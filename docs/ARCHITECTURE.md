@@ -1,5 +1,7 @@
 # Clutch — 系统架构文档
 
+> **文件路径速查：** 具体「改什么去哪个文件」见 [`memory/FILEMAP.md`](../memory/FILEMAP.md)。下文为完整设计理由、数据流与 ADR 叙事。
+
 > **版本**: v0.1  
 > **状态**: 已确认方案  
 > **最后更新**: 2026-06-22
@@ -475,4 +477,4 @@ cd apps/desktop && npm run tauri dev
 
 ---
 
-*本文档随实现进展持续更新。关联文档：[需求提案](./PROPOSAL.md) · [开发纪律](../CLAUDE.md)*
+*本文档随实现进展持续更新。关联文档：[需求提案历史快照](../specs/core/proposal.md) · [开发纪律](../CLAUDE.md) · [文件路径速查](../memory/FILEMAP.md)*

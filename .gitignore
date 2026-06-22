@@ -25,6 +25,15 @@ services/orchestrator/.venv/
 .DS_Store
 *.log
 coverage/
+htmlcov/
+
+# Layer 5 — 验证报告归档（保留目录占位）
+runs/verification/*
+!runs/verification/.gitkeep
+
+# E2E 报告（e2e/ 创建后，见 DECISIONS D1）
+e2e/playwright-report/
+e2e/test-results/
 
 # Tauri (future)
 apps/desktop/src-tauri/target/

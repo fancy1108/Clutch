@@ -1,6 +1,7 @@
-# ARCHITECTURE（文件定位速查）
+# FILEMAP（文件路径速查）
 
-> 第 6 步架构拆解后填实具体路径。现在只建骨架。
+> Agent Check-in 用：「改什么 → 去哪个文件」。第 6 步填实路径映射表。  
+> **完整架构设计、数据流与 ADR 叙事**见 [`docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md)。
 
 ## 五层架构
 
@@ -10,7 +11,7 @@
 | Layer 2 Product Truth | `specs/` | proposal、design、tasks — 产品需求快照（历史） |
 | Layer 3 Runtime State | `memory/` | 进度、踩坑、决策 — 跨会话运行态 |
 | Layer 4 Execution | `.claude/workflows/`、`.cursor/` | workflows、agents — 可选自动化 |
-| Layer 5 Evidence | `runs/` | 执行日志、截图 — 第 7 步起按需积累 |
+| Layer 5 Evidence | `runs/` | `runs/<run_id>/` 工作流证据；`runs/verification/` 测试/覆盖率报告归档 |
 
 ## 权威优先级（冲突时）
 
@@ -26,4 +27,16 @@
 
 | 想改什么 | 去哪里 |
 |---------|--------|
-| （待填） | |
+| 测试策略与 E2E 范围 | `memory/DECISIONS.md`（D1） |
+| E2E 落地前提勾选 | `memory/ROADMAP.md` §E2E 落地前提 |
+| 测试门禁状态 | `memory/TESTS.md` |
+| 后端单元测试 | `services/orchestrator/tests/` |
+| CI 工作流 | `.github/workflows/ci.yml` |
+| 本地一键校验 | `scripts/verify.sh` |
+| 验证报告归档 | `runs/verification/`（gitignore，本地/CI 快照） |
+| E2E 包（M2 后，D1 可执行时） | `e2e/`（尚未创建） |
+
+## 待办（第 6 步填实）
+
+- [ ] 编排引擎、WebSocket、工作流编辑器等业务模块路径映射
+- [ ] `specs/core/tasks.md` 创建后，在此表补全「改什么 → 去哪」

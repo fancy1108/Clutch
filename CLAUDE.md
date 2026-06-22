@@ -17,7 +17,7 @@
 ## ⛔ 铁律
 
 - 原子提交：每完成一个原子 task 立即 commit，禁止提交 broken 代码。
-- 禁止猜测文件路径；找不到时读 `memory/ARCHITECTURE.md` 或列目录确认。
+- 禁止猜测文件路径；找不到时读 `memory/FILEMAP.md` 或列目录确认。
 - 禁止同时处理多个功能；一次一个 task，commit 后再下一个。
 - 禁止在未实际运行校验命令的情况下标记功能完成。
 - 禁止在未更新 `specs/` 或 `memory/DECISIONS.md` 的情况下做架构级业务变更。
@@ -45,7 +45,7 @@
 
 1. 读 `memory/PROGRESS.md` — 了解上次做到哪
 2. 读 `memory/FAILURES.md` — 避开已知陷阱
-3. 读 `memory/ARCHITECTURE.md` — 定位文件，禁止猜路径
+3. 读 `memory/FILEMAP.md` — 定位文件，禁止猜路径
 4. 读 `memory/DECISIONS.md` — 确认最新决策与开放问题
 5. 运行 `git log --oneline -10`
 6. 运行会话校验命令，确认环境干净
@@ -63,10 +63,10 @@
 
 - `PROGRESS.md` — 进度接力棒，每次会话必读必写
 - `FAILURES.md` — 防坑手册，踩坑即写（`[OPEN]` / `[RESOLVED]`）
-- `ARCHITECTURE.md` — 五层架构与文件定位速查，第 6 步填实路径映射
+- `FILEMAP.md` — 文件路径速查表（五层索引 + 路径映射），第 6 步填实
 - `DECISIONS.md` — 决策记录与**唯一**开放问题汇总地
 - `ROADMAP.md` — 功能清单（Default FAIL，验证通过才能 ✅）
-- `TESTS.md` — 测试状态追踪（必须实际运行后才能标记通过）
+- `TESTS.md` — 测试状态追踪（门禁级；列：日期 / 范围 / 命令 / 结果 / 报告证据；必须实际运行后才能标 ✅）
 
 ---
 

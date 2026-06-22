@@ -8,7 +8,7 @@
 | Layer 2 Product Truth | `specs/` | proposal、design、tasks — 产品需求历史快照 |
 | Layer 3 Runtime State | `memory/` | 进度、踩坑、决策 — 跨会话运行态 |
 | Layer 4 Execution | `.claude/workflows/`、`.cursor/` | workflows、agents — 可选自动化 |
-| Layer 5 Evidence | `runs/` | 执行日志、截图 — 第 7 步起按需积累 |
+| Layer 5 Evidence | `runs/` | 工作流执行证据（`runs/<run_id>/`）与验证报告归档（`runs/verification/`）— 第 7 步起按需积累 |
 
 ## 权威优先级
 
@@ -23,15 +23,15 @@
 | 想改什么 | 去哪里 | 何时更新 |
 |---------|--------|---------|
 | 铁律、命令、Check-in | `CLAUDE.md` | 治理规则变更时 |
-| 产品目标、MVP、Non-Goals（历史） | `specs/core/proposal.md` | 仅作快照，不随演进更新 |
+| 产品目标、MVP、Non-Goals（历史） | [`specs/core/proposal.md`](./specs/core/proposal.md) | 仅作快照，不随演进更新 |
 | 视觉规范 | `specs/core/design.md` | 第 4–5 步 |
 | 开发任务清单 | `specs/core/tasks.md` | 第 6 步 |
 | 当前进度、下次做什么 | `memory/PROGRESS.md` | 每个 Agent 会话结束 |
 | 踩坑记录 | `memory/FAILURES.md` | 卡壳 >10 分钟或回滚时 |
 | 架构决策与开放问题 | `memory/DECISIONS.md` | 做技术选型或待决事项时 |
-| 文件定位速查 | `memory/ARCHITECTURE.md` | 第 6 步填实 |
+| 文件定位速查 | [`memory/FILEMAP.md`](./memory/FILEMAP.md) | 第 6 步填实 |
 | 功能验收状态 | `memory/ROADMAP.md`、`memory/TESTS.md` | 验证通过后 |
-| 系统设计详述 | `docs/ARCHITECTURE.md` | 架构评审时 |
+| 系统设计详述（叙事 + ADR） | [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) | 架构评审时；路径速查见 `memory/FILEMAP.md` |
 
 ## 禁止事项
 

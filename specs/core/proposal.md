@@ -1,4 +1,6 @@
-> **本文档为历史快照，不随项目演进更新。如与 CLAUDE.md / memory/DECISIONS.md 中记录的最新决策冲突，以后者为准。**
+> **本文档为历史快照，不随项目演进更新。** 如与 `CLAUDE.md` / `memory/DECISIONS.md` 中记录的最新决策冲突，以后者为准。  
+> 内部相对路径链接（如 `./ARCHITECTURE.md`）反映迁移前的目录结构，可能已失效，**不会被修复**——这是预期行为，不是遗漏。  
+> 当前架构文档见 [`docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md)。
 
 # Clutch — 产品需求提案
 
