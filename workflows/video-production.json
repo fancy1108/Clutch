@@ -1,0 +1,53 @@
+{
+  "$schema": "./workflow.schema.json",
+  "id": "video-production",
+  "name": "Video Production Pipeline",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "n1",
+      "type": "agent_task",
+      "position": { "x": 100, "y": 100 },
+      "data": {
+        "label": "准备视频工程",
+        "agent": "Builder",
+        "tool": "claude-cli",
+        "instruction": "在 src/video-core 下初始化模块并准备构建环境"
+      }
+    },
+    {
+      "id": "n2",
+      "type": "check",
+      "position": { "x": 100, "y": 250 },
+      "data": {
+        "label": "合规检查",
+        "checks": [
+          { "type": "file_exists", "path": "docs/verify.md" },
+          { "type": "lint", "command": "pnpm run lint" }
+        ]
+      }
+    },
+    {
+      "id": "n3",
+      "type": "human_gate",
+      "position": { "x": 100, "y": 400 },
+      "data": {
+        "label": "检查未通过，等待我确认"
+      }
+    },
+    {
+      "id": "end",
+      "type": "end",
+      "position": { "x": 100, "y": 550 },
+      "data": { "label": "完成" }
+    }
+  ],
+  "edges": [
+    { "id": "e1", "source": "start", "target": "n1" },
+    { "id": "e2", "source": "n1", "target": "n2" },
+    { "id": "e3", "source": "n2", "target": "end", "data": { "when": "passed" } },
+    { "id": "e4", "source": "n2", "target": "n3", "data": { "when": "failed" } },
+    { "id": "e5", "source": "n3", "target": "end", "data": { "when": "approve" } },
+    { "id": "e6", "source": "n3", "target": "n1", "data": { "when": "retry" } }
+  ]
+}

@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build
+dist/
+build/
+*.tsbuildinfo
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+services/orchestrator/.venv/
+.ruff_cache/
+*.egg-info/
+
+# Environment
+.env*
+!.env.example
+
+# OS & logs
+.DS_Store
+*.log
+coverage/
+
+# Tauri (future)
+apps/desktop/src-tauri/target/

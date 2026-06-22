@@ -1,0 +1,183 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://clutch.local/schemas/workflow.json",
+  "title": "Clutch Workflow",
+  "description": "User-facing SOP workflow definition. Compiled to LangGraph by services/orchestrator.",
+  "type": "object",
+  "required": ["id", "name", "version", "nodes", "edges"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "description": "Stable workflow identifier (kebab-case)"
+    },
+    "name": { "type": "string", "minLength": 1 },
+    "version": { "type": "integer", "minimum": 1 },
+    "nodes": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/node" }
+    },
+    "edges": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/edge" }
+    }
+  },
+  "$defs": {
+    "position": {
+      "type": "object",
+      "required": ["x", "y"],
+      "additionalProperties": false,
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" }
+      }
+    },
+    "node": {
+      "type": "object",
+      "required": ["id", "type", "data"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "type": {
+          "type": "string",
+          "enum": ["start", "agent_task", "check", "human_gate", "end"]
+        },
+        "position": { "$ref": "#/$defs/position" },
+        "data": { "type": "object" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "agent_task" } } },
+          "then": {
+            "properties": {
+              "data": {
+                "type": "object",
+                "required": ["label", "agent", "instruction"],
+                "additionalProperties": false,
+                "properties": {
+                  "label": { "type": "string" },
+                  "agent": {
+                    "type": "string",
+                    "enum": ["Orchestrator", "Builder", "Evaluator"]
+                  },
+                  "tool": { "type": "string" },
+                  "instruction": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "check" } } },
+          "then": {
+            "properties": {
+              "data": {
+                "type": "object",
+                "required": ["label", "checks"],
+                "additionalProperties": false,
+                "properties": {
+                  "label": { "type": "string" },
+                  "checks": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": { "$ref": "#/$defs/check" }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "human_gate" } } },
+          "then": {
+            "properties": {
+              "data": {
+                "type": "object",
+                "required": ["label"],
+                "additionalProperties": false,
+                "properties": {
+                  "label": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "end" } } },
+          "then": {
+            "properties": {
+              "data": {
+                "type": "object",
+                "required": ["label"],
+                "additionalProperties": false,
+                "properties": {
+                  "label": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "start" } } },
+          "then": {
+            "properties": {
+              "data": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      ]
+    },
+    "check": {
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["file_exists", "lint", "shell"]
+        },
+        "path": { "type": "string" },
+        "command": { "type": "string" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "file_exists" } } },
+          "then": { "required": ["path"] }
+        },
+        {
+          "if": {
+            "properties": { "type": { "enum": ["lint", "shell"] } }
+          },
+          "then": { "required": ["command"] }
+        }
+      ]
+    },
+    "edge": {
+      "type": "object",
+      "required": ["id", "source", "target"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "source": { "type": "string", "minLength": 1 },
+        "target": { "type": "string", "minLength": 1 },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "when": {
+              "type": "string",
+              "enum": ["passed", "failed", "approve", "reject", "retry"],
+              "description": "Conditional branch from check or human_gate nodes"
+            }
+          }
+        }
+      }
+    }
+  }
+}
