@@ -34,7 +34,7 @@
 
 ## M1 · 引擎
 
-> **M1 前须决策**：Q2（默认 LLM）、Q3（Workflow 存放路径）— `DECISIONS.md`
+> **已决策**：D4（LLM 默认 DeepSeek V4 Pro、可切换）、D5（用户工作流 → 应用数据目录）— `DECISIONS.md`
 
 | ID | 任务 | FR | 完成标准 |
 |----|------|-----|----------|
@@ -58,6 +58,7 @@
 | M2-04 | Human Gate UI | FR-04-01–05 | Approve / Reject / Retry + 审计 |
 | M2-05 | LangGraph `interrupt_before` 人工闸门 | FR-04-02–04 | `human_decision` resume |
 | M2-06 | 废弃 `mockData.ts` 编排逻辑 | proposal §15 | 仅保留可选 demo 种子 |
+| M2-07 | 运行历史持久化 + 侧栏入口 | D3, FR-02-01 | 可查看过往 run、状态、时间，便于排查 |
 
 **M2 门禁**：D1 可改为 `可执行`；可建 `e2e/` Smoke（health + WS）。
 
@@ -71,7 +72,7 @@
 | M3-02 | Changes 面板真实 diff | FR-02-06 | `file_changed` → Diff 预览 |
 | M3-03 | Cursor GUI Adapter | FR-05-03 | `open -a Cursor` 生效 |
 | M3-04 | FS Watcher + debounce | FR-05-04 | 保存后 ≤3s 触发 Evaluator |
-| M3-05 | Evaluator 检查规则 | FR-01-04 | `file_exists` + `shell` |
+| M3-05 | Evaluator 执行用户 Agent 配置 | D6, FR-01-04, FR-06-03 | Prompt/Skills/Deliverables 驱动；机制含 `file_exists` + `shell` |
 | M3-06 | 检查节点分支连线 | FR-01-05 | 不通过 → 人工闸门 / 回退 |
 
 **M3 门禁**：MVP 闭环可演示；E2E 闭环用例可对齐。
@@ -96,7 +97,6 @@
 
 | 模块 | FR 范围 | 说明 |
 |------|---------|------|
-| 运行历史 | Q1 待决策 | Sidebar 历史入口 |
 | Skills Registry 后端同步 | FR-06-04 | 替代 localStorage |
 | 单 Agent 模式 | FR-02-09 | 隐藏 Flow 入口 |
 | 全量 MCP 类型 | FR-05-05 | MVP 仅 filesystem |

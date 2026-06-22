@@ -88,4 +88,7 @@
 |---------|--------|
 | 前后端共享 TS 类型 | `packages/shared-types/index.ts` |
 | Workflow JSON Schema | `workflows/workflow.schema.json` |
-| 内置模板 | `workflows/*.json` |
+| 内置模板（只读） | `workflows/*.json` |
+| 用户工作流（读写，D5） | Tauri 应用数据目录 `workflows/` |
+| 可选导出到项目 | `.clutch/workflows/`（导入/导出，非默认） |
+| Agent / Evaluator 配置 UI | `components/AgentManager.tsx` |
