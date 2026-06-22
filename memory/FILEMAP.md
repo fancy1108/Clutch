@@ -84,6 +84,7 @@
 | FastAPI 入口、HTTP/WS 路由 | `src/main.py` |
 | ClutchState 初始值 | `src/state.py` |
 | LangGraph 最小运行时 | `src/graph.py` |
+| Workflow JSON Schema 校验 | `src/workflow_validator.py` |
 | （待建）WorkflowCompiler | `src/compiler/` |
 | （待建）CLI / GUI Adapter | `src/adapters/` |
 | 依赖与 pytest 配置 | `pyproject.toml` |

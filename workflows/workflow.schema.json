@@ -7,6 +7,10 @@
   "required": ["id", "name", "version", "nodes", "edges"],
   "additionalProperties": false,
   "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Optional JSON Schema self-reference for editor tooling"
+    },
     "id": {
       "type": "string",
       "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",

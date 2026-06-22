@@ -9,12 +9,13 @@ from copy import deepcopy
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from src.graph import run_minimal_graph
 from src.state import ClutchState, initial_state
+from src.workflow_validator import WorkflowValidationError, load_and_validate_workflow, validate_workflow
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +35,18 @@ _run_states: dict[str, ClutchState] = {}
 class StartRunRequest(BaseModel):
     workflow_id: str = Field(default="video-production")
     instruction: str = Field(default="")
+
+
+class ValidateWorkflowRequest(BaseModel):
+    workflow_id: str | None = None
+    workflow: dict[str, Any] | None = None
+
+
+def _validation_http_error(exc: WorkflowValidationError) -> HTTPException:
+    return HTTPException(
+        status_code=422,
+        detail={"message": exc.message, "errors": exc.errors},
+    )
 
 
 def _iso_timestamp() -> str:
@@ -71,14 +84,36 @@ async def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.post("/api/workflows/validate")
+async def validate_workflow_endpoint(body: ValidateWorkflowRequest) -> dict[str, str | bool]:
+    try:
+        if body.workflow is not None:
+            validate_workflow(body.workflow)
+            workflow_id = str(body.workflow.get("id", ""))
+        elif body.workflow_id:
+            workflow = load_and_validate_workflow(body.workflow_id)
+            workflow_id = workflow["id"]
+        else:
+            raise WorkflowValidationError("请提供 workflow_id 或 workflow 对象", [])
+    except WorkflowValidationError as exc:
+        raise _validation_http_error(exc) from exc
+
+    return {"valid": True, "workflow_id": workflow_id}
+
+
 @app.post("/api/runs/start")
 async def start_run(body: StartRunRequest) -> dict[str, str]:
+    try:
+        workflow = load_and_validate_workflow(body.workflow_id)
+    except WorkflowValidationError as exc:
+        raise _validation_http_error(exc) from exc
+
     run_id = f"run_{uuid.uuid4().hex[:8]}"
-    state = initial_state(run_id, body.workflow_id)
+    state = initial_state(run_id, workflow["id"])
     state["current_instruction"] = body.instruction
 
     logs = list(state["terminal_logs"])
-    logs.append(f"[ORCHESTRATOR] Starting workflow: {body.workflow_id}")
+    logs.append(f"[ORCHESTRATOR] Starting workflow: {workflow['name']} ({workflow['id']})")
     graph_result = run_minimal_graph(run_id)
     logs.append(f"[LANGGRAPH] Active node → {graph_result['active_node_id']}")
 

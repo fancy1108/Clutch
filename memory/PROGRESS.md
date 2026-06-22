@@ -4,7 +4,7 @@
 
 - 阶段：**M0 核心完成 / M1 骨架启动**
 - 说明：WebSocket `state_patch` 全链路打通；LangGraph 最小图 + `start_run` API 就绪
-- 焦点：**M1-01** Workflow JSON Schema 校验 + Compiler 对接 `video-production.json`
+- 焦点：**M1-02** WorkflowCompiler 对接 `video-production.json`
 - 上次更新：2026-06-22
 - Git HEAD：见 `git log -1`
 
@@ -34,11 +34,17 @@
 
 - [x] **M0-01–03**：Sidecar health、WS ping-pong、`ClutchState` 投影
 - [x] **M1 骨架**：LangGraph 最小图、`POST /api/runs/start`、`POST /api/runs/{id}/stop`
-- [ ] **M1-01**：Workflow JSON Schema 校验
+- [x] **M1-01**：Workflow JSON Schema 校验（`workflow_validator.py` + `/api/workflows/validate`）
+- [ ] **M1-02**：WorkflowCompiler → LangGraph
 - [ ] **M0-05**：Tauri 拉起 Sidecar
 - [ ] **M2**：去 mock，Chat/Terminal 接真实事件
 
 ## 会话日志（最新在上）
+
+### 2026-06-22 会话 7（M1-01 Schema 校验）
+
+- 完成：`workflow_validator.py`、`POST /api/workflows/validate`、`start_run` 前置校验；15 pytest 绿
+- 下次优先：**M1-02** WorkflowCompiler
 
 ### 2026-06-22 会话 6（M0-03 + M1 骨架）
 
