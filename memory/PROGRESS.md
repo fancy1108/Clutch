@@ -4,7 +4,7 @@
 
 - 阶段：**治理脚手架就绪** — 尚未进入 M0 写代码
 - 说明：开工前规范文档已齐（非「全项目规范已封板」）；实现后 ROADMAP / FILEMAP 会随代码演进
-- 焦点：Vibe 8.5 执行性兜底已落地（D7）；下一步 M0 或 Push 验证 CI
+- 焦点：CI 首次绿（D2）；下一步 **M0-01**
 - 上次更新：2026-06-22
 - Git HEAD：见 `git log -1`
 
@@ -27,7 +27,7 @@
 
 ### 规范 / 运维（无代码）
 
-- [ ] **Push + CI**：配置 `git remote` 并 push，确认 Actions 绿，更新 `TESTS.md` CI 行
+- [x] **Push + CI**：remote `git@github.com:fancy1108/Clutch.git`，Actions CI #2 绿，`TESTS.md` 已更新
 - [ ] **M0 后**：CI 与 `check-doc-drift.sh` 启用 `CLUTCH_STRICT_MOCK=1`（收紧 App.tsx setTimeout）
 
 ### 写代码阶段（尚未开始）
@@ -36,6 +36,11 @@
 - [ ] **勿提前**：D1 为 `已记录` 时禁止建 `e2e/`、禁止空测试凑覆盖
 
 ## 会话日志（最新在上）
+
+### 2026-06-22 会话 5（Push + CI 绿）
+
+- 完成：SSH push、pnpm 版本冲突修复（`11e6d77`）、CI #2 绿、`TESTS.md` / `PROGRESS` 更新
+- 下次优先：**M0-01**
 
 ### 2026-06-22 会话 4（Vibe 8.5 验收期真相对齐）
 

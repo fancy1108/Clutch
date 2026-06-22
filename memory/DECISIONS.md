@@ -31,7 +31,7 @@
 
 **D2 遗留待办：**
 
-- [ ] Push 后确认 GitHub Actions 首次绿，更新 `TESTS.md` CI 行
+- [x] Push 后确认 GitHub Actions 首次绿，更新 `TESTS.md` CI 行（2026-06-22，CI #2）
 - [ ] 有覆盖率需求时：pytest-cov / vitest coverage + CI artifacts 上传
 
 ### D3 · 运行历史纳入 MVP（2026-06-22）
