@@ -251,7 +251,7 @@ export const McpServerHub: React.FC = () => {
 
                     <span className="text-xs font-bold text-neutral-900 font-sans">{server.name}</span>
                     <span className={`text-[8.5px] font-mono uppercase px-1.5 py-0.2 rounded font-bold ${
-                      server.type === 'local' ? 'bg-indigo-50 text-indigo-800' : 'bg-neutral-100 text-neutral-500'
+                      server.type === 'local' ? 'bg-neutral-100 text-neutral-800' : 'bg-neutral-100 text-neutral-500'
                     }`}>
                       {server.type}
                     </span>

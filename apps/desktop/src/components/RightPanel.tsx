@@ -362,7 +362,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                         <img className="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBpRidttSGTIY-J-PGvnlcZX_oZSZoBXJY5vjZ9g1PKl_fq4EKoa2RXbcSCvvIdbPLdmfuzPKTxnR8TqV7skwsKlt-eKEzSzktv-TWbHu4c9uBEdP6Es_Fjek1EBQuGZeMtWsUi3fn0lyozFaZBLp9SpES3r0WalbqYY6gGiT1R_0J1kvU-D9rI_2q2f3sMGHuTjWyOZ5gImCLGHSGejtcKmToTSZYMrXfT_A5x1iw_f4q7WljP3FXjk64aQhLgh9nTXUDfPdkIzu0b" alt="Builder" />
                       </div>
                       <div>
-                        <h5 className="text-[12px] font-bold text-neutral-800">Builder Module (JSX)</h5>
+                        <h5 className="text-[12px] font-bold text-neutral-800">Builder Module (JSX VibeCoder)</h5>
                         <p className="text-[10px] text-zinc-500 font-bold font-mono">Status: Idle</p>
                       </div>
                     </div>
@@ -793,7 +793,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                 Automated Container Console
               </h4>
               <button
-                onClick={() => alert("Terminal clears and restarts outputs logs.")}
+                onClick={() => console.warn("Terminal clears and restarts outputs logs.")}
                 className="text-[9px] font-semibold text-on-surface bg-surface-container-high px-2 py-1 rounded"
               >
                 Clear

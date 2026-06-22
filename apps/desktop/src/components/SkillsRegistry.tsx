@@ -10,7 +10,7 @@ export interface ScannedSkill {
 
 export const SkillsRegistry: React.FC = () => {
   const [scannedSkills, setScannedSkills] = useState<ScannedSkill[]>(() => {
-    const saved = localStorage.getItem('clutch-scanned-skills');
+    const saved = localStorage.getItem('vibe-scanned-skills');
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -26,7 +26,7 @@ export const SkillsRegistry: React.FC = () => {
   });
 
   const [mountedDirectories, setMountedDirectories] = useState<string[]>(() => {
-    const saved = localStorage.getItem('clutch-mounted-dirs');
+    const saved = localStorage.getItem('vibe-mounted-dirs');
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -39,14 +39,14 @@ export const SkillsRegistry: React.FC = () => {
   const [successMsg, setSuccessMsg] = useState('');
 
   useEffect(() => {
-    localStorage.setItem('clutch-scanned-skills', JSON.stringify(scannedSkills));
+    localStorage.setItem('vibe-scanned-skills', JSON.stringify(scannedSkills));
     // Dispatch custom event to notify other modules of skills registry change
-    window.dispatchEvent(new Event('clutch-skills-updated'));
+    window.dispatchEvent(new Event('vibe-skills-updated'));
   }, [scannedSkills]);
 
   useEffect(() => {
-    localStorage.setItem('clutch-mounted-dirs', JSON.stringify(mountedDirectories));
-    window.dispatchEvent(new Event('clutch-skills-updated'));
+    localStorage.setItem('vibe-mounted-dirs', JSON.stringify(mountedDirectories));
+    window.dispatchEvent(new Event('vibe-skills-updated'));
   }, [mountedDirectories]);
 
   const handleToggleGlobalSkill = (key: string) => {
@@ -99,7 +99,7 @@ export const SkillsRegistry: React.FC = () => {
         {/* Banner Headers */}
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-[20px] text-indigo-600">school</span>
+            <span className="material-symbols-outlined text-[20px] text-neutral-800">school</span>
             <h2 className="text-base font-bold text-neutral-900 tracking-tight font-sans">Global Skills Registry</h2>
           </div>
           <p className="text-xs text-neutral-500 font-sans leading-relaxed">
@@ -114,7 +114,7 @@ export const SkillsRegistry: React.FC = () => {
               <h3 className="text-[11px] font-extrabold text-[#111111] font-mono tracking-wider uppercase">Active Search Paths</h3>
               <p className="text-[9.5px]/snug text-neutral-400 font-sans">Directories recursively scanned for YAML specification headers.</p>
             </div>
-            <span className="text-[8.5px] font-mono uppercase bg-indigo-50 text-indigo-700 border border-indigo-200/50 px-2 py-0.5 rounded font-extrabold">Auto-Discovery</span>
+            <span className="text-[8.5px] font-mono uppercase bg-neutral-100 text-neutral-700 border border-neutral-200 px-2 py-0.5 rounded font-extrabold">Auto-Discovery</span>
           </div>
 
           <div className="grid grid-cols-1 gap-2">
@@ -198,7 +198,7 @@ export const SkillsRegistry: React.FC = () => {
                     type="button"
                     onClick={() => handleToggleGlobalSkill(skill.key)}
                     className={`w-9 h-5 rounded-full p-0.5 transition-all duration-300 relative cursor-pointer flex items-center ${
-                      skill.isActiveGlobally ? 'bg-indigo-600 justify-end' : 'bg-neutral-200 justify-start'
+                      skill.isActiveGlobally ? 'bg-neutral-900 justify-end' : 'bg-neutral-200 justify-start'
                     }`}
                     title="Toggle global workspace validation inject"
                   >

@@ -1,215 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
-export interface Deliverable {
-  name: string;
-  content: string;
-}
-
-export interface Agent {
-  id: string;
-  name: string;
-  description: string;
-  markdownDoc: string;
-  lastModified: string;
-  avatar: string;
-  deliverables: Deliverable[];
-  mcpTools?: string[];
-  aiEngine?: string;
-  skills?: string[];
-}
-
-const DEFAULT_AGENTS: Agent[] = [
-  {
-    id: 'agent-orchestrator',
-    name: 'Orchestrator Module (VobeSOP v2)',
-    description: 'Parses system instructions, establishes project file trees, and assigns granular code files to modular subtask units.',
-    lastModified: '2026-06-21 14:30',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA0yGh59QNLj5n0igNxMgu4lgaiNqZpcN29SpWM0JHNlAuFmOBx-Id67Zcd2NDCNBjBKrcffQrdrfoe-3XaSlveekLAP9SRis93uTk7XPPFO5y4Swos7NvATw6n7eZEm7nfAQuTiMAoWRSnxefAOJugUbZx3fCTNv4jGyjvT-UZznwKzp_HoXuStup_0juhBCZYamrV0Coil-k27d9Yi7il6NabIEG0FfbxwL5V5azpfZQOlBfpaganta2kP7n59BKPHd4K2uTOfZ5p',
-    mcpTools: ['git_write_permission', 'cmd_exec_permission'],
-    aiEngine: 'Antigravity CLI',
-    skills: ['React-Lint-Rules', 'Markdown-Verification'],
-    markdownDoc: `# Orchestrator Module (VobeSOP v2)
-
-The Orchestrator is the central dispatcher and runtime monitor of the AI multi-agent workflow. It structures human requirements into explicit technical specifications.
-
-## 🎯 Key Responsibilities
-- **Context Triage**: Evaluates changes in specifications and user goals.
-- **Plan Synthesizer**: Generates highly targeted \`plan.md\` tasks prioritizing modularized structure.
-- **Dispatch & Guard**: Spawns subtask agents (Builder, Auditor) and configures quality gates.
-
-## ⚙️ Operating Procedures
-1. Reads workspace repository files on activation.
-2. Generates initial orchestration manifest files.
-3. Watches output streams to verify alignment with strict technical standards.
-`,
-    deliverables: [
-      {
-        name: 'plan.md',
-        content: `# Action Plan: Video Pipeline Orchestration
-
-This plan directs current subprocess agents for validating visual assets and running smoke testing protocols.
-
-## 📋 Required Actions
-- [x] Gather layout constraints for index/compositions.
-- [x] Establish the clean environment configurations.
-- [ ] Compile final video render components using JSX.
-`
-      },
-      {
-        name: 'handoff-status.json',
-        content: `{
-  "pipelineState": "ORCHESTRATED",
-  "gatesPassed": ["Gate_1_Initiated", "Gate_2_Syntax_Verify"],
-  "mp4Path": "out/Video_Production_v2.mp4",
-  "activeAgent": "Builder",
-  "timestamp": "2026-06-21T07:38:43Z"
-}`
-      }
-    ]
-  },
-  {
-    id: 'agent-builder',
-    name: 'Builder Module (JSX)',
-    description: 'Generates responsive Tailwind layouts, writes clean TypeScript classes, resolves directory schema constraints, and executes local debug suites.',
-    lastModified: '2026-06-20 09:15',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBpRidttSGTIY-J-PGvnlcZX_oZSZoBXJY5vjZ9g1PKl_fq4EKoa2RXbcSCvvIdbPLdmfuzPKTxnR8TqV7skwsKlt-eKEzSzktv-TWbHu4c9uBEdP6Es_Fjek1EBQuGZeMtWsUi3fn0lyozFaZBLp9SpES3r0WalbqYY6gGiT1R_0J1kvU-D9rI_2q2f3sMGHuTjWyOZ5gImCLGHSGejtcKmToTSZYMrXfT_A5x1iw_f4q7WljP3FXjk64aQhLgh9nTXUDfPdkIzu0b',
-    mcpTools: ['git_write_permission', 'figma_api_connect'],
-    aiEngine: 'Claude Code (Local CLI)',
-    skills: ['React-Lint-Rules', 'Mock-Data-Generator'],
-    markdownDoc: `# Builder Module (JSX)
-
-The execution engine responsible for writing production-ready React modules, schema bindings, and custom user styles.
-
-## 🛠️ Main Capabilities
-- **Responsive Layout Design**: Strict adherence to mobile-first + desktop-precision styling systems.
-- **Type-safe State Machines**: Implements robust state flows without excessive rendering side-effects.
-- **Zero-Dependency Core**: Avoids heavy third-party bloat, relying on streamlined inline hooks.
-
-## 🛡️ Coding Directives
-- Always declare Types in \`src/types.ts\`.
-- Keep component imports crisp, modular, and cleanly separated.
-- Style with direct Tailwind CSS values rather than complex custom CSS rules.
-`,
-    deliverables: [
-      {
-        name: 'src/App.tsx',
-        content: `import React, { useState } from 'react';
-
-export default function App() {
-  const [activeTab, setActiveTab] = useState('chat');
-  return (
-    <div className="flex h-screen bg-neutral-50">
-      <header className="h-14 border-b border-neutral-200">
-        <h1 className="text-sm font-bold">Clutch</h1>
-      </header>
-    </div>
-  );
-}`
-      },
-      {
-        name: 'src/mockData.ts',
-        content: `export const initialData = {
-  status: "ready",
-  version: "2.4.1",
-  lastCommit: "2026-06-21T07:38:43Z"
-};`
-      }
-    ]
-  },
-  {
-    id: 'agent-auditor',
-    name: 'Auditor Agent (Pipeline Quality Audit)',
-    description: 'Examines workflow and product quality pipelines, performing pixel-precise visually verification, extracting keyframes, and enforcing regression compliance.',
-    lastModified: '2026-06-21 15:00',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCmb7VGaQXE-4sYnIZR3VrcHVAPhv4Px14kMlkayJj8kVm8htTWITmPi26wsj8P6B9RrqykIWj81S2ilmGR0e8cXhA1gjc3U-Nw0DsgHV3HvVmBskuoUksIt6YM6Z3ORjFtRhBphqAXxRKf9ke-zYcPs0TcEFKxw_bwGXSDiAKV5CL7kZf9i6lSZDe91ccUNjaAIsgTMKEEvYc7bZpXYz3D5dClulRwbNru5SZB-1E5FM0A2qMPs-IAfiR8OB1-cUvFh3WYKx9qlGgN',
-    mcpTools: ['cmd_exec_permission'],
-    aiEngine: 'Cursor Workspace Node',
-    skills: ['Secure-Code-Checklist'],
-    markdownDoc: `# Auditor Agent (Pipeline Quality Audit)
-
-This quality containment unit ensures compliance and visual elegance across all generated pipeline assets.
-
-## 📋 Auditor Guidelines
-1. **Quarantine Rule**: Automatically flags large or damaged elements and moves them to secure buffers.
-2. **Claim-First**: Formally aligns facts with direct textual citations.
-3. **Double links**: Enforces bidirectional metadata link patterns with a density > 2 links/para.
-
-## 🚫 Critical Constraints
-- Keep physical outputs entirely distinct from logical groupings.
-- Never modify raw baseline input records directly.
-`,
-    deliverables: [
-      {
-        name: '.claude/agents/auditor.md',
-        content: `# Auditor Agent Configuration Override
-
-- Evaluates: Design system layout constraints
-- Verification tool: Headless engine keyframes
-- Regression tolerance: 0% layout shift permitted`
-      },
-      {
-        name: 'runs/audit-system-actions.md',
-        content: `# System Actions — Audit Round #4
-
-## Systemic Issues Identified
-- **SA-01: Auto-scaling overflow under 1280x720 canvas**
-  - *Evidence:* Layout truncation on scene 3 screenshot.
-  - *Correction:* Adjusted \`scale-css-px.ts\` multiplier parameters.`
-      },
-      {
-        name: 'runs/auditor-report.md',
-        content: `# Auditor Report: Smoke Spec 14 Fast
-
-## Visual Verification Outcomes
-| SceneID | Screenshot | Visual Result | Layout Match |
-|---|---|---|---|
-| scene1 | \`screenshots/scene1-lastframe.png\` | PASS | YES |
-| scene2 | \`screenshots/scene2-lastframe.png\` | PASS | YES |
-| scene3 | \`screenshots/scene3-lastframe.png\` | FAIL | NO (truncated) |`
-      }
-    ]
-  },
-  {
-    id: 'agent-evaluator',
-    name: 'Evaluator Module (Automated QA Compliance)',
-    description: 'Validates visual layout parameters against design wireframes, compliance contrast benchmarks, and checks list artifacts for exits.',
-    lastModified: '2026-06-19 18:22',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA1WfXo6Scl9tL9vT3yG0tYyL9K2zE3O9_4O_4A_5o9S1vP5T5_4O_4A_5o9S1vP5T5_4O_4A_5',
-    aiEngine: 'Antigravity CLI',
-    skills: ['Secure-Code-Checklist'],
-    markdownDoc: `# Evaluator Module (Automated QA Compliance)
-
-Automated system for verifying lint rules, syntax compilation, and functional assertions across all components.
-
-## 🔍 Validation Checklist
-- **Lint Compliance**: Asserts strict compliance with project parameters.
-- **Artifact Auditing**: Verifies that required files exist and contain appropriate configurations.
-- **Type-Safety Audits**: Disallows loose structures, implicit any types, or hanging references.
-`,
-    deliverables: [
-      {
-        name: 'verify.md',
-        content: `# Verification Logs - QA Complete
-
-Linter successfully verified no unused types or missing imports.
-
-## Status Checklist
-- [x] Linter diagnostics: SUCCESS
-- [x] Unused dependencies check: COMPLETE
-- [x] Production build artifact checks: MATCHED`
-      },
-      {
-        name: 'evaluator-verdict.json',
-        content: `{
-  "engineeringPass": true,
-  "visualAuditPass": true,
-  "userSignoff": true,
-  "buildDuration": "2.42s"
-}`
-      }
-    ]
-  }
-];
+import { Deliverable, Agent } from '../types';
+import { initialAgents as DEFAULT_AGENTS } from '../mockData';
 
 export function AgentLogo({ name, description, className = "w-10 h-10" }: { name: string; description: string; className?: string }) {
   // Let's create a deterministic hash from name
@@ -290,7 +82,7 @@ interface AgentManagerProps {
 
 export function AgentManager({ selectedSidebarWidth, isModalStyle }: AgentManagerProps) {
   const [agents, setAgents] = useState<Agent[]>(() => {
-    const saved = localStorage.getItem('clutch-agents');
+    const saved = localStorage.getItem('vibe-workspace-agents');
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -318,9 +110,9 @@ export function AgentManager({ selectedSidebarWidth, isModalStyle }: AgentManage
   const [newDelivContent, setNewDelivContent] = useState('');
   const [selectedMcpTools, setSelectedMcpTools] = useState<string[]>([]);
 
-  // Clutch workspace state extensions
+  // Vibe workspace state extensions
   const [scannedSkills, setScannedSkills] = useState<{ key: string; label: string; source: string; isActiveGlobally: boolean; desc: string }[]>(() => {
-    const saved = localStorage.getItem('clutch-scanned-skills');
+    const saved = localStorage.getItem('vibe-scanned-skills');
     if (saved) {
       try { return JSON.parse(saved); } catch (e) {}
     }
@@ -334,7 +126,7 @@ export function AgentManager({ selectedSidebarWidth, isModalStyle }: AgentManage
   });
 
   const [mountedDirectories, setMountedDirectories] = useState<string[]>(() => {
-    const saved = localStorage.getItem('clutch-mounted-dirs');
+    const saved = localStorage.getItem('vibe-mounted-dirs');
     if (saved) {
       try { return JSON.parse(saved); } catch (e) {}
     }
@@ -348,30 +140,30 @@ export function AgentManager({ selectedSidebarWidth, isModalStyle }: AgentManage
   const [skillsSearch, setSkillsSearch] = useState('');
 
   useEffect(() => {
-    localStorage.setItem('clutch-scanned-skills', JSON.stringify(scannedSkills));
+    localStorage.setItem('vibe-scanned-skills', JSON.stringify(scannedSkills));
   }, [scannedSkills]);
 
   useEffect(() => {
-    localStorage.setItem('clutch-mounted-dirs', JSON.stringify(mountedDirectories));
+    localStorage.setItem('vibe-mounted-dirs', JSON.stringify(mountedDirectories));
   }, [mountedDirectories]);
 
   useEffect(() => {
     const handleUpdateSkills = () => {
-      const saved = localStorage.getItem('clutch-scanned-skills');
+      const saved = localStorage.getItem('vibe-scanned-skills');
       if (saved) {
         try {
           setScannedSkills(JSON.parse(saved));
         } catch (e) {}
       }
     };
-    window.addEventListener('clutch-skills-updated', handleUpdateSkills);
+    window.addEventListener('vibe-skills-updated', handleUpdateSkills);
     return () => {
-      window.removeEventListener('clutch-skills-updated', handleUpdateSkills);
+      window.removeEventListener('vibe-skills-updated', handleUpdateSkills);
     };
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('clutch-agents', JSON.stringify(agents));
+    localStorage.setItem('vibe-workspace-agents', JSON.stringify(agents));
   }, [agents]);
 
   const handleOpenCreate = () => {
@@ -436,7 +228,7 @@ export function AgentManager({ selectedSidebarWidth, isModalStyle }: AgentManage
 
   const handleSave = () => {
     if (!name.trim()) {
-      alert('Please enter Agent Name');
+      console.warn('Please enter Agent Name');
       return;
     }
 
@@ -629,9 +421,9 @@ export function AgentManager({ selectedSidebarWidth, isModalStyle }: AgentManage
                   </div>
                   <div className="border-t border-neutral-200/50 pt-2.5">
                     <p className="text-[10px] text-neutral-400 font-medium">DRIVING AI ENGINE</p>
-                    <div className="flex items-center gap-1.5 mt-1 bg-indigo-50/50 border border-indigo-100/80 rounded-lg p-1.5">
-                      <span className="material-symbols-outlined text-[13px] text-indigo-600">bolt</span>
-                      <span className="text-[10.5px] font-mono font-bold text-indigo-900">{selectedAgent.aiEngine || 'Antigravity CLI'}</span>
+                    <div className="flex items-center gap-1.5 mt-1 bg-neutral-100 border border-neutral-200 rounded-lg p-1.5">
+                      <span className="material-symbols-outlined text-[13px] text-neutral-700">bolt</span>
+                      <span className="text-[10.5px] font-mono font-bold text-neutral-900">{selectedAgent.aiEngine || 'Antigravity CLI'}</span>
                     </div>
                   </div>
                   <div className="border-t border-neutral-200/50 pt-2.5 flex justify-between items-center">
@@ -670,11 +462,11 @@ export function AgentManager({ selectedSidebarWidth, isModalStyle }: AgentManage
                   {selectedAgent.mcpTools && selectedAgent.mcpTools.length > 0 ? (
                     selectedAgent.mcpTools.map(toolKey => {
                       const info = {
-                        'git_write_permission': { label: 'Local Git Access', icon: 'terminal', bg: 'bg-indigo-50/75 text-indigo-700 border-indigo-100' },
-                        'figma_api_connect': { label: 'Figma Design Hook', icon: 'palette', bg: 'bg-pink-50/75 text-pink-700 border-pink-100' },
-                        'cmd_exec_permission': { label: 'CLI Command Engine', icon: 'code', bg: 'bg-emerald-50/75 text-emerald-700 border-emerald-100' },
-                        'slack_webhook': { label: 'Slack Webhook Feed', icon: 'forum', bg: 'bg-sky-50/75 text-sky-700 border-sky-100' },
-                        'google_sheets_sync': { label: 'Sheets Live Sync', icon: 'table_chart', bg: 'bg-amber-50/75 text-amber-700 border-amber-100' }
+                        'git_write_permission': { label: 'Local Git Access', icon: 'terminal', bg: 'bg-neutral-50 text-neutral-800 border-neutral-200/60' },
+                        'figma_api_connect': { label: 'Figma Design Hook', icon: 'palette', bg: 'bg-neutral-50 text-neutral-800 border-neutral-200/60' },
+                        'cmd_exec_permission': { label: 'CLI Command Engine', icon: 'code', bg: 'bg-neutral-50 text-neutral-800 border-neutral-200/60' },
+                        'slack_webhook': { label: 'Slack Webhook Feed', icon: 'forum', bg: 'bg-neutral-50 text-neutral-800 border-neutral-200/60' },
+                        'google_sheets_sync': { label: 'Sheets Live Sync', icon: 'table_chart', bg: 'bg-neutral-50 text-neutral-800 border-neutral-200/60' }
                       }[toolKey] || { label: toolKey, icon: 'extension', bg: 'bg-neutral-50 text-neutral-700 border-neutral-150' };
 
                       return (
@@ -789,7 +581,7 @@ export function AgentManager({ selectedSidebarWidth, isModalStyle }: AgentManage
                       </span>
                     )}
                     {agent.aiEngine && (
-                      <span className="text-[9.5px] font-mono text-indigo-700 bg-indigo-50 border border-indigo-150 px-1.5 py-0.2 rounded-md tracking-tight font-extrabold uppercase">
+                      <span className="text-[9.5px] font-mono text-neutral-800 bg-neutral-100 border border-neutral-200 px-1.5 py-0.2 rounded-md tracking-tight font-extrabold uppercase">
                         {agent.aiEngine}
                       </span>
                     )}
@@ -868,7 +660,7 @@ export function AgentManager({ selectedSidebarWidth, isModalStyle }: AgentManage
               {/* 🧩 MODULE 1: Identity & Engine */}
               <div className="p-4 bg-neutral-50/30 border border-neutral-200/60 rounded-xl space-y-3.5 animate-fade-in">
                 <div className="flex items-center gap-1.5 pb-2 border-b border-neutral-200/40">
-                  <span className="text-[9.5px] font-extrabold text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.2 rounded font-mono tracking-wider uppercase">Module 1</span>
+                  <span className="text-[9.5px] font-extrabold text-neutral-800 bg-neutral-100 border border-neutral-200 px-1.5 py-0.2 rounded font-mono tracking-wider uppercase">Module 1</span>
                   <span className="text-[10.5px] font-extrabold text-[#111111] font-mono tracking-wide uppercase">Identity & Driving Engine</span>
                 </div>
                 
@@ -905,8 +697,8 @@ export function AgentManager({ selectedSidebarWidth, isModalStyle }: AgentManage
                         <span>🟢 Local Runtime Verified</span>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-1.5 mt-1.5 text-[9.5px]/tight font-mono font-bold text-indigo-700 bg-indigo-50/50 border border-indigo-100/50 rounded-md py-0.5 px-2.5 w-max">
-                        <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 inline-block animate-ping"></span>
+                      <div className="flex items-center gap-1.5 mt-1.5 text-[9.5px]/tight font-mono font-bold text-neutral-700 bg-neutral-100/50 border border-neutral-200/50 rounded-md py-0.5 px-2.5 w-max">
+                        <span className="h-1.5 w-1.5 rounded-full bg-neutral-500 inline-block animate-ping"></span>
                         <span>🟢 Cloud Gateway Connected (Latency: 45ms)</span>
                       </div>
                     )}
@@ -928,7 +720,7 @@ export function AgentManager({ selectedSidebarWidth, isModalStyle }: AgentManage
               {/* 🧩 MODULE 2: Persona & Soul (System Prompt) */}
               <div className="p-4 bg-neutral-50/30 border border-neutral-200/60 rounded-xl space-y-2.5">
                 <div className="flex items-center gap-1.5 pb-2 border-b border-neutral-200/40">
-                  <span className="text-[9.5px] font-extrabold text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.2 rounded font-mono tracking-wider uppercase">Module 2</span>
+                  <span className="text-[9.5px] font-extrabold text-neutral-800 bg-neutral-100 border border-neutral-200 px-1.5 py-0.2 rounded font-mono tracking-wider uppercase">Module 2</span>
                   <span className="text-[10.5px] font-extrabold text-[#111111] font-mono tracking-wide uppercase">System Persona & Soul</span>
                 </div>
                 
@@ -951,10 +743,10 @@ export function AgentManager({ selectedSidebarWidth, isModalStyle }: AgentManage
               <div className="p-4 bg-neutral-50/30 border border-neutral-200/60 rounded-xl space-y-4">
                 <div className="flex items-center justify-between pb-2 border-b border-neutral-200/40">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[9.5px] font-extrabold text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.2 rounded font-mono tracking-wider uppercase">Module 3</span>
+                    <span className="text-[9.5px] font-extrabold text-neutral-800 bg-neutral-100 border border-neutral-200 px-1.5 py-0.2 rounded font-mono tracking-wider uppercase">Module 3</span>
                     <span className="text-[10.5px] font-extrabold text-[#111111] font-mono tracking-wide uppercase">Attach Agent Skills</span>
                   </div>
-                  <span className="text-[8.5px] uppercase font-mono bg-indigo-50 text-indigo-700 border border-indigo-200/60 px-2 py-0.5 rounded">Local-First</span>
+                  <span className="text-[8.5px] uppercase font-mono bg-neutral-100 text-neutral-700 border border-neutral-200/60 px-2 py-0.5 rounded">Local-First</span>
                 </div>
 
                 {/* Sub-section 3A: Attach Skills Pill arrangement */}
@@ -1031,17 +823,17 @@ export function AgentManager({ selectedSidebarWidth, isModalStyle }: AgentManage
                                   }
                                 }}
                                 className={`w-full text-left p-2 rounded text-[11px] flex items-center justify-between transition-colors ${
-                                  isAttached ? 'bg-indigo-50/60 text-indigo-950 font-medium' : 'hover:bg-neutral-100 text-neutral-600'
+                                  isAttached ? 'bg-neutral-100 text-neutral-900 font-medium' : 'hover:bg-neutral-100 text-neutral-600'
                                 }`}
                               >
                                 <div className="flex flex-col">
                                   <div className="flex items-center gap-1.5 font-bold">
-                                    <span className="material-symbols-outlined text-[12px] text-indigo-500">label</span>
+                                    <span className="material-symbols-outlined text-[12px] text-neutral-500">label</span>
                                     <span>{skill.label}</span>
                                   </div>
                                   <span className="text-[9.5px] text-neutral-400 font-sans ml-4">{skill.desc}</span>
                                 </div>
-                                <span className="material-symbols-outlined text-[15px] text-indigo-600 flex-shrink-0">
+                                <span className="material-symbols-outlined text-[15px] text-neutral-600 flex-shrink-0">
                                   {isAttached ? 'check_box' : 'check_box_outline_blank'}
                                 </span>
                               </button>
@@ -1083,7 +875,7 @@ export function AgentManager({ selectedSidebarWidth, isModalStyle }: AgentManage
               {/* 🧩 MODULE 4: Bind MCP Servers */}
               <div className="p-4 bg-neutral-50/30 border border-neutral-200/60 rounded-xl space-y-3">
                 <div className="flex items-center gap-1.5 pb-2 border-b border-neutral-200/40">
-                  <span className="text-[9.5px] font-extrabold text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.2 rounded font-mono tracking-wider uppercase">Module 4</span>
+                  <span className="text-[9.5px] font-extrabold text-neutral-800 bg-neutral-100 border border-neutral-200 px-1.5 py-0.2 rounded font-mono tracking-wider uppercase">Module 4</span>
                   <span className="text-[10.5px] font-extrabold text-[#111111] font-mono tracking-wide uppercase">Permissions and MCP Server Bindings</span>
                 </div>
                 
@@ -1142,7 +934,7 @@ export function AgentManager({ selectedSidebarWidth, isModalStyle }: AgentManage
                                 <span className={isSelected && security.label.includes('🔴') ? 'text-rose-950' : ''}>{tool.label}</span>
                                 {isSelected && (
                                   <span className={`text-[7.5px] uppercase font-mono px-1.5 py-0.2 rounded-sm tracking-wider ${
-                                    security.label.includes('🔴') ? 'bg-rose-600 text-white' : 'bg-indigo-500 text-white'
+                                    security.label.includes('🔴') ? 'bg-rose-600 text-white' : 'bg-neutral-700 text-white'
                                   }`}>
                                     {security.label.includes('🔴') ? '🛡️ BYPASS' : 'Mounted'}
                                   </span>
@@ -1182,7 +974,7 @@ export function AgentManager({ selectedSidebarWidth, isModalStyle }: AgentManage
               {/* 🧩 MODULE 5: Deliverables Output Constraints */}
               <div className="p-4 bg-neutral-50/30 border border-neutral-200/60 rounded-xl space-y-3">
                 <div className="flex items-center gap-1.5 pb-2 border-b border-neutral-200/40">
-                  <span className="text-[9.5px] font-extrabold text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.2 rounded font-mono tracking-wider uppercase">Module 5</span>
+                  <span className="text-[9.5px] font-extrabold text-neutral-800 bg-neutral-100 border border-neutral-200 px-1.5 py-0.2 rounded font-mono tracking-wider uppercase">Module 5</span>
                   <span className="text-[10.5px] font-extrabold text-[#111111] font-mono tracking-wide uppercase">Deliverables Config & State Update Rules</span>
                 </div>
 

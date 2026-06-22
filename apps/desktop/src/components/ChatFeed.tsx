@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { ChatMessage, RunStatus } from '../types';
+import { useLanguage } from './LanguageContext';
 
 interface ChatFeedProps {
   messages: ChatMessage[];
@@ -32,6 +33,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   onReject,
   onRetryWithInstructions
 }) => {
+  const { t } = useLanguage();
   const bottomRef = useRef<HTMLDivElement>(null);
   const [hillInstructions, setHillInstructions] = useState('');
 
@@ -139,7 +141,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                         )}
                       </div>
                       <button 
-                        onClick={() => alert(`Direct deliverables for ${msg.agent}:\nAll schema checks verified.`)}
+                        onClick={() => console.warn(`Direct deliverables for ${msg.agent}:\nAll schema checks verified.`)}
                         className="text-[9px] font-bold text-on-surface-variant/70 hover:text-primary transition-colors flex items-center gap-1"
                       >
                         <span className="material-symbols-outlined text-[13px]">visibility</span> View Deliverables
@@ -272,7 +274,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                     </span>
                   </div>
                   <button 
-                    onClick={() => alert(`Active Orchestrator validation step inside Round 2.`)}
+                    onClick={() => console.warn(`Active Orchestrator validation step inside Round 2.`)}
                     className="text-[9px] font-bold text-on-surface-variant/70 hover:text-black transition-colors flex items-center gap-1"
                   >
                     <span className="material-symbols-outlined text-[13px]">visibility</span> View Workspace State
@@ -317,7 +319,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
             </button>
           </div>
         ) : runStatus === 'failed' ? (
-          /* Human-in-the-loop — see UI_UX_GUIDELINES.md */
+          /* Human-in-the-loop (人工介入) Intervention Panel - Beautiful high-contrast theme matching AGENTS.md / design.md */
           <div className="w-full max-w-2xl bg-white border border-rose-200/90 p-5 p-r-6 shadow-xl hover:shadow-2xl transition-all rounded-2xl flex flex-col gap-4 select-text text-left">
             <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
               <div className="flex items-center gap-2.5">
@@ -433,13 +435,13 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                 onChange={e => setInputValue(e.target.value)}
                 onKeyDown={handleKeyDown}
                 className="w-full border-none focus:ring-0 text-xs text-on-surface bg-transparent p-2 resize-none min-h-[40px] max-h-[140px] placeholder:text-on-surface-variant/70 outline-none"
-                placeholder={isMultiAgent ? "Ask @Builder, @Orchestrator or trigger @Workflow..." : "Ask your AI Agent anything..."}
+                placeholder={isMultiAgent ? t("Ask @Builder, @Orchestrator or trigger @Workflow...") : t("Ask your AI Agent anything...")}
                 rows={1}
               />
 
               <div className="flex items-center gap-1 flex-shrink-0 mb-0.5">
                 <button 
-                  onClick={() => alert("Simulated mic active. Talk to prompt the agents.")}
+                  onClick={() => console.warn("Simulated mic active. Talk to prompt the agents.")}
                   className="w-10 h-10 flex items-center justify-center text-on-surface-variant hover:bg-surface-container rounded-full transition-colors"
                   title="Voice input"
                 >

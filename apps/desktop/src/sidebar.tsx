@@ -1,5 +1,6 @@
 import React from 'react';
 import { RepositoryFolder, MainView } from './types';
+import { useLanguage } from './components/LanguageContext';
 
 interface SidebarProps {
   currentView: MainView;
@@ -26,6 +27,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   setIsOpenState,
   isMultiAgent = true
 }) => {
+  const { t } = useLanguage();
+
   const toggleFolder = (folderName: string) => {
     setFolders(prev =>
       prev.map(f => (f.name === folderName ? { ...f, collapsed: !f.collapsed } : f))
@@ -47,10 +50,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Collapse Toggle Handle */}
       <button
         onClick={() => setIsOpenState(!isOpenState)}
-        className={`absolute top-[88px] w-6 h-6 bg-white border border-neutral-300 rounded-full flex items-center justify-center z-50 shadow-md hover:shadow-lg hover:bg-neutral-50 hover:border-neutral-450 transition-all cursor-pointer text-neutral-600 hover:text-neutral-900 duration-200 hover:scale-110 active:scale-95 ${
+        className={`absolute top-[88px] w-6 h-6 bg-surface-bright border border-outline rounded-full flex items-center justify-center z-50 shadow-md hover:shadow-lg hover:bg-surface-container hover:border-on-surface/30 transition-all cursor-pointer text-on-surface-variant hover:text-on-surface duration-200 hover:scale-110 active:scale-95 ${
           isOpenState ? '-right-3' : '-right-6'
         }`}
-        title={isOpenState ? 'Collapse Sidebar' : 'Expand Sidebar'}
+        title={isOpenState ? t('Collapse Sidebar') : t('Expand Sidebar')}
       >
         <span className="material-symbols-outlined text-[13px] font-bold">
           {isOpenState ? 'chevron_left' : 'chevron_right'}
@@ -62,9 +65,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Top Window Dots (Mock MacOS Control Buttons) */}
         <div className="flex items-center justify-between mb-2 px-2">
           <div className="flex gap-2">
-            <div className="w-3 h-3 rounded-full bg-[#ff5f57] hover:scale-105 transition-transform cursor-pointer" title="Close" />
-            <div className="w-3 h-3 rounded-full bg-[#febc2e] hover:scale-105 transition-transform cursor-pointer" title="Minimize" />
-            <div className="w-3 h-3 rounded-full bg-[#28c840] hover:scale-105 transition-transform cursor-pointer" title="Fullscreen" />
+            <div className="w-3 h-3 rounded-full bg-[#ff5f57] hover:scale-105 transition-transform cursor-pointer" title={t("Close")} />
+            <div className="w-3 h-3 rounded-full bg-[#febc2e] hover:scale-105 transition-transform cursor-pointer" title={t("Minimize")} />
+            <div className="w-3 h-3 rounded-full bg-[#28c840] hover:scale-105 transition-transform cursor-pointer" title={t("Fullscreen")} />
           </div>
         </div>
 
@@ -77,28 +80,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
             }}
             className={`w-full flex items-center gap-3 p-2.5 rounded-lg transition-all text-left group ${
               currentView === 'chat' && activeFlow === 'Video Production'
-                ? 'bg-white shadow-sm text-on-surface font-semibold border border-outline-variant/50'
-                : 'text-on-surface-variant hover:bg-white hover:text-on-surface'
+                ? 'bg-surface-bright shadow-sm text-on-surface font-semibold border border-outline-variant/50'
+                : 'text-on-surface-variant hover:bg-surface-bright hover:text-on-surface'
             }`}
           >
             <span className="material-symbols-outlined text-[20px] text-on-surface-variant group-hover:text-primary">
               chat
             </span>
-            <span className="text-xs font-semibold tracking-wide">New Chat / Reset</span>
+            <span className="text-xs font-semibold tracking-wide">{t("New Chat")}</span>
           </button>
 
           <button
             onClick={() => setView('agents')}
             className={`w-full flex items-center gap-3 p-2.5 rounded-lg transition-all text-left group ${
               currentView === 'agents'
-                ? 'bg-white shadow-sm text-on-surface font-semibold border border-outline-variant/50'
-                : 'text-on-surface-variant hover:bg-white hover:text-on-surface'
+                ? 'bg-surface-bright shadow-sm text-on-surface font-semibold border border-outline-variant/50'
+                : 'text-on-surface-variant hover:bg-surface-bright hover:text-on-surface'
             }`}
           >
             <span className="material-symbols-outlined text-[20px] text-on-surface-variant group-hover:text-primary">
               smart_toy
             </span>
-            <span className="text-xs font-semibold tracking-wide">AI Agents</span>
+            <span className="text-xs font-semibold tracking-wide">{t("AI Agents")}</span>
           </button>
 
           {isMultiAgent && (
@@ -106,14 +109,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onClick={() => setView('workflows')}
               className={`w-full flex items-center gap-3 p-2.5 rounded-lg transition-all text-left group ${
                 currentView === 'workflows'
-                  ? 'bg-white shadow-sm text-on-surface font-semibold border border-outline-variant/60'
-                  : 'text-on-surface-variant hover:bg-white hover:text-on-surface'
+                  ? 'bg-surface-bright shadow-sm text-on-surface font-semibold border border-outline-variant/60'
+                  : 'text-on-surface-variant hover:bg-surface-bright hover:text-on-surface'
               }`}
             >
               <span className="material-symbols-outlined text-[20px] text-on-surface-variant group-hover:text-primary">
                 account_tree
               </span>
-              <span className="text-xs font-semibold tracking-wide">Workflows SOP</span>
+              <span className="text-xs font-semibold tracking-wide">{t("Workflows SOP")}</span>
             </button>
           )}
         </div>
@@ -121,13 +124,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Folders and Projects Header */}
         <div className="flex items-center justify-between text-on-surface-variant mb-1 px-3">
           <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/70">
-            REPOSITORIES
+            {t("REPOSITORIES")}
           </span>
           <div className="flex gap-2">
-            <span className="material-symbols-outlined text-[16px] cursor-pointer hover:text-primary" title="Filter list">
+            <span className="material-symbols-outlined text-[16px] cursor-pointer hover:text-primary" title={t("Filter list")}>
               filter_list
             </span>
-            <span className="material-symbols-outlined text-[16px] cursor-pointer hover:text-primary" title="New folder">
+            <span className="material-symbols-outlined text-[16px] cursor-pointer hover:text-primary" title={t("New folder")}>
               create_new_folder
             </span>
           </div>
@@ -139,13 +142,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div key={folder.name} className="space-y-1">
               <div
                 onClick={() => toggleFolder(folder.name)}
-                className="flex items-center justify-between text-on-surface font-semibold p-1.5 rounded hover:bg-white transition-colors cursor-pointer group"
+                className="flex items-center justify-between text-on-surface font-semibold p-1.5 rounded hover:bg-surface-bright transition-colors cursor-pointer group"
               >
                 <div className="flex items-center gap-2">
                   <span className="material-symbols-outlined text-[18px] text-on-surface-variant">
                     {folder.collapsed ? 'folder' : 'folder_open'}
                   </span>
-                  <span className="text-xs tracking-wide">{folder.name}</span>
+                  <span className="text-xs tracking-wide">{t(folder.name)}</span>
                 </div>
                 <span
                   onClick={(e) => {
@@ -153,8 +156,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     onResetSimulation();
                     setView('chat');
                   }}
-                  className="material-symbols-outlined text-[16px] opacity-0 group-hover:opacity-100 transition-opacity hover:text-primary hover:scale-110 p-0.5 rounded hover:bg-slate-100"
-                  title="New Chat"
+                  className="material-symbols-outlined text-[16px] opacity-0 group-hover:opacity-100 transition-opacity hover:text-primary hover:scale-110 p-0.5 rounded hover:bg-surface-container"
+                  title={t("New Chat")}
                 >
                   add
                 </span>
@@ -164,7 +167,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <div className="space-y-0.5 ml-4 border-l-2 border-outline-variant/20 pl-2">
                   {folder.items.length === 0 ? (
                     <p className="text-[11px] text-on-surface-variant/60 italic py-1 pl-2">
-                      No agents yet
+                      {t("No agents yet")}
                     </p>
                   ) : (
                     folder.items.map(item => {
@@ -175,11 +178,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           onClick={() => handleFlowSelect(item.name)}
                           className={`w-full flex items-center justify-between p-2 rounded-lg text-left transition-all cursor-pointer ${
                             isItemActive
-                              ? 'bg-white shadow-sm text-on-surface font-bold border border-outline-variant/40'
-                              : 'text-on-surface-variant hover:bg-white hover:text-on-surface'
+                              ? 'bg-surface-bright shadow-sm text-on-surface font-bold border border-outline-variant/40'
+                              : 'text-on-surface-variant hover:bg-surface-bright hover:text-on-surface'
                           }`}
                         >
-                          <span className="text-xs truncate max-w-[160px]">{item.name}</span>
+                          <span className="text-xs truncate max-w-[160px]">{t(item.name)}</span>
                           <div className="flex items-center gap-1.5 flex-shrink-0">
                             <span className="text-[9px] font-mono bg-surface-container-high px-1 rounded text-on-surface-variant/80">
                               {item.time}
@@ -200,13 +203,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button
             onClick={() => setView('settings')}
             className={`w-full flex items-center gap-3 p-2 rounded-lg text-left transition-all group ${
-              currentView === 'settings' ? 'bg-white shadow-sm text-on-surface font-semibold border border-outline-variant/60' : 'text-on-surface-variant hover:bg-white'
+              currentView === 'settings' ? 'bg-surface-bright shadow-sm text-on-surface font-semibold border border-outline-variant/60' : 'text-on-surface-variant hover:bg-surface-bright'
             }`}
           >
             <span className="material-symbols-outlined text-[20px] text-on-surface-variant group-hover:text-primary">
               settings
             </span>
-            <span className="text-xs font-semibold tracking-wide">Settings</span>
+            <span className="text-xs font-semibold tracking-wide">{t("Settings")}</span>
           </button>
         </div>
       </div>

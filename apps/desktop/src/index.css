@@ -56,8 +56,8 @@
 
 body {
   font-family: 'Hanken Grotesk', sans-serif;
-  background-color: #ffffff;
-  color: #1a1c1c;
+  background-color: var(--color-background, #ffffff);
+  color: var(--color-on-background, #1a1c1c);
   -webkit-font-smoothing: antialiased;
 }
 

@@ -90,8 +90,8 @@ export default function AiToolsManager({ isModalStyle }: AiToolsManagerProps) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {connectedTools.map(tool => (
                 <div key={tool.id} className="p-4 border border-neutral-200/60 rounded-xl bg-white shadow-xs flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center flex-shrink-0">
-                    <span className="material-symbols-outlined text-indigo-500">{tool.icon}</span>
+                  <div className="w-10 h-10 rounded-lg bg-neutral-100 flex items-center justify-center flex-shrink-0">
+                    <span className="material-symbols-outlined text-neutral-600">{tool.icon}</span>
                   </div>
                   <div className="flex-1">
                     <h4 className="text-xs font-bold text-neutral-800">{tool.name}</h4>

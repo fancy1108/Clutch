@@ -1,11 +1,18 @@
-import { ChatMessage, RepositoryFolder, UncommittedFile, WorkflowStep } from './types';
+import { ChatMessage, RepositoryFolder, UncommittedFile, WorkflowStep, Agent } from './types';
 
+export const initialConfiguredModels = [
+  { id: 'deepseek-v4pro', name: 'DeepSeek V4Pro', provider: 'DeepSeek AI', contextWindow: '128k context', temperature: 0.3, description: 'Highest-tier reasoning model optimized for code compilation & agent orchestration.' },
+  { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', provider: 'Google AI', contextWindow: '1M context', temperature: 0.5, description: 'Default fast workspace driver. Optimized for low-latency operations.' },
+  { id: 'gemini-2.1-pro', name: 'Gemini 2.1 Pro', provider: 'Google AI', contextWindow: '2M context', temperature: 0.4, description: 'Advanced multimodal reasoning with deeper logical structures.' },
+  { id: 'gpt-4o', name: 'GPT-4o Workspace', provider: 'OpenAI', contextWindow: '128k context', temperature: 0.4, description: 'High-performance generalist model with reliable instruction-following.' },
+  { id: 'claude-3-7-sonnet', name: 'Claude 3.7 Sonnet', provider: 'Anthropic', contextWindow: '200k context', temperature: 0.3, description: 'State-of-the-art coding assistant optimized for agent workspaces.' },
+];
 export const initialFolders: RepositoryFolder[] = [
   {
     name: 'obsidian',
     collapsed: false,
     items: [
-      { name: 'Clutch workspace...', time: '6h', isActive: true },
+      { name: 'Vibe coding workspace...', time: '6h', isActive: true },
       { name: 'Missing bug fix in AI a...', time: '2d' }
     ]
   },
@@ -154,7 +161,7 @@ export const workflowSteps: WorkflowStep[] = [
 export const mockWorkflows: import('./types').WorkflowDef[] = [
   {
     id: 'wf-1',
-    name: 'Clutch Coding Schema',
+    name: 'Vibe Coding Schema',
     lastDeployed: '2h ago',
     isActive: true,
     icon: 'code',
@@ -206,3 +213,197 @@ export const initialTerminalLogs = [
   '-- PENDING HUMAN INTERVENSION --',
   'Waiting for user command to re-assign or repair project...'
 ];
+
+export const initialAgents: Agent[] = [
+  {
+    id: 'agent-orchestrator',
+    name: 'Orchestrator Module (VobeSOP v2)',
+    description: 'Parses system instructions, establishes project file trees, and assigns granular code files to modular subtask units.',
+    lastModified: '2026-06-21 14:30',
+    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA0yGh59QNLj5n0igNxMgu4lgaiNqZpcN29SpWM0JHNlAuFmOBx-Id67Zcd2NDCNBjBKrcffQrdrfoe-3XaSlveekLAP9SRis93uTk7XPPFO5y4Swos7NvATw6n7eZEm7nfAQuTiMAoWRSnxefAOJugUbZx3fCTNv4jGyjvT-UZznwKzp_HoXuStup_0juhBCZYamrV0Coil-k27d9Yi7il6NabIEG0FfbxwL5V5azpfZQOlBfpaganta2kP7n59BKPHd4K2uTOfZ5p',
+    mcpTools: ['git_write_permission', 'cmd_exec_permission'],
+    aiEngine: 'Antigravity CLI',
+    skills: ['React-Lint-Rules', 'Markdown-Verification'],
+    markdownDoc: `# Orchestrator Module (VobeSOP v2)
+
+The Orchestrator is the central dispatcher and runtime monitor of the AI multi-agent workflow. It structures human requirements into explicit technical specifications.
+
+## 🎯 Key Responsibilities
+- **Context Triage**: Evaluates changes in specifications and user goals.
+- **Plan Synthesizer**: Generates highly targeted \`plan.md\` tasks prioritizing modularized structure.
+- **Dispatch & Guard**: Spawns subtask agents (Builder, Auditor) and configures quality gates.
+
+## ⚙️ Operating Procedures
+1. Reads workspace repository files on activation.
+2. Generates initial orchestration manifest files.
+3. Watches output streams to verify alignment with strict technical standards.
+`,
+    deliverables: [
+      {
+        name: 'plan.md',
+        content: `# Action Plan: Video Pipeline Orchestration
+
+This plan directs current subprocess agents for validating visual assets and running smoke testing protocols.
+
+## 📋 Required Actions
+- [x] Gather layout constraints for index/compositions.
+- [x] Establish the clean environment configurations.
+- [ ] Compile final video render components using JSX.
+`
+      },
+      {
+        name: 'handoff-status.json',
+        content: `{
+  "pipelineState": "ORCHESTRATED",
+  "gatesPassed": ["Gate_1_Initiated", "Gate_2_Syntax_Verify"],
+  "mp4Path": "out/Video_Production_v2.mp4",
+  "activeAgent": "Builder",
+  "timestamp": "2026-06-21T07:38:43Z"
+}`
+      }
+    ]
+  },
+  {
+    id: 'agent-builder',
+    name: 'Builder Module (JSX VibeCoder)',
+    description: 'Generates responsive Tailwind layouts, writes clean TypeScript classes, resolves directory schema constraints, and executes local debug suites.',
+    lastModified: '2026-06-20 09:15',
+    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBpRidttSGTIY-J-PGvnlcZX_oZSZoBXJY5vjZ9g1PKl_fq4EKoa2RXbcSCvvIdbPLdmfuzPKTxnR8TqV7skwsKlt-eKEzSzktv-TWbHu4c9uBEdP6Es_Fjek1EBQuGZeMtWsUi3fn0lyozFaZBLp9SpES3r0WalbqYY6gGiT1R_0J1kvU-D9rI_2q2f3sMGHuTjWyOZ5gImCLGHSGejtcKmToTSZYMrXfT_A5x1iw_f4q7WljP3FXjk64aQhLgh9nTXUDfPdkIzu0b',
+    mcpTools: ['git_write_permission', 'figma_api_connect'],
+    aiEngine: 'Claude Code (Local CLI)',
+    skills: ['React-Lint-Rules', 'Mock-Data-Generator'],
+    markdownDoc: `# Builder Module (JSX VibeCoder)
+
+The execution engine responsible for writing production-ready React modules, schema bindings, and custom user styles.
+
+## 🛠️ Main Capabilities
+- **Responsive Layout Design**: Strict adherence to mobile-first + desktop-precision styling systems.
+- **Type-safe State Machines**: Implements robust state flows without excessive rendering side-effects.
+- **Zero-Dependency Core**: Avoids heavy third-party bloat, relying on streamlined inline hooks.
+
+## 🛡️ Coding Directives
+- Always declare Types in \`src/types.ts\`.
+- Keep component imports crisp, modular, and cleanly separated.
+- Style with direct Tailwind CSS values rather than complex custom CSS rules.
+`,
+    deliverables: [
+      {
+        name: 'src/App.tsx',
+        content: `import React, { useState } from 'react';
+
+export default function App() {
+  const [activeTab, setActiveTab] = useState('chat');
+  return (
+    <div className="flex h-screen bg-neutral-50">
+      <header className="h-14 border-b border-neutral-200">
+        <h1 className="text-sm font-bold">Clutch</h1>
+      </header>
+    </div>
+  );
+}`
+      },
+      {
+        name: 'src/mockData.ts',
+        content: `export const initialData = {
+  status: "ready",
+  version: "2.4.1",
+  lastCommit: "2026-06-21T07:38:43Z"
+};`
+      }
+    ]
+  },
+  {
+    id: 'agent-auditor',
+    name: 'Auditor Agent (Pipeline Quality Audit)',
+    description: 'Examines workflow and product quality pipelines, performing pixel-precise visually verification, extracting keyframes, and enforcing regression compliance.',
+    lastModified: '2026-06-21 15:00',
+    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCmb7VGaQXE-4sYnIZR3VrcHVAPhv4Px14kMlkayJj8kVm8htTWITmPi26wsj8P6B9RrqykIWj81S2ilmGR0e8cXhA1gjc3U-Nw0DsgHV3HvVmBskuoUksIt6YM6Z3ORjFtRhBphqAXxRKf9ke-zYcPs0TcEFKxw_bwGXSDiAKV5CL7kZf9i6lSZDe91ccUNjaAIsgTMKEEvYc7bZpXYz3D5dClulRwbNru5SZB-1E5FM0A2qMPs-IAfiR8OB1-cUvFh3WYKx9qlGgN',
+    mcpTools: ['cmd_exec_permission'],
+    aiEngine: 'Cursor Workspace Node',
+    skills: ['Secure-Code-Checklist'],
+    markdownDoc: `# Auditor Agent (Pipeline Quality Audit)
+
+This quality containment unit ensures compliance and visual elegance across all generated pipeline assets.
+
+## 📋 Auditor Guidelines
+1. **Quarantine Rule**: Automatically flags large or damaged elements and moves them to secure buffers.
+2. **Claim-First**: Formally aligns facts with direct textual citations.
+3. **Double links**: Enforces bidirectional metadata link patterns with a density > 2 links/para.
+
+## 🚫 Critical Constraints
+- Keep physical outputs entirely distinct from logical groupings.
+- Never modify raw baseline input records directly.
+`,
+    deliverables: [
+      {
+        name: '.claude/agents/auditor.md',
+        content: `# Auditor Agent Configuration Override
+
+- Evaluates: Design system layout constraints
+- Verification tool: Headless engine keyframes
+- Regression tolerance: 0% layout shift permitted`
+      },
+      {
+        name: 'runs/audit-system-actions.md',
+        content: `# System Actions — Audit Round #4
+
+## Systemic Issues Identified
+- **SA-01: Auto-scaling overflow under 1280x720 canvas**
+  - *Evidence:* Layout truncation on scene 3 screenshot.
+  - *Correction:* Adjusted \`scale-css-px.ts\` multiplier parameters.`
+      },
+      {
+        name: 'runs/auditor-report.md',
+        content: `# Auditor Report: Smoke Spec 14 Fast
+
+## Visual Verification Outcomes
+| SceneID | Screenshot | Visual Result | Layout Match |
+|---|---|---|---|
+| scene1 | \`screenshots/scene1-lastframe.png\` | PASS | YES |
+| scene2 | \`screenshots/scene2-lastframe.png\` | PASS | YES |
+| scene3 | \`screenshots/scene3-lastframe.png\` | FAIL | NO (truncated) |`
+      }
+    ]
+  },
+  {
+    id: 'agent-evaluator',
+    name: 'Evaluator Module (Automated QA Compliance)',
+    description: 'Validates visual layout parameters against design wireframes, compliance contrast benchmarks, and checks list artifacts for exits.',
+    lastModified: '2026-06-19 18:22',
+    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA1WfXo6Scl9tL9vT3yG0tYyL9K2zE3O9_4O_4A_5o9S1vP5T5_4O_4A_5o9S1vP5T5_4O_4A_5',
+    aiEngine: 'Antigravity CLI',
+    skills: ['Secure-Code-Checklist'],
+    markdownDoc: `# Evaluator Module (Automated QA Compliance)
+
+Automated system for verifying lint rules, syntax compilation, and functional assertions across all components.
+
+## 🔍 Validation Checklist
+- **Lint Compliance**: Asserts strict compliance with project parameters.
+- **Artifact Auditing**: Verifies that required files exist and contain appropriate configurations.
+- **Type-Safety Audits**: Disallows loose structures, implicit any types, or hanging references.
+`,
+    deliverables: [
+      {
+        name: 'verify.md',
+        content: `# Verification Logs - QA Complete
+
+Linter successfully verified no unused types or missing imports.
+
+## Status Checklist
+- [x] Linter diagnostics: SUCCESS
+- [x] Unused dependencies check: COMPLETE
+- [x] Production build artifact checks: MATCHED`
+      },
+      {
+        name: 'evaluator-verdict.json',
+        content: `{
+  "engineeringPass": true,
+  "visualAuditPass": true,
+  "userSignoff": true,
+  "buildDuration": "2.42s"
+}`
+      }
+    ]
+  }
+];
+
