@@ -1,5 +1,73 @@
-import { ChatMessage, UncommittedFile, RunStatus } from '../types';
+import { ChatMessage, UncommittedFile, RunStatus, WebSocketEnvelope } from '../types';
 import { initialChatMessages, initialTerminalLogs, uncommittedFiles } from '../mockData';
+
+const SIDECAR_RUN_ID = 'test_run_001';
+const SIDECAR_WS_URL = `ws://localhost:8123/ws/runs/${SIDECAR_RUN_ID}`;
+
+class SidecarWebSocketManager {
+  private socket: WebSocket | null = null;
+  private connectPromise: Promise<void> | null = null;
+
+  connect(): Promise<void> {
+    if (this.socket?.readyState === WebSocket.OPEN) {
+      return Promise.resolve();
+    }
+
+    if (this.connectPromise) {
+      return this.connectPromise;
+    }
+
+    this.connectPromise = new Promise((resolve, reject) => {
+      const ws = new WebSocket(SIDECAR_WS_URL);
+      this.socket = ws;
+
+      ws.onopen = () => {
+        console.log('%c[Clutch WS] Connected to sidecar', 'color: #22c55e; font-weight: bold;');
+        resolve();
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const envelope = JSON.parse(event.data) as WebSocketEnvelope;
+          if (envelope.event === 'message') {
+            console.log('[Clutch WS] envelope:', envelope);
+          }
+        } catch {
+          console.warn('[Clutch WS] non-JSON message:', event.data);
+        }
+      };
+
+      ws.onerror = () => {
+        const error = new Error('WebSocket connection failed');
+        this.connectPromise = null;
+        reject(error);
+      };
+
+      ws.onclose = () => {
+        this.socket = null;
+        this.connectPromise = null;
+      };
+    });
+
+    return this.connectPromise;
+  }
+
+  async send(payload: Record<string, unknown>): Promise<void> {
+    await this.connect();
+    if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+      throw new Error('WebSocket is not connected');
+    }
+    this.socket.send(JSON.stringify(payload));
+  }
+}
+
+const sidecarWebSocket = new SidecarWebSocketManager();
+
+export const connectSidecarWebSocket = (): Promise<void> => sidecarWebSocket.connect();
+
+export const sendSidecarTestMessage = async (): Promise<void> => {
+  await sidecarWebSocket.send({ text: 'Hello sidecar!' });
+};
 
 export const submitChatMessage = async (
   text: string, 
