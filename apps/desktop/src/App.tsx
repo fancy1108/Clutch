@@ -11,7 +11,7 @@ import { McpServerHub } from './components/McpServerHub';
 import { ModelsManager } from './components/ModelsManager';
 import { ThemeManager, THEME_PRESETS } from './components/ThemeManager';
 import { SystemPreferencesModal } from './components/SystemPreferencesModal';
-import { MainView, RightTab, RunStatus, ChatMessage, UncommittedFile } from './types';
+import { MainView, RightTab, ChatMessage, UncommittedFile } from './types';
 import {
   initialConfiguredModels,
   initialFolders,
@@ -22,10 +22,24 @@ import {
 } from './mockData';
 import { LanguageProvider, useLanguage } from './components/LanguageContext';
 import { loadFlowState, submitChatMessage, approveNode, rejectNode, retryNodeWithInstructions, reassignToBuilder } from './services/api';
+import { clutchStore, DEFAULT_RUN_ID, useClutchState } from './services/clutchState';
+import type { RunStatus } from './types';
 
 
 function MainLayout() {
   const { t } = useLanguage();
+  const { state: clutchState, connected } = useClutchState();
+
+  useEffect(() => {
+    void clutchStore.connect(DEFAULT_RUN_ID);
+  }, []);
+
+  const runStatus: RunStatus =
+    clutchState.status === 'awaiting_human' ? 'running' : (clutchState.status as RunStatus);
+  const terminalLogs =
+    connected && clutchState.terminal_logs.length > 0
+      ? clutchState.terminal_logs
+      : initialTerminalLogs;
 
   // Navigation & Structure views
   const [currentView, setView] = useState<MainView>('chat');
@@ -73,11 +87,9 @@ function MainLayout() {
     }
   }, [isMultiAgent, rightTab, currentView]);
 
-  // Simulated Execution engine states
-  const [runStatus, setRunStatus] = useState<RunStatus>('running');
+  // Chat / file mock state (M2 replaces with WS events)
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>(initialChatMessages);
   const [uncommitted, setUncommitted] = useState<UncommittedFile[]>(uncommittedFiles);
-  const [terminalLogs, setTerminalLogs] = useState<string[]>(initialTerminalLogs);
 
   // Close unified settings dialog on ESC key
   useEffect(() => {
@@ -91,36 +103,29 @@ function MainLayout() {
   }, []);
 
   const handleStopRun = () => {
-    setRunStatus('failed');
-    setTerminalLogs(prev => [...prev, `[ORCHESTRATOR] Automatic repair workflow paused by supervisor.`]);
+    void clutchStore.send({ action: 'stop_run' });
   };
 
   const handleApprove = async () => {
-    setRunStatus('running'); // visual feedback
+    void clutchStore.send({ action: 'human_decision', decision: 'approve' });
     const res = await approveNode();
-    setRunStatus('passed');
     setRightTab('overview');
-    setTerminalLogs(prev => [...prev, ...res.logs]);
     setChatMessages(prev => [...prev, ...res.messages]);
     setUncommitted(prev => prev.filter(f => f.name === 'src/video-core/utils.ts'));
   };
 
   const handleReject = async () => {
-    setRunStatus('running');
+    void clutchStore.send({ action: 'human_decision', decision: 'reject' });
     const res = await rejectNode();
-    setTerminalLogs(prev => [...prev, ...res.logs]);
     setChatMessages(prev => [...prev, ...res.messages]);
-    setRunStatus('failed');
   };
 
   const handleRetryWithInstructions = async (instructions: string) => {
-    setRunStatus('running');
+    void clutchStore.send({ action: 'human_decision', decision: 'retry', instructions });
     setRightTab('terminal');
     const res = await retryNodeWithInstructions(instructions);
-    
-    setTerminalLogs(prev => [...prev, ...res.logs]);
+
     setChatMessages(prev => [...prev, ...res.messages]);
-    setRunStatus('passed');
     setRightTab('overview');
     setUncommitted(prev => prev.filter(f => f.name === 'src/video-core/utils.ts'));
   };
@@ -132,18 +137,13 @@ function MainLayout() {
     setCurrentFlowName(flow);
     const res = await loadFlowState(flow);
     setChatMessages(res.messages);
-    setRunStatus(res.status);
-    setTerminalLogs(res.logs);
     setUncommitted(res.uncommitted);
   };
 
   const handleReassignToBuilder = async () => {
-    setRunStatus('running');
     setRightTab('terminal');
     const res = await reassignToBuilder();
-    setTerminalLogs(prev => [...prev, ...res.logs]);
     setChatMessages(prev => [...prev, ...res.messages]);
-    setRunStatus('passed');
     setRightTab('overview');
     setUncommitted(prev => prev.filter(f => f.name === 'src/video-core/utils.ts'));
   };
@@ -167,10 +167,8 @@ function MainLayout() {
   };
 
   const handleResetSimulation = () => {
-    setRunStatus('failed');
     setChatMessages(initialChatMessages);
     setUncommitted(uncommittedFiles);
-    setTerminalLogs(initialTerminalLogs);
     setRightTab('overview');
     setCurrentFlowName('Video Production');
   };

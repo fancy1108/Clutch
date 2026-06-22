@@ -2,6 +2,9 @@
 
 export type RunStatus = 'failed' | 'running' | 'passed';
 
+/** Sidecar run status including human-gate pause. */
+export type ClutchRunStatus = RunStatus | 'awaiting_human';
+
 export type AgentRole = 'Orchestrator' | 'Builder' | 'Evaluator' | 'Supervisor';
 
 export interface ChatMessage {
@@ -68,3 +71,23 @@ export type WebSocketEvent =
   | 'validation_result'
   | 'human_required'
   | 'run_completed';
+
+/** LangGraph SSOT projected to the React UI. */
+export interface ClutchState {
+  run_id: string;
+  workflow_id: string;
+  current_instruction: string;
+  active_node_id: string;
+  active_agent: string;
+  status: ClutchRunStatus;
+  messages: ChatMessage[];
+  terminal_logs: string[];
+  changed_files: string[];
+}
+
+/** WebSocket `state_patch` payload (partial update). */
+export interface StatePatchData {
+  run_id: string;
+  timestamp: string;
+  patch: Partial<ClutchState>;
+}

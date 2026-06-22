@@ -1,16 +1,61 @@
-"""Clutch orchestration sidecar — M0 skeleton."""
+"""Clutch orchestration sidecar — M0 skeleton with ClutchState projection."""
 
 from __future__ import annotations
 
 import json
 import logging
+from copy import deepcopy
 from datetime import UTC, datetime
+from typing import Any
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
+
+from src.state import ClutchState, initial_state
 
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Clutch Orchestrator", version="0.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://127.0.0.1:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+_run_states: dict[str, ClutchState] = {}
+
+
+def _iso_timestamp() -> str:
+    return datetime.now(UTC).isoformat()
+
+
+def _get_or_create_run(run_id: str) -> ClutchState:
+    if run_id not in _run_states:
+        _run_states[run_id] = initial_state(run_id)
+    return _run_states[run_id]
+
+
+def _merge_patch(state: ClutchState, patch: dict[str, Any]) -> ClutchState:
+    merged = deepcopy(state)
+    for key, value in patch.items():
+        if key in merged:
+            merged[key] = value  # type: ignore[literal-required]
+    return merged
+
+
+async def _send_state_patch(websocket: WebSocket, run_id: str, patch: dict[str, Any]) -> None:
+    envelope = {
+        "event": "state_patch",
+        "data": {
+            "run_id": run_id,
+            "timestamp": _iso_timestamp(),
+            "patch": patch,
+        },
+    }
+    await websocket.send_text(json.dumps(envelope))
 
 
 @app.get("/health")
@@ -21,17 +66,21 @@ async def health() -> dict[str, str]:
 @app.websocket("/ws/runs/{run_id}")
 async def ws_run(websocket: WebSocket, run_id: str) -> None:
     await websocket.accept()
+    state = _get_or_create_run(run_id)
+
     logger.info(
         "WebSocket connected",
         extra={
             "run_id": run_id,
-            "node_id": "-",
+            "node_id": state["active_node_id"],
             "source": "orchestrator",
             "level": "info",
             "message": "client connected",
             "timestamp": _iso_timestamp(),
         },
     )
+
+    await _send_state_patch(websocket, run_id, dict(state))
 
     try:
         while True:
@@ -45,7 +94,7 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                 "WebSocket message received",
                 extra={
                     "run_id": run_id,
-                    "node_id": "-",
+                    "node_id": state["active_node_id"],
                     "source": "orchestrator",
                     "level": "info",
                     "message": raw,
@@ -53,28 +102,51 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                 },
             )
 
-            envelope = {
-                "event": "message",
-                "data": {
-                    "run_id": run_id,
-                    "echo": payload,
-                    "timestamp": _iso_timestamp(),
-                },
-            }
-            await websocket.send_text(json.dumps(envelope))
+            patch: dict[str, Any] = {}
+            if isinstance(payload, dict) and payload.get("text"):
+                logs = list(state["terminal_logs"])
+                logs.append(f"[ORCHESTRATOR] Received: {payload['text']}")
+                patch = {
+                    "terminal_logs": logs,
+                    "active_node_id": "n1",
+                    "active_agent": "Builder",
+                    "status": "running",
+                }
+            elif isinstance(payload, dict) and payload.get("action") == "human_decision":
+                decision = payload.get("decision", "approve")
+                patch = {
+                    "status": "passed" if decision == "approve" else "failed",
+                    "active_agent": "Supervisor",
+                }
+            elif isinstance(payload, dict) and payload.get("action") == "stop_run":
+                logs = list(state["terminal_logs"])
+                logs.append("[ORCHESTRATOR] Run stopped by supervisor.")
+                patch = {"status": "failed", "terminal_logs": logs}
+
+            if patch:
+                state = _merge_patch(state, patch)
+                _run_states[run_id] = state
+                await _send_state_patch(websocket, run_id, patch)
+            else:
+                envelope = {
+                    "event": "message",
+                    "data": {
+                        "run_id": run_id,
+                        "echo": payload,
+                        "timestamp": _iso_timestamp(),
+                    },
+                }
+                await websocket.send_text(json.dumps(envelope))
+
     except WebSocketDisconnect:
         logger.info(
             "WebSocket disconnected",
             extra={
                 "run_id": run_id,
-                "node_id": "-",
+                "node_id": state["active_node_id"],
                 "source": "orchestrator",
                 "level": "info",
                 "message": "client disconnected",
                 "timestamp": _iso_timestamp(),
             },
         )
-
-
-def _iso_timestamp() -> str:
-    return datetime.now(UTC).isoformat()

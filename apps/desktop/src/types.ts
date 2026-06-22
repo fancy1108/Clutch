@@ -2,8 +2,11 @@ import type { ChatMessage as SharedChatMessage } from '@clutch/shared-types';
 
 export type {
   AgentRole,
+  ClutchRunStatus,
+  ClutchState,
   DiffLine,
   RunStatus,
+  StatePatchData,
   UncommittedFile,
   WebSocketEnvelope,
   WebSocketEvent,
