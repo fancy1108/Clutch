@@ -1,0 +1,25 @@
+#!/usr/bin/env sh
+set -e
+
+STAGED=$(git diff --cached --name-only --diff-filter=ACMR)
+[ -z "$STAGED" ] && exit 0
+
+needs_verify=false
+needs_drift=false
+
+if echo "$STAGED" | grep -qE '^(apps/desktop/src/|services/orchestrator/src/|packages/)'; then
+  needs_verify=true
+  needs_drift=true
+fi
+
+if echo "$STAGED" | grep -qE '^\.claude/workflows/'; then
+  needs_drift=true
+fi
+
+if [ "$needs_verify" = true ]; then
+  ./scripts/verify.sh
+fi
+
+if [ "$needs_drift" = true ]; then
+  ./scripts/check-doc-drift.sh
+fi

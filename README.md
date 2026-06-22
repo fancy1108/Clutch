@@ -16,7 +16,10 @@ clutch/
 ├── .env.example
 ├── src/                            # Pro 空壳占位（第 7 步起）
 ├── scripts/
-│   └── verify.sh                   # 本地一键校验（build + pytest）
+│   ├── verify.sh                   # 本地一键校验（build + pytest + drift）
+│   └── check-doc-drift.sh          # 文档↔代码机检不变量（D7）
+├── .husky/
+│   └── pre-commit                  # 条件触发 verify / drift（D7）
 ├── specs/
 │   └── core/
 │       ├── proposal.md             # Layer 2 — 产品需求历史快照

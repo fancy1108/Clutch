@@ -13,7 +13,8 @@
 |------|------|------|------|-----------|------|
 | 2026-06-22 | 前端构建 | `pnpm build` | ✅ | — | 类型检查：`pnpm lint` |
 | 2026-06-22 | 后端测试 | `cd services/orchestrator && uv run pytest` | ✅ 1 passed | — | |
-| — | CI（GitHub Actions） | push/PR 触发 `.github/workflows/ci.yml` | 待运行 | Actions artifacts | 见 DECISIONS D2 |
+| 2026-06-22 | 漂移机检 | `./scripts/check-doc-drift.sh` | ✅ | — | 见 DECISIONS D7 |
+| — | CI（GitHub Actions） | push/PR 触发 `.github/workflows/ci.yml` | 待运行 | Actions artifacts | 见 DECISIONS D2、D7 |
 
 ## 格式说明
 

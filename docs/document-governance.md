@@ -7,7 +7,7 @@
 | Layer 1 Governance | `CLAUDE.md`、`.cursor/rules/`、`.github/copilot-instructions.md` | 铁律、命令、Check-in — Agent 入口路由 |
 | Layer 2 Product Truth | `specs/` | proposal、design、tasks — 产品需求历史快照 |
 | Layer 3 Runtime State | `memory/` | 进度、踩坑、决策 — 跨会话运行态 |
-| Layer 4 Execution | `.claude/workflows/`、`.cursor/` | workflows、agents — 可选自动化 |
+| Layer 4 Execution | `.claude/workflows/`、`.cursor/` | 操作剧本（须符合 `CLAUDE.md` §Layer 4 约束） |
 | Layer 5 Evidence | `runs/` | 工作流执行证据（`runs/<run_id>/`）与验证报告归档（`runs/verification/`）— 第 7 步起按需积累 |
 
 ## 权威优先级

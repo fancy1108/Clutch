@@ -34,8 +34,12 @@
 | 前端构建（校验） | `pnpm build` |
 | 后端启动 | `cd services/orchestrator && uv run uvicorn src.main:app --reload --port 8123` |
 | 后端测试（校验） | `cd services/orchestrator && uv run pytest` |
+| 本地一键校验 | `./scripts/verify.sh` |
+| 文档↔代码漂移（机检） | `./scripts/check-doc-drift.sh` |
 
-**会话校验（commit 前必跑）：** `pnpm build && cd services/orchestrator && uv run pytest`
+**会话校验（commit 前必跑）：** `./scripts/verify.sh`（含 build + pytest + 漂移机检）
+
+**Git pre-commit（Husky）：** 仅当 staged 触及 `apps/desktop/src/`、`services/orchestrator/src/`、`packages/` 时跑 `verify.sh`；触及 `.claude/workflows/` 时跑 `check-doc-drift.sh`；纯 `memory/`、`specs/`、`docs/` 改动放行。
 
 ---
 
@@ -56,6 +60,36 @@
 2. 更新 `memory/PROGRESS.md`（完成了什么 + 下次优先做什么）
 3. 卡壳超过 10 分钟的问题记入 `memory/FAILURES.md`（`[OPEN]`）
 4. 新架构决策记入 `memory/DECISIONS.md`；开放问题只维护于此，禁止在其他文档另开列表
+
+### Layer 4 操作剧本（`.claude/workflows/`、`.cursor/`）
+
+Layer 4 为**操作规程**，不是权威来源。冲突时以本文 §铁律 与 `memory/DECISIONS.md` 为准。
+
+**约束（每个 Layer 4 剧本均适用）：**
+
+1. **不扩权**：不得定义新铁律、架构红线或开放问题；仅描述步骤、触发条件与证据要求。
+2. **文件头**：开头须含层级声明（见下方模板）；禁止省略。
+3. **可发现性**：新增剧本须在 `memory/FILEMAP.md` 登记「想做什么 → 路径」。
+4. **按需路由**：非每次 Check-in 必读的剧本，须在本文或 `FILEMAP` 写明**触发条件**（不得隐式存在）。
+
+**`.cursor/rules/*.mdc`**：仅允许**指针型**规则（见 `base.mdc`）；禁止写入与本文冲突或扩权的铁律。
+
+**文件头模板（复制后改标题）：**
+
+```markdown
+> Layer 4 操作剧本 · 不扩权。铁律见 `CLAUDE.md`；决策见 `memory/DECISIONS.md`。
+> 本文件不定义新规则，仅描述 `<场景>` 的操作步骤。
+```
+
+### 验收期真相对齐（按需）
+
+**触发条件**（满足任一）：
+
+- 用户反馈「做的和说的不一样」、验收项与预期不符
+- `memory/ROADMAP.md` 某项验收失败
+- `scripts/check-doc-drift.sh` 报漂移
+
+**执行**：先读并按 [`.claude/workflows/truth-alignment.md`](./.claude/workflows/truth-alignment.md) 做物理诊断；未完成工具调用与证据收集前，禁止改业务代码。本剧本不定义新铁律。
 
 ---
 

@@ -4,7 +4,7 @@
 
 - 阶段：**治理脚手架就绪** — 尚未进入 M0 写代码
 - 说明：开工前规范文档已齐（非「全项目规范已封板」）；实现后 ROADMAP / FILEMAP 会随代码演进
-- 焦点：Q1–Q4 已关闭（D3–D6）；下一步 M0 或 Push 验证 CI
+- 焦点：Vibe 8.5 执行性兜底已落地（D7）；下一步 M0 或 Push 验证 CI
 - 上次更新：2026-06-22
 - Git HEAD：见 `git log -1`
 
@@ -12,13 +12,14 @@
 
 - [x] Layer 1–3 治理文档 + Memory 六件套
 - [x] 测试规范（D1/D2、TESTS、CI workflow、`verify.sh`）
+- [x] Vibe 8.5 兜底（D7：Husky、漂移机检、truth-alignment 剧本、Layer 4 约束）
 - [x] `specs/core/tasks.md`、`design.md`、`ROADMAP` 功能清单、`FILEMAP` 路径
 - [x] 产品开放问题 Q1–Q4 → D3–D6 已决策
 
 ## 下次 Agent 启动必读
 
 1. 读本文件（`PROGRESS.md`）
-2. 读 `FAILURES.md`、`FILEMAP.md`、`DECISIONS.md`（D3–D6）、`specs/core/tasks.md`
+2. 读 `FAILURES.md`、`FILEMAP.md`、`DECISIONS.md`（D3–D8）、`specs/core/tasks.md`
 3. 运行 `git log --oneline -10`
 4. 运行 `./scripts/verify.sh`
 
@@ -27,6 +28,7 @@
 ### 规范 / 运维（无代码）
 
 - [ ] **Push + CI**：配置 `git remote` 并 push，确认 Actions 绿，更新 `TESTS.md` CI 行
+- [ ] **M0 后**：CI 与 `check-doc-drift.sh` 启用 `CLUTCH_STRICT_MOCK=1`（收紧 App.tsx setTimeout）
 
 ### 写代码阶段（尚未开始）
 
@@ -34,6 +36,11 @@
 - [ ] **勿提前**：D1 为 `已记录` 时禁止建 `e2e/`、禁止空测试凑覆盖
 
 ## 会话日志（最新在上）
+
+### 2026-06-22 会话 4（Vibe 8.5 验收期真相对齐）
+
+- 完成：D7/D8；`check-doc-drift.sh`、Husky pre-commit、truth-alignment 剧本、`CLAUDE.md` Layer 4 约束与按需路由、FILEMAP/TESTS/CI 更新
+- 下次优先：**M0-01** 或 Push 验证 CI
 
 ### 2026-06-22 会话 3（决策关闭 + 表述修正）
 

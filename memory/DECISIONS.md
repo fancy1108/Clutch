@@ -71,6 +71,26 @@
 - **落地前提**：M3。
 - **决策状态**：`已记录`（原 Q4 关闭）
 
+### D7 · 执行性兜底与 Layer 4 剧本（2026-06-22）
+
+- **背景**：Vibe 8.5 验收期真相对齐；`CLAUDE.md` 会话校验与 Check-out 仅靠 Agent 自觉，缺 git/CI 强制力；意图层漂移无法单靠 grep。
+- **方案**：
+  1. **Husky** `pre-commit`：触及 `apps/desktop/src/`、`services/orchestrator/src/`、`packages/` 时跑 `verify.sh`；触及 `.claude/workflows/` 时跑 `check-doc-drift.sh`；纯文档改动放行
+  2. **CI**：在 D2 基础上增 `scripts/check-doc-drift.sh` step
+  3. **漂移机检 v1**：`scripts/check-doc-drift.sh`（可机检不变量表；M0 后 `CLUTCH_STRICT_MOCK=1` 收紧 App.tsx setTimeout）
+  4. **人工剧本**：`.claude/workflows/truth-alignment.md`；Layer 4 通用约束见 `CLAUDE.md` §Layer 4
+- **影响**：`CLAUDE.md`、`FILEMAP.md`、`verify.sh`、`.husky/pre-commit`、`.github/workflows/ci.yml`；`TESTS.md` 增漂移行
+- **落地前提**：无
+- **决策状态**：`已落地`
+
+### D8 · PR-Agent / DangerJS 暂缓（2026-06-22）
+
+- **背景**：Vibe 8.5 兵器库含 PR 对照与 PR 结构合规工具；当前无逐功能 `design.md`（`specs/core/design.md` 仅为视觉快照）、无多人 PR 协作流。
+- **方案**：**暂不引入**。等多人协作走 PR 流程且功能级 spec 成熟后再评估。
+- **影响**：无新增依赖；避免维护成本大于收益
+- **落地前提**：GitHub PR 工作流成为常态 + 功能级 design 文档层就绪
+- **决策状态**：`已记录`
+
 ## 开放问题
 
 （暂无 — 原 Q1–Q4 已于 2026-06-22 关闭，见 D3–D6。）

@@ -6,3 +6,4 @@ cd "$root"
 
 pnpm build
 (cd services/orchestrator && uv run pytest)
+./scripts/check-doc-drift.sh

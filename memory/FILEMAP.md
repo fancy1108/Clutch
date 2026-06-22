@@ -11,7 +11,7 @@
 | Layer 1 Governance | `CLAUDE.md`、`.cursor/rules/`、`.github/copilot-instructions.md` | 铁律、命令、Check-in — Agent 入口路由 |
 | Layer 2 Product Truth | `specs/` | proposal、design、tasks — 产品需求快照（历史） |
 | Layer 3 Runtime State | `memory/` | 进度、踩坑、决策 — 跨会话运行态 |
-| Layer 4 Execution | `.claude/workflows/`、`.cursor/` | workflows、agents — 可选自动化 |
+| Layer 4 Execution | `.claude/workflows/`、`.cursor/` | 操作剧本（须符合 `CLAUDE.md` §Layer 4 约束） |
 | Layer 5 Evidence | `runs/` | `runs/<run_id>/` 工作流证据；`runs/verification/` 测试/覆盖率报告归档 |
 
 ## 权威优先级（冲突时）
@@ -38,6 +38,8 @@
 | 决策与开放问题 | `memory/DECISIONS.md` |
 | 功能验收状态 | `memory/ROADMAP.md` |
 | 测试门禁状态 | `memory/TESTS.md` |
+| Layer 4 边界与剧本约束 | `CLAUDE.md` §Layer 4 操作剧本 |
+| 验收偏差 / 实现漂移物理诊断 | `.claude/workflows/truth-alignment.md` |
 
 ### 测试与 CI
 
@@ -48,6 +50,8 @@
 | 后端单元测试 | `services/orchestrator/tests/` |
 | CI 工作流 | `.github/workflows/ci.yml` |
 | 本地一键校验 | `scripts/verify.sh` |
+| 文档↔代码漂移机检 | `scripts/check-doc-drift.sh` |
+| Git pre-commit（条件触发） | `.husky/pre-commit` |
 | 验证报告归档 | `runs/verification/`（gitignore） |
 | E2E 包（M2 后，D1 可执行时） | `e2e/`（尚未创建） |
 
