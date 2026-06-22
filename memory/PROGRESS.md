@@ -5,7 +5,7 @@
 - 阶段：Phase 0（治理脚手架 + 测试基础设施）
 - 焦点：测试三层治理（DECISIONS / ROADMAP / TESTS）与 CI 已就绪；E2E 待 M0–M2 前提
 - 上次更新：2026-06-22
-- Git HEAD：`78b9a89` — Add test governance, CI workflow, and FILEMAP consolidation
+- Git HEAD：`1d663fe` — test governance + CI（主改动 `78b9a89`）
 
 ## 下次 Agent 启动必读
 
