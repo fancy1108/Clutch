@@ -1,7 +1,8 @@
 # FILEMAP（文件路径速查）
 
-> Agent Check-in 用：「改什么 → 去哪个文件」。第 6 步填实路径映射表。  
-> **完整架构设计、数据流与 ADR 叙事**见 [`docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md)。
+> Agent Check-in 用：「改什么 → 去哪个文件」。  
+> **完整架构设计、数据流与 ADR 叙事**见 [`docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md)。  
+> **开发任务**见 [`specs/core/tasks.md`](../specs/core/tasks.md)。
 
 ## 五层架构
 
@@ -23,20 +24,68 @@
 
 所有自定义日志/事件输出遵循 `CLAUDE.md` §日志与事件字段规范（`run_id`、`node_id`、`source`、`level`、`message`、`timestamp`）。
 
-## 文件定位（第 6 步填实）
+## 文件定位
+
+### 治理与规范
+
+| 想改什么 | 去哪里 |
+|---------|--------|
+| 铁律、命令、Check-in | `CLAUDE.md` |
+| 产品需求历史 | `specs/core/proposal.md` |
+| 视觉设计快照 | `specs/core/design.md` → `UI_UX_GUIDELINES.md` |
+| 开发任务清单 | `specs/core/tasks.md` |
+| 进度 / 待办 | `memory/PROGRESS.md` |
+| 决策与开放问题 | `memory/DECISIONS.md` |
+| 功能验收状态 | `memory/ROADMAP.md` |
+| 测试门禁状态 | `memory/TESTS.md` |
+
+### 测试与 CI
 
 | 想改什么 | 去哪里 |
 |---------|--------|
 | 测试策略与 E2E 范围 | `memory/DECISIONS.md`（D1） |
 | E2E 落地前提勾选 | `memory/ROADMAP.md` §E2E 落地前提 |
-| 测试门禁状态 | `memory/TESTS.md` |
 | 后端单元测试 | `services/orchestrator/tests/` |
 | CI 工作流 | `.github/workflows/ci.yml` |
 | 本地一键校验 | `scripts/verify.sh` |
-| 验证报告归档 | `runs/verification/`（gitignore，本地/CI 快照） |
+| 验证报告归档 | `runs/verification/`（gitignore） |
 | E2E 包（M2 后，D1 可执行时） | `e2e/`（尚未创建） |
 
-## 待办（第 6 步填实）
+### 前端（`apps/desktop/src`）
 
-- [ ] 编排引擎、WebSocket、工作流编辑器等业务模块路径映射
-- [ ] `specs/core/tasks.md` 创建后，在此表补全「改什么 → 去哪」
+| 想改什么 | 去哪里 |
+|---------|--------|
+| 应用根布局、WS 接入 | `App.tsx` |
+| 侧栏（工作区 / 历史） | `sidebar.tsx` |
+| Chat 流与人工干预 UI | `components/ChatFeed.tsx` |
+| 右侧面板（Overview/Terminal/Changes/Flow） | `components/RightPanel.tsx` |
+| 工作流画布编辑 | `components/WorkflowOrchestration.tsx` |
+| Agent 角色配置 | `components/AgentManager.tsx` |
+| AI 工具连接状态 | `components/AiToolsManager.tsx` |
+| Skills 注册 | `components/SkillsRegistry.tsx` |
+| MCP 配置 | `components/McpServerHub.tsx` |
+| 顶栏 | `components/Header.tsx` |
+| 全局样式 | `index.css` |
+| 类型定义 | `types.ts` |
+| **待废弃** mock 数据 | `mockData.ts` |
+| Vite 配置与代理 | `vite.config.ts` |
+| Tauri 壳与 Sidecar 拉起 | `src-tauri/` |
+
+### 后端（`services/orchestrator`）
+
+| 想改什么 | 去哪里 |
+|---------|--------|
+| FastAPI 入口、路由注册 | `src/main.py` |
+| （待建）WorkflowCompiler | `src/compiler/` |
+| （待建）LangGraph 图与节点 | `src/graph/` |
+| （待建）WebSocket 推送 | `src/ws/` |
+| （待建）CLI / GUI Adapter | `src/adapters/` |
+| 依赖与 pytest 配置 | `pyproject.toml` |
+
+### 共享与 Workflow
+
+| 想改什么 | 去哪里 |
+|---------|--------|
+| 前后端共享 TS 类型 | `packages/shared-types/index.ts` |
+| Workflow JSON Schema | `workflows/workflow.schema.json` |
+| 内置模板 | `workflows/*.json` |

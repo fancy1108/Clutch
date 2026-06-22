@@ -19,7 +19,9 @@ clutch/
 │   └── verify.sh                   # 本地一键校验（build + pytest）
 ├── specs/
 │   └── core/
-│       └── proposal.md             # Layer 2 — 产品需求历史快照
+│       ├── proposal.md             # Layer 2 — 产品需求历史快照
+│       ├── design.md               # Layer 2 — 视觉设计快照（→ UI_UX_GUIDELINES）
+│       └── tasks.md                # Layer 2 — M0–M4 开发任务清单
 ├── memory/                         # Layer 3 — Agent 跨会话运行态
 │   ├── PROGRESS.md
 │   ├── FAILURES.md
@@ -67,6 +69,8 @@ clutch/
 | [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) | 系统架构详述（设计理由、数据流） |
 | [`docs/document-governance.md`](./docs/document-governance.md) | 五层架构与权威优先级 |
 | [`specs/core/proposal.md`](./specs/core/proposal.md) | 产品需求历史快照（非权威） |
+| [`specs/core/tasks.md`](./specs/core/tasks.md) | M0–M4 开发任务清单 |
+| [`specs/core/design.md`](./specs/core/design.md) | 视觉设计快照 |
 | [`UI_UX_GUIDELINES.md`](./UI_UX_GUIDELINES.md) | 前端 React + Tailwind UI/UX |
 
 ## 快速开始
