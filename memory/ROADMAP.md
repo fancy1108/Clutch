@@ -10,9 +10,9 @@
 |------|--------|--------|------|---------|
 | 工作流画布 | P0 | M1 | ❌ | M1-06, M1-07 |
 | 运行监督台 | P0 | M2 | ❌ | M2-01–03, M2-07 |
-| 编排引擎 | P0 | M1 | ❌ | M1-02–05（D4 Provider 抽象） |
+| 编排引擎 | P0 | M1 | 🟡 | M1-02/03 骨架 ✅；全量 Compiler 待办 |
 | 人工干预 | P0 | M2 | ❌ | M2-04, M2-05 |
-| 桌面基座（Tauri + Sidecar + WS） | P0 | M0 | ❌ | M0-01–06 |
+| 桌面基座（Tauri + Sidecar + WS） | P0 | M0 | 🟡 | M0-01–03 ✅；M0-05–06 待办 |
 | CLI 工具接入 | P1 | M3 | ❌ | M3-01 |
 | 文件变更与 Diff | P1 | M3 | ❌ | M3-02 |
 | Cursor 唤起 + 自动检查 | P1 | M3 | ❌ | M3-03, M3-04 |
@@ -31,13 +31,14 @@
 
 | 前提 | 关联里程碑 | 状态 | 验证证据 |
 |------|------------|------|----------|
-| 前端收到真实 `state_patch` | M0 | ❌ | TESTS.md / `runs/verification/` |
+| 前端收到真实 `state_patch` | M0 | ✅ | pytest `test_ws_state_patch.py` + `verify.sh` 2026-06-22 |
 | Terminal / Chat 无 mock，为真数据 | M2 | ❌ | ROADMAP 功能项 + TESTS.md |
 | CLI 真实执行跑通 | M3 | ❌ | ROADMAP 功能项 + TESTS.md |
 
 ## 待办（开发里程碑）
 
-- [ ] **M0**：见 `tasks.md` §M0 → 验收后更新 E2E 前提第一行
+- [x] **M0 核心**：M0-01–03 完成（E2E 前提第一行 ✅）
+- [ ] **M0 收尾**：M0-05 Tauri Sidecar、M0-06 类型对齐复审
 - [ ] **M1**：见 `tasks.md` §M1（D4、D5 已决）
 - [ ] **M2**：见 `tasks.md` §M2 → D1 可改为 `可执行`
 - [ ] **M3**：见 `tasks.md` §M3 → MVP 闭环 ❌ 改 ✅

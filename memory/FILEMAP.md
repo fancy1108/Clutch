@@ -59,7 +59,9 @@
 
 | 想改什么 | 去哪里 |
 |---------|--------|
-| 应用根布局、WS 接入 | `App.tsx` |
+| 应用根布局、ClutchState 投影 | `App.tsx` |
+| WebSocket store、`useClutchState` | `services/clutchState.ts` |
+| API 抽象（mock 待 M2 替换） | `services/api.ts` |
 | 侧栏（工作区 / 历史） | `sidebar.tsx` |
 | Chat 流与人工干预 UI | `components/ChatFeed.tsx` |
 | 右侧面板（Overview/Terminal/Changes/Flow） | `components/RightPanel.tsx` |
@@ -79,10 +81,10 @@
 
 | 想改什么 | 去哪里 |
 |---------|--------|
-| FastAPI 入口、路由注册 | `src/main.py` |
+| FastAPI 入口、HTTP/WS 路由 | `src/main.py` |
+| ClutchState 初始值 | `src/state.py` |
+| LangGraph 最小运行时 | `src/graph.py` |
 | （待建）WorkflowCompiler | `src/compiler/` |
-| （待建）LangGraph 图与节点 | `src/graph/` |
-| （待建）WebSocket 推送 | `src/ws/` |
 | （待建）CLI / GUI Adapter | `src/adapters/` |
 | 依赖与 pytest 配置 | `pyproject.toml` |
 

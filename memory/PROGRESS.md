@@ -2,9 +2,9 @@
 
 ## 当前状态
 
-- 阶段：**治理脚手架就绪** — 尚未进入 M0 写代码
-- 说明：开工前规范文档已齐（非「全项目规范已封板」）；实现后 ROADMAP / FILEMAP 会随代码演进
-- 焦点：CI 首次绿（D2）；下一步 **M0-01**
+- 阶段：**M0 核心完成 / M1 骨架启动**
+- 说明：WebSocket `state_patch` 全链路打通；LangGraph 最小图 + `start_run` API 就绪
+- 焦点：**M1-01** Workflow JSON Schema 校验 + Compiler 对接 `video-production.json`
 - 上次更新：2026-06-22
 - Git HEAD：见 `git log -1`
 
@@ -30,12 +30,20 @@
 - [x] **Push + CI**：remote `git@github.com:fancy1108/Clutch.git`，Actions CI #2 绿，`TESTS.md` 已更新
 - [ ] **M0 后**：CI 与 `check-doc-drift.sh` 启用 `CLUTCH_STRICT_MOCK=1`（收紧 App.tsx setTimeout）
 
-### 写代码阶段（尚未开始）
+### 写代码阶段
 
-- [ ] **M0**：按 `tasks.md` §M0 执行（Sidecar + WebSocket `state_patch`）
-- [ ] **勿提前**：D1 为 `已记录` 时禁止建 `e2e/`、禁止空测试凑覆盖
+- [x] **M0-01–03**：Sidecar health、WS ping-pong、`ClutchState` 投影
+- [x] **M1 骨架**：LangGraph 最小图、`POST /api/runs/start`、`POST /api/runs/{id}/stop`
+- [ ] **M1-01**：Workflow JSON Schema 校验
+- [ ] **M0-05**：Tauri 拉起 Sidecar
+- [ ] **M2**：去 mock，Chat/Terminal 接真实事件
 
 ## 会话日志（最新在上）
+
+### 2026-06-22 会话 6（M0-03 + M1 骨架）
+
+- 完成：`ClutchState` 共享类型、WS `state_patch`、`useClutchState` store、LangGraph 最小图、`start_run`/`stop_run` API；7 pytest 绿
+- 下次优先：**M1-01** Schema 校验 + WorkflowCompiler
 
 ### 2026-06-22 会话 5（Push + CI 绿）
 

@@ -4,13 +4,16 @@ from __future__ import annotations
 
 import json
 import logging
+import uuid
 from copy import deepcopy
 from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
 
+from src.graph import run_minimal_graph
 from src.state import ClutchState, initial_state
 
 logger = logging.getLogger(__name__)
@@ -26,6 +29,11 @@ app.add_middleware(
 )
 
 _run_states: dict[str, ClutchState] = {}
+
+
+class StartRunRequest(BaseModel):
+    workflow_id: str = Field(default="video-production")
+    instruction: str = Field(default="")
 
 
 def _iso_timestamp() -> str:
@@ -61,6 +69,52 @@ async def _send_state_patch(websocket: WebSocket, run_id: str, patch: dict[str, 
 @app.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.post("/api/runs/start")
+async def start_run(body: StartRunRequest) -> dict[str, str]:
+    run_id = f"run_{uuid.uuid4().hex[:8]}"
+    state = initial_state(run_id, body.workflow_id)
+    state["current_instruction"] = body.instruction
+
+    logs = list(state["terminal_logs"])
+    logs.append(f"[ORCHESTRATOR] Starting workflow: {body.workflow_id}")
+    graph_result = run_minimal_graph(run_id)
+    logs.append(f"[LANGGRAPH] Active node → {graph_result['active_node_id']}")
+
+    state = _merge_patch(
+        state,
+        {
+            "active_node_id": graph_result["active_node_id"],
+            "active_agent": graph_result["active_agent"],
+            "status": graph_result["status"],
+            "terminal_logs": logs,
+        },
+    )
+    _run_states[run_id] = state
+
+    logger.info(
+        "Run started",
+        extra={
+            "run_id": run_id,
+            "node_id": state["active_node_id"],
+            "source": "orchestrator",
+            "level": "info",
+            "message": f"workflow={body.workflow_id}",
+            "timestamp": _iso_timestamp(),
+        },
+    )
+    return {"run_id": run_id, "status": state["status"]}
+
+
+@app.post("/api/runs/{run_id}/stop")
+async def stop_run(run_id: str) -> dict[str, str]:
+    state = _get_or_create_run(run_id)
+    logs = list(state["terminal_logs"])
+    logs.append("[ORCHESTRATOR] Run stopped via HTTP.")
+    state = _merge_patch(state, {"status": "failed", "terminal_logs": logs})
+    _run_states[run_id] = state
+    return {"run_id": run_id, "status": state["status"]}
 
 
 @app.websocket("/ws/runs/{run_id}")
