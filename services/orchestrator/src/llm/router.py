@@ -45,6 +45,18 @@ class CompletionFn(Protocol):
     ) -> str: ...
 
 
+class ChatFn(Protocol):
+    def __call__(
+        self,
+        *,
+        provider_id: ProviderId,
+        base_url: str,
+        api_model: str,
+        api_key: str,
+        messages: list[dict[str, str]],
+    ) -> str: ...
+
+
 def _env_key_for(provider_id: ProviderId) -> str:
     return f"{ENV_KEY_PREFIX}{provider_id.upper()}_API_KEY"
 
@@ -57,6 +69,7 @@ class LLMProviderRouter:
     _api_keys: dict[ProviderId, str] = field(default_factory=dict)
     _active_model_id: str = DEFAULT_MODEL_ID
     _complete: CompletionFn | None = None
+    _chat: ChatFn | None = None
 
     @property
     def active_model_id(self) -> str:
@@ -88,14 +101,35 @@ class LLMProviderRouter:
         spec = self._models[model_id or self._active_model_id]
         return spec, self.get_api_key(spec.provider_id)
 
-    def complete(self, prompt: str, *, model_id: str | None = None) -> str:
+    def _require_api_key(self, provider_id: ProviderId, api_key: str | None) -> str:
+        if api_key:
+            return api_key
+        if provider_id == "ollama":
+            return ""
+        raise RuntimeError(f"No API key configured for provider {provider_id!r}")
+
+    def chat(self, messages: list[dict[str, str]], *, model_id: str | None = None) -> str:
         spec, api_key = self.resolve_for_model(model_id)
-        if not api_key:
-            raise RuntimeError(f"No API key configured for provider {spec.provider_id!r}")
+        key = self._require_api_key(spec.provider_id, api_key)
+        if self._chat is None:
+            raise RuntimeError("No chat backend configured")
+        return self._chat(
+            provider_id=spec.provider_id,
+            base_url=spec.base_url,
+            api_model=spec.api_model,
+            api_key=key,
+            messages=messages,
+        )
+
+    def complete(self, prompt: str, *, model_id: str | None = None) -> str:
+        if self._chat is not None:
+            return self.chat([{"role": "user", "content": prompt}], model_id=model_id)
+        spec, api_key = self.resolve_for_model(model_id)
+        key = self._require_api_key(spec.provider_id, api_key)
         if self._complete is None:
             raise RuntimeError("No completion backend configured")
         return self._complete(
-            base_url=spec.base_url, api_model=spec.api_model, api_key=api_key, prompt=prompt
+            base_url=spec.base_url, api_model=spec.api_model, api_key=key, prompt=prompt
         )
 
     def as_route_suggester(self) -> Callable[[dict[str, Any], str, dict[str, Any]], str]:

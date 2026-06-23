@@ -513,17 +513,13 @@ function MainLayout() {
             <span className="material-symbols-outlined text-[13px]">keyboard_arrow_down</span>
           </span>
 
-          <span className="flex items-center gap-1.5 px-2 py-1 rounded font-mono text-[10px] uppercase tracking-wide">
-            <span className="material-symbols-outlined text-[14px]">podcasts</span>
-            {clutchState.status}
-          </span>
-
           <span 
             onClick={() => setView('models')}
             className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-container-low hover:text-on-surface transition-colors cursor-pointer font-medium text-on-surface-variant"
           >
-            <span className="material-symbols-outlined text-[15px] text-on-surface-variant">smart_toy</span>
-            Agent: {clutchState.active_agent || '—'}
+            <span className="material-symbols-outlined text-[15px] text-on-surface-variant">layers</span>
+            {t("Model")}: {selectedModel || '—'}
+            <span className="material-symbols-outlined text-[13px]">keyboard_arrow_down</span>
           </span>
 
           {isMultiAgent ? (
@@ -532,19 +528,10 @@ function MainLayout() {
               className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-container-low text-primary font-bold transition-colors cursor-pointer"
             >
               <span className="material-symbols-outlined text-[15px] text-primary">movie</span>
-              Workflow: {clutchState.workflow_id || currentFlowName || '—'} 
+              {t("Workflow")}: {clutchState.workflow_id || currentFlowName || '—'} 
               <span className="material-symbols-outlined text-[13px]">keyboard_arrow_down</span>
             </span>
-          ) : (
-            <span 
-              onClick={() => setView('agents')}
-              className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-container-low text-primary font-bold transition-colors cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-[15px] text-primary">smart_toy</span> 
-              {t("Active Agent")}: {t("Orchestrator")} 
-              <span className="material-symbols-outlined text-[13px]">keyboard_arrow_down</span>
-            </span>
-          )}
+          ) : null}
         </div>
 
         <div className="font-semibold text-on-surface-variant/70 italic mr-2 select-text">

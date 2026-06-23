@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from src.llm.http_complete import http_chat_complete
 from src.llm.router import LLMProviderRouter, ProviderId
 
 from src.credentials.claude_code import bootstrap_claude_credentials
@@ -28,6 +29,7 @@ def config_path() -> Path:
 
 def load_router() -> LLMProviderRouter:
     router = LLMProviderRouter()
+    router._chat = http_chat_complete  # type: ignore[method-assign]
     bootstrap_claude_credentials(router)
     path = config_path()
     if not path.is_file():

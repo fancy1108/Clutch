@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import uuid
@@ -340,6 +341,114 @@ def _token_patch(state: ClutchState, text: str) -> dict[str, int | float]:
         "session_tokens": total,
         "session_cost_usd": round(total * 0.00000015, 6),
     }
+
+
+def _token_patch_turn(
+    state: ClutchState, *, user_text: str, assistant_text: str
+) -> dict[str, int | float]:
+    input_tokens = state.get("token_input", 0) + _estimate_tokens(user_text)
+    output_tokens = state.get("token_output", 0) + _estimate_tokens(assistant_text)
+    total = input_tokens + output_tokens
+    return {
+        "token_input": input_tokens,
+        "token_output": output_tokens,
+        "session_tokens": total,
+        "session_cost_usd": round(total * 0.00000015, 6),
+    }
+
+
+def _history_for_llm(messages: list[dict[str, object]]) -> list[dict[str, str]]:
+    history: list[dict[str, str]] = []
+    for message in messages:
+        agent = str(message.get("agent", ""))
+        text = str(message.get("text", "")).strip()
+        if not text:
+            continue
+        role = "user" if agent == "User" else "assistant"
+        history.append({"role": role, "content": text})
+    return history
+
+
+async def _llm_chat_reply(state: ClutchState, text: str) -> tuple[str, str]:
+    from src.models_config import get_router
+
+    router = get_router()
+    model = router.get_active_model()
+    history = _history_for_llm(state["messages"])
+    history.append({"role": "user", "content": text})
+    try:
+        reply_text = await asyncio.to_thread(router.chat, history)
+    except RuntimeError as exc:
+        reply_text = (
+            f"Cannot reach the configured model ({model.name}). "
+            f"Add an API key in Settings → Models. ({exc})"
+        )
+    return model.name, reply_text
+
+
+async def _handle_plain_chat(
+    websocket: WebSocket,
+    run_id: str,
+    state: ClutchState,
+    text: str,
+) -> ClutchState:
+    user_message = _chat_message("User", text, msg_id=f"user_{uuid.uuid4().hex[:8]}")
+    model_name, reply_text = await _llm_chat_reply(state, text)
+    reply = _chat_message(model_name, reply_text)
+    log_line = f"[CHAT] {model_name}: {len(reply_text)} chars"
+
+    messages = list(state["messages"]) + [user_message, reply]
+    logs = list(state["terminal_logs"]) + [log_line]
+    patch = {
+        "messages": messages,
+        "terminal_logs": logs,
+        "status": "idle",
+        **_token_patch_turn(state, user_text=text, assistant_text=reply_text),
+    }
+    state = _merge_patch(state, patch)
+    _run_states[run_id] = state
+    _touch_session(run_id, title=text.strip()[:80] or "New session", status=state["status"])
+
+    await _send_message_event(websocket, run_id, user_message, "")
+    await _send_log_event(websocket, run_id, log_line, node_id="")
+    await _send_message_event(websocket, run_id, reply, "")
+    await _notify_run_state(websocket, run_id, state, patch)
+    return state
+
+
+async def _handle_workflow_chat_stub(
+    websocket: WebSocket,
+    run_id: str,
+    state: ClutchState,
+    text: str,
+) -> ClutchState:
+    node_id = state["active_node_id"]
+    user_message = _chat_message("User", text, msg_id=f"user_{uuid.uuid4().hex[:8]}")
+    reply = _chat_message(
+        "Orchestrator",
+        f"Instruction received — dispatching to {state['active_agent']}: {text}",
+    )
+    log_line = f"[ORCHESTRATOR] Received: {text}"
+
+    messages = list(state["messages"]) + [user_message, reply]
+    logs = list(state["terminal_logs"]) + [log_line]
+    patch = {
+        "messages": messages,
+        "terminal_logs": logs,
+        "active_node_id": "n1",
+        "active_agent": "Builder",
+        "status": "running",
+        **_token_patch(state, text + reply["text"]),
+    }
+    state = _merge_patch(state, patch)
+    _run_states[run_id] = state
+    _touch_session(run_id, title=text.strip()[:80] or "New session", status=state["status"])
+
+    await _send_message_event(websocket, run_id, user_message, node_id)
+    await _send_log_event(websocket, run_id, log_line, node_id=node_id)
+    await _send_message_event(websocket, run_id, reply, "n1")
+    await _notify_run_state(websocket, run_id, state, patch)
+    return state
 
 
 async def _send_file_changed(
@@ -858,33 +967,10 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
             patch: dict[str, Any] = {}
             if isinstance(payload, dict) and payload.get("text"):
                 text = str(payload["text"])
-                node_id = state["active_node_id"]
-                user_message = _chat_message("User", text, msg_id=f"user_{uuid.uuid4().hex[:8]}")
-                reply = _chat_message(
-                    "Orchestrator",
-                    f"已收到指令，将分派给 {state['active_agent']}：{text}",
-                )
-                log_line = f"[ORCHESTRATOR] Received: {text}"
-
-                messages = list(state["messages"]) + [user_message, reply]
-                logs = list(state["terminal_logs"]) + [log_line]
-
-                patch = {
-                    "messages": messages,
-                    "terminal_logs": logs,
-                    "active_node_id": "n1",
-                    "active_agent": "Builder",
-                    "status": "running",
-                    **_token_patch(state, text + reply["text"]),
-                }
-                state = _merge_patch(state, patch)
-                _run_states[run_id] = state
-                _touch_session(run_id, title=text.strip()[:80] or "New session", status=state["status"])
-
-                await _send_message_event(websocket, run_id, user_message, node_id)
-                await _send_log_event(websocket, run_id, log_line, node_id=node_id)
-                await _send_message_event(websocket, run_id, reply, "n1")
-                await _notify_run_state(websocket, run_id, state, patch)
+                if state["workflow_id"]:
+                    state = await _handle_workflow_chat_stub(websocket, run_id, state, text)
+                else:
+                    state = await _handle_plain_chat(websocket, run_id, state, text)
             elif isinstance(payload, dict) and payload.get("action") == "human_decision":
                 decision = str(payload.get("decision", "approve"))
                 instructions = str(payload.get("instructions", ""))

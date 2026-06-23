@@ -20,6 +20,12 @@ if lsof -ti tcp:8123 >/dev/null 2>&1; then
   sleep 0.5
 fi
 
+mkdir -p runs/verification
+e2e_state="$(mktemp -d "${TMPDIR:-/tmp}/clutch-e2e-state.XXXXXX")"
+export CLUTCH_WORKSPACES_FILE="${e2e_state}/workspaces.json"
+export CLUTCH_RUN_HISTORY_DIR="${e2e_state}/sessions"
+
+log="runs/verification/$(date +%Y-%m-%d)-e2e-smoke.log"
 (cd services/orchestrator && uv run uvicorn src.main:app --host 127.0.0.1 --port 8123) &
 sidecar_pid=$!
 for _ in $(seq 1 30); do
@@ -29,7 +35,4 @@ for _ in $(seq 1 30); do
   sleep 0.5
 done
 curl -sf http://127.0.0.1:8123/health >/dev/null
-
-mkdir -p runs/verification
-log="runs/verification/$(date +%Y-%m-%d)-e2e-smoke.log"
 (cd e2e && pnpm test 2>&1 | tee "$root/$log")
