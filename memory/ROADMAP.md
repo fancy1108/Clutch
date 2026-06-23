@@ -26,9 +26,9 @@
 | 文件浏览（Files 面板） | P0 | M2 | ✅ | M2-11 |
 | Token / 校验结果展示 | P0 | M2 | ✅ | M2-13, M2-14 |
 | 工作区授权 | P0 | M2 | ✅ | M2-09；M4-05 |
-| E2E / 前端单测 | P0 | M2 | ✅ | M2-10, T-01–02（D1） |
-| macOS 打包 | P1 | M4 | 🟡 | M4-06（`pnpm tauri build` 待本机验证） |
-| **MVP 闭环** | — | M3 | 🟡 | proposal §10.1；T-03 待 Playwright 闭环用例 |
+| E2E / 前端单测 | P0 | M2 | ✅ | M2-10, T-01–03（D1） |
+| macOS 打包 | P1 | M4 | ✅ | M4-06 |
+| **MVP 闭环** | — | M3 | ✅ | proposal §10.1；T-03 |
 
 ## E2E 落地前提（关联 DECISIONS D1）
 
@@ -44,15 +44,14 @@
 - [x] **M1**：M1-01–09
 - [x] **M2**：M2-01–14
 - [x] **M3**：M3-01–07（pytest）
-- [x] **M4**：M4-01–05、07–09
-- [ ] **M4-06**：本机 `pnpm tauri build` 产出 DMG 证据
-- [ ] **T-03**：MVP 闭环 E2E（proposal §10.1）
+- [x] **M4**：M4-01–09（含 M4-06 DMG）
+- [x] **T-03**：MVP 闭环 E2E（proposal §10.1）
 
 ## 待验证前提（来自 proposal §13 依赖与前提）
 
 | 假设 | 待验证内容 | 关联 task |
 |------|-----------|-----------|
-| Python 3.11+ 可运行 | 开发期用户环境；发布期内嵌 runtime 可行性 | M4-06 |
-| Claude API Key / Claude Code 已登录 | 用户自行配置路径与 UX | M4-04, M3-01 |
+| Python 3.11+ 可运行 | 开发期用户环境；发布期内嵌 runtime 可行性 | M4-06 ✅ |
+| Claude API Key / Claude Code 已登录 | 自动读取 `~/.claude/settings.json` | M4-04 ✅ |
 | 目标项目已 clone 并授权为工作区 | 工作区路径白名单机制 | M2-09, M4-05 ✅ |
-| macOS 12+ 为第一平台 | Tauri 打包与 Sidecar 生命周期 | M0-05 ✅, M4-06 🟡 |
+| macOS 12+ 为第一平台 | Tauri 打包与 Sidecar 生命周期 | M0-05 ✅, M4-06 ✅ |

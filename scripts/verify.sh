@@ -8,3 +8,4 @@ pnpm build
 pnpm test
 (cd services/orchestrator && uv run pytest)
 ./scripts/check-doc-drift.sh
+./scripts/run-e2e.sh

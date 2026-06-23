@@ -10,6 +10,8 @@ from typing import Any
 
 from src.llm.router import LLMProviderRouter, ProviderId
 
+from src.credentials.claude_code import bootstrap_claude_credentials
+
 CONFIG_ENV = "CLUTCH_MODELS_CONFIG"
 
 
@@ -26,6 +28,7 @@ def config_path() -> Path:
 
 def load_router() -> LLMProviderRouter:
     router = LLMProviderRouter()
+    bootstrap_claude_credentials(router)
     path = config_path()
     if not path.is_file():
         return router

@@ -68,6 +68,69 @@ class ReassignRequest(BaseModel):
     instructions: str = Field(default="reassign_to_builder")
 
 
+class HumanDecisionRequest(BaseModel):
+    decision: str = Field(default="approve")
+    instructions: str = Field(default="")
+
+
+def _apply_human_decision(
+    run_id: str,
+    decision: str,
+    instructions: str = "",
+) -> tuple[ClutchState, dict[str, Any], dict[str, Any], str]:
+    state = _get_or_create_run(run_id)
+    if decision == "approve":
+        supervisor_text = "人工审批：已通过，继续执行工作流。"
+    elif decision == "reject":
+        supervisor_text = "人工审批：已拒绝，运行标记为失败。"
+    else:
+        supervisor_text = f"人工审批：按指令重试 — {instructions or '（无附加说明）'}"
+
+    supervisor_message = _chat_message("Supervisor", supervisor_text)
+    log_line = f"[SUPERVISOR] {supervisor_text}"
+    messages = list(state["messages"]) + [supervisor_message]
+    logs = list(state["terminal_logs"]) + [log_line]
+
+    session = _run_sessions.get(run_id)
+    if session and state["status"] == "awaiting_human":
+        graph_result = resume_workflow(session, run_id, decision)
+        patch = {
+            "messages": messages,
+            "terminal_logs": logs,
+            "status": graph_result["status"],
+            "active_node_id": graph_result["active_node_id"],
+            "active_agent": graph_result["active_agent"],
+        }
+    elif decision == "reject":
+        patch = {
+            "messages": messages,
+            "terminal_logs": logs,
+            "status": "failed",
+            "active_agent": "Supervisor",
+        }
+    elif decision == "approve":
+        patch = {
+            "messages": messages,
+            "terminal_logs": logs,
+            "status": "passed",
+            "active_agent": "Supervisor",
+        }
+    else:
+        patch = {
+            "messages": messages,
+            "terminal_logs": logs,
+            "status": "running",
+            "active_agent": "Builder",
+            "active_node_id": "n1",
+        }
+
+    state = _merge_patch(state, patch)
+    _run_states[run_id] = state
+    if _is_terminal_status(state["status"]):
+        update_run_record(run_id, {"status": state["status"], "ended_at": _iso_timestamp()})
+    return state, patch, supervisor_message, log_line
+
+
 def _validation_http_error(exc: WorkflowValidationError) -> HTTPException:
     return HTTPException(
         status_code=422,
@@ -435,6 +498,14 @@ async def save_agents_endpoint(body: AgentsSaveRequest) -> dict[str, str]:
     return {"status": "saved"}
 
 
+@app.get("/api/models/credentials")
+async def get_models_credentials() -> dict[str, Any]:
+    from src.credentials.claude_code import credential_status
+    from src.models_config import get_router
+
+    return credential_status(get_router())
+
+
 @app.get("/api/models/config")
 async def get_models_config() -> dict[str, Any]:
     from src.models_config import get_router
@@ -489,6 +560,14 @@ async def mcp_status() -> dict[str, Any]:
             "workspace_path": workspace["workspace_path"] if workspace else None,
         }
     }
+
+
+@app.post("/api/runs/{run_id}/human-decision")
+async def human_decision_http(run_id: str, body: HumanDecisionRequest) -> dict[str, Any]:
+    state, _patch, _message, _log = _apply_human_decision(
+        run_id, body.decision, body.instructions
+    )
+    return {"run_id": run_id, "status": state["status"], "active_node_id": state["active_node_id"]}
 
 
 @app.post("/api/runs/{run_id}/reassign")
@@ -672,59 +751,9 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                 instructions = str(payload.get("instructions", ""))
                 node_id = state["active_node_id"]
 
-                if decision == "approve":
-                    supervisor_text = "人工审批：已通过，继续执行工作流。"
-                elif decision == "reject":
-                    supervisor_text = "人工审批：已拒绝，运行标记为失败。"
-                else:
-                    supervisor_text = f"人工审批：按指令重试 — {instructions or '（无附加说明）'}"
-
-                supervisor_message = _chat_message("Supervisor", supervisor_text)
-                log_line = f"[SUPERVISOR] {supervisor_text}"
-
-                messages = list(state["messages"]) + [supervisor_message]
-                logs = list(state["terminal_logs"]) + [log_line]
-
-                session = _run_sessions.get(run_id)
-                if session and state["status"] == "awaiting_human":
-                    graph_result = resume_workflow(session, run_id, decision)
-                    patch = {
-                        "messages": messages,
-                        "terminal_logs": logs,
-                        "status": graph_result["status"],
-                        "active_node_id": graph_result["active_node_id"],
-                        "active_agent": graph_result["active_agent"],
-                    }
-                elif decision == "reject":
-                    patch = {
-                        "messages": messages,
-                        "terminal_logs": logs,
-                        "status": "failed",
-                        "active_agent": "Supervisor",
-                    }
-                elif decision == "approve":
-                    patch = {
-                        "messages": messages,
-                        "terminal_logs": logs,
-                        "status": "passed",
-                        "active_agent": "Supervisor",
-                    }
-                else:
-                    patch = {
-                        "messages": messages,
-                        "terminal_logs": logs,
-                        "status": "running",
-                        "active_agent": "Builder",
-                        "active_node_id": "n1",
-                    }
-
-                state = _merge_patch(state, patch)
-                _run_states[run_id] = state
-                if _is_terminal_status(state["status"]):
-                    update_run_record(
-                        run_id,
-                        {"status": state["status"], "ended_at": _iso_timestamp()},
-                    )
+                state, patch, supervisor_message, log_line = _apply_human_decision(
+                    run_id, decision, instructions
+                )
 
                 await _send_message_event(websocket, run_id, supervisor_message, node_id)
                 await _send_log_event(websocket, run_id, log_line, node_id=node_id)

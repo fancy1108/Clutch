@@ -187,6 +187,23 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 | Task | 焦点 | 状态 |
 |------|------|------|
-| **M0-05** | Tauri Sidecar 生命周期 | `[OPEN]` 本机无 Rust |
-| **M1-06** | 工作流编辑器保存/加载 | `[OPEN]` UI 模型 ↔ compiler JSON 无映射规范 |
-| **M2-01** | Chat 接 `message` 事件 | 待 M1 收尾 |
+| **T-04** | 红队 / 体感审计 | 可选 |
+| **P2** | Skills 后端、单 Agent、完整 MCP、i18n | 延后 |
+
+### cf342c6 — M2–M4 批量 ✅
+- **日期：** 2026-06-23
+- **Commit：** `cf342c6` — feat(m2-m4): complete supervision desk, toolchain, and release polish
+- **Verification：** `./scripts/verify.sh` → 67 pytest + build + vitest + drift
+- **证据：** 会话 19 verify 输出
+- **交付文件：** `git show cf342c6 --stat`
+
+### M4-04 + T-03 + M4-06（本会话，待 commit）✅
+- **日期：** 2026-06-23
+- **Verification：** `./scripts/verify.sh` → 70 pytest + 3 E2E；`apps/desktop` `pnpm tauri build`
+- **证据：** `runs/verification/2026-06-23-e2e-smoke.log`、`runs/verification/2026-06-23-tauri-build.log`
+- **交付文件：**
+  - `services/orchestrator/src/credentials/claude_code.py` — 读取 Claude Code CLI `ANTHROPIC_AUTH_TOKEN`
+  - `services/orchestrator/src/main.py` — `POST /api/runs/{id}/human-decision`、`GET /api/models/credentials`
+  - `e2e/tests/mvp-closed-loop.spec.ts` — T-03 Playwright
+  - `services/orchestrator/tests/test_mvp_closed_loop.py` — T-03 API
+  - `scripts/run-e2e.sh` — E2E 门禁（自动起 Sidecar）
