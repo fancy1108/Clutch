@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+from src.llm.http_complete import http_chat_complete
 from src.llm.router import LLMProviderRouter
 from src.main import app
 from src.models_config import serialize_models_config
@@ -18,6 +19,7 @@ def models_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     monkeypatch.setenv("CLUTCH_MODELS_CONFIG", str(config))
     monkeypatch.setattr("src.credentials.claude_code._CLAUDE_SETTINGS", tmp_path / "no-claude.json")
     router = LLMProviderRouter()
+    router._chat = http_chat_complete  # type: ignore[method-assign]
     monkeypatch.setattr("src.models_config.get_router", lambda: router)
     return config
 
@@ -65,3 +67,38 @@ def test_serialize_models_config_flags_availability() -> None:
     deepseek = next(m for m in payload["models"] if m["id"] == "deepseek-v4pro")
     assert claude["available"] is True
     assert deepseek["available"] is False
+    assert claude["credential_source_label"] is not None
+
+
+def test_config_includes_source_for_saved_key(models_config: Path) -> None:
+    client = TestClient(app)
+    client.post("/api/models/config", json={"provider_id": "deepseek", "api_key": "sk-test-deepseek"})
+    body = client.get("/api/models/config").json()
+    deepseek = next(m for m in body["models"] if m["id"] == "deepseek-v4pro")
+    assert deepseek["credential_source"] == "clutch_models_config"
+    assert "models.json" in (deepseek["credential_source_label"] or "")
+
+
+def test_model_test_endpoint_success(models_config: Path) -> None:
+    from src.models_config import get_router
+
+    client = TestClient(app)
+    client.post("/api/models/config", json={"provider_id": "deepseek", "api_key": "sk-test-deepseek"})
+    get_router()._chat = lambda **_kwargs: "ok"  # type: ignore[method-assign, assignment]
+    result = client.post("/api/models/test", json={"model_id": "deepseek-v4pro"}).json()
+    assert result["ok"] is True
+
+
+def test_model_test_endpoint_failure(models_config: Path) -> None:
+    from src.models_config import get_router
+
+    client = TestClient(app)
+    client.post("/api/models/config", json={"provider_id": "deepseek", "api_key": "sk-test-deepseek"})
+
+    def boom(**_kwargs: object) -> str:
+        raise RuntimeError("401 unauthorized")
+
+    get_router()._chat = boom  # type: ignore[method-assign]
+    result = client.post("/api/models/test", json={"model_id": "deepseek-v4pro"}).json()
+    assert result["ok"] is False
+    assert "401" in result["message"]

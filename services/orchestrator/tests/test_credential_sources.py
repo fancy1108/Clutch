@@ -1,0 +1,30 @@
+"""Credential source resolution tests."""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import pytest
+
+from src.credentials import sources
+from src.llm.router import LLMProviderRouter
+
+
+@pytest.fixture
+def models_json(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    path = tmp_path / "models.json"
+    monkeypatch.setenv(sources.CONFIG_ENV, str(path))
+    return path
+
+
+def test_saved_key_reports_clutch_models_config(models_json: Path) -> None:
+    models_json.write_text(
+        json.dumps({"api_keys": {"deepseek": "sk-from-file"}}),
+        encoding="utf-8",
+    )
+    router = LLMProviderRouter()
+    router.set_api_key("deepseek", "sk-from-file")
+    cred = sources.resolve_provider_credential_source(router, "deepseek")
+    assert cred["source"] == "clutch_models_config"
+    assert "models.json" in (cred["source_label"] or "")

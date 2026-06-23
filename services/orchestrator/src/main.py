@@ -65,6 +65,10 @@ class ModelsConfigRequest(BaseModel):
     api_key: str | None = None
 
 
+class ModelTestRequest(BaseModel):
+    model_id: str
+
+
 class ToolConnectRequest(BaseModel):
     tool_id: str
 
@@ -754,6 +758,13 @@ async def update_models_config(body: ModelsConfigRequest) -> dict[str, str]:
         router.set_api_key(body.provider_id, body.api_key)  # type: ignore[arg-type]
     save_router(router)
     return {"status": "saved", "active_model_id": router.active_model_id}
+
+
+@app.post("/api/models/test")
+async def test_models_connection(body: ModelTestRequest) -> dict[str, Any]:
+    from src.models_config import get_router, test_model_connection
+
+    return test_model_connection(get_router(), body.model_id)
 
 
 @app.get("/api/tools/status")

@@ -60,6 +60,7 @@ function MainLayout() {
     contextWindow: string;
     temperature: number;
     description: string;
+    credentialSourceLabel: string | null;
   }>>([]);
 
   // Column Collapsing states

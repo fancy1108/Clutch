@@ -5,11 +5,23 @@ export interface ModelEntry {
   name: string;
   provider_id: string;
   available: boolean;
+  credential_source?: string | null;
+  credential_source_label?: string | null;
 }
 
 export interface ModelConfig {
   active_model_id: string;
   models: ModelEntry[];
+  providers?: Record<
+    string,
+    { configured: boolean; source: string | null; source_label: string | null }
+  >;
+}
+
+export interface ModelTestResult {
+  ok: boolean;
+  model_id: string;
+  message: string;
 }
 
 export async function fetchModelsConfig(): Promise<ModelConfig> {
@@ -32,6 +44,16 @@ export async function saveModelsConfig(payload: {
     const body = (await response.json().catch(() => ({}))) as { detail?: { message?: string } };
     throw new Error(body.detail?.message ?? `models save failed (${response.status})`);
   }
+}
+
+export async function testModelConnection(modelId: string): Promise<ModelTestResult> {
+  const response = await fetch(`${BASE}/api/models/test`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model_id: modelId }),
+  });
+  if (!response.ok) throw new Error(`model test failed (${response.status})`);
+  return response.json() as Promise<ModelTestResult>;
 }
 
 export async function fetchMcpStatus(): Promise<{
@@ -62,7 +84,10 @@ export function mapModelConfigToUi(config: ModelConfig) {
       providerId: m.provider_id,
       contextWindow: '—',
       temperature: 0.3,
-      description: `Provider credentials configured (${m.provider_id}).`,
+      description: m.credential_source_label
+        ? `Credential source: ${m.credential_source_label}`
+        : 'Credential source unknown.',
+      credentialSourceLabel: m.credential_source_label ?? null,
     })),
     activeAvailable: available.some((m) => m.id === config.active_model_id),
   };

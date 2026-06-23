@@ -25,6 +25,7 @@ interface SystemPreferencesModalProps {
     contextWindow: string;
     temperature: number;
     description: string;
+    credentialSourceLabel: string | null;
   }>;
   setConfiguredModels: Dispatch<SetStateAction<Array<any>>>;
   themeId: string;

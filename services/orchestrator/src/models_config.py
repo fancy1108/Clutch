@@ -12,6 +12,7 @@ from src.llm.http_complete import http_chat_complete
 from src.llm.router import LLMProviderRouter, ProviderId
 
 from src.credentials.claude_code import bootstrap_claude_credentials
+from src.credentials.sources import resolve_provider_credential_source
 
 CONFIG_ENV = "CLUTCH_MODELS_CONFIG"
 
@@ -70,18 +71,69 @@ def is_model_available(router: LLMProviderRouter, model_id: str) -> bool:
 
 
 def serialize_models_config(router: LLMProviderRouter) -> dict[str, Any]:
-    return {
-        "active_model_id": router.active_model_id,
-        "models": [
+    providers: dict[str, Any] = {}
+    models: list[dict[str, Any]] = []
+    for spec in router.list_models():
+        cred = resolve_provider_credential_source(router, spec.provider_id)
+        providers.setdefault(
+            spec.provider_id,
+            {
+                "configured": cred["configured"],
+                "source": cred["source"],
+                "source_label": cred["source_label"],
+            },
+        )
+        models.append(
             {
                 "id": spec.id,
                 "name": spec.name,
                 "provider_id": spec.provider_id,
                 "available": is_model_available(router, spec.id),
+                "credential_source": cred["source"],
+                "credential_source_label": cred["source_label"],
             }
-            for spec in router.list_models()
-        ],
+        )
+    return {
+        "active_model_id": router.active_model_id,
+        "providers": providers,
+        "models": models,
     }
+
+
+_TEST_PROMPT = "Reply with exactly: ok"
+_TEST_TIMEOUT_SEC = 20.0
+
+
+def test_model_connection(router: LLMProviderRouter, model_id: str) -> dict[str, Any]:
+    if not is_model_available(router, model_id):
+        return {
+            "ok": False,
+            "model_id": model_id,
+            "message": "No credentials configured for this model.",
+        }
+    spec, api_key = router.resolve_for_model(model_id)
+    try:
+        if router._chat is None:
+            raise RuntimeError("Chat backend not configured")
+        router._chat(
+            provider_id=spec.provider_id,
+            base_url=spec.base_url,
+            api_model=spec.api_model,
+            api_key=router._require_api_key(spec.provider_id, api_key),
+            messages=[{"role": "user", "content": _TEST_PROMPT}],
+            timeout_sec=_TEST_TIMEOUT_SEC,
+        )
+        return {
+            "ok": True,
+            "model_id": model_id,
+            "message": "Provider accepted the API call.",
+        }
+    except Exception as exc:
+        return {
+            "ok": False,
+            "model_id": model_id,
+            "message": str(exc)[:300],
+        }
 
 
 _router = load_router()

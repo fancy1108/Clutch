@@ -13,7 +13,9 @@ _TIMEOUT_SEC = 120
 _MAX_TOKENS = 4096
 
 
-def _post_json(url: str, headers: dict[str, str], body: dict[str, Any]) -> dict[str, Any]:
+def _post_json(
+    url: str, headers: dict[str, str], body: dict[str, Any], *, timeout_sec: float = _TIMEOUT_SEC
+) -> dict[str, Any]:
     payload = json.dumps(body).encode("utf-8")
     req = urllib.request.Request(
         url,
@@ -22,7 +24,7 @@ def _post_json(url: str, headers: dict[str, str], body: dict[str, Any]) -> dict[
         method="POST",
     )
     try:
-        with urllib.request.urlopen(req, timeout=_TIMEOUT_SEC) as resp:
+        with urllib.request.urlopen(req, timeout=timeout_sec) as resp:
             return json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace")[:500]
@@ -30,7 +32,12 @@ def _post_json(url: str, headers: dict[str, str], body: dict[str, Any]) -> dict[
 
 
 def _openai_chat(
-    *, base_url: str, api_model: str, api_key: str, messages: list[dict[str, str]]
+    *,
+    base_url: str,
+    api_model: str,
+    api_key: str,
+    messages: list[dict[str, str]],
+    timeout_sec: float = _TIMEOUT_SEC,
 ) -> str:
     url = f"{base_url.rstrip('/')}/chat/completions"
     headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
@@ -38,6 +45,7 @@ def _openai_chat(
         url,
         headers,
         {"model": api_model, "messages": messages, "max_tokens": _MAX_TOKENS},
+        timeout_sec=timeout_sec,
     )
     try:
         return str(data["choices"][0]["message"]["content"]).strip()
@@ -46,7 +54,12 @@ def _openai_chat(
 
 
 def _anthropic_chat(
-    *, base_url: str, api_model: str, api_key: str, messages: list[dict[str, str]]
+    *,
+    base_url: str,
+    api_model: str,
+    api_key: str,
+    messages: list[dict[str, str]],
+    timeout_sec: float = _TIMEOUT_SEC,
 ) -> str:
     url = f"{base_url.rstrip('/')}/messages"
     headers = {
@@ -71,7 +84,7 @@ def _anthropic_chat(
     }
     if system_parts:
         body["system"] = "\n\n".join(system_parts)
-    data = _post_json(url, headers, body)
+    data = _post_json(url, headers, body, timeout_sec=timeout_sec)
     try:
         blocks = data["content"]
         return "".join(str(block.get("text", "")) for block in blocks).strip()
@@ -86,11 +99,20 @@ def http_chat_complete(
     api_model: str,
     api_key: str,
     messages: list[dict[str, str]],
+    timeout_sec: float = _TIMEOUT_SEC,
 ) -> str:
     if provider_id == "anthropic":
         return _anthropic_chat(
-            base_url=base_url, api_model=api_model, api_key=api_key, messages=messages
+            base_url=base_url,
+            api_model=api_model,
+            api_key=api_key,
+            messages=messages,
+            timeout_sec=timeout_sec,
         )
     return _openai_chat(
-        base_url=base_url, api_model=api_model, api_key=api_key, messages=messages
+        base_url=base_url,
+        api_model=api_model,
+        api_key=api_key,
+        messages=messages,
+        timeout_sec=timeout_sec,
     )
