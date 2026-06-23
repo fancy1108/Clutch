@@ -128,7 +128,7 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ### M1-04 ✅
 - **日期：** 2026-06-23
-- **Commit：** （本 commit）
+- **Commit：** `dc904dc` — feat(m1): add orchestrator edge-first routing with LLM fallback (M1-04)
 - **Verification：** `uv run pytest tests/test_orchestrator_routing.py -v` → 7 passed；`./scripts/verify.sh` → 29 passed
 - **证据：** `runs/verification/2026-06-23-m1-04-routing-pytest.log`
 - **交付文件：**

@@ -5,7 +5,7 @@
 - 阶段：**M0 核心完成 / M1 骨架启动**
 - 说明：WebSocket `state_patch` 全链路打通；LangGraph 最小图 + `start_run` API 就绪
 - 焦点：**M1-05** `run_completed` 与状态序列化
-- Git HEAD：M1-04 待 commit
+- Git HEAD：`dc904dc`（M1-04）
 
 ## 治理脚手架就绪标准（文档层 ✅）
 
