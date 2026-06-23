@@ -43,7 +43,6 @@ def test_run_completed_after_ws_stop_action() -> None:
     with client.websocket_connect("/ws/runs/run_completed_ws_stop") as ws:
         ws.receive_json()
         ws.send_json({"action": "stop_run"})
-        ws.receive_json()
-        completed = ws.receive_json()
-        assert completed["event"] == "run_completed"
+        events = [ws.receive_json() for _ in range(3)]
+        completed = next(e for e in events if e["event"] == "run_completed")
         assert completed["data"]["status"] == "failed"

@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import type { ClutchState, StatePatchData, WebSocketEnvelope } from '../types';
+import type { ChatMessage, ClutchState, StatePatchData, WebSocketEnvelope } from '../types';
 
 export const DEFAULT_RUN_ID = 'test_run_001';
 
@@ -15,6 +15,12 @@ function createEmptyState(runId: string): ClutchState {
     terminal_logs: [],
     changed_files: [],
   };
+}
+
+function isChatMessage(value: unknown): value is ChatMessage {
+  if (!value || typeof value !== 'object') return false;
+  const msg = value as Record<string, unknown>;
+  return typeof msg.id === 'string' && typeof msg.text === 'string';
 }
 
 class ClutchStateStore {
@@ -47,6 +53,16 @@ class ClutchStateStore {
     this.emit();
   }
 
+  private appendMessage(message: ChatMessage): void {
+    if (this.state.messages.some((item) => item.id === message.id)) return;
+    this.applyPatch({ messages: [...this.state.messages, message] });
+  }
+
+  private appendLog(line: string): void {
+    if (!line || this.state.terminal_logs.at(-1) === line) return;
+    this.applyPatch({ terminal_logs: [...this.state.terminal_logs, line] });
+  }
+
   connect(runId: string = DEFAULT_RUN_ID): Promise<void> {
     if (this.socket?.readyState === WebSocket.OPEN && this.runId === runId) {
       return Promise.resolve();
@@ -77,7 +93,17 @@ class ClutchStateStore {
             return;
           }
           if (envelope.event === 'message') {
-            console.log('[Clutch WS] envelope:', envelope);
+            const data = envelope.data as { message?: unknown };
+            if (isChatMessage(data.message)) {
+              this.appendMessage(data.message);
+            }
+            return;
+          }
+          if (envelope.event === 'log') {
+            const data = envelope.data as { message?: string };
+            if (data.message) {
+              this.appendLog(data.message);
+            }
           }
         } catch {
           console.warn('[Clutch WS] non-JSON message:', event.data);
@@ -120,4 +146,8 @@ export const connectSidecarWebSocket = (): Promise<void> => clutchStore.connect(
 
 export const sendSidecarTestMessage = async (): Promise<void> => {
   await clutchStore.send({ text: 'Hello sidecar!' });
+};
+
+export const submitChatMessage = async (text: string): Promise<void> => {
+  await clutchStore.send({ text });
 };

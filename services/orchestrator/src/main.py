@@ -116,6 +116,76 @@ async def _notify_run_state(
         await _send_run_completed(websocket, run_id, state)
 
 
+_AGENT_AVATARS: dict[str, str] = {
+    "Orchestrator": "https://lh3.googleusercontent.com/aida-public/AB6AXuA0yGh59QNLj5n0igNxMgu4lgaiNqZpcN29SpWM0JHNlAuFmOBx-Id67Zcd2NDCNBjBKrcffQrdrfoe-3XaSlveekLAP9SRis93uTk7XPPFO5y4Swos7NvATw6n7eZEm7nfAQuTiMAoWRSnxefAOJugUbZx3fCTNv4jGyjvT-UZznwKzp_HoXuStup_0juhBCZYamrV0Coil-k27d9Yi7il6NabIEG0FfbxwL5V5azpfZQOlBfpaganta2kP7n59BKPHd4K2uTOfZ5p",
+    "Builder": "https://lh3.googleusercontent.com/aida-public/AB6AXuBpRidttSGTIY-J-PGvnlcZX_oZSZoBXJY5vjZ9g1PKl_fq4EKoa2RXbcSCvvIdbPLdmfuzPKTxnR8TqV7skwsKlt-eKEzSzktv-TWbHu4c9uBEdP6Es_Fjek1EBQuGZeMtWsUi3fn0lyozFaZBLp9SpES3r0WalbqYY6gGiT1R_0J1kvU-D9rI_2q2f3sMGHuTjWyOZ5gImCLGHSGejtcKmToTSZYMrXfT_A5x1iw_f4q7WljP3FXjk64aQhLgh9nTXUDfPdkIzu0b",
+    "Evaluator": "https://lh3.googleusercontent.com/aida-public/AB6AXuCmb7VGaQXE-4sYnIZR3VrcHVAPhv4Px14kMlkayJj8kVm8htTWITmPi26wsj8P6B9RrqykIWj81S2ilmGR0e8cXhA1gjc3U-Nw0DsgHV3HvVmBskuoUksIt6YM6Z3ORjFtRhBphqAXxRKf9ke-zYcPs0TcEFKxw_bwGXSDiAKV5CL7kZf9i6lSZDe91ccUNjaAIsgTMKEEvYc7bZpXYz3D5dClulRwbNru5SZB-1E5FM0A2qMPs-IAfiR8OB1-cUvFh3WYKx9qlGgN",
+    "Supervisor": "https://lh3.googleusercontent.com/aida-public/AB6AXuCmb7VGaQXE-4sYnIZR3VrcHVAPhv4Px14kMlkayJj8kVm8htTWITmPi26wsj8P6B9RrqykIWj81S2ilmGR0e8cXhA1gjc3U-Nw0DsgHV3HvVmBskuoUksIt6YM6Z3ORjFtRhBphqAXxRKf9ke-zYcPs0TcEFKxw_bwGXSDiAKV5CL7kZf9i6lSZDe91ccUNjaAIsgTMKEEvYc7bZpXYz3D5dClulRwbNru5SZB-1E5FM0A2qMPs-IAfiR8OB1-cUvFh3WYKx9qlGgN",
+    "User": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=100",
+}
+
+
+def _chat_time() -> str:
+    return datetime.now(UTC).strftime("%H:%M")
+
+
+def _chat_message(
+    agent: str,
+    text: str,
+    *,
+    status: str | None = None,
+    msg_id: str | None = None,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "id": msg_id or f"msg_{uuid.uuid4().hex[:8]}",
+        "agent": agent,
+        "avatar": _AGENT_AVATARS.get(agent, ""),
+        "time": _chat_time(),
+        "text": text,
+    }
+    if status:
+        payload["status"] = status
+    return payload
+
+
+async def _send_message_event(
+    websocket: WebSocket, run_id: str, message: dict[str, Any], node_id: str
+) -> None:
+    envelope = {
+        "event": "message",
+        "data": {
+            "run_id": run_id,
+            "node_id": node_id,
+            "source": "orchestrator",
+            "timestamp": _iso_timestamp(),
+            "message": message,
+        },
+    }
+    await websocket.send_text(json.dumps(envelope))
+
+
+async def _send_log_event(
+    websocket: WebSocket,
+    run_id: str,
+    line: str,
+    *,
+    node_id: str,
+    level: str = "info",
+) -> None:
+    envelope = {
+        "event": "log",
+        "data": {
+            "run_id": run_id,
+            "node_id": node_id,
+            "source": "orchestrator",
+            "level": level,
+            "message": line,
+            "timestamp": _iso_timestamp(),
+        },
+    }
+    await websocket.send_text(json.dumps(envelope))
+
+
 @app.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "ok"}
@@ -290,39 +360,83 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
 
             patch: dict[str, Any] = {}
             if isinstance(payload, dict) and payload.get("text"):
-                logs = list(state["terminal_logs"])
-                logs.append(f"[ORCHESTRATOR] Received: {payload['text']}")
+                text = str(payload["text"])
+                node_id = state["active_node_id"]
+                user_message = _chat_message("User", text, msg_id=f"user_{uuid.uuid4().hex[:8]}")
+                reply = _chat_message(
+                    "Orchestrator",
+                    f"已收到指令，将分派给 {state['active_agent']}：{text}",
+                )
+                log_line = f"[ORCHESTRATOR] Received: {text}"
+
+                messages = list(state["messages"]) + [user_message, reply]
+                logs = list(state["terminal_logs"]) + [log_line]
+
                 patch = {
+                    "messages": messages,
                     "terminal_logs": logs,
                     "active_node_id": "n1",
                     "active_agent": "Builder",
                     "status": "running",
                 }
-            elif isinstance(payload, dict) and payload.get("action") == "human_decision":
-                decision = payload.get("decision", "approve")
-                patch = {
-                    "status": "passed" if decision == "approve" else "failed",
-                    "active_agent": "Supervisor",
-                }
-            elif isinstance(payload, dict) and payload.get("action") == "stop_run":
-                logs = list(state["terminal_logs"])
-                logs.append("[ORCHESTRATOR] Run stopped by supervisor.")
-                patch = {"status": "failed", "terminal_logs": logs}
-
-            if patch:
                 state = _merge_patch(state, patch)
                 _run_states[run_id] = state
+
+                await _send_message_event(websocket, run_id, user_message, node_id)
+                await _send_log_event(websocket, run_id, log_line, node_id=node_id)
+                await _send_message_event(websocket, run_id, reply, "n1")
+                await _notify_run_state(websocket, run_id, state, patch)
+            elif isinstance(payload, dict) and payload.get("action") == "human_decision":
+                decision = str(payload.get("decision", "approve"))
+                instructions = str(payload.get("instructions", ""))
+                node_id = state["active_node_id"]
+
+                if decision == "approve":
+                    supervisor_text = "人工审批：已通过，继续执行工作流。"
+                    new_status = "passed"
+                elif decision == "reject":
+                    supervisor_text = "人工审批：已拒绝，运行标记为失败。"
+                    new_status = "failed"
+                else:
+                    supervisor_text = f"人工审批：按指令重试 — {instructions or '（无附加说明）'}"
+                    new_status = "running"
+
+                supervisor_message = _chat_message("Supervisor", supervisor_text)
+                log_line = f"[SUPERVISOR] {supervisor_text}"
+
+                messages = list(state["messages"]) + [supervisor_message]
+                logs = list(state["terminal_logs"]) + [log_line]
+                patch = {
+                    "messages": messages,
+                    "terminal_logs": logs,
+                    "status": new_status,
+                    "active_agent": "Supervisor",
+                }
+                state = _merge_patch(state, patch)
+                _run_states[run_id] = state
+
+                await _send_message_event(websocket, run_id, supervisor_message, node_id)
+                await _send_log_event(websocket, run_id, log_line, node_id=node_id)
+                await _notify_run_state(websocket, run_id, state, patch)
+            elif isinstance(payload, dict) and payload.get("action") == "stop_run":
+                logs = list(state["terminal_logs"])
+                log_line = "[ORCHESTRATOR] Run stopped by supervisor."
+                logs.append(log_line)
+                patch = {"status": "failed", "terminal_logs": logs}
+                state = _merge_patch(state, patch)
+                _run_states[run_id] = state
+                await _send_log_event(
+                    websocket, run_id, log_line, node_id=state["active_node_id"]
+                )
                 await _notify_run_state(websocket, run_id, state, patch)
             else:
-                envelope = {
-                    "event": "message",
-                    "data": {
-                        "run_id": run_id,
-                        "echo": payload,
-                        "timestamp": _iso_timestamp(),
-                    },
-                }
-                await websocket.send_text(json.dumps(envelope))
+                unknown = _chat_message(
+                    "Orchestrator",
+                    f"未识别的 WebSocket 载荷：{payload!r}",
+                )
+                await _send_message_event(
+                    websocket, run_id, unknown, state["active_node_id"]
+                )
 
     except WebSocketDisconnect:
         logger.info(

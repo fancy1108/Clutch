@@ -26,8 +26,9 @@ def test_ws_state_patch_on_message() -> None:
     with client.websocket_connect("/ws/runs/run_m0_ping") as ws:
         ws.receive_json()  # initial state_patch
         ws.send_json({"text": "Hello sidecar!"})
-        envelope = ws.receive_json()
-        assert envelope["event"] == "state_patch"
-        patch = envelope["data"]["patch"]
+        events = [ws.receive_json() for _ in range(4)]
+        patch_events = [e for e in events if e["event"] == "state_patch"]
+        assert len(patch_events) == 1
+        patch = patch_events[0]["data"]["patch"]
         assert patch["active_node_id"] == "n1"
         assert any("Hello sidecar!" in line for line in patch["terminal_logs"])

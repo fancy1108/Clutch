@@ -15,20 +15,16 @@ import { MainView, RightTab, ChatMessage, UncommittedFile } from './types';
 import {
   initialConfiguredModels,
   initialFolders,
-  initialChatMessages,
-  secondaryChatMessages,
   uncommittedFiles,
-  initialTerminalLogs
 } from './mockData';
 import { LanguageProvider, useLanguage } from './components/LanguageContext';
-import { loadFlowState, submitChatMessage, approveNode, rejectNode, retryNodeWithInstructions, reassignToBuilder } from './services/api';
-import { clutchStore, DEFAULT_RUN_ID, useClutchState } from './services/clutchState';
+import { clutchStore, DEFAULT_RUN_ID, submitChatMessage, useClutchState } from './services/clutchState';
 import type { RunStatus } from './types';
 
 
 function MainLayout() {
   const { t } = useLanguage();
-  const { state: clutchState, connected } = useClutchState();
+  const { state: clutchState } = useClutchState();
 
   useEffect(() => {
     void clutchStore.connect(DEFAULT_RUN_ID);
@@ -36,14 +32,14 @@ function MainLayout() {
 
   const runStatus: RunStatus =
     clutchState.status === 'awaiting_human' ? 'running' : (clutchState.status as RunStatus);
-  const terminalLogs =
-    connected && clutchState.terminal_logs.length > 0
-      ? clutchState.terminal_logs
-      : initialTerminalLogs;
+  const chatMessages = clutchState.messages as ChatMessage[];
+  const terminalLogs = clutchState.terminal_logs;
 
   // Navigation & Structure views
   const [currentView, setView] = useState<MainView>('chat');
-  const [currentFlowName, setCurrentFlowName] = useState<string>('Video Production');
+  const [currentFlowName, setCurrentFlowName] = useState<string>(
+    () => clutchState.workflow_id || 'video-production',
+  );
   const [isMultiAgent, setIsMultiAgent] = useState<boolean>(true);
   const [themeId, setThemeId] = useState<string>('pristine-light');
 
@@ -87,8 +83,7 @@ function MainLayout() {
     }
   }, [isMultiAgent, rightTab, currentView]);
 
-  // Chat / file mock state (M2 replaces with WS events)
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(initialChatMessages);
+  // Chat / diff state (diff mock until M3-02)
   const [uncommitted, setUncommitted] = useState<UncommittedFile[]>(uncommittedFiles);
 
   // Close unified settings dialog on ESC key
@@ -106,71 +101,42 @@ function MainLayout() {
     void clutchStore.send({ action: 'stop_run' });
   };
 
-  const handleApprove = async () => {
+  const handleApprove = () => {
     void clutchStore.send({ action: 'human_decision', decision: 'approve' });
-    const res = await approveNode();
     setRightTab('overview');
-    setChatMessages(prev => [...prev, ...res.messages]);
-    setUncommitted(prev => prev.filter(f => f.name === 'src/video-core/utils.ts'));
   };
 
-  const handleReject = async () => {
+  const handleReject = () => {
     void clutchStore.send({ action: 'human_decision', decision: 'reject' });
-    const res = await rejectNode();
-    setChatMessages(prev => [...prev, ...res.messages]);
   };
 
-  const handleRetryWithInstructions = async (instructions: string) => {
+  const handleRetryWithInstructions = (instructions: string) => {
     void clutchStore.send({ action: 'human_decision', decision: 'retry', instructions });
     setRightTab('terminal');
-    const res = await retryNodeWithInstructions(instructions);
-
-    setChatMessages(prev => [...prev, ...res.messages]);
     setRightTab('overview');
-    setUncommitted(prev => prev.filter(f => f.name === 'src/video-core/utils.ts'));
   };
 
   // Chat Input Box State
   const [inputValue, setInputValue] = useState<string>('');
 
-  const handleFlowSelect = async (flow: string) => {
+  const handleFlowSelect = (flow: string) => {
     setCurrentFlowName(flow);
-    const res = await loadFlowState(flow);
-    setChatMessages(res.messages);
-    setUncommitted(res.uncommitted);
   };
 
-  const handleReassignToBuilder = async () => {
+  const handleReassignToBuilder = () => {
     setRightTab('terminal');
-    const res = await reassignToBuilder();
-    setChatMessages(prev => [...prev, ...res.messages]);
+    void clutchStore.send({ action: 'human_decision', decision: 'retry', instructions: 'reassign_to_builder' });
     setRightTab('overview');
-    setUncommitted(prev => prev.filter(f => f.name === 'src/video-core/utils.ts'));
   };
 
   const handleSendMessage = async (text: string) => {
     if (!text.trim()) return;
-    
-    // UI optimistic update
-    const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    setChatMessages(prev => [...prev, {
-      id: `user-${Date.now()}`,
-      agent: 'User',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=100',
-      time: timeNow,
-      text: text,
-      isUser: true,
-    }]);
-
-    const resMsg = await submitChatMessage(text, currentFlowName, runStatus);
-    setChatMessages(prev => [...prev, resMsg]);
+    await submitChatMessage(text);
   };
 
   const handleResetSimulation = () => {
-    setChatMessages(initialChatMessages);
-    setUncommitted(uncommittedFiles);
     setRightTab('overview');
-    setCurrentFlowName('Video Production');
+    setCurrentFlowName(clutchState.workflow_id || 'video-production');
   };
 
   const currentThemeObj = THEME_PRESETS.find(t => t.id === themeId) || THEME_PRESETS[0];
@@ -371,7 +337,7 @@ function MainLayout() {
               className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-container-low text-primary font-bold transition-colors cursor-pointer"
             >
               <span className="material-symbols-outlined text-[15px] text-primary">movie</span> 
-              {t("Workflow")}: {t(currentFlowName)} 
+              {t("Workflow")}: {clutchState.workflow_id || currentFlowName} 
               <span className="material-symbols-outlined text-[13px]">keyboard_arrow_down</span>
             </span>
           ) : (
