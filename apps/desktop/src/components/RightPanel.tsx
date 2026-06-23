@@ -1,6 +1,7 @@
 import React from 'react';
 import { RightTab, UncommittedFile, ClutchRunStatus } from '../types';
 import type { FileTreeNode } from '../services/workspaceApi';
+import { useLanguage } from './LanguageContext';
 
 interface RightPanelProps {
   activeTab: RightTab;
@@ -51,6 +52,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   onOpenWorkspaceFile,
   workspaceAuthorized = false,
 }) => {
+  const { t } = useLanguage();
   const flowHighlight = (role: 'orchestrator' | 'builder' | 'evaluator') => {
     const agent = activeAgent.toLowerCase();
     if (role === 'orchestrator') return activeNodeId === 'start' || agent === 'orchestrator';
@@ -187,7 +189,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
               <div className="p-6 border border-dashed border-outline-variant/50 rounded-xl text-center space-y-2">
                 <span className="material-symbols-outlined text-[24px] text-on-surface-variant/50">monitoring</span>
                 <p className="text-[11px] text-on-surface-variant leading-relaxed">
-                  暂无运行中的工作流。启动模板或发送指令后，这里会显示 Token 统计与 Flow 进度。
+                  {t('No active workflow overview')}
                 </p>
               </div>
             ) : (
@@ -242,7 +244,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                 <div className="p-3.5 border border-neutral-200 rounded-xl space-y-3">
                   <p className="text-[9.5px] font-bold uppercase tracking-wider text-neutral-800">Token Cost History</p>
                   <p className="text-[10px] text-neutral-500 font-mono">
-                    本轮累计 {tokenTotal.toLocaleString()} tokens · ${sessionCostUsd.toFixed(4)}
+                    {t('Session tokens accumulated')} {tokenTotal.toLocaleString()} tokens · ${sessionCostUsd.toFixed(4)}
                   </p>
                 </div>
                 )}
@@ -465,10 +467,10 @@ export const RightPanel: React.FC<RightPanelProps> = ({
             <div className="space-y-1 font-mono font-medium text-xs text-on-surface-variant pl-1">
               {!workspaceAuthorized ? (
                 <p className="text-[11px] text-on-surface-variant/70 italic p-2">
-                  请先在顶栏选择并授权工作区目录。
+                  {t('Authorize workspace files hint')}
                 </p>
               ) : workspaceFiles.length === 0 ? (
-                <p className="text-[11px] text-on-surface-variant/70 italic p-2">工作区为空。</p>
+                <p className="text-[11px] text-on-surface-variant/70 italic p-2">{t('Workspace folder empty')}</p>
               ) : (
                 renderFileNodes(workspaceFiles)
               )}
@@ -811,7 +813,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
             {/* Black monospace logs terminal container */}
             <div className="flex-1 bg-black text-green-400 font-mono text-[10px] p-4 rounded-xl space-y-1.5 h-[340px] overflow-y-auto terminal-scroll select-all border border-neutral-800 shadow-md">
               {terminalLogs.length === 0 ? (
-                <p className="text-neutral-500 font-sans text-[11px]">暂无日志。启动工作流后 Sidecar 输出会显示在这里。</p>
+                <p className="text-neutral-500 font-sans text-[11px]">{t('No terminal logs yet')}</p>
               ) : (
               terminalLogs.map((log, i) => {
                 let colorClass = 'text-green-400/90';

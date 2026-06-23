@@ -19,6 +19,7 @@ interface ChatFeedProps {
   workspaceAuthorized?: boolean;
   onPickWorkspace?: () => void;
   onOpenWorkflows?: () => void;
+  workspacePickError?: string | null;
 }
 
 export const ChatFeed: React.FC<ChatFeedProps> = ({
@@ -38,6 +39,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   workspaceAuthorized = false,
   onPickWorkspace,
   onOpenWorkflows,
+  workspacePickError = null,
 }) => {
   const { t } = useLanguage();
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -84,19 +86,24 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
               <span className="material-symbols-outlined text-[28px] text-on-surface-variant">hub</span>
             </div>
             <div className="space-y-2 max-w-md">
-              <h2 className="text-lg font-bold text-on-surface tracking-tight">开始新的监督会话</h2>
+              <h2 className="text-lg font-bold text-on-surface tracking-tight">{t('Start a supervised session')}</h2>
               <p className="text-sm text-on-surface-variant leading-relaxed">
-                选择工作区并启动工作流，或直接在下方输入指令。Clutch 会编排 Builder / Evaluator 并在需要时请你审批。
+                {t('Select a workspace and start a workflow, or type an instruction below. Clutch will orchestrate Builder / Evaluator and ask for your approval when needed.')}
               </p>
             </div>
             <div className="flex flex-wrap items-center justify-center gap-2">
+              {workspacePickError && (
+                <p className="w-full text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">
+                  {workspacePickError}
+                </p>
+              )}
               {!workspaceAuthorized && (
                 <button
                   type="button"
                   onClick={onPickWorkspace}
                   className="px-4 py-2 rounded-lg bg-primary text-white text-xs font-bold hover:opacity-90 transition-opacity"
                 >
-                  授权工作区
+                  {t('Authorize workspace')}
                 </button>
               )}
               {isMultiAgent && (
@@ -105,7 +112,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                   onClick={onOpenWorkflows}
                   className="px-4 py-2 rounded-lg border border-outline-variant bg-white text-xs font-bold text-on-surface hover:bg-surface-container-low transition-colors"
                 >
-                  选择工作流模板
+                  {t('Choose workflow template')}
                 </button>
               )}
             </div>
@@ -203,11 +210,11 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
               </span>
               <div className="text-left">
                 <p className="text-[10px] font-bold tracking-wider text-on-surface-variant uppercase">
-                  工作流运行中
+                  {t('Workflow running')}
                   {currentFlowName ? ` · ${currentFlowName}` : ''}
                 </p>
                 <p className="text-xs text-on-surface mt-0.5 font-medium">
-                  监督台正在接收 Sidecar 事件…
+                  {t('Receiving sidecar events')}
                 </p>
               </div>
             </div>
@@ -235,7 +242,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                     Human-In-The-Loop
                   </h4>
                   <p className="text-[10.5px] text-on-surface-variant/80 mt-0.5">
-                    检查未通过或需要人工确认，请选择下一步操作。
+                    {t('Human gate hint')}
                   </p>
                 </div>
               </div>
@@ -267,7 +274,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                     setHillInstructions('');
                   }
                 }}
-                placeholder='附加指令，例如 "跳过语法检查直接打包"'
+                placeholder={t('Retry instructions placeholder')}
                 className="w-full bg-transparent border-none text-[11px] text-on-surface placeholder:text-neutral-400 focus:outline-none py-1.5 px-2"
               />
               <button

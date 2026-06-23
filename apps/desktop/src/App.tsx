@@ -12,29 +12,28 @@ import { ModelsManager } from './components/ModelsManager';
 import { ThemeManager, THEME_PRESETS } from './components/ThemeManager';
 import { SystemPreferencesModal } from './components/SystemPreferencesModal';
 import { MainView, RightTab, ChatMessage, UncommittedFile, DiffLine } from './types';
-import {
-  initialConfiguredModels,
-} from './mockData';
 import { LanguageProvider, useLanguage } from './components/LanguageContext';
 import { clutchStore, createSessionRunId, submitChatMessage, useClutchState } from './services/clutchState';
-import { fetchRunHistory, type RunHistoryRecord } from './services/runApi';
+import { fetchSessions, createSession, type SessionRecord } from './services/runApi';
 import {
-  authorizeWorkspace,
-  fetchWorkspace,
+  activateWorkspace,
+  addWorkspace,
   fetchWorkspaceFile,
   fetchWorkspaceTree,
+  fetchWorkspaces,
   reassignToBuilder,
   type FileTreeNode,
   type WorkspaceInfo,
 } from './services/workspaceApi';
-import { fetchModelsConfig } from './services/modelsApi';
+import { pickWorkspaceFolder } from './services/pickWorkspaceFolder';
+import { fetchModelsConfig, mapModelConfigToUi } from './services/modelsApi';
 
 
 function MainLayout() {
   const { t } = useLanguage();
   const { state: clutchState } = useClutchState();
 
-  const [sessionRunId] = useState(() => createSessionRunId());
+  const [sessionRunId, setSessionRunId] = useState(() => createSessionRunId());
 
   useEffect(() => {
     void clutchStore.connect(sessionRunId);
@@ -51,18 +50,17 @@ function MainLayout() {
   const [themeId, setThemeId] = useState<string>('pristine-light');
 
   // Active selected model state
-  const [selectedModel, setSelectedModel] = useState<string>('DeepSeek V4Pro');
+  const [selectedModel, setSelectedModel] = useState<string>('');
+  const [activeModelId, setActiveModelId] = useState<string>('');
   const [configuredModels, setConfiguredModels] = useState<Array<{
     id: string;
     name: string;
     provider: string;
+    providerId: string;
     contextWindow: string;
     temperature: number;
     description: string;
-    isCustom?: boolean;
-    endpoint?: string;
-    apiKey?: string;
-  }>>(initialConfiguredModels);
+  }>>([]);
 
   // Column Collapsing states
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
@@ -73,9 +71,12 @@ function MainLayout() {
 
   // Repository list folders state
   const [folders, setFolders] = useState<import('./types').RepositoryFolder[]>([]);
-  const [runHistory, setRunHistory] = useState<RunHistoryRecord[]>([]);
+  const [sessions, setSessions] = useState<SessionRecord[]>([]);
+  const [workspaces, setWorkspaces] = useState<WorkspaceInfo[]>([]);
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null);
   const [workspace, setWorkspace] = useState<WorkspaceInfo | null>(null);
   const [workspaceFiles, setWorkspaceFiles] = useState<FileTreeNode[]>([]);
+  const [workspacePickError, setWorkspacePickError] = useState<string | null>(null);
   const [highRiskConfirmed, setHighRiskConfirmed] = useState(false);
 
   const refreshWorkspaceFiles = async () => {
@@ -88,11 +89,15 @@ function MainLayout() {
   };
 
   useEffect(() => {
-    void fetchWorkspace()
-      .then(async (info) => {
-        if (!info) return;
-        setWorkspace(info);
-        await refreshWorkspaceFiles();
+    void fetchWorkspaces()
+      .then(async (listed) => {
+        setWorkspaces(listed.workspaces);
+        setActiveWorkspaceId(listed.active_id);
+        const active = listed.workspaces.find((item) => item.id === listed.active_id) ?? null;
+        setWorkspace(active);
+        if (active) {
+          await refreshWorkspaceFiles();
+        }
       })
       .catch(() => {});
   }, []);
@@ -100,18 +105,26 @@ function MainLayout() {
   useEffect(() => {
     void fetchModelsConfig()
       .then((config) => {
-        setSelectedModel(config.models.find((m) => m.id === config.active_model_id)?.name || 'DeepSeek V4 Pro');
+        const mapped = mapModelConfigToUi(config);
+        setConfiguredModels(mapped.models);
+        setActiveModelId(mapped.activeModelId);
+        const active = mapped.models.find((m) => m.id === mapped.activeModelId);
+        setSelectedModel(active?.name ?? '');
       })
       .catch(() => {});
   }, []);
 
+  const refreshSessions = async () => {
+    try {
+      setSessions(await fetchSessions());
+    } catch (error: unknown) {
+      console.warn('[Clutch] sessions unavailable:', error);
+    }
+  };
+
   useEffect(() => {
-    void fetchRunHistory()
-      .then(setRunHistory)
-      .catch((error: unknown) => {
-        console.warn('[Clutch] run history unavailable:', error);
-      });
-  }, [clutchState.run_id, clutchState.status]);
+    void refreshSessions();
+  }, [clutchState.run_id, clutchState.status, activeWorkspaceId]);
 
   useEffect(() => {
     const handler = (event: Event) => {
@@ -167,15 +180,31 @@ function MainLayout() {
   };
 
   const handlePickWorkspace = async () => {
-    const path = window.prompt('输入本地项目根目录的绝对路径：', workspace?.workspace_path || '');
-    if (!path?.trim()) return;
+    setWorkspacePickError(null);
     try {
-      const info = await authorizeWorkspace(path.trim());
+      const path = await pickWorkspaceFolder(t('Select project folder'));
+      if (!path) return;
+      const info = await addWorkspace(path);
+      const listed = await fetchWorkspaces();
+      setWorkspaces(listed.workspaces);
+      setActiveWorkspaceId(listed.active_id);
       setWorkspace(info);
       await refreshWorkspaceFiles();
     } catch (error) {
+      const message = error instanceof Error ? error.message : 'Workspace authorize failed';
+      setWorkspacePickError(message);
       console.error('[Clutch] workspace authorize failed:', error);
-      window.alert('工作区授权失败，请检查路径是否存在。');
+    }
+  };
+
+  const handleSelectWorkspace = async (workspaceId: string) => {
+    try {
+      const info = await activateWorkspace(workspaceId);
+      setActiveWorkspaceId(workspaceId);
+      setWorkspace(info);
+      await refreshWorkspaceFiles();
+    } catch (error) {
+      console.error('[Clutch] workspace switch failed:', error);
     }
   };
 
@@ -218,9 +247,48 @@ function MainLayout() {
     setRightTab('overview');
   };
 
+  const handleNewChat = async () => {
+    if (!workspace) {
+      await handlePickWorkspace();
+      return;
+    }
+    const runId = createSessionRunId();
+    try {
+      await createSession({ run_id: runId, title: t('New session') });
+      setSessionRunId(runId);
+      setCurrentFlowName('');
+      setView('chat');
+      setRightTab('overview');
+      await refreshSessions();
+    } catch (error) {
+      console.error('[Clutch] create session failed:', error);
+    }
+  };
+
+  const handleSelectSession = async (session: SessionRecord) => {
+    if (session.workspace_id && session.workspace_id !== activeWorkspaceId) {
+      await handleSelectWorkspace(session.workspace_id);
+    }
+    setSessionRunId(session.run_id);
+    setCurrentFlowName(session.workflow_id || '');
+    setView('chat');
+  };
+
+  const handleNewChatInWorkspace = async (workspaceId: string) => {
+    if (workspaceId !== activeWorkspaceId) {
+      await handleSelectWorkspace(workspaceId);
+    }
+    await handleNewChat();
+  };
+
   const handleSendMessage = async (text: string) => {
     if (!text.trim()) return;
+    if (!workspace) {
+      setWorkspacePickError(t('Select a project before starting a conversation.'));
+      return;
+    }
     await submitChatMessage(text);
+    await refreshSessions();
   };
 
   const handleResetSimulation = () => {
@@ -268,11 +336,18 @@ function MainLayout() {
           setFolders={setFolders}
           activeFlow={currentFlowName}
           setActiveFlow={handleFlowSelect}
-          onResetSimulation={handleResetSimulation}
+          onNewChat={() => { void handleNewChat(); }}
           isOpenState={sidebarOpen}
           setIsOpenState={setSidebarOpen}
           isMultiAgent={isMultiAgent}
-          runHistory={runHistory}
+          sessions={sessions}
+          activeSessionId={sessionRunId}
+          workspaces={workspaces}
+          activeWorkspaceId={activeWorkspaceId}
+          onAddWorkspace={() => { void handlePickWorkspace(); }}
+          onSelectWorkspace={(id) => { void handleSelectWorkspace(id); }}
+          onSelectSession={(session) => { void handleSelectSession(session); }}
+          onNewChatInWorkspace={(id) => { void handleNewChatInWorkspace(id); }}
         />
 
         {/* Central screen switcher with Right component based on Left tab selections */}
@@ -374,6 +449,7 @@ function MainLayout() {
                 workspaceAuthorized={Boolean(workspace)}
                 onPickWorkspace={() => { void handlePickWorkspace(); }}
                 onOpenWorkflows={() => setView('workflows')}
+                workspacePickError={workspacePickError}
               />
               <RightPanel
                 activeTab={rightTab}
@@ -410,10 +486,14 @@ function MainLayout() {
           isMultiAgent={isMultiAgent}
           selectedModel={selectedModel}
           setSelectedModel={setSelectedModel}
+          activeModelId={activeModelId}
+          setActiveModelId={setActiveModelId}
           configuredModels={configuredModels}
           setConfiguredModels={setConfiguredModels}
           themeId={themeId}
           setThemeId={setThemeId}
+          workspaceLabel={workspace?.name ?? workspace?.workspace_path?.split('/').pop() ?? null}
+          sessionActive={clutchStatus !== 'idle' && clutchStatus !== 'failed'}
         />
 
       </div>
@@ -468,7 +548,7 @@ function MainLayout() {
         </div>
 
         <div className="font-semibold text-on-surface-variant/70 italic mr-2 select-text">
-          Clutch v2.4.1
+          Clutch v0.0.0
         </div>
       </footer>
     </div>

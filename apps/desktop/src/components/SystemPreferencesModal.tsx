@@ -15,20 +15,22 @@ interface SystemPreferencesModalProps {
   isMultiAgent: boolean;
   selectedModel: string;
   setSelectedModel: Dispatch<SetStateAction<string>>;
+  activeModelId: string;
+  setActiveModelId: Dispatch<SetStateAction<string>>;
   configuredModels: Array<{
     id: string;
     name: string;
     provider: string;
+    providerId: string;
     contextWindow: string;
     temperature: number;
     description: string;
-    isCustom?: boolean;
-    endpoint?: string;
-    apiKey?: string;
   }>;
   setConfiguredModels: Dispatch<SetStateAction<Array<any>>>;
   themeId: string;
   setThemeId: (themeId: string) => void;
+  workspaceLabel?: string | null;
+  sessionActive?: boolean;
 }
 
 export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
@@ -37,10 +39,14 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
   isMultiAgent,
   selectedModel,
   setSelectedModel,
+  activeModelId,
+  setActiveModelId,
   configuredModels,
   setConfiguredModels,
   themeId,
-  setThemeId
+  setThemeId,
+  workspaceLabel,
+  sessionActive = false,
 }) => {
   const { t } = useLanguage();
 
@@ -176,11 +182,15 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
                 <div className="space-y-1 text-[10px] font-medium text-on-surface-variant text-left">
                   <div className="flex justify-between">
                     <span>{t("Workspace:")}</span>
-                    <span className="font-semibold text-on-surface">v2.4.1</span>
+                    <span className="font-semibold text-on-surface truncate max-w-[120px]" title={workspaceLabel ?? undefined}>
+                      {workspaceLabel ?? '—'}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span>{t("Session:")}</span>
-                    <span className="font-mono text-green-600 font-bold">● {t("ACTIVE")}</span>
+                    <span className={`font-mono font-bold ${sessionActive ? 'text-green-600' : 'text-on-surface-variant'}`}>
+                      ● {sessionActive ? t("ACTIVE") : '—'}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -203,6 +213,8 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
               <ModelsManager 
                 selectedModel={selectedModel}
                 setSelectedModel={setSelectedModel}
+                activeModelId={activeModelId}
+                setActiveModelId={setActiveModelId}
                 configuredModels={configuredModels}
                 setConfiguredModels={setConfiguredModels}
               />

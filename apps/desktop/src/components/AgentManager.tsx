@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 
 import { Deliverable, Agent } from '../types';
 import { fetchAgents, saveAgents } from '../services/agentApi';
-import { initialAgents as DEFAULT_AGENTS } from '../mockData';
 
 export function AgentLogo({ name, description, className = "w-10 h-10" }: { name: string; description: string; className?: string }) {
   // Let's create a deterministic hash from name
@@ -82,17 +81,7 @@ interface AgentManagerProps {
 }
 
 export function AgentManager({ selectedSidebarWidth, isModalStyle }: AgentManagerProps) {
-  const [agents, setAgents] = useState<Agent[]>(() => {
-    const saved = localStorage.getItem('vibe-workspace-agents');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        return DEFAULT_AGENTS;
-      }
-    }
-    return DEFAULT_AGENTS;
-  });
+  const [agents, setAgents] = useState<Agent[]>([]);
 
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [isPreviewDeliverable, setIsPreviewDeliverable] = useState<Deliverable | null>(null);
@@ -113,44 +102,38 @@ export function AgentManager({ selectedSidebarWidth, isModalStyle }: AgentManage
 
   // Vibe workspace state extensions
   const [scannedSkills, setScannedSkills] = useState<{ key: string; label: string; source: string; isActiveGlobally: boolean; desc: string }[]>(() => {
-    const saved = localStorage.getItem('vibe-scanned-skills');
+    const saved = localStorage.getItem('clutch-scanned-skills');
     if (saved) {
       try { return JSON.parse(saved); } catch (e) {}
     }
-    return [
-      { key: 'React-Lint-Rules', label: 'React Performance Rules', source: './.agents/skills/', isActiveGlobally: true, desc: 'Enforces clean dependency arrays and stable handler functions.' },
-      { key: 'Secure-Code-Checklist', label: 'Security & Token Audits', source: '~/.agents/skills/', isActiveGlobally: false, desc: 'Prevents exposing live tokens and enforces server-side proxies.' },
-      { key: 'GraphQL-Schema-Audit', label: 'GraphQL Schema Validator', source: '~/.agents/skills/', isActiveGlobally: false, desc: 'Ensures structured query definitions match relational models.' },
-      { key: 'Mock-Data-Generator', label: 'Simulated Data Autogen', source: './.agents/skills/', isActiveGlobally: false, desc: 'Seeds local database states with consistent mock records.' },
-      { key: 'Markdown-Verification', label: 'Markdown Spec Compliance', source: '~/.agents/skills/', isActiveGlobally: false, desc: 'Enforces standard structural tags and header checks.' }
-    ];
+    return [];
   });
 
   const [mountedDirectories, setMountedDirectories] = useState<string[]>(() => {
-    const saved = localStorage.getItem('vibe-mounted-dirs');
+    const saved = localStorage.getItem('clutch-mounted-dirs');
     if (saved) {
       try { return JSON.parse(saved); } catch (e) {}
     }
-    return ['~/.agents/skills/', './.agents/skills/'];
+    return [];
   });
 
-  const [aiEngine, setAiEngine] = useState('Antigravity CLI');
+  const [aiEngine, setAiEngine] = useState('Claude Code (Local CLI)');
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [newDirPath, setNewDirPath] = useState('');
   const [isSkillsAttachOpen, setIsSkillsAttachOpen] = useState(false);
   const [skillsSearch, setSkillsSearch] = useState('');
 
   useEffect(() => {
-    localStorage.setItem('vibe-scanned-skills', JSON.stringify(scannedSkills));
+    localStorage.setItem('clutch-scanned-skills', JSON.stringify(scannedSkills));
   }, [scannedSkills]);
 
   useEffect(() => {
-    localStorage.setItem('vibe-mounted-dirs', JSON.stringify(mountedDirectories));
+    localStorage.setItem('clutch-mounted-dirs', JSON.stringify(mountedDirectories));
   }, [mountedDirectories]);
 
   useEffect(() => {
     const handleUpdateSkills = () => {
-      const saved = localStorage.getItem('vibe-scanned-skills');
+      const saved = localStorage.getItem('clutch-scanned-skills');
       if (saved) {
         try {
           setScannedSkills(JSON.parse(saved));
@@ -166,15 +149,15 @@ export function AgentManager({ selectedSidebarWidth, isModalStyle }: AgentManage
   useEffect(() => {
     void fetchAgents()
       .then((list) => {
-        if (list.length > 0) setAgents(list);
+        setAgents(list);
       })
       .catch(() => {});
   }, []);
 
-  useEffect(() => {
-    if (agents.length === 0) return;
-    void saveAgents(agents).catch(() => {});
-  }, [agents]);
+  const persistAgents = (next: Agent[]) => {
+    setAgents(next);
+    void saveAgents(next).catch(() => {});
+  };
 
   const handleOpenCreate = () => {
     setModalMode('create');
@@ -188,7 +171,7 @@ export function AgentManager({ selectedSidebarWidth, isModalStyle }: AgentManage
     setNewDelivName('');
     setNewDelivContent('');
     setSelectedMcpTools([]);
-    setAiEngine('Antigravity CLI');
+    setAiEngine('Claude Code (Local CLI)');
     setSelectedSkills([]);
     setIsSkillsAttachOpen(false);
     setIsModalOpen(true);
@@ -205,7 +188,7 @@ export function AgentManager({ selectedSidebarWidth, isModalStyle }: AgentManage
     setNewDelivName('');
     setNewDelivContent('');
     setSelectedMcpTools(agent.mcpTools || []);
-    setAiEngine(agent.aiEngine || 'Antigravity CLI');
+    setAiEngine(agent.aiEngine || 'Claude Code (Local CLI)');
     setSelectedSkills(agent.skills || []);
     setIsSkillsAttachOpen(false);
     setIsModalOpen(true);
@@ -215,7 +198,7 @@ export function AgentManager({ selectedSidebarWidth, isModalStyle }: AgentManage
     e.stopPropagation();
     if (window.confirm('Are you sure you want to delete this AI Agent?')) {
       const updated = agents.filter(a => a.id !== id);
-      setAgents(updated);
+      persistAgents(updated);
       if (selectedAgent && selectedAgent.id === id) {
         setSelectedAgent(null);
       }
@@ -257,7 +240,7 @@ export function AgentManager({ selectedSidebarWidth, isModalStyle }: AgentManage
         aiEngine,
         skills: selectedSkills
       };
-      setAgents([newAgent, ...agents]);
+      persistAgents([newAgent, ...agents]);
     } else {
       const updated = agents.map(a => {
         if (a.id === editingId) {
@@ -279,7 +262,7 @@ export function AgentManager({ selectedSidebarWidth, isModalStyle }: AgentManage
         }
         return a;
       });
-      setAgents(updated);
+      persistAgents(updated);
     }
     setIsModalOpen(false);
   };
@@ -433,7 +416,7 @@ export function AgentManager({ selectedSidebarWidth, isModalStyle }: AgentManage
                     <p className="text-[10px] text-neutral-400 font-medium">DRIVING AI ENGINE</p>
                     <div className="flex items-center gap-1.5 mt-1 bg-neutral-100 border border-neutral-200 rounded-lg p-1.5">
                       <span className="material-symbols-outlined text-[13px] text-neutral-700">bolt</span>
-                      <span className="text-[10.5px] font-mono font-bold text-neutral-900">{selectedAgent.aiEngine || 'Antigravity CLI'}</span>
+                      <span className="text-[10.5px] font-mono font-bold text-neutral-900">{selectedAgent.aiEngine || 'Claude Code (Local CLI)'}</span>
                     </div>
                   </div>
                   <div className="border-t border-neutral-200/50 pt-2.5 flex justify-between items-center">
@@ -552,6 +535,11 @@ export function AgentManager({ selectedSidebarWidth, isModalStyle }: AgentManage
 
           {/* Agents Grid List */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {agents.length === 0 ? (
+              <p className="text-xs text-neutral-400 italic col-span-full">
+                No agents configured. Create one to define prompts, deliverables, and execution settings.
+              </p>
+            ) : null}
             {agents.map((agent) => (
               <div
                 key={agent.id}
@@ -693,25 +681,9 @@ export function AgentManager({ selectedSidebarWidth, isModalStyle }: AgentManage
                       onChange={(e) => setAiEngine(e.target.value)}
                       className="w-full px-3 py-1.5 text-xs border border-neutral-200 focus:outline-none focus:border-neutral-900 focus:ring-1 focus:ring-neutral-900/20 bg-white rounded-lg font-sans text-neutral-800"
                     >
-                      <option value="Antigravity CLI">Antigravity CLI (Autonomous Local)</option>
                       <option value="Claude Code (Local CLI)">Claude Code (Local CLI)</option>
-                      <option value="Cursor Workspace Node">Cursor Workspace Node (IDE Agent)</option>
-                      <option value="Gemini 1.5 Pro Agent">Gemini 1.5 Pro Agent (Cloud LLM)</option>
-                      <option value="GPT-4o Workspace Runner">GPT-4o Workspace Runner (Interactive)</option>
+                      <option value="Cursor Workspace Node">Cursor Workspace Node (IDE)</option>
                     </select>
-                    
-                    {/* Connectivity Status dynamic indicator */}
-                    {['Antigravity CLI', 'Claude Code (Local CLI)', 'Cursor Workspace Node'].includes(aiEngine) ? (
-                      <div className="flex items-center gap-1.5 mt-1.5 text-[9.5px]/tight font-mono font-bold text-emerald-700 bg-emerald-50/50 border border-emerald-100/50 rounded-md py-0.5 px-2.5 w-max animate-pulse">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 inline-block"></span>
-                        <span>🟢 Local Runtime Verified</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1.5 mt-1.5 text-[9.5px]/tight font-mono font-bold text-neutral-700 bg-neutral-100/50 border border-neutral-200/50 rounded-md py-0.5 px-2.5 w-max">
-                        <span className="h-1.5 w-1.5 rounded-full bg-neutral-500 inline-block animate-ping"></span>
-                        <span>🟢 Cloud Gateway Connected (Latency: 45ms)</span>
-                      </div>
-                    )}
                   </div>
                 </div>
 

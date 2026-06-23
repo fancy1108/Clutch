@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { RepositoryFolder, MainView } from './types';
 import { useLanguage } from './components/LanguageContext';
-import type { RunHistoryRecord } from './services/runApi';
+import type { SessionRecord } from './services/runApi';
+import type { WorkspaceInfo } from './services/workspaceApi';
 
 interface SidebarProps {
   currentView: MainView;
@@ -10,11 +11,34 @@ interface SidebarProps {
   setFolders: React.Dispatch<React.SetStateAction<RepositoryFolder[]>>;
   activeFlow: string;
   setActiveFlow: (flow: string) => void;
-  onResetSimulation: () => void;
+  onNewChat: () => void;
   isOpenState: boolean;
   setIsOpenState: (open: boolean) => void;
   isMultiAgent?: boolean;
-  runHistory?: RunHistoryRecord[];
+  sessions?: SessionRecord[];
+  activeSessionId?: string;
+  workspaces?: WorkspaceInfo[];
+  activeWorkspaceId?: string | null;
+  onAddWorkspace?: () => void;
+  onSelectWorkspace?: (workspaceId: string) => void;
+  onSelectSession?: (session: SessionRecord) => void;
+  onNewChatInWorkspace?: (workspaceId: string) => void;
+}
+
+function formatRelativeTime(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const minutes = Math.max(1, Math.floor(diffMs / 60000));
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  return `${days}d`;
+}
+
+function sessionLabel(session: SessionRecord): string {
+  if (session.title?.trim()) return session.title.trim();
+  if (session.workflow_id) return session.workflow_id;
+  return session.run_id;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -24,18 +48,37 @@ export const Sidebar: React.FC<SidebarProps> = ({
   setFolders,
   activeFlow,
   setActiveFlow,
-  onResetSimulation,
+  onNewChat,
   isOpenState,
   setIsOpenState,
   isMultiAgent = true,
-  runHistory = [],
+  sessions = [],
+  activeSessionId = '',
+  workspaces = [],
+  activeWorkspaceId = null,
+  onAddWorkspace,
+  onSelectWorkspace,
+  onSelectSession,
+  onNewChatInWorkspace,
 }) => {
   const { t } = useLanguage();
+  const [collapsedWorkspaces, setCollapsedWorkspaces] = useState<Record<string, boolean>>({});
 
-  const toggleFolder = (folderName: string) => {
-    setFolders(prev =>
-      prev.map(f => (f.name === folderName ? { ...f, collapsed: !f.collapsed } : f))
-    );
+  const sessionsByWorkspace = useMemo(() => {
+    const map = new Map<string, SessionRecord[]>();
+    for (const session of sessions) {
+      const workspaceId = session.workspace_id;
+      if (!workspaceId) continue;
+      const bucket = map.get(workspaceId) ?? [];
+      bucket.push(session);
+      map.set(workspaceId, bucket);
+    }
+    return map;
+  }, [sessions]);
+
+  const toggleWorkspace = (workspaceId: string) => {
+    setCollapsedWorkspaces((prev) => ({ ...prev, [workspaceId]: !prev[workspaceId] }));
+    onSelectWorkspace?.(workspaceId);
   };
 
   const handleFlowSelect = (flowName: string) => {
@@ -50,7 +93,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
       }`}
       style={{ overflow: 'visible' }}
     >
-      {/* Collapse Toggle Handle */}
       <button
         onClick={() => setIsOpenState(!isOpenState)}
         className={`absolute top-[88px] w-6 h-6 bg-surface-bright border border-outline rounded-full flex items-center justify-center z-50 shadow-md hover:shadow-lg hover:bg-surface-container hover:border-on-surface/30 transition-all cursor-pointer text-on-surface-variant hover:text-on-surface duration-200 hover:scale-110 active:scale-95 ${
@@ -63,9 +105,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </span>
       </button>
 
-      {/* Main Sidebar Contents (Hidden completely when collapsed) */}
       <div className={`flex-1 flex flex-col gap-4 overflow-hidden h-full ${!isOpenState ? 'hidden' : ''}`}>
-        {/* Top Window Dots (Mock MacOS Control Buttons) */}
         <div className="flex items-center justify-between mb-2 px-2">
           <div className="flex gap-2">
             <div className="w-3 h-3 rounded-full bg-[#ff5f57] hover:scale-105 transition-transform cursor-pointer" title={t("Close")} />
@@ -74,15 +114,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
         </div>
 
-        {/* Main Actions Panel */}
         <div className="space-y-1 mb-4 px-1">
           <button
-            onClick={() => {
-              onResetSimulation();
-              setView('chat');
-            }}
+            onClick={onNewChat}
             className={`w-full flex items-center gap-3 p-2.5 rounded-lg transition-all text-left group ${
-              currentView === 'chat' && activeFlow === 'Video Production'
+              currentView === 'chat'
                 ? 'bg-surface-bright shadow-sm text-on-surface font-semibold border border-outline-variant/50'
                 : 'text-on-surface-variant hover:bg-surface-bright hover:text-on-surface'
             }`}
@@ -124,113 +160,101 @@ export const Sidebar: React.FC<SidebarProps> = ({
           )}
         </div>
 
-        {/* Folders and Projects Header */}
         <div className="flex items-center justify-between text-on-surface-variant mb-1 px-3">
           <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/70">
-            {t("REPOSITORIES")}
+            {t('Projects')}
           </span>
           <div className="flex gap-2">
-            <span className="material-symbols-outlined text-[16px] cursor-pointer hover:text-primary" title={t("Filter list")}>
-              filter_list
-            </span>
-            <span className="material-symbols-outlined text-[16px] cursor-pointer hover:text-primary" title={t("New folder")}>
+            <span
+              className="material-symbols-outlined text-[16px] cursor-pointer hover:text-primary"
+              title={t('Add project folder')}
+              onClick={() => onAddWorkspace?.()}
+            >
               create_new_folder
             </span>
           </div>
         </div>
 
-        {/* Main Folders Navigation Tree */}
-        <nav className="flex-1 sidebar-scroll overflow-y-auto space-y-4 px-1 pb-4">
-          {runHistory.length > 0 && (
-            <div className="space-y-1">
-              <div className="flex items-center justify-between text-on-surface font-semibold p-1.5 rounded">
-                <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-[18px] text-on-surface-variant">history</span>
-                  <span className="text-xs tracking-wide">{t('Run History')}</span>
-                </div>
-              </div>
-              <div className="space-y-0.5 ml-4 border-l-2 border-outline-variant/20 pl-2">
-                {runHistory.map((run) => (
-                  <div
-                    key={run.run_id}
-                    onClick={() => handleFlowSelect(run.workflow_id)}
-                    className="w-full flex items-center justify-between p-2 rounded-lg text-left transition-all cursor-pointer text-on-surface-variant hover:bg-surface-bright hover:text-on-surface"
-                  >
-                    <span className="text-xs truncate max-w-[140px] font-mono">{run.run_id}</span>
-                    <span className="text-[9px] font-mono bg-surface-container-high px-1 rounded uppercase">
-                      {run.status}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          {folders.length === 0 && runHistory.length === 0 && (
+        <nav className="flex-1 sidebar-scroll overflow-y-auto space-y-2 px-1 pb-4">
+          {workspaces.length === 0 && (
             <p className="text-[11px] text-on-surface-variant/60 italic px-3 py-2 leading-relaxed">
-              {t('No repositories yet. Authorize a workspace from the header to begin.')}
+              {t('No repositories yet. Use Add project folder or Authorize workspace to begin.')}
             </p>
           )}
-          {folders.map(folder => (
-            <div key={folder.name} className="space-y-1">
-              <div
-                onClick={() => toggleFolder(folder.name)}
-                className="flex items-center justify-between text-on-surface font-semibold p-1.5 rounded hover:bg-surface-bright transition-colors cursor-pointer group"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-[18px] text-on-surface-variant">
-                    {folder.collapsed ? 'folder' : 'folder_open'}
-                  </span>
-                  <span className="text-xs tracking-wide">{t(folder.name)}</span>
-                </div>
-                <span
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onResetSimulation();
-                    setView('chat');
-                  }}
-                  className="material-symbols-outlined text-[16px] opacity-0 group-hover:opacity-100 transition-opacity hover:text-primary hover:scale-110 p-0.5 rounded hover:bg-surface-container"
-                  title={t("New Chat")}
-                >
-                  add
-                </span>
-              </div>
+          {workspaces.map((repo) => {
+            const isActiveWorkspace = repo.id === activeWorkspaceId;
+            const collapsed = collapsedWorkspaces[repo.id] ?? false;
+            const projectSessions = sessionsByWorkspace.get(repo.id) ?? [];
 
-              {!folder.collapsed && (
-                <div className="space-y-0.5 ml-4 border-l-2 border-outline-variant/20 pl-2">
-                  {folder.items.length === 0 ? (
-                    <p className="text-[11px] text-on-surface-variant/60 italic py-1 pl-2">
-                      {t("No agents yet")}
-                    </p>
-                  ) : (
-                    folder.items.map(item => {
-                      const isItemActive = activeFlow === item.name || (item.isActive && activeFlow === "Video Production" && folder.name === "obsidian");
-                      return (
-                        <div
-                          key={item.name}
-                          onClick={() => handleFlowSelect(item.name)}
-                          className={`w-full flex items-center justify-between p-2 rounded-lg text-left transition-all cursor-pointer ${
-                            isItemActive
-                              ? 'bg-surface-bright shadow-sm text-on-surface font-bold border border-outline-variant/40'
-                              : 'text-on-surface-variant hover:bg-surface-bright hover:text-on-surface'
-                          }`}
-                        >
-                          <span className="text-xs truncate max-w-[160px]">{t(item.name)}</span>
-                          <div className="flex items-center gap-1.5 flex-shrink-0">
-                            <span className="text-[9px] font-mono bg-surface-container-high px-1 rounded text-on-surface-variant/80">
-                              {item.time}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
+            return (
+              <div key={repo.id} className="space-y-0.5">
+                <div
+                  className={`flex items-center justify-between p-1.5 rounded-lg transition-colors group ${
+                    isActiveWorkspace
+                      ? 'bg-surface-container-low/80'
+                      : 'hover:bg-surface-bright'
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => toggleWorkspace(repo.id)}
+                    className="flex items-center gap-2 flex-1 min-w-0 text-left"
+                    title={repo.workspace_path}
+                  >
+                    <span className="material-symbols-outlined text-[18px] text-on-surface-variant">
+                      {collapsed ? 'folder' : 'folder_open'}
+                    </span>
+                    <span className="text-xs font-semibold truncate">{repo.name}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onNewChatInWorkspace?.(repo.id);
+                    }}
+                    className="material-symbols-outlined text-[16px] opacity-60 group-hover:opacity-100 hover:text-primary p-0.5 rounded"
+                    title={t('New Chat')}
+                  >
+                    add
+                  </button>
                 </div>
-              )}
-            </div>
-          ))}
+
+                {!collapsed && (
+                  <div className="space-y-0.5 ml-4 border-l-2 border-outline-variant/20 pl-2">
+                    {projectSessions.length === 0 ? (
+                      <p className="text-[11px] text-on-surface-variant/60 italic py-1 pl-2">
+                        {t('No sessions in this project yet')}
+                      </p>
+                    ) : (
+                      projectSessions.map((session) => {
+                        const isActiveSession = session.run_id === activeSessionId;
+                        return (
+                          <button
+                            key={session.run_id}
+                            type="button"
+                            onClick={() => onSelectSession?.(session)}
+                            className={`w-full flex items-center justify-between p-2 rounded-lg text-left transition-all ${
+                              isActiveSession
+                                ? 'bg-surface-bright shadow-sm text-on-surface font-bold border border-outline-variant/40'
+                                : 'text-on-surface-variant hover:bg-surface-bright hover:text-on-surface'
+                            }`}
+                          >
+                            <span className="text-xs truncate max-w-[150px]">{sessionLabel(session)}</span>
+                            <span className="text-[9px] font-mono text-on-surface-variant/70 flex-shrink-0">
+                              {formatRelativeTime(session.started_at)}
+                            </span>
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
         </nav>
 
-        {/* Sidebar Footer settings */}
         <div className="mt-auto pt-3 border-t border-outline-variant/50 space-y-1">
           <button
             onClick={() => setView('settings')}

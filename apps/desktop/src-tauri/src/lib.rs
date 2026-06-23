@@ -27,12 +27,25 @@ enum SidecarChild {
 
 struct SidecarState(Mutex<Option<SidecarChild>>);
 
+fn free_sidecar_port() {
+    #[cfg(all(not(debug_assertions), target_os = "macos"))]
+    {
+        let _ = std::process::Command::new("sh")
+            .arg("-c")
+            .arg("lsof -ti tcp:8123 | xargs kill -9 2>/dev/null || true")
+            .status();
+        thread::sleep(Duration::from_millis(400));
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_dialog::init())
         .manage(SidecarState(Mutex::new(None)))
         .setup(|app| {
+            free_sidecar_port();
             let child = spawn_sidecar(app.handle())?;
             *app.state::<SidecarState>().0.lock().unwrap() = Some(child);
             wait_for_sidecar_port(Duration::from_secs(60))?;

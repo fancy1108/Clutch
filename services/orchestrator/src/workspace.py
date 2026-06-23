@@ -1,38 +1,147 @@
-"""Authorized workspace path, file tree, and path whitelist (M2-09 / M4-05)."""
+"""Authorized workspace paths, multi-repo list, and path whitelist (M2-09 / M4-05)."""
 
 from __future__ import annotations
 
+import json
 import os
+import sys
+import uuid
 from pathlib import Path
 from typing import Any
 
-_workspace_path: Path | None = None
 _SKIP_DIRS = {".git", "node_modules", ".venv", "__pycache__", "dist", "target"}
+WORKSPACES_ENV = "CLUTCH_WORKSPACES_FILE"
+
+_workspaces: dict[str, dict[str, str]] = {}
+_active_id: str | None = None
+_loaded = False
+_persistence_disabled = False
 
 
 class WorkspaceError(PermissionError):
     """Raised when workspace is missing or path is outside whitelist."""
 
 
-def set_workspace(path: str) -> dict[str, str]:
+def _store_path() -> Path:
+    override = os.environ.get(WORKSPACES_ENV)
+    if override:
+        return Path(override)
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / "clutch" / "workspaces.json"
+    if sys.platform == "win32":
+        return Path(os.environ.get("APPDATA", Path.home())) / "clutch" / "workspaces.json"
+    return Path.home() / ".local" / "share" / "clutch" / "workspaces.json"
+
+
+def _ensure_loaded() -> None:
+    global _loaded, _workspaces, _active_id
+    if _loaded or _persistence_disabled:
+        return
+    path = _store_path()
+    if not path.is_file():
+        _loaded = True
+        return
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        _loaded = True
+        return
+    _workspaces = {item["id"]: item for item in data.get("workspaces", []) if "id" in item}
+    active = data.get("active_id")
+    _active_id = active if active in _workspaces else None
+    _loaded = True
+
+
+def _persist() -> None:
+    if _persistence_disabled:
+        return
+    path = _store_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "workspaces": list(_workspaces.values()),
+        "active_id": _active_id,
+    }
+    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+
+def _normalize_path(path: str) -> Path:
     resolved = Path(path).expanduser().resolve()
     if not resolved.is_dir():
         raise WorkspaceError(f"工作区路径不存在或不是目录：{path}")
-    global _workspace_path
-    _workspace_path = resolved
-    return {"workspace_path": str(resolved), "name": resolved.name}
+    return resolved
+
+
+def _entry_for_path(resolved: Path) -> dict[str, str]:
+    return {
+        "id": f"ws_{uuid.uuid4().hex[:12]}",
+        "workspace_path": str(resolved),
+        "name": resolved.name,
+    }
+
+
+def list_workspaces() -> dict[str, Any]:
+    _ensure_loaded()
+    return {
+        "workspaces": list(_workspaces.values()),
+        "active_id": _active_id,
+    }
+
+
+def add_workspace(path: str) -> dict[str, str]:
+    _ensure_loaded()
+    resolved = _normalize_path(path)
+    resolved_str = str(resolved)
+    for entry in _workspaces.values():
+        if entry["workspace_path"] == resolved_str:
+            global _active_id
+            _active_id = entry["id"]
+            _persist()
+            return entry
+    entry = _entry_for_path(resolved)
+    _workspaces[entry["id"]] = entry
+    _active_id = entry["id"]
+    _persist()
+    return entry
+
+
+def activate_workspace(workspace_id: str) -> dict[str, str]:
+    _ensure_loaded()
+    entry = _workspaces.get(workspace_id)
+    if entry is None:
+        raise WorkspaceError(f"工作区不存在：{workspace_id}")
+    global _active_id
+    _active_id = workspace_id
+    _persist()
+    return entry
+
+
+def remove_workspace(workspace_id: str) -> None:
+    _ensure_loaded()
+    if workspace_id not in _workspaces:
+        raise WorkspaceError(f"工作区不存在：{workspace_id}")
+    global _active_id
+    del _workspaces[workspace_id]
+    if _active_id == workspace_id:
+        _active_id = next(iter(_workspaces), None)
+    _persist()
+
+
+def set_workspace(path: str) -> dict[str, str]:
+    return add_workspace(path)
 
 
 def get_workspace() -> dict[str, str] | None:
-    if _workspace_path is None:
+    _ensure_loaded()
+    if _active_id is None:
         return None
-    return {"workspace_path": str(_workspace_path), "name": _workspace_path.name}
+    return _workspaces.get(_active_id)
 
 
 def require_workspace() -> Path:
-    if _workspace_path is None:
+    info = get_workspace()
+    if info is None:
         raise WorkspaceError("未授权工作区，请先在应用中选择一个项目根目录。")
-    return _workspace_path
+    return Path(info["workspace_path"])
 
 
 def resolve_allowed_path(relative_path: str) -> Path:
@@ -85,5 +194,8 @@ def read_file(relative_path: str, *, max_bytes: int = 512_000) -> str:
 
 
 def clear_workspace_for_tests() -> None:
-    global _workspace_path
-    _workspace_path = None
+    global _workspaces, _active_id, _loaded, _persistence_disabled
+    _workspaces = {}
+    _active_id = None
+    _loaded = True
+    _persistence_disabled = True

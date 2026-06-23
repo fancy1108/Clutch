@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from src.compiler import WorkflowSession, begin_workflow, resume_workflow
-from src.run_history import append_run_record, list_runs, update_run_record
+from src.run_history import append_run_record, list_runs, update_run_record, upsert_session
 from src.state import ClutchState, initial_state
 from src.workspace import WorkspaceError
 from src.workflow_storage import resolve_workflow
@@ -26,8 +26,8 @@ app = FastAPI(title="Clutch Orchestrator", version="0.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://127.0.0.1:3000"],
-    allow_credentials=True,
+    # Sidecar binds 127.0.0.1 only — allow Vite dev + Tauri desktop webview origins.
+    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1|tauri\.localhost)(:\d+)?|tauri://localhost",
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -64,6 +64,10 @@ class ModelsConfigRequest(BaseModel):
     api_key: str | None = None
 
 
+class ToolConnectRequest(BaseModel):
+    tool_id: str
+
+
 class ReassignRequest(BaseModel):
     instructions: str = Field(default="reassign_to_builder")
 
@@ -71,6 +75,58 @@ class ReassignRequest(BaseModel):
 class HumanDecisionRequest(BaseModel):
     decision: str = Field(default="approve")
     instructions: str = Field(default="")
+
+
+class SessionCreateRequest(BaseModel):
+    run_id: str
+    title: str = Field(default="New session")
+    workflow_id: str = Field(default="")
+
+
+def _session_workspace_fields() -> dict[str, str]:
+    from src.workspace import get_workspace
+
+    workspace = get_workspace()
+    if workspace is None:
+        return {}
+    return {
+        "workspace_id": workspace["id"],
+        "workspace_name": workspace["name"],
+    }
+
+
+def _touch_session(
+    run_id: str,
+    *,
+    title: str | None = None,
+    workflow_id: str | None = None,
+    status: str | None = None,
+) -> None:
+    from src.run_history import list_runs, upsert_session
+
+    fields = _session_workspace_fields()
+    if not fields:
+        return
+    patch: dict[str, Any] = {**fields, "run_id": run_id}
+    if title is not None:
+        patch["title"] = title[:80]
+    if workflow_id is not None:
+        patch["workflow_id"] = workflow_id
+    if status is not None:
+        patch["status"] = status
+    existing = next((record for record in list_runs() if record.get("run_id") == run_id), None)
+    if existing:
+        upsert_session({**existing, **patch})
+    else:
+        upsert_session(
+            {
+                **patch,
+                "title": patch.get("title", "New session"),
+                "workflow_id": patch.get("workflow_id", ""),
+                "status": patch.get("status", "idle"),
+                "started_at": _iso_timestamp(),
+            }
+        )
 
 
 def _apply_human_decision(
@@ -356,7 +412,7 @@ async def _send_log_event(
 
 @app.get("/health")
 async def health() -> dict[str, str]:
-    return {"status": "ok"}
+    return {"status": "ok", "api_version": "2"}
 
 
 @app.post("/api/workflows/validate")
@@ -435,12 +491,71 @@ async def delete_user_workflow_endpoint(workflow_id: str) -> dict[str, str]:
 
 
 @app.get("/api/runs/history")
-async def get_run_history() -> dict[str, list[dict[str, Any]]]:
-    return {"runs": list_runs()}
+async def get_run_history(workspace_id: str | None = None) -> dict[str, list[dict[str, Any]]]:
+    return {"runs": list_runs(workspace_id=workspace_id)}
+
+
+@app.post("/api/sessions")
+async def create_session_endpoint(body: SessionCreateRequest) -> dict[str, Any]:
+    from src.workspace import get_workspace
+
+    workspace = get_workspace()
+    if workspace is None:
+        raise HTTPException(status_code=400, detail={"message": "请先选择并授权一个项目工作区"})
+    record = upsert_session(
+        {
+            "run_id": body.run_id,
+            "workspace_id": workspace["id"],
+            "workspace_name": workspace["name"],
+            "title": body.title[:80] or "New session",
+            "workflow_id": body.workflow_id,
+            "status": "idle",
+            "started_at": _iso_timestamp(),
+        }
+    )
+    return record
 
 
 def _workspace_http_error(exc: WorkspaceError) -> HTTPException:
     return HTTPException(status_code=403, detail={"message": str(exc)})
+
+
+@app.get("/api/workspaces")
+async def list_workspaces_endpoint() -> dict[str, Any]:
+    from src.workspace import list_workspaces
+
+    return list_workspaces()
+
+
+@app.post("/api/workspaces")
+async def add_workspace_endpoint(body: WorkspaceRequest) -> dict[str, str]:
+    from src.workspace import WorkspaceError, add_workspace
+
+    try:
+        return add_workspace(body.path)
+    except WorkspaceError as exc:
+        raise _workspace_http_error(exc) from exc
+
+
+@app.post("/api/workspaces/{workspace_id}/activate")
+async def activate_workspace_endpoint(workspace_id: str) -> dict[str, str]:
+    from src.workspace import WorkspaceError, activate_workspace
+
+    try:
+        return activate_workspace(workspace_id)
+    except WorkspaceError as exc:
+        raise _workspace_http_error(exc) from exc
+
+
+@app.delete("/api/workspaces/{workspace_id}")
+async def remove_workspace_endpoint(workspace_id: str) -> dict[str, str]:
+    from src.workspace import WorkspaceError, remove_workspace
+
+    try:
+        remove_workspace(workspace_id)
+    except WorkspaceError as exc:
+        raise _workspace_http_error(exc) from exc
+    return {"status": "removed", "workspace_id": workspace_id}
 
 
 @app.get("/api/workspace")
@@ -455,10 +570,10 @@ async def get_workspace_endpoint() -> dict[str, str]:
 
 @app.post("/api/workspace")
 async def set_workspace_endpoint(body: WorkspaceRequest) -> dict[str, str]:
-    from src.workspace import WorkspaceError, set_workspace
+    from src.workspace import WorkspaceError, add_workspace
 
     try:
-        return set_workspace(body.path)
+        return add_workspace(body.path)
     except WorkspaceError as exc:
         raise _workspace_http_error(exc) from exc
 
@@ -508,30 +623,55 @@ async def get_models_credentials() -> dict[str, Any]:
 
 @app.get("/api/models/config")
 async def get_models_config() -> dict[str, Any]:
-    from src.models_config import get_router
+    from src.models_config import get_router, serialize_models_config
 
-    router = get_router()
-    return {
-        "active_model_id": router.active_model_id,
-        "models": [
-            {"id": spec.id, "name": spec.name, "provider_id": spec.provider_id}
-            for spec in router.list_models()
-        ],
-    }
+    return serialize_models_config(get_router())
 
 
 @app.post("/api/models/config")
 async def update_models_config(body: ModelsConfigRequest) -> dict[str, str]:
     from src.llm.router import ProviderId
-    from src.models_config import get_router, save_router
+    from src.models_config import get_router, is_model_available, save_router
 
     router = get_router()
     if body.active_model_id:
+        if not is_model_available(router, body.active_model_id):
+            raise HTTPException(
+                status_code=400,
+                detail={"message": "Model is not available — configure provider API key first"},
+            )
         router.set_active_model(body.active_model_id)
     if body.provider_id and body.api_key is not None:
         router.set_api_key(body.provider_id, body.api_key)  # type: ignore[arg-type]
     save_router(router)
     return {"status": "saved", "active_model_id": router.active_model_id}
+
+
+@app.get("/api/tools/status")
+async def tools_status() -> dict[str, list[dict[str, Any]]]:
+    from src.tools_status import list_tools_status
+
+    return {"tools": list_tools_status()}
+
+
+@app.post("/api/tools/connect")
+async def connect_tool_endpoint(body: ToolConnectRequest) -> dict[str, Any]:
+    from src.tools_status import connect_tool
+
+    try:
+        return connect_tool(body.tool_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+
+
+@app.post("/api/tools/disconnect")
+async def disconnect_tool_endpoint(body: ToolConnectRequest) -> dict[str, Any]:
+    from src.tools_status import disconnect_tool
+
+    try:
+        return disconnect_tool(body.tool_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
 
 
 @app.post("/api/tools/open-cursor")
@@ -628,13 +768,11 @@ async def start_run(body: StartRunRequest) -> dict[str, str]:
         },
     )
     _run_states[run_id] = state
-    append_run_record(
-        {
-            "run_id": run_id,
-            "workflow_id": workflow["id"],
-            "status": state["status"],
-            "started_at": _iso_timestamp(),
-        }
+    _touch_session(
+        run_id,
+        title=workflow.get("name") or workflow["id"],
+        workflow_id=workflow["id"],
+        status=state["status"],
     )
 
     logger.info(
@@ -741,6 +879,7 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                 }
                 state = _merge_patch(state, patch)
                 _run_states[run_id] = state
+                _touch_session(run_id, title=text.strip()[:80] or "New session", status=state["status"])
 
                 await _send_message_event(websocket, run_id, user_message, node_id)
                 await _send_log_event(websocket, run_id, log_line, node_id=node_id)

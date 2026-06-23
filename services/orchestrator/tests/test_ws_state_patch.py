@@ -8,7 +8,9 @@ client = TestClient(app)
 def test_health() -> None:
     response = client.get("/health")
     assert response.status_code == 200
-    assert response.json() == {"status": "ok"}
+    body = response.json()
+    assert body["status"] == "ok"
+    assert body["api_version"] == "2"
 
 
 def test_ws_state_patch_on_connect() -> None:

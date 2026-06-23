@@ -14,17 +14,21 @@ cleanup() {
 }
 trap cleanup EXIT
 
-if ! curl -sf http://127.0.0.1:8123/health >/dev/null; then
-  (cd services/orchestrator && uv run uvicorn src.main:app --host 127.0.0.1 --port 8123) &
-  sidecar_pid=$!
-  for _ in $(seq 1 30); do
-    if curl -sf http://127.0.0.1:8123/health >/dev/null; then
-      break
-    fi
-    sleep 0.5
-  done
-  curl -sf http://127.0.0.1:8123/health >/dev/null
+# E2E must hit the dev Sidecar with bundled workflow templates, not a stale DMG process.
+if lsof -ti tcp:8123 >/dev/null 2>&1; then
+  lsof -ti tcp:8123 | xargs kill -9 2>/dev/null || true
+  sleep 0.5
 fi
+
+(cd services/orchestrator && uv run uvicorn src.main:app --host 127.0.0.1 --port 8123) &
+sidecar_pid=$!
+for _ in $(seq 1 30); do
+  if curl -sf http://127.0.0.1:8123/health >/dev/null; then
+    break
+  fi
+  sleep 0.5
+done
+curl -sf http://127.0.0.1:8123/health >/dev/null
 
 mkdir -p runs/verification
 log="runs/verification/$(date +%Y-%m-%d)-e2e-smoke.log"

@@ -60,6 +60,28 @@ def save_router(router: LLMProviderRouter) -> dict[str, Any]:
     return payload
 
 
+def is_model_available(router: LLMProviderRouter, model_id: str) -> bool:
+    if model_id not in router._models:
+        return False
+    provider_id: ProviderId = router._models[model_id].provider_id
+    return bool(router.get_api_key(provider_id))
+
+
+def serialize_models_config(router: LLMProviderRouter) -> dict[str, Any]:
+    return {
+        "active_model_id": router.active_model_id,
+        "models": [
+            {
+                "id": spec.id,
+                "name": spec.name,
+                "provider_id": spec.provider_id,
+                "available": is_model_available(router, spec.id),
+            }
+            for spec in router.list_models()
+        ],
+    }
+
+
 _router = load_router()
 
 

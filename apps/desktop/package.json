@@ -17,6 +17,8 @@
     "@clutch/shared-types": "workspace:*",
     "@google/genai": "^2.4.0",
     "@tailwindcss/vite": "^4.1.14",
+    "@tauri-apps/api": "2",
+    "@tauri-apps/plugin-dialog": "^2.7.1",
     "@vitejs/plugin-react": "^5.0.4",
     "@xyflow/react": "^12.11.0",
     "dotenv": "^17.2.3",
@@ -26,7 +28,6 @@
     "react-dom": "^19.0.1"
   },
   "devDependencies": {
-    "@tauri-apps/api": "2",
     "@tauri-apps/cli": "2",
     "@types/node": "^22.14.0",
     "@types/react": "^19.0.0",
