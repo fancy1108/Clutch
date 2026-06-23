@@ -142,7 +142,6 @@
 | 模块 | FR / Prototype | 说明 |
 |------|----------------|------|
 | Skills Registry 后端同步 | FR-06-04 · `SkillsRegistry.tsx` | 替代 localStorage |
-| 单 Agent 模式 | FR-02-09 · `isMultiAgent` | 隐藏 Flow / Workflows 入口；Header 模式切换 |
 | 全量 MCP 类型 | FR-05-05 · `McpServerHub.tsx` | MVP 仅 filesystem |
 | 主题 Appearance 持久化 | `ThemeManager.tsx` | 预设主题 localStorage → 可选后端 |
 | i18n 双语 | `LanguageContext.tsx` | en/zh 切换；MVP 可保留现有 UI |

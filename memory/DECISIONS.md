@@ -95,6 +95,14 @@
 - **落地前提**：M1-09 ✅
 - **决策状态**：`可执行`
 
+### D10 · 单 Agent 模式不开发（2026-06-23）
+
+- **背景**：Prototype 含 Single / Multi Agent 切换（`isMultiAgent`、FR-02-09）；产品聚焦多 Agent 工作流编排，轻量对话式单 Agent 与定位重叠且增加维护面。
+- **方案**：**不开发**单 Agent 模式；产品仅保留 Multi Agent（工作流 + Flow + 多角色监督）。Prototype 残留 props 可保留至后续清理，默认 `isMultiAgent=true`，不实现模式切换 UI 与 Single 专属路径。
+- **影响**：自 `ROADMAP`、`tasks.md` §P2 移除该任务；`proposal.md` FR-02-09 视为废止；`ARCHITECTURE.md` §7.1 以 Multi Agent 为唯一运行模式。
+- **落地前提**：无
+- **决策状态**：`已记录`
+
 ### D8 · PR-Agent / DangerJS 暂缓（2026-06-22）
 
 - **背景**：Vibe 8.5 兵器库含 PR 对照与 PR 结构合规工具；当前无逐功能 `design.md`（`specs/core/design.md` 仅为视觉快照）、无多人 PR 协作流。

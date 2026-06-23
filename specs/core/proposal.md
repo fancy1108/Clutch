@@ -129,7 +129,6 @@
 | Agent 配置 | P1 | 角色、说明、工具、Skills |
 | MCP 管理 | P2 | 连接、状态、工具数 |
 | Skills 注册 | P2 | 目录扫描与挂载 |
-| 单 Agent 模式 | P2 | 简化为对话式执行 |
 
 ---
 
@@ -164,7 +163,7 @@
 | FR-02-06 | 右侧 Changes 展示真实 git diff 或文件 diff | 文件可点击预览 |
 | FR-02-07 | 右侧 Flow 展示当前工作流及活跃节点高亮 | 运行中节点视觉区分 |
 | FR-02-08 | 底部状态栏展示 Branch、Mode、当前 Flow | 与 Prototype 一致 |
-| FR-02-09 | 支持 Single / Multi Agent 模式切换 | Single 模式隐藏 Flow 相关入口 |
+| ~~FR-02-09~~ | ~~支持 Single / Multi Agent 模式切换~~ | **废止（D10）** — 仅 Multi Agent |
 
 ---
 
@@ -252,7 +251,7 @@
 2. **监督而非黑盒**：任何自动动作都可在 Terminal / Chat 追溯
 3. **失败是可操作的**：错误卡片旁必有下一步（修复、审批、重试）
 4. **渐进复杂度**：模板 → 改参数 → 拖节点，三级上手路径
-5. **模式切换**：Single Agent 给轻量用户，Multi Agent 给编排用户
+5. **多 Agent 编排**：统一 Multi Agent 工作流体验（单 Agent 模式不开发，D10）
 
 ---
 

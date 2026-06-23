@@ -399,10 +399,11 @@ class ToolAdapter(Protocol):
 
 ### 7.1 运行模式
 
+> **D10**：仅 **Multi Agent**；单 Agent 模式不开发。Prototype `isMultiAgent` 为历史占位，默认 true。
+
 | 模式 | UI 行为 |
 |------|---------|
-| **Multi Agent** | 完整工作流 + Flow tab + 多角色 Chat |
-| **Single Agent** | 隐藏 Flow tab；单 Orchestrator 对话式执行 |
+| **Multi Agent**（唯一） | 完整工作流 + Flow tab + 多角色 Chat |
 
 ---
 

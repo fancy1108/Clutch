@@ -20,7 +20,6 @@
 | Agent 配置 | P1 | M4 | ✅ | M4-02 |
 | MCP 管理 | P2 | M4 | ✅ | M4-03（filesystem 状态） |
 | Skills 注册（后端同步） | P2 | 延后 | ❌ | tasks §P2 |
-| 单 Agent 模式 | P2 | 延后 | ❌ | tasks §P2 |
 | 内置模板 | P1 | M4 | ✅ | M4-01 |
 | 运行历史 | P0 | M2 | ✅ | M2-07（D3） |
 | 文件浏览（Files 面板） | P0 | M2 | ✅ | M2-11 |
