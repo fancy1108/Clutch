@@ -6,7 +6,7 @@
 - 说明：WebSocket `state_patch` 全链路打通；LangGraph 最小图 + `start_run` API 就绪
 - 焦点：**M1-04** Orchestrator 路由节点（`test_orchestrator_routing.py`）
 - 上次更新：2026-06-23
-- Git HEAD：`ea5e648`（M1-02）；M1-03 待 commit
+- Git HEAD：`3c45ad0`（M1-03）
 
 ## 治理脚手架就绪标准（文档层 ✅）
 

@@ -116,6 +116,16 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 | D7 验收兜底 | ✅ `cba4094` | `check-doc-drift.sh`、Husky、truth-alignment |
 | D1/D2 测试治理 | ✅ 多 commit | `verify.sh`、`.github/workflows/ci.yml` |
 
+### M1-03 ✅
+- **日期：** 2026-06-23
+- **Commit：** `3c45ad0` — feat(m1): wire start_run to WorkflowCompiler (M1-03)
+- **Verification：** `uv run pytest tests/test_start_run.py -v` → 3 passed；`./scripts/verify.sh` → 22 passed
+- **证据：** `runs/verification/2026-06-23-m1-03-start-run-pytest.log`
+- **交付文件：**
+  - `services/orchestrator/src/compiler/compiler.py` — 新增 `run_workflow`
+  - `services/orchestrator/src/main.py` — `start_run` 改走编译图
+  - `services/orchestrator/tests/test_start_run.py` — `active_node_id` 变化断言
+
 ---
 
 ## 待交付（下一 Task）
@@ -125,17 +135,3 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 | **M1-04** | Orchestrator 路由节点 + `test_orchestrator_routing.py` |
 | **M0-05** | `src-tauri/` Sidecar 生命周期 |
 | **M0-06** | 类型对齐复审结论写入本节 |
-
----
-
-## 进行中（待 commit）
-
-### M1-03 ⚠️ 待 commit
-- **日期：** 2026-06-23
-- **Commit：** （待 `git commit`）
-- **Verification：** `uv run pytest tests/test_start_run.py -v` → 3 passed；`./scripts/verify.sh` → 22 passed
-- **证据：** `runs/verification/2026-06-23-m1-03-start-run-pytest.log`
-- **交付文件：**
-  - `services/orchestrator/src/compiler/compiler.py` — 新增 `run_workflow` 辅助函数
-  - `services/orchestrator/src/main.py` — `start_run` 改走编译图
-  - `services/orchestrator/tests/test_start_run.py` — `active_node_id` 变化断言
