@@ -12,20 +12,16 @@
 
 （暂无）
 
-## [OPEN] M1-06 阻塞：`WorkflowDef/steps` 与编译器 `nodes/edges` JSON 无映射规范
-
-- **现象：** `WorkflowOrchestration.tsx` 使用 Prototype 的 `WorkflowDef` + `WorkflowStep`（含 `nextSteps`）；Sidecar / Compiler 使用 `workflows/*.json` 的 `nodes` + `edges`（含 `agent_task` / `check` / `human_gate` / `end` 类型）
-- **影响：** M1-06「编辑器读写真实 JSON」无法在不猜测转换规则的情况下实现
-- **规避：** M1-09 后端 CRUD API 已就绪；模板可通过 API 读写 compiler JSON
-- **解除条件：** 在 `specs/` 或 `DECISIONS.md` 明确 UI 模型 ↔ compiler JSON 的转换规则，或重构编辑器直接编辑 compiler JSON
-
-## [OPEN] M0-05 阻塞：本机无 Rust 工具链
-
-- **现象：** `cargo` / `rustc` 未安装；无法运行 `pnpm tauri dev` 验收 M0-05
-- **影响：** Tauri Sidecar 生命周期 task 无法在本环境完成 Verification
-- **规避：** Sidecar 仍可通过 `cd services/orchestrator && uv run uvicorn src.main:app --reload --port 8123` 手动启动；`pnpm dev` 前端开发不受影响
-- **解除条件：** 安装 Rust（https://rustup.rs）后执行 `pnpm tauri init` / 补全 `src-tauri/` Rust 工程并实现 Sidecar spawn
-
 ## 已解决问题（经验库）
 
-（暂无）
+### [RESOLVED] M1-06 · UI 模型 ↔ compiler JSON 无映射（2026-06-23）
+
+- **现象：** 画布 `WorkflowDef` 与执行 JSON 格式不一致，无法保存
+- **解决：** **D9** 双模式 — 线性流程画布互转 + JSON 高级编辑；M1-06 落地
+- **规避：** 复杂流程（检查/审批/分支）勿强行用画布，走 JSON 模式
+
+### [RESOLVED] M0-05 · 本机无 Rust 工具链（2026-06-23）
+
+- **现象：** 无法 `pnpm tauri dev`
+- **解决：** rustup 安装 Rust；M0-05 Tauri 工程补全中
+- **规避：** 开发期仍可手动 `uv run uvicorn` 启动 Sidecar

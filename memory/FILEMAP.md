@@ -78,6 +78,9 @@
 | 设置模态壳 | `components/SystemPreferencesModal.tsx` |
 | i18n（P2） | `components/LanguageContext.tsx` |
 | 工作流画布编辑 | `components/WorkflowOrchestration.tsx` |
+| 工作流 JSON 面板（D9） | `components/WorkflowJsonPanel.tsx` |
+| 画布 ↔ compiler 转换（D9） | `services/workflowFormat.ts` |
+| 工作流 Sidecar API 客户端 | `services/workflowApi.ts` |
 | Agent 角色配置 | `components/AgentManager.tsx` |
 | AI 工具连接状态 | `components/AiToolsManager.tsx` |
 | Skills 注册 | `components/SkillsRegistry.tsx` |

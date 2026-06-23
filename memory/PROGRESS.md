@@ -4,8 +4,8 @@
 
 - 阶段：**M0 核心完成 / M1 骨架启动**
 - 说明：WebSocket `state_patch` 全链路打通；LangGraph 最小图 + `start_run` API 就绪
-- 焦点：**M0-05** / **M1-06**（阻塞见 `FAILURES.md`）
-- Git HEAD：`b6584ef`（M1-07）
+- 焦点：**M2-01** Chat 接真实 `message` 事件
+- Git HEAD：`465b079`（M0-05 + M1-06）
 
 ## 治理脚手架就绪标准（文档层 ✅）
 
@@ -39,15 +39,20 @@
 - [x] **M1-03**：`start_run` 对接 WorkflowCompiler + `test_start_run` 增强断言
 - [x] **M1-04**：Orchestrator 路由（边优先、LLM 兜底）+ `test_orchestrator_routing.py`
 - [x] **M1-05**：`run_completed` WS 推送 + `test_run_completed.py`
-- [ ] **M0-05**：Tauri 拉起 Sidecar — `[OPEN]` 无 Rust
+- [x] **M0-05**：Tauri 拉起 Sidecar（dev：`pnpm --filter @clutch/desktop tauri dev`）
 - [x] **M0-06**：`ClutchState` 类型对齐复审
-- [x] **M1-07**：图结构保存前校验
-- [ ] **M1-06**：工作流编辑器保存/加载 — `[OPEN]` UI↔JSON 映射未定
+- [x] **M1-06**：工作流编辑器双模式（D9）
 - [x] **M1-08**：LLM Provider Router + `test_llm_provider.py`
 - [x] **M1-09**：用户工作流持久化 API + `test_workflow_storage.py`
 - [ ] **M2**：M2-01–14（见 `tasks.md` §M2）
 
 ## 会话日志（最新在上）
+
+### 2026-06-23 会话 17（D9 / M1-06 / M0-05）
+
+- 决策：**D9** 画布（简单线性）+ JSON（复杂流程）双模式；Rust 已安装
+- 完成：WorkflowOrchestration 接 M1-09 API；Tauri dev 自动起 Sidecar（`465b079`）
+- 下次优先：**M2-01**
 
 ### 2026-06-23 会话 16（M1-09 / M1-07 / M0-06）
 
