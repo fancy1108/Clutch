@@ -17,9 +17,9 @@ def test_ws_state_patch_on_connect() -> None:
         assert envelope["event"] == "state_patch"
         assert envelope["data"]["run_id"] == "run_m0_test"
         patch = envelope["data"]["patch"]
-        assert patch["status"] == "running"
-        assert patch["active_node_id"] == "start"
-        assert len(patch["terminal_logs"]) >= 1
+        assert patch["status"] == "idle"
+        assert patch["active_node_id"] == ""
+        assert patch["terminal_logs"] == []
 
 
 def test_ws_state_patch_on_message() -> None:

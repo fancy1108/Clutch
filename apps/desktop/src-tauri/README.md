@@ -3,30 +3,24 @@
 Rust 宿主层职责：
 
 1. 承载 React WebView（开发态连 `localhost:3000`，发布态加载 `dist/`）
-2. **拉起 Python Sidecar**（P5：PyInstaller 产物作为 `externalBin` 内嵌）
+2. **拉起 Python Sidecar**（发布态：PyInstaller 内嵌 `externalBin`）
 3. 系统 API：`open -a Cursor`、安全存储 API Key 等
 
 ## 开发态
 
-Sidecar 需单独启动（见根目录 `README.md`）：
+`pnpm tauri dev` 自动用 `uv run uvicorn` 拉起 `services/orchestrator`（需本机安装 uv）。
+
+## 发布打包
 
 ```bash
-cd services/orchestrator && uv run uvicorn src.main:app --reload --port 8123
+cd apps/desktop && pnpm tauri build
 ```
 
-## P5 打包
+`beforeBuildCommand` 会依次执行：
 
-- `services/orchestrator` → PyInstaller → `src-tauri/binaries/orchestrator-{target-triple}`
-- `tauri.conf.json` → `bundle.externalBin` 注册 sidecar
-- 应用启动时由 Rust `Command` 或 Tauri sidecar API 拉起编排进程
+1. `pnpm build`（前端 `dist/`）
+2. `../../scripts/build-sidecar.sh`（PyInstaller → `binaries/orchestrator-{target-triple}`）
 
-## 初始化 Tauri CLI（首次）
+`tauri.conf.json` 的 `bundle.externalBin` 将 sidecar 打入 `.app`；启动时 Rust 用 Tauri sidecar API 监听 `8123`，再加载 UI。
 
-```bash
-cd apps/desktop
-pnpm add -D @tauri-apps/cli@2 @tauri-apps/api@2
-# 若需从模板补全 Rust 工程：
-pnpm tauri init --ci
-```
-
-当前目录为 **结构占位**；完整 `Cargo.toml` / `lib.rs` 在接入 Tauri CLI 时生成。
+**验收：** 安装 DMG 后打开 Clutch，约 5s 内 `curl http://127.0.0.1:8123/health` 应返回 `{"status":"ok"}`。

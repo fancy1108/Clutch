@@ -1,11 +1,11 @@
 import React from 'react';
-import { RightTab, RunStatus, UncommittedFile } from '../types';
+import { RightTab, UncommittedFile, ClutchRunStatus } from '../types';
 import type { FileTreeNode } from '../services/workspaceApi';
 
 interface RightPanelProps {
   activeTab: RightTab;
   setActiveTab: (tab: RightTab) => void;
-  runStatus: RunStatus;
+  clutchStatus: ClutchRunStatus;
   activeNodeId?: string;
   activeAgent?: string;
   workflowId?: string;
@@ -30,9 +30,9 @@ interface RightPanelProps {
 export const RightPanel: React.FC<RightPanelProps> = ({
   activeTab,
   setActiveTab,
-  runStatus,
+  clutchStatus,
   activeNodeId = '',
-  activeAgent = 'Orchestrator',
+  activeAgent = '',
   workflowId = '',
   sessionTokens = 0,
   sessionCostUsd = 0,
@@ -78,6 +78,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
     return file ? file.diffs : null;
   };
 
+  const isIdle = clutchStatus === 'idle';
   const tokenTotal = sessionTokens || tokenInput + tokenOutput;
   const inputPct = tokenTotal > 0 ? Math.round((tokenInput / tokenTotal) * 100) : 0;
   const outputPct = tokenTotal > 0 ? 100 - inputPct : 0;
@@ -179,9 +180,18 @@ export const RightPanel: React.FC<RightPanelProps> = ({
             <div className="p-3 border border-outline-variant/30 rounded-xl bg-surface-container-low/40 font-mono text-[10px] space-y-1">
               <p>workflow: <span className="text-on-surface font-bold">{workflowId || '—'}</span></p>
               <p>active_node: <span className="text-on-surface font-bold">{activeNodeId || '—'}</span></p>
-              <p>active_agent: <span className="text-on-surface font-bold">{activeAgent}</span></p>
-              <p>status: <span className="text-on-surface font-bold uppercase">{runStatus}</span></p>
+              <p>active_agent: <span className="text-on-surface font-bold">{activeAgent || '—'}</span></p>
+              <p>status: <span className="text-on-surface font-bold uppercase">{clutchStatus}</span></p>
             </div>
+            {isIdle ? (
+              <div className="p-6 border border-dashed border-outline-variant/50 rounded-xl text-center space-y-2">
+                <span className="material-symbols-outlined text-[24px] text-on-surface-variant/50">monitoring</span>
+                <p className="text-[11px] text-on-surface-variant leading-relaxed">
+                  暂无运行中的工作流。启动模板或发送指令后，这里会显示 Token 统计与 Flow 进度。
+                </p>
+              </div>
+            ) : (
+            <>
             <section>
               <h4 className="text-[10px] font-bold text-on-surface-variant/75 uppercase tracking-widest mb-4">
                 Session Token Analytics
@@ -228,52 +238,14 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                   </div>
                 </div>
 
-                {/* Simple Multi-Round Chart using structured interactive divs simulating bars */}
+                {tokenTotal > 0 && (
                 <div className="p-3.5 border border-neutral-200 rounded-xl space-y-3">
                   <p className="text-[9.5px] font-bold uppercase tracking-wider text-neutral-800">Token Cost History</p>
-                  
-                  {/* Bar Chart Container */}
-                  <div className="h-24 flex items-end gap-3 px-1.5 pt-4 border-b border-neutral-100">
-                    {/* Round 1 */}
-                    <div className="flex-1 flex flex-col items-center group cursor-pointer">
-                      <div className="relative w-full flex flex-col justify-end h-16">
-                        {/* Tooltip on hover */}
-                        <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-neutral-800 text-white text-[8px] font-mono py-0.5 px-1 rounded opacity-0 group-hover:opacity-100 transition-opacity z-20 whitespace-nowrap shadow-xs">
-                          12.4k
-                        </div>
-                        <div className="w-full bg-neutral-200 group-hover:bg-neutral-300 rounded-t-sm transition-all" style={{ height: '30%' }} />
-                      </div>
-                      <span className="text-[8px] font-bold text-neutral-400 mt-1.5 font-mono">R1</span>
-                    </div>
-
-                    {/* Round 2 */}
-                    <div className="flex-1 flex flex-col items-center group cursor-pointer">
-                      <div className="relative w-full flex flex-col justify-end h-16">
-                        <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-neutral-800 text-white text-[8px] font-mono py-0.5 px-1 rounded opacity-0 group-hover:opacity-100 transition-opacity z-20 whitespace-nowrap shadow-xs">
-                          15.6k
-                        </div>
-                        <div className="w-full bg-neutral-300 group-hover:bg-neutral-400 rounded-t-sm transition-all" style={{ height: '45%' }} />
-                      </div>
-                      <span className="text-[8px] font-bold text-neutral-400 mt-1.5 font-mono">R2</span>
-                    </div>
-
-                    {/* Round 3 (Active) */}
-                    <div className="flex-1 flex flex-col items-center group cursor-pointer">
-                      <div className="relative w-full flex flex-col justify-end h-16">
-                        <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-neutral-800 text-white text-[8px] font-mono py-0.5 px-1 rounded opacity-0 group-hover:opacity-100 transition-opacity z-20 whitespace-nowrap shadow-xs">
-                          24.4k
-                        </div>
-                        <div className="w-full bg-neutral-900 group-hover:bg-black rounded-t-sm transition-all animate-pulse" style={{ height: '75%' }} />
-                      </div>
-                      <span className="text-[8px] font-bold text-neutral-800 mt-1.5 font-mono">Active</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between text-[9px] text-zinc-400 font-medium">
-                    <span>3 Execution Cycles</span>
-                    <span className="text-zinc-500 font-bold">&#8901; Avg 17.4k / run</span>
-                  </div>
+                  <p className="text-[10px] text-neutral-500 font-mono">
+                    本轮累计 {tokenTotal.toLocaleString()} tokens · ${sessionCostUsd.toFixed(4)}
+                  </p>
                 </div>
+                )}
 
               </div>
             </section>
@@ -325,17 +297,17 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                   {/* Evaluator node */}
                   <div className="flex flex-col items-center w-full">
                     <div className="flex items-center gap-3 w-full bg-surface p-2.5 rounded-xl border border-outline-variant/30">
-                      <div className={`w-9 h-9 rounded-full border-2 border-white flex items-center justify-center shadow-xs overflow-hidden flex-shrink-0 ${runStatus === 'passed' ? 'bg-green-600' : 'bg-error-red'}`}>
+                      <div className={`w-9 h-9 rounded-full border-2 border-white flex items-center justify-center shadow-xs overflow-hidden flex-shrink-0 ${clutchStatus === 'passed' ? 'bg-green-600' : 'bg-error-red'}`}>
                         <img className="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCmb7VGaQXE-4sYnIZR3VrcHVAPhv4Px14kMlkayJj8kVm8htTWITmPi26wsj8P6B9RrqykIWj81S2ilmGR0e8cXhA1gjc3U-Nw0DsgHV3HvVmBskuoUksIt6YM6Z3ORjFtRhBphqAXxRKf9ke-zYcPs0TcEFKxw_bwGXSDiAKV5CL7kZf9i6lSZDe91ccUNjaAIsgTMKEEvYc7bZpXYz3D5dClulRwbNru5SZB-1E5FM0A2qMPs-IAfiR8OB1-cUvFh3WYKx9qlGgN" alt="Evaluator" />
                       </div>
                       <div>
                         <p className="text-[11px] font-bold text-on-surface">Evaluator</p>
-                        <p className={`text-[10px] font-bold font-mono ${runStatus === 'passed' ? 'text-green-600' : 'text-error-red'}`}>
-                          {runStatus === 'passed' ? 'Passed' : 'Failed'}
+                        <p className={`text-[10px] font-bold font-mono ${clutchStatus === 'passed' ? 'text-green-600' : 'text-error-red'}`}>
+                          {clutchStatus === 'passed' ? 'Passed' : 'Failed'}
                         </p>
                       </div>
                     </div>
-                    {runStatus !== 'passed' && (
+                    {clutchStatus !== 'passed' && (
                       <div className="h-4 flex flex-col items-center justify-center">
                         <div className="w-0.5 h-full bg-outline-variant/60 relative flex justify-center">
                           <span className="material-symbols-outlined absolute -bottom-2 text-[14px] text-on-surface-variant/60">arrow_drop_down</span>
@@ -345,7 +317,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                   </div>
 
                   {/* Builder running node shown when failing */}
-                  {runStatus !== 'passed' && (
+                  {clutchStatus !== 'passed' && (
                     <div className="flex flex-col items-center w-full">
                       <div className="flex items-center gap-3 w-full bg-white p-2.5 rounded-xl border-2 border-primary shadow-xs">
                         <div className="w-9 h-9 rounded-full bg-surface-container border-2 border-primary flex items-center justify-center shadow-xs overflow-hidden flex-shrink-0 animate-pulse">
@@ -478,6 +450,8 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                 )}
               </section>
             )}
+            </>
+            )}
           </div>
         )}
 
@@ -555,20 +529,20 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                   <path
                     d="M 68 28 L 105 28"
                     fill="none"
-                    stroke={runStatus === 'running' || runStatus === 'passed' ? '#000000' : '#cbd5e1'}
+                    stroke={clutchStatus === 'running' || clutchStatus === 'passed' ? '#000000' : '#cbd5e1'}
                     strokeWidth="1.5"
-                    markerEnd={runStatus === 'running' || runStatus === 'passed' ? 'url(#mini-arrow-active)' : 'url(#mini-arrow)'}
-                    strokeDasharray={runStatus === 'running' ? "4 3" : "none"}
-                    className={runStatus === 'running' ? "animate-shimmer" : ""}
+                    markerEnd={clutchStatus === 'running' || clutchStatus === 'passed' ? 'url(#mini-arrow-active)' : 'url(#mini-arrow)'}
+                    strokeDasharray={clutchStatus === 'running' ? "4 3" : "none"}
+                    className={clutchStatus === 'running' ? "animate-shimmer" : ""}
                   />
 
                   {/* Line 2: Builder -> Evaluator */}
                   <path
                     d="M 172 28 L 210 28"
                     fill="none"
-                    stroke={runStatus === 'passed' ? '#000000' : runStatus === 'failed' ? '#71717a' : '#cbd5e1'}
+                    stroke={clutchStatus === 'passed' ? '#000000' : clutchStatus === 'failed' ? '#71717a' : '#cbd5e1'}
                     strokeWidth="1.5"
-                    markerEnd={runStatus === 'passed' ? 'url(#mini-arrow-active)' : runStatus === 'failed' ? 'url(#mini-arrow-stuck)' : 'url(#mini-arrow)'}
+                    markerEnd={clutchStatus === 'passed' ? 'url(#mini-arrow-active)' : clutchStatus === 'failed' ? 'url(#mini-arrow-stuck)' : 'url(#mini-arrow)'}
                   />
                 </svg>
 
@@ -593,7 +567,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                   <div className={`w-[44px] h-[44px] bg-white rounded-xl flex items-center justify-center shadow-xs relative transition-all border ${
                     flowHighlight('builder')
                       ? 'border-neutral-900 ring-2 ring-neutral-100 animate-pulse'
-                      : runStatus === 'failed'
+                      : clutchStatus === 'failed'
                       ? 'border-neutral-400 ring-2 ring-neutral-100'
                       : 'border-neutral-300'
                   }`}>
@@ -602,26 +576,26 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                       src="https://lh3.googleusercontent.com/aida-public/AB6AXuBpRidttSGTIY-J-PGvnlcZX_oZSZoBXJY5vjZ9g1PKl_fq4EKoa2RXbcSCvvIdbPLdmfuzPKTxnR8TqV7skwsKlt-eKEzSzktv-TWbHu4c9uBEdP6Es_Fjek1EBQuGZeMtWsUi3fn0lyozFaZBLp9SpES3r0WalbqYY6gGiT1R_0J1kvU-D9rI_2q2f3sMGHuTjWyOZ5gImCLGHSGejtcKmToTSZYMrXfT_A5x1iw_f4q7WljP3FXjk64aQhLgh9nTXUDfPdkIzu0b"
                       alt="Builder"
                     />
-                    {runStatus === 'running' && (
+                    {clutchStatus === 'running' && (
                       <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-black rounded-full border border-white flex items-center justify-center text-white shadow-xs">
                         <span className="material-symbols-outlined text-[10px] animate-spin">progress_activity</span>
                       </span>
                     )}
-                    {runStatus === 'failed' && (
+                    {clutchStatus === 'failed' && (
                       <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-neutral-500 rounded-full border border-white flex items-center justify-center text-white shadow-xs text-[9px] font-bold">
                         !
                       </span>
                     )}
-                    {runStatus === 'passed' && (
+                    {clutchStatus === 'passed' && (
                       <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-black rounded-full border border-white flex items-center justify-center text-white shadow-xs">
                         <span className="material-symbols-outlined text-[10px] font-extrabold">check</span>
                       </span>
                     )}
                   </div>
                   <span className="text-[10px] font-bold text-slate-700 mt-2 text-center truncate w-full">Builder</span>
-                  {runStatus === 'running' ? (
+                  {clutchStatus === 'running' ? (
                     <span className="text-[8px] text-neutral-800 font-bold tracking-wide mt-0.5 animate-pulse">Running</span>
-                  ) : runStatus === 'failed' ? (
+                  ) : clutchStatus === 'failed' ? (
                     <span className="text-[8px] text-neutral-500 font-extrabold tracking-wide mt-0.5 bg-neutral-50 px-1 rounded animate-pulse">Stuck here</span>
                   ) : (
                     <span className="text-[8px] text-neutral-600 font-bold tracking-wide mt-0.5">Committed</span>
@@ -633,7 +607,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                   <div className={`w-[44px] h-[44px] bg-white border rounded-xl flex items-center justify-center shadow-xs relative transition-all ${
                     flowHighlight('evaluator')
                       ? 'border-neutral-900 ring-2 ring-neutral-100'
-                      : runStatus === 'passed'
+                      : clutchStatus === 'passed'
                         ? 'border-neutral-900 ring-2 ring-neutral-100'
                         : 'border-neutral-200 brightness-95 opacity-70'
                   }`}>
@@ -642,7 +616,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                       src="https://lh3.googleusercontent.com/aida-public/AB6AXuCmb7VGaQXE-4sYnIZR3VrcHVAPhv4Px14kMlkayJj8kVm8htTWITmPi26wsj8P6B9RrqykIWj81S2ilmGR0e8cXhA1gjc3U-Nw0DsgHV3HvVmBskuoUksIt6YM6Z3ORjFtRhBphqAXxRKf9ke-zYcPs0TcEFKxw_bwGXSDiAKV5CL7kZf9i6lSZDe91ccUNjaAIsgTMKEEvYc7bZpXYz3D5dClulRwbNru5SZB-1E5FM0A2qMPs-IAfiR8OB1-cUvFh3WYKx9qlGgN"
                       alt="Evaluator"
                     />
-                    {runStatus === 'passed' && (
+                    {clutchStatus === 'passed' && (
                       <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-black rounded-full border border-white flex items-center justify-center text-white shadow-xs">
                         <span className="material-symbols-outlined text-[10px] font-extrabold">check</span>
                       </span>
@@ -650,14 +624,14 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                   </div>
                   <span className="text-[10px] font-bold text-slate-700 mt-2 text-center truncate w-full">Evaluator</span>
                   <span className="text-[8px] text-slate-400 font-bold tracking-wide mt-0.5">
-                    {runStatus === 'passed' ? 'Success' : 'Pending'}
+                    {clutchStatus === 'passed' ? 'Success' : 'Pending'}
                   </span>
                 </div>
               </div>
 
               {/* Precise details of currently stuck or active element */}
               <div className="w-full mt-3 pt-3 border-t border-slate-200/50 flex flex-col gap-1.5 text-center px-1">
-                {runStatus === 'failed' && (
+                {clutchStatus === 'failed' && (
                   <>
                     <p className="text-[10px] font-extrabold text-neutral-800 uppercase tracking-widest flex items-center justify-center gap-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-neutral-600 animate-ping" />
@@ -668,7 +642,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                     </p>
                   </>
                 )}
-                {runStatus === 'running' && (
+                {clutchStatus === 'running' && (
                   <>
                     <p className="text-[10px] font-extrabold text-neutral-900 uppercase tracking-widest flex items-center justify-center gap-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-black animate-ping" />
@@ -679,7 +653,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                     </p>
                   </>
                 )}
-                {runStatus === 'passed' && (
+                {clutchStatus === 'passed' && (
                   <>
                     <p className="text-[10px] font-extrabold text-black uppercase tracking-widest flex items-center justify-center gap-1">
                       ALL CHECKLISTS PASSED
@@ -697,13 +671,13 @@ export const RightPanel: React.FC<RightPanelProps> = ({
               <div className="flex items-center justify-between mb-1.5">
                 <span className="text-[9px] font-bold text-on-surface-variant uppercase">Retry Loop Status</span>
                 <span className="text-[9px] font-extrabold text-primary font-mono bg-primary/5 px-1.5 py-0.5 rounded">
-                  {runStatus === 'passed' ? 'Pass (3/3)' : 'Round 2/3'}
+                  {clutchStatus === 'passed' ? 'Pass (3/3)' : 'Round 2/3'}
                 </span>
               </div>
               <div className="w-full bg-surface-container-highest h-1 rounded-full overflow-hidden">
                 <div
                   className="bg-primary h-full transition-all duration-500"
-                  style={{ width: runStatus === 'passed' ? '100%' : '66.6%' }}
+                  style={{ width: clutchStatus === 'passed' ? '100%' : '66.6%' }}
                 />
               </div>
             </div>
@@ -715,14 +689,14 @@ export const RightPanel: React.FC<RightPanelProps> = ({
           <div className="space-y-4 animate-fade-in text-xs select-none">
             <div className="flex items-center justify-between">
               <h4 className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">
-                Uncommitted Changes ({runStatus === 'passed' ? '0' : uncommitted.length})
+                Uncommitted Changes ({clutchStatus === 'passed' ? '0' : uncommitted.length})
               </h4>
               <span className="material-symbols-outlined text-[18px] text-on-surface-variant/70 cursor-pointer hover:text-primary">
                 more_horiz
               </span>
             </div>
 
-            {runStatus === 'passed' ? (
+            {clutchStatus === 'passed' ? (
               <div className="py-8 text-center bg-surface-container-low/40 rounded-xl border border-dashed border-outline-variant mt-2 text-on-surface-variant/60">
                 <span className="material-symbols-outlined text-[28px] mb-2">done_all</span>
                 <p className="text-[11px] font-medium">All changes successfully committed</p>
@@ -773,7 +747,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
             )}
 
             {/* Diff Viewer representation */}
-            {runStatus !== 'passed' && getActiveFileDiff() && (
+            {clutchStatus !== 'passed' && getActiveFileDiff() && (
               <div className="mt-6 border border-outline-variant/20 rounded-xl overflow-hidden bg-white shadow-xs">
                 <div className="flex items-center justify-between px-3 py-2 bg-surface-container/30 border-b border-outline-variant/20">
                   <div className="flex items-center gap-2">
@@ -836,7 +810,10 @@ export const RightPanel: React.FC<RightPanelProps> = ({
 
             {/* Black monospace logs terminal container */}
             <div className="flex-1 bg-black text-green-400 font-mono text-[10px] p-4 rounded-xl space-y-1.5 h-[340px] overflow-y-auto terminal-scroll select-all border border-neutral-800 shadow-md">
-              {terminalLogs.map((log, i) => {
+              {terminalLogs.length === 0 ? (
+                <p className="text-neutral-500 font-sans text-[11px]">暂无日志。启动工作流后 Sidecar 输出会显示在这里。</p>
+              ) : (
+              terminalLogs.map((log, i) => {
                 let colorClass = 'text-green-400/90';
                 if (log.includes('WARNING') || log.includes('FAILED')) {
                   colorClass = 'text-red-400 font-semibold';
@@ -852,7 +829,8 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                     {log}
                   </div>
                 );
-              })}
+              })
+              )}
             </div>
           </div>
         )}

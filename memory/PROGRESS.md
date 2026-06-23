@@ -5,7 +5,7 @@
 - 阶段：**M0–M4 MVP 验收形态就绪**
 - 说明：Claude Code CLI 凭证自动导入、`POST /api/runs/{id}/human-decision`、T-03 MVP 闭环 E2E、`verify.sh` 含 E2E 门禁；70 pytest + 3 Playwright 绿
 - 焦点：用户本机验收 DMG（`apps/desktop` → `pnpm tauri build`）；可选 push 触发 CI
-- Git HEAD：待本会话 commit（基于 `cf342c6`）
+- Git HEAD：`c1b16cf`
 
 ## 治理脚手架就绪标准（文档层 ✅）
 
@@ -24,7 +24,7 @@
 
 ## 待办（跨会话）
 
-- [x] **M0–M4**：MVP 任务清单（P2 Skills/单 Agent 延后）
+- [x] **M0–M4**：MVP 任务清单（P2 Skills 延后；单 Agent 不开发见 D10）
 - [x] **M4-06**：`pnpm tauri build` → DMG 证据 `runs/verification/2026-06-23-tauri-build.log`
 - [x] **T-03**：MVP 闭环 E2E + `test_mvp_closed_loop.py`
 - [ ] **T-04**：红队 / 体感审计（可选）

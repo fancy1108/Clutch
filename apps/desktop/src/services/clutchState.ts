@@ -1,16 +1,18 @@
 import { useSyncExternalStore } from 'react';
 import type { ChatMessage, ClutchState, StatePatchData, WebSocketEnvelope } from '../types';
 
-export const DEFAULT_RUN_ID = 'test_run_001';
+export function createSessionRunId(): string {
+  return `run_${Date.now().toString(36)}`;
+}
 
 function createEmptyState(runId: string): ClutchState {
   return {
     run_id: runId,
-    workflow_id: 'video-production',
+    workflow_id: '',
     current_instruction: '',
     active_node_id: '',
-    active_agent: 'Orchestrator',
-    status: 'running',
+    active_agent: '',
+    status: 'idle',
     messages: [],
     terminal_logs: [],
     changed_files: [],
@@ -28,11 +30,11 @@ function isChatMessage(value: unknown): value is ChatMessage {
 }
 
 class ClutchStateStore {
-  private state: ClutchState = createEmptyState(DEFAULT_RUN_ID);
+  private state: ClutchState = createEmptyState(createSessionRunId());
   private listeners = new Set<() => void>();
   private socket: WebSocket | null = null;
   private connectPromise: Promise<void> | null = null;
-  private runId = DEFAULT_RUN_ID;
+  private runId = this.state.run_id;
   private _connected = false;
 
   get connected(): boolean {
@@ -67,7 +69,7 @@ class ClutchStateStore {
     this.applyPatch({ terminal_logs: [...this.state.terminal_logs, line] });
   }
 
-  connect(runId: string = DEFAULT_RUN_ID): Promise<void> {
+  connect(runId: string = this.runId): Promise<void> {
     if (this.socket?.readyState === WebSocket.OPEN && this.runId === runId) {
       return Promise.resolve();
     }
@@ -77,6 +79,9 @@ class ClutchStateStore {
     }
 
     this.runId = runId;
+    this.state = createEmptyState(runId);
+    this.emit();
+
     this.connectPromise = new Promise((resolve, reject) => {
       const ws = new WebSocket(`ws://localhost:8123/ws/runs/${runId}`);
       this.socket = ws;
@@ -93,7 +98,6 @@ class ClutchStateStore {
           if (envelope.event === 'state_patch') {
             const data = envelope.data as StatePatchData;
             this.applyPatch(data.patch);
-            console.log('%c[Clutch] state_patch', 'color: #22c55e; font-weight: bold;', data.patch);
             return;
           }
           if (envelope.event === 'message') {
@@ -176,7 +180,8 @@ export function useClutchState(): { state: ClutchState; connected: boolean } {
   return { state, connected: clutchStore.connected };
 }
 
-export const connectSidecarWebSocket = (): Promise<void> => clutchStore.connect(DEFAULT_RUN_ID);
+export const connectSidecarWebSocket = (): Promise<void> =>
+  clutchStore.connect(clutchStore.getSnapshot().run_id);
 
 export const sendSidecarTestMessage = async (): Promise<void> => {
   await clutchStore.send({ text: 'Hello sidecar!' });

@@ -1,15 +1,31 @@
-//! Tauri shell — dev Sidecar lifecycle via `uv run uvicorn` (M0-05).
+//! Tauri shell — dev: `uv run uvicorn`; release: PyInstaller sidecar (M0-05 / M4-06).
 
 use std::net::TcpStream;
-use std::path::PathBuf;
-use std::process::{Command, Stdio};
 use std::sync::Mutex;
-use std::time::{Duration, Instant};
 use std::thread;
+use std::time::{Duration, Instant};
 
 use tauri::Manager;
+use tauri_plugin_shell::ShellExt;
 
-struct SidecarState(Mutex<Option<std::process::Child>>);
+#[cfg(debug_assertions)]
+use std::path::PathBuf;
+#[cfg(debug_assertions)]
+use std::process::{Command, Stdio};
+#[cfg(not(debug_assertions))]
+use tauri_plugin_shell::process::CommandChild;
+
+#[cfg(debug_assertions)]
+enum SidecarChild {
+    Dev(std::process::Child),
+}
+
+#[cfg(not(debug_assertions))]
+enum SidecarChild {
+    Release(CommandChild),
+}
+
+struct SidecarState(Mutex<Option<SidecarChild>>);
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -17,19 +33,39 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .manage(SidecarState(Mutex::new(None)))
         .setup(|app| {
-            let child = spawn_dev_sidecar()?;
+            let child = spawn_sidecar(app.handle())?;
             *app.state::<SidecarState>().0.lock().unwrap() = Some(child);
-            wait_for_sidecar_port(Duration::from_secs(45))?;
+            wait_for_sidecar_port(Duration::from_secs(60))?;
             Ok(())
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
 
+fn spawn_sidecar(app: &tauri::AppHandle) -> Result<SidecarChild, String> {
+    #[cfg(debug_assertions)]
+    {
+        return spawn_dev_sidecar().map(SidecarChild::Dev);
+    }
+
+    #[cfg(not(debug_assertions))]
+    {
+        let (_rx, child) = app
+            .shell()
+            .sidecar("orchestrator")
+            .map_err(|e| format!("无法加载 Sidecar 二进制：{e}"))?
+            .spawn()
+            .map_err(|e| format!("无法启动 Sidecar：{e}"))?;
+        return Ok(SidecarChild::Release(child));
+    }
+}
+
+#[cfg(debug_assertions)]
 fn orchestrator_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../services/orchestrator")
 }
 
+#[cfg(debug_assertions)]
 fn spawn_dev_sidecar() -> Result<std::process::Child, String> {
     let dir = orchestrator_dir();
     if !dir.join("src/main.py").is_file() {
@@ -59,10 +95,10 @@ fn spawn_dev_sidecar() -> Result<std::process::Child, String> {
 fn wait_for_sidecar_port(timeout: Duration) -> Result<(), String> {
     let start = Instant::now();
     while start.elapsed() < timeout {
-        if TcpStream::connect("127.0.0.1:8123").is_ok() {
+        if std::net::TcpStream::connect("127.0.0.1:8123").is_ok() {
             return Ok(());
         }
         thread::sleep(Duration::from_millis(400));
     }
-    Err("Sidecar 启动超时：8123 端口不可达。请检查 uv 与 services/orchestrator".into())
+    Err("Sidecar 启动超时：8123 端口不可达。请检查编排服务是否已内嵌或本机 uv 环境".into())
 }

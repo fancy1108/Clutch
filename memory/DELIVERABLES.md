@@ -188,7 +188,7 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 | Task | 焦点 | 状态 |
 |------|------|------|
 | **T-04** | 红队 / 体感审计 | 可选 |
-| **P2** | Skills 后端、单 Agent、完整 MCP、i18n | 延后 |
+| **P2** | Skills 后端、完整 MCP、i18n | 延后 |
 
 ### cf342c6 — M2–M4 批量 ✅
 - **日期：** 2026-06-23
@@ -197,8 +197,9 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 - **证据：** 会话 19 verify 输出
 - **交付文件：** `git show cf342c6 --stat`
 
-### M4-04 + T-03 + M4-06（本会话，待 commit）✅
+### M4-04 + T-03 + M4-06 ✅
 - **日期：** 2026-06-23
+- **Commit：** `c1b16cf` — feat(mvp): Claude Code credentials, human-decision API, and T-03 closed-loop E2E
 - **Verification：** `./scripts/verify.sh` → 70 pytest + 3 E2E；`apps/desktop` `pnpm tauri build`
 - **证据：** `runs/verification/2026-06-23-e2e-smoke.log`、`runs/verification/2026-06-23-tauri-build.log`
 - **交付文件：**

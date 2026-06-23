@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Literal, TypedDict
 
-ClutchRunStatus = Literal["running", "failed", "passed", "awaiting_human"]
+ClutchRunStatus = Literal["idle", "running", "failed", "passed", "awaiting_human"]
 
 
 class ClutchState(TypedDict):
@@ -23,16 +23,16 @@ class ClutchState(TypedDict):
     token_output: int
 
 
-def initial_state(run_id: str, workflow_id: str = "video-production") -> ClutchState:
+def initial_state(run_id: str, workflow_id: str = "") -> ClutchState:
     return ClutchState(
         run_id=run_id,
         workflow_id=workflow_id,
         current_instruction="",
-        active_node_id="start",
-        active_agent="Orchestrator",
-        status="running",
+        active_node_id="",
+        active_agent="",
+        status="idle",
         messages=[],
-        terminal_logs=["[ORCHESTRATOR] Sidecar connected. Awaiting instruction."],
+        terminal_logs=[],
         changed_files=[],
         session_tokens=0,
         session_cost_usd=0.0,

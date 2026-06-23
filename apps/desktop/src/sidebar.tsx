@@ -166,6 +166,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </div>
             </div>
           )}
+          {folders.length === 0 && runHistory.length === 0 && (
+            <p className="text-[11px] text-on-surface-variant/60 italic px-3 py-2 leading-relaxed">
+              {t('No repositories yet. Authorize a workspace from the header to begin.')}
+            </p>
+          )}
           {folders.map(folder => (
             <div key={folder.name} className="space-y-1">
               <div

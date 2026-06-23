@@ -3,5 +3,17 @@
   "identifier": "default",
   "description": "Default capability for Clutch desktop",
   "windows": ["main"],
-  "permissions": ["core:default", "shell:allow-open"]
+  "permissions": [
+    "core:default",
+    "shell:allow-open",
+    {
+      "identifier": "shell:allow-execute",
+      "allow": [
+        {
+          "name": "orchestrator",
+          "sidecar": true
+        }
+      ]
+    }
+  ]
 }

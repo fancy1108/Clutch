@@ -38,3 +38,6 @@ e2e/test-results/
 
 # Tauri (future)
 apps/desktop/src-tauri/target/
+apps/desktop/src-tauri/binaries/
+services/orchestrator/build/
+services/orchestrator/dist/

@@ -2,8 +2,8 @@
 
 export type RunStatus = 'failed' | 'running' | 'passed';
 
-/** Sidecar run status including human-gate pause. */
-export type ClutchRunStatus = RunStatus | 'awaiting_human';
+/** Sidecar run status including human-gate pause and pre-run idle. */
+export type ClutchRunStatus = RunStatus | 'awaiting_human' | 'idle';
 
 export type AgentRole = 'Orchestrator' | 'Builder' | 'Evaluator' | 'Supervisor';
 

@@ -14,11 +14,9 @@ import { SystemPreferencesModal } from './components/SystemPreferencesModal';
 import { MainView, RightTab, ChatMessage, UncommittedFile, DiffLine } from './types';
 import {
   initialConfiguredModels,
-  initialFolders,
-  uncommittedFiles,
 } from './mockData';
 import { LanguageProvider, useLanguage } from './components/LanguageContext';
-import { clutchStore, DEFAULT_RUN_ID, submitChatMessage, useClutchState } from './services/clutchState';
+import { clutchStore, createSessionRunId, submitChatMessage, useClutchState } from './services/clutchState';
 import { fetchRunHistory, type RunHistoryRecord } from './services/runApi';
 import {
   authorizeWorkspace,
@@ -30,27 +28,25 @@ import {
   type WorkspaceInfo,
 } from './services/workspaceApi';
 import { fetchModelsConfig } from './services/modelsApi';
-import type { RunStatus } from './types';
 
 
 function MainLayout() {
   const { t } = useLanguage();
   const { state: clutchState } = useClutchState();
 
-  useEffect(() => {
-    void clutchStore.connect(DEFAULT_RUN_ID);
-  }, []);
+  const [sessionRunId] = useState(() => createSessionRunId());
 
-  const runStatus: RunStatus =
-    clutchState.status === 'awaiting_human' ? 'running' : (clutchState.status as RunStatus);
+  useEffect(() => {
+    void clutchStore.connect(sessionRunId);
+  }, [sessionRunId]);
+
+  const clutchStatus = clutchState.status;
   const chatMessages = clutchState.messages as ChatMessage[];
   const terminalLogs = clutchState.terminal_logs;
 
   // Navigation & Structure views
   const [currentView, setView] = useState<MainView>('chat');
-  const [currentFlowName, setCurrentFlowName] = useState<string>(
-    () => clutchState.workflow_id || 'video-production',
-  );
+  const [currentFlowName, setCurrentFlowName] = useState<string>('');
   const [isMultiAgent, setIsMultiAgent] = useState<boolean>(true);
   const [themeId, setThemeId] = useState<string>('pristine-light');
 
@@ -76,7 +72,7 @@ function MainLayout() {
   const [previewFile, setPreviewFile] = useState<{ name: string; content: string } | null>(null);
 
   // Repository list folders state
-  const [folders, setFolders] = useState(initialFolders);
+  const [folders, setFolders] = useState<import('./types').RepositoryFolder[]>([]);
   const [runHistory, setRunHistory] = useState<RunHistoryRecord[]>([]);
   const [workspace, setWorkspace] = useState<WorkspaceInfo | null>(null);
   const [workspaceFiles, setWorkspaceFiles] = useState<FileTreeNode[]>([]);
@@ -148,7 +144,7 @@ function MainLayout() {
   }, [isMultiAgent, rightTab, currentView]);
 
   // Chat / diff state (diff mock until M3-02)
-  const [uncommitted, setUncommitted] = useState<UncommittedFile[]>(uncommittedFiles);
+  const [uncommitted, setUncommitted] = useState<UncommittedFile[]>([]);
 
   // Close unified settings dialog on ESC key
   useEffect(() => {
@@ -229,8 +225,14 @@ function MainLayout() {
 
   const handleResetSimulation = () => {
     setRightTab('overview');
-    setCurrentFlowName(clutchState.workflow_id || 'video-production');
+    setCurrentFlowName('');
   };
+
+  useEffect(() => {
+    if (clutchState.workflow_id) {
+      setCurrentFlowName(clutchState.workflow_id);
+    }
+  }, [clutchState.workflow_id]);
 
   const currentThemeObj = THEME_PRESETS.find(t => t.id === themeId) || THEME_PRESETS[0];
   const themeVars = currentThemeObj.variables;
@@ -243,7 +245,7 @@ function MainLayout() {
       
       {/* 1. Header component */}
       <Header
-        currentFlow={currentFlowName}
+        currentFlow={currentFlowName || clutchState.workflow_id || t('New session')}
         workspaceName={workspace?.name}
         onPickWorkspace={() => { void handlePickWorkspace(); }}
         folders={folders}
@@ -360,8 +362,8 @@ function MainLayout() {
                 inputValue={inputValue}
                 setInputValue={setInputValue}
                 onSendMessage={handleSendMessage}
-                runStatus={runStatus}
-                currentFlowName={currentFlowName}
+                clutchStatus={clutchStatus}
+                currentFlowName={currentFlowName || clutchState.workflow_id}
                 selectedSidebarWidth={selectedSidebarWidth}
                 rightSidebarWidth={rightSidebarWidth}
                 onStopRun={handleStopRun}
@@ -369,12 +371,14 @@ function MainLayout() {
                 onApprove={handleApprove}
                 onReject={handleReject}
                 onRetryWithInstructions={handleRetryWithInstructions}
-                awaitingHuman={clutchState.status === 'awaiting_human'}
+                workspaceAuthorized={Boolean(workspace)}
+                onPickWorkspace={() => { void handlePickWorkspace(); }}
+                onOpenWorkflows={() => setView('workflows')}
               />
               <RightPanel
                 activeTab={rightTab}
                 setActiveTab={setRightTab}
-                runStatus={runStatus}
+                clutchStatus={clutchStatus}
                 activeNodeId={clutchState.active_node_id}
                 activeAgent={clutchState.active_agent}
                 workflowId={clutchState.workflow_id}
@@ -439,7 +443,7 @@ function MainLayout() {
             className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-container-low hover:text-on-surface transition-colors cursor-pointer font-medium text-on-surface-variant"
           >
             <span className="material-symbols-outlined text-[15px] text-on-surface-variant">smart_toy</span>
-            Agent: {clutchState.active_agent}
+            Agent: {clutchState.active_agent || '—'}
           </span>
 
           {isMultiAgent ? (
@@ -448,7 +452,7 @@ function MainLayout() {
               className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-container-low text-primary font-bold transition-colors cursor-pointer"
             >
               <span className="material-symbols-outlined text-[15px] text-primary">movie</span>
-              Workflow: {clutchState.workflow_id || currentFlowName} 
+              Workflow: {clutchState.workflow_id || currentFlowName || '—'} 
               <span className="material-symbols-outlined text-[13px]">keyboard_arrow_down</span>
             </span>
           ) : (
