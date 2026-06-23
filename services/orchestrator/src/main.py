@@ -67,6 +67,14 @@ def _merge_patch(state: ClutchState, patch: dict[str, Any]) -> ClutchState:
     return merged
 
 
+def _is_terminal_status(status: str) -> bool:
+    return status in {"passed", "failed"}
+
+
+def _serialize_clutch_state(state: ClutchState) -> dict[str, Any]:
+    return dict(state)
+
+
 async def _send_state_patch(websocket: WebSocket, run_id: str, patch: dict[str, Any]) -> None:
     envelope = {
         "event": "state_patch",
@@ -77,6 +85,30 @@ async def _send_state_patch(websocket: WebSocket, run_id: str, patch: dict[str, 
         },
     }
     await websocket.send_text(json.dumps(envelope))
+
+
+async def _send_run_completed(websocket: WebSocket, run_id: str, state: ClutchState) -> None:
+    envelope = {
+        "event": "run_completed",
+        "data": {
+            "run_id": run_id,
+            "timestamp": _iso_timestamp(),
+            "status": state["status"],
+            "state": _serialize_clutch_state(state),
+        },
+    }
+    await websocket.send_text(json.dumps(envelope))
+
+
+async def _notify_run_state(
+    websocket: WebSocket,
+    run_id: str,
+    state: ClutchState,
+    patch: dict[str, Any],
+) -> None:
+    await _send_state_patch(websocket, run_id, patch)
+    if _is_terminal_status(state["status"]):
+        await _send_run_completed(websocket, run_id, state)
 
 
 @app.get("/health")
@@ -170,6 +202,8 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
     )
 
     await _send_state_patch(websocket, run_id, dict(state))
+    if _is_terminal_status(state["status"]):
+        await _send_run_completed(websocket, run_id, state)
 
     try:
         while True:
@@ -215,7 +249,7 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
             if patch:
                 state = _merge_patch(state, patch)
                 _run_states[run_id] = state
-                await _send_state_patch(websocket, run_id, patch)
+                await _notify_run_state(websocket, run_id, state, patch)
             else:
                 envelope = {
                     "event": "message",

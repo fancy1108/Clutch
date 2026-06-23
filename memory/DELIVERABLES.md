@@ -136,12 +136,21 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
   - `services/orchestrator/src/compiler/compiler.py` — 条件边改走 `route_next`
   - `services/orchestrator/tests/test_orchestrator_routing.py` — 路由单元测试
 
+### M1-05 ✅
+- **日期：** 2026-06-23
+- **Commit：** （本 commit）
+- **Verification：** `uv run pytest tests/test_run_completed.py -v` → 3 passed；`./scripts/verify.sh` → 32 passed
+- **证据：** `runs/verification/2026-06-23-m1-05-run-completed-pytest.log`
+- **交付文件：**
+  - `services/orchestrator/src/main.py` — `run_completed` 事件与 `ClutchState` 序列化
+  - `services/orchestrator/tests/test_run_completed.py` — passed/failed 终态 WS 推送
+
 ---
 
 ## 待交付（下一 Task）
 
 | Task | 焦点 |
 |------|------|
-| **M1-05** | `run_completed` + `test_run_completed.py` |
+| **M1-08** | LLM Provider Router + `test_llm_provider.py` |
 | **M0-05** | `src-tauri/` Sidecar 生命周期 |
 | **M0-06** | 类型对齐复审结论写入本节 |
