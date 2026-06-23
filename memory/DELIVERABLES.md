@@ -138,7 +138,7 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ### M1-05 ✅
 - **日期：** 2026-06-23
-- **Commit：** （本 commit）
+- **Commit：** `1dadde3` — feat(m1): push run_completed over WebSocket on terminal status (M1-05)
 - **Verification：** `uv run pytest tests/test_run_completed.py -v` → 3 passed；`./scripts/verify.sh` → 32 passed
 - **证据：** `runs/verification/2026-06-23-m1-05-run-completed-pytest.log`
 - **交付文件：**

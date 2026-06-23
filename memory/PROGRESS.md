@@ -5,7 +5,7 @@
 - 阶段：**M0 核心完成 / M1 骨架启动**
 - 说明：WebSocket `state_patch` 全链路打通；LangGraph 最小图 + `start_run` API 就绪
 - 焦点：**M1-08** LLM Provider Router（或 M0-05 Sidecar 生命周期）
-- Git HEAD：M1-05 待 commit
+- Git HEAD：`1dadde3`（M1-05）
 
 ## 治理脚手架就绪标准（文档层 ✅）
 
