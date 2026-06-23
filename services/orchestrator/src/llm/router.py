@@ -1,0 +1,121 @@
+"""LLM Provider Router — D4 default DeepSeek V4 Pro, switchable per provider keys (M1-08)."""
+
+from __future__ import annotations
+
+import os
+from dataclasses import dataclass, field
+from typing import Any, Callable, Literal, Protocol
+
+ProviderId = Literal["deepseek", "openai", "anthropic", "google", "ollama", "custom"]
+
+DEFAULT_MODEL_ID = "deepseek-v4pro"
+ENV_KEY_PREFIX = "CLUTCH_"
+
+
+@dataclass(frozen=True)
+class ModelSpec:
+    id: str
+    name: str
+    provider_id: ProviderId
+    api_model: str
+    base_url: str
+
+
+BUILTIN_MODELS: dict[str, ModelSpec] = {
+    DEFAULT_MODEL_ID: ModelSpec(
+        id="deepseek-v4pro",
+        name="DeepSeek V4 Pro",
+        provider_id="deepseek",
+        api_model="deepseek-chat",
+        base_url="https://api.deepseek.com/v1",
+    ),
+    "claude-3-7-sonnet": ModelSpec(
+        id="claude-3-7-sonnet",
+        name="Claude 3.7 Sonnet",
+        provider_id="anthropic",
+        api_model="claude-3-7-sonnet-latest",
+        base_url="https://api.anthropic.com/v1",
+    ),
+}
+
+
+class CompletionFn(Protocol):
+    def __call__(
+        self, *, base_url: str, api_model: str, api_key: str, prompt: str
+    ) -> str: ...
+
+
+def _env_key_for(provider_id: ProviderId) -> str:
+    return f"{ENV_KEY_PREFIX}{provider_id.upper()}_API_KEY"
+
+
+@dataclass
+class LLMProviderRouter:
+    """Route LLM calls to the active model's provider; keys stored per provider."""
+
+    _models: dict[str, ModelSpec] = field(default_factory=lambda: dict(BUILTIN_MODELS))
+    _api_keys: dict[ProviderId, str] = field(default_factory=dict)
+    _active_model_id: str = DEFAULT_MODEL_ID
+    _complete: CompletionFn | None = None
+
+    @property
+    def active_model_id(self) -> str:
+        return self._active_model_id
+
+    def register_model(self, spec: ModelSpec) -> None:
+        self._models[spec.id] = spec
+
+    def list_models(self) -> list[ModelSpec]:
+        return list(self._models.values())
+
+    def set_active_model(self, model_id: str) -> None:
+        if model_id not in self._models:
+            raise KeyError(f"Unknown model: {model_id}")
+        self._active_model_id = model_id
+
+    def get_active_model(self) -> ModelSpec:
+        return self._models[self._active_model_id]
+
+    def set_api_key(self, provider_id: ProviderId, api_key: str) -> None:
+        self._api_keys[provider_id] = api_key
+
+    def get_api_key(self, provider_id: ProviderId) -> str | None:
+        if provider_id in self._api_keys:
+            return self._api_keys[provider_id]
+        return os.environ.get(_env_key_for(provider_id))
+
+    def resolve_for_model(self, model_id: str | None = None) -> tuple[ModelSpec, str | None]:
+        spec = self._models[model_id or self._active_model_id]
+        return spec, self.get_api_key(spec.provider_id)
+
+    def complete(self, prompt: str, *, model_id: str | None = None) -> str:
+        spec, api_key = self.resolve_for_model(model_id)
+        if not api_key:
+            raise RuntimeError(f"No API key configured for provider {spec.provider_id!r}")
+        if self._complete is None:
+            raise RuntimeError("No completion backend configured")
+        return self._complete(
+            base_url=spec.base_url, api_model=spec.api_model, api_key=api_key, prompt=prompt
+        )
+
+    def as_route_suggester(self) -> Callable[[dict[str, Any], str, dict[str, Any]], str]:
+        """Adapter for orchestrator routing LLM fallback (M1-04)."""
+
+        def suggest(workflow: dict[str, Any], source: str, state: dict[str, Any]) -> str:
+            edges = [edge for edge in workflow["edges"] if edge["source"] == source]
+            options = [
+                edge["data"]["when"]
+                for edge in edges
+                if edge.get("data", {}).get("when")
+            ]
+            if not options:
+                return "passed"
+            prompt = (
+                f"Routing decision for workflow node {source!r}. "
+                f"State keys: {sorted(state.keys())}. "
+                f"Pick one branch: {options}. Reply with only the branch key."
+            )
+            choice = self.complete(prompt).strip().strip('"')
+            return choice if choice in options else options[0]
+
+        return suggest
