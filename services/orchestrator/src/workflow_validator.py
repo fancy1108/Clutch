@@ -14,6 +14,11 @@ _SCHEMA_PATH = _REPO_ROOT / "workflows" / "workflow.schema.json"
 _WORKFLOWS_DIR = _REPO_ROOT / "workflows"
 
 
+def workflows_dir() -> Path:
+    """Built-in read-only workflow templates directory (D5)."""
+    return _WORKFLOWS_DIR
+
+
 class WorkflowValidationError(ValueError):
     """Raised when workflow JSON fails schema validation."""
 

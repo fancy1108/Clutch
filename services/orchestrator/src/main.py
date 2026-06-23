@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 
 from src.compiler import run_workflow
 from src.state import ClutchState, initial_state
+from src.workflow_storage import resolve_workflow
 from src.workflow_validator import WorkflowValidationError, load_and_validate_workflow, validate_workflow
 
 logger = logging.getLogger(__name__)
@@ -40,6 +41,10 @@ class StartRunRequest(BaseModel):
 class ValidateWorkflowRequest(BaseModel):
     workflow_id: str | None = None
     workflow: dict[str, Any] | None = None
+
+
+class SaveUserWorkflowRequest(BaseModel):
+    workflow: dict[str, Any]
 
 
 def _validation_http_error(exc: WorkflowValidationError) -> HTTPException:
@@ -133,10 +138,68 @@ async def validate_workflow_endpoint(body: ValidateWorkflowRequest) -> dict[str,
     return {"valid": True, "workflow_id": workflow_id}
 
 
+@app.get("/api/workflows/templates")
+async def list_workflow_templates() -> dict[str, list[str]]:
+    from src.workflow_storage import list_templates
+
+    return {"workflow_ids": list_templates()}
+
+
+@app.get("/api/workflows/templates/{workflow_id}")
+async def get_workflow_template(workflow_id: str) -> dict[str, Any]:
+    from src.workflow_storage import get_template
+
+    try:
+        workflow = get_template(workflow_id)
+    except WorkflowValidationError as exc:
+        raise _validation_http_error(exc) from exc
+    return {"source": "template", "workflow": workflow}
+
+
+@app.get("/api/workflows/user")
+async def list_user_workflow_ids() -> dict[str, list[str]]:
+    from src.workflow_storage import list_user_workflows
+
+    return {"workflow_ids": list_user_workflows()}
+
+
+@app.get("/api/workflows/user/{workflow_id}")
+async def get_user_workflow_endpoint(workflow_id: str) -> dict[str, Any]:
+    from src.workflow_storage import get_user_workflow
+
+    try:
+        workflow = get_user_workflow(workflow_id)
+    except WorkflowValidationError as exc:
+        raise _validation_http_error(exc) from exc
+    return {"source": "user", "workflow": workflow}
+
+
+@app.post("/api/workflows/user")
+async def save_user_workflow_endpoint(body: SaveUserWorkflowRequest) -> dict[str, str]:
+    from src.workflow_storage import save_user_workflow
+
+    try:
+        workflow = save_user_workflow(body.workflow)
+    except WorkflowValidationError as exc:
+        raise _validation_http_error(exc) from exc
+    return {"workflow_id": str(workflow["id"]), "status": "saved"}
+
+
+@app.delete("/api/workflows/user/{workflow_id}")
+async def delete_user_workflow_endpoint(workflow_id: str) -> dict[str, str]:
+    from src.workflow_storage import delete_user_workflow
+
+    try:
+        delete_user_workflow(workflow_id)
+    except WorkflowValidationError as exc:
+        raise _validation_http_error(exc) from exc
+    return {"workflow_id": workflow_id, "status": "deleted"}
+
+
 @app.post("/api/runs/start")
 async def start_run(body: StartRunRequest) -> dict[str, str]:
     try:
-        workflow = load_and_validate_workflow(body.workflow_id)
+        workflow, _source = resolve_workflow(body.workflow_id)
     except WorkflowValidationError as exc:
         raise _validation_http_error(exc) from exc
 
