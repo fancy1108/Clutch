@@ -96,6 +96,16 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
   - `services/orchestrator/tests/test_validate_api.py` — HTTP API 用例
   - `workflows/workflow.schema.json` — schema 小改
 
+### M1-02 ✅
+- **日期：** 2026-06-23
+- **Commit：** `ea5e648` — feat(m1): add WorkflowCompiler for video-production JSON (M1-02)
+- **Verification：** `uv run pytest tests/test_compiler.py -v` → 6 passed；`./scripts/verify.sh` → 21 passed
+- **证据：** `runs/verification/2026-06-23-m1-02-compiler-pytest.log`
+- **交付文件：**
+  - `services/orchestrator/src/compiler/__init__.py` — 导出 WorkflowCompiler API
+  - `services/orchestrator/src/compiler/compiler.py` — JSON → LangGraph 编译、五类 handler、条件边
+  - `services/orchestrator/tests/test_compiler.py` — 节点/边/类型与 video-production.json 一致
+
 ---
 
 ## 文档 / 治理（非代码 Task）
@@ -112,7 +122,7 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 | Task | 焦点 |
 |------|------|
-| **M1-03** | `start_run` 对接 WorkflowCompiler；`test_start_run` 增强 |
+| **M1-04** | Orchestrator 路由节点 + `test_orchestrator_routing.py` |
 | **M0-05** | `src-tauri/` Sidecar 生命周期 |
 | **M0-06** | 类型对齐复审结论写入本节 |
 
@@ -120,12 +130,12 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ## 进行中（待 commit）
 
-### M1-02 ⚠️ 待 commit
+### M1-03 ⚠️ 待 commit
 - **日期：** 2026-06-23
 - **Commit：** （待 `git commit`）
-- **Verification：** `uv run pytest tests/test_compiler.py -v` → 6 passed；`./scripts/verify.sh` → 21 passed
-- **证据：** `runs/verification/2026-06-23-m1-02-compiler-pytest.log`
+- **Verification：** `uv run pytest tests/test_start_run.py -v` → 3 passed；`./scripts/verify.sh` → 22 passed
+- **证据：** `runs/verification/2026-06-23-m1-03-start-run-pytest.log`
 - **交付文件：**
-  - `services/orchestrator/src/compiler/__init__.py` — 导出 WorkflowCompiler API
-  - `services/orchestrator/src/compiler/compiler.py` — JSON → LangGraph 编译、五类 handler、条件边
-  - `services/orchestrator/tests/test_compiler.py` — 节点/边/类型与 video-production.json 一致
+  - `services/orchestrator/src/compiler/compiler.py` — 新增 `run_workflow` 辅助函数
+  - `services/orchestrator/src/main.py` — `start_run` 改走编译图
+  - `services/orchestrator/tests/test_start_run.py` — `active_node_id` 变化断言

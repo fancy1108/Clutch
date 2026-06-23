@@ -209,3 +209,9 @@ def initial_compiler_state(run_id: str) -> CompilerState:
         check_result="",
         human_decision="",
     )
+
+
+def run_workflow(workflow: dict[str, Any], run_id: str) -> CompilerState:
+    """Compile and invoke workflow; return final graph state."""
+    compiled = compile_workflow(workflow)
+    return compiled.invoke(initial_compiler_state(run_id))

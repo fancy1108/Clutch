@@ -7,6 +7,7 @@ from src.compiler.compiler import (
     WorkflowCompiler,
     compile_workflow,
     initial_compiler_state,
+    run_workflow,
 )
 
 __all__ = [
@@ -16,4 +17,5 @@ __all__ = [
     "WorkflowCompiler",
     "compile_workflow",
     "initial_compiler_state",
+    "run_workflow",
 ]

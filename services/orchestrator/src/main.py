@@ -13,7 +13,7 @@ from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from src.graph import run_minimal_graph
+from src.compiler import run_workflow
 from src.state import ClutchState, initial_state
 from src.workflow_validator import WorkflowValidationError, load_and_validate_workflow, validate_workflow
 
@@ -114,7 +114,7 @@ async def start_run(body: StartRunRequest) -> dict[str, str]:
 
     logs = list(state["terminal_logs"])
     logs.append(f"[ORCHESTRATOR] Starting workflow: {workflow['name']} ({workflow['id']})")
-    graph_result = run_minimal_graph(run_id)
+    graph_result = run_workflow(workflow, run_id)
     logs.append(f"[LANGGRAPH] Active node → {graph_result['active_node_id']}")
 
     state = _merge_patch(
