@@ -13,7 +13,7 @@
 | 日期 | 范围 | 命令 | 结果 | 报告/证据 | 备注 |
 |------|------|------|------|-----------|------|
 | 2026-06-22 | 前端构建 | `pnpm build` | ✅ | — | 类型检查：`pnpm lint` |
-| 2026-06-22 | 后端测试 | `cd services/orchestrator && uv run pytest` | ✅ 15 passed | — | + workflow schema 校验 |
+| 2026-06-23 | 后端测试 | `cd services/orchestrator && uv run pytest` | ✅ 21 passed | `runs/verification/2026-06-23-m1-02-compiler-pytest.log` | + M1-02 WorkflowCompiler（6 tests） |
 | 2026-06-22 | 漂移机检 | `./scripts/check-doc-drift.sh` | ✅ | — | 见 DECISIONS D7 |
 | 2026-06-22 | CI（GitHub Actions） | push/PR 触发 `.github/workflows/ci.yml` | ✅ | [CI #2](https://github.com/fancy1108/Clutch/actions) | `11e6d77`；见 D2、D7 |
 
@@ -36,7 +36,7 @@
 ## 待办
 
 - [x] Push 后 CI 首次绿 → 更新上表 CI 行（2026-06-22）
-- [ ] **M1-02**：`tests/test_compiler.py` 绿后更新后端测试行备注
+- [x] **M1-02**：`tests/test_compiler.py` 绿后更新后端测试行备注
 - [ ] **M2-10**：安装 vitest + Playwright；D1 → `可执行`；增 E2E/vitest 门禁行
 - [ ] **T-01~04**：里程碑完成后逐行标 ✅ 并链 `runs/verification/`
 - [ ] 需要覆盖率报告时：输出到 `runs/verification/<date>-<scope>/`，在本表「报告/证据」列链接；**每个代码 Task** 同时在 `memory/DELIVERABLES.md` 登记

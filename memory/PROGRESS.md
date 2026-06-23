@@ -4,9 +4,9 @@
 
 - 阶段：**M0 核心完成 / M1 骨架启动**
 - 说明：WebSocket `state_patch` 全链路打通；LangGraph 最小图 + `start_run` API 就绪
-- 焦点：**M1-02** WorkflowCompiler 对接 `video-production.json`（须 `test_compiler.py` 绿）
+- 焦点：**M1-03** `start_run` 对接编译图（须含 `active_node_id` 变化断言）
 - 上次更新：2026-06-23
-- Git HEAD：见 `git log -1`（含 DELIVERABLES 与 tasks 文档补强）
+- Git HEAD：M1-02 代码待 commit（`verify.sh` 21 passed）
 
 ## 治理脚手架就绪标准（文档层 ✅）
 
@@ -36,13 +36,20 @@
 - [x] **M0-04**：Vite 代理（`pnpm dev` 可连 Sidecar）
 - [x] **M1 骨架**：LangGraph 最小图、`POST /api/runs/start`、`POST /api/runs/{id}/stop`（**M1-03 须按 tasks Verification 复审**）
 - [x] **M1-01**：Workflow JSON Schema 校验（`workflow_validator.py` + `/api/workflows/validate`）
-- [ ] **M1-02**：WorkflowCompiler → LangGraph + `tests/test_compiler.py`
+- [x] **M1-02**：WorkflowCompiler → LangGraph + `tests/test_compiler.py`
 - [ ] **M0-05**：Tauri 拉起 Sidecar
 - [ ] **M0-06**：`ClutchState` 类型对齐复审
 - [ ] **M1-04/05/08/09**：路由、`run_completed`、Provider Router、工作流持久化 API
 - [ ] **M2**：M2-01–14（见 `tasks.md` §M2）
 
 ## 会话日志（最新在上）
+
+### 2026-06-23 会话 11（M1-02 WorkflowCompiler）
+
+- 完成：`src/compiler/`（五类节点 handler + 条件边）；`tests/test_compiler.py` 6 passed；`verify.sh` 21 passed
+- 证据：`runs/verification/2026-06-23-m1-02-compiler-pytest.log`
+- 遗留：`start_run` 仍走 `run_minimal_graph`（M1-03 对接编译图）
+- 下次优先：**M1-03** 编译图执行 + `test_start_run` 增强断言
 
 ### 2026-06-23 会话 10（DELIVERABLES 交付索引）
 

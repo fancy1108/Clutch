@@ -97,7 +97,7 @@
 | ClutchState 初始值 | `src/state.py` |
 | LangGraph 最小运行时 | `src/graph.py` |
 | Workflow JSON Schema 校验 | `src/workflow_validator.py` |
-| WorkflowCompiler（M1-02） | `src/compiler/`（待建） |
+| WorkflowCompiler（M1-02） | `src/compiler/` |
 | LLM Provider Router（M1-08，D4） | `src/llm/` 或 `src/providers/`（待建） |
 | 用户工作流存储 API（M1-09，D5） | `src/workflow_storage.py`（待建） |
 | CLI / GUI Adapter（M3） | `src/adapters/`（待建） |

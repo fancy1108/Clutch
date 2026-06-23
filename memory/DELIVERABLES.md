@@ -112,6 +112,20 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 | Task | 焦点 |
 |------|------|
-| **M1-02** | `src/compiler/`、`tests/test_compiler.py` |
+| **M1-03** | `start_run` 对接 WorkflowCompiler；`test_start_run` 增强 |
 | **M0-05** | `src-tauri/` Sidecar 生命周期 |
 | **M0-06** | 类型对齐复审结论写入本节 |
+
+---
+
+## 进行中（待 commit）
+
+### M1-02 ⚠️ 待 commit
+- **日期：** 2026-06-23
+- **Commit：** （待 `git commit`）
+- **Verification：** `uv run pytest tests/test_compiler.py -v` → 6 passed；`./scripts/verify.sh` → 21 passed
+- **证据：** `runs/verification/2026-06-23-m1-02-compiler-pytest.log`
+- **交付文件：**
+  - `services/orchestrator/src/compiler/__init__.py` — 导出 WorkflowCompiler API
+  - `services/orchestrator/src/compiler/compiler.py` — JSON → LangGraph 编译、五类 handler、条件边
+  - `services/orchestrator/tests/test_compiler.py` — 节点/边/类型与 video-production.json 一致
