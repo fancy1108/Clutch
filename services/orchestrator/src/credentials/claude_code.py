@@ -54,6 +54,63 @@ def resolve_anthropic_base_url() -> str | None:
     return None
 
 
+def normalize_anthropic_base_url(base_url: str) -> str:
+    """Ensure Anthropic Messages API base ends with /v1 (Claude Code proxy omits it)."""
+    base = base_url.rstrip("/")
+    if base.endswith("/v1"):
+        return base
+    return f"{base}/v1"
+
+
+def resolve_anthropic_api_model() -> str | None:
+    env = read_claude_code_env()
+    for key in (
+        "ANTHROPIC_DEFAULT_SONNET_MODEL_NAME",
+        "ANTHROPIC_DEFAULT_SONNET_MODEL",
+        "ANTHROPIC_MODEL",
+        "CLAUDE_CODE_SUBAGENT_MODEL",
+    ):
+        value = env.get(key)
+        if value:
+            return str(value)
+    for key in (
+        "ANTHROPIC_DEFAULT_SONNET_MODEL_NAME",
+        "ANTHROPIC_DEFAULT_SONNET_MODEL",
+        "ANTHROPIC_MODEL",
+    ):
+        value = os.environ.get(key)
+        if value:
+            return str(value)
+    return None
+
+
+def resolve_anthropic_transport(
+    *, base_url: str, api_model: str, api_key: str
+) -> tuple[str, str, str]:
+    """Apply Claude Code CLI proxy URL + mapped model names when configured."""
+    cli_env = read_claude_code_env()
+    cli_key, _source = resolve_anthropic_api_key()
+    resolved_key = api_key or (cli_key or "")
+    resolved_base = base_url
+    cli_base = resolve_anthropic_base_url()
+    if cli_base and (cli_key == api_key or api_key == cli_env.get("ANTHROPIC_AUTH_TOKEN")):
+        resolved_base = cli_base
+    elif cli_base and not api_key and cli_key:
+        resolved_base = cli_base
+        resolved_key = cli_key
+
+    resolved_model = api_model
+    cli_model = resolve_anthropic_api_model()
+    if cli_model and (
+        cli_key == api_key
+        or api_key == cli_env.get("ANTHROPIC_AUTH_TOKEN")
+        or api_model.startswith("claude-")
+    ):
+        resolved_model = cli_model
+
+    return normalize_anthropic_base_url(resolved_base), resolved_model, resolved_key
+
+
 def bootstrap_claude_credentials(router: LLMProviderRouter) -> dict[str, Any]:
     """Import Claude Code CLI credentials when Clutch has no explicit Anthropic key."""
     if router.get_api_key("anthropic"):
@@ -64,13 +121,21 @@ def bootstrap_claude_credentials(router: LLMProviderRouter) -> dict[str, Any]:
         return {"anthropic": {"configured": False, "source": None}}
 
     router.set_api_key("anthropic", api_key)
-    base_url = (resolve_anthropic_base_url() or "https://api.anthropic.com/v1").rstrip("/")
+    base_url = normalize_anthropic_base_url(
+        resolve_anthropic_base_url() or "https://api.anthropic.com/v1"
+    )
+    api_model = resolve_anthropic_api_model() or "claude-3-7-sonnet-latest"
+    display_name = (
+        "Claude Sonnet"
+        if api_model != "claude-3-7-sonnet-latest"
+        else "Claude 3.7 Sonnet"
+    )
     router.register_model(
         ModelSpec(
             id=_DEFAULT_CLAUDE_MODEL,
-            name="Claude 3.7 Sonnet",
+            name=display_name,
             provider_id="anthropic",
-            api_model="claude-3-7-sonnet-latest",
+            api_model=api_model,
             base_url=base_url,
         )
     )

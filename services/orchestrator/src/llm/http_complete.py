@@ -7,6 +7,7 @@ import urllib.error
 import urllib.request
 from typing import Any
 
+from src.credentials.claude_code import resolve_anthropic_transport
 from src.llm.router import ProviderId
 
 _TIMEOUT_SEC = 120
@@ -61,6 +62,9 @@ def _anthropic_chat(
     messages: list[dict[str, str]],
     timeout_sec: float = _TIMEOUT_SEC,
 ) -> str:
+    base_url, api_model, api_key = resolve_anthropic_transport(
+        base_url=base_url, api_model=api_model, api_key=api_key
+    )
     url = f"{base_url.rstrip('/')}/messages"
     headers = {
         "x-api-key": api_key,

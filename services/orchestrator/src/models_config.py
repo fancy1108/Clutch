@@ -137,7 +137,32 @@ def test_model_connection(router: LLMProviderRouter, model_id: str) -> dict[str,
 
 
 _router = load_router()
+_E2E_ROUTER: LLMProviderRouter | None = None
+
+
+def _e2e_fake_router() -> LLMProviderRouter:
+    global _E2E_ROUTER
+    if _E2E_ROUTER is None:
+        router = LLMProviderRouter()
+
+        def _fake_chat(
+            *,
+            provider_id: ProviderId,
+            base_url: str,
+            api_model: str,
+            api_key: str,
+            messages: list[dict[str, str]],
+            timeout_sec: float = 20.0,
+        ) -> str:
+            _ = (provider_id, base_url, api_model, api_key, timeout_sec)
+            return f"Echo: {messages[-1]['content']}"
+
+        router._chat = _fake_chat  # type: ignore[method-assign]
+        _E2E_ROUTER = router
+    return _E2E_ROUTER
 
 
 def get_router() -> LLMProviderRouter:
+    if os.environ.get("CLUTCH_E2E_FAKE_LLM") == "1":
+        return _e2e_fake_router()
     return _router

@@ -57,7 +57,18 @@
 | 文档↔代码漂移机检 | `scripts/check-doc-drift.sh` |
 | Git pre-commit（条件触发） | `.husky/pre-commit` |
 | 验证报告归档 | `runs/verification/`（gitignore） |
-| E2E 包（M2-10，D1 可执行后） | `e2e/`（尚未创建；Smoke：health + WS） |
+| E2E 包（M2-10，D1 可执行后） | `e2e/`；见下表 |
+| E2E 沙箱与门禁 | `scripts/e2e-sandbox-setup.sh`；`scripts/run-e2e.sh`；`runs/verification/.e2e-env` |
+| E2E Node WS 助手 | `e2e/helpers/ws.ts` |
+| E2E 桌面 Tauri 助手 | `e2e/helpers/tauri.ts`（`authorizeSandboxWorkspace`） |
+| E2E 会话预置（Node） | `e2e/helpers/seed.ts` |
+| E2E API：`session-history` | `e2e/tests/session-history.spec.ts` |
+| E2E API：smoke / mvp | `e2e/tests/smoke.spec.ts`、`mvp-closed-loop.spec.ts` |
+| E2E Desktop fixture | `e2e/fixtures/desktop.ts`（`@srsholmes/tauri-playwright`） |
+| E2E Desktop 全 UI | `e2e/tests/desktop/all-ui.spec.ts` |
+| E2E Desktop 历史续聊 | `e2e/tests/desktop/session-history.spec.ts` |
+| E2E Tauri 沙箱 command | `apps/desktop/src-tauri/src/lib.rs` → `clutch_e2e_sandbox` |
+| E2E 工作区注入（前端） | `apps/desktop/src/services/pickWorkspaceFolder.ts` |
 
 ### 前端（`apps/desktop/src`）
 
@@ -65,6 +76,7 @@
 |---------|--------|
 | 应用根布局、ClutchState 投影 | `App.tsx` |
 | WebSocket store、`useClutchState` | `services/clutchState.ts` |
+| 会话 / 运行 API | `services/runApi.ts` |
 | API 抽象（mock 待 M2 替换） | `services/api.ts` |
 | 侧栏（工作区 / 历史，M2-07/09） | `sidebar.tsx` |
 | 底部状态栏（M2-08） | `App.tsx`（Branch / Mode / Flow） |
@@ -98,6 +110,8 @@
 |---------|--------|
 | FastAPI 入口、HTTP/WS 路由 | `src/main.py` |
 | ClutchState 初始值 | `src/state.py` |
+| 会话元数据持久化（M2-07） | `src/run_history.py` |
+| 会话 messages 持久化（D11） | `src/run_state_store.py` |
 | LangGraph 最小运行时 | `src/graph.py` |
 | Workflow JSON Schema 校验 | `src/workflow_validator.py` |
 | WorkflowCompiler（M1-02） | `src/compiler/` |

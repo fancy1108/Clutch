@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
-from dataclasses import dataclass
 from typing import Any, Callable, TypedDict
 
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command
 
+from src.agent_executor import execute_agent_task
 from src.orchestrator.routing import route_next
 
 
@@ -23,6 +23,9 @@ class CompilerState(TypedDict):
     status: str
     check_result: str
     human_decision: str
+    current_instruction: str
+    task_logs: list[str]
+    task_messages: list[dict[str, Any]]
 
 
 NodeHandler = Callable[[CompilerState, dict[str, Any]], CompilerState]
@@ -43,21 +46,33 @@ class EdgeMeta:
 
 
 def _handle_start(state: CompilerState, _node: dict[str, Any]) -> CompilerState:
+    task_logs = list(state.get("task_logs", []))
+    task_logs.append("[ORCHESTRATOR] Workflow graph entered")
     return {
         **state,
         "active_node_id": "start",
         "active_agent": "Orchestrator",
         "status": "running",
+        "task_logs": task_logs,
     }
 
 
 def _handle_agent_task(state: CompilerState, node: dict[str, Any]) -> CompilerState:
-    data = node.get("data", {})
+    result = execute_agent_task(
+        node.get("data", {}),
+        instruction=state.get("current_instruction", ""),
+    )
+    task_logs = list(state.get("task_logs", []))
+    task_messages = list(state.get("task_messages", []))
+    task_logs.extend(result.logs)
+    task_messages.append(result.message)
     return {
         **state,
         "active_node_id": node["id"],
-        "active_agent": str(data.get("agent", "Builder")),
+        "active_agent": result.agent,
         "status": "running",
+        "task_logs": task_logs,
+        "task_messages": task_messages,
     }
 
 
@@ -65,20 +80,41 @@ def _handle_check(state: CompilerState, node: dict[str, Any]) -> CompilerState:
     preset = state.get("check_result") or ""
     if preset:
         result = preset
+        eval_logs: list[str] = [f"[EVALUATOR] Using preset result: {result}"]
     else:
         from src.evaluator import evaluate_node_data
         from src.workspace import get_workspace
 
         if get_workspace() is None:
             result = "passed"
+            eval_logs = ["[EVALUATOR] No workspace — checks skipped (passed)"]
         else:
-            result, _logs = evaluate_node_data(node.get("data", {}))
+            result, eval_logs = evaluate_node_data(node.get("data", {}))
+
+    task_logs = list(state.get("task_logs", []))
+    task_logs.extend(eval_logs)
+    task_messages = list(state.get("task_messages", []))
+    if result == "failed":
+        summary = "\n".join(eval_logs[-3:]) if eval_logs else "Checks failed."
+        from src.chat_events import chat_message
+
+        task_messages.append(
+            chat_message(
+                "Evaluator",
+                f"Checks failed.\n\n{summary}",
+                status="FAILED",
+                badge_text="VALIDATION FAILED",
+            )
+        )
+
     return {
         **state,
         "active_node_id": node["id"],
         "active_agent": "Evaluator",
         "status": "running",
         "check_result": result,
+        "task_logs": task_logs,
+        "task_messages": task_messages,
     }
 
 
@@ -233,7 +269,7 @@ def is_awaiting_human_gate(compiled: Any, config: dict[str, Any], workflow: dict
     return any(node in gate_ids for node in snapshot.next)
 
 
-def initial_compiler_state(run_id: str) -> CompilerState:
+def initial_compiler_state(run_id: str, *, instruction: str = "") -> CompilerState:
     return CompilerState(
         run_id=run_id,
         active_node_id="start",
@@ -241,6 +277,9 @@ def initial_compiler_state(run_id: str) -> CompilerState:
         status="running",
         check_result="",
         human_decision="",
+        current_instruction=instruction,
+        task_logs=[],
+        task_messages=[],
     )
 
 
@@ -262,10 +301,13 @@ def begin_workflow(
     run_id: str,
     *,
     initial_state: CompilerState | None = None,
+    instruction: str = "",
 ) -> tuple[WorkflowSession, CompilerState]:
     compiled = compile_workflow(workflow)
     config = workflow_run_config(run_id)
-    state = initial_state or initial_compiler_state(run_id)
+    state = initial_state or initial_compiler_state(run_id, instruction=instruction)
+    if instruction and not state.get("current_instruction"):
+        state = {**state, "current_instruction": instruction}
     result = compiled.invoke(state, config)
     session = WorkflowSession(compiled=compiled, config=config, workflow=workflow)
     if is_awaiting_human_gate(compiled, config, workflow):
@@ -279,8 +321,20 @@ def begin_workflow(
     return session, result
 
 
-def resume_workflow(session: WorkflowSession, run_id: str, decision: str) -> CompilerState:
+def resume_workflow(
+    session: WorkflowSession,
+    run_id: str,
+    decision: str,
+    *,
+    instruction: str = "",
+) -> CompilerState:
     """Resume a paused workflow after supervisor human_decision."""
+    update: dict[str, str] = {"human_decision": decision}
+    if instruction.strip():
+        update["current_instruction"] = instruction.strip()
+    if decision == "retry":
+        update["check_result"] = ""
+    session.compiled.update_state(session.config, update)
     result = session.compiled.invoke(Command(resume=decision), session.config)
     if not result.get("human_decision"):
         result = {**result, "human_decision": decision}

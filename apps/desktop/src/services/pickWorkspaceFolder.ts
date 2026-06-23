@@ -1,4 +1,4 @@
-import { isTauri } from '@tauri-apps/api/core';
+import { invoke, isTauri } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
 
 export class WorkspacePickerError extends Error {
@@ -13,6 +13,11 @@ export async function pickWorkspaceFolder(title = 'Select project folder'): Prom
     throw new WorkspacePickerError(
       'Folder picker only works in the Clutch desktop app. Open Clutch from Applications, not the browser.',
     );
+  }
+
+  const e2eSandbox = await invoke<string | null>('clutch_e2e_sandbox');
+  if (e2eSandbox) {
+    return e2eSandbox;
   }
 
   try {

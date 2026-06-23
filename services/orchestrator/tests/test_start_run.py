@@ -1,3 +1,7 @@
+"""M1-03 — start_run API tests."""
+
+from types import SimpleNamespace
+
 from fastapi.testclient import TestClient
 
 from src.main import _run_states, app
@@ -5,7 +9,16 @@ from src.main import _run_states, app
 client = TestClient(app)
 
 
-def test_start_run_returns_run_id() -> None:
+class _FakeRouter:
+    def get_active_model(self) -> SimpleNamespace:
+        return SimpleNamespace(name="Test Model")
+
+    def chat(self, history: list[dict[str, str]]) -> str:
+        return "ok"
+
+
+def test_start_run_returns_run_id(monkeypatch) -> None:
+    monkeypatch.setattr("src.models_config.get_router", lambda: _FakeRouter())
     response = client.post(
         "/api/runs/start",
         json={"workflow_id": "video-production", "instruction": "smoke test"},
@@ -14,9 +27,11 @@ def test_start_run_returns_run_id() -> None:
     body = response.json()
     assert body["run_id"].startswith("run_")
     assert body["status"] == "passed"
+    assert body["state"]["workflow_id"] == "video-production"
 
 
-def test_start_run_advances_active_node_via_compiled_graph() -> None:
+def test_start_run_advances_active_node_via_compiled_graph(monkeypatch) -> None:
+    monkeypatch.setattr("src.models_config.get_router", lambda: _FakeRouter())
     response = client.post(
         "/api/runs/start",
         json={"workflow_id": "video-production", "instruction": "graph smoke"},
@@ -28,9 +43,11 @@ def test_start_run_advances_active_node_via_compiled_graph() -> None:
     assert state["active_node_id"] == "end"
     assert state["active_agent"] == "Orchestrator"
     assert state["status"] == "passed"
+    assert any(msg["agent"] == "Builder" for msg in state["messages"])
 
 
-def test_stop_run_marks_failed() -> None:
+def test_stop_run_marks_failed(monkeypatch) -> None:
+    monkeypatch.setattr("src.models_config.get_router", lambda: _FakeRouter())
     start = client.post("/api/runs/start", json={"workflow_id": "video-production"})
     run_id = start.json()["run_id"]
 

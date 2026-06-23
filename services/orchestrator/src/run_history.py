@@ -12,6 +12,11 @@ _HISTORY_ENV = "CLUTCH_RUN_HISTORY_DIR"
 _MAX_RECORDS = 200
 
 
+def sessions_data_dir() -> Path:
+    """Root directory for session metadata (history.json) and per-run state files."""
+    return _history_dir()
+
+
 def _history_dir() -> Path:
     override = os.environ.get(_HISTORY_ENV)
     if override:

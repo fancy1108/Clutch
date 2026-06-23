@@ -318,12 +318,36 @@ Workflow JSON
 
 #### 客户端 → 服务端指令
 
-| action | 说明 |
-|--------|------|
+| action / payload | 说明 |
+|------------------|------|
+| `{ "text": "..." }` | 无工作流时的直连 LLM 聊天（plain chat） |
 | `start_run` | 指定 workflow_id + instruction 启动 |
 | `human_decision` | 上报 approve / reject / retry + 可选 instructions |
 | `stop_run` | 取消当前运行（终止子进程） |
 | `resume_run` | interrupt 后继续 |
+
+---
+
+### 6.3.1 会话与对话持久化（D3 + D11）
+
+侧栏「历史会话」分两层存储，均位于应用数据目录（macOS：`~/Library/Application Support/clutch/sessions/`）：
+
+| 文件 | 内容 | 用途 |
+|------|------|------|
+| `history.json` | `run_id`、标题、工作区、`workflow_id`、状态、时间 | 侧栏列表（M2-07 / D3） |
+| `states/{run_id}.json` | 完整 `ClutchState`（含 `messages`、`terminal_logs` 等） | 点选会话恢复对话（D11） |
+
+**写入时机：** Sidecar 在 `_commit_run_state()` 时落盘（plain chat、工作流推进、人工决策等所有状态变更）。
+
+**读取时机：**
+
+1. `_get_or_create_run(run_id)` — Sidecar 内存未命中时从 `states/` 加载
+2. `GET /api/runs/{run_id}/state` — 前端切换会话时 HTTP hydrate
+3. WebSocket 连接 — 推送 `state_patch` 同步增量
+
+**前端路径：** `handleSelectSession` → `fetchRunState` → `clutchStore.setPendingHydrate` → `connect(run_id)`（避免切换时清空已加载消息）。
+
+> E2E 使用 `CLUTCH_E2E_FAKE_LLM=1` 注入 Echo 路由器，避免依赖真实 API Key。
 
 ---
 
@@ -379,7 +403,7 @@ class ToolAdapter(Protocol):
 | `App.tsx` | `ClutchState` 投影；三栏布局；文件预览浮层 | M0-03, M2-11 |
 | `App.tsx` footer | Branch / Model / Workflow 状态栏 | M2-08 |
 | `Header.tsx` | 工作区面包屑；语言切换（P2） | M2-09 · P2 i18n |
-| `sidebar.tsx` | 工作区/历史；REPOSITORIES 树 | M2-07, M2-09 |
+| `sidebar.tsx` | 工作区/历史；REPOSITORIES 树；`data-testid="sidebar-session-{run_id}"` | M2-07, M2-09, D11 |
 | `ChatFeed.tsx` | `message` / `validation_result`；人工干预；Stop | M2-01, M2-04, M2-14, M1-03 |
 | `RightPanel.tsx` | Overview / Files / Flow / Changes / Terminal | M2-03, M2-11~13, M3-02, M2-02 |
 | `RightPanel` Reassign | 「交给 Builder 修复」 | M2-12 |
@@ -393,8 +417,9 @@ class ToolAdapter(Protocol):
 | `ThemeManager.tsx` | 主题预设（P2 持久化） | P2 |
 | `SystemPreferencesModal.tsx` | 设置模态壳 | — |
 | `LanguageContext.tsx` | en/zh 文案 | P2 |
-| `services/clutchState.ts` | WebSocket store | M0-02, M0-03 |
-| `services/api.ts` | HTTP/编排 API（去 mock） | M2-06, M2-01, M2-12 |
+| `services/clutchState.ts` | WebSocket store；`setPendingHydrate` 会话恢复 | M0-02, M0-03, D11 |
+| `services/runApi.ts` | 会话 API；`fetchRunState` / `fetchSessions` | M2-07, D11 |
+| `services/api.ts` | HTTP/编排 API 重导出（去 mock） | M2-06, M2-01, M2-12 |
 | `mockData.ts` | 逐步废弃，仅 demo 种子 | M2-06 |
 
 ### 7.1 运行模式
@@ -489,7 +514,7 @@ cd apps/desktop && npm run tauri dev
 | 原问题 | 决策 / 任务 |
 |--------|-------------|
 | LLM Provider 统一 Router | **D4** → **M1-08** |
-| 运行历史持久化 | **D3** → **M2-07**（MVP 纳入；存储方案 M2 实现时定） |
+| 运行历史持久化 | **D3** → **M2-07**（元数据 `history.json`）+ **D11**（对话 `states/{run_id}.json`） |
 | 工作区授权与白名单 | **M2-09** + **M4-05** |
 | 子进程崩溃隔离 | **M3-07** |
 

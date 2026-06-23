@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
 
@@ -11,8 +12,17 @@ from src.main import _run_states, app
 client = TestClient(app)
 
 
-def test_mvp_closed_loop_check_fail_human_approve(tmp_path: Path) -> None:
+class _FakeRouter:
+    def get_active_model(self) -> SimpleNamespace:
+        return SimpleNamespace(name="Test Model")
+
+    def chat(self, history: list[dict[str, str]]) -> str:
+        return "ok"
+
+
+def test_mvp_closed_loop_check_fail_human_approve(tmp_path: Path, monkeypatch) -> None:
     """模板运行 → 检查失败 → 人工审批 → 通过。"""
+    monkeypatch.setattr("src.models_config.get_router", lambda: _FakeRouter())
     workspace = tmp_path / "workspace"
     workspace.mkdir()
 

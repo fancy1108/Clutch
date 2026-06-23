@@ -32,6 +32,7 @@ interface SystemPreferencesModalProps {
   setThemeId: (themeId: string) => void;
   workspaceLabel?: string | null;
   sessionActive?: boolean;
+  onUseWorkflowInChat?: (workflowId: string, workflowName: string) => void;
 }
 
 export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
@@ -48,6 +49,7 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
   setThemeId,
   workspaceLabel,
   sessionActive = false,
+  onUseWorkflowInChat,
 }) => {
   const { t } = useLanguage();
 
@@ -77,6 +79,7 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
               </p>
               
               <button
+                data-testid="settings-nav-general"
                 onClick={() => setView('settings')}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-xs transition-all border ${
                   currentView === 'settings'
@@ -89,6 +92,7 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
               </button>
 
               <button
+                data-testid="settings-nav-tools"
                 onClick={() => setView('tools')}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-xs transition-all border ${
                   currentView === 'tools'
@@ -101,6 +105,7 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
               </button>
 
               <button
+                data-testid="settings-nav-agents"
                 onClick={() => setView('agents')}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-xs transition-all border ${
                   currentView === 'agents'
@@ -114,6 +119,7 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
 
               {isMultiAgent && (
                 <button
+                  data-testid="settings-nav-workflows"
                   onClick={() => setView('workflows')}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-xs transition-all border ${
                     currentView === 'workflows'
@@ -129,6 +135,7 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
               )}
 
               <button
+                data-testid="settings-nav-models"
                 onClick={() => setView('models')}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-xs transition-all border ${
                   currentView === 'models'
@@ -141,6 +148,7 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
               </button>
 
               <button
+                data-testid="settings-nav-skills"
                 onClick={() => setView('skills')}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-xs transition-all border ${
                   currentView === 'skills'
@@ -153,6 +161,7 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
               </button>
 
               <button
+                data-testid="settings-nav-mcp"
                 onClick={() => setView('mcp')}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-xs transition-all border ${
                   currentView === 'mcp'
@@ -165,6 +174,7 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
               </button>
 
               <button
+                data-testid="settings-nav-appearance"
                 onClick={() => setView('appearance')}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-xs transition-all border ${
                   currentView === 'appearance'
@@ -203,7 +213,11 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
             {currentView === 'agents' ? (
               <AgentManager isModalStyle={true} />
             ) : currentView === 'workflows' ? (
-              <WorkflowOrchestration isModalStyle={true} onClose={() => setView('chat')} />
+              <WorkflowOrchestration
+                isModalStyle={true}
+                onClose={() => setView('chat')}
+                onUseInChat={onUseWorkflowInChat}
+              />
             ) : currentView === 'tools' ? (
               <AiToolsManager isModalStyle={true} />
             ) : currentView === 'skills' ? (
@@ -236,6 +250,7 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
 
         {/* Floating Top-Right Close Button */}
         <button
+          data-testid="settings-close"
           onClick={() => setView('chat')}
           className="absolute top-4 right-4 z-50 w-7 h-7 bg-surface-container/60 hover:bg-surface-container-high/60 text-on-surface-variant hover:text-on-surface rounded-full flex items-center justify-center transition-all group cursor-pointer border border-outline/30"
           title={t("Close Panel")}

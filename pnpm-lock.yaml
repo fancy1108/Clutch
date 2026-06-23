@@ -84,6 +84,9 @@ importers:
       '@playwright/test':
         specifier: ^1.51.0
         version: 1.61.0
+      '@srsholmes/tauri-playwright':
+        specifier: ^0.4.1
+        version: 0.4.1(@playwright/test@1.61.0)
 
   packages/shared-types:
     devDependencies:
@@ -516,6 +519,12 @@ packages:
     resolution: {integrity: sha512-BfzEnDJOt9T8M989/lA37EcJgat01wLRnoi5dQf3QzOH7jzpqTAzdDbVfRljVr5r+jzKqpbHeyOfAaXxAd0PAA==}
     cpu: [x64]
     os: [win32]
+
+  '@srsholmes/tauri-playwright@0.4.1':
+    resolution: {integrity: sha512-y83KJ/61mbnZodsZ4JsWAU/Ewp1LxPeliuG0WeZXfwLa0DtcfrNrltzOdqkii3sERS/mCA63g4E/vYEw9e7B0Q==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      '@playwright/test': ^1.40.0
 
   '@tailwindcss/node@4.3.1':
     resolution: {integrity: sha512-6NDaqRoAMSXD1mr/RXu0HBvNE9a2n5tHPsxu9XHLws8o4Twes5rBM2205SUUiJ9goAtadrN6xTGX0UDEwp/N4A==}
@@ -1746,6 +1755,10 @@ snapshots:
 
   '@rollup/rollup-win32-x64-msvc@4.62.2':
     optional: true
+
+  '@srsholmes/tauri-playwright@0.4.1(@playwright/test@1.61.0)':
+    dependencies:
+      '@playwright/test': 1.61.0
 
   '@tailwindcss/node@4.3.1':
     dependencies:

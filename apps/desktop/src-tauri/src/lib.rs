@@ -27,6 +27,11 @@ enum SidecarChild {
 
 struct SidecarState(Mutex<Option<SidecarChild>>);
 
+#[tauri::command]
+fn clutch_e2e_sandbox() -> Option<String> {
+    std::env::var("CLUTCH_E2E_SANDBOX").ok()
+}
+
 fn free_sidecar_port() {
     #[cfg(all(not(debug_assertions), target_os = "macos"))]
     {
@@ -40,10 +45,21 @@ fn free_sidecar_port() {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
-        .manage(SidecarState(Mutex::new(None)))
+        .invoke_handler(tauri::generate_handler![clutch_e2e_sandbox])
+        .manage(SidecarState(Mutex::new(None)));
+
+    #[cfg(feature = "e2e-testing")]
+    {
+        builder = builder.plugin(tauri_plugin_playwright::init_with_config(
+            tauri_plugin_playwright::PluginConfig::new()
+                .socket_path("/tmp/clutch-tauri-playwright.sock"),
+        ));
+    }
+
+    builder
         .setup(|app| {
             free_sidecar_port();
             let child = spawn_sidecar(app.handle())?;
@@ -75,7 +91,7 @@ fn spawn_sidecar(app: &tauri::AppHandle) -> Result<SidecarChild, String> {
 
 #[cfg(debug_assertions)]
 fn orchestrator_dir() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../services/orchestrator")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../services/orchestrator")
 }
 
 #[cfg(debug_assertions)]
@@ -88,20 +104,25 @@ fn spawn_dev_sidecar() -> Result<std::process::Child, String> {
         ));
     }
 
-    Command::new("uv")
-        .args([
-            "run",
-            "uvicorn",
-            "src.main:app",
-            "--host",
-            "127.0.0.1",
-            "--port",
-            "8123",
-        ])
-        .current_dir(&dir)
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn()
+    let mut cmd = Command::new("uv");
+    cmd.args([
+        "run",
+        "uvicorn",
+        "src.main:app",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "8123",
+    ])
+    .current_dir(&dir)
+    .stdout(Stdio::null())
+    .stderr(Stdio::null());
+
+    for (key, value) in std::env::vars().filter(|(k, _)| k.starts_with("CLUTCH_")) {
+        cmd.env(key, value);
+    }
+
+    cmd.spawn()
         .map_err(|e| format!("无法启动 Sidecar（请确认已安装 uv）：{e}"))
 }
 

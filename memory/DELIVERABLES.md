@@ -218,3 +218,43 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
   - `apps/desktop/src/services/clutchState.ts` — 删除 `sendSidecarTestMessage`
   - `apps/desktop/src/services/api.ts` — 移除对应 export
   - `scripts/run-e2e.sh` — E2E 门禁（自动起 Sidecar）
+
+### D11 · 会话消息持久化 + 历史 hydrate 🔄
+- **日期：** 2026-06-23
+- **Commit：** _（待提交）_
+- **Verification：** `uv run pytest` → 101 passed（`test_run_state_store` 含）；`pnpm build` ✅；E2E API `session-history` ✅；E2E Desktop `session-history` ❌（hydrate 可见性）
+- **证据：** `runs/verification/2026-06-23-e2e-full.log`
+- **交付文件：**
+  - `services/orchestrator/src/run_state_store.py` — `states/{run_id}.json` 读写
+  - `services/orchestrator/src/main.py` — `_commit_run_state` / `_get_or_create_run` 磁盘加载
+  - `services/orchestrator/tests/test_run_state_store.py` — 持久化 + plain chat 落盘
+  - `services/orchestrator/tests/conftest.py` — 全量测试隔离 `CLUTCH_RUN_HISTORY_DIR`
+  - `services/orchestrator/src/models_config.py` — `CLUTCH_E2E_FAKE_LLM` Echo 路由
+  - `apps/desktop/src/services/runApi.ts` — `fetchRunState`
+  - `apps/desktop/src/services/clutchState.ts` — `setPendingHydrate`、WS 切换修复
+  - `apps/desktop/src/App.tsx` — `handleSelectSession` hydrate
+  - `apps/desktop/src/sidebar.tsx` — `data-testid="sidebar-session-{run_id}"`
+  - `e2e/tests/session-history.spec.ts` — API：plain chat → GET state（Node WS）
+  - `e2e/tests/desktop/session-history.spec.ts` — 桌面：侧栏点选恢复对话（待绿）
+  - `scripts/e2e-sandbox-setup.sh` — `CLUTCH_E2E_FAKE_LLM=1`
+  - `docs/ARCHITECTURE.md` §6.3.1 — 持久化叙事
+  - `memory/DECISIONS.md` D11；`specs/core/tasks.md` M2-07 / M2-10 更新
+
+### D12 · 桌面 E2E 全链路（tauri-playwright）🔄
+- **日期：** 2026-06-23
+- **Commit：** _（待提交，与 D11 同批）_
+- **Verification：** `./scripts/run-e2e.sh` → **API 4/4 ✅**；**Desktop 0/3 ❌**（2026-06-23 末次跑）
+- **证据：** `runs/verification/2026-06-23-e2e-full.log`；`e2e/test-results/desktop-*/`
+- **已交付（代码在工作区）：**
+  - `apps/desktop/src-tauri/` — `e2e-testing` feature、`tauri-plugin-playwright`、`clutch_e2e_sandbox`、`spawn_dev_sidecar` 转发 `CLUTCH_*`
+  - `apps/desktop/package.json` — `tauri:e2e`
+  - `e2e/playwright.config.ts` — `api` + `desktop`（`mode: 'tauri'`）projects
+  - `e2e/helpers/ws.ts`、`tauri.ts`、`seed.ts`
+  - `e2e/fixtures/desktop.ts`、`e2e/tests/desktop/all-ui.spec.ts`
+  - `scripts/run-e2e.sh` — API → 杀端口 → Tauri → `wait_tauri_ready` → Desktop
+  - UI：`data-testid`、Branch 菜单、Terminal Clear 去占位
+- **待完成：**
+  - [ ] `all-ui`：`chat-input` textarea 输入方案
+  - [ ] `desktop/session-history`：侧栏 hydrate 断言
+  - [ ] `all-ui` 占位字符串检测用例跑通
+  - [ ] `./scripts/run-e2e.sh` 7/7 绿 → 本节改 ✅

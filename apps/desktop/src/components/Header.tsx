@@ -74,6 +74,7 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Language Switcher Toggle */}
         <div className="flex items-center bg-surface-container-low p-1 rounded-lg border border-outline-variant/30">
           <button
+            data-testid="lang-en"
             onClick={() => setLanguage('en')}
             className={`px-3 py-1.5 text-[11px] rounded-md transition-all cursor-pointer ${
               language === 'en'
@@ -84,6 +85,7 @@ export const Header: React.FC<HeaderProps> = ({
             English
           </button>
           <button
+            data-testid="lang-zh"
             onClick={() => setLanguage('zh')}
             className={`px-3 py-1.5 text-[11px] rounded-md transition-all cursor-pointer ${
               language === 'zh'

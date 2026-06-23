@@ -36,11 +36,11 @@
 
 ### D3 · 运行历史纳入 MVP（2026-06-22）
 
-- **背景**：Q1 指**运行历史**（过往 `run_id`、工作流、状态、时间等可回溯记录），不是单指 Terminal 实时日志；用户需要用于**排查问题**。
-- **方案**：MVP 纳入运行历史；侧栏可查看历史运行列表；与单次运行的 Terminal 审计日志（`log` 事件）互补。
-- **影响**：`tasks.md` §M2 增任务；`sidebar.tsx` 接历史 API；Sidecar 本地持久化（SQLite 或等价方案，M2 实现时定）。
+- **背景**：Q1 指**运行历史**（过往 `run_id`、工作流、状态、时间等可回溯记录），不是单指 Terminal 实时日志；用户需要用于**排查问题**与**续聊**。
+- **方案**：MVP 纳入运行历史；侧栏可查看历史运行列表；与单次运行的 Terminal 审计日志（`log` 事件）互补。**对话正文**见 **D11**（`states/{run_id}.json`）。
+- **影响**：`tasks.md` §M2 增任务；`sidebar.tsx` 接历史 API；Sidecar 本地持久化（`history.json` + `states/`）。
 - **落地前提**：M2 监督台去 mock 阶段。
-- **决策状态**：`已记录`（原 Q1 关闭）
+- **决策状态**：`已落地`（元数据 M2-07；对话 D11）
 
 ### D4 · LLM 提供方可切换（2026-06-22）
 
@@ -94,6 +94,25 @@
 - **影响**：`WorkflowOrchestration.tsx`、`WorkflowJsonPanel.tsx`、`workflowFormat.ts`、`workflowApi.ts`；复杂能力不强行塞进画布
 - **落地前提**：M1-09 ✅
 - **决策状态**：`可执行`
+
+### D11 · 会话消息持久化（2026-06-23）
+
+- **背景**：D3/M2-07 仅持久化运行元数据（`run_id`、标题、状态）；用户期望 Cursor 式「点历史看完整对话并续聊」。
+- **方案**：按 `run_id` 将完整 `ClutchState`（至少 `messages` + `terminal_logs`）写入 `sessions/states/{run_id}.json`；`_get_or_create_run` 启动时从磁盘加载；前端切换会话时 `GET /api/runs/{id}/state` hydrate 后再连 WS。
+- **影响**：`run_state_store.py`；`main.py` `_commit_run_state`；`runApi.fetchRunState`；`clutchState.setPendingHydrate`。
+- **落地前提**：M2-07 元数据持久化 ✅
+- **决策状态**：`已落地`
+
+### D12 · 桌面 E2E 全链路（2026-06-23）
+
+- **背景**：用户要求界面全操作覆盖、一次性纳入门禁、禁止占位/mock；测试不得触碰用户真实项目。
+- **方案**：
+  - `tauri-plugin-playwright`（`e2e-testing` feature）+ 顶层 `e2e/tests/desktop/`
+  - `scripts/e2e-sandbox-setup.sh` 在 `/tmp/clutch-e2e.*` 生成假项目；`CLUTCH_E2E_SANDBOX` 注入工作区
+  - `scripts/run-e2e.sh`：API 冒烟 + 桌面全 UI（`verify.sh` 门禁）
+  - 占位 UI（Branch 菜单、Terminal Clear）改为真实行为；`data-testid` 供 E2E 选择
+- **影响**：新 Rust/npm 依赖；`withGlobalTauri: true`；`playwright:default` capability
+- **决策状态**：`已落地`（`./scripts/verify.sh` 7/7 Playwright 绿，2026-06-23）
 
 ### D10 · 单 Agent 模式不开发（2026-06-23）
 

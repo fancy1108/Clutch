@@ -134,6 +134,55 @@ def _touch_session(
         )
 
 
+def _run_workflow(run_id: str, workflow_id: str, instruction: str) -> ClutchState:
+    workflow, _source = resolve_workflow(workflow_id)
+    state = _get_or_create_run(run_id)
+    prepend_logs = [f"[ORCHESTRATOR] Starting workflow: {workflow['name']} ({workflow['id']})"]
+    session, graph_result = begin_workflow(workflow, run_id, instruction=instruction)
+    _run_sessions[run_id] = session
+    from src.workflow_projection import project_graph_to_clutch
+
+    patch = project_graph_to_clutch(
+        state,
+        graph_result,
+        workflow=workflow,
+        instruction=instruction,
+        prepend_logs=prepend_logs,
+    )
+    state = _merge_patch(state, patch)
+    _commit_run_state(run_id, state)
+    _touch_session(
+        run_id,
+        title=instruction.strip()[:80] or str(workflow.get("name") or workflow["id"]),
+        workflow_id=workflow["id"],
+        status=state["status"],
+    )
+    return state
+
+
+def _merge_graph_resume(
+    state: ClutchState,
+    graph_result: dict[str, Any],
+    *,
+    base_messages: list[dict[str, Any]],
+    base_logs: list[str],
+) -> dict[str, Any]:
+    messages = list(base_messages)
+    logs = list(base_logs)
+    messages.extend(graph_result.get("task_messages", []))
+    logs.extend(graph_result.get("task_logs", []))
+    logs.append(f"[LANGGRAPH] Active node → {graph_result['active_node_id']}")
+    if graph_result["status"] == "awaiting_human":
+        logs.append("[SUPERVISOR] Human gate reached — awaiting decision.")
+    return {
+        "messages": messages,
+        "terminal_logs": logs,
+        "status": graph_result["status"],
+        "active_node_id": graph_result["active_node_id"],
+        "active_agent": graph_result["active_agent"],
+    }
+
+
 def _apply_human_decision(
     run_id: str,
     decision: str,
@@ -154,14 +203,18 @@ def _apply_human_decision(
 
     session = _run_sessions.get(run_id)
     if session and state["status"] == "awaiting_human":
-        graph_result = resume_workflow(session, run_id, decision)
-        patch = {
-            "messages": messages,
-            "terminal_logs": logs,
-            "status": graph_result["status"],
-            "active_node_id": graph_result["active_node_id"],
-            "active_agent": graph_result["active_agent"],
-        }
+        graph_result = resume_workflow(
+            session,
+            run_id,
+            decision,
+            instruction=instructions if decision == "retry" else "",
+        )
+        patch = _merge_graph_resume(
+            state,
+            graph_result,
+            base_messages=messages,
+            base_logs=logs,
+        )
     elif decision == "reject":
         patch = {
             "messages": messages,
@@ -186,7 +239,7 @@ def _apply_human_decision(
         }
 
     state = _merge_patch(state, patch)
-    _run_states[run_id] = state
+    _commit_run_state(run_id, state)
     if _is_terminal_status(state["status"]):
         update_run_record(run_id, {"status": state["status"], "ended_at": _iso_timestamp()})
     return state, patch, supervisor_message, log_line
@@ -205,8 +258,19 @@ def _iso_timestamp() -> str:
 
 def _get_or_create_run(run_id: str) -> ClutchState:
     if run_id not in _run_states:
-        _run_states[run_id] = initial_state(run_id)
+        from src.run_state_store import load_run_state
+
+        persisted = load_run_state(run_id)
+        _run_states[run_id] = persisted if persisted else initial_state(run_id)
     return _run_states[run_id]
+
+
+def _commit_run_state(run_id: str, state: ClutchState) -> ClutchState:
+    from src.run_state_store import save_run_state
+
+    _run_states[run_id] = state
+    save_run_state(state)
+    return state
 
 
 def _merge_patch(state: ClutchState, patch: dict[str, Any]) -> ClutchState:
@@ -410,7 +474,7 @@ async def _handle_plain_chat(
         **_token_patch_turn(state, user_text=text, assistant_text=reply_text),
     }
     state = _merge_patch(state, patch)
-    _run_states[run_id] = state
+    _commit_run_state(run_id, state)
     _touch_session(run_id, title=text.strip()[:80] or "New session", status=state["status"])
 
     await _send_message_event(websocket, run_id, user_message, "")
@@ -420,37 +484,46 @@ async def _handle_plain_chat(
     return state
 
 
-async def _handle_workflow_chat_stub(
+async def _handle_workflow_chat_message(
     websocket: WebSocket,
     run_id: str,
     state: ClutchState,
     text: str,
 ) -> ClutchState:
-    node_id = state["active_node_id"]
     user_message = _chat_message("User", text, msg_id=f"user_{uuid.uuid4().hex[:8]}")
-    reply = _chat_message(
-        "Orchestrator",
-        f"Instruction received — dispatching to {state['active_agent']}: {text}",
-    )
-    log_line = f"[ORCHESTRATOR] Received: {text}"
+    messages = list(state["messages"]) + [user_message]
+    logs = list(state["terminal_logs"])
+    logs.append(f"[USER] {text}")
 
-    messages = list(state["messages"]) + [user_message, reply]
-    logs = list(state["terminal_logs"]) + [log_line]
-    patch = {
-        "messages": messages,
-        "terminal_logs": logs,
-        "active_node_id": "n1",
-        "active_agent": "Builder",
-        "status": "running",
-        **_token_patch(state, text + reply["text"]),
-    }
+    if state["status"] == "awaiting_human":
+        state, patch, supervisor_message, log_line = _apply_human_decision(
+            run_id, "retry", text
+        )
+        await _send_message_event(websocket, run_id, user_message, state["active_node_id"])
+        await _send_message_event(websocket, run_id, supervisor_message, state["active_node_id"])
+        await _send_log_event(websocket, run_id, log_line, node_id=state["active_node_id"])
+        await _notify_run_state(websocket, run_id, state, patch)
+        if state["status"] == "awaiting_human":
+            await _send_validation_result(
+                websocket,
+                run_id,
+                node_id=state["active_node_id"],
+                passed=False,
+                message="Evaluator checks still failing — awaiting approval.",
+            )
+            await _send_human_required(
+                websocket,
+                run_id,
+                node_id=state["active_node_id"],
+                prompt="Checks still failing — approve, reject, or retry again.",
+            )
+        return state
+
+    patch = {"messages": messages, "terminal_logs": logs}
     state = _merge_patch(state, patch)
-    _run_states[run_id] = state
-    _touch_session(run_id, title=text.strip()[:80] or "New session", status=state["status"])
-
-    await _send_message_event(websocket, run_id, user_message, node_id)
-    await _send_log_event(websocket, run_id, log_line, node_id=node_id)
-    await _send_message_event(websocket, run_id, reply, "n1")
+    _commit_run_state(run_id, state)
+    await _send_message_event(websocket, run_id, user_message, state["active_node_id"])
+    await _send_log_event(websocket, run_id, logs[-1], node_id=state["active_node_id"])
     await _notify_run_state(websocket, run_id, state, patch)
     return state
 
@@ -842,7 +915,7 @@ async def reassign_run(run_id: str, body: ReassignRequest) -> dict[str, str]:
             "active_agent": graph_result["active_agent"],
         }
         state = _merge_patch(state, patch)
-        _run_states[run_id] = state
+        _commit_run_state(run_id, state)
     else:
         patch = {
             "status": "running",
@@ -850,50 +923,22 @@ async def reassign_run(run_id: str, body: ReassignRequest) -> dict[str, str]:
             "active_node_id": "n1",
         }
         state = _merge_patch(state, patch)
-        _run_states[run_id] = state
+        _commit_run_state(run_id, state)
     logs = list(state["terminal_logs"])
     logs.append(f"[USER] Re-assign to Builder: {body.instructions}")
     logs.append("[BUILDER] Resuming repair task per supervisor directive.")
     state = _merge_patch(state, {"terminal_logs": logs})
-    _run_states[run_id] = state
+    _commit_run_state(run_id, state)
     return {"run_id": run_id, "status": state["status"]}
 
 
 @app.post("/api/runs/start")
-async def start_run(body: StartRunRequest) -> dict[str, str]:
+async def start_run(body: StartRunRequest) -> dict[str, Any]:
     try:
-        workflow, _source = resolve_workflow(body.workflow_id)
+        run_id = f"run_{uuid.uuid4().hex[:8]}"
+        state = _run_workflow(run_id, body.workflow_id, body.instruction)
     except WorkflowValidationError as exc:
         raise _validation_http_error(exc) from exc
-
-    run_id = f"run_{uuid.uuid4().hex[:8]}"
-    state = initial_state(run_id, workflow["id"])
-    state["current_instruction"] = body.instruction
-
-    logs = list(state["terminal_logs"])
-    logs.append(f"[ORCHESTRATOR] Starting workflow: {workflow['name']} ({workflow['id']})")
-    session, graph_result = begin_workflow(workflow, run_id)
-    _run_sessions[run_id] = session
-    logs.append(f"[LANGGRAPH] Active node → {graph_result['active_node_id']}")
-    if graph_result["status"] == "awaiting_human":
-        logs.append("[SUPERVISOR] Human gate reached — awaiting decision.")
-
-    state = _merge_patch(
-        state,
-        {
-            "active_node_id": graph_result["active_node_id"],
-            "active_agent": graph_result["active_agent"],
-            "status": graph_result["status"],
-            "terminal_logs": logs,
-        },
-    )
-    _run_states[run_id] = state
-    _touch_session(
-        run_id,
-        title=workflow.get("name") or workflow["id"],
-        workflow_id=workflow["id"],
-        status=state["status"],
-    )
 
     logger.info(
         "Run started",
@@ -906,7 +951,42 @@ async def start_run(body: StartRunRequest) -> dict[str, str]:
             "timestamp": _iso_timestamp(),
         },
     )
-    return {"run_id": run_id, "status": state["status"]}
+    return {
+        "run_id": run_id,
+        "status": state["status"],
+        "state": _serialize_clutch_state(state),
+    }
+
+
+@app.post("/api/runs/{run_id}/start")
+async def start_run_on_session(run_id: str, body: StartRunRequest) -> dict[str, Any]:
+    try:
+        state = _run_workflow(run_id, body.workflow_id, body.instruction)
+    except WorkflowValidationError as exc:
+        raise _validation_http_error(exc) from exc
+
+    logger.info(
+        "Session workflow started",
+        extra={
+            "run_id": run_id,
+            "node_id": state["active_node_id"],
+            "source": "orchestrator",
+            "level": "info",
+            "message": f"workflow={body.workflow_id}",
+            "timestamp": _iso_timestamp(),
+        },
+    )
+    return {
+        "run_id": run_id,
+        "status": state["status"],
+        "state": _serialize_clutch_state(state),
+    }
+
+
+@app.get("/api/runs/{run_id}/state")
+async def get_run_state(run_id: str) -> dict[str, Any]:
+    state = _get_or_create_run(run_id)
+    return {"run_id": run_id, "state": _serialize_clutch_state(state)}
 
 
 @app.post("/api/runs/{run_id}/stop")
@@ -915,7 +995,7 @@ async def stop_run(run_id: str) -> dict[str, str]:
     logs = list(state["terminal_logs"])
     logs.append("[ORCHESTRATOR] Run stopped via HTTP.")
     state = _merge_patch(state, {"status": "failed", "terminal_logs": logs})
-    _run_states[run_id] = state
+    _commit_run_state(run_id, state)
     update_run_record(run_id, {"status": "failed", "ended_at": _iso_timestamp()})
     return {"run_id": run_id, "status": state["status"]}
 
@@ -979,7 +1059,7 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
             if isinstance(payload, dict) and payload.get("text"):
                 text = str(payload["text"])
                 if state["workflow_id"]:
-                    state = await _handle_workflow_chat_stub(websocket, run_id, state, text)
+                    state = await _handle_workflow_chat_message(websocket, run_id, state, text)
                 else:
                     state = await _handle_plain_chat(websocket, run_id, state, text)
             elif isinstance(payload, dict) and payload.get("action") == "human_decision":
@@ -1014,7 +1094,7 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                 logs.append(log_line)
                 patch = {"status": "failed", "terminal_logs": logs}
                 state = _merge_patch(state, patch)
-                _run_states[run_id] = state
+                _commit_run_state(run_id, state)
                 update_run_record(run_id, {"status": "failed", "ended_at": _iso_timestamp()})
                 await _send_log_event(
                     websocket, run_id, log_line, node_id=state["active_node_id"]

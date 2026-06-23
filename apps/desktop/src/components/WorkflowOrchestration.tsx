@@ -41,6 +41,7 @@ type EditorViewMode = 'canvas' | 'json';
 interface WorkflowOrchestrationProps {
   onClose: () => void;
   isModalStyle?: boolean;
+  onUseInChat?: (workflowId: string, workflowName: string) => void;
 }
 
 const DEFAULT_AVATAR = 'https://lh3.googleusercontent.com/aida-public/AB6AXuCdbGLlsb3N3uOkfOjw1Q1_yDEdGIJRGnmhLu-FVragfIKdNByQw1J1dUhUyD0bhtU68_IQlwgYzvIetQ2bY0YH_lZtUPtQ34nuKBxaxPyS3e2_NiWBHxGCtDAanZ14d9Jj74bIX1CMvh__wE2web2l3_MmMZ3M6VbcAyIQ32DmLoC1ZxOulFXqko_7SDi7dj4UYhiz2GZJT9mIeqNcXO-z24SVjGrZaOr-FBsXxb6cUVkNht5QSQLvRy955U1VtJCFXs670Vt4hbki';
@@ -101,7 +102,11 @@ const nodeTypes = {
   custom: CustomNode,
 };
 
-export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({ onClose, isModalStyle }) => {
+export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
+  onClose,
+  isModalStyle,
+  onUseInChat,
+}) => {
   const [listItems, setListItems] = useState<WorkflowListItem[]>([]);
   const [activeItem, setActiveItem] = useState<WorkflowListItem | null>(null);
   const [workflows, setWorkflows] = useState<WorkflowDef[]>([]);
@@ -530,6 +535,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({ on
           )}
           <button
             type="button"
+            data-testid="workflow-save"
             onClick={handleSaveWorkflow}
             disabled={isSaving || loading}
             className="flex items-center gap-1.5 px-4 py-2 bg-neutral-900 hover:bg-neutral-800 text-white border border-neutral-900 rounded-xl text-xs font-bold transition-all shadow-sm disabled:opacity-40 cursor-pointer"
@@ -538,6 +544,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({ on
             {activeItem?.readOnly ? '另存为副本' : '保存'}
           </button>
           <button
+            data-testid="workflow-create"
             onClick={handleCreateWorkflow}
             className="flex items-center gap-1.5 px-4 py-2 bg-neutral-50 hover:bg-neutral-100 text-neutral-800 border border-neutral-200 rounded-xl text-xs font-bold transition-all cursor-pointer"
           >
@@ -564,6 +571,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({ on
           {listItems.map(item => (
             <div
               key={`${item.source}-${item.id}`}
+              data-testid={`workflow-item-${item.id}`}
               onClick={() => selectWorkflow(item)}
               className={`p-3 border rounded-xl flex items-center justify-between cursor-pointer transition-all bg-white relative ${
                 activeItem?.id === item.id && activeItem?.source === item.source
@@ -610,6 +618,19 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({ on
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
+                  {onUseInChat && activeItem && (
+                    <button
+                      type="button"
+                      data-testid="workflow-run-in-chat"
+                      onClick={() => {
+                        onUseInChat(activeItem.id, activeItem.name);
+                        onClose();
+                      }}
+                      className="px-3 py-1.5 rounded-lg bg-neutral-900 text-white text-[11px] font-bold hover:bg-black transition-colors"
+                    >
+                      Run in Chat
+                    </button>
+                  )}
                   <div className="flex rounded-lg border border-neutral-200 overflow-hidden text-[11px] font-bold">
                     <button
                       type="button"

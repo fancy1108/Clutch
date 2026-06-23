@@ -14,7 +14,7 @@ import { SystemPreferencesModal } from './components/SystemPreferencesModal';
 import { MainView, RightTab, ChatMessage, UncommittedFile, DiffLine } from './types';
 import { LanguageProvider, useLanguage } from './components/LanguageContext';
 import { clutchStore, createSessionRunId, submitChatMessage, useClutchState } from './services/clutchState';
-import { fetchSessions, createSession, type SessionRecord } from './services/runApi';
+import { fetchSessions, createSession, startWorkflowRun, fetchRunState, type SessionRecord } from './services/runApi';
 import {
   activateWorkspace,
   addWorkspace,
@@ -46,6 +46,7 @@ function MainLayout() {
   // Navigation & Structure views
   const [currentView, setView] = useState<MainView>('chat');
   const [currentFlowName, setCurrentFlowName] = useState<string>('');
+  const [selectedWorkflowId, setSelectedWorkflowId] = useState<string | null>(null);
   const [isMultiAgent, setIsMultiAgent] = useState<boolean>(true);
   const [themeId, setThemeId] = useState<string>('pristine-light');
 
@@ -79,6 +80,7 @@ function MainLayout() {
   const [workspaceFiles, setWorkspaceFiles] = useState<FileTreeNode[]>([]);
   const [workspacePickError, setWorkspacePickError] = useState<string | null>(null);
   const [highRiskConfirmed, setHighRiskConfirmed] = useState(false);
+  const [branchMenuOpen, setBranchMenuOpen] = useState(false);
 
   const refreshWorkspaceFiles = async () => {
     try {
@@ -171,6 +173,10 @@ function MainLayout() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  const handleClearTerminal = () => {
+    clutchStore.clearTerminalLogs();
+  };
+
   const handleStopRun = () => {
     if (!highRiskConfirmed) {
       const ok = window.confirm('确认停止当前运行？此操作将中断 Builder/Evaluator 执行。');
@@ -238,6 +244,13 @@ function MainLayout() {
 
   const handleFlowSelect = (flow: string) => {
     setCurrentFlowName(flow);
+    setSelectedWorkflowId(flow);
+  };
+
+  const handleUseWorkflowInChat = (workflowId: string, workflowName: string) => {
+    setSelectedWorkflowId(workflowId);
+    setCurrentFlowName(workflowName);
+    setView('chat');
   };
 
   const handleReassignToBuilder = () => {
@@ -258,6 +271,7 @@ function MainLayout() {
       await createSession({ run_id: runId, title: t('New session') });
       setSessionRunId(runId);
       setCurrentFlowName('');
+      setSelectedWorkflowId(null);
       setView('chat');
       setRightTab('overview');
       await refreshSessions();
@@ -270,8 +284,15 @@ function MainLayout() {
     if (session.workspace_id && session.workspace_id !== activeWorkspaceId) {
       await handleSelectWorkspace(session.workspace_id);
     }
+    try {
+      const { state } = await fetchRunState(session.run_id);
+      clutchStore.setPendingHydrate(state);
+    } catch (error) {
+      console.warn('[Clutch] session state hydrate failed:', error);
+    }
     setSessionRunId(session.run_id);
     setCurrentFlowName(session.workflow_id || '');
+    setSelectedWorkflowId(session.workflow_id || null);
     setView('chat');
   };
 
@@ -286,6 +307,28 @@ function MainLayout() {
     if (!text.trim()) return;
     if (!workspace) {
       setWorkspacePickError(t('Select a project before starting a conversation.'));
+      return;
+    }
+    if (selectedWorkflowId && !clutchState.workflow_id) {
+      try {
+        try {
+          await createSession({
+            run_id: sessionRunId,
+            title: text.trim().slice(0, 80) || t('New session'),
+            workflow_id: selectedWorkflowId,
+          });
+        } catch {
+          // session may already exist for this run_id
+        }
+        const result = await startWorkflowRun(sessionRunId, selectedWorkflowId, text);
+        clutchStore.replaceState(result.state);
+        setSelectedWorkflowId(null);
+        await refreshSessions();
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to start workflow';
+        setWorkspacePickError(message);
+        console.error('[Clutch] workflow start failed:', error);
+      }
       return;
     }
     await submitChatMessage(text);
@@ -451,6 +494,12 @@ function MainLayout() {
                 onPickWorkspace={() => { void handlePickWorkspace(); }}
                 onOpenWorkflows={() => setView('workflows')}
                 workspacePickError={workspacePickError}
+                selectedWorkflowId={selectedWorkflowId}
+                selectedWorkflowName={currentFlowName}
+                onClearSelectedWorkflow={() => {
+                  setSelectedWorkflowId(null);
+                  setCurrentFlowName('');
+                }}
               />
               <RightPanel
                 activeTab={rightTab}
@@ -475,6 +524,7 @@ function MainLayout() {
                 workspaceFiles={workspaceFiles}
                 onOpenWorkspaceFile={(path) => { void handleOpenWorkspaceFile(path); }}
                 workspaceAuthorized={Boolean(workspace)}
+                onClearTerminal={handleClearTerminal}
               />
             </>
           )
@@ -495,6 +545,7 @@ function MainLayout() {
           setThemeId={setThemeId}
           workspaceLabel={workspace?.name ?? workspace?.workspace_path?.split('/').pop() ?? null}
           sessionActive={clutchStatus !== 'idle' && clutchStatus !== 'failed'}
+          onUseWorkflowInChat={handleUseWorkflowInChat}
         />
 
       </div>
@@ -505,16 +556,47 @@ function MainLayout() {
         className="fixed bottom-0 right-0 h-8 bg-background border-t border-outline-variant flex items-center justify-between px-6 z-50 text-[11px] text-on-surface-variant/80 select-none transition-all duration-300"
       >
         <div className="flex items-center gap-6">
-          <span 
-            onClick={() => console.warn("Simulated action: switching workspace branches of target repo...")}
-            className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-container-low hover:text-on-surface transition-colors cursor-pointer font-medium"
-          >
-            <span className="material-symbols-outlined text-[15px] text-on-surface-variant">fork_right</span> 
-            {t("Branch")}: {clutchState.run_id || '—'}
-            <span className="material-symbols-outlined text-[13px]">keyboard_arrow_down</span>
-          </span>
+          <div className="relative">
+            <span
+              data-testid="footer-branch-trigger"
+              onClick={() => setBranchMenuOpen((open) => !open)}
+              className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-container-low hover:text-on-surface transition-colors cursor-pointer font-medium"
+            >
+              <span className="material-symbols-outlined text-[15px] text-on-surface-variant">fork_right</span>
+              {t('Branch')}: {clutchState.run_id || '—'}
+              <span className="material-symbols-outlined text-[13px]">keyboard_arrow_down</span>
+            </span>
+            {branchMenuOpen ? (
+              <div
+                data-testid="footer-branch-menu"
+                className="absolute bottom-full left-0 mb-1 min-w-[220px] max-h-48 overflow-y-auto bg-surface-bright border border-outline-variant rounded-lg shadow-lg py-1 z-[60]"
+              >
+                {sessions.length === 0 ? (
+                  <p className="px-3 py-2 text-[11px] text-on-surface-variant">{t('No sessions in this project yet')}</p>
+                ) : (
+                  sessions.map((session) => (
+                    <button
+                      key={session.run_id}
+                      type="button"
+                      data-testid={`footer-branch-session-${session.run_id}`}
+                      onClick={() => {
+                        void handleSelectSession(session);
+                        setBranchMenuOpen(false);
+                      }}
+                      className={`w-full text-left px-3 py-2 text-[11px] hover:bg-surface-container-low ${
+                        session.run_id === sessionRunId ? 'text-primary font-bold' : 'text-on-surface'
+                      }`}
+                    >
+                      {session.title?.trim() || session.workflow_id || session.run_id}
+                    </button>
+                  ))
+                )}
+              </div>
+            ) : null}
+          </div>
 
-          <span 
+          <span
+            data-testid="footer-model-trigger"
             onClick={() => setView('models')}
             className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-container-low hover:text-on-surface transition-colors cursor-pointer font-medium text-on-surface-variant"
           >
@@ -524,12 +606,13 @@ function MainLayout() {
           </span>
 
           {isMultiAgent ? (
-            <span 
+            <span
+              data-testid="footer-workflow-trigger"
               onClick={() => setView('workflows')}
               className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-container-low text-primary font-bold transition-colors cursor-pointer"
             >
               <span className="material-symbols-outlined text-[15px] text-primary">movie</span>
-              {t("Workflow")}: {clutchState.workflow_id || currentFlowName || '—'} 
+              {t("Workflow")}: {clutchState.workflow_id || selectedWorkflowId || currentFlowName || '—'} 
               <span className="material-symbols-outlined text-[13px]">keyboard_arrow_down</span>
             </span>
           ) : null}

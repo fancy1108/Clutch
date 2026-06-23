@@ -42,3 +42,31 @@ export async function createSession(input: {
   }
   return response.json() as Promise<SessionRecord>;
 }
+
+export async function startWorkflowRun(
+  runId: string,
+  workflowId: string,
+  instruction: string,
+): Promise<{ run_id: string; status: string; state: import('../types').ClutchState }> {
+  const response = await fetch(`http://localhost:8123/api/runs/${runId}/start`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ workflow_id: workflowId, instruction }),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    const message = (body as { detail?: { message?: string } }).detail?.message || `Failed to start workflow (${response.status})`;
+    throw new Error(message);
+  }
+  return response.json() as Promise<{ run_id: string; status: string; state: import('../types').ClutchState }>;
+}
+
+export async function fetchRunState(
+  runId: string,
+): Promise<{ run_id: string; state: import('../types').ClutchState }> {
+  const response = await fetch(`http://localhost:8123/api/runs/${encodeURIComponent(runId)}/state`);
+  if (!response.ok) {
+    throw new Error(`Failed to load session state (${response.status})`);
+  }
+  return response.json() as Promise<{ run_id: string; state: import('../types').ClutchState }>;
+}

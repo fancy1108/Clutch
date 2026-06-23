@@ -94,6 +94,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       style={{ overflow: 'visible' }}
     >
       <button
+        data-testid="sidebar-toggle"
         onClick={() => setIsOpenState(!isOpenState)}
         className={`absolute top-[88px] w-6 h-6 bg-surface-bright border border-outline rounded-full flex items-center justify-center z-50 shadow-md hover:shadow-lg hover:bg-surface-container hover:border-on-surface/30 transition-all cursor-pointer text-on-surface-variant hover:text-on-surface duration-200 hover:scale-110 active:scale-95 ${
           isOpenState ? '-right-3' : '-right-6'
@@ -116,6 +117,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         <div className="space-y-1 mb-4 px-1">
           <button
+            data-testid="nav-new-chat"
             onClick={onNewChat}
             className={`w-full flex items-center gap-3 p-2.5 rounded-lg transition-all text-left group ${
               currentView === 'chat'
@@ -130,6 +132,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </button>
 
           <button
+            data-testid="nav-agents"
             onClick={() => setView('agents')}
             className={`w-full flex items-center gap-3 p-2.5 rounded-lg transition-all text-left group ${
               currentView === 'agents'
@@ -145,6 +148,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           {isMultiAgent && (
             <button
+              data-testid="nav-workflows"
               onClick={() => setView('workflows')}
               className={`w-full flex items-center gap-3 p-2.5 rounded-lg transition-all text-left group ${
                 currentView === 'workflows'
@@ -166,6 +170,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </span>
           <div className="flex gap-2">
             <span
+              data-testid="nav-add-workspace"
               className="material-symbols-outlined text-[16px] cursor-pointer hover:text-primary"
               title={t('Add project folder')}
               onClick={() => onAddWorkspace?.()}
@@ -197,6 +202,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 >
                   <button
                     type="button"
+                    data-testid={`workspace-row-${repo.id}`}
                     onClick={() => toggleWorkspace(repo.id)}
                     className="flex items-center gap-2 flex-1 min-w-0 text-left"
                     title={repo.workspace_path}
@@ -232,6 +238,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           <button
                             key={session.run_id}
                             type="button"
+                            data-testid={`sidebar-session-${session.run_id}`}
                             onClick={() => onSelectSession?.(session)}
                             className={`w-full flex items-center justify-between p-2 rounded-lg text-left transition-all ${
                               isActiveSession
@@ -257,6 +264,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         <div className="mt-auto pt-3 border-t border-outline-variant/50 space-y-1">
           <button
+            data-testid="nav-settings"
             onClick={() => setView('settings')}
             className={`w-full flex items-center gap-3 p-2 rounded-lg text-left transition-all group ${
               currentView === 'settings' ? 'bg-surface-bright shadow-sm text-on-surface font-semibold border border-outline-variant/60' : 'text-on-surface-variant hover:bg-surface-bright'

@@ -74,6 +74,8 @@ const zhTranslations: Record<string, string> = {
   "Select a workspace and start a workflow, or type an instruction below. Clutch will orchestrate Builder / Evaluator and ask for your approval when needed.": "选择工作区并启动工作流，或直接在下方输入指令。Clutch 会编排 Builder / Evaluator 并在需要时请你审批。",
   "Authorize workspace": "授权工作区",
   "Choose workflow template": "选择工作流模板",
+  "Describe what you want this workflow to do...": "描述你希望此 Workflow / 工作流 完成的任务…",
+  "Clear": "Clear / 清除",
   "Workflow running": "工作流运行中",
   "Receiving sidecar events": "监督台正在接收 Sidecar 事件…",
   "Human gate hint": "检查未通过或需要人工确认，请选择下一步操作。",

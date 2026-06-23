@@ -79,10 +79,10 @@
 | M2-04 | Human Gate UI | FR-04-01–05 | Approve / Reject / Retry + 审计 | 触发 `human_required` 后三按钮可用；操作后 Chat/Terminal 有 `[SUPERVISOR]` 行 |
 | M2-05 | LangGraph `interrupt_before` 人工闸门 | FR-04-02–04 | `human_decision` resume 后继续执行 | `uv run pytest tests/test_human_gate.py -v` |
 | M2-06 | 废弃 `mockData.ts` 编排逻辑 | proposal §15 | 仅保留可选 demo 种子；`api.ts` 无 mock 编排 | `CLUTCH_STRICT_MOCK=1 ./scripts/check-doc-drift.sh` 通过 |
-| M2-07 | 运行历史持久化 + 侧栏入口 | D3, FR-02-01 | 可查看过往 run、状态、时间 | `uv run pytest tests/test_run_history.py -v`；侧栏列表非空 |
+| M2-07 | 运行历史持久化 + 侧栏入口 | D3, FR-02-01 | 可查看过往 run、状态、时间；**点选会话可加载完整 messages**（D11） | `uv run pytest tests/test_run_history.py tests/test_run_state_store.py -v`；侧栏列表非空 |
 | M2-08 | 底部状态栏接真实状态 | FR-02-08 | Branch / Mode / Flow 来自 `ClutchState` 或运行上下文，非硬编码 | 切换工作流或 `state_patch` 后状态栏文案同步变化 |
 | M2-09 | 工作区选择与授权 UX | FR-02-01, proposal §13 | 用户选择本地项目根目录并授权；`Header` 面包屑显示真实项目名；未授权时 Adapter 不读盘 | 选目录后 Sidecar 收到 `workspace_path`；Header 面包屑与所选工作区一致 |
-| M2-10 | E2E Smoke + vitest 基础设施 | D1, D2 | D1 状态改为 `可执行`；建 `e2e/`；Smoke：health + WS `state_patch`；前端 vitest 首条用例 | `pnpm exec playwright test`（或 `e2e/` 包内命令）Smoke 绿；`TESTS.md` 增 E2E/vitest 行 |
+| M2-10 | E2E Smoke + vitest 基础设施 | D1, D2 | D1 状态改为 `可执行`；建 `e2e/`；Smoke：health + WS `state_patch`；**会话历史** `session-history.spec.ts` | `pnpm exec playwright test` Smoke + session-history 绿；`TESTS.md` 增 E2E/vitest 行 |
 | M2-11 | Files 面板工作区目录树与预览 | FR-02-04 | `RightPanel` Files  tab 展示授权工作区真实目录；点击文件读盘预览；移除 `fileTreeNodes` / `getFullFileContent` mock | M2-09 后：目录与磁盘一致；预览内容与文件实际内容一致 |
 | M2-12 | 「交给 Builder 修复」Reassign | proposal §5.1, FR-04 | `reassignToBuilder` 走真实 API；校验失败后可将任务打回 Builder 重跑 | 手动：Evaluator 失败后点击 Reassign，Chat/Terminal 出现 Builder 活动 |
 | M2-13 | Overview Token/成本统计 | FR-02-04 | Session Token 分布、成本摘要来自 `ClutchState` / `state_patch`；非硬编码 | `state_patch` 更新 token 字段后 Overview 数字同步 |
@@ -160,7 +160,7 @@
 | `App.tsx` footer | Branch / Model / Workflow 状态栏 | M2-08 | ✅ |
 | `Header.tsx` | 面包屑工作区/项目名 | M2-09 | ✅ |
 | `Header.tsx` | 语言切换 en/zh | P2 i18n | — |
-| `sidebar.tsx` | 工作流/会话列表、运行历史 | M2-07, M2-09 | ✅ |
+| `sidebar.tsx` | 工作流/会话列表、运行历史、**点选恢复 messages** | M2-07, M2-09, D11 | ✅ |
 | `sidebar.tsx` | REPOSITORIES 文件夹树 | M2-09（上下文）/ P2 CRUD | 部分 |
 | `ChatFeed.tsx` | Agent 消息流、失败卡片、用户输入 | M2-01, M2-14 | ✅ |
 | `ChatFeed.tsx` | Approve / Reject / Retry、Stop Run | M2-04, M1-03 | ✅ |
@@ -205,6 +205,7 @@
 | `tests/test_workflow_storage.py` | M1-09 |
 | `tests/test_human_gate.py` | M2-05 |
 | `tests/test_run_history.py` | M2-07 |
+| `tests/test_run_state_store.py` | M2-07, D11 |
 | `tests/test_cli_adapter.py` | M3-01 |
 | `tests/test_fs_watcher.py` | M3-04 |
 | `tests/test_evaluator.py` | M3-05 |

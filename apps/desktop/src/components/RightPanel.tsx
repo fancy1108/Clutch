@@ -26,6 +26,7 @@ interface RightPanelProps {
   workspaceFiles?: FileTreeNode[];
   onOpenWorkspaceFile?: (path: string) => void;
   workspaceAuthorized?: boolean;
+  onClearTerminal?: () => void;
 }
 
 export const RightPanel: React.FC<RightPanelProps> = ({
@@ -51,6 +52,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   workspaceFiles = [],
   onOpenWorkspaceFile,
   workspaceAuthorized = false,
+  onClearTerminal,
 }) => {
   const { t } = useLanguage();
   const flowHighlight = (role: 'orchestrator' | 'builder' | 'evaluator') => {
@@ -63,13 +65,9 @@ export const RightPanel: React.FC<RightPanelProps> = ({
     return false;
   };
 
-  const [selectedFile, setSelectedFile] = React.useState<string>('src/video-core/processor.ts');
+  const [selectedFile, setSelectedFile] = React.useState<string>('');
   const [selectedAgentProfile, setSelectedAgentProfile] = React.useState<'orchestrator' | 'builder' | 'auditor'>('orchestrator');
-  const [expandedFiles, setExpandedFiles] = React.useState<Record<string, boolean>>({
-    'PARA': true,
-    '.obsidian': false,
-    '.claude': false
-  });
+  const [expandedFiles, setExpandedFiles] = React.useState<Record<string, boolean>>({});
 
   const toggleExpand = (dir: string) => {
     setExpandedFiles(prev => ({ ...prev, [dir]: !prev[dir] }));
@@ -137,6 +135,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
     >
       {/* Collapse Handle Button */}
       <button
+        data-testid="right-panel-toggle"
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className={`absolute top-4 w-6 h-6 bg-white border border-neutral-300 rounded-full flex items-center justify-center z-50 shadow-md hover:shadow-lg hover:bg-neutral-50 hover:border-neutral-450 transition-all cursor-pointer text-neutral-600 hover:text-neutral-900 duration-200 hover:scale-110 active:scale-95 ${
@@ -160,6 +159,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
               return (
                 <button
                   key={tab}
+                  data-testid={`right-tab-${tab}`}
                   onClick={() => setActiveTab(tab)}
                   className={`px-4 py-3 text-xs font-bold whitespace-nowrap tracking-wide capitalize transition-all ${
                     isActive
@@ -253,7 +253,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
             </section>
 
             {/* Active section depending on isMultiAgent mode */}
-            {isMultiAgent ? (
+            {isMultiAgent && workflowId ? (
               <section>
                 <h4 className="text-[10px] font-bold text-on-surface-variant/75 uppercase tracking-widest mb-3">
                   Active Flow Workflow
@@ -803,7 +803,9 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                 Automated Container Console
               </h4>
               <button
-                onClick={() => console.warn("Terminal clears and restarts outputs logs.")}
+                type="button"
+                data-testid="terminal-clear-btn"
+                onClick={() => onClearTerminal?.()}
                 className="text-[9px] font-semibold text-on-surface bg-surface-container-high px-2 py-1 rounded"
               >
                 Clear

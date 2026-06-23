@@ -2,10 +2,10 @@
 
 ## 当前状态
 
-- 阶段：**M0–M4 MVP 验收形态就绪**
-- 说明：Claude Code CLI 凭证自动导入、`POST /api/runs/{id}/human-decision`、T-03 MVP 闭环 E2E、`verify.sh` 含 E2E 门禁；73 pytest + 3 Playwright 绿
-- 焦点：用户本机验收 DMG；工作区多项目 WIP（未提交）；可选 push 触发 CI
-- Git HEAD：`2d85c14`（+ 工作区未提交改动）
+- 阶段：**M0–M4 MVP + D12 桌面 E2E 门禁 ✅**
+- 说明：D11 会话持久化 + D12 `tauri-playwright` 桌面 E2E；101 pytest + 7 Playwright 绿
+- 焦点：push 触发 CI；用户本机验收 DMG
+- Git HEAD：待 commit（D11+D12 工作区）
 
 ## 治理脚手架就绪标准（文档层 ✅）
 
@@ -18,34 +18,51 @@
 ## 下次 Agent 启动必读
 
 1. 读本文件（`PROGRESS.md`）
-2. 读 `FAILURES.md`、`FILEMAP.md`、`DECISIONS.md`（D3–D8）、`specs/core/tasks.md`
+2. 读 `FAILURES.md`（**桌面 E2E 坑**）、`FILEMAP.md`、`DECISIONS.md`（D11–D12）
 3. 运行 `git log --oneline -10`
-4. 运行 `./scripts/verify.sh`
+4. 运行 `./scripts/run-e2e.sh`（比 `verify.sh` 更快定位 E2E 问题）
 
 ## 待办（跨会话）
 
 - [x] **M0–M4**：MVP 任务清单（P2 Skills 延后；单 Agent 不开发见 D10）
 - [x] **M4-06**：`pnpm tauri build` → DMG 证据 `runs/verification/2026-06-23-tauri-build.log`
 - [x] **T-03**：MVP 闭环 E2E + `test_mvp_closed_loop.py`
+- [x] **D11**：会话 messages 持久化 + 侧栏历史 hydrate（代码已写，待 commit）
+- [x] **D12**：桌面 E2E 全链路 — `./scripts/run-e2e.sh` 7/7 ✅
+- [ ] **提交 + push** D11+D12 工作区改动
 - [ ] **T-04**：红队 / 体感审计（可选）
 - [ ] Push 至 `origin` 触发 CI
 
 ## 会话日志（最新在上）
 
+### 2026-06-23 会话 23（D12 桌面 E2E 修复 — 进行中）
+
+- **完成：**
+  - **根因修复（API）**：`session-history` / `smoke` 不再用 Chromium 起 WebSocket；新增 `e2e/helpers/ws.ts`（Node 原生 WebSocket）→ API **4/4 passed**
+  - **门禁脚本**：`run-e2e.sh` 加 `wait_tauri_ready`（vite + health + playwright socket）、显式传递 `CLUTCH_*` 环境变量、`playwright install chromium`
+  - **沙箱**：`e2e-sandbox-setup.sh` + `CLUTCH_E2E_SANDBOX` 注入；`pickWorkspaceFolder.ts` / `clutch_e2e_sandbox` Tauri command
+  - **桌面基建**：`tauri-plugin-playwright`（`e2e-testing` feature）、`e2e/fixtures/desktop.ts`、`e2e/tests/desktop/all-ui.spec.ts`
+  - **tauri-playwright 适配**：`waitForFunction(expr, timeoutMs)` 非 Playwright options；`authorizeSandboxWorkspace` helper；`evaluate` 须传字符串 script
+  - **Sidecar 环境**：`lib.rs` `spawn_dev_sidecar` 转发 `CLUTCH_*` 给 uvicorn 子进程
+  - **占位清理**：Branch 菜单、Terminal Clear、`data-testid` 等（前序会话）
+- **校验：**
+  - `./scripts/run-e2e.sh` → API 4 passed；Desktop 2 failed（见 `runs/verification/2026-06-23-e2e-full.log`）
+  - 桌面失败 1：`type_text` on `<textarea>`（`HTMLInputElement` setter）
+  - 桌面失败 2：侧栏 session 恢复后 `getByText(seedText)` 不可见
+- **下次优先：** 修 textarea 输入 + 侧栏 hydrate；跑绿 `run-e2e.sh`；commit
+
+### 2026-06-23 会话 22（D11 文档/用例完善）
+
+- 完成：E2E `session-history`（API + desktop 用例草稿）；`CLUTCH_E2E_FAKE_LLM`；ARCHITECTURE §6.3.1
+- 校验：`uv run pytest` 101 passed；E2E 当时未全绿
+- 下次优先：commit；用户验收历史续聊
+
 ### 2026-06-23 会话 21（移除 [Test WS] 调试 UI）
 
-- 完成：识别侧栏 `[Test WS]` 为 M0-02 开发联调遗留；移除按钮与 `sendSidecarTestMessage`；同步 `DELIVERABLES` / `tasks.md` / `PROGRESS`
-- 校验：`2d85c14` pre-commit `verify.sh` ✅；Check-out 时 WIP `main.py:133` SyntaxError 致 pytest 失败（与本次无关）
+- 完成：识别侧栏 `[Test WS]` 为 M0-02 开发联调遗留；移除按钮与 `sendSidecarTestMessage`
 - Commit：`2d85c14`
-- 下次优先：继续工作区多项目 WIP 并提交；用户 DMG 验收；push CI
 
 ### 2026-06-23 会话 20（MVP 验收收尾）
 
-- 完成：Claude Code 凭证 `credentials/claude_code.py`；`human-decision` HTTP；T-03 Playwright + pytest；`run-e2e.sh` 接入 `verify.sh`
-- 校验：`./scripts/verify.sh` → build + vitest + 70 pytest + drift + 3 E2E ✅；`apps/desktop` `pnpm tauri build` → DMG ✅
-- 下次优先：用户验收；push CI
-
-### 2026-06-23 会话 19（M2–M4 全量落地）
-
-- 完成：workspace/agent/models API；Files 真目录；M3 adapters/evaluator；`e2e/` Smoke；67 pytest
-- Commit：`cf342c6`
+- 完成：Claude Code 凭证；`human-decision` HTTP；T-03 Playwright + pytest
+- 校验：`./scripts/verify.sh` → 70 pytest + 3 E2E ✅

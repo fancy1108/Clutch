@@ -35,6 +35,7 @@ class ClutchStateStore {
   private socket: WebSocket | null = null;
   private connectPromise: Promise<void> | null = null;
   private runId = this.state.run_id;
+  private pendingHydrate: ClutchState | null = null;
   private _connected = false;
 
   get connected(): boolean {
@@ -47,6 +48,16 @@ class ClutchStateStore {
   };
 
   getSnapshot = (): ClutchState => this.state;
+
+  replaceState = (state: ClutchState): void => {
+    this.runId = state.run_id;
+    this.state = state;
+    this.emit();
+  };
+
+  setPendingHydrate = (state: ClutchState): void => {
+    this.pendingHydrate = state;
+  };
 
   private emit(): void {
     for (const listener of this.listeners) {
@@ -74,12 +85,24 @@ class ClutchStateStore {
       return Promise.resolve();
     }
 
-    if (this.connectPromise) {
+    if (this.connectPromise && this.runId === runId) {
       return this.connectPromise;
     }
 
+    if (this.socket) {
+      this.socket.close();
+      this.socket = null;
+      this._connected = false;
+    }
+    this.connectPromise = null;
+
     this.runId = runId;
-    this.state = createEmptyState(runId);
+    if (this.pendingHydrate?.run_id === runId) {
+      this.state = this.pendingHydrate;
+      this.pendingHydrate = null;
+    } else if (this.state.run_id !== runId) {
+      this.state = createEmptyState(runId);
+    }
     this.emit();
 
     this.connectPromise = new Promise((resolve, reject) => {
@@ -162,6 +185,10 @@ class ClutchStateStore {
     });
 
     return this.connectPromise;
+  }
+
+  clearTerminalLogs(): void {
+    this.applyPatch({ terminal_logs: [] });
   }
 
   async send(payload: Record<string, unknown>): Promise<void> {

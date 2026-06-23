@@ -20,6 +20,9 @@ interface ChatFeedProps {
   onPickWorkspace?: () => void;
   onOpenWorkflows?: () => void;
   workspacePickError?: string | null;
+  selectedWorkflowId?: string | null;
+  selectedWorkflowName?: string;
+  onClearSelectedWorkflow?: () => void;
 }
 
 export const ChatFeed: React.FC<ChatFeedProps> = ({
@@ -40,6 +43,9 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   onPickWorkspace,
   onOpenWorkflows,
   workspacePickError = null,
+  selectedWorkflowId = null,
+  selectedWorkflowName = '',
+  onClearSelectedWorkflow,
 }) => {
   const { t } = useLanguage();
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -100,6 +106,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
               {!workspaceAuthorized && (
                 <button
                   type="button"
+                  data-testid="chat-authorize-workspace"
                   onClick={onPickWorkspace}
                   className="px-4 py-2 rounded-lg bg-primary text-white text-xs font-bold hover:opacity-90 transition-opacity"
                 >
@@ -109,6 +116,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
               {isMultiAgent && (
                 <button
                   type="button"
+                  data-testid="chat-open-workflows"
                   onClick={onOpenWorkflows}
                   className="px-4 py-2 rounded-lg border border-outline-variant bg-white text-xs font-bold text-on-surface hover:bg-surface-container-low transition-colors"
                 >
@@ -250,6 +258,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
+                data-testid="chat-approve"
                 onClick={onApprove}
                 className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-600 border border-emerald-200 text-emerald-800 hover:text-white font-bold rounded-lg text-[10px] uppercase"
               >
@@ -257,6 +266,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
               </button>
               <button
                 type="button"
+                data-testid="chat-reject"
                 onClick={onReject}
                 className="px-3.5 py-2 bg-rose-50 hover:bg-red-600 border border-rose-200 text-rose-800 hover:text-white font-bold rounded-lg text-[10px] uppercase"
               >
@@ -298,14 +308,32 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
           </div>
         ) : (
           <div className="w-full max-w-2xl bg-white border border-outline-variant p-2 shadow-xl focus-within:ring-2 focus-within:ring-primary/5 rounded-xl">
+            {selectedWorkflowId && (
+              <div className="flex items-center justify-between px-2 pt-1 pb-0.5">
+                <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-primary bg-primary/5 border border-primary/20 rounded-lg px-2 py-1">
+                  <span className="material-symbols-outlined text-[14px]">account_tree</span>
+                  {selectedWorkflowName || selectedWorkflowId}
+                </span>
+                <button
+                  type="button"
+                  onClick={onClearSelectedWorkflow}
+                  className="text-[10px] text-on-surface-variant hover:text-on-surface px-2 py-1"
+                >
+                  {t('Clear')}
+                </button>
+              </div>
+            )}
             <div className="flex items-end gap-2 px-2 py-1">
               <textarea
+                data-testid="chat-input"
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={handleKeyDown}
                 className="w-full border-none focus:ring-0 text-xs text-on-surface bg-transparent p-2 resize-none min-h-[40px] max-h-[140px] placeholder:text-on-surface-variant/70 outline-none"
                 placeholder={
-                  isMultiAgent
+                  selectedWorkflowId
+                    ? t('Describe what you want this workflow to do...')
+                    : isMultiAgent
                     ? t('Ask @Builder, @Orchestrator or trigger @Workflow...')
                     : t('Ask your AI Agent anything...')
                 }
@@ -313,6 +341,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
               />
               <button
                 type="button"
+                data-testid="chat-send"
                 onClick={handleSendClick}
                 disabled={!inputValue.trim()}
                 className={`w-10 h-10 flex items-center justify-center rounded-full transition-all ${
