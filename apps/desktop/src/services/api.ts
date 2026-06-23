@@ -1,1 +1,1 @@
-export { connectSidecarWebSocket, sendSidecarTestMessage, submitChatMessage } from './clutchState';
+export { connectSidecarWebSocket, submitChatMessage } from './clutchState';

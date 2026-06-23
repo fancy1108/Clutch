@@ -183,10 +183,6 @@ export function useClutchState(): { state: ClutchState; connected: boolean } {
 export const connectSidecarWebSocket = (): Promise<void> =>
   clutchStore.connect(clutchStore.getSnapshot().run_id);
 
-export const sendSidecarTestMessage = async (): Promise<void> => {
-  await clutchStore.send({ text: 'Hello sidecar!' });
-};
-
 export const submitChatMessage = async (text: string): Promise<void> => {
   await clutchStore.send({ text });
 };

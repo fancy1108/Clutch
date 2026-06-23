@@ -1,7 +1,6 @@
 import React from 'react';
 import { RepositoryFolder, MainView } from './types';
 import { useLanguage } from './components/LanguageContext';
-import { sendSidecarTestMessage } from './services/api';
 import type { RunHistoryRecord } from './services/runApi';
 
 interface SidebarProps {
@@ -233,17 +232,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Sidebar Footer settings */}
         <div className="mt-auto pt-3 border-t border-outline-variant/50 space-y-1">
-          <button
-            type="button"
-            onClick={() => {
-              void sendSidecarTestMessage().catch((error: unknown) => {
-                console.error('[Clutch WS] test send failed:', error);
-              });
-            }}
-            className="w-full flex items-center justify-center gap-2 p-2 rounded-lg text-left transition-all border border-dashed border-outline-variant/80 text-on-surface-variant hover:bg-surface-bright hover:text-on-surface text-[11px] font-mono"
-          >
-            [Test WS]
-          </button>
           <button
             onClick={() => setView('settings')}
             className={`w-full flex items-center gap-3 p-2 rounded-lg text-left transition-all group ${
