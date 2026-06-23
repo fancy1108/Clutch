@@ -4,22 +4,22 @@
 
 - 阶段：**M0 核心完成 / M1 骨架启动**
 - 说明：WebSocket `state_patch` 全链路打通；LangGraph 最小图 + `start_run` API 就绪
-- 焦点：**M1-02** WorkflowCompiler 对接 `video-production.json`
-- 上次更新：2026-06-22
-- Git HEAD：见 `git log -1`
+- 焦点：**M1-02** WorkflowCompiler 对接 `video-production.json`（须 `test_compiler.py` 绿）
+- 上次更新：2026-06-23
+- Git HEAD：见 `git log -1`（含 DELIVERABLES 与 tasks 文档补强）
 
 ## 治理脚手架就绪标准（文档层 ✅）
 
 - [x] Layer 1–3 治理文档 + Memory 六件套
 - [x] 测试规范（D1/D2、TESTS、CI workflow、`verify.sh`）
 - [x] Vibe 8.5 兜底（D7：Husky、漂移机检、truth-alignment 剧本、Layer 4 约束）
-- [x] `specs/core/tasks.md`、`design.md`、`ROADMAP` 功能清单、`FILEMAP` 路径
+- [x] Task 交付索引（`DELIVERABLES.md` + Check-out 规则 + `runs/verification/README`）
 - [x] 产品开放问题 Q1–Q4 → D3–D6 已决策
 
 ## 下次 Agent 启动必读
 
 1. 读本文件（`PROGRESS.md`）
-2. 读 `FAILURES.md`、`FILEMAP.md`、`DECISIONS.md`（D3–D8）、`specs/core/tasks.md`
+2. 读 `FAILURES.md`、`FILEMAP.md`、`DECISIONS.md`（D3–D8）、`specs/core/tasks.md`；续作时扫一眼 `DELIVERABLES.md` 最后交付 commit
 3. 运行 `git log --oneline -10`
 4. 运行 `./scripts/verify.sh`
 
@@ -33,13 +33,34 @@
 ### 写代码阶段
 
 - [x] **M0-01–03**：Sidecar health、WS ping-pong、`ClutchState` 投影
-- [x] **M1 骨架**：LangGraph 最小图、`POST /api/runs/start`、`POST /api/runs/{id}/stop`
+- [x] **M0-04**：Vite 代理（`pnpm dev` 可连 Sidecar）
+- [x] **M1 骨架**：LangGraph 最小图、`POST /api/runs/start`、`POST /api/runs/{id}/stop`（**M1-03 须按 tasks Verification 复审**）
 - [x] **M1-01**：Workflow JSON Schema 校验（`workflow_validator.py` + `/api/workflows/validate`）
-- [ ] **M1-02**：WorkflowCompiler → LangGraph
+- [ ] **M1-02**：WorkflowCompiler → LangGraph + `tests/test_compiler.py`
 - [ ] **M0-05**：Tauri 拉起 Sidecar
-- [ ] **M2**：去 mock，Chat/Terminal 接真实事件
+- [ ] **M0-06**：`ClutchState` 类型对齐复审
+- [ ] **M1-04/05/08/09**：路由、`run_completed`、Provider Router、工作流持久化 API
+- [ ] **M2**：M2-01–14（见 `tasks.md` §M2）
 
 ## 会话日志（最新在上）
+
+### 2026-06-23 会话 10（DELIVERABLES 交付索引）
+
+- 完成：新建 `memory/DELIVERABLES.md`；回填 M0-01~M1-01；`CLAUDE.md` Check-out、`tasks.md`、`FILEMAP`、`TESTS` 联动；`runs/verification/README.md`
+- 标注：M0-06 / M1-03 ⚠️ 待复审
+- 下次优先：**M1-02**；完成后按模板写入 `DELIVERABLES.md` + 可选 pytest log
+
+### 2026-06-23 会话 9（Prototype 全覆盖审计）
+
+- 完成：对照 `apps/desktop/src` 补 task M2-11~14、M4-09；`tasks.md` §Prototype → Task 映射；`ROADMAP` / `ARCHITECTURE` §7 / `FILEMAP` 对齐
+- 结论：Prototype 所有 MVP 能力均有 task；i18n / 主题 / Skills / 单 Agent / 侧栏文件夹 CRUD 明确标 P2
+- 下次优先：**M1-02** WorkflowCompiler + `test_compiler.py`
+
+### 2026-06-23 会话 8（tasks 验收补强 + 文档同步）
+
+- 完成：`tasks.md` 增补 Verification 列与新 task（M1-08/09、M2-08~10、M3-07、M4-08、T-01~04）；`ROADMAP` / `PROGRESS` / `TESTS` / `FILEMAP` / `ARCHITECTURE` §13 对齐
+- 遗留：M1-03 骨架未按新 Verification 复审；待建 pytest 文件均未创建
+- 下次优先：**M1-02** WorkflowCompiler + `test_compiler.py`（Red 阶段）
 
 ### 2026-06-22 会话 7（M1-01 Schema 校验）
 

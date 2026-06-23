@@ -6,6 +6,7 @@
 |------|------|------|
 | [`CLAUDE.md`](./CLAUDE.md) | Claude Code、全体开发者 | **唯一权威**：铁律、命令、Check-in、日志规范 |
 | [`memory/PROGRESS.md`](./memory/PROGRESS.md) | 所有 Agent | 跨会话进度接力棒 |
+| [`memory/DELIVERABLES.md`](./memory/DELIVERABLES.md) | 所有 Agent | Task 交付索引（Commit / Verification / 证据） |
 | [`memory/DECISIONS.md`](./memory/DECISIONS.md) | 所有 Agent | 最新决策与开放问题（唯一汇总地） |
 | [`memory/FILEMAP.md`](./memory/FILEMAP.md) | 所有 Agent | 文件路径速查（Check-in 用） |
 | [`specs/core/proposal.md`](./specs/core/proposal.md) | 产品追溯 | 历史快照，非权威 |

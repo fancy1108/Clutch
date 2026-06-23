@@ -372,18 +372,30 @@ class ToolAdapter(Protocol):
 
 ## 7. 前端模块与 Prototype 映射
 
-| Prototype 组件 | 目标职责 |
-|----------------|----------|
-| `App.tsx` | 移除 mock 逻辑；接入 WebSocket store |
-| `sidebar.tsx` | 工作区 / 运行历史列表（接 API） |
-| `ChatFeed.tsx` | 渲染 `message` 事件；人工干预 UI |
-| `RightPanel.tsx` | Overview / Files / Flow / Changes / Terminal |
-| `WorkflowOrchestration.tsx` | Workflow JSON 编辑器 + 校验 + 保存 |
-| `AgentManager.tsx` | Agent 角色配置（prompt、deliverables、tools） |
-| `AiToolsManager.tsx` | Tool Adapter 连接状态 |
-| `SkillsRegistry.tsx` | Skills 目录扫描（localStorage → 后端同步） |
-| `McpServerHub.tsx` | MCP 连接配置（接后端） |
-| `mockData.ts` | 逐步废弃，仅保留 demo 种子数据 |
+> **任务 ID 与验收**见 [`specs/core/tasks.md`](../specs/core/tasks.md) §Prototype → Task 映射。
+
+| Prototype 组件 | 目标职责 | 主要 Task |
+|----------------|----------|-----------|
+| `App.tsx` | `ClutchState` 投影；三栏布局；文件预览浮层 | M0-03, M2-11 |
+| `App.tsx` footer | Branch / Model / Workflow 状态栏 | M2-08 |
+| `Header.tsx` | 工作区面包屑；语言切换（P2） | M2-09 · P2 i18n |
+| `sidebar.tsx` | 工作区/历史；REPOSITORIES 树 | M2-07, M2-09 |
+| `ChatFeed.tsx` | `message` / `validation_result`；人工干预；Stop | M2-01, M2-04, M2-14, M1-03 |
+| `RightPanel.tsx` | Overview / Files / Flow / Changes / Terminal | M2-03, M2-11~13, M3-02, M2-02 |
+| `RightPanel` Reassign | 「交给 Builder 修复」 | M2-12 |
+| `TerminalPanel.tsx` | 子进程日志流 | M2-02 |
+| `WorkflowOrchestration.tsx` | Workflow JSON 编辑、校验、保存 | M1-02, M1-06, M1-07 |
+| `AgentManager.tsx` | Agent prompt、deliverables、工具绑定 | M4-02, M3-05 |
+| `ModelsManager.tsx` | 模型与 Provider 配置 UI | M1-08, M4-04, M4-09 |
+| `AiToolsManager.tsx` | Tool Adapter 连接状态 | M4-03 |
+| `SkillsRegistry.tsx` | Skills 目录（P2 后端同步） | P2 |
+| `McpServerHub.tsx` | MCP 连接配置 | M4-03 |
+| `ThemeManager.tsx` | 主题预设（P2 持久化） | P2 |
+| `SystemPreferencesModal.tsx` | 设置模态壳 | — |
+| `LanguageContext.tsx` | en/zh 文案 | P2 |
+| `services/clutchState.ts` | WebSocket store | M0-02, M0-03 |
+| `services/api.ts` | HTTP/编排 API（去 mock） | M2-06, M2-01, M2-12 |
+| `mockData.ts` | 逐步废弃，仅 demo 种子 | M2-06 |
 
 ### 7.1 运行模式
 
@@ -469,10 +481,21 @@ cd apps/desktop && npm run tauri dev
 
 ## 13. 开放问题（后续迭代）
 
-- [ ] LLM Provider 抽象（Claude / Gemini / 本地模型）的统一 Router 设计
-- [ ] 多工作区并行运行的资源隔离与进程沙箱
+> **已决策 / 已拆任务**项见 [`memory/DECISIONS.md`](../memory/DECISIONS.md) 与 [`specs/core/tasks.md`](../specs/core/tasks.md)，**不再**重复列于下方。
+
+### 已关闭或已拆入 tasks
+
+| 原问题 | 决策 / 任务 |
+|--------|-------------|
+| LLM Provider 统一 Router | **D4** → **M1-08** |
+| 运行历史持久化 | **D3** → **M2-07**（MVP 纳入；存储方案 M2 实现时定） |
+| 工作区授权与白名单 | **M2-09** + **M4-05** |
+| 子进程崩溃隔离 | **M3-07** |
+
+### 仍开放（MVP 后或未定方案）
+
+- [ ] 多工作区**并行**运行的资源隔离与进程沙箱（单工作区见 M2-09）
 - [ ] Workflow 版本管理与回滚 UI
-- [ ] 运行历史持久化与可观测性（本地 SQLite？）
 - [ ] 团队协作（工作流导出/导入格式标准化）
 
 ---

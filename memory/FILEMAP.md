@@ -33,8 +33,12 @@
 | 铁律、命令、Check-in | `CLAUDE.md` |
 | 产品需求历史 | `specs/core/proposal.md` |
 | 视觉设计快照 | `specs/core/design.md` → `UI_UX_GUIDELINES.md` |
-| 开发任务清单 | `specs/core/tasks.md` |
+| 开发任务清单（含 Verification） | `specs/core/tasks.md` |
+| Prototype → Task 全量映射 | `specs/core/tasks.md` §Prototype → Task 映射 |
+| 待建 pytest 与 task 映射 | `specs/core/tasks.md` §待建 pytest 文件 |
+| 里程碑级验收 T-01~04 | `specs/core/tasks.md` §测试与验收 |
 | 进度 / 待办 | `memory/PROGRESS.md` |
+| Task 交付索引（Commit / 证据） | `memory/DELIVERABLES.md` |
 | 决策与开放问题 | `memory/DECISIONS.md` |
 | 功能验收状态 | `memory/ROADMAP.md` |
 | 测试门禁状态 | `memory/TESTS.md` |
@@ -47,13 +51,13 @@
 |---------|--------|
 | 测试策略与 E2E 范围 | `memory/DECISIONS.md`（D1） |
 | E2E 落地前提勾选 | `memory/ROADMAP.md` §E2E 落地前提 |
-| 后端单元测试 | `services/orchestrator/tests/` |
+| 后端单元测试（现有 + 随 task 新建） | `services/orchestrator/tests/`；清单见 `tasks.md` §待建 pytest |
 | CI 工作流 | `.github/workflows/ci.yml` |
 | 本地一键校验 | `scripts/verify.sh` |
 | 文档↔代码漂移机检 | `scripts/check-doc-drift.sh` |
 | Git pre-commit（条件触发） | `.husky/pre-commit` |
 | 验证报告归档 | `runs/verification/`（gitignore） |
-| E2E 包（M2 后，D1 可执行时） | `e2e/`（尚未创建） |
+| E2E 包（M2-10，D1 可执行后） | `e2e/`（尚未创建；Smoke：health + WS） |
 
 ### 前端（`apps/desktop/src`）
 
@@ -62,9 +66,17 @@
 | 应用根布局、ClutchState 投影 | `App.tsx` |
 | WebSocket store、`useClutchState` | `services/clutchState.ts` |
 | API 抽象（mock 待 M2 替换） | `services/api.ts` |
-| 侧栏（工作区 / 历史） | `sidebar.tsx` |
+| 侧栏（工作区 / 历史，M2-07/09） | `sidebar.tsx` |
+| 底部状态栏（M2-08） | `App.tsx`（Branch / Mode / Flow） |
 | Chat 流与人工干预 UI | `components/ChatFeed.tsx` |
-| 右侧面板（Overview/Terminal/Changes/Flow） | `components/RightPanel.tsx` |
+| 右侧面板（Overview/Files/Flow/Changes/Terminal） | `components/RightPanel.tsx` |
+| Terminal 日志子面板 | `components/TerminalPanel.tsx` |
+| 文件预览浮层 | `App.tsx`（`previewFile`） |
+| 底部状态栏（M2-08） | `App.tsx` footer |
+| 模型配置 UI（M4-09） | `components/ModelsManager.tsx` |
+| 主题 Appearance（P2） | `components/ThemeManager.tsx` |
+| 设置模态壳 | `components/SystemPreferencesModal.tsx` |
+| i18n（P2） | `components/LanguageContext.tsx` |
 | 工作流画布编辑 | `components/WorkflowOrchestration.tsx` |
 | Agent 角色配置 | `components/AgentManager.tsx` |
 | AI 工具连接状态 | `components/AiToolsManager.tsx` |
@@ -85,8 +97,10 @@
 | ClutchState 初始值 | `src/state.py` |
 | LangGraph 最小运行时 | `src/graph.py` |
 | Workflow JSON Schema 校验 | `src/workflow_validator.py` |
-| （待建）WorkflowCompiler | `src/compiler/` |
-| （待建）CLI / GUI Adapter | `src/adapters/` |
+| WorkflowCompiler（M1-02） | `src/compiler/`（待建） |
+| LLM Provider Router（M1-08，D4） | `src/llm/` 或 `src/providers/`（待建） |
+| 用户工作流存储 API（M1-09，D5） | `src/workflow_storage.py`（待建） |
+| CLI / GUI Adapter（M3） | `src/adapters/`（待建） |
 | 依赖与 pytest 配置 | `pyproject.toml` |
 
 ### 共享与 Workflow

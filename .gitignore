@@ -30,6 +30,7 @@ htmlcov/
 # Layer 5 — 验证报告归档（保留目录占位）
 runs/verification/*
 !runs/verification/.gitkeep
+!runs/verification/README.md
 
 # E2E 报告（e2e/ 创建后，见 DECISIONS D1）
 e2e/playwright-report/
