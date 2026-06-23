@@ -4,8 +4,8 @@
 
 - 阶段：**M0 核心完成 / M1 骨架启动**
 - 说明：WebSocket `state_patch` 全链路打通；LangGraph 最小图 + `start_run` API 就绪
-- 焦点：**M1-09** 用户工作流持久化 API（或 M0-05 Sidecar 生命周期）
-- Git HEAD：`63e1bde`（M1-08）
+- 焦点：**M0-05** / **M1-06**（阻塞见 `FAILURES.md`）
+- Git HEAD：`b6584ef`（M1-07）
 
 ## 治理脚手架就绪标准（文档层 ✅）
 
@@ -39,13 +39,22 @@
 - [x] **M1-03**：`start_run` 对接 WorkflowCompiler + `test_start_run` 增强断言
 - [x] **M1-04**：Orchestrator 路由（边优先、LLM 兜底）+ `test_orchestrator_routing.py`
 - [x] **M1-05**：`run_completed` WS 推送 + `test_run_completed.py`
-- [ ] **M0-05**：Tauri 拉起 Sidecar
-- [ ] **M0-06**：`ClutchState` 类型对齐复审
+- [ ] **M0-05**：Tauri 拉起 Sidecar — `[OPEN]` 无 Rust
+- [x] **M0-06**：`ClutchState` 类型对齐复审
+- [x] **M1-07**：图结构保存前校验
+- [ ] **M1-06**：工作流编辑器保存/加载 — `[OPEN]` UI↔JSON 映射未定
 - [x] **M1-08**：LLM Provider Router + `test_llm_provider.py`
-- [ ] **M1-09**：用户工作流持久化 API
+- [x] **M1-09**：用户工作流持久化 API + `test_workflow_storage.py`
 - [ ] **M2**：M2-01–14（见 `tasks.md` §M2）
 
 ## 会话日志（最新在上）
+
+### 2026-06-23 会话 16（M1-09 / M1-07 / M0-06）
+
+- 完成：M1-09 用户工作流 CRUD API（5 tests）；M1-07 图结构中文校验（+3 tests）；M0-06 类型对齐复审 ✅
+- 阻塞：M0-05（无 Rust）；M1-06（WorkflowDef vs compiler JSON）→ `FAILURES.md`
+- 证据：`runs/verification/2026-06-23-m1-09-workflow-storage-pytest.log`；verify.sh 47 passed
+- 下次优先：解除 M0-05 / M1-06 阻塞后 → M2-01
 
 ### 2026-06-23 会话 15（M1-08 LLM Provider Router）
 

@@ -155,12 +155,38 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
   - `services/orchestrator/src/llm/__init__.py` — 包导出
   - `services/orchestrator/tests/test_llm_provider.py` — Router 与 orchestrator 路由集成测试
 
+### M1-09 ✅
+- **日期：** 2026-06-23
+- **Commit：** `7048999` — feat(m1): add user workflow persistence API (M1-09)
+- **Verification：** `uv run pytest tests/test_workflow_storage.py -v` → 5 passed；`./scripts/verify.sh` → 44 passed
+- **证据：** `runs/verification/2026-06-23-m1-09-workflow-storage-pytest.log`
+- **交付文件：**
+  - `services/orchestrator/src/workflow_storage.py` — D5 内置模板只读 + 用户目录 CRUD
+  - `services/orchestrator/src/main.py` — `/api/workflows/templates|user` 路由；`start_run` 走 `resolve_workflow`
+  - `services/orchestrator/tests/test_workflow_storage.py` — 路径与 CRUD 集成测试
+
+### M0-06 ✅
+- **日期：** 2026-06-23
+- **Commit：** 文档 commit — ClutchState 字段对齐复审
+- **Verification：** 人工 diff `packages/shared-types/index.ts` ↔ `services/orchestrator/src/state.py`；`pnpm build` 无类型错误
+- **证据：** 本节字段对照表；`./scripts/verify.sh` 通过
+- **结论：** 9 个 `ClutchState` 字段与 `ClutchRunStatus` 枚举一致，无需代码变更
+
+### M1-07 ✅
+- **日期：** 2026-06-23
+- **Commit：** `b6584ef` — feat(m1): add workflow graph structure validation (M1-07)
+- **Verification：** `uv run pytest tests/test_workflow_validator.py -k invalid -v` → 4 passed；`./scripts/verify.sh` → 47 passed
+- **证据：** `runs/verification/`（verify.sh 全量）
+- **交付文件：**
+  - `services/orchestrator/src/workflow_validator.py` — `validate_workflow_graph` 中文图结构错误
+  - `services/orchestrator/tests/test_workflow_validator.py` — 缺 start/end、孤立节点用例
+
 ---
 
 ## 待交付（下一 Task）
 
-| Task | 焦点 |
-|------|------|
-| **M1-09** | 用户工作流持久化 API + `test_workflow_storage.py` |
-| **M0-05** | `src-tauri/` Sidecar 生命周期 |
-| **M0-06** | 类型对齐复审结论写入本节 |
+| Task | 焦点 | 状态 |
+|------|------|------|
+| **M0-05** | Tauri Sidecar 生命周期 | `[OPEN]` 本机无 Rust |
+| **M1-06** | 工作流编辑器保存/加载 | `[OPEN]` UI 模型 ↔ compiler JSON 无映射规范 |
+| **M2-01** | Chat 接 `message` 事件 | 待 M1 收尾 |

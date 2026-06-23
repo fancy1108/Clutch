@@ -100,7 +100,7 @@
 | WorkflowCompiler（M1-02） | `src/compiler/` |
 | Orchestrator 路由（M1-04） | `src/orchestrator/routing.py` |
 | LLM Provider Router（M1-08，D4） | `src/llm/router.py` |
-| 用户工作流存储 API（M1-09，D5） | `src/workflow_storage.py`（待建） |
+| 用户工作流存储 API（M1-09，D5） | `src/workflow_storage.py` |
 | CLI / GUI Adapter（M3） | `src/adapters/`（待建） |
 | 依赖与 pytest 配置 | `pyproject.toml` |
 
