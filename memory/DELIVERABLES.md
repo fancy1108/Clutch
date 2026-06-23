@@ -102,7 +102,7 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 | 会话 | 状态 | 说明 |
 |------|------|------|
-| 会话 8–9（2026-06-23） | ⏳ 未 commit | `tasks.md`、`ROADMAP`、`DELIVERABLES` 等；commit 后在此补 Task-ID 与 hash |
+| 会话 8–10（2026-06-23） | ✅ `0a24a7b` | `tasks.md`、`ROADMAP`、`DELIVERABLES`、Check-out 规则、`ARCHITECTURE` §7/§13 |
 | D7 验收兜底 | ✅ `cba4094` | `check-doc-drift.sh`、Husky、truth-alignment |
 | D1/D2 测试治理 | ✅ 多 commit | `verify.sh`、`.github/workflows/ci.yml` |
 
