@@ -39,7 +39,7 @@
 | ID | 任务 | FR | 完成标准 | Verification |
 |----|------|-----|----------|--------------|
 | M0-01 | FastAPI Sidecar 健康检查与 CORS | FR-07-02, FR-07-04 | `/health` 可用；仅 `127.0.0.1:8123` | `uv run pytest tests/test_health.py -v` |
-| M0-02 | WebSocket 连接与信封格式 | FR-03-05 | `event` + `data`；含 `state_patch` | `uv run pytest tests/test_ws_state_patch.py -v` |
+| M0-02 | WebSocket 连接与信封格式 | FR-03-05 | `event` + `data`；含 `state_patch`；**无**侧栏调试按钮（联调靠 pytest + 主聊天 `submitChatMessage`） | `uv run pytest tests/test_ws_state_patch.py -v` |
 | M0-03 | 前端 WebSocket store（替换 mock 驱动） | FR-02-04 | `App.tsx` 投影 `ClutchState`；禁止 `setTimeout` 编排 | `pnpm build`；`CLUTCH_STRICT_MOCK=1 ./scripts/check-doc-drift.sh` |
 | M0-04 | Vite 代理 `/api`、`/ws` → 8123 | — | `pnpm dev` 可连 Sidecar | Sidecar 启动后 `curl -s http://127.0.0.1:8123/health` 返回 200 |
 | M0-05 | Tauri 拉起 Sidecar 生命周期 | FR-07-01, FR-07-02 | 单入口启动；失败有明确错误 | `pnpm tauri dev` 启动后 `/health` 可达，无需手动开第二个终端 |

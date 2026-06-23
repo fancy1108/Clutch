@@ -42,8 +42,8 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 - **Verification：** `uv run pytest tests/test_ws_state_patch.py -v`（WS 全链路在 M0-03 commit 补强）
 - **证据：** 同上；`test_ws_state_patch.py` 在 `42f9423` 完善
 - **交付文件：**
-  - `apps/desktop/src/services/api.ts` — Sidecar WS 测试发送
-  - `apps/desktop/src/sidebar.tsx` — [Test WS] 按钮
+  - `apps/desktop/src/services/api.ts` — Sidecar WS 测试发送（`sendSidecarTestMessage`，已于 `2d85c14` 移除）
+  - `apps/desktop/src/sidebar.tsx` — ~~[Test WS] 调试按钮~~（M0 联调用；`2d85c14` 移除，用户改由主聊天 `submitChatMessage`）
 
 ### M0-03 ✅
 - **日期：** 2026-06-22
@@ -207,4 +207,14 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
   - `services/orchestrator/src/main.py` — `POST /api/runs/{id}/human-decision`、`GET /api/models/credentials`
   - `e2e/tests/mvp-closed-loop.spec.ts` — T-03 Playwright
   - `services/orchestrator/tests/test_mvp_closed_loop.py` — T-03 API
+
+### UI 清理 — 移除 M0 [Test WS] 调试按钮 ✅
+- **日期：** 2026-06-23
+- **Commit：** `2d85c14` — fix(desktop): remove M0 WebSocket debug button from sidebar
+- **Verification：** `2d85c14` pre-commit：`./scripts/verify.sh` → build + 73 pytest + 3 E2E + drift ✅
+- **证据：** commit hook 输出（`2d85c14`）；Check-out 时工作区 WIP 致 pytest 收集失败，与本次变更无关
+- **交付文件：** `git show 2d85c14 --stat`
+  - `apps/desktop/src/sidebar.tsx` — 移除侧栏 `[Test WS]` 按钮
+  - `apps/desktop/src/services/clutchState.ts` — 删除 `sendSidecarTestMessage`
+  - `apps/desktop/src/services/api.ts` — 移除对应 export
   - `scripts/run-e2e.sh` — E2E 门禁（自动起 Sidecar）

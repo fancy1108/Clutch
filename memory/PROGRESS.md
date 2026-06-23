@@ -3,9 +3,9 @@
 ## 当前状态
 
 - 阶段：**M0–M4 MVP 验收形态就绪**
-- 说明：Claude Code CLI 凭证自动导入、`POST /api/runs/{id}/human-decision`、T-03 MVP 闭环 E2E、`verify.sh` 含 E2E 门禁；70 pytest + 3 Playwright 绿
-- 焦点：用户本机验收 DMG（`apps/desktop` → `pnpm tauri build`）；可选 push 触发 CI
-- Git HEAD：`c1b16cf`
+- 说明：Claude Code CLI 凭证自动导入、`POST /api/runs/{id}/human-decision`、T-03 MVP 闭环 E2E、`verify.sh` 含 E2E 门禁；73 pytest + 3 Playwright 绿
+- 焦点：用户本机验收 DMG；工作区多项目 WIP（未提交）；可选 push 触发 CI
+- Git HEAD：`2d85c14`（+ 工作区未提交改动）
 
 ## 治理脚手架就绪标准（文档层 ✅）
 
@@ -31,6 +31,13 @@
 - [ ] Push 至 `origin` 触发 CI
 
 ## 会话日志（最新在上）
+
+### 2026-06-23 会话 21（移除 [Test WS] 调试 UI）
+
+- 完成：识别侧栏 `[Test WS]` 为 M0-02 开发联调遗留；移除按钮与 `sendSidecarTestMessage`；同步 `DELIVERABLES` / `tasks.md` / `PROGRESS`
+- 校验：`2d85c14` pre-commit `verify.sh` ✅；Check-out 时 WIP `main.py:133` SyntaxError 致 pytest 失败（与本次无关）
+- Commit：`2d85c14`
+- 下次优先：继续工作区多项目 WIP 并提交；用户 DMG 验收；push CI
 
 ### 2026-06-23 会话 20（MVP 验收收尾）
 
