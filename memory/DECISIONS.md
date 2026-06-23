@@ -83,6 +83,18 @@
 - **落地前提**：无
 - **决策状态**：`已落地`
 
+### D9 · 工作流编辑器双模式（画布 + JSON）（2026-06-23）
+
+- **背景**：M1-06 阻塞 — Prototype 画布用 `WorkflowDef/steps`，执行引擎用 compiler `nodes/edges`；用户希望简单流程拖拽、复杂流程（检查/审批/循环）直接写 JSON。
+- **方案**：
+  1. **JSON 为执行 SSOT**：保存/加载一律走 M1-09 API 与 compiler JSON Schema + 图结构校验
+  2. **画布模式（简单）**：仅当工作流为**线性** `agent_task` 链 + 单一 `end`、无条件边时可双向转换（`workflowFormat.ts`）
+  3. **JSON 模式（高级）**：始终可用；含 `check` / `human_gate` / 条件边 / 分支时自动禁用画布或只读提示，用户直接编辑 JSON
+  4. **内置模板只读**：编辑后通过「另存为副本」写入用户目录（D5）
+- **影响**：`WorkflowOrchestration.tsx`、`WorkflowJsonPanel.tsx`、`workflowFormat.ts`、`workflowApi.ts`；复杂能力不强行塞进画布
+- **落地前提**：M1-09 ✅
+- **决策状态**：`可执行`
+
 ### D8 · PR-Agent / DangerJS 暂缓（2026-06-22）
 
 - **背景**：Vibe 8.5 兵器库含 PR 对照与 PR 结构合规工具；当前无逐功能 `design.md`（`specs/core/design.md` 仅为视觉快照）、无多人 PR 协作流。

@@ -1,6 +1,5 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { WorkflowStep, WorkflowDef } from '../types';
-import { mockWorkflows } from '../mockData';
 import {
   ReactFlow,
   Controls,
@@ -18,6 +17,26 @@ import {
   MarkerType
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import { WorkflowJsonPanel } from './WorkflowJsonPanel';
+import {
+  canvasToCompiler,
+  compilerToCanvas,
+  formatCompilerJson,
+  isCanvasCompatible,
+  parseCompilerJson,
+  type CompilerWorkflow,
+} from '../services/workflowFormat';
+import {
+  deleteUserWorkflow,
+  listWorkflowItems,
+  loadTemplateWorkflow,
+  loadUserWorkflow,
+  saveUserWorkflow,
+  validateWorkflow,
+  type WorkflowListItem,
+} from '../services/workflowApi';
+
+type EditorViewMode = 'canvas' | 'json';
 
 interface WorkflowOrchestrationProps {
   onClose: () => void;
@@ -83,10 +102,18 @@ const nodeTypes = {
 };
 
 export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({ onClose, isModalStyle }) => {
-  const [workflows, setWorkflows] = useState<WorkflowDef[]>(mockWorkflows);
-  const [activeWorkflowId, setActiveWorkflowId] = useState<string>(workflows[0]?.id || '');
-
-  const activeWorkflow = workflows.find(wf => wf.id === activeWorkflowId);
+  const [listItems, setListItems] = useState<WorkflowListItem[]>([]);
+  const [activeItem, setActiveItem] = useState<WorkflowListItem | null>(null);
+  const [workflows, setWorkflows] = useState<WorkflowDef[]>([]);
+  const [activeWorkflowId, setActiveWorkflowId] = useState<string>('');
+  const [viewMode, setViewMode] = useState<EditorViewMode>('json');
+  const [jsonText, setJsonText] = useState('');
+  const [canvasCompatible, setCanvasCompatible] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Nodes and edges states
   const [nodes, setNodes] = useState<Node[]>([]);
@@ -101,6 +128,107 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({ on
   const [newWorkflowName, setNewWorkflowName] = useState('');
   const [newWorkflowDesc, setNewWorkflowDesc] = useState('');
   const [newWorkflowIcon, setNewWorkflowIcon] = useState('account_tree');
+
+  const activeWorkflow = workflows.find(wf => wf.id === activeWorkflowId);
+
+  const refreshList = useCallback(async () => {
+    const items = await listWorkflowItems();
+    setListItems(items);
+    return items;
+  }, []);
+
+  const applyCompilerWorkflow = useCallback((item: WorkflowListItem, workflow: CompilerWorkflow) => {
+    setActiveItem(item);
+    setJsonText(formatCompilerJson(workflow));
+    setSaveError(null);
+    setSaveStatus(null);
+    const compatible = isCanvasCompatible(workflow);
+    setCanvasCompatible(compatible);
+    if (compatible) {
+      const canvas = compilerToCanvas(workflow, item.source === 'template' ? 'movie' : 'account_tree');
+      setWorkflows((prev) => {
+        const rest = prev.filter((w) => w.id !== canvas.id);
+        return [...rest, canvas];
+      });
+      setActiveWorkflowId(canvas.id);
+    } else {
+      setViewMode('json');
+    }
+  }, []);
+
+  const selectWorkflow = useCallback(async (item: WorkflowListItem) => {
+    try {
+      setLoadError(null);
+      const workflow =
+        item.source === 'template'
+          ? await loadTemplateWorkflow(item.id)
+          : await loadUserWorkflow(item.id);
+      applyCompilerWorkflow(item, workflow);
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : '加载失败');
+    }
+  }, [applyCompilerWorkflow]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        setLoading(true);
+        const items = await refreshList();
+        if (!cancelled && items.length > 0) {
+          await selectWorkflow(items[0]);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setLoadError(err instanceof Error ? err.message : '无法连接 Sidecar');
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshList, selectWorkflow]);
+
+  const handleSaveWorkflow = async () => {
+    setIsSaving(true);
+    setSaveError(null);
+    setSaveStatus(null);
+    try {
+      let compiler: CompilerWorkflow;
+      if (viewMode === 'canvas' && canvasCompatible && activeWorkflow) {
+        compiler = canvasToCompiler(activeWorkflow);
+      } else {
+        compiler = parseCompilerJson(jsonText);
+      }
+
+      if (activeItem?.readOnly) {
+        compiler = {
+          ...compiler,
+          id: compiler.id.endsWith('-custom') ? compiler.id : `${compiler.id}-custom`,
+          name: `${compiler.name} (副本)`,
+        };
+      }
+
+      await validateWorkflow(compiler);
+      await saveUserWorkflow(compiler);
+      setSaveStatus('已保存到本机工作流目录');
+      const items = await refreshList();
+      const saved = items.find((i) => i.id === compiler.id && i.source === 'user');
+      if (saved) await selectWorkflow(saved);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : '保存失败');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const syncJsonFromCanvas = () => {
+    if (!activeWorkflow) return;
+    const compiler = canvasToCompiler(activeWorkflow);
+    setJsonText(formatCompilerJson(compiler));
+  };
 
   // Layout conversion
   React.useEffect(() => {
@@ -197,26 +325,62 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({ on
     setNewWorkflowIcon('account_tree');
   };
 
-  const saveNewWorkflow = () => {
+  const saveNewWorkflow = async () => {
     if (!newWorkflowName.trim()) return;
-    const newWf: WorkflowDef = {
-      id: `wf-${Date.now()}`,
+    const slug = newWorkflowName
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '') || `flow-${Date.now()}`;
+    const empty: CompilerWorkflow = {
+      id: slug,
       name: newWorkflowName.trim(),
-      description: newWorkflowDesc.trim() || 'No description provided.',
-      lastDeployed: 'Just now',
-      isActive: true,
-      icon: newWorkflowIcon,
-      steps: []
+      version: 1,
+      nodes: [
+        {
+          id: 'n1',
+          type: 'agent_task',
+          position: { x: 250, y: 80 },
+          data: {
+            label: '第一步',
+            agent: 'Builder',
+            instruction: newWorkflowDesc.trim() || '在此填写任务说明',
+          },
+        },
+        { id: 'end', type: 'end', position: { x: 250, y: 220 }, data: { label: '完成' } },
+      ],
+      edges: [
+        { id: 'e1', source: 'start', target: 'n1' },
+        { id: 'e2', source: 'n1', target: 'end' },
+      ],
     };
-    setWorkflows(prev => [...prev, newWf]);
-    setActiveWorkflowId(newWf.id);
-    setIsCreatingWorkflow(false);
+    try {
+      await validateWorkflow(empty);
+      await saveUserWorkflow(empty);
+      setIsCreatingWorkflow(false);
+      const items = await refreshList();
+      const created = items.find((i) => i.id === slug);
+      if (created) await selectWorkflow(created);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : '创建工作流失败');
+    }
   };
 
-  const deleteWorkflow = (id: string) => {
-    if (!confirm('Are you sure you want to delete this workflow?')) return;
-    setWorkflows(prev => prev.filter(w => w.id !== id));
-    if (activeWorkflowId === id) setActiveWorkflowId('');
+  const deleteWorkflow = async (id: string, source: 'template' | 'user') => {
+    if (source === 'template') return;
+    if (!confirm('确定删除此工作流？')) return;
+    try {
+      await deleteUserWorkflow(id);
+      const items = await refreshList();
+      if (items.length > 0) await selectWorkflow(items[0]);
+      else {
+        setActiveItem(null);
+        setActiveWorkflowId('');
+        setJsonText('');
+      }
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : '删除失败');
+    }
   };
 
   const deleteNode = (nodeId: string) => {
@@ -358,13 +522,29 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({ on
             Design and manage cooperative multi-agent state pipelines.
           </p>
         </div>
-        <button
-          onClick={handleCreateWorkflow}
-          className="flex items-center gap-1.5 px-4 py-2 bg-neutral-900 hover:bg-neutral-800 text-white border border-neutral-900 rounded-xl text-xs font-bold transition-all shadow-sm active:scale-97 cursor-pointer"
-        >
-          <span className="material-symbols-outlined text-[15px]">add</span>
-          Create Flow
-        </button>
+        <div className="flex items-center gap-2">
+          {saveStatus && (
+            <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-2 py-1 rounded-lg">
+              {saveStatus}
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={handleSaveWorkflow}
+            disabled={isSaving || loading}
+            className="flex items-center gap-1.5 px-4 py-2 bg-neutral-900 hover:bg-neutral-800 text-white border border-neutral-900 rounded-xl text-xs font-bold transition-all shadow-sm disabled:opacity-40 cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-[15px]">save</span>
+            {activeItem?.readOnly ? '另存为副本' : '保存'}
+          </button>
+          <button
+            onClick={handleCreateWorkflow}
+            className="flex items-center gap-1.5 px-4 py-2 bg-neutral-50 hover:bg-neutral-100 text-neutral-800 border border-neutral-200 rounded-xl text-xs font-bold transition-all cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-[15px]">add</span>
+            Create Flow
+          </button>
+        </div>
       </header>
 
       <div className="flex flex-1 min-h-0">
@@ -373,83 +553,137 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({ on
           <h3 className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest pl-2 mb-1 text-left">
             Active SOP Workflows
           </h3>
-          {workflows.map(wf => (
+          {loading && (
+            <p className="text-[10px] text-neutral-400 pl-2 font-mono">加载中…</p>
+          )}
+          {loadError && (
+            <p className="text-[10px] text-rose-700 bg-rose-50 border border-rose-200/80 rounded-lg px-2 py-1.5 mx-1">
+              {loadError}
+            </p>
+          )}
+          {listItems.map(item => (
             <div
-              key={wf.id}
-              onClick={() => setActiveWorkflowId(wf.id)}
+              key={`${item.source}-${item.id}`}
+              onClick={() => selectWorkflow(item)}
               className={`p-3 border rounded-xl flex items-center justify-between cursor-pointer transition-all bg-white relative ${
-                activeWorkflowId === wf.id
+                activeItem?.id === item.id && activeItem?.source === item.source
                   ? 'border-neutral-300 bg-neutral-50 shadow-sm'
                   : 'border-neutral-200/50 hover:border-neutral-300 shadow-xs'
               }`}
             >
               <div className="flex items-center gap-3 overflow-hidden">
                 <div className="w-8 h-8 rounded-lg bg-neutral-100/70 flex flex-shrink-0 items-center justify-center">
-                  <span className="material-symbols-outlined text-neutral-600 text-[18px]">{wf.icon || 'code'}</span>
+                  <span className="material-symbols-outlined text-neutral-600 text-[18px]">
+                    {item.source === 'template' ? 'movie' : 'account_tree'}
+                  </span>
                 </div>
                 <div className="overflow-hidden text-left">
-                  <h4 className="text-[11px] font-bold text-neutral-800 truncate">{wf.name}</h4>
+                  <h4 className="text-[11px] font-bold text-neutral-800 truncate">{item.name}</h4>
                   <p className="text-[9px] text-neutral-400 font-mono mt-0.5 truncate">
-                    Updated: {wf.lastDeployed}
+                    {item.source === 'template' ? '内置模板 · 只读' : '用户工作流'}
                   </p>
                 </div>
               </div>
-              <button 
-                onClick={(e) => { e.stopPropagation(); deleteWorkflow(wf.id); }}
-                className="text-neutral-300 hover:text-red-500 transition-colors ml-2 flex-shrink-0"
-              >
-                <span className="material-symbols-outlined text-[14px]">delete</span>
-              </button>
+              {!item.readOnly && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); deleteWorkflow(item.id, item.source); }}
+                  className="text-neutral-300 hover:text-red-500 transition-colors ml-2 flex-shrink-0"
+                >
+                  <span className="material-symbols-outlined text-[14px]">delete</span>
+                </button>
+              )}
             </div>
           ))}
         </div>
 
-        {/* Right main area for workflow canvas */}
-        <div className="flex-1 flex flex-col relative">
-          {activeWorkflow ? (
+        <div className="flex-1 flex flex-col relative min-h-0">
+          {activeItem ? (
             <>
-              {/* Left-side non-card clean information header */}
-              <div className="absolute top-5 left-6 z-10 text-left pointer-events-none select-none">
-                <span className="text-xs font-extrabold text-neutral-800 font-sans tracking-tight block uppercase">
-                  {activeWorkflow.name}
-                </span>
-                <span className="text-[10px] text-neutral-400 font-mono mt-0.5 block">
-                  {activeWorkflow.steps.length} active nodes / steps
-                </span>
+              <div className="flex-shrink-0 flex items-center justify-between px-6 py-3 border-b border-neutral-100 bg-white/95">
+                <div className="text-left">
+                  <span className="text-xs font-extrabold text-neutral-800 font-sans tracking-tight block uppercase">
+                    {activeItem.name}
+                  </span>
+                  <span className="text-[10px] text-neutral-400 font-mono mt-0.5 block">
+                    {canvasCompatible ? '支持画布编辑（简单线性流程）' : '仅 JSON 模式（含检查/审批/分支）'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex rounded-lg border border-neutral-200 overflow-hidden text-[11px] font-bold">
+                    <button
+                      type="button"
+                      disabled={!canvasCompatible}
+                      onClick={() => { syncJsonFromCanvas(); setViewMode('canvas'); }}
+                      className={`px-3 py-1.5 transition-colors ${
+                        viewMode === 'canvas'
+                          ? 'bg-neutral-900 text-white'
+                          : 'bg-white text-neutral-600 hover:bg-neutral-50 disabled:opacity-40'
+                      }`}
+                    >
+                      画布
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setViewMode('json')}
+                      className={`px-3 py-1.5 transition-colors ${
+                        viewMode === 'json'
+                          ? 'bg-neutral-900 text-white'
+                          : 'bg-white text-neutral-600 hover:bg-neutral-50'
+                      }`}
+                    >
+                      JSON
+                    </button>
+                  </div>
+                  {viewMode === 'canvas' && canvasCompatible && (
+                    <button
+                      type="button"
+                      onClick={addNode}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-50 hover:bg-neutral-100 text-neutral-700 rounded-lg text-xs font-bold border border-neutral-200/80 cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-[15px]">add</span>
+                      Add Node
+                    </button>
+                  )}
+                </div>
               </div>
 
-              {/* Right-side sleek action button */}
-              <div className="absolute top-5 right-6 z-10 flex items-center gap-2">
-                <button
-                  onClick={addNode}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-50 hover:bg-neutral-100 text-neutral-700 hover:text-neutral-900 rounded-lg text-xs font-bold transition-all border border-neutral-200/80 shadow-xs active:scale-97 cursor-pointer"
-                  title="Add node"
-                >
-                  <span className="material-symbols-outlined text-[15px] text-neutral-500">add</span>
-                  Add Node
-                </button>
-              </div>
-
-              <div className="flex-1 relative bg-neutral-50/20">
-                <ReactFlow
-                  nodes={nodes}
-                  edges={edges}
-                  onNodesChange={onNodesChange}
-                  onEdgesChange={onEdgesChange}
-                  onConnect={onConnect}
-                  onEdgesDelete={onEdgesDelete}
-                  nodeTypes={nodeTypes}
-                  fitView
-                >
-                  <Background />
-                  <Controls />
-                </ReactFlow>
-              </div>
+              {viewMode === 'json' ? (
+                <WorkflowJsonPanel
+                  value={jsonText}
+                  onChange={setJsonText}
+                  readOnly={false}
+                  error={saveError}
+                  hint={
+                    !canvasCompatible
+                      ? '复杂流程：请用 JSON 编辑'
+                      : activeItem.readOnly
+                        ? '内置模板：编辑后请「另存为副本」'
+                        : null
+                  }
+                />
+              ) : activeWorkflow ? (
+                <div className="flex-1 relative bg-neutral-50/20 min-h-0">
+                  <ReactFlow
+                    nodes={nodes}
+                    edges={edges}
+                    onNodesChange={onNodesChange}
+                    onEdgesChange={onEdgesChange}
+                    onConnect={onConnect}
+                    onEdgesDelete={onEdgesDelete}
+                    nodeTypes={nodeTypes}
+                    fitView
+                  >
+                    <Background />
+                    <Controls />
+                  </ReactFlow>
+                </div>
+              ) : null}
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center flex-col text-neutral-400">
               <span className="material-symbols-outlined text-[32px] mb-2 font-light">account_tree</span>
-              <p className="text-xs font-medium">Select or create a workflow to view diagram</p>
+              <p className="text-xs font-medium">Select or create a workflow</p>
             </div>
           )}
         </div>
