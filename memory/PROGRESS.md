@@ -4,8 +4,8 @@
 
 - 阶段：**M0 核心完成 / M1 骨架启动**
 - 说明：WebSocket `state_patch` 全链路打通；LangGraph 最小图 + `start_run` API 就绪
-- 焦点：**M1-08** LLM Provider Router（或 M0-05 Sidecar 生命周期）
-- Git HEAD：`1dadde3`（M1-05）
+- 焦点：**M1-09** 用户工作流持久化 API（或 M0-05 Sidecar 生命周期）
+- Git HEAD：`63e1bde`（M1-08）
 
 ## 治理脚手架就绪标准（文档层 ✅）
 
@@ -41,10 +41,17 @@
 - [x] **M1-05**：`run_completed` WS 推送 + `test_run_completed.py`
 - [ ] **M0-05**：Tauri 拉起 Sidecar
 - [ ] **M0-06**：`ClutchState` 类型对齐复审
-- [ ] **M1-05/08/09**：Provider Router、工作流持久化 API（M1-05 ✅）
+- [x] **M1-08**：LLM Provider Router + `test_llm_provider.py`
+- [ ] **M1-09**：用户工作流持久化 API
 - [ ] **M2**：M2-01–14（见 `tasks.md` §M2）
 
 ## 会话日志（最新在上）
+
+### 2026-06-23 会话 15（M1-08 LLM Provider Router）
+
+- 完成：`src/llm/router.py`（Provider 抽象、默认 DeepSeek V4 Pro、可切换、按 Provider 分存 API Key）；`test_llm_provider.py` 7 passed；`verify.sh` 39 passed
+- 证据：`runs/verification/2026-06-23-m1-08-llm-provider-pytest.log`
+- 下次优先：**M1-09** 或 **M0-05**
 
 ### 2026-06-23 会话 14（M1-05 run_completed）
 

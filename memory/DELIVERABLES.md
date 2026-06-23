@@ -145,12 +145,22 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
   - `services/orchestrator/src/main.py` — `run_completed` 事件与 `ClutchState` 序列化
   - `services/orchestrator/tests/test_run_completed.py` — passed/failed 终态 WS 推送
 
+### M1-08 ✅
+- **日期：** 2026-06-23
+- **Commit：** `63e1bde` — feat(m1): add LLM Provider Router with DeepSeek default (M1-08)
+- **Verification：** `uv run pytest tests/test_llm_provider.py -v` → 7 passed；`./scripts/verify.sh` → 39 passed
+- **证据：** `runs/verification/2026-06-23-m1-08-llm-provider-pytest.log`
+- **交付文件：**
+  - `services/orchestrator/src/llm/router.py` — Provider 抽象、默认 DeepSeek V4 Pro、可切换、按 Provider 分存 Key
+  - `services/orchestrator/src/llm/__init__.py` — 包导出
+  - `services/orchestrator/tests/test_llm_provider.py` — Router 与 orchestrator 路由集成测试
+
 ---
 
 ## 待交付（下一 Task）
 
 | Task | 焦点 |
 |------|------|
-| **M1-08** | LLM Provider Router + `test_llm_provider.py` |
+| **M1-09** | 用户工作流持久化 API + `test_workflow_storage.py` |
 | **M0-05** | `src-tauri/` Sidecar 生命周期 |
 | **M0-06** | 类型对齐复审结论写入本节 |
