@@ -5,7 +5,7 @@
 - 阶段：**M0–M4 MVP + D12 桌面 E2E 门禁 ✅**
 - 说明：D11 会话持久化 + D12 `tauri-playwright` 桌面 E2E；101 pytest + 7 Playwright 绿
 - 焦点：push 触发 CI；用户本机验收 DMG
-- Git HEAD：待 commit（D11+D12 工作区）
+- Git HEAD：`9e509c3`（已 push `origin/main`）
 
 ## 治理脚手架就绪标准（文档层 ✅）
 
@@ -29,7 +29,7 @@
 - [x] **T-03**：MVP 闭环 E2E + `test_mvp_closed_loop.py`
 - [x] **D11**：会话 messages 持久化 + 侧栏历史 hydrate（代码已写，待 commit）
 - [x] **D12**：桌面 E2E 全链路 — `./scripts/run-e2e.sh` 7/7 ✅
-- [ ] **提交 + push** D11+D12 工作区改动
+- [x] **提交 + push** D11+D12 → `9e509c3`
 - [ ] **T-04**：红队 / 体感审计（可选）
 - [ ] Push 至 `origin` 触发 CI
 

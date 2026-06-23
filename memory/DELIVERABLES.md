@@ -219,10 +219,10 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
   - `apps/desktop/src/services/api.ts` — 移除对应 export
   - `scripts/run-e2e.sh` — E2E 门禁（自动起 Sidecar）
 
-### D11 · 会话消息持久化 + 历史 hydrate 🔄
+### D11 · 会话消息持久化 + 历史 hydrate ✅
 - **日期：** 2026-06-23
-- **Commit：** _（待提交）_
-- **Verification：** `uv run pytest` → 101 passed（`test_run_state_store` 含）；`pnpm build` ✅；E2E API `session-history` ✅；E2E Desktop `session-history` ❌（hydrate 可见性）
+- **Commit：** `9e509c3`
+- **Verification：** `./scripts/verify.sh` → 101 pytest + 7 Playwright ✅
 - **证据：** `runs/verification/2026-06-23-e2e-full.log`
 - **交付文件：**
   - `services/orchestrator/src/run_state_store.py` — `states/{run_id}.json` 读写
@@ -240,10 +240,10 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
   - `docs/ARCHITECTURE.md` §6.3.1 — 持久化叙事
   - `memory/DECISIONS.md` D11；`specs/core/tasks.md` M2-07 / M2-10 更新
 
-### D12 · 桌面 E2E 全链路（tauri-playwright）🔄
+### D12 · 桌面 E2E 全链路（tauri-playwright）✅
 - **日期：** 2026-06-23
-- **Commit：** _（待提交，与 D11 同批）_
-- **Verification：** `./scripts/run-e2e.sh` → **API 4/4 ✅**；**Desktop 0/3 ❌**（2026-06-23 末次跑）
+- **Commit：** `9e509c3`
+- **Verification：** `./scripts/verify.sh` → **7/7 Playwright** + 101 pytest ✅
 - **证据：** `runs/verification/2026-06-23-e2e-full.log`；`e2e/test-results/desktop-*/`
 - **已交付（代码在工作区）：**
   - `apps/desktop/src-tauri/` — `e2e-testing` feature、`tauri-plugin-playwright`、`clutch_e2e_sandbox`、`spawn_dev_sidecar` 转发 `CLUTCH_*`
@@ -253,8 +253,4 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
   - `e2e/fixtures/desktop.ts`、`e2e/tests/desktop/all-ui.spec.ts`
   - `scripts/run-e2e.sh` — API → 杀端口 → Tauri → `wait_tauri_ready` → Desktop
   - UI：`data-testid`、Branch 菜单、Terminal Clear 去占位
-- **待完成：**
-  - [ ] `all-ui`：`chat-input` textarea 输入方案
-  - [ ] `desktop/session-history`：侧栏 hydrate 断言
-  - [ ] `all-ui` 占位字符串检测用例跑通
-  - [ ] `./scripts/run-e2e.sh` 7/7 绿 → 本节改 ✅
+- **待完成：**（无 — 2026-06-23 门禁全绿）
