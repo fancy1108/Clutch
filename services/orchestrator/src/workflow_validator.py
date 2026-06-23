@@ -40,14 +40,51 @@ def validate_workflow(workflow: dict[str, Any]) -> None:
     schema = _load_schema()
     validator = Draft202012Validator(schema)
     errors = sorted(validator.iter_errors(workflow), key=lambda item: list(item.absolute_path))
-    if not errors:
-        return
+    if errors:
+        formatted = [
+            f"{'.'.join(str(part) for part in err.absolute_path) or '（根）'}: {err.message}"
+            for err in errors[:10]
+        ]
+        raise WorkflowValidationError("工作流 JSON 不符合 Schema 规范", formatted)
 
-    formatted = [
-        f"{'.'.join(str(part) for part in err.absolute_path) or '（根）'}: {err.message}"
-        for err in errors[:10]
-    ]
-    raise WorkflowValidationError("工作流 JSON 不符合 Schema 规范", formatted)
+    validate_workflow_graph(workflow)
+
+
+def validate_workflow_graph(workflow: dict[str, Any]) -> None:
+    """Graph-level checks: start/end connectivity and isolated nodes (M1-07)."""
+    errors: list[str] = []
+    nodes = workflow.get("nodes", [])
+    node_ids = {node["id"] for node in nodes}
+    has_end = any(node.get("type") == "end" for node in nodes)
+    if not has_end:
+        errors.append("工作流缺少结束节点")
+
+    edges = workflow.get("edges", [])
+    if not any(edge.get("source") == "start" for edge in edges):
+        errors.append("工作流缺少开始节点连接")
+
+    adjacency: dict[str, list[str]] = {node_id: [] for node_id in node_ids}
+    adjacency["start"] = []
+    for edge in edges:
+        source = edge.get("source")
+        target = edge.get("target")
+        if source in adjacency:
+            adjacency[source].append(str(target))
+
+    reachable: set[str] = set()
+    queue = ["start"]
+    while queue:
+        current = queue.pop()
+        for target in adjacency.get(current, []):
+            if target in node_ids and target not in reachable:
+                reachable.add(target)
+                queue.append(target)
+
+    for node_id in sorted(node_ids - reachable):
+        errors.append(f"孤立节点：{node_id} 未与开始节点连通")
+
+    if errors:
+        raise WorkflowValidationError("工作流图结构无效", errors)
 
 
 def load_workflow_by_id(workflow_id: str) -> dict[str, Any]:
