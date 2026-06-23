@@ -2,6 +2,7 @@ import React from 'react';
 import { RepositoryFolder, MainView } from './types';
 import { useLanguage } from './components/LanguageContext';
 import { sendSidecarTestMessage } from './services/api';
+import type { RunHistoryRecord } from './services/runApi';
 
 interface SidebarProps {
   currentView: MainView;
@@ -14,6 +15,7 @@ interface SidebarProps {
   isOpenState: boolean;
   setIsOpenState: (open: boolean) => void;
   isMultiAgent?: boolean;
+  runHistory?: RunHistoryRecord[];
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -26,7 +28,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onResetSimulation,
   isOpenState,
   setIsOpenState,
-  isMultiAgent = true
+  isMultiAgent = true,
+  runHistory = [],
 }) => {
   const { t } = useLanguage();
 
@@ -139,6 +142,30 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Main Folders Navigation Tree */}
         <nav className="flex-1 sidebar-scroll overflow-y-auto space-y-4 px-1 pb-4">
+          {runHistory.length > 0 && (
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-on-surface font-semibold p-1.5 rounded">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[18px] text-on-surface-variant">history</span>
+                  <span className="text-xs tracking-wide">{t('Run History')}</span>
+                </div>
+              </div>
+              <div className="space-y-0.5 ml-4 border-l-2 border-outline-variant/20 pl-2">
+                {runHistory.map((run) => (
+                  <div
+                    key={run.run_id}
+                    onClick={() => handleFlowSelect(run.workflow_id)}
+                    className="w-full flex items-center justify-between p-2 rounded-lg text-left transition-all cursor-pointer text-on-surface-variant hover:bg-surface-bright hover:text-on-surface"
+                  >
+                    <span className="text-xs truncate max-w-[140px] font-mono">{run.run_id}</span>
+                    <span className="text-[9px] font-mono bg-surface-container-high px-1 rounded uppercase">
+                      {run.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {folders.map(folder => (
             <div key={folder.name} className="space-y-1">
               <div

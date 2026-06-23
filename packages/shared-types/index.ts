@@ -83,6 +83,10 @@ export interface ClutchState {
   messages: ChatMessage[];
   terminal_logs: string[];
   changed_files: string[];
+  session_tokens?: number;
+  session_cost_usd?: number;
+  token_input?: number;
+  token_output?: number;
 }
 
 /** WebSocket `state_patch` payload (partial update). */

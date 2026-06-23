@@ -16,6 +16,7 @@ interface ChatFeedProps {
   onApprove?: () => void;
   onReject?: () => void;
   onRetryWithInstructions?: (instructions: string) => void;
+  awaitingHuman?: boolean;
 }
 
 export const ChatFeed: React.FC<ChatFeedProps> = ({
@@ -31,7 +32,8 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   isMultiAgent = true,
   onApprove,
   onReject,
-  onRetryWithInstructions
+  onRetryWithInstructions,
+  awaitingHuman = false,
 }) => {
   const { t } = useLanguage();
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -296,7 +298,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
         }}
         className="fixed bottom-8 flex justify-center px-6 z-40 transition-all duration-300 select-none"
       >
-        {runStatus === 'running' ? (
+        {runStatus === 'running' && !awaitingHuman ? (
           /* Active Workflow in-progress banner with a Stop button - perfectly aligned with the clean high-contrast theme */
           <div className="w-full max-w-2xl bg-white border border-outline-variant p-3 shadow-xl transition-all rounded-xl flex items-center justify-between select-none">
             <div className="flex items-center gap-3">
@@ -318,7 +320,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
               Stop
             </button>
           </div>
-        ) : runStatus === 'failed' ? (
+        ) : awaitingHuman || runStatus === 'failed' ? (
           /* Human-in-the-loop (人工介入) Intervention Panel - Beautiful high-contrast theme matching AGENTS.md / design.md */
           <div className="w-full max-w-2xl bg-white border border-rose-200/90 p-5 p-r-6 shadow-xl hover:shadow-2xl transition-all rounded-2xl flex flex-col gap-4 select-text text-left">
             <div className="flex items-center justify-between border-b border-neutral-100 pb-3">

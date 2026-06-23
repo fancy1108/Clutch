@@ -8,6 +8,7 @@
     "preview": "pnpm --filter @clutch/desktop preview",
     "lint": "pnpm -r lint",
     "clean": "pnpm --filter @clutch/desktop clean",
+    "test": "pnpm --filter @clutch/desktop test",
     "prepare": "husky"
   },
   "engines": {

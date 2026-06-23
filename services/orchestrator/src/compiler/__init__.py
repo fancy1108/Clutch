@@ -5,9 +5,13 @@ from src.compiler.compiler import (
     EdgeMeta,
     NodeMeta,
     WorkflowCompiler,
+    WorkflowSession,
+    begin_workflow,
     compile_workflow,
     initial_compiler_state,
+    resume_workflow,
     run_workflow,
+    workflow_run_config,
 )
 
 __all__ = [
@@ -15,7 +19,11 @@ __all__ = [
     "EdgeMeta",
     "NodeMeta",
     "WorkflowCompiler",
+    "WorkflowSession",
+    "begin_workflow",
     "compile_workflow",
     "initial_compiler_state",
+    "resume_workflow",
     "run_workflow",
+    "workflow_run_config",
 ]

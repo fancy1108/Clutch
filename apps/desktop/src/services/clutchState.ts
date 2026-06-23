@@ -14,6 +14,10 @@ function createEmptyState(runId: string): ClutchState {
     messages: [],
     terminal_logs: [],
     changed_files: [],
+    session_tokens: 0,
+    session_cost_usd: 0,
+    token_input: 0,
+    token_output: 0,
   };
 }
 
@@ -103,6 +107,36 @@ class ClutchStateStore {
             const data = envelope.data as { message?: string };
             if (data.message) {
               this.appendLog(data.message);
+            }
+            return;
+          }
+          if (envelope.event === 'human_required') {
+            this.applyPatch({ status: 'awaiting_human' });
+            return;
+          }
+          if (envelope.event === 'validation_result') {
+            const data = envelope.data as { passed?: boolean; message?: string };
+            if (data.passed === false && data.message) {
+              this.appendMessage({
+                id: `validation-${Date.now()}`,
+                agent: 'Evaluator',
+                avatar: '',
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                text: `${data.message}\n\n下一步：在下方选择「Bypass & Approve」、「Reject & Redo」，或填写指令后 Retry。`,
+                status: 'FAILED',
+                badgeText: 'VALIDATION FAILED',
+              });
+            }
+            return;
+          }
+          if (envelope.event === 'file_changed') {
+            window.dispatchEvent(new CustomEvent('clutch-file-changed', { detail: envelope.data }));
+            return;
+          }
+          if (envelope.event === 'run_completed') {
+            const data = envelope.data as { status?: string };
+            if (data.status) {
+              this.applyPatch({ status: data.status as ClutchState['status'] });
             }
           }
         } catch {

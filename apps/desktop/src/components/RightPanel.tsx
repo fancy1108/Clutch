@@ -1,24 +1,18 @@
 import React from 'react';
 import { RightTab, RunStatus, UncommittedFile } from '../types';
-import { fileTreeNodes } from '../mockData';
-
-export const getFullFileContent = (name: string): string => {
-  switch (name) {
-    case 'src/video-core/processor.ts':
-      return `import { validate } from "./utils";\n\nexport async function processVideo(assets: string[]) {\n  console.info("Processing active video templates...");\n  const result = await validate(assets);\n  return result.status === 'ok';\n}`;
-    case 'src/video-core/utils.ts':
-      return `export function logExecutionStep(step: string) {\n  console.info(\`[ORCHESTRATION] [\${new Date().toLocaleTimeString()}] -> \${step}\`);\n}\n\nexport async function validate(assets: string[]) {\n  if (assets.length === 0) {\n    return { status: "error", reason: "empty_assets" };\n  }\n  return { status: "ok" };\n}`;
-    case 'docs/verify.md':
-      return `# 🤖 Librarian Protocol v2.0 (System Commander)\n\n## 📋 Operational Directives\n\nYou are currently the **Chief Auditor** of this knowledge base. When processing \`3_Resources/Wiki/raw/buffer/\`, you must strictly adhere to the following pipeline:\n\n### 1. Quarantine Rule\n\n- Check standard file formatting. If encrypted PDF, damaged markdown or large file exceeding 100k tokens is encountered, quarantine instantly to \`3_Resources/Wiki/raw/quarantine/\`.\n- Log failures within \`3_Resources/Wiki/meta/log.md\`.\n\n### 2. Claim-First Extraction\n\n- Prior to completing a summary, you must generate a corresponding \`Claim_[FileName].md\` inside \`3_Resources/Wiki/meta/claims/\`.\n- Every detail added to the Wiki must align to original citations.\n\n### 3. Logical Melting\n\n- **Concepts**: Place general theory in \`3_Resources/Wiki/pages/concepts/\`.\n- **Entities**: Place specific software in \`3_Resources/Wiki/pages/entities/\`.\n- Bidirectional metadata link density must exceed 2 links/paragraph.\n\n### 4. Chronological Archiving\n\n- Archive raw materials to \`3_Resources/Library/YYYY/MM/\`.\n- Rename standard files to \`YYYYMMDD_[FileName].md\`.\n\n## 🚫 Hard Constraints\n\n- Physical layer (Library/) forbids logical schema categorization.\n- Never modify raw input directory files directly.\n- Wiki search sources must point to the newest physical paths.`;
-    default:
-      return '';
-  }
-};
+import type { FileTreeNode } from '../services/workspaceApi';
 
 interface RightPanelProps {
   activeTab: RightTab;
   setActiveTab: (tab: RightTab) => void;
   runStatus: RunStatus;
+  activeNodeId?: string;
+  activeAgent?: string;
+  workflowId?: string;
+  sessionTokens?: number;
+  sessionCostUsd?: number;
+  tokenInput?: number;
+  tokenOutput?: number;
   onReassign: () => void;
   uncommitted: UncommittedFile[];
   terminalLogs: string[];
@@ -28,12 +22,22 @@ interface RightPanelProps {
   rightSidebarWidth: number;
   onPreviewFile: (file: { name: string; content: string }) => void;
   isMultiAgent?: boolean;
+  workspaceFiles?: FileTreeNode[];
+  onOpenWorkspaceFile?: (path: string) => void;
+  workspaceAuthorized?: boolean;
 }
 
 export const RightPanel: React.FC<RightPanelProps> = ({
   activeTab,
   setActiveTab,
   runStatus,
+  activeNodeId = '',
+  activeAgent = 'Orchestrator',
+  workflowId = '',
+  sessionTokens = 0,
+  sessionCostUsd = 0,
+  tokenInput = 0,
+  tokenOutput = 0,
   onReassign,
   uncommitted,
   terminalLogs,
@@ -42,8 +46,21 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   selectedSidebarWidth,
   rightSidebarWidth,
   onPreviewFile,
-  isMultiAgent = true
+  isMultiAgent = true,
+  workspaceFiles = [],
+  onOpenWorkspaceFile,
+  workspaceAuthorized = false,
 }) => {
+  const flowHighlight = (role: 'orchestrator' | 'builder' | 'evaluator') => {
+    const agent = activeAgent.toLowerCase();
+    if (role === 'orchestrator') return activeNodeId === 'start' || agent === 'orchestrator';
+    if (role === 'builder') return activeNodeId === 'n1' || agent === 'builder';
+    if (role === 'evaluator') {
+      return ['n2', 'n3', 'end'].includes(activeNodeId) || agent === 'evaluator' || agent === 'supervisor';
+    }
+    return false;
+  };
+
   const [selectedFile, setSelectedFile] = React.useState<string>('src/video-core/processor.ts');
   const [selectedAgentProfile, setSelectedAgentProfile] = React.useState<'orchestrator' | 'builder' | 'auditor'>('orchestrator');
   const [expandedFiles, setExpandedFiles] = React.useState<Record<string, boolean>>({
@@ -60,6 +77,53 @@ export const RightPanel: React.FC<RightPanelProps> = ({
     const file = uncommitted.find(f => f.name === selectedFile);
     return file ? file.diffs : null;
   };
+
+  const tokenTotal = sessionTokens || tokenInput + tokenOutput;
+  const inputPct = tokenTotal > 0 ? Math.round((tokenInput / tokenTotal) * 100) : 0;
+  const outputPct = tokenTotal > 0 ? 100 - inputPct : 0;
+
+  const renderFileNodes = (nodes: FileTreeNode[], depth = 0): React.ReactNode =>
+    nodes.map((node) => {
+      const isFolder = node.type === 'folder';
+      const isExpanded = expandedFiles[node.path] ?? depth < 1;
+      return (
+        <div key={node.path} className="space-y-1">
+          <div
+            onClick={() => {
+              if (isFolder) {
+                toggleExpand(node.path);
+              } else {
+                onOpenWorkspaceFile?.(node.path);
+              }
+            }}
+            className="flex items-center gap-2 p-1.5 hover:bg-surface-container-low rounded cursor-pointer transition-colors"
+            style={{ paddingLeft: `${depth * 8 + 6}px` }}
+          >
+            {isFolder ? (
+              <>
+                <span className={`material-symbols-outlined text-[16px] transition-transform ${isExpanded ? 'rotate-90' : ''}`}>
+                  chevron_right
+                </span>
+                <span className="material-symbols-outlined text-[16px] text-on-surface-variant">
+                  {isExpanded ? 'folder_open' : 'folder'}
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="w-4" />
+                <span className="material-symbols-outlined text-[16px] text-on-surface-variant">description</span>
+              </>
+            )}
+            <span className="truncate">{node.name}</span>
+          </div>
+          {isFolder && isExpanded && node.children && node.children.length > 0 && (
+            <div className="border-l border-outline-variant/30 ml-3">
+              {renderFileNodes(node.children, depth + 1)}
+            </div>
+          )}
+        </div>
+      );
+    });
 
   return (
     <aside
@@ -112,6 +176,12 @@ export const RightPanel: React.FC<RightPanelProps> = ({
         {/* TAB 1: OVERVIEW */}
         {activeTab === 'overview' && (
           <div className="space-y-6 animate-fade-in text-xs">
+            <div className="p-3 border border-outline-variant/30 rounded-xl bg-surface-container-low/40 font-mono text-[10px] space-y-1">
+              <p>workflow: <span className="text-on-surface font-bold">{workflowId || '—'}</span></p>
+              <p>active_node: <span className="text-on-surface font-bold">{activeNodeId || '—'}</span></p>
+              <p>active_agent: <span className="text-on-surface font-bold">{activeAgent}</span></p>
+              <p>status: <span className="text-on-surface font-bold uppercase">{runStatus}</span></p>
+            </div>
             <section>
               <h4 className="text-[10px] font-bold text-on-surface-variant/75 uppercase tracking-widest mb-4">
                 Session Token Analytics
@@ -121,12 +191,14 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                 <div className="grid grid-cols-2 gap-3">
                   <div className="p-3 border border-neutral-200 bg-neutral-50/50 rounded-xl">
                     <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider mb-1">Total Tokens</p>
-                    <p className="text-base font-extrabold text-neutral-900 font-mono">52,480</p>
-                    <p className="text-[8px] text-zinc-400 mt-0.5 font-medium">5.2% of 1M limit</p>
+                    <p className="text-base font-extrabold text-neutral-900 font-mono">{tokenTotal.toLocaleString()}</p>
+                    <p className="text-[8px] text-zinc-400 mt-0.5 font-medium">
+                      {tokenTotal > 0 ? `${((tokenTotal / 1000000) * 100).toFixed(1)}% of 1M limit` : '—'}
+                    </p>
                   </div>
                   <div className="p-3 border border-neutral-200 bg-neutral-50/50 rounded-xl">
                     <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider mb-1">Estimated Cost</p>
-                    <p className="text-base font-extrabold text-neutral-900 font-mono">$0.0078</p>
+                    <p className="text-base font-extrabold text-neutral-900 font-mono">${sessionCostUsd.toFixed(4)}</p>
                     <p className="text-[8px] text-emerald-600 mt-0.5 font-bold">100% Free Context</p>
                   </div>
                 </div>
@@ -140,18 +212,18 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                   
                   {/* Segmented Progress Bar */}
                   <div className="w-full h-3 rounded-full overflow-hidden flex bg-neutral-100 border border-neutral-200/50">
-                    <div className="h-full bg-neutral-900 transition-all duration-300 hover:opacity-90" style={{ width: '82%' }} title="Input: 42,910 tokens (82%)" />
-                    <div className="h-full bg-neutral-400 transition-all duration-300 hover:opacity-90" style={{ width: '18%' }} title="Output: 9,570 tokens (18%)" />
+                    <div className="h-full bg-neutral-900 transition-all duration-300 hover:opacity-90" style={{ width: `${inputPct}%` }} title={`Input: ${tokenInput} tokens (${inputPct}%)`} />
+                    <div className="h-full bg-neutral-400 transition-all duration-300 hover:opacity-90" style={{ width: `${outputPct}%` }} title={`Output: ${tokenOutput} tokens (${outputPct}%)`} />
                   </div>
 
                   <div className="flex justify-between text-[9px] font-mono pt-1">
                     <div className="flex items-center gap-1.5 text-neutral-800">
                       <span className="w-1.5 h-1.5 rounded-full bg-neutral-900" />
-                      <span>Input (82%): 42,910</span>
+                      <span>Input ({inputPct}%): {tokenInput.toLocaleString()}</span>
                     </div>
                     <div className="flex items-center gap-1.5 text-neutral-1000">
                       <span className="w-1.5 h-1.5 rounded-full bg-neutral-400" />
-                      <span>Output (18%): 9,570</span>
+                      <span>Output ({outputPct}%): {tokenOutput.toLocaleString()}</span>
                     </div>
                   </div>
                 </div>
@@ -417,57 +489,15 @@ export const RightPanel: React.FC<RightPanelProps> = ({
             </h4>
             
             <div className="space-y-1 font-mono font-medium text-xs text-on-surface-variant pl-1">
-              {fileTreeNodes.map(node => {
-                const isFolder = node.type === 'folder';
-                const isExpanded = expandedFiles[node.name];
-
-                return (
-                  <div key={node.name} className="space-y-1">
-                    <div
-                      onClick={() => isFolder ? toggleExpand(node.name) : onPreviewFile({ name: node.name, content: (node as any).content || '' })}
-                      className="flex items-center gap-2 p-1.5 hover:bg-surface-container-low rounded cursor-pointer transition-colors"
-                    >
-                      {isFolder ? (
-                        <>
-                          <span className={`material-symbols-outlined text-[16px] transition-transform ${isExpanded ? 'rotate-90' : ''}`}>
-                            chevron_right
-                          </span>
-                          <span className="material-symbols-outlined text-[16px] text-on-surface-variant">
-                            {isExpanded ? 'folder_open' : 'folder'}
-                          </span>
-                        </>
-                      ) : (
-                        <>
-                          <span className="w-4" />
-                          <span className="material-symbols-outlined text-[16px] text-on-surface-variant">
-                            description
-                          </span>
-                        </>
-                      )}
-                      <span className={!isFolder ? "hover:text-primary transition-colors cursor-pointer" : ""}>{node.name}</span>
-                    </div>
-
-                    {isFolder && isExpanded && node.children && node.children.length > 0 && (
-                      <div className="ml-4 pl-3 border-l border-outline-variant/30 space-y-1">
-                        {node.children.map(child => (
-                          <div
-                            key={child.name}
-                            onClick={() => {
-                              onPreviewFile({ name: child.name, content: child.content || '' });
-                            }}
-                            className="flex items-center gap-2 p-1.5 hover:bg-surface-container-low rounded cursor-pointer transition-colors text-on-surface-variant"
-                          >
-                            <span className="material-symbols-outlined text-[16px] text-on-surface-variant/70">
-                              description
-                            </span>
-                            <span className="hover:text-primary font-light text-[11px] truncate">{child.name}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+              {!workspaceAuthorized ? (
+                <p className="text-[11px] text-on-surface-variant/70 italic p-2">
+                  请先在顶栏选择并授权工作区目录。
+                </p>
+              ) : workspaceFiles.length === 0 ? (
+                <p className="text-[11px] text-on-surface-variant/70 italic p-2">工作区为空。</p>
+              ) : (
+                renderFileNodes(workspaceFiles)
+              )}
             </div>
           </div>
         )}
@@ -544,7 +574,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
 
                 {/* Node 1: Orchestrator */}
                 <div className="flex flex-col items-center w-[76px] relative z-10">
-                  <div className="w-[44px] h-[44px] bg-white border border-green-200 rounded-xl flex items-center justify-center shadow-xs relative hover:border-green-300 transition-all">
+                  <div className={`w-[44px] h-[44px] bg-white border border-green-200 rounded-xl flex items-center justify-center shadow-xs relative hover:border-green-300 transition-all ${flowHighlight('orchestrator') ? 'ring-2 ring-neutral-900' : ''}`}>
                     <img
                       className="w-8 h-8 rounded-lg object-cover"
                       src="https://lh3.googleusercontent.com/aida-public/AB6AXuA0yGh59QNLj5n0igNxMgu4lgaiNqZpcN29SpWM0JHNlAuFmOBx-Id67Zcd2NDCNBjBKrcffQrdrfoe-3XaSlveekLAP9SRis93uTk7XPPFO5y4Swos7NvATw6n7eZEm7nfAQuTiMAoWRSnxefAOJugUbZx3fCTNv4jGyjvT-UZznwKzp_HoXuStup_0juhBCZYamrV0Coil-k27d9Yi7il6NabIEG0FfbxwL5V5azpfZQOlBfpaganta2kP7n59BKPHd4K2uTOfZ5p"
@@ -561,7 +591,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                 {/* Node 2: Builder */}
                 <div className="flex flex-col items-center w-[76px] relative z-10">
                   <div className={`w-[44px] h-[44px] bg-white rounded-xl flex items-center justify-center shadow-xs relative transition-all border ${
-                    runStatus === 'running'
+                    flowHighlight('builder')
                       ? 'border-neutral-900 ring-2 ring-neutral-100 animate-pulse'
                       : runStatus === 'failed'
                       ? 'border-neutral-400 ring-2 ring-neutral-100'
@@ -601,7 +631,11 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                 {/* Node 3: Evaluator */}
                 <div className="flex flex-col items-center w-[76px] relative z-10">
                   <div className={`w-[44px] h-[44px] bg-white border rounded-xl flex items-center justify-center shadow-xs relative transition-all ${
-                    runStatus === 'passed' ? 'border-neutral-900 ring-2 ring-neutral-100' : 'border-neutral-200 brightness-95 opacity-70'
+                    flowHighlight('evaluator')
+                      ? 'border-neutral-900 ring-2 ring-neutral-100'
+                      : runStatus === 'passed'
+                        ? 'border-neutral-900 ring-2 ring-neutral-100'
+                        : 'border-neutral-200 brightness-95 opacity-70'
                   }`}>
                     <img
                       className="w-8 h-8 rounded-lg object-cover"

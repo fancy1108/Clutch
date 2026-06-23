@@ -3,6 +3,8 @@ import { useLanguage } from './LanguageContext';
 
 interface HeaderProps {
   currentFlow: string;
+  workspaceName?: string;
+  onPickWorkspace?: () => void;
   folders?: any[];
   isMultiAgent: boolean;
   setIsMultiAgent: (val: boolean) => void;
@@ -14,6 +16,8 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({
   currentFlow,
+  workspaceName,
+  onPickWorkspace,
   folders,
   isMultiAgent,
   setIsMultiAgent,
@@ -32,9 +36,10 @@ export const Header: React.FC<HeaderProps> = ({
     )
   );
 
-  const parentLabel = parentFolder 
-    ? parentFolder.name.charAt(0).toUpperCase() + parentFolder.name.slice(1) 
-    : 'Obsidian';
+  const parentLabel = workspaceName
+    || (parentFolder
+      ? parentFolder.name.charAt(0).toUpperCase() + parentFolder.name.slice(1)
+      : 'Workspace');
 
   return (
     <header className={`fixed top-0 right-0 h-[64px] bg-background/85 backdrop-blur-md border-b border-outline-variant z-40 flex items-center justify-between px-10 select-none transition-all duration-300 ${
@@ -52,8 +57,9 @@ export const Header: React.FC<HeaderProps> = ({
         )}
         <nav className="flex items-center gap-2 text-xs font-semibold tracking-wide text-on-surface-variant">
           <span
-            onClick={() => setView('chat')}
+            onClick={onPickWorkspace}
             className="hover:text-primary cursor-pointer font-bold transition-colors"
+            title={t("Select workspace")}
           >
             {t(parentLabel)}
           </span>

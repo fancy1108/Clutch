@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from src.compiler import WorkflowCompiler, compile_workflow, initial_compiler_state
+from src.compiler import WorkflowCompiler, compile_workflow, initial_compiler_state, workflow_run_config
 from src.compiler.compiler import NODE_HANDLERS
 from src.workflow_validator import load_and_validate_workflow
 
@@ -58,20 +58,22 @@ def test_compiled_edges_match_workflow_json() -> None:
 
 def test_invoke_happy_path_reaches_end_node() -> None:
     compiled = compile_workflow(VIDEO_PRODUCTION)
-    result = compiled.invoke(initial_compiler_state("run_compiler_happy"))
+    run_id = "run_compiler_happy"
+    result = compiled.invoke(initial_compiler_state(run_id), workflow_run_config(run_id))
 
     assert result["active_node_id"] == "end"
     assert result["status"] == "passed"
     assert result["active_agent"] == "Orchestrator"
 
 
-def test_invoke_failed_check_routes_through_human_gate() -> None:
+def test_invoke_failed_check_pauses_at_human_gate() -> None:
     compiled = compile_workflow(VIDEO_PRODUCTION)
-    state = initial_compiler_state("run_compiler_failed")
+    run_id = "run_compiler_failed"
+    state = initial_compiler_state(run_id)
     state["check_result"] = "failed"
 
-    result = compiled.invoke(state)
+    result = compiled.invoke(state, workflow_run_config(run_id))
 
-    assert result["active_node_id"] == "end"
-    assert result["status"] == "passed"
-    assert result["human_decision"] == "approve"
+    assert result["active_node_id"] == "n2"
+    assert result["check_result"] == "failed"
+    assert compiled.get_state(workflow_run_config(run_id)).next == ("n3",)

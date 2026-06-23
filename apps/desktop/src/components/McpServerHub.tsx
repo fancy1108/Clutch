@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { fetchMcpStatus } from '../services/modelsApi';
 
 export interface McpServer {
   id: string;
@@ -70,6 +71,26 @@ export const McpServerHub: React.FC = () => {
       lastHeartbeat: 'Just now'
     }
   ]);
+
+  useEffect(() => {
+    void fetchMcpStatus()
+      .then((status) => {
+        const fs = status.filesystem;
+        setServers((prev) =>
+          prev.map((server) =>
+            server.id === 'local-fs'
+              ? {
+                  ...server,
+                  status: fs.connected ? 'connected' : 'failed',
+                  toolsCount: fs.tools,
+                  lastHeartbeat: fs.connected ? 'Just now' : 'Workspace not authorized',
+                }
+              : server,
+          ),
+        );
+      })
+      .catch(() => {});
+  }, []);
 
   const [newServerName, setNewServerName] = useState('');
   const [newServerType, setNewServerType] = useState<'local' | 'remote'>('local');

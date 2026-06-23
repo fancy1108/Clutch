@@ -11,7 +11,7 @@ import { McpServerHub } from './components/McpServerHub';
 import { ModelsManager } from './components/ModelsManager';
 import { ThemeManager, THEME_PRESETS } from './components/ThemeManager';
 import { SystemPreferencesModal } from './components/SystemPreferencesModal';
-import { MainView, RightTab, ChatMessage, UncommittedFile } from './types';
+import { MainView, RightTab, ChatMessage, UncommittedFile, DiffLine } from './types';
 import {
   initialConfiguredModels,
   initialFolders,
@@ -19,6 +19,17 @@ import {
 } from './mockData';
 import { LanguageProvider, useLanguage } from './components/LanguageContext';
 import { clutchStore, DEFAULT_RUN_ID, submitChatMessage, useClutchState } from './services/clutchState';
+import { fetchRunHistory, type RunHistoryRecord } from './services/runApi';
+import {
+  authorizeWorkspace,
+  fetchWorkspace,
+  fetchWorkspaceFile,
+  fetchWorkspaceTree,
+  reassignToBuilder,
+  type FileTreeNode,
+  type WorkspaceInfo,
+} from './services/workspaceApi';
+import { fetchModelsConfig } from './services/modelsApi';
 import type { RunStatus } from './types';
 
 
@@ -66,6 +77,59 @@ function MainLayout() {
 
   // Repository list folders state
   const [folders, setFolders] = useState(initialFolders);
+  const [runHistory, setRunHistory] = useState<RunHistoryRecord[]>([]);
+  const [workspace, setWorkspace] = useState<WorkspaceInfo | null>(null);
+  const [workspaceFiles, setWorkspaceFiles] = useState<FileTreeNode[]>([]);
+  const [highRiskConfirmed, setHighRiskConfirmed] = useState(false);
+
+  const refreshWorkspaceFiles = async () => {
+    try {
+      const nodes = await fetchWorkspaceTree();
+      setWorkspaceFiles(nodes);
+    } catch {
+      setWorkspaceFiles([]);
+    }
+  };
+
+  useEffect(() => {
+    void fetchWorkspace()
+      .then(async (info) => {
+        if (!info) return;
+        setWorkspace(info);
+        await refreshWorkspaceFiles();
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    void fetchModelsConfig()
+      .then((config) => {
+        setSelectedModel(config.models.find((m) => m.id === config.active_model_id)?.name || 'DeepSeek V4 Pro');
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    void fetchRunHistory()
+      .then(setRunHistory)
+      .catch((error: unknown) => {
+        console.warn('[Clutch] run history unavailable:', error);
+      });
+  }, [clutchState.run_id, clutchState.status]);
+
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const data = (event as CustomEvent).detail as { path?: string; diff_lines?: DiffLine[] };
+      if (!data.path) return;
+      setUncommitted((prev) => [
+        ...prev.filter((file) => file.name !== data.path),
+        { name: data.path, status: 'M', diffs: data.diff_lines || [], active: true },
+      ]);
+      setRightTab('changes');
+    };
+    window.addEventListener('clutch-file-changed', handler);
+    return () => window.removeEventListener('clutch-file-changed', handler);
+  }, []);
 
   // Sidebar selector width for calculations
   const selectedSidebarWidth = sidebarOpen ? 280 : 0;
@@ -98,7 +162,34 @@ function MainLayout() {
   }, []);
 
   const handleStopRun = () => {
+    if (!highRiskConfirmed) {
+      const ok = window.confirm('确认停止当前运行？此操作将中断 Builder/Evaluator 执行。');
+      if (!ok) return;
+      setHighRiskConfirmed(true);
+    }
     void clutchStore.send({ action: 'stop_run' });
+  };
+
+  const handlePickWorkspace = async () => {
+    const path = window.prompt('输入本地项目根目录的绝对路径：', workspace?.workspace_path || '');
+    if (!path?.trim()) return;
+    try {
+      const info = await authorizeWorkspace(path.trim());
+      setWorkspace(info);
+      await refreshWorkspaceFiles();
+    } catch (error) {
+      console.error('[Clutch] workspace authorize failed:', error);
+      window.alert('工作区授权失败，请检查路径是否存在。');
+    }
+  };
+
+  const handleOpenWorkspaceFile = async (path: string) => {
+    try {
+      const content = await fetchWorkspaceFile(path);
+      setPreviewFile({ name: path, content });
+    } catch (error) {
+      console.error('[Clutch] read file failed:', error);
+    }
   };
 
   const handleApprove = () => {
@@ -125,7 +216,9 @@ function MainLayout() {
 
   const handleReassignToBuilder = () => {
     setRightTab('terminal');
-    void clutchStore.send({ action: 'human_decision', decision: 'retry', instructions: 'reassign_to_builder' });
+    void reassignToBuilder(clutchState.run_id)
+      .then(() => clutchStore.send({ action: 'human_decision', decision: 'retry', instructions: 'reassign_to_builder' }))
+      .catch((error: unknown) => console.error('[Clutch] reassign failed:', error));
     setRightTab('overview');
   };
 
@@ -151,6 +244,8 @@ function MainLayout() {
       {/* 1. Header component */}
       <Header
         currentFlow={currentFlowName}
+        workspaceName={workspace?.name}
+        onPickWorkspace={() => { void handlePickWorkspace(); }}
         folders={folders}
         isMultiAgent={isMultiAgent}
         setIsMultiAgent={setIsMultiAgent}
@@ -175,6 +270,7 @@ function MainLayout() {
           isOpenState={sidebarOpen}
           setIsOpenState={setSidebarOpen}
           isMultiAgent={isMultiAgent}
+          runHistory={runHistory}
         />
 
         {/* Central screen switcher with Right component based on Left tab selections */}
@@ -273,11 +369,19 @@ function MainLayout() {
                 onApprove={handleApprove}
                 onReject={handleReject}
                 onRetryWithInstructions={handleRetryWithInstructions}
+                awaitingHuman={clutchState.status === 'awaiting_human'}
               />
               <RightPanel
                 activeTab={rightTab}
                 setActiveTab={setRightTab}
                 runStatus={runStatus}
+                activeNodeId={clutchState.active_node_id}
+                activeAgent={clutchState.active_agent}
+                workflowId={clutchState.workflow_id}
+                sessionTokens={clutchState.session_tokens}
+                sessionCostUsd={clutchState.session_cost_usd}
+                tokenInput={clutchState.token_input}
+                tokenOutput={clutchState.token_output}
                 onReassign={handleReassignToBuilder}
                 uncommitted={uncommitted}
                 terminalLogs={terminalLogs}
@@ -287,6 +391,9 @@ function MainLayout() {
                 rightSidebarWidth={rightSidebarWidth}
                 onPreviewFile={setPreviewFile}
                 isMultiAgent={isMultiAgent}
+                workspaceFiles={workspaceFiles}
+                onOpenWorkspaceFile={(path) => { void handleOpenWorkspaceFile(path); }}
+                workspaceAuthorized={Boolean(workspace)}
               />
             </>
           )
@@ -318,17 +425,21 @@ function MainLayout() {
             className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-container-low hover:text-on-surface transition-colors cursor-pointer font-medium"
           >
             <span className="material-symbols-outlined text-[15px] text-on-surface-variant">fork_right</span> 
-            {t("Branch: main")}
+            {t("Branch")}: {clutchState.run_id || '—'}
             <span className="material-symbols-outlined text-[13px]">keyboard_arrow_down</span>
+          </span>
+
+          <span className="flex items-center gap-1.5 px-2 py-1 rounded font-mono text-[10px] uppercase tracking-wide">
+            <span className="material-symbols-outlined text-[14px]">podcasts</span>
+            {clutchState.status}
           </span>
 
           <span 
             onClick={() => setView('models')}
             className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-container-low hover:text-on-surface transition-colors cursor-pointer font-medium text-on-surface-variant"
           >
-            <span className="material-symbols-outlined text-[15px] text-on-surface-variant animate-pulse">layers</span> 
-            {t("Model")}: {selectedModel} 
-            <span className="material-symbols-outlined text-[13px]">keyboard_arrow_down</span>
+            <span className="material-symbols-outlined text-[15px] text-on-surface-variant">smart_toy</span>
+            Agent: {clutchState.active_agent}
           </span>
 
           {isMultiAgent ? (
@@ -336,8 +447,8 @@ function MainLayout() {
               onClick={() => setView('workflows')}
               className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-container-low text-primary font-bold transition-colors cursor-pointer"
             >
-              <span className="material-symbols-outlined text-[15px] text-primary">movie</span> 
-              {t("Workflow")}: {clutchState.workflow_id || currentFlowName} 
+              <span className="material-symbols-outlined text-[15px] text-primary">movie</span>
+              Workflow: {clutchState.workflow_id || currentFlowName} 
               <span className="material-symbols-outlined text-[13px]">keyboard_arrow_down</span>
             </span>
           ) : (

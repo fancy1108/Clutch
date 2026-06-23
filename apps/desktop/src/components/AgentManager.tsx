@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
 import { Deliverable, Agent } from '../types';
+import { fetchAgents, saveAgents } from '../services/agentApi';
 import { initialAgents as DEFAULT_AGENTS } from '../mockData';
 
 export function AgentLogo({ name, description, className = "w-10 h-10" }: { name: string; description: string; className?: string }) {
@@ -163,7 +164,16 @@ export function AgentManager({ selectedSidebarWidth, isModalStyle }: AgentManage
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('vibe-workspace-agents', JSON.stringify(agents));
+    void fetchAgents()
+      .then((list) => {
+        if (list.length > 0) setAgents(list);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (agents.length === 0) return;
+    void saveAgents(agents).catch(() => {});
   }, [agents]);
 
   const handleOpenCreate = () => {

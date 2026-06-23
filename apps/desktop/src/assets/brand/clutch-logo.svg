@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 274.98 64" role="img" aria-label="Clutch logo">
+  <title>Clutch</title>
+  <g id="clutch-mark">
+  <circle cx="32" cy="32" r="30" fill="#1D2447"/>
+  <path fill="#FFFFFF" d="M 47.898 57.441 A 30 30 0 1 1 47.898 6.559 L 40.479 18.431 A 16 16 0 1 0 40.479 45.569 Z"/>
+  <circle cx="32" cy="32" r="8" fill="#1D2447"/>
+  <path fill="#1D2447" d="M 39.2 17.8 L 46.8 11.2 L 51.2 15.8 L 43.4 22.8 Z"/>
+  <path fill="#1D2447" d="M 39.8 44.2 L 48.2 44.2 L 48.2 49.8 L 39.8 49.8 Z"/>
+  <path fill="#1D2447" d="M 41.5 39.5 L 52.5 50.5 L 64 43.5 L 64 64 L 49 64 Z"/>
+  <path fill="#1D2447" d="M 49.5 47.8 A 7.5 7.5 0 0 1 57.8 56.2 L 52.2 61.8 A 12 12 0 0 0 44.5 52.5 Z"/>
+  </g>
+  <g id="clutch-wordmark">
+  <path fill="#000000" d="M0,0 L25,0 L26,59 L29,56 L31,56 L31,53 L37,51 L42,45 L50,43 L64,43 L64,45 L67,45 L67,47 L74,47 L76,49 L76,53 L79,52 L80,55 L81,52 L82,55 L87,54 L91,59 L90,64 L92,70 L96,70 L98,76 L98,104 L97,123 L88,123 L74,122 L73,81 L69,76 L66,71 L59,69 L51,69 L44,72 L40,72 L40,74 L31,78 L27,81 L25,126 L0,126 Z " transform="translate(74, 0) scale(0.3902439024390244) translate(387,20)"/>
+  <path fill="#000000" d="M0,0 L27,0 L28,61 L30,67 L35,73 L35,75 L37,75 L37,77 L56,78 L59,79 L63,78 L64,69 L67,67 L70,60 L71,1 L96,1 L96,60 L94,67 L92,77 L90,79 L88,84 L77,93 L73,95 L72,97 L65,97 L65,99 L56,100 L40,100 L41,97 L39,97 L39,95 L26,95 L22,91 L17,92 L12,87 L8,82 L4,79 L1,70 L0,63 Z " transform="translate(74, 0) scale(0.3902439024390244) translate(83,46)"/>
+  <path fill="#000000" d="M0,0 L27,0 L27,18 L56,18 L56,42 L28,43 L27,119 L0,119 L-1,43 L-26,42 L-26,19 L0,19 Z " transform="translate(74, 0) scale(0.3902439024390244) translate(218,28)"/>
+  <path fill="#000000" d="M0,0 L7,0 L7,2 L10,2 L10,4 L12,2 L21,3 L25,5 L29,6 L29,8 L32,8 L32,10 L34,10 L34,13 L36,14 L36,17 L34,18 L34,20 L32,20 L33,24 L27,24 L28,30 L26,30 L26,28 L22,28 L18,26 L13,25 L13,23 L0,24 L-10,28 L-16,33 L-20,41 L-21,45 L-21,59 L-16,68 L-11,74 L-1,78 L-1,80 L9,78 L15,78 L16,75 L21,74 L22,77 L24,70 L25,72 L32,74 L42,84 L40,88 L32,94 L31,97 L22,101 L-11,101 L-13,100 L-13,97 L-23,97 L-28,93 L-33,91 L-37,86 L-42,81 L-45,74 L-49,63 L-49,47 L-48,44 L-45,42 L-44,35 L-42,35 L-43,30 L-42,26 L-40,21 L-36,17 L-33,17 L-32,15 L-30,15 L-29,11 L-21,5 L-13,2 L0,2 Z " transform="translate(74, 0) scale(0.3902439024390244) translate(332,45)"/>
+  <path fill="#000000" d="M0,0 L25,0 L25,126 L0,126 Z " transform="translate(74, 0) scale(0.3902439024390244) translate(38,20)"/>
+  <path fill="#000000" d="M0,0 L2,1 L2,51 L-26,51 L-26,4 L-24,5 L-23,45 L-10,46 L-1,47 L-1,28 Z " transform="translate(74, 0) scale(0.3902439024390244) translate(485,96)"/>
+  <path fill="#000000" d="M0,0 L26,0 L26,1 L1,1 L1,127 L26,127 L26,99 L27,99 L27,128 L0,128 Z " transform="translate(74, 0) scale(0.3902439024390244) translate(386,19)"/>
+  <path fill="#000000" d="M0,0 L7,6 L14,12 L13,15 L7,19 L5,19 L5,21 L0,23 Z " transform="translate(74, 0) scale(0.3902439024390244) translate(12,116)"/>
+  <path fill="#000000" d="M0,0 L7,4 L13,10 L11,14 L1,24 L0,24 Z " transform="translate(74, 0) scale(0.3902439024390244) translate(12,31)"/>
+  <path fill="#000000" d="M0,0 L2,0 L2,56 L10,49 L17,47 L13,52 L9,54 L6,54 L6,57 L4,57 L3,60 L1,60 L0,57 Z " transform="translate(74, 0) scale(0.3902439024390244) translate(412,19)"/>
+  <path fill="#000000" d="M0,0 L2,4 L11,4 L17,5 L17,7 L19,7 L19,9 L43,9 L43,7 L48,7 L44,10 L34,12 L18,12 L7,10 L1,6 L-4,2 Z " transform="translate(74, 0) scale(0.3902439024390244) translate(105,136)"/>
+  <path fill="#000000" d="M0,0 L6,2 L13,10 L12,14 L1,25 L-1,23 L-1,19 L4,18 L4,15 L6,15 L6,13 L4,12 L8,12 L6,8 L6,5 L4,5 L4,3 L1,3 Z " transform="translate(74, 0) scale(0.3902439024390244) translate(360,50)"/>
+  <path fill="#000000" d="M0,0 L19,0 L30,3 L34,6 L30,7 L30,5 L21,4 L21,5 L16,5 L16,3 L13,3 L13,1 L6,1 L6,3 L-11,4 L-8,2 Z " transform="translate(74, 0) scale(0.3902439024390244) translate(326,44)"/>
+  <path fill="#000000" d="M0,0 L2,0 L2,8 L-4,9 L-6,8 L-21,7 L-25,6 L-25,4 L-27,4 L-26,2 L-18,4 L-7,4 Z " transform="translate(74, 0) scale(0.3902439024390244) translate(145,117)"/>
+  <path fill="#000000" d="M0,0 L4,1 L2,1 L2,4 L22,4 L30,5 L27,7 L7,7 L-2,4 L-6,1 Z " transform="translate(74, 0) scale(0.3902439024390244) translate(317,141)"/>
+  <path fill="#000000" d="M0,0 L4,2 L11,11 L14,20 L15,25 L13,25 L12,19 L9,19 L8,21 L6,18 L5,12 L6,8 Z " transform="translate(74, 0) scale(0.3902439024390244) translate(471,71)"/>
+  <path fill="#000000" d="M0,0 L13,0 L13,2 L21,2 L22,3 L26,5 L26,7 L28,8 L26,10 L22,9 L18,6 L8,2 L0,1 Z " transform="translate(74, 0) scale(0.3902439024390244) translate(332,68)"/>
+  <path fill="#000000" d="M0,0 L6,0 L18,5 L22,9 L18,11 L17,9 L16,11 L14,10 L15,8 L11,10 L11,5 L10,4 L3,3 L3,1 Z " transform="translate(74, 0) scale(0.3902439024390244) translate(451,64)"/>
+  </g>
+</svg>

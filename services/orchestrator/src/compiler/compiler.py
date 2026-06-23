@@ -4,9 +4,12 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
+from dataclasses import dataclass
 from typing import Any, Callable, TypedDict
 
+from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
+from langgraph.types import Command
 
 from src.orchestrator.routing import route_next
 
@@ -59,8 +62,17 @@ def _handle_agent_task(state: CompilerState, node: dict[str, Any]) -> CompilerSt
 
 
 def _handle_check(state: CompilerState, node: dict[str, Any]) -> CompilerState:
-    # M1 stub: real check execution arrives in M3; default to passed for compile smoke.
-    result = state.get("check_result") or "passed"
+    preset = state.get("check_result") or ""
+    if preset:
+        result = preset
+    else:
+        from src.evaluator import evaluate_node_data
+        from src.workspace import get_workspace
+
+        if get_workspace() is None:
+            result = "passed"
+        else:
+            result, _logs = evaluate_node_data(node.get("data", {}))
     return {
         **state,
         "active_node_id": node["id"],
@@ -71,12 +83,19 @@ def _handle_check(state: CompilerState, node: dict[str, Any]) -> CompilerState:
 
 
 def _handle_human_gate(state: CompilerState, node: dict[str, Any]) -> CompilerState:
-    decision = state.get("human_decision") or "approve"
+    decision = state.get("human_decision") or ""
+    if not decision:
+        return {
+            **state,
+            "active_node_id": node["id"],
+            "active_agent": "Supervisor",
+            "status": "awaiting_human",
+        }
     return {
         **state,
         "active_node_id": node["id"],
         "active_agent": "Supervisor",
-        "status": "awaiting_human",
+        "status": "running",
         "human_decision": decision,
     }
 
@@ -177,7 +196,9 @@ class WorkflowCompiler:
         if "end" in nodes_by_id:
             graph.add_edge("end", END)
 
-        return graph.compile()
+        human_gate_ids = [node["id"] for node in workflow["nodes"] if node["type"] == "human_gate"]
+        checkpointer = MemorySaver()
+        return graph.compile(checkpointer=checkpointer, interrupt_before=human_gate_ids)
 
     def _wrap_handler(self, node: dict[str, Any]) -> Callable[[CompilerState], CompilerState]:
         node_type = node["type"]
@@ -196,6 +217,22 @@ def compile_workflow(workflow: dict[str, Any]):
     return WorkflowCompiler().compile(workflow)
 
 
+def human_gate_node_ids(workflow: dict[str, Any]) -> list[str]:
+    return [node["id"] for node in workflow["nodes"] if node["type"] == "human_gate"]
+
+
+def workflow_run_config(run_id: str) -> dict[str, dict[str, str]]:
+    return {"configurable": {"thread_id": run_id}}
+
+
+def is_awaiting_human_gate(compiled: Any, config: dict[str, Any], workflow: dict[str, Any]) -> bool:
+    snapshot = compiled.get_state(config)
+    if not snapshot.next:
+        return False
+    gate_ids = set(human_gate_node_ids(workflow))
+    return any(node in gate_ids for node in snapshot.next)
+
+
 def initial_compiler_state(run_id: str) -> CompilerState:
     return CompilerState(
         run_id=run_id,
@@ -208,6 +245,51 @@ def initial_compiler_state(run_id: str) -> CompilerState:
 
 
 def run_workflow(workflow: dict[str, Any], run_id: str) -> CompilerState:
-    """Compile and invoke workflow; return final graph state."""
+    """Compile and invoke workflow; pause at human_gate interrupts when needed."""
+    _session, result = begin_workflow(workflow, run_id)
+    return result
+
+
+@dataclass(frozen=True)
+class WorkflowSession:
+    compiled: Any
+    config: dict[str, Any]
+    workflow: dict[str, Any]
+
+
+def begin_workflow(
+    workflow: dict[str, Any],
+    run_id: str,
+    *,
+    initial_state: CompilerState | None = None,
+) -> tuple[WorkflowSession, CompilerState]:
     compiled = compile_workflow(workflow)
-    return compiled.invoke(initial_compiler_state(run_id))
+    config = workflow_run_config(run_id)
+    state = initial_state or initial_compiler_state(run_id)
+    result = compiled.invoke(state, config)
+    session = WorkflowSession(compiled=compiled, config=config, workflow=workflow)
+    if is_awaiting_human_gate(compiled, config, workflow):
+        gate_id = next(iter(compiled.get_state(config).next))
+        return session, {
+            **result,
+            "active_node_id": gate_id,
+            "active_agent": "Supervisor",
+            "status": "awaiting_human",
+        }
+    return session, result
+
+
+def resume_workflow(session: WorkflowSession, run_id: str, decision: str) -> CompilerState:
+    """Resume a paused workflow after supervisor human_decision."""
+    result = session.compiled.invoke(Command(resume=decision), session.config)
+    if not result.get("human_decision"):
+        result = {**result, "human_decision": decision}
+    if is_awaiting_human_gate(session.compiled, session.config, session.workflow):
+        gate_id = next(iter(session.compiled.get_state(session.config).next))
+        return {
+            **result,
+            "active_node_id": gate_id,
+            "active_agent": "Supervisor",
+            "status": "awaiting_human",
+        }
+    return result

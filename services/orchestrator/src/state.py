@@ -17,6 +17,10 @@ class ClutchState(TypedDict):
     messages: list[dict[str, object]]
     terminal_logs: list[str]
     changed_files: list[str]
+    session_tokens: int
+    session_cost_usd: float
+    token_input: int
+    token_output: int
 
 
 def initial_state(run_id: str, workflow_id: str = "video-production") -> ClutchState:
@@ -30,4 +34,8 @@ def initial_state(run_id: str, workflow_id: str = "video-production") -> ClutchS
         messages=[],
         terminal_logs=["[ORCHESTRATOR] Sidecar connected. Awaiting instruction."],
         changed_files=[],
+        session_tokens=0,
+        session_cost_usd=0.0,
+        token_input=0,
+        token_output=0,
     )

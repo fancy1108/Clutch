@@ -13,7 +13,9 @@
 | 日期 | 范围 | 命令 | 结果 | 报告/证据 | 备注 |
 |------|------|------|------|-----------|------|
 | 2026-06-22 | 前端构建 | `pnpm build` | ✅ | — | 类型检查：`pnpm lint` |
-| 2026-06-23 | 后端测试 | `cd services/orchestrator && uv run pytest` | ✅ 47 passed | verify.sh 全量 | + M1-09（5）、M1-07（+3） |
+| 2026-06-23 | 后端测试 | `cd services/orchestrator && uv run pytest` | ✅ 67 passed | verify.sh 全量 | M2–M4 新增 11 个 test 文件 |
+| 2026-06-23 | 前端单测 | `pnpm test`（vitest） | ✅ 1 passed | verify.sh | `workflowFormat.test.ts` |
+| 2026-06-23 | E2E Smoke | `cd e2e && pnpm test`（需 Sidecar） | 待运行 | `e2e/tests/smoke.spec.ts` | 见 D1 已落地 |
 | 2026-06-22 | 漂移机检 | `./scripts/check-doc-drift.sh` | ✅ | — | 见 DECISIONS D7 |
 | 2026-06-22 | CI（GitHub Actions） | push/PR 触发 `.github/workflows/ci.yml` | ✅ | [CI #2](https://github.com/fancy1108/Clutch/actions) | `11e6d77`；见 D2、D7 |
 
@@ -21,8 +23,8 @@
 
 | ID | 触发 | 状态 | 关联 task / 证据 |
 |----|------|------|------------------|
-| T-01 | M2 完成 | 待运行 | 真实性审计；M2-06 + `grep mockData` |
-| T-02 | M2 完成 | 待运行 | E2E Smoke；同 M2-10 |
+| T-01 | M2 完成 | ✅ | `api.ts` 无 mock 编排；`verify.sh` 绿 |
+| T-02 | M2 完成 | 🟡 | E2E Smoke 需 Sidecar 运行时执行 |
 | T-03 | M3 完成 | 待运行 | MVP 闭环 E2E；proposal §10.1 |
 | T-04 | M4 前 | 待运行 | 红队 / 体感审计 |
 

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Clutch mark">
+  <title>Clutch mark</title>
+  <circle cx="32" cy="32" r="30" fill="#1D2447"/>
+  <path fill="#FFFFFF" d="M 47.898 57.441 A 30 30 0 1 1 47.898 6.559 L 40.479 18.431 A 16 16 0 1 0 40.479 45.569 Z"/>
+  <circle cx="32" cy="32" r="8" fill="#1D2447"/>
+  <path fill="#1D2447" d="M 39.2 17.8 L 46.8 11.2 L 51.2 15.8 L 43.4 22.8 Z"/>
+  <path fill="#1D2447" d="M 39.8 44.2 L 48.2 44.2 L 48.2 49.8 L 39.8 49.8 Z"/>
+  <path fill="#1D2447" d="M 41.5 39.5 L 52.5 50.5 L 64 43.5 L 64 64 L 49 64 Z"/>
+  <path fill="#1D2447" d="M 49.5 47.8 A 7.5 7.5 0 0 1 57.8 56.2 L 52.2 61.8 A 12 12 0 0 0 44.5 52.5 Z"/>
+</svg>

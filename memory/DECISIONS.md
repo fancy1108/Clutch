@@ -15,11 +15,11 @@
   - 目录：顶层 `e2e/`（Playwright），**不**放在 `apps/desktop/`
   - 分级：Smoke（M0 后，health + WS `state_patch`）→ 闭环（M2–M3 后，对齐 proposal §10.1 MVP）
 - **影响**：未来 E2E 依赖、CI job、TESTS.md 门禁均按此执行；`memory/ROADMAP.md` 前提行与 D1 联动。
-- **落地前提**（未满足前**禁止**建 `e2e/` 或安装 Playwright）：
-  1. M0：前端收到真实 `state_patch`（proposal §10.2）
-  2. M2：去除 mock，Terminal / Chat 为真数据
+- **落地前提**（已满足）：
+  1. M0：前端收到真实 `state_patch` ✅
+  2. M2：去除 mock，Terminal / Chat 为真数据 ✅
 - **建议落地阶段**：M2 完成后启动 `e2e/` 包；Smoke 用例可在 M0 后首条添加，闭环用例对齐 M3。
-- **决策状态**：`已记录`
+- **决策状态**：`已落地`（`e2e/` + Playwright Smoke + vitest 首条用例）
 
 ### D2 · CI 门禁范围（2026-06-22）
 
