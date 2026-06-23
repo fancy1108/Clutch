@@ -8,6 +8,8 @@ from typing import Any, Callable, TypedDict
 
 from langgraph.graph import END, START, StateGraph
 
+from src.orchestrator.routing import route_next
+
 
 class CompilerState(TypedDict):
     """Runtime state passed through compiled LangGraph nodes."""
@@ -155,22 +157,16 @@ class WorkflowCompiler:
             if conditional:
                 path_map = {edge["data"]["when"]: edge["target"] for edge in conditional}
 
-                source_type = (
-                    "start"
-                    if source == "start"
-                    else nodes_by_id.get(source, {}).get("type", "")
-                )
-
                 def _route(
                     state: CompilerState,
+                    _workflow: dict[str, Any] = workflow,
+                    _source: str = source,
                     _path_map: dict[str, str] = path_map,
-                    _source_type: str = source_type,
                 ) -> str:
-                    if _source_type == "check":
-                        return state.get("check_result") or "passed"
-                    if _source_type == "human_gate":
-                        return state.get("human_decision") or "approve"
-                    return next(iter(_path_map))
+                    branch, _method = route_next(_workflow, _source, state)
+                    if branch not in _path_map:
+                        raise ValueError(f"Branch {branch!r} not in path map for {_source!r}")
+                    return branch
 
                 graph.add_conditional_edges(source, _route, path_map)
             elif len(unconditional) == 1:

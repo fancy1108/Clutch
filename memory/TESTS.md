@@ -13,7 +13,7 @@
 | 日期 | 范围 | 命令 | 结果 | 报告/证据 | 备注 |
 |------|------|------|------|-----------|------|
 | 2026-06-22 | 前端构建 | `pnpm build` | ✅ | — | 类型检查：`pnpm lint` |
-| 2026-06-23 | 后端测试 | `cd services/orchestrator && uv run pytest` | ✅ 22 passed | `runs/verification/2026-06-23-m1-03-start-run-pytest.log` | + M1-03 start_run 对接编译图 |
+| 2026-06-23 | 后端测试 | `cd services/orchestrator && uv run pytest` | ✅ 29 passed | `runs/verification/2026-06-23-m1-04-routing-pytest.log` | + M1-04 Orchestrator 路由（7 tests） |
 | 2026-06-22 | 漂移机检 | `./scripts/check-doc-drift.sh` | ✅ | — | 见 DECISIONS D7 |
 | 2026-06-22 | CI（GitHub Actions） | push/PR 触发 `.github/workflows/ci.yml` | ✅ | [CI #2](https://github.com/fancy1108/Clutch/actions) | `11e6d77`；见 D2、D7 |
 

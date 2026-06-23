@@ -4,9 +4,8 @@
 
 - 阶段：**M0 核心完成 / M1 骨架启动**
 - 说明：WebSocket `state_patch` 全链路打通；LangGraph 最小图 + `start_run` API 就绪
-- 焦点：**M1-04** Orchestrator 路由节点（`test_orchestrator_routing.py`）
-- 上次更新：2026-06-23
-- Git HEAD：`3c45ad0`（M1-03）
+- 焦点：**M1-05** `run_completed` 与状态序列化
+- Git HEAD：M1-04 待 commit
 
 ## 治理脚手架就绪标准（文档层 ✅）
 
@@ -38,12 +37,19 @@
 - [x] **M1-01**：Workflow JSON Schema 校验（`workflow_validator.py` + `/api/workflows/validate`）
 - [x] **M1-02**：WorkflowCompiler → LangGraph + `tests/test_compiler.py`
 - [x] **M1-03**：`start_run` 对接 WorkflowCompiler + `test_start_run` 增强断言
+- [x] **M1-04**：Orchestrator 路由（边优先、LLM 兜底）+ `test_orchestrator_routing.py`
 - [ ] **M0-05**：Tauri 拉起 Sidecar
 - [ ] **M0-06**：`ClutchState` 类型对齐复审
-- [ ] **M1-04/05/08/09**：路由、`run_completed`、Provider Router、工作流持久化 API（M1-03 ✅）
+- [ ] **M1-04/05/08/09**：`run_completed`、Provider Router、工作流持久化 API（M1-04 ✅）
 - [ ] **M2**：M2-01–14（见 `tasks.md` §M2）
 
 ## 会话日志（最新在上）
+
+### 2026-06-23 会话 13（M1-04 Orchestrator 路由）
+
+- 完成：`src/orchestrator/routing.py`（边优先、LLM 兜底）；compiler 接入；`test_orchestrator_routing.py` 7 passed；`verify.sh` 29 passed
+- 证据：`runs/verification/2026-06-23-m1-04-routing-pytest.log`
+- 下次优先：**M1-05** `run_completed`
 
 ### 2026-06-23 会话 12（M1-03 start_run 对接编译图）
 

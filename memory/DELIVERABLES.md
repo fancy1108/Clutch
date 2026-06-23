@@ -126,12 +126,22 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
   - `services/orchestrator/src/main.py` — `start_run` 改走编译图
   - `services/orchestrator/tests/test_start_run.py` — `active_node_id` 变化断言
 
+### M1-04 ✅
+- **日期：** 2026-06-23
+- **Commit：** （本 commit）
+- **Verification：** `uv run pytest tests/test_orchestrator_routing.py -v` → 7 passed；`./scripts/verify.sh` → 29 passed
+- **证据：** `runs/verification/2026-06-23-m1-04-routing-pytest.log`
+- **交付文件：**
+  - `services/orchestrator/src/orchestrator/routing.py` — 边优先路由 + LLM 兜底
+  - `services/orchestrator/src/compiler/compiler.py` — 条件边改走 `route_next`
+  - `services/orchestrator/tests/test_orchestrator_routing.py` — 路由单元测试
+
 ---
 
 ## 待交付（下一 Task）
 
 | Task | 焦点 |
 |------|------|
-| **M1-04** | Orchestrator 路由节点 + `test_orchestrator_routing.py` |
+| **M1-05** | `run_completed` + `test_run_completed.py` |
 | **M0-05** | `src-tauri/` Sidecar 生命周期 |
 | **M0-06** | 类型对齐复审结论写入本节 |
