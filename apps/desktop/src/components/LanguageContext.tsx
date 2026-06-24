@@ -100,6 +100,9 @@ const zhTranslations: Record<string, string> = {
   "Are you sure you want to remove this project from the list?": "确定要从列表中移除该项目吗？",
   "Are you sure you want to permanently delete this session?": "确定要永久删除该会话吗？",
   "Delete": "删除",
+  "Reload": "Reload / 重新加载",
+  "Thinking...": "思考中...",
+  "Clutch Agent": "Clutch Agent / Clutch 智能体",
   "Settings": "Settings / 设置",
 
   // Header

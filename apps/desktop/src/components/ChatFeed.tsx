@@ -66,9 +66,11 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
 
   const showEmptyState = isIdle && messages.length === 0 && isDefaultNewSessionTitle;
 
+  const showThinking = isRunning && messages.length > 0 && messages[messages.length - 1].agent === 'User';
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, clutchStatus]);
+  }, [messages, clutchStatus, showThinking]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -233,6 +235,31 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
             </div>
           );
         })}
+
+        {showThinking && (
+          <div className="w-full flex justify-start">
+            <div className="flex gap-4 max-w-[85%] p-2 rounded-xl">
+              <div className="w-9 h-9 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center bg-surface-container">
+                <span className="material-symbols-outlined text-[18px] text-on-surface-variant/70 animate-spin">
+                  progress_activity
+                </span>
+              </div>
+
+              <div className="flex-1 space-y-1.5 overflow-hidden">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-on-surface">{t('Clutch Agent')}</span>
+                  <span className="text-[10px] text-on-surface-variant/60">{t('Thinking...')}</span>
+                </div>
+
+                <div className="p-4 bg-surface-container-low rounded-2xl rounded-tl-none border border-outline-variant/30 shadow-sm flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 rounded-full bg-on-surface/40 animate-typing-bounce" />
+                  <div className="w-1.5 h-1.5 rounded-full bg-on-surface/40 animate-typing-bounce animation-delay-100" />
+                  <div className="w-1.5 h-1.5 rounded-full bg-on-surface/40 animate-typing-bounce animation-delay-200" />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div ref={bottomRef} />
       </div>

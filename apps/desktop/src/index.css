@@ -132,3 +132,23 @@ body {
   animation: progress-loading 1.8s infinite ease-in-out;
 }
 
+@keyframes typing-bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.animate-typing-bounce {
+  animation: typing-bounce 1s infinite ease-in-out;
+}
+.animation-delay-100 {
+  animation-delay: 100ms;
+}
+.animation-delay-200 {
+  animation-delay: 200ms;
+}
+
+
