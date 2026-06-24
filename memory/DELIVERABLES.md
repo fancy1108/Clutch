@@ -27,6 +27,17 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ## 已交付（代码 Task · 自 Git 回填）
 
+### UI-FIXES-RELOAD-THINKING ✅
+- **日期：** 2026-06-24
+- **Commit：** `31752ce` — `feat(ui): add reload to context menu and show thinking animation during runs`
+- **Verification：** `./scripts/verify.sh` → 116 pytest + vitest passed
+- **证据：** `runs/verification/2026-06-24-rightclick-thinking-verification.log`
+- **交付文件：**
+  - `apps/desktop/src/sidebar.tsx` — Add StopPropagation to context menu, add custom "Reload" action
+  - `apps/desktop/src/components/LanguageContext.tsx` — Add Chinese translations for Reload, Thinking..., and Clutch Agent
+  - `apps/desktop/src/index.css` — Define wave keyframe and bounce animation for thinking dots
+  - `apps/desktop/src/components/ChatFeed.tsx` — Render bouncing dots when LLM is thinking and add auto-scroll logic
+
 ### UI-FIXES ✅
 - **日期：** 2026-06-24
 - **Commit：** `725f6b5` — `feat(ui): fix multiple UI and backend interaction issues`

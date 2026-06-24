@@ -12,6 +12,7 @@
 
 | 日期 | 范围 | 命令 | 结果 | 报告/证据 | 备注 |
 |------|------|------|------|-----------|------|
+| 2026-06-24 | 右键&思考动效 | `./scripts/verify.sh` | ✅ 116 pytest + 1 vitest | `runs/verification/2026-06-24-rightclick-thinking-verification.log` | 右键自定义 Reload 与 LLM 思考中动画校验 |
 | 2026-06-24 | UI/后端修复 | `./scripts/verify.sh` | ✅ 116 pytest + vitest | `runs/verification/2026-06-24-ui-fixes-verify.log` | UI 与后端交互修复校验 |
 | 2026-06-22 | 前端构建 | `pnpm build` | ✅ | — | 类型检查：`pnpm lint` |
 | 2026-06-23 | 后端测试 | `cd services/orchestrator && uv run pytest` | ✅ 104 passed | `runs/verification/2026-06-24-p2-01-verify.log` | 含 `test_skills_registry`（P2-01） |

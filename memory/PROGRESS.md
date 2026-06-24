@@ -38,7 +38,13 @@
 - [x] **DMG**：`pnpm tauri build` → `runs/verification/2026-06-24-clutch-p2.dmg`
 - [ ] **T-04**：红队 / 体感审计（可选）
 
-## 会话日志（最新在上）
+### 2026-06-24 会话（右键自定义 Reload 与思考动效）
+
+- **完成：**
+  - 在侧栏项目/会话自定义右键菜单中增加了 Reload / 重新加载选项，并且利用 `e.stopPropagation()` 解决了冒泡关闭的问题，确保右键自定义菜单可以在打包 DMG 禁用原生右键的环境下正常使用 Reload 和 Delete；
+  - 增加了 LLM 思考中动效，当 `isRunning` 且最后一条消息是 User 时，以 AI 气泡展示三点波浪跳跃动效并附带旋转 Loader，同时将思考动效加入 auto-scroll 依赖，启动后自动滚到底部。
+- **校验：** `./scripts/verify.sh` → 116 pytest + 1 vitest + drift ✅
+- **下次优先：** 待用户进一步验收测试。
 
 ### 2026-06-24 会话（UI 与后端交互修复）
 
