@@ -32,6 +32,7 @@
 | 文件定位速查 | [`memory/FILEMAP.md`](./memory/FILEMAP.md) | 第 6 步填实 |
 | 功能验收状态 | `memory/ROADMAP.md`、`memory/TESTS.md` | 验证通过后 |
 | 系统设计详述（叙事 + ADR） | [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) | 架构评审时；路径速查见 `memory/FILEMAP.md` |
+| Orchestrator 调研 / 候选能力（非决策） | [`docs/research/orchestrator-optimization-pool.md`](./research/orchestrator-optimization-pool.md) | 索引见 `memory/BACKLOG.md` |
 
 ## 禁止事项
 

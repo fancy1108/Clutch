@@ -27,6 +27,25 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ## 已交付（代码 Task · 自 Git 回填）
 
+### UI-FIXES ✅
+- **日期：** 2026-06-24
+- **Commit：** `725f6b5` — `feat(ui): fix multiple UI and backend interaction issues`
+- **Verification：** `./scripts/verify.sh` → 116 pytest + vitest passed
+- **证据：** `runs/verification/2026-06-24-ui-fixes-verify.log`
+- **交付文件：**
+  - `apps/desktop/src/App.tsx` — Compute and pass sessionTitle to ChatFeed, handle deletions
+  - `apps/desktop/src/components/ChatFeed.tsx` — User messages on the right, AI/Agents on the left, hide empty state for existing sessions
+  - `apps/desktop/src/components/LanguageContext.tsx` — Delete prompt translations
+  - `apps/desktop/src/services/runApi.ts` — deleteSession API
+  - `apps/desktop/src/sidebar.tsx` — Traffic lights removal, local context menu state and UI
+  - `services/orchestrator/src/credentials/claude_code.py` — Dynamic model name formatting
+  - `services/orchestrator/src/main.py` — Immediate echo, local time, DELETE /api/runs/{run_id} endpoint
+  - `services/orchestrator/src/run_history.py` — delete_session metadata deletion
+  - `services/orchestrator/src/run_state_store.py` — delete_run_state file deletion
+  - `services/orchestrator/tests/test_run_history.py` — test_delete_session_api test case
+  - `services/orchestrator/tests/test_ws_message_log.py` — updated WS assertions for plain chat sequence
+  - `services/orchestrator/tests/test_ws_state_patch.py` — updated WS assertions for connect state
+
 ### M0-01 ✅
 - **日期：** 2026-06-22
 - **Commit：** `56dd9e9` — feat(orchestrator): add basic FastAPI and WebSocket endpoint（health 初版见 `4aefaac`）

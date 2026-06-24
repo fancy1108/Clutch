@@ -16,6 +16,9 @@
 | [`.cursor/rules/base.mdc`](./.cursor/rules/base.mdc) | Cursor Agent | 精简指针（`alwaysApply`）→ `CLAUDE.md` |
 | [`.github/copilot-instructions.md`](./.github/copilot-instructions.md) | GitHub Copilot | 精简指针 → `CLAUDE.md` |
 | [`docs/document-governance.md`](./docs/document-governance.md) | 架构评审 | 五层架构与权威优先级 |
+| [`docs/agents/issue-tracker.md`](./docs/agents/issue-tracker.md) | Agent skills | 问题追踪器配置（GitHub） |
+| [`docs/agents/triage-labels.md`](./docs/agents/triage-labels.md) | Agent skills | 标签词表映射 |
+| [`docs/agents/domain.md`](./docs/agents/domain.md) | Agent skills | 领域文档消费规则 |
 | [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) | 架构评审 | 系统设计详述（叙事 + ADR） |
 
 ---

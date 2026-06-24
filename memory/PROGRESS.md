@@ -2,8 +2,8 @@
 
 ## 当前状态
 
-- 阶段：**P2 收尾完成 — P2-06 ⏸️（D14）；已 push `9ce59ba`**
-- Git HEAD：`9ce59ba`（`origin/main` 同步）
+- 阶段：**P2 收尾与 UI 修复完成；已完成 7 项 UI 与后端交互优化**
+- Git HEAD：`9ce59ba`（本地有未 commit 的改动，等待打包后 commit）
 
 ## 治理脚手架就绪标准（文档层 ✅）
 
@@ -39,6 +39,19 @@
 - [ ] **T-04**：红队 / 体感审计（可选）
 
 ## 会话日志（最新在上）
+
+### 2026-06-24 会话（UI 与后端交互修复）
+
+- **完成：**
+  - 去掉左上角三个红绿灯图标；
+  - 修复点击侧栏非空历史会话时，中间仍展示 Supervised Session 引导页的 Bug；
+  - 修复 LLM 聊天气泡左/右对齐（User 在右，LLM 在左）；
+  - 修复 plain chat 模式下，用户消息没有立刻回显（需等待 LLM 返回才一起展示）的延迟 Bug；
+  - 修复 Claude Code proxy 环境下，模型显示名被硬编码为 "Claude" 的 Bug，如果是 GLM 则正确显示 "GLM 4" 等；
+  - 实质支持右键项目/会话允许删除（项目只删除侧栏入口，会话是真的物理删除磁盘 json 和 history 记录）；
+  - 修复聊天中 LLM 气泡的时间显示为 UTC 时间的 Bug（已改为使用 native local time）。
+- **校验：** `./scripts/verify.sh` → 116 pytest + vitest ✅
+- **下次优先：** 校验完毕后，原子提交并重新运行 `pnpm tauri build` 重新打包dmg。
 
 ### 2026-06-24 会话（收尾 push）
 
