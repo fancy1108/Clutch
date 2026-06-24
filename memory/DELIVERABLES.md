@@ -27,6 +27,14 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ## 已交付（代码 Task · 自 Git 回填）
 
+### UI-DELETE-NAV-SYNC ✅
+- **日期：** 2026-06-24
+- **Commit：** `0a0a74c` — `feat(ui): prevent ghost session on new chat and auto navigate on delete`
+- **Verification：** `./scripts/verify.sh` → 116 pytest + vitest passed
+- **证据：** `runs/verification/2026-06-24-delete-navigation-verify.log`
+- **交付文件：**
+  - `apps/desktop/src/App.tsx` — Prevent creating sessions immediately on New Chat click, and implement auto-navigation to the next available session or temporary landing page upon deletion.
+
 ### UI-FIXES-RELOAD-THINKING ✅
 - **日期：** 2026-06-24
 - **Commit：** `31752ce` — `feat(ui): add reload to context menu and show thinking animation during runs`

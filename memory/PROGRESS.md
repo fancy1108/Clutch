@@ -38,11 +38,13 @@
 - [x] **DMG**：`pnpm tauri build` → `runs/verification/2026-06-24-clutch-p2.dmg`
 - [ ] **T-04**：红队 / 体感审计（可选）
 
-### 2026-06-24 会话（右键自定义 Reload 与思考动效）
+### 2026-06-24 会话（右键菜单、思考动效、删除与跳转优化）
 
 - **完成：**
   - 在侧栏项目/会话自定义右键菜单中增加了 Reload / 重新加载选项，并且利用 `e.stopPropagation()` 解决了冒泡关闭的问题，确保右键自定义菜单可以在打包 DMG 禁用原生右键的环境下正常使用 Reload 和 Delete；
-  - 增加了 LLM 思考中动效，当 `isRunning` 且最后一条消息是 User 时，以 AI 气泡展示三点波浪跳跃动效并附带旋转 Loader，同时将思考动效加入 auto-scroll 依赖，启动后自动滚到底部。
+  - 增加了 LLM 思考中动效，当 `isRunning` 且最后一条消息是 User 时，以 AI 气泡展示三点波浪跳跃动效并附带旋转 Loader，同时将思考动效加入 auto-scroll 依赖，启动后自动滚到底部；
+  - **防止空白 Ghost 会话物理创建**：重构 `handleNewChat`，移除立刻物理调用 `createSession` 的行为，仅本地生成临时 `runId` 呈现空 landing 状态，当用户发第一条消息时后端由 WebSocket 的 `_touch_session` 顺理成章创建，从而避免点 New Chat 污染侧栏或“删除后又多出一个空会话”的 Bug；
+  - **删除会话自动跳转 fallback 逻辑**：重构 `handleDeleteSession` 以更新前端 session 状态，若删除当前选中会话，则自动在同 Workspace 内检索最新一条剩余会话进行 handleSelectSession 跳转。若已无剩余会话，则直接切换到临时 runId 状态渲染空 landing 引导页。
 - **校验：** `./scripts/verify.sh` → 116 pytest + 1 vitest + drift ✅
 - **下次优先：** 待用户进一步验收测试。
 
