@@ -13,9 +13,9 @@ source runs/verification/.e2e-env
 sidecar_pid=""
 tauri_pid=""
 cleanup() {
-  if [[ -n "${tauri_pid:-}" ]] && kill -0 "$tauri_pid" 2>/dev/null; then
-    kill "$tauri_pid" 2>/dev/null || true
-    wait "$tauri_pid" 2>/dev/null || true
+  if [[ -n "${tauri_pid:-}" ]]; then
+    kill -9 "$tauri_pid" 2>/dev/null || true
+    tauri_pid=""
   fi
   if [[ -n "${sidecar_pid:-}" ]] && kill -0 "$sidecar_pid" 2>/dev/null; then
     kill "$sidecar_pid" 2>/dev/null || true
@@ -89,6 +89,7 @@ wait_tauri_ready() {
   rm -f /tmp/clutch-tauri-playwright.sock 2>/dev/null || true
 
   echo "=== Desktop E2E ==="
+  set +e
   (cd apps/desktop && env CLUTCH_E2E_SANDBOX="${CLUTCH_E2E_SANDBOX:-}" \
     CLUTCH_E2E_FAKE_LLM="${CLUTCH_E2E_FAKE_LLM:-}" \
     CLUTCH_WORKSPACES_FILE="${CLUTCH_WORKSPACES_FILE:-}" \
@@ -97,22 +98,19 @@ wait_tauri_ready() {
     CLUTCH_MODELS_CONFIG="${CLUTCH_MODELS_CONFIG:-}" \
     pnpm tauri:e2e) &
   tauri_pid=$!
-  disown "$tauri_pid" 2>/dev/null || true
   wait_tauri_ready
   desktop_status=0
   (cd e2e && env CLUTCH_E2E_SANDBOX="${CLUTCH_E2E_SANDBOX:-}" pnpm test:desktop) || desktop_status=$?
-  set +e
-  if [[ -n "${tauri_pid:-}" ]] && kill -0 "$tauri_pid" 2>/dev/null; then
-    kill "$tauri_pid" 2>/dev/null || true
-    wait "$tauri_pid" 2>/dev/null || true
-  fi
-  tauri_pid=""
   for port in 8123 3000; do
     if lsof -ti "tcp:${port}" >/dev/null 2>&1; then
       lsof -ti "tcp:${port}" | xargs kill -9 2>/dev/null || true
       sleep 0.5
     fi
   done
+  if [[ -n "${tauri_pid:-}" ]]; then
+    kill -9 "$tauri_pid" 2>/dev/null || true
+  fi
+  tauri_pid=""
   rm -f /tmp/clutch-tauri-playwright.sock 2>/dev/null || true
   if [[ "$desktop_status" -ne 0 ]]; then
     exit "$desktop_status"
