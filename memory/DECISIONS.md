@@ -142,7 +142,15 @@
   6. **P2-06** General Settings — 替换占位页为实质配置（工作区默认、高危确认开关等）
 - **影响**：`tasks.md` §P2 升格为带 ID 任务；`ROADMAP.md` Skills 行改进行中；存储路径 `Application Support/clutch/skills/`、`preferences/`
 - **落地前提**：M4-02 agent 持久化模式可复用；**P2-01 已落地**
-- **决策状态**：`可执行`（P2-02…P2-06 待交付）
+- **决策状态**：`已落地`（P2-01…P2-05 ✅；**P2-06 见 D14 延后**）
+
+### D14 · P2-06 General Settings 延后（2026-06-24）
+
+- **背景**：P2-01…P2-05 已交付；用户明确 **P2-06 先不做**，优先 push / CI / 验收 DMG，勿反复询问是否启动 P2-06。
+- **方案**：`SystemPreferencesModal` General 页「功能开发中」占位**保留**；P2-06 从当前冲刺移除，待用户重新立项后再执行。
+- **影响**：`ROADMAP.md` General Settings 标 ⏸️；`tasks.md` P2-06 标延后；验收范围不含 General 实质配置。
+- **落地前提**：用户重新要求交付 P2-06 或写入新的 task ID。
+- **决策状态**：`已记录`（主动延后，非取消）
 
 ## 开放问题
 

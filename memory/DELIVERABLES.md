@@ -187,8 +187,8 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 | Task | 焦点 | 状态 |
 |------|------|------|
-| **P2-06** | General Settings | 下一 |
-| **P2-06** | General Settings | 待做 |
+| **发布** | push + CI + DMG（P2 验收） | 进行中 |
+| **P2-06** | General Settings | ⏸️ 延后（D14） |
 | **T-04** | 红队 / 体感审计 | 可选 |
 
 ### P2-03 ✅
@@ -204,7 +204,7 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ### P2-05 ✅
 - **日期：** 2026-06-24
-- **Commit：** （待提交）
+- **Commit：** `3e2b6c7` — feat(sidebar): add repository groups with filter and persistence (P2-05)
 - **Verification：** `uv run pytest tests/test_repository_groups.py -v` → 2 passed；`pnpm build` ✅
 - **交付文件：**
   - `services/orchestrator/src/workspace.py` — `repository_groups` 持久化 + CRUD

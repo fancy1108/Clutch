@@ -146,7 +146,7 @@
 | P2-03 | Theme 持久化 | `ThemeManager.tsx` | 重启后保留活跃主题 | 手动：切换主题 → 重启 → 主题仍在 |
 | P2-04 | i18n 双语验收 | `LanguageContext.tsx` · `Header.tsx` | Header en/zh 切换；监督台关键文案双语 | 手动 + E2E `lang-zh` / `lang-en` data-testid |
 | P2-05 | 侧栏 REPOSITORIES CRUD | `sidebar.tsx` | filter / new folder；分组持久化 | 手动：新建分组 → 重启 → 仍在 |
-| P2-06 | General Settings 实质功能 | `SystemPreferencesModal` | 替换「功能开发中」占位 | 手动：General 页可改至少一项并持久化 |
+| P2-06 | General Settings 实质功能 | `SystemPreferencesModal` | 替换「功能开发中」占位 | ⏸️ **延后（D14）** — 占位保留 |
 
 ---
 

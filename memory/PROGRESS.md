@@ -2,8 +2,8 @@
 
 ## 当前状态
 
-- 阶段：**P2 打磨 — P2-05 ✅，下一项 P2-06 General Settings**
-- Git HEAD：`351f3fe`（本地 ahead，待 push）
+- 阶段：**P2 收尾 — P2-01…05 ✅；P2-06 ⏸️ 延后（D14）；发布 push / DMG**
+- Git HEAD：`3e2b6c7`（本地 ahead，待 push）
 
 ## 治理脚手架就绪标准（文档层 ✅）
 
@@ -33,10 +33,18 @@
 - [x] **P2-03**：Theme 持久化
 - [x] **P2-04**：i18n 双语验收
 - [x] **P2-05**：侧栏 REPOSITORIES CRUD
-- [ ] **P2-06**：General Settings 实质功能
+- [ ] **P2-06**：General Settings — ⏸️ **延后（D14，勿主动推进）**
+- [ ] **Push + CI**：P2 提交栈推 remote 并确认 Actions 绿
+- [ ] **DMG**：`pnpm tauri build` 验收包（含 P2 代码）
 - [ ] **T-04**：红队 / 体感审计（可选）
 
 ## 会话日志（最新在上）
+
+### 2026-06-24 会话（P2 收尾 · 发布）
+
+- **决策：** D14 — P2-06 General Settings **延后**，勿反复询问
+- **待做：** push 7 commits → CI → `pnpm tauri build` DMG
+- **P2 功能：** P2-01…05 已 commit（`3e2b6c7`）
 
 ### 2026-06-24 会话（P2-05 REPOSITORIES CRUD）
 
