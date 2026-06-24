@@ -12,6 +12,7 @@ import { ModelsManager } from './components/ModelsManager';
 import { ThemeManager, THEME_PRESETS } from './components/ThemeManager';
 import { SystemPreferencesModal } from './components/SystemPreferencesModal';
 import { MainView, RightTab, ChatMessage, UncommittedFile, DiffLine } from './types';
+import { fetchThemePreference, saveThemePreference, type ThemePresetId } from './services/themeApi';
 import { LanguageProvider, useLanguage } from './components/LanguageContext';
 import { clutchStore, createSessionRunId, submitChatMessage, useClutchState } from './services/clutchState';
 import { fetchSessions, createSession, startWorkflowRun, fetchRunState, type SessionRecord } from './services/runApi';
@@ -48,7 +49,20 @@ function MainLayout() {
   const [currentFlowName, setCurrentFlowName] = useState<string>('');
   const [selectedWorkflowId, setSelectedWorkflowId] = useState<string | null>(null);
   const [isMultiAgent, setIsMultiAgent] = useState<boolean>(true);
-  const [themeId, setThemeId] = useState<string>('pristine-light');
+  const [themeId, setThemeIdState] = useState<ThemePresetId>('pristine-light');
+
+  useEffect(() => {
+    void fetchThemePreference()
+      .then((id) => setThemeIdState(id))
+      .catch(() => {});
+  }, []);
+
+  const setThemeId = (id: string) => {
+    const preset = THEME_PRESETS.find((item) => item.id === id);
+    if (!preset) return;
+    setThemeIdState(preset.id as ThemePresetId);
+    void saveThemePreference(preset.id as ThemePresetId).catch(() => {});
+  };
 
   // Active selected model state
   const [selectedModel, setSelectedModel] = useState<string>('');

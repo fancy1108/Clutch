@@ -187,12 +187,31 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 | Task | 焦点 | 状态 |
 |------|------|------|
-| **P2-03** | Theme 持久化 | 下一 |
-| **P2-03** | Theme 持久化 | 待做 |
-| **P2-04** | i18n 双语验收 | 待做 |
-| **P2-05** | 侧栏 REPOSITORIES CRUD | 待做 |
+| **P2-05** | 侧栏 REPOSITORIES CRUD | 下一 |
 | **P2-06** | General Settings | 待做 |
 | **T-04** | 红队 / 体感审计 | 可选 |
+
+### P2-03 ✅
+- **日期：** 2026-06-24
+- **Commit：** （待提交）
+- **Verification：** `uv run pytest tests/test_theme_preferences.py -v` → 3 passed；`pnpm build` ✅
+- **交付文件：**
+  - `services/orchestrator/src/preferences_storage.py` — Application Support 主题/语言偏好
+  - `services/orchestrator/src/main.py` — `GET/POST /api/preferences/theme`
+  - `services/orchestrator/tests/test_theme_preferences.py`
+  - `apps/desktop/src/services/themeApi.ts`
+  - `apps/desktop/src/App.tsx` — 启动 hydrate + 切换持久化
+
+### P2-04 ✅
+- **日期：** 2026-06-24
+- **Commit：** （待提交）
+- **Verification：** `uv run pytest tests/test_i18n_preferences.py -v` → 3 passed；E2E `i18n.spec.ts` + desktop G-03 断言
+- **交付文件：**
+  - `services/orchestrator/src/main.py` — `GET/POST /api/preferences/language`、`GET /api/preferences`
+  - `services/orchestrator/tests/test_i18n_preferences.py`
+  - `apps/desktop/src/components/LanguageContext.tsx` — Sidecar 同步
+  - `apps/desktop/src/components/ChatFeed.tsx` — `data-testid="chat-supervised-title"`
+  - `e2e/tests/i18n.spec.ts`、`e2e/tests/desktop/all-ui.spec.ts` G-03
 
 ### P2-01 ✅
 - **日期：** 2026-06-24

@@ -65,7 +65,7 @@
 | E2E 桌面 Tauri 助手 | `e2e/helpers/tauri.ts`（`authorizeSandboxWorkspace`） |
 | E2E 会话预置（Node） | `e2e/helpers/seed.ts` |
 | E2E API：`session-history` | `e2e/tests/session-history.spec.ts` |
-| E2E API：smoke / mvp | `e2e/tests/smoke.spec.ts`、`mvp-closed-loop.spec.ts` |
+| E2E API：i18n 偏好 | `e2e/tests/i18n.spec.ts` |
 | E2E Desktop fixture | `e2e/fixtures/desktop.ts`（`@srsholmes/tauri-playwright`） |
 | E2E Desktop 全 UI | `e2e/tests/desktop/all-ui.spec.ts` |
 | E2E Desktop 历史续聊 | `e2e/tests/desktop/session-history.spec.ts` |
@@ -80,6 +80,7 @@
 | WebSocket store、`useClutchState` | `services/clutchState.ts` |
 | 会话 / 运行 API | `services/runApi.ts` |
 | Skills Registry API（P2-01） | `services/skillsApi.ts` |
+| Theme 偏好 API（P2-03） | `services/themeApi.ts`（含 language） |
 | API 抽象（mock 待 M2 替换） | `services/api.ts` |
 | 侧栏（工作区 / 历史，M2-07/09） | `sidebar.tsx` |
 | 底部状态栏（M2-08） | `App.tsx`（Branch / Mode / Flow） |
@@ -124,6 +125,7 @@
 | 用户工作流存储 API（M1-09，D5） | `src/workflow_storage.py` |
 | Skills Registry 持久化（P2-01） | `src/skills_storage.py`、`src/skills_scanner.py` |
 | MCP Registry 持久化（P2-02） | `src/mcp_storage.py` |
+| 用户偏好 / Theme（P2-03） | `src/preferences_storage.py` |
 | CLI / GUI Adapter（M3） | `src/adapters/`（待建） |
 | 依赖与 pytest 配置 | `pyproject.toml` |
 

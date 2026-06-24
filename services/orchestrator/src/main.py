@@ -109,6 +109,14 @@ class McpServerIdRequest(BaseModel):
     enabled: bool | None = None
 
 
+class ThemePreferenceRequest(BaseModel):
+    theme_id: str
+
+
+class LanguagePreferenceRequest(BaseModel):
+    language: str
+
+
 def _skills_registry_payload(*, rescan: bool = True) -> dict[str, Any]:
     from src.skills_scanner import scan_mounted_directories
     from src.skills_storage import load_registry, save_registry
@@ -1013,6 +1021,48 @@ async def toggle_mcp_server(body: McpServerIdRequest) -> dict[str, Any]:
     except ValueError as exc:
         raise HTTPException(status_code=404, detail={"message": str(exc)}) from exc
     return build_mcp_status_payload()
+
+
+@app.get("/api/preferences")
+async def get_preferences() -> dict[str, str]:
+    from src.preferences_storage import load_preferences
+
+    return load_preferences()
+
+
+@app.get("/api/preferences/theme")
+async def get_theme_preference() -> dict[str, str]:
+    from src.preferences_storage import load_preferences
+
+    return load_preferences()
+
+
+@app.post("/api/preferences/theme")
+async def save_theme_preference(body: ThemePreferenceRequest) -> dict[str, str]:
+    from src.preferences_storage import save_theme
+
+    try:
+        return save_theme(body.theme_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+
+
+@app.get("/api/preferences/language")
+async def get_language_preference() -> dict[str, str]:
+    from src.preferences_storage import load_preferences
+
+    prefs = load_preferences()
+    return {"active_language": prefs["active_language"]}
+
+
+@app.post("/api/preferences/language")
+async def save_language_preference(body: LanguagePreferenceRequest) -> dict[str, str]:
+    from src.preferences_storage import save_language
+
+    try:
+        return save_language(body.language)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
 
 
 @app.post("/api/runs/{run_id}/human-decision")

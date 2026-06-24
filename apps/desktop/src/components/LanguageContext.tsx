@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { fetchLanguagePreference, saveLanguagePreference } from '../services/themeApi';
 
 export type Language = 'en' | 'zh';
 
@@ -93,6 +94,11 @@ const zhTranslations: Record<string, string> = {
   "No sessions in this project yet": "此项目下暂无会话",
   "Select a project before starting a conversation.": "请先选择项目，再开始对话。",
   "Settings": "Settings / 设置",
+
+  // Header
+  "Select workspace": "选择工作区",
+  "Go Back": "返回",
+  "Workspace": "Workspace / 工作空间",
 
   // General Settings Panel
   "Developer Profiles": "Developer Profiles / 开发者角色配置",
@@ -266,9 +272,19 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return (saved === 'zh' || saved === 'en') ? saved : 'en';
   });
 
+  useEffect(() => {
+    void fetchLanguagePreference()
+      .then((lang) => {
+        setLanguageState(lang);
+        localStorage.setItem('workspace_lang', lang);
+      })
+      .catch(() => {});
+  }, []);
+
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
     localStorage.setItem('workspace_lang', lang);
+    void saveLanguagePreference(lang).catch(() => {});
   };
 
   const t = (key: string): string => {

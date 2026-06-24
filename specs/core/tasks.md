@@ -176,7 +176,7 @@
 | `AiToolsManager.tsx` | CLI/GUI 工具连接状态 | M4-03 | ✅ |
 | `McpServerHub.tsx` | MCP 连接配置 + Sidecar CRUD | P2-02 | ✅ |
 | `SkillsRegistry.tsx` | Skills 目录扫描 + Sidecar 持久化 | P2-01 | ✅ |
-| `ThemeManager.tsx` | 主题预设 | P2 | — |
+| `ThemeManager.tsx` | 主题预设 + Sidecar 持久化 | P2-03 | ✅ |
 | `SystemPreferencesModal.tsx` | 设置壳（承载上表各面板） | — | — |
 | `mockData.ts` / `services/api.ts` | 编排与假 API 响应 | M2-06 | ✅ |
 | `clutchState.ts` / WS | `state_patch`、`message`、`log` 等 | M0-02, M0-03, M2-01~03 | ✅ |
@@ -211,5 +211,5 @@
 | `tests/test_evaluator.py` | M3-05 |
 | `tests/test_check_branch.py` | M3-06 |
 | `tests/test_subprocess_isolation.py` | M3-07 |
-| `tests/test_mcp_registry.py` | P2-02 |
+| `tests/test_i18n_preferences.py` | P2-04 |
 | `tests/test_skills_registry.py` | P2-01 |

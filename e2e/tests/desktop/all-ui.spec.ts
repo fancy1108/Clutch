@@ -95,8 +95,11 @@ test('desktop: full UI coverage with sandbox isolation', async ({ tauriPage: pag
   });
 
   await test.step('G-03 language switch', async () => {
+    await page.click('[data-testid="nav-new-chat"]');
     await page.click('[data-testid="lang-zh"]');
+    await expect(page.locator('[data-testid="chat-supervised-title"]')).toContainText('开始新的监督会话');
     await page.click('[data-testid="lang-en"]');
+    await expect(page.locator('[data-testid="chat-supervised-title"]')).toContainText('Start a supervised session');
   });
 
   await test.step('G-02 right panel toggle', async () => {

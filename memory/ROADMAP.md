@@ -21,8 +21,8 @@
 | MCP 管理 | P2 | M4 | ✅ | M4-03（filesystem 状态） |
 | Skills 注册（后端同步） | P2 | P2 | ✅ | P2-01 |
 | 全量 MCP 配置 | P2 | P2 | ✅ | P2-02 |
-| Theme 持久化 | P2 | P2 | ❌ | P2-03 |
-| i18n 双语 | P2 | P2 | ❌ | P2-04 |
+| Theme 持久化 | P2 | P2 | ✅ | P2-03 |
+| i18n 双语 | P2 | P2 | ✅ | P2-04 |
 | 侧栏 REPOSITORIES CRUD | P2 | P2 | ❌ | P2-05 |
 | General Settings | P2 | P2 | ❌ | P2-06 |
 | 内置模板 | P1 | M4 | ✅ | M4-01 |

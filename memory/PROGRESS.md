@@ -2,7 +2,7 @@
 
 ## 当前状态
 
-- 阶段：**P2 打磨（D13）— P2-02 ✅，下一项 P2-03 Theme**
+- 阶段：**P2 打磨 — P2-04 ✅，下一项 P2-05 REPOSITORIES CRUD**
 - Git HEAD：`da3c660`（本地 ahead 3，待 push）
 
 ## 治理脚手架就绪标准（文档层 ✅）
@@ -30,13 +30,25 @@
 - [x] **提交 + push** D11+D12 → `9e509c3`
 - [x] **P2-01**：Skills Registry 后端 + 扫描
 - [x] **P2-02**：全量 MCP CRUD
-- [ ] **P2-03**：Theme 持久化
-- [ ] **P2-04**：i18n 双语验收
+- [x] **P2-03**：Theme 持久化
+- [x] **P2-04**：i18n 双语验收
 - [ ] **P2-05**：侧栏 REPOSITORIES CRUD
 - [ ] **P2-06**：General Settings 实质功能
 - [ ] **T-04**：红队 / 体感审计（可选）
 
 ## 会话日志（最新在上）
+
+### 2026-06-24 会话（P2-04 i18n）
+
+- **完成：** `preferences_storage` 合并 language；`/api/preferences/language`；`LanguageContext` Sidecar 同步；`i18n.spec.ts` + desktop G-03 断言
+- **校验：** `test_i18n_preferences.py` 3 passed；`pnpm build` ✅
+- **下次优先：** P2-05 侧栏 REPOSITORIES CRUD
+
+### 2026-06-24 会话（P2-03 Theme 持久化）
+
+- **完成：** `preferences_storage` + `/api/preferences/theme`；`themeApi.ts`；`App.tsx` 启动 hydrate + 切换保存
+- **校验：** `test_theme_preferences.py` 3 passed；`pnpm build` ✅
+- **下次优先：** P2-04 i18n 双语验收
 
 ### 2026-06-24 会话（P2-02 MCP Registry）
 

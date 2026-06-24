@@ -92,7 +92,12 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
               <span className="material-symbols-outlined text-[28px] text-on-surface-variant">hub</span>
             </div>
             <div className="space-y-2 max-w-md">
-              <h2 className="text-lg font-bold text-on-surface tracking-tight">{t('Start a supervised session')}</h2>
+              <h2
+                data-testid="chat-supervised-title"
+                className="text-lg font-bold text-on-surface tracking-tight"
+              >
+                {t('Start a supervised session')}
+              </h2>
               <p className="text-sm text-on-surface-variant leading-relaxed">
                 {t('Select a workspace and start a workflow, or type an instruction below. Clutch will orchestrate Builder / Evaluator and ask for your approval when needed.')}
               </p>
