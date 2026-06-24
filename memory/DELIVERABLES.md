@@ -187,7 +187,7 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 | Task | 焦点 | 状态 |
 |------|------|------|
-| **发布** | push + CI + DMG（P2 验收） | ✅ DMG；CI 待网页确认 |
+| **发布** | push + CI + DMG（P2 验收） | ✅ `9ce59ba` pushed；DMG 见 `runs/verification/2026-06-24-clutch-p2.dmg` |
 | **P2-06** | General Settings | ⏸️ 延后（D14） |
 | **T-04** | 红队 / 体感审计 | 可选 |
 

@@ -2,8 +2,8 @@
 
 ## 当前状态
 
-- 阶段：**P2 收尾完成 — P2-06 ⏸️（D14）；待 push DMG 修复 + D15**
-- Git HEAD：`f1ea1f2`（本地 ahead 1，待 push）
+- 阶段：**P2 收尾完成 — P2-06 ⏸️（D14）；已 push `9ce59ba`**
+- Git HEAD：`9ce59ba`（`origin/main` 同步）
 
 ## 治理脚手架就绪标准（文档层 ✅）
 
@@ -34,11 +34,17 @@
 - [x] **P2-04**：i18n 双语验收
 - [x] **P2-05**：侧栏 REPOSITORIES CRUD
 - [ ] **P2-06**：General Settings — ⏸️ **延后（D14，勿主动推进）**
-- [x] **Push + CI**：P2 提交栈已 push → `609b2d6`（CI 需本地 `gh auth` 或 GitHub 网页确认）
+- [x] **Push + CI**：`9ce59ba` 已 push；CI 见 GitHub Actions（本机无 gh auth）
 - [x] **DMG**：`pnpm tauri build` → `runs/verification/2026-06-24-clutch-p2.dmg`
 - [ ] **T-04**：红队 / 体感审计（可选）
 
 ## 会话日志（最新在上）
+
+### 2026-06-24 会话（收尾 push）
+
+- **Push：** `f1ea1f2`（DMG capability 修复）+ `9ce59ba`（D15 verify 拆分 + schema regen）
+- **校验：** `./scripts/verify.sh` 轻量 → 115 pytest ✅
+- **DMG：** `runs/verification/2026-06-24-clutch-p2.dmg`
 
 ### 2026-06-24 会话（P2 收尾 · 发布）
 
