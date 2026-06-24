@@ -56,14 +56,6 @@ export async function testModelConnection(modelId: string): Promise<ModelTestRes
   return response.json() as Promise<ModelTestResult>;
 }
 
-export async function fetchMcpStatus(): Promise<{
-  filesystem: { connected: boolean; tools: number; workspace_path?: string | null };
-}> {
-  const response = await fetch(`${BASE}/api/mcp/status`);
-  if (!response.ok) throw new Error(`mcp status failed (${response.status})`);
-  return response.json() as Promise<{ filesystem: { connected: boolean; tools: number; workspace_path?: string | null } }>;
-}
-
 export const PROVIDER_LABELS: Record<string, string> = {
   deepseek: 'DeepSeek',
   anthropic: 'Anthropic',

@@ -2,8 +2,8 @@
 
 ## 当前状态
 
-- 阶段：**P2 打磨（D13）— P2-01 ✅，进行中 P2-02**
-- Git HEAD：`a8bc6af`（本地 ahead 1，待 push）
+- 阶段：**P2 打磨（D13）— P2-02 ✅，下一项 P2-03 Theme**
+- Git HEAD：`963e677`（本地 ahead 2，待 push）
 
 ## 治理脚手架就绪标准（文档层 ✅）
 
@@ -29,7 +29,7 @@
 - [x] **D12**：桌面 E2E 全链路 — `./scripts/run-e2e.sh` 7/7 ✅
 - [x] **提交 + push** D11+D12 → `9e509c3`
 - [x] **P2-01**：Skills Registry 后端 + 扫描
-- [ ] **P2-02**：全量 MCP CRUD
+- [x] **P2-02**：全量 MCP CRUD
 - [ ] **P2-03**：Theme 持久化
 - [ ] **P2-04**：i18n 双语验收
 - [ ] **P2-05**：侧栏 REPOSITORIES CRUD
@@ -38,7 +38,13 @@
 
 ## 会话日志（最新在上）
 
-### 2026-06-24 会话（P2-01 Skills Registry）
+### 2026-06-24 会话（P2-02 MCP Registry）
+
+- **完成：** `mcp_storage` + `/api/mcp/servers/register|remove|toggle`；`mcpApi.ts`；`McpServerHub` CRUD UI
+- **校验：** `test_mcp_registry.py` 3 passed；`pnpm build` ✅
+- **下次优先：** P2-03 Theme 持久化
+
+### 2026-06-24 会话（P2-01 Check-out + e2e 修复）
 
 - **完成：** D13 决策 + P2-01 全链路；`./scripts/verify.sh` → 104 pytest + 7 Playwright ✅
 - **校验：** Check-out 完成（DELIVERABLES / TESTS / FAILURES 同步）

@@ -38,6 +38,8 @@
 | 待建 pytest 与 task 映射 | `specs/core/tasks.md` §待建 pytest 文件 |
 | 里程碑级验收 T-01~04 | `specs/core/tasks.md` §测试与验收 |
 | 进度 / 待办 | `memory/PROGRESS.md` |
+| 候选优化需求池（未立项） | `memory/BACKLOG.md` |
+| Orchestrator 主控能力调研（参考） | `docs/research/orchestrator-optimization-pool.md` |
 | Task 交付索引（Commit / 证据） | `memory/DELIVERABLES.md` |
 | 决策与开放问题 | `memory/DECISIONS.md` |
 | 功能验收状态 | `memory/ROADMAP.md` |
@@ -98,6 +100,7 @@
 | AI 工具连接状态 | `components/AiToolsManager.tsx` |
 | Skills 注册 | `components/SkillsRegistry.tsx` |
 | MCP 配置 | `components/McpServerHub.tsx` |
+| MCP Registry API（P2-02） | `services/mcpApi.ts` |
 | 顶栏 | `components/Header.tsx` |
 | 全局样式 | `index.css` |
 | 类型定义 | `types.ts` |
@@ -120,6 +123,7 @@
 | LLM Provider Router（M1-08，D4） | `src/llm/router.py` |
 | 用户工作流存储 API（M1-09，D5） | `src/workflow_storage.py` |
 | Skills Registry 持久化（P2-01） | `src/skills_storage.py`、`src/skills_scanner.py` |
+| MCP Registry 持久化（P2-02） | `src/mcp_storage.py` |
 | CLI / GUI Adapter（M3） | `src/adapters/`（待建） |
 | 依赖与 pytest 配置 | `pyproject.toml` |
 

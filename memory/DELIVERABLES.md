@@ -187,7 +187,7 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 | Task | 焦点 | 状态 |
 |------|------|------|
-| **P2-02** | 全量 MCP CRUD | 下一 |
+| **P2-03** | Theme 持久化 | 下一 |
 | **P2-03** | Theme 持久化 | 待做 |
 | **P2-04** | i18n 双语验收 | 待做 |
 | **P2-05** | 侧栏 REPOSITORIES CRUD | 待做 |
@@ -208,6 +208,18 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
   - `apps/desktop/src/components/SkillsRegistry.tsx` — 去 localStorage，接 Sidecar
   - `apps/desktop/src/components/AgentManager.tsx` — Skills 从 Sidecar 同步
   - `memory/DECISIONS.md` D13 — P2 任务拆解
+
+### P2-02 ✅
+- **日期：** 2026-06-24
+- **Commit：** （见本次 commit）
+- **Verification：** `uv run pytest tests/test_mcp_registry.py -v` → 3 passed；`pnpm build` ✅
+- **证据：** `runs/verification/`（pytest 本地）
+- **交付文件：**
+  - `services/orchestrator/src/mcp_storage.py` — MCP 服务器持久化 + status 聚合
+  - `services/orchestrator/src/main.py` — `/api/mcp/servers/*`、增强 `/api/mcp/status`
+  - `services/orchestrator/tests/test_mcp_registry.py` — P2-02 门禁
+  - `apps/desktop/src/services/mcpApi.ts` — 前端 MCP API
+  - `apps/desktop/src/components/McpServerHub.tsx` — 注册 / 启用 / 删除 UI
 
 ### cf342c6 — M2–M4 批量 ✅
 - **日期：** 2026-06-23

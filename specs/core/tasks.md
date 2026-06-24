@@ -174,7 +174,7 @@
 | `AgentManager.tsx` | Prompt、Deliverables、工具绑定 | M4-02, M3-05 | ✅ |
 | `ModelsManager.tsx` | 模型与 Provider 配置 | M1-08, M4-04, M4-09 | ✅ |
 | `AiToolsManager.tsx` | CLI/GUI 工具连接状态 | M4-03 | ✅ |
-| `McpServerHub.tsx` | MCP 连接配置与状态 | M4-03 | ✅ |
+| `McpServerHub.tsx` | MCP 连接配置 + Sidecar CRUD | P2-02 | ✅ |
 | `SkillsRegistry.tsx` | Skills 目录扫描 + Sidecar 持久化 | P2-01 | ✅ |
 | `ThemeManager.tsx` | 主题预设 | P2 | — |
 | `SystemPreferencesModal.tsx` | 设置壳（承载上表各面板） | — | — |
@@ -211,4 +211,5 @@
 | `tests/test_evaluator.py` | M3-05 |
 | `tests/test_check_branch.py` | M3-06 |
 | `tests/test_subprocess_isolation.py` | M3-07 |
+| `tests/test_mcp_registry.py` | P2-02 |
 | `tests/test_skills_registry.py` | P2-01 |

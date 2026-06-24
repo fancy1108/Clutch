@@ -98,6 +98,17 @@ class SkillsToggleRequest(BaseModel):
     is_active: bool = Field(default=True)
 
 
+class McpRegisterRequest(BaseModel):
+    name: str
+    transport: str = Field(default="stdio")
+    endpoint: str
+
+
+class McpServerIdRequest(BaseModel):
+    id: str
+    enabled: bool | None = None
+
+
 def _skills_registry_payload(*, rescan: bool = True) -> dict[str, Any]:
     from src.skills_scanner import scan_mounted_directories
     from src.skills_storage import load_registry, save_registry
@@ -964,17 +975,44 @@ async def open_cursor_tool() -> dict[str, str]:
 
 @app.get("/api/mcp/status")
 async def mcp_status() -> dict[str, Any]:
-    from src.workspace import get_workspace
+    from src.mcp_storage import build_mcp_status_payload
 
-    workspace = get_workspace()
-    connected = workspace is not None
-    return {
-        "filesystem": {
-            "connected": connected,
-            "tools": 5 if connected else 0,
-            "workspace_path": workspace["workspace_path"] if workspace else None,
-        }
-    }
+    return build_mcp_status_payload()
+
+
+@app.post("/api/mcp/servers/register")
+async def register_mcp_server(body: McpRegisterRequest) -> dict[str, Any]:
+    from src.mcp_storage import build_mcp_status_payload, register_server
+
+    try:
+        register_server(name=body.name, transport=body.transport, endpoint=body.endpoint)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+    return build_mcp_status_payload()
+
+
+@app.post("/api/mcp/servers/remove")
+async def remove_mcp_server(body: McpServerIdRequest) -> dict[str, Any]:
+    from src.mcp_storage import build_mcp_status_payload, remove_server
+
+    try:
+        remove_server(body.id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail={"message": str(exc)}) from exc
+    return build_mcp_status_payload()
+
+
+@app.post("/api/mcp/servers/toggle")
+async def toggle_mcp_server(body: McpServerIdRequest) -> dict[str, Any]:
+    from src.mcp_storage import build_mcp_status_payload, toggle_server
+
+    if body.enabled is None:
+        raise HTTPException(status_code=400, detail={"message": "enabled 字段必填"})
+    try:
+        toggle_server(body.id, enabled=body.enabled)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail={"message": str(exc)}) from exc
+    return build_mcp_status_payload()
 
 
 @app.post("/api/runs/{run_id}/human-decision")
