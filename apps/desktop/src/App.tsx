@@ -26,6 +26,7 @@ import {
   fetchRepositoryGroups,
   createRepositoryGroup,
   updateRepositoryGroup,
+  deleteRepositoryGroup,
   reassignToBuilder,
   type FileTreeNode,
   type RepositoryGroup,
@@ -279,6 +280,75 @@ function MainLayout() {
     }
   };
 
+  const handleDeleteRepositoryGroup = (groupId: string) => {
+    setPromptModal({
+      isOpen: true,
+      title: t('Delete Group'),
+      message: t('Are you sure you want to delete this group?'),
+      hasInput: false,
+      onConfirm: async () => {
+        setPromptModal(null);
+        try {
+          await deleteRepositoryGroup(groupId);
+          const listed = await fetchRepositoryGroups();
+          setRepositoryGroups(listed.groups);
+        } catch (error) {
+          console.error('[Clutch] delete repository group failed:', error);
+        }
+      }
+    });
+  };
+
+  const handleRenameRepositoryGroup = (groupId: string) => {
+    const currentGroup = repositoryGroups.find(g => g.id === groupId);
+    if (!currentGroup) return;
+
+    setPromptModal({
+      isOpen: true,
+      title: t('Rename Group'),
+      placeholder: t('Enter new group name...'),
+      defaultValue: currentGroup.name,
+      hasInput: true,
+      onConfirm: async (newName) => {
+        setPromptModal(null);
+        if (!newName.trim()) return;
+        try {
+          const updated = await updateRepositoryGroup(groupId, { name: newName.trim() });
+          setRepositoryGroups((current) =>
+            current.map((g) => (g.id === groupId ? updated : g))
+          );
+        } catch (error) {
+          console.error('[Clutch] rename repository group failed:', error);
+        }
+      }
+    });
+  };
+
+  const handleMoveWorkspaceToGroup = async (workspaceId: string, targetGroupId: string) => {
+    try {
+      const promises = repositoryGroups.map(async (group) => {
+        const hasId = group.workspace_ids.includes(workspaceId);
+        const isTarget = group.id === targetGroupId;
+        
+        if (isTarget && !hasId) {
+          const newIds = [...group.workspace_ids, workspaceId];
+          return updateRepositoryGroup(group.id, { workspace_ids: newIds });
+        } else if (!isTarget && hasId) {
+          const newIds = group.workspace_ids.filter(id => id !== workspaceId);
+          return updateRepositoryGroup(group.id, { workspace_ids: newIds });
+        }
+        return null;
+      });
+      
+      await Promise.all(promises);
+      
+      const listed = await fetchRepositoryGroups();
+      setRepositoryGroups(listed.groups);
+    } catch (error) {
+      console.error('[Clutch] move workspace to group failed:', error);
+    }
+  };
+
   const handleOpenWorkspaceFile = async (path: string) => {
     try {
       const content = await fetchWorkspaceFile(path);
@@ -529,6 +599,9 @@ function MainLayout() {
           onNewChatInWorkspace={(id) => { void handleNewChatInWorkspace(id); }}
           onDeleteWorkspace={(id) => { void handleDeleteWorkspace(id); }}
           onDeleteSession={(id) => { void handleDeleteSession(id); }}
+          onDeleteRepositoryGroup={(groupId) => { handleDeleteRepositoryGroup(groupId); }}
+          onRenameRepositoryGroup={(groupId) => { handleRenameRepositoryGroup(groupId); }}
+          onMoveWorkspaceToGroup={(wsId, grpId) => { void handleMoveWorkspaceToGroup(wsId, grpId); }}
         />
 
         {/* Central screen switcher with Right component based on Left tab selections */}

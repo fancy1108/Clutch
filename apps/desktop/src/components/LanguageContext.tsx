@@ -108,6 +108,13 @@ const zhTranslations: Record<string, string> = {
   "Thinking...": "思考中...",
   "Clutch Agent": "Clutch Agent / Clutch 智能体",
   "Settings": "Settings / 设置",
+  "Default Group": "Default Group / 默认分组",
+  "Move to Group": "Move to Group / 移动至分组",
+  "Rename Group": "Rename Group / 重命名分组",
+  "Delete Group": "Delete Group / 删除分组",
+  "Rename": "Rename / 重命名",
+  "Are you sure you want to delete this group?": "确定要删除该分组吗？",
+  "Enter new group name...": "请输入新的分组名称...",
 
   // Header
   "Select workspace": "选择工作区",

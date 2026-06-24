@@ -12,6 +12,7 @@
 
 | 日期 | 范围 | 命令 | 结果 | 报告/证据 | 备注 |
 |------|------|------|------|-----------|------|
+| 2026-06-24 | 分组移动与管理优化 | `./scripts/verify.sh` | ✅ 116 pytest + 1 vitest | `runs/verification/2026-06-24-group-drag-verify.log` | 分组文件夹图标区分、虚拟默认分组折叠、原生拖放及右键菜单移动项目校验 |
 | 2026-06-24 | 自定义弹窗与删除修复 | `./scripts/verify.sh` | ✅ 116 pytest + 1 vitest | `runs/verification/2026-06-24-custom-dialog-verify.log` | 自定义 PromptModal 代替原生 window.prompt/confirm 并修复删除项目 |
 | 2026-06-24 | 删除与跳转优化 | `./scripts/verify.sh` | ✅ 116 pytest + 1 vitest | `runs/verification/2026-06-24-delete-navigation-verify.log` | 新建会话惰性加载与删除会话自动跳转跳转规则校验 |
 | 2026-06-24 | 右键&思考动效 | `./scripts/verify.sh` | ✅ 116 pytest + 1 vitest | `runs/verification/2026-06-24-rightclick-thinking-verification.log` | 右键自定义 Reload 与 LLM 思考中动画校验 |
@@ -19,7 +20,7 @@
 | 2026-06-22 | 前端构建 | `pnpm build` | ✅ | — | 类型检查：`pnpm lint` |
 | 2026-06-23 | 后端测试 | `cd services/orchestrator && uv run pytest` | ✅ 104 passed | `runs/verification/2026-06-24-p2-01-verify.log` | 含 `test_skills_registry`（P2-01） |
 | 2026-06-24 | E2E 全量 | `./scripts/verify.sh` | ✅ 7 Playwright + 104 pytest | `runs/verification/2026-06-24-p2-01-verify.log` | P2-01 Check-out |
-| 2026-06-24 | macOS 打包（P2） | `cd apps/desktop && pnpm tauri build` | ✅ | `runs/verification/2026-06-24-tauri-build-p2.log` | DMG `runs/verification/2026-06-24-clutch-p2.dmg`（含 P2-01…05） |
+| 2026-06-24 | macOS 打包（P2） | `cd apps/desktop && pnpm tauri build` | ✅ | `runs/verification/2026-06-24-tauri-build-p2.log` | DMG `runs/verification/2026-06-24-clutch-p2.dmg`（含最新分组移动与管理功能） |
 | 2026-06-23 | macOS 打包 | `cd apps/desktop && pnpm tauri build` | ✅ | `runs/verification/2026-06-23-tauri-build.log` | DMG `Clutch_0.0.0_aarch64.dmg` |
 | 2026-06-22 | 漂移机检 | `./scripts/check-doc-drift.sh` | ✅ | — | 见 DECISIONS D7 |
 | 2026-06-22 | CI（GitHub Actions） | push/PR 触发 `.github/workflows/ci.yml` | ✅ | [CI #2](https://github.com/fancy1108/Clutch/actions) | `11e6d77`；见 D2、D7 |

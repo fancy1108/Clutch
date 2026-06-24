@@ -27,6 +27,16 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ## 已交付（代码 Task · 自 Git 回填）
 
+### UI-GROUP-DRAG-AND-DROP ✅
+- **日期：** 2026-06-24
+- **Commit：** `[PENDING]` — `feat(ui): group enhancements, drag-and-drop support, virtual default group, and right-click move`
+- **Verification：** `./scripts/verify.sh` → 116 pytest + vitest passed
+- **证据：** `runs/verification/2026-06-24-group-drag-verify.log`
+- **交付文件：**
+  - `apps/desktop/src/components/LanguageContext.tsx` — Add translations for group actions.
+  - `apps/desktop/src/sidebar.tsx` — Folder special icons, default group virtual wrapping, HTML5 Drag-and-Drop dragover/drop handlers, right-click group menus and workspace move submenu.
+  - `apps/desktop/src/App.tsx` — Implement delete group, rename group, and move project API handlers, pass callbacks to Sidebar.
+
 ### UI-CUSTOM-DIALOGS ✅
 - **日期：** 2026-06-24
 - **Commit：** `f1e0eac` — `feat(ui): delete reload and add custom PromptModal to replace native prompt and confirm`

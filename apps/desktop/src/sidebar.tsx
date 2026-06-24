@@ -28,6 +28,9 @@ interface SidebarProps {
   onNewChatInWorkspace?: (workspaceId: string) => void;
   onDeleteWorkspace?: (workspaceId: string) => void;
   onDeleteSession?: (runId: string) => void;
+  onDeleteRepositoryGroup?: (groupId: string) => void;
+  onRenameRepositoryGroup?: (groupId: string) => void;
+  onMoveWorkspaceToGroup?: (workspaceId: string, targetGroupId: string) => void;
 }
 
 function formatRelativeTime(iso: string): string {
@@ -70,14 +73,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onNewChatInWorkspace,
   onDeleteWorkspace,
   onDeleteSession,
+  onDeleteRepositoryGroup,
+  onRenameRepositoryGroup,
+  onMoveWorkspaceToGroup,
 }) => {
   const { t } = useLanguage();
   const [repoFilter, setRepoFilter] = useState('');
   const [collapsedWorkspaces, setCollapsedWorkspaces] = useState<Record<string, boolean>>({});
+  const [dragOverGroupId, setDragOverGroupId] = useState<string | null>(null);
+  const [defaultGroupCollapsed, setDefaultGroupCollapsed] = useState(false);
   const [contextMenu, setContextMenu] = useState<{
     x: number;
     y: number;
-    type: 'workspace' | 'session';
+    type: 'workspace' | 'session' | 'group';
     targetId: string;
   } | null>(null);
 
@@ -91,7 +99,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     };
   }, []);
 
-  const handleContextMenu = (e: React.MouseEvent, type: 'workspace' | 'session', targetId: string) => {
+  const handleContextMenu = (e: React.MouseEvent, type: 'workspace' | 'session' | 'group', targetId: string) => {
     e.preventDefault();
     e.stopPropagation();
     setContextMenu({
@@ -100,6 +108,33 @@ export const Sidebar: React.FC<SidebarProps> = ({
       type,
       targetId,
     });
+  };
+
+  const handleDragStart = (e: React.DragEvent, workspaceId: string) => {
+    e.dataTransfer.setData('text/plain', workspaceId);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDragEnter = (e: React.DragEvent, groupId: string) => {
+    e.preventDefault();
+    setDragOverGroupId(groupId);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverGroupId(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, targetGroupId: string) => {
+    e.preventDefault();
+    setDragOverGroupId(null);
+    const workspaceId = e.dataTransfer.getData('text/plain');
+    if (workspaceId) {
+      onMoveWorkspaceToGroup?.(workspaceId, targetGroupId);
+    }
   };
 
   const sessionsByWorkspace = useMemo(() => {
@@ -171,7 +206,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
     const projectSessions = sessionsByWorkspace.get(repo.id) ?? [];
 
     return (
-      <div key={repo.id} className="space-y-0.5">
+      <div
+        key={repo.id}
+        className="space-y-0.5"
+        draggable="true"
+        onDragStart={(e) => handleDragStart(e, repo.id)}
+      >
         <div
           onContextMenu={(e) => handleContextMenu(e, 'workspace', repo.id)}
           className={`flex items-center justify-between p-1.5 rounded-lg transition-colors group ${
@@ -353,6 +393,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             const groupWorkspaces = group.workspace_ids
               .map((workspaceId) => visibleWorkspaces.find((item) => item.id === workspaceId))
               .filter((item): item is WorkspaceInfo => Boolean(item));
+            const isDragOver = dragOverGroupId === group.id;
 
             return (
               <div key={group.id} className="space-y-1" data-testid={`repo-group-${group.id}`}>
@@ -360,10 +401,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   type="button"
                   data-testid={`repo-group-toggle-${group.id}`}
                   onClick={() => onToggleRepositoryGroup?.(group.id, !groupCollapsed)}
-                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left hover:bg-surface-bright transition-colors"
+                  onContextMenu={(e) => handleContextMenu(e, 'group', group.id)}
+                  onDragOver={handleDragOver}
+                  onDragEnter={(e) => handleDragEnter(e, group.id)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, group.id)}
+                  className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left hover:bg-surface-bright transition-all ${
+                    isDragOver ? 'bg-primary/10 ring-1 ring-primary/30 border border-primary/20' : ''
+                  }`}
                 >
                   <span className="material-symbols-outlined text-[16px] text-on-surface-variant">
-                    {groupCollapsed ? 'folder' : 'folder_open'}
+                    folder_special
                   </span>
                   <span className="text-[11px] font-bold uppercase tracking-wide text-on-surface-variant/80 truncate">
                     {group.name}
@@ -383,7 +431,37 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </div>
             );
           })}
-          {ungroupedWorkspaces.map((repo) => renderWorkspaceRow(repo))}
+          {ungroupedWorkspaces.length > 0 && (() => {
+            const isDragOver = dragOverGroupId === '__default__';
+            return (
+              <div className="space-y-1" data-testid="repo-group-default">
+                <button
+                  type="button"
+                  data-testid="repo-group-default-toggle"
+                  onClick={() => setDefaultGroupCollapsed(!defaultGroupCollapsed)}
+                  onDragOver={handleDragOver}
+                  onDragEnter={(e) => handleDragEnter(e, '__default__')}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, '__default__')}
+                  className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left hover:bg-surface-bright transition-all ${
+                    isDragOver ? 'bg-primary/10 ring-1 ring-primary/30 border border-primary/20' : ''
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[16px] text-on-surface-variant">
+                    folder_special
+                  </span>
+                  <span className="text-[11px] font-bold uppercase tracking-wide text-on-surface-variant/80 truncate">
+                    {t('Default Group')}
+                  </span>
+                </button>
+                {!defaultGroupCollapsed && (
+                  <div className="space-y-1 ml-2 border-l border-outline-variant/30 pl-2">
+                    {ungroupedWorkspaces.map((repo) => renderWorkspaceRow(repo))}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
           {workspaces.length > 0 &&
             visibleGroups.length === 0 &&
             ungroupedWorkspaces.length === 0 &&
@@ -416,22 +494,106 @@ export const Sidebar: React.FC<SidebarProps> = ({
           style={{ top: contextMenu.y, left: contextMenu.x }}
           onClick={(e) => e.stopPropagation()}
         >
-          <button
-            type="button"
-            className="w-full text-left px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-colors flex items-center gap-2"
-            onClick={() => {
-              const { type, targetId } = contextMenu;
-              setContextMenu(null);
-              if (type === 'workspace') {
-                onDeleteWorkspace?.(targetId);
-              } else {
+          {contextMenu.type === 'group' && (
+            <>
+              <button
+                type="button"
+                className="w-full text-left px-3 py-2 text-xs text-on-surface hover:bg-surface-container transition-colors flex items-center gap-2"
+                onClick={() => {
+                  const { targetId } = contextMenu;
+                  setContextMenu(null);
+                  onRenameRepositoryGroup?.(targetId);
+                }}
+              >
+                <span className="material-symbols-outlined text-[16px]">edit</span>
+                {t('Rename')}
+              </button>
+              <button
+                type="button"
+                className="w-full text-left px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-colors flex items-center gap-2"
+                onClick={() => {
+                  const { targetId } = contextMenu;
+                  setContextMenu(null);
+                  onDeleteRepositoryGroup?.(targetId);
+                }}
+              >
+                <span className="material-symbols-outlined text-[16px]">delete</span>
+                {t('Delete Group')}
+              </button>
+            </>
+          )}
+
+          {contextMenu.type === 'workspace' && (
+            <>
+              <div className="relative group/submenu">
+                <button
+                  type="button"
+                  className="w-full text-left px-3 py-2 text-xs text-on-surface hover:bg-surface-container transition-colors flex items-center justify-between gap-2 cursor-pointer"
+                >
+                  <span className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[16px]">folder_shared</span>
+                    {t('Move to Group')}
+                  </span>
+                  <span className="material-symbols-outlined text-[14px]">chevron_right</span>
+                </button>
+                <div className="hidden group-hover/submenu:block absolute left-[calc(100%-4px)] top-0 bg-surface-bright border border-outline-variant rounded-lg shadow-lg py-1 min-w-[140px] max-h-[200px] overflow-y-auto z-[101]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onMoveWorkspaceToGroup?.(contextMenu.targetId, '__default__');
+                      setContextMenu(null);
+                    }}
+                    className="w-full text-left px-3 py-1.5 text-xs text-on-surface hover:bg-surface-container transition-colors truncate flex items-center gap-1.5"
+                  >
+                    <span className="material-symbols-outlined text-[14px] text-on-surface-variant">folder_special</span>
+                    {t('Default Group')}
+                  </button>
+                  {repositoryGroups.map((g) => (
+                    <button
+                      key={g.id}
+                      type="button"
+                      onClick={() => {
+                        onMoveWorkspaceToGroup?.(contextMenu.targetId, g.id);
+                        setContextMenu(null);
+                      }}
+                      className="w-full text-left px-3 py-1.5 text-xs text-on-surface hover:bg-surface-container transition-colors truncate flex items-center gap-1.5"
+                    >
+                      <span className="material-symbols-outlined text-[14px] text-on-surface-variant">folder_special</span>
+                      {g.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                className="w-full text-left px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-colors flex items-center gap-2"
+                onClick={() => {
+                  const { targetId } = contextMenu;
+                  setContextMenu(null);
+                  onDeleteWorkspace?.(targetId);
+                }}
+              >
+                <span className="material-symbols-outlined text-[16px]">delete</span>
+                {t('Delete')}
+              </button>
+            </>
+          )}
+
+          {contextMenu.type === 'session' && (
+            <button
+              type="button"
+              className="w-full text-left px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-colors flex items-center gap-2"
+              onClick={() => {
+                const { targetId } = contextMenu;
+                setContextMenu(null);
                 onDeleteSession?.(targetId);
-              }
-            }}
-          >
-            <span className="material-symbols-outlined text-[16px]">delete</span>
-            {t('Delete')}
-          </button>
+              }}
+            >
+              <span className="material-symbols-outlined text-[16px]">delete</span>
+              {t('Delete')}
+            </button>
+          )}
         </div>
       )}
     </aside>

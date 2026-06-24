@@ -38,6 +38,18 @@
 - [x] **DMG**：`pnpm tauri build` → `runs/verification/2026-06-24-clutch-p2.dmg`
 - [ ] **T-04**：红队 / 体感审计（可选）
 
+### 2026-06-24 会话（分组文件夹管理优化与拖拽移动）
+
+- **完成：**
+  - **图标区分**：将分组图标替换为 `folder_special`，与项目的 `folder` / `folder_open` 图标显著区分开。
+  - **默认分组包裹**：实现前端虚拟 `Default Group` (默认分组) 包裹所有 ungrouped 的项目，并支持独立折叠展开。
+  - **分组完整 CRUD**：扩展侧栏右键菜单，对自定义分组（Group）支持重命名和删除功能，配合 `<PromptModal />` 确认及输入。
+  - **拖拽与右键移动项目**：
+    - 支持 HTML5 原生 `draggable` 拖拽项目，并在拖拽移入分组时带有高亮视觉动效；
+    - 在项目右键菜单中增加 `Move to Group` hover 二级级联子菜单，用户点击任一分组（包含虚拟默认分组）均能实时调用 `updateRepositoryGroup` 持久化，并自动同步更新分组树。
+- **校验：** `./scripts/verify.sh` → 116 pytest + vitest passed
+- **下次优先：** 答复用户关于分组新功能的反馈并继续迭代。
+
 ### 2026-06-24 会话（自定义弹窗与删除修复）
 
 - **完成：**
