@@ -152,6 +152,16 @@
 - **落地前提**：用户重新要求交付 P2-06 或写入新的 task ID。
 - **决策状态**：`已记录`（主动延后，非取消）
 
+### D15 · E2E 移出 Pre-commit 门禁（2026-06-24）
+
+- **背景**：原 Husky pre-commit 钩子调用的 `verify.sh` 会自动触发完整的 E2E 测试（`run-e2e.sh`）。E2E 测试耗时较长、环境依赖多，阻塞了正常的本地 commit，导致提交速度过于缓慢。
+- **方案**：
+  - 将 E2E 校验从默认的本地 pre-commit 中剥离。
+  - 修改 `scripts/verify.sh`：默认仅运行轻量校验（build + vitest + pytest + drift），仅当传入 `--e2e` 参数时才运行 E2E。
+  - 推荐在 Push 前或在 CI 流程中手动运行 `./scripts/verify.sh --e2e` 进行全量校验。
+- **影响**：`scripts/verify.sh`、`CLAUDE.md`、`memory/TESTS.md`。
+- **决策状态**：`已落地`
+
 ## 开放问题
 
 （暂无 — 原 Q1–Q4 已于 2026-06-22 关闭，见 D3–D6。）

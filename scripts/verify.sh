@@ -8,4 +8,8 @@ pnpm build
 pnpm test
 (cd services/orchestrator && uv run pytest)
 ./scripts/check-doc-drift.sh
-./scripts/run-e2e.sh
+
+# E2E tests are heavy. Run them only if --e2e flag is provided.
+if [[ "${1:-}" == "--e2e" ]]; then
+  ./scripts/run-e2e.sh
+fi

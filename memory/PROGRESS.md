@@ -2,8 +2,8 @@
 
 ## 当前状态
 
-- 阶段：**P2 收尾 — P2-01…05 ✅；P2-06 ⏸️ 延后（D14）；发布 push / DMG**
-- Git HEAD：`609b2d6`（已 push origin/main）
+- 阶段：**P2 收尾完成 — P2-06 ⏸️（D14）；待 push DMG 修复 + D15**
+- Git HEAD：`f1ea1f2`（本地 ahead 1，待 push）
 
 ## 治理脚手架就绪标准（文档层 ✅）
 

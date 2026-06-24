@@ -6,7 +6,7 @@
 
 ## 校验命令
 
-见 [`CLAUDE.md`](../CLAUDE.md) §核心命令。本地一键：`./scripts/verify.sh`（含 `run-e2e.sh`）
+见 [`CLAUDE.md`](../CLAUDE.md) §核心命令。本地一键校验（轻量）：`./scripts/verify.sh`；全量校验（含 E2E）：`./scripts/verify.sh --e2e`
 
 ## 测试清单
 

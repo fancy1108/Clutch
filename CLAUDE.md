@@ -34,10 +34,13 @@
 | 前端构建（校验） | `pnpm build` |
 | 后端启动 | `cd services/orchestrator && uv run uvicorn src.main:app --reload --port 8123` |
 | 后端测试（校验） | `cd services/orchestrator && uv run pytest` |
-| 本地一键校验 | `./scripts/verify.sh` |
+| 本地一键校验（轻量） | `./scripts/verify.sh` |
+| 本地全量校验（含 E2E） | `./scripts/verify.sh --e2e` |
 | 文档↔代码漂移（机检） | `./scripts/check-doc-drift.sh` |
 
-**会话校验（commit 前必跑）：** `./scripts/verify.sh`（含 build + pytest + 漂移机检）
+**会话校验（commit 前必跑）：** `./scripts/verify.sh`（含 build + pytest + vitest + 漂移机检，默认排除重型 E2E 以免卡顿）
+
+**Push 前推荐手动全量校验：** `./scripts/verify.sh --e2e`（含全部轻量校验及完整 E2E）
 
 **Git pre-commit（Husky）：** 仅当 staged 触及 `apps/desktop/src/`、`services/orchestrator/src/`、`packages/` 时跑 `verify.sh`；触及 `.claude/workflows/` 时跑 `check-doc-drift.sh`；纯 `memory/`、`specs/`、`docs/` 改动放行。
 
@@ -155,3 +158,19 @@ WebSocket 信封格式（事件名在 `event`，载荷在 `data`）：
 - 后端：uv · asyncio · type hints · LangGraph。
 - UI/UX 见 [`UI_UX_GUIDELINES.md`](./UI_UX_GUIDELINES.md)。
 - 产品命名：**Clutch** / **ClutchState**（禁止旧称 Vibe Workspace / VibeState）。
+
+---
+
+## Agent skills
+
+### Issue tracker
+
+Issues tracked in GitHub (fancy1108/Clutch) via `gh` CLI. External PRs are NOT a triage surface. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Five canonical labels: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context repo: one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
