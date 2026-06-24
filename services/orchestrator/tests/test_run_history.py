@@ -119,3 +119,31 @@ def test_history_api_returns_records() -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["runs"][0]["run_id"] == "run_api"
+
+
+def test_delete_session_api(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from fastapi.testclient import TestClient
+    from src.main import app
+    from src import run_history
+
+    monkeypatch.setenv("CLUTCH_RUN_HISTORY_DIR", str(tmp_path))
+    client = TestClient(app)
+
+    run_history.append_run_record(
+        {
+            "run_id": "run_delete_api",
+            "workspace_id": "ws_api",
+            "title": "API session to delete",
+            "workflow_id": "video-production",
+            "status": "passed",
+            "started_at": "2026-06-23T11:00:00+00:00",
+        }
+    )
+
+    assert len(run_history.list_runs()) == 1
+
+    response = client.delete("/api/runs/run_delete_api")
+    assert response.status_code == 200
+    assert response.json()["status"] == "deleted"
+
+    assert len(run_history.list_runs()) == 0

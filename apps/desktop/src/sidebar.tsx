@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { RepositoryFolder, MainView } from './types';
 import { useLanguage } from './components/LanguageContext';
 import type { SessionRecord } from './services/runApi';
@@ -26,6 +26,8 @@ interface SidebarProps {
   onSelectWorkspace?: (workspaceId: string) => void;
   onSelectSession?: (session: SessionRecord) => void;
   onNewChatInWorkspace?: (workspaceId: string) => void;
+  onDeleteWorkspace?: (workspaceId: string) => void;
+  onDeleteSession?: (runId: string) => void;
 }
 
 function formatRelativeTime(iso: string): string {
@@ -66,10 +68,38 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelectWorkspace,
   onSelectSession,
   onNewChatInWorkspace,
+  onDeleteWorkspace,
+  onDeleteSession,
 }) => {
   const { t } = useLanguage();
   const [repoFilter, setRepoFilter] = useState('');
   const [collapsedWorkspaces, setCollapsedWorkspaces] = useState<Record<string, boolean>>({});
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    type: 'workspace' | 'session';
+    targetId: string;
+  } | null>(null);
+
+  useEffect(() => {
+    const handleClose = () => setContextMenu(null);
+    window.addEventListener('click', handleClose);
+    window.addEventListener('contextmenu', handleClose);
+    return () => {
+      window.removeEventListener('click', handleClose);
+      window.removeEventListener('contextmenu', handleClose);
+    };
+  }, []);
+
+  const handleContextMenu = (e: React.MouseEvent, type: 'workspace' | 'session', targetId: string) => {
+    e.preventDefault();
+    setContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      type,
+      targetId,
+    });
+  };
 
   const sessionsByWorkspace = useMemo(() => {
     const map = new Map<string, SessionRecord[]>();
@@ -142,6 +172,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     return (
       <div key={repo.id} className="space-y-0.5">
         <div
+          onContextMenu={(e) => handleContextMenu(e, 'workspace', repo.id)}
           className={`flex items-center justify-between p-1.5 rounded-lg transition-colors group ${
             isActiveWorkspace ? 'bg-surface-container-low/80' : 'hover:bg-surface-bright'
           }`}
@@ -186,6 +217,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     type="button"
                     data-testid={`sidebar-session-${session.run_id}`}
                     onClick={() => onSelectSession?.(session)}
+                    onContextMenu={(e) => handleContextMenu(e, 'session', session.run_id)}
                     className={`w-full flex items-center justify-between p-2 rounded-lg text-left transition-all ${
                       isActiveSession
                         ? 'bg-surface-bright shadow-sm text-on-surface font-bold border border-outline-variant/40'
@@ -227,14 +259,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </button>
 
       <div className={`flex-1 flex flex-col gap-4 overflow-hidden h-full ${!isOpenState ? 'hidden' : ''}`}>
-        <div className="flex items-center justify-between mb-2 px-2">
-          <div className="flex gap-2">
-            <div className="w-3 h-3 rounded-full bg-[#ff5f57] hover:scale-105 transition-transform cursor-pointer" title={t("Close")} />
-            <div className="w-3 h-3 rounded-full bg-[#febc2e] hover:scale-105 transition-transform cursor-pointer" title={t("Minimize")} />
-            <div className="w-3 h-3 rounded-full bg-[#28c840] hover:scale-105 transition-transform cursor-pointer" title={t("Fullscreen")} />
-          </div>
-        </div>
-
         <div className="space-y-1 mb-4 px-1">
           <button
             data-testid="nav-new-chat"
@@ -385,6 +409,30 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </button>
         </div>
       </div>
+      {contextMenu && (
+        <div
+          className="fixed bg-surface-bright border border-outline-variant rounded-lg shadow-lg py-1 z-[100] min-w-[120px]"
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            type="button"
+            className="w-full text-left px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-colors flex items-center gap-2"
+            onClick={() => {
+              const { type, targetId } = contextMenu;
+              setContextMenu(null);
+              if (type === 'workspace') {
+                onDeleteWorkspace?.(targetId);
+              } else {
+                onDeleteSession?.(targetId);
+              }
+            }}
+          >
+            <span className="material-symbols-outlined text-[16px]">delete</span>
+            {t('Delete')}
+          </button>
+        </div>
+      )}
     </aside>
   );
 };

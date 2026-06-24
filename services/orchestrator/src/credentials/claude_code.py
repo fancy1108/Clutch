@@ -125,11 +125,16 @@ def bootstrap_claude_credentials(router: LLMProviderRouter) -> dict[str, Any]:
         resolve_anthropic_base_url() or "https://api.anthropic.com/v1"
     )
     api_model = resolve_anthropic_api_model() or "claude-3-7-sonnet-latest"
-    display_name = (
-        "Claude Sonnet"
-        if api_model != "claude-3-7-sonnet-latest"
-        else "Claude 3.7 Sonnet"
-    )
+    if "glm" in api_model.lower():
+        display_name = api_model.replace("-", " ").upper()
+    elif "claude" in api_model.lower():
+        display_name = (
+            "Claude 3.7 Sonnet"
+            if api_model == "claude-3-7-sonnet-latest"
+            else "Claude Sonnet"
+        )
+    else:
+        display_name = api_model.replace("-", " ").title()
     router.register_model(
         ModelSpec(
             id=_DEFAULT_CLAUDE_MODEL,

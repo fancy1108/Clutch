@@ -82,3 +82,9 @@ def list_runs(*, workspace_id: str | None = None) -> list[dict[str, Any]]:
     if workspace_id is None:
         return records
     return [record for record in records if record.get("workspace_id") == workspace_id]
+
+
+def delete_session(run_id: str) -> None:
+    records = _load_records()
+    records = [r for r in records if r.get("run_id") != run_id]
+    _save_records(records)

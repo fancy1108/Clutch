@@ -30,7 +30,7 @@ def test_ws_plain_chat_without_workflow(monkeypatch) -> None:
     with client.websocket_connect("/ws/runs/run_msg_test") as ws:
         ws.receive_json()  # initial state_patch
         ws.send_json({"text": "你好 Clutch"})
-        events = _collect_after_send(ws, 4)
+        events = _collect_after_send(ws, 5)
 
     message_events = [e for e in events if e["event"] == "message"]
     assert len(message_events) == 2
@@ -39,10 +39,9 @@ def test_ws_plain_chat_without_workflow(monkeypatch) -> None:
     assert any("Echo: 你好 Clutch" in e["data"]["message"]["text"] for e in message_events)
 
     patch_events = [e for e in events if e["event"] == "state_patch"]
-    assert len(patch_events) == 1
-    patch = patch_events[0]["data"]["patch"]
-    assert patch["status"] == "idle"
-    assert patch.get("active_node_id", "") == ""
+    assert len(patch_events) == 2
+    assert patch_events[0]["data"]["patch"]["status"] == "running"
+    assert patch_events[1]["data"]["patch"]["status"] == "idle"
 
 
 def test_ws_log_event_on_plain_chat(monkeypatch) -> None:
@@ -51,7 +50,7 @@ def test_ws_log_event_on_plain_chat(monkeypatch) -> None:
     with client.websocket_connect("/ws/runs/run_log_test") as ws:
         ws.receive_json()
         ws.send_json({"text": "ping"})
-        events = _collect_after_send(ws, 4)
+        events = _collect_after_send(ws, 5)
 
     log_events = [e for e in events if e["event"] == "log"]
     assert len(log_events) == 1

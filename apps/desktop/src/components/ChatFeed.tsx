@@ -23,6 +23,7 @@ interface ChatFeedProps {
   selectedWorkflowId?: string | null;
   selectedWorkflowName?: string;
   onClearSelectedWorkflow?: () => void;
+  sessionTitle?: string;
 }
 
 export const ChatFeed: React.FC<ChatFeedProps> = ({
@@ -46,6 +47,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   selectedWorkflowId = null,
   selectedWorkflowName = '',
   onClearSelectedWorkflow,
+  sessionTitle = '',
 }) => {
   const { t } = useLanguage();
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -54,7 +56,15 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   const isIdle = clutchStatus === 'idle';
   const isRunning = clutchStatus === 'running';
   const awaitingHuman = clutchStatus === 'awaiting_human';
-  const showEmptyState = isIdle && messages.length === 0;
+
+  const isDefaultNewSessionTitle = !sessionTitle ||
+    sessionTitle === 'New session' ||
+    sessionTitle === 'New Chat' ||
+    sessionTitle === 'New session / 新建会话' ||
+    sessionTitle === 'New Chat / 新建会话' ||
+    sessionTitle === '新建会话';
+
+  const showEmptyState = isIdle && messages.length === 0 && isDefaultNewSessionTitle;
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -133,6 +143,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
         )}
 
         {messages.map((msg) => {
+          const isUser = msg.agent === 'User';
           const isErrorMsg =
             msg.status === 'FAILED' ||
             msg.badgeText?.includes('FAILED') ||
@@ -142,63 +153,82 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
           return (
             <div
               key={msg.id}
-              className="flex gap-4 group hover:bg-surface-container-low/35 p-2 rounded-xl transition-colors"
+              className={`w-full flex ${isUser ? 'justify-end' : 'justify-start'}`}
             >
-              <div className="w-9 h-9 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center bg-surface-container">
-                {msg.avatar ? (
-                  <img className="w-full h-full object-cover" src={msg.avatar} alt={msg.agent} />
-                ) : (
-                  <span className="material-symbols-outlined text-[18px] text-on-surface-variant">
-                    smart_toy
-                  </span>
-                )}
-              </div>
-
-              <div className="flex-1 space-y-1.5 overflow-hidden">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-on-surface">{msg.agent}</span>
-                  <span className="text-[10px] text-on-surface-variant/60">{msg.time}</span>
+              <div
+                className={`flex gap-4 max-w-[85%] group hover:bg-surface-container-low/35 p-2 rounded-xl transition-colors ${
+                  isUser ? 'flex-row-reverse' : ''
+                }`}
+              >
+                <div className="w-9 h-9 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center bg-surface-container">
+                  {msg.avatar ? (
+                    <img className="w-full h-full object-cover" src={msg.avatar} alt={msg.agent} />
+                  ) : (
+                    <span className="material-symbols-outlined text-[18px] text-on-surface-variant">
+                      smart_toy
+                    </span>
+                  )}
                 </div>
 
-                {isErrorMsg ? (
-                  <div className="p-4 bg-neutral-50/50 rounded-2xl rounded-tl-none border border-neutral-200/80 shadow-xs">
-                    <div className="flex items-center gap-1.5 mb-2 text-neutral-800 font-bold text-[11px]">
-                      <span className="material-symbols-outlined text-[16px]">error</span>
-                      <span>VALIDATION FAILED</span>
+                <div className="flex-1 space-y-1.5 overflow-hidden">
+                  <div className={`flex items-center gap-2 ${isUser ? 'justify-end' : ''}`}>
+                    {isUser ? (
+                      <>
+                        <span className="text-[10px] text-on-surface-variant/60">{msg.time}</span>
+                        <span className="text-xs font-bold text-on-surface">{msg.agent}</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-xs font-bold text-on-surface">{msg.agent}</span>
+                        <span className="text-[10px] text-on-surface-variant/60">{msg.time}</span>
+                      </>
+                    )}
+                  </div>
+
+                  {isErrorMsg ? (
+                    <div className="p-4 bg-neutral-50/50 rounded-2xl rounded-tl-none border border-neutral-200/80 shadow-xs">
+                      <div className="flex items-center gap-1.5 mb-2 text-neutral-800 font-bold text-[11px]">
+                        <span className="material-symbols-outlined text-[16px]">error</span>
+                        <span>VALIDATION FAILED</span>
+                      </div>
+                      <p className="text-[13px] text-on-surface select-text leading-relaxed whitespace-pre-wrap">
+                        {msg.text}
+                      </p>
                     </div>
-                    <p className="text-[13px] text-on-surface select-text leading-relaxed whitespace-pre-wrap">
-                      {msg.text}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="p-4 bg-surface-container-low rounded-2xl rounded-tl-none border border-outline-variant/30 shadow-sm">
-                    {isCompletedMsg && (
-                      <div className="flex items-center gap-1.5 mb-2 text-green-600 font-bold text-[11px]">
-                        <span className="material-symbols-outlined text-[16px]">check_circle</span>
-                        <span>COMPLETED</span>
-                      </div>
-                    )}
-                    <p className="text-[13px] text-on-surface select-text leading-relaxed whitespace-pre-wrap">
-                      {msg.text}
-                    </p>
-                    {msg.codeHighlight && (
-                      <div className="mt-3 flex items-center gap-2 py-2 px-3 bg-white/60 rounded-xl border border-outline-variant/30">
-                        <span className="material-symbols-outlined text-green-500 text-[18px]">
-                          check_circle
-                        </span>
-                        <span className="text-[11px] font-semibold text-on-surface">
-                          {msg.codeHighlight.lineCount} files updated in {msg.codeHighlight.file}
-                        </span>
-                      </div>
-                    )}
-                    {(msg.executionTime || msg.tokens) && (
-                      <div className="mt-3 pt-3 border-t border-outline-variant/10 flex gap-4 text-[9px] text-on-surface-variant/60 font-mono">
-                        {msg.executionTime && <span>{msg.executionTime}</span>}
-                        {msg.tokens && <span>{msg.tokens}</span>}
-                      </div>
-                    )}
-                  </div>
-                )}
+                  ) : (
+                    <div className={`p-4 rounded-2xl border border-outline-variant/30 shadow-sm ${
+                      isUser 
+                        ? 'bg-primary/10 text-on-surface rounded-tr-none text-left' 
+                        : 'bg-surface-container-low rounded-tl-none'
+                    }`}>
+                      {isCompletedMsg && (
+                        <div className="flex items-center gap-1.5 mb-2 text-green-600 font-bold text-[11px]">
+                          <span className="material-symbols-outlined text-[16px]">check_circle</span>
+                          <span>COMPLETED</span>
+                        </div>
+                      )}
+                      <p className="text-[13px] text-on-surface select-text leading-relaxed whitespace-pre-wrap">
+                        {msg.text}
+                      </p>
+                      {msg.codeHighlight && (
+                        <div className="mt-3 flex items-center gap-2 py-2 px-3 bg-white/60 rounded-xl border border-outline-variant/30">
+                          <span className="material-symbols-outlined text-green-500 text-[18px]">
+                            check_circle
+                          </span>
+                          <span className="text-[11px] font-semibold text-on-surface">
+                            {msg.codeHighlight.lineCount} files updated in {msg.codeHighlight.file}
+                          </span>
+                        </div>
+                      )}
+                      {(msg.executionTime || msg.tokens) && (
+                        <div className="mt-3 pt-3 border-t border-outline-variant/10 flex gap-4 text-[9px] text-on-surface-variant/60 font-mono">
+                          {msg.executionTime && <span>{msg.executionTime}</span>}
+                          {msg.tokens && <span>{msg.tokens}</span>}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           );

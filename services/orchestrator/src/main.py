@@ -391,7 +391,7 @@ _AGENT_AVATARS: dict[str, str] = {
 
 
 def _chat_time() -> str:
-    return datetime.now(UTC).strftime("%H:%M")
+    return datetime.now().strftime("%H:%M")
 
 
 def _chat_message(
@@ -517,26 +517,36 @@ async def _handle_plain_chat(
     text: str,
 ) -> ClutchState:
     user_message = _chat_message("User", text, msg_id=f"user_{uuid.uuid4().hex[:8]}")
-    model_name, reply_text = await _llm_chat_reply(state, text)
-    reply = _chat_message(model_name, reply_text)
-    log_line = f"[CHAT] {model_name}: {len(reply_text)} chars"
-
-    messages = list(state["messages"]) + [user_message, reply]
-    logs = list(state["terminal_logs"]) + [log_line]
-    patch = {
-        "messages": messages,
-        "terminal_logs": logs,
-        "status": "idle",
-        **_token_patch_turn(state, user_text=text, assistant_text=reply_text),
+    user_patch = {
+        "messages": list(state["messages"]) + [user_message],
+        "status": "running",
     }
-    state = _merge_patch(state, patch)
+    state = _merge_patch(state, user_patch)
     _commit_run_state(run_id, state)
     _touch_session(run_id, title=text.strip()[:80] or "New session", status=state["status"])
 
     await _send_message_event(websocket, run_id, user_message, "")
+    await _notify_run_state(websocket, run_id, state, user_patch)
+
+    model_name, reply_text = await _llm_chat_reply(state, text)
+    reply = _chat_message(model_name, reply_text)
+    log_line = f"[CHAT] {model_name}: {len(reply_text)} chars"
+
+    final_messages = list(state["messages"]) + [reply]
+    final_logs = list(state["terminal_logs"]) + [log_line]
+    final_patch = {
+        "messages": final_messages,
+        "terminal_logs": final_logs,
+        "status": "idle",
+        **_token_patch_turn(state, user_text=text, assistant_text=reply_text),
+    }
+    state = _merge_patch(state, final_patch)
+    _commit_run_state(run_id, state)
+    _touch_session(run_id, title=text.strip()[:80] or "New session", status=state["status"])
+
     await _send_log_event(websocket, run_id, log_line, node_id="")
     await _send_message_event(websocket, run_id, reply, "")
-    await _notify_run_state(websocket, run_id, state, patch)
+    await _notify_run_state(websocket, run_id, state, final_patch)
     return state
 
 
@@ -1214,6 +1224,23 @@ async def start_run_on_session(run_id: str, body: StartRunRequest) -> dict[str, 
 async def get_run_state(run_id: str) -> dict[str, Any]:
     state = _get_or_create_run(run_id)
     return {"run_id": run_id, "state": _serialize_clutch_state(state)}
+
+
+@app.delete("/api/runs/{run_id}")
+async def delete_run_endpoint(run_id: str) -> dict[str, str]:
+    from src.run_history import delete_session
+    from src.run_state_store import delete_run_state
+
+    try:
+        delete_session(run_id)
+        delete_run_state(run_id)
+        if run_id in _run_states:
+            del _run_states[run_id]
+        if run_id in _run_sessions:
+            del _run_sessions[run_id]
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail={"message": str(exc)}) from exc
+    return {"status": "deleted", "run_id": run_id}
 
 
 @app.post("/api/runs/{run_id}/stop")

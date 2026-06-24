@@ -15,7 +15,7 @@ import { MainView, RightTab, ChatMessage, UncommittedFile, DiffLine } from './ty
 import { fetchThemePreference, saveThemePreference, type ThemePresetId } from './services/themeApi';
 import { LanguageProvider, useLanguage } from './components/LanguageContext';
 import { clutchStore, createSessionRunId, submitChatMessage, useClutchState } from './services/clutchState';
-import { fetchSessions, createSession, startWorkflowRun, fetchRunState, type SessionRecord } from './services/runApi';
+import { fetchSessions, createSession, startWorkflowRun, fetchRunState, deleteSession, type SessionRecord } from './services/runApi';
 import {
   activateWorkspace,
   addWorkspace,
@@ -347,6 +347,41 @@ function MainLayout() {
     await handleNewChat();
   };
 
+  const handleDeleteWorkspace = async (workspaceId: string) => {
+    const ok = window.confirm(t('Are you sure you want to remove this project from the list?'));
+    if (!ok) return;
+    try {
+      await removeWorkspace(workspaceId);
+      const listed = await fetchWorkspaces();
+      setWorkspaces(listed.workspaces);
+      setActiveWorkspaceId(listed.active_id);
+      const active = listed.workspaces.find((item) => item.id === listed.active_id) ?? null;
+      setWorkspace(active);
+      if (active) {
+        await refreshWorkspaceFiles();
+      } else {
+        setWorkspaceFiles([]);
+      }
+      await refreshSessions();
+    } catch (error) {
+      console.error('[Clutch] remove workspace failed:', error);
+    }
+  };
+
+  const handleDeleteSession = async (runId: string) => {
+    const ok = window.confirm(t('Are you sure you want to permanently delete this session?'));
+    if (!ok) return;
+    try {
+      await deleteSession(runId);
+      await refreshSessions();
+      if (sessionRunId === runId) {
+        await handleNewChat();
+      }
+    } catch (error) {
+      console.error('[Clutch] delete session failed:', error);
+    }
+  };
+
   const handleSendMessage = async (text: string) => {
     if (!text.trim()) return;
     if (!workspace) {
@@ -392,6 +427,9 @@ function MainLayout() {
 
   const currentThemeObj = THEME_PRESETS.find(t => t.id === themeId) || THEME_PRESETS[0];
   const themeVars = currentThemeObj.variables;
+
+  const activeSession = sessions.find(s => s.run_id === sessionRunId);
+  const sessionTitle = activeSession ? (activeSession.title || activeSession.workflow_id || activeSession.run_id) : '';
 
   return (
     <div 
@@ -441,6 +479,8 @@ function MainLayout() {
           onSelectWorkspace={(id) => { void handleSelectWorkspace(id); }}
           onSelectSession={(session) => { void handleSelectSession(session); }}
           onNewChatInWorkspace={(id) => { void handleNewChatInWorkspace(id); }}
+          onDeleteWorkspace={(id) => { void handleDeleteWorkspace(id); }}
+          onDeleteSession={(id) => { void handleDeleteSession(id); }}
         />
 
         {/* Central screen switcher with Right component based on Left tab selections */}
@@ -530,6 +570,7 @@ function MainLayout() {
                 inputValue={inputValue}
                 setInputValue={setInputValue}
                 onSendMessage={handleSendMessage}
+                sessionTitle={sessionTitle}
                 clutchStatus={clutchStatus}
                 currentFlowName={currentFlowName || clutchState.workflow_id}
                 selectedSidebarWidth={selectedSidebarWidth}

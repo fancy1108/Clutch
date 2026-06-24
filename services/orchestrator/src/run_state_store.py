@@ -51,3 +51,12 @@ def save_run_state(state: ClutchState) -> None:
         json.dumps(dict(state), indent=2, ensure_ascii=False),
         encoding="utf-8",
     )
+
+
+def delete_run_state(run_id: str) -> None:
+    try:
+        path = _state_path(run_id)
+        if path.is_file():
+            path.unlink()
+    except ValueError:
+        pass

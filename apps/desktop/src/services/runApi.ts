@@ -70,3 +70,12 @@ export async function fetchRunState(
   }
   return response.json() as Promise<{ run_id: string; state: import('../types').ClutchState }>;
 }
+
+export async function deleteSession(runId: string): Promise<void> {
+  const response = await fetch(`http://localhost:8123/api/runs/${encodeURIComponent(runId)}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to delete session (${response.status})`);
+  }
+}
