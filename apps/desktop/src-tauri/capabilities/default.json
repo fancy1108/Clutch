@@ -16,7 +16,6 @@
           "sidecar": true
         }
       ]
-    },
-    "playwright:default"
+    }
   ]
 }

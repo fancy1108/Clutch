@@ -3,7 +3,7 @@
 ## 当前状态
 
 - 阶段：**P2 收尾 — P2-01…05 ✅；P2-06 ⏸️ 延后（D14）；发布 push / DMG**
-- Git HEAD：`3e2b6c7`（本地 ahead，待 push）
+- Git HEAD：`609b2d6`（已 push origin/main）
 
 ## 治理脚手架就绪标准（文档层 ✅）
 
@@ -34,23 +34,23 @@
 - [x] **P2-04**：i18n 双语验收
 - [x] **P2-05**：侧栏 REPOSITORIES CRUD
 - [ ] **P2-06**：General Settings — ⏸️ **延后（D14，勿主动推进）**
-- [ ] **Push + CI**：P2 提交栈推 remote 并确认 Actions 绿
-- [ ] **DMG**：`pnpm tauri build` 验收包（含 P2 代码）
+- [x] **Push + CI**：P2 提交栈已 push → `609b2d6`（CI 需本地 `gh auth` 或 GitHub 网页确认）
+- [x] **DMG**：`pnpm tauri build` → `runs/verification/2026-06-24-clutch-p2.dmg`
 - [ ] **T-04**：红队 / 体感审计（可选）
 
 ## 会话日志（最新在上）
 
 ### 2026-06-24 会话（P2 收尾 · 发布）
 
-- **决策：** D14 — P2-06 General Settings **延后**，勿反复询问
-- **待做：** push 7 commits → CI → `pnpm tauri build` DMG
-- **P2 功能：** P2-01…05 已 commit（`3e2b6c7`）
+- **决策：** D14 — P2-06 **延后**（已写入 DECISIONS，勿反复询问）
+- **Push：** `609b2d6` → `origin/main`（8 commits）
+- **DMG：** `runs/verification/2026-06-24-clutch-p2.dmg`（修复 release 不含 `playwright:default`）
+- **CI：** 本机无 `gh auth`；请在 GitHub Actions 页确认 `609b2d6` 绿
 
 ### 2026-06-24 会话（P2-05 REPOSITORIES CRUD）
 
 - **完成：** `repository_groups` Sidecar 持久化；侧栏 filter + 新建分组 + 折叠；`test_repository_groups.py` 2 passed
-- **校验：** `pnpm build` ✅
-- **下次优先：** P2-06 General Settings
+- **Commit：** `3e2b6c7`
 
 ### 2026-06-24 会话（P2-04 i18n）
 

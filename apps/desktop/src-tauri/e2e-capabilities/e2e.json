@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "e2e",
+  "description": "E2E-only capability (requires e2e-testing Cargo feature)",
+  "windows": ["main"],
+  "permissions": ["playwright:default"]
+}

@@ -12,7 +12,7 @@
     "test": "vitest run",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
-    "tauri:e2e": "tauri dev --features e2e-testing"
+    "tauri:e2e": "tauri dev --features e2e-testing --config src-tauri/tauri.e2e.conf.json"
   },
   "dependencies": {
     "@clutch/shared-types": "workspace:*",

@@ -1,0 +1,8 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "app": {
+    "security": {
+      "capabilities": ["default", "e2e-capabilities/e2e.json"]
+    }
+  }
+}
