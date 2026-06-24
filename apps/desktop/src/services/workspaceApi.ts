@@ -9,6 +9,17 @@ export interface WorkspacesList {
   active_id: string | null;
 }
 
+export interface RepositoryGroup {
+  id: string;
+  name: string;
+  collapsed: boolean;
+  workspace_ids: string[];
+}
+
+export interface RepositoryGroupsList {
+  groups: RepositoryGroup[];
+}
+
 export interface FileTreeNode {
   name: string;
   path: string;
@@ -117,6 +128,48 @@ export async function removeWorkspace(workspaceId: string): Promise<void> {
     method: 'DELETE',
   });
   if (!response.ok) throw new Error(`remove workspace failed (${response.status})`);
+}
+
+export async function fetchRepositoryGroups(): Promise<RepositoryGroupsList> {
+  const response = await sidecarFetch(`${BASE}/api/repository-groups`);
+  if (!response.ok) throw new Error(`repository groups failed (${response.status})`);
+  return response.json() as Promise<RepositoryGroupsList>;
+}
+
+export async function createRepositoryGroup(name: string): Promise<RepositoryGroup> {
+  const response = await sidecarFetch(`${BASE}/api/repository-groups`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name }),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(parseApiError(body, 'Create repository group failed'));
+  }
+  return response.json() as Promise<RepositoryGroup>;
+}
+
+export async function updateRepositoryGroup(
+  groupId: string,
+  patch: Partial<Pick<RepositoryGroup, 'name' | 'collapsed' | 'workspace_ids'>>,
+): Promise<RepositoryGroup> {
+  const response = await sidecarFetch(`${BASE}/api/repository-groups/${encodeURIComponent(groupId)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(parseApiError(body, 'Update repository group failed'));
+  }
+  return response.json() as Promise<RepositoryGroup>;
+}
+
+export async function deleteRepositoryGroup(groupId: string): Promise<void> {
+  const response = await sidecarFetch(`${BASE}/api/repository-groups/${encodeURIComponent(groupId)}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) throw new Error(`delete repository group failed (${response.status})`);
 }
 
 export async function fetchWorkspaceTree(): Promise<FileTreeNode[]> {

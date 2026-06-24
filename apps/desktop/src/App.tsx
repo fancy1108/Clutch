@@ -22,8 +22,12 @@ import {
   fetchWorkspaceFile,
   fetchWorkspaceTree,
   fetchWorkspaces,
+  fetchRepositoryGroups,
+  createRepositoryGroup,
+  updateRepositoryGroup,
   reassignToBuilder,
   type FileTreeNode,
+  type RepositoryGroup,
   type WorkspaceInfo,
 } from './services/workspaceApi';
 import { pickWorkspaceFolder } from './services/pickWorkspaceFolder';
@@ -89,6 +93,7 @@ function MainLayout() {
   const [folders, setFolders] = useState<import('./types').RepositoryFolder[]>([]);
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
   const [workspaces, setWorkspaces] = useState<WorkspaceInfo[]>([]);
+  const [repositoryGroups, setRepositoryGroups] = useState<RepositoryGroup[]>([]);
   const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null);
   const [workspace, setWorkspace] = useState<WorkspaceInfo | null>(null);
   const [workspaceFiles, setWorkspaceFiles] = useState<FileTreeNode[]>([]);
@@ -116,6 +121,9 @@ function MainLayout() {
           await refreshWorkspaceFiles();
         }
       })
+      .catch(() => {});
+    void fetchRepositoryGroups()
+      .then((listed) => setRepositoryGroups(listed.groups))
       .catch(() => {});
   }, []);
 
@@ -226,6 +234,28 @@ function MainLayout() {
       await refreshWorkspaceFiles();
     } catch (error) {
       console.error('[Clutch] workspace switch failed:', error);
+    }
+  };
+
+  const handleCreateRepositoryGroup = async () => {
+    const name = window.prompt(t('New project group'));
+    if (!name?.trim()) return;
+    try {
+      const group = await createRepositoryGroup(name.trim());
+      setRepositoryGroups((current) => [...current, group]);
+    } catch (error) {
+      console.error('[Clutch] create repository group failed:', error);
+    }
+  };
+
+  const handleToggleRepositoryGroup = async (groupId: string, collapsed: boolean) => {
+    try {
+      const updated = await updateRepositoryGroup(groupId, { collapsed });
+      setRepositoryGroups((current) =>
+        current.map((group) => (group.id === groupId ? updated : group)),
+      );
+    } catch (error) {
+      console.error('[Clutch] update repository group failed:', error);
     }
   };
 
@@ -401,8 +431,13 @@ function MainLayout() {
           sessions={sessions}
           activeSessionId={sessionRunId}
           workspaces={workspaces}
+          repositoryGroups={repositoryGroups}
           activeWorkspaceId={activeWorkspaceId}
           onAddWorkspace={() => { void handlePickWorkspace(); }}
+          onCreateRepositoryGroup={() => { void handleCreateRepositoryGroup(); }}
+          onToggleRepositoryGroup={(groupId, collapsed) => {
+            void handleToggleRepositoryGroup(groupId, collapsed);
+          }}
           onSelectWorkspace={(id) => { void handleSelectWorkspace(id); }}
           onSelectSession={(session) => { void handleSelectSession(session); }}
           onNewChatInWorkspace={(id) => { void handleNewChatInWorkspace(id); }}

@@ -211,5 +211,5 @@
 | `tests/test_evaluator.py` | M3-05 |
 | `tests/test_check_branch.py` | M3-06 |
 | `tests/test_subprocess_isolation.py` | M3-07 |
-| `tests/test_i18n_preferences.py` | P2-04 |
+| `tests/test_repository_groups.py` | P2-05 |
 | `tests/test_skills_registry.py` | P2-01 |

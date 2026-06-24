@@ -56,6 +56,16 @@ class WorkspaceRequest(BaseModel):
     path: str
 
 
+class RepositoryGroupRequest(BaseModel):
+    name: str
+
+
+class RepositoryGroupUpdateRequest(BaseModel):
+    name: str | None = None
+    collapsed: bool | None = None
+    workspace_ids: list[str] | None = None
+
+
 class AgentsSaveRequest(BaseModel):
     agents: list[dict[str, Any]]
 
@@ -788,6 +798,53 @@ async def remove_workspace_endpoint(workspace_id: str) -> dict[str, str]:
     except WorkspaceError as exc:
         raise _workspace_http_error(exc) from exc
     return {"status": "removed", "workspace_id": workspace_id}
+
+
+@app.get("/api/repository-groups")
+async def list_repository_groups_endpoint() -> dict[str, Any]:
+    from src.workspace import list_repository_groups
+
+    return list_repository_groups()
+
+
+@app.post("/api/repository-groups")
+async def create_repository_group_endpoint(body: RepositoryGroupRequest) -> dict[str, Any]:
+    from src.workspace import create_repository_group
+
+    try:
+        return create_repository_group(body.name)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+
+
+@app.patch("/api/repository-groups/{group_id}")
+async def update_repository_group_endpoint(
+    group_id: str, body: RepositoryGroupUpdateRequest
+) -> dict[str, Any]:
+    from src.workspace import WorkspaceError, update_repository_group
+
+    try:
+        return update_repository_group(
+            group_id,
+            name=body.name,
+            collapsed=body.collapsed,
+            workspace_ids=body.workspace_ids,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+    except WorkspaceError as exc:
+        raise _workspace_http_error(exc) from exc
+
+
+@app.delete("/api/repository-groups/{group_id}")
+async def delete_repository_group_endpoint(group_id: str) -> dict[str, str]:
+    from src.workspace import WorkspaceError, delete_repository_group
+
+    try:
+        delete_repository_group(group_id)
+    except WorkspaceError as exc:
+        raise _workspace_http_error(exc) from exc
+    return {"status": "removed", "group_id": group_id}
 
 
 @app.get("/api/workspace")

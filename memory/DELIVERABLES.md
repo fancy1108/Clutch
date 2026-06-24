@@ -187,13 +187,13 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 | Task | 焦点 | 状态 |
 |------|------|------|
-| **P2-05** | 侧栏 REPOSITORIES CRUD | 下一 |
+| **P2-06** | General Settings | 下一 |
 | **P2-06** | General Settings | 待做 |
 | **T-04** | 红队 / 体感审计 | 可选 |
 
 ### P2-03 ✅
 - **日期：** 2026-06-24
-- **Commit：** （待提交）
+- **Commit：** `7caeeec` — feat(preferences): persist theme and language via Sidecar (P2-03, P2-04)
 - **Verification：** `uv run pytest tests/test_theme_preferences.py -v` → 3 passed；`pnpm build` ✅
 - **交付文件：**
   - `services/orchestrator/src/preferences_storage.py` — Application Support 主题/语言偏好
@@ -202,9 +202,21 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
   - `apps/desktop/src/services/themeApi.ts`
   - `apps/desktop/src/App.tsx` — 启动 hydrate + 切换持久化
 
-### P2-04 ✅
+### P2-05 ✅
 - **日期：** 2026-06-24
 - **Commit：** （待提交）
+- **Verification：** `uv run pytest tests/test_repository_groups.py -v` → 2 passed；`pnpm build` ✅
+- **交付文件：**
+  - `services/orchestrator/src/workspace.py` — `repository_groups` 持久化 + CRUD
+  - `services/orchestrator/src/main.py` — `/api/repository-groups/*`
+  - `services/orchestrator/tests/test_repository_groups.py`
+  - `apps/desktop/src/services/workspaceApi.ts` — 分组 API 客户端
+  - `apps/desktop/src/sidebar.tsx` — filter / new group / 分组树
+  - `apps/desktop/src/App.tsx` — hydrate + 创建/折叠分组
+
+### P2-04 ✅
+- **日期：** 2026-06-24
+- **Commit：** `7caeeec` — feat(preferences): persist theme and language via Sidecar (P2-03, P2-04)
 - **Verification：** `uv run pytest tests/test_i18n_preferences.py -v` → 3 passed；E2E `i18n.spec.ts` + desktop G-03 断言
 - **交付文件：**
   - `services/orchestrator/src/main.py` — `GET/POST /api/preferences/language`、`GET /api/preferences`

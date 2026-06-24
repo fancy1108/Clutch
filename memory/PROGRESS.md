@@ -2,8 +2,8 @@
 
 ## 当前状态
 
-- 阶段：**P2 打磨 — P2-04 ✅，下一项 P2-05 REPOSITORIES CRUD**
-- Git HEAD：`da3c660`（本地 ahead 3，待 push）
+- 阶段：**P2 打磨 — P2-05 ✅，下一项 P2-06 General Settings**
+- Git HEAD：`351f3fe`（本地 ahead，待 push）
 
 ## 治理脚手架就绪标准（文档层 ✅）
 
@@ -32,11 +32,17 @@
 - [x] **P2-02**：全量 MCP CRUD
 - [x] **P2-03**：Theme 持久化
 - [x] **P2-04**：i18n 双语验收
-- [ ] **P2-05**：侧栏 REPOSITORIES CRUD
+- [x] **P2-05**：侧栏 REPOSITORIES CRUD
 - [ ] **P2-06**：General Settings 实质功能
 - [ ] **T-04**：红队 / 体感审计（可选）
 
 ## 会话日志（最新在上）
+
+### 2026-06-24 会话（P2-05 REPOSITORIES CRUD）
+
+- **完成：** `repository_groups` Sidecar 持久化；侧栏 filter + 新建分组 + 折叠；`test_repository_groups.py` 2 passed
+- **校验：** `pnpm build` ✅
+- **下次优先：** P2-06 General Settings
 
 ### 2026-06-24 会话（P2-04 i18n）
 

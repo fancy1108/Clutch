@@ -98,6 +98,7 @@ wait_tauri_ready() {
     CLUTCH_MODELS_CONFIG="${CLUTCH_MODELS_CONFIG:-}" \
     pnpm tauri:e2e) &
   tauri_pid=$!
+  disown "$tauri_pid" 2>/dev/null || true
   wait_tauri_ready
   desktop_status=0
   (cd e2e && env CLUTCH_E2E_SANDBOX="${CLUTCH_E2E_SANDBOX:-}" pnpm test:desktop) || desktop_status=$?
@@ -107,9 +108,6 @@ wait_tauri_ready() {
       sleep 0.5
     fi
   done
-  if [[ -n "${tauri_pid:-}" ]]; then
-    kill -9 "$tauri_pid" 2>/dev/null || true
-  fi
   tauri_pid=""
   rm -f /tmp/clutch-tauri-playwright.sock 2>/dev/null || true
   if [[ "$desktop_status" -ne 0 ]]; then

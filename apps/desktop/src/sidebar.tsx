@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { RepositoryFolder, MainView } from './types';
 import { useLanguage } from './components/LanguageContext';
 import type { SessionRecord } from './services/runApi';
-import type { WorkspaceInfo } from './services/workspaceApi';
+import type { RepositoryGroup, WorkspaceInfo } from './services/workspaceApi';
 
 interface SidebarProps {
   currentView: MainView;
@@ -18,8 +18,11 @@ interface SidebarProps {
   sessions?: SessionRecord[];
   activeSessionId?: string;
   workspaces?: WorkspaceInfo[];
+  repositoryGroups?: RepositoryGroup[];
   activeWorkspaceId?: string | null;
   onAddWorkspace?: () => void;
+  onCreateRepositoryGroup?: () => void;
+  onToggleRepositoryGroup?: (groupId: string, collapsed: boolean) => void;
   onSelectWorkspace?: (workspaceId: string) => void;
   onSelectSession?: (session: SessionRecord) => void;
   onNewChatInWorkspace?: (workspaceId: string) => void;
@@ -55,13 +58,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
   sessions = [],
   activeSessionId = '',
   workspaces = [],
+  repositoryGroups = [],
   activeWorkspaceId = null,
   onAddWorkspace,
+  onCreateRepositoryGroup,
+  onToggleRepositoryGroup,
   onSelectWorkspace,
   onSelectSession,
   onNewChatInWorkspace,
 }) => {
   const { t } = useLanguage();
+  const [repoFilter, setRepoFilter] = useState('');
   const [collapsedWorkspaces, setCollapsedWorkspaces] = useState<Record<string, boolean>>({});
 
   const sessionsByWorkspace = useMemo(() => {
@@ -76,6 +83,47 @@ export const Sidebar: React.FC<SidebarProps> = ({
     return map;
   }, [sessions]);
 
+  const filterText = repoFilter.trim().toLowerCase();
+  const matchesFilter = (value: string) =>
+    !filterText || value.toLowerCase().includes(filterText);
+
+  const groupedWorkspaceIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const group of repositoryGroups) {
+      for (const workspaceId of group.workspace_ids) {
+        ids.add(workspaceId);
+      }
+    }
+    return ids;
+  }, [repositoryGroups]);
+
+  const visibleWorkspaces = useMemo(
+    () =>
+      workspaces.filter(
+        (workspace) =>
+          matchesFilter(workspace.name) || matchesFilter(workspace.workspace_path),
+      ),
+    [workspaces, filterText],
+  );
+
+  const visibleGroups = useMemo(
+    () =>
+      repositoryGroups.filter((group) => {
+        if (matchesFilter(group.name)) return true;
+        return group.workspace_ids.some((workspaceId) => {
+          const workspace = workspaces.find((item) => item.id === workspaceId);
+          if (!workspace) return false;
+          return matchesFilter(workspace.name) || matchesFilter(workspace.workspace_path);
+        });
+      }),
+    [repositoryGroups, workspaces, filterText],
+  );
+
+  const ungroupedWorkspaces = useMemo(
+    () => visibleWorkspaces.filter((workspace) => !groupedWorkspaceIds.has(workspace.id)),
+    [visibleWorkspaces, groupedWorkspaceIds],
+  );
+
   const toggleWorkspace = (workspaceId: string) => {
     setCollapsedWorkspaces((prev) => ({ ...prev, [workspaceId]: !prev[workspaceId] }));
     onSelectWorkspace?.(workspaceId);
@@ -84,6 +132,78 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const handleFlowSelect = (flowName: string) => {
     setActiveFlow(flowName);
     setView('chat');
+  };
+
+  const renderWorkspaceRow = (repo: WorkspaceInfo) => {
+    const isActiveWorkspace = repo.id === activeWorkspaceId;
+    const collapsed = collapsedWorkspaces[repo.id] ?? false;
+    const projectSessions = sessionsByWorkspace.get(repo.id) ?? [];
+
+    return (
+      <div key={repo.id} className="space-y-0.5">
+        <div
+          className={`flex items-center justify-between p-1.5 rounded-lg transition-colors group ${
+            isActiveWorkspace ? 'bg-surface-container-low/80' : 'hover:bg-surface-bright'
+          }`}
+        >
+          <button
+            type="button"
+            data-testid={`workspace-row-${repo.id}`}
+            onClick={() => toggleWorkspace(repo.id)}
+            className="flex items-center gap-2 flex-1 min-w-0 text-left"
+            title={repo.workspace_path}
+          >
+            <span className="material-symbols-outlined text-[18px] text-on-surface-variant">
+              {collapsed ? 'folder' : 'folder_open'}
+            </span>
+            <span className="text-xs font-semibold truncate">{repo.name}</span>
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onNewChatInWorkspace?.(repo.id);
+            }}
+            className="material-symbols-outlined text-[16px] opacity-60 group-hover:opacity-100 hover:text-primary p-0.5 rounded"
+            title={t('New Chat')}
+          >
+            add
+          </button>
+        </div>
+
+        {!collapsed && (
+          <div className="space-y-0.5 ml-4 border-l-2 border-outline-variant/20 pl-2">
+            {projectSessions.length === 0 ? (
+              <p className="text-[11px] text-on-surface-variant/60 italic py-1 pl-2">
+                {t('No sessions in this project yet')}
+              </p>
+            ) : (
+              projectSessions.map((session) => {
+                const isActiveSession = session.run_id === activeSessionId;
+                return (
+                  <button
+                    key={session.run_id}
+                    type="button"
+                    data-testid={`sidebar-session-${session.run_id}`}
+                    onClick={() => onSelectSession?.(session)}
+                    className={`w-full flex items-center justify-between p-2 rounded-lg text-left transition-all ${
+                      isActiveSession
+                        ? 'bg-surface-bright shadow-sm text-on-surface font-bold border border-outline-variant/40'
+                        : 'text-on-surface-variant hover:bg-surface-bright hover:text-on-surface'
+                    }`}
+                  >
+                    <span className="text-xs truncate max-w-[150px]">{sessionLabel(session)}</span>
+                    <span className="text-[9px] font-mono text-on-surface-variant/70 flex-shrink-0">
+                      {formatRelativeTime(session.started_at)}
+                    </span>
+                  </button>
+                );
+              })
+            )}
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -170,6 +290,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </span>
           <div className="flex gap-2">
             <span
+              data-testid="nav-new-repo-group"
+              className="material-symbols-outlined text-[16px] cursor-pointer hover:text-primary"
+              title={t('New project group')}
+              onClick={() => onCreateRepositoryGroup?.()}
+            >
+              folder_special
+            </span>
+            <span
               data-testid="nav-add-workspace"
               className="material-symbols-outlined text-[16px] cursor-pointer hover:text-primary"
               title={t('Add project folder')}
@@ -180,85 +308,65 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
         </div>
 
+        <input
+          data-testid="repo-filter"
+          type="search"
+          value={repoFilter}
+          onChange={(event) => setRepoFilter(event.target.value)}
+          placeholder={t('Filter projects')}
+          className="mx-2 mb-2 w-[calc(100%-1rem)] rounded-lg border border-outline-variant/60 bg-surface-bright px-3 py-1.5 text-[11px] text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:border-primary/50"
+        />
+
         <nav className="flex-1 sidebar-scroll overflow-y-auto space-y-2 px-1 pb-4">
-          {workspaces.length === 0 && (
+          {workspaces.length === 0 && repositoryGroups.length === 0 && (
             <p className="text-[11px] text-on-surface-variant/60 italic px-3 py-2 leading-relaxed">
               {t('No repositories yet. Use Add project folder or Authorize workspace to begin.')}
             </p>
           )}
-          {workspaces.map((repo) => {
-            const isActiveWorkspace = repo.id === activeWorkspaceId;
-            const collapsed = collapsedWorkspaces[repo.id] ?? false;
-            const projectSessions = sessionsByWorkspace.get(repo.id) ?? [];
+          {visibleGroups.map((group) => {
+            const groupCollapsed = group.collapsed;
+            const groupWorkspaces = group.workspace_ids
+              .map((workspaceId) => visibleWorkspaces.find((item) => item.id === workspaceId))
+              .filter((item): item is WorkspaceInfo => Boolean(item));
 
             return (
-              <div key={repo.id} className="space-y-0.5">
-                <div
-                  className={`flex items-center justify-between p-1.5 rounded-lg transition-colors group ${
-                    isActiveWorkspace
-                      ? 'bg-surface-container-low/80'
-                      : 'hover:bg-surface-bright'
-                  }`}
+              <div key={group.id} className="space-y-1" data-testid={`repo-group-${group.id}`}>
+                <button
+                  type="button"
+                  data-testid={`repo-group-toggle-${group.id}`}
+                  onClick={() => onToggleRepositoryGroup?.(group.id, !groupCollapsed)}
+                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left hover:bg-surface-bright transition-colors"
                 >
-                  <button
-                    type="button"
-                    data-testid={`workspace-row-${repo.id}`}
-                    onClick={() => toggleWorkspace(repo.id)}
-                    className="flex items-center gap-2 flex-1 min-w-0 text-left"
-                    title={repo.workspace_path}
-                  >
-                    <span className="material-symbols-outlined text-[18px] text-on-surface-variant">
-                      {collapsed ? 'folder' : 'folder_open'}
-                    </span>
-                    <span className="text-xs font-semibold truncate">{repo.name}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onNewChatInWorkspace?.(repo.id);
-                    }}
-                    className="material-symbols-outlined text-[16px] opacity-60 group-hover:opacity-100 hover:text-primary p-0.5 rounded"
-                    title={t('New Chat')}
-                  >
-                    add
-                  </button>
-                </div>
-
-                {!collapsed && (
-                  <div className="space-y-0.5 ml-4 border-l-2 border-outline-variant/20 pl-2">
-                    {projectSessions.length === 0 ? (
+                  <span className="material-symbols-outlined text-[16px] text-on-surface-variant">
+                    {groupCollapsed ? 'folder' : 'folder_open'}
+                  </span>
+                  <span className="text-[11px] font-bold uppercase tracking-wide text-on-surface-variant/80 truncate">
+                    {group.name}
+                  </span>
+                </button>
+                {!groupCollapsed && (
+                  <div className="space-y-1 ml-2 border-l border-outline-variant/30 pl-2">
+                    {groupWorkspaces.length === 0 ? (
                       <p className="text-[11px] text-on-surface-variant/60 italic py-1 pl-2">
-                        {t('No sessions in this project yet')}
+                        {t('No projects in this group yet')}
                       </p>
                     ) : (
-                      projectSessions.map((session) => {
-                        const isActiveSession = session.run_id === activeSessionId;
-                        return (
-                          <button
-                            key={session.run_id}
-                            type="button"
-                            data-testid={`sidebar-session-${session.run_id}`}
-                            onClick={() => onSelectSession?.(session)}
-                            className={`w-full flex items-center justify-between p-2 rounded-lg text-left transition-all ${
-                              isActiveSession
-                                ? 'bg-surface-bright shadow-sm text-on-surface font-bold border border-outline-variant/40'
-                                : 'text-on-surface-variant hover:bg-surface-bright hover:text-on-surface'
-                            }`}
-                          >
-                            <span className="text-xs truncate max-w-[150px]">{sessionLabel(session)}</span>
-                            <span className="text-[9px] font-mono text-on-surface-variant/70 flex-shrink-0">
-                              {formatRelativeTime(session.started_at)}
-                            </span>
-                          </button>
-                        );
-                      })
+                      groupWorkspaces.map((repo) => renderWorkspaceRow(repo))
                     )}
                   </div>
                 )}
               </div>
             );
           })}
+          {ungroupedWorkspaces.map((repo) => renderWorkspaceRow(repo))}
+          {workspaces.length > 0 &&
+            visibleGroups.length === 0 &&
+            ungroupedWorkspaces.length === 0 &&
+            filterText && (
+              <p className="text-[11px] text-on-surface-variant/60 italic px-3 py-2">
+                {t('No projects match your filter')}
+              </p>
+            )}
 
         </nav>
 

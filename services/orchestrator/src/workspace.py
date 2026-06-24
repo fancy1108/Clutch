@@ -13,6 +13,7 @@ _SKIP_DIRS = {".git", "node_modules", ".venv", "__pycache__", "dist", "target"}
 WORKSPACES_ENV = "CLUTCH_WORKSPACES_FILE"
 
 _workspaces: dict[str, dict[str, str]] = {}
+_repository_groups: dict[str, dict[str, Any]] = {}
 _active_id: str | None = None
 _loaded = False
 _persistence_disabled = False
@@ -34,7 +35,7 @@ def _store_path() -> Path:
 
 
 def _ensure_loaded() -> None:
-    global _loaded, _workspaces, _active_id
+    global _loaded, _workspaces, _repository_groups, _active_id
     if _loaded or _persistence_disabled:
         return
     path = _store_path()
@@ -47,6 +48,9 @@ def _ensure_loaded() -> None:
         _loaded = True
         return
     _workspaces = {item["id"]: item for item in data.get("workspaces", []) if "id" in item}
+    _repository_groups = {
+        item["id"]: item for item in data.get("repository_groups", []) if "id" in item
+    }
     active = data.get("active_id")
     _active_id = active if active in _workspaces else None
     _loaded = True
@@ -60,6 +64,7 @@ def _persist() -> None:
     payload = {
         "workspaces": list(_workspaces.values()),
         "active_id": _active_id,
+        "repository_groups": list(_repository_groups.values()),
     }
     path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
@@ -121,8 +126,66 @@ def remove_workspace(workspace_id: str) -> None:
         raise WorkspaceError(f"工作区不存在：{workspace_id}")
     global _active_id
     del _workspaces[workspace_id]
+    for group in _repository_groups.values():
+        workspace_ids = group.get("workspace_ids")
+        if isinstance(workspace_ids, list) and workspace_id in workspace_ids:
+            group["workspace_ids"] = [item for item in workspace_ids if item != workspace_id]
     if _active_id == workspace_id:
         _active_id = next(iter(_workspaces), None)
+    _persist()
+
+
+def list_repository_groups() -> dict[str, Any]:
+    _ensure_loaded()
+    return {"groups": list(_repository_groups.values())}
+
+
+def create_repository_group(name: str) -> dict[str, Any]:
+    _ensure_loaded()
+    normalized = name.strip()
+    if not normalized:
+        raise ValueError("分组名称不能为空")
+    entry: dict[str, Any] = {
+        "id": f"grp_{uuid.uuid4().hex[:12]}",
+        "name": normalized,
+        "collapsed": False,
+        "workspace_ids": [],
+    }
+    _repository_groups[entry["id"]] = entry
+    _persist()
+    return entry
+
+
+def update_repository_group(
+    group_id: str,
+    *,
+    name: str | None = None,
+    collapsed: bool | None = None,
+    workspace_ids: list[str] | None = None,
+) -> dict[str, Any]:
+    _ensure_loaded()
+    entry = _repository_groups.get(group_id)
+    if entry is None:
+        raise WorkspaceError(f"分组不存在：{group_id}")
+    if name is not None:
+        normalized = name.strip()
+        if not normalized:
+            raise ValueError("分组名称不能为空")
+        entry["name"] = normalized
+    if collapsed is not None:
+        entry["collapsed"] = collapsed
+    if workspace_ids is not None:
+        valid_ids = [item for item in workspace_ids if item in _workspaces]
+        entry["workspace_ids"] = valid_ids
+    _persist()
+    return entry
+
+
+def delete_repository_group(group_id: str) -> None:
+    _ensure_loaded()
+    if group_id not in _repository_groups:
+        raise WorkspaceError(f"分组不存在：{group_id}")
+    del _repository_groups[group_id]
     _persist()
 
 
@@ -194,8 +257,9 @@ def read_file(relative_path: str, *, max_bytes: int = 512_000) -> str:
 
 
 def clear_workspace_for_tests() -> None:
-    global _workspaces, _active_id, _loaded, _persistence_disabled
+    global _workspaces, _repository_groups, _active_id, _loaded, _persistence_disabled
     _workspaces = {}
+    _repository_groups = {}
     _active_id = None
     _loaded = True
     _persistence_disabled = True
