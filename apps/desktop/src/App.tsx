@@ -311,17 +311,12 @@ function MainLayout() {
       return;
     }
     const runId = createSessionRunId();
-    try {
-      await createSession({ run_id: runId, title: t('New session') });
-      setSessionRunId(runId);
-      setCurrentFlowName('');
-      setSelectedWorkflowId(null);
-      setView('chat');
-      setRightTab('overview');
-      await refreshSessions();
-    } catch (error) {
-      console.error('[Clutch] create session failed:', error);
-    }
+    setSessionRunId(runId);
+    setCurrentFlowName('');
+    setSelectedWorkflowId(null);
+    setView('chat');
+    setRightTab('overview');
+    void clutchStore.connect(runId);
   };
 
   const handleSelectSession = async (session: SessionRecord) => {
@@ -373,9 +368,25 @@ function MainLayout() {
     if (!ok) return;
     try {
       await deleteSession(runId);
-      await refreshSessions();
+      const updatedSessions = await fetchSessions();
+      setSessions(updatedSessions);
+
       if (sessionRunId === runId) {
-        await handleNewChat();
+        const remainingWorkspaceSessions = updatedSessions.filter(
+          (s) => s.workspace_id === activeWorkspaceId && s.run_id !== runId
+        );
+
+        if (remainingWorkspaceSessions.length > 0) {
+          await handleSelectSession(remainingWorkspaceSessions[0]);
+        } else {
+          const tempRunId = createSessionRunId();
+          setSessionRunId(tempRunId);
+          setCurrentFlowName('');
+          setSelectedWorkflowId(null);
+          setView('chat');
+          setRightTab('overview');
+          void clutchStore.connect(tempRunId);
+        }
       }
     } catch (error) {
       console.error('[Clutch] delete session failed:', error);
