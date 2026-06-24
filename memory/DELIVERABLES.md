@@ -29,7 +29,7 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ### UI-GROUP-DRAG-AND-DROP ✅
 - **日期：** 2026-06-24
-- **Commit：** `[PENDING]` — `feat(ui): group enhancements, drag-and-drop support, virtual default group, and right-click move`
+- **Commit：** `d4d116b` — `feat(ui): distinguish group icons, virtual default group, group CRUD, drag-and-drop, and right-click move`
 - **Verification：** `./scripts/verify.sh` → 116 pytest + vitest passed
 - **证据：** `runs/verification/2026-06-24-group-drag-verify.log`
 - **交付文件：**
