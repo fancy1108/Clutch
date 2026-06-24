@@ -12,6 +12,7 @@
 
 | 日期 | 范围 | 命令 | 结果 | 报告/证据 | 备注 |
 |------|------|------|------|-----------|------|
+| 2026-06-24 | 自定义弹窗与删除修复 | `./scripts/verify.sh` | ✅ 116 pytest + 1 vitest | `runs/verification/2026-06-24-custom-dialog-verify.log` | 自定义 PromptModal 代替原生 window.prompt/confirm 并修复删除项目 |
 | 2026-06-24 | 删除与跳转优化 | `./scripts/verify.sh` | ✅ 116 pytest + 1 vitest | `runs/verification/2026-06-24-delete-navigation-verify.log` | 新建会话惰性加载与删除会话自动跳转跳转规则校验 |
 | 2026-06-24 | 右键&思考动效 | `./scripts/verify.sh` | ✅ 116 pytest + 1 vitest | `runs/verification/2026-06-24-rightclick-thinking-verification.log` | 右键自定义 Reload 与 LLM 思考中动画校验 |
 | 2026-06-24 | UI/后端修复 | `./scripts/verify.sh` | ✅ 116 pytest + vitest | `runs/verification/2026-06-24-ui-fixes-verify.log` | UI 与后端交互修复校验 |

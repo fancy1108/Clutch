@@ -38,6 +38,15 @@
 - [x] **DMG**：`pnpm tauri build` → `runs/verification/2026-06-24-clutch-p2.dmg`
 - [ ] **T-04**：红队 / 体感审计（可选）
 
+### 2026-06-24 会话（自定义弹窗与删除修复）
+
+- **完成：**
+  - **右键 Reload 移除**：从侧栏右键菜单中彻底删除了 Reload 按钮与相关的分隔线。
+  - **自定义 Prompt/Confirm Modal**：设计并实现了一个毛玻璃效果的 `<PromptModal />`，替代 Tauri 桌面端不支持的 `window.prompt` 与 `window.confirm`，支持弹窗输入（创建项目分组）及删除二次确认。
+  - **删除项目 bug 修复**：引入被漏掉的 `removeWorkspace` 避免 ReferenceError 错误，并在删除项目后调用 `fetchRepositoryGroups` 刷新状态，确保侧栏及分组树中立即移出被删除项目。
+- **校验：** `./scripts/verify.sh` → 116 pytest + vitest passed
+- **下次优先：** 答复用户五角星图标的疑问，重新打包并交付。
+
 ### 2026-06-24 会话（右键菜单、思考动效、删除与跳转优化）
 
 - **完成：**

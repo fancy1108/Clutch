@@ -27,6 +27,16 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ## 已交付（代码 Task · 自 Git 回填）
 
+### UI-CUSTOM-DIALOGS ✅
+- **日期：** 2026-06-24
+- **Commit：** `f1e0eac` — `feat(ui): delete reload and add custom PromptModal to replace native prompt and confirm`
+- **Verification：** `./scripts/verify.sh` → 116 pytest + vitest passed
+- **证据：** `runs/verification/2026-06-24-custom-dialog-verify.log`
+- **交付文件：**
+  - `apps/desktop/src/App.tsx` — Add custom PromptModal component, implement non-blocking modal states to replace window.prompt/confirm for deleting projects, sessions, and creating groups.
+  - `apps/desktop/src/components/LanguageContext.tsx` — Add modal translations for prompt fields, confirmation alerts, and button labels.
+  - `apps/desktop/src/sidebar.tsx` — Remove "Reload" context menu item and its separator line.
+
 ### UI-DELETE-NAV-SYNC ✅
 - **日期：** 2026-06-24
 - **Commit：** `0a0a74c` — `feat(ui): prevent ghost session on new chat and auto navigate on delete`
