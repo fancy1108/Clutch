@@ -19,6 +19,7 @@ import { fetchSessions, createSession, startWorkflowRun, fetchRunState, deleteSe
 import {
   activateWorkspace,
   addWorkspace,
+  removeWorkspace,
   fetchWorkspaceFile,
   fetchWorkspaceTree,
   fetchWorkspaces,
@@ -39,6 +40,16 @@ function MainLayout() {
   const { state: clutchState } = useClutchState();
 
   const [sessionRunId, setSessionRunId] = useState(() => createSessionRunId());
+
+  const [promptModal, setPromptModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message?: string;
+    hasInput?: boolean;
+    placeholder?: string;
+    defaultValue?: string;
+    onConfirm: (value: string) => void;
+  } | null>(null);
 
   useEffect(() => {
     void clutchStore.connect(sessionRunId);
@@ -237,15 +248,24 @@ function MainLayout() {
     }
   };
 
-  const handleCreateRepositoryGroup = async () => {
-    const name = window.prompt(t('New project group'));
-    if (!name?.trim()) return;
-    try {
-      const group = await createRepositoryGroup(name.trim());
-      setRepositoryGroups((current) => [...current, group]);
-    } catch (error) {
-      console.error('[Clutch] create repository group failed:', error);
-    }
+  const handleCreateRepositoryGroup = () => {
+    setPromptModal({
+      isOpen: true,
+      title: t('New project group'),
+      placeholder: t('Enter group name...'),
+      hasInput: true,
+      defaultValue: '',
+      onConfirm: async (name) => {
+        setPromptModal(null);
+        if (!name.trim()) return;
+        try {
+          const group = await createRepositoryGroup(name.trim());
+          setRepositoryGroups((current) => [...current, group]);
+        } catch (error) {
+          console.error('[Clutch] create repository group failed:', error);
+        }
+      }
+    });
   };
 
   const handleToggleRepositoryGroup = async (groupId: string, collapsed: boolean) => {
@@ -342,55 +362,72 @@ function MainLayout() {
     await handleNewChat();
   };
 
-  const handleDeleteWorkspace = async (workspaceId: string) => {
-    const ok = window.confirm(t('Are you sure you want to remove this project from the list?'));
-    if (!ok) return;
-    try {
-      await removeWorkspace(workspaceId);
-      const listed = await fetchWorkspaces();
-      setWorkspaces(listed.workspaces);
-      setActiveWorkspaceId(listed.active_id);
-      const active = listed.workspaces.find((item) => item.id === listed.active_id) ?? null;
-      setWorkspace(active);
-      if (active) {
-        await refreshWorkspaceFiles();
-      } else {
-        setWorkspaceFiles([]);
-      }
-      await refreshSessions();
-    } catch (error) {
-      console.error('[Clutch] remove workspace failed:', error);
-    }
-  };
+  const handleDeleteWorkspace = (workspaceId: string) => {
+    setPromptModal({
+      isOpen: true,
+      title: t('Delete project'),
+      message: t('Are you sure you want to remove this project from the list?'),
+      hasInput: false,
+      onConfirm: async () => {
+        setPromptModal(null);
+        try {
+          await removeWorkspace(workspaceId);
+          const listed = await fetchWorkspaces();
+          setWorkspaces(listed.workspaces);
+          setActiveWorkspaceId(listed.active_id);
+          const active = listed.workspaces.find((item) => item.id === listed.active_id) ?? null;
+          setWorkspace(active);
+          if (active) {
+            await refreshWorkspaceFiles();
+          } else {
+            setWorkspaceFiles([]);
+          }
+          const groupsListed = await fetchRepositoryGroups();
+          setRepositoryGroups(groupsListed.groups);
 
-  const handleDeleteSession = async (runId: string) => {
-    const ok = window.confirm(t('Are you sure you want to permanently delete this session?'));
-    if (!ok) return;
-    try {
-      await deleteSession(runId);
-      const updatedSessions = await fetchSessions();
-      setSessions(updatedSessions);
-
-      if (sessionRunId === runId) {
-        const remainingWorkspaceSessions = updatedSessions.filter(
-          (s) => s.workspace_id === activeWorkspaceId && s.run_id !== runId
-        );
-
-        if (remainingWorkspaceSessions.length > 0) {
-          await handleSelectSession(remainingWorkspaceSessions[0]);
-        } else {
-          const tempRunId = createSessionRunId();
-          setSessionRunId(tempRunId);
-          setCurrentFlowName('');
-          setSelectedWorkflowId(null);
-          setView('chat');
-          setRightTab('overview');
-          void clutchStore.connect(tempRunId);
+          await refreshSessions();
+        } catch (error) {
+          console.error('[Clutch] remove workspace failed:', error);
         }
       }
-    } catch (error) {
-      console.error('[Clutch] delete session failed:', error);
-    }
+    });
+  };
+
+  const handleDeleteSession = (runId: string) => {
+    setPromptModal({
+      isOpen: true,
+      title: t('Delete session'),
+      message: t('Are you sure you want to permanently delete this session?'),
+      hasInput: false,
+      onConfirm: async () => {
+        setPromptModal(null);
+        try {
+          await deleteSession(runId);
+          const updatedSessions = await fetchSessions();
+          setSessions(updatedSessions);
+
+          if (sessionRunId === runId) {
+            const remainingWorkspaceSessions = updatedSessions.filter(
+              (s) => s.workspace_id === activeWorkspaceId && s.run_id !== runId
+            );
+
+            if (remainingWorkspaceSessions.length > 0) {
+              await handleSelectSession(remainingWorkspaceSessions[0]);
+            } else {
+              const tempRunId = createSessionRunId();
+              setSessionRunId(tempRunId);
+              setCurrentFlowName('');
+              setSelectedWorkflowId(null);
+              setView('chat');
+              setRightTab('overview');
+              void clutchStore.connect(tempRunId);
+            }
+          }
+        } catch (error) {
+          console.error('[Clutch] delete session failed:', error);
+        }
+      }
+    });
   };
 
   const handleSendMessage = async (text: string) => {
@@ -722,10 +759,104 @@ function MainLayout() {
         <div className="font-semibold text-on-surface-variant/70 italic mr-2 select-text">
           Clutch v0.0.0
         </div>
+      {promptModal && (
+        <PromptModal
+          isOpen={promptModal.isOpen}
+          title={promptModal.title}
+          message={promptModal.message}
+          hasInput={promptModal.hasInput}
+          placeholder={promptModal.placeholder}
+          defaultValue={promptModal.defaultValue}
+          onConfirm={promptModal.onConfirm}
+          onCancel={() => setPromptModal(null)}
+        />
+      )}
       </footer>
     </div>
   );
 }
+
+interface PromptModalProps {
+  isOpen: boolean;
+  title: string;
+  message?: string;
+  hasInput?: boolean;
+  placeholder?: string;
+  defaultValue?: string;
+  onConfirm: (value: string) => void;
+  onCancel: () => void;
+}
+
+const PromptModal: React.FC<PromptModalProps> = ({
+  isOpen,
+  title,
+  message = '',
+  hasInput = false,
+  placeholder = '',
+  defaultValue = '',
+  onConfirm,
+  onCancel,
+}) => {
+  const [value, setValue] = useState(defaultValue);
+  const { t } = useLanguage();
+
+  useEffect(() => {
+    if (isOpen) {
+      setValue(defaultValue);
+    }
+  }, [isOpen, defaultValue]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center z-[1000] select-none">
+      <div className="bg-surface-bright border border-outline-variant w-full max-w-sm rounded-[16px] shadow-xl p-5 space-y-4">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-on-surface">{title}</h3>
+        
+        {message && (
+          <p className="text-[13px] text-on-surface-variant leading-relaxed select-text">
+            {message}
+          </p>
+        )}
+
+        {hasInput && (
+          <input
+            type="text"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder={placeholder}
+            className="w-full rounded-lg border border-outline-variant/60 bg-surface px-3 py-2 text-xs text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary/50"
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                onConfirm(value);
+              } else if (e.key === 'Escape') {
+                onCancel();
+              }
+            }}
+          />
+        )}
+
+        <div className="flex justify-end gap-2 text-[10px] font-bold uppercase tracking-wider pt-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="px-3.5 py-2 border border-outline-variant text-on-surface hover:bg-surface-container-low rounded-lg transition-colors cursor-pointer"
+          >
+            {t('Cancel')}
+          </button>
+          <button
+            type="button"
+            onClick={() => onConfirm(value)}
+            className="px-3.5 py-2 bg-neutral-900 text-white hover:bg-black rounded-lg transition-colors cursor-pointer"
+          >
+            {t('Confirm')}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default function App() {
   return (

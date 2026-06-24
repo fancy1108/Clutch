@@ -418,18 +418,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
         >
           <button
             type="button"
-            className="w-full text-left px-3 py-2 text-xs text-on-surface hover:bg-surface-container-low transition-colors flex items-center gap-2"
-            onClick={() => {
-              setContextMenu(null);
-              window.location.reload();
-            }}
-          >
-            <span className="material-symbols-outlined text-[16px]">refresh</span>
-            {t('Reload')}
-          </button>
-          <div className="border-t border-outline-variant/30 my-0.5" />
-          <button
-            type="button"
             className="w-full text-left px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-colors flex items-center gap-2"
             onClick={() => {
               const { type, targetId } = contextMenu;
