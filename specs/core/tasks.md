@@ -137,16 +137,16 @@
 
 ---
 
-## P2 延后（MVP 不阻塞）
+## P2 · 打磨（MVP 后，D13 执行顺序）
 
-| 模块 | FR / Prototype | 说明 |
-|------|----------------|------|
-| Skills Registry 后端同步 | FR-06-04 · `SkillsRegistry.tsx` | 替代 localStorage |
-| 全量 MCP 类型 | FR-05-05 · `McpServerHub.tsx` | MVP 仅 filesystem |
-| 主题 Appearance 持久化 | `ThemeManager.tsx` | 预设主题 localStorage → 可选后端 |
-| i18n 双语 | `LanguageContext.tsx` | en/zh 切换；MVP 可保留现有 UI |
-| 侧栏仓库文件夹 CRUD | `sidebar.tsx` filter/new folder | REPOSITORIES 分组管理；非 MVP 核心路径 |
-| General Settings 实质功能 | `SystemPreferencesModal` settings 占位 | 当前为占位页 |
+| ID | 任务 | FR / Prototype | 完成标准 | Verification |
+|----|------|----------------|----------|--------------|
+| P2-01 | Skills Registry 后端同步 + 扫描 | FR-06-04 · `SkillsRegistry.tsx` | 挂载目录持久化至 Sidecar；扫描 `SKILL.md`；`AgentManager` 联动 | `uv run pytest tests/test_skills_registry.py -v` |
+| P2-02 | 全量 MCP 配置与状态 | FR-05-05 · `McpServerHub.tsx` | 用户可增删 stdio/SSE MCP；Hub 展示连接与工具数 | `uv run pytest tests/test_mcp_registry.py -v` |
+| P2-03 | Theme 持久化 | `ThemeManager.tsx` | 重启后保留活跃主题 | 手动：切换主题 → 重启 → 主题仍在 |
+| P2-04 | i18n 双语验收 | `LanguageContext.tsx` · `Header.tsx` | Header en/zh 切换；监督台关键文案双语 | 手动 + E2E `lang-zh` / `lang-en` data-testid |
+| P2-05 | 侧栏 REPOSITORIES CRUD | `sidebar.tsx` | filter / new folder；分组持久化 | 手动：新建分组 → 重启 → 仍在 |
+| P2-06 | General Settings 实质功能 | `SystemPreferencesModal` | 替换「功能开发中」占位 | 手动：General 页可改至少一项并持久化 |
 
 ---
 
@@ -175,7 +175,7 @@
 | `ModelsManager.tsx` | 模型与 Provider 配置 | M1-08, M4-04, M4-09 | ✅ |
 | `AiToolsManager.tsx` | CLI/GUI 工具连接状态 | M4-03 | ✅ |
 | `McpServerHub.tsx` | MCP 连接配置与状态 | M4-03 | ✅ |
-| `SkillsRegistry.tsx` | Skills 目录扫描 | P2 | — |
+| `SkillsRegistry.tsx` | Skills 目录扫描 + Sidecar 持久化 | P2-01 | ✅ |
 | `ThemeManager.tsx` | 主题预设 | P2 | — |
 | `SystemPreferencesModal.tsx` | 设置壳（承载上表各面板） | — | — |
 | `mockData.ts` / `services/api.ts` | 编排与假 API 响应 | M2-06 | ✅ |
@@ -211,4 +211,4 @@
 | `tests/test_evaluator.py` | M3-05 |
 | `tests/test_check_branch.py` | M3-06 |
 | `tests/test_subprocess_isolation.py` | M3-07 |
-| `tests/test_workspace_whitelist.py` | M4-05 |
+| `tests/test_skills_registry.py` | P2-01 |

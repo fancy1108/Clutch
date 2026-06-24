@@ -8,6 +8,7 @@ import logging
 import uuid
 from copy import deepcopy
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
@@ -86,6 +87,32 @@ class SessionCreateRequest(BaseModel):
     run_id: str
     title: str = Field(default="New session")
     workflow_id: str = Field(default="")
+
+
+class SkillsMountRequest(BaseModel):
+    path: str
+
+
+class SkillsToggleRequest(BaseModel):
+    key: str
+    is_active: bool = Field(default=True)
+
+
+def _skills_registry_payload(*, rescan: bool = True) -> dict[str, Any]:
+    from src.skills_scanner import scan_mounted_directories
+    from src.skills_storage import load_registry, save_registry
+
+    data = load_registry()
+    if rescan:
+        data["skills"] = scan_mounted_directories(
+            data["mounted_directories"],
+            existing_skills=data["skills"],
+        )
+        save_registry(
+            mounted_directories=data["mounted_directories"],
+            skills=data["skills"],
+        )
+    return data
 
 
 def _session_workspace_fields() -> dict[str, str]:
@@ -797,6 +824,61 @@ async def save_agents_endpoint(body: AgentsSaveRequest) -> dict[str, str]:
 
     save_agents(body.agents)
     return {"status": "saved"}
+
+
+@app.get("/api/skills")
+async def get_skills_registry() -> dict[str, Any]:
+    return _skills_registry_payload(rescan=True)
+
+
+@app.post("/api/skills/mount")
+async def mount_skills_directory(body: SkillsMountRequest) -> dict[str, Any]:
+    from src.skills_storage import load_registry, save_registry
+
+    raw = body.path.strip()
+    if not raw:
+        raise HTTPException(status_code=400, detail={"message": "路径不能为空"})
+    resolved = str(Path(raw).expanduser().resolve())
+    data = load_registry()
+    mounted = list(data["mounted_directories"])
+    if resolved not in mounted:
+        mounted.append(resolved)
+    save_registry(mounted_directories=mounted)
+    return _skills_registry_payload(rescan=True)
+
+
+@app.post("/api/skills/unmount")
+async def unmount_skills_directory(body: SkillsMountRequest) -> dict[str, Any]:
+    from src.skills_storage import load_registry, save_registry
+
+    raw = body.path.strip()
+    if not raw:
+        raise HTTPException(status_code=400, detail={"message": "路径不能为空"})
+    resolved = str(Path(raw).expanduser().resolve())
+    data = load_registry()
+    mounted = [item for item in data["mounted_directories"] if item != resolved]
+    skills = [item for item in data["skills"] if item.get("source") != resolved]
+    save_registry(mounted_directories=mounted, skills=skills)
+    return _skills_registry_payload(rescan=True)
+
+
+@app.post("/api/skills/toggle")
+async def toggle_skill(body: SkillsToggleRequest) -> dict[str, Any]:
+    from src.skills_storage import load_registry, save_registry
+
+    data = _skills_registry_payload(rescan=False)
+    updated = False
+    skills = []
+    for item in data["skills"]:
+        if item.get("key") == body.key:
+            skills.append({**item, "isActiveGlobally": body.is_active})
+            updated = True
+        else:
+            skills.append(item)
+    if not updated:
+        raise HTTPException(status_code=404, detail={"message": "未找到该 Skill"})
+    save_registry(skills=skills)
+    return _skills_registry_payload(rescan=False)
 
 
 @app.get("/api/models/credentials")

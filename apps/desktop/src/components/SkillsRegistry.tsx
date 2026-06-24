@@ -1,58 +1,55 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  fetchSkillsRegistry,
+  mountSkillsDirectory,
+  unmountSkillsDirectory,
+  toggleSkillActive,
+  notifySkillsUpdated,
+  type ScannedSkill,
+} from '../services/skillsApi';
 
-export interface ScannedSkill {
-  key: string;
-  label: string;
-  source: string;
-  isActiveGlobally: boolean;
-  desc: string;
-}
-
-function loadSkills(): ScannedSkill[] {
-  const saved = localStorage.getItem('clutch-scanned-skills') ?? localStorage.getItem('vibe-scanned-skills');
-  if (saved) {
-    try {
-      return JSON.parse(saved);
-    } catch (e) {}
-  }
-  return [];
-}
-
-function loadMountedDirs(): string[] {
-  const saved = localStorage.getItem('clutch-mounted-dirs') ?? localStorage.getItem('vibe-mounted-dirs');
-  if (saved) {
-    try {
-      return JSON.parse(saved);
-    } catch (e) {}
-  }
-  return [];
-}
+export type { ScannedSkill };
 
 export const SkillsRegistry: React.FC = () => {
-  const [scannedSkills, setScannedSkills] = useState<ScannedSkill[]>(loadSkills);
-  const [mountedDirectories, setMountedDirectories] = useState<string[]>(loadMountedDirs);
+  const [scannedSkills, setScannedSkills] = useState<ScannedSkill[]>([]);
+  const [mountedDirectories, setMountedDirectories] = useState<string[]>([]);
   const [newDirPath, setNewDirPath] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    setErrorMsg('');
+    try {
+      const data = await fetchSkillsRegistry();
+      setMountedDirectories(data.mounted_directories);
+      setScannedSkills(data.skills);
+      notifySkillsUpdated();
+    } catch {
+      setErrorMsg('Sidecar unavailable — cannot load skills registry.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    localStorage.setItem('clutch-scanned-skills', JSON.stringify(scannedSkills));
-    window.dispatchEvent(new Event('vibe-skills-updated'));
-  }, [scannedSkills]);
+    void refresh();
+  }, [refresh]);
 
-  useEffect(() => {
-    localStorage.setItem('clutch-mounted-dirs', JSON.stringify(mountedDirectories));
-    window.dispatchEvent(new Event('vibe-skills-updated'));
-  }, [mountedDirectories]);
-
-  const handleToggleGlobalSkill = (key: string) => {
-    setScannedSkills(prev =>
-      prev.map(skill =>
-        skill.key === key ? { ...skill, isActiveGlobally: !skill.isActiveGlobally } : skill
-      )
-    );
+  const handleToggleGlobalSkill = async (key: string) => {
+    const skill = scannedSkills.find((item) => item.key === key);
+    if (!skill) return;
+    try {
+      const data = await toggleSkillActive(key, !skill.isActiveGlobally);
+      setScannedSkills(data.skills);
+      notifySkillsUpdated();
+    } catch {
+      setErrorMsg('Failed to update skill — Sidecar may be offline.');
+    }
   };
 
-  const handleMountDirectory = (e: React.FormEvent) => {
+  const handleMountDirectory = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newDirPath.trim()) return;
     const path = newDirPath.trim();
@@ -62,10 +59,33 @@ export const SkillsRegistry: React.FC = () => {
       return;
     }
 
-    setMountedDirectories(prev => [...prev, path]);
-    setNewDirPath('');
-    setSuccessMsg('Directory mounted. Skill scanning is not yet available — no skills were discovered.');
-    setTimeout(() => setSuccessMsg(''), 4000);
+    try {
+      const data = await mountSkillsDirectory(path);
+      setMountedDirectories(data.mounted_directories);
+      setScannedSkills(data.skills);
+      setNewDirPath('');
+      const count = data.skills.length;
+      setSuccessMsg(
+        count > 0
+          ? `Mounted and discovered ${count} skill(s).`
+          : 'Directory mounted. No SKILL.md files found yet.',
+      );
+      notifySkillsUpdated();
+      setTimeout(() => setSuccessMsg(''), 4000);
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : 'Mount failed.');
+    }
+  };
+
+  const handleUnmount = async (dir: string) => {
+    try {
+      const data = await unmountSkillsDirectory(dir);
+      setMountedDirectories(data.mounted_directories);
+      setScannedSkills(data.skills);
+      notifySkillsUpdated();
+    } catch {
+      setErrorMsg('Failed to unmount directory.');
+    }
   };
 
   return (
@@ -78,19 +98,33 @@ export const SkillsRegistry: React.FC = () => {
           </div>
           <p className="text-xs text-neutral-500 font-sans leading-relaxed">
             Mount directories that contain <code className="font-mono text-[10.5px] bg-neutral-100 text-neutral-800 px-1 py-0.5 rounded">SKILL.md</code> files.
-            Automatic scanning will be added in a future release.
+            Clutch scans them via the Sidecar and syncs active skills to Agent configuration.
           </p>
         </div>
+
+        {errorMsg && (
+          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">{errorMsg}</p>
+        )}
 
         <div className="p-4 bg-neutral-50/50 border border-neutral-200/60 rounded-xl space-y-4">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <h3 className="text-[11px] font-extrabold text-[#111111] font-mono tracking-wider uppercase">Search Paths</h3>
-              <p className="text-[9.5px]/snug text-neutral-400 font-sans">Paths you want Clutch to scan for skills (scan not yet implemented).</p>
+              <p className="text-[9.5px]/snug text-neutral-400 font-sans">Paths stored in Application Support and scanned on refresh.</p>
             </div>
+            <button
+              type="button"
+              onClick={() => void refresh()}
+              disabled={loading}
+              className="text-[10px] font-bold text-neutral-500 hover:text-neutral-800 disabled:opacity-50"
+            >
+              Rescan
+            </button>
           </div>
 
-          {mountedDirectories.length === 0 ? (
+          {loading ? (
+            <p className="text-xs text-neutral-400 italic">Loading skills registry…</p>
+          ) : mountedDirectories.length === 0 ? (
             <p className="text-xs text-neutral-400 italic">No skill directories mounted.</p>
           ) : (
             <div className="grid grid-cols-1 gap-2">
@@ -105,10 +139,7 @@ export const SkillsRegistry: React.FC = () => {
                   </div>
                   <button
                     type="button"
-                    onClick={() => {
-                      setMountedDirectories(prev => prev.filter((item) => item !== dir));
-                      setScannedSkills(prev => prev.filter(s => s.source !== dir));
-                    }}
+                    onClick={() => void handleUnmount(dir)}
                     className="text-neutral-400 hover:text-red-600 transition-colors p-1 hover:bg-neutral-50 rounded"
                     title="Unmount directory"
                   >
@@ -119,7 +150,7 @@ export const SkillsRegistry: React.FC = () => {
             </div>
           )}
 
-          <form onSubmit={handleMountDirectory} className="pt-2 border-t border-dashed border-neutral-200 flex gap-2">
+          <form onSubmit={(e) => void handleMountDirectory(e)} className="pt-2 border-t border-dashed border-neutral-200 flex gap-2">
             <input
               type="text"
               required
@@ -169,7 +200,7 @@ export const SkillsRegistry: React.FC = () => {
                   <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
                     <button
                       type="button"
-                      onClick={() => handleToggleGlobalSkill(skill.key)}
+                      onClick={() => void handleToggleGlobalSkill(skill.key)}
                       className={`w-9 h-5 rounded-full p-0.5 transition-all duration-300 relative cursor-pointer flex items-center ${
                         skill.isActiveGlobally ? 'bg-neutral-900 justify-end' : 'bg-neutral-200 justify-start'
                       }`}

@@ -130,6 +130,20 @@
 - **落地前提**：GitHub PR 工作流成为常态 + 功能级 design 文档层就绪
 - **决策状态**：`已记录`
 
+### D13 · P2 任务拆解与执行顺序（2026-06-24）
+
+- **背景**：M0–M4 MVP 已完成；用户要求按 `tasks.md` §P2 交付 Skills 后端、全量 MCP、i18n、Theme 持久化、侧栏 REPOSITORIES CRUD、General Settings。
+- **方案**（一次一个 task，原子 commit）：
+  1. **P2-01** Skills Registry — Sidecar 持久化 + `SKILL.md` 扫描；`SkillsRegistry` / `AgentManager` 去 `localStorage`
+  2. **P2-02** MCP Hub — 用户配置 stdio/SSE 多服务器 CRUD + 状态聚合（filesystem 保留）
+  3. **P2-03** Theme — 活跃主题写入应用数据目录（与 D5 路径一致）
+  4. **P2-04** i18n — Header en/zh 切换 + 监督台关键路径文案双语验收
+  5. **P2-05** 侧栏 REPOSITORIES — 分组 filter / new folder CRUD + 持久化
+  6. **P2-06** General Settings — 替换占位页为实质配置（工作区默认、高危确认开关等）
+- **影响**：`tasks.md` §P2 升格为带 ID 任务；`ROADMAP.md` Skills 行改进行中；存储路径 `Application Support/clutch/skills/`、`preferences/`
+- **落地前提**：M4-02 agent 持久化模式可复用；**P2-01 已落地**
+- **决策状态**：`可执行`（P2-02…P2-06 待交付）
+
 ## 开放问题
 
 （暂无 — 原 Q1–Q4 已于 2026-06-22 关闭，见 D3–D6。）

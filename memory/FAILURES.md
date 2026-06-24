@@ -10,26 +10,31 @@
 
 ## 活跃问题（尚未解决）
 
-### [OPEN] D12 · tauri-playwright 无法在 `<textarea>` 上 fill/type（2026-06-23）
+（暂无）
+
+## 已解决问题（经验库）
+
+### [RESOLVED] D12 · tauri-playwright 无法在 `<textarea>` 上 fill/type（2026-06-23）
 
 - **现象：** `all-ui.spec.ts` 在 `chat-input`（React `<textarea>`）上 `fill` / `type` 报错：`HTMLInputElement.value setter can only be used on instances of HTMLInputElement`
 - **根因：** `@srsholmes/tauri-playwright` 0.4 的 `type_text` / `fill` 实现假定 `HTMLInputElement`，未处理 `HTMLTextAreaElement`
-- **规避：** 用 `page.evaluate` 字符串脚本 + `HTMLTextAreaElement.prototype.value` setter + 派发 `input` 事件；或先 `click` + 逐键 `press`
-- **关联：** `e2e/tests/desktop/all-ui.spec.ts` W-01 步骤
+- **解决：** `e2e/helpers/tauri.ts` 用 `evaluate` 字符串脚本 + `HTMLTextAreaElement` setter + `input` 事件
+- **规避：** 桌面 E2E 输入统一走 helper，勿直接 `fill` textarea
+- **关联：** `e2e/tests/desktop/all-ui.spec.ts`
 
-### [OPEN] D12 · 桌面侧栏 session hydrate 后消息不可见（2026-06-23）
+### [RESOLVED] D12 · 桌面侧栏 session hydrate 后消息不可见（2026-06-23）
 
 - **现象：** `desktop/session-history.spec.ts`：`waitForFunction` 含 seedText 通过，但 `getByText(seedText)` 5s 超时
-- **可能原因：** 侧栏列表未刷新；`handleSelectSession` hydrate 与 WS 竞态；`getByText` 在 tauri-playwright 下默认 5s 与 body 文本不同步
-- **规避：** 点选后 `waitForSelector` 等 chat 消息 DOM；或延长 `expect` timeout；确认 `fetchRunState` + `setPendingHydrate` 路径
-- **关联：** `e2e/tests/desktop/session-history.spec.ts`；`e2e/helpers/seed.ts`（Node 侧预置会话）
+- **解决：** hydrate 路径稳定 + 用例等待 Chat DOM；`9e509c3` 后桌面 3/3 绿
+- **规避：** 点选会话后 `waitForSelector` 等消息节点，勿仅依赖 `getByText` 默认 5s
+- **关联：** `e2e/tests/desktop/session-history.spec.ts`
 
-### [OPEN] D12 · API E2E 勿用 Chromium 测 WebSocket（2026-06-23）
+### [RESOLVED] D12 · API E2E 勿用 Chromium 测 WebSocket（2026-06-23）
 
-- **现象：** 原 `session-history` / `smoke` 在 Playwright 浏览器里起 WS → `websocket error`（103ms）或依赖 `playwright install`
-- **规避：** 已改 `e2e/helpers/ws.ts`（Node 原生 WebSocket）；**API 用例禁止再 `chromium.launch()` 测 WS**
-
-## 已解决问题（经验库）
+- **现象：** 原 `session-history` / `smoke` 在 Playwright 浏览器里起 WS → `websocket error`（103ms）
+- **解决：** `e2e/helpers/ws.ts`（Node 原生 WebSocket）；API 4/4 绿
+- **规避：** API 用例禁止 `chromium.launch()` 测 WS
+- **关联：** `e2e/tests/smoke.spec.ts`、`session-history.spec.ts`
 
 ### [RESOLVED] M1-06 · UI 模型 ↔ compiler JSON 无映射（2026-06-23）
 

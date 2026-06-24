@@ -77,6 +77,7 @@
 | 应用根布局、ClutchState 投影 | `App.tsx` |
 | WebSocket store、`useClutchState` | `services/clutchState.ts` |
 | 会话 / 运行 API | `services/runApi.ts` |
+| Skills Registry API（P2-01） | `services/skillsApi.ts` |
 | API 抽象（mock 待 M2 替换） | `services/api.ts` |
 | 侧栏（工作区 / 历史，M2-07/09） | `sidebar.tsx` |
 | 底部状态栏（M2-08） | `App.tsx`（Branch / Mode / Flow） |
@@ -118,6 +119,7 @@
 | Orchestrator 路由（M1-04） | `src/orchestrator/routing.py` |
 | LLM Provider Router（M1-08，D4） | `src/llm/router.py` |
 | 用户工作流存储 API（M1-09，D5） | `src/workflow_storage.py` |
+| Skills Registry 持久化（P2-01） | `src/skills_storage.py`、`src/skills_scanner.py` |
 | CLI / GUI Adapter（M3） | `src/adapters/`（待建） |
 | 依赖与 pytest 配置 | `pyproject.toml` |
 

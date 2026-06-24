@@ -2,10 +2,10 @@
 
 ## 当前状态
 
-- 阶段：**M0–M4 MVP + D12 桌面 E2E 门禁 ✅**
-- 说明：D11 会话持久化 + D12 `tauri-playwright` 桌面 E2E；101 pytest + 7 Playwright 绿
-- 焦点：push 触发 CI；用户本机验收 DMG
-- Git HEAD：`9e509c3`（已 push `origin/main`）
+- 阶段：**P2 打磨（D13）— 进行中 P2-01 Skills Registry**
+- 说明：M0–M4 MVP ✅；现按 D13 顺序交付 P2-01…P2-06
+- 焦点：**P2-02** 全量 MCP CRUD（D13 下一项）
+- Git HEAD：`e647fe6`（`origin/main` 同步）
 
 ## 治理脚手架就绪标准（文档层 ✅）
 
@@ -30,10 +30,21 @@
 - [x] **D11**：会话 messages 持久化 + 侧栏历史 hydrate（代码已写，待 commit）
 - [x] **D12**：桌面 E2E 全链路 — `./scripts/run-e2e.sh` 7/7 ✅
 - [x] **提交 + push** D11+D12 → `9e509c3`
+- [x] **P2-01**：Skills Registry 后端 + 扫描
+- [ ] **P2-02**：全量 MCP CRUD
+- [ ] **P2-03**：Theme 持久化
+- [ ] **P2-04**：i18n 双语验收
+- [ ] **P2-05**：侧栏 REPOSITORIES CRUD
+- [ ] **P2-06**：General Settings 实质功能
 - [ ] **T-04**：红队 / 体感审计（可选）
-- [ ] Push 至 `origin` 触发 CI
 
 ## 会话日志（最新在上）
+
+### 2026-06-24 会话（P2-01 Skills Registry）
+
+- **完成：** D13 决策 + P2-01 全链路；`./scripts/verify.sh` → 104 pytest + 7 Playwright ✅
+- **校验：** Check-out 完成（DELIVERABLES / TESTS / FAILURES 同步）
+- **下次优先：** P2-02 全量 MCP CRUD
 
 ### 2026-06-23 会话 23（D12 桌面 E2E 修复 — 进行中）
 

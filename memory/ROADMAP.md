@@ -19,7 +19,12 @@
 | Cursor 唤起 + 自动检查 | P1 | M3 | ✅ | M3-03, M3-04, M3-05 |
 | Agent 配置 | P1 | M4 | ✅ | M4-02 |
 | MCP 管理 | P2 | M4 | ✅ | M4-03（filesystem 状态） |
-| Skills 注册（后端同步） | P2 | 延后 | ❌ | tasks §P2 |
+| Skills 注册（后端同步） | P2 | P2 | ✅ | P2-01 |
+| 全量 MCP 配置 | P2 | P2 | ❌ | P2-02 |
+| Theme 持久化 | P2 | P2 | ❌ | P2-03 |
+| i18n 双语 | P2 | P2 | ❌ | P2-04 |
+| 侧栏 REPOSITORIES CRUD | P2 | P2 | ❌ | P2-05 |
+| General Settings | P2 | P2 | ❌ | P2-06 |
 | 内置模板 | P1 | M4 | ✅ | M4-01 |
 | 运行历史 | P0 | M2 | ✅ | M2-07（D3）+ D11 对话持久化 |
 | 文件浏览（Files 面板） | P0 | M2 | ✅ | M2-11 |

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 
 import { Deliverable, Agent } from '../types';
 import { fetchAgents, saveAgents } from '../services/agentApi';
+import { fetchSkillsRegistry, type ScannedSkill } from '../services/skillsApi';
 
 export function AgentLogo({ name, description, className = "w-10 h-10" }: { name: string; description: string; className?: string }) {
   // Let's create a deterministic hash from name
@@ -101,47 +102,26 @@ export function AgentManager({ selectedSidebarWidth, isModalStyle }: AgentManage
   const [selectedMcpTools, setSelectedMcpTools] = useState<string[]>([]);
 
   // Vibe workspace state extensions
-  const [scannedSkills, setScannedSkills] = useState<{ key: string; label: string; source: string; isActiveGlobally: boolean; desc: string }[]>(() => {
-    const saved = localStorage.getItem('clutch-scanned-skills');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
-    }
-    return [];
-  });
-
-  const [mountedDirectories, setMountedDirectories] = useState<string[]>(() => {
-    const saved = localStorage.getItem('clutch-mounted-dirs');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
-    }
-    return [];
-  });
+  const [scannedSkills, setScannedSkills] = useState<ScannedSkill[]>([]);
 
   const [aiEngine, setAiEngine] = useState('Claude Code (Local CLI)');
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
-  const [newDirPath, setNewDirPath] = useState('');
   const [isSkillsAttachOpen, setIsSkillsAttachOpen] = useState(false);
   const [skillsSearch, setSkillsSearch] = useState('');
 
-  useEffect(() => {
-    localStorage.setItem('clutch-scanned-skills', JSON.stringify(scannedSkills));
-  }, [scannedSkills]);
+  const refreshScannedSkills = () => {
+    void fetchSkillsRegistry()
+      .then((data) => setScannedSkills(data.skills))
+      .catch(() => setScannedSkills([]));
+  };
 
   useEffect(() => {
-    localStorage.setItem('clutch-mounted-dirs', JSON.stringify(mountedDirectories));
-  }, [mountedDirectories]);
-
-  useEffect(() => {
-    const handleUpdateSkills = () => {
-      const saved = localStorage.getItem('clutch-scanned-skills');
-      if (saved) {
-        try {
-          setScannedSkills(JSON.parse(saved));
-        } catch (e) {}
-      }
-    };
+    refreshScannedSkills();
+    const handleUpdateSkills = () => refreshScannedSkills();
+    window.addEventListener('clutch-skills-updated', handleUpdateSkills);
     window.addEventListener('vibe-skills-updated', handleUpdateSkills);
     return () => {
+      window.removeEventListener('clutch-skills-updated', handleUpdateSkills);
       window.removeEventListener('vibe-skills-updated', handleUpdateSkills);
     };
   }, []);

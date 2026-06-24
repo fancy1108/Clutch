@@ -187,8 +187,27 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 | Task | 焦点 | 状态 |
 |------|------|------|
+| **P2-02** | 全量 MCP CRUD | 下一 |
+| **P2-03** | Theme 持久化 | 待做 |
+| **P2-04** | i18n 双语验收 | 待做 |
+| **P2-05** | 侧栏 REPOSITORIES CRUD | 待做 |
+| **P2-06** | General Settings | 待做 |
 | **T-04** | 红队 / 体感审计 | 可选 |
-| **P2** | Skills 后端、完整 MCP、i18n | 延后 |
+
+### P2-01 ✅
+- **日期：** 2026-06-24
+- **Commit：** （见本次 commit）
+- **Verification：** `uv run pytest tests/test_skills_registry.py -v` → 3 passed；`./scripts/verify.sh` → 104 pytest + 7 Playwright
+- **证据：** `runs/verification/2026-06-24-p2-01-skills-pytest.log`、`runs/verification/2026-06-24-p2-01-verify.log`
+- **交付文件：**
+  - `services/orchestrator/src/skills_storage.py` — Application Support 持久化
+  - `services/orchestrator/src/skills_scanner.py` — `SKILL.md` 递归扫描
+  - `services/orchestrator/src/main.py` — `/api/skills/*`
+  - `services/orchestrator/tests/test_skills_registry.py` — P2-01 门禁
+  - `apps/desktop/src/services/skillsApi.ts` — 前端 API 客户端
+  - `apps/desktop/src/components/SkillsRegistry.tsx` — 去 localStorage，接 Sidecar
+  - `apps/desktop/src/components/AgentManager.tsx` — Skills 从 Sidecar 同步
+  - `memory/DECISIONS.md` D13 — P2 任务拆解
 
 ### cf342c6 — M2–M4 批量 ✅
 - **日期：** 2026-06-23
