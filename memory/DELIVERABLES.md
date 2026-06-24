@@ -211,7 +211,7 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ### P2-02 ✅
 - **日期：** 2026-06-24
-- **Commit：** （见本次 commit）
+- **Commit：** `da3c660` — feat(mcp): add user MCP server registry with stdio and SSE CRUD (P2-02)
 - **Verification：** `uv run pytest tests/test_mcp_registry.py -v` → 3 passed；`pnpm build` ✅
 - **证据：** `runs/verification/`（pytest 本地）
 - **交付文件：**
