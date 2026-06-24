@@ -196,7 +196,7 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ### P2-01 ✅
 - **日期：** 2026-06-24
-- **Commit：** （见本次 commit）
+- **Commit：** `a8bc6af` — feat(skills): add Sidecar skills registry with SKILL.md scanning (P2-01)
 - **Verification：** `uv run pytest tests/test_skills_registry.py -v` → 3 passed；`./scripts/verify.sh` → 104 pytest + 7 Playwright
 - **证据：** `runs/verification/2026-06-24-p2-01-skills-pytest.log`、`runs/verification/2026-06-24-p2-01-verify.log`
 - **交付文件：**

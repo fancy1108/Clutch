@@ -98,12 +98,14 @@ wait_tauri_ready() {
     pnpm tauri:e2e) &
   tauri_pid=$!
   wait_tauri_ready
-  (cd e2e && env CLUTCH_E2E_SANDBOX="${CLUTCH_E2E_SANDBOX:-}" pnpm test:desktop)
+  desktop_status=0
+  (cd e2e && env CLUTCH_E2E_SANDBOX="${CLUTCH_E2E_SANDBOX:-}" pnpm test:desktop) || desktop_status=$?
+  set +e
   if [[ -n "${tauri_pid:-}" ]] && kill -0 "$tauri_pid" 2>/dev/null; then
     kill "$tauri_pid" 2>/dev/null || true
     wait "$tauri_pid" 2>/dev/null || true
-    tauri_pid=""
   fi
+  tauri_pid=""
   for port in 8123 3000; do
     if lsof -ti "tcp:${port}" >/dev/null 2>&1; then
       lsof -ti "tcp:${port}" | xargs kill -9 2>/dev/null || true
@@ -111,4 +113,8 @@ wait_tauri_ready() {
     fi
   done
   rm -f /tmp/clutch-tauri-playwright.sock 2>/dev/null || true
+  set -e
+  if [[ "$desktop_status" -ne 0 ]]; then
+    exit "$desktop_status"
+  fi
 } 2>&1 | tee "$root/$log"

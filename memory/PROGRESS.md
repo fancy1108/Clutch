@@ -2,10 +2,8 @@
 
 ## 当前状态
 
-- 阶段：**P2 打磨（D13）— 进行中 P2-01 Skills Registry**
-- 说明：M0–M4 MVP ✅；现按 D13 顺序交付 P2-01…P2-06
-- 焦点：**P2-02** 全量 MCP CRUD（D13 下一项）
-- Git HEAD：`e647fe6`（`origin/main` 同步）
+- 阶段：**P2 打磨（D13）— P2-01 ✅，进行中 P2-02**
+- Git HEAD：`a8bc6af`（本地 ahead 1，待 push）
 
 ## 治理脚手架就绪标准（文档层 ✅）
 
