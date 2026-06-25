@@ -2,8 +2,8 @@
 
 ## 当前状态
 
-- 阶段：**存储路径隔离与自定义指针拖拽交互完成；已完成普通 LLM 运行时 UI/停止控制优化**
-- Git HEAD：`01a88dd`
+- 阶段：**存储路径隔离与自定义指针拖拽交互完成；已完成普通 LLM 运行时 UI 优化及 CC Switch 凭证动态导入**
+- Git HEAD：`c9ea0d6`
 
 ## 治理脚手架就绪标准（文档层 ✅）
 
@@ -37,6 +37,17 @@
 - [x] **Push + CI**：`9ce59ba` 已 push；CI 见 GitHub Actions（本机无 gh auth）
 - [x] **DMG**：`pnpm tauri build` → `runs/verification/2026-06-24-clutch-p2.dmg`
 - [ ] **T-04**：红队 / 体感审计（可选）
+
+### 2026-06-25 会话（CC Switch 凭证导入、Deepseek 修正及端口清理）
+
+- **完成：**
+  - **CC Switch 动态导入**：实现 `bootstrap_cc_switch_credentials`，支持读取 `~/.cc-switch/cc-switch.db`，在 Clutch 启动时自动检测并导入用户配置的自定义模型（如 Zhipu GLM, Agnes AI, Ollama）及相应 API Key，同时在 proxy 不可用时自动降级到直连。
+  - **DeepSeek Base URL 修正**：将默认的 DeepSeek base URL 从 `/v1` 结尾修正为根域名 `https://api.deepseek.com`，解决 OpenAI 兼容客户端发起 `/chat/completions` 时产生 404 错误的问题。
+  - **Tauri 端口冲突清理**：移除了 `free_sidecar_port()` 在 macOS 下的 debug assertions 编译限制。开发端启动时将强行清理后台占用 `8123` 的正式版 Sidecar 进程，避免开发前端因端口劫持而读写生产环境数据。
+  - **API Key 显隐切换**：在 `ModelsManager` 凭证输入表单中增加 `showApiKey` 状态和可视化切换按钮，使用 Google Material Symbols `visibility` 和 `visibility_off` 实现可见性切换。
+- **校验：** `./scripts/verify.sh` → 120 pytest + vitest passed + doc drift ok
+- **下次优先：** 进行发布以及红队/体感审计。
+
 
 ### 2026-06-25 会话（存储隔离与指针拖拽优化）
 

@@ -48,6 +48,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
   const [activeAvailable, setActiveAvailable] = useState(true);
   const [verifyByModel, setVerifyByModel] = useState<Record<string, VerifyState>>({});
   const [verifyMessage, setVerifyMessage] = useState<string | null>(null);
+  const [verifyOk, setVerifyOk] = useState<boolean | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -79,6 +80,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
       await saveModelsConfig({ active_model_id: modelId });
       setVerifyByModel((prev) => ({ ...prev, [modelId]: 'idle' }));
       setVerifyMessage(null);
+      setVerifyOk(null);
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to activate model.');
@@ -98,6 +100,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
       setShowConnectForm(false);
       setVerifyByModel({});
       setVerifyMessage(null);
+      setVerifyOk(null);
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save provider credentials.');
@@ -108,19 +111,23 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
   const handleTestConnection = async (modelId: string) => {
     setVerifyByModel((prev) => ({ ...prev, [modelId]: 'testing' }));
     setVerifyMessage(null);
+    setVerifyOk(null);
     setError(null);
     try {
       const result = await testModelConnection(modelId);
       if (result.ok) {
         setVerifyByModel((prev) => ({ ...prev, [modelId]: 'ok' }));
         setVerifyMessage(result.message);
+        setVerifyOk(true);
       } else {
         setVerifyByModel((prev) => ({ ...prev, [modelId]: 'failed' }));
         setVerifyMessage(result.message);
+        setVerifyOk(false);
       }
     } catch (err) {
       setVerifyByModel((prev) => ({ ...prev, [modelId]: 'failed' }));
       setVerifyMessage(err instanceof Error ? err.message : 'Connection test failed.');
+      setVerifyOk(false);
     }
   };
 
@@ -154,7 +161,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
         {verifyMessage && (
           <p
             className={`text-xs rounded-lg px-3 py-2 border ${
-              activeVerify === 'ok'
+              verifyOk
                 ? 'text-emerald-700 bg-emerald-50 border-emerald-100'
                 : 'text-rose-700 bg-rose-50 border-rose-100'
             }`}

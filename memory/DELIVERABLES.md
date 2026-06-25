@@ -397,3 +397,16 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
   - `scripts/run-e2e.sh` — API → 杀端口 → Tauri → `wait_tauri_ready` → Desktop
   - UI：`data-testid`、Branch 菜单、Terminal Clear 去占位
 - **待完成：**（无 — 2026-06-23 门禁全绿）
+
+### CC Switch 动态凭证导入、DeepSeek 修正与侧端端口隔离 ✅
+- **日期：** 2026-06-25
+- **Commit：** `c9ea0d6` — feat(llm,ui): fix deepseek base url, add credentials bootstrap from cc-switch database, toggle api key visibility, and solve dev/prod sidecar port collision
+- **Verification：** `./scripts/verify.sh` → 120 pytest + vitest passed + doc drift ok
+- **证据：** `runs/verification/2026-06-25-deepseek-ccswitch-verification.log`
+- **已交付：**
+  - `apps/desktop/src-tauri/src/lib.rs` — 移除了 macOS 上 `free_sidecar_port()` 的 debug assertions，确保开发模式也能释放并绑定 `8123` 端口，实现数据安全隔离。
+  - `apps/desktop/src/components/ModelsManager.tsx` — 增加了 API Key 的可见性切换按钮（使用 Material Symbol `visibility`/`visibility_off`）。
+  - `services/orchestrator/src/llm/router.py` — 修复 DeepSeek Base URL 为根域名 `https://api.deepseek.com`，补全 OpenAI, Google Gemini, Ollama 默认内置模型。
+  - `services/orchestrator/src/credentials/claude_code.py` — 实现对 `~/.cc-switch/cc-switch.db` SQLite 数据库的读取，实现从 CC Switch 导入自定义模型和凭证的动态引导程序。
+  - `services/orchestrator/src/credentials/sources.py` — 增加 CC Switch 凭证来源标签。
+  - `services/orchestrator/tests/test_claude_code_credentials.py` — 增加 `test_bootstrap_cc_switch_credentials` 单元测试，修正环境污染问题。
