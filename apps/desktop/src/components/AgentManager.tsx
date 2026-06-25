@@ -145,9 +145,11 @@ export function AgentManager({
   }, []);
 
   const persistAgents = (next: Agent[]) => {
-    const persisted = next.filter((agent) => !isBuiltinAgent(agent));
-    setAgents(mergeAgentsWithBuiltin(persisted));
-    void saveAgents(persisted).catch(() => {});
+    const builtin = next.find((agent) => isBuiltinAgent(agent));
+    const custom = next.filter((agent) => !isBuiltinAgent(agent));
+    const normalized = builtin ? [builtin, ...custom] : mergeAgentsWithBuiltin(custom);
+    setAgents(normalized);
+    void saveAgents(normalized).catch(() => {});
   };
 
   const handleOpenCreate = () => {
@@ -170,7 +172,6 @@ export function AgentManager({
 
   const handleOpenEdit = (agent: Agent, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    if (isBuiltinAgent(agent)) return;
     setModalMode('edit');
     setEditingId(agent.id);
     setName(agent.name);
@@ -356,8 +357,6 @@ export function AgentManager({
             </div>
 
             <div className="flex items-center gap-2">
-              {!isBuiltinAgent(selectedAgent) ? (
-                <>
               <button
                 onClick={(e) => handleOpenEdit(selectedAgent, e)}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg text-[11.5px] font-semibold transition-colors border border-neutral-200 bg-white"
@@ -365,6 +364,7 @@ export function AgentManager({
                 <span className="material-symbols-outlined text-[15px]">edit</span>
                 Edit Settings
               </button>
+              {!isBuiltinAgent(selectedAgent) ? (
               <button
                 onClick={(e) => handleDelete(selectedAgent.id, e)}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg text-[11.5px] font-semibold transition-colors border border-red-100 bg-white"
@@ -372,7 +372,6 @@ export function AgentManager({
                 <span className="material-symbols-outlined text-[15px]">delete</span>
                 Delete
               </button>
-                </>
               ) : null}
             </div>
           </div>
@@ -620,8 +619,6 @@ export function AgentManager({
                   </div>
                   
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {!isBuiltinAgent(agent) ? (
-                      <>
                     <button
                       onClick={(e) => handleOpenEdit(agent, e)}
                       className="p-1 hover:bg-neutral-100 text-neutral-500 hover:text-neutral-800 rounded-md transition-colors"
@@ -629,6 +626,7 @@ export function AgentManager({
                     >
                       <span className="material-symbols-outlined text-[16px]">edit</span>
                     </button>
+                    {!isBuiltinAgent(agent) ? (
                     <button
                       onClick={(e) => handleDelete(agent.id, e)}
                       className="p-1 hover:bg-red-50 text-red-500 hover:text-red-700 rounded-md transition-colors"
@@ -636,7 +634,6 @@ export function AgentManager({
                     >
                       <span className="material-symbols-outlined text-[16px]">delete</span>
                     </button>
-                      </>
                     ) : null}
                   </div>
                 </div>

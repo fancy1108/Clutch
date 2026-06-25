@@ -14,7 +14,7 @@ export async function saveAgents(agents: Agent[]): Promise<void> {
   const response = await fetch(`${BASE}/api/agents`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ agents: agents.filter((agent) => !agent.builtin && agent.id !== 'clutch-agent') }),
+    body: JSON.stringify({ agents }),
   });
   if (!response.ok) throw new Error(`agents save failed (${response.status})`);
 }

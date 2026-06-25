@@ -216,6 +216,8 @@ export function useClutchState(): { state: ClutchState; connected: boolean } {
 export const connectSidecarWebSocket = (): Promise<void> =>
   clutchStore.connect(clutchStore.getSnapshot().run_id);
 
-export const submitChatMessage = async (text: string): Promise<void> => {
-  await clutchStore.send({ text });
+export const submitChatMessage = async (text: string, agentId?: string | null): Promise<void> => {
+  const payload: Record<string, unknown> = { text };
+  if (agentId) payload.agent_id = agentId;
+  await clutchStore.send(payload);
 };

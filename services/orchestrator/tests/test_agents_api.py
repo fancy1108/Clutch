@@ -16,16 +16,29 @@ def test_list_agents_includes_builtin_clutch_agent() -> None:
     assert agents[0]["name"] == "Clutch Agent"
 
 
-def test_save_agents_does_not_persist_builtin_agent(tmp_path, monkeypatch) -> None:
+def test_save_agents_persists_builtin_override(tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("CLUTCH_AGENTS_DIR", str(tmp_path))
-    save_agents([get_builtin_agent(), {"id": "custom-1", "name": "Custom", "description": "x"}])
+    customized = {
+        **get_builtin_agent(),
+        "markdownDoc": "# Custom builtin prompt",
+        "lastModified": "2026-06-25",
+    }
+    save_agents([customized, {"id": "custom-1", "name": "Custom", "description": "x"}])
     stored = list_agents()
-    assert stored[0]["id"] == BUILTIN_AGENT_ID
+    assert stored[0]["markdownDoc"] == "# Custom builtin prompt"
+    assert stored[0]["builtin"] is True
     assert any(agent["id"] == "custom-1" for agent in stored)
-    assert not any(agent["id"] == BUILTIN_AGENT_ID for agent in stored[1:])
+    assert len([agent for agent in stored if agent["id"] == BUILTIN_AGENT_ID]) == 1
 
 
-def test_agents_api_returns_builtin_agent() -> None:
+def test_get_agent_by_id_returns_builtin_agent() -> None:
+    from src.agent_storage import BUILTIN_AGENT_ID, get_agent_by_id
+
+    agent = get_agent_by_id(BUILTIN_AGENT_ID)
+    assert agent is not None
+    assert agent["name"] == "Clutch Agent"
+    assert agent["builtin"] is True
+
     client = TestClient(app)
     response = client.get("/api/agents")
     assert response.status_code == 200

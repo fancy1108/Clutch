@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import os
-import sys
 from pathlib import Path
 from typing import Any
 
@@ -35,10 +34,6 @@ def get_builtin_agent() -> dict[str, Any]:
     }
 
 
-def _is_persisted_agent(agent: dict[str, Any]) -> bool:
-    return agent.get("id") != BUILTIN_AGENT_ID and not agent.get("builtin")
-
-
 def agents_dir() -> Path:
     override = os.environ.get(AGENTS_ENV)
     if override:
@@ -57,19 +52,53 @@ def _agents_file() -> Path:
     return _ensure_dir() / "agents.json"
 
 
-def list_agents() -> list[dict[str, Any]]:
+def _read_file_agents() -> list[dict[str, Any]]:
     path = _agents_file()
-    user_agents: list[dict[str, Any]] = []
-    if path.is_file():
-        user_agents = [
-            agent for agent in json.loads(path.read_text(encoding="utf-8"))
-            if _is_persisted_agent(agent)
-        ]
-    return [get_builtin_agent(), *user_agents]
+    if not path.is_file():
+        return []
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _effective_builtin(override: dict[str, Any] | None = None) -> dict[str, Any]:
+    agent = get_builtin_agent()
+    if override and override.get("id") == BUILTIN_AGENT_ID:
+        agent = {**agent, **override, "id": BUILTIN_AGENT_ID, "builtin": True}
+    return agent
+
+
+def get_agent_by_id(agent_id: str) -> dict[str, Any] | None:
+    for agent in list_agents():
+        if agent.get("id") == agent_id:
+            return agent
+    return None
+
+
+def list_agents() -> list[dict[str, Any]]:
+    file_agents = _read_file_agents()
+    builtin_override = next(
+        (agent for agent in file_agents if agent.get("id") == BUILTIN_AGENT_ID),
+        None,
+    )
+    user_agents = [
+        agent for agent in file_agents if agent.get("id") != BUILTIN_AGENT_ID
+    ]
+    return [_effective_builtin(builtin_override), *user_agents]
 
 
 def save_agents(agents: list[dict[str, Any]]) -> list[dict[str, Any]]:
     path = _agents_file()
-    user_agents = [agent for agent in agents if _is_persisted_agent(agent)]
-    path.write_text(json.dumps(user_agents, indent=2, ensure_ascii=False), encoding="utf-8")
+    builtin_override = next(
+        (agent for agent in agents if agent.get("id") == BUILTIN_AGENT_ID),
+        None,
+    )
+    user_agents = [
+        agent
+        for agent in agents
+        if agent.get("id") != BUILTIN_AGENT_ID and not agent.get("builtin")
+    ]
+    stored: list[dict[str, Any]] = []
+    if builtin_override:
+        stored.append({**builtin_override, "id": BUILTIN_AGENT_ID, "builtin": True})
+    stored.extend(user_agents)
+    path.write_text(json.dumps(stored, indent=2, ensure_ascii=False), encoding="utf-8")
     return list_agents()

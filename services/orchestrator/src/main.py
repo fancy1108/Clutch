@@ -502,12 +502,24 @@ def _history_for_llm(messages: list[dict[str, object]]) -> list[dict[str, str]]:
     return history
 
 
-async def _llm_chat_reply(state: ClutchState, text: str) -> tuple[str, str, list[str]]:
+async def _llm_chat_reply(
+    state: ClutchState,
+    text: str,
+    agent_id: str | None = None,
+) -> tuple[str, str, list[str]]:
+    from src.agent_storage import BUILTIN_AGENT_ID, get_agent_by_id
     from src.engine_router import route_engine
     from src.workspace import get_workspace
 
-    agent_name = state.get("active_agent") or "Builder"
+    resolved_id = (agent_id or "").strip() or BUILTIN_AGENT_ID
+    agent = get_agent_by_id(resolved_id)
+    agent_ref = str(agent.get("id", resolved_id)) if agent else resolved_id
+    reply_label = str(agent.get("name", "Clutch Agent")) if agent else (state.get("active_agent") or "Builder")
+    system_prompt = str(agent.get("markdownDoc", "")).strip() if agent else None
+
     history = _history_for_llm(state["messages"])
+    if system_prompt and not any(item.get("role") == "system" for item in history):
+        history.insert(0, {"role": "system", "content": system_prompt})
     history.append({"role": "user", "content": text})
 
     workspace = get_workspace()
@@ -516,12 +528,13 @@ async def _llm_chat_reply(state: ClutchState, text: str) -> tuple[str, str, list
     try:
         result = await asyncio.to_thread(
             route_engine,
-            agent_name=agent_name,
+            agent_name=agent_ref,
             prompt=text,
             cwd=cwd,
             history=history,
+            system_prompt=system_prompt,
         )
-        return result.engine, result.output, result.logs
+        return reply_label, result.output, result.logs
     except Exception as exc:
         return "System Error", str(exc), [f"Error routing plain chat request: {exc}"]
 
@@ -531,11 +544,19 @@ async def _handle_plain_chat(
     run_id: str,
     state: ClutchState,
     text: str,
+    agent_id: str | None = None,
 ) -> ClutchState:
+    from src.agent_storage import BUILTIN_AGENT_ID, get_agent_by_id
+
+    resolved_id = (agent_id or "").strip() or BUILTIN_AGENT_ID
+    agent = get_agent_by_id(resolved_id)
+    active_agent = str(agent.get("name", "Clutch Agent")) if agent else "Clutch Agent"
+
     user_message = _chat_message("User", text, msg_id=f"user_{uuid.uuid4().hex[:8]}")
     user_patch = {
         "messages": list(state["messages"]) + [user_message],
         "status": "running",
+        "active_agent": active_agent,
     }
     state = _merge_patch(state, user_patch)
     _commit_run_state(run_id, state)
@@ -544,7 +565,7 @@ async def _handle_plain_chat(
     await _send_message_event(websocket, run_id, user_message, "")
     await _notify_run_state(websocket, run_id, state, user_patch)
 
-    model_name, reply_text, route_logs = await _llm_chat_reply(state, text)
+    model_name, reply_text, route_logs = await _llm_chat_reply(state, text, agent_id=resolved_id)
     reply = _chat_message(model_name, reply_text)
     log_line = f"[CHAT] {model_name}: {len(reply_text)} chars"
 
@@ -558,6 +579,7 @@ async def _handle_plain_chat(
         "messages": final_messages,
         "terminal_logs": final_logs,
         "status": "idle",
+        "active_agent": active_agent,
         **_token_patch_turn(state, user_text=text, assistant_text=reply_text),
     }
     state = _merge_patch(state, final_patch)
@@ -1351,10 +1373,13 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
             patch: dict[str, Any] = {}
             if isinstance(payload, dict) and payload.get("text"):
                 text = str(payload["text"])
+                agent_id = str(payload.get("agent_id", "")).strip() or None
                 if state["workflow_id"]:
                     state = await _handle_workflow_chat_message(websocket, run_id, state, text)
                 else:
-                    state = await _handle_plain_chat(websocket, run_id, state, text)
+                    state = await _handle_plain_chat(
+                        websocket, run_id, state, text, agent_id=agent_id
+                    )
             elif isinstance(payload, dict) and payload.get("action") == "human_decision":
                 decision = str(payload.get("decision", "approve"))
                 instructions = str(payload.get("instructions", ""))

@@ -637,7 +637,7 @@ function MainLayout() {
       }
       return;
     }
-    await submitChatMessage(text);
+    await submitChatMessage(text, selectedAgentId);
     await refreshSessions();
   };
 

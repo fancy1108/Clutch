@@ -35,7 +35,7 @@ def test_ws_plain_chat_without_workflow(monkeypatch) -> None:
     message_events = [e for e in events if e["event"] == "message"]
     assert len(message_events) == 2
     agents = {e["data"]["message"]["agent"] for e in message_events}
-    assert agents == {"User", "Test Model"}
+    assert agents == {"User", "Clutch Agent"}
     assert any("Echo: 你好 Clutch" in e["data"]["message"]["text"] for e in message_events)
 
     patch_events = [e for e in events if e["event"] == "state_patch"]
@@ -44,7 +44,35 @@ def test_ws_plain_chat_without_workflow(monkeypatch) -> None:
     assert patch_events[1]["data"]["patch"]["status"] == "idle"
 
 
-def test_ws_log_event_on_plain_chat(monkeypatch) -> None:
+def test_ws_plain_chat_with_agent_id_injects_system_prompt(monkeypatch) -> None:
+    captured: list[list[dict[str, str]]] = []
+
+    class _CapturingRouter:
+        def get_active_model(self) -> SimpleNamespace:
+            return SimpleNamespace(name="Test Model")
+
+        def chat(self, history: list[dict[str, str]]) -> str:
+            captured.append(history)
+            return "Agent reply"
+
+    monkeypatch.setattr("src.models_config.get_router", lambda: _CapturingRouter())
+
+    with client.websocket_connect("/ws/runs/run_agent_prompt") as ws:
+        ws.receive_json()
+        ws.send_json({"text": "help me plan", "agent_id": "clutch-agent"})
+        events = _collect_after_send(ws, 7)
+
+    assert captured
+    history = captured[0]
+    assert history[0]["role"] == "system"
+    assert "Clutch Agent" in history[0]["content"]
+    reply = next(
+        e["data"]["message"]
+        for e in events
+        if e["event"] == "message" and e["data"]["message"]["agent"] == "Clutch Agent"
+    )
+    assert reply["text"] == "Agent reply"
+
     monkeypatch.setattr("src.models_config.get_router", lambda: _FakeRouter())
 
     with client.websocket_connect("/ws/runs/run_log_test") as ws:
