@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import urllib.request
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 from src.llm.http_complete import http_chat_complete
@@ -40,3 +42,43 @@ def test_anthropic_response_parsing() -> None:
             messages=[{"role": "user", "content": "salut"}],
         )
     assert text == "Bonjour"
+
+
+def test_gateway_anthropic_with_tools_uses_openai_transport() -> None:
+    """Agnes-style gateways need OpenAI tool schema on /chat/completions."""
+    captured: dict[str, Any] = {}
+
+    def fake_urlopen(req: urllib.request.Request, timeout: float = 0) -> MagicMock:
+        _ = timeout
+        captured["url"] = req.full_url
+        captured["body"] = json.loads(req.data.decode())
+        mock_resp = MagicMock()
+        mock_resp.read.return_value = json.dumps(
+            {"choices": [{"message": {"content": "ok"}}]}
+        ).encode()
+        mock_resp.__enter__.return_value = mock_resp
+        return mock_resp
+
+    tools = [
+        {
+            "type": "function",
+            "function": {
+                "name": "srv__read_file",
+                "description": "Read a file",
+                "parameters": {"type": "object", "properties": {}},
+            },
+        }
+    ]
+
+    with patch("urllib.request.urlopen", side_effect=fake_urlopen):
+        text = http_chat_complete(
+            provider_id="anthropic",
+            base_url="https://apihub.agnes-ai.com/v1",
+            api_model="agnes-2.0-flash",
+            api_key="sk-agnes",
+            messages=[{"role": "user", "content": "hi"}],
+            tools=tools,
+        )
+    assert text == "ok"
+    assert captured["url"].endswith("/chat/completions")
+    assert captured["body"]["tools"][0]["type"] == "function"

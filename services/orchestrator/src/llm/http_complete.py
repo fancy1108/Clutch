@@ -6,12 +6,23 @@ import json
 import urllib.error
 import urllib.request
 from typing import Any
+from urllib.parse import urlparse
 
 from src.credentials.claude_code import resolve_anthropic_transport
 from src.llm.router import ProviderId
 
 _TIMEOUT_SEC = 120
 _MAX_TOKENS = 4096
+
+
+def _anthropic_uses_messages_api(base_url: str) -> bool:
+    """True when the endpoint speaks native Anthropic /messages (not OpenAI-compat gateways)."""
+    host = urlparse(base_url.rstrip("/")).netloc.lower()
+    if host in ("api.anthropic.com",):
+        return True
+    if host.startswith("127.0.0.1") or host.startswith("localhost"):
+        return True
+    return False
 
 
 def _post_json(
@@ -201,10 +212,24 @@ def http_chat_complete(
     timeout_sec: float = _TIMEOUT_SEC,
 ) -> dict[str, Any] | str:
     if provider_id == "anthropic":
+        resolved_base, resolved_model, resolved_key = resolve_anthropic_transport(
+            base_url=base_url, api_model=api_model, api_key=api_key
+        )
+        # Third-party gateways (e.g. apihub.agnes-ai.com) expose OpenAI-compatible
+        # /chat/completions; Anthropic-style tool schemas fail with 422 on those hosts.
+        if tools and not _anthropic_uses_messages_api(resolved_base):
+            return _openai_chat(
+                base_url=resolved_base,
+                api_model=resolved_model,
+                api_key=resolved_key,
+                messages=messages,
+                tools=tools,
+                timeout_sec=timeout_sec,
+            )
         return _anthropic_chat(
-            base_url=base_url,
-            api_model=api_model,
-            api_key=api_key,
+            base_url=resolved_base,
+            api_model=resolved_model,
+            api_key=resolved_key,
             messages=messages,
             tools=tools,
             timeout_sec=timeout_sec,
