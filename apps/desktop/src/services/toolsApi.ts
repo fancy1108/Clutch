@@ -5,6 +5,8 @@ export interface AiToolStatus {
   name: string;
   description: string;
   icon: string;
+  kind: 'cli' | 'client';
+  path: string;
   installed: boolean;
   connected: boolean;
 }

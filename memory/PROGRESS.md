@@ -5,6 +5,16 @@
 - 阶段：**存储路径隔离与自定义指针拖拽交互完成；已完成普通 LLM 运行时 UI 优化及 CC Switch 凭证动态导入**
 - Git HEAD：`c9ea0d6`
 
+## 2026-06-25 会话（Tools 自动扫描扩容：CLI + macOS 客户端）
+
+- **完成：**
+  - **后端 `tools_status.py` 重写**：用 `CLI_CANDIDATES`（9 个 CLI 二进制）+ `CLIENT_CANDIDATES`（5 个 macOS .app）替换写死 2 项的 `TOOL_CATALOG`。新增 `_cli_path()` / `_client_path()` 统一探测函数，返回解析到的绝对路径。`list_tools_status()` 对每条候选分别探测，只返回实际存在的项，新增 `kind: "cli"|"client"` 和 `path` 字段。
+  - **前端 `toolsApi.ts` 类型**：`AiToolStatus` 新增 `kind` 和 `path`。
+  - **前端 `AiToolsManager.tsx` UI**：空态文案改为覆盖多工具；每张卡片显示 kind 标签 + 绝对路径（等宽截断，hover tooltip）。
+  - **测试**：`test_tools_status.py` 10/10 passed（含 CLI path、client path、非 darwin 客户端不出、未知 tool reject、catalog 唯一 id 等新增用例）。
+  - **校验：** `./scripts/verify.sh` → 123 pytest passed（2 个 `test_claude_code_credentials.py` 失败为既有问题，与本次无关）+ `pnpm build` ✅
+- **下次优先：** 将 Connect 状态接入执行链路（`_llm_chat_reply` / `execute_agent_task` 按 `aiEngine` 分流到 CLI adapter 或 LLM router）。
+
 ## 治理脚手架就绪标准（文档层 ✅）
 
 - [x] Layer 1–3 治理文档 + Memory 六件套

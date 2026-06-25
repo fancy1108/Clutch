@@ -69,7 +69,7 @@ export default function AiToolsManager({ isModalStyle }: AiToolsManagerProps) {
         <div className="text-left">
           <h2 className="text-sm font-bold text-neutral-800 tracking-tight font-sans">AI Tools Integration</h2>
           <p className="text-[11px] text-neutral-400 mt-0.5">
-            Detected local CLIs on this machine. Connect only tools you want Clutch to use.
+            Detected local AI CLIs and desktop clients on this machine. Connect only tools you want Clutch to use.
           </p>
         </div>
         <button
@@ -93,10 +93,11 @@ export default function AiToolsManager({ isModalStyle }: AiToolsManagerProps) {
           <p className="text-xs text-neutral-400 italic">Scanning local toolchains…</p>
         ) : tools.length === 0 ? (
           <div className="text-left space-y-2">
-            <p className="text-xs text-neutral-500">No supported CLI tools detected on this machine.</p>
+            <p className="text-xs text-neutral-500">No supported AI tools detected on this machine.</p>
             <p className="text-[11px] text-neutral-400">
-              Install <span className="font-mono">claude</span> (Claude Code) or{' '}
-              <span className="font-mono">Cursor</span>, then rescan.
+              Install an AI CLI (e.g. <span className="font-mono">claude</span>,{' '}
+              <span className="font-mono">codex</span>, <span className="font-mono">agy</span>) or a
+              desktop client (Claude, Cursor, ChatGPT), then rescan.
             </p>
           </div>
         ) : (
@@ -118,6 +119,14 @@ export default function AiToolsManager({ isModalStyle }: AiToolsManagerProps) {
                       <div className="flex-1">
                         <h4 className="text-xs font-bold text-neutral-800">{tool.name}</h4>
                         <p className="text-[10px] text-neutral-500 mt-1 leading-relaxed">{tool.description}</p>
+                        <div className="mt-1.5 flex items-center gap-1.5">
+                          <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-neutral-400 bg-neutral-100 border border-neutral-200 px-1.5 py-0.5 rounded">
+                            {tool.kind === 'cli' ? 'CLI' : 'Client'}
+                          </span>
+                          <span className="text-[9.5px] font-mono text-neutral-400 truncate" title={tool.path}>
+                            {tool.path}
+                          </span>
+                        </div>
                         <div className="mt-3">
                           <button
                             type="button"
@@ -152,6 +161,14 @@ export default function AiToolsManager({ isModalStyle }: AiToolsManagerProps) {
                       <div className="flex-1">
                         <h4 className="text-xs font-bold text-neutral-600">{tool.name}</h4>
                         <p className="text-[10px] text-neutral-400 mt-1 leading-relaxed">{tool.description}</p>
+                        <div className="mt-1.5 flex items-center gap-1.5">
+                          <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-neutral-400 bg-neutral-100 border border-neutral-200 px-1.5 py-0.5 rounded">
+                            {tool.kind === 'cli' ? 'CLI' : 'Client'}
+                          </span>
+                          <span className="text-[9.5px] font-mono text-neutral-400 truncate" title={tool.path}>
+                            {tool.path}
+                          </span>
+                        </div>
                         <div className="mt-3">
                           <button
                             type="button"

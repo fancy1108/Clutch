@@ -182,6 +182,16 @@
 - **影响**：`scripts/verify.sh`、`CLAUDE.md`、`memory/TESTS.md`。
 - **决策状态**：`已落地`
 
+### D18 · Tools 自动扫描扩容为 CLI + macOS 客户端双探测（2026-06-25）
+
+- **背景**：`tools_status.py` 的 `TOOL_CATALOG` 写死 2 项（claude-cli、cursor），不在清单里的工具即便本机安装了也不会出现在 Tools 页面。
+- **方案**：
+  - 拆分为 `CLI_CANDIDATES`（9 个 CLI 二进制，`shutil.which` 探测）+ `CLIENT_CANDIDATES`（5 个 macOS `.app`，`Path.is_dir()` 探测）。
+  - `list_tools_status()` 返回每项 `kind: "cli"|"client"` 和 `path`（解析到的绝对路径）。
+  - Connect 仍为偏好 flag，暂不接入执行链路（那是后续 ADR）。
+- **影响**：`tools_status.py` 重写；`toolsApi.ts` 类型扩展；`AiToolsManager.tsx` 卡片加 kind/path 显示。
+- **决策状态**：`已落地`
+
 ## 开放问题
 
 （暂无 — 原 Q1–Q4 已于 2026-06-22 关闭，见 D3–D6。）
