@@ -12,7 +12,11 @@ from src.llm.http_complete import http_chat_complete
 from src.llm.router import LLMProviderRouter, ProviderId
 
 from src.credentials.claude_code import bootstrap_claude_credentials, bootstrap_cc_switch_credentials
-from src.credentials.sources import resolve_provider_credential_source
+from src.credentials.sources import (
+    is_clutch_managed_credential,
+    resolve_model_credential_hint,
+    resolve_provider_credential_source,
+)
 
 CONFIG_ENV = "CLUTCH_MODELS_CONFIG"
 
@@ -79,6 +83,7 @@ def serialize_models_config(router: LLMProviderRouter) -> dict[str, Any]:
                 "configured": cred["configured"],
                 "source": cred["source"],
                 "source_label": cred["source_label"],
+                "clutch_managed": is_clutch_managed_credential(spec.provider_id),
             },
         )
         models.append(
@@ -89,6 +94,9 @@ def serialize_models_config(router: LLMProviderRouter) -> dict[str, Any]:
                 "available": is_model_available(router, spec.id),
                 "credential_source": cred["source"],
                 "credential_source_label": cred["source_label"],
+                "credential_hint": resolve_model_credential_hint(router, spec),
+                "endpoint": spec.base_url or None,
+                "clutch_managed": is_clutch_managed_credential(spec.provider_id),
             }
         )
     return {
@@ -100,6 +108,34 @@ def serialize_models_config(router: LLMProviderRouter) -> dict[str, Any]:
 
 _TEST_PROMPT = "Reply with exactly: ok"
 _TEST_TIMEOUT_SEC = 20.0
+
+
+def clear_provider_credential(router: LLMProviderRouter, provider_id: ProviderId) -> None:
+    """Remove a Clutch-managed provider key and rehydrate external sources (CC Switch, etc.)."""
+    if not is_clutch_managed_credential(provider_id):
+        raise ValueError("Only Clutch-managed credentials (models.json) can be removed here.")
+
+    router._api_keys.pop(provider_id, None)  # type: ignore[arg-type]
+    path = config_path()
+    if path.is_file():
+        data = json.loads(path.read_text(encoding="utf-8"))
+        keys = data.get("api_keys")
+        if isinstance(keys, dict):
+            keys.pop(provider_id, None)
+            data["api_keys"] = keys
+        path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        try:
+            path.chmod(0o600)
+        except OSError:
+            pass
+
+    bootstrap_cc_switch_credentials(router)
+    if provider_id == "anthropic" and not router.get_api_key("anthropic"):
+        from src.credentials.claude_code import resolve_anthropic_api_key
+
+        key, _ = resolve_anthropic_api_key()
+        if key:
+            router.set_api_key("anthropic", key)
 
 
 def test_model_connection(router: LLMProviderRouter, model_id: str) -> dict[str, Any]:

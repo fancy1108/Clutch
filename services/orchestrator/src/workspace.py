@@ -239,6 +239,17 @@ def resolve_allowed_path(relative_path: str) -> Path:
     return target
 
 
+def to_workspace_relative(path: str) -> str | None:
+    """Map an absolute or relative path to a workspace-relative path when possible."""
+    root = require_workspace()
+    raw = Path(path).expanduser()
+    target = (root / raw).resolve() if not raw.is_absolute() else raw.resolve()
+    if target != root and root not in target.parents:
+        return None
+    rel = target.relative_to(root)
+    return "." if str(rel) == "." else str(rel)
+
+
 def list_tree(max_depth: int = 3) -> list[dict[str, Any]]:
     root = require_workspace()
 

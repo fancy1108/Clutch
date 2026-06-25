@@ -559,7 +559,7 @@ async def _llm_chat_reply(
     emit_log: Callable[[str], Awaitable[None]] | None = None,
     mcp_approved_tool: dict[str, Any] | None = None,
     mcp_resume: dict[str, Any] | None = None,
-) -> tuple[str, str, str, list[str], str | None, dict[str, Any] | None]:
+) -> tuple[str, str, str, list[str], str | None, dict[str, Any] | None, list[str]]:
     from src.agent_storage import BUILTIN_AGENT_ID, get_agent_by_id
     from src.engine_router import route_engine
     from src.models_config import get_router
@@ -644,6 +644,7 @@ async def _llm_chat_reply(
                         outcome.logs,
                         None,
                         pause_payload,
+                        list(outcome.files_changed or []),
                     )
                 return (
                     reply_label,
@@ -652,6 +653,7 @@ async def _llm_chat_reply(
                     outcome.logs,
                     None,
                     None,
+                    list(outcome.files_changed or []),
                 )
 
             llm_only_logs = [
@@ -683,7 +685,7 @@ async def _llm_chat_reply(
             system_prompt=system_prompt,
             claude_session_id=claude_session_id,
         )
-        return reply_label, result.engine, result.output, llm_only_logs + result.logs, result.claude_session_id, None
+        return reply_label, result.engine, result.output, llm_only_logs + result.logs, result.claude_session_id, None, []
     except Exception as exc:
         from src.engine_router import _normalize_engine_type
 
@@ -693,7 +695,7 @@ async def _llm_chat_reply(
             runtime_engine = "Claude CLI"
         else:
             runtime_engine = runtime_model_name
-        return reply_label, runtime_engine, err, [f"Error routing plain chat request: {err}"], None, None
+        return reply_label, runtime_engine, err, [f"Error routing plain chat request: {err}"], None, None, []
 
 
 async def _handle_plain_chat_mcp_decision(
@@ -761,6 +763,7 @@ async def _handle_plain_chat_mcp_decision(
         route_logs,
         _claude_session_id,
         mcp_pause,
+        files_changed,
     ) = await _llm_chat_reply(
         state,
         "",
@@ -839,6 +842,8 @@ async def _handle_plain_chat_mcp_decision(
     state = _merge_patch(state, final_patch)
     _commit_run_state(run_id, state)
     await _send_message_event(websocket, run_id, reply, "")
+    if files_changed:
+        await _notify_workspace_files_changed(websocket, run_id, files_changed)
     await _notify_run_state(websocket, run_id, state, final_patch)
     return state
 
@@ -892,6 +897,7 @@ async def _handle_plain_chat(
         route_logs,
         claude_session_id,
         mcp_pause,
+        files_changed,
     ) = await _llm_chat_reply(
         state,
         text,
@@ -980,6 +986,8 @@ async def _handle_plain_chat(
     _touch_session(run_id, title=text.strip()[:80] or "New session", status=state["status"])
 
     await _send_message_event(websocket, run_id, reply, "")
+    if files_changed:
+        await _notify_workspace_files_changed(websocket, run_id, files_changed)
     await _notify_run_state(websocket, run_id, state, final_patch)
     return state
 
@@ -1043,12 +1051,30 @@ async def _send_file_changed(
             "node_id": node_id,
             "source": "orchestrator",
             "level": "info",
+            "message": f"Workspace file changed: {path}",
             "path": path,
             "diff_lines": diff_lines,
             "timestamp": _iso_timestamp(),
         },
     }
     await websocket.send_text(json.dumps(envelope))
+
+
+async def _notify_workspace_files_changed(
+    websocket: WebSocket,
+    run_id: str,
+    paths: list[str],
+    *,
+    node_id: str = "",
+) -> None:
+    for path in paths:
+        await _send_file_changed(
+            websocket,
+            run_id,
+            node_id=node_id,
+            path=path,
+            diff_lines=[{"lineNum": 1, "type": "addition", "text": "(updated via MCP)"}],
+        )
 
 
 async def _send_validation_result(
@@ -1433,6 +1459,18 @@ async def update_models_config(body: ModelsConfigRequest) -> dict[str, str]:
         router.set_api_key(body.provider_id, body.api_key)  # type: ignore[arg-type]
     save_router(router)
     return {"status": "saved", "active_model_id": router.active_model_id}
+
+
+@app.delete("/api/models/credentials/{provider_id}")
+async def delete_provider_credential(provider_id: str) -> dict[str, str]:
+    from src.models_config import clear_provider_credential, get_router
+
+    router = get_router()
+    try:
+        clear_provider_credential(router, provider_id)  # type: ignore[arg-type]
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+    return {"status": "removed", "provider_id": provider_id}
 
 
 @app.post("/api/models/test")

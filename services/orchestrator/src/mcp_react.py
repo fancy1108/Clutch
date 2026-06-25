@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from src.mcp_client import McpClient
-from src.mcp_risk import is_risky_mcp_tool
+from src.mcp_risk import extract_mcp_file_path, is_risky_mcp_tool
 
 _INVALID_TOOL_NAME_CHARS = re.compile(r"[^a-zA-Z0-9_-]")
 
@@ -20,6 +20,7 @@ class McpRunOutcome:
     logs: list[str]
     engine_label: str
     approval_required: dict[str, Any] | None = None
+    files_changed: list[str] | None = None
 
 
 def _sanitize_tool_part(value: str) -> str:
@@ -38,6 +39,28 @@ def _emit(logs: list[str], on_log: Callable[[str], None] | None, line: str) -> N
         on_log(line)
 
 
+def _record_file_change(
+    files_changed: list[str],
+    *,
+    tool_name: str,
+    func_args: dict[str, Any],
+    result_str: str,
+) -> None:
+    if result_str.startswith("Error executing tool"):
+        return
+    raw_path = extract_mcp_file_path(tool_name, func_args)
+    if not raw_path:
+        return
+    try:
+        from src.workspace import to_workspace_relative
+
+        rel = to_workspace_relative(raw_path)
+    except Exception:
+        rel = raw_path
+    if rel and rel not in files_changed:
+        files_changed.append(rel)
+
+
 def _execute_tool_call(
     *,
     func_name: str,
@@ -48,6 +71,7 @@ def _execute_tool_call(
     logs: list[str],
     on_log: Callable[[str], None] | None,
     step_idx: int,
+    files_changed: list[str] | None = None,
 ) -> str:
     route = tool_routes.get(func_name)
     _emit(
@@ -71,6 +95,13 @@ def _execute_tool_call(
         ]
         result_str = "\n".join(content_parts) or json.dumps(tool_res)
         _emit(logs, on_log, f"[{log_prefix}] Tool response length: {len(result_str)} chars")
+        if files_changed is not None:
+            _record_file_change(
+                files_changed,
+                tool_name=tool_name,
+                func_args=func_args,
+                result_str=result_str,
+            )
         return result_str
     except Exception as exc:
         _emit(logs, on_log, f"[{log_prefix}] Tool error: {exc}")
@@ -138,6 +169,7 @@ def run_mcp_react_loop(
     model = router.get_active_model()
     engine_label = f"{model.name} · MCP ({len(openai_tools)} tools)"
     output = ""
+    files_changed: list[str] = []
 
     try:
         chat_messages = list(messages)
@@ -159,6 +191,7 @@ def run_mcp_react_loop(
                 logs=logs,
                 on_log=on_log,
                 step_idx=start_step,
+                files_changed=files_changed,
             )
             chat_messages.append(
                 {
@@ -204,6 +237,7 @@ def run_mcp_react_loop(
                                 "func_args": func_args,
                                 "step_idx": step_idx,
                             },
+                            files_changed=files_changed or None,
                         )
 
                     result_str = _execute_tool_call(
@@ -215,6 +249,7 @@ def run_mcp_react_loop(
                         logs=logs,
                         on_log=on_log,
                         step_idx=step_idx,
+                        files_changed=files_changed,
                     )
                     chat_messages.append(
                         {
@@ -247,4 +282,5 @@ def run_mcp_react_loop(
         logs=logs,
         engine_label=engine_label,
         approval_required=None,
+        files_changed=files_changed or None,
     )

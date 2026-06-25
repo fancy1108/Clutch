@@ -113,3 +113,38 @@ def test_tool_alias_matches_openai_name_pattern() -> None:
     dotted = _tool_alias("my.server", "tool.name")
     assert re.fullmatch(r"[a-zA-Z0-9_-]+", dotted)
     assert dotted == "my_server__tool_name"
+
+
+def test_run_mcp_react_records_files_changed(monkeypatch) -> None:
+    class _WriteClient(_FakeClient):
+        def list_tools(self) -> list[dict]:
+            return [
+                {
+                    "name": "write_file",
+                    "description": "Write file",
+                    "inputSchema": {"type": "object", "properties": {}},
+                }
+            ]
+
+    class _ResumeRouter:
+        def get_active_model(self) -> SimpleNamespace:
+            return SimpleNamespace(name="Test Model")
+
+        def chat(self, messages, tools=None):
+            return "done"
+
+    monkeypatch.setattr("src.mcp_react.McpClient", _WriteClient)
+    monkeypatch.setattr("src.models_config.get_router", lambda: _ResumeRouter())
+    monkeypatch.setattr("src.workspace.to_workspace_relative", lambda path: "test.txt")
+
+    outcome = run_mcp_react_loop(
+        messages=[{"role": "user", "content": "write"}],
+        servers=[{"id": "mcp_test", "name": "Test MCP", "endpoint": "echo mcp"}],
+        approved_tool={
+            "tool_call_id": "tc1",
+            "func_name": "mcp_test__write_file",
+            "func_args": {"path": "test.txt"},
+            "step_idx": 0,
+        },
+    )
+    assert outcome.files_changed == ["test.txt"]

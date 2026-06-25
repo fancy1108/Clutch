@@ -102,3 +102,28 @@ def test_model_test_endpoint_failure(models_config: Path) -> None:
     result = client.post("/api/models/test", json={"model_id": "deepseek-v4pro"}).json()
     assert result["ok"] is False
     assert "401" in result["message"]
+
+
+def test_delete_provider_credential(models_config: Path) -> None:
+    client = TestClient(app)
+    client.post("/api/models/config", json={"provider_id": "deepseek", "api_key": "sk-test-deepseek"})
+    listed = client.get("/api/models/config").json()
+    deepseek = next(m for m in listed["models"] if m["id"] == "deepseek-v4pro")
+    assert deepseek["clutch_managed"] is True
+
+    removed = client.delete("/api/models/credentials/deepseek")
+    assert removed.status_code == 200
+
+    listed = client.get("/api/models/config").json()
+    deepseek = next(m for m in listed["models"] if m["id"] == "deepseek-v4pro")
+    assert deepseek["available"] is False
+    assert deepseek["clutch_managed"] is False
+
+
+def test_delete_rejects_external_only_credential(models_config: Path) -> None:
+    from src.models_config import get_router
+
+    client = TestClient(app)
+    get_router().set_api_key("anthropic", "sk-ant-external")
+    response = client.delete("/api/models/credentials/anthropic")
+    assert response.status_code == 400

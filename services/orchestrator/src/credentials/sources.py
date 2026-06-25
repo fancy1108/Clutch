@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import json
 import os
+import sqlite3
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
-from src.credentials.claude_code import resolve_anthropic_api_key
-from src.llm.router import LLMProviderRouter, ProviderId
+from src.credentials.claude_code import _CC_SWITCH_DIR, resolve_anthropic_api_key
+from src.llm.router import LLMProviderRouter, ProviderId, ModelSpec
 
 SOURCE_LABELS: dict[str, str] = {
     "claude_code_settings": "Claude Code CLI (~/.claude/settings.json)",
@@ -94,3 +96,61 @@ def resolve_provider_credential_source(
         }
 
     return {"configured": False, "source": None, "source_label": None}
+
+
+def cc_switch_has_key_for_provider(provider_id: ProviderId) -> bool:
+    """Return True when CC Switch stores a key for this provider family."""
+    db_path = _CC_SWITCH_DIR / "cc-switch.db"
+    if not db_path.is_file():
+        return False
+    try:
+        conn = sqlite3.connect(str(db_path))
+        rows = conn.execute("SELECT app_type, settings_config FROM providers").fetchall()
+        conn.close()
+    except Exception:
+        return False
+    for _app_type, settings_str in rows:
+        if not settings_str:
+            continue
+        try:
+            config = json.loads(settings_str)
+        except Exception:
+            continue
+        if provider_id == "anthropic" and config.get("env", {}).get("ANTHROPIC_AUTH_TOKEN"):
+            return True
+        if provider_id == "openai" and (config.get("auth") or {}).get("OPENAI_API_KEY"):
+            return True
+        if provider_id in ("custom", "ollama") and config.get("api_key"):
+            return True
+    return False
+
+
+def resolve_model_credential_hint(router: LLMProviderRouter, spec: ModelSpec) -> str | None:
+    """Explain likely credential mismatch when a key works elsewhere but not in Clutch."""
+    cred = resolve_provider_credential_source(router, spec.provider_id)
+    hints: list[str] = []
+    if cred["source"] == "clutch_models_config" and cc_switch_has_key_for_provider(spec.provider_id):
+        hints.append(
+            "Clutch models.json overrides CC Switch — remove the Clutch key to fall back to CC Switch."
+        )
+    if spec.base_url:
+        host = urlparse(spec.base_url).netloc
+        official_hosts = {
+            "api.anthropic.com",
+            "api.openai.com",
+            "api.deepseek.com",
+            "generativelanguage.googleapis.com",
+            "localhost",
+            "127.0.0.1",
+        }
+        if host and host not in official_hosts:
+            hints.append(
+                f"Gateway {host} needs its own API key (not the official {spec.provider_id} key)."
+            )
+    if spec.provider_id == "openai" and spec.base_url and "agnes-ai.com" in spec.base_url:
+        hints.append("Agnes models share the OpenAI provider slot — save the Agnes token under OpenAI.")
+    return " ".join(hints) if hints else None
+
+
+def is_clutch_managed_credential(provider_id: ProviderId) -> bool:
+    return bool(_saved_api_keys().get(provider_id))
