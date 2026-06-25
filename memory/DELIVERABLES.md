@@ -27,6 +27,29 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ## 已交付（代码 Task · 自 Git 回填）
 
+### DEV-PROD-ISOLATION-POINTER-DRAG ✅
+- **日期：** 2026-06-25
+- **Commit：** `01a88dd` — `feat(storage,ui): isolate dev/prod storage directories, custom pointer drag-and-drop, and chat feed stop option`
+- **Verification：** `./scripts/verify.sh` → 119 pytest + 1 vitest passed
+- **证据：** `runs/verification/2026-06-25-storage-drag-verify.log`
+- **交付文件：**
+  - `services/orchestrator/src/storage_helper.py` — Isolation utility for DEV (`clutch_dev`) vs PROD (`clutch`) base storage path.
+  - `services/orchestrator/tests/test_storage_helper.py` — Unit tests for DEV vs PROD base storage paths and overrides.
+  - `services/orchestrator/src/agent_storage.py` — Refactor storage directories to use `storage_helper`.
+  - `services/orchestrator/src/credentials/sources.py` — Refactor storage directories to use `storage_helper`.
+  - `services/orchestrator/src/mcp_storage.py` — Refactor storage directories to use `storage_helper`.
+  - `services/orchestrator/src/models_config.py` — Refactor storage directories to use `storage_helper`.
+  - `services/orchestrator/src/preferences_storage.py` — Refactor storage directories to use `storage_helper`.
+  - `services/orchestrator/src/run_history.py` — Refactor storage directories to use `storage_helper`.
+  - `services/orchestrator/src/skills_storage.py` — Refactor storage directories to use `storage_helper`.
+  - `services/orchestrator/src/tools_status.py` — Refactor storage directories to use `storage_helper`.
+  - `services/orchestrator/src/workflow_storage.py` — Refactor storage directories to use `storage_helper`.
+  - `services/orchestrator/src/workspace.py` — Refactor storage directories to use `storage_helper`.
+  - `services/orchestrator/tests/test_credential_sources.py` — Refactor storage directories to use `storage_helper`.
+  - `apps/desktop/src/sidebar.tsx` — Re-implement workspace drag-and-drop using custom React pointer events rather than HTML5 Drag-and-Drop.
+  - `apps/desktop/src/App.tsx` — Improve sequential repository group movement and pass active session settings.
+  - `apps/desktop/src/components/ChatFeed.tsx` — Polish plain LLM session UI, rendering model name info and adding run stop button.
+
 ### UI-GROUP-DRAG-AND-DROP ✅
 - **日期：** 2026-06-24
 - **Commit：** `d4d116b` — `feat(ui): distinguish group icons, virtual default group, group CRUD, drag-and-drop, and right-click move`

@@ -2,8 +2,8 @@
 
 ## 当前状态
 
-- 阶段：**P2 收尾与 UI 修复完成；已完成 7 项 UI 与后端交互优化**
-- Git HEAD：`9ce59ba`（本地有未 commit 的改动，等待打包后 commit）
+- 阶段：**存储路径隔离与自定义指针拖拽交互完成；已完成普通 LLM 运行时 UI/停止控制优化**
+- Git HEAD：`01a88dd`
 
 ## 治理脚手架就绪标准（文档层 ✅）
 
@@ -16,7 +16,7 @@
 ## 下次 Agent 启动必读
 
 1. 读本文件（`PROGRESS.md`）
-2. 读 `FAILURES.md`（**桌面 E2E 坑**）、`FILEMAP.md`、`DECISIONS.md`（D11–D12）
+2. 读 `FAILURES.md`（**桌面 E2E 坑**）、`FILEMAP.md`、`DECISIONS.md`（D11–D12、D16–D17）
 3. 运行 `git log --oneline -10`
 4. 运行 `./scripts/run-e2e.sh`（比 `verify.sh` 更快定位 E2E 问题）
 
@@ -37,6 +37,18 @@
 - [x] **Push + CI**：`9ce59ba` 已 push；CI 见 GitHub Actions（本机无 gh auth）
 - [x] **DMG**：`pnpm tauri build` → `runs/verification/2026-06-24-clutch-p2.dmg`
 - [ ] **T-04**：红队 / 体感审计（可选）
+
+### 2026-06-25 会话（存储隔离与指针拖拽优化）
+
+- **完成：**
+  - **存储路径隔离**：引入 `storage_helper.py` 并重构所有后端 storage 类（`workspace`、`preferences_storage` 等），将开发环境下的本地存储隔离到 `clutch_dev` 目录，防范测试与生产数据互相干扰，生产版维持 `clutch`。
+  - **自定义 Pointer 拖拽**：用基于 React 鼠标/指针监听的自定义 Pointer Drag-and-Drop 逻辑替换侧栏原生的 HTML5 拖拽事件。解决了原生拖放交互难看、在 iframe/Tauri 打包版中不够稳定的问题，并带有平滑的阴影与高亮显示。
+  - **普通 LLM 对话状态 UI 优化**：
+    - 前端 ChatFeed 能够自适应识别无 workflow 调度的普通对话（Plain LLM Session）；
+    - 普通会话运行中，可在 ChatFeed 发送按钮位置渲染「Stop」物理停止按钮，并实质触发停止；
+    - 在运行过程中，普通会话的思考中提示能将当前选用的 LLM 模型名称同步输出在 Agent 标签下方。
+- **校验：** `./scripts/verify.sh` → 119 pytest + vitest passed + doc drift ok
+- **下次优先：** 进行发布以及红队/体感审计。
 
 ### 2026-06-24 会话（分组文件夹管理优化与拖拽移动）
 

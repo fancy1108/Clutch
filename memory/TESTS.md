@@ -12,6 +12,7 @@
 
 | 日期 | 范围 | 命令 | 结果 | 报告/证据 | 备注 |
 |------|------|------|------|-----------|------|
+| 2026-06-25 | 存储隔离与指针拖拽及LLM运行优化 | `./scripts/verify.sh` | ✅ 119 pytest + 1 vitest | `runs/verification/2026-06-25-storage-drag-verify.log` | DEV/PROD存储路径隔离、自定义Pointer拖拽、ChatFeed普通LLM消息提示及停止运行校验 |
 | 2026-06-24 | 分组移动与管理优化 | `./scripts/verify.sh` | ✅ 116 pytest + 1 vitest | `runs/verification/2026-06-24-group-drag-verify.log` | 分组文件夹图标区分、虚拟默认分组折叠、原生拖放及右键菜单移动项目校验 |
 | 2026-06-24 | 自定义弹窗与删除修复 | `./scripts/verify.sh` | ✅ 116 pytest + 1 vitest | `runs/verification/2026-06-24-custom-dialog-verify.log` | 自定义 PromptModal 代替原生 window.prompt/confirm 并修复删除项目 |
 | 2026-06-24 | 删除与跳转优化 | `./scripts/verify.sh` | ✅ 116 pytest + 1 vitest | `runs/verification/2026-06-24-delete-navigation-verify.log` | 新建会话惰性加载与删除会话自动跳转跳转规则校验 |

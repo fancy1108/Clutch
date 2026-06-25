@@ -7,6 +7,26 @@
 
 ## 已记录决策
 
+### D16 · DEV 与 PROD 环境本地存储目录隔离（2026-06-25）
+
+- **背景**：原设计中，无论是开发测试环境（DEV/TEST）还是打包后的生产发布环境（PROD），都统一使用了 `Application Support/clutch` 或类似的用户目录。这会导致开发调试和测试期间产生的假数据与用户实际的使用配置/会话历史发生冲突或相互污染。
+- **方案**：
+  - 引入统一的后端 `storage_helper.py` 来处理底层的存储根目录获取逻辑。
+  - 在开发测试状态（非打包，`sys.frozen` 为 False）下，本地存储目录名定义为 `clutch_dev`；而在生产打包运行状态（`sys.frozen` 为 True）下，使用 `clutch` 目录。
+  - 允许使用环境变量 `CLUTCH_STORAGE_DIR` 覆盖绝对存储路径。
+- **影响**：后端所有的 `storage` 系统均重构为引用 `storage_helper.get_storage_dir()`；测试中隔离更干净。
+- **决策状态**：`已落地`
+
+### D17 · 前端侧栏自定义 Pointer 拖动（2026-06-25）
+
+- **背景**：Tauri 桌面端或嵌套 iframe 下原生 HTML5 `Drag-and-Drop` 的兼容度、动效定制、以及 drop target 状态判断不够稳定，导致拖拽工作区到分组中时易失灵或视觉高亮不够灵敏。
+- **方案**：
+  - 弃用 HTML5 原生 `draggable="true"` 行为。
+  - 基于 React 实现一整套自定义 `pointerdown` -> `pointermove` -> `pointerup` 全局坐标监听的拖动机制。
+  - 在 `pointermove` 过程中利用 `document.elementFromPoint(clientX, clientY)` 实时解析下方带有 `data-drop-group-id` 的元素，实现更平滑与可靠的拖拽分组高亮及投递。
+- **影响**：`apps/desktop/src/sidebar.tsx` 与 `App.tsx` 交互重构。
+- **决策状态**：`已落地`
+
 ### D1 · E2E 测试范围与目录（2026-06-22）
 
 - **背景**：E2E 若测 mock 编排，与「React 只投影 WebSocket ClutchState、禁止 mock 模拟编排」红线冲突；且需跨 Sidecar + UI 两进程，本质是跨包集成测试。
