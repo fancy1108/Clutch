@@ -19,3 +19,29 @@ def isolate_orchestrator_globals(tmp_path, monkeypatch: pytest.MonkeyPatch) -> N
     clear_workspace_for_tests()
     _run_states.clear()
     _run_sessions.clear()
+
+
+@pytest.fixture(autouse=True)
+def mock_route_engine_for_workflow_tests(monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureRequest) -> None:
+    if request.node.get_closest_marker("real_route_engine"):
+        return
+
+    def fake_route_engine(
+        agent_name: str,
+        prompt: str,
+        system_prompt: str | None = None,
+        history: list[dict[str, str]] | None = None,
+        **_kwargs,
+    ):
+        from src.engine_router import EngineResult
+        from src.models_config import get_router
+
+        router = get_router()
+        model = router.get_active_model()
+        chat_history = list(history or [])
+        if not chat_history:
+            chat_history = [{"role": "user", "content": prompt}]
+        output = router.chat(chat_history)
+        return EngineResult(engine=model.name, output=output, logs=["[ROUTER] mocked"])
+
+    monkeypatch.setattr("src.engine_router.route_engine", fake_route_engine)

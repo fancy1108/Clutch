@@ -20,16 +20,9 @@ class _FakeRouter:
         return "ok"
 
 
-def _fake_route_engine(*_args, **_kwargs):
-    from src.engine_router import EngineResult
-
-    return EngineResult(engine="Test", output="workflow agent ok", logs=["[ROUTER] mocked"])
-
-
 def test_mvp_closed_loop_check_fail_human_approve(tmp_path: Path, monkeypatch) -> None:
     """模板运行 → 检查失败 → 人工审批 → 通过。"""
     monkeypatch.setattr("src.models_config.get_router", lambda: _FakeRouter())
-    monkeypatch.setattr("src.engine_router.route_engine", _fake_route_engine)
     workspace = tmp_path / "workspace"
     workspace.mkdir()
 

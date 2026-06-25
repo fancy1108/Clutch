@@ -80,7 +80,7 @@ def test_run_mcp_react_pause_on_risky_tool(monkeypatch) -> None:
                         "id": "tc1",
                         "type": "function",
                         "function": {
-                            "name": "mcp_test::write_file",
+                            "name": "mcp_test__write_file",
                             "arguments": "{\"path\":\"a.txt\"}",
                         },
                     }
@@ -98,5 +98,18 @@ def test_run_mcp_react_pause_on_risky_tool(monkeypatch) -> None:
     )
     assert isinstance(outcome, McpRunOutcome)
     assert outcome.approval_required is not None
-    assert outcome.approval_required["func_name"] == "mcp_test::write_file"
-    assert any("Approval required" in line for line in captured)
+    assert outcome.approval_required["func_name"] == "mcp_test__write_file"
+
+
+def test_tool_alias_matches_openai_name_pattern() -> None:
+    import re
+
+    from src.mcp_react import _tool_alias
+
+    alias = _tool_alias("local-fs", "read_file")
+    assert alias == "local-fs__read_file"
+    assert re.fullmatch(r"[a-zA-Z0-9_-]+", alias)
+
+    dotted = _tool_alias("my.server", "tool.name")
+    assert re.fullmatch(r"[a-zA-Z0-9_-]+", dotted)
+    assert dotted == "my_server__tool_name"

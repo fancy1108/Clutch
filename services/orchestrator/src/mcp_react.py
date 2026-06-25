@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
 from src.mcp_client import McpClient
 from src.mcp_risk import is_risky_mcp_tool
+
+_INVALID_TOOL_NAME_CHARS = re.compile(r"[^a-zA-Z0-9_-]")
 
 
 @dataclass(frozen=True)
@@ -19,17 +22,14 @@ class McpRunOutcome:
     approval_required: dict[str, Any] | None = None
 
 
+def _sanitize_tool_part(value: str) -> str:
+    cleaned = _INVALID_TOOL_NAME_CHARS.sub("_", value.strip())
+    return cleaned or "tool"
+
+
 def _tool_alias(server_id: str, tool_name: str) -> str:
-    return f"{server_id}::{tool_name}"
-
-
-def _parse_tool_alias(alias: str) -> tuple[str, str] | None:
-    if "::" not in alias:
-        return None
-    server_id, tool_name = alias.split("::", 1)
-    if not server_id or not tool_name:
-        return None
-    return server_id, tool_name
+    """OpenAI-compatible tool name (^[a-zA-Z0-9_-]+$)."""
+    return f"{_sanitize_tool_part(server_id)}__{_sanitize_tool_part(tool_name)}"
 
 
 def _emit(logs: list[str], on_log: Callable[[str], None] | None, line: str) -> None:
@@ -49,7 +49,7 @@ def _execute_tool_call(
     on_log: Callable[[str], None] | None,
     step_idx: int,
 ) -> str:
-    route = _parse_tool_alias(func_name)
+    route = tool_routes.get(func_name)
     _emit(
         logs,
         on_log,
@@ -185,7 +185,8 @@ def run_mcp_react_loop(
                     if not isinstance(func_args, dict):
                         func_args = {}
 
-                    _, raw_tool_name = _parse_tool_alias(func_name) or ("", func_name)
+                    route = tool_routes.get(func_name)
+                    raw_tool_name = route[1] if route else func_name
                     if pause_on_risky and is_risky_mcp_tool(raw_tool_name):
                         _emit(
                             logs,

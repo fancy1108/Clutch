@@ -6,7 +6,7 @@ cd "$root"
 
 pnpm build
 pnpm test
-(cd services/orchestrator && uv run pytest)
+(cd services/orchestrator && uv sync --extra dev && uv run pytest)
 ./scripts/check-doc-drift.sh
 
 # E2E tests are heavy. Run them only if --e2e flag is provided.
