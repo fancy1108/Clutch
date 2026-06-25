@@ -133,6 +133,25 @@ def test_builtin_apply_patch_tool(tmp_path: Path, monkeypatch) -> None:
     assert (tmp_path / "via-tool.txt").exists()
 
 
-def test_parse_patch_rejects_invalid_boundaries() -> None:
+def test_parse_patch_delete_file_path_on_next_line() -> None:
+    patch = (
+        "*** Begin Patch\n"
+        "*** Delete File\n"
+        ".deleted_test.txt\n"
+        "*** End Patch"
+    )
+    hunks = parse_patch(patch)
+    assert len(hunks) == 1
+    assert hunks[0].kind == "delete"
+    assert hunks[0].path == ".deleted_test.txt"
+    assert extract_patch_paths(patch) == [".deleted_test.txt"]
+
+
+def test_parse_patch_rejects_empty_hunks() -> None:
+    patch = "*** Begin Patch\n*** End Patch"
+    with pytest.raises(ApplyPatchError, match="no file changes"):
+        parse_patch(patch)
+
+
     with pytest.raises(ApplyPatchError):
         parse_patch("not a patch")

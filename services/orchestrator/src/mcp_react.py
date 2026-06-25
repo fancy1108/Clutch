@@ -9,7 +9,12 @@ from dataclasses import dataclass
 from typing import Any
 
 from src.mcp_client import McpClient
-from src.mcp_risk import extract_mcp_file_path, is_risky_mcp_tool
+from src.mcp_risk import (
+    extract_mcp_file_path,
+    is_risky_mcp_tool,
+    mcp_approval_key,
+    move_file_delete_workaround_message,
+)
 
 _INVALID_TOOL_NAME_CHARS = re.compile(r"[^a-zA-Z0-9_-]")
 
@@ -95,6 +100,11 @@ def _execute_tool_call(
     if route is None:
         return f"Unknown tool alias: {func_name}"
     server_id, tool_name = route
+    workaround = move_file_delete_workaround_message(tool_name, func_args)
+    if workaround:
+        result_str = f"Error executing tool: {workaround}"
+        _emit(logs, on_log, f"[{log_prefix}] Blocked move_file delete workaround")
+        return result_str
     if server_id in builtin_servers:
         from src.builtin_tools import execute_builtin_tool
 
@@ -146,6 +156,7 @@ def run_mcp_react_loop(
     on_log: Callable[[str], None] | None = None,
     pause_on_risky: bool = False,
     approved_tool: dict[str, Any] | None = None,
+    approved_keys: set[str] | None = None,
 ) -> McpRunOutcome:
     """Run tool-augmented chat against one or more MCP servers."""
     if not servers:
@@ -207,6 +218,7 @@ def run_mcp_react_loop(
     engine_label = f"{model.name} · MCP ({len(openai_tools)} tools)"
     output = ""
     files_changed: list[str] = []
+    session_approved = set(approved_keys or ())
 
     try:
         chat_messages = list(messages)
@@ -259,24 +271,32 @@ def run_mcp_react_loop(
                     route = tool_routes.get(func_name)
                     raw_tool_name = route[1] if route else func_name
                     if pause_on_risky and is_risky_mcp_tool(raw_tool_name):
-                        _emit(
-                            logs,
-                            on_log,
-                            f"[{log_prefix}] Approval required for risky tool: {func_name}",
-                        )
-                        return McpRunOutcome(
-                            output="",
-                            logs=logs,
-                            engine_label=engine_label,
-                            approval_required={
-                                "chat_messages": chat_messages,
-                                "tool_call_id": tc_id,
-                                "func_name": func_name,
-                                "func_args": func_args,
-                                "step_idx": step_idx,
-                            },
-                            files_changed=files_changed or None,
-                        )
+                        approval_key = mcp_approval_key(func_name, func_args)
+                        if approval_key in session_approved:
+                            _emit(
+                                logs,
+                                on_log,
+                                f"[{log_prefix}] Auto-approved duplicate risky tool: {func_name}",
+                            )
+                        else:
+                            _emit(
+                                logs,
+                                on_log,
+                                f"[{log_prefix}] Approval required for risky tool: {func_name}",
+                            )
+                            return McpRunOutcome(
+                                output="",
+                                logs=logs,
+                                engine_label=engine_label,
+                                approval_required={
+                                    "chat_messages": chat_messages,
+                                    "tool_call_id": tc_id,
+                                    "func_name": func_name,
+                                    "func_args": func_args,
+                                    "step_idx": step_idx,
+                                },
+                                files_changed=files_changed or None,
+                            )
 
                     result_str = _execute_tool_call(
                         func_name=func_name,

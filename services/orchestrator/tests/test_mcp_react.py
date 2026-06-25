@@ -101,6 +101,72 @@ def test_run_mcp_react_pause_on_risky_tool(monkeypatch) -> None:
     assert outcome.approval_required["func_name"] == "mcp_test__write_file"
 
 
+def test_run_mcp_react_auto_approves_duplicate_risky_tool(monkeypatch) -> None:
+    calls = {"count": 0}
+
+    class _RiskyRouter:
+        def get_active_model(self) -> SimpleNamespace:
+            return SimpleNamespace(name="Test Model")
+
+        def chat(self, messages, tools=None):
+            calls["count"] += 1
+            if calls["count"] == 1:
+                return {
+                    "role": "assistant",
+                    "content": "",
+                    "tool_calls": [
+                        {
+                            "id": "tc1",
+                            "type": "function",
+                            "function": {
+                                "name": "mcp_test__write_file",
+                                "arguments": "{\"path\":\"a.txt\",\"content\":\"\"}",
+                            },
+                        }
+                    ],
+                }
+            return "done"
+
+    class _WriteClient(_FakeClient):
+        def list_tools(self) -> list[dict]:
+            return [
+                {
+                    "name": "write_file",
+                    "description": "Write file",
+                    "inputSchema": {"type": "object", "properties": {}},
+                }
+            ]
+
+        def call_tool(self, name: str, arguments: dict) -> dict:
+            return {"content": [{"type": "text", "text": "ok"}]}
+
+    from src.mcp_risk import mcp_approval_key
+
+    monkeypatch.setattr("src.mcp_react.McpClient", _WriteClient)
+    monkeypatch.setattr("src.models_config.get_router", lambda: _RiskyRouter())
+    monkeypatch.setattr("src.workspace.to_workspace_relative", lambda path: "a.txt")
+
+    approved_key = mcp_approval_key(
+        "mcp_test__write_file",
+        {"path": "a.txt", "content": ""},
+    )
+    outcome = run_mcp_react_loop(
+        messages=[{"role": "user", "content": "write file"}],
+        servers=[{"id": "mcp_test", "name": "Test MCP", "endpoint": "echo mcp"}],
+        pause_on_risky=True,
+        approved_tool={
+            "tool_call_id": "tc1",
+            "func_name": "mcp_test__write_file",
+            "func_args": {"path": "a.txt", "content": ""},
+            "step_idx": 0,
+        },
+        approved_keys={approved_key},
+    )
+    assert outcome.approval_required is None
+    assert outcome.output == "done"
+    assert any("Auto-approved duplicate risky tool" in line for line in outcome.logs)
+
+
 def test_tool_alias_matches_openai_name_pattern() -> None:
     import re
 

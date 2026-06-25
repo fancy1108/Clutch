@@ -11,6 +11,9 @@ END_PATCH = "*** End Patch"
 ADD_MARKER = "*** Add File: "
 DELETE_MARKER = "*** Delete File: "
 UPDATE_MARKER = "*** Update File: "
+ADD_HEADER = "*** Add File"
+DELETE_HEADER = "*** Delete File"
+UPDATE_HEADER = "*** Update File"
 MOVE_MARKER = "*** Move to: "
 EOF_MARKER = "*** End of File"
 CTX_MARKER = "@@ "
@@ -21,6 +24,16 @@ _PATH_MARKERS = (
     (UPDATE_MARKER, "update"),
     (MOVE_MARKER, "move"),
 )
+
+
+def _split_file_header(trimmed: str, header: str) -> str | None:
+    """Return path from `*** X File: path` or None if path is on the next line."""
+    if trimmed == header:
+        return None
+    colon_prefix = f"{header}:"
+    if trimmed.startswith(colon_prefix):
+        return trimmed[len(colon_prefix) :].strip()
+    return None
 
 
 class ApplyPatchError(ValueError):
@@ -64,13 +77,31 @@ def normalize_patch_text(patch: str) -> str:
 
 def extract_patch_paths(patch: str) -> list[str]:
     paths: list[str] = []
+    pending: str | None = None
     for line in normalize_patch_text(patch).splitlines():
         trimmed = line.strip()
+        if trimmed in {BEGIN_PATCH, END_PATCH}:
+            continue
         for marker, _kind in _PATH_MARKERS:
             if trimmed.startswith(marker):
                 raw = trimmed[len(marker) :].strip()
                 if raw and raw not in paths:
                     paths.append(raw)
+        for header in (ADD_HEADER, DELETE_HEADER, UPDATE_HEADER):
+            split = _split_file_header(trimmed, header)
+            if split is None and trimmed == header:
+                pending = header
+                break
+            if split:
+                if split not in paths:
+                    paths.append(split)
+                pending = None
+                break
+        else:
+            if pending and trimmed and not trimmed.startswith("***"):
+                if trimmed not in paths:
+                    paths.append(trimmed)
+                pending = None
     return paths
 
 
@@ -84,8 +115,22 @@ def parse_patch(patch: str) -> list[Hunk]:
 
     hunks: list[Hunk] = []
     mode = "start"
+    pending_header: str | None = None
     current: Hunk | None = None
     chunk: UpdateChunk | None = None
+
+    def start_hunk(kind: Literal["add", "delete", "update"], path: str) -> None:
+        nonlocal current, mode, chunk, pending_header
+        finish_hunk()
+        if not path:
+            pending_header = kind
+            mode = "pending_path"
+            return
+        current = Hunk(kind=kind, path=path)
+        pending_header = None
+        mode = kind
+        if kind == "update":
+            chunk = UpdateChunk()
 
     def finish_chunk() -> None:
         nonlocal chunk
@@ -108,21 +153,29 @@ def parse_patch(patch: str) -> list[Hunk]:
         trimmed = line.strip()
         if trimmed == END_PATCH:
             break
+        if mode == "pending_path" and pending_header and trimmed and not trimmed.startswith("***"):
+            start_hunk(pending_header, trimmed)  # type: ignore[arg-type]
+            continue
+        add_path = _split_file_header(trimmed, ADD_HEADER)
+        if add_path is not None or trimmed == ADD_HEADER:
+            start_hunk("add", add_path or "")
+            continue
+        delete_path = _split_file_header(trimmed, DELETE_HEADER)
+        if delete_path is not None or trimmed == DELETE_HEADER:
+            start_hunk("delete", delete_path or "")
+            continue
+        update_path = _split_file_header(trimmed, UPDATE_HEADER)
+        if update_path is not None or trimmed == UPDATE_HEADER:
+            start_hunk("update", update_path or "")
+            continue
         if trimmed.startswith(ADD_MARKER):
-            finish_hunk()
-            current = Hunk(kind="add", path=trimmed[len(ADD_MARKER) :].strip())
-            mode = "add"
+            start_hunk("add", trimmed[len(ADD_MARKER) :].strip())
             continue
         if trimmed.startswith(DELETE_MARKER):
-            finish_hunk()
-            current = Hunk(kind="delete", path=trimmed[len(DELETE_MARKER) :].strip())
-            mode = "delete"
+            start_hunk("delete", trimmed[len(DELETE_MARKER) :].strip())
             continue
         if trimmed.startswith(UPDATE_MARKER):
-            finish_hunk()
-            current = Hunk(kind="update", path=trimmed[len(UPDATE_MARKER) :].strip())
-            mode = "update"
-            chunk = UpdateChunk()
+            start_hunk("update", trimmed[len(UPDATE_MARKER) :].strip())
             continue
         if mode == "update" and current and trimmed.startswith(MOVE_MARKER):
             current.move_path = trimmed[len(MOVE_MARKER) :].strip()
@@ -153,18 +206,29 @@ def parse_patch(patch: str) -> list[Hunk]:
                     chunk.new_lines.append(body)
                 continue
         if mode in {"delete", "add", "update"} and trimmed.startswith("*** "):
-            finish_hunk()
-            if trimmed.startswith(ADD_MARKER):
-                current = Hunk(kind="add", path=trimmed[len(ADD_MARKER) :].strip())
-                mode = "add"
-            elif trimmed.startswith(DELETE_MARKER):
-                current = Hunk(kind="delete", path=trimmed[len(DELETE_MARKER) :].strip())
-                mode = "delete"
-            elif trimmed.startswith(UPDATE_MARKER):
-                current = Hunk(kind="update", path=trimmed[len(UPDATE_MARKER) :].strip())
-                mode = "update"
-                chunk = UpdateChunk()
+            add_path = _split_file_header(trimmed, ADD_HEADER)
+            if add_path is not None or trimmed == ADD_HEADER:
+                start_hunk("add", add_path or "")
+            elif trimmed.startswith(DELETE_MARKER) or trimmed == DELETE_HEADER or trimmed.startswith(
+                f"{DELETE_HEADER}:"
+            ):
+                delete_path = _split_file_header(trimmed, DELETE_HEADER) or (
+                    trimmed[len(DELETE_MARKER) :].strip() if trimmed.startswith(DELETE_MARKER) else ""
+                )
+                start_hunk("delete", delete_path)
+            elif trimmed.startswith(UPDATE_MARKER) or trimmed == UPDATE_HEADER or trimmed.startswith(
+                f"{UPDATE_HEADER}:"
+            ):
+                update_path = _split_file_header(trimmed, UPDATE_HEADER) or (
+                    trimmed[len(UPDATE_MARKER) :].strip() if trimmed.startswith(UPDATE_MARKER) else ""
+                )
+                start_hunk("update", update_path)
     finish_hunk()
+    if not hunks:
+        raise ApplyPatchError(
+            "Patch contains no file changes. Use one line like "
+            "'*** Delete File: path' or '*** Delete File' followed by the path on the next line."
+        )
     return hunks
 
 

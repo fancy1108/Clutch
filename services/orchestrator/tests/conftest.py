@@ -8,6 +8,7 @@ import pytest
 @pytest.fixture(autouse=True)
 def isolate_orchestrator_globals(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
     from src.main import _run_sessions, _run_states
+    from src.mcp_pending import _approved_keys, _pending
     from src.workspace import clear_workspace_for_tests
 
     monkeypatch.setenv("CLUTCH_RUN_HISTORY_DIR", str(tmp_path))
@@ -15,10 +16,14 @@ def isolate_orchestrator_globals(tmp_path, monkeypatch: pytest.MonkeyPatch) -> N
     clear_workspace_for_tests()
     _run_states.clear()
     _run_sessions.clear()
+    _pending.clear()
+    _approved_keys.clear()
     yield
     clear_workspace_for_tests()
     _run_states.clear()
     _run_sessions.clear()
+    _pending.clear()
+    _approved_keys.clear()
 
 
 @pytest.fixture(autouse=True)

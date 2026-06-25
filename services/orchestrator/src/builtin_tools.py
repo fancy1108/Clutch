@@ -35,7 +35,8 @@ def list_builtin_tools() -> list[dict[str, Any]]:
                 "Apply a Codex-style patch to the active workspace. "
                 "Supports *** Add File, *** Delete File, *** Update File, and *** Move to. "
                 "Patch must start with '*** Begin Patch' and end with '*** End Patch'. "
-                "Prefer this over separate write/move tools for create, edit, delete, and rename."
+                "For deletion (including dotfiles like `.deleted_test.txt`), use "
+                "`*** Delete File: .deleted_test.txt` — never use local-fs move_file."
             ),
             "inputSchema": {
                 "type": "object",

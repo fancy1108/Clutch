@@ -453,7 +453,7 @@ _AGENT_AVATARS: dict[str, str] = {
     "Orchestrator": "https://lh3.googleusercontent.com/aida-public/AB6AXuA0yGh59QNLj5n0igNxMgu4lgaiNqZpcN29SpWM0JHNlAuFmOBx-Id67Zcd2NDCNBjBKrcffQrdrfoe-3XaSlveekLAP9SRis93uTk7XPPFO5y4Swos7NvATw6n7eZEm7nfAQuTiMAoWRSnxefAOJugUbZx3fCTNv4jGyjvT-UZznwKzp_HoXuStup_0juhBCZYamrV0Coil-k27d9Yi7il6NabIEG0FfbxwL5V5azpfZQOlBfpaganta2kP7n59BKPHd4K2uTOfZ5p",
     "Builder": "https://lh3.googleusercontent.com/aida-public/AB6AXuBpRidttSGTIY-J-PGvnlcZX_oZSZoBXJY5vjZ9g1PKl_fq4EKoa2RXbcSCvvIdbPLdmfuzPKTxnR8TqV7skwsKlt-eKEzSzktv-TWbHu4c9uBEdP6Es_Fjek1EBQuGZeMtWsUi3fn0lyozFaZBLp9SpES3r0WalbqYY6gGiT1R_0J1kvU-D9rI_2q2f3sMGHuTjWyOZ5gImCLGHSGejtcKmToTSZYMrXfT_A5x1iw_f4q7WljP3FXjk64aQhLgh9nTXUDfPdkIzu0b",
     "Evaluator": "https://lh3.googleusercontent.com/aida-public/AB6AXuCmb7VGaQXE-4sYnIZR3VrcHVAPhv4Px14kMlkayJj8kVm8htTWITmPi26wsj8P6B9RrqykIWj81S2ilmGR0e8cXhA1gjc3U-Nw0DsgHV3HvVmBskuoUksIt6YM6Z3ORjFtRhBphqAXxRKf9ke-zYcPs0TcEFKxw_bwGXSDiAKV5CL7kZf9i6lSZDe91ccUNjaAIsgTMKEEvYc7bZpXYz3D5dClulRwbNru5SZB-1E5FM0A2qMPs-IAfiR8OB1-cUvFh3WYKx9qlGgN",
-    "Supervisor": "https://lh3.googleusercontent.com/aida-public/AB6AXuCmb7VGaQXE-4sYnIZR3VrcHVAPhv4Px14kMlkayJj8kVm8htTWITmPi26wsj8P6B9RrqykIWj81S2ilmGR0e8cXhA1gjc3U-Nw0DsgHV3HvVmBskuoUksIt6YM6Z3ORjFtRhBphqAXxRKf9ke-zYcPs0TcEFKxw_bwGXSDiAKV5CL7kZf9i6lSZDe91ccUNjaAIsgTMKEEvYc7bZpXYz3D5dClulRwbNru5SZB-1E5FM0A2qMPs-IAfiR8OB1-cUvFh3WYKx9qlGgN",
+    "Supervisor": "",
     "User": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=100",
 }
 
@@ -501,9 +501,12 @@ async def _send_message_event(
 
 
 def _mcp_supervisor_approval_text(func_name: str, func_args: dict[str, Any]) -> str:
+    from src.mcp_risk import normalize_mcp_func_args_for_display
+
     detail = ""
     if func_args:
-        preview = json.dumps(func_args, ensure_ascii=False)
+        display_args = normalize_mcp_func_args_for_display(func_args)
+        preview = json.dumps(display_args, ensure_ascii=False)
         if len(preview) > 120:
             preview = preview[:117] + "..."
         detail = f"\n\nArgs: `{preview}`"
@@ -518,13 +521,17 @@ def _supervisor_gate_messages(
     func_name: str,
     func_args: dict[str, Any],
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    """Append a supervisor approval line; skip exact duplicate of the latest supervisor message."""
+    """Append a supervisor approval line; skip duplicate approval for the same tool intent."""
+    from src.mcp_risk import mcp_approval_key
+
+    approval_key = mcp_approval_key(func_name, func_args)
     text = _mcp_supervisor_approval_text(func_name, func_args)
     if messages:
         last = messages[-1]
-        if last.get("agent") == "Supervisor" and last.get("text") == text:
+        if last.get("agent") == "Supervisor" and last.get("approvalKey") == approval_key:
             return messages, last
     supervisor = _chat_message("Supervisor", text)
+    supervisor["approvalKey"] = approval_key
     return [*messages, supervisor], supervisor
 
 
@@ -641,10 +648,11 @@ def _compose_agent_system_prompt(
                     "Filesystem MCP tools only accept paths inside this workspace. "
                     "Prefer workspace-relative paths (e.g. `test.txt`), not `/test.txt` or other roots.\n"
                     "For create, edit, delete, or rename files, prefer the builtin "
-                    "`clutch-tools__apply_patch` tool with Codex patch syntax "
-                    "(`*** Begin Patch` … `*** Add File` / `*** Delete File` / "
-                    "`*** Update File` … `*** End Patch`). Do not rename files to "
-                    "`.deleted_*` as a delete workaround when apply_patch is available."
+                    "`clutch-tools__apply_patch` tool with Codex patch syntax. "
+                    "Delete example (dotfiles need the leading dot):\n"
+                    "```\n*** Begin Patch\n*** Delete File: .deleted_test.txt\n*** End Patch\n```\n"
+                    "Never use local-fs move_file to delete or to rename `.foo` → `foo`. "
+                    "Do not rename files to `.deleted_*` as a delete workaround when apply_patch is available."
                 )
         skills_block = compose_skills_section(list(agent.get("skills") or []))
         if skills_block:
@@ -719,6 +727,7 @@ async def _llm_chat_reply(
 
     try:
         if mcp_resume or (agent and _uses_configured_llm(agent)):
+            from src.mcp_pending import get_approved_mcp_keys
             from src.mcp_react import run_mcp_react_loop
 
             mcp_servers = (
@@ -746,6 +755,7 @@ async def _llm_chat_reply(
                     on_log=on_log if emit_log else None,
                     pause_on_risky=True,
                     approved_tool=mcp_approved_tool,
+                    approved_keys=get_approved_mcp_keys(state["run_id"]),
                 )
                 if outcome.approval_required:
                     pause_payload = {
@@ -829,7 +839,7 @@ async def _handle_plain_chat_mcp_decision(
     state: ClutchState,
     decision: str,
 ) -> ClutchState:
-    from src.mcp_pending import get_pending, pop_pending
+    from src.mcp_pending import get_pending, pop_pending, record_mcp_approval
 
     pending = get_pending(run_id)
     if pending is None:
@@ -856,6 +866,7 @@ async def _handle_plain_chat_mcp_decision(
         return state
 
     pop_pending(run_id)
+    record_mcp_approval(run_id, pending.func_name, pending.func_args)
     state = _merge_patch(state, {"status": "running", "active_agent": pending.reply_label})
     await _notify_run_state(websocket, run_id, state, {"status": "running"})
 
