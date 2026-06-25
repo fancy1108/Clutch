@@ -72,6 +72,11 @@ class AgentsSaveRequest(BaseModel):
     agents: list[dict[str, Any]]
 
 
+class AgentPromptGenerateRequest(BaseModel):
+    name: str
+    description: str = Field(default="")
+
+
 class ModelsConfigRequest(BaseModel):
     active_model_id: str | None = None
     provider_id: str | None = None
@@ -555,6 +560,21 @@ def _compose_agent_system_prompt(
     return "\n\n".join(parts)
 
 
+def _append_terminal_logs(
+    current_logs: list[str],
+    route_logs: list[str],
+    tail_line: str,
+    *,
+    streamed: bool,
+) -> list[str]:
+    if streamed:
+        merged = list(current_logs)
+        if not merged or merged[-1] != tail_line:
+            merged.append(tail_line)
+        return merged
+    return list(current_logs) + route_logs + [tail_line]
+
+
 async def _llm_chat_reply(
     state: ClutchState,
     text: str,
@@ -681,6 +701,12 @@ async def _llm_chat_reply(
                     item for item in history if item.get("role") != "system"
                 ]
 
+        loop = asyncio.get_running_loop()
+
+        def on_log(line: str) -> None:
+            if emit_log:
+                asyncio.run_coroutine_threadsafe(emit_log(line), loop)
+
         result = await asyncio.to_thread(
             route_engine,
             agent_name=agent_ref,
@@ -689,6 +715,7 @@ async def _llm_chat_reply(
             history=history,
             system_prompt=system_prompt,
             claude_session_id=claude_session_id,
+            on_log=on_log if emit_log else None,
         )
         return reply_label, result.engine, result.output, llm_only_logs + result.logs, result.claude_session_id, None, []
     except Exception as exc:
@@ -805,7 +832,9 @@ async def _handle_plain_chat_mcp_decision(
         )
         pause_patch: dict[str, Any] = {
             "messages": list(state["messages"]) + [supervisor],
-            "terminal_logs": list(state["terminal_logs"]) + route_logs + [gate_line],
+            "terminal_logs": _append_terminal_logs(
+                list(state["terminal_logs"]), route_logs, gate_line, streamed=streamed_logs
+            ),
             "status": "awaiting_human",
             "active_agent": pending.reply_label,
         }
@@ -836,7 +865,9 @@ async def _handle_plain_chat_mcp_decision(
     await _send_log_event(websocket, run_id, log_line, node_id="")
 
     final_messages = list(state["messages"]) + [reply]
-    final_logs = list(state["terminal_logs"]) + route_logs + [log_line]
+    final_logs = _append_terminal_logs(
+        list(state["terminal_logs"]), route_logs, log_line, streamed=streamed_logs
+    )
     final_patch = {
         "messages": final_messages,
         "terminal_logs": final_logs,
@@ -936,7 +967,9 @@ async def _handle_plain_chat(
                 f"MCP 工具 `{mcp_pause['func_name']}` 需要您批准后才能执行。",
             ),
         )
-        pause_logs = list(state["terminal_logs"]) + route_logs + [gate_line]
+        pause_logs = _append_terminal_logs(
+            list(state["terminal_logs"]), route_logs, gate_line, streamed=streamed_logs
+        )
         pause_messages = list(state["messages"]) + [supervisor]
         pause_patch: dict[str, Any] = {
             "messages": pause_messages,
@@ -972,7 +1005,9 @@ async def _handle_plain_chat(
     await _send_log_event(websocket, run_id, log_line, node_id="")
 
     final_messages = list(state["messages"]) + [reply]
-    final_logs = list(state["terminal_logs"]) + route_logs + [log_line]
+    final_logs = _append_terminal_logs(
+        list(state["terminal_logs"]), route_logs, log_line, streamed=streamed_logs
+    )
     final_patch: dict[str, Any] = {
         "messages": final_messages,
         "terminal_logs": final_logs,
@@ -1386,6 +1421,66 @@ async def save_agents_endpoint(body: AgentsSaveRequest) -> dict[str, str]:
     return {"status": "saved"}
 
 
+def _build_agent_prompt_skeleton_fallback(name: str, description: str) -> str:
+    agent_name = name.strip() or "Custom Agent"
+    mission = description.strip() or "Define your core execution task here."
+    return (
+        f"# {agent_name}\n\n"
+        f"You are **{agent_name}**, an operational AI agent in the Clutch workspace.\n\n"
+        f"## Mission\n{mission}\n\n"
+        "## Operating Principles\n"
+        "- Stay focused on the assigned task.\n"
+        "- Surface blockers clearly before proceeding.\n"
+        "- Prefer actionable outputs over vague summaries.\n\n"
+        "## Constraints\n"
+        "- Follow workspace conventions and user instructions.\n"
+        "- Ask for clarification when requirements are ambiguous."
+    )
+
+
+def _extract_llm_text(result: object) -> str:
+    if isinstance(result, dict):
+        content = result.get("content")
+        return str(content).strip() if content else ""
+    return str(result).strip()
+
+
+@app.post("/api/agents/generate-prompt")
+async def generate_agent_prompt_endpoint(body: AgentPromptGenerateRequest) -> dict[str, str]:
+    from src.models_config import get_router, is_model_available
+
+    name = body.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail={"message": "Agent name is required."})
+
+    description = body.description.strip()
+    fallback = _build_agent_prompt_skeleton_fallback(name, description)
+
+    router = get_router()
+    model_id = router.active_model_id
+    if not is_model_available(router, model_id):
+        return {"prompt": fallback, "source": "template"}
+
+    meta_prompt = (
+        "You are helping design an AI agent system prompt skeleton.\n"
+        f"Agent Name: {name}\n"
+        f"Short Description: {description or '(none provided)'}\n\n"
+        "Generate a concise system prompt skeleton in markdown with:\n"
+        '1. One clear persona line (e.g. "You are a ...")\n'
+        "2. Core responsibilities (3-5 bullets)\n"
+        "3. Output/constraints section (2-3 bullets)\n\n"
+        "Keep it under 20 lines. Output only the prompt text, no preamble or explanation."
+    )
+    try:
+        result = router.complete(meta_prompt, model_id=model_id)
+        text = _extract_llm_text(result)
+        if not text:
+            return {"prompt": fallback, "source": "template"}
+        return {"prompt": text, "source": "llm"}
+    except Exception:
+        return {"prompt": fallback, "source": "template"}
+
+
 @app.get("/api/skills")
 async def get_skills_registry() -> dict[str, Any]:
     return _skills_registry_payload(rescan=True)
@@ -1485,6 +1580,13 @@ async def delete_provider_credential(provider_id: str) -> dict[str, str]:
     except ValueError as exc:
         raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
     return {"status": "removed", "provider_id": provider_id}
+
+
+@app.post("/api/models/rehydrate-cc-switch")
+async def rehydrate_cc_switch_endpoint() -> dict[str, Any]:
+    from src.models_config import get_router, rehydrate_cc_switch_models
+
+    return rehydrate_cc_switch_models(get_router())
 
 
 @app.post("/api/models/test")

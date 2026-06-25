@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
 import { Deliverable, Agent } from '../types';
-import { fetchAgents, saveAgents } from '../services/agentApi';
+import { fetchAgents, saveAgents, generateAgentPrompt } from '../services/agentApi';
 import { fetchSkillsRegistry, type ScannedSkill } from '../services/skillsApi';
 import { fetchMcpStatus, type McpServer } from '../services/mcpApi';
 import { getAgentDisplayName, isBuiltinAgent, mergeAgentsWithBuiltin, BUILTIN_AGENT_ID } from '../services/builtinAgent';
@@ -121,6 +121,17 @@ export function AgentManager({
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [isSkillsAttachOpen, setIsSkillsAttachOpen] = useState(false);
   const [skillsSearch, setSkillsSearch] = useState('');
+  const [expandedModules, setExpandedModules] = useState<Record<number, boolean>>({
+    3: false,
+    4: false,
+    5: false,
+  });
+  const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
+  const [promptGenerateError, setPromptGenerateError] = useState<string | null>(null);
+
+  const toggleModule = (moduleNumber: number) => {
+    setExpandedModules((prev) => ({ ...prev, [moduleNumber]: !prev[moduleNumber] }));
+  };
 
   const refreshScannedSkills = () => {
     void fetchSkillsRegistry()
@@ -181,6 +192,8 @@ export function AgentManager({
     setAiEngine('Claude Code (Local CLI)');
     setSelectedSkills([]);
     setIsSkillsAttachOpen(false);
+    setExpandedModules({ 3: false, 4: false, 5: false });
+    setPromptGenerateError(null);
     setIsModalOpen(true);
   };
 
@@ -203,6 +216,8 @@ export function AgentManager({
     );
     setSelectedSkills(agent.skills || []);
     setIsSkillsAttachOpen(false);
+    setExpandedModules({ 3: false, 4: false, 5: false });
+    setPromptGenerateError(null);
     setIsModalOpen(true);
   };
 
@@ -230,6 +245,26 @@ export function AgentManager({
 
   const handleRemoveDeliverable = (index: number) => {
     setDeliverablesInput(deliverablesInput.filter((_, i) => i !== index));
+  };
+
+  const handleGeneratePrompt = async () => {
+    if (!name.trim()) {
+      setPromptGenerateError('Enter an agent name in Module 1 first.');
+      return;
+    }
+    setPromptGenerateError(null);
+    setIsGeneratingPrompt(true);
+    try {
+      const result = await generateAgentPrompt({
+        name: name.trim(),
+        description: description.trim(),
+      });
+      setMarkdownDoc(result.prompt);
+    } catch (error) {
+      setPromptGenerateError(error instanceof Error ? error.message : 'Prompt generation failed.');
+    } finally {
+      setIsGeneratingPrompt(false);
+    }
   };
 
   const handleSave = () => {

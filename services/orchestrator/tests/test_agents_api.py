@@ -57,3 +57,23 @@ def test_get_agent_by_id_returns_builtin_agent() -> None:
     agents = response.json()["agents"]
     assert agents[0]["id"] == BUILTIN_AGENT_ID
     assert agents[0]["builtin"] is True
+
+
+def test_generate_agent_prompt_requires_name(monkeypatch) -> None:
+    monkeypatch.setenv("CLUTCH_E2E_FAKE_LLM", "1")
+    client = TestClient(app)
+    response = client.post("/api/agents/generate-prompt", json={"name": "  ", "description": "x"})
+    assert response.status_code == 400
+
+
+def test_generate_agent_prompt_returns_skeleton(monkeypatch) -> None:
+    monkeypatch.setenv("CLUTCH_E2E_FAKE_LLM", "1")
+    client = TestClient(app)
+    response = client.post(
+        "/api/agents/generate-prompt",
+        json={"name": "Security Auditor", "description": "Review code for vulnerabilities."},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert "Security Auditor" in body["prompt"]
+    assert body["source"] in {"llm", "template"}

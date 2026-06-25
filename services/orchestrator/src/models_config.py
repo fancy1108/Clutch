@@ -13,7 +13,9 @@ from src.llm.router import LLMProviderRouter, ProviderId
 
 from src.credentials.claude_code import bootstrap_claude_credentials, bootstrap_cc_switch_credentials
 from src.credentials.sources import (
+    cc_switch_has_key_for_provider,
     is_clutch_managed_credential,
+    model_source_summary,
     resolve_model_credential_hint,
     resolve_provider_credential_source,
 )
@@ -84,8 +86,13 @@ def serialize_models_config(router: LLMProviderRouter) -> dict[str, Any]:
                 "source": cred["source"],
                 "source_label": cred["source_label"],
                 "clutch_managed": is_clutch_managed_credential(spec.provider_id),
+                "cc_switch_fallback_available": (
+                    is_clutch_managed_credential(spec.provider_id)
+                    and cc_switch_has_key_for_provider(spec.provider_id)
+                ),
             },
         )
+        is_cc_switch = spec.id.startswith("cc-switch-")
         models.append(
             {
                 "id": spec.id,
@@ -94,9 +101,11 @@ def serialize_models_config(router: LLMProviderRouter) -> dict[str, Any]:
                 "available": is_model_available(router, spec.id),
                 "credential_source": cred["source"],
                 "credential_source_label": cred["source_label"],
+                "source_summary": model_source_summary(cred, is_cc_switch=is_cc_switch),
                 "credential_hint": resolve_model_credential_hint(router, spec),
                 "endpoint": spec.base_url or None,
                 "clutch_managed": is_clutch_managed_credential(spec.provider_id),
+                "is_cc_switch": is_cc_switch,
             }
         )
     return {
@@ -108,6 +117,23 @@ def serialize_models_config(router: LLMProviderRouter) -> dict[str, Any]:
 
 _TEST_PROMPT = "Reply with exactly: ok"
 _TEST_TIMEOUT_SEC = 20.0
+
+
+def format_connection_error(exc: Exception) -> str:
+    """Turn provider exceptions into short, user-facing copy."""
+    raw = str(exc)
+    lower = raw.lower()
+    if "429" in raw or "rate limit" in lower:
+        return "Rate limit reached — wait a moment, switch models, or upgrade your provider plan."
+    if "401" in raw or "403" in raw or "unauthorized" in lower:
+        return "API key was rejected — check it matches this provider or gateway."
+    if "404" in raw or "not found" in lower:
+        return "Model or endpoint not found — the key may work but this model ID is wrong."
+    if "timeout" in lower or "timed out" in lower:
+        return "Connection timed out — check your network or try again."
+    if len(raw) > 120 or raw.strip().startswith("{"):
+        return "Connection failed — check your API key and press Test again."
+    return raw[:200]
 
 
 def clear_provider_credential(router: LLMProviderRouter, provider_id: ProviderId) -> None:
@@ -138,6 +164,46 @@ def clear_provider_credential(router: LLMProviderRouter, provider_id: ProviderId
             router.set_api_key("anthropic", key)
 
 
+def rehydrate_cc_switch_models(router: LLMProviderRouter) -> dict[str, Any]:
+    """Re-import CC Switch providers without restarting the sidecar."""
+    from pathlib import Path
+
+    from src.llm.router import DEFAULT_MODEL_ID
+
+    db_path = Path.home() / ".cc-switch" / "cc-switch.db"
+    if not db_path.is_file():
+        return {
+            "ok": False,
+            "cc_switch_found": False,
+            "models_imported": 0,
+            "message": "CC Switch not found. Install CC Switch or check ~/.cc-switch on this machine.",
+        }
+
+    for model_id in [mid for mid in router._models if mid.startswith("cc-switch-")]:
+        router._models.pop(model_id, None)
+    if router.active_model_id not in router._models:
+        router._active_model_id = DEFAULT_MODEL_ID
+
+    bootstrap_cc_switch_credentials(router)
+    cc_models = [spec for spec in router.list_models() if spec.id.startswith("cc-switch-")]
+    if not cc_models:
+        return {
+            "ok": True,
+            "cc_switch_found": True,
+            "models_imported": 0,
+            "message": "CC Switch is installed but no models could be imported (missing keys or unsupported providers).",
+        }
+
+    names = [spec.name for spec in cc_models]
+    return {
+        "ok": True,
+        "cc_switch_found": True,
+        "models_imported": len(cc_models),
+        "model_names": names,
+        "message": f"Imported {len(cc_models)} model(s) from CC Switch.",
+    }
+
+
 def test_model_connection(router: LLMProviderRouter, model_id: str) -> dict[str, Any]:
     if not is_model_available(router, model_id):
         return {
@@ -160,13 +226,13 @@ def test_model_connection(router: LLMProviderRouter, model_id: str) -> dict[str,
         return {
             "ok": True,
             "model_id": model_id,
-            "message": "Provider accepted the API call.",
+            "message": "Connection OK — this model is ready to use.",
         }
     except Exception as exc:
         return {
             "ok": False,
             "model_id": model_id,
-            "message": str(exc)[:300],
+            "message": format_connection_error(exc),
         }
 
 

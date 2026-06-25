@@ -1,10 +1,14 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   deleteProviderCredential,
   fetchModelsConfig,
+  loadModelVerifyState,
   mapModelConfigToUi,
+  pruneModelVerifyCache,
   PROVIDER_LABELS,
+  removeModelVerifyResults,
   rehydrateCcSwitchModels,
+  saveModelVerifyResult,
   saveModelsConfig,
   testModelConnection,
   type ProviderEntry,
@@ -17,7 +21,7 @@ interface ModelItem {
   providerId: string;
   contextWindow: string;
   temperature: number;
-  description: string;
+  sourceSummary: string;
   credentialSourceLabel: string | null;
   credentialHint: string | null;
   endpoint: string | null;
@@ -38,6 +42,13 @@ interface ModelsManagerProps {
 
 const CONNECTABLE_PROVIDERS = ['deepseek', 'anthropic', 'openai', 'google', 'ollama', 'custom'] as const;
 
+function verifyStatusLabel(verify: VerifyState): string | null {
+  if (verify === 'testing') return 'Testing…';
+  if (verify === 'ok') return 'Ready';
+  if (verify === 'failed') return 'Connection failed';
+  return null;
+}
+
 export const ModelsManager: React.FC<ModelsManagerProps> = ({
   activeModelId,
   setActiveModelId,
@@ -52,17 +63,27 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
   const [apiKey, setApiKey] = useState('');
   const [showApiKey, setShowApiKey] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [activatingModelId, setActivatingModelId] = useState<string | null>(null);
+  const [savingKey, setSavingKey] = useState(false);
+  const [deletingProviderId, setDeletingProviderId] = useState<string | null>(null);
+  const [syncingCcSwitch, setSyncingCcSwitch] = useState(false);
+  const [ccSwitchSyncMessage, setCcSwitchSyncMessage] = useState<{
+    tone: 'success' | 'error';
+    text: string;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeAvailable, setActiveAvailable] = useState(true);
   const [providers, setProviders] = useState<Record<string, ProviderEntry>>({});
-  const [verifyByModel, setVerifyByModel] = useState<Record<string, VerifyState>>({});
-  const [verifyMessageByModel, setVerifyMessageByModel] = useState<Record<string, string>>({});
-  const [verifyMessage, setVerifyMessage] = useState<string | null>(null);
-  const [verifyOk, setVerifyOk] = useState<boolean | null>(null);
-  const autoVerifiedRef = useRef(false);
+  const initialVerify = loadModelVerifyState();
+  const [verifyByModel, setVerifyByModel] = useState<Record<string, VerifyState>>(() => ({
+    ...initialVerify.verifyByModel,
+  }));
+  const [verifyMessageByModel, setVerifyMessageByModel] = useState<Record<string, string>>(
+    () => ({ ...initialVerify.verifyMessageByModel }),
+  );
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
+  const refresh = useCallback(async (options?: { silent?: boolean }) => {
+    if (!options?.silent) setLoading(true);
     setError(null);
     try {
       const config = await fetchModelsConfig();
@@ -73,14 +94,15 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
       setActiveAvailable(mapped.activeAvailable);
       const active = mapped.models.find((m) => m.id === mapped.activeModelId);
       setSelectedModel(active?.name ?? '');
+      pruneModelVerifyCache(mapped.models.map((model) => model.id));
       return mapped.models;
     } catch {
       setConfiguredModels([]);
       setProviders({});
-      setError('Sidecar unavailable — cannot load model configuration.');
+      setError('Cannot reach Clutch sidecar — start the backend on port 8123.');
       return [];
     } finally {
-      setLoading(false);
+      if (!options?.silent) setLoading(false);
     }
   }, [setActiveModelId, setConfiguredModels, setSelectedModel]);
 
@@ -90,42 +112,20 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
 
   const handleTestConnection = useCallback(async (modelId: string) => {
     setVerifyByModel((prev) => ({ ...prev, [modelId]: 'testing' }));
-    setVerifyMessage(null);
-    setVerifyOk(null);
     setError(null);
     try {
       const result = await testModelConnection(modelId);
-      if (result.ok) {
-        setVerifyByModel((prev) => ({ ...prev, [modelId]: 'ok' }));
-        setVerifyMessageByModel((prev) => ({ ...prev, [modelId]: result.message }));
-        if (modelId === activeModelId) {
-          setVerifyMessage(result.message);
-          setVerifyOk(true);
-        }
-      } else {
-        setVerifyByModel((prev) => ({ ...prev, [modelId]: 'failed' }));
-        setVerifyMessageByModel((prev) => ({ ...prev, [modelId]: result.message }));
-        if (modelId === activeModelId) {
-          setVerifyMessage(result.message);
-          setVerifyOk(false);
-        }
-      }
+      const nextState: VerifyState = result.ok ? 'ok' : 'failed';
+      setVerifyByModel((prev) => ({ ...prev, [modelId]: nextState }));
+      setVerifyMessageByModel((prev) => ({ ...prev, [modelId]: result.message }));
+      saveModelVerifyResult(modelId, result.ok, result.message);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Connection test failed.';
       setVerifyByModel((prev) => ({ ...prev, [modelId]: 'failed' }));
       setVerifyMessageByModel((prev) => ({ ...prev, [modelId]: message }));
-      if (modelId === activeModelId) {
-        setVerifyMessage(message);
-        setVerifyOk(false);
-      }
+      saveModelVerifyResult(modelId, false, message);
     }
-  }, [activeModelId]);
-
-  useEffect(() => {
-    if (autoVerifiedRef.current || configuredModels.length === 0 || loading) return;
-    autoVerifiedRef.current = true;
-    void Promise.all(configuredModels.map((model) => handleTestConnection(model.id)));
-  }, [configuredModels, handleTestConnection, loading]);
+  }, []);
 
   const openConnectForm = (provider?: string) => {
     setEditingProviderId(provider ?? null);
@@ -133,47 +133,44 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
     setApiKey('');
     setShowApiKey(false);
     setShowConnectForm(true);
+    setError(null);
+  };
+
+  const closeConnectForm = () => {
+    setShowConnectForm(false);
+    setShowApiKey(false);
+    setEditingProviderId(null);
   };
 
   const handleActivate = async (modelId: string) => {
-    setLoading(true);
+    setActivatingModelId(modelId);
     setError(null);
     try {
       await saveModelsConfig({ active_model_id: modelId });
-      setVerifyByModel((prev) => ({ ...prev, [modelId]: 'idle' }));
-      setVerifyMessage(null);
-      setVerifyOk(null);
-      autoVerifiedRef.current = false;
-      const models = await refresh();
-      const target = models.find((m) => m.id === modelId);
-      if (target) void handleTestConnection(modelId);
+      await refresh({ silent: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to activate model.');
-      setLoading(false);
+      setError(err instanceof Error ? err.message : 'Could not switch to this model.');
+    } finally {
+      setActivatingModelId(null);
     }
   };
 
   const handleConnectProvider = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!apiKey.trim()) return;
-    setLoading(true);
+    const savedProviderId = providerId;
+    setSavingKey(true);
     setError(null);
     try {
-      await saveModelsConfig({ provider_id: providerId, api_key: apiKey.trim() });
-      setApiKey('');
-      setShowApiKey(false);
-      setShowConnectForm(false);
-      setEditingProviderId(null);
-      setVerifyByModel({});
-      setVerifyMessageByModel({});
-      setVerifyMessage(null);
-      setVerifyOk(null);
-      autoVerifiedRef.current = false;
-      const models = await refresh();
-      await Promise.all(models.map((model) => handleTestConnection(model.id)));
+      await saveModelsConfig({ provider_id: savedProviderId, api_key: apiKey.trim() });
+      closeConnectForm();
+      const models = await refresh({ silent: true });
+      const providerModels = models.filter((model) => model.providerId === savedProviderId);
+      void Promise.all(providerModels.map((model) => handleTestConnection(model.id)));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save provider credentials.');
-      setLoading(false);
+      setError(err instanceof Error ? err.message : 'Could not save API key.');
+    } finally {
+      setSavingKey(false);
     }
   };
 
@@ -181,199 +178,152 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
     const provider = providers[targetProviderId];
     const useCcSwitch = provider?.cc_switch_fallback_available;
     const message = useCcSwitch
-      ? `Remove the Clutch-saved ${PROVIDER_LABELS[targetProviderId] ?? targetProviderId} key and use CC Switch credentials instead?`
+      ? `Remove the Clutch-saved ${PROVIDER_LABELS[targetProviderId] ?? targetProviderId} key and use CC Switch instead?`
       : `Remove the Clutch-saved API key for ${PROVIDER_LABELS[targetProviderId] ?? targetProviderId}?`;
-    if (!window.confirm(message)) {
-      return;
-    }
-    setLoading(true);
+    if (!window.confirm(message)) return;
+
+    const removedModelIds = new Set(
+      configuredModels.filter((model) => model.providerId === targetProviderId).map((model) => model.id),
+    );
+    setDeletingProviderId(targetProviderId);
     setError(null);
     try {
       await deleteProviderCredential(targetProviderId);
-      setVerifyByModel({});
-      setVerifyMessageByModel({});
-      setVerifyMessage(null);
-      setVerifyOk(null);
-      autoVerifiedRef.current = false;
-      const models = await refresh();
-      if (models.length > 0) {
-        await Promise.all(models.map((model) => handleTestConnection(model.id)));
-      }
+      removeModelVerifyResults(removedModelIds);
+      setVerifyByModel((prev) =>
+        Object.fromEntries(Object.entries(prev).filter(([modelId]) => !removedModelIds.has(modelId))),
+      );
+      setVerifyMessageByModel((prev) =>
+        Object.fromEntries(Object.entries(prev).filter(([modelId]) => !removedModelIds.has(modelId))),
+      );
+      closeConnectForm();
+      await refresh({ silent: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to remove provider credentials.');
-      setLoading(false);
+      setError(err instanceof Error ? err.message : 'Could not remove saved key.');
+      await refresh({ silent: true });
+    } finally {
+      setDeletingProviderId(null);
     }
   };
 
   const handleRehydrateCcSwitch = async () => {
-    setLoading(true);
+    setSyncingCcSwitch(true);
+    setCcSwitchSyncMessage(null);
     setError(null);
     try {
-      await rehydrateCcSwitchModels();
-      setVerifyByModel({});
-      setVerifyMessageByModel({});
-      setVerifyMessage(null);
-      setVerifyOk(null);
-      autoVerifiedRef.current = false;
-      const models = await refresh();
-      if (models.length > 0) {
-        await Promise.all(models.map((model) => handleTestConnection(model.id)));
-      }
+      const result = await rehydrateCcSwitchModels();
+      await refresh({ silent: true });
+      setCcSwitchSyncMessage({
+        tone: result.ok ? 'success' : 'error',
+        text: result.message,
+      });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to sync CC Switch models.');
-      setLoading(false);
+      setCcSwitchSyncMessage({
+        tone: 'error',
+        text: err instanceof Error ? err.message : 'CC Switch import failed.',
+      });
+    } finally {
+      setSyncingCcSwitch(false);
     }
   };
-
-  const managedProviders = CONNECTABLE_PROVIDERS.filter(
-    (id) => providers[id]?.configured && providers[id]?.clutch_managed,
-  );
 
   const activeVerify = activeModelId ? verifyByModel[activeModelId] ?? 'idle' : 'idle';
+  const activeVerifyMessage = activeModelId ? verifyMessageByModel[activeModelId] : undefined;
+  const editingProvider = editingProviderId ? providers[editingProviderId] : undefined;
 
-  const footerStatus = (() => {
-    if (configuredModels.length === 0 || !activeAvailable) return 'No usable model';
+  const currentStatusLine = (() => {
+    if (!activeModelId || !activeAvailable) {
+      return 'Pick a model below or add an API key to get started.';
+    }
     if (activeVerify === 'testing') return 'Testing connection…';
-    if (activeVerify === 'ok') return 'Connection verified';
-    if (activeVerify === 'failed') return 'Invalid credentials';
-    return 'Checking…';
+    if (activeVerify === 'ok') return activeVerifyMessage ?? 'Ready to use.';
+    if (activeVerify === 'failed') return activeVerifyMessage ?? 'Last test failed — fix the key or choose another model.';
+    return 'Not tested yet — press Test when you want to verify.';
   })();
 
-  const statusBadge = (verify: VerifyState) => {
-    if (verify === 'testing') {
-      return (
-        <span className="text-[8.5px] uppercase font-mono bg-surface-container-high text-on-surface-variant border border-outline/60 px-1.5 py-0.2 rounded font-extrabold">
-          Checking…
-        </span>
-      );
-    }
-    if (verify === 'ok') {
-      return (
-        <span className="text-[8.5px] uppercase font-mono bg-emerald-50 text-emerald-800 border border-emerald-200 px-1.5 py-0.2 rounded font-extrabold">
-          Valid
-        </span>
-      );
-    }
-    if (verify === 'failed') {
-      return (
-        <span className="text-[8.5px] uppercase font-mono bg-rose-50 text-rose-800 border border-rose-200 px-1.5 py-0.2 rounded font-extrabold">
-          Invalid
-        </span>
-      );
-    }
-    return null;
-  };
+  const statusTone =
+    !activeAvailable || activeVerify === 'failed'
+      ? 'rose'
+      : activeVerify === 'ok'
+        ? 'emerald'
+        : 'neutral';
 
   return (
     <div className="flex-1 flex flex-col h-full bg-surface-bright text-on-surface select-none leading-normal">
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-[20px] text-on-surface">layers</span>
-            <h2 className="text-base font-bold text-on-surface tracking-tight font-sans">AI Workspace Models</h2>
-          </div>
-          <p className="text-xs text-on-surface-variant font-sans leading-relaxed">
-            Models appear when credentials are detected. Status is checked automatically — invalid keys show in red.
+      <div className="flex-1 overflow-y-auto p-6 space-y-5">
+        <header className="text-left space-y-1">
+          <h2 className="text-base font-bold text-on-surface tracking-tight font-sans">AI Workspace Models</h2>
+          <p className="text-xs text-on-surface-variant leading-relaxed">
+            Choose which model Clutch uses. Keys can come from Clutch, CC Switch, or environment variables.
           </p>
-        </div>
+        </header>
 
         {error && (
-          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">{error}</p>
+          <p className="text-xs text-amber-800 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2 text-left">
+            {error}
+          </p>
         )}
 
-        {verifyMessage && activeModelId && (
+        <section
+          className={`rounded-xl border p-4 text-left ${
+            statusTone === 'rose'
+              ? 'bg-rose-50/60 border-rose-200'
+              : statusTone === 'emerald'
+                ? 'bg-emerald-50/50 border-emerald-200'
+                : 'bg-surface-container border-outline'
+          }`}
+        >
+          <p className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Current model</p>
+          <p className="text-sm font-bold text-on-surface mt-1">{selectedModel || 'None selected'}</p>
           <p
-            className={`text-xs rounded-lg px-3 py-2 border ${
-              verifyOk
-                ? 'text-emerald-700 bg-emerald-50 border-emerald-100'
-                : 'text-rose-700 bg-rose-50 border-rose-100'
+            className={`text-xs mt-1 leading-relaxed ${
+              statusTone === 'rose'
+                ? 'text-rose-800'
+                : statusTone === 'emerald'
+                  ? 'text-emerald-800'
+                  : 'text-on-surface-variant'
             }`}
           >
-            {verifyMessage}
+            {currentStatusLine}
           </p>
-        )}
-
-        {!activeAvailable && activeModelId && (
-          <p className="text-xs text-rose-700 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2">
-            Active model is unavailable — connect provider credentials below.
-          </p>
-        )}
-
-        {managedProviders.length > 0 && !showConnectForm && (
-          <div className="space-y-2">
-            <span className="text-[10px] font-extrabold text-on-surface-variant uppercase tracking-widest">
-              Clutch-managed keys (built-in models only)
-            </span>
-            <p className="text-[10.5px] text-on-surface-variant">
-              CC Switch imported models (e.g. Agnes) keep their own keys. Removing a key here restores CC Switch for built-in models.
-            </p>
-            <div className="grid grid-cols-1 gap-2">
-              {managedProviders.map((id) => (
-                <div
-                  key={id}
-                  className="flex items-center justify-between p-3 bg-surface-container border border-outline rounded-xl"
-                >
-                  <div className="text-left min-w-0">
-                    <p className="text-xs font-bold text-on-surface">{PROVIDER_LABELS[id] ?? id}</p>
-                    <p className="text-[10.5px] text-on-surface-variant truncate">
-                      {providers[id]?.source_label ?? 'Clutch app storage (models.json)'}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
-                    {providers[id]?.cc_switch_fallback_available && (
-                      <button
-                        type="button"
-                        onClick={() => void handleDeleteProvider(id)}
-                        className="px-3 py-1.5 text-[10.5px] font-bold border border-primary/40 text-primary rounded-lg hover:bg-primary/5"
-                      >
-                        Use CC Switch
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => openConnectForm(id)}
-                      className="px-3 py-1.5 text-[10.5px] font-bold border border-outline rounded-lg hover:bg-surface-container-high"
-                    >
-                      Update key
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => void handleDeleteProvider(id)}
-                      className="px-3 py-1.5 text-[10.5px] font-bold border border-rose-200 text-rose-700 rounded-lg hover:bg-rose-50"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {!showConnectForm && (
-          <div className="flex items-center justify-between p-3 bg-surface-container border border-outline rounded-xl">
-            <div className="text-left">
-              <h3 className="text-xs font-bold text-on-surface">CC Switch models</h3>
-              <p className="text-[10.5px] text-on-surface-variant">Re-import providers and keys from ~/.cc-switch without restarting.</p>
-            </div>
+          <div className="flex flex-wrap gap-2 mt-3">
+            {activeModelId && activeAvailable && (
+              <button
+                type="button"
+                disabled={activeVerify === 'testing'}
+                onClick={() => void handleTestConnection(activeModelId)}
+                className="px-3 py-1.5 text-xs font-bold border border-outline rounded-lg hover:bg-surface-container-high disabled:opacity-50"
+              >
+                {activeVerify === 'testing' ? 'Testing…' : activeVerify === 'idle' ? 'Test' : 'Retest'}
+              </button>
+            )}
             <button
               type="button"
-              disabled={loading}
-              onClick={() => void handleRehydrateCcSwitch()}
-              className="px-3.5 py-1.5 rounded-lg text-xs font-bold border border-outline hover:bg-surface-container-high disabled:opacity-50"
+              onClick={() => openConnectForm()}
+              className="px-3 py-1.5 text-xs font-bold bg-primary text-on-primary rounded-lg"
             >
-              Sync from CC Switch
+              Add API key
             </button>
           </div>
-        )}
+        </section>
 
-        {showConnectForm ? (
-          <form onSubmit={(e) => void handleConnectProvider(e)} className="p-4 bg-surface-container border border-outline rounded-xl space-y-4 text-left">
-            <h3 className="text-xs font-bold text-on-surface">
-              {editingProviderId ? 'Update Provider API Key' : 'Connect Provider API Key'}
-            </h3>
+        {showConnectForm && (
+          <form
+            onSubmit={(e) => void handleConnectProvider(e)}
+            className="p-4 bg-surface-container border border-outline rounded-xl space-y-4 text-left"
+          >
+            <div>
+              <h3 className="text-xs font-bold text-on-surface">
+                {editingProviderId ? 'Update API key' : 'Add API key'}
+              </h3>
+              <p className="text-[11px] text-on-surface-variant mt-0.5">
+                Saved in Clutch and used for built-in models of this provider.
+              </p>
+            </div>
             <div className="space-y-1">
-              <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block">Provider</label>
+              <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block">
+                Provider
+              </label>
               <select
                 value={providerId}
                 onChange={(e) => setProviderId(e.target.value)}
@@ -388,7 +338,9 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
               </select>
             </div>
             <div className="space-y-1">
-              <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block">API Key</label>
+              <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block">
+                API key
+              </label>
               <div className="relative flex items-center">
                 <input
                   type={showApiKey ? 'text' : 'password'}
@@ -401,7 +353,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowApiKey(!showApiKey)}
-                  className="absolute right-3 text-on-surface-variant hover:text-on-surface flex items-center"
+                  className="absolute right-3 text-on-surface-variant hover:text-on-surface"
                 >
                   <span className="material-symbols-outlined text-[18px]">
                     {showApiKey ? 'visibility' : 'visibility_off'}
@@ -409,116 +361,134 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
                 </button>
               </div>
               <p className="text-[10px] text-on-surface-variant">
-                Gateway models (Agnes, etc.) use tokens from that gateway — not api.anthropic.com keys.
+                Gateway models (e.g. Agnes) need that gateway&apos;s token — save it under the matching provider.
               </p>
             </div>
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowConnectForm(false);
-                  setShowApiKey(false);
-                  setEditingProviderId(null);
-                }}
-                className="px-3 py-1.5 text-xs font-bold border border-outline rounded-lg"
-              >
-                Cancel
-              </button>
-              <button type="submit" disabled={loading} className="px-4 py-1.5 text-xs font-bold bg-primary text-on-primary rounded-lg disabled:opacity-50">
-                Save credentials
-              </button>
+            <div className="flex justify-between gap-2 flex-wrap">
+              <div>
+                {editingProvider?.clutch_managed && (
+                  <button
+                    type="button"
+                    disabled={deletingProviderId === providerId}
+                    onClick={() => void handleDeleteProvider(providerId)}
+                    className="px-3 py-1.5 text-xs font-bold border border-rose-200 text-rose-700 rounded-lg hover:bg-rose-50 disabled:opacity-50"
+                  >
+                    {deletingProviderId === providerId ? 'Removing…' : 'Remove saved key'}
+                  </button>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={closeConnectForm}
+                  className="px-3 py-1.5 text-xs font-bold border border-outline rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingKey}
+                  className="px-4 py-1.5 text-xs font-bold bg-primary text-on-primary rounded-lg disabled:opacity-50"
+                >
+                  {savingKey ? 'Saving…' : 'Save'}
+                </button>
+              </div>
             </div>
           </form>
-        ) : (
-          <div className="flex items-center justify-between p-3.5 bg-surface-container border border-outline rounded-xl">
-            <div className="text-left">
-              <h3 className="text-xs font-bold text-on-surface">Connect a provider</h3>
-              <p className="text-[10.5px] text-on-surface-variant">Add or replace an API key for a provider.</p>
-            </div>
-            <button type="button" onClick={() => openConnectForm()} className="bg-primary text-on-primary px-3.5 py-1.5 rounded-lg text-xs font-bold">
-              Add API Key
-            </button>
-          </div>
         )}
 
-        <div className="space-y-3 text-left">
-          <div className="flex items-center justify-between pb-1 border-b border-outline/40">
-            <span className="text-[10px] font-extrabold text-on-surface-variant uppercase tracking-widest">Available Models</span>
-            <span className="text-[10px] font-mono text-on-surface-variant">{configuredModels.length} with credentials</span>
+        <section className="space-y-3 text-left">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-bold text-on-surface">Available models</h3>
+            <span className="text-[10px] text-on-surface-variant">{configuredModels.length} ready</span>
           </div>
 
           {loading && configuredModels.length === 0 ? (
-            <p className="text-xs text-on-surface-variant italic py-4">Loading…</p>
+            <p className="text-xs text-on-surface-variant italic py-6 text-center">Loading models…</p>
           ) : configuredModels.length === 0 ? (
-            <p className="text-xs text-on-surface-variant italic py-4">
-              No models available. Connect a provider API key above — only then can you activate a model.
-            </p>
+            <div className="rounded-xl border border-dashed border-outline/70 p-6 text-center space-y-3">
+              <p className="text-xs text-on-surface-variant">No models yet — add an API key or import from CC Switch.</p>
+              <button
+                type="button"
+                onClick={() => openConnectForm()}
+                className="px-3.5 py-1.5 text-xs font-bold bg-primary text-on-primary rounded-lg"
+              >
+                Add API key
+              </button>
+            </div>
           ) : (
-            <div className="grid grid-cols-1 gap-2.5">
+            <div className="grid grid-cols-1 gap-2">
               {configuredModels.map((model) => {
                 const isActive = activeModelId === model.id;
                 const verify = verifyByModel[model.id] ?? 'idle';
+                const statusLabel = verifyStatusLabel(verify);
                 const rowMessage = verifyMessageByModel[model.id];
                 return (
                   <div
                     key={model.id}
-                    className={`relative p-4 rounded-xl border flex flex-col md:flex-row md:items-center justify-between gap-4 ${
+                    className={`p-3.5 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
                       isActive ? 'bg-surface-container border-primary shadow-xs' : 'bg-surface border-outline/65'
                     }`}
                   >
-                    <div className="flex-1 space-y-1.5 min-w-0">
+                    <div className="flex-1 min-w-0 space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs font-bold text-on-surface truncate">{model.name}</span>
-                        <span className="text-[8.5px] uppercase font-mono bg-surface-container-high text-on-surface-variant border border-outline/60 px-1.5 py-0.2 rounded font-extrabold">
-                          {model.provider}
-                        </span>
-                        {model.isCcSwitch && (
-                          <span className="text-[8.5px] uppercase font-mono bg-sky-50 text-sky-800 border border-sky-200 px-1.5 py-0.2 rounded font-extrabold">
-                            CC Switch
-                          </span>
-                        )}
+                        <span className="text-xs font-bold text-on-surface">{model.name}</span>
+                        <span className="text-[10px] text-on-surface-variant">{model.provider}</span>
                         {isActive && (
-                          <span className="text-[8.5px] uppercase font-mono bg-primary/10 text-primary border border-primary/30 px-1.5 py-0.2 rounded font-extrabold">
-                            Active
+                          <span className="text-[9px] uppercase font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">
+                            In use
                           </span>
                         )}
-                        {statusBadge(verify)}
+                        {statusLabel && (
+                          <span
+                            className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded ${
+                              verify === 'ok'
+                                ? 'text-emerald-800 bg-emerald-50'
+                                : verify === 'failed'
+                                  ? 'text-rose-800 bg-rose-50'
+                                  : 'text-on-surface-variant bg-surface-container-high'
+                            }`}
+                          >
+                            {statusLabel}
+                          </span>
+                        )}
                       </div>
-                      <p className="text-[11.5px] text-on-surface-variant">{model.description}</p>
-                      {model.endpoint && (
-                        <p className="text-[10.5px] text-on-surface-variant font-mono truncate">Endpoint: {model.endpoint}</p>
-                      )}
+                      <p className="text-[11px] text-on-surface-variant">{model.sourceSummary}</p>
                       {model.credentialHint && (
-                        <p className="text-[10.5px] text-amber-800 bg-amber-50 border border-amber-100 rounded-md px-2 py-1">
+                        <p className="text-[10.5px] text-amber-900 bg-amber-50 border border-amber-100 rounded-md px-2 py-1">
                           {model.credentialHint}
                         </p>
                       )}
                       {verify === 'failed' && rowMessage && (
-                        <p className="text-[10.5px] text-rose-700">{rowMessage}</p>
+                        <p className="text-[10.5px] text-rose-800">{rowMessage}</p>
                       )}
-                    </div>
-                    <div className="flex items-center gap-2 justify-end flex-shrink-0 flex-wrap">
-                      <button
-                        type="button"
-                        disabled={loading || verify === 'testing'}
-                        onClick={() => void handleTestConnection(model.id)}
-                        className="bg-surface-container hover:bg-surface-container-high border border-outline text-on-surface px-3 py-1.5 rounded-lg text-[10.5px] font-bold disabled:opacity-50"
-                      >
-                        {verify === 'testing' ? 'Testing…' : 'Retest'}
-                      </button>
-                      {isActive ? (
-                        <span className="material-symbols-outlined text-[20px] text-on-primary bg-primary p-1.5 rounded-full border border-outline/50">
-                          check
-                        </span>
-                      ) : (
+                      {model.clutchManaged && !showConnectForm && (
                         <button
                           type="button"
-                          disabled={loading || verify === 'failed'}
-                          onClick={() => void handleActivate(model.id)}
-                          className="bg-surface-container hover:bg-primary hover:text-on-primary border border-outline text-on-surface px-3 py-1.5 rounded-lg text-[10.5px] font-bold disabled:opacity-50"
-                          title={verify === 'failed' ? 'Fix credentials before activating' : undefined}
+                          onClick={() => openConnectForm(model.providerId)}
+                          className="text-[10px] font-bold text-primary hover:underline"
                         >
-                          Activate
+                          Change {model.provider} key
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <button
+                        type="button"
+                        disabled={verify === 'testing'}
+                        onClick={() => void handleTestConnection(model.id)}
+                        className="px-3 py-1.5 text-[10.5px] font-bold border border-outline rounded-lg hover:bg-surface-container-high disabled:opacity-50"
+                      >
+                        {verify === 'testing' ? 'Testing…' : verify === 'idle' ? 'Test' : 'Retest'}
+                      </button>
+                      {!isActive && (
+                        <button
+                          type="button"
+                          disabled={activatingModelId === model.id}
+                          onClick={() => void handleActivate(model.id)}
+                          className="px-3 py-1.5 text-[10.5px] font-bold bg-primary text-on-primary rounded-lg disabled:opacity-50"
+                        >
+                          {activatingModelId === model.id ? 'Switching…' : 'Use this model'}
                         </button>
                       )}
                     </div>
@@ -527,37 +497,32 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
               })}
             </div>
           )}
-        </div>
-      </div>
 
-      <div className="h-10 bg-surface-container border-t border-outline flex items-center justify-between px-6 text-[10px] text-on-surface-variant">
-        <div className="flex items-center gap-1 font-mono font-bold uppercase tracking-wide">
-          <span>Active model:</span>
-          <span className="text-on-surface font-extrabold">{selectedModel || '—'}</span>
-        </div>
-        <div className="flex items-center gap-3">
-          {activeModelId && activeAvailable && (
-            <button
-              type="button"
-              disabled={activeVerify === 'testing'}
-              onClick={() => void handleTestConnection(activeModelId)}
-              className="text-[9.5px] font-bold text-on-surface-variant hover:text-on-surface disabled:opacity-50"
-            >
-              Retest active
-            </button>
-          )}
-          <span
-            className={`font-mono text-[9.5px] ${
-              activeVerify === 'ok'
-                ? 'text-emerald-700'
-                : activeVerify === 'failed'
-                  ? 'text-rose-700'
-                  : ''
-            }`}
-          >
-            {footerStatus}
-          </span>
-        </div>
+          <div className="pt-2 text-center space-y-2">
+            <p className="text-[11px] text-on-surface-variant">
+              Already use CC Switch?{' '}
+              <button
+                type="button"
+                disabled={syncingCcSwitch}
+                onClick={() => void handleRehydrateCcSwitch()}
+                className="font-bold text-primary hover:underline disabled:opacity-50"
+              >
+                {syncingCcSwitch ? 'Importing…' : 'Import models'}
+              </button>
+            </p>
+            {ccSwitchSyncMessage && (
+              <p
+                className={`text-[11px] rounded-lg px-3 py-2 border inline-block ${
+                  ccSwitchSyncMessage.tone === 'success'
+                    ? 'text-emerald-700 bg-emerald-50 border-emerald-100'
+                    : 'text-rose-700 bg-rose-50 border-rose-100'
+                }`}
+              >
+                {ccSwitchSyncMessage.text}
+              </p>
+            )}
+          </div>
+        </section>
       </div>
     </div>
   );

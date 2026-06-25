@@ -125,13 +125,30 @@ def cc_switch_has_key_for_provider(provider_id: ProviderId) -> bool:
     return False
 
 
+def model_source_summary(cred: dict[str, Any], *, is_cc_switch: bool) -> str:
+    """Short label for UI — no file paths or env var names."""
+    if is_cc_switch:
+        return "Imported from CC Switch"
+    source = cred.get("source")
+    summaries = {
+        "clutch_models_config": "API key saved in Clutch",
+        "clutch_env": "Environment variable",
+        "cc_switch_settings": "CC Switch",
+        "claude_code_settings": "Claude Code",
+        "ollama_local": "Local Ollama",
+        "anthropic_env": "ANTHROPIC_API_KEY",
+        "anthropic_auth_token_env": "ANTHROPIC_AUTH_TOKEN",
+    }
+    return summaries.get(str(source), "Credentials configured")
+
+
 def resolve_model_credential_hint(router: LLMProviderRouter, spec: ModelSpec) -> str | None:
     """Explain likely credential mismatch when a key works elsewhere but not in Clutch."""
     cred = resolve_provider_credential_source(router, spec.provider_id)
     hints: list[str] = []
     if cred["source"] == "clutch_models_config" and cc_switch_has_key_for_provider(spec.provider_id):
         hints.append(
-            "Clutch models.json overrides CC Switch — remove the Clutch key to fall back to CC Switch."
+            "A Clutch-saved key overrides CC Switch — remove it to use CC Switch instead."
         )
     if spec.base_url:
         host = urlparse(spec.base_url).netloc
@@ -145,10 +162,10 @@ def resolve_model_credential_hint(router: LLMProviderRouter, spec: ModelSpec) ->
         }
         if host and host not in official_hosts:
             hints.append(
-                f"Gateway {host} needs its own API key (not the official {spec.provider_id} key)."
+                f"This gateway ({host}) needs its own API key — not the official {spec.provider_id} key."
             )
     if spec.provider_id == "openai" and spec.base_url and "agnes-ai.com" in spec.base_url:
-        hints.append("Agnes models share the OpenAI provider slot — save the Agnes token under OpenAI.")
+        hints.append("Save your Agnes token under the OpenAI provider.")
     return " ".join(hints) if hints else None
 
 

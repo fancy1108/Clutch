@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -101,7 +102,7 @@ def test_model_test_endpoint_failure(models_config: Path) -> None:
     get_router()._chat = boom  # type: ignore[method-assign]
     result = client.post("/api/models/test", json={"model_id": "deepseek-v4pro"}).json()
     assert result["ok"] is False
-    assert "401" in result["message"]
+    assert "rejected" in result["message"].lower()
 
 
 def test_delete_provider_credential(models_config: Path) -> None:
@@ -110,6 +111,7 @@ def test_delete_provider_credential(models_config: Path) -> None:
     listed = client.get("/api/models/config").json()
     deepseek = next(m for m in listed["models"] if m["id"] == "deepseek-v4pro")
     assert deepseek["clutch_managed"] is True
+    assert deepseek.get("source_summary") == "API key saved in Clutch"
 
     removed = client.delete("/api/models/credentials/deepseek")
     assert removed.status_code == 200
@@ -127,3 +129,68 @@ def test_delete_rejects_external_only_credential(models_config: Path) -> None:
     get_router().set_api_key("anthropic", "sk-ant-external")
     response = client.delete("/api/models/credentials/anthropic")
     assert response.status_code == 400
+
+
+def test_rehydrate_cc_switch_missing_db(models_config: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("src.models_config.Path.home", lambda: models_config.parent)
+    client = TestClient(app)
+    response = client.post("/api/models/rehydrate-cc-switch")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["ok"] is False
+    assert body["cc_switch_found"] is False
+    assert "not found" in body["message"].lower()
+
+
+def test_rehydrate_cc_switch_imports_models(
+    models_config: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import sqlite3
+
+    from src.models_config import get_router
+
+    cc_dir = tmp_path / ".cc-switch"
+    cc_dir.mkdir()
+    db_file = cc_dir / "cc-switch.db"
+    conn = sqlite3.connect(str(db_file))
+    conn.execute(
+        "CREATE TABLE providers (id TEXT, name TEXT, app_type TEXT, settings_config TEXT)"
+    )
+    conn.execute(
+        "INSERT INTO providers VALUES (?, ?, ?, ?)",
+        (
+            "test-pro",
+            "Test Pro",
+            "claude",
+            json.dumps(
+                {
+                    "env": {
+                        "ANTHROPIC_AUTH_TOKEN": "sk-cc-test",
+                        "ANTHROPIC_BASE_URL": "https://example.com",
+                        "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-test",
+                    }
+                }
+            ),
+        ),
+    )
+    conn.commit()
+    conn.close()
+
+    monkeypatch.setattr("src.credentials.claude_code._CC_SWITCH_DIR", cc_dir)
+    monkeypatch.setattr("src.models_config.Path.home", lambda: tmp_path)
+
+    client = TestClient(app)
+    response = client.post("/api/models/rehydrate-cc-switch")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["ok"] is True
+    assert body["models_imported"] == 1
+    assert "Imported 1 model" in body["message"]
+
+    listed = client.get("/api/models/config").json()
+    imported = next(m for m in listed["models"] if m["id"] == "cc-switch-test-pro")
+    assert imported["is_cc_switch"] is True
+    assert imported["available"] is True
+    assert get_router().get_api_key("anthropic") == "sk-cc-test"

@@ -7,6 +7,7 @@ export interface ModelEntry {
   available: boolean;
   credential_source?: string | null;
   credential_source_label?: string | null;
+  source_summary?: string | null;
   credential_hint?: string | null;
   endpoint?: string | null;
   clutch_managed?: boolean;
@@ -65,9 +66,21 @@ export async function deleteProviderCredential(providerId: string): Promise<void
   }
 }
 
-export async function rehydrateCcSwitchModels(): Promise<void> {
+export interface CcSwitchRehydrateResult {
+  ok: boolean;
+  message: string;
+  cc_switch_found: boolean;
+  models_imported: number;
+  model_names?: string[];
+}
+
+export async function rehydrateCcSwitchModels(): Promise<CcSwitchRehydrateResult> {
   const response = await fetch(`${BASE}/api/models/rehydrate-cc-switch`, { method: 'POST' });
-  if (!response.ok) throw new Error(`cc-switch rehydrate failed (${response.status})`);
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as { detail?: { message?: string } };
+    throw new Error(body.detail?.message ?? `cc-switch rehydrate failed (${response.status})`);
+  }
+  return response.json() as Promise<CcSwitchRehydrateResult>;
 }
 
 export async function testModelConnection(modelId: string): Promise<ModelTestResult> {
@@ -89,6 +102,78 @@ export const PROVIDER_LABELS: Record<string, string> = {
   custom: 'Custom',
 };
 
+const VERIFY_CACHE_KEY = 'clutch.model-verify-cache';
+
+export type ModelVerifyState = 'ok' | 'failed';
+
+interface ModelVerifyCacheEntry {
+  state: ModelVerifyState;
+  message: string;
+  testedAt: string;
+}
+
+type ModelVerifyCache = Record<string, ModelVerifyCacheEntry>;
+
+function readVerifyCache(): ModelVerifyCache {
+  try {
+    const raw = localStorage.getItem(VERIFY_CACHE_KEY);
+    if (!raw) return {};
+    return JSON.parse(raw) as ModelVerifyCache;
+  } catch {
+    return {};
+  }
+}
+
+function writeVerifyCache(cache: ModelVerifyCache): void {
+  localStorage.setItem(VERIFY_CACHE_KEY, JSON.stringify(cache));
+}
+
+export function loadModelVerifyState(): {
+  verifyByModel: Record<string, ModelVerifyState>;
+  verifyMessageByModel: Record<string, string>;
+} {
+  const verifyByModel: Record<string, ModelVerifyState> = {};
+  const verifyMessageByModel: Record<string, string> = {};
+  for (const [modelId, entry] of Object.entries(readVerifyCache())) {
+    verifyByModel[modelId] = entry.state;
+    verifyMessageByModel[modelId] = entry.message;
+  }
+  return { verifyByModel, verifyMessageByModel };
+}
+
+export function saveModelVerifyResult(modelId: string, ok: boolean, message: string): void {
+  const cache = readVerifyCache();
+  cache[modelId] = {
+    state: ok ? 'ok' : 'failed',
+    message,
+    testedAt: new Date().toISOString(),
+  };
+  writeVerifyCache(cache);
+}
+
+export function removeModelVerifyResults(modelIds: Iterable<string>): void {
+  const remove = new Set(modelIds);
+  if (remove.size === 0) return;
+  const cache = readVerifyCache();
+  let changed = false;
+  for (const modelId of remove) {
+    if (modelId in cache) {
+      delete cache[modelId];
+      changed = true;
+    }
+  }
+  if (changed) writeVerifyCache(cache);
+}
+
+export function pruneModelVerifyCache(validModelIds: Iterable<string>): void {
+  const valid = new Set(validModelIds);
+  const cache = readVerifyCache();
+  const pruned = Object.fromEntries(Object.entries(cache).filter(([modelId]) => valid.has(modelId)));
+  if (Object.keys(pruned).length !== Object.keys(cache).length) {
+    writeVerifyCache(pruned);
+  }
+}
+
 export function mapModelConfigToUi(config: ModelConfig) {
   const available = config.models.filter((m) => m.available);
   return {
@@ -101,9 +186,7 @@ export function mapModelConfigToUi(config: ModelConfig) {
       providerId: m.provider_id,
       contextWindow: '—',
       temperature: 0.3,
-      description: m.credential_source_label
-        ? `Credential source: ${m.credential_source_label}`
-        : 'Credential source unknown.',
+      sourceSummary: m.source_summary ?? 'Credentials configured',
       credentialSourceLabel: m.credential_source_label ?? null,
       credentialHint: m.credential_hint ?? null,
       endpoint: m.endpoint ?? null,
