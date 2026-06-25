@@ -11,6 +11,7 @@ def isolate_orchestrator_globals(tmp_path, monkeypatch: pytest.MonkeyPatch) -> N
     from src.workspace import clear_workspace_for_tests
 
     monkeypatch.setenv("CLUTCH_RUN_HISTORY_DIR", str(tmp_path))
+    monkeypatch.setenv("CLUTCH_STORAGE_DIR", str(tmp_path))
     clear_workspace_for_tests()
     _run_states.clear()
     _run_sessions.clear()

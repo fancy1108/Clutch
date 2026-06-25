@@ -40,7 +40,7 @@ def test_ws_state_patch_on_message(monkeypatch) -> None:
     with client.websocket_connect("/ws/runs/run_m0_ping") as ws:
         ws.receive_json()  # initial state_patch
         ws.send_json({"text": "Hello sidecar!"})
-        events = [ws.receive_json() for _ in range(5)]
+        events = [ws.receive_json() for _ in range(7)]
         patch_events = [e for e in events if e["event"] == "state_patch"]
         assert len(patch_events) == 2
         

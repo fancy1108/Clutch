@@ -502,21 +502,28 @@ def _history_for_llm(messages: list[dict[str, object]]) -> list[dict[str, str]]:
     return history
 
 
-async def _llm_chat_reply(state: ClutchState, text: str) -> tuple[str, str]:
-    from src.models_config import get_router
+async def _llm_chat_reply(state: ClutchState, text: str) -> tuple[str, str, list[str]]:
+    from src.engine_router import route_engine
+    from src.workspace import get_workspace
 
-    router = get_router()
-    model = router.get_active_model()
+    agent_name = state.get("active_agent") or "Builder"
     history = _history_for_llm(state["messages"])
     history.append({"role": "user", "content": text})
+
+    workspace = get_workspace()
+    cwd = workspace.get("workspace_path") if workspace else None
+
     try:
-        reply_text = await asyncio.to_thread(router.chat, history)
-    except RuntimeError as exc:
-        reply_text = (
-            f"Cannot reach the configured model ({model.name}). "
-            f"Add an API key in Settings → Models. ({exc})"
+        result = await asyncio.to_thread(
+            route_engine,
+            agent_name=agent_name,
+            prompt=text,
+            cwd=cwd,
+            history=history,
         )
-    return model.name, reply_text
+        return result.engine, result.output, result.logs
+    except Exception as exc:
+        return "System Error", str(exc), [f"Error routing plain chat request: {exc}"]
 
 
 async def _handle_plain_chat(
@@ -537,12 +544,16 @@ async def _handle_plain_chat(
     await _send_message_event(websocket, run_id, user_message, "")
     await _notify_run_state(websocket, run_id, state, user_patch)
 
-    model_name, reply_text = await _llm_chat_reply(state, text)
+    model_name, reply_text, route_logs = await _llm_chat_reply(state, text)
     reply = _chat_message(model_name, reply_text)
     log_line = f"[CHAT] {model_name}: {len(reply_text)} chars"
 
+    for log in route_logs:
+        await _send_log_event(websocket, run_id, log, node_id="")
+    await _send_log_event(websocket, run_id, log_line, node_id="")
+
     final_messages = list(state["messages"]) + [reply]
-    final_logs = list(state["terminal_logs"]) + [log_line]
+    final_logs = list(state["terminal_logs"]) + route_logs + [log_line]
     final_patch = {
         "messages": final_messages,
         "terminal_logs": final_logs,
@@ -553,7 +564,6 @@ async def _handle_plain_chat(
     _commit_run_state(run_id, state)
     _touch_session(run_id, title=text.strip()[:80] or "New session", status=state["status"])
 
-    await _send_log_event(websocket, run_id, log_line, node_id="")
     await _send_message_event(websocket, run_id, reply, "")
     await _notify_run_state(websocket, run_id, state, final_patch)
     return state

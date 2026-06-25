@@ -1,5 +1,5 @@
 import React, { Dispatch, SetStateAction } from 'react';
-import { MainView } from '../types';
+import { Agent, MainView } from '../types';
 import { AgentManager } from './AgentManager';
 import { WorkflowOrchestration } from './WorkflowOrchestration';
 import AiToolsManager from './AiToolsManager';
@@ -33,6 +33,8 @@ interface SystemPreferencesModalProps {
   workspaceLabel?: string | null;
   sessionActive?: boolean;
   onUseWorkflowInChat?: (workflowId: string, workflowName: string) => void;
+  activeAgentId?: string | null;
+  onActivateAgent?: (agent: Agent) => void;
 }
 
 export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
@@ -50,6 +52,8 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
   workspaceLabel,
   sessionActive = false,
   onUseWorkflowInChat,
+  activeAgentId = null,
+  onActivateAgent,
 }) => {
   const { t } = useLanguage();
 
@@ -211,7 +215,11 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
           {/* Modal Right Detail Panel */}
           <div className="flex-1 overflow-hidden flex flex-col bg-surface-bright text-on-surface">
             {currentView === 'agents' ? (
-              <AgentManager isModalStyle={true} />
+              <AgentManager
+                isModalStyle={true}
+                activeAgentId={activeAgentId}
+                onActivateAgent={onActivateAgent}
+              />
             ) : currentView === 'workflows' ? (
               <WorkflowOrchestration
                 isModalStyle={true}

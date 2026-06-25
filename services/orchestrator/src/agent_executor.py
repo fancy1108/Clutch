@@ -37,22 +37,30 @@ def execute_agent_task(node_data: dict[str, Any], *, instruction: str = "") -> A
         )
 
     if tool in {"claude-cli", "llm", "cursor", ""}:
-        from src.models_config import get_router
+        from src.engine_router import route_engine
+        from src.workspace import get_workspace
 
-        router = get_router()
-        model = router.get_active_model()
+        workspace = get_workspace()
+        cwd = workspace.get("workspace_path") if workspace else None
+
         prompt = (
             f"You are the {agent} agent in a supervised software workflow.\n\n"
             f"Task:\n{task_instruction}\n\n"
             "Respond concisely with what you would do, files touched, and next steps."
         )
         try:
-            output = router.chat([{"role": "user", "content": prompt}])
-            logs.append(f"[{agent.upper()}] Completed via {model.name}")
-        except RuntimeError as exc:
+            result = route_engine(
+                agent_name=agent,
+                prompt=prompt,
+                cwd=cwd,
+                fallback_tool=tool,
+            )
+            output = result.output
+            for log_line in result.logs:
+                logs.append(f"[{agent.upper()}] {log_line}")
+        except Exception as exc:
             output = (
-                f"Could not run task with {model.name}. "
-                f"Configure an API key in Settings → Models. ({exc})"
+                f"Could not run task with {agent}. ({exc})"
             )
             logs.append(f"[{agent.upper()}] ERROR: {exc}")
     else:

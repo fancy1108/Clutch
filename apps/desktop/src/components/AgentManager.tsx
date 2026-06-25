@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { Deliverable, Agent } from '../types';
 import { fetchAgents, saveAgents } from '../services/agentApi';
 import { fetchSkillsRegistry, type ScannedSkill } from '../services/skillsApi';
+import { getAgentDisplayName, isBuiltinAgent, mergeAgentsWithBuiltin } from '../services/builtinAgent';
+import { useLanguage } from './LanguageContext';
 
 export function AgentLogo({ name, description, className = "w-10 h-10" }: { name: string; description: string; className?: string }) {
   // Let's create a deterministic hash from name
@@ -79,9 +81,17 @@ export function AgentLogo({ name, description, className = "w-10 h-10" }: { name
 interface AgentManagerProps {
   selectedSidebarWidth?: number;
   isModalStyle?: boolean;
+  activeAgentId?: string | null;
+  onActivateAgent?: (agent: Agent) => void;
 }
 
-export function AgentManager({ selectedSidebarWidth, isModalStyle }: AgentManagerProps) {
+export function AgentManager({
+  selectedSidebarWidth,
+  isModalStyle,
+  activeAgentId = null,
+  onActivateAgent,
+}: AgentManagerProps) {
+  const { t } = useLanguage();
   const [agents, setAgents] = useState<Agent[]>([]);
 
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
@@ -135,8 +145,9 @@ export function AgentManager({ selectedSidebarWidth, isModalStyle }: AgentManage
   }, []);
 
   const persistAgents = (next: Agent[]) => {
-    setAgents(next);
-    void saveAgents(next).catch(() => {});
+    const persisted = next.filter((agent) => !isBuiltinAgent(agent));
+    setAgents(mergeAgentsWithBuiltin(persisted));
+    void saveAgents(persisted).catch(() => {});
   };
 
   const handleOpenCreate = () => {
@@ -159,6 +170,7 @@ export function AgentManager({ selectedSidebarWidth, isModalStyle }: AgentManage
 
   const handleOpenEdit = (agent: Agent, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
+    if (isBuiltinAgent(agent)) return;
     setModalMode('edit');
     setEditingId(agent.id);
     setName(agent.name);
@@ -176,6 +188,7 @@ export function AgentManager({ selectedSidebarWidth, isModalStyle }: AgentManage
 
   const handleDelete = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    if (isBuiltinAgent({ id })) return;
     if (window.confirm('Are you sure you want to delete this AI Agent?')) {
       const updated = agents.filter(a => a.id !== id);
       persistAgents(updated);
@@ -338,11 +351,13 @@ export function AgentManager({ selectedSidebarWidth, isModalStyle }: AgentManage
               <div className="flex items-center gap-1.5 text-[11px] font-semibold text-neutral-400 font-mono uppercase tracking-wider">
                 <span>AI AGENTS</span>
                 <span>/</span>
-                <span className="text-neutral-800">{selectedAgent.name.split(' (')[0]}</span>
+                <span className="text-neutral-800">{getAgentDisplayName(selectedAgent)}</span>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
+              {!isBuiltinAgent(selectedAgent) ? (
+                <>
               <button
                 onClick={(e) => handleOpenEdit(selectedAgent, e)}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg text-[11.5px] font-semibold transition-colors border border-neutral-200 bg-white"
@@ -357,6 +372,8 @@ export function AgentManager({ selectedSidebarWidth, isModalStyle }: AgentManage
                 <span className="material-symbols-outlined text-[15px]">delete</span>
                 Delete
               </button>
+                </>
+              ) : null}
             </div>
           </div>
 
@@ -523,8 +540,15 @@ export function AgentManager({ selectedSidebarWidth, isModalStyle }: AgentManage
             {agents.map((agent) => (
               <div
                 key={agent.id}
-                onClick={() => setSelectedAgent(agent)}
-                className="p-5 border border-neutral-200/45 hover:border-neutral-300/80 bg-white rounded-xl shadow-xs hover:shadow-sm cursor-pointer transition-all duration-200 relative group flex flex-col justify-between min-h-[148px]"
+                onClick={() => {
+                  onActivateAgent?.(agent);
+                  setSelectedAgent(agent);
+                }}
+                className={`p-5 border hover:border-neutral-300/80 bg-white rounded-xl shadow-xs hover:shadow-sm cursor-pointer transition-all duration-200 relative group flex flex-col justify-between min-h-[148px] ${
+                  agent.id === activeAgentId
+                    ? 'border-primary ring-1 ring-primary/25'
+                    : 'border-neutral-200/45'
+                }`}
               >
                 <div>
                   <div className="flex items-start justify-between">
@@ -532,8 +556,13 @@ export function AgentManager({ selectedSidebarWidth, isModalStyle }: AgentManage
                       <AgentLogo name={agent.name} description={agent.description} className="w-10 h-10 text-[10px]" />
                       <div>
                         <h3 className="text-xs font-bold text-neutral-900 font-mono tracking-tight text-left">
-                          {agent.name}
+                          {getAgentDisplayName(agent)}
                         </h3>
+                        {isBuiltinAgent(agent) ? (
+                          <span className="text-[8px] font-mono uppercase text-teal-700 bg-teal-50 px-1 rounded mt-1 inline-block">
+                            {t('builtin')}
+                          </span>
+                        ) : null}
                         <p className="text-[10px] text-neutral-400 font-mono font-medium mt-0.5">
                           Edited: {agent.lastModified}
                         </p>
@@ -591,6 +620,8 @@ export function AgentManager({ selectedSidebarWidth, isModalStyle }: AgentManage
                   </div>
                   
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {!isBuiltinAgent(agent) ? (
+                      <>
                     <button
                       onClick={(e) => handleOpenEdit(agent, e)}
                       className="p-1 hover:bg-neutral-100 text-neutral-500 hover:text-neutral-800 rounded-md transition-colors"
@@ -605,6 +636,8 @@ export function AgentManager({ selectedSidebarWidth, isModalStyle }: AgentManage
                     >
                       <span className="material-symbols-outlined text-[16px]">delete</span>
                     </button>
+                      </>
+                    ) : null}
                   </div>
                 </div>
               </div>

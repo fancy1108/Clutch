@@ -30,7 +30,7 @@ def test_ws_plain_chat_without_workflow(monkeypatch) -> None:
     with client.websocket_connect("/ws/runs/run_msg_test") as ws:
         ws.receive_json()  # initial state_patch
         ws.send_json({"text": "你好 Clutch"})
-        events = _collect_after_send(ws, 5)
+        events = _collect_after_send(ws, 7)
 
     message_events = [e for e in events if e["event"] == "message"]
     assert len(message_events) == 2
@@ -50,12 +50,12 @@ def test_ws_log_event_on_plain_chat(monkeypatch) -> None:
     with client.websocket_connect("/ws/runs/run_log_test") as ws:
         ws.receive_json()
         ws.send_json({"text": "ping"})
-        events = _collect_after_send(ws, 5)
+        events = _collect_after_send(ws, 7)
 
     log_events = [e for e in events if e["event"] == "log"]
-    assert len(log_events) == 1
-    assert "[CHAT]" in log_events[0]["data"]["message"]
-    assert log_events[0]["data"]["source"] == "orchestrator"
+    assert len(log_events) == 3
+    assert "[CHAT]" in log_events[2]["data"]["message"]
+    assert log_events[2]["data"]["source"] == "orchestrator"
 
 
 def test_ws_workflow_chat_logs_when_running() -> None:

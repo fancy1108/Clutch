@@ -11,7 +11,13 @@ import { McpServerHub } from './components/McpServerHub';
 import { ModelsManager } from './components/ModelsManager';
 import { ThemeManager, THEME_PRESETS } from './components/ThemeManager';
 import { SystemPreferencesModal } from './components/SystemPreferencesModal';
-import { MainView, RightTab, ChatMessage, UncommittedFile, DiffLine } from './types';
+import { MainView, RightTab, ChatMessage, UncommittedFile, DiffLine, type Agent } from './types';
+import { fetchAgents } from './services/agentApi';
+import {
+  BUILTIN_AGENT_ID,
+  getAgentDisplayName,
+  mergeAgentsWithBuiltin,
+} from './services/builtinAgent';
 import { fetchThemePreference, saveThemePreference, type ThemePresetId } from './services/themeApi';
 import { LanguageProvider, useLanguage } from './components/LanguageContext';
 import { clutchStore, createSessionRunId, submitChatMessage, useClutchState } from './services/clutchState';
@@ -112,6 +118,10 @@ function MainLayout() {
   const [workspacePickError, setWorkspacePickError] = useState<string | null>(null);
   const [highRiskConfirmed, setHighRiskConfirmed] = useState(false);
   const [branchMenuOpen, setBranchMenuOpen] = useState(false);
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(
+    () => localStorage.getItem('clutch_active_agent_id') || BUILTIN_AGENT_ID,
+  );
+  const [configuredAgents, setConfiguredAgents] = useState<Agent[]>([]);
 
   const refreshWorkspaceFiles = async () => {
     try {
@@ -150,6 +160,61 @@ function MainLayout() {
       })
       .catch(() => {});
   }, []);
+
+  const refreshConfiguredAgents = async () => {
+    try {
+      setConfiguredAgents(await fetchAgents());
+    } catch {
+      setConfiguredAgents(mergeAgentsWithBuiltin([]));
+    }
+  };
+
+  const selectDefaultAgent = () => {
+    setSelectedAgentId(BUILTIN_AGENT_ID);
+    localStorage.setItem('clutch_active_agent_id', BUILTIN_AGENT_ID);
+  };
+
+  const clearWorkflowSelection = () => {
+    setSelectedWorkflowId(null);
+    setCurrentFlowName('');
+  };
+
+  useEffect(() => {
+    void refreshConfiguredAgents();
+  }, [currentView]);
+
+  useEffect(() => {
+    if (configuredAgents.length === 0) return;
+    const storedId = localStorage.getItem('clutch_active_agent_id');
+    const validStored = storedId && configuredAgents.some((agent) => agent.id === storedId);
+    if (validStored) {
+      setSelectedAgentId(storedId);
+      return;
+    }
+    selectDefaultAgent();
+  }, [configuredAgents]);
+
+  useEffect(() => {
+    if (!isMultiAgent) {
+      if (!selectedAgentId) selectDefaultAgent();
+      if (selectedWorkflowId) clearWorkflowSelection();
+      return;
+    }
+    const hasWorkflow = Boolean(selectedWorkflowId || clutchState.workflow_id);
+    if (!hasWorkflow && !selectedAgentId) selectDefaultAgent();
+  }, [isMultiAgent, selectedWorkflowId, selectedAgentId, clutchState.workflow_id]);
+
+  const handleActivateAgent = (agent: Agent) => {
+    setSelectedAgentId(agent.id);
+    localStorage.setItem('clutch_active_agent_id', agent.id);
+    if (isMultiAgent) clearWorkflowSelection();
+  };
+
+  const selectedAgent = configuredAgents.find((agent) => agent.id === selectedAgentId);
+  const selectedAgentName = getAgentDisplayName(selectedAgent);
+  const activeWorkflowLabel = clutchState.workflow_id || selectedWorkflowId || currentFlowName || '—';
+  const hasWorkflowSelection = activeWorkflowLabel !== '—';
+  const multiAgentFooterName = selectedAgentId ? selectedAgentName : '—';
 
   const refreshSessions = async () => {
     try {
@@ -394,11 +459,19 @@ function MainLayout() {
   const handleFlowSelect = (flow: string) => {
     setCurrentFlowName(flow);
     setSelectedWorkflowId(flow);
+    if (isMultiAgent) {
+      setSelectedAgentId(null);
+      localStorage.removeItem('clutch_active_agent_id');
+    }
   };
 
   const handleUseWorkflowInChat = (workflowId: string, workflowName: string) => {
     setSelectedWorkflowId(workflowId);
     setCurrentFlowName(workflowName);
+    if (isMultiAgent) {
+      setSelectedAgentId(null);
+      localStorage.removeItem('clutch_active_agent_id');
+    }
     setView('chat');
   };
 
@@ -419,6 +492,7 @@ function MainLayout() {
     setSessionRunId(runId);
     setCurrentFlowName('');
     setSelectedWorkflowId(null);
+    selectDefaultAgent();
     setView('chat');
     setRightTab('overview');
     void clutchStore.connect(runId);
@@ -437,6 +511,11 @@ function MainLayout() {
     setSessionRunId(session.run_id);
     setCurrentFlowName(session.workflow_id || '');
     setSelectedWorkflowId(session.workflow_id || null);
+    if (session.workflow_id) {
+      setSelectedAgentId(null);
+    } else {
+      selectDefaultAgent();
+    }
     setView('chat');
   };
 
@@ -520,6 +599,21 @@ function MainLayout() {
     if (!workspace) {
       setWorkspacePickError(t('Select a project before starting a conversation.'));
       return;
+    }
+    if (!isMultiAgent) {
+      if (!selectedAgentId) {
+        setWorkspacePickError(t('Select an AI Agent before sending.'));
+        setView('agents');
+        return;
+      }
+    } else {
+      const hasWorkflow = Boolean(
+        (selectedWorkflowId && !clutchState.workflow_id) || clutchState.workflow_id,
+      );
+      if (!hasWorkflow && !selectedAgentId) {
+        setWorkspacePickError(t('Select an AI Agent or a Workflow before sending.'));
+        return;
+      }
     }
     if (selectedWorkflowId && !clutchState.workflow_id) {
       try {
@@ -723,8 +817,8 @@ function MainLayout() {
                 selectedWorkflowId={selectedWorkflowId}
                 selectedWorkflowName={currentFlowName}
                 onClearSelectedWorkflow={() => {
-                  setSelectedWorkflowId(null);
-                  setCurrentFlowName('');
+                  clearWorkflowSelection();
+                  selectDefaultAgent();
                 }}
                 activeWorkflowId={clutchState.workflow_id}
                 llmModelName={selectedModel}
@@ -774,6 +868,8 @@ function MainLayout() {
           workspaceLabel={workspace?.name ?? workspace?.workspace_path?.split('/').pop() ?? null}
           sessionActive={clutchStatus !== 'idle' && clutchStatus !== 'failed'}
           onUseWorkflowInChat={handleUseWorkflowInChat}
+          activeAgentId={selectedAgentId}
+          onActivateAgent={handleActivateAgent}
         />
 
       </div>
@@ -834,16 +930,45 @@ function MainLayout() {
           </span>
 
           {isMultiAgent ? (
+            <>
+              <span
+                data-testid="footer-agent-trigger"
+                onClick={() => setView('agents')}
+                className={`flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-container-low transition-colors cursor-pointer font-medium ${
+                  selectedAgentId && !hasWorkflowSelection
+                    ? 'text-primary font-bold'
+                    : 'text-on-surface-variant'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[15px]">smart_toy</span>
+                {t('Active Agent')}: {multiAgentFooterName}
+                <span className="material-symbols-outlined text-[13px]">keyboard_arrow_down</span>
+              </span>
+              <span
+                data-testid="footer-workflow-trigger"
+                onClick={() => setView('workflows')}
+                className={`flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-container-low transition-colors cursor-pointer font-medium ${
+                  hasWorkflowSelection
+                    ? 'text-primary font-bold'
+                    : 'text-on-surface-variant'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[15px]">movie</span>
+                {t('Workflow')}: {activeWorkflowLabel}
+                <span className="material-symbols-outlined text-[13px]">keyboard_arrow_down</span>
+              </span>
+            </>
+          ) : (
             <span
-              data-testid="footer-workflow-trigger"
-              onClick={() => setView('workflows')}
+              data-testid="footer-agent-trigger"
+              onClick={() => setView('agents')}
               className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-container-low text-primary font-bold transition-colors cursor-pointer"
             >
-              <span className="material-symbols-outlined text-[15px] text-primary">movie</span>
-              {t("Workflow")}: {clutchState.workflow_id || selectedWorkflowId || currentFlowName || '—'} 
+              <span className="material-symbols-outlined text-[15px] text-primary">smart_toy</span>
+              {t("Active Agent")}: {selectedAgentName}
               <span className="material-symbols-outlined text-[13px]">keyboard_arrow_down</span>
             </span>
-          ) : null}
+          )}
         </div>
 
         <div className="font-semibold text-on-surface-variant/70 italic mr-2 select-text">

@@ -154,6 +154,9 @@ const zhTranslations: Record<string, string> = {
   "Add Agent Persona": "Add Agent Persona / 新增 Agent / 智能体",
   "Save Persona Settings": "Save Persona / 保存 Agent / 智能体设置",
   "Active Agent": "Active Agent / 活跃 Agent / 智能体",
+  "Select an AI Agent before sending.": "Select an AI Agent before sending. / 发送前请先选择 AI Agent。",
+  "Select an AI Agent or a Workflow before sending.": "Select an AI Agent or a Workflow before sending. / 发送前请选择 AI Agent 或 Workflow。",
+  "builtin": "builtin / 系统内置",
   "Edit Persona": "Edit Persona / 编辑 Agent / 智能体角色",
   "Delete Persona": "Delete Persona / 删除 Agent / 智能体角色",
 

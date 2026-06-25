@@ -30,6 +30,7 @@ export interface Agent {
   mcpTools?: string[];
   aiEngine?: string;
   skills?: string[];
+  builtin?: boolean;
 }
 
 export interface RepositoryItem {
