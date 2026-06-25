@@ -12,6 +12,16 @@ from langgraph.types import Command
 
 from src.agent_executor import execute_agent_task
 from src.orchestrator.routing import route_next
+from src.terminal_logs import TAG_CHECK, TAG_WORKFLOW, tagged
+
+
+def _stream_compiler_log(state: CompilerState, line: str, *, node_id: str | None = None) -> None:
+    run_id = str(state.get("run_id", "")).strip()
+    if not run_id:
+        return
+    from src.run_log_forwarder import get_forwarder
+
+    get_forwarder(run_id).emit(line, node_id=node_id or str(state.get("active_node_id", "")))
 
 
 class CompilerState(TypedDict):
@@ -47,7 +57,9 @@ class EdgeMeta:
 
 def _handle_start(state: CompilerState, _node: dict[str, Any]) -> CompilerState:
     task_logs = list(state.get("task_logs", []))
-    task_logs.append("[ORCHESTRATOR] Workflow graph entered")
+    line = tagged(TAG_WORKFLOW, "Workflow graph entered")
+    task_logs.append(line)
+    _stream_compiler_log(state, line, node_id="start")
     return {
         **state,
         "active_node_id": "start",
@@ -61,6 +73,8 @@ def _handle_agent_task(state: CompilerState, node: dict[str, Any]) -> CompilerSt
     result = execute_agent_task(
         node.get("data", {}),
         instruction=state.get("current_instruction", ""),
+        run_id=str(state.get("run_id", "")),
+        node_id=str(node.get("id", "")),
     )
     task_logs = list(state.get("task_logs", []))
     task_messages = list(state.get("task_messages", []))
@@ -80,19 +94,21 @@ def _handle_check(state: CompilerState, node: dict[str, Any]) -> CompilerState:
     preset = state.get("check_result") or ""
     if preset:
         result = preset
-        eval_logs: list[str] = [f"[EVALUATOR] Using preset result: {result}"]
+        eval_logs: list[str] = [tagged(TAG_CHECK, f"Using preset result: {result}")]
     else:
         from src.evaluator import evaluate_node_data
         from src.workspace import get_workspace
 
         if get_workspace() is None:
             result = "passed"
-            eval_logs = ["[EVALUATOR] No workspace — checks skipped (passed)"]
+            eval_logs = [tagged(TAG_CHECK, "No workspace — checks skipped (passed)")]
         else:
             result, eval_logs = evaluate_node_data(node.get("data", {}))
 
     task_logs = list(state.get("task_logs", []))
     task_logs.extend(eval_logs)
+    for line in eval_logs:
+        _stream_compiler_log(state, line, node_id=node["id"])
     task_messages = list(state.get("task_messages", []))
     if result == "failed":
         summary = "\n".join(eval_logs[-3:]) if eval_logs else "Checks failed."

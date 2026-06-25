@@ -23,6 +23,7 @@ from src.workspace import WorkspaceError
 from src.workflow_storage import resolve_workflow
 from src.workflow_validator import WorkflowValidationError, load_and_validate_workflow, validate_workflow
 from src.preferences_storage import tr
+from src.terminal_logs import TAG_HUMAN, TAG_WORKFLOW, tagged
 
 logger = logging.getLogger(__name__)
 
@@ -208,19 +209,27 @@ def _touch_session(
 
 
 def _run_workflow(run_id: str, workflow_id: str, instruction: str) -> ClutchState:
+    _setup_run_log_forwarder(run_id)
+    from src.run_log_forwarder import get_forwarder
+
     workflow, _source = resolve_workflow(workflow_id)
-    state = _get_or_create_run(run_id)
-    prepend_logs = [f"[ORCHESTRATOR] Starting workflow: {workflow['name']} ({workflow['id']})"]
+    _get_or_create_run(run_id)
+    get_forwarder(run_id).emit(
+        tagged(TAG_WORKFLOW, f"Starting workflow: {workflow['name']} ({workflow['id']})"),
+        node_id="start",
+    )
     session, graph_result = begin_workflow(workflow, run_id, instruction=instruction)
     _run_sessions[run_id] = session
+    _emit_workflow_graph_tail(run_id, graph_result)
     from src.workflow_projection import project_graph_to_clutch
 
+    state = _get_or_create_run(run_id)
     patch = project_graph_to_clutch(
         state,
         graph_result,
         workflow=workflow,
         instruction=instruction,
-        prepend_logs=prepend_logs,
+        include_logs=False,
     )
     state = _merge_patch(state, patch)
     _commit_run_state(run_id, state)
@@ -239,14 +248,16 @@ def _merge_graph_resume(
     *,
     base_messages: list[dict[str, Any]],
     base_logs: list[str],
+    include_logs: bool = True,
 ) -> dict[str, Any]:
     messages = list(base_messages)
     logs = list(base_logs)
     messages.extend(graph_result.get("task_messages", []))
-    logs.extend(graph_result.get("task_logs", []))
-    logs.append(f"[LANGGRAPH] Active node → {graph_result['active_node_id']}")
-    if graph_result["status"] == "awaiting_human":
-        logs.append("[SUPERVISOR] Human gate reached — awaiting decision.")
+    if include_logs:
+        logs.extend(graph_result.get("task_logs", []))
+        logs.append(tagged(TAG_WORKFLOW, f"Active node → {graph_result['active_node_id']}"))
+        if graph_result["status"] == "awaiting_human":
+            logs.append(tagged(TAG_HUMAN, "Human gate reached — awaiting decision."))
     return {
         "messages": messages,
         "terminal_logs": logs,
@@ -261,6 +272,10 @@ def _apply_human_decision(
     decision: str,
     instructions: str = "",
 ) -> tuple[ClutchState, dict[str, Any], dict[str, Any], str]:
+    _setup_run_log_forwarder(run_id)
+    from src.run_log_forwarder import get_forwarder
+
+    forwarder = get_forwarder(run_id)
     state = _get_or_create_run(run_id)
     if decision == "approve":
         supervisor_text = tr("Human approval: Approved, continuing workflow.", "人工审批：已通过，继续执行工作流。")
@@ -273,9 +288,11 @@ def _apply_human_decision(
         )
 
     supervisor_message = _chat_message("Supervisor", supervisor_text)
-    log_line = f"[SUPERVISOR] {supervisor_text}"
+    log_line = tagged(TAG_HUMAN, supervisor_text)
     messages = list(state["messages"]) + [supervisor_message]
-    logs = list(state["terminal_logs"]) + [log_line]
+    forwarder.emit(log_line, node_id=str(state.get("active_node_id", "")))
+    state = _get_or_create_run(run_id)
+    logs = list(state["terminal_logs"])
 
     session = _run_sessions.get(run_id)
     if session and state["status"] == "awaiting_human":
@@ -285,11 +302,13 @@ def _apply_human_decision(
             decision,
             instruction=instructions if decision == "retry" else "",
         )
+        _emit_workflow_graph_tail(run_id, graph_result)
         patch = _merge_graph_resume(
             state,
             graph_result,
             base_messages=messages,
             base_logs=logs,
+            include_logs=False,
         )
     elif decision == "reject":
         patch = {
@@ -355,6 +374,33 @@ def _merge_patch(state: ClutchState, patch: dict[str, Any]) -> ClutchState:
         if key in merged:
             merged[key] = value  # type: ignore[literal-required]
     return merged
+
+
+def _persist_run_log(run_id: str, line: str, node_id: str) -> None:
+    state = _get_or_create_run(run_id)
+    logs = list(state["terminal_logs"]) + [line]
+    patch: dict[str, Any] = {"terminal_logs": logs}
+    if node_id:
+        patch["active_node_id"] = node_id
+    _commit_run_state(run_id, _merge_patch(state, patch))
+
+
+def _setup_run_log_forwarder(run_id: str) -> None:
+    from src.run_log_forwarder import get_forwarder
+
+    get_forwarder(run_id).set_persist(
+        lambda line, node_id: _persist_run_log(run_id, line, node_id)
+    )
+
+
+def _emit_workflow_graph_tail(run_id: str, graph_result: dict[str, Any]) -> None:
+    from src.run_log_forwarder import get_forwarder
+
+    forwarder = get_forwarder(run_id)
+    node_id = str(graph_result.get("active_node_id", ""))
+    forwarder.emit(tagged(TAG_WORKFLOW, f"Active node → {node_id}"), node_id=node_id)
+    if graph_result.get("status") == "awaiting_human":
+        forwarder.emit(tagged(TAG_HUMAN, "Human gate reached — awaiting decision."), node_id=node_id)
 
 
 def _is_terminal_status(status: str) -> bool:
@@ -748,7 +794,7 @@ async def _handle_plain_chat_mcp_decision(
             "Supervisor",
             tr("MCP tool call rejected by supervisor.", "监督者已拒绝 MCP 工具调用。"),
         )
-        log_line = f"[SUPERVISOR] MCP tool {pending.func_name} rejected"
+        log_line = tagged(TAG_HUMAN, f"MCP tool {pending.func_name} rejected")
         final_patch: dict[str, Any] = {
             "messages": list(state["messages"]) + [supervisor],
             "terminal_logs": list(state["terminal_logs"]) + [log_line],
@@ -1044,12 +1090,14 @@ async def _handle_workflow_chat_message(
     logs.append(f"[USER] {text}")
 
     if state["status"] == "awaiting_human":
-        state, patch, supervisor_message, log_line = _apply_human_decision(
-            run_id, "retry", text
+        state, patch, supervisor_message, log_line = await asyncio.to_thread(
+            _apply_human_decision,
+            run_id,
+            "retry",
+            text,
         )
         await _send_message_event(websocket, run_id, user_message, state["active_node_id"])
         await _send_message_event(websocket, run_id, supervisor_message, state["active_node_id"])
-        await _send_log_event(websocket, run_id, log_line, node_id=state["active_node_id"])
         await _notify_run_state(websocket, run_id, state, patch)
         if state["status"] == "awaiting_human":
             await _send_validation_result(
@@ -1742,8 +1790,11 @@ async def save_language_preference(body: LanguagePreferenceRequest) -> dict[str,
 
 @app.post("/api/runs/{run_id}/human-decision")
 async def human_decision_http(run_id: str, body: HumanDecisionRequest) -> dict[str, Any]:
-    state, _patch, _message, _log = _apply_human_decision(
-        run_id, body.decision, body.instructions
+    state, _patch, _message, _log = await asyncio.to_thread(
+        _apply_human_decision,
+        run_id,
+        body.decision,
+        body.instructions,
     )
     return {"run_id": run_id, "status": state["status"], "active_node_id": state["active_node_id"]}
 
@@ -1771,7 +1822,7 @@ async def reassign_run(run_id: str, body: ReassignRequest) -> dict[str, str]:
         _commit_run_state(run_id, state)
     logs = list(state["terminal_logs"])
     logs.append(f"[USER] Re-assign to Builder: {body.instructions}")
-    logs.append("[BUILDER] Resuming repair task per supervisor directive.")
+    logs.append(tagged(TAG_WORKFLOW, "Resuming task per supervisor directive."))
     state = _merge_patch(state, {"terminal_logs": logs})
     _commit_run_state(run_id, state)
     return {"run_id": run_id, "status": state["status"]}
@@ -1781,7 +1832,7 @@ async def reassign_run(run_id: str, body: ReassignRequest) -> dict[str, str]:
 async def start_run(body: StartRunRequest) -> dict[str, Any]:
     try:
         run_id = f"run_{uuid.uuid4().hex[:8]}"
-        state = _run_workflow(run_id, body.workflow_id, body.instruction)
+        state = await asyncio.to_thread(_run_workflow, run_id, body.workflow_id, body.instruction)
     except WorkflowValidationError as exc:
         raise _validation_http_error(exc) from exc
 
@@ -1806,7 +1857,7 @@ async def start_run(body: StartRunRequest) -> dict[str, Any]:
 @app.post("/api/runs/{run_id}/start")
 async def start_run_on_session(run_id: str, body: StartRunRequest) -> dict[str, Any]:
     try:
-        state = _run_workflow(run_id, body.workflow_id, body.instruction)
+        state = await asyncio.to_thread(_run_workflow, run_id, body.workflow_id, body.instruction)
     except WorkflowValidationError as exc:
         raise _validation_http_error(exc) from exc
 
@@ -1855,7 +1906,7 @@ async def delete_run_endpoint(run_id: str) -> dict[str, str]:
 async def stop_run(run_id: str) -> dict[str, str]:
     state = _get_or_create_run(run_id)
     logs = list(state["terminal_logs"])
-    logs.append("[ORCHESTRATOR] Run stopped via HTTP.")
+    logs.append(tagged(TAG_WORKFLOW, "Run stopped via HTTP."))
     state = _merge_patch(state, {"status": "failed", "terminal_logs": logs})
     _commit_run_state(run_id, state)
     update_run_record(run_id, {"status": "failed", "ended_at": _iso_timestamp()})
@@ -1866,6 +1917,23 @@ async def stop_run(run_id: str) -> dict[str, str]:
 async def ws_run(websocket: WebSocket, run_id: str) -> None:
     await websocket.accept()
     state = _get_or_create_run(run_id)
+    _setup_run_log_forwarder(run_id)
+    from src.run_log_forwarder import get_forwarder
+
+    forwarder = get_forwarder(run_id)
+    loop = asyncio.get_running_loop()
+
+    async def ws_log_emit(line: str, node_id: str) -> None:
+        await _send_log_event(websocket, run_id, line, node_id=node_id)
+        current = _get_or_create_run(run_id)
+        await _notify_run_state(
+            websocket,
+            run_id,
+            current,
+            {"terminal_logs": list(current["terminal_logs"])},
+        )
+
+    forwarder.attach_ws(loop, ws_log_emit)
 
     logger.info(
         "WebSocket connected",
@@ -1939,12 +2007,14 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                     instructions = str(payload.get("instructions", ""))
                     node_id = state["active_node_id"]
 
-                    state, patch, supervisor_message, log_line = _apply_human_decision(
-                        run_id, decision, instructions
+                    state, patch, supervisor_message, log_line = await asyncio.to_thread(
+                        _apply_human_decision,
+                        run_id,
+                        decision,
+                        instructions,
                     )
 
                     await _send_message_event(websocket, run_id, supervisor_message, node_id)
-                    await _send_log_event(websocket, run_id, log_line, node_id=node_id)
                     await _notify_run_state(websocket, run_id, state, patch)
                     if state["status"] == "awaiting_human":
                         await _send_validation_result(
@@ -1962,7 +2032,7 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                         )
             elif isinstance(payload, dict) and payload.get("action") == "stop_run":
                 logs = list(state["terminal_logs"])
-                log_line = "[ORCHESTRATOR] Run stopped by supervisor."
+                log_line = tagged(TAG_WORKFLOW, "Run stopped by supervisor.")
                 logs.append(log_line)
                 patch = {"status": "failed", "terminal_logs": logs}
                 state = _merge_patch(state, patch)
@@ -1993,3 +2063,5 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                 "timestamp": _iso_timestamp(),
             },
         )
+    finally:
+        forwarder.detach_ws()

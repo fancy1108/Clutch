@@ -82,3 +82,54 @@ def test_gateway_anthropic_with_tools_uses_openai_transport() -> None:
     assert text == "ok"
     assert captured["url"].endswith("/chat/completions")
     assert captured["body"]["tools"][0]["type"] == "function"
+
+
+def test_openai_tool_roundtrip_normalizes_assistant_and_tool_messages() -> None:
+    captured: dict[str, Any] = {}
+
+    def fake_urlopen(req: urllib.request.Request, timeout: float = 0) -> MagicMock:
+        _ = timeout
+        captured["body"] = json.loads(req.data.decode())
+        mock_resp = MagicMock()
+        mock_resp.read.return_value = json.dumps(
+            {"choices": [{"message": {"content": "deleted"}}]}
+        ).encode()
+        mock_resp.__enter__.return_value = mock_resp
+        return mock_resp
+
+    messages = [
+        {"role": "user", "content": "delete test.txt"},
+        {
+            "role": "assistant",
+            "content": None,
+            "tool_calls": [
+                {
+                    "id": "call_1",
+                    "function": {
+                        "name": "local-fs__move_file",
+                        "arguments": {"source": "/test.txt", "destination": "/tmp/x"},
+                    },
+                }
+            ],
+        },
+        {"role": "tool", "tool_call_id": "call_1", "content": "ok"},
+    ]
+
+    with patch("urllib.request.urlopen", side_effect=fake_urlopen):
+        text = http_chat_complete(
+            provider_id="anthropic",
+            base_url="https://apihub.agnes-ai.com/v1",
+            api_model="agnes-2.0-flash",
+            api_key="sk-agnes",
+            messages=messages,
+            tools=[{"type": "function", "function": {"name": "x", "parameters": {}}}],
+        )
+    assert text == "deleted"
+    sent = captured["body"]["messages"]
+    assert sent[1]["content"] == ""
+    assert sent[1]["tool_calls"][0]["type"] == "function"
+    assert sent[1]["tool_calls"][0]["function"]["arguments"] == json.dumps(
+        {"source": "/test.txt", "destination": "/tmp/x"}
+    )
+    assert sent[2]["role"] == "tool"
+    assert sent[2]["content"] == "ok"

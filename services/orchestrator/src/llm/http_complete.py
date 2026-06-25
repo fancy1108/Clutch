@@ -43,6 +43,59 @@ def _post_json(
         raise RuntimeError(f"LLM API error {exc.code}: {detail}") from exc
 
 
+def _format_openai_messages(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Normalize chat history for OpenAI-compatible gateways (strict serde on many proxies)."""
+    formatted: list[dict[str, Any]] = []
+    for message in messages:
+        role = str(message.get("role", ""))
+        if role == "system":
+            content = message.get("content")
+            if content:
+                formatted.append({"role": "system", "content": str(content)})
+            continue
+        if role == "assistant":
+            out: dict[str, Any] = {
+                "role": "assistant",
+                "content": message.get("content") or "",
+            }
+            if message.get("tool_calls"):
+                tool_calls: list[dict[str, Any]] = []
+                for tool_call in message["tool_calls"]:
+                    func = tool_call.get("function") or {}
+                    args = func.get("arguments", "{}")
+                    if not isinstance(args, str):
+                        args = json.dumps(args)
+                    tool_calls.append(
+                        {
+                            "id": tool_call["id"],
+                            "type": tool_call.get("type") or "function",
+                            "function": {
+                                "name": func["name"],
+                                "arguments": args,
+                            },
+                        }
+                    )
+                out["tool_calls"] = tool_calls
+            formatted.append(out)
+            continue
+        if role == "tool":
+            formatted.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": message["tool_call_id"],
+                    "content": str(message.get("content") or ""),
+                }
+            )
+            continue
+        formatted.append(
+            {
+                "role": role,
+                "content": str(message.get("content") or ""),
+            }
+        )
+    return formatted
+
+
 def _openai_chat(
     *,
     base_url: str,
@@ -56,15 +109,7 @@ def _openai_chat(
     headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
     body: dict[str, Any] = {
         "model": api_model,
-        "messages": [
-            {
-                "role": m["role"],
-                "content": m.get("content"),
-                **({"tool_calls": m["tool_calls"]} if "tool_calls" in m else {}),
-                **({"tool_call_id": m["tool_call_id"]} if "tool_call_id" in m else {}),
-            }
-            for m in messages
-        ],
+        "messages": _format_openai_messages(messages),
         "max_tokens": _MAX_TOKENS,
     }
     if tools:
@@ -215,9 +260,9 @@ def http_chat_complete(
         resolved_base, resolved_model, resolved_key = resolve_anthropic_transport(
             base_url=base_url, api_model=api_model, api_key=api_key
         )
-        # Third-party gateways (e.g. apihub.agnes-ai.com) expose OpenAI-compatible
-        # /chat/completions; Anthropic-style tool schemas fail with 422 on those hosts.
-        if tools and not _anthropic_uses_messages_api(resolved_base):
+        # Third-party gateways (e.g. apihub.agnes-ai.com) speak OpenAI-compatible
+        # /chat/completions; native /messages + Anthropic tool schema breaks on those hosts.
+        if not _anthropic_uses_messages_api(resolved_base):
             return _openai_chat(
                 base_url=resolved_base,
                 api_model=resolved_model,

@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from src.chat_events import chat_message
+from src.terminal_logs import agent_line, resolve_agent_tag, with_agent_prefix
 
 
 
@@ -17,17 +18,42 @@ class AgentTaskResult:
     message: dict[str, Any]
 
 
-def execute_agent_task(node_data: dict[str, Any], *, instruction: str = "") -> AgentTaskResult:
-    agent = str(node_data.get("agent", "Builder"))
+def execute_agent_task(
+    node_data: dict[str, Any],
+    *,
+    instruction: str = "",
+    run_id: str = "",
+    node_id: str = "",
+) -> AgentTaskResult:
+    agent_ref = str(node_data.get("agent", "")).strip()
     task_instruction = instruction.strip() or str(node_data.get("instruction", "")).strip()
     tool = str(node_data.get("tool", "llm") or "llm")
     label = str(node_data.get("label", "")).strip()
+    agent = agent_ref or label or "Agent"
 
-    logs = [f"[{agent.upper()}] Starting: {label or task_instruction[:120] or 'agent task'}"]
+    def stream_log(line: str) -> None:
+        if not run_id:
+            return
+        from src.run_log_forwarder import get_forwarder
+
+        get_forwarder(run_id).emit(
+            with_agent_prefix(agent_ref, line, label=label),
+            node_id=node_id,
+        )
+
+    logs = [
+        agent_line(
+            agent_ref,
+            f"Starting: {label or task_instruction[:120] or 'agent task'}",
+            label=label,
+        )
+    ]
+    if run_id:
+        stream_log(logs[0])
 
     if not task_instruction:
         output = "No task instruction was provided for this agent step."
-        logs.append(f"[{agent.upper()}] Skipped — empty instruction")
+        logs.append(agent_line(agent_ref, "Skipped — empty instruction", label=label))
         return AgentTaskResult(
             agent=agent,
             output=output,
@@ -49,19 +75,20 @@ def execute_agent_task(node_data: dict[str, Any], *, instruction: str = "") -> A
         )
         try:
             result = route_engine(
-                agent_name=agent,
+                agent_name=agent_ref or agent,
                 prompt=prompt,
                 cwd=cwd,
                 fallback_tool=tool,
+                on_log=stream_log if run_id else None,
             )
             output = result.output
             for log_line in result.logs:
-                logs.append(f"[{agent.upper()}] {log_line}")
+                logs.append(with_agent_prefix(agent_ref, log_line, label=label))
         except Exception as exc:
             output = (
                 f"Could not run task with {agent}. ({exc})"
             )
-            logs.append(f"[{agent.upper()}] ERROR: {exc}")
+            logs.append(agent_line(agent_ref, f"ERROR: {exc}", label=label))
     else:
         from src.mcp_storage import load_servers
         from src.workspace import get_workspace
@@ -111,19 +138,22 @@ def execute_agent_task(node_data: dict[str, Any], *, instruction: str = "") -> A
                 outcome = run_mcp_react_loop(
                     messages=messages,
                     servers=[server_entry],
-                    log_prefix=agent.upper(),
+                    log_prefix=resolve_agent_tag(agent_ref, label=label),
+                    on_log=stream_log if run_id else None,
                 )
                 output = outcome.output
                 for log_line in outcome.logs:
-                    logs.append(log_line if log_line.startswith("[") else f"[{agent.upper()}] {log_line}")
+                    logs.append(with_agent_prefix(agent_ref, log_line, label=label))
             except Exception as exc:
                 output = f"Execution error: {exc}"
-                logs.append(f"[{agent.upper()}] ERROR: {exc}")
+                logs.append(agent_line(agent_ref, f"ERROR: {exc}", label=label))
         else:
             output = f"Tool {tool!r} is not wired yet for agent tasks."
-            logs.append(f"[{agent.upper()}] {output}")
+            logs.append(agent_line(agent_ref, output, label=label))
 
-    logs.append(f"[{agent.upper()}] Output: {len(output)} chars")
+    logs.append(agent_line(agent_ref, f"Output: {len(output)} chars", label=label))
+    if run_id:
+        stream_log(logs[-1])
     return AgentTaskResult(
         agent=agent,
         output=output,

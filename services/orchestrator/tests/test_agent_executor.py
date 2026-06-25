@@ -23,5 +23,5 @@ def test_execute_agent_task_uses_llm(monkeypatch) -> None:
     )
     assert result.agent == "Builder"
     assert "Done:" in result.output
-    assert any("BUILDER" in line for line in result.logs)
+    assert any("Starting:" in line for line in result.logs)
     assert result.message["agent"] == "Builder"

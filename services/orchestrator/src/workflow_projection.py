@@ -7,6 +7,7 @@ from typing import Any
 from src.chat_events import chat_message
 from src.compiler.compiler import CompilerState
 from src.state import ClutchState
+from src.terminal_logs import TAG_HUMAN, TAG_WORKFLOW, tagged
 
 
 def _estimate_tokens(text: str) -> int:
@@ -32,31 +33,43 @@ def project_graph_to_clutch(
     workflow: dict[str, Any],
     instruction: str,
     prepend_logs: list[str] | None = None,
+    include_logs: bool = True,
 ) -> dict[str, Any]:
     messages = list(state["messages"])
     logs = list(state["terminal_logs"])
-    if prepend_logs:
-        logs.extend(prepend_logs)
-
-    if instruction.strip():
-        messages.append(chat_message("User", instruction.strip()))
-
-    for message in graph_result.get("task_messages", []):
-        messages.append(message)
-
-    logs.extend(graph_result.get("task_logs", []))
-    logs.append(f"[LANGGRAPH] Active node → {graph_result['active_node_id']}")
-
-    if graph_result["status"] == "awaiting_human":
-        logs.append("[SUPERVISOR] Human gate reached — awaiting decision.")
-        messages.append(
-            chat_message(
-                "Evaluator",
-                "Validation checks did not pass. Review the terminal log, then approve, reject, or retry with instructions.",
-                status="FAILED",
-                badge_text="VALIDATION FAILED",
+    if include_logs:
+        if prepend_logs:
+            logs.extend(prepend_logs)
+        if instruction.strip():
+            messages.append(chat_message("User", instruction.strip()))
+        for message in graph_result.get("task_messages", []):
+            messages.append(message)
+        logs.extend(graph_result.get("task_logs", []))
+        logs.append(tagged(TAG_WORKFLOW, f"Active node → {graph_result['active_node_id']}"))
+        if graph_result["status"] == "awaiting_human":
+            logs.append(tagged(TAG_HUMAN, "Human gate reached — awaiting decision."))
+            messages.append(
+                chat_message(
+                    "Evaluator",
+                    "Validation checks did not pass. Review the terminal log, then approve, reject, or retry with instructions.",
+                    status="FAILED",
+                    badge_text="VALIDATION FAILED",
+                )
             )
-        )
+    else:
+        if instruction.strip():
+            messages.append(chat_message("User", instruction.strip()))
+        for message in graph_result.get("task_messages", []):
+            messages.append(message)
+        if graph_result["status"] == "awaiting_human":
+            messages.append(
+                chat_message(
+                    "Evaluator",
+                    "Validation checks did not pass. Review the terminal log, then approve, reject, or retry with instructions.",
+                    status="FAILED",
+                    badge_text="VALIDATION FAILED",
+                )
+            )
 
     assistant_text = " ".join(
         str(message.get("text", ""))

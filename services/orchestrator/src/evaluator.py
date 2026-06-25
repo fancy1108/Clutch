@@ -7,6 +7,7 @@ from typing import Any
 
 from src.adapters.cli_adapter import CliAdapterError, run_cli
 from src.preferences_storage import tr
+from src.terminal_logs import TAG_CHECK, tagged
 from src.workspace import WorkspaceError, resolve_allowed_path, require_workspace
 
 
@@ -20,9 +21,9 @@ def run_checks(checks: list[dict[str, Any]]) -> tuple[str, list[str]]:
             rel = str(check.get("path", ""))
             target = resolve_allowed_path(rel)
             if target.is_file():
-                logs.append(f"[EVALUATOR] check {index} file_exists OK: {rel}")
+                logs.append(tagged(TAG_CHECK, f"check {index} file_exists OK: {rel}"))
             else:
-                logs.append(f"[EVALUATOR] check {index} file_exists FAILED: {rel}")
+                logs.append(tagged(TAG_CHECK, f"check {index} file_exists FAILED: {rel}"))
                 return "failed", logs
         elif check_type in {"shell", "lint"}:
             command = check.get("command")
@@ -40,22 +41,22 @@ def run_checks(checks: list[dict[str, Any]]) -> tuple[str, list[str]]:
                     )
                     if proc.returncode != 0:
                         raise CliAdapterError(proc.stderr.strip() or proc.stdout.strip())
-                    logs.append(f"[EVALUATOR] check {index} shell OK")
+                    logs.append(tagged(TAG_CHECK, f"check {index} shell OK"))
                     if proc.stdout.strip():
                         logs.append(proc.stdout.strip())
                 elif isinstance(command, list):
                     result = run_cli([str(part) for part in command], cwd=root, timeout=20.0)
-                    logs.append(f"[EVALUATOR] check {index} shell OK: {' '.join(result.command)}")
+                    logs.append(tagged(TAG_CHECK, f"check {index} shell OK: {' '.join(result.command)}"))
                     if result.stdout.strip():
                         logs.append(result.stdout.strip())
                 else:
-                    logs.append(f"[EVALUATOR] check {index} invalid shell command")
+                    logs.append(tagged(TAG_CHECK, f"check {index} invalid shell command"))
                     return "failed", logs
             except (CliAdapterError, subprocess.TimeoutExpired, OSError) as exc:
-                logs.append(f"[EVALUATOR] check {index} shell FAILED: {exc}")
+                logs.append(tagged(TAG_CHECK, f"check {index} shell FAILED: {exc}"))
                 return "failed", logs
         else:
-            logs.append(f"[EVALUATOR] check {index} unsupported type: {check_type}")
+            logs.append(tagged(TAG_CHECK, f"check {index} unsupported type: {check_type}"))
             return "failed", logs
     return "passed", logs
 
@@ -63,5 +64,5 @@ def run_checks(checks: list[dict[str, Any]]) -> tuple[str, list[str]]:
 def evaluate_node_data(data: dict[str, Any]) -> tuple[str, list[str]]:
     checks = data.get("checks", [])
     if not isinstance(checks, list):
-        return "failed", [tr("[EVALUATOR] checks configuration is invalid", "[EVALUATOR] checks 配置无效")]
+        return "failed", [tr(tagged(TAG_CHECK, "checks configuration is invalid"), tagged(TAG_CHECK, "checks 配置无效"))]
     return run_checks(checks)
