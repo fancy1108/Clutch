@@ -21,6 +21,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: ./scripts/check-doc-drift.sh
       - run: pnpm build
+      - run: pnpm test
 
       - uses: astral-sh/setup-uv@v5
 

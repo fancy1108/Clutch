@@ -22,6 +22,20 @@ echo "# Clutch E2E sandbox — safe to delete" > "${SANDBOX}/README.md"
 mkdir -p "${SANDBOX}/.clutch-skills"
 printf '%s\n' '---' 'name: e2e-skill' '---' '# E2E skill fixture' > "${SANDBOX}/.clutch-skills/e2e-skill.md"
 
+# Git repo so footer branch menu and /api/workspace/git E2E reflect real branches.
+if command -v git >/dev/null 2>&1; then
+  if git -C "${SANDBOX}" init -b main >/dev/null 2>&1; then
+    :
+  else
+    git -C "${SANDBOX}" init >/dev/null 2>&1
+    git -C "${SANDBOX}" checkout -b main >/dev/null 2>&1 || true
+  fi
+  git -C "${SANDBOX}" config user.email "e2e@clutch.local"
+  git -C "${SANDBOX}" config user.name "Clutch E2E"
+  git -C "${SANDBOX}" add .
+  git -C "${SANDBOX}" -c commit.gpgsign=false commit -m "e2e sandbox seed" >/dev/null 2>&1 || true
+fi
+
 ENV_FILE="${1:-${root}/runs/verification/.e2e-env}"
 mkdir -p "$(dirname "${ENV_FILE}")"
 cat > "${ENV_FILE}" <<EOF

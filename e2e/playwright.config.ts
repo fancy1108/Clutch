@@ -9,7 +9,7 @@ export default defineConfig({
   projects: [
     {
       name: 'api',
-      testMatch: /tests\/(smoke|mvp-closed-loop|session-history|i18n)\.spec\.ts/,
+      testMatch: /tests\/(smoke|mvp-closed-loop|session-history|i18n|workspace-git)\.spec\.ts/,
       use: { baseURL: 'http://127.0.0.1:8123' },
     },
     {

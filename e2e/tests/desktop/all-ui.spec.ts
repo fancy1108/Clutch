@@ -81,8 +81,22 @@ test('desktop: full UI coverage with sandbox isolation', async ({ tauriPage: pag
   });
 
   await test.step('G-09 branch menu', async () => {
+    const gitInfo = (await page.evaluate(`
+      (async function() {
+        const res = await fetch('http://127.0.0.1:8123/api/workspace/git');
+        if (!res.ok) return { is_git_repo: false, branch: null, branches: [] };
+        return res.json();
+      })()
+    `)) as { is_git_repo: boolean; branch: string | null; branches: string[] };
+
     await page.click('[data-testid="footer-branch-trigger"]');
     await expect(page.locator('[data-testid="footer-branch-menu"]')).toBeVisible();
+
+    if (gitInfo.is_git_repo && gitInfo.branch) {
+      await expect(page.locator('[data-testid="footer-branch-trigger"]')).toContainText(gitInfo.branch);
+      await expect(page.locator(`[data-testid="footer-branch-item-${gitInfo.branch}"]`)).toBeVisible();
+    }
+
     await page.click('[data-testid="footer-branch-trigger"]');
   });
 

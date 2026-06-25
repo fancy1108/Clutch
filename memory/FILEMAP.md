@@ -67,6 +67,7 @@
 | E2E 会话预置（Node） | `e2e/helpers/seed.ts` |
 | E2E API：`session-history` | `e2e/tests/session-history.spec.ts` |
 | E2E API：i18n 偏好 | `e2e/tests/i18n.spec.ts` |
+| E2E API：workspace git | `e2e/tests/workspace-git.spec.ts` |
 | E2E Desktop fixture | `e2e/fixtures/desktop.ts`（`@srsholmes/tauri-playwright`） |
 | E2E Desktop 全 UI | `e2e/tests/desktop/all-ui.spec.ts` |
 | E2E Desktop 历史续聊 | `e2e/tests/desktop/session-history.spec.ts` |
