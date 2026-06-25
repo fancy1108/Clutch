@@ -27,6 +27,32 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ## 已交付（代码 Task · 自 Git 回填）
 
+### MCP-AND-I18N-COMPLETION ✅
+- **日期：** 2026-06-25
+- **Commit：** `0b90000` — `feat(mcp,i18n): implement full stdio MCP client, raw JSON editor, claude scanner import and fix dynamic backend/frontend English translations`
+- **Verification：** `./scripts/verify.sh` → 128 pytest + vitest + check-doc-drift passed
+- **证据：** `runs/verification/2026-06-25-mcp-i18n-verify.log`
+- **交付文件：**
+  - `services/orchestrator/src/mcp_client.py` — Synchronous stdio JSON-RPC 2.0 client for MCP server handshakes and tool executions.
+  - `services/orchestrator/tests/test_mcp_client.py` — Lifecycle tests for MCP subprocess clients.
+  - `services/orchestrator/tests/test_mcp_api_extensions.py` — Integration tests for raw JSON edits and Claude imports.
+  - `services/orchestrator/src/preferences_storage.py` — Implement thread-safe dynamic translation helper `tr(en, zh)`.
+  - `services/orchestrator/src/main.py` — Integrate `tr()` in HTTP exception responses, websocket status logs, and evaluator gate alerts.
+  - `services/orchestrator/src/workspace.py` — Wrap all folder/file path access failures in `tr()`.
+  - `services/orchestrator/src/mcp_storage.py` — Dynamic translation for MCP registrations.
+  - `services/orchestrator/src/workflow_storage.py` — Dynamic translation for workflow loader and save logic.
+  - `services/orchestrator/src/workflow_validator.py` — i18n support for graph schema validators.
+  - `services/orchestrator/src/evaluator.py` — Localize evaluator checks error outputs.
+  - `services/orchestrator/src/adapters/cursor_adapter.py` — Translate macOS specific command exceptions.
+  - `services/orchestrator/src/adapters/cli_adapter.py` — Translate empty CLI validations.
+  - `apps/desktop/src/components/LanguageContext.tsx` — Export `translateText`, add translation keys for workflow panel, delete confirmations, and JSON structures.
+  - `apps/desktop/src/components/WorkflowJsonPanel.tsx` — Localize JSON schema description.
+  - `apps/desktop/src/components/WorkflowOrchestration.tsx` — Translate workflow canvas, templates list, buttons, delete popups, and error messages.
+  - `apps/desktop/src/App.tsx` — Wrap stop run confirm alert message.
+  - `apps/desktop/src/services/clutchState.ts` — Translate evaluator validation status suffix.
+  - `apps/desktop/src/services/workflowFormat.ts` — Set default end node label to English.
+  - `apps/desktop/src/services/workflowApi.ts` — Convert default API error text to English and update delimiters.
+
 ### DEV-PROD-ISOLATION-POINTER-DRAG ✅
 - **日期：** 2026-06-25
 - **Commit：** `01a88dd` — `feat(storage,ui): isolate dev/prod storage directories, custom pointer drag-and-drop, and chat feed stop option`
