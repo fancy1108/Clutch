@@ -33,7 +33,7 @@
 | B-01 | 主控分派：理解需求 + 匹配 Flow + 精炼 `current_instruction` | P0 | Goose Recipe、LangGraph Supervisor | 候选 | 人类确认 + D14 决策；P2-07 |
 | B-16 | 无 Flow 时匹配单个 Agent（Agent Manager 池 + `single-agent-run` 迷你流） | P0 | Agent Manager、Goose Recipe | 候选 | 人类确认 + D14；P2-12 |
 | B-15 | 内置通用 Agent + `general-fallback.json` 只读工作流 | P0 | D10 边界、内置模板模式 | 候选 | 人类确认 + D14；P2-13 |
-| B-04 | `agent_task` 按 tool 真执行（CLI / Cursor / MCP），非统一 `router.chat` | P0 | M3 CLI Adapter、ARCHITECTURE §6.4 | 候选 | 人类确认 + 决策；P2-10 |
+| B-04 | `agent_task` 按 tool 真执行（CLI / Cursor / MCP），非统一 `router.chat` | P0 | M3 CLI Adapter、ARCHITECTURE §6.4 | 候选（部分落地 `eaf2ea0`） | 人类确认 + 决策；P2-10 |
 
 ### 监督与成本（P1）
 
@@ -61,6 +61,7 @@
 
 - **P2-01…P2-06**（`tasks.md` §P2）为已承诺交付，**不**在本池重复登记。
 - **P2-07～P2-13** 为分派相关预留 ID，升格时再写入 `tasks.md`。
+- **B-04 部分落地（2026-06-25，`eaf2ea0` + `6cc6c6b`）**：`engine_router` 已按 Agent `aiEngine` 与 Tools Connect 分流 Claude CLI / Cursor / 全局 LLM；`execute_agent_task` 与 plain chat 已接入。MCP ReAct 路径在 `agent_executor` 内独立实现。主控自动分派（B-01/B-15/B-16）仍属候选。升格待人类确认。
 
 ## 维护纪律
 

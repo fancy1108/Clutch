@@ -6,6 +6,7 @@ import asyncio
 import json
 import logging
 import uuid
+from collections.abc import Awaitable, Callable
 from copy import deepcopy
 from datetime import UTC, datetime
 from pathlib import Path
@@ -409,6 +410,7 @@ def _chat_message(
     *,
     status: str | None = None,
     msg_id: str | None = None,
+    runtime_engine: str | None = None,
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "id": msg_id or f"msg_{uuid.uuid4().hex[:8]}",
@@ -419,6 +421,8 @@ def _chat_message(
     }
     if status:
         payload["status"] = status
+    if runtime_engine:
+        payload["runtimeEngine"] = runtime_engine
     return payload
 
 
@@ -502,30 +506,174 @@ def _history_for_llm(messages: list[dict[str, object]]) -> list[dict[str, str]]:
     return history
 
 
+def _uses_configured_llm(agent: dict[str, Any] | None) -> bool:
+    from src.engine_router import _normalize_engine_type
+
+    if not agent:
+        return True
+    return _normalize_engine_type(str(agent.get("aiEngine", ""))) != "Claude Code (Local CLI)"
+
+
+def _compose_agent_system_prompt(
+    agent: dict[str, Any],
+    *,
+    model_name: str,
+    model_api: str,
+    mcp_servers_bound: bool = True,
+) -> str:
+    from src.agent_skills import compose_skills_section
+
+    protocol = str(agent.get("markdownDoc", "")).strip()
+    agent_name = str(agent.get("name", "Clutch Agent"))
+    header = (
+        f"You are {agent_name}, the active agent in the user's Clutch workspace.\n"
+        f"When asked who you are, identify yourself as {agent_name}. "
+        f"Do not claim to be a different product, vendor, or base model.\n"
+        f"Runtime model: {model_name} ({model_api}).\n"
+        "Treat every instruction in the agent protocol below as mandatory.\n"
+    )
+    parts = [header.strip()]
+    if protocol:
+        parts.append(protocol)
+    if _uses_configured_llm(agent):
+        if not mcp_servers_bound:
+            parts.append(
+                "No MCP tools are bound for this agent in this run. "
+                "You cannot create, modify, or delete files on disk. "
+                "Never claim a file operation succeeded without MCP tool evidence. "
+                "Tell the user to bind **Local Filesystem MCP Server** in "
+                "Agent Manager → Module 4 (MCP Hub Server Bindings)."
+            )
+        skills_block = compose_skills_section(list(agent.get("skills") or []))
+        if skills_block:
+            parts.append(skills_block)
+    return "\n\n".join(parts)
+
+
 async def _llm_chat_reply(
     state: ClutchState,
     text: str,
     agent_id: str | None = None,
-) -> tuple[str, str, list[str]]:
+    *,
+    claude_session_id: str | None = None,
+    emit_log: Callable[[str], Awaitable[None]] | None = None,
+    mcp_approved_tool: dict[str, Any] | None = None,
+    mcp_resume: dict[str, Any] | None = None,
+) -> tuple[str, str, str, list[str], str | None, dict[str, Any] | None]:
     from src.agent_storage import BUILTIN_AGENT_ID, get_agent_by_id
     from src.engine_router import route_engine
+    from src.models_config import get_router
     from src.workspace import get_workspace
 
     resolved_id = (agent_id or "").strip() or BUILTIN_AGENT_ID
     agent = get_agent_by_id(resolved_id)
     agent_ref = str(agent.get("id", resolved_id)) if agent else resolved_id
     reply_label = str(agent.get("name", "Clutch Agent")) if agent else (state.get("active_agent") or "Builder")
-    system_prompt = str(agent.get("markdownDoc", "")).strip() if agent else None
+
+    router = get_router()
+    model = router.get_active_model()
+    runtime_model_name = model.name
+    model_api = getattr(model, "api_model", None) or runtime_model_name
+
+    from src.agent_mcp import resolve_agent_mcp_servers
+
+    mcp_servers_bound = bool(resolve_agent_mcp_servers(agent)) if agent else False
+    system_prompt = (
+        _compose_agent_system_prompt(
+            agent,
+            model_name=runtime_model_name,
+            model_api=model_api,
+            mcp_servers_bound=mcp_servers_bound,
+        )
+        if agent
+        else None
+    )
 
     history = _history_for_llm(state["messages"])
-    if system_prompt and not any(item.get("role") == "system" for item in history):
-        history.insert(0, {"role": "system", "content": system_prompt})
-    history.append({"role": "user", "content": text})
+    if system_prompt:
+        history = [{"role": "system", "content": system_prompt}] + [
+            item for item in history if item.get("role") != "system"
+        ]
 
     workspace = get_workspace()
     cwd = workspace.get("workspace_path") if workspace else None
+    llm_only_logs: list[str] = []
 
     try:
+        if mcp_resume or (agent and _uses_configured_llm(agent)):
+            from src.mcp_react import run_mcp_react_loop
+
+            mcp_servers = (
+                list(mcp_resume.get("servers") or [])
+                if mcp_resume
+                else resolve_agent_mcp_servers(agent)
+            )
+            if mcp_servers:
+                chat_messages: list[dict[str, Any]] = (
+                    list(mcp_resume.get("chat_messages") or [])
+                    if mcp_resume
+                    else list(history)
+                )
+                loop = asyncio.get_running_loop()
+
+                def on_log(line: str) -> None:
+                    if emit_log:
+                        asyncio.run_coroutine_threadsafe(emit_log(line), loop)
+
+                outcome = await asyncio.to_thread(
+                    run_mcp_react_loop,
+                    messages=chat_messages,
+                    servers=mcp_servers,
+                    log_prefix="CHAT",
+                    on_log=on_log if emit_log else None,
+                    pause_on_risky=True,
+                    approved_tool=mcp_approved_tool,
+                )
+                if outcome.approval_required:
+                    pause_payload = {
+                        **outcome.approval_required,
+                        "servers": mcp_servers,
+                        "agent_id": resolved_id,
+                        "reply_label": reply_label,
+                        "engine_label": outcome.engine_label,
+                    }
+                    return (
+                        reply_label,
+                        outcome.engine_label,
+                        "",
+                        outcome.logs,
+                        None,
+                        pause_payload,
+                    )
+                return (
+                    reply_label,
+                    outcome.engine_label,
+                    outcome.output,
+                    outcome.logs,
+                    None,
+                    None,
+                )
+
+            llm_only_logs = [
+                tr(
+                    "[CHAT] No MCP servers bound on this agent — using LLM text only. "
+                    "Bind Local Filesystem MCP Server in Agent Manager → Module 4 to enable file tools and approval gates.",
+                    "[CHAT] 此 Agent 未绑定 MCP 服务器，仅使用 LLM 文本回复。"
+                    "请在 Agent Manager → Module 4 绑定 Local Filesystem MCP Server 以启用文件工具与审批门。",
+                )
+            ]
+            system_prompt = _compose_agent_system_prompt(
+                agent,
+                model_name=runtime_model_name,
+                model_api=model_api,
+                mcp_servers_bound=False,
+            )
+            history = _history_for_llm(state["messages"])
+            if system_prompt:
+                history = [{"role": "system", "content": system_prompt}] + [
+                    item for item in history if item.get("role") != "system"
+                ]
+
         result = await asyncio.to_thread(
             route_engine,
             agent_name=agent_ref,
@@ -533,10 +681,166 @@ async def _llm_chat_reply(
             cwd=cwd,
             history=history,
             system_prompt=system_prompt,
+            claude_session_id=claude_session_id,
         )
-        return reply_label, result.output, result.logs
+        return reply_label, result.engine, result.output, llm_only_logs + result.logs, result.claude_session_id, None
     except Exception as exc:
-        return "System Error", str(exc), [f"Error routing plain chat request: {exc}"]
+        from src.engine_router import _normalize_engine_type
+
+        err = str(exc)
+        raw_engine = str(agent.get("aiEngine", "")) if agent else ""
+        if _normalize_engine_type(raw_engine) == "Claude Code (Local CLI)" or "Claude CLI" in err:
+            runtime_engine = "Claude CLI"
+        else:
+            runtime_engine = runtime_model_name
+        return reply_label, runtime_engine, err, [f"Error routing plain chat request: {err}"], None, None
+
+
+async def _handle_plain_chat_mcp_decision(
+    websocket: WebSocket,
+    run_id: str,
+    state: ClutchState,
+    decision: str,
+) -> ClutchState:
+    from src.mcp_pending import get_pending, pop_pending
+
+    pending = get_pending(run_id)
+    if pending is None:
+        return state
+
+    if decision != "approve":
+        pop_pending(run_id)
+        supervisor = _chat_message(
+            "Supervisor",
+            tr("MCP tool call rejected by supervisor.", "监督者已拒绝 MCP 工具调用。"),
+        )
+        log_line = f"[SUPERVISOR] MCP tool {pending.func_name} rejected"
+        final_patch: dict[str, Any] = {
+            "messages": list(state["messages"]) + [supervisor],
+            "terminal_logs": list(state["terminal_logs"]) + [log_line],
+            "status": "idle",
+            "active_agent": pending.reply_label,
+        }
+        state = _merge_patch(state, final_patch)
+        _commit_run_state(run_id, state)
+        await _send_message_event(websocket, run_id, supervisor, "")
+        await _send_log_event(websocket, run_id, log_line, node_id="")
+        await _notify_run_state(websocket, run_id, state, final_patch)
+        return state
+
+    pop_pending(run_id)
+    state = _merge_patch(state, {"status": "running", "active_agent": pending.reply_label})
+    await _notify_run_state(websocket, run_id, state, {"status": "running"})
+
+    streamed_logs = False
+
+    async def emit_log(line: str) -> None:
+        nonlocal streamed_logs, state
+        streamed_logs = True
+        await _send_log_event(websocket, run_id, line, node_id="")
+        logs = list(state["terminal_logs"]) + [line]
+        state = _merge_patch(state, {"terminal_logs": logs})
+        _commit_run_state(run_id, state)
+        await _notify_run_state(websocket, run_id, state, {"terminal_logs": logs})
+
+    approved_tool = {
+        "tool_call_id": pending.tool_call_id,
+        "func_name": pending.func_name,
+        "func_args": pending.func_args,
+        "step_idx": pending.step_idx,
+    }
+    mcp_resume = {
+        "chat_messages": pending.chat_messages,
+        "servers": pending.servers,
+    }
+
+    (
+        model_name,
+        runtime_engine,
+        reply_text,
+        route_logs,
+        _claude_session_id,
+        mcp_pause,
+    ) = await _llm_chat_reply(
+        state,
+        "",
+        agent_id=pending.agent_id,
+        emit_log=emit_log,
+        mcp_approved_tool=approved_tool,
+        mcp_resume=mcp_resume,
+    )
+
+    if mcp_pause:
+        from src.mcp_pending import McpPendingApproval, store_pending
+
+        store_pending(
+            run_id,
+            McpPendingApproval(
+                agent_id=pending.agent_id,
+                reply_label=model_name,
+                chat_messages=list(mcp_pause["chat_messages"]),
+                servers=list(mcp_pause["servers"]),
+                tool_call_id=str(mcp_pause["tool_call_id"]),
+                func_name=str(mcp_pause["func_name"]),
+                func_args=dict(mcp_pause.get("func_args") or {}),
+                step_idx=int(mcp_pause.get("step_idx", 0)),
+                logs=list(route_logs),
+            ),
+        )
+        gate_line = f"[CHAT] Awaiting approval for MCP tool: {mcp_pause['func_name']}"
+        supervisor = _chat_message(
+            "Supervisor",
+            tr(
+                f"MCP tool `{mcp_pause['func_name']}` requires your approval before execution.",
+                f"MCP 工具 `{mcp_pause['func_name']}` 需要您批准后才能执行。",
+            ),
+        )
+        pause_patch: dict[str, Any] = {
+            "messages": list(state["messages"]) + [supervisor],
+            "terminal_logs": list(state["terminal_logs"]) + route_logs + [gate_line],
+            "status": "awaiting_human",
+            "active_agent": pending.reply_label,
+        }
+        state = _merge_patch(state, pause_patch)
+        _commit_run_state(run_id, state)
+        await _send_message_event(websocket, run_id, supervisor, "")
+        if not streamed_logs:
+            for log in route_logs:
+                await _send_log_event(websocket, run_id, log, node_id="")
+        await _send_log_event(websocket, run_id, gate_line, node_id="")
+        await _notify_run_state(websocket, run_id, state, pause_patch)
+        await _send_human_required(
+            websocket,
+            run_id,
+            node_id="",
+            prompt=tr(
+                f"Approve MCP tool call: {mcp_pause['func_name']}",
+                f"请审批 MCP 工具调用：{mcp_pause['func_name']}",
+            ),
+        )
+        return state
+
+    reply = _chat_message(model_name, reply_text, runtime_engine=runtime_engine)
+    log_line = f"[CHAT] {model_name} via {runtime_engine}: {len(reply_text)} chars"
+    if not streamed_logs:
+        for log in route_logs:
+            await _send_log_event(websocket, run_id, log, node_id="")
+    await _send_log_event(websocket, run_id, log_line, node_id="")
+
+    final_messages = list(state["messages"]) + [reply]
+    final_logs = list(state["terminal_logs"]) + route_logs + [log_line]
+    final_patch = {
+        "messages": final_messages,
+        "terminal_logs": final_logs,
+        "status": "idle",
+        "active_agent": pending.reply_label,
+        **_token_patch_turn(state, user_text="", assistant_text=reply_text),
+    }
+    state = _merge_patch(state, final_patch)
+    _commit_run_state(run_id, state)
+    await _send_message_event(websocket, run_id, reply, "")
+    await _notify_run_state(websocket, run_id, state, final_patch)
+    return state
 
 
 async def _handle_plain_chat(
@@ -565,23 +869,112 @@ async def _handle_plain_chat(
     await _send_message_event(websocket, run_id, user_message, "")
     await _notify_run_state(websocket, run_id, state, user_patch)
 
-    model_name, reply_text, route_logs = await _llm_chat_reply(state, text, agent_id=resolved_id)
-    reply = _chat_message(model_name, reply_text)
-    log_line = f"[CHAT] {model_name}: {len(reply_text)} chars"
+    stored_session_id = str(state.get("claude_session_id", "")).strip() or None
+    stored_session_agent = str(state.get("claude_session_agent_id", "")).strip()
+    if stored_session_agent and stored_session_agent != resolved_id:
+        stored_session_id = None
 
-    for log in route_logs:
-        await _send_log_event(websocket, run_id, log, node_id="")
+    streamed_logs = False
+
+    async def emit_log(line: str) -> None:
+        nonlocal streamed_logs, state
+        streamed_logs = True
+        await _send_log_event(websocket, run_id, line, node_id="")
+        logs = list(state["terminal_logs"]) + [line]
+        state = _merge_patch(state, {"terminal_logs": logs})
+        _commit_run_state(run_id, state)
+        await _notify_run_state(websocket, run_id, state, {"terminal_logs": logs})
+
+    (
+        model_name,
+        runtime_engine,
+        reply_text,
+        route_logs,
+        claude_session_id,
+        mcp_pause,
+    ) = await _llm_chat_reply(
+        state,
+        text,
+        agent_id=resolved_id,
+        claude_session_id=stored_session_id,
+        emit_log=emit_log,
+    )
+
+    if mcp_pause:
+        from src.mcp_pending import McpPendingApproval, store_pending
+
+        store_pending(
+            run_id,
+            McpPendingApproval(
+                agent_id=resolved_id,
+                reply_label=model_name,
+                chat_messages=list(mcp_pause["chat_messages"]),
+                servers=list(mcp_pause["servers"]),
+                tool_call_id=str(mcp_pause["tool_call_id"]),
+                func_name=str(mcp_pause["func_name"]),
+                func_args=dict(mcp_pause.get("func_args") or {}),
+                step_idx=int(mcp_pause.get("step_idx", 0)),
+                logs=list(route_logs),
+            ),
+        )
+        gate_line = f"[CHAT] Awaiting approval for MCP tool: {mcp_pause['func_name']}"
+        supervisor = _chat_message(
+            "Supervisor",
+            tr(
+                f"MCP tool `{mcp_pause['func_name']}` requires your approval before execution.",
+                f"MCP 工具 `{mcp_pause['func_name']}` 需要您批准后才能执行。",
+            ),
+        )
+        pause_logs = list(state["terminal_logs"]) + route_logs + [gate_line]
+        pause_messages = list(state["messages"]) + [supervisor]
+        pause_patch: dict[str, Any] = {
+            "messages": pause_messages,
+            "terminal_logs": pause_logs,
+            "status": "awaiting_human",
+            "active_agent": active_agent,
+        }
+        state = _merge_patch(state, pause_patch)
+        _commit_run_state(run_id, state)
+        await _send_message_event(websocket, run_id, supervisor, "")
+        if not streamed_logs:
+            for log in route_logs:
+                await _send_log_event(websocket, run_id, log, node_id="")
+        await _send_log_event(websocket, run_id, gate_line, node_id="")
+        await _notify_run_state(websocket, run_id, state, pause_patch)
+        await _send_human_required(
+            websocket,
+            run_id,
+            node_id="",
+            prompt=tr(
+                f"Approve MCP tool call: {mcp_pause['func_name']}",
+                f"请审批 MCP 工具调用：{mcp_pause['func_name']}",
+            ),
+        )
+        return state
+
+    reply = _chat_message(model_name, reply_text, runtime_engine=runtime_engine)
+    log_line = f"[CHAT] {model_name} via {runtime_engine}: {len(reply_text)} chars"
+
+    if not streamed_logs:
+        for log in route_logs:
+            await _send_log_event(websocket, run_id, log, node_id="")
     await _send_log_event(websocket, run_id, log_line, node_id="")
 
     final_messages = list(state["messages"]) + [reply]
     final_logs = list(state["terminal_logs"]) + route_logs + [log_line]
-    final_patch = {
+    final_patch: dict[str, Any] = {
         "messages": final_messages,
         "terminal_logs": final_logs,
         "status": "idle",
         "active_agent": active_agent,
         **_token_patch_turn(state, user_text=text, assistant_text=reply_text),
     }
+    if claude_session_id:
+        final_patch["claude_session_id"] = claude_session_id
+        final_patch["claude_session_agent_id"] = resolved_id
+    elif stored_session_agent and stored_session_agent != resolved_id:
+        final_patch["claude_session_id"] = ""
+        final_patch["claude_session_agent_id"] = ""
     state = _merge_patch(state, final_patch)
     _commit_run_state(run_id, state)
     _touch_session(run_id, title=text.strip()[:80] or "New session", status=state["status"])
@@ -1382,30 +1775,37 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                     )
             elif isinstance(payload, dict) and payload.get("action") == "human_decision":
                 decision = str(payload.get("decision", "approve"))
-                instructions = str(payload.get("instructions", ""))
-                node_id = state["active_node_id"]
+                from src.mcp_pending import get_pending
 
-                state, patch, supervisor_message, log_line = _apply_human_decision(
-                    run_id, decision, instructions
-                )
+                if get_pending(run_id) and not state.get("workflow_id"):
+                    state = await _handle_plain_chat_mcp_decision(
+                        websocket, run_id, state, decision
+                    )
+                else:
+                    instructions = str(payload.get("instructions", ""))
+                    node_id = state["active_node_id"]
 
-                await _send_message_event(websocket, run_id, supervisor_message, node_id)
-                await _send_log_event(websocket, run_id, log_line, node_id=node_id)
-                await _notify_run_state(websocket, run_id, state, patch)
-                if state["status"] == "awaiting_human":
-                    await _send_validation_result(
-                        websocket,
-                        run_id,
-                        node_id=state["active_node_id"],
-                        passed=False,
-                        message=tr("Evaluator checks failed, waiting for human approval.", "Evaluator 检查未通过，等待人工审批。"),
+                    state, patch, supervisor_message, log_line = _apply_human_decision(
+                        run_id, decision, instructions
                     )
-                    await _send_human_required(
-                        websocket,
-                        run_id,
-                        node_id=state["active_node_id"],
-                        prompt=tr("Checks failed, waiting for human confirmation.", "检查未通过，等待人工确认。"),
-                    )
+
+                    await _send_message_event(websocket, run_id, supervisor_message, node_id)
+                    await _send_log_event(websocket, run_id, log_line, node_id=node_id)
+                    await _notify_run_state(websocket, run_id, state, patch)
+                    if state["status"] == "awaiting_human":
+                        await _send_validation_result(
+                            websocket,
+                            run_id,
+                            node_id=state["active_node_id"],
+                            passed=False,
+                            message=tr("Evaluator checks failed, waiting for human approval.", "Evaluator 检查未通过，等待人工审批。"),
+                        )
+                        await _send_human_required(
+                            websocket,
+                            run_id,
+                            node_id=state["active_node_id"],
+                            prompt=tr("Checks failed, waiting for human confirmation.", "检查未通过，等待人工确认。"),
+                        )
             elif isinstance(payload, dict) and payload.get("action") == "stop_run":
                 logs = list(state["terminal_logs"])
                 log_line = "[ORCHESTRATOR] Run stopped by supervisor."

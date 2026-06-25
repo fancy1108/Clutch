@@ -2,8 +2,31 @@
 
 ## 当前状态
 
-- 阶段：**存储路径隔离与自定义指针拖拽交互完成；已完成国际化汉字漏译消除与后端 tr() 动态语言切换支持**
-- Git HEAD：`c9ea0d6` (待 commit)
+- 阶段：**Engine Router 与 Claude CLI 分流已接入 plain chat / agent_task；内置 Clutch Agent 可编辑；聊天按 `agent_id` 路由并注入 system prompt**
+- Git HEAD：`6cc6c6b`
+
+## 2026-06-25 会话（agent_id 聊天路由与内置 Agent 可定制）
+
+- **完成：**
+  - **WebSocket `agent_id`**：`submitChatMessage` 传入选中 Agent；`ws_run` → `_handle_plain_chat` → `_llm_chat_reply` 按 ID 解析 Agent。
+  - **`get_agent_by_id` + 内置 Agent 持久化**：`markdownDoc` 等自定义可写入 `agents.json`；`list_agents()` 合并内置默认值与用户覆盖。
+  - **system prompt 注入**：plain chat 将 Agent `markdownDoc` 插入 LLM history；回复标签用 Agent 名称（如「Clutch Agent」）而非 engine 名。
+  - **前端**：`AgentManager` 允许编辑内置 Agent（Delete 仍禁用）；`saveAgents` 发送完整列表由后端过滤。
+  - **测试**：`test_agents_api.py`、`test_ws_message_log.py` 覆盖 builtin override 与 `agent_id` 注入。
+  - **校验**：`./scripts/verify.sh` → 138 pytest + vitest + check-doc-drift passed（pre-commit `6cc6c6b`）。
+- **下次优先**：发布 / 红队体感审计；或 BACKLOG B-04 剩余项（主控分派、非 agent_task 路径）。
+
+## 2026-06-25 会话（Engine Router + Claude CLI Adapter）
+
+- **完成：**
+  - **`engine_router.py`**：按 Agent `aiEngine` + Tools Connect 状态分流 Claude CLI / Cursor / 全局 LLM；`find_agent()` 多级匹配；`fallback_tool` 支持工作流节点无 Agent 配置时兜底。
+  - **`claude_cli_adapter.py`**：封装 `claude -p` 子进程（system prompt、permissions、allowed-tools）。
+  - **集成**：`main.py` `_llm_chat_reply` / `_handle_plain_chat`、`agent_executor.py` `execute_agent_task` 改走 `route_engine`。
+  - **内置 Agent（前后端）**：`agent_storage.get_builtin_agent()`、`builtinAgent.ts`、`App.tsx` 默认选中 `clutch-agent`。
+  - **测试隔离**：`conftest.py` 设 `CLUTCH_STORAGE_DIR=tmp_path`，避免测试读真实 dev 目录触发 Claude CLI。
+  - **测试**：`test_claude_cli_adapter.py`、`test_engine_router.py`、`test_agents_api.py`。
+  - **校验**：`./scripts/verify.sh` → 138 pytest + vitest passed（commit `eaf2ea0`）。
+- **下次优先**：~~将 Connect 状态接入执行链路~~ ✅ 本会话后续完成（见上节 `6cc6c6b`）。
 
 ## 2026-06-25 会话（国际化双语支持与中文字符消除）
 

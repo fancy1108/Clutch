@@ -26,6 +26,8 @@ interface ChatFeedProps {
   sessionTitle?: string;
   activeWorkflowId?: string;
   llmModelName?: string;
+  activeAgentName?: string;
+  engineHint?: string;
 }
 
 const WORKFLOW_AGENTS = new Set(['Builder', 'Orchestrator', 'Evaluator', 'Supervisor']);
@@ -39,6 +41,21 @@ function isPlainLlmSession(
 
 function isPlainLlmReply(agent: string): boolean {
   return agent !== 'User' && !WORKFLOW_AGENTS.has(agent);
+}
+
+/** Map agent-configured engine label to runtime label from the sidecar. */
+export function configuredEngineToRuntimeLabel(aiEngine: string): string {
+  const key = aiEngine.trim().toLowerCase();
+  if (key.includes('claude code') || key === 'claude-cli') return 'Claude CLI';
+  if (key.includes('cursor')) return 'Cursor';
+  return aiEngine.trim();
+}
+
+function replyRuntimeLabel(
+  runtimeEngine: string | undefined,
+  fallbackModelName: string,
+): string {
+  return runtimeEngine?.trim() || fallbackModelName || '—';
 }
 
 export const ChatFeed: React.FC<ChatFeedProps> = ({
@@ -65,6 +82,8 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   sessionTitle = '',
   activeWorkflowId = '',
   llmModelName = '',
+  activeAgentName = '',
+  engineHint = '',
 }) => {
   const { t } = useLanguage();
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -108,18 +127,25 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
     }
   };
 
-  const renderAgentLabel = (agent: string, statusHint?: string) => {
+  const renderAgentLabel = (
+    agent: string,
+    statusHint?: string,
+    runtimeEngine?: string,
+  ) => {
     const showPlainLlmLabel = isPlainLlmChat && isPlainLlmReply(agent);
-    const modelLabel = showPlainLlmLabel ? agent : llmModelName;
 
     if (showPlainLlmLabel || (statusHint && isPlainLlmChat)) {
+      const agentTitle = activeAgentName || t('Clutch Agent');
+      const engineLabel = statusHint
+        ? replyRuntimeLabel(engineHint, llmModelName)
+        : replyRuntimeLabel(runtimeEngine, llmModelName);
       return (
         <div className="flex items-start gap-2 flex-1 min-w-0">
           <div className="flex flex-col min-w-0">
-            <span className="text-xs font-bold text-on-surface leading-tight">{t('Clutch Agent')}</span>
-            {(modelLabel || statusHint) && (
+            <span className="text-xs font-bold text-on-surface leading-tight">{agentTitle}</span>
+            {(engineLabel || statusHint) && (
               <span className="text-[10px] text-on-surface-variant/60 leading-tight truncate">
-                {modelLabel || llmModelName || '—'}
+                {engineLabel}
               </span>
             )}
           </div>
@@ -232,7 +258,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                       </>
                     ) : (
                       <div className={`flex items-center gap-2 ${isPlainLlmChat && isPlainLlmReply(msg.agent) ? 'items-start' : ''}`}>
-                        {renderAgentLabel(msg.agent)}
+                        {renderAgentLabel(msg.agent, undefined, msg.runtimeEngine)}
                         <span className="text-[10px] text-on-surface-variant/60 flex-shrink-0">{msg.time}</span>
                       </div>
                     )}
@@ -298,7 +324,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
 
               <div className="flex-1 space-y-1.5 overflow-hidden">
                 <div className="flex items-center gap-2">
-                  {renderAgentLabel(llmModelName || 'LLM', t('Thinking...'))}
+                  {renderAgentLabel(activeAgentName || t('Clutch Agent'), t('Thinking...'), engineHint)}
                 </div>
 
                 <div className="p-4 bg-surface-container-low rounded-2xl rounded-tl-none border border-outline-variant/30 shadow-sm flex items-center gap-1.5">

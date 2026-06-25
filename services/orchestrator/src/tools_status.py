@@ -3,7 +3,7 @@
 Scans a built-in candidate set covering both AI CLI binaries (via PATH) and
 macOS desktop clients (via /Applications). Only candidates actually present on
 the machine are surfaced. Connection state is a persisted preference flag — it
-does not yet drive execution routing.
+does not yet drive execution routing for desktop clients.
 """
 
 from __future__ import annotations
@@ -15,9 +15,6 @@ import sys
 from pathlib import Path
 from typing import Any
 
-TOOLS_ENV = "CLUTCH_TOOLS_CONFIG"
-
-# AI CLI candidates probed via PATH (`shutil.which`).
 CLI_CANDIDATES: list[dict[str, str]] = [
     {
         "id": "claude-cli",
@@ -124,6 +121,27 @@ CLIENT_CANDIDATES: list[dict[str, str]] = [
 ]
 
 
+TOOLS_ENV = "CLUTCH_TOOLS_CONFIG"
+
+_CLI_EXTRA_BIN_DIRS: tuple[Path, ...] = (
+    Path.home() / ".local" / "bin",
+    Path.home() / ".npm-global" / "bin",
+    Path.home() / "bin",
+    Path("/opt/homebrew/bin"),
+    Path("/usr/local/bin"),
+)
+
+
+def _extra_cli_search_dirs() -> list[Path]:
+    dirs = list(_CLI_EXTRA_BIN_DIRS)
+    nvm_root = Path.home() / ".nvm" / "versions" / "node"
+    if nvm_root.is_dir():
+        for version_dir in sorted(nvm_root.iterdir(), reverse=True):
+            if version_dir.is_dir():
+                dirs.append(version_dir / "bin")
+    return dirs
+
+
 def config_path() -> Path:
     override = os.environ.get(TOOLS_ENV)
     if override:
@@ -166,6 +184,28 @@ def _resolve_path(tool_id: str) -> str | None:
     return _client_path(cand["app_name"])
 
 
+def resolve_tool_binary(tool_id: str) -> str | None:
+    """Resolve CLI binary path, including common install dirs when PATH is narrow."""
+    direct = _resolve_path(tool_id)
+    if direct:
+        return direct
+    cand = _candidate_by_id(tool_id)
+    if cand is None or "binary" not in cand:
+        return None
+    binary = cand["binary"]
+    for directory in _extra_cli_search_dirs():
+        candidate = directory / binary
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            return str(candidate)
+    return None
+
+
+def tool_available_for_routing(tool_id: str) -> bool:
+    if resolve_tool_binary(tool_id):
+        return True
+    return tool_id in load_connected_ids()
+
+
 def _is_claude_installed() -> bool:
     return _cli_path("claude") is not None
 
@@ -177,6 +217,11 @@ def _is_cursor_installed() -> bool:
 
 
 def _installed(tool_id: str) -> bool:
+    cand = _candidate_by_id(tool_id)
+    if cand is None:
+        return False
+    if "binary" in cand:
+        return resolve_tool_binary(tool_id) is not None
     return _resolve_path(tool_id) is not None
 
 
@@ -206,7 +251,7 @@ def list_tools_status() -> list[dict[str, Any]]:
     connected = load_connected_ids()
     tools: list[dict[str, Any]] = []
     for cand in CLI_CANDIDATES:
-        path = _cli_path(cand["binary"])
+        path = resolve_tool_binary(cand["id"])
         if not path:
             continue
         tools.append(

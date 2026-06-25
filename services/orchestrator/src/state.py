@@ -21,6 +21,8 @@ class ClutchState(TypedDict):
     session_cost_usd: float
     token_input: int
     token_output: int
+    claude_session_id: str
+    claude_session_agent_id: str
 
 
 def initial_state(run_id: str, workflow_id: str = "") -> ClutchState:
@@ -38,4 +40,6 @@ def initial_state(run_id: str, workflow_id: str = "") -> ClutchState:
         session_cost_usd=0.0,
         token_input=0,
         token_output=0,
+        claude_session_id="",
+        claude_session_agent_id="",
     )

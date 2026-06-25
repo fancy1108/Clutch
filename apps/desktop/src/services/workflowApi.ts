@@ -50,6 +50,14 @@ export async function loadUserWorkflow(id: string): Promise<CompilerWorkflow> {
   return body.workflow;
 }
 
+export async function loadWorkflowById(id: string): Promise<CompilerWorkflow> {
+  try {
+    return await loadTemplateWorkflow(id);
+  } catch {
+    return loadUserWorkflow(id);
+  }
+}
+
 export async function saveUserWorkflow(workflow: CompilerWorkflow): Promise<void> {
   const res = await fetch('/api/workflows/user', {
     method: 'POST',

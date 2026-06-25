@@ -43,3 +43,53 @@ def test_chat_claude_cli_args(monkeypatch) -> None:
     ]
     assert called_cwd == "/tmp/fake"
     assert called_timeout == 10.0
+
+
+def test_chat_claude_cli_session_id(monkeypatch) -> None:
+    called_cmd = None
+
+    def fake_run_cli(cmd: list[str], *, cwd: str | None = None, timeout: float = 30.0) -> CliResult:
+        nonlocal called_cmd
+        called_cmd = cmd
+        return CliResult(command=cmd, exit_code=0, stdout="session created", stderr="")
+
+    monkeypatch.setattr("src.adapters.claude_cli_adapter.run_cli", fake_run_cli)
+
+    res = chat_claude_cli(
+        prompt="first turn",
+        session_id="550e8400-e29b-41d4-a716-446655440000",
+    )
+    assert res == "session created"
+    assert called_cmd == [
+        "claude",
+        "-p",
+        "first turn",
+        "--session-id",
+        "550e8400-e29b-41d4-a716-446655440000",
+        "--dangerously-skip-permissions",
+    ]
+
+
+def test_chat_claude_cli_resume(monkeypatch) -> None:
+    called_cmd = None
+
+    def fake_run_cli(cmd: list[str], *, cwd: str | None = None, timeout: float = 30.0) -> CliResult:
+        nonlocal called_cmd
+        called_cmd = cmd
+        return CliResult(command=cmd, exit_code=0, stdout="resumed", stderr="")
+
+    monkeypatch.setattr("src.adapters.claude_cli_adapter.run_cli", fake_run_cli)
+
+    res = chat_claude_cli(
+        prompt="follow up",
+        resume_session_id="550e8400-e29b-41d4-a716-446655440000",
+    )
+    assert res == "resumed"
+    assert called_cmd == [
+        "claude",
+        "-p",
+        "follow up",
+        "--resume",
+        "550e8400-e29b-41d4-a716-446655440000",
+        "--dangerously-skip-permissions",
+    ]

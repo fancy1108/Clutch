@@ -65,16 +65,92 @@ def test_route_engine_fallback_no_agent(monkeypatch) -> None:
 
 
 def test_route_engine_claude_cli_not_connected(monkeypatch, mock_agents) -> None:
-    monkeypatch.setattr("src.engine_router.load_connected_ids", lambda: set())
+    monkeypatch.setattr("src.engine_router.tool_available_for_routing", lambda _tool_id: False)
     monkeypatch.setattr("src.models_config.get_router", lambda: FakeRouter())
 
-    res = route_engine(agent_name="Builder Module (JSX VibeCoder)", prompt="hello")
+    res = route_engine(
+        agent_name="Builder Module (JSX VibeCoder)",
+        prompt="hello",
+    )
     assert res.engine == "Fake Model"
     assert "hello" in res.output
+    assert any("回退到 LLM" in log or "falling back to LLM" in log for log in res.logs)
+
+
+def test_route_engine_claude_cli_passes_conversation_history(monkeypatch, mock_agents) -> None:
+    monkeypatch.setattr("src.engine_router.tool_available_for_routing", lambda _tool_id: True)
+    monkeypatch.setattr("src.engine_router.get_workspace", lambda: {"workspace_path": "/workspace"})
+
+    captured: dict[str, object] = {}
+
+    def fake_chat_claude(prompt, *, cwd, system_prompt, session_id=None, resume_session_id=None, **kwargs):
+        captured["prompt"] = prompt
+        captured["system_prompt"] = system_prompt or ""
+        captured["session_id"] = session_id
+        captured["resume_session_id"] = resume_session_id
+        return "Claude CLI output"
+
+    monkeypatch.setattr("src.engine_router.chat_claude_cli", fake_chat_claude)
+    monkeypatch.setattr("src.engine_router.uuid.uuid4", lambda: "550e8400-e29b-41d4-a716-446655440000")
+
+    history = [
+        {"role": "system", "content": "sys"},
+        {"role": "user", "content": "first question"},
+        {"role": "assistant", "content": "first answer"},
+        {"role": "user", "content": "follow up"},
+    ]
+    res = route_engine(
+        agent_name="Builder Module (JSX VibeCoder)",
+        prompt="follow up",
+        system_prompt="sys",
+        history=history,
+    )
+    assert res.engine == "Claude CLI"
+    assert res.claude_session_id == "550e8400-e29b-41d4-a716-446655440000"
+    assert "User: first question" in str(captured["prompt"])
+    assert "Assistant: first answer" in str(captured["prompt"])
+    assert "User: follow up" in str(captured["prompt"])
+    assert captured["session_id"] == "550e8400-e29b-41d4-a716-446655440000"
+    assert captured["resume_session_id"] is None
+
+
+def test_route_engine_claude_cli_resumes_existing_session(monkeypatch, mock_agents) -> None:
+    monkeypatch.setattr("src.engine_router.tool_available_for_routing", lambda _tool_id: True)
+    monkeypatch.setattr("src.engine_router.get_workspace", lambda: {"workspace_path": "/workspace"})
+
+    captured: dict[str, object] = {}
+
+    def fake_chat_claude(prompt, *, cwd, system_prompt, session_id=None, resume_session_id=None, **kwargs):
+        captured["prompt"] = prompt
+        captured["system_prompt"] = system_prompt
+        captured["session_id"] = session_id
+        captured["resume_session_id"] = resume_session_id
+        return "Claude CLI output"
+
+    monkeypatch.setattr("src.engine_router.chat_claude_cli", fake_chat_claude)
+
+    history = [
+        {"role": "user", "content": "first question"},
+        {"role": "assistant", "content": "first answer"},
+        {"role": "user", "content": "follow up"},
+    ]
+    res = route_engine(
+        agent_name="Builder Module (JSX VibeCoder)",
+        prompt="follow up",
+        system_prompt="sys",
+        history=history,
+        claude_session_id="550e8400-e29b-41d4-a716-446655440000",
+    )
+    assert res.engine == "Claude CLI"
+    assert res.claude_session_id == "550e8400-e29b-41d4-a716-446655440000"
+    assert captured["prompt"] == "follow up"
+    assert captured["system_prompt"] is None
+    assert captured["resume_session_id"] == "550e8400-e29b-41d4-a716-446655440000"
+    assert captured["session_id"] is None
 
 
 def test_route_engine_claude_cli_connected(monkeypatch, mock_agents) -> None:
-    monkeypatch.setattr("src.engine_router.load_connected_ids", lambda: {"claude-cli"})
+    monkeypatch.setattr("src.engine_router.tool_available_for_routing", lambda _tool_id: True)
     monkeypatch.setattr("src.engine_router.get_workspace", lambda: {"workspace_path": "/workspace"})
 
     called_prompt = None
@@ -104,7 +180,10 @@ def test_route_engine_claude_cli_connected(monkeypatch, mock_agents) -> None:
 
 
 def test_route_engine_cursor_connected(monkeypatch, mock_agents) -> None:
-    monkeypatch.setattr("src.engine_router.load_connected_ids", lambda: {"cursor-app"})
+    monkeypatch.setattr(
+        "src.engine_router.tool_available_for_routing",
+        lambda tool_id: tool_id == "cursor-app",
+    )
     monkeypatch.setattr("src.engine_router.get_workspace", lambda: {"workspace_path": "/workspace"})
 
     called_path = None
@@ -126,9 +205,8 @@ def test_route_engine_cursor_connected(monkeypatch, mock_agents) -> None:
 
 
 def test_route_engine_fallback_tool_claude_cli(monkeypatch) -> None:
-    # No agent profile, but node has fallback_tool="claude-cli" and it is connected
     monkeypatch.setattr("src.engine_router.list_agents", lambda: [])
-    monkeypatch.setattr("src.engine_router.load_connected_ids", lambda: {"claude-cli"})
+    monkeypatch.setattr("src.engine_router.tool_available_for_routing", lambda _tool_id: True)
     monkeypatch.setattr("src.engine_router.get_workspace", lambda: {"workspace_path": "/workspace"})
     monkeypatch.setattr("src.engine_router.chat_claude_cli", lambda **k: "fallback claude output")
 
@@ -139,3 +217,24 @@ def test_route_engine_fallback_tool_claude_cli(monkeypatch) -> None:
     )
     assert res.engine == "Claude CLI"
     assert res.output == "fallback claude output"
+
+
+def test_route_engine_normalizes_claude_code_cli_alias(monkeypatch, mock_agents) -> None:
+    monkeypatch.setattr(
+        "src.engine_router.list_agents",
+        lambda: [
+            {
+                "id": "agent-cc",
+                "name": "Claude Code Agent",
+                "aiEngine": "Claude Code CLI",
+            }
+        ],
+    )
+    monkeypatch.setattr("src.engine_router.tool_available_for_routing", lambda _tool_id: True)
+    monkeypatch.setattr("src.engine_router.get_workspace", lambda: {"workspace_path": "/workspace"})
+    monkeypatch.setattr("src.engine_router.chat_claude_cli", lambda **k: "alias routed")
+
+    res = route_engine(agent_name="Claude Code Agent", prompt="hi")
+    assert res.engine == "Claude CLI"
+    assert res.output == "alias routed"
+    assert any("Claude Code (Local CLI)" in log for log in res.logs)

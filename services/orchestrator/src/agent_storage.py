@@ -28,6 +28,7 @@ def get_builtin_agent() -> dict[str, Any]:
         "avatar": "",
         "deliverables": [],
         "mcpTools": [],
+        "mcpServerIds": [],
         "aiEngine": "Configured LLM",
         "skills": [],
         "builtin": True,
@@ -63,6 +64,7 @@ def _effective_builtin(override: dict[str, Any] | None = None) -> dict[str, Any]
     agent = get_builtin_agent()
     if override and override.get("id") == BUILTIN_AGENT_ID:
         agent = {**agent, **override, "id": BUILTIN_AGENT_ID, "builtin": True}
+    agent["aiEngine"] = "Configured LLM"
     return agent
 
 
@@ -98,7 +100,12 @@ def save_agents(agents: list[dict[str, Any]]) -> list[dict[str, Any]]:
     ]
     stored: list[dict[str, Any]] = []
     if builtin_override:
-        stored.append({**builtin_override, "id": BUILTIN_AGENT_ID, "builtin": True})
+        stored.append({
+            **builtin_override,
+            "id": BUILTIN_AGENT_ID,
+            "builtin": True,
+            "aiEngine": "Configured LLM",
+        })
     stored.extend(user_agents)
     path.write_text(json.dumps(stored, indent=2, ensure_ascii=False), encoding="utf-8")
     return list_agents()

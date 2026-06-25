@@ -5,6 +5,8 @@ from __future__ import annotations
 import subprocess
 from dataclasses import dataclass
 
+from src.preferences_storage import tr
+
 
 @dataclass(frozen=True)
 class CliResult:
@@ -16,9 +18,6 @@ class CliResult:
     @property
     def ok(self) -> bool:
         return self.exit_code == 0
-
-
-from src.preferences_storage import tr
 
 
 class CliAdapterError(RuntimeError):
@@ -33,14 +32,25 @@ def run_cli(
 ) -> CliResult:
     if not command:
         raise CliAdapterError(tr("CLI command cannot be empty", "CLI 命令不能为空"))
-    proc = subprocess.run(
-        command,
-        cwd=cwd,
-        capture_output=True,
-        text=True,
-        timeout=timeout,
-        check=False,
-    )
+    try:
+        proc = subprocess.run(
+            command,
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=False,
+        )
+    except subprocess.TimeoutExpired as exc:
+        binary = command[0] if command else "cli"
+        raise CliAdapterError(
+            tr(
+                f"`{binary}` timed out after {timeout:g}s. "
+                "Try a simpler prompt, or set CLUTCH_CLAUDE_CLI_TIMEOUT (seconds).",
+                f"`{binary}` 在 {timeout:g} 秒后超时。"
+                "可尝试更简短的指令，或设置环境变量 CLUTCH_CLAUDE_CLI_TIMEOUT（秒）。",
+            )
+        ) from exc
     result = CliResult(
         command=command,
         exit_code=proc.returncode,

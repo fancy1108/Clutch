@@ -25,6 +25,7 @@ def test_ws_state_patch_on_connect() -> None:
 
 
 def test_ws_state_patch_on_message(monkeypatch) -> None:
+    monkeypatch.setattr("src.engine_router.tool_available_for_routing", lambda _tool_id: False)
     monkeypatch.setattr(
         "src.models_config.get_router",
         lambda: type(
@@ -40,7 +41,15 @@ def test_ws_state_patch_on_message(monkeypatch) -> None:
     with client.websocket_connect("/ws/runs/run_m0_ping") as ws:
         ws.receive_json()  # initial state_patch
         ws.send_json({"text": "Hello sidecar!"})
-        events = [ws.receive_json() for _ in range(7)]
+        events: list[dict] = []
+        while True:
+            event = ws.receive_json()
+            events.append(event)
+            if (
+                event.get("event") == "state_patch"
+                and event.get("data", {}).get("patch", {}).get("status") == "idle"
+            ):
+                break
         patch_events = [e for e in events if e["event"] == "state_patch"]
         assert len(patch_events) == 2
         

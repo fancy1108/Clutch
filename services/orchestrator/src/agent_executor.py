@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 from typing import Any
 
@@ -87,97 +86,39 @@ def execute_agent_task(node_data: dict[str, Any], *, instruction: str = "") -> A
                     break
 
         if mcp_endpoint:
-            from src.mcp_client import McpClient
-            from src.models_config import get_router
+            server_entry = {
+                "id": tool if tool not in {"local-fs", "Local Filesystem MCP Server"} else "local-fs",
+                "name": mcp_name or "mcp",
+                "endpoint": mcp_endpoint,
+            }
+            if mcp_env:
+                server_entry["env"] = mcp_env
 
-            client = McpClient(mcp_name or "mcp", mcp_endpoint, env=mcp_env)
-            logs.append(f"[{agent.upper()}] Starting MCP Server: {mcp_name} ({mcp_endpoint})")
+            from src.mcp_react import run_mcp_react_loop
 
-            if not client.start():
-                output = f"Failed to start MCP server: {mcp_name} ({mcp_endpoint})"
-                logs.append(f"[{agent.upper()}] ERROR: {output}")
-                return AgentTaskResult(
-                    agent=agent,
-                    output=output,
-                    logs=logs,
-                    message=chat_message(agent, output),
-                )
-
+            messages = [
+                {
+                    "role": "system",
+                    "content": (
+                        f"You are the {agent} agent in a supervised software workflow.\n"
+                        f"You have access to MCP tools from {mcp_name}.\n"
+                        "Solve the task by using tools when needed. Reply concisely."
+                    ),
+                },
+                {"role": "user", "content": task_instruction},
+            ]
             try:
-                mcp_tools = client.list_tools()
-                logs.append(f"[{agent.upper()}] Discovered {len(mcp_tools)} tools")
-
-                openai_tools = []
-                for t in mcp_tools:
-                    openai_tools.append({
-                        "type": "function",
-                        "function": {
-                            "name": t["name"],
-                            "description": t.get("description", ""),
-                            "parameters": t.get("inputSchema", {"type": "object", "properties": {}}),
-                        },
-                    })
-
-                router = get_router()
-                model = router.get_active_model()
-                messages = [
-                    {
-                        "role": "system",
-                        "content": (
-                            f"You are the {agent} agent in a supervised software workflow.\n"
-                            f"You have access to the following MCP tools from {mcp_name}.\n"
-                            f"Please solve the task instruction by using the tools. Reply with a concise message describing the outcome."
-                        ),
-                    },
-                    {"role": "user", "content": task_instruction},
-                ]
-
-                # ReAct Loop
-                for step_idx in range(10):
-                    response = router.chat(messages, tools=openai_tools)
-                    if isinstance(response, dict) and response.get("tool_calls"):
-                        messages.append(response)
-                        for tc in response["tool_calls"]:
-                            tc_id = tc["id"]
-                            func_name = tc["function"]["name"]
-                            func_args = tc["function"]["arguments"]
-                            if isinstance(func_args, str):
-                                try:
-                                    func_args = json.loads(func_args)
-                                except Exception:
-                                    pass
-
-                            logs.append(f"[{agent.upper()}] Step {step_idx + 1}: Calling tool {func_name} with {json.dumps(func_args)}")
-                            try:
-                                tool_res = client.call_tool(func_name, func_args)
-                                content_parts = []
-                                for item in tool_res.get("content", []):
-                                    if item.get("type") == "text":
-                                        content_parts.append(item.get("text", ""))
-                                result_str = "\n".join(content_parts) or json.dumps(tool_res)
-                                logs.append(f"[{agent.upper()}] Tool response length: {len(result_str)} chars")
-                            except Exception as exc:
-                                result_str = f"Error executing tool: {exc}"
-                                logs.append(f"[{agent.upper()}] Tool execution error: {exc}")
-
-                            messages.append({
-                                "role": "tool",
-                                "tool_call_id": tc_id,
-                                "content": result_str,
-                            })
-                    else:
-                        output = str(response)
-                        logs.append(f"[{agent.upper()}] Task completed via {model.name}")
-                        break
-                else:
-                    output = f"Agent task hit maximum tool call iteration limit (10) in {model.name}."
-                    logs.append(f"[{agent.upper()}] ERROR: max iterations limit reached")
+                outcome = run_mcp_react_loop(
+                    messages=messages,
+                    servers=[server_entry],
+                    log_prefix=agent.upper(),
+                )
+                output = outcome.output
+                for log_line in outcome.logs:
+                    logs.append(log_line if log_line.startswith("[") else f"[{agent.upper()}] {log_line}")
             except Exception as exc:
                 output = f"Execution error: {exc}"
                 logs.append(f"[{agent.upper()}] ERROR: {exc}")
-            finally:
-                client.close()
-                logs.append(f"[{agent.upper()}] MCP Server {mcp_name} stopped")
         else:
             output = f"Tool {tool!r} is not wired yet for agent tasks."
             logs.append(f"[{agent.upper()}] {output}")

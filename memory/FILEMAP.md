@@ -54,6 +54,7 @@
 | 测试策略与 E2E 范围 | `memory/DECISIONS.md`（D1） |
 | E2E 落地前提勾选 | `memory/ROADMAP.md` §E2E 落地前提 |
 | 后端单元测试（现有 + 随 task 新建） | `services/orchestrator/tests/`；清单见 `tasks.md` §待建 pytest |
+| Video Core 测试 | `tests/test_video_core/` |
 | CI 工作流 | `.github/workflows/ci.yml` |
 | 本地一键校验 | `scripts/verify.sh` |
 | 文档↔代码漂移机检 | `scripts/check-doc-drift.sh` |
@@ -98,6 +99,8 @@
 | 画布 ↔ compiler 转换（D9） | `services/workflowFormat.ts` |
 | 工作流 Sidecar API 客户端 | `services/workflowApi.ts` |
 | Agent 角色配置 | `components/AgentManager.tsx` |
+| 内置 Clutch Agent 定义与合并 | `services/builtinAgent.ts` |
+| Agent Registry API | `services/agentApi.ts` |
 | AI 工具连接状态 | `components/AiToolsManager.tsx` |
 | Skills 注册 | `components/SkillsRegistry.tsx` |
 | MCP 配置 | `components/McpServerHub.tsx` |
@@ -121,12 +124,16 @@
 | Workflow JSON Schema 校验 | `src/workflow_validator.py` |
 | WorkflowCompiler（M1-02） | `src/compiler/` |
 | Orchestrator 路由（M1-04） | `src/orchestrator/routing.py` |
+| Engine Router（aiEngine / Connect 分流） | `src/engine_router.py` |
+| agent_task 节点执行 | `src/agent_executor.py` |
+| Agent 持久化与内置 Agent | `src/agent_storage.py` |
 | LLM Provider Router（M1-08，D4） | `src/llm/router.py` |
 | 用户工作流存储 API（M1-09，D5） | `src/workflow_storage.py` |
 | Skills Registry 持久化（P2-01） | `src/skills_storage.py`、`src/skills_scanner.py` |
 | MCP Registry 持久化（P2-02） | `src/mcp_storage.py` |
 | 用户偏好 / Theme（P2-03） | `src/preferences_storage.py` |
-| CLI / GUI Adapter（M3） | `src/adapters/`（待建） |
+| CLI / GUI Adapter（M3） | `src/adapters/` — `cli_adapter.py`、`claude_cli_adapter.py`、`cursor_adapter.py` |
+| Video Core（M5） | `src/video_core/` — `config.py`（数据模型）、`env.py`（构建环境准备） |
 | 依赖与 pytest 配置 | `pyproject.toml` |
 
 ### 共享与 Workflow

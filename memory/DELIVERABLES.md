@@ -27,6 +27,40 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ## 已交付（代码 Task · 自 Git 回填）
 
+### AGENT-ID-CHAT-ROUTING ✅
+- **日期：** 2026-06-25
+- **Commit：** `6cc6c6b` — `feat(chat): route plain chat by agent_id and allow builtin agent customization`
+- **Verification：** `./scripts/verify.sh` → 138 pytest + vitest + check-doc-drift passed
+- **证据：** pre-commit hook output（`6cc6c6b`）
+- **交付文件：**
+  - `services/orchestrator/src/main.py` — WebSocket `agent_id`；`_llm_chat_reply` / `_handle_plain_chat` 按 Agent 解析并注入 system prompt。
+  - `services/orchestrator/src/agent_storage.py` — `get_agent_by_id`；内置 Agent 覆盖持久化与 `save_agents` 规范化。
+  - `apps/desktop/src/services/clutchState.ts` — `submitChatMessage(text, agentId?)` 附带 `agent_id`。
+  - `apps/desktop/src/App.tsx` — 发送聊天时传 `selectedAgentId`。
+  - `apps/desktop/src/components/AgentManager.tsx` — 内置 Agent 可编辑；persist 保留 builtin 行。
+  - `apps/desktop/src/services/agentApi.ts` — `saveAgents` 提交完整列表。
+  - `services/orchestrator/tests/test_agents_api.py` — builtin override 与 `get_agent_by_id` 测试。
+  - `services/orchestrator/tests/test_ws_message_log.py` — `agent_id` system prompt 注入与回复标签测试。
+
+### ENGINE-ROUTER-CLI-ADAPTER ✅
+- **日期：** 2026-06-25
+- **Commit：** `eaf2ea0` — `feat(routing): implement clutch AI agent engine routing refactor, add Claude CLI adapter, routing tests, and test storage isolation`
+- **Verification：** `./scripts/verify.sh` → 138 pytest + vitest + check-doc-drift passed
+- **证据：** `runs/verification/`（会话内 verify；commit `eaf2ea0`）
+- **交付文件：**
+  - `services/orchestrator/src/engine_router.py` — `route_engine` / `find_agent`；Claude CLI / Cursor / 全局 LLM 三分流。
+  - `services/orchestrator/src/adapters/claude_cli_adapter.py` — `chat_claude_cli` 封装本地 `claude -p`。
+  - `services/orchestrator/src/agent_executor.py` — `execute_agent_task` 经 `route_engine` + `fallback_tool`。
+  - `services/orchestrator/src/main.py` — plain chat 改走 `route_engine`（初版，后续 `6cc6c6b` 增强 agent_id）。
+  - `services/orchestrator/src/agent_storage.py` — 内置 Clutch Agent 注入 `list_agents`。
+  - `apps/desktop/src/services/builtinAgent.ts` — 前端内置 Agent 定义与 `mergeAgentsWithBuiltin`。
+  - `apps/desktop/src/App.tsx` — 默认选中内置 Agent、`localStorage` 持久化。
+  - `apps/desktop/src/components/AgentManager.tsx` — 内置 Agent UI 集成。
+  - `services/orchestrator/tests/conftest.py` — `CLUTCH_STORAGE_DIR` 测试隔离。
+  - `services/orchestrator/tests/test_claude_cli_adapter.py` — CLI 参数拼装单元测试。
+  - `services/orchestrator/tests/test_engine_router.py` — 路由决策单元测试（6 场景）。
+  - `services/orchestrator/tests/test_agents_api.py` — 内置 Agent API 测试。
+
 ### MCP-AND-I18N-COMPLETION ✅
 - **日期：** 2026-06-25
 - **Commit：** `0b90000` — `feat(mcp,i18n): implement full stdio MCP client, raw JSON editor, claude scanner import and fix dynamic backend/frontend English translations`

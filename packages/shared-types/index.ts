@@ -17,6 +17,8 @@ export interface ChatMessage {
   executionTime?: string;
   tokens?: string;
   badgeText?: string;
+  /** Actual execution backend for this reply (e.g. Claude CLI, DeepSeek V4 Pro). */
+  runtimeEngine?: string;
   codeHighlight?: {
     file: string;
     lineCount: number;
@@ -87,6 +89,10 @@ export interface ClutchState {
   session_cost_usd?: number;
   token_input?: number;
   token_output?: number;
+  /** Claude Code CLI session UUID bound to this Clutch run (plain chat). */
+  claude_session_id?: string;
+  /** Agent id that owns `claude_session_id` (reset when user switches agent). */
+  claude_session_agent_id?: string;
 }
 
 /** WebSocket `state_patch` payload (partial update). */

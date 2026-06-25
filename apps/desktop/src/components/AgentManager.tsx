@@ -3,7 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { Deliverable, Agent } from '../types';
 import { fetchAgents, saveAgents } from '../services/agentApi';
 import { fetchSkillsRegistry, type ScannedSkill } from '../services/skillsApi';
-import { getAgentDisplayName, isBuiltinAgent, mergeAgentsWithBuiltin } from '../services/builtinAgent';
+import { fetchMcpStatus, type McpServer } from '../services/mcpApi';
+import { getAgentDisplayName, isBuiltinAgent, mergeAgentsWithBuiltin, BUILTIN_AGENT_ID } from '../services/builtinAgent';
 import { useLanguage } from './LanguageContext';
 
 export function AgentLogo({ name, description, className = "w-10 h-10" }: { name: string; description: string; className?: string }) {
@@ -110,6 +111,8 @@ export function AgentManager({
   const [newDelivName, setNewDelivName] = useState('');
   const [newDelivContent, setNewDelivContent] = useState('');
   const [selectedMcpTools, setSelectedMcpTools] = useState<string[]>([]);
+  const [selectedMcpServerIds, setSelectedMcpServerIds] = useState<string[]>([]);
+  const [mcpServers, setMcpServers] = useState<McpServer[]>([]);
 
   // Vibe workspace state extensions
   const [scannedSkills, setScannedSkills] = useState<ScannedSkill[]>([]);
@@ -124,6 +127,12 @@ export function AgentManager({
       .then((data) => setScannedSkills(data.skills))
       .catch(() => setScannedSkills([]));
   };
+
+  useEffect(() => {
+    void fetchMcpStatus()
+      .then((status) => setMcpServers(status.servers.filter((s) => s.enabled !== false)))
+      .catch(() => setMcpServers([]));
+  }, []);
 
   useEffect(() => {
     refreshScannedSkills();
@@ -149,7 +158,11 @@ export function AgentManager({
     const custom = next.filter((agent) => !isBuiltinAgent(agent));
     const normalized = builtin ? [builtin, ...custom] : mergeAgentsWithBuiltin(custom);
     setAgents(normalized);
-    void saveAgents(normalized).catch(() => {});
+    void saveAgents(normalized)
+      .then(() => fetchAgents().then((list) => setAgents(list)))
+      .catch((error) => {
+        console.error('[Clutch] agents save failed:', error);
+      });
   };
 
   const handleOpenCreate = () => {
@@ -164,6 +177,7 @@ export function AgentManager({
     setNewDelivName('');
     setNewDelivContent('');
     setSelectedMcpTools([]);
+    setSelectedMcpServerIds([]);
     setAiEngine('Claude Code (Local CLI)');
     setSelectedSkills([]);
     setIsSkillsAttachOpen(false);
@@ -181,7 +195,12 @@ export function AgentManager({
     setNewDelivName('');
     setNewDelivContent('');
     setSelectedMcpTools(agent.mcpTools || []);
-    setAiEngine(agent.aiEngine || 'Claude Code (Local CLI)');
+    setSelectedMcpServerIds(agent.mcpServerIds || []);
+    setAiEngine(
+      isBuiltinAgent(agent)
+        ? 'Configured LLM'
+        : agent.aiEngine || 'Claude Code (Local CLI)',
+    );
     setSelectedSkills(agent.skills || []);
     setIsSkillsAttachOpen(false);
     setIsModalOpen(true);
@@ -221,6 +240,10 @@ export function AgentManager({
 
     const todayStr = new Date().toISOString().replace('T', ' ').substring(0, 16);
 
+    const resolvedAiEngine = editingId === BUILTIN_AGENT_ID
+      ? 'Configured LLM'
+      : aiEngine;
+
     if (modalMode === 'create') {
       const newAgent: Agent = {
         id: `agent-${Date.now()}`,
@@ -231,7 +254,8 @@ export function AgentManager({
         avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(name)}`,
         deliverables: deliverablesInput,
         mcpTools: selectedMcpTools,
-        aiEngine,
+        mcpServerIds: selectedMcpServerIds,
+        aiEngine: resolvedAiEngine,
         skills: selectedSkills
       };
       persistAgents([newAgent, ...agents]);
@@ -246,7 +270,8 @@ export function AgentManager({
             lastModified: todayStr,
             deliverables: deliverablesInput,
             mcpTools: selectedMcpTools,
-            aiEngine,
+            mcpServerIds: selectedMcpServerIds,
+            aiEngine: resolvedAiEngine,
             skills: selectedSkills
           };
           if (selectedAgent && selectedAgent.id === editingId) {
@@ -412,7 +437,11 @@ export function AgentManager({
                     <p className="text-[10px] text-neutral-400 font-medium">DRIVING AI ENGINE</p>
                     <div className="flex items-center gap-1.5 mt-1 bg-neutral-100 border border-neutral-200 rounded-lg p-1.5">
                       <span className="material-symbols-outlined text-[13px] text-neutral-700">bolt</span>
-                      <span className="text-[10.5px] font-mono font-bold text-neutral-900">{selectedAgent.aiEngine || 'Claude Code (Local CLI)'}</span>
+                      <span className="text-[10.5px] font-mono font-bold text-neutral-900">
+                        {isBuiltinAgent(selectedAgent)
+                          ? 'Configured LLM'
+                          : selectedAgent.aiEngine || 'Claude Code (Local CLI)'}
+                      </span>
                     </div>
                   </div>
                   <div className="border-t border-neutral-200/50 pt-2.5 flex justify-between items-center">
@@ -444,32 +473,26 @@ export function AgentManager({
                 </div>
               </div>
 
-              {/* Mounted Context / MCP Tools */}
+              {/* Mounted MCP Hub servers */}
               <div>
-                <h3 className="text-[11px] font-bold text-neutral-400 font-mono uppercase tracking-wider mb-2">Mounted MCP Tools</h3>
+                <h3 className="text-[11px] font-bold text-neutral-400 font-mono uppercase tracking-wider mb-2">MCP Hub Servers</h3>
                 <div className="flex flex-col gap-1.5">
-                  {selectedAgent.mcpTools && selectedAgent.mcpTools.length > 0 ? (
-                    selectedAgent.mcpTools.map(toolKey => {
-                      const info = {
-                        'git_write_permission': { label: 'Local Git Access', icon: 'terminal', bg: 'bg-neutral-50 text-neutral-800 border-neutral-200/60' },
-                        'figma_api_connect': { label: 'Figma Design Hook', icon: 'palette', bg: 'bg-neutral-50 text-neutral-800 border-neutral-200/60' },
-                        'cmd_exec_permission': { label: 'CLI Command Engine', icon: 'code', bg: 'bg-neutral-50 text-neutral-800 border-neutral-200/60' },
-                        'slack_webhook': { label: 'Slack Webhook Feed', icon: 'forum', bg: 'bg-neutral-50 text-neutral-800 border-neutral-200/60' },
-                        'google_sheets_sync': { label: 'Sheets Live Sync', icon: 'table_chart', bg: 'bg-neutral-50 text-neutral-800 border-neutral-200/60' }
-                      }[toolKey] || { label: toolKey, icon: 'extension', bg: 'bg-neutral-50 text-neutral-700 border-neutral-150' };
-
+                  {selectedAgent.mcpServerIds && selectedAgent.mcpServerIds.length > 0 ? (
+                    selectedAgent.mcpServerIds.map((serverId) => {
+                      const server = mcpServers.find((s) => s.id === serverId);
+                      const label = server?.name || serverId;
                       return (
-                        <div key={toolKey} className={`px-2.5 py-1.5 border rounded-lg flex items-center justify-between font-mono text-[10px] font-bold ${info.bg}`}>
+                        <div key={serverId} className="px-2.5 py-1.5 border rounded-lg flex items-center justify-between font-mono text-[10px] font-bold bg-neutral-50 text-neutral-800 border-neutral-200/60">
                           <span className="flex items-center gap-1.5">
-                            <span className="material-symbols-outlined text-[13px]">{info.icon}</span>
-                            {info.label}
+                            <span className="material-symbols-outlined text-[13px]">hub</span>
+                            {label}
                           </span>
-                          <span className="text-[7.5px] tracking-wider uppercase opacity-85">MOUNTED</span>
+                          <span className="text-[7.5px] tracking-wider uppercase opacity-85">BOUND</span>
                         </div>
                       );
                     })
                   ) : (
-                    <p className="text-[10px] text-neutral-400/80 italic">No external MCP Context or API Tools mounted to this agent profile.</p>
+                    <p className="text-[10px] text-neutral-400/80 italic">No MCP Hub servers bound. Clutch Agent uses MCP only when servers are linked here.</p>
                   )}
                 </div>
               </div>
@@ -539,10 +562,7 @@ export function AgentManager({
             {agents.map((agent) => (
               <div
                 key={agent.id}
-                onClick={() => {
-                  onActivateAgent?.(agent);
-                  setSelectedAgent(agent);
-                }}
+                onClick={() => onActivateAgent?.(agent)}
                 className={`p-5 border hover:border-neutral-300/80 bg-white rounded-xl shadow-xs hover:shadow-sm cursor-pointer transition-all duration-200 relative group flex flex-col justify-between min-h-[148px] ${
                   agent.id === activeAgentId
                     ? 'border-primary ring-1 ring-primary/25'
@@ -620,6 +640,16 @@ export function AgentManager({
                   
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedAgent(agent);
+                      }}
+                      className="p-1 hover:bg-neutral-100 text-neutral-500 hover:text-neutral-800 rounded-md transition-colors"
+                      title="View details"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">visibility</span>
+                    </button>
+                    <button
                       onClick={(e) => handleOpenEdit(agent, e)}
                       className="p-1 hover:bg-neutral-100 text-neutral-500 hover:text-neutral-800 rounded-md transition-colors"
                       title="Edit settings"
@@ -686,14 +716,26 @@ export function AgentManager({
                   
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-neutral-500 tracking-wider uppercase font-mono block">AI Driving Engine</label>
-                    <select
-                      value={aiEngine}
-                      onChange={(e) => setAiEngine(e.target.value)}
-                      className="w-full px-3 py-1.5 text-xs border border-neutral-200 focus:outline-none focus:border-neutral-900 focus:ring-1 focus:ring-neutral-900/20 bg-white rounded-lg font-sans text-neutral-800"
-                    >
-                      <option value="Claude Code (Local CLI)">Claude Code (Local CLI)</option>
-                      <option value="Cursor Workspace Node">Cursor Workspace Node (IDE)</option>
-                    </select>
+                    {modalMode === 'edit' && editingId === BUILTIN_AGENT_ID ? (
+                      <div>
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 border border-neutral-200 bg-neutral-100 rounded-lg">
+                          <span className="material-symbols-outlined text-[14px] text-neutral-700">bolt</span>
+                          <span className="text-xs font-mono font-bold text-neutral-900">Configured LLM</span>
+                        </div>
+                        <p className="text-[9.5px] text-neutral-400 mt-1.5 leading-relaxed">
+                          Built-in agent always uses the model selected in Settings → Models.
+                        </p>
+                      </div>
+                    ) : (
+                      <select
+                        value={aiEngine}
+                        onChange={(e) => setAiEngine(e.target.value)}
+                        className="w-full px-3 py-1.5 text-xs border border-neutral-200 focus:outline-none focus:border-neutral-900 focus:ring-1 focus:ring-neutral-900/20 bg-white rounded-lg font-sans text-neutral-800"
+                      >
+                        <option value="Claude Code (Local CLI)">Claude Code (Local CLI)</option>
+                        <option value="Cursor Workspace Node">Cursor Workspace Node (IDE)</option>
+                      </select>
+                    )}
                   </div>
                 </div>
 
@@ -864,103 +906,74 @@ export function AgentManager({
                 </div>
               </div>
 
-              {/* 🧩 MODULE 4: Bind MCP Servers */}
+              {/* 🧩 MODULE 4: Bind MCP Hub Servers */}
               <div className="p-4 bg-neutral-50/30 border border-neutral-200/60 rounded-xl space-y-3">
                 <div className="flex items-center gap-1.5 pb-2 border-b border-neutral-200/40">
                   <span className="text-[9.5px] font-extrabold text-neutral-800 bg-neutral-100 border border-neutral-200 px-1.5 py-0.2 rounded font-mono tracking-wider uppercase">Module 4</span>
-                  <span className="text-[10.5px] font-extrabold text-[#111111] font-mono tracking-wide uppercase">Permissions and MCP Server Bindings</span>
+                  <span className="text-[10.5px] font-extrabold text-[#111111] font-mono tracking-wide uppercase">MCP Hub Server Bindings</span>
                 </div>
-                
-                <p className="text-[10px] text-neutral-400 leading-normal">
-                  Grant active tool capabilities to this agent profile. Safety ratings indicate host system sandbox isolation level:
-                </p>
-                <div className="flex flex-col gap-1.5 border border-neutral-200 bg-white p-3 rounded-xl max-h-62 overflow-y-auto">
-                  {(() => {
-                    const TOOL_SECURITY_INFO: Record<string, { label: string; badgeClass: string }> = {
-                      git_write_permission: { label: '🔴 Host Environment (No Isolation)', badgeClass: 'bg-rose-50 text-rose-800 border-rose-200' },
-                      figma_api_connect: { label: '🟢 Cloud API', badgeClass: 'bg-emerald-50 text-emerald-850 border-emerald-200' },
-                      cmd_exec_permission: { label: '🔴 Host Environment (No Isolation)', badgeClass: 'bg-rose-50 text-rose-800 border-rose-200' },
-                      slack_webhook: { label: '🟢 Cloud API', badgeClass: 'bg-emerald-50 text-emerald-850 border-emerald-200' },
-                      google_sheets_sync: { label: '🟡 DB Sandbox', badgeClass: 'bg-amber-50 text-amber-800 border-amber-200' },
-                    };
 
-                    return [
-                      { key: 'git_write_permission', label: 'Local Git Access (Read/Write Branches)', icon: 'terminal', desc: 'Read repository branches, compare index files, and write auto-repair commits' },
-                      { key: 'figma_api_connect', label: 'Figma API Connect (Figma Spec Extraction)', icon: 'palette', desc: 'Pull exact layouts, measure element geometry, and compare pixel differences' },
-                      { key: 'cmd_exec_permission', label: 'Command Line Runner (Terminal Scripts Running)', icon: 'code', desc: 'Execute package installations, compiler routines, and test suite commands' },
-                      { key: 'slack_webhook', label: 'Slack Webhook Feed (Workspace Communications)', icon: 'forum', desc: 'Publish compilation logs, validation reports, and request intervention notifications' },
-                      { key: 'google_sheets_sync', label: 'Sheets Sync (Google Workspace Sync Engine)', icon: 'table_chart', desc: 'Read spreadsheet directives, log check records, and synchronize metric lists' }
-                    ].map(tool => {
-                      const isSelected = selectedMcpTools.includes(tool.key);
-                      const security = TOOL_SECURITY_INFO[tool.key] || { label: '⚪ Host Node', badgeClass: 'bg-neutral-50 text-neutral-700' };
-
-                      return (
-                        <button
-                          key={tool.key}
-                          type="button"
-                          onClick={() => {
-                            if (isSelected) {
-                              setSelectedMcpTools(selectedMcpTools.filter(k => k !== tool.key));
-                            } else {
-                              setSelectedMcpTools([...selectedMcpTools, tool.key]);
-                            }
-                          }}
-                          className={`p-2.5 border text-left rounded-lg transition-all flex items-start justify-between gap-2 cursor-pointer ${
-                            isSelected
-                              ? security.label.includes('🔴')
-                                ? 'bg-rose-50/70 text-rose-950 border-rose-500 ring-1 ring-rose-500/20'
-                                : 'bg-neutral-900/95 text-white border-neutral-900 shadow-2xs'
-                              : 'bg-white text-neutral-600 border-neutral-200/85 hover:bg-neutral-50 hover:text-neutral-800'
-                          }`}
-                        >
-                          <div className="flex items-start gap-2.5">
-                            <span className={`material-symbols-outlined text-[16px] p-1 rounded-md mt-0.5 flex items-center justify-center ${
-                              isSelected 
-                                ? security.label.includes('🔴') ? 'bg-rose-200 text-rose-800' : 'bg-neutral-800 text-white' 
-                                : 'bg-neutral-100 text-neutral-500'
-                            }`}>
-                              {tool.icon}
-                            </span>
-                            <div>
-                              <div className="text-[10.5px] font-bold font-sans flex items-center gap-1.5 flex-wrap">
-                                <span className={isSelected && security.label.includes('🔴') ? 'text-rose-950' : ''}>{tool.label}</span>
-                                {isSelected && (
-                                  <span className={`text-[7.5px] uppercase font-mono px-1.5 py-0.2 rounded-sm tracking-wider ${
-                                    security.label.includes('🔴') ? 'bg-rose-600 text-white' : 'bg-neutral-700 text-white'
+                {aiEngine === 'Configured LLM' ? (
+                  <>
+                    <p className="text-[10px] text-neutral-400 leading-normal">
+                      Bind MCP servers from Settings → MCP Hub. Used when this agent runs on the configured LLM (e.g. Clutch Agent).
+                    </p>
+                    <div className="flex flex-col gap-1.5 border border-neutral-200 bg-white p-3 rounded-xl max-h-62 overflow-y-auto">
+                      {mcpServers.length === 0 ? (
+                        <p className="text-[10px] text-neutral-400 italic p-2">
+                          No enabled MCP servers in Hub. Add servers under Settings → MCP Hub first.
+                        </p>
+                      ) : (
+                        mcpServers.map((server) => {
+                          const isSelected = selectedMcpServerIds.includes(server.id);
+                          return (
+                            <button
+                              key={server.id}
+                              type="button"
+                              onClick={() => {
+                                if (isSelected) {
+                                  setSelectedMcpServerIds(selectedMcpServerIds.filter((id) => id !== server.id));
+                                } else {
+                                  setSelectedMcpServerIds([...selectedMcpServerIds, server.id]);
+                                }
+                              }}
+                              className={`p-2.5 border text-left rounded-lg transition-all flex items-start justify-between gap-2 cursor-pointer ${
+                                isSelected
+                                  ? 'bg-neutral-900/95 text-white border-neutral-900 shadow-2xs'
+                                  : 'bg-white text-neutral-600 border-neutral-200/85 hover:bg-neutral-50 hover:text-neutral-800'
+                              }`}
+                            >
+                              <div className="flex items-start gap-2.5 min-w-0">
+                                <span className={`material-symbols-outlined text-[16px] p-1 rounded-md mt-0.5 ${
+                                  isSelected ? 'bg-neutral-800 text-white' : 'bg-neutral-100 text-neutral-500'
+                                }`}>
+                                  hub
+                                </span>
+                                <div className="min-w-0">
+                                  <div className="text-[10.5px] font-bold font-sans truncate">{server.name}</div>
+                                  <div className={`text-[9.5px]/1.3 mt-0.5 truncate ${
+                                    isSelected ? 'text-neutral-300' : 'text-neutral-400'
                                   }`}>
-                                    {security.label.includes('🔴') ? '🛡️ BYPASS' : 'Mounted'}
-                                  </span>
-                                )}
-                              </div>
-                              <div className={`text-[9.5px]/1.3 mt-0.5 ${
-                                isSelected 
-                                  ? security.label.includes('🔴') ? 'text-rose-800/80' : 'text-neutral-300' 
-                                  : 'text-neutral-400'
-                              }`}>
-                                {tool.desc}
-                              </div>
-                              
-                              {isSelected && security.label.includes('🔴') && (
-                                <div className="text-[8px] font-bold uppercase font-mono text-rose-600 tracking-wider mt-1 flex items-center gap-1 animate-pulse">
-                                  <span>⚠️ HIGH RISK: EXECUTES WITHOUT SANDBOX ISOLATION</span>
+                                    {server.transport} · {server.toolsCount} tools
+                                  </div>
                                 </div>
+                              </div>
+                              {isSelected && (
+                                <span className="text-[7.5px] uppercase font-mono px-1.5 py-0.2 rounded-sm tracking-wider bg-neutral-700 text-white">
+                                  Bound
+                                </span>
                               )}
-                            </div>
-                          </div>
-
-                          {/* Security Sandbox Badge overlay info */}
-                          <div className={`text-[8.5px] font-extrabold uppercase font-mono px-2 py-0.5 border rounded-md whitespace-nowrap self-start ${
-                            isSelected && security.label.includes('🔴')
-                              ? 'bg-rose-100 text-rose-900 border-rose-300'
-                              : security.badgeClass
-                          }`}>
-                            {security.label}
-                          </div>
-                        </button>
-                      );
-                    });
-                  })()}
-                </div>
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-[10px] text-neutral-500 leading-relaxed">
+                    Claude Code (Local CLI) agents use Skills and MCP installed in your local Claude Code environment — not Clutch MCP Hub bindings.
+                  </p>
+                )}
               </div>
 
               {/* 🧩 MODULE 5: Deliverables Output Constraints */}

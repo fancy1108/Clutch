@@ -15,6 +15,7 @@ from src.tools_status import (
     disconnect_tool,
     list_tools_status,
     load_connected_ids,
+    resolve_tool_binary,
     save_connected_ids,
 )
 
@@ -31,6 +32,7 @@ def nothing_installed(monkeypatch: pytest.MonkeyPatch) -> None:
     """Make every probe report the tool as absent."""
     monkeypatch.setattr("src.tools_status._cli_path", lambda binary: None)
     monkeypatch.setattr("src.tools_status._client_path", lambda app_name: None)
+    monkeypatch.setattr("src.tools_status._extra_cli_search_dirs", lambda: [])
 
 
 def test_list_tools_empty_when_none_installed(
@@ -42,6 +44,7 @@ def test_list_tools_empty_when_none_installed(
 def test_connect_persists_only_installed_tools(
     tools_config: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    monkeypatch.setattr("src.tools_status._extra_cli_search_dirs", lambda: [])
     monkeypatch.setattr(
         "src.tools_status._cli_path",
         lambda binary: "/usr/local/bin/claude" if binary == "claude" else None,
@@ -91,6 +94,7 @@ def test_connected_flag_false_when_binary_removed(
 def test_list_includes_installed_cli_with_path(
     tools_config: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    monkeypatch.setattr("src.tools_status._extra_cli_search_dirs", lambda: [])
     monkeypatch.setattr(
         "src.tools_status._cli_path",
         lambda binary: f"/usr/local/bin/{binary}" if binary == "codex" else None,
@@ -109,6 +113,7 @@ def test_list_includes_installed_cli_with_path(
 def test_list_includes_installed_client_with_path(
     tools_config: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    monkeypatch.setattr("src.tools_status._extra_cli_search_dirs", lambda: [])
     monkeypatch.setattr("src.tools_status._cli_path", lambda binary: None)
     monkeypatch.setattr(
         "src.tools_status._client_path",
@@ -126,6 +131,7 @@ def test_list_includes_installed_client_with_path(
 def test_client_not_detected_on_non_darwin(
     tools_config: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    monkeypatch.setattr("src.tools_status._extra_cli_search_dirs", lambda: [])
     monkeypatch.setattr("src.tools_status._cli_path", lambda binary: None)
     monkeypatch.setattr(sys, "platform", "linux")
 
@@ -142,3 +148,36 @@ def test_connect_rejects_unknown_tool(
 def test_candidate_catalogs_have_unique_ids() -> None:
     ids = [c["id"] for c in CLI_CANDIDATES + CLIENT_CANDIDATES]
     assert len(ids) == len(set(ids))
+
+
+def test_resolve_tool_binary_checks_extra_bin_dirs(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    homebrew = tmp_path / "opt" / "homebrew" / "bin"
+    homebrew.mkdir(parents=True)
+    claude_bin = homebrew / "claude"
+    claude_bin.write_text("#!/bin/sh\necho claude\n", encoding="utf-8")
+    claude_bin.chmod(0o755)
+
+    monkeypatch.setattr("src.tools_status._cli_path", lambda binary: None)
+    monkeypatch.setattr("src.tools_status._extra_cli_search_dirs", lambda: [homebrew])
+
+    assert resolve_tool_binary("claude-cli") == str(claude_bin)
+
+
+def test_resolve_tool_binary_finds_nvm_node_bin(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    nvm_bin = tmp_path / "nvm" / "versions" / "node" / "v24.16.0" / "bin"
+    nvm_bin.mkdir(parents=True)
+    claude_bin = nvm_bin / "claude"
+    claude_bin.write_text("#!/bin/sh\necho claude\n", encoding="utf-8")
+    claude_bin.chmod(0o755)
+
+    monkeypatch.setattr("src.tools_status._cli_path", lambda binary: None)
+    monkeypatch.setattr(
+        "src.tools_status._extra_cli_search_dirs",
+        lambda: [nvm_bin],
+    )
+
+    assert resolve_tool_binary("claude-cli") == str(claude_bin)

@@ -29,11 +29,8 @@ export const Header: React.FC<HeaderProps> = ({
   const { language, setLanguage, t } = useLanguage();
 
   // Dynamically resolve parent folder/project name
-  const parentFolder = folders?.find(folder => 
-    folder.items.some((item: any) => 
-      item.name === currentFlow || 
-      (item.name === 'Vibe coding workspace...' && currentFlow === 'Video Production')
-    )
+  const parentFolder = folders?.find((folder) =>
+    folder.items.some((item: { name: string }) => item.name === currentFlow),
   );
 
   const parentLabel = workspaceName

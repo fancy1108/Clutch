@@ -192,6 +192,28 @@
 - **影响**：`tools_status.py` 重写；`toolsApi.ts` 类型扩展；`AiToolsManager.tsx` 卡片加 kind/path 显示。
 - **决策状态**：`已落地`
 
+### D19 · 双引擎工具分工与 Agent `mcpServerIds`（2026-06-25）
+
+- **背景**：Clutch 同时支持 `Configured LLM`（内置 Clutch Agent 等）与 `Claude Code (Local CLI)` 两类执行路径；Skills Registry 与 MCP Hub 已持久化，但 Plain Chat 未接入。Agent Manager Module 4 原 `mcpTools` 为占位 permission key，非 Hub 真服务器。
+- **方案（方案 A）**：
+  1. **`Configured LLM` 路径**：注入 Agent 勾选的 **Skills Registry** `SKILL.md` 至 system prompt；按 Agent **`mcpServerIds`** 绑定 MCP Hub 服务器，经共享 `mcp_react` 执行 ReAct 工具循环。
+  2. **`Claude Code (Local CLI)` 路径**：仅路由至本机 `claude` CLI；**不**叠加 Clutch MCP/Skills（用户 Claude Code 环境自带 Skill/MCP）。
+  3. Agent schema 新增 **`mcpServerIds: string[]`**（Hub `server.id`）；`mcpTools` 保留占位，暂不参与执行。
+- **影响**：`agent_skills.py`、`agent_mcp.py`、`mcp_react.py`；`main._llm_chat_reply`；`AgentManager` Module 4 改绑 Hub；`agent_executor` 复用 `mcp_react`。
+- **决策状态**：`已落地`（P2-14…P2-19：Skills/MCP Plain Chat、实时 MCP 日志、高风险 MCP 审批门）
+
+### D20 · Claude Code CLI 原生 Session 绑定 Clutch run_id（2026-06-25）
+
+- **背景**：Plain chat 经 Claude CLI 时，每轮将完整历史塞进 `-p`，无法复用 Claude Code 工具上下文与 session cache；延迟与 token 成本随轮次线性增长。
+- **方案**：
+  1. `ClutchState` 持久化 `claude_session_id` + `claude_session_agent_id`（`sessions/states/{run_id}.json`）。
+  2. **首轮**（或无 session id）：`claude -p <history|prompt> --session-id <uuid>`，uuid 由 Sidecar 生成并写回 state。
+  3. **续轮**：`claude -p <当前句> --resume <uuid>`，不再重放全文历史；`system_prompt` 仅首轮注入。
+  4. **Resume 失败**：回退历史重放 + 新 `--session-id`。
+  5. **切换 Agent**：`claude_session_agent_id` 与当前 `agent_id` 不一致时丢弃旧 session id。
+- **影响**：`claude_cli_adapter.py`、`engine_router.py`、`main._handle_plain_chat`；`packages/shared-types` `ClutchState` 扩展字段。
+- **决策状态**：`已落地`
+
 ## 开放问题
 
 （暂无 — 原 Q1–Q4 已于 2026-06-22 关闭，见 D3–D6。）

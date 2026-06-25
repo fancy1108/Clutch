@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { Sidebar } from './sidebar';
-import { ChatFeed } from './components/ChatFeed';
+import { ChatFeed, configuredEngineToRuntimeLabel } from './components/ChatFeed';
 import { RightPanel } from './components/RightPanel';
 import { WorkflowOrchestration } from './components/WorkflowOrchestration';
 import { AgentManager, AgentLogo } from './components/AgentManager';
@@ -16,6 +16,7 @@ import { fetchAgents } from './services/agentApi';
 import {
   BUILTIN_AGENT_ID,
   getAgentDisplayName,
+  isBuiltinAgent,
   mergeAgentsWithBuiltin,
 } from './services/builtinAgent';
 import { fetchThemePreference, saveThemePreference, type ThemePresetId } from './services/themeApi';
@@ -33,7 +34,6 @@ import {
   createRepositoryGroup,
   updateRepositoryGroup,
   deleteRepositoryGroup,
-  reassignToBuilder,
   type FileTreeNode,
   type RepositoryGroup,
   type WorkspaceInfo,
@@ -215,6 +215,15 @@ function MainLayout() {
   const activeWorkflowLabel = clutchState.workflow_id || selectedWorkflowId || currentFlowName || '—';
   const hasWorkflowSelection = activeWorkflowLabel !== '—';
   const multiAgentFooterName = selectedAgentId ? selectedAgentName : '—';
+  const showFooterModel =
+    !selectedAgent || isBuiltinAgent(selectedAgent) || hasWorkflowSelection;
+  const customAgentEngineLabel =
+    selectedAgent && !isBuiltinAgent(selectedAgent)
+      ? selectedAgent.aiEngine || 'Claude Code (Local CLI)'
+      : '';
+  const runtimeEngineHint = customAgentEngineLabel
+    ? configuredEngineToRuntimeLabel(customAgentEngineLabel)
+    : selectedModel;
 
   const refreshSessions = async () => {
     try {
@@ -253,12 +262,14 @@ function MainLayout() {
     if (!isMultiAgent && rightTab === 'flow') {
       setRightTab('overview');
     }
+    if (!clutchState.workflow_id && rightTab === 'flow') {
+      setRightTab('overview');
+    }
     if (!isMultiAgent && currentView === 'workflows') {
       setView('chat');
     }
-  }, [isMultiAgent, rightTab, currentView]);
+  }, [isMultiAgent, rightTab, currentView, clutchState.workflow_id]);
 
-  // Chat / diff state (diff mock until M3-02)
   const [uncommitted, setUncommitted] = useState<UncommittedFile[]>([]);
 
   // Close unified settings dialog on ESC key
@@ -449,7 +460,6 @@ function MainLayout() {
 
   const handleRetryWithInstructions = (instructions: string) => {
     void clutchStore.send({ action: 'human_decision', decision: 'retry', instructions });
-    setRightTab('terminal');
     setRightTab('overview');
   };
 
@@ -473,14 +483,6 @@ function MainLayout() {
       localStorage.removeItem('clutch_active_agent_id');
     }
     setView('chat');
-  };
-
-  const handleReassignToBuilder = () => {
-    setRightTab('terminal');
-    void reassignToBuilder(clutchState.run_id)
-      .then(() => clutchStore.send({ action: 'human_decision', decision: 'retry', instructions: 'reassign_to_builder' }))
-      .catch((error: unknown) => console.error('[Clutch] reassign failed:', error));
-    setRightTab('overview');
   };
 
   const handleNewChat = async () => {
@@ -641,7 +643,7 @@ function MainLayout() {
     await refreshSessions();
   };
 
-  const handleResetSimulation = () => {
+  const handleClearSessionView = () => {
     setRightTab('overview');
     setCurrentFlowName('');
   };
@@ -672,7 +674,7 @@ function MainLayout() {
         folders={folders}
         isMultiAgent={isMultiAgent}
         setIsMultiAgent={setIsMultiAgent}
-        onGoBack={handleResetSimulation}
+        onGoBack={handleClearSessionView}
         setView={setView}
         sidebarOpen={sidebarOpen}
         selectedModel={selectedModel}
@@ -822,6 +824,8 @@ function MainLayout() {
                 }}
                 activeWorkflowId={clutchState.workflow_id}
                 llmModelName={selectedModel}
+                activeAgentName={selectedAgentName}
+                engineHint={runtimeEngineHint}
               />
               <RightPanel
                 activeTab={rightTab}
@@ -830,18 +834,15 @@ function MainLayout() {
                 activeNodeId={clutchState.active_node_id}
                 activeAgent={clutchState.active_agent}
                 workflowId={clutchState.workflow_id}
+                currentInstruction={clutchState.current_instruction}
                 sessionTokens={clutchState.session_tokens}
                 sessionCostUsd={clutchState.session_cost_usd}
                 tokenInput={clutchState.token_input}
                 tokenOutput={clutchState.token_output}
-                onReassign={handleReassignToBuilder}
                 uncommitted={uncommitted}
                 terminalLogs={terminalLogs}
                 isOpen={rightPanelOpen}
                 setIsOpen={setRightPanelOpen}
-                selectedSidebarWidth={selectedSidebarWidth}
-                rightSidebarWidth={rightSidebarWidth}
-                onPreviewFile={setPreviewFile}
                 isMultiAgent={isMultiAgent}
                 workspaceFiles={workspaceFiles}
                 onOpenWorkspaceFile={(path) => { void handleOpenWorkspaceFile(path); }}
@@ -919,15 +920,26 @@ function MainLayout() {
             ) : null}
           </div>
 
-          <span
-            data-testid="footer-model-trigger"
-            onClick={() => setView('models')}
-            className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-container-low hover:text-on-surface transition-colors cursor-pointer font-medium text-on-surface-variant"
-          >
-            <span className="material-symbols-outlined text-[15px] text-on-surface-variant">layers</span>
-            {t("Model")}: {selectedModel || '—'}
-            <span className="material-symbols-outlined text-[13px]">keyboard_arrow_down</span>
-          </span>
+          {showFooterModel ? (
+            <span
+              data-testid="footer-model-trigger"
+              onClick={() => setView('models')}
+              className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-container-low hover:text-on-surface transition-colors cursor-pointer font-medium text-on-surface-variant"
+            >
+              <span className="material-symbols-outlined text-[15px] text-on-surface-variant">layers</span>
+              {t("Model")}: {selectedModel || '—'}
+              <span className="material-symbols-outlined text-[13px]">keyboard_arrow_down</span>
+            </span>
+          ) : (
+            <span
+              data-testid="footer-engine-label"
+              className="flex items-center gap-1.5 px-2 py-1 rounded font-medium text-on-surface-variant cursor-default"
+              title={t('Model is provided by the selected agent tool')}
+            >
+              <span className="material-symbols-outlined text-[15px] text-on-surface-variant">bolt</span>
+              {t('Engine')}: {customAgentEngineLabel}
+            </span>
+          )}
 
           {isMultiAgent ? (
             <>

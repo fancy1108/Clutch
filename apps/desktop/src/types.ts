@@ -28,6 +28,7 @@ export interface Agent {
   avatar: string;
   deliverables: Deliverable[];
   mcpTools?: string[];
+  mcpServerIds?: string[];
   aiEngine?: string;
   skills?: string[];
   builtin?: boolean;
@@ -45,7 +46,7 @@ export interface RepositoryFolder {
   collapsed: boolean;
 }
 
-/** UI prototype extends shared contract with user-authored messages. */
+/** Chat message with optional user-authored flag for UI. */
 export interface ChatMessage extends Omit<SharedChatMessage, 'agent'> {
   agent: SharedChatMessage['agent'] | 'User';
   isUser?: boolean;

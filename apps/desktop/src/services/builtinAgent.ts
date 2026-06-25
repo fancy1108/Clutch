@@ -21,6 +21,7 @@ export function getBuiltinAgent(): Agent {
     avatar: '',
     deliverables: [],
     mcpTools: [],
+    mcpServerIds: [],
     aiEngine: 'Configured LLM',
     skills: [],
     builtin: true,
@@ -28,8 +29,16 @@ export function getBuiltinAgent(): Agent {
 }
 
 export function mergeAgentsWithBuiltin(agents: Agent[]): Agent[] {
-  const userAgents = agents.filter((agent) => agent.id !== BUILTIN_AGENT_ID && !agent.builtin);
-  return [getBuiltinAgent(), ...userAgents];
+  const savedBuiltin = agents.find(
+    (agent) => agent.id === BUILTIN_AGENT_ID || agent.builtin,
+  );
+  const userAgents = agents.filter(
+    (agent) => agent.id !== BUILTIN_AGENT_ID && !agent.builtin,
+  );
+  const builtin = savedBuiltin
+    ? { ...getBuiltinAgent(), ...savedBuiltin, id: BUILTIN_AGENT_ID, builtin: true }
+    : getBuiltinAgent();
+  return [builtin, ...userAgents];
 }
 
 export function isBuiltinAgent(agent: Pick<Agent, 'id' | 'builtin'> | null | undefined): boolean {
