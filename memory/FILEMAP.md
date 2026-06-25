@@ -84,12 +84,12 @@
 | Theme 偏好 API（P2-03） | `services/themeApi.ts`（含 language） |
 | API 抽象（mock 待 M2 替换） | `services/api.ts` |
 | 侧栏（工作区 / 历史，M2-07/09） | `sidebar.tsx` |
-| 底部状态栏（M2-08） | `App.tsx`（Branch / Mode / Flow） |
+| 底部状态栏（Branch / Model / Agent） | `App.tsx` footer |
+| 工作区 Git 分支 API | `services/workspaceApi.ts` → `GET /api/workspace/git` |
 | Chat 流与人工干预 UI | `components/ChatFeed.tsx` |
 | 右侧面板（Overview/Files/Flow/Changes/Terminal） | `components/RightPanel.tsx` |
 | Terminal 日志子面板 | `components/TerminalPanel.tsx` |
 | 文件预览浮层 | `App.tsx`（`previewFile`） |
-| 底部状态栏（M2-08） | `App.tsx` footer |
 | 模型配置 UI（M4-09） | `components/ModelsManager.tsx` |
 | 主题 Appearance（P2） | `components/ThemeManager.tsx` |
 | 设置模态壳 | `components/SystemPreferencesModal.tsx` |
@@ -127,13 +127,22 @@
 | Engine Router（aiEngine / Connect 分流） | `src/engine_router.py` |
 | agent_task 节点执行 | `src/agent_executor.py` |
 | Agent 持久化与内置 Agent | `src/agent_storage.py` |
+| 运行日志 WS 转发 | `src/run_log_forwarder.py` |
+| 工作流状态投影 | `src/workflow_projection.py` |
+| Terminal 日志格式化与时间戳 | `src/terminal_logs.py` |
+| MCP 工具风险判定 | `src/mcp_risk.py` |
+| MCP ReAct 执行 | `src/mcp_react.py` |
+| 凭证来源（CC Switch / 环境变量） | `src/credentials/sources.py` |
+| 工作区 Git 分支探测 | `src/workspace.py` → `get_git_info()` |
 | LLM Provider Router（M1-08，D4） | `src/llm/router.py` |
+| LLM HTTP 补全 | `src/llm/http_complete.py` |
+| 模型配置序列化 | `src/models_config.py` |
 | 用户工作流存储 API（M1-09，D5） | `src/workflow_storage.py` |
 | Skills Registry 持久化（P2-01） | `src/skills_storage.py`、`src/skills_scanner.py` |
 | MCP Registry 持久化（P2-02） | `src/mcp_storage.py` |
 | 用户偏好 / Theme（P2-03） | `src/preferences_storage.py` |
 | CLI / GUI Adapter（M3） | `src/adapters/` — `cli_adapter.py`、`claude_cli_adapter.py`、`cursor_adapter.py` |
-| Video Core（M5） | `src/video_core/` — `config.py`（数据模型）、`env.py`（构建环境准备） |
+| Video Core（M5） | `src/video_core/` — `config.py`、`env.py`、`pipeline.py`、`renderer.py` |
 | 依赖与 pytest 配置 | `pyproject.toml` |
 
 ### 共享与 Workflow

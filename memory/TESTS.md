@@ -12,6 +12,7 @@
 
 | 日期 | 范围 | 命令 | 结果 | 报告/证据 | 备注 |
 |------|------|------|------|-----------|------|
+| 2026-06-25 | Git 分支 footer + 日志时间戳 + Models/MCP/Video Core 批次 | `./scripts/verify.sh` | ✅ 218 pytest + 1 vitest | pre-commit `7ee8f43` | `/api/workspace/git`；`stamp_log_line` CST；`run_log_forwarder`；CC Switch 模型；MCP mock 隔离；Video Core 测试 |
 | 2026-06-25 | Engine Router + agent_id 聊天路由 | `./scripts/verify.sh` | ✅ 138 pytest + 1 vitest | pre-commit `6cc6c6b` | `engine_router` / `claude_cli_adapter` 分流；内置 Agent 可编辑；WS `agent_id` + system prompt 注入；`CLUTCH_STORAGE_DIR` 测试隔离 |
 | 2026-06-25 | 存储隔离与指针拖拽及LLM运行优化 | `./scripts/verify.sh` | ✅ 119 pytest + 1 vitest | `runs/verification/2026-06-25-storage-drag-verify.log` | DEV/PROD存储路径隔离、自定义Pointer拖拽、ChatFeed普通LLM消息提示及停止运行校验 |
 | 2026-06-24 | 分组移动与管理优化 | `./scripts/verify.sh` | ✅ 116 pytest + 1 vitest | `runs/verification/2026-06-24-group-drag-verify.log` | 分组文件夹图标区分、虚拟默认分组折叠、原生拖放及右键菜单移动项目校验 |

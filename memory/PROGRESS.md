@@ -2,8 +2,42 @@
 
 ## 当前状态
 
-- 阶段：**Engine Router 与 Claude CLI 分流已接入 plain chat / agent_task；内置 Clutch Agent 可编辑；聊天按 `agent_id` 路由并注入 system prompt**
-- Git HEAD：`6cc6c6b`
+- 阶段：**模型/CC Switch 凭证、MCP 风险与审批、工作流日志流、Video Core 骨架、底部 Git 分支与 Terminal CST 时间戳均已落地**
+- Git HEAD：`7ee8f43`
+
+## 2026-06-25 会话（Git 分支、日志时间戳、MCP 门控、Models UI）
+
+- **完成：**
+  - **底部 Git 分支**：`GET /api/workspace/git` + `workspace.get_git_info()`；footer 显示本地 `main` 等真实分支（不再误用 `run_id`）；下拉列出本地分支。
+  - **文件树刷新**：运行结束或打开 Files 标签时自动 `refreshWorkspaceFiles`。
+  - **Terminal 时间戳**：`stamp_log_line()` 为所有 terminal_logs 加 `[YYYY-MM-DD HH:MM:SS CST]`；幂等不重复 stamp。
+  - **MCP 门控**：Supervisor 审批消息去重；`mcp_risk` 扩展 `source`/`destination` 路径键；system prompt 注入 workspace 根路径提示。
+  - **Models Manager**：布局简化；移除 `credential_hint` 字段。
+  - **校验**：pre-commit `7ee8f43` → 218 pytest + vitest + build passed。
+- **下次优先**：发布 / 红队体感审计；或 BACKLOG B-01 主控分派。
+
+## 2026-06-25 会话（Orchestrator 日志流与执行链路统一）
+
+- **完成：**
+  - **`run_log_forwarder.py`**：工作流/agent 执行日志统一转发与 WS 推送。
+  - **`workflow_projection.py`**：图状态投影增强；`compiler` / `evaluator` 对齐。
+  - **`llm/http_complete.py`**：HTTP 补全路径加固；流式日志接入。
+  - **`terminal_logs.py`**：`agent_line` 等格式化辅助（本会话后续 `7ee8f43` 加 CST stamp）。
+  - **测试**：`test_run_log_forwarder.py`、`test_workflow_log_streaming.py`、`test_http_complete.py` 扩充。
+  - **Commit：** `973857c`
+- **下次优先**：见上节。
+
+## 2026-06-25 会话（模型凭证、MCP 风险、Video Core、Skills 自动挂载）
+
+- **完成：**
+  - **Models / CC Switch**：`rehydrate-cc-switch` 端点；verify 缓存；`credential_source_label`；`ModelsManager` 大改版（`553714d`、`a8d199c`）。
+  - **MCP 凭证与风险**：`credentials/sources.py` 扩展；`mcp_react` 真执行路径；`mcp_risk` 文件路径提取；工作区相对路径（`d5566fb`）。
+  - **测试隔离**：`conftest` MCP mock；workflow 测试不再触发真实 CLI（`91955f2`）。
+  - **Skills 自动挂载**：`ensure_default_skill_mounts`；默认 skills 写入工作区（`3ae36a8`）。
+  - **Video Core 骨架**：`pipeline.py` / `renderer.py` / `config.py`；`test_video_core/` 测试套件（`0c8b087`、`4e812bb`、`77f73f0`）。
+  - **CLI 统一**：`cli_adapter` / `claude_cli_adapter` / `engine_router` 加固（`4e812bb`）。
+  - **Footer Model/Engine**：内置 Agent 显示 Model；自定义 Agent 只读 Engine；删除 `mockData.ts`（`8d89768`）。
+- **下次优先**：见当前状态。
 
 ## 2026-06-25 会话（agent_id 聊天路由与内置 Agent 可定制）
 

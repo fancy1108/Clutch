@@ -27,6 +27,52 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ## 已交付（代码 Task · 自 Git 回填）
 
+### GIT-BRANCH-FOOTER-LOG-STAMP ✅
+- **日期：** 2026-06-25
+- **Commit：** `7ee8f43` — `fix(ui,orchestrator): git branch footer, log timestamps, MCP gates, models UI`
+- **Verification：** `./scripts/verify.sh` → 218 pytest + vitest + build passed（pre-commit）
+- **证据：** pre-commit hook output（`7ee8f43`）
+- **交付文件：**
+  - `services/orchestrator/src/workspace.py` — `get_git_info()` 本地 git 分支探测。
+  - `services/orchestrator/src/main.py` — `GET /api/workspace/git`；terminal_logs 全链路 `stamp_log_line`；MCP supervisor 门控去重。
+  - `services/orchestrator/src/terminal_logs.py` — `stamp_log_line` / `china_log_timestamp`。
+  - `services/orchestrator/src/mcp_risk.py` — `source`/`destination` 路径参数键。
+  - `apps/desktop/src/services/workspaceApi.ts` — `fetchWorkspaceGit()`。
+  - `apps/desktop/src/App.tsx` — footer 显示真实 Git 分支；运行后/Files 标签刷新文件树。
+  - `apps/desktop/src/components/ModelsManager.tsx` — UI 简化；移除 credential_hint。
+  - `services/orchestrator/tests/test_workspaces_api.py` — git 端点测试。
+  - `services/orchestrator/tests/test_terminal_logs.py` — stamp 幂等测试。
+
+### ORCHESTRATOR-LOG-STREAMING ✅
+- **日期：** 2026-06-25
+- **Commit：** `973857c` — `refactor(orchestrator): unify agent execution, LLM HTTP, workflow projection, and main wiring`
+- **Verification：** `./scripts/verify.sh` → 218 pytest passed
+- **证据：** `—`（门禁已覆盖）
+- **交付文件：**
+  - `services/orchestrator/src/run_log_forwarder.py` — 运行日志 WS 转发。
+  - `services/orchestrator/src/workflow_projection.py` — 图状态投影。
+  - `services/orchestrator/src/llm/http_complete.py` — HTTP 补全与流式日志。
+  - `services/orchestrator/src/agent_executor.py` — 执行链路与日志对齐。
+  - `services/orchestrator/tests/test_run_log_forwarder.py` — 转发器单元测试。
+  - `services/orchestrator/tests/test_workflow_log_streaming.py` — 工作流日志流测试。
+
+### MODELS-MCP-VIDEO-CORE ✅
+- **日期：** 2026-06-25
+- **Commit：** `553714d`…`3ae36a8`（`d5566fb`、`91955f2`、`8d89768`、`a8d199c`、`4e812bb`、`0c8b087`、`77f73f0`）
+- **Verification：** `./scripts/verify.sh` → 218 pytest + vitest passed
+- **证据：** `—`（多 commit 批次；最终以 `7ee8f43` 门禁为准）
+- **交付文件：**
+  - `services/orchestrator/src/credentials/sources.py` — 凭证来源解析与 CC Switch 导入。
+  - `services/orchestrator/src/models_config.py` — rehydrate-cc-switch、verify 缓存、credential 标签。
+  - `services/orchestrator/src/mcp_react.py` — MCP ReAct 真执行与测试 mock 隔离。
+  - `services/orchestrator/src/skills_storage.py` — 默认 skills 自动挂载。
+  - `services/orchestrator/src/video_core/` — pipeline / renderer / config 骨架。
+  - `apps/desktop/src/components/ModelsManager.tsx` — 模型配置 UI 改版。
+  - `apps/desktop/src/App.tsx` — footer Model/Engine 切换逻辑。
+  - `apps/desktop/src/mockData.ts` — 删除（去 mock 化）。
+  - `services/orchestrator/tests/test_models_config_api.py` — 模型 API 测试扩充。
+  - `services/orchestrator/tests/test_video_core/` — Video Core 测试套件。
+
 ### AGENT-ID-CHAT-ROUTING ✅
 - **日期：** 2026-06-25
 - **Commit：** `6cc6c6b` — `feat(chat): route plain chat by agent_id and allow builtin agent customization`
