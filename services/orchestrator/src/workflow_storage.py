@@ -18,11 +18,8 @@ def user_workflows_dir() -> Path:
     override = os.environ.get(USER_WORKFLOWS_ENV)
     if override:
         return Path(override)
-    if sys.platform == "darwin":
-        return Path.home() / "Library" / "Application Support" / "clutch" / "workflows"
-    if sys.platform == "win32":
-        return Path(os.environ.get("APPDATA", Path.home())) / "clutch" / "workflows"
-    return Path.home() / ".local" / "share" / "clutch" / "workflows"
+    from src.storage_helper import get_storage_dir
+    return get_storage_dir() / "workflows"
 
 
 def _ensure_user_dir() -> Path:

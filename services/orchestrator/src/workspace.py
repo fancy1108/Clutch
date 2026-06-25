@@ -27,11 +27,8 @@ def _store_path() -> Path:
     override = os.environ.get(WORKSPACES_ENV)
     if override:
         return Path(override)
-    if sys.platform == "darwin":
-        return Path.home() / "Library" / "Application Support" / "clutch" / "workspaces.json"
-    if sys.platform == "win32":
-        return Path(os.environ.get("APPDATA", Path.home())) / "clutch" / "workspaces.json"
-    return Path.home() / ".local" / "share" / "clutch" / "workspaces.json"
+    from src.storage_helper import get_storage_dir
+    return get_storage_dir() / "workspaces.json"
 
 
 def _ensure_loaded() -> None:

@@ -29,11 +29,8 @@ def config_path() -> Path:
     override = os.environ.get(TOOLS_ENV)
     if override:
         return Path(override)
-    if sys.platform == "darwin":
-        return Path.home() / "Library" / "Application Support" / "clutch" / "tools.json"
-    if sys.platform == "win32":
-        return Path(os.environ.get("APPDATA", Path.home())) / "clutch" / "tools.json"
-    return Path.home() / ".local" / "share" / "clutch" / "tools.json"
+    from src.storage_helper import get_storage_dir
+    return get_storage_dir() / "tools.json"
 
 
 def _is_claude_installed() -> bool:

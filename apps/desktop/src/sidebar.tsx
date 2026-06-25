@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { RepositoryFolder, MainView } from './types';
 import { useLanguage } from './components/LanguageContext';
 import type { SessionRecord } from './services/runApi';
@@ -81,7 +81,77 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [repoFilter, setRepoFilter] = useState('');
   const [collapsedWorkspaces, setCollapsedWorkspaces] = useState<Record<string, boolean>>({});
   const [dragOverGroupId, setDragOverGroupId] = useState<string | null>(null);
+  const [draggingWorkspaceId, setDraggingWorkspaceId] = useState<string | null>(null);
+  const [pointerDragActive, setPointerDragActive] = useState(false);
   const [defaultGroupCollapsed, setDefaultGroupCollapsed] = useState(false);
+  const pointerDragRef = useRef<{
+    workspaceId: string;
+    startX: number;
+    startY: number;
+    active: boolean;
+  } | null>(null);
+  const suppressWorkspaceClickRef = useRef(false);
+
+  const DRAG_THRESHOLD_PX = 6;
+
+  useEffect(() => {
+    const resolveDropGroupId = (clientX: number, clientY: number): string | null => {
+      const el = document.elementFromPoint(clientX, clientY);
+      const groupEl = el?.closest('[data-drop-group-id]');
+      return groupEl?.getAttribute('data-drop-group-id') ?? null;
+    };
+
+    const handlePointerMove = (e: MouseEvent) => {
+      const drag = pointerDragRef.current;
+      if (!drag) return;
+
+      if (!drag.active) {
+        const dist = Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY);
+        if (dist < DRAG_THRESHOLD_PX) return;
+        drag.active = true;
+        suppressWorkspaceClickRef.current = true;
+        setPointerDragActive(true);
+      }
+
+      setDragOverGroupId(resolveDropGroupId(e.clientX, e.clientY));
+    };
+
+    const handlePointerUp = (e: MouseEvent) => {
+      const drag = pointerDragRef.current;
+      if (!drag) return;
+
+      if (drag.active) {
+        const groupId = resolveDropGroupId(e.clientX, e.clientY);
+        if (groupId) {
+          onMoveWorkspaceToGroup?.(drag.workspaceId, groupId);
+        }
+      }
+
+      pointerDragRef.current = null;
+      setDraggingWorkspaceId(null);
+      setDragOverGroupId(null);
+      setPointerDragActive(false);
+    };
+
+    window.addEventListener('mousemove', handlePointerMove);
+    window.addEventListener('mouseup', handlePointerUp);
+    return () => {
+      window.removeEventListener('mousemove', handlePointerMove);
+      window.removeEventListener('mouseup', handlePointerUp);
+    };
+  }, [onMoveWorkspaceToGroup]);
+
+  useEffect(() => {
+    if (!pointerDragActive) return;
+    const prevCursor = document.body.style.cursor;
+    const prevUserSelect = document.body.style.userSelect;
+    document.body.style.cursor = 'grabbing';
+    document.body.style.userSelect = 'none';
+    return () => {
+      document.body.style.cursor = prevCursor;
+      document.body.style.userSelect = prevUserSelect;
+    };
+  }, [pointerDragActive]);
   const [contextMenu, setContextMenu] = useState<{
     x: number;
     y: number;
@@ -110,31 +180,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
     });
   };
 
-  const handleDragStart = (e: React.DragEvent, workspaceId: string) => {
-    e.dataTransfer.setData('text/plain', workspaceId);
-    e.dataTransfer.effectAllowed = 'move';
+  const startWorkspacePointerDrag = (workspaceId: string, e: React.MouseEvent) => {
+    if (e.button !== 0) return;
+    pointerDragRef.current = {
+      workspaceId,
+      startX: e.clientX,
+      startY: e.clientY,
+      active: false,
+    };
+    setDraggingWorkspaceId(workspaceId);
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-  };
-
-  const handleDragEnter = (e: React.DragEvent, groupId: string) => {
-    e.preventDefault();
-    setDragOverGroupId(groupId);
-  };
-
-  const handleDragLeave = () => {
-    setDragOverGroupId(null);
-  };
-
-  const handleDrop = (e: React.DragEvent, targetGroupId: string) => {
-    e.preventDefault();
-    setDragOverGroupId(null);
-    const workspaceId = e.dataTransfer.getData('text/plain');
-    if (workspaceId) {
-      onMoveWorkspaceToGroup?.(workspaceId, targetGroupId);
+  const handleWorkspaceRowClick = (workspaceId: string) => {
+    if (suppressWorkspaceClickRef.current) {
+      suppressWorkspaceClickRef.current = false;
+      return;
     }
+    toggleWorkspace(workspaceId);
   };
 
   const sessionsByWorkspace = useMemo(() => {
@@ -202,34 +264,30 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const renderWorkspaceRow = (repo: WorkspaceInfo) => {
     const isActiveWorkspace = repo.id === activeWorkspaceId;
+    const isDragging = draggingWorkspaceId === repo.id;
     const collapsed = collapsedWorkspaces[repo.id] ?? false;
     const projectSessions = sessionsByWorkspace.get(repo.id) ?? [];
 
     return (
-      <div
-        key={repo.id}
-        className="space-y-0.5"
-        draggable="true"
-        onDragStart={(e) => handleDragStart(e, repo.id)}
-      >
+      <div key={repo.id} className="space-y-0.5">
         <div
           onContextMenu={(e) => handleContextMenu(e, 'workspace', repo.id)}
           className={`flex items-center justify-between p-1.5 rounded-lg transition-colors group ${
             isActiveWorkspace ? 'bg-surface-container-low/80' : 'hover:bg-surface-bright'
-          }`}
+          } ${isDragging && pointerDragActive ? 'opacity-50 ring-1 ring-primary/30' : ''}`}
         >
-          <button
-            type="button"
+          <div
+            onMouseDown={(e) => startWorkspacePointerDrag(repo.id, e)}
+            onClick={() => handleWorkspaceRowClick(repo.id)}
             data-testid={`workspace-row-${repo.id}`}
-            onClick={() => toggleWorkspace(repo.id)}
-            className="flex items-center gap-2 flex-1 min-w-0 text-left"
+            className="flex items-center gap-2 flex-1 min-w-0 text-left cursor-grab active:cursor-grabbing"
             title={repo.workspace_path}
           >
             <span className="material-symbols-outlined text-[18px] text-on-surface-variant">
               {collapsed ? 'folder' : 'folder_open'}
             </span>
             <span className="text-xs font-semibold truncate">{repo.name}</span>
-          </button>
+          </div>
           <button
             type="button"
             onClick={(e) => {
@@ -396,19 +454,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
             const isDragOver = dragOverGroupId === group.id;
 
             return (
-              <div key={group.id} className="space-y-1" data-testid={`repo-group-${group.id}`}>
+              <div
+                key={group.id}
+                className={`space-y-1 rounded-lg transition-all ${
+                  isDragOver ? 'bg-primary/5 ring-1 ring-primary/20 border border-primary/10 p-1' : ''
+                }`}
+                data-testid={`repo-group-${group.id}`}
+                data-drop-group-id={group.id}
+              >
                 <button
                   type="button"
                   data-testid={`repo-group-toggle-${group.id}`}
+                  data-drop-group-id={group.id}
                   onClick={() => onToggleRepositoryGroup?.(group.id, !groupCollapsed)}
                   onContextMenu={(e) => handleContextMenu(e, 'group', group.id)}
-                  onDragOver={handleDragOver}
-                  onDragEnter={(e) => handleDragEnter(e, group.id)}
-                  onDragLeave={handleDragLeave}
-                  onDrop={(e) => handleDrop(e, group.id)}
-                  className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left hover:bg-surface-bright transition-all ${
-                    isDragOver ? 'bg-primary/10 ring-1 ring-primary/30 border border-primary/20' : ''
-                  }`}
+                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left hover:bg-surface-bright transition-colors"
                 >
                   <span className="material-symbols-outlined text-[16px] text-on-surface-variant">
                     folder_special
@@ -434,18 +494,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {ungroupedWorkspaces.length > 0 && (() => {
             const isDragOver = dragOverGroupId === '__default__';
             return (
-              <div className="space-y-1" data-testid="repo-group-default">
+              <div
+                className={`space-y-1 rounded-lg transition-all ${
+                  isDragOver ? 'bg-primary/5 ring-1 ring-primary/20 border border-primary/10 p-1' : ''
+                }`}
+                data-testid="repo-group-default"
+                data-drop-group-id="__default__"
+              >
                 <button
                   type="button"
                   data-testid="repo-group-default-toggle"
+                  data-drop-group-id="__default__"
                   onClick={() => setDefaultGroupCollapsed(!defaultGroupCollapsed)}
-                  onDragOver={handleDragOver}
-                  onDragEnter={(e) => handleDragEnter(e, '__default__')}
-                  onDragLeave={handleDragLeave}
-                  onDrop={(e) => handleDrop(e, '__default__')}
-                  className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left hover:bg-surface-bright transition-all ${
-                    isDragOver ? 'bg-primary/10 ring-1 ring-primary/30 border border-primary/20' : ''
-                  }`}
+                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left hover:bg-surface-bright transition-colors"
                 >
                   <span className="material-symbols-outlined text-[16px] text-on-surface-variant">
                     folder_special

@@ -21,11 +21,8 @@ def config_path() -> Path:
     override = os.environ.get(CONFIG_ENV)
     if override:
         return Path(override)
-    if sys.platform == "darwin":
-        return Path.home() / "Library" / "Application Support" / "clutch" / "models.json"
-    if sys.platform == "win32":
-        return Path(os.environ.get("APPDATA", Path.home())) / "clutch" / "models.json"
-    return Path.home() / ".local" / "share" / "clutch" / "models.json"
+    from src.storage_helper import get_storage_dir
+    return get_storage_dir() / "models.json"
 
 
 def load_router() -> LLMProviderRouter:

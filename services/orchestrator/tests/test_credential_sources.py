@@ -9,12 +9,13 @@ import pytest
 
 from src.credentials import sources
 from src.llm.router import LLMProviderRouter
+from src.models_config import CONFIG_ENV
 
 
 @pytest.fixture
 def models_json(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     path = tmp_path / "models.json"
-    monkeypatch.setenv(sources.CONFIG_ENV, str(path))
+    monkeypatch.setenv(CONFIG_ENV, str(path))
     return path
 
 

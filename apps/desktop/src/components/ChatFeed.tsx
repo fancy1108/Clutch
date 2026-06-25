@@ -24,6 +24,21 @@ interface ChatFeedProps {
   selectedWorkflowName?: string;
   onClearSelectedWorkflow?: () => void;
   sessionTitle?: string;
+  activeWorkflowId?: string;
+  llmModelName?: string;
+}
+
+const WORKFLOW_AGENTS = new Set(['Builder', 'Orchestrator', 'Evaluator', 'Supervisor']);
+
+function isPlainLlmSession(
+  selectedWorkflowId: string | null | undefined,
+  activeWorkflowId: string | undefined,
+): boolean {
+  return !selectedWorkflowId && !activeWorkflowId;
+}
+
+function isPlainLlmReply(agent: string): boolean {
+  return agent !== 'User' && !WORKFLOW_AGENTS.has(agent);
 }
 
 export const ChatFeed: React.FC<ChatFeedProps> = ({
@@ -48,6 +63,8 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   selectedWorkflowName = '',
   onClearSelectedWorkflow,
   sessionTitle = '',
+  activeWorkflowId = '',
+  llmModelName = '',
 }) => {
   const { t } = useLanguage();
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -56,6 +73,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   const isIdle = clutchStatus === 'idle';
   const isRunning = clutchStatus === 'running';
   const awaitingHuman = clutchStatus === 'awaiting_human';
+  const isPlainLlmChat = isPlainLlmSession(selectedWorkflowId, activeWorkflowId);
 
   const isDefaultNewSessionTitle = !sessionTitle ||
     sessionTitle === 'New session' ||
@@ -75,6 +93,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
+      if (isRunning && isPlainLlmChat) return;
       if (inputValue.trim()) {
         onSendMessage(inputValue);
         setInputValue('');
@@ -87,6 +106,38 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
       onSendMessage(inputValue);
       setInputValue('');
     }
+  };
+
+  const renderAgentLabel = (agent: string, statusHint?: string) => {
+    const showPlainLlmLabel = isPlainLlmChat && isPlainLlmReply(agent);
+    const modelLabel = showPlainLlmLabel ? agent : llmModelName;
+
+    if (showPlainLlmLabel || (statusHint && isPlainLlmChat)) {
+      return (
+        <div className="flex items-start gap-2 flex-1 min-w-0">
+          <div className="flex flex-col min-w-0">
+            <span className="text-xs font-bold text-on-surface leading-tight">{t('Clutch Agent')}</span>
+            {(modelLabel || statusHint) && (
+              <span className="text-[10px] text-on-surface-variant/60 leading-tight truncate">
+                {modelLabel || llmModelName || '—'}
+              </span>
+            )}
+          </div>
+          {statusHint && (
+            <span className="text-[10px] text-on-surface-variant/60 flex-shrink-0">{statusHint}</span>
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <>
+        <span className="text-xs font-bold text-on-surface">{agent}</span>
+        {statusHint && (
+          <span className="text-[10px] text-on-surface-variant/60">{statusHint}</span>
+        )}
+      </>
+    );
   };
 
   return (
@@ -180,10 +231,10 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                         <span className="text-xs font-bold text-on-surface">{msg.agent}</span>
                       </>
                     ) : (
-                      <>
-                        <span className="text-xs font-bold text-on-surface">{msg.agent}</span>
-                        <span className="text-[10px] text-on-surface-variant/60">{msg.time}</span>
-                      </>
+                      <div className={`flex items-center gap-2 ${isPlainLlmChat && isPlainLlmReply(msg.agent) ? 'items-start' : ''}`}>
+                        {renderAgentLabel(msg.agent)}
+                        <span className="text-[10px] text-on-surface-variant/60 flex-shrink-0">{msg.time}</span>
+                      </div>
                     )}
                   </div>
 
@@ -247,8 +298,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
 
               <div className="flex-1 space-y-1.5 overflow-hidden">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-on-surface">{t('Clutch Agent')}</span>
-                  <span className="text-[10px] text-on-surface-variant/60">{t('Thinking...')}</span>
+                  {renderAgentLabel(llmModelName || 'LLM', t('Thinking...'))}
                 </div>
 
                 <div className="p-4 bg-surface-container-low rounded-2xl rounded-tl-none border border-outline-variant/30 shadow-sm flex items-center gap-1.5">
@@ -271,7 +321,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
         }}
         className="fixed bottom-8 flex justify-center px-6 z-40 transition-all duration-300 select-none"
       >
-        {isRunning && !awaitingHuman ? (
+        {isRunning && !awaitingHuman && !isPlainLlmChat ? (
           <div className="w-full max-w-2xl bg-white border border-outline-variant p-3 shadow-xl rounded-xl flex items-center justify-between">
             <div className="flex items-center gap-3">
               <span className="relative flex h-2.5 w-2.5">
@@ -403,16 +453,20 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
               />
               <button
                 type="button"
-                data-testid="chat-send"
-                onClick={handleSendClick}
-                disabled={!inputValue.trim()}
+                data-testid={isRunning && isPlainLlmChat ? 'chat-stop' : 'chat-send'}
+                onClick={isRunning && isPlainLlmChat ? onStopRun : handleSendClick}
+                disabled={!(isRunning && isPlainLlmChat) && !inputValue.trim()}
                 className={`w-10 h-10 flex items-center justify-center rounded-full transition-all ${
-                  inputValue.trim()
+                  isRunning && isPlainLlmChat
+                    ? 'bg-neutral-900 text-white hover:bg-black'
+                    : inputValue.trim()
                     ? 'bg-primary text-white hover:opacity-90'
                     : 'bg-surface-container text-on-surface-variant/40 cursor-not-allowed'
                 }`}
               >
-                <span className="material-symbols-outlined text-[18px]">arrow_upward</span>
+                <span className="material-symbols-outlined text-[18px]">
+                  {isRunning && isPlainLlmChat ? 'stop' : 'arrow_upward'}
+                </span>
               </button>
             </div>
           </div>

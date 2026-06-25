@@ -69,6 +69,12 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   const [selectedAgentProfile, setSelectedAgentProfile] = React.useState<'orchestrator' | 'builder' | 'auditor'>('orchestrator');
   const [expandedFiles, setExpandedFiles] = React.useState<Record<string, boolean>>({});
 
+  React.useEffect(() => {
+    if (activeTab === 'files') {
+      setExpandedFiles({});
+    }
+  }, [activeTab, workspaceFiles]);
+
   const toggleExpand = (dir: string) => {
     setExpandedFiles(prev => ({ ...prev, [dir]: !prev[dir] }));
   };
@@ -86,7 +92,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   const renderFileNodes = (nodes: FileTreeNode[], depth = 0): React.ReactNode =>
     nodes.map((node) => {
       const isFolder = node.type === 'folder';
-      const isExpanded = expandedFiles[node.path] ?? depth < 1;
+      const isExpanded = expandedFiles[node.path] ?? false;
       return (
         <div key={node.path} className="space-y-1">
           <div

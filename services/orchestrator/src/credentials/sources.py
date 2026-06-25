@@ -4,18 +4,15 @@ from __future__ import annotations
 
 import json
 import os
-import sys
 from pathlib import Path
 from typing import Any
 
 from src.credentials.claude_code import resolve_anthropic_api_key
 from src.llm.router import LLMProviderRouter, ProviderId
 
-CONFIG_ENV = "CLUTCH_MODELS_CONFIG"
-
 SOURCE_LABELS: dict[str, str] = {
     "claude_code_settings": "Claude Code CLI (~/.claude/settings.json)",
-    "clutch_models_config": "Clutch app storage (~/Library/Application Support/clutch/models.json)",
+    "clutch_models_config": "Clutch app storage (models.json)",
     "clutch_env": "CLUTCH_* environment variable",
     "anthropic_env": "ANTHROPIC_API_KEY environment variable",
     "anthropic_auth_token_env": "ANTHROPIC_AUTH_TOKEN environment variable",
@@ -24,14 +21,9 @@ SOURCE_LABELS: dict[str, str] = {
 
 
 def _config_path() -> Path:
-    override = os.environ.get(CONFIG_ENV)
-    if override:
-        return Path(override)
-    if sys.platform == "darwin":
-        return Path.home() / "Library" / "Application Support" / "clutch" / "models.json"
-    if sys.platform == "win32":
-        return Path(os.environ.get("APPDATA", Path.home())) / "clutch" / "models.json"
-    return Path.home() / ".local" / "share" / "clutch" / "models.json"
+    from src.models_config import config_path
+
+    return config_path()
 
 
 def _saved_api_keys() -> dict[str, str]:

@@ -325,27 +325,42 @@ function MainLayout() {
   };
 
   const handleMoveWorkspaceToGroup = async (workspaceId: string, targetGroupId: string) => {
-    try {
-      const promises = repositoryGroups.map(async (group) => {
+    const applyMove = (groups: RepositoryGroup[]) =>
+      groups.map((group) => {
         const hasId = group.workspace_ids.includes(workspaceId);
-        const isTarget = group.id === targetGroupId;
-        
+        const isTarget = targetGroupId !== '__default__' && group.id === targetGroupId;
+
+        if (isTarget && !hasId) {
+          return { ...group, workspace_ids: [...group.workspace_ids, workspaceId] };
+        }
+        if (!isTarget && hasId) {
+          return { ...group, workspace_ids: group.workspace_ids.filter((id) => id !== workspaceId) };
+        }
+        return group;
+      });
+
+    setRepositoryGroups(applyMove);
+
+    try {
+      for (const group of repositoryGroups) {
+        const hasId = group.workspace_ids.includes(workspaceId);
+        const isTarget = targetGroupId !== '__default__' && group.id === targetGroupId;
+
         if (isTarget && !hasId) {
           const newIds = [...group.workspace_ids, workspaceId];
-          return updateRepositoryGroup(group.id, { workspace_ids: newIds });
+          await updateRepositoryGroup(group.id, { workspace_ids: newIds });
         } else if (!isTarget && hasId) {
-          const newIds = group.workspace_ids.filter(id => id !== workspaceId);
-          return updateRepositoryGroup(group.id, { workspace_ids: newIds });
+          const newIds = group.workspace_ids.filter((id) => id !== workspaceId);
+          await updateRepositoryGroup(group.id, { workspace_ids: newIds });
         }
-        return null;
-      });
-      
-      await Promise.all(promises);
-      
+      }
+
       const listed = await fetchRepositoryGroups();
       setRepositoryGroups(listed.groups);
     } catch (error) {
       console.error('[Clutch] move workspace to group failed:', error);
+      const listed = await fetchRepositoryGroups();
+      setRepositoryGroups(listed.groups);
     }
   };
 
@@ -711,6 +726,8 @@ function MainLayout() {
                   setSelectedWorkflowId(null);
                   setCurrentFlowName('');
                 }}
+                activeWorkflowId={clutchState.workflow_id}
+                llmModelName={selectedModel}
               />
               <RightPanel
                 activeTab={rightTab}

@@ -21,11 +21,8 @@ def _history_dir() -> Path:
     override = os.environ.get(_HISTORY_ENV)
     if override:
         return Path(override)
-    if sys.platform == "darwin":
-        return Path.home() / "Library" / "Application Support" / "clutch" / "sessions"
-    if sys.platform == "win32":
-        return Path(os.environ.get("APPDATA", Path.home())) / "clutch" / "sessions"
-    return Path.home() / ".local" / "share" / "clutch" / "sessions"
+    from src.storage_helper import get_storage_dir
+    return get_storage_dir() / "sessions"
 
 
 def _history_file() -> Path:

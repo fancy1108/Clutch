@@ -15,11 +15,8 @@ def agents_dir() -> Path:
     override = os.environ.get(AGENTS_ENV)
     if override:
         return Path(override)
-    if sys.platform == "darwin":
-        return Path.home() / "Library" / "Application Support" / "clutch" / "agents"
-    if sys.platform == "win32":
-        return Path(os.environ.get("APPDATA", Path.home())) / "clutch" / "agents"
-    return Path.home() / ".local" / "share" / "clutch" / "agents"
+    from src.storage_helper import get_storage_dir
+    return get_storage_dir() / "agents"
 
 
 def _ensure_dir() -> Path:

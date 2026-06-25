@@ -15,11 +15,8 @@ def skills_dir() -> Path:
     override = os.environ.get(SKILLS_ENV)
     if override:
         return Path(override)
-    if sys.platform == "darwin":
-        return Path.home() / "Library" / "Application Support" / "clutch" / "skills"
-    if sys.platform == "win32":
-        return Path(os.environ.get("APPDATA", Path.home())) / "clutch" / "skills"
-    return Path.home() / ".local" / "share" / "clutch" / "skills"
+    from src.storage_helper import get_storage_dir
+    return get_storage_dir() / "skills"
 
 
 def _registry_file() -> Path:

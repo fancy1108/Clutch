@@ -19,11 +19,8 @@ def preferences_dir() -> Path:
     override = os.environ.get(PREFERENCES_ENV)
     if override:
         return Path(override)
-    if sys.platform == "darwin":
-        return Path.home() / "Library" / "Application Support" / "clutch" / "preferences"
-    if sys.platform == "win32":
-        return Path(os.environ.get("APPDATA", Path.home())) / "clutch" / "preferences"
-    return Path.home() / ".local" / "share" / "clutch" / "preferences"
+    from src.storage_helper import get_storage_dir
+    return get_storage_dir() / "preferences"
 
 
 def _preferences_file() -> Path:

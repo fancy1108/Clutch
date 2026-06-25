@@ -18,11 +18,8 @@ def mcp_dir() -> Path:
     override = os.environ.get(MCP_ENV)
     if override:
         return Path(override)
-    if sys.platform == "darwin":
-        return Path.home() / "Library" / "Application Support" / "clutch" / "mcp"
-    if sys.platform == "win32":
-        return Path(os.environ.get("APPDATA", Path.home())) / "clutch" / "mcp"
-    return Path.home() / ".local" / "share" / "clutch" / "mcp"
+    from src.storage_helper import get_storage_dir
+    return get_storage_dir() / "mcp"
 
 
 def _servers_file() -> Path:
