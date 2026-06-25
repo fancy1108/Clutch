@@ -15,6 +15,9 @@ from src.llm import LLMProviderRouter
 def reset_claude_settings(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(claude_code, "_CLAUDE_SETTINGS", Path("/nonexistent/settings.json"))
     monkeypatch.setattr(claude_code, "_CC_SWITCH_DIR", Path("/nonexistent/.cc-switch"))
+    # Unset env vars that would shadow file-based settings in tests
+    for key in ("CLUTCH_ANTHROPIC_API_KEY", "ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"):
+        monkeypatch.delenv(key, raising=False)
 
 
 def test_resolve_anthropic_from_claude_settings(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

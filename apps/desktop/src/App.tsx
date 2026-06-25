@@ -70,7 +70,7 @@ function MainLayout() {
   const [currentView, setView] = useState<MainView>('chat');
   const [currentFlowName, setCurrentFlowName] = useState<string>('');
   const [selectedWorkflowId, setSelectedWorkflowId] = useState<string | null>(null);
-  const [isMultiAgent, setIsMultiAgent] = useState<boolean>(true);
+  const [isMultiAgent, setIsMultiAgent] = useState<boolean>(false);
   const [themeId, setThemeIdState] = useState<ThemePresetId>('pristine-light');
 
   useEffect(() => {

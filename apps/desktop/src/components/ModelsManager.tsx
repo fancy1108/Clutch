@@ -477,6 +477,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
                             CC Switch
                           </span>
                         )}
+                        {isActive && (
                           <span className="text-[8.5px] uppercase font-mono bg-primary/10 text-primary border border-primary/30 px-1.5 py-0.2 rounded font-extrabold">
                             Active
                           </span>

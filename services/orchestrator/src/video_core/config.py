@@ -41,12 +41,22 @@ class VideoConfig:
 
     @classmethod
     def from_env(cls) -> VideoConfig:
-        """Build config from environment variables (for CI / containerised builds)."""
-        return cls(
-            resolution=os.getenv("VIDEO_RESOLUTION", cls.resolution),  # type: ignore[arg-type]
-            codec=os.getenv("VIDEO_CODEC", cls.codec),  # type: ignore[arg-type]
-            output_format=os.getenv("VIDEO_FORMAT", cls.output_format),  # type: ignore[arg-type]
-            fps=int(os.getenv("VIDEO_FPS", str(cls.fps))),
-            bitrate_mbps=float(os.getenv("VIDEO_BITRATE_MBPS", str(cls.bitrate_mbps))),
-            output_dir=Path(os.getenv("VIDEO_OUTPUT_DIR", str(cls.output_dir))),
-        )
+        """Build config from environment variables (for CI / containerised builds).
+
+        Starts from a blank instance (which picks up dataclass defaults),
+        then overrides any fields whose VIDEO_* env vars are set.
+        """
+        cfg = cls()  # picks up all dataclass defaults
+        if (v := os.getenv("VIDEO_RESOLUTION")):
+            cfg.resolution = v  # type: ignore[assignment]
+        if (v := os.getenv("VIDEO_CODEC")):
+            cfg.codec = v  # type: ignore[assignment]
+        if (v := os.getenv("VIDEO_FORMAT")):
+            cfg.output_format = v  # type: ignore[assignment]
+        if (v := os.getenv("VIDEO_FPS")):
+            cfg.fps = int(v)
+        if (v := os.getenv("VIDEO_BITRATE_MBPS")):
+            cfg.bitrate_mbps = float(v)
+        if (v := os.getenv("VIDEO_OUTPUT_DIR")):
+            cfg.output_dir = Path(v)
+        return cfg
