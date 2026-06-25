@@ -113,13 +113,21 @@ def execute_agent_task(
                     break
 
         if mcp_endpoint:
-            server_entry = {
-                "id": tool if tool not in {"local-fs", "Local Filesystem MCP Server"} else "local-fs",
-                "name": mcp_name or "mcp",
-                "endpoint": mcp_endpoint,
-            }
+            servers = [
+                {
+                    "id": tool if tool not in {"local-fs", "Local Filesystem MCP Server"} else "local-fs",
+                    "name": mcp_name or "mcp",
+                    "endpoint": mcp_endpoint,
+                }
+            ]
             if mcp_env:
-                server_entry["env"] = mcp_env
+                servers[0]["env"] = mcp_env
+            if tool in {"local-fs", "Local Filesystem MCP Server"}:
+                from src.builtin_tools import resolve_clutch_tools_server
+
+                clutch_tools = resolve_clutch_tools_server()
+                if clutch_tools:
+                    servers.append(clutch_tools)
 
             from src.mcp_react import run_mcp_react_loop
 
@@ -137,7 +145,7 @@ def execute_agent_task(
             try:
                 outcome = run_mcp_react_loop(
                     messages=messages,
-                    servers=[server_entry],
+                    servers=servers,
                     log_prefix=resolve_agent_tag(agent_ref, label=label),
                     on_log=stream_log if run_id else None,
                 )

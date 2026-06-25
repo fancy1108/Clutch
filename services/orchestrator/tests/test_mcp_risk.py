@@ -15,3 +15,6 @@ def test_is_risky_mcp_tool_detects_write_and_read() -> None:
 def test_extract_mcp_file_path_reads_path_argument() -> None:
     assert extract_mcp_file_path("write_file", {"path": "test.txt"}) == "test.txt"
     assert extract_mcp_file_path("read_file", {"path": "test.txt"}) is None
+    patch = "*** Begin Patch\n*** Delete File: gone.txt\n*** End Patch"
+    assert extract_mcp_file_path("apply_patch", {"patch": patch}) == "gone.txt"
+    assert is_risky_mcp_tool("apply_patch")

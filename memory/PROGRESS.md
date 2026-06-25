@@ -2,8 +2,19 @@
 
 ## 当前状态
 
-- 阶段：**模型/CC Switch 凭证、MCP 风险与审批、工作流日志流、Video Core 骨架、底部 Git 分支与 Terminal CST 时间戳均已落地**
-- Git HEAD：`7ee8f43`
+- 阶段：**Codex 兼容 `apply_patch` 内置工具已落地（增/删/改/移 + Supervisor 审批）**
+- Git HEAD：`7ee8f43`（本会话改动待 commit）
+
+## 2026-06-25 会话（apply_patch 方案 B · Codex 对齐）
+
+- **完成：**
+  - **`apply_patch.py`**：Codex patch 解析与在工作区内执行（Add / Delete / Update / Move）。
+  - **`builtin_tools.py`**：虚拟 MCP 服务器 `clutch-tools`，绑定 `local-fs` 时自动挂载。
+  - **`mcp_react.py`**：虚拟服务器不走 subprocess；`changed_paths` 驱动文件树刷新。
+  - **`mcp_risk` / system prompt**：`apply_patch` 高风险审批；禁止 `.deleted_*` 删文件 workaround。
+  - **决策**：`memory/DECISIONS.md` D21；`FILEMAP` 登记。
+  - **校验**：`./scripts/verify.sh` → 228 pytest + vitest + build + doc-drift passed。
+- **下次优先**：桌面端实测删除 `test.txt`；或 commit 本会话交付。
 
 ## 2026-06-25 会话（Git 分支、日志时间戳、MCP 门控、Models UI）
 

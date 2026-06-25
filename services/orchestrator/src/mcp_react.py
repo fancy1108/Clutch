@@ -48,6 +48,17 @@ def _record_file_change(
 ) -> None:
     if result_str.startswith("Error executing tool"):
         return
+    if tool_name == "apply_patch":
+        try:
+            payload = json.loads(result_str)
+        except json.JSONDecodeError:
+            payload = None
+        if isinstance(payload, dict):
+            for raw in payload.get("changed_paths") or []:
+                rel = str(raw).strip()
+                if rel and rel not in files_changed:
+                    files_changed.append(rel)
+            return
     raw_path = extract_mcp_file_path(tool_name, func_args)
     if not raw_path:
         return
@@ -67,6 +78,7 @@ def _execute_tool_call(
     func_args: dict[str, Any],
     tool_routes: dict[str, tuple[str, str]],
     clients: dict[str, McpClient],
+    builtin_servers: set[str],
     log_prefix: str,
     logs: list[str],
     on_log: Callable[[str], None] | None,
@@ -83,6 +95,23 @@ def _execute_tool_call(
     if route is None:
         return f"Unknown tool alias: {func_name}"
     server_id, tool_name = route
+    if server_id in builtin_servers:
+        from src.builtin_tools import execute_builtin_tool
+
+        try:
+            result_str = execute_builtin_tool(tool_name, func_args)
+            _emit(logs, on_log, f"[{log_prefix}] Builtin tool response length: {len(result_str)} chars")
+            if files_changed is not None:
+                _record_file_change(
+                    files_changed,
+                    tool_name=tool_name,
+                    func_args=func_args,
+                    result_str=result_str,
+                )
+            return result_str
+        except Exception as exc:
+            _emit(logs, on_log, f"[{log_prefix}] Builtin tool error: {exc}")
+            return f"Error executing tool: {exc}"
     client = clients.get(server_id)
     if client is None:
         return f"MCP server not connected: {server_id}"
@@ -122,9 +151,11 @@ def run_mcp_react_loop(
     if not servers:
         raise ValueError("At least one MCP server is required")
 
+    from src.builtin_tools import is_virtual_server, list_builtin_tools
     from src.models_config import get_router
 
     clients: dict[str, McpClient] = {}
+    builtin_servers: set[str] = set()
     tool_routes: dict[str, tuple[str, str]] = {}
     openai_tools: list[dict[str, Any]] = []
     logs: list[str] = []
@@ -133,18 +164,24 @@ def run_mcp_react_loop(
     for server in servers:
         server_id = str(server.get("id", "mcp"))
         name = str(server.get("name", server_id))
-        endpoint = str(server.get("endpoint", ""))
-        env = server.get("env") if isinstance(server.get("env"), dict) else None
-        client = McpClient(name, endpoint, env=env)
-        if not client.start():
-            _emit(logs, on_log, f"[{log_prefix}] Failed to start MCP server: {name}")
-            for started in clients.values():
-                started.close()
-            raise RuntimeError(f"Failed to start MCP server: {name}")
-        clients[server_id] = client
-        _emit(logs, on_log, f"[{log_prefix}] Connected MCP server: {name}")
+        if is_virtual_server(server):
+            builtin_servers.add(server_id)
+            _emit(logs, on_log, f"[{log_prefix}] Registered builtin server: {name}")
+            tools = list_builtin_tools()
+        else:
+            endpoint = str(server.get("endpoint", ""))
+            env = server.get("env") if isinstance(server.get("env"), dict) else None
+            client = McpClient(name, endpoint, env=env)
+            if not client.start():
+                _emit(logs, on_log, f"[{log_prefix}] Failed to start MCP server: {name}")
+                for started in clients.values():
+                    started.close()
+                raise RuntimeError(f"Failed to start MCP server: {name}")
+            clients[server_id] = client
+            _emit(logs, on_log, f"[{log_prefix}] Connected MCP server: {name}")
+            tools = client.list_tools()
 
-        for tool in client.list_tools():
+        for tool in tools:
             tool_name = str(tool.get("name", "")).strip()
             if not tool_name:
                 continue
@@ -187,6 +224,7 @@ def run_mcp_react_loop(
                 func_args=func_args,
                 tool_routes=tool_routes,
                 clients=clients,
+                builtin_servers=builtin_servers,
                 log_prefix=log_prefix,
                 logs=logs,
                 on_log=on_log,
@@ -245,6 +283,7 @@ def run_mcp_react_loop(
                         func_args=func_args,
                         tool_routes=tool_routes,
                         clients=clients,
+                        builtin_servers=builtin_servers,
                         log_prefix=log_prefix,
                         logs=logs,
                         on_log=on_log,

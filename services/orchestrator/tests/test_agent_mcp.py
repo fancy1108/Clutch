@@ -40,6 +40,21 @@ def test_resolve_agent_mcp_servers_includes_builtin_local_fs(monkeypatch) -> Non
             "enabled": True,
         },
     )
+    monkeypatch.setattr("src.builtin_tools.resolve_clutch_tools_server", lambda: None)
     resolved = resolve_agent_mcp_servers({"mcpServerIds": ["local-fs"]})
     assert len(resolved) == 1
     assert resolved[0]["id"] == "local-fs"
+
+
+def test_resolve_agent_mcp_servers_pairs_clutch_tools_with_local_fs(monkeypatch) -> None:
+    monkeypatch.setattr("src.agent_mcp.load_servers", lambda: [])
+    monkeypatch.setattr(
+        "src.agent_mcp.resolve_local_fs_server",
+        lambda: {"id": "local-fs", "name": "Local Filesystem MCP Server", "endpoint": "npx"},
+    )
+    monkeypatch.setattr(
+        "src.builtin_tools.resolve_clutch_tools_server",
+        lambda: {"id": "clutch-tools", "name": "Clutch Builtin Tools", "virtual": True},
+    )
+    resolved = resolve_agent_mcp_servers({"mcpServerIds": ["local-fs"]})
+    assert [item["id"] for item in resolved] == ["local-fs", "clutch-tools"]

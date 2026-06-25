@@ -639,7 +639,12 @@ def _compose_agent_system_prompt(
                 parts.append(
                     f"Workspace root: {workspace_path}\n"
                     "Filesystem MCP tools only accept paths inside this workspace. "
-                    "Prefer workspace-relative paths (e.g. `test.txt`), not `/test.txt` or other roots."
+                    "Prefer workspace-relative paths (e.g. `test.txt`), not `/test.txt` or other roots.\n"
+                    "For create, edit, delete, or rename files, prefer the builtin "
+                    "`clutch-tools__apply_patch` tool with Codex patch syntax "
+                    "(`*** Begin Patch` … `*** Add File` / `*** Delete File` / "
+                    "`*** Update File` … `*** End Patch`). Do not rename files to "
+                    "`.deleted_*` as a delete workaround when apply_patch is available."
                 )
         skills_block = compose_skills_section(list(agent.get("skills") or []))
         if skills_block:

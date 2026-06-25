@@ -214,6 +214,17 @@
 - **影响**：`claude_cli_adapter.py`、`engine_router.py`、`main._handle_plain_chat`；`packages/shared-types` `ClutchState` 扩展字段。
 - **决策状态**：`已落地`
 
+### D21 · Codex 兼容 `apply_patch` 内置工具（2026-06-25）
+
+- **背景**：官方 `@modelcontextprotocol/server-filesystem` 无 `delete_file`；Configured LLM 路径删除文件时模型退化为 `move_file` → `.deleted_*` 隐藏文件，与 Claude Code / Codex 体验不一致。
+- **方案（借鉴 OpenAI Codex `codex-rs/apply-patch`）**：
+  1. Sidecar 内置虚拟 MCP 服务器 **`clutch-tools`**，在 Agent 绑定 `local-fs` 时自动挂载。
+  2. 提供 **`apply_patch`** 工具，支持 Codex patch 语法：`Add File` / `Delete File` / `Update File` / `Move to`。
+  3. 在工作区白名单内执行真删除（`unlink`）、写入与 diff 更新；结果 JSON 含 `changed_paths` 驱动 `file_changed` 刷新。
+  4. `apply_patch` 归类为高风险 MCP 工具，走现有 Supervisor 审批门。
+- **影响**：`apply_patch.py`、`builtin_tools.py`、`mcp_react.py`、`agent_mcp.py`、`mcp_risk.py`、`main._compose_agent_system_prompt`。
+- **决策状态**：`已落地`
+
 ## 开放问题
 
 （暂无 — 原 Q1–Q4 已于 2026-06-22 关闭，见 D3–D6。）

@@ -133,6 +133,8 @@
 | Terminal 日志格式化与时间戳 | `src/terminal_logs.py` |
 | MCP 工具风险判定 | `src/mcp_risk.py` |
 | MCP ReAct 执行 | `src/mcp_react.py` |
+| Codex 兼容 apply_patch（增删改移） | `src/apply_patch.py` |
+| 内置虚拟工具服务器 clutch-tools | `src/builtin_tools.py` |
 | 凭证来源（CC Switch / 环境变量） | `src/credentials/sources.py` |
 | 工作区 Git 分支探测 | `src/workspace.py` → `get_git_info()` |
 | LLM Provider Router（M1-08，D4） | `src/llm/router.py` |

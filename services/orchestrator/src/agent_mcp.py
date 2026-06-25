@@ -7,6 +7,7 @@ from typing import Any
 from src.mcp_storage import load_servers
 
 LOCAL_FS_SERVER_ID = "local-fs"
+CLUTCH_TOOLS_SERVER_ID = "clutch-tools"
 
 
 def resolve_local_fs_server() -> dict[str, Any] | None:
@@ -41,6 +42,11 @@ def resolve_agent_mcp_servers(agent: dict[str, Any] | None) -> list[dict[str, An
         local_fs = resolve_local_fs_server()
         if local_fs:
             resolved.append(local_fs)
+        from src.builtin_tools import resolve_clutch_tools_server
+
+        clutch_tools = resolve_clutch_tools_server()
+        if clutch_tools:
+            resolved.append(clutch_tools)
     for server in load_servers():
         server_id = str(server.get("id", "")).strip()
         if server_id not in wanted:
