@@ -25,7 +25,7 @@ def is_risky_mcp_tool(tool_name: str) -> bool:
     return any(token in key for token in _RISKY_TOKENS)
 
 
-_PATH_ARG_KEYS = ("path", "file_path", "filepath", "target")
+_PATH_ARG_KEYS = ("path", "file_path", "filepath", "target", "source", "destination")
 
 
 def extract_mcp_file_path(tool_name: str, func_args: dict[str, Any]) -> str | None:

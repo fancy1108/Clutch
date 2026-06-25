@@ -16,7 +16,6 @@ from src.credentials.sources import (
     cc_switch_has_key_for_provider,
     is_clutch_managed_credential,
     model_source_summary,
-    resolve_model_credential_hint,
     resolve_provider_credential_source,
 )
 
@@ -137,7 +136,6 @@ def serialize_models_config(router: LLMProviderRouter) -> dict[str, Any]:
                 "credential_source": cred["source"],
                 "credential_source_label": cred["source_label"],
                 "source_summary": model_source_summary(cred, is_cc_switch=is_cc_switch),
-                "credential_hint": resolve_model_credential_hint(router, spec),
                 "endpoint": spec.base_url or None,
                 "clutch_managed": is_clutch_managed_credential(spec.provider_id),
                 "is_cc_switch": is_cc_switch,

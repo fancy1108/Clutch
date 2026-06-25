@@ -23,7 +23,7 @@ from src.workspace import WorkspaceError
 from src.workflow_storage import resolve_workflow
 from src.workflow_validator import WorkflowValidationError, load_and_validate_workflow, validate_workflow
 from src.preferences_storage import tr
-from src.terminal_logs import TAG_HUMAN, TAG_WORKFLOW, tagged
+from src.terminal_logs import TAG_HUMAN, TAG_WORKFLOW, stamp_log_line, tagged
 
 logger = logging.getLogger(__name__)
 
@@ -258,6 +258,8 @@ def _merge_graph_resume(
         logs.append(tagged(TAG_WORKFLOW, f"Active node → {graph_result['active_node_id']}"))
         if graph_result["status"] == "awaiting_human":
             logs.append(tagged(TAG_HUMAN, "Human gate reached — awaiting decision."))
+        logs = [stamp_log_line(line) for line in logs[len(base_logs):]]
+        logs = list(base_logs) + logs
     return {
         "messages": messages,
         "terminal_logs": logs,
@@ -378,7 +380,7 @@ def _merge_patch(state: ClutchState, patch: dict[str, Any]) -> ClutchState:
 
 def _persist_run_log(run_id: str, line: str, node_id: str) -> None:
     state = _get_or_create_run(run_id)
-    logs = list(state["terminal_logs"]) + [line]
+    logs = list(state["terminal_logs"]) + [stamp_log_line(line)]
     patch: dict[str, Any] = {"terminal_logs": logs}
     if node_id:
         patch["active_node_id"] = node_id
@@ -498,6 +500,34 @@ async def _send_message_event(
     await websocket.send_text(json.dumps(envelope))
 
 
+def _mcp_supervisor_approval_text(func_name: str, func_args: dict[str, Any]) -> str:
+    detail = ""
+    if func_args:
+        preview = json.dumps(func_args, ensure_ascii=False)
+        if len(preview) > 120:
+            preview = preview[:117] + "..."
+        detail = f"\n\nArgs: `{preview}`"
+    return tr(
+        f"MCP tool `{func_name}` requires your approval before execution.{detail}",
+        f"MCP 工具 `{func_name}` 需要您批准后才能执行。{detail}",
+    )
+
+
+def _supervisor_gate_messages(
+    messages: list[dict[str, Any]],
+    func_name: str,
+    func_args: dict[str, Any],
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Append a supervisor approval line; skip exact duplicate of the latest supervisor message."""
+    text = _mcp_supervisor_approval_text(func_name, func_args)
+    if messages:
+        last = messages[-1]
+        if last.get("agent") == "Supervisor" and last.get("text") == text:
+            return messages, last
+    supervisor = _chat_message("Supervisor", text)
+    return [*messages, supervisor], supervisor
+
+
 async def _send_human_required(
     websocket: WebSocket,
     run_id: str,
@@ -600,6 +630,17 @@ def _compose_agent_system_prompt(
                 "Tell the user to bind **Local Filesystem MCP Server** in "
                 "Agent Manager → Module 4 (MCP Hub Server Bindings)."
             )
+        else:
+            from src.workspace import get_workspace
+
+            workspace = get_workspace()
+            workspace_path = workspace.get("workspace_path") if workspace else None
+            if workspace_path:
+                parts.append(
+                    f"Workspace root: {workspace_path}\n"
+                    "Filesystem MCP tools only accept paths inside this workspace. "
+                    "Prefer workspace-relative paths (e.g. `test.txt`), not `/test.txt` or other roots."
+                )
         skills_block = compose_skills_section(list(agent.get("skills") or []))
         if skills_block:
             parts.append(skills_block)
@@ -613,12 +654,13 @@ def _append_terminal_logs(
     *,
     streamed: bool,
 ) -> list[str]:
+    stamped_tail = stamp_log_line(tail_line)
     if streamed:
         merged = list(current_logs)
-        if not merged or merged[-1] != tail_line:
-            merged.append(tail_line)
+        if not merged or merged[-1] != stamped_tail:
+            merged.append(stamped_tail)
         return merged
-    return list(current_logs) + route_logs + [tail_line]
+    return list(current_logs) + [stamp_log_line(line) for line in route_logs] + [stamped_tail]
 
 
 async def _llm_chat_reply(
@@ -797,7 +839,7 @@ async def _handle_plain_chat_mcp_decision(
         log_line = tagged(TAG_HUMAN, f"MCP tool {pending.func_name} rejected")
         final_patch: dict[str, Any] = {
             "messages": list(state["messages"]) + [supervisor],
-            "terminal_logs": list(state["terminal_logs"]) + [log_line],
+            "terminal_logs": list(state["terminal_logs"]) + [stamp_log_line(log_line)],
             "status": "idle",
             "active_agent": pending.reply_label,
         }
@@ -817,8 +859,9 @@ async def _handle_plain_chat_mcp_decision(
     async def emit_log(line: str) -> None:
         nonlocal streamed_logs, state
         streamed_logs = True
-        await _send_log_event(websocket, run_id, line, node_id="")
-        logs = list(state["terminal_logs"]) + [line]
+        stamped = stamp_log_line(line)
+        await _send_log_event(websocket, run_id, stamped, node_id="")
+        logs = list(state["terminal_logs"]) + [stamped]
         state = _merge_patch(state, {"terminal_logs": logs})
         _commit_run_state(run_id, state)
         await _notify_run_state(websocket, run_id, state, {"terminal_logs": logs})
@@ -869,15 +912,13 @@ async def _handle_plain_chat_mcp_decision(
             ),
         )
         gate_line = f"[CHAT] Awaiting approval for MCP tool: {mcp_pause['func_name']}"
-        supervisor = _chat_message(
-            "Supervisor",
-            tr(
-                f"MCP tool `{mcp_pause['func_name']}` requires your approval before execution.",
-                f"MCP 工具 `{mcp_pause['func_name']}` 需要您批准后才能执行。",
-            ),
+        pause_messages, supervisor = _supervisor_gate_messages(
+            list(state["messages"]),
+            str(mcp_pause["func_name"]),
+            dict(mcp_pause.get("func_args") or {}),
         )
         pause_patch: dict[str, Any] = {
-            "messages": list(state["messages"]) + [supervisor],
+            "messages": pause_messages,
             "terminal_logs": _append_terminal_logs(
                 list(state["terminal_logs"]), route_logs, gate_line, streamed=streamed_logs
             ),
@@ -886,7 +927,8 @@ async def _handle_plain_chat_mcp_decision(
         }
         state = _merge_patch(state, pause_patch)
         _commit_run_state(run_id, state)
-        await _send_message_event(websocket, run_id, supervisor, "")
+        if pause_messages[-1] is supervisor:
+            await _send_message_event(websocket, run_id, supervisor, "")
         if not streamed_logs:
             for log in route_logs:
                 await _send_log_event(websocket, run_id, log, node_id="")
@@ -966,8 +1008,9 @@ async def _handle_plain_chat(
     async def emit_log(line: str) -> None:
         nonlocal streamed_logs, state
         streamed_logs = True
-        await _send_log_event(websocket, run_id, line, node_id="")
-        logs = list(state["terminal_logs"]) + [line]
+        stamped = stamp_log_line(line)
+        await _send_log_event(websocket, run_id, stamped, node_id="")
+        logs = list(state["terminal_logs"]) + [stamped]
         state = _merge_patch(state, {"terminal_logs": logs})
         _commit_run_state(run_id, state)
         await _notify_run_state(websocket, run_id, state, {"terminal_logs": logs})
@@ -1006,17 +1049,14 @@ async def _handle_plain_chat(
             ),
         )
         gate_line = f"[CHAT] Awaiting approval for MCP tool: {mcp_pause['func_name']}"
-        supervisor = _chat_message(
-            "Supervisor",
-            tr(
-                f"MCP tool `{mcp_pause['func_name']}` requires your approval before execution.",
-                f"MCP 工具 `{mcp_pause['func_name']}` 需要您批准后才能执行。",
-            ),
+        pause_messages, supervisor = _supervisor_gate_messages(
+            list(state["messages"]),
+            str(mcp_pause["func_name"]),
+            dict(mcp_pause.get("func_args") or {}),
         )
         pause_logs = _append_terminal_logs(
             list(state["terminal_logs"]), route_logs, gate_line, streamed=streamed_logs
         )
-        pause_messages = list(state["messages"]) + [supervisor]
         pause_patch: dict[str, Any] = {
             "messages": pause_messages,
             "terminal_logs": pause_logs,
@@ -1025,7 +1065,8 @@ async def _handle_plain_chat(
         }
         state = _merge_patch(state, pause_patch)
         _commit_run_state(run_id, state)
-        await _send_message_event(websocket, run_id, supervisor, "")
+        if pause_messages[-1] is supervisor:
+            await _send_message_event(websocket, run_id, supervisor, "")
         if not streamed_logs:
             for log in route_logs:
                 await _send_log_event(websocket, run_id, log, node_id="")
@@ -1087,7 +1128,7 @@ async def _handle_workflow_chat_message(
     user_message = _chat_message("User", text, msg_id=f"user_{uuid.uuid4().hex[:8]}")
     messages = list(state["messages"]) + [user_message]
     logs = list(state["terminal_logs"])
-    logs.append(f"[USER] {text}")
+    logs.append(stamp_log_line(f"[USER] {text}"))
 
     if state["status"] == "awaiting_human":
         state, patch, supervisor_message, log_line = await asyncio.to_thread(
@@ -1196,6 +1237,7 @@ async def _send_log_event(
     node_id: str,
     level: str = "info",
 ) -> None:
+    stamped = stamp_log_line(line)
     envelope = {
         "event": "log",
         "data": {
@@ -1203,7 +1245,7 @@ async def _send_log_event(
             "node_id": node_id,
             "source": "orchestrator",
             "level": level,
-            "message": line,
+            "message": stamped,
             "timestamp": _iso_timestamp(),
         },
     }
@@ -1430,6 +1472,16 @@ async def set_workspace_endpoint(body: WorkspaceRequest) -> dict[str, str]:
         entry = add_workspace(body.path)
         ensure_default_skill_mounts(workspace_path=entry.get("workspace_path"))
         return entry
+    except WorkspaceError as exc:
+        raise _workspace_http_error(exc) from exc
+
+
+@app.get("/api/workspace/git")
+async def get_workspace_git() -> dict[str, Any]:
+    from src.workspace import WorkspaceError, get_git_info
+
+    try:
+        return get_git_info()
     except WorkspaceError as exc:
         raise _workspace_http_error(exc) from exc
 
@@ -1821,8 +1873,8 @@ async def reassign_run(run_id: str, body: ReassignRequest) -> dict[str, str]:
         state = _merge_patch(state, patch)
         _commit_run_state(run_id, state)
     logs = list(state["terminal_logs"])
-    logs.append(f"[USER] Re-assign to Builder: {body.instructions}")
-    logs.append(tagged(TAG_WORKFLOW, "Resuming task per supervisor directive."))
+    logs.append(stamp_log_line(f"[USER] Re-assign to Builder: {body.instructions}"))
+    logs.append(stamp_log_line(tagged(TAG_WORKFLOW, "Resuming task per supervisor directive.")))
     state = _merge_patch(state, {"terminal_logs": logs})
     _commit_run_state(run_id, state)
     return {"run_id": run_id, "status": state["status"]}
@@ -1906,7 +1958,7 @@ async def delete_run_endpoint(run_id: str) -> dict[str, str]:
 async def stop_run(run_id: str) -> dict[str, str]:
     state = _get_or_create_run(run_id)
     logs = list(state["terminal_logs"])
-    logs.append(tagged(TAG_WORKFLOW, "Run stopped via HTTP."))
+    logs.append(stamp_log_line(tagged(TAG_WORKFLOW, "Run stopped via HTTP.")))
     state = _merge_patch(state, {"status": "failed", "terminal_logs": logs})
     _commit_run_state(run_id, state)
     update_run_record(run_id, {"status": "failed", "ended_at": _iso_timestamp()})
@@ -2033,7 +2085,7 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
             elif isinstance(payload, dict) and payload.get("action") == "stop_run":
                 logs = list(state["terminal_logs"])
                 log_line = tagged(TAG_WORKFLOW, "Run stopped by supervisor.")
-                logs.append(log_line)
+                logs.append(stamp_log_line(log_line))
                 patch = {"status": "failed", "terminal_logs": logs}
                 state = _merge_patch(state, patch)
                 _commit_run_state(run_id, state)

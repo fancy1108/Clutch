@@ -27,6 +27,12 @@ export interface FileTreeNode {
   children?: FileTreeNode[];
 }
 
+export interface WorkspaceGitInfo {
+  is_git_repo: boolean;
+  branch: string | null;
+  branches: string[];
+}
+
 const BASE = 'http://localhost:8123';
 
 function stableWorkspaceId(path: string): string {
@@ -170,6 +176,15 @@ export async function deleteRepositoryGroup(groupId: string): Promise<void> {
     method: 'DELETE',
   });
   if (!response.ok) throw new Error(`delete repository group failed (${response.status})`);
+}
+
+export async function fetchWorkspaceGit(): Promise<WorkspaceGitInfo> {
+  const response = await sidecarFetch(`${BASE}/api/workspace/git`);
+  if (response.status === 404) {
+    return { is_git_repo: false, branch: null, branches: [] };
+  }
+  if (!response.ok) throw new Error(`workspace git failed (${response.status})`);
+  return response.json() as Promise<WorkspaceGitInfo>;
 }
 
 export async function fetchWorkspaceTree(): Promise<FileTreeNode[]> {

@@ -18,6 +18,7 @@ const zhTranslations: Record<string, string> = {
   "New Chat / Reset": "New Chat / 重置",
   "AI Agents": "AI Agents / AI 智能体",
   "Branch": "Branch / 分支",
+  "Not a git repository": "Not a git repository / 非 Git 仓库",
   "Model": "Model / 模型",
   "Engine": "Engine / 驱动引擎",
   "Model is provided by the selected agent tool": "Model is provided by the selected agent tool / 模型由所选 Agent 工具自带",

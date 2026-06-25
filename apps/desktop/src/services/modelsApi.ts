@@ -8,7 +8,6 @@ export interface ModelEntry {
   credential_source?: string | null;
   credential_source_label?: string | null;
   source_summary?: string | null;
-  credential_hint?: string | null;
   endpoint?: string | null;
   clutch_managed?: boolean;
   is_cc_switch?: boolean;
@@ -188,7 +187,6 @@ export function mapModelConfigToUi(config: ModelConfig) {
       temperature: 0.3,
       sourceSummary: m.source_summary ?? 'Credentials configured',
       credentialSourceLabel: m.credential_source_label ?? null,
-      credentialHint: m.credential_hint ?? null,
       endpoint: m.endpoint ?? null,
       clutchManaged: Boolean(m.clutch_managed),
       isCcSwitch: Boolean(m.is_cc_switch),

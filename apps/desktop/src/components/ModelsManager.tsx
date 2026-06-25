@@ -23,7 +23,6 @@ interface ModelItem {
   temperature: number;
   sourceSummary: string;
   credentialSourceLabel: string | null;
-  credentialHint: string | null;
   endpoint: string | null;
   clutchManaged: boolean;
   isCcSwitch: boolean;
@@ -175,11 +174,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
   };
 
   const handleDeleteProvider = async (targetProviderId: string) => {
-    const provider = providers[targetProviderId];
-    const useCcSwitch = provider?.cc_switch_fallback_available;
-    const message = useCcSwitch
-      ? `Remove the Clutch-saved ${PROVIDER_LABELS[targetProviderId] ?? targetProviderId} key and use CC Switch instead?`
-      : `Remove the Clutch-saved API key for ${PROVIDER_LABELS[targetProviderId] ?? targetProviderId}?`;
+    const message = `Remove the saved API key for ${PROVIDER_LABELS[targetProviderId] ?? targetProviderId}?`;
     if (!window.confirm(message)) return;
 
     const removedModelIds = new Set(
@@ -250,16 +245,114 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
 
   return (
     <div className="flex-1 flex flex-col h-full bg-surface-bright text-on-surface select-none leading-normal">
-      <div className="flex-1 overflow-y-auto p-6 space-y-5">
-        <header className="text-left space-y-1">
-          <h2 className="text-base font-bold text-on-surface tracking-tight font-sans">AI Workspace Models</h2>
-          <p className="text-xs text-on-surface-variant leading-relaxed">
-            Choose which model Clutch uses. Keys can come from Clutch, CC Switch, or environment variables.
-          </p>
-        </header>
+      <div className="flex-1 overflow-y-auto px-6 pb-6 pt-14 pr-12 space-y-5">
+        <div className="flex items-start justify-between gap-4">
+          <header className="text-left space-y-1 min-w-0">
+            <h2 className="text-base font-bold text-on-surface tracking-tight font-sans">AI Workspace Models</h2>
+            <p className="text-xs text-on-surface-variant leading-relaxed">
+              Choose which model Clutch uses for chat and workflows.
+            </p>
+          </header>
+          <button
+            type="button"
+            onClick={() => openConnectForm()}
+            className="flex-shrink-0 px-3 py-1.5 text-[10.5px] font-bold bg-primary text-on-primary rounded-lg whitespace-nowrap"
+          >
+            Add API key
+          </button>
+        </div>
+
+        {showConnectForm && (
+          <form
+            onSubmit={(e) => void handleConnectProvider(e)}
+            className="p-4 bg-surface-container border border-outline rounded-xl space-y-4 text-left"
+          >
+            <div>
+              <h3 className="text-xs font-bold text-on-surface">
+                {editingProviderId ? 'Update API key' : 'Add API key'}
+              </h3>
+              <p className="text-[11px] text-on-surface-variant mt-0.5">
+                Saved in Clutch and used for built-in models of this provider.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block">
+                  Provider
+                </label>
+                <select
+                  value={providerId}
+                  onChange={(e) => setProviderId(e.target.value)}
+                  disabled={Boolean(editingProviderId)}
+                  className="w-full text-xs border border-outline bg-surface rounded-lg px-3 py-2 text-on-surface disabled:opacity-60"
+                >
+                  {CONNECTABLE_PROVIDERS.map((id) => (
+                    <option key={id} value={id}>
+                      {PROVIDER_LABELS[id] ?? id}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block">
+                  API key
+                </label>
+                <div className="relative flex items-center">
+                  <input
+                    type={showApiKey ? 'text' : 'password'}
+                    required
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    placeholder="sk-••••••••"
+                    className="w-full text-xs border border-outline bg-surface rounded-lg pl-3 pr-10 py-2 font-mono text-on-surface"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowApiKey(!showApiKey)}
+                    className="absolute right-3 text-on-surface-variant hover:text-on-surface"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">
+                      {showApiKey ? 'visibility' : 'visibility_off'}
+                    </span>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-between gap-2 flex-wrap">
+              <div>
+                {editingProvider?.clutch_managed && (
+                  <button
+                    type="button"
+                    disabled={deletingProviderId === providerId}
+                    onClick={() => void handleDeleteProvider(providerId)}
+                    className="px-3 py-1.5 text-[10.5px] font-bold border border-rose-200 text-rose-700 rounded-lg hover:bg-rose-50 disabled:opacity-50"
+                  >
+                    {deletingProviderId === providerId ? 'Removing…' : 'Remove saved key'}
+                  </button>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={closeConnectForm}
+                  className="px-3 py-1.5 text-[10.5px] font-bold border border-outline rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingKey}
+                  className="px-3 py-1.5 text-[10.5px] font-bold bg-primary text-on-primary rounded-lg disabled:opacity-50"
+                >
+                  {savingKey ? 'Saving…' : 'Save'}
+                </button>
+              </div>
+            </div>
+          </form>
+        )}
 
         {error && (
-          <p className="text-xs text-amber-800 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2 text-left">
+          <p className="text-xs text-rose-800 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2 text-left">
             {error}
           </p>
         )}
@@ -286,116 +379,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
           >
             {currentStatusLine}
           </p>
-          <div className="flex flex-wrap gap-2 mt-3">
-            {activeModelId && activeAvailable && (
-              <button
-                type="button"
-                disabled={activeVerify === 'testing'}
-                onClick={() => void handleTestConnection(activeModelId)}
-                className="px-3 py-1.5 text-xs font-bold border border-outline rounded-lg hover:bg-surface-container-high disabled:opacity-50"
-              >
-                {activeVerify === 'testing' ? 'Testing…' : activeVerify === 'idle' ? 'Test' : 'Retest'}
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => openConnectForm()}
-              className="px-3 py-1.5 text-xs font-bold bg-primary text-on-primary rounded-lg"
-            >
-              Add API key
-            </button>
-          </div>
         </section>
-
-        {showConnectForm && (
-          <form
-            onSubmit={(e) => void handleConnectProvider(e)}
-            className="p-4 bg-surface-container border border-outline rounded-xl space-y-4 text-left"
-          >
-            <div>
-              <h3 className="text-xs font-bold text-on-surface">
-                {editingProviderId ? 'Update API key' : 'Add API key'}
-              </h3>
-              <p className="text-[11px] text-on-surface-variant mt-0.5">
-                Saved in Clutch and used for built-in models of this provider.
-              </p>
-            </div>
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block">
-                Provider
-              </label>
-              <select
-                value={providerId}
-                onChange={(e) => setProviderId(e.target.value)}
-                disabled={Boolean(editingProviderId)}
-                className="w-full text-xs border border-outline bg-surface rounded-lg px-3 py-2 text-on-surface disabled:opacity-60"
-              >
-                {CONNECTABLE_PROVIDERS.map((id) => (
-                  <option key={id} value={id}>
-                    {PROVIDER_LABELS[id] ?? id}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block">
-                API key
-              </label>
-              <div className="relative flex items-center">
-                <input
-                  type={showApiKey ? 'text' : 'password'}
-                  required
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="sk-••••••••"
-                  className="w-full text-xs border border-outline bg-surface rounded-lg pl-3 pr-10 py-2 font-mono text-on-surface"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowApiKey(!showApiKey)}
-                  className="absolute right-3 text-on-surface-variant hover:text-on-surface"
-                >
-                  <span className="material-symbols-outlined text-[18px]">
-                    {showApiKey ? 'visibility' : 'visibility_off'}
-                  </span>
-                </button>
-              </div>
-              <p className="text-[10px] text-on-surface-variant">
-                Gateway models (e.g. Agnes) need that gateway&apos;s token — save it under the matching provider.
-              </p>
-            </div>
-            <div className="flex justify-between gap-2 flex-wrap">
-              <div>
-                {editingProvider?.clutch_managed && (
-                  <button
-                    type="button"
-                    disabled={deletingProviderId === providerId}
-                    onClick={() => void handleDeleteProvider(providerId)}
-                    className="px-3 py-1.5 text-xs font-bold border border-rose-200 text-rose-700 rounded-lg hover:bg-rose-50 disabled:opacity-50"
-                  >
-                    {deletingProviderId === providerId ? 'Removing…' : 'Remove saved key'}
-                  </button>
-                )}
-              </div>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={closeConnectForm}
-                  className="px-3 py-1.5 text-xs font-bold border border-outline rounded-lg"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={savingKey}
-                  className="px-4 py-1.5 text-xs font-bold bg-primary text-on-primary rounded-lg disabled:opacity-50"
-                >
-                  {savingKey ? 'Saving…' : 'Save'}
-                </button>
-              </div>
-            </div>
-          </form>
-        )}
 
         <section className="space-y-3 text-left">
           <div className="flex items-center justify-between">
@@ -454,11 +438,6 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
                         )}
                       </div>
                       <p className="text-[11px] text-on-surface-variant">{model.sourceSummary}</p>
-                      {model.credentialHint && (
-                        <p className="text-[10.5px] text-amber-900 bg-amber-50 border border-amber-100 rounded-md px-2 py-1">
-                          {model.credentialHint}
-                        </p>
-                      )}
                       {verify === 'failed' && rowMessage && (
                         <p className="text-[10.5px] text-rose-800">{rowMessage}</p>
                       )}

@@ -2,9 +2,27 @@
 
 from __future__ import annotations
 
+import re
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
 TAG_WORKFLOW = "WORKFLOW"
 TAG_CHECK = "CHECK"
 TAG_HUMAN = "HUMAN"
+
+_CHINA_TZ = ZoneInfo("Asia/Shanghai")
+_STAMPED_RE = re.compile(r"^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} CST\] ")
+
+
+def china_log_timestamp() -> str:
+    return datetime.now(_CHINA_TZ).strftime("%Y-%m-%d %H:%M:%S CST")
+
+
+def stamp_log_line(line: str) -> str:
+    text = line.strip()
+    if not text or _STAMPED_RE.match(text):
+        return line
+    return f"[{china_log_timestamp()}] {text}"
 
 
 def tagged(tag: str, message: str) -> str:

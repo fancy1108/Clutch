@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Header } from './components/Header';
 import { Sidebar } from './sidebar';
 import { ChatFeed, configuredEngineToRuntimeLabel } from './components/ChatFeed';
@@ -29,6 +29,7 @@ import {
   removeWorkspace,
   fetchWorkspaceFile,
   fetchWorkspaceTree,
+  fetchWorkspaceGit,
   fetchWorkspaces,
   fetchRepositoryGroups,
   createRepositoryGroup,
@@ -118,19 +119,32 @@ function MainLayout() {
   const [workspacePickError, setWorkspacePickError] = useState<string | null>(null);
   const [highRiskConfirmed, setHighRiskConfirmed] = useState(false);
   const [branchMenuOpen, setBranchMenuOpen] = useState(false);
+  const [workspaceGit, setWorkspaceGit] = useState<{ branch: string | null; branches: string[] }>({
+    branch: null,
+    branches: [],
+  });
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(
     () => localStorage.getItem('clutch_active_agent_id') || BUILTIN_AGENT_ID,
   );
   const [configuredAgents, setConfiguredAgents] = useState<Agent[]>([]);
 
-  const refreshWorkspaceFiles = async () => {
+  const refreshWorkspaceGit = useCallback(async () => {
+    try {
+      const info = await fetchWorkspaceGit();
+      setWorkspaceGit({ branch: info.branch, branches: info.branches });
+    } catch {
+      setWorkspaceGit({ branch: null, branches: [] });
+    }
+  }, []);
+
+  const refreshWorkspaceFiles = useCallback(async () => {
     try {
       const nodes = await fetchWorkspaceTree();
       setWorkspaceFiles(nodes);
     } catch {
       setWorkspaceFiles([]);
     }
-  };
+  }, []);
 
   useEffect(() => {
     void fetchWorkspaces()
@@ -141,6 +155,7 @@ function MainLayout() {
         setWorkspace(active);
         if (active) {
           await refreshWorkspaceFiles();
+          await refreshWorkspaceGit();
         }
       })
       .catch(() => {});
@@ -237,6 +252,23 @@ function MainLayout() {
     void refreshSessions();
   }, [clutchState.run_id, clutchState.status, activeWorkspaceId]);
 
+  // Active Tab inside the right side panel (Overview, Files, Flow, Changes, Terminal)
+  const [rightTab, setRightTab] = useState<RightTab>('overview');
+
+  const prevClutchStatusRef = useRef(clutchStatus);
+
+  useEffect(() => {
+    const prev = prevClutchStatusRef.current;
+    prevClutchStatusRef.current = clutchStatus;
+    if (prev !== 'running' || clutchStatus === 'running' || !workspace) return;
+    void refreshWorkspaceFiles();
+  }, [clutchStatus, workspace, refreshWorkspaceFiles]);
+
+  useEffect(() => {
+    if (rightTab !== 'files' || !workspace) return;
+    void refreshWorkspaceFiles();
+  }, [rightTab, workspace?.id, refreshWorkspaceFiles]);
+
   useEffect(() => {
     const handler = (event: Event) => {
       const data = (event as CustomEvent).detail as { path?: string; diff_lines?: DiffLine[] };
@@ -250,14 +282,11 @@ function MainLayout() {
     };
     window.addEventListener('clutch-file-changed', handler);
     return () => window.removeEventListener('clutch-file-changed', handler);
-  }, []);
+  }, [refreshWorkspaceFiles]);
 
   // Sidebar selector width for calculations
   const selectedSidebarWidth = sidebarOpen ? 280 : 0;
   const rightSidebarWidth = rightPanelOpen ? 300 : 0;
-
-  // Active Tab inside the right side panel (Overview, Files, Flow, Changes, Terminal)
-  const [rightTab, setRightTab] = useState<RightTab>('overview');
 
   useEffect(() => {
     if (!isMultiAgent && rightTab === 'flow') {
@@ -308,6 +337,7 @@ function MainLayout() {
       setActiveWorkspaceId(listed.active_id);
       setWorkspace(info);
       await refreshWorkspaceFiles();
+      await refreshWorkspaceGit();
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Workspace authorize failed';
       setWorkspacePickError(message);
@@ -321,6 +351,7 @@ function MainLayout() {
       setActiveWorkspaceId(workspaceId);
       setWorkspace(info);
       await refreshWorkspaceFiles();
+      await refreshWorkspaceGit();
     } catch (error) {
       console.error('[Clutch] workspace switch failed:', error);
     }
@@ -546,8 +577,10 @@ function MainLayout() {
           setWorkspace(active);
           if (active) {
             await refreshWorkspaceFiles();
+            await refreshWorkspaceGit();
           } else {
             setWorkspaceFiles([]);
+            setWorkspaceGit({ branch: null, branches: [] });
           }
           const groupsListed = await fetchRepositoryGroups();
           setRepositoryGroups(groupsListed.groups);
@@ -889,7 +922,7 @@ function MainLayout() {
               className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-container-low hover:text-on-surface transition-colors cursor-pointer font-medium"
             >
               <span className="material-symbols-outlined text-[15px] text-on-surface-variant">fork_right</span>
-              {t('Branch')}: {clutchState.run_id || '—'}
+              {t('Branch')}: {workspaceGit.branch || '—'}
               <span className="material-symbols-outlined text-[13px]">keyboard_arrow_down</span>
             </span>
             {branchMenuOpen ? (
@@ -897,24 +930,19 @@ function MainLayout() {
                 data-testid="footer-branch-menu"
                 className="absolute bottom-full left-0 mb-1 min-w-[220px] max-h-48 overflow-y-auto bg-surface-bright border border-outline-variant rounded-lg shadow-lg py-1 z-[60]"
               >
-                {sessions.length === 0 ? (
-                  <p className="px-3 py-2 text-[11px] text-on-surface-variant">{t('No sessions in this project yet')}</p>
+                {workspaceGit.branches.length === 0 ? (
+                  <p className="px-3 py-2 text-[11px] text-on-surface-variant">{t('Not a git repository')}</p>
                 ) : (
-                  sessions.map((session) => (
-                    <button
-                      key={session.run_id}
-                      type="button"
-                      data-testid={`footer-branch-session-${session.run_id}`}
-                      onClick={() => {
-                        void handleSelectSession(session);
-                        setBranchMenuOpen(false);
-                      }}
-                      className={`w-full text-left px-3 py-2 text-[11px] hover:bg-surface-container-low ${
-                        session.run_id === sessionRunId ? 'text-primary font-bold' : 'text-on-surface'
+                  workspaceGit.branches.map((branch) => (
+                    <div
+                      key={branch}
+                      data-testid={`footer-branch-item-${branch}`}
+                      className={`px-3 py-2 text-[11px] ${
+                        branch === workspaceGit.branch ? 'text-primary font-bold' : 'text-on-surface'
                       }`}
                     >
-                      {session.title?.trim() || session.workflow_id || session.run_id}
-                    </button>
+                      {branch}
+                    </div>
                   ))
                 )}
               </div>

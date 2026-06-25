@@ -58,3 +58,31 @@ def test_add_existing_path_activates_without_duplicate(tmp_path: Path) -> None:
     listed = client.get("/api/workspaces").json()
     assert len(listed["workspaces"]) == 2
     assert listed["active_id"] == first["id"]
+
+
+def test_workspace_git_endpoint_non_git(tmp_path: Path) -> None:
+    client = TestClient(app)
+    project = tmp_path / "repo"
+    project.mkdir()
+    client.post("/api/workspaces", json={"path": str(project)})
+
+    response = client.get("/api/workspace/git")
+    assert response.status_code == 200
+    assert response.json() == {"is_git_repo": False, "branch": None, "branches": []}
+
+
+def test_get_git_info_for_local_repo() -> None:
+    from src.workspace import get_git_info
+
+    repo_root = Path(__file__).resolve().parents[3]
+    info = get_git_info(repo_root)
+    assert info["is_git_repo"] is True
+    assert isinstance(info["branch"], str)
+    assert info["branch"] in info["branches"]
+
+
+def test_workspace_git_without_workspace() -> None:
+    client = TestClient(app)
+    response = client.get("/api/workspace/git")
+    assert response.status_code == 200
+    assert response.json() == {"is_git_repo": False, "branch": None, "branches": []}

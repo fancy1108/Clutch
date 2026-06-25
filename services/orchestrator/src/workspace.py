@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 import sys
 import uuid
 from pathlib import Path
@@ -279,6 +280,50 @@ def list_tree(max_depth: int = 3) -> list[dict[str, Any]]:
         return nodes
 
     return walk(root, 0)
+
+
+def _run_git(root: Path, *args: str) -> subprocess.CompletedProcess[str] | None:
+    try:
+        return subprocess.run(
+            ["git", "-C", str(root), *args],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+
+
+def get_git_info(root: Path | None = None) -> dict[str, Any]:
+    """Return current branch and local branch names for a workspace root."""
+    if root is None:
+        try:
+            root = require_workspace()
+        except WorkspaceError:
+            return {"is_git_repo": False, "branch": None, "branches": []}
+
+    inside = _run_git(root, "rev-parse", "--is-inside-work-tree")
+    if inside is None or inside.returncode != 0 or inside.stdout.strip() != "true":
+        return {"is_git_repo": False, "branch": None, "branches": []}
+
+    branch: str | None = None
+    branch_result = _run_git(root, "rev-parse", "--abbrev-ref", "HEAD")
+    if branch_result and branch_result.returncode == 0:
+        name = branch_result.stdout.strip()
+        if name and name != "HEAD":
+            branch = name
+        elif name == "HEAD":
+            sha = _run_git(root, "rev-parse", "--short", "HEAD")
+            if sha and sha.returncode == 0 and sha.stdout.strip():
+                branch = f"detached@{sha.stdout.strip()}"
+
+    branches: list[str] = []
+    branches_result = _run_git(root, "branch", "--format=%(refname:short)")
+    if branches_result and branches_result.returncode == 0:
+        branches = sorted({line.strip() for line in branches_result.stdout.splitlines() if line.strip()})
+
+    return {"is_git_repo": True, "branch": branch, "branches": branches}
 
 
 def read_file(relative_path: str, *, max_bytes: int = 512_000) -> str:
