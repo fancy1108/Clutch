@@ -27,7 +27,7 @@ BUILTIN_MODELS: dict[str, ModelSpec] = {
         name="DeepSeek V4 Pro",
         provider_id="deepseek",
         api_model="deepseek-chat",
-        base_url="https://api.deepseek.com/v1",
+        base_url="https://api.deepseek.com",
     ),
     "claude-3-7-sonnet": ModelSpec(
         id="claude-3-7-sonnet",
@@ -35,6 +35,27 @@ BUILTIN_MODELS: dict[str, ModelSpec] = {
         provider_id="anthropic",
         api_model="claude-3-7-sonnet-latest",
         base_url="https://api.anthropic.com/v1",
+    ),
+    "gpt-4o": ModelSpec(
+        id="gpt-4o",
+        name="GPT-4o",
+        provider_id="openai",
+        api_model="gpt-4o",
+        base_url="https://api.openai.com/v1",
+    ),
+    "gemini-2.5-flash": ModelSpec(
+        id="gemini-2.5-flash",
+        name="Gemini 2.5 Flash",
+        provider_id="google",
+        api_model="gemini-2.5-flash",
+        base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+    ),
+    "qwen2.5-coder-7b": ModelSpec(
+        id="qwen2.5-coder-7b",
+        name="Qwen 2.5 Coder 7B (Ollama)",
+        provider_id="ollama",
+        api_model="qwen2.5-coder:7b",
+        base_url="http://localhost:11434",
     ),
 }
 

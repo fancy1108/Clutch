@@ -33,7 +33,7 @@ fn clutch_e2e_sandbox() -> Option<String> {
 }
 
 fn free_sidecar_port() {
-    #[cfg(all(not(debug_assertions), target_os = "macos"))]
+    #[cfg(target_os = "macos")]
     {
         let _ = std::process::Command::new("sh")
             .arg("-c")

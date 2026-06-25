@@ -10,6 +10,7 @@ from typing import Any
 from src.llm.router import LLMProviderRouter, ModelSpec
 
 _CLAUDE_SETTINGS = Path.home() / ".claude" / "settings.json"
+_CC_SWITCH_DIR = Path.home() / ".cc-switch"
 _DEFAULT_CLAUDE_MODEL = "claude-3-7-sonnet"
 
 
@@ -38,6 +39,11 @@ def resolve_anthropic_api_key() -> tuple[str | None, str]:
             return value, source
 
     token = read_claude_code_env().get("ANTHROPIC_AUTH_TOKEN")
+    if token == "PROXY_MANAGED":
+        cc_env = read_cc_switch_active_provider_env()
+        cc_token = cc_env.get("ANTHROPIC_AUTH_TOKEN")
+        if cc_token and cc_token != "PROXY_MANAGED":
+            return cc_token, "cc_switch_settings"
     if token:
         return token, "claude_code_settings"
     return None, ""
@@ -50,6 +56,11 @@ def resolve_anthropic_base_url() -> str | None:
         else:
             base = os.environ.get("ANTHROPIC_BASE_URL")
         if base:
+            if "127.0.0.1" in str(base) or "localhost" in str(base):
+                cc_env = read_cc_switch_active_provider_env()
+                cc_base = cc_env.get("ANTHROPIC_BASE_URL")
+                if cc_base:
+                    return str(cc_base)
             return str(base)
     return None
 
@@ -64,23 +75,17 @@ def normalize_anthropic_base_url(base_url: str) -> str:
 
 def resolve_anthropic_api_model() -> str | None:
     env = read_claude_code_env()
-    for key in (
-        "ANTHROPIC_DEFAULT_SONNET_MODEL_NAME",
-        "ANTHROPIC_DEFAULT_SONNET_MODEL",
-        "ANTHROPIC_MODEL",
-        "CLAUDE_CODE_SUBAGENT_MODEL",
-    ):
-        value = env.get(key)
-        if value:
-            return str(value)
-    for key in (
-        "ANTHROPIC_DEFAULT_SONNET_MODEL_NAME",
-        "ANTHROPIC_DEFAULT_SONNET_MODEL",
-        "ANTHROPIC_MODEL",
-    ):
-        value = os.environ.get(key)
-        if value:
-            return str(value)
+    cc_env = read_cc_switch_active_provider_env()
+    for source in (cc_env, env, os.environ):
+        for key in (
+            "ANTHROPIC_DEFAULT_SONNET_MODEL_NAME",
+            "ANTHROPIC_DEFAULT_SONNET_MODEL",
+            "ANTHROPIC_MODEL",
+            "CLAUDE_CODE_SUBAGENT_MODEL",
+        ):
+            value = source.get(key)
+            if value:
+                return str(value)
     return None
 
 
@@ -165,3 +170,117 @@ def credential_status(router: LLMProviderRouter) -> dict[str, Any]:
             "source": "clutch_env" if os.environ.get("CLUTCH_DEEPSEEK_API_KEY") else None,
         },
     }
+
+
+def read_cc_switch_active_provider_env() -> dict[str, str]:
+    db_path = _CC_SWITCH_DIR / "cc-switch.db"
+    settings_path = _CC_SWITCH_DIR / "settings.json"
+    if not (db_path.is_file() and settings_path.is_file()):
+        return {}
+    try:
+        # Read active provider ID
+        settings = json.loads(settings_path.read_text(encoding="utf-8"))
+        active_id = settings.get("currentProviderClaude")
+        if not active_id:
+            return {}
+        # Query database
+        import sqlite3
+        conn = sqlite3.connect(str(db_path))
+        c = conn.cursor()
+        c.execute("SELECT settings_config FROM providers WHERE id = ?", (active_id,))
+        row = c.fetchone()
+        conn.close()
+        if not row:
+            return {}
+        config = json.loads(row[0])
+        env = config.get("env")
+        if isinstance(env, dict):
+            return {str(k): str(v) for k, v in env.items() if v}
+    except Exception:
+        pass
+    return {}
+
+
+def bootstrap_cc_switch_credentials(router: LLMProviderRouter) -> None:
+    """Bootstrap dynamic custom models and credentials directly from cc-switch database."""
+    db_path = _CC_SWITCH_DIR / "cc-switch.db"
+    if not db_path.is_file():
+        return
+    try:
+        import sqlite3
+        conn = sqlite3.connect(str(db_path))
+        c = conn.cursor()
+        c.execute("SELECT id, name, app_type, settings_config FROM providers")
+        rows = c.fetchall()
+        conn.close()
+        
+        for pid, name, app_type, settings_str in rows:
+            if not settings_str or pid in ("default", "claude-official", "claude-desktop-official", "codex-official", "gemini-official"):
+                continue
+            try:
+                config = json.loads(settings_str)
+            except Exception:
+                continue
+                
+            api_key = None
+            base_url = None
+            api_model = None
+            provider_id = "custom"
+            
+            if app_type == "claude":
+                env = config.get("env") or {}
+                api_key = env.get("ANTHROPIC_AUTH_TOKEN")
+                base_url = env.get("ANTHROPIC_BASE_URL")
+                api_model = env.get("CLAUDE_CODE_SUBAGENT_MODEL") or env.get("ANTHROPIC_DEFAULT_SONNET_MODEL")
+                provider_id = "anthropic"
+            elif app_type == "codex":
+                auth = config.get("auth") or {}
+                api_key = auth.get("OPENAI_API_KEY")
+                if "apihub.agnes-ai.com" in settings_str:
+                    base_url = "https://apihub.agnes-ai.com/v1"
+                else:
+                    base_url = "https://api.openai.com/v1"
+                config_text = config.get("config") or ""
+                for line in config_text.splitlines():
+                    if line.strip().startswith("model ="):
+                        parts = line.split("=")
+                        if len(parts) >= 2:
+                            api_model = parts[1].strip().strip('"').strip("'")
+                if not api_model:
+                    api_model = "gpt-4o"
+                provider_id = "openai"
+            elif app_type == "hermes":
+                api_key = config.get("api_key")
+                base_url = config.get("base_url")
+                api_model = config.get("model")
+                if base_url and "11434" in base_url:
+                    provider_id = "ollama"
+                else:
+                    provider_id = "custom"
+            
+            if not api_model:
+                continue
+                
+            if base_url:
+                base_url = base_url.rstrip("/")
+                if provider_id == "anthropic" and not base_url.endswith("/v1"):
+                    base_url = f"{base_url}/v1"
+                    
+            if api_key == "PROXY_MANAGED":
+                continue
+                
+            if api_key:
+                model_slug = f"cc-switch-{pid.lower()[:8]}"
+                router.register_model(
+                    ModelSpec(
+                        id=model_slug,
+                        name=f"{name} ({api_model})",
+                        provider_id=provider_id, # type: ignore
+                        api_model=api_model,
+                        base_url=base_url or "",
+                    )
+                )
+                if not router.get_api_key(provider_id): # type: ignore
+                    router.set_api_key(provider_id, api_key) # type: ignore
+    except Exception:
+        pass

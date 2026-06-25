@@ -12,6 +12,7 @@ from src.llm.router import LLMProviderRouter, ProviderId
 
 SOURCE_LABELS: dict[str, str] = {
     "claude_code_settings": "Claude Code CLI (~/.claude/settings.json)",
+    "cc_switch_settings": "CC Switch database (~/.cc-switch/cc-switch.db)",
     "clutch_models_config": "Clutch app storage (models.json)",
     "clutch_env": "CLUTCH_* environment variable",
     "anthropic_env": "ANTHROPIC_API_KEY environment variable",

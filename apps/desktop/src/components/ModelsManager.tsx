@@ -42,6 +42,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
   const [showConnectForm, setShowConnectForm] = useState(false);
   const [providerId, setProviderId] = useState<string>('deepseek');
   const [apiKey, setApiKey] = useState('');
+  const [showApiKey, setShowApiKey] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeAvailable, setActiveAvailable] = useState(true);
@@ -93,6 +94,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
     try {
       await saveModelsConfig({ provider_id: providerId, api_key: apiKey.trim() });
       setApiKey('');
+      setShowApiKey(false);
       setShowConnectForm(false);
       setVerifyByModel({});
       setVerifyMessage(null);
@@ -186,17 +188,28 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block">API Key</label>
-              <input
-                type="password"
-                required
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder="sk-••••••••"
-                className="w-full text-xs border border-outline bg-surface rounded-lg px-3 py-2 font-mono"
-              />
+              <div className="relative flex items-center">
+                <input
+                  type={showApiKey ? 'text' : 'password'}
+                  required
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  placeholder="sk-••••••••"
+                  className="w-full text-xs border border-outline bg-surface rounded-lg pl-3 pr-10 py-2 font-mono text-on-surface"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowApiKey(!showApiKey)}
+                  className="absolute right-3 text-on-surface-variant hover:text-on-surface flex items-center"
+                >
+                  <span className="material-symbols-outlined text-[18px]">
+                    {showApiKey ? 'visibility' : 'visibility_off'}
+                  </span>
+                </button>
+              </div>
             </div>
             <div className="flex justify-end gap-2">
-              <button type="button" onClick={() => setShowConnectForm(false)} className="px-3 py-1.5 text-xs font-bold border border-outline rounded-lg">
+              <button type="button" onClick={() => { setShowConnectForm(false); setShowApiKey(false); }} className="px-3 py-1.5 text-xs font-bold border border-outline rounded-lg">
                 Cancel
               </button>
               <button type="submit" disabled={loading} className="px-4 py-1.5 text-xs font-bold bg-primary text-on-primary rounded-lg disabled:opacity-50">

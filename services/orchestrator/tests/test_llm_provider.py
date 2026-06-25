@@ -49,7 +49,7 @@ def test_complete_uses_active_provider() -> None:
     assert router.complete("hello") == "ok"
     assert calls[0]["api_model"] == "deepseek-chat"
     assert calls[0]["api_key"] == "key-ds"
-    assert calls[0]["base_url"] == "https://api.deepseek.com/v1"
+    assert calls[0]["base_url"] == "https://api.deepseek.com"
 
 
 def test_complete_after_model_switch() -> None:

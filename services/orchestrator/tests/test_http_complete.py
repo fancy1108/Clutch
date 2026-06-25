@@ -17,7 +17,7 @@ def test_openai_compatible_response_parsing() -> None:
     with patch("urllib.request.urlopen", return_value=mock_resp):
         text = http_chat_complete(
             provider_id="deepseek",
-            base_url="https://api.deepseek.com/v1",
+            base_url="https://api.deepseek.com",
             api_model="deepseek-chat",
             api_key="sk-test",
             messages=[{"role": "user", "content": "hi"}],

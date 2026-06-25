@@ -11,7 +11,7 @@ from typing import Any
 from src.llm.http_complete import http_chat_complete
 from src.llm.router import LLMProviderRouter, ProviderId
 
-from src.credentials.claude_code import bootstrap_claude_credentials
+from src.credentials.claude_code import bootstrap_claude_credentials, bootstrap_cc_switch_credentials
 from src.credentials.sources import resolve_provider_credential_source
 
 CONFIG_ENV = "CLUTCH_MODELS_CONFIG"
@@ -29,6 +29,7 @@ def load_router() -> LLMProviderRouter:
     router = LLMProviderRouter()
     router._chat = http_chat_complete  # type: ignore[method-assign]
     bootstrap_claude_credentials(router)
+    bootstrap_cc_switch_credentials(router)
     path = config_path()
     if not path.is_file():
         return router
