@@ -7,15 +7,24 @@ export interface ModelEntry {
   available: boolean;
   credential_source?: string | null;
   credential_source_label?: string | null;
+  credential_hint?: string | null;
+  endpoint?: string | null;
+  clutch_managed?: boolean;
+  is_cc_switch?: boolean;
+}
+
+export interface ProviderEntry {
+  configured: boolean;
+  source: string | null;
+  source_label: string | null;
+  clutch_managed?: boolean;
+  cc_switch_fallback_available?: boolean;
 }
 
 export interface ModelConfig {
   active_model_id: string;
   models: ModelEntry[];
-  providers?: Record<
-    string,
-    { configured: boolean; source: string | null; source_label: string | null }
-  >;
+  providers?: Record<string, ProviderEntry>;
 }
 
 export interface ModelTestResult {
@@ -46,6 +55,21 @@ export async function saveModelsConfig(payload: {
   }
 }
 
+export async function deleteProviderCredential(providerId: string): Promise<void> {
+  const response = await fetch(`${BASE}/api/models/credentials/${encodeURIComponent(providerId)}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as { detail?: { message?: string } };
+    throw new Error(body.detail?.message ?? `credential delete failed (${response.status})`);
+  }
+}
+
+export async function rehydrateCcSwitchModels(): Promise<void> {
+  const response = await fetch(`${BASE}/api/models/rehydrate-cc-switch`, { method: 'POST' });
+  if (!response.ok) throw new Error(`cc-switch rehydrate failed (${response.status})`);
+}
+
 export async function testModelConnection(modelId: string): Promise<ModelTestResult> {
   const response = await fetch(`${BASE}/api/models/test`, {
     method: 'POST',
@@ -69,6 +93,7 @@ export function mapModelConfigToUi(config: ModelConfig) {
   const available = config.models.filter((m) => m.available);
   return {
     activeModelId: config.active_model_id,
+    providers: config.providers ?? {},
     models: available.map((m) => ({
       id: m.id,
       name: m.name,
@@ -80,6 +105,10 @@ export function mapModelConfigToUi(config: ModelConfig) {
         ? `Credential source: ${m.credential_source_label}`
         : 'Credential source unknown.',
       credentialSourceLabel: m.credential_source_label ?? null,
+      credentialHint: m.credential_hint ?? null,
+      endpoint: m.endpoint ?? null,
+      clutchManaged: Boolean(m.clutch_managed),
+      isCcSwitch: Boolean(m.is_cc_switch),
     })),
     activeAvailable: available.some((m) => m.id === config.active_model_id),
   };

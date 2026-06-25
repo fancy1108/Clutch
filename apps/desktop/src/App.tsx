@@ -245,6 +245,7 @@ function MainLayout() {
         ...prev.filter((file) => file.name !== data.path),
         { name: data.path, status: 'M', diffs: data.diff_lines || [], active: true },
       ]);
+      void refreshWorkspaceFiles();
       setRightTab('changes');
     };
     window.addEventListener('clutch-file-changed', handler);
