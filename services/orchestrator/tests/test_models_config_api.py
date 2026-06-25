@@ -71,6 +71,56 @@ def test_serialize_models_config_flags_availability() -> None:
     assert claude["credential_source_label"] is not None
 
 
+def test_serialize_dedupes_same_endpoint_and_api_model() -> None:
+    from src.llm.router import ModelSpec
+
+    router = LLMProviderRouter()
+    agnes_url = "https://apihub.agnes-ai.com/v1"
+    agnes_model = "agnes-2.0-flash"
+    router.register_model(
+        ModelSpec(
+            id="claude-3-7-sonnet",
+            name="Agnes 2.0 Flash",
+            provider_id="anthropic",
+            api_model=agnes_model,
+            base_url=agnes_url,
+        )
+    )
+    router.register_model(
+        ModelSpec(
+            id="cc-switch-agnes1",
+            name="agnes-ai (agnes-2.0-flash)",
+            provider_id="openai",
+            api_model=agnes_model,
+            base_url=agnes_url,
+        )
+    )
+    router.register_model(
+        ModelSpec(
+            id="cc-switch-agnes2",
+            name="Agnes AI (Cloud) (agnes-2.0-flash)",
+            provider_id="custom",
+            api_model=agnes_model,
+            base_url=agnes_url,
+        )
+    )
+    router.set_api_key("anthropic", "key-anthropic")
+    router.set_api_key("openai", "key-openai")
+    router.set_api_key("custom", "key-custom")
+
+    payload = serialize_models_config(router)
+    agnes_ids = {"claude-3-7-sonnet", "cc-switch-agnes1", "cc-switch-agnes2"}
+    listed = [model for model in payload["models"] if model["id"] in agnes_ids]
+    assert len(listed) == 1
+    assert listed[0]["id"] == "claude-3-7-sonnet"
+
+    router.set_active_model("cc-switch-agnes1")
+    payload_active = serialize_models_config(router)
+    listed_active = [model for model in payload_active["models"] if model["id"] in agnes_ids]
+    assert len(listed_active) == 1
+    assert listed_active[0]["id"] == "cc-switch-agnes1"
+
+
 def test_config_includes_source_for_saved_key(models_config: Path) -> None:
     client = TestClient(app)
     client.post("/api/models/config", json={"provider_id": "deepseek", "api_key": "sk-test-deepseek"})

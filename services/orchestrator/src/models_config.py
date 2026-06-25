@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from src.llm.http_complete import http_chat_complete
-from src.llm.router import LLMProviderRouter, ProviderId
+from src.llm.router import LLMProviderRouter, ModelSpec, ProviderId
 
 from src.credentials.claude_code import bootstrap_claude_credentials, bootstrap_cc_switch_credentials
 from src.credentials.sources import (
@@ -74,10 +74,45 @@ def is_model_available(router: LLMProviderRouter, model_id: str) -> bool:
     return bool(router.get_api_key(provider_id))
 
 
+def _normalize_endpoint_base(url: str) -> str:
+    base = (url or "").strip().rstrip("/").lower()
+    if base.endswith("/v1"):
+        base = base[:-3]
+    return base
+
+
+def _model_identity_key(spec: ModelSpec) -> str:
+    return f"{_normalize_endpoint_base(spec.base_url)}|{spec.api_model.strip().lower()}"
+
+
+def _pick_canonical_model(specs: list[ModelSpec], *, active_model_id: str) -> ModelSpec:
+    def sort_key(spec: ModelSpec) -> tuple[int, int, int, str]:
+        return (
+            0 if spec.id == active_model_id else 1,
+            0 if not spec.id.startswith("cc-switch-") else 1,
+            len(spec.name),
+            spec.id,
+        )
+
+    return min(specs, key=sort_key)
+
+
+def _dedupe_model_specs(specs: list[ModelSpec], *, active_model_id: str) -> list[ModelSpec]:
+    """Collapse CC Switch / Claude Code duplicates that share endpoint + api_model."""
+    groups: dict[str, list[ModelSpec]] = {}
+    order: list[str] = []
+    for spec in specs:
+        key = _model_identity_key(spec)
+        if key not in groups:
+            order.append(key)
+        groups.setdefault(key, []).append(spec)
+    return [_pick_canonical_model(groups[key], active_model_id=active_model_id) for key in order]
+
+
 def serialize_models_config(router: LLMProviderRouter) -> dict[str, Any]:
     providers: dict[str, Any] = {}
     models: list[dict[str, Any]] = []
-    for spec in router.list_models():
+    for spec in _dedupe_model_specs(router.list_models(), active_model_id=router.active_model_id):
         cred = resolve_provider_credential_source(router, spec.provider_id)
         providers.setdefault(
             spec.provider_id,

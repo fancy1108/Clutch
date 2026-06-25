@@ -179,6 +179,20 @@ def test_route_engine_claude_cli_connected(monkeypatch, mock_agents) -> None:
     assert any("Routing task to Claude Code" in log for log in res.logs)
 
 
+def test_route_engine_claude_cli_streams_router_logs(monkeypatch, mock_agents) -> None:
+    monkeypatch.setattr("src.engine_router.tool_available_for_routing", lambda _tool_id: True)
+    monkeypatch.setattr("src.engine_router.get_workspace", lambda: {"workspace_path": "/workspace"})
+    monkeypatch.setattr("src.engine_router.chat_claude_cli", lambda **kwargs: "ok")
+
+    streamed: list[str] = []
+    res = route_engine(agent_name="Builder Module (JSX VibeCoder)", prompt="hi", on_log=streamed.append)
+
+    assert res.output == "ok"
+    assert any(line.startswith("[ROUTER]") for line in streamed)
+    assert any("Starting new Claude CLI session" in line for line in streamed)
+    assert streamed == res.logs
+
+
 def test_route_engine_cursor_connected(monkeypatch, mock_agents) -> None:
     monkeypatch.setattr(
         "src.engine_router.tool_available_for_routing",

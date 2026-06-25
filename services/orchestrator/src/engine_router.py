@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
@@ -70,6 +71,12 @@ def find_agent(agent_name: str) -> dict[str, Any] | None:
     return None
 
 
+def _emit_log(logs: list[str], on_log: Callable[[str], None] | None, line: str) -> None:
+    logs.append(line)
+    if on_log:
+        on_log(line)
+
+
 def route_engine(
     agent_name: str,
     prompt: str,
@@ -78,6 +85,7 @@ def route_engine(
     history: list[dict[str, str]] | None = None,
     fallback_tool: str | None = None,
     claude_session_id: str | None = None,
+    on_log: Callable[[str], None] | None = None,
 ) -> EngineResult:
     agent = find_agent(agent_name)
     raw_engine_type = str(agent.get("aiEngine", "")) if agent else ""
@@ -95,20 +103,23 @@ def route_engine(
         if workspace:
             workspace_path = workspace.get("workspace_path")
 
-    logs: list[str] = [
+    logs: list[str] = []
+    _emit_log(
+        logs,
+        on_log,
         (
             f"[ROUTER] agent={agent_name!r} matched={agent is not None} "
             f"aiEngine={raw_engine_type!r}->{engine_type!r} "
             f"claude_path={resolve_tool_binary('claude-cli')!r} "
             f"connected={'claude-cli' in load_connected_ids()}"
-        )
-    ]
+        ),
+    )
 
     if engine_type == "Claude Code (Local CLI)" and tool_available_for_routing("claude-cli"):
         cli_binary = resolve_tool_binary("claude-cli")
-        logs.append(f"Routing task to Claude Code (Local CLI) for agent {agent_name}.")
+        _emit_log(logs, on_log, f"Routing task to Claude Code (Local CLI) for agent {agent_name}.")
         if cli_binary:
-            logs.append(f"Using Claude binary: {cli_binary}")
+            _emit_log(logs, on_log, f"Using Claude binary: {cli_binary}")
         elif "claude-cli" in load_connected_ids():
             raise RuntimeError(
                 tr(
@@ -134,17 +145,18 @@ def route_engine(
                 session_id=session_id,
                 resume_session_id=resume_session_id,
                 binary=cli_binary,
+                on_log=on_log,
             )
 
         try:
             if claude_session_id:
-                logs.append(f"Resuming Claude CLI session {claude_session_id}.")
+                _emit_log(logs, on_log, f"Resuming Claude CLI session {claude_session_id}.")
                 output = _invoke_cli(
                     cli_prompt=prompt,
                     cli_system_prompt=None,
                     resume_session_id=claude_session_id,
                 )
-                logs.append("Claude CLI session resumed successfully.")
+                _emit_log(logs, on_log, "Claude CLI session resumed successfully.")
                 return EngineResult(
                     engine="Claude CLI",
                     output=output,
@@ -155,13 +167,13 @@ def route_engine(
             history_prompt = _format_history_for_cli_prompt(history).strip()
             bootstrap_prompt = history_prompt or prompt
             new_session_id = str(uuid.uuid4())
-            logs.append(f"Starting new Claude CLI session {new_session_id}.")
+            _emit_log(logs, on_log, f"Starting new Claude CLI session {new_session_id}.")
             output = _invoke_cli(
                 cli_prompt=bootstrap_prompt,
                 cli_system_prompt=system_prompt,
                 session_id=new_session_id,
             )
-            logs.append("Claude CLI execution completed successfully.")
+            _emit_log(logs, on_log, "Claude CLI execution completed successfully.")
             return EngineResult(
                 engine="Claude CLI",
                 output=output,
@@ -170,7 +182,7 @@ def route_engine(
             )
         except Exception as exc:
             if claude_session_id:
-                logs.append(f"Claude session resume failed ({exc}); replaying history.")
+                _emit_log(logs, on_log, f"Claude session resume failed ({exc}); replaying history.")
                 try:
                     history_prompt = _format_history_for_cli_prompt(history).strip() or prompt
                     new_session_id = str(uuid.uuid4())
@@ -179,7 +191,7 @@ def route_engine(
                         cli_system_prompt=system_prompt,
                         session_id=new_session_id,
                     )
-                    logs.append(f"Claude CLI recovered with new session {new_session_id}.")
+                    _emit_log(logs, on_log, f"Claude CLI recovered with new session {new_session_id}.")
                     return EngineResult(
                         engine="Claude CLI",
                         output=output,
@@ -187,14 +199,14 @@ def route_engine(
                         claude_session_id=new_session_id,
                     )
                 except Exception as retry_exc:
-                    logs.append(f"Claude CLI recovery failed: {retry_exc}")
+                    _emit_log(logs, on_log, f"Claude CLI recovery failed: {retry_exc}")
                     raise RuntimeError(
                         tr(
                             f"Failed to execute task via Claude CLI: {retry_exc}",
                             f"通过 Claude CLI 执行任务失败：{retry_exc}",
                         )
                     ) from retry_exc
-            logs.append(f"Claude CLI execution failed: {exc}")
+            _emit_log(logs, on_log, f"Claude CLI execution failed: {exc}")
             raise RuntimeError(
                 tr(
                     f"Failed to execute task via Claude CLI: {exc}",

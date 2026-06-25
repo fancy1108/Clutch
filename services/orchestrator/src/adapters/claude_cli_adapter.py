@@ -3,10 +3,18 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Callable
 
 from src.adapters.cli_adapter import run_cli
 
 _DEFAULT_CHAT_TIMEOUT_SEC = float(os.environ.get("CLUTCH_CLAUDE_CLI_TIMEOUT", "600"))
+
+
+def _stream_cli_line(on_log: Callable[[str], None], stream: str, line: str) -> None:
+    if not line:
+        return
+    prefix = "[CLAUDE CLI]" if stream == "stdout" else "[CLAUDE CLI stderr]"
+    on_log(f"{prefix} {line}")
 
 
 def chat_claude_cli(
@@ -20,6 +28,7 @@ def chat_claude_cli(
     allowed_tools: list[str] | None = None,
     timeout: float | None = None,
     binary: str | None = None,
+    on_log: Callable[[str], None] | None = None,
 ) -> str:
     """Call local `claude` CLI in print mode, return response text."""
     if session_id and resume_session_id:
@@ -36,5 +45,13 @@ def chat_claude_cli(
     if allowed_tools:
         cmd += ["--allowed-tools", ",".join(allowed_tools)]
 
-    result = run_cli(cmd, cwd=cwd, timeout=timeout if timeout is not None else _DEFAULT_CHAT_TIMEOUT_SEC)
+    effective_timeout = timeout if timeout is not None else _DEFAULT_CHAT_TIMEOUT_SEC
+    on_line = None
+    if on_log is not None:
+        on_log(f"[CLAUDE CLI] Executing `{cmd[0]}` (timeout {effective_timeout:g}s)")
+        on_line = lambda stream, line: _stream_cli_line(on_log, stream, line)
+
+    result = run_cli(cmd, cwd=cwd, timeout=effective_timeout, on_line=on_line)
+    if on_log is not None:
+        on_log(f"[CLAUDE CLI] Exit code {result.exit_code}")
     return result.stdout

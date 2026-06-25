@@ -12,7 +12,13 @@ def test_chat_claude_cli_args(monkeypatch) -> None:
     called_cwd = None
     called_timeout = None
 
-    def fake_run_cli(cmd: list[str], *, cwd: str | None = None, timeout: float = 30.0) -> CliResult:
+    def fake_run_cli(
+        cmd: list[str],
+        *,
+        cwd: str | None = None,
+        timeout: float = 30.0,
+        on_line=None,
+    ) -> CliResult:
         nonlocal called_cmd, called_cwd, called_timeout
         called_cmd = cmd
         called_cwd = cwd
@@ -48,7 +54,13 @@ def test_chat_claude_cli_args(monkeypatch) -> None:
 def test_chat_claude_cli_session_id(monkeypatch) -> None:
     called_cmd = None
 
-    def fake_run_cli(cmd: list[str], *, cwd: str | None = None, timeout: float = 30.0) -> CliResult:
+    def fake_run_cli(
+        cmd: list[str],
+        *,
+        cwd: str | None = None,
+        timeout: float = 30.0,
+        on_line=None,
+    ) -> CliResult:
         nonlocal called_cmd
         called_cmd = cmd
         return CliResult(command=cmd, exit_code=0, stdout="session created", stderr="")
@@ -73,7 +85,13 @@ def test_chat_claude_cli_session_id(monkeypatch) -> None:
 def test_chat_claude_cli_resume(monkeypatch) -> None:
     called_cmd = None
 
-    def fake_run_cli(cmd: list[str], *, cwd: str | None = None, timeout: float = 30.0) -> CliResult:
+    def fake_run_cli(
+        cmd: list[str],
+        *,
+        cwd: str | None = None,
+        timeout: float = 30.0,
+        on_line=None,
+    ) -> CliResult:
         nonlocal called_cmd
         called_cmd = cmd
         return CliResult(command=cmd, exit_code=0, stdout="resumed", stderr="")
@@ -93,3 +111,29 @@ def test_chat_claude_cli_resume(monkeypatch) -> None:
         "550e8400-e29b-41d4-a716-446655440000",
         "--dangerously-skip-permissions",
     ]
+
+
+def test_chat_claude_cli_streams_via_on_log(monkeypatch) -> None:
+    streamed: list[str] = []
+
+    def fake_run_cli(
+        cmd: list[str],
+        *,
+        cwd: str | None = None,
+        timeout: float = 30.0,
+        on_line=None,
+    ) -> CliResult:
+        assert on_line is not None
+        on_line("stdout", "chunk-a")
+        on_line("stderr", "warn")
+        return CliResult(command=cmd, exit_code=0, stdout="chunk-a", stderr="warn")
+
+    monkeypatch.setattr("src.adapters.claude_cli_adapter.run_cli", fake_run_cli)
+
+    res = chat_claude_cli(prompt="stream me", on_log=streamed.append)
+
+    assert res == "chunk-a"
+    assert any("[CLAUDE CLI] Executing" in line for line in streamed)
+    assert "[CLAUDE CLI] chunk-a" in streamed
+    assert "[CLAUDE CLI stderr] warn" in streamed
+    assert any("Exit code 0" in line for line in streamed)

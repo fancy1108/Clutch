@@ -18,3 +18,24 @@ export async function saveAgents(agents: Agent[]): Promise<void> {
   });
   if (!response.ok) throw new Error(`agents save failed (${response.status})`);
 }
+
+export interface GenerateAgentPromptResult {
+  prompt: string;
+  source: 'llm' | 'template';
+}
+
+export async function generateAgentPrompt(payload: {
+  name: string;
+  description?: string;
+}): Promise<GenerateAgentPromptResult> {
+  const response = await fetch(`${BASE}/api/agents/generate-prompt`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as { detail?: { message?: string } };
+    throw new Error(body.detail?.message ?? `prompt generation failed (${response.status})`);
+  }
+  return response.json() as Promise<GenerateAgentPromptResult>;
+}
