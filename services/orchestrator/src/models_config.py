@@ -149,11 +149,16 @@ def _e2e_fake_router() -> LLMProviderRouter:
             base_url: str,
             api_model: str,
             api_key: str,
-            messages: list[dict[str, str]],
+            messages: list[dict[str, Any]],
+            tools: list[dict[str, Any]] | None = None,
             timeout_sec: float = 20.0,
-        ) -> str:
-            _ = (provider_id, base_url, api_model, api_key, timeout_sec)
-            return f"Echo: {messages[-1]['content']}"
+        ) -> dict[str, Any] | str:
+            _ = (provider_id, base_url, api_model, api_key, tools, timeout_sec)
+            # If the last message is a tool response, we can just echo it
+            last_msg = messages[-1]
+            if last_msg["role"] == "tool":
+                return f"Echo Tool Response: {last_msg['content']}"
+            return f"Echo: {last_msg['content']}"
 
         router._chat = _fake_chat  # type: ignore[method-assign]
         _E2E_ROUTER = router

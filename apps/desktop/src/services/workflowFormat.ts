@@ -126,7 +126,7 @@ export function canvasToCompiler(
     id: 'end',
     type: 'end',
     position: { x: 250, y: canvas.steps.length * 120 + 80 },
-    data: { label: '完成' },
+    data: { label: 'Finish' },
   };
 
   const edges: CompilerEdge[] = [];
@@ -179,7 +179,7 @@ export function canvasToCompiler(
 export function parseCompilerJson(text: string): CompilerWorkflow {
   const parsed = JSON.parse(text) as CompilerWorkflow;
   if (!parsed?.id || !parsed?.nodes || !parsed?.edges) {
-    throw new Error('JSON 必须包含 id、nodes、edges 字段');
+    throw new Error('JSON must contain id, nodes, and edges fields');
   }
   return parsed;
 }

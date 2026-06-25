@@ -71,6 +71,32 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       <div className="flex items-center gap-3">
+        {/* Single / Multi-Agent mode toggle */}
+        <div className="flex items-center bg-surface-container-low p-1 rounded-lg border border-outline-variant/30">
+          <button
+            data-testid="agent-mode-single"
+            onClick={() => setIsMultiAgent(false)}
+            className={`px-3 py-1.5 text-[11px] rounded-md transition-all cursor-pointer ${
+              !isMultiAgent
+                ? 'bg-surface-bright text-on-surface font-bold shadow-sm'
+                : 'text-on-surface-variant hover:text-on-surface font-medium'
+            }`}
+          >
+            {t("Single Agent")}
+          </button>
+          <button
+            data-testid="agent-mode-multi"
+            onClick={() => setIsMultiAgent(true)}
+            className={`px-3 py-1.5 text-[11px] rounded-md transition-all cursor-pointer ${
+              isMultiAgent
+                ? 'bg-surface-bright text-on-surface font-bold shadow-sm'
+                : 'text-on-surface-variant hover:text-on-surface font-medium'
+            }`}
+          >
+            {t("Multi-Agent")}
+          </button>
+        </div>
+
         {/* Language Switcher Toggle */}
         <div className="flex items-center bg-surface-container-low p-1 rounded-lg border border-outline-variant/30">
           <button

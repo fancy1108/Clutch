@@ -213,7 +213,7 @@ function MainLayout() {
 
   const handleStopRun = () => {
     if (!highRiskConfirmed) {
-      const ok = window.confirm('确认停止当前运行？此操作将中断 Builder/Evaluator 执行。');
+      const ok = window.confirm(t('Confirm stopping the current run? This will interrupt Builder/Evaluator execution.'));
       if (!ok) return;
       setHighRiskConfirmed(true);
     }

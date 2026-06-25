@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 from typing import Any, Literal
 
+from src.preferences_storage import tr
 from src.workflow_validator import WorkflowValidationError, validate_workflow, workflows_dir
 
 WorkflowSource = Literal["template", "user"]
@@ -56,7 +57,13 @@ def list_user_workflows() -> list[str]:
 def get_user_workflow(workflow_id: str) -> dict[str, Any]:
     path = _workflow_path(user_workflows_dir(), workflow_id)
     if not path.is_file():
-        raise WorkflowValidationError(f"未找到用户工作流：{workflow_id}", [])
+        raise WorkflowValidationError(
+            tr(
+                f"User workflow not found: {workflow_id}",
+                f"未找到用户工作流：{workflow_id}",
+            ),
+            [],
+        )
     return _load_json_workflow(path, workflow_id)
 
 
@@ -64,7 +71,9 @@ def save_user_workflow(workflow: dict[str, Any]) -> dict[str, Any]:
     validate_workflow(workflow)
     workflow_id = workflow.get("id")
     if not workflow_id or not isinstance(workflow_id, str):
-        raise WorkflowValidationError("工作流 id 不能为空", [])
+        raise WorkflowValidationError(
+            tr("Workflow ID cannot be empty", "工作流 id 不能为空"), []
+        )
 
     path = _workflow_path(_ensure_user_dir(), workflow_id)
     path.write_text(
@@ -77,7 +86,13 @@ def save_user_workflow(workflow: dict[str, Any]) -> dict[str, Any]:
 def delete_user_workflow(workflow_id: str) -> None:
     path = _workflow_path(user_workflows_dir(), workflow_id)
     if not path.is_file():
-        raise WorkflowValidationError(f"未找到用户工作流：{workflow_id}", [])
+        raise WorkflowValidationError(
+            tr(
+                f"User workflow not found: {workflow_id}",
+                f"未找到用户工作流：{workflow_id}",
+            ),
+            [],
+        )
     path.unlink()
 
 
@@ -96,15 +111,26 @@ def _load_json_workflow(path: Path, expected_id: str) -> dict[str, Any]:
     try:
         workflow = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
-        raise WorkflowValidationError(f"工作流文件 JSON 解析失败：{path.name}", [str(exc)]) from exc
+        raise WorkflowValidationError(
+            tr(
+                f"Failed to parse workflow JSON file: {path.name}",
+                f"工作流文件 JSON 解析失败：{path.name}",
+            ),
+            [str(exc)],
+        ) from exc
 
     if not isinstance(workflow, dict):
-        raise WorkflowValidationError("工作流文件必须是 JSON 对象", [])
+        raise WorkflowValidationError(
+            tr("Workflow file must be a JSON object", "工作流文件必须是 JSON 对象"), []
+        )
 
     validate_workflow(workflow)
     if workflow.get("id") != expected_id:
         raise WorkflowValidationError(
-            f"工作流 id 与文件名不一致：文件 {expected_id}.json，内容 id={workflow.get('id')!r}",
+            tr(
+                f"Workflow ID does not match filename: file {expected_id}.json, content id={workflow.get('id')!r}",
+                f"工作流 id 与文件名不一致：文件 {expected_id}.json，内容 id={workflow.get('id')!r}",
+            ),
             [],
         )
     return workflow

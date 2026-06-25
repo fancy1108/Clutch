@@ -6,6 +6,7 @@ import subprocess
 from typing import Any
 
 from src.adapters.cli_adapter import CliAdapterError, run_cli
+from src.preferences_storage import tr
 from src.workspace import WorkspaceError, resolve_allowed_path, require_workspace
 
 
@@ -62,5 +63,5 @@ def run_checks(checks: list[dict[str, Any]]) -> tuple[str, list[str]]:
 def evaluate_node_data(data: dict[str, Any]) -> tuple[str, list[str]]:
     checks = data.get("checks", [])
     if not isinstance(checks, list):
-        return "failed", ["[EVALUATOR] checks 配置无效"]
+        return "failed", [tr("[EVALUATOR] checks configuration is invalid", "[EVALUATOR] checks 配置无效")]
     return run_checks(checks)

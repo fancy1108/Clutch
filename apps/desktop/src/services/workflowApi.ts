@@ -14,9 +14,9 @@ type ApiError = { detail?: { message?: string; errors?: string[] } };
 async function parseError(response: Response): Promise<string> {
   try {
     const body = (await response.json()) as ApiError;
-    const msg = body.detail?.message ?? '请求失败';
-    const errs = body.detail?.errors?.join('；') ?? '';
-    return errs ? `${msg}：${errs}` : msg;
+    const msg = body.detail?.message ?? 'Request failed';
+    const errs = body.detail?.errors?.join(', ') ?? '';
+    return errs ? `${msg}: ${errs}` : msg;
   } catch {
     return `HTTP ${response.status}`;
   }

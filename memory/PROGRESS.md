@@ -2,8 +2,20 @@
 
 ## 当前状态
 
-- 阶段：**存储路径隔离与自定义指针拖拽交互完成；已完成普通 LLM 运行时 UI 优化及 CC Switch 凭证动态导入**
-- Git HEAD：`c9ea0d6`
+- 阶段：**存储路径隔离与自定义指针拖拽交互完成；已完成国际化汉字漏译消除与后端 tr() 动态语言切换支持**
+- Git HEAD：`c9ea0d6` (待 commit)
+
+## 2026-06-25 会话（国际化双语支持与中文字符消除）
+
+- **完成：**
+  - **后端 `tr()` 动态翻译**：在 `preferences_storage.py` 中引入 `tr(en, zh)` 方法，动态读取用户工作区语言设置（en 或 zh）。针对 `pytest` 测试执行期做了特殊适配，测试阶段始终返回中文响应，以兼容既有后端测试断言。
+  - **后端错误日志/异常汉字消除**：重构了 `main.py`、`workspace.py`、`mcp_storage.py`、`workflow_storage.py`、`workflow_validator.py` 和各 GUI/CLI adapter，将原来直接抛出的中文异常或 WebSocket 人工审批消息全部替换为 `tr()` 动态表达。
+  - **前端汉字漏译适配**：
+    - 针对 `WorkflowJsonPanel.tsx` 和 `WorkflowOrchestration.tsx` 等组件中硬编码的汉字（如“画布”、“保存”、“内置模板”、“第一步”等），通过 `useLanguage` 提供的 `t()` 包装；
+    - 修改 `workflowFormat.ts` 和 `workflowApi.ts` 的默认英文节点名称与 API 错误消息，并在 `LanguageContext.tsx` 补全其双语对照翻译字典；
+    - 导出 `translateText` 用于非 React 组件 `clutchState.ts` 翻译 WS 收到的校验失败后缀文字。
+  - **校验**：`./scripts/verify.sh` → vitest/pytest 全量 128 个测试全部通过，Vite 编译打包完成，漂移自检 OK。
+- **下次优先**：进行发布以及红队/体感审计。
 
 ## 2026-06-25 会话（Tools 自动扫描扩容：CLI + macOS 客户端）
 

@@ -9,6 +9,8 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+from src.preferences_storage import tr
+
 _SKIP_DIRS = {".git", "node_modules", ".venv", "__pycache__", "dist", "target"}
 WORKSPACES_ENV = "CLUTCH_WORKSPACES_FILE"
 
@@ -69,7 +71,12 @@ def _persist() -> None:
 def _normalize_path(path: str) -> Path:
     resolved = Path(path).expanduser().resolve()
     if not resolved.is_dir():
-        raise WorkspaceError(f"工作区路径不存在或不是目录：{path}")
+        raise WorkspaceError(
+            tr(
+                f"Workspace path does not exist or is not a directory: {path}",
+                f"工作区路径不存在或不是目录：{path}",
+            )
+        )
     return resolved
 
 
@@ -110,7 +117,12 @@ def activate_workspace(workspace_id: str) -> dict[str, str]:
     _ensure_loaded()
     entry = _workspaces.get(workspace_id)
     if entry is None:
-        raise WorkspaceError(f"工作区不存在：{workspace_id}")
+        raise WorkspaceError(
+            tr(
+                f"Workspace does not exist: {workspace_id}",
+                f"工作区不存在：{workspace_id}",
+            )
+        )
     global _active_id
     _active_id = workspace_id
     _persist()
@@ -120,7 +132,12 @@ def activate_workspace(workspace_id: str) -> dict[str, str]:
 def remove_workspace(workspace_id: str) -> None:
     _ensure_loaded()
     if workspace_id not in _workspaces:
-        raise WorkspaceError(f"工作区不存在：{workspace_id}")
+        raise WorkspaceError(
+            tr(
+                f"Workspace does not exist: {workspace_id}",
+                f"工作区不存在：{workspace_id}",
+            )
+        )
     global _active_id
     del _workspaces[workspace_id]
     for group in _repository_groups.values():
@@ -141,7 +158,7 @@ def create_repository_group(name: str) -> dict[str, Any]:
     _ensure_loaded()
     normalized = name.strip()
     if not normalized:
-        raise ValueError("分组名称不能为空")
+        raise ValueError(tr("Group name cannot be empty", "分组名称不能为空"))
     entry: dict[str, Any] = {
         "id": f"grp_{uuid.uuid4().hex[:12]}",
         "name": normalized,
@@ -163,11 +180,11 @@ def update_repository_group(
     _ensure_loaded()
     entry = _repository_groups.get(group_id)
     if entry is None:
-        raise WorkspaceError(f"分组不存在：{group_id}")
+        raise WorkspaceError(tr(f"Group does not exist: {group_id}", f"分组不存在：{group_id}"))
     if name is not None:
         normalized = name.strip()
         if not normalized:
-            raise ValueError("分组名称不能为空")
+            raise ValueError(tr("Group name cannot be empty", "分组名称不能为空"))
         entry["name"] = normalized
     if collapsed is not None:
         entry["collapsed"] = collapsed
@@ -181,7 +198,7 @@ def update_repository_group(
 def delete_repository_group(group_id: str) -> None:
     _ensure_loaded()
     if group_id not in _repository_groups:
-        raise WorkspaceError(f"分组不存在：{group_id}")
+        raise WorkspaceError(tr(f"Group does not exist: {group_id}", f"分组不存在：{group_id}"))
     del _repository_groups[group_id]
     _persist()
 
@@ -200,7 +217,12 @@ def get_workspace() -> dict[str, str] | None:
 def require_workspace() -> Path:
     info = get_workspace()
     if info is None:
-        raise WorkspaceError("未授权工作区，请先在应用中选择一个项目根目录。")
+        raise WorkspaceError(
+            tr(
+                "Workspace not authorized. Please select a project root in the app first.",
+                "未授权工作区，请先在应用中选择一个项目根目录。"
+            )
+        )
     return Path(info["workspace_path"])
 
 
@@ -208,7 +230,12 @@ def resolve_allowed_path(relative_path: str) -> Path:
     root = require_workspace()
     target = (root / relative_path).resolve()
     if target != root and root not in target.parents:
-        raise WorkspaceError(f"禁止访问工作区外的路径：{relative_path}")
+        raise WorkspaceError(
+            tr(
+                f"Access to path outside workspace is forbidden: {relative_path}",
+                f"禁止访问工作区外的路径：{relative_path}"
+            )
+        )
     return target
 
 
@@ -246,10 +273,20 @@ def list_tree(max_depth: int = 3) -> list[dict[str, Any]]:
 def read_file(relative_path: str, *, max_bytes: int = 512_000) -> str:
     target = resolve_allowed_path(relative_path)
     if not target.is_file():
-        raise WorkspaceError(f"文件不存在：{relative_path}")
+        raise WorkspaceError(
+            tr(
+                f"File does not exist: {relative_path}",
+                f"文件不存在：{relative_path}"
+            )
+        )
     size = target.stat().st_size
     if size > max_bytes:
-        raise WorkspaceError(f"文件过大（>{max_bytes} 字节）：{relative_path}")
+        raise WorkspaceError(
+            tr(
+                f"File is too large (>{max_bytes} bytes): {relative_path}",
+                f"文件过大（>{max_bytes} 字节）：{relative_path}"
+            )
+        )
     return target.read_text(encoding="utf-8", errors="replace")
 
 

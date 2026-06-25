@@ -172,6 +172,33 @@ const zhTranslations: Record<string, string> = {
   "Target Persona / Agent": "Target Persona / Agent / 目标智能体",
   "Mock Output Artifact": "Mock Output Artifact / 交付成果物 / Artifact",
   "View Generated Flow Output": "View SOP Output / 查看生成的 SOP / 工作流结果",
+  "Execution JSON Format": "执行格式 JSON",
+  "Edit complex flows (checks, approvals, branches, loops) here; schema will be verified by Sidecar before saving.": "复杂流程（检查节点、人工审批、条件分支、循环）请在此编辑；保存前会经 Sidecar 校验。",
+  "Failed to load": "加载失败",
+  "Cannot connect to Sidecar": "无法连接 Sidecar",
+  "Copy": "副本",
+  "Saved to local workflow directory": "已保存到本机工作流目录",
+  "Failed to save": "保存失败",
+  "Step 1": "第一步",
+  "Fill task instructions here": "在此填写任务说明",
+  "Finish": "完成",
+  "Failed to create workflow": "创建工作流失败",
+  "Are you sure you want to delete this workflow?": "确定删除此工作流？",
+  "Failed to delete": "删除失败",
+  "Save as copy": "另存为副本",
+  "Loading...": "加载中…",
+  "Built-in template (Read-only)": "内置模板 · 只读",
+  "User Workflow": "用户工作流",
+  "Canvas editable (Simple linear workflow)": "支持画布编辑（简单线性流程）",
+  "JSON mode only (Includes check/approval/branch)": "仅 JSON 模式（含检查/审批/分支）",
+  "Canvas": "画布",
+  "Complex workflow: please edit in JSON mode": "复杂流程：请用 JSON 编辑",
+  "Built-in template: please save as copy after editing": "内置模板：编辑后请「另存为副本」",
+  "Request failed": "请求失败",
+  "JSON must contain id, nodes, and edges fields": "JSON 必须包含 id、nodes、edges 字段",
+  "Confirm stopping the current run? This will interrupt Builder/Evaluator execution.": "确认停止当前运行？此操作将中断 Builder/Evaluator 执行。",
+  "Next steps: select \"Bypass & Approve\", \"Reject & Redo\" below, or type instructions and click \"Retry\".": "下一步：在下方选择「Bypass & Approve」、「Reject & Redo」，或填写指令后 Retry。",
+
 
   // AI Tools page
   "AI Tools Registry & Sandbox": "AI Tools Registry / AI 工具注册中心与沙箱",
@@ -245,7 +272,7 @@ const zhTranslations: Record<string, string> = {
 };
 
 // Simple auto-translator to handle terms containing professional words
-const translateText = (text: string, language: Language): string => {
+export const translateText = (text: string, language: Language): string => {
   if (language === 'en') return text;
   
   // Clean whitespace for matching

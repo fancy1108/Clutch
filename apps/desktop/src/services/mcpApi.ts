@@ -11,6 +11,7 @@ export interface McpServer {
   lastHeartbeat: string;
   builtin?: boolean;
   enabled?: boolean;
+  tools?: Array<{ name: string; description: string; inputSchema?: any }>;
 }
 
 export interface McpStatusResponse {
@@ -64,3 +65,23 @@ export async function toggleMcpServer(id: string, enabled: boolean): Promise<Mcp
   if (!response.ok) throw new Error(`mcp toggle failed (${response.status})`);
   return response.json() as Promise<McpStatusResponse>;
 }
+
+export async function saveMcpConfig(servers: any[]): Promise<McpStatusResponse> {
+  const response = await fetch(`${BASE}/api/mcp/config/save`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ servers }),
+  });
+  if (!response.ok) throw new Error(`mcp config save failed (${response.status})`);
+  return response.json() as Promise<McpStatusResponse>;
+}
+
+export async function importClaudeMcp(): Promise<McpStatusResponse> {
+  const response = await fetch(`${BASE}/api/mcp/import/claude`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!response.ok) throw new Error(`mcp import from claude failed (${response.status})`);
+  return response.json() as Promise<McpStatusResponse>;
+}
+

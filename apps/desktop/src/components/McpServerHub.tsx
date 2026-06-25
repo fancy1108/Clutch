@@ -4,6 +4,8 @@ import {
   registerMcpServer,
   removeMcpServer,
   toggleMcpServer,
+  saveMcpConfig,
+  importClaudeMcp,
   type McpServer,
 } from '../services/mcpApi';
 
@@ -35,6 +37,9 @@ export const McpServerHub: React.FC = () => {
   const [transport, setTransport] = useState<'stdio' | 'sse'>('stdio');
   const [endpoint, setEndpoint] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const [isJsonEditMode, setIsJsonEditMode] = useState(false);
+  const [rawJsonConfig, setRawJsonConfig] = useState('');
+
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -100,6 +105,36 @@ export const McpServerHub: React.FC = () => {
     }
   };
 
+  const handleSaveJsonConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const parsed = JSON.parse(rawJsonConfig);
+      if (!Array.isArray(parsed)) {
+        throw new Error('Config must be a JSON array of server configurations.');
+      }
+      const status = await saveMcpConfig(parsed);
+      setServers(status.servers);
+      setIsJsonEditMode(false);
+      setSuccessMsg('MCP raw config saved.');
+      setTimeout(() => setSuccessMsg(''), 3000);
+    } catch (err: any) {
+      setError(err instanceof Error ? err.message : 'Save JSON failed. Please verify syntax.');
+    }
+  };
+
+  const handleImportClaude = async () => {
+    setError(null);
+    try {
+      const status = await importClaudeMcp();
+      setServers(status.servers);
+      setSuccessMsg('Imported configurations from local Claude setups.');
+      setTimeout(() => setSuccessMsg(''), 3000);
+    } catch (err: any) {
+      setError(err instanceof Error ? err.message : 'Import from Claude failed.');
+    }
+  };
+
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-white select-text">
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
@@ -134,41 +169,100 @@ export const McpServerHub: React.FC = () => {
           <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">{successMsg}</p>
         )}
 
-        <form onSubmit={(e) => void handleRegister(e)} className="p-4 bg-neutral-50/50 border border-neutral-200/60 rounded-xl space-y-3">
-          <h3 className="text-[11px] font-extrabold text-[#111111] font-mono tracking-wider uppercase">Register MCP Server</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-            <input
-              type="text"
+        {isJsonEditMode ? (
+          <form onSubmit={(e) => void handleSaveJsonConfig(e)} className="p-4 bg-neutral-50/50 border border-neutral-200/60 rounded-xl space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-[11px] font-extrabold text-[#111111] font-mono tracking-wider uppercase">Edit Raw Config JSON</h3>
+              <button
+                type="button"
+                onClick={() => setIsJsonEditMode(false)}
+                className="text-[10px] text-neutral-500 hover:text-neutral-800 font-bold"
+              >
+                Cancel
+              </button>
+            </div>
+            <textarea
               required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Display name"
-              className="px-3 py-1.5 text-xs border border-neutral-200 rounded-lg bg-white"
+              rows={8}
+              value={rawJsonConfig}
+              onChange={(e) => setRawJsonConfig(e.target.value)}
+              placeholder='[ { "name": "Git Tools", "transport": "stdio", "endpoint": "..." } ]'
+              className="w-full p-3 text-xs border border-neutral-200 rounded-lg bg-white font-mono"
             />
-            <select
-              value={transport}
-              onChange={(e) => setTransport(e.target.value as 'stdio' | 'sse')}
-              className="px-3 py-1.5 text-xs border border-neutral-200 rounded-lg bg-white"
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                className="px-3.5 py-1.5 bg-neutral-900 hover:bg-black text-white text-[11px] font-bold rounded-lg"
+              >
+                Save JSON Config
+              </button>
+            </div>
+          </form>
+        ) : (
+          <form onSubmit={(e) => void handleRegister(e)} className="p-4 bg-neutral-50/50 border border-neutral-200/60 rounded-xl space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-[11px] font-extrabold text-[#111111] font-mono tracking-wider uppercase">Register MCP Server</h3>
+              <div className="flex gap-2.5 items-center">
+                <button
+                  type="button"
+                  onClick={() => void handleImportClaude()}
+                  className="text-[10px] text-teal-700 hover:text-teal-900 font-bold cursor-pointer"
+                >
+                  Import from Claude
+                </button>
+                <span className="text-neutral-300 text-[10px]">|</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRawJsonConfig(JSON.stringify(servers.filter(s => !s.builtin).map(s => ({
+                      id: s.id,
+                      name: s.name,
+                      transport: s.transport,
+                      endpoint: s.endpoint,
+                      enabled: s.enabled ?? true
+                    })), null, 2));
+                    setIsJsonEditMode(true);
+                  }}
+                  className="text-[10px] text-neutral-500 hover:text-neutral-800 font-bold cursor-pointer"
+                >
+                  Edit raw JSON
+                </button>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              <input
+                type="text"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Display name"
+                className="px-3 py-1.5 text-xs border border-neutral-200 rounded-lg bg-white"
+              />
+              <select
+                value={transport}
+                onChange={(e) => setTransport(e.target.value as 'stdio' | 'sse')}
+                className="px-3 py-1.5 text-xs border border-neutral-200 rounded-lg bg-white"
+              >
+                <option value="stdio">stdio</option>
+                <option value="sse">sse</option>
+              </select>
+              <input
+                type="text"
+                required
+                value={endpoint}
+                onChange={(e) => setEndpoint(e.target.value)}
+                placeholder={transport === 'sse' ? 'https://host/mcp/sse' : 'npx -y @org/mcp-server'}
+                className="px-3 py-1.5 text-xs border border-neutral-200 rounded-lg bg-white font-mono md:col-span-1"
+              />
+            </div>
+            <button
+              type="submit"
+              className="px-3.5 py-1.5 bg-neutral-900 hover:bg-black text-white text-[11px] font-bold rounded-lg"
             >
-              <option value="stdio">stdio</option>
-              <option value="sse">sse</option>
-            </select>
-            <input
-              type="text"
-              required
-              value={endpoint}
-              onChange={(e) => setEndpoint(e.target.value)}
-              placeholder={transport === 'sse' ? 'https://host/mcp/sse' : 'npx -y @org/mcp-server'}
-              className="px-3 py-1.5 text-xs border border-neutral-200 rounded-lg bg-white font-mono md:col-span-1"
-            />
-          </div>
-          <button
-            type="submit"
-            className="px-3.5 py-1.5 bg-neutral-900 hover:bg-black text-white text-[11px] font-bold rounded-lg"
-          >
-            + Register Node
-          </button>
-        </form>
+              + Register Node
+            </button>
+          </form>
+        )}
 
         {loading ? (
           <p className="text-xs text-neutral-400 italic">Loading MCP status…</p>
@@ -192,6 +286,19 @@ export const McpServerHub: React.FC = () => {
                   <p className="text-[10.5px] font-mono text-neutral-500 bg-neutral-50 px-2 py-1 rounded border border-neutral-100/55 break-all leading-normal">
                     {server.endpoint}
                   </p>
+                  {server.tools && server.tools.length > 0 && (
+                    <div className="mt-2 pl-3 border-l-2 border-teal-500/30 space-y-1 select-text">
+                      <span className="text-[9px] font-extrabold text-neutral-400 font-mono tracking-wider uppercase block">Exposed Tools:</span>
+                      <div className="flex flex-col gap-1 max-h-32 overflow-y-auto pr-1">
+                        {server.tools.map((t, idx) => (
+                          <div key={idx} className="text-[10px] text-neutral-600 font-mono flex flex-wrap items-center gap-1.5 leading-snug">
+                            <span className="font-extrabold text-teal-800 bg-teal-50 px-1 rounded text-[9px]">{t.name}</span>
+                            <span className="text-neutral-400 font-sans text-[9px] truncate max-w-[320px]" title={t.description}>{t.description}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-end md:items-center gap-3">
                   <div className="text-[10.5px] md:text-right">

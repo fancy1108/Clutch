@@ -74,8 +74,9 @@ class ChatFn(Protocol):
         base_url: str,
         api_model: str,
         api_key: str,
-        messages: list[dict[str, str]],
-    ) -> str: ...
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any] | str: ...
 
 
 def _env_key_for(provider_id: ProviderId) -> str:
@@ -129,7 +130,13 @@ class LLMProviderRouter:
             return ""
         raise RuntimeError(f"No API key configured for provider {provider_id!r}")
 
-    def chat(self, messages: list[dict[str, str]], *, model_id: str | None = None) -> str:
+    def chat(
+        self,
+        messages: list[dict[str, Any]],
+        *,
+        model_id: str | None = None,
+        tools: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any] | str:
         spec, api_key = self.resolve_for_model(model_id)
         key = self._require_api_key(spec.provider_id, api_key)
         if self._chat is None:
@@ -140,6 +147,7 @@ class LLMProviderRouter:
             api_model=spec.api_model,
             api_key=key,
             messages=messages,
+            tools=tools,
         )
 
     def complete(self, prompt: str, *, model_id: str | None = None) -> str:

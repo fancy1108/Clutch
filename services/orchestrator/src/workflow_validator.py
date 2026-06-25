@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from jsonschema import Draft202012Validator
+from src.preferences_storage import tr
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _SCHEMA_PATH = _REPO_ROOT / "workflows" / "workflow.schema.json"
@@ -31,7 +32,13 @@ class WorkflowValidationError(ValueError):
 @lru_cache(maxsize=1)
 def _load_schema() -> dict[str, Any]:
     if not _SCHEMA_PATH.is_file():
-        raise WorkflowValidationError(f"未找到 Schema 文件：{_SCHEMA_PATH}", [])
+        raise WorkflowValidationError(
+            tr(
+                f"Schema file not found: {_SCHEMA_PATH}",
+                f"未找到 Schema 文件：{_SCHEMA_PATH}",
+            ),
+            [],
+        )
     return json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
 
 
@@ -41,11 +48,15 @@ def validate_workflow(workflow: dict[str, Any]) -> None:
     validator = Draft202012Validator(schema)
     errors = sorted(validator.iter_errors(workflow), key=lambda item: list(item.absolute_path))
     if errors:
+        root_label = tr("(root)", "（根）")
         formatted = [
-            f"{'.'.join(str(part) for part in err.absolute_path) or '（根）'}: {err.message}"
+            f"{'.'.join(str(part) for part in err.absolute_path) or root_label}: {err.message}"
             for err in errors[:10]
         ]
-        raise WorkflowValidationError("工作流 JSON 不符合 Schema 规范", formatted)
+        raise WorkflowValidationError(
+            tr("Workflow JSON does not conform to Schema specifications", "工作流 JSON 不符合 Schema 规范"),
+            formatted,
+        )
 
     validate_workflow_graph(workflow)
 
@@ -57,11 +68,11 @@ def validate_workflow_graph(workflow: dict[str, Any]) -> None:
     node_ids = {node["id"] for node in nodes}
     has_end = any(node.get("type") == "end" for node in nodes)
     if not has_end:
-        errors.append("工作流缺少结束节点")
+        errors.append(tr("Workflow is missing end node", "工作流缺少结束节点"))
 
     edges = workflow.get("edges", [])
     if not any(edge.get("source") == "start" for edge in edges):
-        errors.append("工作流缺少开始节点连接")
+        errors.append(tr("Workflow is missing start node connection", "工作流缺少开始节点连接"))
 
     adjacency: dict[str, list[str]] = {node_id: [] for node_id in node_ids}
     adjacency["start"] = []
@@ -81,25 +92,46 @@ def validate_workflow_graph(workflow: dict[str, Any]) -> None:
                 queue.append(target)
 
     for node_id in sorted(node_ids - reachable):
-        errors.append(f"孤立节点：{node_id} 未与开始节点连通")
+        errors.append(
+            tr(
+                f"Isolated node: {node_id} is not connected to start node",
+                f"孤立节点：{node_id} 未与开始节点连通",
+            )
+        )
 
     if errors:
-        raise WorkflowValidationError("工作流图结构无效", errors)
+        raise WorkflowValidationError(
+            tr("Workflow graph structure is invalid", "工作流图结构无效"), errors
+        )
 
 
 def load_workflow_by_id(workflow_id: str) -> dict[str, Any]:
     """Load built-in workflow template from workflows/{workflow_id}.json."""
     path = _WORKFLOWS_DIR / f"{workflow_id}.json"
     if not path.is_file():
-        raise WorkflowValidationError(f"未找到工作流模板：{workflow_id}", [])
+        raise WorkflowValidationError(
+            tr(
+                f"Workflow template not found: {workflow_id}",
+                f"未找到工作流模板：{workflow_id}",
+            ),
+            [],
+        )
 
     try:
         workflow = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
-        raise WorkflowValidationError(f"工作流文件 JSON 解析失败：{path.name}", [str(exc)]) from exc
+        raise WorkflowValidationError(
+            tr(
+                f"Failed to parse workflow JSON file: {path.name}",
+                f"工作流文件 JSON 解析失败：{path.name}",
+            ),
+            [str(exc)],
+        ) from exc
 
     if not isinstance(workflow, dict):
-        raise WorkflowValidationError("工作流文件必须是 JSON 对象", [])
+        raise WorkflowValidationError(
+            tr("Workflow file must be a JSON object", "工作流文件必须是 JSON 对象"), []
+        )
 
     validate_workflow(workflow)
     return workflow
@@ -110,7 +142,10 @@ def load_and_validate_workflow(workflow_id: str) -> dict[str, Any]:
     workflow = load_workflow_by_id(workflow_id)
     if workflow.get("id") != workflow_id:
         raise WorkflowValidationError(
-            f"工作流 id 与文件名不一致：文件 {workflow_id}.json，内容 id={workflow.get('id')!r}",
+            tr(
+                f"Workflow ID does not match filename: file {workflow_id}.json, content id={workflow.get('id')!r}",
+                f"工作流 id 与文件名不一致：文件 {workflow_id}.json，内容 id={workflow.get('id')!r}",
+            ),
             [],
         )
     return workflow

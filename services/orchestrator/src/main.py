@@ -21,6 +21,7 @@ from src.state import ClutchState, initial_state
 from src.workspace import WorkspaceError
 from src.workflow_storage import resolve_workflow
 from src.workflow_validator import WorkflowValidationError, load_and_validate_workflow, validate_workflow
+from src.preferences_storage import tr
 
 logger = logging.getLogger(__name__)
 
@@ -117,6 +118,11 @@ class McpRegisterRequest(BaseModel):
 class McpServerIdRequest(BaseModel):
     id: str
     enabled: bool | None = None
+
+
+class McpSaveConfigRequest(BaseModel):
+    servers: list[dict[str, Any]]
+
 
 
 class ThemePreferenceRequest(BaseModel):
@@ -246,11 +252,14 @@ def _apply_human_decision(
 ) -> tuple[ClutchState, dict[str, Any], dict[str, Any], str]:
     state = _get_or_create_run(run_id)
     if decision == "approve":
-        supervisor_text = "人工审批：已通过，继续执行工作流。"
+        supervisor_text = tr("Human approval: Approved, continuing workflow.", "人工审批：已通过，继续执行工作流。")
     elif decision == "reject":
-        supervisor_text = "人工审批：已拒绝，运行标记为失败。"
+        supervisor_text = tr("Human approval: Rejected, run marked as failed.", "人工审批：已拒绝，运行标记为失败。")
     else:
-        supervisor_text = f"人工审批：按指令重试 — {instructions or '（无附加说明）'}"
+        supervisor_text = tr(
+            f"Human approval: Retry with instructions - {instructions or '(no comments)'}",
+            f"人工审批：按指令重试 — {instructions or '（无附加说明）'}"
+        )
 
     supervisor_message = _chat_message("Supervisor", supervisor_text)
     log_line = f"[SUPERVISOR] {supervisor_text}"
@@ -677,7 +686,7 @@ async def validate_workflow_endpoint(body: ValidateWorkflowRequest) -> dict[str,
             workflow = load_and_validate_workflow(body.workflow_id)
             workflow_id = workflow["id"]
         else:
-            raise WorkflowValidationError("请提供 workflow_id 或 workflow 对象", [])
+            raise WorkflowValidationError(tr("Please provide workflow_id or workflow object", "请提供 workflow_id 或 workflow 对象"), [])
     except WorkflowValidationError as exc:
         raise _validation_http_error(exc) from exc
 
@@ -753,7 +762,7 @@ async def create_session_endpoint(body: SessionCreateRequest) -> dict[str, Any]:
 
     workspace = get_workspace()
     if workspace is None:
-        raise HTTPException(status_code=400, detail={"message": "请先选择并授权一个项目工作区"})
+        raise HTTPException(status_code=400, detail={"message": tr("Please select and authorize a project workspace first", "请先选择并授权一个项目工作区")})
     record = upsert_session(
         {
             "run_id": body.run_id,
@@ -863,7 +872,7 @@ async def get_workspace_endpoint() -> dict[str, str]:
 
     info = get_workspace()
     if info is None:
-        raise HTTPException(status_code=404, detail={"message": "尚未授权工作区"})
+        raise HTTPException(status_code=404, detail={"message": tr("Workspace not authorized yet", "尚未授权工作区")})
     return info
 
 
@@ -923,7 +932,7 @@ async def mount_skills_directory(body: SkillsMountRequest) -> dict[str, Any]:
 
     raw = body.path.strip()
     if not raw:
-        raise HTTPException(status_code=400, detail={"message": "路径不能为空"})
+        raise HTTPException(status_code=400, detail={"message": tr("Path cannot be empty", "路径不能为空")})
     resolved = str(Path(raw).expanduser().resolve())
     data = load_registry()
     mounted = list(data["mounted_directories"])
@@ -939,7 +948,7 @@ async def unmount_skills_directory(body: SkillsMountRequest) -> dict[str, Any]:
 
     raw = body.path.strip()
     if not raw:
-        raise HTTPException(status_code=400, detail={"message": "路径不能为空"})
+        raise HTTPException(status_code=400, detail={"message": tr("Path cannot be empty", "路径不能为空")})
     resolved = str(Path(raw).expanduser().resolve())
     data = load_registry()
     mounted = [item for item in data["mounted_directories"] if item != resolved]
@@ -962,7 +971,7 @@ async def toggle_skill(body: SkillsToggleRequest) -> dict[str, Any]:
         else:
             skills.append(item)
     if not updated:
-        raise HTTPException(status_code=404, detail={"message": "未找到该 Skill"})
+        raise HTTPException(status_code=404, detail={"message": tr("Skill not found", "未找到该 Skill")})
     save_registry(skills=skills)
     return _skills_registry_payload(rescan=False)
 
@@ -1052,7 +1061,7 @@ async def open_cursor_tool() -> dict[str, str]:
 async def mcp_status() -> dict[str, Any]:
     from src.mcp_storage import build_mcp_status_payload
 
-    return build_mcp_status_payload()
+    return await build_mcp_status_payload()
 
 
 @app.post("/api/mcp/servers/register")
@@ -1063,7 +1072,7 @@ async def register_mcp_server(body: McpRegisterRequest) -> dict[str, Any]:
         register_server(name=body.name, transport=body.transport, endpoint=body.endpoint)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
-    return build_mcp_status_payload()
+    return await build_mcp_status_payload()
 
 
 @app.post("/api/mcp/servers/remove")
@@ -1074,7 +1083,7 @@ async def remove_mcp_server(body: McpServerIdRequest) -> dict[str, Any]:
         remove_server(body.id)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail={"message": str(exc)}) from exc
-    return build_mcp_status_payload()
+    return await build_mcp_status_payload()
 
 
 @app.post("/api/mcp/servers/toggle")
@@ -1082,12 +1091,32 @@ async def toggle_mcp_server(body: McpServerIdRequest) -> dict[str, Any]:
     from src.mcp_storage import build_mcp_status_payload, toggle_server
 
     if body.enabled is None:
-        raise HTTPException(status_code=400, detail={"message": "enabled 字段必填"})
+        raise HTTPException(status_code=400, detail={"message": tr("enabled field is required", "enabled 字段必填")})
     try:
         toggle_server(body.id, enabled=body.enabled)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail={"message": str(exc)}) from exc
-    return build_mcp_status_payload()
+    return await build_mcp_status_payload()
+
+
+@app.post("/api/mcp/config/save")
+async def save_mcp_config(body: McpSaveConfigRequest) -> dict[str, Any]:
+    from src.mcp_storage import build_mcp_status_payload, save_raw_config
+
+    try:
+        save_raw_config(body.servers)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+    return await build_mcp_status_payload()
+
+
+@app.post("/api/mcp/import/claude")
+async def import_claude_mcp() -> dict[str, Any]:
+    from src.mcp_storage import build_mcp_status_payload, import_from_claude
+
+    import_from_claude()
+    return await build_mcp_status_payload()
+
 
 
 @app.get("/api/preferences")
@@ -1278,13 +1307,13 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
             run_id,
             node_id=state["active_node_id"],
             passed=False,
-            message="Evaluator 检查未通过，等待人工审批。",
+            message=tr("Evaluator checks failed, waiting for human approval.", "Evaluator 检查未通过，等待人工审批。"),
         )
         await _send_human_required(
             websocket,
             run_id,
             node_id=state["active_node_id"],
-            prompt="检查未通过，等待人工确认。",
+            prompt=tr("Checks failed, waiting for human confirmation.", "检查未通过，等待人工确认。"),
         )
     if _is_terminal_status(state["status"]):
         await _send_run_completed(websocket, run_id, state)
@@ -1334,13 +1363,13 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                         run_id,
                         node_id=state["active_node_id"],
                         passed=False,
-                        message="Evaluator 检查未通过，等待人工审批。",
+                        message=tr("Evaluator checks failed, waiting for human approval.", "Evaluator 检查未通过，等待人工审批。"),
                     )
                     await _send_human_required(
                         websocket,
                         run_id,
                         node_id=state["active_node_id"],
-                        prompt="检查未通过，等待人工确认。",
+                        prompt=tr("Checks failed, waiting for human confirmation.", "检查未通过，等待人工确认。"),
                     )
             elif isinstance(payload, dict) and payload.get("action") == "stop_run":
                 logs = list(state["terminal_logs"])
@@ -1357,7 +1386,7 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
             else:
                 unknown = _chat_message(
                     "Orchestrator",
-                    f"未识别的 WebSocket 载荷：{payload!r}",
+                    tr(f"Unrecognized WebSocket payload: {payload!r}", f"未识别的 WebSocket 载荷：{payload!r}"),
                 )
                 await _send_message_event(
                     websocket, run_id, unknown, state["active_node_id"]

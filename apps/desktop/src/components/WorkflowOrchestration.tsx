@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { WorkflowStep, WorkflowDef } from '../types';
+import { useLanguage } from './LanguageContext';
 import {
   ReactFlow,
   Controls,
@@ -107,6 +108,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
   isModalStyle,
   onUseInChat,
 }) => {
+  const { t } = useLanguage();
   const [listItems, setListItems] = useState<WorkflowListItem[]>([]);
   const [activeItem, setActiveItem] = useState<WorkflowListItem | null>(null);
   const [workflows, setWorkflows] = useState<WorkflowDef[]>([]);
@@ -170,9 +172,9 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
           : await loadUserWorkflow(item.id);
       applyCompilerWorkflow(item, workflow);
     } catch (err) {
-      setLoadError(err instanceof Error ? err.message : '加载失败');
+      setLoadError(err instanceof Error ? err.message : t('Failed to load'));
     }
-  }, [applyCompilerWorkflow]);
+  }, [applyCompilerWorkflow, t]);
 
   useEffect(() => {
     let cancelled = false;
@@ -185,7 +187,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
         }
       } catch (err) {
         if (!cancelled) {
-          setLoadError(err instanceof Error ? err.message : '无法连接 Sidecar');
+          setLoadError(err instanceof Error ? err.message : t('Cannot connect to Sidecar'));
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -212,18 +214,18 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
         compiler = {
           ...compiler,
           id: compiler.id.endsWith('-custom') ? compiler.id : `${compiler.id}-custom`,
-          name: `${compiler.name} (副本)`,
+          name: `${compiler.name} (${t("Copy")})`,
         };
       }
 
       await validateWorkflow(compiler);
       await saveUserWorkflow(compiler);
-      setSaveStatus('已保存到本机工作流目录');
+      setSaveStatus(t('Saved to local workflow directory'));
       const items = await refreshList();
       const saved = items.find((i) => i.id === compiler.id && i.source === 'user');
       if (saved) await selectWorkflow(saved);
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : '保存失败');
+      setSaveError(err instanceof Error ? err.message : t('Failed to save'));
     } finally {
       setIsSaving(false);
     }
@@ -347,12 +349,12 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
           type: 'agent_task',
           position: { x: 250, y: 80 },
           data: {
-            label: '第一步',
+            label: t('Step 1'),
             agent: 'Builder',
-            instruction: newWorkflowDesc.trim() || '在此填写任务说明',
+            instruction: newWorkflowDesc.trim() || t('Fill task instructions here'),
           },
         },
-        { id: 'end', type: 'end', position: { x: 250, y: 220 }, data: { label: '完成' } },
+        { id: 'end', type: 'end', position: { x: 250, y: 220 }, data: { label: t('Finish') } },
       ],
       edges: [
         { id: 'e1', source: 'start', target: 'n1' },
@@ -367,13 +369,13 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
       const created = items.find((i) => i.id === slug);
       if (created) await selectWorkflow(created);
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : '创建工作流失败');
+      setSaveError(err instanceof Error ? err.message : t('Failed to create workflow'));
     }
   };
 
   const deleteWorkflow = async (id: string, source: 'template' | 'user') => {
     if (source === 'template') return;
-    if (!confirm('确定删除此工作流？')) return;
+    if (!confirm(t('Are you sure you want to delete this workflow?'))) return;
     try {
       await deleteUserWorkflow(id);
       const items = await refreshList();
@@ -384,7 +386,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
         setJsonText('');
       }
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : '删除失败');
+      setSaveError(err instanceof Error ? err.message : t('Failed to delete'));
     }
   };
 
@@ -541,7 +543,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
             className="flex items-center gap-1.5 px-4 py-2 bg-neutral-900 hover:bg-neutral-800 text-white border border-neutral-900 rounded-xl text-xs font-bold transition-all shadow-sm disabled:opacity-40 cursor-pointer"
           >
             <span className="material-symbols-outlined text-[15px]">save</span>
-            {activeItem?.readOnly ? '另存为副本' : '保存'}
+            {activeItem?.readOnly ? t('Save as copy') : t('Save')}
           </button>
           <button
             data-testid="workflow-create"
@@ -561,7 +563,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
             Active SOP Workflows
           </h3>
           {loading && (
-            <p className="text-[10px] text-neutral-400 pl-2 font-mono">加载中…</p>
+            <p className="text-[10px] text-neutral-400 pl-2 font-mono">{t('Loading...')}</p>
           )}
           {loadError && (
             <p className="text-[10px] text-rose-700 bg-rose-50 border border-rose-200/80 rounded-lg px-2 py-1.5 mx-1">
@@ -588,7 +590,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
                 <div className="overflow-hidden text-left">
                   <h4 className="text-[11px] font-bold text-neutral-800 truncate">{item.name}</h4>
                   <p className="text-[9px] text-neutral-400 font-mono mt-0.5 truncate">
-                    {item.source === 'template' ? '内置模板 · 只读' : '用户工作流'}
+                    {item.source === 'template' ? t('Built-in template (Read-only)') : t('User Workflow')}
                   </p>
                 </div>
               </div>
@@ -614,7 +616,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
                     {activeItem.name}
                   </span>
                   <span className="text-[10px] text-neutral-400 font-mono mt-0.5 block">
-                    {canvasCompatible ? '支持画布编辑（简单线性流程）' : '仅 JSON 模式（含检查/审批/分支）'}
+                    {canvasCompatible ? t('Canvas editable (Simple linear workflow)') : t('JSON mode only (Includes check/approval/branch)')}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -642,7 +644,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
                           : 'bg-white text-neutral-600 hover:bg-neutral-50 disabled:opacity-40'
                       }`}
                     >
-                      画布
+                      {t('Canvas')}
                     </button>
                     <button
                       type="button"
@@ -677,9 +679,9 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
                   error={saveError}
                   hint={
                     !canvasCompatible
-                      ? '复杂流程：请用 JSON 编辑'
+                      ? t('Complex workflow: please edit in JSON mode')
                       : activeItem.readOnly
-                        ? '内置模板：编辑后请「另存为副本」'
+                        ? t('Built-in template: please save as copy after editing')
                         : null
                   }
                 />

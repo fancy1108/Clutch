@@ -18,6 +18,9 @@ class CliResult:
         return self.exit_code == 0
 
 
+from src.preferences_storage import tr
+
+
 class CliAdapterError(RuntimeError):
     pass
 
@@ -29,7 +32,7 @@ def run_cli(
     timeout: float = 30.0,
 ) -> CliResult:
     if not command:
-        raise CliAdapterError("CLI 命令不能为空")
+        raise CliAdapterError(tr("CLI command cannot be empty", "CLI 命令不能为空"))
     proc = subprocess.run(
         command,
         cwd=cwd,

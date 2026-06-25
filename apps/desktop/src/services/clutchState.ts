@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import type { ChatMessage, ClutchState, StatePatchData, WebSocketEnvelope } from '../types';
+import { translateText, type Language } from '../components/LanguageContext';
 
 export function createSessionRunId(): string {
   return `run_${Date.now().toString(36)}`;
@@ -144,12 +145,17 @@ class ClutchStateStore {
           if (envelope.event === 'validation_result') {
             const data = envelope.data as { passed?: boolean; message?: string };
             if (data.passed === false && data.message) {
+              const lang = (localStorage.getItem('workspace_lang') as Language) || 'en';
+              const nextStepsText = translateText(
+                'Next steps: select "Bypass & Approve", "Reject & Redo" below, or type instructions and click "Retry".',
+                lang
+              );
               this.appendMessage({
                 id: `validation-${Date.now()}`,
                 agent: 'Evaluator',
                 avatar: '',
                 time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                text: `${data.message}\n\n下一步：在下方选择「Bypass & Approve」、「Reject & Redo」，或填写指令后 Retry。`,
+                text: `${data.message}\n\n${nextStepsText}`,
                 status: 'FAILED',
                 badgeText: 'VALIDATION FAILED',
               });

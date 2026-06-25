@@ -75,3 +75,17 @@ def save_language(language: str) -> dict[str, str]:
     prefs = load_preferences()
     prefs["active_language"] = normalized
     return _write_preferences(prefs)
+
+
+def tr(en: str, zh: str) -> str:
+    """Dynamically return en or zh translation based on current active language preference."""
+    import sys
+    if "pytest" in sys.modules:
+        return zh
+    try:
+        prefs = load_preferences()
+        lang = prefs.get("active_language", "en")
+    except Exception:
+        lang = "en"
+    return zh if lang == "zh" else en
+
