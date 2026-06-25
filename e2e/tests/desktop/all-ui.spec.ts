@@ -1,6 +1,6 @@
 import { test, expect, sandboxRoot } from '../../fixtures/desktop.js';
 import { authorizeSandboxWorkspace, delay } from '../../helpers/tauri.js';
-import { startVideoProductionRun } from '../../helpers/workflow.js';
+import { startVideoProductionRun, ensureE2eUserWorkflow } from '../../helpers/workflow.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -44,14 +44,17 @@ test('desktop: full UI coverage with sandbox isolation', async ({ tauriPage: pag
   await test.step('S-02/S-03 sidebar views', async () => {
     await page.click('[data-testid="nav-agents"]');
     await page.click('[data-testid="nav-workflows"]');
-    await expect(page.locator('[data-testid="workflow-item-video-production"]')).toBeVisible();
+    const workflowId = await ensureE2eUserWorkflow();
+    await page.click('[data-testid="nav-workflows"]');
+    await expect(page.locator(`[data-testid="workflow-item-${workflowId}"]`)).toBeVisible();
     await page.click('[data-testid="nav-new-chat"]');
   });
 
-  await test.step('W-01/W-10 run Video Production in chat', async () => {
+  await test.step('W-01/W-10 run user workflow in chat', async () => {
+    const workflowId = await ensureE2eUserWorkflow();
     await page.click('[data-testid="nav-workflows"]');
-    await page.click('[data-testid="workflow-item-video-production"]');
-    await page.click('[data-testid="workflow-run-in-chat"]');
+    await page.click(`[data-testid="workflow-item-${workflowId}"]`);
+    await page.click('[data-testid="settings-close"]');
     await page.waitForSelector('[data-testid="chat-input"]');
 
     const runId = await startVideoProductionRun('e2e orchestration smoke');

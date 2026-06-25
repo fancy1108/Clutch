@@ -1,3 +1,24 @@
+/** Ensure a minimal user workflow exists for desktop UI E2E (templates hidden from UI). */
+export async function ensureE2eUserWorkflow(): Promise<string> {
+  const workflowId = 'e2e-smoke';
+  const workflow = {
+    id: workflowId,
+    name: 'E2E Smoke',
+    version: 1,
+    nodes: [{ id: 'end', type: 'end', position: { x: 250, y: 120 }, data: { label: 'Finish' } }],
+    edges: [{ id: 'e1', source: 'start', target: 'end' }],
+  };
+  const res = await fetch('http://127.0.0.1:8123/api/workflows/user', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ workflow }),
+  });
+  if (!res.ok) {
+    throw new Error(`user workflow seed failed: ${res.status}`);
+  }
+  return workflowId;
+}
+
 /** Start MVP workflow via Sidecar HTTP (sandbox lacks verify.md → awaiting_human). */
 export async function startVideoProductionRun(instruction: string): Promise<string> {
   const authorize = await fetch('http://127.0.0.1:8123/api/workspace', {

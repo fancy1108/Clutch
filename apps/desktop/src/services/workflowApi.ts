@@ -82,20 +82,10 @@ export async function deleteUserWorkflow(id: string): Promise<void> {
 }
 
 export async function listWorkflowItems(): Promise<WorkflowListItem[]> {
-  const [templates, users] = await Promise.all([fetchTemplateIds(), fetchUserIds()]);
+  const users = await fetchUserIds();
   const items: WorkflowListItem[] = [];
 
-  for (const id of templates) {
-    try {
-      const wf = await loadTemplateWorkflow(id);
-      items.push({ id, name: wf.name, source: 'template', readOnly: true });
-    } catch {
-      items.push({ id, name: id, source: 'template', readOnly: true });
-    }
-  }
-
   for (const id of users) {
-    if (templates.includes(id)) continue;
     try {
       const wf = await loadUserWorkflow(id);
       items.push({ id, name: wf.name, source: 'user', readOnly: false });

@@ -15,4 +15,12 @@ describe('workflowFormat', () => {
     };
     expect(isCanvasCompatible(workflow)).toBe(true);
   });
+
+  it('marks empty start-to-end workflows as canvas compatible', () => {
+    const workflow = {
+      nodes: [{ id: 'end', type: 'end' }],
+      edges: [{ id: 'e1', source: 'start', target: 'end' }],
+    };
+    expect(isCanvasCompatible(workflow)).toBe(true);
+  });
 });

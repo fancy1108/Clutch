@@ -207,14 +207,14 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                   {t('Authorize workspace')}
                 </button>
               )}
-              {isMultiAgent && (
+              {workspaceAuthorized && (
                 <button
                   type="button"
                   data-testid="chat-open-workflows"
                   onClick={onOpenWorkflows}
                   className="px-4 py-2 rounded-lg border border-outline-variant bg-white text-xs font-bold text-on-surface hover:bg-surface-container-low transition-colors"
                 >
-                  {t('Choose workflow template')}
+                  {t('Choose workflow')}
                 </button>
               )}
             </div>
@@ -244,7 +244,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                     <img className="w-full h-full object-cover" src={msg.avatar} alt={msg.agent} />
                   ) : (
                     <span className="material-symbols-outlined text-[18px] text-on-surface-variant">
-                      smart_toy
+                      {msg.agent === 'Supervisor' ? 'verified_user' : 'smart_toy'}
                     </span>
                   )}
                 </div>

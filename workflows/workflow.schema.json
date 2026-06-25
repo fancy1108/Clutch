@@ -65,7 +65,8 @@
                   "label": { "type": "string" },
                   "agent": {
                     "type": "string",
-                    "enum": ["Orchestrator", "Builder", "Evaluator"]
+                    "minLength": 1,
+                    "description": "Configured agent id or display name (resolved by orchestrator)"
                   },
                   "tool": { "type": "string" },
                   "instruction": { "type": "string" }

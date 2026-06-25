@@ -11,6 +11,7 @@ import { McpServerHub } from './components/McpServerHub';
 import { ModelsManager } from './components/ModelsManager';
 import { ThemeManager, THEME_PRESETS } from './components/ThemeManager';
 import { SystemPreferencesModal } from './components/SystemPreferencesModal';
+import { FooterMenuAction, FooterMenuItem, FooterMenuPanel } from './components/FooterMenu';
 import { MainView, RightTab, ChatMessage, UncommittedFile, DiffLine, type Agent } from './types';
 import { fetchAgents } from './services/agentApi';
 import {
@@ -23,6 +24,8 @@ import { fetchThemePreference, saveThemePreference, type ThemePresetId } from '.
 import { LanguageProvider, useLanguage } from './components/LanguageContext';
 import { clutchStore, createSessionRunId, submitChatMessage, useClutchState } from './services/clutchState';
 import { fetchSessions, createSession, startWorkflowRun, fetchRunState, deleteSession, type SessionRecord } from './services/runApi';
+import { listWorkflowItems } from './services/workflowApi';
+import { saveModelsConfig } from './services/modelsApi';
 import {
   activateWorkspace,
   addWorkspace,
@@ -119,6 +122,17 @@ function MainLayout() {
   const [workspacePickError, setWorkspacePickError] = useState<string | null>(null);
   const [highRiskConfirmed, setHighRiskConfirmed] = useState(false);
   const [branchMenuOpen, setBranchMenuOpen] = useState(false);
+  const [modelMenuOpen, setModelMenuOpen] = useState(false);
+  const [agentMenuOpen, setAgentMenuOpen] = useState(false);
+  const [workflowMenuOpen, setWorkflowMenuOpen] = useState(false);
+  const [footerWorkflows, setFooterWorkflows] = useState<Array<{ id: string; name: string }>>([]);
+
+  const closeFooterMenus = useCallback(() => {
+    setBranchMenuOpen(false);
+    setModelMenuOpen(false);
+    setAgentMenuOpen(false);
+    setWorkflowMenuOpen(false);
+  }, []);
   const [workspaceGit, setWorkspaceGit] = useState<{ branch: string | null; branches: string[] }>({
     branch: null,
     branches: [],
@@ -206,13 +220,18 @@ function MainLayout() {
       setSelectedAgentId(storedId);
       return;
     }
-    selectDefaultAgent();
-  }, [configuredAgents]);
+    const hasWorkflow = Boolean(selectedWorkflowId || clutchState.workflow_id);
+    if (!hasWorkflow) {
+      selectDefaultAgent();
+    }
+  }, [configuredAgents, selectedWorkflowId, clutchState.workflow_id]);
 
   useEffect(() => {
     if (!isMultiAgent) {
-      if (!selectedAgentId) selectDefaultAgent();
-      if (selectedWorkflowId) clearWorkflowSelection();
+      const hasWorkflow = Boolean(selectedWorkflowId || clutchState.workflow_id);
+      if (!selectedAgentId && !hasWorkflow) {
+        selectDefaultAgent();
+      }
       return;
     }
     const hasWorkflow = Boolean(selectedWorkflowId || clutchState.workflow_id);
@@ -227,9 +246,13 @@ function MainLayout() {
 
   const selectedAgent = configuredAgents.find((agent) => agent.id === selectedAgentId);
   const selectedAgentName = getAgentDisplayName(selectedAgent);
-  const activeWorkflowLabel = clutchState.workflow_id || selectedWorkflowId || currentFlowName || '—';
+  const activeWorkflowLabel = clutchState.workflow_id || currentFlowName || selectedWorkflowId || '—';
   const hasWorkflowSelection = activeWorkflowLabel !== '—';
-  const multiAgentFooterName = selectedAgentId ? selectedAgentName : '—';
+  const multiAgentFooterName = hasWorkflowSelection
+    ? '—'
+    : selectedAgentId
+      ? selectedAgentName
+      : '—';
   const showFooterModel =
     !selectedAgent || isBuiltinAgent(selectedAgent) || hasWorkflowSelection;
   const customAgentEngineLabel =
@@ -295,10 +318,7 @@ function MainLayout() {
     if (!clutchState.workflow_id && rightTab === 'flow') {
       setRightTab('overview');
     }
-    if (!isMultiAgent && currentView === 'workflows') {
-      setView('chat');
-    }
-  }, [isMultiAgent, rightTab, currentView, clutchState.workflow_id]);
+  }, [isMultiAgent, rightTab, clutchState.workflow_id]);
 
   const [uncommitted, setUncommitted] = useState<UncommittedFile[]>([]);
 
@@ -498,23 +518,65 @@ function MainLayout() {
   // Chat Input Box State
   const [inputValue, setInputValue] = useState<string>('');
 
+  const bindWorkflowForChat = useCallback((workflowId: string, workflowName: string) => {
+    setIsMultiAgent(true);
+    setSelectedWorkflowId(workflowId);
+    setCurrentFlowName(workflowName);
+    setSelectedAgentId(null);
+    localStorage.removeItem('clutch_active_agent_id');
+  }, []);
+
   const handleFlowSelect = (flow: string) => {
-    setCurrentFlowName(flow);
-    setSelectedWorkflowId(flow);
-    if (isMultiAgent) {
-      setSelectedAgentId(null);
-      localStorage.removeItem('clutch_active_agent_id');
-    }
+    bindWorkflowForChat(flow, flow);
   };
 
   const handleUseWorkflowInChat = (workflowId: string, workflowName: string) => {
-    setSelectedWorkflowId(workflowId);
-    setCurrentFlowName(workflowName);
-    if (isMultiAgent) {
-      setSelectedAgentId(null);
-      localStorage.removeItem('clutch_active_agent_id');
-    }
+    bindWorkflowForChat(workflowId, workflowName);
     setView('chat');
+  };
+
+  const toggleWorkflowMenu = async () => {
+    const next = !workflowMenuOpen;
+    closeFooterMenus();
+    setWorkflowMenuOpen(next);
+    if (next) {
+      try {
+        const items = await listWorkflowItems();
+        setFooterWorkflows(items.map((item) => ({ id: item.id, name: item.name })));
+      } catch {
+        setFooterWorkflows([]);
+      }
+    }
+  };
+
+  const toggleModelMenu = () => {
+    const next = !modelMenuOpen;
+    closeFooterMenus();
+    setModelMenuOpen(next);
+  };
+
+  const toggleAgentMenu = () => {
+    const next = !agentMenuOpen;
+    closeFooterMenus();
+    setAgentMenuOpen(next);
+  };
+
+  const handleFooterModelSelect = async (modelId: string) => {
+    const model = configuredModels.find((item) => item.id === modelId);
+    if (!model) return;
+    try {
+      await saveModelsConfig({ active_model_id: modelId });
+      setActiveModelId(modelId);
+      setSelectedModel(model.name);
+      setModelMenuOpen(false);
+    } catch (error) {
+      console.error('[Clutch] model switch failed:', error);
+    }
+  };
+
+  const handleFooterAgentSelect = (agent: Agent) => {
+    handleActivateAgent(agent);
+    setAgentMenuOpen(false);
   };
 
   const handleNewChat = async () => {
@@ -903,6 +965,9 @@ function MainLayout() {
           workspaceLabel={workspace?.name ?? workspace?.workspace_path?.split('/').pop() ?? null}
           sessionActive={clutchStatus !== 'idle' && clutchStatus !== 'failed'}
           onUseWorkflowInChat={handleUseWorkflowInChat}
+          onSelectWorkflow={bindWorkflowForChat}
+          onClearSelectedWorkflow={clearWorkflowSelection}
+          selectedWorkflowId={selectedWorkflowId}
           activeAgentId={selectedAgentId}
           onActivateAgent={handleActivateAgent}
         />
@@ -918,51 +983,80 @@ function MainLayout() {
           <div className="relative">
             <span
               data-testid="footer-branch-trigger"
-              onClick={() => setBranchMenuOpen((open) => !open)}
-              className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-container-low hover:text-on-surface transition-colors cursor-pointer font-medium"
+              onClick={() => {
+                const next = !branchMenuOpen;
+                closeFooterMenus();
+                setBranchMenuOpen(next);
+              }}
+              className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-container-low hover:text-on-surface transition-colors cursor-pointer font-medium whitespace-nowrap"
             >
               <span className="material-symbols-outlined text-[15px] text-on-surface-variant">fork_right</span>
               {t('Branch')}: {workspaceGit.branch || '—'}
               <span className="material-symbols-outlined text-[13px]">keyboard_arrow_down</span>
             </span>
             {branchMenuOpen ? (
-              <div
-                data-testid="footer-branch-menu"
-                className="absolute bottom-full left-0 mb-1 min-w-[220px] max-h-48 overflow-y-auto bg-surface-bright border border-outline-variant rounded-lg shadow-lg py-1 z-[60]"
-              >
+              <FooterMenuPanel testId="footer-branch-menu">
                 {workspaceGit.branches.length === 0 ? (
-                  <p className="px-3 py-2 text-[11px] text-on-surface-variant">{t('Not a git repository')}</p>
+                  <p className="px-3 py-2 pl-9 text-[11px] text-on-surface-variant">{t('Not a git repository')}</p>
                 ) : (
                   workspaceGit.branches.map((branch) => (
-                    <div
+                    <FooterMenuItem
                       key={branch}
-                      data-testid={`footer-branch-item-${branch}`}
-                      className={`px-3 py-2 text-[11px] ${
-                        branch === workspaceGit.branch ? 'text-primary font-bold' : 'text-on-surface'
-                      }`}
+                      testId={`footer-branch-item-${branch}`}
+                      selected={branch === workspaceGit.branch}
+                      onClick={() => setBranchMenuOpen(false)}
                     >
                       {branch}
-                    </div>
+                    </FooterMenuItem>
                   ))
                 )}
-              </div>
+              </FooterMenuPanel>
             ) : null}
           </div>
 
           {showFooterModel ? (
-            <span
-              data-testid="footer-model-trigger"
-              onClick={() => setView('models')}
-              className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-container-low hover:text-on-surface transition-colors cursor-pointer font-medium text-on-surface-variant"
-            >
-              <span className="material-symbols-outlined text-[15px] text-on-surface-variant">layers</span>
-              {t("Model")}: {selectedModel || '—'}
-              <span className="material-symbols-outlined text-[13px]">keyboard_arrow_down</span>
-            </span>
+            <div className="relative">
+              <span
+                data-testid="footer-model-trigger"
+                onClick={toggleModelMenu}
+                className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-container-low hover:text-on-surface transition-colors cursor-pointer font-medium text-on-surface-variant whitespace-nowrap"
+              >
+                <span className="material-symbols-outlined text-[15px] text-on-surface-variant">layers</span>
+                {t("Model")}: {selectedModel || '—'}
+                <span className="material-symbols-outlined text-[13px]">keyboard_arrow_down</span>
+              </span>
+              {modelMenuOpen ? (
+                <FooterMenuPanel testId="footer-model-menu">
+                  {configuredModels.length === 0 ? (
+                    <p className="px-3 py-2 pl-9 text-[11px] text-on-surface-variant">{t('No models configured')}</p>
+                  ) : (
+                    configuredModels.map((model) => (
+                      <FooterMenuItem
+                        key={model.id}
+                        testId={`footer-model-item-${model.id}`}
+                        selected={model.id === activeModelId}
+                        onClick={() => { void handleFooterModelSelect(model.id); }}
+                      >
+                        {model.name}
+                      </FooterMenuItem>
+                    ))
+                  )}
+                  <FooterMenuAction
+                    testId="footer-model-manage"
+                    onClick={() => {
+                      setModelMenuOpen(false);
+                      setView('models');
+                    }}
+                  >
+                    {t('Manage models...')}
+                  </FooterMenuAction>
+                </FooterMenuPanel>
+              ) : null}
+            </div>
           ) : (
             <span
               data-testid="footer-engine-label"
-              className="flex items-center gap-1.5 px-2 py-1 rounded font-medium text-on-surface-variant cursor-default"
+              className="flex items-center gap-1.5 px-2 py-1 rounded font-medium text-on-surface-variant cursor-default whitespace-nowrap"
               title={t('Model is provided by the selected agent tool')}
             >
               <span className="material-symbols-outlined text-[15px] text-on-surface-variant">bolt</span>
@@ -972,43 +1066,125 @@ function MainLayout() {
 
           {isMultiAgent ? (
             <>
-              <span
-                data-testid="footer-agent-trigger"
-                onClick={() => setView('agents')}
-                className={`flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-container-low transition-colors cursor-pointer font-medium ${
-                  selectedAgentId && !hasWorkflowSelection
-                    ? 'text-primary font-bold'
-                    : 'text-on-surface-variant'
-                }`}
-              >
-                <span className="material-symbols-outlined text-[15px]">smart_toy</span>
-                {t('Active Agent')}: {multiAgentFooterName}
-                <span className="material-symbols-outlined text-[13px]">keyboard_arrow_down</span>
-              </span>
-              <span
-                data-testid="footer-workflow-trigger"
-                onClick={() => setView('workflows')}
-                className={`flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-container-low transition-colors cursor-pointer font-medium ${
-                  hasWorkflowSelection
-                    ? 'text-primary font-bold'
-                    : 'text-on-surface-variant'
-                }`}
-              >
-                <span className="material-symbols-outlined text-[15px]">movie</span>
-                {t('Workflow')}: {activeWorkflowLabel}
-                <span className="material-symbols-outlined text-[13px]">keyboard_arrow_down</span>
-              </span>
+              <div className="relative">
+                <span
+                  data-testid="footer-agent-trigger"
+                  onClick={toggleAgentMenu}
+                  className={`flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-container-low transition-colors cursor-pointer font-medium whitespace-nowrap ${
+                    selectedAgentId && !hasWorkflowSelection
+                      ? 'text-primary font-bold'
+                      : 'text-on-surface-variant'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[15px]">smart_toy</span>
+                  {t('Active Agent')}: {multiAgentFooterName}
+                  <span className="material-symbols-outlined text-[13px]">keyboard_arrow_down</span>
+                </span>
+                {agentMenuOpen ? (
+                  <FooterMenuPanel testId="footer-agent-menu">
+                    {configuredAgents.map((agent) => (
+                      <FooterMenuItem
+                        key={agent.id}
+                        testId={`footer-agent-item-${agent.id}`}
+                        selected={!hasWorkflowSelection && agent.id === selectedAgentId}
+                        onClick={() => handleFooterAgentSelect(agent)}
+                      >
+                        {getAgentDisplayName(agent)}
+                      </FooterMenuItem>
+                    ))}
+                    <FooterMenuAction
+                      testId="footer-agent-manage"
+                      onClick={() => {
+                        setAgentMenuOpen(false);
+                        setView('agents');
+                      }}
+                    >
+                      {t('Manage agents...')}
+                    </FooterMenuAction>
+                  </FooterMenuPanel>
+                ) : null}
+              </div>
+              <div className="relative">
+                <span
+                  data-testid="footer-workflow-trigger"
+                  onClick={() => { void toggleWorkflowMenu(); }}
+                  className={`flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-container-low transition-colors cursor-pointer font-medium whitespace-nowrap ${
+                    hasWorkflowSelection
+                      ? 'text-primary font-bold'
+                      : 'text-on-surface-variant'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[15px]">account_tree</span>
+                  {t('Workflow')}: {activeWorkflowLabel}
+                  <span className="material-symbols-outlined text-[13px]">keyboard_arrow_down</span>
+                </span>
+                {workflowMenuOpen ? (
+                  <FooterMenuPanel testId="footer-workflow-menu">
+                    {footerWorkflows.length === 0 ? (
+                      <p className="px-3 py-2 pl-9 text-[11px] text-on-surface-variant">{t('No workflows yet')}</p>
+                    ) : (
+                      footerWorkflows.map((workflow) => (
+                        <FooterMenuItem
+                          key={workflow.id}
+                          testId={`footer-workflow-item-${workflow.id}`}
+                          selected={workflow.id === (selectedWorkflowId || clutchState.workflow_id)}
+                          onClick={() => {
+                            bindWorkflowForChat(workflow.id, workflow.name);
+                            setWorkflowMenuOpen(false);
+                          }}
+                        >
+                          {workflow.name}
+                        </FooterMenuItem>
+                      ))
+                    )}
+                    <FooterMenuAction
+                      testId="footer-workflow-manage"
+                      onClick={() => {
+                        setWorkflowMenuOpen(false);
+                        setView('workflows');
+                      }}
+                    >
+                      {t('Manage workflows...')}
+                    </FooterMenuAction>
+                  </FooterMenuPanel>
+                ) : null}
+              </div>
             </>
           ) : (
-            <span
-              data-testid="footer-agent-trigger"
-              onClick={() => setView('agents')}
-              className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-container-low text-primary font-bold transition-colors cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-[15px] text-primary">smart_toy</span>
-              {t("Active Agent")}: {selectedAgentName}
-              <span className="material-symbols-outlined text-[13px]">keyboard_arrow_down</span>
-            </span>
+            <div className="relative">
+              <span
+                data-testid="footer-agent-trigger"
+                onClick={toggleAgentMenu}
+                className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-container-low text-primary font-bold transition-colors cursor-pointer whitespace-nowrap"
+              >
+                <span className="material-symbols-outlined text-[15px] text-primary">smart_toy</span>
+                {t("Active Agent")}: {selectedAgentName}
+                <span className="material-symbols-outlined text-[13px]">keyboard_arrow_down</span>
+              </span>
+              {agentMenuOpen ? (
+                <FooterMenuPanel testId="footer-agent-menu">
+                  {configuredAgents.map((agent) => (
+                    <FooterMenuItem
+                      key={agent.id}
+                      testId={`footer-agent-item-${agent.id}`}
+                      selected={agent.id === selectedAgentId}
+                      onClick={() => handleFooterAgentSelect(agent)}
+                    >
+                      {getAgentDisplayName(agent)}
+                    </FooterMenuItem>
+                  ))}
+                  <FooterMenuAction
+                    testId="footer-agent-manage"
+                    onClick={() => {
+                      setAgentMenuOpen(false);
+                      setView('agents');
+                    }}
+                  >
+                    {t('Manage agents...')}
+                  </FooterMenuAction>
+                </FooterMenuPanel>
+              ) : null}
+            </div>
           )}
         </div>
 

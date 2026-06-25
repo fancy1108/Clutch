@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { WorkflowStep, WorkflowDef } from '../types';
+import { WorkflowStep, WorkflowDef, Agent } from '../types';
 import { useLanguage } from './LanguageContext';
 import {
   ReactFlow,
@@ -30,12 +30,13 @@ import {
 import {
   deleteUserWorkflow,
   listWorkflowItems,
-  loadTemplateWorkflow,
   loadUserWorkflow,
   saveUserWorkflow,
   validateWorkflow,
   type WorkflowListItem,
 } from '../services/workflowApi';
+import { fetchAgents } from '../services/agentApi';
+import { getAgentDisplayName } from '../services/builtinAgent';
 
 type EditorViewMode = 'canvas' | 'json';
 
@@ -43,9 +44,25 @@ interface WorkflowOrchestrationProps {
   onClose: () => void;
   isModalStyle?: boolean;
   onUseInChat?: (workflowId: string, workflowName: string) => void;
+  onSelectWorkflow?: (workflowId: string, workflowName: string) => void;
+  onClearSelectedWorkflow?: () => void;
+  selectedWorkflowId?: string | null;
 }
 
 const DEFAULT_AVATAR = 'https://lh3.googleusercontent.com/aida-public/AB6AXuCdbGLlsb3N3uOkfOjw1Q1_yDEdGIJRGnmhLu-FVragfIKdNByQw1J1dUhUyD0bhtU68_IQlwgYzvIetQ2bY0YH_lZtUPtQ34nuKBxaxPyS3e2_NiWBHxGCtDAanZ14d9Jj74bIX1CMvh__wE2web2l3_MmMZ3M6VbcAyIQ32DmLoC1ZxOulFXqko_7SDi7dj4UYhiz2GZJT9mIeqNcXO-z24SVjGrZaOr-FBsXxb6cUVkNht5QSQLvRy955U1VtJCFXs670Vt4hbki';
+
+const MODAL_BTN_SECONDARY =
+  'flex items-center gap-1.5 px-4 py-2 bg-neutral-50 hover:bg-neutral-100 text-neutral-700 hover:text-neutral-950 border border-neutral-200/60 rounded-xl text-xs font-bold transition-all shadow-2xs active:scale-[0.97] cursor-pointer whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed';
+
+const MODAL_BTN_PRIMARY =
+  'flex items-center gap-1.5 px-4 py-2 bg-neutral-900 hover:bg-neutral-800 text-white border border-neutral-900 rounded-xl text-xs font-bold transition-all shadow-sm active:scale-[0.97] cursor-pointer whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed';
+
+const MODAL_BTN_CANCEL =
+  'px-4 py-2 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 border border-neutral-200/60 rounded-xl text-xs font-bold transition-all active:scale-[0.97] cursor-pointer whitespace-nowrap';
+
+/** Keep initial canvas zoom modest — fitView alone over-magnifies sparse graphs. */
+const FLOW_DEFAULT_VIEWPORT = { x: 80, y: 60, zoom: 0.58 };
+const FLOW_FIT_VIEW_OPTIONS = { padding: 0.55, maxZoom: 0.62, minZoom: 0.2 };
 
 const CustomNode = ({ data }: { data: any }) => {
   return (
@@ -106,14 +123,16 @@ const nodeTypes = {
 export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
   onClose,
   isModalStyle,
-  onUseInChat,
+  onSelectWorkflow,
+  onClearSelectedWorkflow,
+  selectedWorkflowId = null,
 }) => {
   const { t } = useLanguage();
   const [listItems, setListItems] = useState<WorkflowListItem[]>([]);
   const [activeItem, setActiveItem] = useState<WorkflowListItem | null>(null);
   const [workflows, setWorkflows] = useState<WorkflowDef[]>([]);
   const [activeWorkflowId, setActiveWorkflowId] = useState<string>('');
-  const [viewMode, setViewMode] = useState<EditorViewMode>('json');
+  const [viewMode, setViewMode] = useState<EditorViewMode>('canvas');
   const [jsonText, setJsonText] = useState('');
   const [canvasCompatible, setCanvasCompatible] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -121,6 +140,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [agents, setAgents] = useState<Agent[]>([]);
 
   // Nodes and edges states
   const [nodes, setNodes] = useState<Node[]>([]);
@@ -138,6 +158,15 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
 
   const activeWorkflow = workflows.find(wf => wf.id === activeWorkflowId);
 
+  const resolveAgentLabel = useCallback(
+    (agentRef: string | undefined) => {
+      if (!agentRef) return '';
+      const match = agents.find((a) => a.id === agentRef || a.name === agentRef);
+      return match ? getAgentDisplayName(match) : agentRef;
+    },
+    [agents],
+  );
+
   const refreshList = useCallback(async () => {
     const items = await listWorkflowItems();
     setListItems(items);
@@ -152,12 +181,13 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
     const compatible = isCanvasCompatible(workflow);
     setCanvasCompatible(compatible);
     if (compatible) {
-      const canvas = compilerToCanvas(workflow, item.source === 'template' ? 'movie' : 'account_tree');
+      const canvas = compilerToCanvas(workflow, 'account_tree');
       setWorkflows((prev) => {
         const rest = prev.filter((w) => w.id !== canvas.id);
         return [...rest, canvas];
       });
       setActiveWorkflowId(canvas.id);
+      setViewMode('canvas');
     } else {
       setViewMode('json');
     }
@@ -166,10 +196,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
   const selectWorkflow = useCallback(async (item: WorkflowListItem) => {
     try {
       setLoadError(null);
-      const workflow =
-        item.source === 'template'
-          ? await loadTemplateWorkflow(item.id)
-          : await loadUserWorkflow(item.id);
+      const workflow = await loadUserWorkflow(item.id);
       applyCompilerWorkflow(item, workflow);
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : t('Failed to load'));
@@ -197,6 +224,20 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
       cancelled = true;
     };
   }, [refreshList, selectWorkflow]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchAgents()
+      .then((list) => {
+        if (!cancelled) setAgents(list);
+      })
+      .catch(() => {
+        if (!cancelled) setAgents([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleSaveWorkflow = async () => {
     setIsSaving(true);
@@ -246,6 +287,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
         position: step.position || { x: 250, y: idx * 100 + 50 },
         data: {
           ...step,
+          agent: resolveAgentLabel(step.agent),
           onEdit: (id: string) => openNodeEditor(id),
           onDelete: (id: string) => deleteNode(id),
         }
@@ -270,7 +312,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
       setNodes(newNodes);
       setEdges(newEdges);
     }
-  }, [activeWorkflowId, workflows]); // Also update when workflows changes
+  }, [activeWorkflowId, workflows, resolveAgentLabel]); // Also update when workflows changes
 
   const onNodesChange = useCallback((changes: NodeChange[]) => {
     setNodes((nds) => applyNodeChanges(changes, nds));
@@ -325,6 +367,11 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
     }));
   }, [activeWorkflowId]);
 
+  const handleListItemClick = useCallback((item: WorkflowListItem) => {
+    void selectWorkflow(item);
+    onSelectWorkflow?.(item.id, item.name);
+  }, [selectWorkflow, onSelectWorkflow]);
+
   const handleCreateWorkflow = () => {
     setIsCreatingWorkflow(true);
     setNewWorkflowName('');
@@ -344,22 +391,9 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
       name: newWorkflowName.trim(),
       version: 1,
       nodes: [
-        {
-          id: 'n1',
-          type: 'agent_task',
-          position: { x: 250, y: 80 },
-          data: {
-            label: t('Step 1'),
-            agent: 'Builder',
-            instruction: newWorkflowDesc.trim() || t('Fill task instructions here'),
-          },
-        },
-        { id: 'end', type: 'end', position: { x: 250, y: 220 }, data: { label: t('Finish') } },
+        { id: 'end', type: 'end', position: { x: 250, y: 120 }, data: { label: t('Finish') } },
       ],
-      edges: [
-        { id: 'e1', source: 'start', target: 'n1' },
-        { id: 'e2', source: 'n1', target: 'end' },
-      ],
+      edges: [{ id: 'e1', source: 'start', target: 'end' }],
     };
     try {
       await validateWorkflow(empty);
@@ -373,11 +407,13 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
     }
   };
 
-  const deleteWorkflow = async (id: string, source: 'template' | 'user') => {
-    if (source === 'template') return;
+  const deleteWorkflow = async (id: string) => {
     if (!confirm(t('Are you sure you want to delete this workflow?'))) return;
     try {
       await deleteUserWorkflow(id);
+      if (selectedWorkflowId === id) {
+        onClearSelectedWorkflow?.();
+      }
       const items = await refreshList();
       if (items.length > 0) await selectWorkflow(items[0]);
       else {
@@ -410,7 +446,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
     setEditingNodeId(newNodeId);
     setNodeForm({
       name: 'New Step',
-      agent: 'Orchestrator',
+      agent: '',
       aiTool: '',
       description: '',
       nextSteps: [],
@@ -437,6 +473,11 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
 
   const saveNode = () => {
     if (!editingNodeId) return;
+    if (!nodeForm.agent?.trim()) return;
+
+    const selectedAgent = agents.find(
+      (a) => a.id === nodeForm.agent || a.name === nodeForm.agent,
+    );
 
     setWorkflows(prev => prev.map(wf => {
       if (wf.id !== activeWorkflowId) return wf;
@@ -450,10 +491,10 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
       const targetStep: WorkflowStep = {
         id: editingNodeId,
         name: nodeForm.name || 'New Step',
-        agent: nodeForm.agent || 'Orchestrator',
+        agent: selectedAgent?.id ?? nodeForm.agent!.trim(),
         aiTool: nodeForm.aiTool || '',
         description: nodeForm.description || '',
-        avatar: nodeForm.avatar || DEFAULT_AVATAR,
+        avatar: selectedAgent?.avatar || nodeForm.avatar || DEFAULT_AVATAR,
         nextSteps: formNextSteps,
         position: nodeForm.position || (existingStepIndex >= 0 ? updatedSteps[existingStepIndex].position : { x: 250, y: wf.steps.length * 100 + 50 })
       };
@@ -530,28 +571,14 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {saveStatus && (
-            <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-2 py-1 rounded-lg">
-              {saveStatus}
-            </span>
-          )}
-          <button
-            type="button"
-            data-testid="workflow-save"
-            onClick={handleSaveWorkflow}
-            disabled={isSaving || loading}
-            className="flex items-center gap-1.5 px-4 py-2 bg-neutral-900 hover:bg-neutral-800 text-white border border-neutral-900 rounded-xl text-xs font-bold transition-all shadow-sm disabled:opacity-40 cursor-pointer"
-          >
-            <span className="material-symbols-outlined text-[15px]">save</span>
-            {activeItem?.readOnly ? t('Save as copy') : t('Save')}
-          </button>
           <button
             data-testid="workflow-create"
+            type="button"
             onClick={handleCreateWorkflow}
-            className="flex items-center gap-1.5 px-4 py-2 bg-neutral-50 hover:bg-neutral-100 text-neutral-800 border border-neutral-200 rounded-xl text-xs font-bold transition-all cursor-pointer"
+            className={MODAL_BTN_SECONDARY}
           >
-            <span className="material-symbols-outlined text-[15px]">add</span>
-            Create Flow
+            <span className="material-symbols-outlined text-[16px]">add</span>
+            {t('Create Flow')}
           </button>
         </div>
       </header>
@@ -570,41 +597,60 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
               {loadError}
             </p>
           )}
-          {listItems.map(item => (
+          {listItems.map(item => {
+            const isEditorActive = activeItem?.id === item.id && activeItem?.source === item.source;
+            const isChatSelected = selectedWorkflowId === item.id;
+            return (
             <div
               key={`${item.source}-${item.id}`}
               data-testid={`workflow-item-${item.id}`}
-              onClick={() => selectWorkflow(item)}
-              className={`p-3 border rounded-xl flex items-center justify-between cursor-pointer transition-all bg-white relative ${
-                activeItem?.id === item.id && activeItem?.source === item.source
-                  ? 'border-neutral-300 bg-neutral-50 shadow-sm'
+              onClick={() => handleListItemClick(item)}
+              className={`group p-3 border rounded-xl flex items-center justify-between cursor-pointer transition-all bg-white relative ${
+                isEditorActive || isChatSelected
+                  ? 'border-neutral-400 bg-neutral-50 shadow-sm ring-1 ring-neutral-200'
                   : 'border-neutral-200/50 hover:border-neutral-300 shadow-xs'
               }`}
             >
-              <div className="flex items-center gap-3 overflow-hidden">
+              <div className="flex items-center gap-3 overflow-hidden min-w-0 flex-1">
                 <div className="w-8 h-8 rounded-lg bg-neutral-100/70 flex flex-shrink-0 items-center justify-center">
                   <span className="material-symbols-outlined text-neutral-600 text-[18px]">
-                    {item.source === 'template' ? 'movie' : 'account_tree'}
+                    account_tree
                   </span>
                 </div>
-                <div className="overflow-hidden text-left">
+                <div className="overflow-hidden text-left min-w-0">
                   <h4 className="text-[11px] font-bold text-neutral-800 truncate">{item.name}</h4>
                   <p className="text-[9px] text-neutral-400 font-mono mt-0.5 truncate">
-                    {item.source === 'template' ? t('Built-in template (Read-only)') : t('User Workflow')}
+                    {t('User Workflow')}
                   </p>
                 </div>
               </div>
-              {!item.readOnly && (
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 ml-2">
                 <button
                   type="button"
-                  onClick={(e) => { e.stopPropagation(); deleteWorkflow(item.id, item.source); }}
-                  className="text-neutral-300 hover:text-red-500 transition-colors ml-2 flex-shrink-0"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void selectWorkflow(item);
+                  }}
+                  className="p-1 hover:bg-neutral-100 text-neutral-500 hover:text-neutral-800 rounded-md transition-colors"
+                  title={t('View workflow')}
                 >
-                  <span className="material-symbols-outlined text-[14px]">delete</span>
+                  <span className="material-symbols-outlined text-[16px]">visibility</span>
                 </button>
-              )}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void deleteWorkflow(item.id);
+                  }}
+                  className="p-1 hover:bg-red-50 text-red-500 hover:text-red-700 rounded-md transition-colors"
+                  title={t('Delete workflow')}
+                >
+                  <span className="material-symbols-outlined text-[16px]">delete</span>
+                </button>
+              </div>
             </div>
-          ))}
+            );
+          })}
         </div>
 
         <div className="flex-1 flex flex-col relative min-h-0">
@@ -615,33 +661,27 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
                   <span className="text-xs font-extrabold text-neutral-800 font-sans tracking-tight block uppercase">
                     {activeItem.name}
                   </span>
-                  <span className="text-[10px] text-neutral-400 font-mono mt-0.5 block">
-                    {canvasCompatible ? t('Canvas editable (Simple linear workflow)') : t('JSON mode only (Includes check/approval/branch)')}
-                  </span>
                 </div>
-                <div className="flex items-center gap-2">
-                  {onUseInChat && activeItem && (
-                    <button
-                      type="button"
-                      data-testid="workflow-run-in-chat"
-                      onClick={() => {
-                        onUseInChat(activeItem.id, activeItem.name);
-                        onClose();
-                      }}
-                      className="px-3 py-1.5 rounded-lg bg-neutral-900 text-white text-[11px] font-bold hover:bg-black transition-colors"
-                    >
-                      Run in Chat
-                    </button>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {saveStatus && (
+                    <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-2 py-1 rounded-lg whitespace-nowrap">
+                      {saveStatus}
+                    </span>
                   )}
-                  <div className="flex rounded-lg border border-neutral-200 overflow-hidden text-[11px] font-bold">
+                  {saveError && (
+                    <span className="text-[10px] font-mono text-rose-700 bg-rose-50 border border-rose-200/80 px-2 py-1 rounded-lg max-w-[180px] truncate" title={saveError}>
+                      {saveError}
+                    </span>
+                  )}
+                  <div className="flex rounded-xl border border-neutral-200/60 overflow-hidden text-xs font-bold whitespace-nowrap shadow-2xs">
                     <button
                       type="button"
                       disabled={!canvasCompatible}
                       onClick={() => { syncJsonFromCanvas(); setViewMode('canvas'); }}
-                      className={`px-3 py-1.5 transition-colors ${
+                      className={`px-4 py-2 transition-colors ${
                         viewMode === 'canvas'
                           ? 'bg-neutral-900 text-white'
-                          : 'bg-white text-neutral-600 hover:bg-neutral-50 disabled:opacity-40'
+                          : 'bg-neutral-50 text-neutral-700 hover:bg-neutral-100 disabled:opacity-40'
                       }`}
                     >
                       {t('Canvas')}
@@ -649,10 +689,10 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
                     <button
                       type="button"
                       onClick={() => setViewMode('json')}
-                      className={`px-3 py-1.5 transition-colors ${
+                      className={`px-4 py-2 transition-colors border-l border-neutral-200/60 ${
                         viewMode === 'json'
                           ? 'bg-neutral-900 text-white'
-                          : 'bg-white text-neutral-600 hover:bg-neutral-50'
+                          : 'bg-neutral-50 text-neutral-700 hover:bg-neutral-100'
                       }`}
                     >
                       JSON
@@ -662,12 +702,22 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
                     <button
                       type="button"
                       onClick={addNode}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-50 hover:bg-neutral-100 text-neutral-700 rounded-lg text-xs font-bold border border-neutral-200/80 cursor-pointer"
+                      className={MODAL_BTN_SECONDARY}
                     >
-                      <span className="material-symbols-outlined text-[15px]">add</span>
-                      Add Node
+                      <span className="material-symbols-outlined text-[16px]">add</span>
+                      {t('Add Node')}
                     </button>
                   )}
+                  <button
+                    type="button"
+                    data-testid="workflow-save"
+                    onClick={handleSaveWorkflow}
+                    disabled={isSaving || loading}
+                    className={MODAL_BTN_SECONDARY}
+                  >
+                    <span className="material-symbols-outlined text-[16px]">save</span>
+                    {activeItem?.readOnly ? t('Save as copy') : t('Save')}
+                  </button>
                 </div>
               </div>
 
@@ -680,14 +730,13 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
                   hint={
                     !canvasCompatible
                       ? t('Complex workflow: please edit in JSON mode')
-                      : activeItem.readOnly
-                        ? t('Built-in template: please save as copy after editing')
-                        : null
+                      : null
                   }
                 />
               ) : activeWorkflow ? (
                 <div className="flex-1 relative bg-neutral-50/20 min-h-0">
                   <ReactFlow
+                    key={activeWorkflowId}
                     nodes={nodes}
                     edges={edges}
                     onNodesChange={onNodesChange}
@@ -695,13 +744,29 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
                     onConnect={onConnect}
                     onEdgesDelete={onEdgesDelete}
                     nodeTypes={nodeTypes}
-                    fitView
+                    defaultViewport={FLOW_DEFAULT_VIEWPORT}
+                    fitView={nodes.length > 0}
+                    fitViewOptions={FLOW_FIT_VIEW_OPTIONS}
+                    minZoom={0.2}
+                    maxZoom={1.25}
                   >
                     <Background />
                     <Controls />
                   </ReactFlow>
+                  {nodes.length === 0 && (
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="text-center text-neutral-400">
+                        <span className="material-symbols-outlined text-[28px] mb-2 font-light">add_circle</span>
+                        <p className="text-xs font-medium">{t('Empty workflow — click Add Node to begin')}</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              ) : null}
+              ) : (
+                <div className="flex-1 flex items-center justify-center text-neutral-400 text-xs">
+                  {t('Loading...')}
+                </div>
+              )}
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center flex-col text-neutral-400">
@@ -743,14 +808,22 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
               <div className="space-y-1.5">
                 <label className="font-bold text-neutral-700">Assigned Agent</label>
                 <select 
-                  value={nodeForm.agent || 'Orchestrator'}
+                  value={nodeForm.agent || ''}
                   onChange={e => setNodeForm({...nodeForm, agent: e.target.value})}
                   className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-xs bg-white focus:outline-none focus:border-neutral-400 transition-all font-medium"
                 >
-                  <option value="Orchestrator">Orchestrator</option>
-                  <option value="Builder">Builder</option>
-                  <option value="Evaluator">Evaluator</option>
+                  <option value="">Select an agent…</option>
+                  {agents.map((agent) => (
+                    <option key={agent.id} value={agent.id}>
+                      {getAgentDisplayName(agent)}
+                    </option>
+                  ))}
                 </select>
+                {agents.length === 0 && (
+                  <p className="text-[10px] text-neutral-400">
+                    No agents configured. Create agents in the Agents panel first.
+                  </p>
+                )}
               </div>
 
               <div className="space-y-1.5">
@@ -804,7 +877,12 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
                               className="rounded border-neutral-300 text-neutral-800 focus:ring-neutral-400 w-3.5 h-3.5"
                             />
                             <span className="text-[11px] truncate font-medium text-neutral-700">
-                              {s.name} <span className="text-[9px] text-neutral-400 font-normal">({s.agent})</span>
+                              {s.name}{' '}
+                              {s.agent ? (
+                                <span className="text-[9px] text-neutral-400 font-normal">
+                                  ({resolveAgentLabel(s.agent)})
+                                </span>
+                              ) : null}
                             </span>
                           </label>
                         );
@@ -840,7 +918,12 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
                               className="rounded border-neutral-300 text-neutral-800 focus:ring-neutral-400 w-3.5 h-3.5"
                             />
                             <span className="text-[11px] truncate font-medium text-neutral-700">
-                              {s.name} <span className="text-[9px] text-neutral-400 font-normal">({s.agent})</span>
+                              {s.name}{' '}
+                              {s.agent ? (
+                                <span className="text-[9px] text-neutral-400 font-normal">
+                                  ({resolveAgentLabel(s.agent)})
+                                </span>
+                              ) : null}
                             </span>
                           </label>
                         );
@@ -857,18 +940,21 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
               </div>
             </div>
 
-            <div className="p-4 border-t border-neutral-100 bg-neutral-50/50 flex justify-end gap-3">
-              <button 
+            <div className="p-4 border-t border-neutral-100 bg-neutral-50/50 flex justify-end gap-2">
+              <button
+                type="button"
                 onClick={() => setEditingNodeId(null)}
-                className="px-4 py-2 rounded-lg text-xs font-bold text-neutral-600 hover:bg-neutral-200/50 transition-colors"
+                className={MODAL_BTN_CANCEL}
               >
-                Cancel
+                {t('Cancel')}
               </button>
-              <button 
+              <button
+                type="button"
                 onClick={saveNode}
-                className="px-4 py-2 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-bold transition-all shadow-sm"
+                disabled={!nodeForm.agent?.trim()}
+                className={MODAL_BTN_PRIMARY}
               >
-                Save Node
+                {t('Save Node')}
               </button>
             </div>
           </div>
@@ -946,21 +1032,21 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
               </div>
             </div>
 
-            <div className="p-4 border-t border-neutral-100 bg-neutral-50/50 flex justify-end gap-3">
-              <button 
+            <div className="p-4 border-t border-neutral-100 bg-neutral-50/50 flex justify-end gap-2">
+              <button
                 type="button"
                 onClick={() => setIsCreatingWorkflow(false)}
-                className="px-4 py-2 rounded-lg text-xs font-bold text-neutral-600 hover:bg-neutral-200/50 transition-colors cursor-pointer"
+                className={MODAL_BTN_CANCEL}
               >
-                Cancel
+                {t('Cancel')}
               </button>
-              <button 
+              <button
                 type="button"
                 onClick={saveNewWorkflow}
                 disabled={!newWorkflowName.trim()}
-                className="px-4 py-2 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-bold transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                className={MODAL_BTN_PRIMARY}
               >
-                Save Flow
+                {t('Save Flow')}
               </button>
             </div>
           </div>

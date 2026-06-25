@@ -24,8 +24,6 @@ export interface CompilerWorkflow {
   edges: CompilerEdge[];
 }
 
-const AGENT_ROLES = new Set(['Orchestrator', 'Builder', 'Evaluator']);
-
 function slugId(name: string): string {
   const base = name
     .toLowerCase()
@@ -56,6 +54,15 @@ export function isCanvasCompatible(workflow: CompilerWorkflow): boolean {
 
   if ((outCount.start ?? 0) !== 1) return false;
 
+  const agentNodes = workflow.nodes.filter((n) => n.type === 'agent_task');
+  if (agentNodes.length === 0) {
+    const endId = endNodes[0].id;
+    return (
+      (inCount[endId] ?? 0) === 1 &&
+      workflow.edges.some((e) => e.source === 'start' && e.target === endId)
+    );
+  }
+
   for (const node of workflow.nodes) {
     if (node.type === 'end') {
       if ((inCount[node.id] ?? 0) !== 1) return false;
@@ -67,7 +74,7 @@ export function isCanvasCompatible(workflow: CompilerWorkflow): boolean {
     if (out === 0 && inc === 0) return false;
   }
 
-  return workflow.nodes.some((n) => n.type === 'agent_task');
+  return true;
 }
 
 export function compilerToCanvas(workflow: CompilerWorkflow, icon = 'account_tree'): WorkflowDef {
@@ -86,7 +93,7 @@ export function compilerToCanvas(workflow: CompilerWorkflow, icon = 'account_tre
     return {
       id: node.id,
       name: data.label ?? node.id,
-      agent: data.agent ?? 'Builder',
+      agent: data.agent ?? '',
       aiTool: data.tool,
       description: data.instruction ?? '',
       nextSteps: outgoing.map((e) => e.target).filter((t) => t !== 'end'),
@@ -116,7 +123,7 @@ export function canvasToCompiler(
     position: step.position ?? { x: 250, y: idx * 120 + 80 },
     data: {
       label: step.name,
-      agent: AGENT_ROLES.has(step.agent) ? step.agent : 'Builder',
+      agent: step.agent,
       ...(step.aiTool ? { tool: step.aiTool } : {}),
       instruction: step.description || step.name,
     },
@@ -132,7 +139,13 @@ export function canvasToCompiler(
   const edges: CompilerEdge[] = [];
   let edgeIdx = 1;
 
-  if (canvas.steps.length > 0) {
+  if (canvas.steps.length === 0) {
+    edges.push({
+      id: `e${edgeIdx++}`,
+      source: 'start',
+      target: 'end',
+    });
+  } else {
     edges.push({
       id: `e${edgeIdx++}`,
       source: 'start',

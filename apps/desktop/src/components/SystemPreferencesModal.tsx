@@ -33,6 +33,9 @@ interface SystemPreferencesModalProps {
   workspaceLabel?: string | null;
   sessionActive?: boolean;
   onUseWorkflowInChat?: (workflowId: string, workflowName: string) => void;
+  onSelectWorkflow?: (workflowId: string, workflowName: string) => void;
+  onClearSelectedWorkflow?: () => void;
+  selectedWorkflowId?: string | null;
   activeAgentId?: string | null;
   onActivateAgent?: (agent: Agent) => void;
 }
@@ -52,6 +55,9 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
   workspaceLabel,
   sessionActive = false,
   onUseWorkflowInChat,
+  onSelectWorkflow,
+  onClearSelectedWorkflow,
+  selectedWorkflowId = null,
   activeAgentId = null,
   onActivateAgent,
 }) => {
@@ -225,6 +231,9 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
                 isModalStyle={true}
                 onClose={() => setView('chat')}
                 onUseInChat={onUseWorkflowInChat}
+                onSelectWorkflow={onSelectWorkflow}
+                onClearSelectedWorkflow={onClearSelectedWorkflow}
+                selectedWorkflowId={selectedWorkflowId}
               />
             ) : currentView === 'tools' ? (
               <AiToolsManager isModalStyle={true} />
