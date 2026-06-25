@@ -136,7 +136,12 @@ class LanguagePreferenceRequest(BaseModel):
 
 def _skills_registry_payload(*, rescan: bool = True) -> dict[str, Any]:
     from src.skills_scanner import scan_mounted_directories
-    from src.skills_storage import load_registry, save_registry
+    from src.skills_storage import ensure_default_skill_mounts, load_registry, save_registry
+    from src.workspace import get_workspace
+
+    workspace = get_workspace()
+    workspace_path = workspace.get("workspace_path") if workspace else None
+    ensure_default_skill_mounts(workspace_path=workspace_path)
 
     data = load_registry()
     if rescan:
@@ -1241,20 +1246,26 @@ async def list_workspaces_endpoint() -> dict[str, Any]:
 
 @app.post("/api/workspaces")
 async def add_workspace_endpoint(body: WorkspaceRequest) -> dict[str, str]:
+    from src.skills_storage import ensure_default_skill_mounts
     from src.workspace import WorkspaceError, add_workspace
 
     try:
-        return add_workspace(body.path)
+        entry = add_workspace(body.path)
+        ensure_default_skill_mounts(workspace_path=entry.get("workspace_path"))
+        return entry
     except WorkspaceError as exc:
         raise _workspace_http_error(exc) from exc
 
 
 @app.post("/api/workspaces/{workspace_id}/activate")
 async def activate_workspace_endpoint(workspace_id: str) -> dict[str, str]:
+    from src.skills_storage import ensure_default_skill_mounts
     from src.workspace import WorkspaceError, activate_workspace
 
     try:
-        return activate_workspace(workspace_id)
+        entry = activate_workspace(workspace_id)
+        ensure_default_skill_mounts(workspace_path=entry.get("workspace_path"))
+        return entry
     except WorkspaceError as exc:
         raise _workspace_http_error(exc) from exc
 
@@ -1329,10 +1340,13 @@ async def get_workspace_endpoint() -> dict[str, str]:
 
 @app.post("/api/workspace")
 async def set_workspace_endpoint(body: WorkspaceRequest) -> dict[str, str]:
+    from src.skills_storage import ensure_default_skill_mounts
     from src.workspace import WorkspaceError, add_workspace
 
     try:
-        return add_workspace(body.path)
+        entry = add_workspace(body.path)
+        ensure_default_skill_mounts(workspace_path=entry.get("workspace_path"))
+        return entry
     except WorkspaceError as exc:
         raise _workspace_http_error(exc) from exc
 

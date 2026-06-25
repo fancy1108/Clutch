@@ -73,8 +73,47 @@ def test_api_unmount_removes_skills_from_source(skills_data_dir: Path, tmp_path:
         json={"path": str(mount)},
     )
     assert unmount_resp.status_code == 200
-    assert unmount_resp.json()["mounted_directories"] == []
-    assert unmount_resp.json()["skills"] == []
+    body = unmount_resp.json()
+    assert str(mount.resolve()) not in body["mounted_directories"]
+    assert not any(s.get("source") == str(mount.resolve()) for s in body["skills"])
 
     save_registry(mounted_directories=[], skills=[])
     assert load_registry()["skills"] == []
+
+
+def test_ensure_default_skill_mounts_cursor_and_workspace(
+    skills_data_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from src.skills_storage import ensure_default_skill_mounts, load_registry
+
+    cursor_skills = tmp_path / "skills-cursor"
+    _write_skill(cursor_skills, "automate", "Automate", "Run automations.")
+    ws = tmp_path / "hyperframes"
+    _write_skill(ws / "skills", "hyperframes", "Hyperframes", "Project skill.")
+
+    monkeypatch.setattr(
+        "src.skills_storage.discover_default_skill_directories",
+        lambda **_: [str(cursor_skills.resolve()), str((ws / "skills").resolve())],
+    )
+
+    added = ensure_default_skill_mounts(workspace_path=str(ws))
+    assert len(added) == 2
+    stored = load_registry()
+    assert str(cursor_skills.resolve()) in stored["mounted_directories"]
+    assert str((ws / "skills").resolve()) in stored["mounted_directories"]
+
+    # Idempotent on second call
+    assert ensure_default_skill_mounts(workspace_path=str(ws)) == []
+
+
+def test_api_get_auto_mounts_defaults(skills_data_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    mount = tmp_path / "skills-cursor"
+    _write_skill(mount, "canvas", "Canvas", "Canvas layouts.")
+    monkeypatch.setattr(
+        "src.skills_storage.discover_default_skill_directories",
+        lambda **_: [str(mount.resolve())],
+    )
+
+    body = client.get("/api/skills").json()
+    assert str(mount.resolve()) in body["mounted_directories"]
+    assert any(s["key"] == "skills-cursor/canvas" for s in body["skills"])

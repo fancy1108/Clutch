@@ -1,5 +1,19 @@
-"""Video core module — scaffolding for video production pipeline."""
+"""Video core — render, stitch, and export video assets for Clutch."""
 
-from src.video_core.env import prepare_build_env
+from __future__ import annotations
 
-__all__ = ["prepare_build_env"]
+from .config import Codec, OutputFormat, Resolution, VideoConfig
+from .env import check_ffmpeg, check_python_deps, ensure_dirs, prepare_build_env
+from .pipeline import VideoPipeline
+
+__all__ = [
+    "Codec",
+    "OutputFormat",
+    "Resolution",
+    "VideoConfig",
+    "VideoPipeline",
+    "check_ffmpeg",
+    "check_python_deps",
+    "ensure_dirs",
+    "prepare_build_env",
+]

@@ -63,3 +63,10 @@ def scan_mounted_directories(
                 }
             )
     return discovered
+
+
+def directory_has_skills(root: Path) -> bool:
+    """Return True when a directory tree contains at least one SKILL.md."""
+    if not root.is_dir():
+        return False
+    return any(root.rglob("SKILL.md"))

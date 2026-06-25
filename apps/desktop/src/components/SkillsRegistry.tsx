@@ -98,7 +98,7 @@ export const SkillsRegistry: React.FC = () => {
           </div>
           <p className="text-xs text-neutral-500 font-sans leading-relaxed">
             Mount directories that contain <code className="font-mono text-[10.5px] bg-neutral-100 text-neutral-800 px-1 py-0.5 rounded">SKILL.md</code> files.
-            Clutch scans them via the Sidecar and syncs active skills to Agent configuration.
+            Clutch auto-detects <code className="font-mono text-[10.5px] bg-neutral-100 text-neutral-800 px-1 py-0.5 rounded">~/.cursor/skills-cursor</code> and your workspace <code className="font-mono text-[10.5px] bg-neutral-100 text-neutral-800 px-1 py-0.5 rounded">skills/</code> folder on refresh.
           </p>
         </div>
 

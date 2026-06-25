@@ -36,6 +36,54 @@ def load_registry() -> dict[str, Any]:
     }
 
 
+def discover_default_skill_directories(*, workspace_path: str | None = None) -> list[str]:
+    """Well-known skill roots that exist on this machine (Cursor, workspace project skills/, etc.)."""
+    from src.skills_scanner import directory_has_skills
+
+    candidates: list[Path] = [
+        Path.home() / ".cursor" / "skills-cursor",
+        Path.home() / ".cursor" / "skills",
+    ]
+    if workspace_path:
+        ws = Path(workspace_path).expanduser().resolve()
+        candidates.extend(
+            [
+                ws / "skills",
+                ws / ".cursor" / "skills",
+                ws / ".claude" / "skills",
+            ]
+        )
+    discovered: list[str] = []
+    seen: set[str] = set()
+    for raw in candidates:
+        root = raw.expanduser()
+        if not directory_has_skills(root):
+            continue
+        resolved = str(root.resolve())
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        discovered.append(resolved)
+    return discovered
+
+
+def ensure_default_skill_mounts(*, workspace_path: str | None = None) -> list[str]:
+    """Merge default skill directories into the registry. Returns newly added paths."""
+    data = load_registry()
+    mounted = [str(Path(item).expanduser().resolve()) for item in data["mounted_directories"]]
+    mounted_set = set(mounted)
+    added: list[str] = []
+    for candidate in discover_default_skill_directories(workspace_path=workspace_path):
+        if candidate in mounted_set:
+            continue
+        mounted.append(candidate)
+        mounted_set.add(candidate)
+        added.append(candidate)
+    if added:
+        save_registry(mounted_directories=mounted)
+    return added
+
+
 def save_registry(
     *,
     mounted_directories: list[str] | None = None,
