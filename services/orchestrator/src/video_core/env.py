@@ -16,8 +16,16 @@ logger = logging.getLogger(__name__)
 
 
 def check_ffmpeg() -> bool:
-    """Return True if ffmpeg is on PATH and reports a version."""
-    return shutil.which("ffmpeg") is not None
+    """Return True when a usable ffmpeg binary exists (system PATH or imageio-ffmpeg bundle)."""
+    if shutil.which("ffmpeg") is not None:
+        return True
+    try:
+        import imageio_ffmpeg
+
+        bundled = imageio_ffmpeg.get_ffmpeg_exe()
+        return bool(bundled and Path(bundled).exists())
+    except Exception:
+        return False
 
 
 def check_python_deps() -> bool:

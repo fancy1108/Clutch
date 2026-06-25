@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import shutil
 from pathlib import Path
+
+from src.video_core.env import check_ffmpeg
 
 logger = logging.getLogger(__name__)
 
@@ -22,8 +23,3 @@ async def render(prompt: str, output_path: str, duration: float = 5.0) -> str:
     dest.write_text(f"generated:{prompt}:{duration}s")
     logger.info("stub render → %s", dest)
     return str(dest)
-
-
-def check_ffmpeg() -> bool:
-    """Return True when ``ffmpeg`` binary is on PATH."""
-    return shutil.which("ffmpeg") is not None

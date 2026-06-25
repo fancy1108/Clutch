@@ -18,7 +18,7 @@ class TestCheckFfmpeg:
     """Verify ffmpeg detection logic."""
 
     def test_ffmpeg_on_path(self):
-        """On a dev machine ffmpeg should be available."""
+        """ffmpeg should be available via system PATH or imageio-ffmpeg bundle."""
         assert check_ffmpeg() is True
 
 
