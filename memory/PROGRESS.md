@@ -3,7 +3,7 @@
 ## 当前状态
 
 - 阶段：**D25 ShellSession Step 1 + Hybrid 执行细节已交付（默认 `legacy`）**
-- Git HEAD：`d6c6c90`（Hybrid Step 1 代码）+ 文档 commit 待追加
+- Git HEAD：`4977df6`
 - **下次优先（Step 2）**：`CLUTCH_SHELL_IDLE_SEC` 压测 / agy Route C / baseline JSON
 
 ## 2026-06-27 会话（删会话释放 Shell）

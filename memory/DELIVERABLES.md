@@ -27,6 +27,15 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ## 已交付（代码 Task · 自 Git 回填）
 
+### D25-SHELL-RELEASE-ON-DELETE ✅
+- **日期：** 2026-06-27
+- **Commit：** `4977df6` — `fix(runtime): release ShellSession when deleting a chat run`
+- **Verification：** `./scripts/verify.sh` → 327 pytest ✅
+- **证据：** `—`（门禁已覆盖）
+- **交付文件：**
+  - `services/orchestrator/src/main.py` — `DELETE /api/runs/{run_id}` 调用 `ShellSessionManager.release`
+  - `services/orchestrator/tests/test_run_history.py` — `test_delete_session_releases_shell_session`
+
 ### D25-HYBRID-STEP1 ✅
 - **日期：** 2026-06-27
 - **Commit：** `d6c6c90` — `chore: checkpoint before full-platform UI consistency polish`（含 ShellSession + Hybrid 执行细节全栈）
