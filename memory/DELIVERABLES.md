@@ -596,13 +596,14 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ### 产品介绍文档与关联文档更新同步 ✅
 - **日期：** 2026-06-26
-- **Commit：** `e7a7e04` & `6754466` — docs: create and revise product introduction docs (custom agents & multi-engine routing)
+- **Commit：** `e7a7e04` & `6754466` & `7c314fb` — docs: create, revise and enrich product introduction docs with real pain points and goals
 - **Verification：** `./scripts/verify.sh` → 290 pytest + vitest passed + doc-drift OK
 - **已交付：**
-  - `docs/PRODUCT_INTRO.md` — 产品介绍文档，包含可自定义 Agent、本地工具自动探测、多引擎智能分流路由器等真代码实现特性
+  - `docs/PRODUCT_INTRO.md` — 产品介绍文档，包含项目存在理由（真实痛点一与二）、可自定义 Agent、本地工具自动探测、多引擎智能分流路由器、明确非目标等特性的全面介绍
   - `workflows/README.md` — 纠正 compiler 状态与登记 `weather-to-vision.json` 模板
   - `README.md` — 主 README 注册产品介绍文档条目
   - `memory/FILEMAP.md` — 文件定位速查表中登记新文档
   - `docs/document-governance.md` — 职责划分表格中登记新文档
+
 
 
