@@ -294,8 +294,10 @@ const zhTranslations: Record<string, string> = {
   "Surface": "Surface / 界面色",
   "Text color": "Text / 文字色",
   "Accent primary": "Primary / 核心主调",
-  "Select": "Select / 选择应用"
+  "Select": "Select / 选择应用",
+  "System": "系统"
 };
+
 
 // Simple auto-translator to handle terms containing professional words
 export const translateText = (text: string, language: Language): string => {

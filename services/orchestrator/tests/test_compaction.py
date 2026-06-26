@@ -129,6 +129,8 @@ async def test_compact_run_messages_success(monkeypatch: pytest.MonkeyPatch, tmp
     assert "runs/archive/run_test.jsonl" in digest_msg["text"]
     assert "上下文已压缩" in digest_msg["text"]
     assert digest_msg["badge_text"] == "上下文压缩摘要"
+    assert digest_msg["badgeText"] == "上下文压缩摘要"
+
 
     # Last 4 messages preserved: msg_4, msg_5, msg_6, msg_7
     assert new_state["messages"][2]["id"] == "msg_4"

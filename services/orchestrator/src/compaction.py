@@ -87,8 +87,10 @@ async def compact_run_messages(
         "text": tr(text_en, text_zh),
         "time": now_str,
         "status": "COMPLETED",
+        "badgeText": tr("COMPACTION DIGEST", "上下文压缩摘要"),
         "badge_text": tr("COMPACTION DIGEST", "上下文压缩摘要"),
     }
+
 
     # Step 5: Merge into compacted message list
     compacted_messages = [first_message, digest_msg] + last_messages

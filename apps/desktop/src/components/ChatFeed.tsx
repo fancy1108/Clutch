@@ -51,8 +51,9 @@ function isPlainLlmSession(
 }
 
 function isPlainLlmReply(agent: string): boolean {
-  return agent !== 'User' && !WORKFLOW_AGENTS.has(agent);
+  return agent !== 'User' && agent !== 'System' && !WORKFLOW_AGENTS.has(agent);
 }
+
 
 /** Map agent-configured engine label to runtime label from the sidecar. */
 export function configuredEngineToRuntimeLabel(agentTypeOrLegacy: string): string {
@@ -566,8 +567,11 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                         ? 'verified_user'
                         : msg.agent === 'User'
                           ? 'person'
-                          : 'smart_toy'}
+                          : msg.agent === 'System'
+                            ? 'info'
+                            : 'smart_toy'}
                     </span>
+
                   )}
                 </div>
 
@@ -600,12 +604,18 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                         ? 'bg-primary/10 text-on-surface rounded-tr-none text-left' 
                         : 'bg-surface-container-low rounded-tl-none'
                     }`}>
-                      {isCompletedMsg && (
+                      {msg.badgeText ? (
+                        <div className="flex items-center gap-1.5 mb-2 text-primary font-bold text-[11px]">
+                          <span className="material-symbols-outlined text-[16px]">info</span>
+                          <span>{msg.badgeText}</span>
+                        </div>
+                      ) : isCompletedMsg ? (
                         <div className="flex items-center gap-1.5 mb-2 text-green-600 font-bold text-[11px]">
                           <span className="material-symbols-outlined text-[16px]">check_circle</span>
                           <span>COMPLETED</span>
                         </div>
-                      )}
+                      ) : null}
+
                       {parsed.images.length > 0 && (
                         <div className="flex flex-col gap-2 mb-3">
                           {parsed.images.map((image, index) => (
