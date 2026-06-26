@@ -61,11 +61,6 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-.material-symbols-outlined {
-  font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
-  vertical-align: middle;
-}
-
 /* Custom Scrollbars */
 .sidebar-scroll::-webkit-scrollbar {
   width: 4px;
@@ -132,23 +127,54 @@ body {
   animation: progress-loading 1.8s infinite ease-in-out;
 }
 
-@keyframes typing-bounce {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-4px);
-  }
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-.animate-typing-bounce {
-  animation: typing-bounce 1s infinite ease-in-out;
+@keyframes scale-up {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
 }
+
+@keyframes typing-pulse {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.25s ease-out both;
+}
+
+.animate-scale-up {
+  animation: scale-up 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-typing-pulse {
+  animation: typing-pulse 1.2s ease-out infinite;
+}
+
 .animation-delay-100 {
   animation-delay: 100ms;
 }
+
 .animation-delay-200 {
   animation-delay: 200ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in,
+  .animate-scale-up,
+  .animate-typing-pulse,
+  .animate-subtle-pulse,
+  .animate-shimmer,
+  .animate-progress-loading {
+    animation: none !important;
+  }
+
+  .animate-spin {
+    animation-duration: 1.5s;
+  }
 }
 
 

@@ -5,6 +5,9 @@ import {
   fetchToolsStatus,
   type AiToolStatus,
 } from '../services/toolsApi';
+import { BTN_GHOST, BTN_PRIMARY } from './ui/buttonStyles';
+import { LegacyIcon } from './ui/LegacyIcon';
+import { ALERT_WARNING } from './ui/surfaceStyles';
 
 interface AiToolsManagerProps {
   isModalStyle?: boolean;
@@ -76,7 +79,7 @@ export default function AiToolsManager({ isModalStyle }: AiToolsManagerProps) {
           type="button"
           onClick={() => void refresh()}
           disabled={loading}
-          className="text-[10px] font-bold text-neutral-500 hover:text-neutral-800 disabled:opacity-50"
+          className={`${BTN_GHOST} text-[10px] font-bold disabled:opacity-50`}
         >
           Rescan
         </button>
@@ -84,9 +87,7 @@ export default function AiToolsManager({ isModalStyle }: AiToolsManagerProps) {
 
       <div className="p-8 space-y-8 max-w-4xl mx-auto w-full">
         {error && (
-          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
-            {error}
-          </p>
+          <p className={ALERT_WARNING}>{error}</p>
         )}
 
         {loading ? (
@@ -114,7 +115,7 @@ export default function AiToolsManager({ isModalStyle }: AiToolsManagerProps) {
                   {connectedTools.map((tool) => (
                     <div key={tool.id} className="p-4 border border-neutral-200/60 rounded-xl bg-white shadow-xs flex items-start gap-4">
                       <div className="w-10 h-10 rounded-lg bg-neutral-100 flex items-center justify-center flex-shrink-0">
-                        <span className="material-symbols-outlined text-neutral-600">{tool.icon}</span>
+                        <LegacyIcon name={tool.icon} className="text-neutral-600" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <h4 className="text-xs font-bold text-neutral-800">{tool.name}</h4>
@@ -156,7 +157,7 @@ export default function AiToolsManager({ isModalStyle }: AiToolsManagerProps) {
                   {availableTools.map((tool) => (
                     <div key={tool.id} className="p-4 border border-dashed border-neutral-200 rounded-xl bg-neutral-50/50 flex items-start gap-4">
                       <div className="w-10 h-10 rounded-lg bg-neutral-100 flex items-center justify-center flex-shrink-0 opacity-60">
-                        <span className="material-symbols-outlined text-neutral-500">{tool.icon}</span>
+                        <LegacyIcon name={tool.icon} className="text-neutral-500" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <h4 className="text-xs font-bold text-neutral-600">{tool.name}</h4>
@@ -174,7 +175,7 @@ export default function AiToolsManager({ isModalStyle }: AiToolsManagerProps) {
                             type="button"
                             onClick={() => void handleConnect(tool.id)}
                             disabled={pendingId === tool.id}
-                            className="px-3 py-1.5 bg-neutral-800 hover:bg-neutral-900 text-white text-[10px] font-bold rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                            className={`${BTN_PRIMARY} text-[10px] disabled:opacity-50`}
                           >
                             {pendingId === tool.id ? 'Connecting…' : 'Connect Tool'}
                           </button>

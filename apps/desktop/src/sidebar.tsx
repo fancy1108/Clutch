@@ -3,6 +3,8 @@ import { RepositoryFolder, MainView } from './types';
 import { useLanguage } from './components/LanguageContext';
 import type { SessionRecord } from './services/runApi';
 import type { RepositoryGroup, WorkspaceInfo } from './services/workspaceApi';
+import { LegacyIcon } from './components/ui/LegacyIcon';
+import { BTN_ICON_SM } from './components/ui/buttonStyles';
 
 interface SidebarProps {
   currentView: MainView;
@@ -295,9 +297,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
             className="flex items-center gap-2 flex-1 min-w-0 text-left cursor-grab active:cursor-grabbing"
             title={repo.workspace_path}
           >
-            <span className="material-symbols-outlined text-[18px] text-on-surface-variant">
-              {collapsed ? 'folder' : 'folder_open'}
-            </span>
+            <LegacyIcon
+              name={collapsed ? 'folder' : 'folder_open'}
+              className="text-[18px] text-on-surface-variant"
+            />
             <span className="text-xs font-semibold truncate">{repo.name}</span>
           </div>
           <button
@@ -306,10 +309,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
               e.stopPropagation();
               onNewChatInWorkspace?.(repo.id);
             }}
-            className="material-symbols-outlined text-[16px] opacity-60 group-hover:opacity-100 hover:text-primary p-0.5 rounded"
+            className={BTN_ICON_SM}
             title={t('New Chat')}
+            aria-label={t('New Chat')}
           >
-            add
+            <LegacyIcon name="add" className="text-[16px]" />
           </button>
         </div>
 
@@ -364,9 +368,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
         }`}
         title={isOpenState ? t('Collapse Sidebar') : t('Expand Sidebar')}
       >
-        <span className="material-symbols-outlined text-[13px] font-bold">
-          {isOpenState ? 'chevron_left' : 'chevron_right'}
-        </span>
+        <LegacyIcon
+          name={isOpenState ? 'chevron_left' : 'chevron_right'}
+          className="text-[13px] font-bold"
+        />
       </button>
 
       <div className={`flex-1 flex flex-col gap-4 overflow-hidden h-full ${!isOpenState ? 'hidden' : ''}`}>
@@ -380,9 +385,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 : 'text-on-surface-variant hover:bg-surface-bright hover:text-on-surface'
             }`}
           >
-            <span className="material-symbols-outlined text-[17px] text-on-surface-variant group-hover:text-primary">
-              chat
-            </span>
+            <LegacyIcon name="chat" className="text-[17px] text-on-surface-variant group-hover:text-primary" />
             <span className="text-xs font-semibold tracking-wide">{t("New Chat")}</span>
           </button>
 
@@ -395,9 +398,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 : 'text-on-surface-variant hover:bg-surface-bright hover:text-on-surface'
             }`}
           >
-            <span className="material-symbols-outlined text-[17px] text-on-surface-variant group-hover:text-primary">
-              smart_toy
-            </span>
+            <LegacyIcon name="smart_toy" className="text-[17px] text-on-surface-variant group-hover:text-primary" />
             <span className="text-xs font-semibold tracking-wide">{t("AI Agents")}</span>
           </button>
 
@@ -410,9 +411,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 : 'text-on-surface-variant hover:bg-surface-bright hover:text-on-surface'
             }`}
           >
-            <span className="material-symbols-outlined text-[17px] text-on-surface-variant group-hover:text-primary">
-              account_tree
-            </span>
+            <LegacyIcon name="account_tree" className="text-[17px] text-on-surface-variant group-hover:text-primary" />
             <span className="text-xs font-semibold tracking-wide">{t("Workflows SOP")}</span>
           </button>
         </div>
@@ -422,22 +421,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {t('Projects')}
           </span>
           <div className="flex gap-2">
-            <span
+            <button
+              type="button"
               data-testid="nav-new-repo-group"
-              className="material-symbols-outlined text-[16px] cursor-pointer hover:text-primary"
+              className={BTN_ICON_SM}
               title={t('New project group')}
+              aria-label={t('New project group')}
               onClick={() => onCreateRepositoryGroup?.()}
             >
-              folder_special
-            </span>
-            <span
+              <LegacyIcon name="folder_special" className="text-[16px]" />
+            </button>
+            <button
+              type="button"
               data-testid="nav-add-workspace"
-              className="material-symbols-outlined text-[16px] cursor-pointer hover:text-primary"
+              className={BTN_ICON_SM}
               title={t('Add project folder')}
+              aria-label={t('Add project folder')}
               onClick={() => onAddWorkspace?.()}
             >
-              create_new_folder
-            </span>
+              <LegacyIcon name="create_new_folder" className="text-[16px]" />
+            </button>
           </div>
         </div>
 
@@ -480,9 +483,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   onContextMenu={(e) => handleContextMenu(e, 'group', group.id)}
                   className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left hover:bg-surface-bright transition-colors"
                 >
-                  <span className="material-symbols-outlined text-[16px] text-on-surface-variant">
-                    folder_special
-                  </span>
+                  <LegacyIcon name="folder_special" className="text-[16px] text-on-surface-variant" />
                   <span className="text-[11px] font-bold uppercase tracking-wide text-on-surface-variant/80 truncate">
                     {group.name}
                   </span>
@@ -518,9 +519,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   onClick={() => setDefaultGroupCollapsed(!defaultGroupCollapsed)}
                   className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left hover:bg-surface-bright transition-colors"
                 >
-                  <span className="material-symbols-outlined text-[16px] text-on-surface-variant">
-                    folder_special
-                  </span>
+                  <LegacyIcon name="folder_special" className="text-[16px] text-on-surface-variant" />
                   <span className="text-[11px] font-bold uppercase tracking-wide text-on-surface-variant/80 truncate">
                     {t('Default Group')}
                   </span>
@@ -558,9 +557,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               currentView === 'settings' ? 'bg-surface-bright shadow-sm text-on-surface font-semibold border border-outline-variant/60' : 'text-on-surface-variant hover:bg-surface-bright'
             }`}
           >
-            <span className="material-symbols-outlined text-[20px] text-on-surface-variant group-hover:text-primary">
-              settings
-            </span>
+            <LegacyIcon name="settings" className="text-[20px] text-on-surface-variant group-hover:text-primary" />
             <span className="text-xs font-semibold tracking-wide">{t("Settings")}</span>
           </button>
         </div>
@@ -582,7 +579,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   onRenameRepositoryGroup?.(targetId);
                 }}
               >
-                <span className="material-symbols-outlined text-[16px]">edit</span>
+                <LegacyIcon name="edit" className="text-[16px]" />
                 {t('Rename')}
               </button>
               <button
@@ -594,7 +591,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   onDeleteRepositoryGroup?.(targetId);
                 }}
               >
-                <span className="material-symbols-outlined text-[16px]">delete</span>
+                <LegacyIcon name="delete" className="text-[16px]" />
                 {t('Delete Group')}
               </button>
             </>
@@ -608,10 +605,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   className="w-full text-left px-3 py-2 text-xs text-on-surface hover:bg-surface-container transition-colors flex items-center justify-between gap-2 cursor-pointer"
                 >
                   <span className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-[16px]">folder_shared</span>
+                    <LegacyIcon name="folder_shared" className="text-[16px]" />
                     {t('Move to Group')}
                   </span>
-                  <span className="material-symbols-outlined text-[14px]">chevron_right</span>
+                  <LegacyIcon name="chevron_right" className="text-[14px]" />
                 </button>
                 <div className="hidden group-hover/submenu:block absolute left-[calc(100%-4px)] top-0 bg-surface-bright border border-outline-variant rounded-lg shadow-lg py-1 min-w-[140px] max-h-[200px] overflow-y-auto z-[101]">
                   <button
@@ -622,7 +619,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     }}
                     className="w-full text-left px-3 py-1.5 text-xs text-on-surface hover:bg-surface-container transition-colors truncate flex items-center gap-1.5"
                   >
-                    <span className="material-symbols-outlined text-[14px] text-on-surface-variant">folder_special</span>
+                    <LegacyIcon name="folder_special" className="text-[14px] text-on-surface-variant" />
                     {t('Default Group')}
                   </button>
                   {repositoryGroups.map((g) => (
@@ -635,7 +632,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       }}
                       className="w-full text-left px-3 py-1.5 text-xs text-on-surface hover:bg-surface-container transition-colors truncate flex items-center gap-1.5"
                     >
-                      <span className="material-symbols-outlined text-[14px] text-on-surface-variant">folder_special</span>
+                      <LegacyIcon name="folder_special" className="text-[14px] text-on-surface-variant" />
                       {g.name}
                     </button>
                   ))}
@@ -651,7 +648,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   onDeleteWorkspace?.(targetId);
                 }}
               >
-                <span className="material-symbols-outlined text-[16px]">delete</span>
+                <LegacyIcon name="delete" className="text-[16px]" />
                 {t('Delete')}
               </button>
             </>
@@ -667,7 +664,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 onDeleteSession?.(targetId);
               }}
             >
-              <span className="material-symbols-outlined text-[16px]">delete</span>
+              <LegacyIcon name="delete" className="text-[16px]" />
               {t('Delete')}
             </button>
           )}

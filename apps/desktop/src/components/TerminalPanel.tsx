@@ -1,4 +1,6 @@
 import React from 'react';
+import { BTN_ICON_SM } from './ui/buttonStyles';
+import { LegacyIcon } from './ui/LegacyIcon';
 
 interface TerminalPanelProps {
   terminalLogs: string[];
@@ -18,12 +20,14 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({ terminalLogs, isAc
             <>SIDECAR IDLE</>
           )}
         </span>
-        <span 
-          className="material-symbols-outlined text-[13px] cursor-pointer hover:text-white transition-colors" 
+        <button
+          type="button"
+          className={`${BTN_ICON_SM} text-neutral-400 hover:text-white`}
           onClick={() => console.warn("Terminal clears and restarts outputs logs.")}
+          aria-label="Restart terminal output"
         >
-          restart_alt
-        </span>
+          <LegacyIcon name="restart_alt" className="text-[13px]" />
+        </button>
       </div>
       {terminalLogs.map((log, i) => {
         const cls = log.includes('error') || log.includes('reject') || log.includes('failed') ? 'text-rose-500 font-bold' 

@@ -3,7 +3,9 @@ import React, { useState, useEffect } from 'react';
 import { Deliverable, Agent } from '../types';
 import { fetchAgents, saveAgents, generateAgentPrompt } from '../services/agentApi';
 import { fetchSkillsRegistry, type ScannedSkill } from '../services/skillsApi';
-import { BTN_GHOST, BTN_PRIMARY, BTN_SECONDARY } from './ui/buttonStyles';
+import { BTN_GHOST, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON } from './ui/buttonStyles';
+import { BADGE_SUCCESS } from './ui/surfaceStyles';
+import { LegacyIcon } from './ui/LegacyIcon';
 import { fetchMcpStatus, type McpServer } from '../services/mcpApi';
 import { getAgentDisplayName, isBuiltinAgent, mergeAgentsWithBuiltin, BUILTIN_AGENT_ID } from '../services/builtinAgent';
 import { AGENT_TYPE_OPTIONS, agentTypeFromAgent, agentTypeLabel, type AgentTypeId } from '../services/agentTypes';
@@ -486,7 +488,7 @@ export function AgentManager({
                 className="flex items-center justify-center p-1.5 hover:bg-neutral-100 rounded-lg text-neutral-500 hover:text-neutral-900 transition-colors"
                 title="Back to List"
               >
-                <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+                <LegacyIcon name="arrow_back" className="text-[18px]" />
               </button>
               <div className="h-4 w-[1px] bg-neutral-200" />
               <div className="flex items-center gap-1.5 text-[11px] font-semibold text-neutral-400 font-mono uppercase tracking-wider">
@@ -501,7 +503,7 @@ export function AgentManager({
                 onClick={(e) => handleOpenEdit(selectedAgent, e)}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg text-[11.5px] font-semibold transition-colors border border-neutral-200 bg-white"
               >
-                <span className="material-symbols-outlined text-[15px]">edit</span>
+                <LegacyIcon name="edit" className="text-[15px]" />
                 Edit Settings
               </button>
               {!isBuiltinAgent(selectedAgent) ? (
@@ -509,7 +511,7 @@ export function AgentManager({
                 onClick={(e) => handleDelete(selectedAgent.id, e)}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg text-[11.5px] font-semibold transition-colors border border-red-100 bg-white"
               >
-                <span className="material-symbols-outlined text-[15px]">delete</span>
+                <LegacyIcon name="delete" className="text-[15px]" />
                 Delete
               </button>
               ) : null}
@@ -551,7 +553,7 @@ export function AgentManager({
                   <div className="border-t border-neutral-200/50 pt-2.5">
                     <p className="text-[10px] text-neutral-400 font-medium">AGENT TYPE</p>
                     <div className="flex items-center gap-1.5 mt-1 bg-neutral-100 border border-neutral-200 rounded-lg p-1.5">
-                      <span className="material-symbols-outlined text-[13px] text-neutral-700">bolt</span>
+                      <LegacyIcon name="bolt" className="text-[13px] text-neutral-700" />
                       <span className="text-[10.5px] font-mono font-bold text-neutral-900">
                         {agentTypeLabel(agentTypeFromAgent(selectedAgent))}
                       </span>
@@ -561,7 +563,7 @@ export function AgentManager({
                     <div className="border-t border-neutral-200/50 pt-2.5">
                       <p className="text-[10px] text-neutral-400 font-medium">MODEL</p>
                       <div className="flex items-center gap-1.5 mt-1 bg-neutral-100 border border-neutral-200 rounded-lg p-1.5">
-                        <span className="material-symbols-outlined text-[13px] text-neutral-700">layers</span>
+                        <LegacyIcon name="layers" className="text-[13px] text-neutral-700" />
                         <span className="text-[10.5px] font-mono font-bold text-neutral-900">
                           {clutchModels.find((m) => m.id === selectedAgent.modelId)?.name || selectedAgent.modelId}
                         </span>
@@ -572,7 +574,7 @@ export function AgentManager({
                     <div className="border-t border-neutral-200/50 pt-2.5">
                       <p className="text-[10px] text-neutral-400 font-medium">OLLAMA MODEL</p>
                       <div className="flex items-center gap-1.5 mt-1 bg-neutral-100 border border-neutral-200 rounded-lg p-1.5">
-                        <span className="material-symbols-outlined text-[13px] text-neutral-700">memory</span>
+                        <LegacyIcon name="memory" className="text-[13px] text-neutral-700" />
                         <span className="text-[10.5px] font-mono font-bold text-neutral-900">
                           {selectedAgent.ollamaModel || 'Auto-select best local model'}
                         </span>
@@ -619,7 +621,7 @@ export function AgentManager({
                       return (
                         <div key={serverId} className="px-2.5 py-1.5 border rounded-lg flex items-center justify-between font-mono text-[10px] font-bold bg-neutral-50 text-neutral-800 border-neutral-200/60">
                           <span className="flex items-center gap-1.5">
-                            <span className="material-symbols-outlined text-[13px]">hub</span>
+                            <LegacyIcon name="hub" className="text-[13px]" />
                             {label}
                           </span>
                           <span className="text-[7.5px] tracking-wider uppercase opacity-85">BOUND</span>
@@ -643,16 +645,15 @@ export function AgentManager({
                         className="w-full flex items-center justify-between p-3 border border-neutral-200 hover:border-neutral-300 bg-neutral-50/30 hover:bg-neutral-50 rounded-xl text-left transition-all duration-150 group"
                       >
                         <div className="flex items-center gap-2.5 overflow-hidden">
-                          <span className="material-symbols-outlined text-[17px] text-neutral-400 group-hover:text-neutral-600 font-mono">
-                            {item.name.endsWith('.json') ? 'schema' : 'insert_drive_file'}
-                          </span>
+                          <LegacyIcon
+                            name={item.name.endsWith('.json') ? 'schema' : 'insert_drive_file'}
+                            className="text-[17px] text-neutral-400 group-hover:text-neutral-600 font-mono"
+                          />
                           <span className="text-[11.5px] font-mono text-neutral-800 font-bold truncate group-hover:text-black">
                             {item.name}
                           </span>
                         </div>
-                        <span className="material-symbols-outlined text-[15px] text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity">
-                          visibility
-                        </span>
+                        <LegacyIcon name="visibility" className="text-[15px] text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                       </button>
                     ))
                   ) : (
@@ -670,7 +671,7 @@ export function AgentManager({
           <div className={`flex items-center justify-between border-b border-neutral-100 pb-5 ${isModalStyle ? 'mr-12' : ''}`}>
             <div>
               <h2 className="text-base font-bold text-neutral-800 tracking-tight flex items-center gap-2">
-                <span className="material-symbols-outlined text-neutral-500 text-[20px]">smart_toy</span>
+                <LegacyIcon name="smart_toy" className="text-neutral-500 text-[20px]" />
                 AI Agent Controller
               </h2>
               <p className="text-[11.5px] text-neutral-400 mt-1">
@@ -682,7 +683,7 @@ export function AgentManager({
               onClick={handleOpenCreate}
               className={`${BTN_SECONDARY} gap-1.5`}
             >
-              <span className="material-symbols-outlined text-[16px]">add</span>
+              <LegacyIcon name="add" className="text-[16px]" />
               Create Agent
             </button>
           </div>
@@ -713,7 +714,7 @@ export function AgentManager({
                           {getAgentDisplayName(agent)}
                         </h3>
                         {isBuiltinAgent(agent) ? (
-                          <span className="text-[8px] font-mono uppercase text-teal-700 bg-teal-50 px-1 rounded mt-1 inline-block">
+                          <span className={`${BADGE_SUCCESS} text-[8px] font-mono mt-1 inline-block`}>
                             {t('builtin')}
                           </span>
                         ) : null}
@@ -732,12 +733,12 @@ export function AgentManager({
                 <div className="mt-4 pt-3.5 border-t border-neutral-100 flex items-center justify-between">
                   <div className="flex flex-wrap items-center gap-3">
                     <span className="text-[9.5px] font-mono text-neutral-400 flex items-center gap-1">
-                      <span className="material-symbols-outlined text-[13px]">insert_drive_file</span>
+                      <LegacyIcon name="insert_drive_file" className="text-[13px]" />
                       {agent.deliverables ? agent.deliverables.length : 0} Deliverables
                     </span>
                     {agent.skills && agent.skills.length > 0 && (
                       <span className="text-[9.5px] font-mono text-neutral-400 flex items-center gap-1">
-                        <span className="material-symbols-outlined text-[13px]">school</span>
+                        <LegacyIcon name="school" className="text-[13px]" />
                         {agent.skills.length} Skills
                       </span>
                     )}
@@ -765,7 +766,7 @@ export function AgentManager({
                           }[toolKey] || toolKey;
                           return (
                             <span key={toolKey} className="w-4.5 h-4.5 rounded-full border border-neutral-200/60 bg-neutral-50 flex items-center justify-center text-neutral-500 font-mono shadow-3xs" title={title}>
-                              <span className="material-symbols-outlined text-[10px]">{icon}</span>
+                              <LegacyIcon name={icon} className="text-[10px]" />
                             </span>
                           );
                         })}
@@ -779,25 +780,28 @@ export function AgentManager({
                         e.stopPropagation();
                         setSelectedAgent(agent);
                       }}
-                      className="p-1 hover:bg-neutral-100 text-neutral-500 hover:text-neutral-800 rounded-md transition-colors"
+                      className={BTN_ICON}
                       title="View details"
+                      aria-label="View details"
                     >
-                      <span className="material-symbols-outlined text-[16px]">visibility</span>
+                      <LegacyIcon name="visibility" className="text-[16px]" />
                     </button>
                     <button
                       onClick={(e) => handleOpenEdit(agent, e)}
-                      className="p-1 hover:bg-neutral-100 text-neutral-500 hover:text-neutral-800 rounded-md transition-colors"
+                      className={BTN_ICON}
                       title="Edit settings"
+                      aria-label="Edit settings"
                     >
-                      <span className="material-symbols-outlined text-[16px]">edit</span>
+                      <LegacyIcon name="edit" className="text-[16px]" />
                     </button>
                     {!isBuiltinAgent(agent) ? (
                     <button
                       onClick={(e) => handleDelete(agent.id, e)}
-                      className="p-1 hover:bg-red-50 text-red-500 hover:text-red-700 rounded-md transition-colors"
+                      className={`${BTN_ICON} hover:bg-red-50 text-red-500 hover:text-red-700`}
                       title="Delete agent"
+                      aria-label="Delete agent"
                     >
-                      <span className="material-symbols-outlined text-[16px]">delete</span>
+                      <LegacyIcon name="delete" className="text-[16px]" />
                     </button>
                     ) : null}
                   </div>
@@ -816,14 +820,16 @@ export function AgentManager({
             {/* Modal Header */}
             <div className="h-14 border-b border-neutral-100 px-5 flex items-center justify-between flex-shrink-0 bg-neutral-50/50">
               <h3 className="text-[12.5px] font-extrabold text-neutral-900 font-mono tracking-tight uppercase flex items-center gap-2">
-                <span className="material-symbols-outlined text-[18px]">smart_toy</span>
+                <LegacyIcon name="smart_toy" className="text-[18px]" />
                 {modalMode === 'create' ? 'Create New AI Agent' : 'Edit Agent Settings'}
               </h3>
               <button
+                type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="p-1.5 hover:bg-neutral-200/70 text-neutral-400 hover:text-neutral-700 rounded-lg transition-colors"
+                className={BTN_ICON}
+                aria-label="Close"
               >
-                <span className="material-symbols-outlined text-[18px]">close</span>
+                <LegacyIcon name="close" className="text-[18px]" />
               </button>
             </div>
 
@@ -854,7 +860,7 @@ export function AgentManager({
                     {modalMode === 'edit' && editingId === BUILTIN_AGENT_ID ? (
                       <div>
                         <div className="flex items-center gap-1.5 px-3 py-1.5 border border-neutral-200 bg-neutral-100 rounded-lg">
-                          <span className="material-symbols-outlined text-[14px] text-neutral-700">bolt</span>
+                          <LegacyIcon name="bolt" className="text-[14px] text-neutral-700" />
                           <span className="text-xs font-mono font-bold text-neutral-900">Clutch</span>
                         </div>
                         <p className="text-[9.5px] text-neutral-400 mt-1.5 leading-relaxed">
@@ -993,7 +999,7 @@ export function AgentManager({
                       onClick={() => setIsSkillsAttachOpen(!isSkillsAttachOpen)}
                       className="px-2.5 py-1 bg-white hover:bg-neutral-50 text-neutral-750 hover:text-black border border-neutral-200 rounded-lg text-[10.5px] font-bold flex items-center gap-1 transition-all shadow-3xs cursor-pointer select-none"
                     >
-                      <span className="material-symbols-outlined text-[13px]">bookmark_add</span>
+                      <LegacyIcon name="bookmark_add" className="text-[13px]" />
                       Attach Skills
                     </button>
                   </div>
@@ -1060,14 +1066,15 @@ export function AgentManager({
                               >
                                 <div className="flex flex-col">
                                   <div className="flex items-center gap-1.5 font-bold">
-                                    <span className="material-symbols-outlined text-[12px] text-neutral-500">label</span>
+                                    <LegacyIcon name="label" className="text-[12px] text-neutral-500" />
                                     <span>{skill.label}</span>
                                   </div>
                                   <span className="text-[9.5px] text-neutral-400 font-sans ml-4">{skill.desc}</span>
                                 </div>
-                                <span className="material-symbols-outlined text-[15px] text-neutral-600 flex-shrink-0">
-                                  {isAttached ? 'check_box' : 'check_box_outline_blank'}
-                                </span>
+                                <LegacyIcon
+                                  name={isAttached ? 'check_box' : 'check_box_outline_blank'}
+                                  className="text-[15px] text-neutral-600 flex-shrink-0"
+                                />
                               </button>
                             );
                           });
@@ -1142,11 +1149,12 @@ export function AgentManager({
                               }`}
                             >
                               <div className="flex items-start gap-2.5 min-w-0">
-                                <span className={`material-symbols-outlined text-[16px] p-1 rounded-md mt-0.5 ${
-                                  isSelected ? 'bg-neutral-800 text-white' : 'bg-neutral-100 text-neutral-500'
-                                }`}>
-                                  hub
-                                </span>
+                                <LegacyIcon
+                                  name="hub"
+                                  className={`text-[16px] p-1 rounded-md mt-0.5 ${
+                                    isSelected ? 'bg-neutral-800 text-white' : 'bg-neutral-100 text-neutral-500'
+                                  }`}
+                                />
                                 <div className="min-w-0">
                                   <div className="text-[10.5px] font-bold font-sans truncate">{server.name}</div>
                                   <div className={`text-[9.5px]/1.3 mt-0.5 truncate ${
@@ -1218,15 +1226,16 @@ export function AgentManager({
                     {deliverablesInput.map((deliv, index) => (
                       <div key={index} className="flex items-center justify-between p-2 border border-neutral-200/70 bg-white hover:bg-neutral-50/30 rounded-lg">
                         <div className="flex items-center gap-2 overflow-hidden">
-                          <span className="material-symbols-outlined text-[16px] text-neutral-400 font-mono">insert_drive_file</span>
+                          <LegacyIcon name="insert_drive_file" className="text-[16px] text-neutral-400 font-mono" />
                           <span className="text-[11px] font-mono text-neutral-700 font-semibold truncate">{deliv.name}</span>
                         </div>
                         <button
                           type="button"
                           onClick={() => handleRemoveDeliverable(index)}
-                          className="p-1 hover:bg-red-50 text-red-500 hover:text-red-700 rounded-md transition-colors animate-pulse"
+                          className={`${BTN_ICON} hover:bg-red-50 text-red-500 hover:text-red-700 animate-pulse`}
+                          aria-label="Remove deliverable"
                         >
-                          <span className="material-symbols-outlined text-[15px]">close</span>
+                          <LegacyIcon name="close" className="text-[15px]" />
                         </button>
                       </div>
                     ))}
@@ -1262,16 +1271,19 @@ export function AgentManager({
             {/* Modal Header */}
             <div className="h-14 border-b border-neutral-100 px-5 flex items-center justify-between flex-shrink-0 bg-neutral-50/50">
               <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[17px] text-neutral-500 font-mono">
-                  {isPreviewDeliverable.name.endsWith('.json') ? 'schema' : 'insert_drive_file'}
-                </span>
+                <LegacyIcon
+                  name={isPreviewDeliverable.name.endsWith('.json') ? 'schema' : 'insert_drive_file'}
+                  className="text-[17px] text-neutral-500 font-mono"
+                />
                 <span className="text-[11.5px] font-mono text-neutral-900 font-bold">{isPreviewDeliverable.name}</span>
               </div>
               <button
+                type="button"
                 onClick={() => setIsPreviewDeliverable(null)}
-                className="p-1.5 hover:bg-neutral-200/70 text-neutral-400 hover:text-neutral-700 rounded-lg transition-colors"
+                className={BTN_ICON}
+                aria-label="Close"
               >
-                <span className="material-symbols-outlined text-[18px]">close</span>
+                <LegacyIcon name="close" className="text-[18px]" />
               </button>
             </div>
 

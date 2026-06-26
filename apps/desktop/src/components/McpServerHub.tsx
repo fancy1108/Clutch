@@ -8,6 +8,9 @@ import {
   importClaudeMcp,
   type McpServer,
 } from '../services/mcpApi';
+import { BTN_GHOST, BTN_PRIMARY } from './ui/buttonStyles';
+import { LegacyIcon } from './ui/LegacyIcon';
+import { ALERT_SUCCESS, ALERT_WARNING } from './ui/surfaceStyles';
 
 export type { McpServer };
 
@@ -140,7 +143,7 @@ export const McpServerHub: React.FC = () => {
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-[20px] text-teal-600">terminal</span>
+            <LegacyIcon name="terminal" className="text-[20px] text-emerald-600" />
             <h2 className="text-base font-bold text-neutral-900 tracking-tight font-sans">MCP Server Hub</h2>
           </div>
           <p className="text-xs text-neutral-500 font-sans leading-relaxed">
@@ -150,9 +153,9 @@ export const McpServerHub: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="p-4 bg-teal-50/20 border border-teal-100/70 rounded-2xl text-left">
-            <span className="text-[10px] font-bold text-teal-700 tracking-wider uppercase font-mono">CONNECTED</span>
-            <div className="mt-2 text-2xl font-bold font-sans text-teal-950">
+          <div className="p-4 bg-emerald-50/20 border border-emerald-100/70 rounded-2xl text-left">
+            <span className="text-[10px] font-bold text-emerald-700 tracking-wider uppercase font-mono">CONNECTED</span>
+            <div className="mt-2 text-2xl font-bold font-sans text-neutral-900">
               {connectedCount} <span className="text-xs font-normal text-neutral-400">/ {servers.length}</span>
             </div>
           </div>
@@ -163,10 +166,10 @@ export const McpServerHub: React.FC = () => {
         </div>
 
         {error && (
-          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">{error}</p>
+          <p className={ALERT_WARNING}>{error}</p>
         )}
         {successMsg && (
-          <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">{successMsg}</p>
+          <p className={ALERT_SUCCESS}>{successMsg}</p>
         )}
 
         {isJsonEditMode ? (
@@ -176,7 +179,7 @@ export const McpServerHub: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsJsonEditMode(false)}
-                className="text-[10px] text-neutral-500 hover:text-neutral-800 font-bold"
+                className={`${BTN_GHOST} text-[10px] font-bold`}
               >
                 Cancel
               </button>
@@ -192,7 +195,7 @@ export const McpServerHub: React.FC = () => {
             <div className="flex gap-2">
               <button
                 type="submit"
-                className="px-3.5 py-1.5 bg-neutral-900 hover:bg-black text-white text-[11px] font-bold rounded-lg"
+                className={BTN_PRIMARY}
               >
                 Save JSON Config
               </button>
@@ -206,7 +209,7 @@ export const McpServerHub: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => void handleImportClaude()}
-                  className="text-[10px] text-teal-700 hover:text-teal-900 font-bold cursor-pointer"
+                  className={`${BTN_GHOST} text-[10px] font-bold text-emerald-700 hover:text-emerald-900 border-transparent hover:bg-emerald-50`}
                 >
                   Import from Claude
                 </button>
@@ -223,7 +226,7 @@ export const McpServerHub: React.FC = () => {
                     })), null, 2));
                     setIsJsonEditMode(true);
                   }}
-                  className="text-[10px] text-neutral-500 hover:text-neutral-800 font-bold cursor-pointer"
+                  className={`${BTN_GHOST} text-[10px] font-bold`}
                 >
                   Edit raw JSON
                 </button>
@@ -257,7 +260,7 @@ export const McpServerHub: React.FC = () => {
             </div>
             <button
               type="submit"
-              className="px-3.5 py-1.5 bg-neutral-900 hover:bg-black text-white text-[11px] font-bold rounded-lg"
+              className={BTN_PRIMARY}
             >
               + Register Node
             </button>
@@ -280,19 +283,19 @@ export const McpServerHub: React.FC = () => {
                       {server.transport}
                     </span>
                     {server.builtin && (
-                      <span className="text-[8px] font-mono uppercase text-teal-700 bg-teal-50 px-1 rounded">builtin</span>
+                      <span className="text-[8px] font-mono uppercase text-emerald-700 bg-emerald-50 px-1 rounded">builtin</span>
                     )}
                   </div>
                   <p className="text-[10.5px] font-mono text-neutral-500 bg-neutral-50 px-2 py-1 rounded border border-neutral-100/55 break-all leading-normal">
                     {server.endpoint}
                   </p>
                   {server.tools && server.tools.length > 0 && (
-                    <div className="mt-2 pl-3 border-l-2 border-teal-500/30 space-y-1 select-text">
+                    <div className="mt-2 pl-3 border-l-2 border-emerald-500/30 space-y-1 select-text">
                       <span className="text-[9px] font-extrabold text-neutral-400 font-mono tracking-wider uppercase block">Exposed Tools:</span>
                       <div className="flex flex-col gap-1 max-h-32 overflow-y-auto pr-1">
                         {server.tools.map((t, idx) => (
                           <div key={idx} className="text-[10px] text-neutral-600 font-mono flex flex-wrap items-center gap-1.5 leading-snug">
-                            <span className="font-extrabold text-teal-800 bg-teal-50 px-1 rounded text-[9px]">{t.name}</span>
+                            <span className="font-extrabold text-emerald-800 bg-emerald-50 px-1 rounded text-[9px]">{t.name}</span>
                             <span className="text-neutral-400 font-sans text-[9px] truncate max-w-[320px]" title={t.description}>{t.description}</span>
                           </div>
                         ))}
@@ -340,7 +343,7 @@ export const McpServerHub: React.FC = () => {
           type="button"
           onClick={() => void refresh()}
           disabled={loading}
-          className="text-[10px] font-bold text-neutral-500 hover:text-neutral-800 disabled:opacity-50"
+          className={`${BTN_GHOST} text-[10px] font-bold disabled:opacity-50`}
         >
           Refresh status
         </button>

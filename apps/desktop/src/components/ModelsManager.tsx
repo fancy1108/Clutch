@@ -15,6 +15,9 @@ import {
   testModelConnection,
   type ProviderEntry,
 } from '../services/modelsApi';
+import { BTN_GHOST, BTN_PRIMARY, BTN_SECONDARY } from './ui/buttonStyles';
+import { BADGE_NEUTRAL, BADGE_PRIMARY, BADGE_SUCCESS, CARD_SUBTLE } from './ui/surfaceStyles';
+import { LegacyIcon } from './ui/LegacyIcon';
 
 interface ModelItem {
   id: string;
@@ -342,7 +345,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
                 closeConnectForm();
                 setShowAddImageForm((v) => !v);
               }}
-              className="px-3 py-1.5 text-[10.5px] font-bold border border-outline rounded-lg whitespace-nowrap"
+              className={`${BTN_SECONDARY} text-[10.5px] whitespace-nowrap`}
             >
               Add image model
             </button>
@@ -352,7 +355,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
                 closeAddImageForm();
                 openConnectForm();
               }}
-              className="px-3 py-1.5 text-[10.5px] font-bold bg-primary text-on-primary rounded-lg whitespace-nowrap"
+              className={`${BTN_PRIMARY} text-[10.5px] whitespace-nowrap`}
             >
               Add API key
             </button>
@@ -362,7 +365,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
         {showAddImageForm && (
           <form
             onSubmit={(e) => void handleAddImageModel(e)}
-            className="p-4 bg-violet-50/40 border border-violet-200 rounded-xl space-y-4 text-left"
+            className={`${CARD_SUBTLE} space-y-4 text-left`}
           >
             <div>
               <h3 className="text-xs font-bold text-on-surface">Add custom image model</h3>
@@ -453,13 +456,13 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
               </div>
             </div>
             <div className="flex justify-end gap-2">
-              <button type="button" onClick={closeAddImageForm} className="px-3 py-1.5 text-[10.5px] font-bold border border-outline rounded-lg">
+              <button type="button" onClick={closeAddImageForm} className={`${BTN_GHOST} text-[10.5px]`}>
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={savingImageModel}
-                className="px-3 py-1.5 text-[10.5px] font-bold bg-primary text-on-primary rounded-lg disabled:opacity-50"
+                className={`${BTN_PRIMARY} text-[10.5px] disabled:opacity-50`}
               >
                 {savingImageModel ? 'Saving…' : 'Save image model'}
               </button>
@@ -514,11 +517,9 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowApiKey(!showApiKey)}
-                    className="absolute right-3 text-on-surface-variant hover:text-on-surface"
+                    className={`${BTN_GHOST} absolute right-3 p-0 border-0 text-on-surface-variant hover:text-on-surface hover:bg-transparent`}
                   >
-                    <span className="material-symbols-outlined text-[18px]">
-                      {showApiKey ? 'visibility' : 'visibility_off'}
-                    </span>
+                    <LegacyIcon name={showApiKey ? 'visibility' : 'visibility_off'} className="text-[18px]" />
                   </button>
                 </div>
               </div>
@@ -530,7 +531,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
                     type="button"
                     disabled={deletingProviderId === providerId}
                     onClick={() => void handleDeleteProvider(providerId)}
-                    className="px-3 py-1.5 text-[10.5px] font-bold border border-rose-200 text-rose-700 rounded-lg hover:bg-rose-50 disabled:opacity-50"
+                    className={`${BTN_GHOST} text-[10.5px] border-rose-200 text-rose-700 hover:bg-rose-50 disabled:opacity-50`}
                   >
                     {deletingProviderId === providerId ? 'Removing…' : 'Remove saved key'}
                   </button>
@@ -540,14 +541,14 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
                 <button
                   type="button"
                   onClick={closeConnectForm}
-                  className="px-3 py-1.5 text-[10.5px] font-bold border border-outline rounded-lg"
+                  className={`${BTN_GHOST} text-[10.5px]`}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={savingKey}
-                  className="px-3 py-1.5 text-[10.5px] font-bold bg-primary text-on-primary rounded-lg disabled:opacity-50"
+                  className={`${BTN_PRIMARY} text-[10.5px] disabled:opacity-50`}
                 >
                   {savingKey ? 'Saving…' : 'Save'}
                 </button>
@@ -568,14 +569,14 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
               <button
                 type="button"
                 onClick={() => setPendingRemove(null)}
-                className="px-3 py-1.5 text-[10.5px] font-bold border border-outline rounded-lg"
+                className={`${BTN_GHOST} text-[10.5px]`}
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={() => void handleRemoveModel()}
-                className="px-3 py-1.5 text-[10.5px] font-bold bg-rose-700 text-white rounded-lg"
+                className={`${BTN_PRIMARY} text-[10.5px] bg-rose-700 border-rose-700 hover:bg-rose-800 hover:border-rose-800`}
               >
                 Remove
               </button>
@@ -627,7 +628,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
               <button
                 type="button"
                 onClick={() => openConnectForm()}
-                className="px-3.5 py-1.5 text-xs font-bold bg-primary text-on-primary rounded-lg"
+                className={`${BTN_PRIMARY} text-xs`}
               >
                 Add API key
               </button>
@@ -653,34 +654,26 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
                         <span className="text-xs font-bold text-on-surface">{model.name}</span>
                         <span className="text-[10px] text-on-surface-variant">{model.provider}</span>
                         {model.modelKind === 'image' && (
-                          <span className="text-[9px] uppercase font-bold text-violet-700 bg-violet-50 px-1.5 py-0.5 rounded">
-                            Image
-                          </span>
+                          <span className={BADGE_PRIMARY}>Image</span>
                         )}
                         {model.isCustom && (
-                          <span className="text-[9px] uppercase font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">
-                            Custom
-                          </span>
+                          <span className={BADGE_NEUTRAL}>Custom</span>
                         )}
                         {!canUse && (
-                          <span className="text-[9px] uppercase font-bold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded">
-                            Needs key
-                          </span>
+                          <span className={BADGE_NEUTRAL}>Needs key</span>
                         )}
                         {isActive && (
-                          <span className="text-[9px] uppercase font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">
-                            In use
-                          </span>
+                          <span className={BADGE_PRIMARY}>In use</span>
                         )}
                         {statusLabel && (
                           <span
-                            className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded ${
+                            className={
                               verify === 'ok'
-                                ? 'text-emerald-800 bg-emerald-50'
+                                ? BADGE_SUCCESS
                                 : verify === 'failed'
-                                  ? 'text-rose-800 bg-rose-50'
-                                  : 'text-on-surface-variant bg-surface-container-high'
-                            }`}
+                                  ? BADGE_NEUTRAL
+                                  : BADGE_NEUTRAL
+                            }
                           >
                             {statusLabel}
                           </span>
@@ -709,7 +702,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
                           type="button"
                           disabled={deletingModelId === model.id}
                           onClick={() => setPendingRemove({ id: model.id, name: model.name })}
-                          className="px-3 py-1.5 text-[10.5px] font-bold border border-rose-200 text-rose-700 rounded-lg hover:bg-rose-50 disabled:opacity-50"
+                          className={`${BTN_GHOST} text-[10.5px] border-rose-200 text-rose-700 hover:bg-rose-50 disabled:opacity-50`}
                         >
                           {deletingModelId === model.id ? 'Removing…' : 'Remove'}
                         </button>
@@ -718,7 +711,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
                         type="button"
                         disabled={!canUse || verify === 'testing'}
                         onClick={() => void handleTestConnection(model.id)}
-                        className="px-3 py-1.5 text-[10.5px] font-bold border border-outline rounded-lg hover:bg-surface-container-high disabled:opacity-50"
+                        className={`${BTN_SECONDARY} text-[10.5px] disabled:opacity-50`}
                       >
                         {verify === 'testing' ? 'Testing…' : verify === 'idle' ? 'Test' : 'Retest'}
                       </button>
@@ -727,7 +720,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
                           type="button"
                           disabled={!canUse || activatingModelId === model.id}
                           onClick={() => void handleActivate(model.id)}
-                          className="px-3 py-1.5 text-[10.5px] font-bold bg-primary text-on-primary rounded-lg disabled:opacity-50"
+                          className={`${BTN_PRIMARY} text-[10.5px] disabled:opacity-50`}
                         >
                           {activatingModelId === model.id ? 'Switching…' : 'Use this model'}
                         </button>

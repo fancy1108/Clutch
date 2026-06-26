@@ -13,6 +13,8 @@ import type { SessionRecord } from '../services/runApi';
 import type { ScannedSkill } from '../services/skillsApi';
 import type { FileTreeNode } from '../services/workspaceApi';
 import { PERMISSION_MODES, type PermissionMode } from '../services/permissionApi';
+import { LegacyIcon } from './ui/LegacyIcon';
+import { BTN_ICON_SM } from './ui/buttonStyles';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -91,18 +93,16 @@ function AttachmentChip({
           className="w-[22px] h-[22px] rounded object-cover flex-shrink-0 border border-outline-variant/30"
         />
       ) : (
-        <span className="material-symbols-outlined text-[15px] text-on-surface-variant flex-shrink-0">
-          {fileIcon(att.kind)}
-        </span>
+        <LegacyIcon name={fileIcon(att.kind)} className="text-[15px] text-on-surface-variant flex-shrink-0" />
       )}
       <span className="truncate" title={att.name}>{att.name}</span>
       <button
         type="button"
         onClick={() => onRemove(att.id)}
-        className="ml-0.5 text-on-surface-variant/60 hover:text-on-surface transition-colors flex-shrink-0"
+        className={`${BTN_ICON_SM} ml-0.5 flex-shrink-0`}
         aria-label={`Remove ${att.name}`}
       >
-        <span className="material-symbols-outlined text-[13px]">close</span>
+        <LegacyIcon name="close" className="text-[13px]" />
       </button>
     </span>
   );
@@ -426,17 +426,17 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
       {isMultiAgent && selectedWorkflowId ? (
         <div className="flex flex-wrap gap-1.5 px-3 pt-2 pb-1">
           <span className="inline-flex items-center gap-1.5 pl-1.5 pr-1 py-0.5 text-[11px] font-bold text-primary bg-primary/5 border border-primary/20 rounded-lg max-w-[220px]">
-            <span className="material-symbols-outlined text-[14px] flex-shrink-0">account_tree</span>
+            <LegacyIcon name="account_tree" className="text-[14px] flex-shrink-0" />
             <span className="truncate" title={selectedWorkflowName || selectedWorkflowId}>
               {selectedWorkflowName || selectedWorkflowId}
             </span>
             <button
               type="button"
               onClick={onClearSelectedWorkflow}
-              className="ml-0.5 text-primary/60 hover:text-primary transition-colors flex-shrink-0"
+              className={`${BTN_ICON_SM} ml-0.5 text-primary/60 hover:text-primary flex-shrink-0`}
               aria-label={t('Remove workflow')}
             >
-              <span className="material-symbols-outlined text-[13px]">close</span>
+              <LegacyIcon name="close" className="text-[13px]" />
             </button>
           </span>
         </div>
@@ -455,7 +455,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
       {isDragging && (
         <div className="px-3 pt-2 pb-0">
           <div className="flex items-center gap-2 py-2 px-3 bg-primary/5 border border-primary/20 rounded-lg">
-            <span className="material-symbols-outlined text-primary text-[18px]">upload_file</span>
+            <LegacyIcon name="upload_file" className="text-primary text-[18px]" />
             <span className="text-xs text-primary font-medium">Drop to attach</span>
           </div>
         </div>
@@ -474,7 +474,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
             className="w-8 h-8 flex items-center justify-center rounded-lg text-on-surface-variant/60 hover:text-on-surface hover:bg-surface-container transition-colors"
             title="Attach"
           >
-            <span className="material-symbols-outlined text-[19px]">add</span>
+            <LegacyIcon name="add" className="text-[19px]" />
           </button>
 
           {attachMenuOpen && (
@@ -488,7 +488,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
                   fileInputRef.current?.click();
                 }}
               >
-                <span className="material-symbols-outlined text-[17px] text-on-surface-variant">attach_file</span>
+                <LegacyIcon name="attach_file" className="text-[17px] text-on-surface-variant" />
                 Add attachment
               </button>
 
@@ -502,7 +502,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
                   setFileFilter('');
                 }}
               >
-                <span className="material-symbols-outlined text-[17px] text-on-surface-variant">alternate_email</span>
+                <LegacyIcon name="alternate_email" className="text-[17px] text-on-surface-variant" />
                 Insert @ mention
               </button>
 
@@ -516,7 +516,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
                   setSessionFilter('');
                 }}
               >
-                <span className="material-symbols-outlined text-[17px] text-on-surface-variant">chat_bubble</span>
+                <LegacyIcon name="chat_bubble" className="text-[17px] text-on-surface-variant" />
                 Insert # session
               </button>
 
@@ -530,7 +530,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
                   setSkillFilter('');
                 }}
               >
-                <span className="material-symbols-outlined text-[17px] text-on-surface-variant">terminal</span>
+                <LegacyIcon name="terminal" className="text-[17px] text-on-surface-variant" />
                 Insert / command
               </button>
             </div>
@@ -577,7 +577,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
                   : 'text-on-surface-variant/60 hover:text-on-surface hover:bg-surface-container'
               }`}
             >
-              <span className="material-symbols-outlined text-[18px]">{currentPermission.icon}</span>
+              <LegacyIcon name={currentPermission.icon} className="text-[18px]" />
             </button>
 
             {permissionMenuOpen && (
@@ -592,8 +592,9 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
                     }}
                     className="w-full flex items-start gap-3 px-3 py-2.5 hover:bg-surface-container-low transition-colors text-left group"
                   >
-                    <span
-                      className={`material-symbols-outlined text-[18px] mt-0.5 flex-shrink-0 ${
+                    <LegacyIcon
+                      name={mode.icon}
+                      className={`text-[18px] mt-0.5 flex-shrink-0 ${
                         mode.id === permissionMode
                           ? mode.id === 'full'
                             ? 'text-amber-500'
@@ -604,14 +605,12 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
                             : 'text-on-surface-variant'
                           : 'text-on-surface-variant/50'
                       }`}
-                    >
-                      {mode.icon}
-                    </span>
+                    />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <span className="text-[12px] font-semibold text-on-surface">{mode.label}</span>
                         {mode.id === permissionMode && (
-                          <span className="material-symbols-outlined text-[14px] text-primary">check</span>
+                          <LegacyIcon name="check" className="text-[14px] text-primary" />
                         )}
                       </div>
                       <span className="text-[10.5px] text-on-surface-variant/70">{mode.description}</span>
@@ -636,9 +635,10 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
                 : 'bg-surface-container text-on-surface-variant/40 cursor-not-allowed'
             }`}
           >
-            <span className="material-symbols-outlined text-[17px]">
-              {isRunning && isPlainLlmChat ? 'stop' : 'arrow_upward'}
-            </span>
+            <LegacyIcon
+              name={isRunning && isPlainLlmChat ? 'stop' : 'arrow_upward'}
+              className="text-[17px]"
+            />
           </button>
         </div>
       </div>
@@ -650,7 +650,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
         >
           <div className="p-2 border-b border-outline-variant/30">
             <div className="flex items-center gap-2 px-2">
-              <span className="material-symbols-outlined text-[15px] text-on-surface-variant">terminal</span>
+              <LegacyIcon name="terminal" className="text-[15px] text-on-surface-variant" />
               <span className="text-[11px] font-semibold text-on-surface-variant">Skills / Commands</span>
             </div>
           </div>
@@ -683,7 +683,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
         <div className="absolute bottom-full left-0 mb-2 w-72 bg-white border border-outline-variant rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-bottom-1 duration-150">
           <div className="p-2 border-b border-outline-variant/30">
             <div className="flex items-center gap-2 px-2">
-              <span className="material-symbols-outlined text-[15px] text-on-surface-variant">chat_bubble</span>
+              <LegacyIcon name="chat_bubble" className="text-[15px] text-on-surface-variant" />
               <span className="text-[11px] font-semibold text-on-surface-variant">Sessions</span>
             </div>
           </div>
@@ -717,7 +717,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
         <div className="absolute bottom-full left-0 mb-2 w-72 bg-white border border-outline-variant rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-bottom-1 duration-150">
           <div className="p-2 border-b border-outline-variant/30">
             <div className="flex items-center gap-2 px-2 pb-1">
-              <span className="material-symbols-outlined text-[15px] text-on-surface-variant">folder_open</span>
+              <LegacyIcon name="folder_open" className="text-[15px] text-on-surface-variant" />
               <span className="text-[11px] font-semibold text-on-surface-variant">Project Files</span>
             </div>
             <input
@@ -742,9 +742,10 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
                   onClick={() => insertProjectFile(path)}
                   className="w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-surface-container-low transition-colors"
                 >
-                  <span className="material-symbols-outlined text-[14px] text-on-surface-variant flex-shrink-0">
-                    {path.endsWith('/') ? 'folder' : 'description'}
-                  </span>
+                  <LegacyIcon
+                    name={path.endsWith('/') ? 'folder' : 'description'}
+                    className="text-[14px] text-on-surface-variant flex-shrink-0"
+                  />
                   <span className="text-[11px] text-on-surface truncate" title={path}>{path}</span>
                 </button>
               ))

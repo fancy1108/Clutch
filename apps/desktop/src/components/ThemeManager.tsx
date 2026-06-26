@@ -1,5 +1,6 @@
 import React from 'react';
 import { useLanguage } from './LanguageContext';
+import { LegacyIcon } from './ui/LegacyIcon';
 
 export interface ThemePreset {
   id: string;
@@ -134,7 +135,7 @@ export const ThemeManager: React.FC<ThemeManagerProps> = ({
         {/* Banner Headers */}
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-[20px] text-on-surface">palette</span>
+            <LegacyIcon name="palette" className="text-[20px] text-on-surface" />
             <h2 className="text-base font-bold text-on-surface tracking-tight font-sans">{t("Workspace Theme Configurator")}</h2>
           </div>
           <p className="text-xs text-on-surface-variant font-sans leading-relaxed">
@@ -153,7 +154,7 @@ export const ThemeManager: React.FC<ThemeManagerProps> = ({
               {t("Updates all buttons, panels, background layout variables, and typography states.")}
             </p>
           </div>
-          <span className="material-symbols-outlined text-[36px] text-on-surface-variant">palette</span>
+          <LegacyIcon name="palette" className="text-[36px] text-on-surface-variant" />
         </div>
 
         {/* Theme List Grid */}
@@ -176,7 +177,7 @@ export const ThemeManager: React.FC<ThemeManagerProps> = ({
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-[16px] text-on-surface">{theme.icon}</span>
+                        <LegacyIcon name={theme.icon} className="text-[16px] text-on-surface" />
                         <h4 className="text-xs font-bold text-on-surface">{t(theme.name)}</h4>
                       </div>
                       
@@ -206,7 +207,7 @@ export const ThemeManager: React.FC<ThemeManagerProps> = ({
 
                     <span className="text-[10px] font-bold text-on-surface-variant hover:text-on-surface flex items-center gap-0.5 font-sans">
                       {t("Select")}
-                      <span className="material-symbols-outlined text-[12px]">chevron_right</span>
+                      <LegacyIcon name="chevron_right" className="text-[12px]" />
                     </span>
                   </div>
                 </div>

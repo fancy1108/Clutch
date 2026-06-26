@@ -7,6 +7,9 @@ import {
   notifySkillsUpdated,
   type ScannedSkill,
 } from '../services/skillsApi';
+import { BTN_ICON_SM, BTN_PRIMARY } from './ui/buttonStyles';
+import { LegacyIcon } from './ui/LegacyIcon';
+import { ALERT_SUCCESS, ALERT_WARNING } from './ui/surfaceStyles';
 
 export type { ScannedSkill };
 
@@ -93,7 +96,7 @@ export const SkillsRegistry: React.FC = () => {
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-[20px] text-neutral-800">school</span>
+            <LegacyIcon name="school" className="text-[20px] text-neutral-800" />
             <h2 className="text-base font-bold text-neutral-900 tracking-tight font-sans">Global Skills Registry</h2>
           </div>
           <p className="text-xs text-neutral-500 font-sans leading-relaxed">
@@ -103,7 +106,7 @@ export const SkillsRegistry: React.FC = () => {
         </div>
 
         {errorMsg && (
-          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">{errorMsg}</p>
+          <p className={ALERT_WARNING}>{errorMsg}</p>
         )}
 
         <div className="p-4 bg-neutral-50/50 border border-neutral-200/60 rounded-xl space-y-4">
@@ -134,16 +137,17 @@ export const SkillsRegistry: React.FC = () => {
                   className="flex items-center justify-between p-2.5 bg-white border border-neutral-200 rounded-lg text-xs"
                 >
                   <div className="flex items-center gap-2.5 overflow-hidden">
-                    <span className="material-symbols-outlined text-[16px] text-neutral-400">folder_open</span>
+                    <LegacyIcon name="folder_open" className="text-[16px] text-neutral-400" />
                     <span className="font-mono text-neutral-700 truncate">{dir}</span>
                   </div>
                   <button
                     type="button"
                     onClick={() => void handleUnmount(dir)}
-                    className="text-neutral-400 hover:text-red-600 transition-colors p-1 hover:bg-neutral-50 rounded"
+                    className={`${BTN_ICON_SM} text-neutral-400 hover:text-red-600 hover:bg-neutral-50`}
                     title="Unmount directory"
+                    aria-label="Unmount directory"
                   >
-                    <span className="material-symbols-outlined text-[15px] font-bold">delete</span>
+                    <LegacyIcon name="delete" className="text-[15px] font-bold" />
                   </button>
                 </div>
               ))}
@@ -161,14 +165,14 @@ export const SkillsRegistry: React.FC = () => {
             />
             <button
               type="submit"
-              className="px-3.5 py-1.5 bg-neutral-900 hover:bg-black text-white text-[11px] font-bold rounded-lg transition-all shadow-3xs cursor-pointer"
+              className={BTN_PRIMARY}
             >
               + Mount Root
             </button>
           </form>
 
           {successMsg && (
-            <p className="text-[10px] text-emerald-600 font-sans font-medium select-none">
+            <p className={`${ALERT_SUCCESS} text-[10px] font-medium select-none`}>
               {successMsg}
             </p>
           )}

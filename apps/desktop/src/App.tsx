@@ -47,6 +47,7 @@ import { fetchModelsConfig, mapModelConfigToUi, saveModelsConfig } from './servi
 import { fetchPermissionMode, savePermissionMode, type PermissionMode } from './services/permissionApi';
 import { fetchSkillsRegistry, type ScannedSkill } from './services/skillsApi';
 import { BTN_GHOST, BTN_PRIMARY } from './components/ui/buttonStyles';
+import { LegacyIcon } from './components/ui/LegacyIcon';
 
 
 function MainLayout() {
@@ -920,9 +921,10 @@ function MainLayout() {
               {/* File Preview Header */}
               <div className="h-14 border-b border-outline-variant/60 flex items-center justify-between px-6 bg-neutral-50/50 flex-shrink-0 select-none">
                 <div className="flex items-center gap-3">
-                  <span className="material-symbols-outlined text-[20px] text-neutral-500">
-                    {previewFile.name.endsWith('.md') ? 'markdown' : 'code'}
-                  </span>
+                  <LegacyIcon
+                    name={previewFile.name.endsWith('.md') ? 'markdown' : 'code'}
+                    className="text-[20px] text-neutral-500"
+                  />
                   <div className="flex flex-col justify-center">
                     <h3 className="text-xs font-bold text-neutral-900 font-mono tracking-tight flex items-center gap-1">
                       {previewFile.name.includes('/') && (
@@ -937,7 +939,7 @@ function MainLayout() {
                   onClick={() => setPreviewFile(null)}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-200/50 rounded-lg text-[11px] font-semibold transition-colors"
                 >
-                  <span className="material-symbols-outlined text-[16px]">close</span>
+                  <LegacyIcon name="close" className="text-[16px]" />
                   Close
                 </button>
               </div>
@@ -1089,7 +1091,8 @@ function MainLayout() {
       >
         <div className="flex items-center gap-6">
           <div className="relative">
-            <span
+            <button
+              type="button"
               data-testid="footer-branch-trigger"
               onClick={() => {
                 const next = !branchMenuOpen;
@@ -1097,11 +1100,12 @@ function MainLayout() {
                 setBranchMenuOpen(next);
               }}
               className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-container-low hover:text-on-surface transition-colors cursor-pointer font-medium whitespace-nowrap"
+              aria-label={`${t('Branch')}: ${workspaceGit.branch || '—'}`}
             >
-              <span className="material-symbols-outlined text-[15px] text-on-surface-variant">fork_right</span>
+              <LegacyIcon name="fork_right" className="text-[15px] text-on-surface-variant" />
               {t('Branch')}: {workspaceGit.branch || '—'}
-              <span className="material-symbols-outlined text-[13px]">keyboard_arrow_down</span>
-            </span>
+              <LegacyIcon name="keyboard_arrow_down" className="text-[13px]" />
+            </button>
             {branchMenuOpen ? (
               <FooterMenuPanel testId="footer-branch-menu">
                 {workspaceGit.branches.length === 0 ? (
@@ -1130,20 +1134,22 @@ function MainLayout() {
                   className="flex items-center gap-1.5 px-2 py-1 rounded font-medium text-on-surface-variant whitespace-nowrap cursor-default"
                   title={t('Model is bound on this agent')}
                 >
-                  <span className="material-symbols-outlined text-[15px] text-on-surface-variant">layers</span>
+                  <LegacyIcon name="layers" className="text-[15px] text-on-surface-variant" />
                   {t("Model")}: {footerEffectiveModelName}
                 </span>
               ) : (
                 <>
-              <span
+              <button
+                type="button"
                 data-testid="footer-model-trigger"
                 onClick={toggleModelMenu}
                 className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-container-low hover:text-on-surface transition-colors cursor-pointer font-medium text-on-surface-variant whitespace-nowrap"
+                aria-label={`${t("Model")}: ${footerEffectiveModelName}`}
               >
-                <span className="material-symbols-outlined text-[15px] text-on-surface-variant">layers</span>
+                <LegacyIcon name="layers" className="text-[15px] text-on-surface-variant" />
                 {t("Model")}: {footerEffectiveModelName}
-                <span className="material-symbols-outlined text-[13px]">keyboard_arrow_down</span>
-              </span>
+                <LegacyIcon name="keyboard_arrow_down" className="text-[13px]" />
+              </button>
               {modelMenuOpen ? (
                 <FooterMenuPanel testId="footer-model-menu">
                   {configuredModels.length === 0 ? (
@@ -1180,7 +1186,7 @@ function MainLayout() {
               className="flex items-center gap-1.5 px-2 py-1 rounded font-medium text-on-surface-variant cursor-default whitespace-nowrap"
               title={t('Model is provided by the selected agent tool')}
             >
-              <span className="material-symbols-outlined text-[15px] text-on-surface-variant">bolt</span>
+              <LegacyIcon name="bolt" className="text-[15px] text-on-surface-variant" />
               {t('Engine')}: {customAgentEngineLabel}
             </span>
           ) : null}
@@ -1189,7 +1195,8 @@ function MainLayout() {
             <>
               {!hasWorkflowSelection ? (
               <div className="relative">
-                <span
+                <button
+                  type="button"
                   data-testid="footer-agent-trigger"
                   onClick={toggleAgentMenu}
                   className={`flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-container-low transition-colors cursor-pointer font-medium whitespace-nowrap ${
@@ -1197,11 +1204,12 @@ function MainLayout() {
                       ? 'text-primary font-bold'
                       : 'text-on-surface-variant'
                   }`}
+                  aria-label={`${t('Active Agent')}: ${multiAgentFooterName}`}
                 >
-                  <span className="material-symbols-outlined text-[15px]">smart_toy</span>
+                  <LegacyIcon name="smart_toy" className="text-[15px]" />
                   {t('Active Agent')}: {multiAgentFooterName}
-                  <span className="material-symbols-outlined text-[13px]">keyboard_arrow_down</span>
-                </span>
+                  <LegacyIcon name="keyboard_arrow_down" className="text-[13px]" />
+                </button>
                 {agentMenuOpen ? (
                   <FooterMenuPanel testId="footer-agent-menu">
                     {configuredAgents.map((agent) => (
@@ -1228,7 +1236,8 @@ function MainLayout() {
               </div>
               ) : null}
               <div className="relative">
-                <span
+                <button
+                  type="button"
                   data-testid="footer-workflow-trigger"
                   onClick={() => { void toggleWorkflowMenu(); }}
                   className={`flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-container-low transition-colors cursor-pointer font-medium whitespace-nowrap ${
@@ -1236,11 +1245,12 @@ function MainLayout() {
                       ? 'text-primary font-bold'
                       : 'text-on-surface-variant'
                   }`}
+                  aria-label={`${t('Workflow')}: ${activeWorkflowLabel}`}
                 >
-                  <span className="material-symbols-outlined text-[15px]">account_tree</span>
+                  <LegacyIcon name="account_tree" className="text-[15px]" />
                   {t('Workflow')}: {activeWorkflowLabel}
-                  <span className="material-symbols-outlined text-[13px]">keyboard_arrow_down</span>
-                </span>
+                  <LegacyIcon name="keyboard_arrow_down" className="text-[13px]" />
+                </button>
                 {workflowMenuOpen ? (
                   <FooterMenuPanel testId="footer-workflow-menu">
                     {footerWorkflows.length === 0 ? (
@@ -1275,15 +1285,17 @@ function MainLayout() {
             </>
           ) : !hasWorkflowSelection ? (
             <div className="relative">
-              <span
+              <button
+                type="button"
                 data-testid="footer-agent-trigger"
                 onClick={toggleAgentMenu}
                 className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-container-low text-primary font-bold transition-colors cursor-pointer whitespace-nowrap"
+                aria-label={`${t("Active Agent")}: ${selectedAgentName}`}
               >
-                <span className="material-symbols-outlined text-[15px] text-primary">smart_toy</span>
+                <LegacyIcon name="smart_toy" className="text-[15px] text-primary" />
                 {t("Active Agent")}: {selectedAgentName}
-                <span className="material-symbols-outlined text-[13px]">keyboard_arrow_down</span>
-              </span>
+                <LegacyIcon name="keyboard_arrow_down" className="text-[13px]" />
+              </button>
               {agentMenuOpen ? (
                 <FooterMenuPanel testId="footer-agent-menu">
                   {configuredAgents.map((agent) => (

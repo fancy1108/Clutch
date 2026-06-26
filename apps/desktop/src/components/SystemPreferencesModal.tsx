@@ -8,6 +8,8 @@ import { McpServerHub } from './McpServerHub';
 import { ModelsManager } from './ModelsManager';
 import { ThemeManager } from './ThemeManager';
 import { useLanguage } from './LanguageContext';
+import { BTN_FOCUS } from './ui/buttonStyles';
+import { LegacyIcon } from './ui/LegacyIcon';
 
 interface SystemPreferencesModalProps {
   currentView: MainView;
@@ -64,6 +66,9 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
   const { t } = useLanguage();
 
   const isModalOpen = ['agents', 'settings', 'workflows', 'tools', 'skills', 'mcp', 'models', 'appearance'].includes(currentView);
+  const navBtnBase = `w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-left text-[11px] transition-all border ${BTN_FOCUS}`;
+  const navBtnActive = 'bg-surface-bright text-on-surface font-extrabold border-outline/40 shadow-2xs';
+  const navBtnIdle = 'text-on-surface-variant hover:bg-surface-container-high/60 hover:text-on-surface border-transparent';
 
   if (!isModalOpen) return null;
 
@@ -91,39 +96,27 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
               <button
                 data-testid="settings-nav-general"
                 onClick={() => setView('settings')}
-                className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-left text-[11px] transition-all border ${
-                  currentView === 'settings'
-                    ? 'bg-surface-bright text-on-surface font-extrabold border-outline/40 shadow-2xs'
-                    : 'text-on-surface-variant hover:bg-surface-container-high/60 hover:text-on-surface border-transparent'
-                }`}
+                className={`${navBtnBase} ${currentView === 'settings' ? navBtnActive : navBtnIdle}`}
               >
-                <span className="material-symbols-outlined text-[16px]">settings</span>
+                <LegacyIcon name="settings" className="text-[16px]" />
                 <span className="text-xs">{t("General")}</span>
               </button>
 
               <button
                 data-testid="settings-nav-tools"
                 onClick={() => setView('tools')}
-                className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-left text-[11px] transition-all border ${
-                  currentView === 'tools'
-                    ? 'bg-surface-bright text-on-surface font-extrabold border-outline/40 shadow-2xs'
-                    : 'text-on-surface-variant hover:bg-surface-container-high/60 hover:text-on-surface border-transparent'
-                }`}
+                className={`${navBtnBase} ${currentView === 'tools' ? navBtnActive : navBtnIdle}`}
               >
-                <span className="material-symbols-outlined text-[16px]">handyman</span>
+                <LegacyIcon name="handyman" className="text-[16px]" />
                 <span className="text-xs">{t("AI Tools")}</span>
               </button>
 
               <button
                 data-testid="settings-nav-agents"
                 onClick={() => setView('agents')}
-                className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-left text-[11px] transition-all border ${
-                  currentView === 'agents'
-                    ? 'bg-surface-bright text-on-surface font-extrabold border-outline/40 shadow-2xs'
-                    : 'text-on-surface-variant hover:bg-surface-container-high/60 hover:text-on-surface border-transparent'
-                }`}
+                className={`${navBtnBase} ${currentView === 'agents' ? navBtnActive : navBtnIdle}`}
               >
-                <span className="material-symbols-outlined text-[16px]">smart_toy</span>
+                <LegacyIcon name="smart_toy" className="text-[16px]" />
                 <span className="text-xs">{t("AI Agents")}</span>
               </button>
 
@@ -131,15 +124,12 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
                 <button
                   data-testid="settings-nav-workflows"
                   onClick={() => setView('workflows')}
-                  className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-left text-[11px] transition-all border ${
-                    currentView === 'workflows'
-                      ? 'bg-surface-bright text-on-surface font-extrabold border-outline/40 shadow-2xs'
-                      : 'text-on-surface-variant hover:bg-surface-container-high/60 hover:text-on-surface border-transparent'
-                  }`}
+                  className={`${navBtnBase} ${currentView === 'workflows' ? navBtnActive : navBtnIdle}`}
                 >
-                  <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: currentView === 'workflows' ? "'FILL' 1" : undefined }}>
-                    account_tree
-                  </span>
+                  <LegacyIcon
+                    name="account_tree"
+                    className={`text-[16px] ${currentView === 'workflows' ? 'opacity-100' : 'opacity-60'}`}
+                  />
                   <span className="text-xs">{t("Workflows SOP")}</span>
                 </button>
               )}
@@ -147,52 +137,36 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
               <button
                 data-testid="settings-nav-models"
                 onClick={() => setView('models')}
-                className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-left text-[11px] transition-all border ${
-                  currentView === 'models'
-                    ? 'bg-surface-bright text-on-surface font-extrabold border-outline/40 shadow-2xs'
-                    : 'text-on-surface-variant hover:bg-surface-container-high/60 hover:text-on-surface border-transparent'
-                }`}
+                className={`${navBtnBase} ${currentView === 'models' ? navBtnActive : navBtnIdle}`}
               >
-                <span className="material-symbols-outlined text-[16px]">layers</span>
+                <LegacyIcon name="layers" className="text-[16px]" />
                 <span className="text-xs">{t("Models Config")}</span>
               </button>
 
               <button
                 data-testid="settings-nav-skills"
                 onClick={() => setView('skills')}
-                className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-left text-[11px] transition-all border ${
-                  currentView === 'skills'
-                    ? 'bg-surface-bright text-on-surface font-extrabold border-outline/40 shadow-2xs'
-                    : 'text-on-surface-variant hover:bg-surface-container-high/60 hover:text-on-surface border-transparent'
-                }`}
+                className={`${navBtnBase} ${currentView === 'skills' ? navBtnActive : navBtnIdle}`}
               >
-                <span className="material-symbols-outlined text-[16px]">school</span>
+                <LegacyIcon name="school" className="text-[16px]" />
                 <span className="text-xs">{t("Skills Registry")}</span>
               </button>
 
               <button
                 data-testid="settings-nav-mcp"
                 onClick={() => setView('mcp')}
-                className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-left text-[11px] transition-all border ${
-                  currentView === 'mcp'
-                    ? 'bg-surface-bright text-on-surface font-extrabold border-outline/40 shadow-2xs'
-                    : 'text-on-surface-variant hover:bg-surface-container-high/60 hover:text-on-surface border-transparent'
-                }`}
+                className={`${navBtnBase} ${currentView === 'mcp' ? navBtnActive : navBtnIdle}`}
               >
-                <span className="material-symbols-outlined text-[16px]">terminal</span>
+                <LegacyIcon name="terminal" className="text-[16px]" />
                 <span className="text-xs">{t("MCP Server Hub")}</span>
               </button>
 
               <button
                 data-testid="settings-nav-appearance"
                 onClick={() => setView('appearance')}
-                className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-left text-[11px] transition-all border ${
-                  currentView === 'appearance'
-                    ? 'bg-surface-bright text-on-surface font-extrabold border-outline/40 shadow-2xs'
-                    : 'text-on-surface-variant hover:bg-surface-container-high/60 hover:text-on-surface border-transparent'
-                }`}
+                className={`${navBtnBase} ${currentView === 'appearance' ? navBtnActive : navBtnIdle}`}
               >
-                <span className="material-symbols-outlined text-[16px]">palette</span>
+                <LegacyIcon name="palette" className="text-[16px]" />
                 <span className="text-xs">{t("Appearance")}</span>
               </button>
             </div>
@@ -257,7 +231,7 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
               />
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center p-10 text-center select-none bg-surface-bright text-on-surface">
-                <span className="material-symbols-outlined text-[32px] text-on-surface-variant/40 font-variation-light mb-2">construction</span>
+                <LegacyIcon name="construction" className="text-[32px] text-on-surface-variant/40 mb-2" />
                 <p className="text-xs font-bold text-on-surface-variant">{t("Feature under active development")}</p>
               </div>
             )}
@@ -272,9 +246,7 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
           className="absolute top-4 right-4 z-50 w-7 h-7 bg-surface-container/60 hover:bg-surface-container-high/60 text-on-surface-variant hover:text-on-surface rounded-full flex items-center justify-center transition-all group cursor-pointer border border-outline/30"
           title={t("Close Panel")}
         >
-          <span className="material-symbols-outlined text-[15px] group-hover:rotate-90 transition-transform">
-            close
-          </span>
+          <LegacyIcon name="close" className="text-[15px] group-hover:rotate-90 transition-transform" />
         </button>
       </div>
     </div>

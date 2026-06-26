@@ -3,6 +3,8 @@ import { RightTab, UncommittedFile, ClutchRunStatus } from '../types';
 import type { FileTreeNode } from '../services/workspaceApi';
 import { loadWorkflowById } from '../services/workflowApi';
 import { useLanguage } from './LanguageContext';
+import { LegacyIcon } from './ui/LegacyIcon';
+import { BTN_ICON } from './ui/buttonStyles';
 
 interface RightPanelProps {
   activeTab: RightTab;
@@ -185,7 +187,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
     if (workflowSteps.length === 0) {
       return (
         <div className="p-6 border border-dashed border-outline-variant/50 rounded-xl text-center space-y-2">
-          <span className="material-symbols-outlined text-[24px] text-on-surface-variant/50">account_tree</span>
+          <LegacyIcon name="account_tree" className="text-[24px] text-on-surface-variant/50" />
           <p className="text-[11px] text-on-surface-variant leading-relaxed">{t('Workflow steps unavailable')}</p>
         </div>
       );
@@ -254,19 +256,19 @@ export const RightPanel: React.FC<RightPanelProps> = ({
           >
             {isFolder ? (
               <>
-                <span
-                  className={`material-symbols-outlined text-[16px] transition-transform ${isExpanded ? 'rotate-90' : ''}`}
-                >
-                  chevron_right
-                </span>
-                <span className="material-symbols-outlined text-[16px] text-on-surface-variant">
-                  {isExpanded ? 'folder_open' : 'folder'}
-                </span>
+                <LegacyIcon
+                  name="chevron_right"
+                  className={`text-[16px] transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+                />
+                <LegacyIcon
+                  name={isExpanded ? 'folder_open' : 'folder'}
+                  className="text-[16px] text-on-surface-variant"
+                />
               </>
             ) : (
               <>
                 <span className="w-4" />
-                <span className="material-symbols-outlined text-[16px] text-on-surface-variant">description</span>
+                <LegacyIcon name="description" className="text-[16px] text-on-surface-variant" />
               </>
             )}
             <span className="truncate">{node.name}</span>
@@ -297,9 +299,10 @@ export const RightPanel: React.FC<RightPanelProps> = ({
         }`}
         title={isOpen ? 'Collapse Panel' : 'Expand Panel'}
       >
-        <span className="material-symbols-outlined text-[13px] font-bold">
-          {isOpen ? 'chevron_right' : 'chevron_left'}
-        </span>
+        <LegacyIcon
+          name={isOpen ? 'chevron_right' : 'chevron_left'}
+          className="text-[13px] font-bold"
+        />
       </button>
 
       <div className={`flex-grow flex flex-col h-full overflow-hidden ${!isOpen ? 'hidden' : ''}`}>
@@ -338,7 +341,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                     </section>
                   ) : isIdle ? (
                     <div className="p-6 border border-dashed border-outline-variant/50 rounded-xl text-center space-y-2">
-                      <span className="material-symbols-outlined text-[24px] text-on-surface-variant/50">monitoring</span>
+                      <LegacyIcon name="monitoring" className="text-[24px] text-on-surface-variant/50" />
                       <p className="text-[11px] text-on-surface-variant leading-relaxed">
                         {t('No active workflow overview')}
                       </p>
@@ -350,7 +353,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                   {renderSingleAgentSummary()}
                   {isIdle && tokenTotal === 0 ? (
                     <div className="p-6 border border-dashed border-outline-variant/50 rounded-xl text-center space-y-2">
-                      <span className="material-symbols-outlined text-[24px] text-on-surface-variant/50">smart_toy</span>
+                      <LegacyIcon name="smart_toy" className="text-[24px] text-on-surface-variant/50" />
                       <p className="text-[11px] text-on-surface-variant leading-relaxed">
                         {t('No session activity yet')}
                       </p>
@@ -440,7 +443,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
 
               {uncommitted.length === 0 ? (
                 <div className="py-8 text-center bg-surface-container-low/40 rounded-xl border border-dashed border-outline-variant mt-2 text-on-surface-variant/60">
-                  <span className="material-symbols-outlined text-[28px] mb-2">difference</span>
+                  <LegacyIcon name="difference" className="text-[28px] mb-2" />
                   <p className="text-[11px] font-medium">{t('No uncommitted changes')}</p>
                 </div>
               ) : (
@@ -473,10 +476,11 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                             e.stopPropagation();
                             onOpenWorkspaceFile?.(file.name);
                           }}
-                          className="p-1 hover:bg-neutral-100 rounded text-neutral-500 hover:text-black transition-colors"
+                          className={BTN_ICON}
                           title="Preview file"
+                          aria-label="Preview file"
                         >
-                          <span className="material-symbols-outlined text-[15px]">visibility</span>
+                          <LegacyIcon name="visibility" className="text-[15px]" />
                         </button>
                       </div>
                     );
@@ -488,7 +492,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                 <div className="mt-6 border border-outline-variant/20 rounded-xl overflow-hidden bg-white shadow-xs">
                   <div className="flex items-center justify-between px-3 py-2 bg-surface-container/30 border-b border-outline-variant/20">
                     <div className="flex items-center gap-2">
-                      <span className="material-symbols-outlined text-[14px]">description</span>
+                      <LegacyIcon name="description" className="text-[14px]" />
                       <span className="font-mono text-[10px] font-bold text-on-surface-variant/90 truncate max-w-[140px]">
                         {selectedFile}
                       </span>
@@ -498,7 +502,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                       onClick={() => onOpenWorkspaceFile?.(selectedFile)}
                       className="flex items-center gap-1.5 px-2 py-1 bg-neutral-900 hover:bg-black text-white text-[9.5px] font-bold rounded-lg transition-all shadow-xs active:scale-95"
                     >
-                      <span className="material-symbols-outlined text-[12px]">visibility</span>
+                      <LegacyIcon name="visibility" className="text-[12px]" />
                       Preview Full
                     </button>
                   </div>

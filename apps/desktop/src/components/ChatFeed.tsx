@@ -4,6 +4,7 @@ import { ChatMessage, ClutchRunStatus, HybridExecutionPayload, OutputEvent } fro
 import { useLanguage } from './LanguageContext';
 import { ChatInputBar, type Attachment } from './ChatInputBar';
 import { BTN_DANGER_SM, BTN_PRIMARY, BTN_SECONDARY, BTN_SM, BTN_SUCCESS_SM } from './ui/buttonStyles';
+import { LegacyIcon } from './ui/LegacyIcon';
 import type { SessionRecord } from '../services/runApi';
 import type { ScannedSkill } from '../services/skillsApi';
 import type { FileTreeNode } from '../services/workspaceApi';
@@ -294,7 +295,7 @@ function ChatBubbleImage({ src, alt }: { src: string; alt: string }) {
         rel="noopener noreferrer"
         className="inline-flex items-center gap-1.5 text-[12px] text-primary font-medium hover:underline"
       >
-        <span className="material-symbols-outlined text-[16px]">image</span>
+        <LegacyIcon name="image" className="text-[16px]" />
         {alt}
       </a>
     );
@@ -345,31 +346,31 @@ function renderMarkdown(text: string): React.ReactNode {
     if (isAlert) {
       // Render GitHub-style alert box
       const title = alertType;
-      let borderClass = 'border-l-4 border-blue-500';
+      let borderClass = 'border border-blue-200/80';
       let bgClass = 'bg-blue-50/50';
       let textClass = 'text-blue-900';
       let icon = 'info';
 
       if (alertType === 'IMPORTANT') {
-        borderClass = 'border-l-4 border-violet-500';
-        bgClass = 'bg-violet-50/40';
-        textClass = 'text-violet-900';
+        borderClass = 'border border-neutral-300/80';
+        bgClass = 'bg-neutral-50/80';
+        textClass = 'text-neutral-900';
         icon = 'label_important';
       } else if (alertType === 'WARNING') {
-        borderClass = 'border-l-4 border-amber-500';
+        borderClass = 'border border-amber-200/80';
         bgClass = 'bg-amber-50/40';
         textClass = 'text-amber-900';
         icon = 'warning';
       } else if (alertType === 'TIP') {
-        borderClass = 'border-l-4 border-emerald-500';
+        borderClass = 'border border-emerald-200/80';
         bgClass = 'bg-emerald-50/40';
         textClass = 'text-emerald-900';
         icon = 'lightbulb';
       }
 
       elements.push(
-        <div key={`alert-${key}`} className={`p-3.5 my-3 rounded-r-xl border border-y-outline-variant/20 border-r-outline-variant/20 ${borderClass} ${bgClass} flex items-start gap-2.5`}>
-          <span className={`material-symbols-outlined text-[18px] mt-0.5 ${textClass}`}>{icon}</span>
+        <div key={`alert-${key}`} className={`p-3.5 my-3 rounded-xl ${borderClass} ${bgClass} flex items-start gap-2.5`}>
+          <LegacyIcon name={icon} className={`text-[18px] mt-0.5 ${textClass}`} />
           <div className="flex-1 space-y-1">
             <div className={`text-[11px] font-bold tracking-wide uppercase ${textClass}`}>{title}</div>
             <div className="text-[12.5px] leading-relaxed text-on-surface" dangerouslySetInnerHTML={{ __html: formatInline(content) }} />
@@ -379,7 +380,7 @@ function renderMarkdown(text: string): React.ReactNode {
     } else {
       // Standard blockquote
       elements.push(
-        <blockquote key={`bq-${key}`} className="pl-4 border-l-4 border-neutral-300 my-2 text-neutral-500 italic text-[12.5px]" dangerouslySetInnerHTML={{ __html: formatInline(content) }} />
+        <blockquote key={`bq-${key}`} className="p-3 my-2 border border-neutral-200/80 rounded-xl text-neutral-500 italic text-[12.5px]" dangerouslySetInnerHTML={{ __html: formatInline(content) }} />
       );
     }
 
@@ -655,7 +656,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
         {showEmptyState && (
           <div className="flex flex-col items-center justify-center text-center py-16 px-6 space-y-5">
             <div className="w-14 h-14 rounded-2xl bg-surface-container-low border border-outline-variant/40 flex items-center justify-center">
-              <span className="material-symbols-outlined text-[28px] text-on-surface-variant">hub</span>
+              <LegacyIcon name="hub" className="text-[28px] text-on-surface-variant" />
             </div>
             <div className="space-y-2 max-w-md">
               <h2
@@ -722,15 +723,18 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                   {msg.avatar ? (
                     <img className="w-full h-full object-cover" src={msg.avatar} alt={msg.agent} />
                   ) : (
-                    <span className="material-symbols-outlined text-[18px] text-on-surface-variant">
-                      {msg.agent === 'Supervisor'
-                        ? 'verified_user'
-                        : msg.agent === 'User'
-                          ? 'person'
-                          : msg.agent === 'System'
-                            ? 'info'
-                            : 'smart_toy'}
-                    </span>
+                    <LegacyIcon
+                      name={
+                        msg.agent === 'Supervisor'
+                          ? 'verified_user'
+                          : msg.agent === 'User'
+                            ? 'person'
+                            : msg.agent === 'System'
+                              ? 'info'
+                              : 'smart_toy'
+                      }
+                      className="text-[18px] text-on-surface-variant"
+                    />
 
                   )}
                 </div>
@@ -753,7 +757,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                   {isErrorMsg ? (
                     <div className="p-4 bg-neutral-50/50 rounded-2xl rounded-tl-none border border-neutral-200/80 shadow-xs">
                       <div className="flex items-center gap-1.5 mb-2 text-neutral-800 font-bold text-[11px]">
-                        <span className="material-symbols-outlined text-[16px]">error</span>
+                        <LegacyIcon name="error" className="text-[16px]" />
                         <span>VALIDATION FAILED</span>
                       </div>
                       {renderMarkdown(msg.text)}
@@ -766,12 +770,12 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                     }`}>
                       {msg.badgeText ? (
                         <div className="flex items-center gap-1.5 mb-2 text-primary font-bold text-[11px]">
-                          <span className="material-symbols-outlined text-[16px]">info</span>
+                          <LegacyIcon name="info" className="text-[16px]" />
                           <span>{msg.badgeText}</span>
                         </div>
                       ) : isCompletedMsg ? (
                         <div className="flex items-center gap-1.5 mb-2 text-green-600 font-bold text-[11px]">
-                          <span className="material-symbols-outlined text-[16px]">check_circle</span>
+                          <LegacyIcon name="check_circle" className="text-[16px]" />
                           <span>COMPLETED</span>
                         </div>
                       ) : null}
@@ -808,9 +812,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                       })()}
                       {msg.codeHighlight && (
                         <div className="mt-3 flex items-center gap-2 py-2 px-3 bg-white/60 rounded-xl border border-outline-variant/30">
-                          <span className="material-symbols-outlined text-green-500 text-[18px]">
-                            check_circle
-                          </span>
+                          <LegacyIcon name="check_circle" className="text-green-500 text-[18px]" />
                           <span className="text-[11px] font-semibold text-on-surface">
                             {msg.codeHighlight.lineCount} files updated in {msg.codeHighlight.file}
                           </span>
@@ -834,9 +836,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
           <div className="w-full flex justify-start">
             <div className="flex gap-4 max-w-[85%] p-2 rounded-xl">
               <div className="w-9 h-9 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center bg-surface-container">
-                <span className="material-symbols-outlined text-[18px] text-on-surface-variant/70 animate-spin">
-                  progress_activity
-                </span>
+                <LegacyIcon name="progress_activity" className="text-[18px] text-on-surface-variant/70" spin />
               </div>
 
               <div className="flex-1 space-y-1.5 overflow-hidden">
@@ -845,9 +845,9 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                 </div>
 
                 <div className="p-4 bg-surface-container-low rounded-2xl rounded-tl-none border border-outline-variant/30 shadow-sm flex items-center gap-1.5">
-                  <div className="w-1.5 h-1.5 rounded-full bg-on-surface/40 animate-typing-bounce" />
-                  <div className="w-1.5 h-1.5 rounded-full bg-on-surface/40 animate-typing-bounce animation-delay-100" />
-                  <div className="w-1.5 h-1.5 rounded-full bg-on-surface/40 animate-typing-bounce animation-delay-200" />
+                  <div className="w-1.5 h-1.5 rounded-full bg-on-surface/40 animate-typing-pulse" />
+                  <div className="w-1.5 h-1.5 rounded-full bg-on-surface/40 animate-typing-pulse animation-delay-100" />
+                  <div className="w-1.5 h-1.5 rounded-full bg-on-surface/40 animate-typing-pulse animation-delay-200" />
                 </div>
               </div>
             </div>
@@ -886,7 +886,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
               onClick={onStopRun}
               className="px-3.5 py-1.5 bg-neutral-900 hover:bg-black text-white font-bold rounded-lg text-[10px] uppercase tracking-wider flex items-center gap-1.5"
             >
-              <span className="material-symbols-outlined text-[13px]">cancel</span>
+              <LegacyIcon name="cancel" className="text-[13px]" />
               Stop
             </button>
           </div>
@@ -894,11 +894,8 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
           <div className="w-full max-w-2xl bg-white border border-rose-200/90 p-5 shadow-xl rounded-2xl flex flex-col gap-4 text-left">
             <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
               <div className="flex items-center gap-2.5">
-                <span
-                  className="w-8 h-8 rounded-full text-white flex items-center justify-center"
-                  style={{ backgroundColor: '#ba1a1a' }}
-                >
-                  <span className="material-symbols-outlined text-[18px]">gavel</span>
+                <span className="w-8 h-8 rounded-full bg-error text-on-error flex items-center justify-center">
+                  <LegacyIcon name="gavel" className="text-[18px]" />
                 </span>
                 <div>
                   <h4 className="text-[11.5px] font-bold tracking-wider text-rose-800 uppercase">

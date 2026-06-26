@@ -1,4 +1,5 @@
 import React from 'react';
+import { LegacyIcon } from './ui/LegacyIcon';
 
 export function FooterMenuPanel({
   children,
@@ -35,13 +36,10 @@ export function FooterMenuItem({
       onClick={onClick}
       className="w-full flex items-center gap-2 px-3 py-2 text-[11px] hover:bg-surface-container-low text-left"
     >
-      <span
-        className={`material-symbols-outlined text-[14px] w-4 flex-shrink-0 ${
-          selected ? 'text-primary opacity-100' : 'opacity-0'
-        }`}
-      >
-        check
-      </span>
+      <LegacyIcon
+        name="check"
+        className={`text-[14px] w-4 flex-shrink-0 ${selected ? 'text-primary opacity-100' : 'opacity-0'}`}
+      />
       <span className={`truncate ${selected ? 'text-primary font-bold' : 'text-on-surface'}`}>
         {children}
       </span>

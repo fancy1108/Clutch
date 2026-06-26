@@ -37,7 +37,8 @@ import {
 } from '../services/workflowApi';
 import { fetchAgents } from '../services/agentApi';
 import { getAgentDisplayName } from '../services/builtinAgent';
-import { BTN_GHOST, BTN_PRIMARY, BTN_SECONDARY } from './ui/buttonStyles';
+import { BTN_GHOST, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON } from './ui/buttonStyles';
+import { LegacyIcon } from './ui/LegacyIcon';
 
 type EditorViewMode = 'canvas' | 'json';
 
@@ -75,7 +76,7 @@ const CustomNode = ({ data }: { data: any }) => {
             {data.avatar ? (
               <img className="w-5 h-5 object-contain" src={data.avatar} alt={data.agent} />
             ) : (
-              <span className="material-symbols-outlined text-[15px] text-neutral-500">smart_toy</span>
+              <LegacyIcon name="smart_toy" className="text-[15px] text-neutral-500" />
             )}
           </div>
           <div className="overflow-hidden text-left flex-1 max-w-[130px]">
@@ -89,16 +90,18 @@ const CustomNode = ({ data }: { data: any }) => {
           <button 
             type="button"
             onClick={() => data.onEdit(data.id)}
-            className="text-neutral-300 hover:text-neutral-900 transition-colors"
+            className={`${BTN_ICON} text-neutral-300 hover:text-neutral-900`}
+            aria-label="Edit node"
           >
-            <span className="material-symbols-outlined text-[15px]">edit</span>
+            <LegacyIcon name="edit" className="text-[15px]" />
           </button>
           <button 
             type="button"
             onClick={() => data.onDelete(data.id)}
-            className="text-neutral-300 hover:text-red-600 transition-colors"
+            className={`${BTN_ICON} text-neutral-300 hover:text-red-600`}
+            aria-label="Delete node"
           >
-            <span className="material-symbols-outlined text-[15px]">delete</span>
+            <LegacyIcon name="delete" className="text-[15px]" />
           </button>
         </div>
       </div>
@@ -582,7 +585,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
             onClick={handleCreateWorkflow}
             className={MODAL_BTN_SECONDARY}
           >
-            <span className="material-symbols-outlined text-[16px]">add</span>
+            <LegacyIcon name="add" className="text-[16px]" />
             {t('Create Flow')}
           </button>
         </div>
@@ -618,9 +621,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
             >
               <div className="flex items-center gap-3 overflow-hidden min-w-0 flex-1">
                 <div className="w-8 h-8 rounded-lg bg-neutral-100/70 flex flex-shrink-0 items-center justify-center">
-                  <span className="material-symbols-outlined text-neutral-600 text-[18px]">
-                    account_tree
-                  </span>
+                  <LegacyIcon name="account_tree" className="text-neutral-600 text-[18px]" />
                 </div>
                 <div className="overflow-hidden text-left min-w-0">
                   <h4 className="text-[11px] font-bold text-neutral-800 truncate">{item.name}</h4>
@@ -636,10 +637,11 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
                     e.stopPropagation();
                     void selectWorkflow(item);
                   }}
-                  className="p-1 hover:bg-neutral-100 text-neutral-500 hover:text-neutral-800 rounded-md transition-colors"
+                  className={BTN_ICON}
                   title={t('View workflow')}
+                  aria-label={t('View workflow')}
                 >
-                  <span className="material-symbols-outlined text-[16px]">visibility</span>
+                  <LegacyIcon name="visibility" className="text-[16px]" />
                 </button>
                 <button
                   type="button"
@@ -647,10 +649,11 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
                     e.stopPropagation();
                     void deleteWorkflow(item.id);
                   }}
-                  className="p-1 hover:bg-red-50 text-red-500 hover:text-red-700 rounded-md transition-colors"
+                  className={`${BTN_ICON} hover:bg-red-50 text-red-500 hover:text-red-700`}
                   title={t('Delete workflow')}
+                  aria-label={t('Delete workflow')}
                 >
-                  <span className="material-symbols-outlined text-[16px]">delete</span>
+                  <LegacyIcon name="delete" className="text-[16px]" />
                 </button>
               </div>
             </div>
@@ -709,7 +712,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
                       onClick={addNode}
                       className={MODAL_BTN_SECONDARY}
                     >
-                      <span className="material-symbols-outlined text-[16px]">add</span>
+                      <LegacyIcon name="add" className="text-[16px]" />
                       {t('Add Node')}
                     </button>
                   )}
@@ -720,7 +723,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
                     disabled={isSaving || loading}
                     className={MODAL_BTN_SECONDARY}
                   >
-                    <span className="material-symbols-outlined text-[16px]">save</span>
+                    <LegacyIcon name="save" className="text-[16px]" />
                     {activeItem?.readOnly ? t('Save as copy') : t('Save')}
                   </button>
                 </div>
@@ -761,7 +764,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
                   {nodes.length === 0 && (
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                       <div className="text-center text-neutral-400">
-                        <span className="material-symbols-outlined text-[28px] mb-2 font-light">add_circle</span>
+                        <LegacyIcon name="add_circle" className="text-[28px] mb-2 font-light" />
                         <p className="text-xs font-medium">{t('Empty workflow — click Add Node to begin')}</p>
                       </div>
                     </div>
@@ -775,7 +778,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center flex-col text-neutral-400">
-              <span className="material-symbols-outlined text-[32px] mb-2 font-light">account_tree</span>
+              <LegacyIcon name="account_tree" className="text-[32px] mb-2 font-light" />
               <p className="text-xs font-medium">Select or create a workflow</p>
             </div>
           )}
@@ -790,11 +793,13 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
               <h3 className="text-sm font-bold text-neutral-900">
                 {activeWorkflow?.steps.find(s => s.id.toString() === editingNodeId) ? 'Edit Node' : 'New Node'}
               </h3>
-              <button 
+              <button
+                type="button"
                 onClick={() => setEditingNodeId(null)}
-                className="text-neutral-400 hover:text-neutral-800 transition-colors"
+                className={BTN_ICON}
+                aria-label="Close"
               >
-                <span className="material-symbols-outlined text-[18px]">close</span>
+                <LegacyIcon name="close" className="text-[18px]" />
               </button>
             </div>
             
@@ -973,12 +978,13 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
               <h3 className="text-sm font-bold text-neutral-900">
                 Create New Workflow Flow
               </h3>
-              <button 
+              <button
                 type="button"
                 onClick={() => setIsCreatingWorkflow(false)}
-                className="text-neutral-400 hover:text-neutral-800 transition-colors"
+                className={BTN_ICON}
+                aria-label="Close"
               >
-                <span className="material-symbols-outlined text-[18px]">close</span>
+                <LegacyIcon name="close" className="text-[18px]" />
               </button>
             </div>
             
@@ -1028,7 +1034,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
                           : 'border-neutral-200 hover:border-neutral-350 text-neutral-600 bg-neutral-50/50'
                       }`}
                     >
-                      <span className="material-symbols-outlined text-[16px]">{iconOpt.key}</span>
+                      <LegacyIcon name={iconOpt.key} className="text-[16px]" />
                       <span className="text-[8px] font-bold leading-tight truncate w-full text-center">{iconOpt.name}</span>
                     </button>
                   ))}

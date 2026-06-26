@@ -1,5 +1,7 @@
 import React from 'react';
 import { useLanguage } from './LanguageContext';
+import { BTN_ICON } from './ui/buttonStyles';
+import { LegacyIcon } from './ui/LegacyIcon';
 
 interface HeaderProps {
   currentFlow: string;
@@ -46,10 +48,11 @@ export const Header: React.FC<HeaderProps> = ({
         {onGoBack && (
           <button
             onClick={onGoBack}
-            className="w-8 h-8 flex items-center justify-center hover:bg-surface-container rounded-full transition-colors active:scale-95 text-on-surface cursor-pointer"
+            className={`${BTN_ICON} w-8 h-8 rounded-full text-on-surface`}
             title={t("Go Back")}
+            aria-label={t("Go Back")}
           >
-            <span className="material-symbols-outlined text-[20px] leading-none">chevron_left</span>
+            <LegacyIcon name="chevron_left" className="text-[20px] leading-none" />
           </button>
         )}
         <nav className="flex items-center gap-2 text-xs font-semibold tracking-wide text-on-surface-variant">

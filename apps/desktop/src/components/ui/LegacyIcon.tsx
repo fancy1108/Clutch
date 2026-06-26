@@ -1,0 +1,196 @@
+import {
+  AlertCircle,
+  AlertTriangle,
+  ArrowLeft,
+  ArrowUp,
+  AtSign,
+  BookmarkPlus,
+  Bot,
+  Box,
+  Brackets,
+  Check,
+  CheckCircle,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Circle,
+  Code,
+  Coffee,
+  Eye,
+  EyeOff,
+  File,
+  FileCode,
+  FileEdit,
+  FileText,
+  Film,
+  Folder,
+  FolderOpen,
+  FolderPlus,
+  Gavel,
+  GitBranch,
+  GitFork,
+  GraduationCap,
+  Hammer,
+  Hand,
+  Image,
+  Info,
+  Layers,
+  LayoutGrid,
+  Lightbulb,
+  Loader2,
+  MessageSquare,
+  MessagesSquare,
+  Monitor,
+  Paperclip,
+  Palette,
+  Pencil,
+  Plug,
+  Plus,
+  PlusCircle,
+  Puzzle,
+  Rocket,
+  RotateCcw,
+  Save,
+  Settings,
+  Share2,
+  Square,
+  SquareCheck,
+  ShieldCheck,
+  Snowflake,
+  Sun,
+  Table,
+  Tag,
+  Terminal,
+  Trash2,
+  Upload,
+  User,
+  Wrench,
+  X,
+  XCircle,
+  Zap,
+  type LucideIcon,
+} from 'lucide-react';
+
+/** Maps legacy Material Symbol names (and lucide kebab aliases) to lucide-react icons. */
+const ICON_MAP: Record<string, LucideIcon> = {
+  account_tree: GitBranch,
+  add: Plus,
+  add_circle: PlusCircle,
+  alternate_email: AtSign,
+  api: Plug,
+  arrow_back: ArrowLeft,
+  arrow_upward: ArrowUp,
+  attach_file: Paperclip,
+  bolt: Zap,
+  bookmark_add: BookmarkPlus,
+  cancel: XCircle,
+  chat: MessageSquare,
+  chat_bubble: MessageSquare,
+  check: Check,
+  check_box: SquareCheck,
+  check_box_outline_blank: Square,
+  check_circle: CheckCircle,
+  chevron_left: ChevronLeft,
+  chevron_right: ChevronRight,
+  close: X,
+  code: Code,
+  coffee: Coffee,
+  construction: Hammer,
+  create_new_folder: FolderPlus,
+  delete: Trash2,
+  deploy: Rocket,
+  deployed_code: Rocket,
+  description: FileText,
+  difference: FileCode,
+  edit: Pencil,
+  edit_document: FileEdit,
+  edit_note: FileEdit,
+  error: AlertCircle,
+  eye: Eye,
+  'eye-off': EyeOff,
+  extension: Puzzle,
+  figma_api_connect: Palette,
+  file: File,
+  folder: Folder,
+  folder_open: FolderOpen,
+  folder_shared: FolderOpen,
+  folder_special: Folder,
+  fork_right: GitFork,
+  forum: MessagesSquare,
+  front_hand: Hand,
+  gavel: Gavel,
+  hand: Hand,
+  handyman: Wrench,
+  hub: Share2,
+  image: Image,
+  info: Info,
+  insert_drive_file: File,
+  keyboard_arrow_down: ChevronDown,
+  label: Tag,
+  label_important: AlertCircle,
+  layers: Layers,
+  light_mode: Sun,
+  lightbulb: Lightbulb,
+  markdown: FileText,
+  memory: Box,
+  monitoring: Monitor,
+  movie: Film,
+  palette: Palette,
+  person: User,
+  progress_activity: Loader2,
+  restart_alt: RotateCcw,
+  save: Save,
+  schema: LayoutGrid,
+  school: GraduationCap,
+  settings: Settings,
+  shield_check: ShieldCheck,
+  smart_toy: Bot,
+  stop: Square,
+  sync: RotateCcw,
+  table_chart: Table,
+  terminal: Terminal,
+  upload_file: Upload,
+  verified_user: ShieldCheck,
+  visibility: Eye,
+  visibility_off: EyeOff,
+  warning: AlertTriangle,
+  ac_unit: Snowflake,
+  'alert-triangle': AlertTriangle,
+  'file-pen-line': FileEdit,
+  'shield-check': ShieldCheck,
+};
+
+function sizeFromClassName(className?: string): number | undefined {
+  if (!className) return undefined;
+  const px = className.match(/text-\[(\d+(?:\.\d+)?)px\]/);
+  if (px) return parseFloat(px[1]);
+  const rem = className.match(/text-\[(\d+(?:\.\d+)?)rem\]/);
+  if (rem) return parseFloat(rem[1]) * 16;
+  return undefined;
+}
+
+export function LegacyIcon({
+  name,
+  className = '',
+  spin = false,
+}: {
+  name: string;
+  className?: string;
+  spin?: boolean;
+}) {
+  const Icon = ICON_MAP[name] ?? Circle;
+  const size = sizeFromClassName(className);
+  const spinClass =
+    spin || name === 'progress_activity' || className.includes('animate-spin')
+      ? ' animate-spin'
+      : '';
+
+  return (
+    <Icon
+      aria-hidden
+      size={size}
+      strokeWidth={2}
+      className={`shrink-0 inline-block${spinClass} ${className}`.trim()}
+    />
+  );
+}
