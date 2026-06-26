@@ -8,7 +8,7 @@
 
 **栈：** Tauri 2.x · React 19 + Vite · Tailwind CSS 4 · Motion · React Flow · pnpm | Python 3.11+ · FastAPI · LangGraph · uv
 
-**约束：** 必须桌面端、LangGraph 为唯一编排引擎、用户零代码；前端仅 `apps/desktop/src`，Python 仅 `services/orchestrator/src`；前端禁止访问 DB 或执行系统命令；React 只投影 WebSocket `ClutchState`，禁止 `setTimeout` / mock 模拟编排；Sidecar 仅 `localhost:8123`；单次 ≤3 新文件、≤200 行；新依赖须人类批准。
+**约束：** 必须桌面端、LangGraph 为唯一编排引擎、用户零代码；前端仅 `apps/desktop/src`，Python 仅 `services/orchestrator/src`；前端禁止访问 DB 或执行系统命令；React 只投影 WebSocket `ClutchState`，禁止 `setTimeout` / mock 模拟编排；Sidecar 开发 `localhost:8124`、打包 `localhost:8123`；单次 ≤3 新文件、≤200 行；新依赖须人类批准。
 
 **Vibe：** 业务语言优先 · 监督而非黑盒 · 失败可操作 · 渐进复杂度 · 本地优先
 
@@ -32,7 +32,7 @@
 |------|------|
 | 前端开发 | `pnpm dev` |
 | 前端构建（校验） | `pnpm build` |
-| 后端启动 | `cd services/orchestrator && uv run uvicorn src.main:app --reload --port 8123` |
+| 后端启动（开发） | `cd services/orchestrator && uv run uvicorn src.main:app --reload --port 8124` |
 | 后端测试（校验） | `cd services/orchestrator && uv run pytest` |
 | 本地一键校验（轻量） | `./scripts/verify.sh` |
 | 本地全量校验（含 E2E） | `./scripts/verify.sh --e2e` |
@@ -153,7 +153,7 @@ WebSocket 信封格式（事件名在 `event`，载荷在 `data`）：
 ## 架构红线（摘要）
 
 - **LangGraph 是唯一 SSOT**；React 仅渲染 WebSocket 推送的 `ClutchState`。
-- 前后端仅通过 `localhost:8123` HTTP/WebSocket 通信。
+- 前后端：开发经 Vite 代理连 `localhost:8124`；打包 DMG 直连 `localhost:8123`。
 - 前端：pnpm · Tailwind v4 · lucide-react · Motion · `@xyflow/react`。
 - 后端：uv · asyncio · type hints · LangGraph。
 - UI/UX 见 [`UI_UX_GUIDELINES.md`](./UI_UX_GUIDELINES.md)。

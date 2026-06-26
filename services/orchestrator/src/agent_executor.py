@@ -219,6 +219,8 @@ def execute_agent_task(
                 cwd=cwd,
                 fallback_tool=tool,
                 on_log=stream_log if run_id else None,
+                run_id=run_id,
+                source="flow",
             )
             output = result.output
             for log_line in result.logs:

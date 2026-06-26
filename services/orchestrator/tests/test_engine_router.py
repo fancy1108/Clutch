@@ -330,3 +330,51 @@ def test_route_engine_ollama_not_connected(monkeypatch) -> None:
     res = route_engine(agent_name="Ollama Agent", prompt="hello")
     assert res.engine == "Fake Model"
     assert any("Ollama is not installed/connected" in log or "未安装或未连接" in log for log in res.logs)
+
+
+def test_hybrid_fallback_to_legacy_on_failure(monkeypatch, mock_agents) -> None:
+    monkeypatch.setenv("CLUTCH_RUNTIME_MODE", "hybrid")
+    monkeypatch.setattr("src.engine_router.tool_available_for_routing", lambda _tool_id: True)
+    monkeypatch.setattr("src.engine_router.get_workspace", lambda: {"workspace_path": "/workspace"})
+    monkeypatch.setattr(
+        "src.engine_router._route_claude_hybrid",
+        lambda **kwargs: (_ for _ in ()).throw(RuntimeError("hybrid failed")),
+    )
+
+    legacy_called: dict[str, bool] = {"ok": False}
+
+    def fake_chat_claude(prompt, *, cwd, system_prompt, session_id=None, resume_session_id=None, **kwargs):
+        legacy_called["ok"] = True
+        return "legacy output"
+
+    monkeypatch.setattr("src.engine_router.chat_claude_cli", fake_chat_claude)
+    monkeypatch.setattr("src.engine_router.uuid.uuid4", lambda: "new-session-id")
+
+    res = route_engine(
+        agent_name="Builder Module (JSX VibeCoder)",
+        prompt="hello",
+        run_id="run-hybrid-fallback",
+        source="plain_chat",
+    )
+    assert legacy_called["ok"] is True
+    assert res.output == "legacy output"
+    assert any("fallback to legacy" in log for log in res.logs)
+
+
+def test_route_engine_passes_hybrid_execution_metadata(monkeypatch) -> None:
+    events = [{"type": "shell_echo", "visible": False, "content": "claude -p hi"}]
+
+    def fake_raw(**_kwargs: object) -> EngineResult:
+        return EngineResult(
+            engine="Claude CLI (Hybrid)",
+            output="assistant reply",
+            logs=["[HYBRID] ok"],
+            cli_session_id="sess-1",
+            raw_output="raw shell bytes",
+            output_events=events,
+        )
+
+    monkeypatch.setattr("src.engine_router._route_engine_raw", fake_raw)
+    res = route_engine(agent_name="Claude test Session", prompt="hi")
+    assert res.raw_output == "raw shell bytes"
+    assert res.output_events == events

@@ -130,6 +130,10 @@
 | WorkflowCompiler（M1-02） | `src/compiler/` |
 | Orchestrator 路由（M1-04） | `src/orchestrator/routing.py` |
 | Engine Router（aiEngine / Connect 分流） | `src/engine_router.py` |
+| ShellSession Hybrid Runtime（D25 Step 1） | `src/shell_session.py`、`src/shell_exec_runtime.py`、`src/claude_hybrid_output_parser.py`（含 `OutputEvent`）、`src/runtime_config.py` |
+| RuntimeStrategy / Provider 注册表 | `src/runtime_strategy.py`、`src/provider_registry.py` |
+| Context Continuity 快照 | `src/session_snapshot.py`；`GET/PUT /api/shell-snapshots/{run_id}` |
+| HumanInputKind 载荷 | `src/human_input.py` |
 | agent_task 节点执行 | `src/agent_executor.py` |
 | Agent 持久化与内置 Agent | `src/agent_storage.py` |
 | 运行日志 WS 转发 | `src/run_log_forwarder.py` |

@@ -37,6 +37,7 @@ import {
 } from '../services/workflowApi';
 import { fetchAgents } from '../services/agentApi';
 import { getAgentDisplayName } from '../services/builtinAgent';
+import { BTN_GHOST, BTN_PRIMARY, BTN_SECONDARY } from './ui/buttonStyles';
 
 type EditorViewMode = 'canvas' | 'json';
 
@@ -51,14 +52,9 @@ interface WorkflowOrchestrationProps {
 
 const DEFAULT_AVATAR = 'https://lh3.googleusercontent.com/aida-public/AB6AXuCdbGLlsb3N3uOkfOjw1Q1_yDEdGIJRGnmhLu-FVragfIKdNByQw1J1dUhUyD0bhtU68_IQlwgYzvIetQ2bY0YH_lZtUPtQ34nuKBxaxPyS3e2_NiWBHxGCtDAanZ14d9Jj74bIX1CMvh__wE2web2l3_MmMZ3M6VbcAyIQ32DmLoC1ZxOulFXqko_7SDi7dj4UYhiz2GZJT9mIeqNcXO-z24SVjGrZaOr-FBsXxb6cUVkNht5QSQLvRy955U1VtJCFXs670Vt4hbki';
 
-const MODAL_BTN_SECONDARY =
-  'flex items-center gap-1.5 px-4 py-2 bg-neutral-50 hover:bg-neutral-100 text-neutral-700 hover:text-neutral-950 border border-neutral-200/60 rounded-xl text-xs font-bold transition-all shadow-2xs active:scale-[0.97] cursor-pointer whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed';
-
-const MODAL_BTN_PRIMARY =
-  'flex items-center gap-1.5 px-4 py-2 bg-neutral-900 hover:bg-neutral-800 text-white border border-neutral-900 rounded-xl text-xs font-bold transition-all shadow-sm active:scale-[0.97] cursor-pointer whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed';
-
-const MODAL_BTN_CANCEL =
-  'px-4 py-2 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 border border-neutral-200/60 rounded-xl text-xs font-bold transition-all active:scale-[0.97] cursor-pointer whitespace-nowrap';
+const MODAL_BTN_SECONDARY = BTN_SECONDARY;
+const MODAL_BTN_PRIMARY = BTN_PRIMARY;
+const MODAL_BTN_CANCEL = BTN_GHOST;
 
 /** Keep initial canvas zoom modest — fitView alone over-magnifies sparse graphs. */
 const FLOW_DEFAULT_VIEWPORT = { x: 80, y: 60, zoom: 0.58 };
@@ -152,6 +148,8 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
 
   // New workflow creation states
   const [isCreatingWorkflow, setIsCreatingWorkflow] = useState(false);
+  const [createFlowError, setCreateFlowError] = useState<string | null>(null);
+  const [isSavingNewFlow, setIsSavingNewFlow] = useState(false);
   const [newWorkflowName, setNewWorkflowName] = useState('');
   const [newWorkflowDesc, setNewWorkflowDesc] = useState('');
   const [newWorkflowIcon, setNewWorkflowIcon] = useState('account_tree');
@@ -374,13 +372,14 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
 
   const handleCreateWorkflow = () => {
     setIsCreatingWorkflow(true);
+    setCreateFlowError(null);
     setNewWorkflowName('');
     setNewWorkflowDesc('');
     setNewWorkflowIcon('account_tree');
   };
 
   const saveNewWorkflow = async () => {
-    if (!newWorkflowName.trim()) return;
+    if (!newWorkflowName.trim() || isSavingNewFlow) return;
     const slug = newWorkflowName
       .trim()
       .toLowerCase()
@@ -395,6 +394,8 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
       ],
       edges: [{ id: 'e1', source: 'start', target: 'end' }],
     };
+    setIsSavingNewFlow(true);
+    setCreateFlowError(null);
     try {
       await validateWorkflow(empty);
       await saveUserWorkflow(empty);
@@ -403,7 +404,11 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
       const created = items.find((i) => i.id === slug);
       if (created) await selectWorkflow(created);
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : t('Failed to create workflow'));
+      const message = err instanceof Error ? err.message : t('Failed to create workflow');
+      setCreateFlowError(message);
+      setSaveError(message);
+    } finally {
+      setIsSavingNewFlow(false);
     }
   };
 
@@ -678,7 +683,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
                       type="button"
                       disabled={!canvasCompatible}
                       onClick={() => { syncJsonFromCanvas(); setViewMode('canvas'); }}
-                      className={`px-4 py-2 transition-colors ${
+                      className={`px-3 py-1.5 text-[11px] transition-colors ${
                         viewMode === 'canvas'
                           ? 'bg-neutral-900 text-white'
                           : 'bg-neutral-50 text-neutral-700 hover:bg-neutral-100 disabled:opacity-40'
@@ -689,7 +694,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
                     <button
                       type="button"
                       onClick={() => setViewMode('json')}
-                      className={`px-4 py-2 transition-colors border-l border-neutral-200/60 ${
+                      className={`px-3 py-1.5 text-[11px] transition-colors border-l border-neutral-200/60 ${
                         viewMode === 'json'
                           ? 'bg-neutral-900 text-white'
                           : 'bg-neutral-50 text-neutral-700 hover:bg-neutral-100'
@@ -1031,22 +1036,31 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
               </div>
             </div>
 
-            <div className="p-4 border-t border-neutral-100 bg-neutral-50/50 flex justify-end gap-2">
+            <div className="p-4 border-t border-neutral-100 bg-neutral-50/50 flex flex-col gap-2">
+              {createFlowError && (
+                <p className="text-[10px] text-rose-700 bg-rose-50 border border-rose-200/80 rounded-lg px-2 py-1.5">
+                  {createFlowError}
+                </p>
+              )}
+              <div className="flex justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setIsCreatingWorkflow(false)}
                 className={MODAL_BTN_CANCEL}
+                disabled={isSavingNewFlow}
               >
                 {t('Cancel')}
               </button>
               <button
                 type="button"
-                onClick={saveNewWorkflow}
-                disabled={!newWorkflowName.trim()}
+                data-testid="workflow-create-save"
+                onClick={() => void saveNewWorkflow()}
+                disabled={!newWorkflowName.trim() || isSavingNewFlow}
                 className={MODAL_BTN_PRIMARY}
               >
-                {t('Save Flow')}
+                {isSavingNewFlow ? t('Saving...') : t('Save Flow')}
               </button>
+              </div>
             </div>
           </div>
         </div>

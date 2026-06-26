@@ -1,4 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
+from pathlib import Path
+
 from PyInstaller.utils.hooks import collect_all
 
 block_cipher = None
@@ -6,6 +8,11 @@ block_cipher = None
 datas: list = []
 binaries: list = []
 hiddenimports: list = []
+
+_spec_dir = Path(SPEC).resolve().parent
+_assets = _spec_dir / "src" / "workflow_assets"
+if _assets.is_dir() and any(_assets.glob("*.json")):
+    datas.append((str(_assets), "src/workflow_assets"))
 
 for package in (
     "uvicorn",

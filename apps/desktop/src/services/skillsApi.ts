@@ -1,4 +1,4 @@
-const BASE = 'http://localhost:8123';
+import { SIDECAR_BASE as BASE } from './sidecarUrl';
 
 export interface ScannedSkill {
   key: string;

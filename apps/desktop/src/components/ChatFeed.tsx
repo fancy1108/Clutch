@@ -1,14 +1,174 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { ChatMessage, ClutchRunStatus } from '../types';
+import { ChevronRight } from 'lucide-react';
+import { ChatMessage, ClutchRunStatus, HybridExecutionPayload, OutputEvent } from '../types';
 import { useLanguage } from './LanguageContext';
 import { ChatInputBar, type Attachment } from './ChatInputBar';
+import { BTN_DANGER_SM, BTN_PRIMARY, BTN_SECONDARY, BTN_SM, BTN_SUCCESS_SM } from './ui/buttonStyles';
 import type { SessionRecord } from '../services/runApi';
 import type { ScannedSkill } from '../services/skillsApi';
 import type { FileTreeNode } from '../services/workspaceApi';
 import type { PermissionMode } from '../services/permissionApi';
 
+function outputEventLabel(type: OutputEvent['type'], t: (key: string) => string): string {
+  switch (type) {
+    case 'shell_echo':
+      return t('Shell command');
+    case 'system_prompt':
+      return t('System prompt');
+    case 'boundary_marker':
+      return t('Boundary marker');
+    default:
+      return type;
+  }
+}
+
+function isHybridReply(msg: ChatMessage): boolean {
+  return Boolean(msg.runtimeEngine?.includes('Hybrid'));
+}
+
+function previewExecutionContent(content: string, maxChars = 56): string {
+  const singleLine = content.replace(/\s+/g, ' ').trim();
+  if (singleLine.length <= maxChars) return singleLine;
+  return `${singleLine.slice(0, maxChars)}…`;
+}
+
+function DisclosureRow({
+  label,
+  meta,
+  preview,
+  open,
+  onToggle,
+  children,
+}: {
+  label: string;
+  meta?: string;
+  preview?: string;
+  open: boolean;
+  onToggle: () => void;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className="min-w-0">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center gap-1.5 rounded-md py-1 px-1 text-left text-on-surface-variant hover:bg-surface-container/70 hover:text-on-surface transition-colors"
+      >
+        <ChevronRight
+          className={`h-3.5 w-3.5 shrink-0 text-on-surface-variant/60 transition-transform duration-200 ${
+            open ? 'rotate-90' : ''
+          }`}
+          strokeWidth={2}
+        />
+        <span className="text-[11px] font-medium text-on-surface">{label}</span>
+        {meta ? (
+          <span className="text-[10px] text-on-surface-variant/55 tabular-nums">{meta}</span>
+        ) : null}
+      </button>
+      {!open && preview ? (
+        <p className="ml-[1.35rem] pr-1 text-[10px] font-mono text-on-surface-variant/65 truncate leading-snug">
+          {preview}
+        </p>
+      ) : null}
+      {open && children ? (
+        <div className="ml-[1.1rem] mt-0.5 mb-1.5 border-l border-outline-variant/25 pl-2.5">
+          {children}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ExecutionDetailBlock({
+  label,
+  content,
+  tone = 'default',
+}: {
+  label: string;
+  content: string;
+  tone?: 'default' | 'muted';
+}) {
+  const [open, setOpen] = useState(false);
+  const preview = previewExecutionContent(content);
+
+  return (
+    <DisclosureRow
+      label={label}
+      preview={preview}
+      open={open}
+      onToggle={() => setOpen((value) => !value)}
+    >
+      <pre
+        className={`whitespace-pre-wrap break-words text-[10px] leading-relaxed font-mono max-h-48 overflow-y-auto py-1 ${
+          tone === 'muted' ? 'text-on-surface-variant' : 'text-on-surface'
+        }`}
+      >
+        {content}
+      </pre>
+    </DisclosureRow>
+  );
+}
+
+function HybridExecutionDetails({
+  events,
+  rawOutput,
+  t,
+  forceVisible = false,
+}: {
+  events?: OutputEvent[];
+  rawOutput?: string;
+  t: (key: string) => string;
+  forceVisible?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const hiddenEvents = (events ?? []).filter(
+    (event) => !event.visible && event.type !== 'boundary_marker',
+  );
+  const sectionCount = hiddenEvents.length + (rawOutput ? 1 : 0);
+  const hasDetails = sectionCount > 0;
+  if (!forceVisible && !hasDetails) {
+    return null;
+  }
+
+  return (
+    <div className="mt-2.5 border-t border-outline-variant/15 pt-2">
+      <DisclosureRow
+        label={t('View execution details')}
+        meta={sectionCount > 0 ? `${sectionCount}` : undefined}
+        open={open}
+        onToggle={() => setOpen((value) => !value)}
+      >
+        <div className="space-y-0.5 py-0.5">
+          {hiddenEvents.length === 0 ? (
+            <p className="text-[10px] text-on-surface-variant py-1">
+              {t('No structured execution details were captured for this turn.')}
+            </p>
+          ) : (
+            hiddenEvents.map((event, index) => (
+              <ExecutionDetailBlock
+                key={`${event.type}-${index}`}
+                label={outputEventLabel(event.type, t)}
+                content={event.content}
+                tone={event.type === 'shell_echo' ? 'muted' : 'default'}
+              />
+            ))
+          )}
+          {rawOutput ? (
+            <ExecutionDetailBlock
+              label={t('Raw shell output')}
+              content={rawOutput}
+              tone="muted"
+            />
+          ) : null}
+        </div>
+      </DisclosureRow>
+    </div>
+  );
+}
+
 interface ChatFeedProps {
   messages: ChatMessage[];
+  hybridExecutions?: Record<string, HybridExecutionPayload>;
   inputValue: string;
   setInputValue: (val: string) => void;
   onSendMessage: (text: string, attachments?: Attachment[]) => void;
@@ -353,6 +513,7 @@ function renderMarkdown(text: string): React.ReactNode {
 
 export const ChatFeed: React.FC<ChatFeedProps> = ({
   messages,
+  hybridExecutions,
   inputValue,
   setInputValue,
   onSendMessage,
@@ -518,7 +679,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                   type="button"
                   data-testid="chat-authorize-workspace"
                   onClick={onPickWorkspace}
-                  className="px-4 py-2 rounded-lg bg-primary text-white text-xs font-bold hover:opacity-90 transition-opacity"
+                  className={`${BTN_PRIMARY}`}
                 >
                   {t('Authorize workspace')}
                 </button>
@@ -528,7 +689,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                   type="button"
                   data-testid="chat-open-workflows"
                   onClick={onOpenWorkflows}
-                  className="px-4 py-2 rounded-lg border border-outline-variant bg-white text-xs font-bold text-on-surface hover:bg-surface-container-low transition-colors"
+                  className={BTN_SECONDARY}
                 >
                   {t('Choose workflow')}
                 </button>
@@ -627,6 +788,24 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                         </div>
                       )}
                       {renderMarkdown(displayText)}
+                      {!isUser && (() => {
+                        const hybridMeta = hybridExecutions?.[msg.id];
+                        const executionEvents = hybridMeta?.outputEvents ?? msg.outputEvents;
+                        const executionRaw = hybridMeta?.rawOutput ?? msg.rawOutput;
+                        const showDetails =
+                          isHybridReply(msg) ||
+                          Boolean(executionEvents?.length) ||
+                          Boolean(executionRaw);
+                        if (!showDetails) return null;
+                        return (
+                          <HybridExecutionDetails
+                            events={executionEvents}
+                            rawOutput={executionRaw}
+                            t={t}
+                            forceVisible={isHybridReply(msg)}
+                          />
+                        );
+                      })()}
                       {msg.codeHighlight && (
                         <div className="mt-3 flex items-center gap-2 py-2 px-3 bg-white/60 rounded-xl border border-outline-variant/30">
                           <span className="material-symbols-outlined text-green-500 text-[18px]">
@@ -736,7 +915,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                 type="button"
                 data-testid="chat-approve"
                 onClick={onApprove}
-                className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-600 border border-emerald-200 text-emerald-800 hover:text-white font-bold rounded-lg text-[10px] uppercase"
+                className={BTN_SUCCESS_SM}
               >
                 Bypass & Approve
               </button>
@@ -744,7 +923,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                 type="button"
                 data-testid="chat-reject"
                 onClick={onReject}
-                className="px-3.5 py-2 bg-rose-50 hover:bg-red-600 border border-rose-200 text-rose-800 hover:text-white font-bold rounded-lg text-[10px] uppercase"
+                className={BTN_DANGER_SM}
               >
                 Reject & Redo
               </button>
@@ -772,7 +951,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                     setHillInstructions('');
                   }
                 }}
-                className={`px-3 py-1.5 text-[10px] font-bold rounded-lg ${
+                className={`${BTN_SM} ${
                   hillInstructions.trim()
                     ? 'bg-neutral-900 text-white'
                     : 'bg-neutral-100 text-neutral-400 cursor-not-allowed'

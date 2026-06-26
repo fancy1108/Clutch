@@ -17,6 +17,16 @@
 - **影响**：后端所有的 `storage` 系统均重构为引用 `storage_helper.get_storage_dir()`；测试中隔离更干净。
 - **决策状态**：`已落地`
 
+### D18 · DEV / DMG Sidecar 端口分离（2026-06-26）
+
+- **背景**：D16 已将存储目录隔离为 `clutch_dev` / `clutch`，但 dev 与 DMG 前端均硬编码 `localhost:8123`。两者同时存在时，后启动的 sidecar 抢占端口，导致 DMG UI 读到 dev 会话（或反之）。
+- **方案**：
+  - 开发：`pnpm tauri dev` / Vite 代理 / 手动 `uvicorn` 使用 **8124**；仅清理 8124。
+  - 打包 DMG：PyInstaller sidecar 固定 **8123**；仅清理 8123。
+  - 前端 `sidecarUrl.ts`：dev 走相对路径（Vite 代理），production build 直连 `http://localhost:8123`。
+- **影响**：dev 与 DMG 可同时运行且数据不串；E2E / CI 仍用 8123（prod 口径）。
+- **决策状态**：`已落地`
+
 ### D17 · 前端侧栏自定义 Pointer 拖动（2026-06-25）
 
 - **背景**：Tauri 桌面端或嵌套 iframe 下原生 HTML5 `Drag-and-Drop` 的兼容度、动效定制、以及 drop target 状态判断不够稳定，导致拖拽工作区到分组中时易失灵或视觉高亮不够灵敏。
@@ -257,6 +267,7 @@
   3. 引入 **`RuntimeStrategy`** 枚举（`SHELL_EXEC` · `INTERACTIVE_PTY` · `HTTP_DAEMON` · `SDK_NATIVE`）；EngineRouter 第三阶段改为 `strategy = provider.runtime_strategy`，禁止 `if provider == "claude"` 扩散。
   4. **`HumanInputKind`**（`BOOT_TRUST` · `TOOL_CONFIRM` · `TEXT` · `AUTH`）为 Runtime 一级概念；禁止 Provider 字符串特判。
   5. **Context Continuity**（§2.6）：工作环境 vs AI 记忆分离；`SessionSnapshot` + 换班机制排 **Step 3**。
+  6. **上线安全**（§1.4）：`runtime.mode` 默认 `legacy`；Hybrid Beta + 单轮自动降级；Step 1 仅 Plain Chat + `claude-cli`。
 - **影响**：`docs/research/pty-session.md` v5；Step 1 `ShellSessionManager`；Step 3 `SessionSnapshot` / 继续工作。
 - **决策状态**：`已决策`（文档 + Step 0 证据；Sidecar 编码待 Step 1）
 

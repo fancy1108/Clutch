@@ -41,3 +41,4 @@ apps/desktop/src-tauri/target/
 apps/desktop/src-tauri/binaries/
 services/orchestrator/build/
 services/orchestrator/dist/
+services/orchestrator/src/workflow_assets/*.json

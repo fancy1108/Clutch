@@ -12,6 +12,7 @@ from src.tools_status import load_connected_ids, resolve_tool_binary, tool_avail
 from src.adapters.claude_cli_adapter import chat_claude_cli
 from src.adapters.agy_cli_adapter import chat_agy_cli
 from src.agent_type import agent_type_from_record, resolve_model_for_agent
+from src.runtime_config import hybrid_eligible
 from src.workspace import get_workspace
 from src.preferences_storage import tr
 
@@ -22,6 +23,8 @@ class EngineResult:
     output: str
     logs: list[str]
     cli_session_id: str | None = None
+    raw_output: str | None = None
+    output_events: list[dict[str, object]] | None = None
 
 
 def _normalize_engine_type(engine_type: str) -> str:
@@ -103,6 +106,175 @@ def _resolve_agent_type(agent: dict[str, Any] | None, fallback_tool: str | None)
     return "clutch"
 
 
+def _route_claude_hybrid(
+    *,
+    run_id: str,
+    workspace_path: str,
+    prompt: str,
+    system_prompt: str | None,
+    history: list[dict[str, str]] | None,
+    cli_session_id: str | None,
+    cli_binary: str | None,
+    logs: list[str],
+    on_log: Callable[[str], None] | None,
+) -> EngineResult:
+    import os
+
+    from src.session_snapshot import format_handoff_prefix, load_snapshot
+    from src.shell_exec_runtime import run_claude_turn
+    from src.shell_session import get_shell_session_manager
+
+    timeout = float(os.environ.get("CLUTCH_CLAUDE_CLI_TIMEOUT", "600"))
+    binary = cli_binary or "claude"
+    manager = get_shell_session_manager()
+    snapshot = load_snapshot(run_id)
+    context_prefix = None
+    if snapshot and (snapshot.task_summary or snapshot.open_todos):
+        context_prefix = format_handoff_prefix(snapshot)
+
+    session = manager.get_or_create(run_id, workspace_path=workspace_path)
+    try:
+        if cli_session_id:
+            _emit_log(logs, on_log, f"[HYBRID] resume {cli_session_id} in shell {run_id}")
+            turn = run_claude_turn(
+                session,
+                prompt=prompt,
+                claude_binary=binary,
+                timeout_s=timeout,
+                cli_session_id=cli_session_id,
+                resume_session_id=cli_session_id,
+                context_prefix=context_prefix,
+                system_prompt=system_prompt,
+            )
+            return EngineResult(
+                engine="Claude CLI (Hybrid)",
+                output=turn.stdout,
+                logs=logs + turn.logs,
+                cli_session_id=cli_session_id,
+                raw_output=turn.raw_output,
+                output_events=turn.output_events,
+            )
+
+        history_prompt = _format_history_for_cli_prompt(history).strip()
+        bootstrap_prompt = history_prompt or prompt
+        new_session_id = str(uuid.uuid4())
+        _emit_log(logs, on_log, f"[HYBRID] new session {new_session_id} in shell {run_id}")
+        turn = run_claude_turn(
+            session,
+            prompt=bootstrap_prompt,
+            claude_binary=binary,
+            timeout_s=timeout,
+            new_session_id=new_session_id,
+            system_prompt=system_prompt,
+            context_prefix=context_prefix,
+        )
+        return EngineResult(
+            engine="Claude CLI (Hybrid)",
+            output=turn.stdout,
+            logs=logs + turn.logs,
+            cli_session_id=new_session_id,
+            raw_output=turn.raw_output,
+            output_events=turn.output_events,
+        )
+    finally:
+        manager.mark_idle(run_id)
+
+
+def _route_claude_legacy(
+    *,
+    workspace_path: str | None,
+    prompt: str,
+    system_prompt: str | None,
+    history: list[dict[str, str]] | None,
+    cli_session_id: str | None,
+    cli_binary: str | None,
+    logs: list[str],
+    on_log: Callable[[str], None] | None,
+) -> EngineResult:
+    def _invoke_cli(
+        *,
+        cli_prompt: str,
+        cli_system_prompt: str | None,
+        session_id: str | None = None,
+        resume_session_id: str | None = None,
+    ) -> str:
+        return chat_claude_cli(
+            prompt=cli_prompt,
+            cwd=workspace_path,
+            system_prompt=cli_system_prompt,
+            session_id=session_id,
+            resume_session_id=resume_session_id,
+            binary=cli_binary,
+            on_log=on_log,
+        )
+
+    try:
+        if cli_session_id:
+            _emit_log(logs, on_log, f"Resuming Claude CLI session {cli_session_id}.")
+            output = _invoke_cli(
+                cli_prompt=prompt,
+                cli_system_prompt=None,
+                resume_session_id=cli_session_id,
+            )
+            _emit_log(logs, on_log, "Claude CLI session resumed successfully.")
+            return EngineResult(
+                engine="Claude CLI",
+                output=output,
+                logs=logs,
+                cli_session_id=cli_session_id,
+            )
+
+        history_prompt = _format_history_for_cli_prompt(history).strip()
+        bootstrap_prompt = history_prompt or prompt
+        new_session_id = str(uuid.uuid4())
+        _emit_log(logs, on_log, f"Starting new Claude CLI session {new_session_id}.")
+        output = _invoke_cli(
+            cli_prompt=bootstrap_prompt,
+            cli_system_prompt=system_prompt,
+            session_id=new_session_id,
+        )
+        _emit_log(logs, on_log, "Claude CLI execution completed successfully.")
+        return EngineResult(
+            engine="Claude CLI",
+            output=output,
+            logs=logs,
+            cli_session_id=new_session_id,
+        )
+    except Exception as exc:
+        if cli_session_id:
+            _emit_log(logs, on_log, f"Claude session resume failed ({exc}); replaying history.")
+            try:
+                history_prompt = _format_history_for_cli_prompt(history).strip() or prompt
+                new_session_id = str(uuid.uuid4())
+                output = _invoke_cli(
+                    cli_prompt=history_prompt,
+                    cli_system_prompt=system_prompt,
+                    session_id=new_session_id,
+                )
+                _emit_log(logs, on_log, f"Claude CLI recovered with new session {new_session_id}.")
+                return EngineResult(
+                    engine="Claude CLI",
+                    output=output,
+                    logs=logs,
+                    cli_session_id=new_session_id,
+                )
+            except Exception as retry_exc:
+                _emit_log(logs, on_log, f"Claude CLI recovery failed: {retry_exc}")
+                raise RuntimeError(
+                    tr(
+                        f"Failed to execute task via Claude CLI: {retry_exc}",
+                        f"通过 Claude CLI 执行任务失败：{retry_exc}",
+                    )
+                ) from retry_exc
+        _emit_log(logs, on_log, f"Claude CLI execution failed: {exc}")
+        raise RuntimeError(
+            tr(
+                f"Failed to execute task via Claude CLI: {exc}",
+                f"通过 Claude CLI 执行任务失败：{exc}",
+            )
+        ) from exc
+
+
 def _route_engine_raw(
     agent_name: str,
     prompt: str,
@@ -112,9 +284,15 @@ def _route_engine_raw(
     fallback_tool: str | None = None,
     cli_session_id: str | None = None,
     on_log: Callable[[str], None] | None = None,
+    *,
+    run_id: str | None = None,
+    source: str = "flow",
 ) -> EngineResult:
     agent = find_agent(agent_name)
     agent_type = _resolve_agent_type(agent, fallback_tool)
+    from src.provider_registry import resolve_provider_spec
+
+    provider_spec = resolve_provider_spec(agent_type)
 
     workspace_path = cwd
     if not workspace_path:
@@ -129,6 +307,7 @@ def _route_engine_raw(
         (
             f"[ROUTER] agent={agent_name!r} matched={agent is not None} "
             f"agentType={agent_type!r} "
+            f"runtime_strategy={provider_spec.runtime_strategy.value} "
             f"claude_path={resolve_tool_binary('claude-cli')!r} "
             f"connected={'claude-cli' in load_connected_ids()}"
         ),
@@ -178,88 +357,41 @@ def _route_engine_raw(
                 )
             )
 
-        def _invoke_cli(
-            *,
-            cli_prompt: str,
-            cli_system_prompt: str | None,
-            session_id: str | None = None,
-            resume_session_id: str | None = None,
-        ) -> str:
-            return chat_claude_cli(
-                prompt=cli_prompt,
-                cwd=workspace_path,
-                system_prompt=cli_system_prompt,
-                session_id=session_id,
-                resume_session_id=resume_session_id,
-                binary=cli_binary,
-                on_log=on_log,
-            )
-
-        try:
-            if cli_session_id:
-                _emit_log(logs, on_log, f"Resuming Claude CLI session {cli_session_id}.")
-                output = _invoke_cli(
-                    cli_prompt=prompt,
-                    cli_system_prompt=None,
-                    resume_session_id=cli_session_id,
-                )
-                _emit_log(logs, on_log, "Claude CLI session resumed successfully.")
-                return EngineResult(
-                    engine="Claude CLI",
-                    output=output,
-                    logs=logs,
+        if (
+            provider_spec.runtime_strategy.value == "shell_exec"
+            and hybrid_eligible(source=source, agent_type=agent_type)
+            and run_id
+            and workspace_path
+        ):
+            try:
+                return _route_claude_hybrid(
+                    run_id=run_id,
+                    workspace_path=workspace_path,
+                    prompt=prompt,
+                    system_prompt=system_prompt,
+                    history=history,
                     cli_session_id=cli_session_id,
+                    cli_binary=cli_binary,
+                    logs=logs,
+                    on_log=on_log,
+                )
+            except Exception as exc:
+                _emit_log(
+                    logs,
+                    on_log,
+                    f"[HYBRID] fallback to legacy compatible mode: {exc}",
                 )
 
-            history_prompt = _format_history_for_cli_prompt(history).strip()
-            bootstrap_prompt = history_prompt or prompt
-            new_session_id = str(uuid.uuid4())
-            _emit_log(logs, on_log, f"Starting new Claude CLI session {new_session_id}.")
-            output = _invoke_cli(
-                cli_prompt=bootstrap_prompt,
-                cli_system_prompt=system_prompt,
-                session_id=new_session_id,
-            )
-            _emit_log(logs, on_log, "Claude CLI execution completed successfully.")
-            return EngineResult(
-                engine="Claude CLI",
-                output=output,
-                logs=logs,
-                cli_session_id=new_session_id,
-            )
-        except Exception as exc:
-            if cli_session_id:
-                _emit_log(logs, on_log, f"Claude session resume failed ({exc}); replaying history.")
-                try:
-                    history_prompt = _format_history_for_cli_prompt(history).strip() or prompt
-                    new_session_id = str(uuid.uuid4())
-                    output = _invoke_cli(
-                        cli_prompt=history_prompt,
-                        cli_system_prompt=system_prompt,
-                        session_id=new_session_id,
-                    )
-                    _emit_log(logs, on_log, f"Claude CLI recovered with new session {new_session_id}.")
-                    return EngineResult(
-                        engine="Claude CLI",
-                        output=output,
-                        logs=logs,
-                        cli_session_id=new_session_id,
-                    )
-                except Exception as retry_exc:
-                    _emit_log(logs, on_log, f"Claude CLI recovery failed: {retry_exc}")
-                    raise RuntimeError(
-                        tr(
-                            f"Failed to execute task via Claude CLI: {retry_exc}",
-                            f"通过 Claude CLI 执行任务失败：{retry_exc}",
-                        )
-                    ) from retry_exc
-            _emit_log(logs, on_log, f"Claude CLI execution failed: {exc}")
-            raise RuntimeError(
-                tr(
-                    f"Failed to execute task via Claude CLI: {exc}",
-                    f"通过 Claude CLI 执行任务失败：{exc}",
-                )
-            ) from exc
+        return _route_claude_legacy(
+            workspace_path=workspace_path,
+            prompt=prompt,
+            system_prompt=system_prompt,
+            history=history,
+            cli_session_id=cli_session_id,
+            cli_binary=cli_binary,
+            logs=logs,
+            on_log=on_log,
+        )
 
     if agent_type == "antigravity-cli" and tool_available_for_routing("agy-cli"):
         cli_binary = resolve_tool_binary("agy-cli")
@@ -405,6 +537,9 @@ def route_engine(
     fallback_tool: str | None = None,
     cli_session_id: str | None = None,
     on_log: Callable[[str], None] | None = None,
+    *,
+    run_id: str | None = None,
+    source: str = "flow",
 ) -> EngineResult:
     res = _route_engine_raw(
         agent_name=agent_name,
@@ -415,10 +550,14 @@ def route_engine(
         fallback_tool=fallback_tool,
         cli_session_id=cli_session_id,
         on_log=on_log,
+        run_id=run_id,
+        source=source,
     )
     return EngineResult(
         engine=res.engine,
         output=sanitize_engine_output(res.output),
         logs=res.logs,
         cli_session_id=res.cli_session_id,
+        raw_output=res.raw_output,
+        output_events=res.output_events,
     )

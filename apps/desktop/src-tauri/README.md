@@ -21,6 +21,6 @@ cd apps/desktop && pnpm tauri build
 1. `pnpm build`（前端 `dist/`）
 2. `../../scripts/build-sidecar.sh`（PyInstaller → `binaries/orchestrator-{target-triple}`）
 
-`tauri.conf.json` 的 `bundle.externalBin` 将 sidecar 打入 `.app`；启动时 Rust 用 Tauri sidecar API 监听 `8123`，再加载 UI。
+`tauri.conf.json` 的 `bundle.externalBin` 将 sidecar 打入 `.app`；启动时 Rust 用 Tauri sidecar API 监听 **8123**（开发 sidecar 用 **8124**），再加载 UI。
 
-**验收：** 安装 DMG 后打开 Clutch，约 5s 内 `curl http://127.0.0.1:8123/health` 应返回 `{"status":"ok"}`。
+**验收：** 安装 DMG 后打开 Clutch，约 5s 内 `curl http://127.0.0.1:8123/health` 应返回 `{"status":"ok"}`。开发时 `curl http://127.0.0.1:8124/health`。

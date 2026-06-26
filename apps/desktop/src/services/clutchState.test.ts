@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { mergeChatMessages, createUserChatMessage, USER_CHAT_AVATAR } from './clutchState';
+import {
+  mergeChatMessages,
+  mergeMessageFields,
+  createUserChatMessage,
+  USER_CHAT_AVATAR,
+} from './clutchState';
 import type { ChatMessage } from '../types';
 
 describe('createUserChatMessage', () => {
@@ -59,5 +64,45 @@ describe('mergeChatMessages', () => {
     const merged = mergeChatMessages(optimistic, server);
     expect(merged).toHaveLength(2);
     expect(merged[1].agent).toBe('The Artist');
+  });
+});
+
+describe('mergeMessageFields', () => {
+  const base: ChatMessage = {
+    id: 'agent_hybrid_1',
+    agent: 'Claude test Session',
+    avatar: '',
+    time: '17:01',
+    text: '天蝎女很深情。',
+    runtimeEngine: 'Claude CLI (Hybrid)',
+    rawOutput: 'raw-from-message',
+    outputEvents: [
+      { type: 'shell_echo', visible: false, content: 'claude -p ...' },
+      { type: 'system_prompt', visible: false, content: 'You are Claude' },
+    ],
+  };
+
+  it('does not let empty outputEvents wipe existing hybrid details', () => {
+    const merged = mergeMessageFields(base, { ...base, outputEvents: [] });
+    expect(merged.outputEvents).toHaveLength(2);
+    expect(merged.rawOutput).toBe('raw-from-message');
+  });
+
+  it('prefers non-empty incoming outputEvents', () => {
+    const merged = mergeMessageFields(
+      { ...base, outputEvents: undefined, rawOutput: undefined },
+      {
+        ...base,
+        outputEvents: [{ type: 'boundary_marker', visible: false, content: '__CLUTCH_DONE_x__' }],
+        rawOutput: 'incoming-raw',
+      },
+    );
+    expect(merged.outputEvents).toHaveLength(1);
+    expect(merged.rawOutput).toBe('incoming-raw');
+  });
+
+  it('keeps rawOutput when incoming patch omits it', () => {
+    const merged = mergeMessageFields(base, { ...base, rawOutput: undefined });
+    expect(merged.rawOutput).toBe('raw-from-message');
   });
 });

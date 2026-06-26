@@ -1,6 +1,14 @@
 import { useSyncExternalStore } from 'react';
-import type { ChatMessage, ClutchState, StatePatchData, WebSocketEnvelope } from '../types';
+import type {
+  ChatMessage,
+  ClutchState,
+  HybridExecutionData,
+  HybridExecutionPayload,
+  StatePatchData,
+  WebSocketEnvelope,
+} from '../types';
 import { translateText, type Language } from '../components/LanguageContext';
+import { sidecarWebSocketUrl } from './sidecarUrl';
 
 export function createSessionRunId(): string {
   return `run_${Date.now().toString(36)}`;
@@ -44,6 +52,19 @@ export function createUserChatMessage(text: string): ChatMessage {
 }
 
 /** Keep optimistic chat rows when the server has not caught up yet. */
+export function mergeMessageFields(existing: ChatMessage, incoming: ChatMessage): ChatMessage {
+  const incomingEvents =
+    incoming.outputEvents && incoming.outputEvents.length > 0
+      ? incoming.outputEvents
+      : undefined;
+  return {
+    ...existing,
+    ...incoming,
+    rawOutput: incoming.rawOutput || existing.rawOutput,
+    outputEvents: incomingEvents ?? existing.outputEvents,
+  };
+}
+
 export function mergeChatMessages(
   existing: ChatMessage[],
   incoming: ChatMessage[] | undefined,
@@ -72,7 +93,7 @@ export function mergeChatMessages(
     }
     const priorIndex = indexById.get(message.id);
     if (priorIndex !== undefined) {
-      merged[priorIndex] = message;
+      merged[priorIndex] = mergeMessageFields(merged[priorIndex], message);
       continue;
     }
     merged.push(message);
@@ -103,6 +124,7 @@ class ClutchStateStore {
   private connectPromise: Promise<void> | null = null;
   private runId = this.state.run_id;
   private pendingHydrate: ClutchState | null = null;
+  private pendingHybridExecutions = new Map<string, HybridExecutionPayload>();
   private _connected = false;
 
   get connected(): boolean {
@@ -166,6 +188,12 @@ class ClutchStateStore {
     if (next.messages !== undefined) {
       next.messages = mergeChatMessages(this.state.messages, next.messages);
     }
+    if (next.hybrid_executions !== undefined) {
+      next.hybrid_executions = {
+        ...(this.state.hybrid_executions ?? {}),
+        ...next.hybrid_executions,
+      };
+    }
     if (shouldPreserveOptimisticRun(this.state, next)) {
       delete next.status;
       if (!next.workflow_id && this.state.workflow_id) {
@@ -179,9 +207,65 @@ class ClutchStateStore {
     this.emit();
   }
 
+  private attachHybridExecution(data: HybridExecutionData): void {
+    const messageId = data.messageId;
+    if (!messageId) return;
+    const payload: HybridExecutionPayload = {
+      rawOutput: data.rawOutput,
+      outputEvents: data.outputEvents,
+    };
+    const existingMessages = this.state.messages;
+    const hasMessage = existingMessages.some((message) => message.id === messageId);
+    if (!hasMessage) {
+      this.pendingHybridExecutions.set(messageId, payload);
+      return;
+    }
+    const messages = existingMessages.map((message) =>
+      message.id === messageId
+        ? mergeMessageFields(message, {
+            ...message,
+            rawOutput: payload.rawOutput ?? message.rawOutput,
+            outputEvents: payload.outputEvents ?? message.outputEvents,
+          })
+        : message,
+    );
+    this.applyPatch({
+      messages,
+      hybrid_executions: {
+        ...(this.state.hybrid_executions ?? {}),
+        [messageId]: payload,
+      },
+    });
+  }
+
+  private applyPendingHybridExecution(message: ChatMessage): ChatMessage {
+    const pending = this.pendingHybridExecutions.get(message.id);
+    if (!pending) return message;
+    this.pendingHybridExecutions.delete(message.id);
+    this.applyPatch({
+      hybrid_executions: {
+        ...(this.state.hybrid_executions ?? {}),
+        [message.id]: pending,
+      },
+    });
+    return mergeMessageFields(message, {
+      ...message,
+      rawOutput: pending.rawOutput ?? message.rawOutput,
+      outputEvents: pending.outputEvents ?? message.outputEvents,
+    });
+  }
+
   private appendMessage(message: ChatMessage): void {
-    if (this.state.messages.some((item) => item.id === message.id)) return;
-    this.applyPatch({ messages: [...this.state.messages, message] });
+    const enriched = this.applyPendingHybridExecution(message);
+    if (this.state.messages.some((item) => item.id === enriched.id)) {
+      this.applyPatch({
+        messages: this.state.messages.map((item) =>
+          item.id === enriched.id ? mergeMessageFields(item, enriched) : item,
+        ),
+      });
+      return;
+    }
+    this.applyPatch({ messages: [...this.state.messages, enriched] });
   }
 
   private appendLog(line: string): void {
@@ -215,7 +299,7 @@ class ClutchStateStore {
     this.emit();
 
     this.connectPromise = new Promise((resolve, reject) => {
-      const ws = new WebSocket(`ws://localhost:8123/ws/runs/${runId}`);
+      const ws = new WebSocket(sidecarWebSocketUrl(`/ws/runs/${runId}`));
       this.socket = ws;
 
       ws.onopen = () => {
@@ -237,6 +321,10 @@ class ClutchStateStore {
             if (isChatMessage(data.message)) {
               this.appendMessage(data.message);
             }
+            return;
+          }
+          if (envelope.event === 'hybrid_execution') {
+            this.attachHybridExecution(envelope.data as HybridExecutionData);
             return;
           }
           if (envelope.event === 'log') {

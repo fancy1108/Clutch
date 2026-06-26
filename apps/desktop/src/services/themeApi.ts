@@ -1,4 +1,4 @@
-const BASE = 'http://localhost:8123';
+import { SIDECAR_BASE as BASE } from './sidecarUrl';
 
 export const THEME_PRESET_IDS = ['pristine-light', 'nordic-frost', 'amber-warm'] as const;
 export type ThemePresetId = (typeof THEME_PRESET_IDS)[number];

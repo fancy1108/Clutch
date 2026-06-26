@@ -33,7 +33,7 @@ export interface WorkspaceGitInfo {
   branches: string[];
 }
 
-const BASE = 'http://localhost:8123';
+import { SIDECAR_BASE as BASE, SIDECAR_DEV_PORT, SIDECAR_PROD_PORT } from './sidecarUrl';
 
 function stableWorkspaceId(path: string): string {
   return `ws_${btoa(path).replace(/[^a-zA-Z0-9]/g, '').slice(0, 12)}`;
@@ -64,7 +64,7 @@ async function sidecarFetch(input: string, init?: RequestInit): Promise<Response
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
     throw new Error(
-      `Cannot reach Clutch Sidecar at ${BASE} (${detail}). Quit other Clutch windows or dev servers using port 8123, then reopen the app.`,
+      `Cannot reach Clutch Sidecar (${detail}). Dev uses port ${SIDECAR_DEV_PORT}; packaged app uses ${SIDECAR_PROD_PORT}.`,
     );
   }
 }

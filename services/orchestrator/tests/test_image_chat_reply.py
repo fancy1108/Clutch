@@ -43,6 +43,8 @@ async def test_llm_chat_reply_image_model_rejects_vision_input(monkeypatch: pyte
         _session_id,
         _pause,
         _files,
+        _raw,
+        _events,
     ) = await _llm_chat_reply(
         initial_state("run_img_vision"),
         f"[image: {data_url}]\n这个图片说了什么",
@@ -68,6 +70,8 @@ async def test_llm_chat_reply_uses_image_adapter(monkeypatch: pytest.MonkeyPatch
             _session_id,
             _pause,
             _files,
+            _raw,
+            _events,
         ) = await _llm_chat_reply(initial_state("run_img"), "生成一张白色的狗的照片")
 
     mocked.assert_called_once()

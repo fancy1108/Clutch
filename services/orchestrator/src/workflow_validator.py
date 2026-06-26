@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import sys
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -10,14 +11,40 @@ from typing import Any
 from jsonschema import Draft202012Validator
 from src.preferences_storage import tr
 
-_REPO_ROOT = Path(__file__).resolve().parents[3]
-_SCHEMA_PATH = _REPO_ROOT / "workflows" / "workflow.schema.json"
-_WORKFLOWS_DIR = _REPO_ROOT / "workflows"
+
+def _bundle_root() -> Path:
+    """Repo root in dev; PyInstaller extraction dir when frozen (M4-06)."""
+    candidates: list[Path] = []
+    if getattr(sys, "frozen", False):
+        candidates.append(Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent)))
+    candidates.append(Path(__file__).resolve().parents[3])
+    for parent in Path(__file__).resolve().parents:
+        candidates.append(parent)
+
+    for root in candidates:
+        if (root / "workflows" / "workflow.schema.json").is_file():
+            return root
+
+    if getattr(sys, "frozen", False):
+        return Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
+    return Path(__file__).resolve().parents[3]
 
 
 def workflows_dir() -> Path:
     """Built-in read-only workflow templates directory (D5)."""
-    return _WORKFLOWS_DIR
+    candidates = [
+        Path(__file__).resolve().parent / "workflow_assets",
+        _bundle_root() / "workflows",
+        Path(__file__).resolve().parents[3] / "workflows",
+    ]
+    for path in candidates:
+        if (path / "workflow.schema.json").is_file():
+            return path
+    return candidates[-1]
+
+
+def _schema_path() -> Path:
+    return workflows_dir() / "workflow.schema.json"
 
 
 class WorkflowValidationError(ValueError):
@@ -31,15 +58,16 @@ class WorkflowValidationError(ValueError):
 
 @lru_cache(maxsize=1)
 def _load_schema() -> dict[str, Any]:
-    if not _SCHEMA_PATH.is_file():
+    schema_path = _schema_path()
+    if not schema_path.is_file():
         raise WorkflowValidationError(
             tr(
-                f"Schema file not found: {_SCHEMA_PATH}",
-                f"未找到 Schema 文件：{_SCHEMA_PATH}",
+                f"Schema file not found: {schema_path}",
+                f"未找到 Schema 文件：{schema_path}",
             ),
             [],
         )
-    return json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
+    return json.loads(schema_path.read_text(encoding="utf-8"))
 
 
 def validate_workflow(workflow: dict[str, Any]) -> None:
@@ -107,7 +135,7 @@ def validate_workflow_graph(workflow: dict[str, Any]) -> None:
 
 def load_workflow_by_id(workflow_id: str) -> dict[str, Any]:
     """Load built-in workflow template from workflows/{workflow_id}.json."""
-    path = _WORKFLOWS_DIR / f"{workflow_id}.json"
+    path = workflows_dir() / f"{workflow_id}.json"
     if not path.is_file():
         raise WorkflowValidationError(
             tr(

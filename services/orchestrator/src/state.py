@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Any, Literal, TypedDict
+from typing import Any, Literal, NotRequired, TypedDict
 
 ClutchRunStatus = Literal["idle", "running", "failed", "passed", "awaiting_human"]
 
@@ -24,6 +24,7 @@ class ClutchState(TypedDict):
     token_output: int
     cli_session_id: str
     cli_session_agent_id: str
+    hybrid_executions: NotRequired[dict[str, dict[str, object]]]
 
 
 def read_cli_session_id(state: Mapping[str, Any]) -> str:

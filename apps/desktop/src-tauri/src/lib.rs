@@ -32,12 +32,18 @@ fn clutch_e2e_sandbox() -> Option<String> {
     std::env::var("CLUTCH_E2E_SANDBOX").ok()
 }
 
-fn free_sidecar_port() {
+#[cfg(debug_assertions)]
+const SIDECAR_PORT: u16 = 8124;
+#[cfg(not(debug_assertions))]
+const SIDECAR_PORT: u16 = 8123;
+
+fn free_sidecar_port(port: u16) {
     #[cfg(target_os = "macos")]
     {
+        let script = format!("lsof -ti tcp:{port} | xargs kill -9 2>/dev/null || true");
         let _ = std::process::Command::new("sh")
             .arg("-c")
-            .arg("lsof -ti tcp:8123 | xargs kill -9 2>/dev/null || true")
+            .arg(script)
             .status();
         thread::sleep(Duration::from_millis(400));
     }
@@ -61,10 +67,10 @@ pub fn run() {
 
     builder
         .setup(|app| {
-            free_sidecar_port();
+            free_sidecar_port(SIDECAR_PORT);
             let child = spawn_sidecar(app.handle())?;
             *app.state::<SidecarState>().0.lock().unwrap() = Some(child);
-            wait_for_sidecar_port(Duration::from_secs(60))?;
+            wait_for_sidecar_port(SIDECAR_PORT, Duration::from_secs(60))?;
             Ok(())
         })
         .run(tauri::generate_context!())
@@ -112,7 +118,7 @@ fn spawn_dev_sidecar() -> Result<std::process::Child, String> {
         "--host",
         "127.0.0.1",
         "--port",
-        "8123",
+        "8124",
     ])
     .current_dir(&dir)
     .stdout(Stdio::null())
@@ -126,13 +132,16 @@ fn spawn_dev_sidecar() -> Result<std::process::Child, String> {
         .map_err(|e| format!("无法启动 Sidecar（请确认已安装 uv）：{e}"))
 }
 
-fn wait_for_sidecar_port(timeout: Duration) -> Result<(), String> {
+fn wait_for_sidecar_port(port: u16, timeout: Duration) -> Result<(), String> {
+    let addr = format!("127.0.0.1:{port}");
     let start = Instant::now();
     while start.elapsed() < timeout {
-        if std::net::TcpStream::connect("127.0.0.1:8123").is_ok() {
+        if TcpStream::connect(&addr).is_ok() {
             return Ok(());
         }
         thread::sleep(Duration::from_millis(400));
     }
-    Err("Sidecar 启动超时：8123 端口不可达。请检查编排服务是否已内嵌或本机 uv 环境".into())
+    Err(format!(
+        "Sidecar 启动超时：{port} 端口不可达。请检查编排服务是否已内嵌或本机 uv 环境"
+    ))
 }

@@ -1,7 +1,7 @@
 import type { Agent } from '../types';
 import { mergeAgentsWithBuiltin } from './builtinAgent';
 
-const BASE = 'http://localhost:8123';
+import { SIDECAR_BASE as BASE } from './sidecarUrl';
 
 export async function fetchAgents(): Promise<Agent[]> {
   const response = await fetch(`${BASE}/api/agents`);

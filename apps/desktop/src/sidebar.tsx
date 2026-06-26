@@ -374,13 +374,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button
             data-testid="nav-new-chat"
             onClick={onNewChat}
-            className={`w-full flex items-center gap-3 p-2.5 rounded-lg transition-all text-left group ${
+            className={`w-full flex items-center gap-2.5 p-2 rounded-lg transition-all text-left group ${
               currentView === 'chat'
                 ? 'bg-surface-bright shadow-sm text-on-surface font-semibold border border-outline-variant/50'
                 : 'text-on-surface-variant hover:bg-surface-bright hover:text-on-surface'
             }`}
           >
-            <span className="material-symbols-outlined text-[20px] text-on-surface-variant group-hover:text-primary">
+            <span className="material-symbols-outlined text-[17px] text-on-surface-variant group-hover:text-primary">
               chat
             </span>
             <span className="text-xs font-semibold tracking-wide">{t("New Chat")}</span>
@@ -389,13 +389,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button
             data-testid="nav-agents"
             onClick={() => setView('agents')}
-            className={`w-full flex items-center gap-3 p-2.5 rounded-lg transition-all text-left group ${
+            className={`w-full flex items-center gap-2.5 p-2 rounded-lg transition-all text-left group ${
               currentView === 'agents'
                 ? 'bg-surface-bright shadow-sm text-on-surface font-semibold border border-outline-variant/50'
                 : 'text-on-surface-variant hover:bg-surface-bright hover:text-on-surface'
             }`}
           >
-            <span className="material-symbols-outlined text-[20px] text-on-surface-variant group-hover:text-primary">
+            <span className="material-symbols-outlined text-[17px] text-on-surface-variant group-hover:text-primary">
               smart_toy
             </span>
             <span className="text-xs font-semibold tracking-wide">{t("AI Agents")}</span>
@@ -404,13 +404,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button
             data-testid="nav-workflows"
             onClick={() => setView('workflows')}
-            className={`w-full flex items-center gap-3 p-2.5 rounded-lg transition-all text-left group ${
+            className={`w-full flex items-center gap-2.5 p-2 rounded-lg transition-all text-left group ${
               currentView === 'workflows'
                 ? 'bg-surface-bright shadow-sm text-on-surface font-semibold border border-outline-variant/60'
                 : 'text-on-surface-variant hover:bg-surface-bright hover:text-on-surface'
             }`}
           >
-            <span className="material-symbols-outlined text-[20px] text-on-surface-variant group-hover:text-primary">
+            <span className="material-symbols-outlined text-[17px] text-on-surface-variant group-hover:text-primary">
               account_tree
             </span>
             <span className="text-xs font-semibold tracking-wide">{t("Workflows SOP")}</span>

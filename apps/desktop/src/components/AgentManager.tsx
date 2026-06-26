@@ -3,12 +3,14 @@ import React, { useState, useEffect } from 'react';
 import { Deliverable, Agent } from '../types';
 import { fetchAgents, saveAgents, generateAgentPrompt } from '../services/agentApi';
 import { fetchSkillsRegistry, type ScannedSkill } from '../services/skillsApi';
+import { BTN_GHOST, BTN_PRIMARY, BTN_SECONDARY } from './ui/buttonStyles';
 import { fetchMcpStatus, type McpServer } from '../services/mcpApi';
 import { getAgentDisplayName, isBuiltinAgent, mergeAgentsWithBuiltin, BUILTIN_AGENT_ID } from '../services/builtinAgent';
 import { AGENT_TYPE_OPTIONS, agentTypeFromAgent, agentTypeLabel, type AgentTypeId } from '../services/agentTypes';
 import { fetchModelsConfig, mapModelConfigToUi } from '../services/modelsApi';
 import { useLanguage } from './LanguageContext';
 import { fetchToolsStatus, type AiToolStatus } from '../services/toolsApi';
+import { sidecarHttpUrl } from '../services/sidecarUrl';
 
 export function AgentLogo({ name, description, className = "w-10 h-10" }: { name: string; description: string; className?: string }) {
   // Let's create a deterministic hash from name
@@ -218,7 +220,7 @@ export function AgentManager({
 
   useEffect(() => {
     if (isModalOpen && agentType === 'ollama-cli') {
-      fetch('/api/models/ollama')
+      fetch(sidecarHttpUrl('/api/models/ollama'))
         .then((res) => res.json())
         .then((data) => {
           if (data.ok && data.models) {
@@ -678,7 +680,7 @@ export function AgentManager({
             
             <button
               onClick={handleOpenCreate}
-              className="flex items-center gap-1.5 px-4 py-2 bg-neutral-50 hover:bg-neutral-100 text-neutral-700 hover:text-neutral-950 border border-neutral-200/60 rounded-xl text-xs font-bold transition-all shadow-2xs active:scale-97 cursor-pointer"
+              className={`${BTN_SECONDARY} gap-1.5`}
             >
               <span className="material-symbols-outlined text-[16px]">add</span>
               Create Agent
@@ -1237,13 +1239,13 @@ export function AgentManager({
             <div className="h-14 border-t border-neutral-100 flex items-center justify-end px-5 gap-2.5 bg-neutral-50/30 flex-shrink-0">
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="px-4 py-1.5 text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100 border border-neutral-200 rounded-lg text-xs font-semibold transition-colors"
+                className={BTN_GHOST}
               >
                 Cancel
               </button>
               <button
                 onClick={handleSave}
-                className="px-4 py-1.5 bg-neutral-900 hover:bg-black text-white rounded-lg text-xs font-bold transition-all shadow-2xs active:scale-97"
+                className={BTN_PRIMARY}
               >
                 {modalMode === 'create' ? 'Create AI Agent' : 'Save Configuration'}
               </button>
@@ -1293,7 +1295,7 @@ export function AgentManager({
             <div className="h-13 flex items-center justify-end px-5 gap-2 bg-neutral-50/30 flex-shrink-0">
               <button
                 onClick={() => setIsPreviewDeliverable(null)}
-                className="px-4 py-1.5 bg-[#f8f9fa] hover:bg-neutral-100/80 text-neutral-800 border border-neutral-250/70 rounded-lg text-[11px] font-bold transition-all shadow-2xs active:scale-97"
+                className={BTN_SECONDARY}
               >
                 Dismiss View
               </button>

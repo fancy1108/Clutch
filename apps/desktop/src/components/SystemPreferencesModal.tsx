@@ -91,39 +91,39 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
               <button
                 data-testid="settings-nav-general"
                 onClick={() => setView('settings')}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-xs transition-all border ${
+                className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-left text-[11px] transition-all border ${
                   currentView === 'settings'
                     ? 'bg-surface-bright text-on-surface font-extrabold border-outline/40 shadow-2xs'
                     : 'text-on-surface-variant hover:bg-surface-container-high/60 hover:text-on-surface border-transparent'
                 }`}
               >
-                <span className="material-symbols-outlined text-[18px]">settings</span>
+                <span className="material-symbols-outlined text-[16px]">settings</span>
                 <span className="text-xs">{t("General")}</span>
               </button>
 
               <button
                 data-testid="settings-nav-tools"
                 onClick={() => setView('tools')}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-xs transition-all border ${
+                className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-left text-[11px] transition-all border ${
                   currentView === 'tools'
                     ? 'bg-surface-bright text-on-surface font-extrabold border-outline/40 shadow-2xs'
                     : 'text-on-surface-variant hover:bg-surface-container-high/60 hover:text-on-surface border-transparent'
                 }`}
               >
-                <span className="material-symbols-outlined text-[18px]">handyman</span>
+                <span className="material-symbols-outlined text-[16px]">handyman</span>
                 <span className="text-xs">{t("AI Tools")}</span>
               </button>
 
               <button
                 data-testid="settings-nav-agents"
                 onClick={() => setView('agents')}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-xs transition-all border ${
+                className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-left text-[11px] transition-all border ${
                   currentView === 'agents'
                     ? 'bg-surface-bright text-on-surface font-extrabold border-outline/40 shadow-2xs'
                     : 'text-on-surface-variant hover:bg-surface-container-high/60 hover:text-on-surface border-transparent'
                 }`}
               >
-                <span className="material-symbols-outlined text-[18px]">smart_toy</span>
+                <span className="material-symbols-outlined text-[16px]">smart_toy</span>
                 <span className="text-xs">{t("AI Agents")}</span>
               </button>
 
@@ -131,13 +131,13 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
                 <button
                   data-testid="settings-nav-workflows"
                   onClick={() => setView('workflows')}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-xs transition-all border ${
+                  className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-left text-[11px] transition-all border ${
                     currentView === 'workflows'
                       ? 'bg-surface-bright text-on-surface font-extrabold border-outline/40 shadow-2xs'
                       : 'text-on-surface-variant hover:bg-surface-container-high/60 hover:text-on-surface border-transparent'
                   }`}
                 >
-                  <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: currentView === 'workflows' ? "'FILL' 1" : undefined }}>
+                  <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: currentView === 'workflows' ? "'FILL' 1" : undefined }}>
                     account_tree
                   </span>
                   <span className="text-xs">{t("Workflows SOP")}</span>
@@ -147,52 +147,52 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
               <button
                 data-testid="settings-nav-models"
                 onClick={() => setView('models')}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-xs transition-all border ${
+                className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-left text-[11px] transition-all border ${
                   currentView === 'models'
                     ? 'bg-surface-bright text-on-surface font-extrabold border-outline/40 shadow-2xs'
                     : 'text-on-surface-variant hover:bg-surface-container-high/60 hover:text-on-surface border-transparent'
                 }`}
               >
-                <span className="material-symbols-outlined text-[18px]">layers</span>
+                <span className="material-symbols-outlined text-[16px]">layers</span>
                 <span className="text-xs">{t("Models Config")}</span>
               </button>
 
               <button
                 data-testid="settings-nav-skills"
                 onClick={() => setView('skills')}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-xs transition-all border ${
+                className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-left text-[11px] transition-all border ${
                   currentView === 'skills'
                     ? 'bg-surface-bright text-on-surface font-extrabold border-outline/40 shadow-2xs'
                     : 'text-on-surface-variant hover:bg-surface-container-high/60 hover:text-on-surface border-transparent'
                 }`}
               >
-                <span className="material-symbols-outlined text-[18px]">school</span>
+                <span className="material-symbols-outlined text-[16px]">school</span>
                 <span className="text-xs">{t("Skills Registry")}</span>
               </button>
 
               <button
                 data-testid="settings-nav-mcp"
                 onClick={() => setView('mcp')}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-xs transition-all border ${
+                className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-left text-[11px] transition-all border ${
                   currentView === 'mcp'
                     ? 'bg-surface-bright text-on-surface font-extrabold border-outline/40 shadow-2xs'
                     : 'text-on-surface-variant hover:bg-surface-container-high/60 hover:text-on-surface border-transparent'
                 }`}
               >
-                <span className="material-symbols-outlined text-[18px]">terminal</span>
+                <span className="material-symbols-outlined text-[16px]">terminal</span>
                 <span className="text-xs">{t("MCP Server Hub")}</span>
               </button>
 
               <button
                 data-testid="settings-nav-appearance"
                 onClick={() => setView('appearance')}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-xs transition-all border ${
+                className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-left text-[11px] transition-all border ${
                   currentView === 'appearance'
                     ? 'bg-surface-bright text-on-surface font-extrabold border-outline/40 shadow-2xs'
                     : 'text-on-surface-variant hover:bg-surface-container-high/60 hover:text-on-surface border-transparent'
                 }`}
               >
-                <span className="material-symbols-outlined text-[18px]">palette</span>
+                <span className="material-symbols-outlined text-[16px]">palette</span>
                 <span className="text-xs">{t("Appearance")}</span>
               </button>
             </div>

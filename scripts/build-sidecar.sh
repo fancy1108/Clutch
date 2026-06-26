@@ -10,6 +10,11 @@ triple="$(rustc --print host-tuple)"
 mkdir -p "$tauri_bin"
 cd "$orch"
 
+assets="$orch/src/workflow_assets"
+rm -rf "$assets"
+mkdir -p "$assets"
+cp "$root/workflows/"*.json "$assets/"
+
 echo "== build-sidecar: PyInstaller ($triple) =="
 uv run pyinstaller clutch.spec --noconfirm --clean
 

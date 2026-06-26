@@ -131,6 +131,7 @@ Clutch 启动一个长期存在的工作终端（ShellSession）
 - Token 统计、计费（见 BACKLOG B-02）
 - 跨 run 任务队列、多 Agent 协同（LangGraph 图编排已有，PTY 层不重复造）
 - 容器级 sandbox（见 BACKLOG B-20；本阶段目录级隔离 + 操作日志为底线）
+- **一次性全量切换 Hybrid**（见 §1.4；legacy 路径必须保留至灰度结束）
 
 ### 1.3 与现有 D20 决策的关系
 
@@ -143,6 +144,84 @@ Clutch 启动一个长期存在的工作终端（ShellSession）
 | 失败恢复 | 历史重放 + 新 session id | Shell 重建 + 可选历史回放 + 前端明示 |
 
 ShellSession 是 D20 的**架构升级**，不是替代：重建 shell 时仍可 fallback 到 `--resume` / 历史重放。
+
+### 1.4 上线安全策略（不影响现网）
+
+> **结论**：有风险，但**可控**。前提是 **不一次性替换**现网路径，而是以 Feature Flag + 自动降级 + 灰度接入。  
+> Hybrid 每轮仍是 `claude -p`——**最坏情况是关 Hybrid、回到 legacy，核心 AI 能力不会整体瘫痪**。
+
+#### 1.4.1 双轨并行：Legacy 必须始终保留
+
+| 模式 | 实现 | 默认 |
+|------|------|------|
+| **legacy** | 现网 `subprocess` + `claude -p`（每轮新进程，`cwd=` 传入） | ✅ **默认** |
+| **hybrid** | `ShellSession`（长驻 bash）+ shell 内 `claude -p` exec | Beta，需显式开启 |
+
+配置示意（Sidecar / 环境变量，Step 1 落地）：
+
+```yaml
+# 或 CLUTCH_RUNTIME_MODE=legacy|hybrid
+runtime:
+  mode: legacy          # 默认；仅开发/内测改为 hybrid
+  hybrid:
+    enabled: false
+    plain_chat_only: true    # 第一版仅 Plain Chat
+    providers: [claude-cli]  # 第一版仅 Claude
+```
+
+```python
+ENABLE_HYBRID_RUNTIME = False  # 代码侧等价开关；默认 False
+```
+
+**铁律**：Step 1 **增加** Hybrid 路径，**禁止删除或替换** legacy `claude_cli_adapter` 直连逻辑，直至灰度验证通过。
+
+#### 1.4.2 失败自动降级（用户无感兜底）
+
+```
+用户发消息
+      ↓
+runtime.mode == hybrid ?
+      ├─ 否 → legacy subprocess（现网）
+      └─ 是 → ShellExecRuntime.run_turn()
+                ↓
+            成功 → 返回
+                ↓
+            失败（超时 / PTY 死 / Detector 异常 / 交互式命令拦截）
+                ↓
+            自动 fallback → legacy subprocess
+                ↓
+            state_patch：「本次已切换到兼容模式」（可选，非阻塞）
+```
+
+单轮降级 **不得** 使整个 `run_id` 永久不可用；同一聊天下一轮可重试 Hybrid（可配置冷却）。
+
+#### 1.4.3 灰度范围（第一版刻意收窄）
+
+| 范围 | Step 1 Hybrid | 保持 legacy |
+|------|---------------|-------------|
+| **Plain Chat** | ✅（开关开启时） | 默认仍走 legacy |
+| **Agent Flow / LangGraph 节点** | ❌ | ✅ |
+| **`claude-cli`** | ✅ | 开关关闭时 |
+| **`antigravity-cli` / `ollama-cli` / `clutch`** | ❌ | ✅ |
+
+即使 Hybrid 有 Bug，**影响面 = 自愿开启 Beta 的 Plain Chat + Claude**，不会拖垮 Flow 或其他 Provider。
+
+#### 1.4.4 已知风险与缓解
+
+| 风险 | 现象 | 缓解（Step 1） |
+|------|------|----------------|
+| **cwd 污染** | 用户 `cd /tmp` 后下一轮路径不对 | 每轮 exec 前 `cd "$workspace"` 或 `session.ensure_workspace_cwd()`；可选仅对 Agent 轮次锚定 |
+| **后台进程泄漏** | `npm run dev &` 堆积，CPU 升 | 已有 §2.4：**30min 空闲回收**、**6h 最大重建**；审计日志记录后台任务 |
+| **Shell 卡死** | `vim` / `less` / `top` / `ssh` 占住 PTY | v1 **禁止交互式命令**；检测到即 **本轮 fallback legacy** + 提示 |
+| **Hybrid 整体不可用** | ShellSessionManager 崩溃 | Flag 置 `legacy` 或热关闭 `ENABLE_HYBRID_RUNTIME`；零代码回滚 |
+
+#### 1.4.5 风险等级重估
+
+| 若无 Flag 一次性替换 | 有 Flag + 降级 + 灰度 |
+|----------------------|------------------------|
+| 高风险架构重构 | **可灰度、可回滚的性能优化** |
+
+**对产品/用户的承诺**：默认行为与现网一致；Hybrid 是 **可选 Beta**，失败时单轮或单会话回退，不会出现「所有聊天全部不可用」。
 
 ---
 
@@ -695,8 +774,9 @@ match provider.runtime_strategy:
 | 9 | 长时间稳定性 | **2 小时、100+ 请求**（claude 为主） | 无卡死、内存不线性涨、无串台 |
 | **10** | **Provider 隔离** | 同机开两个 run：`claude` / `agy` 各一 | 两 ShellSession 互不串输出；`run_id` 与 bash PID 一一对应 |
 | **11** | **非 CLI 路径无回归** | `clutch` / `ollama-cli` 冒烟 | 行为与改造前一致 |
+| **15** | **Legacy 保留 + 降级** | Hybrid 故意注入失败 | 自动 fallback legacy；该轮仍有正常回复；默认 `mode=legacy` 零行为变化 |
 
-> 验收 9 是可靠性核心——PTY 最大风险是「跑久了会不会坏」。
+> 验收 9 是可靠性核心——PTY 最大风险是「跑久了会不会坏」。验收 **#15** 是上线安全核心——Hybrid 坏了也不能拖垮聊天。
 
 POC 通过后：多 `run_id` 并发、进程池上限、目录隔离、操作日志。
 
@@ -718,6 +798,7 @@ POC 通过后：多 `run_id` 并发、进程池上限、目录隔离、操作日
 | 确认提示模式覆盖 | 因 Provider 而异 | 可配置正则 + `HumanInputKind` 映射 |
 | LangGraph 多节点共享 PTY | Research / Coding / Review 同 `run_id` | **设计预留** `owner_node_id`；POC 不实现跨节点并发 |
 | `clutch` 路径混淆 | 用户以为所有 Agent 都变快 | UI / 文档区分「CLI Agent」与「Clutch 内置 LLM」 |
+| **Hybrid 影响现网** | 一次性替换导致聊天不可用 | §1.4 Feature Flag 默认 `legacy` + 单轮自动降级 |
 
 ---
 
@@ -764,17 +845,23 @@ POC 通过后：多 `run_id` 并发、进程池上限、目录隔离、操作日
 
 ### Step 1 — ShellSession 核心（3~4 天）
 
-**目标**：落地 §0.4 新方案主路径 — 长驻工位 + 随叫随到 Claude。
+**目标**：落地 §0.4 新方案 — **在 legacy 旁路增加 Hybrid Beta**，默认不影响现网。
 
 | 交付 | 说明 |
 |------|------|
 | `ShellSessionManager` + `ShellExecRuntime` | 一 `run_id` 一 bash PTY；`claude -p` exec |
+| **`runtime.mode` Feature Flag** | 默认 `legacy`；`hybrid` 需显式开启（§1.4.1） |
+| **失败自动降级** | Hybrid 异常 → 当轮 `claude_cli_adapter` legacy；可选 `state_patch` 提示 |
+| **灰度范围锁** | 仅 `Plain Chat` + `claude-cli`；Flow / agy / ollama 不走 Hybrid |
+| 交互式命令拦截 | `vim`/`less`/`top`/`ssh` 等 → 本轮 fallback legacy |
+| `ensure_workspace_cwd()` | 每轮 exec 前锚定项目目录（§1.4.4） |
 | 状态机 §2.0 | `CREATING`…`TERMINATED`；30min 空闲 / 6h 最大存活 |
 | `BoundaryDetector` | `stream-json` + sentinel marker |
 | `HumanInputKind` 骨架 | `BOOT_TRUST` / `TOOL_CONFIRM` 事件载荷 |
 | 销毁时**最小**快照 | 仅 `cwd` + `run_id` 落盘（为 Step 3 预留） |
+| **legacy 路径零删除** | `engine_router` 保留现网 subprocess 分支 |
 
-**验收**：§四 #1~#8、#11。
+**验收**：§四 #1~#8、#11、**#15**。
 
 ### Step 2 — 稳定性与副线（0.5~1 天）
 
@@ -841,7 +928,7 @@ Request → Subprocess → Exit     ShellSession → bash PTY → Many exec → 
 
 **Claude TUI PTY 已否决**。默认路径：**长驻 bash + `claude -p`**（`SHELL_EXEC`），不与上游 Ink TUI 对抗。
 
-**对产品的一句话**：当前方案已设计 **工作环境生命周期**（Step 1）；**长期记忆与恢复机制**（§2.6 · Step 3）单独排期，避免与 Runtime 核心耦死。
+**对产品的一句话**：当前方案已设计 **工作环境生命周期**（Step 1）；**长期记忆与恢复机制**（§2.6 · Step 3）单独排期。**默认不改变现网行为**（§1.4 `legacy` + 降级）。
 
 ---
 
@@ -871,4 +958,4 @@ Request → Subprocess → Exit     ShellSession → bash PTY → Many exec → 
 
 ---
 
-*本文档 v5 新增 §0.4 产品叙事、§2.6 Context Continuity（`SessionSnapshot`、换班机制）及 Step 1~6 排期；v4 确立 ShellSession + `SHELL_EXEC`；基于 Step 0 Route C 5/5 与团队评审对齐。*
+*本文档 v5.1 新增 §1.4 上线安全（Feature Flag · 自动降级 · 灰度范围）；v5 含产品叙事与 Context Continuity；基于 Step 0 Route C 5/5 对齐。*

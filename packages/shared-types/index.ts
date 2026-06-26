@@ -7,6 +7,22 @@ export type ClutchRunStatus = RunStatus | 'awaiting_human' | 'idle';
 
 export type AgentRole = 'Orchestrator' | 'Builder' | 'Evaluator' | 'Supervisor';
 
+export type OutputEventType =
+  | 'assistant'
+  | 'tool'
+  | 'shell_echo'
+  | 'system_prompt'
+  | 'boundary_marker'
+  | 'ansi'
+  | 'debug'
+  | 'stderr';
+
+export interface OutputEvent {
+  type: OutputEventType;
+  visible: boolean;
+  content: string;
+}
+
 export interface ChatMessage {
   id: string;
   agent: AgentRole;
@@ -19,6 +35,10 @@ export interface ChatMessage {
   badgeText?: string;
   /** Actual execution backend for this reply (e.g. Claude CLI, DeepSeek V4 Pro). */
   runtimeEngine?: string;
+  /** Full hybrid shell PTY capture for debug/export. */
+  rawOutput?: string;
+  /** Structured hybrid execution segments (shell echo, system prompt, marker, etc.). */
+  outputEvents?: OutputEvent[];
   codeHighlight?: {
     file: string;
     lineCount: number;
@@ -59,6 +79,20 @@ export interface UncommittedFile {
   active?: boolean;
 }
 
+/** Structured hybrid execution payload keyed by chat message id. */
+export interface HybridExecutionPayload {
+  rawOutput?: string;
+  outputEvents?: OutputEvent[];
+}
+
+/** WebSocket `hybrid_execution` payload — attaches debug fields to a chat message. */
+export interface HybridExecutionData {
+  run_id: string;
+  messageId: string;
+  rawOutput?: string;
+  outputEvents?: OutputEvent[];
+}
+
 /** WebSocket envelope: {"event": "...", "data": {...}} */
 export interface WebSocketEnvelope<T = unknown> {
   event: string;
@@ -68,6 +102,7 @@ export interface WebSocketEnvelope<T = unknown> {
 export type WebSocketEvent =
   | 'state_patch'
   | 'message'
+  | 'hybrid_execution'
   | 'log'
   | 'file_changed'
   | 'validation_result'
@@ -93,6 +128,8 @@ export interface ClutchState {
   cli_session_id?: string;
   /** Agent id that owns `cli_session_id` (reset when user switches agent). */
   cli_session_agent_id?: string;
+  /** Hybrid shell execution details keyed by chat message id. */
+  hybrid_executions?: Record<string, HybridExecutionPayload>;
   /** @deprecated use cli_session_id — still read from older persisted runs */
   claude_session_id?: string;
   /** @deprecated use cli_session_agent_id */

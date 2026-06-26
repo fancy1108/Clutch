@@ -12,6 +12,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, HTTPException, Response, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -27,7 +29,32 @@ from src.terminal_logs import TAG_HUMAN, TAG_WORKFLOW, stamp_log_line, tagged
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Clutch Orchestrator", version="0.0.0")
+
+@asynccontextmanager
+async def _lifespan(app: FastAPI):
+    from src.shell_session import get_shell_session_manager
+
+    async def _sweep_shell_sessions() -> None:
+        manager = get_shell_session_manager()
+        while True:
+            await asyncio.sleep(60)
+            try:
+                terminated = await asyncio.to_thread(manager.sweep_idle)
+                for run_id in terminated:
+                    logger.info("shell_session idle sweep terminated run_id=%s", run_id)
+            except Exception:
+                logger.exception("shell_session sweep failed")
+
+    task = asyncio.create_task(_sweep_shell_sessions())
+    yield
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
+
+
+app = FastAPI(title="Clutch Orchestrator", version="0.0.0", lifespan=_lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -530,6 +557,8 @@ def _chat_message(
     status: str | None = None,
     msg_id: str | None = None,
     runtime_engine: str | None = None,
+    raw_output: str | None = None,
+    output_events: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "id": msg_id or f"msg_{uuid.uuid4().hex[:8]}",
@@ -542,7 +571,46 @@ def _chat_message(
         payload["status"] = status
     if runtime_engine:
         payload["runtimeEngine"] = runtime_engine
+    if raw_output is not None:
+        payload["rawOutput"] = raw_output
+    if output_events is not None:
+        payload["outputEvents"] = output_events
     return payload
+
+
+def _hybrid_execution_entry(
+    *,
+    raw_output: str | None,
+    output_events: list[dict[str, Any]] | None,
+    system_prompt: str | None = None,
+) -> dict[str, object]:
+    events = list(output_events or [])
+    if system_prompt and not any(event.get("type") == "system_prompt" for event in events):
+        events.insert(
+            0,
+            {"type": "system_prompt", "visible": False, "content": system_prompt},
+        )
+    return {
+        "rawOutput": raw_output,
+        "outputEvents": events,
+    }
+
+
+def _merge_hybrid_executions(
+    state: ClutchState,
+    *,
+    message_id: str,
+    raw_output: str | None,
+    output_events: list[dict[str, Any]] | None,
+    system_prompt: str | None = None,
+) -> dict[str, dict[str, object]]:
+    merged = dict(state.get("hybrid_executions") or {})
+    merged[message_id] = _hybrid_execution_entry(
+        raw_output=raw_output,
+        output_events=output_events,
+        system_prompt=system_prompt,
+    )
+    return merged
 
 
 async def _send_message_event(
@@ -556,6 +624,29 @@ async def _send_message_event(
             "source": "orchestrator",
             "timestamp": _iso_timestamp(),
             "message": message,
+        },
+    }
+    await websocket.send_text(json.dumps(envelope))
+
+
+async def _send_hybrid_execution_event(
+    websocket: WebSocket,
+    run_id: str,
+    *,
+    message_id: str,
+    raw_output: str | None,
+    output_events: list[dict[str, Any]] | None,
+) -> None:
+    envelope = {
+        "event": "hybrid_execution",
+        "data": {
+            "run_id": run_id,
+            "node_id": "",
+            "source": "orchestrator",
+            "timestamp": _iso_timestamp(),
+            "messageId": message_id,
+            "rawOutput": raw_output,
+            "outputEvents": output_events or [],
         },
     }
     await websocket.send_text(json.dumps(envelope))
@@ -721,7 +812,7 @@ async def _llm_chat_reply(
     emit_log: Callable[[str], Awaitable[None]] | None = None,
     mcp_approved_tool: dict[str, Any] | None = None,
     mcp_resume: dict[str, Any] | None = None,
-) -> tuple[str, str, str, list[str], str | None, dict[str, Any] | None, list[str]]:
+) -> tuple[str, str, str, list[str], str | None, dict[str, Any] | None, list[str], str | None, list[dict[str, Any]] | None]:
     from src.agent_storage import BUILTIN_AGENT_ID, get_agent_by_id
     from src.engine_router import route_engine
     from src.models_config import get_router
@@ -763,6 +854,8 @@ async def _llm_chat_reply(
                 None,
                 None,
                 [],
+                None,
+                None,
             )
         spec, api_key = router.resolve_for_model(resolved_model_id)
         loop = asyncio.get_running_loop()
@@ -780,7 +873,7 @@ async def _llm_chat_reply(
                 api_key=router._require_api_key(spec.provider_id, api_key),
                 on_log=on_image_log if emit_log else None,
             )
-            return reply_label, runtime_model_name, format_image_reply(result), image_logs, None, None, []
+            return reply_label, runtime_model_name, format_image_reply(result), image_logs, None, None, [], None, None
         except Exception as exc:
             err = str(exc)
             return (
@@ -791,6 +884,8 @@ async def _llm_chat_reply(
                 None,
                 None,
                 [],
+                None,
+                None,
             )
 
     from src.agent_mcp import resolve_agent_mcp_servers
@@ -869,6 +964,8 @@ async def _llm_chat_reply(
                         None,
                         pause_payload,
                         list(outcome.files_changed or []),
+                        None,
+                        None,
                     )
                 return (
                     reply_label,
@@ -878,6 +975,8 @@ async def _llm_chat_reply(
                     None,
                     None,
                     list(outcome.files_changed or []),
+                    None,
+                    None,
                 )
 
             llm_only_logs = [
@@ -915,8 +1014,20 @@ async def _llm_chat_reply(
             system_prompt=system_prompt,
             cli_session_id=cli_session_id,
             on_log=on_log if emit_log else None,
+            run_id=state.get("run_id"),
+            source="plain_chat",
         )
-        return reply_label, result.engine, result.output, llm_only_logs + result.logs, result.cli_session_id, None, []
+        return (
+            reply_label,
+            result.engine,
+            result.output,
+            llm_only_logs + result.logs,
+            result.cli_session_id,
+            None,
+            [],
+            result.raw_output,
+            result.output_events,
+        )
     except Exception as exc:
         from src.agent_type import agent_type_from_record
 
@@ -926,7 +1037,7 @@ async def _llm_chat_reply(
             runtime_engine = "Claude CLI"
         else:
             runtime_engine = runtime_model_name
-        return reply_label, runtime_engine, err, [f"Error routing plain chat request: {err}"], None, None, []
+        return reply_label, runtime_engine, err, [f"Error routing plain chat request: {err}"], None, None, [], None, None
 
 
 async def _handle_plain_chat_mcp_decision(
@@ -997,6 +1108,8 @@ async def _handle_plain_chat_mcp_decision(
         _cli_session_id,
         mcp_pause,
         files_changed,
+        raw_output,
+        output_events,
     ) = await _llm_chat_reply(
         state,
         "",
@@ -1057,7 +1170,13 @@ async def _handle_plain_chat_mcp_decision(
         )
         return state
 
-    reply = _chat_message(model_name, reply_text, runtime_engine=runtime_engine)
+    reply = _chat_message(
+        model_name,
+        reply_text,
+        runtime_engine=runtime_engine,
+        raw_output=raw_output,
+        output_events=output_events,
+    )
     log_line = f"[CHAT] {model_name} via {runtime_engine}: {len(reply_text)} chars"
     if not streamed_logs:
         for log in route_logs:
@@ -1078,6 +1197,14 @@ async def _handle_plain_chat_mcp_decision(
     state = _merge_patch(state, final_patch)
     _commit_run_state(run_id, state)
     await _send_message_event(websocket, run_id, reply, "")
+    if runtime_engine and "Hybrid" in runtime_engine:
+        await _send_hybrid_execution_event(
+            websocket,
+            run_id,
+            message_id=str(reply["id"]),
+            raw_output=raw_output,
+            output_events=output_events,
+        )
     if files_changed:
         await _notify_workspace_files_changed(websocket, run_id, files_changed)
     await _notify_run_state(websocket, run_id, state, final_patch)
@@ -1138,6 +1265,8 @@ async def _handle_plain_chat(
         cli_session_id,
         mcp_pause,
         files_changed,
+        raw_output,
+        output_events,
     ) = await _llm_chat_reply(
         state,
         text,
@@ -1199,7 +1328,49 @@ async def _handle_plain_chat(
         )
         return state
 
-    reply = _chat_message(model_name, reply_text, runtime_engine=runtime_engine)
+    reply = _chat_message(
+        model_name,
+        reply_text,
+        runtime_engine=runtime_engine,
+        raw_output=raw_output,
+        output_events=output_events,
+    )
+
+    hybrid_system_prompt: str | None = None
+    hybrid_executions_patch: dict[str, dict[str, object]] | None = None
+    hybrid_detail_log: str | None = None
+    if runtime_engine and "Hybrid" in runtime_engine:
+        if agent:
+            from src.agent_mcp import resolve_agent_mcp_servers
+            from src.agent_type import resolve_model_for_agent
+            from src.models_config import get_router
+
+            router = get_router()
+            model, _resolved_model_id = resolve_model_for_agent(
+                router, agent, session_model_id=session_model_id
+            )
+            hybrid_system_prompt = _compose_agent_system_prompt(
+                agent,
+                model_name=model.name,
+                model_api=getattr(model, "api_model", None) or model.name,
+                mcp_servers_bound=bool(resolve_agent_mcp_servers(agent)),
+            )
+        hybrid_executions_patch = _merge_hybrid_executions(
+            state,
+            message_id=str(reply["id"]),
+            raw_output=raw_output,
+            output_events=output_events,
+            system_prompt=hybrid_system_prompt,
+        )
+        entry = hybrid_executions_patch[str(reply["id"])]
+        reply["rawOutput"] = entry.get("rawOutput")
+        reply["outputEvents"] = entry.get("outputEvents")
+        hybrid_detail_log = (
+            f"[HYBRID] execution_details message={reply['id']} "
+            f"events={len(entry.get('outputEvents') or [])} "
+            f"raw_bytes={len(str(entry.get('rawOutput') or ''))}"
+        )
+
     log_line = f"[CHAT] {model_name} via {runtime_engine}: {len(reply_text)} chars"
 
     if not streamed_logs:
@@ -1211,6 +1382,8 @@ async def _handle_plain_chat(
     final_logs = _append_terminal_logs(
         list(state["terminal_logs"]), route_logs, log_line, streamed=streamed_logs
     )
+    if hybrid_detail_log:
+        final_logs.append(stamp_log_line(hybrid_detail_log))
     final_patch: dict[str, Any] = {
         "messages": final_messages,
         "terminal_logs": final_logs,
@@ -1218,6 +1391,8 @@ async def _handle_plain_chat(
         "active_agent": active_agent,
         **_token_patch_turn(state, user_text=text, assistant_text=reply_text),
     }
+    if hybrid_executions_patch is not None:
+        final_patch["hybrid_executions"] = hybrid_executions_patch
     if cli_session_id:
         final_patch.update(cli_session_patch(cli_session_id, resolved_id))
     elif stored_session_agent and stored_session_agent != resolved_id:
@@ -1239,6 +1414,15 @@ async def _handle_plain_chat(
     _touch_session(run_id, title=text.strip()[:80] or "New session", status=state["status"])
 
     await _send_message_event(websocket, run_id, reply, "")
+    if runtime_engine and "Hybrid" in runtime_engine and hybrid_executions_patch:
+        entry = hybrid_executions_patch[str(reply["id"])]
+        await _send_hybrid_execution_event(
+            websocket,
+            run_id,
+            message_id=str(reply["id"]),
+            raw_output=entry.get("rawOutput"),  # type: ignore[arg-type]
+            output_events=entry.get("outputEvents"),  # type: ignore[arg-type]
+        )
     if files_changed:
         await _notify_workspace_files_changed(websocket, run_id, files_changed)
     await _notify_run_state(websocket, run_id, state, final_patch)
@@ -1484,6 +1668,48 @@ async def create_session_endpoint(body: SessionCreateRequest) -> dict[str, Any]:
         }
     )
     return record
+
+
+class ShellSnapshotUpdateRequest(BaseModel):
+    task_summary: str = ""
+    open_todos: list[str] = Field(default_factory=list)
+    cwd: str | None = None
+    cli_session_id: str | None = None
+
+
+@app.get("/api/shell-snapshots/{run_id}")
+async def get_shell_snapshot(run_id: str) -> dict[str, Any]:
+    from src.session_snapshot import load_snapshot
+
+    snap = load_snapshot(run_id)
+    if snap is None:
+        raise HTTPException(status_code=404, detail={"message": "Snapshot not found"})
+    return snap.to_dict()
+
+
+@app.put("/api/shell-snapshots/{run_id}")
+async def upsert_shell_snapshot(run_id: str, body: ShellSnapshotUpdateRequest) -> dict[str, Any]:
+    from src.session_snapshot import SessionSnapshot, load_snapshot, save_snapshot
+    from src.workspace import get_workspace
+
+    workspace = get_workspace()
+    existing = load_snapshot(run_id)
+    workspace_path = ""
+    if workspace:
+        workspace_path = str(workspace.get("workspace_path", ""))
+    elif existing:
+        workspace_path = existing.workspace_path
+
+    snap = SessionSnapshot(
+        run_id=run_id,
+        workspace_path=workspace_path,
+        cwd=body.cwd or (existing.cwd if existing else workspace_path),
+        task_summary=body.task_summary or (existing.task_summary if existing else ""),
+        open_todos=body.open_todos or (existing.open_todos if existing else None),
+        cli_session_id=body.cli_session_id or (existing.cli_session_id if existing else None),
+    )
+    save_snapshot(snap)
+    return snap.to_dict()
 
 
 def _workspace_http_error(exc: WorkspaceError) -> HTTPException:

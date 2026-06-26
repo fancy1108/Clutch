@@ -24,6 +24,7 @@
 | 2026-06-22 | 前端构建 | `pnpm build` | ✅ | — | 类型检查：`pnpm lint` |
 | 2026-06-23 | 后端测试 | `cd services/orchestrator && uv run pytest` | ✅ 104 passed | `runs/verification/2026-06-24-p2-01-verify.log` | 含 `test_skills_registry`（P2-01） |
 | 2026-06-24 | E2E 全量 | `./scripts/verify.sh` | ✅ 7 Playwright + 104 pytest | `runs/verification/2026-06-24-p2-01-verify.log` | P2-01 Check-out |
+| 2026-06-26 | macOS 打包（latest） | `cd apps/desktop && pnpm tauri build` | ✅ | `runs/verification/2026-06-26-tauri-build.log` | DMG `runs/verification/2026-06-26-clutch-latest.dmg`（含 compaction + ShellSession POC） |
 | 2026-06-24 | macOS 打包（P2） | `cd apps/desktop && pnpm tauri build` | ✅ | `runs/verification/2026-06-24-tauri-build-p2.log` | DMG `runs/verification/2026-06-24-clutch-p2.dmg`（含最新分组移动与管理功能） |
 | 2026-06-23 | macOS 打包 | `cd apps/desktop && pnpm tauri build` | ✅ | `runs/verification/2026-06-23-tauri-build.log` | DMG `Clutch_0.0.0_aarch64.dmg` |
 | 2026-06-22 | 漂移机检 | `./scripts/check-doc-drift.sh` | ✅ | — | 见 DECISIONS D7 |

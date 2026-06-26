@@ -126,7 +126,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
     } catch {
       setConfiguredModels([]);
       setProviders({});
-      setError('Cannot reach Clutch sidecar — start the backend on port 8123.');
+      setError('Cannot reach Clutch sidecar — start the backend on port 8124 (dev) or reopen the packaged app.');
       return [];
     } finally {
       if (!options?.silent) setLoading(false);

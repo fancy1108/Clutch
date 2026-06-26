@@ -2,8 +2,23 @@
 
 ## 当前状态
 
-- 阶段：**M3-F Flow 多 Agent 接力已落地（D23 ✅）**
-- Git HEAD：`78115be`
+- 阶段：**D25 ShellSession Step 1 已落地（Hybrid 默认关闭）**
+- Git HEAD：`848a365`（待 commit Step 1 代码）
+
+## 2026-06-26 会话（ShellSession Step 1 实施）
+
+- **完成：**
+  - **Runtime 门控**：`runtime_config.py` — `CLUTCH_RUNTIME_MODE=legacy|hybrid`，`hybrid_eligible` 仅 Plain Chat + `claude-cli`
+  - **ShellSession 核心**：`shell_session.py` — 长驻 bash PTY、`ShellSessionManager`、状态机、空闲 sweep（lifespan）
+  - **ShellExecRuntime**：`shell_exec_runtime.py` — shell 内 `claude -p`、marker 边界、交互命令拦截
+  - **EngineRouter 双轨**：Hybrid 失败自动 fallback legacy（验收 #15）；Flow 固定 `source=flow`
+  - **Context Continuity 基础**：`session_snapshot.py` + `GET/PUT /api/shell-snapshots/{run_id}`；换班摘要注入 Hybrid
+  - **RuntimeStrategy 雏形**：`runtime_strategy.py`、`provider_registry.py`；router 日志带 `runtime_strategy`
+  - **HumanInputKind**：`human_input.py`
+  - **文档**：`pty-session.md` §1.4 上线安全策略（待 commit）
+  - **测试**：316 pytest passed（含 hybrid fallback、snapshot API）
+
+- **下次优先**：内测开启 `CLUTCH_RUNTIME_MODE=hybrid` 手动验证；Step 2 压测 + agy Route C
 
 ## 2026-06-26 会话（历史会话上下文压缩与归档 B-03 落地与前端美化）
 

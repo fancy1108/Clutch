@@ -46,6 +46,7 @@ import { pickWorkspaceFolder } from './services/pickWorkspaceFolder';
 import { fetchModelsConfig, mapModelConfigToUi, saveModelsConfig } from './services/modelsApi';
 import { fetchPermissionMode, savePermissionMode, type PermissionMode } from './services/permissionApi';
 import { fetchSkillsRegistry, type ScannedSkill } from './services/skillsApi';
+import { BTN_GHOST, BTN_PRIMARY } from './components/ui/buttonStyles';
 
 
 function MainLayout() {
@@ -993,6 +994,7 @@ function MainLayout() {
             <>
               <ChatFeed
                 messages={chatMessages}
+                hybridExecutions={clutchState.hybrid_executions}
                 inputValue={inputValue}
                 setInputValue={setInputValue}
                 onSendMessage={handleSendMessage}
@@ -1363,8 +1365,8 @@ const PromptModal: React.FC<PromptModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center z-[1000] select-none">
-      <div className="bg-surface-bright border border-outline-variant w-full max-w-sm rounded-[16px] shadow-xl p-5 space-y-4">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-on-surface">{title}</h3>
+      <div className="bg-surface-bright border border-outline-variant w-full max-w-sm rounded-xl shadow-xl p-4 space-y-3">
+        <h3 className="text-[11px] font-bold uppercase tracking-wider text-on-surface">{title}</h3>
         
         {message && (
           <p className="text-[13px] text-on-surface-variant leading-relaxed select-text">
@@ -1378,7 +1380,7 @@ const PromptModal: React.FC<PromptModalProps> = ({
             value={value}
             onChange={(e) => setValue(e.target.value)}
             placeholder={placeholder}
-            className="w-full rounded-lg border border-outline-variant/60 bg-surface px-3 py-2 text-xs text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary/50"
+            className="w-full rounded-lg border border-outline-variant/60 bg-surface px-2.5 py-1.5 text-[11px] text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary/50"
             autoFocus
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
@@ -1390,19 +1392,11 @@ const PromptModal: React.FC<PromptModalProps> = ({
           />
         )}
 
-        <div className="flex justify-end gap-2 text-[10px] font-bold uppercase tracking-wider pt-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="px-3.5 py-2 border border-outline-variant text-on-surface hover:bg-surface-container-low rounded-lg transition-colors cursor-pointer"
-          >
+        <div className="flex justify-end gap-2 pt-1">
+          <button type="button" onClick={onCancel} className={BTN_GHOST}>
             {t('Cancel')}
           </button>
-          <button
-            type="button"
-            onClick={() => onConfirm(value)}
-            className="px-3.5 py-2 bg-neutral-900 text-white hover:bg-black rounded-lg transition-colors cursor-pointer"
-          >
+          <button type="button" onClick={() => onConfirm(value)} className={BTN_PRIMARY}>
             {t('Confirm')}
           </button>
         </div>

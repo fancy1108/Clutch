@@ -1,3 +1,5 @@
+import { sidecarHttpUrl } from './sidecarUrl';
+
 export interface SessionRecord {
   run_id: string;
   workspace_id?: string;
@@ -14,7 +16,7 @@ export type RunHistoryRecord = SessionRecord;
 
 export async function fetchSessions(workspaceId?: string): Promise<SessionRecord[]> {
   const query = workspaceId ? `?workspace_id=${encodeURIComponent(workspaceId)}` : '';
-  const response = await fetch(`http://localhost:8123/api/runs/history${query}`);
+  const response = await fetch(sidecarHttpUrl(`/api/runs/history${query}`));
   if (!response.ok) {
     throw new Error(`Failed to load sessions (${response.status})`);
   }
@@ -30,7 +32,7 @@ export async function createSession(input: {
   title?: string;
   workflow_id?: string;
 }): Promise<SessionRecord> {
-  const response = await fetch('http://localhost:8123/api/sessions', {
+  const response = await fetch(sidecarHttpUrl('/api/sessions'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input),
@@ -48,7 +50,7 @@ export async function startWorkflowRun(
   workflowId: string,
   instruction: string,
 ): Promise<{ run_id: string; status: string; state: import('../types').ClutchState }> {
-  const response = await fetch(`http://localhost:8123/api/runs/${runId}/start`, {
+  const response = await fetch(sidecarHttpUrl(`/api/runs/${runId}/start`), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ workflow_id: workflowId, instruction }),
@@ -64,7 +66,7 @@ export async function startWorkflowRun(
 export async function fetchRunState(
   runId: string,
 ): Promise<{ run_id: string; state: import('../types').ClutchState }> {
-  const response = await fetch(`http://localhost:8123/api/runs/${encodeURIComponent(runId)}/state`);
+  const response = await fetch(sidecarHttpUrl(`/api/runs/${encodeURIComponent(runId)}/state`));
   if (!response.ok) {
     throw new Error(`Failed to load session state (${response.status})`);
   }
@@ -72,7 +74,7 @@ export async function fetchRunState(
 }
 
 export async function deleteSession(runId: string): Promise<void> {
-  const response = await fetch(`http://localhost:8123/api/runs/${encodeURIComponent(runId)}`, {
+  const response = await fetch(sidecarHttpUrl(`/api/runs/${encodeURIComponent(runId)}`), {
     method: 'DELETE',
   });
   if (!response.ok) {
