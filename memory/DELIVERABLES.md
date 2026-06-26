@@ -593,3 +593,15 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 - **已交付：**
   - `apps/desktop/src/sidebar.tsx` — 修复 `showDefaultGroup` 条件与空状态，并在 filter warning 时关联 showDefaultGroup。
   - `apps/desktop/src/App.tsx` — 添加全局 click 事件监听器，点击页面空白处自动关闭展开的底部菜单面板。
+
+### 产品介绍文档与关联文档更新同步 ✅
+- **日期：** 2026-06-26
+- **Commit：** `e7a7e04` — docs: create product introduction docs and sync related files
+- **Verification：** `./scripts/verify.sh` → 290 pytest + vitest passed + doc-drift OK
+- **已交付：**
+  - `docs/PRODUCT_INTRO.md` — 产品介绍文档，包含零代码画布、双引擎路由、Ollama本地发现等新特性
+  - `workflows/README.md` — 纠正 compiler 状态与登记 `weather-to-vision.json` 模板
+  - `README.md` — 主 README 注册产品介绍文档条目
+  - `memory/FILEMAP.md` — 文件定位速查表中登记新文档
+  - `docs/document-governance.md` — 职责划分表格中登记新文档
+
