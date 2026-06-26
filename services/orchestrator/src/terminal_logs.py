@@ -18,6 +18,11 @@ def china_log_timestamp() -> str:
     return datetime.now(_CHINA_TZ).strftime("%Y-%m-%d %H:%M:%S CST")
 
 
+def china_chat_time() -> str:
+    """HH:MM in Asia/Shanghai — matches terminal log timezone."""
+    return datetime.now(_CHINA_TZ).strftime("%H:%M")
+
+
 def stamp_log_line(line: str) -> str:
     text = line.strip()
     if not text or _STAMPED_RE.match(text):

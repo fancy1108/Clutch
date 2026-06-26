@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
 from typing import Any
+
+from src.terminal_logs import china_chat_time
 
 _AGENT_AVATARS: dict[str, str] = {
     "Orchestrator": "https://lh3.googleusercontent.com/aida-public/AB6AXuA0yGh59QNLj5n0igNxMgu4lgaiNqZpcN29SpWM0JHNlAuFmOBx-Id67Zcd2NDCNBjBKrcffQrdrfoe-3XaSlveekLAP9SRis93uTk7XPPFO5y4Swos7NvATw6n7eZEm7nfAQuTiMAoWRSnxefAOJugUbZx3fCTNv4jGyjvT-UZznwKzp_HoXuStup_0juhBCZYamrV0Coil-k27d9Yi7il6NabIEG0FfbxwL5V5azpfZQOlBfpaganta2kP7n59BKPHd4K2uTOfZ5p",
@@ -16,7 +17,7 @@ _AGENT_AVATARS: dict[str, str] = {
 
 
 def chat_time() -> str:
-    return datetime.now(UTC).strftime("%H:%M")
+    return china_chat_time()
 
 
 def chat_message(

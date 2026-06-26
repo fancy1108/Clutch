@@ -509,7 +509,9 @@ _AGENT_AVATARS: dict[str, str] = {
 
 
 def _chat_time() -> str:
-    return datetime.now().strftime("%H:%M")
+    from src.chat_events import chat_time
+
+    return chat_time()
 
 
 def _chat_message(

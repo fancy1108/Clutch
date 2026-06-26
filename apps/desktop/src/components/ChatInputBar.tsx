@@ -422,22 +422,25 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
         onChange={handleLocalFileChange}
       />
 
-      {/* Workflow badge */}
-      {selectedWorkflowId && (
-        <div className="flex items-center justify-between px-3 pt-2 pb-1">
-          <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-primary bg-primary/5 border border-primary/20 rounded-lg px-2 py-1">
-            <span className="material-symbols-outlined text-[14px]">account_tree</span>
-            {selectedWorkflowName || selectedWorkflowId}
+      {/* Workflow chip — Multi-Agent only */}
+      {isMultiAgent && selectedWorkflowId ? (
+        <div className="flex flex-wrap gap-1.5 px-3 pt-2 pb-1">
+          <span className="inline-flex items-center gap-1.5 pl-1.5 pr-1 py-0.5 text-[11px] font-bold text-primary bg-primary/5 border border-primary/20 rounded-lg max-w-[220px]">
+            <span className="material-symbols-outlined text-[14px] flex-shrink-0">account_tree</span>
+            <span className="truncate" title={selectedWorkflowName || selectedWorkflowId}>
+              {selectedWorkflowName || selectedWorkflowId}
+            </span>
+            <button
+              type="button"
+              onClick={onClearSelectedWorkflow}
+              className="ml-0.5 text-primary/60 hover:text-primary transition-colors flex-shrink-0"
+              aria-label={t('Remove workflow')}
+            >
+              <span className="material-symbols-outlined text-[13px]">close</span>
+            </button>
           </span>
-          <button
-            type="button"
-            onClick={onClearSelectedWorkflow}
-            className="text-[10px] text-on-surface-variant hover:text-on-surface px-2 py-1 transition-colors"
-          >
-            {t('Clear')}
-          </button>
         </div>
-      )}
+      ) : null}
 
       {/* Attachment chips */}
       {attachments.length > 0 && (
@@ -544,7 +547,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
           onPaste={handlePaste}
           className="w-full border-none focus:ring-0 text-[13px] text-on-surface bg-transparent py-1.5 resize-none min-h-[36px] max-h-[140px] placeholder:text-on-surface-variant/60 outline-none leading-relaxed"
           placeholder={
-            selectedWorkflowId
+            isMultiAgent && selectedWorkflowId
               ? t('Describe what you want this workflow to do...')
               : isMultiAgent
               ? t('Ask @Builder, @Orchestrator or trigger @Workflow...')

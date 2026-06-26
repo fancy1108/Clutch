@@ -228,6 +228,16 @@ function MainLayout() {
     setCurrentFlowName('');
   };
 
+  const handleSetIsMultiAgent = useCallback((multi: boolean) => {
+    setIsMultiAgent(multi);
+    if (!multi) {
+      clearWorkflowSelection();
+      if (!selectedAgentId) {
+        selectDefaultAgent();
+      }
+    }
+  }, [selectedAgentId]);
+
   useEffect(() => {
     void refreshConfiguredAgents();
   }, [currentView]);
@@ -855,7 +865,7 @@ function MainLayout() {
         onPickWorkspace={() => { void handlePickWorkspace(); }}
         folders={folders}
         isMultiAgent={isMultiAgent}
-        setIsMultiAgent={setIsMultiAgent}
+        setIsMultiAgent={handleSetIsMultiAgent}
         onGoBack={handleClearSessionView}
         setView={setView}
         sidebarOpen={sidebarOpen}
@@ -1106,7 +1116,7 @@ function MainLayout() {
             ) : null}
           </div>
 
-          {showFooterModel ? (
+          {!hasWorkflowSelection && showFooterModel ? (
             <div className="relative">
               {agentBoundModelId ? (
                 <span
@@ -1158,7 +1168,7 @@ function MainLayout() {
                 </>
               )}
             </div>
-          ) : (
+          ) : !hasWorkflowSelection && customAgentEngineLabel ? (
             <span
               data-testid="footer-engine-label"
               className="flex items-center gap-1.5 px-2 py-1 rounded font-medium text-on-surface-variant cursor-default whitespace-nowrap"
@@ -1167,16 +1177,17 @@ function MainLayout() {
               <span className="material-symbols-outlined text-[15px] text-on-surface-variant">bolt</span>
               {t('Engine')}: {customAgentEngineLabel}
             </span>
-          )}
+          ) : null}
 
           {isMultiAgent ? (
             <>
+              {!hasWorkflowSelection ? (
               <div className="relative">
                 <span
                   data-testid="footer-agent-trigger"
                   onClick={toggleAgentMenu}
                   className={`flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-container-low transition-colors cursor-pointer font-medium whitespace-nowrap ${
-                    selectedAgentId && !hasWorkflowSelection
+                    selectedAgentId
                       ? 'text-primary font-bold'
                       : 'text-on-surface-variant'
                   }`}
@@ -1191,7 +1202,7 @@ function MainLayout() {
                       <FooterMenuItem
                         key={agent.id}
                         testId={`footer-agent-item-${agent.id}`}
-                        selected={!hasWorkflowSelection && agent.id === selectedAgentId}
+                        selected={agent.id === selectedAgentId}
                         onClick={() => handleFooterAgentSelect(agent)}
                       >
                         {getAgentDisplayName(agent)}
@@ -1209,6 +1220,7 @@ function MainLayout() {
                   </FooterMenuPanel>
                 ) : null}
               </div>
+              ) : null}
               <div className="relative">
                 <span
                   data-testid="footer-workflow-trigger"
@@ -1255,7 +1267,7 @@ function MainLayout() {
                 ) : null}
               </div>
             </>
-          ) : (
+          ) : !hasWorkflowSelection ? (
             <div className="relative">
               <span
                 data-testid="footer-agent-trigger"
@@ -1290,7 +1302,7 @@ function MainLayout() {
                 </FooterMenuPanel>
               ) : null}
             </div>
-          )}
+          ) : null}
         </div>
 
         <div className="font-semibold text-on-surface-variant/70 italic mr-2 select-text">

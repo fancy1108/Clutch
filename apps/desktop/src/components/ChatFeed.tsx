@@ -75,6 +75,19 @@ function replyRuntimeLabel(
 }
 
 const IMAGE_MARKER_RE = /\[image:\s*(data:image\/[^\]]+)\]\s*/gi;
+const MD_IMAGE_RE = /!\[([^\]]*)\]\(([^)]+)\)/g;
+const MD_IMAGE_LINK_RE = /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g;
+
+function isLikelyImageUrl(url: string): boolean {
+  const trimmed = url.trim();
+  if (trimmed.startsWith('data:image/')) return true;
+  try {
+    const path = new URL(trimmed).pathname.toLowerCase();
+    return /\.(png|jpe?g|gif|webp|svg|bmp|avif)(\?|$)/i.test(path) || path.includes('/images/');
+  } catch {
+    return false;
+  }
+}
 
 function parseMessageImages(text: string): { text: string; images: string[] } {
   const images: string[] = [];
@@ -83,6 +96,60 @@ function parseMessageImages(text: string): { text: string; images: string[] } {
     return '';
   }).trim();
   return { text: stripped, images };
+}
+
+function parseMarkdownImages(text: string): { text: string; images: Array<{ src: string; alt: string }> } {
+  const images: Array<{ src: string; alt: string }> = [];
+  let stripped = text.replace(MD_IMAGE_RE, (_, alt: string, url: string) => {
+    images.push({ src: url.trim(), alt: alt.trim() || 'generated image' });
+    return '';
+  });
+  stripped = stripped.replace(MD_IMAGE_LINK_RE, (match, alt: string, url: string) => {
+    if (isLikelyImageUrl(url)) {
+      images.push({ src: url.trim(), alt: alt.trim() || 'image' });
+      return '';
+    }
+    return match;
+  });
+  return { text: stripped.replace(/\n{3,}/g, '\n\n').trim(), images };
+}
+
+function parseChatContent(text: string): { text: string; images: Array<{ src: string; alt: string }> } {
+  const fromMarkers = parseMessageImages(text);
+  const fromMarkdown = parseMarkdownImages(fromMarkers.text);
+  return {
+    text: fromMarkdown.text,
+    images: [
+      ...fromMarkers.images.map((src) => ({ src, alt: 'Attached screenshot' })),
+      ...fromMarkdown.images,
+    ],
+  };
+}
+
+function ChatBubbleImage({ src, alt }: { src: string; alt: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return (
+      <a
+        href={src}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-1.5 text-[12px] text-primary font-medium hover:underline"
+      >
+        <span className="material-symbols-outlined text-[16px]">image</span>
+        {alt}
+      </a>
+    );
+  }
+  return (
+    <img
+      src={src}
+      alt={alt}
+      referrerPolicy="no-referrer"
+      onError={() => setFailed(true)}
+      className="max-w-full max-h-96 rounded-xl border border-outline-variant/30 object-contain bg-white shadow-sm"
+    />
+  );
 }
 
 function renderMarkdown(text: string): React.ReactNode {
@@ -189,11 +256,28 @@ function renderMarkdown(text: string): React.ReactNode {
     if (imageMatch) {
       elements.push(
         <div key={i} className="my-3">
-          <img
-            src={imageMatch[2]}
-            alt={imageMatch[1] || 'generated image'}
-            className="rounded-xl max-w-full border border-outline-variant/30 shadow-sm"
-          />
+          <ChatBubbleImage src={imageMatch[2]} alt={imageMatch[1] || 'generated image'} />
+        </div>
+      );
+      continue;
+    }
+
+    // Handle markdown image links: [label](https://.../image.png)
+    const linkMatch = trimmed.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+    if (linkMatch && isLikelyImageUrl(linkMatch[2])) {
+      elements.push(
+        <div key={i} className="my-3">
+          <ChatBubbleImage src={linkMatch[2]} alt={linkMatch[1] || 'image'} />
+        </div>
+      );
+      continue;
+    }
+
+    // Handle plain image URLs on their own line
+    if (isLikelyImageUrl(trimmed)) {
+      elements.push(
+        <div key={i} className="my-3">
+          <ChatBubbleImage src={trimmed} alt="generated image" />
         </div>
       );
       continue;
@@ -451,8 +535,8 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
 
         {messages.map((msg) => {
           const isUser = msg.agent === 'User';
-          const parsedUser = isUser ? parseMessageImages(msg.text) : { text: msg.text, images: [] as string[] };
-          const displayText = isUser ? parsedUser.text : msg.text;
+          const parsed = parseChatContent(msg.text);
+          const displayText = parsed.text;
           const isErrorMsg =
             msg.status === 'FAILED' ||
             msg.badgeText?.includes('FAILED') ||
@@ -514,14 +598,13 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                           <span>COMPLETED</span>
                         </div>
                       )}
-                      {parsedUser.images.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mb-3">
-                          {parsedUser.images.map((src, index) => (
-                            <img
+                      {parsed.images.length > 0 && (
+                        <div className="flex flex-col gap-2 mb-3">
+                          {parsed.images.map((image, index) => (
+                            <ChatBubbleImage
                               key={`${msg.id}-img-${index}`}
-                              src={src}
-                              alt="Attached screenshot"
-                              className="max-w-full max-h-64 rounded-lg border border-outline-variant/30 object-contain bg-white"
+                              src={image.src}
+                              alt={image.alt}
                             />
                           ))}
                         </div>
