@@ -2,21 +2,22 @@
 
 ## 1. 产品定位与核心价值
 
-**Clutch** 是一款面向独立开发者、技术运营人员以及 AI 工作流搭建者的桌面应用。它提供了一个 **可视化、零代码的 SOP（标准作业程序）工作流编排与运行控制台**。
+**Clutch** 是一款面向独立开发者、技术运营人员以及 AI 工作流与自动化搭建者的桌面应用。它提供了一个 **可视化、零代码的 SOP（标准作业程序）工作流编排与运行控制台**。
 
-通过 Clutch，用户可以像「导演」一样在画布上定义复杂的 Agent 工作流，由系统调度本地 AI 工具、MCP 服务及大语言模型（LLM）执行，并在统一的 IDE 级控制台中全程监督、人工审批和干预执行结果。
+通过 Clutch，用户可以在画布上定义任意的多 Agent 协作工作流，由系统动态调度本地多种 AI 引擎（各种本地 CLI 工具、MCP 服务及远程/本地大语言模型）执行，并在统一的 IDE 级控制台中全程监督执行过程、进行人工审批与干预决策。
 
 ### 核心价值主张
-- **零代码编排 (Zero-Code Orchestration)**：用户通过可视化拖拽连线即可定义 Agent 工作流，无需手写复杂的 Python / LangGraph 编排代码。
-- **全流程监督 (Full Observability)**：打破 Agent 的“黑盒”状态，在 Chat 气泡、子进程终端日志、Git/文件 Diff、Flow 进度图以及工作区文件树中，实时暴露 Agent 的每一步思考与输出。
-- **人机协同门控 (Human-in-the-Loop)**：在关键校验失败或敏感操作节点，图会自动挂起，由人类进行 Approve（批准强制通过）、Reject（打回原因）或 Retry（带补充指令重试）。
-- **本地优先 (Local First)**：应用运行于本地（Tauri 壳 + Python Sidecar），敏感的 API Key 与工作区文件完全保留在用户本机，安全可控。
+- **通用多 Agent 画布编排 (Generic Multi-Agent Orchestration)**：用户通过可视化拖拽连线定义工作流，支持在各节点灵活指定不同的 Agent 角色与任务说明，运行时由编排引擎自动编译为 LangGraph 状态机并处理输入输出接力。
+- **本地工具生态打通 (Local AI Tool Integration)**：自动扫描本地开发环境并无缝接入各种主流的本地 AI 命令行工具（CLI，如 Claude Code, Aider, Ollama 等）及 macOS 客户端，打破云端与本地的边界。
+- **全流程透明监督 (Console Observability)**：打破 AI 执行的“黑盒”，在统一的控制台界面中展示多角色 Chat 流、流式子进程终端日志、Git 代码变更与 Diff、Flow 进度图以及工作区文件树。
+- **人机协同门控 (Human-in-the-Loop)**：在关键检查失败或敏感操作节点，图会自动挂起，由人类进行 Approve（批准强制通过）、Reject（打回）或 Retry（带补充指令重试）。
+- **本地优先 (Local First)**：应用完全运行于本地，API Key 仅存于本地安全存储中，敏感的工作区数据与开发日志不会外泄。
 
 ---
 
 ## 2. 系统架构概览
 
-Clutch 采用 **前后端物理隔离、本地 loopback 通信** 的现代桌面端架构：
+Clutch 采用 **前端界面交互与后端编排引擎物理隔离、本地 loopback 通信** 的设计：
 
 ```mermaid
 graph TD
@@ -29,80 +30,77 @@ graph TD
         FastAPI[FastAPI REST / WS API]
         LangGraph[LangGraph 状态机运行时]
         Compiler[Workflow Compiler]
-        Adapters[Tool Adapters]
+        Engine_Router[Engine Router]
+        Adapters[Tool/CLI Adapters]
     end
 
     UI <-->|WebSocket / HTTP| FastAPI
     Tauri_Cmd -->|Spawn / Supervise| Python_Orchestrator_Sidecar
-    Adapters -->|子进程| Claude_CLI[Claude CLI / Custom CLIs]
-    Adapters -->|Stdio/SSE| MCP_Servers[MCP Servers]
-    Adapters -->|本地读写| Local_FS[File System & Git]
+    Engine_Router -->|路由分流| Adapters
+    Adapters -->|本地执行| CLI_Tools[本地 CLI 命令行工具 (Claude, Aider, Ollama, agy...)]
+    Adapters -->|唤起应用| Cursor_App[Cursor 等本地桌面应用]
+    Adapters -->|模型 API| Cloud_Local_LLMs[云端模型 / 本地 Ollama API]
 ```
 
-1. **前端 (Tauri + React 19 + Tailwind CSS 4)**：提供高保真三栏式工作台，负责渲染状态投影、画布编辑以及捕获用户输入。前端不承担任何业务逻辑，亦不直接读写磁盘。
-2. **后端 (FastAPI + LangGraph Python Sidecar)**：服务于 `localhost:8123`，作为唯一的真理源 (SSOT) 控制状态跳跃。`WorkflowCompiler` 负责将 React Flow 导出的 JSON 动态编译成 LangGraph 可执行图。
+1. **前端 (React 19 + Tailwind CSS 4 + Motion + React Flow)**：提供高保真三栏式工作台，负责工作流可视化编辑、运行态投影渲染及捕获用户人工审批决策。
+2. **后端 (FastAPI + LangGraph Python Sidecar)**：运行于 `localhost:8123`，作为唯一的真理源 (SSOT) 控制状态跳转。`WorkflowCompiler` 将画布导出的 JSON 动态编译成 LangGraph 可执行图。
 3. **通信机制**：前后端通过 WebSocket 实时更新全局状态 `ClutchState`（采用 `state_patch` 增量推送）。
 
 ---
 
 ## 3. 核心功能特性
 
-### 3.1 零代码工作流画布 (Flow Canvas)
-- **节点类型**：
-  - `start` (开始)：工作流虚拟入口。
-  - `agent_task` (Agent 任务)：指定具体 Agent 角色（Orchestrator, Builder, Evaluator 等）、任务描述及绑定的 MCP 工具与本地命令行。
-  - `check` (自动检查)：执行结构化校验（如文件存在校验、Shell 命令检测），作为 Evaluator 节点的运行依据。
-  - `human_gate` (等我确认)：人机协同闸门，用于敏感或高风险操作。
-  - `end` (完成)：工作流出口。
-- **自动输入输出接力 (Handoff)**：当下游 Agent 节点激活时，系统自动解析输入链。如果直接上游为其他 Agent，则自动将上游的 `node_outputs` 注入到当前 Agent 的提示词中，支持链式 SOP 跑通（例如：天气调研官 Researcher -> 视觉艺术家 Artist 自动生图接力）。
+### 3.1 通用可定制 Agent 系统
+Clutch 不限制或固化 Agent 的角色名称，而是提供了一个完全通用的自定义 Agent 机制：
+- **Agent 自定义配置**：用户可通过 UI 自由创建、编辑或删除 Agent（配置持久化存储于 `agents.json`）。支持配置 Agent 的名称、头像、描述、系统提示词（`markdownDoc`）、绑定的模型（`modelId`）、期望交付产物（`deliverables`）以及关联的 MCP 服务器与 Skills。
+- **内置 Agent**：系统提供默认的 `clutch-agent`（内置 Clutch Agent）作为通用垫底 Agent。
+- **工作流节点绑定**：画布上的 `agent_task` 节点可选择任意自定义或内置的 Agent，编译后节点会自动读取对应 Agent 的属性与提示词，动态调用底层模型进行任务处理。
+- **自动输入输出接力 (Handoff)**：节点激活时自动解析上游。若上游是另一个 Agent 任务节点，系统会自动将该上游节点的 `node_outputs` 作为输入上下文接力注入到当前节点的输入中，从而跑通链式多 Agent 协作流。
 
-### 3.2 三栏式运行监督控制台
-- **左侧栏 (Navigation)**：管理工作区项目及分支（包含 Git 状态）、CRUD 运行会话历史。提供 Models Manager (模型管理)、MCP Server Hub 以及 Skills 扫描器的入口。
-- **中间 Chat 流 (Chat Feed)**：
-  - **角色渲染**：不同 Agent 气泡拥有区分样式（如 User、Orchestrator、Builder、Evaluator）。
-  - **思考动效**：当 LLM 正在处理时，显示跳动的 Loader 和模型名称。
-  - **人机交互卡片**：校验失败时实时呈现干预按钮（Approve / Reject / Retry）。
-  - **物理 Stop 按钮**：支持一键物理终止正在运行的 Agent 任务或工作流（强杀子进程）。
-- **右侧多功能面板 (Right Panel)**：
-  - **Overview**：展示当前节点状态、执行进度和 Token 消耗。
-  - **Files**：显示当前工作区文件树，支持未提交文件的点击预览。
-  - **Flow**：以高亮形式动态显示当前工作流的活跃执行路径，并支持随时查看编译后的 Flow JSON。
-  - **Changes**：通过 FS Watcher (磁盘监听) 和 Git status 实时汇总未提交的文件变更与 Diff 摘要。
-  - **Terminal**：实时流式输出子进程的标准输出与错误（Stdout/Stderr），所有日志均由 Sidecar 自动进行幂等的时间戳格式化（如 `[2026-06-26 17:00:00 CST] [BUILDER] ...`）。
+### 3.2 本地 AI 工具自动扫描与探测
+系统启动时，后端 `tools_status.py` 会自动扫描用户本地的系统 `PATH` 以及 Brew、NPM、NVM 等常用工具目录，智能探测已安装的 AI 工具：
+- **CLI 命令行工具探测**：支持自动扫描 `claude` (Claude Code CLI), `agy` (Antigravity CLI), `codex` (OpenAI Codex CLI), `aider` (Aider), `ollama` (Ollama CLI), `cursor` (Cursor CLI), `code` (VS Code CLI), `codeium` (Codeium CLI), `gemini` (Gemini CLI) 等工具的可执行路径。
+- **macOS 客户端探测**：支持探测 `/Applications` 及 `~/Applications` 下的桌面客户端软件（如 `Cursor.app`）。
+- **配置与连接状态**：探测出的工具会在前端 AI Tools 界面统一呈现其安装类型（CLI 或 Client）、二进制可执行绝对路径以及连接启用状态。
 
-### 3.3 双引擎智能路由 (Double Engine Router)
-在执行任务或普通 Plain Chat 对话时，系统根据配置自动分流：
-1. **Claude Code CLI 引擎**：
-   - 唤起本地 `claude -p` 子进程。
-   - **Session 绑定机制 (ADR-020)**：持久化 session 并使用 `--resume <uuid>` 恢复会话，避免在多轮对话中重复发送全文历史，极大地降低了 Token 消耗和网络延迟。
-2. **配置 LLM 引擎**：
-   - 路由至用户自行配置的 API Provider (如 OpenAI, DeepSeek, 智谱 GLM 等)。
-   - **Ollama 本地驱动**：系统可自动向本地 Ollama 服务发起探测 (`/api/tags`)，发现用户本地已下载的模型，并通过内置的代码能力和推理能力算法进行 **自动排序打分**，优先推荐最优秀的本地模型（如 `qwen3.6`），支持无 Key 极速本地部署。
+### 3.3 多引擎智能路由与 Session 恢复
+在执行任务或普通对话时，编排引擎中的 `EngineRouter` 会根据 Agent 配置的 `agentType` (或 legacy 字段 `aiEngine`) 及本地工具的探测可用状态，进行智能路由分流：
+1. **本地 CLI 适配器路由**：
+   - 如果 Agent 属性配置为 `claude-cli`、`antigravity-cli` 或 `ollama-cli`，且本地探测到相应 CLI 二进制，路由将任务直接下发至对应的本地 CLI 子进程执行。
+   - **CLI 会话恢复机制 (Session Resume)**：特别针对 `claude-cli`（使用 `--resume <session_uuid>`）与 `antigravity-cli` 实现了 Session 缓存与绑定。在多轮交互中，直接恢复原有子进程上下文而无需重放历史全文，极大节约了 Token 开销并降低了网络延迟。
+2. **GUI 客户端唤起**：
+   - 如果 `agentType` 配置为 `cursor-workspace`，系统可直接在本地通过 `open -a Cursor` 唤起 Cursor 桌面端并打开当前工作区，实现 GUI 级别的人机无缝流转。
+3. **全局 LLM 模型路由 (`clutch`)**：
+   - 路由至用户配置的云端或本地模型 API（如 OpenAI, DeepSeek, 智谱 GLM 等）。
+   - **本地 Ollama 自动发现与打分排序**：对于本地 `Ollama` 驱动，系统会自动向本地 `11434` 端口发起探测，自动发现用户本地的所有已下载模型，并通过内置的打分排序算法（评估模型代码能力与推理能力）优先推荐最合适的模型（如 `qwen3.6`），支持在无 Key 时直接一键激活使用。
+   - **生图/视觉模型适配**：针对生图/视觉模型进行特殊判定。若是生图模型（如 `Agnes Image`），输入时会自动走生图路由并回显图片产物；若向仅能生图的非视觉模型上传图片，系统会自动拦截并进行友好提示。
+4. **智能降级回退 (Fallback)**：
+   - 若 Agent 设定了特定的本地 CLI 类型但本地未检测到该工具，路由系统会自动将任务降级回退至 `clutch` 全局 LLM 引擎执行，并在 Terminal 日志中输出明确的 Fallback 审计警示。
 
-### 3.4 虚拟 MCP 客户端与 Codex 文件补丁
-- **虚拟 MCP 服务器 (`clutch-tools`)**：当 Agent 被授予本地文件系统（`local-fs`）访问权限时，系统自动挂载此虚拟服务器。
-- **`apply_patch` 精密文件工具 (ADR-021)**：借鉴 OpenAI Codex 规范，为大模型提供物理文件操作支持（Add, Delete, Update, Move），免去了模型由于缺少删除 API 而采取的隐藏文件等 Workaround 方案。
-- **高风险门控判定**：所有修改和删除文件的 Codex patch 动作均会在 Sidecar 的 `mcp_risk` 中触发安全判定，作为高危动作推送给 Supervisor 进行人工审批。
+### 3.4 虚拟 MCP 服务器与 Codex 文件补丁
+- **虚拟 MCP 客户端 (`clutch-tools`)**：当 Agent 访问本地文件系统（`local-fs`）时，Sidecar 会动态挂载该内置虚拟 MCP 服务。
+- **`apply_patch` 精密文件工具**：提供 Codex 语法兼容的文件打补丁工具（支持 Add, Delete, Update, Move 动作），使模型可以通过标准的 diff 或指令精密增删改移本地文件，避免了传统模型缺乏删除文件 API 而导致的工作区垃圾残留。
+- **安全门控 (mcp_risk)**：涉及删除、修改工作区代码文件的高风险 MCP 动作会在 Sidecar 侧被自动判定，拦截并强制推送为 `human_required` 人工决策，必须经由 Supervisor 审批同意后方能真正对磁盘应用变更。
 
-### 3.5 多语言 (i18n) 与凭证集成
-- **彻底的双语化**：支持中英文（zh/en）界面一键切换。后端通过偏好设置 `tr(en, zh)` 动态翻译系统异常、WS 审批通知，并确保 pytest 测试套件在断言层面的兼容。
-- **CC Switch 动态凭证导入**：启动时可自动扫描本地 `~/.cc-switch/cc-switch.db`，直接提取导入用户已录入的自定义 API Keys（如智谱、DeepSeek 等），无需用户在多处重复输入配置。
+### 3.5 多语言 (i18n) 与凭证导入
+- **多语言双语对照**：支持中英文（zh/en）切换。后端通过 preferences 动态加载语言偏好，在 API/WebSocket 的异常捕获、干预提示上使用 `tr()` 响应，且完全兼容既有测试断言。
+- **凭证自动导入**：支持自动读取 `~/.cc-switch/cc-switch.db` SQLite 数据库，无感导入用户在第三方工具中配置的模型 API Keys，免去繁琐的手动配置过程。
 
 ---
 
-## 5. 内置 SOP 模板
+## 4. 内置 SOP 模板
 
-Clutch 默认打包了常用 SOP 工作流模板（可在 `workflows/` 目录下找到）：
+Clutch 默认打包了以下经典 SOP 工作流模板，位于 `workflows/` 目录：
 
-- **Video Production (视频生产)**：适用于流水线式的视频处理、文字稿生成、自动检查及人工审批发布。
+- **Video Production (视频生产)**：适用于流水线式的视频素材处理、文案生成、评估校验及人工确认发布。
 - **Weather to Vision (天气插画接力)**：
-  - **节点 1 (Researcher)**：天气情报官。负责分析输入天气调研要求，产出场景视觉描述。
-  - **节点 2 (Artist)**：视觉艺术家。绑定 Agnes Image 生图引擎，将上游的视觉描述接力转化为一张高质量插画。
-  - **节点 3 (End)**：流程结束。
+  - **节点 1 (Researcher / 天气情报官)**：分析用户请求，调研并产出包含天空、光影、氛围的场景描述。
+  - **节点 2 (Artist / 视觉艺术家)**：绑定生图模型（如 Agnes Image），自动读取并接力上游的描述文本，最终生成一张高质量插画。
+  - **节点 3 (End / 结束)**。
 
 ---
 
-## 6. 本地运行与构建指令
+## 5. 本地运行与构建指令
 
 ### 开发期启动 (Dev)
 ```bash
@@ -116,13 +114,13 @@ pnpm dev
 ```
 
 ### 本地轻量校验 (Pre-commit)
-在提交代码前，必须跑通轻量校验（确保 Vite build 成功、Python pytest 测试通过、前后端 TS/Schema 机检漂移未发生）：
+在提交代码前运行轻量校验，确保编译通过、单元测试正常、文档未产生漂移：
 ```bash
 ./scripts/verify.sh
 ```
 
 ### 全量 E2E 校验 (Push 前)
-启动本地沙箱并执行完整 Tauri-Playwright GUI 自动化测试：
+运行完整 Tauri-Playwright GUI 自动化测试：
 ```bash
 ./scripts/verify.sh --e2e
 ```
@@ -131,8 +129,8 @@ pnpm dev
 ```bash
 pnpm tauri build
 ```
-打包成功后，生产版会自动内嵌 Sidecar Python runtime，双击生成的 `.dmg` 即可作为独立桌面客户端运行。
+编译打包成功后，生产版会自动内嵌 Sidecar Python 运行环境，输出双击可安装的 `.dmg` 桌面应用程序。
 
 ---
 
-*本文档基于 M3-F09 阶段及 P2 增强会话的代码设计与手动 E2E 证据编写。最新架构详述见 [系统架构文档](file:///Users/fancy/clutch/docs/ARCHITECTURE.md)。*
+*本文档基于最新的前后端实现编写。关联架构设计详述见 [系统架构文档](file:///Users/fancy/clutch/docs/ARCHITECTURE.md)；文件定位见 [FILEMAP.md](file:///Users/fancy/clutch/memory/FILEMAP.md)。*
