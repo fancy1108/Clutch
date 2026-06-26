@@ -63,6 +63,7 @@ def _run_cli_streaming(
     proc = subprocess.Popen(
         command,
         cwd=cwd,
+        stdin=subprocess.DEVNULL,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
@@ -118,6 +119,7 @@ def run_cli(
             proc = subprocess.run(
                 command,
                 cwd=cwd,
+                stdin=subprocess.DEVNULL,
                 capture_output=True,
                 text=True,
                 timeout=timeout,

@@ -21,6 +21,10 @@ class McpClient:
     def start(self) -> bool:
         args = shlex.split(self.endpoint)
         env_vars = os.environ.copy()
+        env_vars["NPM_CONFIG_UPDATE_NOTIFIER"] = "false"
+        env_vars["NPM_CONFIG_AUDIT"] = "false"
+        env_vars["NPM_CONFIG_FUND"] = "false"
+        env_vars["NO_UPDATE_NOTIFIER"] = "1"
         if self.env:
             env_vars.update(self.env)
         try:
@@ -50,10 +54,15 @@ class McpClient:
             return False
 
     def _read_response(self, req_id: int, timeout: float = 5.0) -> dict[str, Any]:
+        import time
+        deadline = time.time() + timeout
         while True:
             if not self.proc or not self.proc.stdout:
                 raise RuntimeError("Process terminated")
-            r, _, _ = select.select([self.proc.stdout], [], [], timeout)
+            remaining = deadline - time.time()
+            if remaining <= 0:
+                raise TimeoutError("Timeout waiting for MCP response")
+            r, _, _ = select.select([self.proc.stdout], [], [], remaining)
             if not r:
                 raise TimeoutError("Timeout waiting for MCP response")
             line = self.proc.stdout.readline()
