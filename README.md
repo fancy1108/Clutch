@@ -70,6 +70,7 @@ clutch/
 | [`memory/PROGRESS.md`](./memory/PROGRESS.md) | Agent 进度接力棒 |
 | [`memory/FILEMAP.md`](./memory/FILEMAP.md) | 文件路径速查（Check-in 用） |
 | [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) | 系统架构详述（设计理由、数据流） |
+| [`docs/PRODUCT_INTRO.md`](./docs/PRODUCT_INTRO.md) | 产品介绍文档（功能、特性与运行机制概述） |
 | [`docs/document-governance.md`](./docs/document-governance.md) | 五层架构与权威优先级 |
 | [`specs/core/proposal.md`](./specs/core/proposal.md) | 产品需求历史快照（非权威） |
 | [`specs/core/tasks.md`](./specs/core/tasks.md) | M0–M4 开发任务清单 |

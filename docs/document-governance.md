@@ -23,6 +23,7 @@
 | 想改什么 | 去哪里 | 何时更新 |
 |---------|--------|---------|
 | 铁律、命令、Check-in | `CLAUDE.md` | 治理规则变更时 |
+| 产品最新功能与特性（产品介绍文档） | [`docs/PRODUCT_INTRO.md`](./PRODUCT_INTRO.md) | 功能发布或功能大幅迭代时 |
 | 产品目标、MVP、Non-Goals（历史） | [`specs/core/proposal.md`](./specs/core/proposal.md) | 仅作快照，不随演进更新 |
 | 视觉规范 | `specs/core/design.md` | 第 4–5 步 |
 | 开发任务清单 | `specs/core/tasks.md` | 第 6 步 |

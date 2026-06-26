@@ -31,6 +31,7 @@
 | 想改什么 | 去哪里 |
 |---------|--------|
 | 铁律、命令、Check-in | `CLAUDE.md` |
+| 产品介绍文档 | `docs/PRODUCT_INTRO.md` |
 | 产品需求历史 | `specs/core/proposal.md` |
 | 视觉设计快照 | `specs/core/design.md` → `UI_UX_GUIDELINES.md` |
 | 开发任务清单（含 Verification） | `specs/core/tasks.md` |
