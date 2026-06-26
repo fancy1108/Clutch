@@ -12,6 +12,7 @@
 
 | 日期 | 范围 | 命令 | 结果 | 报告/证据 | 备注 |
 |------|------|------|------|-----------|------|
+| 2026-06-27 | D25 runtime_registry dispatch | `./scripts/verify.sh` | ✅ 342 pytest | `—` | `try_shell_exec_hybrid` |
 | 2026-06-27 | D25 Snapshot 保留策略 | `./scripts/verify.sh` | ✅ 337 pytest | `—` | `CLUTCH_SHELL_SNAPSHOT_MAX_AGE_DAYS` |
 | 2026-06-27 | D25 Hybrid Step 2（agy + sweep + baseline） | `./scripts/verify.sh` | ✅ 333 pytest + 11 vitest | `runs/verification/2026-06-27-hybrid-step2-verify.log` | agy Route C 4/5；`baseline/*.json` |
 | 2026-06-27 | D25 ShellSession Step 1 + Hybrid 执行细节 | `./scripts/verify.sh` | ✅ 326 pytest + 11 vitest | `runs/verification/2026-06-27-hybrid-step1-verify.log` | `verify_hybrid_execution_ws.py` PASSED；默认 `legacy` |

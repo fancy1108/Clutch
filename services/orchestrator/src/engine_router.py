@@ -12,7 +12,7 @@ from src.tools_status import load_connected_ids, resolve_tool_binary, tool_avail
 from src.adapters.claude_cli_adapter import chat_claude_cli
 from src.adapters.agy_cli_adapter import chat_agy_cli
 from src.agent_type import agent_type_from_record, resolve_model_for_agent
-from src.runtime_config import hybrid_eligible
+from src.runtime_registry import try_shell_exec_hybrid
 from src.workspace import get_workspace
 from src.preferences_storage import tr
 
@@ -447,40 +447,36 @@ def _route_engine_raw(
                 )
             )
 
-        if (
-            provider_spec.runtime_strategy.value == "shell_exec"
-            and hybrid_eligible(source=source, agent_type=agent_type)
-            and run_id
-            and workspace_path
-        ):
-            try:
-                return _route_claude_hybrid(
-                    run_id=run_id,
-                    workspace_path=workspace_path,
-                    prompt=prompt,
-                    system_prompt=system_prompt,
-                    history=history,
-                    cli_session_id=cli_session_id,
-                    cli_binary=cli_binary,
-                    logs=logs,
-                    on_log=on_log,
-                )
-            except Exception as exc:
-                _emit_log(
-                    logs,
-                    on_log,
-                    f"[HYBRID] fallback to legacy compatible mode: {exc}",
-                )
-
-        return _route_claude_legacy(
+        return try_shell_exec_hybrid(
+            agent_type=agent_type,
+            source=source,
+            run_id=run_id,
             workspace_path=workspace_path,
-            prompt=prompt,
-            system_prompt=system_prompt,
-            history=history,
-            cli_session_id=cli_session_id,
-            cli_binary=cli_binary,
+            provider_spec=provider_spec,
+            hybrid_route=lambda: _route_claude_hybrid(
+                run_id=run_id,
+                workspace_path=workspace_path,
+                prompt=prompt,
+                system_prompt=system_prompt,
+                history=history,
+                cli_session_id=cli_session_id,
+                cli_binary=cli_binary,
+                logs=logs,
+                on_log=on_log,
+            ),
+            legacy_route=lambda: _route_claude_legacy(
+                workspace_path=workspace_path,
+                prompt=prompt,
+                system_prompt=system_prompt,
+                history=history,
+                cli_session_id=cli_session_id,
+                cli_binary=cli_binary,
+                logs=logs,
+                on_log=on_log,
+            ),
             logs=logs,
             on_log=on_log,
+            emit_log=_emit_log,
         )
 
     if agent_type == "antigravity-cli" and tool_available_for_routing("agy-cli"):
@@ -499,33 +495,8 @@ def _route_engine_raw(
                 )
             )
 
-        if (
-            provider_spec.runtime_strategy.value == "shell_exec"
-            and hybrid_eligible(source=source, agent_type=agent_type)
-            and run_id
-            and workspace_path
-        ):
-            try:
-                return _route_agy_hybrid(
-                    run_id=run_id,
-                    workspace_path=workspace_path,
-                    prompt=prompt,
-                    system_prompt=system_prompt,
-                    history=history,
-                    cli_session_id=cli_session_id,
-                    cli_binary=cli_binary,
-                    logs=logs,
-                    on_log=on_log,
-                )
-            except Exception as exc:
-                _emit_log(
-                    logs,
-                    on_log,
-                    f"[HYBRID] fallback to legacy compatible mode: {exc}",
-                )
-
-        try:
-            _emit_log(logs, on_log, f"Executing Antigravity CLI prompt...")
+        def _agy_legacy() -> EngineResult:
+            _emit_log(logs, on_log, "Executing Antigravity CLI prompt...")
             output = chat_agy_cli(
                 prompt=prompt,
                 cwd=workspace_path,
@@ -540,6 +511,30 @@ def _route_engine_raw(
                 output=output,
                 logs=logs,
                 cli_session_id=cli_session_id or "agy-session",
+            )
+
+        try:
+            return try_shell_exec_hybrid(
+                agent_type=agent_type,
+                source=source,
+                run_id=run_id,
+                workspace_path=workspace_path,
+                provider_spec=provider_spec,
+                hybrid_route=lambda: _route_agy_hybrid(
+                    run_id=run_id,
+                    workspace_path=workspace_path,
+                    prompt=prompt,
+                    system_prompt=system_prompt,
+                    history=history,
+                    cli_session_id=cli_session_id,
+                    cli_binary=cli_binary,
+                    logs=logs,
+                    on_log=on_log,
+                ),
+                legacy_route=_agy_legacy,
+                logs=logs,
+                on_log=on_log,
+                emit_log=_emit_log,
             )
         except Exception as exc:
             _emit_log(logs, on_log, f"Antigravity CLI execution failed: {exc}")

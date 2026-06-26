@@ -4,8 +4,14 @@
 
 - 阶段：**D25 ShellSession Step 2 已交付（agy Hybrid + sweep 测试 + baseline）**
 - Git HEAD：`3c8229c`
-- Git HEAD：`97a2d15`（待 continue-work commit）
-- **下次优先**：runtime_registry
+- Git HEAD：`39eecba`（待 runtime_registry commit）
+- **阶段：** D25 ShellSession Step 3~5 核心已交付（默认 `legacy`）
+- **你验收时跳过：** MCP hybrid_executions · 2h 长测
+
+## 2026-06-27 会话（Step 4：runtime_registry）
+
+- **完成：** `try_shell_exec_hybrid` 统一 SHELL_EXEC 门控 + fallback；`engine_router` 去重
+- **校验：** `test_runtime_registry.py`；verify 342 pytest ✅
 
 ## 2026-06-27 会话（Step 3 UI：继续上次工作）
 
