@@ -1223,6 +1223,18 @@ async def _handle_plain_chat(
         final_patch["claude_session_id"] = ""
         final_patch["claude_session_agent_id"] = ""
     state = _merge_patch(state, final_patch)
+    
+    from src.compaction import should_compact, compact_run_messages
+    if should_compact(state):
+        state = await compact_run_messages(run_id, state, model_id=resolved_id)
+        final_patch.update({
+            "messages": list(state["messages"]),
+            "token_input": state["token_input"],
+            "token_output": state["token_output"],
+            "session_tokens": state["session_tokens"],
+            "session_cost_usd": state["session_cost_usd"],
+        })
+
     _commit_run_state(run_id, state)
     _touch_session(run_id, title=text.strip()[:80] or "New session", status=state["status"])
 
@@ -1230,7 +1242,9 @@ async def _handle_plain_chat(
     if files_changed:
         await _notify_workspace_files_changed(websocket, run_id, files_changed)
     await _notify_run_state(websocket, run_id, state, final_patch)
+
     return state
+
 
 
 async def _handle_workflow_chat_message(
