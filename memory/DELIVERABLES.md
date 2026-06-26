@@ -606,11 +606,14 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
   - `docs/document-governance.md` — 职责划分表格中登记新文档
 
 
-### 历史会话上下文压缩与归档 (Backlog B-03) ✅
+### 历史会话上下文压缩与归档 (Backlog B-03) 与前端展示美化 ✅
 - **日期：** 2026-06-26
-- **Commit：** `f6642cd` — feat(orchestrator): implement context message compaction and archiving with robust unit and integration tests
-- **Verification：** `./scripts/verify.sh` → 297 passed (7 new tests added, including WS integration tests)
+- **Commit：** `f6642cd` & `78115be` — feat(orchestrator): implement context message compaction, archiving and frontend UI enhancements
+- **Verification：** `./scripts/verify.sh` → 297 passed (7 new tests added, including WS integration tests) + Vite build and Vitest OK
 - **已交付：**
-  - [services/orchestrator/src/compaction.py](file:///Users/fancy/clutch/services/orchestrator/src/compaction.py) — 核心压缩逻辑，包括 `should_compact` 检测、LLM 摘要生成与 Fallback 机制、历史消息归档 JSONL 以及 Token 重新计数与成本估算。
-  - [services/orchestrator/src/main.py](file:///Users/fancy/clutch/services/orchestrator/src/main.py) — 在单 Agent 普通对话消息处理流程 `_handle_plain_chat` 中集成上下文压缩，在 commit 与 notify 之前执行，实现无感、无闪烁的原子状态更新。
+  - [services/orchestrator/src/compaction.py](file:///Users/fancy/clutch/services/orchestrator/src/compaction.py) — 核心压缩逻辑，包括 `should_compact` 检测、LLM 摘要生成与 Fallback 机制、历史消息归档 JSONL 以及 Token 重新计数与成本估算，支持 `badgeText` 与 `badge_text` 兼容字段。
+  - [services/orchestrator/src/main.py](file:///Users/fancy/clutch/services/orchestrator/src/main.py) — 在单 Agent 普通对话消息处理流程 `_handle_plain_chat` 中集成上下文压缩，在 commit 与 notify 之前执行，实现无感、无闪烁 of 原子状态更新。
   - [services/orchestrator/tests/test_compaction.py](file:///Users/fancy/clutch/services/orchestrator/tests/test_compaction.py) — 包含对 token 估算、不同阈值与环境变量下的 compaction 决策、归档路径与文件内容、LLM 摘要合并、异常降级等分支的全面测试，以及 WebSocket 真实连接的集成测试。
+  - [apps/desktop/src/components/ChatFeed.tsx](file:///Users/fancy/clutch/apps/desktop/src/components/ChatFeed.tsx) — 优化 `System` 对话气泡展示逻辑，采用 `info` 信息提示图标，并自动在气泡顶部渲染 `badgeText` 内容以呈现出上下文压缩摘要提示信息。
+  - [apps/desktop/src/components/LanguageContext.tsx](file:///Users/fancy/clutch/apps/desktop/src/components/LanguageContext.tsx) — 补充中文语言下的 `"System": "系统"` 字典映射，使系统通知在 UI 显示上更亲民。
+
