@@ -252,6 +252,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
     [visibleWorkspaces, groupedWorkspaceIds],
   );
 
+  const showDefaultGroup = useMemo(() => {
+    if (workspaces.length === 0) return false;
+    if (ungroupedWorkspaces.length > 0) return true;
+    if (repositoryGroups.length > 0) {
+      if (!filterText) return true;
+      const defaultGroupNameEn = 'default group';
+      const defaultGroupNameZh = t('Default Group').toLowerCase();
+      return defaultGroupNameZh.includes(filterText) || defaultGroupNameEn.includes(filterText);
+    }
+    return false;
+  }, [workspaces.length, ungroupedWorkspaces.length, repositoryGroups.length, filterText, t]);
+
   const toggleWorkspace = (workspaceId: string) => {
     setCollapsedWorkspaces((prev) => ({ ...prev, [workspaceId]: !prev[workspaceId] }));
     onSelectWorkspace?.(workspaceId);
@@ -489,7 +501,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </div>
             );
           })}
-          {ungroupedWorkspaces.length > 0 && (() => {
+          {showDefaultGroup && (() => {
             const isDragOver = dragOverGroupId === '__default__';
             return (
               <div
@@ -515,7 +527,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </button>
                 {!defaultGroupCollapsed && (
                   <div className="space-y-1 ml-2 border-l border-outline-variant/30 pl-2">
-                    {ungroupedWorkspaces.map((repo) => renderWorkspaceRow(repo))}
+                    {ungroupedWorkspaces.length === 0 ? (
+                      <p className="text-[11px] text-on-surface-variant/60 italic py-1 pl-2">
+                        {t('No projects in this group yet')}
+                      </p>
+                    ) : (
+                      ungroupedWorkspaces.map((repo) => renderWorkspaceRow(repo))
+                    )}
                   </div>
                 )}
               </div>
@@ -523,7 +541,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           })()}
           {workspaces.length > 0 &&
             visibleGroups.length === 0 &&
-            ungroupedWorkspaces.length === 0 &&
+            !showDefaultGroup &&
             filterText && (
               <p className="text-[11px] text-on-surface-variant/60 italic px-3 py-2">
                 {t('No projects match your filter')}

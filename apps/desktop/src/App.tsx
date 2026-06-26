@@ -142,6 +142,22 @@ function MainLayout() {
   );
   const [configuredAgents, setConfiguredAgents] = useState<Agent[]>([]);
 
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (branchMenuOpen || modelMenuOpen || agentMenuOpen || workflowMenuOpen) {
+        const target = e.target as HTMLElement;
+        if (target.closest('[data-testid^="footer-"]')) {
+          return;
+        }
+        closeFooterMenus();
+      }
+    };
+    window.addEventListener('click', handleOutsideClick);
+    return () => {
+      window.removeEventListener('click', handleOutsideClick);
+    };
+  }, [branchMenuOpen, modelMenuOpen, agentMenuOpen, workflowMenuOpen, closeFooterMenus]);
+
   const refreshWorkspaceGit = useCallback(async () => {
     try {
       const info = await fetchWorkspaceGit();
