@@ -2,8 +2,16 @@
 
 ## 当前状态
 
-- 阶段：**Codex 兼容 `apply_patch` 内置工具已落地（增/删/改/移 + Supervisor 审批）**
-- Git HEAD：`7ee8f43`（本会话改动待 commit）
+- 阶段：**默认虚拟分组可见性逻辑修复及底部选择菜单点击空白收起交互优化**
+- Git HEAD：`831dbbd`
+
+## 2026-06-26 会话（默认分组可见性与底部菜单收起交互优化）
+
+- **完成：**
+  - **`sidebar.tsx`**：使用 `showDefaultGroup` 来控制虚拟默认分组的渲染，并增加其被展开且无项目时的空状态信息，使其在已创建自定义分组的情况下依然可以作为拖拽的放置目标；修正了 `!showDefaultGroup` 作为筛选后无匹配项目时的逻辑。
+  - **`App.tsx`**：实现 window click 的外部点击检测逻辑，点击页面任意空白处时将一并关闭已展开的底部菜单面板（Branch, Model, Active Agent, Workflow）。
+  - **校验**：Husky 触发的 pre-commit 校验与 `./scripts/verify.sh` → 232 pytest + vitest + build + doc-drift 全部通过。
+- **下次优先**：答复用户反馈并继续开展后续任务。
 
 ## 2026-06-25 会话（apply_patch 方案 B · Codex 对齐）
 

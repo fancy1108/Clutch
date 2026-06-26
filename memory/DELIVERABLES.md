@@ -516,3 +516,11 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
   - `services/orchestrator/src/credentials/claude_code.py` — 实现对 `~/.cc-switch/cc-switch.db` SQLite 数据库的读取，实现从 CC Switch 导入自定义模型和凭证的动态引导程序。
   - `services/orchestrator/src/credentials/sources.py` — 增加 CC Switch 凭证来源标签。
   - `services/orchestrator/tests/test_claude_code_credentials.py` — 增加 `test_bootstrap_cc_switch_credentials` 单元测试，修正环境污染问题。
+
+### Default Group 虚拟分组及底部选项点击空白收起优化 ✅
+- **日期：** 2026-06-26
+- **Commit：** `831dbbd` — feat(ui): fix default group visibility and add click outside handler to collapse footer menus
+- **Verification：** `./scripts/verify.sh` → 232 pytest + vitest passed + doc drift ok
+- **已交付：**
+  - `apps/desktop/src/sidebar.tsx` — 修复 `showDefaultGroup` 条件与空状态，并在 filter warning 时关联 showDefaultGroup。
+  - `apps/desktop/src/App.tsx` — 添加全局 click 事件监听器，点击页面空白处自动关闭展开的底部菜单面板。
