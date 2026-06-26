@@ -23,11 +23,43 @@ def test_agent_type_from_record_prefers_explicit_agent_type() -> None:
     assert agent_type_from_record({"agentType": "ollama-cli", "aiEngine": "Configured LLM"}) == "ollama-cli"
 
 
+def test_builtin_agent_ignores_bound_model_id() -> None:
+    router = LLMProviderRouter()
+    router._chat = lambda **_kwargs: "ok"  # type: ignore[method-assign]
+    router.set_active_model("deepseek-v4pro")
+    agent = {
+        "id": "clutch-agent",
+        "agentType": "clutch",
+        "builtin": True,
+        "modelId": "agnes-image-2.1-flash",
+    }
+    spec, model_id = resolve_model_for_agent(router, agent)
+    assert model_id == "deepseek-v4pro"
+    assert spec.id == "deepseek-v4pro"
+
+
+def test_resolve_model_for_agent_uses_session_model_id() -> None:
+    router = LLMProviderRouter()
+    router._chat = lambda **_kwargs: "ok"  # type: ignore[method-assign]
+    router.set_active_model("deepseek-v4pro")
+    agent = {
+        "id": "clutch-agent",
+        "agentType": "clutch",
+        "builtin": True,
+        "modelId": "agnes-image-2.1-flash",
+    }
+    spec, model_id = resolve_model_for_agent(
+        router, agent, session_model_id="qwen2.5vl-7b"
+    )
+    assert model_id == "qwen2.5vl-7b"
+    assert spec.id == "qwen2.5vl-7b"
+
+
 def test_resolve_model_for_agent_uses_bound_model_id() -> None:
     router = LLMProviderRouter()
     router._chat = lambda **_kwargs: "ok"  # type: ignore[method-assign]
     router.set_active_model("deepseek-v4pro")
-    agent = {"agentType": "clutch", "modelId": "agnes-image-2.1-flash"}
+    agent = {"id": "custom-agent", "agentType": "clutch", "modelId": "agnes-image-2.1-flash"}
     spec, model_id = resolve_model_for_agent(router, agent)
     assert model_id == "agnes-image-2.1-flash"
     assert spec.id == "agnes-image-2.1-flash"

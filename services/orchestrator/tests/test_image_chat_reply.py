@@ -31,6 +31,28 @@ class _FakeImageRouter:
 
 
 @pytest.mark.asyncio
+async def test_llm_chat_reply_image_model_rejects_vision_input(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("src.models_config.get_router", lambda: _FakeImageRouter())
+
+    data_url = "data:image/png;base64,abc"
+    (
+        _label,
+        engine,
+        reply_text,
+        _logs,
+        _session_id,
+        _pause,
+        _files,
+    ) = await _llm_chat_reply(
+        initial_state("run_img_vision"),
+        f"[image: {data_url}]\n这个图片说了什么",
+    )
+
+    assert engine == "Agnes Image 2.1 Flash"
+    assert "cannot read uploaded" in reply_text.lower()
+
+
+@pytest.mark.asyncio
 async def test_llm_chat_reply_uses_image_adapter(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("src.models_config.get_router", lambda: _FakeImageRouter())
 

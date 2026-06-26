@@ -705,6 +705,7 @@ async def _llm_chat_reply(
     text: str,
     agent_id: str | None = None,
     *,
+    session_model_id: str | None = None,
     claude_session_id: str | None = None,
     emit_log: Callable[[str], Awaitable[None]] | None = None,
     mcp_approved_tool: dict[str, Any] | None = None,
@@ -723,7 +724,9 @@ async def _llm_chat_reply(
     router = get_router()
     from src.agent_type import resolve_model_for_agent
 
-    model, resolved_model_id = resolve_model_for_agent(router, agent)
+    model, resolved_model_id = resolve_model_for_agent(
+        router, agent, session_model_id=session_model_id
+    )
     runtime_model_name = model.name
     model_api = getattr(model, "api_model", None) or runtime_model_name
     from src.adapters.ollama_adapter import model_supports_vision
@@ -731,8 +734,25 @@ async def _llm_chat_reply(
     vision_enabled = model_supports_vision(model)
 
     from src.image_router import format_image_reply, generate_image_for_model, is_image_model
+    from src.chat_content import extract_image_data_urls
+
+    _plain, attached_images = extract_image_data_urls(text)
 
     if is_image_model(model):
+        if attached_images:
+            err = (
+                "This model only generates images and cannot read uploaded screenshots. "
+                "Switch to a vision chat model (e.g. Qwen 2.5 VL 7B) using the Model menu in the footer."
+            )
+            return (
+                reply_label,
+                runtime_model_name,
+                err,
+                [f"[CHAT] Vision input ignored for image-generation model {runtime_model_name}"],
+                None,
+                None,
+                [],
+            )
         spec, api_key = router.resolve_for_model(resolved_model_id)
         loop = asyncio.get_running_loop()
         image_logs: list[str] = []
@@ -1059,6 +1079,7 @@ async def _handle_plain_chat(
     state: ClutchState,
     text: str,
     agent_id: str | None = None,
+    session_model_id: str | None = None,
 ) -> ClutchState:
     from src.agent_storage import BUILTIN_AGENT_ID, get_agent_by_id
 
@@ -1108,6 +1129,7 @@ async def _handle_plain_chat(
         state,
         text,
         agent_id=resolved_id,
+        session_model_id=session_model_id,
         claude_session_id=stored_session_id,
         emit_log=emit_log,
     )
@@ -2193,11 +2215,17 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
             if isinstance(payload, dict) and payload.get("text"):
                 text = str(payload["text"])
                 agent_id = str(payload.get("agent_id", "")).strip() or None
+                session_model_id = str(payload.get("model_id", "")).strip() or None
                 if state["workflow_id"]:
                     state = await _handle_workflow_chat_message(websocket, run_id, state, text)
                 else:
                     state = await _handle_plain_chat(
-                        websocket, run_id, state, text, agent_id=agent_id
+                        websocket,
+                        run_id,
+                        state,
+                        text,
+                        agent_id=agent_id,
+                        session_model_id=session_model_id,
                     )
             elif isinstance(payload, dict) and payload.get("action") == "human_decision":
                 decision = str(payload.get("decision", "approve"))

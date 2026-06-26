@@ -96,6 +96,8 @@ def is_model_available(router: LLMProviderRouter, model_id: str) -> bool:
     if model_id not in router._models:
         return False
     provider_id: ProviderId = router._models[model_id].provider_id
+    if provider_id == "ollama":
+        return True
     return bool(router.get_api_key(provider_id))
 
 

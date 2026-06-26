@@ -6,6 +6,8 @@ from typing import Any
 
 from src.llm.router import LLMProviderRouter, ModelSpec
 
+_BUILTIN_AGENT_ID = "clutch-agent"
+
 AGENT_TYPES = frozenset({"clutch", "claude-cli", "ollama-cli", "antigravity-cli"})
 
 _LEGACY_AI_ENGINE_TO_TYPE: dict[str, str] = {
@@ -53,13 +55,19 @@ def is_clutch_agent(agent: dict[str, Any] | None) -> bool:
 def agent_model_id(agent: dict[str, Any] | None) -> str:
     if not agent or not is_clutch_agent(agent):
         return ""
+    if agent.get("builtin") or str(agent.get("id", "")).strip() == _BUILTIN_AGENT_ID:
+        return ""
     return str(agent.get("modelId") or agent.get("model_id") or "").strip()
 
 
 def resolve_model_for_agent(
     router: LLMProviderRouter,
     agent: dict[str, Any] | None,
+    *,
+    session_model_id: str | None = None,
 ) -> tuple[ModelSpec, str]:
+    if session_model_id and session_model_id in router._models:
+        return router._models[session_model_id], session_model_id
     model_id = agent_model_id(agent)
     if model_id and model_id in router._models:
         return router._models[model_id], model_id

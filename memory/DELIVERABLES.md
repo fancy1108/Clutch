@@ -27,6 +27,22 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ## 已交付（代码 Task · 自 Git 回填）
 
+### SESSION-MODEL-SELECTION-AND-IMAGE-REJECTION ✅
+- **日期：** 2026-06-26
+- **Commit：** `Pending commit`
+- **Verification：** `./scripts/verify.sh` → 287 pytest + vitest passed
+- **证据：** `—`（门禁已覆盖）
+- **交付文件：**
+  - `apps/desktop/src/App.tsx` — 重新拉取/同步模型配置，支持在普通会话中通过 WS 发送 `model_id` 并优化 footer 选择逻辑。
+  - `apps/desktop/src/services/clutchState.ts` — `submitChatMessage` 新增 `modelId` 参数并在 Payload 中传递。
+  - `services/orchestrator/src/agent_storage.py` — 内置默认 Agent 不允许绑定 modelId。
+  - `services/orchestrator/src/agent_type.py` — `agent_model_id` 与 `resolve_model_for_agent` 改造，内置默认 Agent 强制忽略绑定模型，并支持 session 级别的 model_id 覆盖。
+  - `services/orchestrator/src/main.py` — WebSocket `_handle_plain_chat` 支持传递和路由 `session_model_id`。
+  - `services/orchestrator/src/models_config.py` — 修复 Ollama 模型无 API Key 时的可用状态检测，使其始终可用。
+  - `services/orchestrator/tests/test_agent_type.py` — 新增内置默认 Agent 忽略模型绑定及 session 级别模型覆盖的单元测试。
+  - `services/orchestrator/tests/test_image_chat_reply.py` — 新增图片问答时非视觉生图模型（如 Agnes Image）的拒绝响应测试。
+  - `services/orchestrator/tests/test_models_config_api.py` — 更新 Ollama 无 API Key 时的激活测试用例。
+
 ### M3-F · Flow 多 Agent 接力（D23） ✅
 - **日期：** 2026-06-26
 - **Commit：** `1395a97` — `feat(flow): multi-agent handoff with clutch execution and image routing`
@@ -52,7 +68,7 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ### OLLAMA-LOCAL-ROUTING ✅
 - **日期：** 2026-06-26
-- **Commit：** `Pending commit`
+- **Commit：** `e94bcc7` — `feat(orchestrator,desktop): add Ollama routing with per-agent model selection`
 - **Verification：** `uv run pytest` → 242 pytest passed
 - **证据：** `—`（门禁已覆盖）
 - **交付文件：**

@@ -43,7 +43,7 @@ import {
   type WorkspaceInfo,
 } from './services/workspaceApi';
 import { pickWorkspaceFolder } from './services/pickWorkspaceFolder';
-import { fetchModelsConfig, mapModelConfigToUi } from './services/modelsApi';
+import { fetchModelsConfig, mapModelConfigToUi, saveModelsConfig } from './services/modelsApi';
 import { fetchPermissionMode, savePermissionMode, type PermissionMode } from './services/permissionApi';
 import { fetchSkillsRegistry, type ScannedSkill } from './services/skillsApi';
 
@@ -196,17 +196,19 @@ function MainLayout() {
       .catch(() => {});
   }, []);
 
-  useEffect(() => {
-    void fetchModelsConfig()
-      .then((config) => {
-        const mapped = mapModelConfigToUi(config);
-        setConfiguredModels(mapped.models);
-        setActiveModelId(mapped.activeModelId);
-        const active = mapped.models.find((m) => m.id === mapped.activeModelId);
-        setSelectedModel(active?.name ?? '');
-      })
-      .catch(() => {});
+  const syncModelsConfig = useCallback(async () => {
+    const config = await fetchModelsConfig();
+    const mapped = mapModelConfigToUi(config);
+    setConfiguredModels(mapped.models);
+    setActiveModelId(mapped.activeModelId);
+    const active = mapped.models.find((m) => m.id === mapped.activeModelId);
+    setSelectedModel(active?.name ?? '');
+    return mapped;
   }, []);
+
+  useEffect(() => {
+    void syncModelsConfig().catch(() => {});
+  }, [syncModelsConfig]);
 
   const refreshConfiguredAgents = async () => {
     try {
@@ -610,6 +612,9 @@ function MainLayout() {
     const next = !modelMenuOpen;
     closeFooterMenus();
     setModelMenuOpen(next);
+    if (next) {
+      void syncModelsConfig().catch(() => {});
+    }
   };
 
   const toggleAgentMenu = () => {
@@ -618,17 +623,22 @@ function MainLayout() {
     setAgentMenuOpen(next);
   };
 
-  const handleFooterModelSelect = async (modelId: string) => {
+  const handleFooterModelSelect = (modelId: string) => {
     const model = configuredModels.find((item) => item.id === modelId);
     if (!model) return;
-    try {
-      await saveModelsConfig({ active_model_id: modelId });
-      setActiveModelId(modelId);
-      setSelectedModel(model.name);
-      setModelMenuOpen(false);
-    } catch (error) {
-      console.error('[Clutch] model switch failed:', error);
-    }
+    setModelMenuOpen(false);
+    void (async () => {
+      try {
+        await saveModelsConfig({ active_model_id: modelId });
+        await syncModelsConfig();
+      } catch (error) {
+        console.error('[Clutch] model switch failed:', error);
+        setWorkspacePickError(
+          error instanceof Error ? error.message : t('Failed to switch model.'),
+        );
+        await syncModelsConfig().catch(() => {});
+      }
+    })();
   };
 
   const handleFooterAgentSelect = (agent: Agent) => {
@@ -807,7 +817,11 @@ function MainLayout() {
       }
       return;
     }
-    await submitChatMessage(text, selectedAgentId);
+    await submitChatMessage(
+      text,
+      selectedAgentId,
+      agentBoundModelId ? undefined : footerEffectiveModelId || undefined,
+    );
     await refreshSessions();
   };
 
@@ -1123,8 +1137,8 @@ function MainLayout() {
                       <FooterMenuItem
                         key={model.id}
                         testId={`footer-model-item-${model.id}`}
-                        selected={model.id === activeModelId}
-                        onClick={() => { void handleFooterModelSelect(model.id); }}
+                        selected={model.id === footerEffectiveModelId}
+                        onClick={() => handleFooterModelSelect(model.id)}
                       >
                         {model.name}
                       </FooterMenuItem>

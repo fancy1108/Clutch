@@ -68,6 +68,8 @@ def _effective_builtin(override: dict[str, Any] | None = None) -> dict[str, Any]
         agent = {**agent, **override, "id": BUILTIN_AGENT_ID, "builtin": True}
     agent["agentType"] = "clutch"
     agent.pop("aiEngine", None)
+    agent.pop("modelId", None)
+    agent.pop("model_id", None)
     return migrate_agent_record(agent)
 
 

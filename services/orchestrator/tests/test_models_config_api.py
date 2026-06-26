@@ -32,7 +32,11 @@ def test_models_mark_unavailable_without_api_key(models_config: Path) -> None:
     response = client.get("/api/models/config")
     assert response.status_code == 200
     body = response.json()
-    assert all(model["available"] is False for model in body["models"])
+    for model in body["models"]:
+        if model["provider_id"] == "ollama":
+            assert model["available"] is True
+        else:
+            assert model["available"] is False
 
 
 def test_connect_provider_enables_model(models_config: Path) -> None:
@@ -52,6 +56,13 @@ def test_activate_rejects_unavailable_model(models_config: Path) -> None:
     client = TestClient(app)
     response = client.post("/api/models/config", json={"active_model_id": "deepseek-v4pro"})
     assert response.status_code == 400
+
+
+def test_activate_ollama_model_without_api_key(models_config: Path) -> None:
+    client = TestClient(app)
+    response = client.post("/api/models/config", json={"active_model_id": "qwen2.5vl-7b"})
+    assert response.status_code == 200
+    assert response.json()["active_model_id"] == "qwen2.5vl-7b"
 
 
 def test_activate_available_model(models_config: Path) -> None:
