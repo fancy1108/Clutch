@@ -596,14 +596,21 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ### 产品介绍文档与关联文档更新同步 ✅
 - **日期：** 2026-06-26
-- **Commit：** `e7a7e04` & `6754466` & `7c314fb` — docs: create, revise and enrich product introduction docs with real pain points and goals
+- **Commit：** `e7a7e04` & `6754466` & `7c314fb` & `437ede6` — docs: create, revise and plan product introduction docs
 - **Verification：** `./scripts/verify.sh` → 290 pytest + vitest passed + doc-drift OK
 - **已交付：**
-  - `docs/PRODUCT_INTRO.md` — 产品介绍文档，包含项目存在理由（真实痛点一与二）、可自定义 Agent、本地工具自动探测、多引擎智能分流路由器、明确非目标等特性的全面介绍
+  - `docs/PRODUCT_INTRO.md` — 产品介绍文档，已区分当前已实现与未来路线图，并依据 Backlog 与开源项目（Reasonix、DeepSeek TUI、agentcache）补充了上下文压缩、工作区快照回滚、缓存友好分叉等 3.6 节状态与上下文管理技术规划
   - `workflows/README.md` — 纠正 compiler 状态与登记 `weather-to-vision.json` 模板
   - `README.md` — 主 README 注册产品介绍文档条目
   - `memory/FILEMAP.md` — 文件定位速查表中登记新文档
   - `docs/document-governance.md` — 职责划分表格中登记新文档
 
 
-
+### 历史会话上下文压缩与归档 (Backlog B-03) ✅
+- **日期：** 2026-06-26
+- **Commit：** `f6642cd` — feat(orchestrator): implement context message compaction and archiving with robust unit and integration tests
+- **Verification：** `./scripts/verify.sh` → 297 passed (7 new tests added, including WS integration tests)
+- **已交付：**
+  - [services/orchestrator/src/compaction.py](file:///Users/fancy/clutch/services/orchestrator/src/compaction.py) — 核心压缩逻辑，包括 `should_compact` 检测、LLM 摘要生成与 Fallback 机制、历史消息归档 JSONL 以及 Token 重新计数与成本估算。
+  - [services/orchestrator/src/main.py](file:///Users/fancy/clutch/services/orchestrator/src/main.py) — 在单 Agent 普通对话消息处理流程 `_handle_plain_chat` 中集成上下文压缩，在 commit 与 notify 之前执行，实现无感、无闪烁的原子状态更新。
+  - [services/orchestrator/tests/test_compaction.py](file:///Users/fancy/clutch/services/orchestrator/tests/test_compaction.py) — 包含对 token 估算、不同阈值与环境变量下的 compaction 决策、归档路径与文件内容、LLM 摘要合并、异常降级等分支的全面测试，以及 WebSocket 真实连接的集成测试。

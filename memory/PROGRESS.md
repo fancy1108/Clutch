@@ -3,7 +3,17 @@
 ## 当前状态
 
 - 阶段：**M3-F Flow 多 Agent 接力已落地（D23 ✅）**
-- Git HEAD：`53d2643`
+- Git HEAD：`f6642cd`
+
+## 2026-06-26 会话（历史会话上下文压缩与归档 B-03 落地）
+
+- **完成：**
+  - **核心压缩逻辑实现**：编写了 `services/orchestrator/src/compaction.py`，支持基于单词数的 Token 估算、历史消息归档保存为 JSONL 文件（自动保存至项目 `runs/archive` 目录或应用 session data 目录）、消息过滤切片（保留首条及最近 4 条），并使用 LLM 进行历史摘要生成，在 LLM 故障时提供带参与 Agent 列表的友好 fallback。
+  - **对话流程无缝集成**：修改了 `services/orchestrator/src/main.py` 的 `_handle_plain_chat`。将在回复完成后进行 token 与 compaction 校验，并在 commit 与通知前完成。这保证了状态以单次 patch 推送到前端，消除了多次 WS message 造成的渲染闪烁，提升了用户体验。
+  - **多维度单元与集成测试**：新建了 `services/orchestrator/tests/test_compaction.py`。全面覆盖 `_estimate_tokens`、`should_compact`（含环境变量覆盖）、`compact_run_messages` 成功与异常降级以及模拟客户端通过 WebSocket 进行 plain chat 时触发 compaction 的完整端到端集成测试。
+  - **全量校验通过**：本地运行 `./scripts/verify.sh` 并顺利通过了所有 297 项后端 Python 测试、前端 Vitest 测试、生产 Vite build 和文档漂移自检，代码已进行 git commit `f6642cd`。
+- **下次优先**：工作流运行中逐步 Chat 的 WS 时序优化。
+
 
 ## 2026-06-26 会话（产品介绍文档编写与文档关联同步）
 
