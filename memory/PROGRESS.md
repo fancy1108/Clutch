@@ -3,7 +3,7 @@
 ## 当前状态
 
 - 阶段：**M3-F Flow 多 Agent 接力已落地（D23 ✅）**
-- Git HEAD：`Pending commit`
+- Git HEAD：`2b61c06`
 
 ## 2026-06-26 会话（会话模型选择与生图视觉校验）
 

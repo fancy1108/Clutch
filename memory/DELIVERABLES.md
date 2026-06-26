@@ -29,7 +29,7 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ### SESSION-MODEL-SELECTION-AND-IMAGE-REJECTION ✅
 - **日期：** 2026-06-26
-- **Commit：** `Pending commit`
+- **Commit：** `2b61c06` — `feat(chat,models): support session model selection, bypass builtin agent model binding, and reject vision input on image-only models`
 - **Verification：** `./scripts/verify.sh` → 287 pytest + vitest passed
 - **证据：** `—`（门禁已覆盖）
 - **交付文件：**
