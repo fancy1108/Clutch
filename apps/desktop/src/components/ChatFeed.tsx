@@ -78,17 +78,6 @@ const IMAGE_MARKER_RE = /\[image:\s*(data:image\/[^\]]+)\]\s*/gi;
 const MD_IMAGE_RE = /!\[([^\]]*)\]\(([^)]+)\)/g;
 const MD_IMAGE_LINK_RE = /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g;
 
-function isLikelyImageUrl(url: string): boolean {
-  const trimmed = url.trim();
-  if (trimmed.startsWith('data:image/')) return true;
-  try {
-    const path = new URL(trimmed).pathname.toLowerCase();
-    return /\.(png|jpe?g|gif|webp|svg|bmp|avif)(\?|$)/i.test(path) || path.includes('/images/');
-  } catch {
-    return false;
-  }
-}
-
 function parseMessageImages(text: string): { text: string; images: string[] } {
   const images: string[] = [];
   const stripped = text.replace(IMAGE_MARKER_RE, (_, url: string) => {
@@ -100,18 +89,27 @@ function parseMessageImages(text: string): { text: string; images: string[] } {
 
 function parseMarkdownImages(text: string): { text: string; images: Array<{ src: string; alt: string }> } {
   const images: Array<{ src: string; alt: string }> = [];
-  let stripped = text.replace(MD_IMAGE_RE, (_, alt: string, url: string) => {
+  const stripped = text.replace(MD_IMAGE_RE, (_, alt: string, url: string) => {
     images.push({ src: url.trim(), alt: alt.trim() || 'generated image' });
     return '';
   });
-  stripped = stripped.replace(MD_IMAGE_LINK_RE, (match, alt: string, url: string) => {
-    if (isLikelyImageUrl(url)) {
-      images.push({ src: url.trim(), alt: alt.trim() || 'image' });
+  const imageUrls = new Set(images.map((image) => image.src));
+  const withoutCompanionLinks = stripped.replace(MD_IMAGE_LINK_RE, (match, _alt: string, url: string) => {
+    if (imageUrls.has(url.trim())) {
       return '';
     }
     return match;
   });
-  return { text: stripped.replace(/\n{3,}/g, '\n\n').trim(), images };
+  return { text: withoutCompanionLinks.replace(/\n{3,}/g, '\n\n').trim(), images };
+}
+
+function dedupeImages(images: Array<{ src: string; alt: string }>): Array<{ src: string; alt: string }> {
+  const seen = new Set<string>();
+  return images.filter((image) => {
+    if (seen.has(image.src)) return false;
+    seen.add(image.src);
+    return true;
+  });
 }
 
 function parseChatContent(text: string): { text: string; images: Array<{ src: string; alt: string }> } {
@@ -119,10 +117,10 @@ function parseChatContent(text: string): { text: string; images: Array<{ src: st
   const fromMarkdown = parseMarkdownImages(fromMarkers.text);
   return {
     text: fromMarkdown.text,
-    images: [
+    images: dedupeImages([
       ...fromMarkers.images.map((src) => ({ src, alt: 'Attached screenshot' })),
       ...fromMarkdown.images,
-    ],
+    ]),
   };
 }
 
@@ -142,13 +140,20 @@ function ChatBubbleImage({ src, alt }: { src: string; alt: string }) {
     );
   }
   return (
-    <img
-      src={src}
-      alt={alt}
-      referrerPolicy="no-referrer"
-      onError={() => setFailed(true)}
-      className="max-w-full max-h-96 rounded-xl border border-outline-variant/30 object-contain bg-white shadow-sm"
-    />
+    <a
+      href={src}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="block w-full max-w-lg"
+      title={alt}
+    >
+      <img
+        src={src}
+        alt={alt}
+        onError={() => setFailed(true)}
+        className="block w-full h-auto max-h-[min(24rem,70vh)] rounded-xl border border-outline-variant/30 object-contain bg-white shadow-sm"
+      />
+    </a>
   );
 }
 
@@ -262,23 +267,19 @@ function renderMarkdown(text: string): React.ReactNode {
       continue;
     }
 
-    // Handle markdown image links: [label](https://.../image.png)
+    // Handle markdown links on their own line (e.g. "Open image")
     const linkMatch = trimmed.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
-    if (linkMatch && isLikelyImageUrl(linkMatch[2])) {
+    if (linkMatch) {
       elements.push(
-        <div key={i} className="my-3">
-          <ChatBubbleImage src={linkMatch[2]} alt={linkMatch[1] || 'image'} />
-        </div>
-      );
-      continue;
-    }
-
-    // Handle plain image URLs on their own line
-    if (isLikelyImageUrl(trimmed)) {
-      elements.push(
-        <div key={i} className="my-3">
-          <ChatBubbleImage src={trimmed} alt="generated image" />
-        </div>
+        <a
+          key={i}
+          href={linkMatch[2]}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 text-[12px] text-primary font-medium hover:underline my-1"
+        >
+          {linkMatch[1]}
+        </a>
       );
       continue;
     }

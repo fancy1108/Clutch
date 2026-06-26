@@ -79,10 +79,7 @@ def format_image_reply(result: dict[str, Any]) -> str:
     image_url = str(result.get("url") or "").strip()
     b64_json = str(result.get("b64_json") or "").strip()
     if image_url:
-        return (
-            f"![{tr('Generated image', '生成的图片')}]({image_url})\n\n"
-            f"[{tr('Open image', '打开图片')}]({image_url})"
-        )
+        return f"![{tr('Generated image', '生成的图片')}]({image_url})"
     if b64_json:
         data_uri = b64_json if b64_json.startswith("data:") else f"data:image/png;base64,{b64_json}"
         return f"![{tr('Generated image', '生成的图片')}]({data_uri})"
