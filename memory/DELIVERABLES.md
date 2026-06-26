@@ -29,7 +29,7 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ### M3-F · Flow 多 Agent 接力（D23） ✅
 - **日期：** 2026-06-26
-- **Commit：** `<pending>` — `feat(flow): multi-agent handoff, clutch execution, incremental state patches`
+- **Commit：** `1395a97` — `feat(flow): multi-agent handoff with clutch execution and image routing`
 - **Verification：** `uv run pytest tests/test_node_input.py tests/test_workflow_handoff.py tests/test_workflow_projection.py tests/test_workflow_step_patch.py tests/test_agent_executor.py -v` → 8 passed；全量 `uv run pytest` → 280 passed（3 video renderer 用例 event loop 抖动，与 Flow 无关）；用户手动 Weather-to-Vision E2E 通过（Researcher → Artist 出图）
 - **证据：** `runs/verification/2026-06-26-M3-F-flow-pytest.log`；用户截图 E2E（上海天气 → 外滩插画）
 - **交付文件：**

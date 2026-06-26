@@ -3,7 +3,7 @@
 ## 当前状态
 
 - 阶段：**M3-F Flow 多 Agent 接力已落地（D23 ✅）**
-- Git HEAD：`998beee`（待 commit 收尾）
+- Git HEAD：`1395a97`
 
 ## 2026-06-26 会话（M3-F Flow 接力落地 · Weather-to-Vision）
 
