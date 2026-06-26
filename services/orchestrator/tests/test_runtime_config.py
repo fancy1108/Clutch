@@ -26,8 +26,9 @@ def test_runtime_mode_hybrid_when_set(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_hybrid_eligible_requires_all_conditions(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("CLUTCH_RUNTIME_MODE", "hybrid")
     assert hybrid_eligible(source="plain_chat", agent_type="claude-cli") is True
+    assert hybrid_eligible(source="plain_chat", agent_type="antigravity-cli") is True
     assert hybrid_eligible(source="flow", agent_type="claude-cli") is False
-    assert hybrid_eligible(source="plain_chat", agent_type="antigravity-cli") is False
+    assert hybrid_eligible(source="plain_chat", agent_type="ollama-cli") is False
 
 
 def test_hybrid_eligible_false_when_legacy() -> None:

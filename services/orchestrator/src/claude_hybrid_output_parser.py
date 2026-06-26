@@ -32,8 +32,8 @@ _SYSTEM_PROMPT_RE = re.compile(
     re.DOTALL | re.IGNORECASE,
 )
 _NOISE_LINE_RE = re.compile(
-    r"^(?:clutch\$|CLUTCH_P=|--(?:append-system-prompt|session-id|resume|dangerously-skip-permissions)\b|"
-    r".*claude -p.*|.*__CLUTCH_.*|.*append-system-prompt.*)$",
+    r"^(?:clutch\$|CLUTCH_P=|--(?:append-system-prompt|session-id|resume|conversation|dangerously-skip-permissions)\b|"
+    r".*(?:claude|agy) -p.*|.*__CLUTCH_.*|.*append-system-prompt.*)$",
     re.I,
 )
 

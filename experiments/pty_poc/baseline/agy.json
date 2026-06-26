@@ -1,0 +1,37 @@
+{
+  "$schema": "clutch-pty-baseline-v1",
+  "provider": "agy",
+  "binary_path": "/opt/homebrew/bin/agy",
+  "recorded_at": "2026-06-26T17:11:56.764317+00:00",
+  "workspace": "/tmp/clutch-pty-poc-hybrid-f4a775d5",
+  "mode": "hybrid_bash_agy_p",
+  "pty_drivable": null,
+  "pty_drivable_notes": "",
+  "timing": {
+    "first_token_ms": 10219,
+    "avg_token_gap_ms": 8197,
+    "max_silence_ms": 18645,
+    "max_tool_silence_ms": null,
+    "round_ttfb_ms": [
+      10219,
+      8115,
+      18645,
+      2004,
+      2004
+    ]
+  },
+  "patterns": {
+    "prompt_echo_pattern": "",
+    "human_confirm_patterns": [],
+    "human_text_patterns": [],
+    "human_auth_patterns": []
+  },
+  "human_input_kinds_observed": [],
+  "stderr_behavior": "",
+  "sigint_behavior": "",
+  "structured_output": {
+    "available_in_print_mode": null,
+    "stream_json_event_types": []
+  },
+  "notes": "generated from 20260626T171156Z-route-c-hybrid-agy.json; pass_all=False"
+}

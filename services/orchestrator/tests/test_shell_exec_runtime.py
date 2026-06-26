@@ -6,6 +6,7 @@ import pytest
 
 from src.shell_exec_runtime import (
     InteractiveCommandBlocked,
+    _build_agy_shell_cmd,
     _build_claude_shell_cmd,
     assert_no_interactive_command,
     extract_claude_output,
@@ -43,3 +44,17 @@ def test_build_claude_shell_cmd_keeps_flags_on_claude_invocation() -> None:
     assert cmd.endswith("; echo __CLUTCH_DONE_x__")
     assert "; --append-system-prompt" not in cmd
     assert "; --dangerously-skip-permissions" not in cmd
+
+
+def test_build_agy_shell_cmd_includes_conversation() -> None:
+    cmd = _build_agy_shell_cmd(
+        agy_binary="/opt/homebrew/bin/agy",
+        prompt="hello",
+        marker="__CLUTCH_DONE_x__",
+        conversation_id="conv-1",
+        system_prompt=None,
+    )
+    assert cmd.startswith("CLUTCH_P='hello'; /opt/homebrew/bin/agy -p \"$CLUTCH_P\"")
+    assert "--conversation conv-1" in cmd
+    assert "--dangerously-skip-permissions" in cmd
+    assert cmd.endswith("; echo __CLUTCH_DONE_x__")

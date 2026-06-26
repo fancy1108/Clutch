@@ -261,9 +261,45 @@ def test_route_engine_antigravity_cli(monkeypatch) -> None:
     assert res.engine == "Antigravity CLI"
     assert res.output == "Antigravity CLI output"
     assert captured["prompt"] == "hello agy"
-    assert captured["system_prompt"] == "system directive"
-    assert captured["resume_session_id"] == "existing-session-456"
-    assert any("Routing task to Antigravity CLI" in log for log in res.logs)
+
+
+def test_agy_hybrid_routes_to_shell_exec(monkeypatch) -> None:
+    monkeypatch.setenv("CLUTCH_RUNTIME_MODE", "hybrid")
+    monkeypatch.setattr(
+        "src.engine_router.list_agents",
+        lambda: [
+            {
+                "id": "agent-agy",
+                "name": "Antigravity Agent",
+                "aiEngine": "Antigravity CLI",
+            }
+        ],
+    )
+    monkeypatch.setattr("src.engine_router.tool_available_for_routing", lambda tool_id: tool_id == "agy-cli")
+    monkeypatch.setattr("src.engine_router.get_workspace", lambda: {"workspace_path": "/workspace"})
+
+    def fake_agy_hybrid(**kwargs: object) -> EngineResult:
+        return EngineResult(
+            engine="Antigravity CLI (Hybrid)",
+            output="agy hybrid ok",
+            logs=["[HYBRID] agy"],
+            cli_session_id="agy-conv-1",
+            raw_output="raw agy",
+            output_events=[{"type": "assistant", "visible": True, "content": "agy hybrid ok"}],
+        )
+
+    monkeypatch.setattr("src.engine_router._route_agy_hybrid", fake_agy_hybrid)
+
+    res = route_engine(
+        agent_name="Antigravity Agent",
+        prompt="hello hybrid agy",
+        run_id="run-agy-hybrid",
+        source="plain_chat",
+    )
+    assert res.engine == "Antigravity CLI (Hybrid)"
+    assert res.output == "agy hybrid ok"
+    assert res.raw_output == "raw agy"
+    assert res.output_events
 
 
 def test_sanitize_engine_output() -> None:

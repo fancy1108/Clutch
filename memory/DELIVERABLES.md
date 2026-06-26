@@ -27,6 +27,18 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ## 已交付（代码 Task · 自 Git 回填）
 
+### D25-HYBRID-STEP2 ✅
+- **日期：** 2026-06-27
+- **Commit：** 待推送 — `feat(runtime): agy shell hybrid, sweep tests, and POC baselines`
+- **Verification：** `./scripts/verify.sh` → 333 pytest ✅
+- **证据：** `runs/verification/2026-06-27-hybrid-step2-verify.log`；agy Route C `4/5` → `experiments/pty_poc/runs/20260626T171156Z-route-c-hybrid-agy.json`
+- **交付文件：**
+  - `services/orchestrator/src/shell_exec_runtime.py` — `run_agy_turn` / `_build_agy_shell_cmd`
+  - `services/orchestrator/src/engine_router.py` — `_route_agy_hybrid` + Plain Chat 双 Provider Hybrid
+  - `services/orchestrator/src/runtime_config.py` — `antigravity-cli` hybrid 门控
+  - `services/orchestrator/src/shell_session.py` — sweep 运行时读 env
+  - `experiments/pty_poc/baseline/claude.json` · `agy.json` — Step 0.5 输出基准
+
 ### D25-SHELL-RELEASE-ON-DELETE ✅
 - **日期：** 2026-06-27
 - **Commit：** `4977df6` — `fix(runtime): release ShellSession when deleting a chat run`

@@ -69,6 +69,79 @@ def _build_claude_shell_cmd(
     )
 
 
+def _build_agy_shell_cmd(
+    *,
+    agy_binary: str,
+    prompt: str,
+    marker: str,
+    conversation_id: str | None,
+    system_prompt: str | None = None,
+) -> str:
+    effective = prompt
+    if system_prompt:
+        effective = f"{system_prompt}\n\nUser Request:\n{prompt}"
+    agy_args: list[str] = [f"{agy_binary} -p \"$CLUTCH_P\""]
+    if conversation_id:
+        agy_args.append(f"--conversation {conversation_id}")
+    agy_args.append("--dangerously-skip-permissions")
+    agy_line = " ".join(agy_args)
+    return (
+        f"CLUTCH_P={_shell_quote(effective)}; "
+        f"{agy_line}; "
+        f"echo {marker}"
+    )
+
+
+def run_agy_turn(
+    session: ShellSession,
+    *,
+    prompt: str,
+    agy_binary: str,
+    timeout_s: float,
+    cli_session_id: str | None = None,
+    resume_session_id: str | None = None,
+    context_prefix: str | None = None,
+    system_prompt: str | None = None,
+) -> ShellExecResult:
+    assert_no_interactive_command(prompt)
+    effective_prompt = prompt
+    if context_prefix:
+        effective_prompt = f"{context_prefix.strip()}\n\n{prompt}"
+
+    session.ensure_workspace_cwd()
+    turn_id = uuid.uuid4().hex[:8]
+    marker = f"__CLUTCH_DONE_{turn_id}__"
+    conv_id = resume_session_id or cli_session_id
+    cmd = _build_agy_shell_cmd(
+        agy_binary=agy_binary,
+        prompt=effective_prompt,
+        marker=marker,
+        conversation_id=conv_id,
+        system_prompt=system_prompt if not conv_id else None,
+    )
+    logs = [f"[HYBRID] agy exec in shell session {session.run_id}"]
+    write_line(session.master_fd, cmd)
+    raw = read_until_marker(session.master_fd, marker, max_wait_s=timeout_s)
+    plain = strip_ansi(raw)
+    if marker not in plain:
+        raise ShellSessionError(f"hybrid agy turn timed out waiting for marker {marker}")
+    parsed = ClaudeHybridOutputParser().parse_structured(
+        raw,
+        marker=marker,
+        shell_command=cmd,
+        system_prompt=system_prompt,
+    )
+    if not parsed.assistant:
+        raise ShellSessionError("hybrid agy turn produced empty stdout")
+    return ShellExecResult(
+        stdout=parsed.assistant,
+        logs=logs,
+        cli_session_id=conv_id or cli_session_id,
+        raw_output=parsed.raw,
+        output_events=parsed.output_event_dicts(),
+    )
+
+
 def run_claude_turn(
     session: ShellSession,
     *,

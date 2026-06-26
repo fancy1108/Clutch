@@ -165,6 +165,14 @@ _IDLE_SEC = float(os.environ.get("CLUTCH_SHELL_IDLE_SEC", "1800"))
 _MAX_SEC = float(os.environ.get("CLUTCH_SHELL_MAX_SEC", "21600"))
 
 
+def _idle_threshold_sec() -> float:
+    return float(os.environ.get("CLUTCH_SHELL_IDLE_SEC", str(_IDLE_SEC)))
+
+
+def _max_lifetime_sec() -> float:
+    return float(os.environ.get("CLUTCH_SHELL_MAX_SEC", str(_MAX_SEC)))
+
+
 class ShellSessionManager:
     def __init__(self) -> None:
         self._sessions: dict[str, ShellSession] = {}
@@ -216,12 +224,12 @@ class ShellSessionManager:
             items = list(self._sessions.items())
         for run_id, session in items:
             if session.state not in (SessionState.IDLE, SessionState.READY):
-                if now - session.created_at >= _MAX_SEC and session.state == SessionState.BUSY:
+                if now - session.created_at >= _max_lifetime_sec() and session.state == SessionState.BUSY:
                     continue
                 continue
             idle_for = now - session.last_activity_at
             age = now - session.created_at
-            if idle_for >= _IDLE_SEC or age >= _MAX_SEC:
+            if idle_for >= _idle_threshold_sec() or age >= _max_lifetime_sec():
                 self.release(run_id)
                 terminated.append(run_id)
         return terminated

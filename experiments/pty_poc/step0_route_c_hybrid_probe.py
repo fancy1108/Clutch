@@ -84,20 +84,31 @@ def _write_line(master_fd: int, line: str) -> None:
     os.write(master_fd, (line if line.endswith("\n") else line + "\n").encode())
 
 
-def _extract_claude_output(plain: str, *, marker: str, cmd_echo: str) -> str:
-    """Strip shell echo and marker; return Claude stdout-ish region."""
+def _extract_cli_output(plain: str, *, marker: str, cmd_echo: str, cli_name: str) -> str:
+    """Strip shell echo and marker; return CLI stdout-ish region."""
     text = plain
     if marker in text:
         text = text.split(marker, 1)[0]
     for noise in (cmd_echo, "\r"):
         text = text.replace(noise, "")
     lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
-    # Drop lines that look like our shell command
-    kept = [ln for ln in lines if "claude -p" not in ln and "__CLUTCH_" not in ln]
+    kept = [
+        ln
+        for ln in lines
+        if f"{cli_name} -p" not in ln and "__CLUTCH_" not in ln
+    ]
     return "\n".join(kept).strip()
 
 
-def run_hybrid(*, rounds: int, workspace: Path, claude_binary: str, round_timeout_s: float) -> dict:
+def run_hybrid(
+    *,
+    rounds: int,
+    workspace: Path,
+    cli_binary: str,
+    cli_name: str,
+    mode: str,
+    round_timeout_s: float,
+) -> dict:
     workspace.mkdir(parents=True, exist_ok=True)
     shell = shutil.which("bash") or "/bin/bash"
     pid, master_fd = pty.fork()
@@ -132,7 +143,7 @@ def run_hybrid(*, rounds: int, workspace: Path, claude_binary: str, round_timeou
             safe = prompt.replace("'", "'\"'\"'")
             cmd = (
                 f"CLUTCH_P='{safe}'; "
-                f"{claude_binary} -p \"$CLUTCH_P\" --dangerously-skip-permissions; "
+                f"{cli_binary} -p \"$CLUTCH_P\" --dangerously-skip-permissions; "
                 f"echo {marker}"
             )
             t0 = time.monotonic()
@@ -140,7 +151,7 @@ def run_hybrid(*, rounds: int, workspace: Path, claude_binary: str, round_timeou
             out = _read_until_marker(master_fd, marker, max_wait_s=round_timeout_s)
             total_ms = int((time.monotonic() - t0) * 1000)
             plain = _strip_ansi(out)
-            claude_out = _extract_claude_output(plain, marker=marker, cmd_echo=cmd[:80])
+            claude_out = _extract_cli_output(plain, marker=marker, cmd_echo=cmd[:80], cli_name=cli_name)
             has_marker = marker in plain
             has_model_text = len(claude_out) >= 2
             ok = has_marker and has_model_text
@@ -162,7 +173,8 @@ def run_hybrid(*, rounds: int, workspace: Path, claude_binary: str, round_timeou
 
         return {
             "route": "C",
-            "mode": "hybrid_bash_claude_p",
+            "mode": mode,
+            "provider": cli_name,
             "workspace": str(workspace),
             "cwd_inheritance_ok": cwd_ok,
             "pwd_output": pwd_out[-200:],
@@ -186,6 +198,7 @@ def run_hybrid(*, rounds: int, workspace: Path, claude_binary: str, round_timeou
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--rounds", type=int, default=5)
+    parser.add_argument("--provider", choices=["claude", "agy"], default="claude")
     parser.add_argument(
         "--workspace",
         type=Path,
@@ -195,24 +208,27 @@ def main() -> None:
     parser.add_argument("--round-timeout", type=float, default=180.0)
     args = parser.parse_args()
 
-    claude = shutil.which("claude")
-    if not claude:
-        raise SystemExit("claude not on PATH")
+    binary = shutil.which("claude" if args.provider == "claude" else "agy")
+    if not binary:
+        raise SystemExit(f"{args.provider} not on PATH")
 
     workspace = args.workspace or (DEFAULT_WORKSPACE.parent / f"{DEFAULT_WORKSPACE.name}-{uuid.uuid4().hex[:8]}")
+    mode = f"hybrid_bash_{args.provider}_p"
 
     report = run_hybrid(
         rounds=args.rounds,
         workspace=workspace,
-        claude_binary=claude,
+        cli_binary=binary,
+        cli_name=args.provider,
+        mode=mode,
         round_timeout_s=args.round_timeout,
     )
     report["recorded_at"] = datetime.now(timezone.utc).isoformat()
-    report["binary"] = claude
+    report["binary"] = binary
 
     RUNS_DIR.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    out = RUNS_DIR / f"{stamp}-route-c-hybrid.json"
+    out = RUNS_DIR / f"{stamp}-route-c-hybrid-{args.provider}.json"
     out.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(
         json.dumps(

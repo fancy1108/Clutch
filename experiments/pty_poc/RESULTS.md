@@ -10,9 +10,11 @@
 | **B** Headless 扫描 | ✅ 完成 | 无 `--headless` / `--no-tui`；`-p` 跳过 trust；`stream-json` 仅 print+verbose | `runs/*-route-b-headless-search.json` |
 | **A** pexpect 驱动 TUI | ❌ **未过（严格）** | 模型有回复（`⏺OK`）但 Ink ANSI 使 expect 不可靠；宽松判定曾误报 5/5 | `runs/20260626T141659Z-route-a-pexpect.json` |
 | **C** Hybrid bash + `claude -p` | ✅ **5/5** | cwd 继承成立；每轮 ~10–35s | `runs/20260626T141235Z-route-c-hybrid.json` |
+| **C′** Hybrid bash + `agy -p` | ✅ **4/5** | round 4 偶发空输出（API/超时）；其余轮正常 | `runs/20260626T171156Z-route-c-hybrid-agy.json` |
+| **0.5** baseline JSON | ✅ | `baseline/claude.json` · `baseline/agy.json` | `step0_baseline.py` |
 | 0.1 裸 PTY（遗留） | ❌ 证伪 | 裸 `os.write` 无法过 trust gate | `runs/20260626T134818Z-claude-pty-probe.json` |
 
-**Step 0 进度：~85%**（A/B/C 主路线已跑通；待 agy 复测 + 0.5 baseline 合并）
+**Step 0 进度：✅ 完成**（Route C claude 5/5 · agy 4/5 · baseline JSON 已合并）
 
 ---
 
@@ -101,9 +103,6 @@ ShellSession → bash (长驻)
 
 ## 下一步
 
-1. `agy` 重复 Route C（及必要时 Route A）
-2. `step0_baseline.py` 合并 → `baseline/claude.json`
-3. Step 1 编码：**`ShellSessionManager` + `SHELL_EXEC`**（主路径）
-4. `HumanInputKind` 落地 Sidecar：`BOOT_TRUST` / `TOOL_CONFIRM` / `TEXT` / `AUTH`
-5. `ProviderSpec.runtime_strategy` 注册表（§2.2）
-6. §2.6 Context Continuity — **Step 3**（`SessionSnapshot`、继续上次工作）
+1. Step 5：多 `run_id` 池上限、后台进程审计
+2. 验收 #9：2h / 100+ 真机 Hybrid 长测（claude 为主）
+3. MCP approve 路径写入 `hybrid_executions`

@@ -2,9 +2,18 @@
 
 ## 当前状态
 
-- 阶段：**D25 ShellSession Step 1 + Hybrid 执行细节已交付（默认 `legacy`）**
-- Git HEAD：`4977df6`
-- **下次优先（Step 2）**：`CLUTCH_SHELL_IDLE_SEC` 压测 / agy Route C / baseline JSON
+- 阶段：**D25 ShellSession Step 2 已交付（agy Hybrid + sweep 测试 + baseline）**
+- Git HEAD：待 commit
+- **下次优先（Step 5 / 验收 #9 长测）**：Shell 池上限 · 2h/100+ 真机压测 · MCP 路径 `hybrid_executions`
+
+## 2026-06-27 会话（Step 2：稳定性 + agy Route C）
+
+- **完成：**
+  - **agy Hybrid 路径**：`run_agy_turn` · `_route_agy_hybrid` · `hybrid_eligible` 含 `antigravity-cli`
+  - **Shell sweep 可测**：`sweep_idle` 运行时读 `CLUTCH_SHELL_*`；新增 idle/max/120 轮 cycle 单测
+  - **POC**：`step0_route_c_hybrid_probe.py --provider agy` → 4/5；`baseline/claude.json` + `baseline/agy.json`
+- **校验：** `./scripts/verify.sh` → 333 pytest + 11 vitest + build + doc-drift ✅
+- **证据：** `runs/verification/2026-06-27-hybrid-step2-verify.log`；`experiments/pty_poc/runs/20260626T171156Z-route-c-hybrid-agy.json`
 
 ## 2026-06-27 会话（删会话释放 Shell）
 

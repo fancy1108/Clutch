@@ -180,6 +180,77 @@ def _route_claude_hybrid(
         manager.mark_idle(run_id)
 
 
+def _route_agy_hybrid(
+    *,
+    run_id: str,
+    workspace_path: str,
+    prompt: str,
+    system_prompt: str | None,
+    history: list[dict[str, str]] | None,
+    cli_session_id: str | None,
+    cli_binary: str | None,
+    logs: list[str],
+    on_log: Callable[[str], None] | None,
+) -> EngineResult:
+    import os
+
+    from src.session_snapshot import format_handoff_prefix, load_snapshot
+    from src.shell_exec_runtime import run_agy_turn
+    from src.shell_session import get_shell_session_manager
+
+    timeout = float(os.environ.get("CLUTCH_AGY_CLI_TIMEOUT", "600"))
+    binary = cli_binary or "agy"
+    manager = get_shell_session_manager()
+    snapshot = load_snapshot(run_id)
+    context_prefix = None
+    if snapshot and (snapshot.task_summary or snapshot.open_todos):
+        context_prefix = format_handoff_prefix(snapshot)
+
+    session = manager.get_or_create(run_id, workspace_path=workspace_path)
+    try:
+        if cli_session_id:
+            _emit_log(logs, on_log, f"[HYBRID] resume agy {cli_session_id} in shell {run_id}")
+            turn = run_agy_turn(
+                session,
+                prompt=prompt,
+                agy_binary=binary,
+                timeout_s=timeout,
+                cli_session_id=cli_session_id,
+                resume_session_id=cli_session_id,
+                context_prefix=context_prefix,
+            )
+            return EngineResult(
+                engine="Antigravity CLI (Hybrid)",
+                output=turn.stdout,
+                logs=logs + turn.logs,
+                cli_session_id=cli_session_id,
+                raw_output=turn.raw_output,
+                output_events=turn.output_events,
+            )
+
+        history_prompt = _format_history_for_cli_prompt(history).strip()
+        bootstrap_prompt = history_prompt or prompt
+        _emit_log(logs, on_log, f"[HYBRID] new agy session in shell {run_id}")
+        turn = run_agy_turn(
+            session,
+            prompt=bootstrap_prompt,
+            agy_binary=binary,
+            timeout_s=timeout,
+            system_prompt=system_prompt,
+            context_prefix=context_prefix,
+        )
+        return EngineResult(
+            engine="Antigravity CLI (Hybrid)",
+            output=turn.stdout,
+            logs=logs + turn.logs,
+            cli_session_id=turn.cli_session_id or "agy-session",
+            raw_output=turn.raw_output,
+            output_events=turn.output_events,
+        )
+    finally:
+        manager.mark_idle(run_id)
+
+
 def _route_claude_legacy(
     *,
     workspace_path: str | None,
@@ -408,6 +479,31 @@ def _route_engine_raw(
                     "请安装后重启 Clutch，或确认其在 PATH 中（如 /opt/homebrew/bin/agy）。",
                 )
             )
+
+        if (
+            provider_spec.runtime_strategy.value == "shell_exec"
+            and hybrid_eligible(source=source, agent_type=agent_type)
+            and run_id
+            and workspace_path
+        ):
+            try:
+                return _route_agy_hybrid(
+                    run_id=run_id,
+                    workspace_path=workspace_path,
+                    prompt=prompt,
+                    system_prompt=system_prompt,
+                    history=history,
+                    cli_session_id=cli_session_id,
+                    cli_binary=cli_binary,
+                    logs=logs,
+                    on_log=on_log,
+                )
+            except Exception as exc:
+                _emit_log(
+                    logs,
+                    on_log,
+                    f"[HYBRID] fallback to legacy compatible mode: {exc}",
+                )
 
         try:
             _emit_log(logs, on_log, f"Executing Antigravity CLI prompt...")

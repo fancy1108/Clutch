@@ -1,0 +1,37 @@
+{
+  "$schema": "clutch-pty-baseline-v1",
+  "provider": "claude",
+  "binary_path": "/Users/fancy/.nvm/versions/node/v24.16.0/bin/claude",
+  "recorded_at": "2026-06-26T14:12:35.213717+00:00",
+  "workspace": "/tmp/clutch-pty-poc-hybrid-cae45718",
+  "mode": "hybrid_bash_claude_p",
+  "pty_drivable": null,
+  "pty_drivable_notes": "",
+  "timing": {
+    "first_token_ms": 18762,
+    "avg_token_gap_ms": 17488,
+    "max_silence_ms": 35603,
+    "max_tool_silence_ms": null,
+    "round_ttfb_ms": [
+      18762,
+      12433,
+      10319,
+      10324,
+      35603
+    ]
+  },
+  "patterns": {
+    "prompt_echo_pattern": "",
+    "human_confirm_patterns": [],
+    "human_text_patterns": [],
+    "human_auth_patterns": []
+  },
+  "human_input_kinds_observed": [],
+  "stderr_behavior": "",
+  "sigint_behavior": "",
+  "structured_output": {
+    "available_in_print_mode": null,
+    "stream_json_event_types": []
+  },
+  "notes": "generated from 20260626T141235Z-route-c-hybrid.json; pass_all=True"
+}
