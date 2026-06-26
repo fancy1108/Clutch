@@ -3,7 +3,7 @@
 ## 当前状态
 
 - 阶段：**D25 ShellSession Step 2 已交付（agy Hybrid + sweep 测试 + baseline）**
-- Git HEAD：待 commit
+- Git HEAD：`b69e35d`
 - **下次优先（Step 5 / 验收 #9 长测）**：Shell 池上限 · 2h/100+ 真机压测 · MCP 路径 `hybrid_executions`
 
 ## 2026-06-27 会话（Step 2：稳定性 + agy Route C）

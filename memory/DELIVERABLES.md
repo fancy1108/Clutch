@@ -29,7 +29,7 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ### D25-HYBRID-STEP2 ✅
 - **日期：** 2026-06-27
-- **Commit：** 待推送 — `feat(runtime): agy shell hybrid, sweep tests, and POC baselines`
+- **Commit：** `b69e35d` — `feat(runtime): agy shell hybrid, sweep tests, and POC baselines`
 - **Verification：** `./scripts/verify.sh` → 333 pytest ✅
 - **证据：** `runs/verification/2026-06-27-hybrid-step2-verify.log`；agy Route C `4/5` → `experiments/pty_poc/runs/20260626T171156Z-route-c-hybrid-agy.json`
 - **交付文件：**
