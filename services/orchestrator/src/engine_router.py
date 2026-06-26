@@ -95,6 +95,23 @@ def _emit_log(logs: list[str], on_log: Callable[[str], None] | None, line: str) 
         on_log(line)
 
 
+def _persist_hybrid_turn_snapshot(
+    *,
+    run_id: str,
+    workspace_path: str,
+    cli_session_id: str | None,
+    prompt: str,
+) -> None:
+    from src.session_snapshot import upsert_hybrid_turn_snapshot
+
+    upsert_hybrid_turn_snapshot(
+        run_id=run_id,
+        workspace_path=workspace_path,
+        cli_session_id=cli_session_id,
+        task_summary=prompt,
+    )
+
+
 def _resolve_agent_type(agent: dict[str, Any] | None, fallback_tool: str | None) -> str:
     if agent:
         return agent_type_from_record(agent)
@@ -154,6 +171,12 @@ def _route_claude_hybrid(
                 context_prefix=context_prefix,
                 system_prompt=system_prompt,
             )
+            _persist_hybrid_turn_snapshot(
+                run_id=run_id,
+                workspace_path=workspace_path,
+                cli_session_id=cli_session_id,
+                prompt=prompt,
+            )
             return EngineResult(
                 engine="Claude CLI (Hybrid)",
                 output=turn.stdout,
@@ -176,6 +199,12 @@ def _route_claude_hybrid(
             new_session_id=new_session_id,
             system_prompt=system_prompt,
             context_prefix=context_prefix,
+        )
+        _persist_hybrid_turn_snapshot(
+            run_id=run_id,
+            workspace_path=workspace_path,
+            cli_session_id=new_session_id,
+            prompt=prompt,
         )
         return EngineResult(
             engine="Claude CLI (Hybrid)",
@@ -236,6 +265,12 @@ def _route_agy_hybrid(
                 resume_session_id=cli_session_id,
                 context_prefix=context_prefix,
             )
+            _persist_hybrid_turn_snapshot(
+                run_id=run_id,
+                workspace_path=workspace_path,
+                cli_session_id=cli_session_id,
+                prompt=prompt,
+            )
             return EngineResult(
                 engine="Antigravity CLI (Hybrid)",
                 output=turn.stdout,
@@ -256,6 +291,12 @@ def _route_agy_hybrid(
             timeout_s=timeout,
             system_prompt=system_prompt,
             context_prefix=context_prefix,
+        )
+        _persist_hybrid_turn_snapshot(
+            run_id=run_id,
+            workspace_path=workspace_path,
+            cli_session_id=turn.cli_session_id,
+            prompt=prompt,
         )
         return EngineResult(
             engine="Antigravity CLI (Hybrid)",

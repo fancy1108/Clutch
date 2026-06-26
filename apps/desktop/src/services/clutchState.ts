@@ -106,15 +106,16 @@ export function mergeChatMessages(
   return merged;
 }
 
-function shouldPreserveOptimisticRun(
+export function shouldPreserveOptimisticRun(
   current: ClutchState,
   patch: Partial<ClutchState>,
 ): boolean {
-  return (
-    current.status === 'running' &&
-    patch.status === 'idle' &&
-    current.messages.some((message) => message.agent === 'User')
-  );
+  if (current.status !== 'running' || patch.status !== 'idle') return false;
+  // Plain chat (no workflow) must accept idle after the assistant reply.
+  if (!current.workflow_id) return false;
+  const incomingMessages = patch.messages;
+  if (incomingMessages?.some((message) => message.agent !== 'User')) return false;
+  return current.messages.some((message) => message.agent === 'User');
 }
 
 class ClutchStateStore {

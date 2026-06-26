@@ -6,12 +6,11 @@ import re
 import uuid
 from dataclasses import dataclass
 
-from src.claude_hybrid_output_parser import ClaudeHybridOutputParser, parse_hybrid_claude_output
+from src.claude_hybrid_output_parser import ClaudeHybridOutputParser, marker_completed_in_output, parse_hybrid_claude_output
 from src.shell_session import (
     ShellSession,
     ShellSessionError,
     read_until_marker,
-    strip_ansi,
     write_line,
 )
 
@@ -122,8 +121,7 @@ def run_agy_turn(
     logs = [f"[HYBRID] agy exec in shell session {session.run_id}"]
     write_line(session.master_fd, cmd)
     raw = read_until_marker(session.master_fd, marker, max_wait_s=timeout_s)
-    plain = strip_ansi(raw)
-    if marker not in plain:
+    if not marker_completed_in_output(raw, marker):
         raise ShellSessionError(f"hybrid agy turn timed out waiting for marker {marker}")
     parsed = ClaudeHybridOutputParser().parse_structured(
         raw,
@@ -175,8 +173,7 @@ def run_claude_turn(
     logs = [f"[HYBRID] exec in shell session {session.run_id}"]
     write_line(session.master_fd, cmd)
     raw = read_until_marker(session.master_fd, marker, max_wait_s=timeout_s)
-    plain = strip_ansi(raw)
-    if marker not in plain:
+    if not marker_completed_in_output(raw, marker):
         raise ShellSessionError(f"hybrid turn timed out waiting for marker {marker}")
     parsed = ClaudeHybridOutputParser().parse_structured(
         raw,

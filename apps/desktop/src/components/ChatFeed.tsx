@@ -27,6 +27,20 @@ function isHybridReply(msg: ChatMessage): boolean {
   return Boolean(msg.runtimeEngine?.includes('Hybrid'));
 }
 
+function resolveAssistantDisplayText(
+  msg: ChatMessage,
+  hybridExecutions?: Record<string, HybridExecutionPayload>,
+): string {
+  const events = hybridExecutions?.[msg.id]?.outputEvents ?? msg.outputEvents;
+  const assistantEvent = events?.find(
+    (event) => event.type === 'assistant' && event.visible !== false && event.content.trim(),
+  );
+  if (assistantEvent?.content.trim()) {
+    return assistantEvent.content;
+  }
+  return parseChatContent(msg.text).text;
+}
+
 function previewExecutionContent(content: string, maxChars = 56): string {
   const singleLine = content.replace(/\s+/g, ' ').trim();
   if (singleLine.length <= maxChars) return singleLine;
@@ -702,7 +716,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
         {messages.map((msg) => {
           const isUser = msg.agent === 'User';
           const parsed = parseChatContent(msg.text);
-          const displayText = parsed.text;
+          const displayText = isUser ? parsed.text : resolveAssistantDisplayText(msg, hybridExecutions);
           const isErrorMsg =
             msg.status === 'FAILED' ||
             msg.badgeText?.includes('FAILED') ||

@@ -10,6 +10,7 @@ from src.session_snapshot import (
     load_snapshot,
     prune_stale_snapshots,
     save_snapshot,
+    upsert_hybrid_turn_snapshot,
 )
 
 
@@ -62,3 +63,17 @@ def test_prune_disabled_when_zero_days(tmp_path, monkeypatch) -> None:
     save_snapshot(SessionSnapshot(run_id="keep", workspace_path="/p", cwd="/p"))
     assert prune_stale_snapshots(max_age_days=0) == []
     assert load_snapshot("keep") is not None
+
+
+def test_upsert_hybrid_turn_snapshot(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr("src.session_snapshot.snapshot_dir", lambda: tmp_path)
+    upsert_hybrid_turn_snapshot(
+        run_id="run-hybrid",
+        workspace_path="/proj",
+        cli_session_id="cli-abc",
+        task_summary="你是什么星座",
+    )
+    loaded = load_snapshot("run-hybrid")
+    assert loaded is not None
+    assert loaded.cli_session_id == "cli-abc"
+    assert loaded.task_summary == "你是什么星座"

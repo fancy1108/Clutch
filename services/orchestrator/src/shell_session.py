@@ -40,7 +40,7 @@ class ShellSessionPoolFullError(ShellSessionError):
     pass
 
 
-from src.claude_hybrid_output_parser import strip_ansi
+from src.claude_hybrid_output_parser import marker_completed_in_output, strip_ansi
 
 
 def _read_available(master_fd: int, *, wait_s: float) -> str:
@@ -70,7 +70,7 @@ def read_until_marker(master_fd: int, marker: str, *, max_wait_s: float) -> str:
         chunk = _read_available(master_fd, wait_s=min(2.0, deadline - time.monotonic()))
         if chunk:
             chunks.append(chunk)
-            if marker in strip_ansi("".join(chunks)):
+            if marker_completed_in_output("".join(chunks), marker):
                 break
         elif chunks:
             time.sleep(0.1)

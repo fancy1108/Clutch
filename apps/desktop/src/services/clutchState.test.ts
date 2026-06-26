@@ -4,6 +4,7 @@ import {
   mergeMessageFields,
   createUserChatMessage,
   USER_CHAT_AVATAR,
+  shouldPreserveOptimisticRun,
 } from './clutchState';
 import type { ChatMessage } from '../types';
 
@@ -104,5 +105,47 @@ describe('mergeMessageFields', () => {
   it('keeps rawOutput when incoming patch omits it', () => {
     const merged = mergeMessageFields(base, { ...base, rawOutput: undefined });
     expect(merged.rawOutput).toBe('raw-from-message');
+  });
+});
+
+describe('shouldPreserveOptimisticRun', () => {
+  const userOnly = [createUserChatMessage('hello')];
+  const withAgent: ChatMessage[] = [
+    ...userOnly,
+    {
+      id: 'agent_1',
+      agent: 'Clutch Agent',
+      avatar: '',
+      time: '17:01',
+      text: 'hi',
+    },
+  ];
+
+  it('allows plain chat to return idle after assistant reply', () => {
+    expect(
+      shouldPreserveOptimisticRun(
+        {
+          run_id: 'run_1',
+          workflow_id: '',
+          status: 'running',
+          messages: userOnly,
+        } as import('../types').ClutchState,
+        { status: 'idle', messages: withAgent },
+      ),
+    ).toBe(false);
+  });
+
+  it('still preserves workflow optimistic running before agent reply', () => {
+    expect(
+      shouldPreserveOptimisticRun(
+        {
+          run_id: 'run_1',
+          workflow_id: 'my-flow',
+          status: 'running',
+          messages: userOnly,
+        } as import('../types').ClutchState,
+        { status: 'idle' },
+      ),
+    ).toBe(true);
   });
 });

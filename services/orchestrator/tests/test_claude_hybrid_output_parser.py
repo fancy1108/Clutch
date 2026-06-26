@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from src.claude_hybrid_output_parser import (
     ClaudeHybridOutputParser,
+    marker_completed_in_output,
     parse_hybrid_claude_output,
     strip_ansi,
 )
@@ -107,3 +108,29 @@ def test_parse_filters_blockquote_protocol_lines() -> None:
     )
     out = ClaudeHybridOutputParser().parse(raw, marker="__CLUTCH_DONE_x__")
     assert out == "INTJ 是一种理性、独立的性格类型。"
+
+
+def test_marker_completed_ignores_command_echo() -> None:
+    marker = "__CLUTCH_DONE_ab12__"
+    command_only = (
+        f"CLUTCH_P='hi'; claude -p \"$CLUTCH_P\" --dangerously-skip-permissions; "
+        f"echo {marker}\n"
+    )
+    assert marker_completed_in_output(command_only, marker=marker) is False
+    completed = (
+        f"{command_only}"
+        "real answer\n"
+        f"{marker}\n"
+        "clutch$ "
+    )
+    assert marker_completed_in_output(completed, marker=marker) is True
+
+
+def test_parse_rejects_shell_fragment_assistant() -> None:
+    raw = (
+        "CLUTCH_P='One word: blue'; /opt/homebrew/bin/agy -p \"$CLUTCH_P\" "
+        "--dangerously-skip-permissions; echo __CLUTCH_DONE_5__\n"
+        "__CLUTCH_DONE_5__\n"
+    )
+    out = ClaudeHybridOutputParser().parse(raw, marker="__CLUTCH_DONE_5__")
+    assert out == ""

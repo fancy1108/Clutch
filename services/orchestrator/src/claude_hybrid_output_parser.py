@@ -36,6 +36,11 @@ _NOISE_LINE_RE = re.compile(
     r".*(?:claude|agy) -p.*|.*__CLUTCH_.*|.*append-system-prompt.*)$",
     re.I,
 )
+_SHELL_LEAK_RE = re.compile(
+    r"CLUTCH_P=|(?:claude|agy)\s+-p\b|dangerously-skip-permissions|__CLUTCH_",
+    re.I,
+)
+_MARKER_LINE_PATTERNS: dict[str, re.Pattern[str]] = {}
 
 
 @dataclass(frozen=True)
@@ -65,6 +70,31 @@ def strip_ansi(text: str) -> str:
         prev = out
         out = ANSI_RE.sub("", out)
     return out.replace("\x0f", "").replace("\x07", "")
+
+
+def _marker_line_pattern(marker: str) -> re.Pattern[str]:
+    cached = _MARKER_LINE_PATTERNS.get(marker)
+    if cached is not None:
+        return cached
+    pattern = re.compile(
+        rf"(?:^|[\r\n]+)\s*({re.escape(marker)})\s*(?:[\r\n]+|$)",
+        re.MULTILINE,
+    )
+    _MARKER_LINE_PATTERNS[marker] = pattern
+    return pattern
+
+
+def marker_completed_in_output(raw: str, marker: str) -> bool:
+    """True when bash `echo <marker>` printed the marker on its own line (not shell echo)."""
+    normalized = _erase_backspaces(strip_ansi(raw)).replace("\r", "\n")
+    return bool(_marker_line_pattern(marker).search(normalized))
+
+
+def _last_standalone_marker_index(normalized: str, marker: str) -> int:
+    last = -1
+    for match in _marker_line_pattern(marker).finditer(normalized):
+        last = match.start(1)
+    return last
 
 
 def _erase_backspaces(text: str) -> str:
@@ -104,6 +134,14 @@ def _is_noise_line(line: str) -> bool:
     if _NOISE_LINE_RE.match(clean):
         return True
     lowered = clean.lower()
+    if "clutch_p" in lowered or "$clutch_p" in lowered:
+        return True
+    if "skip-permission" in lowered or "dangerously-skip" in lowered:
+        return True
+    if "/bin/claude" in lowered or "/bin/agy" in lowered or ".nvm/" in lowered:
+        return True
+    if re.search(r";\s*echo\s*$", clean, re.I):
+        return True
     if "when asked who you are" in lowered:
         return True
     if "identify yourself as" in lowered:
@@ -135,6 +173,15 @@ def _is_noise_line(line: str) -> bool:
     if re.fullmatch(r"[\d;]+", clean.strip()):
         return True
     return False
+
+
+def _sanitize_assistant(text: str) -> str:
+    cleaned = text.strip()
+    if not cleaned:
+        return ""
+    if _SHELL_LEAK_RE.search(cleaned):
+        return ""
+    return cleaned
 
 
 def _extract_shell_echo(text: str, *, marker: str) -> str | None:
@@ -204,9 +251,11 @@ class ClaudeHybridOutputParser:
         if parsed_prompt:
             events.append(OutputEvent(type="system_prompt", visible=False, content=parsed_prompt))
 
-        end = normalized.rfind(marker)
+        end = _last_standalone_marker_index(normalized, marker)
+        if end < 0:
+            end = normalized.rfind(marker)
         body = _strip_shell_preamble(normalized[:end], marker=marker) if end >= 0 else ""
-        assistant = _extract_assistant_lines(body)
+        assistant = _sanitize_assistant(_extract_assistant_lines(body))
         events.append(OutputEvent(type="boundary_marker", visible=False, content=marker))
         if assistant:
             events.append(OutputEvent(type="assistant", visible=True, content=assistant))

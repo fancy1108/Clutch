@@ -48,6 +48,29 @@ def save_snapshot(snapshot: SessionSnapshot) -> Path:
     return out
 
 
+def upsert_hybrid_turn_snapshot(
+    *,
+    run_id: str,
+    workspace_path: str,
+    cli_session_id: str | None = None,
+    task_summary: str = "",
+) -> Path:
+    """Persist snapshot after a successful hybrid turn (sidebar ↻ indicator)."""
+    existing = load_snapshot(run_id)
+    summary = task_summary.strip()[:500]
+    if not summary and existing:
+        summary = existing.task_summary
+    snap = SessionSnapshot(
+        run_id=run_id,
+        workspace_path=workspace_path,
+        cwd=workspace_path,
+        cli_session_id=cli_session_id or (existing.cli_session_id if existing else None),
+        task_summary=summary,
+        open_todos=existing.open_todos if existing else None,
+    )
+    return save_snapshot(snap)
+
+
 def load_snapshot(run_id: str) -> SessionSnapshot | None:
     path = snapshot_dir() / f"{run_id}.json"
     if not path.is_file():
