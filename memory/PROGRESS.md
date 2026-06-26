@@ -4,7 +4,13 @@
 
 - 阶段：**D25 ShellSession Step 2 已交付（agy Hybrid + sweep 测试 + baseline）**
 - Git HEAD：`3c8229c`
-- **下次优先**：snapshot list API · DISCONNECTED 恢复 · 继续上次工作 UI · runtime_registry
+- Git HEAD：`27ea3f4`（待 list API commit）
+- **下次优先**：DISCONNECTED 恢复 · 继续上次工作 UI · runtime_registry
+
+## 2026-06-27 会话（Step 3 API：快照列表）
+
+- **完成：** `GET /api/shell-snapshots` 返回全部快照摘要（供侧栏「继续上次工作」）
+- **校验：** `test_shell_snapshot_list`；verify 338 pytest ✅
 
 ## 2026-06-27 会话（Step 5：Snapshot 保留策略）
 

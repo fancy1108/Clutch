@@ -25,3 +25,23 @@ def test_shell_snapshot_upsert_and_get(tmp_path, monkeypatch) -> None:
 
     missing = client.get("/api/shell-snapshots/missing")
     assert missing.status_code == 404
+
+
+def test_shell_snapshot_list(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr("src.session_snapshot.snapshot_dir", lambda: tmp_path)
+    client = TestClient(app)
+
+    client.put(
+        "/api/shell-snapshots/run-a",
+        json={"task_summary": "Task A"},
+    )
+    client.put(
+        "/api/shell-snapshots/run-b",
+        json={"task_summary": "Task B"},
+    )
+
+    listed = client.get("/api/shell-snapshots")
+    assert listed.status_code == 200
+    snapshots = listed.json()["snapshots"]
+    run_ids = {item["run_id"] for item in snapshots}
+    assert run_ids == {"run-a", "run-b"}

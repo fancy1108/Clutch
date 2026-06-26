@@ -119,3 +119,31 @@ def prune_stale_snapshots(*, max_age_days: int | None = None) -> list[str]:
         except OSError:
             logger.warning("shell_snapshot prune failed run_id=%s", run_id)
     return removed
+
+
+def list_snapshots() -> list[dict[str, object]]:
+    """Summaries for all persisted snapshots (newest first)."""
+    root = snapshot_dir()
+    if not root.is_dir():
+        return []
+
+    paths = list(root.glob("*.json"))
+    paths.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+    items: list[dict[str, object]] = []
+    for path in paths:
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        items.append(
+            {
+                "run_id": data.get("run_id", path.stem),
+                "workspace_path": data.get("workspace_path", ""),
+                "cwd": data.get("cwd", ""),
+                "task_summary": data.get("task_summary", ""),
+                "open_todos": data.get("open_todos") or [],
+                "cli_session_id": data.get("cli_session_id"),
+                "captured_at": data.get("captured_at", ""),
+            }
+        )
+    return items

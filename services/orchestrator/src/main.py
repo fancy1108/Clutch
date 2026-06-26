@@ -1682,6 +1682,13 @@ class ShellSnapshotUpdateRequest(BaseModel):
     cli_session_id: str | None = None
 
 
+@app.get("/api/shell-snapshots")
+async def list_shell_snapshots() -> dict[str, Any]:
+    from src.session_snapshot import list_snapshots
+
+    return {"snapshots": list_snapshots()}
+
+
 @app.get("/api/shell-snapshots/{run_id}")
 async def get_shell_snapshot(run_id: str) -> dict[str, Any]:
     from src.session_snapshot import load_snapshot
