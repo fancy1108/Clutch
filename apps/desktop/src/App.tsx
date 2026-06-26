@@ -810,7 +810,9 @@ function MainLayout() {
         } catch {
           // session may already exist for this run_id
         }
-        await clutchStore.connect(sessionRunId);
+        if (!clutchStore.connected) {
+          await clutchStore.connect(sessionRunId);
+        }
         await refreshSessions();
         const result = await startWorkflowRun(sessionRunId, workflowId, instruction);
         clutchStore.replaceState(result.state);

@@ -40,6 +40,53 @@ export function createUserChatMessage(text: string): ChatMessage {
   };
 }
 
+/** Keep optimistic chat rows when the server has not caught up yet. */
+export function mergeChatMessages(
+  existing: ChatMessage[],
+  incoming: ChatMessage[] | undefined,
+): ChatMessage[] {
+  if (!incoming) return existing;
+  if (incoming.length === 0 && existing.length > 0) return existing;
+
+  const merged = [...existing];
+  const indexById = new Map(existing.map((message, index) => [message.id, index]));
+  const userTexts = new Set(
+    existing
+      .filter((message) => message.agent === 'User')
+      .map((message) => message.text.trim()),
+  );
+
+  for (const message of incoming) {
+    const trimmed = message.text.trim();
+    if (message.agent === 'User' && userTexts.has(trimmed)) {
+      continue;
+    }
+    const priorIndex = indexById.get(message.id);
+    if (priorIndex !== undefined) {
+      merged[priorIndex] = message;
+      continue;
+    }
+    merged.push(message);
+    indexById.set(message.id, merged.length - 1);
+    if (message.agent === 'User') {
+      userTexts.add(trimmed);
+    }
+  }
+
+  return merged;
+}
+
+function shouldPreserveOptimisticRun(
+  current: ClutchState,
+  patch: Partial<ClutchState>,
+): boolean {
+  return (
+    current.status === 'running' &&
+    patch.status === 'idle' &&
+    current.messages.some((message) => message.agent === 'User')
+  );
+}
+
 class ClutchStateStore {
   private state: ClutchState = createEmptyState(createSessionRunId());
   private listeners = new Set<() => void>();
@@ -106,7 +153,20 @@ class ClutchStateStore {
   }
 
   private applyPatch(patch: Partial<ClutchState>): void {
-    this.state = { ...this.state, ...patch };
+    const next: Partial<ClutchState> = { ...patch };
+    if (next.messages !== undefined) {
+      next.messages = mergeChatMessages(this.state.messages, next.messages);
+    }
+    if (shouldPreserveOptimisticRun(this.state, next)) {
+      delete next.status;
+      if (!next.workflow_id && this.state.workflow_id) {
+        delete next.workflow_id;
+      }
+      if (!next.current_instruction && this.state.current_instruction) {
+        delete next.current_instruction;
+      }
+    }
+    this.state = { ...this.state, ...next };
     this.emit();
   }
 

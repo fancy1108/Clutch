@@ -416,7 +416,10 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
 
   const showEmptyState = isIdle && messages.length === 0 && isDefaultNewSessionTitle;
 
-  const showThinking = isRunning && messages.length > 0 && messages[messages.length - 1].agent === 'User';
+  const lastUserIndex = messages.findLastIndex((message) => message.agent === 'User');
+  const lastAgentIndex = messages.findLastIndex((message) => message.agent !== 'User');
+  const showThinking =
+    isRunning && lastUserIndex >= 0 && lastUserIndex > lastAgentIndex;
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });

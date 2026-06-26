@@ -261,6 +261,15 @@ def _run_workflow(run_id: str, workflow_id: str, instruction: str) -> ClutchStat
             },
         )
         _commit_run_state(run_id, state)
+        get_forwarder(run_id).emit_state_patch(
+            {
+                "workflow_id": workflow["id"],
+                "status": "running",
+                "current_instruction": trimmed,
+                "messages": list(state["messages"]),
+            },
+            "running",
+        )
     get_forwarder(run_id).emit(
         tagged(TAG_WORKFLOW, f"Starting workflow: {workflow['name']} ({workflow['id']})"),
         node_id="start",
