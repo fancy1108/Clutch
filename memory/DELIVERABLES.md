@@ -27,6 +27,16 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ## 已交付（代码 Task · 自 Git 回填）
 
+### SUBPROCESS-MCP-HANGS-FIX ✅
+- **日期：** 2026-06-26
+- **Commit：** `5df2a9c` — `fix(orchestrator): resolve subprocess and MCP client hangs in chat sessions`
+- **Verification：** `./scripts/verify.sh` → 232 pytest + vitest + build passed（pre-commit）
+- **证据：** `—`（门禁已覆盖，且 pytest 运行耗时从分钟级缩短至 26 秒）
+- **交付文件：**
+  - `services/orchestrator/src/adapters/cli_adapter.py` — `_run_cli_streaming` / `run_cli` 注入 `stdin=subprocess.DEVNULL` 解决子进程 TTY 挂起问题。
+  - `services/orchestrator/src/mcp_client.py` — `_read_response` 重构为基于绝对 Deadline 的累计超时；`start()` 注入 npm/npx 环境变量优化启动速度。
+  - `services/orchestrator/tests/conftest.py` — `isolate_orchestrator_globals` fixture 注入 `CLUTCH_E2E_FAKE_LLM="1"` 隔离测试外部网络 API 请求。
+
 ### GIT-BRANCH-FOOTER-LOG-STAMP ✅
 - **日期：** 2026-06-25
 - **Commit：** `7ee8f43` — `fix(ui,orchestrator): git branch footer, log timestamps, MCP gates, models UI`

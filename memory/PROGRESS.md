@@ -2,8 +2,17 @@
 
 ## 当前状态
 
-- 阶段：**默认虚拟分组可见性逻辑修复及底部选择菜单点击空白收起交互优化**
-- Git HEAD：`831dbbd`
+- 阶段：**后端子进程与 MCP 客户端聊天挂起修复，测试套件 LLM Mock 隔离**
+- Git HEAD：`5df2a9c`
+
+## 2026-06-26 会话（后端子进程与 MCP 挂起修复）
+
+- **完成：**
+  - **`cli_adapter.py`**：将 `stdin=subprocess.DEVNULL` 显式注入所有 `Popen` 和 `run` 的子进程参数中，避免子进程继承交互式终端 stdin 而无休止地阻塞在 `read(0)` 上。
+  - **`mcp_client.py`**：重构 `_read_response` 为基于绝对 Deadline 的累计超时逻辑，解决当 npm/npx 每隔数秒输出安装进度等噪音时超时重置无限等待的问题；在 `start()` 时注入优化 npm/npx 更新和遥测的环境变量。
+  - **`conftest.py`**：在 `isolate_orchestrator_globals` 全局单测隔离 fixture 中默认注入 `CLUTCH_E2E_FAKE_LLM=1`，防止 pytest 套件因开发机网络波动连接 DeepSeek 等外部 API 时造成测试执行阶段发生无限期卡顿。
+  - **校验**：Husky 触发的 pre-commit 校验与 `./scripts/verify.sh` → 232 pytest + vitest + build + doc-drift 全部顺利通过且运行速度提升数倍。
+- **下次优先**：答复用户反馈或进行后续 SOP / 编排任务。
 
 ## 2026-06-26 会话（默认分组可见性与底部菜单收起交互优化）
 
