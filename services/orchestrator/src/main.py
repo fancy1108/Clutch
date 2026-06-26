@@ -817,7 +817,7 @@ async def _llm_chat_reply(
     emit_log: Callable[[str], Awaitable[None]] | None = None,
     mcp_approved_tool: dict[str, Any] | None = None,
     mcp_resume: dict[str, Any] | None = None,
-) -> tuple[str, str, str, list[str], str | None, dict[str, Any] | None, list[str], str | None, list[dict[str, Any]] | None]:
+) -> tuple[str, str, str, list[str], str | None, dict[str, Any] | None, list[str], str | None, list[dict[str, Any]] | None, bool]:
     from src.agent_storage import BUILTIN_AGENT_ID, get_agent_by_id
     from src.engine_router import route_engine
     from src.models_config import get_router
@@ -861,6 +861,7 @@ async def _llm_chat_reply(
                 [],
                 None,
                 None,
+                False,
             )
         spec, api_key = router.resolve_for_model(resolved_model_id)
         loop = asyncio.get_running_loop()
@@ -878,7 +879,7 @@ async def _llm_chat_reply(
                 api_key=router._require_api_key(spec.provider_id, api_key),
                 on_log=on_image_log if emit_log else None,
             )
-            return reply_label, runtime_model_name, format_image_reply(result), image_logs, None, None, [], None, None
+            return reply_label, runtime_model_name, format_image_reply(result), image_logs, None, None, [], None, None, False
         except Exception as exc:
             err = str(exc)
             return (
@@ -891,6 +892,7 @@ async def _llm_chat_reply(
                 [],
                 None,
                 None,
+                False,
             )
 
     from src.agent_mcp import resolve_agent_mcp_servers
@@ -971,6 +973,7 @@ async def _llm_chat_reply(
                         list(outcome.files_changed or []),
                         None,
                         None,
+                        False,
                     )
                 return (
                     reply_label,
@@ -982,6 +985,7 @@ async def _llm_chat_reply(
                     list(outcome.files_changed or []),
                     None,
                     None,
+                    False,
                 )
 
             llm_only_logs = [
@@ -1032,6 +1036,7 @@ async def _llm_chat_reply(
             [],
             result.raw_output,
             result.output_events,
+            result.shell_recovered,
         )
     except Exception as exc:
         from src.agent_type import agent_type_from_record
@@ -1042,7 +1047,7 @@ async def _llm_chat_reply(
             runtime_engine = "Claude CLI"
         else:
             runtime_engine = runtime_model_name
-        return reply_label, runtime_engine, err, [f"Error routing plain chat request: {err}"], None, None, [], None, None
+        return reply_label, runtime_engine, err, [f"Error routing plain chat request: {err}"], None, None, [], None, None, False
 
 
 async def _handle_plain_chat_mcp_decision(
@@ -1272,6 +1277,7 @@ async def _handle_plain_chat(
         files_changed,
         raw_output,
         output_events,
+        shell_recovered,
     ) = await _llm_chat_reply(
         state,
         text,
@@ -1398,6 +1404,10 @@ async def _handle_plain_chat(
     }
     if hybrid_executions_patch is not None:
         final_patch["hybrid_executions"] = hybrid_executions_patch
+    if shell_recovered:
+        final_patch["shell_session_status"] = "recovering"
+    elif runtime_engine and "Hybrid" in runtime_engine:
+        final_patch["shell_session_status"] = "ready"
     if cli_session_id:
         final_patch.update(cli_session_patch(cli_session_id, resolved_id))
     elif stored_session_agent and stored_session_agent != resolved_id:

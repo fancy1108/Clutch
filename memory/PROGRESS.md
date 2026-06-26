@@ -4,8 +4,12 @@
 
 - 阶段：**D25 ShellSession Step 2 已交付（agy Hybrid + sweep 测试 + baseline）**
 - Git HEAD：`3c8229c`
-- Git HEAD：`27ea3f4`（待 list API commit）
-- **下次优先**：DISCONNECTED 恢复 · 继续上次工作 UI · runtime_registry
+- **下次优先**：继续上次工作 UI · runtime_registry
+
+## 2026-06-27 会话（Shell DISCONNECTED 恢复）
+
+- **完成：** PTY 死亡时写快照、`consume_shell_recovery`、Hybrid 日志 + `shell_session_status` state_patch
+- **校验：** `test_disconnected_session_sets_recovery_notice`；verify 339 pytest ✅
 
 ## 2026-06-27 会话（Step 3 API：快照列表）
 

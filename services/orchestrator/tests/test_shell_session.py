@@ -159,6 +159,28 @@ def test_pool_evicts_oldest_idle_when_at_limit(monkeypatch: pytest.MonkeyPatch) 
     assert manager._sessions["run-new"].state == SessionState.BUSY
 
 
+def test_disconnected_session_sets_recovery_notice(monkeypatch: pytest.MonkeyPatch) -> None:
+    manager = ShellSessionManager()
+    dead = ShellSession(
+        run_id="run-dead",
+        workspace_path="/tmp",
+        state=SessionState.IDLE,
+        master_fd=1,
+        pid=99999,
+    )
+    manager._sessions["run-dead"] = dead
+    monkeypatch.setattr(ShellSession, "alive", lambda self: False)
+    def fake_close(self: ShellSession, *, write_snapshot: bool = True) -> None:
+        self.state = SessionState.TERMINATED
+
+    monkeypatch.setattr(ShellSession, "close", fake_close)
+    monkeypatch.setattr(ShellSession, "_spawn", lambda self: None)
+
+    manager.get_or_create("run-dead", workspace_path="/tmp")
+    assert manager.consume_shell_recovery("run-dead") is True
+    assert manager.consume_shell_recovery("run-dead") is False
+
+
 def test_pool_full_when_all_busy(monkeypatch: pytest.MonkeyPatch) -> None:
     from src.shell_session import ShellSessionPoolFullError
 

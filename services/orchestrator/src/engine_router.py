@@ -25,6 +25,7 @@ class EngineResult:
     cli_session_id: str | None = None
     raw_output: str | None = None
     output_events: list[dict[str, object]] | None = None
+    shell_recovered: bool = False
 
 
 def _normalize_engine_type(engine_type: str) -> str:
@@ -133,7 +134,14 @@ def _route_claude_hybrid(
         context_prefix = format_handoff_prefix(snapshot)
 
     session = manager.get_or_create(run_id, workspace_path=workspace_path)
+    shell_recovered = manager.consume_shell_recovery(run_id)
     try:
+        if shell_recovered:
+            _emit_log(
+                logs,
+                on_log,
+                "[HYBRID] shell disconnected; new bash PTY spawned (snapshot handoff if available)",
+            )
         if cli_session_id:
             _emit_log(logs, on_log, f"[HYBRID] resume {cli_session_id} in shell {run_id}")
             turn = run_claude_turn(
@@ -153,6 +161,7 @@ def _route_claude_hybrid(
                 cli_session_id=cli_session_id,
                 raw_output=turn.raw_output,
                 output_events=turn.output_events,
+                shell_recovered=shell_recovered,
             )
 
         history_prompt = _format_history_for_cli_prompt(history).strip()
@@ -175,6 +184,7 @@ def _route_claude_hybrid(
             cli_session_id=new_session_id,
             raw_output=turn.raw_output,
             output_events=turn.output_events,
+            shell_recovered=shell_recovered,
         )
     finally:
         manager.mark_idle(run_id)
@@ -207,7 +217,14 @@ def _route_agy_hybrid(
         context_prefix = format_handoff_prefix(snapshot)
 
     session = manager.get_or_create(run_id, workspace_path=workspace_path)
+    shell_recovered = manager.consume_shell_recovery(run_id)
     try:
+        if shell_recovered:
+            _emit_log(
+                logs,
+                on_log,
+                "[HYBRID] shell disconnected; new bash PTY spawned (snapshot handoff if available)",
+            )
         if cli_session_id:
             _emit_log(logs, on_log, f"[HYBRID] resume agy {cli_session_id} in shell {run_id}")
             turn = run_agy_turn(
@@ -226,6 +243,7 @@ def _route_agy_hybrid(
                 cli_session_id=cli_session_id,
                 raw_output=turn.raw_output,
                 output_events=turn.output_events,
+                shell_recovered=shell_recovered,
             )
 
         history_prompt = _format_history_for_cli_prompt(history).strip()
@@ -246,6 +264,7 @@ def _route_agy_hybrid(
             cli_session_id=turn.cli_session_id or "agy-session",
             raw_output=turn.raw_output,
             output_events=turn.output_events,
+            shell_recovered=shell_recovered,
         )
     finally:
         manager.mark_idle(run_id)
@@ -656,4 +675,5 @@ def route_engine(
         cli_session_id=res.cli_session_id,
         raw_output=res.raw_output,
         output_events=res.output_events,
+        shell_recovered=res.shell_recovered,
     )

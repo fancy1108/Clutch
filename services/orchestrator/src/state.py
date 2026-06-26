@@ -25,6 +25,7 @@ class ClutchState(TypedDict):
     cli_session_id: str
     cli_session_agent_id: str
     hybrid_executions: NotRequired[dict[str, dict[str, object]]]
+    shell_session_status: NotRequired[str]
 
 
 def read_cli_session_id(state: Mapping[str, Any]) -> str:

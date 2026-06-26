@@ -193,6 +193,7 @@ def _max_sessions() -> int:
 class ShellSessionManager:
     def __init__(self) -> None:
         self._sessions: dict[str, ShellSession] = {}
+        self._recovery_notices: set[str] = set()
         self._lock = threading.Lock()
 
     def _active_session_count(self) -> int:
@@ -221,14 +222,27 @@ class ShellSessionManager:
         )
         return run_id
 
+    def consume_shell_recovery(self, run_id: str) -> bool:
+        with self._lock:
+            if run_id in self._recovery_notices:
+                self._recovery_notices.discard(run_id)
+                return True
+            return False
+
     def get_or_create(self, run_id: str, *, workspace_path: str, owner_node_id: str = "plain_chat") -> ShellSession:
         with self._lock:
+            disconnected = False
             session = self._sessions.get(run_id)
             if session and session.state != SessionState.TERMINATED:
                 if not session.alive():
+                    disconnected = True
                     session.state = SessionState.DISCONNECTED
-                    session.close(write_snapshot=False)
+                    session.close(write_snapshot=True)
                     self._sessions.pop(run_id, None)
+                    logger.warning(
+                        "shell_session disconnected run_id=%s source=shell_session",
+                        run_id,
+                    )
                 else:
                     if session.state in (SessionState.BUSY,):
                         raise ShellSessionBusyError(f"ShellSession {run_id} is busy")
@@ -251,6 +265,8 @@ class ShellSessionManager:
             session._spawn()
             self._sessions[run_id] = session
             session.state = SessionState.BUSY
+            if disconnected:
+                self._recovery_notices.add(run_id)
             return session
 
     def mark_idle(self, run_id: str) -> None:
