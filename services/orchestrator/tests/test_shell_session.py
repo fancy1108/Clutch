@@ -120,3 +120,57 @@ def test_manager_repeated_idle_cycles(monkeypatch: pytest.MonkeyPatch) -> None:
         manager.mark_idle(run_id)
         assert manager._sessions[run_id].state == SessionState.IDLE
     assert len(manager._sessions) == 3
+
+
+def test_pool_evicts_oldest_idle_when_at_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("CLUTCH_SHELL_MAX_SESSIONS", "2")
+    manager = ShellSessionManager()
+    old = ShellSession(
+        run_id="run-old",
+        workspace_path="/tmp",
+        state=SessionState.IDLE,
+        master_fd=1,
+        pid=1,
+    )
+    old.last_activity_at = 1.0
+    busy = ShellSession(
+        run_id="run-busy",
+        workspace_path="/tmp",
+        state=SessionState.BUSY,
+        master_fd=2,
+        pid=2,
+    )
+    manager._sessions["run-old"] = old
+    manager._sessions["run-busy"] = busy
+
+    closed: list[str] = []
+
+    def fake_close(self: ShellSession, *, write_snapshot: bool = True) -> None:
+        closed.append(self.run_id)
+        self.state = SessionState.TERMINATED
+
+    monkeypatch.setattr(ShellSession, "close", fake_close)
+    monkeypatch.setattr(ShellSession, "_spawn", lambda self: None)
+
+    session = manager.get_or_create("run-new", workspace_path="/tmp")
+    assert session.run_id == "run-new"
+    assert "run-old" in closed
+    assert "run-busy" in manager._sessions
+    assert manager._sessions["run-new"].state == SessionState.BUSY
+
+
+def test_pool_full_when_all_busy(monkeypatch: pytest.MonkeyPatch) -> None:
+    from src.shell_session import ShellSessionPoolFullError
+
+    monkeypatch.setenv("CLUTCH_SHELL_MAX_SESSIONS", "1")
+    manager = ShellSessionManager()
+    manager._sessions["run-busy"] = ShellSession(
+        run_id="run-busy",
+        workspace_path="/tmp",
+        state=SessionState.BUSY,
+        master_fd=1,
+        pid=1,
+    )
+    monkeypatch.setattr(ShellSession, "_spawn", lambda self: None)
+    with pytest.raises(ShellSessionPoolFullError):
+        manager.get_or_create("run-new", workspace_path="/tmp")

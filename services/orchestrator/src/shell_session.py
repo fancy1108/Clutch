@@ -9,9 +9,13 @@ import shutil
 import signal
 import threading
 import time
+import logging
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
+
+
+logger = logging.getLogger(__name__)
 
 
 class SessionState(str, Enum):
@@ -29,6 +33,10 @@ class ShellSessionBusyError(RuntimeError):
 
 
 class ShellSessionError(RuntimeError):
+    pass
+
+
+class ShellSessionPoolFullError(ShellSessionError):
     pass
 
 
@@ -173,10 +181,45 @@ def _max_lifetime_sec() -> float:
     return float(os.environ.get("CLUTCH_SHELL_MAX_SEC", str(_MAX_SEC)))
 
 
+def _max_sessions() -> int:
+    """0 = unlimited; default 8 concurrent bash PTYs per Sidecar."""
+    raw = os.environ.get("CLUTCH_SHELL_MAX_SESSIONS", "8").strip()
+    try:
+        return max(0, int(raw))
+    except ValueError:
+        return 8
+
+
 class ShellSessionManager:
     def __init__(self) -> None:
         self._sessions: dict[str, ShellSession] = {}
         self._lock = threading.Lock()
+
+    def _active_session_count(self) -> int:
+        return sum(
+            1
+            for session in self._sessions.values()
+            if session.state != SessionState.TERMINATED
+        )
+
+    def _evict_oldest_idle_unlocked(self) -> str | None:
+        candidates = [
+            (run_id, session)
+            for run_id, session in self._sessions.items()
+            if session.state in (SessionState.IDLE, SessionState.READY)
+        ]
+        if not candidates:
+            return None
+        run_id, session = min(candidates, key=lambda item: item[1].last_activity_at)
+        self._sessions.pop(run_id, None)
+        session.close()
+        logger.info(
+            "shell_session pool evicted idle run_id=%s active=%s limit=%s",
+            run_id,
+            self._active_session_count(),
+            _max_sessions(),
+        )
+        return run_id
 
     def get_or_create(self, run_id: str, *, workspace_path: str, owner_node_id: str = "plain_chat") -> ShellSession:
         with self._lock:
@@ -192,6 +235,13 @@ class ShellSessionManager:
                     session.state = SessionState.BUSY
                     session.touch()
                     return session
+            limit = _max_sessions()
+            if limit > 0 and self._active_session_count() >= limit:
+                evicted = self._evict_oldest_idle_unlocked()
+                if evicted is None:
+                    raise ShellSessionPoolFullError(
+                        f"ShellSession pool full ({limit}); all sessions busy"
+                    )
             session = ShellSession(
                 run_id=run_id,
                 workspace_path=workspace_path,
