@@ -29,7 +29,7 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ### STOP-WORKFLOW-UX-FIX ✅
 - **日期：** 2026-06-26
-- **Commit：** `Pending commit`
+- **Commit：** `896d6f6` — `fix(ui): prevent Human-in-the-Loop card from rendering on failed or stopped runs`
 - **Verification：** `./scripts/verify.sh` → 287 pytest + vitest passed
 - **证据：** `—`（门禁已覆盖）
 - **交付文件：**
