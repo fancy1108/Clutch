@@ -3,14 +3,19 @@
 ## 当前状态
 
 - 阶段：**M3-F Flow 多 Agent 接力已落地（D23 ✅）**
-- Git HEAD：`a1e48a3`
+- Git HEAD：`6754466`
 
 ## 2026-06-26 会话（产品介绍文档编写与文档关联同步）
 
 - **完成：**
-  - **产品介绍文档落地**：新建并编写了系统功能最完备的 `docs/PRODUCT_INTRO.md` 产品介绍文档，系统地梳理了零代码 Flow 画布编排、双引擎智能分流路由器、Ollama本地可用模型打分推荐、虚拟 MCP `apply_patch` 精密文件更新工具、人机闸门、双语翻译支持、模板文件与本地构建指令。
+  - **产品介绍文档落地与修正**：新建并编写了系统最完备的 `docs/PRODUCT_INTRO.md` 产品介绍文档。根据代码库真实实现，修正并详述了以下核心特性：
+    - **通用可定制 Agent 系统**：系统原生支持自定义 Agent (CRUD 读写 `agents.json`)，支持在画布节点中自由指定与绑定，以及多 Agent 间的输入输出自动接力（Handoff）。
+    - **本地工具自动探测**：自动扫描系统 PATH 与 Brew/NPM 等候选目录，识别包括 Claude, Antigravity, Ollama, Aider, Cursor 等在内的本地 CLI 工具与客户端。
+    - **多引擎智能路由与 Session 恢复**：支持在本地 CLI 适配器、Cursor 桌面端、云端或本地配置的 LLM 中灵活路由，并支持 Claude CLI 等会话的 Session UUID `--resume` 恢复机制，以及路由降级 Fallback。
+    - **其它功能**：涵盖内置 `clutch-tools` 虚拟 MCP 的 `apply_patch` 精密文件工具与 `mcp_risk` 安全门控、双语翻译 (i18n) 与凭证导入。
   - **关联文档同步更新**：修正了 `workflows/README.md` 中 `WorkflowCompiler` 的已落地描述，补充了最新的 `weather-to-vision.json` 模板介绍；并在根目录 `README.md`、文件索引表 `memory/FILEMAP.md` 及文档治理策略 `docs/document-governance.md` 中为产品介绍文档增设了全局索引项。
   - **本地校验与 Commit**：运行 `./scripts/verify.sh` 顺利跑通全量 290 项 pytest 后端单测、前端 vitest 编译，且 `check-doc-drift.sh` 漂移机检全绿，对上述文档进行了 git commit。
+
 - **下次优先**：Flow 运行中逐步 Chat 的 WS 时序优化。
 
 ## 2026-06-26 会话（会话模型选择与生图视觉校验）
