@@ -25,9 +25,9 @@ CLI_CANDIDATES: list[dict[str, str]] = [
     },
     {
         "id": "agy-cli",
-        "name": "Agenty CLI",
+        "name": "Antigravity CLI",
         "binary": "agy",
-        "description": "Agenty command-line agent runtime.",
+        "description": "Antigravity command-line agent runtime.",
         "icon": "terminal",
     },
     {
@@ -82,43 +82,7 @@ CLI_CANDIDATES: list[dict[str, str]] = [
 ]
 
 # macOS desktop client candidates probed under /Applications and ~/Applications.
-CLIENT_CANDIDATES: list[dict[str, str]] = [
-    {
-        "id": "claude-app",
-        "name": "Claude Desktop",
-        "app_name": "Claude.app",
-        "description": "Anthropic Claude desktop application.",
-        "icon": "smart_toy",
-    },
-    {
-        "id": "cursor-app",
-        "name": "Cursor",
-        "app_name": "Cursor.app",
-        "description": "Cursor AI IDE.",
-        "icon": "edit_document",
-    },
-    {
-        "id": "chatgpt-app",
-        "name": "ChatGPT Desktop",
-        "app_name": "ChatGPT.app",
-        "description": "OpenAI ChatGPT desktop application.",
-        "icon": "chat",
-    },
-    {
-        "id": "windsurf-app",
-        "name": "Windsurf",
-        "app_name": "Windsurf.app",
-        "description": "Windsurf AI editor.",
-        "icon": "air",
-    },
-    {
-        "id": "zed-app",
-        "name": "Zed",
-        "app_name": "Zed.app",
-        "description": "Zed editor with AI assistance.",
-        "icon": "code",
-    },
-]
+CLIENT_CANDIDATES: list[dict[str, str]] = []
 
 
 TOOLS_ENV = "CLUTCH_TOOLS_CONFIG"

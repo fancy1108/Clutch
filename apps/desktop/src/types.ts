@@ -30,6 +30,7 @@ export interface Agent {
   mcpTools?: string[];
   mcpServerIds?: string[];
   aiEngine?: string;
+  ollamaModel?: string;
   skills?: string[];
   builtin?: boolean;
 }

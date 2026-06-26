@@ -1712,6 +1712,16 @@ async def test_models_connection(body: ModelTestRequest) -> dict[str, Any]:
     return test_model_connection(get_router(), body.model_id)
 
 
+@app.get("/api/models/ollama")
+async def list_local_ollama_models() -> dict[str, Any]:
+    try:
+        from src.adapters.ollama_adapter import get_ollama_models
+        models = get_ollama_models()
+        return {"ok": True, "models": models}
+    except Exception as exc:
+        return {"ok": False, "models": [], "error": str(exc)}
+
+
 @app.get("/api/tools/status")
 async def tools_status() -> dict[str, list[dict[str, Any]]]:
     from src.tools_status import list_tools_status

@@ -27,6 +27,18 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ## 已交付（代码 Task · 自 Git 回填）
 
+### OLLAMA-LOCAL-ROUTING ✅
+- **日期：** 2026-06-26
+- **Commit：** `Pending commit`
+- **Verification：** `uv run pytest` → 242 pytest passed
+- **证据：** `—`（门禁已覆盖）
+- **交付文件：**
+  - `services/orchestrator/src/adapters/ollama_adapter.py` — Ollama 适配器，支持动态扫描本地模型及自动推理排序打分，封装本地 chat completions 交互。
+  - `services/orchestrator/src/engine_router.py` — 支持 Ollama 引擎标准化映射识别与分流，返回具体调用的模型标签如 `Ollama (qwen3.6:35b)`。
+  - `services/orchestrator/src/agent_executor.py` — 将 `ollama` / `ollama-cli` 添加到 Agent 执行的工具白名单中。
+  - `services/orchestrator/tests/test_ollama_adapter.py` — 新增单元测试文件覆盖本地模型过滤、评分及接口请求模拟。
+  - `services/orchestrator/tests/test_engine_router.py` — 扩展 Ollama 引擎的路由调度与不可用兜底单元测试。
+
 ### SUBPROCESS-MCP-HANGS-FIX ✅
 - **日期：** 2026-06-26
 - **Commit：** `5df2a9c` — `fix(orchestrator): resolve subprocess and MCP client hangs in chat sessions`

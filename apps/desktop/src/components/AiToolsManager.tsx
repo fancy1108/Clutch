@@ -116,7 +116,7 @@ export default function AiToolsManager({ isModalStyle }: AiToolsManagerProps) {
                       <div className="w-10 h-10 rounded-lg bg-neutral-100 flex items-center justify-center flex-shrink-0">
                         <span className="material-symbols-outlined text-neutral-600">{tool.icon}</span>
                       </div>
-                      <div className="flex-1">
+                      <div className="flex-1 min-w-0">
                         <h4 className="text-xs font-bold text-neutral-800">{tool.name}</h4>
                         <p className="text-[10px] text-neutral-500 mt-1 leading-relaxed">{tool.description}</p>
                         <div className="mt-1.5 flex items-center gap-1.5">
@@ -158,7 +158,7 @@ export default function AiToolsManager({ isModalStyle }: AiToolsManagerProps) {
                       <div className="w-10 h-10 rounded-lg bg-neutral-100 flex items-center justify-center flex-shrink-0 opacity-60">
                         <span className="material-symbols-outlined text-neutral-500">{tool.icon}</span>
                       </div>
-                      <div className="flex-1">
+                      <div className="flex-1 min-w-0">
                         <h4 className="text-xs font-bold text-neutral-600">{tool.name}</h4>
                         <p className="text-[10px] text-neutral-400 mt-1 leading-relaxed">{tool.description}</p>
                         <div className="mt-1.5 flex items-center gap-1.5">

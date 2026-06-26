@@ -10,6 +10,7 @@ from typing import Any
 from src.agent_storage import list_agents
 from src.tools_status import load_connected_ids, resolve_tool_binary, tool_available_for_routing
 from src.adapters.claude_cli_adapter import chat_claude_cli
+from src.adapters.agy_cli_adapter import chat_agy_cli
 from src.adapters.cursor_adapter import open_workspace_in_cursor
 from src.workspace import get_workspace
 from src.preferences_storage import tr
@@ -32,6 +33,21 @@ def _normalize_engine_type(engine_type: str) -> str:
         "claude cli",
     }:
         return "Claude Code (Local CLI)"
+    if key in {
+        "antigravity cli",
+        "antigravity-cli",
+        "antigravity",
+        "agenty cli",
+        "agy-cli",
+        "agy cli",
+    }:
+        return "Antigravity CLI"
+    if key in {
+        "ollama",
+        "ollama-cli",
+        "ollama (cli)",
+    }:
+        return "Ollama"
     if "cursor" in key and "workspace" in key:
         return "Cursor Workspace Node"
     return engine_type.strip()
@@ -77,7 +93,7 @@ def _emit_log(logs: list[str], on_log: Callable[[str], None] | None, line: str) 
         on_log(line)
 
 
-def route_engine(
+def _route_engine_raw(
     agent_name: str,
     prompt: str,
     system_prompt: str | None = None,
@@ -94,8 +110,12 @@ def route_engine(
     if not engine_type and fallback_tool:
         if fallback_tool == "claude-cli":
             engine_type = "Claude Code (Local CLI)"
+        elif fallback_tool in {"agy-cli", "agy"}:
+            engine_type = "Antigravity CLI"
         elif fallback_tool == "cursor":
             engine_type = "Cursor Workspace Node"
+        elif fallback_tool in {"ollama", "ollama-cli"}:
+            engine_type = "Ollama"
 
     workspace_path = cwd
     if not workspace_path:
@@ -214,6 +234,48 @@ def route_engine(
                 )
             ) from exc
 
+    if engine_type == "Antigravity CLI" and tool_available_for_routing("agy-cli"):
+        cli_binary = resolve_tool_binary("agy-cli")
+        _emit_log(logs, on_log, f"Routing task to Antigravity CLI for agent {agent_name}.")
+        if cli_binary:
+            _emit_log(logs, on_log, f"Using Antigravity binary: {cli_binary}")
+        elif "agy-cli" in load_connected_ids():
+            raise RuntimeError(
+                tr(
+                    "Antigravity CLI is connected but the `agy` binary was not found. "
+                    "Restart Clutch after install, or ensure it is on PATH "
+                    "(e.g. /opt/homebrew/bin/agy).",
+                    "Antigravity CLI 已连接，但未找到 `agy` 可执行文件。"
+                    "请安装后重启 Clutch，或确认其在 PATH 中（如 /opt/homebrew/bin/agy）。",
+                )
+            )
+
+        try:
+            _emit_log(logs, on_log, f"Executing Antigravity CLI prompt...")
+            output = chat_agy_cli(
+                prompt=prompt,
+                cwd=workspace_path,
+                system_prompt=system_prompt,
+                resume_session_id=claude_session_id,
+                binary=cli_binary,
+                on_log=on_log,
+            )
+            _emit_log(logs, on_log, "Antigravity CLI execution completed successfully.")
+            return EngineResult(
+                engine="Antigravity CLI",
+                output=output,
+                logs=logs,
+                claude_session_id=claude_session_id or "agy-session",
+            )
+        except Exception as exc:
+            _emit_log(logs, on_log, f"Antigravity CLI execution failed: {exc}")
+            raise RuntimeError(
+                tr(
+                    f"Failed to execute task via Antigravity CLI: {exc}",
+                    f"通过 Antigravity CLI 执行任务失败：{exc}",
+                )
+            ) from exc
+
     if engine_type == "Cursor Workspace Node" and tool_available_for_routing("cursor-app"):
         logs.append(f"Routing task to Cursor Workspace Node for agent {agent_name}.")
         if not workspace_path:
@@ -240,6 +302,33 @@ def route_engine(
                 )
             ) from exc
 
+    if engine_type == "Ollama" and tool_available_for_routing("ollama-cli"):
+        from src.adapters.ollama_adapter import chat_ollama
+        _emit_log(logs, on_log, f"Routing task to Ollama for agent {agent_name}.")
+        try:
+            configured_model = str(agent.get("ollamaModel", "")) if agent else ""
+            model_tag, output = chat_ollama(
+                prompt=prompt,
+                model=configured_model or None,
+                system_prompt=system_prompt,
+                history=history,
+                on_log=on_log,
+            )
+            _emit_log(logs, on_log, f"Ollama execution completed successfully via {model_tag}.")
+            return EngineResult(
+                engine=f"Ollama ({model_tag})",
+                output=output,
+                logs=logs,
+            )
+        except Exception as exc:
+            _emit_log(logs, on_log, f"Ollama execution failed: {exc}")
+            raise RuntimeError(
+                tr(
+                    f"Failed to execute task via Ollama: {exc}",
+                    f"通过 Ollama 执行任务失败：{exc}",
+                )
+            ) from exc
+
     if engine_type == "Claude Code (Local CLI)":
         logs.append(
             tr(
@@ -247,11 +336,25 @@ def route_engine(
                 f"Agent {agent_name} 需要 Claude Code CLI，但未安装或未连接，已回退到 LLM。",
             )
         )
-    elif raw_engine_type and engine_type != "Claude Code (Local CLI)":
+    elif engine_type == "Antigravity CLI":
         logs.append(
             tr(
-                f"Agent {agent_name} aiEngine={raw_engine_type!r} is not a Claude CLI profile — using LLM.",
-                f"Agent {agent_name} 的 aiEngine={raw_engine_type!r} 不是 Claude CLI 配置，已使用 LLM。",
+                f"Agent {agent_name} requests Antigravity CLI but `agy` is not installed/connected — falling back to LLM.",
+                f"Agent {agent_name} 需要 Antigravity CLI，但未安装或未连接，已回退到 LLM。",
+            )
+        )
+    elif engine_type == "Ollama":
+        logs.append(
+            tr(
+                f"Agent {agent_name} requests Ollama but Ollama is not installed/connected — falling back to LLM.",
+                f"Agent {agent_name} 需要 Ollama，但未安装或未连接，已回退到 LLM。",
+            )
+        )
+    elif raw_engine_type and engine_type not in {"Claude Code (Local CLI)", "Antigravity CLI", "Ollama"}:
+        logs.append(
+            tr(
+                f"Agent {agent_name} aiEngine={raw_engine_type!r} is not a recognized CLI profile — using LLM.",
+                f"Agent {agent_name} 的 aiEngine={raw_engine_type!r} 不是已识别的 CLI 配置，已使用 LLM。",
             )
         )
 
@@ -281,3 +384,47 @@ def route_engine(
                 f"无法访问配置的模型 ({engine_name})。请在 设置 → 模型 配置 API Key。({exc})",
             )
         ) from exc
+
+
+import re
+
+MODEL_BRAND_REPLACEMENTS = [
+    (r"\bAgnes\b", "Gemini"),
+    (r"\bagnes\b", "gemini"),
+]
+
+
+def sanitize_engine_output(text: str) -> str:
+    if not text:
+        return text
+    for pattern, replacement in MODEL_BRAND_REPLACEMENTS:
+        text = re.sub(pattern, replacement, text)
+    return text
+
+
+def route_engine(
+    agent_name: str,
+    prompt: str,
+    system_prompt: str | None = None,
+    cwd: str | None = None,
+    history: list[dict[str, str]] | None = None,
+    fallback_tool: str | None = None,
+    claude_session_id: str | None = None,
+    on_log: Callable[[str], None] | None = None,
+) -> EngineResult:
+    res = _route_engine_raw(
+        agent_name=agent_name,
+        prompt=prompt,
+        system_prompt=system_prompt,
+        cwd=cwd,
+        history=history,
+        fallback_tool=fallback_tool,
+        claude_session_id=claude_session_id,
+        on_log=on_log,
+    )
+    return EngineResult(
+        engine=res.engine,
+        output=sanitize_engine_output(res.output),
+        logs=res.logs,
+        claude_session_id=res.claude_session_id,
+    )

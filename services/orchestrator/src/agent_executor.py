@@ -61,7 +61,7 @@ def execute_agent_task(
             message=chat_message(agent, output),
         )
 
-    if tool in {"claude-cli", "llm", "cursor", ""}:
+    if tool in {"claude-cli", "agy-cli", "agy", "llm", "cursor", "ollama", "ollama-cli", ""}:
         from src.engine_router import route_engine
         from src.workspace import get_workspace
 

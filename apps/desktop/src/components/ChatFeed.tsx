@@ -47,6 +47,7 @@ function isPlainLlmReply(agent: string): boolean {
 export function configuredEngineToRuntimeLabel(aiEngine: string): string {
   const key = aiEngine.trim().toLowerCase();
   if (key.includes('claude code') || key === 'claude-cli') return 'Claude CLI';
+  if (key.includes('antigravity') || key.includes('agenty') || key === 'agy-cli') return 'Antigravity CLI';
   if (key.includes('cursor')) return 'Cursor';
   return aiEngine.trim();
 }
@@ -56,6 +57,172 @@ function replyRuntimeLabel(
   fallbackModelName: string,
 ): string {
   return runtimeEngine?.trim() || fallbackModelName || '—';
+}
+
+function renderMarkdown(text: string): React.ReactNode {
+  if (!text) return null;
+
+  const lines = text.split('\n');
+  const elements: React.ReactNode[] = [];
+
+  let inBlockquote = false;
+  let blockquoteLines: string[] = [];
+  let isAlert = false;
+  let alertType = ''; // 'IMPORTANT', 'WARNING', 'NOTE', 'TIP'
+
+  const flushBlockquote = (key: number) => {
+    if (blockquoteLines.length === 0 && !isAlert) return;
+
+    const content = blockquoteLines.join('\n');
+    blockquoteLines = [];
+    inBlockquote = false;
+
+    // Inline formatting helper
+    const formatInline = (str: string) => {
+      return str
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/`([^`]+)`/g, '<code class="bg-neutral-200/60 dark:bg-neutral-800 text-on-surface px-1 py-0.5 rounded font-mono text-[11px] border border-outline-variant/20 mx-0.5">$1</code>');
+    };
+
+    if (isAlert) {
+      // Render GitHub-style alert box
+      const title = alertType;
+      let borderClass = 'border-l-4 border-blue-500';
+      let bgClass = 'bg-blue-50/50';
+      let textClass = 'text-blue-900';
+      let icon = 'info';
+
+      if (alertType === 'IMPORTANT') {
+        borderClass = 'border-l-4 border-violet-500';
+        bgClass = 'bg-violet-50/40';
+        textClass = 'text-violet-900';
+        icon = 'label_important';
+      } else if (alertType === 'WARNING') {
+        borderClass = 'border-l-4 border-amber-500';
+        bgClass = 'bg-amber-50/40';
+        textClass = 'text-amber-900';
+        icon = 'warning';
+      } else if (alertType === 'TIP') {
+        borderClass = 'border-l-4 border-emerald-500';
+        bgClass = 'bg-emerald-50/40';
+        textClass = 'text-emerald-900';
+        icon = 'lightbulb';
+      }
+
+      elements.push(
+        <div key={`alert-${key}`} className={`p-3.5 my-3 rounded-r-xl border border-y-outline-variant/20 border-r-outline-variant/20 ${borderClass} ${bgClass} flex items-start gap-2.5`}>
+          <span className={`material-symbols-outlined text-[18px] mt-0.5 ${textClass}`}>{icon}</span>
+          <div className="flex-1 space-y-1">
+            <div className={`text-[11px] font-bold tracking-wide uppercase ${textClass}`}>{title}</div>
+            <div className="text-[12.5px] leading-relaxed text-on-surface" dangerouslySetInnerHTML={{ __html: formatInline(content) }} />
+          </div>
+        </div>
+      );
+    } else {
+      // Standard blockquote
+      elements.push(
+        <blockquote key={`bq-${key}`} className="pl-4 border-l-4 border-neutral-300 my-2 text-neutral-500 italic text-[12.5px]" dangerouslySetInnerHTML={{ __html: formatInline(content) }} />
+      );
+    }
+
+    isAlert = false;
+    alertType = '';
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    // Handle blockquote
+    if (trimmed.startsWith('>')) {
+      let content = line.substring(line.indexOf('>') + 1);
+      if (content.startsWith(' ')) {
+        content = content.substring(1);
+      }
+
+      // Check for alert header: [!IMPORTANT], [!WARNING], [!NOTE], [!TIP]
+      const alertMatch = content.match(/^\[!(IMPORTANT|WARNING|NOTE|TIP)\]/i);
+      if (alertMatch) {
+        isAlert = true;
+        alertType = alertMatch[1].toUpperCase();
+        inBlockquote = true;
+      } else {
+        blockquoteLines.push(content);
+        inBlockquote = true;
+      }
+      continue;
+    }
+
+    // If we were in blockquote but the current line is not, flush the blockquote
+    if (inBlockquote) {
+      flushBlockquote(i);
+    }
+
+    // Handle Headings
+    if (trimmed.startsWith('# ')) {
+      elements.push(
+        <h1 key={i} className="text-base font-extrabold text-neutral-900 border-b border-neutral-200 pb-1.5 mb-3 mt-3">
+          {trimmed.substring(2)}
+        </h1>
+      );
+      continue;
+    }
+    if (trimmed.startsWith('## ')) {
+      elements.push(
+        <h2 key={i} className="text-sm font-bold text-neutral-800 mt-4 mb-1.5">
+          {trimmed.substring(3)}
+        </h2>
+      );
+      continue;
+    }
+    if (trimmed.startsWith('### ')) {
+      elements.push(
+        <h3 key={i} className="text-xs font-bold text-neutral-800 mt-3 mb-1">
+          {trimmed.substring(4)}
+        </h3>
+      );
+      continue;
+    }
+
+    // Handle List Items
+    if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+      const content = trimmed.substring(2);
+      const formatInline = (str: string) => {
+        return str
+          .replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-on-surface">$1</strong>')
+          .replace(/`([^`]+)`/g, '<code class="bg-neutral-200/60 dark:bg-neutral-800 text-on-surface px-1 py-0.5 rounded font-mono text-[11px] border border-outline-variant/20 mx-0.5">$1</code>');
+      };
+      elements.push(
+        <div key={i} className="flex items-start gap-2 pl-2 my-1 text-on-surface text-[13px]">
+          <span className="w-1 h-1 mt-2 rounded bg-neutral-400 flex-shrink-0" />
+          <span dangerouslySetInnerHTML={{ __html: formatInline(content) }} />
+        </div>
+      );
+      continue;
+    }
+
+    // Handle normal paragraphs
+    const formatInline = (str: string) => {
+      return str
+        .replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-on-surface">$1</strong>')
+        .replace(/`([^`]+)`/g, '<code class="bg-neutral-200/60 dark:bg-neutral-800 text-on-surface px-1 py-0.5 rounded font-mono text-[11px] border border-outline-variant/20 mx-0.5">$1</code>');
+    };
+
+    if (trimmed === '') {
+      elements.push(<div key={i} className="h-2" />);
+    } else {
+      elements.push(
+        <p key={i} className="my-1.5 text-on-surface text-[13px] leading-relaxed" dangerouslySetInnerHTML={{ __html: formatInline(line) }} />
+      );
+    }
+  }
+
+  // Final flush in case file ends with blockquote
+  if (inBlockquote) {
+    flushBlockquote(lines.length);
+  }
+
+  return <div className="space-y-1 select-text">{elements}</div>;
 }
 
 export const ChatFeed: React.FC<ChatFeedProps> = ({
@@ -270,9 +437,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                         <span className="material-symbols-outlined text-[16px]">error</span>
                         <span>VALIDATION FAILED</span>
                       </div>
-                      <p className="text-[13px] text-on-surface select-text leading-relaxed whitespace-pre-wrap">
-                        {msg.text}
-                      </p>
+                      {renderMarkdown(msg.text)}
                     </div>
                   ) : (
                     <div className={`p-4 rounded-2xl border border-outline-variant/30 shadow-sm ${
@@ -286,9 +451,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                           <span>COMPLETED</span>
                         </div>
                       )}
-                      <p className="text-[13px] text-on-surface select-text leading-relaxed whitespace-pre-wrap">
-                        {msg.text}
-                      </p>
+                      {renderMarkdown(msg.text)}
                       {msg.codeHighlight && (
                         <div className="mt-3 flex items-center gap-2 py-2 px-3 bg-white/60 rounded-xl border border-outline-variant/30">
                           <span className="material-symbols-outlined text-green-500 text-[18px]">

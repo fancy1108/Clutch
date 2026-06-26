@@ -252,3 +252,106 @@ def test_route_engine_normalizes_claude_code_cli_alias(monkeypatch, mock_agents)
     assert res.engine == "Claude CLI"
     assert res.output == "alias routed"
     assert any("Claude Code (Local CLI)" in log for log in res.logs)
+
+
+def test_route_engine_antigravity_cli(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "src.engine_router.list_agents",
+        lambda: [
+            {
+                "id": "agent-agy",
+                "name": "Antigravity Agent",
+                "aiEngine": "Antigravity CLI",
+            }
+        ],
+    )
+    monkeypatch.setattr("src.engine_router.tool_available_for_routing", lambda tool_id: tool_id == "agy-cli")
+    monkeypatch.setattr("src.engine_router.get_workspace", lambda: {"workspace_path": "/workspace"})
+    
+    captured = {}
+    def fake_chat_agy(prompt, *, cwd, system_prompt, resume_session_id=None, **kwargs):
+        captured["prompt"] = prompt
+        captured["system_prompt"] = system_prompt
+        captured["resume_session_id"] = resume_session_id
+        return "Antigravity CLI output"
+        
+    monkeypatch.setattr("src.engine_router.chat_agy_cli", fake_chat_agy)
+
+    res = route_engine(
+        agent_name="Antigravity Agent",
+        prompt="hello agy",
+        system_prompt="system directive",
+        claude_session_id="existing-session-456",
+    )
+    assert res.engine == "Antigravity CLI"
+    assert res.output == "Antigravity CLI output"
+    assert captured["prompt"] == "hello agy"
+    assert captured["system_prompt"] == "system directive"
+    assert captured["resume_session_id"] == "existing-session-456"
+    assert any("Routing task to Antigravity CLI" in log for log in res.logs)
+
+
+def test_sanitize_engine_output() -> None:
+    from src.engine_router import sanitize_engine_output
+    text = "我是 Agy，运行于 Agnes 2.0 Flash (agnes-2.0-flash) 模型。这里是 agnes 测试，另一个词是 magnes。"
+    res = sanitize_engine_output(text)
+    assert "Gemini 2.0 Flash" in res
+    assert "gemini-2.0-flash" in res
+    assert "我是 Agy，运行于 Gemini 2.0 Flash (gemini-2.0-flash) 模型。" in res
+    assert "这里是 gemini 测试" in res
+    assert "另一个词是 magnes。" in res
+
+
+def test_route_engine_ollama(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "src.engine_router.list_agents",
+        lambda: [
+            {
+                "id": "agent-ollama",
+                "name": "Ollama Agent",
+                "aiEngine": "Ollama",
+            }
+        ],
+    )
+    monkeypatch.setattr("src.engine_router.tool_available_for_routing", lambda tool_id: tool_id == "ollama-cli")
+    monkeypatch.setattr("src.engine_router.get_workspace", lambda: {"workspace_path": "/workspace"})
+
+    captured = {}
+    def fake_chat_ollama(prompt, *, model=None, system_prompt=None, history=None, on_log=None):
+        captured["prompt"] = prompt
+        captured["model"] = model
+        captured["system_prompt"] = system_prompt
+        captured["history"] = history
+        return "qwen3.6:35b", "Ollama response output"
+
+    monkeypatch.setattr("src.adapters.ollama_adapter.chat_ollama", fake_chat_ollama)
+
+    res = route_engine(
+        agent_name="Ollama Agent",
+        prompt="hello ollama",
+        system_prompt="system guide",
+    )
+    assert res.engine == "Ollama (qwen3.6:35b)"
+    assert res.output == "Ollama response output"
+    assert captured["prompt"] == "hello ollama"
+    assert captured["system_prompt"] == "system guide"
+    assert any("Routing task to Ollama" in log for log in res.logs)
+
+
+def test_route_engine_ollama_not_connected(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "src.engine_router.list_agents",
+        lambda: [
+            {
+                "id": "agent-ollama",
+                "name": "Ollama Agent",
+                "aiEngine": "Ollama",
+            }
+        ],
+    )
+    monkeypatch.setattr("src.engine_router.tool_available_for_routing", lambda tool_id: False)
+    monkeypatch.setattr("src.models_config.get_router", lambda: FakeRouter())
+
+    res = route_engine(agent_name="Ollama Agent", prompt="hello")
+    assert res.engine == "Fake Model"
+    assert any("Ollama is not installed/connected" in log or "未安装或未连接" in log for log in res.logs)

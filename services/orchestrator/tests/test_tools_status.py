@@ -113,6 +113,16 @@ def test_list_includes_installed_cli_with_path(
 def test_list_includes_installed_client_with_path(
     tools_config: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    mock_clients = [
+        {
+            "id": "cursor-app",
+            "name": "Cursor",
+            "app_name": "Cursor.app",
+            "description": "Cursor AI IDE.",
+            "icon": "edit_document",
+        }
+    ]
+    monkeypatch.setattr("src.tools_status.CLIENT_CANDIDATES", mock_clients)
     monkeypatch.setattr("src.tools_status._extra_cli_search_dirs", lambda: [])
     monkeypatch.setattr("src.tools_status._cli_path", lambda binary: None)
     monkeypatch.setattr(

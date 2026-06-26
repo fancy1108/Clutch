@@ -2,8 +2,17 @@
 
 ## 当前状态
 
-- 阶段：**后端子进程与 MCP 客户端聊天挂起修复，测试套件 LLM Mock 隔离**
-- Git HEAD：`5df2a9c`
+- 阶段：**Ollama 本地模型打通与动态模型解析路由**
+- Git HEAD：`998beee`
+
+## 2026-06-26 会话（Ollama 本地模型打通与动态模型解析路由）
+
+- **完成：**
+  - **`ollama_adapter.py`**：新增 Ollama 本地模型适配器。调用 `GET http://localhost:11434/api/tags` 自动发现本地可用模型，并实现基于代码/推理能力的自动排序打分算法（优先选用 `qwen3.6`，其次 `qwen2.5-coder`、`llama3` 等）。使用标准的 OpenAI 兼容格式调用本地 `/v1/chat/completions`。
+  - **`engine_router.py`**：支持对 `Ollama` 驱动引擎在路由时的标准化识别与分流。当 Ollama 可用时执行本地适配器，并返回实际调用的具体模型 tag（如 `qwen3.6:35b`）使得前端 ChatFeed 能够实时渲染正确的本地运行模型名。
+  - **`agent_executor.py`**：将 `ollama` 与 `ollama-cli` 引入到工作流 Agent 任务的合法 tool check 白名单中，允许 Agent 任务走 Ollama 模型路由。
+  - **测试与校验**：新增 `test_ollama_adapter.py` 覆盖发现模型、排序打分以及请求格式化的单元测试，在 `test_engine_router.py` 扩充 Ollama 路由及连接状态兜底测试。全量后端 242 项 pytest 校验全部通过。
+- **下次优先**：答复用户反馈并开展后续集成测试。
 
 ## 2026-06-26 会话（后端子进程与 MCP 挂起修复）
 

@@ -6,6 +6,7 @@ import { fetchSkillsRegistry, type ScannedSkill } from '../services/skillsApi';
 import { fetchMcpStatus, type McpServer } from '../services/mcpApi';
 import { getAgentDisplayName, isBuiltinAgent, mergeAgentsWithBuiltin, BUILTIN_AGENT_ID } from '../services/builtinAgent';
 import { useLanguage } from './LanguageContext';
+import { fetchToolsStatus, type AiToolStatus } from '../services/toolsApi';
 
 export function AgentLogo({ name, description, className = "w-10 h-10" }: { name: string; description: string; className?: string }) {
   // Let's create a deterministic hash from name
@@ -117,7 +118,29 @@ export function AgentManager({
   // Vibe workspace state extensions
   const [scannedSkills, setScannedSkills] = useState<ScannedSkill[]>([]);
 
+  const [connectedTools, setConnectedTools] = useState<AiToolStatus[]>([]);
   const [aiEngine, setAiEngine] = useState('Claude Code (Local CLI)');
+  const [ollamaModels, setOllamaModels] = useState<string[]>([]);
+  const [ollamaModel, setOllamaModel] = useState('');
+
+  const refreshConnectedTools = () => {
+    void fetchToolsStatus()
+      .then((toolsList) => {
+        setConnectedTools(toolsList.filter((t) => t.connected));
+      })
+      .catch(() => {
+        setConnectedTools([]);
+      });
+  };
+
+  const getDefaultEngine = (tools: AiToolStatus[]) => {
+    if (tools.length === 0) return 'Claude Code (Local CLI)';
+    const first = tools[0];
+    if (first.id === 'claude-cli') return 'Claude Code (Local CLI)';
+    if (first.id === 'agy-cli') return 'Antigravity CLI';
+    if (first.id === 'cursor-app' || first.id === 'cursor-cli') return 'Cursor Workspace Node';
+    return first.name;
+  };
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [isSkillsAttachOpen, setIsSkillsAttachOpen] = useState(false);
   const [skillsSearch, setSkillsSearch] = useState('');
@@ -143,6 +166,7 @@ export function AgentManager({
     void fetchMcpStatus()
       .then((status) => setMcpServers(status.servers.filter((s) => s.enabled !== false)))
       .catch(() => setMcpServers([]));
+    refreshConnectedTools();
   }, []);
 
   useEffect(() => {
@@ -164,6 +188,24 @@ export function AgentManager({
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    if (isModalOpen && aiEngine === 'Ollama') {
+      fetch('/api/models/ollama')
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.ok && data.models) {
+            setOllamaModels(data.models);
+            if (data.models.length > 0) {
+              setOllamaModel((prev) =>
+                prev && data.models.includes(prev) ? prev : data.models[0],
+              );
+            }
+          }
+        })
+        .catch((err) => console.error('Failed to fetch Ollama models:', err));
+    }
+  }, [isModalOpen, aiEngine]);
+
   const persistAgents = (next: Agent[]) => {
     const builtin = next.find((agent) => isBuiltinAgent(agent));
     const custom = next.filter((agent) => !isBuiltinAgent(agent));
@@ -177,6 +219,7 @@ export function AgentManager({
   };
 
   const handleOpenCreate = () => {
+    refreshConnectedTools();
     setModalMode('create');
     setEditingId('');
     setName('');
@@ -189,7 +232,8 @@ export function AgentManager({
     setNewDelivContent('');
     setSelectedMcpTools([]);
     setSelectedMcpServerIds([]);
-    setAiEngine('Claude Code (Local CLI)');
+    setAiEngine(getDefaultEngine(connectedTools));
+    setOllamaModel('');
     setSelectedSkills([]);
     setIsSkillsAttachOpen(false);
     setExpandedModules({ 3: false, 4: false, 5: false });
@@ -199,6 +243,7 @@ export function AgentManager({
 
   const handleOpenEdit = (agent: Agent, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
+    refreshConnectedTools();
     setModalMode('edit');
     setEditingId(agent.id);
     setName(agent.name);
@@ -212,8 +257,9 @@ export function AgentManager({
     setAiEngine(
       isBuiltinAgent(agent)
         ? 'Configured LLM'
-        : agent.aiEngine || 'Claude Code (Local CLI)',
+        : agent.aiEngine || getDefaultEngine(connectedTools),
     );
+    setOllamaModel(agent.ollamaModel || '');
     setSelectedSkills(agent.skills || []);
     setIsSkillsAttachOpen(false);
     setExpandedModules({ 3: false, 4: false, 5: false });
@@ -273,6 +319,11 @@ export function AgentManager({
       return;
     }
 
+    if (aiEngine === 'Ollama' && !ollamaModel.trim()) {
+      console.warn('Please select an Ollama model');
+      return;
+    }
+
     const todayStr = new Date().toISOString().replace('T', ' ').substring(0, 16);
 
     const resolvedAiEngine = editingId === BUILTIN_AGENT_ID
@@ -291,6 +342,7 @@ export function AgentManager({
         mcpTools: selectedMcpTools,
         mcpServerIds: selectedMcpServerIds,
         aiEngine: resolvedAiEngine,
+        ollamaModel: resolvedAiEngine === 'Ollama' ? ollamaModel : undefined,
         skills: selectedSkills
       };
       persistAgents([newAgent, ...agents]);
@@ -307,6 +359,7 @@ export function AgentManager({
             mcpTools: selectedMcpTools,
             mcpServerIds: selectedMcpServerIds,
             aiEngine: resolvedAiEngine,
+            ollamaModel: resolvedAiEngine === 'Ollama' ? ollamaModel : undefined,
             skills: selectedSkills
           };
           if (selectedAgent && selectedAgent.id === editingId) {
@@ -479,6 +532,17 @@ export function AgentManager({
                       </span>
                     </div>
                   </div>
+                  {!isBuiltinAgent(selectedAgent) && selectedAgent.aiEngine === 'Ollama' && (
+                    <div className="border-t border-neutral-200/50 pt-2.5">
+                      <p className="text-[10px] text-neutral-400 font-medium">OLLAMA MODEL</p>
+                      <div className="flex items-center gap-1.5 mt-1 bg-neutral-100 border border-neutral-200 rounded-lg p-1.5">
+                        <span className="material-symbols-outlined text-[13px] text-neutral-700">memory</span>
+                        <span className="text-[10.5px] font-mono font-bold text-neutral-900">
+                          {selectedAgent.ollamaModel || 'Auto-select best local model'}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                   <div className="border-t border-neutral-200/50 pt-2.5 flex justify-between items-center">
                     <div>
                       <p className="text-[10px] text-neutral-400 font-medium">LAST MODIFIED</p>
@@ -761,18 +825,70 @@ export function AgentManager({
                           Built-in agent always uses the model selected in Settings → Models.
                         </p>
                       </div>
-                    ) : (
-                      <select
-                        value={aiEngine}
-                        onChange={(e) => setAiEngine(e.target.value)}
-                        className="w-full px-3 py-1.5 text-xs border border-neutral-200 focus:outline-none focus:border-neutral-900 focus:ring-1 focus:ring-neutral-900/20 bg-white rounded-lg font-sans text-neutral-800"
-                      >
-                        <option value="Claude Code (Local CLI)">Claude Code (Local CLI)</option>
-                        <option value="Cursor Workspace Node">Cursor Workspace Node (IDE)</option>
-                      </select>
-                    )}
+                    ) : (() => {
+                      const optionsMap = new Map<string, string>();
+                      connectedTools.forEach((t) => {
+                        if (t.id === 'claude-cli') {
+                          optionsMap.set('Claude Code (Local CLI)', 'Claude Code (Local CLI)');
+                        } else if (t.id === 'agy-cli') {
+                          optionsMap.set('Antigravity CLI', 'Antigravity CLI');
+                        } else {
+                          optionsMap.set(t.name, `${t.name} (${t.kind === 'cli' ? 'CLI' : 'Client'})`);
+                        }
+                      });
+                      if (aiEngine && !optionsMap.has(aiEngine)) {
+                        optionsMap.set(aiEngine, aiEngine);
+                      }
+                      if (optionsMap.size === 0) {
+                        optionsMap.set('Claude Code (Local CLI)', 'Claude Code (Local CLI)');
+                      }
+
+                      return (
+                        <select
+                          value={aiEngine}
+                          onChange={(e) => setAiEngine(e.target.value)}
+                          className="w-full px-3 py-1.5 text-xs border border-neutral-200 focus:outline-none focus:border-neutral-900 focus:ring-1 focus:ring-neutral-900/20 bg-white rounded-lg font-sans text-neutral-800"
+                        >
+                          {Array.from(optionsMap.entries()).map(([val, label]) => (
+                            <option key={val} value={val}>
+                              {label}
+                            </option>
+                          ))}
+                        </select>
+                      );
+                    })()}
                   </div>
                 </div>
+
+                {aiEngine === 'Ollama' && (
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-neutral-500 tracking-wider uppercase font-mono block">
+                      Ollama Model
+                    </label>
+                    {ollamaModels.length === 0 ? (
+                      <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 leading-relaxed">
+                        No local models found. Ensure Ollama is running and run{' '}
+                        <code className="font-mono text-[9.5px] bg-amber-100 px-1 py-0.5 rounded">ollama pull &lt;model&gt;</code>{' '}
+                        first.
+                      </p>
+                    ) : (
+                      <select
+                        value={ollamaModel}
+                        onChange={(e) => setOllamaModel(e.target.value)}
+                        className="w-full px-3 py-1.5 text-xs border border-neutral-200 focus:outline-none focus:border-neutral-900 focus:ring-1 focus:ring-neutral-900/20 bg-white rounded-lg font-mono text-neutral-800"
+                      >
+                        {ollamaModels.map((model) => (
+                          <option key={model} value={model}>
+                            {model}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                    <p className="text-[9.5px] text-neutral-400 leading-relaxed">
+                      Select which locally installed Ollama model this agent uses at runtime.
+                    </p>
+                  </div>
+                )}
 
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-neutral-500 tracking-wider uppercase font-mono block">Short Description</label>
