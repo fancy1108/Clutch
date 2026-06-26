@@ -4,7 +4,12 @@
 
 - 阶段：**D25 ShellSession Step 2 已交付（agy Hybrid + sweep 测试 + baseline）**
 - Git HEAD：`3c8229c`
-- **下次优先**：MCP 路径 `hybrid_executions` · 2h/100+ 真机长测
+- **下次优先**：snapshot list API · DISCONNECTED 恢复 · 继续上次工作 UI · runtime_registry
+
+## 2026-06-27 会话（Step 5：Snapshot 保留策略）
+
+- **完成：** `CLUTCH_SHELL_SNAPSHOT_MAX_AGE_DAYS`（默认 30，0=禁用）；lifespan sweep 调用 `prune_stale_snapshots`
+- **校验：** `./scripts/verify.sh` → 337 pytest ✅
 
 ## 2026-06-27 会话（Step 5 起步：Shell 池上限）
 

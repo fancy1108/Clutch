@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 import json
+import logging
+import os
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
 from src.storage_helper import get_storage_dir
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -73,3 +77,45 @@ def format_handoff_prefix(snapshot: SessionSnapshot) -> str:
     if snapshot.cwd:
         parts.append(f"Working directory: {snapshot.cwd}")
     return "\n".join(parts)
+
+
+def snapshot_max_age_days() -> int:
+    """0 disables pruning. Default 30 days."""
+    raw = os.environ.get("CLUTCH_SHELL_SNAPSHOT_MAX_AGE_DAYS", "30").strip()
+    try:
+        return max(0, int(raw))
+    except ValueError:
+        return 30
+
+
+def prune_stale_snapshots(*, max_age_days: int | None = None) -> list[str]:
+    """Delete snapshot files older than max_age_days. Returns removed run_ids."""
+    limit_days = snapshot_max_age_days() if max_age_days is None else max(0, max_age_days)
+    if limit_days <= 0:
+        return []
+
+    root = snapshot_dir()
+    if not root.is_dir():
+        return []
+
+    cutoff = datetime.now(timezone.utc).timestamp() - (limit_days * 86400)
+    removed: list[str] = []
+    for path in root.glob("*.json"):
+        try:
+            mtime = path.stat().st_mtime
+        except OSError:
+            continue
+        if mtime >= cutoff:
+            continue
+        run_id = path.stem
+        try:
+            path.unlink()
+            removed.append(run_id)
+            logger.info(
+                "shell_snapshot pruned run_id=%s age_days>=%s source=session_snapshot",
+                run_id,
+                limit_days,
+            )
+        except OSError:
+            logger.warning("shell_snapshot prune failed run_id=%s", run_id)
+    return removed

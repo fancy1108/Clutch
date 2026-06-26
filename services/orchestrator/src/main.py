@@ -42,6 +42,11 @@ async def _lifespan(app: FastAPI):
                 terminated = await asyncio.to_thread(manager.sweep_idle)
                 for run_id in terminated:
                     logger.info("shell_session idle sweep terminated run_id=%s", run_id)
+                from src.session_snapshot import prune_stale_snapshots
+
+                pruned = await asyncio.to_thread(prune_stale_snapshots)
+                for run_id in pruned:
+                    logger.info("shell_snapshot pruned run_id=%s", run_id)
             except Exception:
                 logger.exception("shell_session sweep failed")
 
