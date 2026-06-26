@@ -27,6 +27,14 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ## 已交付（代码 Task · 自 Git 回填）
 
+### STOP-WORKFLOW-UX-FIX ✅
+- **日期：** 2026-06-26
+- **Commit：** `Pending commit`
+- **Verification：** `./scripts/verify.sh` → 287 pytest + vitest passed
+- **证据：** `—`（门禁已覆盖）
+- **交付文件：**
+  - `apps/desktop/src/components/ChatFeed.tsx` — 修复点击 Stop 结束运行后会错误弹出 Human-in-the-Loop 卡片的 Bug；去除了 `clutchStatus === 'failed'` 对该卡片的渲染逻辑，使 Stopped 或 Failed 的 run 正确渲染常规的聊天输入框。
+
 ### SESSION-MODEL-SELECTION-AND-IMAGE-REJECTION ✅
 - **日期：** 2026-06-26
 - **Commit：** `2b61c06` — `feat(chat,models): support session model selection, bypass builtin agent model binding, and reject vision input on image-only models`

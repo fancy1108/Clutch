@@ -611,7 +611,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
               Stop
             </button>
           </div>
-        ) : awaitingHuman || clutchStatus === 'failed' ? (
+        ) : awaitingHuman ? (
           <div className="w-full max-w-2xl bg-white border border-rose-200/90 p-5 shadow-xl rounded-2xl flex flex-col gap-4 text-left">
             <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
               <div className="flex items-center gap-2.5">

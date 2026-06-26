@@ -3,16 +3,17 @@
 ## 当前状态
 
 - 阶段：**M3-F Flow 多 Agent 接力已落地（D23 ✅）**
-- Git HEAD：`2b61c06`
+- Git HEAD：`Pending commit`
 
 ## 2026-06-26 会话（会话模型选择与生图视觉校验）
 
 - **完成：**
-  - **会话级模型选择**：前端 footer 切换模型时调用 `saveModelsConfig` 并在 plain chat 时通过 WS 发送 `model_id`；后端 `_handle_plain_chat` / `_llm_chat_reply` 支持 `session_model_id` 动态路由。
-  - **内置 Agent 解绑**：内置默认 Agent `clutch-agent` 忽略绑定的 `modelId`，强制跟随 footer 选择的模型；自定义 Agent 仍可绑定特定模型。
-  - **生图模型视觉校验**：若向仅能生图的非视觉模型（如 `Agnes Image`）上传截图/图片，则在 `_llm_chat_reply` 中直接拦截并提示用户切换到视觉聊天模型。
-  - **Ollama 激活优化**：在 `models_config.py` 中将 Ollama 驱动的模型在无 API key 时也标记为 `available`，并支持直接激活。
-  - **测试与校验**：新增 `test_llm_chat_reply_image_model_rejects_vision_input` 并修改/扩充 `test_agent_type.py` 和 `test_models_config_api.py` 的测试。
+  - **会话级模型选择**：前端 footer 切换模型时调用 `saveModelsConfig` 并在 plain chat 时通过 WS 发送 `model_id`；后端 `_handle_plain_chat` / `_llm_chat_reply` 支持 `session_model_id` 动态路由.
+  - **内置 Agent 解绑**：内置默认 Agent `clutch-agent` 忽略绑定的 `modelId`，强制跟随 footer 选择的模型；自定义 Agent 仍可绑定特定模型.
+  - **生图模型视觉校验**：若向仅能生图的非视觉模型（如 `Agnes Image`）上传截图/图片，则在 `_llm_chat_reply` 中直接拦截并提示用户切换到视觉聊天模型.
+  - **Ollama 激活优化**：在 `models_config.py` 中将 Ollama 驱动的模型在无 API key 时也标记为 `available`，并支持直接激活.
+  - **停止工作流交互优化**：修复在运行中点击 Stop 时会错误弹出 Human-in-the-Loop 交互卡片的 Bug。移除了 `failed` 状态也会错误渲染该卡片的判定，使 Stopped 或 Failed 的 run 正确恢复显示常规的聊天输入框。
+  - **测试与校验**：新增 `test_llm_chat_reply_image_model_rejects_vision_input` 并修改/扩充 `test_agent_type.py` 和 `test_models_config_api.py` 的测试.
 - **下次优先**：Flow 运行中逐步 Chat 的 WS 时序优化。
 
 ## 2026-06-26 会话（M3-F Flow 接力落地 · Weather-to-Vision）
