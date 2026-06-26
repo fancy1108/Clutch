@@ -27,6 +27,22 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ## 已交付（代码 Task · 自 Git 回填）
 
+### D25-HYBRID-STEP1 ✅
+- **日期：** 2026-06-27
+- **Commit：** `d6c6c90` — `chore: checkpoint before full-platform UI consistency polish`（含 ShellSession + Hybrid 执行细节全栈）
+- **Verification：** `./scripts/verify.sh` → 326 pytest + 11 vitest + build + doc-drift ✅
+- **证据：** `runs/verification/2026-06-27-hybrid-step1-verify.log`；`uv run python services/orchestrator/scripts/verify_hybrid_execution_ws.py` → PASSED
+- **交付文件：**
+  - `services/orchestrator/src/shell_session.py` — 长驻 bash PTY、`ShellSessionManager`、30min/6h sweep
+  - `services/orchestrator/src/shell_exec_runtime.py` — shell 内 `claude -p` + marker
+  - `services/orchestrator/src/claude_hybrid_output_parser.py` — assistant 清洗 + `OutputEvent`
+  - `services/orchestrator/src/runtime_config.py` — `CLUTCH_RUNTIME_MODE` 门控
+  - `services/orchestrator/src/engine_router.py` — Hybrid 分支 + legacy 降级 + metadata 透传
+  - `services/orchestrator/src/main.py` — `hybrid_executions` patch + WS 事件
+  - `apps/desktop/src/components/ChatFeed.tsx` — 树形执行细节披露
+  - `apps/desktop/src/services/clutchState.ts` — `hybrid_executions` 合并与 pending buffer
+  - `apps/desktop/src/services/sidecarUrl.ts` — dev 8124 / prod 8123
+
 ### STOP-WORKFLOW-UX-FIX ✅
 - **日期：** 2026-06-26
 - **Commit：** `896d6f6` — `fix(ui): prevent Human-in-the-Loop card from rendering on failed or stopped runs`

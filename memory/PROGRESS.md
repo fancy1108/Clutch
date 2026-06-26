@@ -2,8 +2,24 @@
 
 ## 当前状态
 
-- 阶段：**D25 ShellSession Step 1 已落地（Hybrid 默认关闭）**
-- Git HEAD：`848a365`（待 commit Step 1 代码）
+- 阶段：**D25 ShellSession Step 1 + Hybrid 执行细节已交付（默认 `legacy`）**
+- Git HEAD：`d6c6c90`（Hybrid Step 1 代码）+ 文档 commit 待追加
+- **下次优先（Step 2）**：`CLUTCH_SHELL_IDLE_SEC` 压测 / agy Route C / baseline JSON
+
+## 2026-06-27 会话（删会话释放 Shell）
+
+- **完成：** `DELETE /api/runs/{run_id}` 调用 `ShellSessionManager.release(run_id)`，侧栏删会话不再等 30min sweep
+- **校验：** `test_delete_session_releases_shell_session`；`./scripts/verify.sh` → 327 pytest ✅
+
+## 2026-06-27 会话（Hybrid 执行细节 + Step 1 交付 commit）
+
+- **完成：**
+  - **ShellSession Step 1 全栈**：`runtime_config` · `shell_session` · `shell_exec_runtime` · router 双轨 · snapshot API · lifecycle sweep
+  - **输出归一化**：`claude_hybrid_output_parser`；聊天气泡默认只显示 assistant；折叠区树形披露（lucide）
+  - **`hybrid_executions` SSOT**：`ClutchState` 独立 map + WS `hybrid_execution`；修复 `route_engine` 丢弃 `raw_output`/`output_events`
+  - **前端**：`sidecarUrl` dev/prod 端口；紧凑按钮 `buttonStyles`；`clutchState` merge 防丢字段
+  - **校验**：`./scripts/verify.sh` → 326 pytest + 11 vitest + build + doc-drift ✅
+- **证据**：`runs/verification/2026-06-27-hybrid-step1-verify.log`；`services/orchestrator/scripts/verify_hybrid_execution_ws.py`
 
 ## 2026-06-26 会话（ShellSession Step 1 实施）
 

@@ -12,6 +12,7 @@
 
 | 日期 | 范围 | 命令 | 结果 | 报告/证据 | 备注 |
 |------|------|------|------|-----------|------|
+| 2026-06-27 | D25 ShellSession Step 1 + Hybrid 执行细节 | `./scripts/verify.sh` | ✅ 326 pytest + 11 vitest | `runs/verification/2026-06-27-hybrid-step1-verify.log` | `verify_hybrid_execution_ws.py` PASSED；默认 `legacy` |
 | 2026-06-25 | Git 分支 footer + 日志时间戳 + Models/MCP/Video Core 批次 | `./scripts/verify.sh` | ✅ 218 pytest + 1 vitest | pre-commit `7ee8f43` | `/api/workspace/git`；`stamp_log_line` CST；`run_log_forwarder`；CC Switch 模型；MCP mock 隔离；Video Core 测试 |
 | 2026-06-25 | E2E workspace git API + 沙箱 git init | `e2e/tests/workspace-git.spec.ts`（需 `run-e2e.sh`） | 待运行 | `—` | 沙箱 `git init -b main`；Playwright 断言 footer 分支与 API 一致 |
 | 2026-06-25 | Engine Router + agent_id 聊天路由 | `./scripts/verify.sh` | ✅ 138 pytest + 1 vitest | pre-commit `6cc6c6b` | `engine_router` / `claude_cli_adapter` 分流；内置 Agent 可编辑；WS `agent_id` + system prompt 注入；`CLUTCH_STORAGE_DIR` 测试隔离 |
