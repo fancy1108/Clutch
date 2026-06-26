@@ -1044,6 +1044,8 @@ function MainLayout() {
                 isOpen={rightPanelOpen}
                 setIsOpen={setRightPanelOpen}
                 isMultiAgent={isMultiAgent}
+                sessionAgentName={selectedAgentName}
+                modelName={footerEffectiveModelName}
                 workspaceFiles={workspaceFiles}
                 onOpenWorkspaceFile={(path) => { void handleOpenWorkspaceFile(path); }}
                 workspaceAuthorized={Boolean(workspace)}

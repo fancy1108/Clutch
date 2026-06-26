@@ -562,7 +562,11 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                     <img className="w-full h-full object-cover" src={msg.avatar} alt={msg.agent} />
                   ) : (
                     <span className="material-symbols-outlined text-[18px] text-on-surface-variant">
-                      {msg.agent === 'Supervisor' ? 'verified_user' : 'smart_toy'}
+                      {msg.agent === 'Supervisor'
+                        ? 'verified_user'
+                        : msg.agent === 'User'
+                          ? 'person'
+                          : 'smart_toy'}
                     </span>
                   )}
                 </div>

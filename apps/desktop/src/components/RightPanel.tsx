@@ -25,6 +25,8 @@ interface RightPanelProps {
   rightSidebarWidth?: number;
   onPreviewFile?: (file: { name: string; content: string }) => void;
   isMultiAgent?: boolean;
+  sessionAgentName?: string;
+  modelName?: string;
   workspaceFiles?: FileTreeNode[];
   onOpenWorkspaceFile?: (path: string) => void;
   workspaceAuthorized?: boolean;
@@ -55,6 +57,8 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   isOpen,
   setIsOpen,
   isMultiAgent = true,
+  sessionAgentName = '',
+  modelName = '',
   workspaceFiles = [],
   onOpenWorkspaceFile,
   workspaceAuthorized = false,
@@ -152,6 +156,30 @@ export const RightPanel: React.FC<RightPanelProps> = ({
       ) : null}
     </div>
   );
+
+  const renderSingleAgentSummary = () => {
+    const agentLabel = sessionAgentName || activeAgent || '—';
+    return (
+      <div className="p-3 border border-outline-variant/30 rounded-xl bg-surface-container-low/40 font-mono text-[10px] space-y-1">
+        <p>
+          {t('Active Agent')}: <span className="text-on-surface font-bold">{agentLabel}</span>
+        </p>
+        {modelName ? (
+          <p>
+            {t('Model')}: <span className="text-on-surface font-bold">{modelName}</span>
+          </p>
+        ) : null}
+        <p>
+          status: <span className="text-on-surface font-bold uppercase">{clutchStatus}</span>
+        </p>
+        {currentInstruction ? (
+          <p className="pt-1 border-t border-outline-variant/20">
+            instruction: <span className="text-on-surface">{currentInstruction}</span>
+          </p>
+        ) : null}
+      </div>
+    );
+  };
 
   const renderWorkflowSteps = (compact = false) => {
     if (workflowSteps.length === 0) {
@@ -298,22 +326,38 @@ export const RightPanel: React.FC<RightPanelProps> = ({
         <div className="flex-1 overflow-y-auto sidebar-scroll p-5 select-none bg-white">
           {activeTab === 'overview' && (
             <div className="space-y-6 animate-fade-in text-xs">
-              {renderStateSummary()}
-              {hasWorkflow ? (
-                <section>
-                  <h4 className="text-[10px] font-bold text-on-surface-variant/75 uppercase tracking-widest mb-3">
-                    {t('Workflow step execution')}
-                  </h4>
-                  {renderWorkflowSteps(true)}
-                </section>
-              ) : isIdle ? (
-                <div className="p-6 border border-dashed border-outline-variant/50 rounded-xl text-center space-y-2">
-                  <span className="material-symbols-outlined text-[24px] text-on-surface-variant/50">monitoring</span>
-                  <p className="text-[11px] text-on-surface-variant leading-relaxed">
-                    {t('No active workflow overview')}
-                  </p>
-                </div>
-              ) : null}
+              {isMultiAgent ? (
+                <>
+                  {renderStateSummary()}
+                  {hasWorkflow ? (
+                    <section>
+                      <h4 className="text-[10px] font-bold text-on-surface-variant/75 uppercase tracking-widest mb-3">
+                        {t('Workflow step execution')}
+                      </h4>
+                      {renderWorkflowSteps(true)}
+                    </section>
+                  ) : isIdle ? (
+                    <div className="p-6 border border-dashed border-outline-variant/50 rounded-xl text-center space-y-2">
+                      <span className="material-symbols-outlined text-[24px] text-on-surface-variant/50">monitoring</span>
+                      <p className="text-[11px] text-on-surface-variant leading-relaxed">
+                        {t('No active workflow overview')}
+                      </p>
+                    </div>
+                  ) : null}
+                </>
+              ) : (
+                <>
+                  {renderSingleAgentSummary()}
+                  {isIdle && tokenTotal === 0 ? (
+                    <div className="p-6 border border-dashed border-outline-variant/50 rounded-xl text-center space-y-2">
+                      <span className="material-symbols-outlined text-[24px] text-on-surface-variant/50">smart_toy</span>
+                      <p className="text-[11px] text-on-surface-variant leading-relaxed">
+                        {t('No session activity yet')}
+                      </p>
+                    </div>
+                  ) : null}
+                </>
+              )}
               {tokenTotal > 0 ? (
                 <section>
                   <h4 className="text-[10px] font-bold text-on-surface-variant/75 uppercase tracking-widest mb-4">

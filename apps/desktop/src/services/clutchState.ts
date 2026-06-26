@@ -30,11 +30,14 @@ function isChatMessage(value: unknown): value is ChatMessage {
   return typeof msg.id === 'string' && typeof msg.text === 'string';
 }
 
+export const USER_CHAT_AVATAR =
+  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=100';
+
 export function createUserChatMessage(text: string): ChatMessage {
   return {
     id: `user_${Date.now().toString(36)}`,
     agent: 'User',
-    avatar: '',
+    avatar: USER_CHAT_AVATAR,
     time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     text: text.trim(),
   };
@@ -59,6 +62,12 @@ export function mergeChatMessages(
   for (const message of incoming) {
     const trimmed = message.text.trim();
     if (message.agent === 'User' && userTexts.has(trimmed)) {
+      const existingIndex = merged.findIndex(
+        (item) => item.agent === 'User' && item.text.trim() === trimmed,
+      );
+      if (existingIndex >= 0 && message.avatar && !merged[existingIndex].avatar) {
+        merged[existingIndex] = { ...merged[existingIndex], avatar: message.avatar };
+      }
       continue;
     }
     const priorIndex = indexById.get(message.id);

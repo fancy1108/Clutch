@@ -98,6 +98,7 @@ const zhTranslations: Record<string, string> = {
   "Human gate hint": "检查未通过或需要人工确认，请选择下一步操作。",
   "Retry instructions placeholder": "附加指令，例如 \"跳过语法检查直接打包\"",
   "No active workflow overview": "暂无运行中的工作流。启动模板或发送指令后，这里会显示 Token 统计与 Flow 进度。",
+  "No session activity yet": "开始与 Agent 对话后，这里会显示会话状态与 Token 统计。",
   "Workflow step execution": "Workflow step execution / 工作流步骤执行",
   "Workflow steps unavailable": "无法加载工作流步骤定义。",
   "Workflow selected — send a message to start": "Workflow selected — send a message to start / 已选择工作流 — 发送消息即可启动",
