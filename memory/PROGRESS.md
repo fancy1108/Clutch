@@ -4,7 +4,7 @@
 
 - 阶段：**D25 ShellSession Step 2 已交付（agy Hybrid + sweep 测试 + baseline）**
 - Git HEAD：`3c8229c`
-- Git HEAD：`39eecba`（待 runtime_registry commit）
+- Git HEAD：`73f6eef`
 - **阶段：** D25 ShellSession Step 3~5 核心已交付（默认 `legacy`）
 - **你验收时跳过：** MCP hybrid_executions · 2h 长测
 
