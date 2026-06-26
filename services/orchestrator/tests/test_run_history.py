@@ -147,3 +147,22 @@ def test_delete_session_api(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
     assert response.json()["status"] == "deleted"
 
     assert len(run_history.list_runs()) == 0
+
+
+def test_delete_session_releases_shell_session(monkeypatch: pytest.MonkeyPatch) -> None:
+    from fastapi.testclient import TestClient
+    from src.main import app
+    from src.shell_session import get_shell_session_manager
+
+    manager = get_shell_session_manager()
+    released: list[str] = []
+
+    def fake_release(run_id: str) -> None:
+        released.append(run_id)
+
+    monkeypatch.setattr(manager, "release", fake_release)
+    client = TestClient(app)
+
+    response = client.delete("/api/runs/run_shell_release")
+    assert response.status_code == 200
+    assert released == ["run_shell_release"]

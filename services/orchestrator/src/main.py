@@ -2349,8 +2349,10 @@ async def get_run_state(run_id: str) -> dict[str, Any]:
 async def delete_run_endpoint(run_id: str) -> dict[str, str]:
     from src.run_history import delete_session
     from src.run_state_store import delete_run_state
+    from src.shell_session import get_shell_session_manager
 
     try:
+        get_shell_session_manager().release(run_id)
         delete_session(run_id)
         delete_run_state(run_id)
         if run_id in _run_states:
