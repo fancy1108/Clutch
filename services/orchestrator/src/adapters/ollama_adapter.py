@@ -6,16 +6,65 @@ import json
 import urllib.request
 import urllib.error
 from collections.abc import Callable
+from typing import Any
 
-def get_ollama_models() -> list[str]:
+from src.llm.router import ModelSpec
+
+
+def _fetch_ollama_tags() -> list[dict[str, Any]]:
     url = "http://localhost:11434/api/tags"
     req = urllib.request.Request(url, method="GET")
+    with urllib.request.urlopen(req, timeout=5.0) as resp:
+        data = json.loads(resp.read().decode("utf-8"))
+    models = data.get("models", [])
+    return models if isinstance(models, list) else []
+
+
+def get_ollama_models() -> list[str]:
     try:
-        with urllib.request.urlopen(req, timeout=5.0) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-            return [m["name"] for m in data.get("models", [])]
+        return [str(m["name"]) for m in _fetch_ollama_tags() if m.get("name")]
     except Exception as exc:
-        raise RuntimeError(f"Failed to query Ollama models from {url}: {exc}") from exc
+        raise RuntimeError(f"Failed to query Ollama models from http://localhost:11434/api/tags: {exc}") from exc
+
+
+def ollama_model_supports_tools(model_tag: str) -> bool:
+    """Return whether the local Ollama tag advertises tool-calling support."""
+    try:
+        for entry in _fetch_ollama_tags():
+            if str(entry.get("name", "")) == model_tag:
+                capabilities = entry.get("capabilities")
+                if isinstance(capabilities, list):
+                    return "tools" in capabilities
+                return False
+    except Exception:
+        return False
+    return False
+
+
+def ollama_model_supports_vision(model_tag: str) -> bool:
+    """Return whether the local Ollama tag advertises vision input."""
+    try:
+        for entry in _fetch_ollama_tags():
+            if str(entry.get("name", "")) == model_tag:
+                capabilities = entry.get("capabilities")
+                if isinstance(capabilities, list):
+                    return "vision" in capabilities
+                return False
+    except Exception:
+        return False
+    return False
+
+
+def model_supports_vision(spec: ModelSpec) -> bool:
+    if getattr(spec, "provider_id", None) == "ollama":
+        return ollama_model_supports_vision(spec.api_model)
+    return True
+
+
+def model_supports_tool_calling(spec: ModelSpec) -> bool:
+    if getattr(spec, "provider_id", None) == "ollama":
+        return ollama_model_supports_tools(spec.api_model)
+    return True
 
 def pick_best_ollama_model(models: list[str]) -> str:
     if not models:

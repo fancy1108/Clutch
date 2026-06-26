@@ -46,10 +46,16 @@ def test_find_agent(mock_agents) -> None:
 
 
 class FakeRouter:
-    def get_active_model(self) -> SimpleNamespace:
-        return SimpleNamespace(name="Fake Model")
+    active_model_id = "fake-model"
 
-    def chat(self, history: list[dict[str, str]]) -> str:
+    def get_active_model(self) -> SimpleNamespace:
+        return SimpleNamespace(name="Fake Model", id="fake-model", model_kind="chat")
+
+    def resolve_for_model(self, model_id: str | None = None):
+        return SimpleNamespace(name="Fake Model", id=model_id or "fake-model", model_kind="chat"), "fake-key"
+
+    def chat(self, history: list[dict[str, str]], *, model_id=None, tools=None) -> str:
+        _ = (model_id, tools)
         return f"Fake response for: {history[-1]['content']}"
 
 
@@ -61,7 +67,7 @@ def test_route_engine_fallback_no_agent(monkeypatch) -> None:
     res = route_engine(agent_name="Builder", prompt="test prompt")
     assert res.engine == "Fake Model"
     assert "test prompt" in res.output
-    assert any("Routing task to global LLM provider" in log for log in res.logs)
+    assert any("Routing task to Clutch model" in log for log in res.logs)
 
 
 def test_route_engine_claude_cli_not_connected(monkeypatch, mock_agents) -> None:

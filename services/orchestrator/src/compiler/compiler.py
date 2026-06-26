@@ -11,8 +11,10 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command
 
 from src.agent_executor import execute_agent_task
+from src.compiler.node_input import resolve_agent_task_input
 from src.orchestrator.routing import route_next
 from src.terminal_logs import TAG_CHECK, TAG_WORKFLOW, tagged
+from src.workflow_runtime import emit_workflow_agent_step
 
 
 def _stream_compiler_log(state: CompilerState, line: str, *, node_id: str | None = None) -> None:
@@ -34,11 +36,12 @@ class CompilerState(TypedDict):
     check_result: str
     human_decision: str
     current_instruction: str
+    node_outputs: dict[str, str]
     task_logs: list[str]
     task_messages: list[dict[str, Any]]
 
 
-NodeHandler = Callable[[CompilerState, dict[str, Any]], CompilerState]
+NodeHandler = Callable[[CompilerState, dict[str, Any], dict[str, Any]], CompilerState]
 
 
 @dataclass(frozen=True)
@@ -55,7 +58,7 @@ class EdgeMeta:
     when: str | None = None
 
 
-def _handle_start(state: CompilerState, _node: dict[str, Any]) -> CompilerState:
+def _handle_start(state: CompilerState, _node: dict[str, Any], _workflow: dict[str, Any]) -> CompilerState:
     task_logs = list(state.get("task_logs", []))
     line = tagged(TAG_WORKFLOW, "Workflow graph entered")
     task_logs.append(line)
@@ -69,28 +72,47 @@ def _handle_start(state: CompilerState, _node: dict[str, Any]) -> CompilerState:
     }
 
 
-def _handle_agent_task(state: CompilerState, node: dict[str, Any]) -> CompilerState:
+def _handle_agent_task(
+    state: CompilerState,
+    node: dict[str, Any],
+    workflow: dict[str, Any],
+) -> CompilerState:
+    run_id = str(state.get("run_id", ""))
+    node_id = str(node.get("id", ""))
+    task_input = resolve_agent_task_input(state, node, workflow)
     result = execute_agent_task(
         node.get("data", {}),
-        instruction=state.get("current_instruction", ""),
-        run_id=str(state.get("run_id", "")),
-        node_id=str(node.get("id", "")),
+        instruction=task_input,
+        run_id=run_id,
+        node_id=node_id,
     )
     task_logs = list(state.get("task_logs", []))
     task_messages = list(state.get("task_messages", []))
     task_logs.extend(result.logs)
     task_messages.append(result.message)
+    node_outputs = dict(state.get("node_outputs") or {})
+    node_outputs[node_id] = result.output
+    emit_workflow_agent_step(
+        run_id,
+        {
+            "new_messages": [result.message],
+            "active_node_id": node_id,
+            "active_agent": result.agent,
+            "status": "running",
+        },
+    )
     return {
         **state,
-        "active_node_id": node["id"],
+        "active_node_id": node_id,
         "active_agent": result.agent,
         "status": "running",
+        "node_outputs": node_outputs,
         "task_logs": task_logs,
         "task_messages": task_messages,
     }
 
 
-def _handle_check(state: CompilerState, node: dict[str, Any]) -> CompilerState:
+def _handle_check(state: CompilerState, node: dict[str, Any], _workflow: dict[str, Any]) -> CompilerState:
     preset = state.get("check_result") or ""
     if preset:
         result = preset
@@ -134,7 +156,7 @@ def _handle_check(state: CompilerState, node: dict[str, Any]) -> CompilerState:
     }
 
 
-def _handle_human_gate(state: CompilerState, node: dict[str, Any]) -> CompilerState:
+def _handle_human_gate(state: CompilerState, node: dict[str, Any], _workflow: dict[str, Any]) -> CompilerState:
     decision = state.get("human_decision") or ""
     if not decision:
         return {
@@ -152,7 +174,7 @@ def _handle_human_gate(state: CompilerState, node: dict[str, Any]) -> CompilerSt
     }
 
 
-def _handle_end(state: CompilerState, node: dict[str, Any]) -> CompilerState:
+def _handle_end(state: CompilerState, node: dict[str, Any], _workflow: dict[str, Any]) -> CompilerState:
     return {
         **state,
         "active_node_id": node["id"],
@@ -178,6 +200,7 @@ class WorkflowCompiler:
     def __init__(self) -> None:
         self._node_metas: list[NodeMeta] = []
         self._edge_metas: list[EdgeMeta] = []
+        self._workflow: dict[str, Any] = {}
 
     @property
     def node_metas(self) -> list[NodeMeta]:
@@ -188,6 +211,7 @@ class WorkflowCompiler:
         return list(self._edge_metas)
 
     def compile(self, workflow: dict[str, Any]):
+        self._workflow = workflow
         self._node_metas = []
         self._edge_metas = []
 
@@ -257,9 +281,10 @@ class WorkflowCompiler:
         handler = self.NODE_HANDLERS.get(node_type)
         if handler is None:
             raise ValueError(f"No handler registered for node type: {node_type}")
+        workflow = self._workflow
 
         def _run(state: CompilerState) -> CompilerState:
-            return handler(state, node)
+            return handler(state, node, workflow)
 
         return _run
 
@@ -294,6 +319,7 @@ def initial_compiler_state(run_id: str, *, instruction: str = "") -> CompilerSta
         check_result="",
         human_decision="",
         current_instruction=instruction,
+        node_outputs={},
         task_logs=[],
         task_messages=[],
     )

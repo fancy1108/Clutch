@@ -12,6 +12,7 @@ from src.tools_status import load_connected_ids, resolve_tool_binary, tool_avail
 from src.adapters.claude_cli_adapter import chat_claude_cli
 from src.adapters.agy_cli_adapter import chat_agy_cli
 from src.adapters.cursor_adapter import open_workspace_in_cursor
+from src.agent_type import agent_type_from_record, resolve_model_for_agent
 from src.workspace import get_workspace
 from src.preferences_storage import tr
 
@@ -93,6 +94,20 @@ def _emit_log(logs: list[str], on_log: Callable[[str], None] | None, line: str) 
         on_log(line)
 
 
+def _resolve_agent_type(agent: dict[str, Any] | None, fallback_tool: str | None) -> str:
+    if agent:
+        return agent_type_from_record(agent)
+    if fallback_tool == "claude-cli":
+        return "claude-cli"
+    if fallback_tool in {"agy-cli", "agy"}:
+        return "antigravity-cli"
+    if fallback_tool == "cursor":
+        return "cursor-workspace"
+    if fallback_tool in {"ollama", "ollama-cli"}:
+        return "ollama-cli"
+    return "clutch"
+
+
 def _route_engine_raw(
     agent_name: str,
     prompt: str,
@@ -104,18 +119,7 @@ def _route_engine_raw(
     on_log: Callable[[str], None] | None = None,
 ) -> EngineResult:
     agent = find_agent(agent_name)
-    raw_engine_type = str(agent.get("aiEngine", "")) if agent else ""
-    engine_type = _normalize_engine_type(raw_engine_type)
-
-    if not engine_type and fallback_tool:
-        if fallback_tool == "claude-cli":
-            engine_type = "Claude Code (Local CLI)"
-        elif fallback_tool in {"agy-cli", "agy"}:
-            engine_type = "Antigravity CLI"
-        elif fallback_tool == "cursor":
-            engine_type = "Cursor Workspace Node"
-        elif fallback_tool in {"ollama", "ollama-cli"}:
-            engine_type = "Ollama"
+    agent_type = _resolve_agent_type(agent, fallback_tool)
 
     workspace_path = cwd
     if not workspace_path:
@@ -129,13 +133,41 @@ def _route_engine_raw(
         on_log,
         (
             f"[ROUTER] agent={agent_name!r} matched={agent is not None} "
-            f"aiEngine={raw_engine_type!r}->{engine_type!r} "
+            f"agentType={agent_type!r} "
             f"claude_path={resolve_tool_binary('claude-cli')!r} "
             f"connected={'claude-cli' in load_connected_ids()}"
         ),
     )
 
-    if engine_type == "Claude Code (Local CLI)" and tool_available_for_routing("claude-cli"):
+    if agent_type == "clutch":
+        from src.image_router import format_image_reply, generate_image_for_model, is_image_model
+        from src.models_config import get_router
+
+        router = get_router()
+        spec, model_id = resolve_model_for_agent(router, agent)
+        if is_image_model(spec):
+            _emit_log(logs, on_log, f"Routing image generation to {spec.name} for agent {agent_name}.")
+            api_key = router.resolve_for_model(model_id)[1]
+            try:
+                result = generate_image_for_model(
+                    spec,
+                    prompt,
+                    api_key=router._require_api_key(spec.provider_id, api_key),
+                    on_log=on_log,
+                )
+                output = format_image_reply(result)
+                _emit_log(logs, on_log, f"Image generation completed via {spec.name}.")
+                return EngineResult(engine=spec.name, output=output, logs=logs)
+            except Exception as exc:
+                _emit_log(logs, on_log, f"Image generation failed: {exc}")
+                raise RuntimeError(
+                    tr(
+                        f"Image generation failed ({spec.name}): {exc}",
+                        f"生图失败 ({spec.name})：{exc}",
+                    )
+                ) from exc
+
+    if agent_type == "claude-cli" and tool_available_for_routing("claude-cli"):
         cli_binary = resolve_tool_binary("claude-cli")
         _emit_log(logs, on_log, f"Routing task to Claude Code (Local CLI) for agent {agent_name}.")
         if cli_binary:
@@ -234,7 +266,7 @@ def _route_engine_raw(
                 )
             ) from exc
 
-    if engine_type == "Antigravity CLI" and tool_available_for_routing("agy-cli"):
+    if agent_type == "antigravity-cli" and tool_available_for_routing("agy-cli"):
         cli_binary = resolve_tool_binary("agy-cli")
         _emit_log(logs, on_log, f"Routing task to Antigravity CLI for agent {agent_name}.")
         if cli_binary:
@@ -276,7 +308,7 @@ def _route_engine_raw(
                 )
             ) from exc
 
-    if engine_type == "Cursor Workspace Node" and tool_available_for_routing("cursor-app"):
+    if agent_type == "cursor-workspace" and tool_available_for_routing("cursor-app"):
         logs.append(f"Routing task to Cursor Workspace Node for agent {agent_name}.")
         if not workspace_path:
             raise RuntimeError(
@@ -302,7 +334,7 @@ def _route_engine_raw(
                 )
             ) from exc
 
-    if engine_type == "Ollama" and tool_available_for_routing("ollama-cli"):
+    if agent_type == "ollama-cli" and tool_available_for_routing("ollama-cli"):
         from src.adapters.ollama_adapter import chat_ollama
         _emit_log(logs, on_log, f"Routing task to Ollama for agent {agent_name}.")
         try:
@@ -329,41 +361,34 @@ def _route_engine_raw(
                 )
             ) from exc
 
-    if engine_type == "Claude Code (Local CLI)":
+    if agent_type == "claude-cli":
         logs.append(
             tr(
-                f"Agent {agent_name} requests Claude Code CLI but `claude` is not installed/connected — falling back to LLM.",
-                f"Agent {agent_name} 需要 Claude Code CLI，但未安装或未连接，已回退到 LLM。",
+                f"Agent {agent_name} requests Claude CLI but `claude` is not installed/connected — falling back to LLM.",
+                f"Agent {agent_name} 需要 Claude CLI，但未安装或未连接，已回退到 LLM。",
             )
         )
-    elif engine_type == "Antigravity CLI":
+    elif agent_type == "antigravity-cli":
         logs.append(
             tr(
                 f"Agent {agent_name} requests Antigravity CLI but `agy` is not installed/connected — falling back to LLM.",
                 f"Agent {agent_name} 需要 Antigravity CLI，但未安装或未连接，已回退到 LLM。",
             )
         )
-    elif engine_type == "Ollama":
+    elif agent_type == "ollama-cli":
         logs.append(
             tr(
                 f"Agent {agent_name} requests Ollama but Ollama is not installed/connected — falling back to LLM.",
                 f"Agent {agent_name} 需要 Ollama，但未安装或未连接，已回退到 LLM。",
             )
         )
-    elif raw_engine_type and engine_type not in {"Claude Code (Local CLI)", "Antigravity CLI", "Ollama"}:
-        logs.append(
-            tr(
-                f"Agent {agent_name} aiEngine={raw_engine_type!r} is not a recognized CLI profile — using LLM.",
-                f"Agent {agent_name} 的 aiEngine={raw_engine_type!r} 不是已识别的 CLI 配置，已使用 LLM。",
-            )
-        )
 
     from src.models_config import get_router
 
     router = get_router()
-    model = router.get_active_model()
-    engine_name = model.name
-    logs.append(f"Routing task to global LLM provider ({engine_name}) for agent {agent_name}.")
+    spec, model_id = resolve_model_for_agent(router, agent)
+    engine_name = spec.name
+    logs.append(f"Routing task to Clutch model ({engine_name}) for agent {agent_name}.")
 
     chat_history = history
     if not chat_history:
@@ -373,11 +398,11 @@ def _route_engine_raw(
         chat_history.append({"role": "user", "content": prompt})
 
     try:
-        output = router.chat(chat_history)
-        logs.append(f"Global LLM execution completed successfully via {engine_name}.")
+        output = router.chat(chat_history, model_id=model_id)
+        logs.append(f"Clutch model execution completed successfully via {engine_name}.")
         return EngineResult(engine=engine_name, output=output, logs=logs)
     except Exception as exc:
-        logs.append(f"Global LLM execution failed: {exc}")
+        logs.append(f"Clutch model execution failed: {exc}")
         raise RuntimeError(
             tr(
                 f"Cannot reach the configured model ({engine_name}). Add an API key in Settings → Models. ({exc})",

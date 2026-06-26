@@ -1,0 +1,41 @@
+{
+  "$schema": "./workflow.schema.json",
+  "id": "weather-to-vision",
+  "name": "Weather to Vision",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "researcher",
+      "type": "agent_task",
+      "position": { "x": 120, "y": 120 },
+      "data": {
+        "label": "天气情报官",
+        "agent": "Researcher",
+        "tool": "llm",
+        "instruction": "根据用户请求调研天气，输出一段给插画师用的视觉描述（光线、天空、氛围、场景元素），不要生成图片。"
+      }
+    },
+    {
+      "id": "artist",
+      "type": "agent_task",
+      "position": { "x": 120, "y": 280 },
+      "data": {
+        "label": "视觉艺术家",
+        "agent": "The Artist",
+        "tool": "llm",
+        "instruction": "将上一节点的视觉描述转化为一张高质量插画。"
+      }
+    },
+    {
+      "id": "end",
+      "type": "end",
+      "position": { "x": 120, "y": 440 },
+      "data": { "label": "完成" }
+    }
+  ],
+  "edges": [
+    { "id": "e1", "source": "start", "target": "researcher" },
+    { "id": "e2", "source": "researcher", "target": "artist" },
+    { "id": "e3", "source": "artist", "target": "end" }
+  ]
+}

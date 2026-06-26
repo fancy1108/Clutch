@@ -34,6 +34,7 @@
 | 产品需求历史 | `specs/core/proposal.md` |
 | 视觉设计快照 | `specs/core/design.md` → `UI_UX_GUIDELINES.md` |
 | 开发任务清单（含 Verification） | `specs/core/tasks.md` |
+| Flow 多 Agent 接力 Task（D23） | `specs/core/tasks.md` §M3-F · Flow 多 Agent 接力 |
 | Prototype → Task 全量映射 | `specs/core/tasks.md` §Prototype → Task 映射 |
 | 待建 pytest 与 task 映射 | `specs/core/tasks.md` §待建 pytest 文件 |
 | 里程碑级验收 T-01~04 | `specs/core/tasks.md` §测试与验收 |

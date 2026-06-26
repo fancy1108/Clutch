@@ -12,7 +12,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Response, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -88,6 +88,15 @@ class ModelTestRequest(BaseModel):
     model_id: str
 
 
+class CustomImageModelRequest(BaseModel):
+    name: str
+    api_model: str
+    base_url: str
+    provider_id: str = Field(default="custom")
+    image_backend: str = Field(default="")
+    api_key: str | None = None
+
+
 class ToolConnectRequest(BaseModel):
     tool_id: str
 
@@ -138,6 +147,10 @@ class ThemePreferenceRequest(BaseModel):
 
 class LanguagePreferenceRequest(BaseModel):
     language: str
+
+
+class PermissionModeRequest(BaseModel):
+    mode: str
 
 
 def _skills_registry_payload(*, rescan: bool = True) -> dict[str, Any]:
@@ -208,17 +221,54 @@ def _touch_session(
         )
 
 
+def _apply_workflow_step_patch(run_id: str, patch: dict[str, Any]) -> None:
+    state = _get_or_create_run(run_id)
+    messages = list(state["messages"])
+    for message in patch.get("new_messages", []):
+        if not isinstance(message, dict):
+            continue
+        msg_id = str(message.get("id", ""))
+        if msg_id and any(str(item.get("id", "")) == msg_id for item in messages):
+            continue
+        messages.append(message)
+    merged_patch = {key: value for key, value in patch.items() if key != "new_messages"}
+    merged_patch["messages"] = messages
+    state = _commit_run_state(run_id, _merge_patch(state, merged_patch))
+    from src.run_log_forwarder import get_forwarder
+
+    get_forwarder(run_id).emit_state_patch(merged_patch, state["status"])
+
+
 def _run_workflow(run_id: str, workflow_id: str, instruction: str) -> ClutchState:
     _setup_run_log_forwarder(run_id)
     from src.run_log_forwarder import get_forwarder
+    from src.workflow_runtime import clear_workflow_step_callback, register_workflow_step_callback
+
+    register_workflow_step_callback(run_id, lambda patch: _apply_workflow_step_patch(run_id, patch))
 
     workflow, _source = resolve_workflow(workflow_id)
-    _get_or_create_run(run_id)
+    state = _get_or_create_run(run_id)
+    trimmed = instruction.strip()
+    if trimmed:
+        user_message = _chat_message("User", trimmed, msg_id=f"user_{uuid.uuid4().hex[:8]}")
+        state = _merge_patch(
+            state,
+            {
+                "workflow_id": workflow["id"],
+                "status": "running",
+                "current_instruction": trimmed,
+                "messages": list(state["messages"]) + [user_message],
+            },
+        )
+        _commit_run_state(run_id, state)
     get_forwarder(run_id).emit(
         tagged(TAG_WORKFLOW, f"Starting workflow: {workflow['name']} ({workflow['id']})"),
         node_id="start",
     )
-    session, graph_result = begin_workflow(workflow, run_id, instruction=instruction)
+    try:
+        session, graph_result = begin_workflow(workflow, run_id, instruction=instruction)
+    finally:
+        clear_workflow_step_callback(run_id)
     _run_sessions[run_id] = session
     _emit_workflow_graph_tail(run_id, graph_result)
     from src.workflow_projection import project_graph_to_clutch
@@ -587,24 +637,34 @@ def _token_patch_turn(
     }
 
 
-def _history_for_llm(messages: list[dict[str, object]]) -> list[dict[str, str]]:
-    history: list[dict[str, str]] = []
+def _history_for_llm(
+    messages: list[dict[str, object]],
+    *,
+    vision_enabled: bool = False,
+) -> list[dict[str, Any]]:
+    from src.chat_content import user_message_content_for_llm
+
+    history: list[dict[str, Any]] = []
     for message in messages:
         agent = str(message.get("agent", ""))
         text = str(message.get("text", "")).strip()
         if not text:
             continue
         role = "user" if agent == "User" else "assistant"
-        history.append({"role": role, "content": text})
+        if role == "user":
+            content = user_message_content_for_llm(text, vision_enabled=vision_enabled)
+        else:
+            content = text
+        history.append({"role": role, "content": content})
     return history
 
 
 def _uses_configured_llm(agent: dict[str, Any] | None) -> bool:
-    from src.engine_router import _normalize_engine_type
+    from src.agent_type import is_clutch_agent
 
     if not agent:
         return True
-    return _normalize_engine_type(str(agent.get("aiEngine", ""))) != "Claude Code (Local CLI)"
+    return is_clutch_agent(agent)
 
 
 def _compose_agent_system_prompt(
@@ -614,50 +674,14 @@ def _compose_agent_system_prompt(
     model_api: str,
     mcp_servers_bound: bool = True,
 ) -> str:
-    from src.agent_skills import compose_skills_section
+    from src.agent_prompt import compose_agent_system_prompt
 
-    protocol = str(agent.get("markdownDoc", "")).strip()
-    agent_name = str(agent.get("name", "Clutch Agent"))
-    header = (
-        f"You are {agent_name}, the active agent in the user's Clutch workspace.\n"
-        f"When asked who you are, identify yourself as {agent_name}. "
-        f"Do not claim to be a different product, vendor, or base model.\n"
-        f"Runtime model: {model_name} ({model_api}).\n"
-        "Treat every instruction in the agent protocol below as mandatory.\n"
+    return compose_agent_system_prompt(
+        agent,
+        model_name=model_name,
+        model_api=model_api,
+        mcp_servers_bound=mcp_servers_bound,
     )
-    parts = [header.strip()]
-    if protocol:
-        parts.append(protocol)
-    if _uses_configured_llm(agent):
-        if not mcp_servers_bound:
-            parts.append(
-                "No MCP tools are bound for this agent in this run. "
-                "You cannot create, modify, or delete files on disk. "
-                "Never claim a file operation succeeded without MCP tool evidence. "
-                "Tell the user to bind **Local Filesystem MCP Server** in "
-                "Agent Manager → Module 4 (MCP Hub Server Bindings)."
-            )
-        else:
-            from src.workspace import get_workspace
-
-            workspace = get_workspace()
-            workspace_path = workspace.get("workspace_path") if workspace else None
-            if workspace_path:
-                parts.append(
-                    f"Workspace root: {workspace_path}\n"
-                    "Filesystem MCP tools only accept paths inside this workspace. "
-                    "Prefer workspace-relative paths (e.g. `test.txt`), not `/test.txt` or other roots.\n"
-                    "For create, edit, delete, or rename files, prefer the builtin "
-                    "`clutch-tools__apply_patch` tool with Codex patch syntax. "
-                    "Delete example (dotfiles need the leading dot):\n"
-                    "```\n*** Begin Patch\n*** Delete File: .deleted_test.txt\n*** End Patch\n```\n"
-                    "Never use local-fs move_file to delete or to rename `.foo` → `foo`. "
-                    "Do not rename files to `.deleted_*` as a delete workaround when apply_patch is available."
-                )
-        skills_block = compose_skills_section(list(agent.get("skills") or []))
-        if skills_block:
-            parts.append(skills_block)
-    return "\n\n".join(parts)
 
 
 def _append_terminal_logs(
@@ -697,9 +721,46 @@ async def _llm_chat_reply(
     reply_label = str(agent.get("name", "Clutch Agent")) if agent else (state.get("active_agent") or "Builder")
 
     router = get_router()
-    model = router.get_active_model()
+    from src.agent_type import resolve_model_for_agent
+
+    model, resolved_model_id = resolve_model_for_agent(router, agent)
     runtime_model_name = model.name
     model_api = getattr(model, "api_model", None) or runtime_model_name
+    from src.adapters.ollama_adapter import model_supports_vision
+
+    vision_enabled = model_supports_vision(model)
+
+    from src.image_router import format_image_reply, generate_image_for_model, is_image_model
+
+    if is_image_model(model):
+        spec, api_key = router.resolve_for_model(resolved_model_id)
+        loop = asyncio.get_running_loop()
+        image_logs: list[str] = []
+
+        def on_image_log(line: str) -> None:
+            if emit_log:
+                asyncio.run_coroutine_threadsafe(emit_log(line), loop)
+
+        try:
+            result = await asyncio.to_thread(
+                generate_image_for_model,
+                spec,
+                text,
+                api_key=router._require_api_key(spec.provider_id, api_key),
+                on_log=on_image_log if emit_log else None,
+            )
+            return reply_label, runtime_model_name, format_image_reply(result), image_logs, None, None, []
+        except Exception as exc:
+            err = str(exc)
+            return (
+                reply_label,
+                runtime_model_name,
+                err,
+                [f"Error generating image: {err}"],
+                None,
+                None,
+                [],
+            )
 
     from src.agent_mcp import resolve_agent_mcp_servers
 
@@ -715,7 +776,7 @@ async def _llm_chat_reply(
         else None
     )
 
-    history = _history_for_llm(state["messages"])
+    history = _history_for_llm(state["messages"], vision_enabled=vision_enabled)
     if system_prompt:
         history = [{"role": "system", "content": system_prompt}] + [
             item for item in history if item.get("role") != "system"
@@ -754,8 +815,12 @@ async def _llm_chat_reply(
                     log_prefix="CHAT",
                     on_log=on_log if emit_log else None,
                     pause_on_risky=True,
+                    permission_mode=__import__(
+                        "src.preferences_storage", fromlist=["load_permission_mode"]
+                    ).load_permission_mode(),
                     approved_tool=mcp_approved_tool,
                     approved_keys=get_approved_mcp_keys(state["run_id"]),
+                    model_id=resolved_model_id,
                 )
                 if outcome.approval_required:
                     pause_payload = {
@@ -798,7 +863,7 @@ async def _llm_chat_reply(
                 model_api=model_api,
                 mcp_servers_bound=False,
             )
-            history = _history_for_llm(state["messages"])
+            history = _history_for_llm(state["messages"], vision_enabled=vision_enabled)
             if system_prompt:
                 history = [{"role": "system", "content": system_prompt}] + [
                     item for item in history if item.get("role") != "system"
@@ -822,11 +887,11 @@ async def _llm_chat_reply(
         )
         return reply_label, result.engine, result.output, llm_only_logs + result.logs, result.claude_session_id, None, []
     except Exception as exc:
-        from src.engine_router import _normalize_engine_type
+        from src.agent_type import agent_type_from_record
 
         err = str(exc)
-        raw_engine = str(agent.get("aiEngine", "")) if agent else ""
-        if _normalize_engine_type(raw_engine) == "Claude Code (Local CLI)" or "Claude CLI" in err:
+        agent_type = agent_type_from_record(agent) if agent else "clutch"
+        if agent_type == "claude-cli" or "Claude CLI" in err:
             runtime_engine = "Claude CLI"
         else:
             runtime_engine = runtime_model_name
@@ -1661,9 +1726,10 @@ async def get_models_credentials() -> dict[str, Any]:
 
 
 @app.get("/api/models/config")
-async def get_models_config() -> dict[str, Any]:
+async def get_models_config(response: Response) -> dict[str, Any]:
     from src.models_config import get_router, serialize_models_config
 
+    response.headers["Cache-Control"] = "no-store"
     return serialize_models_config(get_router())
 
 
@@ -1710,6 +1776,45 @@ async def test_models_connection(body: ModelTestRequest) -> dict[str, Any]:
     from src.models_config import get_router, test_model_connection
 
     return test_model_connection(get_router(), body.model_id)
+
+
+@app.post("/api/models/custom/image")
+async def add_custom_image_model(body: CustomImageModelRequest) -> dict[str, Any]:
+    from src.custom_models import add_custom_model
+    from src.models_config import get_router, serialize_models_config
+
+    router = get_router()
+    try:
+        spec = add_custom_model(
+            router,
+            name=body.name,
+            api_model=body.api_model,
+            base_url=body.base_url,
+            provider_id=body.provider_id,
+            model_kind="image",
+            image_backend=body.image_backend,
+            api_key=body.api_key,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+    return {
+        "status": "created",
+        "model_id": spec.id,
+        "config": serialize_models_config(router),
+    }
+
+
+@app.delete("/api/models/custom/{model_id}")
+async def delete_custom_image_model(model_id: str) -> dict[str, Any]:
+    from src.custom_models import remove_model_from_list
+    from src.models_config import get_router, serialize_models_config
+
+    router = get_router()
+    try:
+        remove_model_from_list(router, model_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+    return {"status": "deleted", "model_id": model_id, "config": serialize_models_config(router)}
 
 
 @app.get("/api/models/ollama")
@@ -1866,6 +1971,23 @@ async def save_language_preference(body: LanguagePreferenceRequest) -> dict[str,
         raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
 
 
+@app.get("/api/preferences/permission-mode")
+async def get_permission_mode() -> dict[str, str]:
+    from src.preferences_storage import load_permission_mode
+
+    return {"permission_mode": load_permission_mode()}
+
+
+@app.post("/api/preferences/permission-mode")
+async def save_permission_mode_route(body: PermissionModeRequest) -> dict[str, str]:
+    from src.preferences_storage import save_permission_mode
+
+    try:
+        return save_permission_mode(body.mode)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+
+
 @app.post("/api/runs/{run_id}/human-decision")
 async def human_decision_http(run_id: str, body: HumanDecisionRequest) -> dict[str, Any]:
     state, _patch, _message, _log = await asyncio.to_thread(
@@ -2011,7 +2133,11 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
             {"terminal_logs": list(current["terminal_logs"])},
         )
 
-    forwarder.attach_ws(loop, ws_log_emit)
+    async def ws_state_patch_emit(patch: dict[str, Any], status: str) -> None:
+        current = _get_or_create_run(run_id)
+        await _notify_run_state(websocket, run_id, current, patch)
+
+    forwarder.attach_ws(loop, ws_log_emit, ws_state_patch_emit)
 
     logger.info(
         "WebSocket connected",

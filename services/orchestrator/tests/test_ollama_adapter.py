@@ -7,10 +7,13 @@ from io import BytesIO
 import pytest
 
 from src.adapters.ollama_adapter import (
-    get_ollama_models,
-    pick_best_ollama_model,
     chat_ollama,
+    get_ollama_models,
+    model_supports_tool_calling,
+    ollama_model_supports_tools,
+    pick_best_ollama_model,
 )
+from src.llm.router import ModelSpec
 
 class MockHTTPResponse:
     def __init__(self, data: bytes, code: int = 200):
@@ -74,6 +77,59 @@ def test_get_ollama_models(monkeypatch) -> None:
     models = get_ollama_models()
     assert models == ["qwen3.6:35b", "qwen2.5vl:7b"]
     assert called_url == "http://localhost:11434/api/tags"
+
+
+def test_ollama_model_supports_tools(monkeypatch) -> None:
+    mock_data = {
+        "models": [
+            {"name": "qwen3.6:35b", "capabilities": ["vision", "completion", "tools"]},
+            {"name": "qwen2.5vl:7b", "capabilities": ["vision", "completion"]},
+        ]
+    }
+
+    def mock_urlopen(req, timeout=None):
+        return MockHTTPResponse(json.dumps(mock_data).encode("utf-8"))
+
+    monkeypatch.setattr("urllib.request.urlopen", mock_urlopen)
+
+    assert ollama_model_supports_tools("qwen3.6:35b") is True
+    assert ollama_model_supports_tools("qwen2.5vl:7b") is False
+    assert model_supports_tool_calling(
+        ModelSpec(
+            id="qwen2.5vl-7b",
+            name="Qwen 2.5 VL 7B (Ollama)",
+            provider_id="ollama",
+            api_model="qwen2.5vl:7b",
+            base_url="http://localhost:11434/v1",
+        )
+    ) is False
+
+
+def test_ollama_model_supports_vision(monkeypatch) -> None:
+    mock_data = {
+        "models": [
+            {"name": "qwen3.6:35b", "capabilities": ["vision", "completion", "tools"]},
+            {"name": "qwen2.5vl:7b", "capabilities": ["vision", "completion"]},
+        ]
+    }
+
+    def mock_urlopen(req, timeout=None):
+        return MockHTTPResponse(json.dumps(mock_data).encode("utf-8"))
+
+    monkeypatch.setattr("urllib.request.urlopen", mock_urlopen)
+
+    from src.adapters.ollama_adapter import model_supports_vision, ollama_model_supports_vision
+
+    assert ollama_model_supports_vision("qwen2.5vl:7b") is True
+    assert model_supports_vision(
+        ModelSpec(
+            id="qwen2.5vl-7b",
+            name="Qwen 2.5 VL 7B (Ollama)",
+            provider_id="ollama",
+            api_model="qwen2.5vl:7b",
+            base_url="http://localhost:11434/v1",
+        )
+    ) is True
 
 
 def test_chat_ollama(monkeypatch) -> None:

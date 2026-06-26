@@ -35,7 +35,16 @@ def _collect_after_send(ws, count: int | None = None) -> list[dict]:
 
 class _FakeRouter:
     def get_active_model(self) -> SimpleNamespace:
-        return SimpleNamespace(name="Test Model", api_model="test-api-model")
+        return SimpleNamespace(
+            id="test-model",
+            name="Test Model",
+            api_model="test-api-model",
+            model_kind="chat",
+        )
+
+    @property
+    def active_model_id(self) -> str:
+        return "test-model"
 
     def chat(self, history: list[dict[str, str]]) -> str:
         last = history[-1]["content"]
@@ -67,7 +76,12 @@ def test_ws_plain_chat_with_agent_id_injects_system_prompt(monkeypatch) -> None:
 
     class _CapturingRouter:
         def get_active_model(self) -> SimpleNamespace:
-            return SimpleNamespace(name="Test Model", api_model="test-api-model")
+            return SimpleNamespace(
+                id="test-model",
+                name="Test Model",
+                api_model="test-api-model",
+                model_kind="chat",
+            )
 
         def chat(self, history: list[dict[str, str]]) -> str:
             captured.append(history)

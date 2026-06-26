@@ -40,9 +40,15 @@ def project_graph_to_clutch(
     if include_logs:
         if prepend_logs:
             logs.extend(prepend_logs)
-        if instruction.strip():
+        if instruction.strip() and not any(
+            message.get("agent") == "User" and message.get("text", "").strip() == instruction.strip()
+            for message in messages
+        ):
             messages.append(chat_message("User", instruction.strip()))
         for message in graph_result.get("task_messages", []):
+            msg_id = str(message.get("id", "")) if isinstance(message, dict) else ""
+            if msg_id and any(str(item.get("id", "")) == msg_id for item in messages):
+                continue
             messages.append(message)
         logs.extend(graph_result.get("task_logs", []))
         logs.append(tagged(TAG_WORKFLOW, f"Active node → {graph_result['active_node_id']}"))
@@ -57,9 +63,15 @@ def project_graph_to_clutch(
                 )
             )
     else:
-        if instruction.strip():
+        if instruction.strip() and not any(
+            message.get("agent") == "User" and message.get("text", "").strip() == instruction.strip()
+            for message in messages
+        ):
             messages.append(chat_message("User", instruction.strip()))
         for message in graph_result.get("task_messages", []):
+            msg_id = str(message.get("id", "")) if isinstance(message, dict) else ""
+            if msg_id and any(str(item.get("id", "")) == msg_id for item in messages):
+                continue
             messages.append(message)
         if graph_result["status"] == "awaiting_human":
             messages.append(

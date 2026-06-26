@@ -16,6 +16,21 @@ from src.mcp_risk import (
     move_file_delete_workaround_message,
 )
 
+# Tools that auto-approve in auto_edit mode (safe file writes within workspace)
+_AUTO_EDIT_APPROVED_TOOLS = frozenset({
+    "write_file",
+    "edit_file",
+    "apply_patch",
+    "create_file",
+    "patch_file",
+})
+
+# Tools that are ALWAYS hard-blocked in plan mode
+_PLAN_MODE_BLOCKED_TOKENS = (
+    "write", "edit", "create", "patch", "delete", "remove",
+    "move", "rename", "run", "execute", "shell", "command",
+)
+
 _INVALID_TOOL_NAME_CHARS = re.compile(r"[^a-zA-Z0-9_-]")
 
 
@@ -147,6 +162,36 @@ def _execute_tool_call(
         return f"Error executing tool: {exc}"
 
 
+def _tools_unsupported_error(exc: BaseException) -> bool:
+    return "does not support tools" in str(exc).lower()
+
+
+def _router_chat(
+    router: Any,
+    chat_messages: list[dict[str, Any]],
+    *,
+    openai_tools: list[dict[str, Any]],
+    use_tools: bool,
+    model_id: str | None,
+    logs: list[str],
+    log_prefix: str,
+    on_log: Callable[[str], None] | None,
+) -> tuple[Any, bool]:
+    """Call router.chat; fall back to text-only when the model rejects tools."""
+    tools_arg = openai_tools if use_tools else None
+    try:
+        return router.chat(chat_messages, tools=tools_arg, model_id=model_id), use_tools
+    except RuntimeError as exc:
+        if use_tools and _tools_unsupported_error(exc):
+            _emit(
+                logs,
+                on_log,
+                f"[{log_prefix}] Model does not support tool calling — retrying text-only",
+            )
+            return router.chat(chat_messages, tools=None, model_id=model_id), False
+        raise
+
+
 def run_mcp_react_loop(
     *,
     messages: list[dict[str, Any]],
@@ -155,21 +200,49 @@ def run_mcp_react_loop(
     max_steps: int = 10,
     on_log: Callable[[str], None] | None = None,
     pause_on_risky: bool = False,
+    permission_mode: str = "ask",
     approved_tool: dict[str, Any] | None = None,
     approved_keys: set[str] | None = None,
+    model_id: str | None = None,
 ) -> McpRunOutcome:
     """Run tool-augmented chat against one or more MCP servers."""
     if not servers:
         raise ValueError("At least one MCP server is required")
 
+    from src.adapters.ollama_adapter import model_supports_tool_calling
     from src.builtin_tools import is_virtual_server, list_builtin_tools
     from src.models_config import get_router
+
+    router = get_router()
+    spec, _resolved_id = router.resolve_for_model(model_id)
+    logs: list[str] = []
+
+    if approved_tool and not model_supports_tool_calling(spec):
+        raise RuntimeError(
+            f"Model {spec.name!r} does not support tool calling; cannot resume an MCP tool step."
+        )
+
+    if not model_supports_tool_calling(spec) and not approved_tool:
+        engine_label = f"{spec.name} · no tools"
+        _emit(
+            logs,
+            on_log,
+            f"[{log_prefix}] Model does not support tool calling — chat without MCP tools",
+        )
+        output = str(router.chat(list(messages), tools=None, model_id=model_id))
+        _emit(logs, on_log, f"[{log_prefix}] Completed via {spec.name}")
+        return McpRunOutcome(
+            output=output,
+            logs=logs,
+            engine_label=engine_label,
+            approval_required=None,
+            files_changed=None,
+        )
 
     clients: dict[str, McpClient] = {}
     builtin_servers: set[str] = set()
     tool_routes: dict[str, tuple[str, str]] = {}
     openai_tools: list[dict[str, Any]] = []
-    logs: list[str] = []
     _emit(logs, on_log, f"[{log_prefix}] Starting MCP ReAct with {len(servers)} server(s)")
 
     for server in servers:
@@ -213,12 +286,11 @@ def run_mcp_react_loop(
             )
 
     _emit(logs, on_log, f"[{log_prefix}] Discovered {len(openai_tools)} tool(s)")
-    router = get_router()
-    model = router.get_active_model()
-    engine_label = f"{model.name} · MCP ({len(openai_tools)} tools)"
+    engine_label = f"{spec.name} · MCP ({len(openai_tools)} tools)"
     output = ""
     files_changed: list[str] = []
     session_approved = set(approved_keys or ())
+    use_tools = bool(openai_tools)
 
     try:
         chat_messages = list(messages)
@@ -253,7 +325,18 @@ def run_mcp_react_loop(
             start_step += 1
 
         for step_idx in range(start_step, max_steps):
-            response = router.chat(chat_messages, tools=openai_tools or None)
+            response, use_tools = _router_chat(
+                router,
+                chat_messages,
+                openai_tools=openai_tools,
+                use_tools=use_tools,
+                model_id=model_id,
+                logs=logs,
+                log_prefix=log_prefix,
+                on_log=on_log,
+            )
+            if not use_tools and "no tools" not in engine_label:
+                engine_label = f"{spec.name} · no tools"
             if isinstance(response, dict) and response.get("tool_calls"):
                 chat_messages.append(response)
                 for tool_call in response["tool_calls"]:
@@ -271,32 +354,93 @@ def run_mcp_react_loop(
                     route = tool_routes.get(func_name)
                     raw_tool_name = route[1] if route else func_name
                     if pause_on_risky and is_risky_mcp_tool(raw_tool_name):
-                        approval_key = mcp_approval_key(func_name, func_args)
-                        if approval_key in session_approved:
-                            _emit(
-                                logs,
-                                on_log,
-                                f"[{log_prefix}] Auto-approved duplicate risky tool: {func_name}",
+                        # Plan mode: hard-block ALL write/exec tools immediately
+                        if permission_mode == "plan":
+                            tool_key = raw_tool_name.lower().replace("-", "_")
+                            is_write_exec = any(
+                                token in tool_key for token in _PLAN_MODE_BLOCKED_TOKENS
                             )
-                        else:
-                            _emit(
-                                logs,
-                                on_log,
-                                f"[{log_prefix}] Approval required for risky tool: {func_name}",
-                            )
-                            return McpRunOutcome(
-                                output="",
-                                logs=logs,
-                                engine_label=engine_label,
-                                approval_required={
-                                    "chat_messages": chat_messages,
-                                    "tool_call_id": tc_id,
-                                    "func_name": func_name,
-                                    "func_args": func_args,
-                                    "step_idx": step_idx,
-                                },
-                                files_changed=files_changed or None,
-                            )
+                            if is_write_exec:
+                                _emit(
+                                    logs,
+                                    on_log,
+                                    f"[{log_prefix}] Plan mode: blocked write/exec tool: {func_name}",
+                                )
+                                chat_messages.append(
+                                    {
+                                        "role": "tool",
+                                        "tool_call_id": tc_id,
+                                        "content": (
+                                            "[Plan Mode] This operation is blocked. "
+                                            "You are in read-only planning mode. "
+                                            "Describe what you WOULD do without executing it."
+                                        ),
+                                    }
+                                )
+                                continue
+
+                        # auto_edit mode: auto-approve pure file-edit tools
+                        if permission_mode == "auto_edit":
+                            tool_key = raw_tool_name.lower().replace("-", "_")
+                            if any(approved in tool_key for approved in _AUTO_EDIT_APPROVED_TOOLS):
+                                _emit(
+                                    logs,
+                                    on_log,
+                                    f"[{log_prefix}] Auto-edit mode: auto-approved file tool: {func_name}",
+                                )
+                                # fall through to execute normally
+                            else:
+                                # shell / delete / network → still pause for approval
+                                approval_key = mcp_approval_key(func_name, func_args)
+                                if approval_key not in (approved_keys or set()):
+                                    _emit(
+                                        logs,
+                                        on_log,
+                                        f"[{log_prefix}] Auto-edit: approval required for shell/delete: {func_name}",
+                                    )
+                                    return McpRunOutcome(
+                                        output="",
+                                        logs=logs,
+                                        engine_label=engine_label,
+                                        approval_required={
+                                            "chat_messages": chat_messages,
+                                            "tool_call_id": tc_id,
+                                            "func_name": func_name,
+                                            "func_args": func_args,
+                                            "step_idx": step_idx,
+                                        },
+                                        files_changed=files_changed or None,
+                                    )
+
+                        # full mode: skip approval gates entirely
+                        elif permission_mode != "full":
+                            # ask mode (default): pause on any risky tool
+                            approval_key = mcp_approval_key(func_name, func_args)
+                            if approval_key in (approved_keys or set()):
+                                _emit(
+                                    logs,
+                                    on_log,
+                                    f"[{log_prefix}] Auto-approved duplicate risky tool: {func_name}",
+                                )
+                            else:
+                                _emit(
+                                    logs,
+                                    on_log,
+                                    f"[{log_prefix}] Approval required for risky tool: {func_name}",
+                                )
+                                return McpRunOutcome(
+                                    output="",
+                                    logs=logs,
+                                    engine_label=engine_label,
+                                    approval_required={
+                                        "chat_messages": chat_messages,
+                                        "tool_call_id": tc_id,
+                                        "func_name": func_name,
+                                        "func_args": func_args,
+                                        "step_idx": step_idx,
+                                    },
+                                    files_changed=files_changed or None,
+                                )
 
                     result_str = _execute_tool_call(
                         func_name=func_name,
@@ -319,12 +463,12 @@ def run_mcp_react_loop(
                     )
             else:
                 output = str(response)
-                _emit(logs, on_log, f"[{log_prefix}] Completed via {model.name}")
+                _emit(logs, on_log, f"[{log_prefix}] Completed via {spec.name}")
                 break
         else:
             output = (
                 f"Agent task hit maximum tool call iteration limit ({max_steps}) "
-                f"in {model.name}."
+                f"in {spec.name}."
             )
             _emit(logs, on_log, f"[{log_prefix}] ERROR: max iterations limit reached")
     finally:

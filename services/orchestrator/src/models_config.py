@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from src.image_router import is_image_model, resolve_image_backend, verify_image_model_connection
 from src.llm.http_complete import http_chat_complete
 from src.llm.router import LLMProviderRouter, ModelSpec, ProviderId
 
@@ -37,10 +38,19 @@ def load_router() -> LLMProviderRouter:
     bootstrap_cc_switch_credentials(router)
     path = config_path()
     if not path.is_file():
+        from src.custom_models import register_custom_models
+
+        register_custom_models(router)
         return router
     data = json.loads(path.read_text(encoding="utf-8"))
+    from src.custom_models import register_custom_models
+
+    register_custom_models(router)
     if model_id := data.get("active_model_id"):
-        router.set_active_model(str(model_id))
+        try:
+            router.set_active_model(str(model_id))
+        except KeyError:
+            pass
     for provider_id, api_key in (data.get("api_keys") or {}).items():
         if api_key:
             router.set_api_key(provider_id, str(api_key))  # type: ignore[arg-type]
@@ -50,6 +60,7 @@ def load_router() -> LLMProviderRouter:
 def save_router(router: LLMProviderRouter) -> dict[str, Any]:
     path = config_path()
     path.parent.mkdir(parents=True, exist_ok=True)
+    existing = _read_config_data()
     payload = {
         "active_model_id": router.active_model_id,
         "api_keys": {
@@ -57,13 +68,28 @@ def save_router(router: LLMProviderRouter) -> dict[str, Any]:
             for provider in ("deepseek", "openai", "anthropic", "google", "ollama", "custom")
             if router.get_api_key(provider)  # type: ignore[arg-type]
         },
+        "custom_models": existing.get("custom_models", []),
+        "hidden_model_ids": existing.get("hidden_model_ids", []),
     }
-    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     try:
         path.chmod(0o600)
     except OSError:
         pass
     return payload
+
+
+def _read_config_data() -> dict[str, Any]:
+    from src.custom_models import _read_config
+
+    return _read_config()
+
+
+def hidden_model_ids() -> set[str]:
+    raw = _read_config_data().get("hidden_model_ids", [])
+    if not isinstance(raw, list):
+        return set()
+    return {str(item).strip() for item in raw if str(item).strip()}
 
 
 def is_model_available(router: LLMProviderRouter, model_id: str) -> bool:
@@ -98,20 +124,38 @@ def _pick_canonical_model(specs: list[ModelSpec], *, active_model_id: str) -> Mo
 
 def _dedupe_model_specs(specs: list[ModelSpec], *, active_model_id: str) -> list[ModelSpec]:
     """Collapse CC Switch / Claude Code duplicates that share endpoint + api_model."""
+    from src.custom_models import custom_model_ids
+
+    custom_ids = custom_model_ids()
+    custom_specs = [spec for spec in specs if spec.id in custom_ids]
+    other_specs = [spec for spec in specs if spec.id not in custom_ids]
+
     groups: dict[str, list[ModelSpec]] = {}
     order: list[str] = []
-    for spec in specs:
+    for spec in other_specs:
         key = _model_identity_key(spec)
         if key not in groups:
             order.append(key)
         groups.setdefault(key, []).append(spec)
-    return [_pick_canonical_model(groups[key], active_model_id=active_model_id) for key in order]
+    deduped = [_pick_canonical_model(groups[key], active_model_id=active_model_id) for key in order]
+
+    seen = {spec.id for spec in deduped}
+    for spec in custom_specs:
+        if spec.id not in seen:
+            deduped.append(spec)
+            seen.add(spec.id)
+    return deduped
 
 
 def serialize_models_config(router: LLMProviderRouter) -> dict[str, Any]:
+    from src.custom_models import is_custom_model_id
+
     providers: dict[str, Any] = {}
     models: list[dict[str, Any]] = []
+    hidden = hidden_model_ids()
     for spec in _dedupe_model_specs(router.list_models(), active_model_id=router.active_model_id):
+        if spec.id in hidden:
+            continue
         cred = resolve_provider_credential_source(router, spec.provider_id)
         providers.setdefault(
             spec.provider_id,
@@ -132,13 +176,16 @@ def serialize_models_config(router: LLMProviderRouter) -> dict[str, Any]:
                 "id": spec.id,
                 "name": spec.name,
                 "provider_id": spec.provider_id,
+                "model_kind": spec.model_kind,
                 "available": is_model_available(router, spec.id),
                 "credential_source": cred["source"],
                 "credential_source_label": cred["source_label"],
                 "source_summary": model_source_summary(cred, is_cc_switch=is_cc_switch),
                 "endpoint": spec.base_url or None,
+                "image_backend": spec.image_backend or resolve_image_backend(spec),
                 "clutch_managed": is_clutch_managed_credential(spec.provider_id),
                 "is_cc_switch": is_cc_switch,
+                "is_custom": is_custom_model_id(spec.id),
             }
         )
     return {
@@ -246,6 +293,16 @@ def test_model_connection(router: LLMProviderRouter, model_id: str) -> dict[str,
         }
     spec, api_key = router.resolve_for_model(model_id)
     try:
+        if is_image_model(spec):
+            verify_image_model_connection(
+                spec,
+                api_key=router._require_api_key(spec.provider_id, api_key),
+            )
+            return {
+                "ok": True,
+                "model_id": model_id,
+                "message": "Connection OK — image generation is ready.",
+            }
         if router._chat is None:
             raise RuntimeError("Chat backend not configured")
         router._chat(

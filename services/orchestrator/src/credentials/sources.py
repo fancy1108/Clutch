@@ -144,6 +144,8 @@ def model_source_summary(cred: dict[str, Any], *, is_cc_switch: bool) -> str:
 
 def resolve_model_credential_hint(router: LLMProviderRouter, spec: ModelSpec) -> str | None:
     """Explain likely credential mismatch when a key works elsewhere but not in Clutch."""
+    from src.image_router import is_image_model
+
     cred = resolve_provider_credential_source(router, spec.provider_id)
     hints: list[str] = []
     if cred["source"] == "clutch_models_config" and cc_switch_has_key_for_provider(spec.provider_id):
@@ -166,6 +168,8 @@ def resolve_model_credential_hint(router: LLMProviderRouter, spec: ModelSpec) ->
             )
     if spec.provider_id == "openai" and spec.base_url and "agnes-ai.com" in spec.base_url:
         hints.append("Save your Agnes token under the OpenAI provider.")
+    if is_image_model(spec) and spec.provider_id == "custom" and spec.base_url and "agnes-ai.com" in spec.base_url:
+        hints.append("Save your Agnes API key under the Custom provider.")
     return " ".join(hints) if hints else None
 
 

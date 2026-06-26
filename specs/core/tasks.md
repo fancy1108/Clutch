@@ -108,6 +108,29 @@
 
 ---
 
+## M3-F · Flow 多 Agent 接力（D23 · Weather-to-Vision）
+
+> **决策**：`memory/DECISIONS.md` D23。**依赖**：单 Agent `agentType` + `modelId` 已落地。  
+> **最小可演示路径**：M3-F01 → M3-F02 → M3-F04 → M3-F06 → M3-F07 → M3-F09。
+
+| ID | 任务 | 完成标准 | Verification |
+|----|------|----------|--------------|
+| M3-F01 | `node_outputs` + `resolve_agent_task_input` | `CompilerState` 扩展；auto 规则解析上游/用户输入；`node.data.instruction` 作前缀 | `uv run pytest tests/test_node_input.py -v` |
+| M3-F02 | `_handle_agent_task` 写入输出并消费解析输入 | 每节点执行后 `node_outputs[id]=output`；下游收到上游文本 | `uv run pytest tests/test_compiler.py -k handoff -v` |
+| M3-F03 | `workflow_projection` 与 `current_instruction` 对齐 | patch 反映链式执行结果，不单锁用户首句 | `uv run pytest tests/test_workflow_projection.py -v` |
+| M3-F04 | Flow 注入 Agent `markdownDoc` | 非生图任务使用 `_compose_agent_system_prompt` 或共享模块 | pytest 断言 prompt 含 protocol 片段 |
+| M3-F05 | Flow 内 Clutch 对话走 MCP ReAct | 有 `mcpServerIds` 时同 Plain Chat；`modelId` 传入 `mcp_react` | `uv run pytest tests/test_agent_executor.py -k clutch -v` |
+| M3-F06 | 生图节点使用上游输出作 prompt | Artist 节点 `task_instruction` = Researcher `output` | `test_flow_image_uses_upstream_output` |
+| M3-F07 | 每 `agent_task` 增量 `state_patch` | 节点完成即 Chat 多一条消息；`active_agent` / `active_node_id` 更新 | mock forwarder 断言 patch 次数；手动两节点 Flow |
+| M3-F08 | 前端 Flow 等待态 | `running` 时按 `active_agent` 显示 thinking（复用单 Agent） | vitest 或手动 |
+| M3-F09 | Weather-to-Vision Flow 配置落地 | 用户 Flow：Researcher（clutch）→ Artist（clutch + Agnes）；线性边 | validator 通过；手动端到端 |
+| M3-F10 | Researcher 真实天气（可选） | 天气 MCP/HTTP 或保持 markdown 推断（首版 B 可跳过） | 人工 / 集成测试 |
+| M3-F11 | Flow 链式 E2E 冒烟 | fake LLM + fake image 两节点 handoff | `runs/verification/` 证据 |
+
+**M3-F 门禁**：Weather-to-Vision 手动跑通：用户一句 → Researcher 消息 → Artist 出图；Chat 逐步出现两条 Agent 消息。
+
+---
+
 ## M4 · 打磨与发布
 
 | ID | 任务 | FR | 完成标准 | Verification |

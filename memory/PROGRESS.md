@@ -2,8 +2,26 @@
 
 ## 当前状态
 
-- 阶段：**Ollama 本地模型打通与动态模型解析路由**
-- Git HEAD：`998beee`
+- 阶段：**M3-F Flow 多 Agent 接力已落地（D23 ✅）**
+- Git HEAD：`998beee`（待 commit 收尾）
+
+## 2026-06-26 会话（M3-F Flow 接力落地 · Weather-to-Vision）
+
+- **完成：**
+  - **D23 代码落地**：`node_outputs` + `resolve_agent_task_input`；编译器 handoff；`agent_executor` Clutch 人格/MCP/生图；增量 `state_patch`；`workflow_projection` 消息去重。
+  - **前端**：Flow 启动前 `await clutchStore.connect`；`optimisticWorkflowStart` + ChatFeed thinking。
+  - **模板**：`workflows/weather-to-vision.json`。
+  - **测试**：`test_node_input`、`test_workflow_handoff`、`test_workflow_projection`、`test_workflow_step_patch`、`test_agent_executor`（clutch prompt + 上游生图）。
+  - **手动 E2E**：用户验证 Researcher（claude-cli）→ Artist（Agnes Image）上海天气插画成功。
+- **下次优先**：commit 收尾；或 Flow 运行中逐步 Chat 的 WS 时序优化。
+
+## 2026-06-26 会话（Flow 接力计划文档化）
+
+- **完成：**
+  - **`memory/DECISIONS.md` D23**：Flow `node_outputs`、auto 输入解析、Clutch 执行对齐、逐步 `state_patch`、Weather-to-Vision 首版范围。
+  - **`specs/core/tasks.md` §M3-F**：M3-F01…M3-F11 Task 清单与 Verification。
+  - **`memory/FILEMAP.md`**：M3-F 索引行。
+- **下次优先**：M3-F01（`node_outputs` + `resolve_agent_task_input`）。
 
 ## 2026-06-26 会话（Ollama 本地模型打通与动态模型解析路由）
 

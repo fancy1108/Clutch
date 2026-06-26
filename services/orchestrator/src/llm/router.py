@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Literal, Protocol
 
 ProviderId = Literal["deepseek", "openai", "anthropic", "google", "ollama", "custom"]
+ModelKind = Literal["chat", "image"]
 
 DEFAULT_MODEL_ID = "deepseek-v4pro"
 ENV_KEY_PREFIX = "CLUTCH_"
@@ -19,6 +20,8 @@ class ModelSpec:
     provider_id: ProviderId
     api_model: str
     base_url: str
+    model_kind: ModelKind = "chat"
+    image_backend: str = ""
 
 
 BUILTIN_MODELS: dict[str, ModelSpec] = {
@@ -50,12 +53,29 @@ BUILTIN_MODELS: dict[str, ModelSpec] = {
         api_model="gemini-2.5-flash",
         base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
     ),
+    "qwen2.5vl-7b": ModelSpec(
+        id="qwen2.5vl-7b",
+        name="Qwen 2.5 VL 7B (Ollama)",
+        provider_id="ollama",
+        api_model="qwen2.5vl:7b",
+        base_url="http://localhost:11434/v1",
+    ),
+    # Legacy id kept so existing models.json selections keep working.
     "qwen2.5-coder-7b": ModelSpec(
         id="qwen2.5-coder-7b",
-        name="Qwen 2.5 Coder 7B (Ollama)",
+        name="Qwen 2.5 VL 7B (Ollama)",
         provider_id="ollama",
-        api_model="qwen2.5-coder:7b",
-        base_url="http://localhost:11434",
+        api_model="qwen2.5vl:7b",
+        base_url="http://localhost:11434/v1",
+    ),
+    "agnes-image-2.1-flash": ModelSpec(
+        id="agnes-image-2.1-flash",
+        name="Agnes Image 2.1 Flash",
+        provider_id="custom",
+        api_model="agnes-image-2.1-flash",
+        base_url="https://apihub.agnes-ai.com",
+        model_kind="image",
+        image_backend="agnes",
     ),
 }
 

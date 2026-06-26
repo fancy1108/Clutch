@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
+  addCustomImageModel,
+  deleteCustomModel,
   deleteProviderCredential,
   fetchModelsConfig,
   loadModelVerifyState,
@@ -19,6 +21,9 @@ interface ModelItem {
   name: string;
   provider: string;
   providerId: string;
+  modelKind?: 'chat' | 'image';
+  imageBackend?: string;
+  available: boolean;
   contextWindow: string;
   temperature: number;
   sourceSummary: string;
@@ -26,6 +31,7 @@ interface ModelItem {
   endpoint: string | null;
   clutchManaged: boolean;
   isCcSwitch: boolean;
+  isCustom?: boolean;
 }
 
 type VerifyState = 'idle' | 'testing' | 'ok' | 'failed';
@@ -40,6 +46,11 @@ interface ModelsManagerProps {
 }
 
 const CONNECTABLE_PROVIDERS = ['deepseek', 'anthropic', 'openai', 'google', 'ollama', 'custom'] as const;
+const IMAGE_BACKENDS = [
+  { id: '', label: 'Auto-detect from URL' },
+  { id: 'agnes', label: 'Agnes Image API' },
+  { id: 'openai_images', label: 'OpenAI-compatible /v1/images/generations' },
+] as const;
 
 function verifyStatusLabel(verify: VerifyState): string | null {
   if (verify === 'testing') return 'Testing…';
@@ -57,6 +68,16 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
   setConfiguredModels,
 }) => {
   const [showConnectForm, setShowConnectForm] = useState(false);
+  const [showAddImageForm, setShowAddImageForm] = useState(false);
+  const [imageName, setImageName] = useState('');
+  const [imageApiModel, setImageApiModel] = useState('');
+  const [imageBaseUrl, setImageBaseUrl] = useState('https://apihub.agnes-ai.com');
+  const [imageProviderId, setImageProviderId] = useState('custom');
+  const [imageBackend, setImageBackend] = useState('');
+  const [imageApiKey, setImageApiKey] = useState('');
+  const [savingImageModel, setSavingImageModel] = useState(false);
+  const [deletingModelId, setDeletingModelId] = useState<string | null>(null);
+  const [pendingRemove, setPendingRemove] = useState<{ id: string; name: string } | null>(null);
   const [editingProviderId, setEditingProviderId] = useState<string | null>(null);
   const [providerId, setProviderId] = useState<string>('deepseek');
   const [apiKey, setApiKey] = useState('');
@@ -81,11 +102,8 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
     () => ({ ...initialVerify.verifyMessageByModel }),
   );
 
-  const refresh = useCallback(async (options?: { silent?: boolean }) => {
-    if (!options?.silent) setLoading(true);
-    setError(null);
-    try {
-      const config = await fetchModelsConfig();
+  const applyConfig = useCallback(
+    (config: Awaited<ReturnType<typeof fetchModelsConfig>>) => {
       const mapped = mapModelConfigToUi(config);
       setConfiguredModels(mapped.models);
       setProviders(mapped.providers);
@@ -95,6 +113,16 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
       setSelectedModel(active?.name ?? '');
       pruneModelVerifyCache(mapped.models.map((model) => model.id));
       return mapped.models;
+    },
+    [setActiveModelId, setConfiguredModels, setSelectedModel],
+  );
+
+  const refresh = useCallback(async (options?: { silent?: boolean }) => {
+    if (!options?.silent) setLoading(true);
+    setError(null);
+    try {
+      const config = await fetchModelsConfig();
+      return applyConfig(config);
     } catch {
       setConfiguredModels([]);
       setProviders({});
@@ -103,7 +131,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
     } finally {
       if (!options?.silent) setLoading(false);
     }
-  }, [setActiveModelId, setConfiguredModels, setSelectedModel]);
+  }, [applyConfig, setConfiguredModels]);
 
   useEffect(() => {
     void refresh();
@@ -139,6 +167,60 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
     setShowConnectForm(false);
     setShowApiKey(false);
     setEditingProviderId(null);
+  };
+
+  const closeAddImageForm = () => {
+    setShowAddImageForm(false);
+    setImageName('');
+    setImageApiModel('');
+    setImageBaseUrl('https://apihub.agnes-ai.com');
+    setImageProviderId('custom');
+    setImageBackend('');
+    setImageApiKey('');
+  };
+
+  const handleAddImageModel = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!imageName.trim() || !imageApiModel.trim() || !imageBaseUrl.trim()) return;
+    setSavingImageModel(true);
+    setError(null);
+    try {
+      const result = await addCustomImageModel({
+        name: imageName.trim(),
+        api_model: imageApiModel.trim(),
+        base_url: imageBaseUrl.trim(),
+        provider_id: imageProviderId,
+        image_backend: imageBackend as '' | 'agnes' | 'openai_images',
+        api_key: imageApiKey.trim() || undefined,
+      });
+      closeAddImageForm();
+      const models = await refresh({ silent: true });
+      const created = models.find((m) => m.id === result.model_id);
+      if (created?.available) {
+        void handleTestConnection(result.model_id);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not add image model.');
+    } finally {
+      setSavingImageModel(false);
+    }
+  };
+
+  const handleRemoveModel = async () => {
+    if (!pendingRemove) return;
+    const { id: modelId, name: modelName } = pendingRemove;
+    setPendingRemove(null);
+    setDeletingModelId(modelId);
+    setError(null);
+    try {
+      const config = await deleteCustomModel(modelId);
+      removeModelVerifyResults([modelId]);
+      applyConfig(config);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : `Could not remove "${modelName}".`);
+    } finally {
+      setDeletingModelId(null);
+    }
   };
 
   const handleActivate = async (modelId: string) => {
@@ -253,14 +335,137 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
               Choose which model Clutch uses for chat and workflows.
             </p>
           </header>
-          <button
-            type="button"
-            onClick={() => openConnectForm()}
-            className="flex-shrink-0 px-3 py-1.5 text-[10.5px] font-bold bg-primary text-on-primary rounded-lg whitespace-nowrap"
-          >
-            Add API key
-          </button>
+          <div className="flex flex-shrink-0 gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                closeConnectForm();
+                setShowAddImageForm((v) => !v);
+              }}
+              className="px-3 py-1.5 text-[10.5px] font-bold border border-outline rounded-lg whitespace-nowrap"
+            >
+              Add image model
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                closeAddImageForm();
+                openConnectForm();
+              }}
+              className="px-3 py-1.5 text-[10.5px] font-bold bg-primary text-on-primary rounded-lg whitespace-nowrap"
+            >
+              Add API key
+            </button>
+          </div>
         </div>
+
+        {showAddImageForm && (
+          <form
+            onSubmit={(e) => void handleAddImageModel(e)}
+            className="p-4 bg-violet-50/40 border border-violet-200 rounded-xl space-y-4 text-left"
+          >
+            <div>
+              <h3 className="text-xs font-bold text-on-surface">Add custom image model</h3>
+              <p className="text-[11px] text-on-surface-variant mt-0.5">
+                Register a text-to-image endpoint without editing code. Use Agnes or any OpenAI-compatible gateway.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block">
+                  Display name
+                </label>
+                <input
+                  required
+                  value={imageName}
+                  onChange={(e) => setImageName(e.target.value)}
+                  placeholder="My Image Model"
+                  className="w-full text-xs border border-outline bg-surface rounded-lg px-3 py-2 text-on-surface"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block">
+                  API model id
+                </label>
+                <input
+                  required
+                  value={imageApiModel}
+                  onChange={(e) => setImageApiModel(e.target.value)}
+                  placeholder="agnes-image-2.1-flash"
+                  className="w-full text-xs border border-outline bg-surface rounded-lg px-3 py-2 font-mono text-on-surface"
+                />
+              </div>
+              <div className="space-y-1 sm:col-span-2">
+                <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block">
+                  Base URL
+                </label>
+                <input
+                  required
+                  value={imageBaseUrl}
+                  onChange={(e) => setImageBaseUrl(e.target.value)}
+                  placeholder="https://apihub.agnes-ai.com"
+                  className="w-full text-xs border border-outline bg-surface rounded-lg px-3 py-2 font-mono text-on-surface"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block">
+                  API key provider
+                </label>
+                <select
+                  value={imageProviderId}
+                  onChange={(e) => setImageProviderId(e.target.value)}
+                  className="w-full text-xs border border-outline bg-surface rounded-lg px-3 py-2 text-on-surface"
+                >
+                  {CONNECTABLE_PROVIDERS.map((id) => (
+                    <option key={id} value={id}>
+                      {PROVIDER_LABELS[id] ?? id}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block">
+                  Image backend
+                </label>
+                <select
+                  value={imageBackend}
+                  onChange={(e) => setImageBackend(e.target.value)}
+                  className="w-full text-xs border border-outline bg-surface rounded-lg px-3 py-2 text-on-surface"
+                >
+                  {IMAGE_BACKENDS.map((item) => (
+                    <option key={item.id || 'auto'} value={item.id}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1 sm:col-span-2">
+                <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block">
+                  API key (optional)
+                </label>
+                <input
+                  type="password"
+                  value={imageApiKey}
+                  onChange={(e) => setImageApiKey(e.target.value)}
+                  placeholder="Save key for the selected provider"
+                  className="w-full text-xs border border-outline bg-surface rounded-lg px-3 py-2 font-mono text-on-surface"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={closeAddImageForm} className="px-3 py-1.5 text-[10.5px] font-bold border border-outline rounded-lg">
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={savingImageModel}
+                className="px-3 py-1.5 text-[10.5px] font-bold bg-primary text-on-primary rounded-lg disabled:opacity-50"
+              >
+                {savingImageModel ? 'Saving…' : 'Save image model'}
+              </button>
+            </div>
+          </form>
+        )}
 
         {showConnectForm && (
           <form
@@ -351,6 +556,33 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
           </form>
         )}
 
+        {pendingRemove && (
+          <div className="p-4 bg-rose-50/70 border border-rose-200 rounded-xl space-y-3 text-left">
+            <p className="text-xs text-rose-900">
+              Remove <span className="font-bold">{pendingRemove.name}</span> from your model list?
+              {pendingRemove.id.startsWith('custom-')
+                ? ' This custom model will be deleted permanently.'
+                : ' Built-in models are hidden from the list and can be restored by editing models.json.'}
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setPendingRemove(null)}
+                className="px-3 py-1.5 text-[10.5px] font-bold border border-outline rounded-lg"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleRemoveModel()}
+                className="px-3 py-1.5 text-[10.5px] font-bold bg-rose-700 text-white rounded-lg"
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        )}
+
         {error && (
           <p className="text-xs text-rose-800 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2 text-left">
             {error}
@@ -384,7 +616,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
         <section className="space-y-3 text-left">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-bold text-on-surface">Available models</h3>
-            <span className="text-[10px] text-on-surface-variant">{configuredModels.length} ready</span>
+            <span className="text-[10px] text-on-surface-variant">{configuredModels.length} listed</span>
           </div>
 
           {loading && configuredModels.length === 0 ? (
@@ -407,17 +639,34 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
                 const verify = verifyByModel[model.id] ?? 'idle';
                 const statusLabel = verifyStatusLabel(verify);
                 const rowMessage = verifyMessageByModel[model.id];
+                const canUse = model.available;
+                const canRemove = Boolean(model.isCustom || model.modelKind === 'image') && !model.isCcSwitch;
                 return (
                   <div
                     key={model.id}
                     className={`p-3.5 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
                       isActive ? 'bg-surface-container border-primary shadow-xs' : 'bg-surface border-outline/65'
-                    }`}
+                    } ${!canUse ? 'opacity-80' : ''}`}
                   >
                     <div className="flex-1 min-w-0 space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-xs font-bold text-on-surface">{model.name}</span>
                         <span className="text-[10px] text-on-surface-variant">{model.provider}</span>
+                        {model.modelKind === 'image' && (
+                          <span className="text-[9px] uppercase font-bold text-violet-700 bg-violet-50 px-1.5 py-0.5 rounded">
+                            Image
+                          </span>
+                        )}
+                        {model.isCustom && (
+                          <span className="text-[9px] uppercase font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">
+                            Custom
+                          </span>
+                        )}
+                        {!canUse && (
+                          <span className="text-[9px] uppercase font-bold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded">
+                            Needs key
+                          </span>
+                        )}
                         {isActive && (
                           <span className="text-[9px] uppercase font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">
                             In use
@@ -438,6 +687,9 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
                         )}
                       </div>
                       <p className="text-[11px] text-on-surface-variant">{model.sourceSummary}</p>
+                      {model.endpoint && (
+                        <p className="text-[10px] text-on-surface-variant/80 font-mono truncate">{model.endpoint}</p>
+                      )}
                       {verify === 'failed' && rowMessage && (
                         <p className="text-[10.5px] text-rose-800">{rowMessage}</p>
                       )}
@@ -451,10 +703,20 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
                         </button>
                       )}
                     </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
+                    <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
+                      {canRemove && (
+                        <button
+                          type="button"
+                          disabled={deletingModelId === model.id}
+                          onClick={() => setPendingRemove({ id: model.id, name: model.name })}
+                          className="px-3 py-1.5 text-[10.5px] font-bold border border-rose-200 text-rose-700 rounded-lg hover:bg-rose-50 disabled:opacity-50"
+                        >
+                          {deletingModelId === model.id ? 'Removing…' : 'Remove'}
+                        </button>
+                      )}
                       <button
                         type="button"
-                        disabled={verify === 'testing'}
+                        disabled={!canUse || verify === 'testing'}
                         onClick={() => void handleTestConnection(model.id)}
                         className="px-3 py-1.5 text-[10.5px] font-bold border border-outline rounded-lg hover:bg-surface-container-high disabled:opacity-50"
                       >
@@ -463,7 +725,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
                       {!isActive && (
                         <button
                           type="button"
-                          disabled={activatingModelId === model.id}
+                          disabled={!canUse || activatingModelId === model.id}
                           onClick={() => void handleActivate(model.id)}
                           className="px-3 py-1.5 text-[10.5px] font-bold bg-primary text-on-primary rounded-lg disabled:opacity-50"
                         >

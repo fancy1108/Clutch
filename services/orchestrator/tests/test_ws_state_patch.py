@@ -32,7 +32,11 @@ def test_ws_state_patch_on_message(monkeypatch) -> None:
             "_R",
             (),
             {
-                "get_active_model": lambda self: type("M", (), {"name": "Test Model"})(),
+                "get_active_model": lambda self: type(
+                    "M",
+                    (),
+                    {"id": "test-model", "name": "Test Model", "model_kind": "chat"},
+                )(),
                 "chat": lambda self, history: "pong",
             },
         )(),

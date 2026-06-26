@@ -7,6 +7,8 @@ import os
 from pathlib import Path
 from typing import Any
 
+from src.agent_type import migrate_agent_record
+
 AGENTS_ENV = "CLUTCH_AGENTS_DIR"
 BUILTIN_AGENT_ID = "clutch-agent"
 
@@ -29,7 +31,7 @@ def get_builtin_agent() -> dict[str, Any]:
         "deliverables": [],
         "mcpTools": [],
         "mcpServerIds": [],
-        "aiEngine": "Configured LLM",
+        "agentType": "clutch",
         "skills": [],
         "builtin": True,
     }
@@ -64,8 +66,9 @@ def _effective_builtin(override: dict[str, Any] | None = None) -> dict[str, Any]
     agent = get_builtin_agent()
     if override and override.get("id") == BUILTIN_AGENT_ID:
         agent = {**agent, **override, "id": BUILTIN_AGENT_ID, "builtin": True}
-    agent["aiEngine"] = "Configured LLM"
-    return agent
+    agent["agentType"] = "clutch"
+    agent.pop("aiEngine", None)
+    return migrate_agent_record(agent)
 
 
 def get_agent_by_id(agent_id: str) -> dict[str, Any] | None:
@@ -82,7 +85,9 @@ def list_agents() -> list[dict[str, Any]]:
         None,
     )
     user_agents = [
-        agent for agent in file_agents if agent.get("id") != BUILTIN_AGENT_ID
+        migrate_agent_record(agent)
+        for agent in file_agents
+        if agent.get("id") != BUILTIN_AGENT_ID
     ]
     return [_effective_builtin(builtin_override), *user_agents]
 
@@ -94,18 +99,13 @@ def save_agents(agents: list[dict[str, Any]]) -> list[dict[str, Any]]:
         None,
     )
     user_agents = [
-        agent
+        migrate_agent_record(agent)
         for agent in agents
         if agent.get("id") != BUILTIN_AGENT_ID and not agent.get("builtin")
     ]
     stored: list[dict[str, Any]] = []
     if builtin_override:
-        stored.append({
-            **builtin_override,
-            "id": BUILTIN_AGENT_ID,
-            "builtin": True,
-            "aiEngine": "Configured LLM",
-        })
+        stored.append(_effective_builtin(builtin_override))
     stored.extend(user_agents)
     path.write_text(json.dumps(stored, indent=2, ensure_ascii=False), encoding="utf-8")
     return list_agents()

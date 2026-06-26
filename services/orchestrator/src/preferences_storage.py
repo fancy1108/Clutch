@@ -1,4 +1,4 @@
-"""User preferences persistence (P2-03 theme, P2-04 language)."""
+"""User preferences persistence (P2-03 theme, P2-04 language, permission mode)."""
 
 from __future__ import annotations
 
@@ -13,6 +13,14 @@ DEFAULT_THEME_ID = "pristine-light"
 DEFAULT_LANGUAGE = "en"
 ALLOWED_THEME_IDS = frozenset({"pristine-light", "nordic-frost", "amber-warm"})
 ALLOWED_LANGUAGES = frozenset({"en", "zh"})
+
+# Permission modes (controls when the agent pauses for human approval)
+# ask       – pause before every risky tool (write/delete/exec). Default & safest.
+# auto_edit – auto-approve file edits; still pause before shell/delete/network ops.
+# plan      – read-only; all write/exec tools are hard-blocked (agent just plans).
+# full      – bypass all pause gates (still blocks truly catastrophic ops like rm -rf /).
+ALLOWED_PERMISSION_MODES = frozenset({"ask", "auto_edit", "plan", "full"})
+DEFAULT_PERMISSION_MODE = "ask"
 
 
 def preferences_dir() -> Path:
@@ -33,6 +41,7 @@ def _defaults() -> dict[str, str]:
     return {
         "active_theme_id": DEFAULT_THEME_ID,
         "active_language": DEFAULT_LANGUAGE,
+        "permission_mode": DEFAULT_PERMISSION_MODE,
     }
 
 
@@ -52,11 +61,18 @@ def load_preferences() -> dict[str, str]:
     data = json.loads(path.read_text(encoding="utf-8"))
     theme_id = str(data.get("active_theme_id") or DEFAULT_THEME_ID)
     language = str(data.get("active_language") or DEFAULT_LANGUAGE)
+    permission_mode = str(data.get("permission_mode") or DEFAULT_PERMISSION_MODE)
     if theme_id not in ALLOWED_THEME_IDS:
         theme_id = DEFAULT_THEME_ID
     if language not in ALLOWED_LANGUAGES:
         language = DEFAULT_LANGUAGE
-    return {"active_theme_id": theme_id, "active_language": language}
+    if permission_mode not in ALLOWED_PERMISSION_MODES:
+        permission_mode = DEFAULT_PERMISSION_MODE
+    return {
+        "active_theme_id": theme_id,
+        "active_language": language,
+        "permission_mode": permission_mode,
+    }
 
 
 def save_theme(theme_id: str) -> dict[str, str]:
@@ -75,6 +91,21 @@ def save_language(language: str) -> dict[str, str]:
     prefs = load_preferences()
     prefs["active_language"] = normalized
     return _write_preferences(prefs)
+
+
+def save_permission_mode(mode: str) -> dict[str, str]:
+    """Persist the permission mode. Raises ValueError for unknown modes."""
+    normalized = mode.strip().lower()
+    if normalized not in ALLOWED_PERMISSION_MODES:
+        raise ValueError(f"Unknown permission mode: {normalized}. Allowed: {sorted(ALLOWED_PERMISSION_MODES)}")
+    prefs = load_preferences()
+    prefs["permission_mode"] = normalized
+    return _write_preferences(prefs)
+
+
+def load_permission_mode() -> str:
+    """Return the current permission mode string."""
+    return load_preferences().get("permission_mode", DEFAULT_PERMISSION_MODE)
 
 
 def tr(en: str, zh: str) -> str:

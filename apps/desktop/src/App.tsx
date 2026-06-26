@@ -25,7 +25,7 @@ import { LanguageProvider, useLanguage } from './components/LanguageContext';
 import { clutchStore, createSessionRunId, submitChatMessage, useClutchState } from './services/clutchState';
 import { fetchSessions, createSession, startWorkflowRun, fetchRunState, deleteSession, type SessionRecord } from './services/runApi';
 import { listWorkflowItems } from './services/workflowApi';
-import { saveModelsConfig } from './services/modelsApi';
+import { isClutchAgentType, agentTypeFromAgent, agentTypeLabel } from './services/agentTypes';
 import {
   activateWorkspace,
   addWorkspace,
@@ -44,6 +44,8 @@ import {
 } from './services/workspaceApi';
 import { pickWorkspaceFolder } from './services/pickWorkspaceFolder';
 import { fetchModelsConfig, mapModelConfigToUi } from './services/modelsApi';
+import { fetchPermissionMode, savePermissionMode, type PermissionMode } from './services/permissionApi';
+import { fetchSkillsRegistry, type ScannedSkill } from './services/skillsApi';
 
 
 function MainLayout() {
@@ -270,10 +272,23 @@ function MainLayout() {
       ? selectedAgentName
       : '—';
   const showFooterModel =
-    !selectedAgent || isBuiltinAgent(selectedAgent) || hasWorkflowSelection;
+    !hasWorkflowSelection && isClutchAgentType(selectedAgent);
+  const agentBoundModelId =
+    selectedAgent && !isBuiltinAgent(selectedAgent) && selectedAgent.modelId
+      ? selectedAgent.modelId
+      : undefined;
+  const footerEffectiveModelId = agentBoundModelId || activeModelId;
+  const footerEffectiveModelName =
+    configuredModels.find((model) => model.id === footerEffectiveModelId)?.name
+    || selectedModel
+    || '—';
+  const chatActiveAgentName =
+    clutchState.workflow_id || selectedWorkflowId
+      ? clutchState.active_agent || currentFlowName || selectedAgentName
+      : selectedAgentName;
   const customAgentEngineLabel =
-    selectedAgent && !isBuiltinAgent(selectedAgent)
-      ? selectedAgent.aiEngine || 'Claude Code (Local CLI)'
+    selectedAgent && !isClutchAgentType(selectedAgent)
+      ? agentTypeLabel(agentTypeFromAgent(selectedAgent))
       : '';
   const runtimeEngineHint = customAgentEngineLabel
     ? configuredEngineToRuntimeLabel(customAgentEngineLabel)
@@ -327,14 +342,17 @@ function MainLayout() {
   const selectedSidebarWidth = sidebarOpen ? 280 : 0;
   const rightSidebarWidth = rightPanelOpen ? 300 : 0;
 
+  const effectiveWorkflowId = selectedWorkflowId || clutchState.workflow_id || '';
+  const effectiveWorkflowName = currentFlowName || clutchState.workflow_id || selectedWorkflowId || '';
+
   useEffect(() => {
     if (!isMultiAgent && rightTab === 'flow') {
       setRightTab('overview');
     }
-    if (!clutchState.workflow_id && rightTab === 'flow') {
+    if (!effectiveWorkflowId && rightTab === 'flow') {
       setRightTab('overview');
     }
-  }, [isMultiAgent, rightTab, clutchState.workflow_id]);
+  }, [isMultiAgent, rightTab, effectiveWorkflowId]);
 
   const [uncommitted, setUncommitted] = useState<UncommittedFile[]>([]);
 
@@ -534,6 +552,29 @@ function MainLayout() {
   // Chat Input Box State
   const [inputValue, setInputValue] = useState<string>('');
 
+  // Permission mode (persisted on backend)
+  const [permissionMode, setPermissionMode] = useState<PermissionMode>('ask');
+
+  useEffect(() => {
+    void fetchPermissionMode()
+      .then((mode) => setPermissionMode(mode))
+      .catch(() => {});
+  }, []);
+
+  const handlePermissionModeChange = (mode: PermissionMode) => {
+    setPermissionMode(mode);
+    void savePermissionMode(mode).catch(() => {});
+  };
+
+  // Skills list for / command picker in chat input
+  const [chatSkills, setChatSkills] = useState<ScannedSkill[]>([]);
+
+  useEffect(() => {
+    void fetchSkillsRegistry()
+      .then((data) => setChatSkills(data.skills))
+      .catch(() => {});
+  }, []);
+
   const bindWorkflowForChat = useCallback((workflowId: string, workflowName: string) => {
     setIsMultiAgent(true);
     setSelectedWorkflowId(workflowId);
@@ -730,23 +771,38 @@ function MainLayout() {
       }
     }
     if (selectedWorkflowId && !clutchState.workflow_id) {
+      const workflowId = selectedWorkflowId;
+      const instruction = text.trim();
+      setWorkspacePickError(null);
+      clutchStore.optimisticWorkflowStart({
+        runId: sessionRunId,
+        workflowId,
+        instruction,
+        activeAgent: currentFlowName || undefined,
+      });
       try {
         try {
           await createSession({
             run_id: sessionRunId,
-            title: text.trim().slice(0, 80) || t('New session'),
-            workflow_id: selectedWorkflowId,
+            title: instruction.slice(0, 80) || t('New session'),
+            workflow_id: workflowId,
           });
         } catch {
           // session may already exist for this run_id
         }
-        const result = await startWorkflowRun(sessionRunId, selectedWorkflowId, text);
+        await clutchStore.connect(sessionRunId);
+        await refreshSessions();
+        const result = await startWorkflowRun(sessionRunId, workflowId, instruction);
         clutchStore.replaceState(result.state);
         setSelectedWorkflowId(null);
         await refreshSessions();
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to start workflow';
         setWorkspacePickError(message);
+        clutchStore.replaceState({
+          ...clutchStore.getSnapshot(),
+          status: 'failed',
+        });
         console.error('[Clutch] workflow start failed:', error);
       }
       return;
@@ -936,8 +992,13 @@ function MainLayout() {
                 }}
                 activeWorkflowId={clutchState.workflow_id}
                 llmModelName={selectedModel}
-                activeAgentName={selectedAgentName}
+                activeAgentName={chatActiveAgentName}
                 engineHint={runtimeEngineHint}
+                workspaceFiles={workspaceFiles}
+                sessions={sessions}
+                skills={chatSkills}
+                permissionMode={permissionMode}
+                onPermissionModeChange={handlePermissionModeChange}
               />
               <RightPanel
                 activeTab={rightTab}
@@ -945,7 +1006,8 @@ function MainLayout() {
                 clutchStatus={clutchStatus}
                 activeNodeId={clutchState.active_node_id}
                 activeAgent={clutchState.active_agent}
-                workflowId={clutchState.workflow_id}
+                workflowId={effectiveWorkflowId}
+                workflowName={effectiveWorkflowName}
                 currentInstruction={clutchState.current_instruction}
                 sessionTokens={clutchState.session_tokens}
                 sessionCostUsd={clutchState.session_cost_usd}
@@ -1032,13 +1094,24 @@ function MainLayout() {
 
           {showFooterModel ? (
             <div className="relative">
+              {agentBoundModelId ? (
+                <span
+                  data-testid="footer-model-trigger"
+                  className="flex items-center gap-1.5 px-2 py-1 rounded font-medium text-on-surface-variant whitespace-nowrap cursor-default"
+                  title={t('Model is bound on this agent')}
+                >
+                  <span className="material-symbols-outlined text-[15px] text-on-surface-variant">layers</span>
+                  {t("Model")}: {footerEffectiveModelName}
+                </span>
+              ) : (
+                <>
               <span
                 data-testid="footer-model-trigger"
                 onClick={toggleModelMenu}
                 className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-container-low hover:text-on-surface transition-colors cursor-pointer font-medium text-on-surface-variant whitespace-nowrap"
               >
                 <span className="material-symbols-outlined text-[15px] text-on-surface-variant">layers</span>
-                {t("Model")}: {selectedModel || '—'}
+                {t("Model")}: {footerEffectiveModelName}
                 <span className="material-symbols-outlined text-[13px]">keyboard_arrow_down</span>
               </span>
               {modelMenuOpen ? (
@@ -1068,6 +1141,8 @@ function MainLayout() {
                   </FooterMenuAction>
                 </FooterMenuPanel>
               ) : null}
+                </>
+              )}
             </div>
           ) : (
             <span

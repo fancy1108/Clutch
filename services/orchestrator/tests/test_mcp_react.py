@@ -11,7 +11,10 @@ class _FakeRouter:
     def get_active_model(self) -> SimpleNamespace:
         return SimpleNamespace(name="Test Model")
 
-    def chat(self, messages, tools=None):
+    def resolve_for_model(self, model_id=None):
+        return SimpleNamespace(name="Test Model"), model_id
+
+    def chat(self, messages, tools=None, model_id=None):
         if tools:
             return "Used tools path"
         return "Plain answer"
@@ -39,6 +42,49 @@ class _FakeClient:
 
     def close(self) -> None:
         return None
+
+
+def test_run_mcp_react_text_only_when_model_lacks_tools(monkeypatch) -> None:
+    class _TextOnlyRouter:
+        def resolve_for_model(self, model_id=None):
+            from src.llm.router import BUILTIN_MODELS
+
+            spec = BUILTIN_MODELS["qwen2.5vl-7b"]
+            return spec, spec.id
+
+        def chat(self, messages, tools=None, model_id=None):
+            assert tools is None
+            return "I am Qwen 2.5 VL"
+
+    monkeypatch.setattr("src.models_config.get_router", lambda: _TextOnlyRouter())
+    monkeypatch.setattr(
+        "src.adapters.ollama_adapter.model_supports_tool_calling",
+        lambda spec: False,
+    )
+
+    outcome = run_mcp_react_loop(
+        messages=[{"role": "user", "content": "你是什么模型"}],
+        servers=[{"id": "mcp_test", "name": "Test MCP", "endpoint": "echo mcp"}],
+        log_prefix="TEST",
+        model_id="qwen2.5vl-7b",
+    )
+    assert outcome.output == "I am Qwen 2.5 VL"
+    assert outcome.engine_label.endswith("no tools")
+    assert any("without MCP tools" in line for line in outcome.logs)
+
+
+def test_run_mcp_react_loop_plain_answer_completes(monkeypatch) -> None:
+    """Regression: plain LLM replies must not reference undefined `model`."""
+    monkeypatch.setattr("src.mcp_react.McpClient", _FakeClient)
+    monkeypatch.setattr("src.models_config.get_router", lambda: _FakeRouter())
+
+    outcome = run_mcp_react_loop(
+        messages=[{"role": "user", "content": "hello"}],
+        servers=[{"id": "mcp_test", "name": "Test MCP", "endpoint": "echo mcp"}],
+        log_prefix="TEST",
+    )
+    assert outcome.output == "Used tools path"
+    assert any("Completed via Test Model" in line for line in outcome.logs)
 
 
 def test_run_mcp_react_loop_returns_engine_label(monkeypatch) -> None:
@@ -71,7 +117,10 @@ def test_run_mcp_react_pause_on_risky_tool(monkeypatch) -> None:
         def get_active_model(self) -> SimpleNamespace:
             return SimpleNamespace(name="Test Model")
 
-        def chat(self, messages, tools=None):
+        def resolve_for_model(self, model_id=None):
+            return SimpleNamespace(name="Test Model"), model_id
+
+        def chat(self, messages, tools=None, model_id=None):
             return {
                 "role": "assistant",
                 "content": "",
@@ -108,7 +157,10 @@ def test_run_mcp_react_auto_approves_duplicate_risky_tool(monkeypatch) -> None:
         def get_active_model(self) -> SimpleNamespace:
             return SimpleNamespace(name="Test Model")
 
-        def chat(self, messages, tools=None):
+        def resolve_for_model(self, model_id=None):
+            return SimpleNamespace(name="Test Model"), model_id
+
+        def chat(self, messages, tools=None, model_id=None):
             calls["count"] += 1
             if calls["count"] == 1:
                 return {
@@ -186,7 +238,10 @@ def test_run_mcp_react_registers_builtin_tools(monkeypatch) -> None:
         def get_active_model(self) -> SimpleNamespace:
             return SimpleNamespace(name="Test Model")
 
-        def chat(self, messages, tools=None):
+        def resolve_for_model(self, model_id=None):
+            return SimpleNamespace(name="Test Model"), model_id
+
+        def chat(self, messages, tools=None, model_id=None):
             names = [tool["function"]["name"] for tool in tools or []]
             assert "clutch-tools__apply_patch" in names
             return "done"
@@ -222,7 +277,10 @@ def test_run_mcp_react_builtin_apply_patch_records_files_changed(tmp_path, monke
         def get_active_model(self) -> SimpleNamespace:
             return SimpleNamespace(name="Test Model")
 
-        def chat(self, messages, tools=None):
+        def resolve_for_model(self, model_id=None):
+            return SimpleNamespace(name="Test Model"), model_id
+
+        def chat(self, messages, tools=None, model_id=None):
             return "done"
 
     monkeypatch.setattr("src.models_config.get_router", lambda: _Router())
@@ -256,7 +314,10 @@ def test_run_mcp_react_records_files_changed(monkeypatch) -> None:
         def get_active_model(self) -> SimpleNamespace:
             return SimpleNamespace(name="Test Model")
 
-        def chat(self, messages, tools=None):
+        def resolve_for_model(self, model_id=None):
+            return SimpleNamespace(name="Test Model"), model_id
+
+        def chat(self, messages, tools=None, model_id=None):
             return "done"
 
     monkeypatch.setattr("src.mcp_react.McpClient", _WriteClient)

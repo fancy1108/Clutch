@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from unittest.mock import patch
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -153,6 +155,26 @@ def test_model_test_endpoint_failure(models_config: Path) -> None:
     result = client.post("/api/models/test", json={"model_id": "deepseek-v4pro"}).json()
     assert result["ok"] is False
     assert "rejected" in result["message"].lower()
+
+
+def test_agnes_image_model_listed_with_kind(models_config: Path) -> None:
+    client = TestClient(app)
+    body = client.get("/api/models/config").json()
+    agnes = next(m for m in body["models"] if m["id"] == "agnes-image-2.1-flash")
+    assert agnes["name"] == "Agnes Image 2.1 Flash"
+    assert agnes["provider_id"] == "custom"
+    assert agnes["model_kind"] == "image"
+    assert agnes["endpoint"] == "https://apihub.agnes-ai.com"
+
+
+def test_agnes_image_model_test_uses_image_adapter(models_config: Path) -> None:
+    client = TestClient(app)
+    client.post("/api/models/config", json={"provider_id": "custom", "api_key": "sk-test-agnes"})
+    with patch("src.models_config.verify_image_model_connection") as mocked:
+        result = client.post("/api/models/test", json={"model_id": "agnes-image-2.1-flash"}).json()
+    assert result["ok"] is True
+    assert "image" in result["message"].lower()
+    mocked.assert_called_once()
 
 
 def test_delete_provider_credential(models_config: Path) -> None:

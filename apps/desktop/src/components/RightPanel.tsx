@@ -11,6 +11,7 @@ interface RightPanelProps {
   activeNodeId?: string;
   activeAgent?: string;
   workflowId?: string;
+  workflowName?: string;
   currentInstruction?: string;
   sessionTokens?: number;
   sessionCostUsd?: number;
@@ -20,9 +21,9 @@ interface RightPanelProps {
   terminalLogs: string[];
   isOpen: boolean;
   setIsOpen: (val: boolean) => void;
-  selectedSidebarWidth: number;
-  rightSidebarWidth: number;
-  onPreviewFile: (file: { name: string; content: string }) => void;
+  selectedSidebarWidth?: number;
+  rightSidebarWidth?: number;
+  onPreviewFile?: (file: { name: string; content: string }) => void;
   isMultiAgent?: boolean;
   workspaceFiles?: FileTreeNode[];
   onOpenWorkspaceFile?: (path: string) => void;
@@ -43,6 +44,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   activeNodeId = '',
   activeAgent = '',
   workflowId = '',
+  workflowName = '',
   currentInstruction = '',
   sessionTokens = 0,
   sessionCostUsd = 0,
@@ -109,10 +111,12 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   };
 
   const isIdle = clutchStatus === 'idle';
+  const hasWorkflow = Boolean(workflowId);
+  const workflowLabel = workflowName || workflowId;
   const tokenTotal = sessionTokens || tokenInput + tokenOutput;
   const inputPct = tokenTotal > 0 ? Math.round((tokenInput / tokenTotal) * 100) : 0;
   const outputPct = tokenTotal > 0 ? 100 - inputPct : 0;
-  const showFlowTab = Boolean(workflowId);
+  const showFlowTab = hasWorkflow;
   const visibleTabs = (['overview', 'files', 'flow', 'changes', 'terminal'] as RightTab[])
     .filter((tab) => isMultiAgent || tab !== 'flow')
     .filter((tab) => tab !== 'flow' || showFlowTab);
@@ -120,8 +124,13 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   const renderStateSummary = () => (
     <div className="p-3 border border-outline-variant/30 rounded-xl bg-surface-container-low/40 font-mono text-[10px] space-y-1">
       <p>
-        workflow: <span className="text-on-surface font-bold">{workflowId || '—'}</span>
+        workflow: <span className="text-on-surface font-bold">{workflowLabel || '—'}</span>
       </p>
+      {workflowName && workflowId && workflowName !== workflowId ? (
+        <p>
+          workflow_id: <span className="text-on-surface font-bold">{workflowId}</span>
+        </p>
+      ) : null}
       <p>
         active_node: <span className="text-on-surface font-bold">{activeNodeId || '—'}</span>
       </p>
@@ -131,6 +140,11 @@ export const RightPanel: React.FC<RightPanelProps> = ({
       <p>
         status: <span className="text-on-surface font-bold uppercase">{clutchStatus}</span>
       </p>
+      {isIdle && hasWorkflow ? (
+        <p className="pt-1 border-t border-outline-variant/20 text-on-surface-variant">
+          {t('Workflow selected — send a message to start')}
+        </p>
+      ) : null}
       {currentInstruction ? (
         <p className="pt-1 border-t border-outline-variant/20">
           instruction: <span className="text-on-surface">{currentInstruction}</span>
@@ -139,6 +153,54 @@ export const RightPanel: React.FC<RightPanelProps> = ({
     </div>
   );
 
+  const renderWorkflowSteps = (compact = false) => {
+    if (workflowSteps.length === 0) {
+      return (
+        <div className="p-6 border border-dashed border-outline-variant/50 rounded-xl text-center space-y-2">
+          <span className="material-symbols-outlined text-[24px] text-on-surface-variant/50">account_tree</span>
+          <p className="text-[11px] text-on-surface-variant leading-relaxed">{t('Workflow steps unavailable')}</p>
+        </div>
+      );
+    }
+
+    return (
+      <ol className={compact ? 'space-y-1.5' : 'space-y-2'}>
+        {workflowSteps.map((step, index) => {
+          const isActive = step.id === activeNodeId;
+          return (
+            <li
+              key={step.id}
+              className={`rounded-xl border ${
+                compact ? 'p-2' : 'p-3'
+              } ${
+                isActive
+                  ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
+                  : 'border-outline-variant/30 bg-surface-container-low/30'
+              }`}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">
+                    {index + 1}. {step.id}
+                  </p>
+                  <p className={`font-bold text-on-surface truncate ${compact ? 'text-[10px]' : 'text-[11px]'}`}>
+                    {step.label}
+                  </p>
+                  <p className="text-[10px] text-on-surface-variant font-mono mt-0.5">{step.agent}</p>
+                </div>
+                {isActive ? (
+                  <span className="text-[9px] font-bold uppercase text-primary whitespace-nowrap">
+                    {clutchStatus}
+                  </span>
+                ) : null}
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+    );
+  };
+
   const renderFileNodes = (nodes: FileTreeNode[], depth = 0): React.ReactNode =>
     nodes.map((node) => {
       const isFolder = node.type === 'folder';
@@ -146,6 +208,11 @@ export const RightPanel: React.FC<RightPanelProps> = ({
       return (
         <div key={node.path} className="space-y-1">
           <div
+            draggable
+            onDragStart={(e) => {
+              e.dataTransfer.setData('text/plain', node.path);
+              e.dataTransfer.effectAllowed = 'copy';
+            }}
             onClick={() => {
               if (isFolder) {
                 toggleExpand(node.path);
@@ -153,8 +220,9 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                 onOpenWorkspaceFile?.(node.path);
               }
             }}
-            className="flex items-center gap-2 p-1.5 hover:bg-surface-container-low rounded cursor-pointer transition-colors"
+            className="flex items-center gap-2 p-1.5 hover:bg-surface-container-low rounded cursor-grab active:cursor-grabbing transition-colors"
             style={{ paddingLeft: `${depth * 8 + 6}px` }}
+            title={`Drag to chat: ${node.path}`}
           >
             {isFolder ? (
               <>
@@ -183,6 +251,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
         </div>
       );
     });
+
 
   return (
     <aside
@@ -230,14 +299,22 @@ export const RightPanel: React.FC<RightPanelProps> = ({
           {activeTab === 'overview' && (
             <div className="space-y-6 animate-fade-in text-xs">
               {renderStateSummary()}
-              {isIdle ? (
+              {hasWorkflow ? (
+                <section>
+                  <h4 className="text-[10px] font-bold text-on-surface-variant/75 uppercase tracking-widest mb-3">
+                    {t('Workflow step execution')}
+                  </h4>
+                  {renderWorkflowSteps(true)}
+                </section>
+              ) : isIdle ? (
                 <div className="p-6 border border-dashed border-outline-variant/50 rounded-xl text-center space-y-2">
                   <span className="material-symbols-outlined text-[24px] text-on-surface-variant/50">monitoring</span>
                   <p className="text-[11px] text-on-surface-variant leading-relaxed">
                     {t('No active workflow overview')}
                   </p>
                 </div>
-              ) : tokenTotal > 0 ? (
+              ) : null}
+              {tokenTotal > 0 ? (
                 <section>
                   <h4 className="text-[10px] font-bold text-on-surface-variant/75 uppercase tracking-widest mb-4">
                     Session Token Analytics
@@ -307,45 +384,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                 {t('Workflow step execution')}
               </h4>
               {renderStateSummary()}
-              {workflowSteps.length === 0 ? (
-                <div className="p-6 border border-dashed border-outline-variant/50 rounded-xl text-center space-y-2">
-                  <span className="material-symbols-outlined text-[24px] text-on-surface-variant/50">account_tree</span>
-                  <p className="text-[11px] text-on-surface-variant leading-relaxed">
-                    {t('Workflow steps unavailable')}
-                  </p>
-                </div>
-              ) : (
-                <ol className="space-y-2">
-                  {workflowSteps.map((step, index) => {
-                    const isActive = step.id === activeNodeId;
-                    return (
-                      <li
-                        key={step.id}
-                        className={`p-3 rounded-xl border ${
-                          isActive
-                            ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
-                            : 'border-outline-variant/30 bg-surface-container-low/30'
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">
-                              {index + 1}. {step.id}
-                            </p>
-                            <p className="text-[11px] font-bold text-on-surface truncate">{step.label}</p>
-                            <p className="text-[10px] text-on-surface-variant font-mono mt-0.5">{step.agent}</p>
-                          </div>
-                          {isActive ? (
-                            <span className="text-[9px] font-bold uppercase text-primary whitespace-nowrap">
-                              {clutchStatus}
-                            </span>
-                          ) : null}
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ol>
-              )}
+              {renderWorkflowSteps()}
             </div>
           )}
 

@@ -87,6 +87,10 @@ def _format_openai_messages(messages: list[dict[str, Any]]) -> list[dict[str, An
                 }
             )
             continue
+        content = message.get("content")
+        if isinstance(content, list):
+            formatted.append({"role": role, "content": content})
+            continue
         formatted.append(
             {
                 "role": role,
@@ -246,6 +250,14 @@ def _anthropic_chat(
         raise RuntimeError(f"Unexpected Anthropic response: {data!r}") from exc
 
 
+def _normalize_ollama_base_url(base_url: str) -> str:
+    """Ollama OpenAI-compatible API lives under /v1/chat/completions."""
+    base = base_url.rstrip("/")
+    if base.endswith("/v1"):
+        return base
+    return f"{base}/v1"
+
+
 def http_chat_complete(
     *,
     provider_id: ProviderId,
@@ -256,6 +268,8 @@ def http_chat_complete(
     tools: list[dict[str, Any]] | None = None,
     timeout_sec: float = _TIMEOUT_SEC,
 ) -> dict[str, Any] | str:
+    if provider_id == "ollama":
+        base_url = _normalize_ollama_base_url(base_url)
     if provider_id == "anthropic":
         resolved_base, resolved_model, resolved_key = resolve_anthropic_transport(
             base_url=base_url, api_model=api_model, api_key=api_key

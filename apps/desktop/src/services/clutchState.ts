@@ -30,6 +30,16 @@ function isChatMessage(value: unknown): value is ChatMessage {
   return typeof msg.id === 'string' && typeof msg.text === 'string';
 }
 
+export function createUserChatMessage(text: string): ChatMessage {
+  return {
+    id: `user_${Date.now().toString(36)}`,
+    agent: 'User',
+    avatar: '',
+    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    text: text.trim(),
+  };
+}
+
 class ClutchStateStore {
   private state: ClutchState = createEmptyState(createSessionRunId());
   private listeners = new Set<() => void>();
@@ -54,6 +64,35 @@ class ClutchStateStore {
     this.runId = state.run_id;
     this.state = state;
     this.emit();
+  };
+
+  /** Optimistic UI while POST /runs/{id}/start blocks on the first workflow node. */
+  optimisticWorkflowStart = (params: {
+    runId: string;
+    workflowId: string;
+    instruction: string;
+    activeAgent?: string;
+  }): void => {
+    const trimmed = params.instruction.trim();
+    if (!trimmed) return;
+
+    const userMessage = createUserChatMessage(trimmed);
+    if (this.state.run_id !== params.runId) {
+      this.state = createEmptyState(params.runId);
+    }
+
+    const hasUserMessage = this.state.messages.some(
+      (item) => item.agent === 'User' && item.text === trimmed,
+    );
+
+    this.applyPatch({
+      run_id: params.runId,
+      workflow_id: params.workflowId,
+      status: 'running',
+      current_instruction: trimmed,
+      messages: hasUserMessage ? this.state.messages : [...this.state.messages, userMessage],
+      active_agent: params.activeAgent || this.state.active_agent,
+    });
   };
 
   setPendingHydrate = (state: ClutchState): void => {

@@ -225,6 +225,18 @@
 - **影响**：`apply_patch.py`、`builtin_tools.py`、`mcp_react.py`、`agent_mcp.py`、`mcp_risk.py`、`main._compose_agent_system_prompt`。
 - **决策状态**：`已落地`
 
+### D23 · Flow 节点输入/输出接力（2026-06-26）
+
+- **背景**：Multi-Agent Flow 中每个 `agent_task` 均读取同一份 `current_instruction`（用户首句），下游 Agent 收不到上游输出；Weather-to-Vision 等链式 SOP 无法跑通（Researcher 描述无法交给 Artist 生图）。单 Agent 已支持 `agentType: clutch` + `modelId` 绑模与生图，Flow 仍缺接力与逐步 UI 投影。
+- **方案**：
+  1. **`CompilerState.node_outputs`**：`dict[str, str]`，键为节点 `id`，值为该节点 `agent_task` 的文本输出。
+  2. **输入解析（auto，首版无编辑器 UI）**：`resolve_agent_task_input(state, node, workflow)` — 若唯一上游为 `start`，输入 = 用户 `current_instruction`；否则输入 = 直接上游节点的 `node_outputs[upstream_id]`。节点 `data.instruction` 作为**补充前缀**（`{instruction}\n\n{body}`），不覆盖上游正文。
+  3. **执行对齐单 Agent**：Flow 内 Clutch Agent 注入 `markdownDoc`；`agentType: clutch` + image `modelId` 走生图；非 image 有 `mcpServerIds` 时走 `mcp_react`（与 Plain Chat 一致）。
+  4. **逐步监督**：每个 `agent_task` 完成后增量 `state_patch`（消息 + `active_agent` + `active_node_id`），Chat 逐步回显；整图仍单次 `invoke`，不在本决策内拆 HTTP。
+  5. **Weather-to-Vision 首版**：Researcher 可先靠 `markdownDoc` 生成视觉描述（不接真实天气 API）；Artist 绑定 Agnes Image；线性边 `start → researcher → artist → end`。
+- **影响**：`compiler/compiler.py`、`compiler/node_input.py`（新）、`agent_executor.py`、`workflow_projection.py`、`main.py`（增量 patch）、`apps/desktop` Chat/Flow UI；Task 清单见 `specs/core/tasks.md` §M3-F。
+- **决策状态**：`已落地`（M3-F01–F09；用户 2026-06-26 手动 Weather-to-Vision E2E 通过）
+
 ## 开放问题
 
 （暂无 — 原 Q1–Q4 已于 2026-06-22 关闭，见 D3–D6。）

@@ -82,7 +82,7 @@ def test_plain_chat_persists_messages(monkeypatch) -> None:
 
     class _FakeRouter:
         def get_active_model(self) -> SimpleNamespace:
-            return SimpleNamespace(name="Test Model")
+            return SimpleNamespace(id="test-model", name="Test Model", model_kind="chat")
 
         def chat(self, history: list[dict[str, str]]) -> str:
             return f"Echo: {history[-1]['content']}"

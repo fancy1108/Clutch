@@ -4,6 +4,8 @@ export interface ModelEntry {
   id: string;
   name: string;
   provider_id: string;
+  model_kind?: 'chat' | 'image';
+  image_backend?: string;
   available: boolean;
   credential_source?: string | null;
   credential_source_label?: string | null;
@@ -11,6 +13,7 @@ export interface ModelEntry {
   endpoint?: string | null;
   clutch_managed?: boolean;
   is_cc_switch?: boolean;
+  is_custom?: boolean;
 }
 
 export interface ProviderEntry {
@@ -34,7 +37,7 @@ export interface ModelTestResult {
 }
 
 export async function fetchModelsConfig(): Promise<ModelConfig> {
-  const response = await fetch(`${BASE}/api/models/config`);
+  const response = await fetch(`${BASE}/api/models/config`, { cache: 'no-store' });
   if (!response.ok) throw new Error(`models config failed (${response.status})`);
   return response.json() as Promise<ModelConfig>;
 }
@@ -92,13 +95,50 @@ export async function testModelConnection(modelId: string): Promise<ModelTestRes
   return response.json() as Promise<ModelTestResult>;
 }
 
+export interface AddCustomImageModelInput {
+  name: string;
+  api_model: string;
+  base_url: string;
+  provider_id?: string;
+  image_backend?: '' | 'agnes' | 'openai_images';
+  api_key?: string;
+}
+
+export async function addCustomImageModel(
+  input: AddCustomImageModelInput,
+): Promise<{ model_id: string; config: ModelConfig }> {
+  const response = await fetch(`${BASE}/api/models/custom/image`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as { detail?: { message?: string } };
+    throw new Error(body.detail?.message ?? `add image model failed (${response.status})`);
+  }
+  return response.json() as Promise<{ model_id: string; config: ModelConfig }>;
+}
+
+export async function deleteCustomModel(modelId: string): Promise<ModelConfig> {
+  const response = await fetch(`${BASE}/api/models/custom/${encodeURIComponent(modelId)}`, {
+    method: 'DELETE',
+    cache: 'no-store',
+  });
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as { detail?: { message?: string } };
+    throw new Error(body.detail?.message ?? `delete custom model failed (${response.status})`);
+  }
+  const body = (await response.json()) as { config: ModelConfig };
+  return body.config;
+}
+
 export const PROVIDER_LABELS: Record<string, string> = {
   deepseek: 'DeepSeek',
   anthropic: 'Anthropic',
   openai: 'OpenAI',
   google: 'Google',
   ollama: 'Ollama',
-  custom: 'Custom',
+  custom: 'Agnes / Custom',
 };
 
 const VERIFY_CACHE_KEY = 'clutch.model-verify-cache';
@@ -174,22 +214,29 @@ export function pruneModelVerifyCache(validModelIds: Iterable<string>): void {
 }
 
 export function mapModelConfigToUi(config: ModelConfig) {
-  const available = config.models.filter((m) => m.available);
+  const visible = config.models.filter((m) => m.available || m.is_custom);
+  const available = visible.filter((m) => m.available);
   return {
     activeModelId: config.active_model_id,
     providers: config.providers ?? {},
-    models: available.map((m) => ({
+    models: visible.map((m) => ({
       id: m.id,
       name: m.name,
       provider: PROVIDER_LABELS[m.provider_id] ?? m.provider_id,
       providerId: m.provider_id,
+      modelKind: m.model_kind ?? 'chat',
+      imageBackend: m.image_backend ?? '',
+      available: m.available,
       contextWindow: '—',
       temperature: 0.3,
-      sourceSummary: m.source_summary ?? 'Credentials configured',
+      sourceSummary: m.available
+        ? (m.source_summary ?? 'Credentials configured')
+        : 'Add an API key for this provider to enable this model.',
       credentialSourceLabel: m.credential_source_label ?? null,
       endpoint: m.endpoint ?? null,
       clutchManaged: Boolean(m.clutch_managed),
       isCcSwitch: Boolean(m.is_cc_switch),
+      isCustom: Boolean(m.is_custom),
     })),
     activeAvailable: available.some((m) => m.id === config.active_model_id),
   };

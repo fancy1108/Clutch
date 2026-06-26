@@ -19,6 +19,8 @@ export interface Deliverable {
   content: string;
 }
 
+export type AgentType = 'clutch' | 'claude-cli' | 'ollama-cli' | 'antigravity-cli';
+
 export interface Agent {
   id: string;
   name: string;
@@ -29,8 +31,11 @@ export interface Agent {
   deliverables: Deliverable[];
   mcpTools?: string[];
   mcpServerIds?: string[];
-  aiEngine?: string;
+  agentType?: AgentType;
+  modelId?: string;
   ollamaModel?: string;
+  /** @deprecated use agentType */
+  aiEngine?: string;
   skills?: string[];
   builtin?: boolean;
 }

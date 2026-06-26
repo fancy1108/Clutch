@@ -22,7 +22,7 @@ export function getBuiltinAgent(): Agent {
     deliverables: [],
     mcpTools: [],
     mcpServerIds: [],
-    aiEngine: 'Configured LLM',
+    agentType: 'clutch',
     skills: [],
     builtin: true,
   };

@@ -10,6 +10,66 @@ from unittest.mock import MagicMock, patch
 from src.llm.http_complete import http_chat_complete
 
 
+def test_openai_multimodal_user_message_passthrough() -> None:
+    captured: dict[str, Any] = {}
+
+    def fake_urlopen(req: urllib.request.Request, timeout: float = 0) -> MagicMock:
+        _ = timeout
+        captured["body"] = json.loads(req.data.decode())
+        mock_resp = MagicMock()
+        mock_resp.read.return_value = json.dumps(
+            {"choices": [{"message": {"content": "a cat"}}]}
+        ).encode()
+        mock_resp.__enter__.return_value = mock_resp
+        return mock_resp
+
+    messages = [
+        {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": "what is this?"},
+                {"type": "image_url", "image_url": {"url": "data:image/png;base64,abc"}},
+            ],
+        }
+    ]
+
+    with patch("urllib.request.urlopen", side_effect=fake_urlopen):
+        text = http_chat_complete(
+            provider_id="ollama",
+            base_url="http://localhost:11434",
+            api_model="qwen2.5vl:7b",
+            api_key="",
+            messages=messages,
+        )
+    assert text == "a cat"
+    assert captured["body"]["messages"][0]["content"][1]["type"] == "image_url"
+
+
+def test_ollama_base_url_normalized_to_v1_prefix() -> None:
+    captured: dict[str, Any] = {}
+
+    def fake_urlopen(req: urllib.request.Request, timeout: float = 0) -> MagicMock:
+        _ = timeout
+        captured["url"] = req.full_url
+        mock_resp = MagicMock()
+        mock_resp.read.return_value = json.dumps(
+            {"choices": [{"message": {"content": "ok"}}]}
+        ).encode()
+        mock_resp.__enter__.return_value = mock_resp
+        return mock_resp
+
+    with patch("urllib.request.urlopen", side_effect=fake_urlopen):
+        text = http_chat_complete(
+            provider_id="ollama",
+            base_url="http://localhost:11434",
+            api_model="qwen2.5vl:7b",
+            api_key="",
+            messages=[{"role": "user", "content": "hi"}],
+        )
+    assert text == "ok"
+    assert captured["url"] == "http://localhost:11434/v1/chat/completions"
+
+
 def test_openai_compatible_response_parsing() -> None:
     payload = {"choices": [{"message": {"content": "Hello from model"}}]}
     mock_resp = MagicMock()

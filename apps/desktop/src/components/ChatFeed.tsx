@@ -1,12 +1,17 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { ChatMessage, ClutchRunStatus } from '../types';
 import { useLanguage } from './LanguageContext';
+import { ChatInputBar, type Attachment } from './ChatInputBar';
+import type { SessionRecord } from '../services/runApi';
+import type { ScannedSkill } from '../services/skillsApi';
+import type { FileTreeNode } from '../services/workspaceApi';
+import type { PermissionMode } from '../services/permissionApi';
 
 interface ChatFeedProps {
   messages: ChatMessage[];
   inputValue: string;
   setInputValue: (val: string) => void;
-  onSendMessage: (text: string) => void;
+  onSendMessage: (text: string, attachments?: Attachment[]) => void;
   clutchStatus: ClutchRunStatus;
   currentFlowName?: string;
   selectedSidebarWidth: number;
@@ -28,6 +33,12 @@ interface ChatFeedProps {
   llmModelName?: string;
   activeAgentName?: string;
   engineHint?: string;
+  // New props for ChatInputBar
+  workspaceFiles?: FileTreeNode[];
+  sessions?: SessionRecord[];
+  skills?: ScannedSkill[];
+  permissionMode?: PermissionMode;
+  onPermissionModeChange?: (mode: PermissionMode) => void;
 }
 
 const WORKFLOW_AGENTS = new Set(['Builder', 'Orchestrator', 'Evaluator', 'Supervisor']);
@@ -44,12 +55,16 @@ function isPlainLlmReply(agent: string): boolean {
 }
 
 /** Map agent-configured engine label to runtime label from the sidecar. */
-export function configuredEngineToRuntimeLabel(aiEngine: string): string {
-  const key = aiEngine.trim().toLowerCase();
-  if (key.includes('claude code') || key === 'claude-cli') return 'Claude CLI';
-  if (key.includes('antigravity') || key.includes('agenty') || key === 'agy-cli') return 'Antigravity CLI';
+export function configuredEngineToRuntimeLabel(agentTypeOrLegacy: string): string {
+  const key = agentTypeOrLegacy.trim().toLowerCase();
+  if (key === 'clutch' || key.includes('configured llm')) return 'Clutch';
+  if (key.includes('claude') || key === 'claude-cli') return 'Claude CLI';
+  if (key.includes('antigravity') || key.includes('agenty') || key === 'agy-cli' || key === 'antigravity-cli') {
+    return 'Antigravity CLI';
+  }
+  if (key.includes('ollama') || key === 'ollama-cli') return 'Ollama CLI';
   if (key.includes('cursor')) return 'Cursor';
-  return aiEngine.trim();
+  return agentTypeOrLegacy.trim();
 }
 
 function replyRuntimeLabel(
@@ -57,6 +72,17 @@ function replyRuntimeLabel(
   fallbackModelName: string,
 ): string {
   return runtimeEngine?.trim() || fallbackModelName || '—';
+}
+
+const IMAGE_MARKER_RE = /\[image:\s*(data:image\/[^\]]+)\]\s*/gi;
+
+function parseMessageImages(text: string): { text: string; images: string[] } {
+  const images: string[] = [];
+  const stripped = text.replace(IMAGE_MARKER_RE, (_, url: string) => {
+    images.push(url.trim());
+    return '';
+  }).trim();
+  return { text: stripped, images };
 }
 
 function renderMarkdown(text: string): React.ReactNode {
@@ -158,6 +184,21 @@ function renderMarkdown(text: string): React.ReactNode {
       flushBlockquote(i);
     }
 
+    // Handle markdown images: ![alt](url)
+    const imageMatch = trimmed.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
+    if (imageMatch) {
+      elements.push(
+        <div key={i} className="my-3">
+          <img
+            src={imageMatch[2]}
+            alt={imageMatch[1] || 'generated image'}
+            className="rounded-xl max-w-full border border-outline-variant/30 shadow-sm"
+          />
+        </div>
+      );
+      continue;
+    }
+
     // Handle Headings
     if (trimmed.startsWith('# ')) {
       elements.push(
@@ -251,10 +292,30 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   llmModelName = '',
   activeAgentName = '',
   engineHint = '',
+  workspaceFiles = [],
+  sessions = [],
+  skills = [],
+  permissionMode = 'ask',
+  onPermissionModeChange,
 }) => {
   const { t } = useLanguage();
   const bottomRef = useRef<HTMLDivElement>(null);
   const [hillInstructions, setHillInstructions] = useState('');
+
+  // Serialize attachments into text for sending
+  const handleSendWithAttachments = (text: string, attachments: Attachment[]) => {
+    let fullText = text;
+    for (const att of attachments) {
+      if (att.kind === 'image' && att.dataUrl) {
+        fullText = `[image: ${att.dataUrl}]\n${fullText}`;
+      } else if (att.path) {
+        fullText = `[file: ${att.path}]\n${fullText}`;
+      } else {
+        fullText = `[file: ${att.name}]\n${fullText}`;
+      }
+    }
+    onSendMessage(fullText.trim(), attachments);
+  };
 
   const isIdle = clutchStatus === 'idle';
   const isRunning = clutchStatus === 'running';
@@ -390,6 +451,8 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
 
         {messages.map((msg) => {
           const isUser = msg.agent === 'User';
+          const parsedUser = isUser ? parseMessageImages(msg.text) : { text: msg.text, images: [] as string[] };
+          const displayText = isUser ? parsedUser.text : msg.text;
           const isErrorMsg =
             msg.status === 'FAILED' ||
             msg.badgeText?.includes('FAILED') ||
@@ -451,7 +514,19 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                           <span>COMPLETED</span>
                         </div>
                       )}
-                      {renderMarkdown(msg.text)}
+                      {parsedUser.images.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          {parsedUser.images.map((src, index) => (
+                            <img
+                              key={`${msg.id}-img-${index}`}
+                              src={src}
+                              alt="Attached screenshot"
+                              className="max-w-full max-h-64 rounded-lg border border-outline-variant/30 object-contain bg-white"
+                            />
+                          ))}
+                        </div>
+                      )}
+                      {renderMarkdown(displayText)}
                       {msg.codeHighlight && (
                         <div className="mt-3 flex items-center gap-2 py-2 px-3 bg-white/60 rounded-xl border border-outline-variant/30">
                           <span className="material-symbols-outlined text-green-500 text-[18px]">
@@ -608,56 +683,24 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
             </div>
           </div>
         ) : (
-          <div className="w-full max-w-2xl bg-white border border-outline-variant p-2 shadow-xl focus-within:ring-2 focus-within:ring-primary/5 rounded-xl">
-            {selectedWorkflowId && (
-              <div className="flex items-center justify-between px-2 pt-1 pb-0.5">
-                <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-primary bg-primary/5 border border-primary/20 rounded-lg px-2 py-1">
-                  <span className="material-symbols-outlined text-[14px]">account_tree</span>
-                  {selectedWorkflowName || selectedWorkflowId}
-                </span>
-                <button
-                  type="button"
-                  onClick={onClearSelectedWorkflow}
-                  className="text-[10px] text-on-surface-variant hover:text-on-surface px-2 py-1"
-                >
-                  {t('Clear')}
-                </button>
-              </div>
-            )}
-            <div className="flex items-end gap-2 px-2 py-1">
-              <textarea
-                data-testid="chat-input"
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={handleKeyDown}
-                className="w-full border-none focus:ring-0 text-xs text-on-surface bg-transparent p-2 resize-none min-h-[40px] max-h-[140px] placeholder:text-on-surface-variant/70 outline-none"
-                placeholder={
-                  selectedWorkflowId
-                    ? t('Describe what you want this workflow to do...')
-                    : isMultiAgent
-                    ? t('Ask @Builder, @Orchestrator or trigger @Workflow...')
-                    : t('Ask your AI Agent anything...')
-                }
-                rows={1}
-              />
-              <button
-                type="button"
-                data-testid={isRunning && isPlainLlmChat ? 'chat-stop' : 'chat-send'}
-                onClick={isRunning && isPlainLlmChat ? onStopRun : handleSendClick}
-                disabled={!(isRunning && isPlainLlmChat) && !inputValue.trim()}
-                className={`w-10 h-10 flex items-center justify-center rounded-full transition-all ${
-                  isRunning && isPlainLlmChat
-                    ? 'bg-neutral-900 text-white hover:bg-black'
-                    : inputValue.trim()
-                    ? 'bg-primary text-white hover:opacity-90'
-                    : 'bg-surface-container text-on-surface-variant/40 cursor-not-allowed'
-                }`}
-              >
-                <span className="material-symbols-outlined text-[18px]">
-                  {isRunning && isPlainLlmChat ? 'stop' : 'arrow_upward'}
-                </span>
-              </button>
-            </div>
+          <div className="w-full flex justify-center">
+            <ChatInputBar
+              inputValue={inputValue}
+              setInputValue={setInputValue}
+              onSendMessage={handleSendWithAttachments}
+              isRunning={isRunning}
+              isPlainLlmChat={isPlainLlmChat}
+              onStopRun={onStopRun}
+              selectedWorkflowId={selectedWorkflowId}
+              selectedWorkflowName={selectedWorkflowName}
+              onClearSelectedWorkflow={onClearSelectedWorkflow}
+              isMultiAgent={isMultiAgent}
+              workspaceFiles={workspaceFiles}
+              sessions={sessions}
+              skills={skills}
+              permissionMode={permissionMode}
+              onPermissionModeChange={onPermissionModeChange ?? (() => {})}
+            />
           </div>
         )}
       </div>

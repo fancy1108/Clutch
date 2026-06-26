@@ -27,6 +27,29 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ## 已交付（代码 Task · 自 Git 回填）
 
+### M3-F · Flow 多 Agent 接力（D23） ✅
+- **日期：** 2026-06-26
+- **Commit：** `<pending>` — `feat(flow): multi-agent handoff, clutch execution, incremental state patches`
+- **Verification：** `uv run pytest tests/test_node_input.py tests/test_workflow_handoff.py tests/test_workflow_projection.py tests/test_workflow_step_patch.py tests/test_agent_executor.py -v` → 8 passed；全量 `uv run pytest` → 280 passed（3 video renderer 用例 event loop 抖动，与 Flow 无关）；用户手动 Weather-to-Vision E2E 通过（Researcher → Artist 出图）
+- **证据：** `runs/verification/2026-06-26-M3-F-flow-pytest.log`；用户截图 E2E（上海天气 → 外滩插画）
+- **交付文件：**
+  - `services/orchestrator/src/compiler/node_input.py` — Flow 节点输入 auto 解析（start 上游 → 用户句；否则 → 上游 output）
+  - `services/orchestrator/src/compiler/compiler.py` — `node_outputs` 写入与 `emit_workflow_agent_step`
+  - `services/orchestrator/src/agent_prompt.py` — 单聊/Flow 共享 system prompt 组合
+  - `services/orchestrator/src/agent_executor.py` — Clutch 文本/MCP/生图与 CLI 分流
+  - `services/orchestrator/src/workflow_runtime.py` — 逐步 step callback
+  - `services/orchestrator/src/workflow_projection.py` — 终态投影消息 id 去重
+  - `services/orchestrator/src/main.py` — `_apply_workflow_step_patch` + Flow 启动注册 callback
+  - `services/orchestrator/src/run_log_forwarder.py` — `emit_state_patch`
+  - `workflows/weather-to-vision.json` — Researcher → Artist 线性模板
+  - `apps/desktop/src/App.tsx` — Flow 启动前 `await clutchStore.connect`
+  - `apps/desktop/src/services/clutchState.ts` — `optimisticWorkflowStart`
+  - `services/orchestrator/tests/test_node_input.py` — D23 输入解析
+  - `services/orchestrator/tests/test_workflow_handoff.py` — 两节点接力
+  - `services/orchestrator/tests/test_workflow_projection.py` — 增量消息去重
+  - `services/orchestrator/tests/test_workflow_step_patch.py` — step state_patch
+  - `services/orchestrator/tests/test_agent_executor.py` — Clutch prompt + 上游生图
+
 ### OLLAMA-LOCAL-ROUTING ✅
 - **日期：** 2026-06-26
 - **Commit：** `Pending commit`

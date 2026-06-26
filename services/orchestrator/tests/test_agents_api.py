@@ -27,20 +27,20 @@ def test_save_agents_persists_builtin_override(tmp_path, monkeypatch) -> None:
     stored = list_agents()
     assert stored[0]["markdownDoc"] == "# Custom builtin prompt"
     assert stored[0]["builtin"] is True
-    assert stored[0]["aiEngine"] == "Configured LLM"
+    assert stored[0]["agentType"] == "clutch"
     assert any(agent["id"] == "custom-1" for agent in stored)
     assert len([agent for agent in stored if agent["id"] == BUILTIN_AGENT_ID]) == 1
 
 
-def test_save_agents_strips_builtin_ai_engine_override(tmp_path, monkeypatch) -> None:
+def test_save_agents_strips_builtin_agent_type_override(tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("CLUTCH_AGENTS_DIR", str(tmp_path))
     customized = {
         **get_builtin_agent(),
-        "aiEngine": "Claude Code (Local CLI)",
+        "agentType": "claude-cli",
     }
     save_agents([customized])
     stored = list_agents()
-    assert stored[0]["aiEngine"] == "Configured LLM"
+    assert stored[0]["agentType"] == "clutch"
 
 
 def test_get_agent_by_id_returns_builtin_agent() -> None:

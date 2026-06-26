@@ -5,6 +5,8 @@ import { fetchAgents, saveAgents, generateAgentPrompt } from '../services/agentA
 import { fetchSkillsRegistry, type ScannedSkill } from '../services/skillsApi';
 import { fetchMcpStatus, type McpServer } from '../services/mcpApi';
 import { getAgentDisplayName, isBuiltinAgent, mergeAgentsWithBuiltin, BUILTIN_AGENT_ID } from '../services/builtinAgent';
+import { AGENT_TYPE_OPTIONS, agentTypeFromAgent, agentTypeLabel, type AgentTypeId } from '../services/agentTypes';
+import { fetchModelsConfig, mapModelConfigToUi } from '../services/modelsApi';
 import { useLanguage } from './LanguageContext';
 import { fetchToolsStatus, type AiToolStatus } from '../services/toolsApi';
 
@@ -119,7 +121,9 @@ export function AgentManager({
   const [scannedSkills, setScannedSkills] = useState<ScannedSkill[]>([]);
 
   const [connectedTools, setConnectedTools] = useState<AiToolStatus[]>([]);
-  const [aiEngine, setAiEngine] = useState('Claude Code (Local CLI)');
+  const [agentType, setAgentType] = useState<AgentTypeId>('clutch');
+  const [modelId, setModelId] = useState('');
+  const [clutchModels, setClutchModels] = useState<Array<{ id: string; name: string; modelKind: string }>>([]);
   const [ollamaModels, setOllamaModels] = useState<string[]>([]);
   const [ollamaModel, setOllamaModel] = useState('');
 
@@ -133,14 +137,7 @@ export function AgentManager({
       });
   };
 
-  const getDefaultEngine = (tools: AiToolStatus[]) => {
-    if (tools.length === 0) return 'Claude Code (Local CLI)';
-    const first = tools[0];
-    if (first.id === 'claude-cli') return 'Claude Code (Local CLI)';
-    if (first.id === 'agy-cli') return 'Antigravity CLI';
-    if (first.id === 'cursor-app' || first.id === 'cursor-cli') return 'Cursor Workspace Node';
-    return first.name;
-  };
+  const getDefaultAgentType = (): AgentTypeId => 'clutch';
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [isSkillsAttachOpen, setIsSkillsAttachOpen] = useState(false);
   const [skillsSearch, setSkillsSearch] = useState('');
@@ -189,7 +186,38 @@ export function AgentManager({
   }, []);
 
   useEffect(() => {
-    if (isModalOpen && aiEngine === 'Ollama') {
+    void fetchModelsConfig()
+      .then((config) => {
+        const mapped = mapModelConfigToUi(config);
+        setClutchModels(
+          mapped.models.map((model) => ({
+            id: model.id,
+            name: model.name,
+            modelKind: model.modelKind ?? 'chat',
+          })),
+        );
+      })
+      .catch(() => setClutchModels([]));
+  }, []);
+
+  useEffect(() => {
+    if (!isModalOpen || agentType !== 'clutch') return;
+    void fetchModelsConfig()
+      .then((config) => {
+        const mapped = mapModelConfigToUi(config);
+        setClutchModels(
+          mapped.models.map((model) => ({
+            id: model.id,
+            name: model.name,
+            modelKind: model.modelKind ?? 'chat',
+          })),
+        );
+      })
+      .catch(() => setClutchModels([]));
+  }, [isModalOpen, agentType]);
+
+  useEffect(() => {
+    if (isModalOpen && agentType === 'ollama-cli') {
       fetch('/api/models/ollama')
         .then((res) => res.json())
         .then((data) => {
@@ -204,7 +232,7 @@ export function AgentManager({
         })
         .catch((err) => console.error('Failed to fetch Ollama models:', err));
     }
-  }, [isModalOpen, aiEngine]);
+  }, [isModalOpen, agentType]);
 
   const persistAgents = (next: Agent[]) => {
     const builtin = next.find((agent) => isBuiltinAgent(agent));
@@ -225,14 +253,13 @@ export function AgentManager({
     setName('');
     setDescription('');
     setMarkdownDoc(`# Custom Agent Prompt\n\nDefine custom parameters or directives for this agent here.\n\n## 📋 Protocol\n- Task validation.\n- Process orchestration.`);
-    setDeliverablesInput([
-      { name: 'instructions.md', content: '# Custom instructions\n- Rule 1: Compile cleanly\n- Rule 2: Adhere to guidelines.' }
-    ]);
+    setDeliverablesInput([]);
     setNewDelivName('');
     setNewDelivContent('');
     setSelectedMcpTools([]);
     setSelectedMcpServerIds([]);
-    setAiEngine(getDefaultEngine(connectedTools));
+    setAgentType(getDefaultAgentType());
+    setModelId('');
     setOllamaModel('');
     setSelectedSkills([]);
     setIsSkillsAttachOpen(false);
@@ -254,11 +281,8 @@ export function AgentManager({
     setNewDelivContent('');
     setSelectedMcpTools(agent.mcpTools || []);
     setSelectedMcpServerIds(agent.mcpServerIds || []);
-    setAiEngine(
-      isBuiltinAgent(agent)
-        ? 'Configured LLM'
-        : agent.aiEngine || getDefaultEngine(connectedTools),
-    );
+    setAgentType(agentTypeFromAgent(agent));
+    setModelId(agent.modelId || '');
     setOllamaModel(agent.ollamaModel || '');
     setSelectedSkills(agent.skills || []);
     setIsSkillsAttachOpen(false);
@@ -319,16 +343,15 @@ export function AgentManager({
       return;
     }
 
-    if (aiEngine === 'Ollama' && !ollamaModel.trim()) {
+    if (agentType === 'ollama-cli' && !ollamaModel.trim()) {
       console.warn('Please select an Ollama model');
       return;
     }
 
     const todayStr = new Date().toISOString().replace('T', ' ').substring(0, 16);
 
-    const resolvedAiEngine = editingId === BUILTIN_AGENT_ID
-      ? 'Configured LLM'
-      : aiEngine;
+    const resolvedAgentType: AgentTypeId = editingId === BUILTIN_AGENT_ID ? 'clutch' : agentType;
+    const resolvedModelId = resolvedAgentType === 'clutch' && modelId.trim() ? modelId.trim() : undefined;
 
     if (modalMode === 'create') {
       const newAgent: Agent = {
@@ -341,8 +364,9 @@ export function AgentManager({
         deliverables: deliverablesInput,
         mcpTools: selectedMcpTools,
         mcpServerIds: selectedMcpServerIds,
-        aiEngine: resolvedAiEngine,
-        ollamaModel: resolvedAiEngine === 'Ollama' ? ollamaModel : undefined,
+        agentType: resolvedAgentType,
+        modelId: resolvedModelId,
+        ollamaModel: resolvedAgentType === 'ollama-cli' ? ollamaModel : undefined,
         skills: selectedSkills
       };
       persistAgents([newAgent, ...agents]);
@@ -358,8 +382,9 @@ export function AgentManager({
             deliverables: deliverablesInput,
             mcpTools: selectedMcpTools,
             mcpServerIds: selectedMcpServerIds,
-            aiEngine: resolvedAiEngine,
-            ollamaModel: resolvedAiEngine === 'Ollama' ? ollamaModel : undefined,
+            agentType: resolvedAgentType,
+            modelId: resolvedModelId,
+            ollamaModel: resolvedAgentType === 'ollama-cli' ? ollamaModel : undefined,
             skills: selectedSkills
           };
           if (selectedAgent && selectedAgent.id === editingId) {
@@ -522,17 +547,26 @@ export function AgentManager({
                     <p className="text-[11px] text-neutral-600 font-normal mt-0.5 leading-relaxed">{selectedAgent.description}</p>
                   </div>
                   <div className="border-t border-neutral-200/50 pt-2.5">
-                    <p className="text-[10px] text-neutral-400 font-medium">DRIVING AI ENGINE</p>
+                    <p className="text-[10px] text-neutral-400 font-medium">AGENT TYPE</p>
                     <div className="flex items-center gap-1.5 mt-1 bg-neutral-100 border border-neutral-200 rounded-lg p-1.5">
                       <span className="material-symbols-outlined text-[13px] text-neutral-700">bolt</span>
                       <span className="text-[10.5px] font-mono font-bold text-neutral-900">
-                        {isBuiltinAgent(selectedAgent)
-                          ? 'Configured LLM'
-                          : selectedAgent.aiEngine || 'Claude Code (Local CLI)'}
+                        {agentTypeLabel(agentTypeFromAgent(selectedAgent))}
                       </span>
                     </div>
                   </div>
-                  {!isBuiltinAgent(selectedAgent) && selectedAgent.aiEngine === 'Ollama' && (
+                  {agentTypeFromAgent(selectedAgent) === 'clutch' && selectedAgent.modelId && (
+                    <div className="border-t border-neutral-200/50 pt-2.5">
+                      <p className="text-[10px] text-neutral-400 font-medium">MODEL</p>
+                      <div className="flex items-center gap-1.5 mt-1 bg-neutral-100 border border-neutral-200 rounded-lg p-1.5">
+                        <span className="material-symbols-outlined text-[13px] text-neutral-700">layers</span>
+                        <span className="text-[10.5px] font-mono font-bold text-neutral-900">
+                          {clutchModels.find((m) => m.id === selectedAgent.modelId)?.name || selectedAgent.modelId}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  {agentTypeFromAgent(selectedAgent) === 'ollama-cli' && (
                     <div className="border-t border-neutral-200/50 pt-2.5">
                       <p className="text-[10px] text-neutral-400 font-medium">OLLAMA MODEL</p>
                       <div className="flex items-center gap-1.5 mt-1 bg-neutral-100 border border-neutral-200 rounded-lg p-1.5">
@@ -705,9 +739,9 @@ export function AgentManager({
                         {agent.skills.length} Skills
                       </span>
                     )}
-                    {agent.aiEngine && (
+                    {agentTypeFromAgent(agent) && (
                       <span className="text-[9.5px] font-mono text-neutral-800 bg-neutral-100 border border-neutral-200 px-1.5 py-0.2 rounded-md tracking-tight font-extrabold uppercase">
-                        {agent.aiEngine}
+                        {agentTypeLabel(agentTypeFromAgent(agent))}
                       </span>
                     )}
                     {agent.mcpTools && agent.mcpTools.length > 0 && (
@@ -814,53 +848,64 @@ export function AgentManager({
                   </div>
                   
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-neutral-500 tracking-wider uppercase font-mono block">AI Driving Engine</label>
+                    <label className="text-[10px] font-bold text-neutral-500 tracking-wider uppercase font-mono block">Agent Type</label>
                     {modalMode === 'edit' && editingId === BUILTIN_AGENT_ID ? (
                       <div>
                         <div className="flex items-center gap-1.5 px-3 py-1.5 border border-neutral-200 bg-neutral-100 rounded-lg">
                           <span className="material-symbols-outlined text-[14px] text-neutral-700">bolt</span>
-                          <span className="text-xs font-mono font-bold text-neutral-900">Configured LLM</span>
+                          <span className="text-xs font-mono font-bold text-neutral-900">Clutch</span>
                         </div>
                         <p className="text-[9.5px] text-neutral-400 mt-1.5 leading-relaxed">
-                          Built-in agent always uses the model selected in Settings → Models.
+                          Built-in agent uses Clutch models. Pick a default model below or switch at runtime in chat.
                         </p>
                       </div>
-                    ) : (() => {
-                      const optionsMap = new Map<string, string>();
-                      connectedTools.forEach((t) => {
-                        if (t.id === 'claude-cli') {
-                          optionsMap.set('Claude Code (Local CLI)', 'Claude Code (Local CLI)');
-                        } else if (t.id === 'agy-cli') {
-                          optionsMap.set('Antigravity CLI', 'Antigravity CLI');
-                        } else {
-                          optionsMap.set(t.name, `${t.name} (${t.kind === 'cli' ? 'CLI' : 'Client'})`);
-                        }
-                      });
-                      if (aiEngine && !optionsMap.has(aiEngine)) {
-                        optionsMap.set(aiEngine, aiEngine);
-                      }
-                      if (optionsMap.size === 0) {
-                        optionsMap.set('Claude Code (Local CLI)', 'Claude Code (Local CLI)');
-                      }
-
-                      return (
-                        <select
-                          value={aiEngine}
-                          onChange={(e) => setAiEngine(e.target.value)}
-                          className="w-full px-3 py-1.5 text-xs border border-neutral-200 focus:outline-none focus:border-neutral-900 focus:ring-1 focus:ring-neutral-900/20 bg-white rounded-lg font-sans text-neutral-800"
-                        >
-                          {Array.from(optionsMap.entries()).map(([val, label]) => (
-                            <option key={val} value={val}>
-                              {label}
-                            </option>
-                          ))}
-                        </select>
-                      );
-                    })()}
+                    ) : (
+                      <select
+                        value={agentType}
+                        onChange={(e) => setAgentType(e.target.value as AgentTypeId)}
+                        className="w-full px-3 py-1.5 text-xs border border-neutral-200 focus:outline-none focus:border-neutral-900 focus:ring-1 focus:ring-neutral-900/20 bg-white rounded-lg font-sans text-neutral-800"
+                      >
+                        {AGENT_TYPE_OPTIONS.map((option) => (
+                          <option key={option.id} value={option.id}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </div>
                 </div>
 
-                {aiEngine === 'Ollama' && (
+                {agentType === 'clutch' && (
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-neutral-500 tracking-wider uppercase font-mono block">
+                      Model
+                    </label>
+                    {clutchModels.length === 0 ? (
+                      <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 leading-relaxed">
+                        No models configured yet. Add API keys or image models under Settings → Models first.
+                      </p>
+                    ) : (
+                      <select
+                        value={modelId}
+                        onChange={(e) => setModelId(e.target.value)}
+                        className="w-full px-3 py-1.5 text-xs border border-neutral-200 focus:outline-none focus:border-neutral-900 focus:ring-1 focus:ring-neutral-900/20 bg-white rounded-lg font-mono text-neutral-800"
+                      >
+                        <option value="">Use global default model</option>
+                        {clutchModels.map((model) => (
+                          <option key={model.id} value={model.id}>
+                            {model.name}
+                            {model.modelKind === 'image' ? ' (image)' : ''}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                    <p className="text-[9.5px] text-neutral-400 leading-relaxed">
+                      Clutch agents run on Sidecar models (chat or image). Leave empty to follow the global model in chat.
+                    </p>
+                  </div>
+                )}
+
+                {agentType === 'ollama-cli' && (
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-neutral-500 tracking-wider uppercase font-mono block">
                       Ollama Model
@@ -1064,10 +1109,10 @@ export function AgentManager({
                   <span className="text-[10.5px] font-extrabold text-[#111111] font-mono tracking-wide uppercase">MCP Hub Server Bindings</span>
                 </div>
 
-                {aiEngine === 'Configured LLM' ? (
+                {agentType === 'clutch' ? (
                   <>
                     <p className="text-[10px] text-neutral-400 leading-normal">
-                      Bind MCP servers from Settings → MCP Hub. Used when this agent runs on the configured LLM (e.g. Clutch Agent).
+                      Bind MCP servers from Settings → MCP Hub. Used when this agent runs on Clutch models.
                     </p>
                     <div className="flex flex-col gap-1.5 border border-neutral-200 bg-white p-3 rounded-xl max-h-62 overflow-y-auto">
                       {mcpServers.length === 0 ? (
