@@ -129,6 +129,8 @@ const zhTranslations: Record<string, string> = {
   "New session": "新建会话",
   "Projects": "Projects / 项目",
   "No sessions in this project yet": "此项目下暂无会话",
+  "Saved workspace snapshot": "已保存工作环境快照",
+  "Continue previous work": "可继续上次工作",
   "Select a project before starting a conversation.": "请先选择项目，再开始对话。",
   "Are you sure you want to remove this project from the list?": "确定要从列表中移除该项目吗？",
   "Are you sure you want to permanently delete this session?": "确定要永久删除该会话吗？",

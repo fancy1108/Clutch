@@ -130,6 +130,8 @@ export interface ClutchState {
   cli_session_agent_id?: string;
   /** Hybrid shell execution details keyed by chat message id. */
   hybrid_executions?: Record<string, HybridExecutionPayload>;
+  /** Long-lived bash PTY status for hybrid runtime (ready / recovering). */
+  shell_session_status?: string;
   /** @deprecated use cli_session_id — still read from older persisted runs */
   claude_session_id?: string;
   /** @deprecated use cli_session_agent_id */

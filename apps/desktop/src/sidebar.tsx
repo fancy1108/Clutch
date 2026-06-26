@@ -18,6 +18,7 @@ interface SidebarProps {
   setIsOpenState: (open: boolean) => void;
   isMultiAgent?: boolean;
   sessions?: SessionRecord[];
+  shellSnapshotRunIds?: ReadonlySet<string>;
   activeSessionId?: string;
   workspaces?: WorkspaceInfo[];
   repositoryGroups?: RepositoryGroup[];
@@ -63,6 +64,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   setIsOpenState,
   isMultiAgent = true,
   sessions = [],
+  shellSnapshotRunIds,
   activeSessionId = '',
   workspaces = [],
   repositoryGroups = [],
@@ -326,6 +328,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             ) : (
               projectSessions.map((session) => {
                 const isActiveSession = session.run_id === activeSessionId;
+                const hasSnapshot = shellSnapshotRunIds?.has(session.run_id) ?? false;
                 return (
                   <button
                     key={session.run_id}
@@ -333,13 +336,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     data-testid={`sidebar-session-${session.run_id}`}
                     onClick={() => onSelectSession?.(session)}
                     onContextMenu={(e) => handleContextMenu(e, 'session', session.run_id)}
+                    title={hasSnapshot ? t('Continue previous work') : undefined}
                     className={`w-full flex items-center justify-between p-2 rounded-lg text-left transition-all ${
                       isActiveSession
                         ? 'bg-surface-bright shadow-sm text-on-surface font-bold border border-outline-variant/40'
                         : 'text-on-surface-variant hover:bg-surface-bright hover:text-on-surface'
                     }`}
                   >
-                    <span className="text-xs truncate max-w-[150px]">{sessionLabel(session)}</span>
+                    <span className="flex items-center gap-1.5 min-w-0">
+                      {hasSnapshot ? (
+                        <LegacyIcon
+                          name="restart_alt"
+                          className="text-[12px] text-primary flex-shrink-0"
+                          aria-hidden
+                        />
+                      ) : null}
+                      <span className="text-xs truncate max-w-[130px]">{sessionLabel(session)}</span>
+                    </span>
                     <span className="text-[9px] font-mono text-on-surface-variant/70 flex-shrink-0">
                       {formatRelativeTime(session.started_at)}
                     </span>

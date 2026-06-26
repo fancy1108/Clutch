@@ -24,6 +24,7 @@ import { fetchThemePreference, saveThemePreference, type ThemePresetId } from '.
 import { LanguageProvider, useLanguage } from './components/LanguageContext';
 import { clutchStore, createSessionRunId, submitChatMessage, useClutchState } from './services/clutchState';
 import { fetchSessions, createSession, startWorkflowRun, fetchRunState, deleteSession, type SessionRecord } from './services/runApi';
+import { fetchShellSnapshots } from './services/shellSnapshotApi';
 import { listWorkflowItems } from './services/workflowApi';
 import { isClutchAgentType, agentTypeFromAgent, agentTypeLabel } from './services/agentTypes';
 import {
@@ -118,6 +119,7 @@ function MainLayout() {
   // Repository list folders state
   const [folders, setFolders] = useState<import('./types').RepositoryFolder[]>([]);
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
+  const [shellSnapshotRunIds, setShellSnapshotRunIds] = useState<ReadonlySet<string>>(() => new Set());
   const [workspaces, setWorkspaces] = useState<WorkspaceInfo[]>([]);
   const [repositoryGroups, setRepositoryGroups] = useState<RepositoryGroup[]>([]);
   const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null);
@@ -310,7 +312,12 @@ function MainLayout() {
 
   const refreshSessions = async () => {
     try {
-      setSessions(await fetchSessions());
+      const [runs, snapshots] = await Promise.all([
+        fetchSessions(),
+        fetchShellSnapshots().catch(() => []),
+      ]);
+      setSessions(runs);
+      setShellSnapshotRunIds(new Set(snapshots.map((snap) => snap.run_id)));
     } catch (error: unknown) {
       console.warn('[Clutch] sessions unavailable:', error);
     }
@@ -892,6 +899,7 @@ function MainLayout() {
           setIsOpenState={setSidebarOpen}
           isMultiAgent={isMultiAgent}
           sessions={sessions}
+          shellSnapshotRunIds={shellSnapshotRunIds}
           activeSessionId={sessionRunId}
           workspaces={workspaces}
           repositoryGroups={repositoryGroups}

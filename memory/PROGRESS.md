@@ -4,7 +4,13 @@
 
 - 阶段：**D25 ShellSession Step 2 已交付（agy Hybrid + sweep 测试 + baseline）**
 - Git HEAD：`3c8229c`
-- **下次优先**：继续上次工作 UI · runtime_registry
+- Git HEAD：`97a2d15`（待 continue-work commit）
+- **下次优先**：runtime_registry
+
+## 2026-06-27 会话（Step 3 UI：继续上次工作）
+
+- **完成：** 侧栏会话行显示快照图标 + tooltip；`fetchShellSnapshots` + `shell_session_status` 类型
+- **校验：** verify 339 pytest + 11 vitest ✅
 
 ## 2026-06-27 会话（Shell DISCONNECTED 恢复）
 
