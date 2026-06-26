@@ -17,11 +17,6 @@ def mock_agents(monkeypatch) -> list[dict[str, str]]:
             "aiEngine": "Claude Code (Local CLI)",
         },
         {
-            "id": "agent-auditor",
-            "name": "Auditor Agent (Pipeline Quality Audit)",
-            "aiEngine": "Cursor Workspace Node",
-        },
-        {
             "id": "agent-evaluator",
             "name": "Evaluator Module",
             "aiEngine": "DeepSeek API",
@@ -35,11 +30,10 @@ def test_find_agent(mock_agents) -> None:
     # Exact name match
     assert find_agent("Builder Module (JSX VibeCoder)")["id"] == "agent-builder"
     # Exact id match
-    assert find_agent("agent-auditor")["id"] == "agent-auditor"
+    assert find_agent("agent-evaluator")["id"] == "agent-evaluator"
     # Case-insensitive match
     assert find_agent("builder module (jsx vibecoder)")["id"] == "agent-builder"
     # Substring match
-    assert find_agent("Auditor")["id"] == "agent-auditor"
     assert find_agent("evaluator")["id"] == "agent-evaluator"
     # None match
     assert find_agent("Unknown Agent") is None
@@ -112,7 +106,7 @@ def test_route_engine_claude_cli_passes_conversation_history(monkeypatch, mock_a
         history=history,
     )
     assert res.engine == "Claude CLI"
-    assert res.claude_session_id == "550e8400-e29b-41d4-a716-446655440000"
+    assert res.cli_session_id == "550e8400-e29b-41d4-a716-446655440000"
     assert "User: first question" in str(captured["prompt"])
     assert "Assistant: first answer" in str(captured["prompt"])
     assert "User: follow up" in str(captured["prompt"])
@@ -145,10 +139,10 @@ def test_route_engine_claude_cli_resumes_existing_session(monkeypatch, mock_agen
         prompt="follow up",
         system_prompt="sys",
         history=history,
-        claude_session_id="550e8400-e29b-41d4-a716-446655440000",
+        cli_session_id="550e8400-e29b-41d4-a716-446655440000",
     )
     assert res.engine == "Claude CLI"
-    assert res.claude_session_id == "550e8400-e29b-41d4-a716-446655440000"
+    assert res.cli_session_id == "550e8400-e29b-41d4-a716-446655440000"
     assert captured["prompt"] == "follow up"
     assert captured["system_prompt"] is None
     assert captured["resume_session_id"] == "550e8400-e29b-41d4-a716-446655440000"
@@ -197,31 +191,6 @@ def test_route_engine_claude_cli_streams_router_logs(monkeypatch, mock_agents) -
     assert any(line.startswith("[ROUTER]") for line in streamed)
     assert any("Starting new Claude CLI session" in line for line in streamed)
     assert streamed == res.logs
-
-
-def test_route_engine_cursor_connected(monkeypatch, mock_agents) -> None:
-    monkeypatch.setattr(
-        "src.engine_router.tool_available_for_routing",
-        lambda tool_id: tool_id == "cursor-app",
-    )
-    monkeypatch.setattr("src.engine_router.get_workspace", lambda: {"workspace_path": "/workspace"})
-
-    called_path = None
-
-    def fake_open_cursor(path):
-        nonlocal called_path
-        called_path = path
-
-    monkeypatch.setattr("src.engine_router.open_workspace_in_cursor", fake_open_cursor)
-
-    res = route_engine(
-        agent_name="Auditor Agent (Pipeline Quality Audit)",
-        prompt="open code",
-    )
-    assert res.engine == "Cursor"
-    assert "打开工作区" in res.output or "opened in Cursor" in res.output
-    assert called_path == "/workspace"
-    assert any("Routing task to Cursor" in log for log in res.logs)
 
 
 def test_route_engine_fallback_tool_claude_cli(monkeypatch) -> None:
@@ -287,7 +256,7 @@ def test_route_engine_antigravity_cli(monkeypatch) -> None:
         agent_name="Antigravity Agent",
         prompt="hello agy",
         system_prompt="system directive",
-        claude_session_id="existing-session-456",
+        cli_session_id="existing-session-456",
     )
     assert res.engine == "Antigravity CLI"
     assert res.output == "Antigravity CLI output"

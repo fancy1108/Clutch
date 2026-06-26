@@ -1,0 +1,13 @@
+{
+  "cmd": [
+    "/Users/fancy/.nvm/versions/node/v24.16.0/bin/claude",
+    "-p",
+    "Reply with exactly: OK",
+    "--output-format",
+    "stream-json",
+    "--dangerously-skip-permissions"
+  ],
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "Warning: no stdin data received in 3s, proceeding without it. If piping from a slow command, redirect stdin explicitly: < /dev/null to skip, or wait longer.\nError: When using --print, --output-format=stream-json requires --verbose\n"
+}

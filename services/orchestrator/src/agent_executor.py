@@ -127,7 +127,7 @@ def execute_agent_task(
     agent_dict = find_agent(agent_ref or agent)
     display_name = _agent_display_name(agent_dict, agent)
 
-    if tool in {"claude-cli", "agy-cli", "agy", "llm", "cursor", "ollama", "ollama-cli", ""}:
+    if tool in {"claude-cli", "agy-cli", "agy", "antigravity-cli", "llm", "ollama", "ollama-cli", ""}:
         from src.agent_type import resolve_model_for_agent
         from src.engine_router import route_engine
         from src.image_router import format_image_reply, generate_image_for_model, is_image_model

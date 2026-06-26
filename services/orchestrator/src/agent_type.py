@@ -24,7 +24,6 @@ _LEGACY_AI_ENGINE_TO_TYPE: dict[str, str] = {
     "ollama": "ollama-cli",
     "ollama-cli": "ollama-cli",
     "ollama (cli)": "ollama-cli",
-    "cursor workspace node": "cursor-workspace",
     "deepseek api": "clutch",
 }
 

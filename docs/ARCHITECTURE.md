@@ -371,26 +371,17 @@ class ToolAdapter(Protocol):
 | 完成 | 根据 exit code 写入 `ClutchState` |
 | 取消 | SIGTERM → 超时后 SIGKILL |
 
-#### 6.4.2 GUI Adapter（如 Cursor）
-
-| 步骤 | 实现 |
-|------|------|
-| 唤起 | Tauri Command: `open -a Cursor {workspace_path}` |
-| 提示 | UI 展示「请在 Cursor 中完成编辑」 |
-| 同步 | FS Watcher（watchdog）监听 workspace |
-| 触发 | debounce 2–3s 后自动进入 Evaluator check |
-
-#### 6.4.3 MCP Adapter
+#### 6.4.2 MCP Adapter
 
 - 对接 `McpServerHub` 配置的 stdio / SSE 端点
 - 使用 MCP Python SDK 或 LangChain MCP 工具封装
 - 工具列表在 Agent 配置界面选择，运行期注入 Agent 节点
 
-#### 6.4.4 FS Watcher
+#### 6.4.3 FS Watcher
 
 - 监听 `git status` 变更或文件 write 事件
 - 推送 `file_changed` 与 diff 摘要
-- 与 GUI Adapter 共用，也可被 Check 节点直接触发
+- 与 FS Watcher 联动，也可被 Check 节点直接触发
 
 ---
 

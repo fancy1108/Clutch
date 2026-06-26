@@ -237,6 +237,29 @@
 - **影响**：`compiler/compiler.py`、`compiler/node_input.py`（新）、`agent_executor.py`、`workflow_projection.py`、`main.py`（增量 patch）、`apps/desktop` Chat/Flow UI；Task 清单见 `specs/core/tasks.md` §M3-F。
 - **决策状态**：`已落地`（M3-F01–F09；用户 2026-06-26 手动 Weather-to-Vision E2E 通过）
 
+### D24 · CLI Session 字段泛化与 Cursor GUI 路由移除（2026-06-26）
+
+- **背景**：`claude_session_id` 被 `antigravity-cli` 复用但命名误导；`cursor-workspace` / `cursor-app` / `cursor_adapter` 已退出产品面（`CLIENT_CANDIDATES` 为空，前端 `AGENT_TYPE_OPTIONS` 仅四类），`engine_router` 中相关分支为死代码。
+- **方案**：
+  1. `ClutchState` 写入 `cli_session_id` + `cli_session_agent_id`；`read_cli_session_*` 读盘兼容旧 `claude_session_*`。
+  2. `EngineResult.cli_session_id` 取代 `claude_session_id`。
+  3. 删除 `cursor_adapter.py`、`POST /api/tools/open-cursor`、`engine_router` cursor-workspace 分支、`agent_type` legacy `cursor-workspace` 映射。
+  4. 前端 Workflow `aiTool` 下拉与 AI Tools 文案对齐四类 CLI 路由；`ChatFeed` 移除 Cursor 引擎标签。
+- **影响**：`state.py`、`engine_router.py`、`main.py`、`packages/shared-types`、`WorkflowOrchestration.tsx`、`AiToolsManager.tsx`、`ChatFeed.tsx`；PTY 调研见 `docs/research/pty-session.md`。
+- **决策状态**：`已落地`
+
+### D25 · ShellSession + `SHELL_EXEC` 为 CLI Runtime 默认（2026-06-26）
+
+- **背景**：Step 0 三路线实验（`experiments/pty_poc/`）：Route A（pexpect 驱动 Claude Ink TUI）严格 5/5 失败；Route C（长驻 bash PTY + `claude -p`）5/5 通过。
+- **方案**：
+  1. **否决**全量 Claude TUI PTY（`INTERACTIVE_PTY` 非 Claude 默认）。
+  2. 第二阶段默认 **`ShellSession`**（长驻 bash）+ 每轮 **exec**（`claude -p` / `agy -p` / `codex exec`）。
+  3. 引入 **`RuntimeStrategy`** 枚举（`SHELL_EXEC` · `INTERACTIVE_PTY` · `HTTP_DAEMON` · `SDK_NATIVE`）；EngineRouter 第三阶段改为 `strategy = provider.runtime_strategy`，禁止 `if provider == "claude"` 扩散。
+  4. **`HumanInputKind`**（`BOOT_TRUST` · `TOOL_CONFIRM` · `TEXT` · `AUTH`）为 Runtime 一级概念；禁止 Provider 字符串特判。
+  5. **Context Continuity**（§2.6）：工作环境 vs AI 记忆分离；`SessionSnapshot` + 换班机制排 **Step 3**。
+- **影响**：`docs/research/pty-session.md` v5；Step 1 `ShellSessionManager`；Step 3 `SessionSnapshot` / 继续工作。
+- **决策状态**：`已决策`（文档 + Step 0 证据；Sidecar 编码待 Step 1）
+
 ## 开放问题
 
 （暂无 — 原 Q1–Q4 已于 2026-06-22 关闭，见 D3–D6。）

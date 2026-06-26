@@ -833,11 +833,10 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
                   onChange={e => setNodeForm({...nodeForm, aiTool: e.target.value})}
                   className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-xs bg-white focus:outline-none focus:border-neutral-400 transition-all font-medium text-neutral-600"
                 >
-                  <option value="">None</option>
-                  <option value="Claude Code CLI">Claude Code CLI</option>
-                  <option value="Antigravity CLI">Antigravity CLI</option>
-                  <option value="Cursor">Cursor</option>
-                  <option value="Code X">Code X</option>
+                  <option value="">None (use agent type)</option>
+                  <option value="claude-cli">Claude CLI</option>
+                  <option value="antigravity-cli">Antigravity CLI</option>
+                  <option value="ollama-cli">Ollama CLI</option>
                 </select>
               </div>
 

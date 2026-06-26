@@ -1,0 +1,198 @@
+{
+  "recorded_at": "2026-06-26T14:07:17.709082+00:00",
+  "binary": "/Users/fancy/.nvm/versions/node/v24.16.0/bin/claude",
+  "flags_found": {
+    "headless": false,
+    "no_tui": false,
+    "print_skips_trust": false,
+    "bare_mode": true,
+    "stream_json_print_only": true
+  },
+  "conclusion": "No --headless / --no-tui flag in scanned help. -p/--print skips workspace trust dialog (non-TTY). Structured output requires --print + --verbose.",
+  "keyword_hits": [
+    {
+      "cmd": "/Users/fancy/.nvm/versions/node/v24.16.0/bin/claude --help",
+      "line": "Claude Code - starts an interactive session by default, use -p/--print for"
+    },
+    {
+      "cmd": "/Users/fancy/.nvm/versions/node/v24.16.0/bin/claude --help",
+      "line": "non-interactive output"
+    },
+    {
+      "cmd": "/Users/fancy/.nvm/versions/node/v24.16.0/bin/claude --help",
+      "line": "--agents <json>                       JSON object defining custom agents (e.g."
+    },
+    {
+      "cmd": "/Users/fancy/.nvm/versions/node/v24.16.0/bin/claude --help",
+      "line": "--bare                                Minimal mode: skip hooks, LSP, plugin"
+    },
+    {
+      "cmd": "/Users/fancy/.nvm/versions/node/v24.16.0/bin/claude --help",
+      "line": "--print)"
+    },
+    {
+      "cmd": "/Users/fancy/.nvm/versions/node/v24.16.0/bin/claude --help",
+      "line": "--output-format=stream-json)"
+    },
+    {
+      "cmd": "/Users/fancy/.nvm/versions/node/v24.16.0/bin/claude --help",
+      "line": "arrive (only works with --print and"
+    },
+    {
+      "cmd": "/Users/fancy/.nvm/versions/node/v24.16.0/bin/claude --help",
+      "line": "--output-format=stream-json)"
+    },
+    {
+      "cmd": "/Users/fancy/.nvm/versions/node/v24.16.0/bin/claude --help",
+      "line": "--input-format <format>               Input format (only works with --print):"
+    },
+    {
+      "cmd": "/Users/fancy/.nvm/versions/node/v24.16.0/bin/claude --help",
+      "line": "\"text\" (default), or \"stream-json\""
+    },
+    {
+      "cmd": "/Users/fancy/.nvm/versions/node/v24.16.0/bin/claude --help",
+      "line": "\"text\", \"stream-json\")"
+    },
+    {
+      "cmd": "/Users/fancy/.nvm/versions/node/v24.16.0/bin/claude --help",
+      "line": "--json-schema <schema>                JSON Schema for structured output"
+    },
+    {
+      "cmd": "/Users/fancy/.nvm/versions/node/v24.16.0/bin/claude --help",
+      "line": "calls (only works with --print)"
+    },
+    {
+      "cmd": "/Users/fancy/.nvm/versions/node/v24.16.0/bin/claude --help",
+      "line": "--mcp-config <configs...>             Load MCP servers from JSON files or"
+    },
+    {
+      "cmd": "/Users/fancy/.nvm/versions/node/v24.16.0/bin/claude --help",
+      "line": "resumed (only works with --print)"
+    },
+    {
+      "cmd": "/Users/fancy/.nvm/versions/node/v24.16.0/bin/claude --help",
+      "line": "--output-format <format>              Output format (only works with --print):"
+    },
+    {
+      "cmd": "/Users/fancy/.nvm/versions/node/v24.16.0/bin/claude --help",
+      "line": "\"text\" (default), \"json\" (single"
+    },
+    {
+      "cmd": "/Users/fancy/.nvm/versions/node/v24.16.0/bin/claude --help",
+      "line": "result), or \"stream-json\" (realtime"
+    },
+    {
+      "cmd": "/Users/fancy/.nvm/versions/node/v24.16.0/bin/claude --help",
+      "line": "streaming) (choices: \"text\", \"json\","
+    },
+    {
+      "cmd": "/Users/fancy/.nvm/versions/node/v24.16.0/bin/claude --help",
+      "line": "\"stream-json\")"
+    },
+    {
+      "cmd": "/Users/fancy/.nvm/versions/node/v24.16.0/bin/claude --help",
+      "line": "-p, --print                           Print response and exit (useful for"
+    },
+    {
+      "cmd": "/Users/fancy/.nvm/versions/node/v24.16.0/bin/claude --help",
+      "line": "pipes). Note: The workspace trust dialog"
+    },
+    {
+      "cmd": "/Users/fancy/.nvm/versions/node/v24.16.0/bin/claude --help",
+      "line": "non-interactive mode (via -p, or when"
+    },
+    {
+      "cmd": "/Users/fancy/.nvm/versions/node/v24.16.0/bin/claude --help",
+      "line": "stdout is not a TTY, e.g. piped or"
+    },
+    {
+      "cmd": "/Users/fancy/.nvm/versions/node/v24.16.0/bin/claude --help",
+      "line": "directories you trust. Settings files"
+    },
+    {
+      "cmd": "/Users/fancy/.nvm/versions/node/v24.16.0/bin/claude --help",
+      "line": "--prompt-suggestions [value]          Enable prompt suggestions. In print/SDK"
+    },
+    {
+      "cmd": "/Users/fancy/.nvm/versions/node/v24.16.0/bin/claude --help",
+      "line": "with --input-format=stream-json and"
+    },
+    {
+      "cmd": "/Users/fancy/.nvm/versions/node/v24.16.0/bin/claude --help",
+      "line": "--output-format=stream-json)"
+    },
+    {
+      "cmd": "/Users/fancy/.nvm/versions/node/v24.16.0/bin/claude --help",
+      "line": "--safe-mode                           Start with all customizations"
+    },
+    {
+      "cmd": "/Users/fancy/.nvm/versions/node/v24.16.0/bin/claude --help",
+      "line": "--settings <file-or-json>             Path to a settings JSON file or a JSON"
+    },
+    {
+      "cmd": "/Users/fancy/.nvm/versions/node/v24.16.0/bin/claude --help",
+      "line": "auto-updater. Note: The workspace trust"
+    },
+    {
+      "cmd": "/Users/fancy/.nvm/versions/node/v24.16.0/bin/claude --help",
+      "line": "dialog is skipped and stdio servers from"
+    },
+    {
+      "cmd": "/Users/fancy/.nvm/versions/node/v24.16.0/bin/claude --help",
+      "line": ".mcp.json are spawned for health checks."
+    },
+    {
+      "cmd": "/Users/fancy/.nvm/versions/node/v24.16.0/bin/claude --help",
+      "line": "trust."
+    },
+    {
+      "cmd": "/Users/fancy/.nvm/versions/node/v24.16.0/bin/claude --help",
+      "line": "number / base branch) and print the"
+    },
+    {
+      "cmd": "/Users/fancy/.nvm/versions/node/v24.16.0/bin/claude agents --help",
+      "line": "--all                                 With --json: include completed sessions"
+    },
+    {
+      "cmd": "/Users/fancy/.nvm/versions/node/v24.16.0/bin/claude agents --help",
+      "line": "--json                                Print active sessions as a JSON array"
+    },
+    {
+      "cmd": "/Users/fancy/.nvm/versions/node/v24.16.0/bin/claude agents --help",
+      "line": "require a TTY)"
+    },
+    {
+      "cmd": "/Users/fancy/.nvm/versions/node/v24.16.0/bin/claude agents --help",
+      "line": "--settings <file-or-json>             Settings file or JSON string to apply to"
+    },
+    {
+      "cmd": "/Users/fancy/.nvm/versions/node/v24.16.0/bin/claude mcp --help",
+      "line": "# Add stdio server with environment variables:"
+    },
+    {
+      "cmd": "/Users/fancy/.nvm/versions/node/v24.16.0/bin/claude mcp --help",
+      "line": "# Add stdio server with subprocess flags:"
+    },
+    {
+      "cmd": "/Users/fancy/.nvm/versions/node/v24.16.0/bin/claude mcp --help",
+      "line": "add-json [options] <name> <json>      Add an MCP server (stdio or SSE) with a"
+    },
+    {
+      "cmd": "/Users/fancy/.nvm/versions/node/v24.16.0/bin/claude mcp --help",
+      "line": "JSON string"
+    },
+    {
+      "cmd": "/Users/fancy/.nvm/versions/node/v24.16.0/bin/claude mcp --help",
+      "line": "Unapproved .mcp.json servers are shown"
+    },
+    {
+      "cmd": "/Users/fancy/.nvm/versions/node/v24.16.0/bin/claude mcp --help",
+      "line": ".mcp.json servers are shown as ⏸ Pending"
+    },
+    {
+      "cmd": "/Users/fancy/.nvm/versions/node/v24.16.0/bin/claude mcp --help",
+      "line": "project-scoped (.mcp.json) servers"
+    }
+  ]
+}

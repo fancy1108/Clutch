@@ -42,6 +42,8 @@
 | 进度 / 待办 | `memory/PROGRESS.md` |
 | 候选优化需求池（未立项） | `memory/BACKLOG.md` |
 | Orchestrator 主控能力调研（参考） | `docs/research/orchestrator-optimization-pool.md` |
+| CLI PTY Session 改造方案（参考） | `docs/research/pty-session.md` |
+| PTY Session Step 0 实验 | `experiments/pty_poc/` |
 | Task 交付索引（Commit / 证据） | `memory/DELIVERABLES.md` |
 | 决策与开放问题 | `memory/DECISIONS.md` |
 | 功能验收状态 | `memory/ROADMAP.md` |
@@ -146,7 +148,9 @@
 | Skills Registry 持久化（P2-01） | `src/skills_storage.py`、`src/skills_scanner.py` |
 | MCP Registry 持久化（P2-02） | `src/mcp_storage.py` |
 | 用户偏好 / Theme（P2-03） | `src/preferences_storage.py` |
-| CLI / GUI Adapter（M3） | `src/adapters/` — `cli_adapter.py`、`claude_cli_adapter.py`、`cursor_adapter.py` |
+| CLI Adapter（M3） | `src/adapters/` — `cli_adapter.py`、`claude_cli_adapter.py`、`agy_cli_adapter.py`、`ollama_adapter.py` |
+| CLI PTY Session 调研（参考） | `docs/research/pty-session.md` |
+| PTY Session Step 0 实验 | `experiments/pty_poc/` |
 | Video Core（M5） | `src/video_core/` — `config.py`、`env.py`、`pipeline.py`、`renderer.py` |
 | 依赖与 pytest 配置 | `pyproject.toml` |
 

@@ -69,7 +69,7 @@ export default function AiToolsManager({ isModalStyle }: AiToolsManagerProps) {
         <div className="text-left">
           <h2 className="text-sm font-bold text-neutral-800 tracking-tight font-sans">AI Tools Integration</h2>
           <p className="text-[11px] text-neutral-400 mt-0.5">
-            Detected local AI CLIs and desktop clients on this machine. Connect only tools you want Clutch to use.
+            Detected local AI CLIs on this machine. Connect only tools you want Clutch to route to.
           </p>
         </div>
         <button
@@ -96,8 +96,8 @@ export default function AiToolsManager({ isModalStyle }: AiToolsManagerProps) {
             <p className="text-xs text-neutral-500">No supported AI tools detected on this machine.</p>
             <p className="text-[11px] text-neutral-400">
               Install an AI CLI (e.g. <span className="font-mono">claude</span>,{' '}
-              <span className="font-mono">codex</span>, <span className="font-mono">agy</span>) or a
-              desktop client (Claude, Cursor, ChatGPT), then rescan.
+              <span className="font-mono">codex</span>, <span className="font-mono">agy</span>,{' '}
+              <span className="font-mono">ollama</span>), then rescan.
             </p>
           </div>
         ) : (

@@ -1,0 +1,31 @@
+{
+  "$schema": "clutch-pty-baseline-v1",
+  "provider": "claude",
+  "binary_path": "",
+  "recorded_at": "",
+  "workspace": "",
+  "mode": "interactive_pty | print_stream_json | print_text",
+  "pty_drivable": null,
+  "pty_drivable_notes": "",
+  "timing": {
+    "first_token_ms": null,
+    "avg_token_gap_ms": null,
+    "max_silence_ms": null,
+    "max_tool_silence_ms": null,
+    "round_ttfb_ms": []
+  },
+  "patterns": {
+    "prompt_echo_pattern": "",
+    "human_confirm_patterns": [],
+    "human_text_patterns": [],
+    "human_auth_patterns": []
+  },
+  "human_input_kinds_observed": [],
+  "stderr_behavior": "",
+  "sigint_behavior": "",
+  "structured_output": {
+    "available_in_print_mode": null,
+    "stream_json_event_types": []
+  },
+  "notes": ""
+}

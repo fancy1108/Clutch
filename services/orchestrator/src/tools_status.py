@@ -174,12 +174,6 @@ def _is_claude_installed() -> bool:
     return _cli_path("claude") is not None
 
 
-def _is_cursor_installed() -> bool:
-    if _cli_path("cursor"):
-        return True
-    return _client_path("Cursor.app") is not None
-
-
 def _installed(tool_id: str) -> bool:
     cand = _candidate_by_id(tool_id)
     if cand is None:

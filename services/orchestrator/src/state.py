@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Literal, TypedDict
+from collections.abc import Mapping
+from typing import Any, Literal, TypedDict
 
 ClutchRunStatus = Literal["idle", "running", "failed", "passed", "awaiting_human"]
 
@@ -21,8 +22,26 @@ class ClutchState(TypedDict):
     session_cost_usd: float
     token_input: int
     token_output: int
-    claude_session_id: str
-    claude_session_agent_id: str
+    cli_session_id: str
+    cli_session_agent_id: str
+
+
+def read_cli_session_id(state: Mapping[str, Any]) -> str:
+    """Read CLI session id; accepts legacy `claude_session_id` from older state files."""
+    return str(state.get("cli_session_id") or state.get("claude_session_id", "")).strip()
+
+
+def read_cli_session_agent_id(state: Mapping[str, Any]) -> str:
+    """Read owning agent id; accepts legacy `claude_session_agent_id`."""
+    return str(
+        state.get("cli_session_agent_id") or state.get("claude_session_agent_id", "")
+    ).strip()
+
+
+def cli_session_patch(session_id: str | None, agent_id: str) -> dict[str, str]:
+    if session_id:
+        return {"cli_session_id": session_id, "cli_session_agent_id": agent_id}
+    return {"cli_session_id": "", "cli_session_agent_id": ""}
 
 
 def initial_state(run_id: str, workflow_id: str = "") -> ClutchState:
@@ -40,6 +59,6 @@ def initial_state(run_id: str, workflow_id: str = "") -> ClutchState:
         session_cost_usd=0.0,
         token_input=0,
         token_output=0,
-        claude_session_id="",
-        claude_session_agent_id="",
+        cli_session_id="",
+        cli_session_agent_id="",
     )

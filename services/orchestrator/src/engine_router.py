@@ -11,7 +11,6 @@ from src.agent_storage import list_agents
 from src.tools_status import load_connected_ids, resolve_tool_binary, tool_available_for_routing
 from src.adapters.claude_cli_adapter import chat_claude_cli
 from src.adapters.agy_cli_adapter import chat_agy_cli
-from src.adapters.cursor_adapter import open_workspace_in_cursor
 from src.agent_type import agent_type_from_record, resolve_model_for_agent
 from src.workspace import get_workspace
 from src.preferences_storage import tr
@@ -22,7 +21,7 @@ class EngineResult:
     engine: str
     output: str
     logs: list[str]
-    claude_session_id: str | None = None
+    cli_session_id: str | None = None
 
 
 def _normalize_engine_type(engine_type: str) -> str:
@@ -49,8 +48,6 @@ def _normalize_engine_type(engine_type: str) -> str:
         "ollama (cli)",
     }:
         return "Ollama"
-    if "cursor" in key and "workspace" in key:
-        return "Cursor Workspace Node"
     return engine_type.strip()
 
 
@@ -99,10 +96,8 @@ def _resolve_agent_type(agent: dict[str, Any] | None, fallback_tool: str | None)
         return agent_type_from_record(agent)
     if fallback_tool == "claude-cli":
         return "claude-cli"
-    if fallback_tool in {"agy-cli", "agy"}:
+    if fallback_tool in {"agy-cli", "agy", "antigravity-cli"}:
         return "antigravity-cli"
-    if fallback_tool == "cursor":
-        return "cursor-workspace"
     if fallback_tool in {"ollama", "ollama-cli"}:
         return "ollama-cli"
     return "clutch"
@@ -115,7 +110,7 @@ def _route_engine_raw(
     cwd: str | None = None,
     history: list[dict[str, str]] | None = None,
     fallback_tool: str | None = None,
-    claude_session_id: str | None = None,
+    cli_session_id: str | None = None,
     on_log: Callable[[str], None] | None = None,
 ) -> EngineResult:
     agent = find_agent(agent_name)
@@ -201,19 +196,19 @@ def _route_engine_raw(
             )
 
         try:
-            if claude_session_id:
-                _emit_log(logs, on_log, f"Resuming Claude CLI session {claude_session_id}.")
+            if cli_session_id:
+                _emit_log(logs, on_log, f"Resuming Claude CLI session {cli_session_id}.")
                 output = _invoke_cli(
                     cli_prompt=prompt,
                     cli_system_prompt=None,
-                    resume_session_id=claude_session_id,
+                    resume_session_id=cli_session_id,
                 )
                 _emit_log(logs, on_log, "Claude CLI session resumed successfully.")
                 return EngineResult(
                     engine="Claude CLI",
                     output=output,
                     logs=logs,
-                    claude_session_id=claude_session_id,
+                    cli_session_id=cli_session_id,
                 )
 
             history_prompt = _format_history_for_cli_prompt(history).strip()
@@ -230,10 +225,10 @@ def _route_engine_raw(
                 engine="Claude CLI",
                 output=output,
                 logs=logs,
-                claude_session_id=new_session_id,
+                cli_session_id=new_session_id,
             )
         except Exception as exc:
-            if claude_session_id:
+            if cli_session_id:
                 _emit_log(logs, on_log, f"Claude session resume failed ({exc}); replaying history.")
                 try:
                     history_prompt = _format_history_for_cli_prompt(history).strip() or prompt
@@ -248,7 +243,7 @@ def _route_engine_raw(
                         engine="Claude CLI",
                         output=output,
                         logs=logs,
-                        claude_session_id=new_session_id,
+                        cli_session_id=new_session_id,
                     )
                 except Exception as retry_exc:
                     _emit_log(logs, on_log, f"Claude CLI recovery failed: {retry_exc}")
@@ -288,7 +283,7 @@ def _route_engine_raw(
                 prompt=prompt,
                 cwd=workspace_path,
                 system_prompt=system_prompt,
-                resume_session_id=claude_session_id,
+                resume_session_id=cli_session_id,
                 binary=cli_binary,
                 on_log=on_log,
             )
@@ -297,7 +292,7 @@ def _route_engine_raw(
                 engine="Antigravity CLI",
                 output=output,
                 logs=logs,
-                claude_session_id=claude_session_id or "agy-session",
+                cli_session_id=cli_session_id or "agy-session",
             )
         except Exception as exc:
             _emit_log(logs, on_log, f"Antigravity CLI execution failed: {exc}")
@@ -305,32 +300,6 @@ def _route_engine_raw(
                 tr(
                     f"Failed to execute task via Antigravity CLI: {exc}",
                     f"通过 Antigravity CLI 执行任务失败：{exc}",
-                )
-            ) from exc
-
-    if agent_type == "cursor-workspace" and tool_available_for_routing("cursor-app"):
-        logs.append(f"Routing task to Cursor Workspace Node for agent {agent_name}.")
-        if not workspace_path:
-            raise RuntimeError(
-                tr(
-                    "Cannot open in Cursor: no active workspace path.",
-                    "无法在 Cursor 中打开：没有激活的工作区路径。",
-                )
-            )
-        try:
-            open_workspace_in_cursor(workspace_path)
-            output = tr(
-                "Workspace opened in Cursor Desktop.",
-                "已在 Cursor 桌面端中打开工作区。",
-            )
-            logs.append("Workspace opened in Cursor successfully.")
-            return EngineResult(engine="Cursor", output=output, logs=logs)
-        except Exception as exc:
-            logs.append(f"Failed to open workspace in Cursor: {exc}")
-            raise RuntimeError(
-                tr(
-                    f"Failed to open workspace in Cursor: {exc}",
-                    f"无法在 Cursor 中打开工作区：{exc}",
                 )
             ) from exc
 
@@ -434,7 +403,7 @@ def route_engine(
     cwd: str | None = None,
     history: list[dict[str, str]] | None = None,
     fallback_tool: str | None = None,
-    claude_session_id: str | None = None,
+    cli_session_id: str | None = None,
     on_log: Callable[[str], None] | None = None,
 ) -> EngineResult:
     res = _route_engine_raw(
@@ -444,12 +413,12 @@ def route_engine(
         cwd=cwd,
         history=history,
         fallback_tool=fallback_tool,
-        claude_session_id=claude_session_id,
+        cli_session_id=cli_session_id,
         on_log=on_log,
     )
     return EngineResult(
         engine=res.engine,
         output=sanitize_engine_output(res.output),
         logs=res.logs,
-        claude_session_id=res.claude_session_id,
+        cli_session_id=res.cli_session_id,
     )

@@ -83,24 +83,28 @@ Clutch 不限制或固化 Agent 的角色名称，而是提供了一个完全通
 - **自动输入输出接力 (Handoff)**：节点激活时自动解析上游。若上游是另一个 Agent 任务节点，系统会自动将该上游节点的 `node_outputs` 作为输入上下文接力注入到当前节点的输入中，从而跑通链式多 Agent 协作流。
 
 ### 3.2 本地 AI 工具自动扫描与探测
-系统启动时，后端 `tools_status.py` 会自动扫描用户本地的系统 `PATH` 以及 Brew、NPM、NVM 等常用工具目录，智能探测已安装的 AI 工具：
-- **CLI 命令行工具探测**：支持自动扫描 `claude` (Claude Code CLI), `agy` (Antigravity CLI), `codex` (OpenAI Codex CLI), `aider` (Aider), `ollama` (Ollama CLI), `cursor` (Cursor CLI), `code` (VS Code CLI), `codeium` (Codeium CLI), `gemini` (Gemini CLI) 等工具的可执行路径。
-- **macOS 客户端探测**：支持探测 `/Applications` 及 `~/Applications` 下的桌面客户端软件（如 `Cursor.app`）。
-- **配置与连接状态**：探测出的工具会在前端 AI Tools 界面统一呈现其安装类型（CLI 或 Client）、二进制可执行绝对路径以及连接启用状态。
+系统启动时，后端 `tools_status.py` 会自动扫描用户本地的系统 `PATH` 以及 Brew、NPM、NVM 等常用工具目录，智能探测已安装的 **CLI** 工具：
+- **CLI 命令行工具探测**：支持自动扫描 `claude` (Claude Code CLI)、`agy` (Antigravity CLI)、`codex` (OpenAI Codex CLI)、`aider` (Aider)、`ollama` (Ollama CLI)、`cursor` (Cursor CLI)、`code` (VS Code CLI)、`codeium` (Codeium CLI)、`gemini` (Gemini CLI) 等可执行文件。**仅本机已安装的二进制会出现在 AI Tools 页面。**
+- **配置与连接状态**：探测结果在前端 AI Tools 界面展示为 CLI 类型、可执行绝对路径，以及用户手动启用的「已连接」偏好（`tools.json`）。连接状态用于路由可用性判断，**不等于**已在 `engine_router` 接入执行。
 
 ### 3.3 多引擎智能路由与 Session 恢复
-在执行任务或普通对话时，编排引擎中的 `EngineRouter` 会根据 Agent 配置的 `agentType` (或 legacy 字段 `aiEngine`) 及本地工具的探测可用状态，进行智能路由分流：
+在执行任务或普通对话时，编排引擎中的 `EngineRouter` 会根据 Agent 配置的 `agentType`（或 legacy 字段 `aiEngine`）及本地工具的探测可用状态，进行智能路由分流。
+
+**产品可选的 `agentType`（前端 Agent Manager）仅四类**：`clutch`、`claude-cli`、`antigravity-cli`、`ollama-cli`。
+
 1. **本地 CLI 适配器路由**：
-   - 如果 Agent 属性配置为 `claude-cli`、`antigravity-cli` 或 `ollama-cli`，且本地探测到相应 CLI 二进制，路由将任务直接下发至对应的本地 CLI 子进程执行。
-   - **CLI 会话恢复机制 (Session Resume)**：特别针对 `claude-cli`（使用 `--resume <session_uuid>`）与 `antigravity-cli` 实现了 Session 缓存与绑定。在多轮交互中，直接恢复原有子进程上下文而无需重放历史全文，极大节约了 Token 开销并降低了网络延迟。
-2. **GUI 客户端唤起**：
-   - 如果 `agentType` 配置为 `cursor-workspace`，系统可直接在本地通过 `open -a Cursor` 唤起 Cursor 桌面端并打开当前工作区，实现 GUI 级别的人机无缝流转。
-3. **全局 LLM 模型路由 (`clutch`)**：
-   - 路由至用户配置的云端或本地模型 API（如 OpenAI, DeepSeek, 智谱 GLM 等）。
-   - **本地 Ollama 自动发现与打分排序**：对于本地 `Ollama` 驱动，系统会自动向本地 `11434` 端口发起探测，自动发现用户本地的所有已下载模型，并通过内置的打分排序算法（评估模型代码能力与推理能力）优先推荐最合适的模型（如 `qwen3.6`），支持在无 Key 时直接一键激活使用。
-   - **生图/视觉模型适配**：针对生图/视觉模型进行特殊判定。若是生图模型（如 `Agnes Image`），输入时会自动走生图路由并回显图片产物；若向仅能生图的非视觉模型上传图片，系统会自动拦截并进行友好提示。
-4. **智能降级回退 (Fallback)**：
-   - 若 Agent 设定了特定的本地 CLI 类型但本地未检测到该工具，路由系统会自动将任务降级回退至 `clutch` 全局 LLM 引擎执行，并在 Terminal 日志中输出明确的 Fallback 审计警示。
+   - Agent 配置为 `claude-cli` 或 `antigravity-cli`，且本地探测到对应 CLI 并已连接时，路由至本地子进程（`claude_cli_adapter` / `agy_cli_adapter`），每轮 `subprocess` 执行 `-p` print 模式。
+   - **CLI 逻辑 Session（D20）**：`claude-cli` 使用 `--session-id` / `--resume`；`antigravity-cli` 使用 `--conversation`。`ClutchState` 持久化 `cli_session_id` / `cli_session_agent_id`（读盘兼容旧 `claude_session_*`），切换 Agent 时丢弃旧 session。
+2. **Ollama 本地模型路由（`ollama-cli`）**：
+   - 经 HTTP 调用本机 `11434` 端口（`ollama_adapter`），非子进程 spawn；自动发现已 pull 的模型并打分排序（优先 `qwen3.6` 等）。
+3. **全局 LLM 模型路由（`clutch`）**：
+   - 路由至用户配置的云端或本地模型 API（OpenAI、DeepSeek、智谱 GLM 等）。
+   - 注入 Agent 绑定的 **Skills**（`SKILL.md`）与 **MCP Hub** 服务器，经 `mcp_react` 执行工具循环（D19）。
+   - **生图/视觉模型适配**：生图模型走生图路由；向非视觉模型上传图片时拦截并提示切换模型。
+4. **智能降级回退（Fallback）**：
+   - 若 Agent 指定本地 CLI 但工具未安装或未连接，降级至 `clutch` LLM 引擎，并在 Terminal 输出 Fallback 审计行。
+
+> **说明**：`codex` / `gemini` / `aider` 等 CLI 已在 `tools_status` 探测清单中，但**尚未**接入 `engine_router`（见 BACKLOG B-17）。
 
 ### 3.4 虚拟 MCP 服务器与 Codex 文件补丁
 - **虚拟 MCP 客户端 (`clutch-tools`)**：当 Agent 访问本地文件系统（`local-fs`）时，Sidecar 会动态挂载该内置虚拟 MCP 服务。
@@ -111,14 +115,16 @@ Clutch 不限制或固化 Agent 的角色名称，而是提供了一个完全通
 - **多语言双语对照**：支持中英文（zh/en）切换。后端通过 preferences 动态加载语言偏好，在 API/WebSocket 的异常捕获、干预提示上使用 `tr()` 响应，且完全兼容既有测试断言。
 - **凭证自动导入**：支持自动读取 `~/.cc-switch/cc-switch.db` SQLite 数据库，无感导入用户在第三方工具中配置的模型 API Keys，免去繁琐的手动配置过程。
 
-### 3.6 状态与上下文管理技术规划（规划中，对标主流开源项目）
-为了彻底解决上下文膨胀与执行失控的工程问题，Clutch 在 Backlog 中规划了以下上下文经济学与状态管理方案，并从相关优秀开源项目中汲取了技术路线：
-- **上下文自动压缩与归档 (Messages Compaction & Archiving - 对标 Backlog B-03)**：
-  - **技术方案**：借鉴 **DeepSeek Reasonix** (SPEC §3.6) 和 **OpenCode** (autoCompact) 的做法。当会话的 `prompt_tokens` 消耗达到模型上下文窗口的临界阈值（例如 80%）时，系统自动触发 compaction。将中间轮次的冗长 Tool 结果与 Assistant 思考过程用轻量模型提炼为文本摘要 (Digest)，将原始的完整消息归档为本地 JSONL 日志文件（如 `runs/archive/{run_id}.jsonl`）。在活动会话中，只保留最新的 User 指令、关键架构决策/交付物路径以及该摘要，以此实现 context 剪枝。
-- **工作区轻量快照与物理回滚 (Workspace Checkpoint & Rollback - 对标 Backlog B-11)**：
-  - **技术方案**：借鉴 **DeepSeek TUI** 的 `side-git` 机制。在 Agent 执行高风险修改或图进入人机交互闸门（`human_gate`）之前，Sidecar 自动在后台对当前工作区进行一次物理级轻量快照（如利用影子 git commit 记录状态）。若检查节点（`check`）发生校验失败、执行异常，或者用户在 Supervisor 审批卡片中点击“拒绝” (Reject)，用户可一键执行回滚恢复，将工作区代码文件还原到最近一次清洁的快照状态，防止代码库被逻辑混乱的 Agent 破坏。
-- **缓存友好的前缀保护分叉 (Prefix-Preserving Forking - 对标 Backlog B-14)**：
-  - **技术方案**：借鉴 **agentcache** 设计。在进行多路径并行探索或 Planner 与 Executor 独立会话设计（对标 Backlog B-06）时，实现 prefix-preserving fork，确保子 Agent 在并行执行 fan-out 时能最大化对齐大模型 Prompt Cache 的首部，防止并发任务对全局 Prompt Cache 的穿透，保障响应延迟和费用控制。
+### 3.6 状态与上下文管理
+- **上下文自动压缩与归档（已落地 · B-03）**：
+  - `services/orchestrator/src/compaction.py`：当会话 token 估算达到阈值时，对中间轮次做 LLM 摘要，原文归档 JSONL；Plain Chat 在回复提交前触发，经 `state_patch` 推送 `badgeText`。
+  - 调研参考：DeepSeek Reasonix compaction、OpenCode autoCompact。
+- **CLI PTY 长驻 Session（规划中 · 调研稿）**：
+  - 见 [`docs/research/pty-session.md`](research/pty-session.md)：将 `claude-cli` / `antigravity-cli` 从每轮 subprocess 升级为 per-`run_id` PTY，物理继承 cwd/shell；`clutch` / `ollama-cli` 不在范围内。
+- **工作区轻量快照与物理回滚（规划中 · B-11）**：
+  - 借鉴 DeepSeek TUI `side-git`：Human Gate reject 或校验失败时一键回滚工作区。
+- **缓存友好的前缀保护分叉（规划中 · B-14）**：
+  - 借鉴 agentcache：Planner/Executor 或多子 Agent 并行时保持 prefix cache 对齐。
 
 ---
 

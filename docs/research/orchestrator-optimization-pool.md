@@ -346,12 +346,12 @@ flowchart LR
 ```mermaid
 flowchart TD
     Node([agent_task 节点]) --> Branch{tool 类型}
-    Branch -->|claude-cli 等| ExecCLI[CliAdapter 真执行]
-    Branch -->|cursor| ExecCur[唤起 + FS Watcher]
+    Branch -->|claude-cli / agy-cli 等| ExecCLI[CliAdapter 真执行]
+    Branch -->|ollama-cli| ExecOllama[ollama_adapter HTTP]
     Branch -->|mcp| ExecMCP[MCP tools/call]
-    Branch -->|llm| ExecLLM[Sidecar LLM · 降级 · 应少用]
+    Branch -->|clutch / llm| ExecLLM[Sidecar LLM + mcp_react]
 
-    ExecCLI & ExecCur & ExecMCP & ExecLLM --> Patch[state_patch]
+    ExecCLI & ExecOllama & ExecMCP & ExecLLM --> Patch[state_patch]
     Patch --> Next[下一节点 · check / human_gate / end]
 ```
 

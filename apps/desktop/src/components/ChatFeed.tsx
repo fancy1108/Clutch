@@ -64,7 +64,6 @@ export function configuredEngineToRuntimeLabel(agentTypeOrLegacy: string): strin
     return 'Antigravity CLI';
   }
   if (key.includes('ollama') || key === 'ollama-cli') return 'Ollama CLI';
-  if (key.includes('cursor')) return 'Cursor';
   return agentTypeOrLegacy.trim();
 }
 

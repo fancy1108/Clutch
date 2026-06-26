@@ -89,9 +89,13 @@ export interface ClutchState {
   session_cost_usd?: number;
   token_input?: number;
   token_output?: number;
-  /** Claude Code CLI session UUID bound to this Clutch run (plain chat). */
+  /** CLI provider session id (`claude --resume` / `agy --conversation`). */
+  cli_session_id?: string;
+  /** Agent id that owns `cli_session_id` (reset when user switches agent). */
+  cli_session_agent_id?: string;
+  /** @deprecated use cli_session_id — still read from older persisted runs */
   claude_session_id?: string;
-  /** Agent id that owns `claude_session_id` (reset when user switches agent). */
+  /** @deprecated use cli_session_agent_id */
   claude_session_agent_id?: string;
 }
 

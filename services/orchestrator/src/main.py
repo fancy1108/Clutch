@@ -717,7 +717,7 @@ async def _llm_chat_reply(
     agent_id: str | None = None,
     *,
     session_model_id: str | None = None,
-    claude_session_id: str | None = None,
+    cli_session_id: str | None = None,
     emit_log: Callable[[str], Awaitable[None]] | None = None,
     mcp_approved_tool: dict[str, Any] | None = None,
     mcp_resume: dict[str, Any] | None = None,
@@ -913,10 +913,10 @@ async def _llm_chat_reply(
             cwd=cwd,
             history=history,
             system_prompt=system_prompt,
-            claude_session_id=claude_session_id,
+            cli_session_id=cli_session_id,
             on_log=on_log if emit_log else None,
         )
-        return reply_label, result.engine, result.output, llm_only_logs + result.logs, result.claude_session_id, None, []
+        return reply_label, result.engine, result.output, llm_only_logs + result.logs, result.cli_session_id, None, []
     except Exception as exc:
         from src.agent_type import agent_type_from_record
 
@@ -994,7 +994,7 @@ async def _handle_plain_chat_mcp_decision(
         runtime_engine,
         reply_text,
         route_logs,
-        _claude_session_id,
+        _cli_session_id,
         mcp_pause,
         files_changed,
     ) = await _llm_chat_reply(
@@ -1111,8 +1111,10 @@ async def _handle_plain_chat(
     await _send_message_event(websocket, run_id, user_message, "")
     await _notify_run_state(websocket, run_id, state, user_patch)
 
-    stored_session_id = str(state.get("claude_session_id", "")).strip() or None
-    stored_session_agent = str(state.get("claude_session_agent_id", "")).strip()
+    from src.state import cli_session_patch, read_cli_session_agent_id, read_cli_session_id
+
+    stored_session_id = read_cli_session_id(state) or None
+    stored_session_agent = read_cli_session_agent_id(state)
     if stored_session_agent and stored_session_agent != resolved_id:
         stored_session_id = None
 
@@ -1133,7 +1135,7 @@ async def _handle_plain_chat(
         runtime_engine,
         reply_text,
         route_logs,
-        claude_session_id,
+        cli_session_id,
         mcp_pause,
         files_changed,
     ) = await _llm_chat_reply(
@@ -1141,7 +1143,7 @@ async def _handle_plain_chat(
         text,
         agent_id=resolved_id,
         session_model_id=session_model_id,
-        claude_session_id=stored_session_id,
+        cli_session_id=stored_session_id,
         emit_log=emit_log,
     )
 
@@ -1216,12 +1218,10 @@ async def _handle_plain_chat(
         "active_agent": active_agent,
         **_token_patch_turn(state, user_text=text, assistant_text=reply_text),
     }
-    if claude_session_id:
-        final_patch["claude_session_id"] = claude_session_id
-        final_patch["claude_session_agent_id"] = resolved_id
+    if cli_session_id:
+        final_patch.update(cli_session_patch(cli_session_id, resolved_id))
     elif stored_session_agent and stored_session_agent != resolved_id:
-        final_patch["claude_session_id"] = ""
-        final_patch["claude_session_agent_id"] = ""
+        final_patch.update(cli_session_patch(None, ""))
     state = _merge_patch(state, final_patch)
     
     from src.compaction import should_compact, compact_run_messages
@@ -1899,19 +1899,6 @@ async def disconnect_tool_endpoint(body: ToolConnectRequest) -> dict[str, Any]:
         return disconnect_tool(body.tool_id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
-
-
-@app.post("/api/tools/open-cursor")
-async def open_cursor_tool() -> dict[str, str]:
-    from src.adapters.cursor_adapter import open_workspace_in_cursor
-    from src.workspace import WorkspaceError, require_workspace
-
-    try:
-        root = require_workspace()
-        open_workspace_in_cursor(str(root))
-    except (WorkspaceError, RuntimeError) as exc:
-        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
-    return {"status": "opened"}
 
 
 @app.get("/api/mcp/status")

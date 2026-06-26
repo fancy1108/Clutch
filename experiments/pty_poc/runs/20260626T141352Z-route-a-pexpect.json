@@ -1,0 +1,55 @@
+{
+  "route": "A",
+  "provider": "claude",
+  "binary": "/Users/fancy/.nvm/versions/node/v24.16.0/bin/claude",
+  "workspace": "/tmp/clutch-pty-poc-c1dd9c19",
+  "started_at": "2026-06-26T14:13:32.509521+00:00",
+  "boot_trust_handled": true,
+  "boot_trust_skipped": false,
+  "bypass_permissions_handled": false,
+  "rounds": [
+    {
+      "index": 1,
+      "prompt": "Reply with exactly the word OK and nothing else.",
+      "ok": true,
+      "elapsed_s": 0.1,
+      "output_preview": "───────────────────────────────────────────────────────────────────────────────────────────────────\r\u001b[2C\u001b[1B⏵⏵\u001b[6Gbypass\u001b[13Gpermissions\u001b[25Gon\u001b[28G(shift+tab\u001b[39Gto\u001b[42Gcycle)\u001b[49G·\u001b[51G←\u001b[53Gfor\u001b[57Gagents\u001b[103G●\u001b[105Ghigh\u001b[110G·\u001b[112G/effort\r\u001b[1B\u001b[K\u001b[2C\u001b[3A\u001b[2D\u001b[3B\r\u001b[4A\u001b[K\r\u001b[1B────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────\r\u001b[1B❯ \u001b[7m \u001b[27m\u001b[K\r\u001b[1B────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────\r\r\n\u001b[3G⏵⏵\u001b[6Gbypass\u001b[13Gpermissions\u001b[25Gon\u001b[28G(shift+tab\u001b[39Gto\u001b[42Gcycle)\u001b[49G·\u001b[51G←\u001b[53Gfor\u001b[57Gagents\u001b[103G●\u001b[105Ghigh\u001b[110G·\u001b[112G/effort\r\r\n\u001b[2C\u001b[3A\u001b[2D\u001b[3B\r\u001b[102C\u001b[1A\u001b[K\r\r\n\u001b[2C\u001b[3A\u001b(B\u000f\u001b]0;⠂ Claude Code\u0007\u001b[2D\u001b[3B\r\u001b[4A❯ Reply with exactly the word OK",
+      "notes": ""
+    },
+    {
+      "index": 2,
+      "prompt": "What is 2+2? One short line only.",
+      "ok": true,
+      "elapsed_s": 0.06,
+      "output_preview": " and nothing else.\u001b[K\r\u001b[1B\u001b[K\r\u001b[1B✻ Working…\u001b[K\r\u001b[2C\u001b[1B\u001b[K\r\r\n────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────\r\r\n❯ \u001b[7m \u001b[27m\r\r\n────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────\r\r\n\u001b[3G⏵⏵\u001b[6Gbypass\u001b[13Gpermissions\u001b[25Gon\u001b[28G(shift+tab\u001b[39Gto\u001b[42Gcycle)\u001b[49G·\u001b[51Gesc\u001b[55Gto\u001b[58Ginterrupt\r\r\n\u001b[2C\u001b[3A",
+      "notes": ""
+    },
+    {
+      "index": 3,
+      "prompt": "Name one color. One word only.",
+      "ok": true,
+      "elapsed_s": 0.05,
+      "output_preview": "\u001b[2D\u001b[3B\r\u001b[6A✽\r\r\n\r\n\r\n\r\n\r\n\r\n\u001b[2C\u001b[3A\u001b[2D\u001b[3B\r\u001b[6A✻\r\r\n\r\n\r\n\r\n\r\n\r\n\u001b[2C\u001b[3A\u001b[2D\u001b[3B\r\u001b[4A\u001b[K\r\u001b[1B  ❯\u001b[5GWhat\u001b[10Gis\u001b[13G2+2?\u001b[18GOne\u001b[22Gshort\u001b[28Gline\u001b[33Gonly.\r\u001b[2B❯ \u001b[7mP\u001b[27mress up to ed\u001b[18Gt queued me\u001b[30Gsages\u001b[K\r\r\n────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────\r\r\n\u001b[3G⏵⏵\u001b[6Gbypass\u001b[13Gpermissions\u001b[25Gon\u001b[28G(shift+tab\u001b[39Gto\u001b[42Gcycle)\u001b[49G·\u001b[51Gesc\u001b[55Gto\u001b[58Ginterrupt\r\r\n\u001b[2C\u001b[3A\u001b[2D\u001b[3B\r\u001b[8A✶\r\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\u001b[2C\u001b[3A\u001b[2D\u001b[3B\r\u001b[8A✳\r\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\u001b[2C\u001b[3A\u001b]0;⠐ Claude Code\u0007\u001b[2D\u001b[3B\r\u001b[8A✢\r\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\u001b[2C\u001b[3A",
+      "notes": ""
+    },
+    {
+      "index": 4,
+      "prompt": "Say hello in one word.",
+      "ok": true,
+      "elapsed_s": 0.05,
+      "output_preview": "\u001b[2D\u001b[3B\r\u001b[4A  ❯ Name one color. One word only.\u001b[K\r\u001b[1B────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────\r\u001b[1B❯ \u001b[7mP\u001b[27mress up to edit queued messages\u001b[K\r\u001b[1B────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────\r\r\n\u001b[3G⏵⏵\u001b[6Gbypass\u001b[13Gpermissions\u001b[25Gon\u001b[28G(shift+tab\u001b[39Gto\u001b[42Gcycle)\u001b[49G·\u001b[51Gesc\u001b[55Gto\u001b[58Ginterrupt\r\r\n\u001b[2C\u001b[3A\u001b[2D\u001b[3B\r\u001b[9A·\r\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\u001b[2C\u001b[3A\u001b[2D\u001b[3B\r\u001b[9A✢\r\r\n\r\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\u001b[2C\u001b[3A",
+      "notes": ""
+    },
+    {
+      "index": 5,
+      "prompt": "Reply DONE only.",
+      "ok": true,
+      "elapsed_s": 0.05,
+      "output_preview": "\u001b[2D\u001b[3B\r\u001b[4A  ❯ Say hello in one word.\u001b[K\r\u001b[1B────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────\r\u001b[1B❯ \u001b[7mP\u001b[27mress up to edit queued messages\u001b[K\r\u001b[1B────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────\r\r\n\u001b[3G⏵⏵\u001b[6Gbypass\u001b[13Gpermissions\u001b[25Gon\u001b[28G(shift+tab\u001b[39Gto\u001b[42Gcycle)\u001b[49G·\u001b[51Gesc\u001b[55Gto\u001b[58Ginterrupt\r\r\n\u001b[2C\u001b[3A\u001b[2D\u001b[3B\r\u001b[10A✳\r\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\u001b[2C\u001b[3A\u001b[2D\u001b[3B\r\u001b[10A✶\r\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\u001b[2C\u001b[3A",
+      "notes": ""
+    }
+  ],
+  "success_count": 5,
+  "pass_5_of_5": true,
+  "failure_reason": ""
+}
