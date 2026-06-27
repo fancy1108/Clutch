@@ -342,10 +342,7 @@ function MainLayout() {
     clutchState.workflow_id || selectedWorkflowId
       ? clutchState.active_agent || currentFlowName || selectedAgentName
       : selectedAgentName;
-  const chatActiveAgentAvatar =
-    configuredAgents.find(
-      (a) => getAgentDisplayName(a) === chatActiveAgentName || a.id === chatActiveAgentName
-    )?.avatar || BUILTIN_AGENT_AVATARS[chatActiveAgentName] || '';
+  const chatActiveAgentAvatar = BUILTIN_AGENT_AVATARS[chatActiveAgentName] || '';
   const customAgentEngineLabel =
     selectedAgent && !isClutchAgentType(selectedAgent)
       ? agentTypeLabel(agentTypeFromAgent(selectedAgent))
