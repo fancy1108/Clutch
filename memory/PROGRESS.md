@@ -2,8 +2,8 @@
 
 ## 当前状态
 
-- **阶段：** D25 Hybrid Runtime — **HRT-07 导出脚本待 commit**；下一步 HRT-08
-- **Git HEAD：** `4694231`（HRT-06 debug API）
+- **阶段：** D25 Hybrid Runtime — **HRT-05~07 完成**；下一步 HRT-08
+- **Git HEAD：** `446b7a0`
 - **下次优先：** **HRT-08**（多 session 并发治理）
 - **验收期跳过：** MCP hybrid_executions 深度 UI · 2h/100+ 压测
 - **已知限制：** 多 session 并行 hybrid **未治理**（HRT-08）；验收期请串行
@@ -19,12 +19,12 @@
 | HRT-04 | ✅ | 用户验收 A–E 2026-06-27 |
 | HRT-05 | ✅ | `70835ba` audit JSONL |
 | HRT-06 | ✅ | `4694231` debug API |
-| HRT-07 | 🔄 待 commit | `export-run-debug.sh` |
+| HRT-07 | ✅ | `446b7a0` export script |
 | HRT-08~10 | ❌ | 并发 |
 
 ### 未 commit 工作
 
-- **HRT-07**：`scripts/export-run-debug.sh`
+（无）
 
 ## 2026-06-27 会话（HRT-01~03 hybrid 修复 commit）
 
