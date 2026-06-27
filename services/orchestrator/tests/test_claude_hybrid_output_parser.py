@@ -126,6 +126,19 @@ def test_marker_completed_ignores_command_echo() -> None:
     assert marker_completed_in_output(completed, marker=marker) is True
 
 
+def test_marker_completed_with_ansi_before_marker() -> None:
+    marker = "__CLUTCH_DONE_debug01__"
+    raw = (
+        "OK\r\n"
+        "\x1b(B\x0f\x1b[>4m\x1b[<u\x1b7\x1b8\x1b]0;\x07\x1b[?25h"
+        f"{marker}\r\n"
+        "clutch$ "
+    )
+    assert marker_completed_in_output(raw, marker=marker) is True
+    out = ClaudeHybridOutputParser().parse(raw, marker=marker)
+    assert out == "OK"
+
+
 def test_parse_rejects_shell_fragment_assistant() -> None:
     raw = (
         "CLUTCH_P='One word: blue'; /opt/homebrew/bin/agy -p \"$CLUTCH_P\" "

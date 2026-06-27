@@ -9,6 +9,7 @@ import type { SessionRecord } from '../services/runApi';
 import type { ScannedSkill } from '../services/skillsApi';
 import type { FileTreeNode } from '../services/workspaceApi';
 import type { PermissionMode } from '../services/permissionApi';
+import { USER_CHAT_AVATAR } from '../services/clutchState';
 
 function outputEventLabel(type: OutputEvent['type'], t: (key: string) => string): string {
   switch (type) {
@@ -214,6 +215,7 @@ interface ChatFeedProps {
   skills?: ScannedSkill[];
   permissionMode?: PermissionMode;
   onPermissionModeChange?: (mode: PermissionMode) => void;
+  userAvatar?: string;
 }
 
 const WORKFLOW_AGENTS = new Set(['Builder', 'Orchestrator', 'Evaluator', 'Supervisor']);
@@ -558,6 +560,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   skills = [],
   permissionMode = 'ask',
   onPermissionModeChange,
+  userAvatar,
 }) => {
   const { t } = useLanguage();
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -722,6 +725,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
             msg.badgeText?.includes('FAILED') ||
             msg.badgeText?.includes('NEEDS');
           const isCompletedMsg = msg.status === 'COMPLETED';
+          const avatarUrl = isUser ? (userAvatar || USER_CHAT_AVATAR) : msg.avatar;
 
           return (
             <div
@@ -734,8 +738,8 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                 }`}
               >
                 <div className="w-9 h-9 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center bg-surface-container">
-                  {msg.avatar ? (
-                    <img className="w-full h-full object-cover" src={msg.avatar} alt={msg.agent} />
+                  {avatarUrl ? (
+                    <img className="w-full h-full object-cover" src={avatarUrl} alt={msg.agent} />
                   ) : (
                     <LegacyIcon
                       name={

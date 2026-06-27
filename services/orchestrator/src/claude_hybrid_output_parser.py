@@ -85,15 +85,24 @@ def _marker_line_pattern(marker: str) -> re.Pattern[str]:
 
 
 def marker_completed_in_output(raw: str, marker: str) -> bool:
-    """True when bash `echo <marker>` printed the marker on its own line (not shell echo)."""
-    normalized = _erase_backspaces(strip_ansi(raw)).replace("\r", "\n")
-    return bool(_marker_line_pattern(marker).search(normalized))
+    """True when bash finished `echo <marker>` and the shell prompt returned."""
+    plain = _erase_backspaces(strip_ansi(raw)).replace("\r", "\n")
+    # After claude -p, marker is often glued to ANSI residue (e.g. `0;__CLUTCH_DONE_x__`)
+    # or followed by the clutch$ prompt — not always on a clean standalone line.
+    if re.search(rf"{re.escape(marker)}\s*(?:\n\s*)*clutch\$", plain):
+        return True
+    if _marker_line_pattern(marker).search(plain):
+        return True
+    return plain.count(marker) >= 2
 
 
 def _last_standalone_marker_index(normalized: str, marker: str) -> int:
     last = -1
     for match in _marker_line_pattern(marker).finditer(normalized):
         last = match.start(1)
+    clutch_match = re.search(rf"({re.escape(marker)})\s*(?:\n\s*)*clutch\$", normalized)
+    if clutch_match:
+        last = max(last, clutch_match.start(1))
     return last
 
 

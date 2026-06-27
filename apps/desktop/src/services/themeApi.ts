@@ -7,6 +7,7 @@ export type AppLanguage = 'en' | 'zh';
 export interface UserPreferences {
   active_theme_id: ThemePresetId;
   active_language: AppLanguage;
+  user_avatar?: string;
 }
 
 export async function fetchPreferences(): Promise<UserPreferences> {
@@ -17,7 +18,7 @@ export async function fetchPreferences(): Promise<UserPreferences> {
     ? body.active_theme_id
     : 'pristine-light';
   const language = body.active_language === 'zh' ? 'zh' : 'en';
-  return { active_theme_id: themeId, active_language: language };
+  return { active_theme_id: themeId, active_language: language, user_avatar: body.user_avatar };
 }
 
 export async function fetchThemePreference(): Promise<ThemePresetId> {
@@ -58,4 +59,18 @@ export async function saveLanguagePreference(language: AppLanguage): Promise<App
   }
   const saved = (await response.json()) as UserPreferences;
   return saved.active_language;
+}
+
+export async function saveAvatarPreference(avatar: string): Promise<string> {
+  const response = await fetch(`${BASE}/api/preferences/avatar`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ avatar }),
+  });
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as { detail?: { message?: string } };
+    throw new Error(body.detail?.message ?? `avatar save failed (${response.status})`);
+  }
+  const saved = (await response.json()) as UserPreferences;
+  return saved.user_avatar || '';
 }

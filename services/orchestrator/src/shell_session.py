@@ -63,6 +63,23 @@ def _read_available(master_fd: int, *, wait_s: float) -> str:
     return "".join(chunks)
 
 
+def read_until_contains(master_fd: int, needle: str, *, max_wait_s: float) -> str:
+    """Read PTY output until `needle` appears (used for bash prompt sync)."""
+    chunks: list[str] = []
+    deadline = time.monotonic() + max_wait_s
+    while time.monotonic() < deadline:
+        chunk = _read_available(master_fd, wait_s=min(2.0, deadline - time.monotonic()))
+        if chunk:
+            chunks.append(chunk)
+            if needle in strip_ansi("".join(chunks)):
+                break
+        elif chunks:
+            time.sleep(0.1)
+        else:
+            time.sleep(0.05)
+    return "".join(chunks)
+
+
 def read_until_marker(master_fd: int, marker: str, *, max_wait_s: float) -> str:
     chunks: list[str] = []
     deadline = time.monotonic() + max_wait_s
@@ -120,9 +137,9 @@ class ShellSession:
             raise SystemExit(1)
         self.pid = pid
         self.master_fd = master_fd
-        read_until_marker(master_fd, "$", max_wait_s=8.0)
+        read_until_contains(master_fd, "$", max_wait_s=8.0)
         write_line(master_fd, "export COLUMNS=200 PS1='clutch$ '")
-        read_until_marker(master_fd, "clutch$", max_wait_s=3.0)
+        read_until_contains(master_fd, "clutch$", max_wait_s=3.0)
         self.ensure_workspace_cwd()
         self.state = SessionState.READY
         self.touch()
@@ -131,7 +148,7 @@ class ShellSession:
         if self.master_fd < 0:
             raise ShellSessionError("session not started")
         write_line(self.master_fd, f"cd {self.workspace_path}")
-        read_until_marker(self.master_fd, "clutch$", max_wait_s=5.0)
+        read_until_contains(self.master_fd, "clutch$", max_wait_s=5.0)
 
     def alive(self) -> bool:
         if self.pid <= 0:

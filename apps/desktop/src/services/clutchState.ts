@@ -9,6 +9,7 @@ import type {
 } from '../types';
 import { translateText, type Language } from '../components/LanguageContext';
 import { sidecarWebSocketUrl } from './sidecarUrl';
+import defaultAvatar from '../assets/default_avatar.jpg';
 
 export function createSessionRunId(): string {
   return `run_${Date.now().toString(36)}`;
@@ -38,8 +39,12 @@ function isChatMessage(value: unknown): value is ChatMessage {
   return typeof msg.id === 'string' && typeof msg.text === 'string';
 }
 
-export const USER_CHAT_AVATAR =
-  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=100';
+export let USER_CHAT_AVATAR = defaultAvatar;
+
+export function setUserChatAvatar(avatar: string) {
+  USER_CHAT_AVATAR = avatar || defaultAvatar;
+  clutchStore.triggerUpdate();
+}
 
 export function createUserChatMessage(text: string): ChatMessage {
   return {
@@ -177,6 +182,10 @@ class ClutchStateStore {
   setPendingHydrate = (state: ClutchState): void => {
     this.pendingHydrate = state;
   };
+
+  triggerUpdate(): void {
+    this.emit();
+  }
 
   private emit(): void {
     for (const listener of this.listeners) {

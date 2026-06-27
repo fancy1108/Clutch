@@ -20,9 +20,9 @@ import {
   isBuiltinAgent,
   mergeAgentsWithBuiltin,
 } from './services/builtinAgent';
-import { fetchThemePreference, saveThemePreference, type ThemePresetId } from './services/themeApi';
+import { fetchPreferences, saveThemePreference, type ThemePresetId } from './services/themeApi';
 import { LanguageProvider, useLanguage } from './components/LanguageContext';
-import { clutchStore, createSessionRunId, submitChatMessage, useClutchState } from './services/clutchState';
+import { clutchStore, createSessionRunId, submitChatMessage, useClutchState, setUserChatAvatar } from './services/clutchState';
 import { fetchSessions, createSession, startWorkflowRun, fetchRunState, deleteSession, type SessionRecord } from './services/runApi';
 import { fetchShellSnapshots } from './services/shellSnapshotApi';
 import { listWorkflowItems } from './services/workflowApi';
@@ -81,10 +81,17 @@ function MainLayout() {
   const [selectedWorkflowId, setSelectedWorkflowId] = useState<string | null>(null);
   const [isMultiAgent, setIsMultiAgent] = useState<boolean>(false);
   const [themeId, setThemeIdState] = useState<ThemePresetId>('pristine-light');
+  const [userAvatar, setUserAvatarState] = useState<string>('');
 
   useEffect(() => {
-    void fetchThemePreference()
-      .then((id) => setThemeIdState(id))
+    void fetchPreferences()
+      .then((prefs) => {
+        setThemeIdState(prefs.active_theme_id);
+        if (prefs.user_avatar) {
+          setUserAvatarState(prefs.user_avatar);
+          setUserChatAvatar(prefs.user_avatar);
+        }
+      })
       .catch(() => {});
   }, []);
 
@@ -1037,6 +1044,7 @@ function MainLayout() {
                 skills={chatSkills}
                 permissionMode={permissionMode}
                 onPermissionModeChange={handlePermissionModeChange}
+                userAvatar={userAvatar}
               />
               <RightPanel
                 activeTab={rightTab}
@@ -1088,6 +1096,8 @@ function MainLayout() {
           selectedWorkflowId={selectedWorkflowId}
           activeAgentId={selectedAgentId}
           onActivateAgent={handleActivateAgent}
+          userAvatar={userAvatar}
+          setUserAvatar={setUserAvatarState}
         />
 
       </div>

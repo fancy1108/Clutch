@@ -1,4 +1,4 @@
-import React, { Dispatch, SetStateAction } from 'react';
+import React, { Dispatch, SetStateAction, useRef } from 'react';
 import { Agent, MainView } from '../types';
 import { AgentManager } from './AgentManager';
 import { WorkflowOrchestration } from './WorkflowOrchestration';
@@ -8,8 +8,11 @@ import { McpServerHub } from './McpServerHub';
 import { ModelsManager } from './ModelsManager';
 import { ThemeManager } from './ThemeManager';
 import { useLanguage } from './LanguageContext';
-import { BTN_FOCUS } from './ui/buttonStyles';
+import { BTN_FOCUS, BTN_PRIMARY, BTN_SECONDARY } from './ui/buttonStyles';
 import { LegacyIcon } from './ui/LegacyIcon';
+import { saveAvatarPreference } from '../services/themeApi';
+import { setUserChatAvatar } from '../services/clutchState';
+import defaultAvatar from '../assets/default_avatar.jpg';
 
 interface SystemPreferencesModalProps {
   currentView: MainView;
@@ -40,6 +43,8 @@ interface SystemPreferencesModalProps {
   selectedWorkflowId?: string | null;
   activeAgentId?: string | null;
   onActivateAgent?: (agent: Agent) => void;
+  userAvatar: string;
+  setUserAvatar: (avatar: string) => void;
 }
 
 export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
@@ -62,8 +67,44 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
   selectedWorkflowId = null,
   activeAgentId = null,
   onActivateAgent,
+  userAvatar,
+  setUserAvatar,
 }) => {
   const { t } = useLanguage();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert(t("Supported formats: PNG, JPG, GIF. Max file size: 5MB."));
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const base64 = event.target?.result as string;
+      try {
+        await saveAvatarPreference(base64);
+        setUserAvatar(base64);
+        setUserChatAvatar(base64);
+      } catch (err) {
+        console.error('Failed to save avatar:', err);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleResetAvatar = async () => {
+    try {
+      await saveAvatarPreference('');
+      setUserAvatar('');
+      setUserChatAvatar('');
+    } catch (err) {
+      console.error('Failed to reset avatar:', err);
+    }
+  };
 
   const isModalOpen = ['agents', 'settings', 'workflows', 'tools', 'skills', 'mcp', 'models', 'appearance'].includes(currentView);
   const navBtnBase = `w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-left text-[11px] transition-all border ${BTN_FOCUS}`;
@@ -229,6 +270,69 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
                 currentThemeId={themeId}
                 setThemeId={setThemeId}
               />
+            ) : currentView === 'settings' ? (
+              <div className="flex-1 flex flex-col p-8 overflow-y-auto bg-surface-bright text-on-surface select-text">
+                <div className="border-b border-outline/30 pb-4 mb-6">
+                  <h2 className="text-lg font-extrabold tracking-tight text-on-surface flex items-center gap-2">
+                    <LegacyIcon name="settings" className="text-xl" />
+                    {t("General Settings")}
+                  </h2>
+                  <p className="text-[11px] text-on-surface-variant mt-1">
+                    {t("Customize your application profile, account settings and default preferences.")}
+                  </p>
+                </div>
+
+                <div className="space-y-6">
+                  {/* Avatar Settings Section */}
+                  <div className="bg-surface-container/30 p-6 rounded-2xl border border-outline/30 space-y-4">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                      {t("Profile Avatar")}
+                    </h3>
+                    <div className="flex items-center gap-6">
+                      <div className="relative w-20 h-20 rounded-full overflow-hidden border border-outline/50 shadow-md bg-surface-container flex-shrink-0 flex items-center justify-center group">
+                        <img 
+                          className="w-full h-full object-cover" 
+                          src={userAvatar || defaultAvatar} 
+                          alt="User Avatar" 
+                        />
+                      </div>
+                      
+                      <div className="space-y-2.5">
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => fileInputRef.current?.click()}
+                            className={`${BTN_PRIMARY} px-3 py-1.5 text-xs font-semibold cursor-pointer flex items-center gap-1.5`}
+                          >
+                            <LegacyIcon name="upload" className="text-[14px]" />
+                            {t("Choose Photo")}
+                          </button>
+                          
+                          {userAvatar && (
+                            <button
+                              onClick={handleResetAvatar}
+                              className={`${BTN_SECONDARY} px-3 py-1.5 text-xs font-semibold cursor-pointer flex items-center gap-1.5`}
+                            >
+                              <LegacyIcon name="restart_alt" className="text-[14px]" />
+                              {t("Reset to Default")}
+                            </button>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-on-surface-variant/80">
+                          {t("Supported formats: PNG, JPG, GIF. Max file size: 5MB.")}
+                        </p>
+                      </div>
+                    </div>
+
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      className="hidden"
+                      accept="image/*"
+                      onChange={handleFileChange}
+                    />
+                  </div>
+                </div>
+              </div>
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center p-10 text-center select-none bg-surface-bright text-on-surface">
                 <LegacyIcon name="construction" className="text-[32px] text-on-surface-variant/40 mb-2" />

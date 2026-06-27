@@ -185,6 +185,10 @@ class PermissionModeRequest(BaseModel):
     mode: str
 
 
+class AvatarPreferenceRequest(BaseModel):
+    avatar: str
+
+
 def _skills_registry_payload(*, rescan: bool = True) -> dict[str, Any]:
     from src.skills_scanner import scan_mounted_directories
     from src.skills_storage import ensure_default_skill_mounts, load_registry, save_registry
@@ -2266,6 +2270,16 @@ async def save_permission_mode_route(body: PermissionModeRequest) -> dict[str, s
 
     try:
         return save_permission_mode(body.mode)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+
+
+@app.post("/api/preferences/avatar")
+async def save_avatar_preference(body: AvatarPreferenceRequest) -> dict[str, str]:
+    from src.preferences_storage import save_avatar
+
+    try:
+        return save_avatar(body.avatar)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
 
