@@ -3,7 +3,7 @@
 ## 当前状态
 
 - **阶段：** D25 Hybrid Runtime — **Flow/Chat UX + Tauri dev 生命周期已落地，待人工验收**
-- **Git HEAD：** （本 commit 后更新）
+- **Git HEAD：** `9b1c9e9`
 - **下次优先：** Weather-to-Vision 工作流验收（Agent 标签/Logo、Hybrid 图片、用户消息合并）；通过后更新 ROADMAP
 - **验收期跳过：** MCP hybrid_executions 深度 UI · 2h/100+ 压测
 
