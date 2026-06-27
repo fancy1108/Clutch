@@ -75,77 +75,121 @@ graph TD
 
 ## 3. 核心功能特性
 
-### 3.1 通用可定制 Agent 系统
-Clutch 不限制或固化 Agent 的角色名称，而是提供了一个完全通用的自定义 Agent 机制：
-- **Agent 自定义配置**：用户可通过 UI 自由创建、编辑或删除 Agent（配置持久化存储于 `agents.json`）。支持配置 Agent 的名称、头像、描述、系统提示词（`markdownDoc`）、绑定的模型（`modelId`）、期望交付产物（`deliverables`）以及关联的 MCP 服务器与 Skills。
-- **内置 Agent**：系统提供默认的 `clutch-agent`（内置 Clutch Agent）作为通用垫底 Agent。
-- **工作流节点绑定**：画布上的 `agent_task` 节点可选择任意自定义或内置的 Agent，编译后节点会自动读取对应 Agent 的属性与提示词，动态调用底层模型进行任务处理。
-- **自动输入输出接力 (Handoff)**：节点激活时自动解析上游。若上游是另一个 Agent 任务节点，系统会自动将该上游节点的 `node_outputs` 作为输入上下文接力注入到当前节点的输入中，从而跑通链式多 Agent 协作流。
+本节所列特性为**当前项目前端与后端已完全实现并验证**的真实功能与系统架构，不包含任何模拟（Mock）或占位数据：
 
-### 3.2 本地 AI 工具自动扫描与探测
-系统启动时，后端 `tools_status.py` 会自动扫描用户本地的系统 `PATH` 以及 Brew、NPM、NVM 等常用工具目录，智能探测已安装的 **CLI** 工具：
-- **CLI 命令行工具探测**：支持自动扫描 `claude` (Claude Code CLI)、`agy` (Antigravity CLI)、`codex` (OpenAI Codex CLI)、`aider` (Aider)、`ollama` (Ollama CLI)、`cursor` (Cursor CLI)、`code` (VS Code CLI)、`codeium` (Codeium CLI)、`gemini` (Gemini CLI) 等可执行文件。**仅本机已安装的二进制会出现在 AI Tools 页面。**
-- **配置与连接状态**：探测结果在前端 AI Tools 界面展示为 CLI 类型、可执行绝对路径，以及用户手动启用的「已连接」偏好（`tools.json`）。连接状态用于路由可用性判断，**不等于**已在 `engine_router` 接入执行。
+### 3.1 可视化多 Agent 画布与自动接力 (Visual Multi-Agent Canvas & Auto-Handoff)
 
-### 3.3 多引擎智能路由与 Session 恢复
-在执行任务或普通对话时，编排引擎中的 `EngineRouter` 会根据 Agent 配置的 `agentType`（或 legacy 字段 `aiEngine`）及本地工具的探测可用状态，进行智能路由分流。
+提供基于 React Flow 的通用工作流编排画布，由后端 LangGraph 状态机引擎提供执行支撑。
 
-**产品可选的 `agentType`（前端 Agent Manager）仅四类**：`clutch`、`claude-cli`、`antigravity-cli`、`ollama-cli`。
+```
++--------------------------------------------------------------+
+| [ Researcher ] ------( node_outputs )------> [ Artist ]       |
+| (Type: custom)                               (Type: AgnesImg)|
++--------------------------------------------------------------+
+```
 
-1. **本地 CLI 适配器路由**：
-   - Agent 配置为 `claude-cli` 或 `antigravity-cli`，且本地探测到对应 CLI 并已连接时，路由至本地子进程（`claude_cli_adapter` / `agy_cli_adapter`），每轮 `subprocess` 执行 `-p` print 模式。
-   - **CLI 逻辑 Session（D20）**：`claude-cli` 使用 `--session-id` / `--resume`；`antigravity-cli` 使用 `--conversation`。`ClutchState` 持久化 `cli_session_id` / `cli_session_agent_id`（读盘兼容旧 `claude_session_*`），切换 Agent 时丢弃旧 session。
-2. **Ollama 本地模型路由（`ollama-cli`）**：
-   - 经 HTTP 调用本机 `11434` 端口（`ollama_adapter`），非子进程 spawn；自动发现已 pull 的模型并打分排序（优先 `qwen3.6` 等）。
-3. **全局 LLM 模型路由（`clutch`）**：
-   - 路由至用户配置的云端或本地模型 API（OpenAI、DeepSeek、智谱 GLM 等）。
-   - 注入 Agent 绑定的 **Skills**（`SKILL.md`）与 **MCP Hub** 服务器，经 `mcp_react` 执行工具循环（D19）。
-   - **生图/视觉模型适配**：生图模型走生图路由；向非视觉模型上传图片时拦截并提示切换模型。
-4. **智能降级回退（Fallback）**：
-   - 若 Agent 指定本地 CLI 但工具未安装或未连接，降级至 `clutch` LLM 引擎，并在 Terminal 输出 Fallback 审计行。
+* **通用 Agent 自定义**：支持用户自由创建、修改 Agent 提示词、绑定模型和 MCP 工具，配置持久化于本地 `agents.json`。
+* **节点自动输入输出接力 (Handoff)**：工作流节点在被激活运行时，会自动解析其所有上游节点的输出 `node_outputs`，并作为当前节点的输入上下文进行自动注入，实现多角色、流水线式的链式智能体协作。
 
-> **说明**：`codex` / `gemini` / `aider` 等 CLI 已在 `tools_status` 探测清单中，但**尚未**接入 `engine_router`（见 BACKLOG B-17）。
+### 3.2 人机协同门控与高风险命令审批 (Human-in-the-Loop Gate & High-Risk Tool Approval)
 
-### 3.4 虚拟 MCP 服务器与 Codex 文件补丁
-- **虚拟 MCP 客户端 (`clutch-tools`)**：当 Agent 访问本地文件系统（`local-fs`）时，Sidecar 会动态挂载该内置虚拟 MCP 服务。
-- **`apply_patch` 精密文件工具**：提供 Codex 语法兼容的文件打补丁工具（支持 Add, Delete, Update, Move 动作），使模型可以通过标准的 diff 或指令精密增删改移本地文件，避免了传统模型缺乏删除文件 API 而导致的工作区垃圾残留。
-- **安全门控 (mcp_risk)**：涉及删除、修改工作区代码文件的高风险 MCP 动作会在 Sidecar 侧被自动判定，拦截并强制推送为 `human_required` 人工决策，必须经由 Supervisor 审批同意后方能真正对磁盘应用变更。
+保障 Agent 代码改动和命令行执行的安全审计防线。
 
-### 3.5 多语言 (i18n)、凭证导入与用户个人配置
-- **多语言双语对照**：支持中英文（zh/en）切换。后端通过 preferences 动态加载语言偏好，在 API/WebSocket 的异常捕获、干预提示上使用 `tr()` 响应，且完全兼容既有测试断言。
-- **凭证自动导入**：支持自动读取 `~/.cc-switch/cc-switch.db` SQLite 数据库，无感导入用户在第三方工具中配置的模型 API Keys，免去繁琐的手动配置过程。
-- **用户头像与姓名配置 (Profile Preferences)**：在通用设置 (General Settings) 面板中支持用户上传自定义头像（转换为 base64 存储）、重置为默认头像，以及自定义个人显示名称。后端偏好接口（`user_avatar` 和 `user_name` 偏好键）支持持久化并自动应用到 Chat Feed 中用户发送的消息气泡的标签与头像显示中。
-- **应用版本动态获取 (Dynamic Application Versioning)**：右下角的状态展示栏通过调用 Tauri 的 `getVersion` 插件接口动态解析并展示当前桌面应用的准确版本号，非桌面浏览器环境则安全回退为 `0.0.0`，保证了不同运行环境下的可用性与一致性。
+```
++-------------------------------------------------------------+
+| ⚠️ Human Approval Required                                    |
+| Command: git add . && git commit -m "update"                |
+| High-Risk Actions: Write files to workspace                 |
+|                                                             |
+|   [ Approve (✓) ]     [ Reject (✗) ]     [ Retry (↺) ]       |
++-------------------------------------------------------------+
+```
 
-### 3.6 状态与上下文管理
-- **会话偏好持久化 (Session-Specific Preference Persistence)**：前端使用 `localStorage` 分别追踪并持久化每个 `sessionRunId` 的用户选择（单 Agent / 多 Agent 模式、所选工作流 ID、所选 Agent ID）。在用户点击侧栏会话进行切换时，自动精准恢复其历史离开时的所有选择，防止误切回默认 Agent。
-- **上下文自动压缩与归档（已落地 · B-03）**：
-  - `services/orchestrator/src/compaction.py`：当会话 token 估算达到阈值时，对中间轮次做 LLM 摘要，原文归档 JSONL；Plain Chat 在回复提交前触发，经 `state_patch` 推送 `badgeText`。
-  - 调研参考：DeepSeek Reasonix compaction、OpenCode autoCompact。
-- **CLI PTY 长驻 Session（规划中 · 调研稿）**：
-  - 见 [`docs/research/pty-session.md`](research/pty-session.md)：将 `claude-cli` / `antigravity-cli` 从每轮 subprocess 升级为 per-`run_id` PTY，物理继承 cwd/shell；`clutch` / `ollama-cli` 不在范围内。
-- **工作区轻量快照与物理回滚（规划中 · B-11）**：
-  - 借鉴 DeepSeek TUI `side-git`：Human Gate reject 或校验失败时一键回滚工作区。
-- **缓存友好的前缀保护分叉（规划中 · B-14）**：
-  - 借鉴 agentcache：Planner/Executor 或多子 Agent 并行时保持 prefix cache 对齐。
+* **文件打补丁审批**：当 Agent 试图使用 Codex 兼容的文件编辑器工具（`apply_patch`）对本地项目代码进行增、删、改、移时，Sidecar 引擎（通过 `mcp_risk.py` 判定）会自动拦截并挂起图运行。
+* **协同门控动作**：在前端弹出的审批卡片中，用户可点击 **Approve**（确认并运行）、**Reject**（回退打回）或 **Retry**（输入补充提示词强制模型重写）。
+
+### 3.3 本地 AI 工具探测与多引擎智能路由 (Local AI Tools Autodiscovery & Multi-Engine Router)
+
+自动打通本地开发工具链并智能路由模型请求。
+
+```
++--------------------------------------------------------------+
+| AI Tools Status                                              |
+|  [✓] Claude CLI       (/opt/homebrew/bin/claude)  [Connected]|
+|  [✓] Antigravity CLI  (/usr/local/bin/agy)        [Connected]|
+|  [✗] Ollama CLI       (Not found in PATH)         [Offline]  |
++--------------------------------------------------------------+
+```
+
+* **本地二进制文件扫描**：应用启动时自动扫描环境变量 `PATH` 以及 Brew/NPM 等路径，探测本地已安装的 `claude` (Claude Code)、`agy` (Antigravity CLI)、`aider`、`ollama` 等可执行文件，结果存于 `tools.json`。
+* **智能路由与逻辑 Session**：`EngineRouter` 根据 Agent 的引擎类型智能分流。如分发给本地 CLI 时，会启动子进程并利用 `--session-id` 或 `--conversation` 参数实现会话上下文物理恢复，以节省重放的 Token 成本。非 CLI 引擎时，则直接路由至本地 Ollama 实例或云端 LLM API。
+
+### 3.4 IDE 级全流程透明监督控制台 (IDE-grade Observability Workbench)
+
+打破大模型后台运行的黑盒状态，让执行轨迹完全透明化。
+
+```
++--------------------------------------------------------------+
+| [Sidebar] |  [Chat Feed]                 | [Right Panel]     |
+| Sessions  |  Orchestrator: Thinking...   |   Overview        |
+|  - Run 1  |   - User: Hello!             |   Files           |
+|  - Run 2  |   - SmartToy: I am processing| > Terminal Logs   |
+|           |                              |   Changes (Diff)  |
++--------------------------------------------------------------+
+```
+
+* **Chat Feed 区域**：支持展示多 Agent 在编排或单聊模式下，以各自专属头像与名称输出的历史聊天气泡。
+* **Terminal 终端审计日志**：右侧面板实时展示子进程中 CLI 工具运行产生的标准输出和标准错误日志（Stdout/Stderr），用户能看到 Agent 究竟敲了什么命令。
+* **Changes 红绿代码 Diff 追踪**：实时捕获并高亮显示工作区文件系统的每一次具体代码行变动。
+
+### 3.5 个人账号偏好与资料配置 (Personal Settings & Preference Dashboard)
+
+提供用户个性的个性化展示与系统运行配置。
+
+```
++--------------------------------------------------------------+
+| System Preferences                                           |
+|  [ General ]   Avatar: [Change Photo]                        |
+|  [ AI Tools ]  Profile Name: [ Fancy User                  ] |
+|  [ Themes  ]   Language: [中文/English  ]                    |
++--------------------------------------------------------------+
+```
+
+* **个人姓名与头像自定义**：支持在通用设置中上传本地照片（转换为 Base64 持久化）作为用户聊天气泡的头像，支持设定个性化名称以替代默认的 "User" 发送者标签。
+* **多语言与系统主题**：支持中英文（zh/en）双语翻译与对照切换；支持在 `pristine-light`、`nordic-frost`、`amber-warm` 配色预设中一键切换桌面环境的主题。
+* **本地应用版本检测**：右下角动态调用 Tauri 插件接口读取当前桌面版应用的真实版本号（非 Tauri 环境下安全降级回显 `0.0.0`）。
+* **会话级偏好记忆**：自动按 `sessionRunId` 使用 `localStorage` 记录和还原用户在此会话历史中最后选定的单/多 Agent 模式、所选工作流 ID 及 Agent ID。
 
 ---
 
-## 4. 内置 SOP 模板
+## 4. 规划中特性 (Future Roadmap)
 
-Clutch 默认打包了以下经典 SOP 工作流模板，位于 `workflows/` 目录：
+以下特性来源于 **Backlog (候选需求池)**，是针对未来阶段的深度优化与升级规划：
 
-- **Video Production (视频生产)**：适用于流水线式的视频素材处理、文案生成、评估校验及人工确认发布。
-- **Weather to Vision (天气插画接力)**：
-  - **节点 1 (Researcher / 天气情报官)**：分析用户请求，调研并产出包含天空、光影、氛围的场景描述。
-  - **节点 2 (Artist / 视觉艺术家)**：绑定生图模型（如 Agnes Image），自动读取并接力上游的描述文本，最终生成一张高质量插画。
-  - **节点 3 (End / 结束)**。
+### 4.1 智能主控与任务自愈 (Smart Dispatcher & Self-Healing)
+* **需求智能匹配分派**：大模型根据用户的自然语言输入，自动判定应启动哪个已有的工作流 SOP，并提炼出第一步的指导提示，免去手动查找启动的繁琐。
+* **图内运行错误自愈**：在 Agent 编写代码出现语法或运行报错时，直接读取错误日志和编译器诊断结果回灌至 Agent 编排流中，让大模型自动尝试排查并编写修复代码，降低人工审批打回的频次。
+
+### 4.2 精细化命令安全拦截与沙箱防护 (Fine-grained Permissions & OS Sandbox)
+* **细粒度命令审批策略**：支持用户配置规则，如对 `git` 提交直接无感放行，但对涉及编译执行或疑似敏感修改的指令保持“询问”状态。
+* **安全目录 Glob 限制**：设定文件夹路径读写白名单（如仅允许 Agent 操作 `./src`，禁止访问系统盘），若超出边界则在前端弹出临时权限扩权申请。
+* **OS 级虚拟沙箱隔离**：深入技术调研，通过容器或 OS 底层沙箱技术（如 Linux Bubblewrap / Windows 隔离 Sandbox）将 Agent 的物理子进程锁死，防范恶意命令破坏系统。
+
+### 4.3 交互体验与效率机制升级 (UX & Efficiency Upgrades)
+* **审批行内红绿 Diff 预览**：在用户确认 Approve/Reject 的弹窗卡片中直接嵌入代码改动的红绿对比展示，无需手动切换右侧 Changes 选项卡。
+* **代码流式增量补丁推送**：当大模型在后台极快写代码时，通过 WebSocket 增量、流式地将代码 diff 过程在聊天区更新渲染，避免长时卡顿等待。
+* **API 真实 Token 成本追踪**：更精准地捕获和累加单次运行中所消耗的大模型真实 Token（包含缓存命中状态），便于用户监控费用支出。
+* **上下文压缩与历史归档**：在单轮长对话的 Token 消耗逼近限制时，自动提取中间轮次摘要，并将完整的原始对话历史归档至本地 JSONL 格式中。
+
+### 4.4 长驻 PTY 会话交互与并行多智能体 (PTY Sessions & Parallel Sub-agents)
+* **长驻 PTY 终端交互**：支持运行需要键盘输入确认的交互式命令（如向标准输入 `stdin` 动态灌入确认字符），并支持保持类似于本地热更新服务器 (`pnpm dev`) 等长连接会话的后台挂起监控。
+* **并行多智能体与 Git Worktree 隔离**：允许编排图内同时拉起多个子 Agent 并行执行不同的分支任务，在底层利用 Git Worktree 机制为不同的 Agent 创建隔离的临时项目副本目录，在确保多智能体开发效率的同时绝对保护主项目代码不被改坏。
 
 ---
 
-## 5. 本地运行与构建指令
+## 5. 附录：本地开发与构建指南
 
-### 开发期启动 (Dev)
+### 5.1 开发期启动 (Dev)
 ```bash
 # 终端 1：启动 Python Sidecar (端口 8123)
 cd services/orchestrator
@@ -156,19 +200,19 @@ cd apps/desktop
 pnpm dev
 ```
 
-### 本地轻量校验 (Pre-commit)
+### 5.2 本地轻量校验 (Pre-commit)
 在提交代码前运行轻量校验，确保编译通过、单元测试正常、文档未产生漂移：
 ```bash
 ./scripts/verify.sh
 ```
 
-### 全量 E2E 校验 (Push 前)
-运行完整 Tauri-Playwright GUI 自动化测试：
+### 5.3 全量 E2E 校验 (Push 前)
+运行完整 Playwright GUI 自动化端到端测试：
 ```bash
 ./scripts/verify.sh --e2e
 ```
 
-### 桌面端打包 (Build DMG)
+### 5.4 桌面端打包 (Build DMG)
 ```bash
 pnpm tauri build
 ```
