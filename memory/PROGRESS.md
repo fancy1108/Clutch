@@ -3,7 +3,7 @@
 ## 当前状态
 
 - **阶段：** D25 Hybrid Runtime — **HRT-09 完成**；下一步 HRT-10
-- **Git HEAD：** `b7788ff`
+- **Git HEAD：** `1e6b55d`
 - **下次优先：** **HRT-10**（POC #6/#10 自动化）
 - **验收期跳过：** MCP hybrid_executions 深度 UI · 2h/100+ 压测
 
@@ -36,7 +36,7 @@
   - **软件版本动态获取：** 移除了右下角写死的 `Clutch v0.0.0` 版本文本，使用 Tauri 的 `getVersion` API 在桌面环境下动态获取当前应用程序的版本号，对于非 Tauri 浏览器环境安全降级为 `0.0.0`。
   - **用户姓名偏好设置：** 在 `preferences_storage.py` 和 `main.py` 扩展支持 `user_name` 偏好的读取、保存与 API 路由；在 General Settings 页面新增个人名称输入框支持用户自定义昵称，并同步更新 Chat Feed 中用户发送的消息气泡发送者标签展示。
   - **Backlog 梳理决策：** 针对 B-15（虚拟Fallback工作流）与 B-16（自动Fallback单智能体）做已否决废除归档；B-17（Codex 接入）作为未来支持保留；B-20（OS级沙箱）标记为深入调研的待定项；B-08（Git Worktree 隔离）标记为专业企业项目防改坏代码关键能力保留。
-  - **PRD文档按页面重构：** 将 `docs/PRODUCT_INTRO.md` 重新梳理为按页面/视图划分的真实功能规格（包含单智能体对话页面、多智能体画布页面、右侧监督面板、人机门控审批弹窗、设置中心弹窗等），每个页面前增加了对应的前端 ASCII UI 示意图；更新了附录开发指南并追加了面向用户的分类“规划中特性”路线图。
+  - **PRD文档按页面与Settings子项重构：** 将 `docs/PRODUCT_INTRO.md` 核心功能重新梳理为按页面/视图划分的纯英文大纲结构（包括 Chat Workspace、Observability Panel、Human-in-the-Loop Dialog 和 Settings Dashboard），其中 Settings Dashboard 细分并补齐了通用设置、智能体管理、工作流管理、工具探测、模型凭证、技能注册、MCP扩展、外观设计和会话持久化等 9 个完整的功能子项；同时剔除了不美观的 ASCII 图示。
 - **校验：** 本地运行 `./scripts/verify.sh` 并顺利通过了所有 357 项后端 Python 单元测试和 13 项前端 Vitest 测试 ✅
 
 ## 2026-06-27 会话（用户头像设置与 General 页面开发）
