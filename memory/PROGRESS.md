@@ -3,7 +3,7 @@
 ## 当前状态
 
 - 阶段：**持久化会话特定偏好与加载动效去动画已交付**
-- Git HEAD：`8a03c61`
+- Git HEAD：`d6152f0`
 - **阶段：** D25 ShellSession Step 3~5 核心已交付（默认 `legacy`）
 - **你验收时跳过：** MCP hybrid_executions · 2h 长测
 
@@ -14,7 +14,8 @@
   - **会话偏好持久化：** 在 `App.tsx` 中使用 `localStorage` 按 `sessionRunId` 对当前会话的选择（包括所选模式 `isMultiAgent`、所选 Flow `selectedWorkflowId` 与所选 Agent `selectedAgentId`）进行自动存储。并在切换会话时优先进行恢复。
   - **工作流名称解析：** 优化了 `clutchState.workflow_id` 在 `App.tsx` 中变更时的名称解析，自动从 `footerWorkflows` 映射匹配获取人类可读的工作流展示名。
   - **软件版本动态获取：** 移除了右下角写死的 `Clutch v0.0.0` 版本文本，使用 Tauri 的 `getVersion` API 在桌面环境下动态获取当前应用程序的版本号，对于非 Tauri 浏览器环境安全降级为 `0.0.0`。
-- **校验：** 本地运行 `./scripts/verify.sh` 并顺利通过了所有 349 项后端 Python 单元测试和 13 项前端 Vitest 测试 ✅
+  - **用户姓名偏好设置：** 在 `preferences_storage.py` 和 `main.py` 扩展支持 `user_name` 偏好的读取、保存与 API 路由；在 General Settings 页面新增个人名称输入框支持用户自定义昵称，并同步更新 Chat Feed 中用户发送的消息气泡发送者标签展示。
+- **校验：** 本地运行 `./scripts/verify.sh` 并顺利通过了所有 351 项后端 Python 单元测试（包含新增的用户姓名相关用例）和 13 项前端 Vitest 测试 ✅
 
 ## 2026-06-27 会话（用户头像设置与 General 页面开发）
 

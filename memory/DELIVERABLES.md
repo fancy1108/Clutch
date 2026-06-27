@@ -29,12 +29,16 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ### CHAT-FEED-PREFERENCE-AND-AVATAR-POLISH ✅
 - **日期：** 2026-06-27
-- **Commit：** `8a03c61` — `feat: simplify thinking avatar resolution to align exactly with completed messages` (前序 `7922e8d`, `9cba3b2`)
-- **Verification：** `./scripts/verify.sh` → 349 pytest + 13 vitest + build + doc-drift passed ✅
+- **Commit：** `d6152f0` — `feat: support custom profile name settings in General preferences` (前序 `8a03c61`, `7922e8d`, `9cba3b2`)
+- **Verification：** `./scripts/verify.sh` → 351 pytest (含 2 个新增 user_name 偏好用例) + 13 vitest + build + doc-drift passed ✅
 - **证据：** `—`（门禁已覆盖）
 - **交付文件：**
-  - `apps/desktop/src/App.tsx` — 引入 `BUILTIN_AGENT_AVATARS` 常量，计算 `chatActiveAgentAvatar` 并传入 `<ChatFeed>`；在 `handleSelectSession` 中读取并在切换会话时恢复所选的模式、Flow 和 Agent；添加 `useEffect` 将选择实时持久化到 `localStorage` 中；优化 `clutchState.workflow_id` effect 来解析人类可读 of workflow 名称；使用 Tauri 的 `getVersion` API 动态获取版本号（浏览器降级为 `0.0.0`）。将 `chatActiveAgentAvatar` 简化为仅从内置角色映射，使加载中和加载后的头像保持完全一致（例如 custom agent 统一显示灰色智能机器人图标 `smart_toy`，而非显示临时生成的 Dicebear 头像）。
-  - `apps/desktop/src/components/ChatFeed.tsx` — 添加 `activeAgentAvatar` 并用于 `showThinking` 加载状态渲染，移除了 avatar 头像位置 of `progress_activity` 旋转动画，显示静态头像（或机器人 fallback 图标），使得加载动画仅在右侧消息气泡中的三点打字脉冲中显示。
+  - `services/orchestrator/src/preferences_storage.py` & `main.py` & `tests/test_avatar_preferences.py` — 偏好后端扩展存储 `"user_name"`（默认 `"User"`），增加 POST `/api/preferences/name` 接口和单元测试。
+  - `apps/desktop/src/services/themeApi.ts` — 在 `UserPreferences` 接口增加 `user_name`，定义并导出 `saveUserNamePreference`。
+  - `apps/desktop/src/components/LanguageContext.tsx` — 添加 `"Profile Name"` 和 `"Enter your name"` 的中英文 i18n 翻译资源。
+  - `apps/desktop/src/components/SystemPreferencesModal.tsx` — 添加 `userName` / `setUserName` 属性，在 General 页面新增 Profile Name 的输入控件。
+  - `apps/desktop/src/App.tsx` — 管理 `userName` 的状态，通过 `fetchPreferences` 在初始化时还原用户名，通过 `setUserName` 保持保存偏好；将其传递给 `ChatFeed` 和 `SystemPreferencesModal`。
+  - `apps/desktop/src/components/ChatFeed.tsx` — 增加 `userName` 属性并在用户发送的消息气泡的发送者名字标签中使用，实现自定义昵称展示。
 
 ### D25-HYBRID-STEP2 ✅
 - **日期：** 2026-06-27
