@@ -2,9 +2,9 @@
 
 ## 当前状态
 
-- **阶段：** D25 Hybrid Runtime — **HRT-09 完成**；下一步 HRT-10
-- **Git HEAD：** `1e6b55d`
-- **下次优先：** **HRT-10**（POC #6/#10 自动化）
+- **阶段：** D25 Hybrid Runtime — **HRT-10 完成**；下一步 D29 回看 HRT-05~07 audit 回归
+- **Git HEAD：** `ae37c5f`（HRT-10 待 commit）
+- **下次优先：** **D29 回归** — 并发路径 failure mode 是否已在 JSONL/debug 可见
 - **验收期跳过：** MCP hybrid_executions 深度 UI · 2h/100+ 压测
 
 ### HRT 进度快照
@@ -21,7 +21,7 @@
 | HRT-07 | ✅ | `446b7a0` export script |
 | HRT-08 | ✅ | `a16bf5f` |
 | HRT-09 | ✅ | `7b62914` background hydrate |
-| HRT-10 | ❌ | POC 自动化 |
+| HRT-10 | ✅ | POC #6/#10 pytest + verify script |
 
 ### 未 commit 工作
 
@@ -37,6 +37,7 @@
   - **用户姓名偏好设置：** 在 `preferences_storage.py` 和 `main.py` 扩展支持 `user_name` 偏好的读取、保存与 API 路由；在 General Settings 页面新增个人名称输入框支持用户自定义昵称，并同步更新 Chat Feed 中用户发送的消息气泡发送者标签展示。
   - **Backlog 梳理决策：** 针对 B-15（虚拟Fallback工作流）与 B-16（自动Fallback单智能体）做已否决废除归档；B-17（Codex 接入）作为未来支持保留；B-20（OS级沙箱）标记为深入调研的待定项；B-08（Git Worktree 隔离）标记为专业企业项目防改坏代码关键能力保留。
   - **PRD文档按页面与Settings子项重构：** 将 `docs/PRODUCT_INTRO.md` 核心功能重新梳理为按页面/视图划分的纯英文大纲结构（包括 Chat Workspace、Observability Panel、Human-in-the-Loop Dialog 和 Settings Dashboard），其中 Settings Dashboard 细分并补齐了通用设置、智能体管理、工作流管理、工具探测、模型凭证、技能注册、MCP扩展、外观设计和会话持久化等 9 个完整的功能子项；同时剔除了不美观的 ASCII 图示。
+  - **开发纪律强化：** 在 `CLAUDE.md` 的铁律中新增了“每次 Git Commit 必须同步更新/核对 PRD（`docs/PRODUCT_INTRO.md`）”的强制规定，确保代码与产品规格始终保持同步。
 - **校验：** 本地运行 `./scripts/verify.sh` 并顺利通过了所有 357 项后端 Python 单元测试和 13 项前端 Vitest 测试 ✅
 
 ## 2026-06-27 会话（用户头像设置与 General 页面开发）
