@@ -78,7 +78,8 @@
 | **基础 Plain Chat 产品验收** | **P0** | **D25** | **✅** | **HRT-04**（2026-06-27 用户 A–E） |
 | Hybrid 审计 JSONL + debug API | P1 | D25 | ✅ | HRT-05~07 · `446b7a0` |
 | 诊断导出 | P2 | D25 | ❌ | HRT-07 |
-| 多 session 并发治理 | P1 | D25 | ⚠️ | HRT-08~09 ✅ · HRT-10 待做 |
+| 多 session 并发治理 | P1 | D25 | ⚠️ | HRT-08~10 ✅ · §F 人工多 session 待验 |
+| POC #6/#10 自动化 | P1 | D25 | ✅ | HRT-10 · `test_hybrid_poc_acceptance.py` |
 
 ### D25 人工验收（HRT-04 门禁 · 默认 FAIL）
 

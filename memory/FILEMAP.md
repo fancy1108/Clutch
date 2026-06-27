@@ -64,6 +64,7 @@
 | CI 工作流 | `.github/workflows/ci.yml` |
 | 本地一键校验 | `scripts/verify.sh` |
 | Hybrid run 诊断导出（HRT-07） | `scripts/export-run-debug.sh` → `GET /api/runs/{id}/debug` |
+| POC #6/#10 自动化验收（HRT-10） | `scripts/verify-hybrid-poc-06-10.sh` · `services/orchestrator/tests/test_hybrid_poc_acceptance.py` |
 | 文档↔代码漂移机检 | `scripts/check-doc-drift.sh` |
 | Git pre-commit（条件触发） | `.husky/pre-commit` |
 | 验证报告归档 | `runs/verification/`（gitignore） |

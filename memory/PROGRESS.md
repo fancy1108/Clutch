@@ -3,7 +3,7 @@
 ## 当前状态
 
 - **阶段：** D25 Hybrid Runtime — **HRT-10 完成**；下一步 D29 回看 HRT-05~07 audit 回归
-- **Git HEAD：** `ae37c5f`（HRT-10 待 commit）
+- **Git HEAD：** _(this commit)_
 - **下次优先：** **D29 回归** — 并发路径 failure mode 是否已在 JSONL/debug 可见
 - **验收期跳过：** MCP hybrid_executions 深度 UI · 2h/100+ 压测
 

@@ -58,6 +58,15 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 - **交付文件：** —
 - **依赖 commit：** `1d281f6` · `848ed7f`
 
+### HRT-10 ✅ POC 验收 #6 / #10 自动化
+- **日期：** 2026-06-27
+- **Commit：** _(set after commit)_
+- **Verification：** `./scripts/verify-hybrid-poc-06-10.sh` → 8 passed；`./scripts/verify.sh` → 378 pytest + 14 vitest + build（`test_mcp_client_lifecycle` 偶发 flake，单跑通过）
+- **证据：** —
+- **交付文件：**
+  - `services/orchestrator/tests/test_hybrid_poc_acceptance.py` — BUSY 拒绝、池满、hybrid 无 legacy fallback、双 run_id PTY/cwd 隔离
+  - `scripts/verify-hybrid-poc-06-10.sh` — 一键跑 HRT-10 验收用例
+
 ---
 
 ## 已交付（代码 Task · 自 Git 回填）
