@@ -2,8 +2,8 @@
 
 ## 当前状态
 
-- **阶段：** D25 Hybrid Runtime — **HRT-08 待 commit**；下一步 HRT-09
-- **Git HEAD：** `488d78d`
+- **阶段：** D25 Hybrid Runtime — **HRT-08 完成**；下一步 HRT-09
+- **Git HEAD：** `a16bf5f`
 - **下次优先：** **HRT-09**（后台 turn hydrate）→ HRT-10
 - **验收期跳过：** MCP hybrid_executions 深度 UI · 2h/100+ 压测
 
@@ -19,7 +19,7 @@
 | HRT-05 | ✅ | `70835ba` audit JSONL |
 | HRT-06 | ✅ | `4694231` debug API |
 | HRT-07 | ✅ | `446b7a0` export script |
-| HRT-08 | 🔄 待 commit | 并发拒绝 + UI 提示 |
+| HRT-08 | ✅ | `a16bf5f` 并发拒绝 + UI |
 | HRT-09~10 | ❌ | hydrate / POC |
 
 ### 未 commit 工作
