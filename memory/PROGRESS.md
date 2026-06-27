@@ -3,7 +3,7 @@
 ## 当前状态
 
 - **阶段：** D25 Hybrid Runtime — **HRT-04 单 session 验收 ✅**；下一步 HRT-05 或 HRT-08
-- **Git HEAD：** `88b07b4`
+- **Git HEAD：** `53c4829`
 - **权威 Task 表：** [`specs/core/hybrid-runtime-plan.md`](../specs/core/hybrid-runtime-plan.md)
 - **下次优先：** 人类 **HRT-04** 单 session 验收（重启 Sidecar + `CLUTCH_RUNTIME_MODE=hybrid`）
 - **验收期跳过：** MCP hybrid_executions 深度 UI · 2h/100+ 压测
