@@ -271,6 +271,16 @@
 - **影响**：`docs/research/pty-session.md` v5；Step 1 `ShellSessionManager`；Step 3 `SessionSnapshot` / 继续工作。
 - **决策状态**：`已决策`（文档 + Step 0 证据；Sidecar 编码待 Step 1）
 
+### D26 · 用户自定义头像替换与存储（2026-06-27）
+
+- **背景**：原系统 User 消息气泡统一指向静态 Unsplash 网页地址，不支持自定义用户配置，在 General 设置里也没有对应的偏好配置，缺乏个性化表现。
+- **方案**：
+  1. **默认用户头像**：将用户提供的猪玩偶插图以 `default_avatar.jpg` 打包进应用静态资源。
+  2. **偏好机制**：在 `preferences.json` 偏好中增加 `"user_avatar"` 属性，采用 base64 DataURL 方式对本地更换的头像图片进行持久化，避免配置和资源文件存放在不同目录导致的路径查找问题。
+  3. **头像分发与广播**：应用启动时在 `App.tsx` 中 hydrate 并通过 state 分发到 chat bubble 以及 settings UI。
+- **影响**：`preferences_storage.py`，`main.py` 偏好端点，前端 `clutchState` / `SystemPreferencesModal`。
+- **决策状态**：`已落地`
+
 ## 开放问题
 
 （暂无 — 原 Q1–Q4 已于 2026-06-22 关闭，见 D3–D6。）

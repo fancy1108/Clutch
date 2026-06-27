@@ -654,3 +654,21 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
   - [apps/desktop/src/components/ChatFeed.tsx](file:///Users/fancy/clutch/apps/desktop/src/components/ChatFeed.tsx) — 优化 `System` 对话气泡展示逻辑，采用 `info` 信息提示图标，并自动在气泡顶部渲染 `badgeText` 内容以呈现出上下文压缩摘要提示信息。
   - [apps/desktop/src/components/LanguageContext.tsx](file:///Users/fancy/clutch/apps/desktop/src/components/LanguageContext.tsx) — 补充中文语言下的 `"System": "系统"` 字典映射，使系统通知在 UI 显示上更亲民。
 
+
+### USER-AVATAR-SELECTION ✅
+- **日期：** 2026-06-27
+- **Commit：** `7fabcff` — `feat(ui): set default user avatar and allow custom photo selection in General settings`
+- **Verification：** `./scripts/verify.sh` → 348 pytest passed + 13 vitest passed + build and doc-drift OK
+- **证据：** `—`（门禁已覆盖）
+- **已交付：**
+  - [apps/desktop/src/assets/default_avatar.jpg](file:///Users/fancy/clutch/apps/desktop/src/assets/default_avatar.jpg) — 新增的默认用户头像（粉色卡通猪玩偶照片）。
+  - [services/orchestrator/src/preferences_storage.py](file:///Users/fancy/clutch/services/orchestrator/src/preferences_storage.py) — 扩展偏好管理，支持默认及自定义的 `user_avatar` 偏好项。
+  - [services/orchestrator/src/main.py](file:///Users/fancy/clutch/services/orchestrator/src/main.py) — 增加 `AvatarPreferenceRequest` 以及 `/api/preferences/avatar` 偏好更新 POST 接口。
+  - [services/orchestrator/tests/test_avatar_preferences.py](file:///Users/fancy/clutch/services/orchestrator/tests/test_avatar_preferences.py) — 覆盖获取默认头像、修改及重置自定义头像的单元测试。
+  - [apps/desktop/src/services/themeApi.ts](file:///Users/fancy/clutch/apps/desktop/src/services/themeApi.ts) — 扩展 `UserPreferences` 类型与 `saveAvatarPreference` 网络适配器。
+  - [apps/desktop/src/services/clutchState.ts](file:///Users/fancy/clutch/apps/desktop/src/services/clutchState.ts) — 将 `USER_CHAT_AVATAR` 指向默认猪玩偶头像，并提供 `setUserChatAvatar` 触发应用组件重绘。
+  - [apps/desktop/src/App.tsx](file:///Users/fancy/clutch/apps/desktop/src/App.tsx) — 应用启动时 hydrate 获取用户定制头像，并将其作为 state 参数透传至监督及设置组件。
+  - [apps/desktop/src/components/ChatFeed.tsx](file:///Users/fancy/clutch/apps/desktop/src/components/ChatFeed.tsx) — 动态计算用户消息的气泡头像，支持按 state 中的 custom 头像或 default 猪玩偶头像展示。
+  - [apps/desktop/src/components/SystemPreferencesModal.tsx](file:///Users/fancy/clutch/apps/desktop/src/components/SystemPreferencesModal.tsx) — 重构设置 General 面板，构建毛玻璃卡片、圆形头像预览、支持读取本地文件转 base64 并提交至 Sidecar 保存。
+  - [apps/desktop/src/components/LanguageContext.tsx](file:///Users/fancy/clutch/apps/desktop/src/components/LanguageContext.tsx) — 新增 General Settings 页面元素及按钮提示的中英对照双语翻译。
+

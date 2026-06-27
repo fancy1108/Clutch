@@ -2,11 +2,20 @@
 
 ## 当前状态
 
-- 阶段：**D25 ShellSession Step 2 已交付（agy Hybrid + sweep 测试 + baseline）**
-- Git HEAD：`3c8229c`
-- Git HEAD：`73f6eef`
+- 阶段：**用户默认头像与自定义头像更换已交付**
+- Git HEAD：`7fabcff`
 - **阶段：** D25 ShellSession Step 3~5 核心已交付（默认 `legacy`）
 - **你验收时跳过：** MCP hybrid_executions · 2h 长测
+
+## 2026-06-27 会话（用户头像设置与 General 页面开发）
+
+- **完成：**
+  - 设置默认用户基准头像：`apps/desktop/src/assets/default_avatar.jpg`。
+  - 在 `preferences_storage.py` 和 `main.py` 添加 `"user_avatar"` 偏好和 `/api/preferences/avatar` 接口。
+  - 在前端 `themeApi.ts` 和 `clutchState.ts` 补充偏好获取与用户头像更新通知。
+  - 在 `SystemPreferencesModal.tsx` 构建 General Settings 面板，支持查看及更换头像（读取本地照片 base64 并持久化）。
+  - 增加 i18n 汉化支持。
+- **校验：** 新增 `test_avatar_preferences.py`，运行 `./scripts/verify.sh` 全量 pytest 348 个用例 + vitest 13 个用例全部通过 ✅
 
 ## 2026-06-27 会话（Step 4：runtime_registry）
 
