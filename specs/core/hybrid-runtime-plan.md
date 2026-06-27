@@ -59,6 +59,17 @@ pnpm --filter @clutch/desktop tauri dev
 
 **状态图例：** ❌ 未通过 · ⚠️ 部分/未验收 · 🔄 进行中 · ✅ 已验收
 
+### 2.1 执行顺序与维护习惯（D29 · 2026-06-27）
+
+**顺序（已拍板）：** HRT-05 → HRT-06 → HRT-07 → HRT-08~10 → **回看** HRT-05~07 是否需增补。
+
+| 原则 | 说明 |
+|------|------|
+| **HRT-05~07 是长期基建** | 像 pytest/vitest：Hybrid 相关代码变动时，同步检查 audit 字段、debug API、导出是否仍够用 |
+| **先可排查、再扩并发** | 没有结构化日志就做并发，问题仍靠截图 |
+| **HRT-08 后回归 audit** | 并发路径可能新增 failure mode，需在 JSONL/API 中可见 |
+| **每个代码 Task Check-out** | 若触及 hybrid turn / shell / parser / router：跑 `./scripts/verify.sh`；**考虑**是否补 audit 字段或单测 |
+
 ---
 
 ## 3. 人工验收清单（HRT-04 门禁）

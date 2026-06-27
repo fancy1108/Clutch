@@ -290,7 +290,17 @@
   3. **HRT-07**：UI「导出诊断」或 `scripts/export-run-debug.sh`（不含密钥）。
   4. turn 失败/超时须写 audit + 尽量恢复 `status: idle`（与 HRT-01 一并验收）。
 - **影响**：`shell_exec_runtime.py` · `main.py` · 可选 `ChatFeed` / Settings。
-- **决策状态**：`可执行`（Task HRT-05~07；依赖 HRT-04 基础验收）
+- **决策状态**：`可执行`（Task HRT-05~07；HRT-04 已通过）
+
+### D29 · Hybrid 执行顺序：先 debug 基建、后并发（2026-06-27）
+
+- **背景**：HRT-04 单 session 验收已通过；HRT-05~07（审计/debug）与 HRT-08~10（并发）均可立项。用户确认：排查能力应像测试一样长期维护，随需求与代码变动迭代。
+- **方案**：
+  1. **固定顺序**：HRT-05 → HRT-06 → HRT-07 → HRT-08~10 → 评估 HRT-05~07 是否需增补。
+  2. **维护习惯**：任何触及 hybrid turn / shell / parser / router 的 commit，Check-out 时检查 audit JSONL 与 debug API 是否仍覆盖新路径（类比「改代码看测试」）。
+  3. HRT-08 完成后对 audit 做一轮回归（新 failure mode 必须可查询，禁止回到截图排查）。
+- **影响**：`specs/core/hybrid-runtime-plan.md` §2.1 · Agent Check-out 纪律。
+- **决策状态**：`已落地`（文档）
 
 ## 开放问题
 
