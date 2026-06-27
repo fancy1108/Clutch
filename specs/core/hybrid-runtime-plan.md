@@ -45,10 +45,10 @@ pnpm --filter @clutch/desktop tauri dev
 
 | ID | 主题 | 状态 | 依赖 | 完成标准 | Verification |
 |----|------|------|------|----------|--------------|
-| **HRT-00** | 计划与文档对齐 | 🔄 进行中 | — | 本文件 + ROADMAP/DECISIONS/tasks/FILEMAP 同步 | `./scripts/check-doc-drift.sh` |
-| **HRT-01** | 基础聊天气泡 + idle 恢复 | ⚠️ 部分 | S1–S4 | 见 §3.1 A–D；`848ed7f` + 待 commit 补丁 | 人工验收 §3 + pytest |
-| **HRT-02** | Marker 完成检测（ANSI / clutch$） | ⚠️ 未 commit | HRT-01 | 真实 `claude -p` turn ≤120s 返回；不 600s 超时 | pytest + 本地 hybrid 单 turn |
-| **HRT-03** | Snapshot 仅断线恢复注入 | ⚠️ 未 commit | HRT-01 | 续轮气泡无 `Task summary` / `Working directory` | pytest `test_parse_filters_snapshot_handoff_lines` |
+| **HRT-00** | 计划与文档对齐 | ✅ | — | 本文件 + ROADMAP/DECISIONS/tasks/FILEMAP 同步 | `check-doc-drift.sh` |
+| **HRT-01** | 基础聊天气泡 + idle 恢复 | ⚠️ 待验收 | S1–S4 | 见 §3.1 A–D；含 `848ed7f` 与 HRT-01~03 commit | 人工验收 §3 + pytest |
+| **HRT-02** | Marker 完成检测（ANSI / clutch$） | ✅ 代码 | HRT-01 | 真实 `claude -p` turn ≤120s | pytest + 本地 hybrid 单 turn |
+| **HRT-03** | Snapshot 仅断线恢复注入 | ✅ 代码 | HRT-01 | 续轮气泡无 `Task summary` / `Working directory` | pytest |
 | **HRT-04** | **产品验收：单 session 串行** | ❌ | HRT-01~03 | §3.1 全部 ✅；证据 `runs/verification/` | 人类验收清单 |
 | **HRT-05** | Hybrid turn 审计 JSONL | ❌ | HRT-04 | 每 turn 写结构化行；含 run_id/marker/duration/result | pytest + 读 jsonl |
 | **HRT-06** | `GET /api/runs/{id}/debug` | ❌ | HRT-05 | 返回 status、末 N 条 terminal_logs、最近 audit 行 | pytest API |
@@ -84,14 +84,9 @@ pnpm --filter @clutch/desktop tauri dev
 
 ---
 
-## 4. 未 commit 工作（须在 HRT-01~03 中一次性提交）
+## 4. 已合入 commit（HRT-01~03）
 
-| 文件 | 变更摘要 | 归属 Task |
-|------|----------|-----------|
-| `claude_hybrid_output_parser.py` | marker+clutch$ 检测；过滤 snapshot 行 | HRT-02, HRT-03 |
-| `shell_session.py` | `read_until_contains` 用于 spawn 同步 | HRT-02 |
-| `engine_router.py` | `context_prefix` 仅 `shell_recovered` | HRT-03 |
-| `test_claude_hybrid_output_parser.py` | 对应单测 | HRT-02, HRT-03 |
+见 `git log` — `claude_hybrid_output_parser.py` · `engine_router.py` · 单测。
 
 ---
 

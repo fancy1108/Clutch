@@ -177,6 +177,14 @@ def _is_noise_line(line: str) -> bool:
         return True
     if lowered.startswith("workspace root:"):
         return True
+    if lowered.startswith("task summary:"):
+        return True
+    if lowered.startswith("working directory:"):
+        return True
+    if lowered.startswith("open todos:"):
+        return True
+    if clean.startswith("[Clutch session context]"):
+        return True
     if not re.search(r"[\w\u4e00-\u9fff]", clean):
         return True
     if re.fullmatch(r"[\d;]+", clean.strip()):

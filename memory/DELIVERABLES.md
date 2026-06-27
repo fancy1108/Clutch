@@ -27,10 +27,10 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ## 已交付（文档 / 计划 · 无代码 commit）
 
-### HRT-00 🔄 计划与文档对齐
+### HRT-00 ✅ 计划与文档对齐
 - **日期：** 2026-06-27
-- **Commit：** （待人类确认后 commit 文档批次）
-- **Verification：** `./scripts/check-doc-drift.sh` → 待跑
+- **Commit：** `7221641` — docs(hybrid): add HRT execution plan and sync memory/specs (HRT-00)
+- **Verification：** `./scripts/check-doc-drift.sh` → 0 errors
 - **证据：** —
 - **交付文件：**
   - `specs/core/hybrid-runtime-plan.md` — D25 权威 HRT Task 表 + 验收 + 文档矩阵
@@ -39,6 +39,16 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
   - `memory/DECISIONS.md` — D27 命名拆分 · D28 审计 · Q-HRT-1/2
   - `memory/PROGRESS.md` — HRT 进度快照 + 下次优先
   - `memory/FILEMAP.md` · `memory/BACKLOG.md` · `docs/document-governance.md` · `AGENTS.md` · `docs/research/pty-session.md` — 交叉引用
+
+### HRT-01~03 ✅ 气泡过滤 · marker · snapshot 注入范围
+- **日期：** 2026-06-27
+- **Commit：** （本 commit）
+- **Verification：** `uv run pytest tests/test_claude_hybrid_output_parser.py tests/test_engine_router.py -q` → 27 passed
+- **证据：** —
+- **交付文件：**
+  - `services/orchestrator/src/claude_hybrid_output_parser.py` — 过滤 snapshot 行；marker+clutch$ 完成检测
+  - `services/orchestrator/src/engine_router.py` — context_prefix 仅 shell_recovered 时注入
+  - `services/orchestrator/tests/test_claude_hybrid_output_parser.py` — snapshot / marker 单测
 
 ---
 

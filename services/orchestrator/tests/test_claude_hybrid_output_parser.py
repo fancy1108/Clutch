@@ -147,3 +147,19 @@ def test_parse_rejects_shell_fragment_assistant() -> None:
     )
     out = ClaudeHybridOutputParser().parse(raw, marker="__CLUTCH_DONE_5__")
     assert out == ""
+
+
+def test_parse_filters_snapshot_handoff_lines() -> None:
+    raw = (
+        "CLUTCH_P='hi'; claude -p \"$CLUTCH_P\" --dangerously-skip-permissions; "
+        "echo __CLUTCH_DONE_h__\n"
+        "[Clutch session context]\n"
+        "Task summary: 你好\n"
+        "Working directory: /Users/fancy/hyperframes\n"
+        "我是 Agnes，没有年龄的概念。\n"
+        "__CLUTCH_DONE_h__\n"
+    )
+    out = ClaudeHybridOutputParser().parse(raw, marker="__CLUTCH_DONE_h__")
+    assert out == "我是 Agnes，没有年龄的概念。"
+    assert "Task summary" not in out
+    assert "Working directory" not in out

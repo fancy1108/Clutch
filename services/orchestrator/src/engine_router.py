@@ -146,12 +146,11 @@ def _route_claude_hybrid(
     binary = cli_binary or "claude"
     manager = get_shell_session_manager()
     snapshot = load_snapshot(run_id)
-    context_prefix = None
-    if snapshot and (snapshot.task_summary or snapshot.open_todos):
-        context_prefix = format_handoff_prefix(snapshot)
-
     session = manager.get_or_create(run_id, workspace_path=workspace_path)
     shell_recovered = manager.consume_shell_recovery(run_id)
+    context_prefix = None
+    if shell_recovered and snapshot and (snapshot.task_summary or snapshot.open_todos):
+        context_prefix = format_handoff_prefix(snapshot)
     try:
         if shell_recovered:
             _emit_log(
@@ -241,12 +240,11 @@ def _route_agy_hybrid(
     binary = cli_binary or "agy"
     manager = get_shell_session_manager()
     snapshot = load_snapshot(run_id)
-    context_prefix = None
-    if snapshot and (snapshot.task_summary or snapshot.open_todos):
-        context_prefix = format_handoff_prefix(snapshot)
-
     session = manager.get_or_create(run_id, workspace_path=workspace_path)
     shell_recovered = manager.consume_shell_recovery(run_id)
+    context_prefix = None
+    if shell_recovered and snapshot and (snapshot.task_summary or snapshot.open_todos):
+        context_prefix = format_handoff_prefix(snapshot)
     try:
         if shell_recovered:
             _emit_log(
