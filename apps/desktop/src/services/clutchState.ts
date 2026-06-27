@@ -70,42 +70,69 @@ export function mergeMessageFields(existing: ChatMessage, incoming: ChatMessage)
   };
 }
 
+export interface MergeChatMessagesOptions {
+  /** Client-generated id for the in-flight user turn (plain chat optimistic send). */
+  pendingUserMessageId?: string | null;
+}
+
 export function mergeChatMessages(
   existing: ChatMessage[],
   incoming: ChatMessage[] | undefined,
+  options?: MergeChatMessagesOptions,
 ): ChatMessage[] {
   if (!incoming) return existing;
   if (incoming.length === 0 && existing.length > 0) return existing;
 
   const merged = [...existing];
   const indexById = new Map(existing.map((message, index) => [message.id, index]));
-  const userTexts = new Set(
-    existing
-      .filter((message) => message.agent === 'User')
-      .map((message) => message.text.trim()),
-  );
+  const pendingUserMessageId = options?.pendingUserMessageId ?? null;
 
   for (const message of incoming) {
     const trimmed = message.text.trim();
-    if (message.agent === 'User' && userTexts.has(trimmed)) {
-      const existingIndex = merged.findIndex(
-        (item) => item.agent === 'User' && item.text.trim() === trimmed,
-      );
-      if (existingIndex >= 0 && message.avatar && !merged[existingIndex].avatar) {
-        merged[existingIndex] = { ...merged[existingIndex], avatar: message.avatar };
-      }
-      continue;
-    }
     const priorIndex = indexById.get(message.id);
     if (priorIndex !== undefined) {
       merged[priorIndex] = mergeMessageFields(merged[priorIndex], message);
       continue;
     }
+
+    if (message.agent === 'User') {
+      const trailingSameUser =
+        merged.length > 0
+        && merged[merged.length - 1].agent === 'User'
+        && merged[merged.length - 1].text.trim() === trimmed;
+      if (trailingSameUser) {
+        const targetIndex = merged.length - 1;
+        if (message.avatar && !merged[targetIndex].avatar) {
+          merged[targetIndex] = { ...merged[targetIndex], avatar: message.avatar };
+        }
+        continue;
+      }
+
+      const lastUserIdx = merged.findLastIndex(
+        (item) => item.agent === 'User' && item.text.trim() === trimmed,
+      );
+      if (lastUserIdx >= 0) {
+        const hasAgentReplyAfter = merged
+          .slice(lastUserIdx + 1)
+          .some((item) => item.agent !== 'User' && item.agent !== 'System');
+        if (!hasAgentReplyAfter) {
+          if (message.avatar && !merged[lastUserIdx].avatar) {
+            merged[lastUserIdx] = { ...merged[lastUserIdx], avatar: message.avatar };
+          }
+          continue;
+        }
+        const isPendingTurn =
+          Boolean(pendingUserMessageId)
+          && (message.id === pendingUserMessageId
+            || merged.some((item) => item.id === pendingUserMessageId));
+        if (!isPendingTurn) {
+          continue;
+        }
+      }
+    }
+
     merged.push(message);
     indexById.set(message.id, merged.length - 1);
-    if (message.agent === 'User') {
-      userTexts.add(trimmed);
-    }
   }
 
   return merged;
@@ -162,6 +189,7 @@ class ClutchStateStore {
   private backgroundHydrates = new Map<string, ReturnType<typeof setInterval>>();
   private backgroundSnapshots = new Map<string, ClutchState>();
   private pendingHybridExecutions = new Map<string, HybridExecutionPayload>();
+  private pendingUserMessageId: string | null = null;
   private _connected = false;
 
   get connected(): boolean {
@@ -179,6 +207,28 @@ class ClutchStateStore {
     this.runId = state.run_id;
     this.state = state;
     this.emit();
+  };
+
+  /** After blocking workflow HTTP returns, keep richer incremental WS state when possible. */
+  mergeWorkflowComplete = (remote: ClutchState): void => {
+    const local = this.state;
+    const localCount = local.messages?.length ?? 0;
+    const remoteCount = remote.messages?.length ?? 0;
+    if (local.run_id === remote.run_id && localCount >= remoteCount && localCount > 0) {
+      this.applyPatch({
+        status: remote.status,
+        active_node_id: remote.active_node_id,
+        active_agent: remote.active_agent,
+        terminal_logs: remote.terminal_logs,
+        hybrid_executions: remote.hybrid_executions,
+        token_input: remote.token_input,
+        token_output: remote.token_output,
+        session_tokens: remote.session_tokens,
+        session_cost_usd: remote.session_cost_usd,
+      });
+      return;
+    }
+    this.replaceState(remote);
   };
 
   /** Poll Sidecar HTTP state while a background plain-chat turn may still be running. */
@@ -285,7 +335,24 @@ class ClutchStateStore {
   private applyPatch(patch: Partial<ClutchState>): void {
     const next: Partial<ClutchState> = { ...patch };
     if (next.messages !== undefined) {
-      next.messages = mergeChatMessages(this.state.messages, next.messages);
+      next.messages = mergeChatMessages(this.state.messages, next.messages, {
+        pendingUserMessageId: this.pendingUserMessageId,
+      });
+      if (
+        this.pendingUserMessageId
+        && next.messages.some((message) => message.id === this.pendingUserMessageId)
+      ) {
+        const pendingIndex = next.messages.findIndex(
+          (message) => message.id === this.pendingUserMessageId,
+        );
+        const hasAgentAfterPending = pendingIndex >= 0
+          && next.messages
+            .slice(pendingIndex + 1)
+            .some((message) => message.agent !== 'User' && message.agent !== 'System');
+        if (hasAgentAfterPending) {
+          this.pendingUserMessageId = null;
+        }
+      }
     }
     if (next.hybrid_executions !== undefined) {
       next.hybrid_executions = {
@@ -514,15 +581,36 @@ class ClutchStateStore {
   appendOptimisticUserMessage(text: string, messageId?: string): void {
     const trimmed = text.trim();
     if (!trimmed) return;
-    const exists = this.state.messages.some(
-      (message) => message.agent === 'User' && message.text.trim() === trimmed,
-    );
-    if (exists) return;
+    const last = this.state.messages[this.state.messages.length - 1];
+    if (last?.agent === 'User' && last.text.trim() === trimmed) return;
     const message = createUserChatMessage(trimmed);
     if (messageId) {
       message.id = messageId;
     }
     this.applyPatch({ messages: [...this.state.messages, message] });
+  }
+
+  /** Optimistic user row + running status while plain-chat WS turn starts. */
+  optimisticPlainChatSend(text: string): string {
+    const trimmed = text.trim();
+    const last = this.state.messages[this.state.messages.length - 1];
+    let messageId: string;
+    const patch: Partial<ClutchState> = {};
+    if (last?.agent === 'User' && last.text.trim() === trimmed) {
+      messageId = last.id;
+    } else {
+      const message = createUserChatMessage(trimmed);
+      messageId = message.id;
+      patch.messages = [...this.state.messages, message];
+    }
+    this.pendingUserMessageId = messageId;
+    if (this.state.status !== 'running') {
+      patch.status = 'running';
+    }
+    if (Object.keys(patch).length > 0) {
+      this.applyPatch(patch);
+    }
+    return messageId;
   }
 
   removeUserMessageById(messageId: string): void {
@@ -554,9 +642,11 @@ export const submitChatMessage = async (
   text: string,
   agentId?: string | null,
   modelId?: string | null,
+  clientMessageId?: string | null,
 ): Promise<void> => {
   const payload: Record<string, unknown> = { text };
   if (agentId) payload.agent_id = agentId;
   if (modelId) payload.model_id = modelId;
+  if (clientMessageId) payload.client_message_id = clientMessageId;
   await clutchStore.send(payload);
 };

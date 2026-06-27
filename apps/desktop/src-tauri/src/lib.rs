@@ -40,7 +40,7 @@ const SIDECAR_PORT: u16 = 8123;
 fn free_sidecar_port(port: u16) {
     #[cfg(target_os = "macos")]
     {
-        let script = format!("lsof -ti tcp:{port} | xargs kill -9 2>/dev/null || true");
+        let script = format!("lsof -ti tcp:{port} -sTCP:LISTEN | xargs kill -9 2>/dev/null || true");
         let _ = std::process::Command::new("sh")
             .arg("-c")
             .arg(script)

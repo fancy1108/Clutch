@@ -1,0 +1,81 @@
+name: Bug Report
+description: Something is broken in Clutch
+title: "[Bug]: "
+labels: ["needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Please read [PROJECT_SCOPE](docs/PROJECT_SCOPE.md) if unsure whether this is in scope.
+        Run `./scripts/doctor.sh` and paste output below.
+
+  - type: dropdown
+    id: install-method
+    attributes:
+      label: How do you run Clutch?
+      options:
+        - From-source (pnpm tauri dev)
+        - DMG / release build
+        - Sidecar only (uvicorn)
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Clutch version or git commit
+      placeholder: e.g. v0.1.0 or abc1234
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Authorize workspace ...
+        2. Start workflow ...
+        3. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: doctor
+    attributes:
+      label: ./scripts/doctor.sh output
+      render: shell
+      placeholder: Paste full output
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs (redact API keys)
+      render: shell
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - macOS 14+ (Apple Silicon)
+        - macOS 14+ (Intel)
+        - macOS 13 or older
+        - Linux
+        - Windows
+    validations:
+      required: true

@@ -4,7 +4,7 @@ import { Sidebar } from './sidebar';
 import { ChatFeed, configuredEngineToRuntimeLabel } from './components/ChatFeed';
 import { RightPanel } from './components/RightPanel';
 import { WorkflowOrchestration } from './components/WorkflowOrchestration';
-import { AgentManager, AgentLogo } from './components/AgentManager';
+import { AgentManager } from './components/AgentManager';
 import AiToolsManager from './components/AiToolsManager';
 import { SkillsRegistry } from './components/SkillsRegistry';
 import { McpServerHub } from './components/McpServerHub';
@@ -12,7 +12,7 @@ import { ModelsManager } from './components/ModelsManager';
 import { ThemeManager, THEME_PRESETS } from './components/ThemeManager';
 import { SystemPreferencesModal } from './components/SystemPreferencesModal';
 import { FooterMenuAction, FooterMenuItem, FooterMenuPanel } from './components/FooterMenu';
-import { MainView, RightTab, ChatMessage, UncommittedFile, DiffLine, type Agent } from './types';
+import { MainView, RightTab, ChatMessage, UncommittedFile, DiffLine, type Agent, type ClutchState } from './types';
 import { fetchAgents } from './services/agentApi';
 import {
   BUILTIN_AGENT_ID,
@@ -25,8 +25,16 @@ import { LanguageProvider, useLanguage } from './components/LanguageContext';
 import { clutchStore, createSessionRunId, submitChatMessage, useClutchState, setUserChatAvatar } from './services/clutchState';
 import { fetchSessions, createSession, startWorkflowRun, fetchRunState, deleteSession, type SessionRecord } from './services/runApi';
 import { fetchShellSnapshots } from './services/shellSnapshotApi';
-import { listWorkflowItems } from './services/workflowApi';
+import { listWorkflowItems, loadWorkflowById } from './services/workflowApi';
+import {
+  findWorkflowStep,
+  isWorkflowSystemAgent,
+  orderedWorkflowAgentSteps,
+  resolveInProgressWorkflowStep,
+  type WorkflowAgentStep,
+} from './services/workflowAgentSteps';
 import { isClutchAgentType, agentTypeFromAgent, agentTypeLabel } from './services/agentTypes';
+import { resolveAgentBrandLogo, resolveBrandLogoSrc } from './services/brandLogos';
 import {
   activateWorkspace,
   addWorkspace,
@@ -51,13 +59,6 @@ import { BTN_GHOST, BTN_PRIMARY } from './components/ui/buttonStyles';
 import { LegacyIcon } from './components/ui/LegacyIcon';
 import { isTauri } from '@tauri-apps/api/core';
 import { getVersion } from '@tauri-apps/api/app';
-
-const BUILTIN_AGENT_AVATARS: Record<string, string> = {
-  Orchestrator: "https://lh3.googleusercontent.com/aida-public/AB6AXuA0yGh59QNLj5n0igNxMgu4lgaiNqZpcN29SpWM0JHNlAuFmOBx-Id67Zcd2NDCNBjBKrcffQrdrfoe-3XaSlveekLAP9SRis93uTk7XPPFO5y4Swos7NvATw6n7eZEm7nfAQuTiMAoWRSnxefAOJugUbZx3fCTNv4jGyjvT-UZznwKzp_HoXuStup_0juhBCZYamrV0Coil-k27d9Yi7il6NabIEG0FfbxwL5V5azpfZQOlBfpaganta2kP7n59BKPHd4K2uTOfZ5p",
-  Builder: "https://lh3.googleusercontent.com/aida-public/AB6AXuBpRidttSGTIY-J-PGvnlcZX_oZSZoBXJY5vjZ9g1PKl_fq4EKoa2RXbcSCvvIdbPLdmfuzPKTxnR8TqV7skwsKlt-eKEzSzktv-TWbHu4c9uBEdP6Es_Fjek1EBQuGZeMtWsUi3fn0lyozFaZBLp9SpES3r0WalbqYY6gGiT1R_0J1kvU-D9rI_2q2f3sMGHuTjWyOZ5gImCLGHSGejtcKmToTSZYMrXfT_A5x1iw_f4q7WljP3FXjk64aQhLgh9nTXUDfPdkIzu0b",
-  Evaluator: "https://lh3.googleusercontent.com/aida-public/AB6AXuCmb7VGaQXE-4sYnIZR3VrcHVAPhv4Px14kMlkayJj8kVm8htTWITmPi26wsj8P6B9RrqykIWj81S2ilmGR0e8cXhA1gjc3U-Nw0DsgHV3HvVmBskuoUksIt6YM6Z3ORjFtRhBphqAXxRKf9ke-zYcPs0TcEFKxw_bwGXSDiAKV5CL7kZf9i6lSZDe91ccUNjaAIsgTMKEEvYc7bZpXYz3D5dClulRwbNru5SZB-1E5FM0A2qMPs-IAfiR8OB1-cUvFh3WYKx9qlGgN",
-  Supervisor: "",
-};
 
 function MainLayout() {
   const { t } = useLanguage();
@@ -92,8 +93,7 @@ function MainLayout() {
   const scheduleBackgroundHydrateForRun = useCallback(
     (runId: string) => {
       const snapshot = clutchStore.getSnapshot();
-      if (snapshot.run_id !== runId || snapshot.workflow_id) return;
-      if (snapshot.status !== 'running') return;
+      if (snapshot.run_id !== runId || snapshot.status !== 'running') return;
       clutchStore.scheduleBackgroundHydrate(runId, hydrateRunState);
     },
     [hydrateRunState],
@@ -102,7 +102,7 @@ function MainLayout() {
   useEffect(() => {
     void clutchStore.connect(sessionRunId).then(() => {
       const snapshot = clutchStore.getSnapshot();
-      if (!snapshot.workflow_id && snapshot.status === 'running') {
+      if (snapshot.status === 'running') {
         clutchStore.scheduleBackgroundHydrate(sessionRunId, hydrateRunState);
       }
     });
@@ -116,6 +116,7 @@ function MainLayout() {
   const [currentView, setView] = useState<MainView>('chat');
   const [currentFlowName, setCurrentFlowName] = useState<string>('');
   const [selectedWorkflowId, setSelectedWorkflowId] = useState<string | null>(null);
+  const [workflowAgentSteps, setWorkflowAgentSteps] = useState<WorkflowAgentStep[]>([]);
   const [isMultiAgent, setIsMultiAgent] = useState<boolean>(false);
   const [themeId, setThemeIdState] = useState<ThemePresetId>('pristine-light');
   const [userAvatar, setUserAvatarState] = useState<string>('');
@@ -292,6 +293,7 @@ function MainLayout() {
       if (!selectedAgentId) {
         selectDefaultAgent();
       }
+      setView((current) => (current === 'workflows' ? 'chat' : current));
     }
   }, [selectedAgentId]);
 
@@ -323,10 +325,7 @@ function MainLayout() {
 
   useEffect(() => {
     if (!isMultiAgent) {
-      const hasWorkflow = Boolean(selectedWorkflowId || clutchState.workflow_id);
-      if (!selectedAgentId && !hasWorkflow) {
-        selectDefaultAgent();
-      }
+      if (!selectedAgentId) selectDefaultAgent();
       return;
     }
     const hasWorkflow = Boolean(selectedWorkflowId || clutchState.workflow_id);
@@ -350,7 +349,7 @@ function MainLayout() {
   const selectedAgent = configuredAgents.find((agent) => agent.id === selectedAgentId);
   const selectedAgentName = getAgentDisplayName(selectedAgent);
   const activeWorkflowLabel = clutchState.workflow_id || currentFlowName || selectedWorkflowId || '—';
-  const hasWorkflowSelection = activeWorkflowLabel !== '—';
+  const hasWorkflowSelection = isMultiAgent && activeWorkflowLabel !== '—';
   const multiAgentFooterName = hasWorkflowSelection
     ? '—'
     : selectedAgentId
@@ -367,11 +366,38 @@ function MainLayout() {
     configuredModels.find((model) => model.id === footerEffectiveModelId)?.name
     || selectedModel
     || '—';
-  const chatActiveAgentName =
-    clutchState.workflow_id || selectedWorkflowId
-      ? clutchState.active_agent || currentFlowName || selectedAgentName
-      : selectedAgentName;
-  const chatActiveAgentAvatar = BUILTIN_AGENT_AVATARS[chatActiveAgentName] || '';
+  const isWorkflowChat = Boolean(clutchState.workflow_id || selectedWorkflowId);
+  const inProgressWorkflowStep = isWorkflowChat
+    ? resolveInProgressWorkflowStep(workflowAgentSteps, chatMessages, {
+      activeNodeId: clutchState.active_node_id,
+      activeAgentName: clutchState.active_agent,
+    })
+    : null;
+  const chatActiveAgentName = isWorkflowChat
+    ? (
+      inProgressWorkflowStep?.agentName
+      || (!isWorkflowSystemAgent(clutchState.active_agent) ? clutchState.active_agent : '')
+      || workflowAgentSteps[0]?.agentName
+      || ''
+    )
+    : selectedAgentName;
+  const resolveAgentLogo = useCallback((agentName: string) => {
+    const agent = configuredAgents.find(
+      (item) => getAgentDisplayName(item) === agentName || item.name === agentName,
+    );
+    if (agent) return resolveAgentBrandLogo(agent);
+    const step = findWorkflowStep(workflowAgentSteps, { activeAgentName: agentName })
+      ?? workflowAgentSteps.find((item) => item.agentName === agentName);
+    if (step?.toolId && step.toolId !== 'clutch') {
+      return resolveBrandLogoSrc({ toolId: step.toolId });
+    }
+    return undefined;
+  }, [configuredAgents, workflowAgentSteps]);
+  const chatActiveAgentAvatar =
+    resolveAgentLogo(chatActiveAgentName)
+    ?? (inProgressWorkflowStep?.toolId && inProgressWorkflowStep.toolId !== 'clutch'
+      ? resolveBrandLogoSrc({ toolId: inProgressWorkflowStep.toolId })
+      : undefined);
   const customAgentEngineLabel =
     selectedAgent && !isClutchAgentType(selectedAgent)
       ? agentTypeLabel(agentTypeFromAgent(selectedAgent))
@@ -435,6 +461,25 @@ function MainLayout() {
 
   const effectiveWorkflowId = selectedWorkflowId || clutchState.workflow_id || '';
   const effectiveWorkflowName = currentFlowName || clutchState.workflow_id || selectedWorkflowId || '';
+
+  useEffect(() => {
+    if (!effectiveWorkflowId) {
+      setWorkflowAgentSteps([]);
+      return;
+    }
+    let cancelled = false;
+    void loadWorkflowById(effectiveWorkflowId)
+      .then((workflow) => {
+        if (cancelled) return;
+        setWorkflowAgentSteps(orderedWorkflowAgentSteps(workflow, configuredAgents));
+      })
+      .catch(() => {
+        if (!cancelled) setWorkflowAgentSteps([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [effectiveWorkflowId, configuredAgents]);
 
   useEffect(() => {
     if (!isMultiAgent && rightTab === 'flow') {
@@ -911,7 +956,7 @@ function MainLayout() {
         runId: sessionRunId,
         workflowId,
         instruction,
-        activeAgent: currentFlowName || undefined,
+        activeAgent: workflowAgentSteps[0]?.agentName || undefined,
       });
       try {
         try {
@@ -928,7 +973,7 @@ function MainLayout() {
         }
         await refreshSessions();
         const result = await startWorkflowRun(sessionRunId, workflowId, instruction);
-        clutchStore.replaceState(result.state);
+        clutchStore.mergeWorkflowComplete(result.state);
         setSelectedWorkflowId(null);
         await refreshSessions();
       } catch (error) {
@@ -942,10 +987,12 @@ function MainLayout() {
       }
       return;
     }
+    const clientMessageId = clutchStore.optimisticPlainChatSend(text.trim());
     await submitChatMessage(
       text,
       selectedAgentId,
       agentBoundModelId ? undefined : footerEffectiveModelId || undefined,
+      clientMessageId,
     );
     await refreshSessions();
   };
@@ -1138,6 +1185,9 @@ function MainLayout() {
                 llmModelName={selectedModel}
                 activeAgentName={chatActiveAgentName}
                 activeAgentAvatar={chatActiveAgentAvatar}
+                activeNodeId={clutchState.active_node_id}
+                workflowAgentSteps={workflowAgentSteps}
+                resolveAgentLogo={resolveAgentLogo}
                 engineHint={runtimeEngineHint}
                 workspaceFiles={workspaceFiles}
                 sessions={sessions}
@@ -1405,7 +1455,7 @@ function MainLayout() {
                 ) : null}
               </div>
             </>
-          ) : !hasWorkflowSelection ? (
+          ) : (
             <div className="relative">
               <button
                 type="button"
@@ -1442,7 +1492,7 @@ function MainLayout() {
                 </FooterMenuPanel>
               ) : null}
             </div>
-          ) : null}
+          )}
         </div>
 
         <div className="font-semibold text-on-surface-variant/70 italic mr-2 select-text">

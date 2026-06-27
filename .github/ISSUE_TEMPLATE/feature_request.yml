@@ -1,0 +1,41 @@
+name: Feature Request
+description: Suggest an idea for Clutch
+title: "[Feature]: "
+labels: ["needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please check [PROJECT_SCOPE — Non-Goals](docs/PROJECT_SCOPE.md#3-non-goals我们不做) first.
+        Out-of-scope requests may be closed with `wontfix`.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / use case
+      description: What pain are you solving? Who is it for?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: High-level idea — not necessarily implementation detail
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Workflows, MCP, fork, other tools
+
+  - type: checkboxes
+    id: extensibility
+    attributes:
+      label: Extension fit
+      options:
+        - label: This could be a Workflow / MCP / Agent config only (no core code)
+        - label: This requires a new official extension point (see EXTENSIBILITY.md)
+        - label: This changes core orchestration / LangGraph

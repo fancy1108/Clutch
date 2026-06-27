@@ -77,15 +77,39 @@ def _handle_agent_task(
     node: dict[str, Any],
     workflow: dict[str, Any],
 ) -> CompilerState:
+    from src.workflow_cancel import WorkflowCancelled, is_workflow_cancelled
+
     run_id = str(state.get("run_id", ""))
+    if is_workflow_cancelled(run_id):
+        raise WorkflowCancelled(f"Workflow {run_id} stopped by supervisor")
     node_id = str(node.get("id", ""))
+    node_data = node.get("data", {}) or {}
+    agent_ref = str(node_data.get("agent", "")).strip()
+    label = str(node_data.get("label", "")).strip()
+    from src.engine_router import find_agent
+
+    agent_dict = find_agent(agent_ref) if agent_ref else None
+    if agent_dict and str(agent_dict.get("name", "")).strip():
+        pending_agent = str(agent_dict["name"]).strip()
+    else:
+        pending_agent = label or agent_ref or "Agent"
+    emit_workflow_agent_step(
+        run_id,
+        {
+            "active_node_id": node_id,
+            "active_agent": pending_agent,
+            "status": "running",
+        },
+    )
     task_input = resolve_agent_task_input(state, node, workflow)
     result = execute_agent_task(
-        node.get("data", {}),
+        node_data,
         instruction=task_input,
         run_id=run_id,
         node_id=node_id,
     )
+    if is_workflow_cancelled(run_id):
+        raise WorkflowCancelled(f"Workflow {run_id} stopped by supervisor")
     task_logs = list(state.get("task_logs", []))
     task_messages = list(state.get("task_messages", []))
     task_logs.extend(result.logs)
@@ -99,6 +123,7 @@ def _handle_agent_task(
             "active_node_id": node_id,
             "active_agent": result.agent,
             "status": "running",
+            **(result.state_patch or {}),
         },
     )
     return {

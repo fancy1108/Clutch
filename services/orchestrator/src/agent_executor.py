@@ -15,6 +15,7 @@ class AgentTaskResult:
     output: str
     logs: list[str]
     message: dict[str, Any]
+    state_patch: dict[str, Any] | None = None
 
 
 def _agent_display_name(agent_dict: dict[str, Any] | None, fallback: str) -> str:
@@ -43,13 +44,22 @@ def _read_flow_cli_session_id(run_id: str, agent_id: str) -> str | None:
     return sid if sid else None
 
 
-def _persist_flow_cli_session(run_id: str, agent_id: str, cli_session_id: str | None) -> None:
+def _persist_flow_cli_session(
+    run_id: str,
+    agent_id: str,
+    cli_session_id: str | None,
+    *,
+    extra_patch: dict[str, Any] | None = None,
+) -> None:
     if not run_id or not cli_session_id:
         return
     from src.state import cli_session_patch
     from src.workflow_runtime import emit_workflow_agent_step
 
-    emit_workflow_agent_step(run_id, cli_session_patch(cli_session_id, agent_id))
+    patch = cli_session_patch(cli_session_id, agent_id)
+    if extra_patch:
+        patch = {**patch, **extra_patch}
+    emit_workflow_agent_step(run_id, patch)
 
 
 def _run_clutch_chat_task(
@@ -155,6 +165,9 @@ def execute_agent_task(
 
     agent_dict = find_agent(agent_ref or agent)
     display_name = _agent_display_name(agent_dict, agent)
+    output = ""
+    state_patch: dict[str, Any] | None = None
+    result_message: dict[str, Any] | None = None
 
     if tool in {"claude-cli", "agy-cli", "agy", "antigravity-cli", "llm", "ollama", "ollama-cli", ""}:
         from src.agent_type import resolve_model_for_agent
@@ -242,8 +255,11 @@ def execute_agent_task(
             "Respond concisely with what you would do, files touched, and next steps."
         )
         agent_id_for_session = _agent_id_for_session(agent_dict, agent_ref or agent)
+        from src.agent_type import agent_type_from_record
+
+        resolved_agent_type = agent_type_from_record(agent_dict) if agent_dict else ""
         cli_session_id: str | None = None
-        if tool == "claude-cli" and run_id:
+        if resolved_agent_type == "claude-cli" and run_id:
             from src.runtime_config import hybrid_eligible
 
             if hybrid_eligible(source="flow", agent_type="claude-cli"):
@@ -262,7 +278,23 @@ def execute_agent_task(
             output = result.output
             for log_line in result.logs:
                 logs.append(with_agent_prefix(agent_ref, log_line, label=label))
-            if tool == "claude-cli" and run_id and result.cli_session_id:
+            message = chat_message(display_name, output)
+            state_patch = None
+            if result.engine and "Hybrid" in result.engine:
+                message["runtimeEngine"] = result.engine
+                if result.raw_output:
+                    message["rawOutput"] = result.raw_output
+                if result.output_events:
+                    message["outputEvents"] = result.output_events
+                state_patch = {
+                    "hybrid_executions": {
+                        str(message["id"]): {
+                            "rawOutput": result.raw_output,
+                            "outputEvents": result.output_events or [],
+                        }
+                    }
+                }
+            if resolved_agent_type == "claude-cli" and run_id and result.cli_session_id:
                 from src.runtime_config import hybrid_eligible
 
                 if hybrid_eligible(source="flow", agent_type="claude-cli"):
@@ -270,10 +302,13 @@ def execute_agent_task(
                         run_id,
                         agent_id_for_session,
                         result.cli_session_id,
+                        extra_patch=state_patch,
                     )
+            result_message = message
         except Exception as exc:
             output = f"Could not run task with {display_name}. ({exc})"
             logs.append(agent_line(agent_ref, f"ERROR: {exc}", label=label))
+            result_message = chat_message(display_name, output)
     else:
         from src.mcp_storage import load_servers
         from src.workspace import get_workspace
@@ -351,5 +386,6 @@ def execute_agent_task(
         agent=display_name,
         output=output,
         logs=logs,
-        message=chat_message(display_name, output),
+        message=result_message or chat_message(display_name, output),
+        state_patch=state_patch,
     )

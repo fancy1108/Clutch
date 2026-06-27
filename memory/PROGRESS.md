@@ -2,9 +2,9 @@
 
 ## 当前状态
 
-- **阶段：** D25 Hybrid Runtime — **Flow `claude-cli` Hybrid 已 commit，待人工验收**
-- **Git HEAD：** `919c4b0`
-- **下次优先：** Multi-Agent SOP 混合节点验收（Claude CLI → Clutch）；通过后更新 ROADMAP
+- **阶段：** D25 Hybrid Runtime — **Flow/Chat UX + Tauri dev 生命周期已落地，待人工验收**
+- **Git HEAD：** （本 commit 后更新）
+- **下次优先：** Weather-to-Vision 工作流验收（Agent 标签/Logo、Hybrid 图片、用户消息合并）；通过后更新 ROADMAP
 - **验收期跳过：** MCP hybrid_executions 深度 UI · 2h/100+ 压测
 
 ### HRT 进度快照
@@ -26,6 +26,15 @@
 ### 未 commit 工作
 
 （无）
+
+## 2026-06-27 会话（Flow/Chat UX + Tauri dev）
+
+- **完成：**
+  - **Tauri 开发白屏：** `scripts/tauri-dev.sh` 守护化 Vite；`beforeDevCommand` 置空；`free_sidecar_port` 仅杀 LISTEN；根目录 `pnpm tauri:dev`。
+  - **工作流 Chat：** `workflowAgentSteps` 从 Agent Manager 解析类型/Logo；`active_node_id` 优先；Hybrid 节点可折叠 execution details。
+  - **Chat 合并：** `client_message_id` + 乐观发送；Hybrid 图片与正文同源解析。
+  - **工作流取消：** `workflow_cancel.py` + Stop 协作式中断；品牌 Logo 组件与资产。
+  - **文档：** `PRODUCT_INTRO.md` §3.1/§5.1、`CLAUDE.md`、`README.md`、`FILEMAP.md` 同步。
 
 ## 2026-06-27 会话（HRT-01~03 hybrid 修复 commit）
 

@@ -149,6 +149,24 @@ def test_parse_rejects_shell_fragment_assistant() -> None:
     assert out == ""
 
 
+def test_parse_filters_history_echo_and_wait_prompt() -> None:
+    raw = (
+        "CLUTCH_P='hi'; claude -p \"$CLUTCH_P\" --dangerously-skip-permissions; "
+        "echo __CLUTCH_DONE_echo__\n"
+        "Assistant: 你好！我是 Clutch Agent，由 Sapiens AI 开发。\n"
+        "你好！有什么我可以帮你的吗？\n"
+        "你好！有什么我可以帮你的吗？\n"
+        "It's been 20 second(s) since the last assistant message, with the user via their main channel.\n"
+        "If you were asked to wait / no-reply, and are reached via the main channel, you should take a look at the main channel for new messages, to assess whether the user is waiting or pinging you.\n"
+        "你好！有什么我可以帮你的吗？\n"
+        "__CLUTCH_DONE_echo__\n"
+    )
+    out = ClaudeHybridOutputParser().parse(raw, marker="__CLUTCH_DONE_echo__")
+    assert out == "你好！有什么我可以帮你的吗？"
+    assert "Clutch Agent" not in out
+    assert "main channel" not in out
+
+
 def test_parse_filters_snapshot_handoff_lines() -> None:
     raw = (
         "CLUTCH_P='hi'; claude -p \"$CLUTCH_P\" --dangerously-skip-permissions; "

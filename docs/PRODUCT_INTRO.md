@@ -81,9 +81,9 @@ graph TD
 
 * **Single Agent Workspace**：支持绑定自定义 System Prompts 与大语言模型。底层的 `EngineRouter` 在 `clutch` (全局 LLM API)、`claude-cli` (Claude Code 本地 CLI)、`antigravity-cli` (Agy CLI) 与 `ollama-cli` 之间智能路由分流，并自动维持 CLI 引擎的逻辑 Session 恢复。Thinking 加载状态的头像与消息加载完成的静态头像保持逻辑一致。
 * **Hybrid 多 Session（plain chat）**：同一工程 workspace 下可并行维护多个 chat session；`CLUTCH_RUNTIME_MODE=hybrid` 时后端为每个 `run_id` 分配独立 shell，并按 workspace 串行执行 CLI turn，避免同目录并发 `claude -p` 互锁。切换 session 时先持久化 `idle` 状态再推送 WebSocket；切走期间后台 turn 完成后可通过 HTTP hydrate 恢复，避免 UI 永久卡在 Thinking。
-* **Multi-Agent Graph Workspace**：React Flow 画布可视化编排节点与连线，后台 Workflow Compiler 动态将其编译为 LangGraph 状态机。下游节点自动接收并注入上游的 `node_outputs`。工作流节点的激活状态、运行阶段与详细日志通过 WebSocket 增量 `state_patch` 实时推送到前端渲染。`CLUTCH_RUNTIME_MODE=hybrid` 时，**`claude-cli` 节点**走与 plain chat 相同的 Hybrid PTY shell（含 workspace CLI 锁与 session resume）；Clutch 内置 Agent 等其它节点类型不变。
+* **Multi-Agent Graph Workspace**：React Flow 画布可视化编排节点与连线，后台 Workflow Compiler 动态将其编译为 LangGraph 状态机。下游节点自动接收并注入上游的 `node_outputs`。工作流节点的激活状态、运行阶段与详细日志通过 WebSocket 增量 `state_patch` 实时推送到前端渲染。Chat 中各节点回复展示 **Agent Manager 配置的 Agent 类型与品牌 Logo**（而非仅依赖节点 `tool` 字段）；Thinking / 进行中步骤优先跟随后端 `active_node_id` / `active_agent`。`claude-cli` 且 `CLUTCH_RUNTIME_MODE=hybrid` 的节点附带可折叠 **View execution details**（与 Single Agent Hybrid 一致）。运行中用户可通过 Stop **取消工作流**（协作式 cancel + 前端 idle 恢复）。`CLUTCH_RUNTIME_MODE=hybrid` 时，**`claude-cli` 节点**走与 plain chat 相同的 Hybrid PTY shell（含 workspace CLI 锁与 session resume）；Clutch 内置 Agent（含图片模型）等其它节点类型不变。
 * **Rich Chat Input Bar & Attachments**：支持从剪贴板直接粘贴图片生成 Chip 缩略图预览；支持从右侧文件树拖拽文件/文件夹进入输入框作为附件；输入框内键入 `/` 触发已扫描 Skills 的指令联想，键入 `#` 触发历史会话引用联想；提供全局运行状态控制（Running 时展示 Stop 按钮，支持用户手动中止运行）；提供持久化的安全审批模式选择（Auto-approve, Ask-on-Write, Manual confirmation）。
-* **Observability Chat Feed**：支持对本地子进程 CLI（如 Claude Code CLI）敲击的所有终端命令及 stdout/stderr 输出进行行内展开卡片审计；聊天气泡中优雅地展示 Agent 专属标签、Boundary markers 和系统提示词 metadata。
+* **Observability Chat Feed**：支持对本地子进程 CLI（如 Claude Code CLI）敲击的所有终端命令及 stdout/stderr 输出进行行内展开卡片审计；聊天气泡中优雅地展示 Agent 专属标签、Boundary markers 和系统提示词 metadata。**Hybrid 回复的正文与图片均从 `outputEvents` 的 assistant 内容解析**，避免工作流上一节点气泡误显示下一节点生成的图片。Plain chat 支持 `client_message_id` 与乐观发送合并，避免切换 Agent 后重复「你好」等用户消息被去重或丢失。
 
 ---
 
@@ -145,15 +145,35 @@ graph TD
 ## 5. 附录：本地开发与构建指南
 
 ### 5.1 开发期启动 (Dev)
-```bash
-# 终端 1：启动 Python Sidecar (端口 8123)
-cd services/orchestrator
-uv run uvicorn src.main:app --reload --port 8123
 
-# 终端 2：启动 Tauri 前端
-cd apps/desktop
-pnpm dev
+**推荐：Tauri 桌面一体启动（含 Hybrid Sidecar）**
+
+```bash
+# 仓库根目录 — 脚本会守护化启动 Vite :3000，再跑 tauri dev（勿用裸 pnpm tauri dev）
+export CLUTCH_RUNTIME_MODE=hybrid
+pnpm tauri:dev
 ```
+
+**分拆调试（双终端）**
+
+```bash
+# 终端 1：Vite 前端
+cd apps/desktop && pnpm dev
+
+# 终端 2：Tauri 壳（Sidecar 由 Tauri 在 dev 下自动拉起 :8124）
+cd apps/desktop
+export CLUTCH_RUNTIME_MODE=hybrid
+pnpm tauri dev --no-dev-server-wait
+```
+
+**仅 Sidecar（无桌面壳）**
+
+```bash
+cd services/orchestrator
+uv run uvicorn src.main:app --reload --port 8124
+```
+
+> 开发期 Sidecar 监听 **8124**；打包 DMG 内嵌 Sidecar 为 **8123**。`tauri.conf.json` 的 `beforeDevCommand` 为空，由 `scripts/tauri-dev.sh` 管理 Vite 生命周期，避免 Tauri 误杀 dev server。
 
 ### 5.2 本地轻量校验 (Pre-commit)
 在提交代码前运行轻量校验，确保编译通过、单元测试正常、文档未产生漂移：

@@ -262,8 +262,13 @@ def _touch_session(
 
 
 def _apply_workflow_step_patch(run_id: str, patch: dict[str, Any]) -> None:
+    from src.workflow_cancel import is_workflow_cancelled
+
+    if is_workflow_cancelled(run_id):
+        return
     state = _get_or_create_run(run_id)
     messages = list(state["messages"])
+    new_messages: list[dict[str, Any]] = []
     for message in patch.get("new_messages", []):
         if not isinstance(message, dict):
             continue
@@ -271,15 +276,39 @@ def _apply_workflow_step_patch(run_id: str, patch: dict[str, Any]) -> None:
         if msg_id and any(str(item.get("id", "")) == msg_id for item in messages):
             continue
         messages.append(message)
+        new_messages.append(message)
     merged_patch = {key: value for key, value in patch.items() if key != "new_messages"}
     merged_patch["messages"] = messages
+    if "hybrid_executions" in patch:
+        merged_hybrid = dict(state.get("hybrid_executions") or {})
+        incoming = patch.get("hybrid_executions") or {}
+        if isinstance(incoming, dict):
+            merged_hybrid.update(incoming)
+        merged_patch["hybrid_executions"] = merged_hybrid
     state = _commit_run_state(run_id, _merge_patch(state, merged_patch))
     from src.run_log_forwarder import get_forwarder
 
-    get_forwarder(run_id).emit_state_patch(merged_patch, state["status"])
+    forwarder = get_forwarder(run_id)
+    forwarder.emit_state_patch(merged_patch, state["status"])
+    node_id = str(patch.get("active_node_id", ""))
+    for message in new_messages:
+        forwarder.emit_message(message, node_id=node_id)
+    hybrid_patch = patch.get("hybrid_executions")
+    if isinstance(hybrid_patch, dict):
+        for message_id, entry in hybrid_patch.items():
+            if not isinstance(entry, dict):
+                continue
+            forwarder.emit_hybrid_execution(
+                str(message_id),
+                raw_output=entry.get("rawOutput"),  # type: ignore[arg-type]
+                output_events=entry.get("outputEvents"),  # type: ignore[arg-type]
+            )
 
 
 def _run_workflow(run_id: str, workflow_id: str, instruction: str) -> ClutchState:
+    from src.workflow_cancel import WorkflowCancelled, clear_workflow_cancel, is_workflow_cancelled
+
+    clear_workflow_cancel(run_id)
     _setup_run_log_forwarder(run_id)
     from src.run_log_forwarder import get_forwarder
     from src.workflow_runtime import clear_workflow_step_callback, register_workflow_step_callback
@@ -310,14 +339,37 @@ def _run_workflow(run_id: str, workflow_id: str, instruction: str) -> ClutchStat
             },
             "running",
         )
+        get_forwarder(run_id).emit_message(user_message, node_id="start")
     get_forwarder(run_id).emit(
         tagged(TAG_WORKFLOW, f"Starting workflow: {workflow['name']} ({workflow['id']})"),
         node_id="start",
     )
+    cancelled = False
+    session = None
+    graph_result = None
     try:
-        session, graph_result = begin_workflow(workflow, run_id, instruction=instruction)
+        try:
+            session, graph_result = begin_workflow(workflow, run_id, instruction=instruction)
+        except WorkflowCancelled:
+            state = _get_or_create_run(run_id)
+            if state.get("status") != "failed":
+                logs = list(state["terminal_logs"])
+                logs.append(stamp_log_line(tagged(TAG_WORKFLOW, "Run stopped by supervisor.")))
+                state = _merge_patch(state, {"status": "failed", "terminal_logs": logs})
+                _commit_run_state(run_id, state)
+            _touch_session(run_id, status="failed")
+            return state
+        finally:
+            clear_workflow_step_callback(run_id)
+        cancelled = is_workflow_cancelled(run_id)
     finally:
-        clear_workflow_step_callback(run_id)
+        clear_workflow_cancel(run_id)
+
+    if cancelled:
+        state = _get_or_create_run(run_id)
+        _touch_session(run_id, status=str(state.get("status", "failed")))
+        return state
+
     _run_sessions[run_id] = session
     _emit_workflow_graph_tail(run_id, graph_result)
     from src.workflow_projection import project_graph_to_clutch
@@ -844,6 +896,7 @@ async def _llm_chat_reply(
     emit_log: Callable[[str], Awaitable[None]] | None = None,
     mcp_approved_tool: dict[str, Any] | None = None,
     mcp_resume: dict[str, Any] | None = None,
+    isolate_cli_history: bool = False,
 ) -> tuple[str, str, str, list[str], str | None, dict[str, Any] | None, list[str], str | None, list[dict[str, Any]] | None, bool]:
     from src.agent_storage import BUILTIN_AGENT_ID, get_agent_by_id
     from src.engine_router import route_engine
@@ -1043,12 +1096,17 @@ async def _llm_chat_reply(
             if emit_log:
                 asyncio.run_coroutine_threadsafe(emit_log(line), loop)
 
+        route_history = history
+        if isolate_cli_history:
+            system_items = [item for item in history if item.get("role") == "system"]
+            route_history = system_items + [{"role": "user", "content": text.strip()}]
+
         result = await asyncio.to_thread(
             route_engine,
             agent_name=agent_ref,
             prompt=text,
             cwd=cwd,
-            history=history,
+            history=route_history,
             system_prompt=system_prompt,
             cli_session_id=cli_session_id,
             on_log=on_log if emit_log else None,
@@ -1258,6 +1316,13 @@ def _interrupt_plain_chat_shell(run_id: str) -> None:
     get_shell_session_manager().release(run_id)
 
 
+def _interrupt_workflow_run(run_id: str) -> None:
+    from src.workflow_cancel import request_workflow_cancel
+
+    request_workflow_cancel(run_id)
+    _interrupt_plain_chat_shell(run_id)
+
+
 async def _apply_plain_chat_stop(
     websocket: WebSocket,
     run_id: str,
@@ -1347,6 +1412,7 @@ async def _handle_plain_chat(
     text: str,
     agent_id: str | None = None,
     session_model_id: str | None = None,
+    client_message_id: str | None = None,
 ) -> ClutchState:
     from src.agent_storage import BUILTIN_AGENT_ID, get_agent_by_id
     from src.runtime_config import runtime_mode
@@ -1359,9 +1425,17 @@ async def _handle_plain_chat(
         return state
 
     stripped = text.strip()
-    user_message = _chat_message("User", text, msg_id=f"user_{uuid.uuid4().hex[:8]}")
+    client_id = (client_message_id or "").strip()
+    user_message = _chat_message(
+        "User",
+        text,
+        msg_id=client_id or f"user_{uuid.uuid4().hex[:8]}",
+    )
     messages = list(state["messages"])
-    user_message_added = not (
+    already_has_client_id = bool(
+        client_id and any(str(item.get("id", "")) == client_id for item in messages)
+    )
+    user_message_added = not already_has_client_id and not (
         messages
         and messages[-1].get("agent") == "User"
         and str(messages[-1].get("text", "")).strip() == stripped
@@ -1387,7 +1461,8 @@ async def _handle_plain_chat(
 
     stored_session_id = read_cli_session_id(state) or None
     stored_session_agent = read_cli_session_agent_id(state)
-    if stored_session_agent and stored_session_agent != resolved_id:
+    agent_switched = bool(stored_session_agent and stored_session_agent != resolved_id)
+    if agent_switched:
         stored_session_id = None
 
     streamed_logs = False
@@ -1431,6 +1506,7 @@ async def _handle_plain_chat(
             session_model_id=session_model_id,
             cli_session_id=stored_session_id,
             emit_log=emit_log,
+            isolate_cli_history=agent_switched,
         )
     except HybridPlainChatRejected as exc:
         keep_running = exc.code == "session_busy" and state["status"] == "running"
@@ -2638,10 +2714,12 @@ async def stop_run(run_id: str) -> dict[str, str]:
         _touch_session(run_id, status=state["status"])
         update_run_record(run_id, {"status": "idle", "ended_at": _iso_timestamp()})
         return {"run_id": run_id, "status": state["status"]}
+    await asyncio.to_thread(_interrupt_workflow_run, run_id)
     logs = list(state["terminal_logs"])
     logs.append(stamp_log_line(tagged(TAG_WORKFLOW, "Run stopped via HTTP.")))
     state = _merge_patch(state, {"status": "failed", "terminal_logs": logs})
     _commit_run_state(run_id, state)
+    _touch_session(run_id, status="failed")
     update_run_record(run_id, {"status": "failed", "ended_at": _iso_timestamp()})
     return {"run_id": run_id, "status": state["status"]}
 
@@ -2673,7 +2751,29 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
         current = _get_or_create_run(run_id)
         await _notify_run_state(websocket, run_id, current, patch)
 
-    forwarder.attach_ws(loop, ws_log_emit, ws_state_patch_emit)
+    async def ws_message_emit(message: dict[str, Any], node_id: str) -> None:
+        await _send_message_event(websocket, run_id, message, node_id)
+
+    async def ws_hybrid_execution_emit(
+        message_id: str,
+        raw_output: str | None,
+        output_events: list[dict[str, Any]] | None,
+    ) -> None:
+        await _send_hybrid_execution_event(
+            websocket,
+            run_id,
+            message_id=message_id,
+            raw_output=raw_output,
+            output_events=output_events,
+        )
+
+    forwarder.attach_ws(
+        loop,
+        ws_log_emit,
+        ws_state_patch_emit,
+        ws_message_emit,
+        ws_hybrid_execution_emit,
+    )
 
     logger.info(
         "WebSocket connected",
@@ -2713,6 +2813,7 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
         text: str,
         agent_id: str | None,
         session_model_id: str | None,
+        client_message_id: str | None = None,
     ) -> None:
         nonlocal plain_chat_task, state
         if plain_chat_task is not None and not plain_chat_task.done():
@@ -2725,6 +2826,7 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                 text,
                 agent_id=agent_id,
                 session_model_id=session_model_id,
+                client_message_id=client_message_id,
             )
         )
         plain_chat_task.add_done_callback(_plain_chat_done)
@@ -2733,6 +2835,7 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
         text: str,
         agent_id: str | None,
         session_model_id: str | None,
+        client_message_id: str | None = None,
     ) -> None:
         nonlocal state
         plain_chat_queue.append(
@@ -2740,6 +2843,7 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                 "text": text,
                 "agent_id": agent_id,
                 "session_model_id": session_model_id,
+                "client_message_id": client_message_id,
             }
         )
         log_line = stamp_log_line(
@@ -2766,6 +2870,7 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
             str(item["text"]),
             item.get("agent_id"),
             item.get("session_model_id"),
+            item.get("client_message_id"),
         )
 
     def _plain_chat_done(task: asyncio.Task[ClutchState]) -> None:
@@ -2813,12 +2918,13 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                 text = str(payload["text"])
                 agent_id = str(payload.get("agent_id", "")).strip() or None
                 session_model_id = str(payload.get("model_id", "")).strip() or None
+                client_message_id = str(payload.get("client_message_id", "")).strip() or None
                 if state["workflow_id"]:
                     state = await _handle_workflow_chat_message(websocket, run_id, state, text)
                 elif plain_chat_task is not None and not plain_chat_task.done():
-                    await _enqueue_plain_chat(text, agent_id, session_model_id)
+                    await _enqueue_plain_chat(text, agent_id, session_model_id, client_message_id)
                 else:
-                    await _start_plain_chat_turn(text, agent_id, session_model_id)
+                    await _start_plain_chat_turn(text, agent_id, session_model_id, client_message_id)
             elif isinstance(payload, dict) and payload.get("action") == "human_decision":
                 decision = str(payload.get("decision", "approve"))
                 from src.mcp_pending import get_pending
@@ -2863,12 +2969,14 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                     plain_chat_task = None
                     state = await _apply_plain_chat_stop(websocket, run_id, state)
                 else:
+                    await asyncio.to_thread(_interrupt_workflow_run, run_id)
                     logs = list(state["terminal_logs"])
                     log_line = tagged(TAG_WORKFLOW, "Run stopped by supervisor.")
                     logs.append(stamp_log_line(log_line))
                     patch = {"status": "failed", "terminal_logs": logs}
                     state = _merge_patch(state, patch)
                     _commit_run_state(run_id, state)
+                    _touch_session(run_id, status="failed")
                     update_run_record(run_id, {"status": "failed", "ended_at": _iso_timestamp()})
                     await _send_log_event(
                         websocket, run_id, log_line, node_id=state["active_node_id"]

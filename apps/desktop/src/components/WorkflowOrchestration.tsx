@@ -37,6 +37,8 @@ import {
 } from '../services/workflowApi';
 import { fetchAgents } from '../services/agentApi';
 import { getAgentDisplayName } from '../services/builtinAgent';
+import { agentTypeFromAgent } from '../services/agentTypes';
+import { resolveBrandLogoSrc } from '../services/brandLogos';
 import { BTN_GHOST, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON } from './ui/buttonStyles';
 import { LegacyIcon } from './ui/LegacyIcon';
 
@@ -282,17 +284,25 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
   // Layout conversion
   React.useEffect(() => {
     if (activeWorkflow) {
-      const newNodes: Node[] = activeWorkflow.steps.map((step, idx) => ({
+      const newNodes: Node[] = activeWorkflow.steps.map((step, idx) => {
+        const matchedAgent = agents.find((agent) => agent.id === step.agent || agent.name === step.agent);
+        return {
         id: step.id.toString(),
         type: 'custom',
         position: step.position || { x: 250, y: idx * 100 + 50 },
         data: {
           ...step,
           agent: resolveAgentLabel(step.agent),
+          avatar: resolveBrandLogoSrc({
+            aiTool: step.aiTool,
+            agent: matchedAgent,
+            agentType: matchedAgent ? agentTypeFromAgent(matchedAgent) : undefined,
+          }),
           onEdit: (id: string) => openNodeEditor(id),
           onDelete: (id: string) => deleteNode(id),
         }
-      }));
+      };
+      });
 
       const newEdges: Edge[] = [];
       activeWorkflow.steps.forEach(step => {
@@ -313,7 +323,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
       setNodes(newNodes);
       setEdges(newEdges);
     }
-  }, [activeWorkflowId, workflows, resolveAgentLabel]); // Also update when workflows changes
+  }, [activeWorkflowId, workflows, resolveAgentLabel, agents]); // Also update when workflows changes
 
   const onNodesChange = useCallback((changes: NodeChange[]) => {
     setNodes((nds) => applyNodeChanges(changes, nds));

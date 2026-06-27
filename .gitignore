@@ -24,6 +24,8 @@ services/orchestrator/.venv/
 # OS & logs
 .DS_Store
 *.log
+.clutch-vite.pid
+.clutch-vite-dev.log
 coverage/
 htmlcov/
 

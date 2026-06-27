@@ -31,7 +31,8 @@
 
 | 操作 | 命令 |
 |------|------|
-| 前端开发 | `pnpm dev` |
+| 前端开发 | `pnpm dev`（仅 Web；桌面见下行） |
+| Tauri 桌面开发 | `export CLUTCH_RUNTIME_MODE=hybrid && pnpm tauri:dev` |
 | 前端构建（校验） | `pnpm build` |
 | 后端启动（开发） | `cd services/orchestrator && uv run uvicorn src.main:app --reload --port 8124` |
 | 后端测试（校验） | `cd services/orchestrator && uv run pytest` |

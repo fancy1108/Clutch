@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { ChatMessage, ClutchRunStatus, HybridExecutionPayload, OutputEvent } from '../types';
 import { useLanguage } from './LanguageContext';
@@ -10,6 +10,12 @@ import type { ScannedSkill } from '../services/skillsApi';
 import type { FileTreeNode } from '../services/workspaceApi';
 import type { PermissionMode } from '../services/permissionApi';
 import { USER_CHAT_AVATAR, clutchStore } from '../services/clutchState';
+import { resolveBrandLogoSrc } from '../services/brandLogos';
+import {
+  buildWorkflowReplyStepIndex,
+  resolveInProgressWorkflowStep,
+} from '../services/workflowAgentSteps';
+import { BrandLogo } from './BrandLogo';
 
 function outputEventLabel(type: OutputEvent['type'], t: (key: string) => string): string {
   switch (type) {
@@ -32,14 +38,24 @@ function resolveAssistantDisplayText(
   msg: ChatMessage,
   hybridExecutions?: Record<string, HybridExecutionPayload>,
 ): string {
+  return resolveAssistantContentSource(msg, hybridExecutions).displayText;
+}
+
+/** Hybrid replies show assistant text from outputEvents; images must use the same source. */
+function resolveAssistantContentSource(
+  msg: ChatMessage,
+  hybridExecutions?: Record<string, HybridExecutionPayload>,
+): { displayText: string; parseSource: string } {
   const events = hybridExecutions?.[msg.id]?.outputEvents ?? msg.outputEvents;
   const assistantEvent = events?.find(
     (event) => event.type === 'assistant' && event.visible !== false && event.content.trim(),
   );
   if (assistantEvent?.content.trim()) {
-    return assistantEvent.content;
+    const displayText = assistantEvent.content;
+    return { displayText, parseSource: displayText };
   }
-  return parseChatContent(msg.text).text;
+  const parsed = parseChatContent(msg.text);
+  return { displayText: parsed.text, parseSource: msg.text };
 }
 
 function previewExecutionContent(content: string, maxChars = 56): string {
@@ -210,6 +226,9 @@ interface ChatFeedProps {
   llmModelName?: string;
   activeAgentName?: string;
   activeAgentAvatar?: string;
+  activeNodeId?: string;
+  workflowAgentSteps?: Array<{ nodeId: string; agentName: string; agentType: string; toolId?: string; agentRef?: string; label?: string }>;
+  resolveAgentLogo?: (agentName: string) => string | undefined;
   engineHint?: string;
   // New props for ChatInputBar
   workspaceFiles?: FileTreeNode[];
@@ -560,6 +579,9 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   llmModelName = '',
   activeAgentName = '',
   activeAgentAvatar,
+  activeNodeId = '',
+  workflowAgentSteps = [],
+  resolveAgentLogo,
   engineHint = '',
   workspaceFiles = [],
   sessions = [],
@@ -642,10 +664,45 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
 
   const showEmptyState = isIdle && messages.length === 0 && isDefaultNewSessionTitle;
 
+  const workflowReplyStepIndex = useMemo(
+    () => buildWorkflowReplyStepIndex(workflowAgentSteps, messages),
+    [workflowAgentSteps, messages],
+  );
+
   const lastUserIndex = messages.findLastIndex((message) => message.agent === 'User');
   const lastAgentIndex = messages.findLastIndex((message) => message.agent !== 'User');
+  const inProgressWorkflowStep =
+    isRunning && !isPlainLlmChat
+      ? (
+        resolveInProgressWorkflowStep(workflowAgentSteps, messages, {
+          activeNodeId,
+          activeAgentName,
+        })
+        ?? (
+          workflowAgentSteps.length === 0 && lastUserIndex >= 0 && lastUserIndex > lastAgentIndex
+            ? {
+                nodeId: activeNodeId || '',
+                agentName: activeAgentName,
+                agentType: engineHint || '',
+                toolId: '',
+              }
+            : null
+        )
+      )
+      : null;
+  const thinkingAgentName = isPlainLlmChat
+    ? activeAgentName
+    : (inProgressWorkflowStep?.agentName || activeAgentName);
+  const thinkingAgentType = isPlainLlmChat
+    ? (engineHint || '')
+    : (inProgressWorkflowStep?.agentType || '');
+  const thinkingAgentLogo =
+    resolveBrandLogoSrc({ toolId: inProgressWorkflowStep?.toolId })
+    ?? resolveAgentLogo?.(thinkingAgentName);
+  const showWorkflowThinking = Boolean(inProgressWorkflowStep);
   const showThinking =
-    isRunning && lastUserIndex >= 0 && lastUserIndex > lastAgentIndex;
+    (isRunning && lastUserIndex >= 0 && lastUserIndex > lastAgentIndex && isPlainLlmChat) ||
+    showWorkflowThinking;
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -655,13 +712,15 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
     const dock = dockRef.current;
     if (!dock) return;
     const measure = () => {
-      setDockHeight(dock.offsetHeight + 48);
+      // bottom-8 (32px) + desired gap above dock; extra when thinking bubble is visible
+      const gapAboveDock = 48 + (showThinking ? 32 : 0);
+      setDockHeight(dock.offsetHeight + 32 + gapAboveDock);
     };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(dock);
     return () => observer.disconnect();
-  }, [pendingMessages.length, shellSessionStatus, awaitingHuman, isRunning, isPlainLlmChat]);
+  }, [pendingMessages.length, shellSessionStatus, awaitingHuman, isRunning, isPlainLlmChat, showThinking]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -685,20 +744,27 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
     agent: string,
     statusHint?: string,
     runtimeEngine?: string,
+    workflowAgentType?: string,
   ) => {
     const showPlainLlmLabel = isPlainLlmChat && isPlainLlmReply(agent);
+    const showHybridLabel = Boolean(runtimeEngine?.includes('Hybrid'));
+    const showWorkflowLabel = !isPlainLlmChat && Boolean(workflowAgentType);
 
-    if (showPlainLlmLabel || (statusHint && isPlainLlmChat)) {
-      const agentTitle = activeAgentName || t('Clutch Agent');
-      const engineLabel = statusHint
-        ? replyRuntimeLabel(engineHint, llmModelName)
-        : replyRuntimeLabel(runtimeEngine, llmModelName);
+    if (showPlainLlmLabel || (statusHint && isPlainLlmChat) || showHybridLabel || showWorkflowLabel) {
+      const agentTitle = showHybridLabel ? agent : (agent || activeAgentName || t('Clutch Agent'));
+      const engineLabel = showHybridLabel
+        ? replyRuntimeLabel(runtimeEngine, llmModelName)
+        : workflowAgentType
+          ? workflowAgentType
+          : statusHint
+            ? replyRuntimeLabel(engineHint, llmModelName)
+            : replyRuntimeLabel(runtimeEngine, llmModelName);
       return (
         <div className="flex items-start gap-2 flex-1 min-w-0">
           <div className="flex flex-col min-w-0">
             <span className="text-xs font-bold text-on-surface leading-tight">{agentTitle}</span>
-            {(engineLabel || statusHint) && (
-              <span className="text-[10px] text-on-surface-variant/60 leading-tight truncate">
+            {engineLabel && (
+              <span className="text-[10px] text-on-surface-variant/60 leading-tight truncate uppercase tracking-wide">
                 {engineLabel}
               </span>
             )}
@@ -781,14 +847,34 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
 
         {messages.map((msg) => {
           const isUser = msg.agent === 'User';
-          const parsed = parseChatContent(msg.text);
-          const displayText = isUser ? parsed.text : resolveAssistantDisplayText(msg, hybridExecutions);
+          const replyStepIndex = workflowReplyStepIndex.get(msg.id);
+          const replyStep = replyStepIndex !== undefined
+            ? workflowAgentSteps[replyStepIndex]
+            : undefined;
+          const workflowReplyType = !isPlainLlmChat && !isUser
+            ? (msg.runtimeEngine?.trim()
+              ? replyRuntimeLabel(msg.runtimeEngine, llmModelName)
+              : replyStep?.agentType || '')
+            : undefined;
+          const assistantContent = !isUser
+            ? resolveAssistantContentSource(msg, hybridExecutions)
+            : null;
+          const parsed = parseChatContent(
+            isUser ? msg.text : (assistantContent?.parseSource ?? msg.text),
+          );
+          const displayText = isUser ? parsed.text : (assistantContent?.displayText ?? parsed.text);
           const isErrorMsg =
             msg.status === 'FAILED' ||
             msg.badgeText?.includes('FAILED') ||
             msg.badgeText?.includes('NEEDS');
           const isCompletedMsg = msg.status === 'COMPLETED';
-          const avatarUrl = isUser ? (userAvatar || USER_CHAT_AVATAR) : msg.avatar;
+          const avatarUrl = isUser
+            ? (userAvatar || USER_CHAT_AVATAR)
+            : (
+              msg.avatar
+              || resolveBrandLogoSrc({ toolId: replyStep?.toolId, runtimeEngine: msg.runtimeEngine })
+              || resolveAgentLogo?.(msg.agent)
+            );
 
           return (
             <div
@@ -802,7 +888,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
               >
                 <div className="w-9 h-9 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center bg-surface-container">
                   {avatarUrl ? (
-                    <img className="w-full h-full object-cover" src={avatarUrl} alt={msg.agent} />
+                    <img className="w-full h-full object-contain p-1" src={avatarUrl} alt={msg.agent} />
                   ) : (
                     <LegacyIcon
                       name={
@@ -829,7 +915,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                       </>
                     ) : (
                       <div className={`flex items-center gap-2 ${isPlainLlmChat && isPlainLlmReply(msg.agent) ? 'items-start' : ''}`}>
-                        {renderAgentLabel(msg.agent, undefined, msg.runtimeEngine)}
+                        {renderAgentLabel(msg.agent, undefined, msg.runtimeEngine, workflowReplyType)}
                         <span className="text-[10px] text-on-surface-variant/60 flex-shrink-0">{msg.time}</span>
                       </div>
                     )}
@@ -914,28 +1000,23 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
         })}
 
         {showThinking && (
-          <div className="w-full flex justify-start">
+          <div className="w-full flex justify-start mb-4">
             <div className="flex gap-4 max-w-[85%] p-2 rounded-xl">
-              <div className="w-9 h-9 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center bg-surface-container">
-                {activeAgentAvatar ? (
-                  <img className="w-full h-full object-cover" src={activeAgentAvatar} alt={activeAgentName || t('Clutch Agent')} />
-                ) : (
-                  <LegacyIcon
-                    name={
-                      activeAgentName === 'Supervisor'
-                        ? 'verified_user'
-                        : activeAgentName === 'System'
-                          ? 'info'
-                          : 'smart_toy'
-                    }
-                    className="text-[18px] text-on-surface-variant"
-                  />
-                )}
-              </div>
+              <BrandLogo
+                src={thinkingAgentLogo || activeAgentAvatar}
+                alt={thinkingAgentName || t('Clutch Agent')}
+                className="w-9 h-9 bg-surface-container"
+                imgClassName="w-[70%] h-[70%] object-contain"
+              />
 
               <div className="flex-1 space-y-1.5 overflow-hidden">
                 <div className="flex items-center gap-2">
-                  {renderAgentLabel(activeAgentName || t('Clutch Agent'), t('Thinking...'), engineHint)}
+                  {renderAgentLabel(
+                    thinkingAgentName || t('Clutch Agent'),
+                    t('Thinking...'),
+                    isPlainLlmChat ? undefined : engineHint,
+                    thinkingAgentType || undefined,
+                  )}
                 </div>
 
                 <div className="p-4 bg-surface-container-low rounded-2xl rounded-tl-none border border-outline-variant/30 shadow-sm flex items-center gap-1.5">

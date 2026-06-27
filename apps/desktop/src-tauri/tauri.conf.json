@@ -4,9 +4,12 @@
   "version": "0.0.0",
   "identifier": "com.clutch.app",
   "build": {
-    "beforeDevCommand": "pnpm dev",
+    "beforeDevCommand": "",
     "devUrl": "http://localhost:3000",
-    "beforeBuildCommand": "pnpm build && bash ../../scripts/build-sidecar.sh",
+    "beforeBuildCommand": {
+      "script": "pnpm build && bash ../../scripts/build-sidecar.sh",
+      "cwd": ".."
+    },
     "frontendDist": "../dist"
   },
   "app": {

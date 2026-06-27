@@ -67,6 +67,86 @@ describe('mergeChatMessages', () => {
     expect(merged).toHaveLength(2);
     expect(merged[1].agent).toBe('The Artist');
   });
+
+  it('appends duplicate user text when a new turn was optimistically queued at the end', () => {
+    const pendingId = 'user_pending_turn_2';
+    const firstTurn = [
+      createUserChatMessage('你好'),
+      {
+        id: 'agent_1',
+        agent: 'Clutch Agent',
+        avatar: '',
+        time: '17:01',
+        text: '你好！',
+      },
+      { ...createUserChatMessage('你好'), id: pendingId },
+    ];
+    const server: ChatMessage[] = [
+      firstTurn[0],
+      firstTurn[1] as ChatMessage,
+      {
+        id: pendingId,
+        agent: 'User',
+        avatar: USER_CHAT_AVATAR,
+        time: '17:02',
+        text: '你好',
+      },
+    ];
+    const merged = mergeChatMessages(firstTurn, server, { pendingUserMessageId: pendingId });
+    expect(merged.filter((message) => message.agent === 'User')).toHaveLength(2);
+    expect(merged[2].id).toBe(pendingId);
+  });
+
+  it('allows a new turn with repeated text when pending user message id is set', () => {
+    const pendingId = 'user_client_turn_2';
+    const firstTurn = [
+      createUserChatMessage('你好'),
+      {
+        id: 'agent_1',
+        agent: 'Clutch Agent',
+        avatar: '',
+        time: '17:01',
+        text: '你好！',
+      },
+    ];
+    const server: ChatMessage[] = [
+      {
+        id: pendingId,
+        agent: 'User',
+        avatar: USER_CHAT_AVATAR,
+        time: '17:02',
+        text: '你好',
+      },
+    ];
+    const merged = mergeChatMessages(firstTurn, server, { pendingUserMessageId: pendingId });
+    expect(merged.filter((message) => message.agent === 'User')).toHaveLength(2);
+    expect(merged[2].id).toBe(pendingId);
+  });
+
+  it('drops server re-echo of user text after agent has already replied', () => {
+    const firstTurn = [
+      createUserChatMessage('你好'),
+      {
+        id: 'agent_1',
+        agent: 'Clutch Agent',
+        avatar: '',
+        time: '17:01',
+        text: '你好！',
+      },
+    ];
+    const server: ChatMessage[] = [
+      ...firstTurn,
+      {
+        id: 'user_server_dup',
+        agent: 'User',
+        avatar: USER_CHAT_AVATAR,
+        time: '17:02',
+        text: '你好',
+      },
+    ];
+    const merged = mergeChatMessages(firstTurn, server);
+    expect(merged.filter((message) => message.agent === 'User')).toHaveLength(1);
+  });
 });
 
 describe('mergeMessageFields', () => {

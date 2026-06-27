@@ -4,14 +4,14 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --port=3000 --host=0.0.0.0",
+    "dev": "vite --port=3000 --host=0.0.0.0 --strictPort",
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
     "test": "vitest run",
     "tauri": "tauri",
-    "tauri:dev": "tauri dev",
+    "tauri:dev": "bash ../../scripts/tauri-dev.sh",
     "tauri:e2e": "tauri dev --features e2e-testing --config src-tauri/tauri.e2e.conf.json"
   },
   "dependencies": {

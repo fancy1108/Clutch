@@ -1,0 +1,56 @@
+name: Installation Issue
+description: Cannot install, build, or start Clutch
+title: "[Install]: "
+labels: ["needs-triage", "needs-info"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Installation help. **Do not paste API keys.**
+
+  - type: dropdown
+    id: method
+    attributes:
+      label: Installation method
+      options:
+        - DMG download
+        - From-source (README)
+        - pnpm tauri build
+        - Sidecar only
+    validations:
+      required: true
+
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Output of `./scripts/doctor.sh`
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: error
+    attributes:
+      label: Error message or screenshot description
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - macOS 14+ Apple Silicon
+        - macOS 14+ Intel
+        - macOS 13-
+        - Linux
+        - Windows
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: health
+    attributes:
+      label: Health check
+      options:
+        - label: I tried `curl http://127.0.0.1:8123/health` (DMG) or `:8124` (dev)

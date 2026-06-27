@@ -25,6 +25,10 @@ def clear_workflow_step_callback(run_id: str) -> None:
 def emit_workflow_agent_step(run_id: str, patch: dict[str, Any]) -> None:
     if not run_id:
         return
+    from src.workflow_cancel import is_workflow_cancelled
+
+    if is_workflow_cancelled(run_id):
+        return
     with _lock:
         callback = _step_callbacks.get(run_id)
     if callback is not None:

@@ -9,6 +9,7 @@
     "lint": "pnpm -r lint",
     "clean": "pnpm --filter @clutch/desktop clean",
     "test": "pnpm --filter @clutch/desktop test",
+    "tauri:dev": "bash scripts/tauri-dev.sh",
     "prepare": "husky"
   },
   "engines": {

@@ -6,7 +6,7 @@ import {
   type AiToolStatus,
 } from '../services/toolsApi';
 import { BTN_GHOST, BTN_PRIMARY } from './ui/buttonStyles';
-import { LegacyIcon } from './ui/LegacyIcon';
+import { AiToolIcon } from './AiToolIcon';
 import { ALERT_WARNING } from './ui/surfaceStyles';
 
 interface AiToolsManagerProps {
@@ -114,9 +114,7 @@ export default function AiToolsManager({ isModalStyle }: AiToolsManagerProps) {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {connectedTools.map((tool) => (
                     <div key={tool.id} className="p-4 border border-neutral-200/60 rounded-xl bg-white shadow-xs flex items-start gap-4">
-                      <div className="w-10 h-10 rounded-lg bg-neutral-100 flex items-center justify-center flex-shrink-0">
-                        <LegacyIcon name={tool.icon} className="text-neutral-600" />
-                      </div>
+                      <AiToolIcon tool={tool} />
                       <div className="flex-1 min-w-0">
                         <h4 className="text-xs font-bold text-neutral-800">{tool.name}</h4>
                         <p className="text-[10px] text-neutral-500 mt-1 leading-relaxed">{tool.description}</p>
@@ -156,9 +154,7 @@ export default function AiToolsManager({ isModalStyle }: AiToolsManagerProps) {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {availableTools.map((tool) => (
                     <div key={tool.id} className="p-4 border border-dashed border-neutral-200 rounded-xl bg-neutral-50/50 flex items-start gap-4">
-                      <div className="w-10 h-10 rounded-lg bg-neutral-100 flex items-center justify-center flex-shrink-0 opacity-60">
-                        <LegacyIcon name={tool.icon} className="text-neutral-500" />
-                      </div>
+                      <AiToolIcon tool={tool} dimmed />
                       <div className="flex-1 min-w-0">
                         <h4 className="text-xs font-bold text-neutral-600">{tool.name}</h4>
                         <p className="text-[10px] text-neutral-400 mt-1 leading-relaxed">{tool.description}</p>

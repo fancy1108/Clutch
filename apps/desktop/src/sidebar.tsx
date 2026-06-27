@@ -415,18 +415,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <span className="text-xs font-semibold tracking-wide">{t("AI Agents")}</span>
           </button>
 
-          <button
-            data-testid="nav-workflows"
-            onClick={() => setView('workflows')}
-            className={`w-full flex items-center gap-2.5 p-2 rounded-lg transition-all text-left group ${
-              currentView === 'workflows'
-                ? 'bg-surface-bright shadow-sm text-on-surface font-semibold border border-outline-variant/60'
-                : 'text-on-surface-variant hover:bg-surface-bright hover:text-on-surface'
-            }`}
-          >
-            <LegacyIcon name="account_tree" className="text-[17px] text-on-surface-variant group-hover:text-primary" />
-            <span className="text-xs font-semibold tracking-wide">{t("Workflows SOP")}</span>
-          </button>
+          {isMultiAgent ? (
+            <button
+              data-testid="nav-workflows"
+              onClick={() => setView('workflows')}
+              className={`w-full flex items-center gap-2.5 p-2 rounded-lg transition-all text-left group ${
+                currentView === 'workflows'
+                  ? 'bg-surface-bright shadow-sm text-on-surface font-semibold border border-outline-variant/60'
+                  : 'text-on-surface-variant hover:bg-surface-bright hover:text-on-surface'
+              }`}
+            >
+              <LegacyIcon name="account_tree" className="text-[17px] text-on-surface-variant group-hover:text-primary" />
+              <span className="text-xs font-semibold tracking-wide">{t("Workflows SOP")}</span>
+            </button>
+          ) : null}
         </div>
 
         <div className="flex items-center justify-between text-on-surface-variant mb-1 px-3">

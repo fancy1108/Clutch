@@ -13,9 +13,35 @@ import { fetchModelsConfig, mapModelConfigToUi } from '../services/modelsApi';
 import { useLanguage } from './LanguageContext';
 import { fetchToolsStatus, type AiToolStatus } from '../services/toolsApi';
 import { sidecarHttpUrl } from '../services/sidecarUrl';
+import { resolveBrandLogoSrc } from '../services/brandLogos';
 
-export function AgentLogo({ name, description, className = "w-10 h-10" }: { name: string; description: string; className?: string }) {
-  // Let's create a deterministic hash from name
+export function AgentLogo({
+  name,
+  description,
+  className = 'w-10 h-10',
+  agentType,
+  toolId,
+  logoSrc,
+}: {
+  name: string;
+  description: string;
+  className?: string;
+  agentType?: AgentTypeId | string;
+  toolId?: string;
+  logoSrc?: string;
+}) {
+  const brandSrc = logoSrc ?? resolveBrandLogoSrc({ agentType, toolId });
+  if (brandSrc) {
+    return (
+      <div
+        className={`${className} rounded-full flex items-center justify-center bg-white relative overflow-hidden flex-shrink-0 select-none border border-neutral-200/40`}
+      >
+        <img src={brandSrc} alt={name} className="w-[68%] h-[68%] object-contain" />
+      </div>
+    );
+  }
+
+  // Deterministic gradient avatar for agents without a tool brand.
   let hash = 0;
   for (let i = 0; i < name.length; i++) {
     hash = name.charCodeAt(i) + ((hash << 5) - hash);
@@ -524,7 +550,12 @@ export function AgentManager({
             <div className="flex-1 overflow-y-auto p-8 border-r border-neutral-200">
               <div className="max-w-2xl mx-auto bg-white border border-neutral-200/70 p-8 rounded-xl shadow-xs leading-relaxed font-sans mt-2 mb-10">
                 <div className="flex items-center gap-4 border-b border-neutral-100 pb-5 mb-5 select-none">
-                  <AgentLogo name={selectedAgent.name} description={selectedAgent.description} className="w-12 h-12 text-sm" />
+                  <AgentLogo
+                    name={selectedAgent.name}
+                    description={selectedAgent.description}
+                    className="w-12 h-12 text-sm"
+                    agentType={agentTypeFromAgent(selectedAgent)}
+                  />
                   <div>
                     <h2 className="text-sm font-bold text-neutral-900 tracking-tight font-mono">{selectedAgent.name}</h2>
                     <p className="text-[11px] text-neutral-400 mt-0.5">Role System Specifications</p>
@@ -708,7 +739,12 @@ export function AgentManager({
                 <div>
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
-                      <AgentLogo name={agent.name} description={agent.description} className="w-10 h-10 text-[10px]" />
+                      <AgentLogo
+                        name={agent.name}
+                        description={agent.description}
+                        className="w-10 h-10 text-[10px]"
+                        agentType={agentTypeFromAgent(agent)}
+                      />
                       <div>
                         <h3 className="text-xs font-bold text-neutral-900 font-mono tracking-tight text-left">
                           {getAgentDisplayName(agent)}
@@ -743,7 +779,14 @@ export function AgentManager({
                       </span>
                     )}
                     {agentTypeFromAgent(agent) && (
-                      <span className="text-[9.5px] font-mono text-neutral-800 bg-neutral-100 border border-neutral-200 px-1.5 py-0.2 rounded-md tracking-tight font-extrabold uppercase">
+                      <span className="text-[9.5px] font-mono text-neutral-800 bg-neutral-100 border border-neutral-200 px-1.5 py-0.2 rounded-md tracking-tight font-extrabold uppercase inline-flex items-center gap-1">
+                        {resolveBrandLogoSrc({ agentType: agentTypeFromAgent(agent) }) ? (
+                          <img
+                            src={resolveBrandLogoSrc({ agentType: agentTypeFromAgent(agent) })}
+                            alt=""
+                            className="w-3 h-3 object-contain"
+                          />
+                        ) : null}
                         {agentTypeLabel(agentTypeFromAgent(agent))}
                       </span>
                     )}

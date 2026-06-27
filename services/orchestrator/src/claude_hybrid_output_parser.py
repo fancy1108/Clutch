@@ -189,6 +189,16 @@ def _is_noise_line(line: str) -> bool:
         return True
     if re.fullmatch(r"[\d;]+", clean.strip()):
         return True
+    if re.match(r"^(Assistant|User):\s", clean):
+        return True
+    if "since the last assistant message" in lowered:
+        return True
+    if "if you were asked to wait" in lowered:
+        return True
+    if "reached via the main channel" in lowered:
+        return True
+    if "take a look at the main channel" in lowered:
+        return True
     return False
 
 
@@ -231,9 +241,13 @@ def _extract_system_prompt(shell_echo: str | None) -> str | None:
 
 def _extract_assistant_lines(body: str) -> str:
     lines: list[str] = []
+    seen: set[str] = set()
     for ln in body.splitlines():
         clean = _normalize_output_line(ln)
         if clean and not _is_noise_line(clean):
+            if clean in seen:
+                continue
+            seen.add(clean)
             lines.append(clean)
     return "\n".join(lines).strip()
 

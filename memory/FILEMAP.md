@@ -32,6 +32,15 @@
 |---------|--------|
 | 铁律、命令、Check-in | `CLAUDE.md` |
 | 产品介绍文档 | `docs/PRODUCT_INTRO.md` |
+| 开源 / DMG 分发排期（OSR-xx） | `docs/OPEN_SOURCE_RELEASE.md` |
+| Goals / Non-Goals | `docs/PROJECT_SCOPE.md` |
+| API / Schema 稳定性 | `docs/STABILITY.md` |
+| 扩展点边界 | `docs/EXTENSIBILITY.md` |
+| 维护者治理 | `docs/GOVERNANCE.md` |
+| 贡献指南（Phase 1 政策） | `CONTRIBUTING.md` |
+| 性能基线 | `docs/PERFORMANCE.md` |
+| 环境自检 | `scripts/doctor.sh` |
+| Tauri 桌面开发（Hybrid） | `scripts/tauri-dev.sh` · 根目录 `pnpm tauri:dev` |
 | 产品需求历史 | `specs/core/proposal.md` |
 | 视觉设计快照 | `specs/core/design.md` → `UI_UX_GUIDELINES.md` |
 | 开发任务清单（含 Verification） | `specs/core/tasks.md` |
@@ -97,6 +106,8 @@
 | 底部状态栏（Branch / Model / Agent） | `App.tsx` footer |
 | 工作区 Git 分支 API | `services/workspaceApi.ts` → `GET /api/workspace/git` |
 | Chat 流与人工干预 UI | `components/ChatFeed.tsx` |
+| 工作流 Chat 步骤 / Agent 类型解析 | `services/workflowAgentSteps.ts` |
+| Agent / 工具品牌 Logo | `services/brandLogos.ts` · `components/BrandLogo.tsx` |
 | 右侧面板（Overview/Files/Flow/Changes/Terminal） | `components/RightPanel.tsx` |
 | Terminal 日志子面板 | `components/TerminalPanel.tsx` |
 | 文件预览浮层 | `App.tsx`（`previewFile`） |
@@ -143,6 +154,7 @@
 | Agent 持久化与内置 Agent | `src/agent_storage.py` |
 | 运行日志 WS 转发 | `src/run_log_forwarder.py` |
 | 工作流状态投影 | `src/workflow_projection.py` |
+| 工作流运行中取消 | `src/workflow_cancel.py` |
 | Terminal 日志格式化与时间戳 | `src/terminal_logs.py` |
 | MCP 工具风险判定 | `src/mcp_risk.py` |
 | MCP ReAct 执行 | `src/mcp_react.py` |

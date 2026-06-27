@@ -181,6 +181,55 @@ def test_flow_claude_cli_passes_and_persists_cli_session(monkeypatch, tmp_path) 
     assert persisted[-1]["cli_session_agent_id"] == "agent-claude"
 
 
+def test_flow_llm_tool_claude_agent_attaches_hybrid_metadata(monkeypatch, tmp_path) -> None:
+    """Workflow nodes often use tool=llm while the bound agent is claude-cli."""
+    monkeypatch.setenv("CLUTCH_RUNTIME_MODE", "hybrid")
+    monkeypatch.setenv("CLUTCH_STORAGE_DIR", str(tmp_path))
+
+    def fake_route_engine(**kwargs):
+        from src.engine_router import EngineResult
+
+        return EngineResult(
+            engine="Claude CLI (Hybrid)",
+            output="weather summary",
+            logs=["[HYBRID] ok"],
+            cli_session_id="sess-researcher",
+            raw_output="raw shell",
+            output_events=[{"type": "assistant", "visible": True, "content": "weather summary"}],
+        )
+
+    persisted: list[dict] = []
+
+    monkeypatch.setattr("src.engine_router.route_engine", fake_route_engine)
+    monkeypatch.setattr(
+        "src.engine_router.find_agent",
+        lambda _ref: {
+            "id": "agent-researcher",
+            "name": "The Researcher",
+            "agentType": "claude-cli",
+        },
+    )
+    monkeypatch.setattr("src.workspace.get_workspace", lambda: {"workspace_path": "/workspace/ecc"})
+    monkeypatch.setattr(
+        "src.workflow_runtime.emit_workflow_agent_step",
+        lambda run_id, patch: persisted.append(patch),
+    )
+
+    result = execute_agent_task(
+        {"agent": "Researcher", "label": "Research", "tool": "llm"},
+        instruction="Lijiang weather",
+        run_id="run-wtv",
+        node_id="researcher",
+    )
+
+    assert result.message["runtimeEngine"] == "Claude CLI (Hybrid)"
+    assert result.message["rawOutput"] == "raw shell"
+    assert result.state_patch is not None
+    assert "hybrid_executions" in result.state_patch
+    assert persisted
+    assert persisted[-1].get("hybrid_executions")
+
+
 def test_flow_agy_stays_legacy_without_cli_session_persist(monkeypatch) -> None:
     monkeypatch.setenv("CLUTCH_RUNTIME_MODE", "hybrid")
     captured: dict[str, object] = {}
