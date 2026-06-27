@@ -42,7 +42,7 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ### HRT-01~03 ✅ 气泡过滤 · marker · snapshot 注入范围
 - **日期：** 2026-06-27
-- **Commit：** （本 commit）
+- **Commit：** `1d281f6` — fix(hybrid): tighten marker detection and snapshot handoff scope (HRT-01~03)
 - **Verification：** `uv run pytest tests/test_claude_hybrid_output_parser.py tests/test_engine_router.py -q` → 27 passed
 - **证据：** —
 - **交付文件：**

@@ -3,7 +3,7 @@
 ## 当前状态
 
 - **阶段：** D25 Hybrid Runtime — **HRT-00~03 已 commit；HRT-04 产品验收未过**
-- **Git HEAD：** （HRT-01~03 commit 后更新）
+- **Git HEAD：** `1d281f6`
 - **权威 Task 表：** [`specs/core/hybrid-runtime-plan.md`](../specs/core/hybrid-runtime-plan.md)
 - **下次优先：** 人类 **HRT-04** 单 session 验收（重启 Sidecar + `CLUTCH_RUNTIME_MODE=hybrid`）
 - **验收期跳过：** MCP hybrid_executions 深度 UI · 2h/100+ 压测
