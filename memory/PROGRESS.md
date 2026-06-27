@@ -2,10 +2,18 @@
 
 ## 当前状态
 
-- 阶段：**用户默认头像与自定义头像更换已交付**
-- Git HEAD：`7fabcff`
+- 阶段：**持久化会话特定偏好与加载动效去动画已交付**
+- Git HEAD：`9cba3b2`
 - **阶段：** D25 ShellSession Step 3~5 核心已交付（默认 `legacy`）
 - **你验收时跳过：** MCP hybrid_executions · 2h 长测
+
+## 2026-06-27 会话（会话特定偏好持久化与加载动效去动画）
+
+- **完成：**
+  - **加载动效去动画：** 移除了 `ChatFeed.tsx` 在 AI 思考状态 (`showThinking`) 时头像位置的 `progress_activity` 旋转加载动画；实现当活跃 Agent 拥有头像时展示其静态头像，无头像时展示静态的机器人/用户图标，使得加载动效仅集中于对话框内的打字脉冲动画。
+  - **会话偏好持久化：** 在 `App.tsx` 中使用 `localStorage` 按 `sessionRunId` 对当前会话的选择（包括所选模式 `isMultiAgent`、所选 Flow `selectedWorkflowId` 与所选 Agent `selectedAgentId`）进行自动存储。并在切换会话时优先进行恢复。
+  - **工作流名称解析：** 优化了 `clutchState.workflow_id` 在 `App.tsx` 中变更时的名称解析，自动从 `footerWorkflows` 映射匹配获取人类可读的工作流展示名。
+- **校验：** 本地运行 `./scripts/verify.sh` 并顺利通过了所有 348 项后端 Python 单元测试和 13 项前端 Vitest 测试 ✅
 
 ## 2026-06-27 会话（用户头像设置与 General 页面开发）
 
