@@ -2,9 +2,9 @@
 
 ## 当前状态
 
-- **阶段：** D25 Hybrid Runtime — **HRT-08 完成**；下一步 HRT-09
-- **Git HEAD：** `bed3fc0`
-- **下次优先：** **HRT-09**（后台 turn hydrate）→ HRT-10
+- **阶段：** D25 Hybrid Runtime — **HRT-09 完成**；下一步 HRT-10
+- **Git HEAD：** `b7788ff`
+- **下次优先：** **HRT-10**（POC #6/#10 自动化）
 - **验收期跳过：** MCP hybrid_executions 深度 UI · 2h/100+ 压测
 
 ### HRT 进度快照
