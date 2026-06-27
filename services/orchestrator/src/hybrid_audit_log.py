@@ -11,7 +11,7 @@ from typing import Literal
 
 from src.storage_helper import get_storage_dir
 
-HybridTurnResult = Literal["ok", "timeout", "empty", "error", "blocked"]
+HybridTurnResult = Literal["ok", "timeout", "empty", "error", "blocked", "rejected"]
 
 
 @dataclass(frozen=True)
@@ -70,8 +70,13 @@ def build_turn_audit_line(
     node_id: str,
     message: str,
     timestamp: datetime | None = None,
+    source: str = "shell_exec_runtime",
+    level: str | None = None,
 ) -> HybridTurnAuditLine:
     ts = timestamp or datetime.now(UTC)
+    resolved_level = level or ("error" if result not in ("ok",) else "info")
+    if result == "rejected":
+        resolved_level = level or "warn"
     return HybridTurnAuditLine(
         run_id=run_id,
         turn_id=turn_id,
@@ -82,8 +87,8 @@ def build_turn_audit_line(
         agent=agent,
         command_summary=command_summary,
         node_id=node_id,
-        source="shell_exec_runtime",
-        level="error" if result != "ok" else "info",
+        source=source,
+        level=resolved_level,
         message=message,
         timestamp=ts.isoformat(),
     )
@@ -130,3 +135,29 @@ def read_hybrid_audit_lines(
     if limit <= 0:
         return lines
     return lines[-limit:]
+
+
+def append_hybrid_rejection_audit(
+    *,
+    run_id: str,
+    reason: str,
+    message: str,
+    node_id: str = "plain_chat",
+) -> None:
+    import uuid
+
+    append_hybrid_turn_audit(
+        build_turn_audit_line(
+            run_id=run_id,
+            turn_id=uuid.uuid4().hex[:8],
+            marker="",
+            duration_ms=0,
+            result="rejected",
+            cli_session_id=None,
+            agent="hybrid",
+            command_summary="",
+            node_id=node_id,
+            message=f"{reason}: {message}",
+            source="orchestrator",
+        )
+    )

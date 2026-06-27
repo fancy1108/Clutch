@@ -53,7 +53,7 @@ pnpm --filter @clutch/desktop tauri dev
 | **HRT-05** | Hybrid turn 审计 JSONL | ✅ | HRT-04 | 每 turn 写结构化行；含 run_id/marker/duration/result | pytest + 读 jsonl |
 | **HRT-06** | `GET /api/runs/{id}/debug` | ✅ | HRT-05 | 返回 status、末 N 条 terminal_logs、最近 audit 行 | pytest API |
 | **HRT-07** | 诊断导出（UI 或 CLI script） | ✅ | HRT-06 | 一键导出 run 摘要（无密钥） | `./scripts/export-run-debug.sh` |
-| **HRT-08** | 多 session 并发治理 | ❌ | HRT-04 | 池满/全 BUSY 时 UI 提示；非 silent Thinking | pytest + 双 session 手动 |
+| **HRT-08** | 多 session 并发治理 | 🔄 待 commit | HRT-04 | 池满/全 BUSY 时 UI 提示；非 silent Thinking | pytest + 双 session 手动 |
 | **HRT-09** | 后台 turn 完成 hydrate | ❌ | HRT-08 | 切 session 后回来可见已完成回复 | 手动：A 发送 → 切 B → 回 A |
 | **HRT-10** | POC 验收 #6 #10 自动化 | ❌ | HRT-08 | BUSY 拒绝/排队；两 run_id cwd 隔离 | pytest 或 poc 脚本 |
 

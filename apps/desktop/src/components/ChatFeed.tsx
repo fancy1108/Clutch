@@ -216,6 +216,7 @@ interface ChatFeedProps {
   skills?: ScannedSkill[];
   permissionMode?: PermissionMode;
   onPermissionModeChange?: (mode: PermissionMode) => void;
+  shellSessionStatus?: string;
   userAvatar?: string;
   userName?: string;
 }
@@ -563,6 +564,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   skills = [],
   permissionMode = 'ask',
   onPermissionModeChange,
+  shellSessionStatus,
   userAvatar,
   userName = 'User',
 }) => {
@@ -1014,6 +1016,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
               skills={skills}
               permissionMode={permissionMode}
               onPermissionModeChange={onPermissionModeChange ?? (() => {})}
+              shellSessionStatus={shellSessionStatus}
             />
           </div>
         )}

@@ -72,6 +72,22 @@ def test_append_and_read_audit_line(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     assert missing == []
 
 
+def test_append_hybrid_rejection_audit(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from src.hybrid_audit_log import append_hybrid_rejection_audit
+
+    monkeypatch.setenv("CLUTCH_STORAGE_DIR", str(tmp_path))
+    append_hybrid_rejection_audit(
+        run_id="run_reject",
+        reason="pool_full",
+        message="All Hybrid shell sessions are busy.",
+    )
+    lines = read_hybrid_audit_lines(run_id="run_reject", audit_dir=get_hybrid_audit_dir())
+    assert len(lines) == 1
+    assert lines[0]["result"] == "rejected"
+    assert lines[0]["source"] == "orchestrator"
+    assert lines[0]["level"] == "warn"
+
+
 def test_read_hybrid_audit_lines_respects_limit(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("CLUTCH_STORAGE_DIR", str(tmp_path))
     audit_dir = get_hybrid_audit_dir()

@@ -471,9 +471,10 @@ def _commit_run_state(run_id: str, state: ClutchState) -> ClutchState:
 
 def _merge_patch(state: ClutchState, patch: dict[str, Any]) -> ClutchState:
     merged = deepcopy(state)
+    optional_keys = frozenset({"hybrid_executions", "shell_session_status"})
     for key, value in patch.items():
-        if key in merged:
-            merged[key] = value  # type: ignore[literal-required]
+        if key in merged or key in optional_keys:
+            merged[key] = value  # type: ignore[literal-required, index]
     return merged
 
 
@@ -927,6 +928,8 @@ async def _llm_chat_reply(
     cwd = workspace.get("workspace_path") if workspace else None
     llm_only_logs: list[str] = []
 
+    from src.hybrid_concurrency import HybridPlainChatRejected
+
     try:
         if mcp_resume or (agent and _uses_configured_llm(agent)):
             from src.mcp_pending import get_approved_mcp_keys
@@ -1046,6 +1049,8 @@ async def _llm_chat_reply(
             result.output_events,
             result.shell_recovered,
         )
+    except HybridPlainChatRejected:
+        raise
     except Exception as exc:
         from src.agent_type import agent_type_from_record
 
@@ -1229,6 +1234,41 @@ async def _handle_plain_chat_mcp_decision(
     return state
 
 
+async def _apply_hybrid_plain_chat_rejection(
+    websocket: WebSocket,
+    run_id: str,
+    state: ClutchState,
+    *,
+    code: str,
+    keep_running: bool = False,
+) -> ClutchState:
+    from src.hybrid_audit_log import append_hybrid_rejection_audit
+    from src.hybrid_concurrency import hybrid_rejection_message, shell_session_status_for_rejection
+    from src.runtime_config import runtime_mode
+
+    user_text = hybrid_rejection_message(code)
+    log_line = f"[HYBRID] rejected ({code}): {user_text}"
+    append_hybrid_rejection_audit(run_id=run_id, reason=code, message=user_text)
+
+    supervisor = _chat_message("Supervisor", user_text)
+    logs = list(state["terminal_logs"]) + [stamp_log_line(log_line)]
+    patch: dict[str, Any] = {
+        "messages": list(state["messages"]) + [supervisor],
+        "terminal_logs": logs,
+    }
+    if runtime_mode() == "hybrid":
+        patch["shell_session_status"] = shell_session_status_for_rejection(code)
+    if not keep_running:
+        patch["status"] = "idle"
+    state = _merge_patch(state, patch)
+    _commit_run_state(run_id, state)
+    _touch_session(run_id, status=state["status"])
+    await _send_message_event(websocket, run_id, supervisor, "")
+    await _send_log_event(websocket, run_id, log_line, node_id="")
+    await _notify_run_state(websocket, run_id, state, patch)
+    return state
+
+
 async def _handle_plain_chat(
     websocket: WebSocket,
     run_id: str,
@@ -1238,10 +1278,20 @@ async def _handle_plain_chat(
     session_model_id: str | None = None,
 ) -> ClutchState:
     from src.agent_storage import BUILTIN_AGENT_ID, get_agent_by_id
+    from src.runtime_config import runtime_mode
 
     resolved_id = (agent_id or "").strip() or BUILTIN_AGENT_ID
     agent = get_agent_by_id(resolved_id)
     active_agent = str(agent.get("name", "Clutch Agent")) if agent else "Clutch Agent"
+
+    if state["status"] == "running" and runtime_mode() == "hybrid":
+        return await _apply_hybrid_plain_chat_rejection(
+            websocket,
+            run_id,
+            state,
+            code="run_in_progress",
+            keep_running=True,
+        )
 
     user_message = _chat_message("User", text, msg_id=f"user_{uuid.uuid4().hex[:8]}")
     user_patch = {
@@ -1275,25 +1325,36 @@ async def _handle_plain_chat(
         _commit_run_state(run_id, state)
         await _notify_run_state(websocket, run_id, state, {"terminal_logs": logs})
 
-    (
-        model_name,
-        runtime_engine,
-        reply_text,
-        route_logs,
-        cli_session_id,
-        mcp_pause,
-        files_changed,
-        raw_output,
-        output_events,
-        shell_recovered,
-    ) = await _llm_chat_reply(
-        state,
-        text,
-        agent_id=resolved_id,
-        session_model_id=session_model_id,
-        cli_session_id=stored_session_id,
-        emit_log=emit_log,
-    )
+    from src.hybrid_concurrency import HybridPlainChatRejected
+
+    try:
+        (
+            model_name,
+            runtime_engine,
+            reply_text,
+            route_logs,
+            cli_session_id,
+            mcp_pause,
+            files_changed,
+            raw_output,
+            output_events,
+            shell_recovered,
+        ) = await _llm_chat_reply(
+            state,
+            text,
+            agent_id=resolved_id,
+            session_model_id=session_model_id,
+            cli_session_id=stored_session_id,
+            emit_log=emit_log,
+        )
+    except HybridPlainChatRejected as exc:
+        return await _apply_hybrid_plain_chat_rejection(
+            websocket,
+            run_id,
+            state,
+            code=exc.code,
+            keep_running=False,
+        )
 
     if mcp_pause:
         from src.mcp_pending import McpPendingApproval, store_pending

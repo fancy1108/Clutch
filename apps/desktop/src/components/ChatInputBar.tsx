@@ -45,6 +45,7 @@ interface ChatInputBarProps {
   skills?: ScannedSkill[];
   permissionMode: PermissionMode;
   onPermissionModeChange: (mode: PermissionMode) => void;
+  shellSessionStatus?: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -59,6 +60,28 @@ function fileIcon(kind: Attachment['kind']): string {
   if (kind === 'image') return 'image';
   if (kind === 'folder') return 'folder';
   return 'description';
+}
+
+function hybridRejectionNotice(status: string | undefined, lang: 'en' | 'zh'): string | null {
+  if (!status?.startsWith('rejected_')) return null;
+  const code = status.slice('rejected_'.length);
+  const messages: Record<string, { en: string; zh: string }> = {
+    run_in_progress: {
+      en: 'A message is already processing in this chat. Wait or press Stop.',
+      zh: '此会话已有消息正在处理。请等待或点击 Stop。',
+    },
+    session_busy: {
+      en: 'Hybrid shell is busy for this chat. Wait or press Stop.',
+      zh: '此会话 Hybrid shell 忙碌中。请等待或点击 Stop。',
+    },
+    pool_full: {
+      en: 'All Hybrid shell sessions are busy. Try again when another chat finishes.',
+      zh: '所有 Hybrid shell 会话均在忙碌。请待其他会话完成后再试。',
+    },
+  };
+  const entry = messages[code];
+  if (!entry) return null;
+  return lang === 'zh' ? entry.zh : entry.en;
 }
 
 function flattenFileTree(nodes: FileTreeNode[], prefix = ''): string[] {
@@ -128,8 +151,9 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
   skills = [],
   permissionMode,
   onPermissionModeChange,
+  shellSessionStatus,
 }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -398,6 +422,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
 
   const canSend = (inputValue.trim().length > 0 || attachments.length > 0) && !(isRunning && isPlainLlmChat);
   const currentPermission = PERMISSION_MODES.find((m) => m.id === permissionMode) ?? PERMISSION_MODES[0];
+  const hybridNotice = hybridRejectionNotice(shellSessionStatus, language === 'zh' ? 'zh' : 'en');
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
@@ -413,6 +438,11 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
+      {hybridNotice ? (
+        <div className="px-3 py-2 text-[11px] leading-snug text-amber-900 bg-amber-50 border-b border-amber-200/80 rounded-t-xl">
+          {hybridNotice}
+        </div>
+      ) : null}
       {/* Hidden native file input */}
       <input
         ref={fileInputRef}

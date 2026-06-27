@@ -1119,6 +1119,7 @@ function MainLayout() {
                 skills={chatSkills}
                 permissionMode={permissionMode}
                 onPermissionModeChange={handlePermissionModeChange}
+                shellSessionStatus={clutchState.shell_session_status}
                 userAvatar={userAvatar}
                 userName={userName}
               />

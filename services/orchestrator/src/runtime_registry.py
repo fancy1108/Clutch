@@ -36,6 +36,11 @@ def try_shell_exec_hybrid(
         try:
             return hybrid_route()
         except Exception as exc:
+            from src.hybrid_concurrency import hybrid_rejection_for_exception
+
+            rejection = hybrid_rejection_for_exception(exc)
+            if rejection is not None:
+                raise rejection
             emit_log(
                 logs,
                 on_log,
