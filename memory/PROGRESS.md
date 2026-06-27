@@ -3,14 +3,14 @@
 ## 当前状态
 
 - 阶段：**持久化会话特定偏好与加载动效去动画已交付**
-- Git HEAD：`7922e8d`
+- Git HEAD：`8a03c61`
 - **阶段：** D25 ShellSession Step 3~5 核心已交付（默认 `legacy`）
 - **你验收时跳过：** MCP hybrid_executions · 2h 长测
 
 ## 2026-06-27 会话（会话特定偏好持久化与加载动效去动画）
 
 - **完成：**
-  - **加载动效去动画：** 移除了 `ChatFeed.tsx` 在 AI 思考状态 (`showThinking`) 时头像位置的 `progress_activity` 旋转加载动画；实现当活跃 Agent 拥有头像时展示其静态头像，无头像时展示静态的机器人/用户图标，使得加载动效仅集中于对话框内的打字脉冲动画。
+  - **加载动效去动画：** 移除了 `ChatFeed.tsx` 在 AI 思考状态 (`showThinking`) 时头像位置的 `progress_activity` 旋转加载动画；实现当活跃 Agent 拥有头像时展示其静态头像，无头像时展示静态的机器人/用户图标，使得加载动效仅集中于对话框内的打字脉冲动画。**同时，将加载中与加载完成的头像规则完全对齐（如非内置角色统一使用 `smart_toy` 灰色机器人头，避免加载中和加载后头像闪烁/不一致）。**
   - **会话偏好持久化：** 在 `App.tsx` 中使用 `localStorage` 按 `sessionRunId` 对当前会话的选择（包括所选模式 `isMultiAgent`、所选 Flow `selectedWorkflowId` 与所选 Agent `selectedAgentId`）进行自动存储。并在切换会话时优先进行恢复。
   - **工作流名称解析：** 优化了 `clutchState.workflow_id` 在 `App.tsx` 中变更时的名称解析，自动从 `footerWorkflows` 映射匹配获取人类可读的工作流展示名。
   - **软件版本动态获取：** 移除了右下角写死的 `Clutch v0.0.0` 版本文本，使用 Tauri 的 `getVersion` API 在桌面环境下动态获取当前应用程序的版本号，对于非 Tauri 浏览器环境安全降级为 `0.0.0`。

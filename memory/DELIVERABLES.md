@@ -29,11 +29,11 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ### CHAT-FEED-PREFERENCE-AND-AVATAR-POLISH ✅
 - **日期：** 2026-06-27
-- **Commit：** `7922e8d` — `feat: read tauri app version dynamically using getVersion` (前序 `9cba3b2`)
+- **Commit：** `8a03c61` — `feat: simplify thinking avatar resolution to align exactly with completed messages` (前序 `7922e8d`, `9cba3b2`)
 - **Verification：** `./scripts/verify.sh` → 349 pytest + 13 vitest + build + doc-drift passed ✅
 - **证据：** `—`（门禁已覆盖）
 - **交付文件：**
-  - `apps/desktop/src/App.tsx` — 引入 `BUILTIN_AGENT_AVATARS` 常量，计算 `chatActiveAgentAvatar` 并传入 `<ChatFeed>`；在 `handleSelectSession` 中读取并在切换会话时恢复所选的模式、Flow 和 Agent；添加 `useEffect` 将选择实时持久化到 `localStorage` 中；优化 `clutchState.workflow_id` effect 来解析人类可读 of workflow 名称；使用 Tauri 的 `getVersion` API 动态获取版本号（浏览器降级为 `0.0.0`）。
+  - `apps/desktop/src/App.tsx` — 引入 `BUILTIN_AGENT_AVATARS` 常量，计算 `chatActiveAgentAvatar` 并传入 `<ChatFeed>`；在 `handleSelectSession` 中读取并在切换会话时恢复所选的模式、Flow 和 Agent；添加 `useEffect` 将选择实时持久化到 `localStorage` 中；优化 `clutchState.workflow_id` effect 来解析人类可读 of workflow 名称；使用 Tauri 的 `getVersion` API 动态获取版本号（浏览器降级为 `0.0.0`）。将 `chatActiveAgentAvatar` 简化为仅从内置角色映射，使加载中和加载后的头像保持完全一致（例如 custom agent 统一显示灰色智能机器人图标 `smart_toy`，而非显示临时生成的 Dicebear 头像）。
   - `apps/desktop/src/components/ChatFeed.tsx` — 添加 `activeAgentAvatar` 并用于 `showThinking` 加载状态渲染，移除了 avatar 头像位置 of `progress_activity` 旋转动画，显示静态头像（或机器人 fallback 图标），使得加载动画仅在右侧消息气泡中的三点打字脉冲中显示。
 
 ### D25-HYBRID-STEP2 ✅
