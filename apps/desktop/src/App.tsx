@@ -49,6 +49,8 @@ import { fetchPermissionMode, savePermissionMode, type PermissionMode } from './
 import { fetchSkillsRegistry, type ScannedSkill } from './services/skillsApi';
 import { BTN_GHOST, BTN_PRIMARY } from './components/ui/buttonStyles';
 import { LegacyIcon } from './components/ui/LegacyIcon';
+import { isTauri } from '@tauri-apps/api/core';
+import { getVersion } from '@tauri-apps/api/app';
 
 const BUILTIN_AGENT_AVATARS: Record<string, string> = {
   Orchestrator: "https://lh3.googleusercontent.com/aida-public/AB6AXuA0yGh59QNLj5n0igNxMgu4lgaiNqZpcN29SpWM0JHNlAuFmOBx-Id67Zcd2NDCNBjBKrcffQrdrfoe-3XaSlveekLAP9SRis93uTk7XPPFO5y4Swos7NvATw6n7eZEm7nfAQuTiMAoWRSnxefAOJugUbZx3fCTNv4jGyjvT-UZznwKzp_HoXuStup_0juhBCZYamrV0Coil-k27d9Yi7il6NabIEG0FfbxwL5V5azpfZQOlBfpaganta2kP7n59BKPHd4K2uTOfZ5p",
@@ -60,6 +62,15 @@ const BUILTIN_AGENT_AVATARS: Record<string, string> = {
 function MainLayout() {
   const { t } = useLanguage();
   const { state: clutchState } = useClutchState();
+  const [appVersion, setAppVersion] = useState<string>('0.0.0');
+
+  useEffect(() => {
+    if (isTauri()) {
+      getVersion()
+        .then((v) => setAppVersion(v))
+        .catch((err) => console.warn('[Clutch] Failed to fetch app version:', err));
+    }
+  }, []);
 
   const [sessionRunId, setSessionRunId] = useState(() => createSessionRunId());
 
@@ -1400,7 +1411,7 @@ function MainLayout() {
         </div>
 
         <div className="font-semibold text-on-surface-variant/70 italic mr-2 select-text">
-          Clutch v0.0.0
+          Clutch v{appVersion}
         </div>
       {promptModal && (
         <PromptModal
