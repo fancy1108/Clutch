@@ -173,6 +173,30 @@
 
 ---
 
+## D25 · Hybrid Runtime（HRT-xx）
+
+> **权威 Task 表与验收清单**：[`hybrid-runtime-plan.md`](./hybrid-runtime-plan.md)  
+> **决策**：D25 · D27 · D28 — [`memory/DECISIONS.md`](../../memory/DECISIONS.md)  
+> **ROADMAP 勾选**：[`memory/ROADMAP.md`](../../memory/ROADMAP.md) §D25
+
+| ID | 任务 | 完成标准 | Verification |
+|----|------|----------|--------------|
+| HRT-00 | 计划与文档对齐 | hybrid-runtime-plan + memory/specs 同步 | `check-doc-drift.sh` |
+| HRT-01 | 基础聊天气泡 + idle | §3.1 A–D；无 shell/snapshot 泄漏 | 人工 + pytest |
+| HRT-02 | Marker 完成检测 | 真实 turn 不 600s 超时 | pytest + 本地 claude turn |
+| HRT-03 | Snapshot 仅断线注入 | 续轮无 Task summary 行 | pytest |
+| HRT-04 | **单 session 产品验收** | ROADMAP §D25 勾选 A–E | `runs/verification/*-hrt-04*` |
+| HRT-05 | Hybrid audit JSONL | 每 turn 结构化行 | pytest |
+| HRT-06 | debug API | `GET /api/runs/{id}/debug` | pytest |
+| HRT-07 | 诊断导出 | UI 或 script | 手动 |
+| HRT-08 | 多 session 并发治理 | 超限 UI 提示 | pytest + 手动 |
+| HRT-09 | 后台 turn hydrate | 切 session 后状态正确 | 手动 |
+| HRT-10 | POC #6 #10 | BUSY 拒绝；两 run cwd 隔离 | pytest / poc |
+
+已交付代码块（非 HRT 序号）：**HRT-S1 ~ S4**、**HRT-S5-partial** — 见 hybrid-runtime-plan §1.1。
+
+---
+
 ## Prototype → Task 映射（`apps/desktop/src`）
 
 > **UI 已存在、去 mock 化任务见下表。** 完整组件职责叙事见 [`docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md) §7。
@@ -211,7 +235,7 @@
 
 | 维护什么 | 文件 |
 |----------|------|
-| 任务定义 | 本文件 |
+| 任务定义 | 本文件 + [`hybrid-runtime-plan.md`](./hybrid-runtime-plan.md)（D25 HRT） |
 | Task 交付索引 | `memory/DELIVERABLES.md` |
 | 功能验收 ❌/✅ | `memory/ROADMAP.md` |
 | 文件路径 | `memory/FILEMAP.md` |

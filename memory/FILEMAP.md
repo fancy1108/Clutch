@@ -35,6 +35,7 @@
 | 产品需求历史 | `specs/core/proposal.md` |
 | 视觉设计快照 | `specs/core/design.md` → `UI_UX_GUIDELINES.md` |
 | 开发任务清单（含 Verification） | `specs/core/tasks.md` |
+| **D25 Hybrid Runtime Task（HRT）** | **`specs/core/hybrid-runtime-plan.md`** |
 | Flow 多 Agent 接力 Task（D23） | `specs/core/tasks.md` §M3-F · Flow 多 Agent 接力 |
 | Prototype → Task 全量映射 | `specs/core/tasks.md` §Prototype → Task 映射 |
 | 待建 pytest 与 task 映射 | `specs/core/tasks.md` §待建 pytest 文件 |
@@ -43,6 +44,7 @@
 | 候选优化需求池（未立项） | `memory/BACKLOG.md` |
 | Orchestrator 主控能力调研（参考） | `docs/research/orchestrator-optimization-pool.md` |
 | CLI PTY Session 改造方案（参考） | `docs/research/pty-session.md` |
+| **D25 Hybrid 执行状态（权威）** | **`specs/core/hybrid-runtime-plan.md`** · D27 命名对齐 |
 | PTY Session Step 0 实验 | `experiments/pty_poc/` |
 | Task 交付索引（Commit / 证据） | `memory/DELIVERABLES.md` |
 | 决策与开放问题 | `memory/DECISIONS.md` |

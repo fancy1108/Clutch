@@ -25,6 +25,23 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ---
 
+## 已交付（文档 / 计划 · 无代码 commit）
+
+### HRT-00 🔄 计划与文档对齐
+- **日期：** 2026-06-27
+- **Commit：** （待人类确认后 commit 文档批次）
+- **Verification：** `./scripts/check-doc-drift.sh` → 待跑
+- **证据：** —
+- **交付文件：**
+  - `specs/core/hybrid-runtime-plan.md` — D25 权威 HRT Task 表 + 验收 + 文档矩阵
+  - `specs/core/tasks.md` — §D25 HRT 索引
+  - `memory/ROADMAP.md` — §D25 Hybrid + 人工验收勾选
+  - `memory/DECISIONS.md` — D27 命名拆分 · D28 审计 · Q-HRT-1/2
+  - `memory/PROGRESS.md` — HRT 进度快照 + 下次优先
+  - `memory/FILEMAP.md` · `memory/BACKLOG.md` · `docs/document-governance.md` · `AGENTS.md` · `docs/research/pty-session.md` — 交叉引用
+
+---
+
 ## 已交付（代码 Task · 自 Git 回填）
 
 ### CHAT-FEED-PREFERENCE-AND-AVATAR-POLISH ✅

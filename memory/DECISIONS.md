@@ -269,7 +269,35 @@
   5. **Context Continuity**（§2.6）：工作环境 vs AI 记忆分离；`SessionSnapshot` + 换班机制排 **Step 3**。
   6. **上线安全**（§1.4）：`runtime.mode` 默认 `legacy`；Hybrid Beta + 单轮自动降级；Step 1 仅 Plain Chat + `claude-cli`。
 - **影响**：`docs/research/pty-session.md` v5；Step 1 `ShellSessionManager`；Step 3 `SessionSnapshot` / 继续工作。
-- **决策状态**：`已决策`（文档 + Step 0 证据；Sidecar 编码待 Step 1）
+- **决策状态**：`已决策`（文档 + Step 0 证据；Sidecar Step 1–4 代码已落地；**产品验收见 HRT-04**）
+
+### D27 · Hybrid Step 5 命名与范围拆分（2026-06-27）
+
+- **背景**：`pty-session.md` §Step 5 含「多 run 并发 + 操作日志审计 + 池化」；`PROGRESS.md` 曾将「池上限 + Snapshot prune」标为 Step 5，易造成「Step 5 已完成」误解。
+- **方案**：
+  1. **HRT-S5-partial**（已落地）：`CLUTCH_SHELL_MAX_SESSIONS`、`CLUTCH_SHELL_SNAPSHOT_MAX_AGE_DAYS`。
+  2. **HRT-05 ~ HRT-10**（未落地）：审计 JSONL、debug API、多 session 治理、POC #6/#10 — 权威 Task 表见 [`specs/core/hybrid-runtime-plan.md`](../specs/core/hybrid-runtime-plan.md)。
+  3. `pty-session.md` Step 5 保留设计叙事；执行状态以 HRT 表为准。
+- **影响**：`memory/ROADMAP.md` · `memory/PROGRESS.md` · `specs/core/hybrid-runtime-plan.md`。
+- **决策状态**：`已落地`（文档）
+
+### D28 · Hybrid 可排查性：审计日志与 debug API（2026-06-27）
+
+- **背景**：Hybrid 验收依赖用户截图 Terminal；`terminal_logs` 虽持久化于 `states/{run_id}.json`，但无结构化 turn 审计、无按 run 查询 API、无导出路径。`pty-session.md` §2.4.2 要求操作日志必含 `run_id` / `source` 等字段。
+- **方案**：
+  1. **HRT-05**：每 hybrid turn 追加 JSONL 行（`logs/hybrid/{date}.jsonl`）— marker、duration_ms、result、cli_session_id。
+  2. **HRT-06**：`GET /api/runs/{run_id}/debug` — status、末 N 条 terminal_logs、最近 audit 行。
+  3. **HRT-07**：UI「导出诊断」或 `scripts/export-run-debug.sh`（不含密钥）。
+  4. turn 失败/超时须写 audit + 尽量恢复 `status: idle`（与 HRT-01 一并验收）。
+- **影响**：`shell_exec_runtime.py` · `main.py` · 可选 `ChatFeed` / Settings。
+- **决策状态**：`可执行`（Task HRT-05~07；依赖 HRT-04 基础验收）
+
+## 开放问题
+
+| ID | 问题 | 选项 | 默认 |
+|----|------|------|------|
+| Q-HRT-1 | 多 session 并发策略 | A) 全 run 串行队列 B) 同 workspace 串行 C) 拒绝+提示（pty §2.1） | **C**（与 POC 一致）直至 HRT-08 立项 |
+| Q-HRT-2 | 诊断导出形态 | A) 仅 API B) API + 桌面「复制诊断」按钮 | **B**（HRT-07） |
 
 ### D26 · 用户自定义头像替换与存储（2026-06-27）
 
@@ -280,7 +308,3 @@
   3. **头像分发与广播**：应用启动时在 `App.tsx` 中 hydrate 并通过 state 分发到 chat bubble 以及 settings UI。
 - **影响**：`preferences_storage.py`，`main.py` 偏好端点，前端 `clutchState` / `SystemPreferencesModal`。
 - **决策状态**：`已落地`
-
-## 开放问题
-
-（暂无 — 原 Q1–Q4 已于 2026-06-22 关闭，见 D3–D6。）

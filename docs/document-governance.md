@@ -27,6 +27,7 @@
 | 产品目标、MVP、Non-Goals（历史） | [`specs/core/proposal.md`](./specs/core/proposal.md) | 仅作快照，不随演进更新 |
 | 视觉规范 | `specs/core/design.md` | 第 4–5 步 |
 | 开发任务清单 | `specs/core/tasks.md` | 第 6 步 |
+| D25 Hybrid Runtime 执行计划 | `specs/core/hybrid-runtime-plan.md` | D25 Task（HRT-xx） |
 | 当前进度、下次做什么 | `memory/PROGRESS.md` | 每个 Agent 会话结束 |
 | 踩坑记录 | `memory/FAILURES.md` | 卡壳 >10 分钟或回滚时 |
 | 架构决策与开放问题 | `memory/DECISIONS.md` | 做技术选型或待决事项时 |

@@ -4,7 +4,16 @@
 > 调研全文（分派流程图、`dispatch` 字段）见 [`docs/research/orchestrator-optimization-pool.md`](../docs/research/orchestrator-optimization-pool.md) §7。  
 > **升格路径：** 候选 → `DECISIONS.md` §开放问题（待拍板）→ Dxx 决策 → `specs/core/tasks.md` + `ROADMAP.md`。
 
-## 主控分派策略（产品共识 · 未立项）
+## 已升格 → D25 HRT（勿重复立项）
+
+| 原候选方向 | HRT ID | 决策 |
+|------------|--------|------|
+| Hybrid 操作审计 / 按 run 排查 | HRT-05 ~ HRT-07 | D28 |
+| 多 session 并发 / 池满提示 | HRT-08 ~ HRT-10 | D27 · Q-HRT-1 |
+
+权威 Task 表：[`specs/core/hybrid-runtime-plan.md`](../specs/core/hybrid-runtime-plan.md)
+
+---
 
 主控 **只调度、不干活**；**不让人选 Flow / Agent**。分派终态三种：
 

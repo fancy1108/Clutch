@@ -900,6 +900,9 @@ POC 通过后：多 `run_id` 并发、进程池上限、目录隔离、操作日
 
 ### Step 5 — 规模与治理（按排期）
 
+> **执行状态**：见 [`specs/core/hybrid-runtime-plan.md`](../../specs/core/hybrid-runtime-plan.md)（HRT-xx）。  
+> 已实现子集 = **HRT-S5-partial**（池上限 + Snapshot prune）；全文 Step 5 = **HRT-05 ~ HRT-10**（审计 + 并发 + POC #6/#10）。
+
 - 多 `run_id` 并发、ShellSession 池上限、操作日志审计
 - 跨天持久化策略（Snapshot 保留时长、磁盘占用）
 

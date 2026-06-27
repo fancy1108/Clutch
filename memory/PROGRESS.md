@@ -2,12 +2,32 @@
 
 ## 当前状态
 
-- 阶段：**持久化会话特定偏好与加载动效去动画已交付**
-- Git HEAD：`d6152f0`
-- **阶段：** D25 ShellSession Step 3~5 核心已交付（默认 `legacy`）
-- **你验收时跳过：** MCP hybrid_executions · 2h 长测
+- **阶段：** D25 Hybrid Runtime — **HRT-00 计划已对齐；HRT-01~03 代码待 commit；HRT-04 产品验收未过**
+- **Git HEAD：** `2809046`（文档/偏好）；Hybrid 修复含 `848ed7f` + 工作区未提交补丁
+- **权威 Task 表：** [`specs/core/hybrid-runtime-plan.md`](../specs/core/hybrid-runtime-plan.md)
+- **下次优先：** HRT-01~03 原子 commit → `./scripts/verify.sh` → 人类 HRT-04 验收
+- **验收期跳过：** MCP hybrid_executions 深度 UI · 2h/100+ 压测
+- **已知限制：** 多 session 并行 hybrid **未治理**（HRT-08）；验收期请串行
 
-## 2026-06-27 会话（会话特定偏好持久化与加载动效去动画）
+### HRT 进度快照
+
+| ID | 状态 | 说明 |
+|----|------|------|
+| HRT-00 | 🔄 | 本计划 + ROADMAP/DECISIONS/tasks/FILEMAP 同步 |
+| HRT-S1~S4 | ✅ 代码 | ShellSession · agy · Snapshot · runtime_registry |
+| HRT-S5-partial | ✅ 代码 | pool=8 · snapshot prune（≠ pty Step 5 全文） |
+| HRT-01 | ⚠️ | `848ed7f` + 未提交 parser/router 补丁 |
+| HRT-02~03 | ⚠️ | 同上（marker · snapshot 注入） |
+| HRT-04~10 | ❌ | 验收 / 审计 / 并发 |
+
+### 未 commit 工作（归属 HRT-01~03）
+
+- `claude_hybrid_output_parser.py` — marker+clutch$、过滤 snapshot 行
+- `shell_session.py` — `read_until_contains`（若已合入其他 commit 以 git 为准）
+- `engine_router.py` — context_prefix 仅 shell_recovered
+- `test_claude_hybrid_output_parser.py` — 单测
+
+## 2026-06-27 会话（HRT-00 计划与文档对齐）
 
 - **完成：**
   - **加载动效去动画：** 移除了 `ChatFeed.tsx` 在 AI 思考状态 (`showThinking`) 时头像位置的 `progress_activity` 旋转加载动画；实现当活跃 Agent 拥有头像时展示其静态头像，无头像时展示静态的机器人/用户图标，使得加载动效仅集中于对话框内的打字脉冲动画。**同时，将加载中与加载完成的头像规则完全对齐（如非内置角色统一使用 `smart_toy` 灰色机器人头，避免加载中和加载后头像闪烁/不一致）。**
