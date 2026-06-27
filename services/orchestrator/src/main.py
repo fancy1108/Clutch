@@ -2395,6 +2395,23 @@ async def get_run_state(run_id: str) -> dict[str, Any]:
     return {"run_id": run_id, "state": _serialize_clutch_state(state)}
 
 
+@app.get("/api/runs/{run_id}/debug")
+async def get_run_debug(
+    run_id: str,
+    logs_limit: int | None = None,
+    audit_limit: int | None = None,
+) -> dict[str, Any]:
+    from src.run_debug import build_run_debug_payload
+
+    state = _get_or_create_run(run_id)
+    return build_run_debug_payload(
+        run_id,
+        state,
+        logs_limit=logs_limit,
+        audit_limit=audit_limit,
+    )
+
+
 @app.delete("/api/runs/{run_id}")
 async def delete_run_endpoint(run_id: str) -> dict[str, str]:
     from src.run_history import delete_session

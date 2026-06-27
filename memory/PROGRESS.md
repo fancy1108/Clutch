@@ -2,10 +2,10 @@
 
 ## 当前状态
 
-- **阶段：** D25 Hybrid Runtime — **HRT-05 审计 JSONL 代码完成**（待 commit）；下一步 HRT-06
-- **Git HEAD：** `b664d48`（含 BACKLOG 决策更新）
+- **阶段：** D25 Hybrid Runtime — **HRT-06 debug API 待 commit**；下一步 HRT-07
+- **Git HEAD：** `70835ba`（HRT-05 已合入）
 - **权威 Task 表：** [`specs/core/hybrid-runtime-plan.md`](../specs/core/hybrid-runtime-plan.md)
-- **下次优先：** **HRT-06**（`GET /api/runs/{id}/debug`）→ HRT-07 → HRT-08~10（见 D29）
+- **下次优先：** **HRT-07**（诊断导出 script/UI）→ HRT-08~10（见 D29）
 - **验收期跳过：** MCP hybrid_executions 深度 UI · 2h/100+ 压测
 - **已知限制：** 多 session 并行 hybrid **未治理**（HRT-08）；验收期请串行
 
@@ -18,12 +18,13 @@
 | HRT-S5-partial | ✅ 代码 | pool=8 · snapshot prune（≠ pty Step 5 全文） |
 | HRT-01~03 | ✅ 代码 | marker · snapshot 注入 · parser 过滤 |
 | HRT-04 | ✅ | 用户验收 A–E 2026-06-27 |
-| HRT-05 | 🔄 代码 | `hybrid_audit_log.py` + shell_exec_runtime 集成 |
-| HRT-06~10 | ❌ | debug API / 并发 |
+| HRT-05 | ✅ | `70835ba` audit JSONL |
+| HRT-06 | 🔄 待 commit | debug API |
+| HRT-07~10 | ❌ | 导出 / 并发 |
 
 ### 未 commit 工作
 
-- **HRT-05**：`hybrid_audit_log.py` · `shell_exec_runtime.py` 审计集成 · 单测（10 passed）
+- **HRT-06**：`run_debug.py` · `GET /api/runs/{id}/debug` · `ShellSessionManager.debug_snapshot`
 
 ## 2026-06-27 会话（HRT-01~03 hybrid 修复 commit）
 

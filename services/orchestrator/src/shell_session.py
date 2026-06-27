@@ -293,6 +293,19 @@ class ShellSessionManager:
                 session.state = SessionState.IDLE
                 session.touch()
 
+    def debug_snapshot(self, run_id: str) -> dict[str, object] | None:
+        """Read-only shell session status for run debug API (HRT-06)."""
+        with self._lock:
+            session = self._sessions.get(run_id)
+            if session is None or session.state == SessionState.TERMINATED:
+                return None
+            return {
+                "state": session.state.value,
+                "workspace_path": session.workspace_path,
+                "owner_node_id": session.owner_node_id,
+                "alive": session.alive(),
+            }
+
     def release(self, run_id: str) -> None:
         with self._lock:
             session = self._sessions.pop(run_id, None)
