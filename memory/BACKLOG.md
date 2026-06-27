@@ -40,8 +40,8 @@
 | ID | 候选能力 | 优先级 | 参考 | 状态 | 升格条件 |
 |----|----------|--------|------|------|----------|
 | B-01 | 主控分派：理解需求 + 匹配 Flow + 精炼 `current_instruction` | P0 | Goose Recipe、LangGraph Supervisor | 候选 | 人类确认 + D14 决策；P2-07 |
-| B-16 | 无 Flow 时匹配单个 Agent（Agent Manager 池 + `single-agent-run` 迷你流） | P0 | Agent Manager、Goose Recipe | 候选 | 人类确认 + D14；P2-12 |
-| B-15 | 内置通用 Agent + `general-fallback.json` 只读工作流 | P0 | D10 边界、内置模板模式 | 候选 | 人类确认 + D14；P2-13 |
+| B-16 | 无 Flow 时匹配单个 Agent（Agent Manager 池 + `single-agent-run` 迷你流） | P0 | Agent Manager、Goose Recipe | 已否决 | 2026-06-27 彻底废除，已有明确的 Single/Multi Agent 模式分类 |
+| B-15 | 内置通用 Agent + `general-fallback.json` 只读工作流 | P0 | D10 边界、内置模板模式 | 已否决 | 2026-06-27 彻底废除，已有明确的 Single/Multi Agent 模式分类 |
 | B-04 | `agent_task` 按 tool 真执行（CLI / Cursor / MCP），非统一 `router.chat` | P0 | M3 CLI Adapter、ARCHITECTURE §6.4 | 候选（部分落地 `eaf2ea0`） | 人类确认 + 决策；P2-10 |
 
 ### 监督与成本（P1）
@@ -58,7 +58,7 @@
 | ID | 候选能力 | 优先级 | 参考 | 状态 | 升格条件 |
 |----|----------|--------|------|------|----------|
 | B-07 | Auto 模型路由（flash vs pro + thinking 档位） | P2 | DeepSeek TUI `--model auto` | 候选 | 人类确认 + 决策 |
-| B-08 | 子 Agent 并行 + git worktree 隔离 | P2 | Stoneforge、DeepSeek TUI RLM | 候选 | 人类确认 + 决策 |
+| B-08 | 子 Agent 并行 + git worktree 隔离（企业项目防改坏代码关键能力） | P2 | Stoneforge、DeepSeek TUI RLM | 候选 | 人类确认 + 决策 |
 | B-09 | Skills 按任务语义动态注入（非全量塞 prompt） | P2 | DeepSeek TUI `load_skill` | 候选 | P2-01 ✅ 后立项 |
 | B-12 | 工作区 `.clutch/AGENTS.md` 项目记忆 + Sidecar 扫描 | P2 | Reasonix `/init`、Goose Goosehints | 候选 | 人类确认 + 决策 |
 | B-13 | 编辑后 LSP diagnostics 回灌 Builder 下一轮 | P2 | DeepSeek TUI、OpenCode LSP | 候选 | 人类确认 + 决策 |
@@ -83,7 +83,7 @@
 
 | ID | 候选能力 | 优先级 | 参考 | 状态 | 升格条件 |
 |----|----------|--------|------|------|----------|
-| B-20 | **OS 级沙箱**：工作区外路径 / 网络边界（Linux bubblewrap、Windows sandbox） | P1 | Codex `linux-sandbox`、`windows-sandbox-rs` | 候选 | 人类确认 + 安全评审 |
+| B-20 | **OS 级沙箱**（需要深入调研的待定需求）：工作区外路径 / 网络边界（Linux bubblewrap、Windows sandbox） | P1 | Codex `linux-sandbox`、`windows-sandbox-rs` | 候选 | 人类确认 + 安全评审与详细技术调研 |
 | B-21 | **Exec policy**：命令模式 allow/deny/ask（`Bash(rm:*)`、`Edit(/src/**)` 等） | P1 | Codex `docs/execpolicy.md` | 候选 | 人类确认 + D22 决策 |
 | B-22 | **路径级工具权限**：按 glob 限制 read/write/edit/delete 目标路径 | P1 | Claude Code permissions、Codex FileSystemPermissions | 候选 | B-21 立项后拆分 |
 | B-23 | **apply_patch UI diff**：删除/更新前内容快照 + Terminal/Chat 红绿 diff 展示 | P1 | Codex `FileChange::Delete`、TUI `diff_render` | 候选 | D21 验收反馈后立项 |
