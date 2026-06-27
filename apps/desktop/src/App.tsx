@@ -50,6 +50,12 @@ import { fetchSkillsRegistry, type ScannedSkill } from './services/skillsApi';
 import { BTN_GHOST, BTN_PRIMARY } from './components/ui/buttonStyles';
 import { LegacyIcon } from './components/ui/LegacyIcon';
 
+const BUILTIN_AGENT_AVATARS: Record<string, string> = {
+  Orchestrator: "https://lh3.googleusercontent.com/aida-public/AB6AXuA0yGh59QNLj5n0igNxMgu4lgaiNqZpcN29SpWM0JHNlAuFmOBx-Id67Zcd2NDCNBjBKrcffQrdrfoe-3XaSlveekLAP9SRis93uTk7XPPFO5y4Swos7NvATw6n7eZEm7nfAQuTiMAoWRSnxefAOJugUbZx3fCTNv4jGyjvT-UZznwKzp_HoXuStup_0juhBCZYamrV0Coil-k27d9Yi7il6NabIEG0FfbxwL5V5azpfZQOlBfpaganta2kP7n59BKPHd4K2uTOfZ5p",
+  Builder: "https://lh3.googleusercontent.com/aida-public/AB6AXuBpRidttSGTIY-J-PGvnlcZX_oZSZoBXJY5vjZ9g1PKl_fq4EKoa2RXbcSCvvIdbPLdmfuzPKTxnR8TqV7skwsKlt-eKEzSzktv-TWbHu4c9uBEdP6Es_Fjek1EBQuGZeMtWsUi3fn0lyozFaZBLp9SpES3r0WalbqYY6gGiT1R_0J1kvU-D9rI_2q2f3sMGHuTjWyOZ5gImCLGHSGejtcKmToTSZYMrXfT_A5x1iw_f4q7WljP3FXjk64aQhLgh9nTXUDfPdkIzu0b",
+  Evaluator: "https://lh3.googleusercontent.com/aida-public/AB6AXuCmb7VGaQXE-4sYnIZR3VrcHVAPhv4Px14kMlkayJj8kVm8htTWITmPi26wsj8P6B9RrqykIWj81S2ilmGR0e8cXhA1gjc3U-Nw0DsgHV3HvVmBskuoUksIt6YM6Z3ORjFtRhBphqAXxRKf9ke-zYcPs0TcEFKxw_bwGXSDiAKV5CL7kZf9i6lSZDe91ccUNjaAIsgTMKEEvYc7bZpXYz3D5dClulRwbNru5SZB-1E5FM0A2qMPs-IAfiR8OB1-cUvFh3WYKx9qlGgN",
+  Supervisor: "",
+};
 
 function MainLayout() {
   const { t } = useLanguage();
@@ -255,6 +261,14 @@ function MainLayout() {
 
   useEffect(() => {
     if (configuredAgents.length === 0) return;
+    const sessionAgentId = localStorage.getItem(`clutch_session_agent_${sessionRunId}`);
+    if (sessionAgentId) {
+      const validSessionAgent = configuredAgents.some((agent) => agent.id === sessionAgentId);
+      if (validSessionAgent) {
+        setSelectedAgentId(sessionAgentId);
+        return;
+      }
+    }
     const storedId = localStorage.getItem('clutch_active_agent_id');
     const validStored = storedId && configuredAgents.some((agent) => agent.id === storedId);
     if (validStored) {
@@ -265,7 +279,7 @@ function MainLayout() {
     if (!hasWorkflow) {
       selectDefaultAgent();
     }
-  }, [configuredAgents, selectedWorkflowId, clutchState.workflow_id]);
+  }, [configuredAgents, selectedWorkflowId, clutchState.workflow_id, sessionRunId]);
 
   useEffect(() => {
     if (!isMultiAgent) {
@@ -278,6 +292,14 @@ function MainLayout() {
     const hasWorkflow = Boolean(selectedWorkflowId || clutchState.workflow_id);
     if (!hasWorkflow && !selectedAgentId) selectDefaultAgent();
   }, [isMultiAgent, selectedWorkflowId, selectedAgentId, clutchState.workflow_id]);
+
+  // Persist session-specific preferences
+  useEffect(() => {
+    if (!sessionRunId) return;
+    localStorage.setItem(`clutch_session_mode_${sessionRunId}`, isMultiAgent ? 'multi' : 'single');
+    localStorage.setItem(`clutch_session_flow_${sessionRunId}`, selectedWorkflowId || '');
+    localStorage.setItem(`clutch_session_agent_${sessionRunId}`, selectedAgentId || '');
+  }, [sessionRunId, isMultiAgent, selectedWorkflowId, selectedAgentId]);
 
   const handleActivateAgent = (agent: Agent) => {
     setSelectedAgentId(agent.id);
@@ -309,6 +331,10 @@ function MainLayout() {
     clutchState.workflow_id || selectedWorkflowId
       ? clutchState.active_agent || currentFlowName || selectedAgentName
       : selectedAgentName;
+  const chatActiveAgentAvatar =
+    configuredAgents.find(
+      (a) => getAgentDisplayName(a) === chatActiveAgentName || a.id === chatActiveAgentName
+    )?.avatar || BUILTIN_AGENT_AVATARS[chatActiveAgentName] || '';
   const customAgentEngineLabel =
     selectedAgent && !isClutchAgentType(selectedAgent)
       ? agentTypeLabel(agentTypeFromAgent(selectedAgent))
@@ -691,20 +717,50 @@ function MainLayout() {
     if (session.workspace_id && session.workspace_id !== activeWorkspaceId) {
       await handleSelectWorkspace(session.workspace_id);
     }
+    let hydratedState: ClutchState | null = null;
     try {
       const { state } = await fetchRunState(session.run_id);
+      hydratedState = state;
       clutchStore.setPendingHydrate(state);
     } catch (error) {
       console.warn('[Clutch] session state hydrate failed:', error);
     }
     setSessionRunId(session.run_id);
-    setCurrentFlowName(session.workflow_id || '');
-    setSelectedWorkflowId(session.workflow_id || null);
-    if (session.workflow_id) {
-      setSelectedAgentId(null);
+
+    const storedMode = localStorage.getItem(`clutch_session_mode_${session.run_id}`);
+    const storedFlowId = localStorage.getItem(`clutch_session_flow_${session.run_id}`);
+    const storedAgentId = localStorage.getItem(`clutch_session_agent_${session.run_id}`);
+
+    if (storedMode !== null) {
+      setIsMultiAgent(storedMode === 'multi');
     } else {
-      selectDefaultAgent();
+      setIsMultiAgent(Boolean(session.workflow_id));
     }
+
+    if (storedFlowId !== null) {
+      setSelectedWorkflowId(storedFlowId || null);
+      const matched = footerWorkflows.find((w) => w.id === storedFlowId);
+      setCurrentFlowName(matched ? matched.name : (storedFlowId || ''));
+    } else {
+      const matched = footerWorkflows.find((w) => w.id === session.workflow_id);
+      setCurrentFlowName(matched ? matched.name : (session.workflow_id || ''));
+      setSelectedWorkflowId(session.workflow_id || null);
+    }
+
+    if (storedAgentId !== null) {
+      setSelectedAgentId(storedAgentId || null);
+    } else {
+      const stateAgentId = hydratedState?.cli_session_agent_id || hydratedState?.claude_session_agent_id;
+      if (stateAgentId) {
+        setSelectedAgentId(stateAgentId);
+      } else if (session.workflow_id) {
+        setSelectedAgentId(null);
+      } else {
+        const storedGlobalAgentId = localStorage.getItem('clutch_active_agent_id');
+        setSelectedAgentId(storedGlobalAgentId || BUILTIN_AGENT_ID);
+      }
+    }
+
     setView('chat');
   };
 
@@ -860,9 +916,10 @@ function MainLayout() {
 
   useEffect(() => {
     if (clutchState.workflow_id) {
-      setCurrentFlowName(clutchState.workflow_id);
+      const matched = footerWorkflows.find((w) => w.id === clutchState.workflow_id);
+      setCurrentFlowName(matched ? matched.name : clutchState.workflow_id);
     }
-  }, [clutchState.workflow_id]);
+  }, [clutchState.workflow_id, footerWorkflows]);
 
   const currentThemeObj = THEME_PRESETS.find(t => t.id === themeId) || THEME_PRESETS[0];
   const themeVars = currentThemeObj.variables;
@@ -1038,6 +1095,7 @@ function MainLayout() {
                 activeWorkflowId={clutchState.workflow_id}
                 llmModelName={selectedModel}
                 activeAgentName={chatActiveAgentName}
+                activeAgentAvatar={chatActiveAgentAvatar}
                 engineHint={runtimeEngineHint}
                 workspaceFiles={workspaceFiles}
                 sessions={sessions}

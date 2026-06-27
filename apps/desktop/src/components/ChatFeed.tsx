@@ -208,6 +208,7 @@ interface ChatFeedProps {
   activeWorkflowId?: string;
   llmModelName?: string;
   activeAgentName?: string;
+  activeAgentAvatar?: string;
   engineHint?: string;
   // New props for ChatInputBar
   workspaceFiles?: FileTreeNode[];
@@ -554,6 +555,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   activeWorkflowId = '',
   llmModelName = '',
   activeAgentName = '',
+  activeAgentAvatar,
   engineHint = '',
   workspaceFiles = [],
   sessions = [],
@@ -857,7 +859,20 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
           <div className="w-full flex justify-start">
             <div className="flex gap-4 max-w-[85%] p-2 rounded-xl">
               <div className="w-9 h-9 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center bg-surface-container">
-                <LegacyIcon name="progress_activity" className="text-[18px] text-on-surface-variant/70" spin />
+                {activeAgentAvatar ? (
+                  <img className="w-full h-full object-cover" src={activeAgentAvatar} alt={activeAgentName || t('Clutch Agent')} />
+                ) : (
+                  <LegacyIcon
+                    name={
+                      activeAgentName === 'Supervisor'
+                        ? 'verified_user'
+                        : activeAgentName === 'System'
+                          ? 'info'
+                          : 'smart_toy'
+                    }
+                    className="text-[18px] text-on-surface-variant"
+                  />
+                )}
               </div>
 
               <div className="flex-1 space-y-1.5 overflow-hidden">
