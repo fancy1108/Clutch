@@ -73,134 +73,47 @@ graph TD
 
 ---
 
-## 3. 核心功能特性（按页面呈现）
+## 3. 核心功能特性（按页面与视图）
 
 本节所列特性为**当前项目前端与后端已完全实现并验证**的真实功能与系统架构，不包含任何模拟（Mock）数据：
 
-### 3.1 主工作台 - 单智能体对话页面 (Chat Workspace - Single Agent Page)
+### 3.1 Chat Workspace (主工作台对话与输入)
 
-用户在该页面与选定的单一 Agent 进行对话聊天，用于日常调试、问答和代码修改。
-
-```
-+--------------------------------------------------------------+
-| [Single Agent (Active)] [Multi-Agent]                        |
-|                                                              |
-| Model: [ Gemini Pro 1.5 ]  Agent: [ Clutch Agent ]           |
-| +----------------------------------------------------------+ |
-| | User (Fancy):                                            | |
-| |   Hello, can you help me write code?                     | |
-| |                                                          | |
-| | smart_toy SmartToy (Thinking...):                        | |
-| |   Sure, let me check the files in the workspace...       | |
-| +----------------------------------------------------------+ |
-| [ Enter message...                                      >] |
-+--------------------------------------------------------------+
-```
-
-* **对话引擎路由**：支持在 `clutch` (全局 LLM API)、`claude-cli` (Claude Code 本地 CLI)、`antigravity-cli` (Agy CLI) 和 `ollama-cli` 之间智能路由。
-* **CLI 会话逻辑持久化**：针对本地 CLI 引擎（`claude-cli` / `antigravity-cli`），前端切换 Agent 时会自动丢弃旧会话并重置，而切换会话时，后端通过持久化 `cli_session_id` 对 CLI 终端环境进行 `--resume` 重连恢复，节省重放 Token。
-* **思考状态头像对齐**：当 Agent 处于 Thinking 状态时，其头像与加载完成后的消息头像保持逻辑一致（内置 Agent 渲染定制头像，自定义 Agent 统一回退渲染静态灰色智能机器人 `smart_toy` 图标），消除加载状态前后的闪烁不一致。
+* **Single Agent Workspace**：支持绑定自定义 System Prompts 与大语言模型。底层的 `EngineRouter` 在 `clutch` (全局 LLM API)、`claude-cli` (Claude Code 本地 CLI)、`antigravity-cli` (Agy CLI) 与 `ollama-cli` 之间智能路由分流，并自动维持 CLI 引擎的逻辑 Session 恢复。Thinking 加载状态的头像与消息加载完成的静态头像保持逻辑一致。
+* **Multi-Agent Graph Workspace**：React Flow 画布可视化编排节点与连线，后台 Workflow Compiler 动态将其编译为 LangGraph 状态机。下游节点自动接收并注入上游的 `node_outputs`。工作流节点的激活状态、运行阶段与详细日志通过 WebSocket 增量 `state_patch` 实时推送到前端渲染。
+* **Rich Chat Input Bar & Attachments**：支持从剪贴板直接粘贴图片生成 Chip 缩略图预览；支持从右侧文件树拖拽文件/文件夹进入输入框作为附件；输入框内键入 `/` 触发已扫描 Skills 的指令联想，键入 `#` 触发历史会话引用联想；提供全局运行状态控制（Running 时展示 Stop 按钮，支持用户手动中止运行）；提供持久化的安全审批模式选择（Auto-approve, Ask-on-Write, Manual confirmation）。
+* **Observability Chat Feed**：支持对本地子进程 CLI（如 Claude Code CLI）敲击的所有终端命令及 stdout/stderr 输出进行行内展开卡片审计；聊天气泡中优雅地展示 Agent 专属标签、Boundary markers 和系统提示词 metadata。
 
 ---
 
-### 3.2 主工作台 - 多智能体画布与执行页面 (Chat Workspace - Multi-Agent Canvas Page)
+### 3.2 Observability Panel (右侧监督面板)
 
-用户在可视化的 React Flow 画布上拖拽节点、连接线，编排多 Agent 协作工作流。
-
-```
-+--------------------------------------------------------------+
-| [Single Agent] [Multi-Agent (Active)]                        |
-|                                                              |
-| Flow: [ Weather Vision ]  Node: [ Researcher ] (Running...)  |
-| +-------------------- Canvas Pane -------------------------+ |
-| |  [ Researcher ] ------( node_outputs )------> [ Artist ]  | |
-| +----------------------------------------------------------+ |
-| +-------------------- Chat & Log Pane ---------------------+ |
-| | Orchestrator (12:00): Initiating workflow weather_vision.| |
-| | Researcher (12:01): Gathering local weather data...      | |
-| +----------------------------------------------------------+ |
-+--------------------------------------------------------------+
-```
-
-* **React Flow 画布编排**：拖拽并定制 `agent_task` 节点的提示词、MCP 工具与模型，后端 Workflow Compiler 自动编译生成对应的 LangGraph 状态机。
-* **节点自动输入输出接力 (Handoff)**：工作流节点在激活时，会自动读取其所有上游节点的执行输出 `node_outputs`，作为上下文参数注入当前节点的输入，实现流水线式的协作流。
-* **动态状态同步**：画布节点运行状态（如 `idle`、`running`、`success`、`failed`）以及当前执行日志均通过 WebSocket 增量 `state_patch` 实时推送到前端高亮展示。
+* **Run Overview & Token Metrics**：实时追踪会话运行的元数据（工作流 ID、激活节点、绑定模型、当前状态）；展示步骤 checklist 列表高亮标记当前的 active 节点；可视化展示输入与输出的 Token 消耗占比进度条，并折算成真实的 USD 消费。
+* **File Tree Browser & Drag-and-Drop**：以树状结构实时呈现工作区的所有本地项目代码文件；支持双击快速在代码编辑器中打开文件；支持直接拖拽文件节点至聊天输入栏以引用文件。
+* **Multi-Agent Flow Viewer**：以可视化的流程图节点状态高亮呈现当前 LangGraph 运行图的进度轨迹。
+* **Code Diff Auditor**：列出本地工作区发生变化的所有修改文件；支持行内红绿代码 Diff 详情对比审计。
+* **Terminal Console Logs**：流式展示本地子进程（如 `claude-cli`）在底层执行的所有 stdout/stderr 日志流；提供一键清空日志按钮。
 
 ---
 
-### 3.3 主工作台 - 右侧监督面板 (Right-side Observability Panel)
+### 3.3 Human-in-the-Loop Dialog (人机门控审批浮窗)
 
-用于打破 AI 运行黑盒，为人类提供透明的安全监督指标。
-
-```
-+--------------------------------------------------------------+
-| [Overview]  [Terminal]  [Changes]  [Files]                   |
-| +-------------------- Changes (Code Diff) -----------------+ |
-| | src/main.py                                              | |
-| | - from src.i18n import tr                                | |
-| | + from src.preferences_storage import tr                 | |
-| +-------------------- Terminal Output ---------------------+ |
-| | [claude-cli] $ git diff                                  | |
-| | [claude-cli] Running tests... 357 passed.                | |
-| +----------------------------------------------------------+ |
-+--------------------------------------------------------------+
-```
-
-* **Terminal (命令行日志审计)**：通过实时监控后台子进程管道，流式输出本地 CLI（如 Claude Code CLI）在底层真正执行的所有控制台 stdout/stderr。
-* **Changes (文件 Diff 审计)**：实时监听本地工作区文件系统变化，高亮渲染当前被大模型编辑的文件的红绿代码行差异差异对比（Diff）。
-* **Files (文件树浏览器)**：实时渲染工作区的本地文件目录树，方便用户快速查看或定位项目产物。
+* **High-Risk Tool Interception**：Sidecar 的 `mcp_risk.py` 智能扫描 Agent 的工具调用参数。一旦涉及写入或删除等高风险磁盘操作（如 `apply_patch` 覆盖或删除代码），自动拦截并挂起图状态为 `human_required`。
+* **Gate Control Panel**：前端弹窗展示挂起的详情，支持用户 Approve 批准写入、Reject 拒绝步骤，或 Retry 填入反馈提示词重试。
 
 ---
 
-### 3.4 浮窗 - 人机协同门控审批卡片 (Human-in-the-Loop Gate Modal)
+### 3.4 Settings Dashboard (设置与配置中心)
 
-关键执行步骤或高风险操作的最终决策审批卡片。
-
-```
-+--------------------------------------------------------------+
-|                       ⚠️ 人工审批确认                         |
-|   Agent 准备执行以下高危工具调用：                           |
-|   MCP Tool: clutch-tools__apply_patch                        |
-|   Target: /Users/fancy/clutch/src/main.py                    |
-|                                                              |
-|     [ 批准执行 (Approve) ]     [ 拒绝 (Reject) ]             |
-|     [ 补充指令重试 (Retry) ]                                  |
-+--------------------------------------------------------------+
-```
-
-* **高风险行为拦截**：Sidecar 中的 `mcp_risk.py` 自动监测 Agent 的 MCP 工具调用。一旦涉及高风险的磁盘写入/删除（如 `apply_patch` 覆盖或删除代码），自动拦截并将图状态挂起为 `human_required`。
-* **人工决策干预**：在前端弹出的审批浮窗中，用户可以点击：
-  1. **Approve (批准)**：同意继续并直接对磁盘执行该动作。
-  2. **Reject (拒绝)**：拒绝该工具调用并终止当前步骤。
-  3. **Retry (补充重试)**：拒绝此输出，并在输入框中输入反馈指令，命令模型重新思考和编写。
-
----
-
-### 3.5 设置中心弹窗 (System Preferences Modal)
-
-系统全局参数偏好、外观主题与用户资料的管理面板。
-
-```
-+--------------------------------------------------------------+
-| 设置 (Preferences)                                            |
-| +------------+---------------------------------------------+ |
-| | 通用设置   | 个人头像: [ 预览 ] [更换照片] [恢复默认]     | |
-| | AI 工具箱  | 个人姓名: [ Fancy User                    ] | |
-| | 主题外观   | 界面语言: [ 中文 (简体) / Chinese       v ] | |
-| |            | 软件版本: Clutch v1.2.4 (MacOS)             | |
-| +------------+---------------------------------------------+ |
-+--------------------------------------------------------------+
-```
-
-* **通用设置 (General)**：
-  * 支持自定义 **个人展示名称** 并在 Chat Feed 的用户消息泡泡上展示。
-  * 支持上传 **用户自定义头像照片**（由前端读取并转换为 Base64 持久化，作为用户的消息发送头像）。
-  * 提供 **多语言 (i18n)** 切换下拉菜单（支持中英文界面，API 出错捕获与状态同步采用后端 `tr()` 响应）。
-  * 动态读取并展示 **真实桌面客户端版本号**（Tauri `getVersion` 插件 API，在浏览器中降级显示 `0.0.0`）。
-* **AI 工具箱 (AI Tools)**：
-  * 自动发现并在表格中列出本机中安装的 CLI 引擎（如 Claude, Agy, Aider 等）的绝对物理路径，支持用户开关「已连接」偏好。
-* **主题外观 (Themes)**：
-  * 提供 `pristine-light` (纯净明亮)、`nordic-frost` (北欧深海) 和 `amber-warm` (琥珀温暖) 等主题预设，支持一键切换。
+* **General Settings**：支持用户修改个人名称并应用在发送气泡标签中；支持上传自定义头像并转换为 base64 存盘；支持中英文双语对照切换，后端 API / WS 错误采用 `tr()` 响应；利用 Tauri `getVersion` 插件动态显示真实桌面客户端版本号。
+* **Agent Settings**：提供可视化 Agent 管理器（`AgentManager.tsx`），支持自由增删改自定义 Agent，配置其名称、头像、System Prompt、模型及关联 MCP 工具。
+* **Workflow Settings**：管理和选择可用的流程图 SOP 模板，支持一键在 Chat 中启用。
+* **Tool Settings**：自动扫描本机 `PATH` 检测已安装的 CLI 工具绝对路径（`claude`, `agy`, `aider`, `ollama`），支持物理“已连接”启用偏好配置。
+* **Model Provider Settings**：配置各种云端大模型与 Ollama API Keys 凭证（支持无感导入 `.cc-switch` 凭证）；支持对模型属性（Context Window, Temperature）进行精细注册与调整。
+* **Skills Settings**：自动扫描项目关联的 Skills，解析 `.md` 指引文件前缀的 YAML 元数据信息并呈现在表格中。
+* **MCP Server Settings**：支持注册、连接或拔除本地/远程的 Model Context Protocol 服务器。
+* **Appearance Settings**：提供一键在 Pristine Light、Nordic Frost 和 Amber Warm 主题间切换的设计面板。
+* **Session Memory**：使用 LocalStorage 后台自动记忆每个 sessionRunId 的工作流 ID、智能体 ID 以及单/多智能体模式切换状态，在切换会话时精准恢复。
 
 ---
 
@@ -217,7 +130,7 @@ graph TD
 ### 4.2 终端与沙箱权限规划 (Terminal & Sandboxing)
 * **长驻 PTY 终端交互**：支持运行需要键盘输入确认的交互式命令（如向标准输入 `stdin` 动态灌入确认字符），并支持保持类似于本地热更新服务器 (`pnpm dev`) 等长连接会话的后台挂起监控。
 * **细粒度命令审批策略**：支持用户配置规则，如对 `git` 提交直接无感放行，但对涉及编译执行或疑似敏感修改的指令保持“询问”状态。
-* **安全目录 Glob 限制与动态申请**：设定文件夹路径读写白名单（如仅允许 Agent 操作 `./src`，禁止访问系统盘），若超出边界则在前端弹出临时权限扩权申请。
+* **安全目录 Glob 限制与动态申请**：设定文件夹路径读写白名单（如仅允许 Agent操作 `./src`，禁止访问系统盘），若超出边界则在前端弹出临时权限扩权申请。
 * **OS 级虚拟沙箱隔离**：深入技术调研，通过容器或 OS 底层沙箱技术（如 Linux Bubblewrap / Windows 隔离 Sandbox）将 Agent 的物理子进程锁死，防范恶意命令破坏系统。
 
 ### 4.3 编排运行与成本性能规划 (Execution & Performance)
