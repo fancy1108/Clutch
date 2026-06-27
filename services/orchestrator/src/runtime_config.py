@@ -19,9 +19,11 @@ def runtime_mode() -> RuntimeMode:
 
 
 def hybrid_eligible(*, source: str, agent_type: str) -> bool:
-    """True when hybrid is enabled for Plain Chat + shell-exec CLI providers."""
-    return (
-        runtime_mode() == "hybrid"
-        and source == "plain_chat"
-        and agent_type in ("claude-cli", "antigravity-cli")
-    )
+    """True when hybrid shell-exec is enabled for the given dispatch source."""
+    if runtime_mode() != "hybrid":
+        return False
+    if agent_type == "claude-cli":
+        return source in ("plain_chat", "flow")
+    if agent_type == "antigravity-cli":
+        return source == "plain_chat"
+    return False

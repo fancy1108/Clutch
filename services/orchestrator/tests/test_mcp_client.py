@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+import time
 from pathlib import Path
 from src.mcp_client import McpClient
 
@@ -37,7 +38,12 @@ def test_mcp_client_lifecycle(tmp_path: Path) -> None:
     endpoint = f"{sys.executable} {script_path}"
     client = McpClient("mock-mcp", endpoint)
     assert client.start() is True
-    tools = client.list_tools()
+    tools: list[dict] = []
+    for _ in range(5):
+        tools = client.list_tools()
+        if tools:
+            break
+        time.sleep(0.05)
     assert len(tools) == 1
     assert tools[0]["name"] == "test_tool"
     call_res = client.call_tool("test_tool", {"arg1": "val1"})

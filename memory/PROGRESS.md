@@ -2,9 +2,9 @@
 
 ## 当前状态
 
-- **阶段：** D25 Hybrid Runtime — **§F 多 session 并发修复已验收**（对话5/6 通过）
-- **Git HEAD：** `c22bc30`
-- **下次优先：** 勾选 ROADMAP §F；可选 MCP hybrid_executions 深度 UI
+- **阶段：** D25 Hybrid Runtime — **Flow `claude-cli` Hybrid 已 commit，待人工验收**
+- **Git HEAD：** `919c4b0`
+- **下次优先：** Multi-Agent SOP 混合节点验收（Claude CLI → Clutch）；通过后更新 ROADMAP
 - **验收期跳过：** MCP hybrid_executions 深度 UI · 2h/100+ 压测
 
 ### HRT 进度快照

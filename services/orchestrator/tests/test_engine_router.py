@@ -263,6 +263,36 @@ def test_route_engine_antigravity_cli(monkeypatch) -> None:
     assert captured["prompt"] == "hello agy"
 
 
+def test_claude_hybrid_routes_from_flow_source(monkeypatch, mock_agents) -> None:
+    monkeypatch.setenv("CLUTCH_RUNTIME_MODE", "hybrid")
+    monkeypatch.setattr("src.engine_router.tool_available_for_routing", lambda _tool_id: True)
+    monkeypatch.setattr("src.engine_router.get_workspace", lambda: {"workspace_path": "/workspace"})
+
+    captured: dict[str, object] = {}
+
+    def fake_claude_hybrid(**kwargs: object) -> EngineResult:
+        captured.update(kwargs)
+        return EngineResult(
+            engine="Claude CLI (Hybrid)",
+            output="flow hybrid ok",
+            logs=["[HYBRID] flow claude"],
+            cli_session_id="sess-flow",
+        )
+
+    monkeypatch.setattr("src.engine_router._route_claude_hybrid", fake_claude_hybrid)
+
+    res = route_engine(
+        agent_name="Builder Module (JSX VibeCoder)",
+        prompt="hello hybrid flow",
+        run_id="run-flow-claude",
+        source="flow",
+        cli_session_id="sess-prev",
+    )
+    assert res.output == "flow hybrid ok"
+    assert captured["run_id"] == "run-flow-claude"
+    assert captured["cli_session_id"] == "sess-prev"
+
+
 def test_agy_hybrid_routes_to_shell_exec(monkeypatch) -> None:
     monkeypatch.setenv("CLUTCH_RUNTIME_MODE", "hybrid")
     monkeypatch.setattr(

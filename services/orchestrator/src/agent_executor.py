@@ -23,6 +23,35 @@ def _agent_display_name(agent_dict: dict[str, Any] | None, fallback: str) -> str
     return fallback
 
 
+def _agent_id_for_session(agent_dict: dict[str, Any] | None, agent_ref: str) -> str:
+    if agent_dict and str(agent_dict.get("id", "")).strip():
+        return str(agent_dict["id"]).strip()
+    return agent_ref
+
+
+def _read_flow_cli_session_id(run_id: str, agent_id: str) -> str | None:
+    from src.run_state_store import load_run_state
+    from src.state import read_cli_session_agent_id, read_cli_session_id
+
+    state = load_run_state(run_id)
+    if state is None:
+        return None
+    stored_agent = read_cli_session_agent_id(state)
+    if stored_agent and stored_agent != agent_id:
+        return None
+    sid = read_cli_session_id(state)
+    return sid if sid else None
+
+
+def _persist_flow_cli_session(run_id: str, agent_id: str, cli_session_id: str | None) -> None:
+    if not run_id or not cli_session_id:
+        return
+    from src.state import cli_session_patch
+    from src.workflow_runtime import emit_workflow_agent_step
+
+    emit_workflow_agent_step(run_id, cli_session_patch(cli_session_id, agent_id))
+
+
 def _run_clutch_chat_task(
     *,
     agent_dict: dict[str, Any],
@@ -212,12 +241,20 @@ def execute_agent_task(
             f"Task:\n{task_instruction}\n\n"
             "Respond concisely with what you would do, files touched, and next steps."
         )
+        agent_id_for_session = _agent_id_for_session(agent_dict, agent_ref or agent)
+        cli_session_id: str | None = None
+        if tool == "claude-cli" and run_id:
+            from src.runtime_config import hybrid_eligible
+
+            if hybrid_eligible(source="flow", agent_type="claude-cli"):
+                cli_session_id = _read_flow_cli_session_id(run_id, agent_id_for_session)
         try:
             result = route_engine(
                 agent_name=agent_ref or agent,
                 prompt=prompt,
                 cwd=cwd,
                 fallback_tool=tool,
+                cli_session_id=cli_session_id,
                 on_log=stream_log if run_id else None,
                 run_id=run_id,
                 source="flow",
@@ -225,6 +262,15 @@ def execute_agent_task(
             output = result.output
             for log_line in result.logs:
                 logs.append(with_agent_prefix(agent_ref, log_line, label=label))
+            if tool == "claude-cli" and run_id and result.cli_session_id:
+                from src.runtime_config import hybrid_eligible
+
+                if hybrid_eligible(source="flow", agent_type="claude-cli"):
+                    _persist_flow_cli_session(
+                        run_id,
+                        agent_id_for_session,
+                        result.cli_session_id,
+                    )
         except Exception as exc:
             output = f"Could not run task with {display_name}. ({exc})"
             logs.append(agent_line(agent_ref, f"ERROR: {exc}", label=label))

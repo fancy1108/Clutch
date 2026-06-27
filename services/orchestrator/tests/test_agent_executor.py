@@ -128,3 +128,89 @@ def test_flow_image_uses_upstream_output(monkeypatch) -> None:
     assert upstream in seen_prompts[0]
     assert "https://example.com/shanghai.png" in result.output
     assert result.agent == "The Artist"
+
+
+def test_flow_claude_cli_passes_and_persists_cli_session(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("CLUTCH_RUNTIME_MODE", "hybrid")
+    monkeypatch.setenv("CLUTCH_STORAGE_DIR", str(tmp_path))
+
+    captured: dict[str, object] = {}
+    persisted: list[dict[str, str]] = []
+
+    def fake_route_engine(**kwargs):
+        captured.update(kwargs)
+        from src.engine_router import EngineResult
+
+        return EngineResult(
+            engine="Claude CLI (Hybrid)",
+            output="flow hybrid reply",
+            logs=["[HYBRID] ok"],
+            cli_session_id="sess-flow-1",
+        )
+
+    def fake_emit(run_id: str, patch: dict) -> None:
+        persisted.append({"run_id": run_id, **patch})
+
+    monkeypatch.setattr("src.engine_router.route_engine", fake_route_engine)
+    monkeypatch.setattr(
+        "src.engine_router.find_agent",
+        lambda _ref: {"id": "agent-claude", "name": "Builder", "agentType": "claude-cli"},
+    )
+    monkeypatch.setattr("src.workspace.get_workspace", lambda: {"workspace_path": "/workspace/ecc"})
+    monkeypatch.setattr("src.workflow_runtime.emit_workflow_agent_step", fake_emit)
+
+    from src.run_state_store import save_run_state
+    from src.state import cli_session_patch, initial_state
+
+    state = initial_state("run-flow-hybrid")
+    save_run_state({**state, **cli_session_patch("sess-existing", "agent-claude")})
+
+    result = execute_agent_task(
+        {"agent": "agent-claude", "label": "Build", "tool": "claude-cli"},
+        instruction="Implement feature X",
+        run_id="run-flow-hybrid",
+        node_id="node-build",
+    )
+
+    assert result.output == "flow hybrid reply"
+    assert captured["source"] == "flow"
+    assert captured["cli_session_id"] == "sess-existing"
+    assert captured["run_id"] == "run-flow-hybrid"
+    assert persisted
+    assert persisted[-1]["cli_session_id"] == "sess-flow-1"
+    assert persisted[-1]["cli_session_agent_id"] == "agent-claude"
+
+
+def test_flow_agy_stays_legacy_without_cli_session_persist(monkeypatch) -> None:
+    monkeypatch.setenv("CLUTCH_RUNTIME_MODE", "hybrid")
+    captured: dict[str, object] = {}
+    persisted: list[dict] = []
+
+    def fake_route_engine(**kwargs):
+        captured.update(kwargs)
+        from src.engine_router import EngineResult
+
+        return EngineResult(
+            engine="Antigravity CLI",
+            output="agy legacy reply",
+            logs=[],
+            cli_session_id="agy-sess",
+        )
+
+    monkeypatch.setattr("src.engine_router.route_engine", fake_route_engine)
+    monkeypatch.setattr(
+        "src.engine_router.find_agent",
+        lambda _ref: {"id": "agent-agy", "name": "Agy", "agentType": "antigravity-cli"},
+    )
+    monkeypatch.setattr("src.workspace.get_workspace", lambda: {"workspace_path": "/workspace"})
+    monkeypatch.setattr("src.workflow_runtime.emit_workflow_agent_step", lambda *_args: persisted.append({}))
+
+    execute_agent_task(
+        {"agent": "agent-agy", "label": "Run", "tool": "agy-cli"},
+        instruction="Do work",
+        run_id="run-flow-agy",
+        node_id="node-agy",
+    )
+
+    assert captured.get("cli_session_id") is None
+    assert persisted == []
