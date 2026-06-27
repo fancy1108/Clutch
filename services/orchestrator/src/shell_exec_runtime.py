@@ -3,10 +3,18 @@
 from __future__ import annotations
 
 import re
+import time
 import uuid
 from dataclasses import dataclass
+from typing import Literal
 
 from src.claude_hybrid_output_parser import ClaudeHybridOutputParser, marker_completed_in_output, parse_hybrid_claude_output
+from src.hybrid_audit_log import (
+    HybridTurnResult,
+    append_hybrid_turn_audit,
+    build_turn_audit_line,
+    summarize_shell_command,
+)
 from src.shell_session import (
     ShellSession,
     ShellSessionError,
@@ -91,6 +99,103 @@ def _build_agy_shell_cmd(
     )
 
 
+def _record_hybrid_turn_audit(
+    session: ShellSession,
+    *,
+    agent: str,
+    turn_id: str,
+    marker: str,
+    cmd: str,
+    duration_ms: int,
+    result: HybridTurnResult,
+    cli_session_id: str | None,
+    message: str,
+) -> None:
+    append_hybrid_turn_audit(
+        build_turn_audit_line(
+            run_id=session.run_id,
+            turn_id=turn_id,
+            marker=marker,
+            duration_ms=duration_ms,
+            result=result,
+            cli_session_id=cli_session_id,
+            agent=agent,
+            command_summary=summarize_shell_command(cmd) if cmd else "",
+            node_id=session.owner_node_id,
+            message=message,
+        )
+    )
+
+
+def _execute_hybrid_turn(
+    session: ShellSession,
+    *,
+    agent: Literal["claude", "agy"],
+    cmd: str,
+    marker: str,
+    turn_id: str,
+    timeout_s: float,
+    system_prompt: str | None,
+    cli_session_id: str | None,
+) -> ShellExecResult:
+    run_id = session.run_id
+    start = time.monotonic()
+    result: HybridTurnResult = "error"
+    message = ""
+
+    try:
+        write_line(session.master_fd, cmd)
+        raw = read_until_marker(session.master_fd, marker, max_wait_s=timeout_s)
+        if not marker_completed_in_output(raw, marker):
+            result = "timeout"
+            message = f"hybrid {agent} turn timed out waiting for marker {marker}"
+            raise ShellSessionError(message)
+        parsed = ClaudeHybridOutputParser().parse_structured(
+            raw,
+            marker=marker,
+            shell_command=cmd,
+            system_prompt=system_prompt,
+        )
+        if not parsed.assistant:
+            result = "empty"
+            message = f"hybrid {agent} turn produced empty stdout"
+            raise ShellSessionError(message)
+        result = "ok"
+        message = f"hybrid {agent} turn ok marker={marker}"
+        return ShellExecResult(
+            stdout=parsed.assistant,
+            logs=[f"[HYBRID] {agent} exec in shell session {run_id}"],
+            cli_session_id=cli_session_id,
+            raw_output=parsed.raw,
+            output_events=parsed.output_event_dicts(),
+        )
+    except ShellSessionError as exc:
+        if result == "error":
+            lowered = str(exc).lower()
+            if "timed out" in lowered:
+                result = "timeout"
+            elif "empty stdout" in lowered:
+                result = "empty"
+        message = str(exc)
+        raise
+    except Exception as exc:
+        message = str(exc)
+        raise
+    finally:
+        duration_ms = int((time.monotonic() - start) * 1000)
+        _record_hybrid_turn_audit(
+            session,
+            agent=agent,
+            turn_id=turn_id,
+            marker=marker,
+            cmd=cmd,
+            duration_ms=duration_ms,
+            result=result,
+            cli_session_id=cli_session_id,
+            message=message or f"hybrid {agent} turn {result}",
+        )
+
+
 def run_agy_turn(
     session: ShellSession,
     *,
@@ -102,13 +207,28 @@ def run_agy_turn(
     context_prefix: str | None = None,
     system_prompt: str | None = None,
 ) -> ShellExecResult:
-    assert_no_interactive_command(prompt)
+    turn_id = uuid.uuid4().hex[:8]
+    try:
+        assert_no_interactive_command(prompt)
+    except InteractiveCommandBlocked as exc:
+        _record_hybrid_turn_audit(
+            session,
+            agent="agy",
+            turn_id=turn_id,
+            marker="",
+            cmd="",
+            duration_ms=0,
+            result="blocked",
+            cli_session_id=resume_session_id or cli_session_id,
+            message=str(exc),
+        )
+        raise
+
     effective_prompt = prompt
     if context_prefix:
         effective_prompt = f"{context_prefix.strip()}\n\n{prompt}"
 
     session.ensure_workspace_cwd()
-    turn_id = uuid.uuid4().hex[:8]
     marker = f"__CLUTCH_DONE_{turn_id}__"
     conv_id = resume_session_id or cli_session_id
     cmd = _build_agy_shell_cmd(
@@ -118,25 +238,15 @@ def run_agy_turn(
         conversation_id=conv_id,
         system_prompt=system_prompt if not conv_id else None,
     )
-    logs = [f"[HYBRID] agy exec in shell session {session.run_id}"]
-    write_line(session.master_fd, cmd)
-    raw = read_until_marker(session.master_fd, marker, max_wait_s=timeout_s)
-    if not marker_completed_in_output(raw, marker):
-        raise ShellSessionError(f"hybrid agy turn timed out waiting for marker {marker}")
-    parsed = ClaudeHybridOutputParser().parse_structured(
-        raw,
+    return _execute_hybrid_turn(
+        session,
+        agent="agy",
+        cmd=cmd,
         marker=marker,
-        shell_command=cmd,
+        turn_id=turn_id,
+        timeout_s=timeout_s,
         system_prompt=system_prompt,
-    )
-    if not parsed.assistant:
-        raise ShellSessionError("hybrid agy turn produced empty stdout")
-    return ShellExecResult(
-        stdout=parsed.assistant,
-        logs=logs,
         cli_session_id=conv_id or cli_session_id,
-        raw_output=parsed.raw,
-        output_events=parsed.output_event_dicts(),
     )
 
 
@@ -152,13 +262,28 @@ def run_claude_turn(
     context_prefix: str | None = None,
     system_prompt: str | None = None,
 ) -> ShellExecResult:
-    assert_no_interactive_command(prompt)
+    turn_id = uuid.uuid4().hex[:8]
+    try:
+        assert_no_interactive_command(prompt)
+    except InteractiveCommandBlocked as exc:
+        _record_hybrid_turn_audit(
+            session,
+            agent="claude",
+            turn_id=turn_id,
+            marker="",
+            cmd="",
+            duration_ms=0,
+            result="blocked",
+            cli_session_id=resume_session_id or cli_session_id or new_session_id,
+            message=str(exc),
+        )
+        raise
+
     effective_prompt = prompt
     if context_prefix:
         effective_prompt = f"{context_prefix.strip()}\n\n{prompt}"
 
     session.ensure_workspace_cwd()
-    turn_id = uuid.uuid4().hex[:8]
     marker = f"__CLUTCH_DONE_{turn_id}__"
     sid = resume_session_id or cli_session_id
     bootstrap_id = new_session_id
@@ -170,24 +295,21 @@ def run_claude_turn(
         resume_session_id=sid if not bootstrap_id else None,
         system_prompt=system_prompt if bootstrap_id else None,
     )
-    logs = [f"[HYBRID] exec in shell session {session.run_id}"]
-    write_line(session.master_fd, cmd)
-    raw = read_until_marker(session.master_fd, marker, max_wait_s=timeout_s)
-    if not marker_completed_in_output(raw, marker):
-        raise ShellSessionError(f"hybrid turn timed out waiting for marker {marker}")
-    parsed = ClaudeHybridOutputParser().parse_structured(
-        raw,
-        marker=marker,
-        shell_command=cmd,
-        system_prompt=system_prompt,
-    )
-    if not parsed.assistant:
-        raise ShellSessionError("hybrid turn produced empty stdout")
     out_session = bootstrap_id or sid or cli_session_id
-    return ShellExecResult(
-        stdout=parsed.assistant,
-        logs=logs,
+    turn = _execute_hybrid_turn(
+        session,
+        agent="claude",
+        cmd=cmd,
+        marker=marker,
+        turn_id=turn_id,
+        timeout_s=timeout_s,
+        system_prompt=system_prompt,
         cli_session_id=out_session,
-        raw_output=parsed.raw,
-        output_events=parsed.output_event_dicts(),
+    )
+    return ShellExecResult(
+        stdout=turn.stdout,
+        logs=turn.logs,
+        cli_session_id=out_session,
+        raw_output=turn.raw_output,
+        output_events=turn.output_events,
     )

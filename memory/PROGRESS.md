@@ -2,10 +2,10 @@
 
 ## 当前状态
 
-- **阶段：** D25 Hybrid Runtime — **HRT-04 单 session 验收 ✅**；下一步 HRT-05 或 HRT-08
-- **Git HEAD：** `f199209`
+- **阶段：** D25 Hybrid Runtime — **HRT-05 审计 JSONL 代码完成**（待 commit）；下一步 HRT-06
+- **Git HEAD：** `b664d48`（含 BACKLOG 决策更新）
 - **权威 Task 表：** [`specs/core/hybrid-runtime-plan.md`](../specs/core/hybrid-runtime-plan.md)
-- **下次优先：** **HRT-05**（audit JSONL）→ HRT-06 → HRT-07 → HRT-08~10（见 D29）
+- **下次优先：** **HRT-06**（`GET /api/runs/{id}/debug`）→ HRT-07 → HRT-08~10（见 D29）
 - **验收期跳过：** MCP hybrid_executions 深度 UI · 2h/100+ 压测
 - **已知限制：** 多 session 并行 hybrid **未治理**（HRT-08）；验收期请串行
 
@@ -18,21 +18,23 @@
 | HRT-S5-partial | ✅ 代码 | pool=8 · snapshot prune（≠ pty Step 5 全文） |
 | HRT-01~03 | ✅ 代码 | marker · snapshot 注入 · parser 过滤 |
 | HRT-04 | ✅ | 用户验收 A–E 2026-06-27 |
-| HRT-05~10 | ❌ | 审计 / 并发 |
+| HRT-05 | 🔄 代码 | `hybrid_audit_log.py` + shell_exec_runtime 集成 |
+| HRT-06~10 | ❌ | debug API / 并发 |
 
 ### 未 commit 工作
 
-（无 — HRT-01~03 已合入）
+- **HRT-05**：`hybrid_audit_log.py` · `shell_exec_runtime.py` 审计集成 · 单测（10 passed）
 
 ## 2026-06-27 会话（HRT-01~03 hybrid 修复 commit）
 
 - **完成：**
   - **加载动效去动画：** 移除了 `ChatFeed.tsx` 在 AI 思考状态 (`showThinking`) 时头像位置的 `progress_activity` 旋转加载动画；实现当活跃 Agent 拥有头像时展示其静态头像，无头像时展示静态的机器人/用户图标，使得加载动效仅集中于对话框内的打字脉冲动画。**同时，将加载中与加载完成的头像规则完全对齐（如非内置角色统一使用 `smart_toy` 灰色机器人头，避免加载中和加载后头像闪烁/不一致）。**
   - **会话偏好持久化：** 在 `App.tsx` 中使用 `localStorage` 按 `sessionRunId` 对当前会话的选择（包括所选模式 `isMultiAgent`、所选 Flow `selectedWorkflowId` 与所选 Agent `selectedAgentId`）进行自动存储。并在切换会话时优先进行恢复。
-  - **工作流名称解析：** 优化了 `clutchState.workflow_id` 在 `App.tsx` 中变更时的名称解析，自动从 `footerWorkflows` 映射匹配获取人类可读的工作流展示名。
+  - **工作流名称解析：** 优化了 `clutchState.workflow_id` 在 `App.tsx` 中变更时的名称解析，自动从 `footerWorkflows` 映射匹配获取人类可绿的工作流展示名。
   - **软件版本动态获取：** 移除了右下角写死的 `Clutch v0.0.0` 版本文本，使用 Tauri 的 `getVersion` API 在桌面环境下动态获取当前应用程序的版本号，对于非 Tauri 浏览器环境安全降级为 `0.0.0`。
   - **用户姓名偏好设置：** 在 `preferences_storage.py` 和 `main.py` 扩展支持 `user_name` 偏好的读取、保存与 API 路由；在 General Settings 页面新增个人名称输入框支持用户自定义昵称，并同步更新 Chat Feed 中用户发送的消息气泡发送者标签展示。
-- **校验：** 本地运行 `./scripts/verify.sh` 并顺利通过了所有 351 项后端 Python 单元测试（包含新增的用户姓名相关用例）和 13 项前端 Vitest 测试 ✅
+  - **Backlog 梳理决策：** 针对 B-15（虚拟Fallback工作流）与 B-16（自动Fallback单智能体）做已否决废除归档；B-17（Codex 接入）作为未来支持保留；B-20（OS级沙箱）标记为深入调研的待定项；B-08（Git Worktree 隔离）标记为专业企业项目防改坏代码关键能力保留。
+- **校验：** 本地运行 `./scripts/verify.sh` 并顺利通过了所有 357 项后端 Python 单元测试和 13 项前端 Vitest 测试 ✅
 
 ## 2026-06-27 会话（用户头像设置与 General 页面开发）
 
