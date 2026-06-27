@@ -2,8 +2,8 @@
 
 ## 当前状态
 
-- **阶段：** D25 Hybrid Runtime — **HRT-00~03 已 commit；HRT-04 产品验收未过**
-- **Git HEAD：** `1d281f6`
+- **阶段：** D25 Hybrid Runtime — **HRT-04 单 session 验收 ✅**；下一步 HRT-05 或 HRT-08
+- **Git HEAD：** `88b07b4`
 - **权威 Task 表：** [`specs/core/hybrid-runtime-plan.md`](../specs/core/hybrid-runtime-plan.md)
 - **下次优先：** 人类 **HRT-04** 单 session 验收（重启 Sidecar + `CLUTCH_RUNTIME_MODE=hybrid`）
 - **验收期跳过：** MCP hybrid_executions 深度 UI · 2h/100+ 压测
@@ -16,8 +16,9 @@
 | HRT-00 | ✅ | `7221641` 计划与文档 |
 | HRT-S1~S4 | ✅ 代码 | ShellSession · agy · Snapshot · runtime_registry |
 | HRT-S5-partial | ✅ 代码 | pool=8 · snapshot prune（≠ pty Step 5 全文） |
-| HRT-01~03 | ✅ 代码 | marker · snapshot 注入 · parser 过滤（待 HRT-04 验收） |
-| HRT-04~10 | ❌ | 验收 / 审计 / 并发 |
+| HRT-01~03 | ✅ 代码 | marker · snapshot 注入 · parser 过滤 |
+| HRT-04 | ✅ | 用户验收 A–E 2026-06-27 |
+| HRT-05~10 | ❌ | 审计 / 并发 |
 
 ### 未 commit 工作
 

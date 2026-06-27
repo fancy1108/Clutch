@@ -185,7 +185,7 @@
 | HRT-01 | 基础聊天气泡 + idle | §3.1 A–D；无 shell/snapshot 泄漏 | 人工 + pytest |
 | HRT-02 | Marker 完成检测 | 真实 turn 不 600s 超时 | pytest + 本地 claude turn |
 | HRT-03 | Snapshot 仅断线注入 | 续轮无 Task summary 行 | pytest |
-| HRT-04 | **单 session 产品验收** | ROADMAP §D25 勾选 A–E | `runs/verification/*-hrt-04*` |
+| HRT-04 | **单 session 产品验收** | ROADMAP §D25 勾选 A–E | `runs/verification/2026-06-27-hrt-04-acceptance.md` |
 | HRT-05 | Hybrid audit JSONL | 每 turn 结构化行 | pytest |
 | HRT-06 | debug API | `GET /api/runs/{id}/debug` | pytest |
 | HRT-07 | 诊断导出 | UI 或 script | 手动 |

@@ -75,18 +75,18 @@
 | Snapshot + 侧栏 ↻ + PTY 恢复 | P1 | D25-S3 | ✅ 代码 | HRT-S3 |
 | runtime_registry 分发 | P1 | D25-S4 | ✅ 代码 | HRT-S4 |
 | 池上限 + Snapshot 保留 | P2 | D25-S5-partial | ✅ 代码 | HRT-S5-partial |
-| **基础 Plain Chat 产品验收** | **P0** | **D25** | **❌** | **HRT-01 ~ HRT-04** |
+| **基础 Plain Chat 产品验收** | **P0** | **D25** | **✅** | **HRT-04**（2026-06-27 用户 A–E） |
 | Hybrid 审计 JSONL + debug API | P1 | D25 | ❌ | HRT-05, HRT-06 |
 | 诊断导出 | P2 | D25 | ❌ | HRT-07 |
 | 多 session 并发治理 | P1 | D25 | ❌ | HRT-08 ~ HRT-10 |
 
 ### D25 人工验收（HRT-04 门禁 · 默认 FAIL）
 
-- [ ] **A** 首轮气泡仅 assistant 文本（无 shell / snapshot 泄漏）
-- [ ] **B** 第二轮续聊正常 + 发送键恢复
-- [ ] **C** 旧 session 侧栏 ↻
-- [ ] **D** 回复后 idle；可切 session；无永久 Thinking
-- [ ] **E** Terminal 有 `[HYBRID]` + `[CHAT] ... chars`
+- [x] **A** 首轮气泡仅 assistant 文本（无 shell / snapshot 泄漏）
+- [x] **B** 第二轮续聊正常 + 发送键恢复
+- [x] **C** 旧 session 侧栏 ↻
+- [x] **D** 回复后 idle；可切 session；无永久 Thinking
+- [x] **E** Terminal 有 `[HYBRID]` + `[CHAT] ... chars`
 - [ ] **F** 多 session 并发（HRT-08 后启用；此前串行验收）
 
-证据：`runs/verification/YYYY-MM-DD-hrt-04-acceptance.md`
+证据：`runs/verification/2026-06-27-hrt-04-acceptance.md`

@@ -49,7 +49,7 @@ pnpm --filter @clutch/desktop tauri dev
 | **HRT-01** | 基础聊天气泡 + idle 恢复 | ⚠️ 待验收 | S1–S4 | 见 §3.1 A–D；含 `848ed7f` 与 HRT-01~03 commit | 人工验收 §3 + pytest |
 | **HRT-02** | Marker 完成检测（ANSI / clutch$） | ✅ 代码 | HRT-01 | 真实 `claude -p` turn ≤120s | pytest + 本地 hybrid 单 turn |
 | **HRT-03** | Snapshot 仅断线恢复注入 | ✅ 代码 | HRT-01 | 续轮气泡无 `Task summary` / `Working directory` | pytest |
-| **HRT-04** | **产品验收：单 session 串行** | ❌ | HRT-01~03 | §3.1 全部 ✅；证据 `runs/verification/` | 人类验收清单 |
+| **HRT-04** | **产品验收：单 session 串行** | ✅ | HRT-01~03 | §3.1 A–E | 用户确认 2026-06-27 |
 | **HRT-05** | Hybrid turn 审计 JSONL | ❌ | HRT-04 | 每 turn 写结构化行；含 run_id/marker/duration/result | pytest + 读 jsonl |
 | **HRT-06** | `GET /api/runs/{id}/debug` | ❌ | HRT-05 | 返回 status、末 N 条 terminal_logs、最近 audit 行 | pytest API |
 | **HRT-07** | 诊断导出（UI 或 CLI script） | ❌ | HRT-06 | 一键导出 run 摘要（无密钥） | 手动导出 + 排查演练 |

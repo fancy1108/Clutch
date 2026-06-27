@@ -50,6 +50,14 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
   - `services/orchestrator/src/engine_router.py` — context_prefix 仅 shell_recovered 时注入
   - `services/orchestrator/tests/test_claude_hybrid_output_parser.py` — snapshot / marker 单测
 
+### HRT-04 ✅ 单 session Plain Chat 产品验收
+- **日期：** 2026-06-27
+- **Commit：** `88b07b4` 基线 · 验收记录见下方 commit
+- **Verification：** 用户人工验收 A–E 全部通过
+- **证据：** `runs/verification/2026-06-27-hrt-04-acceptance.md`
+- **交付文件：** —
+- **依赖 commit：** `1d281f6` · `848ed7f`
+
 ---
 
 ## 已交付（代码 Task · 自 Git 回填）
