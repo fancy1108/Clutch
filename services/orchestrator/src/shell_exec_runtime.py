@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 import time
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Literal
 
@@ -137,63 +138,79 @@ def _execute_hybrid_turn(
     timeout_s: float,
     system_prompt: str | None,
     cli_session_id: str | None,
+    on_lock_wait: Callable[[], None] | None = None,
 ) -> ShellExecResult:
-    run_id = session.run_id
-    start = time.monotonic()
-    result: HybridTurnResult = "error"
-    message = ""
+    import os
 
-    try:
-        write_line(session.master_fd, cmd)
-        raw = read_until_marker(session.master_fd, marker, max_wait_s=timeout_s)
-        if not marker_completed_in_output(raw, marker):
-            result = "timeout"
-            message = f"hybrid {agent} turn timed out waiting for marker {marker}"
-            raise ShellSessionError(message)
-        parsed = ClaudeHybridOutputParser().parse_structured(
-            raw,
-            marker=marker,
-            shell_command=cmd,
-            system_prompt=system_prompt,
-        )
-        if not parsed.assistant:
-            result = "empty"
-            message = f"hybrid {agent} turn produced empty stdout"
-            raise ShellSessionError(message)
-        result = "ok"
-        message = f"hybrid {agent} turn ok marker={marker}"
-        return ShellExecResult(
-            stdout=parsed.assistant,
-            logs=[f"[HYBRID] {agent} exec in shell session {run_id}"],
-            cli_session_id=cli_session_id,
-            raw_output=parsed.raw,
-            output_events=parsed.output_event_dicts(),
-        )
-    except ShellSessionError as exc:
-        if result == "error":
-            lowered = str(exc).lower()
-            if "timed out" in lowered:
+    def _run_turn() -> ShellExecResult:
+        run_id = session.run_id
+        start = time.monotonic()
+        result: HybridTurnResult = "error"
+        message = ""
+
+        try:
+            write_line(session.master_fd, cmd)
+            raw = read_until_marker(session.master_fd, marker, max_wait_s=timeout_s)
+            if not marker_completed_in_output(raw, marker):
                 result = "timeout"
-            elif "empty stdout" in lowered:
+                message = f"hybrid {agent} turn timed out waiting for marker {marker}"
+                raise ShellSessionError(message)
+            parsed = ClaudeHybridOutputParser().parse_structured(
+                raw,
+                marker=marker,
+                shell_command=cmd,
+                system_prompt=system_prompt,
+            )
+            if not parsed.assistant:
                 result = "empty"
-        message = str(exc)
-        raise
-    except Exception as exc:
-        message = str(exc)
-        raise
-    finally:
-        duration_ms = int((time.monotonic() - start) * 1000)
-        _record_hybrid_turn_audit(
-            session,
-            agent=agent,
-            turn_id=turn_id,
-            marker=marker,
-            cmd=cmd,
-            duration_ms=duration_ms,
-            result=result,
-            cli_session_id=cli_session_id,
-            message=message or f"hybrid {agent} turn {result}",
-        )
+                message = f"hybrid {agent} turn produced empty stdout"
+                raise ShellSessionError(message)
+            result = "ok"
+            message = f"hybrid {agent} turn ok marker={marker}"
+            return ShellExecResult(
+                stdout=parsed.assistant,
+                logs=[f"[HYBRID] {agent} exec in shell session {run_id}"],
+                cli_session_id=cli_session_id,
+                raw_output=parsed.raw,
+                output_events=parsed.output_event_dicts(),
+            )
+        except ShellSessionError as exc:
+            if result == "error":
+                lowered = str(exc).lower()
+                if "timed out" in lowered:
+                    result = "timeout"
+                elif "empty stdout" in lowered:
+                    result = "empty"
+            message = str(exc)
+            raise
+        except Exception as exc:
+            message = str(exc)
+            raise
+        finally:
+            duration_ms = int((time.monotonic() - start) * 1000)
+            _record_hybrid_turn_audit(
+                session,
+                agent=agent,
+                turn_id=turn_id,
+                marker=marker,
+                cmd=cmd,
+                duration_ms=duration_ms,
+                result=result,
+                cli_session_id=cli_session_id,
+                message=message or f"hybrid {agent} turn {result}",
+            )
+
+    if os.environ.get("CLUTCH_E2E_FAKE_HYBRID") == "1":
+        return _run_turn()
+
+    from src.workspace_cli_lock import workspace_cli_turn
+
+    with workspace_cli_turn(
+        session.workspace_path,
+        timeout_s=timeout_s,
+        on_waiting=on_lock_wait,
+    ):
+        return _run_turn()
 
 
 def run_agy_turn(
@@ -206,6 +223,7 @@ def run_agy_turn(
     resume_session_id: str | None = None,
     context_prefix: str | None = None,
     system_prompt: str | None = None,
+    on_lock_wait: Callable[[], None] | None = None,
 ) -> ShellExecResult:
     turn_id = uuid.uuid4().hex[:8]
     try:
@@ -247,6 +265,7 @@ def run_agy_turn(
         timeout_s=timeout_s,
         system_prompt=system_prompt,
         cli_session_id=conv_id or cli_session_id,
+        on_lock_wait=on_lock_wait,
     )
 
 
@@ -261,7 +280,31 @@ def run_claude_turn(
     new_session_id: str | None = None,
     context_prefix: str | None = None,
     system_prompt: str | None = None,
+    on_lock_wait: Callable[[], None] | None = None,
 ) -> ShellExecResult:
+    import os
+
+    effective_prompt = prompt
+    if context_prefix:
+        effective_prompt = f"{context_prefix.strip()}\n\n{prompt}"
+
+    if os.environ.get("CLUTCH_E2E_FAKE_HYBRID") == "1":
+        delay = float(os.environ.get("CLUTCH_E2E_FAKE_HYBRID_DELAY", "0.15"))
+        if delay > 0:
+            time.sleep(delay)
+        sid = new_session_id or resume_session_id or cli_session_id or uuid.uuid4().hex
+        reply = f"E2E hybrid ({session.run_id}): {effective_prompt.strip()[:120]}"
+        return ShellExecResult(
+            stdout=reply,
+            logs=[f"[HYBRID] e2e-fake claude turn in shell session {session.run_id}"],
+            cli_session_id=sid,
+            raw_output=f"CLUTCH_P={_shell_quote(effective_prompt[:40])}; claude -p (e2e-fake)",
+            output_events=[
+                {"type": "shell_echo", "visible": False, "content": "claude -p (e2e-fake)"},
+                {"type": "assistant", "visible": True, "content": reply},
+            ],
+        )
+
     turn_id = uuid.uuid4().hex[:8]
     try:
         assert_no_interactive_command(prompt)
@@ -278,10 +321,6 @@ def run_claude_turn(
             message=str(exc),
         )
         raise
-
-    effective_prompt = prompt
-    if context_prefix:
-        effective_prompt = f"{context_prefix.strip()}\n\n{prompt}"
 
     session.ensure_workspace_cwd()
     marker = f"__CLUTCH_DONE_{turn_id}__"
@@ -305,6 +344,7 @@ def run_claude_turn(
         timeout_s=timeout_s,
         system_prompt=system_prompt,
         cli_session_id=out_session,
+        on_lock_wait=on_lock_wait,
     )
     return ShellExecResult(
         stdout=turn.stdout,

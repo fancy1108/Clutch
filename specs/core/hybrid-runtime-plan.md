@@ -61,7 +61,7 @@ pnpm --filter @clutch/desktop tauri dev
 
 ### 2.1 执行顺序与维护习惯（D29 · 2026-06-27）
 
-**顺序（已拍板）：** HRT-05 → HRT-06 → HRT-07 → HRT-08~10 → **回看** HRT-05~07 是否需增补。
+**顺序（已拍板）：** HRT-05 → HRT-06 → HRT-07 → HRT-08~10 → **回看** HRT-05~07 是否需增补（**D29 回归 ✅** · `test_hybrid_audit_d29_regression.py`）。
 
 | 原则 | 说明 |
 |------|------|
@@ -86,12 +86,27 @@ pnpm --filter @clutch/desktop tauri dev
 | D | UI 状态 | 回复后 `status: idle`；可切 session；无永久 Thinking |
 | E | Terminal | 有 `[HYBRID]` + `[CHAT] ... chars` |
 
-### 3.2 多 session（HRT-08 前：已知限制）
+### 3.2 多 session（HRT-08 后 · §F 门禁）
 
-| # | 行为 | 当前预期 |
+> 启用：`export CLUTCH_RUNTIME_MODE=hybrid && pnpm --filter @clutch/desktop tauri dev`  
+> 证据：`runs/verification/YYYY-MM-DD-hrt-f-multi-session.md`（run_id + `./scripts/export-run-debug.sh` 摘录）
+
+| # | 场景 | 通过标准 |
 |---|------|----------|
-| F | 两 session 同时发消息 | **可能**双卡；验收期 **串行** |
-| G | 排查 | 用 run_id 查 `states/{run_id}.json` 或 HRT-06 API，**不依赖截图** |
+| **F1** | 两 session 各发一条（如 claude + agy） | 均正常回复或合理拒绝；Terminal / 气泡 stdout **不混** |
+| **F2** | 同 session `running` 时再发 | amber 提示 + `shell_session_status: rejected_run_in_progress`；Supervisor 消息 |
+| **F3** | 同 session shell BUSY 时再发 | `rejected_session_busy`；**不** fallback legacy |
+| **F4** | 池满（≥8 并发或全 BUSY） | `rejected_pool_full` + Supervisor 消息 |
+| **F5** | 排查 | `./scripts/export-run-debug.sh RUN_ID` 含 `hybrid_audit` 中 `result: rejected` 行 |
+| **G** | 后台 hydrate | A 发送 → 切 B → 回 A：已完成回复可见（HRT-09） |
+
+自动化前置：`./scripts/verify-hybrid-poc-06-10.sh`（POC #6/#10）+ `pytest tests/test_hybrid_audit_d29_regression.py`（D29 audit 回归）
+
+### 3.2.1 历史（HRT-08 前）
+
+| # | 行为 | 旧预期 |
+|---|------|--------|
+| F | 两 session 同时发消息 | 可能双卡；验收期串行 |
 
 ---
 

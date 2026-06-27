@@ -13,6 +13,11 @@ export default defineConfig({
       use: { baseURL: 'http://127.0.0.1:8123' },
     },
     {
+      name: 'hybrid-api',
+      testMatch: /tests\/hybrid-concurrent-sessions\.spec\.ts/,
+      use: { baseURL: 'http://127.0.0.1:8123' },
+    },
+    {
       name: 'desktop',
       testMatch: /tests\/desktop\/.*\.spec\.ts/,
       use: { mode: 'tauri' },

@@ -6,6 +6,7 @@
   "scripts": {
     "test": "playwright test -c playwright.config.ts",
     "test:api": "playwright test -c playwright.config.ts --project=api",
+    "test:hybrid-api": "playwright test -c playwright.config.ts --project=hybrid-api",
     "test:desktop": "playwright test -c playwright.config.ts --project=desktop"
   },
   "devDependencies": {

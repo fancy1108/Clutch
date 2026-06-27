@@ -146,11 +146,21 @@ def _route_claude_hybrid(
     binary = cli_binary or "claude"
     manager = get_shell_session_manager()
     snapshot = load_snapshot(run_id)
+    _emit_log(logs, on_log, f"[HYBRID] acquiring shell for {run_id}")
     session = manager.get_or_create(run_id, workspace_path=workspace_path)
+    _emit_log(logs, on_log, f"[HYBRID] shell ready for {run_id}")
     shell_recovered = manager.consume_shell_recovery(run_id)
     context_prefix = None
     if shell_recovered and snapshot and (snapshot.task_summary or snapshot.open_todos):
         context_prefix = format_handoff_prefix(snapshot)
+
+    def _lock_wait_log() -> None:
+        _emit_log(
+            logs,
+            on_log,
+            f"[HYBRID] acquiring workspace CLI lock for {workspace_path}",
+        )
+
     try:
         if shell_recovered:
             _emit_log(
@@ -169,6 +179,7 @@ def _route_claude_hybrid(
                 resume_session_id=cli_session_id,
                 context_prefix=context_prefix,
                 system_prompt=system_prompt,
+                on_lock_wait=_lock_wait_log,
             )
             _persist_hybrid_turn_snapshot(
                 run_id=run_id,
@@ -198,6 +209,7 @@ def _route_claude_hybrid(
             new_session_id=new_session_id,
             system_prompt=system_prompt,
             context_prefix=context_prefix,
+            on_lock_wait=_lock_wait_log,
         )
         _persist_hybrid_turn_snapshot(
             run_id=run_id,
@@ -240,11 +252,21 @@ def _route_agy_hybrid(
     binary = cli_binary or "agy"
     manager = get_shell_session_manager()
     snapshot = load_snapshot(run_id)
+    _emit_log(logs, on_log, f"[HYBRID] acquiring shell for {run_id}")
     session = manager.get_or_create(run_id, workspace_path=workspace_path)
+    _emit_log(logs, on_log, f"[HYBRID] shell ready for {run_id}")
     shell_recovered = manager.consume_shell_recovery(run_id)
     context_prefix = None
     if shell_recovered and snapshot and (snapshot.task_summary or snapshot.open_todos):
         context_prefix = format_handoff_prefix(snapshot)
+
+    def _lock_wait_log() -> None:
+        _emit_log(
+            logs,
+            on_log,
+            f"[HYBRID] acquiring workspace CLI lock for {workspace_path}",
+        )
+
     try:
         if shell_recovered:
             _emit_log(
@@ -262,6 +284,7 @@ def _route_agy_hybrid(
                 cli_session_id=cli_session_id,
                 resume_session_id=cli_session_id,
                 context_prefix=context_prefix,
+                on_lock_wait=_lock_wait_log,
             )
             _persist_hybrid_turn_snapshot(
                 run_id=run_id,
@@ -289,6 +312,7 @@ def _route_agy_hybrid(
             timeout_s=timeout,
             system_prompt=system_prompt,
             context_prefix=context_prefix,
+            on_lock_wait=_lock_wait_log,
         )
         _persist_hybrid_turn_snapshot(
             run_id=run_id,
@@ -471,10 +495,15 @@ def _route_engine_raw(
                 ) from exc
 
     if agent_type == "claude-cli" and tool_available_for_routing("claude-cli"):
+        import os
+
         cli_binary = resolve_tool_binary("claude-cli")
         _emit_log(logs, on_log, f"Routing task to Claude Code (Local CLI) for agent {agent_name}.")
         if cli_binary:
             _emit_log(logs, on_log, f"Using Claude binary: {cli_binary}")
+        elif os.environ.get("CLUTCH_E2E_FAKE_HYBRID") == "1":
+            cli_binary = "claude"
+            _emit_log(logs, on_log, "Using Claude binary: e2e-fake (CLUTCH_E2E_FAKE_HYBRID)")
         elif "claude-cli" in load_connected_ids():
             raise RuntimeError(
                 tr(

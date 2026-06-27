@@ -1,15 +1,15 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { ChatMessage, ClutchRunStatus, HybridExecutionPayload, OutputEvent } from '../types';
 import { useLanguage } from './LanguageContext';
-import { ChatInputBar, type Attachment } from './ChatInputBar';
+import { ChatInputBar, type Attachment, type PendingChatMessage } from './ChatInputBar';
 import { BTN_DANGER_SM, BTN_PRIMARY, BTN_SECONDARY, BTN_SM, BTN_SUCCESS_SM } from './ui/buttonStyles';
 import { LegacyIcon } from './ui/LegacyIcon';
 import type { SessionRecord } from '../services/runApi';
 import type { ScannedSkill } from '../services/skillsApi';
 import type { FileTreeNode } from '../services/workspaceApi';
 import type { PermissionMode } from '../services/permissionApi';
-import { USER_CHAT_AVATAR } from '../services/clutchState';
+import { USER_CHAT_AVATAR, clutchStore } from '../services/clutchState';
 
 function outputEventLabel(type: OutputEvent['type'], t: (key: string) => string): string {
   switch (type) {
@@ -205,6 +205,7 @@ interface ChatFeedProps {
   selectedWorkflowName?: string;
   onClearSelectedWorkflow?: () => void;
   sessionTitle?: string;
+  sessionRunId?: string;
   activeWorkflowId?: string;
   llmModelName?: string;
   activeAgentName?: string;
@@ -554,6 +555,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   selectedWorkflowName = '',
   onClearSelectedWorkflow,
   sessionTitle = '',
+  sessionRunId = '',
   activeWorkflowId = '',
   llmModelName = '',
   activeAgentName = '',
@@ -570,7 +572,45 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
 }) => {
   const { t } = useLanguage();
   const bottomRef = useRef<HTMLDivElement>(null);
+  const dockRef = useRef<HTMLDivElement>(null);
+  const [dockHeight, setDockHeight] = useState(176);
   const [hillInstructions, setHillInstructions] = useState('');
+  const [pendingMessages, setPendingMessages] = useState<PendingChatMessage[]>([]);
+
+  useEffect(() => {
+    setPendingMessages([]);
+  }, [sessionRunId]);
+
+  const isIdle = clutchStatus === 'idle';
+  const isRunning = clutchStatus === 'running';
+  const awaitingHuman = clutchStatus === 'awaiting_human';
+  const isPlainLlmChat = isPlainLlmSession(selectedWorkflowId, activeWorkflowId);
+
+  const prevStatusRef = useRef(clutchStatus);
+  useEffect(() => {
+    const becameIdle = prevStatusRef.current !== 'idle' && clutchStatus === 'idle';
+    prevStatusRef.current = clutchStatus;
+    if (!isPlainLlmChat || !becameIdle || pendingMessages.length === 0) return;
+    const [next, ...rest] = pendingMessages;
+    setPendingMessages(rest);
+    onSendMessage(next.text);
+  }, [clutchStatus, isPlainLlmChat, pendingMessages, onSendMessage]);
+
+  const enqueuePending = useCallback((text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    const id = `pending_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    setPendingMessages((prev) => [...prev, { id, text: trimmed }]);
+  }, []);
+
+  const removePending = useCallback((id: string) => {
+    setPendingMessages((prev) => prev.filter((item) => item.id !== id));
+  }, []);
+
+  const handleStopWithQueueClear = useCallback(() => {
+    setPendingMessages([]);
+    onStopRun?.();
+  }, [onStopRun]);
 
   // Serialize attachments into text for sending
   const handleSendWithAttachments = (text: string, attachments: Attachment[]) => {
@@ -584,13 +624,14 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
         fullText = `[file: ${att.name}]\n${fullText}`;
       }
     }
-    onSendMessage(fullText.trim(), attachments);
+    const trimmed = fullText.trim();
+    if (!trimmed) return;
+    if (isRunning && isPlainLlmChat) {
+      enqueuePending(trimmed);
+      return;
+    }
+    onSendMessage(trimmed, attachments);
   };
-
-  const isIdle = clutchStatus === 'idle';
-  const isRunning = clutchStatus === 'running';
-  const awaitingHuman = clutchStatus === 'awaiting_human';
-  const isPlainLlmChat = isPlainLlmSession(selectedWorkflowId, activeWorkflowId);
 
   const isDefaultNewSessionTitle = !sessionTitle ||
     sessionTitle === 'New session' ||
@@ -608,7 +649,19 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, clutchStatus, showThinking]);
+  }, [messages, clutchStatus, showThinking, pendingMessages.length]);
+
+  useEffect(() => {
+    const dock = dockRef.current;
+    if (!dock) return;
+    const measure = () => {
+      setDockHeight(dock.offsetHeight + 48);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(dock);
+    return () => observer.disconnect();
+  }, [pendingMessages.length, shellSessionStatus, awaitingHuman, isRunning, isPlainLlmChat]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -672,8 +725,9 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
       style={{
         paddingLeft: `${selectedSidebarWidth + 30}px`,
         paddingRight: `${rightSidebarWidth + 30}px`,
+        paddingBottom: dockHeight,
       }}
-      className="mt-[64px] flex-1 overflow-y-auto py-10 pb-40 flex flex-col items-center px-6 transition-all duration-300 bg-background"
+      className="mt-[64px] flex-1 overflow-y-auto py-10 flex flex-col items-center px-6 transition-all duration-300 bg-background"
     >
       <div className="w-full max-w-2xl mx-auto space-y-8 py-4">
         {showEmptyState && (
@@ -898,6 +952,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
       </div>
 
       <div
+        ref={dockRef}
         style={{
           left: `${selectedSidebarWidth + 24}px`,
           right: `${rightSidebarWidth + 24}px`,
@@ -1006,7 +1061,9 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
               onSendMessage={handleSendWithAttachments}
               isRunning={isRunning}
               isPlainLlmChat={isPlainLlmChat}
-              onStopRun={onStopRun}
+              onStopRun={handleStopWithQueueClear}
+              pendingMessages={pendingMessages}
+              onRemovePendingMessage={removePending}
               selectedWorkflowId={selectedWorkflowId}
               selectedWorkflowName={selectedWorkflowName}
               onClearSelectedWorkflow={onClearSelectedWorkflow}
@@ -1017,6 +1074,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
               permissionMode={permissionMode}
               onPermissionModeChange={onPermissionModeChange ?? (() => {})}
               shellSessionStatus={shellSessionStatus}
+              onDismissHybridNotice={() => clutchStore.clearShellSessionNotice()}
             />
           </div>
         )}

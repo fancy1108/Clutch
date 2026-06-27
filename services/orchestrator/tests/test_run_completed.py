@@ -39,10 +39,17 @@ def test_run_completed_after_http_stop_on_ws_connect() -> None:
         assert completed["data"]["state"]["status"] == "failed"
 
 
-def test_run_completed_after_ws_stop_action() -> None:
-    with client.websocket_connect("/ws/runs/run_completed_ws_stop") as ws:
+def test_plain_chat_stop_via_ws_action_sets_idle() -> None:
+    with client.websocket_connect("/ws/runs/run_plain_chat_ws_stop") as ws:
         ws.receive_json()
         ws.send_json({"action": "stop_run"})
-        events = [ws.receive_json() for _ in range(3)]
-        completed = next(e for e in events if e["event"] == "run_completed")
-        assert completed["data"]["status"] == "failed"
+        saw_idle = False
+        for _ in range(4):
+            event = ws.receive_json()
+            if event["event"] != "state_patch":
+                continue
+            status = event["data"].get("patch", {}).get("status")
+            if status == "idle":
+                saw_idle = True
+                break
+        assert saw_idle

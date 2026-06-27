@@ -27,3 +27,6 @@ package = false
 asyncio_mode = "auto"
 pythonpath = ["."]
 testpaths = ["tests"]
+markers = [
+    "real_route_engine: use production engine_router instead of conftest mock",
+]

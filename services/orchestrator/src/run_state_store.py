@@ -76,9 +76,17 @@ def persisted_state_preferred(persisted: ClutchState, memory: ClutchState) -> bo
 
 
 def sync_run_state_from_disk(run_id: str, memory: ClutchState) -> ClutchState:
+    from src.hybrid_concurrency import clear_stale_shell_rejection_status
+
     persisted = load_run_state(run_id)
     if persisted is None:
-        return memory
-    if persisted_state_preferred(persisted, memory):
-        return persisted
-    return memory
+        chosen = memory
+    elif persisted_state_preferred(persisted, memory):
+        chosen = persisted
+    else:
+        chosen = memory
+    stale_patch = clear_stale_shell_rejection_status(chosen)
+    if stale_patch:
+        chosen = {**chosen, **stale_patch}  # type: ignore[typeddict-item]
+        save_run_state(chosen)
+    return chosen

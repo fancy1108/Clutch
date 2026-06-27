@@ -66,6 +66,8 @@ wait_tauri_ready() {
 {
   echo "=== API E2E ==="
   (cd services/orchestrator && env CLUTCH_E2E_FAKE_LLM="${CLUTCH_E2E_FAKE_LLM:-}" \
+    CLUTCH_STORAGE_DIR="${CLUTCH_STORAGE_DIR:-}" \
+    CLUTCH_AGENTS_DIR="${CLUTCH_AGENTS_DIR:-}" \
     CLUTCH_E2E_SANDBOX="${CLUTCH_E2E_SANDBOX:-}" \
     CLUTCH_WORKSPACES_FILE="${CLUTCH_WORKSPACES_FILE:-}" \
     CLUTCH_RUN_HISTORY_DIR="${CLUTCH_RUN_HISTORY_DIR:-}" \
@@ -75,6 +77,37 @@ wait_tauri_ready() {
   sidecar_pid=$!
   wait_sidecar
   (cd e2e && env CLUTCH_E2E_SANDBOX="${CLUTCH_E2E_SANDBOX:-}" pnpm test:api)
+
+  kill "$sidecar_pid" 2>/dev/null || true
+  wait "$sidecar_pid" 2>/dev/null || true
+  sidecar_pid=""
+  sleep 2
+  for port in 8123 3000; do
+    if lsof -ti "tcp:${port}" >/dev/null 2>&1; then
+      lsof -ti "tcp:${port}" | xargs kill -9 2>/dev/null || true
+      sleep 0.5
+    fi
+  done
+
+  echo "=== Hybrid concurrent sessions API E2E (real PTY spawn) ==="
+  (cd services/orchestrator && env CLUTCH_E2E_FAKE_LLM="${CLUTCH_E2E_FAKE_LLM:-}" \
+    CLUTCH_E2E_FAKE_HYBRID=1 \
+    CLUTCH_RUNTIME_MODE=hybrid \
+    CLUTCH_SHELL_MAX_SESSIONS=8 \
+    CLUTCH_STORAGE_DIR="${CLUTCH_STORAGE_DIR:-}" \
+    CLUTCH_AGENTS_DIR="${CLUTCH_AGENTS_DIR:-}" \
+    CLUTCH_E2E_SANDBOX="${CLUTCH_E2E_SANDBOX:-}" \
+    CLUTCH_WORKSPACES_FILE="${CLUTCH_WORKSPACES_FILE:-}" \
+    CLUTCH_RUN_HISTORY_DIR="${CLUTCH_RUN_HISTORY_DIR:-}" \
+    CLUTCH_TOOLS_CONFIG="${CLUTCH_TOOLS_CONFIG:-}" \
+    CLUTCH_MODELS_CONFIG="${CLUTCH_MODELS_CONFIG:-}" \
+    uv run uvicorn src.main:app --host 127.0.0.1 --port 8123) &
+  sidecar_pid=$!
+  wait_sidecar
+  (cd e2e && env CLUTCH_E2E_SANDBOX="${CLUTCH_E2E_SANDBOX:-}" \
+    CLUTCH_RUNTIME_MODE=hybrid \
+    CLUTCH_E2E_FAKE_HYBRID=1 \
+    pnpm test:hybrid-api)
 
   kill "$sidecar_pid" 2>/dev/null || true
   wait "$sidecar_pid" 2>/dev/null || true

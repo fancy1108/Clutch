@@ -190,10 +190,10 @@ def test_poc_10_workspace_cwd_is_per_session(monkeypatch: pytest.MonkeyPatch) ->
 
     lines_a = written[session_a.master_fd]
     lines_b = written[session_b.master_fd]
-    assert any("cd /projects/alpha" in line for line in lines_a)
-    assert any("cd /projects/beta" in line for line in lines_b)
-    assert not any("cd /projects/beta" in line for line in lines_a)
-    assert not any("cd /projects/alpha" in line for line in lines_b)
+    assert any(line.startswith("cd ") and "/projects/alpha" in line for line in lines_a)
+    assert any(line.startswith("cd ") and "/projects/beta" in line for line in lines_b)
+    assert not any("/projects/beta" in line for line in lines_a)
+    assert not any("/projects/alpha" in line for line in lines_b)
 
 
 def test_poc_10_debug_snapshot_per_run(monkeypatch: pytest.MonkeyPatch) -> None:

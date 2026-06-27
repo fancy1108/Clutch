@@ -159,7 +159,8 @@ class ClutchStateStore {
   private runId = this.state.run_id;
   private pendingHydrate: ClutchState | null = null;
   private reconnectHydrate: ClutchState | null = null;
-  private backgroundHydrateTimer: ReturnType<typeof setInterval> | null = null;
+  private backgroundHydrates = new Map<string, ReturnType<typeof setInterval>>();
+  private backgroundSnapshots = new Map<string, ClutchState>();
   private pendingHybridExecutions = new Map<string, HybridExecutionPayload>();
   private _connected = false;
 
@@ -185,17 +186,15 @@ class ClutchStateStore {
     runId: string,
     fetchState: (id: string) => Promise<ClutchState>,
   ): void => {
-    this.clearBackgroundHydrate();
-    if (this.runId !== runId) return;
+    if (this.backgroundHydrates.has(runId)) return;
 
     const poll = async () => {
-      if (this.runId !== runId) {
-        this.clearBackgroundHydrate();
-        return;
-      }
       try {
         const remote = await fetchState(runId);
+        this.backgroundSnapshots.set(runId, remote);
+
         if (this.runId !== runId) return;
+
         const localCount = this.state.messages?.length ?? 0;
         const remoteCount = remote.messages?.length ?? 0;
         if (
@@ -210,7 +209,7 @@ class ClutchStateStore {
           this.emit();
         }
         if (remote.status !== 'running') {
-          this.clearBackgroundHydrate();
+          this.clearBackgroundHydrateForRun(runId);
         }
       } catch {
         // ignore transient fetch errors while polling
@@ -218,15 +217,25 @@ class ClutchStateStore {
     };
 
     void poll();
-    this.backgroundHydrateTimer = setInterval(() => {
-      void poll();
-    }, 3000);
+    this.backgroundHydrates.set(
+      runId,
+      setInterval(() => {
+        void poll();
+      }, 3000),
+    );
+  };
+
+  clearBackgroundHydrateForRun = (runId: string): void => {
+    const timer = this.backgroundHydrates.get(runId);
+    if (timer) {
+      clearInterval(timer);
+      this.backgroundHydrates.delete(runId);
+    }
   };
 
   clearBackgroundHydrate = (): void => {
-    if (this.backgroundHydrateTimer) {
-      clearInterval(this.backgroundHydrateTimer);
-      this.backgroundHydrateTimer = null;
+    for (const runId of [...this.backgroundHydrates.keys()]) {
+      this.clearBackgroundHydrateForRun(runId);
     }
   };
 
@@ -378,16 +387,21 @@ class ClutchStateStore {
       this._connected = false;
     }
     this.connectPromise = null;
-    this.clearBackgroundHydrate();
 
     this.runId = runId;
     if (this.pendingHydrate?.run_id === runId) {
       this.state = this.pendingHydrate;
       this.reconnectHydrate = this.pendingHydrate;
       this.pendingHydrate = null;
-    } else if (this.state.run_id !== runId) {
-      this.state = createEmptyState(runId);
-      this.reconnectHydrate = null;
+    } else {
+      const backgroundSnapshot = this.backgroundSnapshots.get(runId);
+      if (backgroundSnapshot) {
+        this.state = backgroundSnapshot;
+        this.reconnectHydrate = backgroundSnapshot;
+      } else if (this.state.run_id !== runId) {
+        this.state = createEmptyState(runId);
+        this.reconnectHydrate = null;
+      }
     }
     this.emit();
 
@@ -490,6 +504,31 @@ class ClutchStateStore {
 
   clearTerminalLogs(): void {
     this.applyPatch({ terminal_logs: [] });
+  }
+
+  clearShellSessionNotice(): void {
+    if (!this.state.shell_session_status?.startsWith('rejected_')) return;
+    this.applyPatch({ shell_session_status: 'ready' });
+  }
+
+  appendOptimisticUserMessage(text: string, messageId?: string): void {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    const exists = this.state.messages.some(
+      (message) => message.agent === 'User' && message.text.trim() === trimmed,
+    );
+    if (exists) return;
+    const message = createUserChatMessage(trimmed);
+    if (messageId) {
+      message.id = messageId;
+    }
+    this.applyPatch({ messages: [...this.state.messages, message] });
+  }
+
+  removeUserMessageById(messageId: string): void {
+    const next = this.state.messages.filter((message) => message.id !== messageId);
+    if (next.length === this.state.messages.length) return;
+    this.applyPatch({ messages: next });
   }
 
   async send(payload: Record<string, unknown>): Promise<void> {

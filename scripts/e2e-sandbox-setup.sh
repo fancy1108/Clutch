@@ -7,7 +7,7 @@ E2E_ROOT="${CLUTCH_E2E_ROOT:-$(mktemp -d "${TMPDIR:-/tmp}/clutch-e2e.XXXXXX")}"
 SANDBOX="${E2E_ROOT}/sandbox-project"
 STATE="${E2E_ROOT}/clutch-state"
 
-mkdir -p "${SANDBOX}/src" "${STATE}"
+mkdir -p "${SANDBOX}/src" "${STATE}" "${STATE}/storage" "${STATE}/agents"
 # Intentionally omit docs/verify.md for MVP check-fail scenario.
 cat > "${SANDBOX}/package.json" <<'EOF'
 {
@@ -44,8 +44,35 @@ export CLUTCH_E2E_SANDBOX='${SANDBOX}'
 export CLUTCH_WORKSPACES_FILE='${STATE}/workspaces.json'
 export CLUTCH_RUN_HISTORY_DIR='${STATE}/sessions'
 export CLUTCH_TOOLS_CONFIG='${STATE}/tools.json'
+export CLUTCH_STORAGE_DIR='${STATE}/storage'
+export CLUTCH_AGENTS_DIR='${STATE}/agents'
 export CLUTCH_E2E_FAKE_LLM='1'
 export CLUTCH_MODELS_CONFIG='${STATE}/models.json'
+EOF
+
+cat > "${STATE}/tools.json" <<'EOF'
+{
+  "connected": ["claude-cli"]
+}
+EOF
+
+cat > "${STATE}/agents/agents.json" <<'EOF'
+[
+  {
+    "id": "agent-e2e-hybrid",
+    "name": "Claude E2E Hybrid",
+    "description": "E2E hybrid plain-chat agent",
+    "markdownDoc": "# Claude E2E Hybrid\n\n## Protocol\n- Reply concisely for automated tests.\n",
+    "lastModified": "e2e",
+    "avatar": "",
+    "deliverables": [],
+    "mcpTools": [],
+    "mcpServerIds": [],
+    "agentType": "claude-cli",
+    "aiEngine": "Claude Code (Local CLI)",
+    "skills": []
+  }
+]
 EOF
 
 echo "${E2E_ROOT}"

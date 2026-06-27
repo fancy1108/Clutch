@@ -29,6 +29,11 @@ export interface Attachment {
   mimeType?: string;
 }
 
+export interface PendingChatMessage {
+  id: string;
+  text: string;
+}
+
 interface ChatInputBarProps {
   inputValue: string;
   setInputValue: (val: string) => void;
@@ -36,6 +41,8 @@ interface ChatInputBarProps {
   isRunning: boolean;
   isPlainLlmChat: boolean;
   onStopRun?: () => void;
+  pendingMessages?: PendingChatMessage[];
+  onRemovePendingMessage?: (id: string) => void;
   selectedWorkflowId?: string | null;
   selectedWorkflowName?: string;
   onClearSelectedWorkflow?: () => void;
@@ -46,6 +53,7 @@ interface ChatInputBarProps {
   permissionMode: PermissionMode;
   onPermissionModeChange: (mode: PermissionMode) => void;
   shellSessionStatus?: string;
+  onDismissHybridNotice?: () => void;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -65,11 +73,9 @@ function fileIcon(kind: Attachment['kind']): string {
 function hybridRejectionNotice(status: string | undefined, lang: 'en' | 'zh'): string | null {
   if (!status?.startsWith('rejected_')) return null;
   const code = status.slice('rejected_'.length);
+  // Superseded by pending-message queue (HRT-08).
+  if (code === 'run_in_progress') return null;
   const messages: Record<string, { en: string; zh: string }> = {
-    run_in_progress: {
-      en: 'A message is already processing in this chat. Wait or press Stop.',
-      zh: '此会话已有消息正在处理。请等待或点击 Stop。',
-    },
     session_busy: {
       en: 'Hybrid shell is busy for this chat. Wait or press Stop.',
       zh: '此会话 Hybrid shell 忙碌中。请等待或点击 Stop。',
@@ -142,6 +148,8 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
   isRunning,
   isPlainLlmChat,
   onStopRun,
+  pendingMessages = [],
+  onRemovePendingMessage,
   selectedWorkflowId,
   selectedWorkflowName,
   onClearSelectedWorkflow,
@@ -152,8 +160,10 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
   permissionMode,
   onPermissionModeChange,
   shellSessionStatus,
+  onDismissHybridNotice,
 }) => {
   const { t, language } = useLanguage();
+  const [dismissedNoticeKey, setDismissedNoticeKey] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -304,6 +314,15 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
     [addImageFile, addFilePath],
   );
 
+  // ── Send ────────────────────────────────────────────────────────────────────
+
+  const handleSend = useCallback(() => {
+    if (!inputValue.trim() && attachments.length === 0) return;
+    onSendMessage(inputValue, attachments);
+    setAttachments([]);
+    setInputValue('');
+  }, [inputValue, attachments, onSendMessage, setInputValue]);
+
   // ── Keyboard handler ────────────────────────────────────────────────────────
 
   const handleKeyDown = useCallback(
@@ -316,13 +335,12 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
       }
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
-        if (isRunning && isPlainLlmChat) return;
         if (inputValue.trim() || attachments.length > 0) {
           handleSend();
         }
       }
     },
-    [inputValue, attachments, isRunning, isPlainLlmChat],
+    [inputValue, attachments, handleSend],
   );
 
   const handleInputChange = useCallback(
@@ -357,15 +375,6 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
     },
     [setInputValue],
   );
-
-  // ── Send ────────────────────────────────────────────────────────────────────
-
-  const handleSend = useCallback(() => {
-    if (!inputValue.trim() && attachments.length === 0) return;
-    onSendMessage(inputValue, attachments);
-    setAttachments([]);
-    setInputValue('');
-  }, [inputValue, attachments, onSendMessage, setInputValue]);
 
   // ── Skill / Session insert ──────────────────────────────────────────────────
 
@@ -420,9 +429,16 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
     (p) => !fileFilter || p.toLowerCase().includes(fileFilter.toLowerCase()),
   );
 
-  const canSend = (inputValue.trim().length > 0 || attachments.length > 0) && !(isRunning && isPlainLlmChat);
+  const canSend = inputValue.trim().length > 0 || attachments.length > 0;
+  const showPlainChatStop = isRunning && isPlainLlmChat;
   const currentPermission = PERMISSION_MODES.find((m) => m.id === permissionMode) ?? PERMISSION_MODES[0];
   const hybridNotice = hybridRejectionNotice(shellSessionStatus, language === 'zh' ? 'zh' : 'en');
+  const showHybridNotice =
+    hybridNotice && dismissedNoticeKey !== (shellSessionStatus ?? '');
+
+  useEffect(() => {
+    setDismissedNoticeKey(null);
+  }, [shellSessionStatus]);
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
@@ -438,9 +454,50 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      {hybridNotice ? (
-        <div className="px-3 py-2 text-[11px] leading-snug text-amber-900 bg-amber-50 border-b border-amber-200/80 rounded-t-xl">
-          {hybridNotice}
+      {showHybridNotice ? (
+        <div className="flex items-start gap-2 px-3 py-2 text-[11px] leading-snug text-amber-900 bg-amber-50 border-b border-amber-200/80 rounded-t-xl">
+          <span className="flex-1">{hybridNotice}</span>
+          <button
+            type="button"
+            onClick={() => {
+              setDismissedNoticeKey(shellSessionStatus ?? '');
+              onDismissHybridNotice?.();
+            }}
+            className={`${BTN_ICON_SM} flex-shrink-0 text-amber-800/70 hover:text-amber-950 hover:bg-amber-100/80`}
+            aria-label={language === 'zh' ? '关闭提示' : 'Dismiss notice'}
+          >
+            <LegacyIcon name="close" className="text-[14px]" />
+          </button>
+        </div>
+      ) : null}
+      {pendingMessages.length > 0 ? (
+        <div className="px-3 pt-3 pb-2 border-b border-outline-variant/40">
+          <div className="flex items-center gap-1.5 mb-2">
+            <span className="text-[11px] font-semibold text-on-surface-variant">
+              {language === 'zh' ? '待发送消息' : 'Pending messages'}
+            </span>
+            <LegacyIcon name="info" className="text-[13px] text-on-surface-variant/50" />
+          </div>
+          <div className="space-y-1.5 max-h-24 overflow-y-auto">
+            {pendingMessages.map((item) => (
+              <div
+                key={item.id}
+                className="flex items-center gap-2 rounded-lg border border-outline-variant/50 bg-surface-container-low/60 px-2.5 py-1.5"
+              >
+                <span className="flex-1 text-[12px] text-on-surface truncate" title={item.text}>
+                  {item.text}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => onRemovePendingMessage?.(item.id)}
+                  className={`${BTN_ICON_SM} text-on-surface-variant/60 hover:text-red-600 hover:bg-red-50`}
+                  aria-label={language === 'zh' ? '移出队列' : 'Remove from queue'}
+                >
+                  <LegacyIcon name="delete" className="text-[15px]" />
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       ) : null}
       {/* Hidden native file input */}
@@ -651,24 +708,31 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
             )}
           </div>
 
-          {/* Send / Stop button */}
+          {/* Stop (plain chat while running) + Send — Cursor-style: both available */}
+          {showPlainChatStop ? (
+            <button
+              type="button"
+              data-testid="chat-stop"
+              onClick={onStopRun}
+              className="w-8 h-8 flex items-center justify-center rounded-full bg-neutral-900 text-white hover:bg-black transition-all"
+              title="Stop"
+              aria-label="Stop"
+            >
+              <LegacyIcon name="stop" className="text-[17px]" />
+            </button>
+          ) : null}
           <button
             type="button"
-            data-testid={isRunning && isPlainLlmChat ? 'chat-stop' : 'chat-send'}
-            onClick={isRunning && isPlainLlmChat ? onStopRun : handleSend}
-            disabled={!canSend && !(isRunning && isPlainLlmChat)}
+            data-testid="chat-send"
+            onClick={handleSend}
+            disabled={!canSend}
             className={`w-8 h-8 flex items-center justify-center rounded-full transition-all ${
-              isRunning && isPlainLlmChat
-                ? 'bg-neutral-900 text-white hover:bg-black'
-                : canSend
+              canSend
                 ? 'bg-primary text-white hover:opacity-90'
                 : 'bg-surface-container text-on-surface-variant/40 cursor-not-allowed'
             }`}
           >
-            <LegacyIcon
-              name={isRunning && isPlainLlmChat ? 'stop' : 'arrow_upward'}
-              className="text-[17px]"
-            />
+            <LegacyIcon name="arrow_upward" className="text-[17px]" />
           </button>
         </div>
       </div>

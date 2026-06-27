@@ -67,6 +67,7 @@ class _FakeSession:
     run_id: str = "run_hybrid_audit"
     owner_node_id: str = "plain_chat"
     master_fd: int = 99
+    workspace_path: str = "/tmp/clutch-test-workspace"
 
     def ensure_workspace_cwd(self) -> None:
         return None

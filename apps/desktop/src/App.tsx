@@ -84,20 +84,29 @@ function MainLayout() {
     onConfirm: (value: string) => void;
   } | null>(null);
 
+  const hydrateRunState = useCallback(async (runId: string) => {
+    const { state } = await fetchRunState(runId);
+    return state;
+  }, []);
+
+  const scheduleBackgroundHydrateForRun = useCallback(
+    (runId: string) => {
+      const snapshot = clutchStore.getSnapshot();
+      if (snapshot.run_id !== runId || snapshot.workflow_id) return;
+      if (snapshot.status !== 'running') return;
+      clutchStore.scheduleBackgroundHydrate(runId, hydrateRunState);
+    },
+    [hydrateRunState],
+  );
+
   useEffect(() => {
     void clutchStore.connect(sessionRunId).then(() => {
       const snapshot = clutchStore.getSnapshot();
       if (!snapshot.workflow_id && snapshot.status === 'running') {
-        clutchStore.scheduleBackgroundHydrate(sessionRunId, async (runId) => {
-          const { state } = await fetchRunState(runId);
-          return state;
-        });
+        clutchStore.scheduleBackgroundHydrate(sessionRunId, hydrateRunState);
       }
     });
-    return () => {
-      clutchStore.clearBackgroundHydrate();
-    };
-  }, [sessionRunId]);
+  }, [sessionRunId, hydrateRunState]);
 
   const clutchStatus = clutchState.status;
   const chatMessages = clutchState.messages as ChatMessage[];
@@ -731,6 +740,7 @@ function MainLayout() {
       await handlePickWorkspace();
       return;
     }
+    scheduleBackgroundHydrateForRun(sessionRunId);
     const runId = createSessionRunId();
     setSessionRunId(runId);
     setCurrentFlowName('');
@@ -744,6 +754,9 @@ function MainLayout() {
   const handleSelectSession = async (session: SessionRecord) => {
     if (session.workspace_id && session.workspace_id !== activeWorkspaceId) {
       await handleSelectWorkspace(session.workspace_id);
+    }
+    if (session.run_id !== sessionRunId) {
+      scheduleBackgroundHydrateForRun(sessionRunId);
     }
     let hydratedState: ClutchState | null = null;
     try {
@@ -1101,6 +1114,7 @@ function MainLayout() {
                 setInputValue={setInputValue}
                 onSendMessage={handleSendMessage}
                 sessionTitle={sessionTitle}
+                sessionRunId={sessionRunId}
                 clutchStatus={clutchStatus}
                 currentFlowName={currentFlowName || clutchState.workflow_id}
                 selectedSidebarWidth={selectedSidebarWidth}

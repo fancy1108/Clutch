@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+from typing import Any
+
 from src.preferences_storage import tr
 from src.shell_session import ShellSessionBusyError, ShellSessionError, ShellSessionPoolFullError
 
@@ -59,3 +62,13 @@ def hybrid_rejection_message(code: str) -> str:
 
 def shell_session_status_for_rejection(code: str) -> str:
     return f"rejected_{code}"
+
+
+def clear_stale_shell_rejection_status(state: Mapping[str, Any]) -> dict[str, Any] | None:
+    """Drop persisted rejected_* when run is idle (queue supersedes run_in_progress)."""
+    raw = state.get("shell_session_status")
+    if state.get("status") != "idle":
+        return None
+    if not isinstance(raw, str) or not raw.startswith("rejected_"):
+        return None
+    return {"shell_session_status": "ready"}

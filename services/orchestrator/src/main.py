@@ -549,6 +549,22 @@ async def _notify_run_state(
         await _send_run_completed(websocket, run_id, state)
 
 
+async def _try_ws_notify(
+    coro: Awaitable[None],
+    *,
+    run_id: str,
+    what: str,
+) -> None:
+    try:
+        await coro
+    except WebSocketDisconnect:
+        logger.warning(
+            "WebSocket disconnected during %s run_id=%s",
+            what,
+            run_id,
+        )
+
+
 _AGENT_AVATARS: dict[str, str] = {
     "Orchestrator": "https://lh3.googleusercontent.com/aida-public/AB6AXuA0yGh59QNLj5n0igNxMgu4lgaiNqZpcN29SpWM0JHNlAuFmOBx-Id67Zcd2NDCNBjBKrcffQrdrfoe-3XaSlveekLAP9SRis93uTk7XPPFO5y4Swos7NvATw6n7eZEm7nfAQuTiMAoWRSnxefAOJugUbZx3fCTNv4jGyjvT-UZznwKzp_HoXuStup_0juhBCZYamrV0Coil-k27d9Yi7il6NabIEG0FfbxwL5V5azpfZQOlBfpaganta2kP7n59BKPHd4K2uTOfZ5p",
     "Builder": "https://lh3.googleusercontent.com/aida-public/AB6AXuBpRidttSGTIY-J-PGvnlcZX_oZSZoBXJY5vjZ9g1PKl_fq4EKoa2RXbcSCvvIdbPLdmfuzPKTxnR8TqV7skwsKlt-eKEzSzktv-TWbHu4c9uBEdP6Es_Fjek1EBQuGZeMtWsUi3fn0lyozFaZBLp9SpES3r0WalbqYY6gGiT1R_0J1kvU-D9rI_2q2f3sMGHuTjWyOZ5gImCLGHSGejtcKmToTSZYMrXfT_A5x1iw_f4q7WljP3FXjk64aQhLgh9nTXUDfPdkIzu0b",
@@ -765,6 +781,8 @@ def _history_for_llm(
         agent = str(message.get("agent", ""))
         text = str(message.get("text", "")).strip()
         if not text:
+            continue
+        if agent in {"Supervisor", "Orchestrator"}:
             continue
         role = "user" if agent == "User" else "assistant"
         if role == "user":
@@ -1234,6 +1252,59 @@ async def _handle_plain_chat_mcp_decision(
     return state
 
 
+def _interrupt_plain_chat_shell(run_id: str) -> None:
+    from src.shell_session import get_shell_session_manager
+
+    get_shell_session_manager().release(run_id)
+
+
+async def _apply_plain_chat_stop(
+    websocket: WebSocket,
+    run_id: str,
+    state: ClutchState,
+) -> ClutchState:
+    from src.runtime_config import runtime_mode
+
+    await asyncio.to_thread(_interrupt_plain_chat_shell, run_id)
+    if runtime_mode() == "hybrid":
+        log_line = stamp_log_line(tagged(TAG_WORKFLOW, "[HYBRID] Plain chat stopped by user."))
+    else:
+        log_line = stamp_log_line(tagged(TAG_WORKFLOW, "Run stopped by supervisor."))
+    logs = list(state["terminal_logs"]) + [log_line]
+    patch: dict[str, Any] = {"status": "idle", "terminal_logs": logs}
+    if runtime_mode() == "hybrid":
+        patch["shell_session_status"] = "ready"
+    state = _merge_patch(state, patch)
+    _commit_run_state(run_id, state)
+    _touch_session(run_id, status=state["status"])
+    await _send_log_event(websocket, run_id, log_line, node_id="")
+    await _notify_run_state(websocket, run_id, state, patch)
+    return state
+
+
+async def _recover_stuck_plain_chat(run_id: str) -> None:
+    from src.runtime_config import runtime_mode
+
+    state = _get_or_create_run(run_id)
+    if state.get("workflow_id"):
+        return
+    if state["status"] != "running":
+        return
+    log_line = stamp_log_line(
+        tagged(
+            TAG_WORKFLOW,
+            "[HYBRID] Recovered plain chat after WebSocket disconnect.",
+        )
+    )
+    logs = list(state["terminal_logs"]) + [log_line]
+    patch: dict[str, Any] = {"status": "idle", "terminal_logs": logs}
+    if runtime_mode() == "hybrid":
+        patch["shell_session_status"] = "ready"
+    state = _merge_patch(state, patch)
+    _commit_run_state(run_id, state)
+    _touch_session(run_id, status=state["status"])
+
+
 async def _apply_hybrid_plain_chat_rejection(
     websocket: WebSocket,
     run_id: str,
@@ -1285,25 +1356,31 @@ async def _handle_plain_chat(
     active_agent = str(agent.get("name", "Clutch Agent")) if agent else "Clutch Agent"
 
     if state["status"] == "running" and runtime_mode() == "hybrid":
-        return await _apply_hybrid_plain_chat_rejection(
-            websocket,
-            run_id,
-            state,
-            code="run_in_progress",
-            keep_running=True,
-        )
+        return state
 
+    stripped = text.strip()
     user_message = _chat_message("User", text, msg_id=f"user_{uuid.uuid4().hex[:8]}")
-    user_patch = {
-        "messages": list(state["messages"]) + [user_message],
+    messages = list(state["messages"])
+    user_message_added = not (
+        messages
+        and messages[-1].get("agent") == "User"
+        and str(messages[-1].get("text", "")).strip() == stripped
+    )
+    if user_message_added:
+        messages = messages + [user_message]
+    user_patch: dict[str, Any] = {
+        "messages": messages,
         "status": "running",
         "active_agent": active_agent,
     }
+    if runtime_mode() == "hybrid":
+        user_patch["shell_session_status"] = "ready"
     state = _merge_patch(state, user_patch)
     _commit_run_state(run_id, state)
     _touch_session(run_id, title=text.strip()[:80] or "New session", status=state["status"])
 
-    await _send_message_event(websocket, run_id, user_message, "")
+    if user_message_added:
+        await _send_message_event(websocket, run_id, user_message, "")
     await _notify_run_state(websocket, run_id, state, user_patch)
 
     from src.state import cli_session_patch, read_cli_session_agent_id, read_cli_session_id
@@ -1319,11 +1396,19 @@ async def _handle_plain_chat(
         nonlocal streamed_logs, state
         streamed_logs = True
         stamped = stamp_log_line(line)
-        await _send_log_event(websocket, run_id, stamped, node_id="")
         logs = list(state["terminal_logs"]) + [stamped]
         state = _merge_patch(state, {"terminal_logs": logs})
         _commit_run_state(run_id, state)
-        await _notify_run_state(websocket, run_id, state, {"terminal_logs": logs})
+        await _try_ws_notify(
+            _send_log_event(websocket, run_id, stamped, node_id=""),
+            run_id=run_id,
+            what="log",
+        )
+        await _try_ws_notify(
+            _notify_run_state(websocket, run_id, state, {"terminal_logs": logs}),
+            run_id=run_id,
+            what="state_patch",
+        )
 
     from src.hybrid_concurrency import HybridPlainChatRejected
 
@@ -1348,13 +1433,34 @@ async def _handle_plain_chat(
             emit_log=emit_log,
         )
     except HybridPlainChatRejected as exc:
+        keep_running = exc.code == "session_busy" and state["status"] == "running"
         return await _apply_hybrid_plain_chat_rejection(
             websocket,
             run_id,
             state,
             code=exc.code,
-            keep_running=False,
+            keep_running=keep_running,
         )
+    except Exception as exc:
+        err_line = f"Error in plain chat: {exc}"
+        logs = list(state["terminal_logs"]) + [stamp_log_line(err_line)]
+        err_patch: dict[str, Any] = {"status": "idle", "terminal_logs": logs}
+        if runtime_mode() == "hybrid":
+            err_patch["shell_session_status"] = "ready"
+        state = _merge_patch(state, err_patch)
+        _commit_run_state(run_id, state)
+        _touch_session(run_id, status=state["status"])
+        await _try_ws_notify(
+            _send_log_event(websocket, run_id, err_line, node_id=""),
+            run_id=run_id,
+            what="log",
+        )
+        await _try_ws_notify(
+            _notify_run_state(websocket, run_id, state, err_patch),
+            run_id=run_id,
+            what="state_patch",
+        )
+        return state
 
     if mcp_pause:
         from src.mcp_pending import McpPendingApproval, store_pending
@@ -1453,11 +1559,6 @@ async def _handle_plain_chat(
 
     log_line = f"[CHAT] {model_name} via {runtime_engine}: {len(reply_text)} chars"
 
-    if not streamed_logs:
-        for log in route_logs:
-            await _send_log_event(websocket, run_id, log, node_id="")
-    await _send_log_event(websocket, run_id, log_line, node_id="")
-
     final_messages = list(state["messages"]) + [reply]
     final_logs = _append_terminal_logs(
         list(state["terminal_logs"]), route_logs, log_line, streamed=streamed_logs
@@ -1482,7 +1583,7 @@ async def _handle_plain_chat(
     elif stored_session_agent and stored_session_agent != resolved_id:
         final_patch.update(cli_session_patch(None, ""))
     state = _merge_patch(state, final_patch)
-    
+
     from src.compaction import should_compact, compact_run_messages
     if should_compact(state):
         state = await compact_run_messages(run_id, state, model_id=resolved_id)
@@ -1497,19 +1598,47 @@ async def _handle_plain_chat(
     _commit_run_state(run_id, state)
     _touch_session(run_id, title=text.strip()[:80] or "New session", status=state["status"])
 
-    await _send_message_event(websocket, run_id, reply, "")
+    if not streamed_logs:
+        for log in route_logs:
+            await _try_ws_notify(
+                _send_log_event(websocket, run_id, log, node_id=""),
+                run_id=run_id,
+                what="log",
+            )
+    await _try_ws_notify(
+        _send_log_event(websocket, run_id, log_line, node_id=""),
+        run_id=run_id,
+        what="log",
+    )
+    await _try_ws_notify(
+        _send_message_event(websocket, run_id, reply, ""),
+        run_id=run_id,
+        what="message",
+    )
     if runtime_engine and "Hybrid" in runtime_engine and hybrid_executions_patch:
         entry = hybrid_executions_patch[str(reply["id"])]
-        await _send_hybrid_execution_event(
-            websocket,
-            run_id,
-            message_id=str(reply["id"]),
-            raw_output=entry.get("rawOutput"),  # type: ignore[arg-type]
-            output_events=entry.get("outputEvents"),  # type: ignore[arg-type]
+        await _try_ws_notify(
+            _send_hybrid_execution_event(
+                websocket,
+                run_id,
+                message_id=str(reply["id"]),
+                raw_output=entry.get("rawOutput"),  # type: ignore[arg-type]
+                output_events=entry.get("outputEvents"),  # type: ignore[arg-type]
+            ),
+            run_id=run_id,
+            what="hybrid_execution",
         )
     if files_changed:
-        await _notify_workspace_files_changed(websocket, run_id, files_changed)
-    await _notify_run_state(websocket, run_id, state, final_patch)
+        await _try_ws_notify(
+            _notify_workspace_files_changed(websocket, run_id, files_changed),
+            run_id=run_id,
+            what="file_changed",
+        )
+    await _try_ws_notify(
+        _notify_run_state(websocket, run_id, state, final_patch),
+        run_id=run_id,
+        what="state_patch",
+    )
 
     return state
 
@@ -2495,6 +2624,20 @@ async def delete_run_endpoint(run_id: str) -> dict[str, str]:
 @app.post("/api/runs/{run_id}/stop")
 async def stop_run(run_id: str) -> dict[str, str]:
     state = _get_or_create_run(run_id)
+    if not state.get("workflow_id"):
+        await asyncio.to_thread(_interrupt_plain_chat_shell, run_id)
+        logs = list(state["terminal_logs"])
+        logs.append(stamp_log_line(tagged(TAG_WORKFLOW, "[HYBRID] Plain chat stopped via HTTP.")))
+        patch: dict[str, Any] = {"status": "idle", "terminal_logs": logs}
+        from src.runtime_config import runtime_mode
+
+        if runtime_mode() == "hybrid":
+            patch["shell_session_status"] = "ready"
+        state = _merge_patch(state, patch)
+        _commit_run_state(run_id, state)
+        _touch_session(run_id, status=state["status"])
+        update_run_record(run_id, {"status": "idle", "ended_at": _iso_timestamp()})
+        return {"run_id": run_id, "status": state["status"]}
     logs = list(state["terminal_logs"])
     logs.append(stamp_log_line(tagged(TAG_WORKFLOW, "Run stopped via HTTP.")))
     state = _merge_patch(state, {"status": "failed", "terminal_logs": logs})
@@ -2562,6 +2705,89 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
     if _is_terminal_status(state["status"]):
         await _send_run_completed(websocket, run_id, state)
 
+    ws_loop = asyncio.get_running_loop()
+    plain_chat_task: asyncio.Task[ClutchState] | None = None
+    plain_chat_queue: list[dict[str, str | None]] = []
+
+    async def _start_plain_chat_turn(
+        text: str,
+        agent_id: str | None,
+        session_model_id: str | None,
+    ) -> None:
+        nonlocal plain_chat_task, state
+        if plain_chat_task is not None and not plain_chat_task.done():
+            return
+        plain_chat_task = asyncio.create_task(
+            _handle_plain_chat(
+                websocket,
+                run_id,
+                state,
+                text,
+                agent_id=agent_id,
+                session_model_id=session_model_id,
+            )
+        )
+        plain_chat_task.add_done_callback(_plain_chat_done)
+
+    async def _enqueue_plain_chat(
+        text: str,
+        agent_id: str | None,
+        session_model_id: str | None,
+    ) -> None:
+        nonlocal state
+        plain_chat_queue.append(
+            {
+                "text": text,
+                "agent_id": agent_id,
+                "session_model_id": session_model_id,
+            }
+        )
+        log_line = stamp_log_line(
+            tagged(
+                TAG_WORKFLOW,
+                f"[HYBRID] queued plain chat ({len(plain_chat_queue)} pending)",
+            )
+        )
+        logs = list(state["terminal_logs"]) + [log_line]
+        patch = {
+            "terminal_logs": logs,
+            "shell_session_status": "ready",
+        }
+        state = _merge_patch(state, patch)
+        _commit_run_state(run_id, state)
+        await _send_log_event(websocket, run_id, log_line, node_id="")
+        await _notify_run_state(websocket, run_id, state, patch)
+
+    async def _drain_plain_chat_queue() -> None:
+        if not plain_chat_queue or (plain_chat_task is not None and not plain_chat_task.done()):
+            return
+        item = plain_chat_queue.pop(0)
+        await _start_plain_chat_turn(
+            str(item["text"]),
+            item.get("agent_id"),
+            item.get("session_model_id"),
+        )
+
+    def _plain_chat_done(task: asyncio.Task[ClutchState]) -> None:
+        nonlocal plain_chat_task, state
+        if plain_chat_task is not task:
+            return
+        plain_chat_task = None
+        if task.cancelled():
+            return
+        exc = task.exception()
+        if exc is not None:
+            logger.exception("plain chat task failed run_id=%s", run_id, exc_info=exc)
+            loop = ws_loop
+            loop.create_task(_recover_stuck_plain_chat(run_id))
+            return
+        try:
+            state = task.result()
+        except Exception:
+            logger.exception("plain chat task result failed run_id=%s", run_id)
+        loop = ws_loop
+        loop.create_task(_drain_plain_chat_queue())
+
     try:
         while True:
             raw = await websocket.receive_text()
@@ -2589,15 +2815,10 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                 session_model_id = str(payload.get("model_id", "")).strip() or None
                 if state["workflow_id"]:
                     state = await _handle_workflow_chat_message(websocket, run_id, state, text)
+                elif plain_chat_task is not None and not plain_chat_task.done():
+                    await _enqueue_plain_chat(text, agent_id, session_model_id)
                 else:
-                    state = await _handle_plain_chat(
-                        websocket,
-                        run_id,
-                        state,
-                        text,
-                        agent_id=agent_id,
-                        session_model_id=session_model_id,
-                    )
+                    await _start_plain_chat_turn(text, agent_id, session_model_id)
             elif isinstance(payload, dict) and payload.get("action") == "human_decision":
                 decision = str(payload.get("decision", "approve"))
                 from src.mcp_pending import get_pending
@@ -2634,17 +2855,25 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                             prompt=tr("Checks failed, waiting for human confirmation.", "检查未通过，等待人工确认。"),
                         )
             elif isinstance(payload, dict) and payload.get("action") == "stop_run":
-                logs = list(state["terminal_logs"])
-                log_line = tagged(TAG_WORKFLOW, "Run stopped by supervisor.")
-                logs.append(stamp_log_line(log_line))
-                patch = {"status": "failed", "terminal_logs": logs}
-                state = _merge_patch(state, patch)
-                _commit_run_state(run_id, state)
-                update_run_record(run_id, {"status": "failed", "ended_at": _iso_timestamp()})
-                await _send_log_event(
-                    websocket, run_id, log_line, node_id=state["active_node_id"]
-                )
-                await _notify_run_state(websocket, run_id, state, patch)
+                if not state.get("workflow_id"):
+                    plain_chat_queue.clear()
+                    await asyncio.to_thread(_interrupt_plain_chat_shell, run_id)
+                    if plain_chat_task is not None and not plain_chat_task.done():
+                        plain_chat_task.cancel()
+                    plain_chat_task = None
+                    state = await _apply_plain_chat_stop(websocket, run_id, state)
+                else:
+                    logs = list(state["terminal_logs"])
+                    log_line = tagged(TAG_WORKFLOW, "Run stopped by supervisor.")
+                    logs.append(stamp_log_line(log_line))
+                    patch = {"status": "failed", "terminal_logs": logs}
+                    state = _merge_patch(state, patch)
+                    _commit_run_state(run_id, state)
+                    update_run_record(run_id, {"status": "failed", "ended_at": _iso_timestamp()})
+                    await _send_log_event(
+                        websocket, run_id, log_line, node_id=state["active_node_id"]
+                    )
+                    await _notify_run_state(websocket, run_id, state, patch)
             else:
                 unknown = _chat_message(
                     "Orchestrator",

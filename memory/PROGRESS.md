@@ -2,9 +2,9 @@
 
 ## 当前状态
 
-- **阶段：** D25 Hybrid Runtime — **HRT-10 完成**；下一步 D29 回看 HRT-05~07 audit 回归
-- **Git HEAD：** `5e1491d`
-- **下次优先：** **D29 回归** — 并发路径 failure mode 是否已在 JSONL/debug 可见
+- **阶段：** D25 Hybrid Runtime — **§F 多 session 并发修复已验收**（对话5/6 通过）
+- **Git HEAD：** `524ca03`
+- **下次优先：** 勾选 ROADMAP §F；可选 MCP hybrid_executions 深度 UI
 - **验收期跳过：** MCP hybrid_executions 深度 UI · 2h/100+ 压测
 
 ### HRT 进度快照
