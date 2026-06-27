@@ -217,6 +217,7 @@ interface ChatFeedProps {
   permissionMode?: PermissionMode;
   onPermissionModeChange?: (mode: PermissionMode) => void;
   userAvatar?: string;
+  userName?: string;
 }
 
 const WORKFLOW_AGENTS = new Set(['Builder', 'Orchestrator', 'Evaluator', 'Supervisor']);
@@ -563,6 +564,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   permissionMode = 'ask',
   onPermissionModeChange,
   userAvatar,
+  userName = 'User',
 }) => {
   const { t } = useLanguage();
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -767,7 +769,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                     {isUser ? (
                       <>
                         <span className="text-[10px] text-on-surface-variant/60">{msg.time}</span>
-                        <span className="text-xs font-bold text-on-surface">{msg.agent}</span>
+                        <span className="text-xs font-bold text-on-surface">{userName || msg.agent}</span>
                       </>
                     ) : (
                       <div className={`flex items-center gap-2 ${isPlainLlmChat && isPlainLlmReply(msg.agent) ? 'items-start' : ''}`}>

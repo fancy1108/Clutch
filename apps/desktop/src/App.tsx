@@ -20,7 +20,7 @@ import {
   isBuiltinAgent,
   mergeAgentsWithBuiltin,
 } from './services/builtinAgent';
-import { fetchPreferences, saveThemePreference, type ThemePresetId } from './services/themeApi';
+import { fetchPreferences, saveThemePreference, saveUserNamePreference, type ThemePresetId } from './services/themeApi';
 import { LanguageProvider, useLanguage } from './components/LanguageContext';
 import { clutchStore, createSessionRunId, submitChatMessage, useClutchState, setUserChatAvatar } from './services/clutchState';
 import { fetchSessions, createSession, startWorkflowRun, fetchRunState, deleteSession, type SessionRecord } from './services/runApi';
@@ -99,6 +99,7 @@ function MainLayout() {
   const [isMultiAgent, setIsMultiAgent] = useState<boolean>(false);
   const [themeId, setThemeIdState] = useState<ThemePresetId>('pristine-light');
   const [userAvatar, setUserAvatarState] = useState<string>('');
+  const [userName, setUserNameState] = useState<string>('User');
 
   useEffect(() => {
     void fetchPreferences()
@@ -107,6 +108,9 @@ function MainLayout() {
         if (prefs.user_avatar) {
           setUserAvatarState(prefs.user_avatar);
           setUserChatAvatar(prefs.user_avatar);
+        }
+        if (prefs.user_name) {
+          setUserNameState(prefs.user_name);
         }
       })
       .catch(() => {});
@@ -117,6 +121,11 @@ function MainLayout() {
     if (!preset) return;
     setThemeIdState(preset.id as ThemePresetId);
     void saveThemePreference(preset.id as ThemePresetId).catch(() => {});
+  };
+
+  const setUserName = (name: string) => {
+    setUserNameState(name);
+    void saveUserNamePreference(name).catch(() => {});
   };
 
   // Active selected model state
@@ -1111,6 +1120,7 @@ function MainLayout() {
                 permissionMode={permissionMode}
                 onPermissionModeChange={handlePermissionModeChange}
                 userAvatar={userAvatar}
+                userName={userName}
               />
               <RightPanel
                 activeTab={rightTab}
@@ -1164,6 +1174,8 @@ function MainLayout() {
           onActivateAgent={handleActivateAgent}
           userAvatar={userAvatar}
           setUserAvatar={setUserAvatarState}
+          userName={userName}
+          setUserName={setUserName}
         />
 
       </div>

@@ -36,6 +36,8 @@ const zhTranslations: Record<string, string> = {
   "General Settings": "General Settings / 通用设置",
   "Customize your application profile, account settings and default preferences.": "自定义您的应用个人资料、帐户设置和默认偏好。",
   "Profile Avatar": "Profile Avatar / 个人头像",
+  "Profile Name": "Profile Name / 个人名称",
+  "Enter your name": "Enter your name / 输入您的名称",
   "Choose Photo": "Choose Photo / 选择照片",
   "Reset to Default": "Reset to Default / 重置为默认",
   "Supported formats: PNG, JPG, GIF. Max file size: 5MB.": "支持格式：PNG、JPG、GIF。文件大小限制：5MB。",

@@ -43,6 +43,7 @@ def _defaults() -> dict[str, str]:
         "active_language": DEFAULT_LANGUAGE,
         "permission_mode": DEFAULT_PERMISSION_MODE,
         "user_avatar": "",
+        "user_name": "User",
     }
 
 
@@ -64,6 +65,7 @@ def load_preferences() -> dict[str, str]:
     language = str(data.get("active_language") or DEFAULT_LANGUAGE)
     permission_mode = str(data.get("permission_mode") or DEFAULT_PERMISSION_MODE)
     user_avatar = str(data.get("user_avatar") or "")
+    user_name = str(data.get("user_name") or "User")
     if theme_id not in ALLOWED_THEME_IDS:
         theme_id = DEFAULT_THEME_ID
     if language not in ALLOWED_LANGUAGES:
@@ -75,12 +77,19 @@ def load_preferences() -> dict[str, str]:
         "active_language": language,
         "permission_mode": permission_mode,
         "user_avatar": user_avatar,
+        "user_name": user_name,
     }
 
 
 def save_avatar(avatar: str) -> dict[str, str]:
     prefs = load_preferences()
     prefs["user_avatar"] = avatar
+    return _write_preferences(prefs)
+
+
+def save_user_name(user_name: str) -> dict[str, str]:
+    prefs = load_preferences()
+    prefs["user_name"] = user_name.strip() or "User"
     return _write_preferences(prefs)
 
 

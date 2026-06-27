@@ -189,6 +189,10 @@ class AvatarPreferenceRequest(BaseModel):
     avatar: str
 
 
+class UserNamePreferenceRequest(BaseModel):
+    user_name: str
+
+
 def _skills_registry_payload(*, rescan: bool = True) -> dict[str, Any]:
     from src.skills_scanner import scan_mounted_directories
     from src.skills_storage import ensure_default_skill_mounts, load_registry, save_registry
@@ -2280,6 +2284,16 @@ async def save_avatar_preference(body: AvatarPreferenceRequest) -> dict[str, str
 
     try:
         return save_avatar(body.avatar)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+
+
+@app.post("/api/preferences/name")
+async def save_user_name_preference(body: UserNamePreferenceRequest) -> dict[str, str]:
+    from src.preferences_storage import save_user_name
+
+    try:
+        return save_user_name(body.user_name)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
 

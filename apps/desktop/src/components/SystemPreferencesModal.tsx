@@ -45,6 +45,8 @@ interface SystemPreferencesModalProps {
   onActivateAgent?: (agent: Agent) => void;
   userAvatar: string;
   setUserAvatar: (avatar: string) => void;
+  userName?: string;
+  setUserName?: (name: string) => void;
 }
 
 export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
@@ -69,6 +71,8 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
   onActivateAgent,
   userAvatar,
   setUserAvatar,
+  userName = 'User',
+  setUserName,
 }) => {
   const { t } = useLanguage();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -330,6 +334,22 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
                       accept="image/*"
                       onChange={handleFileChange}
                     />
+                  </div>
+
+                  {/* Profile Name Settings Section */}
+                  <div className="bg-surface-container/30 p-6 rounded-2xl border border-outline/30 space-y-4">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                      {t("Profile Name")}
+                    </h3>
+                    <div className="flex items-center gap-4 max-w-md">
+                      <input
+                        type="text"
+                        value={userName}
+                        onChange={(e) => setUserName?.(e.target.value)}
+                        placeholder={t("Enter your name")}
+                        className="flex-1 bg-surface border border-outline/40 rounded-xl px-4 py-2.5 text-xs text-on-surface focus:outline-none focus:border-primary/60 transition-colors"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
