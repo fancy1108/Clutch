@@ -60,7 +60,7 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ### HRT-10 ✅ POC 验收 #6 / #10 自动化
 - **日期：** 2026-06-27
-- **Commit：** _(set after commit)_
+- **Commit：** `5e1491d` — test(hybrid): automate POC acceptance #6 and #10 (HRT-10)
 - **Verification：** `./scripts/verify-hybrid-poc-06-10.sh` → 8 passed；`./scripts/verify.sh` → 378 pytest + 14 vitest + build（`test_mcp_client_lifecycle` 偶发 flake，单跑通过）
 - **证据：** —
 - **交付文件：**
