@@ -673,17 +673,20 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
         {showEmptyState && (
           <div className="flex flex-col items-center justify-center text-center py-16 px-6 space-y-5">
             <div className="w-14 h-14 rounded-2xl bg-surface-container-low border border-outline-variant/40 flex items-center justify-center">
-              <LegacyIcon name="hub" className="text-[28px] text-on-surface-variant" />
+              <LegacyIcon name={isMultiAgent ? "hub" : "smart_toy"} className="text-[28px] text-on-surface-variant" />
             </div>
             <div className="space-y-2 max-w-md">
               <h2
                 data-testid="chat-supervised-title"
                 className="text-lg font-bold text-on-surface tracking-tight"
               >
-                {t('Start a supervised session')}
+                {isMultiAgent ? t('Start a supervised session') : t('Start a single agent session')}
               </h2>
               <p className="text-sm text-on-surface-variant leading-relaxed">
-                {t('Select a workspace and start a workflow, or type an instruction below. Clutch will orchestrate Builder / Evaluator and ask for your approval when needed.')}
+                {isMultiAgent
+                  ? t('Select a workspace and start a workflow, or type an instruction below. Clutch will orchestrate Builder / Evaluator and ask for your approval when needed.')
+                  : t('Select a workspace and type an instruction below to chat with the agent directly.')
+                }
               </p>
             </div>
             <div className="flex flex-wrap items-center justify-center gap-2">
@@ -702,7 +705,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                   {t('Authorize workspace')}
                 </button>
               )}
-              {workspaceAuthorized && (
+              {workspaceAuthorized && isMultiAgent && (
                 <button
                   type="button"
                   data-testid="chat-open-workflows"

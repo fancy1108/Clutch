@@ -91,6 +91,8 @@ const zhTranslations: Record<string, string> = {
   "Run SOP": "Run SOP / 运行 SOP",
   "Start a supervised session": "开始新的监督会话",
   "Select a workspace and start a workflow, or type an instruction below. Clutch will orchestrate Builder / Evaluator and ask for your approval when needed.": "选择工作区并启动工作流，或直接在下方输入指令。Clutch 会编排 Builder / Evaluator 并在需要时请你审批。",
+  "Start a single agent session": "开始单智能体会话",
+  "Select a workspace and type an instruction below to chat with the agent directly.": "选择工作区并在下方输入指令，直接与智能体进行对话。",
   "Authorize workspace": "授权工作区",
   "Choose workflow template": "选择工作流模板",
   "Create Flow": "创建工作流",
