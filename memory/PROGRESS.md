@@ -3,7 +3,7 @@
 ## 当前状态
 
 - **阶段：** D25 Hybrid Runtime — **§F 多 session 并发修复已验收**（对话5/6 通过）
-- **Git HEAD：** `524ca03`
+- **Git HEAD：** `c22bc30`
 - **下次优先：** 勾选 ROADMAP §F；可选 MCP hybrid_executions 深度 UI
 - **验收期跳过：** MCP hybrid_executions 深度 UI · 2h/100+ 压测
 
