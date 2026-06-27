@@ -63,6 +63,7 @@
 | Video Core 测试 | `tests/test_video_core/` |
 | CI 工作流 | `.github/workflows/ci.yml` |
 | 本地一键校验 | `scripts/verify.sh` |
+| Hybrid run 诊断导出（HRT-07） | `scripts/export-run-debug.sh` → `GET /api/runs/{id}/debug` |
 | 文档↔代码漂移机检 | `scripts/check-doc-drift.sh` |
 | Git pre-commit（条件触发） | `.husky/pre-commit` |
 | 验证报告归档 | `runs/verification/`（gitignore） |

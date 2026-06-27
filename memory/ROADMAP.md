@@ -76,7 +76,7 @@
 | runtime_registry 分发 | P1 | D25-S4 | ✅ 代码 | HRT-S4 |
 | 池上限 + Snapshot 保留 | P2 | D25-S5-partial | ✅ 代码 | HRT-S5-partial |
 | **基础 Plain Chat 产品验收** | **P0** | **D25** | **✅** | **HRT-04**（2026-06-27 用户 A–E） |
-| Hybrid 审计 JSONL + debug API | P1 | D25 | ❌ | HRT-05, HRT-06 |
+| Hybrid 审计 JSONL + debug API | P1 | D25 | ⚠️ | HRT-05~06 ✅；HRT-07 导出 script 待 commit |
 | 诊断导出 | P2 | D25 | ❌ | HRT-07 |
 | 多 session 并发治理 | P1 | D25 | ❌ | HRT-08 ~ HRT-10 |
 

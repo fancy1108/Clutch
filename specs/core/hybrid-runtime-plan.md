@@ -51,8 +51,8 @@ pnpm --filter @clutch/desktop tauri dev
 | **HRT-03** | Snapshot 仅断线恢复注入 | ✅ 代码 | HRT-01 | 续轮气泡无 `Task summary` / `Working directory` | pytest |
 | **HRT-04** | **产品验收：单 session 串行** | ✅ | HRT-01~03 | §3.1 A–E | 用户确认 2026-06-27 |
 | **HRT-05** | Hybrid turn 审计 JSONL | ✅ | HRT-04 | 每 turn 写结构化行；含 run_id/marker/duration/result | pytest + 读 jsonl |
-| **HRT-06** | `GET /api/runs/{id}/debug` | 🔄 待 commit | HRT-05 | 返回 status、末 N 条 terminal_logs、最近 audit 行 | pytest API |
-| **HRT-07** | 诊断导出（UI 或 CLI script） | ❌ | HRT-06 | 一键导出 run 摘要（无密钥） | 手动导出 + 排查演练 |
+| **HRT-06** | `GET /api/runs/{id}/debug` | ✅ | HRT-05 | 返回 status、末 N 条 terminal_logs、最近 audit 行 | pytest API |
+| **HRT-07** | 诊断导出（UI 或 CLI script） | 🔄 待 commit | HRT-06 | 一键导出 run 摘要（无密钥） | 手动导出 + 排查演练 |
 | **HRT-08** | 多 session 并发治理 | ❌ | HRT-04 | 池满/全 BUSY 时 UI 提示；非 silent Thinking | pytest + 双 session 手动 |
 | **HRT-09** | 后台 turn 完成 hydrate | ❌ | HRT-08 | 切 session 后回来可见已完成回复 | 手动：A 发送 → 切 B → 回 A |
 | **HRT-10** | POC 验收 #6 #10 自动化 | ❌ | HRT-08 | BUSY 拒绝/排队；两 run_id cwd 隔离 | pytest 或 poc 脚本 |
@@ -135,6 +135,7 @@ HRT-06 后：`GET /api/runs/{run_id}/debug`（可选 `logs_limit` / `audit_limit
 
 ```bash
 curl -s "http://localhost:8123/api/runs/{run_id}/debug?logs_limit=8&audit_limit=20" | jq '{status, terminal_logs, hybrid_audit}'
+./scripts/export-run-debug.sh {run_id} --out runs/verification/{run_id}-debug.json
 ```
 
 ---

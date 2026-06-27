@@ -2,10 +2,9 @@
 
 ## 当前状态
 
-- **阶段：** D25 Hybrid Runtime — **HRT-06 debug API 待 commit**；下一步 HRT-07
-- **Git HEAD：** `70835ba`（HRT-05 已合入）
-- **权威 Task 表：** [`specs/core/hybrid-runtime-plan.md`](../specs/core/hybrid-runtime-plan.md)
-- **下次优先：** **HRT-07**（诊断导出 script/UI）→ HRT-08~10（见 D29）
+- **阶段：** D25 Hybrid Runtime — **HRT-07 导出脚本待 commit**；下一步 HRT-08
+- **Git HEAD：** `4694231`（HRT-06 debug API）
+- **下次优先：** **HRT-08**（多 session 并发治理）
 - **验收期跳过：** MCP hybrid_executions 深度 UI · 2h/100+ 压测
 - **已知限制：** 多 session 并行 hybrid **未治理**（HRT-08）；验收期请串行
 
@@ -19,12 +18,13 @@
 | HRT-01~03 | ✅ 代码 | marker · snapshot 注入 · parser 过滤 |
 | HRT-04 | ✅ | 用户验收 A–E 2026-06-27 |
 | HRT-05 | ✅ | `70835ba` audit JSONL |
-| HRT-06 | 🔄 待 commit | debug API |
-| HRT-07~10 | ❌ | 导出 / 并发 |
+| HRT-06 | ✅ | `4694231` debug API |
+| HRT-07 | 🔄 待 commit | `export-run-debug.sh` |
+| HRT-08~10 | ❌ | 并发 |
 
 ### 未 commit 工作
 
-- **HRT-06**：`run_debug.py` · `GET /api/runs/{id}/debug` · `ShellSessionManager.debug_snapshot`
+- **HRT-07**：`scripts/export-run-debug.sh`
 
 ## 2026-06-27 会话（HRT-01~03 hybrid 修复 commit）
 
