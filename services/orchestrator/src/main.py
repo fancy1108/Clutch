@@ -2506,7 +2506,10 @@ async def stop_run(run_id: str) -> dict[str, str]:
 @app.websocket("/ws/runs/{run_id}")
 async def ws_run(websocket: WebSocket, run_id: str) -> None:
     await websocket.accept()
-    state = _get_or_create_run(run_id)
+    from src.run_state_store import sync_run_state_from_disk
+
+    state = sync_run_state_from_disk(run_id, _get_or_create_run(run_id))
+    _run_states[run_id] = state
     _setup_run_log_forwarder(run_id)
     from src.run_log_forwarder import get_forwarder
 

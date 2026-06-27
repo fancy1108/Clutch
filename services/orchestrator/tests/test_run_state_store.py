@@ -4,7 +4,12 @@ from __future__ import annotations
 
 import pytest
 
-from src.run_state_store import load_run_state, save_run_state
+from src.run_state_store import (
+    load_run_state,
+    persisted_state_preferred,
+    save_run_state,
+    sync_run_state_from_disk,
+)
 from src.state import initial_state
 
 
@@ -100,3 +105,65 @@ def test_plain_chat_persists_messages(monkeypatch) -> None:
     assert reloaded is not None
     assert any(message.get("text") == "你好" for message in reloaded["messages"])
     assert any("Echo: 你好" in str(message.get("text")) for message in reloaded["messages"])
+
+
+def test_persisted_state_preferred_when_disk_has_more_messages() -> None:
+    memory = initial_state("run_hydrate")
+    memory["status"] = "running"
+    memory["messages"] = [
+        {"id": "u1", "agent": "User", "avatar": "", "time": "12:00", "text": "hi"},
+    ]
+    persisted = initial_state("run_hydrate")
+    persisted["status"] = "idle"
+    persisted["messages"] = [
+        {"id": "u1", "agent": "User", "avatar": "", "time": "12:00", "text": "hi"},
+        {"id": "a1", "agent": "Claude", "avatar": "", "time": "12:01", "text": "hello back"},
+    ]
+    assert persisted_state_preferred(persisted, memory) is True
+
+
+def test_sync_run_state_from_disk_upgrades_stale_memory() -> None:
+    memory = initial_state("run_sync")
+    memory["status"] = "running"
+    memory["messages"] = [
+        {"id": "u1", "agent": "User", "avatar": "", "time": "12:00", "text": "hi"},
+    ]
+    persisted = initial_state("run_sync")
+    persisted["status"] = "idle"
+    persisted["messages"] = memory["messages"] + [
+        {"id": "a1", "agent": "Claude", "avatar": "", "time": "12:01", "text": "done"},
+    ]
+    save_run_state(persisted)
+
+    synced = sync_run_state_from_disk("run_sync", memory)
+    assert synced["status"] == "idle"
+    assert len(synced["messages"]) == 2
+
+
+def test_ws_connect_prefers_persisted_completed_turn() -> None:
+    from fastapi.testclient import TestClient
+
+    from src.main import _run_states, app
+
+    _run_states.clear()
+    stale = initial_state("run_ws_hydrate")
+    stale["status"] = "running"
+    stale["messages"] = [
+        {"id": "u1", "agent": "User", "avatar": "", "time": "12:00", "text": "hi"},
+    ]
+    _run_states["run_ws_hydrate"] = stale
+
+    fresh = initial_state("run_ws_hydrate")
+    fresh["status"] = "idle"
+    fresh["messages"] = stale["messages"] + [
+        {"id": "a1", "agent": "Claude", "avatar": "", "time": "12:01", "text": "background reply"},
+    ]
+    save_run_state(fresh)
+
+    with TestClient(app).websocket_connect("/ws/runs/run_ws_hydrate") as ws:
+        envelope = ws.receive_json()
+
+    assert envelope["event"] == "state_patch"
+    patch = envelope["data"]["patch"]
+    assert patch["status"] == "idle"
+    assert any(message.get("text") == "background reply" for message in patch["messages"])

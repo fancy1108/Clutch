@@ -60,3 +60,25 @@ def delete_run_state(run_id: str) -> None:
             path.unlink()
     except ValueError:
         pass
+
+
+def persisted_state_preferred(persisted: ClutchState, memory: ClutchState) -> bool:
+    """True when disk has a newer completed turn than in-memory (HRT-09)."""
+    p_msgs = len(persisted.get("messages") or [])
+    m_msgs = len(memory.get("messages") or [])
+    if p_msgs > m_msgs:
+        return True
+    return (
+        p_msgs == m_msgs
+        and persisted.get("status") == "idle"
+        and memory.get("status") == "running"
+    )
+
+
+def sync_run_state_from_disk(run_id: str, memory: ClutchState) -> ClutchState:
+    persisted = load_run_state(run_id)
+    if persisted is None:
+        return memory
+    if persisted_state_preferred(persisted, memory):
+        return persisted
+    return memory

@@ -85,7 +85,18 @@ function MainLayout() {
   } | null>(null);
 
   useEffect(() => {
-    void clutchStore.connect(sessionRunId);
+    void clutchStore.connect(sessionRunId).then(() => {
+      const snapshot = clutchStore.getSnapshot();
+      if (!snapshot.workflow_id && snapshot.status === 'running') {
+        clutchStore.scheduleBackgroundHydrate(sessionRunId, async (runId) => {
+          const { state } = await fetchRunState(runId);
+          return state;
+        });
+      }
+    });
+    return () => {
+      clutchStore.clearBackgroundHydrate();
+    };
   }, [sessionRunId]);
 
   const clutchStatus = clutchState.status;

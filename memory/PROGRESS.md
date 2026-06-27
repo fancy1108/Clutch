@@ -19,8 +19,9 @@
 | HRT-05 | ✅ | `70835ba` audit JSONL |
 | HRT-06 | ✅ | `4694231` debug API |
 | HRT-07 | ✅ | `446b7a0` export script |
-| HRT-08 | ✅ | `a16bf5f` 并发拒绝 + UI |
-| HRT-09~10 | ❌ | hydrate / POC |
+| HRT-08 | ✅ | `a16bf5f` |
+| HRT-09 | 🔄 待 commit | background hydrate |
+| HRT-10 | ❌ | POC 自动化 |
 
 ### 未 commit 工作
 

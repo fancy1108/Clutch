@@ -5,6 +5,7 @@ import {
   createUserChatMessage,
   USER_CHAT_AVATAR,
   shouldPreserveOptimisticRun,
+  preferRicherSessionPatch,
 } from './clutchState';
 import type { ChatMessage } from '../types';
 
@@ -105,6 +106,35 @@ describe('mergeMessageFields', () => {
   it('keeps rawOutput when incoming patch omits it', () => {
     const merged = mergeMessageFields(base, { ...base, rawOutput: undefined });
     expect(merged.rawOutput).toBe('raw-from-message');
+  });
+});
+
+describe('preferRicherSessionPatch', () => {
+  it('keeps hydrated assistant reply when WS reconnect patch is stale', () => {
+    const preferred = {
+      run_id: 'run_a',
+      workflow_id: '',
+      status: 'idle',
+      messages: [
+        createUserChatMessage('hello'),
+        {
+          id: 'agent_1',
+          agent: 'Claude',
+          avatar: '',
+          time: '17:01',
+          text: 'background reply',
+        },
+      ],
+    } as import('../types').ClutchState;
+
+    const patch = preferRicherSessionPatch(preferred, {
+      status: 'running',
+      messages: [createUserChatMessage('hello')],
+    });
+
+    expect(patch.status).toBe('idle');
+    expect(patch.messages).toHaveLength(2);
+    expect(patch.messages?.[1].text).toBe('background reply');
   });
 });
 

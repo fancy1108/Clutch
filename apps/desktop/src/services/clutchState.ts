@@ -111,6 +111,34 @@ export function mergeChatMessages(
   return merged;
 }
 
+/** Prefer HTTP-hydrated session when WS reconnect snapshot is stale (HRT-09). */
+export function preferRicherSessionPatch(
+  preferred: ClutchState,
+  patch: Partial<ClutchState>,
+): Partial<ClutchState> {
+  const next: Partial<ClutchState> = { ...patch };
+  const preferredMessages = preferred.messages ?? [];
+  const patchMessages = next.messages ?? [];
+  if (preferredMessages.length > patchMessages.length) {
+    next.messages = preferredMessages;
+  }
+  if (
+    preferred.status === 'idle' &&
+    preferredMessages.length > patchMessages.length
+  ) {
+    next.status = 'idle';
+  }
+  const preferredHybrid = preferred.hybrid_executions ?? {};
+  const patchHybrid = next.hybrid_executions ?? {};
+  if (Object.keys(preferredHybrid).length > Object.keys(patchHybrid).length) {
+    next.hybrid_executions = { ...patchHybrid, ...preferredHybrid };
+  }
+  if (preferred.terminal_logs && preferred.terminal_logs.length > (next.terminal_logs?.length ?? 0)) {
+    next.terminal_logs = preferred.terminal_logs;
+  }
+  return next;
+}
+
 export function shouldPreserveOptimisticRun(
   current: ClutchState,
   patch: Partial<ClutchState>,
@@ -130,6 +158,8 @@ class ClutchStateStore {
   private connectPromise: Promise<void> | null = null;
   private runId = this.state.run_id;
   private pendingHydrate: ClutchState | null = null;
+  private reconnectHydrate: ClutchState | null = null;
+  private backgroundHydrateTimer: ReturnType<typeof setInterval> | null = null;
   private pendingHybridExecutions = new Map<string, HybridExecutionPayload>();
   private _connected = false;
 
@@ -148,6 +178,56 @@ class ClutchStateStore {
     this.runId = state.run_id;
     this.state = state;
     this.emit();
+  };
+
+  /** Poll Sidecar HTTP state while a background plain-chat turn may still be running. */
+  scheduleBackgroundHydrate = (
+    runId: string,
+    fetchState: (id: string) => Promise<ClutchState>,
+  ): void => {
+    this.clearBackgroundHydrate();
+    if (this.runId !== runId) return;
+
+    const poll = async () => {
+      if (this.runId !== runId) {
+        this.clearBackgroundHydrate();
+        return;
+      }
+      try {
+        const remote = await fetchState(runId);
+        if (this.runId !== runId) return;
+        const localCount = this.state.messages?.length ?? 0;
+        const remoteCount = remote.messages?.length ?? 0;
+        if (
+          remoteCount > localCount ||
+          (remote.status === 'idle' && this.state.status === 'running' && remoteCount >= localCount)
+        ) {
+          this.state = {
+            ...this.state,
+            ...preferRicherSessionPatch(this.state, remote),
+            messages: mergeChatMessages(this.state.messages, remote.messages),
+          };
+          this.emit();
+        }
+        if (remote.status !== 'running') {
+          this.clearBackgroundHydrate();
+        }
+      } catch {
+        // ignore transient fetch errors while polling
+      }
+    };
+
+    void poll();
+    this.backgroundHydrateTimer = setInterval(() => {
+      void poll();
+    }, 3000);
+  };
+
+  clearBackgroundHydrate = (): void => {
+    if (this.backgroundHydrateTimer) {
+      clearInterval(this.backgroundHydrateTimer);
+      this.backgroundHydrateTimer = null;
+    }
   };
 
   /** Optimistic UI while POST /runs/{id}/start blocks on the first workflow node. */
@@ -298,13 +378,16 @@ class ClutchStateStore {
       this._connected = false;
     }
     this.connectPromise = null;
+    this.clearBackgroundHydrate();
 
     this.runId = runId;
     if (this.pendingHydrate?.run_id === runId) {
       this.state = this.pendingHydrate;
+      this.reconnectHydrate = this.pendingHydrate;
       this.pendingHydrate = null;
     } else if (this.state.run_id !== runId) {
       this.state = createEmptyState(runId);
+      this.reconnectHydrate = null;
     }
     this.emit();
 
@@ -323,6 +406,12 @@ class ClutchStateStore {
           const envelope = JSON.parse(event.data) as WebSocketEnvelope;
           if (envelope.event === 'state_patch') {
             const data = envelope.data as StatePatchData;
+            if (this.reconnectHydrate) {
+              const preferred = this.reconnectHydrate;
+              this.reconnectHydrate = null;
+              this.applyPatch(preferRicherSessionPatch(preferred, data.patch));
+              return;
+            }
             this.applyPatch(data.patch);
             return;
           }
