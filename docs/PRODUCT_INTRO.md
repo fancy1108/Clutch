@@ -111,11 +111,14 @@ Clutch 不限制或固化 Agent 的角色名称，而是提供了一个完全通
 - **`apply_patch` 精密文件工具**：提供 Codex 语法兼容的文件打补丁工具（支持 Add, Delete, Update, Move 动作），使模型可以通过标准的 diff 或指令精密增删改移本地文件，避免了传统模型缺乏删除文件 API 而导致的工作区垃圾残留。
 - **安全门控 (mcp_risk)**：涉及删除、修改工作区代码文件的高风险 MCP 动作会在 Sidecar 侧被自动判定，拦截并强制推送为 `human_required` 人工决策，必须经由 Supervisor 审批同意后方能真正对磁盘应用变更。
 
-### 3.5 多语言 (i18n) 与凭证导入
+### 3.5 多语言 (i18n)、凭证导入与用户个人配置
 - **多语言双语对照**：支持中英文（zh/en）切换。后端通过 preferences 动态加载语言偏好，在 API/WebSocket 的异常捕获、干预提示上使用 `tr()` 响应，且完全兼容既有测试断言。
 - **凭证自动导入**：支持自动读取 `~/.cc-switch/cc-switch.db` SQLite 数据库，无感导入用户在第三方工具中配置的模型 API Keys，免去繁琐的手动配置过程。
+- **用户头像与姓名配置 (Profile Preferences)**：在通用设置 (General Settings) 面板中支持用户上传自定义头像（转换为 base64 存储）、重置为默认头像，以及自定义个人显示名称。后端偏好接口（`user_avatar` 和 `user_name` 偏好键）支持持久化并自动应用到 Chat Feed 中用户发送的消息气泡的标签与头像显示中。
+- **应用版本动态获取 (Dynamic Application Versioning)**：右下角的状态展示栏通过调用 Tauri 的 `getVersion` 插件接口动态解析并展示当前桌面应用的准确版本号，非桌面浏览器环境则安全回退为 `0.0.0`，保证了不同运行环境下的可用性与一致性。
 
 ### 3.6 状态与上下文管理
+- **会话偏好持久化 (Session-Specific Preference Persistence)**：前端使用 `localStorage` 分别追踪并持久化每个 `sessionRunId` 的用户选择（单 Agent / 多 Agent 模式、所选工作流 ID、所选 Agent ID）。在用户点击侧栏会话进行切换时，自动精准恢复其历史离开时的所有选择，防止误切回默认 Agent。
 - **上下文自动压缩与归档（已落地 · B-03）**：
   - `services/orchestrator/src/compaction.py`：当会话 token 估算达到阈值时，对中间轮次做 LLM 摘要，原文归档 JSONL；Plain Chat 在回复提交前触发，经 `state_patch` 推送 `badgeText`。
   - 调研参考：DeepSeek Reasonix compaction、OpenCode autoCompact。
