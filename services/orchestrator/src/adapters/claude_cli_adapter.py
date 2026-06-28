@@ -31,27 +31,26 @@ def chat_claude_cli(
     on_log: Callable[[str], None] | None = None,
 ) -> str:
     """Call local `claude` CLI in print mode, return response text."""
-    if session_id and resume_session_id:
-        raise ValueError("session_id and resume_session_id are mutually exclusive")
-    cmd = [binary or "claude", "-p", prompt]
-    if resume_session_id:
-        cmd += ["--resume", resume_session_id]
-    elif session_id:
-        cmd += ["--session-id", session_id]
-    if system_prompt:
-        cmd += ["--append-system-prompt", system_prompt]
+    from src.adapters.cli_adapter import chat_generic_cli
+    
+    extra_args = []
     if dangerously_skip_permissions:
-        cmd.append("--dangerously-skip-permissions")
+        extra_args.append("--dangerously-skip-permissions")
     if allowed_tools:
-        cmd += ["--allowed-tools", ",".join(allowed_tools)]
-
-    effective_timeout = timeout if timeout is not None else _DEFAULT_CHAT_TIMEOUT_SEC
-    on_line = None
-    if on_log is not None:
-        on_log(f"[CLAUDE CLI] Executing `{cmd[0]}` (timeout {effective_timeout:g}s)")
-        on_line = lambda stream, line: _stream_cli_line(on_log, stream, line)
-
-    result = run_cli(cmd, cwd=cwd, timeout=effective_timeout, on_line=on_line)
-    if on_log is not None:
-        on_log(f"[CLAUDE CLI] Exit code {result.exit_code}")
-    return result.stdout
+        extra_args += ["--allowed-tools", ",".join(allowed_tools)]
+        
+    return chat_generic_cli(
+        prompt,
+        binary=binary or "claude",
+        conversation_mode="separate",
+        extra_args=extra_args,
+        prepend_system_prompt=False,
+        cwd=cwd,
+        system_prompt=system_prompt,
+        session_id=session_id,
+        resume_session_id=resume_session_id,
+        timeout=timeout,
+        on_log=on_log,
+        log_prefix="CLAUDE",
+        run_cli_fn=run_cli,
+    )

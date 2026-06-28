@@ -263,6 +263,7 @@ export function configuredEngineToRuntimeLabel(agentTypeOrLegacy: string): strin
   if (key.includes('antigravity') || key.includes('agenty') || key === 'agy-cli' || key === 'antigravity-cli') {
     return 'Antigravity CLI';
   }
+  if (key.includes('codex') || key === 'codex-cli') return 'Codex CLI';
   if (key.includes('ollama') || key === 'ollama-cli') return 'Ollama CLI';
   return agentTypeOrLegacy.trim();
 }
@@ -712,9 +713,9 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
     const dock = dockRef.current;
     if (!dock) return;
     const measure = () => {
-      // bottom-8 (32px) + desired gap above dock; extra when thinking bubble is visible
-      const gapAboveDock = 48 + (showThinking ? 32 : 0);
-      setDockHeight(dock.offsetHeight + 32 + gapAboveDock);
+      // bottom-8 (32px) + generous gap so last bubble clears the fixed input dock
+      const gapAboveDock = 96 + (showThinking ? 40 : 0);
+      setDockHeight(Math.max(dock.offsetHeight + 32 + gapAboveDock, 260));
     };
     measure();
     const observer = new ResizeObserver(measure);
@@ -1029,7 +1030,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
           </div>
         )}
 
-        <div ref={bottomRef} />
+        <div ref={bottomRef} style={{ scrollMarginBottom: dockHeight }} className="h-2 shrink-0" aria-hidden />
       </div>
 
       <div

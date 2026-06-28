@@ -32,7 +32,7 @@ CLI_CANDIDATES: list[dict[str, str]] = [
     },
     {
         "id": "codex-cli",
-        "name": "OpenAI Codex CLI",
+        "name": "Codex CLI",
         "binary": "codex",
         "description": "Codex command-line coding agent.",
         "icon": "terminal",
@@ -183,6 +183,31 @@ def _installed(tool_id: str) -> bool:
     return _resolve_path(tool_id) is not None
 
 
+def resolve_agent_type_for_tool(tool_id: str) -> str | None:
+    """Map a tools panel id (e.g. agy-cli, ollama-cli) to the routing agent_type key."""
+    from src.agent_type import AGENT_TYPES, normalize_agent_type
+    from src.engine_router import CLI_ROUTING_CONFIGS
+    from src.provider_registry import resolve_provider_spec
+    from src.runtime_strategy import RuntimeStrategy
+
+    key = tool_id.strip()
+    for agent_type, cfg in CLI_ROUTING_CONFIGS.items():
+        if isinstance(cfg, dict) and cfg.get("tool_id") == key:
+            return agent_type
+    if key in CLI_ROUTING_CONFIGS:
+        return key
+
+    normalized = normalize_agent_type(key)
+    if normalized != "clutch":
+        if normalized in AGENT_TYPES or normalized in CLI_ROUTING_CONFIGS:
+            return normalized
+        spec = resolve_provider_spec(normalized)
+        if spec.runtime_strategy == RuntimeStrategy.HTTP_DAEMON:
+            return normalized
+
+    return None
+
+
 def load_connected_ids() -> set[str]:
     path = config_path()
     if not path.is_file():
@@ -205,12 +230,39 @@ def save_connected_ids(connected: set[str]) -> None:
     path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 
-def list_tools_status() -> list[dict[str, Any]]:
+def list_tools_status(*, include_all: bool = False) -> list[dict[str, Any]]:
+    from src.engine_router import CLI_ROUTING_CONFIGS
+    from src.agent_type import normalize_agent_type
+    from src.provider_registry import resolve_provider_spec
+    from src.runtime_strategy import RuntimeStrategy
+
+    # Build a set of all tool_ids covered by CLI_ROUTING_CONFIGS entries.
+    # Keys in CLI_ROUTING_CONFIGS are agent_type strings (e.g. "antigravity-cli"),
+    # while the inner "tool_id" field is the canonical id (e.g. "agy-cli").
+    # We need both directions for a correct lookup.
+    registered_tool_ids: set[str] = set()
+    for agent_type_key, cfg in CLI_ROUTING_CONFIGS.items():
+        registered_tool_ids.add(agent_type_key)          # e.g. "antigravity-cli"
+        if isinstance(cfg, dict) and "tool_id" in cfg:
+            registered_tool_ids.add(cfg["tool_id"])      # e.g. "agy-cli"
+
+    def _is_registered(tool_id: str) -> bool:
+        if tool_id in registered_tool_ids:
+            return True
+        # Also try mapping via agent_type normalisation
+        agent_type = normalize_agent_type(tool_id)
+        if agent_type in registered_tool_ids:
+            return True
+        # Built-in HTTP providers (e.g. Ollama) are registered without shell CLI config.
+        if resolve_provider_spec(agent_type).runtime_strategy == RuntimeStrategy.HTTP_DAEMON:
+            return True
+        return False
+
     connected = load_connected_ids()
     tools: list[dict[str, Any]] = []
     for cand in CLI_CANDIDATES:
         path = resolve_tool_binary(cand["id"])
-        if not path:
+        if not path and not include_all:
             continue
         tools.append(
             {
@@ -219,14 +271,16 @@ def list_tools_status() -> list[dict[str, Any]]:
                 "description": cand["description"],
                 "icon": cand["icon"],
                 "kind": "cli",
-                "path": path,
-                "installed": True,
+                "path": path or "",
+                "installed": path is not None,
                 "connected": cand["id"] in connected,
+                "registered": _is_registered(cand["id"]),
+                "agentType": resolve_agent_type_for_tool(cand["id"]),
             }
         )
     for cand in CLIENT_CANDIDATES:
         path = _client_path(cand["app_name"])
-        if not path:
+        if not path and not include_all:
             continue
         tools.append(
             {
@@ -235,12 +289,15 @@ def list_tools_status() -> list[dict[str, Any]]:
                 "description": cand["description"],
                 "icon": cand["icon"],
                 "kind": "client",
-                "path": path,
-                "installed": True,
+                "path": path or "",
+                "installed": path is not None,
                 "connected": cand["id"] in connected,
+                "registered": _is_registered(cand["id"]),
+                "agentType": resolve_agent_type_for_tool(cand["id"]),
             }
         )
     return tools
+
 
 
 def connect_tool(tool_id: str) -> dict[str, Any]:
@@ -261,3 +318,110 @@ def disconnect_tool(tool_id: str) -> dict[str, Any]:
     connected.discard(tool_id)
     save_connected_ids(connected)
     return {"id": tool_id, "connected": False}
+
+
+def auto_configure_cli_via_llm(tool_id: str, binary_path: str) -> dict[str, Any]:
+    import subprocess
+    try:
+        res = subprocess.run([binary_path, "--help"], capture_output=True, text=True, timeout=5.0)
+        help_text = res.stdout or res.stderr
+    except Exception as exc:
+        raise RuntimeError(f"Failed to run binary --help: {exc}")
+
+    if not help_text:
+        help_text = "No help text returned."
+
+    from src.models_config import get_router
+    router = get_router()
+
+    # Use the user's currently active model for analysis
+    active_spec = router.get_active_model()
+    has_key = bool(router.get_api_key(active_spec.provider_id))
+    model_id = active_spec.id if (active_spec.model_kind != "image" and has_key) else None
+
+    if not model_id:
+        # Try any other non-image model that has a key
+        for spec in router.list_models():
+            if spec.model_kind != "image" and router.get_api_key(spec.provider_id):
+                model_id = spec.id
+                break
+
+    if not model_id:
+        # No LLM with a valid API key configured — return safe defaults
+        return {
+            "tool_id": tool_id,
+            "binary_name": tool_id.replace("-cli", ""),
+            "conversation_mode": "none",
+            "prepend_system_prompt": True,
+            "extra_args": [],
+            "prompt_flag": "-p",
+        }
+
+    prompt = f"""You are a command-line interface parameter analyzer.
+We have a local AI tool binary help documentation. We need to extract the correct configuration options so we can route prompts to it automatically.
+
+Help output for the binary:
+\"\"\"
+{help_text}
+\"\"\"
+
+Please analyze the help text and output a JSON object containing the following keys (DO NOT output markdown code blocks, just raw JSON text):
+1. "binary_name": the binary name (e.g. "ollama", "gemini", "codeium")
+2. "conversation_mode": either "resume_or_new" (if it supports conversation IDs / resume), "separate", or "none" (if it only supports single prompt execution)
+3. "prepend_system_prompt": boolean (true if it doesn't support a system prompt flag and we need to prepend it to the user prompt, false if it has a native system prompt flag)
+4. "extra_args": list of strings for flags needed for normal operation (e.g. ["--yes-always"])
+5. "prompt_flag": the string flag used to pass the prompt or message (e.g. "-p", "--prompt", "--message", or empty "" if prompt is passed as positional argument). Look carefully at the help text for prompt input flags!
+
+Example Output:
+{{
+  "binary_name": "ollama",
+  "conversation_mode": "none",
+  "prepend_system_prompt": true,
+  "extra_args": ["run"],
+  "prompt_flag": ""
+}}
+"""
+
+    chat_history = [{"role": "user", "content": prompt}]
+    try:
+        raw = router.chat(chat_history, model_id=model_id)
+        # router.chat() can return either a plain str or a dict with message content
+        if isinstance(raw, dict):
+            # OpenAI-style response: choices[0].message.content
+            try:
+                reply = raw["choices"][0]["message"]["content"]
+            except (KeyError, IndexError, TypeError):
+                # Anthropic-style or other: content[0].text or .text
+                try:
+                    content = raw.get("content", [])
+                    if isinstance(content, list) and content:
+                        reply = content[0].get("text", "")
+                    else:
+                        reply = str(raw)
+                except Exception:
+                    reply = str(raw)
+        else:
+            reply = str(raw)
+
+        reply_clean = reply.strip()
+        if reply_clean.startswith("```"):
+            lines = reply_clean.split("\n")
+            if lines[0].startswith("```"):
+                lines = lines[1:]
+            if lines[-1].strip() == "```":
+                lines = lines[:-1]
+            reply_clean = "\n".join(lines).strip()
+
+        config = json.loads(reply_clean)
+        config["tool_id"] = tool_id
+        return config
+    except Exception:
+        # Fallback default configuration if JSON parsing fails
+        return {
+            "tool_id": tool_id,
+            "binary_name": tool_id.replace("-cli", ""),
+            "conversation_mode": "none",
+            "prepend_system_prompt": True,
+            "extra_args": [],
+            "prompt_flag": "-p",
+        }

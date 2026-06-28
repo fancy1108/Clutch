@@ -24,6 +24,6 @@ def hybrid_eligible(*, source: str, agent_type: str) -> bool:
         return False
     if agent_type == "claude-cli":
         return source in ("plain_chat", "flow")
-    if agent_type == "antigravity-cli":
+    if agent_type in ("antigravity-cli", "codex-cli", "aider-cli"):
         return source == "plain_chat"
     return False

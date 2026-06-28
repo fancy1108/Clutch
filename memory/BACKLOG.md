@@ -75,7 +75,7 @@
 
 | ID | 候选能力 | 优先级 | 参考 | 状态 | 升格条件 |
 |----|----------|--------|------|------|----------|
-| B-17 | **Codex CLI 引擎接入**：`engine_router` 路由 `codex-cli`（`tools_status` 已探测，未执行） | P0 | openai/codex CLI、`claude_cli_adapter` 模式 | 候选 | 人类确认 + 决策 |
+| B-17 | **Codex CLI 引擎接入**：`engine_router` 路由 `codex-cli`（`tools_status` 已探测，未执行） | P0 | openai/codex CLI、`claude_cli_adapter` 模式 | **部分落地 2026-06-28** | plain chat + hybrid `codex exec --json`；flow 节点待验收 |
 | B-18 | **受控 Shell 执行**：`exec_command` / `shell_command`（PTY、工作区内、Supervisor 审批） | P0 | Codex `unified_exec`、`shell_spec` | 候选 | B-21 或沙箱方案拍板后立项 |
 | B-19 | **长驻 Shell 会话**：`write_stdin` + session id 续跑（dev server / 交互命令） | P1 | Codex `exec_command` + `write_stdin` | 候选 | B-18 立项后评估 |
 
@@ -109,7 +109,7 @@
 | 文件真删除 | ✅ D21 `*** Delete File` | — |
 | 高风险工具审批 | ✅ Supervisor + `mcp_risk` | B-21/B-24 细粒度补强 |
 | 用户确认输入 | ⚠️ 仅审批卡片 | B-31 |
-| CLI Agent 路由 | ✅ Claude CLI；❌ Codex CLI | B-17 |
+| CLI Agent 路由 | ✅ Claude CLI；✅ Codex CLI（plain chat hybrid）；Agy/Ollama 动态下拉 | B-17 部分落地 |
 | Skills / MCP Hub | ✅ 已落地 | B-09 动态注入、B-27/B-28 扩展 |
 
 ## 与已立项任务的关系

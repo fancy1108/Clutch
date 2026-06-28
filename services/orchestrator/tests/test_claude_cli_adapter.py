@@ -39,13 +39,13 @@ def test_chat_claude_cli_args(monkeypatch) -> None:
     assert res == "Mocked response"
     assert called_cmd == [
         "claude",
+        "--dangerously-skip-permissions",
+        "--allowed-tools",
+        "git *,edit",
         "-p",
         "hello world",
         "--append-system-prompt",
         "strict auditor",
-        "--dangerously-skip-permissions",
-        "--allowed-tools",
-        "git *,edit",
     ]
     assert called_cwd == "/tmp/fake"
     assert called_timeout == 10.0
@@ -74,11 +74,11 @@ def test_chat_claude_cli_session_id(monkeypatch) -> None:
     assert res == "session created"
     assert called_cmd == [
         "claude",
-        "-p",
-        "first turn",
+        "--dangerously-skip-permissions",
         "--session-id",
         "550e8400-e29b-41d4-a716-446655440000",
-        "--dangerously-skip-permissions",
+        "-p",
+        "first turn",
     ]
 
 
@@ -105,11 +105,11 @@ def test_chat_claude_cli_resume(monkeypatch) -> None:
     assert res == "resumed"
     assert called_cmd == [
         "claude",
-        "-p",
-        "follow up",
+        "--dangerously-skip-permissions",
         "--resume",
         "550e8400-e29b-41d4-a716-446655440000",
-        "--dangerously-skip-permissions",
+        "-p",
+        "follow up",
     ]
 
 

@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
+import os
+import pty
+import select
 import subprocess
 import threading
+import time
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from src.claude_hybrid_output_parser import extract_cli_issue_message, extract_codex_assistant_output, extract_tty_cli_output
 from src.preferences_storage import tr
 
 
@@ -105,6 +110,114 @@ def _run_cli_streaming(
     )
 
 
+def _is_agy_binary(binary: str) -> bool:
+    return binary.rsplit("/", 1)[-1] == "agy"
+
+
+def _is_codex_binary(binary: str) -> bool:
+    return binary.rsplit("/", 1)[-1] == "codex"
+
+
+def format_cli_issue_for_user(message: str) -> str:
+    """Turn agy quota/auth lines into a clear chat-visible message."""
+    lowered = message.lower()
+    if "quota" in lowered or "rate limit" in lowered:
+        return tr(
+            f"Antigravity CLI quota limit reached. {message}",
+            f"Antigravity CLI 配额已用尽。{message}",
+        )
+    if "authentication" in lowered:
+        return tr(
+            f"Antigravity CLI is not signed in. Run `agy` in a terminal to authenticate. ({message})",
+            f"Antigravity CLI 未登录。请在终端运行 `agy` 完成登录。（{message}）",
+        )
+    return message
+
+
+def _finalize_cli_content(content: str, *, raw: str = "") -> str:
+    text = content.strip()
+    if text:
+        if extract_cli_issue_message(text):
+            return format_cli_issue_for_user(text)
+        return text
+    issue = extract_cli_issue_message(raw) if raw else None
+    if issue:
+        return format_cli_issue_for_user(issue)
+    return text
+
+
+def run_cli_pty(
+    command: list[str],
+    *,
+    cwd: str | None = None,
+    timeout: float = 30.0,
+    on_line: Callable[[str, str], None] | None = None,
+) -> CliResult:
+    """Run a CLI attached to a fresh PTY (required for `agy -p` headless capture)."""
+    if not command:
+        raise CliAdapterError(tr("CLI command cannot be empty", "CLI 命令不能为空"))
+
+    master_fd, slave_fd = pty.openpty()
+    try:
+        proc = subprocess.Popen(
+            command,
+            cwd=cwd,
+            stdin=slave_fd,
+            stdout=slave_fd,
+            stderr=slave_fd,
+            close_fds=True,
+        )
+    except Exception:
+        os.close(master_fd)
+        os.close(slave_fd)
+        raise
+    os.close(slave_fd)
+
+    raw_chunks: list[bytes] = []
+    deadline = time.monotonic() + timeout
+    try:
+        while True:
+            if proc.poll() is not None:
+                while True:
+                    ready, _, _ = select.select([master_fd], [], [], 0.05)
+                    if not ready:
+                        break
+                    chunk = os.read(master_fd, 65536)
+                    if not chunk:
+                        break
+                    raw_chunks.append(chunk)
+                    if on_line:
+                        on_line("stdout", chunk.decode("utf-8", errors="replace"))
+                break
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                proc.kill()
+                proc.wait()
+                raise _timeout_error(command, timeout)
+            ready, _, _ = select.select([master_fd], [], [], min(remaining, 1.0))
+            if ready:
+                chunk = os.read(master_fd, 65536)
+                if chunk:
+                    raw_chunks.append(chunk)
+                    if on_line:
+                        on_line("stdout", chunk.decode("utf-8", errors="replace"))
+    except subprocess.TimeoutExpired as exc:
+        proc.kill()
+        proc.wait()
+        raise _timeout_error(command, timeout) from exc
+    finally:
+        os.close(master_fd)
+
+    raw = b"".join(raw_chunks).decode("utf-8", errors="replace")
+    stdout = _finalize_cli_content(extract_tty_cli_output(raw), raw=raw)
+    exit_code = proc.returncode if proc.returncode is not None else 1
+    result = CliResult(command=command, exit_code=exit_code, stdout=stdout, stderr=raw if not stdout else "")
+    if not result.ok:
+        detail = stdout.strip() or raw.strip()
+        raise CliAdapterError(f"CLI 退出码 {result.exit_code}: {detail}")
+    return result
+
+
 def run_cli(
     command: list[str],
     *,
@@ -142,3 +255,114 @@ def run_cli(
             f"CLI 退出码 {result.exit_code}: {result.stderr.strip() or result.stdout.strip()}"
         )
     return result
+
+
+def compose_cli_argv(
+    *,
+    binary: str,
+    effective_prompt: str,
+    prompt_flag: str = "-p",
+    conversation_mode: str = "separate",
+    session_id: str | None = None,
+    resume_session_id: str | None = None,
+    prepend_system_prompt: bool = False,
+    system_prompt: str | None = None,
+    supports_append_system_prompt: bool = True,
+    extra_args: list[str] | None = None,
+) -> list[str]:
+    """Build argv for a non-interactive CLI turn (subcommand/flags before prompt)."""
+    cmd: list[str] = [binary]
+    if extra_args:
+        cmd.extend(extra_args)
+
+    if conversation_mode == "resume_or_new":
+        if resume_session_id:
+            cmd += ["--conversation", resume_session_id]
+    elif conversation_mode == "separate":
+        if resume_session_id:
+            cmd += ["--resume", resume_session_id]
+        elif session_id:
+            cmd += ["--session-id", session_id]
+    elif conversation_mode == "none":
+        if resume_session_id:
+            cmd += ["--conversation", resume_session_id]
+    elif conversation_mode == "history_only":
+        pass
+
+    if prompt_flag:
+        cmd += [prompt_flag, effective_prompt]
+    else:
+        cmd.append(effective_prompt)
+
+    if not prepend_system_prompt and system_prompt and supports_append_system_prompt:
+        cmd += ["--append-system-prompt", system_prompt]
+
+    return cmd
+
+
+def chat_generic_cli(
+    prompt: str,
+    *,
+    binary: str,
+    conversation_mode: str = "separate",
+    extra_args: list[str] | None = None,
+    prepend_system_prompt: bool = False,
+    cwd: str | None = None,
+    system_prompt: str | None = None,
+    session_id: str | None = None,
+    resume_session_id: str | None = None,
+    timeout: float | None = None,
+    on_log: Callable[[str], None] | None = None,
+    log_prefix: str | None = None,
+    run_cli_fn: Callable = run_cli,
+    prompt_flag: str = "-p",
+    supports_append_system_prompt: bool = True,
+) -> str:
+    """Call local CLI in print mode, return response text."""
+    if session_id and resume_session_id:
+        raise ValueError("session_id and resume_session_id are mutually exclusive")
+    
+    effective_prompt = prompt
+    if prepend_system_prompt and system_prompt:
+        effective_prompt = f"{system_prompt}\n\nUser Request:\n{prompt}"
+
+    cmd = compose_cli_argv(
+        binary=binary,
+        effective_prompt=effective_prompt,
+        prompt_flag=prompt_flag,
+        conversation_mode=conversation_mode,
+        session_id=session_id,
+        resume_session_id=resume_session_id,
+        prepend_system_prompt=prepend_system_prompt,
+        system_prompt=system_prompt,
+        supports_append_system_prompt=supports_append_system_prompt,
+        extra_args=extra_args,
+    )
+
+    effective_timeout = timeout if timeout is not None else 600.0
+    
+    prefix = log_prefix if log_prefix is not None else binary.split("/")[-1].split(".")[0].upper()
+    on_line = None
+    if on_log is not None:
+        on_log(f"[{prefix} CLI] Executing `{cmd[0]}` (timeout {effective_timeout:g}s)")
+        on_line = lambda stream, line: on_log(
+            f"[{prefix} CLI] {line}" if stream == "stdout" else f"[{prefix} CLI stderr] {line}"
+        )
+
+    effective_run_cli = run_cli_fn
+    if effective_run_cli is run_cli and _is_agy_binary(binary):
+        effective_run_cli = run_cli_pty
+
+    result = effective_run_cli(cmd, cwd=cwd, timeout=effective_timeout, on_line=on_line)
+    if on_log is not None:
+        on_log(f"[{prefix} CLI] Exit code {result.exit_code}")
+    if _is_codex_binary(binary):
+        stdout_text = extract_codex_assistant_output(result.stdout) or extract_tty_cli_output(result.stdout)
+    else:
+        stdout_text = result.stdout
+    content = _finalize_cli_content(stdout_text, raw=result.stderr)
+    if not content:
+        stderr = result.stderr.strip()
+        if stderr and not stderr.lower().startswith("warning:"):
+            content = _finalize_cli_content(extract_cli_issue_message(stderr) or stderr, raw=stderr)
+    return content

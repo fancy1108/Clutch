@@ -181,3 +181,32 @@ def test_chat_ollama(monkeypatch) -> None:
     ]
     assert any("Discovering local Ollama models..." in log for log in logs)
     assert any("Selected best Ollama model: qwen3.6:35b" in log for log in logs)
+
+
+def test_chat_ollama_history_includes_current_prompt(monkeypatch) -> None:
+    chat_payload = None
+
+    def mock_urlopen(req, timeout=None):
+        nonlocal chat_payload
+        url = req if isinstance(req, str) else req.get_full_url()
+        if "chat/completions" in url:
+            chat_payload = json.loads(req.data.decode("utf-8"))
+            mock_data = {
+                "choices": [{"message": {"role": "assistant", "content": "ok"}}]
+            }
+            return MockHTTPResponse(json.dumps(mock_data).encode("utf-8"))
+        raise ValueError(f"Unexpected url call: {url}")
+
+    monkeypatch.setattr("urllib.request.urlopen", mock_urlopen)
+
+    _model, _output = chat_ollama(
+        prompt="第二句",
+        model="qwen2.5vl:7b",
+        history=[
+            {"role": "user", "content": "你好"},
+            {"role": "assistant", "content": "你好！"},
+        ],
+    )
+    assert chat_payload is not None
+    assert chat_payload["messages"][-1] == {"role": "user", "content": "第二句"}
+    assert chat_payload["messages"][0] == {"role": "user", "content": "你好"}

@@ -25,7 +25,7 @@ def test_chat_agy_cli_args(monkeypatch) -> None:
         called_timeout = timeout
         return CliResult(command=cmd, exit_code=0, stdout="Mocked response", stderr="")
 
-    monkeypatch.setattr("src.adapters.agy_cli_adapter.run_cli", fake_run_cli)
+    monkeypatch.setattr("src.adapters.agy_cli_adapter.run_cli_pty", fake_run_cli)
 
     res = chat_agy_cli(
         prompt="hello world",
@@ -38,9 +38,9 @@ def test_chat_agy_cli_args(monkeypatch) -> None:
     assert res == "Mocked response"
     assert called_cmd == [
         "agy",
-        "-p",
-        "strict auditor\n\nUser Request:\nhello world",
         "--dangerously-skip-permissions",
+        "-p",
+        "hello world",
     ]
     assert called_cwd == "/tmp/fake"
     assert called_timeout == 10.0
@@ -60,7 +60,7 @@ def test_chat_agy_cli_resume(monkeypatch) -> None:
         called_cmd = cmd
         return CliResult(command=cmd, exit_code=0, stdout="resumed", stderr="")
 
-    monkeypatch.setattr("src.adapters.agy_cli_adapter.run_cli", fake_run_cli)
+    monkeypatch.setattr("src.adapters.agy_cli_adapter.run_cli_pty", fake_run_cli)
 
     res = chat_agy_cli(
         prompt="follow up",
@@ -69,11 +69,11 @@ def test_chat_agy_cli_resume(monkeypatch) -> None:
     assert res == "resumed"
     assert called_cmd == [
         "agy",
-        "-p",
-        "follow up",
+        "--dangerously-skip-permissions",
         "--conversation",
         "550e8400-e29b-41d4-a716-446655440000",
-        "--dangerously-skip-permissions",
+        "-p",
+        "follow up",
     ]
 
 
@@ -92,7 +92,7 @@ def test_chat_agy_cli_streams_via_on_log(monkeypatch) -> None:
         on_line("stderr", "warn")
         return CliResult(command=cmd, exit_code=0, stdout="chunk-a", stderr="warn")
 
-    monkeypatch.setattr("src.adapters.agy_cli_adapter.run_cli", fake_run_cli)
+    monkeypatch.setattr("src.adapters.agy_cli_adapter.run_cli_pty", fake_run_cli)
 
     res = chat_agy_cli(prompt="stream me", on_log=streamed.append)
 
@@ -117,7 +117,7 @@ def test_chat_agy_cli_new_session(monkeypatch) -> None:
         called_cmd = cmd
         return CliResult(command=cmd, exit_code=0, stdout="started", stderr="")
 
-    monkeypatch.setattr("src.adapters.agy_cli_adapter.run_cli", fake_run_cli)
+    monkeypatch.setattr("src.adapters.agy_cli_adapter.run_cli_pty", fake_run_cli)
 
     res = chat_agy_cli(
         prompt="start session",
@@ -126,9 +126,7 @@ def test_chat_agy_cli_new_session(monkeypatch) -> None:
     assert res == "started"
     assert called_cmd == [
         "agy",
+        "--dangerously-skip-permissions",
         "-p",
         "start session",
-        "--conversation",
-        "new-session-uuid",
-        "--dangerously-skip-permissions",
     ]

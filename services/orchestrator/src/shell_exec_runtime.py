@@ -9,7 +9,18 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Literal
 
-from src.claude_hybrid_output_parser import ClaudeHybridOutputParser, marker_completed_in_output, parse_hybrid_claude_output
+from src.adapters.cli_adapter import format_cli_issue_for_user
+from src.claude_hybrid_output_parser import (
+    ClaudeHybridOutputParser,
+    extract_cli_issue_message,
+    extract_codex_assistant_output,
+    marker_completed_in_output,
+    parse_hybrid_claude_output,
+    strip_ansi,
+    _erase_backspaces,
+    _extract_assistant_lines,
+    _strip_shell_preamble,
+)
 from src.hybrid_audit_log import (
     HybridTurnResult,
     append_hybrid_turn_audit,
@@ -50,6 +61,10 @@ def assert_no_interactive_command(text: str) -> None:
 
 def extract_claude_output(plain: str, *, marker: str) -> str:
     return parse_hybrid_claude_output(plain, marker=marker)
+
+
+def _is_codex_binary(binary: str) -> bool:
+    return binary.rsplit("/", 1)[-1] == "codex"
 
 
 def _build_claude_shell_cmd(
@@ -131,7 +146,7 @@ def _record_hybrid_turn_audit(
 def _execute_hybrid_turn(
     session: ShellSession,
     *,
-    agent: Literal["claude", "agy"],
+    agent: str,
     cmd: str,
     marker: str,
     turn_id: str,
@@ -139,6 +154,7 @@ def _execute_hybrid_turn(
     system_prompt: str | None,
     cli_session_id: str | None,
     on_lock_wait: Callable[[], None] | None = None,
+    use_codex_parser: bool = False,
 ) -> ShellExecResult:
     import os
 
@@ -155,6 +171,20 @@ def _execute_hybrid_turn(
                 result = "timeout"
                 message = f"hybrid {agent} turn timed out waiting for marker {marker}"
                 raise ShellSessionError(message)
+            if use_codex_parser:
+                assistant = extract_codex_assistant_output(raw, marker=marker)
+                if assistant:
+                    result = "ok"
+                    message = f"hybrid {agent} turn ok marker={marker}"
+                    return ShellExecResult(
+                        stdout=assistant,
+                        logs=[f"[HYBRID] {agent} exec in shell session {run_id}"],
+                        cli_session_id=cli_session_id,
+                        raw_output=raw,
+                        output_events=[
+                            {"type": "assistant", "visible": True, "content": assistant},
+                        ],
+                    )
             parsed = ClaudeHybridOutputParser().parse_structured(
                 raw,
                 marker=marker,
@@ -162,6 +192,38 @@ def _execute_hybrid_turn(
                 system_prompt=system_prompt,
             )
             if not parsed.assistant:
+                issue = extract_cli_issue_message(raw)
+                if issue:
+                    formatted = format_cli_issue_for_user(issue)
+                    result = "ok"
+                    message = f"hybrid {agent} turn surfaced cli issue marker={marker}"
+                    return ShellExecResult(
+                        stdout=formatted,
+                        logs=[f"[HYBRID] {agent} exec in shell session {run_id}"],
+                        cli_session_id=cli_session_id,
+                        raw_output=raw,
+                        output_events=[
+                            {"type": "assistant", "visible": True, "content": formatted},
+                        ],
+                    )
+                fallback = _extract_assistant_lines(
+                    _strip_shell_preamble(
+                        _erase_backspaces(strip_ansi(raw)).replace("\r", ""),
+                        marker=marker,
+                    )
+                )
+                if fallback:
+                    result = "ok"
+                    message = f"hybrid {agent} turn ok (fallback parse) marker={marker}"
+                    return ShellExecResult(
+                        stdout=fallback,
+                        logs=[f"[HYBRID] {agent} exec in shell session {run_id}"],
+                        cli_session_id=cli_session_id,
+                        raw_output=raw,
+                        output_events=[
+                            {"type": "assistant", "visible": True, "content": fallback},
+                        ],
+                    )
                 result = "empty"
                 message = f"hybrid {agent} turn produced empty stdout"
                 raise ShellSessionError(message)
@@ -213,6 +275,159 @@ def _execute_hybrid_turn(
         return _run_turn()
 
 
+def _build_generic_cli_shell_cmd(
+    *,
+    binary: str,
+    prompt: str,
+    marker: str,
+    new_session_id: str | None = None,
+    resume_session_id: str | None = None,
+    system_prompt: str | None = None,
+    conversation_mode: str = "separate",
+    extra_args: list[str] | None = None,
+    prepend_system_prompt: bool = False,
+    prompt_flag: str = "-p",
+    supports_append_system_prompt: bool = True,
+    close_stdin: bool = False,
+) -> str:
+    effective = prompt
+    if prepend_system_prompt and system_prompt:
+        effective = f"{system_prompt}\n\nUser Request:\n{prompt}"
+
+    parts: list[str] = [binary]
+    if extra_args:
+        parts.extend(extra_args)
+
+    if conversation_mode == "resume_or_new":
+        if resume_session_id:
+            parts.append(f"--conversation {resume_session_id}")
+    elif conversation_mode == "separate":
+        if new_session_id:
+            parts.append(f"--session-id {new_session_id}")
+        elif resume_session_id:
+            parts.append(f"--resume {resume_session_id}")
+    elif conversation_mode == "none":
+        if resume_session_id:
+            parts.append(f"--conversation {resume_session_id}")
+
+    if prompt_flag:
+        parts.append(f'{prompt_flag} "$CLUTCH_P"')
+    else:
+        parts.append('"$CLUTCH_P"')
+
+    if not prepend_system_prompt and system_prompt and supports_append_system_prompt:
+        parts.append(f"--append-system-prompt {_shell_quote(system_prompt)}")
+
+    line = " ".join(parts)
+    if close_stdin:
+        line = f"{line} </dev/null"
+    return (
+        f"CLUTCH_P={_shell_quote(effective)}; "
+        f"{line}; "
+        f"echo {marker}"
+    )
+
+
+def run_generic_cli_turn(
+    session: ShellSession,
+    *,
+    agent_type: str,
+    prompt: str,
+    binary: str,
+    timeout_s: float,
+    conversation_mode: str,
+    extra_args: list[str] | None = None,
+    prepend_system_prompt: bool = False,
+    cli_session_id: str | None = None,
+    resume_session_id: str | None = None,
+    new_session_id: str | None = None,
+    context_prefix: str | None = None,
+    system_prompt: str | None = None,
+    on_lock_wait: Callable[[], None] | None = None,
+    prompt_flag: str = "-p",
+    supports_append_system_prompt: bool = True,
+    close_stdin: bool = False,
+) -> ShellExecResult:
+    import os
+
+    effective_prompt = prompt
+    if context_prefix:
+        effective_prompt = f"{context_prefix.strip()}\n\n{prompt}"
+
+    if os.environ.get("CLUTCH_E2E_FAKE_HYBRID") == "1":
+        delay = float(os.environ.get("CLUTCH_E2E_FAKE_HYBRID_DELAY", "0.15"))
+        if delay > 0:
+            time.sleep(delay)
+        sid = new_session_id or resume_session_id or cli_session_id or uuid.uuid4().hex
+        reply = f"E2E hybrid ({session.run_id}): {effective_prompt.strip()[:120]}"
+        return ShellExecResult(
+            stdout=reply,
+            logs=[f"[HYBRID] e2e-fake {agent_type} turn in shell session {session.run_id}"],
+            cli_session_id=sid,
+            raw_output=f"CLUTCH_P={_shell_quote(effective_prompt[:40])}; {binary} {prompt_flag} (e2e-fake)",
+            output_events=[
+                {"type": "shell_echo", "visible": False, "content": f"{binary} {prompt_flag} (e2e-fake)"},
+                {"type": "assistant", "visible": True, "content": reply},
+            ],
+        )
+
+    turn_id = uuid.uuid4().hex[:8]
+    try:
+        assert_no_interactive_command(prompt)
+    except InteractiveCommandBlocked as exc:
+        _record_hybrid_turn_audit(
+            session,
+            agent=agent_type,
+            turn_id=turn_id,
+            marker="",
+            cmd="",
+            duration_ms=0,
+            result="blocked",
+            cli_session_id=new_session_id or resume_session_id or cli_session_id,
+            message=str(exc),
+        )
+        raise
+
+    session.ensure_workspace_cwd()
+    marker = f"__CLUTCH_DONE_{turn_id}__"
+    
+    cmd = _build_generic_cli_shell_cmd(
+        binary=binary,
+        prompt=effective_prompt,
+        marker=marker,
+        new_session_id=new_session_id,
+        resume_session_id=resume_session_id or cli_session_id,
+        system_prompt=system_prompt,
+        conversation_mode=conversation_mode,
+        extra_args=extra_args,
+        prepend_system_prompt=prepend_system_prompt,
+        prompt_flag=prompt_flag,
+        supports_append_system_prompt=supports_append_system_prompt,
+        close_stdin=close_stdin,
+    )
+    conv_id = new_session_id or resume_session_id or cli_session_id
+    
+    turn = _execute_hybrid_turn(
+        session,
+        agent=agent_type,  # type: ignore
+        cmd=cmd,
+        marker=marker,
+        turn_id=turn_id,
+        timeout_s=timeout_s,
+        system_prompt=system_prompt,
+        cli_session_id=conv_id,
+        on_lock_wait=on_lock_wait,
+        use_codex_parser=_is_codex_binary(binary),
+    )
+    return ShellExecResult(
+        stdout=turn.stdout,
+        logs=turn.logs,
+        cli_session_id=conv_id,
+        raw_output=turn.raw_output,
+        output_events=turn.output_events,
+    )
+
+
 def run_agy_turn(
     session: ShellSession,
     *,
@@ -226,54 +441,21 @@ def run_agy_turn(
     system_prompt: str | None = None,
     on_lock_wait: Callable[[], None] | None = None,
 ) -> ShellExecResult:
-    turn_id = uuid.uuid4().hex[:8]
-    try:
-        assert_no_interactive_command(prompt)
-    except InteractiveCommandBlocked as exc:
-        _record_hybrid_turn_audit(
-            session,
-            agent="agy",
-            turn_id=turn_id,
-            marker="",
-            cmd="",
-            duration_ms=0,
-            result="blocked",
-            cli_session_id=resume_session_id or cli_session_id,
-            message=str(exc),
-        )
-        raise
-
-    effective_prompt = prompt
-    if context_prefix:
-        effective_prompt = f"{context_prefix.strip()}\n\n{prompt}"
-
-    session.ensure_workspace_cwd()
-    marker = f"__CLUTCH_DONE_{turn_id}__"
-    conv_id = new_session_id or resume_session_id or cli_session_id
-    cmd = _build_agy_shell_cmd(
-        agy_binary=agy_binary,
-        prompt=effective_prompt,
-        marker=marker,
-        conversation_id=conv_id,
-        system_prompt=system_prompt if not conv_id else None,
-    )
-    turn = _execute_hybrid_turn(
+    return run_generic_cli_turn(
         session,
-        agent="agy",
-        cmd=cmd,
-        marker=marker,
-        turn_id=turn_id,
+        agent_type="agy",
+        prompt=prompt,
+        binary=agy_binary,
         timeout_s=timeout_s,
+        conversation_mode="none",
+        extra_args=["--dangerously-skip-permissions"],
+        prepend_system_prompt=False,
+        cli_session_id=cli_session_id,
+        resume_session_id=resume_session_id,
+        new_session_id=new_session_id,
+        context_prefix=context_prefix,
         system_prompt=system_prompt,
-        cli_session_id=conv_id,
         on_lock_wait=on_lock_wait,
-    )
-    return ShellExecResult(
-        stdout=turn.stdout,
-        logs=turn.logs,
-        cli_session_id=conv_id,
-        raw_output=turn.raw_output,
-        output_events=turn.output_events,
     )
 
 
@@ -290,74 +472,19 @@ def run_claude_turn(
     system_prompt: str | None = None,
     on_lock_wait: Callable[[], None] | None = None,
 ) -> ShellExecResult:
-    import os
-
-    effective_prompt = prompt
-    if context_prefix:
-        effective_prompt = f"{context_prefix.strip()}\n\n{prompt}"
-
-    if os.environ.get("CLUTCH_E2E_FAKE_HYBRID") == "1":
-        delay = float(os.environ.get("CLUTCH_E2E_FAKE_HYBRID_DELAY", "0.15"))
-        if delay > 0:
-            time.sleep(delay)
-        sid = new_session_id or resume_session_id or cli_session_id or uuid.uuid4().hex
-        reply = f"E2E hybrid ({session.run_id}): {effective_prompt.strip()[:120]}"
-        return ShellExecResult(
-            stdout=reply,
-            logs=[f"[HYBRID] e2e-fake claude turn in shell session {session.run_id}"],
-            cli_session_id=sid,
-            raw_output=f"CLUTCH_P={_shell_quote(effective_prompt[:40])}; claude -p (e2e-fake)",
-            output_events=[
-                {"type": "shell_echo", "visible": False, "content": "claude -p (e2e-fake)"},
-                {"type": "assistant", "visible": True, "content": reply},
-            ],
-        )
-
-    turn_id = uuid.uuid4().hex[:8]
-    try:
-        assert_no_interactive_command(prompt)
-    except InteractiveCommandBlocked as exc:
-        _record_hybrid_turn_audit(
-            session,
-            agent="claude",
-            turn_id=turn_id,
-            marker="",
-            cmd="",
-            duration_ms=0,
-            result="blocked",
-            cli_session_id=resume_session_id or cli_session_id or new_session_id,
-            message=str(exc),
-        )
-        raise
-
-    session.ensure_workspace_cwd()
-    marker = f"__CLUTCH_DONE_{turn_id}__"
-    sid = resume_session_id or cli_session_id
-    bootstrap_id = new_session_id
-    cmd = _build_claude_shell_cmd(
-        claude_binary=claude_binary,
-        prompt=effective_prompt,
-        marker=marker,
-        session_id=bootstrap_id,
-        resume_session_id=sid if not bootstrap_id else None,
-        system_prompt=system_prompt if bootstrap_id else None,
-    )
-    out_session = bootstrap_id or sid or cli_session_id
-    turn = _execute_hybrid_turn(
+    return run_generic_cli_turn(
         session,
-        agent="claude",
-        cmd=cmd,
-        marker=marker,
-        turn_id=turn_id,
+        agent_type="claude",
+        prompt=prompt,
+        binary=claude_binary,
         timeout_s=timeout_s,
+        conversation_mode="separate",
+        extra_args=["--dangerously-skip-permissions"],
+        prepend_system_prompt=False,
+        cli_session_id=cli_session_id,
+        resume_session_id=resume_session_id,
+        new_session_id=new_session_id,
+        context_prefix=context_prefix,
         system_prompt=system_prompt,
-        cli_session_id=out_session,
         on_lock_wait=on_lock_wait,
-    )
-    return ShellExecResult(
-        stdout=turn.stdout,
-        logs=turn.logs,
-        cli_session_id=out_session,
-        raw_output=turn.raw_output,
-        output_events=turn.output_events,
     )

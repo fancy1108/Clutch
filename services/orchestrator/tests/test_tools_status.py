@@ -15,6 +15,7 @@ from src.tools_status import (
     disconnect_tool,
     list_tools_status,
     load_connected_ids,
+    resolve_agent_type_for_tool,
     resolve_tool_binary,
     save_connected_ids,
 )
@@ -108,6 +109,48 @@ def test_list_includes_installed_cli_with_path(
     assert codex["kind"] == "cli"
     assert codex["path"] == "/usr/local/bin/codex"
     assert codex["connected"] is False
+    assert codex["registered"] is True
+    assert codex["agentType"] == "codex-cli"
+
+
+def test_resolve_agent_type_for_tool_maps_tool_ids() -> None:
+    assert resolve_agent_type_for_tool("agy-cli") == "antigravity-cli"
+    assert resolve_agent_type_for_tool("codex-cli") == "codex-cli"
+    assert resolve_agent_type_for_tool("claude-cli") == "claude-cli"
+    assert resolve_agent_type_for_tool("ollama-cli") == "ollama-cli"
+    assert resolve_agent_type_for_tool("unknown-cli") is None
+
+
+def test_list_tools_ollama_has_agent_type(
+    tools_config: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("src.tools_status._extra_cli_search_dirs", lambda: [])
+    monkeypatch.setattr(
+        "src.tools_status._cli_path",
+        lambda binary: "/usr/local/bin/ollama" if binary == "ollama" else None,
+    )
+    connect_tool("ollama-cli")
+    tools = list_tools_status()
+    ollama = next(item for item in tools if item["id"] == "ollama-cli")
+    assert ollama["connected"] is True
+    assert ollama["registered"] is True
+    assert ollama["agentType"] == "ollama-cli"
+
+
+def test_list_tools_includes_agent_type_when_connected(
+    tools_config: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("src.tools_status._extra_cli_search_dirs", lambda: [])
+    monkeypatch.setattr(
+        "src.tools_status._cli_path",
+        lambda binary: f"/usr/local/bin/{binary}" if binary == "codex" else None,
+    )
+    connect_tool("codex-cli")
+    tools = list_tools_status()
+    codex = next(item for item in tools if item["id"] == "codex-cli")
+    assert codex["connected"] is True
+    assert codex["registered"] is True
+    assert codex["agentType"] == "codex-cli"
 
 
 def test_list_includes_installed_client_with_path(
@@ -191,3 +234,53 @@ def test_resolve_tool_binary_finds_nvm_node_bin(
     )
 
     assert resolve_tool_binary("claude-cli") == str(claude_bin)
+
+
+def test_auto_configure_cli_via_llm(monkeypatch: pytest.MonkeyPatch) -> None:
+    import subprocess
+    from src.tools_status import auto_configure_cli_via_llm
+
+    class MockCompletedProcess:
+        stdout = "usage: gemini-cli [--version] [--help] [-p PROMPT]\n\nOptions:\n  -p, --prompt   Prompt string"
+        stderr = ""
+
+    monkeypatch.setattr(subprocess, "run", lambda *args, **kwargs: MockCompletedProcess())
+
+    # Mock the LLM router call to return a valid JSON configuration string
+    class MockRouterSpec:
+        id = "test-model"
+        name = "DeepSeek"
+        provider_id = "deepseek"
+        model_kind = "chat"
+
+    class MockRouter:
+        def get_active_model(self):
+            return MockRouterSpec()
+
+        def list_models(self):
+            return [MockRouterSpec()]
+
+        def get_api_key(self, provider_id):
+            return "fake-key"
+
+        def chat(self, history, model_id=None):
+            return """
+            {
+                "binary_name": "gemini",
+                "conversation_mode": "none",
+                "prepend_system_prompt": true,
+                "extra_args": [],
+                "prompt_flag": "-p"
+            }
+            """
+
+    monkeypatch.setattr("src.models_config.get_router", lambda: MockRouter())
+
+    config = auto_configure_cli_via_llm("gemini-cli", "/usr/local/bin/gemini")
+    assert config["binary_name"] == "gemini"
+    assert config["prompt_flag"] == "-p"
+    assert config["conversation_mode"] == "none"
+    assert config["prepend_system_prompt"] is True
+
+
+

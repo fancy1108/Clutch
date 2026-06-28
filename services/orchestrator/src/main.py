@@ -825,13 +825,28 @@ def _history_for_llm(
     messages: list[dict[str, object]],
     *,
     vision_enabled: bool = False,
+    hybrid_executions: dict[str, object] | None = None,
 ) -> list[dict[str, Any]]:
-    from src.chat_content import user_message_content_for_llm
+    from src.chat_content import normalize_text_content, user_message_content_for_llm
 
     history: list[dict[str, Any]] = []
+    hybrid_map = hybrid_executions or {}
     for message in messages:
         agent = str(message.get("agent", ""))
         text = str(message.get("text", "")).strip()
+        if not text:
+            msg_id = str(message.get("id", ""))
+            entry = hybrid_map.get(msg_id) if msg_id else None
+            if isinstance(entry, dict):
+                events = entry.get("outputEvents") or message.get("outputEvents") or []
+                if isinstance(events, list):
+                    for event in events:
+                        if not isinstance(event, dict):
+                            continue
+                        if event.get("type") == "assistant" and event.get("visible", True) is not False:
+                            text = str(event.get("content", "")).strip()
+                            if text:
+                                break
         if not text:
             continue
         if agent in {"Supervisor", "Orchestrator"}:
@@ -841,7 +856,10 @@ def _history_for_llm(
             content = user_message_content_for_llm(text, vision_enabled=vision_enabled)
         else:
             content = text
-        history.append({"role": role, "content": content})
+        normalized = normalize_text_content(content)
+        if not normalized:
+            continue
+        history.append({"role": role, "content": normalized})
     return history
 
 
@@ -989,7 +1007,11 @@ async def _llm_chat_reply(
         else None
     )
 
-    history = _history_for_llm(state["messages"], vision_enabled=vision_enabled)
+    history = _history_for_llm(
+        state["messages"],
+        vision_enabled=vision_enabled,
+        hybrid_executions=state.get("hybrid_executions"),
+    )
     if system_prompt:
         history = [{"role": "system", "content": system_prompt}] + [
             item for item in history if item.get("role") != "system"
@@ -1084,7 +1106,11 @@ async def _llm_chat_reply(
                 model_api=model_api,
                 mcp_servers_bound=False,
             )
-            history = _history_for_llm(state["messages"], vision_enabled=vision_enabled)
+            history = _history_for_llm(
+        state["messages"],
+        vision_enabled=vision_enabled,
+        hybrid_executions=state.get("hybrid_executions"),
+    )
             if system_prompt:
                 history = [{"role": "system", "content": system_prompt}] + [
                     item for item in history if item.get("role") != "system"
@@ -1097,9 +1123,6 @@ async def _llm_chat_reply(
                 asyncio.run_coroutine_threadsafe(emit_log(line), loop)
 
         route_history = history
-        if isolate_cli_history:
-            system_items = [item for item in history if item.get("role") == "system"]
-            route_history = system_items + [{"role": "user", "content": text.strip()}]
 
         result = await asyncio.to_thread(
             route_engine,
@@ -1112,6 +1135,7 @@ async def _llm_chat_reply(
             on_log=on_log if emit_log else None,
             run_id=state.get("run_id"),
             source="plain_chat",
+            session_model_id=session_model_id,
         )
         return (
             reply_label,
@@ -1506,7 +1530,6 @@ async def _handle_plain_chat(
             session_model_id=session_model_id,
             cli_session_id=stored_session_id,
             emit_log=emit_log,
-            isolate_cli_history=agent_switched,
         )
     except HybridPlainChatRejected as exc:
         keep_running = exc.code == "session_busy" and state["status"] == "running"
@@ -2388,19 +2411,112 @@ async def delete_custom_image_model(model_id: str) -> dict[str, Any]:
 
 @app.get("/api/models/ollama")
 async def list_local_ollama_models() -> dict[str, Any]:
+    import urllib.error
+    import shutil
+    from pathlib import Path
     try:
         from src.adapters.ollama_adapter import get_ollama_models
         models = get_ollama_models()
         return {"ok": True, "models": models}
     except Exception as exc:
-        return {"ok": False, "models": [], "error": str(exc)}
+        reason = "unknown"
+        inner = exc.__cause__ if hasattr(exc, "__cause__") else None
+        if "ConnectionRefusedError" in str(exc) or "connection refused" in str(exc).lower() or (inner and isinstance(inner, urllib.error.URLError)):
+            reason = "connection_refused"
+            
+        app_exists = Path("/Applications/Ollama.app").is_dir() or Path("~/Applications/Ollama.app").expanduser().is_dir()
+        binary_exists = shutil.which("ollama") is not None
+        
+        return {
+            "ok": False,
+            "models": [],
+            "error": str(exc),
+            "reason": reason,
+            "app_installed": app_exists,
+            "binary_installed": binary_exists
+        }
+
+
+@app.post("/api/models/ollama/start")
+async def start_ollama_service() -> dict[str, Any]:
+    import subprocess
+    import shutil
+    from pathlib import Path
+    
+    app_paths = ["/Applications/Ollama.app", str(Path.home() / "Applications/Ollama.app")]
+    app_exists = any(Path(p).is_dir() for p in app_paths)
+    
+    if app_exists:
+        try:
+            subprocess.Popen(["open", "-a", "Ollama"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return {"ok": True, "message": "Launching Ollama.app..."}
+        except Exception as exc:
+            pass
+            
+    binary = shutil.which("ollama")
+    if binary:
+        try:
+            subprocess.Popen([binary, "serve"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+            return {"ok": True, "message": "Starting `ollama serve` in background..."}
+        except Exception as exc:
+            return {"ok": False, "error": f"Failed to run `ollama serve`: {exc}"}
+            
+    return {"ok": False, "error": "Ollama.app not found and `ollama` command not in PATH."}
 
 
 @app.get("/api/tools/status")
 async def tools_status() -> dict[str, list[dict[str, Any]]]:
     from src.tools_status import list_tools_status
 
-    return {"tools": list_tools_status()}
+    return {"tools": list_tools_status(include_all=True)}
+
+
+@app.post("/api/tools/auto-configure")
+async def auto_configure_tool_endpoint(body: ToolConnectRequest) -> dict[str, Any]:
+    from src.tools_status import resolve_tool_binary
+    from src.engine_router import CLI_ROUTING_CONFIGS, save_custom_cli_configs, load_custom_cli_configs
+    from src.agent_type import AGENT_TYPES, _LEGACY_AI_ENGINE_TO_TYPE
+
+    binary_path = resolve_tool_binary(body.tool_id)
+    if not binary_path:
+        raise HTTPException(status_code=400, detail={"message": f"Tool {body.tool_id} is not installed on this machine."})
+
+    from src.agent_type import normalize_agent_type
+    from src.provider_registry import resolve_provider_spec
+    from src.runtime_strategy import RuntimeStrategy
+
+    if resolve_provider_spec(normalize_agent_type(body.tool_id)).runtime_strategy == RuntimeStrategy.HTTP_DAEMON:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "message": (
+                    f"{body.tool_id} uses Clutch's native HTTP integration "
+                    "and does not need shell CLI auto-configure."
+                ),
+            },
+        )
+
+    try:
+        from src.tools_status import auto_configure_cli_via_llm
+        config = auto_configure_cli_via_llm(body.tool_id, binary_path)
+
+        # Determine the right routing key: use the known agent_type if this tool_id maps
+        # to one that's already in AGENT_TYPES (e.g. 'agy-cli' -> 'antigravity-cli').
+        # Otherwise use tool_id directly. Never use normalize_agent_type() here because
+        # it falls back to 'clutch' for unknown IDs, which would corrupt CLI_ROUTING_CONFIGS.
+        candidate = _LEGACY_AI_ENGINE_TO_TYPE.get(body.tool_id, body.tool_id)
+        agent_type_key = candidate if candidate in AGENT_TYPES else body.tool_id
+
+        custom_configs = load_custom_cli_configs()
+        custom_configs[agent_type_key] = config
+        save_custom_cli_configs(custom_configs)
+
+        CLI_ROUTING_CONFIGS[agent_type_key] = config
+
+        return {"status": "configured", "config": config}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail={"message": str(exc)}) from exc
+
 
 
 @app.post("/api/tools/connect")

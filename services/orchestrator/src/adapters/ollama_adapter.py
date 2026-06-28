@@ -115,16 +115,38 @@ def chat_ollama(
             on_log(f"[OLLAMA] Selected best Ollama model: {selected_model}")
     
     # Build messages
-    formatted_messages = []
+    from src.chat_content import normalize_text_content
+
+    formatted_messages: list[dict[str, str]] = []
     if history:
         for msg in history:
             role = msg.get("role", "user")
-            content = msg.get("content", "")
-            formatted_messages.append({"role": role, "content": content})
+            content = normalize_text_content(msg.get("content", ""))
+            if not content:
+                continue
+            if role == "system":
+                formatted_messages.append({"role": "system", "content": content})
+            elif role == "assistant":
+                formatted_messages.append({"role": "assistant", "content": content})
+            else:
+                formatted_messages.append({"role": "user", "content": content})
+        last_user = next(
+            (m["content"] for m in reversed(formatted_messages) if m["role"] == "user"),
+            "",
+        )
+        if prompt.strip() and prompt.strip() != last_user:
+            formatted_messages.append({"role": "user", "content": prompt.strip()})
     else:
         if system_prompt:
             formatted_messages.append({"role": "system", "content": system_prompt})
         formatted_messages.append({"role": "user", "content": prompt})
+
+    if on_log:
+        user_turns = sum(1 for m in formatted_messages if m["role"] == "user")
+        assistant_turns = sum(1 for m in formatted_messages if m["role"] == "assistant")
+        on_log(
+            f"[OLLAMA] Conversation context: {user_turns} user + {assistant_turns} assistant message(s)"
+        )
 
     url = "http://localhost:11434/v1/chat/completions"
     body = {

@@ -9,6 +9,8 @@ export interface AiToolStatus {
   path: string;
   installed: boolean;
   connected: boolean;
+  registered: boolean;
+  agentType?: string | null;
 }
 
 export async function fetchToolsStatus(): Promise<AiToolStatus[]> {
@@ -34,4 +36,14 @@ export async function disconnectTool(toolId: string): Promise<void> {
     body: JSON.stringify({ tool_id: toolId }),
   });
   if (!response.ok) throw new Error(`disconnect tool failed (${response.status})`);
+}
+
+export async function autoConfigureTool(toolId: string): Promise<any> {
+  const response = await fetch(`${BASE}/api/tools/auto-configure`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tool_id: toolId }),
+  });
+  if (!response.ok) throw new Error(`auto configure tool failed (${response.status})`);
+  return response.json();
 }

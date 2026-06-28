@@ -143,7 +143,9 @@ def test_route_engine_claude_cli_resumes_existing_session(monkeypatch, mock_agen
     )
     assert res.engine == "Claude CLI"
     assert res.cli_session_id == "550e8400-e29b-41d4-a716-446655440000"
-    assert captured["prompt"] == "follow up"
+    assert "User: first question" in str(captured["prompt"])
+    assert "Assistant: first answer" in str(captured["prompt"])
+    assert "User: follow up" in str(captured["prompt"])
     assert captured["system_prompt"] is None
     assert captured["resume_session_id"] == "550e8400-e29b-41d4-a716-446655440000"
     assert captured["session_id"] is None
@@ -242,15 +244,22 @@ def test_route_engine_antigravity_cli(monkeypatch) -> None:
     )
     monkeypatch.setattr("src.engine_router.tool_available_for_routing", lambda tool_id: tool_id == "agy-cli")
     monkeypatch.setattr("src.engine_router.get_workspace", lambda: {"workspace_path": "/workspace"})
-    
+
     captured = {}
-    def fake_chat_agy(prompt, *, cwd, system_prompt, resume_session_id=None, **kwargs):
+
+    def fake_chat_generic_cli(prompt, *, binary, conversation_mode, cwd, system_prompt, **kwargs):
         captured["prompt"] = prompt
         captured["system_prompt"] = system_prompt
-        captured["resume_session_id"] = resume_session_id
+        captured["binary"] = binary
+        captured["conversation_mode"] = conversation_mode
         return "Antigravity CLI output"
-        
-    monkeypatch.setattr("src.engine_router.chat_agy_cli", fake_chat_agy)
+
+    monkeypatch.setattr("src.adapters.cli_adapter.chat_generic_cli", fake_chat_generic_cli)
+
+    def fake_try_shell_exec_hybrid(*, hybrid_route, legacy_route, **kwargs):
+        return legacy_route()
+
+    monkeypatch.setattr("src.engine_router.try_shell_exec_hybrid", fake_try_shell_exec_hybrid)
 
     res = route_engine(
         agent_name="Antigravity Agent",
@@ -261,6 +270,7 @@ def test_route_engine_antigravity_cli(monkeypatch) -> None:
     assert res.engine == "Antigravity CLI"
     assert res.output == "Antigravity CLI output"
     assert captured["prompt"] == "hello agy"
+    assert captured["conversation_mode"] == "none"
 
 
 def test_claude_hybrid_routes_from_flow_source(monkeypatch, mock_agents) -> None:
@@ -320,6 +330,13 @@ def test_agy_hybrid_routes_to_shell_exec(monkeypatch) -> None:
 
     monkeypatch.setattr("src.engine_router._route_agy_hybrid", fake_agy_hybrid)
 
+    # try_shell_exec_hybrid is now called since agy-cli is registered;
+    # mock it to directly invoke the hybrid_route lambda.
+    def fake_try_shell_exec_hybrid(*, hybrid_route, legacy_route, **kwargs):
+        return hybrid_route()
+
+    monkeypatch.setattr("src.engine_router.try_shell_exec_hybrid", fake_try_shell_exec_hybrid)
+
     res = route_engine(
         agent_name="Antigravity Agent",
         prompt="hello hybrid agy",
@@ -376,6 +393,51 @@ def test_route_engine_ollama(monkeypatch) -> None:
     assert res.output == "Ollama response output"
     assert captured["prompt"] == "hello ollama"
     assert captured["system_prompt"] == "system guide"
+    assert any("Routing task to Ollama" in log for log in res.logs)
+
+
+def test_route_engine_ollama_ignores_shell_cli_auto_config(monkeypatch) -> None:
+    """Ollama must use HTTP API even when auto-configure added a shell CLI entry."""
+    from src.engine_router import CLI_ROUTING_CONFIGS
+
+    monkeypatch.setattr(
+        "src.engine_router.list_agents",
+        lambda: [
+            {
+                "id": "agent-ollama",
+                "name": "Ollama Agent",
+                "agentType": "ollama-cli",
+                "ollamaModel": "qwen2.5-coder",
+            }
+        ],
+    )
+    monkeypatch.setattr("src.engine_router.tool_available_for_routing", lambda tool_id: tool_id == "ollama-cli")
+    monkeypatch.setattr("src.engine_router.get_workspace", lambda: {"workspace_path": "/workspace"})
+    monkeypatch.setitem(
+        CLI_ROUTING_CONFIGS,
+        "ollama-cli",
+        {
+            "tool_id": "ollama-cli",
+            "binary_name": "ollama",
+            "conversation_mode": "none",
+            "prepend_system_prompt": True,
+            "extra_args": [],
+            "prompt_flag": "-p",
+        },
+    )
+
+    captured: dict[str, str | None] = {}
+
+    def fake_chat_ollama(prompt, *, model=None, system_prompt=None, history=None, on_log=None):
+        captured["model"] = model
+        return "qwen2.5-coder", "HTTP ollama reply"
+
+    monkeypatch.setattr("src.adapters.ollama_adapter.chat_ollama", fake_chat_ollama)
+
+    res = route_engine(agent_name="Ollama Agent", prompt="你好")
+    assert res.engine == "Ollama (qwen2.5-coder)"
+    assert res.output == "HTTP ollama reply"
+    assert captured["model"] == "qwen2.5-coder"
     assert any("Routing task to Ollama" in log for log in res.logs)
 
 
@@ -444,3 +506,38 @@ def test_route_engine_passes_hybrid_execution_metadata(monkeypatch) -> None:
     res = route_engine(agent_name="Claude test Session", prompt="hi")
     assert res.raw_output == "raw shell bytes"
     assert res.output_events == events
+
+
+def test_route_engine_aider_cli(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "src.engine_router.list_agents",
+        lambda: [
+            {
+                "id": "agent-aider",
+                "name": "Aider Agent",
+                "agentType": "aider-cli",
+            }
+        ],
+    )
+    monkeypatch.setattr("src.engine_router.tool_available_for_routing", lambda tool_id: tool_id == "aider-cli")
+    monkeypatch.setattr("src.engine_router.get_workspace", lambda: {"workspace_path": "/workspace"})
+    
+    captured = {}
+    def fake_chat_generic(prompt, *, binary, prompt_flag, extra_args=None, **kwargs):
+        captured["prompt"] = prompt
+        captured["binary"] = binary
+        captured["prompt_flag"] = prompt_flag
+        captured["extra_args"] = extra_args
+        return "aider mock output"
+        
+    monkeypatch.setattr("src.engine_router._route_generic_cli_legacy", 
+                        lambda *args, **kwargs: EngineResult(
+                            engine="Aider CLI",
+                            output=fake_chat_generic(kwargs["prompt"], binary=kwargs["cli_binary"] or "aider", prompt_flag=kwargs["prompt_flag"], extra_args=kwargs["extra_args"]),
+                            logs=[]
+                        ))
+    
+    res = route_engine(agent_name="Aider Agent", prompt="optimize this file")
+    assert res.output == "aider mock output"
+    assert captured["prompt_flag"] == "--message"
+    assert "--yes-always" in captured["extra_args"]

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass
 from typing import Any, Literal
@@ -32,15 +33,30 @@ _SYSTEM_PROMPT_RE = re.compile(
     re.DOTALL | re.IGNORECASE,
 )
 _NOISE_LINE_RE = re.compile(
-    r"^(?:clutch\$|CLUTCH_P=|--(?:append-system-prompt|session-id|resume|conversation|dangerously-skip-permissions)\b|"
-    r".*(?:claude|agy) -p.*|.*__CLUTCH_.*|.*append-system-prompt.*)$",
+    r"^(?:clutch\$|CLUTCH_P=|--(?:append-system-prompt|session-id|resume|conversation|dangerously-skip-permissions|"
+    r"skip-git-repo-check|dangerously-bypass-approvals-and-sandbox|json)\b|"
+    r".*(?:claude|agy) -p.*|.*__CLUTCH_.*|.*append-system-prompt.*|"
+    r".*\bcodex exec\b.*)$",
     re.I,
 )
 _SHELL_LEAK_RE = re.compile(
     r"CLUTCH_P=|(?:claude|agy)\s+-p\b|dangerously-skip-permissions|__CLUTCH_",
     re.I,
 )
+_CODEX_TOKEN_COUNT_RE = re.compile(r"^[\d,]+$")
 _MARKER_LINE_PATTERNS: dict[str, re.Pattern[str]] = {}
+_CLI_ISSUE_LINE_MARKERS = (
+    "individual quota reached",
+    "quota reached",
+    "rate limit",
+    "authentication required",
+    "authentication timed out",
+    "upgrade your subscription",
+)
+_QUOTA_MESSAGE_RE = re.compile(
+    r"Individual quota reached\.[^\n]*(?:Resets in[^\n.]*)?",
+    re.IGNORECASE,
+)
 
 
 @dataclass(frozen=True)
@@ -199,6 +215,24 @@ def _is_noise_line(line: str) -> bool:
         return True
     if "take a look at the main channel" in lowered:
         return True
+    if lowered.startswith("reasoning summaries:"):
+        return True
+    if lowered.startswith("session id:"):
+        return True
+    if lowered == "user" or lowered == "codex":
+        return True
+    if lowered.startswith("user request:"):
+        return True
+    if lowered.startswith("tokens used"):
+        return True
+    if _CODEX_TOKEN_COUNT_RE.match(clean):
+        return True
+    if "reading additional input from stdin" in lowered:
+        return True
+    if "model metadata for" in lowered and "not found" in lowered:
+        return True
+    if clean.startswith("{") and '"type"' in clean:
+        return True
     return False
 
 
@@ -237,6 +271,81 @@ def _extract_system_prompt(shell_echo: str | None) -> str | None:
         return None
     prompt = _unshell_single_quoted(match.group(1)).strip()
     return prompt or None
+
+
+def extract_cli_issue_message(raw: str) -> str | None:
+    """Return a user-visible agy/CLI failure line (quota, auth, etc.) from raw PTY output."""
+    normalized = _erase_backspaces(strip_ansi(raw)).replace("\r", "\n")
+    quota_match = _QUOTA_MESSAGE_RE.search(normalized)
+    if quota_match:
+        return quota_match.group(0).strip()
+    for ln in normalized.splitlines():
+        clean = _normalize_output_line(ln)
+        if not clean:
+            continue
+        lowered = clean.lower()
+        if any(marker in lowered for marker in _CLI_ISSUE_LINE_MARKERS):
+            return clean
+    return None
+
+
+def parse_codex_jsonl_output(text: str) -> str | None:
+    """Extract the last Codex agent_message from `codex exec --json` JSONL stdout."""
+    messages: list[str] = []
+    for line in text.splitlines():
+        clean = strip_ansi(line).strip()
+        if not clean.startswith("{"):
+            continue
+        try:
+            obj = json.loads(clean)
+        except json.JSONDecodeError:
+            continue
+        if obj.get("type") != "item.completed":
+            continue
+        item = obj.get("item")
+        if not isinstance(item, dict):
+            continue
+        if item.get("type") != "agent_message":
+            continue
+        body = str(item.get("text", "")).strip()
+        if body:
+            messages.append(body)
+    return messages[-1] if messages else None
+
+
+def extract_codex_assistant_output(raw: str, *, marker: str | None = None) -> str:
+    """Parse Codex hybrid or subprocess output (JSONL preferred, TUI fallback)."""
+    normalized = _erase_backspaces(strip_ansi(raw)).replace("\r", "")
+    body = normalized
+    if marker and marker in normalized:
+        end = _last_standalone_marker_index(normalized, marker)
+        if end < 0:
+            end = normalized.rfind(marker)
+        body = _strip_shell_preamble(normalized[:end], marker=marker) if end >= 0 else normalized
+
+    json_text = parse_codex_jsonl_output(body) or parse_codex_jsonl_output(normalized)
+    if json_text:
+        return json_text
+
+    tui = _sanitize_assistant(_extract_assistant_lines(body))
+    if tui:
+        return tui
+    issue = extract_cli_issue_message(raw)
+    return issue or ""
+
+
+def extract_tty_cli_output(raw: str) -> str:
+    """Strip TUI/PTY noise and return assistant text from a headless CLI capture."""
+    if "codex exec" in raw.lower() or '"agent_message"' in raw:
+        codex = extract_codex_assistant_output(raw)
+        if codex:
+            return codex
+    normalized = _erase_backspaces(strip_ansi(raw)).replace("\r", "")
+    assistant = _sanitize_assistant(_extract_assistant_lines(normalized))
+    if assistant:
+        return assistant
+    issue = extract_cli_issue_message(raw)
+    return issue or ""
 
 
 def _extract_assistant_lines(body: str) -> str:

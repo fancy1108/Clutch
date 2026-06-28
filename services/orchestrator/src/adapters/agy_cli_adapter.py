@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from collections.abc import Callable
 
-from src.adapters.cli_adapter import run_cli
+from src.adapters.cli_adapter import run_cli_pty
 
 _DEFAULT_CHAT_TIMEOUT_SEC = float(os.environ.get("CLUTCH_AGY_CLI_TIMEOUT", "600"))
 
@@ -32,29 +32,25 @@ def chat_agy_cli(
     on_log: Callable[[str], None] | None = None,
 ) -> str:
     """Call local `agy` CLI in print mode, return response text."""
-    if session_id and resume_session_id:
-        raise ValueError("session_id and resume_session_id are mutually exclusive")
+    from src.adapters.cli_adapter import chat_generic_cli
     
-    # Prepend system prompt to user prompt if system prompt is present
-    effective_prompt = prompt
-    if system_prompt:
-        effective_prompt = f"{system_prompt}\n\nUser Request:\n{prompt}"
-
-    cmd = [binary or "agy", "-p", effective_prompt]
-    effective_conv_id = resume_session_id or session_id
-    if effective_conv_id:
-        cmd += ["--conversation", effective_conv_id]
-        
+    extra_args = []
     if dangerously_skip_permissions:
-        cmd.append("--dangerously-skip-permissions")
-
-    effective_timeout = timeout if timeout is not None else _DEFAULT_CHAT_TIMEOUT_SEC
-    on_line = None
-    if on_log is not None:
-        on_log(f"[ANTIGRAVITY CLI] Executing `{cmd[0]}` (timeout {effective_timeout:g}s)")
-        on_line = lambda stream, line: _stream_cli_line(on_log, stream, line)
-
-    result = run_cli(cmd, cwd=cwd, timeout=effective_timeout, on_line=on_line)
-    if on_log is not None:
-        on_log(f"[ANTIGRAVITY CLI] Exit code {result.exit_code}")
-    return result.stdout
+        extra_args.append("--dangerously-skip-permissions")
+        
+    return chat_generic_cli(
+        prompt,
+        binary=binary or "agy",
+        conversation_mode="none",
+        extra_args=extra_args,
+        prepend_system_prompt=False,
+        cwd=cwd,
+        system_prompt=system_prompt,
+        session_id=session_id,
+        resume_session_id=resume_session_id,
+        timeout=timeout,
+        on_log=on_log,
+        log_prefix="ANTIGRAPHIC" if binary == "fake" else "ANTIGRAVITY", # We handle generic or special prefix
+        run_cli_fn=run_cli_pty,
+        supports_append_system_prompt=False,
+    )

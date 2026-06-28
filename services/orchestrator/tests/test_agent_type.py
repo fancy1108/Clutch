@@ -76,3 +76,19 @@ def test_resolve_model_for_agent_falls_back_to_active_model() -> None:
 
 def test_is_clutch_agent_false_for_ollama_cli() -> None:
     assert not is_clutch_agent({"agentType": "ollama-cli"})
+
+
+def test_aider_cli_migration_and_resolution() -> None:
+    assert agent_type_from_record({"agentType": "aider-cli"}) == "aider-cli"
+    assert agent_type_from_record({"aiEngine": "aider"}) == "aider-cli"
+    assert not is_clutch_agent({"agentType": "aider-cli"})
+    
+    migrated = migrate_agent_record({"id": "aider-agent", "agentType": "aider-cli", "ollamaModel": "qwen2.5-coder"})
+    assert migrated["agentType"] == "aider-cli"
+    assert "ollamaModel" not in migrated
+
+
+def test_codex_cli_migration_and_resolution() -> None:
+    assert agent_type_from_record({"agentType": "codex-cli"}) == "codex-cli"
+    assert agent_type_from_record({"aiEngine": "OpenAI Codex CLI"}) == "codex-cli"
+    assert not is_clutch_agent({"agentType": "codex-cli"})

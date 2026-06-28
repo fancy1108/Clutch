@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from src.claude_hybrid_output_parser import (
     ClaudeHybridOutputParser,
+    extract_cli_issue_message,
+    extract_codex_assistant_output,
+    extract_tty_cli_output,
     marker_completed_in_output,
+    parse_codex_jsonl_output,
     parse_hybrid_claude_output,
     strip_ansi,
 )
@@ -181,3 +185,72 @@ def test_parse_filters_snapshot_handoff_lines() -> None:
     assert out == "我是 Agnes，没有年龄的概念。"
     assert "Task summary" not in out
     assert "Working directory" not in out
+
+
+def test_extract_cli_issue_message_quota() -> None:
+    raw = (
+        "\x1b[31m⚠ Individual quota reached. Please upgrade your subscription to increase your limits. "
+        "Resets in 2h17m22s.\x1b[0m\r\n"
+        "How's the CLI experience so far?\r\n"
+    )
+    issue = extract_cli_issue_message(raw)
+    assert issue is not None
+    assert "Individual quota reached" in issue
+    assert "Resets in 2h17m22s" in issue
+
+
+def test_extract_tty_cli_output_surfaces_quota_when_no_assistant() -> None:
+    raw = (
+        "Individual quota reached. Please upgrade your subscription to increase your limits. "
+        "Resets in 1h5m0s.\r\n"
+    )
+    out = extract_tty_cli_output(raw)
+    assert "Individual quota reached" in out
+    assert "Resets in 1h5m0s" in out
+
+
+_CODEX_JSONL_HYBRID = (
+    "CLUTCH_P='你好'; /Users/fancy/.local/bin/codex exec --skip-git-repo-check "
+    "--dangerously-bypass-approvals-and-sandbox --json \"$CLUTCH_P\" </dev/null; "
+    "echo __CLUTCH_DONE_codex1__\n"
+    "Reading additional input from stdin...\n"
+    '{"type":"thread.started","thread_id":"019f0cbe-bd02-75f3-a758-1004ad5cad64"}\n'
+    '{"type":"item.completed","item":{"id":"item_0","type":"error","message":"Model metadata warning"}}\n'
+    '{"type":"turn.started"}\n'
+    '{"type":"item.completed","item":{"id":"item_1","type":"agent_message","text":"你好！有什么我可以帮你的吗？"}}\n'
+    '{"type":"turn.completed","usage":{"input_tokens":16731,"output_tokens":12}}\n'
+    "__CLUTCH_DONE_codex1__\n"
+    "clutch$ "
+)
+
+_CODEX_TUI_FALLBACK = (
+    "reasoning summaries: none\n"
+    "session id: 019f0cbe-bd02-75f3-a758-1004ad5cad64\n"
+    "user\n"
+    "User Request:\n"
+    "warning: Model metadata for gemini-2.0-flash not found.\n"
+    "codex\n"
+    "你好！有什么我可以帮你的吗？\n"
+    "tokens used\n"
+    "16,731\n"
+)
+
+
+def test_parse_codex_jsonl_output_extracts_agent_message() -> None:
+    raw = (
+        '{"type":"item.completed","item":{"type":"agent_message","text":"PONG"}}\n'
+        '{"type":"turn.completed","usage":{"output_tokens":1}}\n'
+    )
+    assert parse_codex_jsonl_output(raw) == "PONG"
+
+
+def test_extract_codex_assistant_output_from_hybrid_jsonl() -> None:
+    out = extract_codex_assistant_output(_CODEX_JSONL_HYBRID, marker="__CLUTCH_DONE_codex1__")
+    assert out == "你好！有什么我可以帮你的吗？"
+    assert "session id" not in out
+    assert "tokens used" not in out
+
+
+def test_extract_codex_assistant_output_tui_fallback() -> None:
+    out = extract_codex_assistant_output(_CODEX_TUI_FALLBACK)
+    assert out == "你好！有什么我可以帮你的吗？"

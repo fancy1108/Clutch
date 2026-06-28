@@ -23,7 +23,7 @@ export interface Deliverable {
   content: string;
 }
 
-export type AgentType = 'clutch' | 'claude-cli' | 'ollama-cli' | 'antigravity-cli';
+export type AgentType = string;
 
 export interface Agent {
   id: string;

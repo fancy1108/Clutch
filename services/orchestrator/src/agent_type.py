@@ -8,7 +8,7 @@ from src.llm.router import LLMProviderRouter, ModelSpec
 
 _BUILTIN_AGENT_ID = "clutch-agent"
 
-AGENT_TYPES = frozenset({"clutch", "claude-cli", "ollama-cli", "antigravity-cli"})
+AGENT_TYPES = frozenset({"clutch", "claude-cli", "ollama-cli", "antigravity-cli", "codex-cli", "aider-cli"})
 
 _LEGACY_AI_ENGINE_TO_TYPE: dict[str, str] = {
     "configured llm": "clutch",
@@ -21,10 +21,16 @@ _LEGACY_AI_ENGINE_TO_TYPE: dict[str, str] = {
     "antigravity-cli": "antigravity-cli",
     "agy-cli": "antigravity-cli",
     "agy cli": "antigravity-cli",
+    "codex cli": "codex-cli",
+    "codex-cli": "codex-cli",
+    "openai codex cli": "codex-cli",
     "ollama": "ollama-cli",
     "ollama-cli": "ollama-cli",
     "ollama (cli)": "ollama-cli",
     "deepseek api": "clutch",
+    "aider": "aider-cli",
+    "aider-cli": "aider-cli",
+    "aider (cli)": "aider-cli",
 }
 
 
@@ -32,7 +38,20 @@ def normalize_agent_type(raw: str) -> str:
     key = raw.strip().lower()
     if key in AGENT_TYPES:
         return key
-    return _LEGACY_AI_ENGINE_TO_TYPE.get(key, "clutch")
+    legacy = _LEGACY_AI_ENGINE_TO_TYPE.get(key)
+    if legacy:
+        return legacy
+    try:
+        from src.engine_router import CLI_ROUTING_CONFIGS
+
+        if key in CLI_ROUTING_CONFIGS:
+            return key
+        for agent_type, cfg in CLI_ROUTING_CONFIGS.items():
+            if isinstance(cfg, dict) and str(cfg.get("tool_id", "")).lower() == key:
+                return agent_type
+    except Exception:
+        pass
+    return "clutch"
 
 
 def agent_type_from_record(agent: dict[str, Any] | None) -> str:

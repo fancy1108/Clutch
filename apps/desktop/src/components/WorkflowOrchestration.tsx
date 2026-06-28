@@ -856,6 +856,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
                   <option value="">None (use agent type)</option>
                   <option value="claude-cli">Claude CLI</option>
                   <option value="antigravity-cli">Antigravity CLI</option>
+                  <option value="codex-cli">Codex CLI</option>
                   <option value="ollama-cli">Ollama CLI</option>
                 </select>
               </div>

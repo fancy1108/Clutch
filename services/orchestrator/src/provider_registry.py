@@ -26,6 +26,16 @@ _REGISTRY: dict[str, ProviderSpec] = {
         RuntimeStrategy.SHELL_EXEC,
         exec_template='agy -p "{prompt}"',
     ),
+    "codex-cli": ProviderSpec(
+        "codex-cli",
+        RuntimeStrategy.SHELL_EXEC,
+        exec_template='codex -p "{prompt}"',
+    ),
+    "aider-cli": ProviderSpec(
+        "aider-cli",
+        RuntimeStrategy.SHELL_EXEC,
+        exec_template='aider --message "{prompt}"',
+    ),
     "ollama-cli": ProviderSpec("ollama-cli", RuntimeStrategy.HTTP_DAEMON),
 }
 

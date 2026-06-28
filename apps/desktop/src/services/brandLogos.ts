@@ -3,6 +3,7 @@
 import type { Agent } from '../types';
 import { agentTypeFromAgent, isClutchAgentType, type AgentTypeId } from './agentTypes';
 
+import chatgptLogo from '../assets/tool-logos/chatgpt.svg';
 import aiderLogo from '../assets/tool-logos/aider.svg';
 import antigravityLogo from '../assets/tool-logos/antigravity.svg';
 import claudeLogo from '../assets/tool-logos/claude.svg';
@@ -13,6 +14,7 @@ import vscodeLogo from '../assets/tool-logos/vscode.svg';
 export type BrandLogoKey =
   | 'claude-cli'
   | 'antigravity-cli'
+  | 'codex-cli'
   | 'ollama-cli'
   | 'aider-cli'
   | 'code-cli';
@@ -20,6 +22,7 @@ export type BrandLogoKey =
 const BRAND_LOGO_SRC: Record<BrandLogoKey, string> = {
   'claude-cli': claudeLogo,
   'antigravity-cli': antigravityLogo,
+  'codex-cli': chatgptLogo,
   'ollama-cli': ollamaLogo,
   'aider-cli': aiderLogo,
   'code-cli': vscodeLogo,
@@ -34,6 +37,10 @@ const ALIAS_TO_KEY: Record<string, BrandLogoKey> = {
   'antigravity cli': 'antigravity-cli',
   'agy-cli': 'antigravity-cli',
   agy: 'antigravity-cli',
+  'codex-cli': 'codex-cli',
+  codex: 'codex-cli',
+  'codex cli': 'codex-cli',
+  'openai codex cli': 'codex-cli',
   'ollama-cli': 'ollama-cli',
   ollama: 'ollama-cli',
   'aider-cli': 'aider-cli',

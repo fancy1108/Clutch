@@ -79,7 +79,7 @@ graph TD
 
 ### 3.1 Chat Workspace (主工作台对话与输入)
 
-* **Single Agent Workspace**：支持绑定自定义 System Prompts 与大语言模型。底层的 `EngineRouter` 在 `clutch` (全局 LLM API)、`claude-cli` (Claude Code 本地 CLI)、`antigravity-cli` (Agy CLI) 与 `ollama-cli` 之间智能路由分流，并自动维持 CLI 引擎的逻辑 Session 恢复。Thinking 加载状态的头像与消息加载完成的静态头像保持逻辑一致。
+* **Single Agent Workspace**：支持绑定自定义 System Prompts 与大语言模型。底层的 `EngineRouter` 在 `clutch` (全局 LLM API)、`claude-cli` (Claude Code 本地 CLI)、`antigravity-cli` (Agy CLI)、`codex-cli` (Codex CLI) 与 `ollama-cli` 之间智能路由分流，并自动维持 CLI 引擎的逻辑 Session 恢复（Codex 使用 `codex exec --json` + history replay，聊天区仅展示 `agent_message` 正文）。**Agent 类型下拉**由 `/api/tools/status` 动态生成：已 Connect 且配置完成的 CLI 工具自动出现在 Single Agent 与 Agent Manager 选项中（含 Codex、Ollama 等）。Thinking 加载状态的头像与消息加载完成的静态头像保持逻辑一致。
 * **Hybrid 多 Session（plain chat）**：同一工程 workspace 下可并行维护多个 chat session；`CLUTCH_RUNTIME_MODE=hybrid` 时后端为每个 `run_id` 分配独立 shell，并按 workspace 串行执行 CLI turn，避免同目录并发 `claude -p` 互锁。切换 session 时先持久化 `idle` 状态再推送 WebSocket；切走期间后台 turn 完成后可通过 HTTP hydrate 恢复，避免 UI 永久卡在 Thinking。
 * **Multi-Agent Graph Workspace**：React Flow 画布可视化编排节点与连线，后台 Workflow Compiler 动态将其编译为 LangGraph 状态机。下游节点自动接收并注入上游的 `node_outputs`。工作流节点的激活状态、运行阶段与详细日志通过 WebSocket 增量 `state_patch` 实时推送到前端渲染。Chat 中各节点回复展示 **Agent Manager 配置的 Agent 类型与品牌 Logo**（而非仅依赖节点 `tool` 字段）；Thinking / 进行中步骤优先跟随后端 `active_node_id` / `active_agent`。`claude-cli` 且 `CLUTCH_RUNTIME_MODE=hybrid` 的节点附带可折叠 **View execution details**（与 Single Agent Hybrid 一致）。运行中用户可通过 Stop **取消工作流**（协作式 cancel + 前端 idle 恢复）。`CLUTCH_RUNTIME_MODE=hybrid` 时，**`claude-cli` 节点**走与 plain chat 相同的 Hybrid PTY shell（含 workspace CLI 锁与 session resume）；Clutch 内置 Agent（含图片模型）等其它节点类型不变。
 * **Rich Chat Input Bar & Attachments**：支持从剪贴板直接粘贴图片生成 Chip 缩略图预览；支持从右侧文件树拖拽文件/文件夹进入输入框作为附件；输入框内键入 `/` 触发已扫描 Skills 的指令联想，键入 `#` 触发历史会话引用联想；提供全局运行状态控制（Running 时展示 Stop 按钮，支持用户手动中止运行）；提供持久化的安全审批模式选择（Auto-approve, Ask-on-Write, Manual confirmation）。
@@ -109,7 +109,7 @@ graph TD
 * **General Settings**：支持用户修改个人名称并应用在发送气泡标签中；支持上传自定义头像并转换为 base64 存盘；支持中英文双语对照切换，后端 API / WS 错误采用 `tr()` 响应；利用 Tauri `getVersion` 插件动态显示真实桌面客户端版本号。
 * **Agent Settings**：提供可视化 Agent 管理器（`AgentManager.tsx`），支持自由增删改自定义 Agent，配置其名称、头像、System Prompt、模型及关联 MCP 工具。
 * **Workflow Settings**：管理和选择可用的流程图 SOP 模板，支持一键在 Chat 中启用。
-* **Tool Settings**：自动扫描本机 `PATH` 检测已安装的 CLI 工具绝对路径（`claude`, `agy`, `aider`, `ollama`），支持物理“已连接”启用偏好配置。
+* **Tool Settings**：自动扫描本机 `PATH` 检测已安装的 CLI 工具绝对路径（`claude`, `agy`, `codex`, `aider`, `ollama` 等），支持物理“已连接”启用偏好配置；未配置工具支持 **Auto Config**（LLM 分析 `--help` 自动写入 `custom_clis.json` 路由参数）。
 * **Model Provider Settings**：配置各种云端大模型与 Ollama API Keys 凭证（支持无感导入 `.cc-switch` 凭证）；支持对模型属性（Context Window, Temperature）进行精细注册与调整。
 * **Skills Settings**：自动扫描项目关联的 Skills，解析 `.md` 指引文件前缀的 YAML 元数据信息并呈现在表格中。
 * **MCP Server Settings**：支持注册、连接或拔除本地/远程的 Model Context Protocol 服务器。

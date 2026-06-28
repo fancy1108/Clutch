@@ -2,9 +2,9 @@
 
 ## 当前状态
 
-- **阶段：** D25 Hybrid Runtime — **Flow/Chat UX + Tauri dev 生命周期已落地，待人工验收**
-- **Git HEAD：** `fa88fcd`
-- **下次优先：** Weather-to-Vision 工作流验收（Agent 标签/Logo、Hybrid 图片、用户消息合并）；通过后更新 ROADMAP
+- **阶段：** D25 Hybrid Runtime — **Codex CLI 接入 + 动态 Agent 类型已落地，待 UI 验收**
+- **Git HEAD：** `6d660a4`（本 commit 后将更新）
+- **下次优先：** 重启 orchestrator 后验收 Codex 单轮/多轮；Weather-to-Vision 工作流验收
 - **验收期跳过：** MCP hybrid_executions 深度 UI · 2h/100+ 压测
 
 ### HRT 进度快照
@@ -25,7 +25,24 @@
 
 ### 未 commit 工作
 
-（无）
+（无 — 见本 commit）
+
+## 2026-06-28 会话 7（Codex CLI 接入 · 输出过滤 · 动态 Agent 类型）
+
+- **完成：**
+  - **Codex CLI 路由**：`engine_router` 使用 `codex exec --json` 位置参数（非 `-p` profile）；`history_only` 多轮 history replay；Hybrid shell `</dev/null` 防 stdin 挂起。
+  - **Codex 输出解析**：`parse_codex_jsonl_output` / `extract_codex_assistant_output` 从 JSONL 提取 `agent_message.text`，TUI 噪音（session id、tokens used 等）过滤；修复单轮 18k 噪音进入 history 导致第二轮极慢/卡住。
+  - **动态 Agent 类型**：前端 `agentTypeOptionsFromTools()` + `AgentManager` 从 `/api/tools/status` 生成下拉；后端 `resolve_agent_type_for_tool` 映射 `codex-cli` / `ollama-cli`；Connect 且配置完成后自动出现在选项中。
+  - **Agy / Ollama 修复**：移除 agy `--model` 注入；PTY 捕获空输出；Ollama 多轮 history；cross-agent history 测试。
+- **校验：** `uv run pytest` Codex/agy/ollama 相关测试通过；本地 live codex 单轮 + 多轮 + hybrid shell 通过 ✅
+
+## 2026-06-28 会话 6（零配置 AI 工具自动嗅探与安装指引）
+
+- **完成：**
+  - **安装状态与注册状态分流**：在 `tools_status.py` 中重构 `list_tools_status` 支持 `include_all=True`，向前端返回所有候选工具列表。
+  - **未安装工具引导与一键复制代码**：在 `AiToolsManager.tsx` 中，针对未安装工具提供抽屉面板展示安装命令与详细描述，提供一键复制按钮。若用户系统未检测到任何可用 CLI，顶部会弹出高亮卡片提示用户前往安装和连接。
+  - **未配置工具的 AI 自动嗅探（Auto Config）**：在 `main.py` 和 `tools_status.py` 中实现 `/api/tools/auto-configure` 嗅探接口，并利用 `custom_clis.json` 偏好保存实现本地持久化。未配置的工具会显式显示 `Unconfigured`（未配置）警告徽标，并在 Connect/Disconnect 旁增加「Auto Config」操作按钮，点击后系统会利用 LLM 自主分析二进制文件的帮助文档（如 Aider 的 `--message`），自动适配 Prompt 旗标、Session 参数和 Extra Args，无需用户懂任何命令行参数即可直接装载使用。
+- **校验：** 新增 `test_auto_configure_cli_via_llm` 单元测试，后端 `uv run pytest` 共 411 项测试通过，前端 `pnpm build` 100% 编译成功 ✅
 
 ## 2026-06-28 会话 5（历史会话列表图标逻辑更改与测试套件缓存清理）
 

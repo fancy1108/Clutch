@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 
 import { Deliverable, Agent } from '../types';
 import { fetchAgents, saveAgents, generateAgentPrompt } from '../services/agentApi';
@@ -8,7 +8,13 @@ import { BADGE_SUCCESS } from './ui/surfaceStyles';
 import { LegacyIcon } from './ui/LegacyIcon';
 import { fetchMcpStatus, type McpServer } from '../services/mcpApi';
 import { getAgentDisplayName, isBuiltinAgent, mergeAgentsWithBuiltin, BUILTIN_AGENT_ID } from '../services/builtinAgent';
-import { AGENT_TYPE_OPTIONS, agentTypeFromAgent, agentTypeLabel, type AgentTypeId } from '../services/agentTypes';
+import {
+  CLUTCH_AGENT_TYPE,
+  agentTypeFromAgent,
+  agentTypeLabel,
+  buildSelectableAgentTypeOptions,
+  type AgentTypeId,
+} from '../services/agentTypes';
 import { fetchModelsConfig, mapModelConfigToUi } from '../services/modelsApi';
 import { useLanguage } from './LanguageContext';
 import { fetchToolsStatus, type AiToolStatus } from '../services/toolsApi';
@@ -150,24 +156,36 @@ export function AgentManager({
   // Vibe workspace state extensions
   const [scannedSkills, setScannedSkills] = useState<ScannedSkill[]>([]);
 
-  const [connectedTools, setConnectedTools] = useState<AiToolStatus[]>([]);
-  const [agentType, setAgentType] = useState<AgentTypeId>('clutch');
+  const [eligibleTools, setEligibleTools] = useState<AiToolStatus[]>([]);
+  const [agentType, setAgentType] = useState<AgentTypeId>(CLUTCH_AGENT_TYPE);
   const [modelId, setModelId] = useState('');
   const [clutchModels, setClutchModels] = useState<Array<{ id: string; name: string; modelKind: string }>>([]);
   const [ollamaModels, setOllamaModels] = useState<string[]>([]);
   const [ollamaModel, setOllamaModel] = useState('');
+  const [ollamaError, setOllamaError] = useState<{
+    reason?: string;
+    error?: string;
+    app_installed?: boolean;
+    binary_installed?: boolean;
+  } | null>(null);
+  const [isStartingOllama, setIsStartingOllama] = useState(false);
 
-  const refreshConnectedTools = () => {
+  const refreshConnectedTools = useCallback(() => {
     void fetchToolsStatus()
       .then((toolsList) => {
-        setConnectedTools(toolsList.filter((t) => t.connected));
+        setEligibleTools(toolsList.filter((tool) => tool.connected));
       })
       .catch(() => {
-        setConnectedTools([]);
+        setEligibleTools([]);
       });
-  };
+  }, []);
 
-  const getDefaultAgentType = (): AgentTypeId => 'clutch';
+  const agentTypeOptions = useMemo(
+    () => buildSelectableAgentTypeOptions(eligibleTools, modalMode === 'edit' ? agentType : undefined),
+    [eligibleTools, modalMode, agentType],
+  );
+
+  const getDefaultAgentType = (): AgentTypeId => CLUTCH_AGENT_TYPE;
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [isSkillsAttachOpen, setIsSkillsAttachOpen] = useState(false);
   const [skillsSearch, setSkillsSearch] = useState('');
@@ -248,6 +266,7 @@ export function AgentManager({
 
   useEffect(() => {
     if (isModalOpen && agentType === 'ollama-cli') {
+      setOllamaError(null);
       fetch(sidecarHttpUrl('/api/models/ollama'))
         .then((res) => res.json())
         .then((data) => {
@@ -258,11 +277,67 @@ export function AgentManager({
                 prev && data.models.includes(prev) ? prev : data.models[0],
               );
             }
+          } else {
+            setOllamaModels([]);
+            setOllamaError({
+              reason: data.reason,
+              error: data.error,
+              app_installed: data.app_installed,
+              binary_installed: data.binary_installed,
+            });
           }
         })
-        .catch((err) => console.error('Failed to fetch Ollama models:', err));
+        .catch((err) => {
+          console.error('Failed to fetch Ollama models:', err);
+          setOllamaModels([]);
+          setOllamaError({ error: String(err) });
+        });
     }
   }, [isModalOpen, agentType]);
+
+  const handleStartOllama = () => {
+    setIsStartingOllama(true);
+    fetch(sidecarHttpUrl('/api/models/ollama/start'), { method: 'POST' })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.ok) {
+          let attempts = 0;
+          const interval = setInterval(() => {
+            fetch(sidecarHttpUrl('/api/models/ollama'))
+              .then((res) => res.json())
+              .then((statusData) => {
+                attempts++;
+                if (statusData.ok && statusData.models && statusData.models.length > 0) {
+                  setOllamaModels(statusData.models);
+                  setOllamaModel((prev) =>
+                    prev && statusData.models.includes(prev) ? prev : statusData.models[0],
+                  );
+                  setOllamaError(null);
+                  setIsStartingOllama(false);
+                  clearInterval(interval);
+                } else if (attempts >= 6) {
+                  setIsStartingOllama(false);
+                  clearInterval(interval);
+                }
+              })
+              .catch(() => {
+                attempts++;
+                if (attempts >= 6) {
+                  setIsStartingOllama(false);
+                  clearInterval(interval);
+                }
+              });
+          }, 1500);
+        } else {
+          setIsStartingOllama(false);
+          alert(data.error || 'Failed to start Ollama');
+        }
+      })
+      .catch((err) => {
+        setIsStartingOllama(false);
+        alert('Error starting Ollama: ' + err);
+      });
+  };
 
   const persistAgents = (next: Agent[]) => {
     const builtin = next.find((agent) => isBuiltinAgent(agent));
@@ -380,7 +455,7 @@ export function AgentManager({
 
     const todayStr = new Date().toISOString().replace('T', ' ').substring(0, 16);
 
-    const resolvedAgentType: AgentTypeId = editingId === BUILTIN_AGENT_ID ? 'clutch' : agentType;
+    const resolvedAgentType: AgentTypeId = editingId === BUILTIN_AGENT_ID ? CLUTCH_AGENT_TYPE : agentType;
     const resolvedModelId = resolvedAgentType === 'clutch' && modelId.trim() ? modelId.trim() : undefined;
 
     if (modalMode === 'create') {
@@ -586,7 +661,7 @@ export function AgentManager({
                     <div className="flex items-center gap-1.5 mt-1 bg-neutral-100 border border-neutral-200 rounded-lg p-1.5">
                       <LegacyIcon name="bolt" className="text-[13px] text-neutral-700" />
                       <span className="text-[10.5px] font-mono font-bold text-neutral-900">
-                        {agentTypeLabel(agentTypeFromAgent(selectedAgent))}
+                        {agentTypeLabel(agentTypeFromAgent(selectedAgent), eligibleTools)}
                       </span>
                     </div>
                   </div>
@@ -787,7 +862,7 @@ export function AgentManager({
                             className="w-3 h-3 object-contain"
                           />
                         ) : null}
-                        {agentTypeLabel(agentTypeFromAgent(agent))}
+                        {agentTypeLabel(agentTypeFromAgent(agent), eligibleTools)}
                       </span>
                     )}
                     {agent.mcpTools && agent.mcpTools.length > 0 && (
@@ -916,12 +991,17 @@ export function AgentManager({
                         onChange={(e) => setAgentType(e.target.value as AgentTypeId)}
                         className="w-full px-3 py-1.5 text-xs border border-neutral-200 focus:outline-none focus:border-neutral-900 focus:ring-1 focus:ring-neutral-900/20 bg-white rounded-lg font-sans text-neutral-800"
                       >
-                        {AGENT_TYPE_OPTIONS.map((option) => (
+                        {agentTypeOptions.map((option) => (
                           <option key={option.id} value={option.id}>
                             {option.label}
                           </option>
                         ))}
                       </select>
+                    )}
+                    {modalMode !== 'edit' && agentTypeOptions.length === 1 && (
+                      <p className="text-[9.5px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-2 leading-relaxed">
+                        No CLI tools are connected yet. Open Settings → AI Tools, connect a tool, and run Auto-configure to add more agent types here.
+                      </p>
                     )}
                   </div>
                 </div>
@@ -956,35 +1036,62 @@ export function AgentManager({
                   </div>
                 )}
 
-                {agentType === 'ollama-cli' && (
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-neutral-500 tracking-wider uppercase font-mono block">
-                      Ollama Model
-                    </label>
-                    {ollamaModels.length === 0 ? (
-                      <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 leading-relaxed">
-                        No local models found. Ensure Ollama is running and run{' '}
-                        <code className="font-mono text-[9.5px] bg-amber-100 px-1 py-0.5 rounded">ollama pull &lt;model&gt;</code>{' '}
-                        first.
-                      </p>
-                    ) : (
-                      <select
-                        value={ollamaModel}
-                        onChange={(e) => setOllamaModel(e.target.value)}
-                        className="w-full px-3 py-1.5 text-xs border border-neutral-200 focus:outline-none focus:border-neutral-900 focus:ring-1 focus:ring-neutral-900/20 bg-white rounded-lg font-mono text-neutral-800"
-                      >
-                        {ollamaModels.map((model) => (
-                          <option key={model} value={model}>
-                            {model}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                    <p className="text-[9.5px] text-neutral-400 leading-relaxed">
-                      Select which locally installed Ollama model this agent uses at runtime.
-                    </p>
-                  </div>
-                )}
+                 {agentType === 'ollama-cli' && (
+                   <div className="space-y-1">
+                     <label className="text-[10px] font-bold text-neutral-500 tracking-wider uppercase font-mono block">
+                       Ollama Model
+                     </label>
+                     {ollamaModels.length === 0 ? (
+                       <div className="text-[10px] text-amber-700 bg-amber-50/50 border border-amber-200/60 rounded-xl p-3 space-y-2">
+                         {ollamaError?.reason === 'connection_refused' ? (
+                           <>
+                             <p className="leading-relaxed font-sans">
+                               <strong>Ollama is not running.</strong> Make sure the Ollama desktop application is open or that the Ollama daemon is running in the background.
+                             </p>
+                             {(ollamaError?.app_installed || ollamaError?.binary_installed) && (
+                               <button
+                                 type="button"
+                                 onClick={handleStartOllama}
+                                 disabled={isStartingOllama}
+                                 className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-[10px] font-bold font-mono transition-colors disabled:opacity-50 inline-flex items-center gap-1.5"
+                               >
+                                 {isStartingOllama ? (
+                                   <>
+                                     <span className="w-2.5 h-2.5 rounded-full border-2 border-white border-t-transparent animate-spin inline-block" />
+                                     Starting Ollama...
+                                   </>
+                                 ) : (
+                                   'Launch Ollama Service'
+                                 )}
+                               </button>
+                             )}
+                           </>
+                         ) : (
+                           <p className="leading-relaxed font-sans">
+                             No local models found. Ensure Ollama is running and run{' '}
+                             <code className="font-mono text-[9.5px] bg-amber-100/80 px-1 py-0.5 rounded text-amber-800 font-semibold">ollama pull &lt;model&gt;</code>{' '}
+                             first (e.g., <code className="font-mono text-[9.5px] bg-amber-100/80 px-1 py-0.5 rounded text-amber-800 font-semibold">ollama pull qwen2.5-coder</code>).
+                           </p>
+                         )}
+                       </div>
+                     ) : (
+                       <select
+                         value={ollamaModel}
+                         onChange={(e) => setOllamaModel(e.target.value)}
+                         className="w-full px-3 py-1.5 text-xs border border-neutral-200 focus:outline-none focus:border-neutral-900 focus:ring-1 focus:ring-neutral-900/20 bg-white rounded-lg font-mono text-neutral-800"
+                       >
+                         {ollamaModels.map((model) => (
+                           <option key={model} value={model}>
+                             {model}
+                           </option>
+                         ))}
+                       </select>
+                     )}
+                     <p className="text-[9.5px] text-neutral-400 leading-relaxed">
+                       Select which locally installed Ollama model this agent uses at runtime.
+                     </p>
+                   </div>
+                 )}
 
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-neutral-500 tracking-wider uppercase font-mono block">Short Description</label>

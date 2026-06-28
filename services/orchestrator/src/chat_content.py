@@ -36,3 +36,22 @@ def user_message_content_for_llm(
     for url in image_urls:
         parts.append({"type": "image_url", "image_url": {"url": url}})
     return parts
+
+
+def normalize_text_content(content: Any) -> str:
+    """Flatten OpenAI-style multimodal content to plain text for local CLIs."""
+    if isinstance(content, str):
+        return content.strip()
+    if isinstance(content, list):
+        parts: list[str] = []
+        for item in content:
+            if not isinstance(item, dict):
+                continue
+            if item.get("type") == "text":
+                text = str(item.get("text", "")).strip()
+                if text:
+                    parts.append(text)
+            elif item.get("type") == "image_url":
+                parts.append("[image omitted]")
+        return "\n".join(parts).strip()
+    return str(content or "").strip()

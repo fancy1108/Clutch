@@ -5,7 +5,7 @@ import { resolveBrandLogoSrc, resolveToolBrandLogo } from './brandLogos';
 describe('brandLogos', () => {
   it('resolves only tools with explicit brand assets', () => {
     expect(resolveToolBrandLogo('claude-cli')).toBeTruthy();
-    expect(resolveToolBrandLogo('codex-cli')).toBeUndefined();
+    expect(resolveToolBrandLogo('codex-cli')).toBeTruthy();
     expect(resolveToolBrandLogo('gemini-cli')).toBeUndefined();
   });
 

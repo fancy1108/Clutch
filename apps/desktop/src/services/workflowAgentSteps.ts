@@ -22,6 +22,7 @@ const TOOL_LABELS: Record<string, string> = {
   'claude-cli': 'Claude CLI',
   'ollama-cli': 'Ollama CLI',
   'antigravity-cli': 'Antigravity CLI',
+  'codex-cli': 'Codex CLI',
   'agy-cli': 'Antigravity CLI',
   agy: 'Antigravity CLI',
 };
@@ -74,6 +75,8 @@ function nodeToolToAgentTypeId(tool?: string): AgentTypeId {
   if (key === 'claude-cli') return 'claude-cli';
   if (key === 'ollama-cli' || key === 'ollama') return 'ollama-cli';
   if (key === 'antigravity-cli' || key === 'agy-cli' || key === 'agy') return 'antigravity-cli';
+  if (key === 'codex-cli' || key === 'codex') return 'codex-cli';
+  if (key === 'aider-cli' || key === 'aider') return 'aider-cli';
   return 'clutch';
 }
 

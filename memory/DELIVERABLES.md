@@ -80,6 +80,19 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
   - `apps/desktop/src/components/ui/LegacyIcon.tsx` — 导入 `Folders`，实现自定义的 `FoldersOpen` 堆叠文件夹 icon 并在 `ICON_MAP` 中进行映射。
   - `apps/desktop/src/sidebar.tsx` — 更新自定义和默认 Repository Group 的 icon，依据 `groupCollapsed` / `defaultGroupCollapsed` 状态动态渲染 `folder_special` 或 `folder_special_open`。
 
+### AUTO-CONFIG-PROBING-AND-INSTALL-GUIDE ✅
+- **日期：** 2026-06-28
+- **Commit：** `<pending>` — `feat(hybrid): add AI-probing auto configuration and install guides for CLI tools`
+- **Verification：** `uv run pytest` -> 411 passed, 1 warning (100% success) ✅, `pnpm build` in apps/desktop -> 100% success ✅
+- **证据：** `—`（门禁已覆盖）
+- **交付文件：**
+  - `services/orchestrator/src/tools_status.py` — 支持 `list_tools_status(include_all=True)` 并返回 `registered` 状态；实现了 `auto_configure_cli_via_llm`，它执行二进制文件的 `--help`，调用默认大模型对文本进行识别解析，自动推导出适配参数。
+  - `services/orchestrator/src/main.py` — `/api/tools/status` 调用 `list_tools_status(include_all=True)`，新增了 POST `/api/tools/auto-configure` 端点。
+  - `services/orchestrator/src/engine_router.py` — 补充了 `load_custom_cli_configs` 和 `save_custom_cli_configs` 帮助函数，在 `CLI_ROUTING_CONFIGS` 加载时自动读取并合并 `custom_clis.json` 配置。
+  - `services/orchestrator/tests/test_tools_status.py` — 编写了 `test_auto_configure_cli_via_llm` 单元测试。
+  - `apps/desktop/src/services/toolsApi.ts` — 在 `AiToolStatus` 接口中增加 `registered` 字段，实现 `autoConfigureTool` 前端接口函数。
+  - `apps/desktop/src/components/AiToolsManager.tsx` — 重构 UI，将工具归类为 Connected、Detected、Available to Install。为未注册工具展示 Unconfigured 警告角标并提供一键 Auto Config 按钮，为未安装工具实现带有展开功能的一键复制代码安装指南，且在全无工具安装时提供置顶显目引导横幅。
+
 ### GENERIC-CLI-ROUTING-AND-CONFIG-DISPATCH ✅
 - **日期：** 2026-06-28
 - **Commit：** `<pending>` — `feat(hybrid): unify CLI agent routing under a central config-driven registry`
@@ -783,4 +796,17 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
   - [apps/desktop/src/App.tsx](file:///Users/fancy/clutch/apps/desktop/src/App.tsx) — 向 Sidebar 传入 `clutchStatus` 状态，并实现在会话执行结束（状态从 `running` 变为非 `running`）时自动调用 `refreshSessions` 刷新会话列表。
   - [services/orchestrator/tests/conftest.py](file:///Users/fancy/clutch/services/orchestrator/tests/conftest.py) — 修复 pytest 全量测试时由于 `ShellSession` 缓存泄露导致 Pool 爆满引发 `test_concurrent_hybrid_plain_chat_ws` 错误的问题。在全局孤立 fixture `isolate_orchestrator_globals` 中新增 `clean_sessions()` 清理逻辑。
 
+### Codex CLI 接入 · JSON 输出过滤 · 动态 Agent 类型 ✅
+- **日期：** 2026-06-28
+- **Commit：** _(本 commit)_
+- **Verification：** `./scripts/verify.sh` → 433 pytest passed + vitest OK + build + doc-drift OK
+- **证据：** `runs/verification/2026-06-28-codex-cli-integration.log`
+- **已交付：**
+  - `services/orchestrator/src/engine_router.py` — `codex-cli` 路由：`codex exec --json`、history replay、`close_stdin`
+  - `services/orchestrator/src/claude_hybrid_output_parser.py` — `parse_codex_jsonl_output` / Codex TUI 噪音过滤
+  - `services/orchestrator/src/shell_exec_runtime.py` — Hybrid shell `</dev/null`、Codex 专用解析
+  - `services/orchestrator/src/tools_status.py` — `codex-cli` agentType 映射与 Auto-configure
+  - `apps/desktop/src/services/agentTypes.ts` — 动态 Agent 类型下拉（Connect 工具驱动）
+  - `apps/desktop/src/components/AgentManager.tsx` — 使用 eligible tools 替代硬编码列表
+  - `docs/PRODUCT_INTRO.md` — Codex CLI 与动态 Agent 类型产品说明对齐
 
