@@ -73,7 +73,7 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ### FLOW-REFINE ✅
 - **日期：** 2026-06-28
-- **Commit：** `<pending>` — `feat(flow): pause/refine/continue after workflow with @agent hybrid`
+- **Commit：** `0be4e89` — `feat(flow): add pause/refine/continue with @agent hybrid after workflow`
 - **Verification：** `./scripts/verify.sh` → build + vitest 33 + pytest（含 `test_flow_refine.py` 11、`test_visual_narrative_flow.py`）
 - **证据：** `—`（门禁已覆盖）
 - **交付文件：**
