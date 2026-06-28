@@ -26,6 +26,7 @@ import {
   Folder,
   FolderOpen,
   FolderPlus,
+  Folders,
   Gavel,
   GitBranch,
   GitFork,
@@ -70,9 +71,41 @@ import {
   Zap,
   type LucideIcon,
 } from 'lucide-react';
+import React from 'react';
+
+// Custom FoldersOpen icon component
+const FoldersOpen = React.forwardRef<
+  SVGSVGElement,
+  React.ComponentProps<'svg'> & { size?: number | string; strokeWidth?: number | string }
+>(({ size = 24, strokeWidth = 2, className, ...props }, ref) => {
+  return (
+    <svg
+      ref={ref}
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      {...props}
+    >
+      {/* Back folder (closed) */}
+      <path d="M20 5a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h2.5a1.5 1.5 0 0 1 1.2.6l.6.8a1.5 1.5 0 0 0 1.2.6z" />
+      {/* Front folder back panel */}
+      <path d="M2 17V12a2 2 0 0 1 2-2h2.5a1.5 1.5 0 0 1 1.2.6l.6.8a1.5 1.5 0 0 0 1.2.6H14a2 2 0 0 1 2 2v2" />
+      {/* Front folder open flap */}
+      <path d="m5 16 1-2.5A1.5 1.5 0 0 1 7.3 12H14a1.5 1.5 0 0 1 1.4 1.9l-1.3 5.2A1.5 1.5 0 0 1 12.7 20.3H3a1.5 1.5 0 0 1-1.4-1.6" />
+    </svg>
+  );
+});
+FoldersOpen.displayName = 'FoldersOpen';
 
 /** Maps legacy Material Symbol names (and lucide kebab aliases) to lucide-react icons. */
-const ICON_MAP: Record<string, LucideIcon> = {
+const ICON_MAP: Record<string, React.ComponentType<any>> = {
   account_tree: GitBranch,
   add: Plus,
   add_circle: PlusCircle,
@@ -114,7 +147,8 @@ const ICON_MAP: Record<string, LucideIcon> = {
   folder: Folder,
   folder_open: FolderOpen,
   folder_shared: FolderOpen,
-  folder_special: Folder,
+  folder_special: Folders,
+  folder_special_open: FoldersOpen,
   fork_right: GitFork,
   forum: MessagesSquare,
   front_hand: Hand,

@@ -20,6 +20,7 @@ interface SidebarProps {
   sessions?: SessionRecord[];
   shellSnapshotRunIds?: ReadonlySet<string>;
   activeSessionId?: string;
+  clutchStatus?: string;
   workspaces?: WorkspaceInfo[];
   repositoryGroups?: RepositoryGroup[];
   activeWorkspaceId?: string | null;
@@ -66,6 +67,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   sessions = [],
   shellSnapshotRunIds,
   activeSessionId = '',
+  clutchStatus = '',
   workspaces = [],
   repositoryGroups = [],
   activeWorkspaceId = null,
@@ -328,6 +330,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
             ) : (
               projectSessions.map((session) => {
                 const isActiveSession = session.run_id === activeSessionId;
+                const isRunning =
+                  (session.run_id === activeSessionId && clutchStatus === 'running') ||
+                  session.status === 'running';
                 const hasSnapshot = shellSnapshotRunIds?.has(session.run_id) ?? false;
                 return (
                   <button
@@ -344,10 +349,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     }`}
                   >
                     <span className="flex items-center gap-1.5 min-w-0">
-                      {hasSnapshot ? (
+                      {isRunning ? (
                         <LegacyIcon
-                          name="restart_alt"
-                          className="text-[12px] text-primary flex-shrink-0"
+                          name="progress_activity"
+                          className="text-[12px] text-primary flex-shrink-0 animate-spin"
                           aria-hidden
                         />
                       ) : null}
@@ -498,7 +503,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   onContextMenu={(e) => handleContextMenu(e, 'group', group.id)}
                   className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left hover:bg-surface-bright transition-colors"
                 >
-                  <LegacyIcon name="folder_special" className="text-[16px] text-on-surface-variant" />
+                  <LegacyIcon name={groupCollapsed ? "folder_special" : "folder_special_open"} className="text-[16px] text-on-surface-variant" />
                   <span className="text-[11px] font-bold uppercase tracking-wide text-on-surface-variant/80 truncate">
                     {group.name}
                   </span>
@@ -534,7 +539,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   onClick={() => setDefaultGroupCollapsed(!defaultGroupCollapsed)}
                   className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left hover:bg-surface-bright transition-colors"
                 >
-                  <LegacyIcon name="folder_special" className="text-[16px] text-on-surface-variant" />
+                  <LegacyIcon name={defaultGroupCollapsed ? "folder_special" : "folder_special_open"} className="text-[16px] text-on-surface-variant" />
                   <span className="text-[11px] font-bold uppercase tracking-wide text-on-surface-variant/80 truncate">
                     {t('Default Group')}
                   </span>
