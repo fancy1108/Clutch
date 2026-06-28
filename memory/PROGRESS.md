@@ -3,7 +3,7 @@
 ## 当前状态
 
 - **阶段：** D25 Hybrid Runtime + **Flow 精修（pause/refine/continue）已落地**
-- **Git HEAD：** （本 commit 后更新）
+- **Git HEAD：** `0be4e89`
 - **下次优先：** 重启 orchestrator 后验收 Visual Narrative 全流程 + 完成后 `@Agent` 精修 + `/continue` 续跑
 - **验收期跳过：** MCP hybrid_executions 深度 UI · 2h/100+ 压测
 
