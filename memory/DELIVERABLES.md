@@ -71,6 +71,26 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ## 已交付（代码 Task · 自 Git 回填）
 
+### SIDEBAR-GROUP-ICONS-REDESIGN ✅
+- **日期：** 2026-06-28
+- **Commit：** `e7bee5f` — `style(design): redesign repository group icons and support open/collapsed states`
+- **Verification：** `./scripts/verify.sh` → 408 passed, 1 warning (100% success) ✅
+- **证据：** `—`（门禁已覆盖）
+- **交付文件：**
+  - `apps/desktop/src/components/ui/LegacyIcon.tsx` — 导入 `Folders`，实现自定义的 `FoldersOpen` 堆叠文件夹 icon 并在 `ICON_MAP` 中进行映射。
+  - `apps/desktop/src/sidebar.tsx` — 更新自定义和默认 Repository Group 的 icon，依据 `groupCollapsed` / `defaultGroupCollapsed` 状态动态渲染 `folder_special` 或 `folder_special_open`。
+
+### GENERIC-CLI-ROUTING-AND-CONFIG-DISPATCH ✅
+- **日期：** 2026-06-28
+- **Commit：** `<pending>` — `feat(hybrid): unify CLI agent routing under a central config-driven registry`
+- **Verification：** `uv run pytest` -> 408 passed, 1 warning (100% success) ✅
+- **证据：** `—`（门禁已覆盖）
+- **交付文件：**
+  - `packages/frontend/src/assets/agy-logo.svg` — 替换为了炫彩无限循环 SVG 图标，对齐品牌视觉。
+  - `services/orchestrator/src/models_config.py` — 将设置键匹配项由 `active_model` 修正为 `agent_active_model`，修复模型覆写退化问题。
+  - `services/orchestrator/src/agent_prompt.py` — 修复系统提示词，当使用外部 CLI 时不写入 `Runtime model: ...` 配置。
+  - `services/orchestrator/src/engine_router.py` — 定义了中心化 `CLI_ROUTING_CONFIGS` 配置表，将 Claude 和 Antigravity 路由去重重构，提取为完全通用的 `_route_generic_cli_hybrid` 和 `_route_generic_cli_legacy` 函数，同时为单测保持了向下兼容代理并消除了 TypeError 重复传参冲突。
+
 ### ANTIGRAVITY-CLI-SESSION-TRACKING ✅
 - **日期：** 2026-06-28
 - **Commit：** `b1ff689` — `fix(hybrid): support multi-turn session ID tracking for Antigravity CLI`

@@ -3,7 +3,7 @@
 ## 当前状态
 
 - **阶段：** D25 Hybrid Runtime — **Flow/Chat UX + Tauri dev 生命周期已落地，待人工验收**
-- **Git HEAD：** `b1ff689`
+- **Git HEAD：** `e7bee5f`
 - **下次优先：** Weather-to-Vision 工作流验收（Agent 标签/Logo、Hybrid 图片、用户消息合并）；通过后更新 ROADMAP
 - **验收期跳过：** MCP hybrid_executions 深度 UI · 2h/100+ 压测
 
@@ -26,6 +26,22 @@
 ### 未 commit 工作
 
 （无）
+
+## 2026-06-28 会话 4（项目分组图标状态切换与重构）
+
+- **完成：**
+  - **分组图标状态切换**：在 `sidebar.tsx` 中将 Repository Group 和 Default Group 的图标渲染逻辑改为根据 `groupCollapsed` 和 `defaultGroupCollapsed` 状态动态渲染 `folder_special`（折叠）和 `folder_special_open`（展开）状态。
+  - **自定义 FoldersOpen 图标**：在 `LegacyIcon.tsx` 中实现了自定义的 `FoldersOpen` React 组件，以 SVG 的形式对齐 Lucide 设计，呈现出底部的 open 文件夹与顶部 closed 文件夹的堆叠，代表展开的 Group；同时将 `folder_special` 替换为 Lucide 原生的 `Folders` 堆叠文件夹，代表折叠的 Group，彻底解决了原先群组图标与项目图标样式完全雷同且没有开合状态的问题。
+- **校验：** 本地运行 `./scripts/verify.sh` 通过所有前端 Vite build、Vitest 测试、以及后端 408 项单元测试和文档自检 ✅
+
+## 2026-06-28 会话 3（统一外部 CLI 引擎接入、LOGO 适配、模型设置与系统提示词修复）
+
+- **完成：**
+  - **LOGO 替换与视觉对齐**：将 `packages/frontend/src/assets/agy-logo.svg` 替换为最新炫彩拱门渐变 SVG，修复了错误的 Google 徽标。
+  - **模型配置覆写修复**：在 `models_config.py` 中将配置项匹配键从 `active_model` 修正为 `agent_active_model`，防止其退化为系统硬编码的默认模型（如 `agnes-2.0-flash`）。
+  - **CLI 提示词修复**：调整 `agent_prompt.py` 以确保使用外部 CLI 引擎（如 `antigravity-cli`）进行对话时，系统提示词不再携带 `Runtime model: ...`，而是直接依赖 CLI 自身的配置。
+  - **统一 CLI 路由架构**：在 `engine_router.py` 中构建 `CLI_ROUTING_CONFIGS` 引擎配置表，并重构去重原本冗余的代码。将 Claude、Antigravity 以及未来新增的 CLI 路由逻辑完全抽象并统一至 `_route_generic_cli_hybrid` 和 `_route_generic_cli_legacy` 处理。此外，新增了兼容层动态 pop 机制，消除了 `TypeError: got multiple values for keyword argument` 并确保 100% 兼容单元测试。
+- **校验：** 本地运行 `uv run pytest` 顺利通过了所有 408 项 Python 单元测试，无漂移 ✅
 
 ## 2026-06-28 会话 2（Antigravity CLI 多轮会话会话 ID 追踪、LOGO 视觉对齐）
 
