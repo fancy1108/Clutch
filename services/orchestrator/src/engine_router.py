@@ -731,12 +731,23 @@ def route_engine(
         run_id=run_id,
         source=source,
     )
+    sanitized_output = sanitize_engine_output(res.output)
+    sanitized_raw = sanitize_engine_output(res.raw_output) if res.raw_output else res.raw_output
+    sanitized_events = None
+    if res.output_events:
+        sanitized_events = []
+        for event in res.output_events:
+            evt = dict(event)
+            if "content" in evt and isinstance(evt["content"], str):
+                evt["content"] = sanitize_engine_output(evt["content"])
+            sanitized_events.append(evt)
+
     return EngineResult(
         engine=res.engine,
-        output=sanitize_engine_output(res.output),
+        output=sanitized_output,
         logs=res.logs,
         cli_session_id=res.cli_session_id,
-        raw_output=res.raw_output,
-        output_events=res.output_events,
+        raw_output=sanitized_raw,
+        output_events=sanitized_events,
         shell_recovered=res.shell_recovered,
     )

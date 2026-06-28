@@ -10,6 +10,7 @@ import signal
 import subprocess
 import threading
 import time
+import codecs
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
@@ -44,8 +45,8 @@ class ShellSessionPoolFullError(ShellSessionError):
 from src.claude_hybrid_output_parser import marker_completed_in_output, strip_ansi
 
 
-def _read_available(master_fd: int, *, wait_s: float) -> str:
-    chunks: list[str] = []
+def _read_available_bytes(master_fd: int, *, wait_s: float) -> bytes:
+    chunks: list[bytes] = []
     deadline = time.monotonic() + wait_s
     while time.monotonic() < deadline:
         remaining = deadline - time.monotonic()
@@ -60,41 +61,45 @@ def _read_available(master_fd: int, *, wait_s: float) -> str:
             break
         if not data:
             break
-        chunks.append(data.decode(errors="replace"))
-    return "".join(chunks)
+        chunks.append(data)
+    return b"".join(chunks)
 
 
 def read_until_contains(master_fd: int, needle: str, *, max_wait_s: float) -> str:
     """Read PTY output until `needle` appears (used for bash prompt sync)."""
-    chunks: list[str] = []
+    decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
+    decoded_chunks: list[str] = []
     deadline = time.monotonic() + max_wait_s
     while time.monotonic() < deadline:
-        chunk = _read_available(master_fd, wait_s=min(2.0, deadline - time.monotonic()))
-        if chunk:
-            chunks.append(chunk)
-            if needle in strip_ansi("".join(chunks)):
+        chunk_bytes = _read_available_bytes(master_fd, wait_s=min(2.0, deadline - time.monotonic()))
+        if chunk_bytes:
+            decoded_chunks.append(decoder.decode(chunk_bytes))
+            if needle in strip_ansi("".join(decoded_chunks)):
                 break
-        elif chunks:
+        elif decoded_chunks:
             time.sleep(0.1)
         else:
             time.sleep(0.05)
-    return "".join(chunks)
+    decoded_chunks.append(decoder.decode(b"", final=True))
+    return "".join(decoded_chunks)
 
 
 def read_until_marker(master_fd: int, marker: str, *, max_wait_s: float) -> str:
-    chunks: list[str] = []
+    decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
+    decoded_chunks: list[str] = []
     deadline = time.monotonic() + max_wait_s
     while time.monotonic() < deadline:
-        chunk = _read_available(master_fd, wait_s=min(2.0, deadline - time.monotonic()))
-        if chunk:
-            chunks.append(chunk)
-            if marker_completed_in_output("".join(chunks), marker):
+        chunk_bytes = _read_available_bytes(master_fd, wait_s=min(2.0, deadline - time.monotonic()))
+        if chunk_bytes:
+            decoded_chunks.append(decoder.decode(chunk_bytes))
+            if marker_completed_in_output("".join(decoded_chunks), marker):
                 break
-        elif chunks:
+        elif decoded_chunks:
             time.sleep(0.1)
         else:
             time.sleep(0.05)
-    return "".join(chunks)
+    decoded_chunks.append(decoder.decode(b"", final=True))
+    return "".join(decoded_chunks)
 
 
 def write_line(master_fd: int, line: str) -> None:

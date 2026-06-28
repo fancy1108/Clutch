@@ -18,11 +18,12 @@ def compose_agent_system_prompt(
 
     protocol = str(agent.get("markdownDoc", "")).strip()
     agent_name = str(agent.get("name", "Clutch Agent"))
+    model_info = f"Runtime model: {model_name} ({model_api}).\n" if is_clutch_agent(agent) else ""
     header = (
         f"You are {agent_name}, the active agent in the user's Clutch workspace.\n"
         f"When asked who you are, identify yourself as {agent_name}. "
         f"Do not claim to be a different product, vendor, or base model.\n"
-        f"Runtime model: {model_name} ({model_api}).\n"
+        f"{model_info}"
         "Treat every instruction in the agent protocol below as mandatory.\n"
     )
     parts = [header.strip()]
