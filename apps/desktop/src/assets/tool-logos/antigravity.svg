@@ -2,15 +2,16 @@
 <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="antigravity-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#2563eb" />
-      <stop offset="15%" stop-color="#3b82f6" />
+      <stop offset="0%" stop-color="#2f80ed" />
+      <stop offset="18%" stop-color="#00d2ff" />
       <stop offset="30%" stop-color="#10b981" />
-      <stop offset="45%" stop-color="#fbbf24" />
-      <stop offset="55%" stop-color="#ef4444" />
-      <stop offset="70%" stop-color="#06b6d4" />
-      <stop offset="85%" stop-color="#2563eb" />
-      <stop offset="100%" stop-color="#1d4ed8" />
+      <stop offset="42%" stop-color="#fbbf24" />
+      <stop offset="50%" stop-color="#f97316" />
+      <stop offset="58%" stop-color="#ef4444" />
+      <stop offset="72%" stop-color="#8b5cf6" />
+      <stop offset="88%" stop-color="#4f46e5" />
+      <stop offset="100%" stop-color="#2f80ed" />
     </linearGradient>
   </defs>
-  <path d="M 15 88 C 12 88 10 85 10 82 C 12 65 25 30 44 18 C 47 15 53 15 56 18 C 75 30 88 65 90 82 C 90 85 88 88 85 88 C 82 88 77 82 74 72 C 64 45 56 33 50 33 C 44 33 36 45 26 72 C 23 82 18 88 15 88 Z" fill="url(#antigravity-grad)" />
+  <path d="M 15 82 C 10 84 12 88 18 88 C 28 88 35 80 40 68 C 43 56 47 52 50 52 C 53 52 57 56 60 68 C 65 80 72 88 82 88 C 88 88 90 84 85 82 C 78 72 68 45 60 30 C 55 15 45 15 40 30 C 32 45 22 72 15 82 Z" fill="url(#antigravity-grad)" />
 </svg>
