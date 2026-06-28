@@ -181,6 +181,11 @@ function MainLayout() {
   const [workspaceFiles, setWorkspaceFiles] = useState<FileTreeNode[]>([]);
   const [workspacePickError, setWorkspacePickError] = useState<string | null>(null);
   const [highRiskConfirmed, setHighRiskConfirmed] = useState(false);
+
+  // Reset high-risk confirmation when switching sessions
+  useEffect(() => {
+    setHighRiskConfirmed(false);
+  }, [sessionRunId]);
   const [branchMenuOpen, setBranchMenuOpen] = useState(false);
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
   const [agentMenuOpen, setAgentMenuOpen] = useState(false);
@@ -509,7 +514,9 @@ function MainLayout() {
   };
 
   const handleStopRun = () => {
-    if (!highRiskConfirmed) {
+    // Workflow (Flow) runs: stop immediately without confirmation.
+    // Plain LLM chat runs: ask once to avoid accidental interruption.
+    if (!isWorkflowChat && !highRiskConfirmed) {
       const ok = window.confirm(t('Confirm stopping the current run? This will interrupt Builder/Evaluator execution.'));
       if (!ok) return;
       setHighRiskConfirmed(true);
@@ -973,6 +980,12 @@ function MainLayout() {
           await clutchStore.connect(sessionRunId);
         }
         await refreshSessions();
+        // Optimistically mark this session as running so the sidebar spinner
+        // stays visible when the user switches to another session while the
+        // workflow is still executing (startWorkflowRun is a blocking HTTP call).
+        setSessions(prev =>
+          prev.map(s => s.run_id === sessionRunId ? { ...s, status: 'running' } : s)
+        );
         const result = await startWorkflowRun(sessionRunId, workflowId, instruction);
         clutchStore.mergeWorkflowComplete(result.state);
         setSelectedWorkflowId(null);
