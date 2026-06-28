@@ -144,18 +144,14 @@ def test_chat_ollama(monkeypatch) -> None:
             tags_called = True
             mock_data = {"models": [{"name": "qwen3.6:35b"}]}
             return MockHTTPResponse(json.dumps(mock_data).encode("utf-8"))
-        elif "chat/completions" in url:
+        elif "chat/completions" in url or "api/chat" in url:
             chat_called = True
             chat_payload = json.loads(req.data.decode("utf-8"))
             mock_data = {
-                "choices": [
-                    {
-                        "message": {
-                            "role": "assistant",
-                            "content": "Hello! I am qwen3.6.",
-                        }
-                    }
-                ]
+                "message": {
+                    "role": "assistant",
+                    "content": "Hello! I am qwen3.6.",
+                }
             }
             return MockHTTPResponse(json.dumps(mock_data).encode("utf-8"))
         raise ValueError(f"Unexpected url call: {url}")
@@ -189,10 +185,10 @@ def test_chat_ollama_history_includes_current_prompt(monkeypatch) -> None:
     def mock_urlopen(req, timeout=None):
         nonlocal chat_payload
         url = req if isinstance(req, str) else req.get_full_url()
-        if "chat/completions" in url:
+        if "chat/completions" in url or "api/chat" in url:
             chat_payload = json.loads(req.data.decode("utf-8"))
             mock_data = {
-                "choices": [{"message": {"role": "assistant", "content": "ok"}}]
+                "message": {"role": "assistant", "content": "ok"}
             }
             return MockHTTPResponse(json.dumps(mock_data).encode("utf-8"))
         raise ValueError(f"Unexpected url call: {url}")
@@ -201,7 +197,7 @@ def test_chat_ollama_history_includes_current_prompt(monkeypatch) -> None:
 
     _model, _output = chat_ollama(
         prompt="第二句",
-        model="qwen2.5vl:7b",
+        model="qwen3.6:35b",
         history=[
             {"role": "user", "content": "你好"},
             {"role": "assistant", "content": "你好！"},
@@ -210,3 +206,38 @@ def test_chat_ollama_history_includes_current_prompt(monkeypatch) -> None:
     assert chat_payload is not None
     assert chat_payload["messages"][-1] == {"role": "user", "content": "第二句"}
     assert chat_payload["messages"][0] == {"role": "user", "content": "你好"}
+
+
+def test_chat_ollama_vl_inlines_transcript_for_multi_turn(monkeypatch) -> None:
+    chat_payload = None
+
+    def mock_urlopen(req, timeout=None):
+        nonlocal chat_payload
+        url = req if isinstance(req, str) else req.get_full_url()
+        if "api/chat" in url:
+            chat_payload = json.loads(req.data.decode("utf-8"))
+            body = {"message": {"role": "assistant", "content": "你上句说的是你是谁"}}
+            return MockHTTPResponse(json.dumps(body).encode("utf-8"))
+        raise ValueError(f"Unexpected url call: {url}")
+
+    monkeypatch.setattr("urllib.request.urlopen", mock_urlopen)
+
+    _model, output = chat_ollama(
+        prompt="我上句说的什么",
+        model="qwen2.5vl:7b",
+        history=[
+            {"role": "user", "content": "你是谁"},
+            {"role": "assistant", "content": "我是通义千问。"},
+            {"role": "user", "content": "我上句说的什么"},
+        ],
+    )
+    assert chat_payload is not None
+    assert chat_payload["stream"] is False
+    assert len(chat_payload["messages"]) == 1
+    last = chat_payload["messages"][0]["content"]
+    assert "[Conversation so far]" in last
+    assert "User: 你是谁" in last
+    assert "Assistant: 我是通义千问。" in last
+    assert "[Current question]" in last
+    assert "我上句说的什么" in last
+    assert "你是谁" in output

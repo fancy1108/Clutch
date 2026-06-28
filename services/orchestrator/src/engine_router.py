@@ -159,7 +159,26 @@ def _cli_prompt_from_history(
 ) -> str:
     """Build a single CLI prompt that includes prior turns for plain-chat context."""
     history_prompt = _format_history_for_cli_prompt(history).strip()
-    return history_prompt if history_prompt else prompt
+    if not history_prompt:
+        return prompt
+    current = prompt.strip()
+    if current and f"User: {current}" not in history_prompt:
+        return f"{history_prompt}\n\nUser: {current}"
+    return history_prompt
+
+
+def _effective_prepend_system_prompt(
+    prepend_system_prompt: bool,
+    *,
+    conversation_mode: str,
+    cli_session_id: str | None,
+) -> bool:
+    """Skip prepending system prompt when resuming a CLI session with history replay."""
+    if not prepend_system_prompt:
+        return False
+    if conversation_mode == "history_only" and cli_session_id:
+        return False
+    return True
 
 
 def _ensure_cli_output(
@@ -707,6 +726,46 @@ def _route_engine_raw(
 
         effective_extra_args = list(config["extra_args"])
 
+        legacy_kwargs = dict(
+            agent_type=agent_type,
+            binary_name=config["binary_name"],
+            conversation_mode=config["conversation_mode"],
+            prepend_system_prompt=config["prepend_system_prompt"],
+            extra_args=effective_extra_args,
+            workspace_path=workspace_path,
+            prompt=prompt,
+            system_prompt=system_prompt,
+            history=history,
+            cli_session_id=cli_session_id,
+            cli_binary=cli_binary,
+            logs=logs,
+            on_log=on_log,
+            prompt_flag=config.get("prompt_flag", "-p"),
+            supports_append_system_prompt=config.get("supports_append_system_prompt", True),
+        )
+
+        if source == "flow" and agent_type == "claude-cli" and cli_binary:
+            from src.shell_exec_runtime import hybrid_pty_shell_command_risky
+
+            if hybrid_pty_shell_command_risky(
+                agent_type=agent_type,
+                binary=cli_binary,
+                prompt=prompt,
+                system_prompt=system_prompt,
+                conversation_mode=config["conversation_mode"],
+                extra_args=effective_extra_args,
+                prepend_system_prompt=config["prepend_system_prompt"],
+                prompt_flag=config.get("prompt_flag", "-p"),
+                supports_append_system_prompt=config.get("supports_append_system_prompt", True),
+                close_stdin=config.get("close_stdin", False),
+            ):
+                _emit_log(
+                    logs,
+                    on_log,
+                    "[HYBRID] multiline CLI payload — using legacy subprocess",
+                )
+                return _route_generic_cli_legacy(**legacy_kwargs)
+
         try:
             return try_shell_exec_hybrid(
                 agent_type=agent_type,
@@ -733,23 +792,7 @@ def _route_engine_raw(
                     supports_append_system_prompt=config.get("supports_append_system_prompt", True),
                     close_stdin=config.get("close_stdin", False),
                 ),
-                legacy_route=lambda: _route_generic_cli_legacy(
-                    agent_type=agent_type,
-                    binary_name=config["binary_name"],
-                    conversation_mode=config["conversation_mode"],
-                    prepend_system_prompt=config["prepend_system_prompt"],
-                    extra_args=effective_extra_args,
-                    workspace_path=workspace_path,
-                    prompt=prompt,
-                    system_prompt=system_prompt,
-                    history=history,
-                    cli_session_id=cli_session_id,
-                    cli_binary=cli_binary,
-                    logs=logs,
-                    on_log=on_log,
-                    prompt_flag=config.get("prompt_flag", "-p"),
-                    supports_append_system_prompt=config.get("supports_append_system_prompt", True),
-                ),
+                legacy_route=lambda: _route_generic_cli_legacy(**legacy_kwargs),
                 logs=logs,
                 on_log=on_log,
                 emit_log=_emit_log,

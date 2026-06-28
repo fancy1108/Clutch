@@ -37,7 +37,7 @@ import {
 } from '../services/workflowApi';
 import { fetchAgents } from '../services/agentApi';
 import { getAgentDisplayName } from '../services/builtinAgent';
-import { agentTypeFromAgent } from '../services/agentTypes';
+import { agentTypeFromAgent, agentTypeLabel } from '../services/agentTypes';
 import { resolveBrandLogoSrc } from '../services/brandLogos';
 import { BTN_GHOST, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON } from './ui/buttonStyles';
 import { LegacyIcon } from './ui/LegacyIcon';
@@ -153,6 +153,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
 
   // New workflow creation states
   const [isCreatingWorkflow, setIsCreatingWorkflow] = useState(false);
+  const [editingWorkflowId, setEditingWorkflowId] = useState<string | null>(null);
   const [createFlowError, setCreateFlowError] = useState<string | null>(null);
   const [isSavingNewFlow, setIsSavingNewFlow] = useState(false);
   const [newWorkflowName, setNewWorkflowName] = useState('');
@@ -184,7 +185,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
     const compatible = isCanvasCompatible(workflow);
     setCanvasCompatible(compatible);
     if (compatible) {
-      const canvas = compilerToCanvas(workflow, 'account_tree');
+      const canvas = compilerToCanvas(workflow, workflow.icon ?? 'account_tree');
       setWorkflows((prev) => {
         const rest = prev.filter((w) => w.id !== canvas.id);
         return [...rest, canvas];
@@ -385,10 +386,21 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
 
   const handleCreateWorkflow = () => {
     setIsCreatingWorkflow(true);
+    setEditingWorkflowId(null);
     setCreateFlowError(null);
     setNewWorkflowName('');
     setNewWorkflowDesc('');
     setNewWorkflowIcon('account_tree');
+  };
+
+  const handleEditWorkflow = (item: WorkflowListItem, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingWorkflowId(item.id);
+    setCreateFlowError(null);
+    setNewWorkflowName(item.name);
+    setNewWorkflowDesc(item.description || '');
+    setNewWorkflowIcon(item.icon || 'account_tree');
+    setIsCreatingWorkflow(true);
   };
 
   const saveNewWorkflow = async () => {
@@ -406,6 +418,8 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
         { id: 'end', type: 'end', position: { x: 250, y: 120 }, data: { label: t('Finish') } },
       ],
       edges: [{ id: 'e1', source: 'start', target: 'end' }],
+      icon: newWorkflowIcon,
+      description: newWorkflowDesc.trim(),
     };
     setIsSavingNewFlow(true);
     setCreateFlowError(null);
@@ -420,6 +434,49 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
       const message = err instanceof Error ? err.message : t('Failed to create workflow');
       setCreateFlowError(message);
       setSaveError(message);
+    } finally {
+      setIsSavingNewFlow(false);
+    }
+  };
+
+  const saveWorkflowEdits = async () => {
+    if (!newWorkflowName.trim() || isSavingNewFlow || !editingWorkflowId) return;
+    setIsSavingNewFlow(true);
+    setCreateFlowError(null);
+    try {
+      const workflow = await loadUserWorkflow(editingWorkflowId);
+      const updatedWorkflow: CompilerWorkflow = {
+        ...workflow,
+        name: newWorkflowName.trim(),
+        icon: newWorkflowIcon,
+        description: newWorkflowDesc.trim(),
+      };
+
+      await validateWorkflow(updatedWorkflow);
+      await saveUserWorkflow(updatedWorkflow);
+
+      // If the edited workflow is the active workflow, update its canvas state
+      if (activeWorkflowId === editingWorkflowId) {
+        setWorkflows(prev => prev.map(wf => {
+          if (wf.id !== editingWorkflowId) return wf;
+          return {
+            ...wf,
+            name: updatedWorkflow.name,
+            icon: updatedWorkflow.icon ?? 'account_tree',
+            description: updatedWorkflow.description ?? '',
+          };
+        }));
+        if (activeItem && activeItem.id === editingWorkflowId) {
+          setActiveItem(prev => prev ? { ...prev, name: updatedWorkflow.name, icon: updatedWorkflow.icon, description: updatedWorkflow.description } : null);
+        }
+      }
+
+      setIsCreatingWorkflow(false);
+      setEditingWorkflowId(null);
+      await refreshList();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : t('Failed to save workflow');
+      setCreateFlowError(message);
     } finally {
       setIsSavingNewFlow(false);
     }
@@ -578,6 +635,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
     }));
   }, [activeWorkflowId]);
 
+  const selectedAgent = agents.find(a => a.id === nodeForm.agent);
 
   const contentElement = (
     <div className="flex-1 h-full flex flex-col bg-white overflow-hidden">
@@ -631,7 +689,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
             >
               <div className="flex items-center gap-3 overflow-hidden min-w-0 flex-1">
                 <div className="w-8 h-8 rounded-lg bg-neutral-100/70 flex flex-shrink-0 items-center justify-center">
-                  <LegacyIcon name="account_tree" className="text-neutral-600 text-[18px]" />
+                  <LegacyIcon name={item.icon || "account_tree"} className="text-neutral-600 text-[18px]" />
                 </div>
                 <div className="overflow-hidden text-left min-w-0">
                   <h4 className="text-[11px] font-bold text-neutral-800 truncate">{item.name}</h4>
@@ -644,14 +702,13 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
                 <button
                   type="button"
                   onClick={(e) => {
-                    e.stopPropagation();
-                    void selectWorkflow(item);
+                    handleEditWorkflow(item, e);
                   }}
                   className={BTN_ICON}
-                  title={t('View workflow')}
-                  aria-label={t('View workflow')}
+                  title={t('Edit workflow')}
+                  aria-label={t('Edit workflow')}
                 >
-                  <LegacyIcon name="visibility" className="text-[16px]" />
+                  <LegacyIcon name="edit" className="text-[16px]" />
                 </button>
                 <button
                   type="button"
@@ -798,7 +855,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
       {/* Node Edit Modal */}
       {editingNodeId && (
         <div className="absolute inset-0 bg-neutral-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-6 animate-fade-in">
-          <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl border border-neutral-200 overflow-hidden flex flex-col text-left">
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl border border-neutral-200 overflow-hidden flex flex-col text-left max-h-[80%]">
             <div className="px-5 py-4 border-b border-neutral-100 flex items-center justify-between bg-neutral-50/50">
               <h3 className="text-sm font-bold text-neutral-900">
                 {activeWorkflow?.steps.find(s => s.id.toString() === editingNodeId) ? 'Edit Node' : 'New Node'}
@@ -813,7 +870,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
               </button>
             </div>
             
-            <div className="p-5 space-y-4 text-xs">
+            <div className="p-5 space-y-4 text-xs overflow-y-auto flex-1">
               <div className="space-y-1.5">
                 <label className="font-bold text-neutral-700">Node Name</label>
                 <input 
@@ -829,7 +886,16 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
                 <label className="font-bold text-neutral-700">Assigned Agent</label>
                 <select 
                   value={nodeForm.agent || ''}
-                  onChange={e => setNodeForm({...nodeForm, agent: e.target.value})}
+                  onChange={e => {
+                    const agentId = e.target.value;
+                    const selected = agents.find(a => a.id === agentId);
+                    setNodeForm({
+                      ...nodeForm,
+                      agent: agentId,
+                      name: selected ? selected.name : (nodeForm.name || ''),
+                      description: selected ? selected.description : (nodeForm.description || '')
+                    });
+                  }}
                   className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-xs bg-white focus:outline-none focus:border-neutral-400 transition-all font-medium"
                 >
                   <option value="">Select an agent…</option>
@@ -844,21 +910,24 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
                     No agents configured. Create agents in the Agents panel first.
                   </p>
                 )}
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="font-bold text-neutral-700">AI Tool (Optional)</label>
-                <select 
-                  value={nodeForm.aiTool || ''}
-                  onChange={e => setNodeForm({...nodeForm, aiTool: e.target.value})}
-                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-xs bg-white focus:outline-none focus:border-neutral-400 transition-all font-medium text-neutral-600"
-                >
-                  <option value="">None (use agent type)</option>
-                  <option value="claude-cli">Claude CLI</option>
-                  <option value="antigravity-cli">Antigravity CLI</option>
-                  <option value="codex-cli">Codex CLI</option>
-                  <option value="ollama-cli">Ollama CLI</option>
-                </select>
+                {selectedAgent && (
+                  <div className="mt-2 p-2.5 rounded-lg border border-neutral-100 bg-neutral-50/50 space-y-1 text-[10.5px] text-neutral-500 font-medium">
+                    <div className="flex justify-between items-center">
+                      <span className="text-neutral-400">AI Tool / Type:</span>
+                      <span className="font-bold text-neutral-700 font-mono">
+                        {agentTypeLabel(agentTypeFromAgent(selectedAgent))}
+                      </span>
+                    </div>
+                    {selectedAgent.description && (
+                      <div>
+                        <span className="text-neutral-400 block mb-0.5">Description:</span>
+                        <p className="text-neutral-600 font-normal line-clamp-2 leading-relaxed">
+                          {selectedAgent.description}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="space-y-1.5">
@@ -984,14 +1053,14 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
       {/* Create Workflow Modal */}
       {isCreatingWorkflow && (
         <div className="absolute inset-0 bg-neutral-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-6 animate-fade-in">
-          <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl border border-neutral-200 overflow-hidden flex flex-col text-left">
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl border border-neutral-200 overflow-hidden flex flex-col text-left max-h-[80%]">
             <div className="px-5 py-4 border-b border-neutral-100 flex items-center justify-between bg-neutral-50/50">
               <h3 className="text-sm font-bold text-neutral-900">
-                Create New Workflow Flow
+                {editingWorkflowId ? t('Edit Workflow') : t('Create New Workflow')}
               </h3>
               <button
                 type="button"
-                onClick={() => setIsCreatingWorkflow(false)}
+                onClick={() => { setIsCreatingWorkflow(false); setEditingWorkflowId(null); }}
                 className={BTN_ICON}
                 aria-label="Close"
               >
@@ -999,7 +1068,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
               </button>
             </div>
             
-            <div className="p-5 space-y-4 text-xs">
+            <div className="p-5 space-y-4 text-xs overflow-y-auto flex-1">
               <div className="space-y-1.5">
                 <label className="font-bold text-neutral-700">Flow Name</label>
                 <input 
@@ -1062,7 +1131,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
               <div className="flex justify-end gap-2">
               <button
                 type="button"
-                onClick={() => setIsCreatingWorkflow(false)}
+                onClick={() => { setIsCreatingWorkflow(false); setEditingWorkflowId(null); }}
                 className={MODAL_BTN_CANCEL}
                 disabled={isSavingNewFlow}
               >
@@ -1071,11 +1140,11 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
               <button
                 type="button"
                 data-testid="workflow-create-save"
-                onClick={() => void saveNewWorkflow()}
+                onClick={() => void (editingWorkflowId ? saveWorkflowEdits() : saveNewWorkflow())}
                 disabled={!newWorkflowName.trim() || isSavingNewFlow}
                 className={MODAL_BTN_PRIMARY}
               >
-                {isSavingNewFlow ? t('Saving...') : t('Save Flow')}
+                {isSavingNewFlow ? t('Saving...') : t('Save')}
               </button>
               </div>
             </div>

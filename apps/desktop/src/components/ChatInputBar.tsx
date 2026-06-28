@@ -15,6 +15,7 @@ import type { FileTreeNode } from '../services/workspaceApi';
 import { PERMISSION_MODES, type PermissionMode } from '../services/permissionApi';
 import { LegacyIcon } from './ui/LegacyIcon';
 import { BTN_ICON_SM } from './ui/buttonStyles';
+import { shouldSubmitChatOnEnter } from './chatInputKeyboard';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -54,6 +55,8 @@ interface ChatInputBarProps {
   onPermissionModeChange: (mode: PermissionMode) => void;
   shellSessionStatus?: string;
   onDismissHybridNotice?: () => void;
+  isFlowRefining?: boolean;
+  workflowAgents?: Array<{ nodeId: string; agentName: string; label?: string }>;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -161,12 +164,15 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
   onPermissionModeChange,
   shellSessionStatus,
   onDismissHybridNotice,
+  isFlowRefining = false,
+  workflowAgents = [],
 }) => {
   const { t, language } = useLanguage();
   const [dismissedNoticeKey, setDismissedNoticeKey] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const compositionActiveRef = useRef(false);
 
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -178,10 +184,12 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
   // Popovers
   const [skillPickerOpen, setSkillPickerOpen] = useState(false);
   const [sessionPickerOpen, setSessionPickerOpen] = useState(false);
+  const [agentPickerOpen, setAgentPickerOpen] = useState(false);
   const [fileBrowserOpen, setFileBrowserOpen] = useState(false);
 
   const [skillFilter, setSkillFilter] = useState('');
   const [sessionFilter, setSessionFilter] = useState('');
+  const [agentFilter, setAgentFilter] = useState('');
   const [fileFilter, setFileFilter] = useState('');
 
   // Close all menus on outside click
@@ -192,6 +200,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
         setPermissionMenuOpen(false);
         setSkillPickerOpen(false);
         setSessionPickerOpen(false);
+        setAgentPickerOpen(false);
         setFileBrowserOpen(false);
       }
     };
@@ -323,26 +332,6 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
     setInputValue('');
   }, [inputValue, attachments, onSendMessage, setInputValue]);
 
-  // ── Keyboard handler ────────────────────────────────────────────────────────
-
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if (e.key === 'Escape') {
-        setSkillPickerOpen(false);
-        setSessionPickerOpen(false);
-        setFileBrowserOpen(false);
-        return;
-      }
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        if (inputValue.trim() || attachments.length > 0) {
-          handleSend();
-        }
-      }
-    },
-    [inputValue, attachments, handleSend],
-  );
-
   const handleInputChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       const val = e.target.value;
@@ -361,6 +350,23 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
       }
       setSkillPickerOpen(false);
 
+      // Detect @ trigger for workflow agents (refine mode)
+      const lastAt = val.lastIndexOf('@');
+      if (
+        isFlowRefining
+        && lastAt !== -1
+        && (lastAt === 0 || val[lastAt - 1] === ' ' || val[lastAt - 1] === '\n')
+      ) {
+        const fragment = val.slice(lastAt + 1);
+        if (!fragment.includes(' ')) {
+          setAgentFilter(fragment);
+          setAgentPickerOpen(true);
+          setSessionPickerOpen(false);
+          return;
+        }
+      }
+      setAgentPickerOpen(false);
+
       // Detect hash trigger for sessions
       const lastHash = val.lastIndexOf('#');
       if (lastHash !== -1 && (lastHash === 0 || val[lastHash - 1] === ' ' || val[lastHash - 1] === '\n')) {
@@ -373,7 +379,18 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
       }
       setSessionPickerOpen(false);
     },
-    [setInputValue],
+    [setInputValue, isFlowRefining],
+  );
+
+  const insertWorkflowAgent = useCallback(
+    (agentName: string) => {
+      const lastAt = inputValue.lastIndexOf('@');
+      const before = lastAt >= 0 ? inputValue.slice(0, lastAt) : inputValue;
+      setInputValue(`${before}@${agentName} `);
+      setAgentPickerOpen(false);
+      textareaRef.current?.focus();
+    },
+    [inputValue, setInputValue],
   );
 
   // ── Skill / Session insert ──────────────────────────────────────────────────
@@ -424,6 +441,10 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
       (s.title || '').toLowerCase().includes(sessionFilter.toLowerCase()) ||
       s.run_id.toLowerCase().includes(sessionFilter.toLowerCase()),
   );
+  const filteredWorkflowAgents = workflowAgents.filter((step) => {
+    const haystack = `${step.agentName} ${step.label ?? ''}`.toLowerCase();
+    return !agentFilter || haystack.includes(agentFilter.toLowerCase());
+  });
   const allFilePaths = flattenFileTree(workspaceFiles);
   const filteredFiles = allFilePaths.filter(
     (p) => !fileFilter || p.toLowerCase().includes(fileFilter.toLowerCase()),
@@ -435,6 +456,55 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
   const hybridNotice = hybridRejectionNotice(shellSessionStatus, language === 'zh' ? 'zh' : 'en');
   const showHybridNotice =
     hybridNotice && dismissedNoticeKey !== (shellSessionStatus ?? '');
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.key === 'Escape') {
+        setSkillPickerOpen(false);
+        setSessionPickerOpen(false);
+        setAgentPickerOpen(false);
+        setFileBrowserOpen(false);
+        return;
+      }
+
+      const isComposing = compositionActiveRef.current || e.nativeEvent.isComposing;
+      if (
+        skillPickerOpen &&
+        filteredSkills.length > 0 &&
+        shouldSubmitChatOnEnter(e.nativeEvent, isComposing)
+      ) {
+        e.preventDefault();
+        insertSkill(filteredSkills[0]);
+        return;
+      }
+      if (
+        sessionPickerOpen &&
+        filteredSessions.length > 0 &&
+        shouldSubmitChatOnEnter(e.nativeEvent, isComposing)
+      ) {
+        e.preventDefault();
+        insertSession(filteredSessions[0]);
+        return;
+      }
+
+      if (!shouldSubmitChatOnEnter(e.nativeEvent, isComposing)) return;
+
+      e.preventDefault();
+      if (canSend) {
+        handleSend();
+      }
+    },
+    [
+      canSend,
+      filteredSessions,
+      filteredSkills,
+      handleSend,
+      insertSession,
+      insertSkill,
+      sessionPickerOpen,
+      skillPickerOpen,
+    ],
+  );
 
   useEffect(() => {
     setDismissedNoticeKey(null);
@@ -630,11 +700,19 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
           data-testid="chat-input"
           value={inputValue}
           onChange={handleInputChange}
+          onCompositionStart={() => {
+            compositionActiveRef.current = true;
+          }}
+          onCompositionEnd={() => {
+            compositionActiveRef.current = false;
+          }}
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
           className="w-full border-none focus:ring-0 text-[13px] text-on-surface bg-transparent py-1.5 resize-none min-h-[36px] max-h-[140px] placeholder:text-on-surface-variant/60 outline-none leading-relaxed"
           placeholder={
-            isMultiAgent && selectedWorkflowId
+            isFlowRefining
+              ? t('@Agent your feedback (Hybrid) — /continue to resume flow')
+              : isMultiAgent && selectedWorkflowId
               ? t('Describe what you want this workflow to do...')
               : isMultiAgent
               ? t('Ask @Builder, @Orchestrator or trigger @Workflow...')
@@ -736,6 +814,37 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
           </button>
         </div>
       </div>
+
+      {/* ── Workflow agent picker (flow refine) ── */}
+      {agentPickerOpen && isFlowRefining && (
+        <div className="absolute bottom-full left-0 mb-2 w-72 bg-white border border-outline-variant rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-bottom-1 duration-150">
+          <div className="p-2 border-b border-outline-variant/30">
+            <div className="flex items-center gap-2 px-2">
+              <LegacyIcon name="smart_toy" className="text-[15px] text-on-surface-variant" />
+              <span className="text-[11px] font-semibold text-on-surface-variant">Workflow agents</span>
+            </div>
+          </div>
+          <div className="max-h-52 overflow-y-auto">
+            {filteredWorkflowAgents.length === 0 ? (
+              <p className="px-4 py-3 text-[11px] text-on-surface-variant/60 italic">No agents in this workflow</p>
+            ) : (
+              filteredWorkflowAgents.map((step) => (
+                <button
+                  key={step.nodeId}
+                  type="button"
+                  onClick={() => insertWorkflowAgent(step.agentName)}
+                  className="w-full flex flex-col px-3 py-2 text-left hover:bg-surface-container-low transition-colors"
+                >
+                  <span className="text-[12px] font-semibold text-on-surface">@{step.agentName}</span>
+                  {step.label && step.label !== step.agentName ? (
+                    <span className="text-[10.5px] text-on-surface-variant/60 truncate">{step.label}</span>
+                  ) : null}
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── Skill picker popover ── */}
       {skillPickerOpen && (

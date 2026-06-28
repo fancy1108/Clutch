@@ -27,8 +27,10 @@ def test_hybrid_eligible_requires_all_conditions(monkeypatch: pytest.MonkeyPatch
     monkeypatch.setenv("CLUTCH_RUNTIME_MODE", "hybrid")
     assert hybrid_eligible(source="plain_chat", agent_type="claude-cli") is True
     assert hybrid_eligible(source="flow", agent_type="claude-cli") is True
+    assert hybrid_eligible(source="flow_refine", agent_type="claude-cli") is True
     assert hybrid_eligible(source="plain_chat", agent_type="antigravity-cli") is True
     assert hybrid_eligible(source="flow", agent_type="antigravity-cli") is False
+    assert hybrid_eligible(source="flow", agent_type="codex-cli") is False
     assert hybrid_eligible(source="plain_chat", agent_type="ollama-cli") is False
 
 

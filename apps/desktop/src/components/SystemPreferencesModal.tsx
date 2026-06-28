@@ -165,19 +165,17 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
                 <span className="text-xs">{t("AI Agents")}</span>
               </button>
 
-              {isMultiAgent && (
-                <button
-                  data-testid="settings-nav-workflows"
-                  onClick={() => setView('workflows')}
-                  className={`${navBtnBase} ${currentView === 'workflows' ? navBtnActive : navBtnIdle}`}
-                >
-                  <LegacyIcon
-                    name="account_tree"
-                    className={`text-[16px] ${currentView === 'workflows' ? 'opacity-100' : 'opacity-60'}`}
-                  />
-                  <span className="text-xs">{t("Workflows SOP")}</span>
-                </button>
-              )}
+              <button
+                data-testid="settings-nav-workflows"
+                onClick={() => setView('workflows')}
+                className={`${navBtnBase} ${currentView === 'workflows' ? navBtnActive : navBtnIdle}`}
+              >
+                <LegacyIcon
+                  name="account_tree"
+                  className={`text-[16px] ${currentView === 'workflows' ? 'opacity-100' : 'opacity-60'}`}
+                />
+                <span className="text-xs">{t("Workflows SOP")}</span>
+              </button>
 
               <button
                 data-testid="settings-nav-models"

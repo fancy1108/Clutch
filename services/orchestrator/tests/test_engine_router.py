@@ -5,7 +5,88 @@ from __future__ import annotations
 from types import SimpleNamespace
 import pytest
 
-from src.engine_router import find_agent, route_engine, EngineResult
+from src.engine_router import (
+    CLI_ROUTING_CONFIGS,
+    EngineResult,
+    _cli_prompt_from_history,
+    _effective_prepend_system_prompt,
+    find_agent,
+    route_engine,
+)
+
+
+def test_cli_prompt_from_history_appends_current_when_missing() -> None:
+    history = [
+        {"role": "user", "content": "first"},
+        {"role": "assistant", "content": "answer"},
+    ]
+    prompt = _cli_prompt_from_history("follow up", history)
+    assert "User: first" in prompt
+    assert "Assistant: answer" in prompt
+    assert prompt.endswith("User: follow up")
+
+
+def test_cli_prompt_from_history_keeps_current_when_already_present() -> None:
+    history = [
+        {"role": "user", "content": "first"},
+        {"role": "assistant", "content": "answer"},
+        {"role": "user", "content": "follow up"},
+    ]
+    prompt = _cli_prompt_from_history("follow up", history)
+    assert prompt.count("User: follow up") == 1
+
+
+def test_effective_prepend_system_prompt_skips_history_replay_follow_up() -> None:
+    assert _effective_prepend_system_prompt(
+        True,
+        conversation_mode="history_only",
+        cli_session_id="sess-1",
+    ) is False
+    assert _effective_prepend_system_prompt(
+        True,
+        conversation_mode="history_only",
+        cli_session_id=None,
+    ) is True
+
+
+def test_codex_history_replay_shell_cmd_omits_system_prompt() -> None:
+    from src.shell_exec_runtime import _build_generic_cli_shell_cmd
+
+    config = CLI_ROUTING_CONFIGS["codex-cli"]
+    history_prompt = _cli_prompt_from_history(
+        "我上句说的什么",
+        [
+            {"role": "user", "content": "你好"},
+            {"role": "assistant", "content": "Hello!"},
+            {"role": "user", "content": "我上句说的什么"},
+        ],
+    )
+    system_prompt = (
+        "You are Codex, the active agent in the user's Clutch workspace.\n"
+        "For conversational questions (identity, recall, small talk), answer directly "
+        "from the conversation and your role above."
+    )
+    cmd = _build_generic_cli_shell_cmd(
+        binary="codex",
+        prompt=history_prompt,
+        marker="__DONE__",
+        resume_session_id="sess-1",
+        system_prompt=system_prompt,
+        conversation_mode=config["conversation_mode"],
+        extra_args=config["extra_args"],
+        prepend_system_prompt=_effective_prepend_system_prompt(
+            config["prepend_system_prompt"],
+            conversation_mode=config["conversation_mode"],
+            cli_session_id="sess-1",
+        ),
+        prompt_flag=config["prompt_flag"],
+        supports_append_system_prompt=config["supports_append_system_prompt"],
+        close_stdin=config.get("close_stdin", False),
+    )
+    assert "User Request:" not in cmd
+    assert "For conversational questions" not in cmd
+    assert "User: 你好" in cmd
+    assert "我上句说的什么" in cmd
 
 
 @pytest.fixture
@@ -301,6 +382,57 @@ def test_claude_hybrid_routes_from_flow_source(monkeypatch, mock_agents) -> None
     assert res.output == "flow hybrid ok"
     assert captured["run_id"] == "run-flow-claude"
     assert captured["cli_session_id"] == "sess-prev"
+
+
+def test_route_engine_flow_multiline_claude_skips_hybrid_pty(
+    monkeypatch, mock_agents
+) -> None:
+    monkeypatch.setenv("CLUTCH_RUNTIME_MODE", "hybrid")
+    monkeypatch.setattr("src.engine_router.tool_available_for_routing", lambda _tool_id: True)
+    monkeypatch.setattr("src.engine_router.get_workspace", lambda: {"workspace_path": "/workspace"})
+
+    hybrid_called = {"value": False}
+    legacy_called = {"value": False}
+
+    def fake_claude_hybrid(**kwargs: object) -> EngineResult:
+        hybrid_called["value"] = True
+        return EngineResult(engine="Claude CLI (Hybrid)", output="hybrid", logs=[])
+
+    def fake_legacy(**kwargs: object) -> EngineResult:
+        legacy_called["value"] = True
+        return EngineResult(
+            engine="Claude CLI",
+            output='{"climax_script":"done"}',
+            logs=[],
+            cli_session_id="sess-legacy",
+        )
+
+    monkeypatch.setattr("src.engine_router._route_claude_hybrid", fake_claude_hybrid)
+    monkeypatch.setattr("src.engine_router._route_generic_cli_legacy", fake_legacy)
+
+    step1_json = (
+        '{\n  "world_background": "端阳仙境",\n'
+        '  "protagonist_design": "阿包",\n'
+        '  "core_conflict": "龙舟赛"\n}'
+    )
+    task = f"承接上游结构化数据，撰写具有强画面感的故事文本。\n\n{step1_json}"
+    system_prompt = (
+        "You are 2-Scriptwriter, the active agent in the user's Clutch workspace.\n"
+        "Treat every instruction in the agent protocol below as mandatory.\n\n"
+        "你是一位金牌编剧。\n\n"
+        "必须且只能输出合法的 JSON 格式。\n"
+    )
+
+    res = route_engine(
+        agent_name="Builder Module (JSX VibeCoder)",
+        prompt=task,
+        system_prompt=system_prompt,
+        run_id="run-flow-multiline",
+        source="flow",
+    )
+    assert "climax_script" in res.output
+    assert legacy_called["value"] is True
+    assert hybrid_called["value"] is False
 
 
 def test_agy_hybrid_routes_to_shell_exec(monkeypatch) -> None:

@@ -40,7 +40,7 @@ def test_chat_agy_cli_args(monkeypatch) -> None:
         "agy",
         "--dangerously-skip-permissions",
         "-p",
-        "hello world",
+        "strict auditor\n\nUser Request:\nhello world",
     ]
     assert called_cwd == "/tmp/fake"
     assert called_timeout == 10.0

@@ -114,3 +114,51 @@ def test_ws_plain_chat_image_model(monkeypatch: pytest.MonkeyPatch) -> None:
         event.get("event") == "log" and "[CHAT] Starting MCP ReAct" in event["data"].get("message", "")
         for event in events
     )
+
+
+@pytest.mark.asyncio
+async def test_llm_chat_reply_codex_ignores_footer_image_model(monkeypatch: pytest.MonkeyPatch) -> None:
+    from src.engine_router import EngineResult
+
+    monkeypatch.setattr("src.models_config.get_router", lambda: _FakeImageRouter())
+    monkeypatch.setattr(
+        "src.agent_storage.get_agent_by_id",
+        lambda _agent_id: {
+            "id": "agent-codex",
+            "name": "Codex",
+            "agentType": "codex-cli",
+        },
+    )
+
+    def fake_route_engine(**_kwargs):
+        return EngineResult(
+            engine="Codex CLI (Hybrid)",
+            output="你上句说的是「你好」",
+            logs=[],
+        )
+
+    monkeypatch.setattr("src.engine_router.route_engine", fake_route_engine)
+
+    with patch("src.image_router.generate_image_for_model") as mocked_image:
+        (
+            label,
+            engine,
+            reply_text,
+            _logs,
+            _session_id,
+            _pause,
+            _files,
+            _raw,
+            _events,
+            _shell_recovered,
+        ) = await _llm_chat_reply(
+            initial_state("run_codex_no_image"),
+            "我上句说了什么",
+            agent_id="agent-codex",
+            session_model_id="agnes-image-2.1-flash",
+        )
+
+    mocked_image.assert_not_called()
+    assert label == "Codex"
+    assert "Codex" in engine
+    assert "你好" in reply_text

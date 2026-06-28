@@ -118,8 +118,9 @@ def _is_codex_binary(binary: str) -> bool:
     return binary.rsplit("/", 1)[-1] == "codex"
 
 
-def format_cli_issue_for_user(message: str) -> str:
+def format_cli_issue_for_user(message: str, agent_type: str | None = None) -> str:
     """Turn agy quota/auth lines into a clear chat-visible message."""
+    _ = agent_type
     lowered = message.lower()
     if "quota" in lowered or "rate limit" in lowered:
         return tr(
@@ -323,7 +324,7 @@ def chat_generic_cli(
         raise ValueError("session_id and resume_session_id are mutually exclusive")
     
     effective_prompt = prompt
-    if prepend_system_prompt and system_prompt:
+    if system_prompt and (prepend_system_prompt or not supports_append_system_prompt):
         effective_prompt = f"{system_prompt}\n\nUser Request:\n{prompt}"
 
     cmd = compose_cli_argv(
@@ -366,3 +367,94 @@ def chat_generic_cli(
         if stderr and not stderr.lower().startswith("warning:"):
             content = _finalize_cli_content(extract_cli_issue_message(stderr) or stderr, raw=stderr)
     return content
+
+
+_CLI_BINARY_LABELS: dict[str, str] = {
+    "claude-cli": "claude",
+    "antigravity-cli": "agy",
+    "agy-cli": "agy",
+    "codex-cli": "codex",
+    "aider-cli": "aider",
+}
+
+
+def _cli_binary_label(agent_type: str | None) -> str:
+    key = (agent_type or "").strip().lower()
+    return _CLI_BINARY_LABELS.get(key, key.replace("-cli", "") or "cli")
+
+
+def is_cli_auth_issue(text: str) -> bool:
+    lowered = (text or "").lower()
+    return any(
+        token in lowered
+        for token in (
+            "authentication required",
+            "please visit the url",
+            "waiting for authentication",
+            "sign in",
+            "not signed in",
+            "login required",
+        )
+    )
+
+
+def is_formatted_login_retry_message(text: str) -> bool:
+    lowered = (text or "").lower()
+    return (
+        "complete auth in terminal" in lowered
+        or "请在终端" in (text or "")
+        or "重新运行" in (text or "")
+        or "重试" in (text or "")
+    )
+
+
+def format_cli_login_retry_message(
+    agent_type: str,
+    *,
+    raw_message: str = "",
+) -> str:
+    binary = _cli_binary_label(agent_type)
+    detail = ""
+    raw = (raw_message or "").strip()
+    if raw:
+        if "世界观" in raw or len(raw) > 240 or "workflow" in raw.lower():
+            from src.claude_hybrid_output_parser import extract_cli_issue_message
+
+            issue = extract_cli_issue_message(raw) or ""
+            if issue and len(issue) <= 240:
+                detail = f" ({issue})"
+        else:
+            detail = f" ({raw})"
+    return tr(
+        f"CLI sign-in required for `{binary}`. Complete auth in Terminal, then retry this step.{detail}",
+        f"`{binary}` 需要登录。请在终端完成认证后重新运行此步骤。{detail}",
+    )
+
+
+def format_cli_empty_output_message(agent_type: str | None) -> str:
+    binary = _cli_binary_label(agent_type)
+    return tr(
+        f"`{binary}` CLI finished but returned no text.",
+        f"`{binary}` CLI 已结束，但未返回文本。",
+    )
+
+
+def format_flow_cli_failure(display_name: str, agent_type: str | None, exc: BaseException) -> str:
+    return tr(
+        f"Could not run task with {display_name}. ({exc})",
+        f"无法使用 {display_name} 执行任务。（{exc}）",
+    )
+
+
+def is_agent_task_failure(output: str) -> bool:
+    text = (output or "").strip()
+    if not text:
+        return True
+    lowered = text.lower()
+    if is_formatted_login_retry_message(text):
+        return True
+    if "returned empty output" in lowered or "returned no text" in lowered or "未返回文本" in text:
+        return True
+    if format_cli_empty_output_message(None).split(".")[0].lower() in lowered:
+        return True
+    return False

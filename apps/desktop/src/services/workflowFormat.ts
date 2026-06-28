@@ -22,6 +22,8 @@ export interface CompilerWorkflow {
   version: number;
   nodes: CompilerNode[];
   edges: CompilerEdge[];
+  icon?: string;
+  description?: string;
 }
 
 function slugId(name: string): string {
@@ -107,8 +109,8 @@ export function compilerToCanvas(workflow: CompilerWorkflow, icon = 'account_tre
     name: workflow.name,
     lastDeployed: '—',
     isActive: false,
-    icon,
-    description: '',
+    icon: workflow.icon ?? icon,
+    description: workflow.description ?? '',
     steps,
   };
 }
@@ -186,6 +188,8 @@ export function canvasToCompiler(
     version: base?.version ?? 1,
     nodes: [...agentNodes, endNode],
     edges,
+    icon: canvas.icon,
+    description: canvas.description,
   };
 }
 

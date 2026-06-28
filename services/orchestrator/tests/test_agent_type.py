@@ -92,3 +92,15 @@ def test_codex_cli_migration_and_resolution() -> None:
     assert agent_type_from_record({"agentType": "codex-cli"}) == "codex-cli"
     assert agent_type_from_record({"aiEngine": "OpenAI Codex CLI"}) == "codex-cli"
     assert not is_clutch_agent({"agentType": "codex-cli"})
+
+
+def test_resolve_model_for_agent_ignores_session_model_for_codex_cli() -> None:
+    router = LLMProviderRouter()
+    router._chat = lambda **_kwargs: "ok"  # type: ignore[method-assign]
+    router.set_active_model("agnes-image-2.1-flash")
+    agent = {"id": "agent-codex", "agentType": "codex-cli", "name": "Codex"}
+    spec, model_id = resolve_model_for_agent(
+        router, agent, session_model_id="agnes-image-2.1-flash"
+    )
+    assert model_id == "agnes-image-2.1-flash"
+    assert spec.id == "agnes-image-2.1-flash"

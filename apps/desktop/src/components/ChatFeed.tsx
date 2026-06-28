@@ -13,6 +13,7 @@ import { USER_CHAT_AVATAR, clutchStore } from '../services/clutchState';
 import { resolveBrandLogoSrc } from '../services/brandLogos';
 import {
   buildWorkflowReplyStepIndex,
+  isWorkflowRefineEligible,
   resolveInProgressWorkflowStep,
 } from '../services/workflowAgentSteps';
 import { BrandLogo } from './BrandLogo';
@@ -605,6 +606,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   }, [sessionRunId]);
 
   const isIdle = clutchStatus === 'idle';
+  const isRefining = isWorkflowRefineEligible(clutchStatus, activeWorkflowId);
   const isRunning = clutchStatus === 'running';
   const awaitingHuman = clutchStatus === 'awaiting_human';
   const isPlainLlmChat = isPlainLlmSession(selectedWorkflowId, activeWorkflowId);
@@ -722,24 +724,6 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
     observer.observe(dock);
     return () => observer.disconnect();
   }, [pendingMessages.length, shellSessionStatus, awaitingHuman, isRunning, isPlainLlmChat, showThinking]);
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      if (isRunning && isPlainLlmChat) return;
-      if (inputValue.trim()) {
-        onSendMessage(inputValue);
-        setInputValue('');
-      }
-    }
-  };
-
-  const handleSendClick = () => {
-    if (inputValue.trim()) {
-      onSendMessage(inputValue);
-      setInputValue('');
-    }
-  };
 
   const renderAgentLabel = (
     agent: string,
@@ -1041,7 +1025,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
         }}
         className="fixed bottom-8 flex justify-center px-6 z-40 transition-all duration-300 select-none"
       >
-        {isRunning && !awaitingHuman && !isPlainLlmChat ? (
+        {isRunning && !awaitingHuman && !isPlainLlmChat && !isRefining ? (
           <div className="w-full max-w-2xl bg-white border border-outline-variant p-3 shadow-xl rounded-xl flex items-center justify-between">
             <div className="flex items-center gap-3">
               <span className="relative flex h-2.5 w-2.5">
@@ -1157,6 +1141,8 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
               onPermissionModeChange={onPermissionModeChange ?? (() => {})}
               shellSessionStatus={shellSessionStatus}
               onDismissHybridNotice={() => clutchStore.clearShellSessionNotice()}
+              isFlowRefining={isRefining}
+              workflowAgents={workflowAgentSteps}
             />
           </div>
         )}

@@ -108,14 +108,40 @@ def _handle_agent_task(
         run_id=run_id,
         node_id=node_id,
     )
-    if is_workflow_cancelled(run_id):
-        raise WorkflowCancelled(f"Workflow {run_id} stopped by supervisor")
     task_logs = list(state.get("task_logs", []))
     task_messages = list(state.get("task_messages", []))
     task_logs.extend(result.logs)
     task_messages.append(result.message)
     node_outputs = dict(state.get("node_outputs") or {})
     node_outputs[node_id] = result.output
+    if result.failed:
+        from src.preferences_storage import tr
+        from src.workflow_cancel import WorkflowStepFailed
+
+        stop_line = tagged(
+            TAG_WORKFLOW,
+            tr(
+                f"Workflow stopped: step «{label or pending_agent}» failed — downstream steps skipped.",
+                f"工作流已停止：步骤「{label or pending_agent}」失败，后续步骤已跳过。",
+            ),
+        )
+        task_logs.append(stop_line)
+        _stream_compiler_log(state, stop_line, node_id=node_id)
+        emit_workflow_agent_step(
+            run_id,
+            {
+                "new_messages": [result.message],
+                "active_node_id": node_id,
+                "active_agent": result.agent,
+                "status": "failed",
+            },
+        )
+        raise WorkflowStepFailed(
+            run_id=run_id,
+            node_id=node_id,
+            agent=result.agent,
+            message=result.output,
+        )
     emit_workflow_agent_step(
         run_id,
         {
@@ -126,6 +152,8 @@ def _handle_agent_task(
             **(result.state_patch or {}),
         },
     )
+    if is_workflow_cancelled(run_id):
+        raise WorkflowCancelled(f"Workflow {run_id} stopped by supervisor")
     return {
         **state,
         "active_node_id": node_id,

@@ -47,6 +47,18 @@ class _FakeImageRouter:
 
 def test_execute_agent_task_uses_llm(monkeypatch) -> None:
     monkeypatch.setattr("src.models_config.get_router", lambda: _FakeRouter())
+
+    def fake_route_engine(**kwargs):
+        from src.engine_router import EngineResult
+
+        prompt = str(kwargs.get("prompt", ""))
+        return EngineResult(
+            engine="Test Model",
+            output=f"Done: {prompt[:40]}",
+            logs=["[ROUTER] mocked"],
+        )
+
+    monkeypatch.setattr("src.engine_router.route_engine", fake_route_engine)
     result = execute_agent_task(
         {"agent": "Builder", "label": "Setup", "instruction": "Create README"},
         instruction="",
@@ -230,8 +242,38 @@ def test_flow_llm_tool_claude_agent_attaches_hybrid_metadata(monkeypatch, tmp_pa
     assert persisted[-1].get("hybrid_executions")
 
 
-def test_flow_agy_stays_legacy_without_cli_session_persist(monkeypatch) -> None:
+def test_flow_agy_auth_failure_shows_terminal_login_hint(monkeypatch) -> None:
     monkeypatch.setenv("CLUTCH_RUNTIME_MODE", "hybrid")
+
+    def fake_route_engine(**kwargs):
+        raise RuntimeError("Authentication required. Please visit the URL to log in.")
+
+    monkeypatch.setattr("src.engine_router.route_engine", fake_route_engine)
+    monkeypatch.setattr(
+        "src.engine_router.find_agent",
+        lambda _ref: {
+            "id": "agent-agy",
+            "name": "1-Concept Architect",
+            "agentType": "antigravity-cli",
+            "markdownDoc": "Output JSON.",
+        },
+    )
+    monkeypatch.setattr("src.workspace.get_workspace", lambda: {"workspace_path": "/workspace"})
+
+    result = execute_agent_task(
+        {"agent": "agent-agy", "label": "Concept", "tool": "agy-cli"},
+        instruction="Test prompt",
+        run_id="run-flow-auth",
+        node_id="node-agy",
+    )
+
+    assert "`agy`" in result.output
+    assert "retry" in result.output.lower() or "重新运行" in result.output
+
+
+def test_flow_agy_uses_hybrid_and_persists_cli_session(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("CLUTCH_RUNTIME_MODE", "hybrid")
+    monkeypatch.setenv("CLUTCH_STORAGE_DIR", str(tmp_path))
     captured: dict[str, object] = {}
     persisted: list[dict] = []
 
@@ -240,26 +282,33 @@ def test_flow_agy_stays_legacy_without_cli_session_persist(monkeypatch) -> None:
         from src.engine_router import EngineResult
 
         return EngineResult(
-            engine="Antigravity CLI",
-            output="agy legacy reply",
-            logs=[],
+            engine="Antigravity CLI (Hybrid)",
+            output='{"world_background":"test"}',
+            logs=["[HYBRID] ok"],
             cli_session_id="agy-sess",
         )
 
     monkeypatch.setattr("src.engine_router.route_engine", fake_route_engine)
     monkeypatch.setattr(
         "src.engine_router.find_agent",
-        lambda _ref: {"id": "agent-agy", "name": "Agy", "agentType": "antigravity-cli"},
+        lambda _ref: {
+            "id": "agent-agy",
+            "name": "1-Concept Architect",
+            "agentType": "antigravity-cli",
+            "markdownDoc": "Output JSON only.",
+        },
     )
     monkeypatch.setattr("src.workspace.get_workspace", lambda: {"workspace_path": "/workspace"})
     monkeypatch.setattr("src.workflow_runtime.emit_workflow_agent_step", lambda *_args: persisted.append({}))
 
     execute_agent_task(
-        {"agent": "agent-agy", "label": "Run", "tool": "agy-cli"},
-        instruction="Do work",
+        {"agent": "agent-agy", "label": "Concept", "tool": "agy-cli"},
+        instruction="Dragon Boat Festival adventure",
         run_id="run-flow-agy",
         node_id="node-agy",
     )
 
+    assert captured.get("prompt") == "Dragon Boat Festival adventure"
+    assert "Output JSON only." in str(captured.get("system_prompt"))
     assert captured.get("cli_session_id") is None
-    assert persisted == []
+    assert persisted

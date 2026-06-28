@@ -2,10 +2,22 @@
 
 ## 当前状态
 
-- **阶段：** D25 Hybrid Runtime — **Codex CLI 接入 + 动态 Agent 类型已落地，待 UI 验收**
-- **Git HEAD：** `a75bf5d`
-- **下次优先：** 重启 orchestrator 后验收 Codex 单轮/多轮；Weather-to-Vision 工作流验收
+- **阶段：** D25 Hybrid Runtime + **Flow 精修（pause/refine/continue）已落地**
+- **Git HEAD：** （本 commit 后更新）
+- **下次优先：** 重启 orchestrator 后验收 Visual Narrative 全流程 + 完成后 `@Agent` 精修 + `/continue` 续跑
 - **验收期跳过：** MCP hybrid_executions 深度 UI · 2h/100+ 压测
+
+### 未 commit 工作
+
+（无 — 见本 commit）
+
+## 2026-06-28 会话 9（Flow 精修 + 节点 handoff 验收）
+
+- **Flow 精修 UX**：Stop 或工作流 `passed`/`failed` 后，`@` 弹出工作流 Agent 列表；`@Agent` + 反馈走 Hybrid（`flow_refine`）；`/continue` 提交修订并以 Legacy 续跑下游。
+- **后端**：`flow_refine.py`（mention 解析、session 重建、`final_image_prompt` 生图精修）；`main.py` 路由与 `_prepare_workflow_refine_state`；`refining` 状态与 `node_outputs` handoff。
+- **修复**：`close_stdin` 500、agy 空输出、多行 Claude Flow legacy 子进程、带空格 Agent 名 `@5-Visual Rendering Engine`、完成后消息仅记 `[USER]` 不进精修。
+- **文档**：`docs/PRODUCT_INTRO.md` §3.1 Multi-Agent / Chat Input 精修说明。
+- **验证**：`./scripts/verify.sh`（build + vitest + pytest）。
 
 ### HRT 进度快照
 
@@ -23,9 +35,11 @@
 | HRT-09 | ✅ | `7b62914` background hydrate |
 | HRT-10 | ✅ | POC #6/#10 pytest + verify script |
 
-### 未 commit 工作
+## 2026-06-28 会话 8（Flow Stop 按钮修复）
 
-（无 — 见本 commit）
+- **完成：**
+  - **Flow Stop 按钮无响应修复**：定位并修复了 Flow 工作流运行中点击 Stop 按钮无效的 Bug。根因是 `handleStopRun`（`App.tsx`）在所有情况下都先弹出 `window.confirm` 二次确认弹窗，而在 Tauri 桌面端 `window.confirm` 会阻塞 JS 主线程导致整个 React UI 冻住，用户感受为"按钮点不动"。切换一次对话再回来后 `highRiskConfirmed` 已被置为 `true` 才跳过弹窗直接停止。修复：Flow 工作流 Stop 直接发送 `stop_run` 无需二次确认；普通 LLM Chat Stop 保留一次性 confirm 防误触；同时在 `sessionRunId` 变化时重置 `highRiskConfirmed` 防跨会话状态泄漏。
+- **校验：** `pnpm build` 通过；vitest 33/33 通过
 
 ## 2026-06-28 会话 7（Codex CLI 接入 · 输出过滤 · 动态 Agent 类型）
 

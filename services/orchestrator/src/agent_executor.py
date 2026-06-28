@@ -16,6 +16,7 @@ class AgentTaskResult:
     logs: list[str]
     message: dict[str, Any]
     state_patch: dict[str, Any] | None = None
+    failed: bool = False
 
 
 def _agent_display_name(agent_dict: dict[str, Any] | None, fallback: str) -> str:
@@ -168,6 +169,7 @@ def execute_agent_task(
     output = ""
     state_patch: dict[str, Any] | None = None
     result_message: dict[str, Any] | None = None
+    task_failed = False
 
     if tool in {"claude-cli", "agy-cli", "agy", "antigravity-cli", "codex-cli", "codex", "aider-cli", "llm", "ollama", "ollama-cli", ""}:
         from src.agent_type import resolve_model_for_agent
@@ -249,11 +251,21 @@ def execute_agent_task(
                 message=chat_message(display_name, output),
             )
 
-        prompt = (
-            f"You are the {display_name} agent in a supervised software workflow.\n\n"
-            f"Task:\n{task_instruction}\n\n"
-            "Respond concisely with what you would do, files touched, and next steps."
-        )
+        prompt = task_instruction
+        system_prompt: str | None = None
+        if agent_dict:
+            from src.agent_prompt import compose_agent_system_prompt
+            from src.agent_type import resolve_model_for_agent
+
+            router = get_router()
+            spec, _model_id = resolve_model_for_agent(router, agent_dict)
+            system_prompt = compose_agent_system_prompt(
+                agent_dict,
+                model_name=spec.name,
+                model_api=spec.api_model,
+                mcp_servers_bound=False,
+                clutch_mcp_path=False,
+            )
         agent_id_for_session = _agent_id_for_session(agent_dict, agent_ref or agent)
         from src.agent_type import agent_type_from_record
 
@@ -268,6 +280,7 @@ def execute_agent_task(
             result = route_engine(
                 agent_name=agent_ref or agent,
                 prompt=prompt,
+                system_prompt=system_prompt,
                 cwd=cwd,
                 fallback_tool=tool,
                 cli_session_id=cli_session_id,
@@ -276,6 +289,37 @@ def execute_agent_task(
                 source="flow",
             )
             output = result.output
+            if not str(output or "").strip():
+                probe = str(result.raw_output or "").strip()
+                if probe:
+                    from src.claude_hybrid_output_parser import extract_tty_cli_output
+
+                    output = extract_tty_cli_output(probe) or probe
+            if resolved_agent_type:
+                from src.adapters.cli_adapter import (
+                    format_cli_login_retry_message,
+                    is_cli_auth_issue,
+                    is_formatted_login_retry_message,
+                )
+                from src.claude_hybrid_output_parser import extract_cli_issue_message
+
+                auth_probe = result.raw_output or output
+                if is_cli_auth_issue(auth_probe) and not is_formatted_login_retry_message(
+                    output
+                ):
+                    issue = extract_cli_issue_message(auth_probe) or ""
+                    output = format_cli_login_retry_message(
+                        resolved_agent_type,
+                        raw_message=issue,
+                    )
+                    auth_log = agent_line(
+                        agent_ref,
+                        "CLI sign-in required — complete auth in Terminal, then retry",
+                        label=label,
+                    )
+                    logs.append(auth_log)
+                    if run_id:
+                        stream_log(auth_log)
             for log_line in result.logs:
                 logs.append(with_agent_prefix(agent_ref, log_line, label=label))
             message = chat_message(display_name, output)
@@ -285,30 +329,60 @@ def execute_agent_task(
                 if result.raw_output:
                     message["rawOutput"] = result.raw_output
                 if result.output_events:
-                    message["outputEvents"] = result.output_events
+                    events = [dict(event) for event in result.output_events]
+                    for event in events:
+                        if (
+                            event.get("type") == "assistant"
+                            and event.get("visible", True) is not False
+                        ):
+                            event["content"] = output
+                    message["outputEvents"] = events
                 state_patch = {
                     "hybrid_executions": {
                         str(message["id"]): {
                             "rawOutput": result.raw_output,
-                            "outputEvents": result.output_events or [],
+                            "outputEvents": message.get("outputEvents") or [],
                         }
                     }
                 }
-            if resolved_agent_type in {"claude-cli", "antigravity-cli", "codex-cli", "aider-cli"} and run_id and result.cli_session_id:
-                from src.runtime_config import hybrid_eligible
-
-                if hybrid_eligible(source="flow", agent_type=resolved_agent_type):
-                    _persist_flow_cli_session(
-                        run_id,
-                        agent_id_for_session,
-                        result.cli_session_id,
-                        extra_patch=state_patch,
-                    )
+            if (
+                resolved_agent_type in {"claude-cli", "antigravity-cli", "codex-cli", "aider-cli"}
+                and run_id
+                and result.cli_session_id
+            ):
+                _persist_flow_cli_session(
+                    run_id,
+                    agent_id_for_session,
+                    result.cli_session_id,
+                    extra_patch=state_patch,
+                )
             result_message = message
         except Exception as exc:
-            output = f"Could not run task with {display_name}. ({exc})"
-            logs.append(agent_line(agent_ref, f"ERROR: {exc}", label=label))
-            result_message = chat_message(display_name, output)
+            from src.adapters.cli_adapter import (
+                format_cli_login_retry_message,
+                format_flow_cli_failure,
+                is_cli_auth_issue,
+            )
+
+            if resolved_agent_type and is_cli_auth_issue(str(exc)):
+                output = format_cli_login_retry_message(
+                    resolved_agent_type,
+                    raw_message=str(exc),
+                )
+                logs.append(
+                    agent_line(
+                        agent_ref,
+                        "CLI sign-in required — complete auth in Terminal, then retry",
+                        label=label,
+                    )
+                )
+                if run_id:
+                    stream_log(logs[-1])
+            else:
+                output = format_flow_cli_failure(display_name, resolved_agent_type, exc)
+                logs.append(agent_line(agent_ref, f"ERROR: {exc}", label=label))
+            result_message = chat_message(display_name, output, status="FAILED")
+            task_failed = True
     else:
         from src.mcp_storage import load_servers
         from src.workspace import get_workspace
@@ -382,10 +456,18 @@ def execute_agent_task(
     logs.append(agent_line(agent_ref, f"Output: {len(output)} chars", label=label))
     if run_id:
         stream_log(logs[-1])
+
+    from src.adapters.cli_adapter import is_agent_task_failure
+
+    failed = task_failed or is_agent_task_failure(output)
+    if failed and result_message and not result_message.get("status"):
+        result_message = {**result_message, "status": "FAILED"}
+
     return AgentTaskResult(
         agent=display_name,
         output=output,
         logs=logs,
-        message=result_message or chat_message(display_name, output),
+        message=result_message or chat_message(display_name, output, status="FAILED" if failed else None),
         state_patch=state_patch,
+        failed=failed,
     )

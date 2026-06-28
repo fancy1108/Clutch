@@ -90,7 +90,14 @@ export async function listWorkflowItems(): Promise<WorkflowListItem[]> {
   for (const id of users) {
     try {
       const wf = await loadUserWorkflow(id);
-      items.push({ id, name: wf.name, source: 'user', readOnly: false });
+      items.push({
+        id,
+        name: wf.name,
+        source: 'user',
+        readOnly: false,
+        icon: wf.icon,
+        description: wf.description,
+      });
     } catch {
       items.push({ id, name: id, source: 'user', readOnly: false });
     }

@@ -18,6 +18,8 @@
     },
     "name": { "type": "string", "minLength": 1 },
     "version": { "type": "integer", "minimum": 1 },
+    "icon": { "type": "string" },
+    "description": { "type": "string" },
     "nodes": {
       "type": "array",
       "minItems": 1,

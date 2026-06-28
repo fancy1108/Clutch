@@ -59,11 +59,11 @@ def test_try_shell_exec_hybrid_falls_back_on_failure(monkeypatch: pytest.MonkeyP
     assert any("fallback to legacy" in line for line in logs)
 
 
-def test_try_shell_exec_hybrid_skips_for_flow_source(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_try_shell_exec_hybrid_runs_for_flow_when_eligible(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("CLUTCH_RUNTIME_MODE", "hybrid")
 
     def hybrid() -> EngineResult:
-        raise AssertionError("hybrid should not run for flow")
+        return EngineResult(engine="Hybrid", output="x", logs=[])
 
     result = try_shell_exec_hybrid(
         agent_type="claude-cli",
@@ -72,9 +72,9 @@ def test_try_shell_exec_hybrid_skips_for_flow_source(monkeypatch: pytest.MonkeyP
         workspace_path="/tmp",
         provider_spec=None,
         hybrid_route=hybrid,
-        legacy_route=lambda: EngineResult(engine="Legacy", output="x", logs=[]),
+        legacy_route=lambda: EngineResult(engine="Legacy", output="y", logs=[]),
         logs=[],
         on_log=None,
         emit_log=lambda *_args: None,
     )
-    assert result.engine == "Legacy"
+    assert result.engine == "Hybrid"

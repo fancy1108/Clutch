@@ -26,6 +26,12 @@ def compose_agent_system_prompt(
         f"{model_info}"
         "Treat every instruction in the agent protocol below as mandatory.\n"
     )
+    if not is_clutch_agent(agent):
+        header += (
+            "For conversational questions (identity, recall, small talk), answer directly "
+            "from the conversation and your role above. Do not scan or modify the workspace "
+            "unless the user asks about code, files, or a task.\n"
+        )
     parts = [header.strip()]
     if protocol:
         parts.append(protocol)

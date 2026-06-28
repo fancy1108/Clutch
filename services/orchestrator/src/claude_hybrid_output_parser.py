@@ -43,6 +43,11 @@ _SHELL_LEAK_RE = re.compile(
     r"CLUTCH_P=|(?:claude|agy)\s+-p\b|dangerously-skip-permissions|__CLUTCH_",
     re.I,
 )
+_CODEX_STDERR_RE = re.compile(
+    r"(?:\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?\s+\w+\s+codex_core::|"
+    r"failed to load skill|missing field description)",
+    re.IGNORECASE,
+)
 _CODEX_TOKEN_COUNT_RE = re.compile(r"^[\d,]+$")
 _MARKER_LINE_PATTERNS: dict[str, re.Pattern[str]] = {}
 _CLI_ISSUE_LINE_MARKERS = (
@@ -51,7 +56,15 @@ _CLI_ISSUE_LINE_MARKERS = (
     "rate limit",
     "authentication required",
     "authentication timed out",
+    "please visit the url to log in",
+    "paste the authorization code",
+    "waiting for authentication",
+    "not signed in",
+    "not logged in",
+    "login required",
     "upgrade your subscription",
+    "timed out waiting for response",
+    "timed out waiting",
 )
 _QUOTA_MESSAGE_RE = re.compile(
     r"Individual quota reached\.[^\n]*(?:Resets in[^\n.]*)?",
@@ -171,6 +184,10 @@ def _is_noise_line(line: str) -> bool:
         return True
     if "identify yourself as" in lowered:
         return True
+    if "for conversational questions" in lowered:
+        return True
+    if "do not scan or modify the workspace" in lowered:
+        return True
     if lowered.startswith("runtime model:"):
         return True
     if "custom agent prompt" in lowered:
@@ -201,6 +218,8 @@ def _is_noise_line(line: str) -> bool:
         return True
     if clean.startswith("[Clutch session context]"):
         return True
+    if clean in ("{", "}", "},", "[", "]"):
+        return False
     if not re.search(r"[\w\u4e00-\u9fff]", clean):
         return True
     if re.fullmatch(r"[\d;]+", clean.strip()):
@@ -231,6 +250,8 @@ def _is_noise_line(line: str) -> bool:
         return True
     if "model metadata for" in lowered and "not found" in lowered:
         return True
+    if _CODEX_STDERR_RE.search(clean):
+        return True
     if clean.startswith("{") and '"type"' in clean:
         return True
     return False
@@ -243,6 +264,130 @@ def _sanitize_assistant(text: str) -> str:
     if _SHELL_LEAK_RE.search(cleaned):
         return ""
     return cleaned
+
+
+def _collapse_match_whitespace(text: str) -> str:
+    return re.sub(r"\s+", "", text)
+
+
+def extract_trailing_json_object(text: str) -> str | None:
+    """Return the last parseable JSON object in CLI PTY output (e.g. agy echo + JSON)."""
+    plain = _erase_backspaces(strip_ansi(text)).replace("\r", "")
+    start = plain.rfind("{")
+    while start >= 0:
+        depth = 0
+        for idx in range(start, len(plain)):
+            ch = plain[idx]
+            if ch == "{":
+                depth += 1
+            elif ch == "}":
+                depth -= 1
+                if depth == 0:
+                    candidate = plain[start : idx + 1]
+                    try:
+                        obj = json.loads(candidate)
+                    except json.JSONDecodeError:
+                        break
+                    if isinstance(obj, dict) and obj:
+                        return json.dumps(obj, ensure_ascii=False, indent=2)
+                    break
+        start = plain.rfind("{", 0, max(0, start - 1))
+    return None
+
+
+def _strip_echoed_protocol_lines(
+    assistant: str,
+    *,
+    system_prompt: str | None,
+    user_prompt: str | None,
+) -> str:
+    """Drop leading lines that match echoed system/user prompt (PTY whitespace tolerant)."""
+    sp_norm = _collapse_match_whitespace(system_prompt or "")
+    user_norm = _collapse_match_whitespace(user_prompt or "")
+    kept: list[str] = []
+    skipping = True
+    for line in assistant.splitlines():
+        clean = _normalize_output_line(line)
+        if not clean:
+            if not skipping:
+                kept.append(line)
+            continue
+        line_norm = _collapse_match_whitespace(clean)
+        if skipping:
+            if sp_norm and line_norm and line_norm in sp_norm:
+                continue
+            if user_norm and line_norm and line_norm in user_norm:
+                continue
+            if clean.lower().startswith("user request:"):
+                continue
+            if clean == "JSON":
+                continue
+            skipping = False
+        kept.append(line)
+    return "\n".join(kept).strip()
+
+
+def sanitize_assistant_cli_output(
+    assistant: str,
+    *,
+    raw_body: str = "",
+    system_prompt: str | None = None,
+    user_prompt: str | None = None,
+) -> str:
+    """Prefer structured CLI payload over echoed embedded prompts in chat UI."""
+    for source in (raw_body, assistant):
+        if not source.strip():
+            continue
+        json_payload = extract_trailing_json_object(source)
+        if json_payload:
+            return json_payload
+
+    text = strip_leading_embedded_prompt(
+        assistant,
+        system_prompt=system_prompt,
+        user_prompt=user_prompt,
+    )
+    text = _strip_echoed_protocol_lines(
+        text,
+        system_prompt=system_prompt,
+        user_prompt=user_prompt,
+    )
+    return strip_leading_embedded_prompt(
+        text,
+        system_prompt=system_prompt,
+        user_prompt=user_prompt,
+    ).strip()
+
+
+def strip_leading_embedded_prompt(
+    output: str,
+    *,
+    system_prompt: str | None = None,
+    user_prompt: str | None = None,
+) -> str:
+    """Remove CLI echo of embedded system/user prompt prefix from assistant-visible text."""
+    text = output.strip()
+    if not text:
+        return text
+
+    sp = (system_prompt or "").strip()
+    if sp:
+        if text.startswith(sp):
+            text = text[len(sp) :].lstrip()
+        elif sp in text:
+            # agy sometimes repeats the protocol before the actual answer
+            idx = text.find(sp)
+            if idx >= 0 and idx < min(200, len(text) // 2):
+                text = text[idx + len(sp) :].lstrip()
+
+    if user_prompt:
+        embedded_user = f"User Request:\n{user_prompt.strip()}"
+        if text.startswith(embedded_user):
+            text = text[len(embedded_user) :].lstrip()
+        elif text.startswith("User Request:"):
+            text = text.split("\n", 1)[-1].lstrip() if "\n" in text else ""
+
+    return text.strip()
 
 
 def _extract_shell_echo(text: str, *, marker: str) -> str | None:
@@ -371,6 +516,7 @@ class ClaudeHybridOutputParser:
         marker: str,
         shell_command: str | None = None,
         system_prompt: str | None = None,
+        user_prompt: str | None = None,
     ) -> HybridParseResult:
         events: list[OutputEvent] = []
         if marker not in raw:
@@ -396,6 +542,12 @@ class ClaudeHybridOutputParser:
             end = normalized.rfind(marker)
         body = _strip_shell_preamble(normalized[:end], marker=marker) if end >= 0 else ""
         assistant = _sanitize_assistant(_extract_assistant_lines(body))
+        assistant = sanitize_assistant_cli_output(
+            assistant,
+            raw_body=body,
+            system_prompt=parsed_prompt or system_prompt,
+            user_prompt=user_prompt,
+        )
         events.append(OutputEvent(type="boundary_marker", visible=False, content=marker))
         if assistant:
             events.append(OutputEvent(type="assistant", visible=True, content=assistant))

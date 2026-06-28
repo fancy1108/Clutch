@@ -20,6 +20,8 @@ def runtime_mode() -> RuntimeMode:
 
 def hybrid_eligible(*, source: str, agent_type: str) -> bool:
     """True when hybrid shell-exec is enabled for the given dispatch source."""
+    if source == "flow_refine" and agent_type == "claude-cli":
+        return True
     if runtime_mode() != "hybrid":
         return False
     if agent_type == "claude-cli":

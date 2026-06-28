@@ -66,6 +66,40 @@ def model_supports_tool_calling(spec: ModelSpec) -> bool:
         return ollama_model_supports_tools(spec.api_model)
     return True
 
+def _ollama_should_inline_transcript(model: str, messages: list[dict[str, str]]) -> bool:
+    """VL-tagged Ollama models often ignore multi-turn `messages` for text-only chat."""
+    if not any(m.get("role") == "assistant" for m in messages):
+        return False
+    lower = model.lower()
+    return "vl" in lower or "vision" in lower
+
+
+def _inline_ollama_transcript(messages: list[dict[str, str]]) -> list[dict[str, str]]:
+    """Fold prior turns into the last user message for models with weak chat-history support."""
+    if not messages:
+        return messages
+    system_msgs = [m for m in messages if m.get("role") == "system"]
+    conv = [m for m in messages if m.get("role") != "system"]
+    if not conv or conv[-1].get("role") != "user":
+        return messages
+    prior = conv[:-1]
+    if not prior:
+        return messages
+    lines: list[str] = []
+    for item in prior:
+        role = item.get("role", "user")
+        content = str(item.get("content", "")).strip()
+        if not content:
+            continue
+        label = "User" if role == "user" else "Assistant"
+        lines.append(f"{label}: {content}")
+    if not lines:
+        return messages
+    last = str(conv[-1].get("content", "")).strip()
+    inlined = f"[Conversation so far]\n" + "\n".join(lines) + f"\n\n[Current question]\n{last}"
+    return [*system_msgs, {"role": "user", "content": inlined}]
+
+
 def pick_best_ollama_model(models: list[str]) -> str:
     if not models:
         raise RuntimeError("No models found in Ollama. Please run `ollama pull <model>` first.")
@@ -141,6 +175,11 @@ def chat_ollama(
             formatted_messages.append({"role": "system", "content": system_prompt})
         formatted_messages.append({"role": "user", "content": prompt})
 
+    if _ollama_should_inline_transcript(selected_model, formatted_messages):
+        formatted_messages = _inline_ollama_transcript(formatted_messages)
+        if on_log:
+            on_log("[OLLAMA] Inlined conversation transcript for VL model multi-turn support")
+
     if on_log:
         user_turns = sum(1 for m in formatted_messages if m["role"] == "user")
         assistant_turns = sum(1 for m in formatted_messages if m["role"] == "assistant")
@@ -148,15 +187,16 @@ def chat_ollama(
             f"[OLLAMA] Conversation context: {user_turns} user + {assistant_turns} assistant message(s)"
         )
 
-    url = "http://localhost:11434/v1/chat/completions"
+    url = "http://localhost:11434/api/chat"
     body = {
         "model": selected_model,
         "messages": formatted_messages,
+        "stream": False,
     }
-    
+
     if on_log:
-        on_log("[OLLAMA] Sending request to Ollama chat completions endpoint...")
-        
+        on_log("[OLLAMA] Sending request to Ollama /api/chat endpoint...")
+
     req = urllib.request.Request(
         url,
         data=json.dumps(body).encode("utf-8"),
@@ -166,7 +206,11 @@ def chat_ollama(
     try:
         with urllib.request.urlopen(req, timeout=120.0) as resp:
             data = json.loads(resp.read().decode("utf-8"))
-            output = data["choices"][0]["message"]["content"]
+            message = data.get("message") if isinstance(data.get("message"), dict) else None
+            if message and message.get("content"):
+                output = str(message["content"])
+            else:
+                output = data["choices"][0]["message"]["content"]
             return selected_model, output
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace")[:500]

@@ -28,9 +28,11 @@ import { fetchShellSnapshots } from './services/shellSnapshotApi';
 import { listWorkflowItems, loadWorkflowById } from './services/workflowApi';
 import {
   findWorkflowStep,
+  shouldRouteWorkflowRefine,
   isWorkflowSystemAgent,
   orderedWorkflowAgentSteps,
   resolveInProgressWorkflowStep,
+  resolveWorkflowMentionAgentId,
   type WorkflowAgentStep,
 } from './services/workflowAgentSteps';
 import { isClutchAgentType, agentTypeFromAgent, agentTypeLabel } from './services/agentTypes';
@@ -939,6 +941,20 @@ function MainLayout() {
     if (!text.trim()) return;
     if (!workspace) {
       setWorkspacePickError(t('Select a project before starting a conversation.'));
+      return;
+    }
+    if (
+      clutchState.workflow_id
+      && shouldRouteWorkflowRefine(clutchState.status, clutchState.workflow_id, text)
+    ) {
+      setWorkspacePickError(null);
+      const mentionAgentId = resolveWorkflowMentionAgentId(
+        text,
+        workflowAgentSteps,
+        configuredAgents,
+      );
+      await submitChatMessage(text, mentionAgentId ?? clutchState.refine_agent_id ?? undefined);
+      await refreshSessions();
       return;
     }
     if (!isMultiAgent) {

@@ -13,6 +13,7 @@ from src.shell_exec_runtime import (
     _build_claude_shell_cmd,
     assert_no_interactive_command,
     extract_claude_output,
+    run_agy_turn,
     run_claude_turn,
 )
 def test_interactive_command_blocked() -> None:
@@ -159,3 +160,80 @@ def test_run_claude_turn_writes_blocked_audit(
     assert len(lines) == 1
     assert lines[0]["result"] == "blocked"
     assert lines[0]["duration_ms"] == 0
+
+
+def test_run_agy_turn_surfaces_auth_without_protocol_echo(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session = _FakeSession()
+    marker = "__CLUTCH_DONE_aabbccdd__"
+    protocol = (
+        "你是一位资深的世界观架构师。你的任务是接收用户输入的初始灵感。\n"
+        "工作流要求：必须且只能输出合法的 JSON 格式。"
+    )
+
+    class _FixedUuid:
+        hex = "aabbccdd" + "0" * 24
+
+    monkeypatch.setattr("src.shell_exec_runtime.uuid.uuid4", lambda: _FixedUuid())
+
+    def fake_read_until_marker(_fd: int, _marker: str, *, max_wait_s: float) -> str:
+        return (
+            f"CLUTCH_P='{protocol}'; agy -p \"$CLUTCH_P\"; echo {marker}\n"
+            f"{protocol}\n"
+            "Authentication required. Please visit the URL to log in.\n"
+            f"{marker}\nclutch$ "
+        )
+
+    monkeypatch.setattr("src.shell_exec_runtime.write_line", lambda *_args: None)
+    monkeypatch.setattr("src.shell_exec_runtime.read_until_marker", fake_read_until_marker)
+
+    result = run_agy_turn(
+        session,  # type: ignore[arg-type]
+        prompt="端午节奇幻冒险",
+        agy_binary="/opt/homebrew/bin/agy",
+        timeout_s=5.0,
+        system_prompt=protocol,
+    )
+    assert "世界观架构师" not in result.stdout
+    assert "not signed in" in result.stdout.lower() or "未登录" in result.stdout
+    assert result.output_events
+    assert "世界观架构师" not in str(result.output_events[0].get("content", ""))
+
+
+def test_hybrid_pty_shell_command_risky_detects_flow_scriptwriter_payload() -> None:
+    from src.shell_exec_runtime import hybrid_pty_shell_command_risky
+
+    step1_json = (
+        '{\n  "world_background": "端阳仙境",\n'
+        '  "protagonist_design": "阿包",\n'
+        '  "core_conflict": "龙舟赛"\n}'
+    )
+    task = f"承接上游结构化数据，撰写具有强画面感的故事文本。\n\n{step1_json}"
+    system_prompt = (
+        "You are 2-Scriptwriter, the active agent in the user's Clutch workspace.\n"
+        "Treat every instruction in the agent protocol below as mandatory.\n\n"
+        "你是一位金牌编剧。\n\n"
+        "必须且只能输出合法的 JSON 格式。\n"
+    )
+    assert hybrid_pty_shell_command_risky(
+        agent_type="claude-cli",
+        binary="claude",
+        prompt=task,
+        system_prompt=system_prompt,
+        conversation_mode="separate",
+        extra_args=["--dangerously-skip-permissions"],
+    )
+
+
+def test_hybrid_pty_shell_command_risky_allows_short_plain_chat() -> None:
+    from src.shell_exec_runtime import hybrid_pty_shell_command_risky
+
+    assert not hybrid_pty_shell_command_risky(
+        agent_type="claude-cli",
+        binary="claude",
+        prompt="你好",
+        system_prompt="You are helpful.",
+        conversation_mode="separate",
+        extra_args=["--dangerously-skip-permissions"],
+    )

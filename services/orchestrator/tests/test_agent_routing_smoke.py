@@ -101,7 +101,7 @@ def test_ollama_receives_full_context(monkeypatch) -> None:
     def mock_urlopen(req, timeout=None):
         payload = json.loads(req.data.decode("utf-8"))
         captured["messages"] = payload["messages"]
-        body = {"choices": [{"message": {"role": "assistant", "content": "你上句说的是上海天气"}}]}
+        body = {"message": {"role": "assistant", "content": "你上句说的是上海天气"}}
         return MockHTTPResponse(json.dumps(body).encode("utf-8"))
 
     monkeypatch.setattr("urllib.request.urlopen", mock_urlopen)
@@ -117,9 +117,11 @@ def test_ollama_receives_full_context(monkeypatch) -> None:
         ],
     )
     messages = captured["messages"]
-    assert messages[1]["content"] == "上海今天天气怎么样"
-    assert messages[2]["content"] == "无法获取实时天气"
-    assert messages[-1]["content"] == "我上句话说了什么"
+    assert messages[0]["role"] == "system"
+    assert "[Conversation so far]" in messages[-1]["content"]
+    assert "上海今天天气怎么样" in messages[-1]["content"]
+    assert "无法获取实时天气" in messages[-1]["content"]
+    assert "我上句话说了什么" in messages[-1]["content"]
     assert "上海" in output or "天气" in output
 
 

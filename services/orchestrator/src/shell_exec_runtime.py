@@ -9,7 +9,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Literal
 
-from src.adapters.cli_adapter import format_cli_issue_for_user
+from src.adapters.cli_adapter import format_cli_issue_for_user, is_cli_auth_issue
 from src.claude_hybrid_output_parser import (
     ClaudeHybridOutputParser,
     extract_cli_issue_message,
@@ -35,6 +35,14 @@ from src.shell_session import (
 )
 
 _INTERACTIVE_RE = re.compile(r"\b(vim|nano|less|more|top|htop|ssh)\b", re.I)
+
+_HYBRID_AGENT_TYPES: dict[str, str] = {
+    "agy": "antigravity-cli",
+    "antigravity": "antigravity-cli",
+    "claude": "claude-cli",
+    "codex": "codex-cli",
+    "aider": "aider-cli",
+}
 
 
 class InteractiveCommandBlocked(ShellSessionError):
@@ -152,6 +160,7 @@ def _execute_hybrid_turn(
     turn_id: str,
     timeout_s: float,
     system_prompt: str | None,
+    user_prompt: str | None = None,
     cli_session_id: str | None,
     on_lock_wait: Callable[[], None] | None = None,
     use_codex_parser: bool = False,
@@ -190,11 +199,31 @@ def _execute_hybrid_turn(
                 marker=marker,
                 shell_command=cmd,
                 system_prompt=system_prompt,
+                user_prompt=user_prompt,
             )
+            issue = extract_cli_issue_message(raw)
+            if issue and is_cli_auth_issue(issue):
+                formatted = format_cli_issue_for_user(
+                    issue,
+                    agent_type=_HYBRID_AGENT_TYPES.get(agent),
+                )
+                result = "ok"
+                message = f"hybrid {agent} turn surfaced cli auth marker={marker}"
+                return ShellExecResult(
+                    stdout=formatted,
+                    logs=[f"[HYBRID] {agent} exec in shell session {run_id}"],
+                    cli_session_id=cli_session_id,
+                    raw_output=raw,
+                    output_events=[
+                        {"type": "assistant", "visible": True, "content": formatted},
+                    ],
+                )
             if not parsed.assistant:
-                issue = extract_cli_issue_message(raw)
                 if issue:
-                    formatted = format_cli_issue_for_user(issue)
+                    formatted = format_cli_issue_for_user(
+                        issue,
+                        agent_type=_HYBRID_AGENT_TYPES.get(agent),
+                    )
                     result = "ok"
                     message = f"hybrid {agent} turn surfaced cli issue marker={marker}"
                     return ShellExecResult(
@@ -226,7 +255,18 @@ def _execute_hybrid_turn(
                     )
                 result = "empty"
                 message = f"hybrid {agent} turn produced empty stdout"
-                raise ShellSessionError(message)
+                from src.adapters.cli_adapter import format_cli_empty_output_message
+
+                empty_msg = format_cli_empty_output_message(_HYBRID_AGENT_TYPES.get(agent))
+                return ShellExecResult(
+                    stdout=empty_msg,
+                    logs=[f"[HYBRID] {agent} exec in shell session {run_id}", f"[HYBRID] {message}"],
+                    cli_session_id=cli_session_id,
+                    raw_output=raw,
+                    output_events=[
+                        {"type": "assistant", "visible": True, "content": empty_msg},
+                    ],
+                )
             result = "ok"
             message = f"hybrid {agent} turn ok marker={marker}"
             return ShellExecResult(
@@ -291,7 +331,7 @@ def _build_generic_cli_shell_cmd(
     close_stdin: bool = False,
 ) -> str:
     effective = prompt
-    if prepend_system_prompt and system_prompt:
+    if system_prompt and prepend_system_prompt:
         effective = f"{system_prompt}\n\nUser Request:\n{prompt}"
 
     parts: list[str] = [binary]
@@ -326,6 +366,43 @@ def _build_generic_cli_shell_cmd(
         f"{line}; "
         f"echo {marker}"
     )
+
+
+# Interactive bash PTY treats embedded newlines as multiple submissions; claude -p then
+# never reaches the completion marker (see Flow step-2 Scriptwriter with upstream JSON).
+HYBRID_PTY_MULTILINE_LINE_THRESHOLD = 10
+
+
+def hybrid_pty_shell_command_risky(
+    *,
+    agent_type: str,
+    binary: str,
+    prompt: str,
+    system_prompt: str | None = None,
+    conversation_mode: str = "separate",
+    extra_args: list[str] | None = None,
+    prepend_system_prompt: bool = False,
+    prompt_flag: str = "-p",
+    supports_append_system_prompt: bool = True,
+    close_stdin: bool = False,
+) -> bool:
+    """True when a hybrid shell line is too multiline for reliable PTY capture."""
+    if agent_type.replace("-cli", "") != "claude":
+        return False
+    cmd = _build_generic_cli_shell_cmd(
+        binary=binary,
+        prompt=prompt,
+        marker="__CLUTCH_PROBE__",
+        new_session_id="probe",
+        system_prompt=system_prompt,
+        conversation_mode=conversation_mode,
+        extra_args=extra_args,
+        prepend_system_prompt=prepend_system_prompt,
+        prompt_flag=prompt_flag,
+        supports_append_system_prompt=supports_append_system_prompt,
+        close_stdin=close_stdin,
+    )
+    return cmd.count("\n") > HYBRID_PTY_MULTILINE_LINE_THRESHOLD
 
 
 def run_generic_cli_turn(
@@ -415,6 +492,7 @@ def run_generic_cli_turn(
         turn_id=turn_id,
         timeout_s=timeout_s,
         system_prompt=system_prompt,
+        user_prompt=effective_prompt,
         cli_session_id=conv_id,
         on_lock_wait=on_lock_wait,
         use_codex_parser=_is_codex_binary(binary),

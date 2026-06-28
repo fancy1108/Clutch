@@ -78,6 +78,7 @@ const zhTranslations: Record<string, string> = {
   "Activate Mode": "Activate Mode / 激活 Model / 模型",
 
   // Chat placeholders / messages
+  "@Agent your feedback (Hybrid) — /continue to resume flow": "@Agent 反馈修改意见（Hybrid）— 发送 /continue 继续工作流",
   "Ask @Builder, @Orchestrator or trigger @Workflow...": "咨询 @Builder / 构建器, @Orchestrator / 编排器 或触发 @Workflow / 工作流...",
   "Ask your AI Agent anything...": "咨询您的 AI Agent / 智能体 任何问题...",
   "View execution details": "查看底层执行细节 / View execution details",
@@ -109,6 +110,9 @@ const zhTranslations: Record<string, string> = {
   "Manage agents...": "管理 Agent...",
   "No models configured": "暂无已配置模型",
   "View workflow": "查看工作流",
+  "Edit workflow": "编辑工作流",
+  "Edit Workflow": "编辑工作流",
+  "Create New Workflow": "创建新工作流",
   "Delete workflow": "删除工作流",
   "Empty workflow — click Add Node to begin": "空工作流 — 点击 Add Node 开始编排",
   "Describe what you want this workflow to do...": "描述你希望此 Workflow / 工作流 完成的任务…",

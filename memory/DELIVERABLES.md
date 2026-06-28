@@ -71,6 +71,22 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ## 已交付（代码 Task · 自 Git 回填）
 
+### FLOW-REFINE ✅
+- **日期：** 2026-06-28
+- **Commit：** `<pending>` — `feat(flow): pause/refine/continue after workflow with @agent hybrid`
+- **Verification：** `./scripts/verify.sh` → build + vitest 33 + pytest（含 `test_flow_refine.py` 11、`test_visual_narrative_flow.py`）
+- **证据：** `—`（门禁已覆盖）
+- **交付文件：**
+  - `services/orchestrator/src/flow_refine.py` — `@` mention 解析、session 重建、`final_image_prompt` 生图精修、`/continue` 续跑
+  - `services/orchestrator/src/main.py` — `refining` 状态、`_prepare_workflow_refine_state`、完成后精修路由
+  - `services/orchestrator/src/runtime_config.py` — `flow_refine` Hybrid 资格
+  - `packages/shared-types/index.ts` — `refining` 状态与 refine 字段
+  - `apps/desktop/src/components/ChatInputBar.tsx` — 精修模式 `@` Agent 选择器
+  - `apps/desktop/src/components/ChatFeed.tsx` · `App.tsx` — `isWorkflowRefineEligible` / `shouldRouteWorkflowRefine`
+  - `apps/desktop/src/services/workflowAgentSteps.ts` — 带空格 Agent 名 mention 解析
+  - `docs/PRODUCT_INTRO.md` — §3.1 精修 UX 产品说明
+  - `services/orchestrator/tests/test_flow_refine.py` — 精修单测
+
 ### SIDEBAR-GROUP-ICONS-REDESIGN ✅
 - **日期：** 2026-06-28
 - **Commit：** `e7bee5f` — `style(design): redesign repository group icons and support open/collapsed states`

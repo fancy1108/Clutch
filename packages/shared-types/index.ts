@@ -3,7 +3,7 @@
 export type RunStatus = 'failed' | 'running' | 'passed';
 
 /** Sidecar run status including human-gate pause and pre-run idle. */
-export type ClutchRunStatus = RunStatus | 'awaiting_human' | 'idle';
+export type ClutchRunStatus = RunStatus | 'awaiting_human' | 'refining' | 'idle';
 
 export type AgentRole = 'Orchestrator' | 'Builder' | 'Evaluator' | 'Supervisor';
 
@@ -132,6 +132,11 @@ export interface ClutchState {
   hybrid_executions?: Record<string, HybridExecutionPayload>;
   /** Long-lived bash PTY status for hybrid runtime (ready / recovering). */
   shell_session_status?: string;
+  /** Workflow node under human refine after pause. */
+  refining_node_id?: string;
+  /** Latest agent draft while refining (committed on /continue). */
+  refine_draft_output?: string;
+  refine_agent_id?: string;
   /** @deprecated use cli_session_id — still read from older persisted runs */
   claude_session_id?: string;
   /** @deprecated use cli_session_agent_id */

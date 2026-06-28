@@ -262,10 +262,6 @@ def _touch_session(
 
 
 def _apply_workflow_step_patch(run_id: str, patch: dict[str, Any]) -> None:
-    from src.workflow_cancel import is_workflow_cancelled
-
-    if is_workflow_cancelled(run_id):
-        return
     state = _get_or_create_run(run_id)
     messages = list(state["messages"])
     new_messages: list[dict[str, Any]] = []
@@ -305,8 +301,98 @@ def _apply_workflow_step_patch(run_id: str, patch: dict[str, Any]) -> None:
             )
 
 
+def _apply_workflow_refining_pause(
+    run_id: str,
+    session: WorkflowSession,
+    *,
+    prepend_log: bool = True,
+) -> ClutchState:
+    from src.flow_refine import compiler_snapshot_values, infer_refining_node_id, pause_log_line
+    from src.runtime_config import runtime_mode
+
+    state = _get_or_create_run(run_id)
+    compiler_values = compiler_snapshot_values(session)
+    refining_node_id = infer_refining_node_id(
+        clutch_active_node_id=str(state.get("active_node_id", "")),
+        compiler_values=compiler_values,
+    )
+    messages = list(state.get("messages") or [])
+    for message in compiler_values.get("task_messages") or []:
+        if not isinstance(message, dict):
+            continue
+        msg_id = str(message.get("id", ""))
+        if msg_id and any(str(item.get("id", "")) == msg_id for item in messages):
+            continue
+        messages.append(message)
+    logs = list(state["terminal_logs"])
+    pause_line = pause_log_line()
+    if prepend_log and not any(pause_line in line for line in logs[-5:]):
+        logs.append(stamp_log_line(pause_line))
+    patch: dict[str, Any] = {
+        "status": "refining",
+        "refining_node_id": refining_node_id,
+        "messages": messages,
+        "terminal_logs": logs,
+    }
+    if runtime_mode() == "hybrid":
+        patch["shell_session_status"] = "ready"
+    state = _merge_patch(state, patch)
+    _commit_run_state(run_id, state)
+    _touch_session(run_id, status="refining")
+    return state
+
+
+def _prepare_workflow_refine_state(
+    run_id: str,
+    state: ClutchState,
+    *,
+    target_agent_id: str | None = None,
+    prepend_log: bool = True,
+) -> ClutchState:
+    from src.flow_refine import (
+        ensure_workflow_session_for_refine,
+        infer_refining_node_id,
+        workflow_node_id_for_agent,
+    )
+
+    session = ensure_workflow_session_for_refine(run_id, state, sessions=_run_sessions)
+    if session is None:
+        return state
+    if state.get("status") == "refining" and not target_agent_id:
+        return state
+
+    if state.get("status") != "refining":
+        state = _apply_workflow_refining_pause(run_id, session, prepend_log=prepend_log)
+
+    refining_node_id = str(state.get("refining_node_id") or "").strip()
+    if target_agent_id:
+        node_from_agent = workflow_node_id_for_agent(session.workflow, target_agent_id)
+        if node_from_agent:
+            refining_node_id = node_from_agent
+            patch = {"refining_node_id": refining_node_id}
+            state = _merge_patch(state, patch)
+            _commit_run_state(run_id, state)
+    elif not refining_node_id:
+        compiler_values = session.compiled.get_state(session.config).values or {}
+        refining_node_id = infer_refining_node_id(
+            clutch_active_node_id=str(state.get("active_node_id") or ""),
+            compiler_values=dict(compiler_values),
+        )
+        if refining_node_id:
+            state = _merge_patch(state, {"refining_node_id": refining_node_id})
+            _commit_run_state(run_id, state)
+    return state
+
+
 def _run_workflow(run_id: str, workflow_id: str, instruction: str) -> ClutchState:
-    from src.workflow_cancel import WorkflowCancelled, clear_workflow_cancel, is_workflow_cancelled
+    from src.compiler import (
+        WorkflowSession,
+        compile_workflow,
+        initial_compiler_state,
+        is_awaiting_human_gate,
+        workflow_run_config,
+    )
+    from src.workflow_cancel import WorkflowCancelled, clear_workflow_cancel, is_workflow_cancelled, WorkflowStepFailed
 
     clear_workflow_cancel(run_id)
     _setup_run_log_forwarder(run_id)
@@ -345,18 +431,52 @@ def _run_workflow(run_id: str, workflow_id: str, instruction: str) -> ClutchStat
         node_id="start",
     )
     cancelled = False
-    session = None
+    session: WorkflowSession | None = None
     graph_result = None
+    compiled = compile_workflow(workflow)
+    config = workflow_run_config(run_id)
+    session = WorkflowSession(compiled=compiled, config=config, workflow=workflow)
+    _run_sessions[run_id] = session
+    graph_state = initial_compiler_state(run_id, instruction=instruction)
+    if instruction.strip() and not graph_state.get("current_instruction"):
+        graph_state = {**graph_state, "current_instruction": instruction.strip()}
     try:
         try:
-            session, graph_result = begin_workflow(workflow, run_id, instruction=instruction)
+            graph_result = compiled.invoke(graph_state, config)
+            if is_awaiting_human_gate(compiled, config, workflow):
+                gate_id = next(iter(compiled.get_state(config).next))
+                graph_result = {
+                    **graph_result,
+                    "active_node_id": gate_id,
+                    "active_agent": "Supervisor",
+                    "status": "awaiting_human",
+                }
         except WorkflowCancelled:
+            return _apply_workflow_refining_pause(run_id, session)
+        except WorkflowStepFailed as exc:
             state = _get_or_create_run(run_id)
-            if state.get("status") != "failed":
-                logs = list(state["terminal_logs"])
-                logs.append(stamp_log_line(tagged(TAG_WORKFLOW, "Run stopped by supervisor.")))
-                state = _merge_patch(state, {"status": "failed", "terminal_logs": logs})
-                _commit_run_state(run_id, state)
+            logs = list(state["terminal_logs"])
+            logs.append(
+                stamp_log_line(
+                    tagged(
+                        TAG_WORKFLOW,
+                        tr(
+                            f"Workflow stopped at {exc.agent}: downstream steps skipped.",
+                            f"工作流在 {exc.agent} 处停止：后续步骤已跳过。",
+                        ),
+                    )
+                )
+            )
+            state = _merge_patch(
+                state,
+                {
+                    "status": "failed",
+                    "terminal_logs": logs,
+                    "active_node_id": exc.node_id,
+                    "active_agent": exc.agent,
+                },
+            )
+            _commit_run_state(run_id, state)
             _touch_session(run_id, status="failed")
             return state
         finally:
@@ -367,10 +487,12 @@ def _run_workflow(run_id: str, workflow_id: str, instruction: str) -> ClutchStat
 
     if cancelled:
         state = _get_or_create_run(run_id)
-        _touch_session(run_id, status=str(state.get("status", "failed")))
+        if state.get("status") != "refining" and session is not None:
+            return _apply_workflow_refining_pause(run_id, session)
+        _touch_session(run_id, status=str(state.get("status", "refining")))
         return state
 
-    _run_sessions[run_id] = session
+    assert session is not None and graph_result is not None
     _emit_workflow_graph_tail(run_id, graph_result)
     from src.workflow_projection import project_graph_to_clutch
 
@@ -915,6 +1037,8 @@ async def _llm_chat_reply(
     mcp_approved_tool: dict[str, Any] | None = None,
     mcp_resume: dict[str, Any] | None = None,
     isolate_cli_history: bool = False,
+    chat_source: str = "plain_chat",
+    system_prompt_suffix: str = "",
 ) -> tuple[str, str, str, list[str], str | None, dict[str, Any] | None, list[str], str | None, list[dict[str, Any]] | None, bool]:
     from src.agent_storage import BUILTIN_AGENT_ID, get_agent_by_id
     from src.engine_router import route_engine
@@ -927,23 +1051,49 @@ async def _llm_chat_reply(
     reply_label = str(agent.get("name", "Clutch Agent")) if agent else (state.get("active_agent") or "Builder")
 
     router = get_router()
-    from src.agent_type import resolve_model_for_agent
+    from src.agent_type import agent_type_from_record, is_clutch_agent, resolve_model_for_agent
 
+    uses_clutch_model = is_clutch_agent(agent)
     model, resolved_model_id = resolve_model_for_agent(
-        router, agent, session_model_id=session_model_id
+        router,
+        agent,
+        session_model_id=session_model_id if uses_clutch_model else None,
     )
-    runtime_model_name = model.name
-    model_api = getattr(model, "api_model", None) or runtime_model_name
+    if uses_clutch_model:
+        runtime_model_name = model.name
+        model_api = getattr(model, "api_model", None) or runtime_model_name
+    else:
+        runtime_model_name = str(agent.get("name", reply_label)) if agent else reply_label
+        model_api = agent_type_from_record(agent) if agent else "cli"
     from src.adapters.ollama_adapter import model_supports_vision
 
-    vision_enabled = model_supports_vision(model)
+    if uses_clutch_model:
+        vision_enabled = model_supports_vision(model)
+    elif agent and agent_type_from_record(agent) == "ollama-cli":
+        from src.llm.router import ModelSpec
+
+        tag = str(agent.get("ollamaModel", "")).strip()
+        if tag:
+            vision_enabled = model_supports_vision(
+                ModelSpec(
+                    id=tag,
+                    name=tag,
+                    provider_id="ollama",
+                    api_model=tag,
+                    base_url="http://localhost:11434/v1",
+                )
+            )
+        else:
+            vision_enabled = False
+    else:
+        vision_enabled = False
 
     from src.image_router import format_image_reply, generate_image_for_model, is_image_model
     from src.chat_content import extract_image_data_urls
 
     _plain, attached_images = extract_image_data_urls(text)
 
-    if is_image_model(model):
+    if uses_clutch_model and is_image_model(model):
         if attached_images:
             err = (
                 "This model only generates images and cannot read uploaded screenshots. "
@@ -1006,6 +1156,8 @@ async def _llm_chat_reply(
         if agent
         else None
     )
+    if system_prompt_suffix.strip():
+        system_prompt = (system_prompt or "") + system_prompt_suffix
 
     history = _history_for_llm(
         state["messages"],
@@ -1134,7 +1286,7 @@ async def _llm_chat_reply(
             cli_session_id=cli_session_id,
             on_log=on_log if emit_log else None,
             run_id=state.get("run_id"),
-            source="plain_chat",
+            source=chat_source,
             session_model_id=session_model_id,
         )
         return (
@@ -1743,12 +1895,309 @@ async def _handle_plain_chat(
 
 
 
+async def _commit_flow_refine_and_continue(
+    websocket: WebSocket,
+    run_id: str,
+    state: ClutchState,
+) -> ClutchState:
+    from src.flow_refine import continue_workflow_after_refine
+    from src.workflow_projection import project_graph_to_clutch
+    from src.workflow_runtime import clear_workflow_step_callback, register_workflow_step_callback
+
+    session = _run_sessions.get(run_id)
+    node_id = str(state.get("refining_node_id") or state.get("active_node_id") or "").strip()
+    output = str(state.get("refine_draft_output") or "").strip()
+    if not output:
+        for message in reversed(state["messages"]):
+            if message.get("agent") == "User":
+                continue
+            text = str(message.get("text", "")).strip()
+            if text:
+                output = text
+                break
+    if not session or not node_id or not output:
+        supervisor = _chat_message(
+            "Supervisor",
+            tr(
+                "Cannot resume: refine an agent output first (@Agent feedback), then send /continue.",
+                "无法继续：请先 @ Agent 给出修改意见，再发送 /continue。",
+            ),
+        )
+        messages = list(state["messages"]) + [supervisor]
+        patch = {"messages": messages}
+        state = _merge_patch(state, patch)
+        _commit_run_state(run_id, state)
+        await _send_message_event(websocket, run_id, supervisor, node_id)
+        await _notify_run_state(websocket, run_id, state, patch)
+        return state
+
+    register_workflow_step_callback(run_id, lambda patch: _apply_workflow_step_patch(run_id, patch))
+    try:
+        graph_result = await asyncio.to_thread(
+            continue_workflow_after_refine,
+            session,
+            node_id=node_id,
+            node_output=output,
+        )
+    finally:
+        clear_workflow_step_callback(run_id)
+
+    _emit_workflow_graph_tail(run_id, graph_result)
+    workflow, _ = resolve_workflow(str(state.get("workflow_id") or ""))
+    supervisor = _chat_message(
+        "Supervisor",
+        tr(
+            "Refine committed — continuing workflow with legacy step execution.",
+            "精修已提交 — 后续步骤将以 Legacy 模式继续执行。",
+        ),
+    )
+    messages = list(state["messages"]) + [supervisor]
+    base_patch = project_graph_to_clutch(
+        state,
+        graph_result,
+        workflow=workflow,
+        instruction=str(state.get("current_instruction") or ""),
+        include_logs=False,
+    )
+    patch: dict[str, Any] = {
+        **base_patch,
+        "messages": messages,
+        "refining_node_id": "",
+        "refine_draft_output": "",
+        "refine_agent_id": "",
+    }
+    state = _merge_patch(state, patch)
+    _commit_run_state(run_id, state)
+    _touch_session(run_id, status=state["status"])
+    await _send_message_event(websocket, run_id, supervisor, node_id)
+    await _notify_run_state(websocket, run_id, state, patch)
+    if state["status"] == "awaiting_human":
+        await _send_human_required(
+            websocket,
+            run_id,
+            node_id=state["active_node_id"],
+            prompt=tr("Checks failed, waiting for human confirmation.", "检查未通过，等待人工确认。"),
+        )
+    return state
+
+
+async def _handle_flow_refine_message(
+    websocket: WebSocket,
+    run_id: str,
+    state: ClutchState,
+    text: str,
+    agent_id: str | None = None,
+) -> ClutchState:
+    from src.agent_storage import get_agent_by_id
+    from src.engine_router import find_agent
+    from src.flow_refine import (
+        build_refine_system_appendix,
+        is_continue_command,
+        node_output_for_refine,
+        parse_agent_mention,
+        resolve_image_refine_prompt,
+        workflow_node_label,
+    )
+    from src.hybrid_concurrency import HybridPlainChatRejected
+    from src.runtime_config import runtime_mode
+    from src.state import cli_session_patch, read_cli_session_agent_id, read_cli_session_id
+
+    if is_continue_command(text):
+        state = _prepare_workflow_refine_state(run_id, state, prepend_log=False)
+        return await _commit_flow_refine_and_continue(websocket, run_id, state)
+
+    session = _run_sessions.get(run_id)
+    workflow = session.workflow if session else None
+    mention_name, body = parse_agent_mention(text, workflow=workflow)
+    resolved_id = (agent_id or "").strip()
+    if mention_name:
+        matched = find_agent(mention_name)
+        if matched:
+            resolved_id = str(matched.get("id", "")).strip()
+    if not resolved_id:
+        resolved_id = str(state.get("refine_agent_id") or "").strip()
+    if resolved_id:
+        state = _prepare_workflow_refine_state(
+            run_id,
+            state,
+            target_agent_id=resolved_id,
+            prepend_log=state.get("status") != "refining",
+        )
+    if not resolved_id or not (body or text.strip()):
+        supervisor = _chat_message(
+            "Supervisor",
+            tr(
+                "Refine mode: type @AgentName then your feedback (Hybrid). Send /continue when satisfied.",
+                "精修模式：输入 @Agent名称 和修改意见（Hybrid）。满意后发送 /continue 继续工作流。",
+            ),
+        )
+        messages = list(state["messages"]) + [supervisor]
+        patch = {"messages": messages}
+        state = _merge_patch(state, patch)
+        await _send_message_event(websocket, run_id, supervisor, state.get("active_node_id", ""))
+        await _notify_run_state(websocket, run_id, state, patch)
+        return state
+
+    agent = get_agent_by_id(resolved_id)
+    active_agent = str(agent.get("name", "Agent")) if agent else mention_name or "Agent"
+    user_message = _chat_message("User", text, msg_id=f"user_{uuid.uuid4().hex[:8]}")
+    messages = list(state["messages"]) + [user_message]
+    user_patch: dict[str, Any] = {
+        "messages": messages,
+        "status": "refining",
+        "refine_agent_id": resolved_id,
+        "active_agent": active_agent,
+    }
+    if runtime_mode() == "hybrid":
+        user_patch["shell_session_status"] = "ready"
+    state = _merge_patch(state, user_patch)
+    _commit_run_state(run_id, state)
+    await _send_message_event(websocket, run_id, user_message, state.get("active_node_id", ""))
+    await _notify_run_state(websocket, run_id, state, user_patch)
+
+    refining_node_id = str(state.get("refining_node_id") or state.get("active_node_id") or "")
+    node_output = ""
+    node_label = refining_node_id
+    if session:
+        node_output = node_output_for_refine(
+            session=session,
+            node_id=refining_node_id,
+            messages=list(state["messages"]),
+        )
+        node_label = workflow_node_label(session, refining_node_id)
+    refine_suffix = build_refine_system_appendix(
+        node_id=refining_node_id,
+        node_label=node_label,
+        node_output=node_output,
+    )
+
+    stored_session_id = read_cli_session_id(state) or None
+    stored_session_agent = read_cli_session_agent_id(state)
+    if stored_session_agent and stored_session_agent != resolved_id:
+        stored_session_id = None
+
+    streamed_logs = False
+
+    async def emit_log(line: str) -> None:
+        nonlocal streamed_logs, state
+        streamed_logs = True
+        stamped = stamp_log_line(line)
+        logs = list(state["terminal_logs"]) + [stamped]
+        state = _merge_patch(state, {"terminal_logs": logs})
+        _commit_run_state(run_id, state)
+        await _send_log_event(websocket, run_id, stamped, node_id=refining_node_id)
+        await _notify_run_state(websocket, run_id, state, {"terminal_logs": logs})
+
+    from src.agent_type import is_clutch_agent, resolve_model_for_agent
+    from src.image_router import is_image_model
+    from src.models_config import get_router
+
+    task_text = body or text.strip()
+    if session and agent and is_clutch_agent(agent):
+        router = get_router()
+        spec, _model_id = resolve_model_for_agent(router, agent)
+        if is_image_model(spec):
+            task_text = resolve_image_refine_prompt(
+                session=session,
+                refining_node_id=refining_node_id,
+                user_body=body,
+                messages=list(state["messages"]),
+            )
+
+    try:
+        (
+            model_name,
+            runtime_engine,
+            reply_text,
+            route_logs,
+            cli_session_id,
+            _mcp_pause,
+            files_changed,
+            raw_output,
+            output_events,
+            shell_recovered,
+        ) = await _llm_chat_reply(
+            state,
+            task_text,
+            agent_id=resolved_id,
+            cli_session_id=stored_session_id,
+            emit_log=emit_log,
+            chat_source="flow_refine",
+            system_prompt_suffix=refine_suffix,
+        )
+    except HybridPlainChatRejected as exc:
+        return await _apply_hybrid_plain_chat_rejection(
+            websocket,
+            run_id,
+            state,
+            code=str(exc),
+            keep_running=True,
+        )
+
+    reply = _chat_message(
+        model_name,
+        reply_text,
+        runtime_engine=runtime_engine,
+        msg_id=f"agent_{uuid.uuid4().hex[:8]}",
+    )
+    final_messages = list(state["messages"]) + [reply]
+    final_patch: dict[str, Any] = {
+        "messages": final_messages,
+        "refine_draft_output": reply_text,
+        "active_agent": model_name,
+        "status": "refining",
+        **cli_session_patch(cli_session_id, resolved_id),
+        **_token_patch_turn(state, user_text=body or text, assistant_text=reply_text),
+    }
+    if runtime_mode() == "hybrid":
+        final_patch["shell_session_status"] = "ready"
+    if shell_recovered:
+        final_patch["shell_session_status"] = "ready"
+    if route_logs and not streamed_logs:
+        final_patch["terminal_logs"] = list(state["terminal_logs"]) + [
+            stamp_log_line(line) for line in route_logs
+        ]
+    state = _merge_patch(state, final_patch)
+    _commit_run_state(run_id, state)
+    await _send_message_event(websocket, run_id, reply, refining_node_id)
+    if runtime_engine and "Hybrid" in runtime_engine and raw_output:
+        await _send_hybrid_execution_event(
+            websocket,
+            run_id,
+            message_id=str(reply["id"]),
+            raw_output=raw_output,
+            output_events=output_events,
+        )
+    if files_changed:
+        await _notify_workspace_files_changed(websocket, run_id, files_changed, node_id=refining_node_id)
+    await _notify_run_state(websocket, run_id, state, final_patch)
+    return state
+
+
 async def _handle_workflow_chat_message(
     websocket: WebSocket,
     run_id: str,
     state: ClutchState,
     text: str,
+    agent_id: str | None = None,
 ) -> ClutchState:
+    from src.flow_refine import is_workflow_refine_eligible, refine_triggered_by_message
+
+    session = _run_sessions.get(run_id)
+    workflow = session.workflow if session else None
+    if not workflow and state.get("workflow_id"):
+        try:
+            workflow, _ = resolve_workflow(str(state["workflow_id"]))
+        except Exception:
+            workflow = None
+    status = str(state.get("status") or "")
+    if is_workflow_refine_eligible(state) and refine_triggered_by_message(
+        text,
+        status=status,
+        workflow=workflow,
+    ):
+        return await _handle_flow_refine_message(websocket, run_id, state, text, agent_id)
+
     user_message = _chat_message("User", text, msg_id=f"user_{uuid.uuid4().hex[:8]}")
     messages = list(state["messages"]) + [user_message]
     logs = list(state["terminal_logs"])
@@ -3035,8 +3484,33 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                 agent_id = str(payload.get("agent_id", "")).strip() or None
                 session_model_id = str(payload.get("model_id", "")).strip() or None
                 client_message_id = str(payload.get("client_message_id", "")).strip() or None
-                if state["workflow_id"]:
-                    state = await _handle_workflow_chat_message(websocket, run_id, state, text)
+                if state.get("workflow_id"):
+                    from src.flow_refine import is_workflow_refine_eligible, refine_triggered_by_message
+
+                    status = str(state.get("status") or "")
+                    session = _run_sessions.get(run_id)
+                    workflow = session.workflow if session else None
+                    if not workflow:
+                        try:
+                            workflow, _ = resolve_workflow(str(state["workflow_id"]))
+                        except Exception:
+                            workflow = None
+                    if is_workflow_refine_eligible(state) and refine_triggered_by_message(
+                        text,
+                        status=status,
+                        workflow=workflow,
+                    ):
+                        state = await _handle_flow_refine_message(
+                            websocket, run_id, state, text, agent_id
+                        )
+                    elif status == "refining":
+                        state = await _handle_flow_refine_message(
+                            websocket, run_id, state, text, agent_id
+                        )
+                    else:
+                        state = await _handle_workflow_chat_message(
+                            websocket, run_id, state, text, agent_id
+                        )
                 elif plain_chat_task is not None and not plain_chat_task.done():
                     await _enqueue_plain_chat(text, agent_id, session_model_id, client_message_id)
                 else:
@@ -3086,18 +3560,43 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                     state = await _apply_plain_chat_stop(websocket, run_id, state)
                 else:
                     await asyncio.to_thread(_interrupt_workflow_run, run_id)
-                    logs = list(state["terminal_logs"])
-                    log_line = tagged(TAG_WORKFLOW, "Run stopped by supervisor.")
-                    logs.append(stamp_log_line(log_line))
-                    patch = {"status": "failed", "terminal_logs": logs}
-                    state = _merge_patch(state, patch)
-                    _commit_run_state(run_id, state)
-                    _touch_session(run_id, status="failed")
-                    update_run_record(run_id, {"status": "failed", "ended_at": _iso_timestamp()})
-                    await _send_log_event(
-                        websocket, run_id, log_line, node_id=state["active_node_id"]
-                    )
-                    await _notify_run_state(websocket, run_id, state, patch)
+                    session = _run_sessions.get(run_id)
+                    if session:
+                        state = _apply_workflow_refining_pause(run_id, session, prepend_log=False)
+                        await _send_log_event(
+                            websocket,
+                            run_id,
+                            state["terminal_logs"][-1],
+                            node_id=state.get("active_node_id", ""),
+                        )
+                        await _notify_run_state(
+                            websocket,
+                            run_id,
+                            state,
+                            {
+                                "status": "refining",
+                                "refining_node_id": state.get("refining_node_id", ""),
+                                "terminal_logs": state["terminal_logs"],
+                            },
+                        )
+                    else:
+                        logs = list(state["terminal_logs"])
+                        log_line = stamp_log_line(
+                            tagged(TAG_WORKFLOW, "Run stopped by supervisor — entering refine mode.")
+                        )
+                        logs.append(log_line)
+                        patch = {
+                            "status": "refining",
+                            "refining_node_id": state.get("active_node_id", ""),
+                            "terminal_logs": logs,
+                        }
+                        state = _merge_patch(state, patch)
+                        _commit_run_state(run_id, state)
+                        _touch_session(run_id, status="refining")
+                        await _send_log_event(
+                            websocket, run_id, log_line, node_id=state["active_node_id"]
+                        )
+                        await _notify_run_state(websocket, run_id, state, patch)
             else:
                 unknown = _chat_message(
                     "Orchestrator",

@@ -9,6 +9,9 @@ from src.adapters.cli_adapter import (
     chat_generic_cli,
     compose_cli_argv,
     format_cli_issue_for_user,
+    format_cli_login_retry_message,
+    format_cli_empty_output_message,
+    is_cli_auth_issue,
     run_cli,
     run_cli_pty,
 )
@@ -101,9 +104,72 @@ def test_compose_cli_argv_codex_uses_exec_positional_prompt() -> None:
 
 def test_format_cli_issue_for_user_quota() -> None:
     msg = "Individual quota reached. Resets in 2h."
-    out = format_cli_issue_for_user(msg)
+    out = format_cli_issue_for_user(msg, agent_type="antigravity-cli")
     assert "quota limit reached" in out.lower() or "配额已用尽" in out
     assert "Individual quota reached" in out
+
+
+def test_format_cli_login_retry_message_agy() -> None:
+    out = format_cli_login_retry_message(
+        "antigravity-cli",
+        raw_message="Authentication required.",
+    )
+    assert "`agy`" in out
+    assert "retry" in out.lower() or "重新运行" in out
+
+
+def test_format_cli_login_retry_message_omits_embedded_protocol() -> None:
+    protocol = (
+        "你是一位资深的世界观架构师。你的任务是接收用户输入的初始灵感。\n"
+        "工作流要求：必须且只能输出合法的 JSON 格式。\n"
+        "Authentication required."
+    )
+    out = format_cli_login_retry_message("antigravity-cli", raw_message=protocol)
+    assert "世界观架构师" not in out
+    assert "Authentication required." in out
+    assert "`agy`" in out
+
+
+def test_format_cli_login_retry_message_skips_huge_raw() -> None:
+    out = format_cli_login_retry_message(
+        "antigravity-cli",
+        raw_message="x" * 500 + " sign in",
+    )
+    assert "世界观" not in out
+    assert out.count("(") == 0
+
+
+def test_is_formatted_login_retry_message() -> None:
+    from src.adapters.cli_adapter import is_formatted_login_retry_message
+
+    formatted = format_cli_login_retry_message("antigravity-cli")
+    assert is_formatted_login_retry_message(formatted)
+    assert not is_formatted_login_retry_message("Authentication required.")
+
+
+def test_format_cli_login_retry_message_claude() -> None:
+    out = format_cli_login_retry_message("claude-cli")
+    assert "`claude`" in out
+
+
+def test_is_cli_auth_issue_detects_oauth_prompt() -> None:
+    assert is_cli_auth_issue("Please visit the URL to log in")
+    assert is_cli_auth_issue("Waiting for authentication (timeout 30s)")
+    assert not is_cli_auth_issue("hello world")
+
+
+def test_format_cli_empty_output_message() -> None:
+    out = format_cli_empty_output_message("antigravity-cli")
+    assert "`agy`" in out
+    assert "no text" in out.lower() or "未返回文本" in out
+
+
+def test_is_agent_task_failure() -> None:
+    from src.adapters.cli_adapter import is_agent_task_failure
+
+    assert is_agent_task_failure("Failed to execute task via Antigravity CLI: returned empty output.")
+    assert is_agent_task_failure("Antigravity CLI finished but returned no text.")
+    assert not is_agent_task_failure('{"world_background":"ok"}')
 
 
 def test_chat_generic_cli_surfaces_quota_from_pty() -> None:

@@ -254,3 +254,99 @@ def test_extract_codex_assistant_output_from_hybrid_jsonl() -> None:
 def test_extract_codex_assistant_output_tui_fallback() -> None:
     out = extract_codex_assistant_output(_CODEX_TUI_FALLBACK)
     assert out == "你好！有什么我可以帮你的吗？"
+
+
+def test_extract_codex_assistant_output_summarizes_skill_stderr() -> None:
+    raw = (
+        '2026-06-28T11:04:36.081477Z ERROR codex_core::session::session: failed to load skill '
+        '/Users/fancy/skills/foo/SKILL.md: missing field description\n'
+        '2026-06-28T11:04:36.081500Z ERROR codex_core::session::session: failed to load skill '
+        '/Users/fancy/skills/bar/SKILL.md: missing field description\n'
+    )
+    out = extract_codex_assistant_output(raw)
+    assert out == ""
+
+
+def test_extract_codex_assistant_output_ignores_leaked_system_prompt_line() -> None:
+    raw = (
+        "User Request:\n"
+        "For conversational questions (identity, recall, small talk), answer directly "
+        "from the conversation and your role above. Do not scan or modify the workspace "
+        "unless the user asks about code, files, or a task.\n"
+        "codex\n"
+        "你上句说的是「你好」。\n"
+    )
+    out = extract_codex_assistant_output(raw)
+    assert out == "你上句说的是「你好」。"
+
+
+def test_strip_leading_embedded_prompt_removes_system_protocol_echo() -> None:
+    from src.claude_hybrid_output_parser import strip_leading_embedded_prompt
+
+    system = (
+        "你是一位资深的世界观架构师。\n\n"
+        "工作流要求：\n\n必须且只能输出合法的 JSON 格式。"
+    )
+    answer = '{"world_background":"floating river","core_conflict":"race"}'
+    echoed = f"{system}\n\n{answer}"
+    out = strip_leading_embedded_prompt(echoed, system_prompt=system)
+    assert out == answer
+
+
+def test_strip_leading_embedded_prompt_removes_user_request_echo() -> None:
+    from src.claude_hybrid_output_parser import strip_leading_embedded_prompt
+
+    system = "You are the architect."
+    user = "Dragon Boat Festival adventure"
+    answer = '{"core_conflict":"tide"}'
+    echoed = f"{system}\n\nUser Request:\n{user}\n\n{answer}"
+    out = strip_leading_embedded_prompt(
+        echoed,
+        system_prompt=system,
+        user_prompt=user,
+    )
+    assert out == answer
+
+
+def test_extract_trailing_json_object_from_agy_echo() -> None:
+    from src.claude_hybrid_output_parser import (
+        ClaudeHybridOutputParser,
+        extract_trailing_json_object,
+    )
+
+    marker = "__CLUTCH_DONE_f6af7427__"
+    protocol = (
+        "你是一位资深的世界观架构师。你的任务是接收用户输入的初始灵感，并将其转化为结构化的背景设定。\n"
+        "工作流要求：必须且只能输出合法的 JSON 格式。"
+    )
+    payload = {
+        "world_background": "端阳仙境",
+        "protagonist_design": "艾小叶",
+        "core_conflict": "赢得龙舟赛",
+    }
+    import json
+
+    body = (
+        f"{protocol}\n"
+        "接收碎片化灵感，完成从 0 到 1 的标准化设定。\n"
+        f"{json.dumps(payload, ensure_ascii=False, indent=2)}\n"
+    )
+    raw = (
+        f"CLUTCH_P='{protocol}'; agy -p \"$CLUTCH_P\"; echo {marker}\n"
+        f"{body}"
+        f"{marker}\nclutch$ "
+    )
+    extracted = extract_trailing_json_object(body)
+    assert extracted is not None
+    assert "端阳仙境" in extracted
+    assert "世界观架构师" not in extracted
+
+    parsed = ClaudeHybridOutputParser().parse_structured(
+        raw,
+        marker=marker,
+        system_prompt=protocol,
+        user_prompt="接收碎片化灵感，完成从 0 到 1 的标准化设定。",
+    )
+    assert "端阳仙境" in parsed.assistant
+    assert "世界观架构师" not in parsed.assistant
+    assert parsed.events[-1].content == parsed.assistant

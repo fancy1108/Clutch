@@ -38,6 +38,90 @@ export function isWorkflowSystemAgent(name: string | undefined): boolean {
   return WORKFLOW_SYSTEM_AGENTS.has(name.trim());
 }
 
+/** Flow refine: pause mid-run, or tweak after passed/failed. */
+export function isWorkflowRefineEligible(
+  status: string | undefined,
+  workflowId: string | null | undefined,
+): boolean {
+  if (!workflowId?.trim()) return false;
+  return status === 'refining' || status === 'passed' || status === 'failed';
+}
+
+export function isWorkflowRefineMessage(text: string, status: string | undefined): boolean {
+  if (status === 'refining') return true;
+  const trimmed = text.trim();
+  if (!trimmed) return false;
+  if (/^\/(continue|resume)\b/i.test(trimmed)) return true;
+  if (trimmed === '继续' || trimmed === '继续执行' || trimmed === '继续工作流') return true;
+  return /^@\S/.test(trimmed);
+}
+
+export function shouldRouteWorkflowRefine(
+  status: string | undefined,
+  workflowId: string | null | undefined,
+  text: string,
+): boolean {
+  if (!isWorkflowRefineEligible(status, workflowId)) return false;
+  return isWorkflowRefineMessage(text, status);
+}
+
+export function parseWorkflowMention(
+  text: string,
+  steps: WorkflowAgentStep[],
+): { mention: string | null; body: string } {
+  const trimmed = text.trim();
+  if (!trimmed.startsWith('@')) {
+    return { mention: null, body: trimmed };
+  }
+  const rest = trimmed.slice(1).trimStart();
+  const candidates = new Map<string, WorkflowAgentStep>();
+  for (const step of steps) {
+    if (step.label.trim()) candidates.set(step.label.trim(), step);
+    if (step.agentName.trim()) candidates.set(step.agentName.trim(), step);
+  }
+  const sorted = [...candidates.keys()].sort((a, b) => b.length - a.length);
+  for (const name of sorted) {
+    if (rest === name || rest.startsWith(`${name} `)) {
+      return { mention: name, body: rest.slice(name.length).trim() };
+    }
+  }
+  const fallback = rest.match(/^(\S+)\s*(.*)$/s);
+  if (!fallback) return { mention: null, body: trimmed };
+  return { mention: fallback[1], body: fallback[2].trim() };
+}
+
+/** Resolve @mention in flow refine mode to a configured agent id. */
+export function resolveWorkflowMentionAgentId(
+  text: string,
+  steps: WorkflowAgentStep[],
+  agents: Agent[],
+): string | null {
+  const { mention } = parseWorkflowMention(text, steps);
+  if (!mention) return null;
+  const token = mention.trim();
+  const lower = token.toLowerCase();
+  for (const step of steps) {
+    if (
+      step.agentName === token
+      || step.label === token
+      || step.agentName.toLowerCase() === lower
+      || step.label.toLowerCase() === lower
+    ) {
+      const rec = resolveAgentRecord(step.agentRef, agents);
+      if (rec?.id) return rec.id;
+    }
+  }
+  const direct = agents.find(
+    (agent) =>
+      agent.id === token
+      || agent.name === token
+      || getAgentDisplayName(agent) === token
+      || agent.name.toLowerCase() === lower
+      || getAgentDisplayName(agent).toLowerCase() === lower,
+  );
+  return direct?.id ?? null;
+}
+
 export function resolveAgentDisplayName(agentRef: string, agents: Agent[]): string {
   const matched = resolveAgentRecord(agentRef, agents);
   if (matched) return getAgentDisplayName(matched);
