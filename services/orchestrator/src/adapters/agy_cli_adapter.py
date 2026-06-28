@@ -41,13 +41,9 @@ def chat_agy_cli(
         effective_prompt = f"{system_prompt}\n\nUser Request:\n{prompt}"
 
     cmd = [binary or "agy", "-p", effective_prompt]
-    if resume_session_id:
-        cmd += ["--conversation", resume_session_id]
-    elif session_id:
-        # Note: agy uses --conversation for resuming, and generates conversation ID automatically.
-        # Currently we don't have a direct flag to force a new custom conversation ID on launch, 
-        # but we can pass it if supported or rely on agy resuming.
-        pass
+    effective_conv_id = resume_session_id or session_id
+    if effective_conv_id:
+        cmd += ["--conversation", effective_conv_id]
         
     if dangerously_skip_permissions:
         cmd.append("--dangerously-skip-permissions")

@@ -101,3 +101,34 @@ def test_chat_agy_cli_streams_via_on_log(monkeypatch) -> None:
     assert "[ANTIGRAVITY CLI] chunk-a" in streamed
     assert "[ANTIGRAVITY CLI stderr] warn" in streamed
     assert any("Exit code 0" in line for line in streamed)
+
+
+def test_chat_agy_cli_new_session(monkeypatch) -> None:
+    called_cmd = None
+
+    def fake_run_cli(
+        cmd: list[str],
+        *,
+        cwd: str | None = None,
+        timeout: float = 30.0,
+        on_line=None,
+    ) -> CliResult:
+        nonlocal called_cmd
+        called_cmd = cmd
+        return CliResult(command=cmd, exit_code=0, stdout="started", stderr="")
+
+    monkeypatch.setattr("src.adapters.agy_cli_adapter.run_cli", fake_run_cli)
+
+    res = chat_agy_cli(
+        prompt="start session",
+        session_id="new-session-uuid",
+    )
+    assert res == "started"
+    assert called_cmd == [
+        "agy",
+        "-p",
+        "start session",
+        "--conversation",
+        "new-session-uuid",
+        "--dangerously-skip-permissions",
+    ]

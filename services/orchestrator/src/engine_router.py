@@ -304,12 +304,14 @@ def _route_agy_hybrid(
 
         history_prompt = _format_history_for_cli_prompt(history).strip()
         bootstrap_prompt = history_prompt or prompt
-        _emit_log(logs, on_log, f"[HYBRID] new agy session in shell {run_id}")
+        new_session_id = str(uuid.uuid4())
+        _emit_log(logs, on_log, f"[HYBRID] new agy session {new_session_id} in shell {run_id}")
         turn = run_agy_turn(
             session,
             prompt=bootstrap_prompt,
             agy_binary=binary,
             timeout_s=timeout,
+            new_session_id=new_session_id,
             system_prompt=system_prompt,
             context_prefix=context_prefix,
             on_lock_wait=_lock_wait_log,
@@ -317,14 +319,14 @@ def _route_agy_hybrid(
         _persist_hybrid_turn_snapshot(
             run_id=run_id,
             workspace_path=workspace_path,
-            cli_session_id=turn.cli_session_id,
+            cli_session_id=new_session_id,
             prompt=prompt,
         )
         return EngineResult(
             engine="Antigravity CLI (Hybrid)",
             output=turn.stdout,
             logs=logs + turn.logs,
-            cli_session_id=turn.cli_session_id or "agy-session",
+            cli_session_id=new_session_id,
             raw_output=turn.raw_output,
             output_events=turn.output_events,
             shell_recovered=shell_recovered,
@@ -565,11 +567,13 @@ def _route_engine_raw(
 
         def _agy_legacy() -> EngineResult:
             _emit_log(logs, on_log, "Executing Antigravity CLI prompt...")
+            effective_sid = cli_session_id or str(uuid.uuid4())
             output = chat_agy_cli(
                 prompt=prompt,
                 cwd=workspace_path,
-                system_prompt=system_prompt,
-                resume_session_id=cli_session_id,
+                system_prompt=system_prompt if not cli_session_id else None,
+                session_id=effective_sid if not cli_session_id else None,
+                resume_session_id=cli_session_id if cli_session_id else None,
                 binary=cli_binary,
                 on_log=on_log,
             )
@@ -578,7 +582,7 @@ def _route_engine_raw(
                 engine="Antigravity CLI",
                 output=output,
                 logs=logs,
-                cli_session_id=cli_session_id or "agy-session",
+                cli_session_id=effective_sid,
             )
 
         try:

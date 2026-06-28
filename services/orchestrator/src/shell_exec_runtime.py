@@ -221,6 +221,7 @@ def run_agy_turn(
     timeout_s: float,
     cli_session_id: str | None = None,
     resume_session_id: str | None = None,
+    new_session_id: str | None = None,
     context_prefix: str | None = None,
     system_prompt: str | None = None,
     on_lock_wait: Callable[[], None] | None = None,
@@ -248,7 +249,7 @@ def run_agy_turn(
 
     session.ensure_workspace_cwd()
     marker = f"__CLUTCH_DONE_{turn_id}__"
-    conv_id = resume_session_id or cli_session_id
+    conv_id = new_session_id or resume_session_id or cli_session_id
     cmd = _build_agy_shell_cmd(
         agy_binary=agy_binary,
         prompt=effective_prompt,
@@ -256,7 +257,7 @@ def run_agy_turn(
         conversation_id=conv_id,
         system_prompt=system_prompt if not conv_id else None,
     )
-    return _execute_hybrid_turn(
+    turn = _execute_hybrid_turn(
         session,
         agent="agy",
         cmd=cmd,
@@ -264,8 +265,15 @@ def run_agy_turn(
         turn_id=turn_id,
         timeout_s=timeout_s,
         system_prompt=system_prompt,
-        cli_session_id=conv_id or cli_session_id,
+        cli_session_id=conv_id,
         on_lock_wait=on_lock_wait,
+    )
+    return ShellExecResult(
+        stdout=turn.stdout,
+        logs=turn.logs,
+        cli_session_id=conv_id,
+        raw_output=turn.raw_output,
+        output_events=turn.output_events,
     )
 
 
