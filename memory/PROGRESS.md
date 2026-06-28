@@ -3,7 +3,7 @@
 ## 当前状态
 
 - **阶段：** D25 Hybrid Runtime — **Flow/Chat UX + Tauri dev 生命周期已落地，待人工验收**
-- **Git HEAD：** `e7bee5f`
+- **Git HEAD：** `fa88fcd`
 - **下次优先：** Weather-to-Vision 工作流验收（Agent 标签/Logo、Hybrid 图片、用户消息合并）；通过后更新 ROADMAP
 - **验收期跳过：** MCP hybrid_executions 深度 UI · 2h/100+ 压测
 
@@ -26,6 +26,14 @@
 ### 未 commit 工作
 
 （无）
+
+## 2026-06-28 会话 5（历史会话列表图标逻辑更改与测试套件缓存清理）
+
+- **完成：**
+  - **历史会话条目图标优化**：在 `sidebar.tsx` 中重构会话条目渲染逻辑。移除原先基于 snapshot 状态显示的静态多轮对话图标（`restart_alt` 环形箭头）。新增 ongoing 状态计算，当会话处于运行状态（`status === 'running'` 或当前活跃会话在 `clutchStatus` 中为 `running`）时，渲染 `progress_activity` 动效旋转加载动画，其他完成状态会话的图标保留为空。
+  - **活跃会话结束实时刷新**：在 `App.tsx` 中向 `Sidebar` 传递 `clutchStatus` 参数，并在 `clutchStatus` 从 `running` 变为 `idle` 等结束态的 `useEffect` 中，触发 `refreshSessions()`，实现侧边栏列表状态的实时刷新。
+  - **测试套件 Session 泄露清理**：在 `conftest.py` 中的 `isolate_orchestrator_globals` 全局 `autouse` fixture 中新增 `clean_sessions()`，确保在每个 pytest 测试执行前和后，将 `ShellSessionManager` 缓存的 `_sessions` 全部调用 `release()` 正确释放。这彻底消除了由于测试并发与连续运行造成 Session 泄露进而导致 ShellSession 资源爆满引发 `test_concurrent_hybrid_plain_chat_ws` 运行失败的问题。
+- **校验：** 运行 `./scripts/verify.sh` 通过了全部 Vite build、Vitest 单元测试以及后端全量 408 项单元测试，文档自检无任何漂移 ✅
 
 ## 2026-06-28 会话 4（项目分组图标状态切换与重构）
 

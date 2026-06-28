@@ -773,3 +773,14 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
   - [apps/desktop/src/components/SystemPreferencesModal.tsx](file:///Users/fancy/clutch/apps/desktop/src/components/SystemPreferencesModal.tsx) — 重构设置 General 面板，构建毛玻璃卡片、圆形头像预览、支持读取本地文件转 base64 并提交至 Sidecar 保存。
   - [apps/desktop/src/components/LanguageContext.tsx](file:///Users/fancy/clutch/apps/desktop/src/components/LanguageContext.tsx) — 新增 General Settings 页面元素及按钮提示的中英对照双语翻译。
 
+
+### 历史会话正在进行加载动效与完成无图标更改 ✅
+- **日期：** 2026-06-28
+- **Commit：** `fa88fcd` — `fix(desktop): connect clutchStatus to sidebar and prevent session pool exhaustion in tests`
+- **Verification：** `./scripts/verify.sh` → 408 passed + vitest OK + build and doc-drift OK
+- **已交付：**
+  - [apps/desktop/src/sidebar.tsx](file:///Users/fancy/clutch/apps/desktop/src/sidebar.tsx) — 更改会话条目图标逻辑：正在运行的会话（`status === 'running'`）显示 `progress_activity` 动效旋转加载动画，已完成的会话显示为空（无图标），不再显示原有的 `restart_alt` 环形多轮会话图标。
+  - [apps/desktop/src/App.tsx](file:///Users/fancy/clutch/apps/desktop/src/App.tsx) — 向 Sidebar 传入 `clutchStatus` 状态，并实现在会话执行结束（状态从 `running` 变为非 `running`）时自动调用 `refreshSessions` 刷新会话列表。
+  - [services/orchestrator/tests/conftest.py](file:///Users/fancy/clutch/services/orchestrator/tests/conftest.py) — 修复 pytest 全量测试时由于 `ShellSession` 缓存泄露导致 Pool 爆满引发 `test_concurrent_hybrid_plain_chat_ws` 错误的问题。在全局孤立 fixture `isolate_orchestrator_globals` 中新增 `clean_sessions()` 清理逻辑。
+
+
