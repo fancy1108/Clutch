@@ -3,7 +3,7 @@
 ## 当前状态
 
 - **阶段：** D25 Hybrid Runtime — **Flow/Chat UX + Tauri dev 生命周期已落地，待人工验收**
-- **Git HEAD：** `9b1c9e9`
+- **Git HEAD：** `f0b78c1`
 - **下次优先：** Weather-to-Vision 工作流验收（Agent 标签/Logo、Hybrid 图片、用户消息合并）；通过后更新 ROADMAP
 - **验收期跳过：** MCP hybrid_executions 深度 UI · 2h/100+ 压测
 
@@ -26,6 +26,16 @@
 ### 未 commit 工作
 
 （无）
+
+## 2026-06-28 会话（PTY 乱码、CLI 提示词、Antigravity LOGO 修复）
+
+- **完成：**
+  - **PTY 乱码修复**：在 `shell_session.py` 中将 `_read_available` 改为以字节流形式读取，并使用 `codecs.getincrementaldecoder` 进行增量解码。这避免了因多字节 UTF-8 字符（如“工作空间”中的“工”）跨 Read 缓冲区边界时被错误解码为 `` 乱码的问题。
+  - **CLI 编码声明**：在 `cli_adapter.py` 的 `subprocess.Popen` 和 `subprocess.run` 中明确传入 `encoding="utf-8"` and `errors="replace"`，保证各操作系统平台下标准输出流的 UTF-8 兼容性。
+  - **CLI 提示词调整**：修改了 `agent_prompt.py`，仅在 `is_clutch_agent` 为 True 时向 system prompt 注入 `Runtime model: ...`；而 `antigravity-cli` (Agy) 等外部 CLI 引擎将不再带有此信息，防止其误报运行在 Clutch 侧大模型上。
+  - **返回结果脱敏/品牌替换**：在 `engine_router.py` 中，对 `route_engine` 返回的 `raw_output` 和 `output_events` 也均调用 `sanitize_engine_output`，避免前端读取到事件流或 raw 原始报文中的未替换品牌名（如 Agnes）。
+  - **Antigravity LOGO 替换**：设计并用炫彩拱门渐变 SVG 替换了 `apps/desktop/src/assets/tool-logos/antigravity.svg` 中错误的 Google 徽标。
+- **校验：** 新增 `test_agent_prompt.py` 测试提示词条件拼装；本地运行 `./scripts/verify.sh` 并顺利通过了所有 407 项 Python 单元测试和 13 项前端测试，文档机检无漂移 ✅
 
 ## 2026-06-27 会话（Flow/Chat UX + Tauri dev）
 

@@ -71,6 +71,19 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ## 已交付（代码 Task · 自 Git 回填）
 
+### PTY-DECODING-AND-CLI-PROMPT-FIX ✅
+- **日期：** 2026-06-28
+- **Commit：** `f0b78c1` — `fix(hybrid): correct PTY decoding, CLI agent prompts, brand sanitization, and Antigravity logo`
+- **Verification：** `./scripts/verify.sh` → 407 passed, 1 warning (100% success) ✅
+- **证据：** `—`（门禁已覆盖）
+- **交付文件：**
+  - `services/orchestrator/src/shell_session.py` — 增量读取字节并在 `read_until_contains`/`read_until_marker` 中通过 incremental decoder 解决 PTY 跨 buffer 乱码问题。
+  - `services/orchestrator/src/adapters/cli_adapter.py` — 对 `subprocess` 调用强制声明 `encoding="utf-8"` 和 `errors="replace"`。
+  - `services/orchestrator/src/agent_prompt.py` — 仅对 `clutch` (API 直连) 智能体注入 `Runtime model` 指导，排除外部 CLI/hybrid 类型的引擎以防误导。
+  - `services/orchestrator/src/engine_router.py` — 在 `route_engine` 中对 `raw_output` 和 `output_events` 均进行品牌 sanitization（Agnes 转换为 Gemini），保证前端一致。
+  - `services/orchestrator/tests/test_agent_prompt.py` — 针对 system prompt 中 Runtime model 条件注入逻辑的单元测试。
+  - `apps/desktop/src/assets/tool-logos/antigravity.svg` — 重新设计了渐变拱门 SVG Logo，替换掉原先错误的 Google logo。
+
 ### CHAT-FEED-PREFERENCE-AND-AVATAR-POLISH ✅
 - **日期：** 2026-06-27
 - **Commit：** `d6152f0` — `feat: support custom profile name settings in General preferences` (前序 `8a03c61`, `7922e8d`, `9cba3b2`)
