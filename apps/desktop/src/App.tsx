@@ -433,6 +433,7 @@ function MainLayout() {
     prevClutchStatusRef.current = clutchStatus;
     if (prev !== 'running' || clutchStatus === 'running' || !workspace) return;
     void refreshWorkspaceFiles();
+    void refreshSessions();
   }, [clutchStatus, workspace, refreshWorkspaceFiles]);
 
   useEffect(() => {
@@ -1053,6 +1054,7 @@ function MainLayout() {
           sessions={sessions}
           shellSnapshotRunIds={shellSnapshotRunIds}
           activeSessionId={sessionRunId}
+          clutchStatus={clutchStatus}
           workspaces={workspaces}
           repositoryGroups={repositoryGroups}
           activeWorkspaceId={activeWorkspaceId}

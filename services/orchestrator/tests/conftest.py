@@ -10,17 +10,30 @@ def isolate_orchestrator_globals(tmp_path, monkeypatch: pytest.MonkeyPatch) -> N
     from src.main import _run_sessions, _run_states
     from src.mcp_pending import _approved_keys, _pending
     from src.workspace import clear_workspace_for_tests
+    from src.shell_session import get_shell_session_manager
+
+    def clean_sessions():
+        manager = get_shell_session_manager()
+        with manager._lock:
+            run_ids = list(manager._sessions.keys())
+        for run_id in run_ids:
+            try:
+                manager.release(run_id)
+            except Exception:
+                pass
 
     monkeypatch.setenv("CLUTCH_RUN_HISTORY_DIR", str(tmp_path))
     monkeypatch.setenv("CLUTCH_STORAGE_DIR", str(tmp_path))
     monkeypatch.setenv("CLUTCH_E2E_FAKE_LLM", "1")
     clear_workspace_for_tests()
+    clean_sessions()
     _run_states.clear()
     _run_sessions.clear()
     _pending.clear()
     _approved_keys.clear()
     yield
     clear_workspace_for_tests()
+    clean_sessions()
     _run_states.clear()
     _run_sessions.clear()
     _pending.clear()
