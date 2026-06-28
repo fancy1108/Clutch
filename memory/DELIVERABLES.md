@@ -798,7 +798,7 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ### Codex CLI 接入 · JSON 输出过滤 · 动态 Agent 类型 ✅
 - **日期：** 2026-06-28
-- **Commit：** _(本 commit)_
+- **Commit：** `a75bf5d` — feat(orchestrator,desktop): integrate Codex CLI with JSON output and dynamic agent types
 - **Verification：** `./scripts/verify.sh` → 433 pytest passed + vitest OK + build + doc-drift OK
 - **证据：** `runs/verification/2026-06-28-codex-cli-integration.log`
 - **已交付：**

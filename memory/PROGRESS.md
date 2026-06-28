@@ -3,7 +3,7 @@
 ## 当前状态
 
 - **阶段：** D25 Hybrid Runtime — **Codex CLI 接入 + 动态 Agent 类型已落地，待 UI 验收**
-- **Git HEAD：** `6d660a4`（本 commit 后将更新）
+- **Git HEAD：** `a75bf5d`
 - **下次优先：** 重启 orchestrator 后验收 Codex 单轮/多轮；Weather-to-Vision 工作流验收
 - **验收期跳过：** MCP hybrid_executions 深度 UI · 2h/100+ 压测
 
