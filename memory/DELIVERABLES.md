@@ -71,6 +71,17 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ## 已交付（代码 Task · 自 Git 回填）
 
+### ANTIGRAVITY-CLI-SESSION-TRACKING ✅
+- **日期：** 2026-06-28
+- **Commit：** `b1ff689` — `fix(hybrid): support multi-turn session ID tracking for Antigravity CLI`
+- **Verification：** `./scripts/verify.sh` → 408 passed, 1 warning (100% success) ✅
+- **证据：** `—`（门禁已覆盖）
+- **交付文件：**
+  - `services/orchestrator/src/adapters/agy_cli_adapter.py` — 对 `chat_agy_cli` 进行了改造，支持在首轮对话传入 `--conversation` 以生成统一的 UUID 会话 ID。
+  - `services/orchestrator/src/shell_exec_runtime.py` — 在 `run_agy_turn` 中接收并传递 `new_session_id` 到 `_execute_hybrid_turn`，解决 hybrid 运行时首次执行的 ID 生成问题。
+  - `services/orchestrator/src/engine_router.py` — 修改 `_route_agy_hybrid` 和 `_agy_legacy` 逻辑，若未找到 `cli_session_id` 则首轮对话自动生成 UUID 形式的 `new_session_id` 并持久化，后续轮次继续引用该 ID。
+  - `services/orchestrator/tests/test_agy_cli_adapter.py` — 增加 `test_chat_agy_cli_new_session` 测试用例验证首轮对话的参数传递。
+
 ### PTY-DECODING-AND-CLI-PROMPT-FIX ✅
 - **日期：** 2026-06-28
 - **Commit：** `f0b78c1` — `fix(hybrid): correct PTY decoding, CLI agent prompts, brand sanitization, and Antigravity logo`

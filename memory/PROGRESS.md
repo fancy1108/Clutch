@@ -3,7 +3,7 @@
 ## 当前状态
 
 - **阶段：** D25 Hybrid Runtime — **Flow/Chat UX + Tauri dev 生命周期已落地，待人工验收**
-- **Git HEAD：** `f0b78c1`
+- **Git HEAD：** `b1ff689`
 - **下次优先：** Weather-to-Vision 工作流验收（Agent 标签/Logo、Hybrid 图片、用户消息合并）；通过后更新 ROADMAP
 - **验收期跳过：** MCP hybrid_executions 深度 UI · 2h/100+ 压测
 
@@ -26,6 +26,13 @@
 ### 未 commit 工作
 
 （无）
+
+## 2026-06-28 会话 2（Antigravity CLI 多轮会话会话 ID 追踪、LOGO 视觉对齐）
+
+- **完成：**
+  - **Antigravity CLI 会话 ID 追踪**：将 `agy` 的多轮会话会话 ID（`cli_session_id`）生成与追踪行为和 `claude-cli` 全面对齐。在首轮对话时由 Clutch 自动生成 UUID `new_session_id` 并通过 `--conversation` 传入 `agy`；之后的后续对话（包括 hybrid 模式和 legacy 模式）继续传递该 session ID 供 `agy` 自动匹配与载入内部会话历史，从而彻底消除了 `Warning: conversation "agy-session" not found` 且无法保留上文的问题。
+  - **Antigravity Logo 细节对齐**：根据用户提供的最新高分辨率视觉图样，调整了 `antigravity.svg` 渐变彩虹拱门的路径几何形状（使内部拱高约占 50%，两腿对称微向外展）与多色线性渐变 stop 点（深蓝 → 湖蓝 → 翠绿 → 橙黄 → 猩红 → 靛紫 → 深蓝），实现高保真度对齐。
+- **校验：** 新增 `test_chat_agy_cli_new_session` 测试会话启动参数拼接；本地运行 `./scripts/verify.sh` 通过所有 408 项 Python 单元测试和 13 项前端测试 ✅
 
 ## 2026-06-28 会话（PTY 乱码、CLI 提示词、Antigravity LOGO 修复）
 
