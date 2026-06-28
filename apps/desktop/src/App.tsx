@@ -63,7 +63,7 @@ import { getVersion } from '@tauri-apps/api/app';
 function MainLayout() {
   const { t } = useLanguage();
   const { state: clutchState } = useClutchState();
-  const [appVersion, setAppVersion] = useState<string>('0.0.0');
+  const [appVersion, setAppVersion] = useState<string>('0.1.0');
 
   useEffect(() => {
     if (isTauri()) {

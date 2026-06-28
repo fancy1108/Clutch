@@ -261,7 +261,7 @@
 |------|----------|------|
 | Workflow 定义 | 本地 JSON 文件 | 用户工作流 / 模板 |
 | Agent 配置 | 本地 JSON / SQLite | 角色 prompt、工具绑定 |
-| API Keys | Tauri secure store | 加密 |
+| API Keys | 本地 `models.json`（`chmod 600`）；Keychain 为 T2 目标 | 历史目标为 Tauri secure store；以 [`ARCHITECTURE.md`](../../docs/ARCHITECTURE.md) §9 为准 |
 | Skills 挂载路径 | 本地配置 | 可沿用 Registry 逻辑 |
 | 运行历史 | 本地 SQLite（P2） | MVP 可仅内存 |
 

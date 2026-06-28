@@ -443,7 +443,7 @@ class ToolAdapter(Protocol):
 
 | 主题 | 策略 |
 |------|------|
-| API Key | 仅存本地加密存储（Tauri secure store），不经 UI 明文展示 |
+| API Key | 本地 `~/Library/Application Support/clutch/models.json`（或 `clutch_dev`），文件权限 `600`；Settings 中以密码框输入，**不经日志输出**。Keychain 加密存储规划见 T2（OSR-13） |
 | MCP / CLI 权限 | Agent 配置时显式勾选；高危工具（shell、git push）需二次确认 |
 | 网络 | Sidecar 默认只监听 `127.0.0.1` |
 | 工作区 | 用户显式授权项目根目录，Adapter 不可越界访问 |

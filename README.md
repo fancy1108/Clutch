@@ -77,6 +77,8 @@ clutch/
 | [`docs/PROJECT_SCOPE.md`](./docs/PROJECT_SCOPE.md) | Goals / Non-Goals |
 | [`docs/STABILITY.md`](./docs/STABILITY.md) | API / Schema 稳定性 |
 | [`docs/EXTENSIBILITY.md`](./docs/EXTENSIBILITY.md) | 官方扩展点 |
+| [`LICENSE`](./LICENSE) | MIT 开源协议 |
+| [`CHANGELOG.md`](./CHANGELOG.md) | 版本变更（当前 **0.1.0**） |
 | [`CONTRIBUTING.md`](./CONTRIBUTING.md) | **如何贡献**、Phase 1 PR 政策 |
 | [`docs/GOVERNANCE.md`](./docs/GOVERNANCE.md) | 维护者治理 |
 | [`docs/PERFORMANCE.md`](./docs/PERFORMANCE.md) | 性能基线 |

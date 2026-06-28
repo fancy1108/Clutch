@@ -138,7 +138,7 @@
 | M4-01 | 内置模板导入 | FR-01-07 | Video Production 等 1–2 个 | 模板列表可见；一键导入后编辑器可打开 JSON |
 | M4-02 | Agent 配置持久化 | FR-06-01–03 | `AgentManager.tsx` 接后端 | 重启应用后 Agent 配置保留 |
 | M4-03 | MCP / AI Tools 状态（filesystem） | FR-05-05, FR-05-06 | 至少 filesystem MCP 可连通 | MCP 面板显示 connected；工具数 > 0 |
-| M4-04 | API Key 安全存储 | FR-07-03 | Tauri secure store；日志脱敏 | `grep` 日志无 `sk-` 等密钥；Key 存 secure store |
+| M4-04 | API Key 安全存储 | FR-07-03 | **当前**：`models.json` + `chmod 600` + 日志不写 Key；**T2 目标**：Keychain | 日志无 `sk-`；Key 不落仓库 |
 | M4-05 | 工作区路径白名单 | proposal §13, M2-09 | 与 M2-09 授权路径联动；越界读写返回 403 + 中文提示 | `uv run pytest tests/test_workspace_whitelist.py -v` |
 | M4-06 | macOS DMG 打包 | FR-07-01 | 可安装演示 | `pnpm tauri build` 产出 DMG；安装后可启动 |
 | M4-07 | 错误提示与可操作建议 | proposal §8 | 失败卡片旁有下一步 | 手动：触发失败场景，卡片含修复/审批/重试指引 |

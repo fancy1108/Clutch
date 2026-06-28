@@ -21,6 +21,13 @@ services/orchestrator/.venv/
 .env*
 !.env.example
 
+# Local agent / IDE settings (may contain personal paths)
+.claude/settings.local.json
+
+# POC run artifacts (machine-specific paths; regenerate locally)
+experiments/pty_poc/runs/*
+!experiments/pty_poc/runs/.gitkeep
+
 # OS & logs
 .DS_Store
 *.log

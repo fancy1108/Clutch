@@ -1,7 +1,7 @@
 # PTY Session POC — Step 0（三路线）
 
 > **权威设计**：[`docs/research/pty-session.md`](../../docs/research/pty-session.md)（v4 · **ShellSession + `SHELL_EXEC`**）  
-> **证据**：[`RESULTS.md`](./RESULTS.md) · `runs/*.json`
+> **证据**：[`RESULTS.md`](./RESULTS.md) · `runs/*.json`（**本地生成，已 gitignore，勿提交**）
 
 Step 0 目标：**在写 Sidecar 代码之前**，确认 **ShellSession（长驻 bash + per-turn exec）** 为默认 Runtime，**否决 Claude TUI PTY**。
 
@@ -112,5 +112,5 @@ experiments/pty_poc/
 ├── step0_pty_probe.py
 ├── step0_print_mode_probe.py
 ├── step0_baseline.py
-└── runs/
+└── runs/          # local POC output (gitignored)
 ```

@@ -33,6 +33,8 @@
 | 铁律、命令、Check-in | `CLAUDE.md` |
 | 产品介绍文档 | `docs/PRODUCT_INTRO.md` |
 | 开源 / DMG 分发排期（OSR-xx） | `docs/OPEN_SOURCE_RELEASE.md` |
+| 开源协议 | `LICENSE` |
+| 版本变更 | `CHANGELOG.md` |
 | Goals / Non-Goals | `docs/PROJECT_SCOPE.md` |
 | API / Schema 稳定性 | `docs/STABILITY.md` |
 | 扩展点边界 | `docs/EXTENSIBILITY.md` |
