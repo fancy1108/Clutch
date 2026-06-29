@@ -34,6 +34,8 @@
 | 产品介绍文档 | `docs/PRODUCT_INTRO.md` |
 | 开源 / DMG 分发排期（OSR-xx） | `docs/OPEN_SOURCE_RELEASE.md` |
 | 开源协议 | `LICENSE` |
+| 漏洞报告 | `SECURITY.md` |
+| 社区行为准则 | `CODE_OF_CONDUCT.md` |
 | 版本变更 | `CHANGELOG.md` |
 | Goals / Non-Goals | `docs/PROJECT_SCOPE.md` |
 | API / Schema 稳定性 | `docs/STABILITY.md` |
@@ -53,6 +55,7 @@
 | 里程碑级验收 T-01~04 | `specs/core/tasks.md` §测试与验收 |
 | 进度 / 待办 | `memory/PROGRESS.md` |
 | 候选优化需求池（未立项） | `memory/BACKLOG.md` |
+| **开源排期 OSR-xx 状态镜像** | **`memory/BACKLOG.md` §开源 / DMG 分发** · 验收勾选 `memory/ROADMAP.md` §开源分发 |
 | Orchestrator 主控能力调研（参考） | `docs/research/orchestrator-optimization-pool.md` |
 | CLI PTY Session 改造方案（参考） | `docs/research/pty-session.md` |
 | **D25 Hybrid 执行状态（权威）** | **`specs/core/hybrid-runtime-plan.md`** · D27 命名对齐 |

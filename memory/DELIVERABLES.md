@@ -25,6 +25,23 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ---
 
+## 已交付（OSR · 开源排期）
+
+### OSR-06 ✅ 社区与健康文件
+- **日期：** 2026-06-29
+- **Commit：** `(pending)` — `docs(osr): add SECURITY.md and CODE_OF_CONDUCT.md (OSR-06)`
+- **Verification：** `./scripts/verify.sh` → pass
+- **证据：** —
+- **交付文件：**
+  - `SECURITY.md` — 漏洞私密报告、响应 SLA、范围与已知限制
+  - `CODE_OF_CONDUCT.md` — Contributor Covenant 2.1
+  - `CONTRIBUTING.md` — 链至 SECURITY.md
+  - `.github/ISSUE_TEMPLATE/security_report.md` — 链至 SECURITY.md
+  - `README.md` — 文档地图补充
+  - `memory/BACKLOG.md` · `memory/ROADMAP.md` · `docs/OPEN_SOURCE_RELEASE.md` §7.7 — OSR-06 勾选
+
+---
+
 ## 已交付（文档 / 计划 · 无代码 commit）
 
 ### HRT-00 ✅ 计划与文档对齐

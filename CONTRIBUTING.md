@@ -88,7 +88,7 @@ Use the [bug report template](.github/ISSUE_TEMPLATE/bug_report.yml). Include:
 
 Installation problems: [installation issue template](.github/ISSUE_TEMPLATE/installation_issue.yml).
 
-Security vulnerabilities: **do not** open a public Issue. See [security report template](.github/ISSUE_TEMPLATE/security_report.md) (and `SECURITY.md` when published).
+Security vulnerabilities: **do not** open a public Issue. See [`SECURITY.md`](SECURITY.md) and the [security report template](.github/ISSUE_TEMPLATE/security_report.md).
 
 ---
 

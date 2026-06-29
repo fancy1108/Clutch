@@ -4,6 +4,70 @@
 > 调研全文（分派流程图、`dispatch` 字段）见 [`docs/research/orchestrator-optimization-pool.md`](../docs/research/orchestrator-optimization-pool.md) §7。  
 > **升格路径：** 候选 → `DECISIONS.md` §开放问题（待拍板）→ Dxx 决策 → `specs/core/tasks.md` + `ROADMAP.md`。
 
+---
+
+## 开源 / DMG 分发（OSR-xx · 已立项）
+
+> **权威 Task 表：** [`docs/OPEN_SOURCE_RELEASE.md`](../docs/OPEN_SOURCE_RELEASE.md) §7.2（编号、触发线、估时、依赖）  
+> **验收勾选：** 同文件 §7.7（与下表同步维护）  
+> **进度接力：** `memory/PROGRESS.md` · **功能验收镜像：** `memory/ROADMAP.md` §开源分发  
+> **交付索引：** 每 Task commit 后写入 `memory/DELIVERABLES.md`（同 HRT / M4 纪律）  
+> **状态图例：** ❌ 未通过 · ⚠️ 部分 / 草案待验收 · 🔄 持续 · ✅ 已验收
+
+### T0 — 持续护栏
+
+| ID | 任务 | 状态 | 证据 / 备注 |
+|----|------|------|-------------|
+| OSR-01 | `LICENSE`（MIT） | ✅ | 根目录 `LICENSE` |
+| OSR-02 | 仓库卫生 | ✅ | `.gitignore`、`experiments/pty_poc/runs/` |
+| OSR-03 | 文档↔实现一致 | ✅ | Key → `models.json`；**已知漂移：** `permission_mode` UI 未接到 CLI `skip-permissions`（OSR-09） |
+| OSR-04 | semver + `CHANGELOG.md` | ✅ | **0.1.0** |
+| OSR-05 | 新代码安全护栏 | 🔄 | Review 项，持续 |
+| OSR-23 | `PROJECT_SCOPE.md` | ✅ | 草案 v0.1 |
+| OSR-24 | `STABILITY.md` | ✅ | 草案 v0.1 |
+| OSR-25 | `EXTENSIBILITY.md` | ✅ | 草案 v0.1 |
+
+### T1 — 公开仓库前
+
+| ID | 任务 | 状态 | 证据 / 备注 |
+|----|------|------|-------------|
+| **OSR-00** | **外部视角审计** | ❌ | 证据应写入 `runs/verification/`；**T1 前优先** |
+| OSR-06 | `SECURITY.md` + `CONTRIBUTING.md` + `CODE_OF_CONDUCT.md` | ✅ | `SECURITY.md` · `CODE_OF_CONDUCT.md` · `CONTRIBUTING.md` 已链 |
+| OSR-07 | Secret scanning CI（gitleaks） | ❌ | `.github/workflows/ci.yml` 未含 |
+| OSR-08 | Sidecar session token 鉴权 | ❌ | HTTP/WS 仍无 token |
+| OSR-09 | CLI `--dangerously-skip-permissions` 门控 | ❌ | 依赖产品决策；见 `OPEN_SOURCE_RELEASE.md` §5.2.3 |
+| OSR-10 | README + 源码构建说明 | ⚠️ | README 有兼容性 + `doctor.sh`；**缺** `docs/BUILD_FROM_SOURCE.md`、DMG 分叉、截图 |
+| OSR-26 | `GOVERNANCE.md` | ✅ | 草案 v0.1 |
+| OSR-27 | 兼容性矩阵 + `doctor.sh` | ✅ | `README.md` §兼容性 · `scripts/doctor.sh` |
+| OSR-28 | Issue / PR 模板 | ✅ | `.github/ISSUE_TEMPLATE/` · `pull_request_template.md` |
+
+**T1 开闸信号**（`OPEN_SOURCE_RELEASE.md` §7.5）：主路径稳定 · 近 2 周无大规模 Settings 重构 · 愿意处理外部 Issue — 见 `ROADMAP.md` §开源分发。
+
+### T2 — 首次 DMG 分发前
+
+| ID | 任务 | 状态 | 依赖 / 备注 |
+|----|------|------|-------------|
+| OSR-11 | Apple 签名 + 公证 | ❌ | 需 Developer 账号 |
+| OSR-12 | Release CI 打 DMG | ❌ | 依赖 OSR-11 |
+| OSR-13 | API Key → Keychain + 迁移 | ❌ | Models UI 稳定后 |
+| OSR-14 | 首次启动向导 | ❌ | 依赖 OSR-09、OSR-13 |
+| OSR-15 | `INSTALL.md` + `DATA_AND_PRIVACY.md` | ❌ | |
+| OSR-16 | Debug API 收敛 + WebView CSP | ❌ | `csp: null` |
+| OSR-17 | PyInstaller `console=False` | ❌ | `clutch.spec` 仍 `console=True` |
+
+### T3 — 生态成熟期（按需）
+
+| ID | 任务 | 状态 | 备注 |
+|----|------|------|------|
+| OSR-18 | OS 级沙箱 PoC | ❌ | 对齐 BACKLOG B-20 |
+| OSR-19 | Windows MSI | ❌ | |
+| OSR-20 | Tauri 自动更新 | ❌ | |
+| OSR-21 | 工作流签名 / MCP 白名单 | ❌ | |
+| OSR-22 | 外部安全审计 | ❌ | |
+| OSR-29 | `PERFORMANCE.md` 基线 | ⚠️ | 草案 v0.1；无 benchmark 实测 |
+
+---
+
 ## 已升格 → D25 HRT（勿重复立项）
 
 | 原候选方向 | HRT ID | 决策 |

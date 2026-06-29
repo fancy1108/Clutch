@@ -92,3 +92,36 @@
 - [x] **G** 后台 hydrate（HRT-09；F 表内 F5 与 export 脚本覆盖排查）
 
 证据：`runs/verification/2026-06-27-hrt-04-acceptance.md`
+
+---
+
+## 开源 / DMG 分发（OSR-xx）
+
+> **Task 权威表：** [`docs/OPEN_SOURCE_RELEASE.md`](../docs/OPEN_SOURCE_RELEASE.md) §7.2、§7.7  
+> **状态镜像：** [`memory/BACKLOG.md`](./BACKLOG.md) §开源 / DMG 分发  
+> **Default FAIL：** 未实际验收不得标 ✅
+
+| 阶段 | 触发线 | 目标 | 状态 | 备注 |
+|------|--------|------|------|------|
+| T0 护栏 | 持续 | 许可证、文档边界、semver | ⚠️ | OSR-01～04、23～25 ✅；OSR-05 🔄 |
+| **T1 可公开仓库** | **公开 repo 前** | 社区文件、Sidecar 鉴权、CLI 策略 | ❌ | **当前阻塞开源**；OSR-26～28 ✅ |
+| T2 可放心装 DMG | 陌生人分发前 | 签名、Keychain、安装向导 | ❌ | OSR-11～17 全未做 |
+| T3 生态成熟 | 按需 | 沙箱、Windows、自动更新 | ❌ | OSR-18～22、29 |
+
+### T1 检查清单（公开仓库前 · 默认 FAIL）
+
+- [ ] **OSR-00** 外部视角审计（`runs/verification/` 证据）
+- [x] **OSR-06** `SECURITY.md` + `CODE_OF_CONDUCT.md` + `CONTRIBUTING.md`
+- [ ] **OSR-07** Secret scanning CI
+- [ ] **OSR-08** Sidecar session token 鉴权
+- [ ] **OSR-09** CLI 权限策略（需产品决策）
+- [ ] **OSR-10** README + `BUILD_FROM_SOURCE.md`
+- [x] **OSR-26** `GOVERNANCE.md`（草案 v0.1）
+- [x] **OSR-27** 兼容性矩阵 + `doctor.sh`
+- [x] **OSR-28** Issue / PR 模板
+
+### T1 开闸信号（§7.5）
+
+- [ ] 主路径：工作区 → 聊天/工作流 → 审批 可稳定复现
+- [ ] 近 2 周无大规模 Settings / API 路由重构
+- [ ] 愿意处理外部 Issue

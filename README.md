@@ -79,6 +79,8 @@ clutch/
 | [`docs/EXTENSIBILITY.md`](./docs/EXTENSIBILITY.md) | 官方扩展点 |
 | [`LICENSE`](./LICENSE) | MIT 开源协议 |
 | [`CHANGELOG.md`](./CHANGELOG.md) | 版本变更（当前 **0.1.0**） |
+| [`SECURITY.md`](./SECURITY.md) | 漏洞私密报告渠道与响应约定 |
+| [`CODE_OF_CONDUCT.md`](./CODE_OF_CONDUCT.md) | 社区行为准则 |
 | [`CONTRIBUTING.md`](./CONTRIBUTING.md) | **如何贡献**、Phase 1 PR 政策 |
 | [`docs/GOVERNANCE.md`](./docs/GOVERNANCE.md) | 维护者治理 |
 | [`docs/PERFORMANCE.md`](./docs/PERFORMANCE.md) | 性能基线 |

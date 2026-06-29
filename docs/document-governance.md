@@ -35,6 +35,7 @@
 | 功能验收状态 | `memory/ROADMAP.md`、`memory/TESTS.md` | 验证通过后 |
 | 系统设计详述（叙事 + ADR） | [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) | 架构评审时；路径速查见 `memory/FILEMAP.md` |
 | Orchestrator 调研 / 候选能力（非决策） | [`docs/research/orchestrator-optimization-pool.md`](./research/orchestrator-optimization-pool.md) | 索引见 `memory/BACKLOG.md` |
+| 开源 / DMG 分发排期（OSR-xx） | [`docs/OPEN_SOURCE_RELEASE.md`](./OPEN_SOURCE_RELEASE.md) §7.2 | 状态镜像 `memory/BACKLOG.md` · 验收 `memory/ROADMAP.md` §开源分发 |
 
 ## 禁止事项
 

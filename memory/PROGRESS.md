@@ -2,14 +2,22 @@
 
 ## 当前状态
 
-- **阶段：** D25 Hybrid Runtime + **Flow 精修（pause/refine/continue）已落地** + **默认 Multi-Agent 并隐藏模式切换按钮已落地** + **MCP 审批流程解包崩溃修复已落地** + **Flow 精修消息回显、Session 提示词丢失、头像映射修复已落地** + **模型设置操作按钮与选中卡片交互优化已落地** + **选中 Flow 时底部显示 - 且 Agent 和 Flow 互斥优化已落地** + **支持删除/隐藏 CC Switch 模型已落地**
+- **阶段：** D25 Hybrid Runtime + Flow 精修已落地 + 功能迭代中；**开源排期 OSR-xx 已登记**（见 `memory/BACKLOG.md` §开源 / DMG 分发 · `memory/ROADMAP.md` §开源分发）
 - **Git HEAD：** `cdfb87b`
-- **下次优先：** 进一步集成测试或根据用户反馈进行精修
+- **下次优先（开源 T1）：** **OSR-00** 外部视角审计（需人类安排）→ **OSR-07** gitleaks CI → OSR-08/09 待权限策略拍板
 - **验收期跳过：** MCP hybrid_executions 深度 UI · 2h/100+ 压测
 
 ### 未 commit 工作
 
-（无 — 见本 commit）
+（无 — 见本 commit OSR-06）
+
+## 2026-06-29 会话 16（OSR-06 社区与健康文件）
+
+- **SECURITY.md**：私密漏洞报告渠道（GitHub Private Vulnerability Reporting）、响应时间线、范围与已知 OSR 加固项索引。
+- **CODE_OF_CONDUCT.md**：Contributor Covenant 2.1。
+- **链接**：`CONTRIBUTING.md`、`.github/ISSUE_TEMPLATE/security_report.md`、`README.md` 文档地图。
+- **验证**：`./scripts/verify.sh`。
+- **下次优先**：OSR-07 Secret scanning CI。
 
 ## 2026-06-29 会话 15（支持删除/隐藏 CC Switch 导入的模型）
 
