@@ -186,13 +186,6 @@ def delete_custom_model(router: LLMProviderRouter, model_id: str) -> None:
 def hide_model_from_list(router: LLMProviderRouter, model_id: str) -> None:
     if model_id not in router._models:
         raise ValueError(tr("Unknown model.", "未知模型。"))
-    if model_id.startswith("cc-switch-"):
-        raise ValueError(
-            tr(
-                "CC Switch models cannot be removed here. Change them in CC Switch instead.",
-                "无法在此删除 CC Switch 导入的模型，请在 CC Switch 中管理。",
-            )
-        )
     if is_custom_model_id(model_id):
         delete_custom_model(router, model_id)
         return

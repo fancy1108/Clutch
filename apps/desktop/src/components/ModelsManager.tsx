@@ -563,7 +563,9 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
               Remove <span className="font-bold">{pendingRemove.name}</span> from your model list?
               {pendingRemove.id.startsWith('custom-')
                 ? ' This custom model will be deleted permanently.'
-                : ' Built-in models are hidden from the list and can be restored by editing models.json.'}
+                : pendingRemove.id.startsWith('cc-switch-')
+                  ? ' CC Switch imported models are hidden from the list and can be restored by clicking Import models.'
+                  : ' Built-in models are hidden from the list and can be restored by editing models.json.'}
             </p>
             <div className="flex justify-end gap-2">
               <button
@@ -641,7 +643,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
                 const statusLabel = verifyStatusLabel(verify);
                 const rowMessage = verifyMessageByModel[model.id];
                 const canUse = model.available;
-                const canRemove = !model.isCcSwitch && !isActive;
+                const canRemove = !isActive;
                 return (
                   <div
                     key={model.id}
