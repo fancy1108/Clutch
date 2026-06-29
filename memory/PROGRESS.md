@@ -2,8 +2,8 @@
 
 ## 当前状态
 
-- **阶段：** D25 Hybrid Runtime + **Flow 精修（pause/refine/continue）已落地** + **默认 Multi-Agent 并隐藏模式切换按钮已落地**
-- **Git HEAD：** `c7213bf`
+- **阶段：** D25 Hybrid Runtime + **Flow 精修（pause/refine/continue）已落地** + **默认 Multi-Agent 并隐藏模式切换按钮已落地** + **MCP 审批流程解包崩溃修复已落地**
+- **Git HEAD：** `8ecc3a7`
 - **下次优先：** 重启 orchestrator 后验收 Visual Narrative 全流程 + 完成后 `@Agent` 精修 + `/continue` 续跑
 - **验收期跳过：** MCP hybrid_executions 深度 UI · 2h/100+ 压测
 
@@ -11,7 +11,15 @@
 
 （无 — 见本 commit）
 
+## 2026-06-29 会话 11（修复 MCP 审批确认后的解包崩溃卡死）
+
+- **现象修复**：修复了用户在聊天中授权了高危 MCP 工具（如 `local-fs__write_file`）后，后端 `_handle_plain_chat_mcp_decision` 调用 `_llm_chat_reply` 返回 10 个值但被错误地解包为 9 个值（缺少 `shell_recovered`）引发 `ValueError`，导致 WebSocket 连接意外中断、UI 状态未能更新并卡在 approval 阶段的问题。
+- **集成测试**：新增 `test_ws_plain_chat_mcp_approve` websocket 集成测试，对人类授权后恢复 MCP 会话的全流程与解包进行端到端校验。
+- **验证**：运行 `./scripts/verify.sh` 全量通过（473 tests passed）。
+
+
 ## 2026-06-29 会话 10（默认 Multi-Agent 并隐藏模式切换按钮）
+
 
 - **UI 优化**：去除了 Header 中的 Single Agent / Multi-Agent 模式切换按钮，避免用户在界面上切换到不支持的单智能体模式导致状态混淆；
 - **状态默认值与加载优化**：将 React state `isMultiAgent` 的默认状态修改为 `true`，同时在 `handleSelectSession` 会话恢复加载流程中不再从 `localStorage` 读取或应用旧的 `single` 模式状态，确保所有用户会话统一初始化并锁定在 Multi-Agent 架构下（即使是没有配置 workflow_id 的普通 plain chat 也可以在多智能体界面运行并提供流程视图）。

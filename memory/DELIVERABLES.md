@@ -71,6 +71,15 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ## 已交付（代码 Task · 自 Git 回填）
 
+### MCP-APPROVAL-UNPACK-FIX ✅
+- **日期：** 2026-06-29
+- **Commit：** `8ecc3a7` — `fix(orchestrator): fix tuple unpacking crash in plain chat human decision resume`
+- **Verification：** `cd services/orchestrator && uv run pytest tests/test_ws_message_log.py -k test_ws_plain_chat_mcp_approve` → 1 passed
+- **证据：** `runs/verification/2026-06-29-mcp-approval-unpack-fix.log`
+- **交付文件：**
+  - `services/orchestrator/src/main.py` — 修复 _handle_plain_chat_mcp_decision 解包 _llm_chat_reply 返回值时的参数数量不匹配崩溃问题，补齐 shell_recovered，并更新 shell_session_status 和 cli_session 偏好补丁
+  - `services/orchestrator/tests/test_ws_message_log.py` — 新增 test_ws_plain_chat_mcp_approve websocket 集成测试
+
 ### DEFAULT-MULTI-AGENT-AND-HIDE-TOGGLE ✅
 - **日期：** 2026-06-29
 - **Commit：** `c7213bf` — `feat(ui): remove single/multi-agent toggle and default to multi-agent mode`
