@@ -9,7 +9,7 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # npm registry signing keys rotated; bundled Corepack on GHA runners may fail
       # to verify packageManager (pnpm@9.15.0). Install pnpm via action-setup instead.
