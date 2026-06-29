@@ -2005,6 +2005,7 @@ async def _handle_flow_refine_message(
         parse_agent_mention,
         resolve_image_refine_prompt,
         workflow_node_label,
+        ensure_workflow_session_for_refine,
     )
     from src.hybrid_concurrency import HybridPlainChatRejected
     from src.runtime_config import runtime_mode
@@ -2014,7 +2015,7 @@ async def _handle_flow_refine_message(
         state = _prepare_workflow_refine_state(run_id, state, prepend_log=False)
         return await _commit_flow_refine_and_continue(websocket, run_id, state)
 
-    session = _run_sessions.get(run_id)
+    session = ensure_workflow_session_for_refine(run_id, state, sessions=_run_sessions)
     workflow = session.workflow if session else None
     mention_name, body = parse_agent_mention(text, workflow=workflow)
     resolved_id = (agent_id or "").strip()

@@ -294,12 +294,29 @@ export function buildWorkflowReplyStepIndex(
 ): Map<string, number> {
   const map = new Map<string, number>();
   if (steps.length === 0) return map;
+
+  const indexByName = new Map<string, number>();
+  steps.forEach((step, idx) => {
+    if (step.agentName) indexByName.set(step.agentName.toLowerCase(), idx);
+    if (step.label) indexByName.set(step.label.toLowerCase(), idx);
+  });
+
+  for (const message of messages) {
+    if (message.agent === 'User' || message.agent === 'System') continue;
+    const lowerAgent = message.agent.toLowerCase();
+    if (indexByName.has(lowerAgent)) {
+      map.set(message.id, indexByName.get(lowerAgent)!);
+    }
+  }
+
   const lastUserIndex = messages.findLastIndex((message) => message.agent === 'User');
   let replyIndex = 0;
   for (const message of messages.slice(lastUserIndex + 1)) {
     if (message.agent === 'User' || message.agent === 'System') continue;
-    map.set(message.id, replyIndex);
-    replyIndex += 1;
+    if (!map.has(message.id)) {
+      map.set(message.id, replyIndex);
+      replyIndex += 1;
+    }
   }
   return map;
 }

@@ -100,7 +100,7 @@ export function mergeChatMessages(
         merged.length > 0
         && merged[merged.length - 1].agent === 'User'
         && merged[merged.length - 1].text.trim() === trimmed;
-      if (trailingSameUser) {
+      if (trailingSameUser && pendingUserMessageId) {
         const targetIndex = merged.length - 1;
         if (message.avatar && !merged[targetIndex].avatar) {
           merged[targetIndex] = { ...merged[targetIndex], avatar: message.avatar };
@@ -125,7 +125,7 @@ export function mergeChatMessages(
           Boolean(pendingUserMessageId)
           && (message.id === pendingUserMessageId
             || merged.some((item) => item.id === pendingUserMessageId));
-        if (!isPendingTurn) {
+        if (pendingUserMessageId && !isPendingTurn) {
           continue;
         }
       }

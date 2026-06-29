@@ -123,7 +123,7 @@ describe('mergeChatMessages', () => {
     expect(merged[2].id).toBe(pendingId);
   });
 
-  it('drops server re-echo of user text after agent has already replied', () => {
+  it('allows duplicate user text in new turns after agent has already replied', () => {
     const firstTurn = [
       createUserChatMessage('你好'),
       {
@@ -145,7 +145,7 @@ describe('mergeChatMessages', () => {
       },
     ];
     const merged = mergeChatMessages(firstTurn, server);
-    expect(merged.filter((message) => message.agent === 'User')).toHaveLength(1);
+    expect(merged.filter((message) => message.agent === 'User')).toHaveLength(2);
   });
 });
 
