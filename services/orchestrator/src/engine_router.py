@@ -744,12 +744,12 @@ def _route_engine_raw(
             supports_append_system_prompt=config.get("supports_append_system_prompt", True),
         )
 
-        if source == "flow" and agent_type == "claude-cli" and cli_binary:
+        if source == "flow" and agent_type == "claude-cli":
             from src.shell_exec_runtime import hybrid_pty_shell_command_risky
 
             if hybrid_pty_shell_command_risky(
                 agent_type=agent_type,
-                binary=cli_binary,
+                binary=cli_binary or config["binary_name"],
                 prompt=prompt,
                 system_prompt=system_prompt,
                 conversation_mode=config["conversation_mode"],
