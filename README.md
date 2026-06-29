@@ -43,19 +43,19 @@ clutch/
 ├── package.json
 ├── pnpm-workspace.yaml
 ├── .env.example
-├── src/                            # Pro 空壳占位（第 7 步起）
+├── src/                            # Pro 版占位目录
 ├── scripts/
 │   ├── verify.sh                   # 本地一键校验（build + pytest + drift）
 │   ├── tauri-dev.sh                # Tauri 开发：守护化 Vite + tauri dev
 │   ├── doctor.sh                   # 环境自检（Node / uv / 平台）
-│   └── check-doc-drift.sh          # 文档↔代码机检不变量（D7）
+│   └── check-doc-drift.sh          # 文档与代码机检不变量
 ├── .husky/
-│   └── pre-commit                  # 条件触发 verify / drift（D7）
+│   └── pre-commit                  # 条件触发 verify 与文档 drift 检查
 ├── specs/
 │   └── core/
 │       ├── proposal.md             # Layer 2 — 产品需求历史快照
 │       ├── design.md               # Layer 2 — 视觉设计快照（→ UI_UX_GUIDELINES）
-│       └── tasks.md                # Layer 2 — M0–M4 开发任务清单
+│       └── tasks.md                # Layer 2 — 开发任务清单
 ├── memory/                         # Layer 3 — Agent 跨会话运行态
 │   ├── PROGRESS.md
 │   ├── FAILURES.md
@@ -83,7 +83,7 @@ clutch/
 ├── packages/
 │   └── shared-types/
 ├── workflows/                      # Workflow JSON Schema + 模板
-├── e2e/                            # （D1，M2 后可执行）Playwright 全链路 E2E
+├── e2e/                            # Playwright 全链路自动化端到端测试
 └── docs/
     ├── ARCHITECTURE.md             # 系统架构详述（叙事 + ADR）
     └── document-governance.md      # 五层架构与权威优先级
@@ -102,7 +102,7 @@ clutch/
 | [`memory/PROGRESS.md`](./memory/PROGRESS.md) | Agent 进度接力棒 |
 | [`memory/FILEMAP.md`](./memory/FILEMAP.md) | 文件路径速查（Check-in 用） |
 | [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) | 系统架构详述（设计理由、数据流） |
-| [`docs/OPEN_SOURCE_RELEASE.md`](./docs/OPEN_SOURCE_RELEASE.md) | 开源、安全、分发与 OSR 排期 |
+| [`docs/OPEN_SOURCE_RELEASE.md`](./docs/OPEN_SOURCE_RELEASE.md) | 开源、安全与发布计划 |
 | [`docs/PROJECT_SCOPE.md`](./docs/PROJECT_SCOPE.md) | Goals / Non-Goals |
 | [`docs/STABILITY.md`](./docs/STABILITY.md) | API / Schema 稳定性 |
 | [`docs/BUILD_FROM_SOURCE.md`](./docs/BUILD_FROM_SOURCE.md) | 源码克隆、开发启动、`pnpm tauri build` |
@@ -117,7 +117,7 @@ clutch/
 | [`docs/PERFORMANCE.md`](./docs/PERFORMANCE.md) | 性能基线 |
 | [`docs/document-governance.md`](./docs/document-governance.md) | 五层架构与权威优先级 |
 | [`specs/core/proposal.md`](./specs/core/proposal.md) | 产品需求历史快照（非权威） |
-| [`specs/core/tasks.md`](./specs/core/tasks.md) | M0–M4 开发任务清单 |
+| [`specs/core/tasks.md`](./specs/core/tasks.md) | 开发任务清单 |
 | [`specs/core/design.md`](./specs/core/design.md) | 视觉设计快照 |
 | [`UI_UX_GUIDELINES.md`](./UI_UX_GUIDELINES.md) | 前端 React + Tailwind UI/UX |
 
@@ -163,7 +163,7 @@ pnpm install
 
 ## 安装方式
 
-> ### ⚠️ 未签名 DMG · 首次安装必读（T1）
+> ### ⚠️ 未签名 DMG · 首次安装必读
 >
 > 当前 Release 中的 `.dmg` **未经 Apple 签名/公证**。macOS 可能提示「**无法验证开发者**」或「**应用已损坏**」——**这是 Gatekeeper 对未签名应用的正常反应，不是病毒，也不是包坏了。**
 >
@@ -178,7 +178,7 @@ pnpm install
 
 ### 从 Release 安装（终端用户 · macOS）
 
-从 [GitHub Releases](https://github.com/fancy1108/Clutch/releases) 下载 **macOS `.dmg`**（当前为**未签名**构建，与多数开源桌面项目相同；见 [`memory/DECISIONS.md`](./memory/DECISIONS.md) **D31**）：
+从 [GitHub Releases](https://github.com/fancy1108/Clutch/releases) 下载 **macOS `.dmg`**（当前版本为未签名构建，这也是开源桌面应用的常见分发方式）：
 
 1. 下载对应架构的 DMG（Apple Silicon 选 `aarch64`）并拖入 **Applications**
 2. **首次打开**若被 Gatekeeper 拦截（含「**已损坏**」文案），任选其一：
@@ -188,7 +188,7 @@ pnpm install
 
 维护者发版：打 tag `v1.0.0`（或后续 `v1.x.x`）触发 [`.github/workflows/release.yml`](./.github/workflows/release.yml) 自动构建并上传 DMG；或本机 `cd apps/desktop && pnpm tauri build` 后手动上传到 Release。
 
-完整安装说明见 [`docs/INSTALL.md`](./docs/INSTALL.md)；数据与隐私见 [`docs/DATA_AND_PRIVACY.md`](./docs/DATA_AND_PRIVACY.md)。Apple 代码签名与公证（OSR-11）在获得 Developer 账号前**不阻塞**开源分发。
+完整安装说明见 [`docs/INSTALL.md`](./docs/INSTALL.md)；数据与隐私见 [`docs/DATA_AND_PRIVACY.md`](./docs/DATA_AND_PRIVACY.md)。获得 Apple Developer 账号后，可再提供代码签名与公证的安装包。
 
 ### 从源码构建（开发者）
 
@@ -220,6 +220,6 @@ Clutch 通过本地 Sidecar（`127.0.0.1:8123` / 开发 `8124`）调度外部 AI
 | **风险** | CLI 可在工作区（及 CLI 自身权限可达范围）内改文件、跑命令，**不会**再逐项询问 |
 | **UI 中的 Permission 菜单** | 聊天栏旁 `ask` / `auto_edit` / `plan` / `full` 主要作用于 **Clutch 内置 Agent 的 MCP 门控**；**不改变**上述 CLI 的 `skip-permissions` 默认行为 |
 
-**决策记录（OSR-09）：** 维持现状（选项 B），T2 对外分发前在文档中明确披露；后续若改为默认 `ask`，将同步更新本文与 [`SECURITY.md`](./SECURITY.md)。
+**权限策略声明：** 现阶段默认维持跳过确认的设定。后续若安全策略调整为默认 `ask`（逐次询问），将同步更新本文与 [`SECURITY.md`](./SECURITY.md)。
 
-漏洞报告见 [`SECURITY.md`](./SECURITY.md)。Sidecar 仅监听本机回环地址；发版前加固项见 [`docs/OPEN_SOURCE_RELEASE.md`](./docs/OPEN_SOURCE_RELEASE.md)。
+漏洞报告见 [`SECURITY.md`](./SECURITY.md)。Sidecar 仅监听本机回环地址。
