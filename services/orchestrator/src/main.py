@@ -64,7 +64,7 @@ async def _lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Clutch Orchestrator", version="0.1.0", lifespan=_lifespan)
+app = FastAPI(title="Clutch Orchestrator", version="1.0.0", lifespan=_lifespan)
 
 app.add_middleware(
     CORSMiddleware,

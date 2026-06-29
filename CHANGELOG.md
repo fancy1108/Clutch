@@ -2,9 +2,9 @@
 
 All notable changes to Clutch are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-**Version policy:** While `0.x`, breaking changes may land in any release — see [`docs/STABILITY.md`](docs/STABILITY.md).
+**Version policy:** See [`docs/STABILITY.md`](docs/STABILITY.md) for semver and module stability levels.
 
-## [0.1.0] - 2026-06-27
+## [1.0.0] - 2026-06-29
 
 ### Added
 
@@ -13,10 +13,11 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) with Phase 1 contribution policy.
 - [`scripts/doctor.sh`](scripts/doctor.sh) environment self-check.
 - GitHub Issue / PR templates under [`.github/`](.github/).
+- README product screenshots and unsigned macOS DMG distribution via GitHub Releases (D31).
 
 ### Changed
 
-- Project version `0.0.0` → **`0.1.0`** (semver starting point for open source).
+- **First public release** at **`1.0.0`** (semver starting point for open source and DMG distribution).
 - **Documentation aligned with implementation (T0):** API keys are stored in local `models.json` with `chmod 600`; macOS Keychain migration is planned for T2 (OSR-13), not claimed as shipped.
 - `experiments/pty_poc/runs/` is local-only (gitignored); removed committed runs that contained machine-specific paths.
 

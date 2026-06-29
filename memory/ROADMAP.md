@@ -104,18 +104,18 @@
 | 阶段 | 触发线 | 目标 | 状态 | 备注 |
 |------|--------|------|------|------|
 | T0 护栏 | 持续 | 许可证、文档边界、semver | ⚠️ | OSR-01～04、23～25 ✅；OSR-05 🔄 |
-| **T1 可公开仓库** | **公开 repo 前** | 社区文件、Sidecar 鉴权、CLI 策略 | ❌ | **当前阻塞开源**；OSR-26～28 ✅ |
-| T2 可放心装 DMG | 陌生人分发前 | 签名、Keychain、安装向导 | ❌ | OSR-11～17 全未做 |
+| **T1 可公开仓库** | **公开 repo 前** | 社区文件、Sidecar 鉴权、CLI 策略 | ✅ | OSR-00/06～10、26～28 已验收（D31） |
+| T2 可放心装 DMG | 陌生人分发前 | 未签名 DMG、Keychain、安装向导 | ⚠️ | OSR-12 workflow 已加；OSR-13～17 待做 |
 | T3 生态成熟 | 按需 | 沙箱、Windows、自动更新 | ❌ | OSR-18～22、29 |
 
 ### T1 检查清单（公开仓库前 · 默认 FAIL）
 
-- [ ] **OSR-00** 外部视角审计（⏭️ 维护者自行验收，D30）
+- [x] **OSR-00** 外部视角审计（维护者自验通过 2026-06-29，D31）
 - [x] **OSR-06** `SECURITY.md` + `CODE_OF_CONDUCT.md` + `CONTRIBUTING.md`
 - [x] **OSR-07** Secret scanning CI
 - [x] **OSR-08** Sidecar session token 鉴权
 - [x] **OSR-09** CLI 权限策略（D30：维持 skip + README 披露）
-- [ ] **OSR-10** README + `BUILD_FROM_SOURCE.md`（⚠️ 缺产品截图）
+- [x] **OSR-10** README + `BUILD_FROM_SOURCE.md` + 产品截图（`docs/images/`）
 - [x] **OSR-26** `GOVERNANCE.md`（草案 v0.1）
 - [x] **OSR-27** 兼容性矩阵 + `doctor.sh`
 - [x] **OSR-28** Issue / PR 模板

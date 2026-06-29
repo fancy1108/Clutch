@@ -44,14 +44,24 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
   - `README.md` §安全与 CLI 权限
   - `SECURITY.md` · `memory/DECISIONS.md` D30
 
-### OSR-10 ⚠️ README + 源码构建（缺截图）
+### OSR-10 ✅ README + 源码构建 + 产品截图
+- **日期：** 2026-06-29
+- **Commit：** （待 commit）— `docs(osr): add README screenshots and unsigned DMG release path (OSR-10, D31)`
+- **交付文件：**
+  - `docs/images/Clutch_1.png` · `Clutch_2.png` — 产品截图
+  - `README.md` — §产品截图 · §安装方式（未签名 DMG）
+  - `docs/BUILD_FROM_SOURCE.md` — D31 交叉引用
+  - `.github/workflows/release.yml` — 未签名 DMG Release CI（OSR-12 部分）
+  - `memory/DECISIONS.md` D31 · BACKLOG/ROADMAP/OPEN_SOURCE_RELEASE 勾选同步
+
+### OSR-10（部分）README + 源码构建
 - **日期：** 2026-06-29
 - **Commit：** `6178bc5` — `docs(osr): add BUILD_FROM_SOURCE and README install paths (OSR-10)`
 - **Verification：** `./scripts/verify.sh` → pass
 - **证据：** —
 - **交付文件：**
   - `docs/BUILD_FROM_SOURCE.md` — 源码构建全流程
-  - `README.md` — DMG vs 源码分叉
+  - `README.md` — DMG vs 源码分叉（截图由后续 commit 补齐）
 
 ### OSR-07 ✅ Secret scanning CI
 - **日期：** 2026-06-29

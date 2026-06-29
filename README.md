@@ -21,6 +21,16 @@
 
 > **想了解全部功能、架构细节与运行机制？** 请阅读 **[`docs/PRODUCT_INTRO.md`](./docs/PRODUCT_INTRO.md)**（产品介绍权威文档，含痛点分析、页面功能清单与数据流说明）。开发者架构叙事见 [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md)。
 
+## 产品截图
+
+**Hybrid 工作流监督台** — 多 Agent 协作、流程进度与 Token 统计一屏可见：
+
+![Clutch Hybrid 工作流监督台](./docs/images/Clutch_1.png)
+
+**可视化 SOP 编排** — 在画布上零代码拖拽多 Agent 流水线：
+
+![Clutch 工作流画布编排](./docs/images/Clutch_2.png)
+
 ## 仓库结构
 
 > 与磁盘一致（排除 `node_modules`、`.venv`、`dist` 等构建产物）。治理层五层标注见 [`docs/document-governance.md`](./docs/document-governance.md)。
@@ -97,7 +107,7 @@ clutch/
 | [`docs/STABILITY.md`](./docs/STABILITY.md) | API / Schema 稳定性 |
 | [`docs/BUILD_FROM_SOURCE.md`](./docs/BUILD_FROM_SOURCE.md) | 源码克隆、开发启动、`pnpm tauri build` |
 | [`LICENSE`](./LICENSE) | MIT 开源协议 |
-| [`CHANGELOG.md`](./CHANGELOG.md) | 版本变更（当前 **0.1.0**） |
+| [`CHANGELOG.md`](./CHANGELOG.md) | 版本变更（当前 **1.0.0**） |
 | [`SECURITY.md`](./SECURITY.md) | 漏洞私密报告渠道与响应约定 |
 | [`CODE_OF_CONDUCT.md`](./CODE_OF_CONDUCT.md) | 社区行为准则 |
 | [`CONTRIBUTING.md`](./CONTRIBUTING.md) | **如何贡献**、Phase 1 PR 政策 |
@@ -151,15 +161,19 @@ pnpm install
 
 ## 安装方式
 
-### 从 Release 安装（终端用户）
+### 从 Release 安装（终端用户 · macOS）
 
-当 [GitHub Releases](https://github.com/fancy1108/Clutch/releases) 提供已签名的 macOS `.dmg` 时：
+从 [GitHub Releases](https://github.com/fancy1108/Clutch/releases) 下载 **macOS `.dmg`**（当前为**未签名**构建，与多数开源桌面项目相同；见 [`memory/DECISIONS.md`](./memory/DECISIONS.md) **D31**）：
 
-1. 下载 DMG 并拖入 **Applications**
-2. 首次打开若被 Gatekeeper 拦截：系统设置 → 隐私与安全性 → 仍要打开（或右键 → 打开）
+1. 下载对应架构的 DMG（Apple Silicon 选 `aarch64`）并拖入 **Applications**
+2. **首次打开**若被 Gatekeeper 拦截，任选其一：
+   - **Finder** 中右键 **Clutch.app** → **打开** → 确认打开
+   - 或终端：`xattr -cr /Applications/Clutch.app` 后从启动台打开
 3. 约 5s 内侧车应就绪：`curl -s http://127.0.0.1:8123/health` → `{"status":"ok"}`
 
-完整安装说明见 [`docs/INSTALL.md`](./docs/INSTALL.md)（T2 / OSR-15，随签名发版补齐）。
+维护者发版：打 tag `v1.0.0`（或后续 `v1.x.x`）触发 [`.github/workflows/release.yml`](./.github/workflows/release.yml) 自动构建并上传 DMG；或本机 `cd apps/desktop && pnpm tauri build` 后手动上传到 Release。
+
+完整安装与隐私说明见 [`docs/INSTALL.md`](./docs/INSTALL.md)（T2 / OSR-15，随发版补齐）。Apple 代码签名与公证（OSR-11）在获得 Developer 账号前**不阻塞**开源分发。
 
 ### 从源码构建（开发者）
 

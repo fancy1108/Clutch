@@ -21,7 +21,7 @@
 | OSR-01 | `LICENSE`（MIT） | ✅ | 根目录 `LICENSE` |
 | OSR-02 | 仓库卫生 | ✅ | `.gitignore`、`experiments/pty_poc/runs/` |
 | OSR-03 | 文档↔实现一致 | ✅ | Key → `models.json`；**已知漂移：** `permission_mode` UI 未接到 CLI `skip-permissions`（OSR-09） |
-| OSR-04 | semver + `CHANGELOG.md` | ✅ | **0.1.0** |
+| OSR-04 | semver + `CHANGELOG.md` | ✅ | **1.0.0** |
 | OSR-05 | 新代码安全护栏 | 🔄 | Review 项，持续 |
 | OSR-23 | `PROJECT_SCOPE.md` | ✅ | 草案 v0.1 |
 | OSR-24 | `STABILITY.md` | ✅ | 草案 v0.1 |
@@ -31,12 +31,12 @@
 
 | ID | 任务 | 状态 | 证据 / 备注 |
 |----|------|------|-------------|
-| **OSR-00** | **外部视角审计** | ⏭️ | 维护者自行发布前验收（D30） |
+| **OSR-00** | **外部视角审计** | ✅ | 维护者自验通过 2026-06-29（D31） |
 | OSR-06 | `SECURITY.md` + `CONTRIBUTING.md` + `CODE_OF_CONDUCT.md` | ✅ | `SECURITY.md` · `CODE_OF_CONDUCT.md` · `CONTRIBUTING.md` 已链 |
 | OSR-07 | Secret scanning CI（gitleaks） | ✅ | `.github/workflows/secret-scan.yml` · `.gitleaks.toml` |
 | OSR-08 | Sidecar session token 鉴权 | ✅ | `sidecar_auth.py` · Tauri `clutch_sidecar_token` · `sidecarFetch` |
 | OSR-09 | CLI `--dangerously-skip-permissions` 门控 | ✅ | **D30**：维持默认 skip；`README.md` §安全与 CLI 权限 披露 |
-| OSR-10 | README + 源码构建说明 | ⚠️ | `docs/BUILD_FROM_SOURCE.md` · README §安装方式；**待** 产品截图 |
+| OSR-10 | README + 源码构建说明 | ✅ | `docs/images/Clutch_*.png` · README §产品截图 · `BUILD_FROM_SOURCE.md` |
 | OSR-26 | `GOVERNANCE.md` | ✅ | 草案 v0.1 |
 | OSR-27 | 兼容性矩阵 + `doctor.sh` | ✅ | `README.md` §兼容性 · `scripts/doctor.sh` |
 | OSR-28 | Issue / PR 模板 | ✅ | `.github/ISSUE_TEMPLATE/` · `pull_request_template.md` |
@@ -47,8 +47,8 @@
 
 | ID | 任务 | 状态 | 依赖 / 备注 |
 |----|------|------|-------------|
-| OSR-11 | Apple 签名 + 公证 | ❌ | 需 Developer 账号 |
-| OSR-12 | Release CI 打 DMG | ❌ | 依赖 OSR-11 |
+| OSR-11 | Apple 签名 + 公证 | ⏭️ | 无 Developer 账号；D31 豁免，不阻塞分发 |
+| OSR-12 | Release CI 打 DMG | ⚠️ | `.github/workflows/release.yml`（未签名）；待首 `v*` tag 验证 |
 | OSR-13 | API Key → Keychain + 迁移 | ❌ | Models UI 稳定后 |
 | OSR-14 | 首次启动向导 | ❌ | 依赖 OSR-09、OSR-13 |
 | OSR-15 | `INSTALL.md` + `DATA_AND_PRIVACY.md` | ❌ | |

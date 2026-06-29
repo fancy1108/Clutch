@@ -313,6 +313,18 @@
 - **影响**：`README.md` · `SECURITY.md` · OSR-09 标 ✅（披露型完成，非行为变更）。
 - **决策状态**：`已落地`
 
+### D31 · 未签名 DMG 经 GitHub Releases 分发（2026-06-29）
+
+- **背景**：维护者暂无 Apple Developer 账号，无法完成 OSR-11 代码签名与公证；仍希望在 T1 公开仓库后向终端用户提供可安装的 macOS DMG（与多数开源桌面项目做法一致）。
+- **方案（用户确认）**：
+  1. **豁免 OSR-11**：不阻塞开源与首次 DMG 分发；获得 Developer 账号后再补签名/公证。
+  2. **分发路径**：GitHub Releases 附 `.dmg`；`README.md` §安装方式 提供下载链接与 Gatekeeper 绕过说明（右键打开 / `xattr -cr`）。
+  3. **Release CI**：`.github/workflows/release.yml` 在 `v*` tag 推送时于 `macos-latest` 构建**未签名** DMG 并上传 Release（OSR-12，不依赖 OSR-11）。
+  4. **OSR-00**：维护者已于 2026-06-29 自行完成发布前验收，T1 开闸。
+  5. **首发版本**：公开发布与首个 DMG tag 从 **`v1.0.0`** 起（非 `v0.1.0`）。
+- **影响**：`README.md` · `docs/BUILD_FROM_SOURCE.md` · `docs/OPEN_SOURCE_RELEASE.md` §7.2/§7.7 · OSR-11 ⏭️ · OSR-12 ⚠️（workflow 已加，待首 tag 验证）。
+- **决策状态**：`已落地`
+
 ## 开放问题
 
 | ID | 问题 | 选项 | 默认 |

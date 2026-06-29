@@ -25,7 +25,7 @@ body:
     id: version
     attributes:
       label: Clutch version or git commit
-      placeholder: e.g. v0.1.0 or abc1234
+      placeholder: e.g. v1.0.0 or abc1234
     validations:
       required: true
 

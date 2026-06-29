@@ -1,6 +1,6 @@
 [project]
 name = "clutch-orchestrator"
-version = "0.1.0"
+version = "1.0.0"
 description = "Clutch Python sidecar — FastAPI + LangGraph orchestration service"
 requires-python = ">=3.11"
 dependencies = [

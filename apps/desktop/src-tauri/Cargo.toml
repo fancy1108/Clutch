@@ -1,6 +1,6 @@
 [package]
 name = "clutch-desktop"
-version = "0.1.0"
+version = "1.0.0"
 description = "Clutch desktop shell — spawns Python Sidecar (M0-05)"
 edition = "2021"
 

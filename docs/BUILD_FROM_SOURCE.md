@@ -1,7 +1,7 @@
 # Build Clutch from source
 
 > **Audience:** Contributors and advanced users on macOS.  
-> **End-user DMG installs** (signed releases) are documented in [`INSTALL.md`](./INSTALL.md) when OSR-11/12 ship.
+> **End-user DMG installs** (unsigned GitHub Releases) are linked from [`README.md`](../README.md) §安装方式. Signing (OSR-11) is deferred per `memory/DECISIONS.md` D31.
 
 ## Prerequisites
 
@@ -106,7 +106,7 @@ curl -s http://127.0.0.1:8123/health
 # {"status":"ok"}
 ```
 
-Unsigned local builds may require **right-click → Open** on first launch (Gatekeeper). Signed releases are tracked as OSR-11.
+Unsigned builds (local or GitHub Release) may require **right-click → Open** on first launch (Gatekeeper). See README §安装方式. Apple signing (OSR-11) is optional until a Developer account is available (D31).
 
 ## 5. Data directories
 
