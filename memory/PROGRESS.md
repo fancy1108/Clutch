@@ -3,7 +3,7 @@
 ## 当前状态
 
 - **阶段：** D25 Hybrid Runtime + Flow 精修已落地 + 功能迭代中；**开源排期 OSR-xx 已登记**（见 `memory/BACKLOG.md` §开源 / DMG 分发 · `memory/ROADMAP.md` §开源分发）
-- **Git HEAD：** （OSR-13 commit 后更新）
+- **Git HEAD：** `ee91743`
 - **下次优先（开源 T2）：** **OSR-14** 首次启动向导
 - **v1.0.0 Release：** ✅ [DMG + SHA256SUMS](https://github.com/fancy1108/Clutch/releases/tag/v1.0.0)（CI run [#28358384072](https://github.com/fancy1108/Clutch/actions/runs/28358384072)）
 

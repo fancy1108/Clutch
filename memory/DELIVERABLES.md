@@ -29,7 +29,7 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ### OSR-13 ✅ API Key → macOS Keychain + 明文迁移
 - **日期：** 2026-06-29
-- **Commit：** （见 `git log -1`）
+- **Commit：** `ee91743` — feat(osr-13): store provider API keys in macOS Keychain
 - **Verification：** `cd services/orchestrator && uv run pytest -q` → 486 passed · `./scripts/verify.sh` → OK
 - **证据：** `—`（本地 pytest）
 - **交付文件：**
