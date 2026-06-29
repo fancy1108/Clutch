@@ -31,11 +31,11 @@
 
 | ID | 任务 | 状态 | 证据 / 备注 |
 |----|------|------|-------------|
-| **OSR-00** | **外部视角审计** | ❌ | 证据应写入 `runs/verification/`；**T1 前优先** |
+| **OSR-00** | **外部视角审计** | ⏭️ | 维护者自行发布前验收（D30） |
 | OSR-06 | `SECURITY.md` + `CONTRIBUTING.md` + `CODE_OF_CONDUCT.md` | ✅ | `SECURITY.md` · `CODE_OF_CONDUCT.md` · `CONTRIBUTING.md` 已链 |
 | OSR-07 | Secret scanning CI（gitleaks） | ✅ | `.github/workflows/secret-scan.yml` · `.gitleaks.toml` |
-| OSR-08 | Sidecar session token 鉴权 | ❌ | HTTP/WS 仍无 token |
-| OSR-09 | CLI `--dangerously-skip-permissions` 门控 | ❌ | 依赖产品决策；见 `OPEN_SOURCE_RELEASE.md` §5.2.3 |
+| OSR-08 | Sidecar session token 鉴权 | ✅ | `sidecar_auth.py` · Tauri `clutch_sidecar_token` · `sidecarFetch` |
+| OSR-09 | CLI `--dangerously-skip-permissions` 门控 | ✅ | **D30**：维持默认 skip；`README.md` §安全与 CLI 权限 披露 |
 | OSR-10 | README + 源码构建说明 | ⚠️ | `docs/BUILD_FROM_SOURCE.md` · README §安装方式；**待** 产品截图 |
 | OSR-26 | `GOVERNANCE.md` | ✅ | 草案 v0.1 |
 | OSR-27 | 兼容性矩阵 + `doctor.sh` | ✅ | `README.md` §兼容性 · `scripts/doctor.sh` |

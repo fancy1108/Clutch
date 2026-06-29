@@ -27,9 +27,28 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ## 已交付（OSR · 开源排期）
 
+### OSR-08 ✅ Sidecar session token 鉴权
+- **日期：** 2026-06-29
+- **Commit：** `(pending)`
+- **Verification：** `./scripts/verify.sh` → 483 passed
+- **交付文件：**
+  - `services/orchestrator/src/sidecar_auth.py` · `main.py` middleware + WS gate
+  - `services/orchestrator/tests/test_sidecar_auth.py`
+  - `apps/desktop/src-tauri/src/lib.rs` · `Cargo.toml`
+  - `apps/desktop/src/services/sidecarUrl.ts` + API 服务层 `sidecarFetch`
+  - `docs/BUILD_FROM_SOURCE.md` — token 说明
+
+### OSR-09 ✅ CLI 权限策略（D30 披露型）
+- **日期：** 2026-06-29
+- **Commit：** `(pending)`
+- **Verification：** 文档核对
+- **交付文件：**
+  - `README.md` §安全与 CLI 权限
+  - `SECURITY.md` · `memory/DECISIONS.md` D30
+
 ### OSR-10 ⚠️ README + 源码构建（缺截图）
 - **日期：** 2026-06-29
-- **Commit：** `(pending)` — `docs(osr): add BUILD_FROM_SOURCE and README install paths (OSR-10)`
+- **Commit：** `6178bc5` — `docs(osr): add BUILD_FROM_SOURCE and README install paths (OSR-10)`
 - **Verification：** `./scripts/verify.sh` → pass
 - **证据：** —
 - **交付文件：**

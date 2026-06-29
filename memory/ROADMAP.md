@@ -110,11 +110,11 @@
 
 ### T1 检查清单（公开仓库前 · 默认 FAIL）
 
-- [ ] **OSR-00** 外部视角审计（`runs/verification/` 证据）
+- [ ] **OSR-00** 外部视角审计（⏭️ 维护者自行验收，D30）
 - [x] **OSR-06** `SECURITY.md` + `CODE_OF_CONDUCT.md` + `CONTRIBUTING.md`
 - [x] **OSR-07** Secret scanning CI
-- [ ] **OSR-08** Sidecar session token 鉴权
-- [ ] **OSR-09** CLI 权限策略（需产品决策）
+- [x] **OSR-08** Sidecar session token 鉴权
+- [x] **OSR-09** CLI 权限策略（D30：维持 skip + README 披露）
 - [ ] **OSR-10** README + `BUILD_FROM_SOURCE.md`（⚠️ 缺产品截图）
 - [x] **OSR-26** `GOVERNANCE.md`（草案 v0.1）
 - [x] **OSR-27** 兼容性矩阵 + `doctor.sh`

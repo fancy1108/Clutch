@@ -302,6 +302,17 @@
 - **影响**：`specs/core/hybrid-runtime-plan.md` §2.1 · Agent Check-out 纪律。
 - **决策状态**：`已落地`（文档）
 
+### D30 · OSR-09 CLI 权限策略：维持 skip-permissions（2026-06-29）
+
+- **背景**：OSR-09 要求门控或默认关闭 `--dangerously-skip-permissions`；Hybrid / 工作流依赖全自动 CLI turn，关闭后可能卡在 `TOOL_CONFIRM` 等人机等待（`pty-session.md` §2.0.2）。
+- **方案（用户确认 · 选项 B）**：
+  1. **维持现状**：`claude_cli_adapter` / `shell_exec_runtime` / `engine_router` 继续默认追加 `--dangerously-skip-permissions`。
+  2. **文档披露**：`README.md` §安全与 CLI 权限 明确说明；`SECURITY.md` 交叉引用。
+  3. **UI 不误导**：Permission 菜单标注主要作用于 MCP 门控（非 CLI skip 开关）；OSR-14 向导不承诺「ask = CLI 也会问」。
+  4. **OSR-00**：外部无指导审计由维护者自行验收，不阻塞 T1 开发项。
+- **影响**：`README.md` · `SECURITY.md` · OSR-09 标 ✅（披露型完成，非行为变更）。
+- **决策状态**：`已落地`
+
 ## 开放问题
 
 | ID | 问题 | 选项 | 默认 |

@@ -3,20 +3,29 @@
 ## 当前状态
 
 - **阶段：** D25 Hybrid Runtime + Flow 精修已落地 + 功能迭代中；**开源排期 OSR-xx 已登记**（见 `memory/BACKLOG.md` §开源 / DMG 分发 · `memory/ROADMAP.md` §开源分发）
-- **Git HEAD：** `cdfb87b`
-- **下次优先（开源 T1）：** **OSR-00** 外部视角审计（需人类安排）→ **OSR-10** README / `BUILD_FROM_SOURCE.md` → OSR-08/09 待权限策略拍板
-- **验收期跳过：** MCP hybrid_executions 深度 UI · 2h/100+ 压测
+- **Git HEAD：** `(pending OSR-08/09 commits)`
+- **下次优先（开源 T1）：** OSR-10 产品截图（可选）→ **T2** OSR-11 Apple 签名 / Release CI
+- **验收期跳过：** MCP hybrid_executions 深度 UI · 2h/100+ 压测 · OSR-00 外部审计（维护者自行验收，D30）
 
 ### 未 commit 工作
 
-（无 — 见本 commit OSR-06）
+（OSR-09 + OSR-08 待 commit）
 
-## 2026-06-29 会话 18（OSR-10 README + 源码构建文档）
+## 2026-06-29 会话 19（OSR-08 Sidecar session token 鉴权）
 
-- **`docs/BUILD_FROM_SOURCE.md`**：克隆、doctor、dev/tauri build、健康检查、数据目录。
-- **`README.md`**：§安装方式 — Release DMG vs 源码构建分叉。
-- **验证**：`./scripts/verify.sh`。
-- **遗留**：产品截图（OSR-10 ⚠️ 部分）。
+- **`CLUTCH_SIDECAR_TOKEN`**：Tauri 启动时生成 UUID，注入 sidecar 环境；`clutch_sidecar_token` command 供 WebView。
+- **后端**：`sidecar_auth.py` + HTTP middleware + WS `?token=`；`/health` 公开；`CLUTCH_E2E_SANDBOX` 跳过鉴权。
+- **前端**：`sidecarFetch` / 异步 `sidecarWebSocketUrl` 全服务接入。
+- **验证**：`./scripts/verify.sh`（483 pytest passed）。
+
+## 2026-06-29 会话 18（OSR-09 CLI 权限策略 · D30）
+
+- **D30**：维持 `--dangerously-skip-permissions`；`README.md` §安全与 CLI 权限 · `SECURITY.md`。
+- **OSR-00**：维护者自行发布前验收。
+
+## 2026-06-29 会话 18b（OSR-10 README + 源码构建 · 已 commit `6178bc5`）
+
+- **`docs/BUILD_FROM_SOURCE.md`** · README §安装方式；缺产品截图。
 
 ## 2026-06-29 会话 17（OSR-07 Secret scanning CI）
 

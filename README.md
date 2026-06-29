@@ -2,6 +2,25 @@
 
 本地 AI 多 Agent 编排与监督控制台（Tauri 桌面应用 + Python Sidecar）。
 
+## 这是什么
+
+**Clutch** 面向独立开发者与技术运营人员，解决「单 Agent 对话上下文膨胀」和「多 Agent 协作过程黑盒、流程难改」两类工程痛点。它不是替代 Claude Code / Cursor 的生成能力，而是在本地加一层**可持久化、可观测、可编辑**的流程控制层：你在画布上零代码拖拽 SOP，系统用 LangGraph 调度本地 CLI、MCP 与大模型，并在统一工作台里全程监督执行与人工审批。
+
+**技术栈：** Tauri 2 · React 19 · FastAPI + LangGraph · 本地优先（Sidecar `localhost:8123`）
+
+### 主要功能（概览）
+
+| 能力 | 说明 |
+|------|------|
+| **可视化工作流编排** | React Flow 画布定义多 Agent SOP，编译为 LangGraph 状态机运行 |
+| **本地 AI 工具接入** | 扫描并连接 Claude Code、Codex、Ollama、Aider 等本地 CLI |
+| **统一监督控制台** | Chat 流、终端日志、文件树、代码 Diff、流程进度一屏可见 |
+| **人机协同门控** | 高风险操作或检查失败时挂起，支持批准 / 打回 / 重试 |
+| **智能体与模型配置** | Agent Manager、模型 API Key、Skills 注册表、MCP 服务网关 |
+| **Hybrid 会话** | 多 Session 并行、工作流精修与自动续跑、状态跨会话恢复 |
+
+> **想了解全部功能、架构细节与运行机制？** 请阅读 **[`docs/PRODUCT_INTRO.md`](./docs/PRODUCT_INTRO.md)**（产品介绍权威文档，含痛点分析、页面功能清单与数据流说明）。开发者架构叙事见 [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md)。
+
 ## 仓库结构
 
 > 与磁盘一致（排除 `node_modules`、`.venv`、`dist` 等构建产物）。治理层五层标注见 [`docs/document-governance.md`](./docs/document-governance.md)。
@@ -66,13 +85,13 @@ clutch/
 
 | 文件 | 用途 |
 |------|------|
-| [`README.md`](./README.md) | 本页：结构、快速开始、文档索引 |
+| [`README.md`](./README.md) | 本页：项目简介、结构、快速开始、文档索引 |
+| [`docs/PRODUCT_INTRO.md`](./docs/PRODUCT_INTRO.md) | **产品介绍（推荐首读）**：定位、痛点、全量功能与运行机制 |
 | [`CLAUDE.md`](./CLAUDE.md) | **唯一权威**：铁律、命令、Check-in、日志规范 |
 | [`AGENTS.md`](./AGENTS.md) | 多 AI 工具入口索引 |
 | [`memory/PROGRESS.md`](./memory/PROGRESS.md) | Agent 进度接力棒 |
 | [`memory/FILEMAP.md`](./memory/FILEMAP.md) | 文件路径速查（Check-in 用） |
 | [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) | 系统架构详述（设计理由、数据流） |
-| [`docs/PRODUCT_INTRO.md`](./docs/PRODUCT_INTRO.md) | 产品介绍（功能与运行机制） |
 | [`docs/OPEN_SOURCE_RELEASE.md`](./docs/OPEN_SOURCE_RELEASE.md) | 开源、安全、分发与 OSR 排期 |
 | [`docs/PROJECT_SCOPE.md`](./docs/PROJECT_SCOPE.md) | Goals / Non-Goals |
 | [`docs/STABILITY.md`](./docs/STABILITY.md) | API / Schema 稳定性 |
@@ -157,3 +176,21 @@ pnpm tauri:dev
 逐步说明、分拆调试与本地打 DMG：[`docs/BUILD_FROM_SOURCE.md`](./docs/BUILD_FROM_SOURCE.md)。
 
 **贡献前**请阅读 [`CONTRIBUTING.md`](./CONTRIBUTING.md) 并运行 `./scripts/verify.sh`。
+
+## 安全与 CLI 权限（重要）
+
+Clutch 通过本地 Sidecar（`127.0.0.1:8123` / 开发 `8124`）调度外部 AI CLI。请在使用前了解以下**当前版本**行为：
+
+### CLI 默认跳过内置确认（`--dangerously-skip-permissions`）
+
+对 **Claude Code CLI**（`claude-cli`）与 **Antigravity CLI**（`agy-cli`）等已接入的引擎，Clutch **默认**在调用时追加 `--dangerously-skip-permissions`。这会**绕过**对应 CLI 自身的工具/写入确认提示，以便工作流与 Hybrid 会话自动跑通。
+
+| 含义 | 说明 |
+|------|------|
+| **适用场景** | 你已信任当前授权工作区，且接受 Agent 在该目录内自动执行工具调用 |
+| **风险** | CLI 可在工作区（及 CLI 自身权限可达范围）内改文件、跑命令，**不会**再逐项询问 |
+| **UI 中的 Permission 菜单** | 聊天栏旁 `ask` / `auto_edit` / `plan` / `full` 主要作用于 **Clutch 内置 Agent 的 MCP 门控**；**不改变**上述 CLI 的 `skip-permissions` 默认行为 |
+
+**决策记录（OSR-09）：** 维持现状（选项 B），T2 对外分发前在文档中明确披露；后续若改为默认 `ask`，将同步更新本文与 [`SECURITY.md`](./SECURITY.md)。
+
+漏洞报告见 [`SECURITY.md`](./SECURITY.md)。Sidecar 仅监听本机回环地址；发版前加固项见 [`docs/OPEN_SOURCE_RELEASE.md`](./docs/OPEN_SOURCE_RELEASE.md)。

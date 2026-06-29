@@ -65,11 +65,17 @@ Summary only — details in [`docs/OPEN_SOURCE_RELEASE.md`](docs/OPEN_SOURCE_REL
 
 | Topic | Current behavior | Planned |
 |-------|------------------|---------|
-| Sidecar API / WebSocket | No session token; localhost binding only | OSR-08 |
+| Sidecar API / WebSocket | No session token; localhost binding only | **OSR-08** session Bearer + WS `?token=` (Tauri spawn) |
 | API key storage | `models.json` on disk, `chmod 600` | OSR-13 Keychain |
-| CLI permissions | `--dangerously-skip-permissions` on some adapters | OSR-09 |
+| CLI permissions | `--dangerously-skip-permissions` on some adapters | **D30** — documented; not gated (OSR-09) |
 
 Reporting these as **hardening gaps** is welcome; we track them on the OSR roadmap.
+
+### CLI tool permissions (current behavior)
+
+Clutch **defaults to** passing `--dangerously-skip-permissions` to supported local CLIs (e.g. Claude Code, Antigravity) so workflows and Hybrid sessions can run without interactive CLI prompts. This **disables those CLIs' own** tool/write confirmation UI within the authorized workspace.
+
+See [`README.md`](README.md) §安全与 CLI 权限 and decision **D30** in [`memory/DECISIONS.md`](memory/DECISIONS.md). The in-app Permission menu (`ask` / `full`, etc.) governs **Clutch MCP gating** for the built-in agent; it does **not** currently remove this CLI flag.
 
 ## Secure development
 
