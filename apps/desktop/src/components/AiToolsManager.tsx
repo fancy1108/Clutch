@@ -6,6 +6,7 @@ import {
   autoConfigureTool,
   type AiToolStatus,
 } from '../services/toolsApi';
+import { CLI_INSTALL_GUIDES } from '../services/cliInstallGuides';
 import { BTN_GHOST, BTN_PRIMARY } from './ui/buttonStyles';
 import { AiToolIcon } from './AiToolIcon';
 import { ALERT_WARNING } from './ui/surfaceStyles';
@@ -15,45 +16,7 @@ interface AiToolsManagerProps {
   isModalStyle?: boolean;
 }
 
-const INSTALL_INSTRUCTIONS: Record<string, { cmd: string; desc: string; url?: string }> = {
-  'claude-cli': {
-    cmd: 'npm install -g @anthropic-ai/claude-code',
-    desc: 'Install Claude Code globally via npm (requires Node.js 18+).',
-  },
-  'agy-cli': {
-    cmd: 'npm install -g antigravity-cli',
-    desc: 'Install Antigravity CLI tool globally via npm.',
-  },
-  'codex-cli': {
-    cmd: 'npm install -g openai-codex',
-    desc: 'Install OpenAI Codex CLI tool globally via npm.',
-  },
-  'code-cli': {
-    cmd: 'code',
-    desc: 'Open VS Code, press Cmd+Shift+P, and run "Shell Command: Install \'code\' command in PATH".',
-  },
-  'codeium-cli': {
-    cmd: 'npm install -g codeium-cli',
-    desc: 'Install Codeium command line interface via npm.',
-  },
-  'aider-cli': {
-    cmd: 'pip install aider-chat',
-    desc: 'Install Aider AI pair programmer via Python pip.',
-  },
-  'gemini-cli': {
-    cmd: 'npm install -g gemini-cli',
-    desc: 'Install Google Gemini CLI tool globally via npm.',
-  },
-  'ollama-cli': {
-    cmd: 'curl -fsSL https://ollama.com/install.sh | sh',
-    desc: 'Download and install Ollama runner for local LLMs, or download from Ollama website.',
-    url: 'https://ollama.com',
-  },
-  'cursor-cli': {
-    cmd: 'cursor',
-    desc: 'Open Cursor IDE, press Cmd+Shift+P, and run "Shell Command: Install \'cursor\' command in PATH".',
-  },
-};
+const INSTALL_INSTRUCTIONS = CLI_INSTALL_GUIDES;
 
 export default function AiToolsManager({ isModalStyle }: AiToolsManagerProps) {
   const [tools, setTools] = useState<AiToolStatus[]>([]);

@@ -51,7 +51,7 @@ function displayLabelForTool(tool: AiToolStatus, agentType: string): string {
   return base;
 }
 
-function agentTypeFromTool(tool: AiToolStatus): string | null {
+export function agentTypeFromTool(tool: AiToolStatus): string | null {
   const fromApi = tool.agentType?.trim();
   if (fromApi) return fromApi;
   const fromId = LEGACY_ENGINE_TO_TYPE[tool.id.trim().toLowerCase()];

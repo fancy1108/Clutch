@@ -41,6 +41,11 @@ fn clutch_sidecar_token(state: tauri::State<SidecarAuthState>) -> String {
     state.token.clone()
 }
 
+#[tauri::command]
+fn clutch_cpu_arch() -> String {
+    std::env::consts::ARCH.to_string()
+}
+
 #[cfg(debug_assertions)]
 const SIDECAR_PORT: u16 = 8124;
 #[cfg(not(debug_assertions))]
@@ -63,7 +68,11 @@ pub fn run() {
     let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
-        .invoke_handler(tauri::generate_handler![clutch_e2e_sandbox, clutch_sidecar_token])
+        .invoke_handler(tauri::generate_handler![
+            clutch_e2e_sandbox,
+            clutch_sidecar_token,
+            clutch_cpu_arch
+        ])
         .manage(SidecarState(Mutex::new(None)));
 
     #[cfg(feature = "e2e-testing")]

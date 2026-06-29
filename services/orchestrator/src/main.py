@@ -3204,6 +3204,20 @@ async def save_language_preference(body: LanguagePreferenceRequest) -> dict[str,
         raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
 
 
+@app.post("/api/preferences/onboarding-complete")
+async def complete_onboarding_preference() -> dict[str, str]:
+    from src.preferences_storage import save_onboarding_completed
+
+    return save_onboarding_completed()
+
+
+@app.post("/api/preferences/onboarding-reset")
+async def reset_onboarding_preference() -> dict[str, str]:
+    from src.preferences_storage import reset_onboarding_completed
+
+    return reset_onboarding_completed()
+
+
 @app.get("/api/preferences/permission-mode")
 async def get_permission_mode() -> dict[str, str]:
     from src.preferences_storage import load_permission_mode

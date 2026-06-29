@@ -7,7 +7,7 @@ E2E_ROOT="${CLUTCH_E2E_ROOT:-$(mktemp -d "${TMPDIR:-/tmp}/clutch-e2e.XXXXXX")}"
 SANDBOX="${E2E_ROOT}/sandbox-project"
 STATE="${E2E_ROOT}/clutch-state"
 
-mkdir -p "${SANDBOX}/src" "${STATE}" "${STATE}/storage" "${STATE}/agents"
+mkdir -p "${SANDBOX}/src" "${STATE}" "${STATE}/storage" "${STATE}/agents" "${STATE}/storage/preferences"
 # Intentionally omit docs/verify.md for MVP check-fail scenario.
 cat > "${SANDBOX}/package.json" <<'EOF'
 {
@@ -47,7 +47,19 @@ export CLUTCH_TOOLS_CONFIG='${STATE}/tools.json'
 export CLUTCH_STORAGE_DIR='${STATE}/storage'
 export CLUTCH_AGENTS_DIR='${STATE}/agents'
 export CLUTCH_E2E_FAKE_LLM='1'
+export CLUTCH_E2E_SKIP_ONBOARDING='1'
 export CLUTCH_MODELS_CONFIG='${STATE}/models.json'
+EOF
+
+cat > "${STATE}/storage/preferences/preferences.json" <<'EOF'
+{
+  "active_theme_id": "pristine-light",
+  "active_language": "en",
+  "permission_mode": "ask",
+  "user_avatar": "",
+  "user_name": "User",
+  "onboarding_completed": "true"
+}
 EOF
 
 cat > "${STATE}/tools.json" <<'EOF'

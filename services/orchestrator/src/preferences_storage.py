@@ -44,6 +44,7 @@ def _defaults() -> dict[str, str]:
         "permission_mode": DEFAULT_PERMISSION_MODE,
         "user_avatar": "",
         "user_name": "User",
+        "onboarding_completed": "false",
     }
 
 
@@ -66,6 +67,9 @@ def load_preferences() -> dict[str, str]:
     permission_mode = str(data.get("permission_mode") or DEFAULT_PERMISSION_MODE)
     user_avatar = str(data.get("user_avatar") or "")
     user_name = str(data.get("user_name") or "User")
+    onboarding_completed = str(data.get("onboarding_completed") or "false").lower()
+    if onboarding_completed not in {"true", "false"}:
+        onboarding_completed = "false"
     if theme_id not in ALLOWED_THEME_IDS:
         theme_id = DEFAULT_THEME_ID
     if language not in ALLOWED_LANGUAGES:
@@ -78,6 +82,7 @@ def load_preferences() -> dict[str, str]:
         "permission_mode": permission_mode,
         "user_avatar": user_avatar,
         "user_name": user_name,
+        "onboarding_completed": onboarding_completed,
     }
 
 
@@ -124,6 +129,22 @@ def save_permission_mode(mode: str) -> dict[str, str]:
 def load_permission_mode() -> str:
     """Return the current permission mode string."""
     return load_preferences().get("permission_mode", DEFAULT_PERMISSION_MODE)
+
+
+def save_onboarding_completed() -> dict[str, str]:
+    prefs = load_preferences()
+    prefs["onboarding_completed"] = "true"
+    return _write_preferences(prefs)
+
+
+def reset_onboarding_completed() -> dict[str, str]:
+    prefs = load_preferences()
+    prefs["onboarding_completed"] = "false"
+    return _write_preferences(prefs)
+
+
+def is_onboarding_completed() -> bool:
+    return load_preferences().get("onboarding_completed") == "true"
 
 
 def tr(en: str, zh: str) -> str:

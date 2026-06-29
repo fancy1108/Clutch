@@ -80,7 +80,26 @@ curl -s http://127.0.0.1:8123/health
 
 ## 6. 首次使用 checklist
 
-按顺序完成即可跑通主路径：
+首次打开 Clutch 时会自动进入**设置向导**（Welcome → 工作区 → 模型 / CLI → Flow 引导 → 权限说明 → 启动）。按向导完成即可跑通主路径。
+
+若跳过向导或需重新配置，可在 **Settings** 中手动完成下表步骤：
+
+**开发调试 — 一键切换向导：**
+
+```bash
+./scripts/onboarding-pref.sh reset      # 下次启动重新出现向导
+./scripts/onboarding-pref.sh complete   # 标记已完成，跳过向导
+./scripts/onboarding-pref.sh status     # 查看当前状态
+```
+
+Sidecar 已运行时也可用 HTTP（开发端口 8124）：
+
+```bash
+curl -sX POST http://localhost:8124/api/preferences/onboarding-reset
+curl -sX POST http://localhost:8124/api/preferences/onboarding-complete
+```
+
+改完后**重启 Clutch**（或刷新 `tauri:dev`）生效。
 
 | 步骤 | 操作 |
 |------|------|

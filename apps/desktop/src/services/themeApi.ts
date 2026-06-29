@@ -9,6 +9,7 @@ export interface UserPreferences {
   active_language: AppLanguage;
   user_avatar?: string;
   user_name?: string;
+  onboarding_completed?: boolean;
 }
 
 export async function fetchPreferences(): Promise<UserPreferences> {
@@ -19,11 +20,15 @@ export async function fetchPreferences(): Promise<UserPreferences> {
     ? body.active_theme_id
     : 'pristine-light';
   const language = body.active_language === 'zh' ? 'zh' : 'en';
+  const onboardingRaw = body.onboarding_completed;
+  const onboarding_completed =
+    onboardingRaw === true || onboardingRaw === 'true';
   return {
     active_theme_id: themeId,
     active_language: language,
     user_avatar: body.user_avatar,
     user_name: body.user_name || 'User',
+    onboarding_completed,
   };
 }
 

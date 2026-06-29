@@ -28,6 +28,10 @@ def isolate_orchestrator_globals(tmp_path, monkeypatch: pytest.MonkeyPatch) -> N
     monkeypatch.setenv("CLUTCH_STORAGE_DIR", str(tmp_path))
     monkeypatch.setenv("CLUTCH_USE_KEYCHAIN", "0")
     monkeypatch.setenv("CLUTCH_E2E_FAKE_LLM", "1")
+    if os.environ.get("CLUTCH_E2E_SANDBOX") and os.environ.get("CLUTCH_E2E_SKIP_ONBOARDING") == "1":
+        from src.preferences_storage import save_onboarding_completed
+
+        save_onboarding_completed()
     clear_workspace_for_tests()
     clean_sessions()
     _run_states.clear()

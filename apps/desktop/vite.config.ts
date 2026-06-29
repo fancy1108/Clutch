@@ -23,6 +23,10 @@ export default defineConfig(({ command }) => {
       strictPort: true,
       host: '0.0.0.0',
       proxy: {
+        '/health': {
+          target: 'http://127.0.0.1:8124',
+          changeOrigin: true,
+        },
         '/api': {
           target: 'http://127.0.0.1:8124',
           changeOrigin: true,

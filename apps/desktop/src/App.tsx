@@ -22,6 +22,9 @@ import {
 } from './services/builtinAgent';
 import { fetchPreferences, saveThemePreference, saveUserNamePreference, type ThemePresetId } from './services/themeApi';
 import { LanguageProvider, useLanguage } from './components/LanguageContext';
+import { OnboardingWizard } from './components/onboarding/OnboardingWizard';
+import { DevOnboardingToolsEmptyPreview } from './components/onboarding/DevOnboardingToolsEmptyPreview';
+import { fetchOnboardingState } from './services/onboardingApi';
 import { clutchStore, createSessionRunId, submitChatMessage, useClutchState, setUserChatAvatar, clearWorkflowForSession } from './services/clutchState';
 import { fetchSessions, createSession, startWorkflowRun, fetchRunState, deleteSession, type SessionRecord } from './services/runApi';
 import { fetchShellSnapshots } from './services/shellSnapshotApi';
@@ -1625,9 +1628,47 @@ const PromptModal: React.FC<PromptModalProps> = ({
 };
 
 export default function App() {
+  if (import.meta.env.DEV && new URLSearchParams(window.location.search).get('dev_tools_empty') === '1') {
+    return (
+      <LanguageProvider>
+        <DevOnboardingToolsEmptyPreview />
+      </LanguageProvider>
+    );
+  }
+
   return (
     <LanguageProvider>
-      <MainLayout />
+      <AppGate />
     </LanguageProvider>
   );
+}
+
+function AppGate() {
+  const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    void fetchOnboardingState()
+      .then((done) => setOnboardingCompleted(done))
+      .catch(() => setOnboardingCompleted(false));
+  }, []);
+
+  if (onboardingCompleted === null) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-background text-on-surface-variant text-sm font-sans">
+        …
+      </div>
+    );
+  }
+
+  if (!onboardingCompleted) {
+    return (
+      <OnboardingWizard
+        onComplete={() => {
+          setOnboardingCompleted(true);
+        }}
+      />
+    );
+  }
+
+  return <MainLayout />;
 }
