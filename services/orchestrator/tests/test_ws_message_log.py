@@ -142,3 +142,60 @@ def test_ws_workflow_chat_logs_when_running() -> None:
     patch = next(e for e in events if e["event"] == "state_patch")["data"]["patch"]
     assert patch.get("status", "running") == "running"
     assert any("note while running" in m["text"] for m in patch["messages"])
+
+
+def test_ws_plain_chat_mcp_approve(monkeypatch) -> None:
+    async def fake_llm_chat_reply(*args, **kwargs):
+        return (
+            "agnes-ai",
+            "agnes-2.0-flash",
+            "File created successfully.",
+            ["[CHAT] Step 1: local-fs__write_file", "[CHAT] Tool response length: 50 chars"],
+            None,
+            None,
+            ["/Users/fancy/penpot/text.txt"],
+            None,
+            None,
+            False,
+        )
+
+    monkeypatch.setattr("src.main._llm_chat_reply", fake_llm_chat_reply)
+
+    from src.mcp_pending import McpPendingApproval, store_pending
+    run_id = "run_mcp_approve_test"
+    pending = McpPendingApproval(
+        agent_id="clutch-agent",
+        reply_label="clutch-agent",
+        chat_messages=[{"role": "user", "content": "create file"}],
+        servers=[{"id": "local-fs", "name": "Local Filesystem"}],
+        tool_call_id="call_1",
+        func_name="local-fs__write_file",
+        func_args={"path": "text.txt", "content": ""},
+        step_idx=0,
+    )
+    store_pending(run_id, pending)
+
+    _run_states[run_id] = initial_state(run_id)
+    _run_states[run_id]["status"] = "awaiting_human"
+
+    with client.websocket_connect(f"/ws/runs/{run_id}") as ws:
+        # initial state patch
+        ws.receive_json()
+
+        # send approve action
+        ws.send_json({"action": "human_decision", "decision": "approve"})
+
+        # collect events
+        events: list[dict] = []
+        while True:
+            event = ws.receive_json()
+            events.append(event)
+            if (
+                event.get("event") == "state_patch"
+                and event.get("data", {}).get("patch", {}).get("status") == "idle"
+            ):
+                break
+
+    msg_events = [e for e in events if e["event"] == "message"]
+    assert any(e["data"]["message"]["text"] == "File created successfully." for e in msg_events)
+

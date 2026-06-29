@@ -78,6 +78,7 @@ const zhTranslations: Record<string, string> = {
   "Activate Mode": "Activate Mode / 激活 Model / 模型",
 
   // Chat placeholders / messages
+  "Note: These settings only apply to the built-in Clutch Agent and MCP tools, and do not affect CLI Agents (such as Claude Code).": "提示：此权限模式仅适用于内置 Clutch Agent / 智能体与 MCP 工具，不影响 CLI Agent（如 Claude Code）。",
   "@Agent your feedback (Hybrid) — /continue to resume flow": "@Agent 反馈修改意见（Hybrid）— 发送 /continue 继续工作流",
   "Ask @Builder, @Orchestrator or trigger @Workflow...": "咨询 @Builder / 构建器, @Orchestrator / 编排器 或触发 @Workflow / 工作流...",
   "Ask your AI Agent anything...": "咨询您的 AI Agent / 智能体 任何问题...",

@@ -277,3 +277,24 @@ def test_rehydrate_cc_switch_imports_models(
     assert imported["is_cc_switch"] is True
     assert imported["available"] is True
     assert get_router().get_api_key("anthropic") == "sk-cc-test"
+
+
+def test_rehydrate_clears_hidden_models(models_config: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import json
+    client = TestClient(app)
+    # Hide 'agnes-image-2.1-flash'
+    response = client.delete("/api/models/custom/agnes-image-2.1-flash")
+    assert response.status_code == 200
+
+    # Verify it is in hidden_model_ids
+    stored = json.loads(models_config.read_text(encoding="utf-8"))
+    assert "agnes-image-2.1-flash" in stored.get("hidden_model_ids", [])
+
+    # Call rehydrate
+    monkeypatch.setattr("src.models_config.Path.home", lambda: models_config.parent)
+    rehydrate_resp = client.post("/api/models/rehydrate-cc-switch")
+    assert rehydrate_resp.status_code == 200
+
+    # Verify hidden_model_ids is cleared
+    stored = json.loads(models_config.read_text(encoding="utf-8"))
+    assert stored.get("hidden_model_ids") == []

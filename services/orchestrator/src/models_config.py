@@ -252,6 +252,17 @@ def rehydrate_cc_switch_models(router: LLMProviderRouter) -> dict[str, Any]:
 
     from src.llm.router import DEFAULT_MODEL_ID
 
+    # Clear hidden_model_ids in models.json to restore hidden built-in models
+    try:
+        path = config_path()
+        if path.is_file():
+            data = json.loads(path.read_text(encoding="utf-8"))
+            if "hidden_model_ids" in data:
+                data["hidden_model_ids"] = []
+                path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    except Exception:
+        pass
+
     db_path = Path.home() / ".cc-switch" / "cc-switch.db"
     if not db_path.is_file():
         return {

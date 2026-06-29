@@ -782,6 +782,10 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
                     </div>
                   </button>
                 ))}
+                <div className="border-t border-outline-variant/60 my-1 mx-3" />
+                <div className="px-3 py-1.5 text-[9.5px] leading-normal text-on-surface-variant/60">
+                  {t('Note: These settings only apply to the built-in Clutch Agent and MCP tools, and do not affect CLI Agents (such as Claude Code).')}
+                </div>
               </div>
             )}
           </div>

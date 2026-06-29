@@ -641,7 +641,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
                 const statusLabel = verifyStatusLabel(verify);
                 const rowMessage = verifyMessageByModel[model.id];
                 const canUse = model.available;
-                const canRemove = Boolean(model.isCustom || model.modelKind === 'image') && !model.isCcSwitch;
+                const canRemove = !model.isCcSwitch && !isActive;
                 return (
                   <div
                     key={model.id}

@@ -1385,6 +1385,7 @@ async def _handle_plain_chat_mcp_decision(
         files_changed,
         raw_output,
         output_events,
+        shell_recovered,
     ) = await _llm_chat_reply(
         state,
         "",
@@ -1469,6 +1470,13 @@ async def _handle_plain_chat_mcp_decision(
         "active_agent": pending.reply_label,
         **_token_patch_turn(state, user_text="", assistant_text=reply_text),
     }
+    if shell_recovered:
+        final_patch["shell_session_status"] = "recovering"
+    elif runtime_engine and "Hybrid" in runtime_engine:
+        final_patch["shell_session_status"] = "ready"
+    if _cli_session_id:
+        from src.state import cli_session_patch
+        final_patch.update(cli_session_patch(_cli_session_id, pending.agent_id))
     state = _merge_patch(state, final_patch)
     _commit_run_state(run_id, state)
     await _send_message_event(websocket, run_id, reply, "")

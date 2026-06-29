@@ -47,6 +47,20 @@ export function AgentLogo({
     );
   }
 
+  if (agentType === CLUTCH_AGENT_TYPE) {
+    const isLarge = className.includes('w-12');
+    return (
+      <div
+        className={`${className} rounded-full flex items-center justify-center bg-surface-container relative overflow-hidden flex-shrink-0 select-none border border-neutral-200/40`}
+      >
+        <LegacyIcon
+          name="smart_toy"
+          className={`${isLarge ? 'text-[22px]' : 'text-[18px]'} text-on-surface-variant`}
+        />
+      </div>
+    );
+  }
+
   // Deterministic gradient avatar for agents without a tool brand.
   let hash = 0;
   for (let i = 0; i < name.length; i++) {
