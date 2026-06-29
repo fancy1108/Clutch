@@ -3,14 +3,14 @@
 ## 当前状态
 
 - **阶段：** D25 Hybrid Runtime + Flow 精修已落地 + 功能迭代中；**开源排期 OSR-xx 已登记**（见 `memory/BACKLOG.md` §开源 / DMG 分发 · `memory/ROADMAP.md` §开源分发）
-- **Git HEAD：** `04d6b30`
+- **Git HEAD：** `109d427`
 - **下次优先（开源 T2）：** 首 `v1.0.0` tag 实跑 Release CI → **OSR-13** Keychain
 
 ### 未 commit 工作
 
-OSR-12（待 commit）
+（无 — OSR-15/12 已 commit）
 
-## 2026-06-29 会话 22（OSR-12 Release CI + 敏感信息门禁）
+## 2026-06-29 会话 22（OSR-12 · 已 commit `109d427`）
 
 - **`scripts/release-preflight.sh`**：发版前检查无 `models.json`/`.env`/Application Support 路径入 git
 - **`release.yml`**：gitleaks · preflight · SHA256SUMS · `workflow_dispatch` 同版本重打

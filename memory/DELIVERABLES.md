@@ -29,7 +29,7 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ### OSR-12 ✅ Release CI + 发版敏感信息门禁
 - **日期：** 2026-06-29
-- **Commit：** （待 commit）
+- **Commit：** `109d427` — `ci(osr): harden release workflow with secret preflight (OSR-12)`
 - **Verification：** `./scripts/release-preflight.sh` · `./scripts/verify.sh` → pass
 - **交付文件：**
   - `.github/workflows/release.yml` — gitleaks · preflight · DMG · SHA256SUMS · workflow_dispatch
@@ -39,7 +39,7 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ### OSR-15 ✅ 安装与隐私文档
 - **日期：** 2026-06-29
-- **Commit：** （待 commit）
+- **Commit：** `04d6b30` — `docs(osr): add INSTALL and DATA_AND_PRIVACY guides (OSR-15)`
 - **Verification：** `./scripts/verify.sh` → pass
 - **交付文件：**
   - `docs/INSTALL.md` — DMG 用户安装全流程
