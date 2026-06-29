@@ -3,13 +3,13 @@
 ## 当前状态
 
 - **阶段：** D25 Hybrid Runtime + Flow 精修已落地 + 功能迭代中；**开源排期 OSR-xx 已登记**（见 `memory/BACKLOG.md` §开源 / DMG 分发 · `memory/ROADMAP.md` §开源分发）
-- **Git HEAD：** `(pending OSR-08/09 commits)`
+- **Git HEAD：** `5744142`
 - **下次优先（开源 T1）：** OSR-10 产品截图（可选）→ **T2** OSR-11 Apple 签名 / Release CI
 - **验收期跳过：** MCP hybrid_executions 深度 UI · 2h/100+ 压测 · OSR-00 外部审计（维护者自行验收，D30）
 
 ### 未 commit 工作
 
-（OSR-09 + OSR-08 待 commit）
+（无 — OSR-08/09 已 commit）
 
 ## 2026-06-29 会话 19（OSR-08 Sidecar session token 鉴权）
 

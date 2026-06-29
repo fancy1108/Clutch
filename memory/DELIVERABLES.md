@@ -29,8 +29,7 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ### OSR-08 ✅ Sidecar session token 鉴权
 - **日期：** 2026-06-29
-- **Commit：** `(pending)`
-- **Verification：** `./scripts/verify.sh` → 483 passed
+- **Commit：** `5744142` — `feat(osr): add sidecar session token auth for HTTP and WebSocket (OSR-08)`
 - **交付文件：**
   - `services/orchestrator/src/sidecar_auth.py` · `main.py` middleware + WS gate
   - `services/orchestrator/tests/test_sidecar_auth.py`
