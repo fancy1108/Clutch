@@ -863,6 +863,19 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 - **Verification：** `./scripts/verify.sh` → build + vitest + pytest 473 passed (100% success) ✅
 - **证据：** `—`（门禁已覆盖）
 - **已交付：**
-  - [apps/desktop/src/components/ModelsManager.tsx](file:///Users/fancy/clutch/apps/desktop/src/components/ModelsManager.tsx) — 重构模型卡片容器与动作按钮。去除了原有的 "Use this model" 文本按钮，将整个模型卡片变为可点击（点击自动触发 `handleActivate` 以选中/启用模型，并添加了 `cursor-pointer` 和 hover 边框高亮样式）；将 "Remove" 与 "Test"/"Retest" 操作重构为仅在鼠标悬浮时显现的图形化 icon 按钮（使用 `BTN_ICON` 与 LegacyIcon `delete` 和 `sync`）；同时对所有内部交互子元素（包括 Change Key 按钮和测试/删除按钮）添加 `e.stopPropagation()` 以防点选穿透。
+  - [apps/desktop/src/components/ModelsManager.tsx](file:///Users/fancy/clutch/apps/desktop/src/components/ModelsManager.tsx) — 重构模型卡片容器与动作按钮。去选择原有的 "Use this model" 文本按钮，将整个模型卡片变为可点击（点击自动触发 `handleActivate` 以选中/启用模型，并添加了 `cursor-pointer` 和 hover 边框高亮样式）；将 "Remove" 与 "Test"/"Retest" 操作重构为仅在鼠标悬浮时显现的图形化 icon 按钮（使用 `BTN_ICON` 与 LegacyIcon `delete` 和 `sync`）；同时对所有内部交互子元素（包括 Change Key 按钮和测试/删除按钮）添加 `e.stopPropagation()` 以防点选穿透。
+
+
+### 选中 Flow 时底部显示 - 且 Agent 和 Flow 互斥优化 (Workflow Agent Mutex) ✅
+- **日期：** 2026-06-29
+- **Commit：** `[PENDING]` — `feat(ui): clear workflow selection and backend state when selecting an agent and display Model/Agent as '-' when Flow is active`
+- **Verification：** `cd services/orchestrator && uv run pytest tests/test_ws_state_patch.py -k test_ws_clear_workflow` → 1 passed; `./scripts/verify.sh` → build + vitest + pytest 474 passed (100% success) ✅
+- **证据：** `—`（门禁已覆盖）
+- **已交付：**
+  - [apps/desktop/src/App.tsx](file:///Users/fancy/clutch/apps/desktop/src/App.tsx) — 当 Workflow 处于选中状态时，Model 显示为 `Model: —`（禁用/非交互状态元素），而 Active Agent 保持下拉按钮，但显示为 `Active Agent: —`。当用户在 Agent 菜单中选择任意智能体时，自动触发 `clearWorkflowSelection` 清理工作流，恢复常规 Plain Chat 下的模型/智能体切换；导入并整合 `clearWorkflowForSession` 方法。
+  - [apps/desktop/src/services/clutchState.ts](file:///Users/fancy/clutch/apps/desktop/src/services/clutchState.ts) — 新增 `clearWorkflowState` store 状态重置与 `clearWorkflowForSession` WebSocket 消息指令发送，供前端在解绑工作流时清空本地状态并同步重置后端 session 级别的 `workflow_id`。
+  - [services/orchestrator/src/main.py](file:///Users/fancy/clutch/services/orchestrator/src/main.py) — 在 WebSocket `/ws/runs/{run_id}` 循环中新增对 `"clear_workflow"` action 载荷的处理。清空当前活跃运行状态和运行历史中的 `workflow_id` 记录，移出当前运行的 `_run_sessions`，并广播最新的 `workflow_id: ""` patch，保证该会话在后续交互时正常路由至 plain chat。
+  - [services/orchestrator/tests/test_ws_state_patch.py](file:///Users/fancy/clutch/services/orchestrator/tests/test_ws_state_patch.py) — 添加 `test_ws_clear_workflow` 单元测试，校验当发送 `"action": "clear_workflow"` 时 state_patch 中的 `workflow_id` 被正确清空且持久化落盘。
+
 
 

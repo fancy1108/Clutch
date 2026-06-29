@@ -2,14 +2,23 @@
 
 ## 当前状态
 
-- **阶段：** D25 Hybrid Runtime + **Flow 精修（pause/refine/continue）已落地** + **默认 Multi-Agent 并隐藏模式切换按钮已落地** + **MCP 审批流程解包崩溃修复已落地** + **Flow 精修消息回显、Session 提示词丢失、头像映射修复已落地** + **模型设置操作按钮与选中卡片交互优化已落地**
-- **Git HEAD：** `4ab1a27`
+- **阶段：** D25 Hybrid Runtime + **Flow 精修（pause/refine/continue）已落地** + **默认 Multi-Agent 并隐藏模式切换按钮已落地** + **MCP 审批流程解包崩溃修复已落地** + **Flow 精修消息回显、Session 提示词丢失、头像映射修复已落地** + **模型设置操作按钮与选中卡片交互优化已落地** + **选中 Flow 时底部显示 - 且 Agent 和 Flow 互斥优化已落地**
+- **Git HEAD：** `[PENDING]`
 - **下次优先：** 进一步集成测试或根据用户反馈进行精修
 - **验收期跳过：** MCP hybrid_executions 深度 UI · 2h/100+ 压测
 
 ### 未 commit 工作
 
 （无 — 见本 commit）
+
+## 2026-06-29 会话 14（选中 Flow 时底部显示 - 且 Agent 和 Flow 互斥优化）
+
+- **工作流与智能体互斥选择**：重构了底部的 Active Agent 按钮，使其在 Workflow 选中时不再为置灰 span，而是保持为可点击 the `Active Agent: — [v]` 下拉触发器。当用户在下拉菜单中选中任何智能体时，自动触发 `clearWorkflowSelection()`。
+- **清除工作流的 WebSocket 同步**：在 `clutchState.ts` 引入 `clearWorkflowForSession` 方法，向后端发送 `{ action: "clear_workflow" }` 并在前端 store 清空 `workflow_id`，使会话重置为 plain chat 状态。
+- **后端 WS 状态更新**：在 Sidecar `/ws/runs/{run_id}` 循环中新增对 `"clear_workflow"` action 的处理，将运行状态与历史 session 中的 `workflow_id` 清空并广播给所有客户端，移出当前运行的 `_run_sessions`，防止后续对话消息错误路由至工作流执行或精修。
+- **模型和智能体视觉优化**：当 Flow 选中激活时，底部的 Model 保持显示为 `Model: —` 禁用/只读状态，Active Agent 按钮显示为 `Active Agent: — [v]`。
+- **单元测试**：添加 `test_ws_clear_workflow` 单元测试，保证 WebSocket `"clear_workflow"` 接口在接收到指令后能正确清除 state 里的 `workflow_id` 并持久化。
+- **验证**：运行 `./scripts/verify.sh` 全量通过（474 tests passed + build & doc-drift OK）。
 
 ## 2026-06-29 会话 13（模型配置界面操作按钮悬浮图形化与卡片选中优化）
 

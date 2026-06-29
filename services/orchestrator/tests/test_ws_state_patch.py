@@ -64,3 +64,26 @@ def test_ws_state_patch_on_message(monkeypatch) -> None:
         patch2 = patch_events[1]["data"]["patch"]
         assert patch2["status"] == "idle"
         assert patch2.get("active_node_id", "") == ""
+
+
+def test_ws_clear_workflow(monkeypatch) -> None:
+    from src.main import _get_or_create_run, _commit_run_state
+    run_id = "run_clear_wf_test"
+    state = _get_or_create_run(run_id)
+    state["workflow_id"] = "test-workflow-id"
+    _commit_run_state(run_id, state)
+
+    with client.websocket_connect(f"/ws/runs/{run_id}") as ws:
+        envelope = ws.receive_json()
+        assert envelope["event"] == "state_patch"
+        assert envelope["data"]["patch"]["workflow_id"] == "test-workflow-id"
+
+        ws.send_json({"action": "clear_workflow"})
+        
+        event = ws.receive_json()
+        assert event["event"] == "state_patch"
+        assert event["data"]["patch"]["workflow_id"] == ""
+        
+        # Verify it was persisted
+        updated_state = _get_or_create_run(run_id)
+        assert updated_state["workflow_id"] == ""

@@ -22,7 +22,7 @@ import {
 } from './services/builtinAgent';
 import { fetchPreferences, saveThemePreference, saveUserNamePreference, type ThemePresetId } from './services/themeApi';
 import { LanguageProvider, useLanguage } from './components/LanguageContext';
-import { clutchStore, createSessionRunId, submitChatMessage, useClutchState, setUserChatAvatar } from './services/clutchState';
+import { clutchStore, createSessionRunId, submitChatMessage, useClutchState, setUserChatAvatar, clearWorkflowForSession } from './services/clutchState';
 import { fetchSessions, createSession, startWorkflowRun, fetchRunState, deleteSession, type SessionRecord } from './services/runApi';
 import { fetchShellSnapshots } from './services/shellSnapshotApi';
 import { listWorkflowItems, loadWorkflowById } from './services/workflowApi';
@@ -291,6 +291,7 @@ function MainLayout() {
   const clearWorkflowSelection = () => {
     setSelectedWorkflowId(null);
     setCurrentFlowName('');
+    void clearWorkflowForSession(sessionRunId);
   };
 
   const handleSetIsMultiAgent = useCallback((multi: boolean) => {
@@ -1401,57 +1402,46 @@ function MainLayout() {
 
           {isMultiAgent ? (
             <>
-              {hasWorkflowSelection ? (
-                <span
-                  data-testid="footer-agent-disabled"
-                  className="flex items-center gap-1.5 px-2 py-1 rounded font-medium text-on-surface-variant cursor-default whitespace-nowrap"
-                  title={t('Agent is determined by the selected workflow')}
+              <div className="relative">
+                <button
+                  type="button"
+                  data-testid="footer-agent-trigger"
+                  onClick={toggleAgentMenu}
+                  className={`flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-container-low transition-colors cursor-pointer font-medium whitespace-nowrap ${
+                    selectedAgentId
+                      ? 'text-primary font-bold'
+                      : 'text-on-surface-variant'
+                  }`}
+                  aria-label={`${t('Active Agent')}: ${multiAgentFooterName}`}
                 >
-                  <LegacyIcon name="smart_toy" className="text-[15px] text-on-surface-variant" />
-                  {t('Active Agent')}: —
-                </span>
-              ) : (
-                <div className="relative">
-                  <button
-                    type="button"
-                    data-testid="footer-agent-trigger"
-                    onClick={toggleAgentMenu}
-                    className={`flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-container-low transition-colors cursor-pointer font-medium whitespace-nowrap ${
-                      selectedAgentId
-                        ? 'text-primary font-bold'
-                        : 'text-on-surface-variant'
-                    }`}
-                    aria-label={`${t('Active Agent')}: ${multiAgentFooterName}`}
-                  >
-                    <LegacyIcon name="smart_toy" className="text-[15px]" />
-                    {t('Active Agent')}: {multiAgentFooterName}
-                    <LegacyIcon name="keyboard_arrow_down" className="text-[13px]" />
-                  </button>
-                  {agentMenuOpen ? (
-                    <FooterMenuPanel testId="footer-agent-menu">
-                      {configuredAgents.map((agent) => (
-                        <FooterMenuItem
-                          key={agent.id}
-                          testId={`footer-agent-item-${agent.id}`}
-                          selected={agent.id === selectedAgentId}
-                          onClick={() => handleFooterAgentSelect(agent)}
-                        >
-                          {getAgentDisplayName(agent)}
-                        </FooterMenuItem>
-                      ))}
-                      <FooterMenuAction
-                        testId="footer-agent-manage"
-                        onClick={() => {
-                          setAgentMenuOpen(false);
-                          setView('agents');
-                        }}
+                  <LegacyIcon name="smart_toy" className="text-[15px]" />
+                  {t('Active Agent')}: {multiAgentFooterName}
+                  <LegacyIcon name="keyboard_arrow_down" className="text-[13px]" />
+                </button>
+                {agentMenuOpen ? (
+                  <FooterMenuPanel testId="footer-agent-menu">
+                    {configuredAgents.map((agent) => (
+                      <FooterMenuItem
+                        key={agent.id}
+                        testId={`footer-agent-item-${agent.id}`}
+                        selected={agent.id === selectedAgentId}
+                        onClick={() => handleFooterAgentSelect(agent)}
                       >
-                        {t('Manage agents...')}
-                      </FooterMenuAction>
-                    </FooterMenuPanel>
-                  ) : null}
-                </div>
-              )}
+                        {getAgentDisplayName(agent)}
+                      </FooterMenuItem>
+                    ))}
+                    <FooterMenuAction
+                      testId="footer-agent-manage"
+                      onClick={() => {
+                        setAgentMenuOpen(false);
+                        setView('agents');
+                      }}
+                    >
+                      {t('Manage agents...')}
+                    </FooterMenuAction>
+                  </FooterMenuPanel>
+                ) : null}
+              </div>
               <div className="relative">
                 <button
                   type="button"
