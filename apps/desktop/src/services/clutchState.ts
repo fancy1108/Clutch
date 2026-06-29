@@ -504,8 +504,10 @@ class ClutchStateStore {
     }
     this.emit();
 
-    this.connectPromise = new Promise((resolve, reject) => {
-      const ws = new WebSocket(sidecarWebSocketUrl(`/ws/runs/${runId}`));
+    this.connectPromise = sidecarWebSocketUrl(`/ws/runs/${runId}`).then(
+      (wsUrl) =>
+        new Promise<void>((resolve, reject) => {
+      const ws = new WebSocket(wsUrl);
       this.socket = ws;
 
       ws.onopen = () => {
@@ -560,7 +562,7 @@ class ClutchStateStore {
               );
               this.appendMessage({
                 id: `validation-${Date.now()}`,
-                agent: 'Evaluator',
+                agent: 'AI Agent',
                 avatar: '',
                 time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                 text: `${data.message}\n\n${nextStepsText}`,
@@ -596,7 +598,8 @@ class ClutchStateStore {
         this.connectPromise = null;
         this.emit();
       };
-    });
+        }),
+    );
 
     return this.connectPromise;
   }

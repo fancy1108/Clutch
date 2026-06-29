@@ -40,8 +40,7 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ### OSR-09 ✅ CLI 权限策略（D30 披露型）
 - **日期：** 2026-06-29
-- **Commit：** `(pending)`
-- **Verification：** 文档核对
+- **Commit：** `6e4f634` — `docs(osr): document default CLI skip-permissions policy (OSR-09, D30)`
 - **交付文件：**
   - `README.md` §安全与 CLI 权限
   - `SECURITY.md` · `memory/DECISIONS.md` D30

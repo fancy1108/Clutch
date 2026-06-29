@@ -1,4 +1,4 @@
-import { SIDECAR_BASE as BASE } from './sidecarUrl';
+import { SIDECAR_BASE as BASE, sidecarFetch } from './sidecarUrl';
 
 export interface ModelEntry {
   id: string;
@@ -37,7 +37,7 @@ export interface ModelTestResult {
 }
 
 export async function fetchModelsConfig(): Promise<ModelConfig> {
-  const response = await fetch(`${BASE}/api/models/config`, { cache: 'no-store' });
+  const response = await sidecarFetch(`${BASE}/api/models/config`, { cache: 'no-store' });
   if (!response.ok) throw new Error(`models config failed (${response.status})`);
   return response.json() as Promise<ModelConfig>;
 }
@@ -47,7 +47,7 @@ export async function saveModelsConfig(payload: {
   provider_id?: string;
   api_key?: string;
 }): Promise<void> {
-  const response = await fetch(`${BASE}/api/models/config`, {
+  const response = await sidecarFetch(`${BASE}/api/models/config`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -59,7 +59,7 @@ export async function saveModelsConfig(payload: {
 }
 
 export async function deleteProviderCredential(providerId: string): Promise<void> {
-  const response = await fetch(`${BASE}/api/models/credentials/${encodeURIComponent(providerId)}`, {
+  const response = await sidecarFetch(`${BASE}/api/models/credentials/${encodeURIComponent(providerId)}`, {
     method: 'DELETE',
   });
   if (!response.ok) {
@@ -77,7 +77,7 @@ export interface CcSwitchRehydrateResult {
 }
 
 export async function rehydrateCcSwitchModels(): Promise<CcSwitchRehydrateResult> {
-  const response = await fetch(`${BASE}/api/models/rehydrate-cc-switch`, { method: 'POST' });
+  const response = await sidecarFetch(`${BASE}/api/models/rehydrate-cc-switch`, { method: 'POST' });
   if (!response.ok) {
     const body = (await response.json().catch(() => ({}))) as { detail?: { message?: string } };
     throw new Error(body.detail?.message ?? `cc-switch rehydrate failed (${response.status})`);
@@ -86,7 +86,7 @@ export async function rehydrateCcSwitchModels(): Promise<CcSwitchRehydrateResult
 }
 
 export async function testModelConnection(modelId: string): Promise<ModelTestResult> {
-  const response = await fetch(`${BASE}/api/models/test`, {
+  const response = await sidecarFetch(`${BASE}/api/models/test`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ model_id: modelId }),
@@ -107,7 +107,7 @@ export interface AddCustomImageModelInput {
 export async function addCustomImageModel(
   input: AddCustomImageModelInput,
 ): Promise<{ model_id: string; config: ModelConfig }> {
-  const response = await fetch(`${BASE}/api/models/custom/image`, {
+  const response = await sidecarFetch(`${BASE}/api/models/custom/image`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input),
@@ -120,7 +120,7 @@ export async function addCustomImageModel(
 }
 
 export async function deleteCustomModel(modelId: string): Promise<ModelConfig> {
-  const response = await fetch(`${BASE}/api/models/custom/${encodeURIComponent(modelId)}`, {
+  const response = await sidecarFetch(`${BASE}/api/models/custom/${encodeURIComponent(modelId)}`, {
     method: 'DELETE',
     cache: 'no-store',
   });

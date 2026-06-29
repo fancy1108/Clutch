@@ -1,4 +1,4 @@
-import { sidecarHttpUrl } from './sidecarUrl';
+import { sidecarHttpUrl, sidecarFetch } from './sidecarUrl';
 
 export interface ShellSnapshotSummary {
   run_id: string;
@@ -11,7 +11,7 @@ export interface ShellSnapshotSummary {
 }
 
 export async function fetchShellSnapshots(): Promise<ShellSnapshotSummary[]> {
-  const response = await fetch(sidecarHttpUrl('/api/shell-snapshots'));
+  const response = await sidecarFetch(sidecarHttpUrl('/api/shell-snapshots'));
   if (!response.ok) {
     throw new Error(`Failed to load shell snapshots (${response.status})`);
   }

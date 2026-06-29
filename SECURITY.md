@@ -65,7 +65,7 @@ Summary only — details in [`docs/OPEN_SOURCE_RELEASE.md`](docs/OPEN_SOURCE_REL
 
 | Topic | Current behavior | Planned |
 |-------|------------------|---------|
-| Sidecar API / WebSocket | No session token; localhost binding only | **OSR-08** session Bearer + WS `?token=` (Tauri spawn) |
+| Sidecar API / WebSocket | `CLUTCH_SIDECAR_TOKEN` Bearer + WS `?token=` when launched via Tauri; `127.0.0.1` only | Hardening continues in OSR-16 |
 | API key storage | `models.json` on disk, `chmod 600` | OSR-13 Keychain |
 | CLI permissions | `--dangerously-skip-permissions` on some adapters | **D30** — documented; not gated (OSR-09) |
 

@@ -18,8 +18,9 @@ import {
 import { fetchModelsConfig, mapModelConfigToUi } from '../services/modelsApi';
 import { useLanguage } from './LanguageContext';
 import { fetchToolsStatus, type AiToolStatus } from '../services/toolsApi';
-import { sidecarHttpUrl } from '../services/sidecarUrl';
+import { sidecarHttpUrl, sidecarFetch } from '../services/sidecarUrl';
 import { resolveBrandLogoSrc } from '../services/brandLogos';
+import { UnderDevelopmentNotice } from './ui/UnderDevelopmentNotice';
 
 export function AgentLogo({
   name,
@@ -281,7 +282,7 @@ export function AgentManager({
   useEffect(() => {
     if (isModalOpen && agentType === 'ollama-cli') {
       setOllamaError(null);
-      fetch(sidecarHttpUrl('/api/models/ollama'))
+      sidecarFetch(sidecarHttpUrl('/api/models/ollama'))
         .then((res) => res.json())
         .then((data) => {
           if (data.ok && data.models) {
@@ -311,13 +312,13 @@ export function AgentManager({
 
   const handleStartOllama = () => {
     setIsStartingOllama(true);
-    fetch(sidecarHttpUrl('/api/models/ollama/start'), { method: 'POST' })
+    sidecarFetch(sidecarHttpUrl('/api/models/ollama/start'), { method: 'POST' })
       .then((res) => res.json())
       .then((data) => {
         if (data.ok) {
           let attempts = 0;
           const interval = setInterval(() => {
-            fetch(sidecarHttpUrl('/api/models/ollama'))
+            sidecarFetch(sidecarHttpUrl('/api/models/ollama'))
               .then((res) => res.json())
               .then((statusData) => {
                 attempts++;
@@ -601,7 +602,7 @@ export function AgentManager({
               <button 
                 onClick={() => setSelectedAgent(null)}
                 className="flex items-center justify-center p-1.5 hover:bg-neutral-100 rounded-lg text-neutral-500 hover:text-neutral-900 transition-colors"
-                title="Back to List"
+                title={t('Back to List')}
               >
                 <LegacyIcon name="arrow_back" className="text-[18px]" />
               </button>
@@ -619,7 +620,7 @@ export function AgentManager({
                 className="flex items-center gap-1.5 px-3 py-1.5 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg text-[11.5px] font-semibold transition-colors border border-neutral-200 bg-white"
               >
                 <LegacyIcon name="edit" className="text-[15px]" />
-                Edit Settings
+                {t('Edit Settings')}
               </button>
               {!isBuiltinAgent(selectedAgent) ? (
               <button
@@ -627,7 +628,7 @@ export function AgentManager({
                 className="flex items-center gap-1.5 px-3 py-1.5 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg text-[11.5px] font-semibold transition-colors border border-red-100 bg-white"
               >
                 <LegacyIcon name="delete" className="text-[15px]" />
-                Delete
+                {t('Delete')}
               </button>
               ) : null}
             </div>
@@ -647,7 +648,7 @@ export function AgentManager({
                   />
                   <div>
                     <h2 className="text-sm font-bold text-neutral-900 tracking-tight font-mono">{selectedAgent.name}</h2>
-                    <p className="text-[11px] text-neutral-400 mt-0.5">Role System Specifications</p>
+                    <p className="text-[11px] text-neutral-400 mt-0.5">{t('Role System Specifications')}</p>
                   </div>
                 </div>
 
@@ -660,18 +661,18 @@ export function AgentManager({
             {/* Right Column: Metadata & Deliverables Panel */}
             <div className="w-80 flex flex-col bg-white overflow-y-auto flex-shrink-0 border-l border-neutral-100 p-6 space-y-6">
               <div>
-                <h3 className="text-[11px] font-bold text-neutral-400 font-mono uppercase tracking-wider mb-2">Agent Details</h3>
+                <h3 className="text-[11px] font-bold text-neutral-400 font-mono uppercase tracking-wider mb-2">{t('Agent Details')}</h3>
                 <div className="bg-neutral-50 p-4 rounded-xl border border-neutral-200/50 space-y-3">
                   <div>
-                    <p className="text-[10px] text-neutral-400 font-medium">NAME</p>
+                    <p className="text-[10px] text-neutral-400 font-medium">{t('NAME')}</p>
                     <p className="text-[11.5px] text-neutral-800 font-semibold mt-0.5">{selectedAgent.name}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-neutral-400 font-medium">DESCRIPTION</p>
+                    <p className="text-[10px] text-neutral-400 font-medium">{t('DESCRIPTION')}</p>
                     <p className="text-[11px] text-neutral-600 font-normal mt-0.5 leading-relaxed">{selectedAgent.description}</p>
                   </div>
                   <div className="border-t border-neutral-200/50 pt-2.5">
-                    <p className="text-[10px] text-neutral-400 font-medium">AGENT TYPE</p>
+                    <p className="text-[10px] text-neutral-400 font-medium">{t('AGENT TYPE')}</p>
                     <div className="flex items-center gap-1.5 mt-1 bg-neutral-100 border border-neutral-200 rounded-lg p-1.5">
                       <LegacyIcon name="bolt" className="text-[13px] text-neutral-700" />
                       <span className="text-[10.5px] font-mono font-bold text-neutral-900">
@@ -681,7 +682,7 @@ export function AgentManager({
                   </div>
                   {agentTypeFromAgent(selectedAgent) === 'clutch' && selectedAgent.modelId && (
                     <div className="border-t border-neutral-200/50 pt-2.5">
-                      <p className="text-[10px] text-neutral-400 font-medium">MODEL</p>
+                      <p className="text-[10px] text-neutral-400 font-medium">{t('MODEL')}</p>
                       <div className="flex items-center gap-1.5 mt-1 bg-neutral-100 border border-neutral-200 rounded-lg p-1.5">
                         <LegacyIcon name="layers" className="text-[13px] text-neutral-700" />
                         <span className="text-[10.5px] font-mono font-bold text-neutral-900">
@@ -692,28 +693,28 @@ export function AgentManager({
                   )}
                   {agentTypeFromAgent(selectedAgent) === 'ollama-cli' && (
                     <div className="border-t border-neutral-200/50 pt-2.5">
-                      <p className="text-[10px] text-neutral-400 font-medium">OLLAMA MODEL</p>
+                      <p className="text-[10px] text-neutral-400 font-medium">{t('OLLAMA MODEL')}</p>
                       <div className="flex items-center gap-1.5 mt-1 bg-neutral-100 border border-neutral-200 rounded-lg p-1.5">
                         <LegacyIcon name="memory" className="text-[13px] text-neutral-700" />
                         <span className="text-[10.5px] font-mono font-bold text-neutral-900">
-                          {selectedAgent.ollamaModel || 'Auto-select best local model'}
+                          {selectedAgent.ollamaModel || t('Auto-select best local model')}
                         </span>
                       </div>
                     </div>
                   )}
                   <div className="border-t border-neutral-200/50 pt-2.5 flex justify-between items-center">
                     <div>
-                      <p className="text-[10px] text-neutral-400 font-medium">LAST MODIFIED</p>
+                      <p className="text-[10px] text-neutral-400 font-medium">{t('LAST MODIFIED')}</p>
                       <p className="text-[10.5px] text-neutral-600 font-mono font-medium mt-0.5">{selectedAgent.lastModified}</p>
                     </div>
-                    <span className="text-[10px] bg-neutral-200/50 text-neutral-600 px-2 py-0.5 rounded-full font-mono font-semibold">ACTIVE</span>
+                    <span className="text-[10px] bg-neutral-200/50 text-neutral-600 px-2 py-0.5 rounded-full font-mono font-semibold">{t('ACTIVE')}</span>
                   </div>
                 </div>
               </div>
 
               {/* Attached Skills Manuals */}
               <div>
-                <h3 className="text-[11px] font-bold text-neutral-400 font-mono uppercase tracking-wider mb-2">Attached Skills Manuals</h3>
+                <h3 className="text-[11px] font-bold text-neutral-400 font-mono uppercase tracking-wider mb-2">{t('Attached Skills Manuals')}</h3>
                 <div className="flex flex-wrap gap-1.5">
                   {selectedAgent.skills && selectedAgent.skills.length > 0 ? (
                     selectedAgent.skills.map(skillKey => {
@@ -725,14 +726,14 @@ export function AgentManager({
                       );
                     })
                   ) : (
-                    <p className="text-[10px] text-neutral-400 italic leading-snug">No linked professional skills attached to this agent manual.</p>
+                    <p className="text-[10px] text-neutral-400 italic leading-snug">{t('No linked professional skills attached to this agent manual.')}</p>
                   )}
                 </div>
               </div>
 
               {/* Mounted MCP Hub servers */}
               <div>
-                <h3 className="text-[11px] font-bold text-neutral-400 font-mono uppercase tracking-wider mb-2">MCP Hub Servers</h3>
+                <h3 className="text-[11px] font-bold text-neutral-400 font-mono uppercase tracking-wider mb-2">{t('MCP Hub Servers')}</h3>
                 <div className="flex flex-col gap-1.5">
                   {selectedAgent.mcpServerIds && selectedAgent.mcpServerIds.length > 0 ? (
                     selectedAgent.mcpServerIds.map((serverId) => {
@@ -777,7 +778,7 @@ export function AgentManager({
                       </button>
                     ))
                   ) : (
-                    <p className="text-[11px] text-neutral-400 italic">No associated deliverablesconfigured.</p>
+                    <p className="text-[11px] text-neutral-400 italic">{t('No associated deliverablesconfigured.')}</p>
                   )}
                 </div>
               </div>
@@ -792,10 +793,10 @@ export function AgentManager({
             <div>
               <h2 className="text-base font-bold text-neutral-800 tracking-tight flex items-center gap-2">
                 <LegacyIcon name="smart_toy" className="text-neutral-500 text-[20px]" />
-                AI Agent Controller
+                {t('AI Agent Controller')}
               </h2>
               <p className="text-[11.5px] text-neutral-400 mt-1">
-                Display the operational directive frameworks and output manifests loaded in the execution sandbox.
+                {t('Display the operational directive frameworks and output manifests loaded in the execution sandbox.')}
               </p>
             </div>
             
@@ -804,7 +805,7 @@ export function AgentManager({
               className={`${BTN_SECONDARY} gap-1.5`}
             >
               <LegacyIcon name="add" className="text-[16px]" />
-              Create Agent
+              {t('Create Agent')}
             </button>
           </div>
 
@@ -812,7 +813,7 @@ export function AgentManager({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {agents.length === 0 ? (
               <p className="text-xs text-neutral-400 italic col-span-full">
-                No agents configured. Create one to define prompts, deliverables, and execution settings.
+                {t('No agents configured. Create one to define prompts, deliverables, and execution settings.')}
               </p>
             ) : null}
             {agents.map((agent) => (
@@ -844,7 +845,7 @@ export function AgentManager({
                           </span>
                         ) : null}
                         <p className="text-[10px] text-neutral-400 font-mono font-medium mt-0.5">
-                          Edited: {agent.lastModified}
+                          {t('Edited:')} {agent.lastModified}
                         </p>
                       </div>
                     </div>
@@ -859,12 +860,12 @@ export function AgentManager({
                   <div className="flex flex-wrap items-center gap-3">
                     <span className="text-[9.5px] font-mono text-neutral-400 flex items-center gap-1">
                       <LegacyIcon name="insert_drive_file" className="text-[13px]" />
-                      {agent.deliverables ? agent.deliverables.length : 0} Deliverables
+                      {agent.deliverables ? agent.deliverables.length : 0} {t('Deliverables')}
                     </span>
                     {agent.skills && agent.skills.length > 0 && (
                       <span className="text-[9.5px] font-mono text-neutral-400 flex items-center gap-1">
                         <LegacyIcon name="school" className="text-[13px]" />
-                        {agent.skills.length} Skills
+                        {agent.skills.length} {t('Skills')}
                       </span>
                     )}
                     {agentTypeFromAgent(agent) && (
@@ -913,16 +914,16 @@ export function AgentManager({
                         setSelectedAgent(agent);
                       }}
                       className={BTN_ICON}
-                      title="View details"
-                      aria-label="View details"
+                      title={t('View details')}
+                      aria-label={t('View details')}
                     >
                       <LegacyIcon name="visibility" className="text-[16px]" />
                     </button>
                     <button
                       onClick={(e) => handleOpenEdit(agent, e)}
                       className={BTN_ICON}
-                      title="Edit settings"
-                      aria-label="Edit settings"
+                      title={t('Edit settings')}
+                      aria-label={t('Edit settings')}
                     >
                       <LegacyIcon name="edit" className="text-[16px]" />
                     </button>
@@ -930,8 +931,8 @@ export function AgentManager({
                     <button
                       onClick={(e) => handleDelete(agent.id, e)}
                       className={`${BTN_ICON} hover:bg-red-50 text-red-500 hover:text-red-700`}
-                      title="Delete agent"
-                      aria-label="Delete agent"
+                      title={t('Delete agent')}
+                      aria-label={t('Delete agent')}
                     >
                       <LegacyIcon name="delete" className="text-[16px]" />
                     </button>
@@ -953,13 +954,13 @@ export function AgentManager({
             <div className="h-14 border-b border-neutral-100 px-5 flex items-center justify-between flex-shrink-0 bg-neutral-50/50">
               <h3 className="text-[12.5px] font-extrabold text-neutral-900 font-mono tracking-tight uppercase flex items-center gap-2">
                 <LegacyIcon name="smart_toy" className="text-[18px]" />
-                {modalMode === 'create' ? 'Create New AI Agent' : 'Edit Agent Settings'}
+                {modalMode === 'create' ? t('Create New AI Agent') : t('Edit Agent Settings')}
               </h3>
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
                 className={BTN_ICON}
-                aria-label="Close"
+                aria-label={t('Close')}
               >
                 <LegacyIcon name="close" className="text-[18px]" />
               </button>
@@ -971,24 +972,24 @@ export function AgentManager({
               {/* 🧩 MODULE 1: Identity & Engine */}
               <div className="p-4 bg-neutral-50/30 border border-neutral-200/60 rounded-xl space-y-3.5 animate-fade-in">
                 <div className="flex items-center gap-1.5 pb-2 border-b border-neutral-200/40">
-                  <span className="text-[9.5px] font-extrabold text-neutral-800 bg-neutral-100 border border-neutral-200 px-1.5 py-0.2 rounded font-mono tracking-wider uppercase">Module 1</span>
-                  <span className="text-[10.5px] font-extrabold text-[#111111] font-mono tracking-wide uppercase">Identity & Driving Engine</span>
+                  <span className="text-[9.5px] font-extrabold text-neutral-800 bg-neutral-100 border border-neutral-200 px-1.5 py-0.2 rounded font-mono tracking-wider uppercase">{t('Module 1')}</span>
+                  <span className="text-[10.5px] font-extrabold text-[#111111] font-mono tracking-wide uppercase">{t('Identity & Driving Engine')}</span>
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pb-1">
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-neutral-500 tracking-wider uppercase font-mono block">Agent Name</label>
+                    <label className="text-[10px] font-bold text-neutral-500 tracking-wider uppercase font-mono block">{t('Agent Name')}</label>
                     <input
                       type="text"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      placeholder="e.g. Orchestration Dispatcher v2.0"
+                      placeholder={t('e.g. Orchestration Dispatcher v2.0')}
                       className="w-full px-3 py-1.5 text-xs border border-neutral-200 focus:outline-none focus:border-neutral-900 focus:ring-1 focus:ring-neutral-900/20 bg-white rounded-lg font-mono"
                     />
                   </div>
                   
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-neutral-500 tracking-wider uppercase font-mono block">Agent Type</label>
+                    <label className="text-[10px] font-bold text-neutral-500 tracking-wider uppercase font-mono block">{t('Agent Type')}</label>
                     {modalMode === 'edit' && editingId === BUILTIN_AGENT_ID ? (
                       <div>
                         <div className="flex items-center gap-1.5 px-3 py-1.5 border border-neutral-200 bg-neutral-100 rounded-lg">
@@ -996,7 +997,7 @@ export function AgentManager({
                           <span className="text-xs font-mono font-bold text-neutral-900">Clutch</span>
                         </div>
                         <p className="text-[9.5px] text-neutral-400 mt-1.5 leading-relaxed">
-                          Built-in agent uses Clutch models. Pick a default model below or switch at runtime in chat.
+                          {t('Built-in agent uses Clutch models. Pick a default model below or switch at runtime in chat.')}
                         </p>
                       </div>
                     ) : (
@@ -1014,7 +1015,7 @@ export function AgentManager({
                     )}
                     {modalMode !== 'edit' && agentTypeOptions.length === 1 && (
                       <p className="text-[9.5px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-2 leading-relaxed">
-                        No CLI tools are connected yet. Open Settings → AI Tools, connect a tool, and run Auto-configure to add more agent types here.
+                        {t('No CLI tools are connected yet. Open Settings → AI Tools, connect a tool, and run Auto-configure to add more agent types here.')}
                       </p>
                     )}
                   </div>
@@ -1023,11 +1024,11 @@ export function AgentManager({
                 {agentType === 'clutch' && (
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-neutral-500 tracking-wider uppercase font-mono block">
-                      Model
+                      {t('Model')}
                     </label>
                     {clutchModels.length === 0 ? (
                       <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 leading-relaxed">
-                        No models configured yet. Add API keys or image models under Settings → Models first.
+                        {t('No models configured yet. Add API keys or image models under Settings → Models first.')}
                       </p>
                     ) : (
                       <select
@@ -1035,7 +1036,7 @@ export function AgentManager({
                         onChange={(e) => setModelId(e.target.value)}
                         className="w-full px-3 py-1.5 text-xs border border-neutral-200 focus:outline-none focus:border-neutral-900 focus:ring-1 focus:ring-neutral-900/20 bg-white rounded-lg font-mono text-neutral-800"
                       >
-                        <option value="">Use global default model</option>
+                        <option value="">{t('Use global default model')}</option>
                         {clutchModels.map((model) => (
                           <option key={model.id} value={model.id}>
                             {model.name}
@@ -1045,7 +1046,7 @@ export function AgentManager({
                       </select>
                     )}
                     <p className="text-[9.5px] text-neutral-400 leading-relaxed">
-                      Clutch agents run on Sidecar models (chat or image). Leave empty to follow the global model in chat.
+                      {t('Clutch agents run on Sidecar models (chat or image). Leave empty to follow the global model in chat.')}
                     </p>
                   </div>
                 )}
@@ -1053,14 +1054,14 @@ export function AgentManager({
                  {agentType === 'ollama-cli' && (
                    <div className="space-y-1">
                      <label className="text-[10px] font-bold text-neutral-500 tracking-wider uppercase font-mono block">
-                       Ollama Model
+                       {t('Ollama Model')}
                      </label>
                      {ollamaModels.length === 0 ? (
                        <div className="text-[10px] text-amber-700 bg-amber-50/50 border border-amber-200/60 rounded-xl p-3 space-y-2">
                          {ollamaError?.reason === 'connection_refused' ? (
                            <>
                              <p className="leading-relaxed font-sans">
-                               <strong>Ollama is not running.</strong> Make sure the Ollama desktop application is open or that the Ollama daemon is running in the background.
+                               <strong>{t('Ollama is not running.')}</strong> {t('Make sure the Ollama desktop application is open or that the Ollama daemon is running in the background.')}
                              </p>
                              {(ollamaError?.app_installed || ollamaError?.binary_installed) && (
                                <button
@@ -1072,19 +1073,17 @@ export function AgentManager({
                                  {isStartingOllama ? (
                                    <>
                                      <span className="w-2.5 h-2.5 rounded-full border-2 border-white border-t-transparent animate-spin inline-block" />
-                                     Starting Ollama...
+                                     {t('Starting Ollama...')}
                                    </>
                                  ) : (
-                                   'Launch Ollama Service'
+                                   t('Launch Ollama Service')
                                  )}
                                </button>
                              )}
                            </>
                          ) : (
                            <p className="leading-relaxed font-sans">
-                             No local models found. Ensure Ollama is running and run{' '}
-                             <code className="font-mono text-[9.5px] bg-amber-100/80 px-1 py-0.5 rounded text-amber-800 font-semibold">ollama pull &lt;model&gt;</code>{' '}
-                             first (e.g., <code className="font-mono text-[9.5px] bg-amber-100/80 px-1 py-0.5 rounded text-amber-800 font-semibold">ollama pull qwen2.5-coder</code>).
+                             {t('No local models found. Ensure Ollama is running and run ollama pull <model> first (e.g., ollama pull qwen2.5-coder).')}
                            </p>
                          )}
                        </div>
@@ -1102,18 +1101,18 @@ export function AgentManager({
                        </select>
                      )}
                      <p className="text-[9.5px] text-neutral-400 leading-relaxed">
-                       Select which locally installed Ollama model this agent uses at runtime.
+                       {t('Select which locally installed Ollama model this agent uses at runtime.')}
                      </p>
                    </div>
                  )}
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-neutral-500 tracking-wider uppercase font-mono block">Short Description</label>
+                  <label className="text-[10px] font-bold text-neutral-500 tracking-wider uppercase font-mono block">{t('Short Description')}</label>
                   <textarea
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     rows={2}
-                    placeholder="Summarize the core execution task of this operational entity..."
+                    placeholder={t('Summarize the core execution task of this operational entity...')}
                     className="w-full px-3 py-2 text-xs border border-neutral-200 focus:outline-none focus:border-neutral-900 focus:ring-1 focus:ring-neutral-900/20 bg-white rounded-lg font-sans resize-none text-neutral-700"
                   />
                 </div>
@@ -1122,21 +1121,21 @@ export function AgentManager({
               {/* 🧩 MODULE 2: Persona & Soul (System Prompt) */}
               <div className="p-4 bg-neutral-50/30 border border-neutral-200/60 rounded-xl space-y-2.5">
                 <div className="flex items-center gap-1.5 pb-2 border-b border-neutral-200/40">
-                  <span className="text-[9.5px] font-extrabold text-neutral-800 bg-neutral-100 border border-neutral-200 px-1.5 py-0.2 rounded font-mono tracking-wider uppercase">Module 2</span>
-                  <span className="text-[10.5px] font-extrabold text-[#111111] font-mono tracking-wide uppercase">System Persona & Soul</span>
+                  <span className="text-[9.5px] font-extrabold text-neutral-800 bg-neutral-100 border border-neutral-200 px-1.5 py-0.2 rounded font-mono tracking-wider uppercase">{t('Module 2')}</span>
+                  <span className="text-[10.5px] font-extrabold text-[#111111] font-mono tracking-wide uppercase">{t('System Persona & Soul')}</span>
                 </div>
                 
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-neutral-500 tracking-wider uppercase font-mono block">System Prompt / Directive Summary</label>
+                  <label className="text-[10px] font-bold text-neutral-500 tracking-wider uppercase font-mono block">{t('System Prompt / Directive Summary')}</label>
                   <textarea
                     value={markdownDoc}
                     onChange={(e) => setMarkdownDoc(e.target.value)}
                     rows={2}
-                    placeholder="Enter basic setup persona details..."
+                    placeholder={t('Enter basic setup persona details...')}
                     className="w-full px-3 py-1.5 border border-neutral-200 focus:outline-none focus:border-neutral-900 focus:ring-1 focus:ring-neutral-900/20 bg-white rounded-lg font-mono text-xs leading-relaxed text-neutral-700"
                   />
                   <p className="text-[9.5px]/relaxed text-neutral-400 font-sans">
-                    💡 <strong>Tips:</strong> Please write only 1-2 core human persona lines here (e.g., <em>&quot;You are a strict security auditor.&quot;</em>). Extensive guidelines and checklist manuals should be configured under the globally decoupled Settings screen and attached as local professional manuals via <strong>Module 3</strong>.
+                    💡 <strong>{t('Tips')}:</strong> {t('Agent persona tips')}
                   </p>
                 </div>
               </div>
@@ -1145,18 +1144,20 @@ export function AgentManager({
               <div className="p-4 bg-neutral-50/30 border border-neutral-200/60 rounded-xl space-y-4">
                 <div className="flex items-center justify-between pb-2 border-b border-neutral-200/40">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[9.5px] font-extrabold text-neutral-800 bg-neutral-100 border border-neutral-200 px-1.5 py-0.2 rounded font-mono tracking-wider uppercase">Module 3</span>
-                    <span className="text-[10.5px] font-extrabold text-[#111111] font-mono tracking-wide uppercase">Attach Agent Skills</span>
+                    <span className="text-[9.5px] font-extrabold text-neutral-800 bg-neutral-100 border border-neutral-200 px-1.5 py-0.2 rounded font-mono tracking-wider uppercase">{t('Module 3')}</span>
+                    <span className="text-[10.5px] font-extrabold text-[#111111] font-mono tracking-wide uppercase">{t('Attach Agent Skills')}</span>
                   </div>
-                  <span className="text-[8.5px] uppercase font-mono bg-neutral-100 text-neutral-700 border border-neutral-200/60 px-2 py-0.5 rounded">Local-First</span>
+                  <span className="text-[8.5px] uppercase font-mono bg-neutral-100 text-neutral-700 border border-neutral-200/60 px-2 py-0.5 rounded">{t('Local-First')}</span>
                 </div>
+
+                <UnderDevelopmentNotice variant="compact" />
 
                 {/* Sub-section 3A: Attach Skills Pill arrangement */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
-                      <label className="text-[10px] font-bold text-neutral-500 tracking-wider uppercase font-mono block">Linked Agent Skills Manuals</label>
-                      <span className="text-[9px] text-neutral-400 block font-normal">Only active skills from your global directory are available below.</span>
+                      <label className="text-[10px] font-bold text-neutral-500 tracking-wider uppercase font-mono block">{t('Linked Agent Skills Manuals')}</label>
+                      <span className="text-[9px] text-neutral-400 block font-normal">{t('Only active skills from your global directory are available below.')}</span>
                     </div>
                     <button
                       type="button"
@@ -1164,15 +1165,15 @@ export function AgentManager({
                       className="px-2.5 py-1 bg-white hover:bg-neutral-50 text-neutral-750 hover:text-black border border-neutral-200 rounded-lg text-[10.5px] font-bold flex items-center gap-1 transition-all shadow-3xs cursor-pointer select-none"
                     >
                       <LegacyIcon name="bookmark_add" className="text-[13px]" />
-                      Attach Skills
+                      {t('Attach Skills')}
                     </button>
                   </div>
 
                   {isSkillsAttachOpen && (
                     <div className="bg-white border border-neutral-200 rounded-lg p-3 space-y-2.5 animate-fade-in shadow-sm">
                       <div className="text-[10px] font-bold text-neutral-400 uppercase font-mono pb-1 border-b border-neutral-105 flex items-center justify-between">
-                        <span>Fuzzy Search Active Specs</span>
-                        <button type="button" onClick={() => setIsSkillsAttachOpen(false)} className="text-neutral-500 hover:text-neutral-800 font-mono text-[10.5px] font-bold">Done</button>
+                        <span>{t('Fuzzy Search Active Specs')}</span>
+                        <button type="button" onClick={() => setIsSkillsAttachOpen(false)} className="text-neutral-500 hover:text-neutral-800 font-mono text-[10.5px] font-bold">{t('Done')}</button>
                       </div>
 
                       {/* Fuzzy search input filtering selection candidates */}
@@ -1181,7 +1182,7 @@ export function AgentManager({
                           type="text"
                           value={skillsSearch}
                           onChange={(e) => setSkillsSearch(e.target.value)}
-                          placeholder="Fuzzy search active skills (e.g. secure, performance)..."
+                          placeholder={t('Fuzzy search active skills (e.g. secure, performance)...')}
                           className="w-full px-2.5 py-1.5 border border-neutral-200 focus:outline-none focus:border-neutral-900 focus:ring-1 focus:ring-neutral-900/20 bg-neutral-50 focus:bg-white rounded-md text-xs font-mono"
                         />
                       </div>
@@ -1198,7 +1199,7 @@ export function AgentManager({
                           if (activeSkills.length === 0) {
                             return (
                               <div className="text-[10px] text-neutral-400 font-sans p-2 bg-neutral-50 border border-neutral-150 rounded leading-relaxed">
-                                ⚠️ <strong>No globally active skills found.</strong> Please navigate to the left-side settings <strong>Skills Registry</strong> pane and activate some SKILL.md rules first!
+                                ⚠️ {t('No globally active skills found. Please navigate to the left-side settings Skills Registry pane and activate some SKILL.md rules first!')}
                               </div>
                             );
                           }
@@ -1206,7 +1207,7 @@ export function AgentManager({
                           if (filtered.length === 0) {
                             return (
                               <div className="text-[10px] text-neutral-450 italic p-2 text-center">
-                                No matching active skills found.
+                                {t('No matching active skills found.')}
                               </div>
                             );
                           }
@@ -1269,7 +1270,7 @@ export function AgentManager({
                         );
                       })
                     ) : (
-                      <span className="text-[10px] text-neutral-400 italic">No manual skills attached. Click &quot;Attach Skills&quot; to pick dynamic specifications.</span>
+                      <span className="text-[10px] text-neutral-400 italic">{t('No manual skills attached. Click \"Attach Skills\" to pick dynamic specifications.')}</span>
                     )}
                   </div>
                 </div>
@@ -1278,19 +1279,21 @@ export function AgentManager({
               {/* 🧩 MODULE 4: Bind MCP Hub Servers */}
               <div className="p-4 bg-neutral-50/30 border border-neutral-200/60 rounded-xl space-y-3">
                 <div className="flex items-center gap-1.5 pb-2 border-b border-neutral-200/40">
-                  <span className="text-[9.5px] font-extrabold text-neutral-800 bg-neutral-100 border border-neutral-200 px-1.5 py-0.2 rounded font-mono tracking-wider uppercase">Module 4</span>
-                  <span className="text-[10.5px] font-extrabold text-[#111111] font-mono tracking-wide uppercase">MCP Hub Server Bindings</span>
+                  <span className="text-[9.5px] font-extrabold text-neutral-800 bg-neutral-100 border border-neutral-200 px-1.5 py-0.2 rounded font-mono tracking-wider uppercase">{t('Module 4')}</span>
+                  <span className="text-[10.5px] font-extrabold text-[#111111] font-mono tracking-wide uppercase">{t('MCP Hub Server Bindings')}</span>
                 </div>
+
+                <UnderDevelopmentNotice variant="compact" />
 
                 {agentType === 'clutch' ? (
                   <>
                     <p className="text-[10px] text-neutral-400 leading-normal">
-                      Bind MCP servers from Settings → MCP Hub. Used when this agent runs on Clutch models.
+                      {t('Bind MCP servers from Settings → MCP Hub. Used when this agent runs on Clutch models.')}
                     </p>
                     <div className="flex flex-col gap-1.5 border border-neutral-200 bg-white p-3 rounded-xl max-h-62 overflow-y-auto">
                       {mcpServers.length === 0 ? (
                         <p className="text-[10px] text-neutral-400 italic p-2">
-                          No enabled MCP servers in Hub. Add servers under Settings → MCP Hub first.
+                          {t('No enabled MCP servers in Hub. Add servers under Settings → MCP Hub first.')}
                         </p>
                       ) : (
                         mcpServers.map((server) => {
@@ -1324,13 +1327,13 @@ export function AgentManager({
                                   <div className={`text-[9.5px]/1.3 mt-0.5 truncate ${
                                     isSelected ? 'text-neutral-300' : 'text-neutral-400'
                                   }`}>
-                                    {server.transport} · {server.toolsCount} tools
+                                    {server.transport} · {server.toolsCount} {t('tools')}
                                   </div>
                                 </div>
                               </div>
                               {isSelected && (
                                 <span className="text-[7.5px] uppercase font-mono px-1.5 py-0.2 rounded-sm tracking-wider bg-neutral-700 text-white">
-                                  Bound
+                                  {t('Bound')}
                                 </span>
                               )}
                             </button>
@@ -1341,7 +1344,7 @@ export function AgentManager({
                   </>
                 ) : (
                   <p className="text-[10px] text-neutral-500 leading-relaxed">
-                    Claude Code (Local CLI) agents use Skills and MCP installed in your local Claude Code environment — not Clutch MCP Hub bindings.
+                    {t('Claude Code (Local CLI) agents use Skills and MCP installed in your local Claude Code environment — not Clutch MCP Hub bindings.')}
                   </p>
                 )}
               </div>
@@ -1349,12 +1352,14 @@ export function AgentManager({
               {/* 🧩 MODULE 5: Deliverables Output Constraints */}
               <div className="p-4 bg-neutral-50/30 border border-neutral-200/60 rounded-xl space-y-3">
                 <div className="flex items-center gap-1.5 pb-2 border-b border-neutral-200/40">
-                  <span className="text-[9.5px] font-extrabold text-neutral-800 bg-neutral-100 border border-neutral-200 px-1.5 py-0.2 rounded font-mono tracking-wider uppercase">Module 5</span>
-                  <span className="text-[10.5px] font-extrabold text-[#111111] font-mono tracking-wide uppercase">Deliverables Config & State Update Rules</span>
+                  <span className="text-[9.5px] font-extrabold text-neutral-800 bg-neutral-100 border border-neutral-200 px-1.5 py-0.2 rounded font-mono tracking-wider uppercase">{t('Module 5')}</span>
+                  <span className="text-[10.5px] font-extrabold text-[#111111] font-mono tracking-wide uppercase">{t('Deliverables Config & State Update Rules')}</span>
                 </div>
 
+                <UnderDevelopmentNotice variant="compact" />
+
                 <p className="text-[10px] text-neutral-400 block pb-1">
-                  Define the scheduled file assets produced by this agent. If orchestrators find these assets absent, rejection alerts trigger:
+                  {t('Define the scheduled file assets produced by this agent. If orchestrators find these assets absent, rejection alerts trigger:')}
                 </p>
 
                 {/* File Template Insertion Field */}
@@ -1362,7 +1367,7 @@ export function AgentManager({
                   <div className="grid grid-cols-3 gap-2">
                     <input
                       type="text"
-                      placeholder="File name (e.g. results.json)"
+                      placeholder={t('File name (e.g. results.json)')}
                       value={newDelivName}
                       onChange={(e) => setNewDelivName(e.target.value)}
                       className="col-span-2 px-2.5 py-1.5 text-xs border border-neutral-200 focus:outline-none focus:border-neutral-900 bg-neutral-50/20 rounded-lg font-mono placeholder:text-neutral-400"
@@ -1372,11 +1377,11 @@ export function AgentManager({
                       onClick={handleAddDeliverable}
                       className="px-2.5 py-1.5 bg-neutral-900 hover:bg-black text-white text-[10px] font-bold rounded-lg transition-colors"
                     >
-                      + Add List File
+                      {t('+ Add List File')}
                     </button>
                   </div>
                   <textarea
-                    placeholder="Enter file template specification markup inside..."
+                    placeholder={t('Enter file template specification markup inside...')}
                     value={newDelivContent}
                     onChange={(e) => setNewDelivContent(e.target.value)}
                     rows={2}
@@ -1397,7 +1402,7 @@ export function AgentManager({
                           type="button"
                           onClick={() => handleRemoveDeliverable(index)}
                           className={`${BTN_ICON} hover:bg-red-50 text-red-500 hover:text-red-700 animate-pulse`}
-                          aria-label="Remove deliverable"
+                          aria-label={t('Remove deliverable')}
                         >
                           <LegacyIcon name="close" className="text-[15px]" />
                         </button>
@@ -1414,13 +1419,13 @@ export function AgentManager({
                 onClick={() => setIsModalOpen(false)}
                 className={BTN_GHOST}
               >
-                Cancel
+                {t('Cancel')}
               </button>
               <button
                 onClick={handleSave}
                 className={BTN_PRIMARY}
               >
-                {modalMode === 'create' ? 'Create AI Agent' : 'Save Configuration'}
+                {modalMode === 'create' ? t('Create AI Agent') : t('Save Configuration')}
               </button>
             </div>
           </div>
@@ -1445,7 +1450,7 @@ export function AgentManager({
                 type="button"
                 onClick={() => setIsPreviewDeliverable(null)}
                 className={BTN_ICON}
-                aria-label="Close"
+                aria-label={t('Close')}
               >
                 <LegacyIcon name="close" className="text-[18px]" />
               </button>
@@ -1473,7 +1478,7 @@ export function AgentManager({
                 onClick={() => setIsPreviewDeliverable(null)}
                 className={BTN_SECONDARY}
               >
-                Dismiss View
+                {t('Dismiss View')}
               </button>
             </div>
 

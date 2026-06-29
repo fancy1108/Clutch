@@ -33,7 +33,7 @@ export interface WorkspaceGitInfo {
   branches: string[];
 }
 
-import { SIDECAR_BASE as BASE, SIDECAR_DEV_PORT, SIDECAR_PROD_PORT } from './sidecarUrl';
+import { SIDECAR_BASE as BASE, SIDECAR_DEV_PORT, SIDECAR_PROD_PORT, sidecarFetch as authorizedSidecarFetch } from './sidecarUrl';
 
 function stableWorkspaceId(path: string): string {
   return `ws_${btoa(path).replace(/[^a-zA-Z0-9]/g, '').slice(0, 12)}`;
@@ -60,7 +60,7 @@ function normalizeWorkspace(body: Record<string, unknown>): WorkspaceInfo {
 
 async function sidecarFetch(input: string, init?: RequestInit): Promise<Response> {
   try {
-    return await fetch(input, init);
+    return await authorizedSidecarFetch(input, init);
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
     throw new Error(

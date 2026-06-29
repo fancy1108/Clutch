@@ -1,4 +1,4 @@
-import { SIDECAR_BASE as BASE } from './sidecarUrl';
+import { SIDECAR_BASE as BASE, sidecarFetch } from './sidecarUrl';
 
 export interface ScannedSkill {
   key: string;
@@ -14,13 +14,13 @@ export interface SkillsRegistryState {
 }
 
 export async function fetchSkillsRegistry(): Promise<SkillsRegistryState> {
-  const response = await fetch(`${BASE}/api/skills`);
+  const response = await sidecarFetch(`${BASE}/api/skills`);
   if (!response.ok) throw new Error(`skills registry failed (${response.status})`);
   return response.json() as Promise<SkillsRegistryState>;
 }
 
 export async function mountSkillsDirectory(path: string): Promise<SkillsRegistryState> {
-  const response = await fetch(`${BASE}/api/skills/mount`, {
+  const response = await sidecarFetch(`${BASE}/api/skills/mount`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ path }),
@@ -33,7 +33,7 @@ export async function mountSkillsDirectory(path: string): Promise<SkillsRegistry
 }
 
 export async function unmountSkillsDirectory(path: string): Promise<SkillsRegistryState> {
-  const response = await fetch(`${BASE}/api/skills/unmount`, {
+  const response = await sidecarFetch(`${BASE}/api/skills/unmount`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ path }),
@@ -43,7 +43,7 @@ export async function unmountSkillsDirectory(path: string): Promise<SkillsRegist
 }
 
 export async function toggleSkillActive(key: string, isActive: boolean): Promise<SkillsRegistryState> {
-  const response = await fetch(`${BASE}/api/skills/toggle`, {
+  const response = await sidecarFetch(`${BASE}/api/skills/toggle`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ key, is_active: isActive }),

@@ -27,9 +27,18 @@ enum SidecarChild {
 
 struct SidecarState(Mutex<Option<SidecarChild>>);
 
+struct SidecarAuthState {
+    token: String,
+}
+
 #[tauri::command]
 fn clutch_e2e_sandbox() -> Option<String> {
     std::env::var("CLUTCH_E2E_SANDBOX").ok()
+}
+
+#[tauri::command]
+fn clutch_sidecar_token(state: tauri::State<SidecarAuthState>) -> String {
+    state.token.clone()
 }
 
 #[cfg(debug_assertions)]
@@ -54,7 +63,7 @@ pub fn run() {
     let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
-        .invoke_handler(tauri::generate_handler![clutch_e2e_sandbox])
+        .invoke_handler(tauri::generate_handler![clutch_e2e_sandbox, clutch_sidecar_token])
         .manage(SidecarState(Mutex::new(None)));
 
     #[cfg(feature = "e2e-testing")]
@@ -68,7 +77,11 @@ pub fn run() {
     builder
         .setup(|app| {
             free_sidecar_port(SIDECAR_PORT);
-            let child = spawn_sidecar(app.handle())?;
+            let token = uuid::Uuid::new_v4().to_string();
+            app.manage(SidecarAuthState {
+                token: token.clone(),
+            });
+            let child = spawn_sidecar(app.handle(), &token)?;
             *app.state::<SidecarState>().0.lock().unwrap() = Some(child);
             wait_for_sidecar_port(SIDECAR_PORT, Duration::from_secs(60))?;
             Ok(())
@@ -77,10 +90,10 @@ pub fn run() {
         .expect("error while running tauri application");
 }
 
-fn spawn_sidecar(app: &tauri::AppHandle) -> Result<SidecarChild, String> {
+fn spawn_sidecar(app: &tauri::AppHandle, token: &str) -> Result<SidecarChild, String> {
     #[cfg(debug_assertions)]
     {
-        return spawn_dev_sidecar().map(SidecarChild::Dev);
+        return spawn_dev_sidecar(token).map(SidecarChild::Dev);
     }
 
     #[cfg(not(debug_assertions))]
@@ -89,6 +102,7 @@ fn spawn_sidecar(app: &tauri::AppHandle) -> Result<SidecarChild, String> {
             .shell()
             .sidecar("orchestrator")
             .map_err(|e| format!("无法加载 Sidecar 二进制：{e}"))?
+            .env("CLUTCH_SIDECAR_TOKEN", token)
             .spawn()
             .map_err(|e| format!("无法启动 Sidecar：{e}"))?;
         return Ok(SidecarChild::Release(child));
@@ -101,7 +115,7 @@ fn orchestrator_dir() -> PathBuf {
 }
 
 #[cfg(debug_assertions)]
-fn spawn_dev_sidecar() -> Result<std::process::Child, String> {
+fn spawn_dev_sidecar(token: &str) -> Result<std::process::Child, String> {
     let dir = orchestrator_dir();
     if !dir.join("src/main.py").is_file() {
         return Err(format!(
@@ -121,10 +135,14 @@ fn spawn_dev_sidecar() -> Result<std::process::Child, String> {
         "8124",
     ])
     .current_dir(&dir)
+    .env("CLUTCH_SIDECAR_TOKEN", token)
     .stdout(Stdio::null())
     .stderr(Stdio::null());
 
     for (key, value) in std::env::vars().filter(|(k, _)| k.starts_with("CLUTCH_")) {
+        if key == "CLUTCH_SIDECAR_TOKEN" {
+            continue;
+        }
         cmd.env(key, value);
     }
 

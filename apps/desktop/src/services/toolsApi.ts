@@ -1,4 +1,4 @@
-import { SIDECAR_BASE as BASE } from './sidecarUrl';
+import { SIDECAR_BASE as BASE, sidecarFetch } from './sidecarUrl';
 
 export interface AiToolStatus {
   id: string;
@@ -14,14 +14,14 @@ export interface AiToolStatus {
 }
 
 export async function fetchToolsStatus(): Promise<AiToolStatus[]> {
-  const response = await fetch(`${BASE}/api/tools/status`);
+  const response = await sidecarFetch(`${BASE}/api/tools/status`);
   if (!response.ok) throw new Error(`tools status failed (${response.status})`);
   const body = (await response.json()) as { tools: AiToolStatus[] };
   return body.tools;
 }
 
 export async function connectTool(toolId: string): Promise<void> {
-  const response = await fetch(`${BASE}/api/tools/connect`, {
+  const response = await sidecarFetch(`${BASE}/api/tools/connect`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ tool_id: toolId }),
@@ -30,7 +30,7 @@ export async function connectTool(toolId: string): Promise<void> {
 }
 
 export async function disconnectTool(toolId: string): Promise<void> {
-  const response = await fetch(`${BASE}/api/tools/disconnect`, {
+  const response = await sidecarFetch(`${BASE}/api/tools/disconnect`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ tool_id: toolId }),
@@ -39,7 +39,7 @@ export async function disconnectTool(toolId: string): Promise<void> {
 }
 
 export async function autoConfigureTool(toolId: string): Promise<any> {
-  const response = await fetch(`${BASE}/api/tools/auto-configure`, {
+  const response = await sidecarFetch(`${BASE}/api/tools/auto-configure`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ tool_id: toolId }),

@@ -68,6 +68,8 @@ curl -s http://127.0.0.1:8124/health
 # {"status":"ok"}
 ```
 
+When launched via **Tauri** (`pnpm tauri:dev`), the shell generates `CLUTCH_SIDECAR_TOKEN` for the sidecar; the desktop UI attaches it automatically (OSR-08). Manual `uvicorn` without that env var does not require a token (local dev / pytest).
+
 ## 3. Verify before contributing
 
 From the repository root:

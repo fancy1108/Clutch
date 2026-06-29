@@ -2,7 +2,7 @@
 
 import type { CompilerWorkflow } from './workflowFormat';
 
-import { SIDECAR_BASE as BASE } from './sidecarUrl';
+import { SIDECAR_BASE as BASE, sidecarFetch } from './sidecarUrl';
 
 export type WorkflowListItem = {
   id: string;
@@ -25,28 +25,28 @@ async function parseError(response: Response): Promise<string> {
 }
 
 export async function fetchTemplateIds(): Promise<string[]> {
-  const res = await fetch(`${BASE}/api/workflows/templates`);
+  const res = await sidecarFetch(`${BASE}/api/workflows/templates`);
   if (!res.ok) throw new Error(await parseError(res));
   const body = (await res.json()) as { workflow_ids: string[] };
   return body.workflow_ids;
 }
 
 export async function fetchUserIds(): Promise<string[]> {
-  const res = await fetch(`${BASE}/api/workflows/user`);
+  const res = await sidecarFetch(`${BASE}/api/workflows/user`);
   if (!res.ok) throw new Error(await parseError(res));
   const body = (await res.json()) as { workflow_ids: string[] };
   return body.workflow_ids;
 }
 
 export async function loadTemplateWorkflow(id: string): Promise<CompilerWorkflow> {
-  const res = await fetch(`${BASE}/api/workflows/templates/${id}`);
+  const res = await sidecarFetch(`${BASE}/api/workflows/templates/${id}`);
   if (!res.ok) throw new Error(await parseError(res));
   const body = (await res.json()) as { workflow: CompilerWorkflow };
   return body.workflow;
 }
 
 export async function loadUserWorkflow(id: string): Promise<CompilerWorkflow> {
-  const res = await fetch(`${BASE}/api/workflows/user/${id}`);
+  const res = await sidecarFetch(`${BASE}/api/workflows/user/${id}`);
   if (!res.ok) throw new Error(await parseError(res));
   const body = (await res.json()) as { workflow: CompilerWorkflow };
   return body.workflow;
@@ -61,7 +61,7 @@ export async function loadWorkflowById(id: string): Promise<CompilerWorkflow> {
 }
 
 export async function saveUserWorkflow(workflow: CompilerWorkflow): Promise<void> {
-  const res = await fetch(`${BASE}/api/workflows/user`, {
+  const res = await sidecarFetch(`${BASE}/api/workflows/user`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ workflow }),
@@ -70,7 +70,7 @@ export async function saveUserWorkflow(workflow: CompilerWorkflow): Promise<void
 }
 
 export async function validateWorkflow(workflow: CompilerWorkflow): Promise<void> {
-  const res = await fetch(`${BASE}/api/workflows/validate`, {
+  const res = await sidecarFetch(`${BASE}/api/workflows/validate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ workflow }),
@@ -79,7 +79,7 @@ export async function validateWorkflow(workflow: CompilerWorkflow): Promise<void
 }
 
 export async function deleteUserWorkflow(id: string): Promise<void> {
-  const res = await fetch(`${BASE}/api/workflows/user/${id}`, { method: 'DELETE' });
+  const res = await sidecarFetch(`${BASE}/api/workflows/user/${id}`, { method: 'DELETE' });
   if (!res.ok) throw new Error(await parseError(res));
 }
 

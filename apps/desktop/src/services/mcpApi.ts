@@ -1,4 +1,4 @@
-import { SIDECAR_BASE as BASE } from './sidecarUrl';
+import { SIDECAR_BASE as BASE, sidecarFetch } from './sidecarUrl';
 
 export interface McpServer {
   id: string;
@@ -24,7 +24,7 @@ export interface McpStatusResponse {
 }
 
 export async function fetchMcpStatus(): Promise<McpStatusResponse> {
-  const response = await fetch(`${BASE}/api/mcp/status`);
+  const response = await sidecarFetch(`${BASE}/api/mcp/status`);
   if (!response.ok) throw new Error(`mcp status failed (${response.status})`);
   return response.json() as Promise<McpStatusResponse>;
 }
@@ -34,7 +34,7 @@ export async function registerMcpServer(payload: {
   transport: 'stdio' | 'sse';
   endpoint: string;
 }): Promise<McpStatusResponse> {
-  const response = await fetch(`${BASE}/api/mcp/servers/register`, {
+  const response = await sidecarFetch(`${BASE}/api/mcp/servers/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -47,7 +47,7 @@ export async function registerMcpServer(payload: {
 }
 
 export async function removeMcpServer(id: string): Promise<McpStatusResponse> {
-  const response = await fetch(`${BASE}/api/mcp/servers/remove`, {
+  const response = await sidecarFetch(`${BASE}/api/mcp/servers/remove`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ id }),
@@ -57,7 +57,7 @@ export async function removeMcpServer(id: string): Promise<McpStatusResponse> {
 }
 
 export async function toggleMcpServer(id: string, enabled: boolean): Promise<McpStatusResponse> {
-  const response = await fetch(`${BASE}/api/mcp/servers/toggle`, {
+  const response = await sidecarFetch(`${BASE}/api/mcp/servers/toggle`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ id, enabled }),
@@ -67,7 +67,7 @@ export async function toggleMcpServer(id: string, enabled: boolean): Promise<Mcp
 }
 
 export async function saveMcpConfig(servers: any[]): Promise<McpStatusResponse> {
-  const response = await fetch(`${BASE}/api/mcp/config/save`, {
+  const response = await sidecarFetch(`${BASE}/api/mcp/config/save`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ servers }),
@@ -77,7 +77,7 @@ export async function saveMcpConfig(servers: any[]): Promise<McpStatusResponse> 
 }
 
 export async function importClaudeMcp(): Promise<McpStatusResponse> {
-  const response = await fetch(`${BASE}/api/mcp/import/claude`, {
+  const response = await sidecarFetch(`${BASE}/api/mcp/import/claude`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
   });

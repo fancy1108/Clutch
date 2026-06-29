@@ -17,6 +17,11 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Response, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from starlette.responses import JSONResponse
+
+from src.sidecar_auth import auth_required, public_http_paths, validate_bearer, validate_token
 
 from src.compiler import WorkflowSession, begin_workflow, resume_workflow
 from src.run_history import append_run_record, list_runs, update_run_record, upsert_session
@@ -68,6 +73,33 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+class SidecarAuthMiddleware(BaseHTTPMiddleware):
+    """OSR-08: require Bearer token when CLUTCH_SIDECAR_TOKEN is set."""
+
+    async def dispatch(self, request: Request, call_next):
+        if request.method == "OPTIONS":
+            return await call_next(request)
+        path = request.url.path
+        if path in public_http_paths():
+            return await call_next(request)
+        if not auth_required():
+            return await call_next(request)
+        if not validate_bearer(request.headers.get("authorization")):
+            return JSONResponse(
+                status_code=401,
+                content={
+                    "detail": {
+                        "message": "Unauthorized sidecar request",
+                        "message_zh": "未授权的 Sidecar 请求",
+                    }
+                },
+            )
+        return await call_next(request)
+
+
+app.add_middleware(SidecarAuthMiddleware)
 
 _run_states: dict[str, ClutchState] = {}
 _run_sessions: dict[str, WorkflowSession] = {}
@@ -3371,6 +3403,11 @@ async def stop_run(run_id: str) -> dict[str, str]:
 
 @app.websocket("/ws/runs/{run_id}")
 async def ws_run(websocket: WebSocket, run_id: str) -> None:
+    if auth_required():
+        ws_token = websocket.query_params.get("token")
+        if not validate_token(ws_token):
+            await websocket.close(code=4401, reason="Unauthorized")
+            return
     await websocket.accept()
     from src.run_state_store import sync_run_state_from_disk
 

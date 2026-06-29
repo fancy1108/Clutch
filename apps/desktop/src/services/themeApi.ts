@@ -1,4 +1,4 @@
-import { SIDECAR_BASE as BASE } from './sidecarUrl';
+import { SIDECAR_BASE as BASE, sidecarFetch } from './sidecarUrl';
 
 export const THEME_PRESET_IDS = ['pristine-light', 'nordic-frost', 'amber-warm'] as const;
 export type ThemePresetId = (typeof THEME_PRESET_IDS)[number];
@@ -12,7 +12,7 @@ export interface UserPreferences {
 }
 
 export async function fetchPreferences(): Promise<UserPreferences> {
-  const response = await fetch(`${BASE}/api/preferences`);
+  const response = await sidecarFetch(`${BASE}/api/preferences`);
   if (!response.ok) throw new Error(`preferences failed (${response.status})`);
   const body = (await response.json()) as UserPreferences;
   const themeId = (THEME_PRESET_IDS as readonly string[]).includes(body.active_theme_id)
@@ -33,7 +33,7 @@ export async function fetchThemePreference(): Promise<ThemePresetId> {
 }
 
 export async function saveThemePreference(themeId: ThemePresetId): Promise<ThemePresetId> {
-  const response = await fetch(`${BASE}/api/preferences/theme`, {
+  const response = await sidecarFetch(`${BASE}/api/preferences/theme`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ theme_id: themeId }),
@@ -47,14 +47,14 @@ export async function saveThemePreference(themeId: ThemePresetId): Promise<Theme
 }
 
 export async function fetchLanguagePreference(): Promise<AppLanguage> {
-  const response = await fetch(`${BASE}/api/preferences/language`);
+  const response = await sidecarFetch(`${BASE}/api/preferences/language`);
   if (!response.ok) throw new Error(`language preference failed (${response.status})`);
   const body = (await response.json()) as { active_language?: string };
   return body.active_language === 'zh' ? 'zh' : 'en';
 }
 
 export async function saveLanguagePreference(language: AppLanguage): Promise<AppLanguage> {
-  const response = await fetch(`${BASE}/api/preferences/language`, {
+  const response = await sidecarFetch(`${BASE}/api/preferences/language`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ language }),
@@ -68,7 +68,7 @@ export async function saveLanguagePreference(language: AppLanguage): Promise<App
 }
 
 export async function saveAvatarPreference(avatar: string): Promise<string> {
-  const response = await fetch(`${BASE}/api/preferences/avatar`, {
+  const response = await sidecarFetch(`${BASE}/api/preferences/avatar`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ avatar }),
@@ -82,7 +82,7 @@ export async function saveAvatarPreference(avatar: string): Promise<string> {
 }
 
 export async function saveUserNamePreference(userName: string): Promise<string> {
-  const response = await fetch(`${BASE}/api/preferences/name`, {
+  const response = await sidecarFetch(`${BASE}/api/preferences/name`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ user_name: userName }),

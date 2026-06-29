@@ -1,4 +1,4 @@
-import { SIDECAR_BASE as BASE } from './sidecarUrl';
+import { SIDECAR_BASE as BASE, sidecarFetch } from './sidecarUrl';
 
 export type PermissionMode = 'ask' | 'auto_edit' | 'plan' | 'full';
 
@@ -35,14 +35,14 @@ export const PERMISSION_MODES: {
 ];
 
 export async function fetchPermissionMode(): Promise<PermissionMode> {
-  const response = await fetch(`${BASE}/api/preferences/permission-mode`);
+  const response = await sidecarFetch(`${BASE}/api/preferences/permission-mode`);
   if (!response.ok) throw new Error(`permission-mode fetch failed (${response.status})`);
   const body = (await response.json()) as { permission_mode: string };
   return (body.permission_mode as PermissionMode) || 'ask';
 }
 
 export async function savePermissionMode(mode: PermissionMode): Promise<PermissionMode> {
-  const response = await fetch(`${BASE}/api/preferences/permission-mode`, {
+  const response = await sidecarFetch(`${BASE}/api/preferences/permission-mode`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ mode }),
