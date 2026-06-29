@@ -1,0 +1,14 @@
+title = "Clutch gitleaks"
+
+[allowlist]
+description = "Synthetic test credentials and documentation examples"
+paths = [
+  '''services/orchestrator/tests/''',
+  '''e2e/''',
+  '''runs/verification/''',
+]
+regexes = [
+  '''sk-test-token''',
+  '''sk-cc-test''',
+  '''sk-agnes''',
+]

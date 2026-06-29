@@ -33,7 +33,7 @@
 |----|------|------|-------------|
 | **OSR-00** | **外部视角审计** | ❌ | 证据应写入 `runs/verification/`；**T1 前优先** |
 | OSR-06 | `SECURITY.md` + `CONTRIBUTING.md` + `CODE_OF_CONDUCT.md` | ✅ | `SECURITY.md` · `CODE_OF_CONDUCT.md` · `CONTRIBUTING.md` 已链 |
-| OSR-07 | Secret scanning CI（gitleaks） | ❌ | `.github/workflows/ci.yml` 未含 |
+| OSR-07 | Secret scanning CI（gitleaks） | ✅ | `.github/workflows/secret-scan.yml` · `.gitleaks.toml` |
 | OSR-08 | Sidecar session token 鉴权 | ❌ | HTTP/WS 仍无 token |
 | OSR-09 | CLI `--dangerously-skip-permissions` 门控 | ❌ | 依赖产品决策；见 `OPEN_SOURCE_RELEASE.md` §5.2.3 |
 | OSR-10 | README + 源码构建说明 | ⚠️ | README 有兼容性 + `doctor.sh`；**缺** `docs/BUILD_FROM_SOURCE.md`、DMG 分叉、截图 |

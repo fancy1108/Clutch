@@ -76,6 +76,7 @@
 | 后端单元测试（现有 + 随 task 新建） | `services/orchestrator/tests/`；清单见 `tasks.md` §待建 pytest |
 | Video Core 测试 | `tests/test_video_core/` |
 | CI 工作流 | `.github/workflows/ci.yml` |
+| Secret scanning（gitleaks） | `.github/workflows/secret-scan.yml` |
 | 本地一键校验 | `scripts/verify.sh` |
 | Hybrid run 诊断导出（HRT-07） | `scripts/export-run-debug.sh` → `GET /api/runs/{id}/debug` |
 | POC #6/#10 自动化验收（HRT-10） | `scripts/verify-hybrid-poc-06-10.sh` · `services/orchestrator/tests/test_hybrid_poc_acceptance.py` |

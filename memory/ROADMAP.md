@@ -112,7 +112,7 @@
 
 - [ ] **OSR-00** 外部视角审计（`runs/verification/` 证据）
 - [x] **OSR-06** `SECURITY.md` + `CODE_OF_CONDUCT.md` + `CONTRIBUTING.md`
-- [ ] **OSR-07** Secret scanning CI
+- [x] **OSR-07** Secret scanning CI
 - [ ] **OSR-08** Sidecar session token 鉴权
 - [ ] **OSR-09** CLI 权限策略（需产品决策）
 - [ ] **OSR-10** README + `BUILD_FROM_SOURCE.md`

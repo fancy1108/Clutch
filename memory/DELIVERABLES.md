@@ -27,9 +27,18 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ## 已交付（OSR · 开源排期）
 
+### OSR-07 ✅ Secret scanning CI
+- **日期：** 2026-06-29
+- **Commit：** `(pending)` — `ci(osr): add gitleaks secret scanning workflow (OSR-07)`
+- **Verification：** `./scripts/verify.sh` → pass
+- **证据：** —
+- **交付文件：**
+  - `.github/workflows/secret-scan.yml` — gitleaks on push/PR
+  - `.gitleaks.toml` — test fixture allowlist
+
 ### OSR-06 ✅ 社区与健康文件
 - **日期：** 2026-06-29
-- **Commit：** `(pending)` — `docs(osr): add SECURITY.md and CODE_OF_CONDUCT.md (OSR-06)`
+- **Commit：** `95a93f4` — `docs(osr): add SECURITY.md and CODE_OF_CONDUCT.md (OSR-06)`
 - **Verification：** `./scripts/verify.sh` → pass
 - **证据：** —
 - **交付文件：**
