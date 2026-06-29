@@ -844,3 +844,15 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
   - `apps/desktop/src/components/AgentManager.tsx` — 使用 eligible tools 替代硬编码列表
   - `docs/PRODUCT_INTRO.md` — Codex CLI 与动态 Agent 类型产品说明对齐
 
+
+### FLOW-REFINE-BUGS-FIX ✅
+- **日期：** 2026-06-29
+- **Commit：** `7ee2ae2` — `fix(flow-refine): resolve user message echo, missing session prompt generation and avatar mapping in workflow refine`
+- **Verification：** `./scripts/verify.sh` → build + vitest 33 passed + pytest 473 passed (100% success) ✅
+- **证据：** `—`（门禁已覆盖）
+- **已交付：**
+  - [services/orchestrator/src/main.py](file:///Users/fancy/clutch/services/orchestrator/src/main.py) — 修复在 `_handle_flow_refine_message` 中初次由于 session 从 `_run_sessions` 取出为 `None` 时未能同步更新本地变量导致的 image refine prompt 忽略和 mention 匹配失效问题。
+  - [apps/desktop/src/services/clutchState.ts](file:///Users/fancy/clutch/apps/desktop/src/services/clutchState.ts) — 修复 `mergeChatMessages` 在 `pendingUserMessageId` 为 null 时误过滤掉同文本的新 User 精修消息气泡的问题。
+  - [apps/desktop/src/services/clutchState.test.ts](file:///Users/fancy/clutch/apps/desktop/src/services/clutchState.test.ts) — 更新 `mergeChatMessages` 单元测试，将原先错误的 duplicate text 丢弃行为断言改为允许在不同 turn 间多次发送同文本消息的符合预期断言。
+  - [apps/desktop/src/services/workflowAgentSteps.ts](file:///Users/fancy/clutch/apps/desktop/src/services/workflowAgentSteps.ts) — 重构 `buildWorkflowReplyStepIndex` 逻辑，优先依据消息的 `agent` 名称/Label 匹配定位 WorkflowStep 获取准确的工具配置与头像，无法匹配时才退化至 Sequential 累加偏移，从而修复了精修结果气泡头像被张冠李戴的现象。
+

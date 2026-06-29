@@ -2,14 +2,21 @@
 
 ## 当前状态
 
-- **阶段：** D25 Hybrid Runtime + **Flow 精修（pause/refine/continue）已落地** + **默认 Multi-Agent 并隐藏模式切换按钮已落地** + **MCP 审批流程解包崩溃修复已落地**
-- **Git HEAD：** `8ecc3a7`
-- **下次优先：** 重启 orchestrator 后验收 Visual Narrative 全流程 + 完成后 `@Agent` 精修 + `/continue` 续跑
+- **阶段：** D25 Hybrid Runtime + **Flow 精修（pause/refine/continue）已落地** + **默认 Multi-Agent 并隐藏模式切换按钮已落地** + **MCP 审批流程解包崩溃修复已落地** + **Flow 精修消息回显、Session 提示词丢失、头像映射修复已落地**
+- **Git HEAD：** `7ee2ae2`
+- **下次优先：** 进一步集成测试或进入下一迭代
 - **验收期跳过：** MCP hybrid_executions 深度 UI · 2h/100+ 压测
 
 ### 未 commit 工作
 
 （无 — 见本 commit）
+
+## 2026-06-29 会话 12（修复 Flow 精修消息回显、提示词生成与头像映射）
+
+- **消息回显修复**：修复了在工作流/精修模式（如 `@5-Visual Rendering Engine 重新生成图片`）下，用户发送的信息在前端 `messages` 列表中被意外丢弃不回显的问题。原因是在 `clutchState.ts` 的 `mergeChatMessages` 中，如果 `pendingUserMessageId` 为 null（工作流和精修不使用 optimistic 发送），匹配到重复文本的历史消息时，会误触 `!isPendingTurn` 判断而将服务器返回的真实用户消息直接 `continue` 丢弃。通过对该判断加上 `pendingUserMessageId` 活跃检查，确保了 workflow 和 refine 下同文本的新 turn 不会被错误过滤。
+- **Session 提示词生成修复**：修复了 orchestrator 重启后，第一次精修消息未正确执行 `resolve_image_refine_prompt` 而导致传递给生图引擎的参数沦为字面量 `"重新生成图片"` (从而生成完全不搭界现代照片) 的 Bug。原因是在 `_handle_flow_refine_message` 中，初次从 `_run_sessions` 获取 session 为 `None`，虽然之后调用 `_prepare_workflow_refine_state` 内部触发了 `ensure_workflow_session_for_refine` 并将其存入了缓存，但本地 `session` 变量未能同步更新依然为 `None`，导致后续 `resolve_image_refine_prompt` 调用被全部跳过。修复为：提前确保 refinement session 载入并同步更新本地 `session`/`workflow` 变量，这也使得 mention 解析时可以正确利用完整的 workflow 定义支持带空格的智能体（如 `@5-Visual Rendering Engine`）准确提取 body 并注入上文提示。
+- **头像映射错误修复**：修复了精修阶段由 `5-Visual Rendering Engine` 运行输出的图片，其消息气泡头像被误显示为 `1-Concept Architect` (Antigravity Logo) 或 `2-Scriptwriter` (Claude Logo) 的问题。原因是在 `buildWorkflowReplyStepIndex` 中，之前仅按照最新一条 User 消息后的首位 agent 顺序将 replyIndex 从 0 累加映射，而在精修模式下仅有特定的后期节点执行，所以 replyIndex 0 被错配给了 workflowAgentSteps[0]。修复为：在 `buildWorkflowReplyStepIndex` 优先按照 `message.agent` 的名称/Label 在步骤表中匹配定位，匹配失败时才退化到以 latest user message 后的序列进行 sequential 兜底映射。
+
 
 ## 2026-06-29 会话 11（修复 MCP 审批确认后的解包崩溃卡死）
 
