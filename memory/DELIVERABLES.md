@@ -71,6 +71,15 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ## 已交付（代码 Task · 自 Git 回填）
 
+### DEFAULT-MULTI-AGENT-AND-HIDE-TOGGLE ✅
+- **日期：** 2026-06-29
+- **Commit：** `c7213bf` — `feat(ui): remove single/multi-agent toggle and default to multi-agent mode`
+- **Verification：** `./scripts/verify.sh` → build + vitest + pytest (471 passed)
+- **证据：** `—`（门禁已覆盖）
+- **交付文件：**
+  - `apps/desktop/src/components/Header.tsx` — 移除 Single Agent / Multi-Agent 模式切换按钮组件
+  - `apps/desktop/src/App.tsx` — 将 `isMultiAgent` 默认状态置为 `true`；加载 session 时忽略存储的 single mode 并默认进入 Multi-Agent 模式
+
 ### FLOW-REFINE ✅
 - **日期：** 2026-06-28
 - **Commit：** `0be4e89` — `feat(flow): add pause/refine/continue with @agent hybrid after workflow`

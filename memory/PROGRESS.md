@@ -2,14 +2,21 @@
 
 ## 当前状态
 
-- **阶段：** D25 Hybrid Runtime + **Flow 精修（pause/refine/continue）已落地**
-- **Git HEAD：** `0be4e89`
+- **阶段：** D25 Hybrid Runtime + **Flow 精修（pause/refine/continue）已落地** + **默认 Multi-Agent 并隐藏模式切换按钮已落地**
+- **Git HEAD：** `c7213bf`
 - **下次优先：** 重启 orchestrator 后验收 Visual Narrative 全流程 + 完成后 `@Agent` 精修 + `/continue` 续跑
 - **验收期跳过：** MCP hybrid_executions 深度 UI · 2h/100+ 压测
 
 ### 未 commit 工作
 
 （无 — 见本 commit）
+
+## 2026-06-29 会话 10（默认 Multi-Agent 并隐藏模式切换按钮）
+
+- **UI 优化**：去除了 Header 中的 Single Agent / Multi-Agent 模式切换按钮，避免用户在界面上切换到不支持的单智能体模式导致状态混淆；
+- **状态默认值与加载优化**：将 React state `isMultiAgent` 的默认状态修改为 `true`，同时在 `handleSelectSession` 会话恢复加载流程中不再从 `localStorage` 读取或应用旧的 `single` 模式状态，确保所有用户会话统一初始化并锁定在 Multi-Agent 架构下（即使是没有配置 workflow_id 的普通 plain chat 也可以在多智能体界面运行并提供流程视图）。
+- **验证**：`./scripts/verify.sh`（build + vitest + pytest 471 passed）。
+
 
 ## 2026-06-28 会话 9（Flow 精修 + 节点 handoff 验收）
 
