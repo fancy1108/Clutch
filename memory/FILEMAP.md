@@ -43,6 +43,7 @@
 | 维护者治理 | `docs/GOVERNANCE.md` |
 | 贡献指南（Phase 1 政策） | `CONTRIBUTING.md` |
 | 性能基线 | `docs/PERFORMANCE.md` |
+| 源码构建 | `docs/BUILD_FROM_SOURCE.md` |
 | 环境自检 | `scripts/doctor.sh` |
 | Tauri 桌面开发（Hybrid） | `scripts/tauri-dev.sh` · 根目录 `pnpm tauri:dev` |
 | 产品需求历史 | `specs/core/proposal.md` |

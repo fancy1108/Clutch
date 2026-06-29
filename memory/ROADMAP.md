@@ -115,7 +115,7 @@
 - [x] **OSR-07** Secret scanning CI
 - [ ] **OSR-08** Sidecar session token 鉴权
 - [ ] **OSR-09** CLI 权限策略（需产品决策）
-- [ ] **OSR-10** README + `BUILD_FROM_SOURCE.md`
+- [ ] **OSR-10** README + `BUILD_FROM_SOURCE.md`（⚠️ 缺产品截图）
 - [x] **OSR-26** `GOVERNANCE.md`（草案 v0.1）
 - [x] **OSR-27** 兼容性矩阵 + `doctor.sh`
 - [x] **OSR-28** Issue / PR 模板

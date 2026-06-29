@@ -76,7 +76,7 @@ clutch/
 | [`docs/OPEN_SOURCE_RELEASE.md`](./docs/OPEN_SOURCE_RELEASE.md) | 开源、安全、分发与 OSR 排期 |
 | [`docs/PROJECT_SCOPE.md`](./docs/PROJECT_SCOPE.md) | Goals / Non-Goals |
 | [`docs/STABILITY.md`](./docs/STABILITY.md) | API / Schema 稳定性 |
-| [`docs/EXTENSIBILITY.md`](./docs/EXTENSIBILITY.md) | 官方扩展点 |
+| [`docs/BUILD_FROM_SOURCE.md`](./docs/BUILD_FROM_SOURCE.md) | 源码克隆、开发启动、`pnpm tauri build` |
 | [`LICENSE`](./LICENSE) | MIT 开源协议 |
 | [`CHANGELOG.md`](./CHANGELOG.md) | 版本变更（当前 **0.1.0**） |
 | [`SECURITY.md`](./SECURITY.md) | 漏洞私密报告渠道与响应约定 |
@@ -129,3 +129,31 @@ pnpm install
 ```
 
 启动与校验命令见 [`CLAUDE.md`](./CLAUDE.md) §核心命令。
+
+## 安装方式
+
+### 从 Release 安装（终端用户）
+
+当 [GitHub Releases](https://github.com/fancy1108/Clutch/releases) 提供已签名的 macOS `.dmg` 时：
+
+1. 下载 DMG 并拖入 **Applications**
+2. 首次打开若被 Gatekeeper 拦截：系统设置 → 隐私与安全性 → 仍要打开（或右键 → 打开）
+3. 约 5s 内侧车应就绪：`curl -s http://127.0.0.1:8123/health` → `{"status":"ok"}`
+
+完整安装说明见 [`docs/INSTALL.md`](./docs/INSTALL.md)（T2 / OSR-15，随签名发版补齐）。
+
+### 从源码构建（开发者）
+
+```bash
+git clone https://github.com/fancy1108/Clutch.git
+cd Clutch
+./scripts/doctor.sh
+pnpm install
+cd services/orchestrator && uv sync --extra dev && cd ../..
+export CLUTCH_RUNTIME_MODE=hybrid   # 可选
+pnpm tauri:dev
+```
+
+逐步说明、分拆调试与本地打 DMG：[`docs/BUILD_FROM_SOURCE.md`](./docs/BUILD_FROM_SOURCE.md)。
+
+**贡献前**请阅读 [`CONTRIBUTING.md`](./CONTRIBUTING.md) 并运行 `./scripts/verify.sh`。

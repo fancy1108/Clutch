@@ -36,7 +36,7 @@
 | OSR-07 | Secret scanning CI（gitleaks） | ✅ | `.github/workflows/secret-scan.yml` · `.gitleaks.toml` |
 | OSR-08 | Sidecar session token 鉴权 | ❌ | HTTP/WS 仍无 token |
 | OSR-09 | CLI `--dangerously-skip-permissions` 门控 | ❌ | 依赖产品决策；见 `OPEN_SOURCE_RELEASE.md` §5.2.3 |
-| OSR-10 | README + 源码构建说明 | ⚠️ | README 有兼容性 + `doctor.sh`；**缺** `docs/BUILD_FROM_SOURCE.md`、DMG 分叉、截图 |
+| OSR-10 | README + 源码构建说明 | ⚠️ | `docs/BUILD_FROM_SOURCE.md` · README §安装方式；**待** 产品截图 |
 | OSR-26 | `GOVERNANCE.md` | ✅ | 草案 v0.1 |
 | OSR-27 | 兼容性矩阵 + `doctor.sh` | ✅ | `README.md` §兼容性 · `scripts/doctor.sh` |
 | OSR-28 | Issue / PR 模板 | ✅ | `.github/ISSUE_TEMPLATE/` · `pull_request_template.md` |

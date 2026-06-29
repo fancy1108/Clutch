@@ -27,9 +27,18 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ## 已交付（OSR · 开源排期）
 
+### OSR-10 ⚠️ README + 源码构建（缺截图）
+- **日期：** 2026-06-29
+- **Commit：** `(pending)` — `docs(osr): add BUILD_FROM_SOURCE and README install paths (OSR-10)`
+- **Verification：** `./scripts/verify.sh` → pass
+- **证据：** —
+- **交付文件：**
+  - `docs/BUILD_FROM_SOURCE.md` — 源码构建全流程
+  - `README.md` — DMG vs 源码分叉
+
 ### OSR-07 ✅ Secret scanning CI
 - **日期：** 2026-06-29
-- **Commit：** `(pending)` — `ci(osr): add gitleaks secret scanning workflow (OSR-07)`
+- **Commit：** `62542ca` — `ci(osr): add gitleaks secret scanning workflow (OSR-07)`
 - **Verification：** `./scripts/verify.sh` → pass
 - **证据：** —
 - **交付文件：**

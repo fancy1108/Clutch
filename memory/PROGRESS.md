@@ -11,6 +11,13 @@
 
 （无 — 见本 commit OSR-06）
 
+## 2026-06-29 会话 18（OSR-10 README + 源码构建文档）
+
+- **`docs/BUILD_FROM_SOURCE.md`**：克隆、doctor、dev/tauri build、健康检查、数据目录。
+- **`README.md`**：§安装方式 — Release DMG vs 源码构建分叉。
+- **验证**：`./scripts/verify.sh`。
+- **遗留**：产品截图（OSR-10 ⚠️ 部分）。
+
 ## 2026-06-29 会话 17（OSR-07 Secret scanning CI）
 
 - **`.github/workflows/secret-scan.yml`**：`gitleaks/gitleaks-action@v3`，`push`/`pull_request` 触发。
