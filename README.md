@@ -106,6 +106,8 @@ clutch/
 | [`docs/PROJECT_SCOPE.md`](./docs/PROJECT_SCOPE.md) | Goals / Non-Goals |
 | [`docs/STABILITY.md`](./docs/STABILITY.md) | API / Schema 稳定性 |
 | [`docs/BUILD_FROM_SOURCE.md`](./docs/BUILD_FROM_SOURCE.md) | 源码克隆、开发启动、`pnpm tauri build` |
+| [`docs/INSTALL.md`](./docs/INSTALL.md) | DMG 安装、Gatekeeper、首次使用与卸载 |
+| [`docs/DATA_AND_PRIVACY.md`](./docs/DATA_AND_PRIVACY.md) | 本地数据、第三方 LLM、导出与删除 |
 | [`LICENSE`](./LICENSE) | MIT 开源协议 |
 | [`CHANGELOG.md`](./CHANGELOG.md) | 版本变更（当前 **1.0.0**） |
 | [`SECURITY.md`](./SECURITY.md) | 漏洞私密报告渠道与响应约定 |
@@ -173,7 +175,7 @@ pnpm install
 
 维护者发版：打 tag `v1.0.0`（或后续 `v1.x.x`）触发 [`.github/workflows/release.yml`](./.github/workflows/release.yml) 自动构建并上传 DMG；或本机 `cd apps/desktop && pnpm tauri build` 后手动上传到 Release。
 
-完整安装与隐私说明见 [`docs/INSTALL.md`](./docs/INSTALL.md)（T2 / OSR-15，随发版补齐）。Apple 代码签名与公证（OSR-11）在获得 Developer 账号前**不阻塞**开源分发。
+完整安装说明见 [`docs/INSTALL.md`](./docs/INSTALL.md)；数据与隐私见 [`docs/DATA_AND_PRIVACY.md`](./docs/DATA_AND_PRIVACY.md)。Apple 代码签名与公证（OSR-11）在获得 Developer 账号前**不阻塞**开源分发。
 
 ### 从源码构建（开发者）
 

@@ -48,10 +48,10 @@
 | ID | 任务 | 状态 | 依赖 / 备注 |
 |----|------|------|-------------|
 | OSR-11 | Apple 签名 + 公证 | ⏭️ | 无 Developer 账号；D31 豁免，不阻塞分发 |
-| OSR-12 | Release CI 打 DMG | ⚠️ | `.github/workflows/release.yml`（未签名）；待首 `v*` tag 验证 |
+| OSR-12 | Release CI 打 DMG | ✅ | `release.yml` · `release-preflight.sh` · gitleaks gate · SHA256SUMS |
 | OSR-13 | API Key → Keychain + 迁移 | ❌ | Models UI 稳定后 |
 | OSR-14 | 首次启动向导 | ❌ | 依赖 OSR-09、OSR-13 |
-| OSR-15 | `INSTALL.md` + `DATA_AND_PRIVACY.md` | ❌ | |
+| OSR-15 | `INSTALL.md` + `DATA_AND_PRIVACY.md` | ✅ | `docs/INSTALL.md` · `docs/DATA_AND_PRIVACY.md` |
 | OSR-16 | Debug API 收敛 + WebView CSP | ❌ | `csp: null` |
 | OSR-17 | PyInstaller `console=False` | ❌ | `clutch.spec` 仍 `console=True` |
 

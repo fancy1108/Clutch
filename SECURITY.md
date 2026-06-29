@@ -4,8 +4,9 @@
 
 | Version | Supported |
 |---------|-----------|
-| 0.1.x   | Yes       |
-| < 0.1   | No        |
+| 0.1.x   | No        |
+| 1.0.x   | Yes       |
+| < 1.0   | No        |
 
 While Clutch is `0.x`, security fixes land on `main` and ship with the next semver tag. See [`docs/STABILITY.md`](docs/STABILITY.md).
 

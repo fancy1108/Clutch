@@ -27,6 +27,25 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ## 已交付（OSR · 开源排期）
 
+### OSR-12 ✅ Release CI + 发版敏感信息门禁
+- **日期：** 2026-06-29
+- **Commit：** （待 commit）
+- **Verification：** `./scripts/release-preflight.sh` · `./scripts/verify.sh` → pass
+- **交付文件：**
+  - `.github/workflows/release.yml` — gitleaks · preflight · DMG · SHA256SUMS · workflow_dispatch
+  - `scripts/release-preflight.sh` — INV-R1～R4
+  - `scripts/build-sidecar.sh` — 打包清单日志
+  - `.gitignore` — `models.json`
+
+### OSR-15 ✅ 安装与隐私文档
+- **日期：** 2026-06-29
+- **Commit：** （待 commit）
+- **Verification：** `./scripts/verify.sh` → pass
+- **交付文件：**
+  - `docs/INSTALL.md` — DMG 用户安装全流程
+  - `docs/DATA_AND_PRIVACY.md` — 本地数据与第三方数据流
+  - `README.md` · `SECURITY.md` · `BUILD_FROM_SOURCE.md` 交叉引用
+
 ### OSR-08 ✅ Sidecar session token 鉴权
 - **日期：** 2026-06-29
 - **Commit：** `5744142` — `feat(osr): add sidecar session token auth for HTTP and WebSocket (OSR-08)`
@@ -46,7 +65,7 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ### OSR-10 ✅ README + 源码构建 + 产品截图
 - **日期：** 2026-06-29
-- **Commit：** （待 commit）— `docs(osr): add README screenshots and unsigned DMG release path (OSR-10, D31)`
+- **Commit：** `54714bd` — `docs(osr): add README screenshots, unsigned DMG release CI, and v1.0.0`
 - **交付文件：**
   - `docs/images/Clutch_1.png` · `Clutch_2.png` — 产品截图
   - `README.md` — §产品截图 · §安装方式（未签名 DMG）

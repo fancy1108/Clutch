@@ -1,7 +1,7 @@
 # Build Clutch from source
 
 > **Audience:** Contributors and advanced users on macOS.  
-> **End-user DMG installs** (unsigned GitHub Releases) are linked from [`README.md`](../README.md) §安装方式. Signing (OSR-11) is deferred per `memory/DECISIONS.md` D31.
+> **End-user DMG installs** (unsigned GitHub Releases): [`INSTALL.md`](./INSTALL.md). Privacy: [`DATA_AND_PRIVACY.md`](./DATA_AND_PRIVACY.md). Signing (OSR-11) deferred per `memory/DECISIONS.md` D31.
 
 ## Prerequisites
 
