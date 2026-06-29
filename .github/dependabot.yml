@@ -27,3 +27,18 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 5
+
+  # Tauri 2.x Linux stack (gtk 0.18 / webkit2gtk) pins glib ^0.18 — 0.20+ needs upstream gtk4 migration.
+  - package-ecosystem: cargo
+    directory: /apps/desktop/src-tauri
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: glib
+        versions: ["< 0.20.0"]
+      - dependency-name: glib-sys
+        versions: ["< 0.20.0"]
+      - dependency-name: glib-macros
+        versions: ["< 0.20.0"]

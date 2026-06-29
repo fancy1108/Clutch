@@ -66,11 +66,17 @@ Summary only — details in [`docs/OPEN_SOURCE_RELEASE.md`](docs/OPEN_SOURCE_REL
 
 | Topic | Current behavior | Planned |
 |-------|------------------|---------|
-| Sidecar API / WebSocket | `CLUTCH_SIDECAR_TOKEN` Bearer + WS `?token=` when launched via Tauri; `127.0.0.1` only | Hardening continues in OSR-16 |
+| Sidecar API / WebSocket | `CLUTCH_SIDECAR_TOKEN` Bearer + WS `?token=` when launched via Tauri; `127.0.0.1` only | — |
+| Debug API / OpenAPI | Disabled in packaged (PyInstaller) sidecar; opt-in via `CLUTCH_DEBUG_API=1` | — |
 | API key storage | macOS Keychain (`com.clutch.app`) on Darwin; legacy `models.json` when `CLUTCH_USE_KEYCHAIN=0` | — |
 | CLI permissions | `--dangerously-skip-permissions` on some adapters | **D30** — documented; not gated (OSR-09) |
+| Linux `glib` (cargo) | Tauri 2.x → gtk 0.18 → `glib` 0.18.5 ([RUSTSEC-2024-0429](https://rustsec.org/advisories/RUSTSEC-2024-0429.html)); not reachable on macOS builds | Upgrade when Tauri/wry moves Linux backend off gtk3 |
 
 Reporting these as **hardening gaps** is welcome; we track them on the OSR roadmap.
+
+### Upstream-blocked cargo alerts
+
+Some Dependabot **cargo** findings on `apps/desktop/src-tauri/Cargo.lock` cannot be patched in Clutch alone because Tauri’s Linux WebView stack (`wry` → `gtk` 0.18 → `webkit2gtk`) requires `glib ^0.18`. Fixed `glib` (≥ 0.20) ships with gtk-rs **0.20+ / GTK4**, which Tauri 2.x has not migrated to yet ([tauri#12048](https://github.com/tauri-apps/tauri/issues/12048)). We keep Tauri on the latest 2.x release, re-check on each bump, and document accepted risk for **Linux-only** transitive deps. macOS and Windows builds do not link this chain.
 
 ### CLI tool permissions (current behavior)
 
