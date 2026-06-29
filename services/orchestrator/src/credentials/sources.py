@@ -15,6 +15,7 @@ from src.llm.router import LLMProviderRouter, ProviderId, ModelSpec
 SOURCE_LABELS: dict[str, str] = {
     "claude_code_settings": "Claude Code CLI (~/.claude/settings.json)",
     "cc_switch_settings": "CC Switch database (~/.cc-switch/cc-switch.db)",
+    "clutch_keychain": "macOS Keychain (Clutch)",
     "clutch_models_config": "Clutch app storage (models.json)",
     "clutch_env": "CLUTCH_* environment variable",
     "anthropic_env": "ANTHROPIC_API_KEY environment variable",
@@ -30,6 +31,10 @@ def _config_path() -> Path:
 
 
 def _saved_api_keys() -> dict[str, str]:
+    from src.credentials.keychain_store import load_all_provider_keys, use_keychain
+
+    if use_keychain():
+        return load_all_provider_keys()
     path = _config_path()
     if not path.is_file():
         return {}
@@ -41,6 +46,12 @@ def _saved_api_keys() -> dict[str, str]:
     if not isinstance(raw, dict):
         return {}
     return {str(key): str(value) for key, value in raw.items() if value}
+
+
+def _clutch_uses_keychain() -> bool:
+    from src.credentials.keychain_store import use_keychain
+
+    return use_keychain()
 
 
 def _label(source_key: str | None) -> str | None:
@@ -62,10 +73,11 @@ def resolve_provider_credential_source(
 
     saved = _saved_api_keys()
     if saved.get(provider_id):
+        source_key = "clutch_keychain" if _clutch_uses_keychain() else "clutch_models_config"
         return {
             "configured": True,
-            "source": "clutch_models_config",
-            "source_label": SOURCE_LABELS["clutch_models_config"],
+            "source": source_key,
+            "source_label": SOURCE_LABELS[source_key],
         }
 
     if provider_id == "anthropic":
@@ -131,6 +143,7 @@ def model_source_summary(cred: dict[str, Any], *, is_cc_switch: bool) -> str:
         return "Imported from CC Switch"
     source = cred.get("source")
     summaries = {
+        "clutch_keychain": "API key saved in Keychain",
         "clutch_models_config": "API key saved in Clutch",
         "clutch_env": "Environment variable",
         "cc_switch_settings": "CC Switch",

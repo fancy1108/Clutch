@@ -30,7 +30,7 @@ Clutch **不会**：
 
 | 相对路径 | 内容 | 敏感程度 |
 |----------|------|----------|
-| `models.json` | 模型 Provider 配置、**API Key（当前为明文 JSON）** | **高** |
+| `models.json` | 模型选择与自定义模型元数据（**不含 API Key**；Key 在 macOS Keychain） | 中 |
 | `preferences/preferences.json` | 主题、语言、权限模式、昵称、头像（base64） | 中 |
 | `workspaces.json` | 已授权工作区的绝对路径 | 中 |
 | `states/{run_id}.json` | 对话、工具输出、终端日志、运行状态 | **高** |
@@ -39,7 +39,7 @@ Clutch **不会**：
 | `shell_snapshots/` | PTY 会话恢复数据 | **高** |
 | `workflows/user/*.json` | 用户自定义工作流 | 中 |
 
-文件权限：`models.json` 等敏感文件在写入时尽量使用 `chmod 600`。**Keychain 迁移**计划见开源路线图 OSR-13。
+文件权限：`models.json` 不再保存 API Key（macOS 上存入 **Keychain**）；非 macOS 开发环境仍可使用明文 `models.json`（`CLUTCH_USE_KEYCHAIN=0`）。
 
 ---
 

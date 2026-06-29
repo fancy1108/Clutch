@@ -3,13 +3,20 @@
 ## 当前状态
 
 - **阶段：** D25 Hybrid Runtime + Flow 精修已落地 + 功能迭代中；**开源排期 OSR-xx 已登记**（见 `memory/BACKLOG.md` §开源 / DMG 分发 · `memory/ROADMAP.md` §开源分发）
-- **Git HEAD：** `418f461`
-- **下次优先（开源 T2）：** **OSR-13** Keychain → OSR-14 首次启动向导
+- **Git HEAD：** （OSR-13 commit 后更新）
+- **下次优先（开源 T2）：** **OSR-14** 首次启动向导
 - **v1.0.0 Release：** ✅ [DMG + SHA256SUMS](https://github.com/fancy1108/Clutch/releases/tag/v1.0.0)（CI run [#28358384072](https://github.com/fancy1108/Clutch/actions/runs/28358384072)）
 
 ### 未 commit 工作
 
 （无）
+
+## 2026-06-29 会话 24（OSR-13 · Keychain 凭证存储）
+
+- **Sidecar**：`keyring` 存 Provider API Key（service `com.clutch.app`）；macOS 默认启用，`CLUTCH_USE_KEYCHAIN=0` 回退明文 `models.json`
+- **迁移**：加载 `models.json` 时把 legacy `api_keys` 写入 Keychain 并从文件剥离
+- **验证**：`uv run pytest` → 486 passed · `./scripts/verify.sh` → OK
+- **下次优先**：OSR-14 首次启动向导
 
 ## 2026-06-29 会话 23（OSR-12 · v1.0.0 Release 实跑 ✅）
 

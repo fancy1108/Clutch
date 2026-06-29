@@ -27,6 +27,18 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ## 已交付（OSR · 开源排期）
 
+### OSR-13 ✅ API Key → macOS Keychain + 明文迁移
+- **日期：** 2026-06-29
+- **Commit：** （见 `git log -1`）
+- **Verification：** `cd services/orchestrator && uv run pytest -q` → 486 passed · `./scripts/verify.sh` → OK
+- **证据：** `—`（本地 pytest）
+- **交付文件：**
+  - `services/orchestrator/src/credentials/keychain_store.py` — Keychain 读写（`com.clutch.app`）
+  - `services/orchestrator/src/credentials/credential_store.py` — 统一加载/持久化 + 迁移
+  - `services/orchestrator/tests/test_keychain_store.py` — 迁移与不落盘断言
+  - `services/orchestrator/src/models_config.py` — save/load 走 credential store
+  - `SECURITY.md` · `docs/DATA_AND_PRIVACY.md` · `docs/PRODUCT_INTRO.md` — 文档对齐
+
 ### OSR-12 ✅ Release CI + 发版敏感信息门禁（v1.0.0 实跑验证）
 - **日期：** 2026-06-29
 - **Commit：** `109d427`（workflow）· 构建修复 `dd9fa20`

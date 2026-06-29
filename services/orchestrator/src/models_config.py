@@ -13,6 +13,13 @@ from src.llm.http_complete import http_chat_complete
 from src.llm.router import LLMProviderRouter, ModelSpec, ProviderId
 
 from src.credentials.claude_code import bootstrap_claude_credentials, bootstrap_cc_switch_credentials
+from src.credentials.credential_store import (
+    load_keys_into_router,
+    maybe_migrate_config_file,
+    persist_router_keys,
+    read_plaintext_api_keys,
+    use_keychain,
+)
 from src.credentials.sources import (
     cc_switch_has_key_for_provider,
     is_clutch_managed_credential,
@@ -41,8 +48,10 @@ def load_router() -> LLMProviderRouter:
         from src.custom_models import register_custom_models
 
         register_custom_models(router)
+        load_keys_into_router(router, {})
         return router
     data = json.loads(path.read_text(encoding="utf-8"))
+    data = maybe_migrate_config_file(path, data)
     from src.custom_models import register_custom_models
 
     register_custom_models(router)
@@ -51,9 +60,7 @@ def load_router() -> LLMProviderRouter:
             router.set_active_model(str(model_id))
         except KeyError:
             pass
-    for provider_id, api_key in (data.get("api_keys") or {}).items():
-        if api_key:
-            router.set_api_key(provider_id, str(api_key))  # type: ignore[arg-type]
+    load_keys_into_router(router, data)
     return router
 
 
@@ -61,13 +68,18 @@ def save_router(router: LLMProviderRouter) -> dict[str, Any]:
     path = config_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     existing = _read_config_data()
-    payload = {
-        "active_model_id": router.active_model_id,
-        "api_keys": {
+    persist_router_keys(router)
+    plaintext_keys: dict[str, str] = {}
+    if not use_keychain():
+        plaintext_keys = {
             provider: router.get_api_key(provider)  # type: ignore[arg-type]
             for provider in ("deepseek", "openai", "anthropic", "google", "ollama", "custom")
             if router.get_api_key(provider)  # type: ignore[arg-type]
-        },
+        }
+    payload = {
+        "active_model_id": router.active_model_id,
+        "api_keys": plaintext_keys,
+        "credential_storage": "keychain" if use_keychain() else "models.json",
         "custom_models": existing.get("custom_models", []),
         "hidden_model_ids": existing.get("hidden_model_ids", []),
     }
@@ -221,9 +233,14 @@ def format_connection_error(exc: Exception) -> str:
 def clear_provider_credential(router: LLMProviderRouter, provider_id: ProviderId) -> None:
     """Remove a Clutch-managed provider key and rehydrate external sources (CC Switch, etc.)."""
     if not is_clutch_managed_credential(provider_id):
-        raise ValueError("Only Clutch-managed credentials (models.json) can be removed here.")
+        raise ValueError("Only Clutch-managed credentials can be removed here.")
 
     router._api_keys.pop(provider_id, None)  # type: ignore[arg-type]
+    from src.credentials.credential_store import use_keychain
+    from src.credentials.keychain_store import delete_provider_key
+
+    if use_keychain():
+        delete_provider_key(provider_id)
     path = config_path()
     if path.is_file():
         data = json.loads(path.read_text(encoding="utf-8"))

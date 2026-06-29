@@ -67,7 +67,7 @@ Summary only — details in [`docs/OPEN_SOURCE_RELEASE.md`](docs/OPEN_SOURCE_REL
 | Topic | Current behavior | Planned |
 |-------|------------------|---------|
 | Sidecar API / WebSocket | `CLUTCH_SIDECAR_TOKEN` Bearer + WS `?token=` when launched via Tauri; `127.0.0.1` only | Hardening continues in OSR-16 |
-| API key storage | `models.json` on disk, `chmod 600` | OSR-13 Keychain |
+| API key storage | macOS Keychain (`com.clutch.app`) on Darwin; legacy `models.json` when `CLUTCH_USE_KEYCHAIN=0` | — |
 | CLI permissions | `--dangerously-skip-permissions` on some adapters | **D30** — documented; not gated (OSR-09) |
 
 Reporting these as **hardening gaps** is welcome; we track them on the OSR roadmap.

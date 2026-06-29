@@ -26,6 +26,7 @@ def isolate_orchestrator_globals(tmp_path, monkeypatch: pytest.MonkeyPatch) -> N
 
     monkeypatch.setenv("CLUTCH_RUN_HISTORY_DIR", str(tmp_path))
     monkeypatch.setenv("CLUTCH_STORAGE_DIR", str(tmp_path))
+    monkeypatch.setenv("CLUTCH_USE_KEYCHAIN", "0")
     monkeypatch.setenv("CLUTCH_E2E_FAKE_LLM", "1")
     clear_workspace_for_tests()
     clean_sessions()

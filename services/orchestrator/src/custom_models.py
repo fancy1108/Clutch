@@ -155,12 +155,17 @@ def add_custom_model(
     custom_models.append(entry)
     data["custom_models"] = custom_models
     if api_key and api_key.strip():
-        keys = data.get("api_keys")
-        if not isinstance(keys, dict):
-            keys = {}
-        keys[spec.provider_id] = api_key.strip()
-        data["api_keys"] = keys
         router.set_api_key(spec.provider_id, api_key.strip())  # type: ignore[arg-type]
+        from src.credentials.keychain_store import set_provider_key, use_keychain
+
+        if use_keychain():
+            set_provider_key(spec.provider_id, api_key.strip())
+        else:
+            keys = data.get("api_keys")
+            if not isinstance(keys, dict):
+                keys = {}
+            keys[spec.provider_id] = api_key.strip()
+            data["api_keys"] = keys
     _write_config(data)
     router.register_model(spec)
     return spec

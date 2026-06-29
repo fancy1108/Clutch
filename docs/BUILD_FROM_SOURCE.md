@@ -117,7 +117,7 @@ Unsigned builds (local or GitHub Release) may require **right-click → Open** o
 
 Override with `CLUTCH_STORAGE_DIR` (absolute path).
 
-API keys live in `models.json` (`chmod 600`) until Keychain migration (OSR-13). See [`SECURITY.md`](../SECURITY.md).
+API keys on **macOS** are stored in **Keychain** (service `com.clutch.app`), not in `models.json`. Linux/dev may set `CLUTCH_USE_KEYCHAIN=0` for plaintext file storage. See [`SECURITY.md`](../SECURITY.md).
 
 ## 6. Optional CLIs
 

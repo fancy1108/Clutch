@@ -49,7 +49,7 @@
 |----|------|------|-------------|
 | OSR-11 | Apple 签名 + 公证 | ⏭️ | 无 Developer 账号；D31 豁免，不阻塞分发 |
 | OSR-12 | Release CI 打 DMG | ✅ | [v1.0.0 Release](https://github.com/fancy1108/Clutch/releases/tag/v1.0.0) · `release-preflight.sh` |
-| OSR-13 | API Key → Keychain + 迁移 | ❌ | Models UI 稳定后 |
+| OSR-13 | API Key → Keychain + 迁移 | ✅ | Python `keyring` · 自动迁移明文 `api_keys` |
 | OSR-14 | 首次启动向导 | ❌ | 依赖 OSR-09、OSR-13 |
 | OSR-15 | `INSTALL.md` + `DATA_AND_PRIVACY.md` | ✅ | `docs/INSTALL.md` · `docs/DATA_AND_PRIVACY.md` |
 | OSR-16 | Debug API 收敛 + WebView CSP | ❌ | `csp: null` |
