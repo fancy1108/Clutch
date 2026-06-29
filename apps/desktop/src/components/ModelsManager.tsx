@@ -15,7 +15,7 @@ import {
   testModelConnection,
   type ProviderEntry,
 } from '../services/modelsApi';
-import { BTN_GHOST, BTN_PRIMARY, BTN_SECONDARY } from './ui/buttonStyles';
+import { BTN_GHOST, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON } from './ui/buttonStyles';
 import { BADGE_NEUTRAL, BADGE_PRIMARY, BADGE_SUCCESS, CARD_SUBTLE } from './ui/surfaceStyles';
 import { LegacyIcon } from './ui/LegacyIcon';
 
@@ -645,8 +645,19 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
                 return (
                   <div
                     key={model.id}
-                    className={`p-3.5 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-                      isActive ? 'bg-surface-container border-primary shadow-xs' : 'bg-surface border-outline/65'
+                    onClick={() => {
+                      if (canUse && !isActive && !activatingModelId) {
+                        void handleActivate(model.id);
+                      }
+                    }}
+                    className={`group p-3.5 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all ${
+                      isActive
+                        ? 'bg-surface-container border-primary shadow-xs'
+                        : `bg-surface border-outline/65 ${
+                            canUse && !activatingModelId
+                              ? 'cursor-pointer hover:border-primary/50 hover:shadow-xs'
+                              : ''
+                          }`
                     } ${!canUse ? 'opacity-80' : ''}`}
                   >
                     <div className="flex-1 min-w-0 space-y-1">
@@ -689,40 +700,53 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
                       {model.clutchManaged && !showConnectForm && (
                         <button
                           type="button"
-                          onClick={() => openConnectForm(model.providerId)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openConnectForm(model.providerId);
+                          }}
                           className="text-[10px] font-bold text-primary hover:underline"
                         >
                           Change {model.provider} key
                         </button>
                       )}
                     </div>
-                    <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
+                    <div
+                      className={`flex items-center gap-1 flex-shrink-0 ml-2 transition-opacity ${
+                        verify === 'testing' || deletingModelId === model.id
+                          ? 'opacity-100'
+                          : 'opacity-0 group-hover:opacity-100'
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        disabled={!canUse || verify === 'testing'}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void handleTestConnection(model.id);
+                        }}
+                        className={BTN_ICON}
+                        title={verify === 'testing' ? 'Testing connection' : verify === 'idle' ? 'Test connection' : 'Retest connection'}
+                        aria-label={verify === 'testing' ? 'Testing connection' : verify === 'idle' ? 'Test connection' : 'Retest connection'}
+                      >
+                        <LegacyIcon
+                          name={verify === 'testing' ? 'progress_activity' : 'sync'}
+                          className="text-[16px]"
+                          spin={verify === 'testing'}
+                        />
+                      </button>
                       {canRemove && (
                         <button
                           type="button"
                           disabled={deletingModelId === model.id}
-                          onClick={() => setPendingRemove({ id: model.id, name: model.name })}
-                          className={`${BTN_GHOST} text-[10.5px] border-rose-200 text-rose-700 hover:bg-rose-50 disabled:opacity-50`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPendingRemove({ id: model.id, name: model.name });
+                          }}
+                          className={`${BTN_ICON} hover:bg-rose-50 text-red-500 hover:text-red-700 disabled:opacity-50`}
+                          title="Remove model"
+                          aria-label="Remove model"
                         >
-                          {deletingModelId === model.id ? 'Removing…' : 'Remove'}
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        disabled={!canUse || verify === 'testing'}
-                        onClick={() => void handleTestConnection(model.id)}
-                        className={`${BTN_SECONDARY} text-[10.5px] disabled:opacity-50`}
-                      >
-                        {verify === 'testing' ? 'Testing…' : verify === 'idle' ? 'Test' : 'Retest'}
-                      </button>
-                      {!isActive && (
-                        <button
-                          type="button"
-                          disabled={!canUse || activatingModelId === model.id}
-                          onClick={() => void handleActivate(model.id)}
-                          className={`${BTN_PRIMARY} text-[10.5px] disabled:opacity-50`}
-                        >
-                          {activatingModelId === model.id ? 'Switching…' : 'Use this model'}
+                          <LegacyIcon name="delete" className="text-[16px]" />
                         </button>
                       )}
                     </div>

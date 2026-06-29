@@ -619,6 +619,10 @@ class ClutchStateStore {
     this.applyPatch({ messages: next });
   }
 
+  clearWorkflowState(): void {
+    this.applyPatch({ workflow_id: '' });
+  }
+
   async send(payload: Record<string, unknown>): Promise<void> {
     await this.connect(this.runId);
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
@@ -649,4 +653,9 @@ export const submitChatMessage = async (
   if (modelId) payload.model_id = modelId;
   if (clientMessageId) payload.client_message_id = clientMessageId;
   await clutchStore.send(payload);
+};
+
+export const clearWorkflowForSession = async (runId: string): Promise<void> => {
+  await clutchStore.send({ action: 'clear_workflow' });
+  clutchStore.clearWorkflowState();
 };

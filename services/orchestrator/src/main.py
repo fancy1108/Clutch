@@ -3606,6 +3606,13 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                             websocket, run_id, log_line, node_id=state["active_node_id"]
                         )
                         await _notify_run_state(websocket, run_id, state, patch)
+            elif isinstance(payload, dict) and payload.get("action") == "clear_workflow":
+                state = _merge_patch(state, {"workflow_id": ""})
+                _commit_run_state(run_id, state)
+                _touch_session(run_id, workflow_id="")
+                if run_id in _run_sessions:
+                    del _run_sessions[run_id]
+                await _notify_run_state(websocket, run_id, state, {"workflow_id": ""})
             else:
                 unknown = _chat_message(
                     "Orchestrator",
