@@ -114,7 +114,7 @@ graph TD
 * **Skills Settings**：自动扫描项目关联的 Skills，解析 `.md` 指引文件前缀的 YAML 元数据信息并呈现在表格中。
 * **MCP Server Settings**：支持注册、连接或拔除本地/远程的 Model Context Protocol 服务器。
 * **Appearance Settings**：提供一键在 Pristine Light、Nordic Frost 和 Amber Warm 主题间切换的设计面板。
-* **Session Memory**：使用 LocalStorage 后台自动记忆每个 sessionRunId 的工作流 ID、智能体 ID 以及单/多智能体模式切换状态，在切换会话时精准恢复。
+* **Session Memory**：使用 LocalStorage 后台自动记忆每个 sessionRunId 的工作流 ID 与智能体 ID，在切换会话时精准恢复并统一展示为多智能体视图架构。
 
 ---
 
