@@ -105,7 +105,7 @@
 |------|--------|------|------|------|
 | T0 护栏 | 持续 | 许可证、文档边界、semver | ⚠️ | OSR-01～04、23～25 ✅；OSR-05 🔄 |
 | **T1 可公开仓库** | **公开 repo 前** | 社区文件、Sidecar 鉴权、CLI 策略 | ✅ | OSR-00/06～10、26～28 已验收（D31） |
-| T2 可放心装 DMG | 陌生人分发前 | 未签名 DMG、Keychain、安装向导 | ⚠️ | OSR-12～15 ✅；**OSR-16～17 待做** |
+| T2 可放心装 DMG | 陌生人分发前 | 未签名 DMG、Keychain、安装向导 | ⚠️ | OSR-12～17 ✅ |
 | T3 生态成熟 | 按需 | 沙箱、Windows、自动更新 | ❌ | OSR-18～22、29 |
 
 ### T1 检查清单（公开仓库前 · 默认 FAIL）
@@ -119,6 +119,15 @@
 - [x] **OSR-26** `GOVERNANCE.md`（草案 v0.1）
 - [x] **OSR-27** 兼容性矩阵 + `doctor.sh`
 - [x] **OSR-28** Issue / PR 模板
+
+### T2 检查清单（DMG 分发前 · 默认 FAIL）
+
+- [x] **OSR-12** GitHub Actions Release DMG + preflight
+- [x] **OSR-13** API Key → macOS Keychain
+- [x] **OSR-14** 首次启动向导
+- [x] **OSR-15** `INSTALL.md` + `DATA_AND_PRIVACY.md`
+- [x] **OSR-16** Debug API 收敛 + WebView CSP
+- [x] **OSR-17** PyInstaller `console=False`
 
 ### T1 开闸信号（§7.5）
 

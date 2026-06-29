@@ -7,18 +7,24 @@
 
 
 - **阶段：** 维护期 — v1.0.0 已发布；D25 Hybrid + Flow 精修已落地
-- **Git HEAD：** `ee91743`
-- **里程碑：** T2 开源分发 — OSR-12～15 ✅ · **OSR-16～17 进行中**（权威：`memory/ROADMAP.md` §开源分发）
+- **Git HEAD：** `ee91743`（工作区含 OSR-16/17 未 commit）
+- **里程碑：** T2 开源分发 — OSR-12～17 ✅（权威：`memory/ROADMAP.md` §开源分发）
 - **v1.0.0 Release：** ✅ [DMG + SHA256SUMS](https://github.com/fancy1108/Clutch/releases/tag/v1.0.0)
 
 
 ## Next Actions
 
-- **OSR-16** Debug API 收敛 + WebView CSP
-- **OSR-17** PyInstaller `console=False`
 - **HRT-F** 多 session 并发人工验收（`ROADMAP.md` §D25）
+- **OSR-11** Apple 签名 + 公证（D31 可豁免，按需）
 
 ## Recent Sessions
+
+## 2026-06-29 会话 26（OSR-16/17 · Release 硬化）
+
+- **OSR-16**：`release_hardening.py` — frozen sidecar 默认关闭 debug API 与 OpenAPI；`CLUTCH_DEBUG_API=1` 可 opt-in；`tauri.conf.json` 生产 CSP + `devCsp`（Vite HMR :3000）
+- **OSR-17**：`clutch.spec` `console=False` — 打包 sidecar 无终端黑窗
+- **验证**：`pytest tests/test_release_hardening.py` + 既有 debug/auth 回归 · `./scripts/verify.sh`
+- **下次优先**：HRT-F 多 session 人工验收
 
 ## 2026-06-29 会话 25（OSR-14 · 首次启动向导）
 
@@ -88,4 +94,3 @@
 - **链接**：`CONTRIBUTING.md`、`.github/ISSUE_TEMPLATE/security_report.md`、`README.md` 文档地图。
 - **验证**：`./scripts/verify.sh`。
 - **下次优先**：OSR-07 Secret scanning CI。
-

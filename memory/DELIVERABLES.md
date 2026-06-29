@@ -31,11 +31,26 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 > 进行中 Task 的交付索引写在此处。完成后移入 **Recently Completed** 或归档。
 
-### OSR-16 ❌ Debug API 收敛 + WebView CSP
-- **状态：** 未开始 · 权威：`memory/ROADMAP.md` §开源分发
+### OSR-16 ✅ Debug API 收敛 + WebView CSP
+- **日期：** 2026-06-29
+- **Commit：** `—`（未 commit，工作区实现）
+- **Verification：** `cd services/orchestrator && uv run pytest tests/test_z_release_hardening.py tests/test_run_debug_api.py tests/test_hybrid_audit_d29_regression.py tests/test_sidecar_auth.py -v` · `./scripts/verify.sh`
+- **证据：** `—`
+- **交付文件：**
+  - `services/orchestrator/src/release_hardening.py` — frozen/debug/docs gate helpers
+  - `services/orchestrator/src/main.py` — conditional OpenAPI + debug 404
+  - `services/orchestrator/src/sidecar_auth.py` — public paths respect `api_docs_enabled()`
+  - `services/orchestrator/tests/test_z_release_hardening.py` — frozen release regression tests
+  - `apps/desktop/src-tauri/tauri.conf.json` — production CSP + `devCsp` for Vite HMR
+  - `SECURITY.md` — debug API opt-in documented
 
-### OSR-17 ❌ PyInstaller `console=False`
-- **状态：** 未开始 · `clutch.spec` 仍 `console=True`
+### OSR-17 ✅ PyInstaller `console=False`
+- **日期：** 2026-06-29
+- **Commit：** `—`（未 commit，工作区实现）
+- **Verification：** `./scripts/verify.sh` · `grep console=False services/orchestrator/clutch.spec`
+- **证据：** `—`
+- **交付文件：**
+  - `services/orchestrator/clutch.spec` — `console=False` hides sidecar terminal on macOS
 
 ---
 

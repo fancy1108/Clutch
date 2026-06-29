@@ -21,6 +21,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
+from src.release_hardening import api_docs_enabled, debug_api_enabled
 from src.sidecar_auth import auth_required, public_http_paths, validate_bearer, validate_token
 
 from src.compiler import WorkflowSession, begin_workflow, resume_workflow
@@ -64,7 +65,17 @@ async def _lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Clutch Orchestrator", version="1.0.0", lifespan=_lifespan)
+_docs_disabled = not api_docs_enabled()
+app = FastAPI(
+    title="Clutch Orchestrator",
+    version="1.0.0",
+    lifespan=_lifespan,
+    **(
+        {"docs_url": None, "redoc_url": None, "openapi_url": None}
+        if _docs_disabled
+        else {}
+    ),
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -3358,6 +3369,9 @@ async def get_run_debug(
     logs_limit: int | None = None,
     audit_limit: int | None = None,
 ) -> dict[str, Any]:
+    if not debug_api_enabled():
+        raise HTTPException(status_code=404, detail={"message": "Not found"})
+
     from src.run_debug import build_run_debug_payload
 
     state = _get_or_create_run(run_id)

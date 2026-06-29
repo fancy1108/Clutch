@@ -12,6 +12,14 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ### Added
 
+- **Release hardening (OSR-16):** Packaged sidecar disables `GET /api/runs/{run_id}/debug` and OpenAPI docs unless `CLUTCH_DEBUG_API=1`; WebView Content-Security-Policy in `tauri.conf.json` (production + `devCsp` for Vite HMR).
+
+### Changed
+
+- **Sidecar distribution (OSR-17):** PyInstaller bundle ships with `console=False` (no terminal window on macOS).
+
+### Added
+
 - Document lifecycle governance: Source of Truth table, event-driven update matrix, and `memory/archive/` rotation with read-only Archive Notice on all archived files.
 
 ## [1.0.0] - 2026-06-29
@@ -50,5 +58,3 @@ First public release — unsigned macOS DMG via [GitHub Releases](https://github
 ### Known limitations (v1.0.0)
 
 - macOS DMG is **not** Apple-notarized (OSR-11 deferred).
-- Debug export API and WebView CSP hardening pending (OSR-16).
-- PyInstaller sidecar still ships with `console=True` (OSR-17).

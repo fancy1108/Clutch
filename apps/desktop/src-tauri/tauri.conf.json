@@ -23,7 +23,22 @@
       }
     ],
     "security": {
-      "csp": null,
+      "csp": {
+        "default-src": "'self' tauri: asset:",
+        "connect-src": "'self' ipc: http://ipc.localhost ws://ipc.localhost tauri: http://localhost:8123 ws://localhost:8123 https://connectivitycheck.gstatic.com",
+        "img-src": "'self' asset: http://asset.localhost tauri: blob: data: https://api.dicebear.com https://lh3.googleusercontent.com https://*.googleusercontent.com",
+        "style-src": "'self' 'unsafe-inline' tauri: asset:",
+        "script-src": "'self' tauri: asset:",
+        "font-src": "'self' asset: data: tauri:"
+      },
+      "devCsp": {
+        "default-src": "'self' tauri: asset:",
+        "connect-src": "'self' ipc: http://ipc.localhost ws://ipc.localhost tauri: http://localhost:3000 ws://localhost:3000 http://127.0.0.1:3000 ws://127.0.0.1:3000 https://connectivitycheck.gstatic.com",
+        "img-src": "'self' asset: http://asset.localhost tauri: blob: data: https://api.dicebear.com https://lh3.googleusercontent.com https://*.googleusercontent.com",
+        "style-src": "'self' 'unsafe-inline' tauri: asset:",
+        "script-src": "'self' 'unsafe-eval' tauri: asset:",
+        "font-src": "'self' asset: data: tauri:"
+      },
       "capabilities": ["default"]
     }
   },

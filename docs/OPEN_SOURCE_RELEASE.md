@@ -54,8 +54,8 @@
 | OSR-13 | API Key → macOS Keychain + 迁移 | **T2** | 1 | 3–5d | |
 | OSR-14 | 首次启动向导 | **T2** | 1 | 2–3d | |
 | OSR-15 | `INSTALL.md` + `DATA_AND_PRIVACY.md` | **T2** | 1 | 1–2d | |
-| OSR-16 | Debug API 收敛 + WebView CSP | **T2** | 1 | 1–2d | |
-| OSR-17 | PyInstaller `console=False` | **T2** | 1 | 0.5d | |
+| OSR-16 | Debug API 收敛 + WebView CSP | **T2** | 1 | 1–2d | ✅ |
+| OSR-17 | PyInstaller `console=False` | **T2** | 1 | 0.5d | ✅ |
 | OSR-18 | OS 级沙箱 PoC（B-20） | **T3** | 2 | 2–4w | |
 | OSR-19 | Windows MSI | **T3** | 2 | 1–2w | |
 | OSR-20 | Tauri 自动更新 | **T3** | 2 | 3–5d | |

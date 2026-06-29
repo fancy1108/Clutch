@@ -40,4 +40,9 @@ def validate_bearer(authorization: str | None) -> bool:
 
 
 def public_http_paths() -> frozenset[str]:
-    return frozenset({"/health", "/openapi.json", "/docs", "/redoc"})
+    from src.release_hardening import api_docs_enabled
+
+    paths = {"/health"}
+    if api_docs_enabled():
+        paths.update({"/openapi.json", "/docs", "/redoc"})
+    return frozenset(paths)
