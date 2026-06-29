@@ -856,3 +856,13 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
   - [apps/desktop/src/services/clutchState.test.ts](file:///Users/fancy/clutch/apps/desktop/src/services/clutchState.test.ts) — 更新 `mergeChatMessages` 单元测试，将原先错误的 duplicate text 丢弃行为断言改为允许在不同 turn 间多次发送同文本消息的符合预期断言。
   - [apps/desktop/src/services/workflowAgentSteps.ts](file:///Users/fancy/clutch/apps/desktop/src/services/workflowAgentSteps.ts) — 重构 `buildWorkflowReplyStepIndex` 逻辑，优先依据消息的 `agent` 名称/Label 匹配定位 WorkflowStep 获取准确的工具配置与头像，无法匹配时才退化至 Sequential 累加偏移，从而修复了精修结果气泡头像被张冠李戴的现象。
 
+
+### 模型设置卡片选择与悬浮图形按钮优化 (Model UI Alignment) ✅
+- **日期：** 2026-06-29
+- **Commit：** `4ab1a27` — `feat(ui): align model configuration action buttons and card-level selection interaction`
+- **Verification：** `./scripts/verify.sh` → build + vitest + pytest 473 passed (100% success) ✅
+- **证据：** `—`（门禁已覆盖）
+- **已交付：**
+  - [apps/desktop/src/components/ModelsManager.tsx](file:///Users/fancy/clutch/apps/desktop/src/components/ModelsManager.tsx) — 重构模型卡片容器与动作按钮。去除了原有的 "Use this model" 文本按钮，将整个模型卡片变为可点击（点击自动触发 `handleActivate` 以选中/启用模型，并添加了 `cursor-pointer` 和 hover 边框高亮样式）；将 "Remove" 与 "Test"/"Retest" 操作重构为仅在鼠标悬浮时显现的图形化 icon 按钮（使用 `BTN_ICON` 与 LegacyIcon `delete` 和 `sync`）；同时对所有内部交互子元素（包括 Change Key 按钮和测试/删除按钮）添加 `e.stopPropagation()` 以防点选穿透。
+
+

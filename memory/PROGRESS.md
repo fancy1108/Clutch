@@ -2,14 +2,22 @@
 
 ## 当前状态
 
-- **阶段：** D25 Hybrid Runtime + **Flow 精修（pause/refine/continue）已落地** + **默认 Multi-Agent 并隐藏模式切换按钮已落地** + **MCP 审批流程解包崩溃修复已落地** + **Flow 精修消息回显、Session 提示词丢失、头像映射修复已落地**
-- **Git HEAD：** `7ee2ae2`
-- **下次优先：** 进一步集成测试或进入下一迭代
+- **阶段：** D25 Hybrid Runtime + **Flow 精修（pause/refine/continue）已落地** + **默认 Multi-Agent 并隐藏模式切换按钮已落地** + **MCP 审批流程解包崩溃修复已落地** + **Flow 精修消息回显、Session 提示词丢失、头像映射修复已落地** + **模型设置操作按钮与选中卡片交互优化已落地**
+- **Git HEAD：** `4ab1a27`
+- **下次优先：** 进一步集成测试或根据用户反馈进行精修
 - **验收期跳过：** MCP hybrid_executions 深度 UI · 2h/100+ 压测
 
 ### 未 commit 工作
 
 （无 — 见本 commit）
+
+## 2026-06-29 会话 13（模型配置界面操作按钮悬浮图形化与卡片选中优化）
+
+- **卡片级选中交互**：去除了原有的 "Use this model" 文本按钮，支持点击模型卡片直接选中启用该模型，并添加了对应的 `cursor-pointer` 和 hover 样式。
+- **操作按钮悬浮与图形化**：将 "Remove" 与 "Test"/"Retest" 操作重构为仅在鼠标悬浮时显现的图形化 icon 按钮（使用 `BTN_ICON` 与 LegacyIcon `delete` 和 `sync`）；对于处于 `testing` 状态的卡片，测试中状态的旋转图标将保持显示，直至测试完毕。
+- **阻止事件冒泡**：对卡片内部所有交互元素（Change provider key 链接、Test 按钮、Delete 按钮）添加了 `e.stopPropagation()`，防止在执行子操作时误触发卡片的全局选中激活事件。
+- **验证**：运行 `./scripts/verify.sh` 全量通过（473 tests passed + build & doc-drift OK）。
+
 
 ## 2026-06-29 会话 12（修复 Flow 精修消息回显、提示词生成与头像映射）
 
