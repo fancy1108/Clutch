@@ -4,6 +4,7 @@ import type { FileTreeNode } from '../services/workspaceApi';
 import { loadWorkflowById } from '../services/workflowApi';
 import { useLanguage, translateRunStatus } from './LanguageContext';
 import { LegacyIcon } from './ui/LegacyIcon';
+import { UnderDevelopmentNotice } from './ui/UnderDevelopmentNotice';
 import { BTN_ICON } from './ui/buttonStyles';
 
 interface RightPanelProps {
