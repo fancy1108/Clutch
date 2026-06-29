@@ -3,12 +3,19 @@
 ## 当前状态
 
 - **阶段：** D25 Hybrid Runtime + Flow 精修已落地 + 功能迭代中；**开源排期 OSR-xx 已登记**（见 `memory/BACKLOG.md` §开源 / DMG 分发 · `memory/ROADMAP.md` §开源分发）
-- **Git HEAD：** `109d427`
-- **下次优先（开源 T2）：** 首 `v1.0.0` tag 实跑 Release CI → **OSR-13** Keychain
+- **Git HEAD：** `418f461`
+- **下次优先（开源 T2）：** **OSR-13** Keychain → OSR-14 首次启动向导
+- **v1.0.0 Release：** ✅ [DMG + SHA256SUMS](https://github.com/fancy1108/Clutch/releases/tag/v1.0.0)（CI run [#28358384072](https://github.com/fancy1108/Clutch/actions/runs/28358384072)）
 
 ### 未 commit 工作
 
-（无 — OSR-15/12 已 commit）
+（无）
+
+## 2026-06-29 会话 23（OSR-12 · v1.0.0 Release 实跑 ✅）
+
+- merge `cursor/refine-auto-continue-i18n-chat-fixes` → `main`；首跑缺 `UnderDevelopmentNotice` → `dd9fa20` 修复后重打 tag
+- Release 资产：`Clutch_1.0.0_aarch64.dmg`（~37 MB）· `SHA256SUMS.txt`
+- stash `wip: i18n/settings UI` 保留，未 pop 到 main
 
 ## 2026-06-29 会话 22（OSR-12 · 已 commit `109d427`）
 

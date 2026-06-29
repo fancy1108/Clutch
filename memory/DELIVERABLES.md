@@ -27,15 +27,15 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ## 已交付（OSR · 开源排期）
 
-### OSR-12 ✅ Release CI + 发版敏感信息门禁
+### OSR-12 ✅ Release CI + 发版敏感信息门禁（v1.0.0 实跑验证）
 - **日期：** 2026-06-29
-- **Commit：** `109d427` — `ci(osr): harden release workflow with secret preflight (OSR-12)`
-- **Verification：** `./scripts/release-preflight.sh` · `./scripts/verify.sh` → pass
+- **Commit：** `109d427`（workflow）· 构建修复 `dd9fa20`
+- **Verification：** [Actions #28358384072](https://github.com/fancy1108/Clutch/actions/runs/28358384072) → success
+- **证据：** [Release v1.0.0](https://github.com/fancy1108/Clutch/releases/tag/v1.0.0) — `Clutch_1.0.0_aarch64.dmg` · `SHA256SUMS.txt`
 - **交付文件：**
   - `.github/workflows/release.yml` — gitleaks · preflight · DMG · SHA256SUMS · workflow_dispatch
   - `scripts/release-preflight.sh` — INV-R1～R4
-  - `scripts/build-sidecar.sh` — 打包清单日志
-  - `.gitignore` — `models.json`
+  - `apps/desktop/src/components/ui/UnderDevelopmentNotice.tsx` — CI 构建修复
 
 ### OSR-15 ✅ 安装与隐私文档
 - **日期：** 2026-06-29
