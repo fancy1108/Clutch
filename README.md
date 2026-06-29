@@ -163,14 +163,27 @@ pnpm install
 
 ## 安装方式
 
+> ### ⚠️ 未签名 DMG · 首次安装必读（T1）
+>
+> 当前 Release 中的 `.dmg` **未经 Apple 签名/公证**。macOS 可能提示「**无法验证开发者**」或「**应用已损坏**」——**这是 Gatekeeper 对未签名应用的正常反应，不是病毒，也不是包坏了。**
+>
+> **复制粘贴即可用（终端）：**
+>
+> ```bash
+> xattr -cr /Applications/Clutch.app && open -a Clutch
+> ```
+>
+> 或：**应用程序** → 右键 **Clutch** → **打开** → 确认打开。  
+> 详细说明与免责：[`docs/INSTALL.md`](./docs/INSTALL.md) · 每次 Release 说明见 [GitHub Releases](https://github.com/fancy1108/Clutch/releases)。
+
 ### 从 Release 安装（终端用户 · macOS）
 
 从 [GitHub Releases](https://github.com/fancy1108/Clutch/releases) 下载 **macOS `.dmg`**（当前为**未签名**构建，与多数开源桌面项目相同；见 [`memory/DECISIONS.md`](./memory/DECISIONS.md) **D31**）：
 
 1. 下载对应架构的 DMG（Apple Silicon 选 `aarch64`）并拖入 **Applications**
-2. **首次打开**若被 Gatekeeper 拦截，任选其一：
-   - **Finder** 中右键 **Clutch.app** → **打开** → 确认打开
-   - 或终端：`xattr -cr /Applications/Clutch.app` 后从启动台打开
+2. **首次打开**若被 Gatekeeper 拦截（含「**已损坏**」文案），任选其一：
+   - **Finder**：右键 **Clutch.app** → **打开** → 确认打开
+   - **终端（推荐，可复制）**：`xattr -cr /Applications/Clutch.app && open -a Clutch`
 3. 约 5s 内侧车应就绪：`curl -s http://127.0.0.1:8123/health` → `{"status":"ok"}`
 
 维护者发版：打 tag `v1.0.0`（或后续 `v1.x.x`）触发 [`.github/workflows/release.yml`](./.github/workflows/release.yml) 自动构建并上传 DMG；或本机 `cd apps/desktop && pnpm tauri build` 后手动上传到 Release。

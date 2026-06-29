@@ -318,7 +318,7 @@
 - **背景**：维护者暂无 Apple Developer 账号，无法完成 OSR-11 代码签名与公证；仍希望在 T1 公开仓库后向终端用户提供可安装的 macOS DMG（与多数开源桌面项目做法一致）。
 - **方案（用户确认）**：
   1. **豁免 OSR-11**：不阻塞开源与首次 DMG 分发；获得 Developer 账号后再补签名/公证。
-  2. **分发路径**：GitHub Releases 附 `.dmg`；`README.md` §安装方式 提供下载链接与 Gatekeeper 绕过说明（右键打开 / `xattr -cr`）。
+  3. **分发路径**：GitHub Releases 附 `.dmg`；`README.md` §安装方式 与 **`.github/RELEASE_GATEKEEPER_NOTICE.md`** 提供醒目 Gatekeeper 绕过说明（含「应用已损坏」免责）。
   3. **Release CI**：`.github/workflows/release.yml` 在 `v*` tag 推送时于 `macos-latest` 构建**未签名** DMG 并上传 Release（OSR-12，不依赖 OSR-11）。
   4. **OSR-00**：维护者已于 2026-06-29 自行完成发布前验收，T1 开闸。
   5. **首发版本**：公开发布与首个 DMG tag 从 **`v1.0.0`** 起（非 `v0.1.0`）。

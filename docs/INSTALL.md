@@ -19,7 +19,16 @@
 
 ---
 
-## 2. 下载与安装
+## 2. 未签名应用说明（必读 · T1）
+
+> **免责：** 当前 Clutch **没有 Apple 开发者签名与公证**（开源初期策略，见 D31）。  
+> 若提示「**无法验证开发者**」或「**Clutch 已损坏，无法打开**」——**这是 macOS Gatekeeper 对未签名应用的正常行为，不是恶意软件，也不是 DMG 下载损坏。**
+
+请先完成下方 §3 再使用应用。
+
+---
+
+## 3. 下载与安装
 
 1. 打开 [GitHub Releases](https://github.com/fancy1108/Clutch/releases)
 2. 下载最新 **`Clutch_*_aarch64.dmg`**（Apple Silicon）或对应架构的 DMG
@@ -29,28 +38,27 @@
 
 ---
 
-## 3. 首次打开（Gatekeeper）
+## 4. 首次打开（Gatekeeper）
 
-macOS 可能提示「无法验证开发者」。任选其一：
+macOS 可能提示「无法验证开发者」或「**应用已损坏**」。**均属正常现象。**
 
 **方式 A — Finder（推荐）**
 
 1. 打开 **应用程序**
-2. **右键** Clutch → **打开**
+2. **右键** Clutch → **打开**（不要双击）
 3. 在对话框中再次点 **打开**
 
-**方式 B — 终端**
+**方式 B — 终端（复制粘贴）**
 
 ```bash
-xattr -cr /Applications/Clutch.app
-open -a Clutch
+xattr -cr /Applications/Clutch.app && open -a Clutch
 ```
 
-仅需在**首次**启动时操作一次。
+仅需在**首次**启动时操作一次。若仍失败，确认 DMG 架构与 Mac 芯片一致（Apple Silicon → `aarch64`）。
 
 ---
 
-## 4. 验证 Sidecar 已就绪
+## 5. 验证 Sidecar 已就绪
 
 打包版 Sidecar 监听 **`127.0.0.1:8123`**（仅本机，不对外网开放）。
 
@@ -66,11 +74,11 @@ curl -s http://127.0.0.1:8123/health
 {"status":"ok"}
 ```
 
-若超时：见下方 [故障排除](#7-故障排除)。
+若超时：见下方 [故障排除](#8-故障排除)。
 
 ---
 
-## 5. 首次使用 checklist
+## 6. 首次使用 checklist
 
 按顺序完成即可跑通主路径：
 
@@ -86,7 +94,7 @@ curl -s http://127.0.0.1:8123/health
 
 ---
 
-## 6. 数据存储位置
+## 7. 数据存储位置
 
 | 模式 | 路径 |
 |------|------|
@@ -99,11 +107,11 @@ curl -s http://127.0.0.1:8123/health
 
 ---
 
-## 7. 故障排除
+## 8. 故障排除
 
 | 现象 | 处理 |
 |------|------|
-| 无法打开 / 已损坏 | 使用 §3 Gatekeeper 步骤；确认 DMG 与芯片架构匹配 |
+| 无法打开 / 已损坏 | 使用 §4 Gatekeeper 步骤；确认 DMG 与芯片架构匹配 |
 | `curl` 健康检查失败 | 完全退出 Clutch 后重开；检查 8123 端口是否被占用：`lsof -iTCP:8123 -sTCP:LISTEN` |
 | 文件夹选择器无响应 | 必须使用 **Clutch.app**，不要用浏览器单独打开 `pnpm dev` |
 | API Key 无效 | Settings → Models 检查 Key；确认 Provider 端点可达 |
@@ -113,7 +121,7 @@ curl -s http://127.0.0.1:8123/health
 
 ---
 
-## 8. 卸载
+## 9. 卸载
 
 1. 退出 Clutch（菜单栏或 `Cmd+Q`）
 2. 将 `/Applications/Clutch.app` 移入废纸篓
@@ -127,7 +135,7 @@ rm -rf ~/Library/Application\ Support/clutch/
 
 ---
 
-## 9. 升级
+## 10. 升级
 
 1. 从 [Releases](https://github.com/fancy1108/Clutch/releases) 下载新版本 DMG
 2. 拖入 Applications 覆盖安装
