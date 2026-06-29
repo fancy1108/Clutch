@@ -97,15 +97,15 @@
 
 ## 开源 / DMG 分发（OSR-xx）
 
-> **Task 权威表：** [`docs/OPEN_SOURCE_RELEASE.md`](../docs/OPEN_SOURCE_RELEASE.md) §7.2、§7.7  
-> **状态镜像：** [`memory/BACKLOG.md`](./BACKLOG.md) §开源 / DMG 分发  
+> **Task 定义：** [`docs/OPEN_SOURCE_RELEASE.md`](../docs/OPEN_SOURCE_RELEASE.md) §7.2  
+> **验收状态（唯一）：** 本节 — 不在 OPEN_SOURCE_RELEASE 勾选
 > **Default FAIL：** 未实际验收不得标 ✅
 
 | 阶段 | 触发线 | 目标 | 状态 | 备注 |
 |------|--------|------|------|------|
 | T0 护栏 | 持续 | 许可证、文档边界、semver | ⚠️ | OSR-01～04、23～25 ✅；OSR-05 🔄 |
 | **T1 可公开仓库** | **公开 repo 前** | 社区文件、Sidecar 鉴权、CLI 策略 | ✅ | OSR-00/06～10、26～28 已验收（D31） |
-| T2 可放心装 DMG | 陌生人分发前 | 未签名 DMG、Keychain、安装向导 | ⚠️ | OSR-13 Keychain ✅；OSR-14～17 待做 |
+| T2 可放心装 DMG | 陌生人分发前 | 未签名 DMG、Keychain、安装向导 | ⚠️ | OSR-12～15 ✅；**OSR-16～17 待做** |
 | T3 生态成熟 | 按需 | 沙箱、Windows、自动更新 | ❌ | OSR-18～22、29 |
 
 ### T1 检查清单（公开仓库前 · 默认 FAIL）

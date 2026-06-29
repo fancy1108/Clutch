@@ -1,8 +1,6 @@
 # Clutch — 维护者治理
 
-> **读者**：贡献者、Issue 提交者  
-> **状态**：草案 v0.1（2026-06-27）  
-> **模型**：**BDFL**（Benevolent Dictator for Life）— 项目所有者拥有最终合并与路线决定权；Maintainer 共识用于日常评审。
+> **Normative policy only** — maintainer process, not feature lists. Product: [`PRODUCT_INTRO.md`](./PRODUCT_INTRO.md).
 
 ---
 

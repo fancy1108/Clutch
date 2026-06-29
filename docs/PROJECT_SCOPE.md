@@ -1,8 +1,6 @@
 # Clutch — 项目定位与边界（Goals / Non-Goals）
 
-> **读者**：外部贡献者、Issue 提交者、潜在 fork 维护者  
-> **权威关系**：产品叙事见 [`PRODUCT_INTRO.md`](./PRODUCT_INTRO.md)；架构约束见 [`ARCHITECTURE.md`](./ARCHITECTURE.md)。本文聚焦 **「做 / 不做」**，用于减少重复解释型 Issue。  
-> **状态**：草案 v0.1（2026-06-27）
+> **Normative policy only** — goals and boundaries, not implementation details. How it works: [`ARCHITECTURE.md`](./ARCHITECTURE.md). What users get: [`PRODUCT_INTRO.md`](./PRODUCT_INTRO.md).
 
 ---
 

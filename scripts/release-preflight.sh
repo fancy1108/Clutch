@@ -70,6 +70,25 @@ if [[ -d "$assets" ]]; then
 fi
 ok "INV-R4 workflow_assets consistent with workflows/ (or empty before build)"
 
+# INV-R5: CHANGELOG must document the release version before tagging
+tag="${CLUTCH_RELEASE_TAG:-${GITHUB_REF_NAME:-}}"
+if [[ -z "$tag" && -n "${1:-}" ]]; then
+  tag="$1"
+fi
+if [[ -n "$tag" ]]; then
+  version="${tag#v}"
+  changelog="$root/CHANGELOG.md"
+  if [[ ! -f "$changelog" ]]; then
+    err "INV-R5 missing CHANGELOG.md"
+  elif ! grep -qE "^## \\[${version//./\\.}\\]" "$changelog"; then
+    err "INV-R5 CHANGELOG.md has no section ## [${version}] — update before tag ${tag}"
+  else
+    ok "INV-R5 CHANGELOG.md documents version ${version}"
+  fi
+else
+  ok "INV-R5 skipped (set CLUTCH_RELEASE_TAG or pass version as arg to enforce)"
+fi
+
 if [[ $errors -gt 0 ]]; then
   echo "== release-preflight: $errors error(s) — aborting release ==" >&2
   exit 1

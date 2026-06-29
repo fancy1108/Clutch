@@ -1,10 +1,10 @@
 # D25 · Hybrid Runtime 执行计划（HRT）
 
-> **权威任务表**：本文件为 D25（ShellSession + `SHELL_EXEC`）**唯一可执行 Task 清单**。  
-> **设计参考**：[`docs/research/pty-session.md`](../../docs/research/pty-session.md)（叙事与 POC 证据，冲突以本文件 + `memory/DECISIONS.md` 为准）。  
-> **决策**：D25 · D27 · D28 — [`memory/DECISIONS.md`](../../memory/DECISIONS.md)  
-> **验收勾选**：[`memory/ROADMAP.md`](../../memory/ROADMAP.md) §D25 Hybrid Runtime  
-> **交付索引**：每 Task commit 后写入 [`memory/DELIVERABLES.md`](../../memory/DELIVERABLES.md)
+> **Task 定义 + Verification 手册**（D25 ShellSession + `SHELL_EXEC`）。  
+> **验收状态：** 仅 [`memory/ROADMAP.md`](../../memory/ROADMAP.md) §D25 — **本文件不维护 ✅/❌**。  
+> **设计参考（只读）：** [`docs/research/pty-session.md`](../../docs/research/pty-session.md)  
+> **决策：** D25 · D27 · D28 — [`memory/DECISIONS.md`](../../memory/DECISIONS.md)  
+> **交付索引：** [`memory/DELIVERABLES.md`](../../memory/DELIVERABLES.md) · [`memory/archive/DELIVERABLES-HRT.md`](../../memory/archive/DELIVERABLES-HRT.md)
 
 ---
 
@@ -41,23 +41,21 @@ pnpm --filter @clutch/desktop tauri dev
 
 ## 2. Task 清单（按依赖顺序）
 
-每个 Task **必须**：原子 commit → `./scripts/verify.sh` → `DELIVERABLES.md` 一节 → 更新 `PROGRESS.md` → 通过后勾选 `ROADMAP.md`。
+每个 Task **必须**：原子 commit → `./scripts/verify.sh` → `DELIVERABLES.md` → `PROGRESS.md` → 更新 **`ROADMAP.md`（唯一状态源）**。
 
-| ID | 主题 | 状态 | 依赖 | 完成标准 | Verification |
-|----|------|------|------|----------|--------------|
-| **HRT-00** | 计划与文档对齐 | ✅ | — | 本文件 + ROADMAP/DECISIONS/tasks/FILEMAP 同步 | `check-doc-drift.sh` |
-| **HRT-01** | 基础聊天气泡 + idle 恢复 | ⚠️ 待验收 | S1–S4 | 见 §3.1 A–D；含 `848ed7f` 与 HRT-01~03 commit | 人工验收 §3 + pytest |
-| **HRT-02** | Marker 完成检测（ANSI / clutch$） | ✅ 代码 | HRT-01 | 真实 `claude -p` turn ≤120s | pytest + 本地 hybrid 单 turn |
-| **HRT-03** | Snapshot 仅断线恢复注入 | ✅ 代码 | HRT-01 | 续轮气泡无 `Task summary` / `Working directory` | pytest |
-| **HRT-04** | **产品验收：单 session 串行** | ✅ | HRT-01~03 | §3.1 A–E | 用户确认 2026-06-27 |
-| **HRT-05** | Hybrid turn 审计 JSONL | ✅ | HRT-04 | 每 turn 写结构化行；含 run_id/marker/duration/result | pytest + 读 jsonl |
-| **HRT-06** | `GET /api/runs/{id}/debug` | ✅ | HRT-05 | 返回 status、末 N 条 terminal_logs、最近 audit 行 | pytest API |
-| **HRT-07** | 诊断导出（UI 或 CLI script） | ✅ | HRT-06 | 一键导出 run 摘要（无密钥） | `./scripts/export-run-debug.sh` |
-| **HRT-08** | 多 session 并发治理 | ✅ | HRT-04 | 池满/全 BUSY 时 UI 提示；非 silent Thinking | pytest + 双 session 手动 |
-| **HRT-09** | 后台 turn 完成 hydrate | ✅ | HRT-08 | 切 session 后回来可见已完成回复 | 手动：A 发送 → 切 B → 回 A |
-| **HRT-10** | POC 验收 #6 #10 自动化 | ✅ | HRT-08 | BUSY 拒绝/排队；两 run_id cwd 隔离 | `./scripts/verify-hybrid-poc-06-10.sh` |
-
-**状态图例：** ❌ 未通过 · ⚠️ 部分/未验收 · 🔄 进行中 · ✅ 已验收
+| ID | 主题 | 依赖 | 完成标准 | Verification |
+|----|------|------|----------|--------------|
+| **HRT-00** | 计划与文档对齐 | — | 本文件 + ROADMAP/DECISIONS/tasks/FILEMAP 同步 | `check-doc-drift.sh` |
+| **HRT-01** | 基础聊天气泡 + idle 恢复 | S1–S4 | 见 §3.1 A–D | 人工验收 §3 + pytest |
+| **HRT-02** | Marker 完成检测（ANSI / clutch$） | HRT-01 | 真实 `claude -p` turn ≤120s | pytest + 本地 hybrid 单 turn |
+| **HRT-03** | Snapshot 仅断线恢复注入 | HRT-01 | 续轮气泡无 `Task summary` / `Working directory` | pytest |
+| **HRT-04** | **产品验收：单 session 串行** | HRT-01~03 | §3.1 A–E | 用户确认 2026-06-27 |
+| **HRT-05** | Hybrid turn 审计 JSONL | HRT-04 | 每 turn 写结构化行 | pytest + 读 jsonl |
+| **HRT-06** | `GET /api/runs/{id}/debug` | HRT-05 | 返回 status、logs、audit | pytest API |
+| **HRT-07** | 诊断导出 | HRT-06 | 一键导出 run 摘要 | `export-run-debug.sh` |
+| **HRT-08** | 多 session 并发治理 | HRT-04 | 池满/全 BUSY 时 UI 提示 | pytest + 双 session 手动 |
+| **HRT-09** | 后台 turn 完成 hydrate | HRT-08 | 切 session 后回来可见回复 | 手动 §3.2 G |
+| **HRT-10** | POC 验收 #6 #10 自动化 | HRT-08 | BUSY 拒绝；cwd 隔离 | `verify-hybrid-poc-06-10.sh` |
 
 ### 2.1 执行顺序与维护习惯（D29 · 2026-06-27）
 
@@ -123,8 +121,8 @@ pnpm --filter @clutch/desktop tauri dev
 | `memory/DELIVERABLES.md` | Commit · Verification · 证据路径 · `--stat` 文件列表 |
 | `memory/PROGRESS.md` | 完成了什么 · 下次优先 HRT-xx |
 | `memory/TESTS.md` | 门禁命令与结果（若跑 verify） |
-| `memory/ROADMAP.md` | 对应行 ❌→✅ |
-| 本文件 §2 状态列 | 同步 Task 状态 |
+| `memory/ROADMAP.md` | 对应行（**唯一状态源**） |
+| 本文件 §2 | **不**同步状态列 |
 | `memory/FAILURES.md` | 卡壳 >10min 或验收失败根因 |
 
 **架构/范围变更** 额外：`memory/DECISIONS.md` · `docs/research/pty-session.md` 交叉引用（不扩权铁律）。

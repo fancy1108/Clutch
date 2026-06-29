@@ -17,13 +17,15 @@
 ## ⛔ 铁律
 
 - 原子提交：每完成一个原子 task 立即 commit，禁止提交 broken 代码。
-- **每次 Git Commit 必须同步更新/核对 PRD（`docs/PRODUCT_INTRO.md`），确保产品功能与架构规格说明与真实代码实现100%一致。**
+- **每次 Git Commit 必须同步更新/核对 PRD（`docs/PRODUCT_INTRO.md`），确保产品功能与架构规格说明与真实代码实现100%一致。** 用户可见功能合并后，**未更新 `PRODUCT_INTRO.md` 不得将 Task 标为完成**（与 `CHANGELOG` 发版门禁同级）。
 - 禁止猜测文件路径；找不到时读 `memory/FILEMAP.md` 或列目录确认。
 - 禁止同时处理多个功能；一次一个 task，commit 后再下一个。
 - 禁止在未实际运行校验命令的情况下标记功能完成。
 - 禁止在未更新 `specs/` 或 `memory/DECISIONS.md` 的情况下做架构级业务变更。
 - 禁止硬编码 API Key 或密钥；禁止将密钥写入日志。
 - 禁止扩展 Prototype mock 编排逻辑（`setTimeout`、`mockData` 等）；去 mock 化须接真实 Sidecar 事件。
+- **禁止未更新 `CHANGELOG.md` 即打 Release tag 或发布 GitHub Release**（`scripts/release-preflight.sh` INV-R5；见 `docs/document-governance.md` §Release 硬门禁）。
+- **禁止向 `memory/archive/*` 追加记录**；轮转须新建归档文件并加 Archive Notice。
 
 ---
 
@@ -62,8 +64,8 @@
 **会话结束 Check-out（必须）：**
 
 1. 所有修改已 git commit
-2. 更新 `memory/PROGRESS.md`（完成了什么 + 下次优先做什么）
-3. **代码 Task 完成时**：在 `memory/DELIVERABLES.md` 追加一节（Commit hash、Verification 命令与结果、证据路径、`git show --stat` 所列交付文件）；重要验证输出写入 `runs/verification/`
+2. 更新 `memory/PROGRESS.md`（完成了什么 + 下次优先做什么）；超过 10 次会话或 200 行时轮转至 `memory/archive/`（见 `document-governance.md`）
+3. **代码 Task 完成时**：在 `memory/DELIVERABLES.md` 追加一节（Commit hash、Verification 命令与结果、证据路径、`git show --stat` 所列交付文件）；重要验证输出写入 `runs/verification/`；里程碑完成后按 [`docs/document-governance.md`](./docs/document-governance.md) §文档生命周期 轮转归档
 4. 卡壳超过 10 分钟的问题记入 `memory/FAILURES.md`（`[OPEN]`）
 5. 新架构决策记入 `memory/DECISIONS.md`；开放问题只维护于此，禁止在其他文档另开列表
 
@@ -158,7 +160,7 @@ WebSocket 信封格式（事件名在 `event`，载荷在 `data`）：
 - 前后端：开发经 Vite 代理连 `localhost:8124`；打包 DMG 直连 `localhost:8123`。
 - 前端：pnpm · Tailwind v4 · lucide-react · Motion · `@xyflow/react`。
 - 后端：uv · asyncio · type hints · LangGraph。
-- UI/UX 见 [`UI_UX_GUIDELINES.md`](./UI_UX_GUIDELINES.md)。
+- UI/UX 见 [`docs/UI_UX_GUIDELINES.md`](./docs/UI_UX_GUIDELINES.md)。
 - 产品命名：**Clutch** / **ClutchState**（禁止旧称 Vibe Workspace / VibeState）。
 
 ---

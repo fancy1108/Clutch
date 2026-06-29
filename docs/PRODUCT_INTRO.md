@@ -1,5 +1,9 @@
 # Clutch — 本地 AI 多 Agent 编排与监督控制台
 
+> **This document describes WHAT users can do.**  
+> Implementation details belong in [`ARCHITECTURE.md`](./ARCHITECTURE.md).  
+> Acceptance status belongs in [`memory/ROADMAP.md`](../memory/ROADMAP.md) — not here.
+
 ## 1. 产品定位与核心价值
 
 **Clutch** 是一款面向独立开发者、技术运营人员以及 AI 工作流与自动化搭建者的桌面应用。它提供了一个 **可视化、零代码的 SOP（标准作业程序）工作流编排与运行控制台**。
@@ -13,14 +17,16 @@
 - **人机协同门控 (Human-in-the-Loop)**：在关键检查失败或敏感操作节点，图会自动挂起，由人类进行 Approve（批准强制通过）、Reject（打回）或 Retry（带补充指令重试）。
 - **本地优先 (Local First)**：应用完全运行于本地；API Key 保存在 macOS **Keychain**（模型元数据在 `models.json`），不经 Clutch 自有云端上传。
 
+**首次体验**：安装后首次启动会进入全屏设置向导（工作区授权 → 云模型或本地 CLI 二选一 → Flow 入口引导 → 权限说明），完成后写入 `onboarding_completed` 偏好，重启不再出现；Settings 仍可手动调整各项配置。
+
 ### 1.2 真实痛点（本项目的存在理由）
 如果仅仅是想生成代码，直接使用 Claude Code / Cursor 裸跑就够了，不需要这套工作台。Clutch 旨在解决以下两个真实的工程化场景痛点：
 
 #### 痛点一：单 Agent 模式下，上下文容易“炸”，新开对话又会丢失上下文
 - **典型场景**：在验收阶段发现一堆 Bug，让 Agent 修复，来回修改了几轮后，对话窗口里堆满了“旧代码 + 新代码 + 历次对话”，大模型开始出现记忆混乱、丢失指令的情况，甚至在修 Bug 的过程中顺手把既有需求也悄悄改了一点而不自知。如果对臃肿的会话无法忍受而新开一个对话，之前积累的所有上下文（对需求的理解、避坑经验、已经达成的共识）又会全部丢失，导致每次要么硬撑一个越来越庞大臃肿的单一会话，要么被迫从零重新向模型对齐。
 - **Clutch 架构解法（现状与路线图）**：
-  - **当前已实现**：支持基础的 **State 跨会话持久化与恢复**（`states/{run_id}.json`）以及针对 CLI 引擎的 **Session 恢复机制**（通过 `--resume <session_uuid>` 避免重复向命令行终端灌入全部历史），以此优化 Token 开销。
-  - **后续路线图规划**：正在规划 **State 分段管理、上下文压缩归档与物理回滚** 机制。将在 prompt tokens 消耗达临界值时自动对中间的冗长工具调用与思考进行折叠摘要压缩，仅保留当前上下文相关的 State 片段送入模型，而非无差别重放。
+  - **当前已实现**：支持基础的 **State 跨会话持久化与恢复**（`states/{run_id}.json`）、针对 CLI 引擎的 **Session 恢复机制**（`--resume` / Codex history replay），以及 **长会话消息压缩（Compaction）**：当估算 token 接近上下文窗口阈值时自动折叠中间 assistant/tool 轮次，完整原文归档至 `runs/archive/{run_id}.jsonl`，并在 Chat 中展示压缩摘要卡片。
+  - **后续路线图**：State 分段管理的进一步自动化、Human Gate reject 后的物理回滚（见 [`memory/BACKLOG.md`](../memory/BACKLOG.md) B-11）。
 
 #### 痛点二：多 Agent 协作能跑起来，但过程黑盒、产物难找、流程难改
 - **典型场景**：在开发复杂本地 SOP 时，即使手动搭过一套多 Agent 协作逻辑（例如：协调者、执行者、视频审核者、需求变更后的代码复核者），且已经在 Claude Code 里实现了 Agent 之间的相互调用，但因为全部跑在同一个对话窗口里，会带来三个具体不便：
@@ -83,6 +89,7 @@ graph TD
 * **Hybrid 多 Session（plain chat）**：同一工程 workspace 下可并行维护多个 chat session；`CLUTCH_RUNTIME_MODE=hybrid` 时后端为每个 `run_id` 分配独立 shell，并按 workspace 串行执行 CLI turn，避免同目录并发 `claude -p` 互锁。切换 session 时先持久化 `idle` 状态再推送 WebSocket；切走期间后台 turn 完成后可通过 HTTP hydrate 恢复，避免 UI 永久卡在 Thinking。
 * **Multi-Agent Graph Workspace**：React Flow 画布可视化编排节点与连线，后台 Workflow Compiler 动态将其编译为 LangGraph 状态机。下游节点自动接收并注入上游的 `node_outputs`；各节点执行时自动注入 Agent Manager 中配置的 `markdownDoc` 作为 system prompt。工作流节点的激活状态、运行阶段与详细日志通过 WebSocket 增量 `state_patch` 实时推送到前端渲染。Chat 中各节点回复展示 **Agent Manager 配置的 Agent 类型与品牌 Logo**（而非仅依赖节点 `tool` 字段）；Thinking / 进行中步骤优先跟随后端 `active_node_id` / `active_agent`。`claude-cli` 且 `CLUTCH_RUNTIME_MODE=hybrid` 的节点附带可折叠 **View execution details**（与 Single Agent Hybrid 一致）。运行中用户可通过 Stop **暂停并进入精修模式**（`status=refining`）；工作流正常结束（`passed`/`failed`）后也可在同一 session 内继续精修。精修时输入框 `@` 弹出工作流 Agent 列表（支持带空格的节点名，如 `@5-Visual Rendering Engine`），向指定 Agent 发送修改意见（`source=flow_refine`，Hybrid 交互）；满意后发送 `/continue` 提交修订并 **以 Legacy 模式继续执行下游节点**。生图节点精修时自动复用上游 `final_image_prompt` 并结合用户补充说明。Sidecar 重启后可从聊天记录重建 `node_outputs` 以恢复精修会话。`CLUTCH_RUNTIME_MODE=hybrid` 时，**`claude-cli` 节点**走与 plain chat 相同的 Hybrid PTY shell（含 workspace CLI 锁与 session resume）；Flow 多行 Claude prompt 自动降级为 legacy subprocess；Clutch 内置 Agent（含图片模型）等其它节点类型不变。
 * **Rich Chat Input Bar & Attachments**：支持从剪贴板直接粘贴图片生成 Chip 缩略图预览；支持从右侧文件树拖拽文件/文件夹进入输入框作为附件；输入框内键入 `/` 触发已扫描 Skills 的指令联想，键入 `#` 触发历史会话引用联想；工作流精修模式（`refining` 或已完成工作流）下键入 `@` 触发工作流 Agent 联想；提供全局运行状态控制（Running 时展示 Stop 按钮，工作流 Stop 进入精修而非 failed）；提供持久化的安全审批模式选择（Auto-approve, Ask-on-Write, Manual confirmation）。
+* **Long-session compaction**：Plain chat 在 token 估算接近模型上下文上限时自动压缩历史消息；用户消息与摘要 digest 保留，完整原文写入 `runs/archive/{run_id}.jsonl`。
 * **Observability Chat Feed**：支持对本地子进程 CLI（如 Claude Code CLI）敲击的所有终端命令及 stdout/stderr 输出进行行内展开卡片审计；聊天气泡中优雅地展示 Agent 专属标签、Boundary markers 和系统提示词 metadata。**Hybrid 回复的正文与图片均从 `outputEvents` 的 assistant 内容解析**，避免工作流上一节点气泡误显示下一节点生成的图片。Plain chat 支持 `client_message_id` 与乐观发送合并，避免切换 Agent 后重复「你好」等用户消息被去重或丢失。
 
 ---
@@ -138,7 +145,8 @@ graph TD
 * **并行多智能体与 Git Worktree 隔离**：允许编排图内同时拉起多个子 Agent 并行执行不同的分支任务，在底层利用 Git Worktree 机制为不同的 Agent 创建隔离的临时项目副本目录，在确保多智能体开发效率的同时绝对保护主项目代码不被改坏。
 * **缓存友好的前缀保护分叉**：多智能体并发或任务分叉执行时，保持提示词的前缀缓存 (Prefix Cache) 对齐，防止大模型发生二次推理编译，从而减小 Token 消耗。
 * **真实 Token 成本追踪**：更精准地捕获和累加单次运行中所消耗的大模型真实 Token（包含缓存命中状态），便于用户监控费用支出。
-* **上下文压缩与历史归档**：在单轮长对话的 Token 消耗逼近限制时，自动提取中间轮次摘要，并将完整的原始对话历史归档至本地 JSONL 格式中。
+
+> **已落地（v1.0.0）**：长会话 **Compaction + JSONL 归档** — 见 §3.1；勿在 Backlog 重复立项（B-03）。
 
 ---
 

@@ -1,9 +1,16 @@
-# Orchestrator 主控能力调研
+# Research Notice
 
-> **性质：** 调研参考，非权威决策源。冲突时以 `CLAUDE.md`、`memory/DECISIONS.md` 为准。  
-> **候选需求索引：** [`memory/BACKLOG.md`](../../memory/BACKLOG.md)（B-01～B-16）  
-> **调研日期：** 2026-06-24（§7 分派架构 2026-06-24 增补）  
-> **触发：** 主控 Agent 轻量调度：理解需求 → Flow / 单 Agent / 通用 Agent；重活由 Worker Tool 执行。
+Exploratory material only.
+
+This document is **not** a source of truth.
+
+Do **not** record implementation status or feature completion here.
+
+Current implementation status:
+
+- docs/PRODUCT_INTRO.md
+- memory/ROADMAP.md
+- docs/ARCHITECTURE.md
 
 ---
 

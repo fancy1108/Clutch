@@ -1,8 +1,6 @@
 # Clutch — 架构稳定性承诺
 
-> **读者**：外部贡献者、插件/集成作者  
-> **目的**：明确 **哪些接口可以依赖、哪些随时可能变**，减少「PR 基于的 API 被删」类冲突。  
-> **状态**：草案 v0.1（2026-06-27）
+> **Normative policy only** — stability commitments, not implementation. Details: [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 
 ---
 

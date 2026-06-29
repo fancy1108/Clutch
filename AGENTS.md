@@ -12,11 +12,11 @@
 | [`specs/core/proposal.md`](./specs/core/proposal.md) | 产品追溯 | 历史快照，非权威 |
 | [`specs/core/tasks.md`](./specs/core/tasks.md) | 全体开发者 | M0–M4 开发任务清单 |
 | [`specs/core/hybrid-runtime-plan.md`](./specs/core/hybrid-runtime-plan.md) | Hybrid 开发者 | D25 HRT Task 与验收（权威） |
-| [`specs/core/design.md`](./specs/core/design.md) | 前端开发者 | 视觉设计快照 → UI_UX_GUIDELINES |
-| [`UI_UX_GUIDELINES.md`](./UI_UX_GUIDELINES.md) | 前端开发者 | React + Tailwind UI/UX 规范 |
+| [`specs/core/design.md`](./specs/core/design.md) | 前端开发者 | 视觉设计快照 → `docs/UI_UX_GUIDELINES.md` |
+| [`docs/UI_UX_GUIDELINES.md`](./docs/UI_UX_GUIDELINES.md) | 前端开发者 | React + Tailwind UI/UX 规范 |
 | [`.cursor/rules/base.mdc`](./.cursor/rules/base.mdc) | Cursor Agent | 精简指针（`alwaysApply`）→ `CLAUDE.md` |
 | [`.github/copilot-instructions.md`](./.github/copilot-instructions.md) | GitHub Copilot | 精简指针 → `CLAUDE.md` |
-| [`docs/document-governance.md`](./docs/document-governance.md) | 架构评审 | 五层架构与权威优先级 |
+| [`docs/document-governance.md`](./docs/document-governance.md) | 架构评审 | 五层架构、权威真相、文档生命周期 |
 | [`docs/agents/issue-tracker.md`](./docs/agents/issue-tracker.md) | Agent skills | 问题追踪器配置（GitHub） |
 | [`docs/agents/triage-labels.md`](./docs/agents/triage-labels.md) | Agent skills | 标签词表映射 |
 | [`docs/agents/domain.md`](./docs/agents/domain.md) | Agent skills | 领域文档消费规则 |
@@ -30,4 +30,4 @@
 
 **For GitHub Copilot users:** see [`.github/copilot-instructions.md`](./.github/copilot-instructions.md).
 
-**For frontend UI work:** see [`UI_UX_GUIDELINES.md`](./UI_UX_GUIDELINES.md).
+**For frontend UI work:** see [`docs/UI_UX_GUIDELINES.md`](./docs/UI_UX_GUIDELINES.md).

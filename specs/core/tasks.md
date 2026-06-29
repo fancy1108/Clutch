@@ -1,7 +1,7 @@
 # Clutch — 开发任务清单（第 6 步）
 
-> 自 [`proposal.md`](./proposal.md) §6、§10 拆解。**执行顺序按里程碑 M0 → M4。**  
-> 验收状态维护于 [`memory/ROADMAP.md`](../../memory/ROADMAP.md)；开放决策见 [`memory/DECISIONS.md`](../../memory/DECISIONS.md)。
+> 自 [`proposal.md`](./proposal.md)（归档指针）§6、§10 拆解。**M0–M4 已全部验收** — 状态见 [`memory/ROADMAP.md`](../../memory/ROADMAP.md)；交付见 [`memory/archive/`](../../memory/archive/)。  
+> **本文件不维护 ✅/❌** — 仅保留任务定义、完成标准与 **Verification 命令**。
 
 ## 里程碑总览
 
@@ -169,7 +169,7 @@
 | P2-03 | Theme 持久化 | `ThemeManager.tsx` | 重启后保留活跃主题 | 手动：切换主题 → 重启 → 主题仍在 |
 | P2-04 | i18n 双语验收 | `LanguageContext.tsx` · `Header.tsx` | Header en/zh 切换；监督台关键文案双语 | 手动 + E2E `lang-zh` / `lang-en` data-testid |
 | P2-05 | 侧栏 REPOSITORIES CRUD | `sidebar.tsx` | filter / new folder；分组持久化 | 手动：新建分组 → 重启 → 仍在 |
-| P2-06 | General Settings 实质功能 | `SystemPreferencesModal` | 替换「功能开发中」占位（已支持用户自定义头像） | ✅ **部分落地（D14）** — 其余设置项继续延后 |
+| P2-06 | General Settings 实质功能 | `SystemPreferencesModal` | 替换「功能开发中」占位（已支持用户自定义头像） | 部分落地（D14）— 其余设置项继续延后 |
 
 ---
 
@@ -199,35 +199,36 @@
 
 ## Prototype → Task 映射（`apps/desktop/src`）
 
-> **UI 已存在、去 mock 化任务见下表。** 完整组件职责叙事见 [`docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md) §7。
+> **UI 已存在、去 mock 化任务见下表。** 完整组件职责叙事见 [`docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md) §7。  
+> **验收状态：** 仅 [`memory/ROADMAP.md`](../../memory/ROADMAP.md) — 下表不含 ✅/❌。
 
-| Prototype 组件 / 能力 | 去 mock 目标 | Task | MVP |
-|----------------------|-------------|------|-----|
-| `App.tsx` | `ClutchState` 投影、布局、文件预览浮层 | M0-03, M2-11 | ✅ |
-| `App.tsx` footer | Branch / Model / Workflow 状态栏 | M2-08 | ✅ |
-| `Header.tsx` | 面包屑工作区/项目名 | M2-09 | ✅ |
-| `Header.tsx` | 语言切换 en/zh | P2 i18n | — |
-| `sidebar.tsx` | 工作流/会话列表、运行历史、**点选恢复 messages** | M2-07, M2-09, D11 | ✅ |
-| `sidebar.tsx` | REPOSITORIES 文件夹树 | M2-09（上下文）/ P2 CRUD | 部分 |
-| `ChatFeed.tsx` | Agent 消息流、失败卡片、用户输入 | M2-01, M2-14 | ✅ |
-| `ChatFeed.tsx` | Approve / Reject / Retry、Stop Run | M2-04, M1-03 | ✅ |
-| `RightPanel` Overview | 进度摘要、Token/成本 | M2-03, M2-13 | ✅ |
-| `RightPanel` Overview | Reassign to Builder | M2-12 | ✅ |
-| `RightPanel` Files | 工作区目录树、文件预览 | M2-11 | ✅ |
-| `RightPanel` Flow | 活跃节点高亮 | M2-03 | ✅ |
-| `RightPanel` Changes | git/file diff | M3-02 | ✅ |
-| `RightPanel` / `TerminalPanel` | 子进程日志 | M2-02 | ✅ |
-| `WorkflowOrchestration.tsx` | 画布编辑、保存/加载 JSON | M1-02, M1-06, M1-07 | ✅ |
-| `AgentManager.tsx` | Prompt、Deliverables、工具绑定 | M4-02, M3-05 | ✅ |
-| `ModelsManager.tsx` | 模型与 Provider 配置 | M1-08, M4-04, M4-09 | ✅ |
-| `AiToolsManager.tsx` | CLI/GUI 工具连接状态 | M4-03 | ✅ |
-| `McpServerHub.tsx` | MCP 连接配置 + Sidecar CRUD | P2-02 | ✅ |
-| `SkillsRegistry.tsx` | Skills 目录扫描 + Sidecar 持久化 | P2-01 | ✅ |
-| `ThemeManager.tsx` | 主题预设 + Sidecar 持久化 | P2-03 | ✅ |
-| `SystemPreferencesModal.tsx` | 设置壳（承载上表各面板） | — | — |
-| `mockData.ts` / `services/api.ts` | 编排与假 API 响应 | M2-06 | ✅ |
-| `clutchState.ts` / WS | `state_patch`、`message`、`log` 等 | M0-02, M0-03, M2-01~03 | ✅ |
-| `src-tauri/` | 单入口启动 Sidecar | M0-05 | ✅ |
+| Prototype 组件 / 能力 | 去 mock 目标 | Task |
+|----------------------|-------------|------|
+| `App.tsx` | `ClutchState` 投影、布局、文件预览浮层 | M0-03, M2-11 |
+| `App.tsx` footer | Branch / Model / Workflow 状态栏 | M2-08 |
+| `Header.tsx` | 面包屑工作区/项目名 | M2-09 |
+| `Header.tsx` | 语言切换 en/zh | P2 i18n |
+| `sidebar.tsx` | 工作流/会话列表、运行历史、**点选恢复 messages** | M2-07, M2-09, D11 |
+| `sidebar.tsx` | REPOSITORIES 文件夹树 | M2-09（上下文）/ P2 CRUD |
+| `ChatFeed.tsx` | Agent 消息流、失败卡片、用户输入 | M2-01, M2-14 |
+| `ChatFeed.tsx` | Approve / Reject / Retry、Stop Run | M2-04, M1-03 |
+| `RightPanel` Overview | 进度摘要、Token/成本 | M2-03, M2-13 |
+| `RightPanel` Overview | Reassign to Builder | M2-12 |
+| `RightPanel` Files | 工作区目录树、文件预览 | M2-11 |
+| `RightPanel` Flow | 活跃节点高亮 | M2-03 |
+| `RightPanel` Changes | git/file diff | M3-02 |
+| `RightPanel` / `TerminalPanel` | 子进程日志 | M2-02 |
+| `WorkflowOrchestration.tsx` | 画布编辑、保存/加载 JSON | M1-02, M1-06, M1-07 |
+| `AgentManager.tsx` | Prompt、Deliverables、工具绑定 | M4-02, M3-05 |
+| `ModelsManager.tsx` | 模型与 Provider 配置 | M1-08, M4-04, M4-09 |
+| `AiToolsManager.tsx` | CLI/GUI 工具连接状态 | M4-03 |
+| `McpServerHub.tsx` | MCP 连接配置 + Sidecar CRUD | P2-02 |
+| `SkillsRegistry.tsx` | Skills 目录扫描 + Sidecar 持久化 | P2-01 |
+| `ThemeManager.tsx` | 主题预设 + Sidecar 持久化 | P2-03 |
+| `SystemPreferencesModal.tsx` | 设置壳（承载上表各面板） | — |
+| `mockData.ts` / `services/api.ts` | 编排与假 API 响应 | M2-06 |
+| `clutchState.ts` / WS | `state_patch`、`message`、`log` 等 | M0-02, M0-03, M2-01~03 |
+| `src-tauri/` | 单入口启动 Sidecar | M0-05 |
 
 ---
 

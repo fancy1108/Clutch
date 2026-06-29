@@ -1,6 +1,6 @@
 # Clutch — 视觉设计快照（Layer 2）
 
-> **权威 UI 规范**见 [`UI_UX_GUIDELINES.md`](../../UI_UX_GUIDELINES.md)（随实现演进更新）。  
+> **权威 UI 规范**见 [`docs/UI_UX_GUIDELINES.md`](../../docs/UI_UX_GUIDELINES.md)（随实现演进更新）。  
 > 本文件为 Layer 2 占位快照：记录治理阶段已确认的方向，**不复制**完整规范条文。
 
 ## 已确认方向（2026-06-22）
@@ -18,6 +18,6 @@
 
 | 文档 | 用途 |
 |------|------|
-| [`UI_UX_GUIDELINES.md`](../../UI_UX_GUIDELINES.md) | 色彩、字体、组件、动效细则 |
+| [`docs/UI_UX_GUIDELINES.md`](../../docs/UI_UX_GUIDELINES.md) | 色彩、字体、组件、动效细则 |
 | [`docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md) §7 | Prototype 组件 → 目标职责映射 |
 | [`specs/core/proposal.md`](./proposal.md) §8 | 界面与体验原则（历史快照） |

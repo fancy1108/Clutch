@@ -1,8 +1,6 @@
 # Clutch — 性能基线
 
-> **读者**：维护者、性能回归评审  
-> **状态**：草案 v0.1（2026-06-27）  
-> **说明**：以下为 **目标值（Targets）**，非合同级 SLA；测量环境见 §3。未达标不阻断发版，但应在 `CHANGELOG` 或 Issue 中跟踪。
+> **Normative policy only** — performance targets, not caching implementation. Do not duplicate implementation detail from [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 
 ---
 

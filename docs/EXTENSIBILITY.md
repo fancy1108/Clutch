@@ -1,8 +1,6 @@
 # Clutch — 扩展性边界
 
-> **读者**：希望集成、插件化或 fork 扩展的开发者  
-> **问题**：「我应该改哪里？」「PR 改整个 Runtime 会被接受吗？」  
-> **状态**：草案 v0.1（2026-06-27）
+> **Normative policy only** — extension boundaries, not code paths. Implementation: [`ARCHITECTURE.md`](./ARCHITECTURE.md) · [`FILEMAP.md`](../memory/FILEMAP.md).
 
 ---
 

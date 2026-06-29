@@ -37,89 +37,56 @@
 
 ```
 clutch/
-├── CLAUDE.md                       # Layer 1 — 治理规则唯一权威
-├── AGENTS.md                       # 多 AI 工具索引（指针）
-├── UI_UX_GUIDELINES.md
-├── package.json
-├── pnpm-workspace.yaml
-├── .env.example
-├── src/                            # Pro 版占位目录
-├── scripts/
-│   ├── verify.sh                   # 本地一键校验（build + pytest + drift）
-│   ├── tauri-dev.sh                # Tauri 开发：守护化 Vite + tauri dev
-│   ├── doctor.sh                   # 环境自检（Node / uv / 平台）
-│   └── check-doc-drift.sh          # 文档与代码机检不变量
-├── .husky/
-│   └── pre-commit                  # 条件触发 verify 与文档 drift 检查
-├── specs/
-│   └── core/
-│       ├── proposal.md             # Layer 2 — 产品需求历史快照
-│       ├── design.md               # Layer 2 — 视觉设计快照（→ UI_UX_GUIDELINES）
-│       └── tasks.md                # Layer 2 — 开发任务清单
+├── README.md                       # 项目入口（本页）
+├── LICENSE · CHANGELOG.md          # 开源与版本（GitHub 约定放根目录）
+├── SECURITY.md · CODE_OF_CONDUCT.md · CONTRIBUTING.md
+├── CLAUDE.md · AGENTS.md           # Layer 1 — 治理与多 AI 工具索引
+├── package.json · pnpm-workspace.yaml · .env.example
+├── scripts/                        # verify · tauri-dev · doctor · release-preflight
+├── apps/desktop/                   # Tauri + React 桌面端
+├── services/orchestrator/          # Python Sidecar（LangGraph）
+├── packages/shared-types/
+├── workflows/                      # Workflow JSON Schema + 内置模板
+├── docs/                           # 产品与架构文档 → docs/README.md
 ├── memory/                         # Layer 3 — Agent 跨会话运行态
-│   ├── PROGRESS.md
-│   ├── FAILURES.md
-│   ├── FILEMAP.md                  # 文件路径速查（≠ docs/ARCHITECTURE.md）
-│   ├── DECISIONS.md
-│   ├── ROADMAP.md
-│   └── TESTS.md
-├── .claude/workflows/              # Layer 4 — 可选自动化
-├── .cursor/rules/
-│   └── base.mdc                    # Cursor 指针 → CLAUDE.md
-├── .github/
-│   ├── workflows/
-│   │   └── ci.yml                  # CI：pnpm build + pytest
-│   └── copilot-instructions.md     # Copilot 指针 → CLAUDE.md
-├── runs/                           # Layer 5 — 执行证据
-│   └── verification/               # 测试/覆盖率报告归档（gitignore）
-├── apps/
-│   └── desktop/                    # Tauri + React 桌面端
-│       ├── src/
-│       └── src-tauri/
-├── services/
-│   └── orchestrator/               # Python Sidecar（LangGraph）
-│       ├── src/
-│       └── tests/
-├── packages/
-│   └── shared-types/
-├── workflows/                      # Workflow JSON Schema + 模板
-├── e2e/                            # Playwright 全链路自动化端到端测试
-└── docs/
-    ├── ARCHITECTURE.md             # 系统架构详述（叙事 + ADR）
-    └── document-governance.md      # 五层架构与权威优先级
+├── specs/core/                     # Layer 2 — 需求/任务历史快照
+├── e2e/ · experiments/ · runs/
+└── .github/ · .husky/ · .cursor/   # CI · hooks · Agent 规则指针
 ```
 
-**解耦原则**：`apps/desktop` 与 `services/orchestrator` 仅通过 `localhost:8123` HTTP/WebSocket 通信。
+**解耦原则**：`apps/desktop` 与 `services/orchestrator` 仅通过 loopback HTTP/WebSocket 通信（开发 `8124`，打包 `8123`）。
 
 ## 文档地图
 
+**完整索引：** [`docs/README.md`](./docs/README.md)（按角色分组）。
+
+### 根目录（社区与治理）
+
 | 文件 | 用途 |
 |------|------|
-| [`README.md`](./README.md) | 本页：项目简介、结构、快速开始、文档索引 |
-| [`docs/PRODUCT_INTRO.md`](./docs/PRODUCT_INTRO.md) | **产品介绍（推荐首读）**：定位、痛点、全量功能与运行机制 |
 | [`CLAUDE.md`](./CLAUDE.md) | **唯一权威**：铁律、命令、Check-in、日志规范 |
 | [`AGENTS.md`](./AGENTS.md) | 多 AI 工具入口索引 |
-| [`memory/PROGRESS.md`](./memory/PROGRESS.md) | Agent 进度接力棒 |
-| [`memory/FILEMAP.md`](./memory/FILEMAP.md) | 文件路径速查（Check-in 用） |
-| [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) | 系统架构详述（设计理由、数据流） |
-| [`docs/OPEN_SOURCE_RELEASE.md`](./docs/OPEN_SOURCE_RELEASE.md) | 开源、安全与发布计划 |
-| [`docs/PROJECT_SCOPE.md`](./docs/PROJECT_SCOPE.md) | Goals / Non-Goals |
-| [`docs/STABILITY.md`](./docs/STABILITY.md) | API / Schema 稳定性 |
-| [`docs/BUILD_FROM_SOURCE.md`](./docs/BUILD_FROM_SOURCE.md) | 源码克隆、开发启动、`pnpm tauri build` |
-| [`docs/INSTALL.md`](./docs/INSTALL.md) | DMG 安装、Gatekeeper、首次使用与卸载 |
-| [`docs/DATA_AND_PRIVACY.md`](./docs/DATA_AND_PRIVACY.md) | 本地数据、第三方 LLM、导出与删除 |
-| [`LICENSE`](./LICENSE) | MIT 开源协议 |
+| [`CONTRIBUTING.md`](./CONTRIBUTING.md) | 如何贡献、Phase 1 PR 政策 |
+| [`SECURITY.md`](./SECURITY.md) · [`CODE_OF_CONDUCT.md`](./CODE_OF_CONDUCT.md) | 漏洞报告 · 社区准则 |
 | [`CHANGELOG.md`](./CHANGELOG.md) | 版本变更（当前 **1.0.0**） |
-| [`SECURITY.md`](./SECURITY.md) | 漏洞私密报告渠道与响应约定 |
-| [`CODE_OF_CONDUCT.md`](./CODE_OF_CONDUCT.md) | 社区行为准则 |
-| [`CONTRIBUTING.md`](./CONTRIBUTING.md) | **如何贡献**、Phase 1 PR 政策 |
-| [`docs/GOVERNANCE.md`](./docs/GOVERNANCE.md) | 维护者治理 |
-| [`docs/PERFORMANCE.md`](./docs/PERFORMANCE.md) | 性能基线 |
-| [`docs/document-governance.md`](./docs/document-governance.md) | 五层架构与权威优先级 |
-| [`specs/core/proposal.md`](./specs/core/proposal.md) | 产品需求历史快照（非权威） |
-| [`specs/core/tasks.md`](./specs/core/tasks.md) | 开发任务清单 |
-| [`specs/core/design.md`](./specs/core/design.md) | 视觉设计快照 |
-| [`UI_UX_GUIDELINES.md`](./UI_UX_GUIDELINES.md) | 前端 React + Tailwind UI/UX |
+
+### 产品与架构（`docs/`）
+
+| 文件 | 用途 |
+|------|------|
+| [`docs/PRODUCT_INTRO.md`](./docs/PRODUCT_INTRO.md) | **推荐首读**：定位、功能、运行机制 |
+| [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) | 系统架构、工作流、WebSocket |
+| [`docs/UI_UX_GUIDELINES.md`](./docs/UI_UX_GUIDELINES.md) | 前端 React + Tailwind 规范 |
+| [`docs/INSTALL.md`](./docs/INSTALL.md) · [`docs/BUILD_FROM_SOURCE.md`](./docs/BUILD_FROM_SOURCE.md) | 安装 DMG · 源码构建 |
+| [`docs/OPEN_SOURCE_RELEASE.md`](./docs/OPEN_SOURCE_RELEASE.md) | 开源排期 OSR-xx |
+
+### Agent 运行态（`memory/`）
+
+| 文件 | 用途 |
+|------|------|
+| [`memory/PROGRESS.md`](./memory/PROGRESS.md) | 跨会话进度接力 |
+| [`memory/FILEMAP.md`](./memory/FILEMAP.md) | 改代码去哪个文件 |
+| [`memory/DECISIONS.md`](./memory/DECISIONS.md) | 架构决策与开放问题 |
 
 ## 兼容性
 

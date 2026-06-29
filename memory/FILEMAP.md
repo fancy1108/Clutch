@@ -32,11 +32,12 @@
 |---------|--------|
 | 铁律、命令、Check-in | `CLAUDE.md` |
 | 产品介绍文档 | `docs/PRODUCT_INTRO.md` |
+| 文档总索引 | `docs/README.md` |
 | 开源 / DMG 分发排期（OSR-xx） | `docs/OPEN_SOURCE_RELEASE.md` |
 | 开源协议 | `LICENSE` |
 | 漏洞报告 | `SECURITY.md` |
 | 社区行为准则 | `CODE_OF_CONDUCT.md` |
-| 版本变更 | `CHANGELOG.md` |
+| 版本变更 | `CHANGELOG.md` · 版本快照 `docs/releases/` |
 | Goals / Non-Goals | `docs/PROJECT_SCOPE.md` |
 | API / Schema 稳定性 | `docs/STABILITY.md` |
 | 扩展点边界 | `docs/EXTENSIBILITY.md` |
@@ -46,22 +47,25 @@
 | 源码构建 | `docs/BUILD_FROM_SOURCE.md` |
 | 环境自检 | `scripts/doctor.sh` |
 | Tauri 桌面开发（Hybrid） | `scripts/tauri-dev.sh` · 根目录 `pnpm tauri:dev` |
-| 产品需求历史 | `specs/core/proposal.md` |
-| 视觉设计快照 | `specs/core/design.md` → `UI_UX_GUIDELINES.md` |
+| 产品需求历史 | `specs/core/proposal.md`（指针）· `specs/archive/proposal-v0.1.md` |
+| 历史叙事归档 | `docs/archive/` · `specs/archive/` |
+| 视觉设计快照 | `specs/core/design.md` → `docs/UI_UX_GUIDELINES.md` |
+| 前端 UI 规范（权威） | `docs/UI_UX_GUIDELINES.md` |
 | 开发任务清单（含 Verification） | `specs/core/tasks.md` |
 | **D25 Hybrid Runtime Task（HRT）** | **`specs/core/hybrid-runtime-plan.md`** |
 | Flow 多 Agent 接力 Task（D23） | `specs/core/tasks.md` §M3-F · Flow 多 Agent 接力 |
 | Prototype → Task 全量映射 | `specs/core/tasks.md` §Prototype → Task 映射 |
 | 待建 pytest 与 task 映射 | `specs/core/tasks.md` §待建 pytest 文件 |
 | 里程碑级验收 T-01~04 | `specs/core/tasks.md` §测试与验收 |
-| 进度 / 待办 | `memory/PROGRESS.md` |
+| 进度 / 待办 | `memory/PROGRESS.md`（近期）· 归档 `memory/archive/PROGRESS-*.md` |
 | 候选优化需求池（未立项） | `memory/BACKLOG.md` |
-| **开源排期 OSR-xx 状态镜像** | **`memory/BACKLOG.md` §开源 / DMG 分发** · 验收勾选 `memory/ROADMAP.md` §开源分发 |
+| **开源排期 OSR-xx 验收状态** | **`memory/ROADMAP.md` §开源分发** · Task 定义 `docs/OPEN_SOURCE_RELEASE.md` §7.2 |
+| 文档生命周期 / 权威真相 | `docs/document-governance.md` |
 | Orchestrator 主控能力调研（参考） | `docs/research/orchestrator-optimization-pool.md` |
 | CLI PTY Session 改造方案（参考） | `docs/research/pty-session.md` |
 | **D25 Hybrid 执行状态（权威）** | **`specs/core/hybrid-runtime-plan.md`** · D27 命名对齐 |
 | PTY Session Step 0 实验 | `experiments/pty_poc/` |
-| Task 交付索引（Commit / 证据） | `memory/DELIVERABLES.md` |
+| Task 交付索引（Commit / 证据） | `memory/DELIVERABLES.md` · 归档 `memory/archive/DELIVERABLES-*.md` |
 | 决策与开放问题 | `memory/DECISIONS.md` |
 | 功能验收状态 | `memory/ROADMAP.md` |
 | 测试门禁状态 | `memory/TESTS.md` |

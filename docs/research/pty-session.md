@@ -1,16 +1,16 @@
-# Clutch Agent Runtime 改造方案 —— 第二阶段：PTY Session
+# Research Notice
 
-> **性质：** 调研参考，非权威决策源。冲突时以 `CLAUDE.md`、`memory/DECISIONS.md` 为准。  
-> **候选需求索引：** [`memory/BACKLOG.md`](../../memory/BACKLOG.md)（B-17～B-22）  
-> **关联决策：** D19（双引擎分工）、D20（Claude CLI 逻辑 Session）  
-> **代码基线：** `services/orchestrator/src/engine_router.py`、`adapters/*_cli_adapter.py`、`tools_status.py`（2026-06-26）
+Exploratory material only.
 
-**文档状态**：评审稿（v5 · ShellSession + Context Continuity 排期）  
-**实验目录**：[`experiments/pty_poc/`](../../experiments/pty_poc/) — Step 0 结论：**Hybrid（Route C）5/5**  
-**关联背景**：Clutch 智能对话响应延迟优化讨论（第一阶段 Streaming / 第二阶段 Shell Runtime / 第三阶段 Agent Runtime）  
-**本文档范围**：聚焦第二阶段 **ShellSession**（长驻 shell PTY + per-turn exec）的工程设计细节与验收标准
+This document is **not** a source of truth.
 
-> **Step 0 决策（2026-06-26）**：**停止全量 Claude TUI PTY**（Route A 严格 5/5 未过）。默认架构为 **ShellSession + `claude -p` / `agy -p` exec**。
+Do **not** record implementation status or feature completion here.
+
+Current implementation status:
+
+- docs/PRODUCT_INTRO.md
+- memory/ROADMAP.md
+- docs/ARCHITECTURE.md
 
 ---
 

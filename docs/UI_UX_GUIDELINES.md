@@ -1,7 +1,7 @@
 # Clutch — UI / UX Guidelines
 
 > **适用范围**：`apps/desktop/src` 内所有 React + Tailwind CSS 界面开发。  
-> 架构与后端纪律见 [`CLAUDE.md`](./CLAUDE.md)。
+> 架构与后端纪律见 [`CLAUDE.md`](../CLAUDE.md)。
 
 ---
 
