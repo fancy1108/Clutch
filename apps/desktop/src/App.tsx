@@ -119,7 +119,7 @@ function MainLayout() {
   const [currentFlowName, setCurrentFlowName] = useState<string>('');
   const [selectedWorkflowId, setSelectedWorkflowId] = useState<string | null>(null);
   const [workflowAgentSteps, setWorkflowAgentSteps] = useState<WorkflowAgentStep[]>([]);
-  const [isMultiAgent, setIsMultiAgent] = useState<boolean>(false);
+  const [isMultiAgent, setIsMultiAgent] = useState<boolean>(true);
   const [themeId, setThemeIdState] = useState<ThemePresetId>('pristine-light');
   const [userAvatar, setUserAvatarState] = useState<string>('');
   const [userName, setUserNameState] = useState<string>('User');
@@ -827,11 +827,7 @@ function MainLayout() {
     const storedFlowId = localStorage.getItem(`clutch_session_flow_${session.run_id}`);
     const storedAgentId = localStorage.getItem(`clutch_session_agent_${session.run_id}`);
 
-    if (storedMode !== null) {
-      setIsMultiAgent(storedMode === 'multi');
-    } else {
-      setIsMultiAgent(Boolean(session.workflow_id));
-    }
+    setIsMultiAgent(true);
 
     if (storedFlowId !== null) {
       setSelectedWorkflowId(storedFlowId || null);
