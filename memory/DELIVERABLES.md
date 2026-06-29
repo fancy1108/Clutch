@@ -868,7 +868,7 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ### 选中 Flow 时底部显示 - 且 Agent 和 Flow 互斥优化 (Workflow Agent Mutex) ✅
 - **日期：** 2026-06-29
-- **Commit：** `[PENDING]` — `feat(ui): clear workflow selection and backend state when selecting an agent and display Model/Agent as '-' when Flow is active`
+- **Commit：** `9566376` — `feat(ui): clear workflow selection and backend state when selecting an agent and display Model/Agent as '-' when Flow is active`
 - **Verification：** `cd services/orchestrator && uv run pytest tests/test_ws_state_patch.py -k test_ws_clear_workflow` → 1 passed; `./scripts/verify.sh` → build + vitest + pytest 474 passed (100% success) ✅
 - **证据：** `—`（门禁已覆盖）
 - **已交付：**
@@ -876,6 +876,16 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
   - [apps/desktop/src/services/clutchState.ts](file:///Users/fancy/clutch/apps/desktop/src/services/clutchState.ts) — 新增 `clearWorkflowState` store 状态重置与 `clearWorkflowForSession` WebSocket 消息指令发送，供前端在解绑工作流时清空本地状态并同步重置后端 session 级别的 `workflow_id`。
   - [services/orchestrator/src/main.py](file:///Users/fancy/clutch/services/orchestrator/src/main.py) — 在 WebSocket `/ws/runs/{run_id}` 循环中新增对 `"clear_workflow"` action 载荷的处理。清空当前活跃运行状态和运行历史中的 `workflow_id` 记录，移出当前运行的 `_run_sessions`，并广播最新的 `workflow_id: ""` patch，保证该会话在后续交互时正常路由至 plain chat。
   - [services/orchestrator/tests/test_ws_state_patch.py](file:///Users/fancy/clutch/services/orchestrator/tests/test_ws_state_patch.py) — 添加 `test_ws_clear_workflow` 单元测试，校验当发送 `"action": "clear_workflow"` 时 state_patch 中的 `workflow_id` 被正确清空且持久化落盘。
+
+
+### CC Switch 导入模型的隐藏与删除支持 ✅
+- **日期：** 2026-06-29
+- **Commit：** `cdfb87b` — `feat(models): allow hiding/deleting CC Switch imported models from models list`
+- **Verification：** `cd services/orchestrator && uv run pytest tests/test_models_config_api.py` → 17 passed; `./scripts/verify.sh` → build + vitest + pytest 474 passed (100% success) ✅
+- **证据：** `—`（门禁已覆盖）
+- **已交付：**
+  - [services/orchestrator/src/custom_models.py](file:///Users/fancy/clutch/services/orchestrator/src/custom_models.py) — 解除了 `hide_model_from_list` 对 `cc-switch-` 前缀的移除屏蔽，支持将其通过写入 `hidden_model_ids` 从可用列表进行逻辑删除/隐藏。
+  - [apps/desktop/src/components/ModelsManager.tsx](file:///Users/fancy/clutch/apps/desktop/src/components/ModelsManager.tsx) — 前端 UI 的 `canRemove` 条件放开为 `!isActive`，使用户可以对已失效的 CC Switch 模型点击垃圾桶删除；同时优化了相关的确认对话框文字，清晰指引其可以通过 Import models 重新导回。
 
 
 

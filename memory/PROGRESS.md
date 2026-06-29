@@ -2,14 +2,22 @@
 
 ## 当前状态
 
-- **阶段：** D25 Hybrid Runtime + **Flow 精修（pause/refine/continue）已落地** + **默认 Multi-Agent 并隐藏模式切换按钮已落地** + **MCP 审批流程解包崩溃修复已落地** + **Flow 精修消息回显、Session 提示词丢失、头像映射修复已落地** + **模型设置操作按钮与选中卡片交互优化已落地** + **选中 Flow 时底部显示 - 且 Agent 和 Flow 互斥优化已落地**
-- **Git HEAD：** `[PENDING]`
+- **阶段：** D25 Hybrid Runtime + **Flow 精修（pause/refine/continue）已落地** + **默认 Multi-Agent 并隐藏模式切换按钮已落地** + **MCP 审批流程解包崩溃修复已落地** + **Flow 精修消息回显、Session 提示词丢失、头像映射修复已落地** + **模型设置操作按钮与选中卡片交互优化已落地** + **选中 Flow 时底部显示 - 且 Agent 和 Flow 互斥优化已落地** + **支持删除/隐藏 CC Switch 模型已落地**
+- **Git HEAD：** `cdfb87b`
 - **下次优先：** 进一步集成测试或根据用户反馈进行精修
 - **验收期跳过：** MCP hybrid_executions 深度 UI · 2h/100+ 压测
 
 ### 未 commit 工作
 
 （无 — 见本 commit）
+
+## 2026-06-29 会话 15（支持删除/隐藏 CC Switch 导入的模型）
+
+- **解除 CC Switch 模型删除限制**：修改了后端 `custom_models.py` 的 `hide_model_from_list`，移除对 `cc-switch-` 前缀模型 ID 的 ValueError 限制，允许将其记录到 `hidden_model_ids` 并从可用列表中隐藏。
+- **UI 操作按钮对齐**：修改前端 `ModelsManager.tsx` 的 `canRemove` 判定逻辑，仅根据 `!isActive` 判断是否显示垃圾桶操作按钮，使 CC Switch 导入的模型也可以通过悬浮垃圾桶进行隐藏。
+- **删除确认提示优化**：在确认隐藏 CC Switch 模型的对话框中，加入了专门的提示说明，告知用户这些模型只是被隐藏，后续可以通过手动点击 "Import models" 重新导回显示。
+- **验证**：运行 `./scripts/verify.sh` 全量通过（474 tests passed + build & doc-drift OK）。
+
 
 ## 2026-06-29 会话 14（选中 Flow 时底部显示 - 且 Agent 和 Flow 互斥优化）
 
