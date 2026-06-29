@@ -14,6 +14,8 @@ assets="$orch/src/workflow_assets"
 rm -rf "$assets"
 mkdir -p "$assets"
 cp "$root/workflows/"*.json "$assets/"
+echo "== workflow_assets (repo templates only; no Application Support data) =="
+ls -1 "$assets/"
 
 echo "== build-sidecar: PyInstaller ($triple) =="
 uv run pyinstaller clutch.spec --noconfirm --clean

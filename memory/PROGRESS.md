@@ -3,15 +3,20 @@
 ## 当前状态
 
 - **阶段：** D25 Hybrid Runtime + Flow 精修已落地 + 功能迭代中；**开源排期 OSR-xx 已登记**（见 `memory/BACKLOG.md` §开源 / DMG 分发 · `memory/ROADMAP.md` §开源分发）
-- **Git HEAD：** `54714bd`
-- **下次优先（开源 T2）：** OSR-12 首 tag 验证 → **OSR-13** Keychain → **OSR-14** 首次启动向导
-- **验收期跳过：** MCP hybrid_executions 深度 UI · 2h/100+ 压测
+- **Git HEAD：** `04d6b30`
+- **下次优先（开源 T2）：** 首 `v1.0.0` tag 实跑 Release CI → **OSR-13** Keychain
 
 ### 未 commit 工作
 
-OSR-15 `INSTALL.md` + `DATA_AND_PRIVACY.md`（待 commit）
+OSR-12（待 commit）
 
-## 2026-06-29 会话 21（OSR-15 安装与隐私文档）
+## 2026-06-29 会话 22（OSR-12 Release CI + 敏感信息门禁）
+
+- **`scripts/release-preflight.sh`**：发版前检查无 `models.json`/`.env`/Application Support 路径入 git
+- **`release.yml`**：gitleaks · preflight · SHA256SUMS · `workflow_dispatch` 同版本重打
+- **`.gitignore`**：`models.json`
+
+## 2026-06-29 会话 21（OSR-15 · 已 commit `04d6b30`）
 
 - **`docs/INSTALL.md`**：DMG 安装、Gatekeeper、健康检查、首次 checklist、卸载
 - **`docs/DATA_AND_PRIVACY.md`**：本地存储表、第三方数据流、用户权利、合规说明

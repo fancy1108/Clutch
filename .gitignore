@@ -21,6 +21,9 @@ services/orchestrator/.venv/
 .env*
 !.env.example
 
+# Local credentials (must never ship in repo or DMG)
+models.json
+
 # Local agent / IDE settings (may contain personal paths)
 .claude/settings.local.json
 

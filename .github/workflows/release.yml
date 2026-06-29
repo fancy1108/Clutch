@@ -1,20 +1,46 @@
 # Build unsigned macOS DMG on version tags and attach to GitHub Release.
-# Signing/notarization (OSR-11) deferred per DECISIONS D31.
+# OSR-12 · signing (OSR-11) deferred per DECISIONS D31.
 name: Release
 
 on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Existing release tag to attach rebuilt DMG (e.g. v1.0.0)"
+        required: true
+        type: string
 
 permissions:
   contents: write
 
 jobs:
+  preflight:
+    name: Secret & bundle preflight
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Gitleaks (release gate)
+        uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Release preflight
+        run: ./scripts/release-preflight.sh
+
   build-macos-dmg:
+    name: Build & upload DMG
+    needs: preflight
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.release_tag || github.ref }}
 
       - uses: pnpm/action-setup@v4
         with:
@@ -38,13 +64,24 @@ jobs:
           pnpm install --frozen-lockfile
           cd services/orchestrator && uv sync --extra dev
 
+      - name: Release preflight (macOS)
+        run: ./scripts/release-preflight.sh
+
       - name: Build DMG
         working-directory: apps/desktop
         run: pnpm tauri build
 
+      - name: SHA256 checksums
+        run: |
+          cd apps/desktop/src-tauri/target/release/bundle/dmg
+          shasum -a 256 *.dmg > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
         with:
-          generate_release_notes: true
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.release_tag || github.ref_name }}
+          generate_release_notes: ${{ github.event_name == 'push' }}
           files: |
             apps/desktop/src-tauri/target/release/bundle/dmg/*.dmg
+            apps/desktop/src-tauri/target/release/bundle/dmg/SHA256SUMS.txt
