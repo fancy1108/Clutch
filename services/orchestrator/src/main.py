@@ -425,7 +425,6 @@ def _run_workflow(run_id: str, workflow_id: str, instruction: str) -> ClutchStat
             },
             "running",
         )
-        get_forwarder(run_id).emit_message(user_message, node_id="start")
     get_forwarder(run_id).emit(
         tagged(TAG_WORKFLOW, f"Starting workflow: {workflow['name']} ({workflow['id']})"),
         node_id="start",
@@ -641,6 +640,29 @@ def _commit_run_state(run_id: str, state: ClutchState) -> ClutchState:
     _run_states[run_id] = state
     save_run_state(state)
     return state
+
+
+def _apply_delete_message(
+    state: ClutchState,
+    message_id: str,
+) -> tuple[ClutchState, dict[str, Any]]:
+    trimmed_id = message_id.strip()
+    if not trimmed_id:
+        return state, {}
+    messages = [
+        message
+        for message in state["messages"]
+        if str(message.get("id", "")) != trimmed_id
+    ]
+    if len(messages) == len(state["messages"]):
+        return state, {}
+    patch: dict[str, Any] = {"messages": messages}
+    hybrid = dict(state.get("hybrid_executions") or {})
+    if trimmed_id in hybrid:
+        del hybrid[trimmed_id]
+        patch["hybrid_executions"] = hybrid
+    state = _merge_patch(state, patch)
+    return state, patch
 
 
 def _merge_patch(state: ClutchState, patch: dict[str, Any]) -> ClutchState:
@@ -1927,8 +1949,8 @@ async def _commit_flow_refine_and_continue(
         supervisor = _chat_message(
             "Supervisor",
             tr(
-                "Cannot resume: refine an agent output first (@Agent feedback), then send /continue.",
-                "无法继续：请先 @ Agent 给出修改意见，再发送 /continue。",
+                "Cannot continue: @ an agent with feedback first.",
+                "无法继续：请先 @ Agent 给出修改意见。",
             ),
         )
         messages = list(state["messages"]) + [supervisor]
@@ -2003,6 +2025,7 @@ async def _handle_flow_refine_message(
         is_continue_command,
         node_output_for_refine,
         parse_agent_mention,
+        refine_reply_ready_to_commit,
         resolve_image_refine_prompt,
         workflow_node_label,
         ensure_workflow_session_for_refine,
@@ -2036,8 +2059,8 @@ async def _handle_flow_refine_message(
         supervisor = _chat_message(
             "Supervisor",
             tr(
-                "Refine mode: type @AgentName then your feedback (Hybrid). Send /continue when satisfied.",
-                "精修模式：输入 @Agent名称 和修改意见（Hybrid）。满意后发送 /continue 继续工作流。",
+                "Refine mode: type @AgentName then your feedback (Hybrid). Downstream runs automatically after refine; use Stop if you need another round.",
+                "精修模式：输入 @Agent名称 和修改意见（Hybrid）。精修完成后自动继续下游；不满意可先停止工作流再 @。",
             ),
         )
         messages = list(state["messages"]) + [supervisor]
@@ -2102,10 +2125,12 @@ async def _handle_flow_refine_message(
     from src.models_config import get_router
 
     task_text = body or text.strip()
+    image_refine = False
     if session and agent and is_clutch_agent(agent):
         router = get_router()
         spec, _model_id = resolve_model_for_agent(router, agent)
         if is_image_model(spec):
+            image_refine = True
             task_text = resolve_image_refine_prompt(
                 session=session,
                 refining_node_id=refining_node_id,
@@ -2120,7 +2145,7 @@ async def _handle_flow_refine_message(
             reply_text,
             route_logs,
             cli_session_id,
-            _mcp_pause,
+            mcp_pause,
             files_changed,
             raw_output,
             output_events,
@@ -2142,6 +2167,49 @@ async def _handle_flow_refine_message(
             code=str(exc),
             keep_running=True,
         )
+
+    if mcp_pause:
+        from src.mcp_pending import McpPendingApproval, store_pending
+
+        store_pending(
+            run_id,
+            McpPendingApproval(
+                agent_id=resolved_id,
+                reply_label=model_name,
+                chat_messages=list(mcp_pause["chat_messages"]),
+                servers=list(mcp_pause["servers"]),
+                tool_call_id=str(mcp_pause["tool_call_id"]),
+                func_name=str(mcp_pause["func_name"]),
+                func_args=dict(mcp_pause.get("func_args") or {}),
+                step_idx=int(mcp_pause.get("step_idx", 0)),
+                logs=list(route_logs),
+            ),
+        )
+        gate_line = f"[CHAT] Awaiting approval for MCP tool: {mcp_pause['func_name']}"
+        pause_messages, supervisor = _supervisor_gate_messages(
+            list(state["messages"]),
+            str(mcp_pause["func_name"]),
+            dict(mcp_pause.get("func_args") or {}),
+        )
+        pause_logs = _append_terminal_logs(
+            list(state["terminal_logs"]), route_logs, gate_line, streamed=streamed_logs
+        )
+        pause_patch: dict[str, Any] = {
+            "messages": pause_messages,
+            "terminal_logs": pause_logs,
+            "status": "awaiting_human",
+            "active_agent": active_agent,
+        }
+        state = _merge_patch(state, pause_patch)
+        _commit_run_state(run_id, state)
+        if pause_messages[-1] is supervisor:
+            await _send_message_event(websocket, run_id, supervisor, refining_node_id)
+        if not streamed_logs:
+            for log in route_logs:
+                await _send_log_event(websocket, run_id, log, node_id=refining_node_id)
+        await _send_log_event(websocket, run_id, gate_line, node_id=refining_node_id)
+        await _notify_run_state(websocket, run_id, state, pause_patch)
+        return state
 
     reply = _chat_message(
         model_name,
@@ -2180,6 +2248,9 @@ async def _handle_flow_refine_message(
     if files_changed:
         await _notify_workspace_files_changed(websocket, run_id, files_changed, node_id=refining_node_id)
     await _notify_run_state(websocket, run_id, state, final_patch)
+    if refine_reply_ready_to_commit(reply_text):
+        state = _prepare_workflow_refine_state(run_id, state, prepend_log=False)
+        return await _commit_flow_refine_and_continue(websocket, run_id, state)
     return state
 
 
@@ -3605,6 +3676,13 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                         await _send_log_event(
                             websocket, run_id, log_line, node_id=state["active_node_id"]
                         )
+                        await _notify_run_state(websocket, run_id, state, patch)
+            elif isinstance(payload, dict) and payload.get("action") == "delete_message":
+                message_id = str(payload.get("message_id", "")).strip()
+                if message_id:
+                    state, patch = _apply_delete_message(state, message_id)
+                    if patch:
+                        _commit_run_state(run_id, state)
                         await _notify_run_state(websocket, run_id, state, patch)
             elif isinstance(payload, dict) and payload.get("action") == "clear_workflow":
                 state = _merge_patch(state, {"workflow_id": ""})

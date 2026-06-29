@@ -9,7 +9,7 @@ import type { SessionRecord } from '../services/runApi';
 import type { ScannedSkill } from '../services/skillsApi';
 import type { FileTreeNode } from '../services/workspaceApi';
 import type { PermissionMode } from '../services/permissionApi';
-import { USER_CHAT_AVATAR, clutchStore } from '../services/clutchState';
+import { USER_CHAT_AVATAR, clutchStore, deleteChatMessage } from '../services/clutchState';
 import { resolveBrandLogoSrc } from '../services/brandLogos';
 import {
   buildWorkflowReplyStepIndex,
@@ -600,6 +600,21 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   const [dockHeight, setDockHeight] = useState(176);
   const [hillInstructions, setHillInstructions] = useState('');
   const [pendingMessages, setPendingMessages] = useState<PendingChatMessage[]>([]);
+  const [messageContextMenu, setMessageContextMenu] = useState<{
+    x: number;
+    y: number;
+    messageId: string;
+  } | null>(null);
+
+  useEffect(() => {
+    const handleClose = () => setMessageContextMenu(null);
+    window.addEventListener('click', handleClose);
+    window.addEventListener('contextmenu', handleClose);
+    return () => {
+      window.removeEventListener('click', handleClose);
+      window.removeEventListener('contextmenu', handleClose);
+    };
+  }, []);
 
   useEffect(() => {
     setPendingMessages([]);
@@ -630,6 +645,16 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
 
   const removePending = useCallback((id: string) => {
     setPendingMessages((prev) => prev.filter((item) => item.id !== id));
+  }, []);
+
+  const handleMessageContextMenu = useCallback((e: React.MouseEvent, messageId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setMessageContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      messageId,
+    });
   }, []);
 
   const handleStopWithQueueClear = useCallback(() => {
@@ -865,6 +890,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
             <div
               key={msg.id}
               className={`w-full flex ${isUser ? 'justify-end' : 'justify-start'}`}
+              onContextMenu={(e) => handleMessageContextMenu(e, msg.id)}
             >
               <div
                 className={`flex gap-4 max-w-[85%] group hover:bg-surface-container-low/35 p-2 rounded-xl transition-colors ${
@@ -1147,6 +1173,25 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
           </div>
         )}
       </div>
+      {messageContextMenu && (
+        <div
+          className="fixed bg-surface-bright border border-outline-variant rounded-lg shadow-lg py-1 z-[100] min-w-[120px]"
+          style={{ top: messageContextMenu.y, left: messageContextMenu.x }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            type="button"
+            className="w-full text-left px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-colors flex items-center gap-2"
+            onClick={() => {
+              deleteChatMessage(messageContextMenu.messageId);
+              setMessageContextMenu(null);
+            }}
+          >
+            <LegacyIcon name="delete" className="text-[16px]" />
+            {t('Delete message')}
+          </button>
+        </div>
+      )}
     </section>
   );
 };

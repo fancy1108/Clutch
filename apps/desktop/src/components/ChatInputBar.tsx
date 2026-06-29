@@ -14,6 +14,7 @@ import type { ScannedSkill } from '../services/skillsApi';
 import type { FileTreeNode } from '../services/workspaceApi';
 import { PERMISSION_MODES, type PermissionMode } from '../services/permissionApi';
 import { LegacyIcon } from './ui/LegacyIcon';
+import { UnderDevelopmentNotice } from './ui/UnderDevelopmentNotice';
 import { BTN_ICON_SM } from './ui/buttonStyles';
 import { shouldSubmitChatOnEnter } from './chatInputKeyboard';
 
@@ -636,6 +637,10 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
 
           {attachMenuOpen && (
             <div className="absolute bottom-full left-0 mb-2 w-52 bg-white border border-outline-variant rounded-xl shadow-xl py-1.5 z-50 animate-in fade-in slide-in-from-bottom-1 duration-150">
+              <div className="px-2 pb-1">
+                <UnderDevelopmentNotice variant="compact" />
+              </div>
+              <div className="border-t border-outline-variant/50 my-1" />
               {/* Add attachment (local) */}
               <button
                 type="button"
@@ -711,7 +716,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
           className="w-full border-none focus:ring-0 text-[13px] text-on-surface bg-transparent py-1.5 resize-none min-h-[36px] max-h-[140px] placeholder:text-on-surface-variant/60 outline-none leading-relaxed"
           placeholder={
             isFlowRefining
-              ? t('@Agent your feedback (Hybrid) — /continue to resume flow')
+              ? t('@Agent your feedback (Hybrid) — auto-continues downstream; Stop to pause')
               : isMultiAgent && selectedWorkflowId
               ? t('Describe what you want this workflow to do...')
               : isMultiAgent
@@ -747,6 +752,10 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
 
             {permissionMenuOpen && (
               <div className="absolute bottom-full right-0 mb-2 w-60 bg-white border border-outline-variant rounded-xl shadow-xl py-1.5 z-50 animate-in fade-in slide-in-from-bottom-1 duration-150">
+                <div className="px-2 pb-1">
+                  <UnderDevelopmentNotice variant="compact" />
+                </div>
+                <div className="border-t border-outline-variant/50 my-1" />
                 {PERMISSION_MODES.map((mode) => (
                   <button
                     key={mode.id}
@@ -825,7 +834,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
           <div className="p-2 border-b border-outline-variant/30">
             <div className="flex items-center gap-2 px-2">
               <LegacyIcon name="smart_toy" className="text-[15px] text-on-surface-variant" />
-              <span className="text-[11px] font-semibold text-on-surface-variant">Workflow agents</span>
+              <span className="text-[11px] font-semibold text-on-surface-variant">{t('Workflow agents')}</span>
             </div>
           </div>
           <div className="max-h-52 overflow-y-auto">
@@ -858,7 +867,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
           <div className="p-2 border-b border-outline-variant/30">
             <div className="flex items-center gap-2 px-2">
               <LegacyIcon name="terminal" className="text-[15px] text-on-surface-variant" />
-              <span className="text-[11px] font-semibold text-on-surface-variant">Skills / Commands</span>
+              <span className="text-[11px] font-semibold text-on-surface-variant">{t('Skills / Commands')}</span>
             </div>
           </div>
           <div className="max-h-52 overflow-y-auto">
@@ -925,7 +934,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
           <div className="p-2 border-b border-outline-variant/30">
             <div className="flex items-center gap-2 px-2 pb-1">
               <LegacyIcon name="folder_open" className="text-[15px] text-on-surface-variant" />
-              <span className="text-[11px] font-semibold text-on-surface-variant">Project Files</span>
+              <span className="text-[11px] font-semibold text-on-surface-variant">{t('Project Files')}</span>
             </div>
             <input
               type="text"

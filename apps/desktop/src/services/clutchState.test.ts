@@ -6,6 +6,7 @@ import {
   USER_CHAT_AVATAR,
   shouldPreserveOptimisticRun,
   preferRicherSessionPatch,
+  isAuthoritativeMessageReplacement,
 } from './clutchState';
 import type { ChatMessage } from '../types';
 
@@ -123,7 +124,49 @@ describe('mergeChatMessages', () => {
     expect(merged[2].id).toBe(pendingId);
   });
 
-  it('allows duplicate user text in new turns after agent has already replied', () => {
+  it('dedupes workflow start server echo while pending id points at optimistic row', () => {
+    const optimistic = [createUserChatMessage('design dashboard')];
+    const pendingId = optimistic[0].id;
+    const server: ChatMessage[] = [
+      {
+        id: 'user_server',
+        agent: 'User',
+        avatar: USER_CHAT_AVATAR,
+        time: '14:21',
+        text: 'design dashboard',
+      },
+    ];
+    const merged = mergeChatMessages(optimistic, server, { pendingUserMessageId: pendingId });
+    expect(merged).toHaveLength(1);
+    expect(merged[0].id).toBe(pendingId);
+  });
+
+  it('dedupes late workflow user echo after the first agent replied', () => {
+    const firstTurn = [
+      createUserChatMessage('design a dashboard'),
+      {
+        id: 'agent_1',
+        agent: '1-Product Manager',
+        avatar: '',
+        time: '14:09',
+        text: '{"page_goal":"observability"}',
+      },
+    ];
+    const lateEcho: ChatMessage[] = [
+      ...firstTurn,
+      {
+        id: 'user_server',
+        agent: 'User',
+        avatar: USER_CHAT_AVATAR,
+        time: '14:09',
+        text: 'design a dashboard',
+      },
+    ];
+    expect(mergeChatMessages(firstTurn, lateEcho)).toHaveLength(2);
+  });
+
+  it('allows duplicate user text in new turns when pending user message id is set', () => {
+    const pendingId = 'user_server_dup';
     const firstTurn = [
       createUserChatMessage('你好'),
       {
@@ -137,14 +180,14 @@ describe('mergeChatMessages', () => {
     const server: ChatMessage[] = [
       ...firstTurn,
       {
-        id: 'user_server_dup',
+        id: pendingId,
         agent: 'User',
         avatar: USER_CHAT_AVATAR,
         time: '17:02',
         text: '你好',
       },
     ];
-    const merged = mergeChatMessages(firstTurn, server);
+    const merged = mergeChatMessages(firstTurn, server, { pendingUserMessageId: pendingId });
     expect(merged.filter((message) => message.agent === 'User')).toHaveLength(2);
   });
 });
@@ -257,5 +300,37 @@ describe('shouldPreserveOptimisticRun', () => {
         { status: 'idle' },
       ),
     ).toBe(true);
+  });
+});
+
+describe('isAuthoritativeMessageReplacement', () => {
+  it('detects message deletions from shorter server patches', () => {
+    const existing: ChatMessage[] = [
+      createUserChatMessage('hello'),
+      {
+        id: 'agent_1',
+        agent: 'Clutch',
+        avatar: '',
+        time: '12:00',
+        text: 'hi there',
+      },
+    ];
+    const incoming = [existing[0]];
+    expect(isAuthoritativeMessageReplacement(existing, incoming)).toBe(true);
+  });
+
+  it('does not treat appended messages as replacement', () => {
+    const existing = [createUserChatMessage('hello')];
+    const incoming = [
+      ...existing,
+      {
+        id: 'agent_1',
+        agent: 'Clutch',
+        avatar: '',
+        time: '12:00',
+        text: 'hi there',
+      },
+    ];
+    expect(isAuthoritativeMessageReplacement(existing, incoming)).toBe(false);
   });
 });

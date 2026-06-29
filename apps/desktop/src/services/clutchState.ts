@@ -75,6 +75,15 @@ export interface MergeChatMessagesOptions {
   pendingUserMessageId?: string | null;
 }
 
+export function isAuthoritativeMessageReplacement(
+  existing: ChatMessage[],
+  incoming: ChatMessage[],
+): boolean {
+  if (incoming.length >= existing.length) return false;
+  const existingIds = new Set(existing.map((message) => message.id));
+  return incoming.every((message) => existingIds.has(message.id));
+}
+
 export function mergeChatMessages(
   existing: ChatMessage[],
   incoming: ChatMessage[] | undefined,
@@ -96,36 +105,16 @@ export function mergeChatMessages(
     }
 
     if (message.agent === 'User') {
-      const trailingSameUser =
-        merged.length > 0
-        && merged[merged.length - 1].agent === 'User'
-        && merged[merged.length - 1].text.trim() === trimmed;
-      if (trailingSameUser && pendingUserMessageId) {
-        const targetIndex = merged.length - 1;
-        if (message.avatar && !merged[targetIndex].avatar) {
-          merged[targetIndex] = { ...merged[targetIndex], avatar: message.avatar };
-        }
-        continue;
-      }
-
-      const lastUserIdx = merged.findLastIndex(
+      const priorSameIdx = merged.findIndex(
         (item) => item.agent === 'User' && item.text.trim() === trimmed,
       );
-      if (lastUserIdx >= 0) {
-        const hasAgentReplyAfter = merged
-          .slice(lastUserIdx + 1)
-          .some((item) => item.agent !== 'User' && item.agent !== 'System');
-        if (!hasAgentReplyAfter) {
-          if (message.avatar && !merged[lastUserIdx].avatar) {
-            merged[lastUserIdx] = { ...merged[lastUserIdx], avatar: message.avatar };
-          }
-          continue;
-        }
+      if (priorSameIdx >= 0) {
         const isPendingTurn =
-          Boolean(pendingUserMessageId)
-          && (message.id === pendingUserMessageId
-            || merged.some((item) => item.id === pendingUserMessageId));
-        if (pendingUserMessageId && !isPendingTurn) {
+          Boolean(pendingUserMessageId) && message.id === pendingUserMessageId;
+        if (!isPendingTurn) {
+          if (message.avatar && !merged[priorSameIdx].avatar) {
+            merged[priorSameIdx] = { ...merged[priorSameIdx], avatar: message.avatar };
+          }
           continue;
         }
       }
@@ -308,6 +297,10 @@ class ClutchStateStore {
       (item) => item.agent === 'User' && item.text === trimmed,
     );
 
+    if (!hasUserMessage) {
+      this.pendingUserMessageId = userMessage.id;
+    }
+
     this.applyPatch({
       run_id: params.runId,
       workflow_id: params.workflowId,
@@ -335,9 +328,28 @@ class ClutchStateStore {
   private applyPatch(patch: Partial<ClutchState>): void {
     const next: Partial<ClutchState> = { ...patch };
     if (next.messages !== undefined) {
-      next.messages = mergeChatMessages(this.state.messages, next.messages, {
-        pendingUserMessageId: this.pendingUserMessageId,
-      });
+      const incomingMessages = next.messages;
+      if (isAuthoritativeMessageReplacement(this.state.messages, incomingMessages)) {
+        next.messages = incomingMessages;
+        if (next.hybrid_executions === undefined) {
+          const incomingIds = new Set(incomingMessages.map((message) => message.id));
+          const deletedIds = this.state.messages
+            .filter((message) => !incomingIds.has(message.id))
+            .map((message) => message.id);
+          if (deletedIds.length > 0) {
+            const hybrid = { ...(this.state.hybrid_executions ?? {}) };
+            for (const id of deletedIds) {
+              delete hybrid[id];
+              this.pendingHybridExecutions.delete(id);
+            }
+            next.hybrid_executions = hybrid;
+          }
+        }
+      } else {
+        next.messages = mergeChatMessages(this.state.messages, incomingMessages, {
+          pendingUserMessageId: this.pendingUserMessageId,
+        });
+      }
       if (
         this.pendingUserMessageId
         && next.messages.some((message) => message.id === this.pendingUserMessageId)
@@ -430,6 +442,26 @@ class ClutchStateStore {
         ),
       });
       return;
+    }
+    if (enriched.agent === 'User') {
+      const trimmed = enriched.text.trim();
+      const isPendingTurn =
+        Boolean(this.pendingUserMessageId) && enriched.id === this.pendingUserMessageId;
+      if (!isPendingTurn) {
+        const prior = this.state.messages.find(
+          (item) => item.agent === 'User' && item.text.trim() === trimmed,
+        );
+        if (prior) {
+          if (enriched.avatar && !prior.avatar) {
+            this.applyPatch({
+              messages: this.state.messages.map((item) =>
+                item.id === prior.id ? { ...item, avatar: enriched.avatar } : item,
+              ),
+            });
+          }
+          return;
+        }
+      }
     }
     this.applyPatch({ messages: [...this.state.messages, enriched] });
   }
@@ -613,10 +645,25 @@ class ClutchStateStore {
     return messageId;
   }
 
-  removeUserMessageById(messageId: string): void {
-    const next = this.state.messages.filter((message) => message.id !== messageId);
-    if (next.length === this.state.messages.length) return;
-    this.applyPatch({ messages: next });
+  deleteMessage(messageId: string): void {
+    const nextMessages = this.state.messages.filter((message) => message.id !== messageId);
+    if (nextMessages.length === this.state.messages.length) return;
+
+    if (this.pendingUserMessageId === messageId) {
+      this.pendingUserMessageId = null;
+    }
+
+    const hybrid = { ...(this.state.hybrid_executions ?? {}) };
+    delete hybrid[messageId];
+    this.pendingHybridExecutions.delete(messageId);
+
+    this.state = {
+      ...this.state,
+      messages: nextMessages,
+      hybrid_executions: hybrid,
+    };
+    this.emit();
+    void this.send({ action: 'delete_message', message_id: messageId });
   }
 
   clearWorkflowState(): void {
@@ -658,4 +705,8 @@ export const submitChatMessage = async (
 export const clearWorkflowForSession = async (runId: string): Promise<void> => {
   await clutchStore.send({ action: 'clear_workflow' });
   clutchStore.clearWorkflowState();
+};
+
+export const deleteChatMessage = (messageId: string): void => {
+  clutchStore.deleteMessage(messageId);
 };

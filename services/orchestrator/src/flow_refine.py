@@ -112,7 +112,9 @@ def resolve_image_refine_prompt(
     base_prompt = ""
     if len(upstreams) == 1:
         upstream_text = str(outputs.get(upstreams[0]) or "").strip()
-        base_prompt = extract_final_image_prompt(upstream_text)
+        extracted = extract_final_image_prompt(upstream_text)
+        # Match normal flow routing: pass full upstream output when no dedicated image key.
+        base_prompt = extracted if extracted else upstream_text
 
     user_text = user_body.strip()
     if base_prompt and user_text:
@@ -127,6 +129,14 @@ def is_continue_command(text: str) -> bool:
     if _CONTINUE_RE.match(stripped):
         return True
     return stripped in {"继续", "继续执行", "继续工作流"}
+
+
+def refine_reply_ready_to_commit(reply_text: str) -> bool:
+    """True when refine output is worth committing and auto-continuing downstream."""
+    text = reply_text.strip()
+    if not text:
+        return False
+    return not text.lower().startswith("error")
 
 
 def compiler_snapshot_values(session: WorkflowSession) -> dict[str, Any]:
@@ -233,8 +243,8 @@ def pause_log_line() -> str:
     return tagged(
         TAG_WORKFLOW,
         tr(
-            "Workflow paused for refine — @ an agent in chat, then /continue when ready.",
-            "工作流已暂停精修 — 在输入框 @ Agent 反馈修改，满意后发送 /continue 继续执行。",
+            "Workflow paused for refine — @ an agent with feedback; downstream runs automatically after refine. Use Stop to pause first.",
+            "工作流已暂停精修 — @ Agent 并输入修改意见，精修完成后自动继续下游。不满意可先点停止再重新 @。",
         ),
     )
 
@@ -297,11 +307,21 @@ def rebuild_node_outputs_from_messages(
         label = str(data.get("label") or node_id).strip()
         if not label:
             continue
+        labels_to_match = {label}
+        agent_ref = str(data.get("agent") or "").strip()
+        if agent_ref:
+            from src.engine_router import find_agent
+
+            record = find_agent(agent_ref)
+            if record:
+                name = str(record.get("name") or "").strip()
+                if name:
+                    labels_to_match.add(name)
         for message in reversed(messages):
             if message.get("agent") == "User":
                 continue
             agent_name = str(message.get("agent") or "").strip()
-            if agent_name == label:
+            if agent_name in labels_to_match:
                 text = str(message.get("text") or "").strip()
                 if text:
                     outputs[node_id] = text

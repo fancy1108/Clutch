@@ -12,6 +12,7 @@ from src.flow_refine import (
     is_workflow_refine_eligible,
     parse_agent_mention,
     rebuild_node_outputs_from_messages,
+    refine_reply_ready_to_commit,
     refine_triggered_by_message,
     resolve_image_refine_prompt,
     workflow_node_id_for_agent,
@@ -77,10 +78,50 @@ def test_resolve_image_refine_prompt_uses_upstream_json() -> None:
     assert "重新生成图片" in prompt
 
 
+def test_resolve_image_refine_prompt_falls_back_to_full_upstream_json() -> None:
+    workflow = {
+        "nodes": [
+            {"id": "n4", "type": "agent_task", "data": {"label": "Prompt", "agent": "a4"}},
+            {"id": "n5", "type": "agent_task", "data": {"label": "Image", "agent": "a5"}},
+        ],
+        "edges": [
+            {"source": "start", "target": "n4"},
+            {"source": "n4", "target": "n5"},
+        ],
+    }
+    compiled = MagicMock()
+    compiled.get_state.return_value = MagicMock(
+        values={
+            "node_outputs": {
+                "n4": '{"ui_spec":"dark observability dashboard with service map"}',
+                "n5": "![Generated image](http://example.com/x.png)",
+            }
+        }
+    )
+    session = MagicMock()
+    session.compiled = compiled
+    session.workflow = workflow
+    prompt = resolve_image_refine_prompt(
+        session=session,
+        refining_node_id="n5",
+        user_body="重新生成图片",
+        messages=[],
+    )
+    assert "dark observability dashboard" in prompt
+    assert "重新生成图片" in prompt
+
+
 def test_is_continue_command() -> None:
     assert is_continue_command("/continue")
     assert is_continue_command("继续执行")
     assert not is_continue_command("@Agent hi")
+
+
+def test_refine_reply_ready_to_commit() -> None:
+    assert refine_reply_ready_to_commit("Revised UX spec")
+    assert not refine_reply_ready_to_commit("")
+    assert not refine_reply_ready_to_commit("   ")
+    assert not refine_reply_ready_to_commit("Error: model unavailable")
 
 
 def test_infer_refining_node_id_prefers_output_node() -> None:

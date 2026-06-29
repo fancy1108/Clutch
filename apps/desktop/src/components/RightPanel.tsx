@@ -2,7 +2,7 @@ import React from 'react';
 import { RightTab, UncommittedFile, ClutchRunStatus } from '../types';
 import type { FileTreeNode } from '../services/workspaceApi';
 import { loadWorkflowById } from '../services/workflowApi';
-import { useLanguage } from './LanguageContext';
+import { useLanguage, translateRunStatus } from './LanguageContext';
 import { LegacyIcon } from './ui/LegacyIcon';
 import { BTN_ICON } from './ui/buttonStyles';
 
@@ -41,6 +41,14 @@ type WorkflowStepView = {
   agent: string;
 };
 
+const RIGHT_TAB_LABELS: Record<RightTab, string> = {
+  overview: 'Overview',
+  files: 'Files',
+  flow: 'Flow',
+  changes: 'Changes',
+  terminal: 'Terminal',
+};
+
 export const RightPanel: React.FC<RightPanelProps> = ({
   activeTab,
   setActiveTab,
@@ -66,7 +74,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   workspaceAuthorized = false,
   onClearTerminal,
 }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [selectedFile, setSelectedFile] = React.useState<string>('');
   const [expandedFiles, setExpandedFiles] = React.useState<Record<string, boolean>>({});
   const [workflowSteps, setWorkflowSteps] = React.useState<WorkflowStepView[]>([]);
@@ -127,24 +135,26 @@ export const RightPanel: React.FC<RightPanelProps> = ({
     .filter((tab) => isMultiAgent || tab !== 'flow')
     .filter((tab) => tab !== 'flow' || showFlowTab);
 
+  const statusLabel = translateRunStatus(clutchStatus, language);
+
   const renderStateSummary = () => (
     <div className="p-3 border border-outline-variant/30 rounded-xl bg-surface-container-low/40 font-mono text-[10px] space-y-1">
       <p>
-        workflow: <span className="text-on-surface font-bold">{workflowLabel || '—'}</span>
+        {t('workflow')}: <span className="text-on-surface font-bold">{workflowLabel || '—'}</span>
       </p>
       {workflowName && workflowId && workflowName !== workflowId ? (
         <p>
-          workflow_id: <span className="text-on-surface font-bold">{workflowId}</span>
+          {t('workflow_id')}: <span className="text-on-surface font-bold">{workflowId}</span>
         </p>
       ) : null}
       <p>
-        active_node: <span className="text-on-surface font-bold">{activeNodeId || '—'}</span>
+        {t('active_node')}: <span className="text-on-surface font-bold">{activeNodeId || '—'}</span>
       </p>
       <p>
-        active_agent: <span className="text-on-surface font-bold">{activeAgent || '—'}</span>
+        {t('active_agent')}: <span className="text-on-surface font-bold">{activeAgent || '—'}</span>
       </p>
       <p>
-        status: <span className="text-on-surface font-bold uppercase">{clutchStatus}</span>
+        {t('status')}: <span className="text-on-surface font-bold uppercase">{statusLabel}</span>
       </p>
       {isIdle && hasWorkflow ? (
         <p className="pt-1 border-t border-outline-variant/20 text-on-surface-variant">
@@ -153,7 +163,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
       ) : null}
       {currentInstruction ? (
         <p className="pt-1 border-t border-outline-variant/20">
-          instruction: <span className="text-on-surface">{currentInstruction}</span>
+          {t('instruction')}: <span className="text-on-surface">{currentInstruction}</span>
         </p>
       ) : null}
     </div>
@@ -172,7 +182,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
           </p>
         ) : null}
         <p>
-          status: <span className="text-on-surface font-bold uppercase">{clutchStatus}</span>
+          {t('status')}: <span className="text-on-surface font-bold uppercase">{statusLabel}</span>
         </p>
         {currentInstruction ? (
           <p className="pt-1 border-t border-outline-variant/20">
@@ -220,7 +230,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                 </div>
                 {isActive ? (
                   <span className="text-[9px] font-bold uppercase text-primary whitespace-nowrap">
-                    {clutchStatus}
+                    {statusLabel}
                   </span>
                 ) : null}
               </div>
@@ -252,7 +262,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
             }}
             className="flex items-center gap-2 p-1.5 hover:bg-surface-container-low rounded cursor-grab active:cursor-grabbing transition-colors"
             style={{ paddingLeft: `${depth * 8 + 6}px` }}
-            title={`Drag to chat: ${node.path}`}
+            title={`${t('Drag to chat')}: ${node.path}`}
           >
             {isFolder ? (
               <>
@@ -297,7 +307,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
         className={`absolute top-4 w-6 h-6 bg-white border border-neutral-300 rounded-full flex items-center justify-center z-50 shadow-md hover:shadow-lg hover:bg-neutral-50 hover:border-neutral-450 transition-all cursor-pointer text-neutral-600 hover:text-neutral-900 duration-200 hover:scale-110 active:scale-95 ${
           isOpen ? '-left-3' : '-left-6'
         }`}
-        title={isOpen ? 'Collapse Panel' : 'Expand Panel'}
+            title={isOpen ? t('Collapse Panel') : t('Expand Panel')}
       >
         <LegacyIcon
           name={isOpen ? 'chevron_right' : 'chevron_left'}
@@ -320,7 +330,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                     : 'text-on-surface-variant hover:text-on-surface'
                 }`}
               >
-                {tab}
+                {t(RIGHT_TAB_LABELS[tab])}
               </button>
             );
           })}
@@ -329,6 +339,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
         <div className="flex-1 overflow-y-auto sidebar-scroll p-5 select-none bg-white">
           {activeTab === 'overview' && (
             <div className="space-y-6 animate-fade-in text-xs">
+              <UnderDevelopmentNotice variant="compact" />
               {isMultiAgent ? (
                 <>
                   {renderStateSummary()}
@@ -364,24 +375,24 @@ export const RightPanel: React.FC<RightPanelProps> = ({
               {tokenTotal > 0 ? (
                 <section>
                   <h4 className="text-[10px] font-bold text-on-surface-variant/75 uppercase tracking-widest mb-4">
-                    Session Token Analytics
+                    {t('Session Token Analytics')}
                   </h4>
                   <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-3">
                       <div className="p-3 border border-neutral-200 bg-neutral-50/50 rounded-xl">
-                        <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider mb-1">Total Tokens</p>
+                        <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider mb-1">{t('Total Tokens')}</p>
                         <p className="text-base font-extrabold text-neutral-900 font-mono">{tokenTotal.toLocaleString()}</p>
                       </div>
                       <div className="p-3 border border-neutral-200 bg-neutral-50/50 rounded-xl">
-                        <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider mb-1">Estimated Cost</p>
+                        <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider mb-1">{t('Estimated Cost')}</p>
                         <p className="text-base font-extrabold text-neutral-900 font-mono">${sessionCostUsd.toFixed(4)}</p>
                       </div>
                     </div>
 
                     <div className="p-3 border border-neutral-200 rounded-xl space-y-2">
                       <div className="flex items-center justify-between text-[10px] font-bold text-neutral-800">
-                        <span>Token Distribution</span>
-                        <span className="text-zinc-500 font-normal font-mono">Input vs Output</span>
+                        <span>{t('Token Distribution')}</span>
+                        <span className="text-zinc-500 font-normal font-mono">{t('Input vs Output')}</span>
                       </div>
                       <div className="w-full h-3 rounded-full overflow-hidden flex bg-neutral-100 border border-neutral-200/50">
                         <div
@@ -396,8 +407,8 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                         />
                       </div>
                       <div className="flex justify-between text-[9px] font-mono pt-1">
-                        <span>Input ({inputPct}%): {tokenInput.toLocaleString()}</span>
-                        <span>Output ({outputPct}%): {tokenOutput.toLocaleString()}</span>
+                        <span>{t('Input')} ({inputPct}%): {tokenInput.toLocaleString()}</span>
+                        <span>{t('Output')} ({outputPct}%): {tokenOutput.toLocaleString()}</span>
                       </div>
                     </div>
                   </div>
@@ -409,7 +420,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
           {activeTab === 'files' && (
             <div className="space-y-4 animate-fade-in text-xs select-none">
               <h4 className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-3">
-                Workspace Folder Structure
+                {t('Workspace Folder Structure')}
               </h4>
               <div className="space-y-1 font-mono font-medium text-xs text-on-surface-variant pl-1">
                 {!workspaceAuthorized ? (
@@ -477,8 +488,8 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                             onOpenWorkspaceFile?.(file.name);
                           }}
                           className={BTN_ICON}
-                          title="Preview file"
-                          aria-label="Preview file"
+                          title={t('Preview file')}
+                          aria-label={t('Preview file')}
                         >
                           <LegacyIcon name="visibility" className="text-[15px]" />
                         </button>
@@ -503,7 +514,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                       className="flex items-center gap-1.5 px-2 py-1 bg-neutral-900 hover:bg-black text-white text-[9.5px] font-bold rounded-lg transition-all shadow-xs active:scale-95"
                     >
                       <LegacyIcon name="visibility" className="text-[12px]" />
-                      Preview Full
+                      {t('Preview Full')}
                     </button>
                   </div>
 
@@ -549,7 +560,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                   onClick={() => onClearTerminal?.()}
                   className="text-[9px] font-semibold text-on-surface bg-surface-container-high px-2 py-1 rounded"
                 >
-                  Clear
+                  {t('Clear')}
                 </button>
               </div>
 

@@ -134,7 +134,7 @@ export interface ClutchState {
   shell_session_status?: string;
   /** Workflow node under human refine after pause. */
   refining_node_id?: string;
-  /** Latest agent draft while refining (committed on /continue). */
+  /** Latest agent draft while refining (committed before auto-continue). */
   refine_draft_output?: string;
   refine_agent_id?: string;
   /** @deprecated use cli_session_id — still read from older persisted runs */
