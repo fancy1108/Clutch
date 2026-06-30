@@ -10,7 +10,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ## [Unreleased]
 
-## [1.0.2] - TBD
+## [1.0.2] - 2026-07-01
 
 Minor release — **Windows installers**, **in-app updates (macOS)**, **macOS sidecar lifecycle fix (#18)**, and **expanded CLI tool discovery (incl. Rivet)**.
 
