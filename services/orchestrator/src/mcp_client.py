@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import json
 import os
-import select
+import queue
 import shlex
 import subprocess
+import threading
 from typing import Any
 
 
@@ -17,9 +18,13 @@ class McpClient:
         self.env = env
         self.proc: subprocess.Popen | None = None
         self._next_id = 1
+        self._responses: queue.Queue[dict[str, Any]] = queue.Queue()
+        self._reader_thread: threading.Thread | None = None
 
     def start(self) -> bool:
-        args = shlex.split(self.endpoint)
+        args = shlex.split(self.endpoint, posix=os.name != "nt")
+        if os.name == "nt":
+            args = [part.strip('"') for part in args]
         env_vars = os.environ.copy()
         env_vars["NPM_CONFIG_UPDATE_NOTIFIER"] = "false"
         env_vars["NPM_CONFIG_AUDIT"] = "false"
@@ -37,6 +42,8 @@ class McpClient:
                 text=True,
                 bufsize=1,
             )
+            self._reader_thread = threading.Thread(target=self._read_loop, daemon=True)
+            self._reader_thread.start()
             # Handshake
             self.call(
                 "initialize",
@@ -53,27 +60,32 @@ class McpClient:
             self.close()
             return False
 
+    def _read_loop(self) -> None:
+        if not self.proc or not self.proc.stdout:
+            return
+        for line in self.proc.stdout:
+            try:
+                self._responses.put(json.loads(line.strip()))
+            except (json.JSONDecodeError, TypeError):
+                continue
+
     def _read_response(self, req_id: int, timeout: float = 5.0) -> dict[str, Any]:
         import time
-        deadline = time.time() + timeout
+        deadline = time.monotonic() + timeout
         while True:
-            if not self.proc or not self.proc.stdout:
+            if not self.proc:
                 raise RuntimeError("Process terminated")
-            remaining = deadline - time.time()
+            remaining = deadline - time.monotonic()
             if remaining <= 0:
                 raise TimeoutError("Timeout waiting for MCP response")
-            r, _, _ = select.select([self.proc.stdout], [], [], remaining)
-            if not r:
-                raise TimeoutError("Timeout waiting for MCP response")
-            line = self.proc.stdout.readline()
-            if not line:
-                raise RuntimeError("EOF reached")
             try:
-                data = json.loads(line.strip())
-                if data.get("id") == req_id:
-                    return data
-            except Exception:
-                continue
+                data = self._responses.get(timeout=remaining)
+            except queue.Empty as exc:
+                raise TimeoutError("Timeout waiting for MCP response") from exc
+            if data.get("id") == req_id:
+                return data
+            if self.proc.poll() is not None and self._responses.empty():
+                raise TimeoutError("Timeout waiting for MCP response")
 
     def call(
         self, method: str, params: dict[str, Any] | None = None, timeout: float = 5.0
@@ -140,3 +152,4 @@ class McpClient:
                 except Exception:
                     pass
             self.proc = None
+            self._reader_thread = None

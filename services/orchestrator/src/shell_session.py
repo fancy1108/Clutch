@@ -22,6 +22,20 @@ if os.name != "nt":
 logger = logging.getLogger(__name__)
 
 
+def _shell_binary() -> str:
+    if os.name != "nt":
+        return shutil.which("bash") or "/bin/bash"
+    git = shutil.which("git")
+    candidates = [
+        Path(git).resolve().parents[1] / "bin" / "bash.exe" if git else None,
+        Path(os.environ.get("ProgramFiles", "C:/Program Files")) / "Git" / "bin" / "bash.exe",
+    ]
+    for candidate in candidates:
+        if candidate and candidate.is_file():
+            return str(candidate)
+    raise ShellSessionError("Git Bash is required for Hybrid sessions on Windows")
+
+
 class SessionState(str, Enum):
     CREATING = "creating"
     READY = "ready"
@@ -47,7 +61,9 @@ class ShellSessionPoolFullError(ShellSessionError):
 from src.claude_hybrid_output_parser import marker_completed_in_output, strip_ansi
 
 
-def _read_available_bytes(master_fd: int, *, wait_s: float) -> bytes:
+def _read_available_bytes(master_fd, *, wait_s: float) -> bytes:
+    if not isinstance(master_fd, int):
+        return master_fd.read(wait_s=wait_s).encode("utf-8", errors="replace")
     chunks: list[bytes] = []
     deadline = time.monotonic() + wait_s
     while time.monotonic() < deadline:
@@ -67,7 +83,7 @@ def _read_available_bytes(master_fd: int, *, wait_s: float) -> bytes:
     return b"".join(chunks)
 
 
-def read_until_contains(master_fd: int, needle: str, *, max_wait_s: float) -> str:
+def read_until_contains(master_fd, needle: str, *, max_wait_s: float) -> str:
     """Read PTY output until `needle` appears (used for bash prompt sync)."""
     decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
     decoded_chunks: list[str] = []
@@ -86,7 +102,7 @@ def read_until_contains(master_fd: int, needle: str, *, max_wait_s: float) -> st
     return "".join(decoded_chunks)
 
 
-def read_until_marker(master_fd: int, marker: str, *, max_wait_s: float) -> str:
+def read_until_marker(master_fd, marker: str, *, max_wait_s: float) -> str:
     decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
     decoded_chunks: list[str] = []
     deadline = time.monotonic() + max_wait_s
@@ -104,8 +120,13 @@ def read_until_marker(master_fd: int, marker: str, *, max_wait_s: float) -> str:
     return "".join(decoded_chunks)
 
 
-def write_line(master_fd: int, line: str) -> None:
-    os.write(master_fd, (line if line.endswith("\n") else line + "\n").encode())
+def write_line(master_fd, line: str) -> None:
+    ending = "\r\n" if os.name == "nt" else "\n"
+    text = line if line.endswith(("\n", "\r")) else line + ending
+    if isinstance(master_fd, int):
+        os.write(master_fd, text.encode())
+    else:
+        master_fd.write(text)
 
 
 def _shell_quote_path(path: str) -> str:
@@ -137,7 +158,7 @@ class ShellSession:
     workspace_path: str
     owner_node_id: str = "plain_chat"
     state: SessionState = SessionState.CREATING
-    master_fd: int = -1
+    master_fd: object = -1
     pid: int = -1
     _proc: subprocess.Popen[bytes] | None = field(default=None, repr=False)
     created_at: float = field(default_factory=time.monotonic)
@@ -149,9 +170,23 @@ class ShellSession:
 
     def _spawn(self) -> None:
         """Start bash on a PTY via subprocess (safe under asyncio thread pools)."""
-        shell = shutil.which("bash") or "/bin/bash"
+        shell = _shell_binary()
         workspace = Path(self.workspace_path)
         workspace.mkdir(parents=True, exist_ok=True)
+
+        if os.name == "nt":
+            from src.windows_pty import WindowsPty
+
+            proc = WindowsPty([shell, "--norc", "--noprofile", "-i"], cwd=str(workspace))
+            self.pid = proc.pid
+            self.master_fd = proc
+            read_until_contains(proc, "$", max_wait_s=8.0)
+            write_line(proc, "export COLUMNS=200 PS1='clutch$ '")
+            read_until_contains(proc, "clutch$", max_wait_s=3.0)
+            self.ensure_workspace_cwd()
+            self.state = SessionState.READY
+            self.touch()
+            return
 
         master_fd, slave_fd = pty.openpty()
         try:
@@ -200,12 +235,14 @@ class ShellSession:
             raise errors[0]
 
     def ensure_workspace_cwd(self) -> None:
-        if self.master_fd < 0:
+        if self.master_fd == -1:
             raise ShellSessionError("session not started")
         write_line(self.master_fd, f"cd {_shell_quote_path(self.workspace_path)}")
         read_until_contains(self.master_fd, "clutch$", max_wait_s=5.0)
 
     def alive(self) -> bool:
+        if not isinstance(self.master_fd, int):
+            return self.master_fd.isalive()
         if self._proc is not None:
             return self._proc.poll() is None
         if self.pid <= 0:
@@ -227,7 +264,11 @@ class ShellSession:
                 )
             except OSError:
                 pass
-        if self.master_fd >= 0:
+        if not isinstance(self.master_fd, int):
+            self.master_fd.close(force=True)
+            self.master_fd = -1
+            self.pid = -1
+        elif self.master_fd >= 0:
             try:
                 os.close(self.master_fd)
             except OSError:
