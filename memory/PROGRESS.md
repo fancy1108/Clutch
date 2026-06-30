@@ -17,7 +17,7 @@
 | 切片 | 版本 |
 |------|------|
 | Windows（#17）+ Updater（本分支） | **v1.0.2** |
-| Loop 工作流 | **v1.0.3**（`release/1.0.2-loop` 保留，下版合入） |
+| Loop 工作流 | **v1.0.3**（`release/1.0.3-loop` · `../clutch-release-1.0.3-loop`） |
 
 ## Next Actions
 

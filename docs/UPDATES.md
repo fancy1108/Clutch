@@ -1,6 +1,6 @@
 # Clutch — 应用内自动更新（OSR-20）
 
-> **状态：v1.0.2 切片** — branch `release/1.0.2-updater`；与 **Windows 安装包**（`release/1.0.2-windows` / PR #17）、loop（`release/1.0.2-loop`）同属 **一次 v1.0.2 发版**。
+> **状态：v1.0.2 切片** — branch `release/1.0.2-updater`；与 **Windows 安装包**（PR #17，已合 `main`）同属 **v1.0.2 发版**。Loop 见 `release/1.0.3-loop`（v1.0.3）。
 
 ---
 
