@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
+import { CONTENT_TOP_WITH_BANNER } from '../constants/layout';
 import { ChevronRight } from 'lucide-react';
 import { ChatMessage, ClutchRunStatus, HybridExecutionPayload, OutputEvent } from '../types';
 import { useLanguage } from './LanguageContext';
@@ -802,8 +803,9 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
         paddingLeft: `${selectedSidebarWidth + 30}px`,
         paddingRight: `${rightSidebarWidth + 30}px`,
         paddingBottom: dockHeight,
+        marginTop: CONTENT_TOP_WITH_BANNER,
       }}
-      className="mt-[64px] flex-1 overflow-y-auto py-10 flex flex-col items-center px-6 transition-all duration-300 bg-background"
+      className="flex-1 overflow-y-auto py-10 flex-col items-center px-6 transition-all duration-300 bg-background flex"
     >
       <div className="w-full max-w-2xl mx-auto space-y-8 py-4">
         {showEmptyState && (

@@ -25,7 +25,7 @@
     "security": {
       "csp": {
         "default-src": "'self' tauri: asset:",
-        "connect-src": "'self' ipc: http://ipc.localhost ws://ipc.localhost tauri: http://localhost:8123 ws://localhost:8123 https://connectivitycheck.gstatic.com",
+        "connect-src": "'self' ipc: http://ipc.localhost ws://ipc.localhost tauri: http://localhost:8123 ws://localhost:8123 https://connectivitycheck.gstatic.com https://github.com https://objects.githubusercontent.com",
         "img-src": "'self' asset: http://asset.localhost tauri: blob: data: https://api.dicebear.com https://lh3.googleusercontent.com https://*.googleusercontent.com https://storage.googleapis.com https://apihub.agnes-ai.com https://*.agnes-ai.com https://*.agnes-ai.space https://oaidalleapiprodscus.blob.core.windows.net",
         "style-src": "'self' 'unsafe-inline' tauri: asset:",
         "script-src": "'self' tauri: asset:",
@@ -45,6 +45,7 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "createUpdaterArtifacts": true,
     "externalBin": ["binaries/orchestrator"],
     "icon": [
       "icons/32x32.png",
@@ -53,5 +54,16 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDNCMUFBRjg0QzI0RkVDNTgKUldSWTdFL0NoSzhhTzNMUUw2eG5kMksyZXBhd3dGaXhQK0ZVYituQjFKd0ZDYXk1L2VJVlp5UTUK",
+      "endpoints": [
+        "https://github.com/fancy1108/Clutch/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }

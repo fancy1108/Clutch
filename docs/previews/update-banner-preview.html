@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Clutch — Update Banner Preview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --font-sans: "Hanken Grotesk", Inter, system-ui, sans-serif;
+      --font-mono: "JetBrains Mono", "SF Mono", monospace;
+      --color-background: #ffffff;
+      --color-surface: #f9f9f9;
+      --color-surface-container-low: #f7f7f7;
+      --color-on-surface: #1a1c1c;
+      --color-on-surface-variant: #71717a;
+      --color-outline-variant: #e5e7eb;
+      --color-primary: #000000;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-sans);
+      background: #ececec;
+      color: var(--color-on-surface);
+      min-height: 100vh;
+      padding: 32px 24px 48px;
+    }
+
+    .page-header {
+      max-width: 980px;
+      margin: 0 auto 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .page-header h1 {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .page-header p {
+      font-size: 14px;
+      color: var(--color-on-surface-variant);
+      margin-top: 6px;
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .seg {
+      display: inline-flex;
+      border: 1px solid var(--color-outline-variant);
+      border-radius: 10px;
+      overflow: hidden;
+      background: white;
+    }
+
+    .seg button {
+      border: none;
+      background: transparent;
+      padding: 8px 14px;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      color: #525252;
+    }
+
+    .seg button.active {
+      background: var(--color-primary);
+      color: white;
+    }
+
+    .grid {
+      max-width: 980px;
+      margin: 0 auto;
+      display: grid;
+      gap: 28px;
+    }
+
+    .panel-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--color-on-surface-variant);
+      margin-bottom: 10px;
+    }
+
+    .mock-window {
+      border: 1px solid #d4d4d4;
+      border-radius: 14px;
+      overflow: hidden;
+      background: var(--color-background);
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.08);
+    }
+
+    .titlebar {
+      height: 38px;
+      background: linear-gradient(#f5f5f5, #ebebeb);
+      border-bottom: 1px solid #d4d4d4;
+      display: flex;
+      align-items: center;
+      padding: 0 14px;
+      gap: 8px;
+    }
+
+    .dot { width: 11px; height: 11px; border-radius: 50%; }
+    .dot.red { background: #ff5f57; }
+    .dot.yellow { background: #febc2e; }
+    .dot.green { background: #28c840; }
+
+    .app-shell {
+      background: var(--color-surface);
+      min-height: 220px;
+      position: relative;
+    }
+
+    .app-header {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 64px;
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(229, 231, 235, 0.8);
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+      font-size: 15px;
+      font-weight: 600;
+      color: #404040;
+      z-index: 10;
+    }
+
+    .update-banner {
+      position: absolute;
+      top: 64px;
+      left: 0;
+      right: 0;
+      z-index: 45;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 10px 16px;
+      background: rgba(247, 247, 247, 0.95);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(229, 231, 235, 0.8);
+      color: var(--color-on-surface);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    }
+
+    .banner-left {
+      display: flex;
+      min-width: 0;
+      flex: 1;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .banner-icon {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+      color: var(--color-on-surface-variant);
+    }
+
+    .banner-text {
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1.35;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .banner-text.mono {
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .progress-track {
+      height: 6px;
+      width: 220px;
+      flex-shrink: 0;
+      border-radius: 999px;
+      background: rgba(229, 231, 235, 0.6);
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 100%;
+      border-radius: 999px;
+      background: var(--color-primary);
+      transform-origin: left center;
+    }
+
+    .banner-actions {
+      display: flex;
+      shrink: 0;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: default;
+      border: 1px solid transparent;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+    }
+
+    .btn-primary {
+      background: #171717;
+      color: white;
+      border-color: #171717;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    }
+
+    .btn-secondary {
+      background: #fafafa;
+      color: #404040;
+      border-color: rgba(229, 229, 229, 0.6);
+    }
+
+    .chat-placeholder {
+      position: absolute;
+      top: 118px;
+      left: 24px;
+      right: 24px;
+      bottom: 24px;
+      border-radius: 12px;
+      border: 1px dashed rgba(229, 231, 235, 0.8);
+      background: rgba(255, 255, 255, 0.55);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--color-on-surface-variant);
+      font-size: 13px;
+    }
+
+    .note {
+      max-width: 980px;
+      margin: 28px auto 0;
+      padding: 14px 16px;
+      border-radius: 12px;
+      background: white;
+      border: 1px solid var(--color-outline-variant);
+      font-size: 13px;
+      line-height: 1.6;
+      color: #525252;
+    }
+
+    .note code {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      background: #f5f5f5;
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+
+    @media (max-width: 640px) {
+      .progress-track { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-header">
+    <div>
+      <h1>Clutch Update Banner Preview</h1>
+      <p>遵循 <code>specs/core/design.md</code> · <code>UI_UX_GUIDELINES.md</code> · 语义 token + BTN_PRIMARY</p>
+    </div>
+    <div class="controls">
+      <span style="font-size:13px;color:var(--color-on-surface-variant);font-weight:600;">Language</span>
+      <div class="seg" role="group" aria-label="Language">
+        <button type="button" id="btn-zh" class="active">中文</button>
+        <button type="button" id="btn-en">English</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid" id="preview-grid"></div>
+
+  <div class="note">
+    本地打开：<code>docs/previews/update-banner-preview.html</code><br />
+    视觉：浅灰信息条 · 黑色主按钮 · lucide 图标 · JetBrains Mono 进度数字。
+  </div>
+
+  <script>
+    const icons = {
+      available: '<svg class="banner-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>',
+      downloading: '<svg class="banner-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17V3"/><path d="m6 11 6 6 6-6"/><path d="M19 21H5"/></svg>',
+      ready: '<svg class="banner-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>',
+    };
+
+    const copy = {
+      zh: {
+        phases: { available: "发现新版本", downloading: "下载中", ready: "已下载" },
+        available: { text: "发现新版本：v1.13.1", primary: "下载更新", secondary: "稍后" },
+        downloading: { text: "下载中… 1.5 / 23.2（6%）", secondary: "稍后", pct: 6 },
+        ready: { text: "更新 v1.13.1 已下载，请重启安装。", primary: "重启安装", secondary: null },
+        chat: "主聊天区域（示意）",
+        header: "Clutch · my-video",
+      },
+      en: {
+        phases: { available: "Available", downloading: "Downloading", ready: "Ready" },
+        available: { text: "New version available: v1.13.1", primary: "Download update", secondary: "Later" },
+        downloading: { text: "Downloading... 1.5 / 23.2 (6%)", secondary: "Later", pct: 6 },
+        ready: { text: "Update v1.13.1 downloaded. Restart to install.", primary: "Restart to install", secondary: null },
+        chat: "Main chat area (placeholder)",
+        header: "Clutch · my-video",
+      },
+    };
+
+    let lang = "zh";
+
+    function bannerHtml(state, data) {
+      const scale = state === "downloading" ? Math.max(data.pct, 4) / 100 : 0;
+      const textClass = state === "downloading" ? "banner-text mono" : "banner-text";
+      const left =
+        state === "downloading"
+          ? `<p class="${textClass}">${data.text}</p>
+             <div class="progress-track"><div class="progress-fill" style="transform:scaleX(${scale})"></div></div>`
+          : `<p class="${textClass}">${data.text}</p>`;
+
+      const primaryBtn =
+        state === "available"
+          ? `<button type="button" class="btn btn-primary">${data.primary}</button>`
+          : state === "ready"
+            ? `<button type="button" class="btn btn-primary">${data.primary}</button>`
+            : "";
+
+      const secondaryBtn = data.secondary
+        ? `<button type="button" class="btn btn-secondary">${data.secondary}</button>`
+        : "";
+
+      return `
+        <div class="update-banner" role="status" aria-live="polite">
+          <div class="banner-left">${icons[state]}${left}</div>
+          <div class="banner-actions">
+            ${primaryBtn}
+            ${secondaryBtn}
+          </div>
+        </div>`;
+    }
+
+    function render() {
+      const t = copy[lang];
+      document.getElementById("preview-grid").innerHTML = ["available", "downloading", "ready"]
+        .map((state) => `
+        <section>
+          <div class="panel-label">${t.phases[state]}</div>
+          <div class="mock-window">
+            <div class="titlebar">
+              <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+            </div>
+            <div class="app-shell">
+              <div class="app-header">${t.header}</div>
+              ${bannerHtml(state, t[state])}
+              <div class="chat-placeholder">${t.chat}</div>
+            </div>
+          </div>
+        </section>`).join("");
+    }
+
+    document.getElementById("btn-zh").addEventListener("click", () => {
+      lang = "zh";
+      document.getElementById("btn-zh").classList.add("active");
+      document.getElementById("btn-en").classList.remove("active");
+      render();
+    });
+    document.getElementById("btn-en").addEventListener("click", () => {
+      lang = "en";
+      document.getElementById("btn-en").classList.add("active");
+      document.getElementById("btn-zh").classList.remove("active");
+      render();
+    });
+    render();
+  </script>
+</body>
+</html>

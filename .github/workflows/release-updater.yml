@@ -1,0 +1,98 @@
+# OSR-20 prep — attach macOS updater bundles + latest.json to an EXISTING release.
+# Manual only (workflow_dispatch). Do NOT wire to tag push until go-live checklist in docs/UPDATES.md §3.
+# Windows (OSR-19): external PR #17 lands on `dev` — not duplicated here.
+name: Release (updater assets)
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Existing release tag (e.g. v1.0.2) — must already have a GitHub Release"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+
+jobs:
+  preflight:
+    name: Updater preflight
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.inputs.release_tag }}
+          fetch-depth: 0
+
+      - name: Require signing secret
+        run: |
+          if [ -z "${TAURI_SIGNING_PRIVATE_KEY}" ]; then
+            echo "::error::Set TAURI_SIGNING_PRIVATE_KEY in repo Secrets before running this workflow."
+            exit 1
+          fi
+
+      - name: Release preflight
+        env:
+          CLUTCH_RELEASE_TAG: ${{ github.event.inputs.release_tag }}
+        run: ./scripts/release-preflight.sh
+
+  build-macos-updater:
+    name: macOS updater bundles
+    needs: preflight
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.inputs.release_tag }}
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 9.15.0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        env:
+          UV_PYTHON_PREFERENCE: only-managed
+        run: |
+          uv python install 3.11
+          pnpm install --frozen-lockfile
+          cd services/orchestrator && uv sync --extra dev
+
+      - name: Build macOS bundles
+        working-directory: apps/desktop
+        run: pnpm tauri build --target aarch64-apple-darwin
+
+      - name: Prepare updater manifest (macOS)
+        env:
+          CLUTCH_RELEASE_TAG: ${{ github.event.inputs.release_tag }}
+        run: |
+          version="${CLUTCH_RELEASE_TAG#v}"
+          bundle_dir="apps/desktop/src-tauri/target/aarch64-apple-darwin/release/bundle/macos"
+          tar_gz="$(ls "$bundle_dir"/*.app.tar.gz | head -1)"
+          sig_file="${tar_gz}.sig"
+          asset_name="$(basename "$tar_gz")"
+          url="https://github.com/${{ github.repository }}/releases/download/${CLUTCH_RELEASE_TAG}/${asset_name}"
+          chmod +x scripts/merge-updater-manifest.sh
+          ./scripts/merge-updater-manifest.sh latest.json darwin-aarch64 "$url" "$sig_file" "$version"
+
+      - name: Upload macOS updater assets
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ github.event.inputs.release_tag }}
+          files: |
+            apps/desktop/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/*.app.tar.gz
+            apps/desktop/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/*.sig
+            latest.json

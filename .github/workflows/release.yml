@@ -1,5 +1,6 @@
 # Build unsigned macOS DMG on version tags and attach to GitHub Release.
 # OSR-12 · signing (OSR-11) deferred per DECISIONS D31.
+# Updater / Windows assets: see release-updater.yml (manual only until OSR-20 go-live).
 name: Release
 
 on:

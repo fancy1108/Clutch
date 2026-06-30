@@ -5,29 +5,36 @@
 
 ## Current Status
 
+- **阶段：** v1.0.2 集成完成 — **`dev` 已合 updater**；待 QA → bump → tag
+- **Git HEAD（dev）：** Windows（`main`）+ Updater + #18 + Rivet/tools；本地 ahead，未 push
 
-- **阶段：** v1.0.2 筹备中 — **Windows + Updater** 合入后发 tag；Loop 推迟 **v1.0.3**
-- **Git HEAD（dev）：** 含 #17 Windows + #21 docs（本地 ahead，未 push）
+### v1.0.2 范围（已定）
 
-### v1.0.2 范围
-
-| 分支 | worktree | 切片 | 状态 |
-|------|----------|------|------|
-| **`dev`** | `/Users/fancy/clutch` | 集成 | 待合 updater |
-| `release/1.0.2-windows` | `clutch-release-1.0.2-windows` | Windows（#17） | ✅ 已合 `main` |
-| `release/1.0.2-updater` | `clutch-release-1.0.2-updater` | OSR-20 应用内更新 | ✅ prep commit |
-| `release/1.0.3-loop` | `clutch-release-1.0.3-loop` | Loop | **v1.0.3** |
+| 切片 | 状态 |
+|------|------|
+| Windows（#17，PR #17） | ✅ 已在 `main` |
+| OSR-20 应用内更新 | ✅ 已合入 `dev` |
+| #18 Sidecar 生命周期（`lib.rs`） | ✅ 在 `dev` |
+| Rivet CLI + Tools 白名单扩展 | ✅ 在 `dev`（进 1.0.2） |
+| Loop | **v1.0.3**（`release/1.0.3-loop`） |
 
 ## Next Actions
 
-- **`release/1.0.2-updater`：** 合入 `dev`（含 #18 sidecar 生命周期 fix，`lib.rs`）→ 统一 QA → tag **v1.0.2**
-- **Go-live updater：** 发版后 `docs/UPDATES.md` §3
-- **v1.0.2 发版后 · GitHub [#18](https://github.com/fancy1108/Clutch/issues/18)：** 回复说明已在 v1.0.2 修复（`Reopen` 恢复窗口、`Exit` 清理 sidecar、启动清理残留 orchestrator）；去掉 `needs-info`；关闭 Issue 并引用 release tag
-- **`release/1.0.3-loop`：** v1.0.3 发版时合入 `dev`
-- **GitHub Bug 待办：** **#18** fix 已写 `lib.rs`（待发 v1.0.2 后关 Issue）· **#19** 仍 open；#20 用法咨询已回复
-- **候选池：** **B-33** Epicode MCP 工作流示例 ← [PR #22](https://github.com/fancy1108/Clutch/pull/22)（仅登记，非承诺）
+- [ ] `./scripts/verify.sh`
+- [ ] DMG smoke：#18 五条（Dock 恢复 / Cmd+Q 清 sidecar / 残留自清理）
+- [ ] `CHANGELOG.md` → `## [1.0.2]` · bump 版本号 · `release-preflight.sh` · tag **v1.0.2**
+- [ ] Go-live updater：`docs/UPDATES.md` §3
+- [ ] 发版后关 GitHub [#18](https://github.com/fancy1108/Clutch/issues/18)
+- **GitHub Bug：** **#19** 仍 open · #20 已回复
+- **候选池：** **B-33** ← PR #22（非承诺）
 
 ## Recent Sessions
+
+## 2026-06-30 会话（v1.0.2 集成）
+
+- **Rivet/tools** 纳入 v1.0.2（用户确认）
+- **`release/1.0.2-updater`** 合入 `dev`（OSR-20 + #18 `lib.rs`）
+- **下次优先：** verify + DMG smoke → tag v1.0.2
 
 ## 2026-06-30 会话（GitHub triage）
 

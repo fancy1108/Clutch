@@ -21,6 +21,15 @@ export const ALERT_SUCCESS =
 export const ALERT_INFO =
   'text-xs text-neutral-700 bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2';
 
+/** Full-width app banner below Header — UI_UX_GUIDELINES §4.4 info feedback */
+export const BANNER_INFO =
+  'flex items-center justify-between gap-4 px-4 py-2.5 bg-surface-container-low/95 backdrop-blur-md border-b border-outline-variant/30 text-on-surface shadow-sm';
+
+export const BANNER_PROGRESS_TRACK =
+  'h-1.5 max-w-[220px] flex-1 rounded-full bg-outline-variant/60 overflow-hidden';
+
+export const BANNER_PROGRESS_FILL = 'h-full rounded-full bg-primary origin-left';
+
 export const BADGE_SUCCESS =
   'text-[9px] uppercase font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded';
 
