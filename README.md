@@ -80,6 +80,12 @@ clutch/
 | [`docs/INSTALL.md`](./docs/INSTALL.md) · [`docs/BUILD_FROM_SOURCE.md`](./docs/BUILD_FROM_SOURCE.md) | 安装 DMG · 源码构建 |
 | [`docs/OPEN_SOURCE_RELEASE.md`](./docs/OPEN_SOURCE_RELEASE.md) | 开源排期 OSR-xx |
 
+### MCP Server 接入（`docs/mcp-servers/`）
+
+| 文件 | 用途 |
+|------|------|
+| [`docs/mcp-servers/epicode.md`](./docs/mcp-servers/epicode.md) | Epicode 持久记忆 MCP 接入指南——让你的 Agent 获得跨会话记忆 + 工作流内知识共享 |
+
 ### Agent 运行态（`memory/`）
 
 | 文件 | 用途 |
