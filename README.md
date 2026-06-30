@@ -99,7 +99,7 @@ clutch/
 | macOS 14+（Apple Silicon） | ✅ 官方主要目标 |
 | macOS 14+（Intel） | ⚠️ 尽力支持，未充分测试 |
 | macOS 13 及更早 | ⚠️ 不保证 |
-| Windows 10/11（x64） | ✅ 支持 MSI / NSIS 安装包 |
+| Windows 10/11（x64） | ⚠️ 提供 MSI / NSIS；**CI 构建已通过，维护者尚未在实体机完整验收** |
 | Linux | 🚧 无官方安装包 |
 
 ### 开发工具链（源码构建）
@@ -160,7 +160,7 @@ pnpm install
 
 ### Windows 安装
 
-下载 `Clutch_*_x64-setup.exe`（向导安装）或 `Clutch_*_x64_en-US.msi`。当前构建未进行 Windows 代码签名；若 SmartScreen 提示未知发布者，请确认安装包来源与 SHA-256 后选择继续。应用安装到 `C:\Program Files\Clutch`，数据保存在 `%APPDATA%\clutch`，API Key 使用 Windows 凭据管理器。
+下载 `Clutch_*_x64-setup.exe`（向导安装）或 `Clutch_*_x64_en-US.msi`（若 Release 提供）。当前构建未进行 Windows 代码签名；若 SmartScreen 提示未知发布者，请确认安装包来源与 SHA-256 后选择继续。**v1.0.2 起：** Windows 包由 CI 构建；维护者尚未在实体 Win10/11 上完成完整人工 smoke，欢迎通过 Issue 反馈。应用安装到 `C:\Program Files\Clutch`，数据保存在 `%APPDATA%\clutch`，API Key 使用 Windows 凭据管理器。
 
 ### 从源码构建（开发者）
 

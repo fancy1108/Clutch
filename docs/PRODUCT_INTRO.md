@@ -201,6 +201,8 @@ pnpm tauri build
 ```
 编译成功后，生产版自动内嵌 Sidecar Python 运行环境，并按当前平台输出 `.dmg`、`.msi` 或 NSIS `.exe` 安装包。桌面壳启动时会清理残留的 Sidecar 进程；**Cmd+Q** 完全退出时终止内嵌 `orchestrator`；macOS 在仅关闭窗口后点击 Dock 图标可重新显示主窗口。
 
+**Windows（v1.0.2+）：** MSI / NSIS 由 CI 构建；维护者尚未在实体 Win10/11 上完成完整人工 smoke，详见 Release 说明与 [`docs/INSTALL.md`](./INSTALL.md#windows)。
+
 ---
 
 *本文档基于最新的前后端实现编写。关联架构设计详述见 [系统架构文档](./ARCHITECTURE.md)；文件定位见 [FILEMAP.md](../memory/FILEMAP.md)。*

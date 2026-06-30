@@ -52,3 +52,18 @@ shasum -a 256 -c SHA256SUMS.txt
 ---
 
 **English (short):** This DMG is **unsigned**. Gatekeeper warnings are expected. Right-click → Open, or run `xattr -cr /Applications/Clutch.app && open -a Clutch` once.
+
+---
+
+## ⚠️ Windows 安装包 — 测试范围说明
+
+自 **v1.0.2** 起提供 Windows 10/11 x64 **MSI** 与 **NSIS (.exe)** 安装包（若本 Release 附件中有 `*-setup.exe` / `*.msi`）。
+
+| 项 | 说明 |
+|----|------|
+| **CI** | GitHub Actions `Windows Build` workflow 构建并通过 pytest / 打包 |
+| **人工验收** | **维护者尚未在实体 Win10/11 上完成完整 smoke**（Chat、Hybrid、Tools 等） |
+| **代码签名** | 当前**未** Windows 代码签名；SmartScreen 可能提示「未知发布者」——请先核对 SHA-256 与 Release 来源 |
+| **反馈** | 欢迎 [提交 Issue](https://github.com/fancy1108/Clutch/issues/new/choose) 标注平台与安装包文件名 |
+
+**English (short):** Windows installers are **CI-built** but **not yet fully smoke-tested by maintainers on physical hardware**. Verify checksums; report issues on GitHub.

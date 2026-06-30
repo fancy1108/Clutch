@@ -38,7 +38,11 @@
 
 ### Windows
 
-下载 `Clutch_*_x64-setup.exe`（推荐）或 `Clutch_*_x64_en-US.msi` 并按向导安装。当前安装包未进行 Windows 代码签名；SmartScreen 提示“未知发布者”时，请先核对下载来源和 SHA-256，再选择“更多信息 → 仍要运行”。安装后从开始菜单启动 Clutch。
+下载 `Clutch_*_x64-setup.exe`（推荐）或 `Clutch_*_x64_en-US.msi` 并按向导安装（**自 v1.0.2 起**；Release 页若未附 Windows 资产，见 [Actions → Windows Build](https://github.com/fancy1108/Clutch/actions/workflows/windows-build.yml) 或维护者说明）。当前安装包未进行 Windows 代码签名；SmartScreen 提示“未知发布者”时，请先核对下载来源和 SHA-256，再选择“更多信息 → 仍要运行”。
+
+> **测试范围：** Windows 安装包由 GitHub CI 构建并通过自动化测试；**维护者尚未在实体 Windows 10/11 上完成完整人工验收**。遇到问题请 [提交 Issue](https://github.com/fancy1108/Clutch/issues/new/choose) 并注明安装包文件名与 Windows 版本。
+
+安装后从开始菜单启动 Clutch。
 
 ---
 
