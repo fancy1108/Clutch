@@ -65,9 +65,26 @@
 | B-30 | 内置 web_search | 候选 | 人类确认 |
 | B-31 | request_permissions 运行时扩权 | 候选 | B-21/B-22 后 |
 | B-32 | apply_patch 流式 diff 事件 | 候选 | B-23 后 |
+| B-33 | 第三方 MCP 记忆工作流示例（Epicode：`workflows/` 模板 + `docs/mcp-servers/` 接入指南） | 候选 | 人类确认；外部 [PR #22](https://github.com/fancy1108/Clutch/pull/22)（无 core 改动，未承诺合并） |
 
 > **D21 已落地：** `clutch-tools__apply_patch` — 勿重复立项。  
-> **D25 已升格 HRT：** 审计 HRT-05~07 · 并发 HRT-08~10 — 见 [`specs/core/hybrid-runtime-plan.md`](../specs/core/hybrid-runtime-plan.md)。
+> **D25 已升格 HRT：** 审计 HRT-05~07 · 并发 HRT-08~10 — 见 [`specs/core/hybrid-runtime-plan.md`](../specs/core/hybrid-runtime-plan.md)。  
+> **B-33 备注：** 与 B-10（内置 BM25 跨 run 记忆）路径不同；Epicode 走 MCP 扩展点。PR 已 triage review，**仅入池，非开发承诺**。
+
+---
+
+## GitHub Issues · 待修复 Bug
+
+> **来源：** 用户反馈 triage（2026-06-30）。暂不开发，仅登记；修复后关 Issue 并移入 Completed 索引。
+
+| Issue | 标题 | 根因摘要 | 建议修复 | 优先级 | 改动面 |
+|-------|------|----------|----------|--------|--------|
+| [#18](https://github.com/fancy1108/Clutch/issues/18) | 关闭后重启失败，需到应用程序才能打开 | macOS：Dock 再点「已启动」无窗口；退出后残留 `orchestrator` 占 8123。**与 DMG 安装后需 `killall` 同源** | **Fix 已写** `lib.rs`：`Reopen` · `Exit` kill sidecar · 启动 `prepare_sidecar_launch`。**v1.0.2 发版后关 Issue** | **P1** · **fix ready** | Tauri Rust |
+| [#19](https://github.com/fancy1108/Clutch/issues/19) | Claude CLI 529 报错 + 文案重复 | **529 / `172.21.0.18:8317`**：上游推理网关过载，非 Clutch 根因。**重复前缀**：`_route_generic_cli_legacy` 与 `_route_engine_raw` 双层 `RuntimeError` 包装（hybrid fallback → legacy） | `engine_router.py`：外层 catch 跳过已包装 `RuntimeError`；529/5xx 展示「网关繁忙」+ 原始 CLI 详情 | **P2** | Python sidecar |
+
+**#19 用户侧：** 终端直跑 `claude -p "hello"` 验证；检查网关负载或稍后重试。
+
+**#18 复现前向用户追问：** 只关窗口还是 Cmd+Q？第二次点 Dock 还是 Applications？活动监视器是否残留 `Clutch` / `orchestrator`？
 
 ---
 

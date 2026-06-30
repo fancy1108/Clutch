@@ -6,18 +6,34 @@
 ## Current Status
 
 
-- **阶段：** 维护期 — v1.0.0 已发布；D25 Hybrid + Flow 精修已落地
-- **Git HEAD：** `ee91743`（工作区含 OSR-16/17 未 commit）
-- **里程碑：** T2 开源分发 — OSR-12～17 ✅（权威：`memory/ROADMAP.md` §开源分发）
-- **v1.0.0 Release：** ✅ [DMG + SHA256SUMS](https://github.com/fancy1108/Clutch/releases/tag/v1.0.0)
+- **阶段：** v1.0.2 筹备中 — **Windows + Updater** 合入后发 tag；Loop 推迟 **v1.0.3**
+- **Git HEAD（dev）：** 含 #17 Windows + #21 docs（本地 ahead，未 push）
 
+### v1.0.2 范围
+
+| 分支 | worktree | 切片 | 状态 |
+|------|----------|------|------|
+| **`dev`** | `/Users/fancy/clutch` | 集成 | 待合 updater |
+| `release/1.0.2-windows` | `clutch-release-1.0.2-windows` | Windows（#17） | ✅ 已合 `main` |
+| `release/1.0.2-updater` | `clutch-release-1.0.2-updater` | OSR-20 应用内更新 | ✅ prep commit |
+| `release/1.0.3-loop` | `clutch-release-1.0.3-loop` | Loop | **v1.0.3** |
 
 ## Next Actions
 
-- **HRT-F** 多 session 并发人工验收（`ROADMAP.md` §D25）
-- **OSR-11** Apple 签名 + 公证（D31 可豁免，按需）
+- **`release/1.0.2-updater`：** 合入 `dev`（含 #18 sidecar 生命周期 fix，`lib.rs`）→ 统一 QA → tag **v1.0.2**
+- **Go-live updater：** 发版后 `docs/UPDATES.md` §3
+- **v1.0.2 发版后 · GitHub [#18](https://github.com/fancy1108/Clutch/issues/18)：** 回复说明已在 v1.0.2 修复（`Reopen` 恢复窗口、`Exit` 清理 sidecar、启动清理残留 orchestrator）；去掉 `needs-info`；关闭 Issue 并引用 release tag
+- **`release/1.0.3-loop`：** v1.0.3 发版时合入 `dev`
+- **GitHub Bug 待办：** **#18** fix 已写 `lib.rs`（待发 v1.0.2 后关 Issue）· **#19** 仍 open；#20 用法咨询已回复
+- **候选池：** **B-33** Epicode MCP 工作流示例 ← [PR #22](https://github.com/fancy1108/Clutch/pull/22)（仅登记，非承诺）
 
 ## Recent Sessions
+
+## 2026-06-30 会话（GitHub triage）
+
+- **PR #22** → **B-33** 写入 `BACKLOG.md` Active 候选池（非待办、非 merge 决策）
+- **#18 / #19** — Issue 评论已发；Bug 登记见 BACKLOG §待修复 Bug
+- **#20** — 用法咨询已回复
 
 ## 2026-06-29 会话 26（OSR-16/17 · Release 硬化）
 

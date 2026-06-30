@@ -1,15 +1,14 @@
 //! Tauri shell — dev: `uv run uvicorn`; release: PyInstaller sidecar (M0-05 / M4-06).
 
 use std::net::TcpStream;
+use std::path::PathBuf;
 use std::sync::Mutex;
 use std::thread;
 use std::time::{Duration, Instant};
 
-use tauri::Manager;
+use tauri::{AppHandle, Manager, RunEvent};
 use tauri_plugin_shell::ShellExt;
 
-#[cfg(debug_assertions)]
-use std::path::PathBuf;
 #[cfg(debug_assertions)]
 use std::process::{Command, Stdio};
 #[cfg(not(debug_assertions))]
@@ -50,6 +49,54 @@ fn clutch_cpu_arch() -> String {
 const SIDECAR_PORT: u16 = 8124;
 #[cfg(not(debug_assertions))]
 const SIDECAR_PORT: u16 = 8123;
+
+fn bundle_sidecar_path() -> Option<PathBuf> {
+    let exe = std::env::current_exe().ok()?;
+    let macos_dir = exe.parent()?;
+    let sidecar = macos_dir.join("orchestrator");
+    if sidecar.is_file() {
+        Some(sidecar)
+    } else {
+        None
+    }
+}
+
+/// Release builds: kill orphaned sidecar processes from a prior crash or incomplete quit.
+#[cfg(not(debug_assertions))]
+fn kill_stale_bundle_sidecars() {
+    let Some(sidecar) = bundle_sidecar_path() else {
+        return;
+    };
+
+    #[cfg(target_os = "macos")]
+    {
+        let path = sidecar.to_string_lossy().into_owned();
+        let _ = std::process::Command::new("pkill")
+            .args(["-f", &path])
+            .status();
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        if let Some(name) = sidecar.file_name().and_then(|n| n.to_str()) {
+            let _ = std::process::Command::new("taskkill")
+                .args(["/IM", name, "/F"])
+                .status();
+        }
+    }
+
+    thread::sleep(Duration::from_millis(200));
+}
+
+#[cfg(debug_assertions)]
+fn kill_stale_bundle_sidecars() {}
+
+fn prepare_sidecar_launch(port: u16) {
+    kill_stale_bundle_sidecars();
+    free_sidecar_port(port);
+    thread::sleep(Duration::from_millis(200));
+    free_sidecar_port(port);
+}
 
 fn free_sidecar_port(port: u16) {
     #[cfg(target_os = "macos")]
@@ -106,7 +153,7 @@ pub fn run() {
 
     builder
         .setup(|app| {
-            free_sidecar_port(SIDECAR_PORT);
+            prepare_sidecar_launch(SIDECAR_PORT);
             let token = uuid::Uuid::new_v4().to_string();
             app.manage(SidecarAuthState {
                 token: token.clone(),
@@ -116,8 +163,49 @@ pub fn run() {
             wait_for_sidecar_port(SIDECAR_PORT, Duration::from_secs(60))?;
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while running tauri application")
+        .run(handle_run_event);
+}
+
+fn handle_run_event(app: &AppHandle, event: RunEvent) {
+    match event {
+        RunEvent::ExitRequested { .. } => terminate_sidecar(app),
+        RunEvent::Exit => {
+            terminate_sidecar(app);
+            free_sidecar_port(SIDECAR_PORT);
+        }
+        #[cfg(target_os = "macos")]
+        RunEvent::Reopen { .. } => focus_main_window(app),
+        _ => {}
+    }
+}
+
+fn terminate_sidecar(app: &AppHandle) {
+    let state = app.state::<SidecarState>();
+    let mut guard = state.0.lock().unwrap();
+    let Some(child) = guard.take() else {
+        return;
+    };
+
+    match child {
+        #[cfg(debug_assertions)]
+        SidecarChild::Dev(mut child) => {
+            let _ = child.kill();
+        }
+        #[cfg(not(debug_assertions))]
+        SidecarChild::Release(child) => {
+            let _ = child.kill();
+        }
+    }
+}
+
+fn focus_main_window(app: &AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.unminimize();
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
 }
 
 fn spawn_sidecar(app: &tauri::AppHandle, token: &str) -> Result<SidecarChild, String> {
