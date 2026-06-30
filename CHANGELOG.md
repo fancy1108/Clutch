@@ -28,6 +28,7 @@ Minor release — **Windows installers**, **in-app updates (macOS)**, **macOS si
 ### Fixed
 
 - **macOS restart / Dock (#18):** Tauri shell kills sidecar on exit, clears stale `orchestrator` on launch, and restores the main window on Dock reopen after closing the window (red button).
+- **Rivet CLI (nvm/npm):** Sidecar prepends Rivet’s `bin` directory to `PATH` so `#!/usr/bin/env node` works when the packaged app lacks nvm in its environment (exit 127).
 
 ### Changed (packaging)
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import shlex
 import subprocess
 import threading
 import time
@@ -129,12 +130,32 @@ def is_rivet_binary(binary: str) -> bool:
     return binary.rsplit("/", 1)[-1] in _RIVET_BINARY_NAMES
 
 
+def _prepend_dir_to_path(env: dict[str, str], directory: str) -> None:
+    if not directory:
+        return
+    existing = env.get("PATH", "")
+    parts = existing.split(os.pathsep) if existing else []
+    if directory not in parts:
+        env["PATH"] = directory + (os.pathsep + existing if existing else "")
+
+
+def rivet_path_export_prefix(binary: str) -> str:
+    """Hybrid shell prefix: npm/nvm Rivet scripts use ``#!/usr/bin/env node``."""
+    if not is_rivet_binary(binary):
+        return ""
+    bin_dir = os.path.dirname(os.path.abspath(binary))
+    if not bin_dir:
+        return ""
+    return f"export PATH={shlex.quote(bin_dir)}:$PATH; "
+
+
 def _cli_subprocess_env(command: list[str]) -> dict[str, str] | None:
     """Headless Rivet requires RIVET_FORCE_RECOVERY_CLI when Clutch spawns subprocesses."""
     if not command or not is_rivet_binary(command[0]):
         return None
     env = os.environ.copy()
     env["RIVET_FORCE_RECOVERY_CLI"] = "1"
+    _prepend_dir_to_path(env, os.path.dirname(os.path.abspath(command[0])))
     return env
 
 

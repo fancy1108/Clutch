@@ -209,10 +209,21 @@ def test_is_rivet_binary() -> None:
 
 def test_cli_subprocess_env_sets_rivet_force_recovery(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("RIVET_FORCE_RECOVERY_CLI", raising=False)
+    monkeypatch.setenv("PATH", "/usr/bin")
     env = _cli_subprocess_env(["/opt/homebrew/bin/rivet", "-p", "hi"])
     assert env is not None
     assert env["RIVET_FORCE_RECOVERY_CLI"] == "1"
+    assert env["PATH"].startswith("/opt/homebrew/bin:")
     assert _cli_subprocess_env(["claude", "-p", "hi"]) is None
+
+
+def test_rivet_path_export_prefix() -> None:
+    from src.adapters.cli_adapter import rivet_path_export_prefix
+
+    prefix = rivet_path_export_prefix("/Users/fancy/.nvm/versions/node/v24.16.0/bin/rivet")
+    assert prefix.startswith("export PATH=")
+    assert "/Users/fancy/.nvm/versions/node/v24.16.0/bin" in prefix
+    assert rivet_path_export_prefix("claude") == ""
 
 
 def test_run_cli_tolerates_rivet_exit_one_with_stdout() -> None:

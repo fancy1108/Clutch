@@ -9,7 +9,12 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Literal
 
-from src.adapters.cli_adapter import format_cli_issue_for_user, is_cli_auth_issue, is_rivet_binary
+from src.adapters.cli_adapter import (
+    format_cli_issue_for_user,
+    is_cli_auth_issue,
+    is_rivet_binary,
+    rivet_path_export_prefix,
+)
 from src.claude_hybrid_output_parser import (
     ClaudeHybridOutputParser,
     extract_cli_issue_message,
@@ -361,7 +366,9 @@ def _build_generic_cli_shell_cmd(
     line = " ".join(parts)
     if close_stdin:
         line = f"{line} </dev/null"
-    rivet_prefix = "RIVET_FORCE_RECOVERY_CLI=1; " if is_rivet_binary(binary) else ""
+    rivet_prefix = ""
+    if is_rivet_binary(binary):
+        rivet_prefix = f"{rivet_path_export_prefix(binary)}RIVET_FORCE_RECOVERY_CLI=1; "
     return (
         f"{rivet_prefix}"
         f"CLUTCH_P={_shell_quote(effective)}; "

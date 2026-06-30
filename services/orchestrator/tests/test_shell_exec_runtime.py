@@ -72,7 +72,8 @@ def test_build_generic_cli_shell_cmd_sets_rivet_force_recovery() -> None:
         conversation_mode="none",
         prompt_flag="-p",
     )
-    assert cmd.startswith("RIVET_FORCE_RECOVERY_CLI=1; CLUTCH_P='hello';")
+    assert cmd.startswith("export PATH=")
+    assert "RIVET_FORCE_RECOVERY_CLI=1; CLUTCH_P='hello';" in cmd
     assert 'rivet -p "$CLUTCH_P"' in cmd
 
 
