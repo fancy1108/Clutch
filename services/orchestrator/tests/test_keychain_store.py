@@ -103,6 +103,12 @@ def test_use_keychain_respects_env_override(monkeypatch: pytest.MonkeyPatch) -> 
     assert use_keychain() is False
 
 
+def test_use_keychain_defaults_on_windows(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("CLUTCH_USE_KEYCHAIN", raising=False)
+    monkeypatch.setattr(keychain_store.sys, "platform", "win32")
+    assert use_keychain() is True
+
+
 def test_get_provider_key_logs_keychain_failure_without_crashing(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

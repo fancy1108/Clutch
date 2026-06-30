@@ -30,6 +30,18 @@ def _shell_binary() -> str:
         Path(git).resolve().parents[1] / "bin" / "bash.exe" if git else None,
         Path(os.environ.get("ProgramFiles", "C:/Program Files")) / "Git" / "bin" / "bash.exe",
     ]
+    try:
+        import winreg
+
+        for hive in (winreg.HKEY_CURRENT_USER, winreg.HKEY_LOCAL_MACHINE):
+            try:
+                with winreg.OpenKey(hive, r"SOFTWARE\GitForWindows") as key:
+                    install_path, _ = winreg.QueryValueEx(key, "InstallPath")
+                    candidates.append(Path(install_path) / "bin" / "bash.exe")
+            except OSError:
+                continue
+    except ImportError:  # pragma: no cover - guarded by os.name
+        pass
     for candidate in candidates:
         if candidate and candidate.is_file():
             return str(candidate)

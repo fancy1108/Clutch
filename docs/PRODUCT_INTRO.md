@@ -12,10 +12,10 @@
 
 ### 1.1 核心价值主张
 - **通用多 Agent 画布编排 (Generic Multi-Agent Orchestration)**：用户通过可视化拖拽连线定义工作流，支持在各节点灵活指定不同的 Agent 角色与任务说明，运行时由编排引擎自动编译为 LangGraph 状态机并处理输入输出接力。
-- **本地工具生态打通 (Local AI Tool Integration)**：自动扫描本地开发环境并无缝接入各种主流的本地 AI 命令行工具（CLI，如 Claude Code, Aider, Ollama 等）及 macOS 客户端，打破云端与本地的边界。
+- **本地工具生态打通 (Local AI Tool Integration)**：自动扫描 macOS / Windows 本地环境并接入 Claude Code、Codex、Aider、Ollama 等 CLI，打破云端与本地的边界。
 - **全流程透明监督 (Console Observability)**：打破 AI 执行的“黑盒”，在统一的控制台界面中展示多角色 Chat 流、流式子进程终端日志、Git 代码变更与 Diff、Flow 进度图以及工作区文件树。
 - **人机协同门控 (Human-in-the-Loop)**：在关键检查失败或敏感操作节点，图会自动挂起，由人类进行 Approve（批准强制通过）、Reject（打回）或 Retry（带补充指令重试）。
-- **本地优先 (Local First)**：应用完全运行于本地；API Key 保存在 macOS **Keychain**（模型元数据在 `models.json`），不经 Clutch 自有云端上传。
+- **本地优先 (Local First)**：应用完全运行于本地；API Key 保存在 macOS **Keychain** 或 Windows **凭据管理器**（模型元数据在 `models.json`），不经 Clutch 自有云端上传。
 
 **首次体验**：安装后首次启动会进入全屏设置向导（工作区授权 → 云模型或本地 CLI 二选一 → Flow 入口引导 → 权限说明），完成后写入 `onboarding_completed` 偏好，重启不再出现；Settings 仍可手动调整各项配置。
 
@@ -74,7 +74,7 @@ graph TD
 ```
 
 1. **前端 (React 19 + Tailwind CSS 4 + Motion + React Flow)**：提供高保真三栏式工作台，负责工作流可视化编辑、运行态投影渲染及捕获用户人工审批决策。
-2. **后端 (FastAPI + LangGraph Python Sidecar)**：运行于 `localhost:8123`，作为唯一的真理源 (SSOT) 控制状态跳转。`WorkflowCompiler` 将画布导出的 JSON 动态编译成 LangGraph 可执行图。打包发行版默认关闭 debug 导出 API 与 OpenAPI 文档（维护者可设 `CLUTCH_DEBUG_API=1`）；Tauri WebView 启用 Content-Security-Policy 限制外连与脚本来源。DMG 内嵌 Sidecar 启用 loopback 会话令牌（OSR-08）：WebView 经 Tauri IPC 获取 Bearer token 后访问 `/api/*`；Models Config 等面板在 Sidecar 不可达、未授权或后端错误时会显示区分性提示（而非一律「无法连接」）。
+2. **后端 (FastAPI + LangGraph Python Sidecar)**：运行于 `localhost:8123`，作为唯一的真理源 (SSOT) 控制状态跳转。`WorkflowCompiler` 将画布导出的 JSON 动态编译成 LangGraph 可执行图。打包发行版默认关闭 debug 导出 API 与 OpenAPI 文档（维护者可设 `CLUTCH_DEBUG_API=1`）；Tauri WebView 启用 Content-Security-Policy 限制外连与脚本来源。DMG / MSI / NSIS 内嵌 Sidecar 启用 loopback 会话令牌（OSR-08）：WebView 经 Tauri IPC 获取 Bearer token 后访问 `/api/*`；Models Config 等面板在 Sidecar 不可达、未授权或后端错误时会显示区分性提示（而非一律「无法连接」）。
 3. **通信机制**：前后端通过 WebSocket 实时更新全局状态 `ClutchState`（采用 `state_patch` 增量推送）。
 
 ---
@@ -195,11 +195,11 @@ uv run uvicorn src.main:app --reload --port 8124
 ./scripts/verify.sh --e2e
 ```
 
-### 5.4 桌面端打包 (Build DMG)
+### 5.4 桌面端打包 (Build DMG / Windows installers)
 ```bash
 pnpm tauri build
 ```
-编译打包成功后，生产版会自动内嵌 Sidecar Python 运行环境，输出双击可安装的 `.dmg` 桌面应用程序。
+编译成功后，生产版自动内嵌 Sidecar Python 运行环境，并按当前平台输出 `.dmg`、`.msi` 或 NSIS `.exe` 安装包。
 
 ---
 

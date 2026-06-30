@@ -1,6 +1,6 @@
-# Clutch — 安装指南（macOS）
+# Clutch — 安装指南（macOS / Windows）
 
-> **受众**：从 GitHub Releases 下载 DMG 的终端用户（非源码构建）。  
+> **受众**：从 GitHub Releases 下载安装包的终端用户（非源码构建）。
 > **开发者**：见 [`BUILD_FROM_SOURCE.md`](./BUILD_FROM_SOURCE.md)。  
 > **隐私**：见 [`DATA_AND_PRIVACY.md`](./DATA_AND_PRIVACY.md)。
 
@@ -10,7 +10,7 @@
 
 | 项 | 要求 |
 |----|------|
-| 操作系统 | **macOS 14+**（Apple Silicon 为主要目标；Intel 尽力支持） |
+| 操作系统 | **macOS 14+** 或 **Windows 10/11 x64** |
 | 磁盘 | 建议 ≥ 500 MB 可用空间（含 Sidecar 与本地状态） |
 | 网络 | 使用云端 LLM 时需联网；Ollama / 纯本地 CLI 可离线 |
 | 可选 CLI | Claude Code、Codex、Ollama、Aider 等 — 在 Settings → Tools 中连接 |
@@ -35,6 +35,10 @@
 3. 打开 DMG，将 **Clutch** 拖入 **Applications**
 
 当前发布包为**未签名**构建（见 [`memory/DECISIONS.md`](../memory/DECISIONS.md) **D31**）。获得 Apple Developer 账号后可升级为签名/公证版本（OSR-11）。
+
+### Windows
+
+下载 `Clutch_*_x64-setup.exe`（推荐）或 `Clutch_*_x64_en-US.msi` 并按向导安装。当前安装包未进行 Windows 代码签名；SmartScreen 提示“未知发布者”时，请先核对下载来源和 SHA-256，再选择“更多信息 → 仍要运行”。安装后从开始菜单启动 Clutch。
 
 ---
 
@@ -119,6 +123,7 @@ curl -sX POST http://localhost:8124/api/preferences/onboarding-complete
 |------|------|
 | DMG 安装版 | `~/Library/Application Support/clutch/` |
 | 源码开发版 | `~/Library/Application Support/clutch_dev/` |
+| Windows 安装版 | `%APPDATA%\clutch\` |
 
 可通过环境变量 `CLUTCH_STORAGE_DIR`（绝对路径）覆盖。
 
@@ -152,6 +157,8 @@ rm -rf ~/Library/Application\ Support/clutch/
 ```
 
 卸载不会删除你授权工作区内的项目文件。
+
+Windows 用户通过 **设置 → 应用 → 已安装的应用 → Clutch → 卸载**；如需清除本地状态，再删除 `%APPDATA%\clutch`。API Key 位于 Windows 凭据管理器中，可按服务名 `com.clutch.app` 删除。
 
 ---
 
