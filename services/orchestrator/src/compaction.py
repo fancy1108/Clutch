@@ -10,6 +10,16 @@ from src.preferences_storage import tr
 
 logger = logging.getLogger("clutch.compaction")
 
+_CRITICAL_STATUSES = {"approval_required", "awaiting_human", "error", "failed", "rejected"}
+_CRITICAL_EVENT_TYPES = {
+    "file_changed", "human_required", "tool", "tool_call", "tool_result", "validation_result"
+}
+_CRITICAL_TEXT_MARKERS = (
+    "checks failed", "execution error", "human approval:", "requires your approval", "tool result",
+    "人工审批：", "需要您批准", "检查未通过", "执行错误", "工具结果",
+)
+
+
 def get_archive_dir() -> Path:
     from src.workspace import get_workspace
     workspace = get_workspace()
@@ -23,6 +33,73 @@ def get_archive_dir() -> Path:
 
 def _estimate_tokens(text: str) -> int:
     return max(1, len(text.split()))
+
+
+def _is_critical_message(message: dict[str, Any]) -> bool:
+    """Return whether a message contains trajectory details compaction must retain."""
+    status = str(message.get("status") or "").strip().lower()
+    event_type = str(
+        message.get("event") or message.get("type") or message.get("kind") or ""
+    ).strip().lower()
+    badge = str(message.get("badgeText") or message.get("badge_text") or "").lower()
+    output_events = message.get("outputEvents") or message.get("output_events") or []
+    text = str(message.get("text") or "").lower()
+    return bool(message.get("approvalKey") or message.get("approval_key")) or any((
+        status in _CRITICAL_STATUSES,
+        event_type in _CRITICAL_EVENT_TYPES,
+        any(marker in badge for marker in ("approval", "error", "fail", "validation", "审批", "失败")),
+        isinstance(output_events, list) and any(
+            isinstance(event, dict) and str(event.get("type") or "").lower() in {"tool", "stderr"}
+            for event in output_events
+        ),
+        any(marker in text for marker in _CRITICAL_TEXT_MARKERS),
+    ))
+
+
+def _build_critical_context(
+    state: ClutchState,
+    messages: list[dict[str, Any]],
+) -> list[str]:
+    """Build deterministic context lines that must survive LLM summarization."""
+    lines: list[str] = []
+    status = str(state.get("status") or "").strip()
+    if status and status != "idle":
+        state_parts = [f"status={status}"]
+        state_parts.extend(
+            f"{label}={value}" for label, value in (
+                ("active_node", state.get("active_node_id")),
+                ("active_agent", state.get("active_agent")),
+            ) if value
+        )
+        lines.append("[workflow_state] " + "; ".join(state_parts))
+
+    changed_files = list(dict.fromkeys(
+        str(path).strip() for path in state.get("changed_files", []) if str(path).strip()
+    ))
+    if changed_files:
+        lines.append("[files_changed] " + ", ".join(changed_files))
+
+    for message in messages:
+        if not _is_critical_message(message):
+            continue
+        details = [f"{key}={message[key]}" for key in ("id", "agent", "status") if message.get(key)]
+        badge = str(message.get("badgeText") or message.get("badge_text") or "").strip()
+        if badge:
+            details.append(f"badge={badge}")
+        text = " ".join(str(message.get("text") or "").split())
+        if text:
+            details.append(f"text={text[:1000]}")
+        output_events = message.get("outputEvents") or message.get("output_events") or []
+        if isinstance(output_events, list):
+            details.extend(
+                f"{event['type']}={' '.join(str(event.get('content') or '').split())[:500]}"
+                for event in output_events if isinstance(event, dict) and event.get("type") in {"tool", "stderr"}
+            )
+        if details:
+            lines.append("[critical_message] " + "; ".join(details))
+
+    return lines
+
 
 def should_compact(state: ClutchState, threshold: int = 15000) -> bool:
     messages = state.get("messages", [])
@@ -66,7 +143,12 @@ async def compact_run_messages(
     intermediate_messages = messages[1:-4]
 
     # Step 3: Call LLM to summarize intermediate history
-    digest = await _generate_llm_digest(intermediate_messages, model_id=model_id)
+    critical_context = _build_critical_context(state, intermediate_messages)
+    digest = await _generate_llm_digest(
+        intermediate_messages,
+        model_id=model_id,
+        critical_context=critical_context,
+    )
 
     # Step 4: Create a compaction digest message
     now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -121,7 +203,11 @@ async def compact_run_messages(
     logger.info(f"Compaction completed. New session tokens: {total}")
     return state
 
-async def _generate_llm_digest(intermediate_messages: list[dict[str, Any]], model_id: str | None = None) -> str:
+async def _generate_llm_digest(
+    intermediate_messages: list[dict[str, Any]],
+    model_id: str | None = None,
+    critical_context: list[str] | None = None,
+) -> str:
     import asyncio
     from src.models_config import get_router
     router = get_router()
@@ -133,6 +219,7 @@ async def _generate_llm_digest(intermediate_messages: list[dict[str, Any]], mode
         if text:
             lines.append(f"{agent}: {text}")
     formatted_history = "\n\n".join(lines)
+    protected_context = "\n".join(f"- {line}" for line in critical_context or [])
     
     system_prompt = (
         "You are a system assistant. Summarize the following AI agent conversation history of a software workflow. "
@@ -140,30 +227,36 @@ async def _generate_llm_digest(intermediate_messages: list[dict[str, Any]], mode
         "1. The user's main goal.\n"
         "2. What changes were made to files/code.\n"
         "3. What tools were executed and what tests passed/failed.\n"
-        "4. The current state/status.\n\n"
+        "4. The current state/status.\n"
+        "5. Human approvals, rejections, and retry instructions.\n\n"
         "Be extremely concise, clear, and bulleted. Do not include introductory chatter. Just return the summary digest. "
         "Respond in the same language as the conversation (English or Chinese)."
+    )
+
+    user_content = formatted_history if not protected_context else (
+        f"Critical trajectory records that must remain recoverable:\n{protected_context}\n\n"
+        f"Conversation history:\n{formatted_history}"
     )
     
     messages = [
         {"role": "system", "content": system_prompt},
-        {"role": "user", "content": formatted_history}
+        {"role": "user", "content": user_content}
     ]
-    
+
     try:
         response = await asyncio.to_thread(router.chat, messages, model_id=model_id)
         if isinstance(response, dict):
-            content = response.get("content")
-            if isinstance(content, str) and content.strip():
-                return content.strip()
-            return str(response).strip()
-        return str(response).strip()
+            response = response.get("content") or response
+        summary = str(response).strip()
     except Exception as exc:
         logger.error(f"Failed to generate compaction digest via LLM: {exc}")
         agents_involved = list(set([str(m.get("agent")) for m in intermediate_messages if m.get("agent")]))
-        return tr(
+        summary = tr(
             f"History compacted due to token limit. Original messages: {len(intermediate_messages)}. "
             f"Last actions performed by agents: {', '.join(agents_involved)}.",
             f"由于 Token 消耗达到阈值，历史对话已折叠。已压缩消息数：{len(intermediate_messages)}。 "
             f"参与的 Agent 包括：{', '.join(agents_involved)}。"
         )
+    if protected_context:
+        summary += f"\n\nCritical trajectory records:\n{protected_context}"
+    return summary
