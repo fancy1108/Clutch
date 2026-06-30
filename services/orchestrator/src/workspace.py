@@ -323,6 +323,13 @@ def get_git_info(root: Path | None = None) -> dict[str, Any]:
     if branches_result and branches_result.returncode == 0:
         branches = sorted({line.strip() for line in branches_result.stdout.splitlines() if line.strip()})
 
+    if branch and branch.startswith("detached@"):
+        detached_entries = [name for name in branches if name.startswith("(HEAD detached")]
+        if detached_entries:
+            branch = detached_entries[0]
+        elif branch not in branches:
+            branches = sorted(set(branches) | {branch})
+
     return {"is_git_repo": True, "branch": branch, "branches": branches}
 
 
