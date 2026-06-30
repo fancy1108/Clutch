@@ -71,6 +71,16 @@ jobs:
           pnpm install --frozen-lockfile
           cd services/orchestrator && uv sync --extra dev
 
+      - name: Enable signed updater bundles
+        run: |
+          node -e "
+          const fs = require('fs');
+          const p = 'apps/desktop/src-tauri/tauri.conf.json';
+          const c = JSON.parse(fs.readFileSync(p, 'utf8'));
+          c.bundle.createUpdaterArtifacts = true;
+          fs.writeFileSync(p, JSON.stringify(c, null, 2) + '\n');
+          "
+
       - name: Build macOS bundles
         working-directory: apps/desktop
         run: pnpm tauri build --target aarch64-apple-darwin
