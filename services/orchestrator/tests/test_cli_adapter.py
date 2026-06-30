@@ -208,21 +208,29 @@ def test_is_rivet_binary() -> None:
 
 
 def test_cli_subprocess_env_sets_rivet_force_recovery(monkeypatch: pytest.MonkeyPatch) -> None:
+    import os
+
     monkeypatch.delenv("RIVET_FORCE_RECOVERY_CLI", raising=False)
-    monkeypatch.setenv("PATH", "/usr/bin")
-    env = _cli_subprocess_env(["/opt/homebrew/bin/rivet", "-p", "hi"])
+    monkeypatch.setenv("PATH", os.path.join(os.sep, "usr", "bin"))
+    rivet = os.path.join(os.sep, "opt", "homebrew", "bin", "rivet")
+    env = _cli_subprocess_env([rivet, "-p", "hi"])
     assert env is not None
     assert env["RIVET_FORCE_RECOVERY_CLI"] == "1"
-    assert env["PATH"].startswith("/opt/homebrew/bin:")
+    bin_dir = os.path.dirname(os.path.abspath(rivet))
+    assert env["PATH"].split(os.pathsep)[0] == bin_dir
     assert _cli_subprocess_env(["claude", "-p", "hi"]) is None
 
 
 def test_rivet_path_export_prefix() -> None:
+    import os
+    import shlex
+
     from src.adapters.cli_adapter import rivet_path_export_prefix
 
-    prefix = rivet_path_export_prefix("/Users/fancy/.nvm/versions/node/v24.16.0/bin/rivet")
+    rivet = os.path.join(os.sep, "opt", "homebrew", "bin", "rivet")
+    prefix = rivet_path_export_prefix(rivet)
     assert prefix.startswith("export PATH=")
-    assert "/Users/fancy/.nvm/versions/node/v24.16.0/bin" in prefix
+    assert shlex.quote(os.path.dirname(os.path.abspath(rivet))) in prefix
     assert rivet_path_export_prefix("claude") == ""
 
 

@@ -65,8 +65,11 @@ def test_build_agy_shell_cmd_includes_conversation() -> None:
 
 
 def test_build_generic_cli_shell_cmd_sets_rivet_force_recovery() -> None:
+    import os
+
+    rivet = os.path.join(os.sep, "opt", "homebrew", "bin", "rivet")
     cmd = _build_generic_cli_shell_cmd(
-        binary="/Users/fancy/.nvm/versions/node/v24.16.0/bin/rivet",
+        binary=rivet,
         prompt="hello",
         marker="__CLUTCH_DONE_x__",
         conversation_mode="none",
