@@ -13,7 +13,7 @@ jobs:
 
       # npm registry signing keys rotated; bundled Corepack on GHA runners may fail
       # to verify packageManager (pnpm@9.15.0). Install pnpm via action-setup instead.
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 9.15.0
 
