@@ -26,6 +26,7 @@ for package in (
     "uvloop",
     "watchfiles",
     "websockets",
+    "keyring",
 ):
     pkg_datas, pkg_binaries, pkg_hidden = collect_all(package)
     datas += pkg_datas

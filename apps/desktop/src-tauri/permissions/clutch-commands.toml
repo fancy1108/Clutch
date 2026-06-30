@@ -1,0 +1,9 @@
+[[permission]]
+identifier = "allow-clutch-sidecar-token"
+description = "Expose the Sidecar session token to the main webview (OSR-08)."
+commands.allow = ["clutch_sidecar_token"]
+
+[[permission]]
+identifier = "allow-clutch-app-commands"
+description = "Other Clutch desktop IPC commands."
+commands.allow = ["clutch_cpu_arch", "clutch_e2e_sandbox"]

@@ -36,9 +36,34 @@ export interface ModelTestResult {
   message: string;
 }
 
+export type ModelsConfigErrorKind = 'unauthorized' | 'unreachable' | 'server' | 'other';
+
+export class ModelsConfigError extends Error {
+  readonly kind: ModelsConfigErrorKind;
+
+  constructor(kind: ModelsConfigErrorKind, message: string) {
+    super(message);
+    this.name = 'ModelsConfigError';
+    this.kind = kind;
+  }
+}
+
 export async function fetchModelsConfig(): Promise<ModelConfig> {
-  const response = await sidecarFetch(`${BASE}/api/models/config`, { cache: 'no-store' });
-  if (!response.ok) throw new Error(`models config failed (${response.status})`);
+  let response: Response;
+  try {
+    response = await sidecarFetch(`${BASE}/api/models/config`, { cache: 'no-store' });
+  } catch {
+    throw new ModelsConfigError('unreachable', 'sidecar unreachable');
+  }
+  if (response.status === 401) {
+    throw new ModelsConfigError('unauthorized', 'sidecar unauthorized');
+  }
+  if (response.status >= 500) {
+    throw new ModelsConfigError('server', `sidecar server error (${response.status})`);
+  }
+  if (!response.ok) {
+    throw new ModelsConfigError('other', `models config failed (${response.status})`);
+  }
   return response.json() as Promise<ModelConfig>;
 }
 

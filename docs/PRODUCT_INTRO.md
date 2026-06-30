@@ -74,7 +74,7 @@ graph TD
 ```
 
 1. **前端 (React 19 + Tailwind CSS 4 + Motion + React Flow)**：提供高保真三栏式工作台，负责工作流可视化编辑、运行态投影渲染及捕获用户人工审批决策。
-2. **后端 (FastAPI + LangGraph Python Sidecar)**：运行于 `localhost:8123`，作为唯一的真理源 (SSOT) 控制状态跳转。`WorkflowCompiler` 将画布导出的 JSON 动态编译成 LangGraph 可执行图。打包发行版默认关闭 debug 导出 API 与 OpenAPI 文档（维护者可设 `CLUTCH_DEBUG_API=1`）；Tauri WebView 启用 Content-Security-Policy 限制外连与脚本来源。
+2. **后端 (FastAPI + LangGraph Python Sidecar)**：运行于 `localhost:8123`，作为唯一的真理源 (SSOT) 控制状态跳转。`WorkflowCompiler` 将画布导出的 JSON 动态编译成 LangGraph 可执行图。打包发行版默认关闭 debug 导出 API 与 OpenAPI 文档（维护者可设 `CLUTCH_DEBUG_API=1`）；Tauri WebView 启用 Content-Security-Policy 限制外连与脚本来源。DMG 内嵌 Sidecar 启用 loopback 会话令牌（OSR-08）：WebView 经 Tauri IPC 获取 Bearer token 后访问 `/api/*`；Models Config 等面板在 Sidecar 不可达、未授权或后端错误时会显示区分性提示（而非一律「无法连接」）。
 3. **通信机制**：前后端通过 WebSocket 实时更新全局状态 `ClutchState`（采用 `state_patch` 增量推送）。
 
 ---

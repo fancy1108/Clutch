@@ -1,6 +1,6 @@
 /** Packaged app sidecar listens on 8123; dev sidecar + Vite proxy use 8124. */
 
-import { invoke } from '@tauri-apps/api/core';
+import { invoke, isTauri } from '@tauri-apps/api/core';
 
 export const SIDECAR_PROD_PORT = 8123;
 export const SIDECAR_DEV_PORT = 8124;
@@ -8,20 +8,29 @@ export const SIDECAR_DEV_PORT = 8124;
 /** HTTP base: empty in dev (Vite proxies /api → 8124); absolute in production builds. */
 export const SIDECAR_BASE = import.meta.env.DEV ? '' : `http://localhost:${SIDECAR_PROD_PORT}`;
 
-let sidecarTokenPromise: Promise<string | null> | null = null;
+let cachedSidecarToken: string | null | undefined;
 
-function isTauriRuntime(): boolean {
-  return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
-}
-
-async function resolveSidecarToken(): Promise<string | null> {
-  if (!isTauriRuntime()) {
+async function resolveSidecarToken(force = false): Promise<string | null> {
+  if (!isTauri()) {
     return null;
   }
-  if (!sidecarTokenPromise) {
-    sidecarTokenPromise = invoke<string>('clutch_sidecar_token').catch(() => null);
+  if (!force && cachedSidecarToken !== undefined) {
+    return cachedSidecarToken;
   }
-  return sidecarTokenPromise;
+  try {
+    const token = (await invoke<string>('clutch_sidecar_token')).trim();
+    cachedSidecarToken = token || null;
+    return cachedSidecarToken;
+  } catch {
+    if (!force) {
+      cachedSidecarToken = undefined;
+    }
+    return null;
+  }
+}
+
+export function resetSidecarTokenCache(): void {
+  cachedSidecarToken = undefined;
 }
 
 export async function sidecarAuthHeaders(init?: HeadersInit): Promise<Headers> {
@@ -36,7 +45,13 @@ export async function sidecarAuthHeaders(init?: HeadersInit): Promise<Headers> {
 /** Authenticated fetch for Sidecar HTTP APIs (OSR-08). */
 export async function sidecarFetch(input: string, init?: RequestInit): Promise<Response> {
   const headers = await sidecarAuthHeaders(init?.headers);
-  return fetch(input, { ...init, headers });
+  let response = await fetch(input, { ...init, headers });
+  if (response.status === 401 && isTauri()) {
+    resetSidecarTokenCache();
+    const retryHeaders = await sidecarAuthHeaders(init?.headers);
+    response = await fetch(input, { ...init, headers: retryHeaders });
+  }
+  return response;
 }
 
 export function sidecarHttpUrl(path: string): string {

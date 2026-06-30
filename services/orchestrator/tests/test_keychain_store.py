@@ -12,6 +12,7 @@ from keyring.backend import KeyringBackend
 from src.credentials.credential_store import maybe_migrate_config_file
 from src.credentials.keychain_store import (
     get_provider_key,
+    invalidate_provider_keys_cache,
     load_all_provider_keys,
     set_provider_key,
     use_keychain,
@@ -41,8 +42,11 @@ class InMemoryKeyring(KeyringBackend):
 
 @pytest.fixture(autouse=True)
 def keychain_backend(monkeypatch: pytest.MonkeyPatch) -> None:
+    invalidate_provider_keys_cache()
     keyring.set_keyring(InMemoryKeyring())
     monkeypatch.setenv("CLUTCH_USE_KEYCHAIN", "1")
+    yield
+    invalidate_provider_keys_cache()
 
 
 def test_set_and_get_provider_key() -> None:
@@ -92,3 +96,37 @@ def test_save_router_does_not_write_api_keys_to_file(tmp_path: Path, monkeypatch
 def test_use_keychain_respects_env_override(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("CLUTCH_USE_KEYCHAIN", "0")
     assert use_keychain() is False
+
+
+def test_get_provider_key_logs_keychain_failure_without_crashing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class BrokenKeyring(InMemoryKeyring):
+        def get_password(self, service: str, username: str) -> str | None:
+            raise RuntimeError("keychain unavailable")
+
+    keyring.set_keyring(BrokenKeyring())
+    assert get_provider_key("deepseek") is None
+    assert load_all_provider_keys() == {}
+
+
+def test_load_all_provider_keys_uses_cache_until_invalidated() -> None:
+    calls = {"count": 0}
+
+    class CountingKeyring(InMemoryKeyring):
+        def get_password(self, service: str, username: str) -> str | None:
+            calls["count"] += 1
+            return super().get_password(service, username)
+
+    keyring.set_keyring(CountingKeyring())
+    set_provider_key("openai", "sk-count-test")
+    invalidate_provider_keys_cache()
+
+    load_all_provider_keys()
+    first_pass = calls["count"]
+    load_all_provider_keys()
+    assert calls["count"] == first_pass
+
+    set_provider_key("deepseek", "sk-count-test-2")
+    load_all_provider_keys()
+    assert calls["count"] > first_pass

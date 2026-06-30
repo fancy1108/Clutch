@@ -6,6 +6,7 @@ import {
   fetchModelsConfig,
   loadModelVerifyState,
   mapModelConfigToUi,
+  ModelsConfigError,
   pruneModelVerifyCache,
   PROVIDER_LABELS,
   removeModelVerifyResults,
@@ -131,10 +132,20 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
     try {
       const config = await fetchModelsConfig();
       return applyConfig(config);
-    } catch {
+    } catch (err) {
       setConfiguredModels([]);
       setProviders({});
-      setError(t('Cannot reach Clutch sidecar — start the backend on port 8124 (dev) or reopen the packaged app.'));
+      if (err instanceof ModelsConfigError) {
+        if (err.kind === 'unauthorized') {
+          setError(t('Sidecar session expired — quit Clutch (Cmd+Q) and reopen the app.'));
+        } else if (err.kind === 'server') {
+          setError(t('Sidecar backend error — quit Clutch (Cmd+Q) and reopen the app.'));
+        } else {
+          setError(t('Cannot reach Clutch sidecar — start the backend on port 8124 (dev) or reopen the packaged app.'));
+        }
+      } else {
+        setError(t('Cannot reach Clutch sidecar — start the backend on port 8124 (dev) or reopen the packaged app.'));
+      }
       return [];
     } finally {
       if (!options?.silent) setLoading(false);

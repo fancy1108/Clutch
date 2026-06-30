@@ -387,6 +387,18 @@
       "description": "Permission identifier",
       "oneOf": [
         {
+          "description": "Other Clutch desktop IPC commands.",
+          "type": "string",
+          "const": "allow-clutch-app-commands",
+          "markdownDescription": "Other Clutch desktop IPC commands."
+        },
+        {
+          "description": "Expose the Sidecar session token to the main webview (OSR-08).",
+          "type": "string",
+          "const": "allow-clutch-sidecar-token",
+          "markdownDescription": "Expose the Sidecar session token to the main webview (OSR-08)."
+        },
+        {
           "description": "Default core plugins set.\n#### This default permission set includes:\n\n- `core:path:default`\n- `core:event:default`\n- `core:window:default`\n- `core:webview:default`\n- `core:app:default`\n- `core:image:default`\n- `core:resources:default`\n- `core:menu:default`\n- `core:tray:default`",
           "type": "string",
           "const": "core:default",

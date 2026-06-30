@@ -5,6 +5,8 @@
   "windows": ["main"],
   "permissions": [
     "core:default",
+    "allow-clutch-sidecar-token",
+    "allow-clutch-app-commands",
     "shell:allow-open",
     "dialog:default",
     "dialog:allow-open",

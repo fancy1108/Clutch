@@ -663,6 +663,8 @@ const zhTranslations: Record<string, string> = {
 
   // Models error messages
   "Cannot reach Clutch sidecar — start the backend on port 8124 (dev) or reopen the packaged app.": "无法连接 Clutch Sidecar — 开发环境请启动 8124 端口后端，或重新打开打包应用。",
+  "Sidecar session expired — quit Clutch (Cmd+Q) and reopen the app.": "Sidecar 会话已过期 — 请完全退出 Clutch（Cmd+Q）后重新打开。",
+  "Sidecar backend error — quit Clutch (Cmd+Q) and reopen the app.": "Sidecar 后端错误 — 请完全退出 Clutch（Cmd+Q）后重新打开。",
   "Connection test failed.": "连接测试失败。",
   "Could not add image model.": "无法添加图像模型。",
   "Could not switch to this model.": "无法切换到此模型。",

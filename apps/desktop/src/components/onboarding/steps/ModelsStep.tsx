@@ -5,6 +5,7 @@ import { useLanguage } from '../../LanguageContext';
 import {
   fetchModelsConfig,
   mapModelConfigToUi,
+  ModelsConfigError,
   PROVIDER_LABELS,
   saveModelsConfig,
   testModelConnection,
@@ -39,8 +40,14 @@ export function ModelsStep({ modelReady, onModelReady, onSkip }: ModelsStepProps
         onModelReady(true);
       }
       return mapped;
-    } catch {
-      setError(t('Cannot reach Clutch sidecar'));
+    } catch (err) {
+      if (err instanceof ModelsConfigError && err.kind === 'server') {
+        setError(t('Sidecar backend error — quit Clutch (Cmd+Q) and reopen the app.'));
+      } else if (err instanceof ModelsConfigError && err.kind === 'unauthorized') {
+        setError(t('Sidecar session expired — quit Clutch (Cmd+Q) and reopen the app.'));
+      } else {
+        setError(t('Cannot reach Clutch sidecar'));
+      }
       return null;
     }
   }, [onModelReady, t]);
