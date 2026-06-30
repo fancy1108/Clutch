@@ -59,6 +59,7 @@
 
 ### PR
 
+- **Base 分支为 `dev`**（`main` 仅发版；见 [`CONTRIBUTING.md`](../CONTRIBUTING.md) §Branch workflow）
 - 一 PR 一主题；过 `./scripts/verify.sh`  
 - 触及 `apps/desktop/src` 或 `services/orchestrator/src` 时遵循 [`CLAUDE.md`](../CLAUDE.md) 铁律  
 - 使用 [PR 模板](../.github/pull_request_template.md)

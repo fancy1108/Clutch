@@ -6,6 +6,17 @@ Thank you for your interest in Clutch. This document explains how to contribute 
 
 ---
 
+## Branch workflow
+
+| Branch | Purpose |
+|--------|---------|
+| **`dev`** | Integration — **open all pull requests here** |
+| **`main`** | Release / stable — maintainer merges from `dev` at release time |
+
+Fork the repo from **`dev`**, branch off **`dev`**, and set the PR **base branch to `dev`**. Do not open feature PRs against `main`.
+
+---
+
 ## Contribution Philosophy
 
 Clutch is currently maintained primarily by its original author.

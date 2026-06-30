@@ -1,3 +1,5 @@
+> **Base branch:** open PRs against **`dev`**, not `main`. See [`CONTRIBUTING.md`](../CONTRIBUTING.md) §Branch workflow.
+
 ## Summary
 
 <!-- What does this PR do? One paragraph. -->

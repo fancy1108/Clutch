@@ -176,7 +176,7 @@ pnpm tauri:dev
 
 逐步说明、分拆调试与本地打 DMG / Windows 安装包：[`docs/BUILD_FROM_SOURCE.md`](./docs/BUILD_FROM_SOURCE.md)。
 
-**贡献前**请阅读 [`CONTRIBUTING.md`](./CONTRIBUTING.md) 并运行 `./scripts/verify.sh`。
+**贡献前**请阅读 [`CONTRIBUTING.md`](./CONTRIBUTING.md)，从 **`dev`** 分支开 PR（不要对 `main` 提功能 PR），并运行 `./scripts/verify.sh`。
 
 ## 安全与 CLI 权限（重要）
 

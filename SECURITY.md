@@ -8,7 +8,7 @@
 | 1.0.x   | Yes       |
 | < 1.0   | No        |
 
-Security fixes for supported `1.0.x` releases land on `main` and ship with the next semver tag. See [`docs/STABILITY.md`](docs/STABILITY.md).
+Security fixes for supported `1.0.x` releases land on `dev` and ship with the next semver tag from `main`. See [`docs/STABILITY.md`](docs/STABILITY.md).
 
 ## Reporting a vulnerability
 
