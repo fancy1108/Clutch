@@ -203,4 +203,4 @@ pnpm tauri build
 
 ---
 
-*本文档基于最新的前后端实现编写。关联架构设计详述见 [系统架构文档](file:///Users/fancy/clutch/docs/ARCHITECTURE.md)；文件定位见 [FILEMAP.md](file:///Users/fancy/clutch/memory/FILEMAP.md)。*
+*本文档基于最新的前后端实现编写。关联架构设计详述见 [系统架构文档](./ARCHITECTURE.md)；文件定位见 [FILEMAP.md](../memory/FILEMAP.md)。*

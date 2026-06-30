@@ -19,9 +19,9 @@
 
 | 模块 / 接口 | 稳定性 | 说明 |
 |-------------|--------|------|
-| **Workflow JSON Schema** (`workflows/workflow.schema.json`) | **Stable**（1.0 前为 Beta） | 用户工作流与模板；Compiler 输入契约 |
+| **Workflow JSON Schema** (`workflows/workflow.schema.json`) | **Stable**（pre-1.0 为 Beta） | 用户工作流与模板；Compiler 输入契约 |
 | **WebSocket 信封** (`event` + `data`，如 `state_patch`) | **Beta** | 事件名稳定倾向高；`data.patch` 字段随 `ClutchState` 演进 |
-| **HTTP REST `/api/*`** | **Experimental** | 路由与 payload 随功能迭代；**1.0 前不保证兼容** |
+| **HTTP REST `/api/*`** | **Experimental** | 路由与 payload 仍随功能迭代；正式稳定前不保证兼容 |
 | **`ClutchState` 字段** | **Experimental** | 前端仅投影 WS；字段可增删 |
 | **LangGraph 内部图 / Compiler 实现** | **Internal** | `services/orchestrator/src/compiler/`、`workflow_runtime.py` |
 | **Engine Router / Hybrid 运行时** | **Internal** | `engine_router.py`、`shell_exec_runtime.py` |
@@ -51,7 +51,7 @@ memory/                                    # 维护者运行态，非 API
 
 ## 3. 版本与 Release 生命周期
 
-当前版本：**1.0.0**（首个公开发布；各模块稳定性见 §2）。
+当前版本：**1.0.1**（各模块稳定性见 §2）。
 
 | 阶段 | 版本号 | 含义 |
 |------|--------|------|
@@ -61,10 +61,10 @@ memory/                                    # 维护者运行态，非 API
 | **LTS** | `1.x` 长期分支（未来） | 仅安全修复；**尚未承诺** |
 | **Deprecated** | 文档标注 + 至少一 minor 过渡期 | 移除前在 `CHANGELOG.md` 说明 |
 
-### 0.x 政策（重要）
+### Pre-1.0 政策（历史说明）
 
-> **Until 1.0, breaking changes are expected.**  
-> 升级 minor（如 `0.2` → `0.3`）后若 Workflow 无法加载或 API 报错，请先查 `CHANGELOG.md`，而非假定兼容。
+> **Before 1.0, breaking changes were expected.**
+> 如果仍在使用历史 `0.x` 版本，升级 minor（如 `0.2` → `0.3`）后若 Workflow 无法加载或 API 报错，请先查 `CHANGELOG.md`，而非假定兼容。
 
 | 变更类型 | 0.x 处理方式 |
 |----------|----------------|

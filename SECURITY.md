@@ -8,7 +8,7 @@
 | 1.0.x   | Yes       |
 | < 1.0   | No        |
 
-While Clutch is `0.x`, security fixes land on `main` and ship with the next semver tag. See [`docs/STABILITY.md`](docs/STABILITY.md).
+Security fixes for supported `1.0.x` releases land on `main` and ship with the next semver tag. See [`docs/STABILITY.md`](docs/STABILITY.md).
 
 ## Reporting a vulnerability
 
@@ -62,7 +62,7 @@ We coordinate public disclosure after a fix is available or an agreed embargo en
 
 ## Known limitations (current release)
 
-Summary only — details in [`docs/OPEN_SOURCE_RELEASE.md`](docs/OPEN_SOURCE_RELEASE.md) §5:
+Summary only — roadmap context in [`docs/OPEN_SOURCE_RELEASE.md`](docs/OPEN_SOURCE_RELEASE.md) §7.2:
 
 | Topic | Current behavior | Planned |
 |-------|------------------|---------|

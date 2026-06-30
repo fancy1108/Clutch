@@ -68,7 +68,7 @@ clutch/
 | [`AGENTS.md`](./AGENTS.md) | 多 AI 工具入口索引 |
 | [`CONTRIBUTING.md`](./CONTRIBUTING.md) | 如何贡献、Phase 1 PR 政策 |
 | [`SECURITY.md`](./SECURITY.md) · [`CODE_OF_CONDUCT.md`](./CODE_OF_CONDUCT.md) | 漏洞报告 · 社区准则 |
-| [`CHANGELOG.md`](./CHANGELOG.md) | 版本变更（当前 **1.0.0**） |
+| [`CHANGELOG.md`](./CHANGELOG.md) | 版本变更（当前 **1.0.1**） |
 
 ### 产品与架构（`docs/`）
 
@@ -90,7 +90,7 @@ clutch/
 
 ## 兼容性
 
-> 详细稳定性见 [`docs/STABILITY.md`](./docs/STABILITY.md)。**0.x 版本可能随时 breaking change。**
+> 详细稳定性见 [`docs/STABILITY.md`](./docs/STABILITY.md)。当前 `1.0.x` 遵循语义化版本；历史 pre-1.0 版本可能包含 breaking change。
 
 ### 平台
 
