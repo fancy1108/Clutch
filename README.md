@@ -99,7 +99,7 @@ clutch/
 | macOS 14+（Apple Silicon） | ✅ 官方主要目标 |
 | macOS 14+（Intel） | ⚠️ 尽力支持，未充分测试 |
 | macOS 13 及更早 | ⚠️ 不保证 |
-| Windows | 🚧 架构预留，无官方安装包 |
+| Windows 10/11（x64） | ✅ 支持 MSI / NSIS 安装包 |
 | Linux | 🚧 无官方安装包 |
 
 ### 开发工具链（源码构建）
@@ -111,6 +111,7 @@ clutch/
 | Python | **≥ 3.11**（CI 使用 3.11） |
 | [uv](https://docs.astral.sh/uv/) | 最新稳定版 |
 | Rust | 最新 stable（仅 `pnpm tauri build` 时需要） |
+| Windows 构建工具 | Visual Studio 2022 C++ Build Tools + Windows 10/11 SDK |
 
 环境自检：
 
@@ -157,6 +158,10 @@ pnpm install
 
 完整安装说明见 [`docs/INSTALL.md`](./docs/INSTALL.md)；数据与隐私见 [`docs/DATA_AND_PRIVACY.md`](./docs/DATA_AND_PRIVACY.md)。获得 Apple Developer 账号后，可再提供代码签名与公证的安装包。
 
+### Windows 安装
+
+下载 `Clutch_*_x64-setup.exe`（向导安装）或 `Clutch_*_x64_en-US.msi`。当前构建未进行 Windows 代码签名；若 SmartScreen 提示未知发布者，请确认安装包来源与 SHA-256 后选择继续。应用安装到 `C:\Program Files\Clutch`，数据保存在 `%APPDATA%\clutch`，API Key 使用 Windows 凭据管理器。
+
 ### 从源码构建（开发者）
 
 ```bash
@@ -169,7 +174,7 @@ export CLUTCH_RUNTIME_MODE=hybrid   # 可选
 pnpm tauri:dev
 ```
 
-逐步说明、分拆调试与本地打 DMG：[`docs/BUILD_FROM_SOURCE.md`](./docs/BUILD_FROM_SOURCE.md)。
+逐步说明、分拆调试与本地打 DMG / Windows 安装包：[`docs/BUILD_FROM_SOURCE.md`](./docs/BUILD_FROM_SOURCE.md)。
 
 **贡献前**请阅读 [`CONTRIBUTING.md`](./CONTRIBUTING.md) 并运行 `./scripts/verify.sh`。
 

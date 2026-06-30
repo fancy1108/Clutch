@@ -10,6 +10,8 @@ dependencies = [
     "jsonschema>=4.26.0",
     "keyring>=25.0.0",
     "langgraph>=1.2.6",
+    "pywinpty>=3.0.5; sys_platform == 'win32'",
+    "tzdata>=2025.2; sys_platform == 'win32'",
     "uvicorn[standard]>=0.32.0",
 ]
 

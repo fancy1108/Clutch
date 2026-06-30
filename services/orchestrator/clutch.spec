@@ -1,4 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
+import importlib.util
+import os
 from pathlib import Path
 
 from PyInstaller.utils.hooks import collect_all
@@ -27,7 +29,11 @@ for package in (
     "watchfiles",
     "websockets",
     "keyring",
+    "winpty",
+    "tzdata",
 ):
+    if importlib.util.find_spec(package) is None:
+        continue
     pkg_datas, pkg_binaries, pkg_hidden = collect_all(package)
     datas += pkg_datas
     binaries += pkg_binaries
@@ -64,7 +70,7 @@ exe = EXE(
     upx=False,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=False,
+    console=os.environ.get("CLUTCH_SIDECAR_CONSOLE") == "1",
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,

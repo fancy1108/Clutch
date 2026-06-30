@@ -61,6 +61,27 @@ fn free_sidecar_port(port: u16) {
             .status();
         thread::sleep(Duration::from_millis(400));
     }
+    #[cfg(target_os = "windows")]
+    {
+        if let Ok(output) = std::process::Command::new("netstat")
+            .args(["-ano", "-p", "tcp"])
+            .output()
+        {
+            let suffix = format!(":{port}");
+            for line in String::from_utf8_lossy(&output.stdout).lines() {
+                let columns: Vec<_> = line.split_whitespace().collect();
+                if columns.len() >= 5
+                    && columns[1].ends_with(&suffix)
+                    && columns[3].eq_ignore_ascii_case("LISTENING")
+                {
+                    let _ = std::process::Command::new("taskkill")
+                        .args(["/PID", columns[4], "/T", "/F"])
+                        .status();
+                }
+            }
+        }
+        thread::sleep(Duration::from_millis(400));
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

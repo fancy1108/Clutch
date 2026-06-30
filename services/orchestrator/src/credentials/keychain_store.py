@@ -1,4 +1,4 @@
-"""macOS Keychain storage for Clutch-managed provider API keys (OSR-13)."""
+"""Native credential storage for Clutch-managed provider API keys (OSR-13)."""
 
 from __future__ import annotations
 
@@ -30,13 +30,13 @@ def _acl_migration_flag_path() -> Path:
 
 
 def use_keychain() -> bool:
-    """Keychain is the default credential store on macOS unless explicitly disabled."""
+    """Use the native macOS or Windows credential store unless explicitly disabled."""
     flag = os.environ.get("CLUTCH_USE_KEYCHAIN", "").strip().lower()
     if flag in {"0", "false", "no", "off"}:
         return False
     if flag in {"1", "true", "yes", "on"}:
         return True
-    return sys.platform == "darwin"
+    return sys.platform in {"darwin", "win32"}
 
 
 def _account(provider_id: str) -> str:
