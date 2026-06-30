@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import os
-import pty
-import select
 import shutil
 import signal
 import subprocess
@@ -15,6 +13,10 @@ import logging
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
+
+if os.name != "nt":
+    import pty
+    import select
 
 
 logger = logging.getLogger(__name__)
