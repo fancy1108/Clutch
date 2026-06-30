@@ -186,7 +186,7 @@ cd services/orchestrator
 uv run uvicorn src.main:app --reload --port 8124
 ```
 
-> 开发期 Sidecar 监听 **8124**；打包 DMG 内嵌 Sidecar 为 **8123**。`tauri.conf.json` 的 `beforeDevCommand` 为空，由 `scripts/tauri-dev.sh` 管理 Vite 生命周期，避免 Tauri 误杀 dev server。
+> 开发期 Sidecar 监听 **8124**；打包桌面安装包内嵌 Sidecar 为 **8123**。`tauri.conf.json` 的 `beforeDevCommand` 为空，由跨平台 `scripts/tauri-dev.py` 管理 Vite 生命周期，避免 Tauri 误杀 dev server；旧版 Bash 启动器保留为 `pnpm tauri:dev:sh`。
 
 ### 5.2 本地轻量校验 (Pre-commit)
 在提交代码前运行轻量校验，确保编译通过、单元测试正常、文档未产生漂移：

@@ -2,7 +2,7 @@
 
 import { invoke, isTauri } from '@tauri-apps/api/core';
 
-export type EnvRequirementId = 'macos' | 'arch' | 'disk' | 'network' | 'gatekeeper';
+export type EnvRequirementId = 'os' | 'arch' | 'disk' | 'network' | 'installer';
 export type EnvCheckTier = 'ok' | 'warn' | 'info';
 
 export interface EnvRequirementResult {
@@ -14,6 +14,10 @@ const DISK_MIN_BYTES = 500 * 1024 * 1024;
 
 export function isMacPlatform(userAgent: string): boolean {
   return /Mac|Macintosh/i.test(userAgent);
+}
+
+export function isWindowsPlatform(userAgent: string): boolean {
+  return /Windows NT/i.test(userAgent);
 }
 
 export function parseMacOsMajorFromUa(userAgent: string): number | null {
@@ -29,7 +33,8 @@ export function parseMacOsMajorFromUa(userAgent: string): number | null {
   return major;
 }
 
-export function tierForMacOs(major: number | null, onMac: boolean): EnvCheckTier {
+export function tierForOs(major: number | null, onMac: boolean, onWindows: boolean): EnvCheckTier {
+  if (onWindows) return 'ok';
   if (!onMac) return 'warn';
   if (major === null) return 'info';
   return major >= 14 ? 'ok' : 'warn';
@@ -59,7 +64,7 @@ export function tierForDiskEstimate(quota: number | undefined, usage: number | u
   return free >= DISK_MIN_BYTES ? 'ok' : 'warn';
 }
 
-export function tierForGatekeeper(inApp: boolean): EnvCheckTier {
+export function tierForInstaller(inApp: boolean): EnvCheckTier {
   return inApp ? 'ok' : 'info';
 }
 
@@ -107,6 +112,7 @@ async function probeInternet(): Promise<boolean> {
 export async function runEnvironmentChecks(inApp: boolean): Promise<EnvRequirementResult[]> {
   const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
   const onMac = isMacPlatform(ua);
+  const onWindows = isWindowsPlatform(ua);
 
   let macMajor: number | null = parseMacOsMajorFromUa(ua);
   let architecture: string | null = await readNativeCpuArch();
@@ -132,10 +138,10 @@ export async function runEnvironmentChecks(inApp: boolean): Promise<EnvRequireme
   const online = await probeInternet();
 
   return [
-    { id: 'macos', tier: tierForMacOs(macMajor, onMac) },
+    { id: 'os', tier: tierForOs(macMajor, onMac, onWindows) },
     { id: 'arch', tier: tierForArch(architecture, onMac) },
     { id: 'disk', tier: diskTier },
     { id: 'network', tier: online ? 'ok' : 'warn' },
-    { id: 'gatekeeper', tier: tierForGatekeeper(inApp) },
+    { id: 'installer', tier: tierForInstaller(inApp) },
   ];
 }

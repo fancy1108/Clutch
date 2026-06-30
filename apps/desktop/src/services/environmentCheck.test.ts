@@ -4,11 +4,12 @@ import {
   isAppleSiliconArch,
   isIntelArch,
   isMacPlatform,
+  isWindowsPlatform,
   parseMacOsMajorFromUa,
   tierForArch,
   tierForDiskEstimate,
-  tierForGatekeeper,
-  tierForMacOs,
+  tierForInstaller,
+  tierForOs,
 } from './environmentCheck';
 
 describe('environmentCheck', () => {
@@ -17,16 +18,22 @@ describe('environmentCheck', () => {
     expect(isMacPlatform('Mozilla/5.0 (Windows NT 10.0)')).toBe(false);
   });
 
+  it('detects Windows platform', () => {
+    expect(isWindowsPlatform('Mozilla/5.0 (Windows NT 10.0; Win64; x64)')).toBe(true);
+    expect(isWindowsPlatform('Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5)')).toBe(false);
+  });
+
   it('parses macOS major from UA when present', () => {
     expect(parseMacOsMajorFromUa('Mac OS X 14_5')).toBe(14);
     expect(parseMacOsMajorFromUa('Mac OS X 10_15_7')).toBe(null);
   });
 
-  it('tiers macOS version', () => {
-    expect(tierForMacOs(14, true)).toBe('ok');
-    expect(tierForMacOs(13, true)).toBe('warn');
-    expect(tierForMacOs(null, true)).toBe('info');
-    expect(tierForMacOs(14, false)).toBe('warn');
+  it('tiers supported operating systems', () => {
+    expect(tierForOs(14, true, false)).toBe('ok');
+    expect(tierForOs(13, true, false)).toBe('warn');
+    expect(tierForOs(null, true, false)).toBe('info');
+    expect(tierForOs(null, false, true)).toBe('ok');
+    expect(tierForOs(14, false, false)).toBe('warn');
   });
 
   it('detects cpu arch tokens', () => {
@@ -49,8 +56,8 @@ describe('environmentCheck', () => {
     expect(tierForDiskEstimate(undefined, undefined)).toBe('info');
   });
 
-  it('tiers gatekeeper', () => {
-    expect(tierForGatekeeper(true)).toBe('ok');
-    expect(tierForGatekeeper(false)).toBe('info');
+  it('tiers installer advisory', () => {
+    expect(tierForInstaller(true)).toBe('ok');
+    expect(tierForInstaller(false)).toBe('info');
   });
 });
