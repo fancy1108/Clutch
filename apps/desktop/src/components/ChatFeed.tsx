@@ -820,7 +820,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
               </h2>
               <p className="text-sm text-on-surface-variant leading-relaxed">
                 {isMultiAgent
-                  ? t('Select a workspace and start a workflow, or type an instruction below. Clutch will orchestrate Builder / Evaluator and ask for your approval when needed.')
+                  ? t('Select a workspace and start a workflow, or type an instruction below. Clutch will orchestrate AI Agents and ask for your approval when needed.')
                   : t('Select a workspace and type an instruction below to chat with the agent directly.')
                 }
               </p>

@@ -11,6 +11,8 @@ import {
 import { BTN_GHOST, BTN_PRIMARY } from './ui/buttonStyles';
 import { LegacyIcon } from './ui/LegacyIcon';
 import { ALERT_SUCCESS, ALERT_WARNING } from './ui/surfaceStyles';
+import { UnderDevelopmentNotice } from './ui/UnderDevelopmentNotice';
+import { useLanguage } from './LanguageContext';
 
 export type { McpServer };
 
@@ -20,12 +22,6 @@ function statusDotClass(status: McpServer['status']): string {
   return 'bg-rose-500';
 }
 
-function statusLabel(status: McpServer['status']): string {
-  if (status === 'connected') return 'Online';
-  if (status === 'reconnecting') return 'Configured';
-  return 'Offline';
-}
-
 function statusTextClass(status: McpServer['status']): string {
   if (status === 'connected') return 'text-emerald-700';
   if (status === 'reconnecting') return 'text-amber-700';
@@ -33,6 +29,14 @@ function statusTextClass(status: McpServer['status']): string {
 }
 
 export const McpServerHub: React.FC = () => {
+  const { t } = useLanguage();
+
+  const statusLabel = (status: McpServer['status']): string => {
+    if (status === 'connected') return t('Online');
+    if (status === 'reconnecting') return t('Configured');
+    return t('Offline');
+  };
+
   const [servers, setServers] = useState<McpServer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -52,7 +56,7 @@ export const McpServerHub: React.FC = () => {
       setServers(status.servers);
     } catch {
       setServers([]);
-      setError('Sidecar unavailable — cannot read MCP status.');
+      setError(t('Sidecar unavailable — cannot read MCP status.'));
     } finally {
       setLoading(false);
     }
@@ -80,7 +84,7 @@ export const McpServerHub: React.FC = () => {
       setServers(status.servers);
       setName('');
       setEndpoint('');
-      setSuccessMsg('MCP server registered.');
+      setSuccessMsg(t('MCP server registered.'));
       setTimeout(() => setSuccessMsg(''), 3000);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Register failed.');
@@ -118,7 +122,7 @@ export const McpServerHub: React.FC = () => {
       const status = await saveMcpConfig(parsed);
       setServers(status.servers);
       setIsJsonEditMode(false);
-      setSuccessMsg('MCP raw config saved.');
+      setSuccessMsg(t('MCP raw config saved.'));
       setTimeout(() => setSuccessMsg(''), 3000);
     } catch (err: any) {
       setError(err instanceof Error ? err.message : 'Save JSON failed. Please verify syntax.');
@@ -130,7 +134,7 @@ export const McpServerHub: React.FC = () => {
     try {
       const status = await importClaudeMcp();
       setServers(status.servers);
-      setSuccessMsg('Imported configurations from local Claude setups.');
+      setSuccessMsg(t('Imported configurations from local Claude setups.'));
       setTimeout(() => setSuccessMsg(''), 3000);
     } catch (err: any) {
       setError(err instanceof Error ? err.message : 'Import from Claude failed.');
@@ -144,23 +148,24 @@ export const McpServerHub: React.FC = () => {
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
             <LegacyIcon name="terminal" className="text-[20px] text-emerald-600" />
-            <h2 className="text-base font-bold text-neutral-900 tracking-tight font-sans">MCP Server Hub</h2>
+            <h2 className="text-base font-bold text-neutral-900 tracking-tight font-sans">{t('MCP Server Hub')}</h2>
           </div>
           <p className="text-xs text-neutral-500 font-sans leading-relaxed">
-            Register stdio or SSE MCP servers alongside the built-in workspace filesystem server.
-            User servers persist in Application Support and connect when agents run.
+            {t('Register stdio or SSE MCP servers alongside the built-in workspace filesystem server. User servers persist in Application Support and connect when agents run.')}
           </p>
         </div>
 
+        <UnderDevelopmentNotice />
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="p-4 bg-emerald-50/20 border border-emerald-100/70 rounded-2xl text-left">
-            <span className="text-[10px] font-bold text-emerald-700 tracking-wider uppercase font-mono">CONNECTED</span>
+            <span className="text-[10px] font-bold text-emerald-700 tracking-wider uppercase font-mono">{t('CONNECTED')}</span>
             <div className="mt-2 text-2xl font-bold font-sans text-neutral-900">
               {connectedCount} <span className="text-xs font-normal text-neutral-400">/ {servers.length}</span>
             </div>
           </div>
           <div className="p-4 bg-neutral-50/50 border border-neutral-200/50 rounded-2xl text-left">
-            <span className="text-[10px] font-bold text-neutral-500 tracking-wider uppercase font-mono">MCP TOOLS</span>
+            <span className="text-[10px] font-bold text-neutral-500 tracking-wider uppercase font-mono">{t('MCP TOOLS')}</span>
             <div className="mt-2 text-2xl font-bold font-sans text-neutral-900">{totalTools}</div>
           </div>
         </div>
@@ -175,13 +180,13 @@ export const McpServerHub: React.FC = () => {
         {isJsonEditMode ? (
           <form onSubmit={(e) => void handleSaveJsonConfig(e)} className="p-4 bg-neutral-50/50 border border-neutral-200/60 rounded-xl space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-[11px] font-extrabold text-[#111111] font-mono tracking-wider uppercase">Edit Raw Config JSON</h3>
+              <h3 className="text-[11px] font-extrabold text-[#111111] font-mono tracking-wider uppercase">{t('Edit Raw Config JSON')}</h3>
               <button
                 type="button"
                 onClick={() => setIsJsonEditMode(false)}
                 className={`${BTN_GHOST} text-[10px] font-bold`}
               >
-                Cancel
+                {t('Cancel')}
               </button>
             </div>
             <textarea
@@ -197,21 +202,21 @@ export const McpServerHub: React.FC = () => {
                 type="submit"
                 className={BTN_PRIMARY}
               >
-                Save JSON Config
+                {t('Save JSON Config')}
               </button>
             </div>
           </form>
         ) : (
           <form onSubmit={(e) => void handleRegister(e)} className="p-4 bg-neutral-50/50 border border-neutral-200/60 rounded-xl space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-[11px] font-extrabold text-[#111111] font-mono tracking-wider uppercase">Register MCP Server</h3>
+              <h3 className="text-[11px] font-extrabold text-[#111111] font-mono tracking-wider uppercase">{t('Register MCP Server')}</h3>
               <div className="flex gap-2.5 items-center">
                 <button
                   type="button"
                   onClick={() => void handleImportClaude()}
                   className={`${BTN_GHOST} text-[10px] font-bold text-emerald-700 hover:text-emerald-900 border-transparent hover:bg-emerald-50`}
                 >
-                  Import from Claude
+                  {t('Import from Claude')}
                 </button>
                 <span className="text-neutral-300 text-[10px]">|</span>
                 <button
@@ -228,7 +233,7 @@ export const McpServerHub: React.FC = () => {
                   }}
                   className={`${BTN_GHOST} text-[10px] font-bold`}
                 >
-                  Edit raw JSON
+                  {t('Edit raw JSON')}
                 </button>
               </div>
             </div>
@@ -238,7 +243,7 @@ export const McpServerHub: React.FC = () => {
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Display name"
+                placeholder={t('Display name')}
                 className="px-3 py-1.5 text-xs border border-neutral-200 rounded-lg bg-white"
               />
               <select
@@ -262,15 +267,15 @@ export const McpServerHub: React.FC = () => {
               type="submit"
               className={BTN_PRIMARY}
             >
-              + Register Node
+              {t('+ Register Node')}
             </button>
           </form>
         )}
 
         {loading ? (
-          <p className="text-xs text-neutral-400 italic">Loading MCP status…</p>
+          <p className="text-xs text-neutral-400 italic">{t('Loading MCP status…')}</p>
         ) : servers.length === 0 ? (
-          <p className="text-xs text-neutral-400 italic">No MCP servers available.</p>
+          <p className="text-xs text-neutral-400 italic">{t('No MCP servers available.')}</p>
         ) : (
           <div className="border border-neutral-200/80 bg-white rounded-xl divide-y divide-neutral-150 overflow-hidden shadow-3xs">
             {servers.map((server) => (
@@ -283,7 +288,7 @@ export const McpServerHub: React.FC = () => {
                       {server.transport}
                     </span>
                     {server.builtin && (
-                      <span className="text-[8px] font-mono uppercase text-emerald-700 bg-emerald-50 px-1 rounded">builtin</span>
+                      <span className="text-[8px] font-mono uppercase text-emerald-700 bg-emerald-50 px-1 rounded">{t('builtin')}</span>
                     )}
                   </div>
                   <p className="text-[10.5px] font-mono text-neutral-500 bg-neutral-50 px-2 py-1 rounded border border-neutral-100/55 break-all leading-normal">
@@ -291,7 +296,7 @@ export const McpServerHub: React.FC = () => {
                   </p>
                   {server.tools && server.tools.length > 0 && (
                     <div className="mt-2 pl-3 border-l-2 border-emerald-500/30 space-y-1 select-text">
-                      <span className="text-[9px] font-extrabold text-neutral-400 font-mono tracking-wider uppercase block">Exposed Tools:</span>
+                      <span className="text-[9px] font-extrabold text-neutral-400 font-mono tracking-wider uppercase block">{t('Exposed Tools:')}</span>
                       <div className="flex flex-col gap-1 max-h-32 overflow-y-auto pr-1">
                         {server.tools.map((t, idx) => (
                           <div key={idx} className="text-[10px] text-neutral-600 font-mono flex flex-wrap items-center gap-1.5 leading-snug">
@@ -305,11 +310,11 @@ export const McpServerHub: React.FC = () => {
                 </div>
                 <div className="flex items-end md:items-center gap-3">
                   <div className="text-[10.5px] md:text-right">
-                    <div className="font-mono text-neutral-400">STATUS</div>
+                    <div className="font-mono text-neutral-400">{t('STATUS')}</div>
                     <div className={`font-semibold capitalize ${statusTextClass(server.status)}`}>
                       {statusLabel(server.status)}
                     </div>
-                    <div className="font-mono text-neutral-400 mt-1">TOOLS</div>
+                    <div className="font-mono text-neutral-400 mt-1">{t('TOOLS')}</div>
                     <div className="font-semibold text-neutral-800">
                       {server.status === 'connected' ? server.toolsCount : '—'}
                     </div>
@@ -322,7 +327,7 @@ export const McpServerHub: React.FC = () => {
                         onClick={() => void handleToggle(server)}
                         className="text-[10px] font-bold text-neutral-600 hover:text-neutral-900"
                       >
-                        {server.status === 'failed' ? 'Enable' : 'Disable'}
+                        {server.status === 'failed' ? t('Enable') : t('Disable')}
                       </button>
                       <button
                         type="button"

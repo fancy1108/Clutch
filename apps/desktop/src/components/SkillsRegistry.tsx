@@ -10,10 +10,13 @@ import {
 import { BTN_ICON_SM, BTN_PRIMARY } from './ui/buttonStyles';
 import { LegacyIcon } from './ui/LegacyIcon';
 import { ALERT_SUCCESS, ALERT_WARNING } from './ui/surfaceStyles';
+import { UnderDevelopmentNotice } from './ui/UnderDevelopmentNotice';
+import { useLanguage } from './LanguageContext';
 
 export type { ScannedSkill };
 
 export const SkillsRegistry: React.FC = () => {
+  const { t } = useLanguage();
   const [scannedSkills, setScannedSkills] = useState<ScannedSkill[]>([]);
   const [mountedDirectories, setMountedDirectories] = useState<string[]>([]);
   const [newDirPath, setNewDirPath] = useState('');
@@ -30,7 +33,7 @@ export const SkillsRegistry: React.FC = () => {
       setScannedSkills(data.skills);
       notifySkillsUpdated();
     } catch {
-      setErrorMsg('Sidecar unavailable — cannot load skills registry.');
+      setErrorMsg(t('Sidecar unavailable — cannot load skills registry.'));
     } finally {
       setLoading(false);
     }
@@ -48,7 +51,7 @@ export const SkillsRegistry: React.FC = () => {
       setScannedSkills(data.skills);
       notifySkillsUpdated();
     } catch {
-      setErrorMsg('Failed to update skill — Sidecar may be offline.');
+      setErrorMsg(t('Failed to update skill — Sidecar may be offline.'));
     }
   };
 
@@ -57,7 +60,7 @@ export const SkillsRegistry: React.FC = () => {
     if (!newDirPath.trim()) return;
     const path = newDirPath.trim();
     if (mountedDirectories.includes(path)) {
-      setSuccessMsg('Directory is already mounted');
+      setSuccessMsg(t('Directory is already mounted'));
       setTimeout(() => setSuccessMsg(''), 2000);
       return;
     }
@@ -70,8 +73,8 @@ export const SkillsRegistry: React.FC = () => {
       const count = data.skills.length;
       setSuccessMsg(
         count > 0
-          ? `Mounted and discovered ${count} skill(s).`
-          : 'Directory mounted. No SKILL.md files found yet.',
+          ? t('Mounted and discovered {count} skill(s).').replace('{count}', String(count))
+          : t('Directory mounted. No SKILL.md files found yet.'),
       );
       notifySkillsUpdated();
       setTimeout(() => setSuccessMsg(''), 4000);
@@ -97,13 +100,14 @@ export const SkillsRegistry: React.FC = () => {
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
             <LegacyIcon name="school" className="text-[20px] text-neutral-800" />
-            <h2 className="text-base font-bold text-neutral-900 tracking-tight font-sans">Global Skills Registry</h2>
+            <h2 className="text-base font-bold text-neutral-900 tracking-tight font-sans">{t('Global Skills Registry')}</h2>
           </div>
           <p className="text-xs text-neutral-500 font-sans leading-relaxed">
-            Mount directories that contain <code className="font-mono text-[10.5px] bg-neutral-100 text-neutral-800 px-1 py-0.5 rounded">SKILL.md</code> files.
-            Clutch auto-detects <code className="font-mono text-[10.5px] bg-neutral-100 text-neutral-800 px-1 py-0.5 rounded">~/.cursor/skills-cursor</code> and your workspace <code className="font-mono text-[10.5px] bg-neutral-100 text-neutral-800 px-1 py-0.5 rounded">skills/</code> folder on refresh.
+            {t('Mount directories skills hint')}
           </p>
         </div>
+
+        <UnderDevelopmentNotice />
 
         {errorMsg && (
           <p className={ALERT_WARNING}>{errorMsg}</p>
@@ -112,8 +116,8 @@ export const SkillsRegistry: React.FC = () => {
         <div className="p-4 bg-neutral-50/50 border border-neutral-200/60 rounded-xl space-y-4">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <h3 className="text-[11px] font-extrabold text-[#111111] font-mono tracking-wider uppercase">Search Paths</h3>
-              <p className="text-[9.5px]/snug text-neutral-400 font-sans">Paths stored in Application Support and scanned on refresh.</p>
+              <h3 className="text-[11px] font-extrabold text-[#111111] font-mono tracking-wider uppercase">{t('Search Paths')}</h3>
+              <p className="text-[9.5px]/snug text-neutral-400 font-sans">{t('Paths stored in Application Support and scanned on refresh.')}</p>
             </div>
             <button
               type="button"
@@ -121,14 +125,14 @@ export const SkillsRegistry: React.FC = () => {
               disabled={loading}
               className="text-[10px] font-bold text-neutral-500 hover:text-neutral-800 disabled:opacity-50"
             >
-              Rescan
+              {t('Rescan')}
             </button>
           </div>
 
           {loading ? (
-            <p className="text-xs text-neutral-400 italic">Loading skills registry…</p>
+            <p className="text-xs text-neutral-400 italic">{t('Loading skills registry…')}</p>
           ) : mountedDirectories.length === 0 ? (
-            <p className="text-xs text-neutral-400 italic">No skill directories mounted.</p>
+            <p className="text-xs text-neutral-400 italic">{t('No skill directories mounted.')}</p>
           ) : (
             <div className="grid grid-cols-1 gap-2">
               {mountedDirectories.map((dir) => (
@@ -144,8 +148,8 @@ export const SkillsRegistry: React.FC = () => {
                     type="button"
                     onClick={() => void handleUnmount(dir)}
                     className={`${BTN_ICON_SM} text-neutral-400 hover:text-red-600 hover:bg-neutral-50`}
-                    title="Unmount directory"
-                    aria-label="Unmount directory"
+                    title={t('Unmount directory')}
+                    aria-label={t('Unmount directory')}
                   >
                     <LegacyIcon name="delete" className="text-[15px] font-bold" />
                   </button>
@@ -160,14 +164,14 @@ export const SkillsRegistry: React.FC = () => {
               required
               value={newDirPath}
               onChange={(e) => setNewDirPath(e.target.value)}
-              placeholder="e.g. ~/.cursor/skills/"
+              placeholder={t('e.g. ~/.cursor/skills/')}
               className="flex-1 px-3 py-1.5 text-xs border border-neutral-200 focus:outline-none focus:border-neutral-900 bg-white rounded-lg font-mono placeholder:text-neutral-400"
             />
             <button
               type="submit"
               className={BTN_PRIMARY}
             >
-              + Mount Root
+              {t('+ Mount Root')}
             </button>
           </form>
 
@@ -180,12 +184,12 @@ export const SkillsRegistry: React.FC = () => {
 
         <div className="space-y-3">
           <div className="flex items-center justify-between px-1">
-            <h3 className="text-[11px] font-extrabold text-[#111111] font-mono tracking-wider uppercase">Discovered Skills</h3>
-            <span className="text-[10px] text-neutral-400 font-semibold font-mono">{scannedSkills.length} FOUND</span>
+            <h3 className="text-[11px] font-extrabold text-[#111111] font-mono tracking-wider uppercase">{t('Discovered Skills')}</h3>
+            <span className="text-[10px] text-neutral-400 font-semibold font-mono">{scannedSkills.length} {t('FOUND')}</span>
           </div>
 
           {scannedSkills.length === 0 ? (
-            <p className="text-xs text-neutral-400 italic px-1">No skills discovered yet.</p>
+            <p className="text-xs text-neutral-400 italic px-1">{t('No skills discovered yet.')}</p>
           ) : (
             <div className="border border-neutral-200/80 bg-white rounded-xl divide-y divide-neutral-100 overflow-hidden shadow-3xs">
               {scannedSkills.map(skill => (
@@ -208,14 +212,14 @@ export const SkillsRegistry: React.FC = () => {
                       className={`w-9 h-5 rounded-full p-0.5 transition-all duration-300 relative cursor-pointer flex items-center ${
                         skill.isActiveGlobally ? 'bg-neutral-900 justify-end' : 'bg-neutral-200 justify-start'
                       }`}
-                      title="Toggle global skill"
+                      title={t('Toggle global skill')}
                     >
                       <span className="w-4 h-4 rounded-full bg-white shadow-3xs block" />
                     </button>
                     {skill.isActiveGlobally ? (
-                      <span className="text-[7.5px] uppercase font-mono text-emerald-700 font-extrabold bg-emerald-50 border border-emerald-150 px-1 py-0.5 rounded">ACTIVE</span>
+                      <span className="text-[7.5px] uppercase font-mono text-emerald-700 font-extrabold bg-emerald-50 border border-emerald-150 px-1 py-0.5 rounded">{t('ACTIVE')}</span>
                     ) : (
-                      <span className="text-[7.5px] uppercase font-mono text-neutral-400 bg-neutral-50 px-1 py-0.5 rounded border border-neutral-200/40">INACTIVE</span>
+                      <span className="text-[7.5px] uppercase font-mono text-neutral-400 bg-neutral-50 px-1 py-0.5 rounded border border-neutral-200/40">{t('Inactive')}</span>
                     )}
                   </div>
                 </div>

@@ -641,9 +641,9 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
     <div className="flex-1 h-full flex flex-col bg-white overflow-hidden">
       <header className={`flex-shrink-0 z-20 bg-white/95 backdrop-blur py-5 flex items-center justify-between border-b border-neutral-100 pl-8 ${isModalStyle ? 'pr-14' : 'pr-8'}`}>
         <div className="text-left">
-          <h2 className="text-sm font-bold text-neutral-800 tracking-tight font-sans">Workflow Orchestration</h2>
+          <h2 className="text-sm font-bold text-neutral-800 tracking-tight font-sans">{t('Workflow Orchestration')}</h2>
           <p className="text-[11px] text-neutral-400 mt-0.5">
-            Design and manage cooperative multi-agent state pipelines.
+            {t('Design and manage cooperative multi-agent state pipelines.')}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -663,7 +663,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
         {/* Left sidebar for workflows */}
         <div className="w-[280px] border-r border-neutral-100 bg-neutral-50/30 overflow-y-auto flex flex-col p-4 gap-3 overflow-x-hidden">
           <h3 className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest pl-2 mb-1 text-left">
-            Active SOP Workflows
+            {t('Active SOP Workflows')}
           </h3>
           {loading && (
             <p className="text-[10px] text-neutral-400 pl-2 font-mono">{t('Loading...')}</p>
@@ -846,7 +846,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
           ) : (
             <div className="flex-1 flex items-center justify-center flex-col text-neutral-400">
               <LegacyIcon name="account_tree" className="text-[32px] mb-2 font-light" />
-              <p className="text-xs font-medium">Select or create a workflow</p>
+              <p className="text-xs font-medium">{t('Select or create a workflow')}</p>
             </div>
           )}
         </div>
@@ -858,13 +858,13 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
           <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl border border-neutral-200 overflow-hidden flex flex-col text-left max-h-[80%]">
             <div className="px-5 py-4 border-b border-neutral-100 flex items-center justify-between bg-neutral-50/50">
               <h3 className="text-sm font-bold text-neutral-900">
-                {activeWorkflow?.steps.find(s => s.id.toString() === editingNodeId) ? 'Edit Node' : 'New Node'}
+                {activeWorkflow?.steps.find(s => s.id.toString() === editingNodeId) ? t('Edit Node') : t('New Node')}
               </h3>
               <button
                 type="button"
                 onClick={() => setEditingNodeId(null)}
                 className={BTN_ICON}
-                aria-label="Close"
+                aria-label={t('Close')}
               >
                 <LegacyIcon name="close" className="text-[18px]" />
               </button>
@@ -872,18 +872,18 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
             
             <div className="p-5 space-y-4 text-xs overflow-y-auto flex-1">
               <div className="space-y-1.5">
-                <label className="font-bold text-neutral-700">Node Name</label>
+                <label className="font-bold text-neutral-700">{t('Node Name')}</label>
                 <input 
                   type="text" 
                   value={nodeForm.name || ''}
                   onChange={e => setNodeForm({...nodeForm, name: e.target.value})}
                   className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-neutral-400 focus:ring-2 focus:ring-neutral-200/50 transition-all font-medium"
-                  placeholder="e.g. Asset Gathering"
+                  placeholder={t('e.g. Asset Gathering')}
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="font-bold text-neutral-700">Assigned Agent</label>
+                <label className="font-bold text-neutral-700">{t('Assigned Agent')}</label>
                 <select 
                   value={nodeForm.agent || ''}
                   onChange={e => {
@@ -898,7 +898,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
                   }}
                   className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-xs bg-white focus:outline-none focus:border-neutral-400 transition-all font-medium"
                 >
-                  <option value="">Select an agent…</option>
+                  <option value="">{t('Select an agent…')}</option>
                   {agents.map((agent) => (
                     <option key={agent.id} value={agent.id}>
                       {getAgentDisplayName(agent)}
@@ -907,20 +907,20 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
                 </select>
                 {agents.length === 0 && (
                   <p className="text-[10px] text-neutral-400">
-                    No agents configured. Create agents in the Agents panel first.
+                    {t('No agents configured. Create agents in the Agents panel first.')}
                   </p>
                 )}
                 {selectedAgent && (
                   <div className="mt-2 p-2.5 rounded-lg border border-neutral-100 bg-neutral-50/50 space-y-1 text-[10.5px] text-neutral-500 font-medium">
                     <div className="flex justify-between items-center">
-                      <span className="text-neutral-400">AI Tool / Type:</span>
+                      <span className="text-neutral-400">{t('AI Tool / Type:')}</span>
                       <span className="font-bold text-neutral-700 font-mono">
                         {agentTypeLabel(agentTypeFromAgent(selectedAgent))}
                       </span>
                     </div>
                     {selectedAgent.description && (
                       <div>
-                        <span className="text-neutral-400 block mb-0.5">Description:</span>
+                        <span className="text-neutral-400 block mb-0.5">{t('Description:')}</span>
                         <p className="text-neutral-600 font-normal line-clamp-2 leading-relaxed">
                           {selectedAgent.description}
                         </p>
@@ -931,18 +931,18 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
               </div>
 
               <div className="space-y-1.5">
-                <label className="font-bold text-neutral-700">Description / Instructions</label>
+                <label className="font-bold text-neutral-700">{t('Description / Instructions')}</label>
                 <textarea 
                   value={nodeForm.description || ''}
                   onChange={e => setNodeForm({...nodeForm, description: e.target.value})}
                   className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-neutral-400 focus:ring-2 focus:ring-neutral-200/50 transition-all min-h-[80px] resize-none"
-                  placeholder="Task instructions..."
+                  placeholder={t('Task instructions...')}
                 />
               </div>
 
               <div className="space-y-3 pt-2 border-t border-neutral-100/70">
                 <div>
-                  <label className="font-bold text-neutral-700 text-[11px] block mb-1">Source Flows (Incoming Upstream Nodes)</label>
+                  <label className="font-bold text-neutral-700 text-[11px] block mb-1">{t('Source Flows (Incoming Upstream Nodes)')}</label>
                   <div className="max-h-[110px] overflow-y-auto border border-neutral-200 rounded-lg p-2 bg-neutral-50/50 space-y-1.5">
                     {(activeWorkflow?.steps || [])
                       .filter(s => s.id.toString() !== editingNodeId)
@@ -977,13 +977,13 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
                         );
                       })}
                     {(activeWorkflow?.steps || []).filter(s => s.id.toString() !== editingNodeId).length === 0 && (
-                      <p className="text-[10px] text-neutral-400 italic font-medium p-1">No other steps in this workflow yet.</p>
+                      <p className="text-[10px] text-neutral-400 italic font-medium p-1">{t('No other steps in this workflow yet.')}</p>
                     )}
                   </div>
                 </div>
 
                 <div>
-                  <label className="font-bold text-neutral-700 text-[11px] block mb-1">Next Flows (Connected Downstream Nodes)</label>
+                  <label className="font-bold text-neutral-700 text-[11px] block mb-1">{t('Next Flows (Connected Downstream Nodes)')}</label>
                   <div className="max-h-[110px] overflow-y-auto border border-neutral-200 rounded-lg p-2 bg-neutral-50/50 space-y-1.5">
                     {activeWorkflow?.steps
                       .filter(s => s.id.toString() !== editingNodeId)
@@ -1018,13 +1018,13 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
                         );
                       })}
                     {(activeWorkflow?.steps || []).filter(s => s.id.toString() !== editingNodeId).length === 0 && (
-                      <p className="text-[10px] text-neutral-400 italic font-medium p-1">No other steps in this workflow yet.</p>
+                      <p className="text-[10px] text-neutral-400 italic font-medium p-1">{t('No other steps in this workflow yet.')}</p>
                     )}
                   </div>
                 </div>
                 
                 <p className="text-[10px] text-neutral-400">
-                  Tip: Toggle checks above or drag lines directly on the workflow canvas.
+                  {t('Tip: Toggle checks above or drag lines directly on the workflow canvas.')}
                 </p>
               </div>
             </div>
@@ -1062,7 +1062,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
                 type="button"
                 onClick={() => { setIsCreatingWorkflow(false); setEditingWorkflowId(null); }}
                 className={BTN_ICON}
-                aria-label="Close"
+                aria-label={t('Close')}
               >
                 <LegacyIcon name="close" className="text-[18px]" />
               </button>
@@ -1070,39 +1070,39 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
             
             <div className="p-5 space-y-4 text-xs overflow-y-auto flex-1">
               <div className="space-y-1.5">
-                <label className="font-bold text-neutral-700">Flow Name</label>
+                <label className="font-bold text-neutral-700">{t('Flow Name')}</label>
                 <input 
                   type="text" 
                   value={newWorkflowName}
                   onChange={e => setNewWorkflowName(e.target.value)}
                   className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-neutral-400 focus:ring-2 focus:ring-neutral-200/50 transition-all font-medium"
-                  placeholder="e.g. Design & Prototype SOP"
+                  placeholder={t('e.g. Design & Prototype SOP')}
                   autoFocus
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="font-bold text-neutral-700">Description</label>
+                <label className="font-bold text-neutral-700">{t('Description')}</label>
                 <textarea 
                   value={newWorkflowDesc}
                   onChange={e => setNewWorkflowDesc(e.target.value)}
                   className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-neutral-400 focus:ring-2 focus:ring-neutral-200/50 transition-all min-h-[80px] resize-none"
-                  placeholder="Briefly state the goal of this pipeline..."
+                  placeholder={t('Briefly state the goal of this pipeline...')}
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="font-bold text-neutral-700 block">Flow Icon Representation</label>
+                <label className="font-bold text-neutral-700 block">{t('Flow Icon Representation')}</label>
                 <div className="grid grid-cols-4 gap-1.5">
                   {[
-                    { key: 'account_tree', name: 'Tree' },
-                    { key: 'code', name: 'Code' },
-                    { key: 'sync', name: 'Sync' },
-                    { key: 'movie', name: 'Video' },
-                    { key: 'deployed_code', name: 'Deploy' },
-                    { key: 'terminal', name: 'Console' },
-                    { key: 'api', name: 'API' },
-                    { key: 'schema', name: 'SOP Mapping' }
+                    { key: 'account_tree', name: t('Tree') },
+                    { key: 'code', name: t('Code') },
+                    { key: 'sync', name: t('Sync') },
+                    { key: 'movie', name: t('Video') },
+                    { key: 'deployed_code', name: t('Deploy') },
+                    { key: 'terminal', name: t('Console') },
+                    { key: 'api', name: t('API') },
+                    { key: 'schema', name: t('SOP Mapping') }
                   ].map(iconOpt => (
                     <button
                       key={iconOpt.key}

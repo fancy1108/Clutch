@@ -18,6 +18,7 @@ import {
 import { BTN_GHOST, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON } from './ui/buttonStyles';
 import { BADGE_NEUTRAL, BADGE_PRIMARY, BADGE_SUCCESS, CARD_SUBTLE } from './ui/surfaceStyles';
 import { LegacyIcon } from './ui/LegacyIcon';
+import { useLanguage } from './LanguageContext';
 
 interface ModelItem {
   id: string;
@@ -49,18 +50,7 @@ interface ModelsManagerProps {
 }
 
 const CONNECTABLE_PROVIDERS = ['deepseek', 'anthropic', 'openai', 'google', 'ollama', 'custom'] as const;
-const IMAGE_BACKENDS = [
-  { id: '', label: 'Auto-detect from URL' },
-  { id: 'agnes', label: 'Agnes Image API' },
-  { id: 'openai_images', label: 'OpenAI-compatible /v1/images/generations' },
-] as const;
-
-function verifyStatusLabel(verify: VerifyState): string | null {
-  if (verify === 'testing') return 'Testing…';
-  if (verify === 'ok') return 'Ready';
-  if (verify === 'failed') return 'Connection failed';
-  return null;
-}
+const IMAGE_BACKEND_IDS = ['', 'agnes', 'openai_images'] as const;
 
 export const ModelsManager: React.FC<ModelsManagerProps> = ({
   activeModelId,
@@ -70,6 +60,21 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
   configuredModels,
   setConfiguredModels,
 }) => {
+  const { t } = useLanguage();
+
+  const imageBackendLabel = (id: (typeof IMAGE_BACKEND_IDS)[number]) => {
+    if (id === '') return t('Auto-detect from URL');
+    if (id === 'agnes') return t('Agnes Image API');
+    return t('OpenAI-compatible /v1/images/generations');
+  };
+
+  const verifyStatusLabel = (verify: VerifyState): string | null => {
+    if (verify === 'testing') return t('Testing…');
+    if (verify === 'ok') return t('Ready');
+    if (verify === 'failed') return t('Connection failed');
+    return null;
+  };
+
   const [showConnectForm, setShowConnectForm] = useState(false);
   const [showAddImageForm, setShowAddImageForm] = useState(false);
   const [imageName, setImageName] = useState('');
@@ -129,7 +134,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
     } catch {
       setConfiguredModels([]);
       setProviders({});
-      setError('Cannot reach Clutch sidecar — start the backend on port 8124 (dev) or reopen the packaged app.');
+      setError(t('Cannot reach Clutch sidecar — start the backend on port 8124 (dev) or reopen the packaged app.'));
       return [];
     } finally {
       if (!options?.silent) setLoading(false);
@@ -150,7 +155,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
       setVerifyMessageByModel((prev) => ({ ...prev, [modelId]: result.message }));
       saveModelVerifyResult(modelId, result.ok, result.message);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Connection test failed.';
+      const message = err instanceof Error ? err.message : t('Connection test failed.');
       setVerifyByModel((prev) => ({ ...prev, [modelId]: 'failed' }));
       setVerifyMessageByModel((prev) => ({ ...prev, [modelId]: message }));
       saveModelVerifyResult(modelId, false, message);
@@ -203,7 +208,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
         void handleTestConnection(result.model_id);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not add image model.');
+      setError(err instanceof Error ? err.message : t('Could not add image model.'));
     } finally {
       setSavingImageModel(false);
     }
@@ -233,7 +238,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
       await saveModelsConfig({ active_model_id: modelId });
       await refresh({ silent: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not switch to this model.');
+      setError(err instanceof Error ? err.message : t('Could not switch to this model.'));
     } finally {
       setActivatingModelId(null);
     }
@@ -252,14 +257,17 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
       const providerModels = models.filter((model) => model.providerId === savedProviderId);
       void Promise.all(providerModels.map((model) => handleTestConnection(model.id)));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not save API key.');
+      setError(err instanceof Error ? err.message : t('Could not save API key.'));
     } finally {
       setSavingKey(false);
     }
   };
 
   const handleDeleteProvider = async (targetProviderId: string) => {
-    const message = `Remove the saved API key for ${PROVIDER_LABELS[targetProviderId] ?? targetProviderId}?`;
+    const message = t('Remove the saved API key for {provider}?').replace(
+      '{provider}',
+      PROVIDER_LABELS[targetProviderId] ?? targetProviderId,
+    );
     if (!window.confirm(message)) return;
 
     const removedModelIds = new Set(
@@ -279,7 +287,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
       closeConnectForm();
       await refresh({ silent: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not remove saved key.');
+      setError(err instanceof Error ? err.message : t('Could not remove saved key.'));
       await refresh({ silent: true });
     } finally {
       setDeletingProviderId(null);
@@ -300,7 +308,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
     } catch (err) {
       setCcSwitchSyncMessage({
         tone: 'error',
-        text: err instanceof Error ? err.message : 'CC Switch import failed.',
+        text: err instanceof Error ? err.message : t('CC Switch import failed.'),
       });
     } finally {
       setSyncingCcSwitch(false);
@@ -313,12 +321,14 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
 
   const currentStatusLine = (() => {
     if (!activeModelId || !activeAvailable) {
-      return 'Pick a model below or add an API key to get started.';
+      return t('Pick a model below or add an API key to get started.');
     }
-    if (activeVerify === 'testing') return 'Testing connection…';
-    if (activeVerify === 'ok') return activeVerifyMessage ?? 'Ready to use.';
-    if (activeVerify === 'failed') return activeVerifyMessage ?? 'Last test failed — fix the key or choose another model.';
-    return 'Not tested yet — press Test when you want to verify.';
+    if (activeVerify === 'testing') return t('Testing connection…');
+    if (activeVerify === 'ok') return activeVerifyMessage ?? t('Ready to use.');
+    if (activeVerify === 'failed') {
+      return activeVerifyMessage ?? t('Last test failed — fix the key or choose another model.');
+    }
+    return t('Not tested yet — press Test when you want to verify.');
   })();
 
   const statusTone =
@@ -333,9 +343,9 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
       <div className="flex-1 overflow-y-auto px-6 pb-6 pt-14 pr-12 space-y-5">
         <div className="flex items-start justify-between gap-4">
           <header className="text-left space-y-1 min-w-0">
-            <h2 className="text-base font-bold text-on-surface tracking-tight font-sans">AI Workspace Models</h2>
+            <h2 className="text-base font-bold text-on-surface tracking-tight font-sans">{t('AI Workspace Models')}</h2>
             <p className="text-xs text-on-surface-variant leading-relaxed">
-              Choose which model Clutch uses for chat and workflows.
+              {t('Choose which model Clutch uses for chat and workflows.')}
             </p>
           </header>
           <div className="flex flex-shrink-0 gap-2">
@@ -347,7 +357,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
               }}
               className={`${BTN_SECONDARY} text-[10.5px] whitespace-nowrap`}
             >
-              Add image model
+              {t('Add image model')}
             </button>
             <button
               type="button"
@@ -357,7 +367,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
               }}
               className={`${BTN_PRIMARY} text-[10.5px] whitespace-nowrap`}
             >
-              Add API key
+              {t('Add API key')}
             </button>
           </div>
         </div>
@@ -368,27 +378,27 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
             className={`${CARD_SUBTLE} space-y-4 text-left`}
           >
             <div>
-              <h3 className="text-xs font-bold text-on-surface">Add custom image model</h3>
+              <h3 className="text-xs font-bold text-on-surface">{t('Add custom image model')}</h3>
               <p className="text-[11px] text-on-surface-variant mt-0.5">
-                Register a text-to-image endpoint without editing code. Use Agnes or any OpenAI-compatible gateway.
+                {t('Register a text-to-image endpoint without editing code. Use Agnes or any OpenAI-compatible gateway.')}
               </p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block">
-                  Display name
+                  {t('Display name')}
                 </label>
                 <input
                   required
                   value={imageName}
                   onChange={(e) => setImageName(e.target.value)}
-                  placeholder="My Image Model"
+                  placeholder={t('My Image Model')}
                   className="w-full text-xs border border-outline bg-surface rounded-lg px-3 py-2 text-on-surface"
                 />
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block">
-                  API model id
+                  {t('API model id')}
                 </label>
                 <input
                   required
@@ -400,7 +410,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
               </div>
               <div className="space-y-1 sm:col-span-2">
                 <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block">
-                  Base URL
+                  {t('Base URL')}
                 </label>
                 <input
                   required
@@ -412,7 +422,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block">
-                  API key provider
+                  {t('API key provider')}
                 </label>
                 <select
                   value={imageProviderId}
@@ -428,43 +438,43 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block">
-                  Image backend
+                  {t('Image backend')}
                 </label>
                 <select
                   value={imageBackend}
                   onChange={(e) => setImageBackend(e.target.value)}
                   className="w-full text-xs border border-outline bg-surface rounded-lg px-3 py-2 text-on-surface"
                 >
-                  {IMAGE_BACKENDS.map((item) => (
-                    <option key={item.id || 'auto'} value={item.id}>
-                      {item.label}
+                  {IMAGE_BACKEND_IDS.map((id) => (
+                    <option key={id || 'auto'} value={id}>
+                      {imageBackendLabel(id)}
                     </option>
                   ))}
                 </select>
               </div>
               <div className="space-y-1 sm:col-span-2">
                 <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block">
-                  API key (optional)
+                  {t('API key (optional)')}
                 </label>
                 <input
                   type="password"
                   value={imageApiKey}
                   onChange={(e) => setImageApiKey(e.target.value)}
-                  placeholder="Save key for the selected provider"
+                  placeholder={t('Save key for the selected provider')}
                   className="w-full text-xs border border-outline bg-surface rounded-lg px-3 py-2 font-mono text-on-surface"
                 />
               </div>
             </div>
             <div className="flex justify-end gap-2">
               <button type="button" onClick={closeAddImageForm} className={`${BTN_GHOST} text-[10.5px]`}>
-                Cancel
+                {t('Cancel')}
               </button>
               <button
                 type="submit"
                 disabled={savingImageModel}
                 className={`${BTN_PRIMARY} text-[10.5px] disabled:opacity-50`}
               >
-                {savingImageModel ? 'Saving…' : 'Save image model'}
+                {savingImageModel ? t('Saving…') : t('Save image model')}
               </button>
             </div>
           </form>
@@ -477,16 +487,16 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
           >
             <div>
               <h3 className="text-xs font-bold text-on-surface">
-                {editingProviderId ? 'Update API key' : 'Add API key'}
+                {editingProviderId ? t('Update API key') : t('Add API key')}
               </h3>
               <p className="text-[11px] text-on-surface-variant mt-0.5">
-                Saved in Clutch and used for built-in models of this provider.
+                {t('Saved in Clutch and used for built-in models of this provider.')}
               </p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block">
-                  Provider
+                  {t('Provider')}
                 </label>
                 <select
                   value={providerId}
@@ -503,7 +513,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block">
-                  API key
+                  {t('API key')}
                 </label>
                 <div className="relative flex items-center">
                   <input
@@ -533,7 +543,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
                     onClick={() => void handleDeleteProvider(providerId)}
                     className={`${BTN_GHOST} text-[10.5px] border-rose-200 text-rose-700 hover:bg-rose-50 disabled:opacity-50`}
                   >
-                    {deletingProviderId === providerId ? 'Removing…' : 'Remove saved key'}
+                    {deletingProviderId === providerId ? t('Removing…') : t('Remove saved key')}
                   </button>
                 )}
               </div>
@@ -543,14 +553,14 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
                   onClick={closeConnectForm}
                   className={`${BTN_GHOST} text-[10.5px]`}
                 >
-                  Cancel
+                  {t('Cancel')}
                 </button>
                 <button
                   type="submit"
                   disabled={savingKey}
                   className={`${BTN_PRIMARY} text-[10.5px] disabled:opacity-50`}
                 >
-                  {savingKey ? 'Saving…' : 'Save'}
+                  {savingKey ? t('Saving…') : t('Save')}
                 </button>
               </div>
             </div>
@@ -560,12 +570,12 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
         {pendingRemove && (
           <div className="p-4 bg-rose-50/70 border border-rose-200 rounded-xl space-y-3 text-left">
             <p className="text-xs text-rose-900">
-              Remove <span className="font-bold">{pendingRemove.name}</span> from your model list?
+              {t('Remove {name} from your model list?').replace('{name}', pendingRemove.name)}
               {pendingRemove.id.startsWith('custom-')
-                ? ' This custom model will be deleted permanently.'
+                ? ` ${t('Remove custom model permanently')}`
                 : pendingRemove.id.startsWith('cc-switch-')
-                  ? ' CC Switch imported models are hidden from the list and can be restored by clicking Import models.'
-                  : ' Built-in models are hidden from the list and can be restored by editing models.json.'}
+                  ? ` ${t('Hide CC Switch imported models')}`
+                  : ` ${t('Hide built-in model')}`}
             </p>
             <div className="flex justify-end gap-2">
               <button
@@ -573,14 +583,14 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
                 onClick={() => setPendingRemove(null)}
                 className={`${BTN_GHOST} text-[10.5px]`}
               >
-                Cancel
+                {t('Cancel')}
               </button>
               <button
                 type="button"
                 onClick={() => void handleRemoveModel()}
                 className={`${BTN_PRIMARY} text-[10.5px] bg-rose-700 border-rose-700 hover:bg-rose-800 hover:border-rose-800`}
               >
-                Remove
+                {t('Remove')}
               </button>
             </div>
           </div>
@@ -601,8 +611,8 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
                 : 'bg-surface-container border-outline'
           }`}
         >
-          <p className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Current model</p>
-          <p className="text-sm font-bold text-on-surface mt-1">{selectedModel || 'None selected'}</p>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">{t('Current model')}</p>
+          <p className="text-sm font-bold text-on-surface mt-1">{selectedModel || t('None selected')}</p>
           <p
             className={`text-xs mt-1 leading-relaxed ${
               statusTone === 'rose'
@@ -618,21 +628,21 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
 
         <section className="space-y-3 text-left">
           <div className="flex items-center justify-between">
-            <h3 className="text-xs font-bold text-on-surface">Available models</h3>
-            <span className="text-[10px] text-on-surface-variant">{configuredModels.length} listed</span>
+            <h3 className="text-xs font-bold text-on-surface">{t('Available models')}</h3>
+            <span className="text-[10px] text-on-surface-variant">{configuredModels.length} {t('listed')}</span>
           </div>
 
           {loading && configuredModels.length === 0 ? (
-            <p className="text-xs text-on-surface-variant italic py-6 text-center">Loading models…</p>
+            <p className="text-xs text-on-surface-variant italic py-6 text-center">{t('Loading models…')}</p>
           ) : configuredModels.length === 0 ? (
             <div className="rounded-xl border border-dashed border-outline/70 p-6 text-center space-y-3">
-              <p className="text-xs text-on-surface-variant">No models yet — add an API key or import from CC Switch.</p>
+              <p className="text-xs text-on-surface-variant">{t('No models yet — add an API key or import from CC Switch.')}</p>
               <button
                 type="button"
                 onClick={() => openConnectForm()}
                 className={`${BTN_PRIMARY} text-xs`}
               >
-                Add API key
+                {t('Add API key')}
               </button>
             </div>
           ) : (
@@ -667,16 +677,16 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
                         <span className="text-xs font-bold text-on-surface">{model.name}</span>
                         <span className="text-[10px] text-on-surface-variant">{model.provider}</span>
                         {model.modelKind === 'image' && (
-                          <span className={BADGE_PRIMARY}>Image</span>
+                          <span className={BADGE_PRIMARY}>{t('Image')}</span>
                         )}
                         {model.isCustom && (
-                          <span className={BADGE_NEUTRAL}>Custom</span>
+                          <span className={BADGE_NEUTRAL}>{t('Custom')}</span>
                         )}
                         {!canUse && (
-                          <span className={BADGE_NEUTRAL}>Needs key</span>
+                          <span className={BADGE_NEUTRAL}>{t('Needs key')}</span>
                         )}
                         {isActive && (
-                          <span className={BADGE_PRIMARY}>In use</span>
+                          <span className={BADGE_PRIMARY}>{t('In use')}</span>
                         )}
                         {statusLabel && (
                           <span
@@ -708,7 +718,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
                           }}
                           className="text-[10px] font-bold text-primary hover:underline"
                         >
-                          Change {model.provider} key
+                          {t('Change {provider} key').replace('{provider}', model.provider)}
                         </button>
                       )}
                     </div>
@@ -727,8 +737,20 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
                           void handleTestConnection(model.id);
                         }}
                         className={BTN_ICON}
-                        title={verify === 'testing' ? 'Testing connection' : verify === 'idle' ? 'Test connection' : 'Retest connection'}
-                        aria-label={verify === 'testing' ? 'Testing connection' : verify === 'idle' ? 'Test connection' : 'Retest connection'}
+                        title={
+                          verify === 'testing'
+                            ? t('Testing connection')
+                            : verify === 'idle'
+                              ? t('Test connection')
+                              : t('Retest connection')
+                        }
+                        aria-label={
+                          verify === 'testing'
+                            ? t('Testing connection')
+                            : verify === 'idle'
+                              ? t('Test connection')
+                              : t('Retest connection')
+                        }
                       >
                         <LegacyIcon
                           name={verify === 'testing' ? 'progress_activity' : 'sync'}
@@ -745,8 +767,8 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
                             setPendingRemove({ id: model.id, name: model.name });
                           }}
                           className={`${BTN_ICON} hover:bg-rose-50 text-red-500 hover:text-red-700 disabled:opacity-50`}
-                          title="Remove model"
-                          aria-label="Remove model"
+                          title={t('Remove model')}
+                          aria-label={t('Remove model')}
                         >
                           <LegacyIcon name="delete" className="text-[16px]" />
                         </button>
@@ -760,14 +782,14 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
 
           <div className="pt-2 text-center space-y-2">
             <p className="text-[11px] text-on-surface-variant">
-              Already use CC Switch?{' '}
+              {t('Already use CC Switch?')}{' '}
               <button
                 type="button"
                 disabled={syncingCcSwitch}
                 onClick={() => void handleRehydrateCcSwitch()}
                 className="font-bold text-primary hover:underline disabled:opacity-50"
               >
-                {syncingCcSwitch ? 'Importing…' : 'Import models'}
+                {syncingCcSwitch ? t('Importing…') : t('Import models')}
               </button>
             </p>
             {ccSwitchSyncMessage && (

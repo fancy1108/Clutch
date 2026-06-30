@@ -340,7 +340,6 @@ export const RightPanel: React.FC<RightPanelProps> = ({
         <div className="flex-1 overflow-y-auto sidebar-scroll p-5 select-none bg-white">
           {activeTab === 'overview' && (
             <div className="space-y-6 animate-fade-in text-xs">
-              <UnderDevelopmentNotice variant="compact" />
               {isMultiAgent ? (
                 <>
                   {renderStateSummary()}

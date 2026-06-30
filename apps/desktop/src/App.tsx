@@ -68,7 +68,7 @@ import { getVersion } from '@tauri-apps/api/app';
 function MainLayout() {
   const { t } = useLanguage();
   const { state: clutchState } = useClutchState();
-  const [appVersion, setAppVersion] = useState<string>('0.1.0');
+  const [appVersion, setAppVersion] = useState<string>('1.0.0');
 
   useEffect(() => {
     if (isTauri()) {
@@ -523,7 +523,7 @@ function MainLayout() {
     // Workflow (Flow) runs: stop immediately without confirmation.
     // Plain LLM chat runs: ask once to avoid accidental interruption.
     if (!isWorkflowChat && !highRiskConfirmed) {
-      const ok = window.confirm(t('Confirm stopping the current run? This will interrupt Builder/Evaluator execution.'));
+      const ok = window.confirm(t('Confirm stopping the current run? This will interrupt the current AI Agent execution.'));
       if (!ok) return;
       setHighRiskConfirmed(true);
     }

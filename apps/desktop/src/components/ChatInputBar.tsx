@@ -14,7 +14,6 @@ import type { ScannedSkill } from '../services/skillsApi';
 import type { FileTreeNode } from '../services/workspaceApi';
 import { PERMISSION_MODES, type PermissionMode } from '../services/permissionApi';
 import { LegacyIcon } from './ui/LegacyIcon';
-import { UnderDevelopmentNotice } from './ui/UnderDevelopmentNotice';
 import { BTN_ICON_SM } from './ui/buttonStyles';
 import { shouldSubmitChatOnEnter } from './chatInputKeyboard';
 
@@ -614,7 +613,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
         <div className="px-3 pt-2 pb-0">
           <div className="flex items-center gap-2 py-2 px-3 bg-primary/5 border border-primary/20 rounded-lg">
             <LegacyIcon name="upload_file" className="text-primary text-[18px]" />
-            <span className="text-xs text-primary font-medium">Drop to attach</span>
+            <span className="text-xs text-primary font-medium">{t('Drop to attach')}</span>
           </div>
         </div>
       )}
@@ -630,17 +629,13 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
               setPermissionMenuOpen(false);
             }}
             className="w-8 h-8 flex items-center justify-center rounded-lg text-on-surface-variant/60 hover:text-on-surface hover:bg-surface-container transition-colors"
-            title="Attach"
+            title={t('Attach')}
           >
             <LegacyIcon name="add" className="text-[19px]" />
           </button>
 
           {attachMenuOpen && (
             <div className="absolute bottom-full left-0 mb-2 w-52 bg-white border border-outline-variant rounded-xl shadow-xl py-1.5 z-50 animate-in fade-in slide-in-from-bottom-1 duration-150">
-              <div className="px-2 pb-1">
-                <UnderDevelopmentNotice variant="compact" />
-              </div>
-              <div className="border-t border-outline-variant/50 my-1" />
               {/* Add attachment (local) */}
               <button
                 type="button"
@@ -720,7 +715,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
               : isMultiAgent && selectedWorkflowId
               ? t('Describe what you want this workflow to do...')
               : isMultiAgent
-              ? t('Ask @Builder, @Orchestrator or trigger @Workflow...')
+              ? t('Ask @Agent or describe your workflow...')
               : t('Ask your AI Agent anything...')
           }
           rows={1}
@@ -752,10 +747,6 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
 
             {permissionMenuOpen && (
               <div className="absolute bottom-full right-0 mb-2 w-60 bg-white border border-outline-variant rounded-xl shadow-xl py-1.5 z-50 animate-in fade-in slide-in-from-bottom-1 duration-150">
-                <div className="px-2 pb-1">
-                  <UnderDevelopmentNotice variant="compact" />
-                </div>
-                <div className="border-t border-outline-variant/50 my-1" />
                 {PERMISSION_MODES.map((mode) => (
                   <button
                     key={mode.id}
@@ -806,8 +797,8 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
               data-testid="chat-stop"
               onClick={onStopRun}
               className="w-8 h-8 flex items-center justify-center rounded-full bg-neutral-900 text-white hover:bg-black transition-all"
-              title="Stop"
-              aria-label="Stop"
+              title={t('Stop')}
+              aria-label={t('Stop')}
             >
               <LegacyIcon name="stop" className="text-[17px]" />
             </button>
@@ -839,7 +830,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
           </div>
           <div className="max-h-52 overflow-y-auto">
             {filteredWorkflowAgents.length === 0 ? (
-              <p className="px-4 py-3 text-[11px] text-on-surface-variant/60 italic">No agents in this workflow</p>
+              <p className="px-4 py-3 text-[11px] text-on-surface-variant/60 italic">{t('No agents in this workflow')}</p>
             ) : (
               filteredWorkflowAgents.map((step) => (
                 <button
@@ -873,7 +864,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
           <div className="max-h-52 overflow-y-auto">
             {filteredSkills.length === 0 ? (
               <p className="px-4 py-3 text-[11px] text-on-surface-variant/60 italic">
-                {skills.length === 0 ? 'No skills loaded' : 'No matches'}
+                {skills.length === 0 ? t('No skills loaded') : t('No matches')}
               </p>
             ) : (
               filteredSkills.map((skill) => (
@@ -900,12 +891,12 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
           <div className="p-2 border-b border-outline-variant/30">
             <div className="flex items-center gap-2 px-2">
               <LegacyIcon name="chat_bubble" className="text-[15px] text-on-surface-variant" />
-              <span className="text-[11px] font-semibold text-on-surface-variant">Sessions</span>
+              <span className="text-[11px] font-semibold text-on-surface-variant">{t('Sessions')}</span>
             </div>
           </div>
           <div className="max-h-52 overflow-y-auto">
             {filteredSessions.length === 0 ? (
-              <p className="px-4 py-3 text-[11px] text-on-surface-variant/60 italic">No sessions yet</p>
+              <p className="px-4 py-3 text-[11px] text-on-surface-variant/60 italic">{t('No sessions yet')}</p>
             ) : (
               filteredSessions.slice(0, 12).map((session) => (
                 <button
@@ -940,7 +931,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
               type="text"
               value={fileFilter}
               onChange={(e) => setFileFilter(e.target.value)}
-              placeholder="Filter files..."
+              placeholder={t('Filter files...')}
               className="w-full text-[11px] px-2 py-1.5 bg-surface-container rounded-lg border-none outline-none text-on-surface placeholder:text-on-surface-variant/50"
               autoFocus
             />
@@ -948,7 +939,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
           <div className="max-h-52 overflow-y-auto">
             {filteredFiles.length === 0 ? (
               <p className="px-4 py-3 text-[11px] text-on-surface-variant/60 italic">
-                {allFilePaths.length === 0 ? 'No workspace files loaded' : 'No matches'}
+                {allFilePaths.length === 0 ? t('No workspace files loaded') : t('No matches')}
               </p>
             ) : (
               filteredFiles.slice(0, 30).map((path) => (

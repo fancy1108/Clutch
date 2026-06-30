@@ -11,6 +11,7 @@ import { BTN_GHOST, BTN_PRIMARY } from './ui/buttonStyles';
 import { AiToolIcon } from './AiToolIcon';
 import { ALERT_WARNING } from './ui/surfaceStyles';
 import { LegacyIcon } from './ui/LegacyIcon';
+import { useLanguage } from './LanguageContext';
 
 interface AiToolsManagerProps {
   isModalStyle?: boolean;
@@ -19,6 +20,7 @@ interface AiToolsManagerProps {
 const INSTALL_INSTRUCTIONS = CLI_INSTALL_GUIDES;
 
 export default function AiToolsManager({ isModalStyle }: AiToolsManagerProps) {
+  const { t } = useLanguage();
   const [tools, setTools] = useState<AiToolStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -34,7 +36,7 @@ export default function AiToolsManager({ isModalStyle }: AiToolsManagerProps) {
       setTools(list);
     } catch {
       setTools([]);
-      setError('Sidecar unavailable — start the orchestrator to scan local tools.');
+      setError(t('Sidecar unavailable — start the orchestrator to scan local tools.'));
     } finally {
       setLoading(false);
     }
@@ -92,9 +94,9 @@ export default function AiToolsManager({ isModalStyle }: AiToolsManagerProps) {
     <div className="flex flex-col h-full overflow-y-auto bg-white">
       <header className={`sticky top-0 z-20 bg-white/95 backdrop-blur py-5 flex items-center justify-between border-b border-neutral-100 pl-8 ${isModalStyle ? 'pr-14' : 'pr-8'}`}>
         <div className="text-left">
-          <h2 className="text-sm font-bold text-neutral-800 tracking-tight font-sans">AI Tools Integration</h2>
+          <h2 className="text-sm font-bold text-neutral-800 tracking-tight font-sans">{t('AI Tools Integration')}</h2>
           <p className="text-[11px] text-neutral-400 mt-0.5">
-            Detected local AI CLIs on this machine. Connect only tools you want Clutch to route to.
+            {t('Detected local AI CLIs on this machine. Connect only tools you want Clutch to route to.')}
           </p>
         </div>
         <button
@@ -103,7 +105,7 @@ export default function AiToolsManager({ isModalStyle }: AiToolsManagerProps) {
           disabled={loading}
           className={`${BTN_GHOST} text-[10px] font-bold disabled:opacity-50`}
         >
-          Rescan
+          {t('Rescan')}
         </button>
       </header>
 
@@ -116,23 +118,21 @@ export default function AiToolsManager({ isModalStyle }: AiToolsManagerProps) {
           <div className="p-4 rounded-xl bg-indigo-50/80 border border-indigo-100 flex items-start gap-3">
             <LegacyIcon name="info" className="text-indigo-500 w-5 h-5 mt-0.5 flex-shrink-0" />
             <div className="text-left text-xs text-indigo-900 leading-relaxed">
-              <p className="font-bold text-indigo-950">No AI command-line tools installed yet</p>
+              <p className="font-bold text-indigo-950">{t('No AI command-line tools installed yet')}</p>
               <p className="mt-1 text-indigo-700/90">
-                To start utilizing agent-based coding, please install at least one tool (e.g. <strong>Claude Code CLI</strong>, <strong>Aider</strong>, or <strong>Ollama</strong>) using the installation guides below, and then click connect.
+                {t('To start utilizing agent-based coding, please install at least one tool (e.g. Claude Code CLI, Aider, or Ollama) using the installation guides below, and then click connect.')}
               </p>
             </div>
           </div>
         )}
 
         {loading ? (
-          <p className="text-xs text-neutral-400 italic">Scanning local toolchains…</p>
+          <p className="text-xs text-neutral-400 italic">{t('Scanning local toolchains…')}</p>
         ) : tools.length === 0 ? (
           <div className="text-left space-y-2">
-            <p className="text-xs text-neutral-500">No supported AI tools detected on this machine.</p>
+            <p className="text-xs text-neutral-500">{t('No supported AI tools detected on this machine.')}</p>
             <p className="text-[11px] text-neutral-400">
-              Install an AI CLI (e.g. <span className="font-mono">claude</span>,{' '}
-              <span className="font-mono">codex</span>, <span className="font-mono">agy</span>,{' '}
-              <span className="font-mono">ollama</span>), then rescan.
+              {t('Install an AI CLI (e.g. claude, codex, agy, ollama), then rescan.')}
             </p>
           </div>
         ) : (
@@ -140,10 +140,10 @@ export default function AiToolsManager({ isModalStyle }: AiToolsManagerProps) {
             <section className="text-left">
               <h3 className="text-xs font-bold text-neutral-900 mb-4 flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                Connected
+                {t('Connected')}
               </h3>
               {connectedTools.length === 0 ? (
-                <p className="text-xs text-neutral-400 italic">No AI tools connected yet.</p>
+                <p className="text-xs text-neutral-400 italic">{t('No AI tools connected yet.')}</p>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {connectedTools.map((tool) => (
@@ -155,14 +155,14 @@ export default function AiToolsManager({ isModalStyle }: AiToolsManagerProps) {
                           {!tool.registered && (
                             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium bg-amber-50 text-amber-600 border border-amber-200">
                               <LegacyIcon name="warning" className="w-2.5 h-2.5" />
-                              Unconfigured
+                              {t('Unconfigured')}
                             </span>
                           )}
                         </div>
                         <p className="text-[10px] text-neutral-500 mt-1 leading-relaxed">{tool.description}</p>
                         <div className="mt-1.5 flex items-center gap-1.5">
                           <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-neutral-400 bg-neutral-100 border border-neutral-200 px-1.5 py-0.5 rounded">
-                            {tool.kind === 'cli' ? 'CLI' : 'Client'}
+                            {tool.kind === 'cli' ? t('CLI') : t('Client')}
                           </span>
                           <span className="text-[9.5px] font-mono text-neutral-400 truncate" title={tool.path}>
                             {tool.path}
@@ -175,7 +175,7 @@ export default function AiToolsManager({ isModalStyle }: AiToolsManagerProps) {
                             disabled={pendingId !== null}
                             className="text-[10px] font-semibold text-neutral-400 hover:text-red-500 transition-colors disabled:opacity-50"
                           >
-                            {pendingId === tool.id ? 'Disconnecting…' : 'Disconnect'}
+                            {pendingId === tool.id ? t('Disconnecting…') : t('Disconnect')}
                           </button>
                           {!tool.registered && (
                             <>
@@ -189,12 +189,12 @@ export default function AiToolsManager({ isModalStyle }: AiToolsManagerProps) {
                                 {pendingId === tool.id ? (
                                   <>
                                     <LegacyIcon name="progress_activity" className="animate-spin w-3 h-3 text-indigo-500" />
-                                    Configuring…
+                                    {t('Configuring…')}
                                   </>
                                 ) : (
                                   <>
                                     <LegacyIcon name="bolt" className="w-3 h-3" />
-                                    Auto Config
+                                    {t('Auto Config')}
                                   </>
                                 )}
                               </button>
@@ -211,10 +211,10 @@ export default function AiToolsManager({ isModalStyle }: AiToolsManagerProps) {
             <section className="text-left">
               <h3 className="text-xs font-bold text-neutral-900 mb-4 flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-neutral-300"></span>
-                Detected (not connected)
+                {t('Detected (not connected)')}
               </h3>
               {availableTools.length === 0 ? (
-                <p className="text-xs text-neutral-400 italic">All detected tools are connected.</p>
+                <p className="text-xs text-neutral-400 italic">{t('All detected tools are connected.')}</p>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {availableTools.map((tool) => (
@@ -226,14 +226,14 @@ export default function AiToolsManager({ isModalStyle }: AiToolsManagerProps) {
                           {!tool.registered && (
                             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium bg-amber-50 text-amber-600 border border-amber-200">
                               <LegacyIcon name="warning" className="w-2.5 h-2.5" />
-                              Unconfigured
+                              {t('Unconfigured')}
                             </span>
                           )}
                         </div>
                         <p className="text-[10px] text-neutral-400 mt-1 leading-relaxed">{tool.description}</p>
                         <div className="mt-1.5 flex items-center gap-1.5">
                           <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-neutral-400 bg-neutral-100 border border-neutral-200 px-1.5 py-0.5 rounded">
-                            {tool.kind === 'cli' ? 'CLI' : 'Client'}
+                            {tool.kind === 'cli' ? t('CLI') : t('Client')}
                           </span>
                           <span className="text-[9.5px] font-mono text-neutral-400 truncate" title={tool.path}>
                             {tool.path}
@@ -246,7 +246,7 @@ export default function AiToolsManager({ isModalStyle }: AiToolsManagerProps) {
                             disabled={pendingId !== null}
                             className={`${BTN_PRIMARY} text-[10px] disabled:opacity-50`}
                           >
-                            {pendingId === tool.id ? 'Connecting…' : 'Connect Tool'}
+                            {pendingId === tool.id ? t('Connecting…') : t('Connect Tool')}
                           </button>
                           {!tool.registered && (
                             <button
@@ -279,10 +279,10 @@ export default function AiToolsManager({ isModalStyle }: AiToolsManagerProps) {
             <section className="text-left">
               <h3 className="text-xs font-bold text-neutral-900 mb-4 flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-neutral-200"></span>
-                Available to Install
+                {t('Available to Install')}
               </h3>
               {notInstalledTools.length === 0 ? (
-                <p className="text-xs text-neutral-400 italic">All supported AI tools are installed.</p>
+                <p className="text-xs text-neutral-400 italic">{t('All supported AI tools are installed.')}</p>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {notInstalledTools.map((tool) => {
@@ -301,10 +301,10 @@ export default function AiToolsManager({ isModalStyle }: AiToolsManagerProps) {
                             <p className="text-[10px] text-neutral-400 mt-1 leading-relaxed">{tool.description}</p>
                             <div className="mt-1.5 flex items-center gap-1.5">
                               <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-neutral-400 bg-neutral-100 border border-neutral-200 px-1.5 py-0.5 rounded">
-                                {tool.kind === 'cli' ? 'CLI' : 'Client'}
+                                {tool.kind === 'cli' ? t('CLI') : t('Client')}
                               </span>
                               <span className="text-[9.5px] text-neutral-400 font-medium">
-                                Not Installed
+                                {t('Not Installed')}
                               </span>
                             </div>
                           </div>
@@ -318,7 +318,7 @@ export default function AiToolsManager({ isModalStyle }: AiToolsManagerProps) {
                               className="text-[10px] font-semibold text-indigo-600 hover:text-indigo-800 transition-colors flex items-center gap-1"
                             >
                               <LegacyIcon name="settings" className="w-3 h-3" />
-                              {isExpanded ? 'Hide Install Guide' : 'Install Guide'}
+                              {isExpanded ? t('Hide Install Guide') : t('Install Guide')}
                             </button>
                             {instruction.url && (
                               <a
@@ -327,7 +327,7 @@ export default function AiToolsManager({ isModalStyle }: AiToolsManagerProps) {
                                 rel="noopener noreferrer"
                                 className="text-[10px] font-semibold text-neutral-500 hover:text-neutral-700 transition-colors inline-flex items-center gap-0.5"
                               >
-                                Visit Website
+                                {t('Visit Website')}
                                 <span className="text-[8px]">↗</span>
                               </a>
                             )}
@@ -350,7 +350,7 @@ export default function AiToolsManager({ isModalStyle }: AiToolsManagerProps) {
                                     setTimeout(() => setCopiedId(null), 2000);
                                   }}
                                   className="text-neutral-400 hover:text-white transition-colors p-1 rounded hover:bg-neutral-800/80 flex-shrink-0"
-                                  title="Copy command"
+                                  title={t('Copy command')}
                                 >
                                   {copiedId === tool.id ? (
                                     <LegacyIcon name="check" className="w-3 h-3 text-green-400" />

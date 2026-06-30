@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="description" content="Clutch — 本地 AI 多 Agent 编排与监督控制台。可视化零代码 SOP，LangGraph 调度本地 CLI 与大模型，全程可观测、可编辑。" />
+  <meta name="theme-color" content="#ffffff" />
+  <title>Clutch — 本地 AI 多 Agent 编排控制台</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --color-background: #ffffff;
+      --color-surface-container-low: #f7f7f7;
+      --color-on-surface: #1a1c1c;
+      --color-on-surface-variant: #71717a;
+      --color-outline-variant: #e5e7eb;
+      --color-primary: #000000;
+      --color-brand: #1d2447;
+      --font-sans: "Hanken Grotesk", "Inter", system-ui, sans-serif;
+      --font-mono: "JetBrains Mono", "SF Mono", monospace;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html {
+      -webkit-text-size-adjust: 100%;
+      height: 100%;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--color-background);
+      color: var(--color-on-surface);
+      -webkit-font-smoothing: antialiased;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    .page {
+      max-width: 430px;
+      margin: 0 auto;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: calc(20px + var(--safe-top)) 22px calc(18px + var(--safe-bottom));
+    }
+
+    /* ── Hero ── */
+    .hero {
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    .hero-mark {
+      width: 44px;
+      height: 44px;
+      margin: 0 auto 10px;
+      display: block;
+    }
+
+    .hero-title {
+      font-size: clamp(2.75rem, 14vw, 3.5rem);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 1;
+      color: var(--color-brand);
+      margin-bottom: 6px;
+    }
+
+    .hero-tagline {
+      font-size: 14px;
+      color: var(--color-on-surface-variant);
+      line-height: 1.4;
+    }
+
+    /* ── Body ── */
+    .body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 14px;
+      min-height: 0;
+      padding: 12px 0;
+    }
+
+    .intro {
+      font-size: 12.5px;
+      line-height: 1.65;
+      color: var(--color-on-surface);
+    }
+
+    .intro strong { font-weight: 600; }
+
+    .card {
+      background: var(--color-surface-container-low);
+      border: 1px solid color-mix(in srgb, var(--color-outline-variant) 30%, transparent);
+      border-radius: 14px;
+      padding: 12px 14px;
+    }
+
+    .card-label {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--color-on-surface-variant);
+      margin-bottom: 8px;
+    }
+
+    .feature-grid {
+      list-style: none;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px 10px;
+    }
+
+    .feature-grid li {
+      font-size: 11.5px;
+      line-height: 1.4;
+      padding-left: 10px;
+      position: relative;
+      color: var(--color-on-surface);
+    }
+
+    .feature-grid li::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0.5em;
+      width: 3px;
+      height: 3px;
+      border-radius: 50%;
+      background: var(--color-brand);
+    }
+
+    .stack {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      line-height: 1.6;
+      color: var(--color-on-surface-variant);
+      text-align: center;
+    }
+
+    /* ── Footer ── */
+    .footer {
+      flex-shrink: 0;
+      text-align: center;
+    }
+
+    .btn-github {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 13px 20px;
+      background: var(--color-primary);
+      color: #ffffff;
+      font-family: var(--font-sans);
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      border-radius: 12px;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .btn-github:active { background: #333; }
+
+    .btn-github svg {
+      width: 18px;
+      height: 18px;
+      fill: currentColor;
+    }
+
+    .repo-url {
+      display: block;
+      margin-top: 10px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--color-on-surface-variant);
+    }
+
+    .license {
+      margin-top: 8px;
+      font-size: 9px;
+      color: color-mix(in srgb, var(--color-on-surface-variant) 60%, transparent);
+    }
+
+    /* 极小屏微调 */
+    @media (max-height: 680px) {
+      .hero-mark { width: 36px; height: 36px; margin-bottom: 6px; }
+      .hero-title { font-size: 2.5rem; }
+      .hero-tagline { font-size: 13px; }
+      .body { gap: 10px; padding: 8px 0; }
+      .intro { font-size: 12px; line-height: 1.55; }
+      .feature-grid li { font-size: 11px; }
+      .btn-github { padding: 11px 18px; font-size: 13px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <svg class="hero-mark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Clutch">
+        <circle cx="32" cy="32" r="30" fill="#1D2447"/>
+        <path fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round" d="M 48 23.5 A 16 16 0 1 0 48 40.5"/>
+      </svg>
+      <h1 class="hero-title">Clutch</h1>
+      <p class="hero-tagline">本地 AI 多 Agent 编排与监督控制台</p>
+    </header>
+
+    <div class="body">
+      <p class="intro">
+        在 Claude Code / Cursor 之上加一层<strong>可持久化、可观测、可编辑</strong>的流程控制层。零代码拖拽 SOP，LangGraph 调度本地 CLI 与大模型，统一工作台全程监督与人工审批。
+      </p>
+
+      <div class="card">
+        <p class="card-label">核心能力</p>
+        <ul class="feature-grid">
+          <li>可视化工作流编排</li>
+          <li>本地 AI 工具接入</li>
+          <li>统一监督控制台</li>
+          <li>人机协同门控</li>
+        </ul>
+      </div>
+
+      <p class="stack">Tauri 2 · React 19 · FastAPI + LangGraph · MIT · macOS</p>
+    </div>
+
+    <footer class="footer">
+      <a class="btn-github" href="https://github.com/fancy1108/Clutch" target="_blank" rel="noopener noreferrer">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.395-.135-.345-.72-1.395-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+        在 GitHub 上查看
+      </a>
+      <span class="repo-url">github.com/fancy1108/Clutch</span>
+      <p class="license">MIT License · 本地优先 · 欢迎 Star 与贡献</p>
+    </footer>
+  </main>
+</body>
+</html>
