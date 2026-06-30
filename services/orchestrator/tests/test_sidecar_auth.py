@@ -30,6 +30,7 @@ def test_api_open_without_token_env(client: TestClient) -> None:
 
 
 def test_api_rejects_missing_token_when_required(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("CLUTCH_E2E_SANDBOX", raising=False)
     monkeypatch.setenv("CLUTCH_SIDECAR_TOKEN", "secret-token")
     authed = TestClient(app)
     response = authed.get("/api/preferences")
@@ -37,6 +38,7 @@ def test_api_rejects_missing_token_when_required(monkeypatch: pytest.MonkeyPatch
 
 
 def test_api_accepts_bearer_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("CLUTCH_E2E_SANDBOX", raising=False)
     monkeypatch.setenv("CLUTCH_SIDECAR_TOKEN", "secret-token")
     authed = TestClient(app)
     response = authed.get(

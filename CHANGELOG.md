@@ -22,6 +22,26 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 - Document lifecycle governance: Source of Truth table, event-driven update matrix, and `memory/archive/` rotation with read-only Archive Notice on all archived files.
 
+## [1.0.1] - 2026-06-30
+
+Patch release — fixes packaged-app **Models Config** connectivity and macOS Keychain prompt spam. **Upgrade recommended** for all v1.0.0 DMG users.
+
+### Fixed
+
+- **Models Config red error (packaged app):** PyInstaller sidecar crashed on `GET /api/models/config` when Keychain read failed — logging used reserved LogRecord field `message` → HTTP 500; UI misreported as “Cannot reach Clutch sidecar”.
+- **Sidecar session token (OSR-08):** Tauri ACL now exposes `clutch_sidecar_token` to the main webview; authenticated fetch retries once on 401.
+- **Keychain prompt spam:** Cache provider key reads per process (was 60+ Keychain accesses per Models refresh; now at most one sweep per cache).
+- **Error copy:** Models UI distinguishes unreachable sidecar vs unauthorized session vs server error.
+
+### Changed
+
+- PyInstaller sidecar bundles `keyring` for macOS Keychain on packaged builds.
+
+### Known limitations (v1.0.1)
+
+- macOS DMG remains **unsigned** (same as v1.0.0); Gatekeeper workaround unchanged.
+- First Models load after install may still take ~10–15s while macOS Keychain grants access — click **Always Allow** when prompted.
+
 ## [1.0.0] - 2026-06-29
 
 First public release — unsigned macOS DMG via [GitHub Releases](https://github.com/fancy1108/Clutch/releases/tag/v1.0.0). Snapshot: [`docs/releases/v1.0.md`](docs/releases/v1.0.md).
