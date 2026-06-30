@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import time
 
 import pytest
@@ -11,12 +12,27 @@ from src.shell_session import (
     ShellSession,
     ShellSessionBusyError,
     ShellSessionManager,
+    read_until_contains,
     strip_ansi,
+    write_line,
 )
 
 
 def test_strip_ansi_removes_escape_codes() -> None:
     assert "OK" in strip_ansi("\x1b[31mOK\x1b[0m")
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows ConPTY integration")
+def test_windows_shell_session_uses_git_bash(tmp_path) -> None:
+    session = ShellSession(run_id="run-win", workspace_path=str(tmp_path))
+    try:
+        session._spawn()
+        write_line(session.master_fd, "echo CLUTCH_CONPTY_OK")
+        output = read_until_contains(session.master_fd, "CLUTCH_CONPTY_OK", max_wait_s=3.0)
+        assert "CLUTCH_CONPTY_OK" in output
+        assert session.alive()
+    finally:
+        session.close(write_snapshot=False)
 
 
 def test_manager_busy_rejects_second_acquire(monkeypatch: pytest.MonkeyPatch) -> None:

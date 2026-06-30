@@ -1,7 +1,7 @@
 # Build Clutch from source
 
-> **Audience:** Contributors and advanced users on macOS.  
-> **End-user DMG installs** (unsigned GitHub Releases): [`INSTALL.md`](./INSTALL.md). Privacy: [`DATA_AND_PRIVACY.md`](./DATA_AND_PRIVACY.md). Signing (OSR-11) deferred per `memory/DECISIONS.md` D31.
+> **Audience:** Contributors and advanced users on macOS or Windows.
+> **End-user installs:** [`INSTALL.md`](./INSTALL.md). Privacy: [`DATA_AND_PRIVACY.md`](./DATA_AND_PRIVACY.md).
 
 ## Prerequisites
 
@@ -14,6 +14,7 @@ Run the environment self-check first:
 | Tool | Version | Notes |
 |------|---------|-------|
 | macOS | 14+ recommended | Apple Silicon is the primary target |
+| Windows | 10/11 x64 | Visual Studio 2022 C++ Build Tools, Windows SDK, WebView2 |
 | Node.js | ≥ 20 | CI uses 22 LTS |
 | pnpm | ≥ 9 | Repo locks `9.15.0` via `packageManager` |
 | Python | ≥ 3.11 | Orchestrator sidecar |
@@ -28,6 +29,8 @@ cd Clutch
 pnpm install
 cd services/orchestrator && uv sync --extra dev && cd ../..
 ```
+
+In PowerShell, use `corepack pnpm` if `pnpm` is not already on `PATH`; replace the chained `cd` line with `cd services/orchestrator; uv sync --extra dev; cd ../..`.
 
 ## 2. Development workflows
 
@@ -83,13 +86,12 @@ For full E2E (heavy): `./scripts/verify.sh --e2e`.
 
 See [`CONTRIBUTING.md`](../CONTRIBUTING.md) and [`CLAUDE.md`](../CLAUDE.md) §核心命令.
 
-## 4. Production DMG (local)
+## 4. Production desktop installers (local)
 
-Requires Rust toolchain and PyInstaller (via `build-sidecar.sh`):
+Requires Rust and PyInstaller. From the repository root:
 
 ```bash
-cd apps/desktop
-pnpm tauri build
+corepack pnpm tauri:build
 ```
 
 Artifacts land under `apps/desktop/src-tauri/target/release/bundle/`.
@@ -97,7 +99,9 @@ Artifacts land under `apps/desktop/src-tauri/target/release/bundle/`.
 `beforeBuildCommand` runs:
 
 1. `pnpm build` → `apps/desktop/dist/`
-2. `scripts/build-sidecar.sh` → PyInstaller binary in `src-tauri/binaries/`
+2. `scripts/build-sidecar.py` → platform-specific PyInstaller binary in `src-tauri/binaries/`
+
+Windows outputs are `bundle/msi/Clutch_*_x64_en-US.msi` and `bundle/nsis/Clutch_*_x64-setup.exe`. The Windows Hybrid runtime uses Git Bash when a connected CLI requires a persistent shell, so install Git for Windows for that mode.
 
 **Health check (prod build, after installing the `.app`):**
 
@@ -114,10 +118,11 @@ Unsigned builds (local or GitHub Release) may require **right-click → Open** o
 |------|----------------|
 | Development (`pnpm tauri dev` / uvicorn) | `~/Library/Application Support/clutch_dev/` |
 | Packaged `.app` (PyInstaller sidecar) | `~/Library/Application Support/clutch/` |
+| Windows packaged app | `%APPDATA%\clutch\` |
 
 Override with `CLUTCH_STORAGE_DIR` (absolute path).
 
-API keys on **macOS** are stored in **Keychain** (service `com.clutch.app`), not in `models.json`. Linux/dev may set `CLUTCH_USE_KEYCHAIN=0` for plaintext file storage. See [`SECURITY.md`](../SECURITY.md).
+API keys use **macOS Keychain** or **Windows Credential Manager** (service `com.clutch.app`), not `models.json`. Set `CLUTCH_USE_KEYCHAIN=0` only to opt out. See [`SECURITY.md`](../SECURITY.md).
 
 ## 6. Optional CLIs
 

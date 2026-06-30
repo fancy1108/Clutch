@@ -12,6 +12,8 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ### Added
 
+- **Windows desktop distribution:** Windows 10/11 x64 MSI and NSIS installers, ConPTY-backed Hybrid sessions, cross-platform MCP/file-lock handling, and Windows Credential Manager storage for provider API keys.
+- **Windows build automation:** Manual/PR workflow builds and uploads Windows installer artifacts.
 - **Release hardening (OSR-16):** Packaged sidecar disables `GET /api/runs/{run_id}/debug` and OpenAPI docs unless `CLUTCH_DEBUG_API=1`; WebView Content-Security-Policy in `tauri.conf.json` (production + `devCsp` for Vite HMR).
 
 ### Changed

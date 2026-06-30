@@ -5,9 +5,10 @@ from __future__ import annotations
 import json
 import os
 import sys
-import fcntl
 from pathlib import Path
 from typing import Any
+
+from src.platform_lock import file_lock
 
 _HISTORY_ENV = "CLUTCH_RUN_HISTORY_DIR"
 _MAX_RECORDS = 200
@@ -42,16 +43,16 @@ def _history_path_ready() -> Path:
 def _mutate_records(mutator) -> Any:
     path = _history_path_ready()
     with path.open("r+", encoding="utf-8") as handle:
-        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
-        handle.seek(0)
-        raw = handle.read().strip()
-        records: list[dict[str, Any]] = json.loads(raw) if raw else []
-        result = mutator(records)
-        handle.seek(0)
-        handle.truncate()
-        handle.write(json.dumps(records[:_MAX_RECORDS], indent=2, ensure_ascii=False))
-        handle.write("\n")
-        return result
+        with file_lock(handle):
+            handle.seek(0)
+            raw = handle.read().strip()
+            records: list[dict[str, Any]] = json.loads(raw) if raw else []
+            result = mutator(records)
+            handle.seek(0)
+            handle.truncate()
+            handle.write(json.dumps(records[:_MAX_RECORDS], indent=2, ensure_ascii=False))
+            handle.write("\n")
+            return result
 
 
 def _load_records() -> list[dict[str, Any]]:
@@ -59,19 +60,19 @@ def _load_records() -> list[dict[str, Any]]:
     if not path.is_file():
         return []
     with path.open("r", encoding="utf-8") as handle:
-        fcntl.flock(handle.fileno(), fcntl.LOCK_SH)
-        raw = handle.read().strip()
-        if not raw:
-            return []
-        return json.loads(raw)
+        with file_lock(handle, exclusive=False):
+            raw = handle.read().strip()
+            if not raw:
+                return []
+            return json.loads(raw)
 
 
 def _save_records(records: list[dict[str, Any]]) -> None:
     path = _history_path_ready()
     with path.open("w", encoding="utf-8") as handle:
-        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
-        handle.write(json.dumps(records[:_MAX_RECORDS], indent=2, ensure_ascii=False))
-        handle.write("\n")
+        with file_lock(handle):
+            handle.write(json.dumps(records[:_MAX_RECORDS], indent=2, ensure_ascii=False))
+            handle.write("\n")
 
 
 def append_run_record(record: dict[str, Any]) -> dict[str, Any]:

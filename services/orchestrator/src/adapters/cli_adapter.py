@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import os
-import pty
-import select
 import subprocess
 import threading
 import time
@@ -13,6 +11,10 @@ from dataclasses import dataclass
 
 from src.claude_hybrid_output_parser import extract_cli_issue_message, extract_codex_assistant_output, extract_tty_cli_output
 from src.preferences_storage import tr
+
+if os.name != "nt":
+    import pty
+    import select
 
 
 @dataclass(frozen=True)
@@ -157,6 +159,24 @@ def run_cli_pty(
     """Run a CLI attached to a fresh PTY (required for `agy -p` headless capture)."""
     if not command:
         raise CliAdapterError(tr("CLI command cannot be empty", "CLI 命令不能为空"))
+
+    if os.name == "nt":
+        from src.windows_pty import run_windows_pty
+
+        try:
+            exit_code, raw = run_windows_pty(
+                command,
+                cwd=cwd,
+                timeout=timeout,
+                on_output=(lambda chunk: on_line("stdout", chunk)) if on_line else None,
+            )
+        except subprocess.TimeoutExpired as exc:
+            raise _timeout_error(command, timeout) from exc
+        stdout = _finalize_cli_content(extract_tty_cli_output(raw), raw=raw)
+        result = CliResult(command=command, exit_code=exit_code, stdout=stdout, stderr=raw if not stdout else "")
+        if not result.ok:
+            raise CliAdapterError(f"CLI 退出码 {result.exit_code}: {stdout.strip() or raw.strip()}")
+        return result
 
     master_fd, slave_fd = pty.openpty()
     try:
