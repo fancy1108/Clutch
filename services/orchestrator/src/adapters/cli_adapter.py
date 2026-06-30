@@ -115,11 +115,11 @@ def _run_cli_streaming(
 
 
 def _is_agy_binary(binary: str) -> bool:
-    return binary.rsplit("/", 1)[-1] == "agy"
+    return os.path.basename(binary) == "agy"
 
 
 def _is_codex_binary(binary: str) -> bool:
-    return binary.rsplit("/", 1)[-1] == "codex"
+    return os.path.basename(binary) == "codex"
 
 
 _RIVET_BINARY_NAMES: frozenset[str] = frozenset({"rivet", "t9"})
@@ -127,7 +127,7 @@ _RIVET_BINARY_NAMES: frozenset[str] = frozenset({"rivet", "t9"})
 
 def is_rivet_binary(binary: str) -> bool:
     """True for Tianshu / Rivet CLI binaries (rivet, legacy t9)."""
-    return binary.rsplit("/", 1)[-1] in _RIVET_BINARY_NAMES
+    return os.path.basename(binary) in _RIVET_BINARY_NAMES
 
 
 def _prepend_dir_to_path(env: dict[str, str], directory: str) -> None:
