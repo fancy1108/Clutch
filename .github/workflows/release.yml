@@ -56,13 +56,16 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
 
       - uses: astral-sh/setup-uv@v7
-
-      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
       - name: Install dependencies
+        env:
+          # Avoid actions/setup-python's python.org 3.11.9 (old OpenSSL) — PyInstaller
+          # sidecar outbound HTTPS fails on modern TLS when frozen with that runtime.
+          UV_PYTHON_PREFERENCE: only-managed
         run: |
+          uv python install 3.11
           pnpm install --frozen-lockfile
           cd services/orchestrator && uv sync --extra dev
 

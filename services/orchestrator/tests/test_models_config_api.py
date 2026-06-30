@@ -298,3 +298,15 @@ def test_rehydrate_clears_hidden_models(models_config: Path, monkeypatch: pytest
     # Verify hidden_model_ids is cleared
     stored = json.loads(models_config.read_text(encoding="utf-8"))
     assert stored.get("hidden_model_ids") == []
+
+
+def test_format_connection_error_debug_surfaces_raw(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from src.models_config import format_connection_error
+
+    long_json = '{"error":{"message":"certificate verify failed"}}'
+    monkeypatch.setenv("CLUTCH_DEBUG", "1")
+    assert format_connection_error(RuntimeError(long_json)) == long_json
+    monkeypatch.delenv("CLUTCH_DEBUG", raising=False)
+    assert "check your API key" in format_connection_error(RuntimeError(long_json))

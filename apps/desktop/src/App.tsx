@@ -497,10 +497,7 @@ function MainLayout() {
     if (!isMultiAgent && rightTab === 'flow') {
       setRightTab('overview');
     }
-    if (!effectiveWorkflowId && rightTab === 'flow') {
-      setRightTab('overview');
-    }
-  }, [isMultiAgent, rightTab, effectiveWorkflowId]);
+  }, [isMultiAgent, rightTab]);
 
   const [uncommitted, setUncommitted] = useState<UncommittedFile[]>([]);
 

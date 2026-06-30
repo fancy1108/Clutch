@@ -28,14 +28,18 @@ Patch release — fixes packaged-app **Models Config** connectivity and macOS Ke
 
 ### Fixed
 
+- **Generated images blank in chat (packaged app):** Agnes returns CDN URLs (`*.agnes-ai.space`), not base64; WebView CSP blocked those hosts. Sidecar now downloads the image and embeds a `data:` URI in chat replies.
+- **Release CI sidecar HTTPS broken:** GitHub Actions bundled python.org CPython 3.11.9 (old OpenSSL); outbound model API calls failed in the DMG. Release workflow now uses uv-managed Python 3.11 only.
 - **Models Config red error (packaged app):** PyInstaller sidecar crashed on `GET /api/models/config` when Keychain read failed — logging used reserved LogRecord field `message` → HTTP 500; UI misreported as “Cannot reach Clutch sidecar”.
 - **Sidecar session token (OSR-08):** Tauri ACL now exposes `clutch_sidecar_token` to the main webview; authenticated fetch retries once on 401.
-- **Keychain prompt spam:** Cache provider key reads per process (was 60+ Keychain accesses per Models refresh; now at most one sweep per cache).
-- **Error copy:** Models UI distinguishes unreachable sidecar vs unauthorized session vs server error.
+- **Keychain prompt spam:** Read keys via `security find` with `-A` ACL migration (one-time per machine); avoids repeated prompts on adhoc-signed sidecar rebuilds.
+- **Error copy:** Models UI distinguishes unreachable sidecar vs unauthorized session vs server error; `CLUTCH_DEBUG=1` surfaces raw connection errors.
 
 ### Changed
 
-- PyInstaller sidecar bundles `keyring` for macOS Keychain on packaged builds.
+- PyInstaller sidecar bundles `keyring` for macOS Keychain on packaged builds; `upx=False` in `clutch.spec`.
+- Right-panel **Flow** tab stays visible in multi-agent mode (empty state when no workflow selected).
+- WebView CSP allows Agnes image CDN hosts as fallback.
 
 ### Known limitations (v1.0.1)
 

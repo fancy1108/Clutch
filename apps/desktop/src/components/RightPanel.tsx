@@ -131,9 +131,8 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   const tokenTotal = sessionTokens || tokenInput + tokenOutput;
   const inputPct = tokenTotal > 0 ? Math.round((tokenInput / tokenTotal) * 100) : 0;
   const outputPct = tokenTotal > 0 ? 100 - inputPct : 0;
-  const showFlowTab = hasWorkflow;
+  const showFlowTab = isMultiAgent;
   const visibleTabs = (['overview', 'files', 'flow', 'changes', 'terminal'] as RightTab[])
-    .filter((tab) => isMultiAgent || tab !== 'flow')
     .filter((tab) => tab !== 'flow' || showFlowTab);
 
   const statusLabel = translateRunStatus(clutchStatus, language);
@@ -441,8 +440,22 @@ export const RightPanel: React.FC<RightPanelProps> = ({
               <h4 className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-3">
                 {t('Workflow step execution')}
               </h4>
-              {renderStateSummary()}
-              {renderWorkflowSteps()}
+              {hasWorkflow ? (
+                <>
+                  {renderStateSummary()}
+                  {renderWorkflowSteps()}
+                </>
+              ) : (
+                <div className="p-6 border border-dashed border-outline-variant/50 rounded-xl text-center space-y-2">
+                  <LegacyIcon name="account_tree" className="text-[24px] text-on-surface-variant/50" />
+                  <p className="text-[11px] text-on-surface-variant leading-relaxed">
+                    {t('Select or create a workflow')}
+                  </p>
+                  <p className="text-[10px] text-on-surface-variant/70 leading-relaxed">
+                    {t('No active workflow overview')}
+                  </p>
+                </div>
+              )}
             </div>
           )}
 

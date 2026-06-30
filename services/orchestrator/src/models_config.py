@@ -216,6 +216,8 @@ _TEST_TIMEOUT_SEC = 20.0
 def format_connection_error(exc: Exception) -> str:
     """Turn provider exceptions into short, user-facing copy."""
     raw = str(exc)
+    if os.environ.get("CLUTCH_DEBUG", "").strip() == "1":
+        return raw[:500]
     lower = raw.lower()
     if "429" in raw or "rate limit" in lower:
         return "Rate limit reached — wait a moment, switch models, or upgrade your provider plan."

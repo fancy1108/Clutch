@@ -131,6 +131,7 @@ curl -sX POST http://localhost:8124/api/preferences/onboarding-complete
 | 现象 | 处理 |
 |------|------|
 | 无法打开 / 已损坏 | 使用 §4 Gatekeeper 步骤；确认 DMG 与芯片架构匹配 |
+| 升级时「**Clutch 正在使用中**」 | 见 [§10 升级](#10-升级)：`Cmd+Q` 完全退出 → 活动监视器结束 `Clutch` / `orchestrator` 后再拖入 Applications |
 | `curl` 健康检查失败 | 完全退出 Clutch 后重开；检查 8123 端口是否被占用：`lsof -iTCP:8123 -sTCP:LISTEN` |
 | 文件夹选择器无响应 | 必须使用 **Clutch.app**，不要用浏览器单独打开 `pnpm dev` |
 | API Key 无效 | Settings → Models 检查 Key；确认 Provider 端点可达 |
@@ -157,8 +158,30 @@ rm -rf ~/Library/Application\ Support/clutch/
 ## 10. 升级
 
 1. 从 [Releases](https://github.com/fancy1108/Clutch/releases) 下载新版本 DMG
-2. 拖入 Applications 覆盖安装
-3. 本地 `Application Support/clutch/` 数据通常保留；重大版本请查看 [`CHANGELOG.md`](../CHANGELOG.md)
+2. **先完全退出 Clutch**（见下方「正在使用中」）
+3. 打开 DMG，将 **Clutch** 拖入 **Applications** 覆盖旧版
+4. 从 **应用程序** 文件夹启动（不要长期从 DMG 卷内直接运行）
+5. 本地 `Application Support/clutch/` 数据通常保留；重大版本请查看 [`CHANGELOG.md`](../CHANGELOG.md)
+
+### 提示「Clutch 正在使用中，无法完成此操作」
+
+macOS **不允许在应用仍在运行时替换** `/Applications/Clutch.app`。Clutch 关闭窗口后，后台 **Sidecar**（`orchestrator`）有时仍会占用文件，因此拖入 Applications 会失败。
+
+**普通用户按此顺序操作（无需终端）：**
+
+1. 若 Clutch 窗口还在 → 菜单栏 **Clutch → 退出 Clutch**，或按 **`Cmd+Q`**（不要只点窗口左上角红点，那可能只是关窗口）
+2. 等待 **3～5 秒**
+3. 再次从 DMG 拖入 **Applications**
+4. 若仍提示「正在使用」→ 打开 **活动监视器**（Spotlight 搜索「活动监视器」或「Activity Monitor」）
+   - 右上角搜索 **`Clutch`** → 若有进程 → 选中 → 点工具栏 **×** → **退出**
+   - 再搜索 **`orchestrator`** → 同样 **退出** 所有匹配项
+5. 回到 DMG，再次拖入 Applications
+
+**开发者可选（一条命令清理残留 Sidecar）：**
+
+```bash
+killall Clutch 2>/dev/null; pkill -f "/Applications/Clutch.app/Contents/MacOS/orchestrator"
+```
 
 维护者发版：打 tag `v1.0.0`（或后续 `v1.x.x`）触发 [`.github/workflows/release.yml`](../.github/workflows/release.yml) 自动构建并上传 DMG；发版前会跑 **gitleaks** 与 [`scripts/release-preflight.sh`](../scripts/release-preflight.sh)（禁止把 `models.json`、`.env` 等打进仓库或 DMG）。
 

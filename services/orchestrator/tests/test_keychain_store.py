@@ -3,14 +3,17 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from pathlib import Path
 
 import keyring
 import pytest
 from keyring.backend import KeyringBackend
 
+from src.credentials import keychain_store
 from src.credentials.credential_store import maybe_migrate_config_file
 from src.credentials.keychain_store import (
+    KEYRING_SERVICE,
     get_provider_key,
     invalidate_provider_keys_cache,
     load_all_provider_keys,
@@ -45,6 +48,7 @@ def keychain_backend(monkeypatch: pytest.MonkeyPatch) -> None:
     invalidate_provider_keys_cache()
     keyring.set_keyring(InMemoryKeyring())
     monkeypatch.setenv("CLUTCH_USE_KEYCHAIN", "1")
+    monkeypatch.setenv("CLUTCH_KEYCHAIN_ACL", "0")
     yield
     invalidate_provider_keys_cache()
 
@@ -130,3 +134,62 @@ def test_load_all_provider_keys_uses_cache_until_invalidated() -> None:
     set_provider_key("deepseek", "sk-count-test-2")
     load_all_provider_keys()
     assert calls["count"] > first_pass
+
+
+def test_set_provider_key_uses_security_acl_when_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("CLUTCH_KEYCHAIN_ACL", "1")
+    calls: list[list[str]] = []
+
+    def fake_run(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        calls.append(cmd)
+        return subprocess.CompletedProcess(cmd, 0, "", "")
+
+    monkeypatch.setattr("src.credentials.keychain_store.subprocess.run", fake_run)
+    set_provider_key("openai", "sk-acl-test")
+    assert calls[0][:4] == ["security", "delete-generic-password", "-s", KEYRING_SERVICE]
+    assert "-A" in calls[1]
+    assert calls[1][:3] == ["security", "add-generic-password", "-A"]
+
+
+def test_load_all_stabilizes_acl_once(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("CLUTCH_KEYCHAIN_ACL", "1")
+    monkeypatch.setenv("CLUTCH_STORAGE_DIR", str(tmp_path))
+    stabilize_calls = {"count": 0}
+    original = keychain_store._stabilize_keychain_acl
+
+    def counting_stabilize(keys: dict[str, str]) -> None:
+        stabilize_calls["count"] += 1
+        original(keys)
+
+    monkeypatch.setattr(keychain_store, "_stabilize_keychain_acl", counting_stabilize)
+    monkeypatch.setattr(
+        keychain_store,
+        "get_provider_key",
+        lambda provider_id: "sk-stabilize" if provider_id == "openai" else None,
+    )
+
+    load_all_provider_keys()
+    load_all_provider_keys()
+    assert stabilize_calls["count"] == 1
+
+    flag = tmp_path / ".keychain_acl_migrated"
+    assert flag.is_file()
+
+    invalidate_provider_keys_cache()
+    load_all_provider_keys()
+    assert stabilize_calls["count"] == 2
+
+
+def test_get_provider_key_uses_security_find_when_acl_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("CLUTCH_KEYCHAIN_ACL", "1")
+    calls: list[list[str]] = []
+
+    def fake_run(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        calls.append(cmd)
+        if "find-generic-password" in cmd:
+            return subprocess.CompletedProcess(cmd, 0, "sk-from-security\n", "")
+        return subprocess.CompletedProcess(cmd, 0, "", "")
+
+    monkeypatch.setattr("src.credentials.keychain_store.subprocess.run", fake_run)
+    assert get_provider_key("deepseek") == "sk-from-security"
+    assert calls[0][:4] == ["security", "find-generic-password", "-s", KEYRING_SERVICE]
