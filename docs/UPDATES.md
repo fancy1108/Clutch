@@ -52,6 +52,8 @@ GitHub **Settings → Secrets → Actions**：
 
 Prep 阶段可先写入 Secret，但**不要**跑 updater workflow，避免在未就绪的 Release 上挂 `latest.json`。
 
+**故障排查：** CI 报 `failed to decode base64 secret key: Invalid symbol 37`（`%`）时，Secret 内容格式错误。请删除并重建 `TAURI_SIGNING_PRIVATE_KEY`：粘贴 `~/.clutch-updater-keys` 的**完整原文**（minisign 私钥，首行 `untrusted comment: minisign encrypted secret key`），**不要**用 `.pub` 文件、不要加引号、不要 URL 编码。若生成密钥时设置了密码，另加 Secret `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`。修复后重跑 **Release (updater assets)**，`release_tag=v1.0.2`。
+
 ---
 
 ## 3. Go-live 清单（专门发 updater 版本时执行）

@@ -5,8 +5,10 @@
 
 ## Current Status
 
-- **阶段：** v1.0.2 集成完成 — **`dev` 已合 updater**；待 QA → bump → tag
-- **Git HEAD（dev）：** Windows（`main`）+ Updater + #18 + Rivet/tools；本地 ahead，未 push
+- **阶段：** **v1.0.2 已发布** — [Release](https://github.com/fancy1108/Clutch/releases/tag/v1.0.2) 含 `Clutch_1.0.2_aarch64.dmg` + `SHA256SUMS.txt`
+- **Git：** `dev` 已 push · [#18](https://github.com/fancy1108/Clutch/issues/18) 已关闭
+- **Windows：** CI run [28462065330](https://github.com/fancy1108/Clutch/actions/runs/28462065330) ✅（`dev` · `2a23585`）；Win 包上传 Release **待重试**（artifact 下载网络中断）
+- **Updater go-live：** ❌ run [28461723951](https://github.com/fancy1108/Clutch/actions/runs/28461723951) — `TAURI_SIGNING_PRIVATE_KEY` 格式错误（symbol 37 = `%`）；见 `docs/UPDATES.md` §2 故障排查
 
 ### v1.0.2 范围（已定）
 
@@ -20,13 +22,9 @@
 
 ## Next Actions
 
-- [ ] `./scripts/verify.sh`
-- [ ] DMG smoke：#18 五条（Dock 恢复 / Cmd+Q 清 sidecar / 残留自清理）
-- [ ] `CHANGELOG.md` → `## [1.0.2]` · bump 版本号 · `release-preflight.sh` · tag **v1.0.2**
-- [ ] Go-live updater：`docs/UPDATES.md` §3
-- [ ] 发版后关 GitHub [#18](https://github.com/fancy1108/Clutch/issues/18)
-- **GitHub Bug：** **#19** 仍 open · #20 已回复
-- **候选池：** **B-33** ← PR #22（非承诺）
+- [ ] 修复 `TAURI_SIGNING_PRIVATE_KEY` → 重跑 **Release (updater assets)**（`release_tag=v1.0.2`）
+- [ ] 从 run [28462065330](https://github.com/fancy1108/Clutch/actions/runs/28462065330) 下载 `clutch-windows-x64` → `gh release upload v1.0.2`（`.msi` + `*-setup.exe`）
+- **`release/1.0.3-loop`：** v1.0.3 发版时合入 `dev`
 
 ## Recent Sessions
 
