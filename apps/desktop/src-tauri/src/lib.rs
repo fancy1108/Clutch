@@ -54,7 +54,8 @@ const SIDECAR_PORT: u16 = 8123;
 fn free_sidecar_port(port: u16) {
     #[cfg(target_os = "macos")]
     {
-        let script = format!("lsof -ti tcp:{port} -sTCP:LISTEN | xargs kill -9 2>/dev/null || true");
+        let script =
+            format!("lsof -ti tcp:{port} -sTCP:LISTEN | xargs kill -9 2>/dev/null || true");
         let _ = std::process::Command::new("sh")
             .arg("-c")
             .arg(script)
@@ -102,6 +103,13 @@ pub fn run() {
             tauri_plugin_playwright::PluginConfig::new()
                 .socket_path("/tmp/clutch-tauri-playwright.sock"),
         ));
+    }
+
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    {
+        builder = builder
+            .plugin(tauri_plugin_process::init())
+            .plugin(tauri_plugin_updater::Builder::new().build());
     }
 
     builder

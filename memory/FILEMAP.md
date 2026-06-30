@@ -34,6 +34,7 @@
 | 产品介绍文档 | `docs/PRODUCT_INTRO.md` |
 | 文档总索引 | `docs/README.md` |
 | 开源 / DMG 分发排期（OSR-xx） | `docs/OPEN_SOURCE_RELEASE.md` |
+| 应用内更新（Prep / Go-live） | `docs/UPDATES.md` · `.github/workflows/release-updater.yml` |
 | 开源协议 | `LICENSE` |
 | 漏洞报告 | `SECURITY.md` |
 | 社区行为准则 | `CODE_OF_CONDUCT.md` |

@@ -23,6 +23,8 @@ import {
 import { fetchPreferences, saveThemePreference, saveUserNamePreference, type ThemePresetId } from './services/themeApi';
 import { LanguageProvider, useLanguage } from './components/LanguageContext';
 import { OnboardingWizard } from './components/onboarding/OnboardingWizard';
+import { UpdateBanner } from './components/UpdateBanner';
+import { CONTENT_TOP_WITH_BANNER } from './constants/layout';
 import { DevOnboardingToolsEmptyPreview } from './components/onboarding/DevOnboardingToolsEmptyPreview';
 import { fetchOnboardingState } from './services/onboardingApi';
 import { clutchStore, createSessionRunId, submitChatMessage, useClutchState, setUserChatAvatar, clearWorkflowForSession } from './services/clutchState';
@@ -1062,6 +1064,8 @@ function MainLayout() {
         selectedModel={selectedModel}
       />
 
+      <UpdateBanner />
+
       {/* 2. Side Panel components layout */}
       <div className="flex-1 flex overflow-hidden">
         
@@ -1103,7 +1107,7 @@ function MainLayout() {
         {true && (
           previewFile ? (
             <div 
-              style={{ paddingLeft: `${selectedSidebarWidth}px`, paddingTop: '64px' }}
+              style={{ paddingLeft: `${selectedSidebarWidth}px`, paddingTop: CONTENT_TOP_WITH_BANNER }}
               className="flex-1 flex flex-col bg-white h-screen overflow-hidden animate-fade-in relative z-30 transition-all duration-300"
             >
               {/* File Preview Header */}

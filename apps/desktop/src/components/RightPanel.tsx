@@ -1,4 +1,5 @@
 import React from 'react';
+import { CONTENT_TOP_WITH_BANNER } from '../constants/layout';
 import { RightTab, UncommittedFile, ClutchRunStatus } from '../types';
 import type { FileTreeNode } from '../services/workspaceApi';
 import { loadWorkflowById } from '../services/workflowApi';
@@ -295,10 +296,10 @@ export const RightPanel: React.FC<RightPanelProps> = ({
 
   return (
     <aside
-      className={`fixed right-0 top-[64px] bottom-0 border-l border-outline-variant bg-white flex flex-col z-30 transition-all duration-300 ${
+      className={`fixed right-0 bottom-0 border-l border-outline-variant bg-white flex flex-col z-30 transition-all duration-300 ${
         isOpen ? 'w-[300px]' : 'w-[0px] border-l-0'
       }`}
-      style={{ overflow: 'visible' }}
+      style={{ top: CONTENT_TOP_WITH_BANNER, overflow: 'visible' }}
     >
       <button
         data-testid="right-panel-toggle"

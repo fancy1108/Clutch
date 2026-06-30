@@ -18,6 +18,8 @@
           "sidecar": true
         }
       ]
-    }
+    },
+    "updater:default",
+    "process:default"
   ]
 }
