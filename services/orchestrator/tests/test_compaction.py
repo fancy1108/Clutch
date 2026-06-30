@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
 import pytest
 from fastapi.testclient import TestClient
 
 from src.state import ClutchState, initial_state
-from src.compaction import should_compact, compact_run_messages, _estimate_tokens
+from src.compaction import (_build_critical_context, _estimate_tokens, _generate_llm_digest,
+                            _is_critical_message, compact_run_messages, should_compact)
 
 
 @pytest.fixture(autouse=True)
@@ -22,6 +24,61 @@ def test_estimate_tokens() -> None:
     assert _estimate_tokens("") == 1
     assert _estimate_tokens("   ") == 1
     assert _estimate_tokens("one two three four") == 4
+
+
+@pytest.mark.asyncio
+async def test_critical_context_happy_path(monkeypatch: pytest.MonkeyPatch) -> None:
+    state = initial_state("run_critical")
+    state.update(status="awaiting_human", active_node_id="check_1",
+                 changed_files=["src/app.py", "src/app.py"])
+    messages = [
+        {"agent": "Supervisor", "text": "Human approval: Approved, continuing workflow."},
+        {"agent": "Builder", "text": "Updated.",
+         "outputEvents": [{"type": "tool", "content": "write src/app.py"}]},
+    ]
+    critical_context = _build_critical_context(state, messages)
+    router = SimpleNamespace(chat=lambda messages, model_id=None: {"content": "General summary."})
+    monkeypatch.setattr("src.models_config.get_router", lambda: router)
+    digest = await _generate_llm_digest(messages, critical_context=critical_context)
+
+    assert "General summary." in digest
+    assert "[files_changed] src/app.py" in digest
+    assert "Human approval: Approved" in digest
+    assert "tool=write src/app.py" in digest
+
+
+def test_critical_context_empty_input() -> None:
+    state = initial_state("run_empty")
+
+    assert _build_critical_context(state, []) == []
+    assert not _is_critical_message({})
+
+
+@pytest.mark.asyncio
+async def test_critical_context_survives_llm_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fail(*args, **kwargs):
+        raise RuntimeError("tool unavailable")
+
+    monkeypatch.setattr("src.models_config.get_router", lambda: SimpleNamespace(chat=fail))
+    critical_context = ["[critical_message] status=FAILED; text=Checks failed"]
+    digest = await _generate_llm_digest(
+        [{"agent": "Evaluator", "text": "Checks failed"}],
+        critical_context=critical_context,
+    )
+
+    assert "由于 Token 消耗达到阈值" in digest
+    assert critical_context[0] in digest
+
+
+@pytest.mark.asyncio
+async def test_generate_llm_digest_existing_usage_compatibility(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    router = SimpleNamespace(chat=lambda messages, model_id=None: {"content": "Legacy summary."})
+    monkeypatch.setattr("src.models_config.get_router", lambda: router)
+    digest = await _generate_llm_digest([{"agent": "User", "text": "Original call"}])
+
+    assert digest == "Legacy summary."
 
 
 def test_should_compact() -> None:
@@ -265,5 +322,3 @@ def test_ws_plain_chat_compaction_integration(monkeypatch) -> None:
     assert final_messages[0]["text"] == "Start instruction"
     assert "Mocked summary of conversation" in final_messages[1]["text"]
     assert "上下文已压缩" in final_messages[1]["text"]
-
-
