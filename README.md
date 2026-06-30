@@ -82,9 +82,11 @@ clutch/
 
 ### MCP Server 接入（`docs/mcp-servers/`）
 
+> 以下为社区/第三方集成指南，非 Clutch 官方服务。用户通过 MCP 配置自行接入，数据存储于对应服务方。
+
 | 文件 | 用途 |
 |------|------|
-| [`docs/mcp-servers/epicode.md`](./docs/mcp-servers/epicode.md) | Epicode 持久记忆 MCP 接入指南——让你的 Agent 获得跨会话记忆 + 工作流内知识共享 |
+| [`docs/mcp-servers/epicode.md`](./docs/mcp-servers/epicode.md) | [Epicode](https://github.com/sunormesky-max/epicode) 持久记忆 MCP 接入指南（社区/第三方）——让你的 Agent 获得跨会话记忆 + 工作流内知识共享 |
 
 ### Agent 运行态（`memory/`）
 

@@ -1,5 +1,7 @@
 # Epicode — Persistent Memory MCP Server
 
+> **Community/Vendor integration** — Epicode is a third-party project, not a Clutch official service. SaaS mode stores data on epicode.cn servers; users opt in by configuring the MCP connection. See [Privacy](#privacy) below.
+
 > **Category:** AI Memory / Knowledge Graph
 > **Protocol:** MCP Streamable HTTP (2025-06-18)
 > **Tools:** 35 (memory CRUD, semantic search, recall with KG expansion, skills, feedback loop, identity)
@@ -43,7 +45,11 @@ In **Settings → Agents**, edit each agent that should have memory (e.g. your R
 
 ### Step 4 — Run the memory pipeline template
 
-Select the **Memory-Augmented Pipeline (Epicode)** workflow. Give it a task like *"Design a rate-limiting middleware for our Rust API"*. Each agent will `memory_recall` before working and `memory_create` after — building a persistent knowledge base as the pipeline runs.
+The **Memory-Augmented Pipeline (Epicode)** workflow uses the default `clutch-agent` for all nodes. This means a single agent with Epicode MCP bound handles every step — it remembers across steps within the same run.
+
+**For separate specialized agents (optional):** Create three agents in **Settings → Agents** (e.g. `Researcher`, `Builder`, `Reviewer`), bind Epicode MCP to each, then edit the workflow JSON to replace `"agent": "clutch-agent"` with your agent names. This gives each role its own system prompt while sharing the same Epicode memory space.
+
+Give it a task like *"Design a rate-limiting middleware for our Rust API"*. Each agent will `memory_recall` before working and `memory_create` after — building a persistent knowledge base as the pipeline runs.
 
 Run the same task a week later: the Research agent will `memory_recall` last week's findings instead of starting from scratch.
 
