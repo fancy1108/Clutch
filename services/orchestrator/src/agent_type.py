@@ -8,7 +8,7 @@ from src.llm.router import LLMProviderRouter, ModelSpec
 
 _BUILTIN_AGENT_ID = "clutch-agent"
 
-AGENT_TYPES = frozenset({"clutch", "claude-cli", "ollama-cli", "antigravity-cli", "codex-cli", "aider-cli"})
+AGENT_TYPES = frozenset({"clutch", "claude-cli", "ollama-cli", "antigravity-cli", "codex-cli", "aider-cli", "rivet-cli"})
 
 _LEGACY_AI_ENGINE_TO_TYPE: dict[str, str] = {
     "configured llm": "clutch",
@@ -31,6 +31,10 @@ _LEGACY_AI_ENGINE_TO_TYPE: dict[str, str] = {
     "aider": "aider-cli",
     "aider-cli": "aider-cli",
     "aider (cli)": "aider-cli",
+    "rivet cli": "rivet-cli",
+    "rivet-cli": "rivet-cli",
+    "tianshu": "rivet-cli",
+    "t9-cli": "rivet-cli",
 }
 
 

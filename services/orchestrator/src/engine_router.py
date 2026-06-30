@@ -84,6 +84,15 @@ CLI_ROUTING_CONFIGS = {
         "extra_args": ["--yes-always"],
         "prompt_flag": "--message",
     },
+    "rivet-cli": {
+        "tool_id": "rivet-cli",
+        "binary_name": "rivet",
+        "conversation_mode": "none",
+        "prepend_system_prompt": True,
+        "extra_args": [],
+        "prompt_flag": "-p",
+        "supports_append_system_prompt": False,
+    },
 }
 
 try:
@@ -703,7 +712,9 @@ def _route_engine_raw(
         if not cli_binary and os.environ.get("CLUTCH_E2E_FAKE_HYBRID") == "1":
             cli_binary = config["binary_name"]
             
-        display_name = "Antigravity" if config["binary_name"] == "agy" else config["binary_name"].title()
+        display_name = "Antigravity" if config["binary_name"] == "agy" else (
+            "Rivet" if config["binary_name"] == "rivet" else config["binary_name"].title()
+        )
         _emit_log(logs, on_log, f"Routing task to {display_name} Code (Local CLI) for agent {agent_name}.")
         if cli_binary:
             _emit_log(logs, on_log, f"Using {display_name} binary: {cli_binary}")
@@ -808,7 +819,9 @@ def _route_engine_raw(
 
     if agent_type in CLI_ROUTING_CONFIGS and agent_type != "ollama-cli":
         config = CLI_ROUTING_CONFIGS[agent_type]
-        display_name = "Antigravity" if config["binary_name"] == "agy" else config["binary_name"].title()
+        display_name = "Antigravity" if config["binary_name"] == "agy" else (
+            "Rivet" if config["binary_name"] == "rivet" else config["binary_name"].title()
+        )
         logs.append(
             tr(
                 f"Agent {agent_name} requests {display_name} CLI but `{config['binary_name']}` is not installed/connected — falling back to LLM.",

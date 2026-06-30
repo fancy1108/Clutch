@@ -11,6 +11,7 @@ from src.shell_exec_runtime import (
     InteractiveCommandBlocked,
     _build_agy_shell_cmd,
     _build_claude_shell_cmd,
+    _build_generic_cli_shell_cmd,
     assert_no_interactive_command,
     extract_claude_output,
     run_agy_turn,
@@ -61,6 +62,30 @@ def test_build_agy_shell_cmd_includes_conversation() -> None:
     assert "--conversation conv-1" in cmd
     assert "--dangerously-skip-permissions" in cmd
     assert cmd.endswith("; echo __CLUTCH_DONE_x__")
+
+
+def test_build_generic_cli_shell_cmd_sets_rivet_force_recovery() -> None:
+    cmd = _build_generic_cli_shell_cmd(
+        binary="/Users/fancy/.nvm/versions/node/v24.16.0/bin/rivet",
+        prompt="hello",
+        marker="__CLUTCH_DONE_x__",
+        conversation_mode="none",
+        prompt_flag="-p",
+    )
+    assert cmd.startswith("RIVET_FORCE_RECOVERY_CLI=1; CLUTCH_P='hello';")
+    assert 'rivet -p "$CLUTCH_P"' in cmd
+
+
+def test_build_claude_shell_cmd_does_not_set_rivet_env() -> None:
+    cmd = _build_claude_shell_cmd(
+        claude_binary="/usr/bin/claude",
+        prompt="hello",
+        marker="__CLUTCH_DONE_x__",
+        session_id="sess-1",
+        resume_session_id=None,
+        system_prompt=None,
+    )
+    assert "RIVET_FORCE_RECOVERY_CLI" not in cmd
 
 
 @dataclass

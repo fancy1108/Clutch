@@ -79,7 +79,109 @@ CLI_CANDIDATES: list[dict[str, str]] = [
         "description": "Cursor command-line launcher.",
         "icon": "edit_document",
     },
+    {
+        "id": "rivet-cli",
+        "name": "Rivet CLI (天枢)",
+        "binary": "rivet",
+        "description": "Tianshu (天枢) terminal AI agent runtime.",
+        "icon": "terminal",
+    },
+    {
+        "id": "opencode-cli",
+        "name": "OpenCode CLI",
+        "binary": "opencode",
+        "description": "Open-source AI coding agent for the terminal.",
+        "icon": "terminal",
+    },
+    {
+        "id": "amazon-q-cli",
+        "name": "Amazon Q Developer CLI",
+        "binary": "q",
+        "description": "Legacy Amazon Q Developer terminal agent (superseded by Kiro CLI).",
+        "icon": "terminal",
+    },
+    {
+        "id": "amp-cli",
+        "name": "Amp CLI",
+        "binary": "amp",
+        "description": "Sourcegraph Amp frontier coding agent for the terminal.",
+        "icon": "terminal",
+    },
+    {
+        "id": "continue-cli",
+        "name": "Continue CLI",
+        "binary": "cn",
+        "description": "Continue modular coding agent for context engineering and automation.",
+        "icon": "terminal",
+    },
+    {
+        "id": "copilot-cli",
+        "name": "GitHub Copilot CLI",
+        "binary": "copilot",
+        "description": "GitHub-native agentic CLI for issues, PRs, and terminal workflows.",
+        "icon": "terminal",
+    },
+    {
+        "id": "crush-cli",
+        "name": "Crush CLI",
+        "binary": "crush",
+        "description": "Charm Bracelet AI coding assistant TUI with MCP and LSP support.",
+        "icon": "terminal",
+    },
+    {
+        "id": "droid-cli",
+        "name": "Factory Droid CLI",
+        "binary": "droid",
+        "description": "Factory AI Droid agent-native development CLI.",
+        "icon": "terminal",
+    },
+    {
+        "id": "goose-cli",
+        "name": "Goose CLI",
+        "binary": "goose",
+        "description": "AAIF Goose open-source extensible AI agent with MCP and recipes.",
+        "icon": "terminal",
+    },
+    {
+        "id": "gptme-cli",
+        "name": "gptme",
+        "binary": "gptme",
+        "description": "Personal AI assistant in the terminal with tool use and sessions.",
+        "icon": "terminal",
+    },
+    {
+        "id": "kiro-cli",
+        "name": "Kiro CLI",
+        "binary": "kiro-cli",
+        "description": "Kiro AI coding agent (successor to Amazon Q Developer CLI).",
+        "icon": "terminal",
+    },
+    {
+        "id": "openclaw-cli",
+        "name": "OpenClaw CLI",
+        "binary": "openclaw",
+        "description": "OpenClaw AI agent CLI with plugins and daemon onboarding.",
+        "icon": "terminal",
+    },
+    {
+        "id": "qwen-code-cli",
+        "name": "Qwen Code CLI",
+        "binary": "qwen",
+        "description": "Qwen open-source AI coding agent for the terminal.",
+        "icon": "terminal",
+    },
 ]
+
+# Primary install recommendations (tested Clutch routing). Other whitelist CLIs are
+# scanned when installed but omitted from the default install catalog until detected.
+RECOMMENDED_CLI_IDS: frozenset[str] = frozenset(
+    {
+        "claude-cli",
+        "ollama-cli",
+        "codex-cli",
+        "agy-cli",
+    }
+)
 
 # macOS desktop client candidates probed under /Applications and ~/Applications.
 CLIENT_CANDIDATES: list[dict[str, str]] = []
@@ -90,6 +192,8 @@ TOOLS_ENV = "CLUTCH_TOOLS_CONFIG"
 _CLI_EXTRA_BIN_DIRS: tuple[Path, ...] = (
     Path.home() / ".local" / "bin",
     Path.home() / ".npm-global" / "bin",
+    Path.home() / ".opencode" / "bin",
+    Path.home() / ".openclaw" / "bin",
     Path.home() / "bin",
     Path("/opt/homebrew/bin"),
     Path("/usr/local/bin"),
@@ -262,8 +366,14 @@ def list_tools_status(*, include_all: bool = False) -> list[dict[str, Any]]:
     tools: list[dict[str, Any]] = []
     for cand in CLI_CANDIDATES:
         path = resolve_tool_binary(cand["id"])
-        if not path and not include_all:
-            continue
+        installed = path is not None
+        recommended = cand["id"] in RECOMMENDED_CLI_IDS
+        if not installed:
+            if include_all:
+                if not recommended:
+                    continue
+            else:
+                continue
         tools.append(
             {
                 "id": cand["id"],
@@ -272,16 +382,23 @@ def list_tools_status(*, include_all: bool = False) -> list[dict[str, Any]]:
                 "icon": cand["icon"],
                 "kind": "cli",
                 "path": path or "",
-                "installed": path is not None,
+                "installed": installed,
                 "connected": cand["id"] in connected,
                 "registered": _is_registered(cand["id"]),
                 "agentType": resolve_agent_type_for_tool(cand["id"]),
+                "recommended": recommended,
             }
         )
     for cand in CLIENT_CANDIDATES:
         path = _client_path(cand["app_name"])
-        if not path and not include_all:
-            continue
+        installed = path is not None
+        recommended = cand["id"] in RECOMMENDED_CLI_IDS
+        if not installed:
+            if include_all:
+                if not recommended:
+                    continue
+            else:
+                continue
         tools.append(
             {
                 "id": cand["id"],
@@ -290,10 +407,11 @@ def list_tools_status(*, include_all: bool = False) -> list[dict[str, Any]]:
                 "icon": cand["icon"],
                 "kind": "client",
                 "path": path or "",
-                "installed": path is not None,
+                "installed": installed,
                 "connected": cand["id"] in connected,
                 "registered": _is_registered(cand["id"]),
                 "agentType": resolve_agent_type_for_tool(cand["id"]),
+                "recommended": recommended,
             }
         )
     return tools

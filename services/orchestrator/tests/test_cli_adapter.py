@@ -14,8 +14,10 @@ from src.adapters.cli_adapter import (
     format_cli_login_retry_message,
     format_cli_empty_output_message,
     is_cli_auth_issue,
+    is_rivet_binary,
     run_cli,
     run_cli_pty,
+    _cli_subprocess_env,
 )
 
 
@@ -196,3 +198,18 @@ def test_chat_generic_cli_surfaces_quota_from_pty() -> None:
         run_cli_fn=fake_run_cli_pty,
     )
     assert "quota limit reached" in out.lower() or "配额已用尽" in out
+
+
+def test_is_rivet_binary() -> None:
+    assert is_rivet_binary("rivet")
+    assert is_rivet_binary("/usr/local/bin/rivet")
+    assert is_rivet_binary("t9")
+    assert not is_rivet_binary("claude")
+
+
+def test_cli_subprocess_env_sets_rivet_force_recovery(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("RIVET_FORCE_RECOVERY_CLI", raising=False)
+    env = _cli_subprocess_env(["/opt/homebrew/bin/rivet", "-p", "hi"])
+    assert env is not None
+    assert env["RIVET_FORCE_RECOVERY_CLI"] == "1"
+    assert _cli_subprocess_env(["claude", "-p", "hi"]) is None

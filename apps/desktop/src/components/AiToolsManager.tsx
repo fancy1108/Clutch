@@ -98,6 +98,9 @@ export default function AiToolsManager({ isModalStyle }: AiToolsManagerProps) {
           <p className="text-[11px] text-neutral-400 mt-0.5">
             {t('Detected local AI CLIs on this machine. Connect only tools you want Clutch to route to.')}
           </p>
+          <p className="text-[10px] text-neutral-400 mt-1">
+            {t('Install guides below list tested CLIs only; other whitelist tools appear here once installed.')}
+          </p>
         </div>
         <button
           type="button"
@@ -120,7 +123,7 @@ export default function AiToolsManager({ isModalStyle }: AiToolsManagerProps) {
             <div className="text-left text-xs text-indigo-900 leading-relaxed">
               <p className="font-bold text-indigo-950">{t('No AI command-line tools installed yet')}</p>
               <p className="mt-1 text-indigo-700/90">
-                {t('To start utilizing agent-based coding, please install at least one tool (e.g. Claude Code CLI, Aider, or Ollama) using the installation guides below, and then click connect.')}
+                {t('To start utilizing agent-based coding, please install at least one tool (e.g. Claude Code, Ollama, Codex, or Antigravity) using the installation guides below, and then click connect.')}
               </p>
             </div>
           </div>
@@ -279,7 +282,7 @@ export default function AiToolsManager({ isModalStyle }: AiToolsManagerProps) {
             <section className="text-left">
               <h3 className="text-xs font-bold text-neutral-900 mb-4 flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-neutral-200"></span>
-                {t('Available to Install')}
+                {t('Recommended to Install')}
               </h3>
               {notInstalledTools.length === 0 ? (
                 <p className="text-xs text-neutral-400 italic">{t('All supported AI tools are installed.')}</p>

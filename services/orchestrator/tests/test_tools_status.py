@@ -36,6 +36,37 @@ def nothing_installed(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("src.tools_status._extra_cli_search_dirs", lambda: [])
 
 
+def test_list_tools_include_all_omits_non_recommended_uninstalled(
+    tools_config: Path, nothing_installed: None
+) -> None:
+    tools = list_tools_status(include_all=True)
+    ids = {tool["id"] for tool in tools}
+    assert "claude-cli" in ids
+    assert "ollama-cli" in ids
+    assert "codex-cli" in ids
+    assert "agy-cli" in ids
+    assert "aider-cli" not in ids
+    assert "rivet-cli" not in ids
+    assert "opencode-cli" not in ids
+    assert all(tool["recommended"] for tool in tools)
+
+
+def test_list_tools_include_all_includes_non_recommended_when_installed(
+    tools_config: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("src.tools_status._extra_cli_search_dirs", lambda: [])
+    monkeypatch.setattr(
+        "src.tools_status._cli_path",
+        lambda binary: "/usr/local/bin/rivet" if binary == "rivet" else None,
+    )
+    monkeypatch.setattr("src.tools_status._client_path", lambda app_name: None)
+
+    tools = list_tools_status(include_all=True)
+    rivet = next(item for item in tools if item["id"] == "rivet-cli")
+    assert rivet["installed"] is True
+    assert rivet["recommended"] is False
+
+
 def test_list_tools_empty_when_none_installed(
     tools_config: Path, nothing_installed: None
 ) -> None:
@@ -118,6 +149,7 @@ def test_resolve_agent_type_for_tool_maps_tool_ids() -> None:
     assert resolve_agent_type_for_tool("codex-cli") == "codex-cli"
     assert resolve_agent_type_for_tool("claude-cli") == "claude-cli"
     assert resolve_agent_type_for_tool("ollama-cli") == "ollama-cli"
+    assert resolve_agent_type_for_tool("rivet-cli") == "rivet-cli"
     assert resolve_agent_type_for_tool("unknown-cli") is None
 
 
@@ -216,6 +248,46 @@ def test_resolve_tool_binary_checks_extra_bin_dirs(
     monkeypatch.setattr("src.tools_status._extra_cli_search_dirs", lambda: [homebrew])
 
     assert resolve_tool_binary("claude-cli") == str(claude_bin)
+
+
+def test_resolve_tool_binary_finds_opencode_default_bin(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    opencode_bin_dir = tmp_path / ".opencode" / "bin"
+    opencode_bin_dir.mkdir(parents=True)
+    opencode_bin = opencode_bin_dir / "opencode"
+    opencode_bin.write_text("#!/bin/sh\necho opencode\n", encoding="utf-8")
+    opencode_bin.chmod(0o755)
+
+    monkeypatch.setattr("src.tools_status._cli_path", lambda binary: None)
+    monkeypatch.setattr(
+        "src.tools_status._extra_cli_search_dirs",
+        lambda: [opencode_bin_dir],
+    )
+
+    assert resolve_tool_binary("opencode-cli") == str(opencode_bin)
+
+
+def test_cli_candidates_include_mainstream_agent_clis() -> None:
+    ids = {c["id"] for c in CLI_CANDIDATES}
+    expected = {
+        "claude-cli",
+        "codex-cli",
+        "rivet-cli",
+        "opencode-cli",
+        "goose-cli",
+        "copilot-cli",
+        "continue-cli",
+        "amazon-q-cli",
+        "kiro-cli",
+        "amp-cli",
+        "qwen-code-cli",
+        "gptme-cli",
+        "openclaw-cli",
+        "droid-cli",
+        "crush-cli",
+    }
+    assert expected.issubset(ids)
 
 
 def test_resolve_tool_binary_finds_nvm_node_bin(

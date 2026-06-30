@@ -77,6 +77,7 @@ def _run_cli_streaming(
         encoding="utf-8",
         errors="replace",
         bufsize=1,
+        env=_cli_subprocess_env(command),
     )
     stdout_chunks: list[str] = []
     stderr_chunks: list[str] = []
@@ -118,6 +119,23 @@ def _is_agy_binary(binary: str) -> bool:
 
 def _is_codex_binary(binary: str) -> bool:
     return binary.rsplit("/", 1)[-1] == "codex"
+
+
+_RIVET_BINARY_NAMES: frozenset[str] = frozenset({"rivet", "t9"})
+
+
+def is_rivet_binary(binary: str) -> bool:
+    """True for Tianshu / Rivet CLI binaries (rivet, legacy t9)."""
+    return binary.rsplit("/", 1)[-1] in _RIVET_BINARY_NAMES
+
+
+def _cli_subprocess_env(command: list[str]) -> dict[str, str] | None:
+    """Headless Rivet requires RIVET_FORCE_RECOVERY_CLI when Clutch spawns subprocesses."""
+    if not command or not is_rivet_binary(command[0]):
+        return None
+    env = os.environ.copy()
+    env["RIVET_FORCE_RECOVERY_CLI"] = "1"
+    return env
 
 
 def format_cli_issue_for_user(message: str, agent_type: str | None = None) -> str:
@@ -187,6 +205,7 @@ def run_cli_pty(
             stdout=slave_fd,
             stderr=slave_fd,
             close_fds=True,
+            env=_cli_subprocess_env(command),
         )
     except Exception:
         os.close(master_fd)
@@ -262,6 +281,7 @@ def run_cli(
                 errors="replace",
                 timeout=timeout,
                 check=False,
+                env=_cli_subprocess_env(command),
             )
             result = CliResult(
                 command=command,
@@ -395,6 +415,7 @@ _CLI_BINARY_LABELS: dict[str, str] = {
     "agy-cli": "agy",
     "codex-cli": "codex",
     "aider-cli": "aider",
+    "rivet-cli": "rivet",
 }
 
 

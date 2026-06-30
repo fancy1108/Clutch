@@ -45,18 +45,6 @@ const MOCK_UNINSTALLED_TOOLS: AiToolStatus[] = [
     agentType: 'ollama-cli',
   },
   {
-    id: 'aider-cli',
-    name: 'Aider CLI',
-    description: 'AI pair programming in your terminal.',
-    icon: 'aider',
-    kind: 'cli',
-    installed: false,
-    connected: false,
-    registered: false,
-    path: '',
-    agentType: 'aider-cli',
-  },
-  {
     id: 'codex-cli',
     name: 'Codex CLI',
     description: 'Codex command-line coding agent.',
@@ -67,6 +55,18 @@ const MOCK_UNINSTALLED_TOOLS: AiToolStatus[] = [
     registered: false,
     path: '',
     agentType: 'codex-cli',
+  },
+  {
+    id: 'agy-cli',
+    name: 'Antigravity CLI',
+    description: 'Antigravity command-line agent runtime.',
+    icon: 'terminal',
+    kind: 'cli',
+    installed: false,
+    connected: false,
+    registered: false,
+    path: '',
+    agentType: 'antigravity-cli',
   },
 ];
 
@@ -178,7 +178,7 @@ export function ToolsStep({
             <div className="space-y-1.5">
               <p className="text-xs font-bold text-indigo-950">{t('No AI command-line tools detected yet')}</p>
               <p className="text-[11px] text-indigo-900/90 leading-relaxed">
-                {t('Install at least one recommended tool below (e.g. Claude Code, Ollama, or Aider). After installing in Terminal, click Rescan, then Connect. If you configured a cloud model, you can skip this step after verifying it.')}
+                {t('Install at least one recommended tool below (e.g. Claude Code, Ollama, Codex, or Antigravity). After installing in Terminal, click Rescan, then Connect. If you configured a cloud model, you can skip this step after verifying it.')}
               </p>
               <p className="text-[10px] text-indigo-800/80">
                 {t('Run a command below in Terminal, then return here and click Rescan.')}

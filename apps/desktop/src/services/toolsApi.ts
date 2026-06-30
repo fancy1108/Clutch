@@ -10,6 +10,7 @@ export interface AiToolStatus {
   installed: boolean;
   connected: boolean;
   registered: boolean;
+  recommended?: boolean;
   agentType?: string | null;
 }
 
