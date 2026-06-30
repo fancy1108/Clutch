@@ -138,6 +138,15 @@ def _cli_subprocess_env(command: list[str]) -> dict[str, str] | None:
     return env
 
 
+def _cli_result_successful(result: CliResult, command: list[str]) -> bool:
+    """True when exit code is ok, or Rivet/T9 returned output despite exit 1."""
+    if result.ok:
+        return True
+    if not command or not is_rivet_binary(command[0]) or result.exit_code != 1:
+        return False
+    return bool((result.stdout or result.stderr or "").strip())
+
+
 def format_cli_issue_for_user(message: str, agent_type: str | None = None) -> str:
     """Turn agy quota/auth lines into a clear chat-visible message."""
     _ = agent_type
@@ -192,7 +201,7 @@ def run_cli_pty(
             raise _timeout_error(command, timeout) from exc
         stdout = _finalize_cli_content(extract_tty_cli_output(raw), raw=raw)
         result = CliResult(command=command, exit_code=exit_code, stdout=stdout, stderr=raw if not stdout else "")
-        if not result.ok:
+        if not _cli_result_successful(result, command):
             raise CliAdapterError(f"CLI 退出码 {result.exit_code}: {stdout.strip() or raw.strip()}")
         return result
 
@@ -252,7 +261,7 @@ def run_cli_pty(
     stdout = _finalize_cli_content(extract_tty_cli_output(raw), raw=raw)
     exit_code = proc.returncode if proc.returncode is not None else 1
     result = CliResult(command=command, exit_code=exit_code, stdout=stdout, stderr=raw if not stdout else "")
-    if not result.ok:
+    if not _cli_result_successful(result, command):
         detail = stdout.strip() or raw.strip()
         raise CliAdapterError(f"CLI 退出码 {result.exit_code}: {detail}")
     return result
@@ -291,7 +300,7 @@ def run_cli(
             )
     except subprocess.TimeoutExpired as exc:
         raise _timeout_error(command, timeout) from exc
-    if not result.ok:
+    if not _cli_result_successful(result, command):
         raise CliAdapterError(
             f"CLI 退出码 {result.exit_code}: {result.stderr.strip() or result.stdout.strip()}"
         )

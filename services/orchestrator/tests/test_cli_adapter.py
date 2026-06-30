@@ -213,3 +213,35 @@ def test_cli_subprocess_env_sets_rivet_force_recovery(monkeypatch: pytest.Monkey
     assert env is not None
     assert env["RIVET_FORCE_RECOVERY_CLI"] == "1"
     assert _cli_subprocess_env(["claude", "-p", "hi"]) is None
+
+
+def test_run_cli_tolerates_rivet_exit_one_with_stdout() -> None:
+    from src.adapters.cli_adapter import CliResult, _cli_result_successful
+
+    assert _cli_result_successful(
+        CliResult(command=["rivet", "-p", "hi"], exit_code=1, stdout="你好", stderr=""),
+        ["rivet", "-p", "hi"],
+    )
+    assert _cli_result_successful(
+        CliResult(command=["t9", "-p", "hi"], exit_code=1, stdout="", stderr="legacy reply"),
+        ["t9", "-p", "hi"],
+    )
+    assert not _cli_result_successful(
+        CliResult(command=["rivet", "-p", "hi"], exit_code=1, stdout="", stderr=""),
+        ["rivet", "-p", "hi"],
+    )
+    assert not _cli_result_successful(
+        CliResult(command=["claude", "-p", "hi"], exit_code=1, stdout="oops", stderr=""),
+        ["claude", "-p", "hi"],
+    )
+
+    def fake_run_cli(*_args, **_kwargs):
+        return CliResult(command=["rivet", "-p", "hi"], exit_code=1, stdout="天枢在此", stderr="")
+
+    out = chat_generic_cli(
+        prompt="hi",
+        binary="rivet",
+        conversation_mode="none",
+        run_cli_fn=fake_run_cli,
+    )
+    assert out == "天枢在此"
