@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import sys
 from pathlib import Path
 
 import keyring
@@ -136,6 +137,7 @@ def test_load_all_provider_keys_uses_cache_until_invalidated() -> None:
     assert calls["count"] > first_pass
 
 
+@pytest.mark.skipif(sys.platform != "darwin", reason="security(1) ACL store is macOS-only")
 def test_set_provider_key_uses_security_acl_when_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("CLUTCH_KEYCHAIN_ACL", "1")
     calls: list[list[str]] = []
@@ -151,6 +153,7 @@ def test_set_provider_key_uses_security_acl_when_enabled(monkeypatch: pytest.Mon
     assert calls[1][:3] == ["security", "add-generic-password", "-A"]
 
 
+@pytest.mark.skipif(sys.platform != "darwin", reason="security(1) ACL stabilize is macOS-only")
 def test_load_all_stabilizes_acl_once(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setenv("CLUTCH_KEYCHAIN_ACL", "1")
     monkeypatch.setenv("CLUTCH_STORAGE_DIR", str(tmp_path))
@@ -180,6 +183,7 @@ def test_load_all_stabilizes_acl_once(monkeypatch: pytest.MonkeyPatch, tmp_path:
     assert stabilize_calls["count"] == 2
 
 
+@pytest.mark.skipif(sys.platform != "darwin", reason="security(1) find-generic-password is macOS-only")
 def test_get_provider_key_uses_security_find_when_acl_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("CLUTCH_KEYCHAIN_ACL", "1")
     calls: list[list[str]] = []
