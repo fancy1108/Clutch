@@ -56,6 +56,18 @@ cd services/orchestrator && uv run pytest tests/test_xxx.py -v \
 
 ## Recently Completed（v1.0.0 · T2）
 
+### Ollama Models Config 本机同步 ✅
+- **日期：** 2026-07-01
+- **Commit：** `2257560` — `fix(models): sync Settings Ollama list with local ollama list`
+- **Verification：** `cd services/orchestrator && uv run pytest tests/test_models_config_api.py -q` → 21 passed · pre-commit `verify.sh` → build + vitest 48 + pytest 523 passed
+- **证据：** `—`
+- **交付文件：**
+  - `services/orchestrator/src/models_config.py` — `local_ollama_tags` / sync / 可用性 / 隐藏未安装内置项 / `active_model_id` 回退
+  - `services/orchestrator/src/main.py` — POST `/api/models/config` 激活前 sync
+  - `services/orchestrator/tests/test_models_config_api.py` — 本机 tag 列表与回退测试
+  - `docs/PRODUCT_INTRO.md` — §3.4 Model Provider Settings 行为说明
+  - `CHANGELOG.md` — `[Unreleased]` Fixed 条目
+
 ### OSR-14 ✅ 首次启动向导
 - **日期：** 2026-06-29
 - **Commit：** `—`（未 commit，工作区实现）
