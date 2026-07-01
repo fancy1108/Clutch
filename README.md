@@ -146,6 +146,13 @@ Details: [`docs/STABILITY.md`](docs/STABILITY.md)
 
 ## For developers
 
+**Windows source builds:** use Windows 10/11 x64 with Node >= 20, pnpm >= 9,
+Python >= 3.11, uv, Rust stable `x86_64-pc-windows-msvc`, Visual Studio 2022
+Build Tools with MSVC v143, a Windows 10/11 SDK, and Git for Windows. The
+Windows app is still Tauri-based: React/Vite frontend, Rust desktop shell,
+PyInstaller Python sidecar, then MSI/NSIS bundles. More detail:
+[`docs/BUILD_FROM_SOURCE.md`](docs/BUILD_FROM_SOURCE.md).
+
 ```bash
 git clone https://github.com/fancy1108/Clutch.git
 cd Clutch
