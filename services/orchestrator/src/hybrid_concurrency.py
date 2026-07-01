@@ -64,6 +64,10 @@ def shell_session_status_for_rejection(code: str) -> str:
     return f"rejected_{code}"
 
 
+def shell_session_status_for_pool_queue() -> str:
+    return "queued_pool"
+
+
 def plain_chat_turn_in_progress(
     *,
     plain_chat_task_done: bool,

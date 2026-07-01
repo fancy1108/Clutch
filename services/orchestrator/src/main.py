@@ -38,7 +38,13 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
+    from src.plain_chat_pool_queue import set_event_loop, set_refresh_handler, set_resume_handler
     from src.shell_session import get_shell_session_manager
+
+    loop = asyncio.get_running_loop()
+    set_event_loop(loop)
+    set_resume_handler(_resume_pool_queued_turn)
+    set_refresh_handler(_refresh_pool_queued_run_states)
 
     async def _sweep_shell_sessions() -> None:
         manager = get_shell_session_manager()
@@ -710,7 +716,14 @@ def _apply_delete_message(
 
 def _merge_patch(state: ClutchState, patch: dict[str, Any]) -> ClutchState:
     merged = deepcopy(state)
-    optional_keys = frozenset({"hybrid_executions", "shell_session_status"})
+    optional_keys = frozenset({
+        "hybrid_executions",
+        "shell_session_status",
+        "shell_pool_blocker_run_ids",
+        "shell_pool_blockers",
+        "shell_pool_queue_position",
+        "shell_pool_queue_depth",
+    })
     for key, value in patch.items():
         if key in merged or key in optional_keys:
             merged[key] = value  # type: ignore[literal-required, index]
@@ -1654,6 +1667,110 @@ async def _apply_hybrid_plain_chat_rejection(
     return state
 
 
+class _NullWebSocket:
+    """Placeholder when resuming a pool-queued turn after the client disconnected."""
+
+    async def send_text(self, _data: str) -> None:
+        return
+
+
+async def _refresh_pool_queued_run_states() -> None:
+    from src.plain_chat_pool_queue import iter_queued_run_ids, pool_queue_state_patch
+
+    for run_id in iter_queued_run_ids():
+        state = _get_or_create_run(run_id)
+        if state.get("shell_session_status") != "queued_pool":
+            continue
+        patch = pool_queue_state_patch(run_id)
+        state = _merge_patch(state, patch)
+        _run_states[run_id] = state
+        _commit_run_state(run_id, state)
+        from src.plain_chat_pool_queue import get_plain_chat_ws
+
+        websocket = get_plain_chat_ws(run_id)
+        if websocket is not None:
+            await _notify_run_state(websocket, run_id, state, patch)
+
+
+async def _apply_pool_full_queue(
+    websocket: WebSocket,
+    run_id: str,
+    state: ClutchState,
+    *,
+    text: str,
+    agent_id: str,
+    session_model_id: str | None,
+    client_message_id: str | None,
+) -> ClutchState:
+    from src.hybrid_concurrency import shell_session_status_for_pool_queue
+    from src.plain_chat_pool_queue import (
+        PoolQueuedTurn,
+        clear_pool_queue_state_patch,
+        enqueue_turn,
+        pool_queue_state_patch,
+        register_plain_chat_ws,
+        schedule_pool_drain,
+    )
+    from src.runtime_config import runtime_mode
+
+    register_plain_chat_ws(run_id, websocket)
+    pending = enqueue_turn(
+        PoolQueuedTurn(
+            run_id=run_id,
+            text=text,
+            agent_id=agent_id,
+            session_model_id=session_model_id,
+            client_message_id=client_message_id,
+        )
+    )
+    log_line = stamp_log_line(
+        tagged(
+            TAG_WORKFLOW,
+            f"[HYBRID] queued waiting for shell pool ({pending} pending globally)",
+        )
+    )
+    logs = list(state["terminal_logs"]) + [log_line]
+    patch: dict[str, Any] = {
+        "terminal_logs": logs,
+        "status": "running",
+    }
+    if runtime_mode() == "hybrid":
+        patch["shell_session_status"] = shell_session_status_for_pool_queue()
+        patch.update(pool_queue_state_patch(run_id))
+    state = _merge_patch(state, patch)
+    _commit_run_state(run_id, state)
+    await _send_log_event(websocket, run_id, log_line, node_id="")
+    await _notify_run_state(websocket, run_id, state, patch)
+    await schedule_pool_drain()
+    return state
+
+
+async def _resume_pool_queued_turn(
+    item: "PoolQueuedTurn",
+    websocket: WebSocket | None,
+) -> None:
+    from src.plain_chat_pool_queue import PoolQueuedTurn, register_plain_chat_ws
+    from src.run_state_store import sync_run_state_from_disk
+
+    assert isinstance(item, PoolQueuedTurn)
+    run_id = item.run_id
+    ws: WebSocket = websocket if websocket is not None else _NullWebSocket()  # type: ignore[assignment]
+    if websocket is not None:
+        register_plain_chat_ws(run_id, websocket)
+    state = sync_run_state_from_disk(run_id, _get_or_create_run(run_id))
+    _run_states[run_id] = state
+    await _handle_plain_chat(
+        ws,
+        run_id,
+        state,
+        item.text,
+        agent_id=item.agent_id,
+        session_model_id=item.session_model_id,
+        client_message_id=item.client_message_id,
+        resume_after_pool_queue=True,
+    )
+
+
 async def _handle_plain_chat(
     websocket: WebSocket,
     run_id: str,
@@ -1662,6 +1779,8 @@ async def _handle_plain_chat(
     agent_id: str | None = None,
     session_model_id: str | None = None,
     client_message_id: str | None = None,
+    *,
+    resume_after_pool_queue: bool = False,
 ) -> ClutchState:
     from src.agent_storage import BUILTIN_AGENT_ID, get_agent_by_id
     from src.runtime_config import runtime_mode
@@ -1670,41 +1789,53 @@ async def _handle_plain_chat(
     agent = get_agent_by_id(resolved_id)
     active_agent = str(agent.get("name", "Clutch Agent")) if agent else "Clutch Agent"
 
-    if state["status"] == "running" and runtime_mode() == "hybrid":
+    if state["status"] == "running" and runtime_mode() == "hybrid" and not resume_after_pool_queue:
         return state
 
     stripped = text.strip()
     client_id = (client_message_id or "").strip()
-    user_message = _chat_message(
-        "User",
-        text,
-        msg_id=client_id or f"user_{uuid.uuid4().hex[:8]}",
-    )
-    messages = list(state["messages"])
-    already_has_client_id = bool(
-        client_id and any(str(item.get("id", "")) == client_id for item in messages)
-    )
-    user_message_added = not already_has_client_id and not (
-        messages
-        and messages[-1].get("agent") == "User"
-        and str(messages[-1].get("text", "")).strip() == stripped
-    )
-    if user_message_added:
-        messages = messages + [user_message]
-    user_patch: dict[str, Any] = {
-        "messages": messages,
-        "status": "running",
-        "active_agent": active_agent,
-    }
-    if runtime_mode() == "hybrid":
-        user_patch["shell_session_status"] = "ready"
-    state = _merge_patch(state, user_patch)
-    _commit_run_state(run_id, state)
-    _touch_session(run_id, title=text.strip()[:80] or "New session", status=state["status"])
+    if not resume_after_pool_queue:
+        user_message = _chat_message(
+            "User",
+            text,
+            msg_id=client_id or f"user_{uuid.uuid4().hex[:8]}",
+        )
+        messages = list(state["messages"])
+        already_has_client_id = bool(
+            client_id and any(str(item.get("id", "")) == client_id for item in messages)
+        )
+        user_message_added = not already_has_client_id and not (
+            messages
+            and messages[-1].get("agent") == "User"
+            and str(messages[-1].get("text", "")).strip() == stripped
+        )
+        if user_message_added:
+            messages = messages + [user_message]
+        user_patch: dict[str, Any] = {
+            "messages": messages,
+            "status": "running",
+            "active_agent": active_agent,
+        }
+        if runtime_mode() == "hybrid":
+            user_patch["shell_session_status"] = "ready"
+        state = _merge_patch(state, user_patch)
+        _commit_run_state(run_id, state)
+        _touch_session(run_id, title=text.strip()[:80] or "New session", status=state["status"])
 
-    if user_message_added:
-        await _send_message_event(websocket, run_id, user_message, "")
-    await _notify_run_state(websocket, run_id, state, user_patch)
+        if user_message_added:
+            await _send_message_event(websocket, run_id, user_message, "")
+        await _notify_run_state(websocket, run_id, state, user_patch)
+    elif runtime_mode() == "hybrid":
+        from src.plain_chat_pool_queue import clear_pool_queue_state_patch
+
+        ready_patch = {
+            "shell_session_status": "ready",
+            "status": "running",
+            **clear_pool_queue_state_patch(),
+        }
+        state = _merge_patch(state, ready_patch)
+        _commit_run_state(run_id, state)
+        await _notify_run_state(websocket, run_id, state, ready_patch)
 
     from src.state import cli_session_patch, read_cli_session_agent_id, read_cli_session_id
 
@@ -1757,6 +1888,16 @@ async def _handle_plain_chat(
             emit_log=emit_log,
         )
     except HybridPlainChatRejected as exc:
+        if exc.code == "pool_full":
+            return await _apply_pool_full_queue(
+                websocket,
+                run_id,
+                state,
+                text=text,
+                agent_id=resolved_id,
+                session_model_id=session_model_id,
+                client_message_id=client_id or None,
+            )
         keep_running = exc.code == "session_busy" and state["status"] == "running"
         return await _apply_hybrid_plain_chat_rejection(
             websocket,
@@ -1901,7 +2042,10 @@ async def _handle_plain_chat(
     if shell_recovered:
         final_patch["shell_session_status"] = "recovering"
     elif runtime_engine and "Hybrid" in runtime_engine:
+        from src.plain_chat_pool_queue import clear_pool_queue_state_patch
+
         final_patch["shell_session_status"] = "ready"
+        final_patch.update(clear_pool_queue_state_patch())
     if cli_session_id:
         final_patch.update(cli_session_patch(cli_session_id, resolved_id))
     elif stored_session_agent and stored_session_agent != resolved_id:
@@ -3438,8 +3582,10 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
             await websocket.close(code=4401, reason="Unauthorized")
             return
     await websocket.accept()
+    from src.plain_chat_pool_queue import register_plain_chat_ws, unregister_plain_chat_ws
     from src.run_state_store import sync_run_state_from_disk
 
+    register_plain_chat_ws(run_id, websocket)
     state = sync_run_state_from_disk(run_id, _get_or_create_run(run_id))
     _run_states[run_id] = state
     _setup_run_log_forwarder(run_id)
@@ -3815,4 +3961,5 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
             },
         )
     finally:
+        unregister_plain_chat_ws(run_id)
         forwarder.detach_ws()

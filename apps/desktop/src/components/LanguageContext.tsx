@@ -166,6 +166,7 @@ const zhTranslations: Record<string, string> = {
   "Confirm": "确认",
   "Reload": "重新加载",
   "Thinking...": "思考中...",
+  "Queued for shell...": "排队等待 shell…",
   "Clutch Agent": "Clutch 智能体",
   "Settings": "设置",
   "Default Group": "默认分组",

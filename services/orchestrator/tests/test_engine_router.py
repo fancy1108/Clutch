@@ -390,6 +390,7 @@ def test_route_engine_flow_multiline_claude_skips_hybrid_pty(
     monkeypatch.setenv("CLUTCH_RUNTIME_MODE", "hybrid")
     monkeypatch.setattr("src.engine_router.tool_available_for_routing", lambda _tool_id: True)
     monkeypatch.setattr("src.engine_router.get_workspace", lambda: {"workspace_path": "/workspace"})
+    monkeypatch.setattr("src.engine_router.load_connected_ids", lambda: set())
     # CI runners may not have `claude` on PATH; multiline guard must not depend on discovery.
     monkeypatch.setattr("src.engine_router.resolve_tool_binary", lambda _tool_id: None)
 

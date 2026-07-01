@@ -103,20 +103,6 @@ function isAssistantMessage(m: { agent: string }): boolean {
   return Boolean(m.agent && m.agent !== 'User' && m.agent !== 'Supervisor');
 }
 
-export async function waitForRunIdle(runId: string, timeoutMs: number): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    const stateRes = await sidecarFetch(`/api/runs/${encodeURIComponent(runId)}/state`);
-    if (stateRes.ok) {
-      const body = (await stateRes.json()) as { state: { status: string } };
-      const status = body.state.status;
-      if (status === 'idle' || status === 'passed' || status === 'failed') return;
-    }
-    await delay(500);
-  }
-  throw new Error(`Run idle timeout after ${timeoutMs}ms (run_id=${runId})`);
-}
-
 export async function waitForRunStatus(
   runId: string,
   status: string,
@@ -132,6 +118,51 @@ export async function waitForRunStatus(
     await delay(200);
   }
   throw new Error(`Run status "${status}" timeout after ${timeoutMs}ms (run_id=${runId})`);
+}
+
+/** Cross-session: shell pool full → queued_pool on sidecar state. */
+export async function waitForQueuedPoolStatus(runId: string, timeoutMs: number): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const stateRes = await sidecarFetch(`/api/runs/${encodeURIComponent(runId)}/state`);
+    if (stateRes.ok) {
+      const body = (await stateRes.json()) as { state: { shell_session_status?: string } };
+      if (body.state.shell_session_status === 'queued_pool') return;
+      const logs = (body.state as { terminal_logs?: string[] }).terminal_logs ?? [];
+      if (logs.some((line) => /queued waiting for shell pool/i.test(line))) return;
+    }
+    await delay(300);
+  }
+  throw new Error(`queued_pool not observed after ${timeoutMs}ms (run_id=${runId})`);
+}
+
+/** Poll sidecar until hybrid shell is acquired (pool contended). */
+export async function waitForHybridShellReady(runId: string, timeoutMs: number): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const stateRes = await sidecarFetch(`/api/runs/${encodeURIComponent(runId)}/state`);
+    if (stateRes.ok) {
+      const body = (await stateRes.json()) as { state: { terminal_logs?: string[] } };
+      const logs = body.state.terminal_logs ?? [];
+      if (logs.some((line) => /\[HYBRID\] shell ready/i.test(line))) return;
+    }
+    await delay(300);
+  }
+  throw new Error(`Hybrid shell not ready after ${timeoutMs}ms (run_id=${runId})`);
+}
+
+export async function waitForRunIdle(runId: string, timeoutMs: number): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const stateRes = await sidecarFetch(`/api/runs/${encodeURIComponent(runId)}/state`);
+    if (stateRes.ok) {
+      const body = (await stateRes.json()) as { state: { status: string } };
+      const status = body.state.status;
+      if (status === 'idle' || status === 'passed' || status === 'failed') return;
+    }
+    await delay(500);
+  }
+  throw new Error(`Run idle timeout after ${timeoutMs}ms (run_id=${runId})`);
 }
 
 /** Both user turns visible while run still busy (queued second message before first reply). */

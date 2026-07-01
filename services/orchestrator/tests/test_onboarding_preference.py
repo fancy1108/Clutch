@@ -21,6 +21,9 @@ def preferences_data_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Pat
 
 
 def test_onboarding_defaults_false(preferences_data_dir: Path) -> None:
+    prefs_file = preferences_data_dir / "preferences.json"
+    if prefs_file.is_file():
+        prefs_file.unlink()
     prefs = load_preferences()
     assert prefs["onboarding_completed"] == "false"
     assert is_onboarding_completed() is False

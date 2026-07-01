@@ -1244,6 +1244,10 @@ function MainLayout() {
                 permissionMode={permissionMode}
                 onPermissionModeChange={handlePermissionModeChange}
                 shellSessionStatus={clutchState.shell_session_status}
+                shellPoolBlockerRunIds={clutchState.shell_pool_blocker_run_ids}
+                shellPoolBlockers={clutchState.shell_pool_blockers}
+                shellPoolQueuePosition={clutchState.shell_pool_queue_position}
+                shellPoolQueueDepth={clutchState.shell_pool_queue_depth}
                 userAvatar={userAvatar}
                 userName={userName}
               />

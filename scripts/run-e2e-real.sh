@@ -99,6 +99,7 @@ wait_tauri_ready() {
     CLUTCH_AGENTS_DIR="${CLUTCH_AGENTS_DIR:-}" \
     CLUTCH_STORAGE_DIR="${CLUTCH_STORAGE_DIR:-}" \
     CLUTCH_USER_WORKFLOWS_DIR="${CLUTCH_USER_WORKFLOWS_DIR:-}" \
+    CLUTCH_SHELL_MAX_SESSIONS="${CLUTCH_SHELL_MAX_SESSIONS:-1}" \
     pnpm tauri:e2e) &
   tauri_pid=$!
   wait_tauri_ready

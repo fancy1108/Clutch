@@ -18,8 +18,11 @@ import {
   startNewChat,
   waitForAssistantReply,
   waitForCurrentSessionRunId,
+  waitForHybridShellReady,
+  waitForQueuedPoolStatus,
   waitForQueuedUserMessages,
   waitForRunIdle,
+  waitForRunStatus,
   waitForUserMessage,
   waitForWorkflowComplete,
   waitForWorkflowRunning,
@@ -106,6 +109,38 @@ test('Q1 same-session message queue (real)', async ({ tauriPage: page }) => {
   expect(firstReply).toMatch(/QUEUE-A/i);
   expect(secondReply).toMatch(/QUEUE-B/i);
   await waitForRunIdle(runId, 15_000);
+});
+
+/** Cross-session: when shell pool is full, the next session queues then runs after a slot frees. */
+test('P1 cross-session pool queue (real)', async ({ tauriPage: page }) => {
+  test.skip(manifest.cli_tools.length === 0, 'No CLI agents available');
+  test.setTimeout(t.cross_agent);
+  await prepareChatTest(page);
+  await authorizeSandboxWorkspace(page);
+  await startNewChat(page);
+  const runIdA = await waitForCurrentSessionRunId(page, 15_000);
+  await clearWorkflowSelection(page);
+  const claudeTool =
+    manifest.cli_tools.find((toolId) => toolId === 'claude-cli') ?? manifest.cli_tools[0];
+  await selectFooterAgent(page, cliAgentId(claudeTool));
+  await sendChatMessage(page, '请只回复：POOL-HOLD');
+  await waitForHybridShellReady(runIdA, 30_000);
+  await startNewChat(page);
+  const runIdB = await waitForCurrentSessionRunId(page, 15_000);
+  await clearWorkflowSelection(page);
+  await selectFooterAgent(page, cliAgentId(claudeTool));
+  await sendChatMessage(page, '请只回复：POOL-WAIT');
+  await waitForQueuedPoolStatus(runIdB, config.cross_agent_cli_timeout_ms);
+  await waitForUserMessage(runIdB, 'POOL-WAIT', config.cross_agent_cli_timeout_ms);
+  await waitForAssistantReply(page, config.cross_agent_cli_timeout_ms, /POOL-HOLD/i, { runId: runIdA });
+  const replyB = await waitForAssistantReply(
+    page,
+    config.cross_agent_cli_timeout_ms,
+    /POOL-WAIT/i,
+    { runId: runIdB },
+  );
+  expect(replyB).toMatch(/POOL-WAIT/i);
+  await waitForRunIdle(runIdB, 15_000);
 });
 
 test('B2 Ollama multi-turn (real)', async ({ tauriPage: page }) => {

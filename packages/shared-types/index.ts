@@ -132,6 +132,14 @@ export interface ClutchState {
   hybrid_executions?: Record<string, HybridExecutionPayload>;
   /** Long-lived bash PTY status for hybrid runtime (ready / recovering). */
   shell_session_status?: string;
+  /** run_ids holding busy Hybrid shells while this run waits in the global pool queue. */
+  shell_pool_blocker_run_ids?: string[];
+  /** Blocker session metadata for pool queue UI. */
+  shell_pool_blockers?: Array<{ run_id: string; title?: string; agent_name?: string }>;
+  /** 1-based position in the global pool FIFO for this run (0 when not queued). */
+  shell_pool_queue_position?: number;
+  /** Total turns waiting in the global pool queue. */
+  shell_pool_queue_depth?: number;
   /** Workflow node under human refine after pause. */
   refining_node_id?: string;
   /** Latest agent draft while refining (committed before auto-continue). */
