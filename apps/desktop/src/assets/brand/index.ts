@@ -5,7 +5,7 @@ export { default as clutchWordmarkUrl } from './clutch-wordmark.svg';
 export { default as clutchLogoUrl } from './clutch-logo.svg';
 
 export const BRAND = {
-  navy: '#1D2447',
+  black: '#000000',
   white: '#FFFFFF',
   onSurface: '#1A1C1C',
 } as const;
