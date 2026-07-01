@@ -18,14 +18,20 @@
 | OSR-20 应用内更新 | ✅ Go-live（macOS） |
 | #18 Sidecar 生命周期（`lib.rs`） | ✅ 在 `dev` |
 | Rivet CLI + Tools 白名单扩展 | ✅ 在 `dev`（进 1.0.2） |
-| Loop | **v1.0.3**（`release/1.0.3-loop`） |
+| Loop | **v1.0.3**（worktree 已清理；开工时从 `dev` 新建 `release/1.0.3-loop`） |
 
 ## Next Actions
 
-- **`release/1.0.3-loop`：** v1.0.3 发版时合入 `dev`
+- **`release/1.0.3-loop`：** v1.0.3 开工时 `git worktree add ../clutch-release-1.0.3-loop -b release/1.0.3-loop dev`
 - **Windows 实体机 smoke：** [#23](https://github.com/fancy1108/Clutch/issues/23) → 验收人 [@qy1297616171-spec](https://github.com/qy1297616171-spec)（PR #17）；**待邀请协作者**后设 GitHub assignee（fancy1108 无 Win）
 
 ## Recent Sessions
+
+## 2026-07-01 会话（worktree 清理）
+
+- **已删除 worktree：** `clutch-release-1.0.2-updater` · `clutch-release-1.0.2-windows` · `clutch-review-pr16/17` · `clutch-release-1.0.3-loop`
+- **已删本地分支：** `release/1.0.2-*` · `review/pr-*` · `release/1.0.3-loop`
+- **注意：** `1.0.3-loop` worktree 上有**未提交** WIP（`test_loop_flow.py` · `loop-test-todo.json`）已随 `--force` 移除丢弃；Loop 需从 `dev` 重新开工
 
 ## 2026-07-01 会话（v1.0.2 发版收尾）
 
