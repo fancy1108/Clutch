@@ -181,7 +181,12 @@ def resolve_model_credential_hint(router: LLMProviderRouter, spec: ModelSpec) ->
             )
     if spec.provider_id == "openai" and spec.base_url and "agnes-ai.com" in spec.base_url:
         hints.append("Save your Agnes token under the OpenAI provider.")
-    if is_image_model(spec) and spec.provider_id == "custom" and spec.base_url and "agnes-ai.com" in spec.base_url:
+    if (
+        spec.provider_id == "custom"
+        and spec.base_url
+        and "agnes-ai.com" in spec.base_url
+        and (is_image_model(spec) or spec.model_kind == "chat")
+    ):
         hints.append("Save your Agnes API key under the Custom provider.")
     return " ".join(hints) if hints else None
 

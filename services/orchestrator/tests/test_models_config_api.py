@@ -165,10 +165,10 @@ def test_serialize_dedupes_same_endpoint_and_api_model() -> None:
     router.set_api_key("custom", "key-custom")
 
     payload = serialize_models_config(router)
-    agnes_ids = {"claude-3-7-sonnet", "cc-switch-agnes1", "cc-switch-agnes2"}
+    agnes_ids = {"claude-3-7-sonnet", "cc-switch-agnes1", "cc-switch-agnes2", "agnes-2.0-flash"}
     listed = [model for model in payload["models"] if model["id"] in agnes_ids]
     assert len(listed) == 1
-    assert listed[0]["id"] == "claude-3-7-sonnet"
+    assert listed[0]["id"] == "agnes-2.0-flash"
 
     router.set_active_model("cc-switch-agnes1")
     payload_active = serialize_models_config(router)
@@ -209,6 +209,26 @@ def test_model_test_endpoint_failure(models_config: Path) -> None:
     result = client.post("/api/models/test", json={"model_id": "deepseek-v4pro"}).json()
     assert result["ok"] is False
     assert "rejected" in result["message"].lower()
+
+
+def test_agnes_chat_model_listed_with_kind(models_config: Path) -> None:
+    client = TestClient(app)
+    body = client.get("/api/models/config").json()
+    agnes = next(m for m in body["models"] if m["id"] == "agnes-2.0-flash")
+    assert agnes["name"] == "Agnes 2.0 Flash"
+    assert agnes["provider_id"] == "custom"
+    assert agnes["model_kind"] == "chat"
+    assert agnes["endpoint"] == "https://apihub.agnes-ai.com/v1"
+
+
+def test_agnes_chat_model_available_with_custom_key(models_config: Path) -> None:
+    client = TestClient(app)
+    client.post("/api/models/config", json={"provider_id": "custom", "api_key": "sk-test-agnes"})
+    body = client.get("/api/models/config").json()
+    agnes = next(m for m in body["models"] if m["id"] == "agnes-2.0-flash")
+    assert agnes["available"] is True
+    image = next(m for m in body["models"] if m["id"] == "agnes-image-2.1-flash")
+    assert image["available"] is True
 
 
 def test_agnes_image_model_listed_with_kind(models_config: Path) -> None:
