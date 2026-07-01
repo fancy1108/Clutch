@@ -12,6 +12,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ### Fixed
 
+- **Settings → Models Config (Ollama):** Model list now reflects **locally installed** `ollama list` tags (same source as Create Agent), instead of always showing built-in catalog entries like `qwen2.5vl:7b` that are not on the machine (`models_config.py`). Persisted `active_model_id` from another Mac auto-falls back to the first installed local tag.
 - **CLI error copy (#19):** Hybrid → legacy fallback no longer double-prefixes「通过 … CLI 执行任务失败」; 529 / 5xx gateway errors show a clearer busy/unavailable message (`engine_router.py`).
 
 ## [1.0.2] - 2026-07-01

@@ -2900,9 +2900,10 @@ async def get_models_config(response: Response) -> dict[str, Any]:
 @app.post("/api/models/config")
 async def update_models_config(body: ModelsConfigRequest) -> dict[str, str]:
     from src.llm.router import ProviderId
-    from src.models_config import get_router, is_model_available, save_router
+    from src.models_config import get_router, is_model_available, save_router, sync_local_ollama_models
 
     router = get_router()
+    sync_local_ollama_models(router)
     if body.active_model_id:
         if not is_model_available(router, body.active_model_id):
             raise HTTPException(

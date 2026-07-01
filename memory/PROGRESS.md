@@ -28,6 +28,14 @@
 
 ## Recent Sessions
 
+## 2026-07-01 会话（Ollama Models Config 本机同步）
+
+- **问题：** Settings → Models Config 展示内置 Ollama 目录（如 `qwen2.5vl:7b`），与 Create Agent 的本机 `ollama list` 不一致，跨 Mac 对话 404
+- **修复：** `models_config.py` — `local_ollama_tags` / `sync_local_ollama_models` / 可用性检测 / 隐藏未安装内置项 / `active_model_id` 自动回退；`main.py` POST 前 sync
+- **测试：** `test_models_config_api.py` 21 passed
+- **文档：** `PRODUCT_INTRO.md` §3.4 · `CHANGELOG` `[Unreleased]`
+- **下次：** 打进 v1.0.3 发布后在第二台 Mac 装 DMG 验收
+
 ## 2026-07-01 会话（HRT-F 验收）
 
 - **F1/F2/G：** Pass · **F3–F5：** Skip/N/A
