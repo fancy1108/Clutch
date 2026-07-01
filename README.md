@@ -77,7 +77,8 @@ clutch/
 | [`docs/PRODUCT_INTRO.md`](./docs/PRODUCT_INTRO.md) | **推荐首读**：定位、功能、运行机制 |
 | [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) | 系统架构、工作流、WebSocket |
 | [`docs/UI_UX_GUIDELINES.md`](./docs/UI_UX_GUIDELINES.md) | 前端 React + Tailwind 规范 |
-| [`docs/INSTALL.md`](./docs/INSTALL.md) · [`docs/BUILD_FROM_SOURCE.md`](./docs/BUILD_FROM_SOURCE.md) | 安装 DMG · 源码构建 |
+| [`docs/INSTALL.md`](./docs/INSTALL.md) · [`docs/BUILD_FROM_SOURCE.md`](./docs/BUILD_FROM_SOURCE.md) | 安装 DMG / Windows · 源码构建 |
+| [`docs/UPDATES.md`](./docs/UPDATES.md) | macOS 应用内更新（维护者 go-live 清单） |
 | [`docs/OPEN_SOURCE_RELEASE.md`](./docs/OPEN_SOURCE_RELEASE.md) | 开源排期 OSR-xx |
 
 ### Agent 运行态（`memory/`）
@@ -96,10 +97,10 @@ clutch/
 
 | 项 | 支持级别 |
 |----|----------|
-| macOS 14+（Apple Silicon） | ✅ 官方主要目标 |
+| macOS 14+（Apple Silicon） | ✅ 官方主要目标；**v1.0.2+ 支持应用内更新** |
 | macOS 14+（Intel） | ⚠️ 尽力支持，未充分测试 |
 | macOS 13 及更早 | ⚠️ 不保证 |
-| Windows 10/11（x64） | ⚠️ 提供 MSI / NSIS；**CI 构建已通过，维护者尚未在实体机完整验收** |
+| Windows 10/11（x64） | ⚠️ v1.0.2+ 提供 MSI/NSIS；**CI 构建已通过，维护者尚未在实体机完整验收**；无应用内更新 |
 | Linux | 🚧 无官方安装包 |
 
 ### 开发工具链（源码构建）
@@ -158,9 +159,11 @@ pnpm install
 
 完整安装说明见 [`docs/INSTALL.md`](./docs/INSTALL.md)；数据与隐私见 [`docs/DATA_AND_PRIVACY.md`](./docs/DATA_AND_PRIVACY.md)。获得 Apple Developer 账号后，可再提供代码签名与公证的安装包。
 
+**macOS 应用内更新（v1.0.2+）：** 启动后自动检查新版本并显示横幅；**v1.0.0 / v1.0.1 须先手动安装 v1.0.2 一次**。详见 [`docs/UPDATES.md`](./docs/UPDATES.md)。
+
 ### Windows 安装
 
-下载 `Clutch_*_x64-setup.exe`（向导安装）或 `Clutch_*_x64_en-US.msi`（若 Release 提供）。当前构建未进行 Windows 代码签名；若 SmartScreen 提示未知发布者，请确认安装包来源与 SHA-256 后选择继续。**v1.0.2 起：** Windows 包由 CI 构建；维护者尚未在实体 Win10/11 上完成完整人工 smoke，欢迎通过 Issue 反馈。应用安装到 `C:\Program Files\Clutch`，数据保存在 `%APPDATA%\clutch`，API Key 使用 Windows 凭据管理器。
+从 [GitHub Releases](https://github.com/fancy1108/Clutch/releases) 下载 `Clutch_*_x64-setup.exe`（向导安装）或 `Clutch_*_x64_en-US.msi`。当前构建未进行 Windows 代码签名；若 SmartScreen 提示未知发布者，请核对 `SHA256SUMS.txt` 与来源后选择继续。**v1.0.2 起：** Windows 包由 CI 构建并附在 Release 页；维护者尚未在实体 Win10/11 上完成完整人工 smoke，欢迎通过 Issue 反馈。应用安装到 `C:\Program Files\Clutch`，数据保存在 `%APPDATA%\clutch`，API Key 使用 Windows 凭据管理器。**Windows 暂无应用内更新**，新版本请重新下载安装包。
 
 ### 从源码构建（开发者）
 

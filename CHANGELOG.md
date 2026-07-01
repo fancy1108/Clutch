@@ -14,13 +14,17 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 Minor release — **Windows installers**, **in-app updates (macOS)**, **macOS sidecar lifecycle fix (#18)**, and **expanded CLI tool discovery (incl. Rivet)**.
 
+> **Release assets (v1.0.2):** [GitHub Release](https://github.com/fancy1108/Clutch/releases/tag/v1.0.2) — macOS DMG, Windows MSI/NSIS, `latest.json` + signed updater bundle (macOS), `SHA256SUMS.txt`. Product snapshot: [`docs/releases/v1.0.2.md`](docs/releases/v1.0.2.md).
+
 > **Windows 说明（v1.0.2）：** MSI / NSIS 安装包由 GitHub Actions CI 构建并通过自动化测试；**维护者尚未在实体 Windows 10/11 机器上完成完整人工验收**。若 Release 页附 Windows 资产，请优先核对 SHA-256 与来源；遇到问题欢迎 [开 Issue](https://github.com/fancy1108/Clutch/issues/new/choose)。macOS DMG 仍为本次主要发布与 smoke 路径。
+
+> **macOS 更新说明：** v1.0.0 / v1.0.1 用户须**手动安装 v1.0.2 一次**；之后可通过应用内横幅自动更新。详见 [`docs/UPDATES.md`](docs/UPDATES.md) · [`docs/INSTALL.md`](docs/INSTALL.md) §3。
 
 ### Added
 
 - **Windows desktop distribution:** Windows 10/11 x64 MSI and NSIS installers, ConPTY-backed Hybrid sessions, cross-platform MCP/file-lock handling, and Windows Credential Manager storage for provider API keys.
 - **Windows build automation:** Manual/PR workflow builds and uploads Windows installer artifacts.
-- **In-app updates (OSR-20):** Tauri `plugin-updater` + update banner; `release-updater.yml` for signed update assets; see [`docs/UPDATES.md`](docs/UPDATES.md).
+- **In-app updates (OSR-20):** Tauri `plugin-updater` + update banner; `release-updater.yml` for signed update assets; **go-live on v1.0.2** — see [`docs/UPDATES.md`](docs/UPDATES.md).
 - **CLI tools (Rivet + whitelist):** Expanded Agent CLI discovery — installed tools always shown; curated install guides for uninstalled CLIs; **Rivet** headless routing via `rivet-cli` with `RIVET_FORCE_RECOVERY_CLI=1`.
 
 ### Changed

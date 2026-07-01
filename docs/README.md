@@ -10,7 +10,8 @@
 | 你是谁 | 先读 |
 |--------|------|
 | 新用户 / 评估产品 | [`PRODUCT_INTRO.md`](./PRODUCT_INTRO.md) |
-| 安装 DMG | [`INSTALL.md`](./INSTALL.md) |
+| 安装 DMG / Windows | [`INSTALL.md`](./INSTALL.md) |
+| macOS 应用内更新 | [`UPDATES.md`](./UPDATES.md) |
 | 从源码开发 | [`BUILD_FROM_SOURCE.md`](./BUILD_FROM_SOURCE.md) |
 | 贡献代码 | 根目录 [`CONTRIBUTING.md`](../CONTRIBUTING.md)（PR base：**`dev`**）+ [`CLAUDE.md`](../CLAUDE.md) |
 | 前端 UI 开发 | [`UI_UX_GUIDELINES.md`](./UI_UX_GUIDELINES.md) |
@@ -35,7 +36,8 @@
 
 | 文档 | 用途 |
 |------|------|
-| [`INSTALL.md`](./INSTALL.md) | DMG 安装、Gatekeeper、首次使用、卸载 |
+| [`INSTALL.md`](./INSTALL.md) | DMG / Windows 安装、Gatekeeper、应用内更新、首次使用、卸载 |
+| [`UPDATES.md`](./UPDATES.md) | macOS 应用内自动更新（OSR-20）· 维护者 go-live 清单 |
 | [`BUILD_FROM_SOURCE.md`](./BUILD_FROM_SOURCE.md) | 克隆、依赖、`pnpm tauri:dev`、本地打包 |
 | [`DATA_AND_PRIVACY.md`](./DATA_AND_PRIVACY.md) | 本地数据目录、第三方 LLM、用户权利 |
 

@@ -38,11 +38,23 @@
 
 ### Windows
 
-下载 `Clutch_*_x64-setup.exe`（推荐）或 `Clutch_*_x64_en-US.msi` 并按向导安装（**自 v1.0.2 起**；Release 页若未附 Windows 资产，见 [Actions → Windows Build](https://github.com/fancy1108/Clutch/actions/workflows/windows-build.yml) 或维护者说明）。当前安装包未进行 Windows 代码签名；SmartScreen 提示“未知发布者”时，请先核对下载来源和 SHA-256，再选择“更多信息 → 仍要运行”。
+从 [GitHub Releases](https://github.com/fancy1108/Clutch/releases) 下载 `Clutch_*_x64-setup.exe`（推荐）或 `Clutch_*_x64_en-US.msi` 并按向导安装（**自 v1.0.2 起**）。当前安装包未进行 Windows 代码签名；SmartScreen 提示“未知发布者”时，请先核对下载来源和 `SHA256SUMS.txt`，再选择“更多信息 → 仍要运行”。
 
 > **测试范围：** Windows 安装包由 GitHub CI 构建并通过自动化测试；**维护者尚未在实体 Windows 10/11 上完成完整人工验收**。遇到问题请 [提交 Issue](https://github.com/fancy1108/Clutch/issues/new/choose) 并注明安装包文件名与 Windows 版本。
 
 安装后从开始菜单启动 Clutch。
+
+### macOS 应用内更新（自 v1.0.2）
+
+**v1.0.2 及以后**的 macOS 安装包内置应用内更新。启动约 4 秒后自动检查 [GitHub Releases](https://github.com/fancy1108/Clutch/releases/latest) 上的 `latest.json`；若远程版本更新，窗口顶部会出现更新横幅，点击即可下载、验签并重启安装。
+
+| 情况 | 操作 |
+|------|------|
+| 当前为 **v1.0.0 或 v1.0.1** | **必须手动**下载并安装 v1.0.2 DMG 一次（旧包无 updater 组件） |
+| 当前为 **v1.0.2+** | 有新版本时跟随横幅更新即可 |
+| 检查失败 / 无横幅 | 静默忽略；可手动从 Releases 下载 DMG |
+
+维护者说明见 [`docs/UPDATES.md`](./UPDATES.md)。**Windows 暂无应用内更新**，请从 Release 页下载新版本安装包。
 
 ---
 

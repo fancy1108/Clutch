@@ -5,30 +5,34 @@
 
 ## Current Status
 
-- **阶段：** **v1.0.2 已发布** — [Release](https://github.com/fancy1108/Clutch/releases/tag/v1.0.2) 含 `Clutch_1.0.2_aarch64.dmg` + `SHA256SUMS.txt`
+- **阶段：** **v1.0.2 已完整发布** — [Release](https://github.com/fancy1108/Clutch/releases/tag/v1.0.2) 含 macOS DMG + Windows MSI/NSIS + updater 资产 + `SHA256SUMS.txt`
 - **Git：** `dev` 已 push · [#18](https://github.com/fancy1108/Clutch/issues/18) 已关闭
-- **Windows：** CI run [28462065330](https://github.com/fancy1108/Clutch/actions/runs/28462065330) ✅（`dev` · `2a23585`）；Win 包上传 Release **待重试**（artifact 下载网络中断）
-- **Updater go-live：** ❌ run [28461723951](https://github.com/fancy1108/Clutch/actions/runs/28461723951) — `TAURI_SIGNING_PRIVATE_KEY` 格式错误（symbol 37 = `%`）；见 `docs/UPDATES.md` §2 故障排查
+- **Windows：** CI run [28462065330](https://github.com/fancy1108/Clutch/actions/runs/28462065330) ✅；Release 已含 `Clutch_1.0.2_x64_en-US.msi` + `Clutch_1.0.2_x64-setup.exe`
+- **Updater go-live：** ✅ run [28465904210](https://github.com/fancy1108/Clutch/actions/runs/28465904210) — `latest.json` + 签名 bundle 已挂 Release
 
 ### v1.0.2 范围（已定）
 
 | 切片 | 状态 |
 |------|------|
-| Windows（#17，PR #17） | ✅ 已在 `main` |
-| OSR-20 应用内更新 | ✅ 已合入 `dev` |
+| Windows（#17，PR #17） | ✅ Release 已发布 |
+| OSR-20 应用内更新 | ✅ Go-live（macOS） |
 | #18 Sidecar 生命周期（`lib.rs`） | ✅ 在 `dev` |
 | Rivet CLI + Tools 白名单扩展 | ✅ 在 `dev`（进 1.0.2） |
 | Loop | **v1.0.3**（`release/1.0.3-loop`） |
 
 ## Next Actions
 
-- [ ] 修复 `TAURI_SIGNING_PRIVATE_KEY` → 重跑 **Release (updater assets)**（`release_tag=v1.0.2`）
-- [ ] 从 run [28462065330](https://github.com/fancy1108/Clutch/actions/runs/28462065330) 下载 `clutch-windows-x64` → `gh release upload v1.0.2`（`.msi` + `*-setup.exe`）
 - **`release/1.0.3-loop`：** v1.0.3 发版时合入 `dev`
+- **Windows 实体机 smoke**（可选）：维护者在 Win10/11 上验收 MSI/NSIS
 
 ## Recent Sessions
 
-## 2026-06-30 会话（v1.0.2 集成）
+## 2026-07-01 会话（v1.0.2 发版收尾）
+
+- **Updater go-live：** 修复 `TAURI_SIGNING_PRIVATE_KEY`（`gh secret set` 从 `~/.clutch-updater-keys`）→ workflow [28465904210](https://github.com/fancy1108/Clutch/actions/runs/28465904210) ✅
+- **Windows 安装包：** 从 CI artifact 上传至 v1.0.2 Release；`SHA256SUMS.txt` 含三项校验和
+- **文档：** `docs/UPDATES.md`、`docs/releases/v1.0.2.md`、`PRODUCT_INTRO.md`、`INSTALL.md` 同步
+- **下次优先：** v1.0.3 Loop 切片
 
 - **Rivet/tools** 纳入 v1.0.2（用户确认）
 - **`release/1.0.2-updater`** 合入 `dev`（OSR-20 + #18 `lib.rs`）
