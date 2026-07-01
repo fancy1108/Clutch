@@ -88,6 +88,19 @@
 
 ---
 
+## 维护者验收（非开发 · 人工）
+
+> **来源：** v1.0.2 发版后登记。非 BACKLOG 功能候选；完成后关 Issue 并更新 `CHANGELOG` / `INSTALL` 免责文案（若通过）。
+
+| Issue | 标题 | 范围 | 状态 |
+|-------|------|------|------|
+| [#23](https://github.com/fancy1108/Clutch/issues/23) | v1.0.2 Windows MSI/NSIS 实体机 smoke | Win10/11 x64 · Release `v1.0.2` 安装包 | **open** · `ready-for-human` |
+
+**资产：** `Clutch_1.0.2_x64-setup.exe` · `Clutch_1.0.2_x64_en-US.msi` · `SHA256SUMS.txt`  
+**CI 证据：** [Windows Build #28462065330](https://github.com/fancy1108/Clutch/actions/runs/28462065330)
+
+---
+
 ## Completed（索引 only）
 
 | ID | 归宿 |

@@ -66,4 +66,6 @@ shasum -a 256 -c SHA256SUMS.txt
 | **代码签名** | 当前**未** Windows 代码签名；SmartScreen 可能提示「未知发布者」——请先核对 SHA-256 与 Release 来源 |
 | **反馈** | 欢迎 [提交 Issue](https://github.com/fancy1108/Clutch/issues/new/choose) 标注平台与安装包文件名 |
 
-**English (short):** Windows installers are **CI-built** but **not yet fully smoke-tested by maintainers on physical hardware**. Verify checksums; report issues on GitHub.
+**维护者待办：** 实体机 smoke 验收 — [Issue #23](https://github.com/fancy1108/Clutch/issues/23)（`ready-for-human`）
+
+**English (short):** Windows installers are **CI-built** but **not yet fully smoke-tested by maintainers on physical hardware**. Verify checksums; report issues on GitHub. Maintainers: see Issue #23 for smoke checklist.

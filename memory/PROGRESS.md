@@ -23,7 +23,7 @@
 ## Next Actions
 
 - **`release/1.0.3-loop`：** v1.0.3 发版时合入 `dev`
-- **Windows 实体机 smoke**（可选）：维护者在 Win10/11 上验收 MSI/NSIS
+- **Windows 实体机 smoke：** 维护者验收 — [#23](https://github.com/fancy1108/Clutch/issues/23)（`ready-for-human`）
 
 ## Recent Sessions
 
