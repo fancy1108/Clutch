@@ -119,5 +119,19 @@ Reason: OSR T0–T1 deliverables archived
   - `README.md` — 文档地图补充
   - `memory/BACKLOG.md` · `memory/ROADMAP.md` · `docs/OPEN_SOURCE_RELEASE.md` §7.7 — OSR-06 勾选
 
+### OSR-16 / OSR-17 ✅ Debug API 收敛 + Sidecar 无控制台
+- **日期：** 2026-06-29
+- **Commit：** `e410897` — `feat(osr-16,osr-17): gate debug API in release and hide sidecar console`
+- **Verification：** `pytest tests/test_z_release_hardening.py` + `./scripts/verify.sh`
+- **证据：** `—`
+- **交付文件：**
+  - `services/orchestrator/src/release_hardening.py` — frozen/debug/docs gate helpers
+  - `services/orchestrator/src/main.py` — conditional OpenAPI + debug 404
+  - `services/orchestrator/src/sidecar_auth.py` — public paths respect `api_docs_enabled()`
+  - `services/orchestrator/tests/test_z_release_hardening.py`
+  - `apps/desktop/src-tauri/tauri.conf.json` — production CSP + `devCsp`
+  - `services/orchestrator/clutch.spec` — `console=False`
+  - `SECURITY.md` — debug API opt-in documented
+
 ---
 
