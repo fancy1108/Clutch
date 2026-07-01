@@ -17,15 +17,38 @@
 
 | 步骤 | 谁做 | 说明 |
 |------|------|------|
-| 1. `CHANGELOG.md` 增加 `## [x.y.z]` | AI | `release-preflight.sh` 会检查（INV-R5） |
+| 1. `CHANGELOG.md` 增加 `## [x.y.z]` | AI | `release-preflight.sh` 会检查（INV-R5）；该节会成为 **GitHub Release 正文顶部**（见 §Release 正文结构） |
 | 2. 版本号 `tauri.conf.json` / `package.json` | AI | 与 tag 一致 |
 | 3. `./scripts/verify.sh` | AI | 通过后再 tag |
 | 4. `git tag vX.Y.Z` + push tag | AI 准备，**你确认** | 触发 [`.github/workflows/release.yml`](../.github/workflows/release.yml) |
-| 5. CI 上传 DMG + `SHA256SUMS.txt` | GitHub Actions | 约 15–30 分钟 |
+| 5. CI 上传 DMG + `SHA256SUMS.txt` | GitHub Actions | 约 15–30 分钟；Release 正文由 `render-release-notes.sh` 生成 |
 | 6. 同步 Homebrew tap | AI 或 CI | 见下文 §Homebrew |
 | 7. macOS 应用内更新（可选） | 你或 AI | 见 [`UPDATES.md`](./UPDATES.md) — 跑 `Release (updater assets)` |
 
 Windows 安装包由 [`.github/workflows/windows-build.yml`](../.github/workflows/windows-build.yml) 构建；发版时确认 Release 页资产齐全。
+
+---
+
+## Release 正文结构（GitHub Releases）
+
+CI 在 `release.yml` 中调用 [`scripts/render-release-notes.sh`](../scripts/render-release-notes.sh)，**不再**使用 GitHub 自动 PR 列表（`generate_release_notes: false`）。
+
+| 顺序 | 来源 | 维护者职责 |
+|------|------|------------|
+| **1. What's in this release** | `CHANGELOG.md` `## [x.y.z]` | 写清一行摘要 + `### Added` / `### Changed` / `### Fixed` 等 |
+| **2. Install / Upgrade / macOS / Windows / Verify** | [`.github/release-notes/`](../.github/release-notes/) 片段 | 一般无需每版改；安装渠道变化时改片段 |
+
+**发版前自检：**
+
+```bash
+./scripts/render-release-notes.sh vX.Y.Z | head -60
+```
+
+缺少 CHANGELOG 节时脚本非零退出（与 INV-R5 一致）。
+
+**参考风格：** 变更摘要置顶（类似 superpowers / ECC Releases）；安装与 Gatekeeper 说明在下方分节。
+
+产品快照（可选）：[`docs/releases/`](./releases/) — 大版本可增 `vX.Y.md`；GitHub Release 仍以 CHANGELOG 为变更真相源。
 
 ---
 
@@ -120,6 +143,7 @@ brew upgrade --cask clutch   # 或新机器上 install
 | 路径 | 用途 |
 |------|------|
 | [`scripts/release-preflight.sh`](../scripts/release-preflight.sh) | tag 前 CHANGELOG 等门禁 |
+| [`scripts/render-release-notes.sh`](../scripts/render-release-notes.sh) | 组装 GitHub Release 正文 |
 | [`scripts/sync-homebrew-tap.sh`](../scripts/sync-homebrew-tap.sh) | bump `homebrew-clutch` |
 | [`scripts/install.sh`](../scripts/install.sh) / [`install.ps1`](../scripts/install.ps1) | 用户一键安装 |
 | [`packaging/homebrew/Casks/clutch.rb`](../packaging/homebrew/Casks/clutch.rb) | cask 模板（与 tap 保持一致） |

@@ -85,13 +85,17 @@ jobs:
           shasum -a 256 *.dmg > SHA256SUMS.txt
           cat SHA256SUMS.txt
 
+      - name: Render release notes
+        if: github.event_name == 'push'
+        run: ./scripts/render-release-notes.sh "${{ github.ref_name }}" -o "${{ runner.temp }}/release-body.md"
+
       - name: Upload release assets (new tag)
         if: github.event_name == 'push'
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
-          body_path: .github/RELEASE_GATEKEEPER_NOTICE.md
-          generate_release_notes: true
+          body_path: ${{ runner.temp }}/release-body.md
+          generate_release_notes: false
           files: |
             apps/desktop/src-tauri/target/release/bundle/dmg/*.dmg
             apps/desktop/src-tauri/target/release/bundle/dmg/SHA256SUMS.txt
