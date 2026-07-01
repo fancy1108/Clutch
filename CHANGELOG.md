@@ -10,17 +10,37 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ## [Unreleased]
 
-### Fixed
+## [1.0.3] - 2026-07-01
 
-- **Settings → Models Config (Ollama):** Model list now reflects **locally installed** `ollama list` tags (same source as Create Agent), instead of always showing built-in catalog entries like `qwen2.5vl:7b` that are not on the machine (`models_config.py`). Persisted `active_model_id` from another Mac auto-falls back to the first installed local tag.
+Minor release — **Hybrid shell pool queue**, **OpenCode CLI**, **Ollama settings fix**, **brand refresh**, and **maintainer real-connection E2E**.
+
+> **Release assets (v1.0.3):** [GitHub Release](https://github.com/fancy1108/Clutch/releases/tag/v1.0.3) — macOS DMG, Windows MSI/NSIS, `latest.json` + signed updater bundle (macOS), `SHA256SUMS.txt`. Product snapshot: [`docs/releases/v1.0.3.md`](docs/releases/v1.0.3.md).
+
+> **macOS 更新：** v1.0.2+ 用户可通过应用内横幅更新至 v1.0.3；v1.0.0 / v1.0.1 仍须先手动安装 v1.0.2+ 一次。详见 [`docs/UPDATES.md`](docs/UPDATES.md).
+
+> **Windows：** 安装包由 CI 构建；维护者尚未在实体 Win10/11 上完成完整人工验收 ([#23](https://github.com/fancy1108/Clutch/issues/23))。
+
+### Added
+
+- **Hybrid shell pool queue (plain chat):** When all Hybrid shell slots are busy, new sessions **queue globally (FIFO)** with input-bar blocker UI (agent avatars + queue position); auto-resume when a slot frees — replaces Supervisor `pool_full` reject for plain chat.
+- **Same-session pending message queue:** Send while a Hybrid turn runs; messages appear as **待发送消息** and drain in order after the current turn.
+- **OpenCode CLI:** First-class `opencode-cli` routing (Hybrid shell when `CLUTCH_RUNTIME_MODE=hybrid`).
+- **Built-in Agnes 2.0 Flash** chat model preset.
+- **Real-connection E2E acceptance** (`./scripts/verify.sh --e2e-real`): 13 desktop cases including same-session queue (Q1) and cross-session pool queue (P1).
+- **Install scripts:** `scripts/install.sh` (macOS curl DMG) and `scripts/install.ps1` (Windows NSIS); Homebrew tap [fancy1108/homebrew-clutch](https://github.com/fancy1108/homebrew-clutch).
+- **Docs:** Bilingual README, [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md), [`docs/RELEASE_MAINTAINER.md`](docs/RELEASE_MAINTAINER.md).
 
 ### Changed
 
-- **README & onboarding docs:** Bilingual README (`README.md` / `README.zh-CN.md`), new **[`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md)** beginner guide (linked prominently from README and `docs/README.md`). Windows installers marked **not yet verified** on physical hardware ([#23](https://github.com/fancy1108/Clutch/issues/23)).
-- **CLI installers:** `scripts/install.sh` (macOS aarch64 DMG) and `scripts/install.ps1` (Windows NSIS) — documented in README / `INSTALL.md` (not `npm install`; desktop app).
-- **Package managers:** Homebrew tap [fancy1108/homebrew-clutch](https://github.com/fancy1108/homebrew-clutch) live; `scripts/sync-homebrew-tap.sh` + optional CI job in `release.yml` (`HOMEBREW_TAP_GITHUB_TOKEN`). Maintainer guide: [`docs/RELEASE_MAINTAINER.md`](docs/RELEASE_MAINTAINER.md).
-- **Intel Mac:** **Not supported** for packaged DMG (Apple Silicon only); documented in `PACKAGE_MANAGERS.md` · `DECISIONS` D32.
-- **CLI error copy (#19):** Hybrid → legacy fallback no longer double-prefixes「通过 … CLI 执行任务失败」; 529 / 5xx gateway errors show a clearer busy/unavailable message (`engine_router.py`).
+- **Brand / app icons:** Refreshed Clutch mark SVGs and regenerated Tauri desktop icon set; `BrandLogo` shows mark on black background.
+- **Settings → Models Config (Ollama):** Model list reflects **local `ollama list`** tags; persisted `active_model_id` from another machine falls back to first installed tag (`models_config.py`).
+- **CLI error copy (#19):** Hybrid → legacy fallback no longer double-prefixes failure text; 529 / 5xx gateway errors show clearer busy/unavailable message (`engine_router.py`).
+- **README & onboarding:** Latest release v1.0.3; install pin examples updated.
+
+### Fixed
+
+- **Hybrid pool queue stuck:** Drain retry on slot release, WS refresh of blocker metadata, re-enqueue on handler failure (`plain_chat_pool_queue.py`).
+- **E2E dev deps:** Playwright kept available for acceptance runs without bloating normal dev builds.
 
 ## [1.0.2] - 2026-07-01
 

@@ -39,6 +39,7 @@
 
 | Version | Snapshot | Notes |
 |---------|----------|-------|
+| 1.0.3 | [`v1.0.3.md`](./v1.0.3.md) | Hybrid pool queue · OpenCode · brand refresh · Ollama fix |
 | 1.0.2 | [`v1.0.2.md`](./v1.0.2.md) | Windows + macOS in-app update + #18 sidecar fix |
 | 1.0.0 | [`v1.0.md`](./v1.0.md) | First public DMG + open source |
 

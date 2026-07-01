@@ -15,7 +15,17 @@ Clutch is a **desktop app** (Tauri + React) for developers and technical operato
 |---|---|
 | **Stack** | Tauri 2 · React 19 · FastAPI + LangGraph · local-first (`localhost:8123`) |
 | **License** | See [LICENSE](LICENSE) |
-| **Latest release** | [v1.0.2](https://github.com/fancy1108/Clutch/releases) |
+| **Latest release** | [v1.0.3](https://github.com/fancy1108/Clutch/releases) |
+
+### What's new in v1.0.3
+
+- **Hybrid shell pool queue** — when all CLI shell slots are busy, new plain-chat sessions queue globally with agent avatars in the input bar; auto-resume when a slot frees.
+- **OpenCode CLI** — first-class Hybrid routing for `opencode-cli` agents.
+- **Same-session message queue** — send while a turn runs; messages drain in order as **待发送消息**.
+- **Settings → Ollama** — model list syncs with local `ollama list`; stale `active_model_id` auto-falls back.
+- **Brand refresh** — new Clutch mark and desktop app icons.
+
+Full notes: [`CHANGELOG.md`](CHANGELOG.md#103---2026-07-01) · [`docs/releases/v1.0.3.md`](docs/releases/v1.0.3.md)
 
 ---
 
@@ -42,7 +52,7 @@ brew install --cask clutch
 irm https://raw.githubusercontent.com/fancy1108/Clutch/main/scripts/install.ps1 | iex
 ```
 
-Pin a version: `CLUTCH_VERSION=v1.0.2` before running either script.
+Pin a version: `CLUTCH_VERSION=v1.0.3` before running either script.
 
 Install channels (maintainers): [`docs/RELEASE_MAINTAINER.md`](docs/RELEASE_MAINTAINER.md)
 
