@@ -26,9 +26,19 @@ You do **not** need Node, Python, or Rust to use the desktop app.
 
 ### Step 1 — Install
 
+**macOS (Apple Silicon) — terminal (easiest):**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/fancy1108/Clutch/main/scripts/install.sh | bash
+```
+
+**Or manual download:**
+
 1. Open **[GitHub Releases](https://github.com/fancy1108/Clutch/releases)** and download the latest installer for your OS.
 2. **macOS:** drag `Clutch.app` into **Applications**. If macOS blocks launch, see [Install guide § Gatekeeper](./INSTALL.md#4-首次打开gatekeeper).
 3. **Windows:** run `Clutch_*_x64-setup.exe` or the MSI. **Not yet verified on real Windows hardware** — CI-built only; report issues on [GitHub](https://github.com/fancy1108/Clutch/issues/new/choose).
+
+> Clutch is a **desktop app**, not an `npm install -g` CLI. See [`INSTALL.md`](./INSTALL.md) for `install.sh` / `install.ps1` options.
 
 Quick Gatekeeper fix (macOS, copy-paste):
 
@@ -141,9 +151,19 @@ Clutch may call local CLIs with `--dangerously-skip-permissions` so workflows ca
 
 ### 第 1 步 — 安装
 
+**macOS（Apple Silicon）— 终端一键安装：**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/fancy1108/Clutch/main/scripts/install.sh | bash
+```
+
+**或手动下载：**
+
 1. 打开 **[GitHub Releases](https://github.com/fancy1108/Clutch/releases)**，下载适合你系统的最新安装包。
 2. **macOS：** 将 `Clutch.app` 拖入 **应用程序**。若被系统拦截，见 [安装指南 § Gatekeeper](./INSTALL.md#4-首次打开gatekeeper)。
 3. **Windows：** 运行 `Clutch_*_x64-setup.exe` 或 MSI。**尚未在真实 Windows 实体机上完整验收** — 目前仅 CI 构建；问题请 [提交 Issue](https://github.com/fancy1108/Clutch/issues/new/choose)。
+
+> Clutch 是**桌面应用**，没有 `npm install -g clutch`。详见 [`INSTALL.md`](./INSTALL.md) 中的 `install.sh` / `install.ps1`。
 
 macOS 终端一键解除拦截（可复制）：
 

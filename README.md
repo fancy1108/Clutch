@@ -21,6 +21,28 @@ Clutch is a **desktop app** (Tauri + React) for developers and technical operato
 
 ## Quick start (end users)
 
+### Option A — Terminal install (recommended)
+
+**macOS (Apple Silicon):**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/fancy1108/Clutch/main/scripts/install.sh | bash
+```
+
+Downloads the latest Release DMG, copies `Clutch.app` to `/Applications`, and clears Gatekeeper quarantine.
+
+**Windows (x64):** PowerShell — **not yet verified on physical hardware**
+
+```powershell
+irm https://raw.githubusercontent.com/fancy1108/Clutch/main/scripts/install.ps1 | iex
+```
+
+Pin a version: `CLUTCH_VERSION=v1.0.2` (bash) or `$env:CLUTCH_VERSION='v1.0.2'` (PowerShell) before running.
+
+> **Not `npm install`:** Clutch is a **desktop app** (like a DMG/MSI), not a Node CLI such as Codex or Reasonix. There is no `npm install -g clutch` yet; Homebrew/winget may come later ([#23](https://github.com/fancy1108/Clutch/issues/23)).
+
+### Option B — Manual download
+
 **1. Download** — [GitHub Releases](https://github.com/fancy1108/Clutch/releases)
 
 | Platform | File | Status |
