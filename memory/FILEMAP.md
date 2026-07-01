@@ -49,6 +49,7 @@
 | 源码构建 | `docs/BUILD_FROM_SOURCE.md` |
 | 环境自检 | `scripts/doctor.sh` |
 | **终端用户安装（DMG/NSIS）** | `scripts/install.sh`（macOS）· `scripts/install.ps1`（Windows） |
+| Homebrew / winget 清单 | `packaging/homebrew/Casks/clutch.rb` · `packaging/winget/` · [`docs/PACKAGE_MANAGERS.md`](../docs/PACKAGE_MANAGERS.md) |
 | Tauri 桌面开发（Hybrid） | `scripts/tauri-dev.sh` · 根目录 `pnpm tauri:dev` |
 | 产品需求历史 | `specs/core/proposal.md`（指针）· `specs/archive/proposal-v0.1.md` |
 | 历史叙事归档 | `docs/archive/` · `specs/archive/` |

@@ -39,7 +39,23 @@ irm https://raw.githubusercontent.com/fancy1108/Clutch/main/scripts/install.ps1 
 
 Pin a version: `CLUTCH_VERSION=v1.0.2` (bash) or `$env:CLUTCH_VERSION='v1.0.2'` (PowerShell) before running.
 
-> **Not `npm install`:** Clutch is a **desktop app** (like a DMG/MSI), not a Node CLI such as Codex or Reasonix. There is no `npm install -g clutch` yet; Homebrew/winget may come later ([#23](https://github.com/fancy1108/Clutch/issues/23)).
+**Homebrew (macOS · Apple Silicon):**
+
+```bash
+brew install --cask ./packaging/homebrew/Casks/clutch.rb   # from cloned repo
+# or, after tap is published: brew tap fancy1108/clutch && brew install --cask clutch
+```
+
+**winget (Windows x64 · not yet verified on hardware):**
+
+```powershell
+winget install --manifest .\packaging\winget\manifests\f\fancy1108\Clutch\1.0.2
+# after winget-pkgs PR merges: winget install --id Fancy1108.Clutch
+```
+
+Details: [`docs/PACKAGE_MANAGERS.md`](docs/PACKAGE_MANAGERS.md)
+
+> **Not `npm install`:** Clutch is a **desktop app** (like a DMG/MSI), not a Node CLI such as Codex or Reasonix. There is no `npm install -g clutch` yet.
 
 ### Option B — Manual download
 

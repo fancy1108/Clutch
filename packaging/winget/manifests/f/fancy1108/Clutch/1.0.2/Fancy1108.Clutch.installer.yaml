@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.9.0.schema.json
+
+PackageIdentifier: Fancy1108.Clutch
+PackageVersion: 1.0.2
+InstallerLocale: en-US
+InstallerType: nullsoft
+Scope: machine
+InstallModes:
+  - interactive
+  - silent
+UpgradeBehavior: install
+ReleaseDate: 2026-06-30
+Installers:
+  - Architecture: x64
+    InstallerUrl: https://github.com/fancy1108/Clutch/releases/download/v1.0.2/Clutch_1.0.2_x64-setup.exe
+    InstallerSha256: 8e3b536e882cc64da7b8a5889e7b3dbd65c4829c88ae903e5c664c801ec85646
+    InstallerSwitches:
+      Silent: /S
+      SilentWithProgress: /S
+ManifestType: installer
+ManifestVersion: 1.9.0

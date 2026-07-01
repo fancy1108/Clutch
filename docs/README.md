@@ -10,6 +10,7 @@
 | 你是谁 | 先读 |
 |--------|------|
 | **新用户 / 第一次安装** | **[`GETTING_STARTED.md`](./GETTING_STARTED.md)**（5 分钟上手 · 中英双语） |
+| Homebrew / winget | [`PACKAGE_MANAGERS.md`](./PACKAGE_MANAGERS.md) |
 | 评估产品能力 | [`PRODUCT_INTRO.md`](./PRODUCT_INTRO.md) |
 | 安装 DMG / Windows | [`INSTALL.md`](./INSTALL.md) |
 | macOS 应用内更新 | [`UPDATES.md`](./UPDATES.md) |

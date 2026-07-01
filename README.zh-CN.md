@@ -39,7 +39,23 @@ irm https://raw.githubusercontent.com/fancy1108/Clutch/main/scripts/install.ps1 
 
 指定版本：运行前设置 `CLUTCH_VERSION=v1.0.2`（bash）或 `$env:CLUTCH_VERSION='v1.0.2'`（PowerShell）。
 
-> **不是 `npm install`：** Clutch 是**桌面应用**（DMG/MSI），不是 Codex、Reasonix 那样的 Node CLI。目前没有 `npm install -g clutch`；Homebrew / winget 后续可能补上 ([#23](https://github.com/fancy1108/Clutch/issues/23))。
+**Homebrew（macOS · Apple Silicon）：**
+
+```bash
+brew install --cask ./packaging/homebrew/Casks/clutch.rb   # 克隆仓库后
+# 或 tap 发布后：brew tap fancy1108/clutch && brew install --cask clutch
+```
+
+**winget（Windows x64 · 尚未在实体机验证）：**
+
+```powershell
+winget install --manifest .\packaging\winget\manifests\f\fancy1108\Clutch\1.0.2
+# 合入 winget-pkgs 后：winget install --id Fancy1108.Clutch
+```
+
+详见 [`docs/PACKAGE_MANAGERS.md`](docs/PACKAGE_MANAGERS.md)
+
+> **不是 `npm install`：** Clutch 是**桌面应用**（DMG/MSI），不是 Codex、Reasonix 那样的 Node CLI。目前没有 `npm install -g clutch`。
 
 ### 方式 B — 手动下载
 
