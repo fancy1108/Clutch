@@ -23,7 +23,7 @@ if [[ -z "$version" ]]; then
   version="$(gh release view --repo "$REPO" --json tagName -q .tagName)"
 fi
 version="${version#v}"
-asset="Clutch_${version//./_}_aarch64.dmg"
+asset="Clutch_${version}_aarch64.dmg"
 
 sums="$(gh release download "v${version}" --repo "$REPO" --pattern SHA256SUMS.txt -O -)"
 sha256="$(echo "$sums" | awk -v f="$asset" '$2 == f {print $1; exit}')"
@@ -40,6 +40,10 @@ path, ver, sha = ARGV
 text = File.read(path)
 text.sub!(/version "[^"]+"/, %(version "#{ver}"))
 text.sub!(/sha256 "[^"]+"/, %(sha256 "#{sha}"))
+text.sub!(
+  %r{url "https://github\.com/fancy1108/Clutch/releases/download/v#\{version\}/[^"]+"},
+  %(url "https://github.com/fancy1108/Clutch/releases/download/v\#{version}/Clutch_\#{version}_aarch64.dmg")
+)
 File.write(path, text)
 RUBY
 

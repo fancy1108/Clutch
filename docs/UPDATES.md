@@ -1,6 +1,6 @@
 # Clutch — 应用内自动更新（OSR-20）
 
-> **状态：Go-live ✅（v1.0.2，2026-07-01）** — [Release v1.0.2](https://github.com/fancy1108/Clutch/releases/tag/v1.0.2) 已挂 `latest.json`、`Clutch.app.tar.gz`、`.sig`。**v1.0.3 待发 tag** — 打 tag 后跑 `Release (updater assets)` 更新 `latest.json`。
+> **状态：Go-live ✅（v1.0.2，2026-07-01）** — [Release v1.0.2](https://github.com/fancy1108/Clutch/releases/tag/v1.0.2) 已挂 `latest.json`、`Clutch.app.tar.gz`、`.sig`。**v1.0.3** — tag + DMG + updater 资产已发布（2026-07-01）；`latest.json` 指向 1.0.3。
 
 ---
 

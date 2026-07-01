@@ -5,9 +5,9 @@
 
 ## Current Status
 
-- **阶段：** **v1.0.3 待发 tag** — 版本号 / CHANGELOG / README / release 快照已就绪；`release-preflight` ✅；**未打 tag / 未 push tag**
-- **Release：** [v1.0.2](https://github.com/fancy1108/Clutch/releases/tag/v1.0.2) 当前线上 · v1.0.3 候选含 shell pool queue、OpenCode、品牌刷新、Ollama 修复、real E2E
-- **Git：** `dev` · 发版文档 commit 待 push
+- **阶段：** **v1.0.3 已发布** — tag + DMG + updater 资产齐全；`latest.json` → 1.0.3
+- **Release：** [v1.0.3](https://github.com/fancy1108/Clutch/releases/tag/v1.0.3) 当前线上 · 含 shell pool queue、OpenCode、品牌刷新、Ollama 修复、侧栏 Update pill、Dock 图标修复
+- **Git：** `dev` · tag `v1.0.3` 已 push
 - **开放：** [#23](https://github.com/fancy1108/Clutch/issues/23) Windows 实体机 smoke
 
 ### v1.0.3 发版清单
@@ -18,17 +18,16 @@
 | CHANGELOG + `docs/releases/v1.0.3.md` | ✅ |
 | README / README.zh-CN / INSTALL | ✅ |
 | `release-preflight` v1.0.3 | ✅ |
-| `./scripts/verify.sh --e2e-real` | 维护者可选（需本机 CLI） |
-| `pnpm tauri build` + DMG smoke | **待你本地** |
-| `git tag v1.0.3` + push tag | **待你确认 smoke 后** |
-| `Release (updater assets)` workflow | tag 后手动跑 |
+| 验收 + 图标 / Update pill 修复 (`c084e1a`) | ✅ |
+| `git tag v1.0.3` + push tag | ✅ |
+| Release CI（DMG + SHA256） | ✅ |
+| `Release (updater assets)` workflow | ✅ run 28509909506 |
+| `latest.json` / `.tar.gz` / `.sig` | ✅ |
 
 ## Next Actions
 
-- **DMG smoke** — `pnpm tauri build` → 安装 `/Applications/Clutch.app` → Hybrid pool queue 抽测
-- **打 tag** — `git tag v1.0.3 && git push origin v1.0.3`（CI 发 DMG/MSI）
-- **Updater** — Actions → Release (updater assets) → `release_tag=v1.0.3`
-- **Homebrew** — CI 或 `CLUTCH_VERSION=v1.0.3 ./scripts/sync-homebrew-tap.sh`
+- **可选：in-app 更新 smoke** — 安装 v1.0.2 → 等待更新提示 → 升到 1.0.3（或直接装 v1.0.3 DMG）
+- **Homebrew** — 若 tap 未自动同步：`CLUTCH_VERSION=v1.0.3 ./scripts/sync-homebrew-tap.sh`
 - **Windows smoke：** [#23](https://github.com/fancy1108/Clutch/issues/23)
 
 ## Recent Sessions

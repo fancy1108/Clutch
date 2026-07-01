@@ -7,9 +7,11 @@
 
 ## 一句话
 
-**你对 AI 说「帮我发 v1.0.3」** → AI 改版本/CHANGELOG/校验/打 tag；CI 打 DMG；然后同步 Homebrew tap（可自动）。
+**你对 AI 说「帮我发 v1.0.3」** → AI 改版本/CHANGELOG/校验 → **merge `dev` → `main`** → 在 **`main` 上**打 tag；CI 打 DMG；然后同步 Homebrew tap（可自动）。
 
-你只需：**确认版本号**、**同意 push/tag**。
+你只需：**确认版本号**、**同意 merge / tag**。
+
+> **分支纪律（见 [`CONTRIBUTING.md`](../CONTRIBUTING.md)）：** `dev` 集成日常开发；`main` 是已发布稳定线。**禁止在 `dev` 上直接打 release tag**（v1.0.3 曾误操作；已用 merge PR 纠正）。Tag 必须落在 `main` 上，且与 Release DMG 同源。
 
 ---
 
@@ -19,11 +21,12 @@
 |------|------|------|
 | 1. `CHANGELOG.md` 增加 `## [x.y.z]` | AI | `release-preflight.sh` 会检查（INV-R5）；该节会成为 **GitHub Release 正文顶部**（见 §Release 正文结构） |
 | 2. 版本号 `tauri.conf.json` / `package.json` | AI | 与 tag 一致 |
-| 3. `./scripts/verify.sh` | AI | 通过后再 tag |
-| 4. `git tag vX.Y.Z` + push tag | AI 准备，**你确认** | 触发 [`.github/workflows/release.yml`](../.github/workflows/release.yml) |
-| 5. CI 上传 DMG + `SHA256SUMS.txt` | GitHub Actions | 约 15–30 分钟；Release 正文由 `render-release-notes.sh` 生成 |
-| 6. 同步 Homebrew tap | AI 或 CI | 见下文 §Homebrew |
-| 7. macOS 应用内更新（可选） | 你或 AI | 见 [`UPDATES.md`](./UPDATES.md) — 跑 `Release (updater assets)` |
+| 3. `./scripts/verify.sh` | AI | 通过后再 merge / tag |
+| 4. **Merge `dev` → `main`** | AI 开 PR，**你确认合并** | `main` 须包含全部发版 commit；合并后再打 tag |
+| 5. **`git tag vX.Y.Z` on `main` + push tag** | AI 准备，**你确认** | 触发 [`.github/workflows/release.yml`](../.github/workflows/release.yml) |
+| 6. CI 上传 DMG + `SHA256SUMS.txt` | GitHub Actions | 约 15–30 分钟；Release 正文由 `render-release-notes.sh` 生成 |
+| 7. 同步 Homebrew tap | AI 或 CI | 见下文 §Homebrew |
+| 8. macOS 应用内更新（可选） | 你或 AI | 见 [`UPDATES.md`](./UPDATES.md) — 跑 `Release (updater assets)` |
 
 Windows 安装包由 [`.github/workflows/windows-build.yml`](../.github/workflows/windows-build.yml) 构建；发版时确认 Release 页资产齐全。
 
@@ -65,9 +68,10 @@ AI 通常会：
 
 1. 编辑 `CHANGELOG.md`、`apps/desktop/src-tauri/tauri.conf.json`、`apps/desktop/package.json`
 2. 跑 `./scripts/verify.sh`
-3. commit（你要求时）
-4. 等你回复「可以发了」后 `git tag` + `git push origin vX.Y.Z`
-5. 等 Release 就绪后执行 `CLUTCH_VERSION=vX.Y.Z ./scripts/sync-homebrew-tap.sh`
+3. commit 到 **`dev`**（你要求时）
+4. 开 PR **`dev` → `main`**，等你合并
+5. checkout **`main`**，等你回复「可以发了」后 `git tag` + `git push origin vX.Y.Z`
+6. 等 Release 就绪后执行 `CLUTCH_VERSION=vX.Y.Z ./scripts/sync-homebrew-tap.sh`
 
 **你不要自己记** `sync-homebrew-tap` 命令 — 交给 AI 即可。
 

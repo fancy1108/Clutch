@@ -9,10 +9,10 @@
 # Bump version + sha256 on each release (see docs/PACKAGE_MANAGERS.md).
 
 cask "clutch" do
-  version "1.0.2"
-  sha256 "982b768608ece0dbd659abbc1dfc70f00185f8c07a8287d0a41165a43df49b7f"
+  version "1.0.3"
+  sha256 "d5509f974d38f5c33333c6e13d2f271adf2a0cf9d5a5ae76739e99960b01458b"
 
-  url "https://github.com/fancy1108/Clutch/releases/download/v#{version}/Clutch_#{version.tr(".", "_")}_aarch64.dmg"
+  url "https://github.com/fancy1108/Clutch/releases/download/v#{version}/Clutch_#{version}_aarch64.dmg"
   name "Clutch"
   desc "Local AI multi-agent orchestration and supervision desktop app"
   homepage "https://github.com/fancy1108/Clutch"
