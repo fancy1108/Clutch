@@ -1,0 +1,62 @@
+{
+  "$schema": "./workflow.schema.json",
+  "id": "epicode-memory-pipeline",
+  "name": "Memory-Augmented Pipeline (Epicode)",
+  "version": 1,
+  "icon": "brain",
+  "description": "Multi-agent pipeline with persistent cross-session memory via Epicode. Each agent reads project context and writes decisions to a shared Epicode memory space, so knowledge flows downstream without manual hand-off. Requires agents bound to an Epicode MCP server — see docs/mcp-servers/epicode.md.",
+  "nodes": [
+    {
+      "id": "researcher",
+      "type": "agent_task",
+      "position": { "x": 120, "y": 100 },
+      "data": {
+        "label": "Research Agent",
+        "agent": "clutch-agent",
+        "instruction": "Research the task and produce a concise technical brief. BEFORE writing your analysis, call memory_recall to retrieve any prior context about this project or task. AFTER completing your analysis, call memory_create to store your key findings (use labels like 'research', 'finding'). This lets downstream agents recall what you discovered."
+      }
+    },
+    {
+      "id": "builder",
+      "type": "agent_task",
+      "position": { "x": 120, "y": 260 },
+      "data": {
+        "label": "Builder Agent",
+        "agent": "clutch-agent",
+        "instruction": "Implement based on the research brief from the previous step. BEFORE starting, call memory_recall with the task topic to retrieve the Research Agent's findings and any relevant architectural decisions. AFTER implementation, call memory_create to record what you built and any important design decisions (labels: 'decision', 'implementation')."
+      }
+    },
+    {
+      "id": "review-gate",
+      "type": "human_gate",
+      "position": { "x": 320, "y": 260 },
+      "data": {
+        "label": "Human Review"
+      }
+    },
+    {
+      "id": "reviewer",
+      "type": "agent_task",
+      "position": { "x": 520, "y": 260 },
+      "data": {
+        "label": "Review Agent",
+        "agent": "clutch-agent",
+        "instruction": "Review the implementation against the research findings. Call memory_recall to retrieve the Research Agent's findings and the Builder's design decisions. Identify gaps, risks, or improvements. AFTER review, call memory_create to store review conclusions (labels: 'review', 'feedback') so future runs learn from this cycle."
+      }
+    },
+    {
+      "id": "end",
+      "type": "end",
+      "position": { "x": 720, "y": 260 },
+      "data": { "label": "Complete" }
+    }
+  ],
+  "edges": [
+    { "id": "e1", "source": "start", "target": "researcher" },
+    { "id": "e2", "source": "researcher", "target": "builder" },
+    { "id": "e3", "source": "builder", "target": "review-gate" },
+    { "id": "e4", "source": "review-gate", "target": "reviewer", "data": { "when": "approve" } },
+    { "id": "e5", "source": "review-gate", "target": "builder", "data": { "when": "reject" } },
+    { "id": "e6", "source": "reviewer", "target": "end" }
+  ]
+}
