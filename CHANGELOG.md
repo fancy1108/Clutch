@@ -32,7 +32,8 @@ Minor release — **Hybrid shell pool queue**, **OpenCode CLI**, **Ollama settin
 
 ### Changed
 
-- **Brand / app icons:** Refreshed Clutch mark SVGs and regenerated Tauri desktop icon set; `BrandLogo` shows mark on black background.
+- **Brand / app icons:** Refreshed Clutch mark SVGs and regenerated Tauri desktop icon set (full-bleed black, no Dock white edges); `BrandLogo` shows mark on black background.
+- **In-app update UI (macOS):** Compact **Update / Later / Restart** pill on the sidebar footer row beside Settings (`BTN_PRIMARY`); download shows spinner + percent.
 - **Settings → Models Config (Ollama):** Model list reflects **local `ollama list`** tags; persisted `active_model_id` from another machine falls back to first installed tag (`models_config.py`).
 - **CLI error copy (#19):** Hybrid → legacy fallback no longer double-prefixes failure text; 529 / 5xx gateway errors show clearer busy/unavailable message (`engine_router.py`).
 - **README & onboarding:** Latest release v1.0.3; install pin examples updated.

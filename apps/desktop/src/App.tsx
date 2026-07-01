@@ -23,7 +23,6 @@ import {
 import { fetchPreferences, saveThemePreference, saveUserNamePreference, type ThemePresetId } from './services/themeApi';
 import { LanguageProvider, useLanguage } from './components/LanguageContext';
 import { OnboardingWizard } from './components/onboarding/OnboardingWizard';
-import { UpdateBanner } from './components/UpdateBanner';
 import { CONTENT_TOP_WITH_BANNER } from './constants/layout';
 import { DevOnboardingToolsEmptyPreview } from './components/onboarding/DevOnboardingToolsEmptyPreview';
 import { fetchOnboardingState } from './services/onboardingApi';
@@ -1080,8 +1079,6 @@ function MainLayout() {
         sidebarOpen={sidebarOpen}
         selectedModel={selectedModel}
       />
-
-      <UpdateBanner />
 
       {/* 2. Side Panel components layout */}
       <div className="flex-1 flex overflow-hidden">

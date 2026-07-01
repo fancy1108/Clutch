@@ -48,6 +48,8 @@ const zhTranslations: Record<string, string> = {
   "Appearance": "外观配置",
   "Feature under active development": "功能正在积极开发中",
   "New version available: {{version}}": "发现新版本：{{version}}",
+  "Update": "更新",
+  "Restart": "重启",
   "Download update": "下载更新",
   "Downloading... {{done}} / {{total}} ({{percent}}%)": "下载中… {{done}} / {{total}}（{{percent}}%）",
   "Update {{version}} downloaded.": "更新 {{version}} 已下载。",

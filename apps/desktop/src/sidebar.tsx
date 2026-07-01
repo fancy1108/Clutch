@@ -4,6 +4,7 @@ import { useLanguage } from './components/LanguageContext';
 import type { SessionRecord } from './services/runApi';
 import type { RepositoryGroup, WorkspaceInfo } from './services/workspaceApi';
 import { LegacyIcon } from './components/ui/LegacyIcon';
+import { UpdateBanner } from './components/UpdateBanner';
 import { BTN_ICON_SM } from './components/ui/buttonStyles';
 
 interface SidebarProps {
@@ -569,17 +570,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         </nav>
 
-        <div className="mt-auto pt-3 border-t border-outline-variant/50 space-y-1">
-          <button
-            data-testid="nav-settings"
-            onClick={() => setView('settings')}
-            className={`w-full flex items-center gap-3 p-2 rounded-lg text-left transition-all group ${
-              currentView === 'settings' ? 'bg-surface-bright shadow-sm text-on-surface font-semibold border border-outline-variant/60' : 'text-on-surface-variant hover:bg-surface-bright'
-            }`}
-          >
-            <LegacyIcon name="settings" className="text-[20px] text-on-surface-variant group-hover:text-primary" />
-            <span className="text-xs font-semibold tracking-wide">{t("Settings")}</span>
-          </button>
+        <div className="mt-auto pt-3 border-t border-outline-variant/50 min-w-0">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <button
+              data-testid="nav-settings"
+              onClick={() => setView('settings')}
+              className={`flex-1 min-w-0 flex items-center gap-3 p-2 rounded-lg text-left transition-all group ${
+                currentView === 'settings' ? 'bg-surface-bright shadow-sm text-on-surface font-semibold border border-outline-variant/60' : 'text-on-surface-variant hover:bg-surface-bright'
+              }`}
+            >
+              <LegacyIcon name="settings" className="text-[20px] shrink-0 text-on-surface-variant group-hover:text-primary" />
+              <span className="text-xs font-semibold tracking-wide truncate">{t("Settings")}</span>
+            </button>
+            <UpdateBanner />
+          </div>
         </div>
       </div>
       {contextMenu && (
