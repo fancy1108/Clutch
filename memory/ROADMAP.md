@@ -78,7 +78,7 @@
 | **基础 Plain Chat 产品验收** | **P0** | **D25** | **✅** | **HRT-04**（2026-06-27 用户 A–E） |
 | Hybrid 审计 JSONL + debug API | P1 | D25 | ✅ | HRT-05~07 · `446b7a0` |
 | 诊断导出 | P2 | D25 | ✅ | HRT-07 · `export-run-debug.sh` |
-| 多 session 并发治理 | P1 | D25 | ⚠️ | HRT-08~10 ✅ · §F 人工多 session 待验 |
+| 多 session 并发治理 | P1 | D25 | ✅ | HRT-08~10 代码 ✅ · §F 人工 [#24](https://github.com/fancy1108/Clutch/issues/24) F1/F2/G ✅（2026-07-01） |
 | POC #6/#10 自动化 | P1 | D25 | ✅ | HRT-10 · `test_hybrid_poc_acceptance.py` |
 
 ### D25 人工验收（HRT-04 门禁 · 默认 FAIL）
@@ -88,7 +88,7 @@
 - [x] **C** 旧 session 侧栏 ↻
 - [x] **D** 回复后 idle；可切 session；无永久 Thinking
 - [x] **E** Terminal 有 `[HYBRID]` + `[CHAT] ... chars`
-- [ ] **F** 多 session 并发（见 `hybrid-runtime-plan.md` §3.2 F1–F5；HRT-08~10 代码 ✅，**人工待验** → [#24](https://github.com/fancy1108/Clutch/issues/24)）
+- [x] **F** 多 session 并发（F1/F2/G ✅ · F3–F5 skip — 证据 [`runs/verification/2026-07-01-hrt-f-multi-session.md`](../runs/verification/2026-07-01-hrt-f-multi-session.md) · [#24](https://github.com/fancy1108/Clutch/issues/24)）
 - [x] **G** 后台 hydrate（HRT-09；F 表内 F5 与 export 脚本覆盖排查）
 
 证据：`runs/verification/2026-06-27-hrt-04-acceptance.md`

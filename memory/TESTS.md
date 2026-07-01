@@ -13,7 +13,7 @@
 | 日期 | 范围 | 命令 | 结果 | 报告/证据 | 备注 |
 |------|------|------|------|-----------|------|
 | 2026-06-27 | D25 HRT-04 单 session Hybrid 验收 | 用户人工 A–E | ✅ | `runs/verification/2026-06-27-hrt-04-acceptance.md` | commit `1d281f6` 基线 |
-| 2026-07-01 | D25 HRT-F 多 session Hybrid 验收 | 用户人工 F1–F5 | 待运行 | [#24](https://github.com/fancy1108/Clutch/issues/24) | `hybrid-runtime-plan.md` §3.2 |
+| 2026-07-01 | D25 HRT-F 多 session Hybrid 验收 | 用户人工 F1/F2/G | ✅ | [`runs/verification/2026-07-01-hrt-f-multi-session.md`](../runs/verification/2026-07-01-hrt-f-multi-session.md) · [#24](https://github.com/fancy1108/Clutch/issues/24) · F3–F5 skip |
 | 2026-06-27 | D25 runtime_registry dispatch | `./scripts/verify.sh` | ✅ 342 pytest | `—` | `try_shell_exec_hybrid` |
 | 2026-06-27 | D25 Snapshot 保留策略 | `./scripts/verify.sh` | ✅ 337 pytest | `—` | `CLUTCH_SHELL_SNAPSHOT_MAX_AGE_DAYS` |
 | 2026-06-27 | D25 Hybrid Step 2（agy + sweep + baseline） | `./scripts/verify.sh` | ✅ 333 pytest + 11 vitest | `runs/verification/2026-06-27-hybrid-step2-verify.log` | agy Route C 4/5；`baseline/*.json` |

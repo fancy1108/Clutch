@@ -88,7 +88,7 @@ _当前无 open 的待修复 Bug（2026-07-01）。_
 | Issue | 标题 | 范围 | 状态 |
 |-------|------|------|------|
 | [#23](https://github.com/fancy1108/Clutch/issues/23) | v1.0.2 Windows MSI/NSIS 实体机 smoke | Win10/11 x64 · Release `v1.0.2` 安装包 | **open** · `ready-for-human` · **验收人：** [@qy1297616171-spec](https://github.com/qy1297616171-spec)（PR #17；待邀请为协作者后 formal assign） |
-| [#24](https://github.com/fancy1108/Clutch/issues/24) | HRT-F 多 session Hybrid 人工验收 | macOS · `CLUTCH_RUNTIME_MODE=hybrid` | **open** · `ready-for-human` · assignee: `fancy1108` |
+| [#24](https://github.com/fancy1108/Clutch/issues/24) | HRT-F 多 session Hybrid 人工验收 | macOS · hybrid | **closed** · F1/F2/G ✅ · F3–F5 skip · [`runs/verification/2026-07-01-hrt-f-multi-session.md`](../runs/verification/2026-07-01-hrt-f-multi-session.md) |
 
 **资产：** `Clutch_1.0.2_x64-setup.exe` · `Clutch_1.0.2_x64_en-US.msi` · `SHA256SUMS.txt`  
 **CI 证据：** [Windows Build #28462065330](https://github.com/fancy1108/Clutch/actions/runs/28462065330)

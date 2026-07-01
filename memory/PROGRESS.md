@@ -24,9 +24,15 @@
 
 - **`release/1.0.3-loop`：** v1.0.3 开工时 `git worktree add ../clutch-release-1.0.3-loop -b release/1.0.3-loop dev`
 - **Windows 实体机 smoke：** [#23](https://github.com/fancy1108/Clutch/issues/23) → [@qy1297616171-spec](https://github.com/qy1297616171-spec)（待协作者邀请）
-- **HRT-F 多 session 验收：** [#24](https://github.com/fancy1108/Clutch/issues/24) → `fancy1108`（macOS hybrid）
+- **HRT-F 多 session 验收：** ✅ [#24](https://github.com/fancy1108/Clutch/issues/24) closed · 证据 `runs/verification/2026-07-01-hrt-f-multi-session.md`
 
 ## Recent Sessions
+
+## 2026-07-01 会话（HRT-F 验收）
+
+- **F1/F2/G：** Pass · **F3–F5：** Skip/N/A
+- **证据：** `runs/verification/2026-07-01-hrt-f-multi-session.md`（本地，gitignore）
+- **#24** 已关闭 · `ROADMAP` §F ✅
 
 ## 2026-07-01 会话（worktree 清理）
 
