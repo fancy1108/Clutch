@@ -94,7 +94,7 @@
 
 | Issue | 标题 | 范围 | 状态 |
 |-------|------|------|------|
-| [#23](https://github.com/fancy1108/Clutch/issues/23) | v1.0.2 Windows MSI/NSIS 实体机 smoke | Win10/11 x64 · Release `v1.0.2` 安装包 | **open** · `ready-for-human` · assignee: [@qy1297616171-spec](https://github.com/qy1297616171-spec)（PR #17） |
+| [#23](https://github.com/fancy1108/Clutch/issues/23) | v1.0.2 Windows MSI/NSIS 实体机 smoke | Win10/11 x64 · Release `v1.0.2` 安装包 | **open** · `ready-for-human` · **验收人：** [@qy1297616171-spec](https://github.com/qy1297616171-spec)（PR #17；待邀请为协作者后 formal assign） |
 
 **资产：** `Clutch_1.0.2_x64-setup.exe` · `Clutch_1.0.2_x64_en-US.msi` · `SHA256SUMS.txt`  
 **CI 证据：** [Windows Build #28462065330](https://github.com/fancy1108/Clutch/actions/runs/28462065330)

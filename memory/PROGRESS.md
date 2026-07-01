@@ -23,7 +23,7 @@
 ## Next Actions
 
 - **`release/1.0.3-loop`：** v1.0.3 发版时合入 `dev`
-- **Windows 实体机 smoke：** [#23](https://github.com/fancy1108/Clutch/issues/23) → assignee [@qy1297616171-spec](https://github.com/qy1297616171-spec)（PR #17；维护者无 Win 环境）
+- **Windows 实体机 smoke：** [#23](https://github.com/fancy1108/Clutch/issues/23) → 验收人 [@qy1297616171-spec](https://github.com/qy1297616171-spec)（PR #17）；**待邀请协作者**后设 GitHub assignee（fancy1108 无 Win）
 
 ## Recent Sessions
 
