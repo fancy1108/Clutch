@@ -113,7 +113,7 @@ xattr -cr /Applications/Clutch.app && open -a Clutch
 | 参与贡献 | [`CONTRIBUTING.md`](CONTRIBUTING.md)（PR 请提 **`dev`**） |
 | 安全漏洞报告 | [`SECURITY.md`](SECURITY.md) |
 
-完整索引：[`docs/README.md`](docs/README.md)
+完整索引：[`docs/README.md`](docs/README.md) · **维护者发版：** [`docs/RELEASE_MAINTAINER.md`](docs/RELEASE_MAINTAINER.md)
 
 ---
 

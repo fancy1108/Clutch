@@ -6,7 +6,17 @@ set -euo pipefail
 
 REPO="${CLUTCH_REPO:-fancy1108/Clutch}"
 TAP_REPO="${HOMEBREW_TAP_REPO:-fancy1108/homebrew-clutch}"
-TAP_DIR="${HOMEBREW_TAP_DIR:-$(cd "$(dirname "$0")/../.." && pwd)/homebrew-clutch}"
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+TAP_DIR="${HOMEBREW_TAP_DIR:-${RUNNER_TEMP:-${root}/../homebrew-clutch}}"
+
+git_auth_url() {
+  local repo="$1"
+  if [[ -n "${GH_TOKEN:-}" ]]; then
+    echo "https://x-access-token:${GH_TOKEN}@github.com/${repo}.git"
+  else
+    echo "https://github.com/${repo}.git"
+  fi
+}
 
 version="${CLUTCH_VERSION:-}"
 if [[ -z "$version" ]]; then
@@ -21,7 +31,7 @@ sha256="$(echo "$sums" | awk -v f="$asset" '$2 == f {print $1; exit}')"
 
 if [[ ! -d "$TAP_DIR/.git" ]]; then
   echo "Cloning tap to $TAP_DIR"
-  git clone "https://github.com/${TAP_REPO}.git" "$TAP_DIR"
+  git clone "$(git_auth_url "$TAP_REPO")" "$TAP_DIR"
 fi
 
 cask="$TAP_DIR/Casks/clutch.rb"
@@ -40,5 +50,9 @@ if git diff --staged --quiet; then
   exit 0
 fi
 git commit -m "chore(cask): bump Clutch to ${version}"
-git push origin HEAD
+if [[ -n "${GH_TOKEN:-}" ]]; then
+  git push "$(git_auth_url "$TAP_REPO")" HEAD:main
+else
+  git push origin HEAD
+fi
 echo "==> Updated ${TAP_REPO} to v${version}"

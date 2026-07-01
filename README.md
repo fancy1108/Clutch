@@ -113,7 +113,7 @@ Deep dive: [`docs/PRODUCT_INTRO.md`](docs/PRODUCT_INTRO.md) · Architecture: [`d
 | Contribute | [`CONTRIBUTING.md`](CONTRIBUTING.md) (PRs to **`dev`**) |
 | Report a security issue | [`SECURITY.md`](SECURITY.md) |
 
-Full index: [`docs/README.md`](docs/README.md)
+Full index: [`docs/README.md`](docs/README.md) · **Maintainers:** [`docs/RELEASE_MAINTAINER.md`](docs/RELEASE_MAINTAINER.md)
 
 ---
 

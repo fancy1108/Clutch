@@ -50,6 +50,7 @@
 | 环境自检 | `scripts/doctor.sh` |
 | **终端用户安装（DMG/NSIS）** | `scripts/install.sh` · `scripts/install.ps1` |
 | **Homebrew tap** | [fancy1108/homebrew-clutch](https://github.com/fancy1108/homebrew-clutch) · `scripts/sync-homebrew-tap.sh` · [`docs/PACKAGE_MANAGERS.md`](../docs/PACKAGE_MANAGERS.md) |
+| **维护者发版 / tap 同步** | [`docs/RELEASE_MAINTAINER.md`](../docs/RELEASE_MAINTAINER.md) |
 | Tauri 桌面开发（Hybrid） | `scripts/tauri-dev.sh` · 根目录 `pnpm tauri:dev` |
 | 产品需求历史 | `specs/core/proposal.md`（指针）· `specs/archive/proposal-v0.1.md` |
 | 历史叙事归档 | `docs/archive/` · `specs/archive/` |

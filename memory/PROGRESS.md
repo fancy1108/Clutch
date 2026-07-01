@@ -28,6 +28,13 @@
 
 ## Recent Sessions
 
+## 2026-07-01 会话（发版与安装渠道文档）
+
+- **方案：** curl + `homebrew-clutch` tap；winget / Intel 暂缓
+- **已建** [fancy1108/homebrew-clutch](https://github.com/fancy1108/homebrew-clutch)
+- **文档** `RELEASE_MAINTAINER.md`（发版 checklist · AI 协作话术 · PAT 可选）
+- **CI** `release.yml` 可选自动 sync tap（`HOMEBREW_TAP_GITHUB_TOKEN`）
+
 ## 2026-07-01 会话（README 与新手引导）
 
 - **README** 重写：`README.md`（EN）+ `README.zh-CN.md`（ZH），顶部语言切换 + 显眼链向新手指南

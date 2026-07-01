@@ -104,3 +104,23 @@ jobs:
           files: |
             apps/desktop/src-tauri/target/release/bundle/dmg/*.dmg
             apps/desktop/src-tauri/target/release/bundle/dmg/SHA256SUMS.txt
+
+  sync-homebrew-tap:
+    name: Sync Homebrew tap
+    needs: build-macos-dmg
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Bump fancy1108/homebrew-clutch
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+          CLUTCH_VERSION: ${{ github.ref_name }}
+          HOMEBREW_TAP_DIR: ${{ runner.temp }}/homebrew-clutch
+        run: |
+          if [[ -z "${GH_TOKEN}" ]]; then
+            echo "HOMEBREW_TAP_GITHUB_TOKEN not set — run scripts/sync-homebrew-tap.sh manually or ask AI."
+            exit 0
+          fi
+          ./scripts/sync-homebrew-tap.sh

@@ -18,7 +18,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 - **README & onboarding docs:** Bilingual README (`README.md` / `README.zh-CN.md`), new **[`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md)** beginner guide (linked prominently from README and `docs/README.md`). Windows installers marked **not yet verified** on physical hardware ([#23](https://github.com/fancy1108/Clutch/issues/23)).
 - **CLI installers:** `scripts/install.sh` (macOS aarch64 DMG) and `scripts/install.ps1` (Windows NSIS) — documented in README / `INSTALL.md` (not `npm install`; desktop app).
-- **Package managers:** Homebrew tap [fancy1108/homebrew-clutch](https://github.com/fancy1108/homebrew-clutch) live; `scripts/sync-homebrew-tap.sh` bumps cask on release. winget deferred until #23.
+- **Package managers:** Homebrew tap [fancy1108/homebrew-clutch](https://github.com/fancy1108/homebrew-clutch) live; `scripts/sync-homebrew-tap.sh` + optional CI job in `release.yml` (`HOMEBREW_TAP_GITHUB_TOKEN`). Maintainer guide: [`docs/RELEASE_MAINTAINER.md`](docs/RELEASE_MAINTAINER.md).
 - **Intel Mac:** **Not supported** for packaged DMG (Apple Silicon only); documented in `PACKAGE_MANAGERS.md` · `DECISIONS` D32.
 - **CLI error copy (#19):** Hybrid → legacy fallback no longer double-prefixes「通过 … CLI 执行任务失败」; 529 / 5xx gateway errors show a clearer busy/unavailable message (`engine_router.py`).
 
