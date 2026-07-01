@@ -32,6 +32,13 @@ You do **not** need Node, Python, or Rust to use the desktop app.
 curl -fsSL https://raw.githubusercontent.com/fancy1108/Clutch/main/scripts/install.sh | bash
 ```
 
+**Or with Homebrew:**
+
+```bash
+brew tap fancy1108/clutch
+brew install --cask clutch
+```
+
 **Or manual download:**
 
 1. Open **[GitHub Releases](https://github.com/fancy1108/Clutch/releases)** and download the latest installer for your OS.
@@ -155,6 +162,13 @@ Clutch may call local CLIs with `--dangerously-skip-permissions` so workflows ca
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/fancy1108/Clutch/main/scripts/install.sh | bash
+```
+
+**或 Homebrew：**
+
+```bash
+brew tap fancy1108/clutch
+brew install --cask clutch
 ```
 
 **或手动下载：**
