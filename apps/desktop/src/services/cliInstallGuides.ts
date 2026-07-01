@@ -110,7 +110,7 @@ export const CLI_INSTALL_GUIDES: Record<string, CliInstallGuide> = {
 };
 
 /** CLIs tested in Clutch — primary install recommendations (Settings + onboarding). */
-export const RECOMMENDED_CLI_IDS = ['claude-cli', 'ollama-cli', 'codex-cli', 'agy-cli'] as const;
+export const RECOMMENDED_CLI_IDS = ['opencode-cli', 'claude-cli', 'ollama-cli', 'codex-cli', 'agy-cli'] as const;
 
 export const ONBOARDING_RECOMMENDED_CLI_IDS = RECOMMENDED_CLI_IDS;
 

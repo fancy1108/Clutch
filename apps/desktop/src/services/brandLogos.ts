@@ -1,13 +1,16 @@
 /** Brand logos for AI tools / agent engines — single resolver for Agent, Tool, Flow, Chat. */
 
 import type { Agent } from '../types';
-import { agentTypeFromAgent, isClutchAgentType, type AgentTypeId } from './agentTypes';
+import { agentTypeFromAgent, isClutchAgentType, CLUTCH_AGENT_TYPE, type AgentTypeId } from './agentTypes';
 
+import { clutchMarkUrl } from '../assets/brand';
+export { clutchMarkUrl };
 import chatgptLogo from '../assets/tool-logos/chatgpt.svg';
 import aiderLogo from '../assets/tool-logos/aider.svg';
 import antigravityLogo from '../assets/tool-logos/antigravity.svg';
 import claudeLogo from '../assets/tool-logos/claude.svg';
 import ollamaLogo from '../assets/tool-logos/ollama.svg';
+import opencodeLogo from '../assets/tool-logos/opencode.svg';
 import vscodeLogo from '../assets/tool-logos/vscode.svg';
 
 /** Only tools with an explicit asset in assets/tool-logos/. */
@@ -17,7 +20,8 @@ export type BrandLogoKey =
   | 'codex-cli'
   | 'ollama-cli'
   | 'aider-cli'
-  | 'code-cli';
+  | 'code-cli'
+  | 'opencode-cli';
 
 const BRAND_LOGO_SRC: Record<BrandLogoKey, string> = {
   'claude-cli': claudeLogo,
@@ -26,6 +30,7 @@ const BRAND_LOGO_SRC: Record<BrandLogoKey, string> = {
   'ollama-cli': ollamaLogo,
   'aider-cli': aiderLogo,
   'code-cli': vscodeLogo,
+  'opencode-cli': opencodeLogo,
 };
 
 const ALIAS_TO_KEY: Record<string, BrandLogoKey> = {
@@ -48,6 +53,9 @@ const ALIAS_TO_KEY: Record<string, BrandLogoKey> = {
   'code-cli': 'code-cli',
   code: 'code-cli',
   'vs code cli': 'code-cli',
+  'opencode-cli': 'opencode-cli',
+  opencode: 'opencode-cli',
+  'open code cli': 'opencode-cli',
 };
 
 export function normalizeBrandLogoKey(
@@ -71,7 +79,10 @@ export function resolveBrandLogoSrc(params: {
   agent?: Pick<Agent, 'agentType' | 'aiEngine'> | null;
 }): string | undefined {
   if (params.agent && isClutchAgentType(params.agent)) {
-    return undefined;
+    return clutchMarkUrl;
+  }
+  if (params.agentType?.trim() === CLUTCH_AGENT_TYPE) {
+    return clutchMarkUrl;
   }
   const candidates = [
     params.toolId,

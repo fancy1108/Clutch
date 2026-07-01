@@ -11,6 +11,7 @@ from src.agent_storage import list_agents
 from src.tools_status import load_connected_ids, resolve_tool_binary, tool_available_for_routing
 from src.adapters.claude_cli_adapter import chat_claude_cli
 from src.agent_type import agent_type_from_record, resolve_model_for_agent
+from src.hybrid_concurrency import HybridPlainChatRejected
 from src.runtime_registry import try_shell_exec_hybrid
 from src.workspace import get_workspace
 from src.preferences_storage import tr
@@ -51,8 +52,10 @@ def load_custom_cli_configs() -> dict[str, Any]:
     except Exception:
         return {}
     # Ollama is HTTP_DAEMON — shell CLI auto-config must not override native routing.
+    # OpenCode has a curated headless recipe (run --auto + positional message).
     if isinstance(configs, dict):
         configs.pop("ollama-cli", None)
+        configs.pop("opencode-cli", None)
     return configs if isinstance(configs, dict) else {}
 
 
@@ -116,6 +119,16 @@ CLI_ROUTING_CONFIGS = {
         "extra_args": [],
         "prompt_flag": "-p",
         "supports_append_system_prompt": False,
+    },
+    "opencode-cli": {
+        "tool_id": "opencode-cli",
+        "binary_name": "opencode",
+        "conversation_mode": "history_only",
+        "prepend_system_prompt": True,
+        "extra_args": ["run", "--auto"],
+        "prompt_flag": "",
+        "supports_append_system_prompt": False,
+        "close_stdin": True,
     },
 }
 
@@ -307,6 +320,8 @@ def _resolve_agent_type(agent: dict[str, Any] | None, fallback_tool: str | None)
         return "ollama-cli"
     if fallback_tool in {"aider", "aider-cli"}:
         return "aider-cli"
+    if fallback_tool in {"opencode-cli", "opencode"}:
+        return "opencode-cli"
     return "clutch"
 
 
@@ -822,6 +837,8 @@ def _route_engine_raw(
                 on_log=on_log,
                 emit_log=_emit_log,
             )
+        except HybridPlainChatRejected:
+            raise
         except Exception as exc:
             _emit_log(logs, on_log, f"{display_name} CLI execution failed: {exc}")
             _raise_cli_execution_error(f"{display_name} CLI", exc)

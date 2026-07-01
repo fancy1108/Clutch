@@ -23,6 +23,7 @@ const TOOL_LABELS: Record<string, string> = {
   'ollama-cli': 'Ollama CLI',
   'antigravity-cli': 'Antigravity CLI',
   'codex-cli': 'Codex CLI',
+  'opencode-cli': 'OpenCode CLI',
   'agy-cli': 'Antigravity CLI',
   agy: 'Antigravity CLI',
 };

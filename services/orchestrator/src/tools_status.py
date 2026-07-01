@@ -176,6 +176,7 @@ CLI_CANDIDATES: list[dict[str, str]] = [
 # scanned when installed but omitted from the default install catalog until detected.
 RECOMMENDED_CLI_IDS: frozenset[str] = frozenset(
     {
+        "opencode-cli",
         "claude-cli",
         "ollama-cli",
         "codex-cli",

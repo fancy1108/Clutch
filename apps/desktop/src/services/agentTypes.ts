@@ -28,6 +28,9 @@ const LEGACY_ENGINE_TO_TYPE: Record<string, AgentTypeId> = {
   aider: 'aider-cli',
   'aider-cli': 'aider-cli',
   'aider (cli)': 'aider-cli',
+  'opencode-cli': 'opencode-cli',
+  opencode: 'opencode-cli',
+  'open code cli': 'opencode-cli',
 };
 
 const AGENT_TYPE_DISPLAY_LABELS: Record<string, string> = {
@@ -36,6 +39,7 @@ const AGENT_TYPE_DISPLAY_LABELS: Record<string, string> = {
   'antigravity-cli': 'Antigravity CLI',
   'codex-cli': 'Codex CLI',
   'aider-cli': 'Aider CLI',
+  'opencode-cli': 'OpenCode CLI',
 };
 
 const LEGACY_TYPE_LABELS: Record<string, string> = {
