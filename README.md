@@ -1,5 +1,7 @@
 # Clutch
 
+[![Clutch — multi-agent console for local CLIs](docs/assets/readme/hero-en.png)](https://fancy1108.github.io/Clutch/)
+
 **Local AI multi-agent orchestration & supervision — on your desktop.**
 
 [English](README.md) · [简体中文](README.zh-CN.md) · [**Getting Started**](docs/GETTING_STARTED.md#english) · [Releases](https://github.com/fancy1108/Clutch/releases)

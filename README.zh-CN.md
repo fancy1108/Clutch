@@ -1,5 +1,7 @@
 # Clutch
 
+[![Clutch — 为本地 CLI 打造的多 Agent 控制台](docs/assets/readme/hero-zh-CN.png)](https://fancy1108.github.io/Clutch/)
+
 **本地 AI 多 Agent 编排与监督 — 桌面控制台**
 
 [English](README.md) · [简体中文](README.zh-CN.md) · [**新手入门**](docs/GETTING_STARTED.md) · [下载 Releases](https://github.com/fancy1108/Clutch/releases)
