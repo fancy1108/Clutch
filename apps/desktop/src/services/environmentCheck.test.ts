@@ -4,11 +4,13 @@ import {
   isAppleSiliconArch,
   isIntelArch,
   isMacPlatform,
+  isX64Arch,
   isWindowsPlatform,
   parseMacOsMajorFromUa,
   tierForArch,
   tierForDiskEstimate,
   tierForInstaller,
+  tierForNetwork,
   tierForOs,
 } from './environmentCheck';
 
@@ -40,13 +42,24 @@ describe('environmentCheck', () => {
     expect(isAppleSiliconArch('aarch64')).toBe(true);
     expect(isAppleSiliconArch('arm64')).toBe(true);
     expect(isIntelArch('x86_64')).toBe(true);
+    expect(isX64Arch('x86_64')).toBe(true);
+    expect(isX64Arch('x64')).toBe(true);
+    expect(isX64Arch('amd64')).toBe(true);
   });
 
   it('does not treat frozen Intel Mac UA as Intel hardware', () => {
     const frozenUa = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)';
-    expect(tierForArch(null, isMacPlatform(frozenUa))).toBe('info');
-    expect(tierForArch('aarch64', isMacPlatform(frozenUa))).toBe('ok');
-    expect(tierForArch('x86_64', isMacPlatform(frozenUa))).toBe('warn');
+    expect(tierForArch(null, isMacPlatform(frozenUa), false)).toBe('info');
+    expect(tierForArch('aarch64', isMacPlatform(frozenUa), false)).toBe('ok');
+    expect(tierForArch('x86_64', isMacPlatform(frozenUa), false)).toBe('warn');
+  });
+
+  it('tiers Windows package architecture', () => {
+    expect(tierForArch('x86_64', false, true)).toBe('ok');
+    expect(tierForArch('x64', false, true)).toBe('ok');
+    expect(tierForArch('aarch64', false, true)).toBe('info');
+    expect(tierForArch('ia32', false, true)).toBe('warn');
+    expect(tierForArch(null, false, true)).toBe('info');
   });
 
   it('tiers disk estimate', () => {
@@ -59,5 +72,11 @@ describe('environmentCheck', () => {
   it('tiers installer advisory', () => {
     expect(tierForInstaller(true)).toBe('ok');
     expect(tierForInstaller(false)).toBe('info');
+  });
+
+  it('tiers network probes without over-warning captive or blocked probes', () => {
+    expect(tierForNetwork(false, null)).toBe('warn');
+    expect(tierForNetwork(true, true)).toBe('ok');
+    expect(tierForNetwork(true, null)).toBe('info');
   });
 });

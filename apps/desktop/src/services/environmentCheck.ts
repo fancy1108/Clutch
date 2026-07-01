@@ -50,8 +50,19 @@ export function isIntelArch(architecture: string | null | undefined): boolean {
   return arch === 'x86_64' || arch === 'x86' || arch.includes('intel');
 }
 
+export function isX64Arch(architecture: string | null | undefined): boolean {
+  const arch = architecture?.toLowerCase() ?? '';
+  return arch === 'x86_64' || arch === 'x64' || arch === 'amd64';
+}
+
 /** Never infer Intel from UA — Apple Silicon Macs report a frozen "Intel Mac" string in WKWebView. */
-export function tierForArch(architecture: string | null, onMac: boolean): EnvCheckTier {
+export function tierForArch(architecture: string | null, onMac: boolean, onWindows: boolean): EnvCheckTier {
+  if (onWindows) {
+    if (!architecture) return 'info';
+    if (isX64Arch(architecture)) return 'ok';
+    if (isAppleSiliconArch(architecture)) return 'info';
+    return 'warn';
+  }
   if (!onMac) return 'info';
   if (isAppleSiliconArch(architecture)) return 'ok';
   if (isIntelArch(architecture)) return 'warn';
@@ -66,6 +77,11 @@ export function tierForDiskEstimate(quota: number | undefined, usage: number | u
 
 export function tierForInstaller(inApp: boolean): EnvCheckTier {
   return inApp ? 'ok' : 'info';
+}
+
+export function tierForNetwork(navigatorOnline: boolean, connectivityProbeOk: boolean | null): EnvCheckTier {
+  if (!navigatorOnline) return 'warn';
+  return connectivityProbeOk === true ? 'ok' : 'info';
 }
 
 async function readNativeCpuArch(): Promise<string | null> {
@@ -94,7 +110,7 @@ async function readPlatformHints(): Promise<{ platformVersion: string | null; ar
   }
 }
 
-async function probeInternet(): Promise<boolean> {
+async function probeInternet(): Promise<boolean | null> {
   if (!navigator.onLine) return false;
   try {
     await fetch('https://connectivitycheck.gstatic.com/generate_204', {
@@ -105,7 +121,7 @@ async function probeInternet(): Promise<boolean> {
     });
     return true;
   } catch {
-    return false;
+    return null;
   }
 }
 
@@ -135,13 +151,13 @@ export async function runEnvironmentChecks(inApp: boolean): Promise<EnvRequireme
     }
   }
 
-  const online = await probeInternet();
+  const connectivityProbeOk = await probeInternet();
 
   return [
     { id: 'os', tier: tierForOs(macMajor, onMac, onWindows) },
-    { id: 'arch', tier: tierForArch(architecture, onMac) },
+    { id: 'arch', tier: tierForArch(architecture, onMac, onWindows) },
     { id: 'disk', tier: diskTier },
-    { id: 'network', tier: online ? 'ok' : 'warn' },
+    { id: 'network', tier: tierForNetwork(navigator.onLine, connectivityProbeOk) },
     { id: 'installer', tier: tierForInstaller(inApp) },
   ];
 }

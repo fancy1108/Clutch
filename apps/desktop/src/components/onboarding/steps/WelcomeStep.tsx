@@ -18,7 +18,7 @@ interface WelcomeStepProps {
 
 const REQUIREMENT_LABELS: Record<EnvRequirementId, string> = {
   os: 'macOS 14+ or Windows 10/11 x64',
-  arch: 'Apple Silicon or modern x64 CPU recommended',
+  arch: 'Apple Silicon Mac or Windows x64 build recommended',
   disk: '~500 MB disk space for app data',
   network: 'Network required for cloud LLM providers',
   installer: 'Unsigned installer: allow only after verifying the download',
@@ -31,9 +31,9 @@ const ENV_HINTS: Record<EnvRequirementId, Record<EnvCheckTier, string>> = {
     info: 'Could not verify the operating system version. macOS 14+ or Windows 10/11 x64 is recommended.',
   },
   arch: {
-    ok: 'Recommended CPU detected — best experience for local models like Ollama.',
-    warn: 'Intel Mac detected — local models may run slower; cloud models and CLI tools work normally.',
-    info: 'Could not detect chip type. Local model speed depends on your hardware.',
+    ok: 'Recommended architecture detected for this package.',
+    warn: 'Less-tested CPU architecture detected — Clutch may still run, but this package is optimized for Apple Silicon or Windows x64.',
+    info: 'Architecture could not be fully verified. Windows ARM may run the x64 build through emulation.',
   },
   disk: {
     ok: 'Enough storage available for app data.',
@@ -43,7 +43,7 @@ const ENV_HINTS: Record<EnvRequirementId, Record<EnvCheckTier, string>> = {
   network: {
     ok: 'Online — you can configure cloud LLM providers.',
     warn: 'Offline or no internet — skip cloud models and use a local CLI instead.',
-    info: 'Network status unknown.',
+    info: 'Network probe was inconclusive. If your browser can access your model provider, you can continue.',
   },
   installer: {
     ok: 'Clutch is running — installer advisory passed.',
