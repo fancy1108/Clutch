@@ -1,5 +1,6 @@
 # Clutch — 安装指南（macOS / Windows）
 
+> **新用户：** 建议先读 **[`GETTING_STARTED.md`](./GETTING_STARTED.md)**（5 分钟图文上手），再回来查安装细节。  
 > **受众**：从 GitHub Releases 下载安装包的终端用户（非源码构建）。
 > **开发者**：见 [`BUILD_FROM_SOURCE.md`](./BUILD_FROM_SOURCE.md)。  
 > **隐私**：见 [`DATA_AND_PRIVACY.md`](./DATA_AND_PRIVACY.md)。

@@ -17,7 +17,7 @@
 - **人机协同门控 (Human-in-the-Loop)**：在关键检查失败或敏感操作节点，图会自动挂起，由人类进行 Approve（批准强制通过）、Reject（打回）或 Retry（带补充指令重试）。
 - **本地优先 (Local First)**：应用完全运行于本地；API Key 保存在 macOS **Keychain** 或 Windows **凭据管理器**（模型元数据在 `models.json`），不经 Clutch 自有云端上传。
 
-**首次体验**：安装后首次启动会进入全屏设置向导（工作区授权 → 云模型或本地 CLI 二选一 → Flow 入口引导 → 权限说明），完成后写入 `onboarding_completed` 偏好，重启不再出现；Settings 仍可手动调整各项配置。
+**首次体验**：安装后首次启动会进入全屏设置向导（工作区授权 → 云模型或本地 CLI 二选一 → Flow 入口引导 → 权限说明），完成后写入 `onboarding_completed` 偏好，重启不再出现；Settings 仍可手动调整各项配置。**分步说明见 [`docs/GETTING_STARTED.md`](./GETTING_STARTED.md)。**
 
 **macOS 应用内更新（v1.0.2+）：** 打包版启动后自动检查 GitHub Releases 上的 `latest.json`；有新版本时在窗口顶部显示更新横幅，下载签名 bundle 并重启安装。**v1.0.0 / v1.0.1 用户须先手动安装 v1.0.2 一次**；Windows 暂无应用内更新，请从 Release 页手动下载新版本。详见 [`docs/UPDATES.md`](./UPDATES.md) · [`docs/INSTALL.md`](./INSTALL.md) §3。
 

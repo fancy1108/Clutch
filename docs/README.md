@@ -9,7 +9,8 @@
 
 | 你是谁 | 先读 |
 |--------|------|
-| 新用户 / 评估产品 | [`PRODUCT_INTRO.md`](./PRODUCT_INTRO.md) |
+| **新用户 / 第一次安装** | **[`GETTING_STARTED.md`](./GETTING_STARTED.md)**（5 分钟上手 · 中英双语） |
+| 评估产品能力 | [`PRODUCT_INTRO.md`](./PRODUCT_INTRO.md) |
 | 安装 DMG / Windows | [`INSTALL.md`](./INSTALL.md) |
 | macOS 应用内更新 | [`UPDATES.md`](./UPDATES.md) |
 | 从源码开发 | [`BUILD_FROM_SOURCE.md`](./BUILD_FROM_SOURCE.md) |
@@ -36,6 +37,7 @@
 
 | 文档 | 用途 |
 |------|------|
+| [`GETTING_STARTED.md`](./GETTING_STARTED.md) | **新手入门** — 安装后首聊、向导步骤、常见配置（中英双语） |
 | [`INSTALL.md`](./INSTALL.md) | DMG / Windows 安装、Gatekeeper、应用内更新、首次使用、卸载 |
 | [`UPDATES.md`](./UPDATES.md) | macOS 应用内自动更新（OSR-20）· 维护者 go-live 清单 |
 | [`BUILD_FROM_SOURCE.md`](./BUILD_FROM_SOURCE.md) | 克隆、依赖、`pnpm tauri:dev`、本地打包 |

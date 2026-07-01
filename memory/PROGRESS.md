@@ -28,6 +28,12 @@
 
 ## Recent Sessions
 
+## 2026-07-01 会话（README 与新手引导）
+
+- **README** 重写：`README.md`（EN）+ `README.zh-CN.md`（ZH），顶部语言切换 + 显眼链向新手指南
+- **新增** `docs/GETTING_STARTED.md` — 安装、向导、首聊、常见配置、故障排除（中英双语）
+- **索引** `docs/README.md` · `INSTALL.md` · `PRODUCT_INTRO.md` · `FILEMAP.md` · `CHANGELOG`
+
 ## 2026-07-01 会话（Ollama Models Config 本机同步）
 
 - **问题：** Settings → Models Config 展示内置 Ollama 目录（如 `qwen2.5vl:7b`），与 Create Agent 的本机 `ollama list` 不一致，跨 Mac 对话 404

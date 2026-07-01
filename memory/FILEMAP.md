@@ -32,6 +32,7 @@
 |---------|--------|
 | 铁律、命令、Check-in | `CLAUDE.md` |
 | 产品介绍文档 | `docs/PRODUCT_INTRO.md` |
+| **新手入门（中英）** | `docs/GETTING_STARTED.md` · 仓库 `README.md` / `README.zh-CN.md` |
 | 文档总索引 | `docs/README.md` |
 | 开源 / DMG 分发排期（OSR-xx） | `docs/OPEN_SOURCE_RELEASE.md` |
 | 应用内更新（Prep / Go-live） | `docs/UPDATES.md` · `.github/workflows/release-updater.yml` |
