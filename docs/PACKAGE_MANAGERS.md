@@ -1,124 +1,125 @@
-# Package managers — Homebrew · winget · Intel Mac
+# 安装渠道说明 — Homebrew · winget · 平台支持
 
-> **Audience:** End users and release maintainers.  
-> **Related:** [`INSTALL.md`](./INSTALL.md) · [`scripts/install.sh`](../scripts/install.sh) · [`scripts/install.ps1`](../scripts/install.ps1)
-
----
-
-## Summary
-
-| Channel | Status | Install |
-|---------|--------|---------|
-| **macOS DMG** (Apple Silicon) | ✅ Primary | Releases · `install.sh` |
-| **macOS DMG** (Intel) | 🚧 **Not built yet** | See [§ Intel Mac](#intel-mac-workload) |
-| **Windows NSIS** | ⚠️ CI-built · **not verified on hardware** ([#23](https://github.com/fancy1108/Clutch/issues/23)) | Releases · `install.ps1` |
-| **Homebrew Cask** | ✅ Manifest in repo · tap optional | See [§ Homebrew](#homebrew) |
-| **winget** | ✅ Manifest in repo · **not in winget-pkgs yet** | See [§ winget](#winget) |
-
-Clutch is a **desktop app**, not an `npm` / `cargo` CLI. Package managers wrap the same GitHub Release installers.
+> **读者：** 产品 / 运营看「你需要做什么」；工程看下文技术细节。  
+> **相关：** [`INSTALL.md`](./INSTALL.md) · [`scripts/install.sh`](../scripts/install.sh) · [`scripts/install.ps1`](../scripts/install.ps1)
 
 ---
 
-## Homebrew
+## 你需要做什么（产品 / 维护者）
 
-Cask source: [`packaging/homebrew/Casks/clutch.rb`](../packaging/homebrew/Casks/clutch.rb)
+代码里已经写好 Homebrew、winget 的「安装说明书」文件，但**用户还不能像装 Codex 那样一条命令全局安装**，除非你完成下面两件事。不做也没关系 — 用户仍可下载 DMG / EXE 或跑 `curl | bash`。
 
-### From a cloned repo (works today)
+### 一、Homebrew（Mac 用户想 `brew install`）
 
-```bash
-git clone https://github.com/fancy1108/Clutch.git
-cd Clutch
-brew install --cask ./packaging/homebrew/Casks/clutch.rb
-```
+**现状：** 只有「说明书」在 Clutch 主仓库里；Homebrew 官方不会自动读这个仓库。
 
-The cask runs `xattr -cr` after install (unsigned DMG). **Apple Silicon only** (`depends_on arch: :arm64`).
+**你要做的（一次性，约 15 分钟）：**
 
-### Official tap (recommended after publish)
+1. 在 GitHub 上**新建一个空仓库**，名字必须是：`homebrew-clutch`（完整地址：`github.com/fancy1108/homebrew-clutch`）。
+2. 在这个新仓库里建文件夹 `Casks/`，把主仓库里的文件 **复制过去**（不是移动）：
+   - 源文件：`Clutch/packaging/homebrew/Casks/clutch.rb`
+   - 目标：`homebrew-clutch/Casks/clutch.rb`
+3. 提交并 push。
 
-Homebrew taps require a repo whose **root** contains `Casks/`. Mirror the cask to:
-
-`https://github.com/fancy1108/homebrew-clutch` → `Casks/clutch.rb`
-
-Then:
+**之后用户就能：**
 
 ```bash
 brew tap fancy1108/clutch
 brew install --cask clutch
 ```
 
-Submitting to [homebrew-cask](https://github.com/Homebrew/homebrew-cask) is optional and slower review; a project tap is enough for OSS.
+**每次发新版本你要做的（约 5 分钟）：**
 
-### Maintainer: bump on release
+1. 等 GitHub Release 上传完 DMG，打开 Release 里的 `SHA256SUMS.txt`，找到 `Clutch_x.x.x_aarch64.dmg` 那一行的哈希值。
+2. 打开 `homebrew-clutch` 仓库里的 `Casks/clutch.rb`，改两行：
+   - `version "x.x.x"`
+   - `sha256 "那一长串哈希"`
+3. 提交 push。不用发 Clutch 主版本也能单独更新 tap。
 
-1. Update `version` and `sha256` in `clutch.rb` (from Release `SHA256SUMS.txt`).
-2. Sync to `homebrew-clutch` repo if used.
-3. `brew audit --cask clutch` (in tap repo).
+**不用做的：** 不必去申请 Homebrew 官方大仓库（审核慢）；自建 tap 就够用了。
 
 ---
 
-## winget
+### 二、winget（Windows 用户想 `winget install Clutch`）
 
-Manifests: [`packaging/winget/manifests/f/fancy1108/Clutch/`](../packaging/winget/manifests/f/fancy1108/Clutch/)
+**现状：** 安装清单写在 Clutch 主仓库 `packaging/winget/`；微软的「应用商店命令行」里**还没有** Clutch。
 
-### Local manifest install (works today)
+**你要做的（一次性，约 30–60 分钟 + 等审核）：**
 
-```powershell
-git clone https://github.com/fancy1108/Clutch.git
-cd Clutch
-winget install --manifest .\packaging\winget\manifests\f\fancy1108\Clutch\1.0.2
-```
+1. 把电脑上的 [winget](https://learn.microsoft.com/en-us/windows/package-manager/winget/) 装好（Windows 10/11 一般已有）。
+2. Fork 微软仓库：[microsoft/winget-pkgs](https://github.com/microsoft/winget-pkgs)（很大，只 fork 一次）。
+3. 把主仓库里的文件夹 **复制** 到 fork 里对应位置（路径要对）：
+   - 源：`Clutch/packaging/winget/manifests/f/fancy1108/Clutch/1.0.2/`（三个 yaml 文件）
+   - 目标：`winget-pkgs/manifests/f/fancy1108/Clutch/1.0.2/`
+4. 在 fork 上提 Pull Request 给微软仓库，标题类似：`Add Fancy1108.Clutch 1.0.2`。
+5. 等机器人检查和维护者合并（通常几天）。
 
-Uses the NSIS `Clutch_*_x64-setup.exe` from GitHub Releases. **Not yet verified on physical Windows hardware** ([#23](https://github.com/fancy1108/Clutch/issues/23)).
-
-### Microsoft community repository (after PR merge)
-
-After a PR to [microsoft/winget-pkgs](https://github.com/microsoft/winget-pkgs) is merged:
+**合并之后用户就能：**
 
 ```powershell
 winget install --id Fancy1108.Clutch
 ```
 
-Maintainer flow per release:
+**每次发新版本你要做的：**
 
-1. Copy `packaging/winget/manifests/f/fancy1108/Clutch/<version>/` into winget-pkgs (or use [`wingetcreate`](https://github.com/microsoft/winget-create)).
-2. Update `InstallerSha256` from `SHA256SUMS.txt`.
-3. Open PR; wait for/winget bot validation.
+1. 在新版本 Release 的 `SHA256SUMS.txt` 里找到 `Clutch_x.x.x_x64-setup.exe` 的哈希。
+2. 在 `winget-pkgs` 里复制上一版文件夹，改成新版本号，更新 yaml 里的版本号、下载链接、哈希。
+3. 再提一个 PR。
 
----
-
-## Intel Mac workload
-
-**Short answer:** **中等工作量（约 1–2 天）**，不是改一行配置就行，但也不需要重写产品。
-
-### Why it's not trivial
-
-| Piece | Today | Intel needs |
-|-------|--------|-------------|
-| **GitHub Actions** | `macos-latest` → **arm64** host | Second job or cross-target build |
-| **Tauri / Rust** | Native `aarch64-apple-darwin` | `x86_64-apple-darwin` target |
-| **PyInstaller sidecar** | Built for host triple in `build-sidecar.py` | **Separate x86_64** `orchestrator-x86_64-apple-darwin` binary |
-| **Release asset** | `Clutch_*_aarch64.dmg` | e.g. `Clutch_*_x64.dmg` |
-| **install.sh / Cask** | `aarch64` only | Arch detection + second cask or `on_arch` |
-| **App updater** | `darwin-aarch64` in `latest.json` | Optional second entry |
-
-The **sidecar** is the main cost: PyInstaller must run with an x86_64 Python on CI (e.g. `arch -x86_64` + x86_64 `uv` Python on Apple Silicon runner, or a self-hosted Intel Mac).
-
-### Suggested implementation order
-
-1. CI job `build-macos-intel-dmg` — `pnpm tauri build --target x86_64-apple-darwin` + x86_64 sidecar script.
-2. Upload `Clutch_*_x64.dmg` to Releases + `SHA256SUMS.txt`.
-3. Extend `install.sh` / Homebrew cask with `on_arch` blocks.
-4. Smoke on a real Intel Mac (or Rosetta-only validation with caveats).
-
-### Until then
-
-- Intel users: [`BUILD_FROM_SOURCE.md`](./BUILD_FROM_SOURCE.md) on the machine, or use Apple Silicon DMG on M-series only.
-- `doctor.sh` already warns on `x86_64` hosts.
+**注意：** Windows 安装包我们**还没在实体机上完整验收**（Issue [#23](https://github.com/fancy1108/Clutch/issues/23)）。上 winget 前建议先让人在真 Win10/11 上装一遍，避免大量用户踩坑。
 
 ---
 
-## Comparison with CLI tools (Codex, Reasonix)
+### 三、Intel 芯片 Mac — **暂不做**
 
-Those projects ship **Node CLIs** → `npm install -g` / `brew install` formula is natural.
+**产品决定（2026-07）：** 只发 **Apple Silicon（M 系列）** DMG，**不提供 Intel Mac 安装包**。
 
-Clutch ships a **bundled GUI + Python sidecar** → package managers install the **same DMG/EXE** as manual download. There is no `npm install -g clutch`.
+| 用户类型 | 怎么办 |
+|----------|--------|
+| M1/M2/M3 Mac | 正常下载 DMG / Homebrew / `curl \| bash` |
+| Intel Mac | **暂不支持**；可自行按源码编译（见 [`BUILD_FROM_SOURCE.md`](./BUILD_FROM_SOURCE.md)），不承诺体验 |
+
+原因简述：要多打一套安装包和后台程序，还要维护两套更新，当前用户量不值得投入。以后有需求再立项。
+
+---
+
+## 渠道总览（给用户看的）
+
+| 渠道 | 状态 | 用户怎么装 |
+|------|------|------------|
+| **macOS DMG**（M 芯片） | ✅ 主要渠道 | [Releases](https://github.com/fancy1108/Clutch/releases) · `curl \| bash` 脚本 |
+| **macOS Intel** | ❌ **暂不支持** | 仅源码自建 |
+| **Windows 安装包** | ⚠️ 有包、**未实体机验收** | Releases · `install.ps1` |
+| **Homebrew** | 📋 清单已有 · **等你建 tap** | 见上文 §一 |
+| **winget** | 📋 清单已有 · **等你提 PR** | 见上文 §二 |
+
+Clutch 是**桌面软件**（像装微信 / VS Code），不是命令行工具，所以**没有** `npm install -g clutch`。
+
+---
+
+## 技术附录（工程）
+
+### Homebrew Cask 源文件
+
+[`packaging/homebrew/Casks/clutch.rb`](../packaging/homebrew/Casks/clutch.rb)
+
+克隆主仓库本地试装：
+
+```bash
+brew install --cask ./packaging/homebrew/Casks/clutch.rb
+```
+
+### winget 清单
+
+[`packaging/winget/manifests/f/fancy1108/Clutch/`](../packaging/winget/manifests/f/fancy1108/Clutch/)
+
+本地试装：
+
+```powershell
+winget install --manifest .\packaging\winget\manifests\f\fancy1108\Clutch\1.0.2
+```
+
+### 与 Codex / Reasonix 的区别
+
+那些是 **Node 命令行工具** → `npm install -g` 很自然。  
+Clutch 是 **带界面的桌面应用 + 内置 Python 服务** → 包管理器只是帮你下载同一个 DMG/EXE。

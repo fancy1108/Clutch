@@ -325,6 +325,16 @@
 - **影响**：`README.md` · `docs/BUILD_FROM_SOURCE.md` · `docs/OPEN_SOURCE_RELEASE.md` §7.2/§7.7 · OSR-11 ⏭️ · OSR-12 ⚠️（workflow 已加，待首 tag 验证）。
 - **决策状态**：`已落地`
 
+### D32 · 暂不提供 Intel Mac 安装包（2026-07-01）
+
+- **背景**：CI 仅构建 Apple Silicon DMG；Intel 需额外 sidecar 架构与 Release 资产，维护成本高，当前用户以 M 芯片为主。
+- **方案（用户确认）**：
+  1. **官方分发仅 aarch64 DMG**；README / INSTALL / PACKAGE_MANAGERS 标明 Intel **暂不支持**。
+  2. Intel 用户可选源码自建（`BUILD_FROM_SOURCE.md`），不承诺体验。
+  3. 后续有明确需求再单独立项 Intel CI。
+- **影响**：`docs/PACKAGE_MANAGERS.md` · `README` · `install.sh` · Homebrew cask `depends_on arch: :arm64`。
+- **决策状态**：`已落地`
+
 ## 开放问题
 
 | ID | 问题 | 选项 | 默认 |

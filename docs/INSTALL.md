@@ -54,7 +54,7 @@ irm https://raw.githubusercontent.com/fancy1108/Clutch/main/scripts/install.ps1 
 ### 3b. 手动下载 DMG / MSI
 
 1. 打开 [GitHub Releases](https://github.com/fancy1108/Clutch/releases)
-2. 下载最新 **`Clutch_*_aarch64.dmg`**（Apple Silicon）或对应架构的 DMG
+2. 下载最新 **`Clutch_*_aarch64.dmg`**（**仅 Apple Silicon / M 芯片**；Intel Mac 暂不提供安装包，见 [`PACKAGE_MANAGERS.md`](./PACKAGE_MANAGERS.md)）
 3. 打开 DMG，将 **Clutch** 拖入 **Applications**
 
 当前发布包为**未签名**构建（见 [`memory/DECISIONS.md`](../memory/DECISIONS.md) **D31**）。获得 Apple Developer 账号后可升级为签名/公证版本（OSR-11）。

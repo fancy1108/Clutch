@@ -32,7 +32,7 @@ cask "clutch" do
     Clutch is currently distributed unsigned (Gatekeeper). If launch is blocked:
       xattr -cr /Applications/Clutch.app && open -a Clutch
 
-    Intel Mac DMG is not published yet — Apple Silicon only.
+    Intel Mac is not supported — Apple Silicon (M-series) only.
   EOS
 
   zap trash: [

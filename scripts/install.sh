@@ -30,7 +30,7 @@ arch="$(uname -m)"
 case "$arch" in
   arm64) asset_suffix="_aarch64.dmg" ;;
   x86_64)
-    die "No Intel DMG is published yet (latest releases are Apple Silicon aarch64 only). Use docs/BUILD_FROM_SOURCE.md or download from Releases manually."
+    die "Intel Mac is not supported — Clutch ships Apple Silicon (M-series) DMG only. See docs/PACKAGE_MANAGERS.md or BUILD_FROM_SOURCE.md to build from source."
     ;;
   *) die "Unsupported architecture: $arch" ;;
 esac

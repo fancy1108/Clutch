@@ -135,7 +135,7 @@ Details: [`docs/STABILITY.md`](docs/STABILITY.md)
 | Platform | Support |
 |----------|---------|
 | macOS 14+ (Apple Silicon) | ✅ Primary target · in-app updates v1.0.2+ |
-| macOS 14+ (Intel) | ⚠️ Best effort |
+| macOS 14+ (Intel) | ❌ **Not supported** — Apple Silicon DMG only; source build at your own risk |
 | Windows 10/11 x64 | ⚠️ MSI/NSIS from v1.0.2 · CI built · **not yet verified on physical Windows hardware** ([#23](https://github.com/fancy1108/Clutch/issues/23)) |
 | Linux | 🚧 No official installer |
 

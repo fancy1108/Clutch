@@ -135,7 +135,7 @@ xattr -cr /Applications/Clutch.app && open -a Clutch
 | 平台 | 支持 |
 |------|------|
 | macOS 14+（Apple Silicon） | ✅ 主要目标 · v1.0.2+ 应用内更新 |
-| macOS 14+（Intel） | ⚠️ 尽力支持 |
+| macOS 14+（Intel） | ❌ **暂不支持** — 仅提供 M 芯片 DMG；Intel 可自行源码编译，不承诺体验 |
 | Windows 10/11 x64 | ⚠️ v1.0.2+ 提供安装包 · CI 构建 · **尚未在实体 Windows 机上完整验收** ([#23](https://github.com/fancy1108/Clutch/issues/23)) |
 | Linux | 🚧 无官方安装包 |
 
