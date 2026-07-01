@@ -11,10 +11,40 @@ from unittest.mock import AsyncMock, MagicMock
 
 from src.hybrid_audit_log import read_hybrid_audit_lines, get_hybrid_audit_dir
 from src.main import _apply_hybrid_plain_chat_rejection, _handle_plain_chat
-from src.hybrid_concurrency import HybridPlainChatRejected
+from src.hybrid_concurrency import HybridPlainChatRejected, plain_chat_turn_in_progress
 from src.shell_session import ShellSessionError
 from src.state import initial_state
 from src.workspace_cli_lock import workspace_cli_turn
+
+
+def test_plain_chat_turn_in_progress_when_task_active() -> None:
+    state = initial_state("run-queue")
+    state["status"] = "idle"
+    assert plain_chat_turn_in_progress(
+        plain_chat_task_done=False,
+        state=state,
+        hybrid_runtime=True,
+    )
+
+
+def test_plain_chat_turn_in_progress_when_hybrid_running() -> None:
+    state = initial_state("run-queue")
+    state["status"] = "running"
+    assert plain_chat_turn_in_progress(
+        plain_chat_task_done=True,
+        state=state,
+        hybrid_runtime=True,
+    )
+
+
+def test_plain_chat_turn_not_in_progress_when_idle() -> None:
+    state = initial_state("run-queue")
+    state["status"] = "idle"
+    assert not plain_chat_turn_in_progress(
+        plain_chat_task_done=True,
+        state=state,
+        hybrid_runtime=True,
+    )
 
 
 @pytest.mark.asyncio

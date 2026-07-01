@@ -1,14 +1,20 @@
 #!/usr/bin/env bash
 # Create isolated E2E sandbox — never touches user projects or Application Support.
+# Usage: ./scripts/e2e-sandbox-setup.sh [--real] [env-file]
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+REAL_MODE=0
+if [[ "${1:-}" == "--real" ]]; then
+  REAL_MODE=1
+  shift
+fi
+
 E2E_ROOT="${CLUTCH_E2E_ROOT:-$(mktemp -d "${TMPDIR:-/tmp}/clutch-e2e.XXXXXX")}"
 SANDBOX="${E2E_ROOT}/sandbox-project"
 STATE="${E2E_ROOT}/clutch-state"
 
 mkdir -p "${SANDBOX}/src" "${STATE}" "${STATE}/storage" "${STATE}/agents" "${STATE}/storage/preferences"
-# Intentionally omit docs/verify.md for MVP check-fail scenario.
 cat > "${SANDBOX}/package.json" <<'EOF'
 {
   "name": "clutch-e2e-sandbox",
@@ -22,7 +28,6 @@ echo "# Clutch E2E sandbox — safe to delete" > "${SANDBOX}/README.md"
 mkdir -p "${SANDBOX}/.clutch-skills"
 printf '%s\n' '---' 'name: e2e-skill' '---' '# E2E skill fixture' > "${SANDBOX}/.clutch-skills/e2e-skill.md"
 
-# Git repo so footer branch menu and /api/workspace/git E2E reflect real branches.
 if command -v git >/dev/null 2>&1; then
   if git -C "${SANDBOX}" init -b main >/dev/null 2>&1; then
     :
@@ -38,7 +43,25 @@ fi
 
 ENV_FILE="${1:-${root}/runs/verification/.e2e-env}"
 mkdir -p "$(dirname "${ENV_FILE}")"
-cat > "${ENV_FILE}" <<EOF
+
+if [[ "${REAL_MODE}" == "1" ]]; then
+  cat > "${ENV_FILE}" <<EOF
+export CLUTCH_E2E_ROOT='${E2E_ROOT}'
+export CLUTCH_E2E_SANDBOX='${SANDBOX}'
+export CLUTCH_E2E_REAL='1'
+export CLUTCH_E2E_SIDECAR_PORT='8124'
+export CLUTCH_WORKSPACES_FILE='${STATE}/workspaces.json'
+export CLUTCH_RUN_HISTORY_DIR='${STATE}/sessions'
+export CLUTCH_TOOLS_CONFIG='${STATE}/tools.json'
+export CLUTCH_STORAGE_DIR='${STATE}/storage'
+export CLUTCH_AGENTS_DIR='${STATE}/agents'
+export CLUTCH_E2E_SKIP_ONBOARDING='1'
+export CLUTCH_MODELS_CONFIG='${STATE}/models.json'
+export CLUTCH_USER_WORKFLOWS_DIR='${STATE}/storage/workflows'
+export CLUTCH_E2E_ACCEPTANCE_MANIFEST='${STATE}/acceptance-manifest.json'
+EOF
+else
+  cat > "${ENV_FILE}" <<EOF
 export CLUTCH_E2E_ROOT='${E2E_ROOT}'
 export CLUTCH_E2E_SANDBOX='${SANDBOX}'
 export CLUTCH_WORKSPACES_FILE='${STATE}/workspaces.json'
@@ -50,6 +73,7 @@ export CLUTCH_E2E_FAKE_LLM='1'
 export CLUTCH_E2E_SKIP_ONBOARDING='1'
 export CLUTCH_MODELS_CONFIG='${STATE}/models.json'
 EOF
+fi
 
 cat > "${STATE}/storage/preferences/preferences.json" <<'EOF'
 {
@@ -62,13 +86,16 @@ cat > "${STATE}/storage/preferences/preferences.json" <<'EOF'
 }
 EOF
 
-cat > "${STATE}/tools.json" <<'EOF'
+if [[ "${REAL_MODE}" == "1" ]]; then
+  export CLUTCH_E2E_ROOT="${E2E_ROOT}"
+  (cd "${root}/services/orchestrator" && uv run python "${root}/scripts/e2e-real-bootstrap.py")
+else
+  cat > "${STATE}/tools.json" <<'EOF'
 {
   "connected": ["claude-cli"]
 }
 EOF
-
-cat > "${STATE}/agents/agents.json" <<'EOF'
+  cat > "${STATE}/agents/agents.json" <<'EOF'
 [
   {
     "id": "agent-e2e-hybrid",
@@ -86,5 +113,6 @@ cat > "${STATE}/agents/agents.json" <<'EOF'
   }
 ]
 EOF
+fi
 
 echo "${E2E_ROOT}"

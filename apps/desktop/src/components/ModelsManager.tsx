@@ -92,6 +92,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
   const [apiKey, setApiKey] = useState('');
   const [showApiKey, setShowApiKey] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [rescanning, setRescanning] = useState(false);
   const [activatingModelId, setActivatingModelId] = useState<string | null>(null);
   const [savingKey, setSavingKey] = useState(false);
   const [deletingProviderId, setDeletingProviderId] = useState<string | null>(null);
@@ -154,6 +155,30 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
 
   useEffect(() => {
     void refresh();
+  }, [refresh]);
+
+  useEffect(() => {
+    const resync = () => {
+      void refresh({ silent: true });
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') resync();
+    };
+    window.addEventListener('focus', resync);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.removeEventListener('focus', resync);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [refresh]);
+
+  const handleRescan = useCallback(async () => {
+    setRescanning(true);
+    try {
+      await refresh({ silent: true });
+    } finally {
+      setRescanning(false);
+    }
   }, [refresh]);
 
   const handleTestConnection = useCallback(async (modelId: string) => {
@@ -360,6 +385,18 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
             </p>
           </header>
           <div className="flex flex-shrink-0 gap-2">
+            <button
+              type="button"
+              onClick={() => void handleRescan()}
+              disabled={loading || rescanning}
+              className={`${BTN_GHOST} text-[10.5px] whitespace-nowrap disabled:opacity-50 inline-flex items-center gap-1`}
+            >
+              <LegacyIcon
+                name="sync"
+                className={`text-[13px] ${rescanning ? 'animate-spin' : ''}`}
+              />
+              {t('Rescan')}
+            </button>
             <button
               type="button"
               onClick={() => {

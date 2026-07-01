@@ -1,0 +1,68 @@
+[
+  {
+    "id": "agent-1782713038589",
+    "name": "1-Product Manager",
+    "description": "资深的 B 端产品经理",
+    "markdownDoc": "# 1-Product Manager\n\n资深的 B 端产品经理。输出简洁、可执行的产品说明。",
+    "lastModified": "e2e",
+    "avatar": "",
+    "deliverables": [],
+    "mcpTools": [],
+    "mcpServerIds": [],
+    "agentType": "clutch",
+    "skills": []
+  },
+  {
+    "id": "agent-1782713085784",
+    "name": "2-UX Designer",
+    "description": "交互设计师",
+    "markdownDoc": "# 2-UX Designer\n\n交互设计师。关注用户路径与信息架构。",
+    "lastModified": "e2e",
+    "avatar": "",
+    "deliverables": [],
+    "mcpTools": [],
+    "mcpServerIds": [],
+    "agentType": "clutch",
+    "skills": []
+  },
+  {
+    "id": "agent-1782713123506",
+    "name": "3-UI Prompt Engineer",
+    "description": "视觉提示词专家",
+    "markdownDoc": "# 3-UI Prompt Engineer\n\n视觉提示词专家。将需求转化为可生图的 prompt。",
+    "lastModified": "e2e",
+    "avatar": "",
+    "deliverables": [],
+    "mcpTools": [],
+    "mcpServerIds": [],
+    "agentType": "clutch",
+    "skills": []
+  },
+  {
+    "id": "agent-1782713167382",
+    "name": "4-UI Generator",
+    "description": "UI 渲染器",
+    "markdownDoc": "# 4-UI Generator\n\nUI 渲染器。根据上游 prompt 生成界面视觉。",
+    "lastModified": "e2e",
+    "avatar": "",
+    "deliverables": [],
+    "mcpTools": [],
+    "mcpServerIds": [],
+    "agentType": "clutch",
+    "modelId": "agnes-image-2.1-flash",
+    "skills": []
+  },
+  {
+    "id": "agent-1782713213920",
+    "name": "5-Design Reviewer",
+    "description": "设计评审官",
+    "markdownDoc": "# 5-Design Reviewer\n\n设计评审官。对产出做简短评审与改进建议。",
+    "lastModified": "e2e",
+    "avatar": "",
+    "deliverables": [],
+    "mcpTools": [],
+    "mcpServerIds": [],
+    "agentType": "clutch",
+    "skills": []
+  }
+]

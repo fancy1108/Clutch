@@ -238,6 +238,17 @@ export function pruneModelVerifyCache(validModelIds: Iterable<string>): void {
   }
 }
 
+export const DEFAULT_TEXT_MODEL_ID = 'deepseek-v4pro';
+
+/** Prefer DeepSeek V4 Pro when available; otherwise first available chat (non-image) model. */
+export function resolveDefaultTextModelId(config: ModelConfig): string {
+  const chatModels = config.models.filter(
+    (model) => model.available && (model.model_kind ?? 'chat') !== 'image',
+  );
+  const preferred = chatModels.find((model) => model.id === DEFAULT_TEXT_MODEL_ID);
+  return preferred?.id ?? chatModels[0]?.id ?? config.active_model_id;
+}
+
 export function mapModelConfigToUi(config: ModelConfig) {
   const visible = config.models.filter((m) => m.available || m.is_custom);
   const available = visible.filter((m) => m.available);

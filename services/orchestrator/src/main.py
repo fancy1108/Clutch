@@ -3517,6 +3517,9 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
         await _send_run_completed(websocket, run_id, state)
 
     ws_loop = asyncio.get_running_loop()
+    from src.hybrid_concurrency import plain_chat_turn_in_progress
+    from src.runtime_config import runtime_mode
+
     plain_chat_task: asyncio.Task[ClutchState] | None = None
     plain_chat_queue: list[dict[str, str | None]] = []
 
@@ -3557,6 +3560,24 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                 "client_message_id": client_message_id,
             }
         )
+        stripped = text.strip()
+        client_id = (client_message_id or "").strip()
+        user_message = _chat_message(
+            "User",
+            text,
+            msg_id=client_id or f"user_{uuid.uuid4().hex[:8]}",
+        )
+        messages = list(state["messages"])
+        already_has_client_id = bool(
+            client_id and any(str(item.get("id", "")) == client_id for item in messages)
+        )
+        user_message_added = not already_has_client_id and not (
+            messages
+            and messages[-1].get("agent") == "User"
+            and str(messages[-1].get("text", "")).strip() == stripped
+        )
+        if user_message_added:
+            messages = messages + [user_message]
         log_line = stamp_log_line(
             tagged(
                 TAG_WORKFLOW,
@@ -3564,17 +3585,28 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
             )
         )
         logs = list(state["terminal_logs"]) + [log_line]
-        patch = {
+        patch: dict[str, Any] = {
+            "messages": messages,
             "terminal_logs": logs,
             "shell_session_status": "ready",
+            "status": "running",
         }
         state = _merge_patch(state, patch)
         _commit_run_state(run_id, state)
+        if user_message_added:
+            await _send_message_event(websocket, run_id, user_message, "")
         await _send_log_event(websocket, run_id, log_line, node_id="")
         await _notify_run_state(websocket, run_id, state, patch)
 
     async def _drain_plain_chat_queue() -> None:
         if not plain_chat_queue or (plain_chat_task is not None and not plain_chat_task.done()):
+            return
+        if plain_chat_turn_in_progress(
+            plain_chat_task_done=True,
+            state=state,
+            hybrid_runtime=runtime_mode() == "hybrid",
+        ):
+            ws_loop.call_later(0.5, lambda: ws_loop.create_task(_drain_plain_chat_queue()))
             return
         item = plain_chat_queue.pop(0)
         await _start_plain_chat_turn(
@@ -3657,7 +3689,11 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                         state = await _handle_workflow_chat_message(
                             websocket, run_id, state, text, agent_id
                         )
-                elif plain_chat_task is not None and not plain_chat_task.done():
+                elif plain_chat_turn_in_progress(
+                    plain_chat_task_done=plain_chat_task is None or plain_chat_task.done(),
+                    state=state,
+                    hybrid_runtime=runtime_mode() == "hybrid",
+                ):
                     await _enqueue_plain_chat(text, agent_id, session_model_id, client_message_id)
                 else:
                     await _start_plain_chat_turn(text, agent_id, session_model_id, client_message_id)

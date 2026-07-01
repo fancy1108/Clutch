@@ -59,7 +59,12 @@ import {
   type WorkspaceInfo,
 } from './services/workspaceApi';
 import { pickWorkspaceFolder } from './services/pickWorkspaceFolder';
-import { fetchModelsConfig, mapModelConfigToUi, saveModelsConfig } from './services/modelsApi';
+import {
+  fetchModelsConfig,
+  mapModelConfigToUi,
+  resolveDefaultTextModelId,
+  saveModelsConfig,
+} from './services/modelsApi';
 import { fetchPermissionMode, savePermissionMode, type PermissionMode } from './services/permissionApi';
 import { fetchSkillsRegistry, type ScannedSkill } from './services/skillsApi';
 import { BTN_GHOST, BTN_PRIMARY } from './components/ui/buttonStyles';
@@ -806,6 +811,18 @@ function MainLayout() {
     selectDefaultAgent();
     setView('chat');
     setRightTab('overview');
+    void (async () => {
+      try {
+        const config = await fetchModelsConfig();
+        const defaultTextModelId = resolveDefaultTextModelId(config);
+        if (defaultTextModelId && defaultTextModelId !== config.active_model_id) {
+          await saveModelsConfig({ active_model_id: defaultTextModelId });
+        }
+        await syncModelsConfig();
+      } catch (error) {
+        console.warn('[Clutch] reset default text model on new chat failed:', error);
+      }
+    })();
     void clutchStore.connect(runId);
   };
 

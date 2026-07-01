@@ -88,7 +88,8 @@ graph TD
 ### 3.1 Chat Workspace (主工作台对话与输入)
 
 * **Single Agent Workspace**：支持绑定自定义 System Prompts 与大语言模型。底层的 `EngineRouter` 在 `clutch` (全局 LLM API)、`claude-cli` (Claude Code 本地 CLI)、`antigravity-cli` (Agy CLI)、`codex-cli` (Codex CLI)、`rivet-cli` (天枢 Rivet CLI) 与 `ollama-cli` 之间智能路由分流，并自动维持 CLI 引擎的逻辑 Session 恢复（Codex 使用 `codex exec --json` + history replay，聊天区仅展示 `agent_message` 正文；Rivet 由 Sidecar 自动注入 `RIVET_FORCE_RECOVERY_CLI=1` 以 headless 调用）。**Agent 类型下拉**由 `/api/tools/status` 动态生成：已 Connect 且配置完成的 CLI 工具自动出现在 Single Agent 与 Agent Manager 选项中（含 Codex、Ollama 等）。Thinking 加载状态的头像与消息加载完成的静态头像保持逻辑一致。
-* **Hybrid 多 Session（plain chat）**：同一工程 workspace 下可并行维护多个 chat session；`CLUTCH_RUNTIME_MODE=hybrid` 时后端为每个 `run_id` 分配独立 shell，并按 workspace 串行执行 CLI turn，避免同目录并发 `claude -p` 互锁。切换 session 时先持久化 `idle` 状态再推送 WebSocket；切走期间后台 turn 完成后可通过 HTTP hydrate 恢复，避免 UI 永久卡在 Thinking。
+* **Hybrid 多 Session（plain chat）**：同一工程 workspace 下可并行维护多个 chat session；`CLUTCH_RUNTIME_MODE=hybrid` 时后端为每个 `run_id` 分配独立 shell，并按 workspace 串行执行 CLI turn，避免同目录并发 `claude -p` 互锁。切换 session 时先持久化 `idle` 状态再推送 WebSocket；切走期间后台 turn 完成后可通过 HTTP hydrate 恢复，避免 UI 永久卡在 Thinking。**同 session 忙时 Send 不禁用**：当前轮次仍在处理时后续消息进入本 session 队列依次执行，用户消息即时展示、不静默丢弃。
+* **New Chat 默认文本模型**：点击 New Chat 时自动将全局 `active_model_id` 重置为默认文本模型（优先 DeepSeek V4 Pro，否则首个可用 chat 模型），避免从生图模型切回新会话后仍走 image 路由。
 * **Multi-Agent Graph Workspace**：React Flow 画布可视化编排节点与连线，后台 Workflow Compiler 动态将其编译为 LangGraph 状态机。下游节点自动接收并注入上游的 `node_outputs`；各节点执行时自动注入 Agent Manager 中配置的 `markdownDoc` 作为 system prompt。工作流节点的激活状态、运行阶段与详细日志通过 WebSocket 增量 `state_patch` 实时推送到前端渲染。Chat 中各节点回复展示 **Agent Manager 配置的 Agent 类型与品牌 Logo**（而非仅依赖节点 `tool` 字段）；Thinking / 进行中步骤优先跟随后端 `active_node_id` / `active_agent`。`claude-cli` 且 `CLUTCH_RUNTIME_MODE=hybrid` 的节点附带可折叠 **View execution details**（与 Single Agent Hybrid 一致）。运行中用户可通过 Stop **暂停并进入精修模式**（`status=refining`）；工作流正常结束（`passed`/`failed`）后也可在同一 session 内继续精修。精修时输入框 `@` 弹出工作流 Agent 列表（支持带空格的节点名，如 `@5-Visual Rendering Engine`），向指定 Agent 发送修改意见（`source=flow_refine`，Hybrid 交互）；满意后发送 `/continue` 提交修订并 **以 Legacy 模式继续执行下游节点**。生图节点精修时自动复用上游 `final_image_prompt` 并结合用户补充说明。Sidecar 重启后可从聊天记录重建 `node_outputs` 以恢复精修会话。`CLUTCH_RUNTIME_MODE=hybrid` 时，**`claude-cli` 节点**走与 plain chat 相同的 Hybrid PTY shell（含 workspace CLI 锁与 session resume）；Flow 多行 Claude prompt 自动降级为 legacy subprocess；Clutch 内置 Agent（含图片模型）等其它节点类型不变。
 * **Rich Chat Input Bar & Attachments**：支持从剪贴板直接粘贴图片生成 Chip 缩略图预览；支持从右侧文件树拖拽文件/文件夹进入输入框作为附件；输入框内键入 `/` 触发已扫描 Skills 的指令联想，键入 `#` 触发历史会话引用联想；工作流精修模式（`refining` 或已完成工作流）下键入 `@` 触发工作流 Agent 联想；提供全局运行状态控制（Running 时展示 Stop 按钮，工作流 Stop 进入精修而非 failed）；提供持久化的安全审批模式选择（Auto-approve, Ask-on-Write, Manual confirmation）。
 * **Long-session compaction**：Plain chat 在 token 估算接近模型上下文上限时自动压缩历史消息；用户消息与摘要 digest 保留，完整原文写入 `runs/archive/{run_id}.jsonl`。
@@ -196,6 +197,12 @@ uv run uvicorn src.main:app --reload --port 8124
 ```bash
 ./scripts/verify.sh --e2e
 ```
+
+**真实连接验收（CLI / API / Ollama / Workflow，无 fake LLM）**：
+```bash
+./scripts/verify.sh --e2e-real
+```
+含 12 项 desktop acceptance（U12、B1/B2、Q1 同 session 排队、X1、I1、N1 New Chat 模型重置、F1、CLI 矩阵）。跑完后 `./scripts/e2e-teardown.sh` 可清理残留 Tauri/Vite/Sidecar 进程。
 
 ### 5.4 桌面端打包 (Build DMG / Windows installers)
 ```bash

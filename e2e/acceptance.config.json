@@ -1,0 +1,35 @@
+{
+  "workflow": {
+    "id": "workflow-demo",
+    "fixture_path": "fixtures/workflow-demo.json",
+    "agents_fixture_path": "fixtures/workflow-demo-agents.json",
+    "start_instruction": "为 B 端 SaaS 设计一个简洁的登录页，包含邮箱登录与忘记密码入口",
+    "timeout_minutes": 8
+  },
+  "api_models": {
+    "text_model_id": "deepseek-v4pro",
+    "text_provider_id": "deepseek",
+    "text_env_key": "CLUTCH_E2E_DEEPSEEK_KEY",
+    "image_model_id": "agnes-image-2.1-flash",
+    "image_provider_id": "custom",
+    "image_env_key": "CLUTCH_E2E_AGNES_KEY"
+  },
+  "cli_exclude": ["agy-cli"],
+  "cli_timeout_ms": 45000,
+  "cross_agent_cli_timeout_ms": 90000,
+  "api_timeout_ms": 30000,
+  "ollama_timeout_ms": 45000,
+  "test_timeouts_ms": {
+    "default_test": 90000,
+    "ui": 30000,
+    "cli_turn": 60000,
+    "api_turn": 45000,
+    "ollama_multi": 120000,
+    "image": 90000,
+    "cross_agent": 180000,
+    "workflow": 540000,
+    "sidecar_health": 60000,
+    "tauri_boot": 120000,
+    "suite_global": 900000
+  }
+}
