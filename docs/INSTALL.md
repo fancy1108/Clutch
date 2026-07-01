@@ -81,6 +81,7 @@ irm https://raw.githubusercontent.com/fancy1108/Clutch/main/scripts/install.ps1 
 
 ---
 
+<a id="gatekeeper"></a>
 ## 4. 首次打开（Gatekeeper）
 
 macOS 可能提示「无法验证开发者」或「**应用已损坏**」。**均属正常现象。**
@@ -121,6 +122,7 @@ curl -s http://127.0.0.1:8123/health
 
 ---
 
+<a id="first-use-checklist"></a>
 ## 6. 首次使用 checklist
 
 首次打开 Clutch 时会自动进入**设置向导**（Welcome → 工作区 → 模型 / CLI → Flow 引导 → 权限说明 → 启动）。按向导完成即可跑通主路径。
@@ -170,6 +172,7 @@ curl -sX POST http://localhost:8124/api/preferences/onboarding-complete
 
 ---
 
+<a id="troubleshooting"></a>
 ## 8. 故障排除
 
 | 现象 | 处理 |

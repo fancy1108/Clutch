@@ -1,10 +1,10 @@
 # Getting Started with Clutch
 
-[English](#english) · [简体中文](#简体中文)
+[English](#english) · [Chinese (Simplified)](#chinese)
 
 ---
 
-## English
+## English {#english}
 
 > **Time:** ~5 minutes after install · **Audience:** first-time users (no coding required)
 
@@ -42,7 +42,7 @@ brew install --cask clutch
 **Or manual download:**
 
 1. Open **[GitHub Releases](https://github.com/fancy1108/Clutch/releases)** and download the latest installer for your OS.
-2. **macOS:** drag `Clutch.app` into **Applications**. If macOS blocks launch, see [Install guide § Gatekeeper](./INSTALL.md#4-首次打开gatekeeper).
+2. **macOS:** drag `Clutch.app` into **Applications**. If macOS blocks launch, see [Install guide — Gatekeeper](./INSTALL.md#gatekeeper).
 3. **Windows:** run `Clutch_*_x64-setup.exe` or the MSI. **Not yet verified on real Windows hardware** — CI-built only; report issues on [GitHub](https://github.com/fancy1108/Clutch/issues/new/choose).
 
 > Clutch is a **desktop app**, not an `npm install -g` CLI. See [`INSTALL.md`](./INSTALL.md) for `install.sh` / `install.ps1` options.
@@ -70,7 +70,7 @@ On first open, Clutch shows a **full-screen setup wizard**. Follow the steps in 
 | **Ready** | Launch into the main app |
 
 > **Skipped the wizard?** Open **Settings** (gear, bottom-left) and complete: Workspace → Models → Tools.  
-> Developers can replay the wizard: [`INSTALL.md` §6](./INSTALL.md#6-首次使用-checklist).
+> Developers can replay the wizard: [`INSTALL.md` — first-use checklist](./INSTALL.md#first-use-checklist).
 
 ### Step 3 — Your first chat
 
@@ -115,13 +115,13 @@ Settings ⚙       (Models · Tools · …)
 
 | Problem | Try |
 |---------|-----|
-| App won't open (macOS) | [Gatekeeper steps](./INSTALL.md#4-首次打开gatekeeper) |
+| App won't open (macOS) | [Gatekeeper steps](./INSTALL.md#gatekeeper) |
 | "Cannot connect" / empty UI | Quit fully (`Cmd+Q`), reopen; check `curl -s http://127.0.0.1:8123/health` |
 | Model 404 / not found | Settings → Models — pick an installed Ollama tag or valid API model |
 | CLI not listed | Settings → Tools → Rescan; ensure CLI works in Terminal `PATH` |
 | Folder picker dead | Use **Clutch.app**, not `pnpm dev` in a browser |
 
-More: [`INSTALL.md` § Troubleshooting](./INSTALL.md#8-故障排除) · [GitHub Issues](https://github.com/fancy1108/Clutch/issues/new/choose)
+More: [`INSTALL.md` — troubleshooting](./INSTALL.md#troubleshooting) · [GitHub Issues](https://github.com/fancy1108/Clutch/issues/new/choose)
 
 ### CLI permissions (read once)
 
@@ -136,7 +136,7 @@ Clutch may call local CLIs with `--dangerously-skip-permissions` so workflows ca
 
 ---
 
-## 简体中文
+## Chinese (Simplified) {#chinese}
 
 > **用时：** 安装后约 5 分钟 · **读者：** 第一次使用、无需写代码
 

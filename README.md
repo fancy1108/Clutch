@@ -2,7 +2,7 @@
 
 **Local AI multi-agent orchestration & supervision — on your desktop.**
 
-[English](README.md) · [简体中文](README.zh-CN.md) · [**Getting Started**](docs/GETTING_STARTED.md) · [Releases](https://github.com/fancy1108/Clutch/releases)
+[English](README.md) · [Chinese (Simplified)](README.zh-CN.md) · [**Getting Started**](docs/GETTING_STARTED.md#english) · [Releases](https://github.com/fancy1108/Clutch/releases)
 
 > [!TIP]
 > **New here?** Read the **[Getting Started Guide](docs/GETTING_STARTED.md)** — install, first-launch wizard, and your first chat in ~5 minutes. No dev setup required.
@@ -44,7 +44,7 @@ irm https://raw.githubusercontent.com/fancy1108/Clutch/main/scripts/install.ps1 
 
 Pin a version: `CLUTCH_VERSION=v1.0.2` before running either script.
 
-Details: [`docs/PACKAGE_MANAGERS.md`](docs/PACKAGE_MANAGERS.md)
+Install channels (maintainers): [`docs/RELEASE_MAINTAINER.md`](docs/RELEASE_MAINTAINER.md)
 
 ### Option B — Manual download
 
@@ -70,7 +70,7 @@ Or: **Applications** → right-click **Clutch** → **Open** → confirm.
 
 **4. New Chat** — pick an agent, send a message.
 
-→ **Full walkthrough:** [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md) · **Install details:** [`docs/INSTALL.md`](docs/INSTALL.md)
+→ **Full walkthrough:** [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md#english) · **Install details:** [`docs/INSTALL.md`](docs/INSTALL.md)
 
 ---
 
