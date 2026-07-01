@@ -88,7 +88,7 @@
 - [x] **C** 旧 session 侧栏 ↻
 - [x] **D** 回复后 idle；可切 session；无永久 Thinking
 - [x] **E** Terminal 有 `[HYBRID]` + `[CHAT] ... chars`
-- [ ] **F** 多 session 并发（见 `hybrid-runtime-plan.md` §3.2 F1–F5；HRT-08~10 代码 ✅，**人工待验**）
+- [ ] **F** 多 session 并发（见 `hybrid-runtime-plan.md` §3.2 F1–F5；HRT-08~10 代码 ✅，**人工待验** → [#24](https://github.com/fancy1108/Clutch/issues/24)）
 - [x] **G** 后台 hydrate（HRT-09；F 表内 F5 与 export 脚本覆盖排查）
 
 证据：`runs/verification/2026-06-27-hrt-04-acceptance.md`
@@ -106,7 +106,7 @@
 | T0 护栏 | 持续 | 许可证、文档边界、semver | ⚠️ | OSR-01～04、23～25 ✅；OSR-05 🔄 |
 | **T1 可公开仓库** | **公开 repo 前** | 社区文件、Sidecar 鉴权、CLI 策略 | ✅ | OSR-00/06～10、26～28 已验收（D31） |
 | T2 可放心装 DMG | 陌生人分发前 | 未签名 DMG、Keychain、安装向导 | ⚠️ | OSR-12～17 ✅ |
-| T3 生态成熟 | 按需 | 沙箱、Windows、自动更新 | ❌ | OSR-18～22、29 |
+| T3 生态成熟 | 按需 | 沙箱、Windows、自动更新 | ⚠️ | OSR-19/20 ✅ v1.0.2；OSR-18/21/22/29 待做 |
 
 ### T1 检查清单（公开仓库前 · 默认 FAIL）
 

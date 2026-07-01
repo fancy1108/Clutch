@@ -675,3 +675,53 @@ def test_route_engine_aider_cli(monkeypatch) -> None:
     assert res.output == "aider mock output"
     assert captured["prompt_flag"] == "--message"
     assert "--yes-always" in captured["extra_args"]
+
+
+def test_cli_failure_already_wrapped_detects_prefixed_runtime_error() -> None:
+    from src.engine_router import _cli_failure_already_wrapped
+
+    assert _cli_failure_already_wrapped(RuntimeError("通过 Claude CLI 执行任务失败：inner"))
+    assert not _cli_failure_already_wrapped(RuntimeError("API Error: 529"))
+
+
+def test_raise_cli_execution_error_avoids_double_wrap() -> None:
+    from src.engine_router import _raise_cli_execution_error
+
+    inner = RuntimeError("通过 Claude CLI 执行任务失败：API Error: 529 busy")
+    with pytest.raises(RuntimeError) as exc_info:
+        _raise_cli_execution_error("Claude CLI", inner)
+    assert str(exc_info.value).count("执行任务失败") == 1
+
+
+def test_raise_cli_execution_error_529_uses_gateway_busy_copy() -> None:
+    from src.engine_router import _raise_cli_execution_error
+
+    with pytest.raises(RuntimeError) as exc_info:
+        _raise_cli_execution_error("Claude CLI", Exception("API Error: 529 overloaded"))
+    msg = str(exc_info.value)
+    assert "529" in msg
+    assert "繁忙" in msg or "gateway" in msg.lower()
+
+
+def test_route_engine_hybrid_legacy_failure_not_double_wrapped(monkeypatch, mock_agents) -> None:
+    monkeypatch.setenv("CLUTCH_RUNTIME_MODE", "hybrid")
+    monkeypatch.setattr("src.engine_router.tool_available_for_routing", lambda _tool_id: True)
+    monkeypatch.setattr("src.engine_router.get_workspace", lambda: {"workspace_path": "/workspace"})
+
+    def fake_hybrid(**kwargs: object) -> EngineResult:
+        raise RuntimeError("hybrid transport failed")
+
+    def fake_legacy(**kwargs: object) -> EngineResult:
+        raise RuntimeError("通过 Claude CLI 执行任务失败：API Error: 529")
+
+    monkeypatch.setattr("src.engine_router._route_claude_hybrid", fake_hybrid)
+    monkeypatch.setattr("src.engine_router._route_generic_cli_legacy", fake_legacy)
+
+    with pytest.raises(RuntimeError) as exc_info:
+        route_engine(
+            agent_name="Builder Module (JSX VibeCoder)",
+            prompt="hello",
+            run_id="run-double-wrap",
+            source="plain_chat",
+        )
+    assert str(exc_info.value).count("执行任务失败") == 1

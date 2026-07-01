@@ -75,16 +75,9 @@
 
 ## GitHub Issues · 待修复 Bug
 
-> **来源：** 用户反馈 triage（2026-06-30）。暂不开发，仅登记；修复后关 Issue 并移入 Completed 索引。
+> **来源：** 用户反馈 triage。修复后关 Issue 并移入 Completed 索引。
 
-| Issue | 标题 | 根因摘要 | 建议修复 | 优先级 | 改动面 |
-|-------|------|----------|----------|--------|--------|
-| [#18](https://github.com/fancy1108/Clutch/issues/18) | 关闭后重启失败，需到应用程序才能打开 | macOS：Dock 再点「已启动」无窗口；退出后残留 `orchestrator` 占 8123。**与 DMG 安装后需 `killall` 同源** | **Fix 已写** `lib.rs`：`Reopen` · `Exit` kill sidecar · 启动 `prepare_sidecar_launch`。**v1.0.2 发版后关 Issue** | **P1** · **fix ready** | Tauri Rust |
-| [#19](https://github.com/fancy1108/Clutch/issues/19) | Claude CLI 529 报错 + 文案重复 | **529 / `172.21.0.18:8317`**：上游推理网关过载，非 Clutch 根因。**重复前缀**：`_route_generic_cli_legacy` 与 `_route_engine_raw` 双层 `RuntimeError` 包装（hybrid fallback → legacy） | `engine_router.py`：外层 catch 跳过已包装 `RuntimeError`；529/5xx 展示「网关繁忙」+ 原始 CLI 详情 | **P2** | Python sidecar |
-
-**#19 用户侧：** 终端直跑 `claude -p "hello"` 验证；检查网关负载或稍后重试。
-
-**#18 复现前向用户追问：** 只关窗口还是 Cmd+Q？第二次点 Dock 还是 Applications？活动监视器是否残留 `Clutch` / `orchestrator`？
+_当前无 open 的待修复 Bug（2026-07-01）。_
 
 ---
 
@@ -95,6 +88,7 @@
 | Issue | 标题 | 范围 | 状态 |
 |-------|------|------|------|
 | [#23](https://github.com/fancy1108/Clutch/issues/23) | v1.0.2 Windows MSI/NSIS 实体机 smoke | Win10/11 x64 · Release `v1.0.2` 安装包 | **open** · `ready-for-human` · **验收人：** [@qy1297616171-spec](https://github.com/qy1297616171-spec)（PR #17；待邀请为协作者后 formal assign） |
+| [#24](https://github.com/fancy1108/Clutch/issues/24) | HRT-F 多 session Hybrid 人工验收 | macOS · `CLUTCH_RUNTIME_MODE=hybrid` | **open** · `ready-for-human` · assignee: `fancy1108` |
 
 **资产：** `Clutch_1.0.2_x64-setup.exe` · `Clutch_1.0.2_x64_en-US.msi` · `SHA256SUMS.txt`  
 **CI 证据：** [Windows Build #28462065330](https://github.com/fancy1108/Clutch/actions/runs/28462065330)
@@ -106,6 +100,8 @@
 | ID | 归宿 |
 |----|------|
 | B-03 | v1.0.0 — `compaction.py` · `runs/archive/{run_id}.jsonl` · 见 [`archive/DELIVERABLES-POST-MVP.md`](./archive/DELIVERABLES-POST-MVP.md) |
+| #18 | v1.0.2 — `lib.rs` sidecar lifecycle · [Issue closed](https://github.com/fancy1108/Clutch/issues/18) |
+| #19 | `engine_router.py` CLI 错误单层包装 + 529 文案 · [Issue closed](https://github.com/fancy1108/Clutch/issues/19) |
 | B-04 | 部分 — `engine_router` / `eaf2ea0` · Git |
 | B-17 | 部分 — plain chat + hybrid Codex · Git |
 

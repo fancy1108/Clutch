@@ -16,6 +16,30 @@ from src.workspace import get_workspace
 from src.preferences_storage import tr
 
 
+def _cli_failure_already_wrapped(exc: BaseException) -> bool:
+    """True when *exc* already carries the user-facing CLI route failure prefix."""
+    msg = str(exc)
+    return "Failed to execute task via" in msg or "执行任务失败" in msg
+
+
+def _raise_cli_execution_error(engine_title: str, exc: BaseException) -> None:
+    """Raise a single-layer CLI execution error (no duplicate prefixes)."""
+    if isinstance(exc, RuntimeError) and _cli_failure_already_wrapped(exc):
+        raise exc
+    detail = str(exc)
+    if "529" in detail or any(code in detail for code in ("API Error: 502", "API Error: 503", "API Error: 504")):
+        msg = tr(
+            f"Inference gateway busy or unavailable ({engine_title}): {detail}",
+            f"推理网关繁忙或暂时不可用（{engine_title}），请稍后重试：{detail}",
+        )
+    else:
+        msg = tr(
+            f"Failed to execute task via {engine_title}: {detail}",
+            f"通过 {engine_title} 执行任务失败：{detail}",
+        )
+    raise RuntimeError(msg) from exc
+
+
 def load_custom_cli_configs() -> dict[str, Any]:
     from src.storage_helper import get_storage_dir
     path = get_storage_dir() / "custom_clis.json"
@@ -589,19 +613,9 @@ def _route_generic_cli_legacy(
                 )
             except Exception as retry_exc:
                 _emit_log(logs, on_log, f"{engine_title} recovery failed: {retry_exc}")
-                raise RuntimeError(
-                    tr(
-                        f"Failed to execute task via {engine_title}: {retry_exc}",
-                        f"通过 {engine_title} 执行任务失败：{retry_exc}",
-                    )
-                ) from retry_exc
+                _raise_cli_execution_error(engine_title, retry_exc)
         _emit_log(logs, on_log, f"{engine_title} execution failed: {exc}")
-        raise RuntimeError(
-            tr(
-                f"Failed to execute task via {engine_title}: {exc}",
-                f"通过 {engine_title} 执行任务失败：{exc}",
-            )
-        ) from exc
+        _raise_cli_execution_error(engine_title, exc)
 
 
 def _route_engine_raw(
@@ -810,12 +824,7 @@ def _route_engine_raw(
             )
         except Exception as exc:
             _emit_log(logs, on_log, f"{display_name} CLI execution failed: {exc}")
-            raise RuntimeError(
-                tr(
-                    f"Failed to execute task via {display_name} CLI: {exc}",
-                    f"通过 {display_name} CLI 执行任务失败：{exc}",
-                )
-            ) from exc
+            _raise_cli_execution_error(f"{display_name} CLI", exc)
 
     if agent_type in CLI_ROUTING_CONFIGS and agent_type != "ollama-cli":
         config = CLI_ROUTING_CONFIGS[agent_type]

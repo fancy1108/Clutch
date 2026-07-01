@@ -10,6 +10,10 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ## [Unreleased]
 
+### Fixed
+
+- **CLI error copy (#19):** Hybrid → legacy fallback no longer double-prefixes「通过 … CLI 执行任务失败」; 529 / 5xx gateway errors show a clearer busy/unavailable message (`engine_router.py`).
+
 ## [1.0.2] - 2026-07-01
 
 Minor release — **Windows installers**, **in-app updates (macOS)**, **macOS sidecar lifecycle fix (#18)**, and **expanded CLI tool discovery (incl. Rivet)**.

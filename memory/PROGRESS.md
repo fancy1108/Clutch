@@ -23,7 +23,8 @@
 ## Next Actions
 
 - **`release/1.0.3-loop`：** v1.0.3 开工时 `git worktree add ../clutch-release-1.0.3-loop -b release/1.0.3-loop dev`
-- **Windows 实体机 smoke：** [#23](https://github.com/fancy1108/Clutch/issues/23) → 验收人 [@qy1297616171-spec](https://github.com/qy1297616171-spec)（PR #17）；**待邀请协作者**后设 GitHub assignee（fancy1108 无 Win）
+- **Windows 实体机 smoke：** [#23](https://github.com/fancy1108/Clutch/issues/23) → [@qy1297616171-spec](https://github.com/qy1297616171-spec)（待协作者邀请）
+- **HRT-F 多 session 验收：** [#24](https://github.com/fancy1108/Clutch/issues/24) → `fancy1108`（macOS hybrid）
 
 ## Recent Sessions
 
