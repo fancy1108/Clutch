@@ -23,10 +23,13 @@ Clutch is a **desktop app** (Tauri + React) for developers and technical operato
 
 **1. Download** — [GitHub Releases](https://github.com/fancy1108/Clutch/releases)
 
-| Platform | File |
-|----------|------|
-| macOS (Apple Silicon) | `Clutch_*_aarch64.dmg` |
-| Windows 10/11 x64 | `Clutch_*_x64-setup.exe` or `.msi` |
+| Platform | File | Status |
+|----------|------|--------|
+| macOS (Apple Silicon) | `Clutch_*_aarch64.dmg` | ✅ Verified |
+| Windows 10/11 x64 | `Clutch_*_x64-setup.exe` or `.msi` | ⚠️ **Not yet verified** on physical hardware |
+
+> [!WARNING]
+> **Windows:** Installers are built in CI and attached to Releases, but maintainers have **not completed full smoke testing on real Windows 10/11 machines** yet. Expect rough edges; please [open an Issue](https://github.com/fancy1108/Clutch/issues/new/choose) with your OS version and installer filename if something breaks. Tracking: [#23](https://github.com/fancy1108/Clutch/issues/23).
 
 **2. First open (macOS unsigned build)** — Gatekeeper may block the app. This is normal for unsigned OSS desktop apps:
 
@@ -95,7 +98,7 @@ Details: [`docs/STABILITY.md`](docs/STABILITY.md)
 |----------|---------|
 | macOS 14+ (Apple Silicon) | ✅ Primary target · in-app updates v1.0.2+ |
 | macOS 14+ (Intel) | ⚠️ Best effort |
-| Windows 10/11 x64 | ⚠️ MSI/NSIS from v1.0.2 · CI built · limited maintainer smoke on real hardware |
+| Windows 10/11 x64 | ⚠️ MSI/NSIS from v1.0.2 · CI built · **not yet verified on physical Windows hardware** ([#23](https://github.com/fancy1108/Clutch/issues/23)) |
 | Linux | 🚧 No official installer |
 
 **Dev toolchain** (source only): Node ≥ 20, pnpm ≥ 9, Python ≥ 3.11, [uv](https://docs.astral.sh/uv/), Rust (for `tauri build`). Run `./scripts/doctor.sh` to check.

@@ -18,7 +18,7 @@
 
 | You need | Notes |
 |----------|--------|
-| **macOS 14+** or **Windows 10/11 (x64)** | See [compatibility](../README.md#compatibility) |
+| **macOS 14+** or **Windows 10/11 (x64)** | See [compatibility](../README.md#compatibility). **Windows installers are not yet verified on physical hardware** — macOS is the primary tested platform. |
 | **A project folder** | Any git repo or folder Clutch may read/write |
 | **At least one AI backend** | Cloud API key **or** a local CLI (Claude Code, Codex, Ollama, …) |
 
@@ -28,7 +28,7 @@ You do **not** need Node, Python, or Rust to use the desktop app.
 
 1. Open **[GitHub Releases](https://github.com/fancy1108/Clutch/releases)** and download the latest installer for your OS.
 2. **macOS:** drag `Clutch.app` into **Applications**. If macOS blocks launch, see [Install guide § Gatekeeper](./INSTALL.md#4-首次打开gatekeeper).
-3. **Windows:** run `Clutch_*_x64-setup.exe` or the MSI.
+3. **Windows:** run `Clutch_*_x64-setup.exe` or the MSI. **Not yet verified on real Windows hardware** — CI-built only; report issues on [GitHub](https://github.com/fancy1108/Clutch/issues/new/choose).
 
 Quick Gatekeeper fix (macOS, copy-paste):
 
@@ -133,7 +133,7 @@ Clutch may call local CLIs with `--dangerously-skip-permissions` so workflows ca
 
 | 需要 | 说明 |
 |------|------|
-| **macOS 14+** 或 **Windows 10/11 (x64)** | 见 [兼容性说明](../README.zh-CN.md#兼容性) |
+| **macOS 14+** 或 **Windows 10/11 (x64)** | 见 [兼容性说明](../README.zh-CN.md#兼容性)。**Windows 安装包尚未在实体机上完整验收** — 目前以 macOS 为主要测试平台。 |
 | **一个项目目录** | 任意 git 仓库或文件夹，Clutch 只在该目录内读写 |
 | **至少一种 AI 能力** | 云端 API Key **或** 本机 CLI（Claude Code、Codex、Ollama 等） |
 
@@ -143,7 +143,7 @@ Clutch may call local CLIs with `--dangerously-skip-permissions` so workflows ca
 
 1. 打开 **[GitHub Releases](https://github.com/fancy1108/Clutch/releases)**，下载适合你系统的最新安装包。
 2. **macOS：** 将 `Clutch.app` 拖入 **应用程序**。若被系统拦截，见 [安装指南 § Gatekeeper](./INSTALL.md#4-首次打开gatekeeper)。
-3. **Windows：** 运行 `Clutch_*_x64-setup.exe` 或 MSI。
+3. **Windows：** 运行 `Clutch_*_x64-setup.exe` 或 MSI。**尚未在真实 Windows 实体机上完整验收** — 目前仅 CI 构建；问题请 [提交 Issue](https://github.com/fancy1108/Clutch/issues/new/choose)。
 
 macOS 终端一键解除拦截（可复制）：
 
