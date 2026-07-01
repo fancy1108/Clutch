@@ -674,10 +674,32 @@ def _route_engine_raw(
 
     if agent_type == "clutch":
         from src.image_router import format_image_reply, generate_image_for_model, is_image_model
+        from src.video_router import format_video_reply, generate_video_for_model, is_video_model
         from src.models_config import get_router
 
         router = get_router()
         spec, model_id = resolve_model_for_agent(router, agent)
+        if is_video_model(spec):
+            _emit_log(logs, on_log, f"Routing video generation to {spec.name} for agent {agent_name}.")
+            api_key = router.resolve_for_model(model_id)[1]
+            try:
+                result = generate_video_for_model(
+                    spec,
+                    prompt,
+                    api_key=router._require_api_key(spec.provider_id, api_key),
+                    on_log=on_log,
+                )
+                output = format_video_reply(result)
+                _emit_log(logs, on_log, f"Video generation completed via {spec.name}.")
+                return EngineResult(engine=spec.name, output=output, logs=logs)
+            except Exception as exc:
+                _emit_log(logs, on_log, f"Video generation failed: {exc}")
+                raise RuntimeError(
+                    tr(
+                        f"Video generation failed ({spec.name}): {exc}",
+                        f"视频生成失败 ({spec.name})：{exc}",
+                    )
+                ) from exc
         if is_image_model(spec):
             _emit_log(logs, on_log, f"Routing image generation to {spec.name} for agent {agent_name}.")
             api_key = router.resolve_for_model(model_id)[1]

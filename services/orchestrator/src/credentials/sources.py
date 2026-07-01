@@ -143,7 +143,7 @@ def cc_switch_has_key_for_provider(provider_id: ProviderId) -> bool:
             return True
         if provider_id == "openai" and (config.get("auth") or {}).get("OPENAI_API_KEY"):
             return True
-        if provider_id in ("custom", "ollama") and config.get("api_key"):
+        if provider_id in ("custom", "agnes", "ollama") and config.get("api_key"):
             return True
     return False
 
@@ -169,6 +169,7 @@ def model_source_summary(cred: dict[str, Any], *, is_cc_switch: bool) -> str:
 def resolve_model_credential_hint(router: LLMProviderRouter, spec: ModelSpec) -> str | None:
     """Explain likely credential mismatch when a key works elsewhere but not in Clutch."""
     from src.image_router import is_image_model
+    from src.video_router import is_video_model
 
     cred = resolve_provider_credential_source(router, spec.provider_id)
     hints: list[str] = []
@@ -192,13 +193,13 @@ def resolve_model_credential_hint(router: LLMProviderRouter, spec: ModelSpec) ->
             )
     if spec.provider_id == "openai" and spec.base_url and "agnes-ai.com" in spec.base_url:
         hints.append("Save your Agnes token under the OpenAI provider.")
-    if (
+    if spec.provider_id == "agnes" or (
         spec.provider_id == "custom"
         and spec.base_url
         and "agnes-ai.com" in spec.base_url
-        and (is_image_model(spec) or spec.model_kind == "chat")
+        and (is_image_model(spec) or is_video_model(spec) or spec.model_kind == "chat")
     ):
-        hints.append("Save your Agnes API key under the Custom provider.")
+        hints.append("Save your Agnes API key under the Agnes provider.")
     return " ".join(hints) if hints else None
 
 

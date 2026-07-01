@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from src.image_router import is_image_model, resolve_image_backend, verify_image_model_connection
+from src.video_router import is_video_model, resolve_video_backend, verify_video_model_connection
 from src.llm.http_complete import http_chat_complete
 from src.llm.router import LLMProviderRouter, ModelSpec, ProviderId
 
@@ -77,7 +78,7 @@ def save_router(router: LLMProviderRouter) -> dict[str, Any]:
     if not use_keychain():
         plaintext_keys = {
             provider: router.get_api_key(provider)  # type: ignore[arg-type]
-            for provider in ("deepseek", "openai", "anthropic", "google", "ollama", "custom")
+            for provider in ("deepseek", "openai", "anthropic", "google", "ollama", "agnes", "custom")
             if router.get_api_key(provider)  # type: ignore[arg-type]
         }
     payload = {
@@ -258,6 +259,7 @@ def serialize_models_config(router: LLMProviderRouter) -> dict[str, Any]:
                 "source_summary": model_source_summary(cred, is_cc_switch=is_cc_switch),
                 "endpoint": spec.base_url or None,
                 "image_backend": spec.image_backend or resolve_image_backend(spec),
+                "video_backend": spec.video_backend or (resolve_video_backend(spec) if is_video_model(spec) else ""),
                 "clutch_managed": is_clutch_managed_credential(spec.provider_id),
                 "is_cc_switch": is_cc_switch,
                 "is_custom": is_custom_model_id(spec.id),
@@ -271,7 +273,8 @@ def serialize_models_config(router: LLMProviderRouter) -> dict[str, Any]:
 
 
 _TEST_PROMPT = "Reply with exactly: ok"
-_TEST_TIMEOUT_SEC = 20.0
+_TEST_TIMEOUT_SEC = 60.0
+_TEST_MAX_TOKENS = 16
 
 
 def format_connection_error(exc: Exception) -> str:
@@ -396,6 +399,16 @@ def test_model_connection(router: LLMProviderRouter, model_id: str) -> dict[str,
                 "model_id": model_id,
                 "message": "Connection OK — image generation is ready.",
             }
+        if is_video_model(spec):
+            verify_video_model_connection(
+                spec,
+                api_key=router._require_api_key(spec.provider_id, api_key),
+            )
+            return {
+                "ok": True,
+                "model_id": model_id,
+                "message": "Connection OK — API key verified (video render is not started during test).",
+            }
         if router._chat is None:
             raise RuntimeError("Chat backend not configured")
         router._chat(
@@ -405,6 +418,7 @@ def test_model_connection(router: LLMProviderRouter, model_id: str) -> dict[str,
             api_key=router._require_api_key(spec.provider_id, api_key),
             messages=[{"role": "user", "content": _TEST_PROMPT}],
             timeout_sec=_TEST_TIMEOUT_SEC,
+            max_tokens=_TEST_MAX_TOKENS,
         )
         return {
             "ok": True,

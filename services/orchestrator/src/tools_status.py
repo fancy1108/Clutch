@@ -456,12 +456,12 @@ def auto_configure_cli_via_llm(tool_id: str, binary_path: str) -> dict[str, Any]
     # Use the user's currently active model for analysis
     active_spec = router.get_active_model()
     has_key = bool(router.get_api_key(active_spec.provider_id))
-    model_id = active_spec.id if (active_spec.model_kind != "image" and has_key) else None
+    model_id = active_spec.id if (active_spec.model_kind not in {"image", "video"} and has_key) else None
 
     if not model_id:
-        # Try any other non-image model that has a key
+        # Try any other chat model that has a key
         for spec in router.list_models():
-            if spec.model_kind != "image" and router.get_api_key(spec.provider_id):
+            if spec.model_kind not in {"image", "video"} and router.get_api_key(spec.provider_id):
                 model_id = spec.id
                 break
 

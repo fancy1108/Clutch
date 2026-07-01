@@ -11,8 +11,8 @@ import { McpServerHub } from './components/McpServerHub';
 import { ModelsManager } from './components/ModelsManager';
 import { ThemeManager, THEME_PRESETS } from './components/ThemeManager';
 import { SystemPreferencesModal } from './components/SystemPreferencesModal';
-import { FooterMenuAction, FooterMenuItem, FooterMenuPanel } from './components/FooterMenu';
-import { MainView, RightTab, ChatMessage, UncommittedFile, DiffLine, type Agent } from './types';
+import { FooterMenuAction, FooterMenuItem, FooterMenuPanel, FooterMenuSection } from './components/FooterMenu';
+import { MainView, RightTab, ChatMessage, UncommittedFile, DiffLine, type Agent, type ClutchState } from './types';
 import { fetchAgents } from './services/agentApi';
 import {
   BUILTIN_AGENT_ID,
@@ -68,6 +68,7 @@ import { pickWorkspaceFolder } from './services/pickWorkspaceFolder';
 import {
   fetchModelsConfig,
   mapModelConfigToUi,
+  modelKindMenuSuffix,
   resolveDefaultTextModelId,
   saveModelsConfig,
 } from './services/modelsApi';
@@ -90,6 +91,14 @@ function logTiming(label: string, details: Record<string, unknown>): void {
 function elapsedMs(startedAt: number): number {
   return Math.round(performance.now() - startedAt);
 }
+
+type InFlightTurnContext = {
+  agentId: string | null;
+  agentName: string;
+  modelId: string | null;
+  modelName: string;
+  engineHint: string;
+};
 
 function MainLayout() {
   const { t } = useLanguage();
@@ -144,6 +153,9 @@ function MainLayout() {
   }, [sessionRunId, hydrateRunState]);
 
   const clutchStatus = clutchState.status;
+  const isTurnInProgress = clutchStatus === 'running' || clutchStatus === 'awaiting_human';
+  const inFlightTurnRef = useRef<InFlightTurnContext | null>(null);
+  const [pendingFooterModelId, setPendingFooterModelId] = useState<string | null>(null);
   const chatMessages = clutchState.messages as ChatMessage[];
   const terminalLogs = clutchState.terminal_logs;
 
@@ -199,6 +211,7 @@ function MainLayout() {
     name: string;
     provider: string;
     providerId: string;
+    modelKind?: 'chat' | 'image' | 'video';
     contextWindow: string;
     temperature: number;
     sourceSummary: string;
@@ -429,7 +442,9 @@ function MainLayout() {
       || workflowAgentSteps[0]?.agentName
       || ''
     )
-    : selectedAgentName;
+    : isTurnInProgress
+      ? (clutchState.active_agent || inFlightTurnRef.current?.agentName || selectedAgentName)
+      : selectedAgentName;
   const resolveAgentLogo = useCallback((agentName: string) => {
     const agent = configuredAgents.find(
       (item) => getAgentDisplayName(item) === agentName || item.name === agentName,
@@ -454,6 +469,14 @@ function MainLayout() {
   const runtimeEngineHint = customAgentEngineLabel
     ? configuredEngineToRuntimeLabel(customAgentEngineLabel)
     : selectedModel;
+  const chatRuntimeEngineHint =
+    isTurnInProgress && !isWorkflowChat && inFlightTurnRef.current?.engineHint
+      ? inFlightTurnRef.current.engineHint
+      : runtimeEngineHint;
+  const chatLlmModelName =
+    isTurnInProgress && !isWorkflowChat && inFlightTurnRef.current?.modelName
+      ? inFlightTurnRef.current.modelName
+      : selectedModel;
 
   const refreshSessions = async () => {
     try {
@@ -476,6 +499,30 @@ function MainLayout() {
   const [rightTab, setRightTab] = useState<RightTab>('overview');
 
   const prevClutchStatusRef = useRef(clutchStatus);
+
+  useEffect(() => {
+    if (!isTurnInProgress) {
+      inFlightTurnRef.current = null;
+    }
+  }, [isTurnInProgress]);
+
+  useEffect(() => {
+    if (isTurnInProgress || !pendingFooterModelId) return;
+    const modelId = pendingFooterModelId;
+    setPendingFooterModelId(null);
+    void (async () => {
+      try {
+        await saveModelsConfig({ active_model_id: modelId });
+        await syncModelsConfig();
+      } catch (error) {
+        console.error('[Clutch] deferred model switch failed:', error);
+        setWorkspacePickError(
+          error instanceof Error ? error.message : t('Failed to switch model.'),
+        );
+        await syncModelsConfig().catch(() => {});
+      }
+    })();
+  }, [isTurnInProgress, pendingFooterModelId, syncModelsConfig, t]);
 
   useEffect(() => {
     const prev = prevClutchStatusRef.current;
@@ -861,6 +908,12 @@ function MainLayout() {
     const model = configuredModels.find((item) => item.id === modelId);
     if (!model) return;
     setModelMenuOpen(false);
+    setActiveModelId(modelId);
+    setSelectedModel(model.name);
+    if (isTurnInProgress) {
+      setPendingFooterModelId(modelId);
+      return;
+    }
     void (async () => {
       try {
         await saveModelsConfig({ active_model_id: modelId });
@@ -1155,11 +1208,31 @@ function MainLayout() {
       }
       return;
     }
+    const sendingAgent = configuredAgents.find((agent) => agent.id === selectedAgentId);
+    const sendingBoundModelId =
+      sendingAgent && !isBuiltinAgent(sendingAgent) && sendingAgent.modelId
+        ? sendingAgent.modelId
+        : undefined;
+    const sendingModelId = sendingBoundModelId ?? footerEffectiveModelId ?? null;
+    const sendingModel = configuredModels.find((model) => model.id === sendingModelId);
+    const sendingCustomEngineLabel =
+      sendingAgent && !isClutchAgentType(sendingAgent)
+        ? agentTypeLabel(agentTypeFromAgent(sendingAgent))
+        : '';
+    inFlightTurnRef.current = {
+      agentId: selectedAgentId,
+      agentName: getAgentDisplayName(sendingAgent),
+      modelId: sendingModelId,
+      modelName: sendingModel?.name ?? selectedModel ?? '',
+      engineHint: sendingCustomEngineLabel
+        ? configuredEngineToRuntimeLabel(sendingCustomEngineLabel)
+        : (sendingModel?.name ?? selectedModel ?? ''),
+    };
     const clientMessageId = clutchStore.optimisticPlainChatSend(text.trim());
     await submitChatMessage(
       text,
       selectedAgentId,
-      agentBoundModelId ? undefined : footerEffectiveModelId || undefined,
+      sendingBoundModelId ? undefined : sendingModelId || undefined,
       clientMessageId,
     );
     await refreshSessions();
@@ -1351,13 +1424,13 @@ function MainLayout() {
                   selectDefaultAgent();
                 }}
                 activeWorkflowId={clutchState.workflow_id}
-                llmModelName={selectedModel}
+                llmModelName={chatLlmModelName}
                 activeAgentName={chatActiveAgentName}
                 activeAgentAvatar={chatActiveAgentAvatar}
                 activeNodeId={clutchState.active_node_id}
                 workflowAgentSteps={workflowAgentSteps}
                 resolveAgentLogo={resolveAgentLogo}
-                engineHint={runtimeEngineHint}
+                engineHint={chatRuntimeEngineHint}
                 workspaceFiles={workspaceFiles}
                 sessions={sessions}
                 skills={chatSkills}
@@ -1511,16 +1584,38 @@ function MainLayout() {
                   {configuredModels.length === 0 ? (
                     <p className="px-3 py-2 pl-9 text-[11px] text-on-surface-variant">{t('No models configured')}</p>
                   ) : (
-                    configuredModels.map((model) => (
-                      <FooterMenuItem
-                        key={model.id}
-                        testId={`footer-model-item-${model.id}`}
-                        selected={model.id === footerEffectiveModelId}
-                        onClick={() => handleFooterModelSelect(model.id)}
-                      >
-                        {model.name}
-                      </FooterMenuItem>
-                    ))
+                    (() => {
+                      const chatModels = configuredModels.filter((m) => (m.modelKind ?? 'chat') === 'chat');
+                      const imageModels = configuredModels.filter((m) => m.modelKind === 'image');
+                      const videoModels = configuredModels.filter((m) => m.modelKind === 'video');
+                      const renderGroup = (
+                        label: string,
+                        models: typeof configuredModels,
+                      ) =>
+                        models.length > 0 ? (
+                          <React.Fragment key={label}>
+                            <FooterMenuSection label={label} />
+                            {models.map((model) => (
+                              <FooterMenuItem
+                                key={model.id}
+                                testId={`footer-model-item-${model.id}`}
+                                selected={model.id === footerEffectiveModelId}
+                                onClick={() => handleFooterModelSelect(model.id)}
+                              >
+                                {model.name}
+                                {modelKindMenuSuffix(model.modelKind)}
+                              </FooterMenuItem>
+                            ))}
+                          </React.Fragment>
+                        ) : null;
+                      return (
+                        <>
+                          {renderGroup(t('Chat models'), chatModels)}
+                          {renderGroup(t('Image models'), imageModels)}
+                          {renderGroup(t('Video models'), videoModels)}
+                        </>
+                      );
+                    })()
                   )}
                   <FooterMenuAction
                     testId="footer-model-manage"

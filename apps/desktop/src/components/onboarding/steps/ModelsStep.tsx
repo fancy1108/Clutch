@@ -12,7 +12,7 @@ import {
 } from '../../../services/modelsApi';
 import { BTN_GHOST, BTN_PRIMARY } from '../../ui/buttonStyles';
 
-const CONNECTABLE_PROVIDERS = ['deepseek', 'anthropic', 'openai', 'google', 'ollama', 'custom'] as const;
+const CONNECTABLE_PROVIDERS = ['deepseek', 'anthropic', 'openai', 'google', 'ollama', 'agnes', 'custom'] as const;
 const KEYLESS_PROVIDERS = new Set(['ollama']);
 
 interface ModelsStepProps {

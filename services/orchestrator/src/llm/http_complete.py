@@ -108,13 +108,14 @@ def _openai_chat(
     messages: list[dict[str, Any]],
     tools: list[dict[str, Any]] | None = None,
     timeout_sec: float = _TIMEOUT_SEC,
+    max_tokens: int = _MAX_TOKENS,
 ) -> dict[str, Any] | str:
     url = f"{base_url.rstrip('/')}/chat/completions"
     headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
     body: dict[str, Any] = {
         "model": api_model,
         "messages": _format_openai_messages(messages),
-        "max_tokens": _MAX_TOKENS,
+        "max_tokens": max_tokens,
     }
     if tools:
         body["tools"] = tools
@@ -137,6 +138,7 @@ def _anthropic_chat(
     messages: list[dict[str, Any]],
     tools: list[dict[str, Any]] | None = None,
     timeout_sec: float = _TIMEOUT_SEC,
+    max_tokens: int = _MAX_TOKENS,
 ) -> dict[str, Any] | str:
     base_url, api_model, api_key = resolve_anthropic_transport(
         base_url=base_url, api_model=api_model, api_key=api_key
@@ -206,7 +208,7 @@ def _anthropic_chat(
 
     body: dict[str, Any] = {
         "model": api_model,
-        "max_tokens": _MAX_TOKENS,
+        "max_tokens": max_tokens,
         "messages": anthropic_messages or [{"role": "user", "content": ""}],
     }
     if system_parts:
@@ -267,6 +269,7 @@ def http_chat_complete(
     messages: list[dict[str, Any]],
     tools: list[dict[str, Any]] | None = None,
     timeout_sec: float = _TIMEOUT_SEC,
+    max_tokens: int = _MAX_TOKENS,
 ) -> dict[str, Any] | str:
     if provider_id == "ollama":
         base_url = _normalize_ollama_base_url(base_url)
@@ -284,6 +287,7 @@ def http_chat_complete(
                 messages=messages,
                 tools=tools,
                 timeout_sec=timeout_sec,
+                max_tokens=max_tokens,
             )
         return _anthropic_chat(
             base_url=resolved_base,
@@ -292,6 +296,7 @@ def http_chat_complete(
             messages=messages,
             tools=tools,
             timeout_sec=timeout_sec,
+            max_tokens=max_tokens,
         )
     return _openai_chat(
         base_url=base_url,
@@ -300,5 +305,6 @@ def http_chat_complete(
         messages=messages,
         tools=tools,
         timeout_sec=timeout_sec,
+        max_tokens=max_tokens,
     )
 

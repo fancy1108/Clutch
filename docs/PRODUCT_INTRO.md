@@ -122,7 +122,7 @@ graph TD
 * **Agent Settings**：提供可视化 Agent 管理器（`AgentManager.tsx`），支持自由增删改自定义 Agent，配置其名称、头像、System Prompt、模型及关联 MCP 工具。
 * **Workflow Settings**：管理和选择可用的流程图 SOP 模板，支持一键在 Chat 中启用。
 * **Tool Settings**：对 20+ 主流 Agent CLI 白名单做本机探测——**已安装的一律展示**（含 Rivet、OpenCode 等扩展工具）；**未安装时默认仅推荐经 Clutch 验证的 CLI**（`opencode`、`claude`、`ollama`、`codex`、`agy`）及安装指引。OpenCode 内置 headless 路由（`run --auto`），Auto Config 错误参数不会覆盖 curated 配置。支持 Connect 偏好与 **Auto Config**（LLM 分析 `--help` 写入 `custom_clis.json` 路由参数）。
-* **Model Provider Settings**：配置各种云端大模型 API Keys 凭证（支持无感导入 `.cc-switch` 凭证）；内置 **Agnes 2.0 Flash**（对话）与 **Agnes Image 2.1 Flash**（生图），共用 **Agnes / Custom** 提供商 API Key；**Ollama 条目与 Create Agent 下拉同源**——实时读取本机 `ollama list` 已安装 tag，Settings 不再展示未安装的内置目录模型；跨设备同步的 `models.json` 若指向本机不存在的 Ollama 模型会自动回退到首个可用本地 tag；支持对模型属性（Context Window, Temperature）进行精细注册与调整。
+* **Model Provider Settings**：配置各种云端大模型 API Keys 凭证（支持无感导入 `.cc-switch` 凭证）；内置 **Agnes 2.0 Flash**（对话）、**Agnes Image 2.1 Flash**（生图）与 **Agnes Video V2.0**（文生视频），共用 **Agnes / Custom** 提供商 API Key；对话区选中视频模型时直接发起渲染并在气泡内嵌播放器（首帧封面 + 下载）；中文提示词自动翻译为英文后再调用视频 API；**Ollama 条目与 Create Agent 下拉同源**——实时读取本机 `ollama list` 已安装 tag，Settings 不再展示未安装的内置目录模型；跨设备同步的 `models.json` 若指向本机不存在的 Ollama 模型会自动回退到首个可用本地 tag；支持对模型属性（Context Window, Temperature）进行精细注册与调整。
 * **Skills Settings**：自动扫描项目关联的 Skills，解析 `.md` 指引文件前缀的 YAML 元数据信息并呈现在表格中。
 * **MCP Server Settings**：支持注册、连接或拔除本地/远程的 Model Context Protocol 服务器。
 * **Appearance Settings**：提供一键在 Pristine Light、Nordic Frost 和 Amber Warm 主题间切换的设计面板。

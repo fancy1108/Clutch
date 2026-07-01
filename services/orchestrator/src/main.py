@@ -178,6 +178,30 @@ class CustomImageModelRequest(BaseModel):
     api_key: str | None = None
 
 
+class CustomChatModelRequest(BaseModel):
+    name: str
+    api_model: str
+    base_url: str
+    provider_id: str = Field(default="custom")
+    api_key: str | None = None
+
+
+class CustomVideoModelRequest(BaseModel):
+    name: str
+    api_model: str
+    base_url: str
+    provider_id: str = Field(default="custom")
+    video_backend: str = Field(default="agnes")
+    api_key: str | None = None
+
+
+class CustomModelUpdateRequest(BaseModel):
+    name: str
+    api_model: str
+    base_url: str
+    api_key: str | None = None
+
+
 class ToolConnectRequest(BaseModel):
     tool_id: str
 
@@ -1171,9 +1195,63 @@ async def _llm_chat_reply(
         vision_enabled = False
 
     from src.image_router import format_image_reply, generate_image_for_model, is_image_model
+    from src.video_router import format_video_reply, generate_video_for_model, is_video_model
     from src.chat_content import extract_image_data_urls
 
     _plain, attached_images = extract_image_data_urls(text)
+
+    if uses_clutch_model and is_video_model(model):
+        if attached_images:
+            err = (
+                "This model only generates videos and cannot read uploaded screenshots. "
+                "Switch to a vision chat model (e.g. Qwen 2.5 VL 7B) using the Model menu in the footer."
+            )
+            return (
+                reply_label,
+                runtime_model_name,
+                err,
+                [f"[CHAT] Vision input ignored for video-generation model {runtime_model_name}"],
+                None,
+                None,
+                [],
+                None,
+                None,
+                False,
+            )
+        spec, api_key = router.resolve_for_model(resolved_model_id)
+        loop = asyncio.get_running_loop()
+        video_logs: list[str] = []
+
+        def on_video_log(line: str) -> None:
+            if emit_log:
+                asyncio.run_coroutine_threadsafe(emit_log(line), loop)
+
+        try:
+            video_prompt = (_plain or text).strip()
+            result = await asyncio.to_thread(
+                generate_video_for_model,
+                spec,
+                video_prompt,
+                api_key=router._require_api_key(spec.provider_id, api_key),
+                on_log=on_video_log if emit_log else None,
+            )
+            return reply_label, runtime_model_name, format_video_reply(result), video_logs, None, None, [], None, None, False
+        except Exception as exc:
+            from src.models_config import format_connection_error
+
+            err = format_connection_error(exc)
+            return (
+                reply_label,
+                runtime_model_name,
+                err,
+                [f"Error generating video: {err}"],
+                None,
+                None,
+                [],
+                None,
+                None,
+                False,
+            )
 
     if uses_clutch_model and is_image_model(model):
         if attached_images:
@@ -3052,17 +3130,35 @@ async def update_models_config(body: ModelsConfigRequest) -> dict[str, str]:
 
     router = get_router()
     sync_local_ollama_models(router)
+    if body.provider_id and body.api_key is not None:
+        router.set_api_key(body.provider_id, body.api_key)  # type: ignore[arg-type]
     if body.active_model_id:
         if not is_model_available(router, body.active_model_id):
             raise HTTPException(
                 status_code=400,
                 detail={"message": "Model is not available — configure provider API key first"},
             )
+        from src.custom_models import unhide_model_from_list
+
+        unhide_model_from_list(body.active_model_id)
         router.set_active_model(body.active_model_id)
-    if body.provider_id and body.api_key is not None:
-        router.set_api_key(body.provider_id, body.api_key)  # type: ignore[arg-type]
     save_router(router)
     return {"status": "saved", "active_model_id": router.active_model_id}
+
+
+@app.get("/api/models/credentials/{provider_id}")
+async def get_provider_credential(provider_id: str) -> dict[str, Any]:
+    from src.credentials.sources import is_clutch_managed_credential
+    from src.models_config import get_router
+
+    router = get_router()
+    if not is_clutch_managed_credential(provider_id):  # type: ignore[arg-type]
+        raise HTTPException(
+            status_code=404,
+            detail={"message": "No Clutch-managed key for this provider."},
+        )
+    api_key = router.get_api_key(provider_id)  # type: ignore[arg-type]
+    return {"provider_id": provider_id, "configured": bool(api_key), "api_key": api_key or ""}
 
 
 @app.delete("/api/models/credentials/{provider_id}")
@@ -3112,6 +3208,81 @@ async def add_custom_image_model(body: CustomImageModelRequest) -> dict[str, Any
         raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
     return {
         "status": "created",
+        "model_id": spec.id,
+        "config": serialize_models_config(router),
+    }
+
+
+@app.post("/api/models/custom/chat")
+async def add_custom_chat_model(body: CustomChatModelRequest) -> dict[str, Any]:
+    from src.custom_models import add_custom_model
+    from src.models_config import get_router, serialize_models_config
+
+    router = get_router()
+    try:
+        spec = add_custom_model(
+            router,
+            name=body.name,
+            api_model=body.api_model,
+            base_url=body.base_url,
+            provider_id=body.provider_id,
+            model_kind="chat",
+            api_key=body.api_key,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+    return {
+        "status": "created",
+        "model_id": spec.id,
+        "config": serialize_models_config(router),
+    }
+
+
+@app.post("/api/models/custom/video")
+async def add_custom_video_model(body: CustomVideoModelRequest) -> dict[str, Any]:
+    from src.custom_models import add_custom_model
+    from src.models_config import get_router, serialize_models_config
+
+    router = get_router()
+    try:
+        spec = add_custom_model(
+            router,
+            name=body.name,
+            api_model=body.api_model,
+            base_url=body.base_url,
+            provider_id=body.provider_id,
+            model_kind="video",
+            video_backend=body.video_backend or "agnes",
+            api_key=body.api_key,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+    return {
+        "status": "created",
+        "model_id": spec.id,
+        "config": serialize_models_config(router),
+    }
+
+
+@app.patch("/api/models/custom/{model_id}")
+async def update_custom_model_entry(model_id: str, body: CustomModelUpdateRequest) -> dict[str, Any]:
+    from src.custom_models import update_custom_model
+    from src.models_config import get_router, serialize_models_config
+
+    router = get_router()
+    try:
+        spec = update_custom_model(
+            router,
+            model_id,
+            name=body.name,
+            api_model=body.api_model,
+            base_url=body.base_url,
+            api_key=body.api_key,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+    return {
+        "status": "updated",
         "model_id": spec.id,
         "config": serialize_models_config(router),
     }

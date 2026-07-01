@@ -958,7 +958,7 @@ export function AgentManager({
                     </label>
                     {clutchModels.length === 0 ? (
                       <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 leading-relaxed">
-                        {t('No models configured yet. Add API keys or image models under Settings → Models first.')}
+                        {t('No models configured yet. Add API keys or image/video models under Settings → Models first.')}
                       </p>
                     ) : (
                       <select
@@ -970,13 +970,14 @@ export function AgentManager({
                         {clutchModels.map((model) => (
                           <option key={model.id} value={model.id}>
                             {model.name}
-                            {model.modelKind === 'image' ? ' (image)' : ''}
+                            {model.modelKind === 'image' ? ` (${t('Image')})` : ''}
+                            {model.modelKind === 'video' ? ` (${t('Video')})` : ''}
                           </option>
                         ))}
                       </select>
                     )}
                     <p className="text-[9.5px] text-neutral-400 leading-relaxed">
-                      {t('Clutch agents run on Sidecar models (chat or image). Leave empty to follow the global model in chat.')}
+                      {t('Clutch agents run on Sidecar models (chat, image, or video). Leave empty to follow the global model in chat.')}
                     </p>
                   </div>
                 )}

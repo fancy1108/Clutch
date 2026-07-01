@@ -14,6 +14,7 @@ import { USER_CHAT_AVATAR, clutchStore, deleteChatMessage } from '../services/cl
 import { resolveBrandLogoSrc } from '../services/brandLogos';
 import { clutchMarkUrl } from '../assets/brand';
 import { AgentChatAvatar } from './AgentChatAvatar';
+import { ChatBubbleVideo } from './ChatBubbleVideo';
 import {
   buildWorkflowReplyStepIndex,
   isWorkflowRefineEligible,
@@ -285,6 +286,7 @@ function replyRuntimeLabel(
 }
 
 const IMAGE_MARKER_RE = /\[image:\s*(data:image\/[^\]]+)\]\s*/gi;
+const VIDEO_MARKER_RE = /\[video:\s*(https?:\/\/[^\]]+)\]\s*/gi;
 const MD_IMAGE_RE = /!\[([^\]]*)\]\(([^)]+)\)/g;
 const MD_IMAGE_LINK_RE = /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g;
 
@@ -322,8 +324,22 @@ function dedupeImages(images: Array<{ src: string; alt: string }>): Array<{ src:
   });
 }
 
-function parseChatContent(text: string): { text: string; images: Array<{ src: string; alt: string }> } {
-  const fromMarkers = parseMessageImages(text);
+function parseMessageVideos(text: string): { text: string; videos: Array<{ src: string; title: string }> } {
+  const videos: Array<{ src: string; title: string }> = [];
+  const stripped = text.replace(VIDEO_MARKER_RE, (_, url: string) => {
+    videos.push({ src: url.trim(), title: 'Generated video' });
+    return '';
+  }).trim();
+  return { text: stripped, videos };
+}
+
+function parseChatContent(text: string): {
+  text: string;
+  images: Array<{ src: string; alt: string }>;
+  videos: Array<{ src: string; title: string }>;
+} {
+  const fromVideos = parseMessageVideos(text);
+  const fromMarkers = parseMessageImages(fromVideos.text);
   const fromMarkdown = parseMarkdownImages(fromMarkers.text);
   return {
     text: fromMarkdown.text,
@@ -331,6 +347,7 @@ function parseChatContent(text: string): { text: string; images: Array<{ src: st
       ...fromMarkers.images.map((src) => ({ src, alt: 'Attached screenshot' })),
       ...fromMarkdown.images,
     ]),
+    videos: fromVideos.videos,
   };
 }
 
@@ -1003,6 +1020,17 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                               key={`${msg.id}-img-${index}`}
                               src={image.src}
                               alt={image.alt}
+                            />
+                          ))}
+                        </div>
+                      )}
+                      {parsed.videos.length > 0 && (
+                        <div className="flex flex-col gap-3 mb-3">
+                          {parsed.videos.map((video, index) => (
+                            <ChatBubbleVideo
+                              key={`${msg.id}-vid-${index}`}
+                              src={video.src}
+                              title={t(video.title)}
                             />
                           ))}
                         </div>

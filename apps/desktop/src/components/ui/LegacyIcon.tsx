@@ -104,9 +104,35 @@ const FoldersOpen = React.forwardRef<
 });
 FoldersOpen.displayName = 'FoldersOpen';
 
+/** Circle with pulse line — model connection test. */
+const ActivityCircle = React.forwardRef<
+  SVGSVGElement,
+  React.ComponentProps<'svg'> & { size?: number | string; strokeWidth?: number | string }
+>(({ size = 24, strokeWidth = 2, className, ...props }, ref) => (
+  <svg
+    ref={ref}
+    xmlns="http://www.w3.org/2000/svg"
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={strokeWidth}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    {...props}
+  >
+    <circle cx="12" cy="12" r="9" strokeDasharray="52 5" strokeDashoffset="-4" />
+    <path d="M8 14.5 9.8 9.8 11.8 14.2 14.2 11 16.5 14.5" />
+  </svg>
+));
+ActivityCircle.displayName = 'ActivityCircle';
+
 /** Maps legacy Material Symbol names (and lucide kebab aliases) to lucide-react icons. */
 const ICON_MAP: Record<string, React.ComponentType<any>> = {
   account_tree: GitBranch,
+  activity_circle: ActivityCircle,
   add: Plus,
   add_circle: PlusCircle,
   alternate_email: AtSign,
