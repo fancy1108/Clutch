@@ -43,7 +43,7 @@ case "$(uname -s)" in
   if [[ "$(uname -m)" == "arm64" ]]; then
       ok "Arch: Apple Silicon (arm64) — primary target"
     else
-      warn "Arch: Intel (x86_64) — not fully tested on every release"
+      warn "Arch: Intel (x86_64) — Clutch does not ship Intel DMG; Apple Silicon only (source build optional)"
     fi
     ;;
   Linux)

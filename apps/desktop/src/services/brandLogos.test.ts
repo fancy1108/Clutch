@@ -6,12 +6,13 @@ describe('brandLogos', () => {
   it('resolves only tools with explicit brand assets', () => {
     expect(resolveToolBrandLogo('claude-cli')).toBeTruthy();
     expect(resolveToolBrandLogo('codex-cli')).toBeTruthy();
+    expect(resolveToolBrandLogo('opencode-cli')).toBeTruthy();
     expect(resolveToolBrandLogo('gemini-cli')).toBeUndefined();
   });
 
-  it('does not map clutch agents to a fallback logo', () => {
-    expect(resolveBrandLogoSrc({ agentType: 'clutch' })).toBeUndefined();
-    expect(resolveBrandLogoSrc({ agent: { agentType: 'clutch' } })).toBeUndefined();
+  it('maps clutch agents to the Clutch brand mark', () => {
+    expect(resolveBrandLogoSrc({ agentType: 'clutch' })).toBeTruthy();
+    expect(resolveBrandLogoSrc({ agent: { agentType: 'clutch' } })).toBeTruthy();
   });
 
   it('resolves cli agent types with assets', () => {

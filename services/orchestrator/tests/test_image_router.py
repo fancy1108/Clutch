@@ -18,6 +18,7 @@ from src.llm.router import BUILTIN_MODELS, ModelSpec
 
 def test_is_image_model_uses_model_kind() -> None:
     assert is_image_model(BUILTIN_MODELS["agnes-image-2.1-flash"])
+    assert not is_image_model(BUILTIN_MODELS["agnes-2.0-flash"])
     assert not is_image_model(BUILTIN_MODELS["deepseek-v4pro"])
 
 

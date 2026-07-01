@@ -390,6 +390,7 @@ def test_route_engine_flow_multiline_claude_skips_hybrid_pty(
     monkeypatch.setenv("CLUTCH_RUNTIME_MODE", "hybrid")
     monkeypatch.setattr("src.engine_router.tool_available_for_routing", lambda _tool_id: True)
     monkeypatch.setattr("src.engine_router.get_workspace", lambda: {"workspace_path": "/workspace"})
+    monkeypatch.setattr("src.engine_router.load_connected_ids", lambda: set())
     # CI runners may not have `claude` on PATH; multiline guard must not depend on discovery.
     monkeypatch.setattr("src.engine_router.resolve_tool_binary", lambda _tool_id: None)
 
@@ -573,6 +574,24 @@ def test_route_engine_ollama_ignores_shell_cli_auto_config(monkeypatch) -> None:
     assert res.output == "HTTP ollama reply"
     assert captured["model"] == "qwen2.5-coder"
     assert any("Routing task to Ollama" in log for log in res.logs)
+
+
+def test_load_custom_cli_configs_ignores_opencode_shell_override(tmp_path, monkeypatch) -> None:
+    """Bad auto-config must not override curated OpenCode headless routing."""
+    from src.engine_router import CLI_ROUTING_CONFIGS, load_custom_cli_configs
+
+    custom = tmp_path / "custom_clis.json"
+    custom.write_text(
+        '{"opencode-cli": {"tool_id": "opencode-cli", "binary_name": "opencode", '
+        '"conversation_mode": "resume_or_new", "extra_args": ["run"], "prompt_flag": "--prompt"}}',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr("src.storage_helper.get_storage_dir", lambda: tmp_path)
+
+    loaded = load_custom_cli_configs()
+    assert "opencode-cli" not in loaded
+    assert CLI_ROUTING_CONFIGS["opencode-cli"]["extra_args"] == ["run", "--auto"]
+    assert CLI_ROUTING_CONFIGS["opencode-cli"]["prompt_flag"] == ""
 
 
 def test_route_engine_ollama_not_connected(monkeypatch) -> None:

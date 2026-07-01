@@ -1,5 +1,7 @@
 import { LegacyIcon } from './ui/LegacyIcon';
 
+import { clutchMarkUrl } from '../assets/brand';
+
 type BrandLogoProps = {
   src?: string | null;
   alt: string;
@@ -24,10 +26,15 @@ export function BrandLogo({
   rounded = 'full',
 }: BrandLogoProps) {
   const roundedClass = ROUNDED_CLASS[rounded];
+  const clutch = src === clutchMarkUrl;
   if (src) {
     return (
-      <div className={`${className} overflow-hidden ${roundedClass} flex items-center justify-center`}>
-        <img src={src} alt={alt} className={`${imgClassName} block`} />
+      <div className={`${className} overflow-hidden ${roundedClass} flex items-center justify-center ${clutch ? 'bg-black' : ''}`}>
+        <img
+          src={src}
+          alt={alt}
+          className={clutch ? 'w-full h-full object-cover block' : `${imgClassName} block`}
+        />
       </div>
     );
   }

@@ -1,0 +1,26 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.9.0.schema.json
+
+PackageIdentifier: Fancy1108.Clutch
+PackageVersion: 1.0.2
+PackageLocale: en-US
+Publisher: Fancy1108
+PublisherUrl: https://github.com/fancy1108
+PublisherSupportUrl: https://github.com/fancy1108/Clutch/issues
+PackageName: Clutch
+PackageUrl: https://github.com/fancy1108/Clutch
+License: MIT
+LicenseUrl: https://github.com/fancy1108/Clutch/blob/main/LICENSE
+ShortDescription: Local AI multi-agent orchestration and supervision desktop app
+Description: |
+  Clutch is a desktop app for visual multi-agent workflow orchestration on top of
+  Claude Code, Codex, Ollama, MCP, and cloud LLMs. LangGraph runs locally; you
+  supervise chat, terminal, diffs, and approvals in one window.
+Moniker: clutch
+Tags:
+  - ai
+  - agent
+  - orchestration
+  - desktop
+ReleaseNotesUrl: https://github.com/fancy1108/Clutch/releases/tag/v1.0.2
+ManifestType: defaultLocale
+ManifestVersion: 1.9.0

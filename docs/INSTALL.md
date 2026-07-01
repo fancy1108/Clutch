@@ -1,5 +1,6 @@
 # Clutch — 安装指南（macOS / Windows）
 
+> **新用户：** 建议先读 **[`GETTING_STARTED.md`](./GETTING_STARTED.md)**（5 分钟图文上手），再回来查安装细节。  
 > **受众**：从 GitHub Releases 下载安装包的终端用户（非源码构建）。
 > **开发者**：见 [`BUILD_FROM_SOURCE.md`](./BUILD_FROM_SOURCE.md)。  
 > **隐私**：见 [`DATA_AND_PRIVACY.md`](./DATA_AND_PRIVACY.md)。
@@ -30,8 +31,30 @@
 
 ## 3. 下载与安装
 
+### 3a. 命令行安装（推荐 · macOS Apple Silicon）
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/fancy1108/Clutch/main/scripts/install.sh | bash
+```
+
+脚本会：拉取 [最新 Release](https://github.com/fancy1108/Clutch/releases/latest) 的 `Clutch_*_aarch64.dmg` → 挂载 → 复制到 `/Applications/Clutch.app` → `xattr -cr` 解除隔离。
+
+指定版本：`CLUTCH_VERSION=v1.0.3 curl -fsSL …/install.sh | bash`
+
+本地仓库也可直接运行：`./scripts/install.sh`
+
+**Windows（PowerShell）：**
+
+```powershell
+irm https://raw.githubusercontent.com/fancy1108/Clutch/main/scripts/install.ps1 | iex
+```
+
+> **说明：** Clutch 是桌面应用，**没有** `npm install -g clutch`（与 Codex / Reasonix 等 CLI 不同）。Windows 安装包**尚未在实体机上完整验收**（[#23](https://github.com/fancy1108/Clutch/issues/23)）。
+
+### 3b. 手动下载 DMG / MSI
+
 1. 打开 [GitHub Releases](https://github.com/fancy1108/Clutch/releases)
-2. 下载最新 **`Clutch_*_aarch64.dmg`**（Apple Silicon）或对应架构的 DMG
+2. 下载最新 **`Clutch_*_aarch64.dmg`**（**仅 Apple Silicon / M 芯片**；Intel Mac 暂不提供安装包，见 [`PACKAGE_MANAGERS.md`](./PACKAGE_MANAGERS.md)）
 3. 打开 DMG，将 **Clutch** 拖入 **Applications**
 
 当前发布包为**未签名**构建（见 [`memory/DECISIONS.md`](../memory/DECISIONS.md) **D31**）。获得 Apple Developer 账号后可升级为签名/公证版本（OSR-11）。
@@ -58,6 +81,7 @@
 
 ---
 
+<a id="gatekeeper"></a>
 ## 4. 首次打开（Gatekeeper）
 
 macOS 可能提示「无法验证开发者」或「**应用已损坏**」。**均属正常现象。**
@@ -98,6 +122,7 @@ curl -s http://127.0.0.1:8123/health
 
 ---
 
+<a id="first-use-checklist"></a>
 ## 6. 首次使用 checklist
 
 首次打开 Clutch 时会自动进入**设置向导**（Welcome → 工作区 → 模型 / CLI → Flow 引导 → 权限说明 → 启动）。按向导完成即可跑通主路径。
@@ -147,6 +172,7 @@ curl -sX POST http://localhost:8124/api/preferences/onboarding-complete
 
 ---
 
+<a id="troubleshooting"></a>
 ## 8. 故障排除
 
 | 现象 | 处理 |

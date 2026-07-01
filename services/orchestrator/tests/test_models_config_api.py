@@ -27,16 +27,36 @@ def models_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return config
 
 
-def test_models_mark_unavailable_without_api_key(models_config: Path) -> None:
+def test_models_mark_unavailable_without_api_key(models_config: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("src.models_config.local_ollama_tags", lambda: [])
     client = TestClient(app)
     response = client.get("/api/models/config")
     assert response.status_code == 200
     body = response.json()
     for model in body["models"]:
         if model["provider_id"] == "ollama":
-            assert model["available"] is True
+            assert model["available"] is False
         else:
             assert model["available"] is False
+
+
+def test_models_config_lists_installed_ollama_tags(
+    models_config: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        "src.models_config.local_ollama_tags",
+        lambda: ["qwen3:8b", "aiden_lu/minicpm-v2.6:Q4_K_M"],
+    )
+    client = TestClient(app)
+    body = client.get("/api/models/config").json()
+    ollama = [m for m in body["models"] if m["provider_id"] == "ollama"]
+    available = [m for m in ollama if m["available"]]
+    assert {m["name"] for m in available} == {
+        "qwen3:8b (Ollama)",
+        "aiden_lu/minicpm-v2.6:Q4_K_M (Ollama)",
+    }
+    assert all(m["id"].startswith("ollama-local-") for m in available)
+    assert not any(m["id"] == "qwen2.5vl-7b" for m in ollama)
 
 
 def test_connect_provider_enables_model(models_config: Path) -> None:
@@ -58,11 +78,34 @@ def test_activate_rejects_unavailable_model(models_config: Path) -> None:
     assert response.status_code == 400
 
 
-def test_activate_ollama_model_without_api_key(models_config: Path) -> None:
+def test_activate_ollama_model_without_api_key(models_config: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("src.models_config.local_ollama_tags", lambda: ["qwen2.5vl:7b"])
     client = TestClient(app)
     response = client.post("/api/models/config", json={"active_model_id": "qwen2.5vl-7b"})
     assert response.status_code == 200
     assert response.json()["active_model_id"] == "qwen2.5vl-7b"
+
+
+def test_activate_dynamic_local_ollama_model(models_config: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("src.models_config.local_ollama_tags", lambda: ["qwen3:8b"])
+    client = TestClient(app)
+    response = client.post("/api/models/config", json={"active_model_id": "ollama-local-qwen3-8b"})
+    assert response.status_code == 200
+    assert response.json()["active_model_id"] == "ollama-local-qwen3-8b"
+
+
+def test_load_router_falls_back_when_persisted_ollama_missing(
+    models_config: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("src.models_config.local_ollama_tags", lambda: ["qwen3:8b"])
+    models_config.write_text(
+        json.dumps({"active_model_id": "qwen2.5vl-7b", "api_keys": {}}),
+        encoding="utf-8",
+    )
+    from src.models_config import load_router
+
+    router = load_router()
+    assert router.active_model_id == "ollama-local-qwen3-8b"
 
 
 def test_activate_available_model(models_config: Path) -> None:
@@ -122,10 +165,10 @@ def test_serialize_dedupes_same_endpoint_and_api_model() -> None:
     router.set_api_key("custom", "key-custom")
 
     payload = serialize_models_config(router)
-    agnes_ids = {"claude-3-7-sonnet", "cc-switch-agnes1", "cc-switch-agnes2"}
+    agnes_ids = {"claude-3-7-sonnet", "cc-switch-agnes1", "cc-switch-agnes2", "agnes-2.0-flash"}
     listed = [model for model in payload["models"] if model["id"] in agnes_ids]
     assert len(listed) == 1
-    assert listed[0]["id"] == "claude-3-7-sonnet"
+    assert listed[0]["id"] == "agnes-2.0-flash"
 
     router.set_active_model("cc-switch-agnes1")
     payload_active = serialize_models_config(router)
@@ -166,6 +209,26 @@ def test_model_test_endpoint_failure(models_config: Path) -> None:
     result = client.post("/api/models/test", json={"model_id": "deepseek-v4pro"}).json()
     assert result["ok"] is False
     assert "rejected" in result["message"].lower()
+
+
+def test_agnes_chat_model_listed_with_kind(models_config: Path) -> None:
+    client = TestClient(app)
+    body = client.get("/api/models/config").json()
+    agnes = next(m for m in body["models"] if m["id"] == "agnes-2.0-flash")
+    assert agnes["name"] == "Agnes 2.0 Flash"
+    assert agnes["provider_id"] == "custom"
+    assert agnes["model_kind"] == "chat"
+    assert agnes["endpoint"] == "https://apihub.agnes-ai.com/v1"
+
+
+def test_agnes_chat_model_available_with_custom_key(models_config: Path) -> None:
+    client = TestClient(app)
+    client.post("/api/models/config", json={"provider_id": "custom", "api_key": "sk-test-agnes"})
+    body = client.get("/api/models/config").json()
+    agnes = next(m for m in body["models"] if m["id"] == "agnes-2.0-flash")
+    assert agnes["available"] is True
+    image = next(m for m in body["models"] if m["id"] == "agnes-image-2.1-flash")
+    assert image["available"] is True
 
 
 def test_agnes_image_model_listed_with_kind(models_config: Path) -> None:

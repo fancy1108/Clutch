@@ -11,10 +11,40 @@ from unittest.mock import AsyncMock, MagicMock
 
 from src.hybrid_audit_log import read_hybrid_audit_lines, get_hybrid_audit_dir
 from src.main import _apply_hybrid_plain_chat_rejection, _handle_plain_chat
-from src.hybrid_concurrency import HybridPlainChatRejected
+from src.hybrid_concurrency import HybridPlainChatRejected, plain_chat_turn_in_progress
 from src.shell_session import ShellSessionError
 from src.state import initial_state
 from src.workspace_cli_lock import workspace_cli_turn
+
+
+def test_plain_chat_turn_in_progress_when_task_active() -> None:
+    state = initial_state("run-queue")
+    state["status"] = "idle"
+    assert plain_chat_turn_in_progress(
+        plain_chat_task_done=False,
+        state=state,
+        hybrid_runtime=True,
+    )
+
+
+def test_plain_chat_turn_in_progress_when_hybrid_running() -> None:
+    state = initial_state("run-queue")
+    state["status"] = "running"
+    assert plain_chat_turn_in_progress(
+        plain_chat_task_done=True,
+        state=state,
+        hybrid_runtime=True,
+    )
+
+
+def test_plain_chat_turn_not_in_progress_when_idle() -> None:
+    state = initial_state("run-queue")
+    state["status"] = "idle"
+    assert not plain_chat_turn_in_progress(
+        plain_chat_task_done=True,
+        state=state,
+        hybrid_runtime=True,
+    )
 
 
 @pytest.mark.asyncio
@@ -168,10 +198,13 @@ async def test_handle_plain_chat_session_busy_keeps_running(
 
 
 @pytest.mark.asyncio
-async def test_handle_plain_chat_catches_hybrid_pool_full(
+async def test_handle_plain_chat_queues_hybrid_pool_full(
     tmp_path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    from src.plain_chat_pool_queue import pool_queue_depth, reset_for_tests
+
+    reset_for_tests()
     monkeypatch.setenv("CLUTCH_STORAGE_DIR", str(tmp_path))
     monkeypatch.setenv("CLUTCH_RUNTIME_MODE", "hybrid")
     monkeypatch.setattr("src.run_state_store.save_run_state", lambda _state: None)
@@ -190,7 +223,9 @@ async def test_handle_plain_chat_catches_hybrid_pool_full(
             "All Hybrid shell sessions are busy.",
         )
 
+    drain = AsyncMock()
     monkeypatch.setattr("src.main._llm_chat_reply", raise_pool_full)
+    monkeypatch.setattr("src.plain_chat_pool_queue.schedule_pool_drain", drain)
 
     websocket = MagicMock()
     websocket.send_text = AsyncMock()
@@ -205,9 +240,15 @@ async def test_handle_plain_chat_catches_hybrid_pool_full(
         agent_id="agent-claude-test",
     )
 
-    assert result["status"] == "idle"
-    assert result["shell_session_status"] == "rejected_pool_full"
-    assert any(message.get("agent") == "Supervisor" for message in result["messages"])
+    assert result["status"] == "running"
+    assert result["shell_session_status"] == "queued_pool"
+    assert result.get("shell_pool_queue_position") == 1
+    assert result.get("shell_pool_queue_depth") == 1
+    assert isinstance(result.get("shell_pool_blocker_run_ids"), list)
+    assert pool_queue_depth() == 1
+    assert not any(message.get("agent") == "Supervisor" for message in result["messages"])
+    drain.assert_awaited_once()
+    reset_for_tests()
 
 
 def test_history_for_llm_excludes_supervisor_rejection() -> None:

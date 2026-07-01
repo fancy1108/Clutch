@@ -318,11 +318,21 @@
 - **背景**：维护者暂无 Apple Developer 账号，无法完成 OSR-11 代码签名与公证；仍希望在 T1 公开仓库后向终端用户提供可安装的 macOS DMG（与多数开源桌面项目做法一致）。
 - **方案（用户确认）**：
   1. **豁免 OSR-11**：不阻塞开源与首次 DMG 分发；获得 Developer 账号后再补签名/公证。
-  3. **分发路径**：GitHub Releases 附 `.dmg`；`README.md` §安装方式 与 **`.github/RELEASE_GATEKEEPER_NOTICE.md`** 提供醒目 Gatekeeper 绕过说明（含「应用已损坏」免责）。
+  3. **分发路径**：GitHub Releases 附 `.dmg`；Release 正文由 `scripts/render-release-notes.sh` 组装（`CHANGELOG` 变更摘要置顶，`.github/release-notes/` 含 Gatekeeper 等安装说明）；`README.md` §安装方式 与 `docs/INSTALL.md` 为完整用户文档。
   3. **Release CI**：`.github/workflows/release.yml` 在 `v*` tag 推送时于 `macos-latest` 构建**未签名** DMG 并上传 Release（OSR-12，不依赖 OSR-11）。
   4. **OSR-00**：维护者已于 2026-06-29 自行完成发布前验收，T1 开闸。
   5. **首发版本**：公开发布与首个 DMG tag 从 **`v1.0.0`** 起（非 `v0.1.0`）。
 - **影响**：`README.md` · `docs/BUILD_FROM_SOURCE.md` · `docs/OPEN_SOURCE_RELEASE.md` §7.2/§7.7 · OSR-11 ⏭️ · OSR-12 ⚠️（workflow 已加，待首 tag 验证）。
+- **决策状态**：`已落地`
+
+### D32 · 暂不提供 Intel Mac 安装包（2026-07-01）
+
+- **背景**：CI 仅构建 Apple Silicon DMG；Intel 需额外 sidecar 架构与 Release 资产，维护成本高，当前用户以 M 芯片为主。
+- **方案（用户确认）**：
+  1. **官方分发仅 aarch64 DMG**；README / INSTALL / PACKAGE_MANAGERS 标明 Intel **暂不支持**。
+  2. Intel 用户可选源码自建（`BUILD_FROM_SOURCE.md`），不承诺体验。
+  3. 后续有明确需求再单独立项 Intel CI。
+- **影响**：`docs/PACKAGE_MANAGERS.md` · `README` · `install.sh` · Homebrew cask `depends_on arch: :arm64`。
 - **决策状态**：`已落地`
 
 ## 开放问题

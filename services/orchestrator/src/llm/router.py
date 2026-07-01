@@ -68,6 +68,13 @@ BUILTIN_MODELS: dict[str, ModelSpec] = {
         api_model="qwen2.5vl:7b",
         base_url="http://localhost:11434/v1",
     ),
+    "agnes-2.0-flash": ModelSpec(
+        id="agnes-2.0-flash",
+        name="Agnes 2.0 Flash",
+        provider_id="custom",
+        api_model="agnes-2.0-flash",
+        base_url="https://apihub.agnes-ai.com/v1",
+    ),
     "agnes-image-2.1-flash": ModelSpec(
         id="agnes-image-2.1-flash",
         name="Agnes Image 2.1 Flash",

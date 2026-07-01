@@ -7,7 +7,8 @@
  *  - / command → skill picker popover
  *  - # → session picker popover
  */
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
+import { Loader2 } from 'lucide-react';
 import { useLanguage } from './LanguageContext';
 import type { SessionRecord } from '../services/runApi';
 import type { ScannedSkill } from '../services/skillsApi';
@@ -16,6 +17,7 @@ import { PERMISSION_MODES, type PermissionMode } from '../services/permissionApi
 import { LegacyIcon } from './ui/LegacyIcon';
 import { BTN_ICON_SM } from './ui/buttonStyles';
 import { shouldSubmitChatOnEnter } from './chatInputKeyboard';
+import { AgentChatAvatar } from './AgentChatAvatar';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -33,6 +35,12 @@ export interface Attachment {
 export interface PendingChatMessage {
   id: string;
   text: string;
+}
+
+export interface ShellPoolBlocker {
+  run_id: string;
+  title?: string;
+  agent_name?: string;
 }
 
 interface ChatInputBarProps {
@@ -54,6 +62,12 @@ interface ChatInputBarProps {
   permissionMode: PermissionMode;
   onPermissionModeChange: (mode: PermissionMode) => void;
   shellSessionStatus?: string;
+  shellPoolBlockerRunIds?: string[];
+  shellPoolBlockers?: ShellPoolBlocker[];
+  shellPoolQueuePosition?: number;
+  shellPoolQueueDepth?: number;
+  currentRunId?: string;
+  resolveAgentLogo?: (agentName: string) => string | undefined;
   onDismissHybridNotice?: () => void;
   isFlowRefining?: boolean;
   workflowAgents?: Array<{ nodeId: string; agentName: string; label?: string }>;
@@ -71,6 +85,13 @@ function fileIcon(kind: Attachment['kind']): string {
   if (kind === 'image') return 'image';
   if (kind === 'folder') return 'folder';
   return 'description';
+}
+
+function resolveSessionTitle(runId: string, sessions: SessionRecord[]): string {
+  const hit = sessions.find((item) => item.run_id === runId);
+  const title = hit?.title?.trim();
+  if (title) return title;
+  return runId.length > 12 ? `${runId.slice(0, 8)}…` : runId;
 }
 
 function hybridRejectionNotice(status: string | undefined, lang: 'en' | 'zh'): string | null {
@@ -163,6 +184,12 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
   permissionMode,
   onPermissionModeChange,
   shellSessionStatus,
+  shellPoolBlockerRunIds = [],
+  shellPoolBlockers = [],
+  shellPoolQueuePosition = 0,
+  shellPoolQueueDepth = 0,
+  currentRunId = '',
+  resolveAgentLogo,
   onDismissHybridNotice,
   isFlowRefining = false,
   workflowAgents = [],
@@ -456,6 +483,20 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
   const hybridNotice = hybridRejectionNotice(shellSessionStatus, language === 'zh' ? 'zh' : 'en');
   const showHybridNotice =
     hybridNotice && dismissedNoticeKey !== (shellSessionStatus ?? '');
+  const isPoolQueued = shellSessionStatus === 'queued_pool';
+  const poolBlockers = useMemo((): ShellPoolBlocker[] => {
+    const fromBackend = shellPoolBlockers.filter(
+      (item) => item.run_id.trim().length > 0 && item.run_id !== currentRunId,
+    );
+    if (fromBackend.length > 0) return fromBackend;
+    return shellPoolBlockerRunIds
+      .filter((runId) => runId.trim().length > 0 && runId !== currentRunId)
+      .map((runId) => ({
+        run_id: runId,
+        title: resolveSessionTitle(runId, sessions),
+        agent_name: '',
+      }));
+  }, [shellPoolBlockers, shellPoolBlockerRunIds, currentRunId, sessions]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -538,6 +579,73 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
           >
             <LegacyIcon name="close" className="text-[14px]" />
           </button>
+        </div>
+      ) : null}
+      {isPoolQueued ? (
+        <div className="px-3 pt-3 pb-2 border-b border-outline-variant/40">
+          <div className="flex items-center gap-1.5 mb-2">
+            <Loader2 className="w-3.5 h-3.5 text-primary animate-spin flex-shrink-0" />
+            <span className="text-[11px] font-semibold text-on-surface-variant">
+              {language === 'zh' ? 'Hybrid shell 排队中' : 'Waiting for Hybrid shell'}
+            </span>
+          </div>
+          <div className="space-y-1.5">
+            {poolBlockers.length > 0 ? (
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-on-surface-variant/70 mb-1.5 px-0.5">
+                  {language === 'zh' ? '等待以下会话释放 shell' : 'Waiting for these sessions'}
+                </p>
+                <ul className="space-y-1.5 max-h-24 overflow-y-auto">
+                  {poolBlockers.map((blocker) => {
+                    const title =
+                      blocker.title?.trim()
+                      || resolveSessionTitle(blocker.run_id, sessions);
+                    const agentName = blocker.agent_name?.trim() ?? '';
+                    const logoSrc = agentName ? resolveAgentLogo?.(agentName) : undefined;
+                    return (
+                      <li
+                        key={blocker.run_id}
+                        className="flex items-center gap-2 rounded-lg border border-outline-variant/50 bg-surface-container-low/60 px-2.5 py-1.5 min-w-0"
+                      >
+                        <AgentChatAvatar
+                          src={logoSrc}
+                          alt={agentName || title}
+                          className="w-6 h-6"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <span className="block text-[12px] text-on-surface truncate font-medium" title={title}>
+                            {title}
+                          </span>
+                          {agentName ? (
+                            <span className="block text-[10px] text-on-surface-variant/70 truncate" title={agentName}>
+                              {agentName}
+                            </span>
+                          ) : null}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ) : (
+              <p className="text-[11px] text-on-surface-variant px-0.5">
+                {language === 'zh'
+                  ? 'Shell 槽位已满，等待其他会话释放…'
+                  : 'Shell pool is full; waiting for a slot…'}
+              </p>
+            )}
+            {shellPoolQueuePosition > 0 ? (
+              <p className="text-[11px] text-on-surface-variant px-0.5">
+                {language === 'zh'
+                  ? `全局队列第 ${shellPoolQueuePosition} 位${
+                      shellPoolQueueDepth > 0 ? `（共 ${shellPoolQueueDepth} 条）` : ''
+                    }`
+                  : `Queue position ${shellPoolQueuePosition}${
+                      shellPoolQueueDepth > 0 ? ` of ${shellPoolQueueDepth}` : ''
+                    } globally`}
+              </p>
+            ) : null}
+          </div>
         </div>
       ) : null}
       {pendingMessages.length > 0 ? (

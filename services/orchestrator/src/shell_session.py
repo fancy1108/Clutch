@@ -450,6 +450,36 @@ class ShellSessionManager:
             if session and session.state == SessionState.BUSY:
                 session.state = SessionState.IDLE
                 session.touch()
+        from src.plain_chat_pool_queue import notify_pool_slot_from_thread
+
+        notify_pool_slot_from_thread()
+
+    def pool_has_capacity(self, run_id: str) -> bool:
+        """True when get_or_create(run_id) would not raise ShellSessionPoolFullError."""
+        with self._lock:
+            session = self._sessions.get(run_id)
+            if session and session.state != SessionState.TERMINATED and session.alive():
+                if session.state in (SessionState.IDLE, SessionState.READY):
+                    return True
+                if session.state in (SessionState.BUSY, SessionState.CREATING):
+                    return False
+            limit = _max_sessions()
+            if limit <= 0:
+                return True
+            if self._active_session_count() < limit:
+                return True
+            return self._evict_oldest_idle_unlocked() is not None
+
+    def busy_shell_run_ids(self) -> list[str]:
+        """run_ids currently holding a BUSY or CREATING shell (pool blockers)."""
+        with self._lock:
+            return [
+                run_id
+                for run_id, session in self._sessions.items()
+                if session.state in (SessionState.BUSY, SessionState.CREATING)
+                and session.state != SessionState.TERMINATED
+                and session.alive()
+            ]
 
     def debug_snapshot(self, run_id: str) -> dict[str, object] | None:
         """Read-only shell session status for run debug API (HRT-06)."""
@@ -469,6 +499,9 @@ class ShellSessionManager:
             session = self._sessions.pop(run_id, None)
         if session:
             session.close()
+        from src.plain_chat_pool_queue import notify_pool_slot_from_thread
+
+        notify_pool_slot_from_thread()
 
     def sweep_idle(self) -> list[str]:
         """Terminate sessions past idle or max lifetime (only when IDLE)."""

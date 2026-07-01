@@ -19,7 +19,7 @@ import { fetchModelsConfig, mapModelConfigToUi } from '../services/modelsApi';
 import { useLanguage } from './LanguageContext';
 import { fetchToolsStatus, type AiToolStatus } from '../services/toolsApi';
 import { sidecarHttpUrl, sidecarFetch } from '../services/sidecarUrl';
-import { resolveBrandLogoSrc } from '../services/brandLogos';
+import { clutchMarkUrl, resolveBrandLogoSrc } from '../services/brandLogos';
 import { UnderDevelopmentNotice } from './ui/UnderDevelopmentNotice';
 
 export function AgentLogo({
@@ -39,96 +39,26 @@ export function AgentLogo({
 }) {
   const brandSrc = logoSrc ?? resolveBrandLogoSrc({ agentType, toolId });
   if (brandSrc) {
+    const clutch = brandSrc === clutchMarkUrl;
     return (
       <div
-        className={`${className} rounded-full flex items-center justify-center bg-white relative overflow-hidden flex-shrink-0 select-none border border-neutral-200/40`}
+        className={`${className} rounded-full flex items-center justify-center ${clutch ? 'bg-black' : 'bg-white'} relative overflow-hidden flex-shrink-0 select-none border border-neutral-200/40`}
       >
-        <img src={brandSrc} alt={name} className="w-[68%] h-[68%] object-contain" />
-      </div>
-    );
-  }
-
-  if (agentType === CLUTCH_AGENT_TYPE) {
-    const isLarge = className.includes('w-12');
-    return (
-      <div
-        className={`${className} rounded-full flex items-center justify-center bg-surface-container relative overflow-hidden flex-shrink-0 select-none border border-neutral-200/40`}
-      >
-        <LegacyIcon
-          name="smart_toy"
-          className={`${isLarge ? 'text-[22px]' : 'text-[18px]'} text-on-surface-variant`}
+        <img
+          src={brandSrc}
+          alt={name}
+          className={clutch ? 'w-full h-full object-cover' : 'w-[68%] h-[68%] object-contain'}
         />
       </div>
     );
   }
 
-  // Deterministic gradient avatar for agents without a tool brand.
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  
-  // Deterministic gradients
-  const gradients = [
-    { from: '#4F46E5', to: '#06B6D4' }, // Indigo to Cyan
-    { from: '#7C3AED', to: '#EC4899' }, // Violet to Pink
-    { from: '#10B981', to: '#3B82F6' }, // Emerald to Blue
-    { from: '#EF4444', to: '#F59E0B' }, // Red to Amber
-    { from: '#020617', to: '#3B82F6' }, // Dark Slate to Blue
-    { from: '#2563EB', to: '#8B5CF6' }  // Blue to Purple
-  ];
-  const grad = gradients[Math.abs(hash) % gradients.length];
-  
-  // Select first letters
-  const cleaned = name.replace(/[^a-zA-Z]/g, '');
-  const initial = cleaned.slice(0, 2).toUpperCase() || name.slice(0, 1).toUpperCase();
-  
-  // Patterns based on descriptor triggers
-  const isOrchestrator = name.toLowerCase().includes('orchestra') || description.toLowerCase().includes('parse') || description.toLowerCase().includes('dispatch');
-  const isBuilder = name.toLowerCase().includes('build') || name.toLowerCase().includes('code') || description.toLowerCase().includes('write') || description.toLowerCase().includes('generat');
-  const isAuditor = name.toLowerCase().includes('audit') || description.toLowerCase().includes('pixel') || description.toLowerCase().includes('quality');
-  const isEvaluator = name.toLowerCase().includes('eval') || name.toLowerCase().includes('qa') || description.toLowerCase().includes('validat');
-  
+  const iconSize = className.includes('w-12') ? 'text-[22px]' : 'text-[18px]';
   return (
-    <div className={`${className} rounded-full flex items-center justify-center text-white relative overflow-hidden shadow-inner flex-shrink-0 select-none border border-neutral-200/20`} style={{ background: `linear-gradient(135deg, ${grad.from}, ${grad.to})` }}>
-      {/* Background Graphic Lines representing systemic pipelines */}
-      <svg className="absolute inset-0 w-full h-full opacity-25 pointer-events-none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">
-        {isOrchestrator && (
-          <>
-            <circle cx="10" cy="10" r="2" fill="white" />
-            <circle cx="30" cy="10" r="2" fill="white" />
-            <circle cx="20" cy="30" r="3" fill="white" />
-            <line x1="10" y1="10" x2="20" y2="30" stroke="white" strokeWidth="1" />
-            <line x1="30" y1="10" x2="20" y2="30" stroke="white" strokeWidth="1" />
-          </>
-        )}
-        {isBuilder && (
-          <>
-            <rect x="12" y="12" width="16" height="16" rx="2" fill="none" stroke="white" strokeWidth="1.5" />
-            <line x1="12" y1="20" x2="28" y2="20" stroke="white" strokeWidth="1" />
-            <line x1="20" y1="12" x2="20" y2="28" stroke="white" strokeWidth="1" strokeDasharray="1 1" />
-          </>
-        )}
-        {isAuditor && (
-          <>
-            <circle cx="20" cy="20" r="10" fill="none" stroke="white" strokeWidth="1.2" strokeDasharray="2 2" />
-            <line x1="20" y1="8" x2="20" y2="32" stroke="white" strokeWidth="0.8" />
-          </>
-        )}
-        {isEvaluator && (
-          <>
-            <path d="M 12 20 L 18 26 L 28 14" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-          </>
-        )}
-        {!isOrchestrator && !isBuilder && !isAuditor && !isEvaluator && (
-          <circle cx="20" cy="20" r="8" fill="none" stroke="white" strokeWidth="0.8" />
-        )}
-      </svg>
-      
-      {/* Initials Text */}
-      <span className="font-mono text-[10px] font-extrabold tracking-wider z-10 drop-shadow-md">
-        {initial}
-      </span>
+    <div
+      className={`${className} rounded-full flex items-center justify-center bg-surface-container relative overflow-hidden flex-shrink-0 select-none border border-neutral-200/40`}
+    >
+      <LegacyIcon name="smart_toy" className={`${iconSize} text-on-surface-variant`} />
     </div>
   );
 }

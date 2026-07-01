@@ -48,19 +48,23 @@ def load_router() -> LLMProviderRouter:
         from src.custom_models import register_custom_models
 
         register_custom_models(router)
+        sync_local_ollama_models(router)
         load_keys_into_router(router, {})
+        _ensure_active_model_available(router)
         return router
     data = json.loads(path.read_text(encoding="utf-8"))
     data = maybe_migrate_config_file(path, data)
     from src.custom_models import register_custom_models
 
     register_custom_models(router)
+    sync_local_ollama_models(router)
     if model_id := data.get("active_model_id"):
         try:
             router.set_active_model(str(model_id))
         except KeyError:
             pass
     load_keys_into_router(router, data)
+    _ensure_active_model_available(router)
     return router
 
 
@@ -104,12 +108,63 @@ def hidden_model_ids() -> set[str]:
     return {str(item).strip() for item in raw if str(item).strip()}
 
 
+_OLLAMA_BASE_URL = "http://localhost:11434/v1"
+
+
+def local_ollama_tags() -> list[str]:
+    """Live tags from the local Ollama daemon (same source as /api/models/ollama)."""
+    try:
+        from src.adapters.ollama_adapter import get_ollama_models
+
+        return get_ollama_models()
+    except Exception:
+        return []
+
+
+def ollama_model_id_for_tag(tag: str) -> str:
+    import re
+
+    slug = re.sub(r"[^a-z0-9]+", "-", tag.lower()).strip("-")
+    return f"ollama-local-{slug}" if slug else "ollama-local-unknown"
+
+
+def sync_local_ollama_models(router: LLMProviderRouter) -> None:
+    """Register one router entry per locally installed Ollama tag (Agent modal uses the same list)."""
+    for tag in local_ollama_tags():
+        model_id = ollama_model_id_for_tag(tag)
+        router.register_model(
+            ModelSpec(
+                id=model_id,
+                name=f"{tag} (Ollama)",
+                provider_id="ollama",
+                api_model=tag,
+                base_url=_OLLAMA_BASE_URL,
+            )
+        )
+
+
+def _ensure_active_model_available(router: LLMProviderRouter) -> None:
+    """Drop persisted selections that are not installed on this machine (e.g. models.json from another Mac)."""
+    if is_model_available(router, router.active_model_id):
+        return
+    local_tags = set(local_ollama_tags())
+    candidates = [
+        spec
+        for spec in router.list_models()
+        if spec.provider_id == "ollama" and spec.api_model in local_tags
+    ]
+    candidates.sort(key=lambda spec: (0 if spec.id.startswith("ollama-local-") else 1, spec.id))
+    if candidates:
+        router.set_active_model(candidates[0].id)
+
+
 def is_model_available(router: LLMProviderRouter, model_id: str) -> bool:
     if model_id not in router._models:
         return False
-    provider_id: ProviderId = router._models[model_id].provider_id
+    spec = router._models[model_id]
+    provider_id: ProviderId = spec.provider_id
     if provider_id == "ollama":
-        return True
+        return spec.api_model in set(local_ollama_tags())
     return bool(router.get_api_key(provider_id))
 
 
@@ -164,12 +219,18 @@ def _dedupe_model_specs(specs: list[ModelSpec], *, active_model_id: str) -> list
 def serialize_models_config(router: LLMProviderRouter) -> dict[str, Any]:
     from src.custom_models import is_custom_model_id
 
+    sync_local_ollama_models(router)
     providers: dict[str, Any] = {}
     models: list[dict[str, Any]] = []
     hidden = hidden_model_ids()
+    local_tags = set(local_ollama_tags())
     for spec in _dedupe_model_specs(router.list_models(), active_model_id=router.active_model_id):
         if spec.id in hidden:
             continue
+        if spec.provider_id == "ollama":
+            is_dynamic = spec.id.startswith("ollama-local-")
+            if not is_dynamic and spec.api_model not in local_tags:
+                continue
         cred = resolve_provider_credential_source(router, spec.provider_id)
         providers.setdefault(
             spec.provider_id,

@@ -12,12 +12,13 @@ import type { FileTreeNode } from '../services/workspaceApi';
 import type { PermissionMode } from '../services/permissionApi';
 import { USER_CHAT_AVATAR, clutchStore, deleteChatMessage } from '../services/clutchState';
 import { resolveBrandLogoSrc } from '../services/brandLogos';
+import { clutchMarkUrl } from '../assets/brand';
+import { AgentChatAvatar } from './AgentChatAvatar';
 import {
   buildWorkflowReplyStepIndex,
   isWorkflowRefineEligible,
   resolveInProgressWorkflowStep,
 } from '../services/workflowAgentSteps';
-import { BrandLogo } from './BrandLogo';
 
 function outputEventLabel(type: OutputEvent['type'], t: (key: string) => string): string {
   switch (type) {
@@ -239,6 +240,10 @@ interface ChatFeedProps {
   permissionMode?: PermissionMode;
   onPermissionModeChange?: (mode: PermissionMode) => void;
   shellSessionStatus?: string;
+  shellPoolBlockerRunIds?: string[];
+  shellPoolBlockers?: Array<{ run_id: string; title?: string; agent_name?: string }>;
+  shellPoolQueuePosition?: number;
+  shellPoolQueueDepth?: number;
   userAvatar?: string;
   userName?: string;
 }
@@ -592,6 +597,10 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   permissionMode = 'ask',
   onPermissionModeChange,
   shellSessionStatus,
+  shellPoolBlockerRunIds = [],
+  shellPoolBlockers = [],
+  shellPoolQueuePosition = 0,
+  shellPoolQueueDepth = 0,
   userAvatar,
   userName = 'User',
 }) => {
@@ -899,25 +908,31 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                   isUser ? 'flex-row-reverse' : ''
                 }`}
               >
-                <div className="w-9 h-9 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center bg-surface-container">
-                  {avatarUrl ? (
-                    <img className="w-full h-full object-contain p-1" src={avatarUrl} alt={msg.agent} />
-                  ) : (
-                    <LegacyIcon
-                      name={
-                        msg.agent === 'Supervisor'
-                          ? 'verified_user'
-                          : msg.agent === 'User'
-                            ? 'person'
-                            : msg.agent === 'System'
-                              ? 'info'
-                              : 'smart_toy'
-                      }
-                      className="text-[18px] text-on-surface-variant"
-                    />
-
-                  )}
-                </div>
+                {isUser ? (
+                  <div className={`w-9 h-9 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center ${avatarUrl === clutchMarkUrl ? 'bg-black' : 'bg-surface-container'}`}>
+                    {avatarUrl ? (
+                      <img
+                        className={avatarUrl === clutchMarkUrl ? 'w-full h-full object-cover' : 'w-full h-full object-contain p-1'}
+                        src={avatarUrl}
+                        alt={msg.agent}
+                      />
+                    ) : (
+                      <LegacyIcon name="person" className="text-[18px] text-on-surface-variant" />
+                    )}
+                  </div>
+                ) : (
+                  <AgentChatAvatar
+                    src={avatarUrl}
+                    alt={msg.agent}
+                    fallbackIcon={
+                      msg.agent === 'Supervisor'
+                        ? 'verified_user'
+                        : msg.agent === 'System'
+                          ? 'info'
+                          : 'smart_toy'
+                    }
+                  />
+                )}
 
                 <div className="flex-1 space-y-1.5 overflow-hidden">
                   <div className={`flex items-center gap-2 ${isUser ? 'justify-end' : ''}`}>
@@ -1015,18 +1030,16 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
         {showThinking && (
           <div className="w-full flex justify-start mb-4">
             <div className="flex gap-4 max-w-[85%] p-2 rounded-xl">
-              <BrandLogo
+              <AgentChatAvatar
                 src={thinkingAgentLogo || activeAgentAvatar}
                 alt={thinkingAgentName || t('Clutch Agent')}
-                className="w-9 h-9 bg-surface-container"
-                imgClassName="w-[70%] h-[70%] object-contain"
               />
 
               <div className="flex-1 space-y-1.5 overflow-hidden">
                 <div className="flex items-center gap-2">
                   {renderAgentLabel(
                     thinkingAgentName || t('Clutch Agent'),
-                    t('Thinking...'),
+                    shellSessionStatus === 'queued_pool' ? t('Queued for shell...') : t('Thinking...'),
                     isPlainLlmChat ? undefined : engineHint,
                     thinkingAgentType || undefined,
                   )}
@@ -1168,6 +1181,12 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
               permissionMode={permissionMode}
               onPermissionModeChange={onPermissionModeChange ?? (() => {})}
               shellSessionStatus={shellSessionStatus}
+              shellPoolBlockerRunIds={shellPoolBlockerRunIds}
+              shellPoolBlockers={shellPoolBlockers}
+              shellPoolQueuePosition={shellPoolQueuePosition}
+              shellPoolQueueDepth={shellPoolQueueDepth}
+              currentRunId={sessionRunId}
+              resolveAgentLogo={resolveAgentLogo}
               onDismissHybridNotice={() => clutchStore.clearShellSessionNotice()}
               isFlowRefining={isRefining}
               workflowAgents={workflowAgentSteps}

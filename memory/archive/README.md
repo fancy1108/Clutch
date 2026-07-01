@@ -11,8 +11,8 @@ For current project state, see:
 - memory/DELIVERABLES.md
 - memory/ROADMAP.md
 
-Updated on: 2026-06-29
-Reason: archive index (edit only when adding new rotated files)
+Updated on: 2026-07-01
+Reason: Q3 PROGRESS rotation + DELIVERABLES cleanup
 
 ---
 
@@ -23,16 +23,18 @@ Reason: archive index (edit only when adding new rotated files)
 
 | 文件 | 内容 |
 |------|------|
-| `PROGRESS-2026-Q2.md` | 2026 Q2 会话日记（轮转前 54→10 会话） |
+| `PROGRESS-2026-Q2.md` | 2026 Q2 会话日记 |
+| `PROGRESS-2026-Q3.md` | 2026 Q3 轮转（OSR-06～22 等会话） |
 | `DELIVERABLES-M0.md` | M0 基座 Task 交付索引 |
 | `DELIVERABLES-M1.md` | M1 引擎 Task 交付索引 |
 | `DELIVERABLES-M2-M4-P2.md` | M2–M4、P2、D11/D12 等交付索引 |
 | `DELIVERABLES-M3.md` | M3 工具链相关交付（M3-F 等） |
 | `DELIVERABLES-POST-MVP.md` | D25 后迭代、UI 抛光、B-03 compaction 等 |
 | `DELIVERABLES-HRT.md` | D25 Hybrid Runtime HRT-00~10 |
-| `DELIVERABLES-OSR.md` | OSR T0–T1 及早期 T2 交付索引 |
+| `DELIVERABLES-OSR.md` | OSR T0–T2 及 OSR-16/17 交付索引 |
+| PROGRESS 会话 | `PROGRESS-2026-Q2.md` · `PROGRESS-2026-Q3.md` |
 
-**轮转：** 2026-06-29 首次执行文档生命周期治理。
+**轮转：** 2026-06-29 首次执行 · 2026-07-01 Q3 PROGRESS 轮转。
 
 ## 新建归档文件时（复制到文件顶部）
 

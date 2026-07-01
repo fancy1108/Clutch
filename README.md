@@ -1,171 +1,148 @@
 # Clutch
 
-本地 AI 多 Agent 编排与监督控制台（Tauri 桌面应用 + Python Sidecar）。
+**Local AI multi-agent orchestration & supervision — on your desktop.**
 
-## 这是什么
+[English](README.md) · [简体中文](README.zh-CN.md) · [**Getting Started**](docs/GETTING_STARTED.md#english) · [Releases](https://github.com/fancy1108/Clutch/releases)
 
-**Clutch** 面向独立开发者与技术运营人员，解决「单 Agent 对话上下文膨胀」和「多 Agent 协作过程黑盒、流程难改」两类工程痛点。它不是替代 Claude Code / Cursor 的生成能力，而是在本地加一层**可持久化、可观测、可编辑**的流程控制层：你在画布上零代码拖拽 SOP，系统用 LangGraph 调度本地 CLI、MCP 与大模型，并在统一工作台里全程监督执行与人工审批。
+> [!TIP]
+> **New here?** Read the **[Getting Started Guide](docs/GETTING_STARTED.md)** — install, first-launch wizard, and your first chat in ~5 minutes. No dev setup required.
 
-**技术栈：** Tauri 2 · React 19 · FastAPI + LangGraph · 本地优先（Sidecar `localhost:8123`）
+Clutch is a **desktop app** (Tauri + React) for developers and technical operators who want **visible, editable, multi-agent workflows** on top of tools you already use — Claude Code, Codex, Ollama, MCP, and cloud LLMs. Drag a SOP on a canvas; LangGraph runs it locally; you supervise chat, terminal, diffs, and approvals in one place.
 
-### 主要功能（概览）
+**Not a replacement for Claude Code or Cursor** — a **control layer** for long sessions and multi-agent pipelines.
 
-| 能力 | 说明 |
-|------|------|
-| **可视化工作流编排** | React Flow 画布定义多 Agent SOP，编译为 LangGraph 状态机运行 |
-| **本地 AI 工具接入** | 扫描并连接 Claude Code、Codex、Ollama、Aider 等本地 CLI |
-| **统一监督控制台** | Chat 流、终端日志、文件树、代码 Diff、流程进度一屏可见 |
-| **人机协同门控** | 高风险操作或检查失败时挂起，支持批准 / 打回 / 重试 |
-| **智能体与模型配置** | Agent Manager、模型 API Key、Skills 注册表、MCP 服务网关 |
-| **Hybrid 会话** | 多 Session 并行、工作流精修与自动续跑、状态跨会话恢复 |
+| | |
+|---|---|
+| **Stack** | Tauri 2 · React 19 · FastAPI + LangGraph · local-first (`localhost:8123`) |
+| **License** | See [LICENSE](LICENSE) |
+| **Latest release** | [v1.0.3](https://github.com/fancy1108/Clutch/releases) |
 
-> **想了解全部功能、架构细节与运行机制？** 请阅读 **[`docs/PRODUCT_INTRO.md`](./docs/PRODUCT_INTRO.md)**（产品介绍权威文档，含痛点分析、页面功能清单与数据流说明）。开发者架构叙事见 [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md)。
+### What's new in v1.0.3
 
-## 产品截图
+- **Hybrid shell pool queue** — when all CLI shell slots are busy, new plain-chat sessions queue globally with agent avatars in the input bar; auto-resume when a slot frees.
+- **OpenCode CLI** — first-class Hybrid routing for `opencode-cli` agents.
+- **Same-session message queue** — send while a turn runs; messages drain in order as **待发送消息**.
+- **Settings → Ollama** — model list syncs with local `ollama list`; stale `active_model_id` auto-falls back.
+- **Brand refresh** — new Clutch mark and desktop app icons.
 
-**Hybrid 工作流监督台** — 多 Agent 协作、流程进度与 Token 统计一屏可见：
+Full notes: [`CHANGELOG.md`](CHANGELOG.md#103---2026-07-01) · [`docs/releases/v1.0.3.md`](docs/releases/v1.0.3.md)
 
-![Clutch Hybrid 工作流监督台](./docs/images/Clutch_1.png)
+---
 
-**可视化 SOP 编排** — 在画布上零代码拖拽多 Agent 流水线：
+## Quick start (end users)
 
-![Clutch 工作流画布编排](./docs/images/Clutch_2.png)
+### Option A — Terminal install (recommended)
 
-## 仓库结构
-
-> 与磁盘一致（排除 `node_modules`、`.venv`、`dist` 等构建产物）。治理层五层标注见 [`docs/document-governance.md`](./docs/document-governance.md)。
-
-```
-clutch/
-├── README.md                       # 项目入口（本页）
-├── LICENSE · CHANGELOG.md          # 开源与版本（GitHub 约定放根目录）
-├── SECURITY.md · CODE_OF_CONDUCT.md · CONTRIBUTING.md
-├── CLAUDE.md · AGENTS.md           # Layer 1 — 治理与多 AI 工具索引
-├── package.json · pnpm-workspace.yaml · .env.example
-├── scripts/                        # verify · tauri-dev · doctor · release-preflight
-├── apps/desktop/                   # Tauri + React 桌面端
-├── services/orchestrator/          # Python Sidecar（LangGraph）
-├── packages/shared-types/
-├── workflows/                      # Workflow JSON Schema + 内置模板
-├── docs/                           # 产品与架构文档 → docs/README.md
-├── memory/                         # Layer 3 — Agent 跨会话运行态
-├── specs/core/                     # Layer 2 — 需求/任务历史快照
-├── e2e/ · experiments/ · runs/
-└── .github/ · .husky/ · .cursor/   # CI · hooks · Agent 规则指针
-```
-
-**解耦原则**：`apps/desktop` 与 `services/orchestrator` 仅通过 loopback HTTP/WebSocket 通信（开发 `8124`，打包 `8123`）。
-
-## 文档地图
-
-**完整索引：** [`docs/README.md`](./docs/README.md)（按角色分组）。
-
-### 根目录（社区与治理）
-
-| 文件 | 用途 |
-|------|------|
-| [`CLAUDE.md`](./CLAUDE.md) | **唯一权威**：铁律、命令、Check-in、日志规范 |
-| [`AGENTS.md`](./AGENTS.md) | 多 AI 工具入口索引 |
-| [`CONTRIBUTING.md`](./CONTRIBUTING.md) | 如何贡献、Phase 1 PR 政策 |
-| [`SECURITY.md`](./SECURITY.md) · [`CODE_OF_CONDUCT.md`](./CODE_OF_CONDUCT.md) | 漏洞报告 · 社区准则 |
-| [`CHANGELOG.md`](./CHANGELOG.md) | 版本变更（当前 **1.0.1**） |
-
-### 产品与架构（`docs/`）
-
-| 文件 | 用途 |
-|------|------|
-| [`docs/PRODUCT_INTRO.md`](./docs/PRODUCT_INTRO.md) | **推荐首读**：定位、功能、运行机制 |
-| [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) | 系统架构、工作流、WebSocket |
-| [`docs/UI_UX_GUIDELINES.md`](./docs/UI_UX_GUIDELINES.md) | 前端 React + Tailwind 规范 |
-| [`docs/INSTALL.md`](./docs/INSTALL.md) · [`docs/BUILD_FROM_SOURCE.md`](./docs/BUILD_FROM_SOURCE.md) | 安装 DMG / Windows · 源码构建 |
-| [`docs/UPDATES.md`](./docs/UPDATES.md) | macOS 应用内更新（维护者 go-live 清单） |
-| [`docs/OPEN_SOURCE_RELEASE.md`](./docs/OPEN_SOURCE_RELEASE.md) | 开源排期 OSR-xx |
-
-### Agent 运行态（`memory/`）
-
-| 文件 | 用途 |
-|------|------|
-| [`memory/PROGRESS.md`](./memory/PROGRESS.md) | 跨会话进度接力 |
-| [`memory/FILEMAP.md`](./memory/FILEMAP.md) | 改代码去哪个文件 |
-| [`memory/DECISIONS.md`](./memory/DECISIONS.md) | 架构决策与开放问题 |
-
-## 兼容性
-
-> 详细稳定性见 [`docs/STABILITY.md`](./docs/STABILITY.md)。当前 `1.0.x` 遵循语义化版本；历史 pre-1.0 版本可能包含 breaking change。
-
-### 平台
-
-| 项 | 支持级别 |
-|----|----------|
-| macOS 14+（Apple Silicon） | ✅ 官方主要目标；**v1.0.2+ 支持应用内更新** |
-| macOS 14+（Intel） | ⚠️ 尽力支持，未充分测试 |
-| macOS 13 及更早 | ⚠️ 不保证 |
-| Windows 10/11（x64） | ⚠️ v1.0.2+ 提供 MSI/NSIS；**CI 构建已通过，维护者尚未在实体机完整验收**；无应用内更新 |
-| Linux | 🚧 无官方安装包 |
-
-### 开发工具链（源码构建）
-
-| 组件 | 版本要求 |
-|------|----------|
-| Node.js | **≥ 20**（推荐 22 LTS） |
-| pnpm | **≥ 9**（仓库锁定 `9.15.0`） |
-| Python | **≥ 3.11**（CI 使用 3.11） |
-| [uv](https://docs.astral.sh/uv/) | 最新稳定版 |
-| Rust | 最新 stable（仅 `pnpm tauri build` 时需要） |
-| Windows 构建工具 | Visual Studio 2022 C++ Build Tools + Windows 10/11 SDK |
-
-环境自检：
+**macOS (Apple Silicon) — pick one:**
 
 ```bash
-./scripts/doctor.sh
+# One-liner (no Homebrew required)
+curl -fsSL https://raw.githubusercontent.com/fancy1108/Clutch/main/scripts/install.sh | bash
 ```
-
-## 快速开始
-
-**前置**：Node 20+、pnpm 9+、Python 3.11+、[uv](https://docs.astral.sh/uv/)、Rust（Tauri 打包时）
 
 ```bash
-pnpm install
+# If you already use Homebrew
+brew tap fancy1108/clutch
+brew install --cask clutch
 ```
 
-启动与校验命令见 [`CLAUDE.md`](./CLAUDE.md) §核心命令。
+**Windows (x64 · not yet verified on hardware):**
 
-## 安装方式
+```powershell
+irm https://raw.githubusercontent.com/fancy1108/Clutch/main/scripts/install.ps1 | iex
+```
 
-> ### ⚠️ 未签名 DMG · 首次安装必读
->
-> 当前 Release 中的 `.dmg` **未经 Apple 签名/公证**。macOS 可能提示「**无法验证开发者**」或「**应用已损坏**」——**这是 Gatekeeper 对未签名应用的正常反应，不是病毒，也不是包坏了。**
->
-> **复制粘贴即可用（终端）：**
->
-> ```bash
-> xattr -cr /Applications/Clutch.app && open -a Clutch
-> ```
->
-> 或：**应用程序** → 右键 **Clutch** → **打开** → 确认打开。  
-> 详细说明与免责：[`docs/INSTALL.md`](./docs/INSTALL.md) · 每次 Release 说明见 [GitHub Releases](https://github.com/fancy1108/Clutch/releases)。
+Pin a version: `CLUTCH_VERSION=v1.0.3` before running either script.
 
-### 从 Release 安装（终端用户 · macOS）
+Install channels (maintainers): [`docs/RELEASE_MAINTAINER.md`](docs/RELEASE_MAINTAINER.md)
 
-从 [GitHub Releases](https://github.com/fancy1108/Clutch/releases) 下载 **macOS `.dmg`**（当前版本为未签名构建，这也是开源桌面应用的常见分发方式）：
+### Option B — Manual download
 
-1. 下载对应架构的 DMG（Apple Silicon 选 `aarch64`）并拖入 **Applications**
-2. **首次打开**若被 Gatekeeper 拦截（含「**已损坏**」文案），任选其一：
-   - **Finder**：右键 **Clutch.app** → **打开** → 确认打开
-   - **终端（推荐，可复制）**：`xattr -cr /Applications/Clutch.app && open -a Clutch`
-3. 约 5s 内侧车应就绪：`curl -s http://127.0.0.1:8123/health` → `{"status":"ok"}`
+**1. Download** — [GitHub Releases](https://github.com/fancy1108/Clutch/releases)
 
-维护者发版：打 tag `v1.0.0`（或后续 `v1.x.x`）触发 [`.github/workflows/release.yml`](./.github/workflows/release.yml) 自动构建并上传 DMG；或本机 `cd apps/desktop && pnpm tauri build` 后手动上传到 Release。
+| Platform | File | Status |
+|----------|------|--------|
+| macOS (Apple Silicon) | `Clutch_*_aarch64.dmg` | ✅ Verified |
+| Windows 10/11 x64 | `Clutch_*_x64-setup.exe` or `.msi` | ⚠️ **Not yet verified** on physical hardware |
 
-完整安装说明见 [`docs/INSTALL.md`](./docs/INSTALL.md)；数据与隐私见 [`docs/DATA_AND_PRIVACY.md`](./docs/DATA_AND_PRIVACY.md)。获得 Apple Developer 账号后，可再提供代码签名与公证的安装包。
+> [!WARNING]
+> **Windows:** Installers are built in CI and attached to Releases, but maintainers have **not completed full smoke testing on real Windows 10/11 machines** yet. Expect rough edges; please [open an Issue](https://github.com/fancy1108/Clutch/issues/new/choose) with your OS version and installer filename if something breaks. Tracking: [#23](https://github.com/fancy1108/Clutch/issues/23).
 
-**macOS 应用内更新（v1.0.2+）：** 启动后自动检查新版本并显示横幅；**v1.0.0 / v1.0.1 须先手动安装 v1.0.2 一次**。详见 [`docs/UPDATES.md`](./docs/UPDATES.md)。
+**2. First open (macOS unsigned build)** — Gatekeeper may block the app. This is normal for unsigned OSS desktop apps:
 
-### Windows 安装
+```bash
+xattr -cr /Applications/Clutch.app && open -a Clutch
+```
 
-从 [GitHub Releases](https://github.com/fancy1108/Clutch/releases) 下载 `Clutch_*_x64-setup.exe`（向导安装）或 `Clutch_*_x64_en-US.msi`。当前构建未进行 Windows 代码签名；若 SmartScreen 提示未知发布者，请核对 `SHA256SUMS.txt` 与来源后选择继续。**v1.0.2 起：** Windows 包由 CI 构建并附在 Release 页；维护者尚未在实体 Win10/11 上完成完整人工 smoke，欢迎通过 Issue 反馈。应用安装到 `C:\Program Files\Clutch`，数据保存在 `%APPDATA%\clutch`，API Key 使用 Windows 凭据管理器。**Windows 暂无应用内更新**，新版本请重新下载安装包。
+Or: **Applications** → right-click **Clutch** → **Open** → confirm.
 
-### 从源码构建（开发者）
+**3. Follow the setup wizard** — workspace → model or CLI → tools → done.
+
+**4. New Chat** — pick an agent, send a message.
+
+→ **Full walkthrough:** [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md#english) · **Install details:** [`docs/INSTALL.md`](docs/INSTALL.md)
+
+---
+
+## What you can do
+
+| Capability | In plain terms |
+|------------|----------------|
+| **Visual workflows** | Drag agents on a canvas; Clutch compiles to LangGraph and runs the SOP |
+| **Local CLI bridge** | Connect Claude Code, Codex, Ollama, Aider, Rivet, … from Settings → Tools |
+| **One supervision desk** | Chat, terminal, file tree, diffs, and flow progress in one window |
+| **Human-in-the-loop** | Pause on risky steps; approve, reject, or retry with instructions |
+| **Agents & models** | Custom agents, API keys, Skills registry, MCP servers |
+| **Hybrid sessions** | Multiple sessions, workflow refine, state across restarts |
+
+Deep dive: [`docs/PRODUCT_INTRO.md`](docs/PRODUCT_INTRO.md) · Architecture: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+
+---
+
+## Screenshots
+
+**Hybrid workflow console** — multi-agent run, progress, and token stats:
+
+![Clutch Hybrid workflow console](./docs/images/Clutch_1.png)
+
+**Visual SOP editor** — zero-code multi-agent pipeline on a canvas:
+
+![Clutch workflow canvas](./docs/images/Clutch_2.png)
+
+---
+
+## Documentation
+
+| I want to… | Read |
+|------------|------|
+| **Get started (recommended)** | [**`docs/GETTING_STARTED.md`**](docs/GETTING_STARTED.md) |
+| Install DMG / Windows | [`docs/INSTALL.md`](docs/INSTALL.md) |
+| Understand all features | [`docs/PRODUCT_INTRO.md`](docs/PRODUCT_INTRO.md) |
+| macOS in-app updates | [`docs/UPDATES.md`](docs/UPDATES.md) |
+| Build from source | [`docs/BUILD_FROM_SOURCE.md`](docs/BUILD_FROM_SOURCE.md) |
+| Contribute | [`CONTRIBUTING.md`](CONTRIBUTING.md) (PRs to **`dev`**) |
+| Report a security issue | [`SECURITY.md`](SECURITY.md) |
+
+Full index: [`docs/README.md`](docs/README.md) · **Maintainers:** [`docs/RELEASE_MAINTAINER.md`](docs/RELEASE_MAINTAINER.md)
+
+---
+
+## Compatibility
+
+Details: [`docs/STABILITY.md`](docs/STABILITY.md)
+
+| Platform | Support |
+|----------|---------|
+| macOS 14+ (Apple Silicon) | ✅ Primary target · in-app updates v1.0.2+ |
+| macOS 14+ (Intel) | ❌ **Not supported** — Apple Silicon DMG only; source build at your own risk |
+| Windows 10/11 x64 | ⚠️ MSI/NSIS from v1.0.2 · CI built · **not yet verified on physical Windows hardware** ([#23](https://github.com/fancy1108/Clutch/issues/23)) |
+| Linux | 🚧 No official installer |
+
+**Dev toolchain** (source only): Node ≥ 20, pnpm ≥ 9, Python ≥ 3.11, [uv](https://docs.astral.sh/uv/), Rust (for `tauri build`). Run `./scripts/doctor.sh` to check.
+
+---
+
+## For developers
 
 ```bash
 git clone https://github.com/fancy1108/Clutch.git
@@ -173,28 +150,42 @@ cd Clutch
 ./scripts/doctor.sh
 pnpm install
 cd services/orchestrator && uv sync --extra dev && cd ../..
-export CLUTCH_RUNTIME_MODE=hybrid   # 可选
+export CLUTCH_RUNTIME_MODE=hybrid   # optional
 pnpm tauri:dev
 ```
 
-逐步说明、分拆调试与本地打 DMG / Windows 安装包：[`docs/BUILD_FROM_SOURCE.md`](./docs/BUILD_FROM_SOURCE.md)。
+Commands & discipline: [`CLAUDE.md`](CLAUDE.md) · Before PR: `./scripts/verify.sh`
 
-**贡献前**请阅读 [`CONTRIBUTING.md`](./CONTRIBUTING.md)，从 **`dev`** 分支开 PR（不要对 `main` 提功能 PR），并运行 `./scripts/verify.sh`。
+---
 
-## 安全与 CLI 权限（重要）
+## Security & CLI permissions
 
-Clutch 通过本地 Sidecar（`127.0.0.1:8123` / 开发 `8124`）调度外部 AI CLI。请在使用前了解以下**当前版本**行为：
+Clutch talks to local AI CLIs through a loopback Sidecar (`127.0.0.1:8123`).
 
-### CLI 默认跳过内置确认（`--dangerously-skip-permissions`）
+> [!IMPORTANT]
+> For **Claude Code** and **Antigravity (agy)** CLIs, Clutch **defaults** to `--dangerously-skip-permissions` so workflows can run without per-tool CLI prompts. Only use on workspaces you trust. The in-chat Permission menu controls **MCP gating for built-in agents**, not this CLI default.
 
-对 **Claude Code CLI**（`claude-cli`）与 **Antigravity CLI**（`agy-cli`）等已接入的引擎，Clutch **默认**在调用时追加 `--dangerously-skip-permissions`。这会**绕过**对应 CLI 自身的工具/写入确认提示，以便工作流与 Hybrid 会话自动跑通。
+Report vulnerabilities: [`SECURITY.md`](SECURITY.md)
 
-| 含义 | 说明 |
-|------|------|
-| **适用场景** | 你已信任当前授权工作区，且接受 Agent 在该目录内自动执行工具调用 |
-| **风险** | CLI 可在工作区（及 CLI 自身权限可达范围）内改文件、跑命令，**不会**再逐项询问 |
-| **UI 中的 Permission 菜单** | 聊天栏旁 `ask` / `auto_edit` / `plan` / `full` 主要作用于 **Clutch 内置 Agent 的 MCP 门控**；**不改变**上述 CLI 的 `skip-permissions` 默认行为 |
+---
 
-**权限策略声明：** 现阶段默认维持跳过确认的设定。后续若安全策略调整为默认 `ask`（逐次询问），将同步更新本文与 [`SECURITY.md`](./SECURITY.md)。
+## Repository layout
 
-漏洞报告见 [`SECURITY.md`](./SECURITY.md)。Sidecar 仅监听本机回环地址。
+```
+clutch/
+├── apps/desktop/           # Tauri + React UI
+├── services/orchestrator/  # Python Sidecar (LangGraph)
+├── docs/                   # Product & install docs
+├── workflows/              # Workflow schemas & templates
+└── scripts/                # verify · doctor · release
+```
+
+Frontend and Sidecar communicate only over loopback HTTP/WebSocket (dev `8124`, packaged `8123`).
+
+---
+
+## Community
+
+- **Questions / bugs:** [GitHub Issues](https://github.com/fancy1108/Clutch/issues/new/choose)
+- **Contributing:** [`CONTRIBUTING.md`](CONTRIBUTING.md) · [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)
+- **Changelog:** [`CHANGELOG.md`](CHANGELOG.md)

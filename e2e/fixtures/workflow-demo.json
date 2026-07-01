@@ -1,0 +1,73 @@
+{
+  "id": "workflow-demo",
+  "name": "Workflow Demo",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "step-1782713286720",
+      "type": "agent_task",
+      "position": { "x": 250, "y": 50 },
+      "data": {
+        "label": "1-Product Manager",
+        "agent": "agent-1782713038589",
+        "instruction": "资深的 B 端产品经理"
+      }
+    },
+    {
+      "id": "step-1782713293279",
+      "type": "agent_task",
+      "position": { "x": 250, "y": 150 },
+      "data": {
+        "label": "2-UX Designer",
+        "agent": "agent-1782713085784",
+        "instruction": "交互设计师"
+      }
+    },
+    {
+      "id": "step-1782713301238",
+      "type": "agent_task",
+      "position": { "x": 250, "y": 250 },
+      "data": {
+        "label": "3-UI Prompt Engineer",
+        "agent": "agent-1782713123506",
+        "instruction": "视觉提示词专家"
+      }
+    },
+    {
+      "id": "step-1782713307614",
+      "type": "agent_task",
+      "position": { "x": 250, "y": 350 },
+      "data": {
+        "label": "4-UI Generator",
+        "agent": "agent-1782713167382",
+        "instruction": "UI 渲染器"
+      }
+    },
+    {
+      "id": "step-1782713314059",
+      "type": "agent_task",
+      "position": { "x": 250, "y": 450 },
+      "data": {
+        "label": "5-Design Reviewer",
+        "agent": "agent-1782713213920",
+        "instruction": "设计评审官"
+      }
+    },
+    {
+      "id": "end",
+      "type": "end",
+      "position": { "x": 250, "y": 680 },
+      "data": { "label": "Finish" }
+    }
+  ],
+  "edges": [
+    { "id": "e1", "source": "start", "target": "step-1782713286720" },
+    { "id": "e2", "source": "step-1782713286720", "target": "step-1782713293279" },
+    { "id": "e3", "source": "step-1782713293279", "target": "step-1782713301238" },
+    { "id": "e4", "source": "step-1782713301238", "target": "step-1782713307614" },
+    { "id": "e5", "source": "step-1782713307614", "target": "step-1782713314059" },
+    { "id": "e6", "source": "step-1782713314059", "target": "end" }
+  ],
+  "icon": "deployed_code",
+  "description": ""
+}

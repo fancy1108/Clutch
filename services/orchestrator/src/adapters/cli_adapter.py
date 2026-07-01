@@ -446,6 +446,7 @@ _CLI_BINARY_LABELS: dict[str, str] = {
     "codex-cli": "codex",
     "aider-cli": "aider",
     "rivet-cli": "rivet",
+    "opencode-cli": "opencode",
 }
 
 

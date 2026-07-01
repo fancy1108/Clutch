@@ -64,6 +64,26 @@ def shell_session_status_for_rejection(code: str) -> str:
     return f"rejected_{code}"
 
 
+def shell_session_status_for_pool_queue() -> str:
+    return "queued_pool"
+
+
+def plain_chat_turn_in_progress(
+    *,
+    plain_chat_task_done: bool,
+    state: Mapping[str, Any],
+    hybrid_runtime: bool,
+) -> bool:
+    """True when a new plain-chat WS message should queue instead of starting a turn."""
+    if not plain_chat_task_done:
+        return True
+    return (
+        hybrid_runtime
+        and not state.get("workflow_id")
+        and state.get("status") == "running"
+    )
+
+
 def clear_stale_shell_rejection_status(state: Mapping[str, Any]) -> dict[str, Any] | None:
     """Drop persisted rejected_* when run is idle (queue supersedes run_in_progress)."""
     raw = state.get("shell_session_status")

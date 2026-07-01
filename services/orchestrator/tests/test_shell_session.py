@@ -274,3 +274,22 @@ def test_pool_full_when_all_busy(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(ShellSession, "_spawn", lambda self: None)
     with pytest.raises(ShellSessionPoolFullError):
         manager.get_or_create("run-new", workspace_path="/tmp")
+
+
+def test_pool_has_capacity_when_slot_available(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("CLUTCH_SHELL_MAX_SESSIONS", "1")
+    manager = ShellSessionManager()
+    assert manager.pool_has_capacity("run-new") is True
+
+
+def test_pool_has_capacity_false_when_all_busy(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("CLUTCH_SHELL_MAX_SESSIONS", "1")
+    manager = ShellSessionManager()
+    manager._sessions["run-busy"] = ShellSession(
+        run_id="run-busy",
+        workspace_path="/tmp",
+        state=SessionState.BUSY,
+        master_fd=1,
+        pid=1,
+    )
+    assert manager.pool_has_capacity("run-new") is False

@@ -36,6 +36,11 @@ _REGISTRY: dict[str, ProviderSpec] = {
         RuntimeStrategy.SHELL_EXEC,
         exec_template='aider --message "{prompt}"',
     ),
+    "opencode-cli": ProviderSpec(
+        "opencode-cli",
+        RuntimeStrategy.SHELL_EXEC,
+        exec_template='opencode run --auto "{prompt}"',
+    ),
     "ollama-cli": ProviderSpec("ollama-cli", RuntimeStrategy.HTTP_DAEMON),
 }
 

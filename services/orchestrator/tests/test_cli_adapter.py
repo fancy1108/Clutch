@@ -264,3 +264,14 @@ def test_run_cli_tolerates_rivet_exit_one_with_stdout() -> None:
         run_cli_fn=fake_run_cli,
     )
     assert out == "天枢在此"
+
+
+def test_compose_cli_argv_opencode_run_auto() -> None:
+    cmd = compose_cli_argv(
+        binary="opencode",
+        effective_prompt="nihao",
+        prompt_flag="",
+        conversation_mode="history_only",
+        extra_args=["run", "--auto"],
+    )
+    assert cmd == ["opencode", "run", "--auto", "nihao"]

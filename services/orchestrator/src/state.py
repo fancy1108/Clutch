@@ -26,6 +26,10 @@ class ClutchState(TypedDict):
     cli_session_agent_id: str
     hybrid_executions: NotRequired[dict[str, dict[str, object]]]
     shell_session_status: NotRequired[str]
+    shell_pool_blocker_run_ids: NotRequired[list[str]]
+    shell_pool_blockers: NotRequired[list[dict[str, str]]]
+    shell_pool_queue_position: NotRequired[int]
+    shell_pool_queue_depth: NotRequired[int]
     refining_node_id: NotRequired[str]
     refine_draft_output: NotRequired[str]
     refine_agent_id: NotRequired[str]

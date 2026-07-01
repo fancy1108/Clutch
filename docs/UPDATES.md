@@ -1,6 +1,6 @@
 # Clutch — 应用内自动更新（OSR-20）
 
-> **状态：Go-live ✅（v1.0.2，2026-07-01）** — [Release](https://github.com/fancy1108/Clutch/releases/tag/v1.0.2) 已挂 `latest.json`、`Clutch.app.tar.gz`、`.sig`。Loop 见 `release/1.0.3-loop`（v1.0.3）。
+> **状态：Go-live ✅（v1.0.2，2026-07-01）** — [Release v1.0.2](https://github.com/fancy1108/Clutch/releases/tag/v1.0.2) 已挂 `latest.json`、`Clutch.app.tar.gz`、`.sig`。**v1.0.3** — tag + DMG + updater 资产已发布（2026-07-01）；`latest.json` 指向 1.0.3。
 
 ---
 
@@ -78,7 +78,7 @@ gh secret set TAURI_SIGNING_PRIVATE_KEY --repo fancy1108/Clutch < ~/.clutch-upda
 - [x] 更新 `CHANGELOG.md`、`docs/releases/v1.0.2.md`、`PRODUCT_INTRO.md`
 - [x] Release 说明：v1.0.0/1.0.1 用户须手动安装本版一次
 
-**下一版（如 v1.0.3）重复：** 打 tag → 确认 DMG 在 Release → 跑 updater workflow（同一 `release_tag`）→ 验证 `latest.json` → 更新 CHANGELOG / 快照。
+**下一版（如 v1.0.3）重复：** 打 tag → 确认 DMG 在 Release → （可选）CI 自动同步 Homebrew tap 或 AI 跑 `sync-homebrew-tap.sh` → 跑 updater workflow → 验证 `latest.json` → 更新 CHANGELOG / 快照。详见 [`RELEASE_MAINTAINER.md`](./RELEASE_MAINTAINER.md)。
 
 ---
 
