@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Clutch mark">
+  <title>Clutch mark</title>
+  <circle cx="32" cy="32" r="32" fill="#000000"/>
+  <path
+    fill="none"
+    stroke="#FFFFFF"
+    stroke-width="5.5"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    d="M39.5 24.5A11 11 0 1 0 39.5 39.5"
+  />
+</svg>

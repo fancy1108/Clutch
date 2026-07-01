@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Clutch — Local multi-agent orchestration. Zero-code SOP, LangGraph, local CLI routing." />
+  <meta name="theme-color" content="#ffffff" />
+  <title>Clutch</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #ffffff;
+      --bg-soft: #f4f5f8;
+      --ink: #111214;
+      --muted: #484f5c;
+      --line: #e2e5ec;
+      --brand: #1d2447;
+      --brand-light: #3d4f8c;
+      --brand-glow: #4a5fad;
+      --accent: #1d2447;
+      --dark: #0e1014;
+      --dark-card: #161922;
+      --mono: "JetBrains Mono", monospace;
+      --sans: "Hanken Grotesk", system-ui, sans-serif;
+      --max: 1120px;
+      --radius: 16px;
+      --ease: cubic-bezier(0.22, 1, 0.36, 1);
+      --space-xs: 8px;
+      --space-sm: 12px;
+      --space-md: 16px;
+      --space-lg: 24px;
+      --space-xl: 40px;
+      --space-2xl: 64px;
+      --space-3xl: clamp(56px, 8vw, 96px);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+    h1, h2, h3 { text-wrap: balance; letter-spacing: -0.03em; }
+    p { text-wrap: pretty; }
+    a { color: inherit; text-decoration: none; }
+    img, svg { display: block; max-width: 100%; }
+
+    .wrap { width: min(var(--max), 100% - clamp(32px, 5vw, 48px)); margin-inline: auto; }
+
+    /* Header */
+    .top {
+      position: sticky; top: 0; z-index: 50;
+      background: var(--bg);
+      border-bottom: 1px solid var(--line);
+    }
+    .top-inner {
+      height: 68px; display: flex; align-items: center; justify-content: space-between; gap: var(--space-md);
+    }
+    .logo { display: flex; align-items: center; gap: 11px; color: var(--brand); flex-shrink: 0; }
+    .logo-mark {
+      width: 38px; height: 38px; border-radius: 50%;
+      flex-shrink: 0; display: block; object-fit: contain;
+    }
+    .logo-mark.sm { width: 34px; height: 34px; }
+    .logo-copy { display: flex; flex-direction: column; gap: 1px; line-height: 1.15; }
+    .logo-name { font-weight: 700; font-size: 18px; letter-spacing: -0.03em; color: var(--brand); }
+    .logo-author { font-size: 11px; font-weight: 500; color: var(--muted); letter-spacing: 0.03em; }
+    .nav { display: flex; align-items: center; gap: 28px; }
+    .nav a:not(.btn) { font-size: 14px; color: var(--muted); transition: color .2s; }
+    .nav a:not(.btn):hover { color: var(--ink); }
+    .nav a:not(.btn):focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; border-radius: 4px; }
+    .top-right { display: flex; align-items: center; gap: 10px; }
+    .lang {
+      display: flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden;
+      font-family: var(--mono); font-size: 11px;
+    }
+    .lang button {
+      padding: 6px 12px; border: none; background: transparent; color: var(--muted); cursor: pointer;
+    }
+    .lang button.on { background: var(--brand); color: #fff; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 10px 20px; font-size: 14px; font-weight: 600; border-radius: 999px;
+      border: 1px solid transparent; transition: transform .2s var(--ease), background .2s;
+    }
+    .btn:hover { transform: translateY(-1px); }
+    .btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
+    .btn-fill { background: var(--ink); color: #fff; }
+    .btn-fill:hover { background: #000; }
+    .btn-line { border-color: var(--line); color: var(--ink); background: #fff; }
+    .menu { display: none; border: none; background: none; padding: 8px; cursor: pointer; color: var(--ink); }
+    .menu:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 6px; }
+
+    /* Hero */
+    .hero {
+      padding: clamp(64px, 10vw, 108px) 0 clamp(56px, 8vw, 80px);
+      overflow: hidden;
+    }
+    .hero-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: clamp(40px, 6vw, 72px); align-items: center;
+    }
+    .hero h1 {
+      font-size: clamp(2.25rem, 4.8vw, 3.65rem); font-weight: 700; line-height: 1.06;
+      color: var(--ink); margin-bottom: var(--space-lg); max-width: 13ch;
+    }
+    .hero p {
+      font-size: clamp(15px, 1.5vw, 17px); color: var(--muted); max-width: 38ch;
+      margin-bottom: var(--space-xl); line-height: 1.65;
+    }
+    .hero-btns { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+    .wechat-float {
+      position: fixed;
+      right: clamp(18px, 3vw, 32px);
+      bottom: clamp(18px, 3vw, 32px);
+      z-index: 40;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+      pointer-events: none;
+    }
+    .wechat-float-label {
+      font-size: 11px; font-weight: 500; color: var(--muted);
+      padding: 3px 10px; border-radius: 999px;
+      background: rgba(255, 255, 255, 0.94);
+      border: 1px solid var(--line);
+      box-shadow: 0 4px 16px rgba(17, 22, 40, 0.06);
+      pointer-events: none;
+    }
+    .wechat-float .wechat-chip { pointer-events: auto; box-shadow: 0 8px 28px rgba(17, 22, 40, 0.12); }
+    .wechat-chip {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 9px 16px 9px 18px; border-radius: 999px; cursor: pointer;
+      border: 1px solid color-mix(in srgb, var(--brand) 24%, var(--line));
+      background: #fff; color: var(--brand);
+      font-family: var(--mono); font-size: 15px; font-weight: 700;
+      letter-spacing: 0.03em; transition: background .2s, border-color .2s, transform .2s var(--ease);
+    }
+    .wechat-chip:hover { background: color-mix(in srgb, var(--brand) 7%, #fff); border-color: var(--brand); transform: translateY(-1px); }
+    .wechat-chip:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
+    .wechat-chip svg { width: 15px; height: 15px; opacity: 0.55; flex-shrink: 0; }
+    .wechat-chip.done { border-color: #16a34a; color: #15803d; }
+
+    .hero-oss {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+      padding: 5px 12px 5px 8px;
+      border-radius: 999px;
+      border: 1px solid color-mix(in srgb, var(--brand) 18%, var(--line));
+      background: color-mix(in srgb, var(--brand) 5%, #fff);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--brand);
+    }
+    .hero-oss svg { width: 16px; height: 16px; flex-shrink: 0; }
+    .hero-oss span { color: var(--muted); font-weight: 500; }
+
+    .btn-gh {
+      border-color: var(--brand);
+      color: var(--brand);
+      background: color-mix(in srgb, var(--brand) 6%, #fff);
+    }
+    .btn-gh:hover { background: color-mix(in srgb, var(--brand) 12%, #fff); }
+
+    /* Isometric integration grid */
+    .iso-board {
+      position: relative;
+      width: 100%;
+      max-width: 620px;
+      height: clamp(400px, 48vw, 520px);
+      margin-inline: auto;
+      perspective: 1200px;
+    }
+    .iso-board::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      bottom: 4%;
+      width: 88%;
+      height: 56px;
+      transform: translateX(-50%);
+      background: radial-gradient(ellipse 85% 100% at 50% 50%, rgba(17, 22, 40, 0.09), transparent 70%);
+      pointer-events: none;
+    }
+    .iso-floor {
+      --iso-x: 54px;
+      --iso-y: 31px;
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 0;
+      height: 0;
+      transform: rotateX(56deg) rotateZ(-45deg) scale(1.1);
+      transform-style: preserve-3d;
+    }
+    .iso-ghost {
+      --sz: 56px;
+      position: absolute;
+      width: var(--sz);
+      height: var(--sz);
+      left: calc((var(--gx) - var(--gy)) * var(--iso-x) - var(--sz) / 2);
+      top: calc((var(--gx) + var(--gy)) * var(--iso-y) - var(--sz) / 2);
+      border-radius: 16px;
+      background: linear-gradient(180deg, #f8f9fb 0%, #eef0f4 100%);
+      border: 1px solid rgba(17, 22, 40, 0.04);
+      box-shadow:
+        2px 4px 0 #e4e7ee,
+        0 10px 20px rgba(17, 22, 40, 0.05);
+      z-index: 0;
+    }
+    .iso-tile {
+      --sz: 58px;
+      position: absolute;
+      width: var(--sz);
+      height: var(--sz);
+      left: calc((var(--gx) - var(--gy)) * var(--iso-x) - var(--sz) / 2);
+      top: calc((var(--gx) + var(--gy)) * var(--iso-y) - var(--sz) / 2);
+      z-index: calc(20 + var(--gx) + var(--gy));
+    }
+    .iso-tile.far { opacity: .52; filter: saturate(0.85); z-index: 2; }
+    .iso-tile.hub { --sz: 88px; z-index: 50; }
+    .iso-tile .slab-top {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      border-radius: 18px;
+      background: #fff;
+      border: 1px solid rgba(17, 22, 40, 0.09);
+      display: grid;
+      place-items: center;
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.95),
+        2px 5px 0 #d8dce6,
+        3px 8px 0 #e8ebf1,
+        0 20px 36px rgba(17, 22, 40, 0.14);
+    }
+    .iso-tile .slab-top::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      box-shadow: inset 0 -8px 14px rgba(17, 22, 40, 0.04);
+      pointer-events: none;
+    }
+    .iso-tile .slab-top img {
+      width: 70%;
+      height: 70%;
+      object-fit: contain;
+    }
+    .iso-tile .slab-top img.tool-logo-strong {
+      width: 76%;
+      height: 76%;
+    }
+    .iso-tile .slab-top .mono {
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      letter-spacing: -0.02em;
+    }
+    .iso-tile.hub .slab-top {
+      background: #0a0c10;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.12),
+        2px 5px 0 #d8dce6,
+        3px 8px 0 #e8ebf1,
+        0 22px 40px rgba(17, 22, 40, 0.16);
+    }
+    .iso-tile.hub .slab-top img { width: 88%; height: 88%; object-fit: contain; }
+
+    /* Logo strip */
+    .strip {
+      padding: var(--space-xl) 0 var(--space-sm);
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, var(--bg) 0%, var(--bg-soft) 100%);
+    }
+    .strip p {
+      text-align: center; font-size: 12px; font-weight: 600;
+      letter-spacing: 0.06em; text-transform: uppercase;
+      color: var(--muted); margin-bottom: var(--space-lg);
+    }
+    .strip-row {
+      display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-sm) var(--space-md);
+      padding-bottom: var(--space-xl);
+    }
+    .strip-row span {
+      font-family: var(--mono); font-size: 12px; padding: 9px 15px;
+      border-radius: 999px; border: 1px solid var(--line); color: var(--muted); background: #fff;
+      transition: border-color .2s, color .2s;
+    }
+    .strip-row span:hover { border-color: color-mix(in srgb, var(--brand) 22%, var(--line)); color: var(--brand); }
+
+    /* Section */
+    .sect { padding: var(--space-3xl) 0; }
+    .sect.soft { background: var(--bg-soft); }
+    .sect-head { text-align: center; max-width: 48ch; margin: 0 auto var(--space-2xl); }
+    .sect-head h2 {
+      font-size: clamp(1.65rem, 3.2vw, 2.35rem);
+      margin-bottom: var(--space-sm);
+      line-height: 1.12;
+    }
+    .sect-head p { color: var(--muted); font-size: 16px; line-height: 1.6; }
+
+    /* Feature tabs + banner */
+    .feat-tabs {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-md);
+    }
+    .feat-tabs .card {
+      padding: var(--space-lg) var(--space-md); border-radius: var(--radius); border: 1px solid var(--line);
+      background: #fff; min-height: 208px; display: flex; flex-direction: column;
+      transition: border-color .22s var(--ease), box-shadow .22s var(--ease), background .22s, color .22s, transform .22s var(--ease);
+      cursor: pointer; text-align: left; font: inherit; color: inherit; width: 100%;
+    }
+    .feat-tabs .card:hover {
+      border-color: color-mix(in srgb, var(--brand) 28%, var(--line));
+      box-shadow: 0 10px 32px rgba(17, 22, 40, 0.06);
+      transform: translateY(-2px);
+    }
+    .feat-tabs .card.is-on {
+      background: var(--dark-card); border-color: #323a50; color: #eef0f4;
+      box-shadow: 0 16px 40px rgba(17, 22, 40, 0.16);
+      transform: translateY(-2px);
+    }
+    .feat-tabs .card.is-on p { color: #a8b0c0; }
+    .card-icon {
+      width: 36px; height: 36px; border-radius: 10px; margin-bottom: 16px;
+      display: grid; place-items: center; font-size: 16px;
+      background: color-mix(in srgb, var(--brand) 8%, #fff); color: var(--brand);
+    }
+    .feat-tabs .card.is-on .card-icon { background: color-mix(in srgb, var(--brand-glow) 22%, var(--dark-card)); color: #c5d0ff; }
+    .feat-tabs h3 { font-size: 15px; font-weight: 600; margin-bottom: 8px; pointer-events: none; }
+    .feat-title-row {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      margin-bottom: 8px; pointer-events: none;
+    }
+    .feat-title-row h3 { margin-bottom: 0; }
+    .wip-badge {
+      font-size: 10px; font-weight: 600; letter-spacing: 0.02em;
+      padding: 3px 8px; border-radius: 999px; white-space: nowrap;
+      color: var(--muted); background: var(--bg-soft); border: 1px solid var(--line);
+    }
+    .feat-tabs .card.is-on .wip-badge {
+      color: #a8b0c0;
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.14);
+    }
+    .feat-tabs p { font-size: 13px; color: var(--muted); flex: 1; pointer-events: none; }
+    .feat-more {
+      margin-top: 14px; font-size: 12px; font-weight: 600; color: var(--brand);
+      display: inline-flex; align-items: center; gap: 4px; pointer-events: none;
+    }
+    .feat-tabs .card.is-on .feat-more { color: #c5d0ff; }
+    .feat-tabs .card:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+    .feat-banner {
+      margin-top: var(--space-lg);
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: calc(var(--radius) + 4px);
+      padding: clamp(32px, 4.5vw, 44px);
+      min-height: 320px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 20px 48px rgba(17, 22, 40, 0.05);
+    }
+    .feat-banner::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 auto;
+      height: 3px;
+      background: var(--brand);
+      opacity: 0.85;
+    }
+    .feat-pane { display: none; }
+    .feat-pane.is-active { display: block; animation: featIn .32s ease; }
+    @keyframes featIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .feat-pane-head { text-align: center; max-width: 46ch; margin: 0 auto 28px; }
+    .feat-pane-head h3 { font-size: clamp(1.35rem, 2.5vw, 1.75rem); margin-bottom: 8px; letter-spacing: -0.03em; }
+    .feat-pane-head .feat-title-row { justify-content: center; margin-bottom: 8px; }
+    .feat-pane-head .feat-title-row h3 { margin-bottom: 0; }
+    .feat-pane-head p { color: var(--muted); font-size: 14px; }
+
+    /* Workflow hub */
+    .hub-wrap { max-width: 720px; margin: 0 auto; }
+    .hub-svg { width: 100%; height: auto; }
+
+    /* Feature mock visuals */
+    .mock-obs {
+      max-width: 640px; margin: 0 auto;
+      border: 1px solid var(--line); border-radius: 14px; background: #fff; overflow: hidden;
+      box-shadow: 0 16px 40px rgba(17, 22, 40, 0.06);
+    }
+    .mock-obs-tabs {
+      display: flex; gap: 4px; padding: 10px 12px; border-bottom: 1px solid var(--line);
+      background: var(--bg-soft); overflow-x: auto;
+    }
+    .mock-obs-tabs span {
+      font-family: var(--mono); font-size: 11px; padding: 6px 10px; border-radius: 8px;
+      color: var(--muted); white-space: nowrap;
+    }
+    .mock-obs-tabs span.on { background: #fff; color: var(--brand); border: 1px solid var(--line); font-weight: 600; }
+    .mock-obs-body { display: grid; grid-template-columns: 1fr 1fr; min-height: 160px; }
+    .mock-chat { padding: 14px; border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; }
+    .mock-bubble {
+      font-size: 11px; line-height: 1.45; padding: 8px 10px; border-radius: 10px; max-width: 92%;
+    }
+    .mock-bubble.user { align-self: flex-end; background: color-mix(in srgb, var(--brand) 10%, #fff); border: 1px solid color-mix(in srgb, var(--brand) 18%, var(--line)); }
+    .mock-bubble.agent { align-self: flex-start; background: var(--bg-soft); border: 1px solid var(--line); color: var(--muted); }
+    .mock-term {
+      padding: 14px; font-family: var(--mono); font-size: 10px; line-height: 1.6;
+      color: #3d8f5a; background: #0f1419;
+    }
+    .mock-term .dim { color: #6b7280; }
+
+    .mock-gate {
+      max-width: 440px; margin: 0 auto;
+      border: 1px solid var(--line); border-radius: 14px; background: #fff;
+      overflow: hidden; box-shadow: 0 16px 40px rgba(17, 22, 40, 0.06);
+    }
+    .mock-gate-head {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 14px; border-bottom: 1px solid var(--line); background: var(--bg-soft);
+    }
+    .mock-gate-tag {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-family: var(--mono); font-size: 10px; font-weight: 600;
+      color: var(--brand);
+      background: color-mix(in srgb, var(--brand) 8%, #fff);
+      border: 1px solid color-mix(in srgb, var(--brand) 18%, var(--line));
+      padding: 4px 10px; border-radius: 999px;
+    }
+    .mock-gate-tag::before {
+      content: "";
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--brand-glow);
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand-glow) 28%, transparent);
+    }
+    .mock-gate-body { padding: 18px 16px 16px; }
+    .mock-gate p {
+      font-size: 13px; color: var(--muted); margin-bottom: 16px; line-height: 1.55;
+    }
+    .mock-gate p code {
+      font-family: var(--mono); font-size: 11px; color: var(--ink);
+      background: var(--bg-soft); border: 1px solid var(--line);
+      padding: 1px 6px; border-radius: 5px;
+    }
+    .mock-gate-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    .mock-gate-actions span {
+      font-size: 11px; font-weight: 600; padding: 8px 16px; border-radius: 999px;
+      border: 1px solid var(--line); background: #fff; color: var(--ink);
+    }
+    .mock-gate-actions span.primary {
+      background: var(--ink); color: #fff; border-color: var(--ink);
+    }
+    .mock-gate-actions span.secondary {
+      border-color: var(--brand); color: var(--brand);
+      background: color-mix(in srgb, var(--brand) 6%, #fff);
+    }
+    .mock-gate-actions span.ghost { color: var(--muted); background: var(--bg-soft); }
+
+    .mock-hybrid {
+      max-width: 520px; margin: 0 auto;
+      border: 1px solid var(--line); border-radius: 14px; background: #fff;
+      overflow: hidden; box-shadow: 0 16px 40px rgba(17, 22, 40, 0.06);
+    }
+    .mock-hybrid-head {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 10px 14px; border-bottom: 1px solid var(--line); background: var(--bg-soft);
+    }
+    .mock-hybrid-head span {
+      font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--brand);
+    }
+    .mock-hybrid-head small {
+      font-family: var(--mono); font-size: 10px; color: var(--muted);
+    }
+    .mock-hybrid-list { display: flex; flex-direction: column; }
+    .mock-session {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 12px 14px; border-bottom: 1px solid var(--line); background: #fff;
+    }
+    .mock-session:last-child { border-bottom: none; }
+    .mock-session-info { min-width: 0; }
+    .mock-session strong {
+      font-size: 13px; display: block; margin-bottom: 2px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .mock-session small { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+    .mock-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-family: var(--mono); font-size: 10px; font-weight: 600;
+      padding: 4px 10px; border-radius: 999px; white-space: nowrap; flex-shrink: 0;
+    }
+    .mock-badge::before {
+      content: ""; width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0;
+    }
+    .mock-badge.run {
+      color: var(--brand);
+      background: color-mix(in srgb, var(--brand) 8%, #fff);
+      border: 1px solid color-mix(in srgb, var(--brand) 20%, var(--line));
+    }
+    .mock-badge.run::before { background: var(--brand-glow); }
+    .mock-badge.queue {
+      color: var(--muted);
+      background: var(--bg-soft);
+      border: 1px solid var(--line);
+    }
+    .mock-badge.queue::before { background: var(--muted); opacity: 0.55; }
+    .mock-badge.idle {
+      color: color-mix(in srgb, var(--muted) 85%, var(--ink));
+      background: #fff;
+      border: 1px solid var(--line);
+    }
+    .mock-badge.idle::before { background: var(--line); }
+
+    /* Stats */
+    .stats {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-md);
+    }
+    .stat {
+      text-align: center; padding: var(--space-xl) var(--space-md);
+      border-radius: var(--radius);
+      border: 1px solid var(--line); background: #fff;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .stat:hover {
+      border-color: color-mix(in srgb, var(--brand) 18%, var(--line));
+      box-shadow: 0 8px 24px rgba(17, 22, 40, 0.05);
+    }
+    .stat strong {
+      display: block; font-size: clamp(2.1rem, 4.2vw, 2.85rem); font-weight: 700;
+      letter-spacing: -0.04em; color: var(--brand); margin-bottom: var(--space-xs);
+      font-variant-numeric: tabular-nums;
+    }
+    .stat span { font-size: 14px; color: var(--muted); line-height: 1.45; }
+
+    /* CTA */
+    .cta {
+      text-align: center; padding: clamp(72px, 11vw, 112px) 0;
+      position: relative; overflow: hidden;
+      background: linear-gradient(180deg, var(--bg) 0%, var(--bg-soft) 55%, var(--bg) 100%);
+    }
+    .cta h2 {
+      font-size: clamp(1.8rem, 3.6vw, 2.55rem);
+      margin-bottom: var(--space-sm);
+      max-width: 22ch; margin-inline: auto;
+      line-height: 1.1;
+    }
+    .cta p { color: var(--muted); margin-bottom: var(--space-xl); font-size: 16px; max-width: 42ch; margin-inline: auto; }
+    .cta-btns { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; }
+    .cta-deco {
+      position: absolute; width: 180px; height: 180px; border-radius: 50%;
+      border: 1px solid color-mix(in srgb, var(--brand) 14%, var(--line));
+      pointer-events: none; opacity: 0.6;
+    }
+    .cta-deco.a { left: -50px; top: 18%; }
+    .cta-deco.b { right: -70px; bottom: 8%; width: 240px; height: 240px; }
+
+    .install-cmds {
+      margin-top: 32px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      max-width: 720px;
+      margin-inline: auto;
+      text-align: left;
+    }
+    .code-box {
+      background: var(--dark);
+      border: 1px solid #2a3144;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .code-box-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px 12px;
+      border-bottom: 1px solid #2a3144;
+      font-size: 11px;
+      font-weight: 600;
+      color: #9aa3b5;
+    }
+    .copy-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      border: 1px solid #3a4256;
+      border-radius: 6px;
+      background: #1a1f2e;
+      color: #c5cad6;
+      font-family: var(--sans);
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background .2s, border-color .2s;
+      white-space: nowrap;
+    }
+    .copy-btn:hover { background: #252b3d; border-color: #4a5568; }
+    .copy-btn.done { color: #8fa4ff; border-color: var(--brand-glow); }
+    .copy-btn svg { width: 13px; height: 13px; flex-shrink: 0; }
+    .code-box pre {
+      margin: 0;
+      padding: 14px;
+      font-family: var(--mono);
+      font-size: 10.5px;
+      line-height: 1.55;
+      color: #e5e7eb;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    /* Footer */
+    .foot {
+      background: var(--dark); color: #c5cad6; padding: var(--space-2xl) 0 var(--space-xl);
+    }
+    .foot-grid {
+      display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: var(--space-xl); margin-bottom: var(--space-2xl);
+    }
+    .foot .logo { margin-bottom: var(--space-md); }
+    .foot .logo-name { color: #fff; }
+    .foot .logo-author { color: #8b94a8; }
+    .foot .logo-mark { box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35); }
+    .foot-tag { font-size: 14px; color: #8b94a8; max-width: 30ch; line-height: 1.55; }
+    .foot h4 {
+      font-size: 11px; font-weight: 600; color: #fff;
+      margin-bottom: var(--space-md); letter-spacing: 0.05em; text-transform: uppercase;
+    }
+    .foot a {
+      display: block; font-size: 14px; color: #a8b0c0;
+      margin-bottom: var(--space-sm); transition: color .2s;
+    }
+    .foot a:hover { color: #fff; }
+    .foot a:focus-visible { outline: 2px solid var(--brand-glow); outline-offset: 2px; border-radius: 4px; }
+    .foot-bottom {
+      padding-top: var(--space-lg); border-top: 1px solid #2a3144;
+      display: flex; justify-content: space-between; flex-wrap: wrap; gap: var(--space-sm);
+      font-family: var(--mono); font-size: 11px; color: #6b7384;
+    }
+
+    /* Scroll reveal */
+    @media (prefers-reduced-motion: no-preference) {
+      .reveal {
+        opacity: 0;
+        transform: translateY(18px);
+        transition: opacity 0.65s var(--ease), transform 0.65s var(--ease);
+      }
+      .reveal.is-visible { opacity: 1; transform: none; }
+      .reveal-d1 { transition-delay: 0.08s; }
+      .reveal-d2 { transition-delay: 0.16s; }
+    }
+
+    @media (max-width: 960px) {
+      .hero-grid { grid-template-columns: 1fr; }
+      .hero-grid > div:first-child { order: 1; }
+      .hero-grid > .iso-board { order: 0; max-width: 520px; }
+      .feat-tabs { grid-template-columns: 1fr 1fr; }
+      .foot-grid { grid-template-columns: 1fr 1fr; gap: var(--space-lg); }
+      .iso-floor { transform: rotateX(56deg) rotateZ(-45deg) scale(0.96); }
+    }
+    @media (max-width: 640px) {
+      .top-inner { height: 64px; }
+      .nav { display: none; }
+      .nav.open {
+        display: flex; flex-direction: column; position: absolute;
+        top: 64px; left: 0; right: 0; padding: var(--space-md) var(--space-lg);
+        background: #fff; border-bottom: 1px solid var(--line); gap: var(--space-sm);
+      }
+      .menu { display: block; }
+      .feat-tabs, .stats { grid-template-columns: 1fr; }
+      .feat-tabs .card { min-height: auto; }
+      .feat-tabs .card:hover, .feat-tabs .card.is-on { transform: none; }
+      .mock-obs-body { grid-template-columns: 1fr; }
+      .mock-chat { border-right: none; border-bottom: 1px solid var(--line); }
+      .mock-session { flex-wrap: wrap; gap: 8px; }
+      .mock-gate-actions { flex-direction: column; }
+      .mock-gate-actions span { width: 100%; text-align: center; }
+      .install-cmds { grid-template-columns: 1fr; }
+      .hero h1 { max-width: none; font-size: clamp(2rem, 8vw, 2.5rem); }
+      .hero p { max-width: none; }
+      .iso-board { height: 320px; max-width: 100%; }
+      .iso-floor { transform: rotateX(56deg) rotateZ(-45deg) scale(0.82); }
+      .cta-deco { display: none; }
+      .foot-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      .btn:hover { transform: none; }
+      .feat-tabs .card:hover, .feat-tabs .card.is-on { transform: none; }
+      .feat-pane.is-active { animation: none; }
+      .reveal { opacity: 1; transform: none; }
+    }
+  </style>
+</head>
+<body>
+  <span id="wechat-id" hidden>Cur_fancy</span>
+  <header class="top">
+    <div class="wrap top-inner">
+      <a href="#" class="logo">
+        <img class="logo-mark" src="assets/brand/clutch-mark.svg" alt="Clutch" width="38" height="38" />
+        <span class="logo-copy">
+          <span class="logo-name">Clutch</span>
+          <span class="logo-author" data-i18n="logo.author">by Fancy</span>
+        </span>
+      </a>
+      <nav class="nav" id="nav">
+        <a href="#features" data-i18n="nav.features">功能</a>
+        <a href="#workflow" data-i18n="nav.workflow">工作流</a>
+        <a href="#install" data-i18n="nav.install">安装</a>
+        <a href="https://github.com/fancy1108/Clutch/blob/main/docs/GETTING_STARTED.md" data-i18n="nav.docs">文档</a>
+      </nav>
+      <div class="top-right">
+        <div class="lang" role="group" aria-label="Language">
+          <button type="button" class="on" data-lang="zh">中</button>
+          <button type="button" data-lang="en">EN</button>
+        </div>
+        <a href="https://github.com/fancy1108/Clutch/releases" class="btn btn-fill" data-i18n="nav.cta">开始使用</a>
+        <button class="menu" id="menu" aria-label="Menu">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div>
+        <a href="https://github.com/fancy1108/Clutch" class="hero-oss" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.395-.135-.345-.72-1.395-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+          <span data-i18n="hero.oss">MIT 开源</span>
+        </a>
+        <h1 data-i18n="hero.title">为本地 CLI<br>打造的多 Agent 控制台</h1>
+        <p data-i18n="hero.sub">零代码 SOP 画布，LangGraph 在 localhost 运行。编排、监督、审批，一屏完成。</p>
+        <div class="hero-btns">
+          <a href="https://github.com/fancy1108/Clutch/releases" class="btn btn-fill" data-i18n="hero.primary">下载 macOS / Windows</a>
+          <a href="https://github.com/fancy1108/Clutch" class="btn btn-gh" target="_blank" rel="noopener" data-i18n="hero.secondary">GitHub 源码</a>
+        </div>
+      </div>
+      <div class="iso-board" aria-hidden="true">
+        <div class="iso-floor">
+          <!-- Top lane · 3个 -->
+          <div class="iso-tile" style="--gx:-3;--gy:-1"><div class="slab-top"><img src="assets/tool-logos/deepseek.svg" alt="" /></div></div>
+          <div class="iso-tile" style="--gx:-2;--gy:-2"><div class="slab-top"><img src="assets/tool-logos/antigravity.svg" alt="" /></div></div>
+          <div class="iso-tile" style="--gx:-1;--gy:-3"><div class="slab-top"><img src="assets/tool-logos/claude.svg" alt="" /></div></div>
+
+          <!-- Middle lane -->
+          <div class="iso-tile far" style="--gx:-2;--gy:2"><div class="slab-top"><span class="mono">MCP</span></div></div>
+          <div class="iso-tile" style="--gx:-1;--gy:1"><div class="slab-top"><img src="assets/tool-logos/opencode.svg" alt="" /></div></div>
+          <div class="iso-tile hub" style="--gx:0;--gy:0">
+            <div class="slab-top">
+              <img src="assets/brand/clutch-mark.svg" alt="" />
+            </div>
+          </div>
+          <div class="iso-tile" style="--gx:1;--gy:-1"><div class="slab-top"><img src="assets/tool-logos/vscode.svg" alt="" /></div></div>
+          <div class="iso-tile far" style="--gx:2;--gy:-2"><div class="slab-top"><span class="mono">rivet</span></div></div>
+
+          <!-- Bottom lane · 3个（与上排同列对齐） -->
+          <div class="iso-tile" style="--gx:1;--gy:3"><div class="slab-top"><img class="tool-logo-strong" src="assets/tool-logos/ollama.svg" alt="" /></div></div>
+          <div class="iso-tile" style="--gx:2;--gy:2"><div class="slab-top"><img src="assets/tool-logos/chatgpt.svg" alt="" /></div></div>
+          <div class="iso-tile" style="--gx:3;--gy:1"><div class="slab-top"><img src="assets/tool-logos/aider.svg" alt="" /></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="wechat-float" id="contact">
+    <span class="wechat-float-label" data-i18n="contact.hero">作者微信</span>
+    <button type="button" class="wechat-chip copy-btn" data-copy-target="wechat-id" aria-label="Copy WeChat ID">
+      Cur_fancy
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+    </button>
+  </div>
+
+  <div class="strip">
+    <div class="wrap">
+      <p data-i18n="strip.label">已路由的本地引擎</p>
+      <div class="strip-row">
+        <span>claude-cli</span>
+        <span>codex-cli</span>
+        <span>opencode-cli</span>
+        <span>antigravity-cli</span>
+        <span>ollama-cli</span>
+        <span>rivet-cli</span>
+        <span>MCP</span>
+      </div>
+    </div>
+  </div>
+
+  <section class="sect reveal" id="features">
+    <div class="wrap">
+      <div class="sect-head">
+        <h2 data-i18n="feat.title">编排引擎</h2>
+        <p data-i18n="feat.lead">在现有 CLI 之上加控制层，不替代生成能力。</p>
+      </div>
+      <div class="feat-tabs" role="tablist" aria-label="Features">
+        <button type="button" class="card is-on" role="tab" aria-selected="true" data-feat="0">
+          <div class="card-icon">◈</div>
+          <h3 data-i18n="feat.c1.t">画布 → LangGraph</h3>
+          <p data-i18n="feat.c1.d">拖拽节点编译为状态机，输出自动接力。</p>
+          <span class="feat-more" data-i18n="feat.more">了解更多 →</span>
+        </button>
+        <button type="button" class="card" role="tab" aria-selected="false" data-feat="1">
+          <div class="card-icon">◎</div>
+          <h3 data-i18n="feat.c2.t">全程可观测</h3>
+          <p data-i18n="feat.c2.d">Chat、终端、Diff、Flow、文件树。</p>
+          <span class="feat-more" data-i18n="feat.more">了解更多 →</span>
+        </button>
+        <button type="button" class="card" role="tab" aria-selected="false" data-feat="2">
+          <div class="card-icon">✓</div>
+          <div class="feat-title-row">
+            <h3 data-i18n="feat.c3.t">人机门控</h3>
+            <span class="wip-badge" data-i18n="feat.wip">开发中</span>
+          </div>
+          <p data-i18n="feat.c3.d">高风险写入挂起，Approve / Reject / Retry。</p>
+          <span class="feat-more" data-i18n="feat.more">了解更多 →</span>
+        </button>
+        <button type="button" class="card" role="tab" aria-selected="false" data-feat="3">
+          <div class="card-icon">⇄</div>
+          <h3 data-i18n="feat.c4.t">Hybrid Session</h3>
+          <p data-i18n="feat.c4.d">多会话并行，CLI 串行，池满排队。</p>
+          <span class="feat-more" data-i18n="feat.more">了解更多 →</span>
+        </button>
+      </div>
+
+      <div class="feat-banner" id="workflow">
+        <div class="feat-pane is-active" data-feat-pane="0" role="tabpanel">
+          <div class="feat-pane-head">
+            <h3 data-i18n="panel.0.title">CLI 统一调度</h3>
+            <p data-i18n="panel.0.lead">Engine Router 按节点分流到已安装的本地工具。</p>
+          </div>
+          <div class="hub-wrap">
+            <svg class="hub-svg" viewBox="0 0 640 220" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <rect x="292" y="16" width="56" height="56" rx="14" fill="#000"/>
+              <image href="assets/brand/clutch-mark.svg" x="292" y="16" width="56" height="56" preserveAspectRatio="xMidYMid meet"/>
+              <line x1="320" y1="72" x2="120" y2="168" stroke="#3d4f8c" stroke-width="1.5" opacity=".55"/>
+              <line x1="320" y1="72" x2="220" y2="168" stroke="#3d4f8c" stroke-width="1.5" opacity=".55"/>
+              <line x1="320" y1="72" x2="320" y2="168" stroke="#3d4f8c" stroke-width="1.5" opacity=".55"/>
+              <line x1="320" y1="72" x2="420" y2="168" stroke="#3d4f8c" stroke-width="1.5" opacity=".55"/>
+              <line x1="320" y1="72" x2="520" y2="168" stroke="#3d4f8c" stroke-width="1.5" opacity=".55"/>
+              <rect x="72" y="168" width="96" height="40" rx="10" fill="#fff" stroke="#e2e5ec"/>
+              <text x="120" y="193" text-anchor="middle" fill="#484f5c" font-family="JetBrains Mono" font-size="11">claude-cli</text>
+              <rect x="172" y="168" width="96" height="40" rx="10" fill="#fff" stroke="#e2e5ec"/>
+              <text x="220" y="193" text-anchor="middle" fill="#484f5c" font-family="JetBrains Mono" font-size="11">codex-cli</text>
+              <rect x="272" y="168" width="96" height="40" rx="10" fill="#fff" stroke="#e2e5ec"/>
+              <text x="320" y="193" text-anchor="middle" fill="#484f5c" font-family="JetBrains Mono" font-size="11">opencode</text>
+              <rect x="372" y="168" width="96" height="40" rx="10" fill="#fff" stroke="#e2e5ec"/>
+              <text x="420" y="193" text-anchor="middle" fill="#484f5c" font-family="JetBrains Mono" font-size="11">rivet-cli</text>
+              <rect x="472" y="168" width="96" height="40" rx="10" fill="#fff" stroke="#e2e5ec"/>
+              <text x="520" y="193" text-anchor="middle" fill="#484f5c" font-family="JetBrains Mono" font-size="11">ollama-cli</text>
+            </svg>
+          </div>
+        </div>
+
+        <div class="feat-pane" data-feat-pane="1" role="tabpanel">
+          <div class="feat-pane-head">
+            <h3 data-i18n="panel.1.title">全程可观测</h3>
+            <p data-i18n="panel.1.lead">WebSocket 推送 ClutchState，Chat、终端、Diff、Flow 同屏投影。</p>
+          </div>
+          <div class="mock-obs" aria-hidden="true">
+            <div class="mock-obs-tabs">
+              <span class="on" data-i18n="mock.tab.chat">Chat</span>
+              <span data-i18n="mock.tab.term">Terminal</span>
+              <span data-i18n="mock.tab.diff">Diff</span>
+              <span data-i18n="mock.tab.flow">Flow</span>
+              <span data-i18n="mock.tab.files">Files</span>
+            </div>
+            <div class="mock-obs-body">
+              <div class="mock-chat">
+                <div class="mock-bubble user" data-i18n="mock.chat.user">重构 auth 模块并跑测试</div>
+                <div class="mock-bubble agent" data-i18n="mock.chat.agent">已调用 claude-cli，等待终端输出…</div>
+              </div>
+              <div class="mock-term">
+                <span class="dim">$</span> clutch run sop_auth_refactor<br>
+                <span class="dim">→</span> node:lint <span class="dim">ok</span><br>
+                <span class="dim">→</span> node:test <span class="dim">running…</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="feat-pane" data-feat-pane="2" role="tabpanel">
+          <div class="feat-pane-head">
+            <div class="feat-title-row">
+              <h3 data-i18n="panel.2.title">人机门控</h3>
+              <span class="wip-badge" data-i18n="feat.wip">开发中</span>
+            </div>
+            <p data-i18n="panel.2.lead">敏感写入挂起 human_required，监督者一键 Approve / Reject / Retry。</p>
+          </div>
+          <div class="mock-gate" aria-hidden="true">
+            <div class="mock-gate-head">
+              <span class="mock-gate-tag">human_required</span>
+            </div>
+            <div class="mock-gate-body">
+              <p data-i18n="mock.gate.msg">Agent 请求写入 <code>services/orchestrator/src/main.py</code>，是否放行？</p>
+              <div class="mock-gate-actions">
+                <span class="primary" data-i18n="mock.gate.approve">Approve</span>
+                <span class="secondary" data-i18n="mock.gate.reject">Reject</span>
+                <span class="ghost" data-i18n="mock.gate.retry">Retry</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="feat-pane" data-feat-pane="3" role="tabpanel">
+          <div class="feat-pane-head">
+            <h3 data-i18n="panel.3.title">Hybrid Session</h3>
+            <p data-i18n="panel.3.lead">多 Flow 并行对话，CLI 引擎串行占用，池满自动排队。</p>
+          </div>
+          <div class="mock-hybrid" aria-hidden="true">
+            <div class="mock-hybrid-head">
+              <span data-i18n="mock.hybrid.label">Hybrid Pool</span>
+              <small data-i18n="mock.hybrid.count">3 flows</small>
+            </div>
+            <div class="mock-hybrid-list">
+              <div class="mock-session">
+                <div class="mock-session-info">
+                  <strong data-i18n="mock.s1.name">Flow · auth-refactor</strong>
+                  <small>claude-cli</small>
+                </div>
+                <span class="mock-badge run" data-i18n="mock.s1.status">running</span>
+              </div>
+              <div class="mock-session">
+                <div class="mock-session-info">
+                  <strong data-i18n="mock.s2.name">Flow · docs-sync</strong>
+                  <small>codex-cli</small>
+                </div>
+                <span class="mock-badge queue" data-i18n="mock.s2.status">queued</span>
+              </div>
+              <div class="mock-session">
+                <div class="mock-session-info">
+                  <strong data-i18n="mock.s3.name">Flow · lint-check</strong>
+                  <small>opencode-cli</small>
+                </div>
+                <span class="mock-badge idle" data-i18n="mock.s3.status">idle</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sect soft reveal" id="stats">
+    <div class="wrap">
+      <div class="sect-head">
+        <h2 data-i18n="stats.title">本地优先</h2>
+        <p data-i18n="stats.lead">Sidecar 跑在 localhost:8123，密钥进系统钥匙串。</p>
+      </div>
+      <div class="stats">
+        <div class="stat"><strong>7</strong><span data-i18n="stats.s1">CLI 引擎路由</span></div>
+        <div class="stat"><strong>0</strong><span data-i18n="stats.s2">云端上传密钥</span></div>
+        <div class="stat"><strong>100%</strong><span data-i18n="stats.s3">本地 Sidecar 运行</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta reveal" id="install">
+    <span class="cta-deco a" aria-hidden="true"></span>
+    <span class="cta-deco b" aria-hidden="true"></span>
+    <div class="wrap">
+      <h2 data-i18n="cta.title">开始编排你的 SOP</h2>
+      <p data-i18n="cta.sub">首次启动有设置向导，约 5 分钟跑通第一个 Flow。</p>
+      <div class="cta-btns">
+        <a href="https://github.com/fancy1108/Clutch/releases" class="btn btn-fill" data-i18n="cta.primary">下载桌面版</a>
+        <a href="https://github.com/fancy1108/Clutch/blob/main/docs/GETTING_STARTED.md" class="btn btn-line" data-i18n="cta.secondary">阅读文档</a>
+      </div>
+      <div class="install-cmds">
+        <div class="code-box">
+          <div class="code-box-head">
+            <span data-i18n="install.mac">macOS</span>
+            <button type="button" class="copy-btn" data-copy-target="cmd-mac" aria-label="Copy">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              <span data-i18n="install.copy">复制</span>
+            </button>
+          </div>
+          <pre id="cmd-mac">curl -fsSL https://raw.githubusercontent.com/fancy1108/Clutch/main/scripts/install.sh | bash</pre>
+        </div>
+        <div class="code-box">
+          <div class="code-box-head">
+            <span data-i18n="install.win">Windows</span>
+            <button type="button" class="copy-btn" data-copy-target="cmd-win" aria-label="Copy">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              <span data-i18n="install.copy">复制</span>
+            </button>
+          </div>
+          <pre id="cmd-win">irm https://raw.githubusercontent.com/fancy1108/Clutch/main/scripts/install.ps1 | iex</pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <div class="wrap">
+      <div class="foot-grid">
+        <div>
+          <a href="#" class="logo">
+            <img class="logo-mark sm" src="assets/brand/clutch-mark.svg" alt="Clutch" width="34" height="34" />
+            <span class="logo-copy">
+              <span class="logo-name">Clutch</span>
+              <span class="logo-author" data-i18n="logo.author">by Fancy</span>
+            </span>
+          </a>
+          <p class="foot-tag" data-i18n="foot.tag">本地多 Agent 编排桌面应用</p>
+        </div>
+        <div>
+          <h4 data-i18n="foot.col1">产品</h4>
+          <a href="#features" data-i18n="nav.features">功能</a>
+          <a href="https://github.com/fancy1108/Clutch/releases">Releases</a>
+        </div>
+        <div>
+          <h4 data-i18n="foot.col2">资源</h4>
+          <a href="https://github.com/fancy1108/Clutch/blob/main/docs/GETTING_STARTED.md" data-i18n="nav.docs">文档</a>
+          <a href="https://github.com/fancy1108/Clutch/blob/main/CHANGELOG.md">Changelog</a>
+        </div>
+        <div>
+          <h4 data-i18n="foot.col3">社区</h4>
+          <a href="https://github.com/fancy1108/Clutch">GitHub</a>
+          <a href="https://github.com/fancy1108/Clutch/issues">Issues</a>
+        </div>
+      </div>
+      <div class="foot-bottom">
+        <span>MIT · Fancy · fancy1108/Clutch</span>
+        <span>Tauri · LangGraph · Local First</span>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    const T = {
+      zh: {
+        'nav.features': '功能', 'nav.workflow': '工作流', 'nav.install': '安装', 'nav.docs': '文档', 'nav.cta': '开始使用',
+        'logo.author': 'by Fancy',
+        'hero.oss': 'MIT 开源',
+        'hero.title': '为本地 CLI<br>打造的多 Agent 控制台',
+        'hero.sub': '零代码 SOP 画布，LangGraph 在 localhost 运行。编排、监督、审批，一屏完成。',
+        'hero.primary': '下载 macOS / Windows', 'hero.secondary': 'GitHub 源码',
+        'contact.hero': '作者微信', 'contact.title': '联系作者',
+        'contact.lead': '有问题、反馈或想交流？加我微信，备注 Clutch。',
+        'contact.copy': '复制微信号',
+        'strip.label': '已路由的本地引擎',
+        'feat.title': '编排引擎', 'feat.lead': '在现有 CLI 之上加控制层，不替代生成能力。',
+        'feat.c1.t': '画布 → LangGraph', 'feat.c1.d': '拖拽节点编译为状态机，输出自动接力。',
+        'feat.c2.t': '全程可观测', 'feat.c2.d': 'Chat、终端、Diff、Flow、文件树。',
+        'feat.c3.t': '人机门控', 'feat.c3.d': '高风险写入挂起，Approve / Reject / Retry。',
+        'feat.wip': '开发中',
+        'feat.c4.t': 'Hybrid Session', 'feat.c4.d': '多会话并行，CLI 串行，池满排队。',
+        'feat.more': '了解更多 →',
+        'panel.0.title': 'CLI 统一调度', 'panel.0.lead': 'Engine Router 按节点分流到已安装的本地工具。',
+        'panel.1.title': '全程可观测', 'panel.1.lead': 'WebSocket 推送 ClutchState，Chat、终端、Diff、Flow 同屏投影。',
+        'panel.2.title': '人机门控', 'panel.2.lead': '敏感写入挂起 human_required，监督者一键 Approve / Reject / Retry。',
+        'panel.3.title': 'Hybrid Session', 'panel.3.lead': '多 Flow 并行对话，CLI 引擎串行占用，池满自动排队。',
+        'mock.tab.chat': 'Chat', 'mock.tab.term': 'Terminal', 'mock.tab.diff': 'Diff', 'mock.tab.flow': 'Flow', 'mock.tab.files': 'Files',
+        'mock.chat.user': '重构 auth 模块并跑测试', 'mock.chat.agent': '已调用 claude-cli，等待终端输出…',
+        'mock.gate.msg': 'Agent 请求写入 <code>services/orchestrator/src/main.py</code>，是否放行？',
+        'mock.gate.approve': 'Approve', 'mock.gate.reject': 'Reject', 'mock.gate.retry': 'Retry',
+        'mock.hybrid.label': 'Hybrid Pool', 'mock.hybrid.count': '3 个 Flow',
+        'mock.s1.name': 'Flow · auth-refactor', 'mock.s1.status': 'running',
+        'mock.s2.name': 'Flow · docs-sync', 'mock.s2.status': 'queued',
+        'mock.s3.name': 'Flow · lint-check', 'mock.s3.status': 'idle',
+        'hub.title': 'CLI 统一调度', 'hub.lead': 'Engine Router 按节点分流到已安装的本地工具。',
+        'stats.title': '本地优先', 'stats.lead': 'Sidecar 跑在 localhost:8123，密钥进系统钥匙串。',
+        'stats.s1': 'CLI 引擎路由', 'stats.s2': '云端上传密钥', 'stats.s3': '本地 Sidecar 运行',
+        'cta.title': '开始编排你的 SOP', 'cta.sub': '首次启动有设置向导，约 5 分钟跑通第一个 Flow。',
+        'cta.primary': '下载桌面版', 'cta.secondary': '阅读文档',
+        'install.mac': 'macOS', 'install.win': 'Windows', 'install.copy': '复制', 'install.copied': '已复制',
+        'foot.tag': '本地多 Agent 编排桌面应用', 'foot.col1': '产品', 'foot.col2': '资源', 'foot.col3': '社区',
+        'meta.title': 'Clutch · 本地多 Agent 编排控制台',
+        'meta.desc': 'Clutch：零代码 SOP，LangGraph，本地 CLI 路由。'
+      },
+      en: {
+        'nav.features': 'Features', 'nav.workflow': 'Workflow', 'nav.install': 'Install', 'nav.docs': 'Docs', 'nav.cta': 'Get started',
+        'logo.author': 'by Fancy',
+        'hero.oss': 'Open Source · MIT',
+        'hero.title': 'Multi-agent console<br>for local CLIs',
+        'hero.sub': 'Zero-code SOP canvas, LangGraph on localhost. Orchestrate, supervise, approve in one view.',
+        'hero.primary': 'Download macOS / Windows', 'hero.secondary': 'GitHub source',
+        'contact.hero': 'WeChat', 'contact.title': 'Contact the author',
+        'contact.lead': 'Questions or feedback? Add me on WeChat — mention Clutch.',
+        'contact.copy': 'Copy WeChat ID',
+        'strip.label': 'Routed local engines',
+        'feat.title': 'Orchestration engine', 'feat.lead': 'A control layer on your CLIs, not a replacement.',
+        'feat.c1.t': 'Canvas → LangGraph', 'feat.c1.d': 'Drag nodes into a state machine with automatic handoffs.',
+        'feat.c2.t': 'Full observability', 'feat.c2.d': 'Chat, terminal, diffs, flow, file tree.',
+        'feat.c3.t': 'Human gates', 'feat.c3.d': 'Risky writes pause for Approve, Reject, or Retry.',
+        'feat.wip': 'In development',
+        'feat.c4.t': 'Hybrid sessions', 'feat.c4.d': 'Parallel chats, serialized CLIs, queued when full.',
+        'feat.more': 'Learn more →',
+        'panel.0.title': 'Unified CLI routing', 'panel.0.lead': 'Engine Router dispatches each node to installed local tools.',
+        'panel.1.title': 'Full observability', 'panel.1.lead': 'WebSocket pushes ClutchState; chat, terminal, diffs, and flow in one view.',
+        'panel.2.title': 'Human gates', 'panel.2.lead': 'Risky writes pause on human_required; supervisor Approve, Reject, or Retry.',
+        'panel.3.title': 'Hybrid sessions', 'panel.3.lead': 'Parallel flows, serialized CLI engines, automatic queue when the pool is full.',
+        'mock.tab.chat': 'Chat', 'mock.tab.term': 'Terminal', 'mock.tab.diff': 'Diff', 'mock.tab.flow': 'Flow', 'mock.tab.files': 'Files',
+        'mock.chat.user': 'Refactor auth module and run tests', 'mock.chat.agent': 'Invoked claude-cli, awaiting terminal output…',
+        'mock.gate.msg': 'Agent requests write to <code>services/orchestrator/src/main.py</code>. Allow?',
+        'mock.gate.approve': 'Approve', 'mock.gate.reject': 'Reject', 'mock.gate.retry': 'Retry',
+        'mock.hybrid.label': 'Hybrid Pool', 'mock.hybrid.count': '3 flows',
+        'mock.s1.name': 'Flow · auth-refactor', 'mock.s1.status': 'running',
+        'mock.s2.name': 'Flow · docs-sync', 'mock.s2.status': 'queued',
+        'mock.s3.name': 'Flow · lint-check', 'mock.s3.status': 'idle',
+        'hub.title': 'Unified CLI routing', 'hub.lead': 'Engine Router dispatches each node to installed local tools.',
+        'stats.title': 'Local first', 'stats.lead': 'Sidecar on localhost:8123. Keys in system keychain.',
+        'stats.s1': 'CLI engine routes', 'stats.s2': 'cloud key uploads', 'stats.s3': 'local Sidecar runtime',
+        'cta.title': 'Start your first SOP', 'cta.sub': 'Setup wizard on first launch. First flow in ~5 minutes.',
+        'cta.primary': 'Download', 'cta.secondary': 'Read docs',
+        'install.mac': 'macOS', 'install.win': 'Windows', 'install.copy': 'Copy', 'install.copied': 'Copied',
+        'foot.tag': 'Local multi-agent desktop app', 'foot.col1': 'Product', 'foot.col2': 'Resources', 'foot.col3': 'Community',
+        'meta.title': 'Clutch · Local multi-agent orchestration',
+        'meta.desc': 'Clutch: zero-code SOP, LangGraph, local CLI routing.'
+      }
+    };
+
+    function setLang(lang) {
+      const d = T[lang] || T.zh;
+      document.documentElement.lang = lang === 'en' ? 'en' : 'zh-CN';
+      document.title = d['meta.title'];
+      document.querySelector('meta[name="description"]').content = d['meta.desc'];
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const k = el.getAttribute('data-i18n');
+        if (d[k]) el.innerHTML = d[k];
+      });
+      document.querySelectorAll('.lang button').forEach(b => {
+        b.classList.toggle('on', b.dataset.lang === lang);
+      });
+      try { localStorage.setItem('clutch-lang', lang); } catch (_) {}
+    }
+
+    const saved = (() => { try { return localStorage.getItem('clutch-lang'); } catch (_) { return null; } })();
+    setLang(saved || (navigator.language.startsWith('zh') ? 'zh' : 'en'));
+    document.querySelectorAll('.lang button').forEach(b => b.addEventListener('click', () => setLang(b.dataset.lang)));
+    document.getElementById('menu').addEventListener('click', () => document.getElementById('nav').classList.toggle('open'));
+
+    const featTabs = document.querySelectorAll('[data-feat]');
+    const featPanes = document.querySelectorAll('[data-feat-pane]');
+    function activateFeat(id) {
+      featTabs.forEach(tab => {
+        const on = tab.dataset.feat === id;
+        tab.classList.toggle('is-on', on);
+        tab.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+      featPanes.forEach(pane => {
+        const on = pane.dataset.featPane === id;
+        pane.classList.toggle('is-active', on);
+        pane.hidden = !on;
+      });
+    }
+    featTabs.forEach(tab => tab.addEventListener('click', () => activateFeat(tab.dataset.feat)));
+    activateFeat('0');
+
+    if (window.matchMedia('(prefers-reduced-motion: no-preference)').matches) {
+      const revealEls = document.querySelectorAll('.reveal');
+      if (revealEls.length && 'IntersectionObserver' in window) {
+        const io = new IntersectionObserver((entries) => {
+          entries.forEach(e => {
+            if (e.isIntersecting) {
+              e.target.classList.add('is-visible');
+              io.unobserve(e.target);
+            }
+          });
+        }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+        revealEls.forEach(el => io.observe(el));
+      } else {
+        revealEls.forEach(el => el.classList.add('is-visible'));
+      }
+    } else {
+      document.querySelectorAll('.reveal').forEach(el => el.classList.add('is-visible'));
+    }
+
+    document.querySelectorAll('.copy-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const target = document.getElementById(btn.dataset.copyTarget);
+        if (!target) return;
+        const text = target.textContent.trim();
+        const labelKey = btn.dataset.copyLabel || 'install.copy';
+        const label = btn.querySelector(`[data-i18n="${labelKey}"]`) || btn.querySelector('[data-i18n="install.copy"]');
+        const lang = document.querySelector('.lang button.on')?.dataset.lang || 'zh';
+        const copied = (T[lang] || T.zh)['install.copied'];
+        try {
+          await navigator.clipboard.writeText(text);
+        } catch (_) {
+          const ta = document.createElement('textarea');
+          ta.value = text;
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+        }
+        btn.classList.add('done');
+        if (label) label.textContent = copied;
+        setTimeout(() => {
+          btn.classList.remove('done');
+          const d = T[lang] || T.zh;
+          if (label) label.textContent = d[labelKey] || d['install.copy'];
+        }, 2000);
+      });
+    });
+  </script>
+</body>
+</html>

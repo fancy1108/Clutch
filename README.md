@@ -2,7 +2,7 @@
 
 **Local AI multi-agent orchestration & supervision — on your desktop.**
 
-[English](README.md) · [简体中文](README.zh-CN.md) · [**Getting Started**](docs/GETTING_STARTED.md#english) · [Releases](https://github.com/fancy1108/Clutch/releases)
+[English](README.md) · [简体中文](README.zh-CN.md) · [**Website**](https://fancy1108.github.io/Clutch/) · [**Getting Started**](docs/GETTING_STARTED.md#english) · [Releases](https://github.com/fancy1108/Clutch/releases)
 
 > [!TIP]
 > **New here?** Read the **[Getting Started Guide](docs/GETTING_STARTED.md)** — install, first-launch wizard, and your first chat in ~5 minutes. No dev setup required.

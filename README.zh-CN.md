@@ -2,7 +2,7 @@
 
 **本地 AI 多 Agent 编排与监督 — 桌面控制台**
 
-[English](README.md) · [简体中文](README.zh-CN.md) · [**新手入门**](docs/GETTING_STARTED.md) · [下载 Releases](https://github.com/fancy1108/Clutch/releases)
+[English](README.md) · [简体中文](README.zh-CN.md) · [**产品官网**](https://fancy1108.github.io/Clutch/) · [**新手入门**](docs/GETTING_STARTED.md) · [下载 Releases](https://github.com/fancy1108/Clutch/releases)
 
 > [!TIP]
 > **第一次用？** 请先读 **[新手入门指南](docs/GETTING_STARTED.md)** — 安装、首次向导、发出第一条聊天，约 5 分钟，**不需要**配置开发环境。

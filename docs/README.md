@@ -9,6 +9,7 @@
 
 | 你是谁 | 先读 |
 |--------|------|
+| **了解产品（官网）** | **[`index.html`](https://fancy1108.github.io/Clutch/)**（GitHub Pages · 中英双语） |
 | **新用户 / 第一次安装** | **[`GETTING_STARTED.md`](./GETTING_STARTED.md)**（5 分钟上手 · 中英双语） |
 | Homebrew / winget 渠道 | [`PACKAGE_MANAGERS.md`](./PACKAGE_MANAGERS.md) |
 | **维护者发版 / AI 代劳** | **[`RELEASE_MAINTAINER.md`](./RELEASE_MAINTAINER.md)** |
