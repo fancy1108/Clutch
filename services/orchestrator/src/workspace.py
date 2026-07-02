@@ -283,6 +283,9 @@ def list_tree(max_depth: int = 3) -> list[dict[str, Any]]:
 
 
 def _run_git(root: Path, *args: str) -> subprocess.CompletedProcess[str] | None:
+    kwargs: dict[str, Any] = {}
+    if sys.platform == "win32":
+        kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
     try:
         return subprocess.run(
             ["git", "-C", str(root), *args],
@@ -290,6 +293,7 @@ def _run_git(root: Path, *args: str) -> subprocess.CompletedProcess[str] | None:
             text=True,
             timeout=5,
             check=False,
+            **kwargs,
         )
     except (OSError, subprocess.TimeoutExpired):
         return None

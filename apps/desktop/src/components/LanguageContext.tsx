@@ -229,6 +229,8 @@ const zhTranslations: Record<string, string> = {
   "Could not save model configuration": "无法保存模型配置",
   "Onboarding keychain note": "凭据会保存在系统安全凭据存储中；不会写入项目文件。",
   "Model connection verified": "模型连接已验证",
+  "Connection OK — this model is ready to use.": "连接成功，此模型可以使用。",
+  "Connection OK — image generation is ready.": "连接成功，图像生成已就绪。",
   "Skip for now": "暂时跳过",
   "Hide": "隐藏",
   "Show": "显示",

@@ -78,7 +78,7 @@ export function ModelsStep({ modelReady, onModelReady, onSkip }: ModelsStepProps
       }
       setTesting(true);
       const result = await testModelConnection(target.id);
-      setTestMessage(result.message);
+      setTestMessage(t(result.message));
       if (result.ok) {
         onModelReady(true);
       } else {
@@ -111,7 +111,7 @@ export function ModelsStep({ modelReady, onModelReady, onSkip }: ModelsStepProps
             data-testid="onboarding-model-provider"
             value={providerId}
             onChange={(e) => setProviderId(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900"
+            className="mt-1 w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 pr-8 text-sm text-neutral-900"
           >
             {CONNECTABLE_PROVIDERS.map((id) => (
               <option key={id} value={id}>
