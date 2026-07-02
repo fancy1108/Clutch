@@ -11,6 +11,7 @@ import os
 import shutil
 import subprocess
 import sys
+import sysconfig
 import time
 import urllib.error
 import urllib.request
@@ -24,6 +25,22 @@ VITE_LOG = REPO_ROOT / ".clutch-vite-dev.log"
 VITE_PID_FILE = REPO_ROOT / ".clutch-vite.pid"
 
 
+def candidate_uv_paths() -> list[Path | None]:
+    home = Path.home()
+    user_scripts = sysconfig.get_path("scripts", scheme="nt_user") if os.name == "nt" else None
+    current_scripts = sysconfig.get_path("scripts")
+    return [
+        Path(os.environ["CLUTCH_UV_BIN"]) if os.environ.get("CLUTCH_UV_BIN") else None,
+        Path(os.environ["UV_EXE"]) if os.environ.get("UV_EXE") else None,
+        Path(os.environ["UV"]) if os.environ.get("UV") else None,
+        Path(user_scripts) / "uv.exe" if user_scripts else None,
+        Path(current_scripts) / "uv.exe" if current_scripts else None,
+        home / ".local" / "bin" / "uv.exe",
+        home / ".cargo" / "bin" / "uv.exe",
+        home / "AppData" / "Roaming" / "uv" / "uv.exe",
+    ]
+
+
 def command(name: str) -> str:
     found = shutil.which(name)
     if found:
@@ -33,6 +50,17 @@ def command(name: str) -> str:
         if found:
             return found
     return name
+
+
+def resolve_uv() -> str:
+    found = command("uv")
+    if found != "uv":
+        return found
+    if os.name == "nt":
+        for path in candidate_uv_paths():
+            if path and path.is_file():
+                return str(path)
+    return found
 
 
 def vite_ready() -> bool:
@@ -111,6 +139,7 @@ def main() -> int:
 
     env = os.environ.copy()
     env.setdefault("CLUTCH_RUNTIME_MODE", "hybrid")
+    env["CLUTCH_UV_BIN"] = resolve_uv()
     return subprocess.call(
         [command("corepack"), "pnpm", "tauri", "dev", "--no-dev-server-wait"],
         cwd=DESKTOP,
