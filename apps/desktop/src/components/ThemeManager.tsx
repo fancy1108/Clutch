@@ -1,6 +1,7 @@
 import React from 'react';
 import { useLanguage } from './LanguageContext';
 import { LegacyIcon } from './ui/LegacyIcon';
+import { SettingsPageHeader, SettingsPageShell } from './ui/SettingsPageHeader';
 
 export interface ThemePreset {
   id: string;
@@ -128,20 +129,14 @@ export const ThemeManager: React.FC<ThemeManagerProps> = ({
   const { t } = useLanguage();
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-surface-bright text-on-surface select-none leading-normal">
-      {/* Container */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
-        
-        {/* Banner Headers */}
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-2">
-            <LegacyIcon name="palette" className="text-[20px] text-on-surface" />
-            <h2 className="text-base font-bold text-on-surface tracking-tight font-sans">{t("Workspace Theme Configurator")}</h2>
-          </div>
-          <p className="text-xs text-on-surface-variant font-sans leading-relaxed">
-            {t("Customize the developer workspace environment with cohesive colors, borders, shadows, and eye-friendly presets.")}
-          </p>
-        </div>
+    <div className="flex-1 flex flex-col overflow-hidden bg-white select-none leading-normal">
+      <SettingsPageShell>
+        <SettingsPageHeader
+          isModalStyle
+          icon="palette"
+          title={t('Workspace Theme Configurator')}
+          description={t('Customize the developer workspace environment with cohesive colors, borders, shadows, and eye-friendly presets.')}
+        />
 
         {/* Live Theme Preview Banner */}
         <div className="p-4 bg-surface-container border border-outline rounded-xl flex items-center justify-between text-left">
@@ -216,7 +211,7 @@ export const ThemeManager: React.FC<ThemeManagerProps> = ({
           </div>
         </div>
 
-      </div>
+      </SettingsPageShell>
 
       {/* Footer bar */}
       <div className="h-10 bg-surface-container border-t border-outline flex items-center justify-between px-6 text-[10px] text-on-surface-variant select-none">

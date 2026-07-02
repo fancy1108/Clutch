@@ -9,6 +9,8 @@ export type {
   HybridExecutionPayload,
   OutputEvent,
   OutputEventType,
+  PtyOutputData,
+  PtySessionStatusData,
   RunStatus,
   StatePatchData,
   UncommittedFile,

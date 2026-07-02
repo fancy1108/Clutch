@@ -14,6 +14,9 @@ Target: **v1.0.4** (not tagged yet).
 
 ### Added
 
+- **Agent-scoped capability tabs:** Settings → **Models**, **MCP Hub**, and **Skills Registry** now use top tabs (**Clutch Agent** · **Claude Code** · **OpenCode**). Clutch tab keeps full edit/bind behavior; CLI tabs scan native config read-only and support CC Switch provider switch when `cc-switch` CLI is on PATH (Claude Code models).
+- **Agent Manager clarity:** Create/edit **Module 3 (Skills)** and **Module 4 (MCP)** branch by agent type — Clutch agents bind Clutch Registry/Hub; Claude Code & OpenCode show native scan + Settings deep links; other CLI types show **coming soon** (no misleading Clutch bind UI). Saving non-Clutch agents clears `skills` / `mcpServerIds`.
+- **CLI config API:** `GET /api/cli-config/{agent_type}/models|skills|mcp` and `POST .../activate-provider` for `claude-cli` and `opencode-cli`.
 - **Agnes Video V2.0 (chat):** Built-in `agnes-video-v2.0` model; generate video from chat with inline player (poster + download); Chinese prompts auto-translated to English before API call; Models settings + Agnes provider key.
 - **Product website (GitHub Pages):** Static landing at **https://fancy1108.github.io/Clutch/** — bilingual overview, install commands, contact (`docs/index.html`).
 - **README marketing:** Clickable hero banners; high-resolution hero assets.

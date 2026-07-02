@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Header } from './components/Header';
 import { Sidebar } from './sidebar';
 import { ChatFeed, configuredEngineToRuntimeLabel } from './components/ChatFeed';
@@ -47,6 +47,13 @@ import {
   type WorkflowAgentStep,
 } from './services/workflowAgentSteps';
 import { isClutchAgentType, agentTypeFromAgent, agentTypeLabel } from './services/agentTypes';
+import {
+  filterAgentsForTerminalWorkspace,
+  isTerminalCapableAgentType,
+  loadWorkspaceViewMode,
+  saveWorkspaceViewMode,
+  type WorkspaceViewMode,
+} from './services/workspaceViewMode';
 import { resolveAgentBrandLogo, resolveBrandLogoSrc } from './services/brandLogos';
 import {
   activateWorkspace,
@@ -186,6 +193,17 @@ function MainLayout() {
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<{ view?: MainView }>).detail;
+      if (detail?.view) {
+        setView(detail.view);
+      }
+    };
+    window.addEventListener('clutch-navigate-settings', handler);
+    return () => window.removeEventListener('clutch-navigate-settings', handler);
+  }, []);
+
   const setThemeId = (id: string) => {
     const preset = THEME_PRESETS.find((item) => item.id === id);
     if (!preset) return;
@@ -261,6 +279,7 @@ function MainLayout() {
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(
     () => localStorage.getItem('clutch_active_agent_id') || BUILTIN_AGENT_ID,
   );
+  const [workspaceViewMode, setWorkspaceViewMode] = useState<WorkspaceViewMode>(() => loadWorkspaceViewMode());
   const [configuredAgents, setConfiguredAgents] = useState<Agent[]>([]);
 
   useEffect(() => {
@@ -410,6 +429,15 @@ function MainLayout() {
 
   const selectedAgent = configuredAgents.find((agent) => agent.id === selectedAgentId);
   const selectedAgentName = getAgentDisplayName(selectedAgent);
+  const isPlainLlmFooter = !selectedWorkflowId && !clutchState.workflow_id;
+  const footerSelectableAgents = useMemo(
+    () => (
+      isPlainLlmFooter && workspaceViewMode === 'terminal'
+        ? filterAgentsForTerminalWorkspace(configuredAgents, 'terminal', agentTypeFromAgent)
+        : configuredAgents
+    ),
+    [configuredAgents, isPlainLlmFooter, workspaceViewMode],
+  );
   const activeWorkflowLabel = clutchState.workflow_id || currentFlowName || selectedWorkflowId || '—';
   const hasWorkflowSelection = isMultiAgent && activeWorkflowLabel !== '—';
   const multiAgentFooterName = hasWorkflowSelection
@@ -1431,6 +1459,9 @@ function MainLayout() {
                 workflowAgentSteps={workflowAgentSteps}
                 resolveAgentLogo={resolveAgentLogo}
                 engineHint={chatRuntimeEngineHint}
+                activeAgentType={selectedAgent ? agentTypeFromAgent(selectedAgent) : ''}
+                workspaceViewMode={workspaceViewMode}
+                onWorkspaceViewModeChange={setWorkspaceViewMode}
                 workspaceFiles={workspaceFiles}
                 sessions={sessions}
                 skills={chatSkills}
@@ -1443,6 +1474,8 @@ function MainLayout() {
                 shellPoolQueueDepth={clutchState.shell_pool_queue_depth}
                 userAvatar={userAvatar}
                 userName={userName}
+                terminalLogs={terminalLogs}
+                onClearTerminal={handleClearTerminal}
               />
               <RightPanel
                 activeTab={rightTab}
@@ -1522,7 +1555,7 @@ function MainLayout() {
               className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-container-low hover:text-on-surface transition-colors cursor-pointer font-medium whitespace-nowrap"
               aria-label={`${t('Branch')}: ${workspaceGit.branch || '—'}`}
             >
-              <LegacyIcon name="fork_right" className="text-[15px] text-on-surface-variant" />
+              <LegacyIcon name="account_tree" className="text-[15px] text-on-surface-variant" />
               {t('Branch')}: {workspaceGit.branch || '—'}
               <LegacyIcon name="keyboard_arrow_down" className="text-[13px]" />
             </button>
@@ -1662,7 +1695,7 @@ function MainLayout() {
                 </button>
                 {agentMenuOpen ? (
                   <FooterMenuPanel testId="footer-agent-menu">
-                    {configuredAgents.map((agent) => (
+                    {footerSelectableAgents.map((agent) => (
                       <FooterMenuItem
                         key={agent.id}
                         testId={`footer-agent-item-${agent.id}`}
@@ -1696,7 +1729,7 @@ function MainLayout() {
                   }`}
                   aria-label={`${t('Workflow')}: ${activeWorkflowLabel}`}
                 >
-                  <LegacyIcon name="account_tree" className="text-[15px]" />
+                  <LegacyIcon name="fork_right" className="text-[15px]" />
                   {t('Workflow')}: {activeWorkflowLabel}
                   <LegacyIcon name="keyboard_arrow_down" className="text-[13px]" />
                 </button>
@@ -1747,7 +1780,7 @@ function MainLayout() {
               </button>
               {agentMenuOpen ? (
                 <FooterMenuPanel testId="footer-agent-menu">
-                  {configuredAgents.map((agent) => (
+                  {footerSelectableAgents.map((agent) => (
                     <FooterMenuItem
                       key={agent.id}
                       testId={`footer-agent-item-${agent.id}`}

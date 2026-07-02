@@ -10,6 +10,7 @@ import { ThemeManager } from './ThemeManager';
 import { useLanguage } from './LanguageContext';
 import { BTN_FOCUS, BTN_PRIMARY, BTN_SECONDARY } from './ui/buttonStyles';
 import { LegacyIcon } from './ui/LegacyIcon';
+import { SettingsPageHeader, SettingsPageShell } from './ui/SettingsPageHeader';
 import { saveAvatarPreference } from '../services/themeApi';
 import { FONT_SIZE_LABEL_KEYS, FONT_SIZE_OPTIONS, type AppFontSize } from '../services/fontSizePreference';
 import { setUserChatAvatar } from '../services/clutchState';
@@ -278,16 +279,13 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
                 setThemeId={setThemeId}
               />
             ) : currentView === 'settings' ? (
-              <div className="flex-1 flex flex-col p-8 overflow-y-auto bg-surface-bright text-on-surface select-text">
-                <div className="border-b border-outline/30 pb-4 mb-6">
-                  <h2 className="text-lg font-extrabold tracking-tight text-on-surface flex items-center gap-2">
-                    <LegacyIcon name="settings" className="text-xl" />
-                    {t("General Settings")}
-                  </h2>
-                  <p className="text-[11px] text-on-surface-variant mt-1">
-                    {t("Customize your application profile, account settings and default preferences.")}
-                  </p>
-                </div>
+              <SettingsPageShell>
+                <SettingsPageHeader
+                  isModalStyle
+                  icon="settings"
+                  title={t('General Settings')}
+                  description={t('Customize your application profile, account settings and default preferences.')}
+                />
 
                 <div className="space-y-6">
                   {/* Avatar Settings Section */}
@@ -378,7 +376,7 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
                     </div>
                   </div>
                 </div>
-              </div>
+              </SettingsPageShell>
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center p-10 text-center select-none bg-surface-bright text-on-surface">
                 <LegacyIcon name="construction" className="text-[32px] text-on-surface-variant/40 mb-2" />

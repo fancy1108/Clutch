@@ -20,6 +20,13 @@ import {
   isWorkflowRefineEligible,
   resolveInProgressWorkflowStep,
 } from '../services/workflowAgentSteps';
+import { ChatTerminalView } from './ChatTerminalView';
+import {
+  isTerminalCapableAgentType,
+  resolveCliToolForTerminal,
+  saveWorkspaceViewMode,
+  type WorkspaceViewMode,
+} from '../services/workspaceViewMode';
 
 function outputEventLabel(type: OutputEvent['type'], t: (key: string) => string): string {
   switch (type) {
@@ -236,6 +243,9 @@ interface ChatFeedProps {
   workflowAgentSteps?: Array<{ nodeId: string; agentName: string; agentType: string; toolId?: string; agentRef?: string; label?: string }>;
   resolveAgentLogo?: (agentName: string) => string | undefined;
   engineHint?: string;
+  activeAgentType?: string;
+  workspaceViewMode: WorkspaceViewMode;
+  onWorkspaceViewModeChange: (mode: WorkspaceViewMode) => void;
   // New props for ChatInputBar
   workspaceFiles?: FileTreeNode[];
   sessions?: SessionRecord[];
@@ -249,6 +259,8 @@ interface ChatFeedProps {
   shellPoolQueueDepth?: number;
   userAvatar?: string;
   userName?: string;
+  terminalLogs?: string[];
+  onClearTerminal?: () => void;
 }
 
 const WORKFLOW_AGENTS = new Set(['Builder', 'Orchestrator', 'Evaluator', 'Supervisor']);
@@ -612,6 +624,9 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   workflowAgentSteps = [],
   resolveAgentLogo,
   engineHint = '',
+  activeAgentType = '',
+  workspaceViewMode,
+  onWorkspaceViewModeChange,
   workspaceFiles = [],
   sessions = [],
   skills = [],
@@ -624,6 +639,8 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   shellPoolQueueDepth = 0,
   userAvatar,
   userName = 'User',
+  terminalLogs = [],
+  onClearTerminal,
 }) => {
   const { t } = useLanguage();
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -656,6 +673,22 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   const isRunning = clutchStatus === 'running';
   const awaitingHuman = clutchStatus === 'awaiting_human';
   const isPlainLlmChat = isPlainLlmSession(selectedWorkflowId, activeWorkflowId);
+  const terminalCliTool = resolveCliToolForTerminal(activeAgentType);
+  const terminalCapable = isTerminalCapableAgentType(activeAgentType);
+  const showWorkspaceViewToggle = isPlainLlmChat && terminalCapable;
+
+  useEffect(() => {
+    if (!showWorkspaceViewToggle && workspaceViewMode === 'terminal') {
+      onWorkspaceViewModeChange('chat');
+      saveWorkspaceViewMode('chat');
+      void clutchStore.detachInteractivePty();
+    }
+  }, [showWorkspaceViewToggle, workspaceViewMode, activeAgentType, onWorkspaceViewModeChange]);
+
+  const handleWorkspaceViewChange = useCallback((mode: WorkspaceViewMode) => {
+    onWorkspaceViewModeChange(mode);
+    saveWorkspaceViewMode(mode);
+  }, [onWorkspaceViewModeChange]);
 
   const prevStatusRef = useRef(clutchStatus);
   useEffect(() => {
@@ -833,6 +866,41 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   const chatMaxWidthClass = isSidebarCollapsed ? 'max-w-4xl' : 'max-w-3xl';
 
   return (
+  <>
+    {showWorkspaceViewToggle ? (
+      <div
+        className="fixed z-40 flex rounded-xl border border-outline-variant/40 overflow-hidden text-xs font-bold whitespace-nowrap shadow-sm bg-surface-container-low"
+        style={{
+          top: `calc(${CONTENT_TOP_WITH_BANNER} + 12px)`,
+          right: `${rightSidebarWidth + 24}px`,
+        }}
+      >
+        <button
+          type="button"
+          data-testid="workspace-view-chat"
+          onClick={() => handleWorkspaceViewChange('chat')}
+          className={`px-3 py-1.5 text-[11px] transition-colors ${
+            workspaceViewMode === 'chat'
+              ? 'bg-neutral-900 text-white'
+              : 'bg-transparent text-on-surface-variant hover:bg-surface-container-high'
+          }`}
+        >
+          {t('Chat mode')}
+        </button>
+        <button
+          type="button"
+          data-testid="workspace-view-terminal"
+          onClick={() => handleWorkspaceViewChange('terminal')}
+          className={`px-3 py-1.5 text-[11px] transition-colors border-l border-outline-variant/40 ${
+            workspaceViewMode === 'terminal'
+              ? 'bg-neutral-900 text-white'
+              : 'bg-transparent text-on-surface-variant hover:bg-surface-container-high'
+          }`}
+        >
+          {t('Terminal mode')}
+        </button>
+      </div>
+    ) : null}
     <section
       style={{
         paddingLeft: `${selectedSidebarWidth + sidebarContentInset}px`,
@@ -853,7 +921,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
             </div>
           </div>
         ) : null}
-        {showEmptyState && (
+        {workspaceViewMode === 'chat' && showEmptyState && (
           <div className="flex flex-col items-center justify-center text-center py-16 px-6 space-y-5">
             <div className="w-14 h-14 rounded-2xl bg-surface-container-low border border-outline-variant/40 flex items-center justify-center">
               <LegacyIcon name={isMultiAgent ? "hub" : "smart_toy"} className="text-[28px] text-on-surface-variant" />
@@ -902,7 +970,23 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
           </div>
         )}
 
-        {messages.map((msg) => {
+        {terminalCapable && isPlainLlmChat ? (
+          <div className={workspaceViewMode === 'terminal' ? 'block' : 'hidden'} aria-hidden={workspaceViewMode !== 'terminal'}>
+            <ChatTerminalView
+              visible={workspaceViewMode === 'terminal'}
+              terminalLogs={terminalLogs}
+              clutchStatus={clutchStatus}
+              shellSessionStatus={shellSessionStatus}
+              activeAgentName={activeAgentName}
+              engineHint={engineHint}
+              cliTool={terminalCliTool ?? 'claude-cli'}
+              sessionRunId={sessionRunId}
+              onClearTerminal={onClearTerminal}
+            />
+          </div>
+        ) : null}
+
+        {workspaceViewMode === 'chat' && messages.map((msg) => {
           const isUser = msg.agent === 'User';
           const replyStepIndex = workflowReplyStepIndex.get(msg.id);
           const replyStep = replyStepIndex !== undefined
@@ -1076,7 +1160,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
           );
         })}
 
-        {showThinking && (
+        {workspaceViewMode === 'chat' && showThinking && (
           <div className="w-full flex justify-start mb-4">
             <div className="flex gap-3 max-w-[85%] px-1.5 py-1 rounded-xl">
               <AgentChatAvatar
@@ -1209,7 +1293,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
               </button>
             </div>
           </div>
-        ) : (
+        ) : workspaceViewMode === 'chat' ? (
           <div className="w-full flex justify-center">
             <ChatInputBar
               inputValue={inputValue}
@@ -1241,7 +1325,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
               workflowAgents={workflowAgentSteps}
             />
           </div>
-        )}
+        ) : null}
       </div>
       {messageContextMenu && (
         <div
@@ -1263,5 +1347,6 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
         </div>
       )}
     </section>
+  </>
   );
 };

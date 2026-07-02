@@ -30,6 +30,27 @@ struct SidecarAuthState {
     token: String,
 }
 
+mod directory_picker;
+
+#[tauri::command]
+fn clutch_host_os() -> &'static str {
+    std::env::consts::OS
+}
+
+#[tauri::command]
+fn clutch_pick_directory(
+    title: Option<String>,
+    default_path: Option<String>,
+    show_hidden: Option<bool>,
+) -> Option<String> {
+    directory_picker::pick_directory(
+        title.as_deref().unwrap_or("Select folder"),
+        default_path.as_deref(),
+        show_hidden.unwrap_or(true),
+    )
+    .map(|path| path.to_string_lossy().into_owned())
+}
+
 #[tauri::command]
 fn clutch_e2e_sandbox() -> Option<String> {
     std::env::var("CLUTCH_E2E_SANDBOX").ok()
@@ -138,6 +159,8 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
+            clutch_pick_directory,
+            clutch_host_os,
             clutch_e2e_sandbox,
             clutch_sidecar_token,
             clutch_cpu_arch

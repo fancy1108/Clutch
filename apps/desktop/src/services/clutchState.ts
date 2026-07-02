@@ -4,6 +4,8 @@ import type {
   ClutchState,
   HybridExecutionData,
   HybridExecutionPayload,
+  PtyOutputData,
+  PtySessionStatusData,
   StatePatchData,
   WebSocketEnvelope,
 } from '../types';
@@ -195,9 +197,58 @@ class ClutchStateStore {
   private pendingUserMessageId: string | null = null;
   private connectionAttemptId = 0;
   private _connected = false;
+  private _ptySessionStatus = '';
+  private _ptyOutputHandlers = new Set<(chunk: string) => void>();
+  private _ptyStatusHandlers = new Set<(status: string) => void>();
 
   get connected(): boolean {
     return this._connected;
+  }
+
+  get ptySessionStatus(): string {
+    return this._ptySessionStatus;
+  }
+
+  onPtyOutput(handler: (chunk: string) => void): () => void {
+    this._ptyOutputHandlers.add(handler);
+    return () => this._ptyOutputHandlers.delete(handler);
+  }
+
+  onPtyStatusChange(handler: (status: string) => void): () => void {
+    this._ptyStatusHandlers.add(handler);
+    return () => this._ptyStatusHandlers.delete(handler);
+  }
+
+  private dispatchPtyOutput(chunk: string): void {
+    for (const handler of this._ptyOutputHandlers) {
+      handler(chunk);
+    }
+  }
+
+  private setPtySessionStatus(status: string): void {
+    this._ptySessionStatus = status;
+    for (const handler of this._ptyStatusHandlers) {
+      handler(status);
+    }
+  }
+
+  async attachInteractivePty(cliTool: string): Promise<void> {
+    this.setPtySessionStatus('booting');
+    await this.send({ action: 'pty_attach', cli_tool: cliTool });
+  }
+
+  async detachInteractivePty(): Promise<void> {
+    this.setPtySessionStatus('detached');
+    await this.send({ action: 'pty_detach' });
+  }
+
+  async sendPtyInput(data: string): Promise<void> {
+    if (!data) return;
+    await this.send({ action: 'pty_input', data });
+  }
+
+  async sendPtyResize(cols: number, rows: number): Promise<void> {
+    await this.send({ action: 'pty_resize', cols, rows });
   }
 
   subscribe = (listener: () => void): (() => void) => {
@@ -656,6 +707,21 @@ class ClutchStateStore {
               if (data.status) {
                 this.applyPatch({ status: data.status as ClutchState['status'] });
               }
+              return;
+            }
+            if (envelope.event === 'pty_output') {
+              const data = envelope.data as PtyOutputData;
+              if (data.chunk) {
+                this.dispatchPtyOutput(data.chunk);
+              }
+              return;
+            }
+            if (envelope.event === 'pty_session_status') {
+              const data = envelope.data as PtySessionStatusData;
+              if (data.status) {
+                this.setPtySessionStatus(data.status);
+              }
+              return;
             }
           } catch {
             console.warn('[Clutch WS] non-JSON message:', event.data);

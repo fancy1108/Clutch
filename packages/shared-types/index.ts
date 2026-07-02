@@ -107,7 +107,32 @@ export type WebSocketEvent =
   | 'file_changed'
   | 'validation_result'
   | 'human_required'
-  | 'run_completed';
+  | 'run_completed'
+  | 'pty_output'
+  | 'pty_session_status';
+
+/** WebSocket `pty_output` payload — raw PTY bytes for embedded terminal mode. */
+export interface PtyOutputData {
+  run_id: string;
+  node_id?: string;
+  source?: string;
+  level?: string;
+  message?: string;
+  timestamp?: string;
+  chunk: string;
+  encoding?: 'utf8';
+}
+
+/** WebSocket `pty_session_status` payload. */
+export interface PtySessionStatusData {
+  run_id: string;
+  node_id?: string;
+  source?: string;
+  level?: string;
+  message?: string;
+  timestamp?: string;
+  status: 'booting' | 'ready' | 'detached' | 'exited' | 'blocked' | string;
+}
 
 /** LangGraph SSOT projected to the React UI. */
 export interface ClutchState {

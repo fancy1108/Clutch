@@ -96,6 +96,7 @@ graph TD
 * **Rich Chat Input Bar & Attachments**：支持从剪贴板直接粘贴图片生成 Chip 缩略图预览；支持从右侧文件树拖拽文件/文件夹进入输入框作为附件；输入框内键入 `/` 触发已扫描 Skills 的指令联想，键入 `#` 触发历史会话引用联想；工作流精修模式（`refining` 或已完成工作流）下键入 `@` 触发工作流 Agent 联想；提供全局运行状态控制（Running 时展示 Stop 按钮，工作流 Stop 进入精修而非 failed）；提供持久化的安全审批模式选择（Auto-approve, Ask-on-Write, Manual confirmation）。
 * **Long-session compaction**：Plain chat 在 token 估算接近模型上下文上限时自动压缩历史消息；用户消息与摘要 digest 保留，完整原文写入 `runs/archive/{run_id}.jsonl`。
 * **Observability Chat Feed**：支持对本地子进程 CLI（如 Claude Code CLI）敲击的所有终端命令及 stdout/stderr 输出进行行内展开卡片审计；聊天气泡中优雅地展示 Agent 专属标签、Boundary markers 和系统提示词 metadata。**Hybrid 回复的正文与图片均从 `outputEvents` 的 assistant 内容解析**，避免工作流上一节点气泡误显示下一节点生成的图片。Plain chat 支持 `client_message_id` 与乐观发送合并，避免切换 Agent 后重复「你好」等用户消息被去重或丢失。
+* **Chat / Terminal 双模式（Single Agent plain chat）**：当 Active Agent 为 **Claude CLI** 或 **OpenCode CLI** 时，主工作台右上角可切换 **对话模式**（默认）与 **终端模式**（嵌入式 xterm + `INTERACTIVE_PTY`）。Clutch 内置 Agent 及其他 CLI 类型不显示该切换；**终端模式下底部 Active Agent 下拉仅列出 Claude CLI 与 OpenCode CLI**。终端模式下底部 `ChatInputBar` 隐藏，用户在 xterm 内直接输入；切回对话模式后历史消息与监督发消息能力不变，PTY 会话在后台保持以减少切换卡顿。工作流 session 不展示切换。右侧 Terminal 审计面板独立保留。
 
 ---
 
@@ -119,12 +120,12 @@ graph TD
 ### 3.4 Settings Dashboard (设置与配置中心)
 
 * **General Settings**：支持用户修改个人名称并应用在发送气泡标签中；支持上传自定义头像并转换为 base64 存盘；支持中英文双语对照切换，后端 API / WS 错误采用 `tr()` 响应；利用 Tauri `getVersion` 插件动态显示真实桌面客户端版本号。
-* **Agent Settings**：提供可视化 Agent 管理器（`AgentManager.tsx`），支持自由增删改自定义 Agent，配置其名称、头像、System Prompt、模型及关联 MCP 工具。
+* **Agent Settings**：提供可视化 Agent 管理器（`AgentManager.tsx`），支持自由增删改自定义 Agent，配置其名称、头像、System Prompt、模型及关联 MCP 工具。**Skills / MCP 模块按 Agent 类型分档**：仅 **Clutch** 内置 Agent 可绑定 Clutch Skills Registry 与 MCP Hub；**Claude Code** / **OpenCode** CLI Agent 展示各自原生配置只读扫描与 Settings 深链；其他 CLI 类型显示「即将上线」，避免误用全局 Registry。
 * **Workflow Settings**：管理和选择可用的流程图 SOP 模板，支持一键在 Chat 中启用。
 * **Tool Settings**：对 20+ 主流 Agent CLI 白名单做本机探测——**已安装的一律展示**（含 Rivet、OpenCode、CodeBuddy 等扩展工具）；**未安装时默认仅推荐经 Clutch 验证的 CLI**（`codebuddy`、`opencode`、`claude`、`ollama`、`codex`、`agy`）及安装指引。CodeBuddy 内置 headless 路由（`codebuddy -p`，curated `--dangerously-skip-permissions`）；OpenCode 内置 headless 路由（`run --auto`），Auto Config 错误参数不会覆盖 curated 配置。支持 Connect 偏好与 **Auto Config**（LLM 分析 `--help` 写入 `custom_clis.json` 路由参数）。
-* **Model Provider Settings**：配置各种云端大模型 API Keys 凭证（支持无感导入 `.cc-switch` 凭证）。内置文本提供商含 **DeepSeek**、**Anthropic**、**OpenAI**、**Google**、**Ollama**、**Agnes** 与 **OpenCode Zen**（[opencode.ai](https://opencode.ai/auth) Zen 工作区 API Key；端点 `https://opencode.ai/zen/v1`）。**OpenCode Zen** 预置 5 个免费对话模型（DeepSeek V4 Flash Free、Big Pickle Free、MiMo-V2.5 Free、North Mini Code Free、Nemotron 3 Ultra Free）；添加时从内置列表选择，可点 **Refresh models** 从 Zen 拉取最新目录，**Save** 时校验 Key 可用且模型仍在目录中。内置 **Agnes 2.0 Flash**（对话）、**Agnes Image 2.1 Flash**（生图）与 **Agnes Video V2.0**（文生视频），共用 **Agnes / Custom** 提供商 API Key；对话区选中视频模型时直接发起渲染并在气泡内嵌播放器（首帧封面 + 下载）；中文提示词自动翻译为英文后再调用视频 API；**Ollama 条目与 Create Agent 下拉同源**——实时读取本机 `ollama list` 已安装 tag，Settings 不再展示未安装的内置目录模型；跨设备同步的 `models.json` 若指向本机不存在的 Ollama 模型会自动回退到首个可用本地 tag；支持对模型属性（Context Window, Temperature）进行精细注册与调整。
-* **Skills Settings**：自动扫描项目关联的 Skills，解析 `.md` 指引文件前缀的 YAML 元数据信息并呈现在表格中。
-* **MCP Server Settings**：支持注册、连接或拔除本地/远程的 Model Context Protocol 服务器。
+* **Model Provider Settings**（**Models by Agent** 顶栏 Tab：**Clutch Agent** · **Claude Code** · **OpenCode**）：**Clutch** Tab 配置内置 Agent 所用云端/本地模型 API Keys（支持无感导入 `.cc-switch` 凭证至 Clutch 侧）。内置文本提供商含 **DeepSeek**、**Anthropic**、**OpenAI**、**Google**、**Ollama**、**Agnes** 与 **OpenCode Zen**（[opencode.ai](https://opencode.ai/auth) Zen 工作区 API Key；端点 `https://opencode.ai/zen/v1`）。**Claude Code** / **OpenCode** Tab 只读扫描各 CLI 原生 model 配置；Claude Code 在已安装 `cc-switch` CLI 时可切换 provider。**OpenCode Zen**（供 Clutch 内置 Agent，非 OpenCode CLI）仍在 Clutch Tab 配置。内置 **Agnes 2.0 Flash**（对话）、**Agnes Image 2.1 Flash**（生图）与 **Agnes Video V2.0**（文生视频）；**Ollama 条目与 Create Agent 下拉同源**——实时读取本机 `ollama list` 已安装 tag。
+* **Skills Settings**（同上 Agent Tab）：Clutch Tab 管理 Skills Registry 挂载；Claude Code / OpenCode Tab 只读扫描原生 `SKILL.md` 目录。
+* **MCP Server Settings**（同上 Agent Tab）：Clutch Tab 注册/绑定 MCP Hub；Claude Code / OpenCode Tab 只读扫描原生 MCP 配置。
 * **Appearance Settings**：提供一键在 Pristine Light、Nordic Frost 和 Amber Warm 主题间切换的设计面板。
 * **Session Memory**：使用 LocalStorage 后台自动记忆每个 sessionRunId 的工作流 ID 与智能体 ID，在切换会话时精准恢复并统一展示为多智能体视图架构。
 

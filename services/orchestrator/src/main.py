@@ -46,6 +46,17 @@ async def _lifespan(app: FastAPI):
     set_resume_handler(_resume_pool_queued_turn)
     set_refresh_handler(_refresh_pool_queued_run_states)
 
+    from src.interactive_pty_runtime import interactive_pty_manager
+    from src.plain_chat_pool_queue import get_plain_chat_ws
+
+    async def _forward_interactive_pty_output(run_id: str, chunk: str) -> None:
+        websocket = get_plain_chat_ws(run_id)
+        if websocket is not None:
+            await _send_pty_output(websocket, run_id, chunk)
+
+    interactive_pty_manager.set_event_loop(loop)
+    interactive_pty_manager.set_output_handler(_forward_interactive_pty_output)
+
     async def _sweep_shell_sessions() -> None:
         manager = get_shell_session_manager()
         while True:
@@ -63,6 +74,18 @@ async def _lifespan(app: FastAPI):
                 logger.exception("shell_session sweep failed")
 
     task = asyncio.create_task(_sweep_shell_sessions())
+
+    async def _prefetch_cc_switch_bundle() -> None:
+        try:
+            from src.cli_agent_config import prefetch_cc_switch_cli_bundle, resolve_cc_switch_cli_path
+
+            if resolve_cc_switch_cli_path():
+                return
+            await asyncio.to_thread(prefetch_cc_switch_cli_bundle)
+        except Exception:
+            logger.debug("cc-switch bundle prefetch skipped", exc_info=True)
+
+    asyncio.create_task(_prefetch_cc_switch_bundle())
     yield
     task.cancel()
     try:
@@ -248,6 +271,13 @@ class McpServerIdRequest(BaseModel):
 class McpSaveConfigRequest(BaseModel):
     servers: list[dict[str, Any]]
 
+
+class CliActivateProviderRequest(BaseModel):
+    provider_id: str
+
+
+class CliActivateModelRequest(BaseModel):
+    model_ref: str
 
 
 class ThemePreferenceRequest(BaseModel):
@@ -1017,6 +1047,46 @@ async def _send_human_required(
             "level": "info",
             "message": prompt,
             "timestamp": _iso_timestamp(),
+        },
+    }
+    await websocket.send_text(json.dumps(envelope))
+
+
+async def _send_pty_output(websocket: WebSocket, run_id: str, chunk: str, *, node_id: str = "") -> None:
+    envelope = {
+        "event": "pty_output",
+        "data": {
+            "run_id": run_id,
+            "node_id": node_id,
+            "source": "interactive_pty",
+            "level": "info",
+            "message": "pty output chunk",
+            "timestamp": _iso_timestamp(),
+            "chunk": chunk,
+            "encoding": "utf8",
+        },
+    }
+    await websocket.send_text(json.dumps(envelope))
+
+
+async def _send_pty_session_status(
+    websocket: WebSocket,
+    run_id: str,
+    status: str,
+    *,
+    node_id: str = "",
+    detail: str = "",
+) -> None:
+    envelope = {
+        "event": "pty_session_status",
+        "data": {
+            "run_id": run_id,
+            "node_id": node_id,
+            "source": "interactive_pty",
+            "level": "info",
+            "message": detail or f"pty session {status}",
+            "timestamp": _iso_timestamp(),
+            "status": status,
         },
     }
     await websocket.send_text(json.dumps(envelope))
@@ -3199,6 +3269,99 @@ async def rehydrate_cc_switch_endpoint() -> dict[str, Any]:
     return rehydrate_cc_switch_models(get_router())
 
 
+@app.get("/api/cli-config/{agent_type}/models")
+async def get_cli_config_models(agent_type: str) -> dict[str, Any]:
+    from src.cli_agent_config import normalize_cli_agent_type, scan_cli_models
+    from src.workspace import get_workspace
+
+    try:
+        normalized = normalize_cli_agent_type(agent_type)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+    workspace = get_workspace()
+    workspace_path = workspace.get("workspace_path") if workspace else None
+    return scan_cli_models(normalized, workspace_path=workspace_path)
+
+
+@app.get("/api/cli-config/{agent_type}/skills")
+async def get_cli_config_skills(agent_type: str) -> dict[str, Any]:
+    from src.cli_agent_config import normalize_cli_agent_type, scan_cli_skills
+    from src.workspace import get_workspace
+
+    try:
+        normalized = normalize_cli_agent_type(agent_type)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+    workspace = get_workspace()
+    workspace_path = workspace.get("workspace_path") if workspace else None
+    return scan_cli_skills(normalized, workspace_path=workspace_path)
+
+
+@app.get("/api/cli-config/{agent_type}/mcp")
+async def get_cli_config_mcp(agent_type: str) -> dict[str, Any]:
+    from src.cli_agent_config import normalize_cli_agent_type, scan_cli_mcp
+    from src.workspace import get_workspace
+
+    try:
+        normalized = normalize_cli_agent_type(agent_type)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+    workspace = get_workspace()
+    workspace_path = workspace.get("workspace_path") if workspace else None
+    return scan_cli_mcp(normalized, workspace_path=workspace_path)
+
+
+@app.post("/api/cli-config/{agent_type}/activate-provider")
+async def activate_cli_config_provider(
+    agent_type: str,
+    body: CliActivateProviderRequest,
+) -> dict[str, Any]:
+    from src.cli_agent_config import activate_cli_provider, normalize_cli_agent_type
+
+    try:
+        normalized = normalize_cli_agent_type(agent_type)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+    result = activate_cli_provider(normalized, body.provider_id)
+    if not result.get("ok"):
+        raise HTTPException(status_code=400, detail={"message": result.get("message", "activate failed")})
+    return result
+
+
+@app.post("/api/cli-config/install-cc-switch-cli")
+async def install_cc_switch_cli_endpoint() -> dict[str, Any]:
+    from src.cli_agent_config import install_cc_switch_cli
+
+    result = await asyncio.to_thread(install_cc_switch_cli)
+    if not result.get("ok"):
+        raise HTTPException(status_code=400, detail={"message": result.get("message", "install failed")})
+    return result
+
+
+@app.post("/api/cli-config/prefetch-cc-switch-cli")
+async def prefetch_cc_switch_cli_endpoint() -> dict[str, Any]:
+    from src.cli_agent_config import prefetch_cc_switch_cli_bundle
+
+    return await asyncio.to_thread(prefetch_cc_switch_cli_bundle)
+
+
+@app.post("/api/cli-config/{agent_type}/activate-model")
+async def activate_cli_config_model(
+    agent_type: str,
+    body: CliActivateModelRequest,
+) -> dict[str, Any]:
+    from src.cli_agent_config import activate_cli_model, normalize_cli_agent_type
+
+    try:
+        normalized = normalize_cli_agent_type(agent_type)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+    result = activate_cli_model(normalized, body.model_ref)
+    if not result.get("ok"):
+        raise HTTPException(status_code=400, detail={"message": result.get("message", "activate failed")})
+    return result
+
+
 @app.post("/api/models/test")
 async def test_models_connection(body: ModelTestRequest) -> dict[str, Any]:
     from src.models_config import get_router, test_model_connection
@@ -4140,6 +4303,71 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                             websocket, run_id, log_line, node_id=state["active_node_id"]
                         )
                         await _notify_run_state(websocket, run_id, state, patch)
+            elif isinstance(payload, dict) and payload.get("action") == "pty_attach":
+                from src.interactive_pty_runtime import InteractivePtyError, interactive_pty_manager
+                from src.workspace import get_workspace
+
+                cli_tool = str(payload.get("cli_tool", "claude-cli")).strip() or "claude-cli"
+                workspace = get_workspace()
+                workspace_path = str(workspace.get("workspace_path", "")).strip() if workspace else ""
+                if not workspace_path:
+                    await _send_pty_session_status(
+                        websocket,
+                        run_id,
+                        "blocked",
+                        detail="No workspace authorized for interactive PTY",
+                    )
+                else:
+                    try:
+                        session = await asyncio.to_thread(
+                            interactive_pty_manager.attach,
+                            run_id,
+                            workspace_path=workspace_path,
+                            cli_tool=cli_tool,
+                        )
+                        await _send_pty_session_status(
+                            websocket,
+                            run_id,
+                            session.status.value,
+                            detail="Interactive PTY attached",
+                        )
+                    except (InteractivePtyError, OSError) as exc:
+                        await _send_pty_session_status(
+                            websocket,
+                            run_id,
+                            "blocked",
+                            detail=str(exc),
+                        )
+            elif isinstance(payload, dict) and payload.get("action") == "pty_detach":
+                from src.interactive_pty_runtime import interactive_pty_manager
+
+                await asyncio.to_thread(interactive_pty_manager.detach, run_id)
+                await _send_pty_session_status(
+                    websocket,
+                    run_id,
+                    "detached",
+                    detail="Interactive PTY detached",
+                )
+            elif isinstance(payload, dict) and payload.get("action") == "pty_input":
+                from src.interactive_pty_runtime import InteractivePtyError, interactive_pty_manager
+
+                data = str(payload.get("data", ""))
+                if data:
+                    try:
+                        await asyncio.to_thread(interactive_pty_manager.write_input, run_id, data)
+                    except InteractivePtyError as exc:
+                        await _send_pty_session_status(
+                            websocket,
+                            run_id,
+                            "blocked",
+                            detail=str(exc),
+                        )
+            elif isinstance(payload, dict) and payload.get("action") == "pty_resize":
+                from src.interactive_pty_runtime import interactive_pty_manager
+
+                cols = int(payload.get("cols", 80))
+                rows = int(payload.get("rows", 24))
+                await asyncio.to_thread(interactive_pty_manager.resize, run_id, cols, rows)
             elif isinstance(payload, dict) and payload.get("action") == "delete_message":
                 message_id = str(payload.get("message_id", "")).strip()
                 if message_id:

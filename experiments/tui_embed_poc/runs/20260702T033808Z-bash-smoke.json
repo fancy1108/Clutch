@@ -1,0 +1,7 @@
+{
+  "started_at": "2026-07-02T03:38:06.351530+00:00",
+  "ok": true,
+  "rounds": 3,
+  "output_preview": "\r\nThe default interactive shell is now zsh.\r\nTo update your account to use zsh, please run `chsh -s /bin/zsh`.\r\nFor more details, please visit https://support.apple.com/kb/HT208050.\r\nbash-3.2$ echo CLUTCH_SMOKE_0\r\nCLUTCH_SMOKE_0\r\nbash-3.2$ echo CLUTCH_SMOKE_1\r\nCLUTCH_SMOKE_1\r\nbash-3.2$ echo CLUTCH_SMOKE_2\r\nCLUTCH_SMOKE_2\r\nbash-3.2$ ",
+  "notes": "bash echo smoke"
+}

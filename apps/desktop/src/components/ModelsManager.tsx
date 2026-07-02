@@ -21,6 +21,7 @@ import {
   type ProviderEntry,
 } from '../services/modelsApi';
 import { BTN_GHOST, BTN_PRIMARY, BTN_ICON } from './ui/buttonStyles';
+import { SettingsPageHeader, SettingsPageShell } from './ui/SettingsPageHeader';
 import { BADGE_NEUTRAL, BADGE_PRIMARY, BADGE_SUCCESS } from './ui/surfaceStyles';
 import { LegacyIcon } from './ui/LegacyIcon';
 import {
@@ -34,6 +35,12 @@ import {
   providersForModelKind,
   type ModelKind,
 } from '../services/modelProviderPresets';
+import { AgentCapabilityTabs } from './AgentCapabilityTabs';
+import { ClaudeCodeModelsPanel } from './ClaudeCodeModelsPanel';
+import { OpenCodeModelsPanel } from './OpenCodeModelsPanel';
+import { MoreAgentsComingSoon } from './MoreAgentsComingSoon';
+import type { AgentCapabilityTabId } from '../services/agentCapabilityTiers';
+import { consumeSettingsAgentTab } from '../services/cliConfigApi';
 
 interface ModelItem {
   id: string;
@@ -137,6 +144,12 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
   const [verifyMessageByModel, setVerifyMessageByModel] = useState<Record<string, string>>(
     () => ({ ...initialVerify.verifyMessageByModel }),
   );
+  const [capabilityTab, setCapabilityTab] = useState<AgentCapabilityTabId>('clutch');
+
+  useEffect(() => {
+    const stashed = consumeSettingsAgentTab();
+    if (stashed) setCapabilityTab(stashed);
+  }, []);
 
   const applyConfig = useCallback(
     (config: Awaited<ReturnType<typeof fetchModelsConfig>>) => {
@@ -642,69 +655,79 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
         : 'neutral';
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-surface-bright text-on-surface select-none leading-normal">
-      <div className="flex-1 overflow-y-auto px-6 pb-6 pt-14 pr-12 space-y-5">
-        <div className="flex items-start justify-between gap-4">
-          <header className="text-left space-y-1 min-w-0">
-            <h2 className="text-base font-bold text-on-surface tracking-tight font-sans">{t('AI Workspace Models')}</h2>
-            <p className="text-xs text-on-surface-variant leading-relaxed">
-              {t('Choose which model Clutch uses for chat and workflows.')}
-            </p>
-          </header>
-          <div className="flex flex-shrink-0 gap-2">
-            <button
-              type="button"
-              onClick={() => void handleRescan()}
-              disabled={loading || rescanning}
-              className={`${BTN_GHOST} text-[10.5px] whitespace-nowrap disabled:opacity-50 inline-flex items-center gap-1`}
-            >
-              <LegacyIcon
-                name="sync"
-                className={`text-[13px] ${rescanning ? 'animate-spin' : ''}`}
-              />
-              {t('Rescan')}
-            </button>
-            <div className="relative" ref={addMenuRef}>
+    <>
+    <SettingsPageShell wide>
+      <SettingsPageHeader
+        isModalStyle
+        icon="layers"
+        title={t('Models by Agent')}
+        description={t('Clutch models power the built-in agent. CLI tabs show each tool native model configuration.')}
+        actions={
+          capabilityTab === 'clutch' ? (
+            <div className="flex flex-shrink-0 gap-2">
               <button
                 type="button"
-                onClick={() => setAddMenuOpen((open) => !open)}
-                className="inline-flex items-center gap-1 px-3 py-1.5 text-[10.5px] font-semibold text-white bg-neutral-900 hover:bg-black border border-neutral-900 rounded-lg shadow-sm transition-colors"
-                aria-haspopup="menu"
-                aria-expanded={addMenuOpen}
+                onClick={() => void handleRescan()}
+                disabled={loading || rescanning}
+                className={`${BTN_GHOST} text-[10.5px] whitespace-nowrap disabled:opacity-50 inline-flex items-center gap-1`}
               >
-                <LegacyIcon name="add" className="text-[13px]" />
-                {t('Add model')}
-                <LegacyIcon name="keyboard_arrow_down" className="text-[13px]" />
+                <LegacyIcon
+                  name="sync"
+                  className={`text-[13px] ${rescanning ? 'animate-spin' : ''}`}
+                />
+                {t('Rescan')}
               </button>
-              {addMenuOpen ? (
-                <div className="absolute right-0 top-full mt-1 min-w-[168px] bg-surface-bright border border-outline-variant rounded-lg shadow-lg py-1 z-30">
-                  <button
-                    type="button"
-                    onClick={() => openAddModal('chat')}
-                    className="w-full text-left px-3 py-2 text-[11px] hover:bg-surface-container-low text-on-surface"
-                  >
-                    {t('Add text model')}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => openAddModal('image')}
-                    className="w-full text-left px-3 py-2 text-[11px] hover:bg-surface-container-low text-on-surface"
-                  >
-                    {t('Add image model')}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => openAddModal('video')}
-                    className="w-full text-left px-3 py-2 text-[11px] hover:bg-surface-container-low text-on-surface"
-                  >
-                    {t('Add video model')}
-                  </button>
-                </div>
-              ) : null}
+              <div className="relative" ref={addMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setAddMenuOpen((open) => !open)}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 text-[10.5px] font-semibold text-white bg-neutral-900 hover:bg-black border border-neutral-900 rounded-lg shadow-sm transition-colors"
+                  aria-haspopup="menu"
+                  aria-expanded={addMenuOpen}
+                >
+                  <LegacyIcon name="add" className="text-[13px]" />
+                  {t('Add model')}
+                  <LegacyIcon name="keyboard_arrow_down" className="text-[13px]" />
+                </button>
+                {addMenuOpen ? (
+                  <div className="absolute right-0 top-full mt-1 min-w-[168px] bg-surface-bright border border-outline-variant rounded-lg shadow-lg py-1 z-30">
+                    <button
+                      type="button"
+                      onClick={() => openAddModal('chat')}
+                      className="w-full text-left px-3 py-2 text-[11px] hover:bg-surface-container-low text-on-surface"
+                    >
+                      {t('Add text model')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openAddModal('image')}
+                      className="w-full text-left px-3 py-2 text-[11px] hover:bg-surface-container-low text-on-surface"
+                    >
+                      {t('Add image model')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openAddModal('video')}
+                      className="w-full text-left px-3 py-2 text-[11px] hover:bg-surface-container-low text-on-surface"
+                    >
+                      {t('Add video model')}
+                    </button>
+                  </div>
+                ) : null}
+              </div>
             </div>
-          </div>
-        </div>
+          ) : null
+        }
+      />
 
+        <AgentCapabilityTabs activeTab={capabilityTab} onTabChange={setCapabilityTab} className="pb-1" />
+
+        {capabilityTab === 'claude-cli' ? <ClaudeCodeModelsPanel /> : null}
+        {capabilityTab === 'opencode-cli' ? <OpenCodeModelsPanel /> : null}
+        {capabilityTab === 'more' ? <MoreAgentsComingSoon /> : null}
+
+        {capabilityTab === 'clutch' ? (
+        <>
         {error && !activeModal && (
           <p className="text-xs text-rose-800 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2 text-left">
             {error}
@@ -898,7 +921,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
 
           <div className="pt-2 text-center space-y-2">
             <p className="text-[11px] text-on-surface-variant">
-              {t('Already use CC Switch?')}{' '}
+              {t('Import CC Switch providers into Clutch (built-in agent credentials only).')}{' '}
               <button
                 type="button"
                 disabled={syncingCcSwitch}
@@ -921,7 +944,9 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
             )}
           </div>
         </section>
-      </div>
+        </>
+        ) : null}
+    </SettingsPageShell>
 
       {activeModal && (
         <div className="fixed inset-0 bg-neutral-900/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
@@ -1197,6 +1222,6 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 };

@@ -73,6 +73,8 @@
 | CLI PTY Session 改造方案（参考） | `docs/research/pty-session.md` |
 | **D25 Hybrid 执行状态（权威）** | **`specs/core/hybrid-runtime-plan.md`** · D27 命名对齐 |
 | PTY Session Step 0 实验 | `experiments/pty_poc/` |
+| TUI 嵌入 Phase 0 实验 | `experiments/tui_embed_poc/` |
+| 交互 PTY Runtime（终端模式） | `services/orchestrator/src/interactive_pty_runtime.py` |
 | Task 交付索引（Commit / 证据） | `memory/DELIVERABLES.md` · 归档 `memory/archive/DELIVERABLES-*.md` |
 | 决策与开放问题 | `memory/DECISIONS.md` |
 | 功能验收状态 | `memory/ROADMAP.md` |
@@ -125,6 +127,8 @@
 | 底部状态栏（Branch / Model / Agent） | `App.tsx` footer |
 | 工作区 Git 分支 API | `services/workspaceApi.ts` → `GET /api/workspace/git` |
 | Chat 流与人工干预 UI | `components/ChatFeed.tsx` |
+| 终端模式 xterm 视图 | `components/ChatTerminalView.tsx` |
+| 对话/终端模式切换状态 | `services/workspaceViewMode.ts` |
 | 工作流 Chat 步骤 / Agent 类型解析 | `services/workflowAgentSteps.ts` |
 | Agent / 工具品牌 Logo | `services/brandLogos.ts` · `components/BrandLogo.tsx` |
 | 右侧面板（Overview/Files/Flow/Changes/Terminal） | `components/RightPanel.tsx` |
@@ -195,6 +199,8 @@
 | CLI Adapter（M3） | `src/adapters/` — `cli_adapter.py`、`claude_cli_adapter.py`、`agy_cli_adapter.py`、`ollama_adapter.py` |
 | CLI PTY Session 调研（参考） | `docs/research/pty-session.md` |
 | PTY Session Step 0 实验 | `experiments/pty_poc/` |
+| TUI 嵌入 Phase 0 实验 | `experiments/tui_embed_poc/` |
+| 交互 PTY Runtime（终端模式） | `services/orchestrator/src/interactive_pty_runtime.py` |
 | Video Core（M5） | `src/video_core/` — `config.py`、`env.py`、`pipeline.py`、`renderer.py` |
 | 依赖与 pytest 配置 | `pyproject.toml` |
 
