@@ -10,6 +10,16 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ## [Unreleased]
 
+Target: **v1.0.4** (not tagged yet).
+
+### Added
+
+- **Agnes Video V2.0 (chat):** Built-in `agnes-video-v2.0` model; generate video from chat with inline player (poster + download); Chinese prompts auto-translated to English before API call; Models settings + Agnes provider key.
+- **Product website (GitHub Pages):** Static landing at **https://fancy1108.github.io/Clutch/** — bilingual overview, install commands, contact (`docs/index.html`).
+- **README marketing:** Clickable hero banners; high-resolution hero assets.
+- **OpenCode Zen text models:** Built-in `opencode` provider in Settings → Models; five curated free chat models (`deepseek-v4-flash-free`, `big-pickle`, `mimo-v2.5-free`, `north-mini-code-free`, `nemotron-3-ultra-free`); optional **Refresh models** from `opencode.ai/zen/v1/models`; **Save** validates API key (chat probe) and model catalog membership; Sidecar uses `User-Agent: ClutchSidecar/1.0` for Zen HTTP (avoids Cloudflare 403 on default Python urllib).
+- **CodeBuddy CLI:** First-class `codebuddy-cli` routing (`codebuddy -p` headless, `--resume` / `--session-id` session recovery); listed first in curated install recommendations.
+
 ## [1.0.3] - 2026-07-01
 
 Minor release — **Hybrid shell pool queue**, **OpenCode CLI**, **Ollama settings fix**, **brand refresh**, and **maintainer real-connection E2E**.

@@ -130,6 +130,14 @@ CLI_ROUTING_CONFIGS = {
         "supports_append_system_prompt": False,
         "close_stdin": True,
     },
+    "codebuddy-cli": {
+        "tool_id": "codebuddy-cli",
+        "binary_name": "codebuddy",
+        "conversation_mode": "separate",
+        "prepend_system_prompt": False,
+        "extra_args": ["--dangerously-skip-permissions"],
+        "prompt_flag": "-p",
+    },
 }
 
 try:
@@ -322,6 +330,8 @@ def _resolve_agent_type(agent: dict[str, Any] | None, fallback_tool: str | None)
         return "aider-cli"
     if fallback_tool in {"opencode-cli", "opencode"}:
         return "opencode-cli"
+    if fallback_tool in {"codebuddy-cli", "codebuddy", "cbc"}:
+        return "codebuddy-cli"
     return "clutch"
 
 

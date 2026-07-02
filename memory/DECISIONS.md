@@ -351,3 +351,17 @@
   3. **头像分发与广播**：应用启动时在 `App.tsx` 中 hydrate 并通过 state 分发到 chat bubble 以及 settings UI。
 - **影响**：`preferences_storage.py`，`main.py` 偏好端点，前端 `clutchState` / `SystemPreferencesModal`。
 - **决策状态**：`已落地`
+
+### D19 · 新增 CLI / 模型 Provider 须同步更新文档（2026-07-02）
+
+- **背景**：OpenCode Zen 文本模型接入后，产品说明（`PRODUCT_INTRO.md`）、上手指南（`GETTING_STARTED.md`）与 `FILEMAP` 一度滞后，用户难以自助配置。
+- **方案**：凡新增或显著变更 **CLI 工具路由**（`codebuddy-cli`、`opencode-cli` 等）或 **内置文本/多模态 Provider**（如 OpenCode Zen），在同一 Task 内至少更新：
+  1. `docs/PRODUCT_INTRO.md` — 用户可见能力与设置路径；
+  2. `docs/GETTING_STARTED.md` — 配置步骤（中英表格各一处）；
+  3. `memory/FILEMAP.md` — 新增/变更的源码路径映射（若涉及新模块）；
+  4. `CHANGELOG.md` — `[Unreleased]` 条目（发版前合并进版本节）；
+  5. `README.md` / `README.zh-CN.md` — **「最新更新」**一节：只写**用户可见**的单一版本要点列表（不按 commit / 开发进度分段）；发版时整节替换为新版本，历史见 `CHANGELOG.md`；
+  6. `apps/desktop/src/services/cliInstallGuides.ts` — 安装指引与 `RECOMMENDED_CLI_IDS`（若列为推荐）；
+  7. `.cursor/rules/cli-whitelist-docs.mdc` — 本清单的权威副本。
+- **影响**：Agent 与用户约定「加 CLI / Provider」时默认包含文档 diff，不单改代码。
+- **决策状态**：`已落地`

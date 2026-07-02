@@ -107,10 +107,15 @@ export const CLI_INSTALL_GUIDES: Record<string, CliInstallGuide> = {
     desc: 'Install Qwen Code AI coding agent globally via npm (requires Node.js 22+).',
     url: 'https://github.com/QwenLM/qwen-code',
   },
+  'codebuddy-cli': {
+    cmd: 'npm install -g @tencent-ai/codebuddy-code',
+    desc: 'Install Tencent Cloud CodeBuddy CLI globally via npm (binary: codebuddy / cbc).',
+    url: 'https://www.codebuddy.ai/docs/cli/installation',
+  },
 };
 
 /** CLIs tested in Clutch — primary install recommendations (Settings + onboarding). */
-export const RECOMMENDED_CLI_IDS = ['opencode-cli', 'claude-cli', 'ollama-cli', 'codex-cli', 'agy-cli'] as const;
+export const RECOMMENDED_CLI_IDS = ['codebuddy-cli', 'opencode-cli', 'claude-cli', 'ollama-cli', 'codex-cli', 'agy-cli'] as const;
 
 export const ONBOARDING_RECOMMENDED_CLI_IDS = RECOMMENDED_CLI_IDS;
 

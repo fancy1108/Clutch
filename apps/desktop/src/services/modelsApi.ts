@@ -241,6 +241,33 @@ export async function deleteCustomModel(modelId: string): Promise<ModelConfig> {
   return body.config;
 }
 
+export interface OpencodeZenModelOption {
+  id: string;
+  api_model: string;
+  name: string;
+  supported: boolean;
+}
+
+export async function fetchOpencodeZenModels(): Promise<{
+  ok: boolean;
+  models: OpencodeZenModelOption[];
+  message?: string;
+}> {
+  const response = await sidecarFetch(`${BASE}/api/models/opencode-zen/list`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  });
+  if (!response.ok) {
+    throw new Error(`OpenCode Zen model list failed (${response.status})`);
+  }
+  return response.json() as Promise<{
+    ok: boolean;
+    models: OpencodeZenModelOption[];
+    message?: string;
+  }>;
+}
+
 export const PROVIDER_LABELS: Record<string, string> = {
   deepseek: 'DeepSeek',
   anthropic: 'Anthropic',
@@ -248,6 +275,7 @@ export const PROVIDER_LABELS: Record<string, string> = {
   google: 'Google',
   ollama: 'Ollama',
   agnes: 'Agnes',
+  opencode: 'OpenCode Zen',
   custom: 'Custom',
 };
 

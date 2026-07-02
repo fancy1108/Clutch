@@ -165,6 +165,10 @@ class ModelsConfigRequest(BaseModel):
     api_key: str | None = None
 
 
+class OpenCodeZenListRequest(BaseModel):
+    api_key: str | None = None
+
+
 class ModelTestRequest(BaseModel):
     model_id: str
 
@@ -3125,13 +3129,28 @@ async def get_models_config(response: Response) -> dict[str, Any]:
 
 @app.post("/api/models/config")
 async def update_models_config(body: ModelsConfigRequest) -> dict[str, str]:
-    from src.llm.router import ProviderId
+    from src.adapters.opencode_zen_adapter import ZEN_DEFAULT_MODEL_ID, validate_opencode_zen_save
     from src.models_config import get_router, is_model_available, save_router, sync_local_ollama_models
 
     router = get_router()
     sync_local_ollama_models(router)
-    if body.provider_id and body.api_key is not None:
-        router.set_api_key(body.provider_id, body.api_key)  # type: ignore[arg-type]
+    if body.provider_id == "opencode" and body.api_key is not None:
+        key = body.api_key.strip()
+        model_id = body.active_model_id
+        if not model_id:
+            active = router._models.get(router.active_model_id)
+            model_id = (
+                router.active_model_id
+                if active and active.provider_id == "opencode"
+                else ZEN_DEFAULT_MODEL_ID
+            )
+        try:
+            validate_opencode_zen_save(key, str(model_id), router)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+        router.set_api_key("opencode", key)
+    elif body.provider_id and body.api_key is not None:
+        router.set_api_key(body.provider_id, body.api_key.strip())  # type: ignore[arg-type]
     if body.active_model_id:
         if not is_model_available(router, body.active_model_id):
             raise HTTPException(
@@ -3299,6 +3318,17 @@ async def delete_custom_image_model(model_id: str) -> dict[str, Any]:
     except ValueError as exc:
         raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
     return {"status": "deleted", "model_id": model_id, "config": serialize_models_config(router)}
+
+
+@app.post("/api/models/opencode-zen/list")
+async def list_opencode_zen_catalog(_body: OpenCodeZenListRequest) -> dict[str, Any]:
+    from src.adapters.opencode_zen_adapter import fetch_opencode_zen_catalog
+
+    try:
+        models = fetch_opencode_zen_catalog()
+        return {"ok": True, "models": models}
+    except Exception as exc:
+        return {"ok": False, "models": [], "message": str(exc)}
 
 
 @app.get("/api/models/ollama")

@@ -41,6 +41,11 @@ _REGISTRY: dict[str, ProviderSpec] = {
         RuntimeStrategy.SHELL_EXEC,
         exec_template='opencode run --auto "{prompt}"',
     ),
+    "codebuddy-cli": ProviderSpec(
+        "codebuddy-cli",
+        RuntimeStrategy.SHELL_EXEC,
+        exec_template='codebuddy -p "{prompt}"',
+    ),
     "ollama-cli": ProviderSpec("ollama-cli", RuntimeStrategy.HTTP_DAEMON),
 }
 

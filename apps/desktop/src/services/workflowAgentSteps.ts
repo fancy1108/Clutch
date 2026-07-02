@@ -24,6 +24,7 @@ const TOOL_LABELS: Record<string, string> = {
   'antigravity-cli': 'Antigravity CLI',
   'codex-cli': 'Codex CLI',
   'opencode-cli': 'OpenCode CLI',
+  'codebuddy-cli': 'CodeBuddy CLI',
   'agy-cli': 'Antigravity CLI',
   agy: 'Antigravity CLI',
 };

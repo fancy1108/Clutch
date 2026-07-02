@@ -260,6 +260,10 @@
       width: 76%;
       height: 76%;
     }
+    .iso-tile .slab-top img.tool-logo-codebuddy {
+      width: 64%;
+      height: 64%;
+    }
     .iso-tile .slab-top .mono {
       font-family: var(--mono);
       font-size: 12px;
@@ -770,7 +774,8 @@
           <div class="iso-tile" style="--gx:1;--gy:-1"><div class="slab-top"><img src="assets/tool-logos/vscode.svg" alt="" /></div></div>
           <div class="iso-tile far" style="--gx:2;--gy:-2"><div class="slab-top"><span class="mono">rivet</span></div></div>
 
-          <!-- Bottom lane · 3个（与上排同列对齐） -->
+          <!-- Bottom lane · gx+gy=4 同一条等距对角线 -->
+          <div class="iso-tile" style="--gx:0;--gy:4"><div class="slab-top"><img class="tool-logo-codebuddy" src="assets/tool-logos/codebuddy.svg" alt="" /></div></div>
           <div class="iso-tile" style="--gx:1;--gy:3"><div class="slab-top"><img class="tool-logo-strong" src="assets/tool-logos/ollama.svg" alt="" /></div></div>
           <div class="iso-tile" style="--gx:2;--gy:2"><div class="slab-top"><img src="assets/tool-logos/chatgpt.svg" alt="" /></div></div>
           <div class="iso-tile" style="--gx:3;--gy:1"><div class="slab-top"><img src="assets/tool-logos/aider.svg" alt="" /></div></div>
@@ -796,6 +801,7 @@
         <span>opencode-cli</span>
         <span>antigravity-cli</span>
         <span>ollama-cli</span>
+        <span>codebuddy-cli</span>
         <span>rivet-cli</span>
         <span>MCP</span>
       </div>
@@ -848,21 +854,24 @@
             <svg class="hub-svg" viewBox="0 0 640 220" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
               <rect x="292" y="16" width="56" height="56" rx="14" fill="#000"/>
               <image href="assets/brand/clutch-mark.svg" x="292" y="16" width="56" height="56" preserveAspectRatio="xMidYMid meet"/>
-              <line x1="320" y1="72" x2="120" y2="168" stroke="#3d4f8c" stroke-width="1.5" opacity=".55"/>
-              <line x1="320" y1="72" x2="220" y2="168" stroke="#3d4f8c" stroke-width="1.5" opacity=".55"/>
-              <line x1="320" y1="72" x2="320" y2="168" stroke="#3d4f8c" stroke-width="1.5" opacity=".55"/>
-              <line x1="320" y1="72" x2="420" y2="168" stroke="#3d4f8c" stroke-width="1.5" opacity=".55"/>
-              <line x1="320" y1="72" x2="520" y2="168" stroke="#3d4f8c" stroke-width="1.5" opacity=".55"/>
-              <rect x="72" y="168" width="96" height="40" rx="10" fill="#fff" stroke="#e2e5ec"/>
-              <text x="120" y="193" text-anchor="middle" fill="#484f5c" font-family="JetBrains Mono" font-size="11">claude-cli</text>
-              <rect x="172" y="168" width="96" height="40" rx="10" fill="#fff" stroke="#e2e5ec"/>
-              <text x="220" y="193" text-anchor="middle" fill="#484f5c" font-family="JetBrains Mono" font-size="11">codex-cli</text>
-              <rect x="272" y="168" width="96" height="40" rx="10" fill="#fff" stroke="#e2e5ec"/>
-              <text x="320" y="193" text-anchor="middle" fill="#484f5c" font-family="JetBrains Mono" font-size="11">opencode</text>
-              <rect x="372" y="168" width="96" height="40" rx="10" fill="#fff" stroke="#e2e5ec"/>
-              <text x="420" y="193" text-anchor="middle" fill="#484f5c" font-family="JetBrains Mono" font-size="11">rivet-cli</text>
-              <rect x="472" y="168" width="96" height="40" rx="10" fill="#fff" stroke="#e2e5ec"/>
-              <text x="520" y="193" text-anchor="middle" fill="#484f5c" font-family="JetBrains Mono" font-size="11">ollama-cli</text>
+              <line x1="320" y1="72" x2="100" y2="168" stroke="#3d4f8c" stroke-width="1.5" opacity=".55"/>
+              <line x1="320" y1="72" x2="188" y2="168" stroke="#3d4f8c" stroke-width="1.5" opacity=".55"/>
+              <line x1="320" y1="72" x2="276" y2="168" stroke="#3d4f8c" stroke-width="1.5" opacity=".55"/>
+              <line x1="320" y1="72" x2="364" y2="168" stroke="#3d4f8c" stroke-width="1.5" opacity=".55"/>
+              <line x1="320" y1="72" x2="452" y2="168" stroke="#3d4f8c" stroke-width="1.5" opacity=".55"/>
+              <line x1="320" y1="72" x2="540" y2="168" stroke="#3d4f8c" stroke-width="1.5" opacity=".55"/>
+              <rect x="58" y="168" width="84" height="40" rx="10" fill="#fff" stroke="#e2e5ec"/>
+              <text x="100" y="193" text-anchor="middle" fill="#484f5c" font-family="JetBrains Mono" font-size="10">claude-cli</text>
+              <rect x="146" y="168" width="84" height="40" rx="10" fill="#fff" stroke="#e2e5ec"/>
+              <text x="188" y="193" text-anchor="middle" fill="#484f5c" font-family="JetBrains Mono" font-size="10">codex-cli</text>
+              <rect x="234" y="168" width="84" height="40" rx="10" fill="#fff" stroke="#e2e5ec"/>
+              <text x="276" y="193" text-anchor="middle" fill="#484f5c" font-family="JetBrains Mono" font-size="10">opencode</text>
+              <rect x="322" y="168" width="84" height="40" rx="10" fill="#fff" stroke="#e2e5ec"/>
+              <text x="364" y="193" text-anchor="middle" fill="#484f5c" font-family="JetBrains Mono" font-size="10">codebuddy</text>
+              <rect x="410" y="168" width="84" height="40" rx="10" fill="#fff" stroke="#e2e5ec"/>
+              <text x="452" y="193" text-anchor="middle" fill="#484f5c" font-family="JetBrains Mono" font-size="10">rivet-cli</text>
+              <rect x="498" y="168" width="84" height="40" rx="10" fill="#fff" stroke="#e2e5ec"/>
+              <text x="540" y="193" text-anchor="middle" fill="#484f5c" font-family="JetBrains Mono" font-size="10">ollama-cli</text>
             </svg>
           </div>
         </div>
@@ -963,7 +972,7 @@
         <p data-i18n="stats.lead">Sidecar 跑在 localhost:8123，密钥进系统钥匙串。</p>
       </div>
       <div class="stats">
-        <div class="stat"><strong>7</strong><span data-i18n="stats.s1">CLI 引擎路由</span></div>
+        <div class="stat"><strong>8</strong><span data-i18n="stats.s1">CLI 引擎路由</span></div>
         <div class="stat"><strong>0</strong><span data-i18n="stats.s2">云端上传密钥</span></div>
         <div class="stat"><strong>100%</strong><span data-i18n="stats.s3">本地 Sidecar 运行</span></div>
       </div>

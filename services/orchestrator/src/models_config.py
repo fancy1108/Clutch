@@ -78,7 +78,16 @@ def save_router(router: LLMProviderRouter) -> dict[str, Any]:
     if not use_keychain():
         plaintext_keys = {
             provider: router.get_api_key(provider)  # type: ignore[arg-type]
-            for provider in ("deepseek", "openai", "anthropic", "google", "ollama", "agnes", "custom")
+            for provider in (
+                "deepseek",
+                "openai",
+                "anthropic",
+                "google",
+                "ollama",
+                "agnes",
+                "opencode",
+                "custom",
+            )
             if router.get_api_key(provider)  # type: ignore[arg-type]
         }
     payload = {
@@ -285,7 +294,7 @@ def format_connection_error(exc: Exception) -> str:
     lower = raw.lower()
     if "429" in raw or "rate limit" in lower:
         return "Rate limit reached — wait a moment, switch models, or upgrade your provider plan."
-    if "401" in raw or "403" in raw or "unauthorized" in lower:
+    if "401" in raw or "403" in raw or "unauthorized" in lower or "invalid api key" in lower:
         return "API key was rejected — check it matches this provider or gateway."
     if "404" in raw or "not found" in lower:
         return "Model or endpoint not found — the key may work but this model ID is wrong."

@@ -184,6 +184,7 @@ def resolve_model_credential_hint(router: LLMProviderRouter, spec: ModelSpec) ->
             "api.openai.com",
             "api.deepseek.com",
             "generativelanguage.googleapis.com",
+            "opencode.ai",
             "localhost",
             "127.0.0.1",
         }

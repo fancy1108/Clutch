@@ -31,6 +31,10 @@ const LEGACY_ENGINE_TO_TYPE: Record<string, AgentTypeId> = {
   'opencode-cli': 'opencode-cli',
   opencode: 'opencode-cli',
   'open code cli': 'opencode-cli',
+  'codebuddy-cli': 'codebuddy-cli',
+  codebuddy: 'codebuddy-cli',
+  'codebuddy cli': 'codebuddy-cli',
+  cbc: 'codebuddy-cli',
 };
 
 const AGENT_TYPE_DISPLAY_LABELS: Record<string, string> = {
@@ -40,6 +44,7 @@ const AGENT_TYPE_DISPLAY_LABELS: Record<string, string> = {
   'codex-cli': 'Codex CLI',
   'aider-cli': 'Aider CLI',
   'opencode-cli': 'OpenCode CLI',
+  'codebuddy-cli': 'CodeBuddy CLI',
 };
 
 const LEGACY_TYPE_LABELS: Record<string, string> = {

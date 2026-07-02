@@ -10,9 +10,10 @@ import {
   saveModelsConfig,
   testModelConnection,
 } from '../../../services/modelsApi';
+import { BUILTIN_PROVIDER_IDS } from '../../../services/modelProviderPresets';
 import { BTN_GHOST, BTN_PRIMARY } from '../../ui/buttonStyles';
 
-const CONNECTABLE_PROVIDERS = ['deepseek', 'anthropic', 'openai', 'google', 'ollama', 'agnes', 'custom'] as const;
+const CONNECTABLE_PROVIDERS = [...BUILTIN_PROVIDER_IDS, 'custom'] as const;
 const KEYLESS_PROVIDERS = new Set(['ollama']);
 
 interface ModelsStepProps {

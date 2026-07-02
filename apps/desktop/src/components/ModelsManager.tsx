@@ -4,6 +4,7 @@ import {
   addCustomImageModel,
   addCustomVideoModel,
   deleteCustomModel,
+  fetchOpencodeZenModels,
   fetchProviderApiKey,
   fetchModelsConfig,
   loadModelVerifyState,
@@ -29,6 +30,7 @@ import {
   DEFAULT_CHAT_MODEL_BY_PROVIDER,
   defaultProviderForModelKind,
   inferImageBackend,
+  OPENCODE_BUILTIN_MODELS,
   providersForModelKind,
   type ModelKind,
 } from '../services/modelProviderPresets';
@@ -70,6 +72,10 @@ import { useLanguage } from './LanguageContext';
 
 const CONNECTABLE_PROVIDERS = [...BUILTIN_PROVIDER_IDS, 'custom'] as const;
 
+function defaultOpencodeModelSelection(): string {
+  return DEFAULT_CHAT_MODEL_BY_PROVIDER.opencode;
+}
+
 export const ModelsManager: React.FC<ModelsManagerProps> = ({
   activeModelId,
   setActiveModelId,
@@ -94,6 +100,14 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
   const [addModelApiKey, setAddModelApiKey] = useState('');
   const [addModelCustomBaseUrl, setAddModelCustomBaseUrl] = useState('');
   const [addModelCustomApiModel, setAddModelCustomApiModel] = useState('');
+  const [opencodeModels, setOpencodeModels] = useState<
+    Array<{ id: string; api_model: string; name: string; supported: boolean }>
+  >(() => [...OPENCODE_BUILTIN_MODELS]);
+  const [loadingOpencodeModels, setLoadingOpencodeModels] = useState(false);
+  const [opencodeListMessage, setOpencodeListMessage] = useState<string | null>(null);
+  const [selectedOpencodeModelId, setSelectedOpencodeModelId] = useState(() =>
+    defaultOpencodeModelSelection(),
+  );
   const [editCustomBaseUrl, setEditCustomBaseUrl] = useState('');
   const [editCustomApiModel, setEditCustomApiModel] = useState('');
   const [editCustomApiKey, setEditCustomApiKey] = useState('');
@@ -226,6 +240,20 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
     setAddModelApiKey('');
     setAddModelCustomBaseUrl('');
     setAddModelCustomApiModel('');
+    applyOpencodeProviderDefaults();
+  };
+
+  const resetOpencodeForm = () => {
+    setOpencodeModels([...OPENCODE_BUILTIN_MODELS]);
+    setLoadingOpencodeModels(false);
+    setOpencodeListMessage(null);
+    setSelectedOpencodeModelId(defaultOpencodeModelSelection());
+  };
+
+  const applyOpencodeProviderDefaults = () => {
+    setOpencodeModels([...OPENCODE_BUILTIN_MODELS]);
+    setOpencodeListMessage(null);
+    setSelectedOpencodeModelId(defaultOpencodeModelSelection());
   };
 
   const resetEditCustomForm = () => {
@@ -238,9 +266,80 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
     setActiveModal(null);
     resetAddModelForm();
     resetEditCustomForm();
+    resetOpencodeForm();
     setApiKey('');
     setShowApiKey(false);
+    setError(null);
   };
+
+  const refreshOpencodeCatalog = useCallback(async () => {
+    setLoadingOpencodeModels(true);
+    setOpencodeListMessage(null);
+    try {
+      const result = await fetchOpencodeZenModels();
+      if (!result.ok || result.models.length === 0) {
+        setOpencodeListMessage(result.message ?? t('Could not refresh model list from opencode.ai.'));
+        return;
+      }
+      setOpencodeModels(result.models);
+      setSelectedOpencodeModelId((current) => {
+        if (current && result.models.some((model) => model.id === current)) return current;
+        const free = result.models.find((model) => model.api_model.endsWith('-free'));
+        return free?.id ?? result.models[0]?.id ?? defaultOpencodeModelSelection();
+      });
+      setOpencodeListMessage(t('Model list updated from opencode.ai.'));
+    } catch (err) {
+      setOpencodeListMessage(
+        err instanceof Error ? err.message : t('Could not refresh model list from opencode.ai.'),
+      );
+    } finally {
+      setLoadingOpencodeModels(false);
+    }
+  }, [t]);
+
+  const renderOpencodeModelPicker = () => (
+    <div className="space-y-1 sm:col-span-2">
+      <div className="flex items-center justify-between gap-2">
+        <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block">
+          {t('Model')}
+        </label>
+        <button
+          type="button"
+          onClick={() => void refreshOpencodeCatalog()}
+          disabled={loadingOpencodeModels}
+          className={`${BTN_GHOST} text-[10px] px-2 py-1 border border-outline/60`}
+        >
+          {loadingOpencodeModels ? t('Refreshing…') : t('Refresh models')}
+        </button>
+      </div>
+      <select
+        value={selectedOpencodeModelId}
+        onChange={(e) => {
+          setSelectedOpencodeModelId(e.target.value);
+          setOpencodeListMessage(null);
+        }}
+        className="w-full text-xs border border-outline bg-surface rounded-lg px-3 py-2 text-on-surface"
+      >
+        {opencodeModels.map((model) => (
+          <option key={model.id} value={model.id}>
+            {model.name}
+          </option>
+        ))}
+      </select>
+      {opencodeListMessage && (
+        <p
+          className={`text-[11px] ${
+            opencodeListMessage.toLowerCase().includes('rejected') ||
+            opencodeListMessage.toLowerCase().includes('no longer')
+              ? 'text-rose-700'
+              : 'text-on-surface-variant'
+          }`}
+        >
+          {opencodeListMessage}
+        </p>
+      )}
+    </div>
+  );
 
   const openAddModal = (kind: ModelKind) => {
     setAddMenuOpen(false);
@@ -257,13 +356,19 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
     setActiveModal({ type: 'edit-key', providerId: nextProviderId });
     setProviderId(nextProviderId);
     setApiKey('');
+    resetOpencodeForm();
     setShowApiKey(false);
     setError(null);
     void (async () => {
       setLoadingKey(true);
       try {
         const key = await fetchProviderApiKey(nextProviderId);
-        if (key) setApiKey(key);
+        if (key) {
+          setApiKey(key);
+          if (nextProviderId === 'opencode' && activeModelId.startsWith('opencode-')) {
+            setSelectedOpencodeModelId(activeModelId);
+          }
+        }
       } catch {
         // No saved key yet — user can enter a new one.
       } finally {
@@ -299,6 +404,23 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
     setError(null);
     try {
       const isBuiltinProvider = addModelProviderId !== 'custom';
+
+      if (addModelKind === 'chat' && addModelProviderId === 'opencode') {
+        if (!selectedOpencodeModelId) {
+          setError(t('Select an OpenCode Zen model.'));
+          return;
+        }
+        await saveModelsConfig({
+          provider_id: 'opencode',
+          api_key: addModelApiKey.trim(),
+          active_model_id: selectedOpencodeModelId,
+        });
+        closeModal();
+        const models = await refresh({ silent: true });
+        const created = models.find((m) => m.id === selectedOpencodeModelId);
+        if (created?.available) void handleTestConnection(selectedOpencodeModelId);
+        return;
+      }
 
       if (addModelKind === 'chat' && isBuiltinProvider) {
         const builtinId = DEFAULT_CHAT_MODEL_BY_PROVIDER[addModelProviderId];
@@ -380,7 +502,11 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
         if (created?.available) void handleTestConnection(result.model_id);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('Could not save model.'));
+      const message = err instanceof Error ? err.message : t('Could not save model.');
+      setError(message);
+      if (addModelProviderId === 'opencode') {
+        setOpencodeListMessage(message);
+      }
     } finally {
       setSavingAddModel(false);
     }
@@ -454,7 +580,13 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
     setSavingKey(true);
     setError(null);
     try {
-      await saveModelsConfig({ provider_id: savedProviderId, api_key: apiKey.trim() });
+      await saveModelsConfig({
+        provider_id: savedProviderId,
+        api_key: apiKey.trim(),
+        ...(savedProviderId === 'opencode' && selectedOpencodeModelId
+          ? { active_model_id: selectedOpencodeModelId }
+          : {}),
+      });
       closeModal();
       const models = await refresh({ silent: true });
       const providerModels = models.filter((model) => model.providerId === savedProviderId);
@@ -833,8 +965,15 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
                       <select
                         value={addModelProviderId}
                         onChange={(e) => {
-                          setAddModelProviderId(e.target.value);
+                          const next = e.target.value;
+                          setAddModelProviderId(next);
                           setAddModelApiKey('');
+                          setError(null);
+                          if (next === 'opencode') {
+                            applyOpencodeProviderDefaults();
+                          } else {
+                            resetOpencodeForm();
+                          }
                           setShowApiKey(false);
                         }}
                         className="w-full text-xs border border-outline bg-surface rounded-lg px-3 py-2 text-on-surface"
@@ -855,7 +994,11 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
                           type={showApiKey ? 'text' : 'password'}
                           required
                           value={addModelApiKey}
-                          onChange={(e) => setAddModelApiKey(e.target.value)}
+                          onChange={(e) => {
+                            setAddModelApiKey(e.target.value);
+                            setError(null);
+                            setOpencodeListMessage(null);
+                          }}
                           placeholder="sk-••••••••"
                           autoComplete="off"
                           className="w-full text-xs border border-outline bg-surface rounded-lg pl-3 pr-10 py-2 font-mono text-on-surface"
@@ -871,6 +1014,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
                         </button>
                       </div>
                     </div>
+                    {addModelKind === 'chat' && addModelProviderId === 'opencode' && renderOpencodeModelPicker()}
                     {addModelProviderId === 'custom' && (
                       <>
                         <div className="space-y-1 sm:col-span-2">
@@ -940,7 +1084,11 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
                           required
                           disabled={loadingKey}
                           value={apiKey}
-                          onChange={(e) => setApiKey(e.target.value)}
+                          onChange={(e) => {
+                            setApiKey(e.target.value);
+                            setError(null);
+                            setOpencodeListMessage(null);
+                          }}
                           placeholder={loadingKey ? t('Loading…') : 'sk-••••••••'}
                           className="w-full text-xs border border-outline bg-surface rounded-lg pl-3 pr-10 py-2 font-mono text-on-surface disabled:opacity-60"
                         />
@@ -955,6 +1103,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
                         </button>
                       </div>
                     </div>
+                    {providerId === 'opencode' && renderOpencodeModelPicker()}
                   </div>
                 </form>
               )}

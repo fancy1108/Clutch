@@ -274,6 +274,75 @@ def test_agnes_chat_model_available_with_custom_key(models_config: Path) -> None
     assert image["available"] is True
 
 
+def test_opencode_zen_free_models_listed(models_config: Path) -> None:
+    client = TestClient(app)
+    body = client.get("/api/models/config").json()
+    opencode = [m for m in body["models"] if m["provider_id"] == "opencode"]
+    assert len(opencode) == 5
+    default = next(m for m in opencode if m["id"] == "opencode-deepseek-v4-flash-free")
+    assert default["endpoint"] == "https://opencode.ai/zen/v1"
+    assert default["available"] is False
+
+
+def test_opencode_zen_key_makes_free_models_available(
+    models_config: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        "src.adapters.opencode_zen_adapter.validate_opencode_zen_save",
+        lambda _key, _model_id, _router: None,
+    )
+    client = TestClient(app)
+    client.post(
+        "/api/models/config",
+        json={
+            "provider_id": "opencode",
+            "api_key": "sk-test-opencode",
+            "active_model_id": "opencode-deepseek-v4-flash-free",
+        },
+    )
+    body = client.get("/api/models/config").json()
+    opencode = [m for m in body["models"] if m["provider_id"] == "opencode"]
+    assert len(opencode) == 5
+    assert all(m["available"] is True for m in opencode)
+    assert body["providers"]["opencode"]["configured"] is True
+
+
+def test_opencode_zen_save_rejects_bad_key(models_config: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def _fail(_key: str, _model_id: str, _router: LLMProviderRouter) -> None:
+        raise ValueError("OpenCode Zen API key was rejected.")
+
+    monkeypatch.setattr("src.adapters.opencode_zen_adapter.validate_opencode_zen_save", _fail)
+    client = TestClient(app)
+    response = client.post(
+        "/api/models/config",
+        json={
+            "provider_id": "opencode",
+            "api_key": "bad-key",
+            "active_model_id": "opencode-big-pickle",
+        },
+    )
+    assert response.status_code == 400
+    assert "rejected" in response.json()["detail"]["message"].lower()
+
+
+def test_opencode_zen_list_endpoint_returns_catalog(models_config: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "src.adapters.opencode_zen_adapter.fetch_opencode_zen_catalog",
+        lambda **_: [
+            {
+                "id": "opencode-big-pickle",
+                "api_model": "big-pickle",
+                "name": "Big Pickle Free (OpenCode Zen)",
+                "supported": True,
+            }
+        ],
+    )
+    client = TestClient(app)
+    result = client.post("/api/models/opencode-zen/list", json={}).json()
+    assert result["ok"] is True
+    assert len(result["models"]) == 1
+
+
 def test_agnes_image_model_listed_with_kind(models_config: Path) -> None:
     client = TestClient(app)
     body = client.get("/api/models/config").json()

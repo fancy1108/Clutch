@@ -26,6 +26,7 @@ _MANAGED_PROVIDERS: tuple[ProviderId, ...] = (
     "google",
     "ollama",
     "agnes",
+    "opencode",
     "custom",
 )
 

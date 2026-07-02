@@ -7,6 +7,7 @@ describe('brandLogos', () => {
     expect(resolveToolBrandLogo('claude-cli')).toBeTruthy();
     expect(resolveToolBrandLogo('codex-cli')).toBeTruthy();
     expect(resolveToolBrandLogo('opencode-cli')).toBeTruthy();
+    expect(resolveToolBrandLogo('codebuddy-cli')).toBeTruthy();
     expect(resolveToolBrandLogo('gemini-cli')).toBeUndefined();
   });
 

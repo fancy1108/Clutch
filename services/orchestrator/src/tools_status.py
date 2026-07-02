@@ -170,12 +170,20 @@ CLI_CANDIDATES: list[dict[str, str]] = [
         "description": "Qwen open-source AI coding agent for the terminal.",
         "icon": "terminal",
     },
+    {
+        "id": "codebuddy-cli",
+        "name": "CodeBuddy CLI",
+        "binary": "codebuddy",
+        "description": "Tencent Cloud CodeBuddy AI coding agent for the terminal (codebuddy / cbc).",
+        "icon": "terminal",
+    },
 ]
 
 # Primary install recommendations (tested Clutch routing). Other whitelist CLIs are
 # scanned when installed but omitted from the default install catalog until detected.
 RECOMMENDED_CLI_IDS: frozenset[str] = frozenset(
     {
+        "codebuddy-cli",
         "opencode-cli",
         "claude-cli",
         "ollama-cli",

@@ -19,7 +19,7 @@ CONFIG_ENV = "CLUTCH_MODELS_CONFIG"
 _VALID_IMAGE_BACKENDS = frozenset({"", "agnes", "openai_images"})
 _VALID_VIDEO_BACKENDS = frozenset({"", "agnes"})
 _VALID_PROVIDERS: frozenset[str] = frozenset(
-    {"deepseek", "openai", "anthropic", "google", "ollama", "agnes", "custom"}
+    {"deepseek", "openai", "anthropic", "google", "ollama", "agnes", "opencode", "custom"}
 )
 
 

@@ -1,0 +1,44 @@
+---
+description: When adding or changing Agent CLI whitelist entries, update code and docs together (D19).
+globs: services/orchestrator/src/tools_status.py,apps/desktop/src/services/cliInstallGuides.ts,services/orchestrator/src/engine_router.py
+alwaysApply: false
+---
+
+> Layer 4 操作剧本 · 不扩权。铁律见 `CLAUDE.md`；决策见 `memory/DECISIONS.md` D19。
+> 本文件不定义新规则，仅描述「新增 Agent CLI 白名单」时的代码与文档同步步骤。
+
+# Agent CLI 白名单 — 代码 + 文档同步
+
+用户要求「加 CLI」或你修改 CLI 白名单/路由时，**同一 Task 内**完成代码与文档，不单改代码。
+
+## 代码（最小集）
+
+| 文件 | 改动 |
+|------|------|
+| `services/orchestrator/src/tools_status.py` | `CLI_CANDIDATES`；若推荐则 `RECOMMENDED_CLI_IDS` |
+| `services/orchestrator/src/engine_router.py` | `CLI_ROUTING_CONFIGS` curated 路由 |
+| `services/orchestrator/src/agent_type.py` | `AGENT_TYPES` + 别名 |
+| `services/orchestrator/src/provider_registry.py` | `ProviderSpec`（若一等公民路由） |
+| `services/orchestrator/src/adapters/cli_adapter.py` | `_CLI_BINARY_LABELS` |
+| `services/orchestrator/src/agent_executor.py` | tool id 集合 |
+| `apps/desktop/src/services/cliInstallGuides.ts` | 安装指引 + `RECOMMENDED_CLI_IDS` |
+| `apps/desktop/src/services/agentTypes.ts` | 显示名与 legacy 映射 |
+| `apps/desktop/src/services/workflowAgentSteps.ts` | `TOOL_LABELS` |
+| `services/orchestrator/tests/test_tools_status.py` | 候选与 `resolve_agent_type_for_tool` |
+
+## 文档（D19 必更）
+
+1. `docs/PRODUCT_INTRO.md` — EngineRouter 列表、Tool Settings 推荐 CLI
+2. `docs/GETTING_STARTED.md` — 中英「常见配置」表各一行
+3. `CHANGELOG.md` — `[Unreleased]` Added
+4. `README.md` / `README.zh-CN.md` — CLI 能力表；若用 `--dangerously-skip-permissions` 则安全节
+5. `memory/FILEMAP.md` — 仅当路径映射有变
+6. `docs/index.html` — 官网引擎条带 + hero 浮层 logo（`docs/assets/tool-logos/`）
+7. `apps/desktop/src/assets/tool-logos/` + `services/brandLogos.ts`（若已路由）
+8. `docs/research/pty-session.md` — 附录引擎一览（可选，保持与路由一致）
+
+## 示例：`codebuddy-cli`
+
+- 二进制：`codebuddy`（别名 `cbc`）
+- 路由：`codebuddy -p` + `--dangerously-skip-permissions`，`conversation_mode: separate`
+- 推荐列表首位（当前策略）
