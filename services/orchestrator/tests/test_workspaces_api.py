@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -79,6 +80,24 @@ def test_get_git_info_for_local_repo() -> None:
     assert info["is_git_repo"] is True
     assert isinstance(info["branch"], str)
     assert info["branch"] in info["branches"]
+
+
+def test_run_git_hides_windows_console(monkeypatch, tmp_path: Path) -> None:
+    from src import workspace
+
+    captured: dict[str, object] = {}
+
+    def fake_run(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        captured.update(kwargs)
+        return subprocess.CompletedProcess(cmd, 0, "true\n", "")
+
+    monkeypatch.setattr(workspace.sys, "platform", "win32")
+    monkeypatch.setattr(workspace.subprocess, "run", fake_run)
+
+    result = workspace._run_git(tmp_path, "rev-parse", "--is-inside-work-tree")
+
+    assert result is not None
+    assert captured["creationflags"] == subprocess.CREATE_NO_WINDOW
 
 
 def test_workspace_git_without_workspace() -> None:

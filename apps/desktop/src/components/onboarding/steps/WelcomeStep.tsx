@@ -17,23 +17,23 @@ interface WelcomeStepProps {
 }
 
 const REQUIREMENT_LABELS: Record<EnvRequirementId, string> = {
-  macos: 'macOS 14+ recommended',
-  arch: 'Apple Silicon recommended for local models',
+  os: 'macOS 14+ or Windows 10/11 x64',
+  arch: 'Apple Silicon Mac or Windows x64 build recommended',
   disk: '~500 MB disk space for app data',
   network: 'Network required for cloud LLM providers',
-  gatekeeper: 'Unsigned DMG: allow in System Settings if macOS blocks launch',
+  installer: 'Unsigned installer: allow only after verifying the download',
 };
 
 const ENV_HINTS: Record<EnvRequirementId, Record<EnvCheckTier, string>> = {
-  macos: {
-    ok: 'Your macOS version meets our recommendation.',
-    warn: 'Older macOS detected — you can still use Clutch, but it is less tested on this version.',
-    info: 'Could not verify macOS version (common on recent Macs). macOS 14+ is recommended.',
+  os: {
+    ok: 'Your operating system meets our recommendation.',
+    warn: 'Unsupported or less-tested operating system detected — Clutch may still run, but packaging support is limited.',
+    info: 'Could not verify the operating system version. macOS 14+ or Windows 10/11 x64 is recommended.',
   },
   arch: {
-    ok: 'Apple Silicon — best experience for local models like Ollama.',
-    warn: 'Intel Mac detected — local models may run slower; cloud models and CLI tools work normally.',
-    info: 'Could not detect chip type. Local model speed depends on your hardware.',
+    ok: 'Recommended architecture detected for this package.',
+    warn: 'Less-tested CPU architecture detected — Clutch may still run, but this package is optimized for Apple Silicon or Windows x64.',
+    info: 'Architecture could not be fully verified. Windows ARM may run the x64 build through emulation.',
   },
   disk: {
     ok: 'Enough storage available for app data.',
@@ -43,12 +43,12 @@ const ENV_HINTS: Record<EnvRequirementId, Record<EnvCheckTier, string>> = {
   network: {
     ok: 'Online — you can configure cloud LLM providers.',
     warn: 'Offline or no internet — skip cloud models and use a local CLI instead.',
-    info: 'Network status unknown.',
+    info: 'Network probe was inconclusive. If your browser can access your model provider, you can continue.',
   },
-  gatekeeper: {
-    ok: 'Clutch is running — Gatekeeper step passed.',
+  installer: {
+    ok: 'Clutch is running — installer advisory passed.',
     warn: '—',
-    info: 'Install from Clutch.app. If macOS blocks launch, see INSTALL.md.',
+    info: 'If macOS Gatekeeper or Windows SmartScreen blocks launch, verify the package source and see INSTALL.md.',
   },
 };
 

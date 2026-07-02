@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -29,7 +30,11 @@ _MANAGED_PROVIDERS: tuple[ProviderId, ...] = (
 
 
 def storage_label() -> str:
-    return "macOS Keychain" if use_keychain() else "models.json"
+    if not use_keychain():
+        return "models.json"
+    if sys.platform == "win32":
+        return "Windows Credential Manager"
+    return "macOS Keychain"
 
 
 def read_plaintext_api_keys(data: dict[str, Any]) -> dict[str, str]:

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import sqlite3
+import sys
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -15,13 +16,21 @@ from src.llm.router import LLMProviderRouter, ProviderId, ModelSpec
 SOURCE_LABELS: dict[str, str] = {
     "claude_code_settings": "Claude Code CLI (~/.claude/settings.json)",
     "cc_switch_settings": "CC Switch database (~/.cc-switch/cc-switch.db)",
-    "clutch_keychain": "macOS Keychain (Clutch)",
+    "clutch_keychain": "OS credential store (Clutch)",
     "clutch_models_config": "Clutch app storage (models.json)",
     "clutch_env": "CLUTCH_* environment variable",
     "anthropic_env": "ANTHROPIC_API_KEY environment variable",
     "anthropic_auth_token_env": "ANTHROPIC_AUTH_TOKEN environment variable",
     "ollama_local": "Local Ollama (no API key required)",
 }
+
+
+def clutch_credential_store_label() -> str:
+    if sys.platform == "win32":
+        return "Windows Credential Manager (Clutch)"
+    if sys.platform == "darwin":
+        return "macOS Keychain (Clutch)"
+    return SOURCE_LABELS["clutch_keychain"]
 
 
 def _config_path() -> Path:
@@ -77,7 +86,9 @@ def resolve_provider_credential_source(
         return {
             "configured": True,
             "source": source_key,
-            "source_label": SOURCE_LABELS[source_key],
+            "source_label": clutch_credential_store_label()
+            if source_key == "clutch_keychain"
+            else SOURCE_LABELS[source_key],
         }
 
     if provider_id == "anthropic":
