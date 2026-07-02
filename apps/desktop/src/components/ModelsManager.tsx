@@ -360,9 +360,9 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
       return t('Pick a model below or add an API key to get started.');
     }
     if (activeVerify === 'testing') return t('Testing connection…');
-    if (activeVerify === 'ok') return activeVerifyMessage ?? t('Ready to use.');
+    if (activeVerify === 'ok') return activeVerifyMessage ? t(activeVerifyMessage) : t('Ready to use.');
     if (activeVerify === 'failed') {
-      return activeVerifyMessage ?? t('Last test failed — fix the key or choose another model.');
+      return activeVerifyMessage ? t(activeVerifyMessage) : t('Last test failed — fix the key or choose another model.');
     }
     return t('Not tested yet — press Test when you want to verify.');
   })();
@@ -755,7 +755,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
                         <p className="text-[10px] text-on-surface-variant/80 font-mono truncate">{model.endpoint}</p>
                       )}
                       {verify === 'failed' && rowMessage && (
-                        <p className="text-[10.5px] text-rose-800">{rowMessage}</p>
+                        <p className="text-[10.5px] text-rose-800">{t(rowMessage)}</p>
                       )}
                       {model.clutchManaged && !showConnectForm && (
                         <button

@@ -234,6 +234,10 @@ class PermissionModeRequest(BaseModel):
     mode: str
 
 
+class FontSizePreferenceRequest(BaseModel):
+    font_size: str
+
+
 class AvatarPreferenceRequest(BaseModel):
     avatar: str
 
@@ -3387,6 +3391,16 @@ async def save_permission_mode_route(body: PermissionModeRequest) -> dict[str, s
 
     try:
         return save_permission_mode(body.mode)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+
+
+@app.post("/api/preferences/font-size")
+async def save_font_size_preference(body: FontSizePreferenceRequest) -> dict[str, str]:
+    from src.preferences_storage import save_font_size
+
+    try:
+        return save_font_size(body.font_size)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
 

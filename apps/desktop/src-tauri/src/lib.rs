@@ -250,7 +250,8 @@ fn spawn_dev_sidecar(token: &str) -> Result<std::process::Child, String> {
         ));
     }
 
-    let mut cmd = Command::new("uv");
+    let uv = std::env::var("CLUTCH_UV_BIN").unwrap_or_else(|_| "uv".to_string());
+    let mut cmd = Command::new(uv);
     cmd.args([
         "run",
         "uvicorn",

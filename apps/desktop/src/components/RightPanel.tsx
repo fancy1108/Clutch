@@ -139,7 +139,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   const statusLabel = translateRunStatus(clutchStatus, language);
 
   const renderStateSummary = () => (
-    <div className="p-3 border border-outline-variant/30 rounded-xl bg-surface-container-low/40 font-mono text-[10px] space-y-1">
+    <div className="p-3 border border-outline-variant/30 rounded-xl bg-surface-container-low/40 font-mono text-[11px] leading-relaxed space-y-1">
       <p>
         {t('workflow')}: <span className="text-on-surface font-bold">{workflowLabel || '—'}</span>
       </p>
@@ -173,7 +173,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   const renderSingleAgentSummary = () => {
     const agentLabel = sessionAgentName || activeAgent || '—';
     return (
-      <div className="p-3 border border-outline-variant/30 rounded-xl bg-surface-container-low/40 font-mono text-[10px] space-y-1">
+      <div className="p-3 border border-outline-variant/30 rounded-xl bg-surface-container-low/40 font-mono text-[11px] leading-relaxed space-y-1">
         <p>
           {t('Active Agent')}: <span className="text-on-surface font-bold">{agentLabel}</span>
         </p>
@@ -221,16 +221,16 @@ export const RightPanel: React.FC<RightPanelProps> = ({
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">
+                  <p className="text-[10.5px] font-bold text-on-surface-variant uppercase tracking-wider">
                     {index + 1}. {step.id}
                   </p>
-                  <p className={`font-bold text-on-surface truncate ${compact ? 'text-[10px]' : 'text-[11px]'}`}>
+                  <p className={`font-bold text-on-surface truncate ${compact ? 'text-[11px]' : 'text-xs'}`}>
                     {step.label}
                   </p>
-                  <p className="text-[10px] text-on-surface-variant font-mono mt-0.5">{step.agent}</p>
+                  <p className="text-[11px] text-on-surface-variant font-mono mt-0.5">{step.agent}</p>
                 </div>
                 {isActive ? (
-                  <span className="text-[9px] font-bold uppercase text-primary whitespace-nowrap">
+                  <span className="text-[10px] font-bold uppercase text-primary whitespace-nowrap">
                     {statusLabel}
                   </span>
                 ) : null}
@@ -317,7 +317,10 @@ export const RightPanel: React.FC<RightPanelProps> = ({
       </button>
 
       <div className={`flex-grow flex flex-col h-full overflow-hidden ${!isOpen ? 'hidden' : ''}`}>
-        <div className="flex border-b border-outline-variant overflow-x-auto sidebar-scroll select-none bg-surface-container-low/40">
+        <div
+          className="grid h-11 border-b border-outline-variant overflow-hidden select-none bg-surface-container-low/40"
+          style={{ gridTemplateColumns: `repeat(${visibleTabs.length}, minmax(0, 1fr))` }}
+        >
           {visibleTabs.map((tab) => {
             const isActive = activeTab === tab;
             return (
@@ -325,13 +328,19 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                 key={tab}
                 data-testid={`right-tab-${tab}`}
                 onClick={() => setActiveTab(tab)}
-                className={`px-4 py-3 text-xs font-bold whitespace-nowrap tracking-wide capitalize transition-all ${
+                className={`relative h-11 min-w-0 overflow-hidden px-1 text-xs font-bold whitespace-nowrap tracking-wide capitalize transition-[background-color,color] ${
                   isActive
-                    ? 'text-primary border-b-2 border-primary bg-white'
+                    ? 'text-primary bg-white'
                     : 'text-on-surface-variant hover:text-on-surface'
                 }`}
               >
-                {t(RIGHT_TAB_LABELS[tab])}
+                <span className="block truncate">{t(RIGHT_TAB_LABELS[tab])}</span>
+                <span
+                  className={`absolute bottom-0 left-1/2 h-[3px] w-5 -translate-x-1/2 rounded-full bg-primary transition-opacity ${
+                    isActive ? 'opacity-100' : 'opacity-0'
+                  }`}
+                  aria-hidden
+                />
               </button>
             );
           })}
@@ -353,7 +362,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                   ) : isIdle ? (
                     <div className="p-6 border border-dashed border-outline-variant/50 rounded-xl text-center space-y-2">
                       <LegacyIcon name="monitoring" className="text-[24px] text-on-surface-variant/50" />
-                      <p className="text-[11px] text-on-surface-variant leading-relaxed">
+                      <p className="text-xs text-on-surface-variant leading-relaxed">
                         {t('No active workflow overview')}
                       </p>
                     </div>
@@ -365,7 +374,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                   {isIdle && tokenTotal === 0 ? (
                     <div className="p-6 border border-dashed border-outline-variant/50 rounded-xl text-center space-y-2">
                       <LegacyIcon name="smart_toy" className="text-[24px] text-on-surface-variant/50" />
-                      <p className="text-[11px] text-on-surface-variant leading-relaxed">
+                      <p className="text-xs text-on-surface-variant leading-relaxed">
                         {t('No session activity yet')}
                       </p>
                     </div>
@@ -449,10 +458,10 @@ export const RightPanel: React.FC<RightPanelProps> = ({
               ) : (
                 <div className="p-6 border border-dashed border-outline-variant/50 rounded-xl text-center space-y-2">
                   <LegacyIcon name="account_tree" className="text-[24px] text-on-surface-variant/50" />
-                  <p className="text-[11px] text-on-surface-variant leading-relaxed">
+                  <p className="text-xs text-on-surface-variant leading-relaxed">
                     {t('Select or create a workflow')}
                   </p>
-                  <p className="text-[10px] text-on-surface-variant/70 leading-relaxed">
+                  <p className="text-[11px] text-on-surface-variant/70 leading-relaxed">
                     {t('No active workflow overview')}
                   </p>
                 </div>

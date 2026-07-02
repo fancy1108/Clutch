@@ -12,7 +12,7 @@ import { ModelsManager } from './components/ModelsManager';
 import { ThemeManager, THEME_PRESETS } from './components/ThemeManager';
 import { SystemPreferencesModal } from './components/SystemPreferencesModal';
 import { FooterMenuAction, FooterMenuItem, FooterMenuPanel } from './components/FooterMenu';
-import { MainView, RightTab, ChatMessage, UncommittedFile, DiffLine, type Agent, type ClutchState } from './types';
+import { MainView, RightTab, ChatMessage, UncommittedFile, DiffLine, type Agent } from './types';
 import { fetchAgents } from './services/agentApi';
 import {
   BUILTIN_AGENT_ID,
@@ -20,10 +20,17 @@ import {
   isBuiltinAgent,
   mergeAgentsWithBuiltin,
 } from './services/builtinAgent';
-import { fetchPreferences, saveThemePreference, saveUserNamePreference, type ThemePresetId } from './services/themeApi';
+import {
+  fetchPreferences,
+  saveFontSizePreference,
+  saveThemePreference,
+  saveUserNamePreference,
+  type ThemePresetId,
+} from './services/themeApi';
+import { DEFAULT_FONT_SIZE, type AppFontSize } from './services/fontSizePreference';
 import { LanguageProvider, useLanguage } from './components/LanguageContext';
 import { OnboardingWizard } from './components/onboarding/OnboardingWizard';
-import { CONTENT_TOP_WITH_BANNER } from './constants/layout';
+import { CONTENT_TOP_WITH_BANNER, SIDEBAR_COLLAPSED_WIDTH_PX, SIDEBAR_EXPANDED_WIDTH_PX } from './constants/layout';
 import { DevOnboardingToolsEmptyPreview } from './components/onboarding/DevOnboardingToolsEmptyPreview';
 import { fetchOnboardingState } from './services/onboardingApi';
 import { clutchStore, createSessionRunId, submitChatMessage, useClutchState, setUserChatAvatar, clearWorkflowForSession } from './services/clutchState';
@@ -71,6 +78,19 @@ import { LegacyIcon } from './components/ui/LegacyIcon';
 import { isTauri } from '@tauri-apps/api/core';
 import { getVersion } from '@tauri-apps/api/app';
 
+function shouldLogTiming(): boolean {
+  return import.meta.env.DEV || localStorage.getItem('clutch_debug_timing') === '1';
+}
+
+function logTiming(label: string, details: Record<string, unknown>): void {
+  if (!shouldLogTiming()) return;
+  console.info(`[Clutch timing] ${label}`, details);
+}
+
+function elapsedMs(startedAt: number): number {
+  return Math.round(performance.now() - startedAt);
+}
+
 function MainLayout() {
   const { t } = useLanguage();
   const { state: clutchState } = useClutchState();
@@ -111,12 +131,16 @@ function MainLayout() {
   );
 
   useEffect(() => {
-    void clutchStore.connect(sessionRunId).then(() => {
-      const snapshot = clutchStore.getSnapshot();
-      if (snapshot.status === 'running') {
-        clutchStore.scheduleBackgroundHydrate(sessionRunId, hydrateRunState);
-      }
-    });
+    void clutchStore.connect(sessionRunId)
+      .then(() => {
+        const snapshot = clutchStore.getSnapshot();
+        if (snapshot.status === 'running') {
+          clutchStore.scheduleBackgroundHydrate(sessionRunId, hydrateRunState);
+        }
+      })
+      .catch((error) => {
+        console.warn('[Clutch] session websocket connect failed:', error);
+      });
   }, [sessionRunId, hydrateRunState]);
 
   const clutchStatus = clutchState.status;
@@ -130,6 +154,7 @@ function MainLayout() {
   const [workflowAgentSteps, setWorkflowAgentSteps] = useState<WorkflowAgentStep[]>([]);
   const [isMultiAgent, setIsMultiAgent] = useState<boolean>(true);
   const [themeId, setThemeIdState] = useState<ThemePresetId>('pristine-light');
+  const [fontSize, setFontSizeState] = useState<AppFontSize>(DEFAULT_FONT_SIZE);
   const [userAvatar, setUserAvatarState] = useState<string>('');
   const [userName, setUserNameState] = useState<string>('User');
 
@@ -137,6 +162,7 @@ function MainLayout() {
     void fetchPreferences()
       .then((prefs) => {
         setThemeIdState(prefs.active_theme_id);
+        setFontSizeState(prefs.font_size ?? DEFAULT_FONT_SIZE);
         if (prefs.user_avatar) {
           setUserAvatarState(prefs.user_avatar);
           setUserChatAvatar(prefs.user_avatar);
@@ -153,6 +179,11 @@ function MainLayout() {
     if (!preset) return;
     setThemeIdState(preset.id as ThemePresetId);
     void saveThemePreference(preset.id as ThemePresetId).catch(() => {});
+  };
+
+  const setFontSize = (size: AppFontSize) => {
+    setFontSizeState(size);
+    void saveFontSizePreference(size).catch(() => {});
   };
 
   const setUserName = (name: string) => {
@@ -192,6 +223,7 @@ function MainLayout() {
   const [workspaceFiles, setWorkspaceFiles] = useState<FileTreeNode[]>([]);
   const [workspacePickError, setWorkspacePickError] = useState<string | null>(null);
   const [highRiskConfirmed, setHighRiskConfirmed] = useState(false);
+  const [loadingSessionId, setLoadingSessionId] = useState<string | null>(null);
 
   // Reset high-risk confirmation when switching sessions
   useEffect(() => {
@@ -474,7 +506,7 @@ function MainLayout() {
   }, [refreshWorkspaceFiles]);
 
   // Sidebar selector width for calculations
-  const selectedSidebarWidth = sidebarOpen ? 280 : 0;
+  const selectedSidebarWidth = sidebarOpen ? SIDEBAR_EXPANDED_WIDTH_PX : SIDEBAR_COLLAPSED_WIDTH_PX;
   const rightSidebarWidth = rightPanelOpen ? 300 : 0;
 
   const effectiveWorkflowId = selectedWorkflowId || clutchState.workflow_id || '';
@@ -553,14 +585,65 @@ function MainLayout() {
   };
 
   const handleSelectWorkspace = async (workspaceId: string) => {
+    const startedAt = performance.now();
+    let activateMs = 0;
+    let treeMs: number | null = null;
+    let gitMs: number | null = null;
+    let treeStatus = 'skipped';
+    let gitStatus = 'skipped';
+
     try {
+      const activateStartedAt = performance.now();
       const info = await activateWorkspace(workspaceId);
+      activateMs = elapsedMs(activateStartedAt);
       setActiveWorkspaceId(workspaceId);
       setWorkspace(info);
-      await refreshWorkspaceFiles();
-      await refreshWorkspaceGit();
+
+      const [treeResult, gitResult] = await Promise.allSettled([
+        (async () => {
+          const treeStartedAt = performance.now();
+          const nodes = await fetchWorkspaceTree();
+          return { nodes, ms: elapsedMs(treeStartedAt) };
+        })(),
+        (async () => {
+          const gitStartedAt = performance.now();
+          const gitInfo = await fetchWorkspaceGit();
+          return { info: gitInfo, ms: elapsedMs(gitStartedAt) };
+        })(),
+      ]);
+
+      if (treeResult.status === 'fulfilled') {
+        treeMs = treeResult.value.ms;
+        treeStatus = 'ok';
+        setWorkspaceFiles(treeResult.value.nodes);
+      } else {
+        treeStatus = 'error';
+        setWorkspaceFiles([]);
+      }
+
+      if (gitResult.status === 'fulfilled') {
+        gitMs = gitResult.value.ms;
+        gitStatus = 'ok';
+        setWorkspaceGit({
+          branch: gitResult.value.info.branch,
+          branches: gitResult.value.info.branches,
+        });
+      } else {
+        gitStatus = 'error';
+        setWorkspaceGit({ branch: null, branches: [] });
+      }
     } catch (error) {
       console.error('[Clutch] workspace switch failed:', error);
+    } finally {
+      logTiming('workspace switch', {
+        workspaceId,
+        totalMs: elapsedMs(startedAt),
+        activateMs,
+        treeMs,
+        treeStatus,
+        gitMs,
+        gitStatus,
+      });
     }
   };
 
@@ -822,57 +905,95 @@ function MainLayout() {
         console.warn('[Clutch] reset default text model on new chat failed:', error);
       }
     })();
-    void clutchStore.connect(runId);
+    void clutchStore.connect(runId).catch((error) => {
+      console.warn('[Clutch] new chat websocket connect failed:', error);
+    });
   };
 
   const handleSelectSession = async (session: SessionRecord) => {
-    if (session.workspace_id && session.workspace_id !== activeWorkspaceId) {
-      await handleSelectWorkspace(session.workspace_id);
+    const isSwitchingSession = session.run_id !== sessionRunId;
+    const startedAt = performance.now();
+    const shouldSwitchWorkspace = Boolean(session.workspace_id && session.workspace_id !== activeWorkspaceId);
+    const hasCachedSession = clutchStore.hasSnapshot(session.run_id);
+    let workspaceSwitchMs: number | null = null;
+
+    if (!isSwitchingSession) {
+      setView('chat');
+      logTiming('session switch', {
+        runId: session.run_id,
+        title: session.title || session.workflow_id || '',
+        totalMs: elapsedMs(startedAt),
+        workspaceSwitchMs,
+        hasCachedSession,
+        note: 'already-active-session',
+      });
+      return;
     }
-    if (session.run_id !== sessionRunId) {
-      scheduleBackgroundHydrateForRun(sessionRunId);
+
+    if (!hasCachedSession) {
+      setLoadingSessionId(session.run_id);
     }
-    let hydratedState: ClutchState | null = null;
     try {
-      const { state } = await fetchRunState(session.run_id);
-      hydratedState = state;
-      clutchStore.setPendingHydrate(state);
-    } catch (error) {
-      console.warn('[Clutch] session state hydrate failed:', error);
-    }
-    setSessionRunId(session.run_id);
+      if (isSwitchingSession) {
+        scheduleBackgroundHydrateForRun(sessionRunId);
+      }
 
-    const storedMode = localStorage.getItem(`clutch_session_mode_${session.run_id}`);
-    const storedFlowId = localStorage.getItem(`clutch_session_flow_${session.run_id}`);
-    const storedAgentId = localStorage.getItem(`clutch_session_agent_${session.run_id}`);
+      if (shouldSwitchWorkspace && session.workspace_id) {
+        const workspaceStartedAt = performance.now();
+        await handleSelectWorkspace(session.workspace_id);
+        workspaceSwitchMs = elapsedMs(workspaceStartedAt);
+      }
 
-    setIsMultiAgent(true);
+      setSessionRunId(session.run_id);
 
-    if (storedFlowId !== null) {
-      setSelectedWorkflowId(storedFlowId || null);
-      const matched = footerWorkflows.find((w) => w.id === storedFlowId);
-      setCurrentFlowName(matched ? matched.name : (storedFlowId || ''));
-    } else {
-      const matched = footerWorkflows.find((w) => w.id === session.workflow_id);
-      setCurrentFlowName(matched ? matched.name : (session.workflow_id || ''));
-      setSelectedWorkflowId(session.workflow_id || null);
-    }
+      const storedFlowId = localStorage.getItem(`clutch_session_flow_${session.run_id}`);
+      const storedAgentId = localStorage.getItem(`clutch_session_agent_${session.run_id}`);
 
-    if (storedAgentId !== null) {
-      setSelectedAgentId(storedAgentId || null);
-    } else {
-      const stateAgentId = hydratedState?.cli_session_agent_id || hydratedState?.claude_session_agent_id;
-      if (stateAgentId) {
-        setSelectedAgentId(stateAgentId);
-      } else if (session.workflow_id) {
-        setSelectedAgentId(null);
+      setIsMultiAgent(true);
+
+      if (storedFlowId !== null) {
+        setSelectedWorkflowId(storedFlowId || null);
+        const matched = footerWorkflows.find((w) => w.id === storedFlowId);
+        setCurrentFlowName(matched ? matched.name : (storedFlowId || ''));
       } else {
-        const storedGlobalAgentId = localStorage.getItem('clutch_active_agent_id');
-        setSelectedAgentId(storedGlobalAgentId || BUILTIN_AGENT_ID);
+        const matched = footerWorkflows.find((w) => w.id === session.workflow_id);
+        setCurrentFlowName(matched ? matched.name : (session.workflow_id || ''));
+        setSelectedWorkflowId(session.workflow_id || null);
+      }
+
+      if (storedAgentId !== null) {
+        setSelectedAgentId(storedAgentId || null);
+      } else {
+        if (session.workflow_id) {
+          setSelectedAgentId(null);
+        } else {
+          const storedGlobalAgentId = localStorage.getItem('clutch_active_agent_id');
+          setSelectedAgentId(storedGlobalAgentId || BUILTIN_AGENT_ID);
+        }
+      }
+
+      setView('chat');
+      void clutchStore.connect(session.run_id)
+        .catch((error) => {
+          console.warn('[Clutch] session websocket connect failed:', error);
+        })
+        .finally(() => {
+          setLoadingSessionId((current) => (current === session.run_id ? null : current));
+        });
+    } finally {
+      logTiming('session switch', {
+        runId: session.run_id,
+        title: session.title || session.workflow_id || '',
+        totalMs: elapsedMs(startedAt),
+        workspaceSwitchMs,
+        hasCachedSession,
+        connectMode: 'background',
+        switchedWorkspace: shouldSwitchWorkspace,
+      });
+      if (hasCachedSession) {
+        setLoadingSessionId(null);
       }
     }
-
-    setView('chat');
   };
 
   const handleNewChatInWorkspace = async (workspaceId: string) => {
@@ -942,7 +1063,9 @@ function MainLayout() {
               setSelectedWorkflowId(null);
               setView('chat');
               setRightTab('overview');
-              void clutchStore.connect(tempRunId);
+              void clutchStore.connect(tempRunId).catch((error) => {
+                console.warn('[Clutch] temp session websocket connect failed:', error);
+              });
             }
           }
         } catch (error) {
@@ -1042,11 +1165,6 @@ function MainLayout() {
     await refreshSessions();
   };
 
-  const handleClearSessionView = () => {
-    setRightTab('overview');
-    setCurrentFlowName('');
-  };
-
   useEffect(() => {
     if (clutchState.workflow_id) {
       const matched = footerWorkflows.find((w) => w.id === clutchState.workflow_id);
@@ -1063,6 +1181,7 @@ function MainLayout() {
   return (
     <div 
       style={themeVars as React.CSSProperties}
+      data-font-size={fontSize}
       className="relative h-screen max-h-screen bg-background text-on-surface overflow-hidden flex flex-col font-sans select-none"
     >
       
@@ -1072,12 +1191,8 @@ function MainLayout() {
         workspaceName={workspace?.name}
         onPickWorkspace={() => { void handlePickWorkspace(); }}
         folders={folders}
-        isMultiAgent={isMultiAgent}
-        setIsMultiAgent={handleSetIsMultiAgent}
-        onGoBack={handleClearSessionView}
-        setView={setView}
+        onToggleSidebar={() => setSidebarOpen((open) => !open)}
         sidebarOpen={sidebarOpen}
-        selectedModel={selectedModel}
       />
 
       {/* 2. Side Panel components layout */}
@@ -1093,11 +1208,11 @@ function MainLayout() {
           setActiveFlow={handleFlowSelect}
           onNewChat={() => { void handleNewChat(); }}
           isOpenState={sidebarOpen}
-          setIsOpenState={setSidebarOpen}
           isMultiAgent={isMultiAgent}
           sessions={sessions}
           shellSnapshotRunIds={shellSnapshotRunIds}
           activeSessionId={sessionRunId}
+          loadingSessionId={loadingSessionId}
           clutchStatus={clutchStatus}
           workspaces={workspaces}
           repositoryGroups={repositoryGroups}
@@ -1208,6 +1323,14 @@ function MainLayout() {
                 onSendMessage={handleSendMessage}
                 sessionTitle={sessionTitle}
                 sessionRunId={sessionRunId}
+                isSessionSwitching={Boolean(loadingSessionId)}
+                loadingSessionTitle={
+                  loadingSessionId
+                    ? sessions.find((session) => session.run_id === loadingSessionId)?.title
+                      || sessions.find((session) => session.run_id === loadingSessionId)?.workflow_id
+                      || loadingSessionId
+                    : ''
+                }
                 clutchStatus={clutchStatus}
                 currentFlowName={currentFlowName || clutchState.workflow_id}
                 selectedSidebarWidth={selectedSidebarWidth}
@@ -1302,6 +1425,8 @@ function MainLayout() {
           setUserAvatar={setUserAvatarState}
           userName={userName}
           setUserName={setUserName}
+          fontSize={fontSize}
+          setFontSize={setFontSize}
         />
 
       </div>

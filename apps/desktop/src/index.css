@@ -60,7 +60,89 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Typography preference layer.
+   Components still use many Tailwind fixed-size utilities today, so this layer maps
+   those existing utilities onto semantic size tiers while preserving hierarchy. */
+[data-font-size="small"] {
+  --app-text-2xs: 9px;
+  --app-text-xs: 10px;
+  --app-text-sm: 12px;
+  --app-text-base: 13px;
+  --app-text-lg: 16px;
+  --app-text-xl: 18px;
+}
+
+[data-font-size="default"] {
+  --app-text-2xs: 10px;
+  --app-text-xs: 11px;
+  --app-text-sm: 13px;
+  --app-text-base: 14px;
+  --app-text-lg: 18px;
+  --app-text-xl: 20px;
+}
+
+[data-font-size="large"] {
+  --app-text-2xs: 11px;
+  --app-text-xs: 12px;
+  --app-text-sm: 14px;
+  --app-text-base: 15px;
+  --app-text-lg: 20px;
+  --app-text-xl: 22px;
+}
+
+[data-font-size="xlarge"] {
+  --app-text-2xs: 12px;
+  --app-text-xs: 13px;
+  --app-text-sm: 15px;
+  --app-text-base: 16px;
+  --app-text-lg: 22px;
+  --app-text-xl: 24px;
+}
+
+[data-font-size="xxlarge"] {
+  --app-text-2xs: 13px;
+  --app-text-xs: 14px;
+  --app-text-sm: 16px;
+  --app-text-base: 17px;
+  --app-text-lg: 24px;
+  --app-text-xl: 26px;
+}
+
+[data-font-size] {
+  font-size: var(--app-text-base);
+}
+
+/* Compatibility bridge for existing fixed Tailwind text utilities.
+   Keep icons out of this bridge; LegacyIcon adds .clutch-icon explicitly. */
+[data-font-size] :where(.text-\[8px\], .text-\[9px\], .text-\[9\.5px\], .text-\[10px\], .text-\[10\.5px\]):not(.clutch-icon) {
+  font-size: var(--app-text-2xs);
+}
+
+[data-font-size] :where(.text-\[11px\], .text-\[11\.5px\], .text-xs):not(.clutch-icon) {
+  font-size: var(--app-text-xs);
+}
+
+[data-font-size] :where(.text-\[12px\], .text-\[12\.5px\], .text-\[13px\], .text-sm):not(.clutch-icon) {
+  font-size: var(--app-text-sm);
+}
+
+[data-font-size] :where(.text-base, .text-\[14px\], .text-\[15px\]):not(.clutch-icon) {
+  font-size: var(--app-text-base);
+}
+
+[data-font-size] :where(.text-lg):not(.clutch-icon) {
+  font-size: var(--app-text-lg);
+}
+
+[data-font-size] :where(.text-xl, .text-\[18px\], .text-\[20px\], .text-\[22px\], .text-\[24px\]):not(.clutch-icon) {
+  font-size: var(--app-text-xl);
+}
+
 /* Custom Scrollbars */
+.sidebar-scroll {
+  overflow-x: hidden;
+}
+
 .sidebar-scroll::-webkit-scrollbar {
   width: 4px;
   height: 4px;
@@ -77,6 +159,19 @@ body {
 
 .sidebar-scroll::-webkit-scrollbar-thumb:hover {
   background: #71717a;
+}
+
+@keyframes session-row-loading {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(220%);
+  }
+}
+
+.session-row-loading-bar {
+  animation: session-row-loading 1.1s ease-in-out infinite;
 }
 
 /* Terminal Scrolling style */

@@ -27,6 +27,8 @@ export function AgentChatAvatar({
           }
           src={src}
           alt={alt}
+          loading="eager"
+          decoding="async"
         />
       ) : (
         <LegacyIcon name={fallbackIcon} className="text-[15px] text-on-surface-variant" />

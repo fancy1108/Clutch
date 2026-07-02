@@ -57,16 +57,18 @@ export function WorkspaceStep({ workspace, onWorkspaceSelected }: WorkspaceStepP
           <p className="text-sm font-mono text-emerald-950 mt-1 break-all">{workspace.workspace_path}</p>
         </div>
       ) : (
-        <button
-          type="button"
-          data-testid="onboarding-pick-workspace"
-          disabled={picking || !isTauri()}
-          onClick={() => void handlePick()}
-          className={`${BTN_PRIMARY} w-full max-w-sm mx-auto flex items-center justify-center gap-2`}
-        >
-          <FolderOpen className="h-4 w-4" />
-          {picking ? t('Selecting…') : t('Select project folder')}
-        </button>
+        <div className="flex justify-center">
+          <button
+            type="button"
+            data-testid="onboarding-pick-workspace"
+            disabled={picking || !isTauri()}
+            onClick={() => void handlePick()}
+            className={`${BTN_PRIMARY} min-w-[11rem] px-4 flex items-center justify-center gap-2`}
+          >
+            <FolderOpen className="h-4 w-4" />
+            {picking ? t('Selecting…') : t('Select project folder')}
+          </button>
+        </div>
       )}
 
       {error && (

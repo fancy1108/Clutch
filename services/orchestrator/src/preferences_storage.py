@@ -11,8 +11,10 @@ from typing import Any
 PREFERENCES_ENV = "CLUTCH_PREFERENCES_DIR"
 DEFAULT_THEME_ID = "pristine-light"
 DEFAULT_LANGUAGE = "en"
+DEFAULT_FONT_SIZE = "default"
 ALLOWED_THEME_IDS = frozenset({"pristine-light", "nordic-frost", "amber-warm"})
 ALLOWED_LANGUAGES = frozenset({"en", "zh"})
+ALLOWED_FONT_SIZES = frozenset({"small", "default", "large", "xlarge", "xxlarge"})
 
 # Permission modes (controls when the agent pauses for human approval)
 # ask       – pause before every risky tool (write/delete/exec). Default & safest.
@@ -42,6 +44,7 @@ def _defaults() -> dict[str, str]:
         "active_theme_id": DEFAULT_THEME_ID,
         "active_language": DEFAULT_LANGUAGE,
         "permission_mode": DEFAULT_PERMISSION_MODE,
+        "font_size": DEFAULT_FONT_SIZE,
         "user_avatar": "",
         "user_name": "User",
         "onboarding_completed": "false",
@@ -65,6 +68,7 @@ def load_preferences() -> dict[str, str]:
     theme_id = str(data.get("active_theme_id") or DEFAULT_THEME_ID)
     language = str(data.get("active_language") or DEFAULT_LANGUAGE)
     permission_mode = str(data.get("permission_mode") or DEFAULT_PERMISSION_MODE)
+    font_size = str(data.get("font_size") or DEFAULT_FONT_SIZE)
     user_avatar = str(data.get("user_avatar") or "")
     user_name = str(data.get("user_name") or "User")
     onboarding_completed = str(data.get("onboarding_completed") or "false").lower()
@@ -76,10 +80,13 @@ def load_preferences() -> dict[str, str]:
         language = DEFAULT_LANGUAGE
     if permission_mode not in ALLOWED_PERMISSION_MODES:
         permission_mode = DEFAULT_PERMISSION_MODE
+    if font_size not in ALLOWED_FONT_SIZES:
+        font_size = DEFAULT_FONT_SIZE
     return {
         "active_theme_id": theme_id,
         "active_language": language,
         "permission_mode": permission_mode,
+        "font_size": font_size,
         "user_avatar": user_avatar,
         "user_name": user_name,
         "onboarding_completed": onboarding_completed,
@@ -123,6 +130,15 @@ def save_permission_mode(mode: str) -> dict[str, str]:
         raise ValueError(f"Unknown permission mode: {normalized}. Allowed: {sorted(ALLOWED_PERMISSION_MODES)}")
     prefs = load_preferences()
     prefs["permission_mode"] = normalized
+    return _write_preferences(prefs)
+
+
+def save_font_size(font_size: str) -> dict[str, str]:
+    normalized = font_size.strip().lower()
+    if normalized not in ALLOWED_FONT_SIZES:
+        raise ValueError(f"Unknown font size: {normalized}. Allowed: {sorted(ALLOWED_FONT_SIZES)}")
+    prefs = load_preferences()
+    prefs["font_size"] = normalized
     return _write_preferences(prefs)
 
 

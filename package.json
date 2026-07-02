@@ -9,7 +9,8 @@
     "lint": "pnpm -r lint",
     "clean": "pnpm --filter @clutch/desktop clean",
     "test": "pnpm --filter @clutch/desktop test",
-    "tauri:dev": "bash scripts/tauri-dev.sh",
+    "tauri:dev": "python scripts/tauri-dev.py",
+    "tauri:dev:sh": "bash scripts/tauri-dev.sh",
     "tauri:build": "corepack pnpm --filter @clutch/desktop tauri build",
     "prepare": "husky"
   },

@@ -43,6 +43,8 @@ export CLUTCH_RUNTIME_MODE=hybrid   # optional; enables Hybrid CLI runtime
 pnpm tauri:dev
 ```
 
+`pnpm tauri:dev` uses a cross-platform Python launcher. The legacy Bash launcher remains available as `pnpm tauri:dev:sh`.
+
 ### Option B — Split terminals
 
 ```bash
@@ -88,7 +90,7 @@ See [`CONTRIBUTING.md`](../CONTRIBUTING.md) and [`CLAUDE.md`](../CLAUDE.md) §�
 
 ## 4. Production desktop installers (local)
 
-Requires Rust and PyInstaller. From the repository root:
+Requires Rust and PyInstaller. On Windows, install Visual Studio 2022 C++ Build Tools, a Windows SDK, and WebView2 Runtime first. From the repository root:
 
 ```bash
 corepack pnpm tauri:build
@@ -103,14 +105,14 @@ Artifacts land under `apps/desktop/src-tauri/target/release/bundle/`.
 
 Windows outputs are `bundle/msi/Clutch_*_x64_en-US.msi` and `bundle/nsis/Clutch_*_x64-setup.exe`. The Windows Hybrid runtime uses Git Bash when a connected CLI requires a persistent shell, so install Git for Windows for that mode.
 
-**Health check (prod build, after installing the `.app`):**
+**Health check (prod build, after installing the desktop package):**
 
 ```bash
 curl -s http://127.0.0.1:8123/health
 # {"status":"ok"}
 ```
 
-Unsigned builds (local or GitHub Release) may require **right-click → Open** on first launch (Gatekeeper). See README §安装方式. Apple signing (OSR-11) is optional until a Developer account is available (D31).
+Unsigned builds may require **right-click → Open** on macOS (Gatekeeper) or **More info → Run anyway** on Windows (SmartScreen). See README §安装方式. Code signing is optional until signing credentials are available.
 
 ## 5. Data directories
 
