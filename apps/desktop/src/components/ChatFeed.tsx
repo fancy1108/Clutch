@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
-import { APP_HEADER_HEIGHT_PX } from '../constants/layout';
+import { APP_FOOTER_HEIGHT_PX, APP_HEADER_HEIGHT_PX } from '../constants/layout';
 import { ChevronRight } from 'lucide-react';
 import { ChatMessage, ClutchRunStatus, HybridExecutionPayload, OutputEvent } from '../types';
 import { useLanguage } from './LanguageContext';
@@ -674,8 +674,11 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   const [orchestratorBarFocused, setOrchestratorBarFocused] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const dockRef = useRef<HTMLDivElement>(null);
+  const terminalDockRef = useRef<HTMLDivElement>(null);
+  const terminalBarRef = useRef<HTMLDivElement>(null);
   const terminalStageRef = useRef<HTMLDivElement>(null);
   const [dockHeight, setDockHeight] = useState(176);
+  const [terminalBarHeight, setTerminalBarHeight] = useState(52);
   const [hillInstructions, setHillInstructions] = useState('');
   const [pendingMessages, setPendingMessages] = useState<PendingChatMessage[]>([]);
   const [messageContextMenu, setMessageContextMenu] = useState<{
@@ -727,6 +730,10 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
     || (sessionDispatched && hasPersistedTerminalLanes)
   );
   const isTerminalLayout = showTerminalWorkspace;
+  /** Input bar + footer clearance reserved under terminal content. */
+  const terminalInputReservePx = terminalBarHeight + APP_FOOTER_HEIGHT_PX;
+  /** Gap (1× bar) + input reserve — drives xterm refit when dock chrome changes. */
+  const terminalDockHeight = terminalBarHeight * 2 + APP_FOOTER_HEIGHT_PX;
 
   const leftChromePad =
     selectedSidebarWidth + 30 + (sidebarOpen ? 0 : TERMINAL_COLLAPSED_TOGGLE_GUTTER_PX);
@@ -736,7 +743,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   const terminalLayoutChromeKey = buildTerminalLayoutChromeKey({
     sidebarWidth: selectedSidebarWidth,
     rightPanelWidth: rightSidebarWidth,
-    dockHeight,
+    dockHeight: showTerminalWorkspace ? terminalDockHeight : dockHeight,
     sidebarOpen,
     rightPanelOpen,
   });
@@ -902,9 +909,8 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
 
   useEffect(() => {
     const dock = dockRef.current;
-    if (!dock) return;
+    if (!dock || showTerminalWorkspace) return;
     const measure = () => {
-      // bottom-8 (32px) + generous gap so last bubble clears the fixed input dock
       const gapAboveDock = 96 + (showThinking ? 40 : 0);
       setDockHeight(Math.max(dock.offsetHeight + 32 + gapAboveDock, 260));
     };
@@ -912,7 +918,19 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
     const observer = new ResizeObserver(measure);
     observer.observe(dock);
     return () => observer.disconnect();
-  }, [pendingMessages.length, shellSessionStatus, awaitingHuman, isRunning, isPlainLlmChat, showThinking]);
+  }, [pendingMessages.length, shellSessionStatus, awaitingHuman, isRunning, isPlainLlmChat, showThinking, showTerminalWorkspace]);
+
+  useEffect(() => {
+    const terminalBar = terminalBarRef.current;
+    if (!terminalBar || !showTerminalWorkspace) return;
+    const measure = () => {
+      setTerminalBarHeight(terminalBar.offsetHeight);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(terminalBar);
+    return () => observer.disconnect();
+  }, [showTerminalWorkspace, inputValue, clutchOrchestraState.pending_handoff_drafts?.length]);
 
   const renderAgentLabel = (
     agent: string,
@@ -967,10 +985,10 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
         paddingLeft: `${leftChromePad}px`,
         paddingRight: `${rightChromePad}px`,
         paddingTop: APP_HEADER_HEIGHT_PX,
-        paddingBottom: dockHeight,
+        paddingBottom: isTerminalLayout ? terminalInputReservePx : dockHeight,
       }}
       className={`flex-1 min-h-0 flex flex-col box-border transition-all duration-300 bg-background ${
-        isTerminalLayout ? 'overflow-hidden py-3 items-stretch' : 'overflow-y-auto items-center py-10 px-6'
+        isTerminalLayout ? 'overflow-hidden py-1 items-stretch' : 'overflow-y-auto items-center py-10 px-6'
       } ${isTerminalLayout ? 'px-4' : ''}`}
     >
       <div
@@ -984,7 +1002,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
         {isTerminalHistoryReadonly ? (
           <div
             className={`flex justify-end shrink-0 ${
-              isTerminalLayout ? 'mt-2 mb-3' : 'mb-6'
+              isTerminalLayout ? 'mt-1 mb-1' : 'mb-6'
             }`}
           >
             <span
@@ -1000,7 +1018,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
         ) : showWorkspaceViewToggle ? (
           <div
             className={`flex justify-end shrink-0 ${
-              isTerminalLayout ? 'mt-2 mb-3' : showTerminalWorkspace ? 'mb-3' : 'mb-6'
+              isTerminalLayout ? 'mt-1 mb-1' : showTerminalWorkspace ? 'mb-3' : 'mb-6'
             }`}
           >
             <div
@@ -1103,6 +1121,15 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
               <TerminalOrchestraEmptyState />
             ) : null}
           </div>
+        ) : null}
+
+        {isTerminalLayout ? (
+          <div
+            data-testid="terminal-input-gap"
+            className="shrink-0 w-full"
+            style={{ height: terminalBarHeight }}
+            aria-hidden
+          />
         ) : null}
 
         {isTerminalHistoryReadonly ? (
@@ -1322,17 +1349,37 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
           <div ref={bottomRef} style={{ scrollMarginBottom: dockHeight }} className="h-2 shrink-0" aria-hidden />
         ) : null}
       </div>
+
     </section>
 
     <div
-        ref={dockRef}
+        ref={showTerminalWorkspace ? terminalDockRef : dockRef}
+        data-testid={showTerminalWorkspace ? 'terminal-orchestrator-dock' : undefined}
         style={{
           left: `${leftChromePad - 6}px`,
           right: `${rightChromePad - 6}px`,
         }}
         className="fixed bottom-8 flex justify-center px-6 z-40 transition-all duration-300 select-none"
       >
-        {isRunning && !awaitingHuman && !isPlainLlmChat && !isRefining ? (
+        {showTerminalWorkspace ? (
+          <div ref={terminalBarRef} className="w-full max-w-2xl">
+            <OrchestratorBar
+            sessionRunId={sessionRunId}
+            drafts={clutchOrchestraState.pending_handoff_drafts ?? []}
+            inputValue={inputValue}
+            setInputValue={setInputValue}
+            permissionMode={permissionMode}
+            onPermissionModeChange={onPermissionModeChange ?? (() => {})}
+            workspaceFiles={workspaceFiles}
+            sessions={sessions}
+            skills={skills}
+            onFocusChange={setOrchestratorBarFocused}
+            mentionableAgents={mentionableAgents}
+            selectedMentionAgentId={selectedMentionAgentId}
+            onMentionAgentChange={onMentionAgentChange}
+          />
+          </div>
+        ) : isRunning && !awaitingHuman && !isPlainLlmChat && !isRefining ? (
           <div className="w-full max-w-2xl bg-white border border-outline-variant p-3 shadow-xl rounded-xl flex items-center justify-between">
             <div className="flex items-center gap-3">
               <span className="relative flex h-2.5 w-2.5">
@@ -1425,24 +1472,6 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                 Retry
               </button>
             </div>
-          </div>
-        ) : showTerminalWorkspace ? (
-          <div className="w-full flex justify-center">
-            <OrchestratorBar
-              sessionRunId={sessionRunId}
-              drafts={clutchOrchestraState.pending_handoff_drafts ?? []}
-              inputValue={inputValue}
-              setInputValue={setInputValue}
-              permissionMode={permissionMode}
-              onPermissionModeChange={onPermissionModeChange ?? (() => {})}
-              workspaceFiles={workspaceFiles}
-              sessions={sessions}
-              skills={skills}
-              onFocusChange={setOrchestratorBarFocused}
-              mentionableAgents={mentionableAgents}
-              selectedMentionAgentId={selectedMentionAgentId}
-              onMentionAgentChange={onMentionAgentChange}
-            />
           </div>
         ) : isTerminalHistoryReadonly ? (
           <div className="w-full flex justify-center">

@@ -71,7 +71,7 @@ def test_attach_bash_smoke() -> None:
 
 
 @pytest.mark.skipif(os.name == "nt", reason="PTY spawn requires Unix")
-def test_reattach_after_detach_respawns_process() -> None:
+def test_reattach_after_detach_reuses_process() -> None:
     bash = shutil.which("bash")
     if not bash:
         pytest.skip("bash not available")
@@ -93,7 +93,7 @@ def test_reattach_after_detach_respawns_process() -> None:
                 workspace_path="/tmp",
                 cli_tool="claude-cli",
             )
-            assert second.pid != first_pid
+            assert second.pid == first_pid
             assert second.attached is True
             interactive_pty_manager.close("run_test::lane_primary")
 

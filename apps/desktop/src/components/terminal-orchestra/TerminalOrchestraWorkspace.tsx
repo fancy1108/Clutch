@@ -59,7 +59,7 @@ export const TerminalOrchestraWorkspace: React.FC<TerminalOrchestraWorkspaceProp
         layoutChromeKey={layoutChromeKey}
         layoutObserveRef={layoutObserveRef}
       />
-      <div className="w-full shrink-0 mt-2">
+      <div className="w-full shrink-0 mt-1">
         <TerminalSessionStatsBar
           sessionRunId={sessionRunId}
           visible={visible}

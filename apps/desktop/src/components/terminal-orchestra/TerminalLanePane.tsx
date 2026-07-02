@@ -12,8 +12,9 @@ import {
   laneShellBorderClass,
   LANE_SHELL_CLASS,
   resolvePtyInjectWarmupMs,
+  type LaneGridLayout,
 } from '../../services/terminalOrchestraUtils';
-import { XTERM_KEEPALIVE_STYLE, scheduleXtermRefit } from './terminalLaneLayout';
+import { scheduleXtermRefit } from './terminalLaneLayout';
 
 interface TerminalLanePaneProps {
   lane: PtyLane;
@@ -29,6 +30,7 @@ interface TerminalLanePaneProps {
   paneRef?: (el: HTMLDivElement | null, laneId: string) => void;
   /** Bumped when grid resizes or lane count changes — triggers xterm refit. */
   layoutTick?: number;
+  layoutMode?: LaneGridLayout;
 }
 
 function isPtyLiveStatus(status: string): boolean {
@@ -47,6 +49,7 @@ export const TerminalLanePane: React.FC<TerminalLanePaneProps> = ({
   onCollapseLane,
   paneRef,
   layoutTick = 0,
+  layoutMode = 'single',
 }) => {
   const { t } = useLanguage();
   const hostRef = useRef<HTMLDivElement>(null);
@@ -55,6 +58,7 @@ export const TerminalLanePane: React.FC<TerminalLanePaneProps> = ({
   const attachTokenRef = useRef(0);
   const attachedKeyRef = useRef<string | null>(null);
   const consumedInjectRef = useRef<string | null>(null);
+  const injectInflightRef = useRef<string | null>(null);
   const [ptyStatus, setPtyStatus] = useState('');
   const [connectPhase, setConnectPhase] = useState<'idle' | 'connecting' | 'ready' | 'failed'>('idle');
   const { state: clutchState } = useClutchState();
@@ -97,28 +101,32 @@ export const TerminalLanePane: React.FC<TerminalLanePaneProps> = ({
     if (!pending || pending.lane_id !== lane.lane_id) return;
 
     const dedupeKey = `${pending.lane_id}:${pending.prompt}:${pending.handoff_path ?? ''}`;
-    if (consumedInjectRef.current === dedupeKey) return;
+    if (consumedInjectRef.current === dedupeKey || injectInflightRef.current === dedupeKey) return;
 
-    for (let attempt = 0; attempt < 32; attempt += 1) {
-      if (clutchStore.getLanePtyStatus(lane.lane_id) !== 'ready') {
-        await new Promise((resolve) => window.setTimeout(resolve, 250));
-        continue;
+    injectInflightRef.current = dedupeKey;
+    try {
+      for (let attempt = 0; attempt < 32; attempt += 1) {
+        if (clutchStore.getLanePtyStatus(lane.lane_id) !== 'ready') {
+          await new Promise((resolve) => window.setTimeout(resolve, 250));
+          continue;
+        }
+        const isHandoff = Boolean(pending.handoff_path?.trim());
+        const warmupMs = resolvePtyInjectWarmupMs(lane.agent_type, { isHandoff, attempt });
+        const ok = await clutchStore.submitPtyPrompt(lane.lane_id, pending.prompt, { warmupMs });
+        if (ok) {
+          consumedInjectRef.current = dedupeKey;
+          await clutchStore.ackPendingPtyInject();
+          refreshLayout();
+          return;
+        }
+        await new Promise((resolve) => window.setTimeout(resolve, 600));
       }
-      const isHandoff = Boolean(pending.handoff_path?.trim());
-      const warmupMs = resolvePtyInjectWarmupMs(lane.agent_type, { isHandoff, attempt });
-      const ok = await clutchStore.submitPtyPrompt(lane.lane_id, pending.prompt, { warmupMs });
-      if (ok) {
-        consumedInjectRef.current = dedupeKey;
-        await clutchStore.ackPendingPtyInject();
-        refreshLayout();
-        return;
+    } finally {
+      if (injectInflightRef.current === dedupeKey) {
+        injectInflightRef.current = null;
       }
-      await new Promise((resolve) => window.setTimeout(resolve, 600));
     }
   }, [isCompleted, isQueued, lane.agent_type, lane.lane_id, visible, refreshLayout]);
-
-  const flushPendingInjectRef = useRef(flushPendingInject);
-  flushPendingInjectRef.current = flushPendingInject;
 
   useEffect(() => {
     if (!visible || isQueued || isCompleted) return;
@@ -163,7 +171,6 @@ export const TerminalLanePane: React.FC<TerminalLanePaneProps> = ({
         if (visible) {
           setConnectPhase('ready');
           refreshLayout();
-          void flushPendingInjectRef.current();
         }
       } else if (status === 'blocked' || status === 'exited') {
         setConnectPhase('failed');
@@ -197,6 +204,7 @@ export const TerminalLanePane: React.FC<TerminalLanePaneProps> = ({
 
   useEffect(() => {
     consumedInjectRef.current = null;
+    injectInflightRef.current = null;
   }, [lane.agent_type, lane.lane_id, lane.status, lane.configured_agent_id, pendingInject?.prompt, pendingInject?.lane_id, pendingInject?.handoff_path]);
 
   useEffect(() => {
@@ -216,19 +224,9 @@ export const TerminalLanePane: React.FC<TerminalLanePaneProps> = ({
   ]);
 
   useEffect(() => {
-    if (!visible || isQueued || isCompleted || lane.collapsed) return;
+    if (!visible || isQueued || isCompleted) return;
     return scheduleXtermRefit(refreshLayout);
-  }, [lane.collapsed, visible, isQueued, isCompleted, layoutTick, refreshLayout]);
-
-  const prevCollapsedRef = useRef(lane.collapsed);
-  useEffect(() => {
-    const wasCollapsed = prevCollapsedRef.current;
-    prevCollapsedRef.current = lane.collapsed;
-    if (wasCollapsed && !lane.collapsed && visible && !isQueued && !isCompleted) {
-      return scheduleXtermRefit(refreshLayout);
-    }
-    return undefined;
-  }, [lane.collapsed, visible, isQueued, isCompleted, refreshLayout]);
+  }, [lane.collapsed, visible, isQueued, isCompleted, layoutTick, layoutMode, refreshLayout]);
 
   useEffect(() => {
     if (!visible || isQueued || isCompleted) return;
@@ -245,6 +243,18 @@ export const TerminalLanePane: React.FC<TerminalLanePaneProps> = ({
       try {
         await clutchStore.connect(sessionRunId);
         if (token !== attachTokenRef.current) return;
+
+        const liveStatus = clutchStore.getLanePtyStatus(lane.lane_id);
+        if (
+          attachedKeyRef.current === attachKey
+          && (liveStatus === 'ready' || liveStatus === 'booting')
+        ) {
+          if (liveStatus === 'ready') {
+            setConnectPhase('ready');
+            refreshLayout();
+          }
+          return;
+        }
 
         if (attachedKeyRef.current !== attachKey) {
           const live = clutchStore.getLanePtyStatus(lane.lane_id);
@@ -267,7 +277,6 @@ export const TerminalLanePane: React.FC<TerminalLanePaneProps> = ({
           setConnectPhase('ready');
           setPtyStatus(clutchStore.getLanePtyStatus(lane.lane_id) || 'ready');
           refreshLayout();
-          void flushPendingInject();
         } else {
           setConnectPhase('failed');
         }
@@ -280,7 +289,7 @@ export const TerminalLanePane: React.FC<TerminalLanePaneProps> = ({
     return () => {
       attachTokenRef.current += 1;
     };
-  }, [visible, lane.lane_id, lane.agent_type, lane.status, sessionRunId, attachIdentity, isQueued, isCompleted, flushPendingInject]);
+  }, [visible, lane.lane_id, lane.agent_type, lane.status, sessionRunId, attachIdentity, isQueued, isCompleted, refreshLayout]);
 
   const isCollapsed = lane.collapsed;
 
@@ -301,7 +310,6 @@ export const TerminalLanePane: React.FC<TerminalLanePaneProps> = ({
       data-testid={`terminal-lane-${lane.lane_id}`}
       data-lane-id={lane.lane_id}
       data-lane-collapsed={isCollapsed ? 'true' : 'false'}
-      style={isCollapsed ? XTERM_KEEPALIVE_STYLE : undefined}
       className={`flex flex-col h-full min-h-0 overflow-hidden ${LANE_SHELL_CLASS} ${laneShellBorderClass(lane.focused)} ${
         isCollapsed ? 'pointer-events-none' : ''
       }`}

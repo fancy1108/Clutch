@@ -12,7 +12,12 @@ import {
 import { TerminalLanePane } from './TerminalLanePane';
 import { TerminalLaneFloatRail } from './TerminalLaneFloatRail';
 import { HandoffLinkOverlay } from './HandoffLinkOverlay';
-import { lanePaneOuterClass, scheduleTerminalLayoutRefit } from './terminalLaneLayout';
+import {
+  expandedLaneSlot,
+  lanePaneOuterClass,
+  LANE_KEEPALIVE_SLOT,
+  scheduleTerminalLayoutRefit,
+} from './terminalLaneLayout';
 
 interface TerminalLaneGridProps {
   lanes: PtyLane[];
@@ -74,17 +79,16 @@ export const TerminalLaneGrid: React.FC<TerminalLaneGridProps> = ({
   const expanded = expandedLanes(displayLanes);
   const collapsed = collapsedLanes(displayLanes);
   const layout = computeLaneLayout(Math.max(1, expanded.length));
-  const gridLanes = orderLanesForGrid(
+  const expandedOrdered = orderLanesForGrid(
     expanded.length > 0 ? expanded : displayLanes,
     layout,
   );
-  const paneLanes = layout === 'split-3' || layout === 'quad'
-    ? gridLanes
-    : displayLanes;
-  const handoffGapClass = handoffEdges.length > 0 ? 'gap-5' : 'gap-3';
   const laneLayoutKey = useMemo(
-    () => paneLanes.map((lane) => `${lane.lane_id}:${lane.collapsed ? 1 : 0}:${lane.focused ? 1 : 0}`).join('|'),
-    [paneLanes],
+    () => [
+      layout,
+      displayLanes.map((lane) => `${lane.lane_id}:${lane.collapsed ? 1 : 0}:${lane.focused ? 1 : 0}`).join('|'),
+    ].join('::'),
+    [displayLanes, layout],
   );
 
   const registerPane = useCallback((el: HTMLDivElement | null, laneId: string) => {
@@ -114,74 +118,7 @@ export const TerminalLaneGrid: React.FC<TerminalLaneGridProps> = ({
     scheduleLayoutRefit();
   };
 
-  const renderLanePane = (lane: PtyLane, outerClass: string) => {
-    const paneKey = !sessionDispatched && previewAgentId
-      ? `preview-${previewAgentId}`
-      : lane.lane_id;
-    return (
-      <div
-        key={paneKey}
-        className={lane.collapsed ? 'contents' : outerClass}
-        aria-hidden={lane.collapsed ? true : undefined}
-      >
-        <TerminalLanePane
-          key={paneKey}
-          lane={lane}
-          sessionRunId={sessionRunId}
-          visible={visible}
-          barFocused={barFocused}
-          configuredAgents={configuredAgents}
-          headerAgentName={!sessionDispatched ? previewAgentName ?? undefined : undefined}
-          attachIdentity={
-            !sessionDispatched
-              ? previewAgentId ?? undefined
-              : lane.configured_agent_id ?? lane.lane_id
-          }
-          layoutTick={layoutTick}
-          onFocusLane={handleFocus}
-          onCollapseLane={handleCollapse}
-          paneRef={lane.collapsed ? undefined : registerPane}
-        />
-      </div>
-    );
-  };
-
-  const laneGrid = (() => {
-    const shell = `${lanePaneOuterClass(false)} min-h-0 min-w-0`;
-    if (layout === 'single') {
-      return (
-        <div className={`flex flex-col flex-1 min-h-0 min-w-0 h-full w-full ${handoffGapClass}`}>
-          {paneLanes.map((lane) => renderLanePane(lane, `${shell} flex-1`))}
-        </div>
-      );
-    }
-    if (layout === 'pair') {
-      return (
-        <div className={`flex flex-row flex-1 min-h-0 min-w-0 h-full ${handoffGapClass}`}>
-          {paneLanes.map((lane) => renderLanePane(lane, `${shell} flex-1 basis-0`))}
-        </div>
-      );
-    }
-    if (layout === 'split-3') {
-      const top = paneLanes.slice(0, 2);
-      const bottom = paneLanes.slice(2);
-      return (
-        <div className={`flex flex-col flex-1 min-h-0 min-w-0 h-full ${handoffGapClass}`}>
-          <div className={`flex flex-row flex-1 min-h-0 min-w-0 basis-0 ${handoffGapClass}`}>
-            {top.map((lane) => renderLanePane(lane, `${shell} flex-1 basis-0`))}
-          </div>
-          <div className="flex flex-[1.35] min-h-0 min-w-0">
-            {bottom.map((lane) => renderLanePane(lane, `${shell} flex-1`))}
-          </div>
-        </div>
-      );
-    }
-    return (
-      <div className={`grid grid-cols-2 grid-rows-2 flex-1 min-h-0 min-w-0 h-full ${handoffGapClass} auto-rows-fr`}>
-        {paneLanes.map((lane) => renderLanePane(lane, `${shell} h-full w-full`))}
-      </div>
-    );
-  })();
+  const shell = `${lanePaneOuterClass(false)} h-full w-full`;
 
   useEffect(() => {
     return scheduleLayoutRefit();
@@ -221,14 +158,54 @@ export const TerminalLaneGrid: React.FC<TerminalLaneGridProps> = ({
 
   useEffect(() => {
     return scheduleLayoutRefit();
-  }, [paneLanes.length, expanded.length, collapsed.length, handoffEdges.length, layout, laneLayoutKey, scheduleLayoutRefit]);
+  }, [displayLanes.length, expanded.length, collapsed.length, handoffEdges.length, layout, laneLayoutKey, scheduleLayoutRefit]);
 
   return (
     <div data-testid="terminal-lane-grid" className="w-full flex flex-1 flex-col min-h-0 min-w-0">
       <div ref={stageRef} className="relative flex flex-1 flex-col min-h-0 min-w-0">
         <div className="flex flex-1 gap-2 min-h-0 min-w-0">
-          <div ref={laneRowRef} className="flex flex-1 min-h-0 min-w-0">
-            {laneGrid}
+          <div ref={laneRowRef} className="relative flex flex-1 min-h-0 min-w-0">
+            {displayLanes.map((lane) => {
+              const paneKey = !sessionDispatched && previewAgentId
+                ? `preview-${previewAgentId}`
+                : lane.lane_id;
+              const isHidden = lane.collapsed || lane.status === 'queued';
+              const slotIndex = expandedOrdered.findIndex((item) => item.lane_id === lane.lane_id);
+              const slotStyle = isHidden
+                ? LANE_KEEPALIVE_SLOT
+                : expandedLaneSlot(slotIndex, layout);
+
+              return (
+                <div
+                  key={paneKey}
+                  data-lane-id={lane.lane_id}
+                  data-lane-collapsed={isHidden ? 'true' : 'false'}
+                  data-lane-layout={layout}
+                  aria-hidden={isHidden ? true : undefined}
+                  style={slotStyle}
+                  className={isHidden ? 'flex flex-col overflow-hidden' : shell}
+                >
+                  <TerminalLanePane
+                    lane={lane}
+                    sessionRunId={sessionRunId}
+                    visible={visible}
+                    barFocused={barFocused}
+                    configuredAgents={configuredAgents}
+                    headerAgentName={!sessionDispatched ? previewAgentName ?? undefined : undefined}
+                    attachIdentity={
+                      !sessionDispatched
+                        ? previewAgentId ?? undefined
+                        : lane.configured_agent_id ?? lane.lane_id
+                    }
+                    layoutTick={layoutTick}
+                    layoutMode={layout}
+                    onFocusLane={handleFocus}
+                    onCollapseLane={handleCollapse}
+                    paneRef={isHidden ? undefined : registerPane}
+                  />
+                </div>
+              );
+            })}
           </div>
           {collapsed.length > 0 ? (
             <TerminalLaneFloatRail lanes={collapsed} configuredAgents={configuredAgents} onExpand={handleExpand} />

@@ -110,6 +110,10 @@ xattr -cr /Applications/Clutch.app && open -a Clutch
 
 ![Clutch 工作流画布编排](./docs/images/Clutch_2.png)
 
+**Terminal Orchestra** — Terminal 模式下交互式 CLI 终端、调度与 Session 恢复：
+
+![Clutch Terminal Session](./docs/images/terminal-session.png)
+
 ---
 
 ## 文档导航

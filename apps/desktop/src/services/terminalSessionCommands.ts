@@ -50,14 +50,20 @@ export function buildTerminalHistoryCommand(
     case 'codex-cli':
     case 'codex':
       return {
-        cmd: 'codex',
-        descKey: 'Open Codex in your system terminal and use its built-in session picker to browse history.',
+        cmd: id
+          ? wrapResumeCommandWithWorkspaceCd(workspacePath, `codex resume ${id}`)
+          : 'codex',
+        descKey:
+          'Run this in your system terminal from the same project directory Clutch used. Restores the Codex session by ID.',
       };
     case 'opencode-cli':
     case 'opencode':
       return {
-        cmd: 'opencode',
-        descKey: 'Open OpenCode in your system terminal; browse session history inside the interactive UI.',
+        cmd: id
+          ? wrapResumeCommandWithWorkspaceCd(workspacePath, `opencode -s ${id}`)
+          : 'opencode',
+        descKey:
+          'Run this in your system terminal from the same project directory Clutch used. Restores the OpenCode session by ID.',
       };
     case 'antigravity-cli':
     case 'agy-cli':
@@ -68,6 +74,28 @@ export function buildTerminalHistoryCommand(
           : 'agy',
         descKey:
           'Run this in your system terminal from the same project directory Clutch used. Restores the Antigravity CLI session.',
+      };
+    case 'rivet-cli':
+    case 'rivet':
+    case 't9-cli':
+      return {
+        cmd: wrapResumeCommandWithWorkspaceCd(workspacePath, 'rivet'),
+        descKey:
+          'Run this in your system terminal from the same project directory. Rivet does not support resuming by session ID — open the TUI and pick the conversation in its session list.',
+      };
+    case 'aider-cli':
+    case 'aider':
+      return {
+        cmd: wrapResumeCommandWithWorkspaceCd(workspacePath, 'aider'),
+        descKey:
+          'Run Aider in your system terminal from the same project directory. Aider resumes via chat-history files, not session IDs — start aider and use --restore-chat-history if you saved history.',
+      };
+    case 'ollama-cli':
+    case 'ollama':
+      return {
+        cmd: wrapResumeCommandWithWorkspaceCd(workspacePath, 'ollama'),
+        descKey:
+          'Ollama has no session resume by ID. Run ollama in your system terminal from the project directory to continue interacting with the model.',
       };
     default:
       return {

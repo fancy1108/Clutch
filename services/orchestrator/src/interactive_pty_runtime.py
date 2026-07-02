@@ -300,7 +300,8 @@ class InteractivePtyManager:
     ) -> InteractivePtySession:
         with self._lock:
             session = self._sessions.get(session_key)
-            if session and session.alive() and session.cli_tool == cli_tool and session.attached:
+            if session and session.alive() and session.cli_tool == cli_tool:
+                session.attached = True
                 if session.status in (InteractivePtyStatus.DETACHED, InteractivePtyStatus.BOOTING):
                     session.status = InteractivePtyStatus.READY
                 self._flush_pending(session)

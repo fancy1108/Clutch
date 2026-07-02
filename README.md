@@ -110,6 +110,10 @@ Deep dive: [`docs/PRODUCT_INTRO.md`](docs/PRODUCT_INTRO.md) · Architecture: [`d
 
 ![Clutch workflow canvas](./docs/images/Clutch_2.png)
 
+**Terminal Orchestra** — interactive CLI lanes, dispatch, and session resume in Terminal mode:
+
+![Clutch Terminal Session](./docs/images/terminal-session.png)
+
 ---
 
 ## Documentation

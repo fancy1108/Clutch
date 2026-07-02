@@ -32,12 +32,52 @@ describe('buildTerminalHistoryCommand', () => {
     expect(buildTerminalHistoryCommand('claude-cli', '', '/Users/fancy/clutch').cmd).toBe('claude');
   });
 
-  it('builds codex open command without resume flag', () => {
-    expect(buildTerminalHistoryCommand('codex-cli', 'sid-1').cmd).toBe('codex');
+  it('builds codex resume command with session id', () => {
+    expect(buildTerminalHistoryCommand('codex-cli', 'sid-1')).toEqual({
+      cmd: 'codex resume sid-1',
+      descKey:
+        'Run this in your system terminal from the same project directory Clutch used. Restores the Codex session by ID.',
+    });
   });
 
-  it('builds opencode open command', () => {
-    expect(buildTerminalHistoryCommand('opencode-cli', 'sid-2').cmd).toBe('opencode');
+  it('prefixes codex resume with cd when workspace path is provided', () => {
+    expect(buildTerminalHistoryCommand('codex-cli', 'sid-1', '/Users/fancy/clutch').cmd).toBe(
+      'cd "/Users/fancy/clutch" && codex resume sid-1',
+    );
+  });
+
+  it('builds opencode resume command with session id', () => {
+    expect(buildTerminalHistoryCommand('opencode-cli', 'sid-2')).toEqual({
+      cmd: 'opencode -s sid-2',
+      descKey:
+        'Run this in your system terminal from the same project directory Clutch used. Restores the OpenCode session by ID.',
+    });
+  });
+
+  it('prefixes opencode resume with cd when workspace path is provided', () => {
+    expect(buildTerminalHistoryCommand('opencode-cli', 'sid-2', '/Users/fancy/clutch').cmd).toBe(
+      'cd "/Users/fancy/clutch" && opencode -s sid-2',
+    );
+  });
+
+  it('builds rivet fallback without resume by id', () => {
+    expect(buildTerminalHistoryCommand('rivet-cli', 'sid-3', '/Users/fancy/clutch')).toEqual({
+      cmd: 'cd "/Users/fancy/clutch" && rivet',
+      descKey:
+        'Run this in your system terminal from the same project directory. Rivet does not support resuming by session ID — open the TUI and pick the conversation in its session list.',
+    });
+  });
+
+  it('builds aider fallback without resume by id', () => {
+    expect(buildTerminalHistoryCommand('aider-cli', 'sid-4', '/Users/fancy/clutch').cmd).toBe(
+      'cd "/Users/fancy/clutch" && aider',
+    );
+  });
+
+  it('builds ollama fallback without resume by id', () => {
+    expect(buildTerminalHistoryCommand('ollama-cli', 'sid-5', '/Users/fancy/clutch').cmd).toBe(
+      'cd "/Users/fancy/clutch" && ollama',
+    );
   });
 });
 
