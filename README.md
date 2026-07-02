@@ -17,13 +17,16 @@ Clutch is a **desktop app** (Tauri + React) for developers and technical operato
 |---|---|
 | **Stack** | Tauri 2 · React 19 · FastAPI + LangGraph · local-first (`localhost:8123`) |
 | **License** | See [LICENSE](LICENSE) |
-| **Latest release** | [v1.0.3](https://github.com/fancy1108/Clutch/releases) |
+| **Latest release** | [v1.0.3](https://github.com/fancy1108/Clutch/releases) · **Next:** [v1.1.0](CHANGELOG.md#110---2026-07-03) |
 
-### What's new (v1.0.4 · in development)
+### What's new (v1.1.0 · in development)
 
+- **Terminal Orchestra (D34)** — Chat ↔ Terminal toggle; multi-lane embedded CLI; OrchestratorBar `@` dispatch, handoff files, dispatch log, and CLI session resume commands.
+- **Windows desktop polish** — Sidebar collapse, font-size preference, faster session switching with cached snapshots ([#28](https://github.com/fancy1108/Clutch/pull/28)).
 - **CodeBuddy CLI** — Tencent CodeBuddy / WorkBuddy integration; connect in Settings → Tools and use as an Agent type with headless runs and session resume.
 - **OpenCode Zen text models** — built-in Settings → Models provider; Zen API Key unlocks five free chat models, with catalog refresh and save-time connectivity checks.
 - **Agnes Video V2.0** — generate video from chat with an inline player and download; Chinese prompts auto-translated to English for the API.
+- **Agent-scoped Settings** — Models / MCP / Skills tabs per agent type (Clutch · Claude Code · OpenCode).
 - **Product website** — [fancy1108.github.io/Clutch](https://fancy1108.github.io/Clutch/): bilingual overview, install commands, and contact.
 
 Older releases: [`CHANGELOG.md`](CHANGELOG.md) · [`docs/releases/`](docs/releases/).
@@ -53,7 +56,7 @@ brew install --cask clutch
 irm https://raw.githubusercontent.com/fancy1108/Clutch/main/scripts/install.ps1 | iex
 ```
 
-Pin a version: `CLUTCH_VERSION=v1.0.3` before running either script.
+Pin a version: `CLUTCH_VERSION=v1.1.0` before running either script (or `v1.0.3` for the current stable release).
 
 Install channels (maintainers): [`docs/RELEASE_MAINTAINER.md`](docs/RELEASE_MAINTAINER.md)
 
