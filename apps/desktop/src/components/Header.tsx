@@ -2,18 +2,15 @@ import React from 'react';
 import { useLanguage } from './LanguageContext';
 import { BTN_ICON } from './ui/buttonStyles';
 import { LegacyIcon } from './ui/LegacyIcon';
+import { SIDEBAR_COLLAPSED_WIDTH_PX, SIDEBAR_EXPANDED_WIDTH_PX } from '../constants/layout';
 
 interface HeaderProps {
   currentFlow: string;
   workspaceName?: string;
   onPickWorkspace?: () => void;
   folders?: any[];
-  isMultiAgent: boolean;
-  setIsMultiAgent: (val: boolean) => void;
-  onGoBack?: () => void;
-  setView: (view: any) => void;
+  onToggleSidebar: () => void;
   sidebarOpen?: boolean;
-  selectedModel?: string;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -21,12 +18,8 @@ export const Header: React.FC<HeaderProps> = ({
   workspaceName,
   onPickWorkspace,
   folders,
-  isMultiAgent,
-  setIsMultiAgent,
-  onGoBack,
-  setView,
+  onToggleSidebar,
   sidebarOpen = true,
-  selectedModel
 }) => {
   const { language, setLanguage, t } = useLanguage();
 
@@ -41,20 +34,20 @@ export const Header: React.FC<HeaderProps> = ({
       : 'Workspace');
 
   return (
-    <header className={`fixed top-0 right-0 h-[64px] bg-background/85 backdrop-blur-md border-b border-outline-variant z-40 flex items-center justify-between px-10 select-none transition-all duration-300 ${
-      sidebarOpen ? 'left-[280px]' : 'left-0'
-    }`}>
-      <div className="flex items-center gap-4">
-        {onGoBack && (
-          <button
-            onClick={onGoBack}
-            className={`${BTN_ICON} w-8 h-8 rounded-full text-on-surface`}
-            title={t("Go Back")}
-            aria-label={t("Go Back")}
-          >
-            <LegacyIcon name="chevron_left" className="text-[20px] leading-none" />
-          </button>
-        )}
+    <header
+      className="fixed top-0 right-0 h-[64px] bg-background/85 backdrop-blur-md border-b border-outline-variant z-40 flex items-center justify-between px-2 select-none transition-[left] duration-200 ease-out"
+      style={{ left: sidebarOpen ? SIDEBAR_EXPANDED_WIDTH_PX : SIDEBAR_COLLAPSED_WIDTH_PX }}
+    >
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={onToggleSidebar}
+          className={`${BTN_ICON} w-7 h-7 rounded-full text-on-surface`}
+          title={sidebarOpen ? t('Collapse Sidebar') : t('Expand Sidebar')}
+          aria-label={sidebarOpen ? t('Collapse Sidebar') : t('Expand Sidebar')}
+        >
+          <LegacyIcon name={sidebarOpen ? 'chevron_left' : 'chevron_right'} className="text-[19px] leading-none" />
+        </button>
         <nav className="flex items-center gap-2 text-xs font-semibold tracking-wide text-on-surface-variant">
           <span
             onClick={onPickWorkspace}

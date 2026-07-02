@@ -224,7 +224,7 @@ export function LegacyIcon({
       aria-hidden
       size={size}
       strokeWidth={2}
-      className={`shrink-0 inline-block${spinClass} ${className}`.trim()}
+      className={`clutch-icon shrink-0 inline-block${spinClass} ${className}`.trim()}
     />
   );
 }

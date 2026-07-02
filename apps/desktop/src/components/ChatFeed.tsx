@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
-import { CONTENT_TOP_WITH_BANNER } from '../constants/layout';
+import { CONTENT_TOP_WITH_BANNER, SIDEBAR_COLLAPSED_WIDTH_PX } from '../constants/layout';
 import { ChevronRight } from 'lucide-react';
 import { ChatMessage, ClutchRunStatus, HybridExecutionPayload, OutputEvent } from '../types';
 import { useLanguage } from './LanguageContext';
@@ -225,6 +225,8 @@ interface ChatFeedProps {
   onClearSelectedWorkflow?: () => void;
   sessionTitle?: string;
   sessionRunId?: string;
+  isSessionSwitching?: boolean;
+  loadingSessionTitle?: string;
   activeWorkflowId?: string;
   llmModelName?: string;
   activeAgentName?: string;
@@ -583,6 +585,8 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   onClearSelectedWorkflow,
   sessionTitle = '',
   sessionRunId = '',
+  isSessionSwitching = false,
+  loadingSessionTitle = '',
   activeWorkflowId = '',
   llmModelName = '',
   activeAgentName = '',
@@ -750,8 +754,8 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
     const dock = dockRef.current;
     if (!dock) return;
     const measure = () => {
-      // bottom-8 (32px) + generous gap so last bubble clears the fixed input dock
-      const gapAboveDock = 96 + (showThinking ? 40 : 0);
+      // bottom-12 (48px) + generous gap so last bubble clears the fixed input dock
+      const gapAboveDock = 112 + (showThinking ? 40 : 0);
       setDockHeight(Math.max(dock.offsetHeight + 32 + gapAboveDock, 260));
     };
     measure();
@@ -806,17 +810,32 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
     );
   };
 
+  const isSidebarCollapsed = selectedSidebarWidth <= SIDEBAR_COLLAPSED_WIDTH_PX;
+  const sidebarContentInset = isSidebarCollapsed ? 8 : 20;
+  const chatEdgePaddingClass = isSidebarCollapsed ? 'px-2' : 'px-4';
+  const chatMaxWidthClass = isSidebarCollapsed ? 'max-w-4xl' : 'max-w-3xl';
+
   return (
     <section
       style={{
-        paddingLeft: `${selectedSidebarWidth + 30}px`,
-        paddingRight: `${rightSidebarWidth + 30}px`,
+        paddingLeft: `${selectedSidebarWidth + sidebarContentInset}px`,
+        paddingRight: `${rightSidebarWidth + 4}px`,
         paddingBottom: dockHeight,
         marginTop: CONTENT_TOP_WITH_BANNER,
       }}
-      className="flex-1 overflow-y-auto py-10 flex-col items-center px-6 transition-all duration-300 bg-background flex"
+      className={`flex-1 overflow-y-auto pt-4 pb-10 flex-col items-center ${chatEdgePaddingClass} transition-all duration-300 bg-background flex`}
     >
-      <div className="w-full max-w-2xl mx-auto space-y-8 py-4">
+      <div className={`relative w-full ${chatMaxWidthClass} mx-auto space-y-5 pt-1 pb-4`}>
+        {isSessionSwitching ? (
+          <div className="sticky top-0 z-30 mx-3 mb-1 overflow-hidden rounded-lg border border-outline-variant/40 bg-surface-bright/90 py-2 pl-4 pr-12 text-[11px] font-medium text-on-surface-variant shadow-sm backdrop-blur">
+            <div className="absolute inset-x-0 top-0 h-[2px] overflow-hidden bg-outline-variant/25">
+              <div className="session-row-loading-bar absolute inset-y-0 w-1/3 rounded-full bg-primary/80" />
+            </div>
+            <div className="truncate pr-3">
+              {loadingSessionTitle ? `${t('Loading session')}: ${loadingSessionTitle}` : t('Loading session')}
+            </div>
+          </div>
+        ) : null}
         {showEmptyState && (
           <div className="flex flex-col items-center justify-center text-center py-16 px-6 space-y-5">
             <div className="w-14 h-14 rounded-2xl bg-surface-container-low border border-outline-variant/40 flex items-center justify-center">
@@ -904,17 +923,19 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
               onContextMenu={(e) => handleMessageContextMenu(e, msg.id)}
             >
               <div
-                className={`flex gap-4 max-w-[85%] group hover:bg-surface-container-low/35 p-2 rounded-xl transition-colors ${
+                className={`flex gap-3 max-w-[85%] group hover:bg-surface-container-low/35 px-1.5 py-1 rounded-xl transition-colors ${
                   isUser ? 'flex-row-reverse' : ''
                 }`}
               >
                 {isUser ? (
-                  <div className={`w-9 h-9 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center ${avatarUrl === clutchMarkUrl ? 'bg-black' : 'bg-surface-container'}`}>
+                  <div className={`w-10 h-10 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center ${avatarUrl === clutchMarkUrl ? 'bg-black' : 'bg-surface-container'}`}>
                     {avatarUrl ? (
                       <img
                         className={avatarUrl === clutchMarkUrl ? 'w-full h-full object-cover' : 'w-full h-full object-contain p-1'}
                         src={avatarUrl}
                         alt={msg.agent}
+                        loading="eager"
+                        decoding="async"
                       />
                     ) : (
                       <LegacyIcon name="person" className="text-[18px] text-on-surface-variant" />
@@ -950,7 +971,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                   </div>
 
                   {isErrorMsg ? (
-                    <div className="p-4 bg-neutral-50/50 rounded-2xl rounded-tl-none border border-neutral-200/80 shadow-xs">
+                    <div className="px-3 py-1.5 bg-neutral-50/50 rounded-2xl rounded-tl-none border border-neutral-200/80 shadow-xs">
                       <div className="flex items-center gap-1.5 mb-2 text-neutral-800 font-bold text-[11px]">
                         <LegacyIcon name="error" className="text-[16px]" />
                         <span>VALIDATION FAILED</span>
@@ -958,7 +979,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                       {renderMarkdown(msg.text)}
                     </div>
                   ) : (
-                    <div className={`p-4 rounded-2xl border border-outline-variant/30 shadow-sm ${
+                    <div className={`px-3 py-1.5 rounded-2xl border border-outline-variant/30 shadow-sm ${
                       isUser 
                         ? 'bg-primary/10 text-on-surface rounded-tr-none text-left' 
                         : 'bg-surface-container-low rounded-tl-none'
@@ -1029,7 +1050,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
 
         {showThinking && (
           <div className="w-full flex justify-start mb-4">
-            <div className="flex gap-4 max-w-[85%] p-2 rounded-xl">
+            <div className="flex gap-3 max-w-[85%] px-1.5 py-1 rounded-xl">
               <AgentChatAvatar
                 src={thinkingAgentLogo || activeAgentAvatar}
                 alt={thinkingAgentName || t('Clutch Agent')}
@@ -1045,7 +1066,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                   )}
                 </div>
 
-                <div className="p-4 bg-surface-container-low rounded-2xl rounded-tl-none border border-outline-variant/30 shadow-sm flex items-center gap-1.5">
+                <div className="px-3 py-1.5 bg-surface-container-low rounded-2xl rounded-tl-none border border-outline-variant/30 shadow-sm flex items-center gap-1.5">
                   <div className="w-1.5 h-1.5 rounded-full bg-on-surface/40 animate-typing-pulse" />
                   <div className="w-1.5 h-1.5 rounded-full bg-on-surface/40 animate-typing-pulse animation-delay-100" />
                   <div className="w-1.5 h-1.5 rounded-full bg-on-surface/40 animate-typing-pulse animation-delay-200" />
@@ -1064,7 +1085,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
           left: `${selectedSidebarWidth + 24}px`,
           right: `${rightSidebarWidth + 24}px`,
         }}
-        className="fixed bottom-8 flex justify-center px-6 z-40 transition-all duration-300 select-none"
+        className="fixed bottom-12 flex justify-center px-6 z-40 transition-all duration-300 select-none"
       >
         {isRunning && !awaitingHuman && !isPlainLlmChat && !isRefining ? (
           <div className="w-full max-w-2xl bg-white border border-outline-variant p-3 shadow-xl rounded-xl flex items-center justify-between">

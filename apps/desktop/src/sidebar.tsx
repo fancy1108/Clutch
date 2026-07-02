@@ -6,6 +6,7 @@ import type { RepositoryGroup, WorkspaceInfo } from './services/workspaceApi';
 import { LegacyIcon } from './components/ui/LegacyIcon';
 import { UpdateBanner } from './components/UpdateBanner';
 import { BTN_ICON_SM } from './components/ui/buttonStyles';
+import { SIDEBAR_COLLAPSED_WIDTH_PX, SIDEBAR_EXPANDED_WIDTH_PX } from './constants/layout';
 
 interface SidebarProps {
   currentView: MainView;
@@ -16,11 +17,11 @@ interface SidebarProps {
   setActiveFlow: (flow: string) => void;
   onNewChat: () => void;
   isOpenState: boolean;
-  setIsOpenState: (open: boolean) => void;
   isMultiAgent?: boolean;
   sessions?: SessionRecord[];
   shellSnapshotRunIds?: ReadonlySet<string>;
   activeSessionId?: string;
+  loadingSessionId?: string | null;
   clutchStatus?: string;
   workspaces?: WorkspaceInfo[];
   repositoryGroups?: RepositoryGroup[];
@@ -63,11 +64,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
   setActiveFlow,
   onNewChat,
   isOpenState,
-  setIsOpenState,
   isMultiAgent = true,
   sessions = [],
   shellSnapshotRunIds,
   activeSessionId = '',
+  loadingSessionId = null,
   clutchStatus = '',
   workspaces = [],
   repositoryGroups = [],
@@ -91,6 +92,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [draggingWorkspaceId, setDraggingWorkspaceId] = useState<string | null>(null);
   const [pointerDragActive, setPointerDragActive] = useState(false);
   const [defaultGroupCollapsed, setDefaultGroupCollapsed] = useState(false);
+  const [collapsedTooltip, setCollapsedTooltip] = useState<{ label: string; top: number } | null>(null);
   const pointerDragRef = useRef<{
     workspaceId: string;
     startX: number;
@@ -291,7 +293,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div key={repo.id} className="space-y-0.5">
         <div
           onContextMenu={(e) => handleContextMenu(e, 'workspace', repo.id)}
-          className={`flex items-center justify-between p-1.5 rounded-lg transition-colors group ${
+          className={`flex items-center justify-between p-1.5 rounded-lg border border-transparent transition-colors group ${
             isActiveWorkspace ? 'bg-surface-container-low/80' : 'hover:bg-surface-bright'
           } ${isDragging && pointerDragActive ? 'opacity-50 ring-1 ring-primary/30' : ''}`}
         >
@@ -300,13 +302,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
             onClick={() => handleWorkspaceRowClick(repo.id)}
             data-testid={`workspace-row-${repo.id}`}
             className="flex items-center gap-2 flex-1 min-w-0 text-left cursor-grab active:cursor-grabbing"
-            title={repo.workspace_path}
           >
             <LegacyIcon
               name={collapsed ? 'folder' : 'folder_open'}
               className="text-[18px] text-on-surface-variant"
             />
-            <span className="text-xs font-semibold truncate">{repo.name}</span>
+            <span className="text-[13px] font-normal text-on-surface-variant/80 truncate">
+              {repo.name}
+            </span>
           </div>
           <button
             type="button"
@@ -315,7 +318,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onNewChatInWorkspace?.(repo.id);
             }}
             className={BTN_ICON_SM}
-            title={t('New Chat')}
             aria-label={t('New Chat')}
           >
             <LegacyIcon name="add" className="text-[16px]" />
@@ -334,6 +336,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 const isRunning =
                   (session.run_id === activeSessionId && clutchStatus === 'running') ||
                   session.status === 'running';
+                const isLoadingSession = session.run_id === loadingSessionId;
                 const hasSnapshot = shellSnapshotRunIds?.has(session.run_id) ?? false;
                 return (
                   <button
@@ -342,11 +345,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     data-testid={`sidebar-session-${session.run_id}`}
                     onClick={() => onSelectSession?.(session)}
                     onContextMenu={(e) => handleContextMenu(e, 'session', session.run_id)}
-                    title={hasSnapshot ? t('Continue previous work') : undefined}
-                    className={`w-full flex items-center justify-between p-2 rounded-lg text-left transition-all ${
+                    aria-label={sessionLabel(session)}
+                    className={`relative w-full overflow-hidden flex items-center justify-between p-2 rounded-lg border text-left transition-[background-color,border-color,color,box-shadow] ${
                       isActiveSession
-                        ? 'bg-surface-bright shadow-sm text-on-surface font-bold border border-outline-variant/40'
-                        : 'text-on-surface-variant hover:bg-surface-bright hover:text-on-surface'
+                        ? 'bg-surface-bright shadow-sm text-on-surface-variant/80 font-normal border-outline-variant/40'
+                        : 'border-transparent text-on-surface-variant hover:bg-surface-bright hover:text-on-surface'
                     }`}
                   >
                     <span className="flex items-center gap-1.5 min-w-0">
@@ -357,11 +360,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           aria-hidden
                         />
                       ) : null}
-                      <span className="text-xs truncate max-w-[130px]">{sessionLabel(session)}</span>
+                      <span className="text-[12.5px] text-on-surface-variant/80 truncate max-w-[130px]">
+                        {sessionLabel(session)}
+                      </span>
                     </span>
                     <span className="text-[9px] font-mono text-on-surface-variant/70 flex-shrink-0">
                       {formatRelativeTime(session.started_at)}
                     </span>
+                    {isLoadingSession ? (
+                      <span className="absolute inset-x-2 bottom-0 h-[2px] overflow-hidden rounded-full bg-outline-variant/30" aria-hidden>
+                        <span className="session-row-loading-bar absolute inset-y-0 w-1/2 rounded-full bg-primary/80" />
+                      </span>
+                    ) : null}
                   </button>
                 );
               })
@@ -372,36 +382,108 @@ export const Sidebar: React.FC<SidebarProps> = ({
     );
   };
 
-  return (
-    <aside
-      className={`fixed h-screen left-0 top-0 border-r border-outline-variant bg-surface flex flex-col transition-all duration-300 z-50 ${
-        isOpenState ? 'w-[280px] p-5' : 'w-[0px] p-0 border-r-0'
-      }`}
-      style={{ overflow: 'visible' }}
-    >
-      <button
-        data-testid="sidebar-toggle"
-        onClick={() => setIsOpenState(!isOpenState)}
-        className={`absolute top-[88px] w-6 h-6 bg-surface-bright border border-outline rounded-full flex items-center justify-center z-50 shadow-md hover:shadow-lg hover:bg-surface-container hover:border-on-surface/30 transition-all cursor-pointer text-on-surface-variant hover:text-on-surface duration-200 hover:scale-110 active:scale-95 ${
-          isOpenState ? '-right-3' : '-right-6'
-        }`}
-        title={isOpenState ? t('Collapse Sidebar') : t('Expand Sidebar')}
-      >
-        <LegacyIcon
-          name={isOpenState ? 'chevron_left' : 'chevron_right'}
-          className="text-[13px] font-bold"
-        />
-      </button>
+  const showCollapsedTooltip = (label: string, target: HTMLElement) => {
+    const rect = target.getBoundingClientRect();
+    setCollapsedTooltip({
+      label,
+      top: rect.top + rect.height / 2,
+    });
+  };
 
-      <div className={`flex-1 flex flex-col gap-4 overflow-hidden h-full ${!isOpenState ? 'hidden' : ''}`}>
+  const hideCollapsedTooltip = () => setCollapsedTooltip(null);
+
+  const collapsedNavButton = (
+    key: string,
+    icon: string,
+    title: string,
+    onClick: () => void,
+    active = false,
+  ) => (
+    <button
+      key={key}
+      type="button"
+      onClick={onClick}
+      aria-label={title}
+      onMouseEnter={(event) => showCollapsedTooltip(title, event.currentTarget)}
+      onMouseLeave={hideCollapsedTooltip}
+      onFocus={(event) => showCollapsedTooltip(title, event.currentTarget)}
+      onBlur={hideCollapsedTooltip}
+      className={`flex h-9 w-9 items-center justify-center rounded-lg border transition-[background-color,border-color,color,box-shadow] ${
+        active
+          ? 'border-outline-variant/60 bg-surface-bright text-on-surface shadow-sm'
+          : 'border-transparent text-on-surface-variant hover:bg-surface-bright hover:text-on-surface'
+      }`}
+    >
+      <LegacyIcon name={icon} className="text-[18px]" />
+    </button>
+  );
+
+  const renderCollapsedRail = () => (
+    <div className="flex h-full flex-col items-center gap-3 overflow-hidden pt-[76px] pb-2">
+      <div className="flex flex-col items-center gap-1">
+        {collapsedNavButton('chat', 'chat', t('New Chat'), onNewChat, currentView === 'chat')}
+        {collapsedNavButton('agents', 'smart_toy', t('AI Agents'), () => setView('agents'), currentView === 'agents')}
+        {isMultiAgent
+          ? collapsedNavButton('workflows', 'account_tree', t('Workflows SOP'), () => setView('workflows'), currentView === 'workflows')
+          : null}
+        {collapsedNavButton('add-workspace', 'create_new_folder', t('Add project folder'), () => onAddWorkspace?.())}
+      </div>
+
+      <div className="h-px w-8 bg-outline-variant/60" />
+
+      <div className="flex min-h-0 w-full flex-1 flex-col items-center gap-1 overflow-y-auto overflow-x-hidden sidebar-scroll px-1">
+        {workspaces.map((repo) => {
+          const isActiveWorkspace = repo.id === activeWorkspaceId;
+          return (
+            <button
+              key={repo.id}
+              type="button"
+              data-testid={`collapsed-workspace-${repo.id}`}
+              onClick={() => onSelectWorkspace?.(repo.id)}
+              aria-label={repo.name}
+              onMouseEnter={(event) => showCollapsedTooltip(repo.name, event.currentTarget)}
+              onMouseLeave={hideCollapsedTooltip}
+              onFocus={(event) => showCollapsedTooltip(repo.name, event.currentTarget)}
+              onBlur={hideCollapsedTooltip}
+              className={`flex h-9 w-9 items-center justify-center rounded-lg border transition-[background-color,border-color,color,box-shadow] ${
+                isActiveWorkspace
+                  ? 'border-outline-variant/70 bg-surface-bright text-on-surface shadow-sm'
+                  : 'border-transparent text-on-surface-variant hover:bg-surface-bright hover:text-on-surface'
+              }`}
+            >
+              <LegacyIcon name={isActiveWorkspace ? 'folder_open' : 'folder'} className="text-[18px]" />
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="h-px w-8 bg-outline-variant/60" />
+
+      {collapsedNavButton('settings', 'settings', t('Settings'), () => setView('settings'), currentView === 'settings')}
+    </div>
+  );
+
+  return (
+    <>
+    <aside
+      className={`fixed h-screen left-0 top-0 border-r border-outline-variant bg-surface flex flex-col overflow-hidden transition-[width] duration-200 ease-out z-50 ${
+        isOpenState ? 'px-4 pt-5 pb-3' : 'p-2'
+      }`}
+      style={{
+        width: isOpenState ? SIDEBAR_EXPANDED_WIDTH_PX : SIDEBAR_COLLAPSED_WIDTH_PX,
+      }}
+    >
+      {isOpenState ? (
+      <div className="flex-1 flex flex-col gap-3 overflow-hidden h-full">
         <div className="space-y-1 mb-4 px-1">
           <button
             data-testid="nav-new-chat"
             onClick={onNewChat}
-            className={`w-full flex items-center gap-2.5 p-2 rounded-lg transition-all text-left group ${
+            aria-label={t('New Chat')}
+            className={`w-full flex items-center gap-2.5 p-2 rounded-lg border transition-[background-color,border-color,color,box-shadow] text-left group ${
               currentView === 'chat'
-                ? 'bg-surface-bright shadow-sm text-on-surface font-semibold border border-outline-variant/50'
-                : 'text-on-surface-variant hover:bg-surface-bright hover:text-on-surface'
+                ? 'bg-surface-bright shadow-sm text-on-surface font-semibold border-outline-variant/50'
+                : 'border-transparent text-on-surface-variant hover:bg-surface-bright hover:text-on-surface'
             }`}
           >
             <LegacyIcon name="chat" className="text-[17px] text-on-surface-variant group-hover:text-primary" />
@@ -411,10 +493,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button
             data-testid="nav-agents"
             onClick={() => setView('agents')}
-            className={`w-full flex items-center gap-2.5 p-2 rounded-lg transition-all text-left group ${
+            aria-label={t('AI Agents')}
+            className={`w-full flex items-center gap-2.5 p-2 rounded-lg border transition-[background-color,border-color,color,box-shadow] text-left group ${
               currentView === 'agents'
-                ? 'bg-surface-bright shadow-sm text-on-surface font-semibold border border-outline-variant/50'
-                : 'text-on-surface-variant hover:bg-surface-bright hover:text-on-surface'
+                ? 'bg-surface-bright shadow-sm text-on-surface font-semibold border-outline-variant/50'
+                : 'border-transparent text-on-surface-variant hover:bg-surface-bright hover:text-on-surface'
             }`}
           >
             <LegacyIcon name="smart_toy" className="text-[17px] text-on-surface-variant group-hover:text-primary" />
@@ -425,10 +508,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               data-testid="nav-workflows"
               onClick={() => setView('workflows')}
-              className={`w-full flex items-center gap-2.5 p-2 rounded-lg transition-all text-left group ${
+              aria-label={t('Workflows SOP')}
+              className={`w-full flex items-center gap-2.5 p-2 rounded-lg border transition-[background-color,border-color,color,box-shadow] text-left group ${
                 currentView === 'workflows'
-                  ? 'bg-surface-bright shadow-sm text-on-surface font-semibold border border-outline-variant/60'
-                  : 'text-on-surface-variant hover:bg-surface-bright hover:text-on-surface'
+                  ? 'bg-surface-bright shadow-sm text-on-surface font-semibold border-outline-variant/60'
+                  : 'border-transparent text-on-surface-variant hover:bg-surface-bright hover:text-on-surface'
               }`}
             >
               <LegacyIcon name="account_tree" className="text-[17px] text-on-surface-variant group-hover:text-primary" />
@@ -437,8 +521,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           ) : null}
         </div>
 
-        <div className="flex items-center justify-between text-on-surface-variant mb-1 px-3">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/70">
+        <div className="flex items-center justify-between text-on-surface-variant px-2">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant/70">
             {t('Projects')}
           </span>
           <div className="flex gap-2">
@@ -446,7 +530,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
               type="button"
               data-testid="nav-new-repo-group"
               className={BTN_ICON_SM}
-              title={t('New project group')}
               aria-label={t('New project group')}
               onClick={() => onCreateRepositoryGroup?.()}
             >
@@ -456,7 +539,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
               type="button"
               data-testid="nav-add-workspace"
               className={BTN_ICON_SM}
-              title={t('Add project folder')}
               aria-label={t('Add project folder')}
               onClick={() => onAddWorkspace?.()}
             >
@@ -471,10 +553,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
           value={repoFilter}
           onChange={(event) => setRepoFilter(event.target.value)}
           placeholder={t('Filter projects')}
-          className="mx-2 mb-2 w-[calc(100%-1rem)] rounded-lg border border-outline-variant/60 bg-surface-bright px-3 py-1.5 text-[11px] text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:border-primary/50"
+          className="mx-1 mb-1 w-[calc(100%-0.5rem)] rounded-lg border border-outline-variant/60 bg-surface-bright px-2.5 py-1.5 text-[11px] text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:border-primary/50"
         />
 
-        <nav className="flex-1 sidebar-scroll overflow-y-auto space-y-2 px-1 pb-4">
+        <div className="mx-1 h-px bg-outline-variant/50" />
+
+        <nav className="flex-1 sidebar-scroll overflow-y-auto space-y-2 px-1 pb-2">
           {workspaces.length === 0 && repositoryGroups.length === 0 && (
             <p className="text-[11px] text-on-surface-variant/60 italic px-3 py-2 leading-relaxed">
               {t('No repositories yet. Use Add project folder or Authorize workspace to begin.')}
@@ -490,8 +574,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
             return (
               <div
                 key={group.id}
-                className={`space-y-1 rounded-lg transition-all ${
-                  isDragOver ? 'bg-primary/5 ring-1 ring-primary/20 border border-primary/10 p-1' : ''
+                className={`space-y-1 rounded-lg border border-transparent transition-[background-color,border-color,box-shadow] ${
+                  isDragOver ? 'bg-primary/5 ring-1 ring-primary/20 border-primary/10' : ''
                 }`}
                 data-testid={`repo-group-${group.id}`}
                 data-drop-group-id={group.id}
@@ -502,10 +586,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   data-drop-group-id={group.id}
                   onClick={() => onToggleRepositoryGroup?.(group.id, !groupCollapsed)}
                   onContextMenu={(e) => handleContextMenu(e, 'group', group.id)}
+                  aria-label={group.name}
                   className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left hover:bg-surface-bright transition-colors"
                 >
                   <LegacyIcon name={groupCollapsed ? "folder_special" : "folder_special_open"} className="text-[16px] text-on-surface-variant" />
-                  <span className="text-[11px] font-bold uppercase tracking-wide text-on-surface-variant/80 truncate">
+                  <span className="text-xs font-bold uppercase tracking-wide text-on-surface-variant/80 truncate">
                     {group.name}
                   </span>
                 </button>
@@ -527,8 +612,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
             const isDragOver = dragOverGroupId === '__default__';
             return (
               <div
-                className={`space-y-1 rounded-lg transition-all ${
-                  isDragOver ? 'bg-primary/5 ring-1 ring-primary/20 border border-primary/10 p-1' : ''
+                className={`space-y-1 rounded-lg border border-transparent transition-[background-color,border-color,box-shadow] ${
+                  isDragOver ? 'bg-primary/5 ring-1 ring-primary/20 border-primary/10' : ''
                 }`}
                 data-testid="repo-group-default"
                 data-drop-group-id="__default__"
@@ -538,10 +623,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   data-testid="repo-group-default-toggle"
                   data-drop-group-id="__default__"
                   onClick={() => setDefaultGroupCollapsed(!defaultGroupCollapsed)}
+                  aria-label={t('Default Group')}
                   className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left hover:bg-surface-bright transition-colors"
                 >
                   <LegacyIcon name={defaultGroupCollapsed ? "folder_special" : "folder_special_open"} className="text-[16px] text-on-surface-variant" />
-                  <span className="text-[11px] font-bold uppercase tracking-wide text-on-surface-variant/80 truncate">
+                  <span className="text-xs font-bold uppercase tracking-wide text-on-surface-variant/80 truncate">
                     {t('Default Group')}
                   </span>
                 </button>
@@ -570,22 +656,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         </nav>
 
-        <div className="mt-auto pt-3 border-t border-outline-variant/50 min-w-0">
-          <div className="flex items-center gap-1.5 min-w-0">
+        <div className="mt-auto pt-1 border-t border-outline-variant/50 min-w-0">
+          <div className="flex items-center gap-1 min-w-0">
             <button
               data-testid="nav-settings"
               onClick={() => setView('settings')}
-              className={`flex-1 min-w-0 flex items-center gap-3 p-2 rounded-lg text-left transition-all group ${
-                currentView === 'settings' ? 'bg-surface-bright shadow-sm text-on-surface font-semibold border border-outline-variant/60' : 'text-on-surface-variant hover:bg-surface-bright'
+              aria-label={t('Settings')}
+              className={`flex-1 min-w-0 flex items-center justify-center gap-2 px-1.5 py-1 rounded-lg border text-center transition-[background-color,border-color,color,box-shadow] group ${
+                currentView === 'settings' ? 'bg-surface-bright shadow-sm text-on-surface font-semibold border-outline-variant/60' : 'border-transparent text-on-surface-variant hover:bg-surface-bright'
               }`}
             >
-              <LegacyIcon name="settings" className="text-[20px] shrink-0 text-on-surface-variant group-hover:text-primary" />
-              <span className="text-xs font-semibold tracking-wide truncate">{t("Settings")}</span>
+              <LegacyIcon name="settings" className="text-[17px] shrink-0 text-on-surface-variant group-hover:text-primary" />
+              <span className="text-[11px] font-semibold tracking-wide truncate">{t("Settings")}</span>
             </button>
             <UpdateBanner />
           </div>
         </div>
       </div>
+      ) : (
+        renderCollapsedRail()
+      )}
       {contextMenu && (
         <div
           className="fixed bg-surface-bright border border-outline-variant rounded-lg shadow-lg py-1 z-[100] min-w-[120px]"
@@ -695,5 +785,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       )}
     </aside>
+    {!isOpenState && collapsedTooltip ? (
+      <div
+        className="fixed z-[80] -translate-y-1/2 rounded-md border border-outline-variant/60 bg-surface-bright px-2.5 py-1.5 text-[11px] font-medium text-on-surface shadow-lg pointer-events-none whitespace-nowrap"
+        style={{ left: SIDEBAR_COLLAPSED_WIDTH_PX + 8, top: collapsedTooltip.top }}
+        role="tooltip"
+      >
+        {collapsedTooltip.label}
+      </div>
+    ) : null}
+    </>
   );
 };

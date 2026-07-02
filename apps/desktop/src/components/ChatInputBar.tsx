@@ -727,7 +727,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
       )}
 
       {/* Text area row */}
-      <div className="flex items-end gap-1.5 px-2 py-1.5">
+      <div className="flex items-center gap-1.5 px-2 py-1.5">
         {/* + Attach button */}
         <div className="relative flex-shrink-0">
           <button
@@ -816,7 +816,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
           }}
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
-          className="w-full border-none focus:ring-0 text-[13px] text-on-surface bg-transparent py-1.5 resize-none min-h-[36px] max-h-[140px] placeholder:text-on-surface-variant/60 outline-none leading-relaxed"
+          className="w-full border-none focus:ring-0 text-[13px] text-on-surface bg-transparent pt-[6px] pb-[2px] resize-none min-h-8 max-h-[140px] placeholder:text-on-surface-variant/60 outline-none leading-5"
           placeholder={
             isFlowRefining
               ? t('@Agent your feedback (Hybrid) — auto-continues downstream; Stop to pause')

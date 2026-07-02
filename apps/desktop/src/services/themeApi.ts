@@ -1,4 +1,5 @@
 import { SIDECAR_BASE as BASE, sidecarFetch } from './sidecarUrl';
+import { DEFAULT_FONT_SIZE, isAppFontSize, type AppFontSize } from './fontSizePreference';
 
 export const THEME_PRESET_IDS = ['pristine-light', 'nordic-frost', 'amber-warm'] as const;
 export type ThemePresetId = (typeof THEME_PRESET_IDS)[number];
@@ -7,6 +8,7 @@ export type AppLanguage = 'en' | 'zh';
 export interface UserPreferences {
   active_theme_id: ThemePresetId;
   active_language: AppLanguage;
+  font_size?: AppFontSize;
   user_avatar?: string;
   user_name?: string;
   onboarding_completed?: boolean;
@@ -20,12 +22,16 @@ export async function fetchPreferences(): Promise<UserPreferences> {
     ? body.active_theme_id
     : 'pristine-light';
   const language = body.active_language === 'zh' ? 'zh' : 'en';
+  const fontSize = isAppFontSize(body.font_size)
+    ? body.font_size
+    : DEFAULT_FONT_SIZE;
   const onboardingRaw = body.onboarding_completed;
   const onboarding_completed =
     onboardingRaw === true || onboardingRaw === 'true';
   return {
     active_theme_id: themeId,
     active_language: language,
+    font_size: fontSize,
     user_avatar: body.user_avatar,
     user_name: body.user_name || 'User',
     onboarding_completed,
@@ -70,6 +76,20 @@ export async function saveLanguagePreference(language: AppLanguage): Promise<App
   }
   const saved = (await response.json()) as UserPreferences;
   return saved.active_language;
+}
+
+export async function saveFontSizePreference(fontSize: AppFontSize): Promise<AppFontSize> {
+  const response = await sidecarFetch(`${BASE}/api/preferences/font-size`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ font_size: fontSize }),
+  });
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as { detail?: { message?: string } };
+    throw new Error(body.detail?.message ?? `font size save failed (${response.status})`);
+  }
+  const saved = (await response.json()) as UserPreferences;
+  return isAppFontSize(saved.font_size) ? saved.font_size : DEFAULT_FONT_SIZE;
 }
 
 export async function saveAvatarPreference(avatar: string): Promise<string> {

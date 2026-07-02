@@ -11,6 +11,19 @@ import { translateText, type Language } from '../components/LanguageContext';
 import { sidecarWebSocketUrl } from './sidecarUrl';
 import defaultAvatar from '../assets/default_avatar.jpg';
 
+function shouldLogTiming(): boolean {
+  return import.meta.env.DEV || localStorage.getItem('clutch_debug_timing') === '1';
+}
+
+function logTiming(label: string, details: Record<string, unknown>): void {
+  if (!shouldLogTiming()) return;
+  console.info(`[Clutch timing] ${label}`, details);
+}
+
+function elapsedMs(startedAt: number): number {
+  return Math.round(performance.now() - startedAt);
+}
+
 export function createSessionRunId(): string {
   return `run_${Date.now().toString(36)}`;
 }
@@ -175,10 +188,12 @@ class ClutchStateStore {
   private runId = this.state.run_id;
   private pendingHydrate: ClutchState | null = null;
   private reconnectHydrate: ClutchState | null = null;
+  private sessionSnapshots = new Map<string, ClutchState>();
   private backgroundHydrates = new Map<string, ReturnType<typeof setInterval>>();
   private backgroundSnapshots = new Map<string, ClutchState>();
   private pendingHybridExecutions = new Map<string, HybridExecutionPayload>();
   private pendingUserMessageId: string | null = null;
+  private connectionAttemptId = 0;
   private _connected = false;
 
   get connected(): boolean {
@@ -192,9 +207,41 @@ class ClutchStateStore {
 
   getSnapshot = (): ClutchState => this.state;
 
+  private rememberSnapshot(state: ClutchState = this.state): void {
+    const runId = state.run_id;
+    if (!runId) return;
+
+    const existing = this.sessionSnapshots.get(runId);
+    const existingMessageCount = existing?.messages?.length ?? 0;
+    const nextMessageCount = state.messages?.length ?? 0;
+    if (existing && existingMessageCount > nextMessageCount) return;
+
+    this.sessionSnapshots.set(runId, {
+      ...state,
+      messages: [...(state.messages ?? [])],
+      terminal_logs: [...(state.terminal_logs ?? [])],
+      changed_files: [...(state.changed_files ?? [])],
+      hybrid_executions: state.hybrid_executions ? { ...state.hybrid_executions } : undefined,
+    });
+
+    if (this.sessionSnapshots.size > 50) {
+      const oldest = this.sessionSnapshots.keys().next().value;
+      if (oldest) this.sessionSnapshots.delete(oldest);
+    }
+  }
+
+  private snapshotForRun(runId: string): ClutchState | null {
+    return this.sessionSnapshots.get(runId) ?? this.backgroundSnapshots.get(runId) ?? null;
+  }
+
+  hasSnapshot = (runId: string): boolean => {
+    return this.snapshotForRun(runId) !== null;
+  };
+
   replaceState = (state: ClutchState): void => {
     this.runId = state.run_id;
     this.state = state;
+    this.rememberSnapshot(state);
     this.emit();
   };
 
@@ -313,6 +360,7 @@ class ClutchStateStore {
 
   setPendingHydrate = (state: ClutchState): void => {
     this.pendingHydrate = state;
+    this.rememberSnapshot(state);
   };
 
   triggerUpdate(): void {
@@ -382,6 +430,7 @@ class ClutchStateStore {
       }
     }
     this.state = { ...this.state, ...next };
+    this.rememberSnapshot(this.state);
     this.emit();
   }
 
@@ -480,6 +529,13 @@ class ClutchStateStore {
       return this.connectPromise;
     }
 
+    this.rememberSnapshot(this.state);
+    const startedAt = performance.now();
+    let urlMs: number | null = null;
+    let wsOpenMs: number | null = null;
+    let usedCachedSnapshot = false;
+    const attemptId = ++this.connectionAttemptId;
+
     if (this.socket) {
       this.socket.close();
       this.socket = null;
@@ -493,10 +549,11 @@ class ClutchStateStore {
       this.reconnectHydrate = this.pendingHydrate;
       this.pendingHydrate = null;
     } else {
-      const backgroundSnapshot = this.backgroundSnapshots.get(runId);
-      if (backgroundSnapshot) {
-        this.state = backgroundSnapshot;
-        this.reconnectHydrate = backgroundSnapshot;
+      const cachedSnapshot = this.snapshotForRun(runId);
+      if (cachedSnapshot) {
+        this.state = cachedSnapshot;
+        this.reconnectHydrate = cachedSnapshot;
+        usedCachedSnapshot = true;
       } else if (this.state.run_id !== runId) {
         this.state = createEmptyState(runId);
         this.reconnectHydrate = null;
@@ -504,102 +561,132 @@ class ClutchStateStore {
     }
     this.emit();
 
-    this.connectPromise = sidecarWebSocketUrl(`/ws/runs/${runId}`).then(
-      (wsUrl) =>
-        new Promise<void>((resolve, reject) => {
-      const ws = new WebSocket(wsUrl);
-      this.socket = ws;
+    this.connectPromise = (async () => {
+      const urlStartedAt = performance.now();
+      const wsUrl = await sidecarWebSocketUrl(`/ws/runs/${runId}`);
+      urlMs = elapsedMs(urlStartedAt);
+      return new Promise<void>((resolve, reject) => {
+        const wsStartedAt = performance.now();
+        const ws = new WebSocket(wsUrl);
+        this.socket = ws;
+        const isCurrentSocket = () => this.socket === ws && this.runId === runId && this.connectionAttemptId === attemptId;
 
-      ws.onopen = () => {
-        this._connected = true;
-        console.log('%c[Clutch WS] Connected to sidecar', 'color: #22c55e; font-weight: bold;');
-        resolve();
-      };
+        ws.onopen = () => {
+          if (!isCurrentSocket()) {
+            ws.close();
+            resolve();
+            return;
+          }
+          wsOpenMs = elapsedMs(wsStartedAt);
+          this._connected = true;
+          console.log('%c[Clutch WS] Connected to sidecar', 'color: #22c55e; font-weight: bold;');
+          logTiming('ws connect', {
+            runId,
+            totalMs: elapsedMs(startedAt),
+            urlMs,
+            wsOpenMs,
+            usedCachedSnapshot,
+          });
+          resolve();
+        };
 
-      ws.onmessage = (event) => {
-        try {
-          const envelope = JSON.parse(event.data) as WebSocketEnvelope;
-          if (envelope.event === 'state_patch') {
-            const data = envelope.data as StatePatchData;
-            if (this.reconnectHydrate) {
-              const preferred = this.reconnectHydrate;
-              this.reconnectHydrate = null;
-              this.applyPatch(preferRicherSessionPatch(preferred, data.patch));
+        ws.onmessage = (event) => {
+          if (!isCurrentSocket()) return;
+          try {
+            const envelope = JSON.parse(event.data) as WebSocketEnvelope;
+            if (envelope.event === 'state_patch') {
+              const data = envelope.data as StatePatchData;
+              if (this.reconnectHydrate) {
+                const preferred = this.reconnectHydrate;
+                this.reconnectHydrate = null;
+                this.applyPatch(preferRicherSessionPatch(preferred, data.patch));
+                return;
+              }
+              this.applyPatch(data.patch);
               return;
             }
-            this.applyPatch(data.patch);
-            return;
-          }
-          if (envelope.event === 'message') {
-            const data = envelope.data as { message?: unknown };
-            if (isChatMessage(data.message)) {
-              this.appendMessage(data.message);
+            if (envelope.event === 'message') {
+              const data = envelope.data as { message?: unknown };
+              if (isChatMessage(data.message)) {
+                this.appendMessage(data.message);
+              }
+              return;
             }
-            return;
-          }
-          if (envelope.event === 'hybrid_execution') {
-            this.attachHybridExecution(envelope.data as HybridExecutionData);
-            return;
-          }
-          if (envelope.event === 'log') {
-            const data = envelope.data as { message?: string };
-            if (data.message) {
-              this.appendLog(data.message);
+            if (envelope.event === 'hybrid_execution') {
+              this.attachHybridExecution(envelope.data as HybridExecutionData);
+              return;
             }
-            return;
-          }
-          if (envelope.event === 'human_required') {
-            this.applyPatch({ status: 'awaiting_human' });
-            return;
-          }
-          if (envelope.event === 'validation_result') {
-            const data = envelope.data as { passed?: boolean; message?: string };
-            if (data.passed === false && data.message) {
-              const lang = (localStorage.getItem('workspace_lang') as Language) || 'en';
-              const nextStepsText = translateText(
-                'Next steps: select "Bypass & Approve", "Reject & Redo" below, or type instructions and click "Retry".',
-                lang
-              );
-              this.appendMessage({
-                id: `validation-${Date.now()}`,
-                agent: 'AI Agent',
-                avatar: '',
-                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                text: `${data.message}\n\n${nextStepsText}`,
-                status: 'FAILED',
-                badgeText: 'VALIDATION FAILED',
-              });
+            if (envelope.event === 'log') {
+              const data = envelope.data as { message?: string };
+              if (data.message) {
+                this.appendLog(data.message);
+              }
+              return;
             }
-            return;
-          }
-          if (envelope.event === 'file_changed') {
-            window.dispatchEvent(new CustomEvent('clutch-file-changed', { detail: envelope.data }));
-            return;
-          }
-          if (envelope.event === 'run_completed') {
-            const data = envelope.data as { status?: string };
-            if (data.status) {
-              this.applyPatch({ status: data.status as ClutchState['status'] });
+            if (envelope.event === 'human_required') {
+              this.applyPatch({ status: 'awaiting_human' });
+              return;
             }
+            if (envelope.event === 'validation_result') {
+              const data = envelope.data as { passed?: boolean; message?: string };
+              if (data.passed === false && data.message) {
+                const lang = (localStorage.getItem('workspace_lang') as Language) || 'en';
+                const nextStepsText = translateText(
+                  'Next steps: select "Bypass & Approve", "Reject & Redo" below, or type instructions and click "Retry".',
+                  lang
+                );
+                this.appendMessage({
+                  id: `validation-${Date.now()}`,
+                  agent: 'AI Agent',
+                  avatar: '',
+                  time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                  text: `${data.message}\n\n${nextStepsText}`,
+                  status: 'FAILED',
+                  badgeText: 'VALIDATION FAILED',
+                });
+              }
+              return;
+            }
+            if (envelope.event === 'file_changed') {
+              window.dispatchEvent(new CustomEvent('clutch-file-changed', { detail: envelope.data }));
+              return;
+            }
+            if (envelope.event === 'run_completed') {
+              const data = envelope.data as { status?: string };
+              if (data.status) {
+                this.applyPatch({ status: data.status as ClutchState['status'] });
+              }
+            }
+          } catch {
+            console.warn('[Clutch WS] non-JSON message:', event.data);
           }
-        } catch {
-          console.warn('[Clutch WS] non-JSON message:', event.data);
-        }
-      };
+        };
 
-      ws.onerror = () => {
-        this.connectPromise = null;
-        reject(new Error('WebSocket connection failed'));
-      };
+        ws.onerror = () => {
+          if (!isCurrentSocket()) {
+            resolve();
+            return;
+          }
+          logTiming('ws connect failed', {
+            runId,
+            totalMs: elapsedMs(startedAt),
+            urlMs,
+            wsOpenMs,
+            usedCachedSnapshot,
+          });
+          this.connectPromise = null;
+          reject(new Error('WebSocket connection failed'));
+        };
 
-      ws.onclose = () => {
-        this._connected = false;
-        this.socket = null;
-        this.connectPromise = null;
-        this.emit();
-      };
-        }),
-    );
+        ws.onclose = () => {
+          if (!isCurrentSocket()) return;
+          this._connected = false;
+          this.socket = null;
+          this.connectPromise = null;
+          this.emit();
+        };
+      });
+    })();
 
     return this.connectPromise;
   }
@@ -665,6 +752,7 @@ class ClutchStateStore {
       messages: nextMessages,
       hybrid_executions: hybrid,
     };
+    this.rememberSnapshot(this.state);
     this.emit();
     void this.send({ action: 'delete_message', message_id: messageId });
   }
