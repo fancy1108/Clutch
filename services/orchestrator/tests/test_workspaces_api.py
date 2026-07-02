@@ -86,18 +86,20 @@ def test_run_git_hides_windows_console(monkeypatch, tmp_path: Path) -> None:
     from src import workspace
 
     captured: dict[str, object] = {}
+    flag = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
 
     def fake_run(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
         captured.update(kwargs)
         return subprocess.CompletedProcess(cmd, 0, "true\n", "")
 
     monkeypatch.setattr(workspace.sys, "platform", "win32")
+    monkeypatch.setattr(workspace.subprocess, "CREATE_NO_WINDOW", flag, raising=False)
     monkeypatch.setattr(workspace.subprocess, "run", fake_run)
 
     result = workspace._run_git(tmp_path, "rev-parse", "--is-inside-work-tree")
 
     assert result is not None
-    assert captured["creationflags"] == subprocess.CREATE_NO_WINDOW
+    assert captured["creationflags"] == flag
 
 
 def test_workspace_git_without_workspace() -> None:
