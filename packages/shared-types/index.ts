@@ -66,6 +66,62 @@ export interface WorkflowDef {
   description?: string;
 }
 
+export type PtyLaneStatus = 'booting' | 'running' | 'completed' | 'queued';
+
+export interface PtyLane {
+  lane_id: string;
+  agent_type: string;
+  label: string;
+  status: PtyLaneStatus;
+  focused: boolean;
+  collapsed: boolean;
+  run_id: string;
+}
+
+export interface DispatchLogEntry {
+  id: string;
+  time: string;
+  sources_label: string;
+  target: string;
+  prompt: string;
+  handoff_file: string;
+  handoff_path: string;
+  input_mode?: 'natural' | 'graph';
+  file_refs?: string[];
+}
+
+export interface DispatchEdge {
+  sources: string[];
+  target: string;
+  handoff_file: string;
+  source_lane_ids: string[];
+  target_lane_id: string;
+}
+
+export interface PendingHandoffDraft {
+  id: string;
+  label: string;
+  text: string;
+  suggested_target?: string;
+  handoff_path?: string;
+}
+
+export interface DispatchPreviewPayload {
+  sources: string[];
+  target: string;
+  task: string;
+  handoff_path: string;
+  handoff_file: string;
+  file_refs: string[];
+  input_mode: 'natural' | 'graph';
+  chips: Array<{
+    id: string;
+    label: string;
+    on: boolean;
+    source_name: string;
+  }>;
+}
+
 export interface DiffLine {
   lineNum: number;
   type: 'addition' | 'deletion' | 'normal';
@@ -114,6 +170,7 @@ export type WebSocketEvent =
 /** WebSocket `pty_output` payload — raw PTY bytes for embedded terminal mode. */
 export interface PtyOutputData {
   run_id: string;
+  lane_id?: string;
   node_id?: string;
   source?: string;
   level?: string;
@@ -126,6 +183,7 @@ export interface PtyOutputData {
 /** WebSocket `pty_session_status` payload. */
 export interface PtySessionStatusData {
   run_id: string;
+  lane_id?: string;
   node_id?: string;
   source?: string;
   level?: string;
@@ -170,6 +228,12 @@ export interface ClutchState {
   /** Latest agent draft while refining (committed before auto-continue). */
   refine_draft_output?: string;
   refine_agent_id?: string;
+  /** D34 terminal orchestra — parallel PTY lanes. */
+  pty_lanes?: PtyLane[];
+  dispatch_log?: DispatchLogEntry[];
+  dispatch_edges?: DispatchEdge[];
+  pending_handoff_drafts?: PendingHandoffDraft[];
+  focused_lane_id?: string | null;
   /** @deprecated use cli_session_id — still read from older persisted runs */
   claude_session_id?: string;
   /** @deprecated use cli_session_agent_id */

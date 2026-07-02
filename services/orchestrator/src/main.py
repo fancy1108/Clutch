@@ -49,10 +49,13 @@ async def _lifespan(app: FastAPI):
     from src.interactive_pty_runtime import interactive_pty_manager
     from src.plain_chat_pool_queue import get_plain_chat_ws
 
-    async def _forward_interactive_pty_output(run_id: str, chunk: str) -> None:
-        websocket = get_plain_chat_ws(run_id)
+    async def _forward_interactive_pty_output(session_key: str, chunk: str) -> None:
+        from src.terminal_orchestra import parse_pty_session_key
+
+        parent_run_id, lane_id = parse_pty_session_key(session_key)
+        websocket = get_plain_chat_ws(parent_run_id)
         if websocket is not None:
-            await _send_pty_output(websocket, run_id, chunk)
+            await _send_pty_output(websocket, parent_run_id, chunk, lane_id=lane_id)
 
     interactive_pty_manager.set_event_loop(loop)
     interactive_pty_manager.set_output_handler(_forward_interactive_pty_output)
@@ -785,6 +788,11 @@ def _merge_patch(state: ClutchState, patch: dict[str, Any]) -> ClutchState:
         "shell_pool_blockers",
         "shell_pool_queue_position",
         "shell_pool_queue_depth",
+        "pty_lanes",
+        "dispatch_log",
+        "dispatch_edges",
+        "pending_handoff_drafts",
+        "focused_lane_id",
     })
     for key, value in patch.items():
         if key in merged or key in optional_keys:
@@ -1052,11 +1060,19 @@ async def _send_human_required(
     await websocket.send_text(json.dumps(envelope))
 
 
-async def _send_pty_output(websocket: WebSocket, run_id: str, chunk: str, *, node_id: str = "") -> None:
+async def _send_pty_output(
+    websocket: WebSocket,
+    run_id: str,
+    chunk: str,
+    *,
+    node_id: str = "",
+    lane_id: str = "",
+) -> None:
     envelope = {
         "event": "pty_output",
         "data": {
             "run_id": run_id,
+            "lane_id": lane_id,
             "node_id": node_id,
             "source": "interactive_pty",
             "level": "info",
@@ -1076,11 +1092,13 @@ async def _send_pty_session_status(
     *,
     node_id: str = "",
     detail: str = "",
+    lane_id: str = "",
 ) -> None:
     envelope = {
         "event": "pty_session_status",
         "data": {
             "run_id": run_id,
+            "lane_id": lane_id,
             "node_id": node_id,
             "source": "interactive_pty",
             "level": "info",
@@ -4181,7 +4199,7 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
             )
 
             patch: dict[str, Any] = {}
-            if isinstance(payload, dict) and payload.get("text"):
+            if isinstance(payload, dict) and payload.get("text") and not payload.get("action"):
                 text = str(payload["text"])
                 agent_id = str(payload.get("agent_id", "")).strip() or None
                 session_model_id = str(payload.get("model_id", "")).strip() or None
@@ -4305,23 +4323,34 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                         await _notify_run_state(websocket, run_id, state, patch)
             elif isinstance(payload, dict) and payload.get("action") == "pty_attach":
                 from src.interactive_pty_runtime import InteractivePtyError, interactive_pty_manager
+                from src.terminal_orchestra import ensure_primary_lane, pty_session_key
                 from src.workspace import get_workspace
 
                 cli_tool = str(payload.get("cli_tool", "claude-cli")).strip() or "claude-cli"
+                lane_id = str(payload.get("lane_id", "primary")).strip() or "primary"
                 workspace = get_workspace()
                 workspace_path = str(workspace.get("workspace_path", "")).strip() if workspace else ""
+                orch_patch = ensure_primary_lane(state, cli_tool=cli_tool)
+                if orch_patch:
+                    state = _merge_patch(state, orch_patch)
+                    _commit_run_state(run_id, state)
+                    await _notify_run_state(websocket, run_id, state, orch_patch)
+                    if not lane_id or lane_id == "primary":
+                        lane_id = str(state.get("focused_lane_id") or "lane_primary")
+                session_key = pty_session_key(run_id, lane_id)
                 if not workspace_path:
                     await _send_pty_session_status(
                         websocket,
                         run_id,
                         "blocked",
                         detail="No workspace authorized for interactive PTY",
+                        lane_id=lane_id,
                     )
                 else:
                     try:
                         session = await asyncio.to_thread(
                             interactive_pty_manager.attach,
-                            run_id,
+                            session_key,
                             workspace_path=workspace_path,
                             cli_tool=cli_tool,
                         )
@@ -4330,6 +4359,7 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                             run_id,
                             session.status.value,
                             detail="Interactive PTY attached",
+                            lane_id=lane_id,
                         )
                     except (InteractivePtyError, OSError) as exc:
                         await _send_pty_session_status(
@@ -4337,37 +4367,167 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                             run_id,
                             "blocked",
                             detail=str(exc),
+                            lane_id=lane_id,
                         )
             elif isinstance(payload, dict) and payload.get("action") == "pty_detach":
                 from src.interactive_pty_runtime import interactive_pty_manager
+                from src.terminal_orchestra import pty_session_key
 
-                await asyncio.to_thread(interactive_pty_manager.detach, run_id)
+                lane_id = str(payload.get("lane_id", "primary")).strip() or "primary"
+                if lane_id == "primary" and state.get("focused_lane_id"):
+                    lane_id = str(state.get("focused_lane_id"))
+                await asyncio.to_thread(interactive_pty_manager.detach, pty_session_key(run_id, lane_id))
                 await _send_pty_session_status(
                     websocket,
                     run_id,
                     "detached",
                     detail="Interactive PTY detached",
+                    lane_id=lane_id,
                 )
             elif isinstance(payload, dict) and payload.get("action") == "pty_input":
                 from src.interactive_pty_runtime import InteractivePtyError, interactive_pty_manager
+                from src.terminal_orchestra import pty_session_key
 
                 data = str(payload.get("data", ""))
+                lane_id = str(payload.get("lane_id", "primary")).strip() or "primary"
+                if lane_id == "primary" and state.get("focused_lane_id"):
+                    lane_id = str(state.get("focused_lane_id"))
                 if data:
                     try:
-                        await asyncio.to_thread(interactive_pty_manager.write_input, run_id, data)
+                        await asyncio.to_thread(
+                            interactive_pty_manager.write_input,
+                            pty_session_key(run_id, lane_id),
+                            data,
+                        )
                     except InteractivePtyError as exc:
                         await _send_pty_session_status(
                             websocket,
                             run_id,
                             "blocked",
                             detail=str(exc),
+                            lane_id=lane_id,
                         )
             elif isinstance(payload, dict) and payload.get("action") == "pty_resize":
                 from src.interactive_pty_runtime import interactive_pty_manager
+                from src.terminal_orchestra import pty_session_key
 
                 cols = int(payload.get("cols", 80))
                 rows = int(payload.get("rows", 24))
-                await asyncio.to_thread(interactive_pty_manager.resize, run_id, cols, rows)
+                lane_id = str(payload.get("lane_id", "primary")).strip() or "primary"
+                if lane_id == "primary" and state.get("focused_lane_id"):
+                    lane_id = str(state.get("focused_lane_id"))
+                await asyncio.to_thread(
+                    interactive_pty_manager.resize,
+                    pty_session_key(run_id, lane_id),
+                    cols,
+                    rows,
+                )
+            elif isinstance(payload, dict) and payload.get("action") == "dispatch_preview":
+                from src.terminal_orchestra import preview_dispatch, serialize_preview
+
+                text = str(payload.get("text", "")).strip()
+                preview = preview_dispatch(state, text)
+                if preview is None:
+                    await websocket.send_text(
+                        json.dumps(
+                            {
+                                "event": "dispatch_preview",
+                                "data": {
+                                    "run_id": run_id,
+                                    "ok": False,
+                                    "error": "输入需包含 @目标 Agent",
+                                },
+                            }
+                        )
+                    )
+                else:
+                    await websocket.send_text(
+                        json.dumps(
+                            {
+                                "event": "dispatch_preview",
+                                "data": {
+                                    "run_id": run_id,
+                                    "ok": True,
+                                    "preview": serialize_preview(preview),
+                                },
+                            }
+                        )
+                    )
+            elif isinstance(payload, dict) and payload.get("action") == "dispatch_confirm":
+                from src.terminal_orchestra import confirm_dispatch, preview_dispatch, serialize_preview
+                from src.workspace import get_workspace
+
+                text = str(payload.get("text", "")).strip()
+                active_chips = payload.get("active_sources")
+                chip_list = (
+                    [str(x) for x in active_chips]
+                    if isinstance(active_chips, list)
+                    else None
+                )
+                preview = preview_dispatch(state, text)
+                if preview is None:
+                    await websocket.send_text(
+                        json.dumps(
+                            {
+                                "event": "dispatch_error",
+                                "data": {"run_id": run_id, "error": "无法解析派发"},
+                            }
+                        )
+                    )
+                else:
+                    workspace = get_workspace()
+                    workspace_path = (
+                        str(workspace.get("workspace_path", "")).strip() if workspace else ""
+                    )
+                    patch = confirm_dispatch(
+                        state,
+                        preview=preview,
+                        prompt=text,
+                        workspace_path=workspace_path or ".",
+                        active_chips=chip_list,
+                    )
+                    state = _merge_patch(state, patch)
+                    _commit_run_state(run_id, state)
+                    await _notify_run_state(websocket, run_id, state, patch)
+                    await websocket.send_text(
+                        json.dumps(
+                            {
+                                "event": "dispatch_confirmed",
+                                "data": {
+                                    "run_id": run_id,
+                                    "preview": serialize_preview(preview),
+                                },
+                            }
+                        )
+                    )
+            elif isinstance(payload, dict) and payload.get("action") == "lane_focus":
+                from src.terminal_orchestra import patch_lane_focus
+
+                lane_id = str(payload.get("lane_id", "")).strip()
+                if lane_id:
+                    patch = patch_lane_focus(state, lane_id)
+                    state = _merge_patch(state, patch)
+                    _commit_run_state(run_id, state)
+                    await _notify_run_state(websocket, run_id, state, patch)
+            elif isinstance(payload, dict) and payload.get("action") == "lane_collapse":
+                from src.terminal_orchestra import patch_lane_collapse
+
+                lane_id = str(payload.get("lane_id", "")).strip()
+                collapsed = bool(payload.get("collapsed", True))
+                if lane_id:
+                    patch = patch_lane_collapse(state, lane_id, collapsed=collapsed)
+                    state = _merge_patch(state, patch)
+                    _commit_run_state(run_id, state)
+                    await _notify_run_state(websocket, run_id, state, patch)
+            elif isinstance(payload, dict) and payload.get("action") == "lane_complete":
+                from src.terminal_orchestra import patch_lane_complete
+
+                lane_id = str(payload.get("lane_id", "")).strip()
+                if lane_id:
+                    patch = patch_lane_complete(state, lane_id)
+                    state = _merge_patch(state, patch)
+                    _commit_run_state(run_id, state)
+                    await _notify_run_state(websocket, run_id, state, patch)
             elif isinstance(payload, dict) and payload.get("action") == "delete_message":
                 message_id = str(payload.get("message_id", "")).strip()
                 if message_id:

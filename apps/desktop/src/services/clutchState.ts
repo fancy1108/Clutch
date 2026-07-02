@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react';
 import type {
   ChatMessage,
   ClutchState,
+  DispatchPreviewPayload,
   HybridExecutionData,
   HybridExecutionPayload,
   PtyOutputData,
@@ -182,6 +183,16 @@ export function shouldPreserveOptimisticRun(
   return current.messages.some((message) => message.agent === 'User');
 }
 
+type LanePtyHandlers = {
+  status: string;
+  outputHandlers: Set<(chunk: string) => void>;
+  statusHandlers: Set<(status: string) => void>;
+};
+
+type DispatchPreviewResult =
+  | { ok: true; preview: DispatchPreviewPayload }
+  | { ok: false; error: string };
+
 class ClutchStateStore {
   private state: ClutchState = createEmptyState(createSessionRunId());
   private listeners = new Set<() => void>();
@@ -200,13 +211,37 @@ class ClutchStateStore {
   private _ptySessionStatus = '';
   private _ptyOutputHandlers = new Set<(chunk: string) => void>();
   private _ptyStatusHandlers = new Set<(status: string) => void>();
+  private _lanePty = new Map<string, LanePtyHandlers>();
+  private _dispatchPreviewResolvers: Array<(result: DispatchPreviewResult) => void> = [];
+  private _dispatchErrorHandlers = new Set<(error: string) => void>();
 
   get connected(): boolean {
     return this._connected;
   }
 
+  private lanePty(laneId: string): LanePtyHandlers {
+    const key = laneId || 'primary';
+    let lane = this._lanePty.get(key);
+    if (!lane) {
+      lane = { status: '', outputHandlers: new Set(), statusHandlers: new Set() };
+      this._lanePty.set(key, lane);
+    }
+    return lane;
+  }
+
+  private resolveFocusedLaneId(): string {
+    const focusId = this.state.focused_lane_id;
+    if (focusId) return focusId;
+    const focused = this.state.pty_lanes?.find((lane) => lane.focused);
+    return focused?.lane_id ?? 'primary';
+  }
+
   get ptySessionStatus(): string {
     return this._ptySessionStatus;
+  }
+
+  getLanePtyStatus(laneId: string): string {
+    return this.lanePty(laneId).status;
   }
 
   onPtyOutput(handler: (chunk: string) => void): () => void {
@@ -214,41 +249,104 @@ class ClutchStateStore {
     return () => this._ptyOutputHandlers.delete(handler);
   }
 
+  onPtyOutputForLane(laneId: string, handler: (chunk: string) => void): () => void {
+    const lane = this.lanePty(laneId);
+    lane.outputHandlers.add(handler);
+    return () => lane.outputHandlers.delete(handler);
+  }
+
   onPtyStatusChange(handler: (status: string) => void): () => void {
     this._ptyStatusHandlers.add(handler);
     return () => this._ptyStatusHandlers.delete(handler);
   }
 
-  private dispatchPtyOutput(chunk: string): void {
+  onPtyStatusChangeForLane(laneId: string, handler: (status: string) => void): () => void {
+    const lane = this.lanePty(laneId);
+    lane.statusHandlers.add(handler);
+    return () => lane.statusHandlers.delete(handler);
+  }
+
+  onDispatchError(handler: (error: string) => void): () => void {
+    this._dispatchErrorHandlers.add(handler);
+    return () => this._dispatchErrorHandlers.delete(handler);
+  }
+
+  private dispatchPtyOutput(chunk: string, laneId = ''): void {
+    const lane = laneId ? this.lanePty(laneId) : null;
+    if (lane) {
+      for (const handler of lane.outputHandlers) {
+        handler(chunk);
+      }
+    }
     for (const handler of this._ptyOutputHandlers) {
       handler(chunk);
     }
   }
 
-  private setPtySessionStatus(status: string): void {
+  private setPtySessionStatus(status: string, laneId = ''): void {
+    if (laneId) {
+      const lane = this.lanePty(laneId);
+      lane.status = status;
+      for (const handler of lane.statusHandlers) {
+        handler(status);
+      }
+    }
     this._ptySessionStatus = status;
     for (const handler of this._ptyStatusHandlers) {
       handler(status);
     }
   }
 
-  async attachInteractivePty(cliTool: string): Promise<void> {
-    this.setPtySessionStatus('booting');
-    await this.send({ action: 'pty_attach', cli_tool: cliTool });
+  async attachInteractivePty(cliTool: string, laneId?: string): Promise<void> {
+    const resolvedLane = laneId || this.resolveFocusedLaneId();
+    this.setPtySessionStatus('booting', resolvedLane);
+    await this.send({ action: 'pty_attach', cli_tool: cliTool, lane_id: resolvedLane });
   }
 
-  async detachInteractivePty(): Promise<void> {
-    this.setPtySessionStatus('detached');
-    await this.send({ action: 'pty_detach' });
+  async detachInteractivePty(laneId?: string): Promise<void> {
+    const resolvedLane = laneId || this.resolveFocusedLaneId();
+    this.setPtySessionStatus('detached', resolvedLane);
+    await this.send({ action: 'pty_detach', lane_id: resolvedLane });
   }
 
-  async sendPtyInput(data: string): Promise<void> {
+  async sendPtyInput(data: string, laneId?: string): Promise<void> {
     if (!data) return;
-    await this.send({ action: 'pty_input', data });
+    const resolvedLane = laneId || this.resolveFocusedLaneId();
+    await this.send({ action: 'pty_input', data, lane_id: resolvedLane });
   }
 
-  async sendPtyResize(cols: number, rows: number): Promise<void> {
-    await this.send({ action: 'pty_resize', cols, rows });
+  async sendPtyResize(cols: number, rows: number, laneId?: string): Promise<void> {
+    const resolvedLane = laneId || this.resolveFocusedLaneId();
+    await this.send({ action: 'pty_resize', cols, rows, lane_id: resolvedLane });
+  }
+
+  async previewDispatch(text: string): Promise<DispatchPreviewResult> {
+    await this.connect(this.runId);
+    return new Promise<DispatchPreviewResult>((resolve) => {
+      this._dispatchPreviewResolvers.push(resolve);
+      void this.send({ action: 'dispatch_preview', text }).catch(() => {
+        const resolver = this._dispatchPreviewResolvers.pop();
+        resolver?.({ ok: false, error: 'WebSocket send failed' });
+      });
+    });
+  }
+
+  async confirmDispatch(text: string, activeChips?: string[]): Promise<void> {
+    const payload: Record<string, unknown> = { action: 'dispatch_confirm', text };
+    if (activeChips) payload.active_sources = activeChips;
+    await this.send(payload);
+  }
+
+  async focusLane(laneId: string): Promise<void> {
+    await this.send({ action: 'lane_focus', lane_id: laneId });
+  }
+
+  async collapseLane(laneId: string, collapsed = true): Promise<void> {
+    await this.send({ action: 'lane_collapse', lane_id: laneId, collapsed });
+  }
+
+  async completeLane(laneId: string): Promise<void> {
+    await this.send({ action: 'lane_complete', lane_id: laneId });
   }
 
   subscribe = (listener: () => void): (() => void) => {
@@ -712,14 +810,38 @@ class ClutchStateStore {
             if (envelope.event === 'pty_output') {
               const data = envelope.data as PtyOutputData;
               if (data.chunk) {
-                this.dispatchPtyOutput(data.chunk);
+                this.dispatchPtyOutput(data.chunk, data.lane_id ?? '');
               }
               return;
             }
             if (envelope.event === 'pty_session_status') {
               const data = envelope.data as PtySessionStatusData;
               if (data.status) {
-                this.setPtySessionStatus(data.status);
+                this.setPtySessionStatus(data.status, data.lane_id ?? '');
+              }
+              return;
+            }
+            if (envelope.event === 'dispatch_preview') {
+              const data = envelope.data as {
+                ok?: boolean;
+                preview?: DispatchPreviewPayload;
+                error?: string;
+              };
+              const resolver = this._dispatchPreviewResolvers.shift();
+              if (resolver) {
+                if (data.ok && data.preview) {
+                  resolver({ ok: true, preview: data.preview });
+                } else {
+                  resolver({ ok: false, error: data.error ?? 'Dispatch preview failed' });
+                }
+              }
+              return;
+            }
+            if (envelope.event === 'dispatch_error') {
+              const data = envelope.data as { error?: string };
+              const message = data.error ?? 'Dispatch failed';
+              for (const handler of this._dispatchErrorHandlers) {
+                handler(message);
               }
               return;
             }

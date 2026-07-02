@@ -13,12 +13,19 @@ from src.main import app
 client = TestClient(app)
 
 
+def _receive_pty_status(ws) -> dict:
+    while True:
+        msg = ws.receive_json()
+        if msg["event"] == "pty_session_status":
+            return msg
+
+
 def test_ws_pty_attach_blocked_without_workspace() -> None:
     with patch("src.workspace.get_workspace", return_value=None):
         with client.websocket_connect("/ws/runs/run_pty_blocked") as ws:
             ws.receive_json()  # initial state_patch
             ws.send_json({"action": "pty_attach", "cli_tool": "claude-cli"})
-            status = ws.receive_json()
+            status = _receive_pty_status(ws)
     assert status["event"] == "pty_session_status"
     assert status["data"]["status"] == "blocked"
 
@@ -40,9 +47,9 @@ def test_ws_pty_attach_and_detach(monkeypatch: pytest.MonkeyPatch) -> None:
             with client.websocket_connect("/ws/runs/run_pty_ok") as ws:
                 ws.receive_json()
                 ws.send_json({"action": "pty_attach", "cli_tool": "claude-cli"})
-                attach_status = ws.receive_json()
+                attach_status = _receive_pty_status(ws)
                 ws.send_json({"action": "pty_detach"})
-                detach_status = ws.receive_json()
+                detach_status = _receive_pty_status(ws)
 
     assert attach_status["event"] == "pty_session_status"
     assert attach_status["data"]["status"] == "ready"

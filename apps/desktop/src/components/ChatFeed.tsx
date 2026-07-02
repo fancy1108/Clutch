@@ -10,7 +10,7 @@ import type { SessionRecord } from '../services/runApi';
 import type { ScannedSkill } from '../services/skillsApi';
 import type { FileTreeNode } from '../services/workspaceApi';
 import type { PermissionMode } from '../services/permissionApi';
-import { USER_CHAT_AVATAR, clutchStore, deleteChatMessage } from '../services/clutchState';
+import { USER_CHAT_AVATAR, clutchStore, deleteChatMessage, useClutchState } from '../services/clutchState';
 import { resolveBrandLogoSrc } from '../services/brandLogos';
 import { clutchMarkUrl } from '../assets/brand';
 import { AgentChatAvatar } from './AgentChatAvatar';
@@ -20,7 +20,8 @@ import {
   isWorkflowRefineEligible,
   resolveInProgressWorkflowStep,
 } from '../services/workflowAgentSteps';
-import { ChatTerminalView } from './ChatTerminalView';
+import { OrchestratorBar } from './terminal-orchestra/OrchestratorBar';
+import { TerminalOrchestraWorkspace } from './terminal-orchestra/TerminalOrchestraWorkspace';
 import {
   isTerminalCapableAgentType,
   resolveCliToolForTerminal,
@@ -643,6 +644,8 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   onClearTerminal,
 }) => {
   const { t } = useLanguage();
+  const { state: clutchOrchestraState } = useClutchState();
+  const [orchestratorBarFocused, setOrchestratorBarFocused] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const dockRef = useRef<HTMLDivElement>(null);
   const [dockHeight, setDockHeight] = useState(176);
@@ -970,20 +973,14 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
           </div>
         )}
 
-        {terminalCapable && isPlainLlmChat ? (
-          <div className={workspaceViewMode === 'terminal' ? 'block' : 'hidden'} aria-hidden={workspaceViewMode !== 'terminal'}>
-            <ChatTerminalView
-              visible={workspaceViewMode === 'terminal'}
-              terminalLogs={terminalLogs}
-              clutchStatus={clutchStatus}
-              shellSessionStatus={shellSessionStatus}
-              activeAgentName={activeAgentName}
-              engineHint={engineHint}
-              cliTool={terminalCliTool ?? 'claude-cli'}
-              sessionRunId={sessionRunId}
-              onClearTerminal={onClearTerminal}
-            />
-          </div>
+        {terminalCapable && isPlainLlmChat && workspaceViewMode === 'terminal' ? (
+          <TerminalOrchestraWorkspace
+            visible
+            clutchStatus={clutchStatus}
+            cliTool={terminalCliTool ?? 'claude-cli'}
+            sessionRunId={sessionRunId}
+            barFocused={orchestratorBarFocused}
+          />
         ) : null}
 
         {workspaceViewMode === 'chat' && messages.map((msg) => {
@@ -1293,6 +1290,19 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
               </button>
             </div>
           </div>
+        ) : workspaceViewMode === 'terminal' && terminalCapable && isPlainLlmChat ? (
+          <OrchestratorBar
+            sessionRunId={sessionRunId}
+            drafts={clutchOrchestraState.pending_handoff_drafts ?? []}
+            inputValue={inputValue}
+            setInputValue={setInputValue}
+            permissionMode={permissionMode}
+            onPermissionModeChange={onPermissionModeChange ?? (() => {})}
+            workspaceFiles={workspaceFiles}
+            sessions={sessions}
+            skills={skills}
+            onFocusChange={setOrchestratorBarFocused}
+          />
         ) : workspaceViewMode === 'chat' ? (
           <div className="w-full flex justify-center">
             <ChatInputBar

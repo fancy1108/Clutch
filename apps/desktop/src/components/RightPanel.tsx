@@ -6,6 +6,7 @@ import { loadWorkflowById } from '../services/workflowApi';
 import { useLanguage, translateRunStatus } from './LanguageContext';
 import { LegacyIcon } from './ui/LegacyIcon';
 import { UnderDevelopmentNotice } from './ui/UnderDevelopmentNotice';
+import { OverviewDispatchLog } from './terminal-orchestra/OverviewDispatchLog';
 import { BTN_ICON } from './ui/buttonStyles';
 
 interface RightPanelProps {
@@ -35,6 +36,8 @@ interface RightPanelProps {
   onOpenWorkspaceFile?: (path: string) => void;
   workspaceAuthorized?: boolean;
   onClearTerminal?: () => void;
+  dispatchLog?: import('../types').DispatchLogEntry[];
+  showTerminalOrchestraOverview?: boolean;
 }
 
 type WorkflowStepView = {
@@ -75,6 +78,8 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   onOpenWorkspaceFile,
   workspaceAuthorized = false,
   onClearTerminal,
+  dispatchLog = [],
+  showTerminalOrchestraOverview = false,
 }) => {
   const { t, language } = useLanguage();
   const [selectedFile, setSelectedFile] = React.useState<string>('');
@@ -349,6 +354,19 @@ export const RightPanel: React.FC<RightPanelProps> = ({
         <div className="flex-1 overflow-y-auto sidebar-scroll p-5 select-none bg-white">
           {activeTab === 'overview' && (
             <div className="space-y-6 animate-fade-in text-xs">
+              {showTerminalOrchestraOverview ? (
+                <section>
+                  <p className="text-[10px] text-on-surface-variant leading-relaxed mb-3 p-2.5 rounded-xl bg-surface-container-low border border-outline-variant/30">
+                    <strong className="text-on-surface">{t('Handoff')}</strong>
+                    {' '}
+                    {t('Handoff overview tip')}
+                  </p>
+                  <h4 className="text-[10px] font-bold text-on-surface-variant/75 uppercase tracking-widest mb-3">
+                    {t('Dispatch records')}
+                  </h4>
+                  <OverviewDispatchLog entries={dispatchLog} />
+                </section>
+              ) : null}
               {isMultiAgent ? (
                 <>
                   {renderStateSummary()}

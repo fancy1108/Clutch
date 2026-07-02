@@ -1501,6 +1501,8 @@ function MainLayout() {
                 onOpenWorkspaceFile={(path) => { void handleOpenWorkspaceFile(path); }}
                 workspaceAuthorized={Boolean(workspace)}
                 onClearTerminal={handleClearTerminal}
+                dispatchLog={clutchState.dispatch_log ?? []}
+                showTerminalOrchestraOverview={isPlainLlmFooter && workspaceViewMode === 'terminal'}
               />
             </>
           )
