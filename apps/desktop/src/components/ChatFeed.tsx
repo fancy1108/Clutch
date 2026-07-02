@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
-import { CONTENT_TOP_WITH_BANNER, SIDEBAR_COLLAPSED_WIDTH_PX } from '../constants/layout';
+import { APP_HEADER_HEIGHT_PX } from '../constants/layout';
 import { ChevronRight } from 'lucide-react';
 import { ChatMessage, ClutchRunStatus, HybridExecutionPayload, OutputEvent } from '../types';
 import { useLanguage } from './LanguageContext';
@@ -22,8 +22,19 @@ import {
 } from '../services/workflowAgentSteps';
 import { OrchestratorBar } from './terminal-orchestra/OrchestratorBar';
 import { TerminalOrchestraWorkspace } from './terminal-orchestra/TerminalOrchestraWorkspace';
+import { TerminalOrchestraEmptyState } from './terminal-orchestra/TerminalOrchestraEmptyState';
+import { TerminalDispatchHistoryFeed } from './terminal-orchestra/TerminalDispatchHistoryFeed';
 import {
-  isTerminalCapableAgentType,
+  parseInputAgentMention,
+  sessionHasTerminalHistory,
+  isArchivedTerminalHistoryView,
+  shouldConfirmLeavingTerminal,
+} from '../services/terminalOrchestraUtils';
+import {
+  buildTerminalLayoutChromeKey,
+  TERMINAL_COLLAPSED_TOGGLE_GUTTER_PX,
+} from './terminal-orchestra/terminalLaneLayout';
+import {
   resolveCliToolForTerminal,
   saveWorkspaceViewMode,
   type WorkspaceViewMode,
@@ -220,6 +231,8 @@ interface ChatFeedProps {
   currentFlowName?: string;
   selectedSidebarWidth: number;
   rightSidebarWidth: number;
+  sidebarOpen?: boolean;
+  rightPanelOpen?: boolean;
   onStopRun?: () => void;
   isMultiAgent?: boolean;
   onApprove?: () => void;
@@ -234,8 +247,6 @@ interface ChatFeedProps {
   onClearSelectedWorkflow?: () => void;
   sessionTitle?: string;
   sessionRunId?: string;
-  isSessionSwitching?: boolean;
-  loadingSessionTitle?: string;
   activeWorkflowId?: string;
   llmModelName?: string;
   activeAgentName?: string;
@@ -247,6 +258,9 @@ interface ChatFeedProps {
   activeAgentType?: string;
   workspaceViewMode: WorkspaceViewMode;
   onWorkspaceViewModeChange: (mode: WorkspaceViewMode) => void;
+  onLeaveTerminalConfirm?: (onProceed: () => void) => void;
+  highlightedDispatchEntryId?: string | null;
+  hasCliAgents?: boolean;
   // New props for ChatInputBar
   workspaceFiles?: FileTreeNode[];
   sessions?: SessionRecord[];
@@ -262,6 +276,11 @@ interface ChatFeedProps {
   userName?: string;
   terminalLogs?: string[];
   onClearTerminal?: () => void;
+  mentionableAgents?: Array<{ id: string; name: string; logo?: string; dispatchTarget: string; agentType?: string }>;
+  selectedMentionAgentId?: string | null;
+  onMentionAgentChange?: (agentId: string | null) => void;
+  /** Authorized workspace path — fallback for native terminal resume commands. */
+  workspacePath?: string;
 }
 
 const WORKFLOW_AGENTS = new Set(['Builder', 'Orchestrator', 'Evaluator', 'Supervisor']);
@@ -299,7 +318,7 @@ function replyRuntimeLabel(
 }
 
 const IMAGE_MARKER_RE = /\[image:\s*(data:image\/[^\]]+)\]\s*/gi;
-const VIDEO_MARKER_RE = /\[video:\s*(https?:\/\/[^\]]+)\]\s*/gi;
+const VIDEO_MARKER_RE = /\[video:\s*((?:https?:\/\/|\/api\/)[^\]]+)\]\s*/gi;
 const MD_IMAGE_RE = /!\[([^\]]*)\]\(([^)]+)\)/g;
 const MD_IMAGE_LINK_RE = /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g;
 
@@ -601,6 +620,8 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   currentFlowName = '',
   selectedSidebarWidth,
   rightSidebarWidth,
+  sidebarOpen = true,
+  rightPanelOpen = true,
   onStopRun,
   isMultiAgent = true,
   onApprove,
@@ -615,8 +636,6 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   onClearSelectedWorkflow,
   sessionTitle = '',
   sessionRunId = '',
-  isSessionSwitching = false,
-  loadingSessionTitle = '',
   activeWorkflowId = '',
   llmModelName = '',
   activeAgentName = '',
@@ -628,6 +647,9 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   activeAgentType = '',
   workspaceViewMode,
   onWorkspaceViewModeChange,
+  onLeaveTerminalConfirm,
+  highlightedDispatchEntryId = null,
+  hasCliAgents = false,
   workspaceFiles = [],
   sessions = [],
   skills = [],
@@ -642,12 +664,17 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   userName = 'User',
   terminalLogs = [],
   onClearTerminal,
+  mentionableAgents = [],
+  selectedMentionAgentId = null,
+  onMentionAgentChange,
+  workspacePath,
 }) => {
   const { t } = useLanguage();
   const { state: clutchOrchestraState } = useClutchState();
   const [orchestratorBarFocused, setOrchestratorBarFocused] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const dockRef = useRef<HTMLDivElement>(null);
+  const terminalStageRef = useRef<HTMLDivElement>(null);
   const [dockHeight, setDockHeight] = useState(176);
   const [hillInstructions, setHillInstructions] = useState('');
   const [pendingMessages, setPendingMessages] = useState<PendingChatMessage[]>([]);
@@ -676,9 +703,56 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   const isRunning = clutchStatus === 'running';
   const awaitingHuman = clutchStatus === 'awaiting_human';
   const isPlainLlmChat = isPlainLlmSession(selectedWorkflowId, activeWorkflowId);
-  const terminalCliTool = resolveCliToolForTerminal(activeAgentType);
-  const terminalCapable = isTerminalCapableAgentType(activeAgentType);
-  const showWorkspaceViewToggle = isPlainLlmChat && terminalCapable;
+  const sessionDispatched = sessionHasTerminalHistory(clutchOrchestraState);
+  const isTerminalHistoryReadonly = isPlainLlmChat && hasCliAgents
+    && isArchivedTerminalHistoryView(clutchOrchestraState, workspaceViewMode);
+  const hasPersistedTerminalLanes = (clutchOrchestraState.pty_lanes ?? []).some(
+    (lane) => lane.status !== 'queued',
+  );
+  const inputTerminalMention = useMemo(
+    () => (workspaceViewMode === 'terminal' ? parseInputAgentMention(inputValue, mentionableAgents) : null),
+    [workspaceViewMode, inputValue, mentionableAgents],
+  );
+  const inputPreviewAgentType = useMemo(() => {
+    if (!inputTerminalMention) return null;
+    const match = mentionableAgents.find((agent) => agent.id === inputTerminalMention.agentId);
+    const agentType = match?.agentType?.trim();
+    if (!agentType) return null;
+    return resolveCliToolForTerminal(agentType);
+  }, [inputTerminalMention, mentionableAgents]);
+  const showWorkspaceViewToggle = isPlainLlmChat && hasCliAgents && !isTerminalHistoryReadonly;
+  const showTerminalWorkspace = workspaceViewMode === 'terminal' && isPlainLlmChat && hasCliAgents;
+  const showTerminalPane = showTerminalWorkspace && (
+    Boolean(inputPreviewAgentType)
+    || (sessionDispatched && hasPersistedTerminalLanes)
+  );
+  const isTerminalLayout = showTerminalWorkspace;
+
+  const leftChromePad =
+    selectedSidebarWidth + 30 + (sidebarOpen ? 0 : TERMINAL_COLLAPSED_TOGGLE_GUTTER_PX);
+  const rightChromePad =
+    rightSidebarWidth + 30 + (rightPanelOpen ? 0 : TERMINAL_COLLAPSED_TOGGLE_GUTTER_PX);
+
+  const terminalLayoutChromeKey = buildTerminalLayoutChromeKey({
+    sidebarWidth: selectedSidebarWidth,
+    rightPanelWidth: rightSidebarWidth,
+    dockHeight,
+    sidebarOpen,
+    rightPanelOpen,
+  });
+  const terminalPreviewAgentType = sessionDispatched ? null : inputPreviewAgentType;
+
+  useEffect(() => {
+    if (showTerminalPane || sessionDispatched) return;
+    void clutchStore.detachInteractivePty('lane_primary');
+  }, [showTerminalPane, sessionDispatched]);
+
+  useEffect(() => {
+    if (!isTerminalHistoryReadonly || workspaceViewMode === 'chat') return;
+    onWorkspaceViewModeChange('chat');
+    saveWorkspaceViewMode('chat');
+    void clutchStore.detachInteractivePty();
+  }, [isTerminalHistoryReadonly, workspaceViewMode, onWorkspaceViewModeChange]);
 
   useEffect(() => {
     if (!showWorkspaceViewToggle && workspaceViewMode === 'terminal') {
@@ -686,12 +760,35 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
       saveWorkspaceViewMode('chat');
       void clutchStore.detachInteractivePty();
     }
-  }, [showWorkspaceViewToggle, workspaceViewMode, activeAgentType, onWorkspaceViewModeChange]);
+  }, [showWorkspaceViewToggle, workspaceViewMode, onWorkspaceViewModeChange]);
 
   const handleWorkspaceViewChange = useCallback((mode: WorkspaceViewMode) => {
+    if (
+      mode === 'chat'
+      && shouldConfirmLeavingTerminal(
+        clutchOrchestraState,
+        workspaceViewMode,
+        inputValue,
+        mentionableAgents,
+      )
+      && onLeaveTerminalConfirm
+    ) {
+      onLeaveTerminalConfirm(() => {
+        onWorkspaceViewModeChange('chat');
+        saveWorkspaceViewMode('chat');
+      });
+      return;
+    }
     onWorkspaceViewModeChange(mode);
     saveWorkspaceViewMode(mode);
-  }, [onWorkspaceViewModeChange]);
+  }, [
+    clutchOrchestraState,
+    workspaceViewMode,
+    inputValue,
+    mentionableAgents,
+    onLeaveTerminalConfirm,
+    onWorkspaceViewModeChange,
+  ]);
 
   const prevStatusRef = useRef(clutchStatus);
   useEffect(() => {
@@ -757,7 +854,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
     sessionTitle === 'New Chat / 新建会话' ||
     sessionTitle === '新建会话';
 
-  const showEmptyState = isIdle && messages.length === 0 && isDefaultNewSessionTitle;
+  const showEmptyState = isIdle && messages.length === 0 && isDefaultNewSessionTitle && !isTerminalHistoryReadonly;
 
   const workflowReplyStepIndex = useMemo(
     () => buildWorkflowReplyStepIndex(workflowAgentSteps, messages),
@@ -807,8 +904,8 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
     const dock = dockRef.current;
     if (!dock) return;
     const measure = () => {
-      // bottom-12 (48px) + generous gap so last bubble clears the fixed input dock
-      const gapAboveDock = 112 + (showThinking ? 40 : 0);
+      // bottom-8 (32px) + generous gap so last bubble clears the fixed input dock
+      const gapAboveDock = 96 + (showThinking ? 40 : 0);
       setDockHeight(Math.max(dock.offsetHeight + 32 + gapAboveDock, 260));
     };
     measure();
@@ -863,64 +960,77 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
     );
   };
 
-  const isSidebarCollapsed = selectedSidebarWidth <= SIDEBAR_COLLAPSED_WIDTH_PX;
-  const sidebarContentInset = isSidebarCollapsed ? 8 : 20;
-  const chatEdgePaddingClass = isSidebarCollapsed ? 'px-2' : 'px-4';
-  const chatMaxWidthClass = isSidebarCollapsed ? 'max-w-4xl' : 'max-w-3xl';
-
   return (
-  <>
-    {showWorkspaceViewToggle ? (
-      <div
-        className="fixed z-40 flex rounded-xl border border-outline-variant/40 overflow-hidden text-xs font-bold whitespace-nowrap shadow-sm bg-surface-container-low"
-        style={{
-          top: `calc(${CONTENT_TOP_WITH_BANNER} + 12px)`,
-          right: `${rightSidebarWidth + 24}px`,
-        }}
-      >
-        <button
-          type="button"
-          data-testid="workspace-view-chat"
-          onClick={() => handleWorkspaceViewChange('chat')}
-          className={`px-3 py-1.5 text-[11px] transition-colors ${
-            workspaceViewMode === 'chat'
-              ? 'bg-neutral-900 text-white'
-              : 'bg-transparent text-on-surface-variant hover:bg-surface-container-high'
-          }`}
-        >
-          {t('Chat mode')}
-        </button>
-        <button
-          type="button"
-          data-testid="workspace-view-terminal"
-          onClick={() => handleWorkspaceViewChange('terminal')}
-          className={`px-3 py-1.5 text-[11px] transition-colors border-l border-outline-variant/40 ${
-            workspaceViewMode === 'terminal'
-              ? 'bg-neutral-900 text-white'
-              : 'bg-transparent text-on-surface-variant hover:bg-surface-container-high'
-          }`}
-        >
-          {t('Terminal mode')}
-        </button>
-      </div>
-    ) : null}
+  <div className="flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden relative w-full">
     <section
       style={{
-        paddingLeft: `${selectedSidebarWidth + sidebarContentInset}px`,
-        paddingRight: `${rightSidebarWidth + 4}px`,
+        paddingLeft: `${leftChromePad}px`,
+        paddingRight: `${rightChromePad}px`,
+        paddingTop: APP_HEADER_HEIGHT_PX,
         paddingBottom: dockHeight,
-        marginTop: CONTENT_TOP_WITH_BANNER,
       }}
-      className={`flex-1 overflow-y-auto pt-4 pb-10 flex-col items-center ${chatEdgePaddingClass} transition-all duration-300 bg-background flex`}
+      className={`flex-1 min-h-0 flex flex-col box-border transition-all duration-300 bg-background ${
+        isTerminalLayout ? 'overflow-hidden py-3 items-stretch' : 'overflow-y-auto items-center py-10 px-6'
+      } ${isTerminalLayout ? 'px-4' : ''}`}
     >
-      <div className={`relative w-full ${chatMaxWidthClass} mx-auto space-y-5 pt-1 pb-4`}>
-        {isSessionSwitching ? (
-          <div className="sticky top-0 z-30 mx-3 mb-1 overflow-hidden rounded-lg border border-outline-variant/40 bg-surface-bright/90 py-2 pl-4 pr-12 text-[11px] font-medium text-on-surface-variant shadow-sm backdrop-blur">
-            <div className="absolute inset-x-0 top-0 h-[2px] overflow-hidden bg-outline-variant/25">
-              <div className="session-row-loading-bar absolute inset-y-0 w-1/3 rounded-full bg-primary/80" />
-            </div>
-            <div className="truncate pr-3">
-              {loadingSessionTitle ? `${t('Loading session')}: ${loadingSessionTitle}` : t('Loading session')}
+      <div
+        ref={isTerminalLayout ? terminalStageRef : undefined}
+        className={`w-full min-w-0 ${
+          isTerminalLayout
+            ? 'flex-1 min-h-0 flex flex-col max-w-none h-full'
+            : 'max-w-2xl mx-auto space-y-8 py-4'
+        }`}
+      >
+        {isTerminalHistoryReadonly ? (
+          <div
+            className={`flex justify-end shrink-0 ${
+              isTerminalLayout ? 'mt-2 mb-3' : 'mb-6'
+            }`}
+          >
+            <span
+              data-testid="workspace-view-readonly-label"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-outline-variant/40 px-3 py-1.5 text-[11px] font-bold whitespace-nowrap shadow-sm bg-surface-container-low text-on-surface-variant"
+            >
+              {t('Chat mode')}
+              <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-neutral-100 text-on-surface-variant/80">
+                {t('Read-only')}
+              </span>
+            </span>
+          </div>
+        ) : showWorkspaceViewToggle ? (
+          <div
+            className={`flex justify-end shrink-0 ${
+              isTerminalLayout ? 'mt-2 mb-3' : showTerminalWorkspace ? 'mb-3' : 'mb-6'
+            }`}
+          >
+            <div
+              data-testid="workspace-view-toggle"
+              className="flex rounded-xl border border-outline-variant/40 overflow-hidden text-xs font-bold whitespace-nowrap shadow-sm bg-surface-container-low"
+            >
+              <button
+                type="button"
+                data-testid="workspace-view-chat"
+                onClick={() => handleWorkspaceViewChange('chat')}
+                className={`px-3 py-1.5 text-[11px] transition-colors ${
+                  workspaceViewMode === 'chat'
+                    ? 'bg-neutral-900 text-white'
+                    : 'bg-transparent text-on-surface-variant hover:bg-surface-container-high'
+                }`}
+              >
+                {t('Chat mode')}
+              </button>
+              <button
+                type="button"
+                data-testid="workspace-view-terminal"
+                onClick={() => handleWorkspaceViewChange('terminal')}
+                className={`px-3 py-1.5 text-[11px] transition-colors border-l border-outline-variant/40 ${
+                  workspaceViewMode === 'terminal'
+                    ? 'bg-neutral-900 text-white'
+                    : 'bg-transparent text-on-surface-variant hover:bg-surface-container-high'
+                }`}
+              >
+                {t('Terminal mode')}
+              </button>
             </div>
           </div>
         ) : null}
@@ -973,14 +1083,39 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
           </div>
         )}
 
-        {terminalCapable && isPlainLlmChat && workspaceViewMode === 'terminal' ? (
-          <TerminalOrchestraWorkspace
-            visible
-            clutchStatus={clutchStatus}
-            cliTool={terminalCliTool ?? 'claude-cli'}
-            sessionRunId={sessionRunId}
-            barFocused={orchestratorBarFocused}
-          />
+        {isPlainLlmChat && hasCliAgents && isTerminalLayout ? (
+          <div className="flex flex-1 flex-col min-h-0 min-w-0 w-full">
+            {showTerminalPane ? (
+              <TerminalOrchestraWorkspace
+                visible
+                clutchStatus={clutchStatus}
+                sessionRunId={sessionRunId}
+                barFocused={orchestratorBarFocused}
+                configuredAgents={mentionableAgents}
+                sessionDispatched={sessionDispatched}
+                previewAgentType={terminalPreviewAgentType}
+                previewAgentId={sessionDispatched ? null : inputTerminalMention?.agentId ?? null}
+                previewAgentName={sessionDispatched ? null : inputTerminalMention?.name ?? null}
+                layoutChromeKey={terminalLayoutChromeKey}
+                layoutObserveRef={terminalStageRef}
+              />
+            ) : showTerminalWorkspace ? (
+              <TerminalOrchestraEmptyState />
+            ) : null}
+          </div>
+        ) : null}
+
+        {isTerminalHistoryReadonly ? (
+          <div className="w-full max-w-2xl mx-auto space-y-8 py-4">
+            <TerminalDispatchHistoryFeed
+              entries={clutchOrchestraState.dispatch_log ?? []}
+              highlightedEntryId={highlightedDispatchEntryId}
+              userAvatar={userAvatar}
+              userName={userName}
+              mentionableAgents={mentionableAgents}
+              workspacePath={workspacePath}
+            />
+          </div>
         ) : null}
 
         {workspaceViewMode === 'chat' && messages.map((msg) => {
@@ -1021,19 +1156,17 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
               onContextMenu={(e) => handleMessageContextMenu(e, msg.id)}
             >
               <div
-                className={`flex gap-3 max-w-[85%] group hover:bg-surface-container-low/35 px-1.5 py-1 rounded-xl transition-colors ${
+                className={`flex gap-4 max-w-[85%] group hover:bg-surface-container-low/35 p-2 rounded-xl transition-colors ${
                   isUser ? 'flex-row-reverse' : ''
                 }`}
               >
                 {isUser ? (
-                  <div className={`w-10 h-10 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center ${avatarUrl === clutchMarkUrl ? 'bg-black' : 'bg-surface-container'}`}>
+                  <div className={`w-9 h-9 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center ${avatarUrl === clutchMarkUrl ? 'bg-black' : 'bg-surface-container'}`}>
                     {avatarUrl ? (
                       <img
                         className={avatarUrl === clutchMarkUrl ? 'w-full h-full object-cover' : 'w-full h-full object-contain p-1'}
                         src={avatarUrl}
                         alt={msg.agent}
-                        loading="eager"
-                        decoding="async"
                       />
                     ) : (
                       <LegacyIcon name="person" className="text-[18px] text-on-surface-variant" />
@@ -1069,7 +1202,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                   </div>
 
                   {isErrorMsg ? (
-                    <div className="px-3 py-1.5 bg-neutral-50/50 rounded-2xl rounded-tl-none border border-neutral-200/80 shadow-xs">
+                    <div className="p-4 bg-neutral-50/50 rounded-2xl rounded-tl-none border border-neutral-200/80 shadow-xs">
                       <div className="flex items-center gap-1.5 mb-2 text-neutral-800 font-bold text-[11px]">
                         <LegacyIcon name="error" className="text-[16px]" />
                         <span>VALIDATION FAILED</span>
@@ -1077,7 +1210,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                       {renderMarkdown(msg.text)}
                     </div>
                   ) : (
-                    <div className={`px-3 py-1.5 rounded-2xl border border-outline-variant/30 shadow-sm ${
+                    <div className={`p-4 rounded-2xl border border-outline-variant/30 shadow-sm ${
                       isUser 
                         ? 'bg-primary/10 text-on-surface rounded-tr-none text-left' 
                         : 'bg-surface-container-low rounded-tl-none'
@@ -1159,7 +1292,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
 
         {workspaceViewMode === 'chat' && showThinking && (
           <div className="w-full flex justify-start mb-4">
-            <div className="flex gap-3 max-w-[85%] px-1.5 py-1 rounded-xl">
+            <div className="flex gap-4 max-w-[85%] p-2 rounded-xl">
               <AgentChatAvatar
                 src={thinkingAgentLogo || activeAgentAvatar}
                 alt={thinkingAgentName || t('Clutch Agent')}
@@ -1175,7 +1308,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                   )}
                 </div>
 
-                <div className="px-3 py-1.5 bg-surface-container-low rounded-2xl rounded-tl-none border border-outline-variant/30 shadow-sm flex items-center gap-1.5">
+                <div className="p-4 bg-surface-container-low rounded-2xl rounded-tl-none border border-outline-variant/30 shadow-sm flex items-center gap-1.5">
                   <div className="w-1.5 h-1.5 rounded-full bg-on-surface/40 animate-typing-pulse" />
                   <div className="w-1.5 h-1.5 rounded-full bg-on-surface/40 animate-typing-pulse animation-delay-100" />
                   <div className="w-1.5 h-1.5 rounded-full bg-on-surface/40 animate-typing-pulse animation-delay-200" />
@@ -1185,16 +1318,19 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
           </div>
         )}
 
-        <div ref={bottomRef} style={{ scrollMarginBottom: dockHeight }} className="h-2 shrink-0" aria-hidden />
+        {workspaceViewMode === 'chat' ? (
+          <div ref={bottomRef} style={{ scrollMarginBottom: dockHeight }} className="h-2 shrink-0" aria-hidden />
+        ) : null}
       </div>
+    </section>
 
-      <div
+    <div
         ref={dockRef}
         style={{
-          left: `${selectedSidebarWidth + 24}px`,
-          right: `${rightSidebarWidth + 24}px`,
+          left: `${leftChromePad - 6}px`,
+          right: `${rightChromePad - 6}px`,
         }}
-        className="fixed bottom-12 flex justify-center px-6 z-40 transition-all duration-300 select-none"
+        className="fixed bottom-8 flex justify-center px-6 z-40 transition-all duration-300 select-none"
       >
         {isRunning && !awaitingHuman && !isPlainLlmChat && !isRefining ? (
           <div className="w-full max-w-2xl bg-white border border-outline-variant p-3 shadow-xl rounded-xl flex items-center justify-between">
@@ -1290,19 +1426,42 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
               </button>
             </div>
           </div>
-        ) : workspaceViewMode === 'terminal' && terminalCapable && isPlainLlmChat ? (
-          <OrchestratorBar
-            sessionRunId={sessionRunId}
-            drafts={clutchOrchestraState.pending_handoff_drafts ?? []}
-            inputValue={inputValue}
-            setInputValue={setInputValue}
-            permissionMode={permissionMode}
-            onPermissionModeChange={onPermissionModeChange ?? (() => {})}
-            workspaceFiles={workspaceFiles}
-            sessions={sessions}
-            skills={skills}
-            onFocusChange={setOrchestratorBarFocused}
-          />
+        ) : showTerminalWorkspace ? (
+          <div className="w-full flex justify-center">
+            <OrchestratorBar
+              sessionRunId={sessionRunId}
+              drafts={clutchOrchestraState.pending_handoff_drafts ?? []}
+              inputValue={inputValue}
+              setInputValue={setInputValue}
+              permissionMode={permissionMode}
+              onPermissionModeChange={onPermissionModeChange ?? (() => {})}
+              workspaceFiles={workspaceFiles}
+              sessions={sessions}
+              skills={skills}
+              onFocusChange={setOrchestratorBarFocused}
+              mentionableAgents={mentionableAgents}
+              selectedMentionAgentId={selectedMentionAgentId}
+              onMentionAgentChange={onMentionAgentChange}
+            />
+          </div>
+        ) : isTerminalHistoryReadonly ? (
+          <div className="w-full flex justify-center">
+            <OrchestratorBar
+              sessionRunId={sessionRunId}
+              drafts={[]}
+              inputValue=""
+              setInputValue={() => {}}
+              permissionMode={permissionMode}
+              onPermissionModeChange={onPermissionModeChange ?? (() => {})}
+              workspaceFiles={workspaceFiles}
+              sessions={sessions}
+              skills={skills}
+              mentionableAgents={mentionableAgents}
+              selectedMentionAgentId={selectedMentionAgentId}
+              onMentionAgentChange={onMentionAgentChange}
+              readOnly
+            />
+          </div>
         ) : workspaceViewMode === 'chat' ? (
           <div className="w-full flex justify-center">
             <ChatInputBar
@@ -1333,11 +1492,14 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
               onDismissHybridNotice={() => clutchStore.clearShellSessionNotice()}
               isFlowRefining={isRefining}
               workflowAgents={workflowAgentSteps}
+              mentionableAgents={mentionableAgents}
+              selectedMentionAgentId={selectedMentionAgentId}
+              onMentionAgentChange={onMentionAgentChange}
             />
           </div>
         ) : null}
       </div>
-      {messageContextMenu && (
+    {messageContextMenu ? (
         <div
           className="fixed bg-surface-bright border border-outline-variant rounded-lg shadow-lg py-1 z-[100] min-w-[120px]"
           style={{ top: messageContextMenu.y, left: messageContextMenu.x }}
@@ -1355,8 +1517,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
             {t('Delete message')}
           </button>
         </div>
-      )}
-    </section>
-  </>
+      ) : null}
+  </div>
   );
 };

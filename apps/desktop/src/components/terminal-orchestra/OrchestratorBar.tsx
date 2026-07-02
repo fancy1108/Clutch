@@ -1,16 +1,18 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import type { DispatchPreviewPayload, PendingHandoffDraft } from '../../types';
+import type { PendingHandoffDraft } from '../../types';
 import type { SessionRecord } from '../../services/runApi';
 import type { ScannedSkill } from '../../services/skillsApi';
 import type { FileTreeNode } from '../../services/workspaceApi';
 import { PERMISSION_MODES, type PermissionMode } from '../../services/permissionApi';
 import { clutchStore } from '../../services/clutchState';
-import { resolveBrandLogoSrc } from '../../services/brandLogos';
-import { DISPATCH_MENTION_OPTIONS } from '../../services/terminalOrchestraUtils';
+import {
+  normalizeOrchestratorDispatchText,
+  parseInputAgentMention,
+  resolveDispatchTargetAgent,
+  collectHandoffLaneTranscripts,
+} from '../../services/terminalOrchestraUtils';
 import { useLanguage } from '../LanguageContext';
 import { LegacyIcon } from '../ui/LegacyIcon';
-import { DispatchConfirmCard } from './DispatchConfirmCard';
-
 interface OrchestratorBarProps {
   sessionRunId: string;
   drafts: PendingHandoffDraft[];
@@ -22,6 +24,10 @@ interface OrchestratorBarProps {
   sessions?: SessionRecord[];
   skills?: ScannedSkill[];
   onFocusChange?: (focused: boolean) => void;
+  mentionableAgents?: Array<{ id: string; name: string; logo?: string; dispatchTarget: string; agentType?: string }>;
+  selectedMentionAgentId?: string | null;
+  onMentionAgentChange?: (agentId: string | null) => void;
+  readOnly?: boolean;
 }
 
 function flattenFileTree(nodes: FileTreeNode[], prefix = ''): string[] {
@@ -45,11 +51,13 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
   sessions = [],
   skills = [],
   onFocusChange,
+  mentionableAgents = [],
+  selectedMentionAgentId = null,
+  onMentionAgentChange,
+  readOnly = false,
 }) => {
   const { t } = useLanguage();
   const [error, setError] = useState('');
-  const [preview, setPreview] = useState<DispatchPreviewPayload | null>(null);
-  const [activeChips, setActiveChips] = useState<string[]>([]);
   const [activeDraftId, setActiveDraftId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; draftText?: string } | null>(null);
   const [agentPickerOpen, setAgentPickerOpen] = useState(false);
@@ -72,8 +80,8 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
   const filteredFiles = allFilePaths.filter(
     (p) => !fileFilter || p.toLowerCase().includes(fileFilter.toLowerCase()),
   );
-  const filteredAgents = DISPATCH_MENTION_OPTIONS.filter((option) =>
-    option.mention.toLowerCase().includes(agentFilter.toLowerCase()),
+  const filteredAgents = mentionableAgents.filter((agent) =>
+    agent.name.toLowerCase().includes(agentFilter.toLowerCase()),
   );
   const filteredSkills = skills.filter(
     (s) =>
@@ -136,6 +144,12 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
     return () => window.removeEventListener('mousedown', handler);
   }, [closeAllPopovers]);
 
+  useEffect(() => {
+    if (!onMentionAgentChange) return;
+    const hit = parseInputAgentMention(inputValue, mentionableAgents);
+    onMentionAgentChange(hit?.agentId ?? null);
+  }, [inputValue, mentionableAgents, onMentionAgentChange]);
+
   const handleInputChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       const val = e.target.value;
@@ -157,7 +171,7 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
     [setInputValue],
   );
 
-  const insertDispatchAgent = useCallback(
+  const insertMentionAgent = useCallback(
     (mention: string) => {
       const lastAt = inputValue.lastIndexOf('@');
       const before = lastAt >= 0 ? inputValue.slice(0, lastAt) : inputValue;
@@ -221,45 +235,55 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
     const trimmed = inputValue.trim();
     if (!trimmed) return;
     setError('');
-    const result = await clutchStore.previewDispatch(trimmed);
+    const mention = parseInputAgentMention(trimmed, mentionableAgents);
+    const dispatchText = normalizeOrchestratorDispatchText(trimmed, mentionableAgents);
+    const result = await clutchStore.previewDispatch(dispatchText);
     if (!result.ok) {
       setError(result.error);
-      setPreview(null);
       return;
     }
-    setPreview(result.preview);
-    setActiveChips(
-      (result.preview.chips ?? []).filter((c) => c.on).map((c) => c.source_name),
+    const targetAgent = resolveDispatchTargetAgent(
+      trimmed,
+      result.preview.target,
+      mentionableAgents,
+      selectedMentionAgentId,
     );
-  }, [inputValue]);
-
-  const handleConfirm = useCallback(async () => {
-    if (!preview) return;
-    setError('');
-    setPreview(null);
-    await clutchStore.confirmDispatch(inputValue.trim(), activeChips);
+    const chips = (result.preview.chips ?? []).filter((c) => c.on).map((c) => c.source_name);
+    const snapshot = clutchStore.getSnapshot();
+    const isHandoff = result.preview.dispatch_mode === 'handoff';
+    const laneTranscripts = isHandoff
+      ? collectHandoffLaneTranscripts(
+          chips.length > 0 ? chips : result.preview.sources,
+          snapshot.pty_lanes ?? [],
+          (laneId) => clutchStore.getLaneTranscript(laneId),
+          result.preview.target,
+        )
+      : [];
+    await clutchStore.confirmDispatch(dispatchText, chips, {
+      id: targetAgent?.agentId,
+      name: targetAgent?.name,
+    }, laneTranscripts);
+    if (targetAgent) {
+      onMentionAgentChange?.(targetAgent.agentId);
+    }
     setInputValue('');
     setActiveDraftId(null);
-  }, [preview, inputValue, activeChips, setInputValue]);
-
-  const toggleChip = (sourceName: string) => {
-    setActiveChips((prev) =>
-      prev.includes(sourceName) ? prev.filter((s) => s !== sourceName) : [...prev, sourceName],
-    );
-  };
+  }, [inputValue, mentionableAgents, onMentionAgentChange, selectedMentionAgentId, setInputValue]);
 
   const selectDraft = (draft: PendingHandoffDraft) => {
     setActiveDraftId(draft.id);
     setInputValue(draft.text);
   };
 
-  const canSend = inputValue.trim().length > 0;
+  const canSend = !readOnly && inputValue.trim().length > 0;
 
   return (
     <div
       ref={containerRef}
       data-testid="orchestrator-bar"
-      className="w-full max-w-2xl bg-white border border-outline-variant shadow-xl rounded-xl transition-all focus-within:ring-2 focus-within:ring-primary/10 relative"
+      className={`relative w-full max-w-2xl bg-white border border-outline-variant shadow-xl rounded-xl transition-all ${
+        readOnly ? 'opacity-70' : 'focus-within:ring-2 focus-within:ring-primary/10'
+      }`}
     >
       <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleLocalFileChange} />
 
@@ -297,7 +321,7 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
         </div>
       ) : null}
 
-      {drafts.length > 0 ? (
+      {drafts.length > 0 && !readOnly ? (
         <div className="flex flex-wrap gap-1.5 px-3 pt-2 pb-1">
           {drafts.map((draft) => (
             <button
@@ -317,16 +341,7 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
       ) : null}
 
       <div className="relative flex items-end gap-1.5 px-2 py-1.5">
-        {preview ? (
-          <DispatchConfirmCard
-            preview={preview}
-            activeChips={activeChips}
-            onToggleChip={toggleChip}
-            onCancel={() => setPreview(null)}
-            onConfirm={() => void handleConfirm()}
-          />
-        ) : null}
-
+        {!readOnly ? (
         <div className="relative flex-shrink-0">
           <button
             type="button"
@@ -391,6 +406,7 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
             </div>
           ) : null}
         </div>
+        ) : null}
 
         <textarea
           ref={textareaRef}
@@ -398,9 +414,12 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
           rows={1}
           value={inputValue}
           onChange={handleInputChange}
-          onFocus={() => onFocusChange?.(true)}
+          onFocus={() => !readOnly && onFocusChange?.(true)}
           onBlur={() => onFocusChange?.(false)}
+          disabled={readOnly}
+          readOnly={readOnly}
           onKeyDown={(e) => {
+            if (readOnly) return;
             if (e.key === 'Escape') {
               closeAllPopovers();
               return;
@@ -414,11 +433,14 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
               void handleSend();
             }
           }}
-          placeholder={t('Orchestrator input placeholder')}
-          className="w-full border-none focus:ring-0 text-[13px] text-on-surface bg-transparent py-1.5 resize-none min-h-[36px] max-h-[140px] placeholder:text-on-surface-variant/60 outline-none leading-relaxed"
+          placeholder={readOnly ? t('Historical session is read-only') : t('Orchestrator input placeholder')}
+          className={`w-full border-none focus:ring-0 text-[13px] text-on-surface bg-transparent py-1.5 resize-none min-h-[36px] max-h-[140px] placeholder:text-on-surface-variant/60 outline-none leading-relaxed ${
+            readOnly ? 'cursor-not-allowed' : ''
+          }`}
         />
 
         <div className="flex items-center gap-1 flex-shrink-0">
+          {!readOnly ? (
           <div className="relative">
             <button
               type="button"
@@ -484,6 +506,7 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
               </div>
             ) : null}
           </div>
+          ) : null}
 
           <button
             type="button"
@@ -507,31 +530,33 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
           <div className="p-2 border-b border-outline-variant/30">
             <div className="flex items-center gap-2 px-2">
               <LegacyIcon name="alternate_email" className="text-[15px] text-on-surface-variant" />
-              <span className="text-[11px] font-semibold text-on-surface-variant">{t('Dispatch agents')}</span>
+              <span className="text-[11px] font-semibold text-on-surface-variant">{t('AI Agents')}</span>
             </div>
           </div>
           <div className="max-h-52 overflow-y-auto">
             {filteredAgents.length === 0 ? (
               <p className="px-4 py-3 text-[11px] text-on-surface-variant/60 italic">{t('No matching agents')}</p>
             ) : (
-              filteredAgents.map((option) => {
-                const logo = resolveBrandLogoSrc({ agentType: option.agentType });
-                return (
-                  <button
-                    key={option.agentType}
-                    type="button"
-                    onClick={() => insertDispatchAgent(option.mention)}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-surface-container-low transition-colors"
-                  >
-                    {logo ? (
-                      <img src={logo} alt="" className="w-5 h-5 rounded object-contain shrink-0" />
-                    ) : (
-                      <span className="w-5 h-5 rounded bg-surface-container-low shrink-0" />
-                    )}
-                    <span className="text-[12px] font-semibold text-on-surface">{option.mention}</span>
-                  </button>
-                );
-              })
+              filteredAgents.map((agent) => (
+                <button
+                  key={agent.id}
+                  type="button"
+                  onClick={() => insertMentionAgent(agent.name)}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-surface-container-low transition-colors"
+                >
+                  {agent.logo ? (
+                    <img src={agent.logo} alt="" className="w-5 h-5 rounded object-contain shrink-0" />
+                  ) : (
+                    <span className="w-5 h-5 rounded bg-surface-container-low shrink-0" />
+                  )}
+                  <span className="flex-1 min-w-0 flex items-center justify-between gap-2">
+                    <span className="text-[12px] font-semibold text-on-surface truncate">@{agent.name}</span>
+                    {agent.id === selectedMentionAgentId ? (
+                      <LegacyIcon name="check" className="text-[14px] text-primary shrink-0" />
+                    ) : null}
+                  </span>
+                </button>
+              ))
             )}
           </div>
         </div>

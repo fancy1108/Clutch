@@ -12,6 +12,7 @@ import claudeLogo from '../assets/tool-logos/claude.svg';
 import ollamaLogo from '../assets/tool-logos/ollama.svg';
 import opencodeLogo from '../assets/tool-logos/opencode.svg';
 import codebuddyLogo from '../assets/tool-logos/codebuddy.svg';
+import rivetLogo from '../assets/tool-logos/rivet.svg';
 import vscodeLogo from '../assets/tool-logos/vscode.svg';
 
 /** Only tools with an explicit asset in assets/tool-logos/. */
@@ -23,7 +24,8 @@ export type BrandLogoKey =
   | 'aider-cli'
   | 'code-cli'
   | 'opencode-cli'
-  | 'codebuddy-cli';
+  | 'codebuddy-cli'
+  | 'rivet-cli';
 
 const BRAND_LOGO_SRC: Record<BrandLogoKey, string> = {
   'claude-cli': claudeLogo,
@@ -34,6 +36,7 @@ const BRAND_LOGO_SRC: Record<BrandLogoKey, string> = {
   'code-cli': vscodeLogo,
   'opencode-cli': opencodeLogo,
   'codebuddy-cli': codebuddyLogo,
+  'rivet-cli': rivetLogo,
 };
 
 const ALIAS_TO_KEY: Record<string, BrandLogoKey> = {
@@ -63,6 +66,11 @@ const ALIAS_TO_KEY: Record<string, BrandLogoKey> = {
   codebuddy: 'codebuddy-cli',
   'codebuddy cli': 'codebuddy-cli',
   cbc: 'codebuddy-cli',
+  'rivet-cli': 'rivet-cli',
+  rivet: 'rivet-cli',
+  'rivet cli': 'rivet-cli',
+  tianshu: 'rivet-cli',
+  't9-cli': 'rivet-cli',
 };
 
 export function normalizeBrandLogoKey(
@@ -108,6 +116,15 @@ export function resolveBrandLogoSrc(params: {
 
 export function resolveAgentBrandLogo(agent: Pick<Agent, 'agentType' | 'aiEngine'> | null | undefined): string | undefined {
   return resolveBrandLogoSrc({ agent });
+}
+
+/** Agent avatar for pickers and chat: custom avatar URL, then known CLI brand logo. */
+export function resolveAgentPickerLogo(
+  agent: Pick<Agent, 'avatar' | 'agentType' | 'aiEngine'> | null | undefined,
+): string | undefined {
+  const custom = agent?.avatar?.trim();
+  if (custom) return custom;
+  return resolveAgentBrandLogo(agent);
 }
 
 export function resolveToolBrandLogo(toolId: string | null | undefined): string | undefined {

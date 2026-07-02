@@ -20,21 +20,14 @@ import {
   isBuiltinAgent,
   mergeAgentsWithBuiltin,
 } from './services/builtinAgent';
-import {
-  fetchPreferences,
-  saveFontSizePreference,
-  saveThemePreference,
-  saveUserNamePreference,
-  type ThemePresetId,
-} from './services/themeApi';
-import { DEFAULT_FONT_SIZE, type AppFontSize } from './services/fontSizePreference';
+import { fetchPreferences, saveThemePreference, saveUserNamePreference, type ThemePresetId } from './services/themeApi';
 import { LanguageProvider, useLanguage } from './components/LanguageContext';
 import { OnboardingWizard } from './components/onboarding/OnboardingWizard';
-import { CONTENT_TOP_WITH_BANNER, SIDEBAR_COLLAPSED_WIDTH_PX, SIDEBAR_EXPANDED_WIDTH_PX } from './constants/layout';
+import { CONTENT_TOP_WITH_BANNER } from './constants/layout';
 import { DevOnboardingToolsEmptyPreview } from './components/onboarding/DevOnboardingToolsEmptyPreview';
 import { fetchOnboardingState } from './services/onboardingApi';
 import { clutchStore, createSessionRunId, submitChatMessage, useClutchState, setUserChatAvatar, clearWorkflowForSession } from './services/clutchState';
-import { fetchSessions, createSession, startWorkflowRun, fetchRunState, deleteSession, type SessionRecord } from './services/runApi';
+import { fetchSessions, startWorkflowRun, fetchRunState, deleteSession, type SessionRecord } from './services/runApi';
 import { fetchShellSnapshots } from './services/shellSnapshotApi';
 import { listWorkflowItems, loadWorkflowById } from './services/workflowApi';
 import {
@@ -46,14 +39,17 @@ import {
   resolveWorkflowMentionAgentId,
   type WorkflowAgentStep,
 } from './services/workflowAgentSteps';
-import { isClutchAgentType, agentTypeFromAgent, agentTypeLabel } from './services/agentTypes';
+import { isClutchAgentType, agentTypeFromAgent, agentTypeLabel, isCliAgentType } from './services/agentTypes';
 import {
   filterAgentsForTerminalWorkspace,
+  filterCliAgents,
   isTerminalCapableAgentType,
   loadWorkspaceViewMode,
+  resolveDefaultTerminalAgent,
   saveWorkspaceViewMode,
   type WorkspaceViewMode,
 } from './services/workspaceViewMode';
+import { CLI_DISPLAY, formatInputMention, saveLastCliAgentId, sessionHasTerminalHistory, sessionHasPersistableContent, isArchivedTerminalHistoryView, normalizeTerminalSessionForResume, shouldConfirmLeavingTerminal, shouldConfirmLeavingTerminalForNewChat } from './services/terminalOrchestraUtils';
 import { resolveAgentBrandLogo, resolveBrandLogoSrc } from './services/brandLogos';
 import {
   activateWorkspace,
@@ -86,19 +82,6 @@ import { LegacyIcon } from './components/ui/LegacyIcon';
 import { isTauri } from '@tauri-apps/api/core';
 import { getVersion } from '@tauri-apps/api/app';
 
-function shouldLogTiming(): boolean {
-  return import.meta.env.DEV || localStorage.getItem('clutch_debug_timing') === '1';
-}
-
-function logTiming(label: string, details: Record<string, unknown>): void {
-  if (!shouldLogTiming()) return;
-  console.info(`[Clutch timing] ${label}`, details);
-}
-
-function elapsedMs(startedAt: number): number {
-  return Math.round(performance.now() - startedAt);
-}
-
 type InFlightTurnContext = {
   agentId: string | null;
   agentName: string;
@@ -121,6 +104,7 @@ function MainLayout() {
   }, []);
 
   const [sessionRunId, setSessionRunId] = useState(() => createSessionRunId());
+  const [highlightedDispatchEntryId, setHighlightedDispatchEntryId] = useState<string | null>(null);
 
   const [promptModal, setPromptModal] = useState<{
     isOpen: boolean;
@@ -147,16 +131,12 @@ function MainLayout() {
   );
 
   useEffect(() => {
-    void clutchStore.connect(sessionRunId)
-      .then(() => {
-        const snapshot = clutchStore.getSnapshot();
-        if (snapshot.status === 'running') {
-          clutchStore.scheduleBackgroundHydrate(sessionRunId, hydrateRunState);
-        }
-      })
-      .catch((error) => {
-        console.warn('[Clutch] session websocket connect failed:', error);
-      });
+    void clutchStore.connect(sessionRunId).then(() => {
+      const snapshot = clutchStore.getSnapshot();
+      if (snapshot.status === 'running') {
+        clutchStore.scheduleBackgroundHydrate(sessionRunId, hydrateRunState);
+      }
+    });
   }, [sessionRunId, hydrateRunState]);
 
   const clutchStatus = clutchState.status;
@@ -173,7 +153,6 @@ function MainLayout() {
   const [workflowAgentSteps, setWorkflowAgentSteps] = useState<WorkflowAgentStep[]>([]);
   const [isMultiAgent, setIsMultiAgent] = useState<boolean>(true);
   const [themeId, setThemeIdState] = useState<ThemePresetId>('pristine-light');
-  const [fontSize, setFontSizeState] = useState<AppFontSize>(DEFAULT_FONT_SIZE);
   const [userAvatar, setUserAvatarState] = useState<string>('');
   const [userName, setUserNameState] = useState<string>('User');
 
@@ -181,7 +160,6 @@ function MainLayout() {
     void fetchPreferences()
       .then((prefs) => {
         setThemeIdState(prefs.active_theme_id);
-        setFontSizeState(prefs.font_size ?? DEFAULT_FONT_SIZE);
         if (prefs.user_avatar) {
           setUserAvatarState(prefs.user_avatar);
           setUserChatAvatar(prefs.user_avatar);
@@ -209,11 +187,6 @@ function MainLayout() {
     if (!preset) return;
     setThemeIdState(preset.id as ThemePresetId);
     void saveThemePreference(preset.id as ThemePresetId).catch(() => {});
-  };
-
-  const setFontSize = (size: AppFontSize) => {
-    setFontSizeState(size);
-    void saveFontSizePreference(size).catch(() => {});
   };
 
   const setUserName = (name: string) => {
@@ -254,7 +227,6 @@ function MainLayout() {
   const [workspaceFiles, setWorkspaceFiles] = useState<FileTreeNode[]>([]);
   const [workspacePickError, setWorkspacePickError] = useState<string | null>(null);
   const [highRiskConfirmed, setHighRiskConfirmed] = useState(false);
-  const [loadingSessionId, setLoadingSessionId] = useState<string | null>(null);
 
   // Reset high-risk confirmation when switching sessions
   useEffect(() => {
@@ -281,6 +253,7 @@ function MainLayout() {
   );
   const [workspaceViewMode, setWorkspaceViewMode] = useState<WorkspaceViewMode>(() => loadWorkspaceViewMode());
   const [configuredAgents, setConfiguredAgents] = useState<Agent[]>([]);
+  const [inputValue, setInputValue] = useState<string>('');
 
   useEffect(() => {
     const handleOutsideClick = (e: MouseEvent) => {
@@ -424,19 +397,104 @@ function MainLayout() {
   const handleActivateAgent = (agent: Agent) => {
     setSelectedAgentId(agent.id);
     localStorage.setItem('clutch_active_agent_id', agent.id);
+    if (isCliAgentType(agentTypeFromAgent(agent))) {
+      saveLastCliAgentId(agent.id);
+    }
     if (isMultiAgent) clearWorkflowSelection();
+    setInputValue(formatInputMention(getAgentDisplayName(agent)));
   };
+
+  const cliAgents = useMemo(
+    () => filterCliAgents(configuredAgents),
+    [configuredAgents],
+  );
+  const hasCliAgents = cliAgents.length > 0;
+
+  const activateTerminalSession = useCallback(() => {
+    const agent = resolveDefaultTerminalAgent(configuredAgents);
+    if (!agent) return;
+    setSelectedAgentId(agent.id);
+    localStorage.setItem('clutch_active_agent_id', agent.id);
+    saveLastCliAgentId(agent.id);
+    setInputValue(formatInputMention(getAgentDisplayName(agent)));
+  }, [configuredAgents]);
+
+  const leaveTerminalSession = useCallback(async () => {
+    await clutchStore.closeAllPtySessions();
+    await clutchStore.detachInteractivePty();
+  }, []);
+
+  const promptLeaveTerminal = useCallback((onProceed: () => void) => {
+    setPromptModal({
+      isOpen: true,
+      title: t('Leave terminal mode?'),
+      message: t(
+        'Leaving terminal mode will end the current session and keep only handoff and dispatch records. Continue?',
+      ),
+      hasInput: false,
+      onConfirm: () => {
+        setPromptModal(null);
+        void (async () => {
+          await leaveTerminalSession();
+          onProceed();
+        })();
+      },
+    });
+  }, [leaveTerminalSession, t]);
+
+  const handleWorkspaceViewModeChange = useCallback((mode: WorkspaceViewMode) => {
+    setWorkspaceViewMode(mode);
+    saveWorkspaceViewMode(mode);
+    if (mode === 'terminal') {
+      activateTerminalSession();
+    }
+  }, [activateTerminalSession]);
+
+  const isPlainLlmFooterEarly = !selectedWorkflowId && !clutchState.workflow_id;
+
+  const prevSessionRunIdForTerminalRef = useRef(sessionRunId);
+
+  useEffect(() => {
+    if (workspaceViewMode !== 'terminal' || !isPlainLlmFooterEarly || configuredAgents.length === 0) return;
+    if (prevSessionRunIdForTerminalRef.current === sessionRunId) return;
+    prevSessionRunIdForTerminalRef.current = sessionRunId;
+    activateTerminalSession();
+  }, [sessionRunId, workspaceViewMode, isPlainLlmFooterEarly, configuredAgents, activateTerminalSession]);
+
+  const syncSelectedAgentFromMention = useCallback((agentId: string | null) => {
+    if (!agentId) return;
+    const agent = configuredAgents.find((item) => item.id === agentId);
+    if (!agent) return;
+    if (workspaceViewMode === 'terminal' && !isCliAgentType(agentTypeFromAgent(agent))) return;
+    if (agent.id === selectedAgentId) return;
+    setSelectedAgentId(agent.id);
+    localStorage.setItem('clutch_active_agent_id', agent.id);
+    if (isCliAgentType(agentTypeFromAgent(agent))) {
+      saveLastCliAgentId(agent.id);
+    }
+  }, [configuredAgents, selectedAgentId, workspaceViewMode]);
 
   const selectedAgent = configuredAgents.find((agent) => agent.id === selectedAgentId);
   const selectedAgentName = getAgentDisplayName(selectedAgent);
   const isPlainLlmFooter = !selectedWorkflowId && !clutchState.workflow_id;
-  const footerSelectableAgents = useMemo(
-    () => (
-      isPlainLlmFooter && workspaceViewMode === 'terminal'
-        ? filterAgentsForTerminalWorkspace(configuredAgents, 'terminal', agentTypeFromAgent)
-        : configuredAgents
-    ),
-    [configuredAgents, isPlainLlmFooter, workspaceViewMode],
+  const hideFooterSessionControls = isPlainLlmFooter && workspaceViewMode === 'terminal';
+  const footerSelectableAgents = useMemo((): Agent[] => (
+    isPlainLlmFooter && workspaceViewMode === 'terminal'
+      ? filterAgentsForTerminalWorkspace(configuredAgents, 'terminal', agentTypeFromAgent) as Agent[]
+      : configuredAgents
+  ), [configuredAgents, isPlainLlmFooter, workspaceViewMode]);
+  const mentionableAgents = useMemo(
+    () => footerSelectableAgents.map((agent) => {
+      const agentType = agentTypeFromAgent(agent);
+      return {
+        id: agent.id,
+        name: getAgentDisplayName(agent),
+        logo: resolveAgentBrandLogo(agent),
+        dispatchTarget: CLI_DISPLAY[agentType] ?? getAgentDisplayName(agent),
+        agentType,
+      };
+    }),
+    [footerSelectableAgents],
   );
   const activeWorkflowLabel = clutchState.workflow_id || currentFlowName || selectedWorkflowId || '—';
   const hasWorkflowSelection = isMultiAgent && activeWorkflowLabel !== '—';
@@ -581,7 +639,7 @@ function MainLayout() {
   }, [refreshWorkspaceFiles]);
 
   // Sidebar selector width for calculations
-  const selectedSidebarWidth = sidebarOpen ? SIDEBAR_EXPANDED_WIDTH_PX : SIDEBAR_COLLAPSED_WIDTH_PX;
+  const selectedSidebarWidth = sidebarOpen ? 280 : 0;
   const rightSidebarWidth = rightPanelOpen ? 300 : 0;
 
   const effectiveWorkflowId = selectedWorkflowId || clutchState.workflow_id || '';
@@ -660,65 +718,14 @@ function MainLayout() {
   };
 
   const handleSelectWorkspace = async (workspaceId: string) => {
-    const startedAt = performance.now();
-    let activateMs = 0;
-    let treeMs: number | null = null;
-    let gitMs: number | null = null;
-    let treeStatus = 'skipped';
-    let gitStatus = 'skipped';
-
     try {
-      const activateStartedAt = performance.now();
       const info = await activateWorkspace(workspaceId);
-      activateMs = elapsedMs(activateStartedAt);
       setActiveWorkspaceId(workspaceId);
       setWorkspace(info);
-
-      const [treeResult, gitResult] = await Promise.allSettled([
-        (async () => {
-          const treeStartedAt = performance.now();
-          const nodes = await fetchWorkspaceTree();
-          return { nodes, ms: elapsedMs(treeStartedAt) };
-        })(),
-        (async () => {
-          const gitStartedAt = performance.now();
-          const gitInfo = await fetchWorkspaceGit();
-          return { info: gitInfo, ms: elapsedMs(gitStartedAt) };
-        })(),
-      ]);
-
-      if (treeResult.status === 'fulfilled') {
-        treeMs = treeResult.value.ms;
-        treeStatus = 'ok';
-        setWorkspaceFiles(treeResult.value.nodes);
-      } else {
-        treeStatus = 'error';
-        setWorkspaceFiles([]);
-      }
-
-      if (gitResult.status === 'fulfilled') {
-        gitMs = gitResult.value.ms;
-        gitStatus = 'ok';
-        setWorkspaceGit({
-          branch: gitResult.value.info.branch,
-          branches: gitResult.value.info.branches,
-        });
-      } else {
-        gitStatus = 'error';
-        setWorkspaceGit({ branch: null, branches: [] });
-      }
+      await refreshWorkspaceFiles();
+      await refreshWorkspaceGit();
     } catch (error) {
       console.error('[Clutch] workspace switch failed:', error);
-    } finally {
-      logTiming('workspace switch', {
-        workspaceId,
-        totalMs: elapsedMs(startedAt),
-        activateMs,
-        treeMs,
-        treeStatus,
-        gitMs,
-        gitStatus,
-      });
     }
   };
 
@@ -860,9 +867,6 @@ function MainLayout() {
     setRightTab('overview');
   };
 
-  // Chat Input Box State
-  const [inputValue, setInputValue] = useState<string>('');
-
   // Permission mode (persisted on backend)
   const [permissionMode, setPermissionMode] = useState<PermissionMode>('ask');
 
@@ -892,6 +896,7 @@ function MainLayout() {
     setCurrentFlowName(workflowName);
     setSelectedAgentId(null);
     localStorage.removeItem('clutch_active_agent_id');
+    setInputValue(formatInputMention(workflowName));
   }, []);
 
   const handleFlowSelect = (flow: string) => {
@@ -961,120 +966,134 @@ function MainLayout() {
     setAgentMenuOpen(false);
   };
 
+  const discardEmptySessionIfNeeded = async (runId: string) => {
+    const snapshot = clutchStore.getSnapshot();
+    if (snapshot.run_id !== runId || sessionHasPersistableContent(snapshot)) return;
+    try {
+      await deleteSession(runId);
+      setSessions((prev) => prev.filter((session) => session.run_id !== runId));
+    } catch {
+      // Session was never persisted — safe to ignore.
+    }
+  };
+
   const handleNewChat = async () => {
     if (!workspace) {
       await handlePickWorkspace();
       return;
     }
-    scheduleBackgroundHydrateForRun(sessionRunId);
-    const runId = createSessionRunId();
-    setSessionRunId(runId);
-    setCurrentFlowName('');
-    setSelectedWorkflowId(null);
-    selectDefaultAgent();
-    setView('chat');
-    setRightTab('overview');
-    void (async () => {
-      try {
-        const config = await fetchModelsConfig();
-        const defaultTextModelId = resolveDefaultTextModelId(config);
-        if (defaultTextModelId && defaultTextModelId !== config.active_model_id) {
-          await saveModelsConfig({ active_model_id: defaultTextModelId });
-        }
-        await syncModelsConfig();
-      } catch (error) {
-        console.warn('[Clutch] reset default text model on new chat failed:', error);
+    const startNewChat = async () => {
+      await discardEmptySessionIfNeeded(sessionRunId);
+      scheduleBackgroundHydrateForRun(sessionRunId);
+      const runId = createSessionRunId();
+      setSessionRunId(runId);
+      setHighlightedDispatchEntryId(null);
+      setCurrentFlowName('');
+      setSelectedWorkflowId(null);
+      if (workspaceViewMode !== 'terminal') {
+        selectDefaultAgent();
       }
-    })();
-    void clutchStore.connect(runId).catch((error) => {
-      console.warn('[Clutch] new chat websocket connect failed:', error);
-    });
-  };
-
-  const handleSelectSession = async (session: SessionRecord) => {
-    const isSwitchingSession = session.run_id !== sessionRunId;
-    const startedAt = performance.now();
-    const shouldSwitchWorkspace = Boolean(session.workspace_id && session.workspace_id !== activeWorkspaceId);
-    const hasCachedSession = clutchStore.hasSnapshot(session.run_id);
-    let workspaceSwitchMs: number | null = null;
-
-    if (!isSwitchingSession) {
       setView('chat');
-      logTiming('session switch', {
-        runId: session.run_id,
-        title: session.title || session.workflow_id || '',
-        totalMs: elapsedMs(startedAt),
-        workspaceSwitchMs,
-        hasCachedSession,
-        note: 'already-active-session',
+      setRightTab('overview');
+      void (async () => {
+        try {
+          const config = await fetchModelsConfig();
+          const defaultTextModelId = resolveDefaultTextModelId(config);
+          if (defaultTextModelId && defaultTextModelId !== config.active_model_id) {
+            await saveModelsConfig({ active_model_id: defaultTextModelId });
+          }
+          await syncModelsConfig();
+        } catch (error) {
+          console.warn('[Clutch] reset default text model on new chat failed:', error);
+        }
+      })();
+      void clutchStore.connect(runId);
+    };
+
+    if (shouldConfirmLeavingTerminalForNewChat(clutchState, workspaceViewMode, inputValue, mentionableAgents)) {
+      promptLeaveTerminal(() => {
+        setWorkspaceViewMode('chat');
+        saveWorkspaceViewMode('chat');
+        void startNewChat();
       });
       return;
     }
+    await startNewChat();
+  };
 
-    if (!hasCachedSession) {
-      setLoadingSessionId(session.run_id);
+  const applySelectedSession = async (session: SessionRecord) => {
+    if (session.workspace_id && session.workspace_id !== activeWorkspaceId) {
+      await handleSelectWorkspace(session.workspace_id);
     }
+    if (session.run_id !== sessionRunId) {
+      await discardEmptySessionIfNeeded(sessionRunId);
+      scheduleBackgroundHydrateForRun(sessionRunId);
+    }
+    let hydratedState: ClutchState | null = null;
     try {
-      if (isSwitchingSession) {
-        scheduleBackgroundHydrateForRun(sessionRunId);
-      }
+      const { state } = await fetchRunState(session.run_id);
+      hydratedState = normalizeTerminalSessionForResume(state);
+      clutchStore.setPendingHydrate(hydratedState);
+    } catch (error) {
+      console.warn('[Clutch] session state hydrate failed:', error);
+    }
+    setSessionRunId(session.run_id);
 
-      if (shouldSwitchWorkspace && session.workspace_id) {
-        const workspaceStartedAt = performance.now();
-        await handleSelectWorkspace(session.workspace_id);
-        workspaceSwitchMs = elapsedMs(workspaceStartedAt);
-      }
+    const storedMode = localStorage.getItem(`clutch_session_mode_${session.run_id}`);
+    const storedFlowId = localStorage.getItem(`clutch_session_flow_${session.run_id}`);
+    const storedAgentId = localStorage.getItem(`clutch_session_agent_${session.run_id}`);
 
-      setSessionRunId(session.run_id);
+    setIsMultiAgent(true);
 
-      const storedFlowId = localStorage.getItem(`clutch_session_flow_${session.run_id}`);
-      const storedAgentId = localStorage.getItem(`clutch_session_agent_${session.run_id}`);
+    if (storedFlowId !== null) {
+      setSelectedWorkflowId(storedFlowId || null);
+      const matched = footerWorkflows.find((w) => w.id === storedFlowId);
+      setCurrentFlowName(matched ? matched.name : (storedFlowId || ''));
+    } else {
+      const matched = footerWorkflows.find((w) => w.id === session.workflow_id);
+      setCurrentFlowName(matched ? matched.name : (session.workflow_id || ''));
+      setSelectedWorkflowId(session.workflow_id || null);
+    }
 
-      setIsMultiAgent(true);
-
-      if (storedFlowId !== null) {
-        setSelectedWorkflowId(storedFlowId || null);
-        const matched = footerWorkflows.find((w) => w.id === storedFlowId);
-        setCurrentFlowName(matched ? matched.name : (storedFlowId || ''));
+    if (storedAgentId !== null) {
+      setSelectedAgentId(storedAgentId || null);
+    } else {
+      const stateAgentId = hydratedState?.cli_session_agent_id || hydratedState?.claude_session_agent_id;
+      if (stateAgentId) {
+        setSelectedAgentId(stateAgentId);
+      } else if (session.workflow_id) {
+        setSelectedAgentId(null);
       } else {
-        const matched = footerWorkflows.find((w) => w.id === session.workflow_id);
-        setCurrentFlowName(matched ? matched.name : (session.workflow_id || ''));
-        setSelectedWorkflowId(session.workflow_id || null);
-      }
-
-      if (storedAgentId !== null) {
-        setSelectedAgentId(storedAgentId || null);
-      } else {
-        if (session.workflow_id) {
-          setSelectedAgentId(null);
-        } else {
-          const storedGlobalAgentId = localStorage.getItem('clutch_active_agent_id');
-          setSelectedAgentId(storedGlobalAgentId || BUILTIN_AGENT_ID);
-        }
-      }
-
-      setView('chat');
-      void clutchStore.connect(session.run_id)
-        .catch((error) => {
-          console.warn('[Clutch] session websocket connect failed:', error);
-        })
-        .finally(() => {
-          setLoadingSessionId((current) => (current === session.run_id ? null : current));
-        });
-    } finally {
-      logTiming('session switch', {
-        runId: session.run_id,
-        title: session.title || session.workflow_id || '',
-        totalMs: elapsedMs(startedAt),
-        workspaceSwitchMs,
-        hasCachedSession,
-        connectMode: 'background',
-        switchedWorkspace: shouldSwitchWorkspace,
-      });
-      if (hasCachedSession) {
-        setLoadingSessionId(null);
+        const storedGlobalAgentId = localStorage.getItem('clutch_active_agent_id');
+        setSelectedAgentId(storedGlobalAgentId || BUILTIN_AGENT_ID);
       }
     }
+
+    setView('chat');
+    setHighlightedDispatchEntryId(null);
+
+    if (sessionHasTerminalHistory(hydratedState ?? {})) {
+      setWorkspaceViewMode('chat');
+      saveWorkspaceViewMode('chat');
+    }
+  };
+
+  const handleSelectSession = async (session: SessionRecord) => {
+    if (session.run_id === sessionRunId) return;
+
+    const proceed = async () => {
+      await applySelectedSession(session);
+    };
+
+    if (shouldConfirmLeavingTerminal(clutchState, workspaceViewMode, inputValue, mentionableAgents)) {
+      promptLeaveTerminal(() => {
+        setWorkspaceViewMode('chat');
+        saveWorkspaceViewMode('chat');
+        void proceed();
+      });
+      return;
+    }
+    await proceed();
   };
 
   const handleNewChatInWorkspace = async (workspaceId: string) => {
@@ -1144,9 +1163,7 @@ function MainLayout() {
               setSelectedWorkflowId(null);
               setView('chat');
               setRightTab('overview');
-              void clutchStore.connect(tempRunId).catch((error) => {
-                console.warn('[Clutch] temp session websocket connect failed:', error);
-              });
+              void clutchStore.connect(tempRunId);
             }
           }
         } catch (error) {
@@ -1202,15 +1219,6 @@ function MainLayout() {
         activeAgent: workflowAgentSteps[0]?.agentName || undefined,
       });
       try {
-        try {
-          await createSession({
-            run_id: sessionRunId,
-            title: instruction.slice(0, 80) || t('New session'),
-            workflow_id: workflowId,
-          });
-        } catch {
-          // session may already exist for this run_id
-        }
         if (!clutchStore.connected) {
           await clutchStore.connect(sessionRunId);
         }
@@ -1266,6 +1274,11 @@ function MainLayout() {
     await refreshSessions();
   };
 
+  const handleClearSessionView = () => {
+    setRightTab('overview');
+    setCurrentFlowName('');
+  };
+
   useEffect(() => {
     if (clutchState.workflow_id) {
       const matched = footerWorkflows.find((w) => w.id === clutchState.workflow_id);
@@ -1282,7 +1295,6 @@ function MainLayout() {
   return (
     <div 
       style={themeVars as React.CSSProperties}
-      data-font-size={fontSize}
       className="relative h-screen max-h-screen bg-background text-on-surface overflow-hidden flex flex-col font-sans select-none"
     >
       
@@ -1292,8 +1304,12 @@ function MainLayout() {
         workspaceName={workspace?.name}
         onPickWorkspace={() => { void handlePickWorkspace(); }}
         folders={folders}
-        onToggleSidebar={() => setSidebarOpen((open) => !open)}
+        isMultiAgent={isMultiAgent}
+        setIsMultiAgent={handleSetIsMultiAgent}
+        onGoBack={handleClearSessionView}
+        setView={setView}
         sidebarOpen={sidebarOpen}
+        selectedModel={selectedModel}
       />
 
       {/* 2. Side Panel components layout */}
@@ -1309,11 +1325,11 @@ function MainLayout() {
           setActiveFlow={handleFlowSelect}
           onNewChat={() => { void handleNewChat(); }}
           isOpenState={sidebarOpen}
+          setIsOpenState={setSidebarOpen}
           isMultiAgent={isMultiAgent}
           sessions={sessions}
           shellSnapshotRunIds={shellSnapshotRunIds}
           activeSessionId={sessionRunId}
-          loadingSessionId={loadingSessionId}
           clutchStatus={clutchStatus}
           workspaces={workspaces}
           repositoryGroups={repositoryGroups}
@@ -1416,6 +1432,7 @@ function MainLayout() {
             </div>
           ) : (
             <>
+              <div className="flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden">
               <ChatFeed
                 messages={chatMessages}
                 hybridExecutions={clutchState.hybrid_executions}
@@ -1424,18 +1441,12 @@ function MainLayout() {
                 onSendMessage={handleSendMessage}
                 sessionTitle={sessionTitle}
                 sessionRunId={sessionRunId}
-                isSessionSwitching={Boolean(loadingSessionId)}
-                loadingSessionTitle={
-                  loadingSessionId
-                    ? sessions.find((session) => session.run_id === loadingSessionId)?.title
-                      || sessions.find((session) => session.run_id === loadingSessionId)?.workflow_id
-                      || loadingSessionId
-                    : ''
-                }
                 clutchStatus={clutchStatus}
                 currentFlowName={currentFlowName || clutchState.workflow_id}
                 selectedSidebarWidth={selectedSidebarWidth}
                 rightSidebarWidth={rightSidebarWidth}
+                sidebarOpen={sidebarOpen}
+                rightPanelOpen={rightPanelOpen}
                 onStopRun={handleStopRun}
                 isMultiAgent={isMultiAgent}
                 onApprove={handleApprove}
@@ -1461,7 +1472,10 @@ function MainLayout() {
                 engineHint={chatRuntimeEngineHint}
                 activeAgentType={selectedAgent ? agentTypeFromAgent(selectedAgent) : ''}
                 workspaceViewMode={workspaceViewMode}
-                onWorkspaceViewModeChange={setWorkspaceViewMode}
+                onWorkspaceViewModeChange={handleWorkspaceViewModeChange}
+                onLeaveTerminalConfirm={promptLeaveTerminal}
+                highlightedDispatchEntryId={highlightedDispatchEntryId}
+                hasCliAgents={hasCliAgents}
                 workspaceFiles={workspaceFiles}
                 sessions={sessions}
                 skills={chatSkills}
@@ -1476,7 +1490,12 @@ function MainLayout() {
                 userName={userName}
                 terminalLogs={terminalLogs}
                 onClearTerminal={handleClearTerminal}
+                mentionableAgents={mentionableAgents}
+                selectedMentionAgentId={selectedAgentId}
+                onMentionAgentChange={syncSelectedAgentFromMention}
+                workspacePath={workspace?.workspace_path}
               />
+              </div>
               <RightPanel
                 activeTab={rightTab}
                 setActiveTab={setRightTab}
@@ -1502,7 +1521,15 @@ function MainLayout() {
                 workspaceAuthorized={Boolean(workspace)}
                 onClearTerminal={handleClearTerminal}
                 dispatchLog={clutchState.dispatch_log ?? []}
-                showTerminalOrchestraOverview={isPlainLlmFooter && workspaceViewMode === 'terminal'}
+                showTerminalOrchestraOverview={
+                  isPlainLlmFooter
+                  && (workspaceViewMode === 'terminal' || sessionHasTerminalHistory(clutchState))
+                }
+                terminalHistoryReadOnly={
+                  isPlainLlmFooter
+                  && isArchivedTerminalHistoryView(clutchState, workspaceViewMode)
+                }
+                onSelectDispatchEntry={(id) => setHighlightedDispatchEntryId(id)}
               />
             </>
           )
@@ -1533,8 +1560,6 @@ function MainLayout() {
           setUserAvatar={setUserAvatarState}
           userName={userName}
           setUserName={setUserName}
-          fontSize={fontSize}
-          setFontSize={setFontSize}
         />
 
       </div>
@@ -1581,6 +1606,8 @@ function MainLayout() {
             ) : null}
           </div>
 
+          {!hideFooterSessionControls ? (
+            <>
           {hasWorkflowSelection ? (
             <span
               data-testid="footer-model-disabled"
@@ -1805,6 +1832,8 @@ function MainLayout() {
               ) : null}
             </div>
           )}
+            </>
+          ) : null}
         </div>
 
         <div className="font-semibold text-on-surface-variant/70 italic mr-2 select-text">
@@ -1912,9 +1941,47 @@ export default function App() {
 
   return (
     <LanguageProvider>
-      <AppGate />
+      <AppErrorBoundary>
+        <AppGate />
+      </AppErrorBoundary>
     </LanguageProvider>
   );
+}
+
+class AppErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { error: Error | null }
+> {
+  state = { error: null as Error | null };
+
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+
+  componentDidCatch(error: Error) {
+    console.error('[Clutch] UI crashed:', error);
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="h-screen flex flex-col items-center justify-center gap-3 bg-background text-on-surface px-6 text-center font-sans">
+          <p className="text-sm font-semibold">Clutch UI encountered an error</p>
+          <p className="text-xs text-on-surface-variant max-w-md break-words">
+            {this.state.error.message}
+          </p>
+          <button
+            type="button"
+            className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-outline-variant/40 hover:bg-surface-container-high"
+            onClick={() => window.location.reload()}
+          >
+            Reload
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
 }
 
 function AppGate() {

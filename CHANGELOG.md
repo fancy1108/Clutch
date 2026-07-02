@@ -15,6 +15,8 @@ Target: **v1.0.4** (not tagged yet).
 ### Added
 
 - **Terminal Orchestra (D34):** Terminal mode multi-lane PTY, OrchestratorBar dispatch (`@Agent` natural language + graph syntax), handoff files, Overview dispatch log, lane handoff overlay, float-rail collapse, and completion draft queue.
+- **Terminal mode CLI coverage:** Chat/Terminal toggle and embedded `INTERACTIVE_PTY` lanes now support all connected CLI agent types (`*-cli`), not only Claude Code and OpenCode; Orchestrator `@` mentions and PTY binary resolution align with routed CLI tools (Codex, Aider, CodeBuddy, Rivet, Ollama, Antigravity, custom CLIs).
+- **Orchestrator → PTY inject:** After sending `@Agent` + task in Terminal mode, Clutch echoes the task into the target lane xterm and submits Enter so the CLI visibly starts processing.
 - **Agent-scoped capability tabs:** Settings → **Models**, **MCP Hub**, and **Skills Registry** now use top tabs (**Clutch Agent** · **Claude Code** · **OpenCode**). Clutch tab keeps full edit/bind behavior; CLI tabs scan native config read-only and support CC Switch provider switch when `cc-switch` CLI is on PATH (Claude Code models).
 - **Agent Manager clarity:** Create/edit **Module 3 (Skills)** and **Module 4 (MCP)** branch by agent type — Clutch agents bind Clutch Registry/Hub; Claude Code & OpenCode show native scan + Settings deep links; other CLI types show **coming soon** (no misleading Clutch bind UI). Saving non-Clutch agents clears `skills` / `mcpServerIds`.
 - **CLI config API:** `GET /api/cli-config/{agent_type}/models|skills|mcp` and `POST .../activate-provider` for `claude-cli` and `opencode-cli`.

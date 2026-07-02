@@ -30,14 +30,20 @@ describe('workspaceViewMode', () => {
     saveWorkspaceViewMode('chat');
   });
 
-  it('allows terminal only for claude-cli and opencode-cli', async () => {
+  it('allows terminal for all CLI agent types', async () => {
     vi.resetModules();
     const { isTerminalCapableAgentType, resolveCliToolForTerminal } = await import('./workspaceViewMode');
     expect(isTerminalCapableAgentType('claude-cli')).toBe(true);
     expect(isTerminalCapableAgentType('opencode-cli')).toBe(true);
+    expect(isTerminalCapableAgentType('codex-cli')).toBe(true);
+    expect(isTerminalCapableAgentType('aider-cli')).toBe(true);
+    expect(isTerminalCapableAgentType('codebuddy-cli')).toBe(true);
+    expect(isTerminalCapableAgentType('rivet-cli')).toBe(true);
+    expect(isTerminalCapableAgentType('ollama-cli')).toBe(true);
+    expect(isTerminalCapableAgentType('antigravity-cli')).toBe(true);
+    expect(isTerminalCapableAgentType('custom-tool-cli')).toBe(true);
     expect(isTerminalCapableAgentType('clutch')).toBe(false);
-    expect(isTerminalCapableAgentType('codex-cli')).toBe(false);
-    expect(resolveCliToolForTerminal('claude-cli')).toBe('claude-cli');
+    expect(resolveCliToolForTerminal('codex-cli')).toBe('codex-cli');
     expect(resolveCliToolForTerminal('clutch')).toBeNull();
   });
 
@@ -46,22 +52,23 @@ describe('workspaceViewMode', () => {
     const { resolveCliToolFromEngineHint } = await import('./workspaceViewMode');
     expect(resolveCliToolFromEngineHint('OpenCode CLI')).toBe('opencode-cli');
     expect(resolveCliToolFromEngineHint('Claude CLI')).toBe('claude-cli');
+    expect(resolveCliToolFromEngineHint('Codex CLI')).toBe('codex-cli');
     expect(resolveCliToolFromEngineHint('MiMo-V2.5 Free')).toBeNull();
   });
 
-  it('filters footer agents to terminal-capable only in terminal mode', async () => {
+  it('filters footer agents to CLI types only in terminal mode', async () => {
     vi.resetModules();
     const { filterAgentsForTerminalWorkspace } = await import('./workspaceViewMode');
     const agents = [
       { id: '1', agentType: 'claude-cli' },
-      { id: '2', agentType: 'opencode-cli' },
+      { id: '2', agentType: 'codex-cli' },
       { id: '3', agentType: 'clutch' },
     ];
     const resolve = (agent: { agentType?: string }) => agent.agentType ?? '';
     expect(filterAgentsForTerminalWorkspace(agents, 'chat', resolve)).toHaveLength(3);
     expect(filterAgentsForTerminalWorkspace(agents, 'terminal', resolve)).toEqual([
       { id: '1', agentType: 'claude-cli' },
-      { id: '2', agentType: 'opencode-cli' },
+      { id: '2', agentType: 'codex-cli' },
     ]);
   });
 });

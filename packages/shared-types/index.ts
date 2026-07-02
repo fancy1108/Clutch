@@ -76,6 +76,11 @@ export interface PtyLane {
   focused: boolean;
   collapsed: boolean;
   run_id: string;
+  /** User-configured agent instance (e.g. Opencode vs Opencode2 sharing opencode-cli). */
+  configured_agent_id?: string;
+  configured_agent_name?: string;
+  /** CLI conversation session id (Clutch-assigned; used for --resume in native terminal). */
+  cli_session_id?: string;
 }
 
 export interface DispatchLogEntry {
@@ -87,7 +92,19 @@ export interface DispatchLogEntry {
   handoff_file: string;
   handoff_path: string;
   input_mode?: 'natural' | 'graph';
+  dispatch_mode?: 'switch' | 'handoff';
   file_refs?: string[];
+  /** Snapshot of lane CLI session ids involved in this dispatch. */
+  lane_sessions?: DispatchLaneSession[];
+}
+
+export interface DispatchLaneSession {
+  lane_id: string;
+  label: string;
+  agent_type: string;
+  cli_session_id: string;
+  /** Workspace directory where the PTY session ran (required for native --resume). */
+  workspace_path?: string;
 }
 
 export interface DispatchEdge {
@@ -96,6 +113,12 @@ export interface DispatchEdge {
   handoff_file: string;
   source_lane_ids: string[];
   target_lane_id: string;
+}
+
+export interface PendingPtyInject {
+  lane_id: string;
+  prompt: string;
+  handoff_path?: string;
 }
 
 export interface PendingHandoffDraft {
@@ -114,6 +137,7 @@ export interface DispatchPreviewPayload {
   handoff_file: string;
   file_refs: string[];
   input_mode: 'natural' | 'graph';
+  dispatch_mode?: 'switch' | 'handoff';
   chips: Array<{
     id: string;
     label: string;
@@ -233,6 +257,7 @@ export interface ClutchState {
   dispatch_log?: DispatchLogEntry[];
   dispatch_edges?: DispatchEdge[];
   pending_handoff_drafts?: PendingHandoffDraft[];
+  pending_pty_inject?: PendingPtyInject | null;
   focused_lane_id?: string | null;
   /** @deprecated use cli_session_id — still read from older persisted runs */
   claude_session_id?: string;

@@ -6,9 +6,12 @@ import re
 from dataclasses import dataclass, field
 from typing import Literal
 
-KNOWN_AGENTS = ("Claude Code", "OpenCode")
+from src.terminal_cli_catalog import KNOWN_DISPATCH_AGENTS
+
+KNOWN_AGENTS = KNOWN_DISPATCH_AGENTS
 WORKSPACE_SOURCE = "工作区"
 InputMode = Literal["natural", "graph"]
+DispatchMode = Literal["switch", "handoff"]
 
 
 @dataclass
@@ -29,6 +32,7 @@ class DispatchPreview:
     chips: list[DispatchChip]
     file_refs: list[str] = field(default_factory=list)
     input_mode: InputMode = "natural"
+    dispatch_mode: DispatchMode = "handoff"
 
 
 def _normalize_agent(value: str) -> str:
@@ -103,40 +107,35 @@ def parse_dispatch_mentions(
     task = ""
     input_mode: InputMode = "natural"
 
-    from_match = re.search(
-        r"\bfrom\s+((?:@[^\s@:，,]+(?:\s+|，|,)?)+)",
-        trimmed,
-        flags=re.IGNORECASE,
-    )
+    from_match = re.search(r"\bfrom\s+", trimmed, flags=re.IGNORECASE)
     if from_match:
         input_mode = "graph"
-        from_clause = from_match.group(1)
+        before_from = trimmed[: from_match.start()]
         sources = []
-        cursor = 0
+        cursor = from_match.end()
         sorted_agents = sorted(KNOWN_AGENTS, key=len, reverse=True)
-        while cursor < len(from_clause):
-            if from_clause[cursor] != "@":
+        while cursor < len(trimmed):
+            while cursor < len(trimmed) and trimmed[cursor] in " \t":
                 cursor += 1
-                continue
-            rest = from_clause[cursor + 1 :]
+            if cursor >= len(trimmed) or trimmed[cursor] != "@":
+                break
+            rest = trimmed[cursor + 1 :]
             matched: str | None = None
             for agent in sorted_agents:
                 if rest.lower().startswith(agent.lower()):
                     nxt = rest[len(agent) :] if len(agent) < len(rest) else ""
-                    if nxt and not re.match(r"[\s，,]", nxt[0]):
+                    if nxt and not re.match(r"[\s，,：:、]", nxt[0]):
                         continue
                     matched = agent
                     break
             if not matched:
-                word = re.match(r"^([^\s@:，,]+)", rest)
+                word = re.match(r"^([^\s@:，,：]+)", rest)
                 matched = word.group(1) if word else None
             if not matched:
-                cursor += 1
-                continue
+                break
             sources.append(_normalize_agent(matched))
             cursor += 1 + len(matched)
-        before_from = trimmed[: from_match.start()]
-        after_from = trimmed[from_match.end() :].lstrip(" :：")
+        after_from = trimmed[cursor:].lstrip(" \t:：")
         target_before_tokens = extract_at_tokens(before_from)
         agent_before = [v for kind, v in target_before_tokens if kind == "agent"]
         if agent_before:
@@ -199,4 +198,5 @@ def parse_dispatch_mentions(
         chips=chips,
         file_refs=file_refs,
         input_mode=input_mode,
+        dispatch_mode="handoff",
     )
