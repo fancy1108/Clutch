@@ -1,4 +1,4 @@
-"""LLM Provider Router — D4 default DeepSeek V4 Pro, switchable per provider keys (M1-08)."""
+"""LLM Provider Router — D4 default Agnes 2.0 Flash, switchable per provider keys (M1-08)."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ ProviderId = Literal[
 ]
 ModelKind = Literal["chat", "image", "video"]
 
-DEFAULT_MODEL_ID = "deepseek-v4pro"
+DEFAULT_MODEL_ID = "agnes-2.0-flash"
 ENV_KEY_PREFIX = "CLUTCH_"
 
 
@@ -28,7 +28,7 @@ class ModelSpec:
 
 
 BUILTIN_MODELS: dict[str, ModelSpec] = {
-    DEFAULT_MODEL_ID: ModelSpec(
+    "deepseek-v4pro": ModelSpec(
         id="deepseek-v4pro",
         name="DeepSeek V4 Pro",
         provider_id="deepseek",

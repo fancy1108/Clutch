@@ -17,19 +17,17 @@ Clutch is a **desktop app** (Tauri + React) for developers and technical operato
 |---|---|
 | **Stack** | Tauri 2 · React 19 · FastAPI + LangGraph · local-first (`localhost:8123`) |
 | **License** | See [LICENSE](LICENSE) |
-| **Latest release** | [v1.0.3](https://github.com/fancy1108/Clutch/releases) · **Next:** [v1.1.0](CHANGELOG.md#110---2026-07-03) |
+| **Latest release** | [v1.1.1](https://github.com/fancy1108/Clutch/releases/tag/v1.1.1) · [Changelog](CHANGELOG.md#111---2026-07-04) |
 
-### What's new (v1.1.0 · in development)
+### What's new in v1.1.1
 
-- **Terminal Orchestra (D34)** — Chat ↔ Terminal toggle; multi-lane embedded CLI; OrchestratorBar `@` dispatch, handoff files, dispatch log, and CLI session resume commands.
-- **Windows desktop polish** — Sidebar collapse, font-size preference, faster session switching with cached snapshots ([#28](https://github.com/fancy1108/Clutch/pull/28)).
-- **CodeBuddy CLI** — Tencent CodeBuddy / WorkBuddy integration; connect in Settings → Tools and use as an Agent type with headless runs and session resume.
-- **OpenCode Zen text models** — built-in Settings → Models provider; Zen API Key unlocks five free chat models, with catalog refresh and save-time connectivity checks.
-- **Agnes Video V2.0** — generate video from chat with an inline player and download; Chinese prompts auto-translated to English for the API.
-- **Agent-scoped Settings** — Models / MCP / Skills tabs per agent type (Clutch · Claude Code · OpenCode).
-- **Product website** — [fancy1108.github.io/Clutch](https://fancy1108.github.io/Clutch/): bilingual overview, install commands, and contact.
+- **Windows interactive PTY ([#30](https://github.com/fancy1108/Clutch/pull/30))** — Terminal Orchestra interactive CLI lanes on Windows via WinPTY. Thanks [@996wuxian](https://github.com/996wuxian).
+- **Platform chrome split** — macOS and Windows workspace UI in `platform/chrome/*.{macos,windows}.tsx`; shared nav icons in `navConfig.ts`. See [`docs/PLATFORM_MAINTENANCE.md`](docs/PLATFORM_MAINTENANCE.md).
+- **General Settings font size ([#30](https://github.com/fancy1108/Clutch/pull/30))** — Restored preference UI, `data-font-size` persistence, and custom `SettingsSelect` dropdown.
+- **Cross-platform `tauri:dev`** — `node scripts/run-tauri-dev.mjs` for macOS and Windows dev ([#30](https://github.com/fancy1108/Clutch/pull/30)).
+- **Chat workspace polish** — Unified compact chat layout and 30px right supervision panel gutter on both platforms.
 
-Older releases: [`CHANGELOG.md`](CHANGELOG.md) · [`docs/releases/`](docs/releases/).
+Older releases (v1.1.0 Terminal Orchestra, CodeBuddy, OpenCode Zen, …): [`CHANGELOG.md`](CHANGELOG.md) · [`docs/releases/`](docs/releases/).
 
 ---
 
@@ -56,7 +54,7 @@ brew install --cask clutch
 irm https://raw.githubusercontent.com/fancy1108/Clutch/main/scripts/install.ps1 | iex
 ```
 
-Pin a version: `CLUTCH_VERSION=v1.1.0` before running either script (or `v1.0.3` for the current stable release).
+Pin a version: `CLUTCH_VERSION=v1.1.1` before running either script (or `v1.1.0` / `v1.0.3` for older releases).
 
 Install channels (maintainers): [`docs/RELEASE_MAINTAINER.md`](docs/RELEASE_MAINTAINER.md)
 
@@ -129,6 +127,7 @@ Deep dive: [`docs/PRODUCT_INTRO.md`](docs/PRODUCT_INTRO.md) · Architecture: [`d
 | macOS in-app updates | [`docs/UPDATES.md`](docs/UPDATES.md) |
 | Build from source | [`docs/BUILD_FROM_SOURCE.md`](docs/BUILD_FROM_SOURCE.md) |
 | Contribute | [`CONTRIBUTING.md`](CONTRIBUTING.md) (PRs to **`dev`**) |
+| macOS / Windows UI boundaries | [`docs/PLATFORM_MAINTENANCE.md`](docs/PLATFORM_MAINTENANCE.md) |
 | Report a security issue | [`SECURITY.md`](SECURITY.md) |
 
 Full index: [`docs/README.md`](docs/README.md) · **Maintainers:** [`docs/RELEASE_MAINTAINER.md`](docs/RELEASE_MAINTAINER.md)

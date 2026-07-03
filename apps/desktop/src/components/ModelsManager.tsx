@@ -122,7 +122,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
   const [savingAddModel, setSavingAddModel] = useState(false);
   const [savingEditModel, setSavingEditModel] = useState(false);
   const [deletingModelId, setDeletingModelId] = useState<string | null>(null);
-  const [providerId, setProviderId] = useState<string>('deepseek');
+  const [providerId, setProviderId] = useState<string>(() => defaultProviderForModelKind('chat'));
   const [apiKey, setApiKey] = useState('');
   const [showApiKey, setShowApiKey] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -250,7 +250,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
   }, [addMenuOpen]);
 
   const resetAddModelForm = (kind?: ModelKind) => {
-    setAddModelProviderId(kind ? defaultProviderForModelKind(kind) : 'deepseek');
+    setAddModelProviderId(kind ? defaultProviderForModelKind(kind) : defaultProviderForModelKind('chat'));
     setAddModelApiKey('');
     setAddModelCustomBaseUrl('');
     setAddModelCustomApiModel('');
@@ -366,7 +366,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
   };
 
   const openEditKeyModal = (provider?: string) => {
-    const nextProviderId = provider ?? 'deepseek';
+    const nextProviderId = provider ?? defaultProviderForModelKind('chat');
     setActiveModal({ type: 'edit-key', providerId: nextProviderId });
     setProviderId(nextProviderId);
     setApiKey('');

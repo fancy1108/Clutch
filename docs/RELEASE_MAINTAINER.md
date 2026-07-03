@@ -7,7 +7,7 @@
 
 ## 一句话
 
-**你对 AI 说「帮我发 v1.0.3」** → AI 改版本/CHANGELOG/校验 → **merge `dev` → `main`** → 在 **`main` 上**打 tag；CI 打 DMG；然后同步 Homebrew tap（可自动）。
+**你对 AI 说「帮我发 v1.1.0」** → AI 改版本/CHANGELOG/校验 → **merge `dev` → `main`** → 在 **`main` 上**打 tag；CI 打 DMG；然后同步 Homebrew tap（可自动）。
 
 你只需：**确认版本号**、**同意 merge / tag**。
 
@@ -60,7 +60,7 @@ CI 在 `release.yml` 中调用 [`scripts/render-release-notes.sh`](../scripts/re
 示例（复制到对话）：
 
 ```text
-帮我发 v1.0.3：更新 CHANGELOG、版本号、跑 verify，我确认后再打 tag 和 push。
+帮我发 v1.1.0：更新 CHANGELOG、版本号、跑 verify，我确认后再打 tag 和 push。
 发完后同步 homebrew-clutch tap。
 ```
 
@@ -93,7 +93,7 @@ brew install --cask clutch
 DMG 出现在 GitHub Release 后：
 
 ```bash
-CLUTCH_VERSION=v1.0.3 ./scripts/sync-homebrew-tap.sh
+CLUTCH_VERSION=v1.1.0 ./scripts/sync-homebrew-tap.sh
 ```
 
 要求：本机 `gh auth login`，对 `fancy1108/homebrew-clutch` 有 push 权限。

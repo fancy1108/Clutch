@@ -604,7 +604,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
   return (
     <div
       ref={containerRef}
-      className={`relative w-full max-w-2xl bg-white border shadow-xl rounded-xl transition-all ${
+      className={`relative w-full bg-white border shadow-xl rounded-xl transition-all ${
         isDragging
           ? 'border-primary/60 ring-2 ring-primary/20'
           : 'border-outline-variant focus-within:ring-2 focus-within:ring-primary/10'

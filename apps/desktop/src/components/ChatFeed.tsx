@@ -28,6 +28,8 @@ import {
 } from '../services/workflowAgentSteps';
 import { OrchestratorBar } from './terminal-orchestra/OrchestratorBar';
 import { TerminalOrchestraWorkspace } from './terminal-orchestra/TerminalOrchestraWorkspace';
+import { chatChromeForHost } from '../platform/chrome/chatChrome';
+import { useHostOs } from '../platform/hostOs';
 import { TerminalOrchestraEmptyState } from './terminal-orchestra/TerminalOrchestraEmptyState';
 import { TerminalDispatchHistoryFeed } from './terminal-orchestra/TerminalDispatchHistoryFeed';
 import {
@@ -680,6 +682,8 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   isHistorySessionView = false,
 }) => {
   const { t } = useLanguage();
+  const hostOs = useHostOs();
+  const chatChrome = chatChromeForHost(hostOs, sidebarOpen, rightPanelOpen);
   const { state: clutchOrchestraState } = useClutchState();
   const [orchestratorBarFocused, setOrchestratorBarFocused] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -750,9 +754,9 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   const terminalDockHeight = terminalBarHeight * 2 + APP_INPUT_DOCK_BOTTOM_PX;
 
   const leftChromePad =
-    selectedSidebarWidth + 30 + (sidebarOpen ? 0 : TERMINAL_COLLAPSED_TOGGLE_GUTTER_PX);
+    selectedSidebarWidth + chatChrome.sidebarContentInset + (sidebarOpen ? 0 : TERMINAL_COLLAPSED_TOGGLE_GUTTER_PX);
   const rightChromePad =
-    rightSidebarWidth + 30 + (rightPanelOpen ? 0 : TERMINAL_COLLAPSED_TOGGLE_GUTTER_PX);
+    rightSidebarWidth + chatChrome.rightContentInset + (rightPanelOpen ? 0 : TERMINAL_COLLAPSED_TOGGLE_GUTTER_PX);
 
   const terminalLayoutChromeKey = buildTerminalLayoutChromeKey({
     sidebarWidth: selectedSidebarWidth,
@@ -1044,14 +1048,14 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
         paddingBottom: isTerminalLayout ? terminalInputReservePx : chatScrollBottomPad,
       }}
       className={`flex-1 min-h-0 flex flex-col box-border transition-all duration-300 bg-background ${
-        isTerminalLayout ? 'overflow-hidden pb-1 items-stretch px-4' : 'overflow-y-auto items-center px-6'
+        isTerminalLayout ? 'overflow-hidden pb-1 items-stretch px-4' : `overflow-y-auto items-center ${chatChrome.chatEdgePaddingClass}`
       }`}
     >
       <div
         className={`w-full min-w-0 ${
           isTerminalLayout
             ? 'flex-1 min-h-0 flex flex-col max-w-none h-full'
-            : 'max-w-2xl mx-auto space-y-8 py-4'
+            : `${chatChrome.chatMaxWidthClass} mx-auto ${chatChrome.messageListSpacingClass} py-4`
         }`}
       >
         {showWorkspaceReadonlyChrome ? (
@@ -1186,7 +1190,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
         ) : null}
 
         {isTerminalDispatchHistoryReadonly ? (
-          <div className="w-full max-w-2xl mx-auto space-y-8 py-4">
+          <div className={`w-full ${chatChrome.chatMaxWidthClass} mx-auto ${chatChrome.messageListSpacingClass} py-4`}>
             <TerminalDispatchHistoryFeed
               entries={clutchOrchestraState.dispatch_log ?? []}
               highlightedEntryId={highlightedDispatchEntryId}
@@ -1236,12 +1240,12 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
               onContextMenu={(e) => handleMessageContextMenu(e, msg.id)}
             >
               <div
-                className={`flex gap-4 max-w-[85%] group hover:bg-surface-container-low/35 p-2 rounded-xl transition-colors ${
+                className={`${chatChrome.messageRowClass} ${
                   isUser ? 'flex-row-reverse' : ''
                 }`}
               >
                 {isUser ? (
-                  <div className={`w-9 h-9 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center ${avatarUrl === clutchMarkUrl ? 'bg-black' : 'bg-surface-container'}`}>
+                  <div className={`${chatChrome.messageAvatarClass} rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center ${avatarUrl === clutchMarkUrl ? 'bg-black' : 'bg-surface-container'}`}>
                     {avatarUrl ? (
                       <img
                         className={avatarUrl === clutchMarkUrl ? 'w-full h-full object-cover' : 'w-full h-full object-contain p-1'}
@@ -1282,7 +1286,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                   </div>
 
                   {isErrorMsg ? (
-                    <div className="p-4 bg-neutral-50/50 rounded-2xl rounded-tl-none border border-neutral-200/80 shadow-xs">
+                    <div className={`${chatChrome.messageBubblePaddingClass} bg-neutral-50/50 rounded-2xl rounded-tl-none border border-neutral-200/80 shadow-xs`}>
                       <div className="flex items-center gap-1.5 mb-2 text-neutral-800 font-bold text-[11px]">
                         <LegacyIcon name="error" className="text-[16px]" />
                         <span>VALIDATION FAILED</span>
@@ -1290,7 +1294,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                       {renderMarkdown(msg.text)}
                     </div>
                   ) : (
-                    <div className={`p-4 rounded-2xl border border-outline-variant/30 shadow-sm ${
+                    <div className={`${chatChrome.messageBubblePaddingClass} rounded-2xl border border-outline-variant/30 shadow-sm ${
                       isUser 
                         ? 'bg-primary/10 text-on-surface rounded-tr-none text-left' 
                         : 'bg-surface-container-low rounded-tl-none'
@@ -1372,7 +1376,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
 
         {workspaceViewMode === 'chat' && showThinking && (
           <div ref={thinkingRef} className="w-full flex justify-start mb-4">
-            <div className="flex gap-4 max-w-[85%] p-2 rounded-xl">
+            <div className={chatChrome.thinkingRowClass}>
               <AgentChatAvatar
                 src={thinkingAgentLogo || activeAgentAvatar}
                 alt={thinkingAgentName || t('Clutch Agent')}
@@ -1388,7 +1392,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                   )}
                 </div>
 
-                <div className="p-4 bg-surface-container-low rounded-2xl rounded-tl-none border border-outline-variant/30 shadow-sm flex items-center gap-1.5">
+                <div className={`${chatChrome.thinkingBubblePaddingClass} bg-surface-container-low rounded-2xl rounded-tl-none border border-outline-variant/30 shadow-sm flex items-center gap-1.5`}>
                   <div className="w-1.5 h-1.5 rounded-full bg-on-surface/40 animate-typing-pulse" />
                   <div className="w-1.5 h-1.5 rounded-full bg-on-surface/40 animate-typing-pulse animation-delay-100" />
                   <div className="w-1.5 h-1.5 rounded-full bg-on-surface/40 animate-typing-pulse animation-delay-200" />
@@ -1413,10 +1417,10 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
           right: `${rightChromePad - 6}px`,
           bottom: APP_INPUT_DOCK_BOTTOM_PX,
         }}
-        className="fixed flex justify-center px-6 z-40 transition-all duration-300 select-none"
+        className={`fixed flex justify-center ${chatChrome.chatEdgePaddingClass} z-40 transition-all duration-300 select-none`}
       >
         {showTerminalWorkspace ? (
-          <div ref={terminalBarRef} className="w-full max-w-2xl">
+          <div ref={terminalBarRef} className={`w-full ${chatChrome.chatMaxWidthClass}`}>
             <OrchestratorBar
             sessionRunId={sessionRunId}
             drafts={clutchOrchestraState.pending_handoff_drafts ?? []}
@@ -1434,7 +1438,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
           />
           </div>
         ) : isRunning && !awaitingHuman && !isPlainLlmChat && !isRefining ? (
-          <div className="w-full max-w-2xl bg-white border border-outline-variant p-3 shadow-xl rounded-xl flex items-center justify-between">
+          <div className={`w-full ${chatChrome.chatMaxWidthClass} bg-white border border-outline-variant p-3 shadow-xl rounded-xl flex items-center justify-between`}>
             <div className="flex items-center gap-3">
               <span className="relative flex h-2.5 w-2.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-black opacity-75" />
@@ -1460,7 +1464,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
             </button>
           </div>
         ) : awaitingHuman ? (
-          <div className="w-full max-w-2xl bg-white border border-rose-200/90 p-5 shadow-xl rounded-2xl flex flex-col gap-4 text-left">
+          <div className={`w-full ${chatChrome.chatMaxWidthClass} bg-white border border-rose-200/90 p-5 shadow-xl rounded-2xl flex flex-col gap-4 text-left`}>
             <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
               <div className="flex items-center gap-2.5">
                 <span className="w-8 h-8 rounded-full bg-error text-on-error flex items-center justify-center">

@@ -1,4 +1,5 @@
 import { SIDECAR_BASE as BASE, sidecarFetch } from './sidecarUrl';
+import { AGNES_BUILTIN_MODEL_ID } from './modelProviderPresets';
 
 export interface ModelEntry {
   id: string;
@@ -368,12 +369,12 @@ export function modelKindMenuSuffix(modelKind?: string): string {
   return '';
 }
 
-/** Prefer DeepSeek V4 Pro when available; otherwise first available chat (non-image) model. */
+/** Prefer Agnes 2.0 Flash when available; otherwise first available chat (non-image) model. */
 export function resolveDefaultTextModelId(config: ModelConfig): string {
   const chatModels = config.models.filter(
     (model) => model.available && !['image', 'video'].includes(model.model_kind ?? 'chat'),
   );
-  const preferred = chatModels.find((model) => model.id === DEFAULT_TEXT_MODEL_ID);
+  const preferred = chatModels.find((model) => model.id === AGNES_BUILTIN_MODEL_ID.chat);
   return preferred?.id ?? chatModels[0]?.id ?? config.active_model_id;
 }
 

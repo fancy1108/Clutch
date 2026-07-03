@@ -32,7 +32,7 @@ export function providersForModelKind(kind: ModelKind): readonly string[] {
 }
 
 export function defaultProviderForModelKind(kind: ModelKind): string {
-  return kind === 'chat' ? 'deepseek' : 'agnes';
+  return 'agnes';
 }
 
 /** Built-in OpenCode Zen free chat models (refresh can extend the picker). */

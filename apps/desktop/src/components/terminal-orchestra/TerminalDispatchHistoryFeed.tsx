@@ -77,7 +77,7 @@ export const TerminalDispatchHistoryFeed: React.FC<TerminalDispatchHistoryFeedPr
 
   return (
     <>
-      <div data-testid="terminal-dispatch-history-feed" className="space-y-8 py-2">
+      <div data-testid="terminal-dispatch-history-feed" className="space-y-5 py-2">
         {entries.map((entry) => {
           const isHandoff = isHandoffDispatchEntry(entry);
           const isHighlighted = highlightedEntryId === entry.id;
@@ -90,14 +90,14 @@ export const TerminalDispatchHistoryFeed: React.FC<TerminalDispatchHistoryFeedPr
               key={entry.id}
               id={`dispatch-history-${entry.id}`}
               ref={isHighlighted ? highlightedRef : undefined}
-              className={`space-y-8 rounded-2xl transition-colors ${
+              className={`space-y-5 rounded-2xl transition-colors ${
                 isHighlighted ? 'ring-2 ring-primary/20 bg-primary/5 p-3 -mx-3' : ''
               }`}
             >
               {/* User prompt */}
               <div className="w-full flex justify-end">
-                <div className="flex gap-4 max-w-[85%] flex-row-reverse group p-2 rounded-xl">
-                  <div className="w-9 h-9 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center bg-surface-container">
+                <div className="flex gap-3 max-w-[85%] flex-row-reverse group px-1.5 py-1 rounded-xl">
+                  <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center bg-surface-container">
                     <img
                       className="w-full h-full object-contain p-1"
                       src={avatarUrl}
@@ -109,7 +109,7 @@ export const TerminalDispatchHistoryFeed: React.FC<TerminalDispatchHistoryFeedPr
                       <span className="text-[10px] text-on-surface-variant/60">{timeLabel}</span>
                       <span className="text-xs font-bold text-on-surface">{userName}</span>
                     </div>
-                    <div className="p-4 rounded-2xl border border-outline-variant/30 shadow-sm bg-primary/10 text-on-surface rounded-tr-none text-left">
+                    <div className="px-3 py-1.5 rounded-2xl border border-outline-variant/30 shadow-sm bg-primary/10 text-on-surface rounded-tr-none text-left">
                       <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">
                         {entry.prompt}
                       </p>
@@ -120,7 +120,7 @@ export const TerminalDispatchHistoryFeed: React.FC<TerminalDispatchHistoryFeedPr
 
               {/* Agent handoff / dispatch response */}
               <div className="w-full flex justify-start">
-                <div className="flex gap-4 max-w-[85%] group p-2 rounded-xl">
+                <div className="flex gap-3 max-w-[85%] group px-1.5 py-1 rounded-xl">
                   <AgentChatAvatar src={agentLogo} alt={agentName} />
                   <div className="flex-1 space-y-1.5 overflow-hidden">
                     <div className="flex items-center gap-2">
@@ -131,7 +131,7 @@ export const TerminalDispatchHistoryFeed: React.FC<TerminalDispatchHistoryFeedPr
                       <button
                         type="button"
                         onClick={() => setPreviewPath(entry.handoff_path)}
-                        className="w-full text-left p-4 rounded-2xl border border-outline-variant/30 shadow-sm bg-surface-container-low rounded-tl-none hover:bg-surface-container-high hover:border-primary/30 transition-colors group/handoff"
+                        className="w-full text-left px-3 py-1.5 rounded-2xl border border-outline-variant/30 shadow-sm bg-surface-container-low rounded-tl-none hover:bg-surface-container-high hover:border-primary/30 transition-colors group/handoff"
                       >
                         <div className="flex items-center gap-2 mb-2">
                           <LegacyIcon
@@ -150,7 +150,7 @@ export const TerminalDispatchHistoryFeed: React.FC<TerminalDispatchHistoryFeedPr
                         </span>
                       </button>
                     ) : (
-                      <div className="p-4 rounded-2xl border border-outline-variant/30 shadow-sm bg-surface-container-low rounded-tl-none">
+                      <div className="px-3 py-1.5 rounded-2xl border border-outline-variant/30 shadow-sm bg-surface-container-low rounded-tl-none">
                         <p className="text-sm text-on-surface-variant leading-relaxed">
                           {t('Terminal dispatch executed')}
                         </p>

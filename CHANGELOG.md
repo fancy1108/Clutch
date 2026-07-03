@@ -10,6 +10,28 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-07-04
+
+Patch release — **Windows interactive PTY** ([#30](https://github.com/fancy1108/Clutch/pull/30)), **platform chrome split**, and shared workspace UI polish. Thanks [@996wuxian](https://github.com/996wuxian).
+
+> **Release assets (v1.1.1):** Tag `v1.1.1` — macOS DMG + `SHA256SUMS.txt` via CI; Windows MSI/NSIS via **Windows Build** workflow (manual attach to Release). Product snapshot: [`docs/releases/v1.1.1.md`](docs/releases/v1.1.1.md).
+
+### Added
+
+- **Windows Terminal Orchestra PTY:** Interactive lanes on Windows via WinPTY backend ([#30](https://github.com/fancy1108/Clutch/pull/30)).
+- **Platform maintenance guide:** [`docs/PLATFORM_MAINTENANCE.md`](docs/PLATFORM_MAINTENANCE.md) — macOS / Windows file boundaries and shared `navConfig`.
+
+### Fixed
+
+- **General Settings font size:** Restored preference UI, persistence, root `data-font-size`, and custom `SettingsSelect` dropdown ([#30](https://github.com/fancy1108/Clutch/pull/30)).
+- **Windows `tauri:dev`:** Cross-platform dev launcher via `node scripts/run-tauri-dev.mjs` ([#30](https://github.com/fancy1108/Clutch/pull/30)).
+- **Chat workspace chrome:** Unified compact chat layout and 30px right supervision panel gutter on macOS and Windows.
+
+### Changed
+
+- **Workspace chrome (Windows):** Sidebar collapse on panel edge, icon-only collapsed rail ([#30](https://github.com/fancy1108/Clutch/pull/30)).
+- **Platform chrome split:** `platform/chrome/*.{macos,windows}.tsx`, shared `navConfig.ts`, `data-platform` shell attribute; macOS keeps floating sidebar toggle and icon+label collapsed rail.
+
 ## [1.1.0] - 2026-07-03
 
 Minor release — **Terminal Orchestra (D34)**, **Windows desktop polish**, **CodeBuddy CLI**, **OpenCode Zen**, **Agnes Video**, and agent-scoped Settings.

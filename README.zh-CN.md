@@ -17,19 +17,17 @@ Clutch 是一款**桌面应用**（Tauri + React），面向独立开发者和�
 |---|---|
 | **技术栈** | Tauri 2 · React 19 · FastAPI + LangGraph · 本地优先（`localhost:8123`） |
 | **许可证** | 见 [LICENSE](LICENSE) |
-| **当前版本** | [v1.0.3](https://github.com/fancy1108/Clutch/releases)（已发布）· **下一版：** [v1.1.0](CHANGELOG.md#110---2026-07-03) |
+| **当前版本** | [v1.1.1](https://github.com/fancy1108/Clutch/releases/tag/v1.1.1) · [更新日志](CHANGELOG.md#111---2026-07-04) |
 
-### 最新更新（v1.1.0 · 开发中）
+### 最新更新（v1.1.1）
 
-- **Terminal Orchestra（D34）** — 对话 ↔ 终端切换；多 Lane 嵌入式 CLI；OrchestratorBar `@` 调度、handoff 文件、派发记录与 CLI Session 恢复命令。
-- **Windows 桌面体验优化** — 侧栏折叠、字号偏好、Session 切换缓存与后台 WebSocket（[#28](https://github.com/fancy1108/Clutch/pull/28)）。
-- **CodeBuddy CLI** — 接入腾讯 CodeBuddy / WorkBuddy；Settings → Tools 连接后可在 Agent 中选用，支持 headless 与会话恢复。
-- **OpenCode Zen 文本模型** — Settings → Models 内置 Provider；填写 Zen API Key 即可使用 5 个免费对话模型，支持刷新模型列表与保存前连通性校验。
-- **Agnes Video V2.0** — 对话区文生视频，气泡内直接播放与下载；中文提示词自动译英后调用 API。
-- **Agent 分栏设置** — Models / MCP / Skills 按 Agent 类型分 Tab（Clutch · Claude Code · OpenCode）。
-- **产品官网** — [fancy1108.github.io/Clutch](https://fancy1108.github.io/Clutch/)：中英文介绍、安装方式与联系方式。
+- **Windows 交互式 PTY ([#30](https://github.com/fancy1108/Clutch/pull/30))** — Terminal Orchestra 在 Windows 上通过 WinPTY 附着交互式 CLI Lane。感谢 [@996wuxian](https://github.com/996wuxian)。
+- **平台 chrome 拆分** — macOS / Windows 工作区 UI 分文件维护（`platform/chrome/*.{macos,windows}.tsx`）；共享导航图标见 `navConfig.ts`。维护边界：[`docs/PLATFORM_MAINTENANCE.md`](docs/PLATFORM_MAINTENANCE.md)。
+- **通用设置字号 ([#30](https://github.com/fancy1108/Clutch/pull/30))** — 恢复字号偏好 UI、`data-font-size` 持久化与自定义 `SettingsSelect` 下拉。
+- **跨平台 `tauri:dev`** — `node scripts/run-tauri-dev.mjs`，macOS / Windows 开发均可使用 ([#30](https://github.com/fancy1108/Clutch/pull/30))。
+- **Chat 工作区打磨** — macOS 与 Windows 统一紧凑 Chat 布局与右侧监督面板 30px 间距。
 
-更早版本见 [`CHANGELOG.md`](CHANGELOG.md) · [`docs/releases/`](docs/releases/)。
+更早版本（v1.1.0 Terminal Orchestra、CodeBuddy、OpenCode Zen 等）：[`CHANGELOG.md`](CHANGELOG.md) · [`docs/releases/`](docs/releases/)。
 
 ---
 
@@ -56,7 +54,7 @@ brew install --cask clutch
 irm https://raw.githubusercontent.com/fancy1108/Clutch/main/scripts/install.ps1 | iex
 ```
 
-指定版本：运行前设置 `CLUTCH_VERSION=v1.1.0`（或 `v1.0.3` 安装当前稳定版）。
+指定版本：运行前设置 `CLUTCH_VERSION=v1.1.1`（或 `v1.1.0` / `v1.0.3` 安装更早稳定版）。
 
 详见 [`docs/PACKAGE_MANAGERS.md`](docs/PACKAGE_MANAGERS.md)
 
@@ -129,6 +127,7 @@ xattr -cr /Applications/Clutch.app && open -a Clutch
 | macOS 应用内更新 | [`docs/UPDATES.md`](docs/UPDATES.md) |
 | 从源码构建 | [`docs/BUILD_FROM_SOURCE.md`](docs/BUILD_FROM_SOURCE.md) |
 | 参与贡献 | [`CONTRIBUTING.md`](CONTRIBUTING.md)（PR 请提 **`dev`**） |
+| macOS / Windows UI 边界 | [`docs/PLATFORM_MAINTENANCE.md`](docs/PLATFORM_MAINTENANCE.md) |
 | 安全漏洞报告 | [`SECURITY.md`](SECURITY.md) |
 
 完整索引：[`docs/README.md`](docs/README.md) · **维护者发版：** [`docs/RELEASE_MAINTAINER.md`](docs/RELEASE_MAINTAINER.md)

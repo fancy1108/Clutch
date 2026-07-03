@@ -24,11 +24,65 @@
 
 > 进行中 Task 的交付索引写在此处。完成后移入 **Recently Completed** 或归档。
 
-_（当前无进行中代码 Task — v1.0.3 Loop 开工后在此登记。）_
+_（当前无进行中代码 Task。）_
 
 ---
 
-## Recently Completed（v1.0.3 · dev · 未发版）
+## Recently Completed
+
+### upstream 首页图标同步 ✅
+- **日期：** 2026-07-03
+- **Commit：** `9a982f4` — `fix(ui): sync workflow sidebar icon from upstream`
+- **Verification：** `pnpm build` → passed；`pnpm test` → 17 files / 125 tests passed；Husky pre-commit → Git Bash PATH 无 `uv`，等价验证通过后 `HUSKY=0` 提交
+- **证据：** `—`
+- **交付文件：**
+  - `apps/desktop/src/sidebar.tsx` — Workflows SOP 展开态与折叠态图标同步为 upstream dev 的 `fork_right`
+
+### upstream dev 同步与左侧折叠入口调整 ✅
+- **日期：** 2026-07-03
+- **Commit：** `214af4d` — `merge upstream dev and align sidebar collapse chrome`
+- **Verification：** `pnpm build` → passed；`pnpm test` → 17 files / 125 tests passed；`python -m uv run pytest tests/test_llm_provider.py` → 7 passed；Husky pre-commit → Git Bash PATH 无 `uv`，等价验证通过后 `HUSKY=0` 提交
+- **证据：** `—`
+- **交付文件：**
+  - `apps/desktop/src/App.tsx` — Header 不再接收顶部侧栏折叠回调，Sidebar 接管开合状态更新
+  - `apps/desktop/src/components/Header.tsx` — 移除顶部左侧侧栏折叠按钮
+  - `apps/desktop/src/sidebar.tsx` — 新增左侧面板右边缘中线折叠按钮，复用 `ChromeEdgeToggle`
+  - `docs/PRODUCT_INTRO.md` — 同步 Workspace Chrome 产品说明
+  - `memory/PROGRESS.md` — 合并 upstream 发版记录并记录 Windows 侧维护进展
+
+### Windows workspace chrome polish 同步 ✅
+- **日期：** 2026-07-03
+- **Commit：** `796120b` — `fix(ui): restore Windows workspace chrome polish`
+- **Verification：** `pnpm build` → passed；`pnpm test` → 17 files / 125 tests passed；Husky pre-commit → Git Bash PATH 无 `uv`，等价验证通过后 `HUSKY=0` 提交
+- **证据：** `—`
+- **交付文件：**
+  - `apps/desktop/src/App.tsx` — Header 侧栏折叠入口恢复，移除左侧浮动折叠按钮
+  - `apps/desktop/src/components/Header.tsx` — 恢复顶部 Header 内置折叠按钮与昨天的 breadcrumb chrome
+  - `apps/desktop/src/sidebar.tsx` — 恢复折叠态纯图标 tooltip、Workflow 图标和底部 Settings 布局
+  - `apps/desktop/src/components/ChatFeed.tsx` — 恢复聊天主区宽度/间距与气泡紧凑样式，同时保留 Terminal Orchestra
+  - `apps/desktop/src/components/RightPanel.tsx` — 恢复右侧监督面板等分 Tab 与短指示条
+  - `docs/PRODUCT_INTRO.md` — 同步 Workspace Chrome 产品说明
+
+### Settings 字体大小偏好恢复 ✅
+- **日期：** 2026-07-03
+- **Commit：** `68769fb` — `fix(settings): restore font size preference`
+- **Verification：** `pnpm build` → passed；`pnpm test` → 17 files / 125 tests passed；Husky pre-commit → Git Bash PATH 无 `uv`，等价验证通过后 `HUSKY=0` 提交
+- **证据：** `—`
+- **交付文件：**
+  - `apps/desktop/src/App.tsx` — 恢复 font size 偏好读取、保存和 `data-font-size` 应用
+  - `apps/desktop/src/components/SystemPreferencesModal.tsx` — 恢复 General Settings 字体大小选择框
+  - `docs/PRODUCT_INTRO.md` — 同步 Settings Dashboard 功能说明
+
+### Windows interactive PTY lanes ✅
+- **日期：** 2026-07-03
+- **Commit：** `395bacb` — `fix(windows): support interactive PTY lanes`
+- **Verification：** `python -m uv run pytest tests/test_interactive_pty_runtime.py` → 11 passed, 5 skipped；`python -m uv run pytest tests/test_terminal_orchestra.py tests/test_ws_pty_events.py tests/test_ws_dispatch_orchestra.py tests/test_interactive_pty_runtime.py` → 36 passed, 5 skipped, 1 warning；`pnpm build` → passed；`pnpm test` → 17 files / 125 tests passed；`python -m uv run pytest` → 634 passed, 9 skipped, 1 warning；Windows `cmd.exe` low-level 与 manager PTY smoke → marker observed；`bash scripts/check-doc-drift.sh` → 未运行，当前 PowerShell PATH 无 `bash`
+- **证据：** `—`
+- **交付文件：**
+  - `services/orchestrator/src/interactive_pty_runtime.py` — Windows interactive PTY backend attach/read/write/close
+  - `services/orchestrator/src/windows_pty.py` — 暴露 read/write/alive/close 行为给 interactive manager 复用
+  - `services/orchestrator/tests/test_interactive_pty_runtime.py` — Windows PTY fake backend 回归测试
+  - `docs/PRODUCT_INTRO.md` — 同步 Windows Terminal Orchestra 支持说明
 
 ### Ollama Models Config 本机同步 ✅
 - **日期：** 2026-07-01

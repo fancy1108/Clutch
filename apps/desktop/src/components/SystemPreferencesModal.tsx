@@ -11,7 +11,9 @@ import { useLanguage } from './LanguageContext';
 import { BTN_FOCUS, BTN_PRIMARY, BTN_SECONDARY } from './ui/buttonStyles';
 import { LegacyIcon } from './ui/LegacyIcon';
 import { SettingsPageHeader, SettingsPageShell } from './ui/SettingsPageHeader';
+import { SettingsSelect } from './ui/SettingsSelect';
 import { saveAvatarPreference } from '../services/themeApi';
+import { FONT_SIZE_LABEL_KEYS, FONT_SIZE_OPTIONS, type AppFontSize } from '../services/fontSizePreference';
 import { setUserChatAvatar } from '../services/clutchState';
 import defaultAvatar from '../assets/default_avatar.jpg';
 
@@ -48,6 +50,8 @@ interface SystemPreferencesModalProps {
   setUserAvatar: (avatar: string) => void;
   userName?: string;
   setUserName?: (name: string) => void;
+  fontSize: AppFontSize;
+  setFontSize: (fontSize: AppFontSize) => void;
 }
 
 export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
@@ -74,6 +78,8 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
   setUserAvatar,
   userName = 'User',
   setUserName,
+  fontSize,
+  setFontSize,
 }) => {
   const { t } = useLanguage();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -344,6 +350,24 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
                         onChange={(e) => setUserName?.(e.target.value)}
                         placeholder={t("Enter your name")}
                         className="flex-1 bg-surface border border-outline/40 rounded-xl px-4 py-2.5 text-xs text-on-surface focus:outline-none focus:border-primary/60 transition-colors"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Font Size Settings Section */}
+                  <div className="bg-surface-container/30 p-6 rounded-2xl border border-outline/30 space-y-4">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                      {t('Font Size')}
+                    </h3>
+                    <div className="flex items-center gap-4 max-w-md">
+                      <SettingsSelect
+                        id="general-font-size"
+                        value={fontSize}
+                        options={FONT_SIZE_OPTIONS.map((option) => ({
+                          value: option,
+                          label: t(FONT_SIZE_LABEL_KEYS[option]),
+                        }))}
+                        onChange={(next) => setFontSize(next as AppFontSize)}
                       />
                     </div>
                   </div>
