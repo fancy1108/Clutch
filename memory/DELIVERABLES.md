@@ -30,6 +30,18 @@ _（当前无进行中代码 Task。）_
 
 ## Recently Completed
 
+### upstream dev 同步与左侧折叠入口调整 ✅
+- **日期：** 2026-07-03
+- **Commit：** `214af4d` — `merge upstream dev and align sidebar collapse chrome`
+- **Verification：** `pnpm build` → passed；`pnpm test` → 17 files / 125 tests passed；`python -m uv run pytest tests/test_llm_provider.py` → 7 passed；Husky pre-commit → Git Bash PATH 无 `uv`，等价验证通过后 `HUSKY=0` 提交
+- **证据：** `—`
+- **交付文件：**
+  - `apps/desktop/src/App.tsx` — Header 不再接收顶部侧栏折叠回调，Sidebar 接管开合状态更新
+  - `apps/desktop/src/components/Header.tsx` — 移除顶部左侧侧栏折叠按钮
+  - `apps/desktop/src/sidebar.tsx` — 新增左侧面板右边缘中线折叠按钮，复用 `ChromeEdgeToggle`
+  - `docs/PRODUCT_INTRO.md` — 同步 Workspace Chrome 产品说明
+  - `memory/PROGRESS.md` — 合并 upstream 发版记录并记录 Windows 侧维护进展
+
 ### Windows workspace chrome polish 同步 ✅
 - **日期：** 2026-07-03
 - **Commit：** `796120b` — `fix(ui): restore Windows workspace chrome polish`

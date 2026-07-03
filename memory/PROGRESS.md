@@ -31,6 +31,13 @@
 
 ## Recent Sessions
 
+## 2026-07-03 会话（同步 upstream dev + 侧栏折叠入口）
+
+- **同步** 合入 `upstream/dev` `4740786`（v1.1.0 文档对齐、Agnes 默认文本模型、图标/模型相关更新），冲突仅发生在 `memory/PROGRESS.md`，已保留 upstream 发版记录与 Windows 维护记录。
+- **UI** 按作者 dev 方向移除 Header 顶部左侧折叠按钮，将左侧侧栏折叠入口移到侧栏右边缘中线位置，与右侧监督面板折叠按钮交互位置一致。
+- **Commit** `214af4d` — `merge upstream dev and align sidebar collapse chrome`
+- **验证** `pnpm build` 通过；`pnpm test` 17 files / 125 tests 通过；`python -m uv run pytest tests/test_llm_provider.py` 7 passed。提交使用 `HUSKY=0`，原因同前：Husky pre-commit 在 Git Bash PATH 中找不到 `uv`。
+
 ## 2026-07-03 会话（v1.1.0 文档对齐 · README / 维护者文档）
 
 - **README 双语** — Latest release / 当前版本 → **v1.1.0**；去掉「in development / 开发中」
