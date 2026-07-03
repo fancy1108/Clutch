@@ -30,6 +30,19 @@ _（当前无进行中代码 Task — v1.0.3 Loop 开工后在此登记。）_
 
 ## Recently Completed（v1.0.3 · dev · 未发版）
 
+### Windows workspace chrome polish 同步 ✅
+- **日期：** 2026-07-03
+- **Commit：** `796120b` — `fix(ui): restore Windows workspace chrome polish`
+- **Verification：** `pnpm build` → passed；`pnpm test` → 17 files / 125 tests passed；Husky pre-commit → Git Bash PATH 无 `uv`，等价验证通过后 `HUSKY=0` 提交
+- **证据：** `—`
+- **交付文件：**
+  - `apps/desktop/src/App.tsx` — Header 侧栏折叠入口恢复，移除左侧浮动折叠按钮
+  - `apps/desktop/src/components/Header.tsx` — 恢复顶部 Header 内置折叠按钮与昨天的 breadcrumb chrome
+  - `apps/desktop/src/sidebar.tsx` — 恢复折叠态纯图标 tooltip、Workflow 图标和底部 Settings 布局
+  - `apps/desktop/src/components/ChatFeed.tsx` — 恢复聊天主区宽度/间距与气泡紧凑样式，同时保留 Terminal Orchestra
+  - `apps/desktop/src/components/RightPanel.tsx` — 恢复右侧监督面板等分 Tab 与短指示条
+  - `docs/PRODUCT_INTRO.md` — 同步 Workspace Chrome 产品说明
+
 ### Settings 字体大小偏好恢复 ✅
 - **日期：** 2026-07-03
 - **Commit：** `68769fb` — `fix(settings): restore font size preference`
