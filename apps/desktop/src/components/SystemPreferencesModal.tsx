@@ -11,6 +11,7 @@ import { useLanguage } from './LanguageContext';
 import { BTN_FOCUS, BTN_PRIMARY, BTN_SECONDARY } from './ui/buttonStyles';
 import { LegacyIcon } from './ui/LegacyIcon';
 import { SettingsPageHeader, SettingsPageShell } from './ui/SettingsPageHeader';
+import { SettingsSelect } from './ui/SettingsSelect';
 import { saveAvatarPreference } from '../services/themeApi';
 import { FONT_SIZE_LABEL_KEYS, FONT_SIZE_OPTIONS, type AppFontSize } from '../services/fontSizePreference';
 import { setUserChatAvatar } from '../services/clutchState';
@@ -353,26 +354,21 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
                     </div>
                   </div>
 
-                  <div className="bg-surface-container/30 p-6 rounded-2xl border border-outline/30">
-                    <div className="flex items-center justify-between gap-4 max-w-md">
-                      <label
-                        htmlFor="general-font-size"
-                        className="text-xs font-bold uppercase tracking-wider text-on-surface-variant"
-                      >
-                        {t('Font Size')}
-                      </label>
-                      <select
+                  {/* Font Size Settings Section */}
+                  <div className="bg-surface-container/30 p-6 rounded-2xl border border-outline/30 space-y-4">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                      {t('Font Size')}
+                    </h3>
+                    <div className="flex items-center gap-4 max-w-md">
+                      <SettingsSelect
                         id="general-font-size"
                         value={fontSize}
-                        onChange={(e) => setFontSize(e.target.value as AppFontSize)}
-                        className="w-36 bg-surface border border-outline/40 rounded-xl px-3 py-2 text-xs font-semibold text-on-surface focus:outline-none focus:border-primary/60 transition-colors"
-                      >
-                        {FONT_SIZE_OPTIONS.map((option) => (
-                          <option key={option} value={option}>
-                            {t(FONT_SIZE_LABEL_KEYS[option])}
-                          </option>
-                        ))}
-                      </select>
+                        options={FONT_SIZE_OPTIONS.map((option) => ({
+                          value: option,
+                          label: t(FONT_SIZE_LABEL_KEYS[option]),
+                        }))}
+                        onChange={(next) => setFontSize(next as AppFontSize)}
+                      />
                     </div>
                   </div>
                 </div>

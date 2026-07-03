@@ -291,7 +291,7 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
     <div
       ref={containerRef}
       data-testid="orchestrator-bar"
-      className={`relative w-full max-w-2xl bg-white border border-outline-variant shadow-xl rounded-xl transition-all ${
+      className={`relative w-full bg-white border border-outline-variant shadow-xl rounded-xl transition-all ${
         readOnly ? 'opacity-70' : 'focus-within:ring-2 focus-within:ring-primary/10'
       }`}
     >

@@ -1190,7 +1190,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
         ) : null}
 
         {isTerminalDispatchHistoryReadonly ? (
-          <div className="w-full max-w-2xl mx-auto space-y-8 py-4">
+          <div className={`w-full ${chatChrome.chatMaxWidthClass} mx-auto ${chatChrome.messageListSpacingClass} py-4`}>
             <TerminalDispatchHistoryFeed
               entries={clutchOrchestraState.dispatch_log ?? []}
               highlightedEntryId={highlightedDispatchEntryId}
@@ -1417,10 +1417,10 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
           right: `${rightChromePad - 6}px`,
           bottom: APP_INPUT_DOCK_BOTTOM_PX,
         }}
-        className="fixed flex justify-center px-6 z-40 transition-all duration-300 select-none"
+        className={`fixed flex justify-center ${chatChrome.chatEdgePaddingClass} z-40 transition-all duration-300 select-none`}
       >
         {showTerminalWorkspace ? (
-          <div ref={terminalBarRef} className="w-full max-w-2xl">
+          <div ref={terminalBarRef} className={`w-full ${chatChrome.chatMaxWidthClass}`}>
             <OrchestratorBar
             sessionRunId={sessionRunId}
             drafts={clutchOrchestraState.pending_handoff_drafts ?? []}
@@ -1438,7 +1438,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
           />
           </div>
         ) : isRunning && !awaitingHuman && !isPlainLlmChat && !isRefining ? (
-          <div className="w-full max-w-2xl bg-white border border-outline-variant p-3 shadow-xl rounded-xl flex items-center justify-between">
+          <div className={`w-full ${chatChrome.chatMaxWidthClass} bg-white border border-outline-variant p-3 shadow-xl rounded-xl flex items-center justify-between`}>
             <div className="flex items-center gap-3">
               <span className="relative flex h-2.5 w-2.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-black opacity-75" />
@@ -1464,7 +1464,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
             </button>
           </div>
         ) : awaitingHuman ? (
-          <div className="w-full max-w-2xl bg-white border border-rose-200/90 p-5 shadow-xl rounded-2xl flex flex-col gap-4 text-left">
+          <div className={`w-full ${chatChrome.chatMaxWidthClass} bg-white border border-rose-200/90 p-5 shadow-xl rounded-2xl flex flex-col gap-4 text-left`}>
             <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
               <div className="flex items-center gap-2.5">
                 <span className="w-8 h-8 rounded-full bg-error text-on-error flex items-center justify-center">
