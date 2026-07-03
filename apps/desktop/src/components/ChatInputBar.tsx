@@ -18,6 +18,7 @@ import { LegacyIcon } from './ui/LegacyIcon';
 import { BTN_ICON_SM } from './ui/buttonStyles';
 import { shouldSubmitChatOnEnter } from './chatInputKeyboard';
 import { AgentChatAvatar } from './AgentChatAvatar';
+import { parseInputAgentMention } from '../services/terminalOrchestraUtils';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -71,6 +72,9 @@ interface ChatInputBarProps {
   onDismissHybridNotice?: () => void;
   isFlowRefining?: boolean;
   workflowAgents?: Array<{ nodeId: string; agentName: string; label?: string }>;
+  mentionableAgents?: Array<{ id: string; name: string; logo?: string }>;
+  selectedMentionAgentId?: string | null;
+  onMentionAgentChange?: (agentId: string | null) => void;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -193,6 +197,9 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
   onDismissHybridNotice,
   isFlowRefining = false,
   workflowAgents = [],
+  mentionableAgents = [],
+  selectedMentionAgentId = null,
+  onMentionAgentChange,
 }) => {
   const { t, language } = useLanguage();
   const [dismissedNoticeKey, setDismissedNoticeKey] = useState<string | null>(null);
@@ -377,11 +384,10 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
       }
       setSkillPickerOpen(false);
 
-      // Detect @ trigger for workflow agents (refine mode)
+      // Detect @ trigger for agent mentions
       const lastAt = val.lastIndexOf('@');
       if (
-        isFlowRefining
-        && lastAt !== -1
+        lastAt !== -1
         && (lastAt === 0 || val[lastAt - 1] === ' ' || val[lastAt - 1] === '\n')
       ) {
         const fragment = val.slice(lastAt + 1);
@@ -389,6 +395,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
           setAgentFilter(fragment);
           setAgentPickerOpen(true);
           setSessionPickerOpen(false);
+          setSkillPickerOpen(false);
           return;
         }
       }
@@ -406,10 +413,10 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
       }
       setSessionPickerOpen(false);
     },
-    [setInputValue, isFlowRefining],
+    [setInputValue],
   );
 
-  const insertWorkflowAgent = useCallback(
+  const insertMentionAgent = useCallback(
     (agentName: string) => {
       const lastAt = inputValue.lastIndexOf('@');
       const before = lastAt >= 0 ? inputValue.slice(0, lastAt) : inputValue;
@@ -418,6 +425,13 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
       textareaRef.current?.focus();
     },
     [inputValue, setInputValue],
+  );
+
+  const insertWorkflowAgent = useCallback(
+    (agentName: string) => {
+      insertMentionAgent(agentName);
+    },
+    [insertMentionAgent],
   );
 
   // ── Skill / Session insert ──────────────────────────────────────────────────
@@ -472,6 +486,20 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
     const haystack = `${step.agentName} ${step.label ?? ''}`.toLowerCase();
     return !agentFilter || haystack.includes(agentFilter.toLowerCase());
   });
+  const showWorkflowAgentPicker = isFlowRefining && workflowAgents.length > 0;
+
+  useEffect(() => {
+    if (!onMentionAgentChange || showWorkflowAgentPicker) return;
+    const hit = parseInputAgentMention(inputValue, mentionableAgents);
+    onMentionAgentChange(hit?.agentId ?? null);
+  }, [inputValue, mentionableAgents, onMentionAgentChange, showWorkflowAgentPicker]);
+  const filteredMentionableAgents = mentionableAgents.filter((agent) => {
+    const haystack = agent.name.toLowerCase();
+    return !agentFilter || haystack.includes(agentFilter.toLowerCase());
+  });
+  const activeAgentPickerItems = showWorkflowAgentPicker
+    ? filteredWorkflowAgents
+    : filteredMentionableAgents;
   const allFilePaths = flattenFileTree(workspaceFiles);
   const filteredFiles = allFilePaths.filter(
     (p) => !fileFilter || p.toLowerCase().includes(fileFilter.toLowerCase()),
@@ -528,6 +556,20 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
         return;
       }
 
+      if (
+        agentPickerOpen
+        && activeAgentPickerItems.length > 0
+        && shouldSubmitChatOnEnter(e.nativeEvent, isComposing)
+      ) {
+        e.preventDefault();
+        if (showWorkflowAgentPicker) {
+          insertWorkflowAgent(filteredWorkflowAgents[0].agentName);
+        } else {
+          insertMentionAgent(filteredMentionableAgents[0].name);
+        }
+        return;
+      }
+
       if (!shouldSubmitChatOnEnter(e.nativeEvent, isComposing)) return;
 
       e.preventDefault();
@@ -543,6 +585,12 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
       insertSession,
       insertSkill,
       sessionPickerOpen,
+      agentPickerOpen,
+      filteredMentionableAgents,
+      filteredWorkflowAgents,
+      insertMentionAgent,
+      insertWorkflowAgent,
+      showWorkflowAgentPicker,
       skillPickerOpen,
     ],
   );
@@ -556,7 +604,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
   return (
     <div
       ref={containerRef}
-      className={`w-full max-w-2xl bg-white border shadow-xl rounded-xl transition-all ${
+      className={`relative w-full max-w-2xl bg-white border shadow-xl rounded-xl transition-all ${
         isDragging
           ? 'border-primary/60 ring-2 ring-primary/20'
           : 'border-outline-variant focus-within:ring-2 focus-within:ring-primary/10'
@@ -691,7 +739,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
       {isMultiAgent && selectedWorkflowId ? (
         <div className="flex flex-wrap gap-1.5 px-3 pt-2 pb-1">
           <span className="inline-flex items-center gap-1.5 pl-1.5 pr-1 py-0.5 text-[11px] font-bold text-primary bg-primary/5 border border-primary/20 rounded-lg max-w-[220px]">
-            <LegacyIcon name="account_tree" className="text-[14px] flex-shrink-0" />
+            <LegacyIcon name="fork_right" className="text-[14px] flex-shrink-0" />
             <span className="truncate" title={selectedWorkflowName || selectedWorkflowId}>
               {selectedWorkflowName || selectedWorkflowId}
             </span>
@@ -727,7 +775,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
       )}
 
       {/* Text area row */}
-      <div className="flex items-end gap-1.5 px-2 py-1.5">
+      <div className="flex items-center gap-1.5 px-2 py-1.5">
         {/* + Attach button */}
         <div className="relative flex-shrink-0">
           <button
@@ -816,7 +864,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
           }}
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
-          className="w-full border-none focus:ring-0 text-[13px] text-on-surface bg-transparent py-1.5 resize-none min-h-[36px] max-h-[140px] placeholder:text-on-surface-variant/60 outline-none leading-relaxed"
+          className="w-full border-none focus:ring-0 text-[13px] text-on-surface bg-transparent pt-[6px] pb-[2px] resize-none min-h-8 max-h-[140px] placeholder:text-on-surface-variant/60 outline-none leading-5"
           placeholder={
             isFlowRefining
               ? t('@Agent your feedback (Hybrid) — auto-continues downstream; Stop to pause')
@@ -927,30 +975,57 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
         </div>
       </div>
 
-      {/* ── Workflow agent picker (flow refine) ── */}
-      {agentPickerOpen && isFlowRefining && (
+      {/* ── Agent picker (@) ── */}
+      {agentPickerOpen && (
         <div className="absolute bottom-full left-0 mb-2 w-72 bg-white border border-outline-variant rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-bottom-1 duration-150">
           <div className="p-2 border-b border-outline-variant/30">
             <div className="flex items-center gap-2 px-2">
               <LegacyIcon name="smart_toy" className="text-[15px] text-on-surface-variant" />
-              <span className="text-[11px] font-semibold text-on-surface-variant">{t('Workflow agents')}</span>
+              <span className="text-[11px] font-semibold text-on-surface-variant">
+                {showWorkflowAgentPicker ? t('Workflow agents') : t('AI Agents')}
+              </span>
             </div>
           </div>
           <div className="max-h-52 overflow-y-auto">
-            {filteredWorkflowAgents.length === 0 ? (
-              <p className="px-4 py-3 text-[11px] text-on-surface-variant/60 italic">{t('No agents in this workflow')}</p>
+            {showWorkflowAgentPicker ? (
+              filteredWorkflowAgents.length === 0 ? (
+                <p className="px-4 py-3 text-[11px] text-on-surface-variant/60 italic">{t('No agents in this workflow')}</p>
+              ) : (
+                filteredWorkflowAgents.map((step) => (
+                  <button
+                    key={step.nodeId}
+                    type="button"
+                    onClick={() => insertWorkflowAgent(step.agentName)}
+                    className="w-full flex flex-col px-3 py-2 text-left hover:bg-surface-container-low transition-colors"
+                  >
+                    <span className="text-[12px] font-semibold text-on-surface">@{step.agentName}</span>
+                    {step.label && step.label !== step.agentName ? (
+                      <span className="text-[10.5px] text-on-surface-variant/60 truncate">{step.label}</span>
+                    ) : null}
+                  </button>
+                ))
+              )
+            ) : filteredMentionableAgents.length === 0 ? (
+              <p className="px-4 py-3 text-[11px] text-on-surface-variant/60 italic">{t('No matching agents')}</p>
             ) : (
-              filteredWorkflowAgents.map((step) => (
+              filteredMentionableAgents.map((agent) => (
                 <button
-                  key={step.nodeId}
+                  key={agent.id}
                   type="button"
-                  onClick={() => insertWorkflowAgent(step.agentName)}
-                  className="w-full flex flex-col px-3 py-2 text-left hover:bg-surface-container-low transition-colors"
+                  onClick={() => insertMentionAgent(agent.name)}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-surface-container-low transition-colors"
                 >
-                  <span className="text-[12px] font-semibold text-on-surface">@{step.agentName}</span>
-                  {step.label && step.label !== step.agentName ? (
-                    <span className="text-[10.5px] text-on-surface-variant/60 truncate">{step.label}</span>
-                  ) : null}
+                  {agent.logo ? (
+                    <img src={agent.logo} alt="" className="w-5 h-5 rounded object-contain shrink-0" />
+                  ) : (
+                    <span className="w-5 h-5 rounded bg-surface-container-low shrink-0" />
+                  )}
+                  <span className="flex-1 min-w-0 flex items-center justify-between gap-2">
+                    <span className="text-[12px] font-semibold text-on-surface truncate">@{agent.name}</span>
+                    {agent.id === selectedMentionAgentId ? (
+                      <LegacyIcon name="check" className="text-[14px] text-primary shrink-0" />
+                    ) : null}
+                  </span>
                 </button>
               ))
             )}

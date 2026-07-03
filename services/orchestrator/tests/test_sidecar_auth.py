@@ -48,6 +48,14 @@ def test_api_accepts_bearer_token(monkeypatch: pytest.MonkeyPatch) -> None:
     assert response.status_code == 200
 
 
+def test_workspace_media_accepts_token_query(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("CLUTCH_E2E_SANDBOX", raising=False)
+    monkeypatch.setenv("CLUTCH_SIDECAR_TOKEN", "secret-token")
+    authed = TestClient(app)
+    response = authed.get("/api/workspace/media?path=.clutch%2Fmissing.mp4&token=secret-token")
+    assert response.status_code != 401
+
+
 def test_e2e_sandbox_skips_auth(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("CLUTCH_SIDECAR_TOKEN", "secret-token")
     monkeypatch.setenv("CLUTCH_E2E_SANDBOX", "/tmp/e2e-sandbox")

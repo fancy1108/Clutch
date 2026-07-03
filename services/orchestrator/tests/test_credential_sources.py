@@ -29,3 +29,8 @@ def test_saved_key_reports_clutch_models_config(models_json: Path) -> None:
     cred = sources.resolve_provider_credential_source(router, "deepseek")
     assert cred["source"] == "clutch_models_config"
     assert "models.json" in (cred["source_label"] or "")
+
+
+def test_keychain_label_uses_windows_credential_manager(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sources.sys, "platform", "win32")
+    assert sources.clutch_credential_store_label() == "Windows Credential Manager (Clutch)"

@@ -4,7 +4,7 @@ export interface ModelEntry {
   id: string;
   name: string;
   provider_id: string;
-  model_kind?: 'chat' | 'image';
+  model_kind?: 'chat' | 'image' | 'video';
   image_backend?: string;
   available: boolean;
   credential_source?: string | null;
@@ -93,6 +93,19 @@ export async function deleteProviderCredential(providerId: string): Promise<void
   }
 }
 
+export async function fetchProviderApiKey(providerId: string): Promise<string | null> {
+  const response = await sidecarFetch(
+    `${BASE}/api/models/credentials/${encodeURIComponent(providerId)}`,
+    { cache: 'no-store' },
+  );
+  if (response.status === 404) return null;
+  if (!response.ok) {
+    throw new Error(`credential fetch failed (${response.status})`);
+  }
+  const body = (await response.json()) as { api_key?: string; configured?: boolean };
+  return body.configured && body.api_key ? body.api_key : null;
+}
+
 export interface CcSwitchRehydrateResult {
   ok: boolean;
   message: string;
@@ -129,6 +142,38 @@ export interface AddCustomImageModelInput {
   api_key?: string;
 }
 
+export interface AddCustomChatModelInput {
+  name: string;
+  api_model: string;
+  base_url: string;
+  provider_id?: string;
+  api_key?: string;
+}
+
+export async function addCustomChatModel(
+  input: AddCustomChatModelInput,
+): Promise<{ model_id: string; config: ModelConfig }> {
+  const response = await sidecarFetch(`${BASE}/api/models/custom/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as { detail?: { message?: string } };
+    throw new Error(body.detail?.message ?? `add chat model failed (${response.status})`);
+  }
+  return response.json() as Promise<{ model_id: string; config: ModelConfig }>;
+}
+
+export interface AddCustomVideoModelInput {
+  name: string;
+  api_model: string;
+  base_url: string;
+  provider_id?: string;
+  video_backend?: 'agnes';
+  api_key?: string;
+}
+
 export async function addCustomImageModel(
   input: AddCustomImageModelInput,
 ): Promise<{ model_id: string; config: ModelConfig }> {
@@ -144,6 +189,45 @@ export async function addCustomImageModel(
   return response.json() as Promise<{ model_id: string; config: ModelConfig }>;
 }
 
+export async function addCustomVideoModel(
+  input: AddCustomVideoModelInput,
+): Promise<{ model_id: string; config: ModelConfig }> {
+  const response = await sidecarFetch(`${BASE}/api/models/custom/video`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as { detail?: { message?: string } };
+    throw new Error(body.detail?.message ?? `add video model failed (${response.status})`);
+  }
+  return response.json() as Promise<{ model_id: string; config: ModelConfig }>;
+}
+
+export interface UpdateCustomModelInput {
+  name: string;
+  api_model: string;
+  base_url: string;
+  api_key?: string;
+}
+
+export async function updateCustomModel(
+  modelId: string,
+  input: UpdateCustomModelInput,
+): Promise<ModelConfig> {
+  const response = await sidecarFetch(`${BASE}/api/models/custom/${encodeURIComponent(modelId)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as { detail?: { message?: string } };
+    throw new Error(body.detail?.message ?? `update custom model failed (${response.status})`);
+  }
+  const body = (await response.json()) as { config: ModelConfig };
+  return body.config;
+}
+
 export async function deleteCustomModel(modelId: string): Promise<ModelConfig> {
   const response = await sidecarFetch(`${BASE}/api/models/custom/${encodeURIComponent(modelId)}`, {
     method: 'DELETE',
@@ -157,13 +241,42 @@ export async function deleteCustomModel(modelId: string): Promise<ModelConfig> {
   return body.config;
 }
 
+export interface OpencodeZenModelOption {
+  id: string;
+  api_model: string;
+  name: string;
+  supported: boolean;
+}
+
+export async function fetchOpencodeZenModels(): Promise<{
+  ok: boolean;
+  models: OpencodeZenModelOption[];
+  message?: string;
+}> {
+  const response = await sidecarFetch(`${BASE}/api/models/opencode-zen/list`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  });
+  if (!response.ok) {
+    throw new Error(`OpenCode Zen model list failed (${response.status})`);
+  }
+  return response.json() as Promise<{
+    ok: boolean;
+    models: OpencodeZenModelOption[];
+    message?: string;
+  }>;
+}
+
 export const PROVIDER_LABELS: Record<string, string> = {
   deepseek: 'DeepSeek',
   anthropic: 'Anthropic',
   openai: 'OpenAI',
   google: 'Google',
   ollama: 'Ollama',
-  custom: 'Agnes / Custom',
+  agnes: 'Agnes',
+  opencode: 'OpenCode Zen',
+  custom: 'Custom',
 };
 
 const VERIFY_CACHE_KEY = 'clutch.model-verify-cache';
@@ -238,12 +351,27 @@ export function pruneModelVerifyCache(validModelIds: Iterable<string>): void {
   }
 }
 
-export const DEFAULT_TEXT_MODEL_ID = 'deepseek-v4pro';
+export const MODEL_KIND_ORDER: Record<string, number> = { chat: 0, image: 1, video: 2 };
+
+export function sortModelsByKind<T extends { modelKind?: string; name: string }>(models: T[]): T[] {
+  return [...models].sort((a, b) => {
+    const kindA = MODEL_KIND_ORDER[a.modelKind ?? 'chat'] ?? 0;
+    const kindB = MODEL_KIND_ORDER[b.modelKind ?? 'chat'] ?? 0;
+    if (kindA !== kindB) return kindA - kindB;
+    return a.name.localeCompare(b.name);
+  });
+}
+
+export function modelKindMenuSuffix(modelKind?: string): string {
+  if (modelKind === 'image') return ' (image)';
+  if (modelKind === 'video') return ' (video)';
+  return '';
+}
 
 /** Prefer DeepSeek V4 Pro when available; otherwise first available chat (non-image) model. */
 export function resolveDefaultTextModelId(config: ModelConfig): string {
   const chatModels = config.models.filter(
-    (model) => model.available && (model.model_kind ?? 'chat') !== 'image',
+    (model) => model.available && !['image', 'video'].includes(model.model_kind ?? 'chat'),
   );
   const preferred = chatModels.find((model) => model.id === DEFAULT_TEXT_MODEL_ID);
   return preferred?.id ?? chatModels[0]?.id ?? config.active_model_id;
@@ -255,7 +383,7 @@ export function mapModelConfigToUi(config: ModelConfig) {
   return {
     activeModelId: config.active_model_id,
     providers: config.providers ?? {},
-    models: visible.map((m) => ({
+    models: sortModelsByKind(visible.map((m) => ({
       id: m.id,
       name: m.name,
       provider: PROVIDER_LABELS[m.provider_id] ?? m.provider_id,
@@ -273,7 +401,7 @@ export function mapModelConfigToUi(config: ModelConfig) {
       clutchManaged: Boolean(m.clutch_managed),
       isCcSwitch: Boolean(m.is_cc_switch),
       isCustom: Boolean(m.is_custom),
-    })),
+    }))),
     activeAvailable: available.some((m) => m.id === config.active_model_id),
   };
 }

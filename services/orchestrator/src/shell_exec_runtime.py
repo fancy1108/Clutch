@@ -67,6 +67,20 @@ def _shell_quote(value: str) -> str:
     return "'" + value.replace("'", "'\"'\"'") + "'"
 
 
+def _shell_command_token(binary: str) -> str:
+    token = binary.strip()
+    drive_match = re.match(r"^([A-Za-z]):[\\/](.*)$", token)
+    if drive_match:
+        drive = drive_match.group(1).lower()
+        rest = drive_match.group(2).replace("\\", "/")
+        token = f"/{drive}/{rest}"
+    elif "\\" in token:
+        token = token.replace("\\", "/")
+    if re.search(r"[\s'\"$`;&|()<>]", token):
+        return _shell_quote(token)
+    return token
+
+
 def assert_no_interactive_command(text: str) -> None:
     if _INTERACTIVE_RE.search(text):
         raise InteractiveCommandBlocked("interactive shell command blocked in hybrid mode")
@@ -77,7 +91,8 @@ def extract_claude_output(plain: str, *, marker: str) -> str:
 
 
 def _is_codex_binary(binary: str) -> bool:
-    return binary.rsplit("/", 1)[-1] == "codex"
+    name = binary.replace("\\", "/").rsplit("/", 1)[-1].lower()
+    return name in {"codex", "codex.exe"}
 
 
 def _build_claude_shell_cmd(
@@ -89,7 +104,7 @@ def _build_claude_shell_cmd(
     resume_session_id: str | None,
     system_prompt: str | None = None,
 ) -> str:
-    claude_args: list[str] = [f"{claude_binary} -p \"$CLUTCH_P\""]
+    claude_args: list[str] = [f"{_shell_command_token(claude_binary)} -p \"$CLUTCH_P\""]
     if resume_session_id:
         claude_args.append(f"--resume {resume_session_id}")
     elif session_id:
@@ -116,7 +131,7 @@ def _build_agy_shell_cmd(
     effective = prompt
     if system_prompt:
         effective = f"{system_prompt}\n\nUser Request:\n{prompt}"
-    agy_args: list[str] = [f"{agy_binary} -p \"$CLUTCH_P\""]
+    agy_args: list[str] = [f"{_shell_command_token(agy_binary)} -p \"$CLUTCH_P\""]
     if conversation_id:
         agy_args.append(f"--conversation {conversation_id}")
     agy_args.append("--dangerously-skip-permissions")
@@ -339,7 +354,7 @@ def _build_generic_cli_shell_cmd(
     if system_prompt and prepend_system_prompt:
         effective = f"{system_prompt}\n\nUser Request:\n{prompt}"
 
-    parts: list[str] = [binary]
+    parts: list[str] = [_shell_command_token(binary)]
     if extra_args:
         parts.extend(extra_args)
 

@@ -5,6 +5,7 @@ import {
   buildWorkflowReplyStepIndex,
   orderedWorkflowAgentSteps,
   resolveInProgressWorkflowStep,
+  resolveWorkflowStepStatuses,
   workflowToolLabel,
 } from './workflowAgentSteps';
 import type { CompilerWorkflow } from './workflowFormat';
@@ -91,5 +92,35 @@ describe('workflowAgentSteps', () => {
     const index = buildWorkflowReplyStepIndex(steps, messages);
     expect(index.get('a1')).toBe(0);
     expect(index.get('a2')).toBe(1);
+  });
+
+  it('resolves workflow step statuses for running and completed runs', () => {
+    const steps = orderedWorkflowAgentSteps(workflow, [...agents]);
+    const runningMessages: ChatMessage[] = [
+      { id: 'u1', agent: 'User', text: 'hello', timestamp: '1' },
+      { id: 'a1', agent: 'The Researcher', text: 'weather', timestamp: '2' },
+    ];
+    const running = resolveWorkflowStepStatuses(steps, runningMessages, {
+      activeNodeId: 'n2',
+      runStatus: 'running',
+    });
+    expect(running.get('n1')).toBe('completed');
+    expect(running.get('n2')).toBe('in_progress');
+
+    const passed = resolveWorkflowStepStatuses(steps, runningMessages, {
+      runStatus: 'passed',
+    });
+    expect(passed.get('n1')).toBe('passed');
+
+    const failedMessages: ChatMessage[] = [
+      ...runningMessages,
+      { id: 'a2', agent: 'The Artist', text: 'nope', timestamp: '3', status: 'FAILED' },
+    ];
+    const failed = resolveWorkflowStepStatuses(steps, failedMessages, {
+      activeNodeId: 'n2',
+      runStatus: 'failed',
+    });
+    expect(failed.get('n1')).toBe('completed');
+    expect(failed.get('n2')).toBe('failed');
   });
 });

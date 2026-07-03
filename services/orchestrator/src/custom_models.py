@@ -12,12 +12,14 @@ from urllib.parse import urlparse
 from src.image_router import resolve_image_backend
 from src.llm.router import BUILTIN_MODELS, DEFAULT_MODEL_ID, LLMProviderRouter, ModelKind, ModelSpec, ProviderId
 from src.preferences_storage import tr
+from src.video_router import resolve_video_backend
 
 CONFIG_ENV = "CLUTCH_MODELS_CONFIG"
 
 _VALID_IMAGE_BACKENDS = frozenset({"", "agnes", "openai_images"})
+_VALID_VIDEO_BACKENDS = frozenset({"", "agnes"})
 _VALID_PROVIDERS: frozenset[str] = frozenset(
-    {"deepseek", "openai", "anthropic", "google", "ollama", "custom"}
+    {"deepseek", "openai", "anthropic", "google", "ollama", "agnes", "opencode", "custom"}
 )
 
 
@@ -81,11 +83,14 @@ def _spec_from_entry(entry: dict[str, Any]) -> ModelSpec:
     if provider_id not in _VALID_PROVIDERS:
         raise ValueError(tr(f"Unsupported provider: {provider_id}", f"不支持的提供商：{provider_id}"))
     model_kind = str(entry.get("model_kind", "image")).strip()
-    if model_kind not in {"chat", "image"}:
-        raise ValueError(tr("model_kind must be chat or image", "model_kind 必须是 chat 或 image"))
+    if model_kind not in {"chat", "image", "video"}:
+        raise ValueError(tr("model_kind must be chat, image, or video", "model_kind 必须是 chat、image 或 video"))
     image_backend = str(entry.get("image_backend", "")).strip()
     if image_backend not in _VALID_IMAGE_BACKENDS:
         raise ValueError(tr("Unsupported image backend", "不支持的生图后端"))
+    video_backend = str(entry.get("video_backend", "")).strip()
+    if video_backend not in _VALID_VIDEO_BACKENDS:
+        raise ValueError(tr("Unsupported video backend", "不支持的视频后端"))
     base_url = str(entry.get("base_url", "")).strip().rstrip("/")
     if not base_url:
         raise ValueError(tr("base_url is required", "base_url 不能为空"))
@@ -105,6 +110,7 @@ def _spec_from_entry(entry: dict[str, Any]) -> ModelSpec:
         base_url=base_url,
         model_kind=model_kind,  # type: ignore[arg-type]
         image_backend=image_backend,
+        video_backend=video_backend,
     )
 
 
@@ -128,11 +134,17 @@ def add_custom_model(
     provider_id: str = "custom",
     model_kind: ModelKind = "image",
     image_backend: str = "",
+    video_backend: str = "",
     model_id: str = "",
     api_key: str | None = None,
 ) -> ModelSpec:
-    if model_kind != "image":
-        raise ValueError(tr("Only image models can be added from the UI for now.", "当前 UI 仅支持添加生图模型。"))
+    if model_kind not in {"chat", "image", "video"}:
+        raise ValueError(
+            tr(
+                "Only chat, image, or video models can be added from the UI.",
+                "当前 UI 仅支持添加对话、图像或视频模型。",
+            )
+        )
     entry = {
         "id": model_id.strip() or _slugify_id(name),
         "name": name.strip(),
@@ -141,19 +153,74 @@ def add_custom_model(
         "provider_id": provider_id.strip() or "custom",
         "model_kind": model_kind,
         "image_backend": image_backend.strip(),
+        "video_backend": video_backend.strip(),
     }
     spec = _spec_from_entry(entry)
     if spec.id in BUILTIN_MODELS:
         raise ValueError(tr("Model id conflicts with a built-in model.", "模型 id 与内置模型冲突。"))
     if spec.id in custom_model_ids():
         raise ValueError(tr("A custom model with this id already exists.", "已存在相同 id 的自定义模型。"))
-    # Validate backend resolves
-    resolve_image_backend(spec)
+    if model_kind == "image":
+        resolve_image_backend(spec)
+    elif model_kind == "video":
+        resolve_video_backend(spec)
 
     data = _read_config()
     custom_models = [item for item in data.get("custom_models", []) if isinstance(item, dict)]
     custom_models.append(entry)
     data["custom_models"] = custom_models
+    if api_key and api_key.strip():
+        router.set_api_key(spec.provider_id, api_key.strip())  # type: ignore[arg-type]
+        from src.credentials.keychain_store import set_provider_key, use_keychain
+
+        if use_keychain():
+            set_provider_key(spec.provider_id, api_key.strip())
+        else:
+            keys = data.get("api_keys")
+            if not isinstance(keys, dict):
+                keys = {}
+            keys[spec.provider_id] = api_key.strip()
+            data["api_keys"] = keys
+    _write_config(data)
+    router.register_model(spec)
+    return spec
+
+
+def update_custom_model(
+    router: LLMProviderRouter,
+    model_id: str,
+    *,
+    name: str,
+    api_model: str,
+    base_url: str,
+    api_key: str | None = None,
+) -> ModelSpec:
+    if not is_custom_model_id(model_id):
+        raise ValueError(tr("Only custom models can be updated here.", "只能更新自定义模型。"))
+    data = _read_config()
+    custom_models = [item for item in data.get("custom_models", []) if isinstance(item, dict)]
+    updated_entry: dict[str, Any] | None = None
+    next_models: list[dict[str, Any]] = []
+    for item in custom_models:
+        if str(item.get("id")) == model_id:
+            updated_entry = {
+                **item,
+                "name": name.strip(),
+                "api_model": api_model.strip(),
+                "base_url": base_url.strip().rstrip("/"),
+            }
+            next_models.append(updated_entry)
+        else:
+            next_models.append(item)
+    if updated_entry is None:
+        raise ValueError(tr("Custom model not found.", "未找到自定义模型。"))
+    spec = _spec_from_entry(updated_entry)
+    model_kind = spec.model_kind
+    if model_kind == "image":
+        resolve_image_backend(spec)
+    elif model_kind == "video":
+        resolve_video_backend(spec)
+    data["custom_models"] = next_models
     if api_key and api_key.strip():
         router.set_api_key(spec.provider_id, api_key.strip())  # type: ignore[arg-type]
         from src.credentials.keychain_store import set_provider_key, use_keychain
@@ -186,6 +253,17 @@ def delete_custom_model(router: LLMProviderRouter, model_id: str) -> None:
         router._active_model_id = DEFAULT_MODEL_ID
     _write_config(data)
     router._models.pop(model_id, None)
+
+
+def unhide_model_from_list(model_id: str) -> bool:
+    """Remove a built-in model from hidden_model_ids so it appears in the catalog again."""
+    data = _read_config()
+    hidden = [str(item) for item in data.get("hidden_model_ids", []) if isinstance(item, str)]
+    if model_id not in hidden:
+        return False
+    data["hidden_model_ids"] = [item for item in hidden if item != model_id]
+    _write_config(data)
+    return True
 
 
 def hide_model_from_list(router: LLMProviderRouter, model_id: str) -> None:

@@ -7,6 +7,8 @@ describe('brandLogos', () => {
     expect(resolveToolBrandLogo('claude-cli')).toBeTruthy();
     expect(resolveToolBrandLogo('codex-cli')).toBeTruthy();
     expect(resolveToolBrandLogo('opencode-cli')).toBeTruthy();
+    expect(resolveToolBrandLogo('codebuddy-cli')).toBeTruthy();
+    expect(resolveToolBrandLogo('rivet-cli')).toBeTruthy();
     expect(resolveToolBrandLogo('gemini-cli')).toBeUndefined();
   });
 
@@ -18,5 +20,6 @@ describe('brandLogos', () => {
   it('resolves cli agent types with assets', () => {
     expect(resolveBrandLogoSrc({ agentType: 'claude-cli' })).toBeTruthy();
     expect(resolveBrandLogoSrc({ agentType: 'ollama-cli' })).toBeTruthy();
+    expect(resolveBrandLogoSrc({ agentType: 'rivet-cli' })).toBeTruthy();
   });
 });

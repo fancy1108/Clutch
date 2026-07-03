@@ -23,10 +23,33 @@ def _state_path(run_id: str) -> Path:
     return _states_dir() / f"{run_id}.json"
 
 
+# Optional ClutchState fields written by orchestrator patches (terminal orchestra, hybrid, etc.)
+_PERSISTED_OPTIONAL_KEYS = frozenset({
+    "hybrid_executions",
+    "shell_session_status",
+    "shell_pool_blocker_run_ids",
+    "shell_pool_blockers",
+    "shell_pool_queue_position",
+    "shell_pool_queue_depth",
+    "refining_node_id",
+    "refine_draft_output",
+    "refine_agent_id",
+    "pty_lanes",
+    "dispatch_log",
+    "dispatch_edges",
+    "pending_handoff_drafts",
+    "focused_lane_id",
+    "pending_pty_inject",
+})
+
+
 def _coerce_state(data: dict[str, Any], run_id: str) -> ClutchState:
     workflow_id = str(data.get("workflow_id", ""))
     state = initial_state(run_id, workflow_id)
     for key in state:
+        if key in data:
+            state[key] = data[key]  # type: ignore[literal-required]
+    for key in _PERSISTED_OPTIONAL_KEYS:
         if key in data:
             state[key] = data[key]  # type: ignore[literal-required]
     state["run_id"] = run_id
@@ -37,7 +60,13 @@ def load_run_state(run_id: str) -> ClutchState | None:
     path = _state_path(run_id)
     if not path.is_file():
         return None
-    data = json.loads(path.read_text(encoding="utf-8"))
+    try:
+        raw = path.read_text(encoding="utf-8").strip()
+        if not raw:
+            return None
+        data = json.loads(raw)
+    except (json.JSONDecodeError, OSError):
+        return None
     if not isinstance(data, dict):
         return None
     return _coerce_state(data, run_id)

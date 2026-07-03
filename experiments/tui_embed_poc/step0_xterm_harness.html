@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Clutch TUI Embed POC</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.min.css" />
+  <style>
+    body { margin: 0; background: #111; color: #ccc; font-family: system-ui, sans-serif; }
+    header { padding: 12px 16px; border-bottom: 1px solid #333; display: flex; gap: 12px; align-items: center; }
+    #terminal { height: calc(100vh - 56px); padding: 8px; }
+    input { background: #222; border: 1px solid #444; color: #eee; padding: 6px 8px; border-radius: 6px; width: 280px; }
+    button { background: #333; color: #fff; border: 0; padding: 6px 12px; border-radius: 6px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <header>
+    <label>WS URL <input id="wsUrl" value="ws://127.0.0.1:8765" /></label>
+    <button id="connect">Connect</button>
+    <span id="status">disconnected</span>
+  </header>
+  <div id="terminal"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.min.js"></script>
+  <script>
+    const term = new Terminal({ cursorBlink: true, fontFamily: 'Menlo, monospace', fontSize: 12, theme: { background: '#111111' } });
+    const fitAddon = new FitAddon.FitAddon();
+    term.loadAddon(fitAddon);
+    term.open(document.getElementById('terminal'));
+    fitAddon.fit();
+    window.addEventListener('resize', () => fitAddon.fit());
+
+    let socket = null;
+    document.getElementById('connect').onclick = () => {
+      const url = document.getElementById('wsUrl').value.trim();
+      if (socket) socket.close();
+      socket = new WebSocket(url);
+      document.getElementById('status').textContent = 'connecting…';
+      socket.onopen = () => { document.getElementById('status').textContent = 'connected'; };
+      socket.onclose = () => { document.getElementById('status').textContent = 'disconnected'; };
+      socket.onmessage = (ev) => term.write(ev.data);
+      socket.onerror = () => { document.getElementById('status').textContent = 'error'; };
+      term.onData((data) => { if (socket && socket.readyState === WebSocket.OPEN) socket.send(data); });
+    };
+  </script>
+</body>
+</html>

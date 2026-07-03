@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import sqlite3
+import sys
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -15,13 +16,21 @@ from src.llm.router import LLMProviderRouter, ProviderId, ModelSpec
 SOURCE_LABELS: dict[str, str] = {
     "claude_code_settings": "Claude Code CLI (~/.claude/settings.json)",
     "cc_switch_settings": "CC Switch database (~/.cc-switch/cc-switch.db)",
-    "clutch_keychain": "macOS Keychain (Clutch)",
+    "clutch_keychain": "OS credential store (Clutch)",
     "clutch_models_config": "Clutch app storage (models.json)",
     "clutch_env": "CLUTCH_* environment variable",
     "anthropic_env": "ANTHROPIC_API_KEY environment variable",
     "anthropic_auth_token_env": "ANTHROPIC_AUTH_TOKEN environment variable",
     "ollama_local": "Local Ollama (no API key required)",
 }
+
+
+def clutch_credential_store_label() -> str:
+    if sys.platform == "win32":
+        return "Windows Credential Manager (Clutch)"
+    if sys.platform == "darwin":
+        return "macOS Keychain (Clutch)"
+    return SOURCE_LABELS["clutch_keychain"]
 
 
 def _config_path() -> Path:
@@ -77,7 +86,9 @@ def resolve_provider_credential_source(
         return {
             "configured": True,
             "source": source_key,
-            "source_label": SOURCE_LABELS[source_key],
+            "source_label": clutch_credential_store_label()
+            if source_key == "clutch_keychain"
+            else SOURCE_LABELS[source_key],
         }
 
     if provider_id == "anthropic":
@@ -132,7 +143,7 @@ def cc_switch_has_key_for_provider(provider_id: ProviderId) -> bool:
             return True
         if provider_id == "openai" and (config.get("auth") or {}).get("OPENAI_API_KEY"):
             return True
-        if provider_id in ("custom", "ollama") and config.get("api_key"):
+        if provider_id in ("custom", "agnes", "ollama") and config.get("api_key"):
             return True
     return False
 
@@ -158,6 +169,7 @@ def model_source_summary(cred: dict[str, Any], *, is_cc_switch: bool) -> str:
 def resolve_model_credential_hint(router: LLMProviderRouter, spec: ModelSpec) -> str | None:
     """Explain likely credential mismatch when a key works elsewhere but not in Clutch."""
     from src.image_router import is_image_model
+    from src.video_router import is_video_model
 
     cred = resolve_provider_credential_source(router, spec.provider_id)
     hints: list[str] = []
@@ -172,6 +184,7 @@ def resolve_model_credential_hint(router: LLMProviderRouter, spec: ModelSpec) ->
             "api.openai.com",
             "api.deepseek.com",
             "generativelanguage.googleapis.com",
+            "opencode.ai",
             "localhost",
             "127.0.0.1",
         }
@@ -181,13 +194,13 @@ def resolve_model_credential_hint(router: LLMProviderRouter, spec: ModelSpec) ->
             )
     if spec.provider_id == "openai" and spec.base_url and "agnes-ai.com" in spec.base_url:
         hints.append("Save your Agnes token under the OpenAI provider.")
-    if (
+    if spec.provider_id == "agnes" or (
         spec.provider_id == "custom"
         and spec.base_url
         and "agnes-ai.com" in spec.base_url
-        and (is_image_model(spec) or spec.model_kind == "chat")
+        and (is_image_model(spec) or is_video_model(spec) or spec.model_kind == "chat")
     ):
-        hints.append("Save your Agnes API key under the Custom provider.")
+        hints.append("Save your Agnes API key under the Agnes provider.")
     return " ".join(hints) if hints else None
 
 

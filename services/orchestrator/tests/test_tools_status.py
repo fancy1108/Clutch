@@ -48,6 +48,7 @@ def test_list_tools_include_all_omits_non_recommended_uninstalled(
     assert "aider-cli" not in ids
     assert "rivet-cli" not in ids
     assert "opencode-cli" in ids
+    assert "codebuddy-cli" in ids
     assert all(tool["recommended"] for tool in tools)
 
 
@@ -151,6 +152,7 @@ def test_resolve_agent_type_for_tool_maps_tool_ids() -> None:
     assert resolve_agent_type_for_tool("ollama-cli") == "ollama-cli"
     assert resolve_agent_type_for_tool("rivet-cli") == "rivet-cli"
     assert resolve_agent_type_for_tool("opencode-cli") == "opencode-cli"
+    assert resolve_agent_type_for_tool("codebuddy-cli") == "codebuddy-cli"
     assert resolve_agent_type_for_tool("unknown-cli") is None
 
 
@@ -274,6 +276,7 @@ def test_cli_candidates_include_mainstream_agent_clis() -> None:
     expected = {
         "claude-cli",
         "codex-cli",
+        "codebuddy-cli",
         "rivet-cli",
         "opencode-cli",
         "goose-cli",

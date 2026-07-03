@@ -24,6 +24,7 @@ const TOOL_LABELS: Record<string, string> = {
   'antigravity-cli': 'Antigravity CLI',
   'codex-cli': 'Codex CLI',
   'opencode-cli': 'OpenCode CLI',
+  'codebuddy-cli': 'CodeBuddy CLI',
   'agy-cli': 'Antigravity CLI',
   agy: 'Antigravity CLI',
 };
@@ -320,4 +321,99 @@ export function buildWorkflowReplyStepIndex(
     }
   }
   return map;
+}
+
+export type WorkflowStepExecutionStatus = 'pending' | 'in_progress' | 'completed' | 'passed' | 'failed';
+
+function isWorkflowStepMessageFailed(message: ChatMessage | undefined): boolean {
+  if (!message) return false;
+  return (
+    message.status === 'FAILED'
+    || Boolean(message.badgeText?.includes('FAILED'))
+    || Boolean(message.badgeText?.includes('NEEDS'))
+  );
+}
+
+function workflowStepIndex(steps: WorkflowAgentStep[], nodeId: string): number {
+  return steps.findIndex((step) => step.nodeId === nodeId);
+}
+
+/** Per-node execution status for Overview / Flow step lists. */
+export function resolveWorkflowStepStatuses(
+  steps: WorkflowAgentStep[],
+  messages: ChatMessage[],
+  options: {
+    activeNodeId?: string;
+    activeAgentName?: string;
+    runStatus?: string;
+  } = {},
+): Map<string, WorkflowStepExecutionStatus> {
+  const statuses = new Map<string, WorkflowStepExecutionStatus>();
+  if (steps.length === 0) return statuses;
+
+  const runStatus = (options.runStatus ?? 'idle').trim().toLowerCase();
+  const isActiveRun = runStatus === 'running' || runStatus === 'awaiting_human' || runStatus === 'refining';
+  const isPassedRun = runStatus === 'passed';
+  const isFailedRun = runStatus === 'failed';
+
+  const replyIndex = buildWorkflowReplyStepIndex(steps, messages);
+  const messagesByStep = new Map<number, ChatMessage>();
+  for (const [messageId, stepIndex] of replyIndex) {
+    const message = messages.find((item) => item.id === messageId);
+    if (message) messagesByStep.set(stepIndex, message);
+  }
+
+  const inProgressStep = isActiveRun
+    ? resolveInProgressWorkflowStep(steps, messages, {
+        activeNodeId: options.activeNodeId,
+        activeAgentName: options.activeAgentName,
+      })
+    : null;
+  const inProgressIndex = inProgressStep
+    ? workflowStepIndex(steps, inProgressStep.nodeId)
+    : -1;
+
+  const failedStepIndex = (() => {
+    for (let index = 0; index < steps.length; index += 1) {
+      if (isWorkflowStepMessageFailed(messagesByStep.get(index))) return index;
+    }
+    if (isFailedRun) {
+      const activeIndex = options.activeNodeId
+        ? workflowStepIndex(steps, options.activeNodeId)
+        : inProgressIndex;
+      if (activeIndex >= 0) return activeIndex;
+    }
+    return -1;
+  })();
+
+  steps.forEach((step, index) => {
+    if (failedStepIndex >= 0 && index === failedStepIndex) {
+      statuses.set(step.nodeId, 'failed');
+      return;
+    }
+    if (failedStepIndex >= 0 && index > failedStepIndex) {
+      statuses.set(step.nodeId, 'pending');
+      return;
+    }
+
+    if (inProgressIndex >= 0 && index === inProgressIndex && isActiveRun) {
+      statuses.set(step.nodeId, 'in_progress');
+      return;
+    }
+
+    const hasReply = messagesByStep.has(index) || (inProgressIndex >= 0 && index < inProgressIndex);
+    if (!hasReply) {
+      statuses.set(step.nodeId, 'pending');
+      return;
+    }
+
+    if (isPassedRun) {
+      statuses.set(step.nodeId, 'passed');
+      return;
+    }
+
+    statuses.set(step.nodeId, 'completed');
+  });
+
+  return statuses;
 }

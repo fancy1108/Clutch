@@ -1,12 +1,27 @@
 import React from 'react';
-import { CONTENT_TOP_WITH_BANNER } from '../constants/layout';
+import { CONTENT_TOP_WITH_BANNER, CHROME_PANEL_TOGGLE_TOP_IN_PANEL_CSS } from '../constants/layout';
+import { ChromeEdgeToggle } from './ui/ChromeEdgeToggle';
 import { RightTab, UncommittedFile, ClutchRunStatus } from '../types';
 import type { FileTreeNode } from '../services/workspaceApi';
 import { loadWorkflowById } from '../services/workflowApi';
+import type { ChatMessage } from '../types';
+import type { WorkflowAgentStep } from '../services/workflowAgentSteps';
+import {
+  resolveWorkflowStepStatuses,
+  workflowToolLabel,
+  type WorkflowStepExecutionStatus,
+} from '../services/workflowAgentSteps';
 import { useLanguage, translateRunStatus } from './LanguageContext';
 import { LegacyIcon } from './ui/LegacyIcon';
+import { AgentChatAvatar } from './AgentChatAvatar';
+import { resolveBrandLogoSrc } from '../services/brandLogos';
 import { UnderDevelopmentNotice } from './ui/UnderDevelopmentNotice';
+import { OverviewDispatchLog } from './terminal-orchestra/OverviewDispatchLog';
 import { BTN_ICON } from './ui/buttonStyles';
+import {
+  WORKFLOW_STEP_STATUS_BADGE,
+  workflowStepStatusLabel,
+} from './ui/surfaceStyles';
 
 interface RightPanelProps {
   activeTab: RightTab;
@@ -35,12 +50,20 @@ interface RightPanelProps {
   onOpenWorkspaceFile?: (path: string) => void;
   workspaceAuthorized?: boolean;
   onClearTerminal?: () => void;
+  dispatchLog?: import('../types').DispatchLogEntry[];
+  showTerminalOrchestraOverview?: boolean;
+  terminalHistoryReadOnly?: boolean;
+  onSelectDispatchEntry?: (entryId: string) => void;
+  workflowAgentSteps?: WorkflowAgentStep[];
+  messages?: ChatMessage[];
 }
 
 type WorkflowStepView = {
   id: string;
   label: string;
   agent: string;
+  agentType?: string;
+  toolId?: string;
 };
 
 const RIGHT_TAB_LABELS: Record<RightTab, string> = {
@@ -75,6 +98,12 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   onOpenWorkspaceFile,
   workspaceAuthorized = false,
   onClearTerminal,
+  dispatchLog = [],
+  showTerminalOrchestraOverview = false,
+  terminalHistoryReadOnly = false,
+  onSelectDispatchEntry,
+  workflowAgentSteps = [],
+  messages = [],
 }) => {
   const { t, language } = useLanguage();
   const [selectedFile, setSelectedFile] = React.useState<string>('');
@@ -88,6 +117,18 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   }, [activeTab, workspaceFiles]);
 
   React.useEffect(() => {
+    if (workflowAgentSteps.length > 0) {
+      setWorkflowSteps(
+        workflowAgentSteps.map((step) => ({
+          id: step.nodeId,
+          label: step.label,
+          agent: step.agentName,
+          agentType: step.agentType,
+          toolId: step.toolId,
+        })),
+      );
+      return;
+    }
     if (!workflowId) {
       setWorkflowSteps([]);
       return;
@@ -101,11 +142,18 @@ export const RightPanel: React.FC<RightPanelProps> = ({
         setWorkflowSteps(
           workflow.nodes
             .filter((node) => node.type === 'agent_task')
-            .map((node) => ({
-              id: node.id,
-              label: String((node.data as { label?: string }).label ?? node.id),
-              agent: String((node.data as { agent?: string }).agent ?? '—'),
-            })),
+            .map((node) => {
+              const data = node.data as { label?: string; agent?: string; tool?: string };
+              const tool = String(data.tool ?? 'clutch').trim().toLowerCase() || 'clutch';
+              const toolId = tool === 'llm' ? 'clutch' : tool;
+              return {
+                id: node.id,
+                label: String(data.label ?? node.id),
+                agent: String(data.agent ?? '—'),
+                agentType: workflowToolLabel(tool),
+                toolId,
+              };
+            }),
         );
       } catch {
         if (!cancelled) setWorkflowSteps([]);
@@ -115,7 +163,28 @@ export const RightPanel: React.FC<RightPanelProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [workflowId]);
+  }, [workflowId, workflowAgentSteps]);
+
+  const workflowStepStatuses = React.useMemo(
+    () => resolveWorkflowStepStatuses(workflowAgentSteps, messages, {
+      activeNodeId,
+      activeAgentName: activeAgent,
+      runStatus: clutchStatus,
+    }),
+    [workflowAgentSteps, messages, activeNodeId, activeAgent, clutchStatus],
+  );
+
+  const renderWorkflowStepStatusBadge = (status: WorkflowStepExecutionStatus) => {
+    if (status === 'pending') return null;
+    return (
+      <span
+        data-testid={`workflow-step-status-${status}`}
+        className={WORKFLOW_STEP_STATUS_BADGE[status]}
+      >
+        {t(workflowStepStatusLabel(status))}
+      </span>
+    );
+  };
 
   const toggleExpand = (dir: string) => {
     setExpandedFiles((prev) => ({ ...prev, [dir]: !prev[dir] }));
@@ -132,9 +201,37 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   const tokenTotal = sessionTokens || tokenInput + tokenOutput;
   const inputPct = tokenTotal > 0 ? Math.round((tokenInput / tokenTotal) * 100) : 0;
   const outputPct = tokenTotal > 0 ? 100 - inputPct : 0;
-  const showFlowTab = isMultiAgent;
-  const visibleTabs = (['overview', 'files', 'flow', 'changes', 'terminal'] as RightTab[])
-    .filter((tab) => tab !== 'flow' || showFlowTab);
+  const visibleTabs: RightTab[] = ['overview', 'files', 'changes', 'terminal'];
+
+  const terminalLogRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const container = terminalLogRef.current;
+    if (!container) return;
+    container.scrollTop = container.scrollHeight;
+  }, [terminalLogs]);
+
+  const renderTerminalLogLines = () => {
+    if (terminalLogs.length === 0) {
+      return (
+        <p className="text-neutral-500 font-sans text-[11px]">{t('No terminal logs yet')}</p>
+      );
+    }
+    return terminalLogs.map((log, i) => {
+      let colorClass = 'text-green-400/90';
+      if (log.includes('WARNING') || log.includes('FAILED')) {
+        colorClass = 'text-red-400 font-semibold';
+      } else if (log.includes('PASSED') || log.includes('SUCCESS')) {
+        colorClass = 'text-emerald-400 font-bold';
+      }
+      return (
+        <div key={i} className={`${colorClass} leading-normal`}>
+          <span className="text-white select-none mr-1.5">$</span>
+          {log}
+        </div>
+      );
+    });
+  };
 
   const statusLabel = translateRunStatus(clutchStatus, language);
 
@@ -198,7 +295,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
     if (workflowSteps.length === 0) {
       return (
         <div className="p-6 border border-dashed border-outline-variant/50 rounded-xl text-center space-y-2">
-          <LegacyIcon name="account_tree" className="text-[24px] text-on-surface-variant/50" />
+          <LegacyIcon name="fork_right" className="text-[24px] text-on-surface-variant/50" />
           <p className="text-[11px] text-on-surface-variant leading-relaxed">{t('Workflow steps unavailable')}</p>
         </div>
       );
@@ -208,6 +305,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
       <ol className={compact ? 'space-y-1.5' : 'space-y-2'}>
         {workflowSteps.map((step, index) => {
           const isActive = step.id === activeNodeId;
+          const stepStatus = workflowStepStatuses.get(step.id) ?? 'pending';
           return (
             <li
               key={step.id}
@@ -227,13 +325,18 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                   <p className={`font-bold text-on-surface truncate ${compact ? 'text-[10px]' : 'text-[11px]'}`}>
                     {step.label}
                   </p>
-                  <p className="text-[10px] text-on-surface-variant font-mono mt-0.5">{step.agent}</p>
+                  <div className="flex items-center gap-2 mt-1.5 min-w-0">
+                    <AgentChatAvatar
+                      src={resolveBrandLogoSrc({ toolId: step.toolId })}
+                      alt={step.agent || step.label}
+                      className={compact ? 'w-5 h-5' : 'w-6 h-6'}
+                    />
+                    <p className="text-[10px] text-on-surface-variant/80 uppercase tracking-wide truncate">
+                      {step.agentType || '—'}
+                    </p>
+                  </div>
                 </div>
-                {isActive ? (
-                  <span className="text-[9px] font-bold uppercase text-primary whitespace-nowrap">
-                    {statusLabel}
-                  </span>
-                ) : null}
+                {renderWorkflowStepStatusBadge(stepStatus)}
               </div>
             </li>
           );
@@ -301,20 +404,14 @@ export const RightPanel: React.FC<RightPanelProps> = ({
       }`}
       style={{ top: CONTENT_TOP_WITH_BANNER, overflow: 'visible' }}
     >
-      <button
-        data-testid="right-panel-toggle"
-        type="button"
+      <ChromeEdgeToggle
+        testId="right-panel-toggle"
+        icon={isOpen ? 'chevron_right' : 'chevron_left'}
+        title={isOpen ? t('Collapse Panel') : t('Expand Panel')}
         onClick={() => setIsOpen(!isOpen)}
-        className={`absolute top-4 w-6 h-6 bg-white border border-neutral-300 rounded-full flex items-center justify-center z-50 shadow-md hover:shadow-lg hover:bg-neutral-50 hover:border-neutral-450 transition-all cursor-pointer text-neutral-600 hover:text-neutral-900 duration-200 hover:scale-110 active:scale-95 ${
-          isOpen ? '-left-3' : '-left-6'
-        }`}
-            title={isOpen ? t('Collapse Panel') : t('Expand Panel')}
-      >
-        <LegacyIcon
-          name={isOpen ? 'chevron_right' : 'chevron_left'}
-          className="text-[13px] font-bold"
-        />
-      </button>
+        className={`absolute transition-all duration-300 ${isOpen ? '-left-3' : '-left-6'}`}
+        style={{ top: CHROME_PANEL_TOGGLE_TOP_IN_PANEL_CSS }}
+      />
 
       <div className={`flex-grow flex flex-col h-full overflow-hidden ${!isOpen ? 'hidden' : ''}`}>
         <div className="flex border-b border-outline-variant overflow-x-auto sidebar-scroll select-none bg-surface-container-low/40">
@@ -325,7 +422,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                 key={tab}
                 data-testid={`right-tab-${tab}`}
                 onClick={() => setActiveTab(tab)}
-                className={`px-4 py-3 text-xs font-bold whitespace-nowrap tracking-wide capitalize transition-all ${
+                className={`px-3 py-3 text-xs font-bold whitespace-nowrap tracking-wide capitalize transition-all ${
                   isActive
                     ? 'text-primary border-b-2 border-primary bg-white'
                     : 'text-on-surface-variant hover:text-on-surface'
@@ -337,83 +434,105 @@ export const RightPanel: React.FC<RightPanelProps> = ({
           })}
         </div>
 
-        <div className="flex-1 overflow-y-auto sidebar-scroll p-5 select-none bg-white">
+        <div className="flex-1 overflow-y-auto sidebar-scroll p-5 bg-white">
           {activeTab === 'overview' && (
-            <div className="space-y-6 animate-fade-in text-xs">
-              {isMultiAgent ? (
-                <>
-                  {renderStateSummary()}
-                  {hasWorkflow ? (
-                    <section>
-                      <h4 className="text-[10px] font-bold text-on-surface-variant/75 uppercase tracking-widest mb-3">
-                        {t('Workflow step execution')}
-                      </h4>
-                      {renderWorkflowSteps(true)}
-                    </section>
-                  ) : isIdle ? (
-                    <div className="p-6 border border-dashed border-outline-variant/50 rounded-xl text-center space-y-2">
-                      <LegacyIcon name="monitoring" className="text-[24px] text-on-surface-variant/50" />
-                      <p className="text-[11px] text-on-surface-variant leading-relaxed">
-                        {t('No active workflow overview')}
-                      </p>
-                    </div>
-                  ) : null}
-                </>
+            <div className="space-y-6 animate-fade-in text-xs select-text">
+              {showTerminalOrchestraOverview ? (
+                <section className="space-y-3">
+                  <div className="p-3 rounded-2xl border border-outline-variant/30 bg-surface-container-low shadow-sm">
+                    <p className="text-[11px] text-on-surface-variant leading-relaxed">
+                      <span className="font-bold text-on-surface">{t('Handoff')}</span>
+                      {' — '}
+                      {t('Handoff overview tip')}
+                    </p>
+                  </div>
+                  <h4 className="text-[10px] font-bold text-on-surface-variant/75 uppercase tracking-widest">
+                    {t('Dispatch records')}
+                  </h4>
+                  <OverviewDispatchLog
+                    entries={dispatchLog}
+                    readOnly={terminalHistoryReadOnly}
+                    onSelectEntry={onSelectDispatchEntry}
+                  />
+                </section>
               ) : (
                 <>
-                  {renderSingleAgentSummary()}
-                  {isIdle && tokenTotal === 0 ? (
-                    <div className="p-6 border border-dashed border-outline-variant/50 rounded-xl text-center space-y-2">
-                      <LegacyIcon name="smart_toy" className="text-[24px] text-on-surface-variant/50" />
-                      <p className="text-[11px] text-on-surface-variant leading-relaxed">
-                        {t('No session activity yet')}
-                      </p>
-                    </div>
+                  {isMultiAgent ? (
+                    <>
+                      {renderStateSummary()}
+                      {hasWorkflow ? (
+                        <section>
+                          <h4 className="text-[10px] font-bold text-on-surface-variant/75 uppercase tracking-widest mb-3">
+                            {t('Workflow step execution')}
+                          </h4>
+                          {renderWorkflowSteps(true)}
+                        </section>
+                      ) : isIdle ? (
+                        <div className="p-6 border border-dashed border-outline-variant/50 rounded-xl text-center space-y-2">
+                          <LegacyIcon name="monitoring" className="text-[24px] text-on-surface-variant/50" />
+                          <p className="text-[11px] text-on-surface-variant leading-relaxed">
+                            {t('No active workflow overview')}
+                          </p>
+                        </div>
+                      ) : null}
+                    </>
+                  ) : (
+                    <>
+                      {renderSingleAgentSummary()}
+                      {isIdle && tokenTotal === 0 ? (
+                        <div className="p-6 border border-dashed border-outline-variant/50 rounded-xl text-center space-y-2">
+                          <LegacyIcon name="smart_toy" className="text-[24px] text-on-surface-variant/50" />
+                          <p className="text-[11px] text-on-surface-variant leading-relaxed">
+                            {t('No session activity yet')}
+                          </p>
+                        </div>
+                      ) : null}
+                    </>
+                  )}
+                  {tokenTotal > 0 ? (
+                    <section>
+                      <h4 className="text-[10px] font-bold text-on-surface-variant/75 uppercase tracking-widest mb-4">
+                        {t('Session Token Analytics')}
+                      </h4>
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="p-3 border border-neutral-200 bg-neutral-50/50 rounded-xl">
+                            <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider mb-1">{t('Total Tokens')}</p>
+                            <p className="text-base font-extrabold text-neutral-900 font-mono">{tokenTotal.toLocaleString()}</p>
+                          </div>
+                          <div className="p-3 border border-neutral-200 bg-neutral-50/50 rounded-xl">
+                            <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider mb-1">{t('Estimated Cost')}</p>
+                            <p className="text-base font-extrabold text-neutral-900 font-mono">${sessionCostUsd.toFixed(4)}</p>
+                          </div>
+                        </div>
+
+                        <div className="p-3 border border-neutral-200 rounded-xl space-y-2">
+                          <div className="flex items-center justify-between text-[10px] font-bold text-neutral-800">
+                            <span>{t('Token Distribution')}</span>
+                            <span className="text-zinc-500 font-normal font-mono">{t('Input vs Output')}</span>
+                          </div>
+                          <div className="w-full h-3 rounded-full overflow-hidden flex bg-neutral-100 border border-neutral-200/50">
+                            <div
+                              className="h-full bg-neutral-900 transition-all duration-300"
+                              style={{ width: `${inputPct}%` }}
+                              title={`Input: ${tokenInput} tokens (${inputPct}%)`}
+                            />
+                            <div
+                              className="h-full bg-neutral-400 transition-all duration-300"
+                              style={{ width: `${outputPct}%` }}
+                              title={`Output: ${tokenOutput} tokens (${outputPct}%)`}
+                            />
+                          </div>
+                          <div className="flex justify-between text-[9px] font-mono pt-1">
+                            <span>{t('Input')} ({inputPct}%): {tokenInput.toLocaleString()}</span>
+                            <span>{t('Output')} ({outputPct}%): {tokenOutput.toLocaleString()}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </section>
                   ) : null}
                 </>
               )}
-              {tokenTotal > 0 ? (
-                <section>
-                  <h4 className="text-[10px] font-bold text-on-surface-variant/75 uppercase tracking-widest mb-4">
-                    {t('Session Token Analytics')}
-                  </h4>
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="p-3 border border-neutral-200 bg-neutral-50/50 rounded-xl">
-                        <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider mb-1">{t('Total Tokens')}</p>
-                        <p className="text-base font-extrabold text-neutral-900 font-mono">{tokenTotal.toLocaleString()}</p>
-                      </div>
-                      <div className="p-3 border border-neutral-200 bg-neutral-50/50 rounded-xl">
-                        <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider mb-1">{t('Estimated Cost')}</p>
-                        <p className="text-base font-extrabold text-neutral-900 font-mono">${sessionCostUsd.toFixed(4)}</p>
-                      </div>
-                    </div>
-
-                    <div className="p-3 border border-neutral-200 rounded-xl space-y-2">
-                      <div className="flex items-center justify-between text-[10px] font-bold text-neutral-800">
-                        <span>{t('Token Distribution')}</span>
-                        <span className="text-zinc-500 font-normal font-mono">{t('Input vs Output')}</span>
-                      </div>
-                      <div className="w-full h-3 rounded-full overflow-hidden flex bg-neutral-100 border border-neutral-200/50">
-                        <div
-                          className="h-full bg-neutral-900 transition-all duration-300"
-                          style={{ width: `${inputPct}%` }}
-                          title={`Input: ${tokenInput} tokens (${inputPct}%)`}
-                        />
-                        <div
-                          className="h-full bg-neutral-400 transition-all duration-300"
-                          style={{ width: `${outputPct}%` }}
-                          title={`Output: ${tokenOutput} tokens (${outputPct}%)`}
-                        />
-                      </div>
-                      <div className="flex justify-between text-[9px] font-mono pt-1">
-                        <span>{t('Input')} ({inputPct}%): {tokenInput.toLocaleString()}</span>
-                        <span>{t('Output')} ({outputPct}%): {tokenOutput.toLocaleString()}</span>
-                      </div>
-                    </div>
-                  </div>
-                </section>
-              ) : null}
             </div>
           )}
 
@@ -433,30 +552,6 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                   renderFileNodes(workspaceFiles)
                 )}
               </div>
-            </div>
-          )}
-
-          {activeTab === 'flow' && showFlowTab && (
-            <div className="space-y-4 animate-fade-in text-xs select-none">
-              <h4 className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-3">
-                {t('Workflow step execution')}
-              </h4>
-              {hasWorkflow ? (
-                <>
-                  {renderStateSummary()}
-                  {renderWorkflowSteps()}
-                </>
-              ) : (
-                <div className="p-6 border border-dashed border-outline-variant/50 rounded-xl text-center space-y-2">
-                  <LegacyIcon name="account_tree" className="text-[24px] text-on-surface-variant/50" />
-                  <p className="text-[11px] text-on-surface-variant leading-relaxed">
-                    {t('Select or create a workflow')}
-                  </p>
-                  <p className="text-[10px] text-on-surface-variant/70 leading-relaxed">
-                    {t('No active workflow overview')}
-                  </p>
-                </div>
-              )}
             </div>
           )}
 
@@ -578,26 +673,11 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                 </button>
               </div>
 
-              <div className="flex-1 bg-black text-green-400 font-mono text-[10px] p-4 rounded-xl space-y-1.5 h-[340px] overflow-y-auto terminal-scroll select-all border border-neutral-800 shadow-md">
-                {terminalLogs.length === 0 ? (
-                  <p className="text-neutral-500 font-sans text-[11px]">{t('No terminal logs yet')}</p>
-                ) : (
-                  terminalLogs.map((log, i) => {
-                    let colorClass = 'text-green-400/90';
-                    if (log.includes('WARNING') || log.includes('FAILED')) {
-                      colorClass = 'text-red-400 font-semibold';
-                    } else if (log.includes('PASSED') || log.includes('SUCCESS')) {
-                      colorClass = 'text-emerald-400 font-bold';
-                    }
-
-                    return (
-                      <div key={i} className={`${colorClass} leading-normal`}>
-                        <span className="text-white select-none mr-1.5">$</span>
-                        {log}
-                      </div>
-                    );
-                  })
-                )}
+              <div
+                ref={terminalLogRef}
+                className="flex-1 bg-black text-green-400 font-mono text-[10px] p-4 rounded-xl space-y-1.5 min-h-[340px] overflow-y-auto terminal-scroll select-all border border-neutral-800 shadow-md"
+              >
+                {renderTerminalLogLines()}
               </div>
             </div>
           )}

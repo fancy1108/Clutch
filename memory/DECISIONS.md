@@ -341,6 +341,11 @@
 |----|------|------|------|
 | Q-HRT-1 | 多 session 并发策略 | A) 全 run 串行队列 B) 同 workspace 串行 C) 拒绝+提示（pty §2.1） | **C**（与 POC 一致）直至 HRT-08 立项 |
 | Q-HRT-2 | 诊断导出形态 | A) 仅 API B) API + 桌面「复制诊断」按钮 | **B**（HRT-07） |
+| Q-D34-1 | Terminal 并行 Lane 上限 N | A) 2 B) 4 C) 8 | **B**（4，见 D34 §2） |
+| Q-D34-2 | handoff 正文生成方 | A) Clutch 内置编排 B) 调用 Matt Pocock handoff skill C) 主 Agent CLI 自写 | **A** 首期；B 可作为 skill 插件对齐 |
+| Q-D34-3 | 超 N 时行为 | A) 拒绝新 Lane B) 排队 C) Tab 折叠旧 Lane | **B+C** 组合（排队 + 折叠展示） |
+| Q-D34-4 | 多 Lane 同时完成回传 | A) 各一路独立草稿 B) 自动合并一条 C) 仅提醒不预填 | **A**（独立草稿队列；用户可自行合并编辑） |
+| Q-D34-5 | handoff sources 默认 | A) 仅聚焦 Lane B) 最近派发到该 target 的 sources C) 空 | **A**；显式 `from @A @B` 覆盖；发送前 chips 可改（见 D34 §2） |
 
 ### D26 · 用户自定义头像替换与存储（2026-06-27）
 
@@ -351,3 +356,87 @@
   3. **头像分发与广播**：应用启动时在 `App.tsx` 中 hydrate 并通过 state 分发到 chat bubble 以及 settings UI。
 - **影响**：`preferences_storage.py`，`main.py` 偏好端点，前端 `clutchState` / `SystemPreferencesModal`。
 - **决策状态**：`已落地`
+
+### D19 · 新增 CLI / 模型 Provider 须同步更新文档（2026-07-02）
+
+- **背景**：OpenCode Zen 文本模型接入后，产品说明（`PRODUCT_INTRO.md`）、上手指南（`GETTING_STARTED.md`）与 `FILEMAP` 一度滞后，用户难以自助配置。
+- **方案**：凡新增或显著变更 **CLI 工具路由**（`codebuddy-cli`、`opencode-cli` 等）或 **内置文本/多模态 Provider**（如 OpenCode Zen），在同一 Task 内至少更新：
+  1. `docs/PRODUCT_INTRO.md` — 用户可见能力与设置路径；
+  2. `docs/GETTING_STARTED.md` — 配置步骤（中英表格各一处）；
+  3. `memory/FILEMAP.md` — 新增/变更的源码路径映射（若涉及新模块）；
+  4. `CHANGELOG.md` — `[Unreleased]` 条目（发版前合并进版本节）；
+  5. `README.md` / `README.zh-CN.md` — **「最新更新」**一节：只写**用户可见**的单一版本要点列表（不按 commit / 开发进度分段）；发版时整节替换为新版本，历史见 `CHANGELOG.md`；
+  6. `apps/desktop/src/services/cliInstallGuides.ts` — 安装指引与 `RECOMMENDED_CLI_IDS`（若列为推荐）；
+  7. `.cursor/rules/cli-whitelist-docs.mdc` — 本清单的权威副本。
+- **影响**：Agent 与用户约定「加 CLI / Provider」时默认包含文档 diff，不单改代码。
+- **决策状态**：`已落地`
+
+### D33 · Chat / Terminal 双模式与 `INTERACTIVE_PTY`（2026-07-02）
+
+- **背景**：用户希望在保留现有监督对话的前提下，于主工作台嵌入完整 Claude Code / OpenCode 交互 TUI。
+- **方案**：
+  1. **默认对话模式**：`workspaceViewMode=chat`；未切换时 UI 与 `SHELL_EXEC` headless 路径与现网一致。
+  2. **终端模式 opt-in**：用户点击切换后 `pty_attach` → 独立 `interactive_pty_runtime.py`（**不修改** `shell_exec_runtime` 默认分支）。
+  3. **输入互斥**：终端模式活跃时隐藏 `ChatInputBar`；`pty_detach` 不杀 CLI 进程。
+  4. **首期范围**：Single Agent plain chat；工作流 session 禁用切换。
+  5. **PTY 事件**：`pty_output` / `pty_input` / `pty_resize` / `pty_attach` / `pty_detach` / `pty_session_status`（附加 WS 通道，不改现有 `state_patch` / `message`）。
+- **证据**：`experiments/tui_embed_poc/RESULTS.md`（bash smoke Go）；产品实现 `ChatFeed` + `ChatTerminalView` + `interactive_pty_runtime.py`。
+- **决策状态**：`已落地`
+
+### D34 · Terminal 多 Agent 协作编排（PTY Lane + Handoff）（2026-07-02）
+
+- **背景**：D33 终端模式为 **单 Agent · 单 PTY · 隐藏 ChatInputBar**，无法在 Terminal 工作台内做 `@派发`、多路并行与跨 CLI 上下文接力。用户场景 **不固定拓扑**（可能是 A∥B 冷启动并行，再把结果交给 C；可能是 A→B→C 链式；可能是多路回传到任意 Agent），需要 **统一派发原语** 与 **可解释的 handoff 来源规则**。
+- **方案（产品原则，**在 D33 上叠加、不替换对话模式与工作流 SOP**）**：
+  1. **唯一用户原语：派发（Dispatch）**
+     - 用户在 **Orchestrator Bar**（或当前聚焦 Lane 的对话流）输入 **`@目标Agent` + 需求描述** → 确认发送 → Clutch **派发到目标 Lane**（新建或聚焦已有 PTY）。
+     - **双模输入（聊天优先，图语法保留）**：
+       - **自然语言（默认）**：口语化描述即可，例如 `@OpenCode 去写个 API，参考 handoff @20260702-claude→opencode-api.md`。系统后台将用户输入 **编译为 dispatch graph**（`target`、`sources`、`file_refs`），无需手写 `from`。
+       - **图语法（高级 / 精确）**：`@C from @A @B：…` 显式指定 sources；与自然语言 **等价**，仅表达方式不同。
+       - **`@文件` 引用**：消息内 `@*.md` 或 Overview **「发送到 Bar」** 插入的文件名，均绑定 handoff 元数据（`sources → target`、路径）；确认卡展示引用清单，用户可见 **具体哪个文件、来自谁**。
+       - **sources 推断优先级（自然语言）**：① `@文件` 元数据（可多个文件合并 sources）② 当前聚焦 Lane ③ 工作区冷启动 `[]`；图语法下显式 `from` 优先，可与 `@文件` 合并。
+     - **不预设 primary / delegate 角色**；Lane 是对等 PTY，关系由 **派发历史（有向边）** 记录，而非写死树形主子。
+     - 各 Lane 内 xterm 仍可原生 TUI 多轮对话；Bar 负责 **跨 Lane 编排**。
+  2. **Handoff 回答「谁交给谁」**
+     - **交给谁（target）**：消息中 **第一个（或唯一）被 @ 的 Agent** = 派发目标 = handoff 接收方。
+     - **谁交出（sources）**：写入 handoff 的上游上下文，按 **优先级** 解析（实现须可测、UI 须可预览）：
+       1. **显式**：`@C from @A @B：…` / `@C（综合 @A @B）…` → sources = `{A, B}`，生成 **`A,B→C.md`**（多源合并摘要 + 各 Lane 审计指针）。
+       2. **聚焦 Lane**：仅一个 `@C` 且未写 from → sources = **当前聚焦的 xterm Lane**（若有）；生成 **`{focused}→C.md`**。
+       3. **无上游（冷启动 / 并行开局）**：无聚焦、无 from → sources = `[]`，handoff 仅含 **工作区摘要 + 用户当条需求**（如 `@A` 与 `@B` 各发一条各自开工，互不依赖）。
+       4. **发送前 UI 确认（推荐默认展示）**：解析出 target + 推断的 sources 后，派发前展示可编辑 chips：`上下文来自：[x] Lane-A [x] Lane-B [ ] 工作区`，用户可增删再发送（避免 silently 丢上下文或误带上下文）。
+     - 产物路径：**`.clutch/handoffs/{timestamp}-{sourcesLabel}→{target}-{slug}.md`**；目标 Lane 首条 prompt **只引用路径**，由接收方 CLI `read`。
+  3. **PTY Lane 模型（2-B）——对等 Lane + 派发图**
+     - 一个 `run_id` 下 **至多 N=4** 路并行 PTY（首期 CLI 类型仍 `claude-cli` · `opencode-cli`；同类型可多 Lane，按 `lane_id` 区分）。
+     - 每条 Lane：`lane_id`、`agent_type`、`label`（子任务标题）、`status`；**可选** `dispatch_edges[]` 记录 `sources → target`（用于审计与草稿建议，非权限树）。
+     - UI：分屏 / Tab；**聚焦**决定默认 handoff source；**Lane 折叠**为终端 **右侧独立栏**（`float-rail`，与 xterm **不重叠**）内堆叠紧凑胶囊：`rounded-xl` · `shadow-sm` · 品牌 LOGO + 一行子任务摘要；`running`/`booting` 仅 spinner，`completed` 仅 LOGO 角标绿点；点击展开，PTY 不断开。
+  4. **典型场景（须全部支持，非穷举）**
+     | 场景 | 用户操作 | handoff |
+     |------|----------|---------|
+     | A、B 并行冷启动 | 连发 `@A …`、`@B …` | 两次 sources=`[]`，各 Lane 独立 |
+     | A 做着，派 B | 聚焦 A，`@B 子任务…` | `A→B.md` |
+     | A∥B 后交给 C | `@C from @A @B：整合…` 或 chips 选 A+B | `A,B→C.md` |
+     | 只要 B 的结果给 C | `@C from @B：…` | `B→C.md` |
+     | B 做完通知任意人 | 完成提醒 + 预填草稿（用户改 @ 与正文） | 生成 `B→*.md` 建议，**用户定 target** |
+     - **不要求**结果必须回 primary；**回谁由用户下一次 `@` 决定**。
+  5. **完成 / 回传交互（用户确认发送）**
+     - Lane 标记完成或弱检测 idle → **提醒** + **预填 Orchestrator Bar 草稿**（建议 target、摘要、handoff 路径）；**不自动注入任何 PTY**。
+     - 草稿 **可编辑** `@`、正文、合并多路；多路完成 → `pending_handoff_drafts[]` 队列。
+     - 派发与回传 **对称**：均可能预填草稿，均需用户发送。
+  6. **状态与 SSOT**
+     - `pty_lanes[]`、`dispatch_edges[]`、`pending_handoff_drafts[]`、handoff 路径 → **`ClutchState`**（WS 投影）；Lane 生命周期由 **PTY Lane Manager** 管理。
+     - **Dispatch graph 与 Handoffs 列表**：**不单独占右侧栏**——`dispatch_edges[]` 与 handoff 路径折叠进 **派发记录时间线**（每条即 `sources → target`）；**最新 handoff 挂在目标 Lane 标题栏**（预览 / 发送到 Bar），用户按终端对应操作；跨 Session 完整归档在历史会话中查看。
+     - **派发历史**：Overview **仅保留本 Session 紧凑时间线**（`dispatch_log[]`：时间、`sources→target`、截断 prompt）；点击条目可聚焦目标 Lane；确认派发后写入并跳转 Overview，**禁止** `window.alert`。
+     - **Handoff md**：**不占用 Lane 标题栏**；有 `from→to` 时在终端 Lane 间绘制**箭头连线**，线中 **📎 附件图标** 悬浮显示文件名卡片（预览 / 发送到 Bar）。右侧派发记录同步保留 handoff 文件操作。
+     - **派发确认 UI**：贴在 **Orchestrator Bar 上方**（`surface-container-low` 卡片 + 主/次按钮），不得阻断终端中部阅读区。
+     - 即兴协作 **不**默认编译进 LangGraph SOP；可 **可选**「保存为工作流」。
+  7. **与 D33 关系**
+     - 单 Lane = N=1 退化；恢复 Orchestrator Bar（与 xterm **聚焦互斥**，非隐藏 Bar）。
+     - 工作流 session 仍不展示 Terminal 切换。
+- **分期**
+  - **D34-α**：Orchestrator Bar + `@` 派发 / 聚焦 Lane；handoff sources 规则 §2（1–3）。
+  - **D34-β**：多 Lane 并行 UI + 多 PTY；**A∥B 冷启动**冒烟。
+  - **D34-γ**：handoff md 生成；派发前 **sources chips** 预览（§2-4）。
+  - **D34-δ**：完成提醒 + 草稿队列；**`@C from @A @B`** 多源合并冒烟。
+  - **D34-ε**：与对话模式 handoff 互通；超 N 排队 / Tab 折叠。
+- **影响**：PTY Lane Manager、handoff 解析器（`parse_dispatch_mentions`）、`ClutchState`、`ChatFeed` lane 容器、`docs/PRODUCT_INTRO.md`（D19）。
+- **证据（待补）**：`A∥B` 冷启动、`A,B→C` 整合、完成草稿用户发送 — `runs/verification/`。
+- **决策状态**：`已记录`（原则已定；实现待 D34-α 立项）

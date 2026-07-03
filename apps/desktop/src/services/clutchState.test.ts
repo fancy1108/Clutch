@@ -259,6 +259,25 @@ describe('preferRicherSessionPatch', () => {
     expect(patch.messages).toHaveLength(2);
     expect(patch.messages?.[1].text).toBe('background reply');
   });
+
+  it('keeps hydrated dispatch log when WS reconnect patch is stale', () => {
+    const preferred = {
+      run_id: 'run_a',
+      workflow_id: '',
+      status: 'idle',
+      dispatch_log: [{ id: 'd1', target: 'OpenCode', task: 'Summarize' }],
+      pty_lanes: [],
+    } as import('../types').ClutchState;
+
+    const patch = preferRicherSessionPatch(preferred, {
+      status: 'idle',
+      dispatch_log: [],
+      pty_lanes: [{ lane_id: 'lane_primary', status: 'running' }],
+    });
+
+    expect(patch.dispatch_log).toHaveLength(1);
+    expect(patch.pty_lanes).toHaveLength(0);
+  });
 });
 
 describe('shouldPreserveOptimisticRun', () => {

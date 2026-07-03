@@ -106,8 +106,49 @@ def update_run_record(run_id: str, patch: dict[str, Any]) -> dict[str, Any] | No
     return _mutate_records(mutate)
 
 
+_DEFAULT_SESSION_TITLES = frozenset({"New session", "New Chat", "新建会话"})
+
+
+def _should_keep_session_record(record: dict[str, Any], state: dict[str, Any] | None) -> bool:
+    from src.session_content import session_has_persistable_content
+
+    if state is not None and session_has_persistable_content(state):
+        return True
+    status = str(record.get("status") or "").strip().lower()
+    if status in {"running", "refining", "awaiting_human"}:
+        return True
+    title = str(record.get("title") or "").strip()
+    if title and title not in _DEFAULT_SESSION_TITLES:
+        return True
+    return False
+
+
+def _prune_empty_records(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    from src.run_state_store import load_run_state
+
+    kept: list[dict[str, Any]] = []
+    changed = False
+    for record in records:
+        run_id = str(record.get("run_id") or "").strip()
+        if not run_id:
+            changed = True
+            continue
+        try:
+            state = load_run_state(run_id)
+        except (json.JSONDecodeError, OSError, ValueError):
+            changed = True
+            continue
+        if not _should_keep_session_record(record, state):
+            changed = True
+            continue
+        kept.append(record)
+    if changed:
+        _save_records(kept)
+    return kept
+
+
 def list_runs(*, workspace_id: str | None = None) -> list[dict[str, Any]]:
-    records = _load_records()
+    records = _prune_empty_records(_load_records())
     if workspace_id is None:
         return records
     return [record for record in records if record.get("workspace_id") == workspace_id]

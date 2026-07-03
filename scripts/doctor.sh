@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Clutch environment doctor — checks toolchain and platform for local dev / DMG smoke.
+# Clutch environment doctor — checks toolchain and platform for local dev / desktop packaging smoke.
 # Exit 0 = all required checks pass; non-zero = at least one required failure.
 set -uo pipefail
 
@@ -50,7 +50,7 @@ case "$(uname -s)" in
     warn "OS: Linux — desktop packaging not officially supported yet"
     ;;
   MINGW*|MSYS*|CYGWIN*)
-    warn "OS: Windows — MSI not officially supported yet"
+    ok "OS: Windows — MSI/NSIS packaging supported"
     ;;
   *)
     warn "OS: $(uname -s) — unknown support level"
@@ -108,7 +108,7 @@ else
 fi
 
 echo ""
-echo "-- Optional (Tauri DMG build) --"
+echo "-- Optional (Tauri desktop build) --"
 
 if command -v rustc >/dev/null 2>&1; then
   rv=$(rustc --version | awk '{print $2}')
@@ -150,7 +150,7 @@ check_sidecar() {
   return 1
 }
 
-if ! check_sidecar 8124 "dev" && ! check_sidecar 8123 "prod/DMG"; then
+if ! check_sidecar 8124 "dev" && ! check_sidecar 8123 "prod/package"; then
   warn "No sidecar on 8124 or 8123 — start dev: cd services/orchestrator && uv run uvicorn src.main:app --reload --port 8124"
 fi
 

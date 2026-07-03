@@ -39,7 +39,7 @@ curl -fsSL https://raw.githubusercontent.com/fancy1108/Clutch/main/scripts/insta
 
 脚本会：拉取 [最新 Release](https://github.com/fancy1108/Clutch/releases/latest) 的 `Clutch_*_aarch64.dmg` → 挂载 → 复制到 `/Applications/Clutch.app` → `xattr -cr` 解除隔离。
 
-指定版本：`CLUTCH_VERSION=v1.0.3 curl -fsSL …/install.sh | bash`
+指定版本：`CLUTCH_VERSION=v1.1.0 curl -fsSL …/install.sh | bash`
 
 本地仓库也可直接运行：`./scripts/install.sh`
 

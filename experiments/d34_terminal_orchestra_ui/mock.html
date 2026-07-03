@@ -1,0 +1,2094 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>D34 Terminal Orchestra UI Mock, Clutch</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f9f9f9;
+      --surface: #ffffff;
+      --surface-low: #f7f7f7;
+      --border: rgba(120, 120, 120, 0.22);
+      --text: #171717;
+      --muted: #737373;
+      --primary: #2563eb;
+      --terminal-bg: #111111;
+      --terminal-bar: #1a1a1a;
+      --emerald: #10b981;
+      --amber: #f59e0b;
+      --sidebar-w: 220px;
+      --right-w: 280px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Hanken Grotesk', system-ui, sans-serif;
+      background: #ececec;
+      color: var(--text);
+      min-height: 100vh;
+      padding: 16px;
+    }
+    .mock-banner {
+      max-width: 1400px;
+      margin: 0 auto 12px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .mock-banner h1 { font-size: 14px; font-weight: 700; }
+    .mock-banner p { font-size: 11px; color: var(--muted); flex: 1 1 100%; }
+    .scenario-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+    .scenario-btns button {
+      font-family: inherit;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 6px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface-low);
+      cursor: pointer;
+    }
+    .scenario-btns button.active {
+      background: #171717;
+      color: #fff;
+      border-color: #171717;
+    }
+    .app {
+      max-width: 1400px;
+      margin: 0 auto;
+      height: calc(100vh - 120px);
+      min-height: 640px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: 48px 1fr 36px;
+      grid-template-columns: var(--sidebar-w) 1fr var(--right-w);
+      box-shadow: 0 2px 8px rgba(0,0,0,.06);
+    }
+    .header {
+      grid-column: 1 / -1;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      font-size: 13px;
+      font-weight: 700;
+      gap: 8px;
+    }
+    .header .ver { color: var(--muted); font-weight: 500; font-size: 11px; }
+    .sidebar {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 12px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .sidebar .nav-item {
+      padding: 8px 10px;
+      border-radius: 8px;
+      margin-bottom: 4px;
+      color: var(--text);
+      font-weight: 600;
+    }
+    .sidebar .nav-item.dim { color: var(--muted); font-weight: 500; }
+    .main {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      min-height: 0;
+      overflow: hidden;
+      position: relative;
+      background: var(--bg);
+    }
+    .mode-toggle {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      z-index: 10;
+      display: flex;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      background: var(--surface-low);
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .mode-toggle button {
+      border: none;
+      background: transparent;
+      padding: 6px 12px;
+      cursor: pointer;
+      font-family: inherit;
+      color: var(--muted);
+    }
+    .mode-toggle button.on { background: #171717; color: #fff; }
+    .workspace {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 52px 20px 0;
+      min-height: 0;
+    }
+    .console-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 10px;
+      padding: 0 4px;
+    }
+    .console-header .title {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .console-header .sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .status-pill {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      padding: 4px 8px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--muted);
+    }
+    .dot { width: 6px; height: 6px; border-radius: 50%; }
+    .dot.green { background: var(--emerald); }
+    .dot.amber { background: var(--amber); animation: pulse 1.2s infinite; }
+    @keyframes pulse { 50% { opacity: .4; } }
+    .lane-tabs { display: flex; gap: 4px; margin-bottom: 8px; flex-wrap: wrap; }
+    .lane-tab {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 6px 10px;
+      border-radius: 8px 8px 0 0;
+      border: 1px solid var(--border);
+      border-bottom: none;
+      background: var(--surface-low);
+      color: var(--muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      max-width: 200px;
+    }
+    .lane-tab .badge {
+      font-size: 9px;
+      padding: 1px 5px;
+      border-radius: 4px;
+      background: #e5e5e5;
+      font-weight: 700;
+    }
+    .lane-tab.focused {
+      background: var(--terminal-bg);
+      color: #e5e5e5;
+      border-color: #333;
+    }
+    .lane-tab.focused .badge { background: #333; color: #aaa; }
+    .lane-tab.completed { opacity: .65; }
+    .lane-tab.completed .badge { background: #d1fae5; color: #065f46; }
+    .lane-tab.add { border-style: dashed; color: var(--muted); }
+    .terminal-stage {
+      flex: 1;
+      min-width: 0;
+      min-height: 0;
+      display: grid;
+      gap: 8px;
+    }
+    .terminal-stage.layout-1 { grid-template-columns: 1fr; }
+    .terminal-stage.layout-2 { grid-template-columns: 1fr 1fr; }
+    .terminal-stage.layout-3 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+    .terminal-stage.layout-3 .pane:first-child { grid-row: 1 / 3; }
+    .pane {
+      border: 1px solid #333;
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--terminal-bg);
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      opacity: .35;
+      transition: opacity .2s, box-shadow .2s;
+    }
+    .pane.visible { opacity: 1; }
+    .pane.focused { box-shadow: 0 0 0 2px var(--primary); }
+    .terminal-stage-wrap {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 12px;
+    }
+    .terminal-main-row {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      gap: 8px;
+      align-items: stretch;
+      position: relative;
+    }
+    .terminal-stage-container {
+      flex: 1;
+      min-width: 0;
+      min-height: 0;
+      position: relative;
+    }
+    .handoff-links-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 6;
+      overflow: visible;
+    }
+    .handoff-links-layer.hidden { display: none; }
+    .handoff-links-layer svg {
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+    .handoff-link-path {
+      fill: none;
+      stroke: #60a5fa;
+      stroke-width: 2;
+      stroke-dasharray: 6 4;
+      opacity: 0.85;
+    }
+    .handoff-link-marker {
+      position: absolute;
+      pointer-events: auto;
+      transform: translate(-50%, -50%);
+      z-index: 7;
+    }
+    .handoff-attach-btn {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      border: 2px solid #3b82f6;
+      background: #fff;
+      color: #2563eb;
+      font-size: 13px;
+      line-height: 1;
+      cursor: pointer;
+      box-shadow: 0 1px 3px rgba(0,0,0,.12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .handoff-attach-btn:hover {
+      border-color: #1d4ed8;
+      background: #eff6ff;
+    }
+    .handoff-hover-card {
+      display: none;
+      position: absolute;
+      left: 50%;
+      bottom: calc(100% + 8px);
+      transform: translateX(-50%);
+      min-width: 200px;
+      max-width: 260px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      box-shadow: 0 4px 12px rgba(0,0,0,.1);
+      z-index: 20;
+      pointer-events: auto;
+    }
+    .handoff-link-marker:hover .handoff-hover-card,
+    .handoff-link-marker:focus-within .handoff-hover-card {
+      display: block;
+    }
+    .handoff-hover-card .fname {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      color: var(--primary);
+      word-break: break-all;
+      margin-bottom: 4px;
+    }
+    .handoff-hover-card .fedge {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+    .handoff-hover-card .card-actions {
+      display: flex;
+      gap: 6px;
+    }
+    .handoff-hover-card .card-actions button {
+      flex: 1;
+      font-family: inherit;
+      font-size: 9px;
+      font-weight: 600;
+      padding: 4px 6px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface-low);
+      cursor: pointer;
+    }
+    .handoff-hover-card .card-actions button:hover {
+      background: #eff6ff;
+      border-color: #93c5fd;
+      color: #1d4ed8;
+    }
+    .float-rail {
+      width: 152px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding-bottom: 2px;
+    }
+    .float-rail.hidden { display: none; }
+    .float-dock {
+      display: flex;
+      flex-direction: column-reverse;
+      align-items: stretch;
+      gap: 6px;
+    }
+    .float-dock:empty { display: none; }
+    .lane-float {
+      pointer-events: auto;
+      width: 100%;
+      max-width: none;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 5px 8px 5px 5px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06);
+      cursor: pointer;
+      transition: background .15s, border-color .15s, box-shadow .15s;
+      display: flex;
+      gap: 7px;
+      align-items: center;
+    }
+    .lane-float:hover {
+      background: var(--surface-low);
+      border-color: rgba(120, 120, 120, 0.35);
+      box-shadow: 0 2px 8px rgba(0,0,0,.08);
+    }
+    .lane-float .logo-wrap {
+      position: relative;
+      flex-shrink: 0;
+    }
+    .lane-float .logo {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      font-weight: 700;
+      color: #fff;
+      font-family: 'Hanken Grotesk', sans-serif;
+    }
+    .lane-float .logo.claude { background: #c2410c; }
+    .lane-float .logo.opencode { background: #1d4ed8; }
+    .lane-float .logo-wrap .done-dot {
+      position: absolute;
+      right: -2px;
+      bottom: -2px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+      border: 2px solid var(--surface);
+    }
+    .lane-float .lane-desc {
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--text);
+      line-height: 1.25;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex: 1;
+      min-width: 0;
+    }
+    .lane-float .lane-handoff-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #3b82f6;
+      flex-shrink: 0;
+      title: '有 handoff';
+    }
+      width: 10px;
+      height: 10px;
+      border: 1.5px solid #e5e5e5;
+      border-top-color: #2563eb;
+      border-radius: 50%;
+      animation: spin .65s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .pane-titlebar {
+      background: var(--terminal-bar);
+      border-bottom: 1px solid #333;
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      color: #888;
+      flex-wrap: wrap;
+    }
+    .pane-handoff-strip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      width: 100%;
+      margin-top: 4px;
+      padding-top: 6px;
+      border-top: 1px solid #2a2a2a;
+    }
+    .pane-handoff-strip .handoff-from {
+      font-size: 9px;
+      color: #6b7280;
+      font-family: 'Hanken Grotesk', sans-serif;
+      white-space: nowrap;
+    }
+    .lane-handoff-chip {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      border: 1px solid #3b82f6;
+      background: rgba(37, 99, 235, 0.15);
+      color: #93c5fd;
+      cursor: pointer;
+      max-width: 180px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .lane-handoff-chip:hover { background: rgba(37, 99, 235, 0.28); }
+    .handoff-act {
+      font-size: 9px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid #444;
+      background: #222;
+      color: #aaa;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .handoff-act:hover { border-color: #666; color: #ddd; }
+    .traffic span {
+      display: inline-block;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      margin-right: 4px;
+    }
+    .t-red { background: #ef4444; }
+    .t-yellow { background: #eab308; }
+    .t-green { background: #22c55e; }
+    .pane-actions { margin-left: auto; display: flex; gap: 6px; }
+    .pane-actions button {
+      font-size: 9px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid #444;
+      background: #222;
+      color: #aaa;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .pane-body {
+      flex: 1;
+      padding: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      line-height: 1.5;
+      color: #d4d4d4;
+      overflow: auto;
+    }
+    .pane-body .prompt { color: #6ee7b7; }
+    .pane-body .dim { color: #666; }
+    .dispatch-preview {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 100%;
+      margin-bottom: 8px;
+      z-index: 50;
+      max-height: min(42vh, 300px);
+      overflow-y: auto;
+      padding: 12px 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 -6px 20px rgba(0,0,0,.1);
+    }
+    .dispatch-preview.hidden { display: none; }
+    .dispatch-preview h3 {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+    .dispatch-row {
+      font-size: 12px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .dispatch-row strong { font-weight: 700; }
+    .handoff-route {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      margin-bottom: 8px;
+      font-size: 12px;
+    }
+    .route-from, .route-to {
+      font-weight: 700;
+      padding: 4px 8px;
+      border-radius: 8px;
+      background: var(--surface-low);
+      border: 1px solid var(--border);
+    }
+    .route-to {
+      background: #171717;
+      color: #fff;
+      border-color: #171717;
+    }
+    .route-arrow {
+      color: var(--muted);
+      font-weight: 700;
+      font-size: 14px;
+    }
+    .route-task {
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.45;
+      margin-bottom: 8px;
+      padding-left: 2px;
+    }
+    .dispatch-preview .preview-note {
+      font-size: 10px;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .sources-adjust {
+      margin-bottom: 8px;
+    }
+    .sources-adjust summary {
+      font-size: 10px;
+      color: var(--muted);
+      cursor: pointer;
+      margin-bottom: 6px;
+    }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--surface-low);
+      cursor: pointer;
+      user-select: none;
+    }
+    .chip.on { background: #dbeafe; border-color: #93c5fd; color: #1d4ed8; }
+    .chip.off { opacity: .45; text-decoration: line-through; }
+    .handoff-path {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      background: var(--surface-low);
+      padding: 6px 8px;
+      border-radius: 6px;
+      margin-top: 6px;
+    }
+    .dispatch-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+      justify-content: flex-end;
+      position: sticky;
+      bottom: 0;
+      background: var(--surface);
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+    }
+    .dispatch-actions button {
+      font-family: inherit;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--surface-low);
+    }
+    .dispatch-actions .primary {
+      background: #171717;
+      color: #fff;
+      border-color: #171717;
+    }
+    .dispatch-actions .secondary:hover {
+      background: var(--surface);
+    }
+    .dock-error {
+      margin-bottom: 8px;
+      padding: 8px 12px;
+      border-radius: 10px;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      font-size: 11px;
+      color: #991b1b;
+      line-height: 1.45;
+    }
+    .dock-error.hidden { display: none; }
+    .history-list { list-style: none; }
+    .history-item {
+      padding: 7px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface-low);
+      margin-bottom: 4px;
+      font-size: 10px;
+      cursor: pointer;
+      transition: background .12s, border-color .12s;
+    }
+    .history-item:hover { background: #f3f4f6; }
+    .history-item.highlight {
+      border-color: #93c5fd;
+      background: #eff6ff;
+    }
+    .history-item .row-main {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
+    .history-item .time {
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--muted);
+      font-size: 9px;
+      flex-shrink: 0;
+    }
+    .history-item .edge {
+      font-weight: 600;
+      color: var(--text);
+      flex: 1;
+      min-width: 0;
+    }
+    .history-item .prompt {
+      color: var(--muted);
+      line-height: 1.35;
+      margin-top: 3px;
+      font-size: 9px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .history-handoff-row {
+      margin-top: 6px;
+      padding-top: 6px;
+      border-top: 1px solid var(--border);
+    }
+    .history-handoff-row .handoff-link {
+      margin-bottom: 6px;
+      padding: 6px 8px;
+      font-size: 9px;
+    }
+    .history-handoff-actions {
+      display: flex;
+      gap: 6px;
+    }
+    .history-handoff-actions button {
+      flex: 1;
+      font-family: inherit;
+      font-size: 9px;
+      font-weight: 600;
+      padding: 4px 6px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      cursor: pointer;
+    }
+    .history-handoff-actions button:hover {
+      background: #eff6ff;
+      border-color: #93c5fd;
+      color: #1d4ed8;
+    }
+    .overview-section-tip {
+      font-size: 10px;
+      color: var(--muted);
+      line-height: 1.45;
+      margin-bottom: 8px;
+    }
+    .overview-section-tip strong { color: var(--text); font-weight: 600; }
+    .right-panel h4 {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .orchestrator-dock {
+      flex-shrink: 0;
+      position: relative;
+      z-index: 40;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 10px 16px 12px;
+    }
+    .dock-input-area {
+      position: relative;
+    }
+    .dock-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--muted);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .draft-queue { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+    .draft-tab {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 4px 8px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: #fffbeb;
+      color: #92400e;
+      cursor: pointer;
+    }
+    .draft-tab.active { border-color: #f59e0b; background: #fef3c7; }
+    .input-row { display: flex; gap: 8px; align-items: flex-end; }
+    .input-box {
+      flex: 1;
+      min-height: 44px;
+      max-height: 120px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--surface-low);
+      font-family: inherit;
+      font-size: 13px;
+      line-height: 1.45;
+      resize: vertical;
+    }
+    .input-box:focus { outline: 2px solid #93c5fd; border-color: #60a5fa; }
+    .send-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      border: none;
+      background: #171717;
+      color: #fff;
+      font-size: 18px;
+      cursor: pointer;
+    }
+    .dock-hint { font-size: 10px; color: var(--muted); margin-top: 6px; }
+    .toast {
+      position: absolute;
+      top: 56px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-size: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.08);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 20;
+      max-width: 90%;
+    }
+    .toast.hidden { display: none; }
+    .toast button {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 4px 8px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface-low);
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .right-panel {
+      background: var(--surface);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .right-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      padding: 0 8px;
+      gap: 2px;
+      flex-shrink: 0;
+    }
+    .right-tabs button {
+      font-family: inherit;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 10px 8px;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+    }
+    .right-tabs button.on {
+      color: var(--text);
+      border-bottom-color: var(--primary);
+    }
+    .right-body {
+      flex: 1;
+      overflow: auto;
+      padding: 12px;
+      font-size: 11px;
+    }
+    .right-body h4 {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--muted);
+      margin-bottom: 8px;
+      margin-top: 12px;
+    }
+    .right-body h4:first-child { margin-top: 0; }
+    .overview-idle {
+      padding: 12px;
+      border-radius: 10px;
+      background: var(--surface-low);
+      color: var(--muted);
+      font-size: 11px;
+      margin-bottom: 12px;
+      text-align: center;
+    }
+    .edge-list { list-style: none; margin-bottom: 8px; }
+    .edge-list li {
+      padding: 6px 8px;
+      border-radius: 8px;
+      background: var(--surface-low);
+      margin-bottom: 4px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+    }
+    .handoff-list { list-style: none; }
+    .handoff-list li { margin-bottom: 6px; }
+    .handoff-row {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface-low);
+      padding: 8px 10px;
+    }
+    .handoff-row .handoff-edge {
+      display: block;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    .handoff-row .handoff-link {
+      margin-bottom: 6px;
+      padding: 6px 8px;
+      font-size: 10px;
+    }
+    .handoff-row-actions {
+      display: flex;
+      gap: 6px;
+    }
+    .handoff-row-actions button {
+      flex: 1;
+      font-family: inherit;
+      font-size: 9px;
+      font-weight: 600;
+      padding: 4px 6px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+    }
+    .handoff-row-actions button:hover {
+      background: #eff6ff;
+      border-color: #93c5fd;
+      color: #1d4ed8;
+    }
+    .parse-mode {
+      display: inline-block;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 6px;
+      background: #f3f4f6;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .parse-mode.natural { background: #dbeafe; color: #1d4ed8; }
+    .parse-mode.graph { background: #ede9fe; color: #5b21b6; }
+    .file-refs {
+      margin-bottom: 8px;
+      font-size: 10px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    .file-refs .file-ref {
+      display: block;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--primary);
+      margin-top: 2px;
+    }
+    .handoff-link {
+      display: block;
+      width: 100%;
+      text-align: left;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface-low);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--primary);
+      cursor: pointer;
+    }
+    .handoff-link:hover { background: #eff6ff; border-color: #93c5fd; }
+    .handoff-link .meta {
+      display: block;
+      font-family: 'Hanken Grotesk', sans-serif;
+      font-size: 9px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+    .right-placeholder {
+      color: var(--muted);
+      font-size: 11px;
+      padding: 24px 8px;
+      text-align: center;
+    }
+    .preview-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.35);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .preview-backdrop.hidden { display: none; }
+    .preview-modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      width: min(560px, 100%);
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 8px 32px rgba(0,0,0,.12);
+    }
+    .preview-modal header {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .preview-modal header h3 {
+      font-size: 12px;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      word-break: break-all;
+    }
+    .preview-modal header button {
+      border: 1px solid var(--border);
+      background: var(--surface-low);
+      border-radius: 8px;
+      padding: 4px 10px;
+      font-size: 11px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .preview-modal .md-body {
+      padding: 16px;
+      overflow: auto;
+      font-size: 12px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text);
+    }
+    .preview-modal .md-body h1 { font-size: 14px; margin-bottom: 8px; font-family: 'Hanken Grotesk', sans-serif; }
+    .preview-modal footer {
+      padding: 10px 16px;
+      border-top: 1px solid var(--border);
+      font-size: 10px;
+      color: var(--muted);
+    }
+    .right-tab-panel.hidden { display: none; }
+    .footer {
+      grid-column: 1 / -1;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      font-size: 11px;
+      color: var(--muted);
+      gap: 16px;
+    }
+    .footer .agent { color: var(--primary); font-weight: 700; }
+    .annotation {
+      max-width: 1400px;
+      margin: 12px auto 64px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 10px;
+    }
+    .annotation .card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      font-size: 11px;
+      line-height: 1.5;
+    }
+    .annotation .card h4 { font-size: 12px; margin-bottom: 6px; }
+    .annotation .num {
+      display: inline-block;
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      background: #171717;
+      color: #fff;
+      text-align: center;
+      line-height: 18px;
+      font-size: 10px;
+      margin-right: 6px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="mock-banner">
+    <div>
+      <h1>D34 Terminal Orchestra: 交互原型 (HTML)</h1>
+      <p>决策草案可视化 · 非生产代码 · 顶部切换场景查看布局与派发预览</p>
+    </div>
+    <div class="scenario-btns" id="scenarioBtns"></div>
+  </div>
+
+  <div class="app">
+    <header class="header">
+      <span>Clutch</span>
+      <span class="ver">v1.0.x mock</span>
+      <span style="margin-left:auto;font-size:11px;color:var(--muted)">penpot · New session</span>
+    </header>
+
+    <aside class="sidebar">
+      <div class="nav-item">New Chat</div>
+      <div class="nav-item dim">AI Agents</div>
+      <div class="nav-item dim">Workflows SOP</div>
+      <div style="margin-top:16px;font-weight:700;font-size:10px;letter-spacing:.06em">PROJECTS</div>
+      <div class="nav-item dim" style="margin-top:6px">penpot</div>
+    </aside>
+
+    <main class="main">
+      <div class="mode-toggle">
+        <button type="button">Chat mode</button>
+        <button type="button" class="on">Terminal mode</button>
+      </div>
+
+      <div class="toast hidden" id="toast">
+        <span id="toastText"></span>
+        <button type="button" id="toastDraftBtn">填入草稿</button>
+        <button type="button" id="toastDismiss">忽略</button>
+      </div>
+
+      <div class="workspace">
+        <div class="console-header">
+          <div>
+            <div class="title">Terminal console</div>
+            <div class="sub" id="consoleSub">3 lanes · 2 running · 1 completed</div>
+          </div>
+          <div class="status-pill">
+            <span class="dot green" id="statusDot"></span>
+            <span id="statusText">Interactive CLI ready</span>
+          </div>
+        </div>
+
+        <div class="lane-tabs" id="laneTabs"></div>
+
+        <div class="terminal-stage-wrap">
+          <div class="terminal-main-row" id="terminalMainRow">
+            <div class="terminal-stage-container">
+              <div class="terminal-stage layout-1" id="terminalStage"></div>
+            </div>
+            <aside class="float-rail hidden" id="floatRail" aria-label="折叠中的 Lane">
+              <div class="float-dock" id="floatDock"></div>
+            </aside>
+            <div class="handoff-links-layer" id="handoffLinksLayer">
+              <svg id="handoffLinksSvg" aria-hidden="true"></svg>
+              <div id="handoffLinkMarkers"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="orchestrator-dock">
+        <div class="dock-label">
+          Orchestrator Bar
+          <span style="font-weight:500;color:var(--muted)">@派发 · 与 xterm 聚焦互斥</span>
+        </div>
+        <div class="dock-error hidden" id="dockError">
+          <span id="dockErrorText">派发失败</span>
+        </div>
+        <div class="dock-input-area">
+          <div class="dispatch-preview hidden" id="dispatchPreview">
+            <h3>确认派发</h3>
+            <p class="preview-note">仅在你点击 ↑ 后出现；未点「确认派发」前不会执行。</p>
+            <span class="parse-mode natural" id="previewParseMode">自然语言</span>
+            <div class="handoff-route" id="previewRoute">
+              <span class="route-from" id="previewFrom">@Claude Code</span>
+              <span class="route-arrow">→</span>
+              <span class="route-to" id="previewTo">@OpenCode</span>
+            </div>
+            <p class="route-task" id="previewTask"></p>
+            <div class="file-refs hidden" id="previewFileRefs"></div>
+            <details class="sources-adjust">
+              <summary>调整 handoff 来源（可选）</summary>
+              <div class="chips" id="previewChips"></div>
+            </details>
+            <p class="preview-note" style="margin-bottom:4px">将生成 handoff 文件</p>
+            <div class="handoff-path" id="previewPath">.clutch/handoffs/…</div>
+            <div class="dispatch-actions">
+              <button type="button" class="secondary" id="cancelDispatch">取消</button>
+              <button type="button" class="primary" id="confirmDispatch">确认派发</button>
+            </div>
+          </div>
+          <div class="draft-queue hidden" id="draftQueue"></div>
+          <div class="input-row">
+            <textarea class="input-box" id="orchestratorInput" rows="2" placeholder="自然语言：@OpenCode 去写个 API，参考 handoff @文件名.md  ·  图语法：@C from @A @B：整合"></textarea>
+            <button type="button" class="send-btn" id="sendBtn" title="发送">↑</button>
+          </div>
+          <div class="dock-hint">Lane 间<strong>箭头连线</strong>表示 handoff；线上附件图标可预览 / 发送到 Bar。右侧派发记录同步保留 handoff 操作。</div>
+        </div>
+      </div>
+    </main>
+
+    <aside class="right-panel">
+      <div class="right-tabs" id="rightTabs">
+        <button type="button" class="on" data-tab="overview">Overview</button>
+        <button type="button" data-tab="files">Files</button>
+        <button type="button" data-tab="flow">Flow</button>
+        <button type="button" data-tab="changes">Changes</button>
+        <button type="button" data-tab="terminal">Terminal</button>
+      </div>
+      <div class="right-body" id="rightBody">
+        <div class="right-tab-panel" data-panel="overview">
+          <p class="overview-section-tip"><strong>Handoff</strong>在终端 Lane 间以箭头连线展示（悬浮附件图标可预览 / 发送到 Bar）。此处为本 Session 派发记录。</p>
+          <h4>派发记录</h4>
+          <ul class="history-list" id="historyList"></ul>
+        </div>
+        <div class="right-tab-panel hidden" data-panel="files">
+          <p class="right-placeholder">Files tree (unchanged)</p>
+        </div>
+        <div class="right-tab-panel hidden" data-panel="flow">
+          <p class="right-placeholder">No active workflow overview</p>
+        </div>
+        <div class="right-tab-panel hidden" data-panel="changes">
+          <p class="right-placeholder">Git changes (unchanged)</p>
+        </div>
+        <div class="right-tab-panel hidden" data-panel="terminal">
+          <p class="right-placeholder">Terminal audit logs (unchanged)</p>
+        </div>
+      </div>
+    </aside>
+
+    <footer class="footer">
+      <span>Branch: main</span>
+      <span>Engine: —</span>
+      <span class="agent">Active: <span id="footerAgent">—</span></span>
+      <span style="margin-left:auto">Clutch mock</span>
+    </footer>
+  </div>
+
+  <div class="preview-backdrop hidden" id="handoffPreview">
+    <div class="preview-modal" role="dialog" aria-labelledby="previewTitle">
+      <header>
+        <h3 id="previewTitle">handoff.md</h3>
+        <button type="button" id="closePreview">关闭</button>
+      </header>
+      <div class="md-body" id="previewBody"></div>
+      <footer id="previewFooter">只读预览 · 实现时可接 Monaco 或侧栏 Markdown 渲染</footer>
+    </div>
+  </div>
+
+  <div class="annotation">
+    <div class="card"><h4><span class="num">1</span>Orchestrator Bar</h4>派发确认贴在输入框上方. 禁止 browser alert; 成功静默写入 Overview; 仅错误时在 dock 显示红条.</div>
+    <div class="card"><h4><span class="num">2</span>Lane 折叠悬浮卡</h4>折叠 Lane 进入终端<strong>右侧独立栏</strong> (不遮挡 xterm). 紧凑胶囊: LOGO + 摘要; running 仅 spinner.</div>
+    <div class="card"><h4><span class="num">3</span>双模输入</h4>自然语言 <code>@目标 + 口语 + @文件</code>（后台编译图）; 图语法 <code>from @A @B</code> 保留. Handoff「发送到 Bar」插入 <code>@文件名</code> 与 from 元数据.</div>
+    <div class="card"><h4><span class="num">4</span>分屏布局</h4>1 全屏, 2 左右, 3 左大右小. 超 N=4 时排队 + Tab 折叠.</div>
+    <div class="card"><h4><span class="num">5</span>完成草稿队列</h4>Lane 标记完成后 toast + 多条可切换预填, 用户编辑后发送.</div>
+    <div class="card"><h4><span class="num">6</span>Handoff 连线</h4>from→to 用终端间<strong>箭头 + 附件图标</strong>（悬浮预览/→Bar）; 右侧派发记录保留 handoff 文件操作.</div>
+  </div>
+
+  <script>
+    const KNOWN_AGENTS = ['Claude Code', 'OpenCode'];
+
+    const HANDOFF_REGISTRY = {
+      '20260702-workspace→opencode-crud.md': { sources: ['工作区'], target: 'OpenCode', laneId: 'b', sourceLaneIds: [] },
+      '20260702-claude→opencode-api.md': { sources: ['Claude Code'], target: 'OpenCode', laneId: 'b', sourceLaneIds: ['a'] },
+      '20260702-claude,opencode→claude-integrate.md': { sources: ['Claude Code', 'OpenCode'], target: 'Claude Code', laneId: 'c', sourceLaneIds: ['a', 'b'] },
+      '20260702-opencode→claude.md': { sources: ['OpenCode'], target: 'Claude Code', laneId: 'a', sourceLaneIds: ['b'] },
+      '…→claude-frontend.md': { sources: ['Claude Code'], target: 'Claude Code', laneId: 'a', sourceLaneIds: [] },
+      '…→opencode-api.md': { sources: ['OpenCode'], target: 'OpenCode', laneId: 'b', sourceLaneIds: [] },
+    };
+
+    function resolveHandoffMeta(file) {
+      const { name } = normalizeHandoff(file);
+      if (HANDOFF_REGISTRY[name]) {
+        const meta = HANDOFF_REGISTRY[name];
+        return { name, ...meta, sourcesLabel: meta.sources.join(' + ') };
+      }
+      const key = Object.keys(HANDOFF_REGISTRY).find((k) => name.includes(k.replace('…', '')) || k.includes(name));
+      if (key) {
+        const meta = HANDOFF_REGISTRY[key];
+        return { name: key, ...meta, sourcesLabel: meta.sources.join(' + ') };
+      }
+      return { name, sources: [], target: null, sourcesLabel: '未知' };
+    }
+
+    function extractAtTokens(text) {
+      const tokens = [];
+      let i = 0;
+      while (i < text.length) {
+        if (text[i] !== '@') {
+          i += 1;
+          continue;
+        }
+        const rest = text.slice(i + 1);
+        let matched = null;
+        let type = null;
+
+        const sortedAgents = [...KNOWN_AGENTS].sort((a, b) => b.length - a.length);
+        for (const agent of sortedAgents) {
+          if (!rest.toLowerCase().startsWith(agent.toLowerCase())) continue;
+          const next = rest[agent.length];
+          if (next && !/[\s，,：:、]/.test(next)) continue;
+          matched = agent;
+          type = 'agent';
+          break;
+        }
+
+        if (!matched) {
+          const fileMatch = rest.match(/^([^\s@]+?\.md)/);
+          if (fileMatch) {
+            matched = fileMatch[1];
+            type = 'file';
+          } else {
+            const registryKey = Object.keys(HANDOFF_REGISTRY).find((k) => rest.startsWith(k));
+            if (registryKey) {
+              matched = registryKey;
+              type = 'file';
+            }
+          }
+        }
+
+        if (matched) {
+          tokens.push({ type, value: matched, index: i });
+          i += 1 + matched.length;
+        } else {
+          i += 1;
+        }
+      }
+      return tokens;
+    }
+
+    function sourcesFromFileRefs(fileRefs) {
+      const sources = [];
+      fileRefs.forEach((file) => {
+        const meta = resolveHandoffMeta(file);
+        meta.sources.forEach((s) => {
+          if (!sources.includes(s)) sources.push(s);
+        });
+      });
+      return sources;
+    }
+
+    function insertHandoffToBar(fileName) {
+      const meta = resolveHandoffMeta(fileName);
+      const input = document.getElementById('orchestratorInput');
+      const focused = SCENARIOS[current]?.lanes.find((l) => l.focused);
+      const targetAgent = meta.target || focused?.agent || 'OpenCode';
+      const fileTag = `@${meta.name}`;
+      const snippet = `${targetAgent ? '@' + targetAgent : '@OpenCode'} 参考 handoff ${fileTag}`;
+      const existing = input.value.trim();
+      if (existing && !existing.includes(fileTag)) {
+        input.value = `${existing} ${fileTag}`;
+      } else if (!existing) {
+        input.value = snippet;
+      }
+      input.focus();
+      hideDockError();
+      showPreview = false;
+      pendingDispatch = null;
+      renderDispatchPreview();
+    }
+
+    const HANDOFF_MD = {
+      '20260702-workspace→opencode-crud.md': `# Handoff: Workspace → OpenCode
+
+## Goal
+实现 /api/users CRUD
+
+## Context
+- 工作区摘要
+- 用户通过 Orchestrator Bar 冷启动派发
+
+## Subtask for receiver
+创建 REST 路由与测试.`,
+      '20260702-claude→opencode-api.md': `# Handoff: Claude Code → OpenCode
+
+## Goal
+实现用户模块 REST API, 字段定义见主 Lane 讨论.
+
+## Decisions made
+- 使用 /api/users CRUD
+- SQLite 本地存储
+
+## Subtask for receiver
+接上 REST, 补 tests, 完成后标记 Lane.`,
+      '20260702-claude,opencode→claude-integrate.md': `# Handoff: Claude Code + OpenCode → Claude Code
+
+## Goal
+整合前端与 API, 跑联调.
+
+## Sources
+- Lane Claude (前端): build passed
+- Lane OpenCode (API): tests 12/12
+
+## Open questions
+- 认证中间件是否统一?`,
+      '20260702-opencode→claude.md': `# Handoff: OpenCode → Claude Code (草稿)
+
+## Goal
+回传 API 子任务结果.
+
+## Summary
+/api/users CRUD 已实现, tests 通过.`,
+    };
+
+    function handoffMarkdown(file) {
+      const key = Object.keys(HANDOFF_MD).find(k => file.includes(k) || k.includes(file.replace('…', '')));
+      if (key) return HANDOFF_MD[key];
+      return `# Handoff preview\n\nFile: ${file}\n\n(Mock content: 实现时从工作区读取真实 md)`;
+    }
+
+    function normalizeHandoff(file) {
+      const full = file.startsWith('.clutch') ? file : `.clutch/handoffs/${file}`;
+      const name = file.split('/').pop() || file;
+      return { full, name };
+    }
+
+    const SCENARIOS = {
+      cold_ab: {
+        label: 'A∥B 冷启动',
+        layout: 'layout-2',
+        lanes: [
+          { id: 'a', agent: 'Claude Code', label: '搭前端骨架', status: 'running', focused: false, collapsed: false, content: '<span class="prompt">claude</span> 正在搭建 React 脚手架…<br><span class="dim"># Bar 冷启动, sources=[]</span>' },
+          { id: 'b', agent: 'OpenCode', label: '写 REST API', status: 'running', focused: false, collapsed: false, content: '<span class="prompt">opencode</span> 创建 routes/api…<br><span class="dim"># 独立 Lane</span>' },
+        ],
+        edges: [],
+        handoffs: [],
+        sub: '2 lanes · parallel cold start',
+        input: '@OpenCode 实现 /api/users CRUD',
+        preview: { target: 'OpenCode', chips: [{ id: 'ws', label: '工作区摘要', on: true }], path: '.clutch/handoffs/20260702-workspace→opencode-crud.md' },
+        toast: null,
+        drafts: [],
+      },
+      a_to_b: {
+        label: '聚焦 A → 派 B',
+        layout: 'layout-2',
+        lanes: [
+          { id: 'a', agent: 'Claude Code', label: '主界面重构', status: 'running', focused: true, collapsed: false, content: '<span class="prompt">claude</span> 已改 Layout.tsx<br><span class="dim">// 聚焦此 Lane</span>' },
+          { id: 'b', agent: 'OpenCode', label: '子任务 API', status: 'booting', focused: false, collapsed: false, content: '<span class="dim">正在连接交互 CLI…</span>' },
+        ],
+        edges: [{ text: 'Claude Code → OpenCode (子任务 API)' }],
+        handoffs: ['20260702-claude→opencode-api.md'],
+        sub: '2 lanes · dispatch from focused',
+        input: '@OpenCode 把用户模块 REST 接上，参考 handoff @20260702-claude→opencode-api.md',
+        preview: { target: 'OpenCode', chips: [{ id: 'a', label: 'Lane · Claude Code', on: true }, { id: 'ws', label: '工作区摘要', on: false }], path: '.clutch/handoffs/20260702-claude→opencode-api.md' },
+        toast: null,
+        drafts: [],
+      },
+      ab_to_c: {
+        label: 'A,B → C 整合',
+        layout: 'layout-3',
+        lanes: [
+          { id: 'a', agent: 'Claude Code', label: '前端完成', status: 'completed', focused: false, collapsed: false, content: '<span class="prompt">claude</span> <span class="dim">✓ build passed</span>' },
+          { id: 'b', agent: 'OpenCode', label: 'API 完成', status: 'completed', focused: false, collapsed: false, content: '<span class="prompt">opencode</span> <span class="dim">✓ tests 12/12</span>' },
+          { id: 'c', agent: 'Claude Code', label: '联调整合', status: 'running', focused: true, collapsed: false, content: '<span class="prompt">claude</span> 阅读 handoff…<br><span class="dim">read .clutch/handoffs/…→claude-integrate.md</span>' },
+        ],
+        edges: [
+          { text: '∅ → Claude (前端)' },
+          { text: '∅ → OpenCode (API)' },
+          { text: 'Claude + OpenCode → Claude (联调)' },
+        ],
+        handoffs: ['…→claude-frontend.md', '…→opencode-api.md', '20260702-claude,opencode→claude-integrate.md'],
+        sub: '3 lanes · multi-source handoff',
+        input: '@Claude Code 整合前端和 API 并联调，参考 @…→claude-frontend.md @…→opencode-api.md',
+        preview: {
+          target: 'Claude Code',
+          chips: [
+            { id: 'a', label: 'Lane · Claude (前端)', on: true },
+            { id: 'b', label: 'Lane · OpenCode', on: true },
+            { id: 'ws', label: '工作区摘要', on: false },
+          ],
+          path: '.clutch/handoffs/20260702-claude,opencode→claude-integrate.md',
+        },
+        toast: null,
+        drafts: [],
+      },
+      complete_draft: {
+        label: '完成 · 草稿队列',
+        layout: 'layout-2',
+        lanes: [
+          { id: 'a', agent: 'Claude Code', label: '主任务', status: 'running', focused: true, collapsed: false, content: '<span class="prompt">claude</span> 等待后端联调…' },
+          { id: 'b', agent: 'OpenCode', label: 'API 子任务', status: 'completed', focused: false, collapsed: false, content: '<span class="prompt">opencode</span> <span class="dim">done · 标记完成</span>' },
+        ],
+        edges: [{ text: 'Claude Code → OpenCode' }],
+        handoffs: ['20260702-claude→opencode-api.md', '20260702-opencode→?.md (草稿)'],
+        sub: '1 running · 1 completed · draft queue',
+        input: '',
+        preview: null,
+        toast: 'OpenCode 子任务「API 子任务」已完成',
+        drafts: [
+          { id: 'd1', label: '回传草稿 1', text: '@Claude Code OpenCode 已完成 API。摘要：/api/users CRUD + tests。\n详见：.clutch/handoffs/20260702-opencode→claude.md\n请继续联调。' },
+          { id: 'd2', label: '回传草稿 2 (示例)', text: '@Claude Code from @OpenCode：…（用户可合并编辑）' },
+        ],
+      },
+    };
+
+    function collectSessionHandoffs(scenario) {
+      const files = [...(scenario.handoffs || [])];
+      sessionDispatchLog.forEach((item) => {
+        if (item.handoffFile && !files.includes(item.handoffFile)) files.push(item.handoffFile);
+      });
+      return files;
+    }
+
+    function renderHandoffHistoryRow(fileName) {
+      const { full, name } = normalizeHandoff(fileName);
+      const meta = resolveHandoffMeta(name);
+      return `<div class="history-handoff-row">
+        <button type="button" class="handoff-link" data-file="${name}">${full}</button>
+        <div class="history-handoff-actions">
+          <button type="button" data-action="preview" data-file="${name}">预览</button>
+          <button type="button" data-action="send-bar" data-file="${name}">发送到 Bar</button>
+        </div>
+      </div>`;
+    }
+
+    function bindHandoffActions(root) {
+      root.querySelectorAll('.handoff-link[data-file], [data-action="preview"]').forEach((btn) => {
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          openHandoffPreview(btn.dataset.file || '');
+        };
+      });
+      root.querySelectorAll('[data-action="send-bar"]').forEach((btn) => {
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          insertHandoffToBar(btn.dataset.file || '');
+        };
+      });
+    }
+
+    function buildHandoffLinkDefs(scenario, handoffFiles) {
+      const defs = [];
+      handoffFiles.forEach((file) => {
+        const meta = resolveHandoffMeta(file);
+        if (!meta.laneId || !meta.sourceLaneIds?.length) return;
+        meta.sourceLaneIds.forEach((srcId) => {
+          defs.push({
+            file: meta.name,
+            meta,
+            sourceLaneId: srcId,
+            targetLaneId: meta.laneId,
+          });
+        });
+      });
+      return defs;
+    }
+
+    function getLaneBox(laneId) {
+      const row = document.getElementById('terminalMainRow');
+      if (!row) return null;
+      const rowRect = row.getBoundingClientRect();
+      const pane = document.querySelector(`.pane[data-id="${laneId}"]`);
+      const el = pane || document.querySelector(`.lane-float[data-id="${laneId}"]`);
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      return {
+        cx: r.left + r.width / 2 - rowRect.left,
+        cy: r.top + r.height / 2 - rowRect.top,
+        left: r.left - rowRect.left,
+        right: r.right - rowRect.left,
+        top: r.top - rowRect.top,
+        bottom: r.bottom - rowRect.top,
+      };
+    }
+
+    function anchorPoint(box, side) {
+      if (!box) return null;
+      if (side === 'left') return { x: box.left, y: box.cy };
+      if (side === 'right') return { x: box.right, y: box.cy };
+      if (side === 'top') return { x: box.cx, y: box.top };
+      return { x: box.cx, y: box.bottom };
+    }
+
+    function pickSides(src, tgt) {
+      const dx = tgt.cx - src.cx;
+      const dy = tgt.cy - src.cy;
+      if (Math.abs(dx) > Math.abs(dy)) {
+        return dx > 0 ? ['right', 'left'] : ['left', 'right'];
+      }
+      return dy > 0 ? ['bottom', 'top'] : ['top', 'bottom'];
+    }
+
+    function renderHandoffMarkerHtml(def, midX, midY) {
+      const short = def.file.length > 32 ? def.file.slice(0, 30) + '…' : def.file;
+      return `<div class="handoff-link-marker" style="left:${midX}px;top:${midY}px">
+        <button type="button" class="handoff-attach-btn" title="${def.file}" aria-label="Handoff 附件">📎</button>
+        <div class="handoff-hover-card">
+          <div class="fname">${short}</div>
+          <div class="fedge">${def.meta.sourcesLabel} → ${def.meta.target}</div>
+          <div class="card-actions">
+            <button type="button" data-action="preview" data-file="${def.file}">预览</button>
+            <button type="button" data-action="send-bar" data-file="${def.file}">发送到 Bar</button>
+          </div>
+        </div>
+      </div>`;
+    }
+
+    function renderHandoffLinks(scenario, handoffFiles) {
+      const svg = document.getElementById('handoffLinksSvg');
+      const markers = document.getElementById('handoffLinkMarkers');
+      const layer = document.getElementById('handoffLinksLayer');
+      if (!svg || !markers || !layer) return;
+
+      const row = document.getElementById('terminalMainRow');
+      const defs = buildHandoffLinkDefs(scenario, handoffFiles);
+      if (!defs.length || !row) {
+        svg.innerHTML = '';
+        markers.innerHTML = '';
+        layer.classList.add('hidden');
+        return;
+      }
+      layer.classList.remove('hidden');
+
+      const w = row.clientWidth;
+      const h = row.clientHeight;
+      svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+      svg.innerHTML = `<defs>
+        <marker id="handoff-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+          <path d="M0,0 L8,4 L0,8 Z" fill="#60a5fa"/>
+        </marker>
+      </defs>`;
+
+      const paths = [];
+      const markerHtml = [];
+      const seen = new Set();
+
+      defs.forEach((def) => {
+        const srcBox = getLaneBox(def.sourceLaneId);
+        const tgtBox = getLaneBox(def.targetLaneId);
+        if (!srcBox || !tgtBox) return;
+        const [srcSide, tgtSide] = pickSides(srcBox, tgtBox);
+        const p0 = anchorPoint(srcBox, srcSide);
+        const p1 = anchorPoint(tgtBox, tgtSide);
+        if (!p0 || !p1) return;
+
+        const midX = (p0.x + p1.x) / 2;
+        const midY = (p0.y + p1.y) / 2;
+        const cdx = (p1.x - p0.x) * 0.25;
+        const cdy = (p1.y - p0.y) * 0.25;
+        const cx = midX + (Math.abs(cdx) > Math.abs(cdy) ? 0 : cdx);
+        const cy = midY + (Math.abs(cdx) > Math.abs(cdy) ? cdy : 0);
+
+        paths.push(`<path class="handoff-link-path" d="M ${p0.x} ${p0.y} Q ${cx} ${cy} ${p1.x} ${p1.y}" marker-end="url(#handoff-arrow)"/>`);
+
+        const key = `${def.sourceLaneId}-${def.targetLaneId}-${def.file}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          markerHtml.push(renderHandoffMarkerHtml(def, midX, midY));
+        }
+      });
+
+      svg.innerHTML += paths.join('');
+      markers.innerHTML = markerHtml.join('');
+      bindHandoffActions(markers);
+    }
+
+    function focusLaneByTarget(targetAgent, scenario) {
+      const lane = scenario.lanes.find((l) => l.agent.toLowerCase() === targetAgent.toLowerCase() && !l.collapsed)
+        || scenario.lanes.find((l) => l.agent.toLowerCase() === targetAgent.toLowerCase());
+      if (lane) {
+        scenario.lanes.forEach((l) => { l.focused = l.id === lane.id; });
+        if (lane.collapsed) lane.collapsed = false;
+        return true;
+      }
+      return false;
+    }
+
+    function agentLogoClass(agent) {
+      return agent.toLowerCase().includes('opencode') ? 'opencode' : 'claude';
+    }
+    function agentLogoText(agent) {
+      return agent.toLowerCase().includes('opencode') ? 'OC' : 'CC';
+    }
+
+    function renderFloatDock(collapsed, key, s) {
+      const rail = document.getElementById('floatRail');
+      const dock = document.getElementById('floatDock');
+      rail.classList.toggle('hidden', collapsed.length === 0);
+      dock.innerHTML = collapsed.map(l => {
+        const active = l.status === 'running' || l.status === 'booting';
+        const done = l.status === 'completed';
+        return `
+        <div class="lane-float" data-id="${l.id}" title="${l.agent} · ${l.label}（点击展开）">
+          <div class="logo-wrap">
+            <div class="logo ${agentLogoClass(l.agent)}">${agentLogoText(l.agent)}</div>
+            ${done ? '<span class="done-dot" aria-label="已完成"></span>' : ''}
+          </div>
+          <span class="lane-desc">${l.label}</span>
+          ${active ? '<span class="spinner" aria-label="运行中"></span>' : ''}
+        </div>`;
+      }).join('');
+      dock.querySelectorAll('.lane-float').forEach(card => {
+        card.onclick = () => {
+          const lane = s.lanes.find(x => x.id === card.dataset.id);
+          if (lane) {
+            lane.collapsed = false;
+            lane.focused = true;
+            s.lanes.forEach(x => { if (x.id !== lane.id) x.focused = false; });
+          }
+          renderScenario(key);
+        };
+      });
+    }
+
+    let current = 'cold_ab';
+    let showPreview = false;
+    let pendingDispatch = null;
+    let sessionDispatchLog = [];
+    let highlightHistoryId = null;
+
+    function switchRightTab(tabId) {
+      document.querySelectorAll('#rightTabs button').forEach(t => {
+        t.classList.toggle('on', t.dataset.tab === tabId);
+      });
+      document.querySelectorAll('.right-tab-panel').forEach(p => {
+        p.classList.toggle('hidden', p.dataset.panel !== tabId);
+      });
+    }
+
+    function formatTime(d = new Date()) {
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function parseOrchestratorDispatch(text, scenario) {
+      const trimmed = text.trim();
+      if (!trimmed || !trimmed.includes('@')) return null;
+
+      const tokens = extractAtTokens(trimmed);
+      const fileRefs = tokens.filter((t) => t.type === 'file').map((t) => t.value);
+      let sources = [];
+      let target = null;
+      let task = '';
+      let inputMode = 'natural';
+
+      const fromMatch = trimmed.match(/\bfrom\s+((?:@[^\s@:，,]+(?:\s+|，|,)?)+)/i);
+      if (fromMatch) {
+        inputMode = 'graph';
+        sources = [...fromMatch[1].matchAll(/@([^\s@:，,]+)/g)].map((m) => m[1].trim());
+        const beforeFrom = trimmed.slice(0, fromMatch.index);
+        const afterFrom = trimmed.slice(fromMatch.index + fromMatch[0].length).replace(/^[:：\s]+/, '');
+        const targetBefore = beforeFrom.match(/@([^\s@:，,]+)\s*$/);
+        if (targetBefore) {
+          target = targetBefore[1].trim();
+          task = afterFrom.trim();
+        } else {
+          const targetAfter = afterFrom.match(/^@([^\s@:，,]+)/);
+          if (!targetAfter) return null;
+          target = targetAfter[1].trim();
+          task = afterFrom.slice(targetAfter[0].length).replace(/^[:：\s]+/, '').trim();
+        }
+      } else {
+        const agentTokens = tokens.filter((t) => t.type === 'agent');
+        if (!agentTokens.length) return null;
+        target = agentTokens[0].value;
+        task = trimmed.replace(new RegExp(`^@${target.replace(/\s+/g, '\\s+')}\\s*`), '').trim();
+        if (fileRefs.length) {
+          sources = sourcesFromFileRefs(fileRefs);
+          inputMode = 'natural';
+        }
+        if (!sources.length) {
+          const focused = scenario.lanes.find((l) => l.focused);
+          sources = focused ? [focused.agent] : ['工作区'];
+        }
+      }
+
+      if (fileRefs.length && inputMode === 'graph') {
+        const inferred = sourcesFromFileRefs(fileRefs);
+        inferred.forEach((s) => {
+          if (!sources.includes(s)) sources.push(s);
+        });
+      }
+
+      const sourcesKey = sources.map((s) => s.replace(/\s+/g, '')).join(',');
+      const handoffFile = `20260702-${sourcesKey}→${target.replace(/\s+/g, '')}.md`;
+      const handoffPath = `.clutch/handoffs/${handoffFile}`;
+
+      const chips = sources.map((name, i) => ({
+        id: `src_${i}`,
+        label: name === '工作区' ? '工作区摘要' : `Lane · ${name}`,
+        on: true,
+        sourceName: name,
+      }));
+
+      return { sources, target, task, handoffPath, handoffFile, chips, fileRefs, inputMode };
+    }
+
+    function buildPendingDispatchFromBar() {
+      const s = SCENARIOS[current];
+      const text = document.getElementById('orchestratorInput').value;
+      return parseOrchestratorDispatch(text, s);
+    }
+
+    function renderDispatchPreview() {
+      const prev = document.getElementById('dispatchPreview');
+      if (!showPreview || !pendingDispatch) {
+        prev.classList.add('hidden');
+        return;
+      }
+      prev.classList.remove('hidden');
+      const fromLabel = pendingDispatch.sources.length === 1
+        ? `@${pendingDispatch.sources[0]}`
+        : pendingDispatch.sources.map((s) => `@${s}`).join(' ');
+      document.getElementById('previewFrom').textContent = fromLabel;
+      document.getElementById('previewTo').textContent = `@${pendingDispatch.target}`;
+      const modeEl = document.getElementById('previewParseMode');
+      modeEl.textContent = pendingDispatch.inputMode === 'graph'
+        ? '图语法 · 显式 from'
+        : pendingDispatch.fileRefs?.length
+          ? '自然语言 · 从 @文件 推断 from'
+          : '自然语言 · 聚焦 Lane / 工作区';
+      modeEl.className = `parse-mode ${pendingDispatch.inputMode === 'graph' ? 'graph' : 'natural'}`;
+      document.getElementById('previewTask').textContent = pendingDispatch.task
+        ? `任务：${pendingDispatch.task}`
+        : '（未填写任务描述）';
+      const fileRefsEl = document.getElementById('previewFileRefs');
+      if (pendingDispatch.fileRefs?.length) {
+        fileRefsEl.classList.remove('hidden');
+        fileRefsEl.innerHTML = '<strong>引用 handoff：</strong>' + pendingDispatch.fileRefs.map((file) => {
+          const meta = resolveHandoffMeta(file);
+          return `<span class="file-ref">@${meta.name} <span style="color:var(--muted)">（${meta.sourcesLabel} → ${meta.target || '—'}）</span></span>`;
+        }).join('');
+      } else {
+        fileRefsEl.classList.add('hidden');
+        fileRefsEl.innerHTML = '';
+      }
+      document.getElementById('previewPath').innerHTML =
+        `<button type="button" class="handoff-link" style="width:100%;margin:0" id="previewPathBtn">${pendingDispatch.handoffPath}</button>`;
+      document.getElementById('previewPathBtn').onclick = () => {
+        openHandoffPreview(pendingDispatch.handoffFile);
+      };
+      const chips = document.getElementById('previewChips');
+      chips.innerHTML = pendingDispatch.chips.map((c, i) =>
+        `<span class="chip ${c.on ? 'on' : 'off'}" data-i="${i}">${c.label}</span>`,
+      ).join('');
+      chips.querySelectorAll('.chip').forEach((chip) => {
+        chip.onclick = () => {
+          const c = pendingDispatch.chips[+chip.dataset.i];
+          c.on = !c.on;
+          chip.classList.toggle('on', c.on);
+          chip.classList.toggle('off', !c.on);
+          const active = pendingDispatch.chips.filter((x) => x.on).map((x) => x.sourceName);
+          pendingDispatch.sources = active.length ? active : ['工作区'];
+          renderDispatchPreview();
+        };
+      });
+    }
+
+    function hideDockError() {
+      document.getElementById('dockError').classList.add('hidden');
+    }
+
+    function showDockError(message) {
+      document.getElementById('dockErrorText').textContent = message;
+      document.getElementById('dockError').classList.remove('hidden');
+    }
+
+    function renderHistoryList(scenario) {
+      const list = document.getElementById('historyList');
+      const all = [...sessionDispatchLog].reverse();
+      if (!all.length) {
+        const files = collectSessionHandoffs(scenario);
+        if (files.length) {
+          list.innerHTML = files.map((file) => {
+            const meta = resolveHandoffMeta(file);
+            return `<li class="history-item" style="cursor:default">
+              <div class="row-main"><span class="edge">${meta.sourcesLabel} → ${meta.target || '—'}</span></div>
+              ${renderHandoffHistoryRow(file)}
+            </li>`;
+          }).join('');
+          bindHandoffActions(list);
+          return;
+        }
+        const edges = scenario.edges || [];
+        if (edges.length) {
+          list.innerHTML = edges.map((e) => `
+            <li class="history-item" style="cursor:default">
+              <div class="row-main"><span class="edge">${e.text}</span></div>
+            </li>`).join('');
+          return;
+        }
+        list.innerHTML = '<li style="color:var(--muted);font-size:10px;padding:8px">尚无派发。确认后在此记录；Lane 间箭头表示 handoff。</li>';
+        return;
+      }
+      list.innerHTML = all.map((item) => {
+        const { name } = normalizeHandoff(item.handoffFile);
+        return `
+        <li class="history-item ${item.id === highlightHistoryId ? 'highlight' : ''}" data-id="${item.id}" data-target="${item.target}">
+          <div class="row-main">
+            <span class="time">${item.time}</span>
+            <span class="edge">${item.sourcesLabel} → ${item.target}</span>
+          </div>
+          ${item.prompt ? `<div class="prompt">${item.prompt}</div>` : ''}
+          ${renderHandoffHistoryRow(name)}
+        </li>`;
+      }).join('');
+      bindHandoffActions(list);
+      list.querySelectorAll('.history-item[data-target]').forEach((row) => {
+        row.addEventListener('click', (e) => {
+          if (e.target.closest('button')) return;
+          highlightHistoryId = row.dataset.id;
+          focusLaneByTarget(row.dataset.target || '', scenario);
+          renderScenario(current);
+        });
+      });
+    }
+
+    function renderOverviewPanels(s) {
+      renderHistoryList(s);
+    }
+
+    function renderScenario(key) {
+      current = key;
+      const s = SCENARIOS[key];
+      document.getElementById('consoleSub').textContent = s.sub;
+      document.getElementById('orchestratorInput').value = s.input || '';
+      document.getElementById('footerAgent').textContent = s.lanes.find(l => l.focused)?.agent || '—';
+
+      document.getElementById('scenarioBtns').innerHTML = Object.entries(SCENARIOS)
+        .map(([k, v]) => `<button type="button" class="${k === key ? 'active' : ''}" data-s="${k}">${v.label}</button>`)
+        .join('');
+      document.querySelectorAll('#scenarioBtns button').forEach(btn => {
+        btn.onclick = () => {
+          sessionDispatchLog = [];
+          highlightHistoryId = null;
+          showPreview = false;
+          pendingDispatch = null;
+          hideDockError();
+          renderScenario(btn.dataset.s);
+        };
+      });
+
+      const tabs = document.getElementById('laneTabs');
+      tabs.innerHTML = s.lanes.map(l => `
+        <div class="lane-tab ${l.focused ? 'focused' : ''} ${l.status === 'completed' ? 'completed' : ''}" data-id="${l.id}">
+          <span class="badge">${l.status}</span>
+          ${l.agent} · ${l.label}
+        </div>
+      `).join('') + '<div class="lane-tab add" title="超过 N 时排队">+ 排队</div>';
+      tabs.querySelectorAll('.lane-tab[data-id]').forEach(tab => {
+        tab.onclick = () => {
+          s.lanes.forEach(l => { l.focused = l.id === tab.dataset.id; });
+          renderScenario(key);
+        };
+      });
+
+      const expanded = s.lanes.filter(l => !l.collapsed);
+      const collapsed = s.lanes.filter(l => l.collapsed);
+
+      renderFloatDock(collapsed, key, s);
+
+      const handoffFiles = collectSessionHandoffs(s);
+      const stage = document.getElementById('terminalStage');
+      const layoutKey = expanded.length <= 1 ? 'layout-1' : expanded.length === 2 ? 'layout-2' : 'layout-3';
+      stage.className = 'terminal-stage ' + layoutKey;
+      stage.innerHTML = expanded.map((l) => `
+        <div class="pane visible ${l.focused ? 'focused' : ''}" data-id="${l.id}">
+          <div class="pane-titlebar">
+            <span class="traffic"><span class="t-red"></span><span class="t-yellow"></span><span class="t-green"></span></span>
+            clutch — ${l.agent} · ${l.label}
+            <div class="pane-actions">
+              ${l.status === 'running' ? '<button type="button" class="mark-done">标记完成</button>' : ''}
+              <button type="button" class="collapse-btn">折叠</button>
+            </div>
+          </div>
+          <div class="pane-body">${l.content}</div>
+        </div>
+      `).join('');
+      stage.querySelectorAll('.collapse-btn').forEach(btn => {
+        btn.onclick = () => {
+          const pane = btn.closest('.pane');
+          const lane = s.lanes.find(x => x.id === pane?.dataset.id);
+          if (lane) lane.collapsed = true;
+          renderScenario(key);
+        };
+      });
+
+      renderOverviewPanels(s);
+      renderDispatchPreview();
+      requestAnimationFrame(() => renderHandoffLinks(s, handoffFiles));
+
+      const toast = document.getElementById('toast');
+      if (s.toast) {
+        toast.classList.remove('hidden');
+        document.getElementById('toastText').textContent = s.toast;
+      } else {
+        toast.classList.add('hidden');
+      }
+
+      const dq = document.getElementById('draftQueue');
+      if (s.drafts?.length) {
+        dq.classList.remove('hidden');
+        dq.innerHTML = s.drafts.map((d, i) =>
+          `<span class="draft-tab ${i === 0 ? 'active' : ''}" data-i="${i}">${d.label}</span>`
+        ).join('');
+        document.getElementById('orchestratorInput').value = s.drafts[0].text;
+        dq.querySelectorAll('.draft-tab').forEach(tab => {
+          tab.onclick = () => {
+            dq.querySelectorAll('.draft-tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            document.getElementById('orchestratorInput').value = s.drafts[+tab.dataset.i].text;
+          };
+        });
+      } else {
+        dq.classList.add('hidden');
+      }
+    }
+
+    function openHandoffPreview(file) {
+      const { full } = normalizeHandoff(file);
+      document.getElementById('previewTitle').textContent = full;
+      document.getElementById('previewBody').textContent = handoffMarkdown(file);
+      document.getElementById('handoffPreview').classList.remove('hidden');
+    }
+
+    document.getElementById('closePreview').onclick = () => {
+      document.getElementById('handoffPreview').classList.add('hidden');
+    };
+    document.getElementById('handoffPreview').onclick = (e) => {
+      if (e.target.id === 'handoffPreview') document.getElementById('handoffPreview').classList.add('hidden');
+    };
+
+    document.querySelectorAll('#rightTabs button').forEach(tab => {
+      tab.onclick = () => switchRightTab(tab.dataset.tab);
+    });
+
+    document.getElementById('sendBtn').onclick = () => {
+      hideDockError();
+      pendingDispatch = buildPendingDispatchFromBar();
+      if (!pendingDispatch) {
+        showPreview = false;
+        showDockError('输入需包含 @目标 Agent，例如 @OpenCode …');
+        renderDispatchPreview();
+        return;
+      }
+      showPreview = true;
+      renderDispatchPreview();
+    };
+    document.getElementById('orchestratorInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        document.getElementById('sendBtn').click();
+      }
+    });
+    document.getElementById('cancelDispatch').onclick = () => {
+      showPreview = false;
+      pendingDispatch = null;
+      renderDispatchPreview();
+    };
+    document.getElementById('confirmDispatch').onclick = () => {
+      if (!pendingDispatch) return;
+      const onChips = pendingDispatch.chips.filter((c) => c.on);
+      const sourcesLabel = onChips.length
+        ? onChips.map((c) => c.sourceName).join(' + ')
+        : '工作区';
+      const entry = {
+        id: `dispatch_${Date.now()}`,
+        time: formatTime(),
+        sourcesLabel,
+        target: pendingDispatch.target,
+        prompt: document.getElementById('orchestratorInput').value.trim(),
+        handoffFile: pendingDispatch.handoffFile,
+        handoffPath: pendingDispatch.handoffPath,
+      };
+      sessionDispatchLog.push(entry);
+      highlightHistoryId = entry.id;
+      showPreview = false;
+      pendingDispatch = null;
+      hideDockError();
+      switchRightTab('overview');
+      renderScenario(current);
+    };
+    document.getElementById('toastDraftBtn').onclick = () => {
+      renderScenario('complete_draft');
+      document.getElementById('toast').classList.add('hidden');
+    };
+    document.getElementById('toastDismiss').onclick = () => {
+      document.getElementById('toast').classList.add('hidden');
+    };
+
+    renderScenario('cold_ab');
+  </script>
+</body>
+</html>

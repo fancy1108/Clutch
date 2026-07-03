@@ -4,7 +4,7 @@
 
 **本地 AI 多 Agent 编排与监督 — 桌面控制台**
 
-[English](README.md) · [简体中文](README.zh-CN.md) · [**新手入门**](docs/GETTING_STARTED.md) · [下载 Releases](https://github.com/fancy1108/Clutch/releases)
+[English](README.md) · [简体中文](README.zh-CN.md) · [**产品官网**](https://fancy1108.github.io/Clutch/) · [**新手入门**](docs/GETTING_STARTED.md) · [下载 Releases](https://github.com/fancy1108/Clutch/releases)
 
 > [!TIP]
 > **第一次用？** 请先读 **[新手入门指南](docs/GETTING_STARTED.md)** — 安装、首次向导、发出第一条聊天，约 5 分钟，**不需要**配置开发环境。
@@ -17,17 +17,19 @@ Clutch 是一款**桌面应用**（Tauri + React），面向独立开发者和�
 |---|---|
 | **技术栈** | Tauri 2 · React 19 · FastAPI + LangGraph · 本地优先（`localhost:8123`） |
 | **许可证** | 见 [LICENSE](LICENSE) |
-| **当前版本** | [v1.0.3](https://github.com/fancy1108/Clutch/releases) |
+| **当前版本** | [v1.0.3](https://github.com/fancy1108/Clutch/releases)（已发布）· **下一版：** [v1.1.0](CHANGELOG.md#110---2026-07-03) |
 
-### v1.0.3 新特性
+### 最新更新（v1.1.0 · 开发中）
 
-- **Hybrid Shell 池排队** — CLI 槽位占满时，跨会话 Plain Chat 进入全局 FIFO 队列，输入框显示阻塞 Agent 头像；槽位释放后自动继续。
-- **OpenCode CLI** — `opencode-cli` 一等公民 Hybrid 路由。
-- **同会话消息队列** — 回合进行中可继续发送，消息以 **待发送消息** 排队并按序执行。
-- **设置 → Ollama** — 模型列表与本地 `ollama list` 同步；跨机 `active_model_id` 自动回退。
-- **品牌刷新** — 新 Clutch 标识与桌面图标。
+- **Terminal Orchestra（D34）** — 对话 ↔ 终端切换；多 Lane 嵌入式 CLI；OrchestratorBar `@` 调度、handoff 文件、派发记录与 CLI Session 恢复命令。
+- **Windows 桌面体验优化** — 侧栏折叠、字号偏好、Session 切换缓存与后台 WebSocket（[#28](https://github.com/fancy1108/Clutch/pull/28)）。
+- **CodeBuddy CLI** — 接入腾讯 CodeBuddy / WorkBuddy；Settings → Tools 连接后可在 Agent 中选用，支持 headless 与会话恢复。
+- **OpenCode Zen 文本模型** — Settings → Models 内置 Provider；填写 Zen API Key 即可使用 5 个免费对话模型，支持刷新模型列表与保存前连通性校验。
+- **Agnes Video V2.0** — 对话区文生视频，气泡内直接播放与下载；中文提示词自动译英后调用 API。
+- **Agent 分栏设置** — Models / MCP / Skills 按 Agent 类型分 Tab（Clutch · Claude Code · OpenCode）。
+- **产品官网** — [fancy1108.github.io/Clutch](https://fancy1108.github.io/Clutch/)：中英文介绍、安装方式与联系方式。
 
-完整说明：[`CHANGELOG.md`](CHANGELOG.md#103---2026-07-01) · [`docs/releases/v1.0.3.md`](docs/releases/v1.0.3.md)
+更早版本见 [`CHANGELOG.md`](CHANGELOG.md) · [`docs/releases/`](docs/releases/)。
 
 ---
 
@@ -54,7 +56,7 @@ brew install --cask clutch
 irm https://raw.githubusercontent.com/fancy1108/Clutch/main/scripts/install.ps1 | iex
 ```
 
-指定版本：运行前设置 `CLUTCH_VERSION=v1.0.3`。
+指定版本：运行前设置 `CLUTCH_VERSION=v1.1.0`（或 `v1.0.3` 安装当前稳定版）。
 
 详见 [`docs/PACKAGE_MANAGERS.md`](docs/PACKAGE_MANAGERS.md)
 
@@ -91,7 +93,7 @@ xattr -cr /Applications/Clutch.app && open -a Clutch
 | 能力 | 一句话 |
 |------|--------|
 | **可视化工作流** | 画布拖拽多 Agent SOP，编译为 LangGraph 运行 |
-| **本地 CLI 接入** | Settings → Tools 连接 Claude Code、Codex、Ollama、Aider、Rivet 等 |
+| **本地 CLI 接入** | Settings → Tools 连接 Claude Code、CodeBuddy、Codex、Ollama、Aider、Rivet 等 |
 | **统一监督台** | 聊天、终端、文件树、Diff、流程进度一屏可见 |
 | **人机协同** | 高风险步骤暂停，批准 / 打回 / 带指令重试 |
 | **智能体与模型** | 自定义 Agent、API Key、Skills、MCP |
@@ -110,6 +112,10 @@ xattr -cr /Applications/Clutch.app && open -a Clutch
 **可视化 SOP 编排** — 零代码多 Agent 流水线：
 
 ![Clutch 工作流画布编排](./docs/images/Clutch_2.png)
+
+**Terminal Orchestra** — Terminal 模式下交互式 CLI 终端、调度与 Session 恢复：
+
+![Clutch Terminal Session](./docs/images/terminal-session.png)
 
 ---
 
@@ -165,7 +171,7 @@ pnpm tauri:dev
 Clutch 通过本机回环 Sidecar（`127.0.0.1:8123`）调度本地 AI CLI。
 
 > [!IMPORTANT]
-> 对 **Claude Code**、**Antigravity (agy)** 等 CLI，Clutch **默认**追加 `--dangerously-skip-permissions`，以便工作流自动跑通、不再逐项确认。请只在信任的工作区使用。聊天栏 Permission 菜单管的是**内置 Agent 的 MCP 门控**，不改变上述 CLI 默认行为。
+> 对 **Claude Code**、**CodeBuddy**、**Antigravity (agy)** 等 CLI，Clutch **默认**追加 `--dangerously-skip-permissions`，以便工作流自动跑通、不再逐项确认。请只在信任的工作区使用。聊天栏 Permission 菜单管的是**内置 Agent 的 MCP 门控**，不改变上述 CLI 默认行为。
 
 漏洞报告：[`SECURITY.md`](SECURITY.md)
 

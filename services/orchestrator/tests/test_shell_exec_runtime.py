@@ -9,9 +9,11 @@ import pytest
 from src.hybrid_audit_log import get_hybrid_audit_dir, read_hybrid_audit_lines
 from src.shell_exec_runtime import (
     InteractiveCommandBlocked,
+    _build_generic_cli_shell_cmd,
     _build_agy_shell_cmd,
     _build_claude_shell_cmd,
-    _build_generic_cli_shell_cmd,
+    _is_codex_binary,
+    _shell_command_token,
     assert_no_interactive_command,
     extract_claude_output,
     run_agy_turn,
@@ -90,6 +92,30 @@ def test_build_claude_shell_cmd_does_not_set_rivet_env() -> None:
         system_prompt=None,
     )
     assert "RIVET_FORCE_RECOVERY_CLI" not in cmd
+
+
+def test_shell_command_token_converts_windows_exe_for_bash() -> None:
+    assert _shell_command_token(r"D:\codex\codex.exe") == "/d/codex/codex.exe"
+    assert _shell_command_token(r"C:\Program Files\Codex\codex.exe") == "'/c/Program Files/Codex/codex.exe'"
+
+
+def test_build_generic_cli_shell_cmd_quotes_windows_codex_path() -> None:
+    cmd = _build_generic_cli_shell_cmd(
+        binary=r"D:\codex\codex.exe",
+        prompt="你好",
+        marker="__CLUTCH_DONE_x__",
+        system_prompt="You are Codex",
+        conversation_mode="history_only",
+        extra_args=["exec", "--skip-git-repo-check", "--json"],
+        prepend_system_prompt=True,
+        prompt_flag="",
+        supports_append_system_prompt=False,
+        close_stdin=True,
+    )
+    assert "/d/codex/codex.exe exec" in cmd
+    assert r"D:\codex\codex.exe" not in cmd
+    assert "D:codexcodex" not in cmd
+    assert _is_codex_binary(r"D:\codex\codex.exe")
 
 
 @dataclass

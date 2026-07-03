@@ -77,13 +77,14 @@ def _run_clutch_chat_task(
     from src.agent_prompt import compose_agent_system_prompt
     from src.agent_type import resolve_model_for_agent
     from src.image_router import is_image_model
+    from src.video_router import is_video_model
     from src.models_config import get_router
     from src.mcp_react import run_mcp_react_loop
 
     router = get_router()
     spec, model_id = resolve_model_for_agent(router, agent_dict)
-    if is_image_model(spec):
-        raise RuntimeError("image model should be handled before clutch chat")
+    if is_image_model(spec) or is_video_model(spec):
+        raise RuntimeError("media model should be handled before clutch chat")
 
     mcp_servers = resolve_agent_mcp_servers(agent_dict)
     system_prompt = compose_agent_system_prompt(
@@ -171,10 +172,11 @@ def execute_agent_task(
     result_message: dict[str, Any] | None = None
     task_failed = False
 
-    if tool in {"claude-cli", "agy-cli", "agy", "antigravity-cli", "codex-cli", "codex", "aider-cli", "opencode-cli", "opencode", "llm", "ollama", "ollama-cli", ""}:
+    if tool in {"claude-cli", "agy-cli", "agy", "antigravity-cli", "codex-cli", "codex", "aider-cli", "opencode-cli", "opencode", "codebuddy-cli", "codebuddy", "cbc", "llm", "ollama", "ollama-cli", ""}:
         from src.agent_type import resolve_model_for_agent
         from src.engine_router import route_engine
         from src.image_router import format_image_reply, generate_image_for_model, is_image_model
+        from src.video_router import format_video_reply, generate_video_for_model, is_video_model
         from src.models_config import get_router
         from src.workspace import get_workspace
 
@@ -184,6 +186,41 @@ def execute_agent_task(
         if agent_dict and is_clutch_agent(agent_dict):
             router = get_router()
             spec, model_id = resolve_model_for_agent(router, agent_dict)
+            if is_video_model(spec):
+                api_key = router.resolve_for_model(model_id)[1]
+                try:
+                    result = generate_video_for_model(
+                        spec,
+                        task_instruction,
+                        api_key=router._require_api_key(spec.provider_id, api_key),
+                        on_log=stream_log if run_id else None,
+                    )
+                    output = format_video_reply(result)
+                    logs.append(
+                        agent_line(agent_ref, f"Video generated via {spec.name}", label=label)
+                    )
+                    if run_id:
+                        stream_log(logs[-1])
+                    logs.append(agent_line(agent_ref, f"Output: {len(output)} chars", label=label))
+                    if run_id:
+                        stream_log(logs[-1])
+                    return AgentTaskResult(
+                        agent=display_name,
+                        output=output,
+                        logs=logs,
+                        message=chat_message(display_name, output),
+                    )
+                except Exception as exc:
+                    output = f"Video generation failed: {exc}"
+                    logs.append(agent_line(agent_ref, f"ERROR: {exc}", label=label))
+                    if run_id:
+                        stream_log(logs[-1])
+                    return AgentTaskResult(
+                        agent=display_name,
+                        output=output,
+                        logs=logs,
+                        message=chat_message(display_name, output),
+                    )
             if is_image_model(spec):
                 api_key = router.resolve_for_model(model_id)[1]
                 try:

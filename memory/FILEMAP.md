@@ -31,6 +31,7 @@
 | 想改什么 | 去哪里 |
 |---------|--------|
 | 铁律、命令、Check-in | `CLAUDE.md` |
+| **新增 Agent CLI 白名单（代码 + 文档同步）** | `.cursor/rules/cli-whitelist-docs.mdc` · 决策 `memory/DECISIONS.md` D19 |
 | 产品介绍文档 | `docs/PRODUCT_INTRO.md` |
 | **新手入门（中英）** | `docs/GETTING_STARTED.md` · 仓库 `README.md` / `README.zh-CN.md` |
 | 文档总索引 | `docs/README.md` |
@@ -72,6 +73,8 @@
 | CLI PTY Session 改造方案（参考） | `docs/research/pty-session.md` |
 | **D25 Hybrid 执行状态（权威）** | **`specs/core/hybrid-runtime-plan.md`** · D27 命名对齐 |
 | PTY Session Step 0 实验 | `experiments/pty_poc/` |
+| TUI 嵌入 Phase 0 实验 | `experiments/tui_embed_poc/` |
+| 交互 PTY Runtime（终端模式） | `services/orchestrator/src/interactive_pty_runtime.py` |
 | Task 交付索引（Commit / 证据） | `memory/DELIVERABLES.md` · 归档 `memory/archive/DELIVERABLES-*.md` |
 | 决策与开放问题 | `memory/DECISIONS.md` |
 | 功能验收状态 | `memory/ROADMAP.md` |
@@ -124,6 +127,8 @@
 | 底部状态栏（Branch / Model / Agent） | `App.tsx` footer |
 | 工作区 Git 分支 API | `services/workspaceApi.ts` → `GET /api/workspace/git` |
 | Chat 流与人工干预 UI | `components/ChatFeed.tsx` |
+| 终端模式 xterm 视图 | `components/ChatTerminalView.tsx` |
+| 对话/终端模式切换状态 | `services/workspaceViewMode.ts` |
 | 工作流 Chat 步骤 / Agent 类型解析 | `services/workflowAgentSteps.ts` |
 | Agent / 工具品牌 Logo | `services/brandLogos.ts` · `components/BrandLogo.tsx` |
 | 右侧面板（Overview/Files/Flow/Changes/Terminal） | `components/RightPanel.tsx` |
@@ -138,6 +143,7 @@
 | 画布 ↔ compiler 转换（D9） | `services/workflowFormat.ts` |
 | 工作流 Sidecar API 客户端 | `services/workflowApi.ts` |
 | Agent 角色配置 | `components/AgentManager.tsx` |
+| Agent CLI 安装指引与推荐列表 | `services/cliInstallGuides.ts` · 后端白名单 `services/orchestrator/src/tools_status.py` · 路由 `engine_router.py`（文档清单见 D19） |
 | 内置 Clutch Agent 定义与合并 | `services/builtinAgent.ts` |
 | Agent Registry API | `services/agentApi.ts` |
 | AI 工具连接状态 | `components/AiToolsManager.tsx` |
@@ -164,6 +170,7 @@
 | WorkflowCompiler（M1-02） | `src/compiler/` |
 | Orchestrator 路由（M1-04） | `src/orchestrator/routing.py` |
 | Engine Router（aiEngine / Connect 分流） | `src/engine_router.py` |
+| Agent CLI 探测与白名单 | `src/tools_status.py` · `src/agent_type.py` · `src/provider_registry.py` · `src/adapters/cli_adapter.py` |
 | ShellSession Hybrid Runtime（D25 Step 1） | `src/shell_session.py`、`src/shell_exec_runtime.py`、`src/hybrid_audit_log.py`（HRT-05 JSONL）、`src/hybrid_concurrency.py`（HRT-08 拒绝+提示）、`src/run_debug.py`（HRT-06 debug API）、`src/claude_hybrid_output_parser.py`（含 `OutputEvent`）、`src/runtime_config.py` |
 | RuntimeStrategy / Provider 注册表 | `src/runtime_strategy.py`、`src/provider_registry.py`、`src/runtime_registry.py` |
 | Context Continuity 快照 | `src/session_snapshot.py`；`GET/PUT /api/shell-snapshots/{run_id}` · `GET /api/shell-snapshots` |
@@ -182,6 +189,8 @@
 | 工作区 Git 分支探测 | `src/workspace.py` → `get_git_info()` |
 | LLM Provider Router（M1-08，D4） | `src/llm/router.py` |
 | LLM HTTP 补全 | `src/llm/http_complete.py` |
+| OpenCode Zen 模型目录 / 保存校验 | `src/adapters/opencode_zen_adapter.py` |
+| 内置模型 Provider 预设（含 OpenCode Zen） | `apps/desktop/src/services/modelProviderPresets.ts` |
 | 模型配置序列化 | `src/models_config.py` |
 | 用户工作流存储 API（M1-09，D5） | `src/workflow_storage.py` |
 | Skills Registry 持久化（P2-01） | `src/skills_storage.py`、`src/skills_scanner.py` |
@@ -190,6 +199,8 @@
 | CLI Adapter（M3） | `src/adapters/` — `cli_adapter.py`、`claude_cli_adapter.py`、`agy_cli_adapter.py`、`ollama_adapter.py` |
 | CLI PTY Session 调研（参考） | `docs/research/pty-session.md` |
 | PTY Session Step 0 实验 | `experiments/pty_poc/` |
+| TUI 嵌入 Phase 0 实验 | `experiments/tui_embed_poc/` |
+| 交互 PTY Runtime（终端模式） | `services/orchestrator/src/interactive_pty_runtime.py` |
 | Video Core（M5） | `src/video_core/` — `config.py`、`env.py`、`pipeline.py`、`renderer.py` |
 | 依赖与 pytest 配置 | `pyproject.toml` |
 

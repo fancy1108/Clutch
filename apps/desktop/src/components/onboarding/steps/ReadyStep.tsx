@@ -16,6 +16,13 @@ function executionPathLabel(modelReady: boolean, toolsReady: boolean, t: (key: s
   return '—';
 }
 
+function credentialStoreLabel(t: (key: string) => string): string {
+  const platform = typeof navigator !== 'undefined' ? navigator.platform : '';
+  if (/Mac/i.test(platform)) return t('Keys stored in macOS Keychain');
+  if (/Win/i.test(platform)) return t('Keys stored in Windows Credential Manager');
+  return t('Keys stored securely by the operating system when supported');
+}
+
 export function ReadyStep({
   workspace,
   modelReady,
@@ -24,7 +31,6 @@ export function ReadyStep({
   defaultAgentName,
 }: ReadyStepProps) {
   const { t } = useLanguage();
-  const isMac = typeof navigator !== 'undefined' && /Mac/.test(navigator.platform);
 
   const summary = [
     { label: t('Active model'), value: modelReady ? activeModelLabel : t('Not configured (CLI path)') },
@@ -57,7 +63,7 @@ export function ReadyStep({
       </div>
 
       <p className="text-[10px] text-neutral-500 text-center">
-        {isMac ? t('Keys stored in macOS Keychain') : t('Keys stored securely (Keychain on macOS)')}
+        {credentialStoreLabel(t)}
       </p>
       <p className="text-[10px] text-neutral-400 text-center">{t('Full permission mode selection coming soon')}</p>
     </div>

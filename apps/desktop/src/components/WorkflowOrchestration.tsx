@@ -40,7 +40,9 @@ import { getAgentDisplayName } from '../services/builtinAgent';
 import { agentTypeFromAgent, agentTypeLabel } from '../services/agentTypes';
 import { resolveBrandLogoSrc } from '../services/brandLogos';
 import { BTN_GHOST, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON } from './ui/buttonStyles';
+import { SettingsPageHeader } from './ui/SettingsPageHeader';
 import { LegacyIcon } from './ui/LegacyIcon';
+import { FullscreenModalOverlay } from './ui/FullscreenModalOverlay';
 
 type EditorViewMode = 'canvas' | 'json';
 
@@ -158,7 +160,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
   const [isSavingNewFlow, setIsSavingNewFlow] = useState(false);
   const [newWorkflowName, setNewWorkflowName] = useState('');
   const [newWorkflowDesc, setNewWorkflowDesc] = useState('');
-  const [newWorkflowIcon, setNewWorkflowIcon] = useState('account_tree');
+  const [newWorkflowIcon, setNewWorkflowIcon] = useState('fork_right');
 
   const activeWorkflow = workflows.find(wf => wf.id === activeWorkflowId);
 
@@ -185,7 +187,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
     const compatible = isCanvasCompatible(workflow);
     setCanvasCompatible(compatible);
     if (compatible) {
-      const canvas = compilerToCanvas(workflow, workflow.icon ?? 'account_tree');
+      const canvas = compilerToCanvas(workflow, workflow.icon ?? 'fork_right');
       setWorkflows((prev) => {
         const rest = prev.filter((w) => w.id !== canvas.id);
         return [...rest, canvas];
@@ -390,7 +392,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
     setCreateFlowError(null);
     setNewWorkflowName('');
     setNewWorkflowDesc('');
-    setNewWorkflowIcon('account_tree');
+    setNewWorkflowIcon('fork_right');
   };
 
   const handleEditWorkflow = (item: WorkflowListItem, e: React.MouseEvent) => {
@@ -399,7 +401,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
     setCreateFlowError(null);
     setNewWorkflowName(item.name);
     setNewWorkflowDesc(item.description || '');
-    setNewWorkflowIcon(item.icon || 'account_tree');
+    setNewWorkflowIcon(item.icon || 'fork_right');
     setIsCreatingWorkflow(true);
   };
 
@@ -462,7 +464,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
           return {
             ...wf,
             name: updatedWorkflow.name,
-            icon: updatedWorkflow.icon ?? 'account_tree',
+            icon: updatedWorkflow.icon ?? 'fork_right',
             description: updatedWorkflow.description ?? '',
           };
         }));
@@ -639,25 +641,25 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
 
   const contentElement = (
     <div className="flex-1 h-full flex flex-col bg-white overflow-hidden">
-      <header className={`flex-shrink-0 z-20 bg-white/95 backdrop-blur py-5 flex items-center justify-between border-b border-neutral-100 pl-8 ${isModalStyle ? 'pr-14' : 'pr-8'}`}>
-        <div className="text-left">
-          <h2 className="text-sm font-bold text-neutral-800 tracking-tight font-sans">{t('Workflow Orchestration')}</h2>
-          <p className="text-[11px] text-neutral-400 mt-0.5">
-            {t('Design and manage cooperative multi-agent state pipelines.')}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            data-testid="workflow-create"
-            type="button"
-            onClick={handleCreateWorkflow}
-            className={MODAL_BTN_SECONDARY}
-          >
-            <LegacyIcon name="add" className="text-[16px]" />
-            {t('Create Flow')}
-          </button>
-        </div>
-      </header>
+      <div className={`px-8 pt-8 flex-shrink-0 ${isModalStyle ? 'pr-14' : 'pr-8'}`}>
+        <SettingsPageHeader
+          isModalStyle={isModalStyle}
+          icon="fork_right"
+          title={t('Workflow Orchestration')}
+          description={t('Design and manage cooperative multi-agent state pipelines.')}
+          actions={
+            <button
+              data-testid="workflow-create"
+              type="button"
+              onClick={handleCreateWorkflow}
+              className={MODAL_BTN_SECONDARY}
+            >
+              <LegacyIcon name="add" className="text-[16px]" />
+              {t('Create Flow')}
+            </button>
+          }
+        />
+      </div>
 
       <div className="flex flex-1 min-h-0">
         {/* Left sidebar for workflows */}
@@ -689,7 +691,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
             >
               <div className="flex items-center gap-3 overflow-hidden min-w-0 flex-1">
                 <div className="w-8 h-8 rounded-lg bg-neutral-100/70 flex flex-shrink-0 items-center justify-center">
-                  <LegacyIcon name={item.icon || "account_tree"} className="text-neutral-600 text-[18px]" />
+                  <LegacyIcon name={item.icon || "fork_right"} className="text-neutral-600 text-[18px]" />
                 </div>
                 <div className="overflow-hidden text-left min-w-0">
                   <h4 className="text-[11px] font-bold text-neutral-800 truncate">{item.name}</h4>
@@ -845,7 +847,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center flex-col text-neutral-400">
-              <LegacyIcon name="account_tree" className="text-[32px] mb-2 font-light" />
+              <LegacyIcon name="fork_right" className="text-[32px] mb-2 font-light" />
               <p className="text-xs font-medium">{t('Select or create a workflow')}</p>
             </div>
           )}
@@ -854,7 +856,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
 
       {/* Node Edit Modal */}
       {editingNodeId && (
-        <div className="absolute inset-0 bg-neutral-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-6 animate-fade-in">
+        <FullscreenModalOverlay>
           <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl border border-neutral-200 overflow-hidden flex flex-col text-left max-h-[80%]">
             <div className="px-5 py-4 border-b border-neutral-100 flex items-center justify-between bg-neutral-50/50">
               <h3 className="text-sm font-bold text-neutral-900">
@@ -1047,12 +1049,12 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
               </button>
             </div>
           </div>
-        </div>
+        </FullscreenModalOverlay>
       )}
 
       {/* Create Workflow Modal */}
       {isCreatingWorkflow && (
-        <div className="absolute inset-0 bg-neutral-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-6 animate-fade-in">
+        <FullscreenModalOverlay>
           <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl border border-neutral-200 overflow-hidden flex flex-col text-left max-h-[80%]">
             <div className="px-5 py-4 border-b border-neutral-100 flex items-center justify-between bg-neutral-50/50">
               <h3 className="text-sm font-bold text-neutral-900">
@@ -1149,7 +1151,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
               </div>
             </div>
           </div>
-        </div>
+        </FullscreenModalOverlay>
       )}
 
     </div>

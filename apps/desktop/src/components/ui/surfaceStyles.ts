@@ -39,6 +39,33 @@ export const BADGE_NEUTRAL =
 export const BADGE_PRIMARY =
   'text-[9px] uppercase font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded';
 
+export type WorkflowStepStatusKind = 'pending' | 'in_progress' | 'completed' | 'passed' | 'failed';
+
+const WORKFLOW_STEP_STATUS_BADGE_BASE =
+  'inline-flex items-center text-[9px] font-bold uppercase whitespace-nowrap px-1.5 py-0.5 rounded border';
+
+/** Semantic workflow step badges — colors from @theme status tokens (no hardcoded hex in components). */
+export const WORKFLOW_STEP_STATUS_BADGE: Record<
+  Exclude<WorkflowStepStatusKind, 'pending'>,
+  string
+> = {
+  in_progress: `${WORKFLOW_STEP_STATUS_BADGE_BASE} text-status-warning-fg bg-status-warning-bg border-status-warning-border`,
+  completed: `${WORKFLOW_STEP_STATUS_BADGE_BASE} text-status-neutral-fg bg-status-neutral-bg border-status-neutral-border`,
+  passed: `${WORKFLOW_STEP_STATUS_BADGE_BASE} text-status-success-fg bg-status-success-bg border-status-success-border`,
+  failed: `${WORKFLOW_STEP_STATUS_BADGE_BASE} text-status-error-fg bg-status-error-bg border-status-error-border`,
+};
+
+export function workflowStepStatusLabel(status: Exclude<WorkflowStepStatusKind, 'pending'>): string {
+  switch (status) {
+    case 'in_progress':
+      return 'In progress';
+    case 'failed':
+      return 'Failed';
+    default:
+      return 'Completed';
+  }
+}
+
 export const INPUT_FIELD =
   'w-full text-xs border border-outline bg-surface rounded-lg px-3 py-2 text-on-surface focus:outline-none focus:border-neutral-900 focus:ring-1 focus:ring-neutral-900/20 transition-all';
 

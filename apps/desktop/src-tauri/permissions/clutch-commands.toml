@@ -6,4 +6,4 @@ commands.allow = ["clutch_sidecar_token"]
 [[permission]]
 identifier = "allow-clutch-app-commands"
 description = "Other Clutch desktop IPC commands."
-commands.allow = ["clutch_cpu_arch", "clutch_e2e_sandbox"]
+commands.allow = ["clutch_cpu_arch", "clutch_e2e_sandbox", "clutch_pick_directory", "clutch_host_os"]

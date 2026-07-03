@@ -5,32 +5,35 @@
 
 ## Current Status
 
-- **阶段：** **v1.0.3 已发布** — tag + DMG + updater 资产齐全；`latest.json` → 1.0.3
-- **Release：** [v1.0.3](https://github.com/fancy1108/Clutch/releases/tag/v1.0.3) 当前线上 · 含 shell pool queue、OpenCode、品牌刷新、Ollama 修复、侧栏 Update pill、Dock 图标修复
-- **Git：** `dev` · tag `v1.0.3` 已 push
+- **阶段：** **v1.1.0 待发版** — 代码与文档已 bump；Terminal Orchestra (D34) + CodeBuddy + OpenCode Zen + Agnes Video；线上仍为 v1.0.3
+- **Release：** [v1.0.3](https://github.com/fancy1108/Clutch/releases/tag/v1.0.3) 当前线上 · 下一版 **v1.1.0**（CHANGELOG / `docs/releases/v1.1.0.md` / README 已更新）
+- **Git：** `feat/d34-terminal-ux` · 版本号 `1.1.0`（package / tauri）
 - **开放：** [#23](https://github.com/fancy1108/Clutch/issues/23) Windows 实体机 smoke
 
-### v1.0.3 发版清单
+### v1.1.0 发版清单（进行中）
 
 | 项 | 状态 |
 |----|------|
-| 版本 bump → 1.0.3 | ✅ |
-| CHANGELOG + `docs/releases/v1.0.3.md` | ✅ |
-| README / README.zh-CN / INSTALL | ✅ |
-| `release-preflight` v1.0.3 | ✅ |
-| 验收 + 图标 / Update pill 修复 (`c084e1a`) | ✅ |
-| `git tag v1.0.3` + push tag | ✅ |
-| Release CI（DMG + SHA256） | ✅ |
-| `Release (updater assets)` workflow | ✅ run 28509909506 |
-| `latest.json` / `.tar.gz` / `.sig` | ✅ |
+| Terminal Orchestra D34 + UX polish | ✅ |
+| 版本 bump → 1.1.0 | ✅ |
+| CHANGELOG + `docs/releases/v1.1.0.md` + PRODUCT_INTRO | ✅ |
+| README / README.zh-CN / GETTING_STARTED / INSTALL | ✅ |
+| `release-preflight` v1.1.0 | ⏳ |
+| `git tag v1.1.0` + push tag | ⏳ |
 
 ## Next Actions
 
-- **可选：in-app 更新 smoke** — 安装 v1.0.2 → 等待更新提示 → 升到 1.0.3（或直接装 v1.0.3 DMG）
-- **Homebrew** — 若 tap 未自动同步：`CLUTCH_VERSION=v1.0.3 ./scripts/sync-homebrew-tap.sh`
+- **merge `feat/d34-terminal-ux` → `dev`** → `release-preflight` → tag v1.1.0 on `main`
+- **Homebrew** — 发版后：`CLUTCH_VERSION=v1.1.0 ./scripts/sync-homebrew-tap.sh`
 - **Windows smoke：** [#23](https://github.com/fancy1108/Clutch/issues/23)
 
 ## Recent Sessions
+
+## 2026-07-03 会话（v1.1.0 文档恢复）
+
+- **恢复** CHANGELOG `[1.1.0]`、`docs/releases/v1.1.0.md`、README 双语 What's new、PRODUCT_INTRO 终端 dock / resume、GETTING_STARTED / INSTALL pin
+- **版本** package / tauri / Cargo → `1.1.0`
+- **分支** `feat/d34-terminal-ux` rebase 至 `dev`（#28）后 push
 
 ## 2026-07-01 会话（文档治理轮转）
 

@@ -78,6 +78,49 @@ def test_activate_rejects_unavailable_model(models_config: Path) -> None:
     assert response.status_code == 400
 
 
+def test_save_agnes_video_key_and_active_in_one_request(models_config: Path) -> None:
+    client = TestClient(app)
+    response = client.post(
+        "/api/models/config",
+        json={
+            "provider_id": "agnes",
+            "api_key": "sk-test-agnes",
+            "active_model_id": "agnes-video-v2.0",
+        },
+    )
+    assert response.status_code == 200
+    assert response.json()["active_model_id"] == "agnes-video-v2.0"
+
+    listed = client.get("/api/models/config").json()
+    video = next(m for m in listed["models"] if m["id"] == "agnes-video-v2.0")
+    assert video["available"] is True
+    assert video["model_kind"] == "video"
+
+
+def test_activate_unhides_hidden_agnes_video(models_config: Path) -> None:
+    client = TestClient(app)
+    client.post(
+        "/api/models/config",
+        json={"provider_id": "agnes", "api_key": "sk-test-agnes"},
+    )
+    hide = client.delete("/api/models/custom/agnes-video-v2.0")
+    assert hide.status_code == 200
+
+    hidden_list = client.get("/api/models/config").json()
+    assert not any(m["id"] == "agnes-video-v2.0" for m in hidden_list["models"])
+
+    activate = client.post(
+        "/api/models/config",
+        json={"active_model_id": "agnes-video-v2.0"},
+    )
+    assert activate.status_code == 200
+
+    listed = client.get("/api/models/config").json()
+    video = next(m for m in listed["models"] if m["id"] == "agnes-video-v2.0")
+    assert video["available"] is True
+    assert listed["active_model_id"] == "agnes-video-v2.0"
+
+
 def test_activate_ollama_model_without_api_key(models_config: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("src.models_config.local_ollama_tags", lambda: ["qwen2.5vl:7b"])
     client = TestClient(app)
@@ -216,14 +259,14 @@ def test_agnes_chat_model_listed_with_kind(models_config: Path) -> None:
     body = client.get("/api/models/config").json()
     agnes = next(m for m in body["models"] if m["id"] == "agnes-2.0-flash")
     assert agnes["name"] == "Agnes 2.0 Flash"
-    assert agnes["provider_id"] == "custom"
+    assert agnes["provider_id"] == "agnes"
     assert agnes["model_kind"] == "chat"
     assert agnes["endpoint"] == "https://apihub.agnes-ai.com/v1"
 
 
 def test_agnes_chat_model_available_with_custom_key(models_config: Path) -> None:
     client = TestClient(app)
-    client.post("/api/models/config", json={"provider_id": "custom", "api_key": "sk-test-agnes"})
+    client.post("/api/models/config", json={"provider_id": "agnes", "api_key": "sk-test-agnes"})
     body = client.get("/api/models/config").json()
     agnes = next(m for m in body["models"] if m["id"] == "agnes-2.0-flash")
     assert agnes["available"] is True
@@ -231,19 +274,88 @@ def test_agnes_chat_model_available_with_custom_key(models_config: Path) -> None
     assert image["available"] is True
 
 
+def test_opencode_zen_free_models_listed(models_config: Path) -> None:
+    client = TestClient(app)
+    body = client.get("/api/models/config").json()
+    opencode = [m for m in body["models"] if m["provider_id"] == "opencode"]
+    assert len(opencode) == 5
+    default = next(m for m in opencode if m["id"] == "opencode-deepseek-v4-flash-free")
+    assert default["endpoint"] == "https://opencode.ai/zen/v1"
+    assert default["available"] is False
+
+
+def test_opencode_zen_key_makes_free_models_available(
+    models_config: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        "src.adapters.opencode_zen_adapter.validate_opencode_zen_save",
+        lambda _key, _model_id, _router: None,
+    )
+    client = TestClient(app)
+    client.post(
+        "/api/models/config",
+        json={
+            "provider_id": "opencode",
+            "api_key": "sk-test-opencode",
+            "active_model_id": "opencode-deepseek-v4-flash-free",
+        },
+    )
+    body = client.get("/api/models/config").json()
+    opencode = [m for m in body["models"] if m["provider_id"] == "opencode"]
+    assert len(opencode) == 5
+    assert all(m["available"] is True for m in opencode)
+    assert body["providers"]["opencode"]["configured"] is True
+
+
+def test_opencode_zen_save_rejects_bad_key(models_config: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def _fail(_key: str, _model_id: str, _router: LLMProviderRouter) -> None:
+        raise ValueError("OpenCode Zen API key was rejected.")
+
+    monkeypatch.setattr("src.adapters.opencode_zen_adapter.validate_opencode_zen_save", _fail)
+    client = TestClient(app)
+    response = client.post(
+        "/api/models/config",
+        json={
+            "provider_id": "opencode",
+            "api_key": "bad-key",
+            "active_model_id": "opencode-big-pickle",
+        },
+    )
+    assert response.status_code == 400
+    assert "rejected" in response.json()["detail"]["message"].lower()
+
+
+def test_opencode_zen_list_endpoint_returns_catalog(models_config: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "src.adapters.opencode_zen_adapter.fetch_opencode_zen_catalog",
+        lambda **_: [
+            {
+                "id": "opencode-big-pickle",
+                "api_model": "big-pickle",
+                "name": "Big Pickle Free (OpenCode Zen)",
+                "supported": True,
+            }
+        ],
+    )
+    client = TestClient(app)
+    result = client.post("/api/models/opencode-zen/list", json={}).json()
+    assert result["ok"] is True
+    assert len(result["models"]) == 1
+
+
 def test_agnes_image_model_listed_with_kind(models_config: Path) -> None:
     client = TestClient(app)
     body = client.get("/api/models/config").json()
     agnes = next(m for m in body["models"] if m["id"] == "agnes-image-2.1-flash")
     assert agnes["name"] == "Agnes Image 2.1 Flash"
-    assert agnes["provider_id"] == "custom"
+    assert agnes["provider_id"] == "agnes"
     assert agnes["model_kind"] == "image"
     assert agnes["endpoint"] == "https://apihub.agnes-ai.com"
 
 
 def test_agnes_image_model_test_uses_image_adapter(models_config: Path) -> None:
     client = TestClient(app)
-    client.post("/api/models/config", json={"provider_id": "custom", "api_key": "sk-test-agnes"})
+    client.post("/api/models/config", json={"provider_id": "agnes", "api_key": "sk-test-agnes"})
     with patch("src.models_config.verify_image_model_connection") as mocked:
         result = client.post("/api/models/test", json={"model_id": "agnes-image-2.1-flash"}).json()
     assert result["ok"] is True

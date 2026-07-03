@@ -59,6 +59,41 @@ export function sidecarHttpUrl(path: string): string {
   return SIDECAR_BASE ? `${SIDECAR_BASE}${normalized}` : normalized;
 }
 
+/** True when src targets Sidecar HTTP (relative /api or loopback sidecar port). */
+export function isSidecarApiPath(src: string): boolean {
+  const trimmed = src.trim();
+  if (trimmed.startsWith('/api/')) {
+    return true;
+  }
+  try {
+    const url = new URL(trimmed);
+    if (url.hostname !== 'localhost' && url.hostname !== '127.0.0.1') {
+      return false;
+    }
+    const port = url.port || (url.protocol === 'https:' ? '443' : '80');
+    return port === String(SIDECAR_PROD_PORT) || port === String(SIDECAR_DEV_PORT);
+  } catch {
+    return false;
+  }
+}
+
+/** Append session token for media elements that cannot send Authorization headers. */
+export async function sidecarAuthedHttpUrl(path: string): Promise<string> {
+  const trimmed = path.trim();
+  let resolved = trimmed;
+  if (trimmed.startsWith('/api/')) {
+    resolved = sidecarHttpUrl(trimmed);
+  } else if (!trimmed.startsWith('http')) {
+    resolved = sidecarHttpUrl(trimmed);
+  }
+  const token = await resolveSidecarToken();
+  if (!token) {
+    return resolved;
+  }
+  const joiner = resolved.includes('?') ? '&' : '?';
+  return `${resolved}${joiner}token=${encodeURIComponent(token)}`;
+}
+
 export async function sidecarWebSocketUrl(path: string): Promise<string> {
   const normalized = path.startsWith('/') ? path : `/${path}`;
   let base: string;

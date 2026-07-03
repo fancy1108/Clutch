@@ -7,11 +7,18 @@ import {
   notifySkillsUpdated,
   type ScannedSkill,
 } from '../services/skillsApi';
-import { BTN_ICON_SM, BTN_PRIMARY } from './ui/buttonStyles';
+import { SettingsPageHeader, SettingsPageShell } from './ui/SettingsPageHeader';
+import { BTN_ICON_SM, BTN_GHOST, BTN_PRIMARY } from './ui/buttonStyles';
 import { LegacyIcon } from './ui/LegacyIcon';
 import { ALERT_SUCCESS, ALERT_WARNING } from './ui/surfaceStyles';
-import { UnderDevelopmentNotice } from './ui/UnderDevelopmentNotice';
 import { useLanguage } from './LanguageContext';
+import { AgentCapabilityTabs } from './AgentCapabilityTabs';
+import { AgentCliCapabilityPreview } from './AgentCliCapabilityPreview';
+import { MoreAgentsComingSoon } from './MoreAgentsComingSoon';
+import { UnderDevelopmentNotice } from './ui/UnderDevelopmentNotice';
+import type { AgentCapabilityTabId } from '../services/agentCapabilityTiers';
+import { consumeSettingsAgentTab } from '../services/cliConfigApi';
+import { pickSkillsDirectory, WorkspacePickerError } from '../services/pickSkillsDirectory';
 
 export type { ScannedSkill };
 
@@ -23,6 +30,12 @@ export const SkillsRegistry: React.FC = () => {
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(true);
+  const [capabilityTab, setCapabilityTab] = useState<AgentCapabilityTabId>('clutch');
+
+  useEffect(() => {
+    const stashed = consumeSettingsAgentTab();
+    if (stashed) setCapabilityTab(stashed);
+  }, []);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -52,6 +65,18 @@ export const SkillsRegistry: React.FC = () => {
       notifySkillsUpdated();
     } catch {
       setErrorMsg(t('Failed to update skill — Sidecar may be offline.'));
+    }
+  };
+
+  const handlePickDirectory = async () => {
+    setErrorMsg('');
+    try {
+      const selected = await pickSkillsDirectory();
+      if (selected) {
+        setNewDirPath(selected);
+      }
+    } catch (err) {
+      setErrorMsg(err instanceof WorkspacePickerError ? err.message : t('Could not open folder picker.'));
     }
   };
 
@@ -95,18 +120,26 @@ export const SkillsRegistry: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden bg-white select-text">
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-2">
-            <LegacyIcon name="school" className="text-[20px] text-neutral-800" />
-            <h2 className="text-base font-bold text-neutral-900 tracking-tight font-sans">{t('Global Skills Registry')}</h2>
-          </div>
-          <p className="text-xs text-neutral-500 font-sans leading-relaxed">
-            {t('Mount directories skills hint')}
-          </p>
-        </div>
+    <SettingsPageShell>
+      <SettingsPageHeader
+        isModalStyle
+        icon="school"
+        title={t('Global Skills Registry')}
+        description={t('Clutch Skills Registry applies to the built-in agent. CLI tabs show native skill directories (read-only).')}
+      />
 
+        <AgentCapabilityTabs activeTab={capabilityTab} onTabChange={setCapabilityTab} />
+
+        {capabilityTab === 'claude-cli' ? (
+          <AgentCliCapabilityPreview agentType="claude-cli" kind="skills" />
+        ) : null}
+        {capabilityTab === 'opencode-cli' ? (
+          <AgentCliCapabilityPreview agentType="opencode-cli" kind="skills" />
+        ) : null}
+        {capabilityTab === 'more' ? <MoreAgentsComingSoon /> : null}
+
+        {capabilityTab === 'clutch' ? (
+        <>
         <UnderDevelopmentNotice />
 
         {errorMsg && (
@@ -158,21 +191,34 @@ export const SkillsRegistry: React.FC = () => {
             </div>
           )}
 
-          <form onSubmit={(e) => void handleMountDirectory(e)} className="pt-2 border-t border-dashed border-neutral-200 flex gap-2">
-            <input
-              type="text"
-              required
-              value={newDirPath}
-              onChange={(e) => setNewDirPath(e.target.value)}
-              placeholder={t('e.g. ~/.cursor/skills/')}
-              className="flex-1 px-3 py-1.5 text-xs border border-neutral-200 focus:outline-none focus:border-neutral-900 bg-white rounded-lg font-mono placeholder:text-neutral-400"
-            />
-            <button
-              type="submit"
-              className={BTN_PRIMARY}
-            >
-              {t('+ Mount Root')}
-            </button>
+          <form onSubmit={(e) => void handleMountDirectory(e)} className="pt-2 border-t border-dashed border-neutral-200 space-y-2">
+            <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+              <button
+                type="button"
+                onClick={() => void handlePickDirectory()}
+                className={`${BTN_GHOST} text-[10px] shrink-0 inline-flex items-center gap-1 self-start`}
+              >
+                <LegacyIcon name="folder_open" className="text-[13px]" />
+                {t('Choose folder')}
+              </button>
+              <input
+                type="text"
+                value={newDirPath}
+                onChange={(e) => setNewDirPath(e.target.value)}
+                placeholder={t('e.g. ~/.cursor/skills')}
+                className="flex-1 min-w-0 px-3 py-1.5 text-xs border border-neutral-200 bg-white focus:outline-none focus:border-neutral-900 rounded-lg font-mono placeholder:text-neutral-400"
+              />
+              <button
+                type="submit"
+                disabled={!newDirPath.trim()}
+                className={`${BTN_PRIMARY} disabled:opacity-50 shrink-0 self-start sm:self-auto`}
+              >
+                {t('+ Mount Root')}
+              </button>
+            </div>
+            <p className="text-[9.5px] text-neutral-400 leading-relaxed">
+              {t('Hidden folders (e.g. ~/.cursor/skills): type the path directly, or press Cmd+Shift+. in the picker to show hidden files.')}
+            </p>
           </form>
 
           {successMsg && (
@@ -227,7 +273,8 @@ export const SkillsRegistry: React.FC = () => {
             </div>
           )}
         </div>
-      </div>
-    </div>
+        </>
+        ) : null}
+    </SettingsPageShell>
   );
 };

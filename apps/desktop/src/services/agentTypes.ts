@@ -31,6 +31,10 @@ const LEGACY_ENGINE_TO_TYPE: Record<string, AgentTypeId> = {
   'opencode-cli': 'opencode-cli',
   opencode: 'opencode-cli',
   'open code cli': 'opencode-cli',
+  'codebuddy-cli': 'codebuddy-cli',
+  codebuddy: 'codebuddy-cli',
+  'codebuddy cli': 'codebuddy-cli',
+  cbc: 'codebuddy-cli',
 };
 
 const AGENT_TYPE_DISPLAY_LABELS: Record<string, string> = {
@@ -40,7 +44,20 @@ const AGENT_TYPE_DISPLAY_LABELS: Record<string, string> = {
   'codex-cli': 'Codex CLI',
   'aider-cli': 'Aider CLI',
   'opencode-cli': 'OpenCode CLI',
+  'codebuddy-cli': 'CodeBuddy CLI',
+  'rivet-cli': 'Rivet CLI',
 };
+
+/** First-class routed CLI agent types (excludes Clutch built-in LLM). */
+export const CLI_AGENT_TYPES = Object.keys(AGENT_TYPE_DISPLAY_LABELS);
+
+export function isCliAgentType(agentType: string | null | undefined): boolean {
+  if (!agentType) return false;
+  const key = agentType.trim().toLowerCase();
+  if (key === CLUTCH_AGENT_TYPE) return false;
+  if (key in AGENT_TYPE_DISPLAY_LABELS) return true;
+  return key.endsWith('-cli');
+}
 
 const LEGACY_TYPE_LABELS: Record<string, string> = {
   [CLUTCH_AGENT_TYPE]: 'Clutch',

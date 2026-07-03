@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -60,7 +61,21 @@ def test_add_existing_path_activates_without_duplicate(tmp_path: Path) -> None:
     assert listed["active_id"] == first["id"]
 
 
-def test_workspace_git_endpoint_non_git(tmp_path: Path) -> None:
+def test_activate_workspace_rejects_missing_path(tmp_path: Path) -> None:
+    from src.workspace import WorkspaceError, activate_workspace, add_workspace, remove_workspace
+
+    project = tmp_path / "gone"
+    project.mkdir()
+    entry = add_workspace(str(project))
+    project.rmdir()
+
+    try:
+        activate_workspace(entry["id"])
+        raise AssertionError("expected WorkspaceError")
+    except WorkspaceError as exc:
+        assert "no longer exists" in str(exc).lower() or "不存在" in str(exc)
+
+    remove_workspace(entry["id"])
     client = TestClient(app)
     project = tmp_path / "repo"
     project.mkdir()
@@ -79,6 +94,26 @@ def test_get_git_info_for_local_repo() -> None:
     assert info["is_git_repo"] is True
     assert isinstance(info["branch"], str)
     assert info["branch"] in info["branches"]
+
+
+def test_run_git_hides_windows_console(monkeypatch, tmp_path: Path) -> None:
+    from src import workspace
+
+    captured: dict[str, object] = {}
+    flag = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+
+    def fake_run(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        captured.update(kwargs)
+        return subprocess.CompletedProcess(cmd, 0, "true\n", "")
+
+    monkeypatch.setattr(workspace.sys, "platform", "win32")
+    monkeypatch.setattr(workspace.subprocess, "CREATE_NO_WINDOW", flag, raising=False)
+    monkeypatch.setattr(workspace.subprocess, "run", fake_run)
+
+    result = workspace._run_git(tmp_path, "rev-parse", "--is-inside-work-tree")
+
+    assert result is not None
+    assert captured["creationflags"] == flag
 
 
 def test_workspace_git_without_workspace() -> None:

@@ -1,4 +1,5 @@
 import { invoke, isTauri } from '@tauri-apps/api/core';
+import { homeDir } from '@tauri-apps/api/path';
 import { open } from '@tauri-apps/plugin-dialog';
 
 export class WorkspacePickerError extends Error {
@@ -8,7 +9,11 @@ export class WorkspacePickerError extends Error {
   }
 }
 
-export async function pickWorkspaceFolder(title = 'Select project folder'): Promise<string | null> {
+export async function pickWorkspaceFolder(
+  title = 'Select project folder',
+  defaultPath?: string,
+  options?: { showHidden?: boolean },
+): Promise<string | null> {
   if (!isTauri()) {
     throw new WorkspacePickerError(
       'Folder picker only works in the Clutch desktop app. Open Clutch from Applications, not the browser.',
@@ -20,11 +25,30 @@ export async function pickWorkspaceFolder(title = 'Select project folder'): Prom
     return e2eSandbox;
   }
 
+  let initialPath = defaultPath;
+  if (!initialPath) {
+    try {
+      initialPath = await homeDir();
+    } catch {
+      initialPath = undefined;
+    }
+  }
+
   try {
+    const hostOs = await invoke<string>('clutch_host_os');
+    if (hostOs === 'macos' && options?.showHidden !== false) {
+      return await invoke<string | null>('clutch_pick_directory', {
+        title,
+        defaultPath: initialPath,
+        showHidden: true,
+      });
+    }
+
     const selected = await open({
       directory: true,
       multiple: false,
       title,
+      defaultPath: initialPath,
     });
     if (selected === null || Array.isArray(selected)) {
       return null;

@@ -81,6 +81,24 @@ def _normalize_path(path: str) -> Path:
     return resolved
 
 
+def is_workspace_path_available(path: str) -> bool:
+    """True when path exists and is a directory (does not mutate registry)."""
+    if not str(path or "").strip():
+        return False
+    try:
+        resolved = Path(path).expanduser().resolve()
+    except OSError:
+        return False
+    return resolved.is_dir()
+
+
+def workspace_path_missing_message(path: str) -> str:
+    return tr(
+        f"Workspace folder no longer exists: {path}. Re-add the project folder in the sidebar.",
+        f"项目文件夹已不存在：{path}。请在侧栏重新添加项目文件夹。",
+    )
+
+
 def _entry_for_path(resolved: Path) -> dict[str, str]:
     return {
         "id": f"ws_{uuid.uuid4().hex[:12]}",
@@ -124,6 +142,8 @@ def activate_workspace(workspace_id: str) -> dict[str, str]:
                 f"工作区不存在：{workspace_id}",
             )
         )
+    if not is_workspace_path_available(entry["workspace_path"]):
+        raise WorkspaceError(workspace_path_missing_message(entry["workspace_path"]))
     global _active_id
     _active_id = workspace_id
     _persist()
@@ -212,7 +232,31 @@ def get_workspace() -> dict[str, str] | None:
     _ensure_loaded()
     if _active_id is None:
         return None
-    return _workspaces.get(_active_id)
+    entry = _workspaces.get(_active_id)
+    if entry is None:
+        return None
+    if not is_workspace_path_available(entry["workspace_path"]):
+        return None
+    return entry
+
+
+def active_workspace_issue() -> str | None:
+    """Human-readable reason when interactive PTY / cwd cannot use the active workspace."""
+    _ensure_loaded()
+    if _active_id is None:
+        return tr(
+            "No workspace authorized for interactive PTY. Select a project folder in the sidebar.",
+            "未授权工作区，无法启动交互终端。请在侧栏选择项目文件夹。",
+        )
+    entry = _workspaces.get(_active_id)
+    if entry is None:
+        return tr(
+            "No workspace authorized for interactive PTY. Select a project folder in the sidebar.",
+            "未授权工作区，无法启动交互终端。请在侧栏选择项目文件夹。",
+        )
+    if not is_workspace_path_available(entry["workspace_path"]):
+        return workspace_path_missing_message(entry["workspace_path"])
+    return None
 
 
 def require_workspace() -> Path:
@@ -283,6 +327,11 @@ def list_tree(max_depth: int = 3) -> list[dict[str, Any]]:
 
 
 def _run_git(root: Path, *args: str) -> subprocess.CompletedProcess[str] | None:
+    kwargs: dict[str, Any] = {}
+    if sys.platform == "win32":
+        creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+        if creationflags:
+            kwargs["creationflags"] = creationflags
     try:
         return subprocess.run(
             ["git", "-C", str(root), *args],
@@ -290,6 +339,7 @@ def _run_git(root: Path, *args: str) -> subprocess.CompletedProcess[str] | None:
             text=True,
             timeout=5,
             check=False,
+            **kwargs,
         )
     except (OSError, subprocess.TimeoutExpired):
         return None

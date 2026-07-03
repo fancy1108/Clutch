@@ -47,21 +47,36 @@ export function FooterMenuItem({
   );
 }
 
+export function FooterMenuSection({ label }: { label: string }) {
+  return (
+    <div className="px-3 pt-2 pb-1 text-[9px] font-bold uppercase tracking-wider text-on-surface-variant/80">
+      {label}
+    </div>
+  );
+}
+
 export function FooterMenuAction({
   onClick,
   children,
   testId,
+  placement = 'top',
 }: {
   onClick: () => void;
   children: React.ReactNode;
   testId?: string;
+  /** Manage actions sit at the top of footer menus by default. */
+  placement?: 'top' | 'bottom';
 }) {
+  const dividerClass =
+    placement === 'top'
+      ? 'border-b border-outline-variant/40'
+      : 'border-t border-outline-variant/40';
   return (
     <button
       type="button"
       data-testid={testId}
       onClick={onClick}
-      className="w-full text-left px-3 py-2 pl-9 text-[11px] text-on-surface-variant border-t border-outline-variant/40 hover:bg-surface-container-low"
+      className={`w-full text-left px-3 py-2 pl-9 text-[11px] text-on-surface-variant hover:bg-surface-container-low ${dividerClass}`}
     >
       {children}
     </button>

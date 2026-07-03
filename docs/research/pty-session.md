@@ -942,11 +942,16 @@ Request → Subprocess → Exit     ShellSession → bash PTY → Many exec → 
 - `clutch` — 内置 LLM + Skills + MCP
 - `claude-cli` — `claude_cli_adapter`
 - `antigravity-cli` — `agy_cli_adapter`
+- `codex-cli` — `codex` headless (`exec --json`)
+- `opencode-cli` — `opencode run --auto`
+- `codebuddy-cli` — `codebuddy -p`（`--resume` / `--session-id`）
+- `rivet-cli` — `RIVET_FORCE_RECOVERY_CLI=1`
+- `aider-cli` — `aider --message`
 - `ollama-cli` — `ollama_adapter`（HTTP）
 
-**已探测未路由（`tools_status.CLI_CANDIDATES`）**
+**已探测未路由（`tools_status.CLI_CANDIDATES` 中其余项）**
 
-- `codex`、`gemini`、`aider`、`code`、`codeium`、`cursor`、`rivet`、`opencode`、`goose`、`copilot`、`cn`、`amp`、`qwen`、`gptme`、`openclaw`、`droid`、`crush`、`q`、`kiro-cli` CLI
+- `gemini`、`code`、`codeium`、`cursor`、`goose`、`copilot`、`cn`、`amp`、`qwen`、`gptme`、`openclaw`、`droid`、`crush`、`q`、`kiro-cli` 等 CLI
 
 **相关 BACKLOG**
 
