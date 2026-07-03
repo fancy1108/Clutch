@@ -30,6 +30,14 @@ _（当前无进行中代码 Task。）_
 
 ## Recently Completed
 
+### upstream 首页图标同步 ✅
+- **日期：** 2026-07-03
+- **Commit：** `9a982f4` — `fix(ui): sync workflow sidebar icon from upstream`
+- **Verification：** `pnpm build` → passed；`pnpm test` → 17 files / 125 tests passed；Husky pre-commit → Git Bash PATH 无 `uv`，等价验证通过后 `HUSKY=0` 提交
+- **证据：** `—`
+- **交付文件：**
+  - `apps/desktop/src/sidebar.tsx` — Workflows SOP 展开态与折叠态图标同步为 upstream dev 的 `fork_right`
+
 ### upstream dev 同步与左侧折叠入口调整 ✅
 - **日期：** 2026-07-03
 - **Commit：** `214af4d` — `merge upstream dev and align sidebar collapse chrome`

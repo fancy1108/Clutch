@@ -31,6 +31,13 @@
 
 ## Recent Sessions
 
+## 2026-07-03 会话（同步 upstream 首页图标）
+
+- **原因** 作者 dev 已将首页/侧栏 Workflows SOP 图标更新为 `fork_right`，但 Windows UI polish 恢复时误把该入口带回旧的 `account_tree`。
+- **修复** `apps/desktop/src/sidebar.tsx` 展开态与折叠态 Workflows SOP 图标统一同步为 upstream dev 的 `fork_right`，保留左侧面板中线折叠按钮与 Windows UI 布局。
+- **Commit** `9a982f4` — `fix(ui): sync workflow sidebar icon from upstream`
+- **验证** `pnpm build` 通过；`pnpm test` 17 files / 125 tests 通过。提交使用 `HUSKY=0`，原因同前：Husky pre-commit 在 Git Bash PATH 中找不到 `uv`。
+
 ## 2026-07-03 会话（同步 upstream dev + 侧栏折叠入口）
 
 - **同步** 合入 `upstream/dev` `4740786`（v1.1.0 文档对齐、Agnes 默认文本模型、图标/模型相关更新），冲突仅发生在 `memory/PROGRESS.md`，已保留 upstream 发版记录与 Windows 维护记录。
