@@ -6,15 +6,29 @@ import time
 from collections.abc import Callable
 
 
+def _env_block(env: dict[str, str] | None) -> str | None:
+    if env is None:
+        return None
+    return "\0".join(f"{key}={value}" for key, value in env.items()) + "\0"
+
+
 class WindowsPty:
-    def __init__(self, command: list[str], *, cwd: str | None = None) -> None:
+    def __init__(
+        self,
+        command: list[str],
+        *,
+        cwd: str | None = None,
+        env: dict[str, str] | None = None,
+        cols: int = 200,
+        rows: int = 30,
+    ) -> None:
         from winpty import PTY
 
         if not command:
             raise ValueError("PTY command cannot be empty")
-        self._pty = PTY(200, 30)
+        self._pty = PTY(cols, rows)
         cmdline = subprocess.list2cmdline(command[1:])
-        self._pty.spawn(command[0], cmdline, cwd, None)
+        self._pty.spawn(command[0], cmdline, cwd, _env_block(env))
 
     @property
     def pid(self) -> int:
@@ -33,6 +47,11 @@ class WindowsPty:
 
     def write(self, text: str) -> None:
         self._pty.write(text)
+
+    def resize(self, cols: int, rows: int) -> None:
+        resize = getattr(self._pty, "set_size", None) or getattr(self._pty, "resize", None)
+        if callable(resize):
+            resize(cols, rows)
 
     def exit_code(self) -> int:
         return int(self._pty.get_exitstatus() or 0)

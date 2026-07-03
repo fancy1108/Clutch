@@ -199,6 +199,7 @@ class InteractivePtySession:
     master_fd: int = -1
     pid: int = -1
     _proc: subprocess.Popen[bytes] | None = field(default=None, repr=False)
+    _winpty: object | None = field(default=None, repr=False)
     status: InteractivePtyStatus = InteractivePtyStatus.BOOTING
     attached: bool = False
     _pending_output: list[str] = field(default_factory=list, repr=False)
@@ -207,6 +208,8 @@ class InteractivePtySession:
     _lock: threading.RLock = field(default_factory=threading.RLock, repr=False)
 
     def alive(self) -> bool:
+        if self._winpty is not None:
+            return bool(self._winpty.isalive())
         if self._proc is not None:
             return self._proc.poll() is None
         if self.pid > 0:
@@ -233,6 +236,9 @@ class InteractivePtySession:
                 except OSError:
                     pass
             self._proc = None
+        if self._winpty is not None:
+            self._winpty.close(force=True)
+            self._winpty = None
         elif self.pid > 0:
             _kill_pid(self.pid)
         self.pid = -1
@@ -240,6 +246,9 @@ class InteractivePtySession:
 
     def write_input(self, data: str) -> None:
         with self._lock:
+            if self._winpty is not None:
+                self._winpty.write(data)
+                return
             if self.master_fd < 0:
                 return
             payload = data.encode("utf-8", errors="replace")
@@ -247,6 +256,9 @@ class InteractivePtySession:
 
     def resize(self, cols: int, rows: int) -> None:
         with self._lock:
+            if self._winpty is not None:
+                self._winpty.resize(cols, rows)
+                return
             if self.master_fd < 0:
                 return
             winsize = struct.pack("HHHH", rows, cols, 0, 0)
@@ -497,8 +509,6 @@ class InteractivePtyManager:
         cli_session_id: str | None = None,
         ollama_model: str | None = None,
     ) -> InteractivePtySession:
-        if os.name == "nt":
-            raise InteractivePtyError("Interactive PTY is not supported on Windows yet")
         from pathlib import Path
 
         if not Path(workspace_path).expanduser().is_dir():
@@ -510,9 +520,6 @@ class InteractivePtyManager:
             binary=binary,
             status=InteractivePtyStatus.BOOTING,
         )
-        master_fd, slave_fd = pty.openpty()
-        winsize = struct.pack("HHHH", 24, 80, 0, 0)
-        fcntl.ioctl(master_fd, termios.TIOCSWINSZ, winsize)
         tool_key = cli_tool.strip().lower()
         if tool_key in {"ollama-cli", "ollama"}:
             argv = self._ollama_run_argv(binary, ollama_model)
@@ -527,6 +534,33 @@ class InteractivePtyManager:
         extra_path = os.pathsep.join(str(directory) for directory in _extra_cli_search_dirs())
         if extra_path:
             spawn_env["PATH"] = extra_path + os.pathsep + spawn_env.get("PATH", "")
+        if os.name == "nt":
+            from src.windows_pty import WindowsPty
+
+            winpty = WindowsPty(argv, cwd=workspace_path, env=spawn_env)
+            session._winpty = winpty
+            session.pid = winpty.pid
+            session.attached = True
+            session.status = InteractivePtyStatus.READY
+            session._read_thread = threading.Thread(
+                target=self._read_loop,
+                args=(session,),
+                name=f"interactive-pty-{session_key}",
+                daemon=True,
+            )
+            session._read_thread.start()
+            self._register_pid(winpty.pid, session_key)
+            logger.info(
+                "interactive PTY spawned session_key=%s binary=%s workspace=%s pid=%s backend=winpty",
+                session_key,
+                binary,
+                workspace_path,
+                winpty.pid,
+            )
+            return session
+        master_fd, slave_fd = pty.openpty()
+        winsize = struct.pack("HHHH", 24, 80, 0, 0)
+        fcntl.ioctl(master_fd, termios.TIOCSWINSZ, winsize)
         proc = subprocess.Popen(
             argv,
             stdin=slave_fd,
@@ -575,10 +609,13 @@ class InteractivePtyManager:
             if not session.alive():
                 session.status = InteractivePtyStatus.EXITED
                 break
-            chunk_bytes = _read_available_bytes(session.master_fd, wait_s=0.15)
-            if not chunk_bytes:
-                continue
-            chunk = decoder.decode(chunk_bytes)
+            if session._winpty is not None:
+                chunk = str(session._winpty.read(wait_s=0.15) or "")
+            else:
+                chunk_bytes = _read_available_bytes(session.master_fd, wait_s=0.15)
+                if not chunk_bytes:
+                    continue
+                chunk = decoder.decode(chunk_bytes)
             if not chunk:
                 continue
             if session.attached:
