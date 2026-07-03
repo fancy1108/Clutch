@@ -23,6 +23,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 ### Changed
 
 - **Workspace chrome (Windows):** Sidebar collapse on panel edge, icon-only collapsed rail, chat spacing, right-panel tab grid ([#30](https://github.com/fancy1108/Clutch/pull/30)). macOS chrome split into platform-specific modules (follow-up).
+- **Platform chrome split:** `platform/chrome/*.{macos,windows}.tsx`, shared `navConfig.ts`, `data-platform` shell attribute.
 
 ## [1.1.0] - 2026-07-03
 

@@ -28,9 +28,11 @@ import {
   type ThemePresetId,
 } from './services/themeApi';
 import { DEFAULT_FONT_SIZE, type AppFontSize } from './services/fontSizePreference';
+import { isWindowsHost, useHostOs } from './platform/hostOs';
 import { LanguageProvider, useLanguage } from './components/LanguageContext';
 import { OnboardingWizard } from './components/onboarding/OnboardingWizard';
-import { CONTENT_TOP_WITH_BANNER, SIDEBAR_COLLAPSED_WIDTH_PX, SIDEBAR_EXPANDED_WIDTH_PX } from './constants/layout';
+import { CONTENT_TOP_WITH_BANNER, SIDEBAR_COLLAPSED_WIDTH_PX, SIDEBAR_EXPANDED_WIDTH_PX, CHROME_PANEL_TOGGLE_TOP_CSS, CHROME_PANEL_TOGGLE_HALF_PX } from './constants/layout';
+import { ChromeEdgeToggle } from './components/ui/ChromeEdgeToggle';
 import { BrandLogo } from './components/BrandLogo';
 import { clutchMarkUrl } from './assets/brand';
 import { DevOnboardingToolsEmptyPreview } from './components/onboarding/DevOnboardingToolsEmptyPreview';
@@ -101,6 +103,8 @@ type InFlightTurnContext = {
 
 function MainLayout() {
   const { t } = useLanguage();
+  const hostOs = useHostOs();
+  const isWindows = isWindowsHost(hostOs);
   const { state: clutchState } = useClutchState();
   const [appVersion, setAppVersion] = useState<string>('1.0.0');
 
@@ -1381,6 +1385,7 @@ function MainLayout() {
   return (
     <div 
       style={themeVars as React.CSSProperties}
+      data-platform={hostOs}
       data-font-size={fontSize}
       className="relative h-screen max-h-screen bg-background text-on-surface overflow-hidden flex flex-col font-sans select-none"
     >
@@ -1392,6 +1397,20 @@ function MainLayout() {
         folders={folders}
         sidebarOpen={sidebarOpen}
       />
+
+      {!isWindows ? (
+      <ChromeEdgeToggle
+        testId="workspace-sidebar-toggle"
+        icon={sidebarOpen ? 'chevron_left' : 'chevron_right'}
+        title={sidebarOpen ? t('Collapse Sidebar') : t('Expand Sidebar')}
+        onClick={() => setSidebarOpen((open) => !open)}
+        className="fixed transition-[left] duration-300 ease-out"
+        style={{
+          top: CHROME_PANEL_TOGGLE_TOP_CSS,
+          left: selectedSidebarWidth - CHROME_PANEL_TOGGLE_HALF_PX,
+        }}
+      />
+      ) : null}
 
       {/* 2. Side Panel components layout */}
       <div className="flex-1 flex overflow-hidden">

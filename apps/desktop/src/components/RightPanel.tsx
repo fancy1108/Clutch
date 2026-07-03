@@ -22,6 +22,8 @@ import {
   WORKFLOW_STEP_STATUS_BADGE,
   workflowStepStatusLabel,
 } from './ui/surfaceStyles';
+import { rightPanelSummaryTextClass, rightPanelUsesGridTabs } from '../platform/chrome/chatChrome';
+import { useHostOs } from '../platform/hostOs';
 
 interface RightPanelProps {
   activeTab: RightTab;
@@ -106,6 +108,9 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   messages = [],
 }) => {
   const { t, language } = useLanguage();
+  const hostOs = useHostOs();
+  const summaryTextClass = rightPanelSummaryTextClass(hostOs);
+  const useGridTabs = rightPanelUsesGridTabs(hostOs);
   const [selectedFile, setSelectedFile] = React.useState<string>('');
   const [expandedFiles, setExpandedFiles] = React.useState<Record<string, boolean>>({});
   const [workflowSteps, setWorkflowSteps] = React.useState<WorkflowStepView[]>([]);
@@ -236,7 +241,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   const statusLabel = translateRunStatus(clutchStatus, language);
 
   const renderStateSummary = () => (
-    <div className="p-3 border border-outline-variant/30 rounded-xl bg-surface-container-low/40 font-mono text-[11px] leading-relaxed space-y-1">
+    <div className={summaryTextClass}>
       <p>
         {t('workflow')}: <span className="text-on-surface font-bold">{workflowLabel || '—'}</span>
       </p>
@@ -270,7 +275,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   const renderSingleAgentSummary = () => {
     const agentLabel = sessionAgentName || activeAgent || '—';
     return (
-      <div className="p-3 border border-outline-variant/30 rounded-xl bg-surface-container-low/40 font-mono text-[11px] leading-relaxed space-y-1">
+      <div className={summaryTextClass}>
         <p>
           {t('Active Agent')}: <span className="text-on-surface font-bold">{agentLabel}</span>
         </p>
@@ -415,8 +420,12 @@ export const RightPanel: React.FC<RightPanelProps> = ({
 
       <div className={`flex-grow flex flex-col h-full overflow-hidden ${!isOpen ? 'hidden' : ''}`}>
         <div
-          className="grid h-11 border-b border-outline-variant overflow-hidden select-none bg-surface-container-low/40"
-          style={{ gridTemplateColumns: `repeat(${visibleTabs.length}, minmax(0, 1fr))` }}
+          className={
+            useGridTabs
+              ? 'grid h-11 border-b border-outline-variant overflow-hidden select-none bg-surface-container-low/40'
+              : 'flex border-b border-outline-variant overflow-x-auto sidebar-scroll select-none bg-surface-container-low/40'
+          }
+          style={useGridTabs ? { gridTemplateColumns: `repeat(${visibleTabs.length}, minmax(0, 1fr))` } : undefined}
         >
           {visibleTabs.map((tab) => {
             const isActive = activeTab === tab;
@@ -425,19 +434,33 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                 key={tab}
                 data-testid={`right-tab-${tab}`}
                 onClick={() => setActiveTab(tab)}
-                className={`relative h-11 min-w-0 overflow-hidden px-1 text-xs font-bold whitespace-nowrap tracking-wide capitalize transition-[background-color,color] ${
-                  isActive
-                    ? 'text-primary bg-white'
-                    : 'text-on-surface-variant hover:text-on-surface'
-                }`}
+                className={
+                  useGridTabs
+                    ? `relative h-11 min-w-0 overflow-hidden px-1 text-xs font-bold whitespace-nowrap tracking-wide capitalize transition-[background-color,color] ${
+                        isActive
+                          ? 'text-primary bg-white'
+                          : 'text-on-surface-variant hover:text-on-surface'
+                      }`
+                    : `px-3 py-3 text-xs font-bold whitespace-nowrap tracking-wide capitalize transition-all ${
+                        isActive
+                          ? 'text-primary border-b-2 border-primary bg-white'
+                          : 'text-on-surface-variant hover:text-on-surface'
+                      }`
+                }
               >
-                <span className="block truncate">{t(RIGHT_TAB_LABELS[tab])}</span>
-                <span
-                  className={`absolute bottom-0 left-1/2 h-[3px] w-5 -translate-x-1/2 rounded-full bg-primary transition-opacity ${
-                    isActive ? 'opacity-100' : 'opacity-0'
-                  }`}
-                  aria-hidden
-                />
+                {useGridTabs ? (
+                  <>
+                    <span className="block truncate">{t(RIGHT_TAB_LABELS[tab])}</span>
+                    <span
+                      className={`absolute bottom-0 left-1/2 h-[3px] w-5 -translate-x-1/2 rounded-full bg-primary transition-opacity ${
+                        isActive ? 'opacity-100' : 'opacity-0'
+                      }`}
+                      aria-hidden
+                    />
+                  </>
+                ) : (
+                  t(RIGHT_TAB_LABELS[tab])
+                )}
               </button>
             );
           })}

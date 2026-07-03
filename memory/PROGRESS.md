@@ -31,19 +31,25 @@
 
 ## Recent Sessions
 
-## 2026-07-03 会话（同步 upstream 首页图标）
+## 2026-07-04 会话（#30 merge + 平台 chrome 拆分）
+
+- **#30** — 已通过 GitHub merge 进 `dev`（@996wuxian）；Windows interactive PTY（WinPTY）、字体偏好恢复、跨平台 `tauri:dev` launcher
+- **平台边界** — `docs/PLATFORM_MAINTENANCE.md`、`.github/CODEOWNERS`、`platform/chrome/*.{macos,windows}.tsx`、`navConfig.ts`
+- **mac** — 保留浮动侧栏折叠按钮、图标+微标签折叠 rail；统一 Chat 紧凑布局 + 右 panel 30px gutter
+- **Windows** — 侧栏边缘折叠按钮、纯图标 rail、紧凑 Chat、右 panel 等分 Tab
+- **致谢** — follow-up commit 含 `Co-authored-by: 996wuxian`
+
+## 2026-07-03 会话（同步 upstream 首页图标 · @996wuxian）
 
 - **原因** 作者 dev 已将首页/侧栏 Workflows SOP 图标更新为 `fork_right`，但 Windows UI polish 恢复时误把该入口带回旧的 `account_tree`。
 - **修复** `apps/desktop/src/sidebar.tsx` 展开态与折叠态 Workflows SOP 图标统一同步为 upstream dev 的 `fork_right`，保留左侧面板中线折叠按钮与 Windows UI 布局。
 - **Commit** `9a982f4` — `fix(ui): sync workflow sidebar icon from upstream`
-- **验证** `pnpm build` 通过；`pnpm test` 17 files / 125 tests 通过。提交使用 `HUSKY=0`，原因同前：Husky pre-commit 在 Git Bash PATH 中找不到 `uv`。
 
-## 2026-07-03 会话（同步 upstream dev + 侧栏折叠入口）
+## 2026-07-03 会话（同步 upstream dev + 侧栏折叠入口 · @996wuxian）
 
-- **同步** 合入 `upstream/dev` `4740786`（v1.1.0 文档对齐、Agnes 默认文本模型、图标/模型相关更新），冲突仅发生在 `memory/PROGRESS.md`，已保留 upstream 发版记录与 Windows 维护记录。
+- **同步** 合入 `upstream/dev` `4740786`（v1.1.0 文档对齐、Agnes 默认文本模型、图标/模型相关更新）。
 - **UI** 按作者 dev 方向移除 Header 顶部左侧折叠按钮，将左侧侧栏折叠入口移到侧栏右边缘中线位置，与右侧监督面板折叠按钮交互位置一致。
 - **Commit** `214af4d` — `merge upstream dev and align sidebar collapse chrome`
-- **验证** `pnpm build` 通过；`pnpm test` 17 files / 125 tests 通过；`python -m uv run pytest tests/test_llm_provider.py` 7 passed。提交使用 `HUSKY=0`，原因同前：Husky pre-commit 在 Git Bash PATH 中找不到 `uv`。
 
 ## 2026-07-03 会话（v1.1.0 文档对齐 · README / 维护者文档）
 

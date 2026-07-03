@@ -25,7 +25,7 @@
 | Path | What |
 |------|------|
 | `apps/desktop/src/platform/chrome/sidebar/SidebarCollapsedRail.macos.tsx` | Collapsed sidebar rail |
-| `apps/desktop/src/platform/chrome/sidebar/SidebarToggle.macos.tsx` | Sidebar fold control placement (mac) |
+| `apps/desktop/src/App.tsx` | macOS floating sidebar fold control (`ChromeEdgeToggle`) |
 
 ### Windows-only
 

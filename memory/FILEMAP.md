@@ -57,6 +57,7 @@
 | 历史叙事归档 | `docs/archive/` · `specs/archive/` |
 | 视觉设计快照 | `specs/core/design.md` → `docs/UI_UX_GUIDELINES.md` |
 | 前端 UI 规范（权威） | `docs/UI_UX_GUIDELINES.md` |
+| **macOS / Windows 平台 UI 边界** | `docs/PLATFORM_MAINTENANCE.md` · `apps/desktop/src/platform/chrome/` |
 | 开发任务清单（含 Verification） | `specs/core/tasks.md` |
 | **D25 Hybrid Runtime Task（HRT）** | **`specs/core/hybrid-runtime-plan.md`** |
 | Flow 多 Agent 接力 Task（D23） | `specs/core/tasks.md` §M3-F · Flow 多 Agent 接力 |

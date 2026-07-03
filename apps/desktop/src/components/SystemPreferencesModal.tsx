@@ -359,7 +359,7 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
                         htmlFor="general-font-size"
                         className="text-xs font-bold uppercase tracking-wider text-on-surface-variant"
                       >
-                        {t("Font Size")}
+                        {t('Font Size')}
                       </label>
                       <select
                         id="general-font-size"

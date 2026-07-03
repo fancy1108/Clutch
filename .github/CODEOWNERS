@@ -1,0 +1,8 @@
+# Platform chrome ownership — see docs/PLATFORM_MAINTENANCE.md
+
+/apps/desktop/src/platform/chrome/navConfig.ts                              @fancy1108 @996wuxian
+/apps/desktop/src/platform/chrome/sidebar/SidebarCollapsedRail.macos.tsx    @fancy1108
+/apps/desktop/src/platform/chrome/sidebar/SidebarCollapsedRail.windows.tsx  @996wuxian
+/apps/desktop/src/platform/chrome/sidebar/SidebarToggle.windows.tsx         @996wuxian
+/services/orchestrator/src/windows_pty.py                                   @996wuxian
+/services/orchestrator/src/interactive_pty_runtime.py                      @fancy1108 @996wuxian
