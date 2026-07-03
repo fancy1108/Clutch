@@ -218,7 +218,7 @@ def resolve_cc_switch_cli_path() -> str | None:
     from src.tools_status import _extra_cli_search_dirs
 
     for directory in _extra_cli_search_dirs():
-        candidate = directory / "cc-switch"
+        candidate = directory / _cc_switch_binary_name()
         if candidate.is_file() and os.access(candidate, os.X_OK) and _verify_cc_switch_cli(str(candidate)):
             return str(candidate)
     return None

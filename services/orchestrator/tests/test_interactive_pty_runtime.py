@@ -175,17 +175,19 @@ def test_scan_system_cli_processes_parses_ps_output() -> None:
             "86108 grep opencode",
         ]
     )
-    with patch("src.interactive_pty_runtime.subprocess.check_output", return_value=ps_output):
-        rows = scan_system_cli_processes({"opencode", "claude"})
+    with patch("src.interactive_pty_runtime.os.name", "posix"):
+        with patch("src.interactive_pty_runtime.subprocess.check_output", return_value=ps_output):
+            rows = scan_system_cli_processes({"opencode", "claude"})
     assert len(rows) == 2
     assert {row["binary"] for row in rows} == {"opencode"}
 
 
 def test_list_alive_for_run_includes_configured_system_processes() -> None:
     ps_output = "99999 /usr/local/bin/codex exec\n"
-    with patch("src.interactive_pty_runtime.configured_cli_binaries", return_value={"codex"}):
-        with patch("src.interactive_pty_runtime.subprocess.check_output", return_value=ps_output):
-            alive = interactive_pty_manager.list_alive_for_run("run_x")
+    with patch("src.interactive_pty_runtime.os.name", "posix"):
+        with patch("src.interactive_pty_runtime.configured_cli_binaries", return_value={"codex"}):
+            with patch("src.interactive_pty_runtime.subprocess.check_output", return_value=ps_output):
+                alive = interactive_pty_manager.list_alive_for_run("run_x")
     assert any(item["cli_tool"] == "codex" and item["source"] == "system" for item in alive)
 
 

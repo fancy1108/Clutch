@@ -185,7 +185,7 @@ def test_install_cc_switch_cli_copies_cached_bundle(tmp_path: Path, monkeypatch:
     source = tmp_path / "cached-cc-switch"
     source.write_text("#!/bin/sh\necho cc-switch-cli 1.0.0\n", encoding="utf-8")
     source.chmod(0o755)
-    target = tmp_path / ".local" / "bin" / "cc-switch"
+    target = tmp_path / ".local" / "bin" / cfg._cc_switch_binary_name()
 
     monkeypatch.setattr(cfg.Path, "home", classmethod(lambda cls: tmp_path))
     monkeypatch.setattr(cfg, "prefetch_cc_switch_cli_bundle", lambda: {"ok": True, "path": str(source)})
