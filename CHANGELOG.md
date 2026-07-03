@@ -10,22 +10,6 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ## [Unreleased]
 
-### Added
-
-- Terminal lane grid pagination (4 lanes per page with dot carousel) when more than four expanded lanes.
-- Overview dispatch loading badge (`Opening terminal…`) while target PTY is booting or pending inject.
-- Local-timezone formatting for Overview dispatch timestamps; backend stores ISO UTC.
-
-### Fixed
-
-- Terminal lane black screen on collapse, pagination, or grid hide/show: PTY stays attached while off-screen; xterm hydrates from transcript and force-repaints on show.
-- Overview dispatch "Opening terminal…" badge clears when target PTY is ready (not stuck on lane `booting` label).
-- Ollama interactive PTY: spawn `ollama run <model>`, pass configured agent model on preview attach, and surface spawn errors instead of stuck `detached`.
-- Antigravity/Ollama/OpenCode PTY prompt inject waits for TUI-ready output before typing; inject works on background lanes.
-- CLI session resume copy commands per agent type (Codex `--last`, OpenCode `-c`, hide invalid Clutch UUID on unsupported CLIs).
-- Handoff preview modal empty section below title; optimistic dispatch in Overview; handoff Send-to-Bar graph syntax.
-- Chat/Terminal mode switch keeps xterm mounted; right panel tabs Overview/Files/Changes/Terminal; terminal session command Copy restored.
-
 ## [1.1.0] - 2026-07-03
 
 Minor release — **Terminal Orchestra (D34)**, **Windows desktop polish**, **CodeBuddy CLI**, **OpenCode Zen**, **Agnes Video**, and agent-scoped Settings.
@@ -50,19 +34,28 @@ Minor release — **Terminal Orchestra (D34)**, **Windows desktop polish**, **Co
 - **README:** Terminal Session screenshot in bilingual README.
 - **OpenCode Zen text models:** Built-in `opencode` provider in Settings → Models; five curated free chat models; optional catalog refresh; save-time connectivity checks.
 - **CodeBuddy CLI:** First-class `codebuddy-cli` routing (`codebuddy -p` headless, `--resume` / `--session-id` session recovery).
+- **Terminal lane grid pagination:** More than four expanded lanes show a dot carousel (4 lanes per 2×2 page).
+- **Overview dispatch UX:** Loading badge (`Opening terminal…`) while target PTY boots or pending inject; dispatch timestamps in local timezone (backend stores ISO UTC).
 
 ### Changed
 
 - **Terminal input dock:** OrchestratorBar uses the same fixed `bottom-8` layout as Chat, with measured gap equal to input bar height.
-- **Terminal lane lifecycle:** Collapsed lanes stay mounted off-screen (xterm keepalive); PTY reattach reuses live sessions.
+- **Terminal lane lifecycle:** Collapsed or paginated lanes stay mounted off-screen (xterm keepalive); PTY stays attached; xterm hydrates from transcript and force-repaints on show (no black screen on expand/collapse).
 
 ### Fixed
 
 - **Dispatch labels:** Natural `@Agent` switch shows **User → Agent**; graph / file-ref dispatches show handoff.
 - **Agnes Video playback:** `/api/workspace/media` accepts `?token=` when Bearer header is missing.
-- **CLI session resume cards:** Copy-paste commands use researched syntax (`codex resume`, `opencode -s`, etc.).
+- **CLI session resume cards:** Copy-paste commands per agent type (`codex resume --last`, `opencode -c`, hide invalid Clutch UUID on unsupported CLIs).
 - **Terminal inject dedupe:** Race no longer triple-echoes prompts into a lane.
 - **Rivet branding:** Only Rivet uses the gray robot fallback icon in `@` picker.
+- **Terminal lane black screen:** Collapse, pagination, or grid hide/show no longer disconnects PTY or wipes xterm canvas.
+- **Overview dispatch pending:** `Opening terminal…` clears when PTY is `ready`, not stuck on lane `booting` label.
+- **Ollama interactive PTY:** Spawn `ollama run <model>`; pass configured agent model on preview attach; surface spawn errors instead of stuck `detached`.
+- **PTY prompt inject:** Antigravity/Ollama/OpenCode wait for TUI-ready output before typing; inject works on background lanes.
+- **Handoff / Overview polish:** Preview modal empty section below title removed; optimistic dispatch in Overview; handoff Send-to-Bar graph syntax.
+- **Chat/Terminal switch:** xterm stays mounted; right panel tabs Overview/Files/Changes/Terminal; terminal session command Copy restored.
+- **Persisted run state:** Tolerate empty or corrupt run state files on hydrate.
 
 ## [1.0.3] - 2026-07-01
 
