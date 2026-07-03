@@ -24,7 +24,7 @@ interface ModelsStepProps {
 
 export function ModelsStep({ modelReady, onModelReady, onSkip }: ModelsStepProps) {
   const { t } = useLanguage();
-  const [providerId, setProviderId] = useState<string>('deepseek');
+  const [providerId, setProviderId] = useState<string>('agnes');
   const [apiKey, setApiKey] = useState('');
   const [showApiKey, setShowApiKey] = useState(false);
   const [testing, setTesting] = useState(false);

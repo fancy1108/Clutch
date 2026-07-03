@@ -17,9 +17,9 @@ Clutch is a **desktop app** (Tauri + React) for developers and technical operato
 |---|---|
 | **Stack** | Tauri 2 · React 19 · FastAPI + LangGraph · local-first (`localhost:8123`) |
 | **License** | See [LICENSE](LICENSE) |
-| **Latest release** | [v1.0.3](https://github.com/fancy1108/Clutch/releases) · **Next:** [v1.1.0](CHANGELOG.md#110---2026-07-03) |
+| **Latest release** | [v1.1.0](https://github.com/fancy1108/Clutch/releases/tag/v1.1.0) · [Changelog](CHANGELOG.md#110---2026-07-03) |
 
-### What's new (v1.1.0 · in development)
+### What's new in v1.1.0
 
 - **Terminal Orchestra (D34)** — Chat ↔ Terminal toggle; multi-lane embedded CLI; OrchestratorBar `@` dispatch, handoff files, dispatch log, and CLI session resume commands.
 - **Windows desktop polish** — Sidebar collapse, font-size preference, faster session switching with cached snapshots ([#28](https://github.com/fancy1108/Clutch/pull/28)).
@@ -56,7 +56,7 @@ brew install --cask clutch
 irm https://raw.githubusercontent.com/fancy1108/Clutch/main/scripts/install.ps1 | iex
 ```
 
-Pin a version: `CLUTCH_VERSION=v1.1.0` before running either script (or `v1.0.3` for the current stable release).
+Pin a version: `CLUTCH_VERSION=v1.1.0` before running either script (or `v1.0.3` for the previous release).
 
 Install channels (maintainers): [`docs/RELEASE_MAINTAINER.md`](docs/RELEASE_MAINTAINER.md)
 

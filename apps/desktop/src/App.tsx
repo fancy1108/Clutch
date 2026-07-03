@@ -1390,7 +1390,6 @@ function MainLayout() {
         workspaceName={workspace?.name}
         onPickWorkspace={() => { void handlePickWorkspace(); }}
         folders={folders}
-        onToggleSidebar={() => setSidebarOpen((open) => !open)}
         sidebarOpen={sidebarOpen}
       />
 
@@ -1407,6 +1406,7 @@ function MainLayout() {
           setActiveFlow={handleFlowSelect}
           onNewChat={() => { void handleNewChat(); }}
           isOpenState={sidebarOpen}
+          setIsOpenState={setSidebarOpen}
           isMultiAgent={isMultiAgent}
           sessions={sessions}
           shellSnapshotRunIds={shellSnapshotRunIds}

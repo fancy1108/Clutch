@@ -6,7 +6,12 @@ import type { RepositoryGroup, WorkspaceInfo } from './services/workspaceApi';
 import { LegacyIcon } from './components/ui/LegacyIcon';
 import { UpdateBanner } from './components/UpdateBanner';
 import { BTN_ICON_SM } from './components/ui/buttonStyles';
-import { SIDEBAR_COLLAPSED_WIDTH_PX, SIDEBAR_EXPANDED_WIDTH_PX } from './constants/layout';
+import { ChromeEdgeToggle } from './components/ui/ChromeEdgeToggle';
+import {
+  CHROME_PANEL_TOGGLE_TOP_CSS,
+  SIDEBAR_COLLAPSED_WIDTH_PX,
+  SIDEBAR_EXPANDED_WIDTH_PX,
+} from './constants/layout';
 
 interface SidebarProps {
   currentView: MainView;
@@ -17,6 +22,7 @@ interface SidebarProps {
   setActiveFlow: (flow: string) => void;
   onNewChat: () => void;
   isOpenState: boolean;
+  setIsOpenState: (open: boolean) => void;
   isMultiAgent?: boolean;
   sessions?: SessionRecord[];
   shellSnapshotRunIds?: ReadonlySet<string>;
@@ -64,6 +70,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   setActiveFlow,
   onNewChat,
   isOpenState,
+  setIsOpenState,
   isMultiAgent = true,
   sessions = [],
   shellSnapshotRunIds,
@@ -466,13 +473,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <>
     <aside
-      className={`fixed h-screen left-0 top-0 border-r border-outline-variant bg-surface flex flex-col overflow-hidden transition-[width] duration-200 ease-out z-50 ${
+      className={`fixed h-screen left-0 top-0 border-r border-outline-variant bg-surface flex flex-col transition-[width] duration-200 ease-out z-50 ${
         isOpenState ? 'px-4 pt-5 pb-3' : 'p-2'
       }`}
       style={{
         width: isOpenState ? SIDEBAR_EXPANDED_WIDTH_PX : SIDEBAR_COLLAPSED_WIDTH_PX,
+        overflow: 'visible',
       }}
     >
+      <ChromeEdgeToggle
+        testId="workspace-sidebar-toggle"
+        icon={isOpenState ? 'chevron_left' : 'chevron_right'}
+        title={isOpenState ? t('Collapse Sidebar') : t('Expand Sidebar')}
+        onClick={() => setIsOpenState(!isOpenState)}
+        className={`absolute transition-all duration-300 ${isOpenState ? '-right-3' : '-right-6'}`}
+        style={{ top: CHROME_PANEL_TOGGLE_TOP_CSS }}
+      />
+
       {isOpenState ? (
       <div className="flex-1 flex flex-col gap-3 overflow-hidden h-full">
         <div className="space-y-1 mb-4 px-1">

@@ -1,7 +1,5 @@
 import React from 'react';
 import { useLanguage } from './LanguageContext';
-import { BTN_ICON } from './ui/buttonStyles';
-import { LegacyIcon } from './ui/LegacyIcon';
 import { SIDEBAR_COLLAPSED_WIDTH_PX, SIDEBAR_EXPANDED_WIDTH_PX } from '../constants/layout';
 
 interface HeaderProps {
@@ -9,7 +7,6 @@ interface HeaderProps {
   workspaceName?: string;
   onPickWorkspace?: () => void;
   folders?: any[];
-  onToggleSidebar: () => void;
   sidebarOpen?: boolean;
 }
 
@@ -18,7 +15,6 @@ export const Header: React.FC<HeaderProps> = ({
   workspaceName,
   onPickWorkspace,
   folders,
-  onToggleSidebar,
   sidebarOpen = true,
 }) => {
   const { language, setLanguage, t } = useLanguage();
@@ -39,15 +35,6 @@ export const Header: React.FC<HeaderProps> = ({
       style={{ left: sidebarOpen ? SIDEBAR_EXPANDED_WIDTH_PX : SIDEBAR_COLLAPSED_WIDTH_PX }}
     >
       <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={onToggleSidebar}
-          className={`${BTN_ICON} w-7 h-7 rounded-full text-on-surface`}
-          title={sidebarOpen ? t('Collapse Sidebar') : t('Expand Sidebar')}
-          aria-label={sidebarOpen ? t('Collapse Sidebar') : t('Expand Sidebar')}
-        >
-          <LegacyIcon name={sidebarOpen ? 'chevron_left' : 'chevron_right'} className="text-[19px] leading-none" />
-        </button>
         <nav className="flex items-center gap-2 text-xs font-semibold tracking-wide text-on-surface-variant">
           <span
             onClick={onPickWorkspace}
