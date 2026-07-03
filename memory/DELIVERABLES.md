@@ -30,6 +30,17 @@ _（当前无进行中代码 Task — v1.0.3 Loop 开工后在此登记。）_
 
 ## Recently Completed（v1.0.3 · dev · 未发版）
 
+### Windows interactive PTY lanes ✅
+- **日期：** 2026-07-03
+- **Commit：** `395bacb` — `fix(windows): support interactive PTY lanes`
+- **Verification：** `python -m uv run pytest tests/test_interactive_pty_runtime.py` → 11 passed, 5 skipped；`python -m uv run pytest tests/test_terminal_orchestra.py tests/test_ws_pty_events.py tests/test_ws_dispatch_orchestra.py tests/test_interactive_pty_runtime.py` → 36 passed, 5 skipped, 1 warning；`pnpm build` → passed；`pnpm test` → 17 files / 125 tests passed；`python -m uv run pytest` → 634 passed, 9 skipped, 1 warning；Windows `cmd.exe` low-level 与 manager PTY smoke → marker observed；`bash scripts/check-doc-drift.sh` → 未运行，当前 PowerShell PATH 无 `bash`
+- **证据：** `—`
+- **交付文件：**
+  - `services/orchestrator/src/interactive_pty_runtime.py` — Windows interactive PTY backend attach/read/write/close
+  - `services/orchestrator/src/windows_pty.py` — 暴露 read/write/alive/close 行为给 interactive manager 复用
+  - `services/orchestrator/tests/test_interactive_pty_runtime.py` — Windows PTY fake backend 回归测试
+  - `docs/PRODUCT_INTRO.md` — 同步 Windows Terminal Orchestra 支持说明
+
 ### Ollama Models Config 本机同步 ✅
 - **日期：** 2026-07-01
 - **Commit：** `2257560` — `fix(models): sync Settings Ollama list with local ollama list`

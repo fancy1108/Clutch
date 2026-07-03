@@ -29,6 +29,13 @@
 
 ## Recent Sessions
 
+## 2026-07-03 会话（Windows interactive PTY lanes）
+
+- **修复** Windows Terminal Orchestra interactive PTY：`interactive_pty_runtime.py` 不再在 Windows 直接 blocked，复用 `WindowsPty` 支持 attach/read/write/close。
+- **验证** 后端定向 PTY / Terminal Orchestra / WebSocket PTY 相关测试通过；全量 `python -m uv run pytest` 通过；`pnpm build`、`pnpm test` 通过；真实 Windows `cmd.exe` low-level 与 manager smoke 通过。
+- **Commit** `395bacb` — `fix(windows): support interactive PTY lanes`
+- **下次优先** Windows PTY polish：resize、Ctrl+C/Ctrl+D、长期运行 session、多 lane 并发关闭；再评估 Windows picker 和上游 TypeScript lint 质量债。
+
 ## 2026-07-03 会话（v1.1.0 文档恢复）
 
 - **恢复** CHANGELOG `[1.1.0]`、`docs/releases/v1.1.0.md`、README 双语 What's new、PRODUCT_INTRO 终端 dock / resume、GETTING_STARTED / INSTALL pin
