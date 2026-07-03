@@ -2,27 +2,17 @@ import { useSyncExternalStore } from 'react';
 import type {
   ChatMessage,
   ClutchState,
+  DispatchPreviewPayload,
   HybridExecutionData,
   HybridExecutionPayload,
+  PtyOutputData,
+  PtySessionStatusData,
   StatePatchData,
   WebSocketEnvelope,
 } from '../types';
 import { translateText, type Language } from '../components/LanguageContext';
 import { sidecarWebSocketUrl } from './sidecarUrl';
 import defaultAvatar from '../assets/default_avatar.jpg';
-
-function shouldLogTiming(): boolean {
-  return import.meta.env.DEV || localStorage.getItem('clutch_debug_timing') === '1';
-}
-
-function logTiming(label: string, details: Record<string, unknown>): void {
-  if (!shouldLogTiming()) return;
-  console.info(`[Clutch timing] ${label}`, details);
-}
-
-function elapsedMs(startedAt: number): number {
-  return Math.round(performance.now() - startedAt);
-}
 
 export function createSessionRunId(): string {
   return `run_${Date.now().toString(36)}`;
@@ -165,6 +155,29 @@ export function preferRicherSessionPatch(
   if (preferred.terminal_logs && preferred.terminal_logs.length > (next.terminal_logs?.length ?? 0)) {
     next.terminal_logs = preferred.terminal_logs;
   }
+  const preferredDispatch = preferred.dispatch_log ?? [];
+  const patchDispatch = next.dispatch_log ?? [];
+  if (preferredDispatch.length > patchDispatch.length) {
+    next.dispatch_log = preferredDispatch;
+  }
+  const preferredLanes = preferred.pty_lanes ?? [];
+  const patchLanes = next.pty_lanes ?? [];
+  const preferredHasActiveLanes = preferredLanes.some((lane) => lane.status !== 'completed');
+  const patchHasActiveLanes = patchLanes.some((lane) => lane.status !== 'completed');
+  if (
+    preferredDispatch.length > 0
+    && !preferredHasActiveLanes
+    && patchHasActiveLanes
+  ) {
+    next.pty_lanes = preferredLanes;
+  } else if (preferredLanes.length > patchLanes.length) {
+    next.pty_lanes = preferredLanes;
+  }
+  const preferredEdges = preferred.dispatch_edges ?? [];
+  const patchEdges = next.dispatch_edges ?? [];
+  if (preferredEdges.length > patchEdges.length) {
+    next.dispatch_edges = preferredEdges;
+  }
   return next;
 }
 
@@ -180,6 +193,21 @@ export function shouldPreserveOptimisticRun(
   return current.messages.some((message) => message.agent === 'User');
 }
 
+type LanePtyHandlers = {
+  status: string;
+  outputHandlers: Set<(chunk: string) => void>;
+  statusHandlers: Set<(status: string) => void>;
+};
+
+type DispatchPreviewResult =
+  | { ok: true; preview: DispatchPreviewPayload }
+  | { ok: false; error: string };
+
+export type PtySessionStats = {
+  total: number;
+  sessions: Array<{ session_key: string; lane_id: string; cli_tool: string }>;
+};
+
 class ClutchStateStore {
   private state: ClutchState = createEmptyState(createSessionRunId());
   private listeners = new Set<() => void>();
@@ -188,16 +216,313 @@ class ClutchStateStore {
   private runId = this.state.run_id;
   private pendingHydrate: ClutchState | null = null;
   private reconnectHydrate: ClutchState | null = null;
-  private sessionSnapshots = new Map<string, ClutchState>();
   private backgroundHydrates = new Map<string, ReturnType<typeof setInterval>>();
   private backgroundSnapshots = new Map<string, ClutchState>();
   private pendingHybridExecutions = new Map<string, HybridExecutionPayload>();
   private pendingUserMessageId: string | null = null;
-  private connectionAttemptId = 0;
   private _connected = false;
+  private _ptySessionStatus = '';
+  private _ptyOutputHandlers = new Set<(chunk: string) => void>();
+  private _ptyStatusHandlers = new Set<(status: string) => void>();
+  private _lanePty = new Map<string, LanePtyHandlers>();
+  private _laneTranscripts = new Map<string, string>();
+  private static readonly MAX_LANE_TRANSCRIPT_CHARS = 200_000;
+  private _dispatchPreviewResolvers: Array<(result: DispatchPreviewResult) => void> = [];
+  private _dispatchErrorHandlers = new Set<(error: string) => void>();
+  private _ptyStatsResolvers: Array<(stats: PtySessionStats) => void> = [];
+  private _ptyClosedHandlers = new Set<() => void>();
+  private _lanePtyOps = new Map<string, Promise<void>>();
 
   get connected(): boolean {
     return this._connected;
+  }
+
+  private lanePty(laneId: string): LanePtyHandlers {
+    const key = laneId || 'primary';
+    let lane = this._lanePty.get(key);
+    if (!lane) {
+      lane = { status: '', outputHandlers: new Set(), statusHandlers: new Set() };
+      this._lanePty.set(key, lane);
+    }
+    return lane;
+  }
+
+  private resolveFocusedLaneId(): string {
+    const focusId = this.state.focused_lane_id;
+    if (focusId) return focusId;
+    const focused = this.state.pty_lanes?.find((lane) => lane.focused);
+    return focused?.lane_id ?? 'primary';
+  }
+
+  private enqueueLanePtyOp(laneId: string, op: () => Promise<void>): Promise<void> {
+    const key = laneId || 'primary';
+    const prev = this._lanePtyOps.get(key) ?? Promise.resolve();
+    const next = prev.then(op, op).finally(() => {
+      if (this._lanePtyOps.get(key) === next) {
+        this._lanePtyOps.delete(key);
+      }
+    });
+    this._lanePtyOps.set(key, next);
+    return next;
+  }
+
+  waitForLanePtyReady(laneId: string, timeoutMs = 15_000): Promise<boolean> {
+    return this.waitForLanePtyReadyInternal(laneId, timeoutMs);
+  }
+
+  get ptySessionStatus(): string {
+    return this._ptySessionStatus;
+  }
+
+  getLanePtyStatus(laneId: string): string {
+    return this.lanePty(laneId).status;
+  }
+
+  getLaneTranscript(laneId: string): string {
+    return this.readLaneTranscript(laneId);
+  }
+
+  private normalizeLaneTranscriptKey(laneId: string): string {
+    const raw = (laneId || 'primary').trim() || 'primary';
+    if (raw === 'primary') return 'lane_primary';
+    return raw;
+  }
+
+  private readLaneTranscript(laneId: string): string {
+    const key = this.normalizeLaneTranscriptKey(laneId);
+    return (
+      this._laneTranscripts.get(key)
+      ?? this._laneTranscripts.get(laneId)
+      ?? (key !== 'primary' ? this._laneTranscripts.get('primary') : undefined)
+      ?? ''
+    );
+  }
+
+  private appendLaneTranscript(laneId: string, chunk: string): void {
+    if (!chunk) return;
+    const key = this.normalizeLaneTranscriptKey(laneId || this.resolveFocusedLaneId());
+    const prev = this._laneTranscripts.get(key) ?? '';
+    const next = (prev + chunk).slice(-ClutchStateStore.MAX_LANE_TRANSCRIPT_CHARS);
+    this._laneTranscripts.set(key, next);
+  }
+
+  onPtyOutput(handler: (chunk: string) => void): () => void {
+    this._ptyOutputHandlers.add(handler);
+    return () => this._ptyOutputHandlers.delete(handler);
+  }
+
+  onPtyOutputForLane(laneId: string, handler: (chunk: string) => void): () => void {
+    const lane = this.lanePty(laneId);
+    lane.outputHandlers.add(handler);
+    return () => lane.outputHandlers.delete(handler);
+  }
+
+  onPtyStatusChange(handler: (status: string) => void): () => void {
+    this._ptyStatusHandlers.add(handler);
+    return () => this._ptyStatusHandlers.delete(handler);
+  }
+
+  onPtyStatusChangeForLane(laneId: string, handler: (status: string) => void): () => void {
+    const lane = this.lanePty(laneId);
+    lane.statusHandlers.add(handler);
+    return () => lane.statusHandlers.delete(handler);
+  }
+
+  onDispatchError(handler: (error: string) => void): () => void {
+    this._dispatchErrorHandlers.add(handler);
+    return () => this._dispatchErrorHandlers.delete(handler);
+  }
+
+  private dispatchPtyOutput(chunk: string, laneId = ''): void {
+    this.appendLaneTranscript(laneId, chunk);
+    const resolvedLaneId = laneId || this.resolveFocusedLaneId();
+    const lane = resolvedLaneId ? this.lanePty(resolvedLaneId) : null;
+    const aliasLane =
+      resolvedLaneId === 'lane_primary'
+        ? this.lanePty('primary')
+        : resolvedLaneId === 'primary'
+          ? this.lanePty('lane_primary')
+          : null;
+    for (const target of [lane, aliasLane]) {
+      if (!target) continue;
+      for (const handler of target.outputHandlers) {
+        handler(chunk);
+      }
+    }
+    for (const handler of this._ptyOutputHandlers) {
+      handler(chunk);
+    }
+  }
+
+  private setPtySessionStatus(status: string, laneId = ''): void {
+    if (laneId) {
+      const lane = this.lanePty(laneId);
+      lane.status = status;
+      for (const handler of lane.statusHandlers) {
+        handler(status);
+      }
+    }
+    this._ptySessionStatus = status;
+    for (const handler of this._ptyStatusHandlers) {
+      handler(status);
+    }
+  }
+
+  async attachInteractivePty(cliTool: string, laneId?: string): Promise<void> {
+    const resolvedLane = laneId || this.resolveFocusedLaneId();
+    return this.enqueueLanePtyOp(resolvedLane, async () => {
+      this.setPtySessionStatus('booting', resolvedLane);
+      await this.send({ action: 'pty_attach', cli_tool: cliTool, lane_id: resolvedLane });
+    });
+  }
+
+  async detachInteractivePty(laneId?: string): Promise<void> {
+    const resolvedLane = laneId || this.resolveFocusedLaneId();
+    return this.enqueueLanePtyOp(resolvedLane, async () => {
+      this.setPtySessionStatus('detached', resolvedLane);
+      await this.send({ action: 'pty_detach', lane_id: resolvedLane });
+    });
+  }
+
+  async sendPtyInput(data: string, laneId?: string): Promise<void> {
+    if (!data) return;
+    const resolvedLane = laneId || this.resolveFocusedLaneId();
+    await this.send({ action: 'pty_input', data, lane_id: resolvedLane });
+  }
+
+  async sendPtyResize(cols: number, rows: number, laneId?: string): Promise<void> {
+    const resolvedLane = laneId || this.resolveFocusedLaneId();
+    await this.send({ action: 'pty_resize', cols, rows, lane_id: resolvedLane });
+  }
+
+  private async delay(ms: number): Promise<void> {
+    await new Promise((resolve) => window.setTimeout(resolve, ms));
+  }
+
+  private async waitForLanePtyReadyInternal(laneId: string, timeoutMs = 15_000): Promise<boolean> {
+    const started = Date.now();
+    while (Date.now() - started < timeoutMs) {
+      const status = this.getLanePtyStatus(laneId);
+      if (status === 'ready') return true;
+      if (status === 'blocked' || status === 'exited') return false;
+      await this.delay(100);
+    }
+    return this.getLanePtyStatus(laneId) === 'ready';
+  }
+
+  /** Submit prompt to lane PTY after attach is ready (text + Enter). */
+  async submitPtyPrompt(
+    laneId: string,
+    prompt: string,
+    options?: { warmupMs?: number },
+  ): Promise<boolean> {
+    const text = prompt.trim();
+    if (!text || !laneId) return false;
+
+    const ready = await this.waitForLanePtyReadyInternal(laneId, 20_000);
+    if (!ready) return false;
+
+    const warmupMs = options?.warmupMs ?? 0;
+    if (warmupMs > 0) {
+      await this.delay(warmupMs);
+    }
+
+    try {
+      await this.sendPtyInput(text, laneId);
+      await this.delay(150);
+      await this.sendPtyInput('\r', laneId);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async ackPendingPtyInject(): Promise<void> {
+    await this.connect(this.runId);
+    await this.send({ action: 'pty_inject_ack' });
+  }
+
+  /** @deprecated Prefer pending_pty_inject + submitPtyPrompt after lane attach. */
+  injectPtyPrompt(laneId: string, prompt: string): void {
+    void this.submitPtyPrompt(laneId, prompt);
+  }
+
+  /** @deprecated Dispatch now sets pending_pty_inject; lane pane submits after PTY ready. */
+  async injectDispatchPrompt(_targetDisplayName: string, _task: string): Promise<void> {
+    return;
+  }
+
+  async previewDispatch(text: string): Promise<DispatchPreviewResult> {
+    await this.connect(this.runId);
+    return new Promise<DispatchPreviewResult>((resolve) => {
+      this._dispatchPreviewResolvers.push(resolve);
+      void this.send({ action: 'dispatch_preview', text }).catch(() => {
+        const resolver = this._dispatchPreviewResolvers.pop();
+        resolver?.({ ok: false, error: 'WebSocket send failed' });
+      });
+    });
+  }
+
+  async confirmDispatch(
+    text: string,
+    activeChips?: string[],
+    targetAgent?: { id?: string; name?: string },
+    laneTranscripts?: Array<{ lane_id: string; agent: string; transcript: string }>,
+  ): Promise<void> {
+    const payload: Record<string, unknown> = { action: 'dispatch_confirm', text };
+    if (activeChips) payload.active_sources = activeChips;
+    if (targetAgent?.id?.trim()) payload.target_configured_agent_id = targetAgent.id.trim();
+    if (targetAgent?.name?.trim()) payload.target_configured_agent_name = targetAgent.name.trim();
+    if (laneTranscripts && laneTranscripts.length > 0) payload.lane_transcripts = laneTranscripts;
+    await this.send(payload);
+  }
+
+  async focusLane(laneId: string): Promise<void> {
+    await this.send({ action: 'lane_focus', lane_id: laneId });
+  }
+
+  async collapseLane(laneId: string, collapsed = true): Promise<void> {
+    const normalizedId = laneId === 'primary' ? 'lane_primary' : laneId;
+    const lanes = this.state.pty_lanes ?? [];
+    if (lanes.length > 0) {
+      this.applyPatch({
+        pty_lanes: lanes.map((lane) => {
+          const id = lane.lane_id === 'primary' ? 'lane_primary' : lane.lane_id;
+          return id === normalizedId ? { ...lane, collapsed } : lane;
+        }),
+      });
+    }
+    await this.send({ action: 'lane_collapse', lane_id: normalizedId, collapsed });
+  }
+
+  async completeLane(laneId: string): Promise<void> {
+    await this.send({ action: 'lane_complete', lane_id: laneId });
+  }
+
+  onPtySessionsClosed(handler: () => void): () => void {
+    this._ptyClosedHandlers.add(handler);
+    return () => this._ptyClosedHandlers.delete(handler);
+  }
+
+  async fetchPtySessionStats(): Promise<PtySessionStats> {
+    await this.connect(this.runId);
+    return new Promise<PtySessionStats>((resolve) => {
+      this._ptyStatsResolvers.push(resolve);
+      void this.send({ action: 'pty_session_stats' }).catch(() => {
+        const resolver = this._ptyStatsResolvers.pop();
+        resolver?.({ total: 0, sessions: [] });
+      });
+    });
+  }
+
+  async closeAllPtySessions(): Promise<void> {
+    await this.connect(this.runId);
+    await this.send({ action: 'pty_close_all' });
+  }
+
+  async closeOtherPtySessions(keepLaneIds: string[]): Promise<void> {
+    await this.connect(this.runId);
+    await this.send({ action: 'pty_close_others', keep_lane_ids: keepLaneIds });
   }
 
   subscribe = (listener: () => void): (() => void) => {
@@ -207,41 +532,9 @@ class ClutchStateStore {
 
   getSnapshot = (): ClutchState => this.state;
 
-  private rememberSnapshot(state: ClutchState = this.state): void {
-    const runId = state.run_id;
-    if (!runId) return;
-
-    const existing = this.sessionSnapshots.get(runId);
-    const existingMessageCount = existing?.messages?.length ?? 0;
-    const nextMessageCount = state.messages?.length ?? 0;
-    if (existing && existingMessageCount > nextMessageCount) return;
-
-    this.sessionSnapshots.set(runId, {
-      ...state,
-      messages: [...(state.messages ?? [])],
-      terminal_logs: [...(state.terminal_logs ?? [])],
-      changed_files: [...(state.changed_files ?? [])],
-      hybrid_executions: state.hybrid_executions ? { ...state.hybrid_executions } : undefined,
-    });
-
-    if (this.sessionSnapshots.size > 50) {
-      const oldest = this.sessionSnapshots.keys().next().value;
-      if (oldest) this.sessionSnapshots.delete(oldest);
-    }
-  }
-
-  private snapshotForRun(runId: string): ClutchState | null {
-    return this.sessionSnapshots.get(runId) ?? this.backgroundSnapshots.get(runId) ?? null;
-  }
-
-  hasSnapshot = (runId: string): boolean => {
-    return this.snapshotForRun(runId) !== null;
-  };
-
   replaceState = (state: ClutchState): void => {
     this.runId = state.run_id;
     this.state = state;
-    this.rememberSnapshot(state);
     this.emit();
   };
 
@@ -360,7 +653,6 @@ class ClutchStateStore {
 
   setPendingHydrate = (state: ClutchState): void => {
     this.pendingHydrate = state;
-    this.rememberSnapshot(state);
   };
 
   triggerUpdate(): void {
@@ -430,7 +722,6 @@ class ClutchStateStore {
       }
     }
     this.state = { ...this.state, ...next };
-    this.rememberSnapshot(this.state);
     this.emit();
   }
 
@@ -529,13 +820,6 @@ class ClutchStateStore {
       return this.connectPromise;
     }
 
-    this.rememberSnapshot(this.state);
-    const startedAt = performance.now();
-    let urlMs: number | null = null;
-    let wsOpenMs: number | null = null;
-    let usedCachedSnapshot = false;
-    const attemptId = ++this.connectionAttemptId;
-
     if (this.socket) {
       this.socket.close();
       this.socket = null;
@@ -549,11 +833,10 @@ class ClutchStateStore {
       this.reconnectHydrate = this.pendingHydrate;
       this.pendingHydrate = null;
     } else {
-      const cachedSnapshot = this.snapshotForRun(runId);
-      if (cachedSnapshot) {
-        this.state = cachedSnapshot;
-        this.reconnectHydrate = cachedSnapshot;
-        usedCachedSnapshot = true;
+      const backgroundSnapshot = this.backgroundSnapshots.get(runId);
+      if (backgroundSnapshot) {
+        this.state = backgroundSnapshot;
+        this.reconnectHydrate = backgroundSnapshot;
       } else if (this.state.run_id !== runId) {
         this.state = createEmptyState(runId);
         this.reconnectHydrate = null;
@@ -561,132 +844,160 @@ class ClutchStateStore {
     }
     this.emit();
 
-    this.connectPromise = (async () => {
-      const urlStartedAt = performance.now();
-      const wsUrl = await sidecarWebSocketUrl(`/ws/runs/${runId}`);
-      urlMs = elapsedMs(urlStartedAt);
-      return new Promise<void>((resolve, reject) => {
-        const wsStartedAt = performance.now();
-        const ws = new WebSocket(wsUrl);
-        this.socket = ws;
-        const isCurrentSocket = () => this.socket === ws && this.runId === runId && this.connectionAttemptId === attemptId;
+    this.connectPromise = sidecarWebSocketUrl(`/ws/runs/${runId}`).then(
+      (wsUrl) =>
+        new Promise<void>((resolve, reject) => {
+      const ws = new WebSocket(wsUrl);
+      this.socket = ws;
 
-        ws.onopen = () => {
-          if (!isCurrentSocket()) {
-            ws.close();
-            resolve();
+      ws.onopen = () => {
+        this._connected = true;
+        console.log('%c[Clutch WS] Connected to sidecar', 'color: #22c55e; font-weight: bold;');
+        resolve();
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const envelope = JSON.parse(event.data) as WebSocketEnvelope;
+          if (envelope.event === 'state_patch') {
+            const data = envelope.data as StatePatchData;
+            if (this.reconnectHydrate) {
+              const preferred = this.reconnectHydrate;
+              this.reconnectHydrate = null;
+              this.applyPatch(preferRicherSessionPatch(preferred, data.patch));
+              return;
+            }
+            this.applyPatch(data.patch);
             return;
           }
-          wsOpenMs = elapsedMs(wsStartedAt);
-          this._connected = true;
-          console.log('%c[Clutch WS] Connected to sidecar', 'color: #22c55e; font-weight: bold;');
-          logTiming('ws connect', {
-            runId,
-            totalMs: elapsedMs(startedAt),
-            urlMs,
-            wsOpenMs,
-            usedCachedSnapshot,
-          });
-          resolve();
-        };
-
-        ws.onmessage = (event) => {
-          if (!isCurrentSocket()) return;
-          try {
-            const envelope = JSON.parse(event.data) as WebSocketEnvelope;
-            if (envelope.event === 'state_patch') {
-              const data = envelope.data as StatePatchData;
-              if (this.reconnectHydrate) {
-                const preferred = this.reconnectHydrate;
-                this.reconnectHydrate = null;
-                this.applyPatch(preferRicherSessionPatch(preferred, data.patch));
-                return;
-              }
-              this.applyPatch(data.patch);
-              return;
+          if (envelope.event === 'message') {
+            const data = envelope.data as { message?: unknown };
+            if (isChatMessage(data.message)) {
+              this.appendMessage(data.message);
             }
-            if (envelope.event === 'message') {
-              const data = envelope.data as { message?: unknown };
-              if (isChatMessage(data.message)) {
-                this.appendMessage(data.message);
-              }
-              return;
-            }
-            if (envelope.event === 'hybrid_execution') {
-              this.attachHybridExecution(envelope.data as HybridExecutionData);
-              return;
-            }
-            if (envelope.event === 'log') {
-              const data = envelope.data as { message?: string };
-              if (data.message) {
-                this.appendLog(data.message);
-              }
-              return;
-            }
-            if (envelope.event === 'human_required') {
-              this.applyPatch({ status: 'awaiting_human' });
-              return;
-            }
-            if (envelope.event === 'validation_result') {
-              const data = envelope.data as { passed?: boolean; message?: string };
-              if (data.passed === false && data.message) {
-                const lang = (localStorage.getItem('workspace_lang') as Language) || 'en';
-                const nextStepsText = translateText(
-                  'Next steps: select "Bypass & Approve", "Reject & Redo" below, or type instructions and click "Retry".',
-                  lang
-                );
-                this.appendMessage({
-                  id: `validation-${Date.now()}`,
-                  agent: 'AI Agent',
-                  avatar: '',
-                  time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                  text: `${data.message}\n\n${nextStepsText}`,
-                  status: 'FAILED',
-                  badgeText: 'VALIDATION FAILED',
-                });
-              }
-              return;
-            }
-            if (envelope.event === 'file_changed') {
-              window.dispatchEvent(new CustomEvent('clutch-file-changed', { detail: envelope.data }));
-              return;
-            }
-            if (envelope.event === 'run_completed') {
-              const data = envelope.data as { status?: string };
-              if (data.status) {
-                this.applyPatch({ status: data.status as ClutchState['status'] });
-              }
-            }
-          } catch {
-            console.warn('[Clutch WS] non-JSON message:', event.data);
-          }
-        };
-
-        ws.onerror = () => {
-          if (!isCurrentSocket()) {
-            resolve();
             return;
           }
-          logTiming('ws connect failed', {
-            runId,
-            totalMs: elapsedMs(startedAt),
-            urlMs,
-            wsOpenMs,
-            usedCachedSnapshot,
-          });
-          this.connectPromise = null;
-          reject(new Error('WebSocket connection failed'));
-        };
+          if (envelope.event === 'hybrid_execution') {
+            this.attachHybridExecution(envelope.data as HybridExecutionData);
+            return;
+          }
+          if (envelope.event === 'log') {
+            const data = envelope.data as { message?: string };
+            if (data.message) {
+              this.appendLog(data.message);
+            }
+            return;
+          }
+          if (envelope.event === 'human_required') {
+            this.applyPatch({ status: 'awaiting_human' });
+            return;
+          }
+          if (envelope.event === 'validation_result') {
+            const data = envelope.data as { passed?: boolean; message?: string };
+            if (data.passed === false && data.message) {
+              const lang = (localStorage.getItem('workspace_lang') as Language) || 'en';
+              const nextStepsText = translateText(
+                'Next steps: select "Bypass & Approve", "Reject & Redo" below, or type instructions and click "Retry".',
+                lang
+              );
+              this.appendMessage({
+                id: `validation-${Date.now()}`,
+                agent: 'AI Agent',
+                avatar: '',
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                text: `${data.message}\n\n${nextStepsText}`,
+                status: 'FAILED',
+                badgeText: 'VALIDATION FAILED',
+              });
+            }
+            return;
+          }
+          if (envelope.event === 'file_changed') {
+            window.dispatchEvent(new CustomEvent('clutch-file-changed', { detail: envelope.data }));
+            return;
+          }
+          if (envelope.event === 'run_completed') {
+            const data = envelope.data as { status?: string };
+            if (data.status) {
+              this.applyPatch({ status: data.status as ClutchState['status'] });
+            }
+            return;
+          }
+          if (envelope.event === 'pty_output') {
+            const data = envelope.data as PtyOutputData;
+            if (data.chunk) {
+              this.dispatchPtyOutput(data.chunk, data.lane_id ?? '');
+            }
+            return;
+          }
+          if (envelope.event === 'pty_session_status') {
+            const data = envelope.data as PtySessionStatusData;
+            if (data.status) {
+              this.setPtySessionStatus(data.status, data.lane_id ?? '');
+            }
+            return;
+          }
+          if (envelope.event === 'dispatch_preview') {
+            const data = envelope.data as {
+              ok?: boolean;
+              preview?: DispatchPreviewPayload;
+              error?: string;
+            };
+            const resolver = this._dispatchPreviewResolvers.shift();
+            if (resolver) {
+              if (data.ok && data.preview) {
+                resolver({ ok: true, preview: data.preview });
+              } else {
+                resolver({ ok: false, error: data.error ?? 'Dispatch preview failed' });
+              }
+            }
+            return;
+          }
+          if (envelope.event === 'dispatch_error') {
+            const data = envelope.data as { error?: string };
+            const message = data.error ?? 'Dispatch failed';
+            for (const handler of this._dispatchErrorHandlers) {
+              handler(message);
+            }
+            return;
+          }
+          if (envelope.event === 'pty_session_stats') {
+            const data = envelope.data as PtySessionStats & { run_id?: string };
+            const resolver = this._ptyStatsResolvers.shift();
+            resolver?.({
+              total: data.total ?? 0,
+              sessions: data.sessions ?? [],
+            });
+            return;
+          }
+          if (envelope.event === 'pty_sessions_closed') {
+            for (const lane of this._lanePty.values()) {
+              lane.status = 'detached';
+            }
+            this._ptySessionStatus = 'detached';
+            for (const handler of this._ptyClosedHandlers) {
+              handler();
+            }
+            return;
+          }
+        } catch {
+          console.warn('[Clutch WS] non-JSON message:', event.data);
+        }
+      };
 
-        ws.onclose = () => {
-          if (!isCurrentSocket()) return;
-          this._connected = false;
-          this.socket = null;
-          this.connectPromise = null;
-          this.emit();
-        };
-      });
-    })();
+      ws.onerror = () => {
+        this.connectPromise = null;
+        reject(new Error('WebSocket connection failed'));
+      };
+
+      ws.onclose = () => {
+        this._connected = false;
+        this.socket = null;
+        this.connectPromise = null;
+        this.emit();
+      };
+        }),
+    );
 
     return this.connectPromise;
   }
@@ -752,7 +1063,6 @@ class ClutchStateStore {
       messages: nextMessages,
       hybrid_executions: hybrid,
     };
-    this.rememberSnapshot(this.state);
     this.emit();
     void this.send({ action: 'delete_message', message_id: messageId });
   }

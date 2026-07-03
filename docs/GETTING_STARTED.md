@@ -20,7 +20,7 @@
 |----------|--------|
 | **macOS 14+** or **Windows 10/11 (x64)** | See [compatibility](../README.md#compatibility). **Windows installers are not yet verified on physical hardware** — macOS is the primary tested platform. |
 | **A project folder** | Any git repo or folder Clutch may read/write |
-| **At least one AI backend** | Cloud API key **or** a local CLI (Claude Code, Codex, Ollama, …) |
+| **At least one AI backend** | Cloud API key **or** a local CLI (Claude Code, CodeBuddy, Codex, Ollama, …) |
 
 You do **not** need Node, Python, or Rust to use the desktop app.
 
@@ -63,8 +63,8 @@ On first open, Clutch shows a **full-screen setup wizard**. Follow the steps in 
 |------|----------------|
 | **Welcome** | Waits until the local backend (Sidecar) is healthy |
 | **Workspace** | Pick the folder agents may work in — only this tree is writable |
-| **Models** | Add a cloud API key (DeepSeek, Anthropic, …) **or** skip if you will use local CLI only |
-| **Tools** | Scan and **Connect** CLIs already on your machine (Claude Code, Ollama, Codex, …) |
+| **Models** | Add a cloud API key (DeepSeek, Anthropic, OpenCode Zen, …) **or** skip if you will use local CLI only |
+| **Tools** | Scan and **Connect** CLIs already on your machine (Claude Code, CodeBuddy, Ollama, Codex, …) |
 | **Flow guide** | Short tour of Chat vs Workflow |
 | **Permissions** | Read how CLI permissions work (important) |
 | **Ready** | Launch into the main app |
@@ -96,8 +96,12 @@ Product tour: [`PRODUCT_INTRO.md`](./PRODUCT_INTRO.md) · Architecture: [`ARCHIT
 | Goal | What to configure |
 |------|-------------------|
 | **Claude Code locally** | Settings → Tools → Rescan → Connect `claude` |
+| **CodeBuddy CLI** | `npm install -g @tencent-ai/codebuddy-code` → Settings → Tools → Connect `codebuddy` → run `codebuddy` once to log in |
 | **Ollama locally** | Install [Ollama](https://ollama.com), pull a model (`ollama pull qwen3:8b`), Settings → Tools → Connect Ollama; pick the model in Agent settings or Models |
-| **Cloud API only** | Settings → Models → add provider key → activate a model |
+| **Cloud API only** | Settings → Models → **Clutch Agent** tab → add provider key → activate a model |
+| **CLI agent models** | Settings → Models → **Claude Code** or **OpenCode** tab (read-only scan; configure in the CLI or CC Switch) |
+| **Terminal Orchestra** | Single Agent chat → pick any connected CLI agent → toggle **Terminal mode** (embedded xterm PTY). Bottom **OrchestratorBar** matches Chat input dock; dispatch history shows **CLI session resume** commands (`claude --resume`, `codex resume`, `opencode -s`, …) |
+| **OpenCode Zen (free)** | [opencode.ai/auth](https://opencode.ai/auth) → Zen → API Keys → Settings → Models → **OpenCode Zen** → pick a free model → Save |
 | **CC Switch users** | Keys can be imported from `~/.cc-switch` on startup |
 
 ### UI map (30 seconds)
@@ -152,7 +156,7 @@ Clutch may call local CLIs with `--dangerously-skip-permissions` so workflows ca
 |------|------|
 | **macOS 14+** 或 **Windows 10/11 (x64)** | 见 [兼容性说明](../README.zh-CN.md#兼容性)。**Windows 安装包尚未在实体机上完整验收** — 目前以 macOS 为主要测试平台。 |
 | **一个项目目录** | 任意 git 仓库或文件夹，Clutch 只在该目录内读写 |
-| **至少一种 AI 能力** | 云端 API Key **或** 本机 CLI（Claude Code、Codex、Ollama 等） |
+| **至少一种 AI 能力** | 云端 API Key **或** 本机 CLI（Claude Code、CodeBuddy、Codex、Ollama 等） |
 
 使用桌面安装包时，**不需要**安装 Node、Python 或 Rust。
 
@@ -195,8 +199,8 @@ xattr -cr /Applications/Clutch.app && open -a Clutch
 |------|------|
 | **欢迎** | 等待本机后端（Sidecar）就绪 |
 | **工作区** | 选择 Agent 可以读写的项目目录 |
-| **模型** | 填写云端 API Key，或若只用本机 CLI 可暂时跳过 |
-| **工具** | 扫描并 **Connect** 本机已装的 CLI（Claude Code、Ollama、Codex 等） |
+| **模型** | 填写云端 API Key（含 OpenCode Zen 等），或若只用本机 CLI 可暂时跳过 |
+| **工具** | 扫描并 **Connect** 本机已装的 CLI（Claude Code、CodeBuddy、Ollama、Codex 等） |
 | **流程引导** | 了解「单聊」和「工作流」的区别 |
 | **权限说明** | 阅读 CLI 权限相关说明（建议认真看） |
 | **就绪** | 进入主界面 |
@@ -228,8 +232,12 @@ xattr -cr /Applications/Clutch.app && open -a Clutch
 | 目标 | 怎么配 |
 |------|--------|
 | **本机 Claude Code** | Settings → Tools → Rescan → Connect `claude` |
+| **CodeBuddy CLI** | `npm install -g @tencent-ai/codebuddy-code` → Settings → Tools → Connect `codebuddy` → 终端运行 `codebuddy` 完成登录 |
 | **本机 Ollama** | 安装 [Ollama](https://ollama.com)，执行 `ollama pull qwen3:8b`，Settings → Tools 连接 Ollama；在 Agent 或 Models 里选模型 |
-| **只用云端 API** | Settings → Models → 填 Key → 激活模型 |
+| **只用云端 API** | Settings → Models → **Clutch Agent** 标签页 → 填 Key → 激活模型 |
+| **CLI Agent 模型** | Settings → Models → **Claude Code** 或 **OpenCode** 标签页（只读扫描；在 CLI 或 CC Switch 中配置） |
+| **Terminal Orchestra** | Single Agent 聊天 → 选择任意已 Connect 的 CLI Agent → 切换 **终端模式**（嵌入式 xterm PTY）。底部 **OrchestratorBar** 与 Chat 输入栏同款贴底；派发记录含 **CLI Session 恢复命令**（`claude --resume`、`codex resume`、`opencode -s` 等） |
+| **OpenCode Zen（免费）** | [opencode.ai/auth](https://opencode.ai/auth) → Zen → API Keys → Settings → Models → **OpenCode Zen** → 选免费模型 → 保存 |
 | **CC Switch 用户** | 启动时可从 `~/.cc-switch` 导入 |
 
 ### 界面速览

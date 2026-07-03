@@ -16,6 +16,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Response, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
@@ -46,6 +47,20 @@ async def _lifespan(app: FastAPI):
     set_resume_handler(_resume_pool_queued_turn)
     set_refresh_handler(_refresh_pool_queued_run_states)
 
+    from src.interactive_pty_runtime import interactive_pty_manager
+    from src.plain_chat_pool_queue import get_plain_chat_ws
+
+    async def _forward_interactive_pty_output(session_key: str, chunk: str) -> None:
+        from src.terminal_orchestra import parse_pty_session_key
+
+        parent_run_id, lane_id = parse_pty_session_key(session_key)
+        websocket = get_plain_chat_ws(parent_run_id)
+        if websocket is not None:
+            await _send_pty_output(websocket, parent_run_id, chunk, lane_id=lane_id)
+
+    interactive_pty_manager.set_event_loop(loop)
+    interactive_pty_manager.set_output_handler(_forward_interactive_pty_output)
+
     async def _sweep_shell_sessions() -> None:
         manager = get_shell_session_manager()
         while True:
@@ -63,6 +78,18 @@ async def _lifespan(app: FastAPI):
                 logger.exception("shell_session sweep failed")
 
     task = asyncio.create_task(_sweep_shell_sessions())
+
+    async def _prefetch_cc_switch_bundle() -> None:
+        try:
+            from src.cli_agent_config import prefetch_cc_switch_cli_bundle, resolve_cc_switch_cli_path
+
+            if resolve_cc_switch_cli_path():
+                return
+            await asyncio.to_thread(prefetch_cc_switch_cli_bundle)
+        except Exception:
+            logger.debug("cc-switch bundle prefetch skipped", exc_info=True)
+
+    asyncio.create_task(_prefetch_cc_switch_bundle())
     yield
     task.cancel()
     try:
@@ -104,6 +131,9 @@ class SidecarAuthMiddleware(BaseHTTPMiddleware):
         if not auth_required():
             return await call_next(request)
         if not validate_bearer(request.headers.get("authorization")):
+            # <video> cannot send Authorization; allow session token query (same as WebSocket).
+            if path == "/api/workspace/media" and validate_token(request.query_params.get("token")):
+                return await call_next(request)
             return JSONResponse(
                 status_code=401,
                 content={
@@ -165,6 +195,10 @@ class ModelsConfigRequest(BaseModel):
     api_key: str | None = None
 
 
+class OpenCodeZenListRequest(BaseModel):
+    api_key: str | None = None
+
+
 class ModelTestRequest(BaseModel):
     model_id: str
 
@@ -175,6 +209,30 @@ class CustomImageModelRequest(BaseModel):
     base_url: str
     provider_id: str = Field(default="custom")
     image_backend: str = Field(default="")
+    api_key: str | None = None
+
+
+class CustomChatModelRequest(BaseModel):
+    name: str
+    api_model: str
+    base_url: str
+    provider_id: str = Field(default="custom")
+    api_key: str | None = None
+
+
+class CustomVideoModelRequest(BaseModel):
+    name: str
+    api_model: str
+    base_url: str
+    provider_id: str = Field(default="custom")
+    video_backend: str = Field(default="agnes")
+    api_key: str | None = None
+
+
+class CustomModelUpdateRequest(BaseModel):
+    name: str
+    api_model: str
+    base_url: str
     api_key: str | None = None
 
 
@@ -220,6 +278,13 @@ class McpServerIdRequest(BaseModel):
 class McpSaveConfigRequest(BaseModel):
     servers: list[dict[str, Any]]
 
+
+class CliActivateProviderRequest(BaseModel):
+    provider_id: str
+
+
+class CliActivateModelRequest(BaseModel):
+    model_ref: str
 
 
 class ThemePreferenceRequest(BaseModel):
@@ -288,9 +353,14 @@ def _touch_session(
     status: str | None = None,
 ) -> None:
     from src.run_history import list_runs, upsert_session
+    from src.session_content import session_has_persistable_content
 
     fields = _session_workspace_fields()
     if not fields:
+        return
+    state = _get_or_create_run(run_id)
+    existing = next((record for record in list_runs() if record.get("run_id") == run_id), None)
+    if not existing and not session_has_persistable_content(state):
         return
     patch: dict[str, Any] = {**fields, "run_id": run_id}
     if title is not None:
@@ -299,7 +369,6 @@ def _touch_session(
         patch["workflow_id"] = workflow_id
     if status is not None:
         patch["status"] = status
-    existing = next((record for record in list_runs() if record.get("run_id") == run_id), None)
     if existing:
         upsert_session({**existing, **patch})
     else:
@@ -727,6 +796,11 @@ def _merge_patch(state: ClutchState, patch: dict[str, Any]) -> ClutchState:
         "shell_pool_blockers",
         "shell_pool_queue_position",
         "shell_pool_queue_depth",
+        "pty_lanes",
+        "dispatch_log",
+        "dispatch_edges",
+        "pending_handoff_drafts",
+        "focused_lane_id",
     })
     for key, value in patch.items():
         if key in merged or key in optional_keys:
@@ -994,6 +1068,56 @@ async def _send_human_required(
     await websocket.send_text(json.dumps(envelope))
 
 
+async def _send_pty_output(
+    websocket: WebSocket,
+    run_id: str,
+    chunk: str,
+    *,
+    node_id: str = "",
+    lane_id: str = "",
+) -> None:
+    envelope = {
+        "event": "pty_output",
+        "data": {
+            "run_id": run_id,
+            "lane_id": lane_id,
+            "node_id": node_id,
+            "source": "interactive_pty",
+            "level": "info",
+            "message": "pty output chunk",
+            "timestamp": _iso_timestamp(),
+            "chunk": chunk,
+            "encoding": "utf8",
+        },
+    }
+    await websocket.send_text(json.dumps(envelope))
+
+
+async def _send_pty_session_status(
+    websocket: WebSocket,
+    run_id: str,
+    status: str,
+    *,
+    node_id: str = "",
+    detail: str = "",
+    lane_id: str = "",
+) -> None:
+    envelope = {
+        "event": "pty_session_status",
+        "data": {
+            "run_id": run_id,
+            "lane_id": lane_id,
+            "node_id": node_id,
+            "source": "interactive_pty",
+            "level": "info",
+            "message": detail or f"pty session {status}",
+            "timestamp": _iso_timestamp(),
+            "status": status,
+        },
+    }
+    await websocket.send_text(json.dumps(envelope))
+
+
 def _estimate_tokens(text: str) -> int:
     return max(1, len(text.split()))
 
@@ -1171,9 +1295,63 @@ async def _llm_chat_reply(
         vision_enabled = False
 
     from src.image_router import format_image_reply, generate_image_for_model, is_image_model
+    from src.video_router import format_video_reply, generate_video_for_model, is_video_model
     from src.chat_content import extract_image_data_urls
 
     _plain, attached_images = extract_image_data_urls(text)
+
+    if uses_clutch_model and is_video_model(model):
+        if attached_images:
+            err = (
+                "This model only generates videos and cannot read uploaded screenshots. "
+                "Switch to a vision chat model (e.g. Qwen 2.5 VL 7B) using the Model menu in the footer."
+            )
+            return (
+                reply_label,
+                runtime_model_name,
+                err,
+                [f"[CHAT] Vision input ignored for video-generation model {runtime_model_name}"],
+                None,
+                None,
+                [],
+                None,
+                None,
+                False,
+            )
+        spec, api_key = router.resolve_for_model(resolved_model_id)
+        loop = asyncio.get_running_loop()
+        video_logs: list[str] = []
+
+        def on_video_log(line: str) -> None:
+            if emit_log:
+                asyncio.run_coroutine_threadsafe(emit_log(line), loop)
+
+        try:
+            video_prompt = (_plain or text).strip()
+            result = await asyncio.to_thread(
+                generate_video_for_model,
+                spec,
+                video_prompt,
+                api_key=router._require_api_key(spec.provider_id, api_key),
+                on_log=on_video_log if emit_log else None,
+            )
+            return reply_label, runtime_model_name, format_video_reply(result), video_logs, None, None, [], None, None, False
+        except Exception as exc:
+            from src.models_config import format_connection_error
+
+            err = format_connection_error(exc)
+            return (
+                reply_label,
+                runtime_model_name,
+                err,
+                [f"Error generating video: {err}"],
+                None,
+                None,
+                [],
+                None,
+                None,
+                False,
+            )
 
     if uses_clutch_model and is_image_model(model):
         if attached_images:
@@ -2688,6 +2866,20 @@ async def create_session_endpoint(body: SessionCreateRequest) -> dict[str, Any]:
     workspace = get_workspace()
     if workspace is None:
         raise HTTPException(status_code=400, detail={"message": tr("Please select and authorize a project workspace first", "请先选择并授权一个项目工作区")})
+    from src.run_state_store import load_run_state
+    from src.session_content import session_has_persistable_content
+
+    state = load_run_state(body.run_id) or _get_or_create_run(body.run_id)
+    if not session_has_persistable_content(state):
+        return {
+            "run_id": body.run_id,
+            "workspace_id": workspace["id"],
+            "workspace_name": workspace["name"],
+            "title": body.title[:80] or "New session",
+            "workflow_id": body.workflow_id,
+            "status": "idle",
+            "started_at": _iso_timestamp(),
+        }
     record = upsert_session(
         {
             "run_id": body.run_id,
@@ -2695,7 +2887,7 @@ async def create_session_endpoint(body: SessionCreateRequest) -> dict[str, Any]:
             "workspace_name": workspace["name"],
             "title": body.title[:80] or "New session",
             "workflow_id": body.workflow_id,
-            "status": "idle",
+            "status": str(state.get("status") or "idle"),
             "started_at": _iso_timestamp(),
         }
     )
@@ -2899,6 +3091,24 @@ async def read_workspace_file(path: str) -> dict[str, str]:
         raise _workspace_http_error(exc) from exc
 
 
+@app.get("/api/workspace/media")
+async def read_workspace_media(path: str) -> FileResponse:
+    from src.workspace import WorkspaceError, resolve_allowed_path
+
+    try:
+        target = resolve_allowed_path(path)
+    except WorkspaceError as exc:
+        raise _workspace_http_error(exc) from exc
+    if not target.is_file():
+        raise HTTPException(
+            status_code=404,
+            detail={"message": tr("File does not exist", "文件不存在"), "message_zh": "文件不存在"},
+        )
+    suffix = target.suffix.lower()
+    media_type = "video/mp4" if suffix == ".mp4" else "application/octet-stream"
+    return FileResponse(target, media_type=media_type, filename=target.name)
+
+
 @app.get("/api/agents")
 async def list_agents_endpoint() -> dict[str, list[dict[str, Any]]]:
     from src.agent_storage import list_agents
@@ -3047,22 +3257,55 @@ async def get_models_config(response: Response) -> dict[str, Any]:
 
 @app.post("/api/models/config")
 async def update_models_config(body: ModelsConfigRequest) -> dict[str, str]:
-    from src.llm.router import ProviderId
+    from src.adapters.opencode_zen_adapter import ZEN_DEFAULT_MODEL_ID, validate_opencode_zen_save
     from src.models_config import get_router, is_model_available, save_router, sync_local_ollama_models
 
     router = get_router()
     sync_local_ollama_models(router)
+    if body.provider_id == "opencode" and body.api_key is not None:
+        key = body.api_key.strip()
+        model_id = body.active_model_id
+        if not model_id:
+            active = router._models.get(router.active_model_id)
+            model_id = (
+                router.active_model_id
+                if active and active.provider_id == "opencode"
+                else ZEN_DEFAULT_MODEL_ID
+            )
+        try:
+            validate_opencode_zen_save(key, str(model_id), router)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+        router.set_api_key("opencode", key)
+    elif body.provider_id and body.api_key is not None:
+        router.set_api_key(body.provider_id, body.api_key.strip())  # type: ignore[arg-type]
     if body.active_model_id:
         if not is_model_available(router, body.active_model_id):
             raise HTTPException(
                 status_code=400,
                 detail={"message": "Model is not available — configure provider API key first"},
             )
+        from src.custom_models import unhide_model_from_list
+
+        unhide_model_from_list(body.active_model_id)
         router.set_active_model(body.active_model_id)
-    if body.provider_id and body.api_key is not None:
-        router.set_api_key(body.provider_id, body.api_key)  # type: ignore[arg-type]
     save_router(router)
     return {"status": "saved", "active_model_id": router.active_model_id}
+
+
+@app.get("/api/models/credentials/{provider_id}")
+async def get_provider_credential(provider_id: str) -> dict[str, Any]:
+    from src.credentials.sources import is_clutch_managed_credential
+    from src.models_config import get_router
+
+    router = get_router()
+    if not is_clutch_managed_credential(provider_id):  # type: ignore[arg-type]
+        raise HTTPException(
+            status_code=404,
+            detail={"message": "No Clutch-managed key for this provider."},
+        )
+    api_key = router.get_api_key(provider_id)  # type: ignore[arg-type]
+    return {"provider_id": provider_id, "configured": bool(api_key), "api_key": api_key or ""}
 
 
 @app.delete("/api/models/credentials/{provider_id}")
@@ -3082,6 +3325,99 @@ async def rehydrate_cc_switch_endpoint() -> dict[str, Any]:
     from src.models_config import get_router, rehydrate_cc_switch_models
 
     return rehydrate_cc_switch_models(get_router())
+
+
+@app.get("/api/cli-config/{agent_type}/models")
+async def get_cli_config_models(agent_type: str) -> dict[str, Any]:
+    from src.cli_agent_config import normalize_cli_agent_type, scan_cli_models
+    from src.workspace import get_workspace
+
+    try:
+        normalized = normalize_cli_agent_type(agent_type)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+    workspace = get_workspace()
+    workspace_path = workspace.get("workspace_path") if workspace else None
+    return scan_cli_models(normalized, workspace_path=workspace_path)
+
+
+@app.get("/api/cli-config/{agent_type}/skills")
+async def get_cli_config_skills(agent_type: str) -> dict[str, Any]:
+    from src.cli_agent_config import normalize_cli_agent_type, scan_cli_skills
+    from src.workspace import get_workspace
+
+    try:
+        normalized = normalize_cli_agent_type(agent_type)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+    workspace = get_workspace()
+    workspace_path = workspace.get("workspace_path") if workspace else None
+    return scan_cli_skills(normalized, workspace_path=workspace_path)
+
+
+@app.get("/api/cli-config/{agent_type}/mcp")
+async def get_cli_config_mcp(agent_type: str) -> dict[str, Any]:
+    from src.cli_agent_config import normalize_cli_agent_type, scan_cli_mcp
+    from src.workspace import get_workspace
+
+    try:
+        normalized = normalize_cli_agent_type(agent_type)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+    workspace = get_workspace()
+    workspace_path = workspace.get("workspace_path") if workspace else None
+    return scan_cli_mcp(normalized, workspace_path=workspace_path)
+
+
+@app.post("/api/cli-config/{agent_type}/activate-provider")
+async def activate_cli_config_provider(
+    agent_type: str,
+    body: CliActivateProviderRequest,
+) -> dict[str, Any]:
+    from src.cli_agent_config import activate_cli_provider, normalize_cli_agent_type
+
+    try:
+        normalized = normalize_cli_agent_type(agent_type)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+    result = activate_cli_provider(normalized, body.provider_id)
+    if not result.get("ok"):
+        raise HTTPException(status_code=400, detail={"message": result.get("message", "activate failed")})
+    return result
+
+
+@app.post("/api/cli-config/install-cc-switch-cli")
+async def install_cc_switch_cli_endpoint() -> dict[str, Any]:
+    from src.cli_agent_config import install_cc_switch_cli
+
+    result = await asyncio.to_thread(install_cc_switch_cli)
+    if not result.get("ok"):
+        raise HTTPException(status_code=400, detail={"message": result.get("message", "install failed")})
+    return result
+
+
+@app.post("/api/cli-config/prefetch-cc-switch-cli")
+async def prefetch_cc_switch_cli_endpoint() -> dict[str, Any]:
+    from src.cli_agent_config import prefetch_cc_switch_cli_bundle
+
+    return await asyncio.to_thread(prefetch_cc_switch_cli_bundle)
+
+
+@app.post("/api/cli-config/{agent_type}/activate-model")
+async def activate_cli_config_model(
+    agent_type: str,
+    body: CliActivateModelRequest,
+) -> dict[str, Any]:
+    from src.cli_agent_config import activate_cli_model, normalize_cli_agent_type
+
+    try:
+        normalized = normalize_cli_agent_type(agent_type)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+    result = activate_cli_model(normalized, body.model_ref)
+    if not result.get("ok"):
+        raise HTTPException(status_code=400, detail={"message": result.get("message", "activate failed")})
+    return result
 
 
 @app.post("/api/models/test")
@@ -3117,6 +3453,81 @@ async def add_custom_image_model(body: CustomImageModelRequest) -> dict[str, Any
     }
 
 
+@app.post("/api/models/custom/chat")
+async def add_custom_chat_model(body: CustomChatModelRequest) -> dict[str, Any]:
+    from src.custom_models import add_custom_model
+    from src.models_config import get_router, serialize_models_config
+
+    router = get_router()
+    try:
+        spec = add_custom_model(
+            router,
+            name=body.name,
+            api_model=body.api_model,
+            base_url=body.base_url,
+            provider_id=body.provider_id,
+            model_kind="chat",
+            api_key=body.api_key,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+    return {
+        "status": "created",
+        "model_id": spec.id,
+        "config": serialize_models_config(router),
+    }
+
+
+@app.post("/api/models/custom/video")
+async def add_custom_video_model(body: CustomVideoModelRequest) -> dict[str, Any]:
+    from src.custom_models import add_custom_model
+    from src.models_config import get_router, serialize_models_config
+
+    router = get_router()
+    try:
+        spec = add_custom_model(
+            router,
+            name=body.name,
+            api_model=body.api_model,
+            base_url=body.base_url,
+            provider_id=body.provider_id,
+            model_kind="video",
+            video_backend=body.video_backend or "agnes",
+            api_key=body.api_key,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+    return {
+        "status": "created",
+        "model_id": spec.id,
+        "config": serialize_models_config(router),
+    }
+
+
+@app.patch("/api/models/custom/{model_id}")
+async def update_custom_model_entry(model_id: str, body: CustomModelUpdateRequest) -> dict[str, Any]:
+    from src.custom_models import update_custom_model
+    from src.models_config import get_router, serialize_models_config
+
+    router = get_router()
+    try:
+        spec = update_custom_model(
+            router,
+            model_id,
+            name=body.name,
+            api_model=body.api_model,
+            base_url=body.base_url,
+            api_key=body.api_key,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+    return {
+        "status": "updated",
+        "model_id": spec.id,
+        "config": serialize_models_config(router),
+    }
+
+
 @app.delete("/api/models/custom/{model_id}")
 async def delete_custom_image_model(model_id: str) -> dict[str, Any]:
     from src.custom_models import remove_model_from_list
@@ -3128,6 +3539,17 @@ async def delete_custom_image_model(model_id: str) -> dict[str, Any]:
     except ValueError as exc:
         raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
     return {"status": "deleted", "model_id": model_id, "config": serialize_models_config(router)}
+
+
+@app.post("/api/models/opencode-zen/list")
+async def list_opencode_zen_catalog(_body: OpenCodeZenListRequest) -> dict[str, Any]:
+    from src.adapters.opencode_zen_adapter import fetch_opencode_zen_catalog
+
+    try:
+        models = fetch_opencode_zen_catalog()
+        return {"ok": True, "models": models}
+    except Exception as exc:
+        return {"ok": False, "models": [], "message": str(exc)}
 
 
 @app.get("/api/models/ollama")
@@ -3518,7 +3940,10 @@ async def start_run_on_session(run_id: str, body: StartRunRequest) -> dict[str, 
 
 @app.get("/api/runs/{run_id}/state")
 async def get_run_state(run_id: str) -> dict[str, Any]:
-    state = _get_or_create_run(run_id)
+    from src.run_state_store import sync_run_state_from_disk
+
+    state = sync_run_state_from_disk(run_id, _get_or_create_run(run_id))
+    _run_states[run_id] = state
     return {"run_id": run_id, "state": _serialize_clutch_state(state)}
 
 
@@ -3817,7 +4242,7 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
             )
 
             patch: dict[str, Any] = {}
-            if isinstance(payload, dict) and payload.get("text"):
+            if isinstance(payload, dict) and payload.get("text") and not payload.get("action"):
                 text = str(payload["text"])
                 agent_id = str(payload.get("agent_id", "")).strip() or None
                 session_model_id = str(payload.get("model_id", "")).strip() or None
@@ -3939,6 +4364,306 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                             websocket, run_id, log_line, node_id=state["active_node_id"]
                         )
                         await _notify_run_state(websocket, run_id, state, patch)
+            elif isinstance(payload, dict) and payload.get("action") == "pty_attach":
+                from src.interactive_pty_runtime import InteractivePtyError, interactive_pty_manager
+                from src.terminal_orchestra import (
+                    _ensure_lane_cli_session_id,
+                    ensure_primary_lane,
+                    normalize_lane_id,
+                    pty_session_key,
+                )
+                from src.workspace import get_workspace
+
+                cli_tool = str(payload.get("cli_tool", "claude-cli")).strip() or "claude-cli"
+                lane_id = normalize_lane_id(str(payload.get("lane_id", "primary")), state)
+                workspace = get_workspace()
+                workspace_path = str(workspace.get("workspace_path", "")).strip() if workspace else ""
+                orch_patch = ensure_primary_lane(state, cli_tool=cli_tool)
+                if orch_patch:
+                    state = _merge_patch(state, orch_patch)
+                    _commit_run_state(run_id, state)
+                    await _notify_run_state(websocket, run_id, state, orch_patch)
+                    lane_id = normalize_lane_id(lane_id, state)
+                lane_cli_session_id: str | None = None
+                for lane in state.get("pty_lanes") or []:
+                    if isinstance(lane, dict) and str(lane.get("lane_id") or "") == lane_id:
+                        lane_cli_session_id = _ensure_lane_cli_session_id(lane)
+                        _commit_run_state(run_id, state)
+                        break
+                session_key = pty_session_key(run_id, lane_id)
+                if not workspace_path:
+                    await _send_pty_session_status(
+                        websocket,
+                        run_id,
+                        "blocked",
+                        detail="No workspace authorized for interactive PTY",
+                        lane_id=lane_id,
+                    )
+                else:
+                    try:
+                        session = await asyncio.to_thread(
+                            interactive_pty_manager.attach,
+                            session_key,
+                            workspace_path=workspace_path,
+                            cli_tool=cli_tool,
+                            cli_session_id=lane_cli_session_id,
+                        )
+                        await _send_pty_session_status(
+                            websocket,
+                            run_id,
+                            session.status.value,
+                            detail="Interactive PTY attached",
+                            lane_id=lane_id,
+                        )
+                    except (InteractivePtyError, OSError) as exc:
+                        await _send_pty_session_status(
+                            websocket,
+                            run_id,
+                            "blocked",
+                            detail=str(exc),
+                            lane_id=lane_id,
+                        )
+            elif isinstance(payload, dict) and payload.get("action") == "pty_detach":
+                from src.interactive_pty_runtime import interactive_pty_manager
+                from src.terminal_orchestra import normalize_lane_id, pty_session_key
+
+                lane_id = normalize_lane_id(str(payload.get("lane_id", "primary")), state)
+                await asyncio.to_thread(interactive_pty_manager.detach, pty_session_key(run_id, lane_id))
+                await _send_pty_session_status(
+                    websocket,
+                    run_id,
+                    "detached",
+                    detail="Interactive PTY detached",
+                    lane_id=lane_id,
+                )
+            elif isinstance(payload, dict) and payload.get("action") == "pty_input":
+                from src.interactive_pty_runtime import InteractivePtyError, interactive_pty_manager
+                from src.terminal_orchestra import normalize_lane_id, pty_session_key
+
+                data = str(payload.get("data", ""))
+                lane_id = normalize_lane_id(str(payload.get("lane_id", "primary")), state)
+                if data:
+                    try:
+                        await asyncio.to_thread(
+                            interactive_pty_manager.write_input,
+                            pty_session_key(run_id, lane_id),
+                            data,
+                        )
+                    except InteractivePtyError as exc:
+                        await _send_pty_session_status(
+                            websocket,
+                            run_id,
+                            "blocked",
+                            detail=str(exc),
+                            lane_id=lane_id,
+                        )
+            elif isinstance(payload, dict) and payload.get("action") == "pty_resize":
+                from src.interactive_pty_runtime import interactive_pty_manager
+                from src.terminal_orchestra import normalize_lane_id, pty_session_key
+
+                cols = int(payload.get("cols", 80))
+                rows = int(payload.get("rows", 24))
+                lane_id = normalize_lane_id(str(payload.get("lane_id", "primary")), state)
+                await asyncio.to_thread(
+                    interactive_pty_manager.resize,
+                    pty_session_key(run_id, lane_id),
+                    cols,
+                    rows,
+                )
+            elif isinstance(payload, dict) and payload.get("action") == "dispatch_preview":
+                from src.terminal_orchestra import preview_dispatch, serialize_preview
+
+                text = str(payload.get("text", "")).strip()
+                preview = preview_dispatch(state, text)
+                if preview is None:
+                    await websocket.send_text(
+                        json.dumps(
+                            {
+                                "event": "dispatch_preview",
+                                "data": {
+                                    "run_id": run_id,
+                                    "ok": False,
+                                    "error": "输入需包含 @目标 Agent",
+                                },
+                            }
+                        )
+                    )
+                else:
+                    await websocket.send_text(
+                        json.dumps(
+                            {
+                                "event": "dispatch_preview",
+                                "data": {
+                                    "run_id": run_id,
+                                    "ok": True,
+                                    "preview": serialize_preview(preview),
+                                },
+                            }
+                        )
+                    )
+            elif isinstance(payload, dict) and payload.get("action") == "dispatch_confirm":
+                from src.terminal_orchestra import confirm_dispatch, preview_dispatch, serialize_preview
+                from src.workspace import get_workspace
+
+                text = str(payload.get("text", "")).strip()
+                active_chips = payload.get("active_sources")
+                chip_list = (
+                    [str(x) for x in active_chips]
+                    if isinstance(active_chips, list)
+                    else None
+                )
+                preview = preview_dispatch(state, text)
+                if preview is None:
+                    await websocket.send_text(
+                        json.dumps(
+                            {
+                                "event": "dispatch_error",
+                                "data": {"run_id": run_id, "error": "无法解析派发"},
+                            }
+                        )
+                    )
+                else:
+                    workspace = get_workspace()
+                    workspace_path = (
+                        str(workspace.get("workspace_path", "")).strip() if workspace else ""
+                    )
+                    patch = confirm_dispatch(
+                        state,
+                        preview=preview,
+                        prompt=text,
+                        workspace_path=workspace_path or ".",
+                        active_chips=chip_list,
+                        target_configured_agent_id=str(
+                            payload.get("target_configured_agent_id") or ""
+                        ),
+                        target_configured_agent_name=str(
+                            payload.get("target_configured_agent_name") or ""
+                        ),
+                        lane_transcripts=(
+                            payload.get("lane_transcripts")
+                            if isinstance(payload.get("lane_transcripts"), list)
+                            else None
+                        ),
+                    )
+                    sessions_to_close = patch.pop("pty_sessions_to_close", [])
+                    for session_key in sessions_to_close:
+                        await asyncio.to_thread(interactive_pty_manager.close, session_key)
+                    state = _merge_patch(state, patch)
+                    _commit_run_state(run_id, state)
+                    _touch_session(run_id, title=text.strip()[:80] or "New session", status=state["status"])
+                    await _notify_run_state(websocket, run_id, state, patch)
+                    if sessions_to_close:
+                        await websocket.send_text(
+                            json.dumps(
+                                {
+                                    "event": "pty_sessions_closed",
+                                    "data": {"run_id": run_id, "mode": "dispatch"},
+                                }
+                            )
+                        )
+                    await websocket.send_text(
+                        json.dumps(
+                            {
+                                "event": "dispatch_confirmed",
+                                "data": {
+                                    "run_id": run_id,
+                                    "preview": serialize_preview(preview),
+                                },
+                            }
+                        )
+                    )
+            elif isinstance(payload, dict) and payload.get("action") == "lane_focus":
+                from src.terminal_orchestra import patch_lane_focus
+
+                lane_id = str(payload.get("lane_id", "")).strip()
+                if lane_id:
+                    patch = patch_lane_focus(state, lane_id)
+                    state = _merge_patch(state, patch)
+                    _commit_run_state(run_id, state)
+                    await _notify_run_state(websocket, run_id, state, patch)
+            elif isinstance(payload, dict) and payload.get("action") == "lane_collapse":
+                from src.terminal_orchestra import patch_lane_collapse
+
+                lane_id = str(payload.get("lane_id", "")).strip()
+                collapsed = bool(payload.get("collapsed", True))
+                if lane_id:
+                    patch = patch_lane_collapse(state, lane_id, collapsed=collapsed)
+                    state = _merge_patch(state, patch)
+                    _commit_run_state(run_id, state)
+                    await _notify_run_state(websocket, run_id, state, patch)
+            elif isinstance(payload, dict) and payload.get("action") == "lane_complete":
+                from src.terminal_orchestra import patch_lane_complete
+
+                lane_id = str(payload.get("lane_id", "")).strip()
+                if lane_id:
+                    patch = patch_lane_complete(state, lane_id)
+                    state = _merge_patch(state, patch)
+                    _commit_run_state(run_id, state)
+                    await _notify_run_state(websocket, run_id, state, patch)
+            elif isinstance(payload, dict) and payload.get("action") == "pty_session_stats":
+                from src.interactive_pty_runtime import interactive_pty_manager
+
+                sessions = interactive_pty_manager.list_alive_for_run(run_id)
+                await websocket.send_text(
+                    json.dumps(
+                        {
+                            "event": "pty_session_stats",
+                            "data": {
+                                "run_id": run_id,
+                                "total": len(sessions),
+                                "sessions": sessions,
+                            },
+                        }
+                    )
+                )
+            elif isinstance(payload, dict) and payload.get("action") == "pty_close_all":
+                from src.interactive_pty_runtime import interactive_pty_manager
+                from src.terminal_orchestra import patch_close_terminal_lanes
+
+                patch = patch_close_terminal_lanes(state, keep_lane_id=None)
+                for session_key in patch.pop("pty_sessions_to_close", []):
+                    await asyncio.to_thread(interactive_pty_manager.close, session_key)
+                interactive_pty_manager.close_for_run(run_id)
+                state = _merge_patch(state, patch)
+                _commit_run_state(run_id, state)
+                await _notify_run_state(websocket, run_id, state, patch)
+                await websocket.send_text(
+                    json.dumps(
+                        {
+                            "event": "pty_sessions_closed",
+                            "data": {"run_id": run_id, "mode": "all"},
+                        }
+                    )
+                )
+            elif isinstance(payload, dict) and payload.get("action") == "pty_close_others":
+                from src.interactive_pty_runtime import interactive_pty_manager
+
+                keep_raw = payload.get("keep_lane_ids")
+                keep_lane_ids: list[str] = []
+                if isinstance(keep_raw, list):
+                    keep_lane_ids = [str(item).strip() for item in keep_raw if str(item).strip()]
+                else:
+                    lane_id = str(payload.get("lane_id", "")).strip()
+                    if lane_id:
+                        keep_lane_ids = [lane_id]
+                interactive_pty_manager.close_for_run(run_id, keep_lane_ids=keep_lane_ids)
+                await websocket.send_text(
+                    json.dumps(
+                        {
+                            "event": "pty_sessions_closed",
+                            "data": {
+                                "run_id": run_id,
+                                "mode": "others",
+                                "keep_lane_ids": keep_lane_ids,
+                            },
+                        }
+                    )
+                )
+            elif isinstance(payload, dict) and payload.get("action") == "pty_inject_ack":
+                patch = {"pending_pty_inject": None}
+                state = _merge_patch(state, patch)
+                _commit_run_state(run_id, state)
+                await _notify_run_state(websocket, run_id, state, patch)
             elif isinstance(payload, dict) and payload.get("action") == "delete_message":
                 message_id = str(payload.get("message_id", "")).strip()
                 if message_id:

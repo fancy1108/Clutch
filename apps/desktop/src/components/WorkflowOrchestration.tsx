@@ -40,6 +40,7 @@ import { getAgentDisplayName } from '../services/builtinAgent';
 import { agentTypeFromAgent, agentTypeLabel } from '../services/agentTypes';
 import { resolveBrandLogoSrc } from '../services/brandLogos';
 import { BTN_GHOST, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON } from './ui/buttonStyles';
+import { SettingsPageHeader } from './ui/SettingsPageHeader';
 import { LegacyIcon } from './ui/LegacyIcon';
 
 type EditorViewMode = 'canvas' | 'json';
@@ -639,25 +640,25 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
 
   const contentElement = (
     <div className="flex-1 h-full flex flex-col bg-white overflow-hidden">
-      <header className={`flex-shrink-0 z-20 bg-white/95 backdrop-blur py-5 flex items-center justify-between border-b border-neutral-100 pl-8 ${isModalStyle ? 'pr-14' : 'pr-8'}`}>
-        <div className="text-left">
-          <h2 className="text-sm font-bold text-neutral-800 tracking-tight font-sans">{t('Workflow Orchestration')}</h2>
-          <p className="text-[11px] text-neutral-400 mt-0.5">
-            {t('Design and manage cooperative multi-agent state pipelines.')}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            data-testid="workflow-create"
-            type="button"
-            onClick={handleCreateWorkflow}
-            className={MODAL_BTN_SECONDARY}
-          >
-            <LegacyIcon name="add" className="text-[16px]" />
-            {t('Create Flow')}
-          </button>
-        </div>
-      </header>
+      <div className={`px-8 pt-8 flex-shrink-0 ${isModalStyle ? 'pr-14' : 'pr-8'}`}>
+        <SettingsPageHeader
+          isModalStyle={isModalStyle}
+          icon="account_tree"
+          title={t('Workflow Orchestration')}
+          description={t('Design and manage cooperative multi-agent state pipelines.')}
+          actions={
+            <button
+              data-testid="workflow-create"
+              type="button"
+              onClick={handleCreateWorkflow}
+              className={MODAL_BTN_SECONDARY}
+            >
+              <LegacyIcon name="add" className="text-[16px]" />
+              {t('Create Flow')}
+            </button>
+          }
+        />
+      </div>
 
       <div className="flex flex-1 min-h-0">
         {/* Left sidebar for workflows */}

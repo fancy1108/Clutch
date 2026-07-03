@@ -47,6 +47,14 @@ export function FooterMenuItem({
   );
 }
 
+export function FooterMenuSection({ label }: { label: string }) {
+  return (
+    <div className="px-3 pt-2 pb-1 text-[9px] font-bold uppercase tracking-wider text-on-surface-variant/80">
+      {label}
+    </div>
+  );
+}
+
 export function FooterMenuAction({
   onClick,
   children,

@@ -12,7 +12,9 @@ from typing import Iterable
 logger = logging.getLogger(__name__)
 
 KEYRING_SERVICE = "com.clutch.app"
-_MANAGED_PROVIDERS = frozenset({"deepseek", "openai", "anthropic", "google", "ollama", "custom"})
+_MANAGED_PROVIDERS = frozenset(
+    {"deepseek", "openai", "anthropic", "google", "ollama", "agnes", "opencode", "custom"}
+)
 _cached_provider_keys: dict[str, str] | None = None
 _acl_stabilized = False
 

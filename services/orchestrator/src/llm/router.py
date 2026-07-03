@@ -6,8 +6,10 @@ import os
 from dataclasses import dataclass, field
 from typing import Any, Callable, Literal, Protocol
 
-ProviderId = Literal["deepseek", "openai", "anthropic", "google", "ollama", "custom"]
-ModelKind = Literal["chat", "image"]
+ProviderId = Literal[
+    "deepseek", "openai", "anthropic", "google", "ollama", "agnes", "opencode", "custom"
+]
+ModelKind = Literal["chat", "image", "video"]
 
 DEFAULT_MODEL_ID = "deepseek-v4pro"
 ENV_KEY_PREFIX = "CLUTCH_"
@@ -22,6 +24,7 @@ class ModelSpec:
     base_url: str
     model_kind: ModelKind = "chat"
     image_backend: str = ""
+    video_backend: str = ""
 
 
 BUILTIN_MODELS: dict[str, ModelSpec] = {
@@ -71,18 +74,63 @@ BUILTIN_MODELS: dict[str, ModelSpec] = {
     "agnes-2.0-flash": ModelSpec(
         id="agnes-2.0-flash",
         name="Agnes 2.0 Flash",
-        provider_id="custom",
+        provider_id="agnes",
         api_model="agnes-2.0-flash",
         base_url="https://apihub.agnes-ai.com/v1",
+    ),
+    # OpenCode Zen free models — https://opencode.ai/docs/zen
+    "opencode-deepseek-v4-flash-free": ModelSpec(
+        id="opencode-deepseek-v4-flash-free",
+        name="DeepSeek V4 Flash Free (OpenCode Zen)",
+        provider_id="opencode",
+        api_model="deepseek-v4-flash-free",
+        base_url="https://opencode.ai/zen/v1",
+    ),
+    "opencode-big-pickle": ModelSpec(
+        id="opencode-big-pickle",
+        name="Big Pickle Free (OpenCode Zen)",
+        provider_id="opencode",
+        api_model="big-pickle",
+        base_url="https://opencode.ai/zen/v1",
+    ),
+    "opencode-mimo-v2.5-free": ModelSpec(
+        id="opencode-mimo-v2.5-free",
+        name="MiMo-V2.5 Free (OpenCode Zen)",
+        provider_id="opencode",
+        api_model="mimo-v2.5-free",
+        base_url="https://opencode.ai/zen/v1",
+    ),
+    "opencode-north-mini-code-free": ModelSpec(
+        id="opencode-north-mini-code-free",
+        name="North Mini Code Free (OpenCode Zen)",
+        provider_id="opencode",
+        api_model="north-mini-code-free",
+        base_url="https://opencode.ai/zen/v1",
+    ),
+    "opencode-nemotron-3-ultra-free": ModelSpec(
+        id="opencode-nemotron-3-ultra-free",
+        name="Nemotron 3 Ultra Free (OpenCode Zen)",
+        provider_id="opencode",
+        api_model="nemotron-3-ultra-free",
+        base_url="https://opencode.ai/zen/v1",
     ),
     "agnes-image-2.1-flash": ModelSpec(
         id="agnes-image-2.1-flash",
         name="Agnes Image 2.1 Flash",
-        provider_id="custom",
+        provider_id="agnes",
         api_model="agnes-image-2.1-flash",
         base_url="https://apihub.agnes-ai.com",
         model_kind="image",
         image_backend="agnes",
+    ),
+    "agnes-video-v2.0": ModelSpec(
+        id="agnes-video-v2.0",
+        name="Agnes Video V2.0",
+        provider_id="agnes",
+        api_model="agnes-video-v2.0",
+        base_url="https://apihub.agnes-ai.com",
+        model_kind="video",
+        video_backend="agnes",
     ),
 }
 
@@ -144,7 +192,15 @@ class LLMProviderRouter:
     def get_api_key(self, provider_id: ProviderId) -> str | None:
         if provider_id in self._api_keys:
             return self._api_keys[provider_id]
-        return os.environ.get(_env_key_for(provider_id))
+        env_key = os.environ.get(_env_key_for(provider_id))
+        if env_key:
+            return env_key
+        # Legacy: Agnes keys were stored under custom before agnes provider existed.
+        if provider_id == "agnes":
+            legacy = self._api_keys.get("custom") or os.environ.get(_env_key_for("custom"))
+            if legacy:
+                return legacy
+        return None
 
     def resolve_for_model(self, model_id: str | None = None) -> tuple[ModelSpec, str | None]:
         spec = self._models[model_id or self._active_model_id]

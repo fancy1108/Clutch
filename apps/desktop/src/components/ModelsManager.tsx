@@ -1,8 +1,11 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  addCustomChatModel,
   addCustomImageModel,
+  addCustomVideoModel,
   deleteCustomModel,
-  deleteProviderCredential,
+  fetchOpencodeZenModels,
+  fetchProviderApiKey,
   fetchModelsConfig,
   loadModelVerifyState,
   mapModelConfigToUi,
@@ -14,19 +17,37 @@ import {
   saveModelVerifyResult,
   saveModelsConfig,
   testModelConnection,
+  updateCustomModel,
   type ProviderEntry,
 } from '../services/modelsApi';
-import { BTN_GHOST, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON } from './ui/buttonStyles';
-import { BADGE_NEUTRAL, BADGE_PRIMARY, BADGE_SUCCESS, CARD_SUBTLE } from './ui/surfaceStyles';
+import { BTN_GHOST, BTN_PRIMARY, BTN_ICON } from './ui/buttonStyles';
+import { SettingsPageHeader, SettingsPageShell } from './ui/SettingsPageHeader';
+import { BADGE_NEUTRAL, BADGE_PRIMARY, BADGE_SUCCESS } from './ui/surfaceStyles';
 import { LegacyIcon } from './ui/LegacyIcon';
-import { useLanguage } from './LanguageContext';
+import {
+  AGNES_BUILTIN_MODEL_ID,
+  AGNES_DEFAULTS,
+  BUILTIN_PROVIDER_IDS,
+  DEFAULT_CHAT_MODEL_BY_PROVIDER,
+  defaultProviderForModelKind,
+  inferImageBackend,
+  OPENCODE_BUILTIN_MODELS,
+  providersForModelKind,
+  type ModelKind,
+} from '../services/modelProviderPresets';
+import { AgentCapabilityTabs } from './AgentCapabilityTabs';
+import { ClaudeCodeModelsPanel } from './ClaudeCodeModelsPanel';
+import { OpenCodeModelsPanel } from './OpenCodeModelsPanel';
+import { MoreAgentsComingSoon } from './MoreAgentsComingSoon';
+import type { AgentCapabilityTabId } from '../services/agentCapabilityTiers';
+import { consumeSettingsAgentTab } from '../services/cliConfigApi';
 
 interface ModelItem {
   id: string;
   name: string;
   provider: string;
   providerId: string;
-  modelKind?: 'chat' | 'image';
+  modelKind?: 'chat' | 'image' | 'video';
   imageBackend?: string;
   available: boolean;
   contextWindow: string;
@@ -40,6 +61,10 @@ interface ModelItem {
 }
 
 type VerifyState = 'idle' | 'testing' | 'ok' | 'failed';
+type ModelsModal =
+  | { type: 'add'; modelKind: ModelKind }
+  | { type: 'edit-key'; providerId: string }
+  | { type: 'edit-custom'; modelId: string; modelKind: ModelKind; baseUrl: string; apiModel: string };
 
 interface ModelsManagerProps {
   activeModelId: string;
@@ -50,8 +75,13 @@ interface ModelsManagerProps {
   setConfiguredModels: React.Dispatch<React.SetStateAction<ModelItem[]>>;
 }
 
-const CONNECTABLE_PROVIDERS = ['deepseek', 'anthropic', 'openai', 'google', 'ollama', 'custom'] as const;
-const IMAGE_BACKEND_IDS = ['', 'agnes', 'openai_images'] as const;
+import { useLanguage } from './LanguageContext';
+
+const CONNECTABLE_PROVIDERS = [...BUILTIN_PROVIDER_IDS, 'custom'] as const;
+
+function defaultOpencodeModelSelection(): string {
+  return DEFAULT_CHAT_MODEL_BY_PROVIDER.opencode;
+}
 
 export const ModelsManager: React.FC<ModelsManagerProps> = ({
   activeModelId,
@@ -63,12 +93,6 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
 }) => {
   const { t } = useLanguage();
 
-  const imageBackendLabel = (id: (typeof IMAGE_BACKEND_IDS)[number]) => {
-    if (id === '') return t('Auto-detect from URL');
-    if (id === 'agnes') return t('Agnes Image API');
-    return t('OpenAI-compatible /v1/images/generations');
-  };
-
   const verifyStatusLabel = (verify: VerifyState): string | null => {
     if (verify === 'testing') return t('Testing…');
     if (verify === 'ok') return t('Ready');
@@ -76,18 +100,27 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
     return null;
   };
 
-  const [showConnectForm, setShowConnectForm] = useState(false);
-  const [showAddImageForm, setShowAddImageForm] = useState(false);
-  const [imageName, setImageName] = useState('');
-  const [imageApiModel, setImageApiModel] = useState('');
-  const [imageBaseUrl, setImageBaseUrl] = useState('https://apihub.agnes-ai.com');
-  const [imageProviderId, setImageProviderId] = useState('custom');
-  const [imageBackend, setImageBackend] = useState('');
-  const [imageApiKey, setImageApiKey] = useState('');
-  const [savingImageModel, setSavingImageModel] = useState(false);
+  const [activeModal, setActiveModal] = useState<ModelsModal | null>(null);
+  const [addMenuOpen, setAddMenuOpen] = useState(false);
+  const addMenuRef = useRef<HTMLDivElement>(null);
+  const [addModelProviderId, setAddModelProviderId] = useState<string>('agnes');
+  const [addModelApiKey, setAddModelApiKey] = useState('');
+  const [addModelCustomBaseUrl, setAddModelCustomBaseUrl] = useState('');
+  const [addModelCustomApiModel, setAddModelCustomApiModel] = useState('');
+  const [opencodeModels, setOpencodeModels] = useState<
+    Array<{ id: string; api_model: string; name: string; supported: boolean }>
+  >(() => [...OPENCODE_BUILTIN_MODELS]);
+  const [loadingOpencodeModels, setLoadingOpencodeModels] = useState(false);
+  const [opencodeListMessage, setOpencodeListMessage] = useState<string | null>(null);
+  const [selectedOpencodeModelId, setSelectedOpencodeModelId] = useState(() =>
+    defaultOpencodeModelSelection(),
+  );
+  const [editCustomBaseUrl, setEditCustomBaseUrl] = useState('');
+  const [editCustomApiModel, setEditCustomApiModel] = useState('');
+  const [editCustomApiKey, setEditCustomApiKey] = useState('');
+  const [savingAddModel, setSavingAddModel] = useState(false);
+  const [savingEditModel, setSavingEditModel] = useState(false);
   const [deletingModelId, setDeletingModelId] = useState<string | null>(null);
-  const [pendingRemove, setPendingRemove] = useState<{ id: string; name: string } | null>(null);
-  const [editingProviderId, setEditingProviderId] = useState<string | null>(null);
   const [providerId, setProviderId] = useState<string>('deepseek');
   const [apiKey, setApiKey] = useState('');
   const [showApiKey, setShowApiKey] = useState(false);
@@ -95,7 +128,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
   const [rescanning, setRescanning] = useState(false);
   const [activatingModelId, setActivatingModelId] = useState<string | null>(null);
   const [savingKey, setSavingKey] = useState(false);
-  const [deletingProviderId, setDeletingProviderId] = useState<string | null>(null);
+  const [loadingKey, setLoadingKey] = useState(false);
   const [syncingCcSwitch, setSyncingCcSwitch] = useState(false);
   const [ccSwitchSyncMessage, setCcSwitchSyncMessage] = useState<{
     tone: 'success' | 'error';
@@ -111,6 +144,12 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
   const [verifyMessageByModel, setVerifyMessageByModel] = useState<Record<string, string>>(
     () => ({ ...initialVerify.verifyMessageByModel }),
   );
+  const [capabilityTab, setCapabilityTab] = useState<AgentCapabilityTabId>('clutch');
+
+  useEffect(() => {
+    const stashed = consumeSettingsAgentTab();
+    if (stashed) setCapabilityTab(stashed);
+  }, []);
 
   const applyConfig = useCallback(
     (config: Awaited<ReturnType<typeof fetchModelsConfig>>) => {
@@ -198,62 +237,329 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
     }
   }, []);
 
-  const openConnectForm = (provider?: string) => {
-    setEditingProviderId(provider ?? null);
-    setProviderId(provider ?? 'deepseek');
+  useEffect(() => {
+    if (!addMenuOpen) return;
+    const onPointerDown = (event: MouseEvent) => {
+      if (addMenuRef.current && !addMenuRef.current.contains(event.target as Node)) {
+        setAddMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onPointerDown);
+    return () => document.removeEventListener('mousedown', onPointerDown);
+  }, [addMenuOpen]);
+
+  const resetAddModelForm = (kind?: ModelKind) => {
+    setAddModelProviderId(kind ? defaultProviderForModelKind(kind) : 'deepseek');
+    setAddModelApiKey('');
+    setAddModelCustomBaseUrl('');
+    setAddModelCustomApiModel('');
+    applyOpencodeProviderDefaults();
+  };
+
+  const resetOpencodeForm = () => {
+    setOpencodeModels([...OPENCODE_BUILTIN_MODELS]);
+    setLoadingOpencodeModels(false);
+    setOpencodeListMessage(null);
+    setSelectedOpencodeModelId(defaultOpencodeModelSelection());
+  };
+
+  const applyOpencodeProviderDefaults = () => {
+    setOpencodeModels([...OPENCODE_BUILTIN_MODELS]);
+    setOpencodeListMessage(null);
+    setSelectedOpencodeModelId(defaultOpencodeModelSelection());
+  };
+
+  const resetEditCustomForm = () => {
+    setEditCustomBaseUrl('');
+    setEditCustomApiModel('');
+    setEditCustomApiKey('');
+  };
+
+  const closeModal = () => {
+    setActiveModal(null);
+    resetAddModelForm();
+    resetEditCustomForm();
+    resetOpencodeForm();
     setApiKey('');
     setShowApiKey(false);
-    setShowConnectForm(true);
     setError(null);
   };
 
-  const closeConnectForm = () => {
-    setShowConnectForm(false);
+  const refreshOpencodeCatalog = useCallback(async () => {
+    setLoadingOpencodeModels(true);
+    setOpencodeListMessage(null);
+    try {
+      const result = await fetchOpencodeZenModels();
+      if (!result.ok || result.models.length === 0) {
+        setOpencodeListMessage(result.message ?? t('Could not refresh model list from opencode.ai.'));
+        return;
+      }
+      setOpencodeModels(result.models);
+      setSelectedOpencodeModelId((current) => {
+        if (current && result.models.some((model) => model.id === current)) return current;
+        const free = result.models.find((model) => model.api_model.endsWith('-free'));
+        return free?.id ?? result.models[0]?.id ?? defaultOpencodeModelSelection();
+      });
+      setOpencodeListMessage(t('Model list updated from opencode.ai.'));
+    } catch (err) {
+      setOpencodeListMessage(
+        err instanceof Error ? err.message : t('Could not refresh model list from opencode.ai.'),
+      );
+    } finally {
+      setLoadingOpencodeModels(false);
+    }
+  }, [t]);
+
+  const renderOpencodeModelPicker = () => (
+    <div className="space-y-1 sm:col-span-2">
+      <div className="flex items-center justify-between gap-2">
+        <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block">
+          {t('Model')}
+        </label>
+        <button
+          type="button"
+          onClick={() => void refreshOpencodeCatalog()}
+          disabled={loadingOpencodeModels}
+          className={`${BTN_GHOST} text-[10px] px-2 py-1 border border-outline/60`}
+        >
+          {loadingOpencodeModels ? t('Refreshing…') : t('Refresh models')}
+        </button>
+      </div>
+      <select
+        value={selectedOpencodeModelId}
+        onChange={(e) => {
+          setSelectedOpencodeModelId(e.target.value);
+          setOpencodeListMessage(null);
+        }}
+        className="w-full text-xs border border-outline bg-surface rounded-lg px-3 py-2 text-on-surface"
+      >
+        {opencodeModels.map((model) => (
+          <option key={model.id} value={model.id}>
+            {model.name}
+          </option>
+        ))}
+      </select>
+      {opencodeListMessage && (
+        <p
+          className={`text-[11px] ${
+            opencodeListMessage.toLowerCase().includes('rejected') ||
+            opencodeListMessage.toLowerCase().includes('no longer')
+              ? 'text-rose-700'
+              : 'text-on-surface-variant'
+          }`}
+        >
+          {opencodeListMessage}
+        </p>
+      )}
+    </div>
+  );
+
+  const openAddModal = (kind: ModelKind) => {
+    setAddMenuOpen(false);
+    setActiveModal({ type: 'add', modelKind: kind });
+    setError(null);
+    resetAddModelForm(kind);
+    resetEditCustomForm();
+    setApiKey('');
     setShowApiKey(false);
-    setEditingProviderId(null);
   };
 
-  const closeAddImageForm = () => {
-    setShowAddImageForm(false);
-    setImageName('');
-    setImageApiModel('');
-    setImageBaseUrl('https://apihub.agnes-ai.com');
-    setImageProviderId('custom');
-    setImageBackend('');
-    setImageApiKey('');
+  const openEditKeyModal = (provider?: string) => {
+    const nextProviderId = provider ?? 'deepseek';
+    setActiveModal({ type: 'edit-key', providerId: nextProviderId });
+    setProviderId(nextProviderId);
+    setApiKey('');
+    resetOpencodeForm();
+    setShowApiKey(false);
+    setError(null);
+    void (async () => {
+      setLoadingKey(true);
+      try {
+        const key = await fetchProviderApiKey(nextProviderId);
+        if (key) {
+          setApiKey(key);
+          if (nextProviderId === 'opencode' && activeModelId.startsWith('opencode-')) {
+            setSelectedOpencodeModelId(activeModelId);
+          }
+        }
+      } catch {
+        // No saved key yet — user can enter a new one.
+      } finally {
+        setLoadingKey(false);
+      }
+    })();
   };
 
-  const handleAddImageModel = async (e: React.FormEvent) => {
+  const openEditCustomModal = (model: ModelItem) => {
+    setActiveModal({
+      type: 'edit-custom',
+      modelId: model.id,
+      modelKind: model.modelKind ?? 'chat',
+      baseUrl: model.endpoint ?? '',
+      apiModel: model.name,
+    });
+    setEditCustomBaseUrl(model.endpoint ?? '');
+    setEditCustomApiModel(model.name);
+    setEditCustomApiKey('');
+    setError(null);
+  };
+
+  const addModelKind: ModelKind | null =
+    activeModal?.type === 'add' ? activeModal.modelKind : null;
+
+  const editingProviderId =
+    activeModal?.type === 'edit-key' ? activeModal.providerId : null;
+
+  const handleAddModel = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!imageName.trim() || !imageApiModel.trim() || !imageBaseUrl.trim()) return;
-    setSavingImageModel(true);
+    if (!addModelKind || !addModelApiKey.trim()) return;
+    setSavingAddModel(true);
     setError(null);
     try {
-      const result = await addCustomImageModel({
-        name: imageName.trim(),
-        api_model: imageApiModel.trim(),
-        base_url: imageBaseUrl.trim(),
-        provider_id: imageProviderId,
-        image_backend: imageBackend as '' | 'agnes' | 'openai_images',
-        api_key: imageApiKey.trim() || undefined,
-      });
-      closeAddImageForm();
-      const models = await refresh({ silent: true });
-      const created = models.find((m) => m.id === result.model_id);
-      if (created?.available) {
-        void handleTestConnection(result.model_id);
+      const isBuiltinProvider = addModelProviderId !== 'custom';
+
+      if (addModelKind === 'chat' && addModelProviderId === 'opencode') {
+        if (!selectedOpencodeModelId) {
+          setError(t('Select an OpenCode Zen model.'));
+          return;
+        }
+        await saveModelsConfig({
+          provider_id: 'opencode',
+          api_key: addModelApiKey.trim(),
+          active_model_id: selectedOpencodeModelId,
+        });
+        closeModal();
+        const models = await refresh({ silent: true });
+        const created = models.find((m) => m.id === selectedOpencodeModelId);
+        if (created?.available) void handleTestConnection(selectedOpencodeModelId);
+        return;
+      }
+
+      if (addModelKind === 'chat' && isBuiltinProvider) {
+        const builtinId = DEFAULT_CHAT_MODEL_BY_PROVIDER[addModelProviderId];
+        await saveModelsConfig({
+          provider_id: addModelProviderId,
+          api_key: addModelApiKey.trim(),
+          ...(builtinId ? { active_model_id: builtinId } : {}),
+        });
+        closeModal();
+        const models = await refresh({ silent: true });
+        if (builtinId) {
+          const created = models.find((m) => m.id === builtinId);
+          if (created?.available) void handleTestConnection(builtinId);
+        } else {
+          const providerModels = models.filter((m) => m.providerId === addModelProviderId);
+          void Promise.all(providerModels.map((m) => handleTestConnection(m.id)));
+        }
+        return;
+      }
+
+      if (isBuiltinProvider && addModelProviderId === 'agnes') {
+        const builtinId = AGNES_BUILTIN_MODEL_ID[addModelKind];
+        await saveModelsConfig({
+          provider_id: 'agnes',
+          api_key: addModelApiKey.trim(),
+          active_model_id: builtinId,
+        });
+        closeModal();
+        const models = await refresh({ silent: true });
+        const created = models.find((m) => m.id === builtinId);
+        if (created?.available) void handleTestConnection(builtinId);
+        return;
+      }
+
+      const baseUrl = addModelCustomBaseUrl.trim();
+      const apiModel = addModelCustomApiModel.trim();
+      if (!baseUrl || !apiModel) {
+        setError(t('Base URL and model id are required for custom gateways.'));
+        return;
+      }
+
+      if (addModelKind === 'chat') {
+        const result = await addCustomChatModel({
+          name: apiModel,
+          api_model: apiModel,
+          base_url: baseUrl,
+          provider_id: 'custom',
+          api_key: addModelApiKey.trim(),
+        });
+        closeModal();
+        const models = await refresh({ silent: true });
+        const created = models.find((m) => m.id === result.model_id);
+        if (created?.available) void handleTestConnection(result.model_id);
+      } else if (addModelKind === 'image') {
+        const result = await addCustomImageModel({
+          name: apiModel,
+          api_model: apiModel,
+          base_url: baseUrl,
+          provider_id: 'custom',
+          image_backend: inferImageBackend(baseUrl),
+          api_key: addModelApiKey.trim(),
+        });
+        closeModal();
+        const models = await refresh({ silent: true });
+        const created = models.find((m) => m.id === result.model_id);
+        if (created?.available) void handleTestConnection(result.model_id);
+      } else {
+        const result = await addCustomVideoModel({
+          name: apiModel,
+          api_model: apiModel,
+          base_url: baseUrl,
+          provider_id: 'custom',
+          video_backend: baseUrl.includes('agnes-ai.com') ? 'agnes' : undefined,
+          api_key: addModelApiKey.trim(),
+        });
+        closeModal();
+        const models = await refresh({ silent: true });
+        const created = models.find((m) => m.id === result.model_id);
+        if (created?.available) void handleTestConnection(result.model_id);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('Could not add image model.'));
+      const message = err instanceof Error ? err.message : t('Could not save model.');
+      setError(message);
+      if (addModelProviderId === 'opencode') {
+        setOpencodeListMessage(message);
+      }
     } finally {
-      setSavingImageModel(false);
+      setSavingAddModel(false);
     }
   };
 
-  const handleRemoveModel = async () => {
-    if (!pendingRemove) return;
-    const { id: modelId, name: modelName } = pendingRemove;
-    setPendingRemove(null);
+  const handleEditCustomModel = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (activeModal?.type !== 'edit-custom') return;
+    const baseUrl = editCustomBaseUrl.trim();
+    const apiModel = editCustomApiModel.trim();
+    if (!baseUrl || !apiModel) return;
+    setSavingEditModel(true);
+    setError(null);
+    try {
+      const config = await updateCustomModel(activeModal.modelId, {
+        name: apiModel,
+        api_model: apiModel,
+        base_url: baseUrl,
+        ...(editCustomApiKey.trim() ? { api_key: editCustomApiKey.trim() } : {}),
+      });
+      applyConfig(config);
+      closeModal();
+      void handleTestConnection(activeModal.modelId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('Could not save model.'));
+    } finally {
+      setSavingEditModel(false);
+    }
+  };
+
+  const handleRemoveModel = async (modelId: string, modelName: string) => {
+    let message = t('Remove {name} from your model list?').replace('{name}', modelName);
+    if (modelId.startsWith('custom-')) {
+      message += ` ${t('Remove custom model permanently')}`;
+    } else if (modelId.startsWith('cc-switch-')) {
+      message += ` ${t('Hide CC Switch imported models')}`;
+    } else {
+      message += ` ${t('Hide built-in model')}`;
+    }
+    if (!window.confirm(message)) return;
     setDeletingModelId(modelId);
     setError(null);
     try {
@@ -287,8 +593,14 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
     setSavingKey(true);
     setError(null);
     try {
-      await saveModelsConfig({ provider_id: savedProviderId, api_key: apiKey.trim() });
-      closeConnectForm();
+      await saveModelsConfig({
+        provider_id: savedProviderId,
+        api_key: apiKey.trim(),
+        ...(savedProviderId === 'opencode' && selectedOpencodeModelId
+          ? { active_model_id: selectedOpencodeModelId }
+          : {}),
+      });
+      closeModal();
       const models = await refresh({ silent: true });
       const providerModels = models.filter((model) => model.providerId === savedProviderId);
       void Promise.all(providerModels.map((model) => handleTestConnection(model.id)));
@@ -296,37 +608,6 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
       setError(err instanceof Error ? err.message : t('Could not save API key.'));
     } finally {
       setSavingKey(false);
-    }
-  };
-
-  const handleDeleteProvider = async (targetProviderId: string) => {
-    const message = t('Remove the saved API key for {provider}?').replace(
-      '{provider}',
-      PROVIDER_LABELS[targetProviderId] ?? targetProviderId,
-    );
-    if (!window.confirm(message)) return;
-
-    const removedModelIds = new Set(
-      configuredModels.filter((model) => model.providerId === targetProviderId).map((model) => model.id),
-    );
-    setDeletingProviderId(targetProviderId);
-    setError(null);
-    try {
-      await deleteProviderCredential(targetProviderId);
-      removeModelVerifyResults(removedModelIds);
-      setVerifyByModel((prev) =>
-        Object.fromEntries(Object.entries(prev).filter(([modelId]) => !removedModelIds.has(modelId))),
-      );
-      setVerifyMessageByModel((prev) =>
-        Object.fromEntries(Object.entries(prev).filter(([modelId]) => !removedModelIds.has(modelId))),
-      );
-      closeConnectForm();
-      await refresh({ silent: true });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t('Could not remove saved key.'));
-      await refresh({ silent: true });
-    } finally {
-      setDeletingProviderId(null);
     }
   };
 
@@ -353,7 +634,6 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
 
   const activeVerify = activeModelId ? verifyByModel[activeModelId] ?? 'idle' : 'idle';
   const activeVerifyMessage = activeModelId ? verifyMessageByModel[activeModelId] : undefined;
-  const editingProvider = editingProviderId ? providers[editingProviderId] : undefined;
 
   const currentStatusLine = (() => {
     if (!activeModelId || !activeAvailable) {
@@ -375,276 +655,80 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
         : 'neutral';
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-surface-bright text-on-surface select-none leading-normal">
-      <div className="flex-1 overflow-y-auto px-6 pb-6 pt-14 pr-12 space-y-5">
-        <div className="flex items-start justify-between gap-4">
-          <header className="text-left space-y-1 min-w-0">
-            <h2 className="text-base font-bold text-on-surface tracking-tight font-sans">{t('AI Workspace Models')}</h2>
-            <p className="text-xs text-on-surface-variant leading-relaxed">
-              {t('Choose which model Clutch uses for chat and workflows.')}
-            </p>
-          </header>
-          <div className="flex flex-shrink-0 gap-2">
-            <button
-              type="button"
-              onClick={() => void handleRescan()}
-              disabled={loading || rescanning}
-              className={`${BTN_GHOST} text-[10.5px] whitespace-nowrap disabled:opacity-50 inline-flex items-center gap-1`}
-            >
-              <LegacyIcon
-                name="sync"
-                className={`text-[13px] ${rescanning ? 'animate-spin' : ''}`}
-              />
-              {t('Rescan')}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                closeConnectForm();
-                setShowAddImageForm((v) => !v);
-              }}
-              className={`${BTN_SECONDARY} text-[10.5px] whitespace-nowrap`}
-            >
-              {t('Add image model')}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                closeAddImageForm();
-                openConnectForm();
-              }}
-              className={`${BTN_PRIMARY} text-[10.5px] whitespace-nowrap`}
-            >
-              {t('Add API key')}
-            </button>
-          </div>
-        </div>
-
-        {showAddImageForm && (
-          <form
-            onSubmit={(e) => void handleAddImageModel(e)}
-            className={`${CARD_SUBTLE} space-y-4 text-left`}
-          >
-            <div>
-              <h3 className="text-xs font-bold text-on-surface">{t('Add custom image model')}</h3>
-              <p className="text-[11px] text-on-surface-variant mt-0.5">
-                {t('Register a text-to-image endpoint without editing code. Use Agnes or any OpenAI-compatible gateway.')}
-              </p>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block">
-                  {t('Display name')}
-                </label>
-                <input
-                  required
-                  value={imageName}
-                  onChange={(e) => setImageName(e.target.value)}
-                  placeholder={t('My Image Model')}
-                  className="w-full text-xs border border-outline bg-surface rounded-lg px-3 py-2 text-on-surface"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block">
-                  {t('API model id')}
-                </label>
-                <input
-                  required
-                  value={imageApiModel}
-                  onChange={(e) => setImageApiModel(e.target.value)}
-                  placeholder="agnes-image-2.1-flash"
-                  className="w-full text-xs border border-outline bg-surface rounded-lg px-3 py-2 font-mono text-on-surface"
-                />
-              </div>
-              <div className="space-y-1 sm:col-span-2">
-                <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block">
-                  {t('Base URL')}
-                </label>
-                <input
-                  required
-                  value={imageBaseUrl}
-                  onChange={(e) => setImageBaseUrl(e.target.value)}
-                  placeholder="https://apihub.agnes-ai.com"
-                  className="w-full text-xs border border-outline bg-surface rounded-lg px-3 py-2 font-mono text-on-surface"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block">
-                  {t('API key provider')}
-                </label>
-                <select
-                  value={imageProviderId}
-                  onChange={(e) => setImageProviderId(e.target.value)}
-                  className="w-full text-xs border border-outline bg-surface rounded-lg px-3 py-2 text-on-surface"
-                >
-                  {CONNECTABLE_PROVIDERS.map((id) => (
-                    <option key={id} value={id}>
-                      {PROVIDER_LABELS[id] ?? id}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block">
-                  {t('Image backend')}
-                </label>
-                <select
-                  value={imageBackend}
-                  onChange={(e) => setImageBackend(e.target.value)}
-                  className="w-full text-xs border border-outline bg-surface rounded-lg px-3 py-2 text-on-surface"
-                >
-                  {IMAGE_BACKEND_IDS.map((id) => (
-                    <option key={id || 'auto'} value={id}>
-                      {imageBackendLabel(id)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-1 sm:col-span-2">
-                <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block">
-                  {t('API key (optional)')}
-                </label>
-                <input
-                  type="password"
-                  value={imageApiKey}
-                  onChange={(e) => setImageApiKey(e.target.value)}
-                  placeholder={t('Save key for the selected provider')}
-                  className="w-full text-xs border border-outline bg-surface rounded-lg px-3 py-2 font-mono text-on-surface"
-                />
-              </div>
-            </div>
-            <div className="flex justify-end gap-2">
-              <button type="button" onClick={closeAddImageForm} className={`${BTN_GHOST} text-[10.5px]`}>
-                {t('Cancel')}
-              </button>
+    <>
+    <SettingsPageShell wide>
+      <SettingsPageHeader
+        isModalStyle
+        icon="layers"
+        title={t('Models by Agent')}
+        description={t('Clutch models power the built-in agent. CLI tabs show each tool native model configuration.')}
+        actions={
+          capabilityTab === 'clutch' ? (
+            <div className="flex flex-shrink-0 gap-2">
               <button
-                type="submit"
-                disabled={savingImageModel}
-                className={`${BTN_PRIMARY} text-[10.5px] disabled:opacity-50`}
+                type="button"
+                onClick={() => void handleRescan()}
+                disabled={loading || rescanning}
+                className={`${BTN_GHOST} text-[10.5px] whitespace-nowrap disabled:opacity-50 inline-flex items-center gap-1`}
               >
-                {savingImageModel ? t('Saving…') : t('Save image model')}
+                <LegacyIcon
+                  name="sync"
+                  className={`text-[13px] ${rescanning ? 'animate-spin' : ''}`}
+                />
+                {t('Rescan')}
               </button>
-            </div>
-          </form>
-        )}
-
-        {showConnectForm && (
-          <form
-            onSubmit={(e) => void handleConnectProvider(e)}
-            className="p-4 bg-surface-container border border-outline rounded-xl space-y-4 text-left"
-          >
-            <div>
-              <h3 className="text-xs font-bold text-on-surface">
-                {editingProviderId ? t('Update API key') : t('Add API key')}
-              </h3>
-              <p className="text-[11px] text-on-surface-variant mt-0.5">
-                {t('Saved in Clutch and used for built-in models of this provider.')}
-              </p>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block">
-                  {t('Provider')}
-                </label>
-                <select
-                  value={providerId}
-                  onChange={(e) => setProviderId(e.target.value)}
-                  disabled={Boolean(editingProviderId)}
-                  className="w-full text-xs border border-outline bg-surface rounded-lg px-3 py-2 text-on-surface disabled:opacity-60"
-                >
-                  {CONNECTABLE_PROVIDERS.map((id) => (
-                    <option key={id} value={id}>
-                      {PROVIDER_LABELS[id] ?? id}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block">
-                  {t('API key')}
-                </label>
-                <div className="relative flex items-center">
-                  <input
-                    type={showApiKey ? 'text' : 'password'}
-                    required
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
-                    placeholder="sk-••••••••"
-                    className="w-full text-xs border border-outline bg-surface rounded-lg pl-3 pr-10 py-2 font-mono text-on-surface"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowApiKey(!showApiKey)}
-                    className={`${BTN_GHOST} absolute right-3 p-0 border-0 text-on-surface-variant hover:text-on-surface hover:bg-transparent`}
-                  >
-                    <LegacyIcon name={showApiKey ? 'visibility' : 'visibility_off'} className="text-[18px]" />
-                  </button>
-                </div>
-              </div>
-            </div>
-            <div className="flex justify-between gap-2 flex-wrap">
-              <div>
-                {editingProvider?.clutch_managed && (
-                  <button
-                    type="button"
-                    disabled={deletingProviderId === providerId}
-                    onClick={() => void handleDeleteProvider(providerId)}
-                    className={`${BTN_GHOST} text-[10.5px] border-rose-200 text-rose-700 hover:bg-rose-50 disabled:opacity-50`}
-                  >
-                    {deletingProviderId === providerId ? t('Removing…') : t('Remove saved key')}
-                  </button>
-                )}
-              </div>
-              <div className="flex gap-2">
+              <div className="relative" ref={addMenuRef}>
                 <button
                   type="button"
-                  onClick={closeConnectForm}
-                  className={`${BTN_GHOST} text-[10.5px]`}
+                  onClick={() => setAddMenuOpen((open) => !open)}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 text-[10.5px] font-semibold text-white bg-neutral-900 hover:bg-black border border-neutral-900 rounded-lg shadow-sm transition-colors"
+                  aria-haspopup="menu"
+                  aria-expanded={addMenuOpen}
                 >
-                  {t('Cancel')}
+                  <LegacyIcon name="add" className="text-[13px]" />
+                  {t('Add model')}
+                  <LegacyIcon name="keyboard_arrow_down" className="text-[13px]" />
                 </button>
-                <button
-                  type="submit"
-                  disabled={savingKey}
-                  className={`${BTN_PRIMARY} text-[10.5px] disabled:opacity-50`}
-                >
-                  {savingKey ? t('Saving…') : t('Save')}
-                </button>
+                {addMenuOpen ? (
+                  <div className="absolute right-0 top-full mt-1 min-w-[168px] bg-surface-bright border border-outline-variant rounded-lg shadow-lg py-1 z-30">
+                    <button
+                      type="button"
+                      onClick={() => openAddModal('chat')}
+                      className="w-full text-left px-3 py-2 text-[11px] hover:bg-surface-container-low text-on-surface"
+                    >
+                      {t('Add text model')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openAddModal('image')}
+                      className="w-full text-left px-3 py-2 text-[11px] hover:bg-surface-container-low text-on-surface"
+                    >
+                      {t('Add image model')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openAddModal('video')}
+                      className="w-full text-left px-3 py-2 text-[11px] hover:bg-surface-container-low text-on-surface"
+                    >
+                      {t('Add video model')}
+                    </button>
+                  </div>
+                ) : null}
               </div>
             </div>
-          </form>
-        )}
+          ) : null
+        }
+      />
 
-        {pendingRemove && (
-          <div className="p-4 bg-rose-50/70 border border-rose-200 rounded-xl space-y-3 text-left">
-            <p className="text-xs text-rose-900">
-              {t('Remove {name} from your model list?').replace('{name}', pendingRemove.name)}
-              {pendingRemove.id.startsWith('custom-')
-                ? ` ${t('Remove custom model permanently')}`
-                : pendingRemove.id.startsWith('cc-switch-')
-                  ? ` ${t('Hide CC Switch imported models')}`
-                  : ` ${t('Hide built-in model')}`}
-            </p>
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setPendingRemove(null)}
-                className={`${BTN_GHOST} text-[10.5px]`}
-              >
-                {t('Cancel')}
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleRemoveModel()}
-                className={`${BTN_PRIMARY} text-[10.5px] bg-rose-700 border-rose-700 hover:bg-rose-800 hover:border-rose-800`}
-              >
-                {t('Remove')}
-              </button>
-            </div>
-          </div>
-        )}
+        <AgentCapabilityTabs activeTab={capabilityTab} onTabChange={setCapabilityTab} className="pb-1" />
 
-        {error && (
+        {capabilityTab === 'claude-cli' ? <ClaudeCodeModelsPanel /> : null}
+        {capabilityTab === 'opencode-cli' ? <OpenCodeModelsPanel /> : null}
+        {capabilityTab === 'more' ? <MoreAgentsComingSoon /> : null}
+
+        {capabilityTab === 'clutch' ? (
+        <>
+        {error && !activeModal && (
           <p className="text-xs text-rose-800 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2 text-left">
             {error}
           </p>
@@ -687,7 +771,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
               <p className="text-xs text-on-surface-variant">{t('No models yet — add an API key or import from CC Switch.')}</p>
               <button
                 type="button"
-                onClick={() => openConnectForm()}
+                onClick={() => openEditKeyModal()}
                 className={`${BTN_PRIMARY} text-xs`}
               >
                 {t('Add API key')}
@@ -702,6 +786,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
                 const rowMessage = verifyMessageByModel[model.id];
                 const canUse = model.available;
                 const canRemove = !isActive;
+                const canEdit = model.clutchManaged || model.isCustom;
                 return (
                   <div
                     key={model.id}
@@ -726,6 +811,9 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
                         <span className="text-[10px] text-on-surface-variant">{model.provider}</span>
                         {model.modelKind === 'image' && (
                           <span className={BADGE_PRIMARY}>{t('Image')}</span>
+                        )}
+                        {model.modelKind === 'video' && (
+                          <span className={BADGE_PRIMARY}>{t('Video')}</span>
                         )}
                         {model.isCustom && (
                           <span className={BADGE_NEUTRAL}>{t('Custom')}</span>
@@ -756,18 +844,6 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
                       )}
                       {verify === 'failed' && rowMessage && (
                         <p className="text-[10.5px] text-rose-800">{t(rowMessage)}</p>
-                      )}
-                      {model.clutchManaged && !showConnectForm && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openConnectForm(model.providerId);
-                          }}
-                          className="text-[10px] font-bold text-primary hover:underline"
-                        >
-                          {t('Change {provider} key').replace('{provider}', model.provider)}
-                        </button>
                       )}
                     </div>
                     <div
@@ -801,18 +877,33 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
                         }
                       >
                         <LegacyIcon
-                          name={verify === 'testing' ? 'progress_activity' : 'sync'}
+                          name={verify === 'testing' ? 'progress_activity' : 'activity_circle'}
                           className="text-[16px]"
                           spin={verify === 'testing'}
                         />
                       </button>
+                      {canEdit && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (model.isCustom) openEditCustomModal(model);
+                            else openEditKeyModal(model.providerId);
+                          }}
+                          className={BTN_ICON}
+                          title={t('Edit model')}
+                          aria-label={t('Edit model')}
+                        >
+                          <LegacyIcon name="edit" className="text-[16px]" />
+                        </button>
+                      )}
                       {canRemove && (
                         <button
                           type="button"
                           disabled={deletingModelId === model.id}
                           onClick={(e) => {
                             e.stopPropagation();
-                            setPendingRemove({ id: model.id, name: model.name });
+                            void handleRemoveModel(model.id, model.name);
                           }}
                           className={`${BTN_ICON} hover:bg-rose-50 text-red-500 hover:text-red-700 disabled:opacity-50`}
                           title={t('Remove model')}
@@ -830,7 +921,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
 
           <div className="pt-2 text-center space-y-2">
             <p className="text-[11px] text-on-surface-variant">
-              {t('Already use CC Switch?')}{' '}
+              {t('Import CC Switch providers into Clutch (built-in agent credentials only).')}{' '}
               <button
                 type="button"
                 disabled={syncingCcSwitch}
@@ -853,7 +944,284 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
             )}
           </div>
         </section>
-      </div>
-    </div>
+        </>
+        ) : null}
+    </SettingsPageShell>
+
+      {activeModal && (
+        <div className="fixed inset-0 bg-neutral-900/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-surface-bright rounded-xl shadow-lg border border-outline max-w-lg w-full max-h-[85vh] flex flex-col overflow-hidden">
+            <div className="h-14 border-b border-outline/60 px-5 flex items-center justify-between flex-shrink-0 bg-surface-container/40">
+              <h3 className="text-xs font-bold text-on-surface">
+                {activeModal.type === 'add'
+                  ? activeModal.modelKind === 'chat'
+                    ? t('Add text model')
+                    : activeModal.modelKind === 'image'
+                      ? t('Add image model')
+                      : t('Add video model')
+                  : activeModal.type === 'edit-key'
+                    ? t('Update API key')
+                    : t('Edit custom model')}
+              </h3>
+              <button type="button" onClick={closeModal} className={BTN_ICON} aria-label={t('Cancel')}>
+                <LegacyIcon name="close" className="text-[18px]" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-5 space-y-4 text-left">
+              {error && (
+                <p className="text-xs text-rose-800 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2">
+                  {error}
+                </p>
+              )}
+
+              {activeModal.type === 'add' && addModelKind && (
+                <form id="models-add-form" onSubmit={(e) => void handleAddModel(e)} className="space-y-4">
+                  <p className="text-[11px] text-on-surface-variant">
+                    {addModelProviderId === 'custom'
+                      ? t('Custom gateway — non-built-in model. Fill in the endpoint details below.')
+                      : t('Built-in provider — enter your API key to enable this model.')}
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block">
+                        {t('Provider')}
+                      </label>
+                      <select
+                        value={addModelProviderId}
+                        onChange={(e) => {
+                          const next = e.target.value;
+                          setAddModelProviderId(next);
+                          setAddModelApiKey('');
+                          setError(null);
+                          if (next === 'opencode') {
+                            applyOpencodeProviderDefaults();
+                          } else {
+                            resetOpencodeForm();
+                          }
+                          setShowApiKey(false);
+                        }}
+                        className="w-full text-xs border border-outline bg-surface rounded-lg px-3 py-2 text-on-surface"
+                      >
+                        {providersForModelKind(addModelKind).map((id) => (
+                          <option key={id} value={id}>
+                            {PROVIDER_LABELS[id] ?? id}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block">
+                        {t('API key')}
+                      </label>
+                      <div className="relative flex items-center">
+                        <input
+                          type={showApiKey ? 'text' : 'password'}
+                          required
+                          value={addModelApiKey}
+                          onChange={(e) => {
+                            setAddModelApiKey(e.target.value);
+                            setError(null);
+                            setOpencodeListMessage(null);
+                          }}
+                          placeholder="sk-••••••••"
+                          autoComplete="off"
+                          className="w-full text-xs border border-outline bg-surface rounded-lg pl-3 pr-10 py-2 font-mono text-on-surface"
+                        />
+                        <button
+                          type="button"
+                          disabled={!addModelApiKey}
+                          onClick={() => setShowApiKey((visible) => !visible)}
+                          className="absolute right-2 p-1 rounded-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low disabled:opacity-40 disabled:pointer-events-none"
+                          aria-label={showApiKey ? t('Hide API key') : t('Show API key')}
+                        >
+                          <LegacyIcon name={showApiKey ? 'visibility' : 'visibility_off'} className="text-[18px]" />
+                        </button>
+                      </div>
+                    </div>
+                    {addModelKind === 'chat' && addModelProviderId === 'opencode' && renderOpencodeModelPicker()}
+                    {addModelProviderId === 'custom' && (
+                      <>
+                        <div className="space-y-1 sm:col-span-2">
+                          <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block">
+                            {t('Base URL')}
+                          </label>
+                          <input
+                            required
+                            value={addModelCustomBaseUrl}
+                            onChange={(e) => setAddModelCustomBaseUrl(e.target.value)}
+                            placeholder={
+                              addModelKind === 'chat'
+                                ? 'https://api.example.com/v1'
+                                : 'https://api.example.com'
+                            }
+                            className="w-full text-xs border border-outline bg-surface rounded-lg px-3 py-2 font-mono text-on-surface"
+                          />
+                        </div>
+                        <div className="space-y-1 sm:col-span-2">
+                          <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block">
+                            {t('API model id')}
+                          </label>
+                          <input
+                            required
+                            value={addModelCustomApiModel}
+                            onChange={(e) => setAddModelCustomApiModel(e.target.value)}
+                            placeholder={AGNES_DEFAULTS[addModelKind].api_model}
+                            className="w-full text-xs border border-outline bg-surface rounded-lg px-3 py-2 font-mono text-on-surface"
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </form>
+              )}
+
+              {activeModal.type === 'edit-key' && (
+                <form id="models-edit-key-form" onSubmit={(e) => void handleConnectProvider(e)} className="space-y-4">
+                  <p className="text-[11px] text-on-surface-variant">
+                    {t('Saved in Clutch and used for built-in models of this provider.')}
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block">
+                        {t('Provider')}
+                      </label>
+                      <select
+                        value={providerId}
+                        onChange={(e) => setProviderId(e.target.value)}
+                        disabled={Boolean(editingProviderId)}
+                        className="w-full text-xs border border-outline bg-surface rounded-lg px-3 py-2 text-on-surface disabled:opacity-60"
+                      >
+                        {CONNECTABLE_PROVIDERS.map((id) => (
+                          <option key={id} value={id}>
+                            {PROVIDER_LABELS[id] ?? id}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block">
+                        {t('API key')}
+                      </label>
+                      <div className="relative flex items-center">
+                        <input
+                          type={showApiKey ? 'text' : 'password'}
+                          required
+                          disabled={loadingKey}
+                          value={apiKey}
+                          onChange={(e) => {
+                            setApiKey(e.target.value);
+                            setError(null);
+                            setOpencodeListMessage(null);
+                          }}
+                          placeholder={loadingKey ? t('Loading…') : 'sk-••••••••'}
+                          className="w-full text-xs border border-outline bg-surface rounded-lg pl-3 pr-10 py-2 font-mono text-on-surface disabled:opacity-60"
+                        />
+                        <button
+                          type="button"
+                          disabled={loadingKey || !apiKey}
+                          onClick={() => setShowApiKey((visible) => !visible)}
+                          className={`${BTN_GHOST} absolute right-1 top-1/2 -translate-y-1/2 z-10 p-1 border-0 text-on-surface-variant hover:text-on-surface hover:bg-transparent disabled:opacity-40`}
+                          aria-label={showApiKey ? t('Hide API key') : t('Show API key')}
+                        >
+                          <LegacyIcon name={showApiKey ? 'visibility' : 'visibility_off'} className="text-[18px]" />
+                        </button>
+                      </div>
+                    </div>
+                    {providerId === 'opencode' && renderOpencodeModelPicker()}
+                  </div>
+                </form>
+              )}
+
+              {activeModal.type === 'edit-custom' && (
+                <form id="models-edit-custom-form" onSubmit={(e) => void handleEditCustomModel(e)} className="space-y-4">
+                  <p className="text-[11px] text-on-surface-variant">
+                    {t('Custom gateway — non-built-in model. Fill in the endpoint details below.')}
+                  </p>
+                  <div className="space-y-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block">
+                        {t('Base URL')}
+                      </label>
+                      <input
+                        required
+                        value={editCustomBaseUrl}
+                        onChange={(e) => setEditCustomBaseUrl(e.target.value)}
+                        placeholder={
+                          activeModal.modelKind === 'chat'
+                            ? 'https://api.example.com/v1'
+                            : 'https://api.example.com'
+                        }
+                        className="w-full text-xs border border-outline bg-surface rounded-lg px-3 py-2 font-mono text-on-surface"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block">
+                        {t('API model id')}
+                      </label>
+                      <input
+                        required
+                        value={editCustomApiModel}
+                        onChange={(e) => setEditCustomApiModel(e.target.value)}
+                        placeholder={AGNES_DEFAULTS[activeModal.modelKind].api_model}
+                        className="w-full text-xs border border-outline bg-surface rounded-lg px-3 py-2 font-mono text-on-surface"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block">
+                        {t('API key (optional)')}
+                      </label>
+                      <input
+                        type="password"
+                        value={editCustomApiKey}
+                        onChange={(e) => setEditCustomApiKey(e.target.value)}
+                        placeholder="sk-••••••••"
+                        className="w-full text-xs border border-outline bg-surface rounded-lg px-3 py-2 font-mono text-on-surface"
+                      />
+                    </div>
+                  </div>
+                </form>
+              )}
+            </div>
+
+            <div className="border-t border-outline/60 px-5 py-4 flex items-center justify-end gap-2 flex-shrink-0">
+              <button type="button" onClick={closeModal} className={`${BTN_GHOST} text-[10.5px]`}>
+                {t('Cancel')}
+              </button>
+                {activeModal.type === 'add' && (
+                  <button
+                    type="submit"
+                    form="models-add-form"
+                    disabled={savingAddModel}
+                    className={`${BTN_PRIMARY} text-[10.5px] disabled:opacity-50`}
+                  >
+                    {savingAddModel ? t('Saving…') : t('Save')}
+                  </button>
+                )}
+                {activeModal.type === 'edit-key' && (
+                  <button
+                    type="submit"
+                    form="models-edit-key-form"
+                    disabled={savingKey}
+                    className={`${BTN_PRIMARY} text-[10.5px] disabled:opacity-50`}
+                  >
+                    {savingKey ? t('Saving…') : t('Save')}
+                  </button>
+                )}
+                {activeModal.type === 'edit-custom' && (
+                  <button
+                    type="submit"
+                    form="models-edit-custom-form"
+                    disabled={savingEditModel}
+                    className={`${BTN_PRIMARY} text-[10.5px] disabled:opacity-50`}
+                  >
+                    {savingEditModel ? t('Saving…') : t('Save')}
+                  </button>
+                )}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 };

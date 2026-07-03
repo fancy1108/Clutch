@@ -17,17 +17,19 @@ Clutch is a **desktop app** (Tauri + React) for developers and technical operato
 |---|---|
 | **Stack** | Tauri 2 · React 19 · FastAPI + LangGraph · local-first (`localhost:8123`) |
 | **License** | See [LICENSE](LICENSE) |
-| **Latest release** | [v1.0.3](https://github.com/fancy1108/Clutch/releases) |
+| **Latest release** | [v1.0.3](https://github.com/fancy1108/Clutch/releases) · **Next:** [v1.1.0](CHANGELOG.md#110---2026-07-03) |
 
-### What's new in v1.0.3
+### What's new (v1.1.0 · in development)
 
-- **Hybrid shell pool queue** — when all CLI shell slots are busy, new plain-chat sessions queue globally with agent avatars in the input bar; auto-resume when a slot frees.
-- **OpenCode CLI** — first-class Hybrid routing for `opencode-cli` agents.
-- **Same-session message queue** — send while a turn runs; messages drain in order as **待发送消息**.
-- **Settings → Ollama** — model list syncs with local `ollama list`; stale `active_model_id` auto-falls back.
-- **Brand refresh** — new Clutch mark and desktop app icons.
+- **Terminal Orchestra (D34)** — Chat ↔ Terminal toggle; multi-lane embedded CLI; OrchestratorBar `@` dispatch, handoff files, dispatch log, and CLI session resume commands.
+- **Windows desktop polish** — Sidebar collapse, font-size preference, faster session switching with cached snapshots ([#28](https://github.com/fancy1108/Clutch/pull/28)).
+- **CodeBuddy CLI** — Tencent CodeBuddy / WorkBuddy integration; connect in Settings → Tools and use as an Agent type with headless runs and session resume.
+- **OpenCode Zen text models** — built-in Settings → Models provider; Zen API Key unlocks five free chat models, with catalog refresh and save-time connectivity checks.
+- **Agnes Video V2.0** — generate video from chat with an inline player and download; Chinese prompts auto-translated to English for the API.
+- **Agent-scoped Settings** — Models / MCP / Skills tabs per agent type (Clutch · Claude Code · OpenCode).
+- **Product website** — [fancy1108.github.io/Clutch](https://fancy1108.github.io/Clutch/): bilingual overview, install commands, and contact.
 
-Full notes: [`CHANGELOG.md`](CHANGELOG.md#103---2026-07-01) · [`docs/releases/v1.0.3.md`](docs/releases/v1.0.3.md)
+Older releases: [`CHANGELOG.md`](CHANGELOG.md) · [`docs/releases/`](docs/releases/).
 
 ---
 
@@ -54,7 +56,7 @@ brew install --cask clutch
 irm https://raw.githubusercontent.com/fancy1108/Clutch/main/scripts/install.ps1 | iex
 ```
 
-Pin a version: `CLUTCH_VERSION=v1.0.3` before running either script.
+Pin a version: `CLUTCH_VERSION=v1.1.0` before running either script (or `v1.0.3` for the current stable release).
 
 Install channels (maintainers): [`docs/RELEASE_MAINTAINER.md`](docs/RELEASE_MAINTAINER.md)
 
@@ -91,7 +93,7 @@ Or: **Applications** → right-click **Clutch** → **Open** → confirm.
 | Capability | In plain terms |
 |------------|----------------|
 | **Visual workflows** | Drag agents on a canvas; Clutch compiles to LangGraph and runs the SOP |
-| **Local CLI bridge** | Connect Claude Code, Codex, Ollama, Aider, Rivet, … from Settings → Tools |
+| **Local CLI bridge** | Connect Claude Code, CodeBuddy, Codex, Ollama, Aider, Rivet, … from Settings → Tools |
 | **One supervision desk** | Chat, terminal, file tree, diffs, and flow progress in one window |
 | **Human-in-the-loop** | Pause on risky steps; approve, reject, or retry with instructions |
 | **Agents & models** | Custom agents, API keys, Skills registry, MCP servers |
@@ -110,6 +112,10 @@ Deep dive: [`docs/PRODUCT_INTRO.md`](docs/PRODUCT_INTRO.md) · Architecture: [`d
 **Visual SOP editor** — zero-code multi-agent pipeline on a canvas:
 
 ![Clutch workflow canvas](./docs/images/Clutch_2.png)
+
+**Terminal Orchestra** — interactive CLI lanes, dispatch, and session resume in Terminal mode:
+
+![Clutch Terminal Session](./docs/images/terminal-session.png)
 
 ---
 
@@ -172,7 +178,7 @@ Commands & discipline: [`CLAUDE.md`](CLAUDE.md) · Before PR: `./scripts/verify.
 Clutch talks to local AI CLIs through a loopback Sidecar (`127.0.0.1:8123`).
 
 > [!IMPORTANT]
-> For **Claude Code** and **Antigravity (agy)** CLIs, Clutch **defaults** to `--dangerously-skip-permissions` so workflows can run without per-tool CLI prompts. Only use on workspaces you trust. The in-chat Permission menu controls **MCP gating for built-in agents**, not this CLI default.
+> For **Claude Code**, **CodeBuddy**, and **Antigravity (agy)** CLIs, Clutch **defaults** to `--dangerously-skip-permissions` so workflows can run without per-tool CLI prompts. Only use on workspaces you trust. The in-chat Permission menu controls **MCP gating for built-in agents**, not this CLI default.
 
 Report vulnerabilities: [`SECURITY.md`](SECURITY.md)
 

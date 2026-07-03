@@ -4,6 +4,7 @@ import { Deliverable, Agent } from '../types';
 import { fetchAgents, saveAgents, generateAgentPrompt } from '../services/agentApi';
 import { fetchSkillsRegistry, type ScannedSkill } from '../services/skillsApi';
 import { BTN_GHOST, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON } from './ui/buttonStyles';
+import { SettingsPageHeader } from './ui/SettingsPageHeader';
 import { BADGE_SUCCESS } from './ui/surfaceStyles';
 import { LegacyIcon } from './ui/LegacyIcon';
 import { fetchMcpStatus, type McpServer } from '../services/mcpApi';
@@ -21,6 +22,9 @@ import { fetchToolsStatus, type AiToolStatus } from '../services/toolsApi';
 import { sidecarHttpUrl, sidecarFetch } from '../services/sidecarUrl';
 import { clutchMarkUrl, resolveBrandLogoSrc } from '../services/brandLogos';
 import { UnderDevelopmentNotice } from './ui/UnderDevelopmentNotice';
+import { getAgentCapabilityTier } from '../services/agentCapabilityTiers';
+import { AgentNativeCapabilityHint } from './AgentNativeCapabilityHint';
+import { AgentCliModelHint } from './AgentCliModelHint';
 
 export function AgentLogo({
   name,
@@ -129,6 +133,15 @@ export function AgentManager({
     () => buildSelectableAgentTypeOptions(eligibleTools, modalMode === 'edit' ? agentType : undefined),
     [eligibleTools, modalMode, agentType],
   );
+
+  const capabilityTier = useMemo(() => getAgentCapabilityTier(agentType), [agentType]);
+
+  useEffect(() => {
+    if (capabilityTier !== 'full') {
+      setSelectedSkills([]);
+      setSelectedMcpServerIds([]);
+    }
+  }, [capabilityTier]);
 
   const getDefaultAgentType = (): AgentTypeId => CLUTCH_AGENT_TYPE;
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
@@ -402,6 +415,9 @@ export function AgentManager({
 
     const resolvedAgentType: AgentTypeId = editingId === BUILTIN_AGENT_ID ? CLUTCH_AGENT_TYPE : agentType;
     const resolvedModelId = resolvedAgentType === 'clutch' && modelId.trim() ? modelId.trim() : undefined;
+    const tier = getAgentCapabilityTier(resolvedAgentType);
+    const resolvedSkills: string[] = [];
+    const resolvedMcpServerIds: string[] = [];
 
     if (modalMode === 'create') {
       const newAgent: Agent = {
@@ -413,11 +429,11 @@ export function AgentManager({
         avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(name)}`,
         deliverables: deliverablesInput,
         mcpTools: selectedMcpTools,
-        mcpServerIds: selectedMcpServerIds,
+        mcpServerIds: resolvedMcpServerIds,
         agentType: resolvedAgentType,
         modelId: resolvedModelId,
         ollamaModel: resolvedAgentType === 'ollama-cli' ? ollamaModel : undefined,
-        skills: selectedSkills
+        skills: resolvedSkills,
       };
       persistAgents([newAgent, ...agents]);
     } else {
@@ -431,11 +447,11 @@ export function AgentManager({
             lastModified: todayStr,
             deliverables: deliverablesInput,
             mcpTools: selectedMcpTools,
-            mcpServerIds: selectedMcpServerIds,
+            mcpServerIds: resolvedMcpServerIds,
             agentType: resolvedAgentType,
             modelId: resolvedModelId,
             ollamaModel: resolvedAgentType === 'ollama-cli' ? ollamaModel : undefined,
-            skills: selectedSkills
+            skills: resolvedSkills,
           };
           if (selectedAgent && selectedAgent.id === editingId) {
             setSelectedAgent(updatedAgent);
@@ -645,44 +661,21 @@ export function AgentManager({
               {/* Attached Skills Manuals */}
               <div>
                 <h3 className="text-[11px] font-bold text-neutral-400 font-mono uppercase tracking-wider mb-2">{t('Attached Skills Manuals')}</h3>
-                <div className="flex flex-wrap gap-1.5">
-                  {selectedAgent.skills && selectedAgent.skills.length > 0 ? (
-                    selectedAgent.skills.map(skillKey => {
-                      const match = scannedSkills.find(s => s.key === skillKey) || { label: skillKey };
-                      return (
-                        <div key={skillKey} className="px-2.5 py-1 bg-neutral-100 border border-neutral-200 rounded-full text-[10px] font-mono font-bold text-neutral-700 flex items-center gap-1 shadow-3xs">
-                          <span>🏷️ {match.label}</span>
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <p className="text-[10px] text-neutral-400 italic leading-snug">{t('No linked professional skills attached to this agent manual.')}</p>
-                  )}
-                </div>
+                {getAgentCapabilityTier(agentTypeFromAgent(selectedAgent)) === 'full' ? (
+                  <UnderDevelopmentNotice variant="compact" />
+                ) : (
+                  <AgentNativeCapabilityHint agentType={agentTypeFromAgent(selectedAgent)} kind="skills" />
+                )}
               </div>
 
               {/* Mounted MCP Hub servers */}
               <div>
                 <h3 className="text-[11px] font-bold text-neutral-400 font-mono uppercase tracking-wider mb-2">{t('MCP Hub Servers')}</h3>
-                <div className="flex flex-col gap-1.5">
-                  {selectedAgent.mcpServerIds && selectedAgent.mcpServerIds.length > 0 ? (
-                    selectedAgent.mcpServerIds.map((serverId) => {
-                      const server = mcpServers.find((s) => s.id === serverId);
-                      const label = server?.name || serverId;
-                      return (
-                        <div key={serverId} className="px-2.5 py-1.5 border rounded-lg flex items-center justify-between font-mono text-[10px] font-bold bg-neutral-50 text-neutral-800 border-neutral-200/60">
-                          <span className="flex items-center gap-1.5">
-                            <LegacyIcon name="hub" className="text-[13px]" />
-                            {label}
-                          </span>
-                          <span className="text-[7.5px] tracking-wider uppercase opacity-85">BOUND</span>
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <p className="text-[10px] text-neutral-400/80 italic">No MCP Hub servers bound. Clutch Agent uses MCP only when servers are linked here.</p>
-                  )}
-                </div>
+                {getAgentCapabilityTier(agentTypeFromAgent(selectedAgent)) === 'full' ? (
+                  <UnderDevelopmentNotice variant="compact" />
+                ) : (
+                  <AgentNativeCapabilityHint agentType={agentTypeFromAgent(selectedAgent)} kind="mcp" />
+                )}
               </div>
 
               <div className="flex-1 flex flex-col min-h-0">
@@ -719,25 +712,18 @@ export function AgentManager({
         // ----------------- AGENT CATALOG LIST PAGE -----------------
         <div className="max-w-4xl mx-auto w-full p-8 space-y-6 overflow-y-auto">
           {/* List Header */}
-          <div className={`flex items-center justify-between border-b border-neutral-100 pb-5 ${isModalStyle ? 'mr-12' : ''}`}>
-            <div>
-              <h2 className="text-base font-bold text-neutral-800 tracking-tight flex items-center gap-2">
-                <LegacyIcon name="smart_toy" className="text-neutral-500 text-[20px]" />
-                {t('AI Agent Controller')}
-              </h2>
-              <p className="text-[11.5px] text-neutral-400 mt-1">
-                {t('Display the operational directive frameworks and output manifests loaded in the execution sandbox.')}
-              </p>
-            </div>
-            
-            <button
-              onClick={handleOpenCreate}
-              className={`${BTN_SECONDARY} gap-1.5`}
-            >
-              <LegacyIcon name="add" className="text-[16px]" />
-              {t('Create Agent')}
-            </button>
-          </div>
+          <SettingsPageHeader
+            isModalStyle={isModalStyle}
+            icon="smart_toy"
+            title={t('AI Agent Controller')}
+            description={t('Display the operational directive frameworks and output manifests loaded in the execution sandbox.')}
+            actions={
+              <button onClick={handleOpenCreate} className={`${BTN_SECONDARY} gap-1.5`}>
+                <LegacyIcon name="add" className="text-[16px]" />
+                {t('Create Agent')}
+              </button>
+            }
+          />
 
           {/* Agents Grid List */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -958,7 +944,7 @@ export function AgentManager({
                     </label>
                     {clutchModels.length === 0 ? (
                       <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 leading-relaxed">
-                        {t('No models configured yet. Add API keys or image models under Settings → Models first.')}
+                        {t('No models configured yet. Add API keys or image/video models under Settings → Models first.')}
                       </p>
                     ) : (
                       <select
@@ -970,13 +956,14 @@ export function AgentManager({
                         {clutchModels.map((model) => (
                           <option key={model.id} value={model.id}>
                             {model.name}
-                            {model.modelKind === 'image' ? ' (image)' : ''}
+                            {model.modelKind === 'image' ? ` (${t('Image')})` : ''}
+                            {model.modelKind === 'video' ? ` (${t('Video')})` : ''}
                           </option>
                         ))}
                       </select>
                     )}
                     <p className="text-[9.5px] text-neutral-400 leading-relaxed">
-                      {t('Clutch agents run on Sidecar models (chat or image). Leave empty to follow the global model in chat.')}
+                      {t('Clutch agents run on Sidecar models (chat, image, or video). Leave empty to follow the global model in chat.')}
                     </p>
                   </div>
                 )}
@@ -1036,6 +1023,10 @@ export function AgentManager({
                    </div>
                  )}
 
+                {(agentType === 'claude-cli' || agentType === 'opencode-cli') && (
+                  <AgentCliModelHint agentType={agentType} />
+                )}
+
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-neutral-500 tracking-wider uppercase font-mono block">{t('Short Description')}</label>
                   <textarea
@@ -1077,133 +1068,16 @@ export function AgentManager({
                     <span className="text-[9.5px] font-extrabold text-neutral-800 bg-neutral-100 border border-neutral-200 px-1.5 py-0.2 rounded font-mono tracking-wider uppercase">{t('Module 3')}</span>
                     <span className="text-[10.5px] font-extrabold text-[#111111] font-mono tracking-wide uppercase">{t('Attach Agent Skills')}</span>
                   </div>
-                  <span className="text-[8.5px] uppercase font-mono bg-neutral-100 text-neutral-700 border border-neutral-200/60 px-2 py-0.5 rounded">{t('Local-First')}</span>
+                  {capabilityTier === 'full' ? (
+                    <span className="text-[8.5px] uppercase font-mono bg-neutral-100 text-neutral-700 border border-neutral-200/60 px-2 py-0.5 rounded">{t('Local-First')}</span>
+                  ) : null}
                 </div>
 
-                <UnderDevelopmentNotice variant="compact" />
-
-                {/* Sub-section 3A: Attach Skills Pill arrangement */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <label className="text-[10px] font-bold text-neutral-500 tracking-wider uppercase font-mono block">{t('Linked Agent Skills Manuals')}</label>
-                      <span className="text-[9px] text-neutral-400 block font-normal">{t('Only active skills from your global directory are available below.')}</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setIsSkillsAttachOpen(!isSkillsAttachOpen)}
-                      className="px-2.5 py-1 bg-white hover:bg-neutral-50 text-neutral-750 hover:text-black border border-neutral-200 rounded-lg text-[10.5px] font-bold flex items-center gap-1 transition-all shadow-3xs cursor-pointer select-none"
-                    >
-                      <LegacyIcon name="bookmark_add" className="text-[13px]" />
-                      {t('Attach Skills')}
-                    </button>
-                  </div>
-
-                  {isSkillsAttachOpen && (
-                    <div className="bg-white border border-neutral-200 rounded-lg p-3 space-y-2.5 animate-fade-in shadow-sm">
-                      <div className="text-[10px] font-bold text-neutral-400 uppercase font-mono pb-1 border-b border-neutral-105 flex items-center justify-between">
-                        <span>{t('Fuzzy Search Active Specs')}</span>
-                        <button type="button" onClick={() => setIsSkillsAttachOpen(false)} className="text-neutral-500 hover:text-neutral-800 font-mono text-[10.5px] font-bold">{t('Done')}</button>
-                      </div>
-
-                      {/* Fuzzy search input filtering selection candidates */}
-                      <div className="relative">
-                        <input
-                          type="text"
-                          value={skillsSearch}
-                          onChange={(e) => setSkillsSearch(e.target.value)}
-                          placeholder={t('Fuzzy search active skills (e.g. secure, performance)...')}
-                          className="w-full px-2.5 py-1.5 border border-neutral-200 focus:outline-none focus:border-neutral-900 focus:ring-1 focus:ring-neutral-900/20 bg-neutral-50 focus:bg-white rounded-md text-xs font-mono"
-                        />
-                      </div>
-
-                      <div className="max-h-36 overflow-y-auto space-y-1">
-                        {(() => {
-                          const activeSkills = scannedSkills.filter(s => s.isActiveGlobally);
-                          const filtered = activeSkills.filter(s =>
-                            s.label.toLowerCase().includes(skillsSearch.toLowerCase()) ||
-                            s.key.toLowerCase().includes(skillsSearch.toLowerCase()) ||
-                            s.desc.toLowerCase().includes(skillsSearch.toLowerCase())
-                          );
-
-                          if (activeSkills.length === 0) {
-                            return (
-                              <div className="text-[10px] text-neutral-400 font-sans p-2 bg-neutral-50 border border-neutral-150 rounded leading-relaxed">
-                                ⚠️ {t('No globally active skills found. Please navigate to the left-side settings Skills Registry pane and activate some SKILL.md rules first!')}
-                              </div>
-                            );
-                          }
-
-                          if (filtered.length === 0) {
-                            return (
-                              <div className="text-[10px] text-neutral-450 italic p-2 text-center">
-                                {t('No matching active skills found.')}
-                              </div>
-                            );
-                          }
-
-                          return filtered.map(skill => {
-                            const isAttached = selectedSkills.includes(skill.key);
-                            return (
-                              <button
-                                key={skill.key}
-                                type="button"
-                                onClick={() => {
-                                  if (isAttached) {
-                                    setSelectedSkills(selectedSkills.filter(k => k !== skill.key));
-                                  } else {
-                                    setSelectedSkills([...selectedSkills, skill.key]);
-                                  }
-                                }}
-                                className={`w-full text-left p-2 rounded text-[11px] flex items-center justify-between transition-colors ${
-                                  isAttached ? 'bg-neutral-100 text-neutral-900 font-medium' : 'hover:bg-neutral-100 text-neutral-600'
-                                }`}
-                              >
-                                <div className="flex flex-col">
-                                  <div className="flex items-center gap-1.5 font-bold">
-                                    <LegacyIcon name="label" className="text-[12px] text-neutral-500" />
-                                    <span>{skill.label}</span>
-                                  </div>
-                                  <span className="text-[9.5px] text-neutral-400 font-sans ml-4">{skill.desc}</span>
-                                </div>
-                                <LegacyIcon
-                                  name={isAttached ? 'check_box' : 'check_box_outline_blank'}
-                                  className="text-[15px] text-neutral-600 flex-shrink-0"
-                                />
-                              </button>
-                            );
-                          });
-                        })()}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Attachment capsule pill labels list */}
-                  <div className="flex flex-wrap gap-1.5 min-h-6 p-2 bg-white border border-neutral-150 rounded-lg items-center">
-                    {selectedSkills.length > 0 ? (
-                      selectedSkills.map(skillKey => {
-                        const match = scannedSkills.find(s => s.key === skillKey) || { label: skillKey };
-                        return (
-                          <div
-                            key={skillKey}
-                            className="px-2.5 py-0.8 bg-neutral-100 text-neutral-700 border border-neutral-200 rounded-full text-[10px] font-bold font-mono tracking-tight flex items-center gap-1 hover:border-neutral-350 transition-colors"
-                          >
-                            <span>🏷️ {match.label}</span>
-                            <button
-                              type="button"
-                              onClick={() => setSelectedSkills(selectedSkills.filter(k => k !== skillKey))}
-                              className="hover:bg-neutral-250 text-neutral-450 hover:text-rose-700 rounded-full w-3.5 h-3.5 flex items-center justify-center font-sans text-[10px] font-extrabold focus:outline-none transition-colors"
-                            >
-                              ×
-                            </button>
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <span className="text-[10px] text-neutral-400 italic">{t('No manual skills attached. Click \"Attach Skills\" to pick dynamic specifications.')}</span>
-                    )}
-                  </div>
-                </div>
+                {capabilityTier === 'full' ? (
+                  <UnderDevelopmentNotice variant="compact" />
+                ) : (
+                  <AgentNativeCapabilityHint agentType={agentType} kind="skills" />
+                )}
               </div>
 
               {/* 🧩 MODULE 4: Bind MCP Hub Servers */}
@@ -1213,69 +1087,10 @@ export function AgentManager({
                   <span className="text-[10.5px] font-extrabold text-[#111111] font-mono tracking-wide uppercase">{t('MCP Hub Server Bindings')}</span>
                 </div>
 
-                <UnderDevelopmentNotice variant="compact" />
-
-                {agentType === 'clutch' ? (
-                  <>
-                    <p className="text-[10px] text-neutral-400 leading-normal">
-                      {t('Bind MCP servers from Settings → MCP Hub. Used when this agent runs on Clutch models.')}
-                    </p>
-                    <div className="flex flex-col gap-1.5 border border-neutral-200 bg-white p-3 rounded-xl max-h-62 overflow-y-auto">
-                      {mcpServers.length === 0 ? (
-                        <p className="text-[10px] text-neutral-400 italic p-2">
-                          {t('No enabled MCP servers in Hub. Add servers under Settings → MCP Hub first.')}
-                        </p>
-                      ) : (
-                        mcpServers.map((server) => {
-                          const isSelected = selectedMcpServerIds.includes(server.id);
-                          return (
-                            <button
-                              key={server.id}
-                              type="button"
-                              onClick={() => {
-                                if (isSelected) {
-                                  setSelectedMcpServerIds(selectedMcpServerIds.filter((id) => id !== server.id));
-                                } else {
-                                  setSelectedMcpServerIds([...selectedMcpServerIds, server.id]);
-                                }
-                              }}
-                              className={`p-2.5 border text-left rounded-lg transition-all flex items-start justify-between gap-2 cursor-pointer ${
-                                isSelected
-                                  ? 'bg-neutral-900/95 text-white border-neutral-900 shadow-2xs'
-                                  : 'bg-white text-neutral-600 border-neutral-200/85 hover:bg-neutral-50 hover:text-neutral-800'
-                              }`}
-                            >
-                              <div className="flex items-start gap-2.5 min-w-0">
-                                <LegacyIcon
-                                  name="hub"
-                                  className={`text-[16px] p-1 rounded-md mt-0.5 ${
-                                    isSelected ? 'bg-neutral-800 text-white' : 'bg-neutral-100 text-neutral-500'
-                                  }`}
-                                />
-                                <div className="min-w-0">
-                                  <div className="text-[10.5px] font-bold font-sans truncate">{server.name}</div>
-                                  <div className={`text-[9.5px]/1.3 mt-0.5 truncate ${
-                                    isSelected ? 'text-neutral-300' : 'text-neutral-400'
-                                  }`}>
-                                    {server.transport} · {server.toolsCount} {t('tools')}
-                                  </div>
-                                </div>
-                              </div>
-                              {isSelected && (
-                                <span className="text-[7.5px] uppercase font-mono px-1.5 py-0.2 rounded-sm tracking-wider bg-neutral-700 text-white">
-                                  {t('Bound')}
-                                </span>
-                              )}
-                            </button>
-                          );
-                        })
-                      )}
-                    </div>
-                  </>
+                {capabilityTier === 'full' ? (
+                  <UnderDevelopmentNotice variant="compact" />
                 ) : (
-                  <p className="text-[10px] text-neutral-500 leading-relaxed">
-                    {t('Claude Code (Local CLI) agents use Skills and MCP installed in your local Claude Code environment — not Clutch MCP Hub bindings.')}
-                  </p>
+                  <AgentNativeCapabilityHint agentType={agentType} kind="mcp" />
                 )}
               </div>
 

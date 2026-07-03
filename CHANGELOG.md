@@ -10,6 +10,44 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-07-03
+
+Minor release — **Terminal Orchestra (D34)**, **Windows desktop polish**, **CodeBuddy CLI**, **OpenCode Zen**, **Agnes Video**, and agent-scoped Settings.
+
+> **Release assets (v1.1.0):** Tag `v1.1.0` — macOS DMG, Windows MSI/NSIS, `latest.json` + signed updater bundle (macOS), `SHA256SUMS.txt`. Product snapshot: [`docs/releases/v1.1.0.md`](docs/releases/v1.1.0.md).
+
+> **macOS 更新：** v1.0.2+ 用户可通过应用内横幅更新；v1.0.0 / v1.0.1 仍须先手动安装 v1.0.2+ 一次。详见 [`docs/UPDATES.md`](docs/UPDATES.md).
+
+> **Windows：** 安装包由 CI 构建；维护者尚未在实体 Win10/11 上完成完整人工验收 ([#23](https://github.com/fancy1108/Clutch/issues/23))。
+
+### Added
+
+- **Terminal Orchestra (D34):** Terminal mode multi-lane PTY, OrchestratorBar dispatch (`@Agent` natural language + graph syntax), handoff files, Overview dispatch log, lane handoff overlay, float-rail collapse, completion draft queue, dispatch history on leave, and CLI session resume copy-paste commands.
+- **Terminal mode CLI coverage:** Chat/Terminal toggle and embedded `INTERACTIVE_PTY` lanes support all connected CLI agent types (`*-cli`); Orchestrator `@` mentions align with routed tools (Codex, Aider, CodeBuddy, Rivet, Ollama, Antigravity, custom CLIs).
+- **Orchestrator → PTY inject:** Dispatched tasks echo into the target lane xterm and auto-submit Enter.
+- **Windows desktop polish:** Sidebar collapse, chat spacing, tab styling, global font-size preference, cached session snapshots, background WebSocket on session switch, and Windows Tauri dev/sidecar fixes ([#28](https://github.com/fancy1108/Clutch/pull/28)).
+- **Agent-scoped capability tabs:** Settings → **Models**, **MCP Hub**, and **Skills Registry** use top tabs (**Clutch Agent** · **Claude Code** · **OpenCode**); CLI tabs scan native config read-only; CC Switch provider switch when `cc-switch` is on PATH.
+- **Agent Manager clarity:** Skills/MCP modules branch by agent type; non-Clutch agents clear misleading Clutch bind fields on save.
+- **CLI config API:** `GET /api/cli-config/{agent_type}/models|skills|mcp` and `POST .../activate-provider` for `claude-cli` and `opencode-cli`.
+- **Agnes Video V2.0 (chat):** Built-in `agnes-video-v2.0` model; inline player + download; Chinese prompts auto-translated to English; authenticated media URLs for `<video>` playback.
+- **Product website (GitHub Pages):** **https://fancy1108.github.io/Clutch/** — bilingual overview, install commands, contact.
+- **README:** Terminal Session screenshot in bilingual README.
+- **OpenCode Zen text models:** Built-in `opencode` provider in Settings → Models; five curated free chat models; optional catalog refresh; save-time connectivity checks.
+- **CodeBuddy CLI:** First-class `codebuddy-cli` routing (`codebuddy -p` headless, `--resume` / `--session-id` session recovery).
+
+### Changed
+
+- **Terminal input dock:** OrchestratorBar uses the same fixed `bottom-8` layout as Chat, with measured gap equal to input bar height.
+- **Terminal lane lifecycle:** Collapsed lanes stay mounted off-screen (xterm keepalive); PTY reattach reuses live sessions.
+
+### Fixed
+
+- **Dispatch labels:** Natural `@Agent` switch shows **User → Agent**; graph / file-ref dispatches show handoff.
+- **Agnes Video playback:** `/api/workspace/media` accepts `?token=` when Bearer header is missing.
+- **CLI session resume cards:** Copy-paste commands use researched syntax (`codex resume`, `opencode -s`, etc.).
+- **Terminal inject dedupe:** Race no longer triple-echoes prompts into a lane.
+- **Rivet branding:** Only Rivet uses the gray robot fallback icon in `@` picker.
+
 ## [1.0.3] - 2026-07-01
 
 Minor release — **Hybrid shell pool queue**, **OpenCode CLI**, **Ollama settings fix**, **brand refresh**, and **maintainer real-connection E2E**.

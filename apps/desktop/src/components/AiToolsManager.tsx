@@ -8,6 +8,7 @@ import {
 } from '../services/toolsApi';
 import { CLI_INSTALL_GUIDES } from '../services/cliInstallGuides';
 import { BTN_GHOST, BTN_PRIMARY } from './ui/buttonStyles';
+import { SettingsPageHeader, SettingsPageShell } from './ui/SettingsPageHeader';
 import { AiToolIcon } from './AiToolIcon';
 import { ALERT_WARNING } from './ui/surfaceStyles';
 import { LegacyIcon } from './ui/LegacyIcon';
@@ -91,28 +92,25 @@ export default function AiToolsManager({ isModalStyle }: AiToolsManagerProps) {
   const isNoCliInstalled = tools.every((t) => !t.installed);
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto bg-white">
-      <header className={`sticky top-0 z-20 bg-white/95 backdrop-blur py-5 flex items-center justify-between border-b border-neutral-100 pl-8 ${isModalStyle ? 'pr-14' : 'pr-8'}`}>
-        <div className="text-left">
-          <h2 className="text-sm font-bold text-neutral-800 tracking-tight font-sans">{t('AI Tools Integration')}</h2>
-          <p className="text-[11px] text-neutral-400 mt-0.5">
-            {t('Detected local AI CLIs on this machine. Connect only tools you want Clutch to route to.')}
-          </p>
-          <p className="text-[10px] text-neutral-400 mt-1">
-            {t('Install guides below list tested CLIs only; other whitelist tools appear here once installed.')}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => void refresh()}
-          disabled={loading}
-          className={`${BTN_GHOST} text-[10px] font-bold disabled:opacity-50`}
-        >
-          {t('Rescan')}
-        </button>
-      </header>
+    <SettingsPageShell>
+      <SettingsPageHeader
+        isModalStyle={isModalStyle}
+        icon="handyman"
+        title={t('AI Tools Integration')}
+        description={t('Detected local AI CLIs on this machine. Connect only tools you want Clutch to route to.')}
+        descriptionSecondary={t('Install guides below list tested CLIs only; other whitelist tools appear here once installed.')}
+        actions={
+          <button
+            type="button"
+            onClick={() => void refresh()}
+            disabled={loading}
+            className={`${BTN_GHOST} text-[10px] font-bold disabled:opacity-50`}
+          >
+            {t('Rescan')}
+          </button>
+        }
+      />
 
-      <div className="p-8 space-y-8 max-w-4xl mx-auto w-full">
         {error && (
           <p className={ALERT_WARNING}>{error}</p>
         )}
@@ -375,7 +373,6 @@ export default function AiToolsManager({ isModalStyle }: AiToolsManagerProps) {
             </section>
           </>
         )}
-      </div>
-    </div>
+    </SettingsPageShell>
   );
 }

@@ -106,8 +106,33 @@ def update_run_record(run_id: str, patch: dict[str, Any]) -> dict[str, Any] | No
     return _mutate_records(mutate)
 
 
+def _prune_empty_records(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    from src.run_state_store import load_run_state
+    from src.session_content import session_has_persistable_content
+
+    kept: list[dict[str, Any]] = []
+    changed = False
+    for record in records:
+        run_id = str(record.get("run_id") or "").strip()
+        if not run_id:
+            changed = True
+            continue
+        try:
+            state = load_run_state(run_id)
+        except (json.JSONDecodeError, OSError, ValueError):
+            changed = True
+            continue
+        if state is None or not session_has_persistable_content(state):
+            changed = True
+            continue
+        kept.append(record)
+    if changed:
+        _save_records(kept)
+    return kept
+
+
 def list_runs(*, workspace_id: str | None = None) -> list[dict[str, Any]]:
-    records = _load_records()
+    records = _prune_empty_records(_load_records())
     if workspace_id is None:
         return records
     return [record for record in records if record.get("workspace_id") == workspace_id]

@@ -12,6 +12,7 @@ export const BTN_MD = `${BTN_BASE} px-3 py-1.5 text-[11px] rounded-lg`;
 export const BTN_PRIMARY = `${BTN_MD} bg-neutral-900 hover:bg-black text-white border border-neutral-900 shadow-sm`;
 export const BTN_PRIMARY_SM = `${BTN_SM} bg-neutral-900 hover:bg-black text-white border border-neutral-900 shadow-sm`;
 export const BTN_SECONDARY = `${BTN_MD} bg-neutral-50 hover:bg-neutral-100 text-neutral-700 hover:text-neutral-950 border border-neutral-200/60`;
+export const BTN_SECONDARY_SM = `${BTN_SM} bg-neutral-50 hover:bg-neutral-100 text-neutral-700 hover:text-neutral-950 border border-neutral-200/60`;
 export const BTN_GHOST = `${BTN_MD} text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 border border-neutral-200/60`;
 export const BTN_GHOST_SM = `${BTN_SM} text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 border border-neutral-200/60`;
 

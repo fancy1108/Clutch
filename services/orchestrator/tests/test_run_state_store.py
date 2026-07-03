@@ -47,6 +47,40 @@ def test_save_and_load_run_state_roundtrip() -> None:
     assert loaded["terminal_logs"] == ["[CHAT] Claude Sonnet: 12 chars"]
 
 
+def test_save_and_load_terminal_orchestra_fields() -> None:
+    state = initial_state("run_terminal_hist")
+    state["dispatch_log"] = [
+        {
+            "id": "dispatch_1",
+            "target": "OpenCode",
+            "task": "Summarize project",
+            "dispatch_mode": "switch",
+        },
+    ]
+    state["pty_lanes"] = [
+        {
+            "lane_id": "lane_primary",
+            "agent_type": "opencode-cli",
+            "label": "OpenCode",
+            "status": "completed",
+            "focused": True,
+            "collapsed": False,
+            "run_id": "run_terminal_hist",
+        },
+    ]
+    state["dispatch_edges"] = [{"from": "User", "to": "OpenCode"}]
+
+    save_run_state(state)
+    loaded = load_run_state("run_terminal_hist")
+
+    assert loaded is not None
+    assert len(loaded["dispatch_log"]) == 1
+    assert loaded["dispatch_log"][0]["target"] == "OpenCode"
+    assert len(loaded["pty_lanes"]) == 1
+    assert loaded["pty_lanes"][0]["status"] == "completed"
+    assert len(loaded["dispatch_edges"]) == 1
+
+
 def test_get_or_create_run_loads_persisted_state() -> None:
     from src.main import _get_or_create_run, _run_states
 
@@ -76,6 +110,28 @@ def test_get_run_state_http_returns_persisted_messages(tmp_path, monkeypatch: py
     assert response.status_code == 200
     body = response.json()
     assert body["state"]["messages"][0]["text"] == "saved"
+
+
+def test_get_run_state_http_returns_terminal_orchestra_fields(
+    tmp_path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from fastapi.testclient import TestClient
+
+    from src.main import _run_states, app
+
+    monkeypatch.setenv("CLUTCH_RUN_HISTORY_DIR", str(tmp_path))
+    _run_states.clear()
+
+    state = initial_state("run_http_terminal")
+    state["dispatch_log"] = [{"id": "d1", "target": "OpenCode", "task": "Summarize"}]
+    state["pty_lanes"] = []
+    save_run_state(state)
+
+    response = TestClient(app).get("/api/runs/run_http_terminal/state")
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body["state"]["dispatch_log"]) == 1
+    assert body["state"]["dispatch_log"][0]["target"] == "OpenCode"
 
 
 def test_plain_chat_persists_messages(monkeypatch) -> None:

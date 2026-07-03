@@ -6,6 +6,7 @@ import { loadWorkflowById } from '../services/workflowApi';
 import { useLanguage, translateRunStatus } from './LanguageContext';
 import { LegacyIcon } from './ui/LegacyIcon';
 import { UnderDevelopmentNotice } from './ui/UnderDevelopmentNotice';
+import { OverviewDispatchLog } from './terminal-orchestra/OverviewDispatchLog';
 import { BTN_ICON } from './ui/buttonStyles';
 
 interface RightPanelProps {
@@ -35,6 +36,10 @@ interface RightPanelProps {
   onOpenWorkspaceFile?: (path: string) => void;
   workspaceAuthorized?: boolean;
   onClearTerminal?: () => void;
+  dispatchLog?: import('../types').DispatchLogEntry[];
+  showTerminalOrchestraOverview?: boolean;
+  terminalHistoryReadOnly?: boolean;
+  onSelectDispatchEntry?: (entryId: string) => void;
 }
 
 type WorkflowStepView = {
@@ -75,6 +80,10 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   onOpenWorkspaceFile,
   workspaceAuthorized = false,
   onClearTerminal,
+  dispatchLog = [],
+  showTerminalOrchestraOverview = false,
+  terminalHistoryReadOnly = false,
+  onSelectDispatchEntry,
 }) => {
   const { t, language } = useLanguage();
   const [selectedFile, setSelectedFile] = React.useState<string>('');
@@ -139,7 +148,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   const statusLabel = translateRunStatus(clutchStatus, language);
 
   const renderStateSummary = () => (
-    <div className="p-3 border border-outline-variant/30 rounded-xl bg-surface-container-low/40 font-mono text-[11px] leading-relaxed space-y-1">
+    <div className="p-3 border border-outline-variant/30 rounded-xl bg-surface-container-low/40 font-mono text-[10px] space-y-1">
       <p>
         {t('workflow')}: <span className="text-on-surface font-bold">{workflowLabel || '—'}</span>
       </p>
@@ -173,7 +182,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   const renderSingleAgentSummary = () => {
     const agentLabel = sessionAgentName || activeAgent || '—';
     return (
-      <div className="p-3 border border-outline-variant/30 rounded-xl bg-surface-container-low/40 font-mono text-[11px] leading-relaxed space-y-1">
+      <div className="p-3 border border-outline-variant/30 rounded-xl bg-surface-container-low/40 font-mono text-[10px] space-y-1">
         <p>
           {t('Active Agent')}: <span className="text-on-surface font-bold">{agentLabel}</span>
         </p>
@@ -221,16 +230,16 @@ export const RightPanel: React.FC<RightPanelProps> = ({
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="text-[10.5px] font-bold text-on-surface-variant uppercase tracking-wider">
+                  <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">
                     {index + 1}. {step.id}
                   </p>
-                  <p className={`font-bold text-on-surface truncate ${compact ? 'text-[11px]' : 'text-xs'}`}>
+                  <p className={`font-bold text-on-surface truncate ${compact ? 'text-[10px]' : 'text-[11px]'}`}>
                     {step.label}
                   </p>
-                  <p className="text-[11px] text-on-surface-variant font-mono mt-0.5">{step.agent}</p>
+                  <p className="text-[10px] text-on-surface-variant font-mono mt-0.5">{step.agent}</p>
                 </div>
                 {isActive ? (
-                  <span className="text-[10px] font-bold uppercase text-primary whitespace-nowrap">
+                  <span className="text-[9px] font-bold uppercase text-primary whitespace-nowrap">
                     {statusLabel}
                   </span>
                 ) : null}
@@ -317,10 +326,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
       </button>
 
       <div className={`flex-grow flex flex-col h-full overflow-hidden ${!isOpen ? 'hidden' : ''}`}>
-        <div
-          className="grid h-11 border-b border-outline-variant overflow-hidden select-none bg-surface-container-low/40"
-          style={{ gridTemplateColumns: `repeat(${visibleTabs.length}, minmax(0, 1fr))` }}
-        >
+        <div className="flex border-b border-outline-variant overflow-x-auto sidebar-scroll select-none bg-surface-container-low/40">
           {visibleTabs.map((tab) => {
             const isActive = activeTab === tab;
             return (
@@ -328,19 +334,13 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                 key={tab}
                 data-testid={`right-tab-${tab}`}
                 onClick={() => setActiveTab(tab)}
-                className={`relative h-11 min-w-0 overflow-hidden px-1 text-xs font-bold whitespace-nowrap tracking-wide capitalize transition-[background-color,color] ${
+                className={`px-4 py-3 text-xs font-bold whitespace-nowrap tracking-wide capitalize transition-all ${
                   isActive
-                    ? 'text-primary bg-white'
+                    ? 'text-primary border-b-2 border-primary bg-white'
                     : 'text-on-surface-variant hover:text-on-surface'
                 }`}
               >
-                <span className="block truncate">{t(RIGHT_TAB_LABELS[tab])}</span>
-                <span
-                  className={`absolute bottom-0 left-1/2 h-[3px] w-5 -translate-x-1/2 rounded-full bg-primary transition-opacity ${
-                    isActive ? 'opacity-100' : 'opacity-0'
-                  }`}
-                  aria-hidden
-                />
+                {t(RIGHT_TAB_LABELS[tab])}
               </button>
             );
           })}
@@ -349,80 +349,102 @@ export const RightPanel: React.FC<RightPanelProps> = ({
         <div className="flex-1 overflow-y-auto sidebar-scroll p-5 select-none bg-white">
           {activeTab === 'overview' && (
             <div className="space-y-6 animate-fade-in text-xs">
-              {isMultiAgent ? (
-                <>
-                  {renderStateSummary()}
-                  {hasWorkflow ? (
-                    <section>
-                      <h4 className="text-[10px] font-bold text-on-surface-variant/75 uppercase tracking-widest mb-3">
-                        {t('Workflow step execution')}
-                      </h4>
-                      {renderWorkflowSteps(true)}
-                    </section>
-                  ) : isIdle ? (
-                    <div className="p-6 border border-dashed border-outline-variant/50 rounded-xl text-center space-y-2">
-                      <LegacyIcon name="monitoring" className="text-[24px] text-on-surface-variant/50" />
-                      <p className="text-xs text-on-surface-variant leading-relaxed">
-                        {t('No active workflow overview')}
-                      </p>
-                    </div>
-                  ) : null}
-                </>
+              {showTerminalOrchestraOverview ? (
+                <section className="space-y-3">
+                  <div className="p-3 rounded-2xl border border-outline-variant/30 bg-surface-container-low shadow-sm">
+                    <p className="text-[11px] text-on-surface-variant leading-relaxed">
+                      <span className="font-bold text-on-surface">{t('Handoff')}</span>
+                      {' — '}
+                      {t('Handoff overview tip')}
+                    </p>
+                  </div>
+                  <h4 className="text-[10px] font-bold text-on-surface-variant/75 uppercase tracking-widest">
+                    {t('Dispatch records')}
+                  </h4>
+                  <OverviewDispatchLog
+                    entries={dispatchLog}
+                    readOnly={terminalHistoryReadOnly}
+                    onSelectEntry={onSelectDispatchEntry}
+                  />
+                </section>
               ) : (
                 <>
-                  {renderSingleAgentSummary()}
-                  {isIdle && tokenTotal === 0 ? (
-                    <div className="p-6 border border-dashed border-outline-variant/50 rounded-xl text-center space-y-2">
-                      <LegacyIcon name="smart_toy" className="text-[24px] text-on-surface-variant/50" />
-                      <p className="text-xs text-on-surface-variant leading-relaxed">
-                        {t('No session activity yet')}
-                      </p>
-                    </div>
+                  {isMultiAgent ? (
+                    <>
+                      {renderStateSummary()}
+                      {hasWorkflow ? (
+                        <section>
+                          <h4 className="text-[10px] font-bold text-on-surface-variant/75 uppercase tracking-widest mb-3">
+                            {t('Workflow step execution')}
+                          </h4>
+                          {renderWorkflowSteps(true)}
+                        </section>
+                      ) : isIdle ? (
+                        <div className="p-6 border border-dashed border-outline-variant/50 rounded-xl text-center space-y-2">
+                          <LegacyIcon name="monitoring" className="text-[24px] text-on-surface-variant/50" />
+                          <p className="text-[11px] text-on-surface-variant leading-relaxed">
+                            {t('No active workflow overview')}
+                          </p>
+                        </div>
+                      ) : null}
+                    </>
+                  ) : (
+                    <>
+                      {renderSingleAgentSummary()}
+                      {isIdle && tokenTotal === 0 ? (
+                        <div className="p-6 border border-dashed border-outline-variant/50 rounded-xl text-center space-y-2">
+                          <LegacyIcon name="smart_toy" className="text-[24px] text-on-surface-variant/50" />
+                          <p className="text-[11px] text-on-surface-variant leading-relaxed">
+                            {t('No session activity yet')}
+                          </p>
+                        </div>
+                      ) : null}
+                    </>
+                  )}
+                  {tokenTotal > 0 ? (
+                    <section>
+                      <h4 className="text-[10px] font-bold text-on-surface-variant/75 uppercase tracking-widest mb-4">
+                        {t('Session Token Analytics')}
+                      </h4>
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="p-3 border border-neutral-200 bg-neutral-50/50 rounded-xl">
+                            <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider mb-1">{t('Total Tokens')}</p>
+                            <p className="text-base font-extrabold text-neutral-900 font-mono">{tokenTotal.toLocaleString()}</p>
+                          </div>
+                          <div className="p-3 border border-neutral-200 bg-neutral-50/50 rounded-xl">
+                            <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider mb-1">{t('Estimated Cost')}</p>
+                            <p className="text-base font-extrabold text-neutral-900 font-mono">${sessionCostUsd.toFixed(4)}</p>
+                          </div>
+                        </div>
+
+                        <div className="p-3 border border-neutral-200 rounded-xl space-y-2">
+                          <div className="flex items-center justify-between text-[10px] font-bold text-neutral-800">
+                            <span>{t('Token Distribution')}</span>
+                            <span className="text-zinc-500 font-normal font-mono">{t('Input vs Output')}</span>
+                          </div>
+                          <div className="w-full h-3 rounded-full overflow-hidden flex bg-neutral-100 border border-neutral-200/50">
+                            <div
+                              className="h-full bg-neutral-900 transition-all duration-300"
+                              style={{ width: `${inputPct}%` }}
+                              title={`Input: ${tokenInput} tokens (${inputPct}%)`}
+                            />
+                            <div
+                              className="h-full bg-neutral-400 transition-all duration-300"
+                              style={{ width: `${outputPct}%` }}
+                              title={`Output: ${tokenOutput} tokens (${outputPct}%)`}
+                            />
+                          </div>
+                          <div className="flex justify-between text-[9px] font-mono pt-1">
+                            <span>{t('Input')} ({inputPct}%): {tokenInput.toLocaleString()}</span>
+                            <span>{t('Output')} ({outputPct}%): {tokenOutput.toLocaleString()}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </section>
                   ) : null}
                 </>
               )}
-              {tokenTotal > 0 ? (
-                <section>
-                  <h4 className="text-[10px] font-bold text-on-surface-variant/75 uppercase tracking-widest mb-4">
-                    {t('Session Token Analytics')}
-                  </h4>
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="p-3 border border-neutral-200 bg-neutral-50/50 rounded-xl">
-                        <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider mb-1">{t('Total Tokens')}</p>
-                        <p className="text-base font-extrabold text-neutral-900 font-mono">{tokenTotal.toLocaleString()}</p>
-                      </div>
-                      <div className="p-3 border border-neutral-200 bg-neutral-50/50 rounded-xl">
-                        <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider mb-1">{t('Estimated Cost')}</p>
-                        <p className="text-base font-extrabold text-neutral-900 font-mono">${sessionCostUsd.toFixed(4)}</p>
-                      </div>
-                    </div>
-
-                    <div className="p-3 border border-neutral-200 rounded-xl space-y-2">
-                      <div className="flex items-center justify-between text-[10px] font-bold text-neutral-800">
-                        <span>{t('Token Distribution')}</span>
-                        <span className="text-zinc-500 font-normal font-mono">{t('Input vs Output')}</span>
-                      </div>
-                      <div className="w-full h-3 rounded-full overflow-hidden flex bg-neutral-100 border border-neutral-200/50">
-                        <div
-                          className="h-full bg-neutral-900 transition-all duration-300"
-                          style={{ width: `${inputPct}%` }}
-                          title={`Input: ${tokenInput} tokens (${inputPct}%)`}
-                        />
-                        <div
-                          className="h-full bg-neutral-400 transition-all duration-300"
-                          style={{ width: `${outputPct}%` }}
-                          title={`Output: ${tokenOutput} tokens (${outputPct}%)`}
-                        />
-                      </div>
-                      <div className="flex justify-between text-[9px] font-mono pt-1">
-                        <span>{t('Input')} ({inputPct}%): {tokenInput.toLocaleString()}</span>
-                        <span>{t('Output')} ({outputPct}%): {tokenOutput.toLocaleString()}</span>
-                      </div>
-                    </div>
-                  </div>
-                </section>
-              ) : null}
             </div>
           )}
 
@@ -458,10 +480,10 @@ export const RightPanel: React.FC<RightPanelProps> = ({
               ) : (
                 <div className="p-6 border border-dashed border-outline-variant/50 rounded-xl text-center space-y-2">
                   <LegacyIcon name="account_tree" className="text-[24px] text-on-surface-variant/50" />
-                  <p className="text-xs text-on-surface-variant leading-relaxed">
+                  <p className="text-[11px] text-on-surface-variant leading-relaxed">
                     {t('Select or create a workflow')}
                   </p>
-                  <p className="text-[11px] text-on-surface-variant/70 leading-relaxed">
+                  <p className="text-[10px] text-on-surface-variant/70 leading-relaxed">
                     {t('No active workflow overview')}
                   </p>
                 </div>
