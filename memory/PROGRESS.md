@@ -5,29 +5,26 @@
 
 ## Current Status
 
-- **阶段：** **v1.1.1 待发版**（2026-07-04）— Windows interactive PTY (#30) + 平台 chrome 拆分
-- **Release：** [v1.1.0](https://github.com/fancy1108/Clutch/releases/tag/v1.1.0) 当前 GitHub Latest · 下一版 **v1.1.1** 已 bump 待 merge/tag
-- **Git：** `dev` 领先 `main` · 版本号 `1.1.1`（package / tauri）
-- **开放：** [#23](https://github.com/fancy1108/Clutch/issues/23) Windows 实体机 smoke（v1.1.1 安装包）
+- **阶段：** **v1.1.1 已发布**（2026-07-04）— Windows interactive PTY (#30) + 平台 chrome 拆分
+- **Release：** [v1.1.1](https://github.com/fancy1108/Clutch/releases/tag/v1.1.1) Latest · 上一版 [v1.1.0](https://github.com/fancy1108/Clutch/releases/tag/v1.1.0)
+- **Git：** `main` / `dev` · 版本号 `1.1.1`
+- **开放：** [#23](https://github.com/fancy1108/Clutch/issues/23) Windows 实体机 smoke（v1.1.1 安装包已挂 Release）
 
 ### v1.1.1 发版清单
 
 | 项 | 状态 |
 |----|------|
-| CHANGELOG + `docs/releases/v1.1.1.md` + README | ✅ |
-| 版本 bump → 1.1.1 | ✅ |
-| `./scripts/verify.sh` | ⏳ |
-| Merge `dev` → `main` + tag `v1.1.1` | ⏳ 待你确认 |
-| CI macOS DMG | ⏳ tag 后 |
-| Windows Build → 手动挂 Release | ⏳ tag 后 |
-| Homebrew tap sync | ⏳ `CLUTCH_VERSION=v1.1.1 ./scripts/sync-homebrew-tap.sh` |
-| macOS updater workflow | ⏳ `release_tag=v1.1.1` |
+| PR #31 merge `dev` → `main` | ✅ |
+| `git tag v1.1.1` + macOS DMG CI | ✅ |
+| Windows MSI/NSIS 挂 Release + SHA256SUMS | ✅ |
+| Homebrew tap → 1.1.1 | ✅ |
+| macOS updater (`latest.json` + tar.gz) | ✅ |
+| @996wuxian Win10/11 smoke | ⏳ |
 
 ## Next Actions
 
-- **你确认** merge PR `dev` → `main`，回复「可以发了」后打 tag `v1.1.1`
-- **Windows** — Actions → Windows Build（ref `v1.1.1`）→ 上传 MSI/NSIS 到 Release
-- **@996wuxian** — #23 smoke on v1.1.1 Win 包
+- **#23** — @996wuxian 用 v1.1.1 Win 安装包做实体机 smoke（PTY + 侧栏 + 安装）
+- **sync `dev`** — merge `main` 回 `dev`（如尚未同步）
 
 ## Recent Sessions
 
