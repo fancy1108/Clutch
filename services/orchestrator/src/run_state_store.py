@@ -60,7 +60,13 @@ def load_run_state(run_id: str) -> ClutchState | None:
     path = _state_path(run_id)
     if not path.is_file():
         return None
-    data = json.loads(path.read_text(encoding="utf-8"))
+    try:
+        raw = path.read_text(encoding="utf-8").strip()
+        if not raw:
+            return None
+        data = json.loads(raw)
+    except (json.JSONDecodeError, OSError):
+        return None
     if not isinstance(data, dict):
         return None
     return _coerce_state(data, run_id)

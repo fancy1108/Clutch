@@ -18,6 +18,19 @@ def isolated_history_dir(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("CLUTCH_RUN_HISTORY_DIR", str(tmp_path))
 
 
+def test_load_run_state_ignores_empty_or_corrupt_file(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("CLUTCH_RUN_HISTORY_DIR", str(tmp_path))
+    from src.run_state_store import _states_dir
+
+    states_dir = _states_dir()
+    states_dir.mkdir(parents=True, exist_ok=True)
+    (states_dir / "run_empty.json").write_text("", encoding="utf-8")
+    (states_dir / "run_bad.json").write_text("{not-json", encoding="utf-8")
+
+    assert load_run_state("run_empty") is None
+    assert load_run_state("run_bad") is None
+
+
 def test_save_and_load_run_state_roundtrip() -> None:
     state = initial_state("run_persist01")
     state["messages"] = [
