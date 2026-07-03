@@ -29,6 +29,15 @@ Clutch 是一款**桌面应用**（Tauri + React），面向独立开发者和�
 - **Agent 分栏设置** — Models / MCP / Skills 按 Agent 类型分 Tab（Clutch · Claude Code · OpenCode）。
 - **产品官网** — [fancy1108.github.io/Clutch](https://fancy1108.github.io/Clutch/)：中英文介绍、安装方式与联系方式。
 
+### v1.1.0 之后（`dev` 分支）
+
+> 尚未打 tag 发版 — 详见 [`CHANGELOG.md` Unreleased](CHANGELOG.md#unreleased)。
+
+- **Windows 交互式 PTY ([#30](https://github.com/fancy1108/Clutch/pull/30))** — Terminal Orchestra 在 Windows 上通过 WinPTY 附着交互式 CLI Lane。感谢 [@996wuxian](https://github.com/996wuxian)。
+- **平台 chrome 拆分** — macOS / Windows 工作区 UI 分文件维护（`platform/chrome/*.{macos,windows}.tsx`）；共享导航图标见 `navConfig.ts`。维护边界：[`docs/PLATFORM_MAINTENANCE.md`](docs/PLATFORM_MAINTENANCE.md)。
+- **通用设置字号 ([#30](https://github.com/fancy1108/Clutch/pull/30))** — 恢复字号偏好 UI、持久化与根节点 `data-font-size`。
+- **跨平台 `tauri:dev`** — `node scripts/run-tauri-dev.mjs`，macOS / Windows 开发均可使用 ([#30](https://github.com/fancy1108/Clutch/pull/30))。
+
 更早版本见 [`CHANGELOG.md`](CHANGELOG.md) · [`docs/releases/`](docs/releases/)。
 
 ---
@@ -129,6 +138,7 @@ xattr -cr /Applications/Clutch.app && open -a Clutch
 | macOS 应用内更新 | [`docs/UPDATES.md`](docs/UPDATES.md) |
 | 从源码构建 | [`docs/BUILD_FROM_SOURCE.md`](docs/BUILD_FROM_SOURCE.md) |
 | 参与贡献 | [`CONTRIBUTING.md`](CONTRIBUTING.md)（PR 请提 **`dev`**） |
+| macOS / Windows UI 边界 | [`docs/PLATFORM_MAINTENANCE.md`](docs/PLATFORM_MAINTENANCE.md) |
 | 安全漏洞报告 | [`SECURITY.md`](SECURITY.md) |
 
 完整索引：[`docs/README.md`](docs/README.md) · **维护者发版：** [`docs/RELEASE_MAINTAINER.md`](docs/RELEASE_MAINTAINER.md)

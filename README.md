@@ -29,6 +29,15 @@ Clutch is a **desktop app** (Tauri + React) for developers and technical operato
 - **Agent-scoped Settings** — Models / MCP / Skills tabs per agent type (Clutch · Claude Code · OpenCode).
 - **Product website** — [fancy1108.github.io/Clutch](https://fancy1108.github.io/Clutch/): bilingual overview, install commands, and contact.
 
+### Since v1.1.0 (on `dev`)
+
+> Not in a tagged release yet — see [`CHANGELOG.md` Unreleased](CHANGELOG.md#unreleased).
+
+- **Windows interactive PTY ([#30](https://github.com/fancy1108/Clutch/pull/30))** — Terminal Orchestra interactive CLI lanes on Windows via WinPTY. Thanks [@996wuxian](https://github.com/996wuxian).
+- **Platform chrome split** — macOS and Windows workspace UI live in `platform/chrome/*.{macos,windows}.tsx`; shared nav icons in `navConfig.ts`. See [`docs/PLATFORM_MAINTENANCE.md`](docs/PLATFORM_MAINTENANCE.md).
+- **General Settings font size ([#30](https://github.com/fancy1108/Clutch/pull/30))** — Restored preference UI, persistence, and root `data-font-size`.
+- **Cross-platform `tauri:dev`** — `node scripts/run-tauri-dev.mjs` for macOS and Windows dev ([#30](https://github.com/fancy1108/Clutch/pull/30)).
+
 Older releases: [`CHANGELOG.md`](CHANGELOG.md) · [`docs/releases/`](docs/releases/).
 
 ---
@@ -129,6 +138,7 @@ Deep dive: [`docs/PRODUCT_INTRO.md`](docs/PRODUCT_INTRO.md) · Architecture: [`d
 | macOS in-app updates | [`docs/UPDATES.md`](docs/UPDATES.md) |
 | Build from source | [`docs/BUILD_FROM_SOURCE.md`](docs/BUILD_FROM_SOURCE.md) |
 | Contribute | [`CONTRIBUTING.md`](CONTRIBUTING.md) (PRs to **`dev`**) |
+| macOS / Windows UI boundaries | [`docs/PLATFORM_MAINTENANCE.md`](docs/PLATFORM_MAINTENANCE.md) |
 | Report a security issue | [`SECURITY.md`](SECURITY.md) |
 
 Full index: [`docs/README.md`](docs/README.md) · **Maintainers:** [`docs/RELEASE_MAINTAINER.md`](docs/RELEASE_MAINTAINER.md)
