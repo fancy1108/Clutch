@@ -20,11 +20,17 @@ import {
   isBuiltinAgent,
   mergeAgentsWithBuiltin,
 } from './services/builtinAgent';
-import { fetchPreferences, saveThemePreference, saveUserNamePreference, type ThemePresetId } from './services/themeApi';
+import {
+  fetchPreferences,
+  saveFontSizePreference,
+  saveThemePreference,
+  saveUserNamePreference,
+  type ThemePresetId,
+} from './services/themeApi';
+import { DEFAULT_FONT_SIZE, type AppFontSize } from './services/fontSizePreference';
 import { LanguageProvider, useLanguage } from './components/LanguageContext';
 import { OnboardingWizard } from './components/onboarding/OnboardingWizard';
-import { CONTENT_TOP_WITH_BANNER, SIDEBAR_COLLAPSED_WIDTH_PX, SIDEBAR_EXPANDED_WIDTH_PX, CHROME_PANEL_TOGGLE_TOP_CSS, CHROME_PANEL_TOGGLE_HALF_PX } from './constants/layout';
-import { ChromeEdgeToggle } from './components/ui/ChromeEdgeToggle';
+import { CONTENT_TOP_WITH_BANNER, SIDEBAR_COLLAPSED_WIDTH_PX, SIDEBAR_EXPANDED_WIDTH_PX } from './constants/layout';
 import { BrandLogo } from './components/BrandLogo';
 import { clutchMarkUrl } from './assets/brand';
 import { DevOnboardingToolsEmptyPreview } from './components/onboarding/DevOnboardingToolsEmptyPreview';
@@ -156,6 +162,7 @@ function MainLayout() {
   const [workflowAgentSteps, setWorkflowAgentSteps] = useState<WorkflowAgentStep[]>([]);
   const [isMultiAgent, setIsMultiAgent] = useState<boolean>(true);
   const [themeId, setThemeIdState] = useState<ThemePresetId>('pristine-light');
+  const [fontSize, setFontSizeState] = useState<AppFontSize>(DEFAULT_FONT_SIZE);
   const [userAvatar, setUserAvatarState] = useState<string>('');
   const [userName, setUserNameState] = useState<string>('User');
 
@@ -163,6 +170,7 @@ function MainLayout() {
     void fetchPreferences()
       .then((prefs) => {
         setThemeIdState(prefs.active_theme_id);
+        setFontSizeState(prefs.font_size ?? DEFAULT_FONT_SIZE);
         if (prefs.user_avatar) {
           setUserAvatarState(prefs.user_avatar);
           setUserChatAvatar(prefs.user_avatar);
@@ -190,6 +198,11 @@ function MainLayout() {
     if (!preset) return;
     setThemeIdState(preset.id as ThemePresetId);
     void saveThemePreference(preset.id as ThemePresetId).catch(() => {});
+  };
+
+  const setFontSize = (size: AppFontSize) => {
+    setFontSizeState(size);
+    void saveFontSizePreference(size).catch(() => {});
   };
 
   const setUserName = (name: string) => {
@@ -1368,6 +1381,7 @@ function MainLayout() {
   return (
     <div 
       style={themeVars as React.CSSProperties}
+      data-font-size={fontSize}
       className="relative h-screen max-h-screen bg-background text-on-surface overflow-hidden flex flex-col font-sans select-none"
     >
       {/* 1. Header component */}
@@ -1377,18 +1391,6 @@ function MainLayout() {
         onPickWorkspace={() => { void handlePickWorkspace(); }}
         folders={folders}
         sidebarOpen={sidebarOpen}
-      />
-
-      <ChromeEdgeToggle
-        testId="workspace-sidebar-toggle"
-        icon={sidebarOpen ? 'chevron_left' : 'chevron_right'}
-        title={sidebarOpen ? t('Collapse Sidebar') : t('Expand Sidebar')}
-        onClick={() => setSidebarOpen((open) => !open)}
-        className="fixed transition-[left] duration-300 ease-out"
-        style={{
-          top: CHROME_PANEL_TOGGLE_TOP_CSS,
-          left: selectedSidebarWidth - CHROME_PANEL_TOGGLE_HALF_PX,
-        }}
       />
 
       {/* 2. Side Panel components layout */}
@@ -1404,6 +1406,7 @@ function MainLayout() {
           setActiveFlow={handleFlowSelect}
           onNewChat={() => { void handleNewChat(); }}
           isOpenState={sidebarOpen}
+          setIsOpenState={setSidebarOpen}
           isMultiAgent={isMultiAgent}
           sessions={sessions}
           shellSnapshotRunIds={shellSnapshotRunIds}
@@ -1642,6 +1645,8 @@ function MainLayout() {
           setUserAvatar={setUserAvatarState}
           userName={userName}
           setUserName={setUserName}
+          fontSize={fontSize}
+          setFontSize={setFontSize}
         />
 
       </div>

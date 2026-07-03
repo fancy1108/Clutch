@@ -6,7 +6,12 @@ import type { RepositoryGroup, WorkspaceInfo } from './services/workspaceApi';
 import { LegacyIcon } from './components/ui/LegacyIcon';
 import { UpdateBanner } from './components/UpdateBanner';
 import { BTN_ICON_SM } from './components/ui/buttonStyles';
-import { SIDEBAR_COLLAPSED_WIDTH_PX, SIDEBAR_EXPANDED_WIDTH_PX } from './constants/layout';
+import { ChromeEdgeToggle } from './components/ui/ChromeEdgeToggle';
+import {
+  CHROME_PANEL_TOGGLE_TOP_CSS,
+  SIDEBAR_COLLAPSED_WIDTH_PX,
+  SIDEBAR_EXPANDED_WIDTH_PX,
+} from './constants/layout';
 
 interface SidebarProps {
   currentView: MainView;
@@ -17,6 +22,7 @@ interface SidebarProps {
   setActiveFlow: (flow: string) => void;
   onNewChat: () => void;
   isOpenState: boolean;
+  setIsOpenState: (open: boolean) => void;
   isMultiAgent?: boolean;
   sessions?: SessionRecord[];
   shellSnapshotRunIds?: ReadonlySet<string>;
@@ -55,12 +61,6 @@ function sessionLabel(session: SessionRecord): string {
   return session.run_id;
 }
 
-function collapsedMicroLabel(value: string, maxLen = 3): string {
-  const trimmed = value.trim();
-  if (!trimmed) return '·';
-  return trimmed.length <= maxLen ? trimmed : trimmed.slice(0, maxLen);
-}
-
 export const Sidebar: React.FC<SidebarProps> = ({
   currentView,
   setView,
@@ -70,6 +70,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   setActiveFlow,
   onNewChat,
   isOpenState,
+  setIsOpenState,
   isMultiAgent = true,
   sessions = [],
   shellSnapshotRunIds,
@@ -402,7 +403,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     key: string,
     icon: string,
     title: string,
-    shortLabel: string,
     onClick: () => void,
     active = false,
   ) => (
@@ -411,29 +411,29 @@ export const Sidebar: React.FC<SidebarProps> = ({
       type="button"
       onClick={onClick}
       aria-label={title}
-      title={title}
-      className={`flex w-full flex-col items-center justify-center gap-0.5 rounded-lg border py-1 transition-[background-color,border-color,color,box-shadow] ${
+      onMouseEnter={(event) => showCollapsedTooltip(title, event.currentTarget)}
+      onMouseLeave={hideCollapsedTooltip}
+      onFocus={(event) => showCollapsedTooltip(title, event.currentTarget)}
+      onBlur={hideCollapsedTooltip}
+      className={`flex h-9 w-9 items-center justify-center rounded-lg border transition-[background-color,border-color,color,box-shadow] ${
         active
           ? 'border-outline-variant/60 bg-surface-bright text-on-surface shadow-sm'
           : 'border-transparent text-on-surface-variant hover:bg-surface-bright hover:text-on-surface'
       }`}
     >
-      <LegacyIcon name={icon} className="text-[17px]" />
-      <span className="max-w-[48px] truncate text-center text-[8px] font-medium leading-none">
-        {shortLabel}
-      </span>
+      <LegacyIcon name={icon} className="text-[18px]" />
     </button>
   );
 
   const renderCollapsedRail = () => (
-    <div className="flex h-full min-h-0 flex-col items-center gap-2 overflow-hidden pt-3 pb-2">
-      <div className="flex w-full flex-col items-stretch gap-0.5">
-        {collapsedNavButton('chat', 'chat', t('New Chat'), t('Chat'), onNewChat, currentView === 'chat')}
-        {collapsedNavButton('agents', 'smart_toy', t('AI Agents'), t('Agent'), () => setView('agents'), currentView === 'agents')}
+    <div className="flex h-full flex-col items-center gap-3 overflow-hidden pt-[76px] pb-2">
+      <div className="flex flex-col items-center gap-1">
+        {collapsedNavButton('chat', 'chat', t('New Chat'), onNewChat, currentView === 'chat')}
+        {collapsedNavButton('agents', 'smart_toy', t('AI Agents'), () => setView('agents'), currentView === 'agents')}
         {isMultiAgent
-          ? collapsedNavButton('workflows', 'fork_right', t('Workflows SOP'), t('Flow'), () => setView('workflows'), currentView === 'workflows')
+          ? collapsedNavButton('workflows', 'fork_right', t('Workflows SOP'), () => setView('workflows'), currentView === 'workflows')
           : null}
-        {collapsedNavButton('add-workspace', 'create_new_folder', t('Add project folder'), t('Project'), () => onAddWorkspace?.())}
+        {collapsedNavButton('add-workspace', 'create_new_folder', t('Add project folder'), () => onAddWorkspace?.())}
       </div>
 
       <div className="h-px w-8 bg-outline-variant/60" />
@@ -441,7 +441,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className="flex min-h-0 w-full flex-1 flex-col items-center gap-1 overflow-y-auto overflow-x-hidden sidebar-scroll px-1">
         {workspaces.map((repo) => {
           const isActiveWorkspace = repo.id === activeWorkspaceId;
-          const microLabel = collapsedMicroLabel(repo.name);
           return (
             <button
               key={repo.id}
@@ -449,21 +448,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
               data-testid={`collapsed-workspace-${repo.id}`}
               onClick={() => onSelectWorkspace?.(repo.id)}
               aria-label={repo.name}
-              title={repo.name}
               onMouseEnter={(event) => showCollapsedTooltip(repo.name, event.currentTarget)}
               onMouseLeave={hideCollapsedTooltip}
               onFocus={(event) => showCollapsedTooltip(repo.name, event.currentTarget)}
               onBlur={hideCollapsedTooltip}
-              className={`flex w-full flex-col items-center justify-center gap-0.5 rounded-lg border py-1 transition-[background-color,border-color,color,box-shadow] ${
+              className={`flex h-9 w-9 items-center justify-center rounded-lg border transition-[background-color,border-color,color,box-shadow] ${
                 isActiveWorkspace
                   ? 'border-outline-variant/70 bg-surface-bright text-on-surface shadow-sm'
                   : 'border-transparent text-on-surface-variant hover:bg-surface-bright hover:text-on-surface'
               }`}
             >
-              <LegacyIcon name={isActiveWorkspace ? 'folder_open' : 'folder'} className="text-[17px]" />
-              <span className="max-w-[48px] truncate text-center text-[8px] font-medium leading-none">
-                {microLabel}
-              </span>
+              <LegacyIcon name={isActiveWorkspace ? 'folder_open' : 'folder'} className="text-[18px]" />
             </button>
           );
         })}
@@ -471,20 +466,30 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       <div className="h-px w-8 bg-outline-variant/60" />
 
-      {collapsedNavButton('settings', 'settings', t('Settings'), t('Set'), () => setView('settings'), currentView === 'settings')}
+      {collapsedNavButton('settings', 'settings', t('Settings'), () => setView('settings'), currentView === 'settings')}
     </div>
   );
 
   return (
     <>
     <aside
-      className={`fixed h-screen left-0 top-0 border-r border-outline-variant bg-surface flex flex-col overflow-hidden transition-[width] duration-200 ease-out z-50 ${
-        isOpenState ? 'px-4 pt-5 pb-3' : 'px-1.5 pb-3'
+      className={`fixed h-screen left-0 top-0 border-r border-outline-variant bg-surface flex flex-col transition-[width] duration-200 ease-out z-50 ${
+        isOpenState ? 'px-4 pt-5 pb-3' : 'p-2'
       }`}
       style={{
         width: isOpenState ? SIDEBAR_EXPANDED_WIDTH_PX : SIDEBAR_COLLAPSED_WIDTH_PX,
+        overflow: 'visible',
       }}
     >
+      <ChromeEdgeToggle
+        testId="workspace-sidebar-toggle"
+        icon={isOpenState ? 'chevron_left' : 'chevron_right'}
+        title={isOpenState ? t('Collapse Sidebar') : t('Expand Sidebar')}
+        onClick={() => setIsOpenState(!isOpenState)}
+        className={`absolute transition-all duration-300 ${isOpenState ? '-right-3' : '-right-6'}`}
+        style={{ top: CHROME_PANEL_TOGGLE_TOP_CSS }}
+      />
+
       {isOpenState ? (
       <div className="flex-1 flex flex-col gap-3 overflow-hidden h-full">
         <div className="space-y-1 mb-4 px-1">
@@ -668,21 +673,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         </nav>
 
-        <div className="mt-auto pt-1 border-t border-outline-variant/50 min-w-0 px-1 space-y-1">
-          <button
-            data-testid="nav-settings"
-            onClick={() => setView('settings')}
-            aria-label={t('Settings')}
-            className={`w-full flex items-center gap-2.5 p-2 rounded-lg border text-left transition-[background-color,border-color,color,box-shadow] group ${
-              currentView === 'settings'
-                ? 'bg-surface-bright shadow-sm text-on-surface font-semibold border-outline-variant/50'
-                : 'border-transparent text-on-surface-variant hover:bg-surface-bright hover:text-on-surface'
-            }`}
-          >
-            <LegacyIcon name="settings" className="text-[17px] text-on-surface-variant group-hover:text-primary" />
-            <span className="text-xs font-semibold tracking-wide">{t('Settings')}</span>
-          </button>
-          <UpdateBanner />
+        <div className="mt-auto pt-1 border-t border-outline-variant/50 min-w-0">
+          <div className="flex items-center gap-1 min-w-0">
+            <button
+              data-testid="nav-settings"
+              onClick={() => setView('settings')}
+              aria-label={t('Settings')}
+              className={`flex-1 min-w-0 flex items-center justify-center gap-2 px-1.5 py-1 rounded-lg border text-center transition-[background-color,border-color,color,box-shadow] group ${
+                currentView === 'settings' ? 'bg-surface-bright shadow-sm text-on-surface font-semibold border-outline-variant/60' : 'border-transparent text-on-surface-variant hover:bg-surface-bright'
+              }`}
+            >
+              <LegacyIcon name="settings" className="text-[17px] shrink-0 text-on-surface-variant group-hover:text-primary" />
+              <span className="text-[11px] font-semibold tracking-wide truncate">{t("Settings")}</span>
+            </button>
+            <UpdateBanner />
+          </div>
         </div>
       </div>
       ) : (

@@ -1,6 +1,6 @@
 import React from 'react';
 import { useLanguage } from './LanguageContext';
-import { HEADER_BREADCRUMB_LEFT_PADDING_PX, SIDEBAR_COLLAPSED_WIDTH_PX, SIDEBAR_EXPANDED_WIDTH_PX } from '../constants/layout';
+import { SIDEBAR_COLLAPSED_WIDTH_PX, SIDEBAR_EXPANDED_WIDTH_PX } from '../constants/layout';
 
 interface HeaderProps {
   currentFlow: string;
@@ -31,14 +31,11 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header
-      className="fixed top-0 right-0 h-[64px] bg-background/85 backdrop-blur-md border-b border-outline-variant z-40 flex items-center justify-between pr-2 select-none transition-[left] duration-200 ease-out"
-      style={{
-        left: sidebarOpen ? SIDEBAR_EXPANDED_WIDTH_PX : SIDEBAR_COLLAPSED_WIDTH_PX,
-        paddingLeft: HEADER_BREADCRUMB_LEFT_PADDING_PX,
-      }}
+      className="fixed top-0 right-0 h-[64px] bg-background/85 backdrop-blur-md border-b border-outline-variant z-40 flex items-center justify-between px-2 select-none transition-[left] duration-200 ease-out"
+      style={{ left: sidebarOpen ? SIDEBAR_EXPANDED_WIDTH_PX : SIDEBAR_COLLAPSED_WIDTH_PX }}
     >
-      <div className="flex items-center gap-3 min-w-0">
-        <nav className="flex items-center gap-2 text-xs font-semibold tracking-wide text-on-surface-variant min-w-0">
+      <div className="flex items-center gap-3">
+        <nav className="flex items-center gap-2 text-xs font-semibold tracking-wide text-on-surface-variant">
           <span
             onClick={onPickWorkspace}
             className="hover:text-primary cursor-pointer font-bold transition-colors"

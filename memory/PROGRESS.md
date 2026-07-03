@@ -31,12 +31,47 @@
 
 ## Recent Sessions
 
+## 2026-07-03 会话（同步 upstream 首页图标）
+
+- **原因** 作者 dev 已将首页/侧栏 Workflows SOP 图标更新为 `fork_right`，但 Windows UI polish 恢复时误把该入口带回旧的 `account_tree`。
+- **修复** `apps/desktop/src/sidebar.tsx` 展开态与折叠态 Workflows SOP 图标统一同步为 upstream dev 的 `fork_right`，保留左侧面板中线折叠按钮与 Windows UI 布局。
+- **Commit** `9a982f4` — `fix(ui): sync workflow sidebar icon from upstream`
+- **验证** `pnpm build` 通过；`pnpm test` 17 files / 125 tests 通过。提交使用 `HUSKY=0`，原因同前：Husky pre-commit 在 Git Bash PATH 中找不到 `uv`。
+
+## 2026-07-03 会话（同步 upstream dev + 侧栏折叠入口）
+
+- **同步** 合入 `upstream/dev` `4740786`（v1.1.0 文档对齐、Agnes 默认文本模型、图标/模型相关更新），冲突仅发生在 `memory/PROGRESS.md`，已保留 upstream 发版记录与 Windows 维护记录。
+- **UI** 按作者 dev 方向移除 Header 顶部左侧折叠按钮，将左侧侧栏折叠入口移到侧栏右边缘中线位置，与右侧监督面板折叠按钮交互位置一致。
+- **Commit** `214af4d` — `merge upstream dev and align sidebar collapse chrome`
+- **验证** `pnpm build` 通过；`pnpm test` 17 files / 125 tests 通过；`python -m uv run pytest tests/test_llm_provider.py` 7 passed。提交使用 `HUSKY=0`，原因同前：Husky pre-commit 在 Git Bash PATH 中找不到 `uv`。
+
 ## 2026-07-03 会话（v1.1.0 文档对齐 · README / 维护者文档）
 
 - **README 双语** — Latest release / 当前版本 → **v1.1.0**；去掉「in development / 开发中」
 - **维护者文档** — `UPDATES.md` · `RELEASE_MAINTAINER.md` · `STABILITY.md` 版本指针同步
 - **Homebrew 模板** — `packaging/homebrew/Casks/clutch.rb` → 1.1.0 + SHA256
 - **Memory** — `PROGRESS.md` · `DELIVERABLES.md` 待发版表述清理
+
+## 2026-07-03 会话（同步 Windows UI polish）
+
+- **原因** 同步 upstream v1.1.0 后，`1a35da6` 中部分 Windows 首页/工作台 chrome 调整被后续 Header、Sidebar、Terminal Orchestra 布局重构覆盖。
+- **修复** 以 `1a35da6` 为基准，恢复 Header 内置侧栏折叠按钮、移除左侧浮动折叠按钮、侧栏折叠态纯图标 tooltip、Workflow 图标、Settings 底部布局、Chat 主区收窄逻辑、聊天气泡紧凑间距、右侧监督面板等分 Tab 与短指示条，并保持 v1.1.0 Terminal Orchestra 新逻辑。
+- **Commit** `796120b` — `fix(ui): restore Windows workspace chrome polish`
+- **验证** `pnpm build` 通过；`pnpm test` 17 files / 125 tests 通过。提交使用 `HUSKY=0`，原因同前：Husky pre-commit 在 Git Bash PATH 中找不到 `uv`。
+
+## 2026-07-03 会话（恢复字体大小偏好）
+
+- **原因** upstream v1.1.0 settings 重构后，字体大小偏好的存储/API/CSS 仍存在，但 `App.tsx` 不再读取并挂载 `data-font-size`，`SystemPreferencesModal.tsx` 也移除了选择入口。
+- **修复** 恢复 General Settings 字体大小选择框、偏好读取/保存、根节点 `data-font-size` 应用，并同步 `PRODUCT_INTRO.md`。
+- **Commit** `68769fb` — `fix(settings): restore font size preference`
+- **验证** `pnpm build` 通过；`pnpm test` 17 files / 125 tests 通过。Husky pre-commit 在 Git Bash PATH 中找不到 `uv`，已在等价前端验证通过后用 `HUSKY=0` 提交。
+
+## 2026-07-03 会话（Windows interactive PTY lanes）
+
+- **修复** Windows Terminal Orchestra interactive PTY：`interactive_pty_runtime.py` 不再在 Windows 直接 blocked，复用 `WindowsPty` 支持 attach/read/write/close。
+- **验证** 后端定向 PTY / Terminal Orchestra / WebSocket PTY 相关测试通过；全量 `python -m uv run pytest` 通过；`pnpm build`、`pnpm test` 通过；真实 Windows `cmd.exe` low-level 与 manager smoke 通过。
+- **Commit** `395bacb` — `fix(windows): support interactive PTY lanes`
+- **下次优先** Windows PTY polish：resize、Ctrl+C/Ctrl+D、长期运行 session、多 lane 并发关闭；再评估 Windows picker 和上游 TypeScript lint 质量债。
 
 ## 2026-07-03 会话（v1.1.0 文档恢复）
 

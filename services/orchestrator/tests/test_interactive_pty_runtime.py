@@ -18,6 +18,7 @@ from src.interactive_pty_runtime import (
     interactive_pty_manager,
     scan_system_cli_processes,
 )
+from src.windows_pty import _env_block
 
 
 @pytest.fixture(autouse=True)
@@ -201,6 +202,76 @@ def test_list_alive_for_run_includes_configured_system_processes() -> None:
             with patch("src.interactive_pty_runtime.subprocess.check_output", return_value=ps_output):
                 alive = interactive_pty_manager.list_alive_for_run("run_x")
     assert any(item["cli_tool"] == "codex" and item["source"] == "system" for item in alive)
+
+
+def test_windows_pty_env_block_formats_createprocess_environment() -> None:
+    block = _env_block({"A": "1", "B": "two"})
+    assert block == "A=1\0B=two\0"
+    assert _env_block(None) is None
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows PTY backend requires Windows")
+def test_attach_windows_pty_backend(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    instances: list[object] = []
+
+    class _FakeWindowsPty:
+        pid = 4321
+
+        def __init__(self, command: list[str], *, cwd: str | None = None, env: dict[str, str] | None = None) -> None:
+            self.command = command
+            self.cwd = cwd
+            self.env = env or {}
+            self.writes: list[str] = []
+            self.resizes: list[tuple[int, int]] = []
+            self.closed_force: bool | None = None
+            self._alive = True
+            instances.append(self)
+
+        def isalive(self) -> bool:
+            return self._alive
+
+        def read(self, *, wait_s: float = 0.0) -> str:
+            return ""
+
+        def write(self, text: str) -> None:
+            self.writes.append(text)
+
+        def resize(self, cols: int, rows: int) -> None:
+            self.resizes.append((cols, rows))
+
+        def close(self, *, force: bool = False) -> None:
+            self.closed_force = force
+            self._alive = False
+
+    import src.windows_pty as windows_pty
+
+    monkeypatch.setattr(windows_pty, "WindowsPty", _FakeWindowsPty)
+    monkeypatch.setattr("src.interactive_pty_runtime.shutil.which", lambda name: f"C:\\Tools\\{name}.exe")
+    monkeypatch.setattr("src.tools_status._extra_cli_search_dirs", lambda: [tmp_path / "bin"])
+
+    session = interactive_pty_manager.attach(
+        "run_win::lane_primary",
+        workspace_path=str(tmp_path),
+        cli_tool="claude-cli",
+        cli_session_id="session-123",
+    )
+
+    fake = instances[0]
+    assert session.status == InteractivePtyStatus.READY
+    assert session.pid == 4321
+    assert fake.command == ["C:\\Tools\\claude.exe", "--session-id", "session-123"]
+    assert fake.cwd == str(tmp_path)
+    assert str(tmp_path / "bin") in fake.env["PATH"]
+    assert interactive_pty_manager.list_alive_for_run("run_win")[0]["source"] == "tracked"
+
+    interactive_pty_manager.write_input("run_win::lane_primary", "hello\r\n")
+    interactive_pty_manager.resize("run_win::lane_primary", 120, 40)
+    assert fake.writes == ["hello\r\n"]
+    assert fake.resizes == [(120, 40)]
+
+    interactive_pty_manager.close("run_win::lane_primary")
+    assert fake.closed_force is True
+    assert session.status == InteractivePtyStatus.EXITED
 
 
 @pytest.mark.skipif(os.name == "nt", reason="PTY spawn requires Unix")
