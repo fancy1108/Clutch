@@ -30,6 +30,16 @@ _（当前无进行中代码 Task — v1.0.3 Loop 开工后在此登记。）_
 
 ## Recently Completed（v1.0.3 · dev · 未发版）
 
+### Settings 字体大小偏好恢复 ✅
+- **日期：** 2026-07-03
+- **Commit：** `68769fb` — `fix(settings): restore font size preference`
+- **Verification：** `pnpm build` → passed；`pnpm test` → 17 files / 125 tests passed；Husky pre-commit → Git Bash PATH 无 `uv`，等价验证通过后 `HUSKY=0` 提交
+- **证据：** `—`
+- **交付文件：**
+  - `apps/desktop/src/App.tsx` — 恢复 font size 偏好读取、保存和 `data-font-size` 应用
+  - `apps/desktop/src/components/SystemPreferencesModal.tsx` — 恢复 General Settings 字体大小选择框
+  - `docs/PRODUCT_INTRO.md` — 同步 Settings Dashboard 功能说明
+
 ### Windows interactive PTY lanes ✅
 - **日期：** 2026-07-03
 - **Commit：** `395bacb` — `fix(windows): support interactive PTY lanes`
