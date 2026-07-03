@@ -5,29 +5,29 @@
 
 ## Current Status
 
-- **阶段：** **v1.1.0 已发布**（2026-07-03）— Terminal Orchestra (D34) + CodeBuddy + OpenCode Zen + Agnes Video + Windows polish
-- **Release：** [v1.1.0](https://github.com/fancy1108/Clutch/releases/tag/v1.1.0) 当前稳定版 · 上一版 [v1.0.3](https://github.com/fancy1108/Clutch/releases/tag/v1.0.3)
-- **Git：** `main` / `dev` · 版本号 `1.1.0`（package / tauri）
-- **开放：** [#23](https://github.com/fancy1108/Clutch/issues/23) Windows 实体机 smoke
+- **阶段：** **v1.1.1 待发版**（2026-07-04）— Windows interactive PTY (#30) + 平台 chrome 拆分
+- **Release：** [v1.1.0](https://github.com/fancy1108/Clutch/releases/tag/v1.1.0) 当前 GitHub Latest · 下一版 **v1.1.1** 已 bump 待 merge/tag
+- **Git：** `dev` 领先 `main` · 版本号 `1.1.1`（package / tauri）
+- **开放：** [#23](https://github.com/fancy1108/Clutch/issues/23) Windows 实体机 smoke（v1.1.1 安装包）
 
-### v1.1.0 发版清单
+### v1.1.1 发版清单
 
 | 项 | 状态 |
 |----|------|
-| Terminal Orchestra D34 + UX polish | ✅ |
-| 版本 bump → 1.1.0 | ✅ |
-| CHANGELOG + `docs/releases/v1.1.0.md` + PRODUCT_INTRO | ✅ |
-| README / README.zh-CN / GETTING_STARTED / INSTALL | ✅ |
-| README「最新更新」指向 v1.1.0（非 in development） | ✅ |
-| `git tag v1.1.0` + GitHub Release | ✅ |
-| `latest.json` → 1.1.0（updater workflow） | ✅ Release 页已挂 `latest.json` |
-| Homebrew tap sync | ⏳ 远程 tap 仍为 1.0.3 — 跑 `CLUTCH_VERSION=v1.1.0 ./scripts/sync-homebrew-tap.sh` |
+| CHANGELOG + `docs/releases/v1.1.1.md` + README | ✅ |
+| 版本 bump → 1.1.1 | ✅ |
+| `./scripts/verify.sh` | ⏳ |
+| Merge `dev` → `main` + tag `v1.1.1` | ⏳ 待你确认 |
+| CI macOS DMG | ⏳ tag 后 |
+| Windows Build → 手动挂 Release | ⏳ tag 后 |
+| Homebrew tap sync | ⏳ `CLUTCH_VERSION=v1.1.1 ./scripts/sync-homebrew-tap.sh` |
+| macOS updater workflow | ⏳ `release_tag=v1.1.1` |
 
 ## Next Actions
 
-- **Homebrew tap** — `CLUTCH_VERSION=v1.1.0 ./scripts/sync-homebrew-tap.sh`
-- **macOS 应用内更新** — Actions → Release (updater assets) → `release_tag=v1.1.0`
-- **Windows smoke：** [#23](https://github.com/fancy1108/Clutch/issues/23)
+- **你确认** merge PR `dev` → `main`，回复「可以发了」后打 tag `v1.1.1`
+- **Windows** — Actions → Windows Build（ref `v1.1.1`）→ 上传 MSI/NSIS 到 Release
+- **@996wuxian** — #23 smoke on v1.1.1 Win 包
 
 ## Recent Sessions
 

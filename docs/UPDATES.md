@@ -1,6 +1,6 @@
 # Clutch — 应用内自动更新（OSR-20）
 
-> **状态：Go-live ✅** — [v1.0.2](https://github.com/fancy1108/Clutch/releases/tag/v1.0.2) 首次应用内更新 · [v1.0.3](https://github.com/fancy1108/Clutch/releases/tag/v1.0.3) · **[v1.1.0](https://github.com/fancy1108/Clutch/releases/tag/v1.1.0)**（2026-07-03）— 当前稳定版；Release 页已含 macOS DMG、`latest.json` 与 updater bundle。Homebrew tap 须单独 sync（见 [`RELEASE_MAINTAINER.md`](./RELEASE_MAINTAINER.md)）。
+> **状态：Go-live ✅** — [v1.0.2](https://github.com/fancy1108/Clutch/releases/tag/v1.0.2) 首次应用内更新 · [v1.0.3](https://github.com/fancy1108/Clutch/releases/tag/v1.0.3) · [v1.1.0](https://github.com/fancy1108/Clutch/releases/tag/v1.1.0) · **[v1.1.1](https://github.com/fancy1108/Clutch/releases/tag/v1.1.1)**（2026-07-04）— 当前稳定版；Release 页含 macOS DMG、`latest.json` 与 updater bundle（发版后）。Homebrew tap 须单独 sync（见 [`RELEASE_MAINTAINER.md`](./RELEASE_MAINTAINER.md)）。
 
 ---
 
