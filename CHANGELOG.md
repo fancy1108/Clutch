@@ -10,6 +10,20 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ## [Unreleased]
 
+### Added
+
+- **Windows Terminal Orchestra PTY:** Interactive lanes on Windows via WinPTY backend ([#30](https://github.com/fancy1108/Clutch/pull/30)).
+- **Platform maintenance guide:** [`docs/PLATFORM_MAINTENANCE.md`](docs/PLATFORM_MAINTENANCE.md) — macOS / Windows file boundaries and shared `navConfig`.
+
+### Fixed
+
+- **General Settings font size:** Restored preference UI, persistence, and root `data-font-size` ([#30](https://github.com/fancy1108/Clutch/pull/30)).
+- **Windows `tauri:dev`:** Cross-platform Python launcher for Tauri dev script ([#30](https://github.com/fancy1108/Clutch/pull/30)).
+
+### Changed
+
+- **Workspace chrome (Windows):** Sidebar collapse on panel edge, icon-only collapsed rail, chat spacing, right-panel tab grid ([#30](https://github.com/fancy1108/Clutch/pull/30)). macOS chrome split into platform-specific modules (follow-up).
+
 ## [1.1.0] - 2026-07-03
 
 Minor release — **Terminal Orchestra (D34)**, **Windows desktop polish**, **CodeBuddy CLI**, **OpenCode Zen**, **Agnes Video**, and agent-scoped Settings.
