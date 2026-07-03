@@ -15,12 +15,15 @@ import {
   waitForPtyOutputReadyForInject,
   type LaneGridLayout,
 } from '../../services/terminalOrchestraUtils';
-import { scheduleXtermRefit } from './terminalLaneLayout';
+import { scheduleXtermRefit, wakeXtermTerminal } from './terminalLaneLayout';
 
 interface TerminalLanePaneProps {
   lane: PtyLane;
   sessionRunId: string;
-  visible: boolean;
+  /** Terminal workspace mode is active (chat vs terminal toggle). */
+  workspaceVisible: boolean;
+  /** Lane is in a visible grid slot (not collapsed, paginated away, or off-screen keep-alive). */
+  gridVisible: boolean;
   barFocused: boolean;
   configuredAgents: Array<{ name: string; agentType?: string }>;
   headerAgentName?: string;
@@ -41,7 +44,8 @@ function isPtyLiveStatus(status: string): boolean {
 export const TerminalLanePane: React.FC<TerminalLanePaneProps> = ({
   lane,
   sessionRunId,
-  visible,
+  workspaceVisible,
+  gridVisible,
   barFocused,
   configuredAgents,
   headerAgentName,
@@ -81,20 +85,24 @@ export const TerminalLanePane: React.FC<TerminalLanePaneProps> = ({
   const barFocusedRef = useRef(barFocused);
   barFocusedRef.current = barFocused;
 
+  const workspaceVisibleRef = useRef(workspaceVisible);
+  workspaceVisibleRef.current = workspaceVisible;
+
+  const gridVisibleRef = useRef(gridVisible);
+  gridVisibleRef.current = gridVisible;
+
   const refreshLayout = useCallback(() => {
     const host = hostRef.current;
     const term = termRef.current;
     const fitAddon = fitRef.current;
     if (!host || !term || !fitAddon) return;
-    if (host.clientWidth < 24 || host.clientHeight < 24) return;
-    try {
-      fitAddon.fit();
-    } catch {
-      return;
-    }
+    if (!wakeXtermTerminal(term, fitAddon, host)) return;
     void clutchStore.sendPtyResize(term.cols, term.rows, lane.lane_id);
-    if (!barFocusedRef.current && visible) term.focus();
-  }, [lane.lane_id, visible]);
+    if (!barFocusedRef.current && gridVisibleRef.current) term.focus();
+  }, [lane.lane_id]);
+
+  const refreshLayoutRef = useRef(refreshLayout);
+  refreshLayoutRef.current = refreshLayout;
 
   const flushPendingInject = useCallback(async () => {
     if (isQueued || isCompleted) return;
@@ -162,6 +170,11 @@ export const TerminalLanePane: React.FC<TerminalLanePaneProps> = ({
     termRef.current = term;
     fitRef.current = fitAddon;
 
+    const buffered = clutchStore.getLaneTranscript(lane.lane_id);
+    if (buffered) {
+      term.write(buffered);
+    }
+
     const syncConnectPhaseFromStore = () => {
       const status = clutchStore.getLanePtyStatus(lane.lane_id);
       const detail = clutchStore.getLanePtyDetail(lane.lane_id);
@@ -175,24 +188,37 @@ export const TerminalLanePane: React.FC<TerminalLanePaneProps> = ({
       }
     };
     syncConnectPhaseFromStore();
+    window.requestAnimationFrame(() => refreshLayoutRef.current());
 
     const resizeObserver = new ResizeObserver(() => {
+      if (!workspaceVisibleRef.current) return;
       if (host.clientWidth < 24 || host.clientHeight < 24) return;
-      window.requestAnimationFrame(() => refreshLayout());
+      window.requestAnimationFrame(() => refreshLayoutRef.current());
     });
     resizeObserver.observe(host);
 
+    const intersectionObserver = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        window.requestAnimationFrame(() => refreshLayoutRef.current());
+      },
+      { threshold: 0.01 },
+    );
+    intersectionObserver.observe(host);
+
     const unsubOutput = clutchStore.onPtyOutputForLane(lane.lane_id, (chunk) => {
       term.write(chunk);
-      if (visible) setConnectPhase((phase) => (phase === 'connecting' ? 'ready' : phase));
+      if (gridVisibleRef.current) {
+        setConnectPhase((phase) => (phase === 'connecting' ? 'ready' : phase));
+      }
     });
     const unsubStatus = clutchStore.onPtyStatusChangeForLane(lane.lane_id, (status) => {
       setPtyStatus(status);
       if (status === 'ready') {
-        if (visible) {
+        if (workspaceVisibleRef.current) {
           setConnectPhase('ready');
           setPtyErrorDetail('');
-          refreshLayout();
+          if (gridVisibleRef.current) refreshLayoutRef.current();
         }
       } else if (status === 'blocked' || status === 'exited') {
         setConnectPhase('failed');
@@ -201,7 +227,7 @@ export const TerminalLanePane: React.FC<TerminalLanePaneProps> = ({
     });
 
     term.onData((data) => {
-      if (visible && !barFocusedRef.current) {
+      if (gridVisibleRef.current && !barFocusedRef.current) {
         void clutchStore.sendPtyInput(data, lane.lane_id);
       }
     });
@@ -210,12 +236,12 @@ export const TerminalLanePane: React.FC<TerminalLanePaneProps> = ({
       unsubOutput();
       unsubStatus();
       resizeObserver.disconnect();
-      attachTokenRef.current += 1;
+      intersectionObserver.disconnect();
       term.dispose();
       termRef.current = null;
       fitRef.current = null;
     };
-  }, [lane.lane_id, isQueued, isCompleted, refreshLayout]);
+  }, [lane.lane_id, isQueued, isCompleted]);
 
   useEffect(() => {
     return () => {
@@ -260,22 +286,45 @@ export const TerminalLanePane: React.FC<TerminalLanePaneProps> = ({
   }, [isQueued, isCompleted, pendingInject, lane.lane_id, flushPendingInject]);
 
   useEffect(() => {
-    if (!visible || isQueued || isCompleted) return;
+    if (!workspaceVisible || !gridVisible || isQueued || isCompleted) return;
+    const status = clutchStore.getLanePtyStatus(lane.lane_id);
+    if (status === 'ready') {
+      setConnectPhase('ready');
+      setPtyErrorDetail('');
+    } else if (status === 'blocked' || status === 'exited') {
+      setConnectPhase('failed');
+      setPtyErrorDetail(clutchStore.getLanePtyDetail(lane.lane_id));
+    }
     return scheduleXtermRefit(refreshLayout);
-  }, [lane.collapsed, visible, isQueued, isCompleted, layoutTick, layoutMode, refreshLayout]);
+  }, [
+    workspaceVisible,
+    gridVisible,
+    lane.collapsed,
+    isQueued,
+    isCompleted,
+    layoutTick,
+    layoutMode,
+    lane.lane_id,
+    refreshLayout,
+  ]);
 
   useEffect(() => {
-    if (!visible || isQueued || isCompleted) {
+    if (!workspaceVisible || isQueued || isCompleted) {
       setConnectPhase('idle');
       return;
     }
 
-    if (lane.status === 'booting') {
-      attachedKeyRef.current = null;
-    }
-
     const attachKey = `${sessionRunId}:${lane.lane_id}:${lane.agent_type}:${attachIdentity ?? lane.lane_id}`;
     const token = ++attachTokenRef.current;
+    const liveOnEnter = clutchStore.getLanePtyStatus(lane.lane_id);
+    if (attachedKeyRef.current === attachKey && liveOnEnter === 'ready') {
+      setConnectPhase('ready');
+      setPtyErrorDetail('');
+      if (gridVisibleRef.current) refreshLayoutRef.current();
+      return () => {
+        attachTokenRef.current += 1;
+      };
+    }
     setConnectPhase('connecting');
 
     const attach = async () => {
@@ -290,7 +339,7 @@ export const TerminalLanePane: React.FC<TerminalLanePaneProps> = ({
         ) {
           if (liveStatus === 'ready') {
             setConnectPhase('ready');
-            refreshLayout();
+            refreshLayoutRef.current();
           }
           return;
         }
@@ -318,7 +367,7 @@ export const TerminalLanePane: React.FC<TerminalLanePaneProps> = ({
           setConnectPhase('ready');
           setPtyErrorDetail('');
           setPtyStatus(clutchStore.getLanePtyStatus(lane.lane_id) || 'ready');
-          refreshLayout();
+          refreshLayoutRef.current();
         } else {
           setConnectPhase('failed');
           setPtyErrorDetail(clutchStore.getLanePtyDetail(lane.lane_id));
@@ -335,7 +384,7 @@ export const TerminalLanePane: React.FC<TerminalLanePaneProps> = ({
     return () => {
       attachTokenRef.current += 1;
     };
-  }, [visible, lane.lane_id, lane.agent_type, lane.status, sessionRunId, attachIdentity, isQueued, isCompleted, refreshLayout]);
+  }, [workspaceVisible, lane.lane_id, lane.agent_type, lane.status, sessionRunId, attachIdentity, isQueued, isCompleted]);
 
   const isCollapsed = lane.collapsed;
 
@@ -398,12 +447,12 @@ export const TerminalLanePane: React.FC<TerminalLanePaneProps> = ({
         ) : (
           <>
             <div ref={hostRef} className="terminal-xterm-host absolute inset-0 p-1 bg-[#111111]" />
-            {connectPhase === 'connecting' ? (
+            {connectPhase === 'connecting' && gridVisible ? (
               <div className="absolute inset-0 flex items-center justify-center bg-[#111111]/90 pointer-events-none">
                 <p className="text-xs font-mono text-neutral-500 animate-pulse">{t('Connecting interactive CLI…')}</p>
               </div>
             ) : null}
-            {connectPhase === 'failed' ? (
+            {connectPhase === 'failed' && gridVisible ? (
               <div className="absolute inset-0 flex items-center justify-center bg-[#111111] p-4 text-center">
                 <div className="space-y-1">
                   <p className="text-xs font-mono text-rose-400">{t('Interactive PTY unavailable')}</p>

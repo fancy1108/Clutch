@@ -432,7 +432,7 @@ describe('terminalOrchestraUtils', () => {
     expect(resolvePtyInjectWarmupMs('ollama-cli', { attempt: 0 })).toBe(3500);
   });
 
-  it('detects dispatch target pending while lane is booting', () => {
+  it('detects dispatch target pending from PTY status, not lane booting label', () => {
     const entry = {
       id: 'd1',
       time: '10:00',
@@ -443,11 +443,15 @@ describe('terminalOrchestraUtils', () => {
       handoff_path: '',
       lane_sessions: [{ lane_id: 'lane_b', label: 'Ollama', agent_type: 'ollama-cli', cli_session_id: 's1' }],
     };
-    const lanes = [
-      sampleLane({ lane_id: 'lane_a', agent_type: 'opencode-cli', configured_agent_name: 'OpenCode' }),
-      sampleLane({ lane_id: 'lane_b', agent_type: 'ollama-cli', status: 'booting', configured_agent_name: 'Ollama' }),
-    ];
-    expect(isDispatchEntryTargetPending(entry, lanes, null, () => '')).toBe(true);
+    const bootingLane = sampleLane({
+      lane_id: 'lane_b',
+      agent_type: 'ollama-cli',
+      status: 'booting',
+      configured_agent_name: 'Ollama',
+    });
+    expect(isDispatchEntryTargetPending(entry, [bootingLane], null, () => '')).toBe(true);
+    expect(isDispatchEntryTargetPending(entry, [bootingLane], null, () => 'booting')).toBe(true);
+    expect(isDispatchEntryTargetPending(entry, [bootingLane], null, () => 'ready')).toBe(false);
     expect(
       isDispatchEntryTargetPending(
         entry,

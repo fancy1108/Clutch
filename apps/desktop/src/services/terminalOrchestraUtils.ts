@@ -307,9 +307,10 @@ export function isDispatchEntryTargetPending(
 ): boolean {
   const lane = findLaneForDispatchTarget(lanes, entry.target, entry.lane_sessions);
   if (!lane) return true;
-  if (lane.status === 'booting' || lane.status === 'queued') return true;
+  if (lane.status === 'queued') return true;
   if (pendingInject?.lane_id === lane.lane_id) return true;
   const ptyStatus = getLanePtyStatus(lane.lane_id);
+  // Lane `booting` is set on spawn and not always flipped to `running`; PTY status is authoritative.
   if (!ptyStatus || (ptyStatus !== 'ready' && ptyStatus !== 'detached')) return true;
   return false;
 }

@@ -18,6 +18,8 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ### Fixed
 
+- Terminal lane black screen on collapse, pagination, or grid hide/show: PTY stays attached while off-screen; xterm hydrates from transcript and force-repaints on show.
+- Overview dispatch "Opening terminal…" badge clears when target PTY is ready (not stuck on lane `booting` label).
 - Ollama interactive PTY: spawn `ollama run <model>`, pass configured agent model on preview attach, and surface spawn errors instead of stuck `detached`.
 - Antigravity/Ollama/OpenCode PTY prompt inject waits for TUI-ready output before typing; inject works on background lanes.
 - CLI session resume copy commands per agent type (Codex `--last`, OpenCode `-c`, hide invalid Clutch UUID on unsupported CLIs).

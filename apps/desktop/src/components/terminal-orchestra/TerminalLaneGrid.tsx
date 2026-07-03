@@ -296,7 +296,8 @@ export const TerminalLaneGrid: React.FC<TerminalLaneGridProps> = ({
                   <TerminalLanePane
                     lane={lane}
                     sessionRunId={sessionRunId}
-                    visible={visible && showInGrid}
+                    workspaceVisible={visible}
+                    gridVisible={showInGrid}
                     barFocused={barFocused}
                     configuredAgents={configuredAgents}
                     headerAgentName={!sessionDispatched ? previewAgentName ?? undefined : undefined}

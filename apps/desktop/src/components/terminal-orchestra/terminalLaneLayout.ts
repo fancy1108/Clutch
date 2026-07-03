@@ -64,6 +64,22 @@ export function scheduleXtermRefit(refit: () => void): () => void {
   };
 }
 
+/** Fit xterm to host and force canvas repaint (fixes black screen after hide/show). */
+export function wakeXtermTerminal(
+  term: { rows: number; refresh: (start: number, end: number) => void },
+  fitAddon: { fit: () => void },
+  host: HTMLElement,
+): boolean {
+  if (host.clientWidth < 24 || host.clientHeight < 24) return false;
+  try {
+    fitAddon.fit();
+    term.refresh(0, Math.max(0, term.rows - 1));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** @deprecated Prefer LANE_KEEPALIVE_SLOT — kept for TerminalOrchestraWorkspace hide. */
 export const XTERM_KEEPALIVE_STYLE: React.CSSProperties = {
   position: 'fixed',
