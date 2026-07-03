@@ -431,7 +431,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {collapsedNavButton('chat', 'chat', t('New Chat'), onNewChat, currentView === 'chat')}
         {collapsedNavButton('agents', 'smart_toy', t('AI Agents'), () => setView('agents'), currentView === 'agents')}
         {isMultiAgent
-          ? collapsedNavButton('workflows', 'account_tree', t('Workflows SOP'), () => setView('workflows'), currentView === 'workflows')
+          ? collapsedNavButton('workflows', 'fork_right', t('Workflows SOP'), () => setView('workflows'), currentView === 'workflows')
           : null}
         {collapsedNavButton('add-workspace', 'create_new_folder', t('Add project folder'), () => onAddWorkspace?.())}
       </div>
@@ -532,7 +532,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   : 'border-transparent text-on-surface-variant hover:bg-surface-bright hover:text-on-surface'
               }`}
             >
-              <LegacyIcon name="account_tree" className="text-[17px] text-on-surface-variant group-hover:text-primary" />
+              <LegacyIcon name="fork_right" className="text-[17px] text-on-surface-variant group-hover:text-primary" />
               <span className="text-xs font-semibold tracking-wide">{t("Workflows SOP")}</span>
             </button>
           ) : null}
