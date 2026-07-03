@@ -6,12 +6,12 @@ from src.llm import DEFAULT_MODEL_ID, LLMProviderRouter, ModelSpec
 from src.orchestrator.routing import route_next
 
 
-def test_default_model_is_deepseek_v4pro() -> None:
+def test_default_model_is_agnes_2_flash() -> None:
     router = LLMProviderRouter()
     assert router.active_model_id == DEFAULT_MODEL_ID
     model = router.get_active_model()
-    assert model.name == "DeepSeek V4 Pro"
-    assert model.provider_id == "deepseek"
+    assert model.name == "Agnes 2.0 Flash"
+    assert model.provider_id == "agnes"
 
 
 def test_switch_active_model() -> None:
@@ -43,13 +43,13 @@ def test_complete_uses_active_provider() -> None:
         return "ok"
 
     router = LLMProviderRouter()
-    router.set_api_key("deepseek", "key-ds")
+    router.set_api_key("agnes", "key-agnes")
     router._complete = fake_complete  # type: ignore[method-assign]
 
     assert router.complete("hello") == "ok"
-    assert calls[0]["api_model"] == "deepseek-chat"
-    assert calls[0]["api_key"] == "key-ds"
-    assert calls[0]["base_url"] == "https://api.deepseek.com"
+    assert calls[0]["api_model"] == "agnes-2.0-flash"
+    assert calls[0]["api_key"] == "key-agnes"
+    assert calls[0]["base_url"] == "https://apihub.agnes-ai.com/v1"
 
 
 def test_complete_after_model_switch() -> None:
@@ -79,7 +79,7 @@ def test_route_suggester_integrates_with_orchestrator() -> None:
     state = {"check_result": "unknown_branch"}
 
     router = LLMProviderRouter()
-    router.set_api_key("deepseek", "key-ds")
+    router.set_api_key("agnes", "key-agnes")
     router._complete = lambda **_kw: "failed"  # type: ignore[method-assign]
 
     target, method = route_next(

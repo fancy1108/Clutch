@@ -5,12 +5,12 @@
 
 ## Current Status
 
-- **阶段：** **v1.1.0 待发版** — 代码与文档已 bump；Terminal Orchestra (D34) + CodeBuddy + OpenCode Zen + Agnes Video；线上仍为 v1.0.3
-- **Release：** [v1.0.3](https://github.com/fancy1108/Clutch/releases/tag/v1.0.3) 当前线上 · 下一版 **v1.1.0**（CHANGELOG / `docs/releases/v1.1.0.md` / README 已更新）
-- **Git：** `feat/d34-terminal-ux` · 版本号 `1.1.0`（package / tauri）
+- **阶段：** **v1.1.0 已发布**（2026-07-03）— Terminal Orchestra (D34) + CodeBuddy + OpenCode Zen + Agnes Video + Windows polish
+- **Release：** [v1.1.0](https://github.com/fancy1108/Clutch/releases/tag/v1.1.0) 当前稳定版 · 上一版 [v1.0.3](https://github.com/fancy1108/Clutch/releases/tag/v1.0.3)
+- **Git：** `main` / `dev` · 版本号 `1.1.0`（package / tauri）
 - **开放：** [#23](https://github.com/fancy1108/Clutch/issues/23) Windows 实体机 smoke
 
-### v1.1.0 发版清单（进行中）
+### v1.1.0 发版清单
 
 | 项 | 状态 |
 |----|------|
@@ -18,16 +18,25 @@
 | 版本 bump → 1.1.0 | ✅ |
 | CHANGELOG + `docs/releases/v1.1.0.md` + PRODUCT_INTRO | ✅ |
 | README / README.zh-CN / GETTING_STARTED / INSTALL | ✅ |
-| `release-preflight` v1.1.0 | ⏳ |
-| `git tag v1.1.0` + push tag | ⏳ |
+| README「最新更新」指向 v1.1.0（非 in development） | ✅ |
+| `git tag v1.1.0` + GitHub Release | ✅ |
+| `latest.json` → 1.1.0（updater workflow） | ✅ Release 页已挂 `latest.json` |
+| Homebrew tap sync | ⏳ 远程 tap 仍为 1.0.3 — 跑 `CLUTCH_VERSION=v1.1.0 ./scripts/sync-homebrew-tap.sh` |
 
 ## Next Actions
 
-- **merge `feat/d34-terminal-ux` → `dev`** → `release-preflight` → tag v1.1.0 on `main`
-- **Homebrew** — 发版后：`CLUTCH_VERSION=v1.1.0 ./scripts/sync-homebrew-tap.sh`
+- **Homebrew tap** — `CLUTCH_VERSION=v1.1.0 ./scripts/sync-homebrew-tap.sh`
+- **macOS 应用内更新** — Actions → Release (updater assets) → `release_tag=v1.1.0`
 - **Windows smoke：** [#23](https://github.com/fancy1108/Clutch/issues/23)
 
 ## Recent Sessions
+
+## 2026-07-03 会话（v1.1.0 文档对齐 · README / 维护者文档）
+
+- **README 双语** — Latest release / 当前版本 → **v1.1.0**；去掉「in development / 开发中」
+- **维护者文档** — `UPDATES.md` · `RELEASE_MAINTAINER.md` · `STABILITY.md` 版本指针同步
+- **Homebrew 模板** — `packaging/homebrew/Casks/clutch.rb` → 1.1.0 + SHA256
+- **Memory** — `PROGRESS.md` · `DELIVERABLES.md` 待发版表述清理
 
 ## 2026-07-03 会话（v1.1.0 文档恢复）
 

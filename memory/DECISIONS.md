@@ -75,7 +75,7 @@
 ### D4 · LLM 提供方可切换（2026-06-22）
 
 - **背景**：Q2 — Orchestrator / Agent 推理所用模型是否固定 Claude。
-- **方案**：**可切换**多 Provider；**默认**为 **DeepSeek V4 Pro**；用户可在设置或 Agent 配置中改选。
+- **方案**：**可切换**多 Provider；**默认**为 **Agnes 2.0 Flash**（2026-07 自 DeepSeek V4 Pro 调整）；用户可在设置或 Agent 配置中改选。
 - **影响**：M1 引擎需 Provider 抽象（Router）；API Key 按 Provider 分别配置；`ARCHITECTURE.md` ADR 待实现时对齐。
 - **落地前提**：M1。
 - **决策状态**：`已记录`（原 Q2 关闭）

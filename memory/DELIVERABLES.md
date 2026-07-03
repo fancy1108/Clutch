@@ -24,11 +24,11 @@
 
 > 进行中 Task 的交付索引写在此处。完成后移入 **Recently Completed** 或归档。
 
-_（当前无进行中代码 Task — v1.0.3 Loop 开工后在此登记。）_
+_（当前无进行中代码 Task。）_
 
 ---
 
-## Recently Completed（v1.0.3 · dev · 未发版）
+## Recently Completed
 
 ### Ollama Models Config 本机同步 ✅
 - **日期：** 2026-07-01

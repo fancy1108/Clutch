@@ -17,9 +17,9 @@ Clutch 是一款**桌面应用**（Tauri + React），面向独立开发者和�
 |---|---|
 | **技术栈** | Tauri 2 · React 19 · FastAPI + LangGraph · 本地优先（`localhost:8123`） |
 | **许可证** | 见 [LICENSE](LICENSE) |
-| **当前版本** | [v1.0.3](https://github.com/fancy1108/Clutch/releases)（已发布）· **下一版：** [v1.1.0](CHANGELOG.md#110---2026-07-03) |
+| **当前版本** | [v1.1.0](https://github.com/fancy1108/Clutch/releases/tag/v1.1.0)（已发布）· [更新日志](CHANGELOG.md#110---2026-07-03) |
 
-### 最新更新（v1.1.0 · 开发中）
+### 最新更新（v1.1.0）
 
 - **Terminal Orchestra（D34）** — 对话 ↔ 终端切换；多 Lane 嵌入式 CLI；OrchestratorBar `@` 调度、handoff 文件、派发记录与 CLI Session 恢复命令。
 - **Windows 桌面体验优化** — 侧栏折叠、字号偏好、Session 切换缓存与后台 WebSocket（[#28](https://github.com/fancy1108/Clutch/pull/28)）。
@@ -56,7 +56,7 @@ brew install --cask clutch
 irm https://raw.githubusercontent.com/fancy1108/Clutch/main/scripts/install.ps1 | iex
 ```
 
-指定版本：运行前设置 `CLUTCH_VERSION=v1.1.0`（或 `v1.0.3` 安装当前稳定版）。
+指定版本：运行前设置 `CLUTCH_VERSION=v1.1.0`（或 `v1.0.3` 安装上一稳定版）。
 
 详见 [`docs/PACKAGE_MANAGERS.md`](docs/PACKAGE_MANAGERS.md)
 
