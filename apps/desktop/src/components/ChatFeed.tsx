@@ -1,5 +1,11 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
-import { APP_FOOTER_HEIGHT_PX, APP_HEADER_HEIGHT_PX } from '../constants/layout';
+import {
+  APP_FOOTER_HEIGHT_PX,
+  APP_HEADER_HEIGHT_PX,
+  APP_INPUT_DOCK_BOTTOM_PX,
+  CHAT_SCROLL_ABOVE_DOCK_GAP_PX,
+  WORKSPACE_CHROME_ROW_TOP_PX,
+} from '../constants/layout';
 import { ChevronRight } from 'lucide-react';
 import { ChatMessage, ClutchRunStatus, HybridExecutionPayload, OutputEvent } from '../types';
 import { useLanguage } from './LanguageContext';
@@ -33,6 +39,7 @@ import {
 import {
   buildTerminalLayoutChromeKey,
   TERMINAL_COLLAPSED_TOGGLE_GUTTER_PX,
+  XTERM_KEEPALIVE_STYLE,
 } from './terminal-orchestra/terminalLaneLayout';
 import {
   resolveCliToolForTerminal,
@@ -281,6 +288,8 @@ interface ChatFeedProps {
   onMentionAgentChange?: (agentId: string | null) => void;
   /** Authorized workspace path — fallback for native terminal resume commands. */
   workspacePath?: string;
+  /** Opened from sidebar history — hide chat/terminal toggle, show read-only chrome. */
+  isHistorySessionView?: boolean;
 }
 
 const WORKFLOW_AGENTS = new Set(['Builder', 'Orchestrator', 'Evaluator', 'Supervisor']);
@@ -668,16 +677,21 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   selectedMentionAgentId = null,
   onMentionAgentChange,
   workspacePath,
+  isHistorySessionView = false,
 }) => {
   const { t } = useLanguage();
   const { state: clutchOrchestraState } = useClutchState();
   const [orchestratorBarFocused, setOrchestratorBarFocused] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const thinkingRef = useRef<HTMLDivElement>(null);
   const dockRef = useRef<HTMLDivElement>(null);
   const terminalDockRef = useRef<HTMLDivElement>(null);
   const terminalBarRef = useRef<HTMLDivElement>(null);
   const terminalStageRef = useRef<HTMLDivElement>(null);
-  const [dockHeight, setDockHeight] = useState(176);
+  const [dockClearance, setDockClearance] = useState(
+    APP_INPUT_DOCK_BOTTOM_PX + 120 + CHAT_SCROLL_ABOVE_DOCK_GAP_PX,
+  );
+  const [thinkingHeight, setThinkingHeight] = useState(0);
   const [terminalBarHeight, setTerminalBarHeight] = useState(52);
   const [hillInstructions, setHillInstructions] = useState('');
   const [pendingMessages, setPendingMessages] = useState<PendingChatMessage[]>([]);
@@ -707,14 +721,16 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   const awaitingHuman = clutchStatus === 'awaiting_human';
   const isPlainLlmChat = isPlainLlmSession(selectedWorkflowId, activeWorkflowId);
   const sessionDispatched = sessionHasTerminalHistory(clutchOrchestraState);
-  const isTerminalHistoryReadonly = isPlainLlmChat && hasCliAgents
+  const isTerminalDispatchHistoryReadonly = isPlainLlmChat && hasCliAgents
     && isArchivedTerminalHistoryView(clutchOrchestraState, workspaceViewMode);
+  const showWorkspaceReadonlyChrome = isPlainLlmChat && hasCliAgents
+    && (isHistorySessionView || isTerminalDispatchHistoryReadonly);
   const hasPersistedTerminalLanes = (clutchOrchestraState.pty_lanes ?? []).some(
     (lane) => lane.status !== 'queued',
   );
   const inputTerminalMention = useMemo(
-    () => (workspaceViewMode === 'terminal' ? parseInputAgentMention(inputValue, mentionableAgents) : null),
-    [workspaceViewMode, inputValue, mentionableAgents],
+    () => parseInputAgentMention(inputValue, mentionableAgents),
+    [inputValue, mentionableAgents],
   );
   const inputPreviewAgentType = useMemo(() => {
     if (!inputTerminalMention) return null;
@@ -723,17 +739,15 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
     if (!agentType) return null;
     return resolveCliToolForTerminal(agentType);
   }, [inputTerminalMention, mentionableAgents]);
-  const showWorkspaceViewToggle = isPlainLlmChat && hasCliAgents && !isTerminalHistoryReadonly;
+  const showWorkspaceViewToggle = isPlainLlmChat && hasCliAgents && !showWorkspaceReadonlyChrome;
   const showTerminalWorkspace = workspaceViewMode === 'terminal' && isPlainLlmChat && hasCliAgents;
-  const showTerminalPane = showTerminalWorkspace && (
-    Boolean(inputPreviewAgentType)
-    || (sessionDispatched && hasPersistedTerminalLanes)
-  );
+  const hasTerminalSession = (sessionDispatched && hasPersistedTerminalLanes) || Boolean(inputPreviewAgentType);
+  const keepTerminalMounted = isPlainLlmChat && hasCliAgents && hasTerminalSession;
   const isTerminalLayout = showTerminalWorkspace;
   /** Input bar + footer clearance reserved under terminal content. */
-  const terminalInputReservePx = terminalBarHeight + APP_FOOTER_HEIGHT_PX;
+  const terminalInputReservePx = terminalBarHeight + APP_INPUT_DOCK_BOTTOM_PX;
   /** Gap (1× bar) + input reserve — drives xterm refit when dock chrome changes. */
-  const terminalDockHeight = terminalBarHeight * 2 + APP_FOOTER_HEIGHT_PX;
+  const terminalDockHeight = terminalBarHeight * 2 + APP_INPUT_DOCK_BOTTOM_PX;
 
   const leftChromePad =
     selectedSidebarWidth + 30 + (sidebarOpen ? 0 : TERMINAL_COLLAPSED_TOGGLE_GUTTER_PX);
@@ -743,23 +757,24 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   const terminalLayoutChromeKey = buildTerminalLayoutChromeKey({
     sidebarWidth: selectedSidebarWidth,
     rightPanelWidth: rightSidebarWidth,
-    dockHeight: showTerminalWorkspace ? terminalDockHeight : dockHeight,
+    dockHeight: showTerminalWorkspace ? terminalDockHeight : dockClearance,
     sidebarOpen,
     rightPanelOpen,
+    workspaceViewMode,
   });
   const terminalPreviewAgentType = sessionDispatched ? null : inputPreviewAgentType;
 
   useEffect(() => {
-    if (showTerminalPane || sessionDispatched) return;
+    if (hasTerminalSession || sessionDispatched) return;
     void clutchStore.detachInteractivePty('lane_primary');
-  }, [showTerminalPane, sessionDispatched]);
+  }, [hasTerminalSession, sessionDispatched]);
 
   useEffect(() => {
-    if (!isTerminalHistoryReadonly || workspaceViewMode === 'chat') return;
+    if (!isTerminalDispatchHistoryReadonly || workspaceViewMode === 'chat') return;
     onWorkspaceViewModeChange('chat');
     saveWorkspaceViewMode('chat');
     void clutchStore.detachInteractivePty();
-  }, [isTerminalHistoryReadonly, workspaceViewMode, onWorkspaceViewModeChange]);
+  }, [isTerminalDispatchHistoryReadonly, workspaceViewMode, onWorkspaceViewModeChange]);
 
   useEffect(() => {
     if (!showWorkspaceViewToggle && workspaceViewMode === 'terminal') {
@@ -861,7 +876,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
     sessionTitle === 'New Chat / 新建会话' ||
     sessionTitle === '新建会话';
 
-  const showEmptyState = isIdle && messages.length === 0 && isDefaultNewSessionTitle && !isTerminalHistoryReadonly;
+  const showEmptyState = isIdle && messages.length === 0 && isDefaultNewSessionTitle && !showWorkspaceReadonlyChrome;
 
   const workflowReplyStepIndex = useMemo(
     () => buildWorkflowReplyStepIndex(workflowAgentSteps, messages),
@@ -903,22 +918,58 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
     (isRunning && lastUserIndex >= 0 && lastUserIndex > lastAgentIndex && isPlainLlmChat) ||
     showWorkflowThinking;
 
+  const chatScrollBottomPad = useMemo(
+    () => dockClearance + (showThinking ? thinkingHeight + 16 : 0),
+    [dockClearance, showThinking, thinkingHeight],
+  );
+
+  const scrollChatToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
+    bottomRef.current?.scrollIntoView({ behavior, block: 'end' });
+  }, []);
+
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, clutchStatus, showThinking, pendingMessages.length]);
+    scrollChatToBottom();
+  }, [messages, clutchStatus, showThinking, pendingMessages.length, scrollChatToBottom]);
+
+  useEffect(() => {
+    if (!showThinking) return;
+    scrollChatToBottom();
+  }, [chatScrollBottomPad, showThinking, scrollChatToBottom]);
 
   useEffect(() => {
     const dock = dockRef.current;
     if (!dock || showTerminalWorkspace) return;
     const measure = () => {
-      const gapAboveDock = 96 + (showThinking ? 40 : 0);
-      setDockHeight(Math.max(dock.offsetHeight + 32 + gapAboveDock, 260));
+      setDockClearance(
+        APP_INPUT_DOCK_BOTTOM_PX + dock.offsetHeight + CHAT_SCROLL_ABOVE_DOCK_GAP_PX,
+      );
     };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(dock);
     return () => observer.disconnect();
-  }, [pendingMessages.length, shellSessionStatus, awaitingHuman, isRunning, isPlainLlmChat, showThinking, showTerminalWorkspace]);
+  }, [
+    pendingMessages.length,
+    shellSessionStatus,
+    awaitingHuman,
+    isRunning,
+    isPlainLlmChat,
+    showTerminalWorkspace,
+    llmModelName,
+  ]);
+
+  useEffect(() => {
+    const thinkingEl = thinkingRef.current;
+    if (!thinkingEl || !showThinking) {
+      setThinkingHeight(0);
+      return;
+    }
+    const measure = () => setThinkingHeight(thinkingEl.offsetHeight);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(thinkingEl);
+    return () => observer.disconnect();
+  }, [showThinking, llmModelName, thinkingAgentName, thinkingAgentType]);
 
   useEffect(() => {
     const terminalBar = terminalBarRef.current;
@@ -978,6 +1029,11 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
     );
   };
 
+  const workspaceChromeRowClass = (extra = '') =>
+    `flex justify-end shrink-0 ${isTerminalLayout ? 'mb-3' : 'mb-6'} ${extra}`.trim();
+
+  const workspaceChromeRowStyle = { paddingTop: WORKSPACE_CHROME_ROW_TOP_PX };
+
   return (
   <div className="flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden relative w-full">
     <section
@@ -985,26 +1041,21 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
         paddingLeft: `${leftChromePad}px`,
         paddingRight: `${rightChromePad}px`,
         paddingTop: APP_HEADER_HEIGHT_PX,
-        paddingBottom: isTerminalLayout ? terminalInputReservePx : dockHeight,
+        paddingBottom: isTerminalLayout ? terminalInputReservePx : chatScrollBottomPad,
       }}
       className={`flex-1 min-h-0 flex flex-col box-border transition-all duration-300 bg-background ${
-        isTerminalLayout ? 'overflow-hidden py-1 items-stretch' : 'overflow-y-auto items-center py-10 px-6'
-      } ${isTerminalLayout ? 'px-4' : ''}`}
+        isTerminalLayout ? 'overflow-hidden pb-1 items-stretch px-4' : 'overflow-y-auto items-center px-6'
+      }`}
     >
       <div
-        ref={isTerminalLayout ? terminalStageRef : undefined}
         className={`w-full min-w-0 ${
           isTerminalLayout
             ? 'flex-1 min-h-0 flex flex-col max-w-none h-full'
             : 'max-w-2xl mx-auto space-y-8 py-4'
         }`}
       >
-        {isTerminalHistoryReadonly ? (
-          <div
-            className={`flex justify-end shrink-0 ${
-              isTerminalLayout ? 'mt-1 mb-1' : 'mb-6'
-            }`}
-          >
+        {showWorkspaceReadonlyChrome ? (
+          <div className={workspaceChromeRowClass()} style={workspaceChromeRowStyle}>
             <span
               data-testid="workspace-view-readonly-label"
               className="inline-flex items-center gap-1.5 rounded-xl border border-outline-variant/40 px-3 py-1.5 text-[11px] font-bold whitespace-nowrap shadow-sm bg-surface-container-low text-on-surface-variant"
@@ -1017,19 +1068,18 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
           </div>
         ) : showWorkspaceViewToggle ? (
           <div
-            className={`flex justify-end shrink-0 ${
-              isTerminalLayout ? 'mt-1 mb-1' : showTerminalWorkspace ? 'mb-3' : 'mb-6'
-            }`}
+            className={workspaceChromeRowClass()}
+            style={workspaceChromeRowStyle}
           >
             <div
               data-testid="workspace-view-toggle"
-              className="flex rounded-xl border border-outline-variant/40 overflow-hidden text-xs font-bold whitespace-nowrap shadow-sm bg-surface-container-low"
+              className="inline-flex items-center rounded-xl border border-outline-variant/40 overflow-hidden text-xs font-bold whitespace-nowrap shadow-sm bg-surface-container-low"
             >
               <button
                 type="button"
                 data-testid="workspace-view-chat"
                 onClick={() => handleWorkspaceViewChange('chat')}
-                className={`px-3 py-1.5 text-[11px] transition-colors ${
+                className={`inline-flex items-center justify-center px-3 h-7 text-[11px] leading-none transition-colors ${
                   workspaceViewMode === 'chat'
                     ? 'bg-neutral-900 text-white'
                     : 'bg-transparent text-on-surface-variant hover:bg-surface-container-high'
@@ -1041,7 +1091,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                 type="button"
                 data-testid="workspace-view-terminal"
                 onClick={() => handleWorkspaceViewChange('terminal')}
-                className={`px-3 py-1.5 text-[11px] transition-colors border-l border-outline-variant/40 ${
+                className={`inline-flex items-center justify-center px-3 h-7 text-[11px] leading-none transition-colors border-l border-outline-variant/40 ${
                   workspaceViewMode === 'terminal'
                     ? 'bg-neutral-900 text-white'
                     : 'bg-transparent text-on-surface-variant hover:bg-surface-container-high'
@@ -1101,26 +1151,29 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
           </div>
         )}
 
-        {isPlainLlmChat && hasCliAgents && isTerminalLayout ? (
-          <div className="flex flex-1 flex-col min-h-0 min-w-0 w-full">
-            {showTerminalPane ? (
-              <TerminalOrchestraWorkspace
-                visible
-                clutchStatus={clutchStatus}
-                sessionRunId={sessionRunId}
-                barFocused={orchestratorBarFocused}
-                configuredAgents={mentionableAgents}
-                sessionDispatched={sessionDispatched}
-                previewAgentType={terminalPreviewAgentType}
-                previewAgentId={sessionDispatched ? null : inputTerminalMention?.agentId ?? null}
-                previewAgentName={sessionDispatched ? null : inputTerminalMention?.name ?? null}
-                layoutChromeKey={terminalLayoutChromeKey}
-                layoutObserveRef={terminalStageRef}
-              />
-            ) : showTerminalWorkspace ? (
-              <TerminalOrchestraEmptyState />
-            ) : null}
+        {keepTerminalMounted ? (
+          <div
+            ref={terminalStageRef}
+            className={isTerminalLayout ? 'flex flex-1 flex-col min-h-0 min-w-0 w-full' : undefined}
+            style={isTerminalLayout ? undefined : XTERM_KEEPALIVE_STYLE}
+            aria-hidden={isTerminalLayout ? undefined : true}
+          >
+            <TerminalOrchestraWorkspace
+              visible={isTerminalLayout}
+              clutchStatus={clutchStatus}
+              sessionRunId={sessionRunId}
+              barFocused={orchestratorBarFocused}
+              configuredAgents={mentionableAgents}
+              sessionDispatched={sessionDispatched}
+              previewAgentType={terminalPreviewAgentType}
+              previewAgentId={sessionDispatched ? null : inputTerminalMention?.agentId ?? null}
+              previewAgentName={sessionDispatched ? null : inputTerminalMention?.name ?? null}
+              layoutChromeKey={terminalLayoutChromeKey}
+              layoutObserveRef={terminalStageRef}
+            />
           </div>
+        ) : isPlainLlmChat && hasCliAgents && isTerminalLayout ? (
+          <TerminalOrchestraEmptyState sessionRunId={sessionRunId} />
         ) : null}
 
         {isTerminalLayout ? (
@@ -1132,7 +1185,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
           />
         ) : null}
 
-        {isTerminalHistoryReadonly ? (
+        {isTerminalDispatchHistoryReadonly ? (
           <div className="w-full max-w-2xl mx-auto space-y-8 py-4">
             <TerminalDispatchHistoryFeed
               entries={clutchOrchestraState.dispatch_log ?? []}
@@ -1318,7 +1371,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
         })}
 
         {workspaceViewMode === 'chat' && showThinking && (
-          <div className="w-full flex justify-start mb-4">
+          <div ref={thinkingRef} className="w-full flex justify-start mb-4">
             <div className="flex gap-4 max-w-[85%] p-2 rounded-xl">
               <AgentChatAvatar
                 src={thinkingAgentLogo || activeAgentAvatar}
@@ -1346,7 +1399,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
         )}
 
         {workspaceViewMode === 'chat' ? (
-          <div ref={bottomRef} style={{ scrollMarginBottom: dockHeight }} className="h-2 shrink-0" aria-hidden />
+          <div ref={bottomRef} style={{ scrollMarginBottom: chatScrollBottomPad }} className="h-2 shrink-0" aria-hidden />
         ) : null}
       </div>
 
@@ -1358,8 +1411,9 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
         style={{
           left: `${leftChromePad - 6}px`,
           right: `${rightChromePad - 6}px`,
+          bottom: APP_INPUT_DOCK_BOTTOM_PX,
         }}
-        className="fixed bottom-8 flex justify-center px-6 z-40 transition-all duration-300 select-none"
+        className="fixed flex justify-center px-6 z-40 transition-all duration-300 select-none"
       >
         {showTerminalWorkspace ? (
           <div ref={terminalBarRef} className="w-full max-w-2xl">
@@ -1473,7 +1527,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
               </button>
             </div>
           </div>
-        ) : isTerminalHistoryReadonly ? (
+        ) : isTerminalDispatchHistoryReadonly ? (
           <div className="w-full flex justify-center">
             <OrchestratorBar
               sessionRunId={sessionRunId}

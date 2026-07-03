@@ -4,14 +4,18 @@ import { clutchStore } from '../../services/clutchState';
 import {
   buildPreviewPtyLane,
   collapsedLanes,
+  computeLaneGridPageCount,
   computeLaneLayout,
   expandedLanes,
+  laneGridPageIndex,
   orderLanesForGrid,
+  sliceLanesForGridPage,
   uniqueLanesByLaneId,
 } from '../../services/terminalOrchestraUtils';
 import { TerminalLanePane } from './TerminalLanePane';
 import { TerminalLaneFloatRail } from './TerminalLaneFloatRail';
 import { HandoffLinkOverlay } from './HandoffLinkOverlay';
+import { useLanguage } from '../LanguageContext';
 import {
   expandedLaneSlot,
   lanePaneOuterClass,
@@ -50,12 +54,15 @@ export const TerminalLaneGrid: React.FC<TerminalLaneGridProps> = ({
   layoutChromeKey = '',
   layoutObserveRef,
 }) => {
+  const { t } = useLanguage();
   const paneRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const stageRef = useRef<HTMLDivElement>(null);
   const laneRowRef = useRef<HTMLDivElement>(null);
   const lastStageSizeRef = useRef<{ width: number; height: number } | null>(null);
   const [handoffHover, setHandoffHover] = useState<DispatchEdge | null>(null);
   const [layoutTick, setLayoutTick] = useState(0);
+  const [previewCollapsed, setPreviewCollapsed] = useState(false);
+  const [gridPage, setGridPage] = useState(0);
 
   const bumpLayoutTick = useCallback(() => {
     setLayoutTick((n) => n + 1);
@@ -71,25 +78,78 @@ export const TerminalLaneGrid: React.FC<TerminalLaneGridProps> = ({
       return uniqueLanesByLaneId(candidates);
     }
     if (!previewAgentType) return [];
-    return [buildPreviewPtyLane(previewAgentType, sessionRunId)];
-  }, [lanes, previewAgentType, sessionRunId, sessionDispatched]);
+    const preview = buildPreviewPtyLane(previewAgentType, sessionRunId);
+    const stateLane = lanes.find((lane) => lane.lane_id === preview.lane_id);
+    return [{
+      ...preview,
+      collapsed: stateLane?.collapsed ?? previewCollapsed,
+      focused: stateLane?.focused ?? preview.focused,
+      status: stateLane?.status ?? preview.status,
+    }];
+  }, [lanes, previewAgentType, previewCollapsed, sessionRunId, sessionDispatched]);
 
-  const handoffEdges = displayLanes.length >= 2 ? dispatchEdges : [];
+  useEffect(() => {
+    setPreviewCollapsed(false);
+  }, [previewAgentType, sessionRunId, sessionDispatched]);
+
+  const handoffEdgesBase = displayLanes.length >= 2 ? dispatchEdges : [];
 
   const expanded = expandedLanes(displayLanes);
   const collapsed = collapsedLanes(displayLanes);
-  const layout = computeLaneLayout(Math.max(1, expanded.length));
+  const pageCount = computeLaneGridPageCount(expanded.length);
+  const needsPagination = pageCount > 1;
+  const safeGridPage = Math.min(gridPage, Math.max(0, pageCount - 1));
+  const baseLayout = computeLaneLayout(Math.max(1, expanded.length));
   const expandedOrdered = orderLanesForGrid(
     expanded.length > 0 ? expanded : displayLanes,
-    layout,
+    needsPagination ? 'quad' : baseLayout,
+  );
+  const pageLanes = needsPagination
+    ? sliceLanesForGridPage(expandedOrdered, safeGridPage)
+    : expandedOrdered;
+  const layout = computeLaneLayout(Math.max(1, pageLanes.length));
+  const pageLanesOrdered = orderLanesForGrid(pageLanes, layout);
+  const visibleLaneIds = useMemo(
+    () => new Set(pageLanesOrdered.map((lane) => lane.lane_id)),
+    [pageLanesOrdered],
+  );
+  const handoffEdges = handoffEdgesBase.filter(
+    (edge) =>
+      visibleLaneIds.has(edge.target_lane_id)
+      && edge.source_lane_ids.every((laneId) => visibleLaneIds.has(laneId)),
   );
   const laneLayoutKey = useMemo(
     () => [
       layout,
+      safeGridPage,
       displayLanes.map((lane) => `${lane.lane_id}:${lane.collapsed ? 1 : 0}:${lane.focused ? 1 : 0}`).join('|'),
     ].join('::'),
-    [displayLanes, layout],
+    [displayLanes, layout, safeGridPage],
   );
+
+  useEffect(() => {
+    if (!needsPagination) {
+      setGridPage(0);
+      return;
+    }
+    if (gridPage >= pageCount) {
+      setGridPage(Math.max(0, pageCount - 1));
+    }
+  }, [gridPage, needsPagination, pageCount]);
+
+  useEffect(() => {
+    if (!needsPagination) return;
+    const focusedLane = expandedOrdered.find((lane) => lane.focused);
+    const focusedId = focusedLane?.lane_id ?? null;
+    if (!focusedId) return;
+    const focusedIndex = expandedOrdered.findIndex((lane) => lane.lane_id === focusedId);
+    if (focusedIndex < 0) return;
+    const targetPage = laneGridPageIndex(focusedIndex);
+    setGridPage((current) => (current === targetPage ? current : targetPage));
+  }, [
+    needsPagination,
+    expandedOrdered.map((lane) => `${lane.lane_id}:${lane.focused ? 1 : 0}`).join('|'),
+  ]);
 
   const registerPane = useCallback((el: HTMLDivElement | null, laneId: string) => {
     const existing = paneRefs.current.get(laneId);
@@ -108,13 +168,25 @@ export const TerminalLaneGrid: React.FC<TerminalLaneGridProps> = ({
   };
 
   const handleCollapse = (laneId: string) => {
+    if (!sessionDispatched) {
+      setPreviewCollapsed(true);
+    }
     void clutchStore.collapseLane(laneId, true);
     scheduleLayoutRefit();
   };
 
   const handleExpand = (laneId: string) => {
+    if (!sessionDispatched) {
+      setPreviewCollapsed(false);
+    }
     void clutchStore.collapseLane(laneId, false);
     void clutchStore.focusLane(laneId);
+    if (needsPagination) {
+      const expandedIndex = expandedOrdered.findIndex((lane) => lane.lane_id === laneId);
+      if (expandedIndex >= 0) {
+        setGridPage(laneGridPageIndex(expandedIndex));
+      }
+    }
     scheduleLayoutRefit();
   };
 
@@ -123,6 +195,11 @@ export const TerminalLaneGrid: React.FC<TerminalLaneGridProps> = ({
   useEffect(() => {
     return scheduleLayoutRefit();
   }, [layoutChromeKey, scheduleLayoutRefit]);
+
+  useEffect(() => {
+    if (!visible) return;
+    return scheduleLayoutRefit();
+  }, [visible, scheduleLayoutRefit]);
 
   useEffect(() => {
     const stage = stageRef.current;
@@ -163,32 +240,63 @@ export const TerminalLaneGrid: React.FC<TerminalLaneGridProps> = ({
   return (
     <div data-testid="terminal-lane-grid" className="w-full flex flex-1 flex-col min-h-0 min-w-0">
       <div ref={stageRef} className="relative flex flex-1 flex-col min-h-0 min-w-0">
+        {needsPagination ? (
+          <div
+            className="flex justify-center items-center gap-2 py-2 shrink-0"
+            data-testid="terminal-lane-page-dots"
+            role="tablist"
+            aria-label={t('Terminal pages')}
+          >
+            {Array.from({ length: pageCount }, (_, pageIndex) => (
+              <button
+                key={pageIndex}
+                type="button"
+                role="tab"
+                aria-selected={pageIndex === safeGridPage}
+                aria-label={`${t('Terminal page')} ${pageIndex + 1}`}
+                onClick={() => {
+                  setGridPage(pageIndex);
+                  scheduleLayoutRefit();
+                }}
+                className={`rounded-full transition-all ${
+                  pageIndex === safeGridPage
+                    ? 'w-2 h-2 bg-on-surface'
+                    : 'w-1.5 h-1.5 bg-on-surface-variant/40 hover:bg-on-surface-variant/70'
+                }`}
+              />
+            ))}
+          </div>
+        ) : null}
         <div className="flex flex-1 gap-2 min-h-0 min-w-0">
           <div ref={laneRowRef} className="relative flex flex-1 min-h-0 min-w-0">
             {displayLanes.map((lane) => {
               const paneKey = !sessionDispatched && previewAgentId
                 ? `preview-${previewAgentId}`
                 : lane.lane_id;
-              const isHidden = lane.collapsed || lane.status === 'queued';
-              const slotIndex = expandedOrdered.findIndex((item) => item.lane_id === lane.lane_id);
-              const slotStyle = isHidden
-                ? LANE_KEEPALIVE_SLOT
-                : expandedLaneSlot(slotIndex, layout);
+              const isCollapsedOrQueued = lane.collapsed || lane.status === 'queued';
+              const expandedIndex = expandedOrdered.findIndex((item) => item.lane_id === lane.lane_id);
+              const onCurrentPage = !needsPagination
+                || (expandedIndex >= 0 && laneGridPageIndex(expandedIndex) === safeGridPage);
+              const slotIndex = pageLanesOrdered.findIndex((item) => item.lane_id === lane.lane_id);
+              const showInGrid = !isCollapsedOrQueued && onCurrentPage && slotIndex >= 0;
+              const slotStyle = showInGrid
+                ? expandedLaneSlot(slotIndex, layout)
+                : LANE_KEEPALIVE_SLOT;
 
               return (
                 <div
                   key={paneKey}
                   data-lane-id={lane.lane_id}
-                  data-lane-collapsed={isHidden ? 'true' : 'false'}
+                  data-lane-collapsed={isCollapsedOrQueued || !onCurrentPage ? 'true' : 'false'}
                   data-lane-layout={layout}
-                  aria-hidden={isHidden ? true : undefined}
+                  aria-hidden={!showInGrid ? true : undefined}
                   style={slotStyle}
-                  className={isHidden ? 'flex flex-col overflow-hidden' : shell}
+                  className={showInGrid ? shell : 'flex flex-col overflow-hidden'}
                 >
                   <TerminalLanePane
                     lane={lane}
                     sessionRunId={sessionRunId}
-                    visible={visible}
+                    visible={visible && showInGrid}
                     barFocused={barFocused}
                     configuredAgents={configuredAgents}
                     headerAgentName={!sessionDispatched ? previewAgentName ?? undefined : undefined}
@@ -201,7 +309,7 @@ export const TerminalLaneGrid: React.FC<TerminalLaneGridProps> = ({
                     layoutMode={layout}
                     onFocusLane={handleFocus}
                     onCollapseLane={handleCollapse}
-                    paneRef={isHidden ? undefined : registerPane}
+                    paneRef={showInGrid ? registerPane : undefined}
                   />
                 </div>
               );

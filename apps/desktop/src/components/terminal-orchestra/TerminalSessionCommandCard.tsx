@@ -3,6 +3,7 @@ import { Check, Copy, Terminal } from 'lucide-react';
 import type { DispatchLaneSession } from '../../types';
 import {
   buildTerminalHistoryCommand,
+  canResumeByStoredSessionId,
   hasTerminalHistoryCommand,
   resolveTerminalHistoryWorkspacePath,
 } from '../../services/terminalSessionCommands';
@@ -32,6 +33,7 @@ export const TerminalSessionCommandCard: React.FC<TerminalSessionCommandCardProp
     resolvedWorkspacePath,
   );
   const sessionId = session.cli_session_id.trim();
+  const showSessionId = Boolean(sessionId && canResumeByStoredSessionId(session.agent_type, sessionId));
 
   const copyText = async (text: string) => {
     if (!text.trim()) return;
@@ -51,15 +53,13 @@ export const TerminalSessionCommandCard: React.FC<TerminalSessionCommandCardProp
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[11px] font-semibold text-on-surface">{session.label}</span>
-            {sessionId ? (
-              <button
-                type="button"
-                className="text-[9px] font-mono text-primary hover:underline truncate max-w-full"
+            {showSessionId ? (
+              <span
+                className="text-[9px] font-mono text-on-surface-variant truncate max-w-full"
                 title={sessionId}
-                onClick={() => void copyText(sessionId)}
               >
                 {sessionId}
-              </button>
+              </span>
             ) : null}
           </div>
           <button
@@ -74,7 +74,7 @@ export const TerminalSessionCommandCard: React.FC<TerminalSessionCommandCardProp
       {expanded ? (
         <div className="mt-2 rounded-lg border border-neutral-800 bg-neutral-900 p-2.5 text-left">
           <p className="text-[10px] text-neutral-400 leading-relaxed font-sans">{t(descKey)}</p>
-          {sessionId ? (
+          {showSessionId ? (
             <p className="mt-1.5 text-[9px] font-mono text-neutral-500 break-all">
               {t('Session ID')}: {sessionId}
             </p>

@@ -21,17 +21,19 @@ function parseHandoffSections(content: string): { headline: string; sections: Ha
 
   const lines = trimmed.split('\n');
   const headline = lines[0]?.startsWith('# ') ? lines[0].slice(2).trim() : '';
-  const rest = headline ? lines.slice(1).join('\n') : trimmed;
+  const rest = (headline ? lines.slice(1).join('\n') : trimmed).trimStart();
   const chunks = rest.split(/^## /m).filter(Boolean);
 
-  const sections = chunks.map((chunk) => {
-    const nl = chunk.indexOf('\n');
-    if (nl === -1) return { title: chunk.trim(), body: '' };
-    return {
-      title: chunk.slice(0, nl).trim(),
-      body: chunk.slice(nl + 1).trim(),
-    };
-  });
+  const sections = chunks
+    .map((chunk) => {
+      const nl = chunk.indexOf('\n');
+      if (nl === -1) return { title: chunk.trim(), body: '' };
+      return {
+        title: chunk.slice(0, nl).trim(),
+        body: chunk.slice(nl + 1).trim(),
+      };
+    })
+    .filter((section) => section.title || section.body);
 
   return { headline, sections };
 }

@@ -6,6 +6,7 @@ import { resolveBrandLogoSrc } from '../../services/brandLogos';
 import { useLanguage } from '../LanguageContext';
 import { AgentChatAvatar } from '../AgentChatAvatar';
 import { LegacyIcon } from '../ui/LegacyIcon';
+import { formatDispatchTime } from '../../services/formatTime';
 import { HandoffPreviewModal } from './HandoffPreviewModal';
 import { TerminalSessionCommandCard } from './TerminalSessionCommandCard';
 
@@ -24,12 +25,6 @@ interface TerminalDispatchHistoryFeedProps {
   userName?: string;
   mentionableAgents?: MentionableAgent[];
   workspacePath?: string;
-}
-
-function formatDispatchTime(iso: string): string {
-  const parsed = Date.parse(iso);
-  if (Number.isNaN(parsed)) return iso;
-  return new Date(parsed).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
 function resolveAgentForTarget(

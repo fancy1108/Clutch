@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Paperclip } from 'lucide-react';
 import type { DispatchEdge } from '../../types';
+import { buildHandoffSendToBarText } from '../../services/terminalOrchestraUtils';
 import { useLanguage } from '../LanguageContext';
 import { BTN_PRIMARY_SM, BTN_SECONDARY_SM } from '../ui/buttonStyles';
 import { HandoffPreviewModal } from './HandoffPreviewModal';
@@ -397,7 +398,12 @@ export const HandoffLinkOverlay: React.FC<HandoffLinkOverlayProps> = ({
                       type="button"
                       className={`${BTN_PRIMARY_SM} flex-1`}
                       onClick={() => {
-                        onSendToBar(`@${seg.edge.target} 参考 handoff @${seg.edge.handoff_file}`);
+                        onSendToBar(buildHandoffSendToBarText({
+                          target: seg.edge.target,
+                          sourcesLabel: (seg.edge.sources ?? []).join(' + '),
+                          handoffFile: seg.edge.handoff_file,
+                          inputMode: 'graph',
+                        }));
                         setPinnedEdge(null);
                         onHoverEdge(null);
                       }}

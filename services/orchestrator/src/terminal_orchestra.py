@@ -27,7 +27,7 @@ def parse_pty_session_key(session_key: str) -> tuple[str, str]:
 
 
 def _iso_now() -> str:
-    return datetime.now(timezone.utc).strftime("%H:%M")
+    return datetime.now(timezone.utc).isoformat()
 
 
 def _lane_list(state: dict[str, Any]) -> list[dict[str, Any]]:
@@ -432,7 +432,8 @@ def _pending_inject_patch(
     prompt: str | None = None,
     handoff_path: str = "",
 ) -> dict[str, Any]:
-    text = (prompt or preview.task).strip()
+    # Switch dispatch: inject task text only (not full @Agent … bar syntax).
+    text = (prompt if prompt is not None else preview.task).strip()
     if not text or not lane_id:
         return {}
     payload: dict[str, str] = {"lane_id": lane_id, "prompt": text}

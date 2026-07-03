@@ -1953,6 +1953,56 @@ async def _resume_pool_queued_turn(
     )
 
 
+async def _persist_plain_chat_user_message(
+    websocket: WebSocket,
+    run_id: str,
+    state: ClutchState,
+    text: str,
+    agent_id: str | None = None,
+    client_message_id: str | None = None,
+) -> ClutchState:
+    """Commit user turn + session list entry before LLM work starts."""
+    from src.agent_storage import BUILTIN_AGENT_ID, get_agent_by_id
+    from src.runtime_config import runtime_mode
+
+    resolved_id = (agent_id or "").strip() or BUILTIN_AGENT_ID
+    agent = get_agent_by_id(resolved_id)
+    active_agent = str(agent.get("name", "Clutch Agent")) if agent else "Clutch Agent"
+
+    stripped = text.strip()
+    client_id = (client_message_id or "").strip()
+    user_message = _chat_message(
+        "User",
+        text,
+        msg_id=client_id or f"user_{uuid.uuid4().hex[:8]}",
+    )
+    messages = list(state["messages"])
+    already_has_client_id = bool(
+        client_id and any(str(item.get("id", "")) == client_id for item in messages)
+    )
+    user_message_added = not already_has_client_id and not (
+        messages
+        and messages[-1].get("agent") == "User"
+        and str(messages[-1].get("text", "")).strip() == stripped
+    )
+    if user_message_added:
+        messages = messages + [user_message]
+    user_patch: dict[str, Any] = {
+        "messages": messages,
+        "status": "running",
+        "active_agent": active_agent,
+    }
+    if runtime_mode() == "hybrid":
+        user_patch["shell_session_status"] = "ready"
+    state = _merge_patch(state, user_patch)
+    _commit_run_state(run_id, state)
+    _touch_session(run_id, title=text.strip()[:80] or "New session", status=state["status"])
+    if user_message_added:
+        await _send_message_event(websocket, run_id, user_message, "")
+    await _notify_run_state(websocket, run_id, state, user_patch)
+    return state
+
+
 async def _handle_plain_chat(
     websocket: WebSocket,
     run_id: str,
@@ -1963,6 +2013,7 @@ async def _handle_plain_chat(
     client_message_id: str | None = None,
     *,
     resume_after_pool_queue: bool = False,
+    user_persisted: bool = False,
 ) -> ClutchState:
     from src.agent_storage import BUILTIN_AGENT_ID, get_agent_by_id
     from src.runtime_config import runtime_mode
@@ -1971,12 +2022,17 @@ async def _handle_plain_chat(
     agent = get_agent_by_id(resolved_id)
     active_agent = str(agent.get("name", "Clutch Agent")) if agent else "Clutch Agent"
 
-    if state["status"] == "running" and runtime_mode() == "hybrid" and not resume_after_pool_queue:
+    if (
+        state["status"] == "running"
+        and runtime_mode() == "hybrid"
+        and not resume_after_pool_queue
+        and not user_persisted
+    ):
         return state
 
     stripped = text.strip()
     client_id = (client_message_id or "").strip()
-    if not resume_after_pool_queue:
+    if not resume_after_pool_queue and not user_persisted:
         user_message = _chat_message(
             "User",
             text,
@@ -2867,19 +2923,8 @@ async def create_session_endpoint(body: SessionCreateRequest) -> dict[str, Any]:
     if workspace is None:
         raise HTTPException(status_code=400, detail={"message": tr("Please select and authorize a project workspace first", "请先选择并授权一个项目工作区")})
     from src.run_state_store import load_run_state
-    from src.session_content import session_has_persistable_content
 
     state = load_run_state(body.run_id) or _get_or_create_run(body.run_id)
-    if not session_has_persistable_content(state):
-        return {
-            "run_id": body.run_id,
-            "workspace_id": workspace["id"],
-            "workspace_name": workspace["name"],
-            "title": body.title[:80] or "New session",
-            "workflow_id": body.workflow_id,
-            "status": "idle",
-            "started_at": _iso_timestamp(),
-        }
     record = upsert_session(
         {
             "run_id": body.run_id,
@@ -2887,7 +2932,7 @@ async def create_session_endpoint(body: SessionCreateRequest) -> dict[str, Any]:
             "workspace_name": workspace["name"],
             "title": body.title[:80] or "New session",
             "workflow_id": body.workflow_id,
-            "status": str(state.get("status") or "idle"),
+            "status": "running",
             "started_at": _iso_timestamp(),
         }
     )
@@ -3261,7 +3306,10 @@ async def update_models_config(body: ModelsConfigRequest) -> dict[str, str]:
     from src.models_config import get_router, is_model_available, save_router, sync_local_ollama_models
 
     router = get_router()
-    sync_local_ollama_models(router)
+    if body.provider_id is not None or (
+        body.active_model_id and str(body.active_model_id).startswith("ollama")
+    ):
+        sync_local_ollama_models(router)
     if body.provider_id == "opencode" and body.api_key is not None:
         key = body.api_key.strip()
         model_id = body.active_model_id
@@ -4117,6 +4165,14 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
         nonlocal plain_chat_task, state
         if plain_chat_task is not None and not plain_chat_task.done():
             return
+        state = await _persist_plain_chat_user_message(
+            websocket,
+            run_id,
+            state,
+            text,
+            agent_id=agent_id,
+            client_message_id=client_message_id,
+        )
         plain_chat_task = asyncio.create_task(
             _handle_plain_chat(
                 websocket,
@@ -4126,6 +4182,7 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                 agent_id=agent_id,
                 session_model_id=session_model_id,
                 client_message_id=client_message_id,
+                user_persisted=True,
             )
         )
         plain_chat_task.add_done_callback(_plain_chat_done)
@@ -4178,6 +4235,8 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
         }
         state = _merge_patch(state, patch)
         _commit_run_state(run_id, state)
+        if user_message_added:
+            _touch_session(run_id, title=text.strip()[:80] or "New session", status=state["status"])
         if user_message_added:
             await _send_message_event(websocket, run_id, user_message, "")
         await _send_log_event(websocket, run_id, log_line, node_id="")
@@ -4372,10 +4431,11 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                     normalize_lane_id,
                     pty_session_key,
                 )
-                from src.workspace import get_workspace
+                from src.workspace import active_workspace_issue, get_workspace
 
                 cli_tool = str(payload.get("cli_tool", "claude-cli")).strip() or "claude-cli"
                 lane_id = normalize_lane_id(str(payload.get("lane_id", "primary")), state)
+                workspace_issue = active_workspace_issue()
                 workspace = get_workspace()
                 workspace_path = str(workspace.get("workspace_path", "")).strip() if workspace else ""
                 orch_patch = ensure_primary_lane(state, cli_tool=cli_tool)
@@ -4385,18 +4445,38 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                     await _notify_run_state(websocket, run_id, state, orch_patch)
                     lane_id = normalize_lane_id(lane_id, state)
                 lane_cli_session_id: str | None = None
+                ollama_model: str | None = None
+                configured_agent_id = str(payload.get("configured_agent_id") or "").strip()
+                if configured_agent_id:
+                    from src.agent_storage import get_agent_by_id
+
+                    agent = get_agent_by_id(configured_agent_id)
+                    if agent:
+                        tag = str(agent.get("ollamaModel", "")).strip()
+                        if tag:
+                            ollama_model = tag
                 for lane in state.get("pty_lanes") or []:
                     if isinstance(lane, dict) and str(lane.get("lane_id") or "") == lane_id:
                         lane_cli_session_id = _ensure_lane_cli_session_id(lane)
                         _commit_run_state(run_id, state)
+                        if cli_tool in {"ollama-cli", "ollama"} and not ollama_model:
+                            lane_cfg_id = str(lane.get("configured_agent_id") or "").strip()
+                            if lane_cfg_id:
+                                from src.agent_storage import get_agent_by_id
+
+                                agent = get_agent_by_id(lane_cfg_id)
+                                if agent:
+                                    tag = str(agent.get("ollamaModel", "")).strip()
+                                    if tag:
+                                        ollama_model = tag
                         break
                 session_key = pty_session_key(run_id, lane_id)
-                if not workspace_path:
+                if workspace_issue or not workspace_path:
                     await _send_pty_session_status(
                         websocket,
                         run_id,
                         "blocked",
-                        detail="No workspace authorized for interactive PTY",
+                        detail=workspace_issue or "No workspace authorized for interactive PTY",
                         lane_id=lane_id,
                     )
                 else:
@@ -4407,6 +4487,7 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                             workspace_path=workspace_path,
                             cli_tool=cli_tool,
                             cli_session_id=lane_cli_session_id,
+                            ollama_model=ollama_model,
                         )
                         await _send_pty_session_status(
                             websocket,
@@ -4416,6 +4497,14 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                             lane_id=lane_id,
                         )
                     except (InteractivePtyError, OSError) as exc:
+                        await _send_pty_session_status(
+                            websocket,
+                            run_id,
+                            "blocked",
+                            detail=str(exc),
+                            lane_id=lane_id,
+                        )
+                    except Exception as exc:
                         await _send_pty_session_status(
                             websocket,
                             run_id,

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import shutil
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -42,8 +43,19 @@ def test_resolve_binary_strips_cli_suffix_for_unknown_types() -> None:
 
 def test_resolve_binary_missing_raises() -> None:
     with patch("src.interactive_pty_runtime.shutil.which", return_value=None):
-        with pytest.raises(InteractivePtyError):
-            interactive_pty_manager.resolve_binary("claude-cli")
+        with patch("src.tools_status._extra_cli_search_dirs", return_value=[]):
+            with pytest.raises(InteractivePtyError):
+                interactive_pty_manager.resolve_binary("claude-cli")
+
+
+def test_resolve_binary_falls_back_to_tools_status_search_dirs() -> None:
+    nvm_bin = Path("/Users/me/.nvm/versions/node/v24/bin")
+    opencode = nvm_bin / "opencode"
+    with patch("src.interactive_pty_runtime.shutil.which", return_value=None):
+        with patch("src.tools_status._extra_cli_search_dirs", return_value=[nvm_bin]):
+            with patch.object(Path, "is_file", lambda self: self == opencode):
+                with patch("src.interactive_pty_runtime.os.access", return_value=True):
+                    assert interactive_pty_manager.resolve_binary("opencode-cli") == str(opencode)
 
 
 @pytest.mark.skipif(os.name == "nt", reason="PTY spawn requires Unix")
@@ -189,6 +201,53 @@ def test_list_alive_for_run_includes_configured_system_processes() -> None:
             with patch("src.interactive_pty_runtime.subprocess.check_output", return_value=ps_output):
                 alive = interactive_pty_manager.list_alive_for_run("run_x")
     assert any(item["cli_tool"] == "codex" and item["source"] == "system" for item in alive)
+
+
+@pytest.mark.skipif(os.name == "nt", reason="PTY spawn requires Unix")
+def test_spawn_ollama_uses_run_subcommand(monkeypatch: pytest.MonkeyPatch) -> None:
+    bash = shutil.which("bash")
+    if not bash:
+        pytest.skip("bash not available")
+    captured: dict[str, list[str]] = {}
+
+    class _FakeProc:
+        pid = 4242
+
+        def poll(self) -> None:
+            return None
+
+        def terminate(self) -> None:
+            return None
+
+        def wait(self, timeout: float | None = None) -> int:
+            return 0
+
+        def kill(self) -> None:
+            return None
+
+    def fake_popen(argv: list[str], **kwargs: object) -> _FakeProc:
+        captured["argv"] = list(argv)
+        return _FakeProc()
+
+    with patch.dict(
+        "src.interactive_pty_runtime.CLI_BINARY_MAP",
+        {"ollama-cli": os.path.basename(bash)},
+        clear=False,
+    ):
+        with patch("src.interactive_pty_runtime.shutil.which", return_value=bash):
+            with patch("src.interactive_pty_runtime.subprocess.Popen", fake_popen):
+                with patch("src.interactive_pty_runtime.pty.openpty", return_value=(3, 4)):
+                    with patch("src.interactive_pty_runtime.os.close"):
+                        with patch("src.interactive_pty_runtime.fcntl.ioctl"):
+                            session = interactive_pty_manager.attach(
+                                "run_ollama::lane_a",
+                                workspace_path="/tmp",
+                                cli_tool="ollama-cli",
+                                ollama_model="qwen2.5-coder",
+                            )
+                            assert session.alive()
+                            assert captured["argv"] == [bash, "run", "qwen2.5-coder"]
+                            interactive_pty_manager.close("run_ollama::lane_a")
 
 
 def test_configured_cli_binaries_includes_saved_agents(monkeypatch) -> None:

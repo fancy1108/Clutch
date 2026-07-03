@@ -23,11 +23,14 @@ import {
 import { fetchPreferences, saveThemePreference, saveUserNamePreference, type ThemePresetId } from './services/themeApi';
 import { LanguageProvider, useLanguage } from './components/LanguageContext';
 import { OnboardingWizard } from './components/onboarding/OnboardingWizard';
-import { CONTENT_TOP_WITH_BANNER } from './constants/layout';
+import { CONTENT_TOP_WITH_BANNER, SIDEBAR_COLLAPSED_WIDTH_PX, SIDEBAR_EXPANDED_WIDTH_PX, CHROME_PANEL_TOGGLE_TOP_CSS, CHROME_PANEL_TOGGLE_HALF_PX } from './constants/layout';
+import { ChromeEdgeToggle } from './components/ui/ChromeEdgeToggle';
+import { BrandLogo } from './components/BrandLogo';
+import { clutchMarkUrl } from './assets/brand';
 import { DevOnboardingToolsEmptyPreview } from './components/onboarding/DevOnboardingToolsEmptyPreview';
 import { fetchOnboardingState } from './services/onboardingApi';
 import { clutchStore, createSessionRunId, submitChatMessage, useClutchState, setUserChatAvatar, clearWorkflowForSession } from './services/clutchState';
-import { fetchSessions, startWorkflowRun, fetchRunState, deleteSession, type SessionRecord } from './services/runApi';
+import { fetchSessions, startWorkflowRun, fetchRunState, deleteSession, createSession, type SessionRecord } from './services/runApi';
 import { fetchShellSnapshots } from './services/shellSnapshotApi';
 import { listWorkflowItems, loadWorkflowById } from './services/workflowApi';
 import {
@@ -219,6 +222,8 @@ function MainLayout() {
   // Repository list folders state
   const [folders, setFolders] = useState<import('./types').RepositoryFolder[]>([]);
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
+  const [loadingSessionId, setLoadingSessionId] = useState<string | null>(null);
+  const [historySessionViewRunId, setHistorySessionViewRunId] = useState<string | null>(null);
   const [shellSnapshotRunIds, setShellSnapshotRunIds] = useState<ReadonlySet<string>>(() => new Set());
   const [workspaces, setWorkspaces] = useState<WorkspaceInfo[]>([]);
   const [repositoryGroups, setRepositoryGroups] = useState<RepositoryGroup[]>([]);
@@ -577,6 +582,56 @@ function MainLayout() {
     }
   };
 
+  const upsertLocalSession = useCallback((
+    runId: string,
+    title: string,
+    opts?: { status?: string; workflowId?: string },
+  ) => {
+    if (!workspace) return;
+    const trimmedTitle = title.trim().slice(0, 80) || t('New session');
+    const status = opts?.status ?? 'running';
+    const workflowId = opts?.workflowId ?? clutchState.workflow_id ?? '';
+    setSessions((prev) => {
+      const index = prev.findIndex((session) => session.run_id === runId);
+      if (index >= 0) {
+        const next = [...prev];
+        next[index] = {
+          ...next[index],
+          title: trimmedTitle,
+          status,
+          workflow_id: workflowId || next[index].workflow_id,
+        };
+        return next;
+      }
+      const record: SessionRecord = {
+        run_id: runId,
+        workspace_id: workspace.id,
+        workspace_name: workspace.name,
+        title: trimmedTitle,
+        workflow_id: workflowId,
+        status,
+        started_at: new Date().toISOString(),
+      };
+      return [record, ...prev];
+    });
+  }, [workspace, clutchState.workflow_id, t]);
+
+  const registerSessionAfterSend = useCallback((
+    runId: string,
+    title: string,
+    opts?: { status?: string; workflowId?: string },
+  ) => {
+    upsertLocalSession(runId, title, opts);
+    void createSession({
+      run_id: runId,
+      title: title.trim().slice(0, 80) || t('New session'),
+      workflow_id: opts?.workflowId ?? clutchState.workflow_id ?? '',
+    }).catch((error) => {
+      console.warn('[Clutch] session register failed:', error);
+    });
+    void refreshSessions();
+  }, [upsertLocalSession, clutchState.workflow_id, t]);
+
   useEffect(() => {
     void refreshSessions();
   }, [clutchState.run_id, clutchState.status, activeWorkspaceId]);
@@ -639,7 +694,7 @@ function MainLayout() {
   }, [refreshWorkspaceFiles]);
 
   // Sidebar selector width for calculations
-  const selectedSidebarWidth = sidebarOpen ? 280 : 0;
+  const selectedSidebarWidth = sidebarOpen ? SIDEBAR_EXPANDED_WIDTH_PX : SIDEBAR_COLLAPSED_WIDTH_PX;
   const rightSidebarWidth = rightPanelOpen ? 300 : 0;
 
   const effectiveWorkflowId = selectedWorkflowId || clutchState.workflow_id || '';
@@ -665,10 +720,10 @@ function MainLayout() {
   }, [effectiveWorkflowId, configuredAgents]);
 
   useEffect(() => {
-    if (!isMultiAgent && rightTab === 'flow') {
+    if (rightTab === 'flow') {
       setRightTab('overview');
     }
-  }, [isMultiAgent, rightTab]);
+  }, [rightTab]);
 
   const [uncommitted, setUncommitted] = useState<UncommittedFile[]>([]);
 
@@ -987,6 +1042,7 @@ function MainLayout() {
       scheduleBackgroundHydrateForRun(sessionRunId);
       const runId = createSessionRunId();
       setSessionRunId(runId);
+      setHistorySessionViewRunId(null);
       setHighlightedDispatchEntryId(null);
       setCurrentFlowName('');
       setSelectedWorkflowId(null);
@@ -1022,59 +1078,67 @@ function MainLayout() {
   };
 
   const applySelectedSession = async (session: SessionRecord) => {
-    if (session.workspace_id && session.workspace_id !== activeWorkspaceId) {
-      await handleSelectWorkspace(session.workspace_id);
-    }
-    if (session.run_id !== sessionRunId) {
-      await discardEmptySessionIfNeeded(sessionRunId);
-      scheduleBackgroundHydrateForRun(sessionRunId);
-    }
-    let hydratedState: ClutchState | null = null;
-    try {
-      const { state } = await fetchRunState(session.run_id);
-      hydratedState = normalizeTerminalSessionForResume(state);
-      clutchStore.setPendingHydrate(hydratedState);
-    } catch (error) {
-      console.warn('[Clutch] session state hydrate failed:', error);
-    }
-    setSessionRunId(session.run_id);
-
-    const storedMode = localStorage.getItem(`clutch_session_mode_${session.run_id}`);
-    const storedFlowId = localStorage.getItem(`clutch_session_flow_${session.run_id}`);
-    const storedAgentId = localStorage.getItem(`clutch_session_agent_${session.run_id}`);
-
-    setIsMultiAgent(true);
-
-    if (storedFlowId !== null) {
-      setSelectedWorkflowId(storedFlowId || null);
-      const matched = footerWorkflows.find((w) => w.id === storedFlowId);
-      setCurrentFlowName(matched ? matched.name : (storedFlowId || ''));
-    } else {
-      const matched = footerWorkflows.find((w) => w.id === session.workflow_id);
-      setCurrentFlowName(matched ? matched.name : (session.workflow_id || ''));
-      setSelectedWorkflowId(session.workflow_id || null);
-    }
-
-    if (storedAgentId !== null) {
-      setSelectedAgentId(storedAgentId || null);
-    } else {
-      const stateAgentId = hydratedState?.cli_session_agent_id || hydratedState?.claude_session_agent_id;
-      if (stateAgentId) {
-        setSelectedAgentId(stateAgentId);
-      } else if (session.workflow_id) {
-        setSelectedAgentId(null);
-      } else {
-        const storedGlobalAgentId = localStorage.getItem('clutch_active_agent_id');
-        setSelectedAgentId(storedGlobalAgentId || BUILTIN_AGENT_ID);
-      }
-    }
-
+    setLoadingSessionId(session.run_id);
     setView('chat');
     setHighlightedDispatchEntryId(null);
+    try {
+      if (session.workspace_id && session.workspace_id !== activeWorkspaceId) {
+        await handleSelectWorkspace(session.workspace_id);
+      }
+      if (session.run_id !== sessionRunId) {
+        void discardEmptySessionIfNeeded(sessionRunId);
+        scheduleBackgroundHydrateForRun(sessionRunId);
+      }
 
-    if (sessionHasTerminalHistory(hydratedState ?? {})) {
+      const storedFlowId = localStorage.getItem(`clutch_session_flow_${session.run_id}`);
+      const storedAgentId = localStorage.getItem(`clutch_session_agent_${session.run_id}`);
+
+      setIsMultiAgent(true);
+
+      let hydratedState: ClutchState | null = null;
+      try {
+        const { state } = await fetchRunState(session.run_id);
+        hydratedState = normalizeTerminalSessionForResume(state);
+        clutchStore.setPendingHydrate(hydratedState);
+      } catch (error) {
+        console.warn('[Clutch] session state hydrate failed:', error);
+      }
+
+      setSessionRunId(session.run_id);
+      setHistorySessionViewRunId(session.run_id);
       setWorkspaceViewMode('chat');
       saveWorkspaceViewMode('chat');
+
+      if (storedFlowId !== null) {
+        setSelectedWorkflowId(storedFlowId || null);
+        const matched = footerWorkflows.find((w) => w.id === storedFlowId);
+        setCurrentFlowName(matched ? matched.name : (storedFlowId || ''));
+      } else {
+        const matched = footerWorkflows.find((w) => w.id === session.workflow_id);
+        setCurrentFlowName(matched ? matched.name : (session.workflow_id || ''));
+        setSelectedWorkflowId(session.workflow_id || null);
+      }
+
+      if (storedAgentId !== null) {
+        setSelectedAgentId(storedAgentId || null);
+      } else {
+        const stateAgentId = hydratedState?.cli_session_agent_id || hydratedState?.claude_session_agent_id;
+        if (stateAgentId) {
+          setSelectedAgentId(stateAgentId);
+        } else if (session.workflow_id) {
+          setSelectedAgentId(null);
+        } else {
+          const storedGlobalAgentId = localStorage.getItem('clutch_active_agent_id');
+          setSelectedAgentId(storedGlobalAgentId || BUILTIN_AGENT_ID);
+        }
+      }
+
+      if (sessionHasTerminalHistory(hydratedState ?? {})) {
+        setWorkspaceViewMode('chat');
+        saveWorkspaceViewMode('chat');
+      }
+    } finally {
+      setLoadingSessionId(null);
     }
   };
 
@@ -1159,6 +1223,7 @@ function MainLayout() {
             } else {
               const tempRunId = createSessionRunId();
               setSessionRunId(tempRunId);
+              setHistorySessionViewRunId(null);
               setCurrentFlowName('');
               setSelectedWorkflowId(null);
               setView('chat');
@@ -1184,13 +1249,15 @@ function MainLayout() {
       && shouldRouteWorkflowRefine(clutchState.status, clutchState.workflow_id, text)
     ) {
       setWorkspacePickError(null);
+      registerSessionAfterSend(sessionRunId, text);
       const mentionAgentId = resolveWorkflowMentionAgentId(
         text,
         workflowAgentSteps,
         configuredAgents,
       );
-      await submitChatMessage(text, mentionAgentId ?? clutchState.refine_agent_id ?? undefined);
-      await refreshSessions();
+      void submitChatMessage(text, mentionAgentId ?? clutchState.refine_agent_id ?? undefined).catch((error) => {
+        console.error('[Clutch] refine message failed:', error);
+      });
       return;
     }
     if (!isMultiAgent) {
@@ -1212,36 +1279,37 @@ function MainLayout() {
       const workflowId = selectedWorkflowId;
       const instruction = text.trim();
       setWorkspacePickError(null);
+      registerSessionAfterSend(sessionRunId, instruction, {
+        workflowId: workflowId,
+      });
       clutchStore.optimisticWorkflowStart({
         runId: sessionRunId,
         workflowId,
         instruction,
         activeAgent: workflowAgentSteps[0]?.agentName || undefined,
       });
-      try {
-        if (!clutchStore.connected) {
-          await clutchStore.connect(sessionRunId);
+      void (async () => {
+        try {
+          if (!clutchStore.connected) {
+            await clutchStore.connect(sessionRunId);
+          }
+          setSessions(prev =>
+            prev.map(s => s.run_id === sessionRunId ? { ...s, status: 'running' } : s)
+          );
+          const result = await startWorkflowRun(sessionRunId, workflowId, instruction);
+          clutchStore.mergeWorkflowComplete(result.state);
+          setSelectedWorkflowId(null);
+          void refreshSessions();
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Failed to start workflow';
+          setWorkspacePickError(message);
+          clutchStore.replaceState({
+            ...clutchStore.getSnapshot(),
+            status: 'failed',
+          });
+          console.error('[Clutch] workflow start failed:', error);
         }
-        await refreshSessions();
-        // Optimistically mark this session as running so the sidebar spinner
-        // stays visible when the user switches to another session while the
-        // workflow is still executing (startWorkflowRun is a blocking HTTP call).
-        setSessions(prev =>
-          prev.map(s => s.run_id === sessionRunId ? { ...s, status: 'running' } : s)
-        );
-        const result = await startWorkflowRun(sessionRunId, workflowId, instruction);
-        clutchStore.mergeWorkflowComplete(result.state);
-        setSelectedWorkflowId(null);
-        await refreshSessions();
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to start workflow';
-        setWorkspacePickError(message);
-        clutchStore.replaceState({
-          ...clutchStore.getSnapshot(),
-          status: 'failed',
-        });
-        console.error('[Clutch] workflow start failed:', error);
-      }
+      })();
       return;
     }
     const sendingAgent = configuredAgents.find((agent) => agent.id === selectedAgentId);
@@ -1265,13 +1333,18 @@ function MainLayout() {
         : (sendingModel?.name ?? selectedModel ?? ''),
     };
     const clientMessageId = clutchStore.optimisticPlainChatSend(text.trim());
-    await submitChatMessage(
+    registerSessionAfterSend(sessionRunId, text);
+    void submitChatMessage(
       text,
       selectedAgentId,
       sendingBoundModelId ? undefined : sendingModelId || undefined,
       clientMessageId,
-    );
-    await refreshSessions();
+    ).catch((error) => {
+      console.error('[Clutch] chat message failed:', error);
+      setWorkspacePickError(
+        error instanceof Error ? error.message : t('Failed to send message.'),
+      );
+    });
   };
 
   const handleClearSessionView = () => {
@@ -1297,19 +1370,25 @@ function MainLayout() {
       style={themeVars as React.CSSProperties}
       className="relative h-screen max-h-screen bg-background text-on-surface overflow-hidden flex flex-col font-sans select-none"
     >
-      
       {/* 1. Header component */}
       <Header
         currentFlow={currentFlowName || clutchState.workflow_id || t('New session')}
         workspaceName={workspace?.name}
         onPickWorkspace={() => { void handlePickWorkspace(); }}
         folders={folders}
-        isMultiAgent={isMultiAgent}
-        setIsMultiAgent={handleSetIsMultiAgent}
-        onGoBack={handleClearSessionView}
-        setView={setView}
         sidebarOpen={sidebarOpen}
-        selectedModel={selectedModel}
+      />
+
+      <ChromeEdgeToggle
+        testId="workspace-sidebar-toggle"
+        icon={sidebarOpen ? 'chevron_left' : 'chevron_right'}
+        title={sidebarOpen ? t('Collapse Sidebar') : t('Expand Sidebar')}
+        onClick={() => setSidebarOpen((open) => !open)}
+        className="fixed transition-[left] duration-300 ease-out"
+        style={{
+          top: CHROME_PANEL_TOGGLE_TOP_CSS,
+          left: selectedSidebarWidth - CHROME_PANEL_TOGGLE_HALF_PX,
+        }}
       />
 
       {/* 2. Side Panel components layout */}
@@ -1325,11 +1404,11 @@ function MainLayout() {
           setActiveFlow={handleFlowSelect}
           onNewChat={() => { void handleNewChat(); }}
           isOpenState={sidebarOpen}
-          setIsOpenState={setSidebarOpen}
           isMultiAgent={isMultiAgent}
           sessions={sessions}
           shellSnapshotRunIds={shellSnapshotRunIds}
           activeSessionId={sessionRunId}
+          loadingSessionId={loadingSessionId}
           clutchStatus={clutchStatus}
           workspaces={workspaces}
           repositoryGroups={repositoryGroups}
@@ -1494,6 +1573,7 @@ function MainLayout() {
                 selectedMentionAgentId={selectedAgentId}
                 onMentionAgentChange={syncSelectedAgentFromMention}
                 workspacePath={workspace?.workspace_path}
+                isHistorySessionView={historySessionViewRunId === sessionRunId}
               />
               </div>
               <RightPanel
@@ -1530,6 +1610,8 @@ function MainLayout() {
                   && isArchivedTerminalHistoryView(clutchState, workspaceViewMode)
                 }
                 onSelectDispatchEntry={(id) => setHighlightedDispatchEntryId(id)}
+                workflowAgentSteps={workflowAgentSteps}
+                messages={chatMessages}
               />
             </>
           )
@@ -1643,6 +1725,15 @@ function MainLayout() {
               </button>
               {modelMenuOpen ? (
                 <FooterMenuPanel testId="footer-model-menu">
+                  <FooterMenuAction
+                    testId="footer-model-manage"
+                    onClick={() => {
+                      setModelMenuOpen(false);
+                      setView('models');
+                    }}
+                  >
+                    {t('Manage models...')}
+                  </FooterMenuAction>
                   {configuredModels.length === 0 ? (
                     <p className="px-3 py-2 pl-9 text-[11px] text-on-surface-variant">{t('No models configured')}</p>
                   ) : (
@@ -1679,15 +1770,6 @@ function MainLayout() {
                       );
                     })()
                   )}
-                  <FooterMenuAction
-                    testId="footer-model-manage"
-                    onClick={() => {
-                      setModelMenuOpen(false);
-                      setView('models');
-                    }}
-                  >
-                    {t('Manage models...')}
-                  </FooterMenuAction>
                 </FooterMenuPanel>
               ) : null}
                 </>
@@ -1724,6 +1806,15 @@ function MainLayout() {
                 </button>
                 {agentMenuOpen ? (
                   <FooterMenuPanel testId="footer-agent-menu">
+                    <FooterMenuAction
+                      testId="footer-agent-manage"
+                      onClick={() => {
+                        setAgentMenuOpen(false);
+                        setView('agents');
+                      }}
+                    >
+                      {t('Manage agents...')}
+                    </FooterMenuAction>
                     {footerSelectableAgents.map((agent) => (
                       <FooterMenuItem
                         key={agent.id}
@@ -1734,15 +1825,6 @@ function MainLayout() {
                         {getAgentDisplayName(agent)}
                       </FooterMenuItem>
                     ))}
-                    <FooterMenuAction
-                      testId="footer-agent-manage"
-                      onClick={() => {
-                        setAgentMenuOpen(false);
-                        setView('agents');
-                      }}
-                    >
-                      {t('Manage agents...')}
-                    </FooterMenuAction>
                   </FooterMenuPanel>
                 ) : null}
               </div>
@@ -1764,6 +1846,15 @@ function MainLayout() {
                 </button>
                 {workflowMenuOpen ? (
                   <FooterMenuPanel testId="footer-workflow-menu">
+                    <FooterMenuAction
+                      testId="footer-workflow-manage"
+                      onClick={() => {
+                        setWorkflowMenuOpen(false);
+                        setView('workflows');
+                      }}
+                    >
+                      {t('Manage workflows...')}
+                    </FooterMenuAction>
                     {footerWorkflows.length === 0 ? (
                       <p className="px-3 py-2 pl-9 text-[11px] text-on-surface-variant">{t('No workflows yet')}</p>
                     ) : (
@@ -1781,15 +1872,6 @@ function MainLayout() {
                         </FooterMenuItem>
                       ))
                     )}
-                    <FooterMenuAction
-                      testId="footer-workflow-manage"
-                      onClick={() => {
-                        setWorkflowMenuOpen(false);
-                        setView('workflows');
-                      }}
-                    >
-                      {t('Manage workflows...')}
-                    </FooterMenuAction>
                   </FooterMenuPanel>
                 ) : null}
               </div>
@@ -1809,6 +1891,15 @@ function MainLayout() {
               </button>
               {agentMenuOpen ? (
                 <FooterMenuPanel testId="footer-agent-menu">
+                  <FooterMenuAction
+                    testId="footer-agent-manage"
+                    onClick={() => {
+                      setAgentMenuOpen(false);
+                      setView('agents');
+                    }}
+                  >
+                    {t('Manage agents...')}
+                  </FooterMenuAction>
                   {footerSelectableAgents.map((agent) => (
                     <FooterMenuItem
                       key={agent.id}
@@ -1819,15 +1910,6 @@ function MainLayout() {
                       {getAgentDisplayName(agent)}
                     </FooterMenuItem>
                   ))}
-                  <FooterMenuAction
-                    testId="footer-agent-manage"
-                    onClick={() => {
-                      setAgentMenuOpen(false);
-                      setView('agents');
-                    }}
-                  >
-                    {t('Manage agents...')}
-                  </FooterMenuAction>
                 </FooterMenuPanel>
               ) : null}
             </div>
@@ -1836,8 +1918,18 @@ function MainLayout() {
           ) : null}
         </div>
 
-        <div className="font-semibold text-on-surface-variant/70 italic mr-2 select-text">
-          Clutch v{appVersion}
+        <div
+          className="flex items-center gap-1.5 font-semibold text-on-surface-variant/70 italic mr-2 select-text"
+          data-testid="footer-app-brand"
+        >
+          <BrandLogo
+            src={clutchMarkUrl}
+            alt=""
+            rounded="none"
+            className="w-3.5 h-3.5 rounded-sm flex items-center justify-center flex-shrink-0 bg-black"
+            imgClassName="w-full h-full object-cover block"
+          />
+          <span>Clutch v{appVersion}</span>
         </div>
       {promptModal && (
         <PromptModal

@@ -80,15 +80,17 @@ export const TerminalSessionStatsBar: React.FC<TerminalSessionStatsBarProps> = (
         <span className="tabular-nums text-on-surface">{liveTotal}</span>
         {summaryParts[1] ?? ''}
       </p>
-      <button
-        type="button"
-        data-testid="terminal-close-others-btn"
-        disabled={busy || !canCloseOthers}
-        onClick={() => void handleCloseOthers()}
-        className={`${BTN_GHOST_SM} shrink-0 !px-2 !py-0.5 text-[10px] normal-case tracking-normal`}
-      >
-        {t('Close other terminals')}
-      </button>
+      <div className="flex shrink-0 items-center gap-1.5">
+        <button
+          type="button"
+          data-testid="terminal-close-others-btn"
+          disabled={busy || !canCloseOthers}
+          onClick={() => void handleCloseOthers()}
+          className={`${BTN_GHOST_SM} !px-2 !py-0.5 text-[10px] normal-case tracking-normal`}
+        >
+          {t('Close other terminals')}
+        </button>
+      </div>
     </div>
   );
 };

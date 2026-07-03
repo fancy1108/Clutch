@@ -1,19 +1,29 @@
 import { describe, expect, it } from 'vitest';
 import {
   agentDisplayName,
+  computeLaneGridPageCount,
   computeLaneLayout,
   orderLanesForGrid,
   expandedLanes,
   collapsedLanes,
+  laneGridPageIndex,
+  sliceLanesForGridPage,
   resolveAgentTypeFromDispatchTarget,
   findLaneIdForAgentType,
   collectHandoffLaneTranscripts,
   findLaneForDispatchSource,
+  findLaneForDispatchTarget,
+  isDispatchEntryTargetPending,
   laneHeaderAgentName,
   parseInputAgentMention,
   resolveAgentFromDispatchTarget,
   resolveDispatchTargetAgent,
   resolvePtyInjectWarmupMs,
+  isPtyOutputReadyForInject,
+  buildOptimisticDispatchEntry,
+  buildHandoffSendToBarText,
+  mergeDispatchLogs,
+  OPTIMISTIC_DISPATCH_ID_PREFIX,
   sessionHasTerminalHistory,
   sessionHasPersistableContent,
   sessionHasActiveTerminalLanes,
@@ -357,10 +367,138 @@ describe('terminalOrchestraUtils', () => {
     expect(findLaneIdForAgentType(lanes, 'claude-cli')).toBeNull();
   });
 
+  it('computes lane grid page count for carousel pagination', () => {
+    expect(computeLaneGridPageCount(4)).toBe(1);
+    expect(computeLaneGridPageCount(5)).toBe(2);
+    expect(computeLaneGridPageCount(9)).toBe(3);
+    expect(laneGridPageIndex(0)).toBe(0);
+    expect(laneGridPageIndex(4)).toBe(1);
+    expect(sliceLanesForGridPage(['a', 'b', 'c', 'd', 'e'], 1)).toEqual(['e']);
+  });
+
   it('uses longer PTY inject warmup for OpenCode TUIs', () => {
     expect(resolvePtyInjectWarmupMs('claude-cli')).toBe(1500);
     expect(resolvePtyInjectWarmupMs('opencode-cli')).toBe(2800);
+    expect(resolvePtyInjectWarmupMs('antigravity-cli')).toBe(3200);
+    expect(resolvePtyInjectWarmupMs('ollama-cli')).toBe(3500);
     expect(resolvePtyInjectWarmupMs('opencode-cli', { attempt: 1 })).toBe(1200);
     expect(resolvePtyInjectWarmupMs('opencode-cli', { isHandoff: true })).toBe(3200);
+  });
+
+  it('detects agy and ollama PTY output ready for inject', () => {
+    expect(isPtyOutputReadyForInject('antigravity-cli', 'Antigravity CLI 1.0\n? for shortcuts')).toBe(true);
+    expect(isPtyOutputReadyForInject('antigravity-cli', 'booting…')).toBe(false);
+    expect(isPtyOutputReadyForInject('ollama-cli', '>>> hello')).toBe(true);
+    expect(isPtyOutputReadyForInject('claude-cli', 'x'.repeat(24))).toBe(true);
+  });
+
+  it('builds optimistic handoff dispatch entry from preview', () => {
+    const entry = buildOptimisticDispatchEntry({
+      prompt: '@Claude Code from @OpenCode review summary',
+      preview: {
+        sources: ['OpenCode'],
+        target: 'Claude Code',
+        task: 'review summary',
+        handoff_path: 'handoffs/pending.md',
+        handoff_file: 'pending.md',
+        file_refs: [],
+        input_mode: 'graph',
+        dispatch_mode: 'handoff',
+        chips: [],
+      },
+      activeSources: ['OpenCode'],
+      targetLabel: 'Claude Code',
+    });
+    expect(entry.id.startsWith(OPTIMISTIC_DISPATCH_ID_PREFIX)).toBe(true);
+    expect(entry.sources_label).toBe('OpenCode');
+    expect(entry.target).toBe('Claude Code');
+    expect(entry.dispatch_mode).toBe('handoff');
+    expect(entry.handoff_file).toBe('pending.md');
+  });
+
+  it('builds handoff send-to-bar text with graph file reference', () => {
+    expect(
+      buildHandoffSendToBarText({
+        target: 'Claude Code',
+        sourcesLabel: 'OpenCode',
+        handoffFile: '20260703-Opencode-ClaudeCode.md',
+        inputMode: 'graph',
+      }),
+    ).toBe('@Claude Code from @OpenCode @20260703-Opencode-ClaudeCode.md');
+  });
+
+  it('uses longer warmup for ollama PTY inject', () => {
+    expect(resolvePtyInjectWarmupMs('ollama-cli', { isHandoff: true, attempt: 0 })).toBe(4500);
+    expect(resolvePtyInjectWarmupMs('ollama-cli', { attempt: 0 })).toBe(3500);
+  });
+
+  it('detects dispatch target pending while lane is booting', () => {
+    const entry = {
+      id: 'd1',
+      time: '10:00',
+      sources_label: 'OpenCode',
+      target: 'Ollama',
+      prompt: 'task',
+      handoff_file: '',
+      handoff_path: '',
+      lane_sessions: [{ lane_id: 'lane_b', label: 'Ollama', agent_type: 'ollama-cli', cli_session_id: 's1' }],
+    };
+    const lanes = [
+      sampleLane({ lane_id: 'lane_a', agent_type: 'opencode-cli', configured_agent_name: 'OpenCode' }),
+      sampleLane({ lane_id: 'lane_b', agent_type: 'ollama-cli', status: 'booting', configured_agent_name: 'Ollama' }),
+    ];
+    expect(isDispatchEntryTargetPending(entry, lanes, null, () => '')).toBe(true);
+    expect(
+      isDispatchEntryTargetPending(
+        entry,
+        [sampleLane({ lane_id: 'lane_b', agent_type: 'ollama-cli', status: 'running', configured_agent_name: 'Ollama' })],
+        null,
+        () => 'ready',
+      ),
+    ).toBe(false);
+  });
+
+  it('resolves dispatch target lane from lane_sessions', () => {
+    const lanes = [
+      sampleLane({ lane_id: 'lane_b', agent_type: 'ollama-cli', configured_agent_name: 'Ollama' }),
+    ];
+    const lane = findLaneForDispatchTarget(lanes, 'Ollama', [
+      { lane_id: 'lane_b', label: 'Ollama', agent_type: 'ollama-cli', cli_session_id: 's1' },
+    ]);
+    expect(lane?.lane_id).toBe('lane_b');
+  });
+
+  it('replaces optimistic dispatch row when server confirms same prompt', () => {
+    const optimistic = buildOptimisticDispatchEntry({
+      prompt: 'task text',
+      preview: {
+        sources: ['OpenCode'],
+        target: 'Claude Code',
+        task: 'task',
+        handoff_path: 'handoffs/a.md',
+        handoff_file: 'a.md',
+        file_refs: [],
+        input_mode: 'graph',
+        dispatch_mode: 'handoff',
+        chips: [],
+      },
+      activeSources: ['OpenCode'],
+      targetLabel: 'Claude Code',
+    });
+    const current = [optimistic];
+    const server = [{
+      id: 'dispatch_server_1',
+      time: '02:17',
+      sources_label: 'OpenCode',
+      target: 'Claude Code',
+      prompt: 'task text',
+      handoff_file: 'a.md',
+      handoff_path: 'handoffs/a.md',
+      input_mode: 'graph' as const,
+      dispatch_mode: 'handoff' as const,
+    }];
+    const merged = mergeDispatchLogs(current, server);
+    expect(merged).toHaveLength(1);
+    expect(merged[0].id).toBe('dispatch_server_1');
   });
 });

@@ -42,7 +42,9 @@ export function useCliModelsScan(agentType: AgentScanType) {
   const refresh = useCallback(
     async (options?: { manual?: boolean }) => {
       const manual = options?.manual ?? false;
-      setLoading(true);
+      const hasCache = Boolean(getCachedModelsScan(agentType));
+      const background = !manual && hasCache;
+      if (!background) setLoading(true);
       setError(null);
       if (manual) {
         setNotice({
@@ -81,7 +83,7 @@ export function useCliModelsScan(agentType: AgentScanType) {
           setNotice({ tone: 'error', message: errMsg });
         }
       } finally {
-        setLoading(false);
+        if (!background) setLoading(false);
       }
     },
     [agentType, setNotice, t],

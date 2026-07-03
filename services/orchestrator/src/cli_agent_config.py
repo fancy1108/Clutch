@@ -11,6 +11,7 @@ import sqlite3
 import subprocess
 import sys
 import tarfile
+import time
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -507,7 +508,18 @@ def _read_opencode_active_model_ref() -> str | None:
     return None
 
 
-def _list_opencode_models_via_cli() -> list[dict[str, Any]]:
+_OPENCODE_CLI_MODELS_CACHE: tuple[float, list[dict[str, Any]]] | None = None
+_OPENCODE_CLI_MODELS_CACHE_TTL_S = 300.0
+
+
+def _list_opencode_models_via_cli(*, use_cache: bool = True) -> list[dict[str, Any]]:
+    global _OPENCODE_CLI_MODELS_CACHE
+    now = time.monotonic()
+    if use_cache and _OPENCODE_CLI_MODELS_CACHE is not None:
+        cached_at, cached_models = _OPENCODE_CLI_MODELS_CACHE
+        if now - cached_at < _OPENCODE_CLI_MODELS_CACHE_TTL_S:
+            return list(cached_models)
+
     opencode_bin = shutil.which("opencode")
     if not opencode_bin:
         return []
@@ -516,7 +528,7 @@ def _list_opencode_models_via_cli() -> list[dict[str, Any]]:
             [opencode_bin, "models"],
             capture_output=True,
             text=True,
-            timeout=20,
+            timeout=8,
             check=False,
         )
     except (OSError, subprocess.TimeoutExpired):
@@ -541,6 +553,7 @@ def _list_opencode_models_via_cli() -> list[dict[str, Any]]:
                 "is_builtin": provider == "opencode",
             }
         )
+    _OPENCODE_CLI_MODELS_CACHE = (now, models)
     return models
 
 

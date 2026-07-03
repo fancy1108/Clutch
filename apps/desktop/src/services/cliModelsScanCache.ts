@@ -52,6 +52,9 @@ export function saveModelsScanCache(agentType: string, data: CliModelsScan): voi
 
 export function shouldAutoScanModels(agentType: string): boolean {
   if (!getCachedModelsScan(agentType)) return true;
+  const memory = memoryCache.get(agentType);
+  const stored = memory ?? readLocalCache(agentType);
+  if (stored && Date.now() - stored.scannedAt < 5 * 60 * 1000) return false;
   const lastDay = localStorage.getItem(`clutch.cliModelsScan.day.${agentType}`);
   const lastBuild = localStorage.getItem(`clutch.cliModelsScan.build.${agentType}`);
   if (lastDay !== todayKey()) return true;

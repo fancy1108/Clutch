@@ -12,7 +12,6 @@ import { BTN_FOCUS, BTN_PRIMARY, BTN_SECONDARY } from './ui/buttonStyles';
 import { LegacyIcon } from './ui/LegacyIcon';
 import { SettingsPageHeader, SettingsPageShell } from './ui/SettingsPageHeader';
 import { saveAvatarPreference } from '../services/themeApi';
-import { FONT_SIZE_LABEL_KEYS, FONT_SIZE_OPTIONS, type AppFontSize } from '../services/fontSizePreference';
 import { setUserChatAvatar } from '../services/clutchState';
 import defaultAvatar from '../assets/default_avatar.jpg';
 
@@ -49,8 +48,6 @@ interface SystemPreferencesModalProps {
   setUserAvatar: (avatar: string) => void;
   userName?: string;
   setUserName?: (name: string) => void;
-  fontSize: AppFontSize;
-  setFontSize: (fontSize: AppFontSize) => void;
 }
 
 export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
@@ -77,8 +74,6 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
   setUserAvatar,
   userName = 'User',
   setUserName,
-  fontSize,
-  setFontSize,
 }) => {
   const { t } = useLanguage();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -177,7 +172,7 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
                 className={`${navBtnBase} ${currentView === 'workflows' ? navBtnActive : navBtnIdle}`}
               >
                 <LegacyIcon
-                  name="account_tree"
+                  name="fork_right"
                   className={`text-[16px] ${currentView === 'workflows' ? 'opacity-100' : 'opacity-60'}`}
                 />
                 <span className="text-xs">{t("Workflows SOP")}</span>
@@ -350,29 +345,6 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
                         placeholder={t("Enter your name")}
                         className="flex-1 bg-surface border border-outline/40 rounded-xl px-4 py-2.5 text-xs text-on-surface focus:outline-none focus:border-primary/60 transition-colors"
                       />
-                    </div>
-                  </div>
-
-                  <div className="bg-surface-container/30 p-6 rounded-2xl border border-outline/30">
-                    <div className="flex items-center justify-between gap-4 max-w-md">
-                      <label
-                        htmlFor="general-font-size"
-                        className="text-xs font-bold uppercase tracking-wider text-on-surface-variant"
-                      >
-                        {t("Font Size")}
-                      </label>
-                      <select
-                        id="general-font-size"
-                        value={fontSize}
-                        onChange={(e) => setFontSize(e.target.value as AppFontSize)}
-                        className="w-36 bg-surface border border-outline/40 rounded-xl px-3 py-2 text-xs font-semibold text-on-surface focus:outline-none focus:border-primary/60 transition-colors"
-                      >
-                        {FONT_SIZE_OPTIONS.map((option) => (
-                          <option key={option} value={option}>
-                            {t(FONT_SIZE_LABEL_KEYS[option])}
-                          </option>
-                        ))}
-                      </select>
                     </div>
                   </div>
                 </div>

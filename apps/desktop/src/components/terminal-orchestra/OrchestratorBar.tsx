@@ -6,10 +6,11 @@ import type { FileTreeNode } from '../../services/workspaceApi';
 import { PERMISSION_MODES, type PermissionMode } from '../../services/permissionApi';
 import { clutchStore } from '../../services/clutchState';
 import {
+  buildOptimisticDispatchEntry,
+  collectHandoffLaneTranscripts,
   normalizeOrchestratorDispatchText,
   parseInputAgentMention,
   resolveDispatchTargetAgent,
-  collectHandoffLaneTranscripts,
 } from '../../services/terminalOrchestraUtils';
 import { useLanguage } from '../LanguageContext';
 import { LegacyIcon } from '../ui/LegacyIcon';
@@ -259,6 +260,15 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
           result.preview.target,
         )
       : [];
+    const targetLabel = targetAgent?.name?.trim() || result.preview.target;
+    clutchStore.optimisticDispatchLogAppend(
+      buildOptimisticDispatchEntry({
+        prompt: dispatchText,
+        preview: result.preview,
+        activeSources: chips,
+        targetLabel,
+      }),
+    );
     await clutchStore.confirmDispatch(dispatchText, chips, {
       id: targetAgent?.agentId,
       name: targetAgent?.name,

@@ -123,6 +123,22 @@ def test_list_runs_prunes_empty_sessions() -> None:
     assert [record["run_id"] for record in records] == ["run_with_chat"]
 
 
+def test_list_runs_keeps_running_session_before_first_reply() -> None:
+    run_history.upsert_session(
+        {
+            "run_id": "run_inflight",
+            "workspace_id": "ws_ecc",
+            "title": "你好",
+            "workflow_id": "",
+            "status": "running",
+            "started_at": "2026-06-23T10:00:00+00:00",
+        }
+    )
+
+    records = run_history.list_runs()
+    assert [record["run_id"] for record in records] == ["run_inflight"]
+
+
 def test_create_session_api_requires_workspace(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
     from fastapi.testclient import TestClient
 
@@ -145,7 +161,11 @@ def test_create_session_api_requires_workspace(tmp_path, monkeypatch: pytest.Mon
     body = created.json()
     assert body["workspace_id"]
     assert body["title"] == "Hello"
-    assert run_history.list_runs() == []
+    assert body["status"] == "running"
+    records = run_history.list_runs()
+    assert len(records) == 1
+    assert records[0]["run_id"] == "run_new"
+    assert records[0]["title"] == "Hello"
 
 
 def test_history_api_returns_records() -> None:

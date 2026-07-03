@@ -1,4 +1,4 @@
-import type { PtyLane } from '@clutch/shared-types';
+import type { DispatchLogEntry, DispatchPreviewPayload, PtyLane } from '@clutch/shared-types';
 
 export const CLI_DISPLAY: Record<string, string> = {
   'claude-cli': 'Claude Code',
@@ -215,6 +215,23 @@ export function parseInputAgentMention(
 
 export type LaneGridLayout = 'single' | 'pair' | 'split-3' | 'quad';
 
+/** Max expanded lanes visible per terminal grid page (2×2). */
+export const LANES_PER_GRID_PAGE = 4;
+
+export function computeLaneGridPageCount(expandedCount: number): number {
+  if (expandedCount <= 0) return 1;
+  return Math.ceil(expandedCount / LANES_PER_GRID_PAGE);
+}
+
+export function laneGridPageIndex(expandedIndex: number): number {
+  return Math.floor(expandedIndex / LANES_PER_GRID_PAGE);
+}
+
+export function sliceLanesForGridPage<T>(lanes: T[], pageIndex: number): T[] {
+  const start = pageIndex * LANES_PER_GRID_PAGE;
+  return lanes.slice(start, start + LANES_PER_GRID_PAGE);
+}
+
 /** Max two lanes per row; odd counts use two small + one large row. */
 export function computeLaneLayout(expandedCount: number): LaneGridLayout {
   if (expandedCount <= 1) return 'single';
@@ -265,6 +282,36 @@ export function findLaneForDispatchSource(lanes: PtyLane[], sourceLabel: string)
   );
   if (byName) return byName;
   return candidates.find((lane) => !lane.collapsed) ?? candidates[0];
+}
+
+/** Resolve the target lane for a dispatch log entry (Overview pending state, focus). */
+export function findLaneForDispatchTarget(
+  lanes: PtyLane[],
+  targetLabel: string,
+  laneSessions?: DispatchLogEntry['lane_sessions'],
+): PtyLane | null {
+  if (laneSessions?.length) {
+    const targetSession = laneSessions[laneSessions.length - 1];
+    const byId = lanes.find((lane) => lane.lane_id === targetSession.lane_id);
+    if (byId) return byId;
+  }
+  return findLaneForDispatchSource(lanes, targetLabel);
+}
+
+/** True while the dispatch target lane is spawning or awaiting PTY prompt inject. */
+export function isDispatchEntryTargetPending(
+  entry: DispatchLogEntry,
+  lanes: PtyLane[],
+  pendingInject: { lane_id: string } | null | undefined,
+  getLanePtyStatus: (laneId: string) => string,
+): boolean {
+  const lane = findLaneForDispatchTarget(lanes, entry.target, entry.lane_sessions);
+  if (!lane) return true;
+  if (lane.status === 'booting' || lane.status === 'queued') return true;
+  if (pendingInject?.lane_id === lane.lane_id) return true;
+  const ptyStatus = getLanePtyStatus(lane.lane_id);
+  if (!ptyStatus || (ptyStatus !== 'ready' && ptyStatus !== 'detached')) return true;
+  return false;
 }
 
 export function collectHandoffLaneTranscripts(
@@ -425,6 +472,104 @@ export function isHandoffDispatchEntry(entry: {
   return Boolean(entry.handoff_file?.trim() && entry.handoff_path?.trim());
 }
 
+export const OPTIMISTIC_DISPATCH_ID_PREFIX = 'dispatch_opt_';
+
+export function buildOptimisticDispatchEntry(params: {
+  prompt: string;
+  preview: DispatchPreviewPayload;
+  activeSources: string[];
+  targetLabel: string;
+}): DispatchLogEntry {
+  const { prompt, preview, activeSources, targetLabel } = params;
+  const isHandoff = preview.dispatch_mode === 'handoff';
+  const sources = activeSources.length > 0 ? activeSources : preview.sources;
+  const sourcesLabel = isHandoff
+    ? (sources.join(' + ') || '工作区')
+    : 'User';
+
+  return {
+    id: `${OPTIMISTIC_DISPATCH_ID_PREFIX}${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    time: new Date().toISOString(),
+    sources_label: sourcesLabel,
+    target: targetLabel,
+    prompt,
+    handoff_file: isHandoff ? (preview.handoff_file ?? '') : '',
+    handoff_path: isHandoff ? (preview.handoff_path ?? '') : '',
+    input_mode: preview.input_mode,
+    dispatch_mode: preview.dispatch_mode ?? (isHandoff ? 'handoff' : 'switch'),
+    file_refs: preview.file_refs,
+  };
+}
+
+/** Reconcile server dispatch_log patches with client optimistic rows. */
+export function mergeDispatchLogs(
+  current: DispatchLogEntry[],
+  incoming: DispatchLogEntry[],
+): DispatchLogEntry[] {
+  if (incoming.length === 0) return current;
+
+  const optimistic = current.filter((entry) => entry.id.startsWith(OPTIMISTIC_DISPATCH_ID_PREFIX));
+  if (optimistic.length === 0) return incoming;
+
+  const stillOptimistic = optimistic.filter(
+    (opt) => !incoming.some(
+      (inc) => inc.prompt === opt.prompt
+        && inc.target === opt.target
+        && !inc.id.startsWith(OPTIMISTIC_DISPATCH_ID_PREFIX),
+    ),
+  );
+
+  if (incoming.length >= current.length) {
+    const tail = stillOptimistic.filter(
+      (opt) => !incoming.some((inc) => inc.id === opt.id),
+    );
+    return tail.length > 0 ? [...incoming, ...tail] : incoming;
+  }
+
+  if (incoming.length < current.length) {
+    return current;
+  }
+
+  return incoming;
+}
+
+/** Fill Orchestrator Bar with graph handoff syntax referencing the .md handoff file. */
+export function buildHandoffSendToBarText(params: {
+  target: string;
+  sourcesLabel: string;
+  handoffFile: string;
+  inputMode?: 'natural' | 'graph';
+  fallbackPrompt?: string;
+}): string {
+  const handoffFile = params.handoffFile.trim();
+  if (!handoffFile) {
+    return params.fallbackPrompt?.trim() ?? '';
+  }
+
+  const target = params.target.trim();
+  const sources = params.sourcesLabel
+    .split(' + ')
+    .map((label) => label.trim())
+    .filter((label) => label && label !== 'User' && label !== '工作区');
+
+  if (sources.length > 0) {
+    const sourceMentions = sources.map((label) => `@${label}`).join(' ');
+    return `@${target} from ${sourceMentions} @${handoffFile}`;
+  }
+
+  return `@${target} @${handoffFile}`;
+}
+
+export function buildHandoffSendToBarTextFromEntry(entry: DispatchLogEntry): string {
+  return buildHandoffSendToBarText({
+    target: entry.target,
+    sourcesLabel: entry.sources_label,
+    handoffFile: entry.handoff_file,
+    inputMode: entry.input_mode,
+    fallbackPrompt: entry.prompt,
+  });
+}
+
 /** One visible lane per lane_id (session may have multiple agents / lanes). */
 export function uniqueLanesByLaneId(lanes: PtyLane[]): PtyLane[] {
   const seen = new Set<string>();
@@ -506,12 +651,59 @@ export function resolvePtyInjectWarmupMs(
   const attempt = options?.attempt ?? 0;
   const isHandoff = options?.isHandoff ?? false;
   const isOpenCode = agentType === 'opencode-cli';
+  const isOllama = agentType === 'ollama-cli';
+  const isAgy = agentType === 'antigravity-cli';
 
   if (isHandoff) {
-    if (attempt === 0) return isOpenCode ? 3200 : 2800;
-    return isOpenCode ? 1400 : 900;
+    if (attempt === 0) {
+      if (isOpenCode) return 3200;
+      if (isOllama) return 4500;
+      if (isAgy) return 3800;
+      return 2800;
+    }
+    if (isOpenCode) return 1400;
+    if (isOllama) return 2200;
+    if (isAgy) return 1600;
+    return 900;
   }
 
-  if (attempt === 0) return isOpenCode ? 2800 : 1500;
-  return isOpenCode ? 1200 : 600;
+  if (attempt === 0) {
+    if (isOpenCode) return 2800;
+    if (isOllama) return 3500;
+    if (isAgy) return 3200;
+    return 1500;
+  }
+  if (isOpenCode) return 1200;
+  if (isOllama) return 1800;
+  if (isAgy) return 1200;
+  return 600;
+}
+
+/** True when embedded CLI TUI has finished booting and accepts input. */
+export function isPtyOutputReadyForInject(agentType: string, transcript: string): boolean {
+  const text = transcript;
+  switch (agentType) {
+    case 'antigravity-cli':
+      return /for shortcuts/i.test(text);
+    case 'ollama-cli':
+      return />>>|Send a message|Type your message/i.test(text) || text.trim().length >= 120;
+    case 'opencode-cli':
+      return />>>|Type a message|ctrl\+c/i.test(text);
+    default:
+      return text.trim().length >= 24;
+  }
+}
+
+export async function waitForPtyOutputReadyForInject(
+  laneId: string,
+  agentType: string,
+  getTranscript: (laneId: string) => string,
+  timeoutMs = 30_000,
+): Promise<boolean> {
+  const started = Date.now();
+  while (Date.now() - started < timeoutMs) {
+    if (isPtyOutputReadyForInject(agentType, getTranscript(laneId))) return true;
+    await new Promise((resolve) => window.setTimeout(resolve, 200));
+  }
+  return isPtyOutputReadyForInject(agentType, getTranscript(laneId));
 }

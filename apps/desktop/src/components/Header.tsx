@@ -1,15 +1,12 @@
 import React from 'react';
 import { useLanguage } from './LanguageContext';
-import { BTN_ICON } from './ui/buttonStyles';
-import { LegacyIcon } from './ui/LegacyIcon';
-import { SIDEBAR_COLLAPSED_WIDTH_PX, SIDEBAR_EXPANDED_WIDTH_PX } from '../constants/layout';
+import { HEADER_BREADCRUMB_LEFT_PADDING_PX, SIDEBAR_COLLAPSED_WIDTH_PX, SIDEBAR_EXPANDED_WIDTH_PX } from '../constants/layout';
 
 interface HeaderProps {
   currentFlow: string;
   workspaceName?: string;
   onPickWorkspace?: () => void;
   folders?: any[];
-  onToggleSidebar: () => void;
   sidebarOpen?: boolean;
 }
 
@@ -18,7 +15,6 @@ export const Header: React.FC<HeaderProps> = ({
   workspaceName,
   onPickWorkspace,
   folders,
-  onToggleSidebar,
   sidebarOpen = true,
 }) => {
   const { language, setLanguage, t } = useLanguage();
@@ -35,20 +31,14 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header
-      className="fixed top-0 right-0 h-[64px] bg-background/85 backdrop-blur-md border-b border-outline-variant z-40 flex items-center justify-between px-2 select-none transition-[left] duration-200 ease-out"
-      style={{ left: sidebarOpen ? SIDEBAR_EXPANDED_WIDTH_PX : SIDEBAR_COLLAPSED_WIDTH_PX }}
+      className="fixed top-0 right-0 h-[64px] bg-background/85 backdrop-blur-md border-b border-outline-variant z-40 flex items-center justify-between pr-2 select-none transition-[left] duration-200 ease-out"
+      style={{
+        left: sidebarOpen ? SIDEBAR_EXPANDED_WIDTH_PX : SIDEBAR_COLLAPSED_WIDTH_PX,
+        paddingLeft: HEADER_BREADCRUMB_LEFT_PADDING_PX,
+      }}
     >
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={onToggleSidebar}
-          className={`${BTN_ICON} w-7 h-7 rounded-full text-on-surface`}
-          title={sidebarOpen ? t('Collapse Sidebar') : t('Expand Sidebar')}
-          aria-label={sidebarOpen ? t('Collapse Sidebar') : t('Expand Sidebar')}
-        >
-          <LegacyIcon name={sidebarOpen ? 'chevron_left' : 'chevron_right'} className="text-[19px] leading-none" />
-        </button>
-        <nav className="flex items-center gap-2 text-xs font-semibold tracking-wide text-on-surface-variant">
+      <div className="flex items-center gap-3 min-w-0">
+        <nav className="flex items-center gap-2 text-xs font-semibold tracking-wide text-on-surface-variant min-w-0">
           <span
             onClick={onPickWorkspace}
             className="hover:text-primary cursor-pointer font-bold transition-colors"

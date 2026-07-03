@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react';
 import type {
   ChatMessage,
   ClutchState,
+  DispatchLogEntry,
   DispatchPreviewPayload,
   HybridExecutionData,
   HybridExecutionPayload,
@@ -11,6 +12,7 @@ import type {
   WebSocketEnvelope,
 } from '../types';
 import { translateText, type Language } from '../components/LanguageContext';
+import { mergeDispatchLogs } from './terminalOrchestraUtils';
 import { sidecarWebSocketUrl } from './sidecarUrl';
 import defaultAvatar from '../assets/default_avatar.jpg';
 
@@ -195,6 +197,7 @@ export function shouldPreserveOptimisticRun(
 
 type LanePtyHandlers = {
   status: string;
+  detail: string;
   outputHandlers: Set<(chunk: string) => void>;
   statusHandlers: Set<(status: string) => void>;
 };
@@ -232,6 +235,7 @@ class ClutchStateStore {
   private _ptyStatsResolvers: Array<(stats: PtySessionStats) => void> = [];
   private _ptyClosedHandlers = new Set<() => void>();
   private _lanePtyOps = new Map<string, Promise<void>>();
+  private pendingOptimisticDispatchIds = new Set<string>();
 
   get connected(): boolean {
     return this._connected;
@@ -241,10 +245,34 @@ class ClutchStateStore {
     const key = laneId || 'primary';
     let lane = this._lanePty.get(key);
     if (!lane) {
-      lane = { status: '', outputHandlers: new Set(), statusHandlers: new Set() };
+      lane = { status: '', detail: '', outputHandlers: new Set(), statusHandlers: new Set() };
       this._lanePty.set(key, lane);
     }
     return lane;
+  }
+
+  /** `primary` and `lane_primary` refer to the same interactive PTY lane. */
+  private lanePtyAliasKeys(laneId: string): string[] {
+    const key = (laneId || 'primary').trim() || 'primary';
+    if (key === 'primary' || key === 'lane_primary') {
+      return ['lane_primary', 'primary'];
+    }
+    return [key];
+  }
+
+  private mirrorLanePtyStatus(status: string, laneId: string, detail = ''): void {
+    for (const key of this.lanePtyAliasKeys(laneId)) {
+      const lane = this.lanePty(key);
+      lane.status = status;
+      if (detail) {
+        lane.detail = detail;
+      } else if (status === 'booting' || status === 'ready') {
+        lane.detail = '';
+      }
+      for (const handler of lane.statusHandlers) {
+        handler(status);
+      }
+    }
   }
 
   private resolveFocusedLaneId(): string {
@@ -275,7 +303,19 @@ class ClutchStateStore {
   }
 
   getLanePtyStatus(laneId: string): string {
-    return this.lanePty(laneId).status;
+    for (const key of this.lanePtyAliasKeys(laneId)) {
+      const status = this.lanePty(key).status;
+      if (status) return status;
+    }
+    return '';
+  }
+
+  getLanePtyDetail(laneId: string): string {
+    for (const key of this.lanePtyAliasKeys(laneId)) {
+      const detail = this.lanePty(key).detail;
+      if (detail) return detail;
+    }
+    return '';
   }
 
   getLaneTranscript(laneId: string): string {
@@ -354,13 +394,9 @@ class ClutchStateStore {
     }
   }
 
-  private setPtySessionStatus(status: string, laneId = ''): void {
+  private setPtySessionStatus(status: string, laneId = '', detail = ''): void {
     if (laneId) {
-      const lane = this.lanePty(laneId);
-      lane.status = status;
-      for (const handler of lane.statusHandlers) {
-        handler(status);
-      }
+      this.mirrorLanePtyStatus(status, laneId, detail);
     }
     this._ptySessionStatus = status;
     for (const handler of this._ptyStatusHandlers) {
@@ -368,18 +404,30 @@ class ClutchStateStore {
     }
   }
 
-  async attachInteractivePty(cliTool: string, laneId?: string): Promise<void> {
+  async attachInteractivePty(
+    cliTool: string,
+    laneId?: string,
+    options?: { configuredAgentId?: string },
+  ): Promise<void> {
     const resolvedLane = laneId || this.resolveFocusedLaneId();
     return this.enqueueLanePtyOp(resolvedLane, async () => {
       this.setPtySessionStatus('booting', resolvedLane);
-      await this.send({ action: 'pty_attach', cli_tool: cliTool, lane_id: resolvedLane });
+      const payload: Record<string, unknown> = {
+        action: 'pty_attach',
+        cli_tool: cliTool,
+        lane_id: resolvedLane,
+      };
+      const configuredAgentId = options?.configuredAgentId?.trim();
+      if (configuredAgentId) {
+        payload.configured_agent_id = configuredAgentId;
+      }
+      await this.send(payload);
     });
   }
 
   async detachInteractivePty(laneId?: string): Promise<void> {
     const resolvedLane = laneId || this.resolveFocusedLaneId();
     return this.enqueueLanePtyOp(resolvedLane, async () => {
-      this.setPtySessionStatus('detached', resolvedLane);
       await this.send({ action: 'pty_detach', lane_id: resolvedLane });
     });
   }
@@ -477,6 +525,16 @@ class ClutchStateStore {
     await this.send(payload);
   }
 
+  /** Optimistic Overview dispatch row — shown before confirm_dispatch state_patch arrives. */
+  optimisticDispatchLogAppend(entry: DispatchLogEntry): void {
+    this.pendingOptimisticDispatchIds.add(entry.id);
+    this.state = {
+      ...this.state,
+      dispatch_log: [...(this.state.dispatch_log ?? []), entry],
+    };
+    this.emit();
+  }
+
   async focusLane(laneId: string): Promise<void> {
     await this.send({ action: 'lane_focus', lane_id: laneId });
   }
@@ -490,6 +548,18 @@ class ClutchStateStore {
           const id = lane.lane_id === 'primary' ? 'lane_primary' : lane.lane_id;
           return id === normalizedId ? { ...lane, collapsed } : lane;
         }),
+      });
+    } else {
+      this.applyPatch({
+        pty_lanes: [{
+          lane_id: normalizedId,
+          agent_type: '',
+          label: '',
+          status: 'running',
+          focused: !collapsed,
+          collapsed,
+          run_id: this.runId,
+        }],
       });
     }
     await this.send({ action: 'lane_collapse', lane_id: normalizedId, collapsed });
@@ -721,6 +791,24 @@ class ClutchStateStore {
         delete next.current_instruction;
       }
     }
+    if (next.dispatch_log !== undefined) {
+      next.dispatch_log = mergeDispatchLogs(this.state.dispatch_log ?? [], next.dispatch_log);
+      for (const id of [...this.pendingOptimisticDispatchIds]) {
+        const optimistic = (this.state.dispatch_log ?? []).find((entry) => entry.id === id);
+        if (!optimistic) {
+          this.pendingOptimisticDispatchIds.delete(id);
+          continue;
+        }
+        const confirmed = next.dispatch_log.some(
+          (entry) => entry.prompt === optimistic.prompt
+            && entry.target === optimistic.target
+            && !entry.id.startsWith('dispatch_opt_'),
+        );
+        if (confirmed) {
+          this.pendingOptimisticDispatchIds.delete(id);
+        }
+      }
+    }
     this.state = { ...this.state, ...next };
     this.emit();
   }
@@ -933,7 +1021,11 @@ class ClutchStateStore {
           if (envelope.event === 'pty_session_status') {
             const data = envelope.data as PtySessionStatusData;
             if (data.status) {
-              this.setPtySessionStatus(data.status, data.lane_id ?? '');
+              this.setPtySessionStatus(
+                data.status,
+                data.lane_id ?? '',
+                typeof data.message === 'string' ? data.message : '',
+              );
             }
             return;
           }

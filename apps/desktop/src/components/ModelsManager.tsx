@@ -24,6 +24,7 @@ import { BTN_GHOST, BTN_PRIMARY, BTN_ICON } from './ui/buttonStyles';
 import { SettingsPageHeader, SettingsPageShell } from './ui/SettingsPageHeader';
 import { BADGE_NEUTRAL, BADGE_PRIMARY, BADGE_SUCCESS } from './ui/surfaceStyles';
 import { LegacyIcon } from './ui/LegacyIcon';
+import { FullscreenModalOverlay } from './ui/FullscreenModalOverlay';
 import {
   AGNES_BUILTIN_MODEL_ID,
   AGNES_DEFAULTS,
@@ -574,13 +575,18 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
   };
 
   const handleActivate = async (modelId: string) => {
+    const model = configuredModels.find((item) => item.id === modelId);
+    if (!model) return;
     setActivatingModelId(modelId);
     setError(null);
+    setActiveModelId(modelId);
+    setSelectedModel(model.name);
     try {
       await saveModelsConfig({ active_model_id: modelId });
-      await refresh({ silent: true });
+      void refresh({ silent: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : t('Could not switch to this model.'));
+      void refresh({ silent: true });
     } finally {
       setActivatingModelId(null);
     }
@@ -722,9 +728,15 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
 
         <AgentCapabilityTabs activeTab={capabilityTab} onTabChange={setCapabilityTab} className="pb-1" />
 
-        {capabilityTab === 'claude-cli' ? <ClaudeCodeModelsPanel /> : null}
-        {capabilityTab === 'opencode-cli' ? <OpenCodeModelsPanel /> : null}
-        {capabilityTab === 'more' ? <MoreAgentsComingSoon /> : null}
+        <div className={capabilityTab === 'claude-cli' ? '' : 'hidden'}>
+          <ClaudeCodeModelsPanel />
+        </div>
+        <div className={capabilityTab === 'opencode-cli' ? '' : 'hidden'}>
+          <OpenCodeModelsPanel />
+        </div>
+        <div className={capabilityTab === 'more' ? '' : 'hidden'}>
+          <MoreAgentsComingSoon />
+        </div>
 
         {capabilityTab === 'clutch' ? (
         <>
@@ -949,7 +961,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
     </SettingsPageShell>
 
       {activeModal && (
-        <div className="fixed inset-0 bg-neutral-900/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+        <FullscreenModalOverlay>
           <div className="bg-surface-bright rounded-xl shadow-lg border border-outline max-w-lg w-full max-h-[85vh] flex flex-col overflow-hidden">
             <div className="h-14 border-b border-outline/60 px-5 flex items-center justify-between flex-shrink-0 bg-surface-container/40">
               <h3 className="text-xs font-bold text-on-surface">
@@ -1220,7 +1232,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
                 )}
             </div>
           </div>
-        </div>
+        </FullscreenModalOverlay>
       )}
     </>
   );

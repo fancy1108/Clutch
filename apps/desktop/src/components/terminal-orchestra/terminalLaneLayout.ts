@@ -21,6 +21,7 @@ export function buildTerminalLayoutChromeKey(parts: {
   dockHeight: number;
   sidebarOpen: boolean;
   rightPanelOpen: boolean;
+  workspaceViewMode?: 'chat' | 'terminal';
 }): string {
   return [
     parts.sidebarWidth,
@@ -28,6 +29,7 @@ export function buildTerminalLayoutChromeKey(parts: {
     parts.dockHeight,
     parts.sidebarOpen ? 1 : 0,
     parts.rightPanelOpen ? 1 : 0,
+    parts.workspaceViewMode ?? 'chat',
   ].join(':');
 }
 

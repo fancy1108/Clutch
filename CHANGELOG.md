@@ -10,6 +10,20 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ## [Unreleased]
 
+### Added
+
+- Terminal lane grid pagination (4 lanes per page with dot carousel) when more than four expanded lanes.
+- Overview dispatch loading badge (`Opening terminal…`) while target PTY is booting or pending inject.
+- Local-timezone formatting for Overview dispatch timestamps; backend stores ISO UTC.
+
+### Fixed
+
+- Ollama interactive PTY: spawn `ollama run <model>`, pass configured agent model on preview attach, and surface spawn errors instead of stuck `detached`.
+- Antigravity/Ollama/OpenCode PTY prompt inject waits for TUI-ready output before typing; inject works on background lanes.
+- CLI session resume copy commands per agent type (Codex `--last`, OpenCode `-c`, hide invalid Clutch UUID on unsupported CLIs).
+- Handoff preview modal empty section below title; optimistic dispatch in Overview; handoff Send-to-Bar graph syntax.
+- Chat/Terminal mode switch keeps xterm mounted; right panel tabs Overview/Files/Changes/Terminal; terminal session command Copy restored.
+
 ## [1.1.0] - 2026-07-03
 
 Minor release — **Terminal Orchestra (D34)**, **Windows desktop polish**, **CodeBuddy CLI**, **OpenCode Zen**, **Agnes Video**, and agent-scoped Settings.

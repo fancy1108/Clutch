@@ -268,16 +268,31 @@ class InteractivePtyManager:
         self._output_handler = handler
 
     def resolve_binary(self, cli_tool: str) -> str:
+        from src.engine_router import CLI_ROUTING_CONFIGS
+        from src.tools_status import _extra_cli_search_dirs, resolve_tool_binary
+
         key = cli_tool.strip().lower()
+        cfg = CLI_ROUTING_CONFIGS.get(key)
+        if isinstance(cfg, dict):
+            tool_id = str(cfg.get("tool_id", "")).strip()
+            if tool_id:
+                found = resolve_tool_binary(tool_id)
+                if found:
+                    return found
+
         name = CLI_BINARY_MAP.get(key)
         if not name and key.endswith("-cli"):
             name = key[: -len("-cli")]
         if not name:
             name = key
         path = shutil.which(name)
-        if not path:
-            raise InteractivePtyError(f"CLI binary not found: {name}")
-        return path
+        if path:
+            return path
+        for directory in _extra_cli_search_dirs():
+            candidate = directory / name
+            if candidate.is_file() and os.access(candidate, os.X_OK):
+                return str(candidate)
+        raise InteractivePtyError(f"CLI binary not found: {name}")
 
     def _session_belongs_to_run(self, session_key: str, run_id: str) -> bool:
         return session_key == run_id or session_key.startswith(f"{run_id}::")
@@ -297,6 +312,7 @@ class InteractivePtyManager:
         workspace_path: str,
         cli_tool: str,
         cli_session_id: str | None = None,
+        ollama_model: str | None = None,
     ) -> InteractivePtySession:
         with self._lock:
             session = self._sessions.get(session_key)
@@ -316,6 +332,7 @@ class InteractivePtyManager:
                 cli_tool,
                 binary,
                 cli_session_id=cli_session_id,
+                ollama_model=ollama_model,
             )
             self._sessions[session_key] = session
             return session
@@ -456,6 +473,21 @@ class InteractivePtyManager:
             closed.append(f"system:{pid}")
         return closed
 
+    def _ollama_run_argv(self, binary: str, ollama_model: str | None) -> list[str]:
+        model = str(ollama_model or "").strip()
+        if not model:
+            try:
+                from src.adapters.ollama_adapter import get_ollama_models, pick_best_ollama_model
+
+                model = pick_best_ollama_model(get_ollama_models())
+            except RuntimeError as exc:
+                raise InteractivePtyError(str(exc)) from exc
+        if not model:
+            raise InteractivePtyError(
+                "No Ollama model configured. Run `ollama pull <model>` and ensure Ollama is running."
+            )
+        return [binary, "run", model]
+
     def _spawn(
         self,
         session_key: str,
@@ -463,9 +495,14 @@ class InteractivePtyManager:
         cli_tool: str,
         binary: str,
         cli_session_id: str | None = None,
+        ollama_model: str | None = None,
     ) -> InteractivePtySession:
         if os.name == "nt":
             raise InteractivePtyError("Interactive PTY is not supported on Windows yet")
+        from pathlib import Path
+
+        if not Path(workspace_path).expanduser().is_dir():
+            raise InteractivePtyError(f"Workspace folder does not exist: {workspace_path}")
         session = InteractivePtySession(
             run_id=session_key,
             workspace_path=workspace_path,
@@ -476,11 +513,20 @@ class InteractivePtyManager:
         master_fd, slave_fd = pty.openpty()
         winsize = struct.pack("HHHH", 24, 80, 0, 0)
         fcntl.ioctl(master_fd, termios.TIOCSWINSZ, winsize)
-        argv = [binary]
         tool_key = cli_tool.strip().lower()
+        if tool_key in {"ollama-cli", "ollama"}:
+            argv = self._ollama_run_argv(binary, ollama_model)
+        else:
+            argv = [binary]
         sid = str(cli_session_id or "").strip()
         if sid and tool_key in {"claude-cli", "claude", "codebuddy-cli", "codebuddy", "cbc"}:
             argv.extend(["--session-id", sid])
+        spawn_env = os.environ.copy()
+        from src.tools_status import _extra_cli_search_dirs
+
+        extra_path = os.pathsep.join(str(directory) for directory in _extra_cli_search_dirs())
+        if extra_path:
+            spawn_env["PATH"] = extra_path + os.pathsep + spawn_env.get("PATH", "")
         proc = subprocess.Popen(
             argv,
             stdin=slave_fd,
@@ -489,6 +535,7 @@ class InteractivePtyManager:
             cwd=workspace_path,
             close_fds=True,
             start_new_session=True,
+            env=spawn_env,
         )
         os.close(slave_fd)
         session.master_fd = master_fd

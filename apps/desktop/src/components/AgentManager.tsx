@@ -25,6 +25,7 @@ import { UnderDevelopmentNotice } from './ui/UnderDevelopmentNotice';
 import { getAgentCapabilityTier } from '../services/agentCapabilityTiers';
 import { AgentNativeCapabilityHint } from './AgentNativeCapabilityHint';
 import { AgentCliModelHint } from './AgentCliModelHint';
+import { FullscreenModalOverlay } from './ui/FullscreenModalOverlay';
 
 export function AgentLogo({
   name,
@@ -863,7 +864,7 @@ export function AgentManager({
 
       {/* ----------------- CREATE/EDIT AGENT DIAOG MODAL ----------------- */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-neutral-900/40 backdrop-blur-xs flex items-center justify-center z-50 animate-fade-in p-4 select-none">
+        <FullscreenModalOverlay>
           <div className="bg-white rounded-xl shadow-lg border border-neutral-200 max-w-xl w-full max-h-[85vh] flex flex-col overflow-hidden">
             
             {/* Modal Header */}
@@ -1174,12 +1175,12 @@ export function AgentManager({
               </button>
             </div>
           </div>
-        </div>
+        </FullscreenModalOverlay>
       )}
 
       {/* ----------------- DELIVERABLE PREVIEW DIALOG MODAL ----------------- */}
       {isPreviewDeliverable && (
-        <div className="fixed inset-0 bg-neutral-900/40 backdrop-blur-xs flex items-center justify-center z-50 animate-fade-in p-4 select-none">
+        <FullscreenModalOverlay>
           <div className="bg-white rounded-xl shadow-lg border border-neutral-200 max-w-2xl w-full max-h-[80vh] flex flex-col overflow-hidden">
             
             {/* Modal Header */}
@@ -1228,7 +1229,7 @@ export function AgentManager({
             </div>
 
           </div>
-        </div>
+        </FullscreenModalOverlay>
       )}
     </div>
   );

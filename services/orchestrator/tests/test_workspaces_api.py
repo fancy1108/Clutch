@@ -61,7 +61,21 @@ def test_add_existing_path_activates_without_duplicate(tmp_path: Path) -> None:
     assert listed["active_id"] == first["id"]
 
 
-def test_workspace_git_endpoint_non_git(tmp_path: Path) -> None:
+def test_activate_workspace_rejects_missing_path(tmp_path: Path) -> None:
+    from src.workspace import WorkspaceError, activate_workspace, add_workspace, remove_workspace
+
+    project = tmp_path / "gone"
+    project.mkdir()
+    entry = add_workspace(str(project))
+    project.rmdir()
+
+    try:
+        activate_workspace(entry["id"])
+        raise AssertionError("expected WorkspaceError")
+    except WorkspaceError as exc:
+        assert "no longer exists" in str(exc).lower() or "不存在" in str(exc)
+
+    remove_workspace(entry["id"])
     client = TestClient(app)
     project = tmp_path / "repo"
     project.mkdir()

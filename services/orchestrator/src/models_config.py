@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
@@ -119,16 +120,26 @@ def hidden_model_ids() -> set[str]:
 
 
 _OLLAMA_BASE_URL = "http://localhost:11434/v1"
+_OLLAMA_TAGS_CACHE: tuple[float, list[str]] | None = None
+_OLLAMA_TAGS_CACHE_TTL_S = 60.0
 
 
 def local_ollama_tags() -> list[str]:
     """Live tags from the local Ollama daemon (same source as /api/models/ollama)."""
+    global _OLLAMA_TAGS_CACHE
+    now = time.monotonic()
+    if _OLLAMA_TAGS_CACHE is not None:
+        cached_at, tags = _OLLAMA_TAGS_CACHE
+        if now - cached_at < _OLLAMA_TAGS_CACHE_TTL_S:
+            return list(tags)
     try:
         from src.adapters.ollama_adapter import get_ollama_models
 
-        return get_ollama_models()
+        tags = get_ollama_models()
     except Exception:
-        return []
+        tags = []
+    _OLLAMA_TAGS_CACHE = (now, tags)
+    return tags
 
 
 def ollama_model_id_for_tag(tag: str) -> str:
