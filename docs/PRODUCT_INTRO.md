@@ -119,7 +119,7 @@ graph TD
 
 ### 3.4 Settings Dashboard (设置与配置中心)
 
-* **General Settings**：支持用户修改个人名称并应用在发送气泡标签中；支持上传自定义头像并转换为 base64 存盘；支持中英文双语对照切换，后端 API / WS 错误采用 `tr()` 响应；利用 Tauri `getVersion` 插件动态显示真实桌面客户端版本号。
+* **General Settings**：支持用户修改个人名称并应用在发送气泡标签中；支持上传自定义头像并转换为 base64 存盘；支持小/默认/大/特大/超级大字体大小偏好并持久化；支持中英文双语对照切换，后端 API / WS 错误采用 `tr()` 响应；利用 Tauri `getVersion` 插件动态显示真实桌面客户端版本号。
 * **Agent Settings**：提供可视化 Agent 管理器（`AgentManager.tsx`），支持自由增删改自定义 Agent，配置其名称、头像、System Prompt、模型及关联 MCP 工具。**Skills / MCP 模块按 Agent 类型分档**：仅 **Clutch** 内置 Agent 可绑定 Clutch Skills Registry 与 MCP Hub；**Claude Code** / **OpenCode** CLI Agent 展示各自原生配置只读扫描与 Settings 深链；其他 CLI 类型显示「即将上线」，避免误用全局 Registry。
 * **Workflow Settings**：管理和选择可用的流程图 SOP 模板，支持一键在 Chat 中启用。
 * **Tool Settings**：对 20+ 主流 Agent CLI 白名单做本机探测——**已安装的一律展示**（含 Rivet、OpenCode、CodeBuddy 等扩展工具）；**未安装时默认仅推荐经 Clutch 验证的 CLI**（`codebuddy`、`opencode`、`claude`、`ollama`、`codex`、`agy`）及安装指引。CodeBuddy 内置 headless 路由（`codebuddy -p`，curated `--dangerously-skip-permissions`）；OpenCode 内置 headless 路由（`run --auto`），Auto Config 错误参数不会覆盖 curated 配置。支持 Connect 偏好与 **Auto Config**（LLM 分析 `--help` 写入 `custom_clis.json` 路由参数）。

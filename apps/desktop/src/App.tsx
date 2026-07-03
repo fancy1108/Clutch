@@ -20,7 +20,14 @@ import {
   isBuiltinAgent,
   mergeAgentsWithBuiltin,
 } from './services/builtinAgent';
-import { fetchPreferences, saveThemePreference, saveUserNamePreference, type ThemePresetId } from './services/themeApi';
+import {
+  fetchPreferences,
+  saveFontSizePreference,
+  saveThemePreference,
+  saveUserNamePreference,
+  type ThemePresetId,
+} from './services/themeApi';
+import { DEFAULT_FONT_SIZE, type AppFontSize } from './services/fontSizePreference';
 import { LanguageProvider, useLanguage } from './components/LanguageContext';
 import { OnboardingWizard } from './components/onboarding/OnboardingWizard';
 import { CONTENT_TOP_WITH_BANNER, SIDEBAR_COLLAPSED_WIDTH_PX, SIDEBAR_EXPANDED_WIDTH_PX, CHROME_PANEL_TOGGLE_TOP_CSS, CHROME_PANEL_TOGGLE_HALF_PX } from './constants/layout';
@@ -156,6 +163,7 @@ function MainLayout() {
   const [workflowAgentSteps, setWorkflowAgentSteps] = useState<WorkflowAgentStep[]>([]);
   const [isMultiAgent, setIsMultiAgent] = useState<boolean>(true);
   const [themeId, setThemeIdState] = useState<ThemePresetId>('pristine-light');
+  const [fontSize, setFontSizeState] = useState<AppFontSize>(DEFAULT_FONT_SIZE);
   const [userAvatar, setUserAvatarState] = useState<string>('');
   const [userName, setUserNameState] = useState<string>('User');
 
@@ -163,6 +171,7 @@ function MainLayout() {
     void fetchPreferences()
       .then((prefs) => {
         setThemeIdState(prefs.active_theme_id);
+        setFontSizeState(prefs.font_size ?? DEFAULT_FONT_SIZE);
         if (prefs.user_avatar) {
           setUserAvatarState(prefs.user_avatar);
           setUserChatAvatar(prefs.user_avatar);
@@ -190,6 +199,11 @@ function MainLayout() {
     if (!preset) return;
     setThemeIdState(preset.id as ThemePresetId);
     void saveThemePreference(preset.id as ThemePresetId).catch(() => {});
+  };
+
+  const setFontSize = (size: AppFontSize) => {
+    setFontSizeState(size);
+    void saveFontSizePreference(size).catch(() => {});
   };
 
   const setUserName = (name: string) => {
@@ -1368,6 +1382,7 @@ function MainLayout() {
   return (
     <div 
       style={themeVars as React.CSSProperties}
+      data-font-size={fontSize}
       className="relative h-screen max-h-screen bg-background text-on-surface overflow-hidden flex flex-col font-sans select-none"
     >
       {/* 1. Header component */}
@@ -1642,6 +1657,8 @@ function MainLayout() {
           setUserAvatar={setUserAvatarState}
           userName={userName}
           setUserName={setUserName}
+          fontSize={fontSize}
+          setFontSize={setFontSize}
         />
 
       </div>
