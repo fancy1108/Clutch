@@ -30,8 +30,7 @@ import {
 import { DEFAULT_FONT_SIZE, type AppFontSize } from './services/fontSizePreference';
 import { LanguageProvider, useLanguage } from './components/LanguageContext';
 import { OnboardingWizard } from './components/onboarding/OnboardingWizard';
-import { CONTENT_TOP_WITH_BANNER, SIDEBAR_COLLAPSED_WIDTH_PX, SIDEBAR_EXPANDED_WIDTH_PX, CHROME_PANEL_TOGGLE_TOP_CSS, CHROME_PANEL_TOGGLE_HALF_PX } from './constants/layout';
-import { ChromeEdgeToggle } from './components/ui/ChromeEdgeToggle';
+import { CONTENT_TOP_WITH_BANNER, SIDEBAR_COLLAPSED_WIDTH_PX, SIDEBAR_EXPANDED_WIDTH_PX } from './constants/layout';
 import { BrandLogo } from './components/BrandLogo';
 import { clutchMarkUrl } from './assets/brand';
 import { DevOnboardingToolsEmptyPreview } from './components/onboarding/DevOnboardingToolsEmptyPreview';
@@ -1391,19 +1390,8 @@ function MainLayout() {
         workspaceName={workspace?.name}
         onPickWorkspace={() => { void handlePickWorkspace(); }}
         folders={folders}
+        onToggleSidebar={() => setSidebarOpen((open) => !open)}
         sidebarOpen={sidebarOpen}
-      />
-
-      <ChromeEdgeToggle
-        testId="workspace-sidebar-toggle"
-        icon={sidebarOpen ? 'chevron_left' : 'chevron_right'}
-        title={sidebarOpen ? t('Collapse Sidebar') : t('Expand Sidebar')}
-        onClick={() => setSidebarOpen((open) => !open)}
-        className="fixed transition-[left] duration-300 ease-out"
-        style={{
-          top: CHROME_PANEL_TOGGLE_TOP_CSS,
-          left: selectedSidebarWidth - CHROME_PANEL_TOGGLE_HALF_PX,
-        }}
       />
 
       {/* 2. Side Panel components layout */}
