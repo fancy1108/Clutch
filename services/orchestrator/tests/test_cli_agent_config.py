@@ -163,12 +163,13 @@ def test_list_cc_switch_providers_filters_official(tmp_path: Path, monkeypatch: 
 def test_resolve_cc_switch_cli_path_checks_local_bin(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
-    cli = bin_dir / "cc-switch"
+    binary_name = cfg._cc_switch_binary_name()
+    cli = bin_dir / binary_name
     cli.write_text("#!/bin/sh\necho cc-switch-cli 1.0.0\n", encoding="utf-8")
     cli.chmod(0o755)
 
     monkeypatch.setattr(cfg.shutil, "which", lambda _name: None)
-    monkeypatch.setattr(cfg, "_verify_cc_switch_cli", lambda path: path.endswith("cc-switch"))
+    monkeypatch.setattr(cfg, "_verify_cc_switch_cli", lambda path: Path(path).name == binary_name)
     monkeypatch.setattr("src.tools_status._extra_cli_search_dirs", lambda: [bin_dir])
 
     assert cfg.resolve_cc_switch_cli_path() == str(cli)
