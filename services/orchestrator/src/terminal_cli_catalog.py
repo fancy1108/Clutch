@@ -9,6 +9,7 @@ CLI_TO_DISPLAY: dict[str, str] = {
     "codex-cli": "Codex CLI",
     "aider-cli": "Aider CLI",
     "codebuddy-cli": "CodeBuddy CLI",
+    "cursor-cli": "Cursor",
     "rivet-cli": "Rivet CLI",
     "ollama-cli": "Ollama",
 }

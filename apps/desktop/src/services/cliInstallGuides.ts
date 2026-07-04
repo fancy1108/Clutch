@@ -41,8 +41,9 @@ export const CLI_INSTALL_GUIDES: Record<string, CliInstallGuide> = {
     url: 'https://ollama.com',
   },
   'cursor-cli': {
-    cmd: 'cursor',
-    desc: 'Open Cursor IDE, press Cmd+Shift+P, and run "Shell Command: Install \'cursor\' command in PATH".',
+    cmd: 'curl https://cursor.com/install -fsS | bash',
+    desc: 'Install Cursor Agent CLI (binary: cursor-agent / agent). Requires ~/.local/bin on PATH.',
+    url: 'https://cursor.com',
   },
   'rivet-cli': {
     cmd: 'npm install -g tianshu-tui',
@@ -115,7 +116,7 @@ export const CLI_INSTALL_GUIDES: Record<string, CliInstallGuide> = {
 };
 
 /** CLIs tested in Clutch — primary install recommendations (Settings + onboarding). */
-export const RECOMMENDED_CLI_IDS = ['codebuddy-cli', 'opencode-cli', 'claude-cli', 'ollama-cli', 'codex-cli', 'agy-cli'] as const;
+export const RECOMMENDED_CLI_IDS = ['codebuddy-cli', 'cursor-cli', 'opencode-cli', 'claude-cli', 'ollama-cli', 'codex-cli', 'agy-cli'] as const;
 
 export const ONBOARDING_RECOMMENDED_CLI_IDS = RECOMMENDED_CLI_IDS;
 

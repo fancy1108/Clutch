@@ -359,6 +359,7 @@ describe('terminalOrchestraUtils', () => {
   it('resolves dispatch target display names to agent types and lanes', () => {
     expect(resolveAgentTypeFromDispatchTarget('OpenCode')).toBe('opencode-cli');
     expect(resolveAgentTypeFromDispatchTarget('Codex CLI')).toBe('codex-cli');
+    expect(resolveAgentTypeFromDispatchTarget('Cursor')).toBe('cursor-cli');
     const lanes = [
       sampleLane({ lane_id: 'lane_oc', agent_type: 'opencode-cli' }),
       sampleLane({ lane_id: 'lane_done', agent_type: 'claude-cli', status: 'completed' }),

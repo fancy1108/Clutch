@@ -74,10 +74,11 @@ CLI_CANDIDATES: list[dict[str, str]] = [
     },
     {
         "id": "cursor-cli",
-        "name": "Cursor CLI",
-        "binary": "cursor",
-        "description": "Cursor command-line launcher.",
-        "icon": "edit_document",
+        "name": "Cursor Agent CLI",
+        "binary": "cursor-agent",
+        "binary_aliases": "agent",
+        "description": "Cursor Agent for terminal workflows (curl cursor.com/install).",
+        "icon": "terminal",
     },
     {
         "id": "rivet-cli",
@@ -184,6 +185,7 @@ CLI_CANDIDATES: list[dict[str, str]] = [
 RECOMMENDED_CLI_IDS: frozenset[str] = frozenset(
     {
         "codebuddy-cli",
+        "cursor-cli",
         "opencode-cli",
         "claude-cli",
         "ollama-cli",
@@ -252,12 +254,24 @@ def _candidate_by_id(tool_id: str) -> dict[str, str] | None:
     return None
 
 
+def _binary_names(cand: dict[str, str]) -> list[str]:
+    names = [cand["binary"]]
+    aliases = cand.get("binary_aliases", "")
+    if aliases:
+        names.extend(part.strip() for part in aliases.split(",") if part.strip())
+    return names
+
+
 def _resolve_path(tool_id: str) -> str | None:
     cand = _candidate_by_id(tool_id)
     if cand is None:
         return None
     if "binary" in cand:
-        return _cli_path(cand["binary"])
+        for binary in _binary_names(cand):
+            found = _cli_path(binary)
+            if found:
+                return found
+        return None
     return _client_path(cand["app_name"])
 
 
@@ -269,11 +283,11 @@ def resolve_tool_binary(tool_id: str) -> str | None:
     cand = _candidate_by_id(tool_id)
     if cand is None or "binary" not in cand:
         return None
-    binary = cand["binary"]
-    for directory in _extra_cli_search_dirs():
-        candidate = directory / binary
-        if candidate.is_file() and os.access(candidate, os.X_OK):
-            return str(candidate)
+    for binary in _binary_names(cand):
+        for directory in _extra_cli_search_dirs():
+            candidate = directory / binary
+            if candidate.is_file() and os.access(candidate, os.X_OK):
+                return str(candidate)
     return None
 
 

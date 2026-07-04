@@ -35,6 +35,10 @@ const LEGACY_ENGINE_TO_TYPE: Record<string, AgentTypeId> = {
   codebuddy: 'codebuddy-cli',
   'codebuddy cli': 'codebuddy-cli',
   cbc: 'codebuddy-cli',
+  'cursor-cli': 'cursor-cli',
+  cursor: 'cursor-cli',
+  'cursor agent cli': 'cursor-cli',
+  'cursor-agent': 'cursor-cli',
 };
 
 const AGENT_TYPE_DISPLAY_LABELS: Record<string, string> = {
@@ -45,6 +49,7 @@ const AGENT_TYPE_DISPLAY_LABELS: Record<string, string> = {
   'aider-cli': 'Aider CLI',
   'opencode-cli': 'OpenCode CLI',
   'codebuddy-cli': 'CodeBuddy CLI',
+  'cursor-cli': 'Cursor CLI',
   'rivet-cli': 'Rivet CLI',
 };
 

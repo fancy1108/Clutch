@@ -49,6 +49,7 @@ def test_list_tools_include_all_omits_non_recommended_uninstalled(
     assert "rivet-cli" not in ids
     assert "opencode-cli" in ids
     assert "codebuddy-cli" in ids
+    assert "cursor-cli" in ids
     assert all(tool["recommended"] for tool in tools)
 
 
@@ -310,6 +311,27 @@ def test_resolve_tool_binary_finds_nvm_node_bin(
     )
 
     assert resolve_tool_binary("claude-cli") == str(claude_bin)
+
+
+def test_resolve_tool_binary_finds_cursor_agent_alias(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    local_bin = tmp_path / ".local" / "bin"
+    local_bin.mkdir(parents=True)
+    agent_bin = local_bin / "agent"
+    agent_bin.write_text("#!/bin/sh\necho agent\n", encoding="utf-8")
+    agent_bin.chmod(0o755)
+
+    monkeypatch.setattr("src.tools_status._cli_path", lambda binary: None)
+    monkeypatch.setattr("src.tools_status._extra_cli_search_dirs", lambda: [local_bin])
+
+    assert resolve_tool_binary("cursor-cli") == str(agent_bin)
+
+
+def test_cli_candidates_include_cursor_agent_cli() -> None:
+    cursor = next(c for c in CLI_CANDIDATES if c["id"] == "cursor-cli")
+    assert cursor["binary"] == "cursor-agent"
+    assert cursor["binary_aliases"] == "agent"
 
 
 def test_auto_configure_cli_via_llm(monkeypatch: pytest.MonkeyPatch) -> None:

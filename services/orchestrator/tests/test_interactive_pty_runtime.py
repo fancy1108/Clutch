@@ -200,7 +200,7 @@ def test_list_alive_for_run_includes_configured_system_processes() -> None:
     with patch("src.interactive_pty_runtime.os.name", "posix"):
         with patch("src.interactive_pty_runtime.configured_cli_binaries", return_value={"codex"}):
             with patch("src.interactive_pty_runtime.subprocess.check_output", return_value=ps_output):
-                alive = interactive_pty_manager.list_alive_for_run("run_x")
+                alive = interactive_pty_manager.list_alive_for_run("run_x", include_system=True)
     assert any(item["cli_tool"] == "codex" and item["source"] == "system" for item in alive)
 
 

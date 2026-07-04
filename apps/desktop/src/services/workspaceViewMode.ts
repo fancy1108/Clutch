@@ -40,6 +40,8 @@ export function resolveCliToolFromEngineHint(engineHint: string): string | null 
     ['openai codex', 'codex-cli'],
     ['aider', 'aider-cli'],
     ['codebuddy', 'codebuddy-cli'],
+    ['cursor', 'cursor-cli'],
+    ['cursor agent', 'cursor-cli'],
     ['rivet', 'rivet-cli'],
     ['天枢', 'rivet-cli'],
     ['ollama', 'ollama-cli'],

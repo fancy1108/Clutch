@@ -10,6 +10,17 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ## [Unreleased]
 
+### Changed
+
+- **Cursor CLI detection:** Tools scan now targets **Cursor Agent CLI** (`cursor-agent` / `agent` from `curl cursor.com/install`) instead of the IDE shell launcher (`cursor`).
+- **Cursor Agent CLI recommended:** Added to default Tools/onboarding recommendations with brand logo.
+
+### Fixed
+
+- **Terminal session stats:** Background terminal count now reflects Clutch-managed PTY sessions only (no longer inflates with every system-wide CLI process).
+- **Cursor Terminal Orchestra:** `@Cursor` dispatch is recognized in Orchestrator Bar (matches Cursor Agent CLI).
+- **Chat thinking row:** Loading bubble matches the height of the preceding user message bubble (not the full row).
+
 ## [1.1.1] - 2026-07-04
 
 Patch release — **Windows interactive PTY** ([#30](https://github.com/fancy1108/Clutch/pull/30)), **platform chrome split**, and shared workspace UI polish. Thanks [@996wuxian](https://github.com/996wuxian).

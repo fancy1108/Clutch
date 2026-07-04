@@ -50,6 +50,14 @@ def test_preview_dispatch_with_focused_lane():
     assert preview.dispatch_mode == "switch"
 
 
+def test_preview_dispatch_cursor_agent():
+    preview = preview_dispatch(_base_state(), "@Cursor 你好")
+    assert preview is not None
+    assert preview.target == "Cursor"
+    assert preview.task == "你好"
+    assert preview.dispatch_mode == "switch"
+
+
 def test_confirm_switch_stores_configured_agent_identity(tmp_path):
     preview = preview_dispatch(_base_state(), "@OpenCode 总结项目")
     assert preview is not None

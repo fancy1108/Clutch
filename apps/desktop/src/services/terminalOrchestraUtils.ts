@@ -7,6 +7,7 @@ export const CLI_DISPLAY: Record<string, string> = {
   'codex-cli': 'Codex CLI',
   'aider-cli': 'Aider CLI',
   'codebuddy-cli': 'CodeBuddy CLI',
+  'cursor-cli': 'Cursor',
   'rivet-cli': 'Rivet CLI',
   'ollama-cli': 'Ollama',
 };

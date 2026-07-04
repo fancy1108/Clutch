@@ -951,7 +951,7 @@ Request → Subprocess → Exit     ShellSession → bash PTY → Many exec → 
 
 **已探测未路由（`tools_status.CLI_CANDIDATES` 中其余项）**
 
-- `gemini`、`code`、`codeium`、`cursor`、`goose`、`copilot`、`cn`、`amp`、`qwen`、`gptme`、`openclaw`、`droid`、`crush`、`q`、`kiro-cli` 等 CLI
+- `gemini`、`code`、`codeium`、`cursor-agent`、`goose`、`copilot`、`cn`、`amp`、`qwen`、`gptme`、`openclaw`、`droid`、`crush`、`q`、`kiro-cli` 等 CLI
 
 **相关 BACKLOG**
 
