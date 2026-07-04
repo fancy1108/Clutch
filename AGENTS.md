@@ -31,3 +31,17 @@
 **For GitHub Copilot users:** see [`.github/copilot-instructions.md`](./.github/copilot-instructions.md).
 
 **For frontend UI work:** see [`docs/UI_UX_GUIDELINES.md`](./docs/UI_UX_GUIDELINES.md).
+
+---
+
+## Cursor Cloud specific instructions
+
+Durable notes for cloud agents (the startup update script already runs `pnpm install` + `uv sync --extra dev` for the orchestrator). Standard commands live in [`CLAUDE.md`](./CLAUDE.md) §核心命令 and [`docs/BUILD_FROM_SOURCE.md`](./docs/BUILD_FROM_SOURCE.md); this section only captures non-obvious cloud gotchas.
+
+- **`uv` is not in the base image.** It is installed to `~/.local/bin` (added to `~/.bashrc`). If `uv` is missing from `PATH`, invoke it as `~/.local/bin/uv`.
+- **Run in web dev mode, not Tauri, on the Linux cloud VM.** `pnpm tauri:dev` targets macOS/Windows and needs the Rust WebKitGTK desktop toolchain, so it is not runnable headless here. Instead run the two services separately:
+  - Sidecar: `cd services/orchestrator && ~/.local/bin/uv run uvicorn src.main:app --reload --host 127.0.0.1 --port 8124`
+  - Frontend: `pnpm dev` (Vite on `:3000`, proxies `/api`, `/ws`, `/health` → `8124`). Health check: `curl -s http://127.0.0.1:8124/health` → `{"status":"ok",...}`.
+- **Web mode has no folder picker.** Workspace/folder selection needs Tauri desktop APIs, so onboarding blocks core features (chat, workflows). To unblock in the browser, authorize a workspace directly against the sidecar: `curl -X POST http://127.0.0.1:8124/api/workspaces -H 'Content-Type: application/json' -d '{"path":"/abs/path"}'` (auto-activates). Mark onboarding done via `curl -X POST http://127.0.0.1:8124/api/preferences/onboarding-complete`, then reload the page.
+- **Agent/chat runs need credentials.** Without a connected CLI or a cloud LLM API key (Settings → Models), sending a chat returns a clear "No API key configured for provider …" error — this is expected, not a bug. Workflow (SOP) editing on the canvas works without any keys.
+- **`pnpm lint` (`tsc --noEmit`) is not part of the CI gate** and currently has pre-existing type errors in some `*.test.ts` files. The authoritative verification is `./scripts/verify.sh` (build + vitest + pytest + doc-drift); `vitest` transpiles via esbuild so tests pass regardless.
