@@ -19,12 +19,11 @@
 | PR #34 merge `dev` → `main` | ✅ |
 | `git tag v1.1.2` + macOS DMG CI | ✅ |
 | Homebrew tap sync (CI) | ✅ |
-| macOS updater (`latest.json` + tar.gz) | ⏳ 可选 |
+| macOS updater (`latest.json` + tar.gz) | ✅ [run #28781037606](https://github.com/fancy1108/Clutch/actions/runs/28781037606) |
 | ~~Windows MSI/NSIS~~ | — 本版跳过（patch 仅 macOS） |
 
 ## Next Actions
 
-- **macOS updater** — 可选跑 `Release (updater assets)` workflow 更新 `latest.json`
 - **#23** — Windows smoke 继续用 v1.1.1；v1.2.0 再发 Win 包
 
 ## Recent Sessions
