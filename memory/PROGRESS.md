@@ -5,28 +5,27 @@
 
 ## Current Status
 
-- **阶段：** **v1.1.2 待发版**（2026-07-06，**仅 macOS**）— MiMo Code CLI + Cursor Agent CLI + Terminal Orchestra 修复
-- **Release：** 上一版 [v1.1.1](https://github.com/fancy1108/Clutch/releases/tag/v1.1.1) · 目标 [v1.1.2](https://github.com/fancy1108/Clutch/releases/tag/v1.1.2)（macOS DMG only）
-- **Git：** `dev` · 版本号 `1.1.2`（3 feature commits since v1.1.1）
-- **Windows：** 本版不发安装包；Win 用户继续用 v1.1.1，下次 Win 包在 v1.2.0+
+- **阶段：** **v1.1.2 已发布**（2026-07-06，**仅 macOS**）— MiMo Code CLI + Cursor Agent CLI + Terminal Orchestra 修复
+- **Release：** [v1.1.2](https://github.com/fancy1108/Clutch/releases/tag/v1.1.2) Latest（macOS）· Win 继续 [v1.1.1](https://github.com/fancy1108/Clutch/releases/tag/v1.1.1)
+- **Git：** `main` / `dev` 已同步 · 版本号 `1.1.2`
+- **Windows：** 本版不发安装包；下次 Win 包在 v1.2.0+
 
 ### v1.1.2 发版清单
 
 | 项 | 状态 |
 |----|------|
 | CHANGELOG + README + `docs/releases/v1.1.2.md` | ✅ |
-| 版本号 bump（package / tauri / homebrew version） | ✅ |
-| `chore(release)` commit on `dev` | ✅ |
-| PR merge `dev` → `main` | ⏳ |
-| `git tag v1.1.2` + macOS DMG CI | ⏳ |
-| Homebrew tap sha256 → 1.1.2 DMG | ⏳ |
-| macOS updater (`latest.json` + tar.gz) | ⏳ |
+| 版本号 bump | ✅ |
+| PR #34 merge `dev` → `main` | ✅ |
+| `git tag v1.1.2` + macOS DMG CI | ✅ |
+| Homebrew tap sync (CI) | ✅ |
+| macOS updater (`latest.json` + tar.gz) | ⏳ 可选 |
 | ~~Windows MSI/NSIS~~ | — 本版跳过（patch 仅 macOS） |
 
 ## Next Actions
 
-- **发版** — commit release prep → merge `dev` → `main` → tag `v1.1.2` → 等 CI DMG → 更新 Homebrew sha256
-- **#23** — Windows smoke 继续用 v1.1.1 安装包；v1.2.0 再发 Win 包
+- **macOS updater** — 可选跑 `Release (updater assets)` workflow 更新 `latest.json`
+- **#23** — Windows smoke 继续用 v1.1.1；v1.2.0 再发 Win 包
 
 ## Recent Sessions
 
