@@ -29,7 +29,7 @@ jobs:
       - run: uv run pytest
         working-directory: services/orchestrator
       - run: pnpm tauri:build
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: clutch-windows-x64
           path: |
