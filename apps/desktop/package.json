@@ -29,7 +29,7 @@
     "@xterm/xterm": "^5.5.0",
     "dotenv": "^17.2.3",
     "lucide-react": "^1.22.0",
-    "motion": "^12.42.0",
+    "motion": "^12.42.2",
     "react": "^19.0.1",
     "react-dom": "^19.0.1"
   },
