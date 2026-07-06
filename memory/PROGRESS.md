@@ -5,28 +5,37 @@
 
 ## Current Status
 
-- **阶段：** **v1.1.1 已发布**（2026-07-04）— Windows interactive PTY (#30) + 平台 chrome 拆分
-- **Release：** [v1.1.1](https://github.com/fancy1108/Clutch/releases/tag/v1.1.1) Latest · 上一版 [v1.1.0](https://github.com/fancy1108/Clutch/releases/tag/v1.1.0)
-- **Git：** `main` / `dev` · 版本号 `1.1.1`
-- **开放：** [#23](https://github.com/fancy1108/Clutch/issues/23) Windows 实体机 smoke（v1.1.1 安装包已挂 Release）
+- **阶段：** **v1.1.2 待发版**（2026-07-06，**仅 macOS**）— MiMo Code CLI + Cursor Agent CLI + Terminal Orchestra 修复
+- **Release：** 上一版 [v1.1.1](https://github.com/fancy1108/Clutch/releases/tag/v1.1.1) · 目标 [v1.1.2](https://github.com/fancy1108/Clutch/releases/tag/v1.1.2)（macOS DMG only）
+- **Git：** `dev` · 版本号 `1.1.2`（3 feature commits since v1.1.1）
+- **Windows：** 本版不发安装包；Win 用户继续用 v1.1.1，下次 Win 包在 v1.2.0+
 
-### v1.1.1 发版清单
+### v1.1.2 发版清单
 
 | 项 | 状态 |
 |----|------|
-| PR #31 merge `dev` → `main` | ✅ |
-| `git tag v1.1.1` + macOS DMG CI | ✅ |
-| Windows MSI/NSIS 挂 Release + SHA256SUMS | ✅ |
-| Homebrew tap → 1.1.1 | ✅ |
-| macOS updater (`latest.json` + tar.gz) | ✅ |
-| @996wuxian Win10/11 smoke | ⏳ |
+| CHANGELOG + README + `docs/releases/v1.1.2.md` | ✅ |
+| 版本号 bump（package / tauri / homebrew version） | ✅ |
+| `chore(release)` commit on `dev` | ✅ |
+| PR merge `dev` → `main` | ⏳ |
+| `git tag v1.1.2` + macOS DMG CI | ⏳ |
+| Homebrew tap sha256 → 1.1.2 DMG | ⏳ |
+| macOS updater (`latest.json` + tar.gz) | ⏳ |
+| ~~Windows MSI/NSIS~~ | — 本版跳过（patch 仅 macOS） |
 
 ## Next Actions
 
-- **#23** — @996wuxian 用 v1.1.1 Win 安装包做实体机 smoke（PTY + 侧栏 + 安装）
-- **sync `dev`** — merge `main` 回 `dev`（如尚未同步）
+- **发版** — commit release prep → merge `dev` → `main` → tag `v1.1.2` → 等 CI DMG → 更新 Homebrew sha256
+- **#23** — Windows smoke 继续用 v1.1.1 安装包；v1.2.0 再发 Win 包
 
 ## Recent Sessions
+
+## 2026-07-06 会话（MiMo Code CLI + v1.1.2 发版准备）
+
+- **MiMo Code CLI** — `mimo-cli` 白名单、headless 路由、`@Mimo` Terminal Orchestra、Settings 扫描 Tab、D19 文档
+- **Cursor Agent CLI** — 推荐工具、`cursor-agent` 探测、`@Cursor` 派发
+- **修复** — PTY 后台终端计数、Chat thinking 气泡高度、Claude Code CC Switch 配置修复 UI
+- **发版材料** — CHANGELOG [1.1.2]、README、`docs/releases/v1.1.2.md`、版本号 1.1.2
 
 ## 2026-07-04 会话（#30 merge + 平台 chrome 拆分）
 

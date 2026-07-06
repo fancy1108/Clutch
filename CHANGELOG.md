@@ -10,20 +10,28 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ## [Unreleased]
 
+## [1.1.2] - 2026-07-06
+
+Patch release — **macOS only** (Apple Silicon DMG + in-app updater). **MiMo Code CLI** first-class integration, **Cursor Agent CLI** as a recommended tool, Terminal Orchestra dispatch fixes, and Claude Code CC Switch config repair in Settings. Windows users remain on [v1.1.1](https://github.com/fancy1108/Clutch/releases/tag/v1.1.1) until the next **minor** release (e.g. v1.2.0).
+
+> **Release assets (v1.1.2):** Tag `v1.1.2` — **macOS only:** `Clutch_1.1.2_aarch64.dmg` + `SHA256SUMS.txt` via CI; optional `latest.json` updater bundle. **No Windows installers** for patch releases — Windows ships on minor bumps (1.2.0, 1.3.0, …). Product snapshot: [`docs/releases/v1.1.2.md`](docs/releases/v1.1.2.md).
+
 ### Added
 
-- **MiMo Code CLI (`mimo-cli`)**: Whitelist detection, headless routing (`mimo run --dangerously-skip-permissions`), Terminal Orchestra PTY + `@Mimo` dispatch, Settings → Models/MCP/Skills read-only scan tab, Xiaomi brand logo, and D19 doc sync (README, FILEMAP, site).
+- **MiMo Code CLI (`mimo-cli`)**: Whitelist detection (prefers `~/.mimocode/bin/mimo` over broken npm shims), headless routing (`mimo run --dangerously-skip-permissions`), Terminal Orchestra PTY + `@Mimo` dispatch, Settings → Models/MCP/Skills read-only scan tab, Xiaomi brand logo, and D19 doc sync.
+- **Cursor Agent CLI recommended:** Added to default Tools/onboarding recommendations (`cursor-agent` / `agent`); brand logo and install guide.
+- **Claude Code CC Switch repair:** Settings → Models (Claude Code tab) can detect and repair broken CC Switch config paths via sidecar API.
 
 ### Changed
 
 - **Cursor CLI detection:** Tools scan now targets **Cursor Agent CLI** (`cursor-agent` / `agent` from `curl cursor.com/install`) instead of the IDE shell launcher (`cursor`).
-- **Cursor Agent CLI recommended:** Added to default Tools/onboarding recommendations with brand logo.
 
 ### Fixed
 
 - **Terminal session stats:** Background terminal count now reflects Clutch-managed PTY sessions only (no longer inflates with every system-wide CLI process).
 - **Cursor Terminal Orchestra:** `@Cursor` dispatch is recognized in Orchestrator Bar (matches Cursor Agent CLI).
 - **Chat thinking row:** Loading bubble matches the height of the preceding user message bubble (not the full row).
+- **Homebrew cask:** `depends_on macos` uses symbol form (`:sonoma`) for current Homebrew.
 
 ## [1.1.1] - 2026-07-04
 
