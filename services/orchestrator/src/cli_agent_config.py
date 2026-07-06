@@ -19,11 +19,15 @@ from typing import Any
 
 from src.credentials.claude_code import (
     _CC_SWITCH_DIR,
+    diagnose_claude_code_env,
     read_claude_code_env,
+    repair_claude_code_settings,
     resolve_anthropic_api_model,
+    sanitize_claude_code_model_id,
 )
+from src.tools_status import resolve_tool_binary
 
-_SUPPORTED_AGENT_TYPES = frozenset({"claude-cli", "opencode-cli"})
+_SUPPORTED_AGENT_TYPES = frozenset({"claude-cli", "opencode-cli", "mimo-cli"})
 
 _CC_SWITCH_APP_BY_AGENT: dict[str, str] = {
     "claude-cli": "claude",
@@ -33,7 +37,10 @@ _CC_SWITCH_APP_BY_AGENT: dict[str, str] = {
 _CC_SWITCH_ACTIVE_KEY_BY_APP: dict[str, str] = {
     "claude": "currentProviderClaude",
     "opencode": "currentProviderOpencode",
+    "codex": "currentProviderCodex",
 }
+
+_CODEX_CONFIG_PATH = Path.home() / ".codex" / "config.toml"
 
 _OPENCODE_CONFIG_CANDIDATES = (
     Path.home() / ".config" / "opencode" / "opencode.json",
@@ -42,6 +49,14 @@ _OPENCODE_CONFIG_CANDIDATES = (
 
 _OPENCODE_AUTH_PATH = Path.home() / ".local" / "share" / "opencode" / "auth.json"
 _OPENCODE_MODEL_STATE_PATH = Path.home() / ".local" / "state" / "opencode" / "model.json"
+
+_MIMOCODE_CONFIG_CANDIDATES = (
+    Path.home() / ".config" / "mimocode" / "mimocode.json",
+    Path.home() / ".config" / "mimocode" / "mimocode.jsonc",
+)
+
+_MIMOCODE_AUTH_PATH = Path.home() / ".local" / "share" / "mimocode" / "auth.json"
+_MIMOCODE_MODEL_STATE_PATH = Path.home() / ".local" / "state" / "mimocode" / "model.json"
 
 _ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*m")
 
@@ -56,6 +71,8 @@ def normalize_cli_agent_type(raw: str) -> str:
         return "claude-cli"
     if key in {"opencode", "opencode-cli"}:
         return "opencode-cli"
+    if key in {"mimo", "mimo-cli", "mimocode"}:
+        return "mimo-cli"
     raise ValueError(f"Unsupported agent type: {raw}")
 
 
@@ -179,7 +196,7 @@ def _model_from_cc_switch_config(app_type: str, config: dict[str, Any]) -> str |
         ):
             value = env.get(key)
             if value:
-                return str(value)
+                return sanitize_claude_code_model_id(str(value))
     if app_type == "opencode":
         model = config.get("model")
         if model:
@@ -199,7 +216,7 @@ def _model_from_cc_switch_config(app_type: str, config: dict[str, Any]) -> str |
                 if line.strip().startswith("model ="):
                     parts = line.split("=", 1)
                     if len(parts) == 2:
-                        return parts[1].strip().strip('"').strip("'")
+                        return sanitize_claude_code_model_id(parts[1].strip().strip('"').strip("'"))
     return None
 
 
@@ -414,7 +431,15 @@ def activate_cc_switch_provider(provider_id: str, *, app_type: str) -> dict[str,
             "ok": False,
             "message": detail or "cc-switch provider switch failed.",
         }
-    return {"ok": True, "message": "Provider switched via cc-switch."}
+    repair: dict[str, Any] | None = None
+    if app_type == "claude":
+        repair = repair_claude_code_settings()
+    elif app_type == "codex":
+        repair = repair_codex_config()
+    message = "Provider switched via cc-switch."
+    if repair and repair.get("changes"):
+        message = f"{message} Applied config repair: {'; '.join(repair['changes'])}"
+    return {"ok": True, "message": message, "repair": repair}
 
 
 def _annotate_active_providers(providers: list[dict[str, Any]], active_id: str | None) -> None:
@@ -431,6 +456,7 @@ def scan_claude_code_models() -> dict[str, Any]:
     claude_env = read_claude_code_env()
     active_model = resolve_anthropic_api_model()
     base_url = claude_env.get("ANTHROPIC_BASE_URL")
+    config_issues = diagnose_claude_code_env(claude_env)
 
     return {
         "agent_type": "claude-cli",
@@ -439,6 +465,8 @@ def scan_claude_code_models() -> dict[str, Any]:
         "active_provider_id": active_id,
         "active_model_id": active_model,
         "base_url": base_url,
+        "config_issues": config_issues,
+        "config_repair_available": bool(config_issues),
         "credential_source": "cc_switch" if active_id else ("claude_settings" if claude_env else None),
         "providers": providers,
         "settings_path": str(Path.home() / ".claude" / "settings.json"),
@@ -448,6 +476,103 @@ def scan_claude_code_models() -> dict[str, Any]:
             if key.startswith("ANTHROPIC_") or key.startswith("CLAUDE_")
         },
     }
+
+
+def _codex_local_proxy_reachable(base_url: str) -> bool:
+    if "127.0.0.1" not in base_url and "localhost" not in base_url:
+        return True
+    try:
+        import urllib.error
+        import urllib.request
+
+        probe = base_url.rstrip("/") + "/models"
+        req = urllib.request.Request(probe, method="GET")
+        with urllib.request.urlopen(req, timeout=2) as resp:
+            return 200 <= resp.status < 500
+    except Exception:
+        return False
+
+
+def _direct_codex_base_url_from_cc_switch() -> str | None:
+    active_id = read_cc_switch_active_provider_id("codex")
+    if not active_id:
+        return None
+    db_path = _CC_SWITCH_DIR / "cc-switch.db"
+    if not db_path.is_file():
+        return None
+    try:
+        conn = sqlite3.connect(str(db_path))
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT settings_config FROM providers WHERE id = ? AND app_type = ?",
+            (active_id, "codex"),
+        )
+        row = cursor.fetchone()
+        conn.close()
+    except Exception:
+        return None
+    if not row or not row[0]:
+        return None
+    settings_str = str(row[0])
+    if "apihub.agnes-ai.com" in settings_str:
+        return "https://apihub.agnes-ai.com/v1"
+    return None
+
+
+def repair_codex_config() -> dict[str, Any]:
+    """Fix Codex config when CC Switch local proxy is down but a direct gateway URL is known."""
+    if not _CODEX_CONFIG_PATH.is_file():
+        return {"ok": False, "message": "Codex config.toml not found.", "changes": []}
+    try:
+        text = _CODEX_CONFIG_PATH.read_text(encoding="utf-8")
+    except OSError as exc:
+        return {"ok": False, "message": f"Failed to read config.toml: {exc}", "changes": []}
+
+    changes: list[str] = []
+    lines = text.splitlines()
+    new_lines: list[str] = []
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("base_url =") and (
+            "127.0.0.1" in stripped or "localhost" in stripped
+        ):
+            current = stripped.split("=", 1)[1].strip().strip('"').strip("'")
+            if not _codex_local_proxy_reachable(current):
+                direct = _direct_codex_base_url_from_cc_switch()
+                if direct:
+                    indent = line[: len(line) - len(line.lstrip())]
+                    new_lines.append(f'{indent}base_url = "{direct}"')
+                    changes.append(f"base_url: {current} → {direct} (CC Switch proxy unreachable)")
+                    continue
+        new_lines.append(line)
+
+    if not changes:
+        return {"ok": True, "message": "Codex config already looks correct.", "changes": []}
+
+    try:
+        _CODEX_CONFIG_PATH.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+    except OSError as exc:
+        return {"ok": False, "message": f"Failed to write config.toml: {exc}", "changes": changes}
+    return {
+        "ok": True,
+        "message": "Repaired Codex config for CC Switch compatibility.",
+        "changes": changes,
+    }
+
+
+def repair_cli_agent_config(agent_type: str) -> dict[str, Any]:
+    key = agent_type.strip().lower()
+    if key in {"claude", "claude-cli"}:
+        return repair_claude_code_settings()
+    if key in {"codex", "codex-cli"}:
+        return repair_codex_config()
+    try:
+        normalized = normalize_cli_agent_type(agent_type)
+    except ValueError:
+        return {"ok": False, "message": f"Config repair is not supported for {agent_type}.", "changes": []}
+    if normalized == "claude-cli":
+        return repair_claude_code_settings()
+    return {"ok": False, "message": f"Config repair is not supported for {normalized}.", "changes": []}
 
 
 def _read_opencode_config_paths() -> list[Path]:
@@ -675,10 +800,214 @@ def scan_opencode_models(*, workspace_path: str | None = None) -> dict[str, Any]
     }
 
 
+def _read_mimocode_config_paths() -> list[Path]:
+    paths: list[Path] = []
+    for candidate in _MIMOCODE_CONFIG_CANDIDATES:
+        if candidate.is_file():
+            paths.append(candidate)
+    return paths
+
+
+def _read_mimocode_config_merged(*, workspace_path: str | None = None) -> dict[str, Any]:
+    merged: dict[str, Any] = {}
+    for path in _read_mimocode_config_paths():
+        if path.suffix == ".jsonc":
+            merged.update(_read_jsonc_file(path))
+        else:
+            merged.update(_read_json_file(path))
+    if workspace_path:
+        project_cfg = Path(workspace_path) / "mimocode.json"
+        if project_cfg.is_file():
+            merged = {**merged, **_read_json_file(project_cfg)}
+    return merged
+
+
+def _read_mimocode_auth_providers() -> list[dict[str, Any]]:
+    if not _MIMOCODE_AUTH_PATH.is_file():
+        return []
+    data = _read_json_file(_MIMOCODE_AUTH_PATH)
+    providers: list[dict[str, Any]] = []
+    for provider_id, cfg in data.items():
+        if not isinstance(cfg, dict):
+            continue
+        providers.append(
+            {
+                "id": str(provider_id),
+                "name": str(provider_id),
+                "auth_type": str(cfg.get("type") or "api"),
+                "has_credential": bool(cfg.get("key") or cfg.get("token")),
+            }
+        )
+    return providers
+
+
+def _read_mimocode_active_model_ref() -> str | None:
+    if not _MIMOCODE_MODEL_STATE_PATH.is_file():
+        return None
+    data = _read_json_file(_MIMOCODE_MODEL_STATE_PATH)
+    recent = data.get("recent")
+    if not isinstance(recent, list) or not recent:
+        return None
+    first = recent[0]
+    if not isinstance(first, dict):
+        return None
+    provider_id = first.get("providerID")
+    model_id = first.get("modelID")
+    if provider_id and model_id:
+        return f"{provider_id}/{model_id}"
+    return None
+
+
+_MIMOCODE_CLI_MODELS_CACHE: tuple[float, list[dict[str, Any]]] | None = None
+_MIMOCODE_CLI_MODELS_CACHE_TTL_S = 300.0
+
+
+def _list_mimo_models_via_cli(*, use_cache: bool = True) -> list[dict[str, Any]]:
+    global _MIMOCODE_CLI_MODELS_CACHE
+    now = time.monotonic()
+    if use_cache and _MIMOCODE_CLI_MODELS_CACHE is not None:
+        cached_at, cached_models = _MIMOCODE_CLI_MODELS_CACHE
+        if now - cached_at < _MIMOCODE_CLI_MODELS_CACHE_TTL_S:
+            return list(cached_models)
+
+    mimo_bin = resolve_tool_binary("mimo-cli")
+    if not mimo_bin:
+        return []
+    try:
+        completed = subprocess.run(
+            [mimo_bin, "models"],
+            capture_output=True,
+            text=True,
+            timeout=15,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return []
+    if completed.returncode != 0:
+        return []
+
+    models: list[dict[str, Any]] = []
+    for raw_line in completed.stdout.splitlines():
+        line = _ANSI_ESCAPE_RE.sub("", raw_line).strip()
+        if not line or line.lower().startswith("error"):
+            continue
+        if "migration" in line.lower() or "database" in line.lower():
+            continue
+        if "/" not in line:
+            continue
+        provider, model_id = line.split("/", 1)
+        models.append(
+            {
+                "provider": provider,
+                "model_id": model_id,
+                "name": model_id,
+                "model_ref": line,
+                "is_builtin": provider in {"mimo", "xiaomi"},
+            }
+        )
+    _MIMOCODE_CLI_MODELS_CACHE = (now, models)
+    return models
+
+
+def activate_mimo_model(model_ref: str) -> dict[str, Any]:
+    normalized = model_ref.strip()
+    if "/" not in normalized:
+        return {"ok": False, "message": "model_ref must be provider/model (e.g. xiaomi/mimo-v2.5-pro)."}
+    provider_id, model_id = normalized.split("/", 1)
+    if not provider_id or not model_id:
+        return {"ok": False, "message": "model_ref must be provider/model."}
+
+    config_dir = Path.home() / ".config" / "mimocode"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    config_paths = _read_mimocode_config_paths()
+    target = config_paths[0] if config_paths else (config_dir / "mimocode.jsonc")
+    if target.suffix == ".jsonc":
+        existing = _read_jsonc_file(target)
+    else:
+        existing = _read_json_file(target)
+    existing["model"] = normalized
+    target.write_text(json.dumps(existing, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+    state_dir = _MIMOCODE_MODEL_STATE_PATH.parent
+    state_dir.mkdir(parents=True, exist_ok=True)
+    state = _read_json_file(_MIMOCODE_MODEL_STATE_PATH)
+    recent = state.get("recent") if isinstance(state.get("recent"), list) else []
+    entry = {"providerID": provider_id, "modelID": model_id}
+    recent = [entry] + [
+        item
+        for item in recent
+        if not (
+            isinstance(item, dict)
+            and item.get("providerID") == provider_id
+            and item.get("modelID") == model_id
+        )
+    ]
+    state["recent"] = recent[:10]
+    variants = state.get("variant") if isinstance(state.get("variant"), dict) else {}
+    variants[normalized] = variants.get(normalized, "default")
+    state["variant"] = variants
+    _MIMOCODE_MODEL_STATE_PATH.write_text(json.dumps(state, ensure_ascii=False) + "\n", encoding="utf-8")
+
+    return {"ok": True, "message": f"MiMo Code default model set to {normalized}."}
+
+
+def scan_mimo_models(*, workspace_path: str | None = None) -> dict[str, Any]:
+    config_paths = _read_mimocode_config_paths()
+    merged = _read_mimocode_config_merged(workspace_path=workspace_path)
+    provider_block = merged.get("provider") if isinstance(merged.get("provider"), dict) else {}
+    catalog = _catalog_from_opencode_config(provider_block)
+
+    auth_providers = _read_mimocode_auth_providers()
+    available_models = _list_mimo_models_via_cli()
+    seen_refs = {item.get("model_ref") for item in catalog if item.get("model_ref")}
+    for item in available_models:
+        model_ref = item.get("model_ref")
+        if model_ref and model_ref not in seen_refs:
+            catalog.append(
+                {
+                    "provider": item["provider"],
+                    "model_id": item["model_id"],
+                    "name": item["name"],
+                    "model_ref": model_ref,
+                    "is_builtin": item.get("is_builtin", False),
+                }
+            )
+            seen_refs.add(model_ref)
+
+    active_model = _read_mimocode_active_model_ref() or merged.get("model")
+    if not active_model and catalog:
+        first_ref = catalog[0].get("model_ref")
+        active_model = first_ref or catalog[0]["model_id"]
+
+    mimo_bin = resolve_tool_binary("mimo-cli")
+
+    return {
+        "agent_type": "mimo-cli",
+        "cc_switch_found": False,
+        "cc_switch_cli_available": False,
+        "active_provider_id": None,
+        "active_model_id": str(active_model) if active_model else None,
+        "default_agent": merged.get("default_agent"),
+        "providers": [],
+        "auth_providers": auth_providers,
+        "available_models": available_models,
+        "catalog": catalog,
+        "config_paths": [str(path) for path in config_paths],
+        "auth_path": str(_MIMOCODE_AUTH_PATH) if _MIMOCODE_AUTH_PATH.is_file() else None,
+        "model_state_path": str(_MIMOCODE_MODEL_STATE_PATH)
+        if _MIMOCODE_MODEL_STATE_PATH.is_file()
+        else None,
+        "project_config_path": str(Path(workspace_path) / "mimocode.json") if workspace_path else None,
+        "mimo_cli_available": mimo_bin is not None,
+    }
+
+
 def scan_cli_models(agent_type: str, *, workspace_path: str | None = None) -> dict[str, Any]:
     normalized = normalize_cli_agent_type(agent_type)
     if normalized == "claude-cli":
         return scan_claude_code_models()
+    if normalized == "mimo-cli":
+        return scan_mimo_models(workspace_path=workspace_path)
     return scan_opencode_models(workspace_path=workspace_path)
 
 
@@ -706,6 +1035,20 @@ def _skill_roots_for_agent(agent_type: str, *, workspace_path: str | None = None
                 [
                     Path(workspace_path) / ".opencode" / "skills",
                     Path(workspace_path) / "opencode" / "skills",
+                ]
+            )
+    elif agent_type == "mimo-cli":
+        roots.extend(
+            [
+                Path.home() / ".mimocode" / "skills",
+                Path.home() / ".config" / "mimocode" / "skills",
+            ]
+        )
+        if workspace_path:
+            roots.extend(
+                [
+                    Path(workspace_path) / ".mimocode" / "skills",
+                    Path(workspace_path) / "mimocode" / "skills",
                 ]
             )
     return [root for root in roots if root.is_dir()]
@@ -907,10 +1250,48 @@ def _mcp_from_opencode_config() -> list[dict[str, Any]]:
     return servers
 
 
+def _mcp_from_mimocode_config() -> list[dict[str, Any]]:
+    servers: list[dict[str, Any]] = []
+    for path in _read_mimocode_config_paths():
+        data = _read_json_file(path) if path.suffix != ".jsonc" else _read_jsonc_file(path)
+        mcp_block = data.get("mcp")
+        if isinstance(mcp_block, dict):
+            for name, cfg in mcp_block.items():
+                if not isinstance(cfg, dict):
+                    continue
+                command = cfg.get("command") or cfg.get("url") or cfg.get("endpoint")
+                if not command:
+                    continue
+                servers.append(
+                    {
+                        "name": str(name),
+                        "transport": str(cfg.get("type") or cfg.get("transport") or "stdio"),
+                        "endpoint": str(command),
+                        "source": str(path),
+                    }
+                )
+    return servers
+
+
 def scan_cli_mcp(agent_type: str, *, workspace_path: str | None = None) -> dict[str, Any]:
     normalized = normalize_cli_agent_type(agent_type)
     if normalized == "claude-cli":
         servers = _mcp_from_claude_json(workspace_path=workspace_path)
+    elif normalized == "mimo-cli":
+        servers = _mcp_from_mimocode_config()
+        if workspace_path:
+            project_mcp = Path(workspace_path) / ".mcp.json"
+            if project_mcp.is_file():
+                data = _read_json_file(project_mcp)
+                seen = {f"{s['name']}:{s['endpoint']}" for s in servers}
+                extra: list[dict[str, Any]] = []
+                _collect_mcp_servers_from_block(
+                    data.get("mcpServers"),
+                    source=str(project_mcp),
+                    seen=seen,
+                    servers=extra,
+                )
+                servers.extend(extra)
     else:
         servers = _mcp_from_opencode_config()
         if workspace_path:
@@ -951,6 +1332,8 @@ def activate_cli_provider(agent_type: str, provider_id: str) -> dict[str, Any]:
 
 def activate_cli_model(agent_type: str, model_ref: str) -> dict[str, Any]:
     normalized = normalize_cli_agent_type(agent_type)
+    if normalized == "mimo-cli":
+        return activate_mimo_model(model_ref)
     if normalized != "opencode-cli":
         return {"ok": False, "message": f"Model switching is not supported for {normalized}."}
     return activate_opencode_model(model_ref)

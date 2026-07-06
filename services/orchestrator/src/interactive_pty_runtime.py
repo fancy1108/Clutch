@@ -35,6 +35,8 @@ CLI_BINARY_MAP: dict[str, str] = {
     "claude": "claude",
     "opencode-cli": "opencode",
     "opencode": "opencode",
+    "mimo-cli": "mimo",
+    "mimo": "mimo",
     "antigravity-cli": "agy",
     "agy-cli": "agy",
     "agy": "agy",

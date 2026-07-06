@@ -95,6 +95,13 @@ CLI_CANDIDATES: list[dict[str, str]] = [
         "icon": "terminal",
     },
     {
+        "id": "mimo-cli",
+        "name": "MiMo Code CLI",
+        "binary": "mimo",
+        "description": "Xiaomi MiMo Code terminal-native AI coding agent (OpenCode fork).",
+        "icon": "terminal",
+    },
+    {
         "id": "amazon-q-cli",
         "name": "Amazon Q Developer CLI",
         "binary": "q",
@@ -186,6 +193,7 @@ RECOMMENDED_CLI_IDS: frozenset[str] = frozenset(
     {
         "codebuddy-cli",
         "cursor-cli",
+        "mimo-cli",
         "opencode-cli",
         "claude-cli",
         "ollama-cli",
@@ -204,6 +212,7 @@ _CLI_EXTRA_BIN_DIRS: tuple[Path, ...] = (
     Path.home() / ".local" / "bin",
     Path.home() / ".npm-global" / "bin",
     Path.home() / ".opencode" / "bin",
+    Path.home() / ".mimocode" / "bin",
     Path.home() / ".openclaw" / "bin",
     Path.home() / "bin",
     Path("/opt/homebrew/bin"),
@@ -275,20 +284,59 @@ def _resolve_path(tool_id: str) -> str | None:
     return _client_path(cand["app_name"])
 
 
+def _mimo_preferred_binary() -> str | None:
+    """Prefer the official curl installer over the npm wrapper (postinstall may be blocked)."""
+    preferred = Path.home() / ".mimocode" / "bin" / "mimo"
+    if preferred.is_file() and os.access(preferred, os.X_OK):
+        return str(preferred)
+    return None
+
+
+def _is_mimo_npm_shim(path: str) -> bool:
+    normalized = path.replace("\\", "/")
+    return "@mimo-ai/cli" in normalized or normalized.endswith("/.bin/mimo")
+
+
+def _should_prefer_mimocode_binary(resolved: str, preferred: str) -> bool:
+    if _is_mimo_npm_shim(resolved):
+        return True
+    try:
+        if os.path.samefile(resolved, preferred):
+            return False
+    except OSError:
+        pass
+    try:
+        # npm ships a small launcher script; curl install is the full binary.
+        return Path(resolved).stat().st_size < 20_000
+    except OSError:
+        return False
+
+
 def resolve_tool_binary(tool_id: str) -> str | None:
     """Resolve CLI binary path, including common install dirs when PATH is narrow."""
     direct = _resolve_path(tool_id)
-    if direct:
+    if direct and tool_id != "mimo-cli":
         return direct
     cand = _candidate_by_id(tool_id)
-    if cand is None or "binary" not in cand:
-        return None
-    for binary in _binary_names(cand):
-        for directory in _extra_cli_search_dirs():
-            candidate = directory / binary
-            if candidate.is_file() and os.access(candidate, os.X_OK):
-                return str(candidate)
-    return None
+    resolved = direct
+    if cand is not None and "binary" in cand:
+        if not resolved:
+            for binary in _binary_names(cand):
+                for directory in _extra_cli_search_dirs():
+                    candidate = directory / binary
+                    if candidate.is_file() and os.access(candidate, os.X_OK):
+                        resolved = str(candidate)
+                        break
+                if resolved:
+                    break
+    if tool_id == "mimo-cli":
+        preferred = _mimo_preferred_binary()
+        if preferred:
+            if not resolved:
+                return preferred
+            if _should_prefer_mimocode_binary(resolved, preferred):
+                return preferred
+    return resolved
 
 
 def tool_available_for_routing(tool_id: str) -> bool:

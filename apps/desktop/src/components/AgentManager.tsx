@@ -1024,7 +1024,7 @@ export function AgentManager({
                    </div>
                  )}
 
-                {(agentType === 'claude-cli' || agentType === 'opencode-cli') && (
+                {(agentType === 'claude-cli' || agentType === 'opencode-cli' || agentType === 'mimo-cli') && (
                   <AgentCliModelHint agentType={agentType} />
                 )}
 

@@ -3,6 +3,7 @@ import type { DispatchLogEntry, DispatchPreviewPayload, PtyLane } from '@clutch/
 export const CLI_DISPLAY: Record<string, string> = {
   'claude-cli': 'Claude Code',
   'opencode-cli': 'OpenCode',
+  'mimo-cli': 'Mimo',
   'antigravity-cli': 'Antigravity CLI',
   'codex-cli': 'Codex CLI',
   'aider-cli': 'Aider CLI',

@@ -36,6 +36,8 @@ export function resolveCliToolFromEngineHint(engineHint: string): string | null 
     ['claude cli', 'claude-cli'],
     ['opencode', 'opencode-cli'],
     ['open code', 'opencode-cli'],
+    ['mimo code', 'mimo-cli'],
+    ['mimocode', 'mimo-cli'],
     ['codex cli', 'codex-cli'],
     ['openai codex', 'codex-cli'],
     ['aider', 'aider-cli'],

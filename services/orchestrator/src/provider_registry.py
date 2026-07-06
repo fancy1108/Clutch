@@ -41,6 +41,11 @@ _REGISTRY: dict[str, ProviderSpec] = {
         RuntimeStrategy.SHELL_EXEC,
         exec_template='opencode run --auto "{prompt}"',
     ),
+    "mimo-cli": ProviderSpec(
+        "mimo-cli",
+        RuntimeStrategy.SHELL_EXEC,
+        exec_template='mimo run --dangerously-skip-permissions "{prompt}"',
+    ),
     "codebuddy-cli": ProviderSpec(
         "codebuddy-cli",
         RuntimeStrategy.SHELL_EXEC,

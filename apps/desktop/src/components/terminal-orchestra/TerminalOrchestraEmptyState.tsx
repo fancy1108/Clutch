@@ -32,7 +32,7 @@ export const TerminalOrchestraEmptyState: React.FC<TerminalOrchestraEmptyStatePr
             {t('Example prompts')}
           </p>
           <p className="font-mono text-[12px] text-on-surface">
-            <span className="text-primary">@Claude Code</span> {t('Summarize this repo and list open tasks')}
+            <span className="text-primary">@Mimo</span> {t('Summarize this repo and list open tasks')}
           </p>
           <p className="font-mono text-[12px] text-on-surface">
             <span className="text-primary">@OpenCode</span> {t('from')}{' '}

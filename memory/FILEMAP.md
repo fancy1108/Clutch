@@ -131,7 +131,7 @@
 | 终端模式 xterm 视图 | `components/ChatTerminalView.tsx` |
 | 对话/终端模式切换状态 | `services/workspaceViewMode.ts` |
 | 工作流 Chat 步骤 / Agent 类型解析 | `services/workflowAgentSteps.ts` |
-| Agent / 工具品牌 Logo | `services/brandLogos.ts` · `components/BrandLogo.tsx` |
+| Agent / 工具品牌 Logo | `services/brandLogos.ts` · `components/BrandLogo.tsx` · `assets/tool-logos/`（含 `mimo.svg`） |
 | 右侧面板（Overview/Files/Flow/Changes/Terminal） | `components/RightPanel.tsx` |
 | Terminal 日志子面板 | `components/TerminalPanel.tsx` |
 | 文件预览浮层 | `App.tsx`（`previewFile`） |
@@ -144,7 +144,8 @@
 | 画布 ↔ compiler 转换（D9） | `services/workflowFormat.ts` |
 | 工作流 Sidecar API 客户端 | `services/workflowApi.ts` |
 | Agent 角色配置 | `components/AgentManager.tsx` |
-| Agent CLI 安装指引与推荐列表 | `services/cliInstallGuides.ts` · 后端白名单 `services/orchestrator/src/tools_status.py` · 路由 `engine_router.py`（文档清单见 D19） |
+| Agent CLI 安装指引与推荐列表 | `services/cliInstallGuides.ts` · 后端白名单 `services/orchestrator/src/tools_status.py` · 路由 `engine_router.py` · 派发目录 `terminal_cli_catalog.py`（含 `mimo-cli`；文档清单见 D19） |
+| MiMo Code CLI 模型/MCP/Skills 扫描 | `services/orchestrator/src/cli_agent_config.py`（`scan_mimo_models`） |
 | 内置 Clutch Agent 定义与合并 | `services/builtinAgent.ts` |
 | Agent Registry API | `services/agentApi.ts` |
 | AI 工具连接状态 | `components/AiToolsManager.tsx` |

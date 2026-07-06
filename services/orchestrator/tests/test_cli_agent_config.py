@@ -14,6 +14,7 @@ from src import cli_agent_config as cfg
 def test_normalize_cli_agent_type_aliases() -> None:
     assert cfg.normalize_cli_agent_type("claude-cli") == "claude-cli"
     assert cfg.normalize_cli_agent_type("opencode") == "opencode-cli"
+    assert cfg.normalize_cli_agent_type("mimo") == "mimo-cli"
     with pytest.raises(ValueError):
         cfg.normalize_cli_agent_type("codex-cli")
 
@@ -212,6 +213,19 @@ def test_install_cc_switch_cli_copies_cached_bundle(tmp_path: Path, monkeypatch:
     assert target.is_file()
 
 
+def test_scan_claude_code_models_reports_config_issues(monkeypatch: pytest.MonkeyPatch) -> None:
+    env = {
+        "ANTHROPIC_BASE_URL": "https://apihub.agnes-ai.com/v1",
+        "ANTHROPIC_DEFAULT_SONNET_MODEL": "agnes-2.0-flash",
+    }
+    monkeypatch.setattr(cfg, "read_claude_code_env", lambda: env)
+    monkeypatch.setattr(cfg, "resolve_anthropic_api_model", lambda: "agnes-2.0-flash")
+    monkeypatch.setattr(cfg, "_CC_SWITCH_DIR", Path("/nonexistent/.cc-switch"))
+    payload = cfg.scan_claude_code_models()
+    assert payload["config_repair_available"] is True
+    assert any(issue["code"] == "claude_base_url_double_v1" for issue in payload["config_issues"])
+
+
 def test_activate_cc_switch_provider_without_cli(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(cfg, "resolve_cc_switch_cli_path", lambda: None)
     monkeypatch.setattr(cfg, "_CC_SWITCH_DIR", Path("/nonexistent/.cc-switch"))
@@ -271,3 +285,28 @@ def test_mcp_from_cc_switch_marks_disabled_entries(tmp_path: Path, monkeypatch: 
     assert len(servers) == 1
     assert servers[0]["name"] == "node_repl"
     assert servers[0]["enabled_for_agent"] is False
+
+
+def test_scan_mimo_models_reads_cli_catalog(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    mimo_bin = tmp_path / "mimo"
+    mimo_bin.write_text("#!/bin/sh\necho 'xiaomi/mimo-v2.5-pro'\n", encoding="utf-8")
+    mimo_bin.chmod(0o755)
+    monkeypatch.setenv("PATH", str(tmp_path))
+    monkeypatch.setattr(
+        cfg,
+        "_list_mimo_models_via_cli",
+        lambda **kwargs: [
+            {
+                "provider": "xiaomi",
+                "model_id": "mimo-v2.5-pro",
+                "name": "mimo-v2.5-pro",
+                "model_ref": "xiaomi/mimo-v2.5-pro",
+                "is_builtin": True,
+            }
+        ],
+    )
+
+    payload = cfg.scan_mimo_models()
+    assert payload["agent_type"] == "mimo-cli"
+    assert payload["mimo_cli_available"] is True
+    assert any(item["model_ref"] == "xiaomi/mimo-v2.5-pro" for item in payload["catalog"])

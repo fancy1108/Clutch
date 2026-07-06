@@ -89,6 +89,14 @@ describe('terminalOrchestraUtils', () => {
     });
   });
 
+  it('resolves @Mimo via dispatch target', () => {
+    const agents = [{ id: 'mimo-1', name: 'Mimo', dispatchTarget: 'Mimo' }];
+    expect(parseInputAgentMention('@Mimo 你好', agents)).toEqual({
+      agentId: 'mimo-1',
+      name: 'Mimo',
+    });
+  });
+
   it('does not guess when multiple agents share the same dispatch target', () => {
     const agents = [
       { id: 'oc-1', name: 'Alpha', dispatchTarget: 'OpenCode' },

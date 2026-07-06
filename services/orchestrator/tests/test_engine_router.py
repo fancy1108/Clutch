@@ -594,6 +594,24 @@ def test_load_custom_cli_configs_ignores_opencode_shell_override(tmp_path, monke
     assert CLI_ROUTING_CONFIGS["opencode-cli"]["prompt_flag"] == ""
 
 
+def test_load_custom_cli_configs_ignores_mimo_shell_override(tmp_path, monkeypatch) -> None:
+    """Bad auto-config must not override curated MiMo Code headless routing."""
+    from src.engine_router import CLI_ROUTING_CONFIGS, load_custom_cli_configs
+
+    custom = tmp_path / "custom_clis.json"
+    custom.write_text(
+        '{"mimo-cli": {"tool_id": "mimo-cli", "binary_name": "mimo", '
+        '"conversation_mode": "resume_or_new", "extra_args": ["run"], "prompt_flag": "--prompt"}}',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr("src.storage_helper.get_storage_dir", lambda: tmp_path)
+
+    loaded = load_custom_cli_configs()
+    assert "mimo-cli" not in loaded
+    assert CLI_ROUTING_CONFIGS["mimo-cli"]["extra_args"] == ["run", "--dangerously-skip-permissions"]
+    assert CLI_ROUTING_CONFIGS["mimo-cli"]["prompt_flag"] == ""
+
+
 def test_route_engine_ollama_not_connected(monkeypatch) -> None:
     monkeypatch.setattr(
         "src.engine_router.list_agents",

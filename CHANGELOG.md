@@ -10,6 +10,10 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ## [Unreleased]
 
+### Added
+
+- **MiMo Code CLI (`mimo-cli`)**: Whitelist detection, headless routing (`mimo run --dangerously-skip-permissions`), Terminal Orchestra PTY + `@Mimo` dispatch, Settings → Models/MCP/Skills read-only scan tab, Xiaomi brand logo, and D19 doc sync (README, FILEMAP, site).
+
 ### Changed
 
 - **Cursor CLI detection:** Tools scan now targets **Cursor Agent CLI** (`cursor-agent` / `agent` from `curl cursor.com/install`) instead of the IDE shell launcher (`cursor`).

@@ -168,6 +168,9 @@ export const McpServerHub: React.FC = () => {
         {capabilityTab === 'opencode-cli' ? (
           <AgentCliCapabilityPreview agentType="opencode-cli" kind="mcp" />
         ) : null}
+        {capabilityTab === 'mimo-cli' ? (
+          <AgentCliCapabilityPreview agentType="mimo-cli" kind="mcp" />
+        ) : null}
         {capabilityTab === 'more' ? <MoreAgentsComingSoon /> : null}
 
         {capabilityTab === 'clutch' ? (

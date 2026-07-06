@@ -54,6 +54,11 @@ export const CLI_INSTALL_GUIDES: Record<string, CliInstallGuide> = {
     desc: 'Install OpenCode AI coding agent globally via npm (binary: opencode).',
     url: 'https://opencode.ai',
   },
+  'mimo-cli': {
+    cmd: 'curl -fsSL https://mimo.xiaomi.com/install | bash',
+    desc: 'Install MiMo Code CLI (binary: mimo). Alternative: npm install -g @mimo-ai/cli',
+    url: 'https://mimo.xiaomi.com/mimocode',
+  },
   'amazon-q-cli': {
     cmd: 'brew install amazon-q',
     desc: 'Install legacy Amazon Q Developer CLI (binary: q). Superseded by Kiro CLI.',
@@ -116,7 +121,7 @@ export const CLI_INSTALL_GUIDES: Record<string, CliInstallGuide> = {
 };
 
 /** CLIs tested in Clutch — primary install recommendations (Settings + onboarding). */
-export const RECOMMENDED_CLI_IDS = ['codebuddy-cli', 'cursor-cli', 'opencode-cli', 'claude-cli', 'ollama-cli', 'codex-cli', 'agy-cli'] as const;
+export const RECOMMENDED_CLI_IDS = ['codebuddy-cli', 'cursor-cli', 'mimo-cli', 'opencode-cli', 'claude-cli', 'ollama-cli', 'codex-cli', 'agy-cli'] as const;
 
 export const ONBOARDING_RECOMMENDED_CLI_IDS = RECOMMENDED_CLI_IDS;
 

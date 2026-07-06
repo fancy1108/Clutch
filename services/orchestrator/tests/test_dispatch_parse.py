@@ -53,3 +53,16 @@ def test_cold_start_no_focus():
 
 def test_missing_agent_returns_none():
     assert parse_dispatch_mentions("hello world", file_meta_resolver=_meta) is None
+
+
+def test_mimo_short_mention():
+    preview = parse_dispatch_mentions("@Mimo 你好", file_meta_resolver=_meta)
+    assert preview is not None
+    assert preview.target == "Mimo"
+    assert preview.task == "你好"
+
+
+def test_mimo_code_alias():
+    preview = parse_dispatch_mentions("@MiMo Code 总结项目", file_meta_resolver=_meta)
+    assert preview is not None
+    assert preview.target == "MiMo Code"

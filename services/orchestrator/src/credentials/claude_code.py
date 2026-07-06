@@ -73,6 +73,112 @@ def normalize_anthropic_base_url(base_url: str) -> str:
     return f"{base}/v1"
 
 
+def normalize_claude_code_cli_base_url(base_url: str) -> str:
+    """Claude Code CLI appends /v1/messages itself; strip a trailing /v1 to avoid /v1/v1/messages."""
+    base = base_url.rstrip("/")
+    if base.endswith("/v1"):
+        return base[:-3]
+    return base
+
+
+def sanitize_claude_code_model_id(model_id: str | None) -> str | None:
+    """Strip Claude Code's [1m] 1M-context suffix — third-party gateways (e.g. Agnes) do not accept it."""
+    if not model_id:
+        return None
+    text = str(model_id).strip()
+    if text.endswith("[1m]"):
+        return text[:-4]
+    return text
+
+
+_CLAUDE_MODEL_ENV_KEYS = (
+    "ANTHROPIC_DEFAULT_SONNET_MODEL_NAME",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+    "ANTHROPIC_MODEL",
+    "CLAUDE_CODE_SUBAGENT_MODEL",
+)
+
+
+def diagnose_claude_code_env(env: dict[str, str]) -> list[dict[str, str]]:
+    """Return user-visible config issues for Claude Code CLI env (CC Switch / settings.json)."""
+    issues: list[dict[str, str]] = []
+    base = str(env.get("ANTHROPIC_BASE_URL") or "").strip()
+    if base.rstrip("/").endswith("/v1"):
+        issues.append(
+            {
+                "code": "claude_base_url_double_v1",
+                "severity": "error",
+                "message": (
+                    "ANTHROPIC_BASE_URL ends with /v1. Claude Code appends /v1 again, "
+                    "so requests hit /v1/v1/messages and fail."
+                ),
+            }
+        )
+    for key in _CLAUDE_MODEL_ENV_KEYS:
+        value = env.get(key)
+        if value and str(value).strip().endswith("[1m]"):
+            issues.append(
+                {
+                    "code": "claude_model_1m_suffix",
+                    "severity": "error",
+                    "message": (
+                        f"{key} uses a [1m] suffix that third-party models (e.g. Agnes) do not support. "
+                        "Remove [1m] or run /model sonnet without the 1M option."
+                    ),
+                }
+            )
+            break
+    return issues
+
+
+def repair_claude_code_settings() -> dict[str, Any]:
+    """Fix CC Switch → Claude Code sync issues in ~/.claude/settings.json."""
+    if not _CLAUDE_SETTINGS.is_file():
+        return {"ok": False, "message": "Claude Code settings.json not found.", "changes": []}
+    try:
+        data = json.loads(_CLAUDE_SETTINGS.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        return {"ok": False, "message": f"Failed to read settings.json: {exc}", "changes": []}
+    if not isinstance(data, dict):
+        return {"ok": False, "message": "settings.json is not an object.", "changes": []}
+    env = data.get("env")
+    if not isinstance(env, dict):
+        return {"ok": False, "message": "No env block in settings.json.", "changes": []}
+
+    changes: list[str] = []
+    base = str(env.get("ANTHROPIC_BASE_URL") or "").strip()
+    if base:
+        fixed_base = normalize_claude_code_cli_base_url(base)
+        if fixed_base != base:
+            env["ANTHROPIC_BASE_URL"] = fixed_base
+            changes.append(f"ANTHROPIC_BASE_URL: {base} → {fixed_base}")
+
+    for key in _CLAUDE_MODEL_ENV_KEYS:
+        value = env.get(key)
+        if not value:
+            continue
+        fixed = sanitize_claude_code_model_id(str(value))
+        if fixed and fixed != value:
+            env[key] = fixed
+            changes.append(f"{key}: removed [1m] suffix")
+
+    if not changes:
+        return {"ok": True, "message": "Claude Code settings already look correct.", "changes": []}
+
+    data["env"] = env
+    try:
+        _CLAUDE_SETTINGS.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    except OSError as exc:
+        return {"ok": False, "message": f"Failed to write settings.json: {exc}", "changes": changes}
+    return {
+        "ok": True,
+        "message": "Repaired Claude Code settings for CC Switch compatibility.",
+        "changes": changes,
+    }
+
+
 def resolve_anthropic_api_model() -> str | None:
     env = read_claude_code_env()
     cc_env = read_cc_switch_active_provider_env()
@@ -85,7 +191,7 @@ def resolve_anthropic_api_model() -> str | None:
         ):
             value = source.get(key)
             if value:
-                return str(value)
+                return sanitize_claude_code_model_id(str(value))
     return None
 
 
@@ -231,7 +337,9 @@ def bootstrap_cc_switch_credentials(router: LLMProviderRouter) -> None:
                 env = config.get("env") or {}
                 api_key = env.get("ANTHROPIC_AUTH_TOKEN")
                 base_url = env.get("ANTHROPIC_BASE_URL")
-                api_model = env.get("CLAUDE_CODE_SUBAGENT_MODEL") or env.get("ANTHROPIC_DEFAULT_SONNET_MODEL")
+                api_model = sanitize_claude_code_model_id(
+                    env.get("CLAUDE_CODE_SUBAGENT_MODEL") or env.get("ANTHROPIC_DEFAULT_SONNET_MODEL")
+                )
                 provider_id = "anthropic"
             elif app_type == "codex":
                 auth = config.get("auth") or {}

@@ -944,6 +944,7 @@ Request → Subprocess → Exit     ShellSession → bash PTY → Many exec → 
 - `antigravity-cli` — `agy_cli_adapter`
 - `codex-cli` — `codex` headless (`exec --json`)
 - `opencode-cli` — `opencode run --auto`
+- `mimo-cli` — `mimo run --dangerously-skip-permissions`
 - `codebuddy-cli` — `codebuddy -p`（`--resume` / `--session-id`）
 - `rivet-cli` — `RIVET_FORCE_RECOVERY_CLI=1`
 - `aider-cli` — `aider --message`

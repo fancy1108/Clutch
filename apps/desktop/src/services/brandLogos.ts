@@ -11,6 +11,7 @@ import antigravityLogo from '../assets/tool-logos/antigravity.svg';
 import claudeLogo from '../assets/tool-logos/claude.svg';
 import ollamaLogo from '../assets/tool-logos/ollama.svg';
 import opencodeLogo from '../assets/tool-logos/opencode.svg';
+import mimoLogo from '../assets/tool-logos/mimo.svg';
 import codebuddyLogo from '../assets/tool-logos/codebuddy.svg';
 import cursorLogo from '../assets/tool-logos/cursor.svg';
 import rivetLogo from '../assets/tool-logos/rivet.svg';
@@ -25,6 +26,7 @@ export type BrandLogoKey =
   | 'aider-cli'
   | 'code-cli'
   | 'opencode-cli'
+  | 'mimo-cli'
   | 'codebuddy-cli'
   | 'cursor-cli'
   | 'rivet-cli';
@@ -37,6 +39,7 @@ const BRAND_LOGO_SRC: Record<BrandLogoKey, string> = {
   'aider-cli': aiderLogo,
   'code-cli': vscodeLogo,
   'opencode-cli': opencodeLogo,
+  'mimo-cli': mimoLogo,
   'codebuddy-cli': codebuddyLogo,
   'cursor-cli': cursorLogo,
   'rivet-cli': rivetLogo,
@@ -65,6 +68,10 @@ const ALIAS_TO_KEY: Record<string, BrandLogoKey> = {
   'opencode-cli': 'opencode-cli',
   opencode: 'opencode-cli',
   'open code cli': 'opencode-cli',
+  'mimo-cli': 'mimo-cli',
+  mimo: 'mimo-cli',
+  'mimo code cli': 'mimo-cli',
+  mimocode: 'mimo-cli',
   'codebuddy-cli': 'codebuddy-cli',
   codebuddy: 'codebuddy-cli',
   'codebuddy cli': 'codebuddy-cli',

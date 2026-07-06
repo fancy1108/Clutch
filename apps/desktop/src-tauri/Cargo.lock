@@ -332,7 +332,7 @@ dependencies = [
 
 [[package]]
 name = "clutch-desktop"
-version = "1.1.0"
+version = "1.1.1"
 dependencies = [
  "dispatch2",
  "objc2",

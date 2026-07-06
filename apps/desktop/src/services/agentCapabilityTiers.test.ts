@@ -9,9 +9,10 @@ describe('agentCapabilityTiers', () => {
     expect(getAgentCapabilityTier('clutch')).toBe('full');
   });
 
-  it('classifies claude and opencode as readOnlyScan', () => {
+  it('classifies claude, opencode, and mimo as readOnlyScan', () => {
     expect(getAgentCapabilityTier('claude-cli')).toBe('readOnlyScan');
     expect(getAgentCapabilityTier('opencode-cli')).toBe('readOnlyScan');
+    expect(getAgentCapabilityTier('mimo-cli')).toBe('readOnlyScan');
   });
 
   it('classifies other CLIs as comingSoon', () => {
@@ -23,6 +24,7 @@ describe('agentCapabilityTiers', () => {
     expect(settingsTabForAgentType('clutch')).toBe('clutch');
     expect(settingsTabForAgentType('claude-cli')).toBe('claude-cli');
     expect(settingsTabForAgentType('opencode-cli')).toBe('opencode-cli');
+    expect(settingsTabForAgentType('mimo-cli')).toBe('mimo-cli');
     expect(settingsTabForAgentType('codex-cli')).toBeNull();
   });
 });
