@@ -28,7 +28,14 @@
 | 7. 同步 Homebrew tap | AI 或 CI | 见下文 §Homebrew |
 | 8. macOS 应用内更新（可选） | 你或 AI | 见 [`UPDATES.md`](./UPDATES.md) — 跑 `Release (updater assets)` |
 
-Windows 安装包由 [`.github/workflows/windows-build.yml`](../.github/workflows/windows-build.yml) 构建；发版时确认 Release 页资产齐全。
+Windows 安装包由 [`.github/workflows/windows-build.yml`](../.github/workflows/windows-build.yml) 构建；**仅在次版本（minor）发版时**挂到 GitHub Release（如 v1.2.0、v1.3.0）。**补丁版（patch，`1.1.x`）只发 macOS DMG**，Windows 用户继续使用上一版次版本的安装包。
+
+### 平台发版策略
+
+| 版本类型 | 示例 | macOS | Windows |
+|----------|------|-------|---------|
+| **Patch** | 1.1.2 | ✅ DMG + updater | ❌ 不发新包 |
+| **Minor** | 1.2.0, 1.3.0 | ✅ | ✅ MSI/NSIS 挂 Release |
 
 ---
 

@@ -944,6 +944,7 @@ Request → Subprocess → Exit     ShellSession → bash PTY → Many exec → 
 - `antigravity-cli` — `agy_cli_adapter`
 - `codex-cli` — `codex` headless (`exec --json`)
 - `opencode-cli` — `opencode run --auto`
+- `mimo-cli` — `mimo run --dangerously-skip-permissions`
 - `codebuddy-cli` — `codebuddy -p`（`--resume` / `--session-id`）
 - `rivet-cli` — `RIVET_FORCE_RECOVERY_CLI=1`
 - `aider-cli` — `aider --message`
@@ -951,7 +952,7 @@ Request → Subprocess → Exit     ShellSession → bash PTY → Many exec → 
 
 **已探测未路由（`tools_status.CLI_CANDIDATES` 中其余项）**
 
-- `gemini`、`code`、`codeium`、`cursor`、`goose`、`copilot`、`cn`、`amp`、`qwen`、`gptme`、`openclaw`、`droid`、`crush`、`q`、`kiro-cli` 等 CLI
+- `gemini`、`code`、`codeium`、`cursor-agent`、`goose`、`copilot`、`cn`、`amp`、`qwen`、`gptme`、`openclaw`、`droid`、`crush`、`q`、`kiro-cli` 等 CLI
 
 **相关 BACKLOG**
 

@@ -19,6 +19,12 @@ export type CliAuthProvider = {
   has_credential: boolean;
 };
 
+export type CliConfigIssue = {
+  code: string;
+  severity: string;
+  message: string;
+};
+
 export type CliModelsScan = {
   agent_type: string;
   cc_switch_found: boolean;
@@ -26,6 +32,8 @@ export type CliModelsScan = {
   active_provider_id: string | null;
   active_model_id: string | null;
   base_url?: string | null;
+  config_issues?: CliConfigIssue[];
+  config_repair_available?: boolean;
   default_agent?: string | null;
   providers: CliConfigProvider[];
   auth_providers?: CliAuthProvider[];
@@ -49,6 +57,7 @@ export type CliModelsScan = {
   settings_path?: string;
   env_preview?: Record<string, string>;
   opencode_cli_available?: boolean;
+  mimo_cli_available?: boolean;
 };
 
 export type CliSkillScanItem = {
@@ -73,7 +82,7 @@ export function stashSettingsAgentTab(tab: AgentCapabilityTabId): void {
 export function consumeSettingsAgentTab(): AgentCapabilityTabId | null {
   const raw = sessionStorage.getItem(SETTINGS_AGENT_TAB_KEY);
   sessionStorage.removeItem(SETTINGS_AGENT_TAB_KEY);
-  if (raw === 'clutch' || raw === 'claude-cli' || raw === 'opencode-cli' || raw === 'more') {
+  if (raw === 'clutch' || raw === 'claude-cli' || raw === 'opencode-cli' || raw === 'mimo-cli' || raw === 'more') {
     return raw;
   }
   return null;
@@ -146,6 +155,16 @@ export async function activateCliModel(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ model_ref: modelRef }),
     },
+  );
+  return parseJson(response);
+}
+
+export async function repairCliAgentConfig(
+  agentType: string,
+): Promise<{ ok: boolean; message: string; changes?: string[] }> {
+  const response = await sidecarFetch(
+    `${BASE}/api/cli-config/${encodeURIComponent(agentType)}/repair-settings`,
+    { method: 'POST' },
   );
   return parseJson(response);
 }

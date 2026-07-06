@@ -688,6 +688,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   const [orchestratorBarFocused, setOrchestratorBarFocused] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const thinkingRef = useRef<HTMLDivElement>(null);
+  const lastUserBubbleRef = useRef<HTMLDivElement>(null);
   const dockRef = useRef<HTMLDivElement>(null);
   const terminalDockRef = useRef<HTMLDivElement>(null);
   const terminalBarRef = useRef<HTMLDivElement>(null);
@@ -696,6 +697,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
     APP_INPUT_DOCK_BOTTOM_PX + 120 + CHAT_SCROLL_ABOVE_DOCK_GAP_PX,
   );
   const [thinkingHeight, setThinkingHeight] = useState(0);
+  const [thinkingBubbleMinHeight, setThinkingBubbleMinHeight] = useState<number | undefined>(undefined);
   const [terminalBarHeight, setTerminalBarHeight] = useState(52);
   const [hillInstructions, setHillInstructions] = useState('');
   const [pendingMessages, setPendingMessages] = useState<PendingChatMessage[]>([]);
@@ -973,7 +975,23 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
     const observer = new ResizeObserver(measure);
     observer.observe(thinkingEl);
     return () => observer.disconnect();
-  }, [showThinking, llmModelName, thinkingAgentName, thinkingAgentType]);
+  }, [showThinking, llmModelName, thinkingAgentName, thinkingAgentType, thinkingBubbleMinHeight]);
+
+  useEffect(() => {
+    const userBubble = lastUserBubbleRef.current;
+    if (!showThinking || !userBubble) {
+      setThinkingBubbleMinHeight(undefined);
+      return;
+    }
+    const measure = () => {
+      const height = userBubble.offsetHeight;
+      if (height > 0) setThinkingBubbleMinHeight(height);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(userBubble);
+    return () => observer.disconnect();
+  }, [showThinking, lastUserIndex, messages]);
 
   useEffect(() => {
     const terminalBar = terminalBarRef.current;
@@ -1202,7 +1220,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
           </div>
         ) : null}
 
-        {workspaceViewMode === 'chat' && messages.map((msg) => {
+        {workspaceViewMode === 'chat' && messages.map((msg, messageIndex) => {
           const isUser = msg.agent === 'User';
           const replyStepIndex = workflowReplyStepIndex.get(msg.id);
           const replyStep = replyStepIndex !== undefined
@@ -1294,7 +1312,9 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                       {renderMarkdown(msg.text)}
                     </div>
                   ) : (
-                    <div className={`${chatChrome.messageBubblePaddingClass} rounded-2xl border border-outline-variant/30 shadow-sm ${
+                    <div
+                      ref={messageIndex === lastUserIndex && isUser ? lastUserBubbleRef : undefined}
+                      className={`${chatChrome.messageBubblePaddingClass} rounded-2xl border border-outline-variant/30 shadow-sm ${
                       isUser 
                         ? 'bg-primary/10 text-on-surface rounded-tr-none text-left' 
                         : 'bg-surface-container-low rounded-tl-none'
@@ -1392,7 +1412,10 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                   )}
                 </div>
 
-                <div className={`${chatChrome.thinkingBubblePaddingClass} bg-surface-container-low rounded-2xl rounded-tl-none border border-outline-variant/30 shadow-sm flex items-center gap-1.5`}>
+                <div
+                  className={`${chatChrome.messageBubblePaddingClass} bg-surface-container-low rounded-2xl rounded-tl-none border border-outline-variant/30 shadow-sm flex items-center gap-1.5`}
+                  style={thinkingBubbleMinHeight ? { minHeight: thinkingBubbleMinHeight } : undefined}
+                >
                   <div className="w-1.5 h-1.5 rounded-full bg-on-surface/40 animate-typing-pulse" />
                   <div className="w-1.5 h-1.5 rounded-full bg-on-surface/40 animate-typing-pulse animation-delay-100" />
                   <div className="w-1.5 h-1.5 rounded-full bg-on-surface/40 animate-typing-pulse animation-delay-200" />

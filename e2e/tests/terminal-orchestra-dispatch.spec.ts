@@ -83,6 +83,66 @@ test.describe('terminal orchestra dispatch (API)', () => {
     expect(fileBody.content).toContain('OpenCode');
   });
 
+  test('dispatch preview + confirm for @Mimo creates mimo-cli lane', async ({ request }) => {
+    await activateSandboxWorkspace(request);
+    const runId = `run_d34_mimo_${Date.now().toString(36)}`;
+    const prompt = '@Mimo 你好';
+    let wsRef: WebSocket | null = null;
+
+    await connectRunWebSocket(runId, {
+      timeoutMs: 20_000,
+      onOpen: (ws) => {
+        wsRef = ws;
+        ws.send(JSON.stringify({ action: 'dispatch_preview', text: prompt }));
+      },
+      onMessage: (payload) => {
+        if (payload.event === 'dispatch_preview') {
+          expect(payload.data?.ok).toBe(true);
+          const preview = payload.data?.preview as { target?: string };
+          expect(preview?.target).toBe('Mimo');
+          wsRef?.send(JSON.stringify({ action: 'dispatch_confirm', text: prompt }));
+          return false;
+        }
+        if (payload.event === 'state_patch') {
+          const patch = payload.data?.patch as { dispatch_log?: unknown[] } | undefined;
+          if (patch?.dispatch_log && patch.dispatch_log.length > 0) return true;
+        }
+        return false;
+      },
+    });
+
+    const stateRes = await request.get(`/api/runs/${encodeURIComponent(runId)}/state`);
+    expect(stateRes.ok()).toBeTruthy();
+    const body = (await stateRes.json()) as {
+      state: {
+        dispatch_log: Array<{ target: string }>;
+        pty_lanes: Array<{ agent_type: string }>;
+      };
+    };
+    expect(body.state.dispatch_log[0]?.target).toBe('Mimo');
+    expect(body.state.pty_lanes.some((lane) => lane.agent_type === 'mimo-cli')).toBeTruthy();
+  });
+
+  test('dispatch preview rejects @Mimo without task body', async ({ request }) => {
+    await activateSandboxWorkspace(request);
+    const runId = `run_d34_mimo_preview_${Date.now().toString(36)}`;
+
+    await connectRunWebSocket(runId, {
+      timeoutMs: 15_000,
+      onOpen: (ws) => {
+        ws.send(JSON.stringify({ action: 'dispatch_preview', text: '@Mimo' }));
+      },
+      onMessage: (payload) => {
+        if (payload.event !== 'dispatch_preview') return false;
+        expect(payload.data?.ok).toBe(true);
+        const preview = payload.data?.preview as { target?: string; task?: string };
+        expect(preview?.target).toBe('Mimo');
+        expect(preview?.task).toBe('');
+        return true;
+      },
+    });
+  });
+
   test('lane_complete appends pending handoff draft', async ({ request }) => {
     await activateSandboxWorkspace(request);
     const runId = `run_d34_complete_${Date.now().toString(36)}`;

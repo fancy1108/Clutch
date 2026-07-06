@@ -39,6 +39,7 @@
 
 | Version | Snapshot | Notes |
 |---------|----------|-------|
+| 1.1.2 | [`v1.1.2.md`](./v1.1.2.md) | **macOS only** · MiMo Code CLI · Cursor Agent CLI · Terminal Orchestra fixes |
 | 1.1.1 | [`v1.1.1.md`](./v1.1.1.md) | Windows interactive PTY · platform chrome split · #30 |
 | 1.1.0 | [`v1.1.0.md`](./v1.1.0.md) | Terminal Orchestra · Windows polish · CodeBuddy · OpenCode Zen · Agnes Video |
 | 1.0.3 | [`v1.0.3.md`](./v1.0.3.md) | Hybrid pool queue · OpenCode · brand refresh · Ollama fix |

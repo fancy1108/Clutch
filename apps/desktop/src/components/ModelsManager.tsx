@@ -38,7 +38,7 @@ import {
 } from '../services/modelProviderPresets';
 import { AgentCapabilityTabs } from './AgentCapabilityTabs';
 import { ClaudeCodeModelsPanel } from './ClaudeCodeModelsPanel';
-import { OpenCodeModelsPanel } from './OpenCodeModelsPanel';
+import { OpenCodeModelsPanel, MiMoModelsPanel } from './OpenCodeModelsPanel';
 import { MoreAgentsComingSoon } from './MoreAgentsComingSoon';
 import type { AgentCapabilityTabId } from '../services/agentCapabilityTiers';
 import { consumeSettingsAgentTab } from '../services/cliConfigApi';
@@ -733,6 +733,9 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
         </div>
         <div className={capabilityTab === 'opencode-cli' ? '' : 'hidden'}>
           <OpenCodeModelsPanel />
+        </div>
+        <div className={capabilityTab === 'mimo-cli' ? '' : 'hidden'}>
+          <MiMoModelsPanel />
         </div>
         <div className={capabilityTab === 'more' ? '' : 'hidden'}>
           <MoreAgentsComingSoon />

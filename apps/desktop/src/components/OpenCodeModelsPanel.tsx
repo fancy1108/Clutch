@@ -10,14 +10,55 @@ import {
   activateCliProvider,
 } from '../services/cliConfigApi';
 
+type NativeCliAgentType = 'opencode-cli' | 'mimo-cli';
+
+const PANEL_META: Record<
+  NativeCliAgentType,
+  {
+    intro: string;
+    docsUrl: string;
+    docsLabel: string;
+    missingConfig: string;
+    switchModelsHint: string;
+    installCliHint: string;
+    showCcSwitch: boolean;
+  }
+> = {
+  'opencode-cli': {
+    intro:
+      'Models used by the OpenCode CLI (opencode run). This is separate from OpenCode Zen models configured for the Clutch built-in agent.',
+    docsUrl: 'https://dev.opencode.ai/docs/config/',
+    docsLabel: 'OpenCode config docs',
+    missingConfig: 'No opencode.json found. Run opencode once or create ~/.config/opencode/opencode.json.',
+    switchModelsHint: 'Select a model to set the OpenCode CLI default. Free built-in models are included.',
+    installCliHint: 'Install the opencode CLI on PATH to switch models from Clutch.',
+    showCcSwitch: true,
+  },
+  'mimo-cli': {
+    intro:
+      'Models used by the MiMo Code CLI (mimo run). Configure providers in the MiMo Code TUI or ~/.config/mimocode/.',
+    docsUrl: 'https://mimo.xiaomi.com/mimocode/config-overrides',
+    docsLabel: 'MiMo Code config docs',
+    missingConfig: 'No mimocode.json found. Run mimo once or create ~/.config/mimocode/mimocode.json.',
+    switchModelsHint: 'Select a model to set the MiMo Code CLI default. MiMo Auto and Xiaomi models are included.',
+    installCliHint: 'Install the mimo CLI on PATH to switch models from Clutch.',
+    showCcSwitch: false,
+  },
+};
+
 function modelRefForItem(item: { model_ref?: string; provider: string; model_id: string }): string {
   return item.model_ref ?? `${item.provider}/${item.model_id}`;
 }
 
-export const OpenCodeModelsPanel: React.FC = () => {
+type NativeCliModelsPanelProps = {
+  agentType: NativeCliAgentType;
+};
+
+export const NativeCliModelsPanel: React.FC<NativeCliModelsPanelProps> = ({ agentType }) => {
   const { t } = useLanguage();
+  const meta = PANEL_META[agentType];
   const { data, loading, error, notice, dismissNotice, refresh, refreshSilent } =
-    useCliModelsScan('opencode-cli');
+    useCliModelsScan(agentType);
   const [activatingRef, setActivatingRef] = useState<string | null>(null);
   const [activatingProviderId, setActivatingProviderId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -26,7 +67,7 @@ export const OpenCodeModelsPanel: React.FC = () => {
     setActivatingRef(modelRef);
     setMessage(null);
     try {
-      const result = await activateCliModel('opencode-cli', modelRef);
+      const result = await activateCliModel(agentType, modelRef);
       setMessage(result.message);
       await refreshSilent();
     } catch (err) {
@@ -40,7 +81,7 @@ export const OpenCodeModelsPanel: React.FC = () => {
     setActivatingProviderId(providerId);
     setMessage(null);
     try {
-      const result = await activateCliProvider('opencode-cli', providerId);
+      const result = await activateCliProvider(agentType, providerId);
       setMessage(result.message);
       await refreshSilent();
     } catch (err) {
@@ -51,25 +92,26 @@ export const OpenCodeModelsPanel: React.FC = () => {
   };
 
   const activeModel = data?.active_model_id ?? null;
-  const canSwitchModels = data?.opencode_cli_available !== false;
+  const canSwitchModels =
+    agentType === 'mimo-cli'
+      ? data?.mimo_cli_available !== false
+      : data?.opencode_cli_available !== false;
 
   return (
     <div className="space-y-4 text-left">
-      <p className="text-xs text-on-surface-variant leading-relaxed">
-        {t('Models used by the OpenCode CLI (opencode run). This is separate from OpenCode Zen models configured for the Clutch built-in agent.')}
-      </p>
+      <p className="text-xs text-on-surface-variant leading-relaxed">{t(meta.intro)}</p>
 
       <div className="space-y-2">
         <div className="flex gap-2">
           <CliScanRescanButton loading={loading} onClick={() => void refresh()} />
           <a
-            href="https://dev.opencode.ai/docs/config/"
+            href={meta.docsUrl}
             target="_blank"
             rel="noreferrer"
             className={`${BTN_GHOST} text-[10.5px] inline-flex items-center gap-1`}
           >
             <LegacyIcon name="open_in_new" className="text-[13px]" />
-            {t('OpenCode config docs')}
+            {t(meta.docsLabel)}
           </a>
         </div>
         <CliScanNotice notice={notice} onDismiss={dismissNotice} />
@@ -96,7 +138,7 @@ export const OpenCodeModelsPanel: React.FC = () => {
               </p>
             ) : (
               <p className="text-[10px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-2">
-                {t('No opencode.json found. Run opencode once or create ~/.config/opencode/opencode.json.')}
+                {t(meta.missingConfig)}
               </p>
             )}
             {data.auth_path ? (
@@ -134,9 +176,7 @@ export const OpenCodeModelsPanel: React.FC = () => {
                 {t('Available models')}
               </h3>
               <p className="text-[10px] text-neutral-500 leading-relaxed">
-                {canSwitchModels
-                  ? t('Select a model to set the OpenCode CLI default. Free built-in models are included.')
-                  : t('Install the opencode CLI on PATH to switch models from Clutch.')}
+                {canSwitchModels ? t(meta.switchModelsHint) : t(meta.installCliHint)}
               </p>
               <div className="space-y-1.5">
                 {data.catalog.map((item) => {
@@ -180,7 +220,7 @@ export const OpenCodeModelsPanel: React.FC = () => {
             </section>
           ) : null}
 
-          {data.providers.length > 0 ? (
+          {meta.showCcSwitch && data.providers.length > 0 ? (
             <section className="space-y-2">
               <h3 className="text-[11px] font-bold uppercase tracking-wide text-neutral-600">
                 {t('CC Switch providers')}
@@ -228,3 +268,7 @@ export const OpenCodeModelsPanel: React.FC = () => {
     </div>
   );
 };
+
+export const OpenCodeModelsPanel: React.FC = () => <NativeCliModelsPanel agentType="opencode-cli" />;
+
+export const MiMoModelsPanel: React.FC = () => <NativeCliModelsPanel agentType="mimo-cli" />;

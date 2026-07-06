@@ -77,7 +77,7 @@ export const TerminalSessionStatsBar: React.FC<TerminalSessionStatsBarProps> = (
     >
       <p className="min-w-0 truncate text-[10px] leading-snug text-on-surface-variant font-mono">
         {summaryParts[0]}
-        <span className="tabular-nums text-on-surface">{liveTotal}</span>
+        <span className="tabular-nums text-on-surface">{backgroundCount}</span>
         {summaryParts[1] ?? ''}
       </p>
       <div className="flex shrink-0 items-center gap-1.5">

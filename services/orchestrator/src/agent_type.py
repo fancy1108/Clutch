@@ -8,7 +8,7 @@ from src.llm.router import LLMProviderRouter, ModelSpec
 
 _BUILTIN_AGENT_ID = "clutch-agent"
 
-AGENT_TYPES = frozenset({"clutch", "claude-cli", "ollama-cli", "antigravity-cli", "codex-cli", "aider-cli", "rivet-cli", "opencode-cli", "codebuddy-cli"})
+AGENT_TYPES = frozenset({"clutch", "claude-cli", "ollama-cli", "antigravity-cli", "codex-cli", "aider-cli", "rivet-cli", "opencode-cli", "mimo-cli", "codebuddy-cli"})
 
 _LEGACY_AI_ENGINE_TO_TYPE: dict[str, str] = {
     "configured llm": "clutch",
@@ -38,6 +38,10 @@ _LEGACY_AI_ENGINE_TO_TYPE: dict[str, str] = {
     "opencode cli": "opencode-cli",
     "opencode-cli": "opencode-cli",
     "open code cli": "opencode-cli",
+    "mimo code cli": "mimo-cli",
+    "mimo-cli": "mimo-cli",
+    "mimo cli": "mimo-cli",
+    "mimocode": "mimo-cli",
     "codebuddy cli": "codebuddy-cli",
     "codebuddy-cli": "codebuddy-cli",
     "workbuddy cli": "codebuddy-cli",

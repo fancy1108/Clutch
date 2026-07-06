@@ -136,6 +136,9 @@ export const SkillsRegistry: React.FC = () => {
         {capabilityTab === 'opencode-cli' ? (
           <AgentCliCapabilityPreview agentType="opencode-cli" kind="skills" />
         ) : null}
+        {capabilityTab === 'mimo-cli' ? (
+          <AgentCliCapabilityPreview agentType="mimo-cli" kind="skills" />
+        ) : null}
         {capabilityTab === 'more' ? <MoreAgentsComingSoon /> : null}
 
         {capabilityTab === 'clutch' ? (

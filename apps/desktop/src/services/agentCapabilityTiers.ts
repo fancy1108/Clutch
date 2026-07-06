@@ -3,7 +3,7 @@ import { CLUTCH_AGENT_TYPE, type AgentTypeId } from './agentTypes';
 export type AgentCapabilityTier = 'full' | 'readOnlyScan' | 'comingSoon';
 
 /** Settings pages that use per-agent tabs in Phase 1+. */
-export type AgentCapabilityTabId = 'clutch' | 'claude-cli' | 'opencode-cli' | 'more';
+export type AgentCapabilityTabId = 'clutch' | 'claude-cli' | 'opencode-cli' | 'mimo-cli' | 'more';
 
 export const AGENT_CAPABILITY_TABS: Array<{
   id: AgentCapabilityTabId;
@@ -13,6 +13,7 @@ export const AGENT_CAPABILITY_TABS: Array<{
   { id: 'clutch', labelKey: 'Clutch Agent', agentType: CLUTCH_AGENT_TYPE },
   { id: 'claude-cli', labelKey: 'Claude Code', agentType: 'claude-cli' },
   { id: 'opencode-cli', labelKey: 'OpenCode', agentType: 'opencode-cli' },
+  { id: 'mimo-cli', labelKey: 'MiMo Code', agentType: 'mimo-cli' },
   { id: 'more', labelKey: 'More', agentType: 'codex-cli' },
 ];
 
@@ -25,7 +26,7 @@ export const COMING_SOON_AGENT_TABS = [
   { id: 'ollama-cli', labelKey: 'Ollama', agentType: 'ollama-cli' as AgentTypeId },
 ];
 
-const READ_ONLY_SCAN_TYPES = new Set<AgentTypeId>(['claude-cli', 'opencode-cli']);
+const READ_ONLY_SCAN_TYPES = new Set<AgentTypeId>(['claude-cli', 'opencode-cli', 'mimo-cli']);
 
 const COMING_SOON_TYPES = new Set<AgentTypeId>([
   'codex-cli',
@@ -49,6 +50,7 @@ export function settingsTabForAgentType(agentType: AgentTypeId | string | undefi
   if (normalized === CLUTCH_AGENT_TYPE) return 'clutch';
   if (normalized === 'claude-cli') return 'claude-cli';
   if (normalized === 'opencode-cli') return 'opencode-cli';
+  if (normalized === 'mimo-cli') return 'mimo-cli';
   return null;
 }
 

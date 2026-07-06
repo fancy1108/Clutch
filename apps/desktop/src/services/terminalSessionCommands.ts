@@ -96,6 +96,19 @@ export function buildTerminalHistoryCommand(
             descKey:
               'Run this in your system terminal from the same project directory Clutch used. Continues the most recent OpenCode session in that folder (opencode -c). Run opencode session list to pick a specific session.',
           };
+    case 'mimo-cli':
+    case 'mimo':
+      return isOpenCodeNativeSessionId(id)
+        ? {
+            cmd: wrapResumeCommandWithWorkspaceCd(workspacePath, `mimo -s ${id}`),
+            descKey:
+              'Run this in your system terminal from the same project directory Clutch used. Restores the MiMo Code session by ID.',
+          }
+        : {
+            cmd: wrapResumeCommandWithWorkspaceCd(workspacePath, 'mimo -c'),
+            descKey:
+              'Run this in your system terminal from the same project directory Clutch used. Continues the most recent MiMo Code session in that folder (mimo -c). Run mimo session list to pick a specific session.',
+          };
     case 'antigravity-cli':
     case 'agy-cli':
     case 'agy':

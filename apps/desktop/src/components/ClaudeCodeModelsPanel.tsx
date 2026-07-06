@@ -4,14 +4,33 @@ import { useLanguage } from './LanguageContext';
 import { CliScanNotice, CliScanRescanButton } from './CliScanNotice';
 import { CcSwitchCliSetupBanner } from './CcSwitchCliSetupBanner';
 import { useCliModelsScan } from '../hooks/useCliModelsScan';
-import { activateCliProvider } from '../services/cliConfigApi';
+import { activateCliProvider, repairCliAgentConfig } from '../services/cliConfigApi';
 
 export const ClaudeCodeModelsPanel: React.FC = () => {
   const { t } = useLanguage();
   const { data, loading, error, notice, dismissNotice, refresh, refreshSilent } =
     useCliModelsScan('claude-cli');
   const [activatingId, setActivatingId] = useState<string | null>(null);
+  const [repairing, setRepairing] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+
+  const handleRepair = async () => {
+    setRepairing(true);
+    setMessage(null);
+    try {
+      const result = await repairCliAgentConfig('claude-cli');
+      const detail =
+        result.changes && result.changes.length > 0
+          ? `${result.message} (${result.changes.join('; ')})`
+          : result.message;
+      setMessage(detail);
+      await refreshSilent();
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : t('Failed to repair Claude Code settings.'));
+    } finally {
+      setRepairing(false);
+    }
+  };
 
   const handleActivate = async (providerId: string) => {
     setActivatingId(providerId);
@@ -63,6 +82,28 @@ export const ClaudeCodeModelsPanel: React.FC = () => {
             <p className="text-sm font-mono text-neutral-900">{data.active_model_id ?? t('Not detected')}</p>
             {data.base_url ? (
               <p className="text-[10px] text-neutral-500 break-all">{t('Base URL')}: {data.base_url}</p>
+            ) : null}
+            {data.config_issues && data.config_issues.length > 0 ? (
+              <div className="space-y-2">
+                {data.config_issues.map((issue) => (
+                  <p
+                    key={issue.code}
+                    className="text-[10px] text-rose-800 bg-rose-50 border border-rose-200 rounded-lg px-2.5 py-2 leading-relaxed"
+                  >
+                    {issue.message}
+                  </p>
+                ))}
+                {data.config_repair_available ? (
+                  <button
+                    type="button"
+                    disabled={repairing}
+                    onClick={() => void handleRepair()}
+                    className={`${BTN_PRIMARY} text-[10px] disabled:opacity-50`}
+                  >
+                    {repairing ? t('Repairing…') : t('Repair CC Switch config')}
+                  </button>
+                ) : null}
+              </div>
             ) : null}
             <p className="text-[10px] text-neutral-500">
               {data.cc_switch_found ? t('CC Switch database detected') : t('CC Switch not found — showing ~/.claude/settings.json only')}

@@ -96,11 +96,13 @@ Product tour: [`PRODUCT_INTRO.md`](./PRODUCT_INTRO.md) · Architecture: [`ARCHIT
 | Goal | What to configure |
 |------|-------------------|
 | **Claude Code locally** | Settings → Tools → Rescan → Connect `claude` |
+| **Cursor Agent CLI** | `curl https://cursor.com/install -fsS \| bash` → Settings → Tools → Rescan → Connect `cursor-agent` |
 | **CodeBuddy CLI** | `npm install -g @tencent-ai/codebuddy-code` → Settings → Tools → Connect `codebuddy` → run `codebuddy` once to log in |
 | **Ollama locally** | Install [Ollama](https://ollama.com), pull a model (`ollama pull qwen3:8b`), Settings → Tools → Connect Ollama; pick the model in Agent settings or Models |
 | **Cloud API only** | Settings → Models → **Clutch Agent** tab → add provider key → activate a model |
-| **CLI agent models** | Settings → Models → **Claude Code** or **OpenCode** tab (read-only scan; configure in the CLI or CC Switch) |
-| **Terminal Orchestra** | Single Agent chat → pick any connected CLI agent → toggle **Terminal mode** (embedded xterm PTY). Bottom **OrchestratorBar** matches Chat input dock; dispatch history shows **CLI session resume** commands (`claude --resume`, `codex resume`, `opencode -s`, …) |
+| **CLI agent models** | Settings → Models → **Claude Code**, **OpenCode**, or **MiMo Code** tab (read-only scan; configure in the CLI or CC Switch) |
+| **Terminal Orchestra** | Single Agent chat → pick any connected CLI agent → toggle **Terminal mode** (embedded xterm PTY). Bottom **OrchestratorBar** matches Chat input dock; dispatch history shows **CLI session resume** commands (`claude --resume`, `codex resume`, `opencode -s`, `mimo -c`, …) |
+| **MiMo Code CLI** | `curl -fsSL https://mimo.xiaomi.com/install \| bash` (or `npm install -g @mimo-ai/cli`) → Settings → Tools → Connect **MiMo Code CLI** |
 | **OpenCode Zen (free)** | [opencode.ai/auth](https://opencode.ai/auth) → Zen → API Keys → Settings → Models → **OpenCode Zen** → pick a free model → Save |
 | **CC Switch users** | Keys can be imported from `~/.cc-switch` on startup |
 
@@ -232,11 +234,13 @@ xattr -cr /Applications/Clutch.app && open -a Clutch
 | 目标 | 怎么配 |
 |------|--------|
 | **本机 Claude Code** | Settings → Tools → Rescan → Connect `claude` |
+| **Cursor Agent CLI** | `curl https://cursor.com/install -fsS \| bash` → Settings → Tools → Rescan → Connect `cursor-agent` |
 | **CodeBuddy CLI** | `npm install -g @tencent-ai/codebuddy-code` → Settings → Tools → Connect `codebuddy` → 终端运行 `codebuddy` 完成登录 |
 | **本机 Ollama** | 安装 [Ollama](https://ollama.com)，执行 `ollama pull qwen3:8b`，Settings → Tools 连接 Ollama；在 Agent 或 Models 里选模型 |
 | **只用云端 API** | Settings → Models → **Clutch Agent** 标签页 → 填 Key → 激活模型 |
-| **CLI Agent 模型** | Settings → Models → **Claude Code** 或 **OpenCode** 标签页（只读扫描；在 CLI 或 CC Switch 中配置） |
-| **Terminal Orchestra** | Single Agent 聊天 → 选择任意已 Connect 的 CLI Agent → 切换 **终端模式**（嵌入式 xterm PTY）。底部 **OrchestratorBar** 与 Chat 输入栏同款贴底；派发记录含 **CLI Session 恢复命令**（`claude --resume`、`codex resume`、`opencode -s` 等） |
+| **CLI Agent 模型** | Settings → Models → **Claude Code**、**OpenCode** 或 **MiMo Code** 标签页（只读扫描；在 CLI 或 CC Switch 中配置） |
+| **Terminal Orchestra** | Single Agent 聊天 → 选择任意已 Connect 的 CLI Agent → 切换 **终端模式**（嵌入式 xterm PTY）。底部 **OrchestratorBar** 与 Chat 输入栏同款贴底；派发记录含 **CLI Session 恢复命令**（`claude --resume`、`codex resume`、`opencode -s`、`mimo -c` 等） |
+| **MiMo Code CLI** | `curl -fsSL https://mimo.xiaomi.com/install \| bash`（或 `npm install -g @mimo-ai/cli`）→ Settings → Tools → Connect **MiMo Code CLI** |
 | **OpenCode Zen（免费）** | [opencode.ai/auth](https://opencode.ai/auth) → Zen → API Keys → Settings → Models → **OpenCode Zen** → 选免费模型 → 保存 |
 | **CC Switch 用户** | 启动时可从 `~/.cc-switch` 导入 |
 

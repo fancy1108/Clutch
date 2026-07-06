@@ -31,10 +31,18 @@ const LEGACY_ENGINE_TO_TYPE: Record<string, AgentTypeId> = {
   'opencode-cli': 'opencode-cli',
   opencode: 'opencode-cli',
   'open code cli': 'opencode-cli',
+  'mimo-cli': 'mimo-cli',
+  mimo: 'mimo-cli',
+  'mimo code cli': 'mimo-cli',
+  mimocode: 'mimo-cli',
   'codebuddy-cli': 'codebuddy-cli',
   codebuddy: 'codebuddy-cli',
   'codebuddy cli': 'codebuddy-cli',
   cbc: 'codebuddy-cli',
+  'cursor-cli': 'cursor-cli',
+  cursor: 'cursor-cli',
+  'cursor agent cli': 'cursor-cli',
+  'cursor-agent': 'cursor-cli',
 };
 
 const AGENT_TYPE_DISPLAY_LABELS: Record<string, string> = {
@@ -44,7 +52,9 @@ const AGENT_TYPE_DISPLAY_LABELS: Record<string, string> = {
   'codex-cli': 'Codex CLI',
   'aider-cli': 'Aider CLI',
   'opencode-cli': 'OpenCode CLI',
+  'mimo-cli': 'MiMo Code CLI',
   'codebuddy-cli': 'CodeBuddy CLI',
+  'cursor-cli': 'Cursor CLI',
   'rivet-cli': 'Rivet CLI',
 };
 

@@ -35,6 +35,8 @@ CLI_BINARY_MAP: dict[str, str] = {
     "claude": "claude",
     "opencode-cli": "opencode",
     "opencode": "opencode",
+    "mimo-cli": "mimo",
+    "mimo": "mimo",
     "antigravity-cli": "agy",
     "agy-cli": "agy",
     "agy": "agy",
@@ -47,6 +49,9 @@ CLI_BINARY_MAP: dict[str, str] = {
     "codebuddy-cli": "codebuddy",
     "codebuddy": "codebuddy",
     "cbc": "codebuddy",
+    "cursor-cli": "cursor-agent",
+    "cursor-agent": "cursor-agent",
+    "agent": "cursor-agent",
     "ollama-cli": "ollama",
     "ollama": "ollama",
 }
@@ -395,7 +400,7 @@ class InteractivePtyManager:
                     pids.add(pid)
         return pids
 
-    def list_alive_for_run(self, run_id: str) -> list[dict[str, str]]:
+    def list_alive_for_run(self, run_id: str, *, include_system: bool = False) -> list[dict[str, str]]:
         seen_pids: set[int] = set()
         alive: list[dict[str, str]] = []
         with self._lock:
@@ -436,20 +441,21 @@ class InteractivePtyManager:
                     }
                 )
 
-        for proc in scan_system_cli_processes(configured_cli_binaries()):
-            pid = int(proc["pid"])
-            if pid in seen_pids:
-                continue
-            seen_pids.add(pid)
-            alive.append(
-                {
-                    "session_key": f"system::{pid}",
-                    "lane_id": "system",
-                    "cli_tool": str(proc["binary"]),
-                    "pid": str(pid),
-                    "source": "system",
-                }
-            )
+        if include_system:
+            for proc in scan_system_cli_processes(configured_cli_binaries()):
+                pid = int(proc["pid"])
+                if pid in seen_pids:
+                    continue
+                seen_pids.add(pid)
+                alive.append(
+                    {
+                        "session_key": f"system::{pid}",
+                        "lane_id": "system",
+                        "cli_tool": str(proc["binary"]),
+                        "pid": str(pid),
+                        "source": "system",
+                    }
+                )
         return alive
 
     def close_for_run(self, run_id: str, *, keep_lane_ids: list[str] | None = None) -> list[str]:

@@ -3417,6 +3417,16 @@ async def get_cli_config_mcp(agent_type: str) -> dict[str, Any]:
     return scan_cli_mcp(normalized, workspace_path=workspace_path)
 
 
+@app.post("/api/cli-config/{agent_type}/repair-settings")
+async def repair_cli_config_settings(agent_type: str) -> dict[str, Any]:
+    from src.cli_agent_config import repair_cli_agent_config
+
+    result = await asyncio.to_thread(repair_cli_agent_config, agent_type)
+    if not result.get("ok"):
+        raise HTTPException(status_code=400, detail={"message": result.get("message", "repair failed")})
+    return result
+
+
 @app.post("/api/cli-config/{agent_type}/activate-provider")
 async def activate_cli_config_provider(
     agent_type: str,

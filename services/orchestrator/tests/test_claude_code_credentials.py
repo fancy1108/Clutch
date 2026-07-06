@@ -59,6 +59,52 @@ def test_bootstrap_sets_claude_active_model(tmp_path: Path, monkeypatch: pytest.
     assert model.api_model == "agnes-2.0-flash"
 
 
+def test_normalize_claude_code_cli_base_url_strips_trailing_v1() -> None:
+    assert claude_code.normalize_claude_code_cli_base_url("https://apihub.agnes-ai.com/v1") == (
+        "https://apihub.agnes-ai.com"
+    )
+    assert claude_code.normalize_claude_code_cli_base_url("http://127.0.0.1:15721") == "http://127.0.0.1:15721"
+
+
+def test_sanitize_claude_code_model_id_strips_1m_suffix() -> None:
+    assert claude_code.sanitize_claude_code_model_id("agnes-2.0-flash[1m]") == "agnes-2.0-flash"
+    assert claude_code.sanitize_claude_code_model_id("agnes-2.0-flash") == "agnes-2.0-flash"
+
+
+def test_diagnose_claude_code_env_flags_double_v1_and_1m_suffix() -> None:
+    issues = claude_code.diagnose_claude_code_env(
+        {
+            "ANTHROPIC_BASE_URL": "https://apihub.agnes-ai.com/v1",
+            "ANTHROPIC_DEFAULT_SONNET_MODEL": "agnes-2.0-flash[1m]",
+        }
+    )
+    codes = {item["code"] for item in issues}
+    assert "claude_base_url_double_v1" in codes
+    assert "claude_model_1m_suffix" in codes
+
+
+def test_repair_claude_code_settings_fixes_cc_switch_sync(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    settings = tmp_path / "settings.json"
+    settings.write_text(
+        json.dumps(
+            {
+                "env": {
+                    "ANTHROPIC_BASE_URL": "https://apihub.agnes-ai.com/v1",
+                    "ANTHROPIC_DEFAULT_SONNET_MODEL": "agnes-2.0-flash[1m]",
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(claude_code, "_CLAUDE_SETTINGS", settings)
+    result = claude_code.repair_claude_code_settings()
+    assert result["ok"] is True
+    assert len(result["changes"]) == 2
+    repaired = json.loads(settings.read_text(encoding="utf-8"))["env"]
+    assert repaired["ANTHROPIC_BASE_URL"] == "https://apihub.agnes-ai.com"
+    assert repaired["ANTHROPIC_DEFAULT_SONNET_MODEL"] == "agnes-2.0-flash"
+
+
 def test_normalize_anthropic_base_url_adds_v1_suffix() -> None:
     assert claude_code.normalize_anthropic_base_url("http://127.0.0.1:15721") == "http://127.0.0.1:15721/v1"
     assert claude_code.normalize_anthropic_base_url("https://api.anthropic.com/v1") == "https://api.anthropic.com/v1"

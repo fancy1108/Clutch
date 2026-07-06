@@ -34,6 +34,7 @@ def nothing_installed(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("src.tools_status._cli_path", lambda binary: None)
     monkeypatch.setattr("src.tools_status._client_path", lambda app_name: None)
     monkeypatch.setattr("src.tools_status._extra_cli_search_dirs", lambda: [])
+    monkeypatch.setattr("src.tools_status._mimo_preferred_binary", lambda: None)
 
 
 def test_list_tools_include_all_omits_non_recommended_uninstalled(
@@ -48,7 +49,9 @@ def test_list_tools_include_all_omits_non_recommended_uninstalled(
     assert "aider-cli" not in ids
     assert "rivet-cli" not in ids
     assert "opencode-cli" in ids
+    assert "mimo-cli" in ids
     assert "codebuddy-cli" in ids
+    assert "cursor-cli" in ids
     assert all(tool["recommended"] for tool in tools)
 
 
@@ -83,6 +86,7 @@ def test_connect_persists_only_installed_tools(
         lambda binary: "/usr/local/bin/claude" if binary == "claude" else None,
     )
     monkeypatch.setattr("src.tools_status._client_path", lambda app_name: None)
+    monkeypatch.setattr("src.tools_status._mimo_preferred_binary", lambda: None)
 
     connect_tool("claude-cli")
     assert load_connected_ids() == {"claude-cli"}
@@ -133,6 +137,7 @@ def test_list_includes_installed_cli_with_path(
         lambda binary: f"/usr/local/bin/{binary}" if binary == "codex" else None,
     )
     monkeypatch.setattr("src.tools_status._client_path", lambda app_name: None)
+    monkeypatch.setattr("src.tools_status._mimo_preferred_binary", lambda: None)
 
     tools = list_tools_status()
     assert len(tools) == 1
@@ -152,6 +157,7 @@ def test_resolve_agent_type_for_tool_maps_tool_ids() -> None:
     assert resolve_agent_type_for_tool("ollama-cli") == "ollama-cli"
     assert resolve_agent_type_for_tool("rivet-cli") == "rivet-cli"
     assert resolve_agent_type_for_tool("opencode-cli") == "opencode-cli"
+    assert resolve_agent_type_for_tool("mimo-cli") == "mimo-cli"
     assert resolve_agent_type_for_tool("codebuddy-cli") == "codebuddy-cli"
     assert resolve_agent_type_for_tool("unknown-cli") is None
 
@@ -207,6 +213,7 @@ def test_list_includes_installed_client_with_path(
         "src.tools_status._client_path",
         lambda app_name: "/Applications/Cursor.app" if app_name == "Cursor.app" else None,
     )
+    monkeypatch.setattr("src.tools_status._mimo_preferred_binary", lambda: None)
 
     tools = list_tools_status()
     assert len(tools) == 1
@@ -222,6 +229,7 @@ def test_client_not_detected_on_non_darwin(
     monkeypatch.setattr("src.tools_status._extra_cli_search_dirs", lambda: [])
     monkeypatch.setattr("src.tools_status._cli_path", lambda binary: None)
     monkeypatch.setattr(sys, "platform", "linux")
+    monkeypatch.setattr("src.tools_status._mimo_preferred_binary", lambda: None)
 
     assert list_tools_status() == []
 
@@ -271,6 +279,25 @@ def test_resolve_tool_binary_finds_opencode_default_bin(
     assert resolve_tool_binary("opencode-cli") == str(opencode_bin)
 
 
+def test_resolve_tool_binary_prefers_mimocode_curl_install(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    broken_npm = tmp_path / "npm-mimo"
+    broken_npm.write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
+    broken_npm.chmod(0o755)
+
+    mimocode_dir = tmp_path / ".mimocode" / "bin"
+    mimocode_dir.mkdir(parents=True)
+    good_mimo = mimocode_dir / "mimo"
+    good_mimo.write_text("#!/bin/sh\necho ok\n", encoding="utf-8")
+    good_mimo.chmod(0o755)
+
+    monkeypatch.setattr("src.tools_status._cli_path", lambda binary: str(broken_npm) if binary == "mimo" else None)
+    monkeypatch.setattr("src.tools_status.Path.home", lambda: tmp_path)
+
+    assert resolve_tool_binary("mimo-cli") == str(good_mimo)
+
+
 def test_cli_candidates_include_mainstream_agent_clis() -> None:
     ids = {c["id"] for c in CLI_CANDIDATES}
     expected = {
@@ -279,6 +306,7 @@ def test_cli_candidates_include_mainstream_agent_clis() -> None:
         "codebuddy-cli",
         "rivet-cli",
         "opencode-cli",
+        "mimo-cli",
         "goose-cli",
         "copilot-cli",
         "continue-cli",
@@ -310,6 +338,27 @@ def test_resolve_tool_binary_finds_nvm_node_bin(
     )
 
     assert resolve_tool_binary("claude-cli") == str(claude_bin)
+
+
+def test_resolve_tool_binary_finds_cursor_agent_alias(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    local_bin = tmp_path / ".local" / "bin"
+    local_bin.mkdir(parents=True)
+    agent_bin = local_bin / "agent"
+    agent_bin.write_text("#!/bin/sh\necho agent\n", encoding="utf-8")
+    agent_bin.chmod(0o755)
+
+    monkeypatch.setattr("src.tools_status._cli_path", lambda binary: None)
+    monkeypatch.setattr("src.tools_status._extra_cli_search_dirs", lambda: [local_bin])
+
+    assert resolve_tool_binary("cursor-cli") == str(agent_bin)
+
+
+def test_cli_candidates_include_cursor_agent_cli() -> None:
+    cursor = next(c for c in CLI_CANDIDATES if c["id"] == "cursor-cli")
+    assert cursor["binary"] == "cursor-agent"
+    assert cursor["binary_aliases"] == "agent"
 
 
 def test_auto_configure_cli_via_llm(monkeypatch: pytest.MonkeyPatch) -> None:

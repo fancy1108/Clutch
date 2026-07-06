@@ -65,7 +65,7 @@
 | 待建 pytest 与 task 映射 | `specs/core/tasks.md` §待建 pytest 文件 |
 | 里程碑级验收 T-01~04 | `specs/core/tasks.md` §测试与验收 |
 | 进度 / 待办 | `memory/PROGRESS.md`（近期）· 归档 `memory/archive/PROGRESS-*.md` |
-| **Git worktree · release slices** | v1.0.2 / v1.0.3 worktree 已清理；**v1.1.0** 已 tag；**v1.1.1** 待发版（2026-07-04） |
+| **Git worktree · release slices** | v1.0.2 / v1.0.3 worktree 已清理；**v1.1.0** / **v1.1.1** 已 tag；**v1.1.2** 待发版（2026-07-06） |
 | 候选优化需求池（未立项） | `memory/BACKLOG.md` · Active（含 **B-33** ← PR #22） |
 | GitHub Issue 待修复 Bug | `memory/BACKLOG.md` §GitHub Issues · 待修复 Bug |
 | **开源排期 OSR-xx 验收状态** | **`memory/ROADMAP.md` §开源分发** · Task 定义 `docs/OPEN_SOURCE_RELEASE.md` §7.2 |
@@ -131,7 +131,7 @@
 | 终端模式 xterm 视图 | `components/ChatTerminalView.tsx` |
 | 对话/终端模式切换状态 | `services/workspaceViewMode.ts` |
 | 工作流 Chat 步骤 / Agent 类型解析 | `services/workflowAgentSteps.ts` |
-| Agent / 工具品牌 Logo | `services/brandLogos.ts` · `components/BrandLogo.tsx` |
+| Agent / 工具品牌 Logo | `services/brandLogos.ts` · `components/BrandLogo.tsx` · `assets/tool-logos/`（含 `mimo.svg`） |
 | 右侧面板（Overview/Files/Flow/Changes/Terminal） | `components/RightPanel.tsx` |
 | Terminal 日志子面板 | `components/TerminalPanel.tsx` |
 | 文件预览浮层 | `App.tsx`（`previewFile`） |
@@ -144,7 +144,8 @@
 | 画布 ↔ compiler 转换（D9） | `services/workflowFormat.ts` |
 | 工作流 Sidecar API 客户端 | `services/workflowApi.ts` |
 | Agent 角色配置 | `components/AgentManager.tsx` |
-| Agent CLI 安装指引与推荐列表 | `services/cliInstallGuides.ts` · 后端白名单 `services/orchestrator/src/tools_status.py` · 路由 `engine_router.py`（文档清单见 D19） |
+| Agent CLI 安装指引与推荐列表 | `services/cliInstallGuides.ts` · 后端白名单 `services/orchestrator/src/tools_status.py` · 路由 `engine_router.py` · 派发目录 `terminal_cli_catalog.py`（含 `mimo-cli`；文档清单见 D19） |
+| MiMo Code CLI 模型/MCP/Skills 扫描 | `services/orchestrator/src/cli_agent_config.py`（`scan_mimo_models`） |
 | 内置 Clutch Agent 定义与合并 | `services/builtinAgent.ts` |
 | Agent Registry API | `services/agentApi.ts` |
 | AI 工具连接状态 | `components/AiToolsManager.tsx` |

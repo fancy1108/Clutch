@@ -12,14 +12,14 @@ import {
   shouldAutoScanModels,
 } from '../services/cliModelsScanCache';
 
-type AgentScanType = 'claude-cli' | 'opencode-cli';
+type AgentScanType = 'claude-cli' | 'opencode-cli' | 'mimo-cli';
 
 function scanSuccessMessage(
   agentType: AgentScanType,
   payload: CliModelsScan,
   t: (key: string) => string,
 ): string {
-  if (agentType === 'opencode-cli') {
+  if (agentType === 'opencode-cli' || agentType === 'mimo-cli') {
     const modelCount = payload.catalog?.length ?? 0;
     const authCount = payload.auth_providers?.length ?? 0;
     return t('Scan complete — {models} models, {providers} credential providers found.')
@@ -30,6 +30,18 @@ function scanSuccessMessage(
     '{count}',
     String(payload.providers.length),
   );
+}
+
+function scanningMessage(agentType: AgentScanType, t: (key: string) => string): string {
+  if (agentType === 'mimo-cli') return t('Scanning MiMo Code configuration…');
+  if (agentType === 'opencode-cli') return t('Scanning OpenCode configuration…');
+  return t('Scanning Claude Code configuration…');
+}
+
+function scanFailureMessage(agentType: AgentScanType, t: (key: string) => string): string {
+  if (agentType === 'mimo-cli') return t('Failed to scan MiMo Code models.');
+  if (agentType === 'opencode-cli') return t('Failed to scan OpenCode models.');
+  return t('Failed to scan Claude Code models.');
 }
 
 export function useCliModelsScan(agentType: AgentScanType) {
@@ -49,10 +61,7 @@ export function useCliModelsScan(agentType: AgentScanType) {
       if (manual) {
         setNotice({
           tone: 'info',
-          message:
-            agentType === 'opencode-cli'
-              ? t('Scanning OpenCode configuration…')
-              : t('Scanning Claude Code configuration…'),
+          message: scanningMessage(agentType, t),
         });
       } else {
         setNotice(null);
@@ -73,11 +82,7 @@ export function useCliModelsScan(agentType: AgentScanType) {
       } catch (err) {
         setData(null);
         const errMsg =
-          err instanceof Error
-            ? err.message
-            : agentType === 'opencode-cli'
-              ? t('Failed to scan OpenCode models.')
-              : t('Failed to scan Claude Code models.');
+          err instanceof Error ? err.message : scanFailureMessage(agentType, t);
         setError(errMsg);
         if (manual) {
           setNotice({ tone: 'error', message: errMsg });

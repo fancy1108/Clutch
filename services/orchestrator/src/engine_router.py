@@ -56,6 +56,7 @@ def load_custom_cli_configs() -> dict[str, Any]:
     if isinstance(configs, dict):
         configs.pop("ollama-cli", None)
         configs.pop("opencode-cli", None)
+        configs.pop("mimo-cli", None)
     return configs if isinstance(configs, dict) else {}
 
 
@@ -126,6 +127,16 @@ CLI_ROUTING_CONFIGS = {
         "conversation_mode": "history_only",
         "prepend_system_prompt": True,
         "extra_args": ["run", "--auto"],
+        "prompt_flag": "",
+        "supports_append_system_prompt": False,
+        "close_stdin": True,
+    },
+    "mimo-cli": {
+        "tool_id": "mimo-cli",
+        "binary_name": "mimo",
+        "conversation_mode": "history_only",
+        "prepend_system_prompt": True,
+        "extra_args": ["run", "--dangerously-skip-permissions"],
         "prompt_flag": "",
         "supports_append_system_prompt": False,
         "close_stdin": True,
@@ -330,6 +341,8 @@ def _resolve_agent_type(agent: dict[str, Any] | None, fallback_tool: str | None)
         return "aider-cli"
     if fallback_tool in {"opencode-cli", "opencode"}:
         return "opencode-cli"
+    if fallback_tool in {"mimo-cli", "mimo", "mimocode"}:
+        return "mimo-cli"
     if fallback_tool in {"codebuddy-cli", "codebuddy", "cbc"}:
         return "codebuddy-cli"
     return "clutch"
