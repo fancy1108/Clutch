@@ -17,16 +17,21 @@ cask "clutch" do
   desc "Local AI multi-agent orchestration and supervision desktop app"
   homepage "https://github.com/fancy1108/Clutch"
 
-  depends_on macos: ">= :sonoma"
+  depends_on macos: :sonoma
   depends_on arch: :arm64
 
   app "Clutch.app"
 
   postflight do
     system_command "/usr/bin/xattr",
-                   args: ["-cr", "#{appdir}/Clutch.app"],
+                   args:         ["-cr", "#{appdir}/Clutch.app"],
                    print_stderr: false
   end
+
+  zap trash: [
+    "~/Library/Application Support/clutch",
+    "~/Library/Application Support/clutch_dev",
+  ]
 
   caveats <<~EOS
     Clutch is currently distributed unsigned (Gatekeeper). If launch is blocked:
@@ -34,9 +39,4 @@ cask "clutch" do
 
     Intel Mac is not supported — Apple Silicon (M-series) only.
   EOS
-
-  zap trash: [
-    "~/Library/Application Support/clutch",
-    "~/Library/Application Support/clutch_dev",
-  ]
 end
