@@ -18,6 +18,7 @@
 | macOS 应用内更新 | [`UPDATES.md`](./UPDATES.md) |
 | 从源码开发 | [`BUILD_FROM_SOURCE.md`](./BUILD_FROM_SOURCE.md) |
 | 贡献代码 | 根目录 [`CONTRIBUTING.md`](../CONTRIBUTING.md)（PR base：**`dev`**）+ [`CLAUDE.md`](../CLAUDE.md) |
+| 第三方 MCP 接入 | [`mcp-servers/`](./mcp-servers/)（社区/第三方集成指南） |
 | 前端 UI 开发 | [`UI_UX_GUIDELINES.md`](./UI_UX_GUIDELINES.md) |
 | 架构与数据流 | [`ARCHITECTURE.md`](./ARCHITECTURE.md) |
 

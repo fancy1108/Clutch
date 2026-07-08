@@ -10,6 +10,18 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ## [Unreleased]
 
+### Added
+
+- **Epicode memory workflow template** (`workflows/epicode-memory-pipeline.json`) and community MCP integration guide (`docs/mcp-servers/epicode.md`) — contributed via [#22](https://github.com/fancy1108/Clutch/pull/22) by [@sunormesky-max](https://github.com/sunormesky-max).
+
+### Changed
+
+- **Dependencies:** lucide-react 1.23.0, @xyflow/react 12.11.2, motion 12.42.2, @xterm/addon-fit 0.11.0, tauri 2.11.5; Windows CI workflow aligned to `pnpm/action-setup@v6`.
+
+### Fixed
+
+- **Windows CI:** `test_scan_mimo_models_reads_cli_catalog` no longer depends on POSIX shell scripts on `PATH` (mock `resolve_tool_binary` instead).
+
 ## [1.1.2] - 2026-07-06
 
 Patch release — **macOS only** (Apple Silicon DMG + in-app updater). **MiMo Code CLI** first-class integration, **Cursor Agent CLI** as a recommended tool, Terminal Orchestra dispatch fixes, and Claude Code CC Switch config repair in Settings. Windows users remain on [v1.1.1](https://github.com/fancy1108/Clutch/releases/tag/v1.1.1) until the next **minor** release (e.g. v1.2.0).

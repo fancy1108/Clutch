@@ -291,7 +291,11 @@ def test_scan_mimo_models_reads_cli_catalog(tmp_path: Path, monkeypatch: pytest.
     mimo_bin = tmp_path / "mimo"
     mimo_bin.write_text("#!/bin/sh\necho 'xiaomi/mimo-v2.5-pro'\n", encoding="utf-8")
     mimo_bin.chmod(0o755)
-    monkeypatch.setenv("PATH", str(tmp_path))
+    monkeypatch.setattr(
+        cfg,
+        "resolve_tool_binary",
+        lambda tool_id: str(mimo_bin) if tool_id == "mimo-cli" else None,
+    )
     monkeypatch.setattr(
         cfg,
         "_list_mimo_models_via_cli",

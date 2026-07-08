@@ -128,6 +128,7 @@ Deep dive: [`docs/PRODUCT_INTRO.md`](docs/PRODUCT_INTRO.md) · Architecture: [`d
 | Understand all features | [`docs/PRODUCT_INTRO.md`](docs/PRODUCT_INTRO.md) |
 | macOS in-app updates | [`docs/UPDATES.md`](docs/UPDATES.md) |
 | Build from source | [`docs/BUILD_FROM_SOURCE.md`](docs/BUILD_FROM_SOURCE.md) |
+| Third-party MCP guides | [`docs/mcp-servers/`](docs/mcp-servers/) (community/vendor integrations) |
 | Contribute | [`CONTRIBUTING.md`](CONTRIBUTING.md) (PRs to **`dev`**) |
 | macOS / Windows UI boundaries | [`docs/PLATFORM_MAINTENANCE.md`](docs/PLATFORM_MAINTENANCE.md) |
 | Report a security issue | [`SECURITY.md`](SECURITY.md) |

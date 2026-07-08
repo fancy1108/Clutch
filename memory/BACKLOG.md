@@ -65,7 +65,7 @@
 | B-30 | 内置 web_search | 候选 | 人类确认 |
 | B-31 | request_permissions 运行时扩权 | 候选 | B-21/B-22 后 |
 | B-32 | apply_patch 流式 diff 事件 | 候选 | B-23 后 |
-| B-33 | 第三方 MCP 记忆工作流示例（Epicode：`workflows/` 模板 + `docs/mcp-servers/` 接入指南） | 候选 | 人类确认；外部 [PR #22](https://github.com/fancy1108/Clutch/pull/22)（无 core 改动，未承诺合并） |
+| B-33 | 第三方 MCP 记忆工作流示例（Epicode：`workflows/` 模板 + `docs/mcp-servers/` 接入指南） | ✅ 已合并 dev（[#22](https://github.com/fancy1108/Clutch/pull/22)） |
 
 > **D21 已落地：** `clutch-tools__apply_patch` — 勿重复立项。  
 > **D25 已升格 HRT：** 审计 HRT-05~07 · 并发 HRT-08~10 — 见 [`specs/core/hybrid-runtime-plan.md`](../specs/core/hybrid-runtime-plan.md)。  
