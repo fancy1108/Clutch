@@ -185,6 +185,13 @@ CLI_CANDIDATES: list[dict[str, str]] = [
         "description": "Tencent Cloud CodeBuddy AI coding agent for the terminal (codebuddy / cbc).",
         "icon": "terminal",
     },
+    {
+        "id": "zcode-cli",
+        "name": "ZCode CLI",
+        "binary": "zcode",
+        "description": "Z.AI ZCode headless coding agent (GLM-family). Ships with the ZCode desktop app; expose the CJS entry via a `zcode` shim on PATH.",
+        "icon": "terminal",
+    },
 ]
 
 # Primary install recommendations (tested Clutch routing). Other whitelist CLIs are
@@ -199,6 +206,7 @@ RECOMMENDED_CLI_IDS: frozenset[str] = frozenset(
         "ollama-cli",
         "codex-cli",
         "agy-cli",
+        "zcode-cli",
     }
 )
 

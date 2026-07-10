@@ -149,6 +149,15 @@ CLI_ROUTING_CONFIGS = {
         "extra_args": ["--dangerously-skip-permissions"],
         "prompt_flag": "-p",
     },
+    "zcode-cli": {
+        "tool_id": "zcode-cli",
+        "binary_name": "zcode",
+        "conversation_mode": "separate",
+        "prepend_system_prompt": False,
+        "extra_args": ["--mode", "yolo", "--json"],
+        "prompt_flag": "-p",
+        "supports_append_system_prompt": False,
+    },
 }
 
 try:
@@ -199,6 +208,14 @@ def _normalize_engine_type(engine_type: str) -> str:
         "openai codex cli",
     }:
         return "Codex CLI"
+    if key in {
+        "zcode",
+        "zcode cli",
+        "zcode-cli",
+        "z.ai zcode",
+        "z.ai zcode cli",
+    }:
+        return "ZCode CLI"
     return engine_type.strip()
 
 
@@ -508,6 +525,10 @@ def _route_generic_cli_legacy(
     legacy_fn = chat_generic_cli
     if binary_name == "claude":
         legacy_fn = chat_claude_cli
+    elif binary_name == "zcode":
+        from src.adapters.zcode_cli_adapter import chat_zcode_cli
+
+        legacy_fn = chat_zcode_cli
 
     def _invoke_cli(
         *,

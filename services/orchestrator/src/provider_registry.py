@@ -51,6 +51,11 @@ _REGISTRY: dict[str, ProviderSpec] = {
         RuntimeStrategy.SHELL_EXEC,
         exec_template='codebuddy -p "{prompt}"',
     ),
+    "zcode-cli": ProviderSpec(
+        "zcode-cli",
+        RuntimeStrategy.SHELL_EXEC,
+        exec_template='zcode -p "{prompt}" --mode yolo --json',
+    ),
     "ollama-cli": ProviderSpec("ollama-cli", RuntimeStrategy.HTTP_DAEMON),
 }
 
