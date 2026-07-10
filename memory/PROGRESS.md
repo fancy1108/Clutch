@@ -22,14 +22,18 @@
 | macOS DMG CI (`release.yml`) | ✅ [run](https://github.com/fancy1108/Clutch/actions/runs/29098717351) |
 | ~~Windows MSI/NSIS~~ | — 本版跳过 |
 | Homebrew tap sync | ✅ |
-| macOS updater (`latest.json`) | ⏳ 可选 |
+| macOS updater (`latest.json`) | ✅ [run](https://github.com/fancy1108/Clutch/actions/runs/29099358247) |
 
 ## Next Actions
 
-- 可选：跑 `Release (updater assets)` 工作流
 - **#23** — Windows smoke 继续用 v1.1.1
 
 ## Recent Sessions
+
+## 2026-07-10 会话（v1.2.0 updater assets）
+
+- **Release (updater assets)** `release_tag=v1.2.0` ✅ — `latest.json` · `Clutch.app.tar.gz` · `.sig`
+- 旧版 macOS 客户端可应用内升级到 1.2.0
 
 ## 2026-07-10 会话（v1.2.0 发版完成）
 
