@@ -20,6 +20,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ### Fixed
 
+- **macOS Dock:** PyInstaller sidecar no longer registers as a GUI app, so opening Clutch shows a single Dock icon instead of a duplicate for the embedded `orchestrator` process.
 - **Windows CI:** `test_scan_mimo_models_reads_cli_catalog` no longer depends on POSIX shell scripts on `PATH` (mock `resolve_tool_binary` instead).
 
 ## [1.1.2] - 2026-07-06
