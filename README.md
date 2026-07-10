@@ -24,7 +24,8 @@ Clutch is a **desktop app** (Tauri + React) for developers and technical operato
 - **Design mode (D36)** — Header `Coding | Design`; generative UI on an infinite canvas (spec → interface → NL iterate); Design.md / URL / image references; Approve → React → Send to Coding.
 - **Design Agent Log** — Per-step **status / model / token** tags so mid-session model switches stay in history.
 - **ZCode CLI** — First-class `zcode-cli` routing, Terminal Orchestra `@ZCode`, and recommended Tools card ([#43](https://github.com/fancy1108/Clutch/pull/43)).
-- **Windows installers return** — Minor release ships MSI/NSIS again (after macOS-only v1.1.2).
+
+> **v1.2.0 is macOS-only** (Apple Silicon DMG + in-app updater). **Windows** users should stay on [v1.1.1](https://github.com/fancy1108/Clutch/releases/tag/v1.1.1); new Windows installers ship in a later release.
 
 Older releases (v1.1.2 MiMo/Cursor, v1.1.1 Windows PTY, …): [`CHANGELOG.md`](CHANGELOG.md) · [`docs/releases/`](docs/releases/).
 

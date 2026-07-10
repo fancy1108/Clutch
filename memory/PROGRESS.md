@@ -5,37 +5,36 @@
 
 ## Current Status
 
-- **阶段：** **v1.2.0 发版材料已备**（2026-07-10）— Design 模式 (D36) + ZCode CLI + Agent Log 步骤标签；**macOS + Windows**
+- **阶段：** **v1.2.0 发版材料已备**（2026-07-10，**仅 macOS**）— Design 模式 (D36) + ZCode CLI + Agent Log 步骤标签
 - **Release：** 待 merge `dev` → `main` 后打 tag [v1.2.0](https://github.com/fancy1108/Clutch/releases/tag/v1.2.0)；当前 Latest 仍为 [v1.1.2](https://github.com/fancy1108/Clutch/releases/tag/v1.1.2)（macOS）
 - **Git：** `dev` 领先 · 版本号 `1.2.0`
-- **Windows：** 本版（minor）应发 MSI/NSIS
+- **Windows：** 本版不发安装包；Win 继续 [v1.1.1](https://github.com/fancy1108/Clutch/releases/tag/v1.1.1)
 
 ### v1.2.0 发版清单
 
 | 项 | 状态 |
 |----|------|
-| CHANGELOG + README + `docs/releases/v1.2.0.md` | ✅ |
+| CHANGELOG + README + `docs/releases/v1.2.0.md` | ✅（macOS-only） |
 | 版本号 bump（package / tauri / Cargo / cask） | ✅ |
 | PRODUCT_INTRO / UPDATES / STABILITY / INSTALL | ✅ |
 | PR merge `dev` → `main` | ⏳ |
 | `git tag v1.2.0` on `main` + macOS DMG CI | ⏳ |
-| Windows Build → 挂 Release | ⏳ |
+| ~~Windows MSI/NSIS~~ | — 本版跳过 |
 | Homebrew tap sync | ⏳（DMG 出后） |
 | macOS updater (`latest.json`) | ⏳ |
 
 ## Next Actions
 
 - Merge `dev` → `main`，在 **main** 打 `v1.2.0` tag（勿在 `dev` 上 tag）
-- 跑 Windows Build，把 MSI/NSIS 挂到 Release
 - DMG 出后 `scripts/sync-homebrew-tap.sh`；可选 updater workflow
-- **#23** — Windows 实体机 smoke
+- **#23** — Windows smoke 继续用 v1.1.1；下次 Win 包随后续发版
 
 ## Recent Sessions
 
-## 2026-07-10 会话（v1.2.0 发版文档）
+## 2026-07-10 会话（v1.2.0 发版文档 · macOS-only）
 
-- **CHANGELOG** Unreleased → `[1.2.0]`；版本号 bump 1.2.0
-- **快照** `docs/releases/v1.2.0.md`；README / UPDATES / STABILITY / INSTALL / PRODUCT_INTRO Agent Log 标签
+- **CHANGELOG** Unreleased → `[1.2.0]`；版本号 bump 1.2.0；**明确本版不发 Windows**
+- **快照** `docs/releases/v1.2.0.md`；README / UPDATES / RELEASE_MAINTAINER 平台策略例外
 - **下一步** merge → main → tag（尚未打 tag）
 
 

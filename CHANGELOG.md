@@ -18,9 +18,9 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ## [1.2.0] - 2026-07-10
 
-Minor release — **Design mode (D36)**, **ZCode CLI**, and Design Agent Log / generate reliability fixes. Ships **macOS + Windows** installers (minor bump restores Windows packages after macOS-only v1.1.2).
+Minor release — **macOS only** (Apple Silicon DMG + in-app updater). **Design mode (D36)**, **ZCode CLI**, and Design Agent Log / generate reliability fixes. Windows users remain on [v1.1.1](https://github.com/fancy1108/Clutch/releases/tag/v1.1.1); next Windows installers target a later release.
 
-> **Release assets (v1.2.0):** Tag `v1.2.0` — macOS `Clutch_1.2.0_aarch64.dmg` + `SHA256SUMS.txt` via CI; Windows MSI/NSIS via **Windows Build** workflow; optional macOS `latest.json` updater bundle. Product snapshot: [`docs/releases/v1.2.0.md`](docs/releases/v1.2.0.md).
+> **Release assets (v1.2.0):** Tag `v1.2.0` — **macOS only:** `Clutch_1.2.0_aarch64.dmg` + `SHA256SUMS.txt` via CI; optional `latest.json` updater bundle. **No Windows installers** for this release. Product snapshot: [`docs/releases/v1.2.0.md`](docs/releases/v1.2.0.md).
 
 ### Added
 

@@ -24,7 +24,8 @@ Clutch 是一款**桌面应用**（Tauri + React），面向独立开发者和�
 - **Design 模式（D36）** — Header `Coding | Design`；无限画布生成式 UI（规范 → 界面 → 自然语言迭代）；支持 Design.md / 网址 / 参考图；批准后生成 React 并交给 Coding。
 - **Design Agent Log** — 每步显示 **status / model / token** 标签，会话中途换模型仍可追溯。
 - **ZCode CLI** — 一等 `zcode-cli` 路由、Terminal Orchestra `@ZCode`、推荐工具卡片（[#43](https://github.com/fancy1108/Clutch/pull/43)）。
-- **恢复 Windows 安装包** — 次版本再次发布 MSI/NSIS（v1.1.2 仅为 macOS）。
+
+> **v1.2.0 仅发 macOS**（Apple Silicon DMG + 应用内更新）。**Windows** 用户请继续使用 [v1.1.1](https://github.com/fancy1108/Clutch/releases/tag/v1.1.1)；新的 Windows 安装包随后续发版发布。
 
 更早版本（v1.1.2 MiMo/Cursor、v1.1.1 Windows PTY 等）：[`CHANGELOG.md`](CHANGELOG.md) · [`docs/releases/`](docs/releases/)。
 
