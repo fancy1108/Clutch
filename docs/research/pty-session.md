@@ -946,6 +946,7 @@ Request → Subprocess → Exit     ShellSession → bash PTY → Many exec → 
 - `opencode-cli` — `opencode run --auto`
 - `mimo-cli` — `mimo run --dangerously-skip-permissions`
 - `codebuddy-cli` — `codebuddy -p`（`--resume` / `--session-id`）
+- `zcode-cli` — `zcode -p --mode yolo --json`（`--resume sess_...` / `zcode -c`）
 - `rivet-cli` — `RIVET_FORCE_RECOVERY_CLI=1`
 - `aider-cli` — `aider --message`
 - `ollama-cli` — `ollama_adapter`（HTTP）

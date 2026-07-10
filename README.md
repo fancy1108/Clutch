@@ -93,7 +93,7 @@ Or: **Applications** → right-click **Clutch** → **Open** → confirm.
 | Capability | In plain terms |
 |------------|----------------|
 | **Visual workflows** | Drag agents on a canvas; Clutch compiles to LangGraph and runs the SOP |
-| **Local CLI bridge** | Connect Claude Code, CodeBuddy, MiMo Code, Codex, Ollama, Aider, Rivet, … from Settings → Tools |
+| **Local CLI bridge** | Connect Claude Code, CodeBuddy, MiMo Code, ZCode, Codex, Ollama, Aider, Rivet, … from Settings → Tools |
 | **One supervision desk** | Chat, terminal, file tree, diffs, and flow progress in one window |
 | **Human-in-the-loop** | Pause on risky steps; approve, reject, or retry with instructions |
 | **Agents & models** | Custom agents, API keys, Skills registry, MCP servers |
@@ -180,7 +180,7 @@ Commands & discipline: [`CLAUDE.md`](CLAUDE.md) · Before PR: `./scripts/verify.
 Clutch talks to local AI CLIs through a loopback Sidecar (`127.0.0.1:8123`).
 
 > [!IMPORTANT]
-> For **Claude Code**, **CodeBuddy**, **MiMo Code**, and **Antigravity (agy)** CLIs, Clutch **defaults** to `--dangerously-skip-permissions` so workflows can run without per-tool CLI prompts. Only use on workspaces you trust. The in-chat Permission menu controls **MCP gating for built-in agents**, not this CLI default.
+> For **Claude Code**, **CodeBuddy**, **MiMo Code**, **ZCode**, and **Antigravity (agy)** CLIs, Clutch **defaults** to permission-bypass flags (`--dangerously-skip-permissions` or ZCode `--mode yolo`) so workflows can run without per-tool CLI prompts. Only use on workspaces you trust. The in-chat Permission menu controls **MCP gating for built-in agents**, not this CLI default.
 
 Report vulnerabilities: [`SECURITY.md`](SECURITY.md)
 

@@ -93,7 +93,7 @@ xattr -cr /Applications/Clutch.app && open -a Clutch
 | 能力 | 一句话 |
 |------|--------|
 | **可视化工作流** | 画布拖拽多 Agent SOP，编译为 LangGraph 运行 |
-| **本地 CLI 接入** | Settings → Tools 连接 Claude Code、CodeBuddy、MiMo Code、Codex、Ollama、Aider、Rivet 等 |
+| **本地 CLI 接入** | Settings → Tools 连接 Claude Code、CodeBuddy、MiMo Code、ZCode、Codex、Ollama、Aider、Rivet 等 |
 | **统一监督台** | 聊天、终端、文件树、Diff、流程进度一屏可见 |
 | **人机协同** | 高风险步骤暂停，批准 / 打回 / 带指令重试 |
 | **智能体与模型** | 自定义 Agent、API Key、Skills、MCP |
@@ -172,7 +172,7 @@ pnpm tauri:dev
 Clutch 通过本机回环 Sidecar（`127.0.0.1:8123`）调度本地 AI CLI。
 
 > [!IMPORTANT]
-> 对 **Claude Code**、**CodeBuddy**、**MiMo Code**、**Antigravity (agy)** 等 CLI，Clutch **默认**追加 `--dangerously-skip-permissions`，以便工作流自动跑通、不再逐项确认。请只在信任的工作区使用。聊天栏 Permission 菜单管的是**内置 Agent 的 MCP 门控**，不改变上述 CLI 默认行为。
+> 对 **Claude Code**、**CodeBuddy**、**MiMo Code**、**ZCode**、**Antigravity (agy)** 等 CLI，Clutch **默认**追加权限绕过参数（`--dangerously-skip-permissions` 或 ZCode 的 `--mode yolo`），以便工作流自动跑通、不再逐项确认。请只在信任的工作区使用。聊天栏 Permission 菜单管的是**内置 Agent 的 MCP 门控**，不改变上述 CLI 默认行为。
 
 漏洞报告：[`SECURITY.md`](SECURITY.md)
 

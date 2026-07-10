@@ -52,6 +52,7 @@ def test_list_tools_include_all_omits_non_recommended_uninstalled(
     assert "mimo-cli" in ids
     assert "codebuddy-cli" in ids
     assert "cursor-cli" in ids
+    assert "zcode-cli" in ids
     assert all(tool["recommended"] for tool in tools)
 
 
@@ -159,6 +160,7 @@ def test_resolve_agent_type_for_tool_maps_tool_ids() -> None:
     assert resolve_agent_type_for_tool("opencode-cli") == "opencode-cli"
     assert resolve_agent_type_for_tool("mimo-cli") == "mimo-cli"
     assert resolve_agent_type_for_tool("codebuddy-cli") == "codebuddy-cli"
+    assert resolve_agent_type_for_tool("zcode-cli") == "zcode-cli"
     assert resolve_agent_type_for_tool("unknown-cli") is None
 
 
@@ -307,6 +309,7 @@ def test_cli_candidates_include_mainstream_agent_clis() -> None:
         "rivet-cli",
         "opencode-cli",
         "mimo-cli",
+        "zcode-cli",
         "goose-cli",
         "copilot-cli",
         "continue-cli",
