@@ -13,6 +13,7 @@ CLI_TO_DISPLAY: dict[str, str] = {
     "cursor-cli": "Cursor",
     "rivet-cli": "Rivet CLI",
     "ollama-cli": "Ollama",
+    "zcode-cli": "ZCode",
 }
 
 # Extra @-mention labels (longest-match wins in dispatch_parse).

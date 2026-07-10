@@ -47,6 +47,7 @@ _HYBRID_AGENT_TYPES: dict[str, str] = {
     "claude": "claude-cli",
     "codex": "codex-cli",
     "aider": "aider-cli",
+    "zcode": "zcode-cli",
 }
 
 

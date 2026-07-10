@@ -8,7 +8,7 @@ from src.llm.router import LLMProviderRouter, ModelSpec
 
 _BUILTIN_AGENT_ID = "clutch-agent"
 
-AGENT_TYPES = frozenset({"clutch", "claude-cli", "ollama-cli", "antigravity-cli", "codex-cli", "aider-cli", "rivet-cli", "opencode-cli", "mimo-cli", "codebuddy-cli"})
+AGENT_TYPES = frozenset({"clutch", "claude-cli", "ollama-cli", "antigravity-cli", "codex-cli", "aider-cli", "rivet-cli", "opencode-cli", "mimo-cli", "codebuddy-cli", "cursor-cli", "zcode-cli"})
 
 _LEGACY_AI_ENGINE_TO_TYPE: dict[str, str] = {
     "configured llm": "clutch",
@@ -46,6 +46,16 @@ _LEGACY_AI_ENGINE_TO_TYPE: dict[str, str] = {
     "codebuddy-cli": "codebuddy-cli",
     "workbuddy cli": "codebuddy-cli",
     "cbc": "codebuddy-cli",
+    "cursor": "cursor-cli",
+    "cursor cli": "cursor-cli",
+    "cursor-cli": "cursor-cli",
+    "cursor agent cli": "cursor-cli",
+    "cursor-agent": "cursor-cli",
+    "zcode": "zcode-cli",
+    "zcode cli": "zcode-cli",
+    "zcode-cli": "zcode-cli",
+    "z.ai zcode": "zcode-cli",
+    "z.ai zcode cli": "zcode-cli",
 }
 
 

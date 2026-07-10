@@ -47,6 +47,8 @@ export function resolveCliToolFromEngineHint(engineHint: string): string | null 
     ['rivet', 'rivet-cli'],
     ['天枢', 'rivet-cli'],
     ['ollama', 'ollama-cli'],
+    ['zcode', 'zcode-cli'],
+    ['z.ai zcode', 'zcode-cli'],
     ['antigravity', 'antigravity-cli'],
     ['agy cli', 'antigravity-cli'],
   ];

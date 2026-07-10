@@ -318,6 +318,7 @@ export function configuredEngineToRuntimeLabel(agentTypeOrLegacy: string): strin
   }
   if (key.includes('codex') || key === 'codex-cli') return 'Codex CLI';
   if (key.includes('ollama') || key === 'ollama-cli') return 'Ollama CLI';
+  if (key.includes('zcode') || key === 'zcode-cli') return 'ZCode CLI';
   return agentTypeOrLegacy.trim();
 }
 

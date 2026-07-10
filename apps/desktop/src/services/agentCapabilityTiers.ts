@@ -24,6 +24,7 @@ export const COMING_SOON_AGENT_TABS = [
   { id: 'antigravity-cli', labelKey: 'Antigravity', agentType: 'antigravity-cli' as AgentTypeId },
   { id: 'rivet-cli', labelKey: 'Rivet', agentType: 'rivet-cli' as AgentTypeId },
   { id: 'ollama-cli', labelKey: 'Ollama', agentType: 'ollama-cli' as AgentTypeId },
+  { id: 'zcode-cli', labelKey: 'ZCode', agentType: 'zcode-cli' as AgentTypeId },
 ];
 
 const READ_ONLY_SCAN_TYPES = new Set<AgentTypeId>(['claude-cli', 'opencode-cli', 'mimo-cli']);
@@ -35,6 +36,7 @@ const COMING_SOON_TYPES = new Set<AgentTypeId>([
   'antigravity-cli',
   'rivet-cli',
   'ollama-cli',
+  'zcode-cli',
 ]);
 
 export function getAgentCapabilityTier(agentType: AgentTypeId | string | undefined): AgentCapabilityTier {

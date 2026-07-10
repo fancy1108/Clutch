@@ -11,6 +11,7 @@ export const CLI_DISPLAY: Record<string, string> = {
   'cursor-cli': 'Cursor',
   'rivet-cli': 'Rivet CLI',
   'ollama-cli': 'Ollama',
+  'zcode-cli': 'ZCode',
 };
 
 /** Dispatch @-mention targets shown in Orchestrator Bar picker (matches backend KNOWN_AGENTS). */
