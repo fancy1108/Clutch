@@ -75,7 +75,6 @@ type DesignWorkspaceProps = {
   onBusyChange?: (busy: boolean, meta?: { device?: 'web' | 'app' }) => void;
 };
 
-type ProcessData = { prompt: string; log: string; status?: string };
 type SpecData = {
   phase: 'placeholder' | 'ready';
   spec?: DesignSpec | null;
@@ -159,28 +158,75 @@ function DesignRoundSelector({
   );
 }
 
-function DesignAgentLogRail({ round }: { round: DesignRound | null }) {
+type AgentLogData = {
+  round: DesignRound | null;
+  fallbackPrompt?: string;
+};
+
+function formatDesignTokenTag(entry: {
+  usage?: { input_tokens?: number; output_tokens?: number; total_tokens?: number };
+  usage_estimated?: boolean;
+}): string | null {
+  const usage = entry.usage;
+  if (!usage) return null;
+  const total = Number(usage.total_tokens || 0);
+  const input = Number(usage.input_tokens || 0);
+  const output = Number(usage.output_tokens || 0);
+  if (total <= 0 && input <= 0 && output <= 0) return null;
+  const n = total > 0 ? total : input + output;
+  const compact =
+    n >= 10_000 ? `${Math.round(n / 1000)}k` : n >= 1000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, '')}k` : String(n);
+  return entry.usage_estimated ? `~${compact}` : compact;
+}
+
+function designModelLabel(entry: { model_name?: string; model_id?: string }): string | null {
+  const raw = (entry.model_name || entry.model_id || '').trim();
+  if (!raw) return null;
+  // Prefer human label; collapse long ids like agnes-2.0-flash → Agnes 2.0 Flash when needed.
+  if (!raw.includes('-') || /\s/.test(raw)) return raw;
+  return raw
+    .split(/[-_]/)
+    .filter(Boolean)
+    .map((part) => (/^\d/.test(part) ? part : part.charAt(0).toUpperCase() + part.slice(1)))
+    .join(' ');
+}
+
+function AgentLogCardNode({ data }: NodeProps) {
   const { t } = useLanguage();
+  const d = data as AgentLogData;
   const [reasoningOpen, setReasoningOpen] = useState(true);
-  if (!round) return null;
-  const hasReasoning = Boolean(round.reasoning_content?.trim());
-  const executionEntries = round.entries.filter((e) => e.text?.trim());
-  if (!hasReasoning && executionEntries.length === 0) return null;
+  const round = d.round;
+  const hasReasoning = Boolean(round?.reasoning_content?.trim());
+  // Skip standalone model/tokens meta lines — those belong as tags on each step.
+  const executionEntries = (round?.entries || []).filter(
+    (e) => e.text?.trim() && e.kind !== 'model' && e.kind !== 'tokens',
+  );
+  if (!hasReasoning && executionEntries.length === 0 && !d.fallbackPrompt) {
+    return (
+      <div className="w-[272px] rounded-2xl border border-outline-variant/30 bg-white/94 p-3 shadow-md">
+        <Handle type="source" position={Position.Right} className="!bg-neutral-300" />
+        <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">
+          {t('Agent log')}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div
-      className="pointer-events-auto flex max-h-[min(520px,70vh)] w-[272px] flex-col overflow-hidden rounded-2xl border border-outline-variant/30 bg-white/94 shadow-lg backdrop-blur-md"
+      className="flex max-h-[min(520px,70vh)] w-[272px] flex-col overflow-hidden rounded-2xl border border-outline-variant/30 bg-white/94 shadow-md backdrop-blur-md"
       data-testid="design-agent-log-rail"
     >
+      <Handle type="source" position={Position.Right} className="!bg-neutral-300" />
       <div className="border-b border-neutral-100 px-3 py-2">
         <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">
           {t('Agent log')}
         </p>
         <p className="mt-0.5 line-clamp-2 text-[11px] font-medium text-neutral-700">
-          {round.user_prompt || `${t('Round')} ${round.index + 1}`}
+          {round?.user_prompt || d.fallbackPrompt || `${t('Round')} ${(round?.index ?? 0) + 1}`}
         </p>
       </div>
-      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-3 py-2.5">
+      <div className="nodrag nowheel min-h-0 flex-1 space-y-2 overflow-y-auto px-3 py-2.5">
         {hasReasoning ? (
           <div className="overflow-hidden rounded-xl border border-violet-100 bg-violet-50/60">
             <button
@@ -200,7 +246,7 @@ function DesignAgentLogRail({ round }: { round: DesignRound | null }) {
             </button>
             {reasoningOpen ? (
               <pre className="max-h-40 overflow-auto whitespace-pre-wrap border-t border-violet-100/80 bg-[#0f1117] px-2.5 py-2 font-mono text-[10px] leading-relaxed text-emerald-300/95">
-                {round.reasoning_content}
+                {round?.reasoning_content}
               </pre>
             ) : null}
           </div>
@@ -210,19 +256,55 @@ function DesignAgentLogRail({ round }: { round: DesignRound | null }) {
             <p className="text-[10px] font-bold uppercase tracking-wide text-neutral-400">
               {t('Execution')}
             </p>
-            {executionEntries.map((entry, i) => (
-              <div
-                key={`${entry.at || ''}-${i}`}
-                className="rounded-lg border border-neutral-100 bg-neutral-50/90 px-2.5 py-2"
-              >
-                <p className="whitespace-pre-wrap text-[11px] leading-relaxed text-neutral-700">
-                  {entry.text}
-                </p>
-                {entry.status ? (
-                  <p className="mt-1 text-[10px] font-medium text-neutral-400">{entry.status}</p>
-                ) : null}
-              </div>
-            ))}
+            {executionEntries.map((entry, i) => {
+              const tokenTag = formatDesignTokenTag(entry);
+              const modelTag = designModelLabel(entry);
+              const statusLabel =
+                entry.status && entry.status !== 'info' ? entry.status : null;
+              const showMeta = Boolean(statusLabel || modelTag || tokenTag);
+              const usageTitle = entry.usage
+                ? `${(entry.usage.input_tokens ?? 0).toLocaleString()} in / ${(entry.usage.output_tokens ?? 0).toLocaleString()} out${
+                    entry.usage_estimated ? ' (estimated)' : ''
+                  }`
+                : undefined;
+              return (
+                <div
+                  key={`${entry.at || ''}-${i}`}
+                  className="rounded-lg border border-neutral-100 bg-neutral-50/90 px-2.5 py-2"
+                >
+                  <p className="whitespace-pre-wrap text-[11px] leading-relaxed text-neutral-700">
+                    {entry.text}
+                  </p>
+                  {showMeta ? (
+                    <div className="mt-1.5 flex items-center gap-1.5 overflow-hidden">
+                      {statusLabel ? (
+                        <span className="shrink-0 text-[10px] font-medium text-neutral-400">
+                          {statusLabel}
+                        </span>
+                      ) : null}
+                      <div className="ml-auto flex min-w-0 max-w-full items-center gap-1 overflow-hidden">
+                        {modelTag ? (
+                          <span
+                            className="min-w-0 truncate rounded bg-sky-50 px-1.5 py-px text-[10px] font-medium leading-4 text-sky-700 ring-1 ring-inset ring-sky-200/70"
+                            title={entry.model_id || modelTag}
+                          >
+                            {modelTag}
+                          </span>
+                        ) : null}
+                        {tokenTag ? (
+                          <span
+                            className="shrink-0 rounded bg-amber-50 px-1.5 py-px font-mono text-[10px] font-medium leading-4 text-amber-800 ring-1 ring-inset ring-amber-200/70"
+                            title={usageTitle}
+                          >
+                            {tokenTag}
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
           </div>
         ) : null}
       </div>
@@ -240,7 +322,7 @@ function inferIterateModeClient(instruction: string, kind: string | undefined): 
 
 type CanvasSelection = {
   nodeId: string;
-  kind: 'ui' | 'spec' | 'md' | 'image' | 'url' | 'process';
+  kind: 'ui' | 'spec' | 'md' | 'image' | 'url' | 'agentLog';
   label: string;
   screenId?: string;
 };
@@ -399,9 +481,9 @@ function selectionKindFromNodeId(id: string): CanvasSelection['kind'] {
   if (id === 'mdDoc') return 'md';
   if (id === 'reference') return 'image';
   if (id === 'urlCard') return 'url';
-  if (id === 'process') return 'process';
+  if (id === 'agentLog') return 'agentLog';
   if (id.startsWith('ui')) return 'ui';
-  return 'process';
+  return 'spec';
 }
 
 function selectionLabel(kind: CanvasSelection['kind'], node: Node, session: DesignSession | null): string {
@@ -409,11 +491,12 @@ function selectionLabel(kind: CanvasSelection['kind'], node: Node, session: Desi
   if (kind === 'md') return session?.reference_md_name || 'DESIGN.md';
   if (kind === 'image') return 'image.png';
   if (kind === 'url') return session?.url_snapshot?.host || session?.reference_url || 'Website';
+  if (kind === 'agentLog') return 'Agent log';
   if (kind === 'ui') {
     const data = node.data as UiData;
     return data.name || 'Interface';
   }
-  return 'Process';
+  return 'Design system';
 }
 type RefData = { name: string; url: string };
 type MdDocData = { name: string; text: string };
@@ -472,38 +555,36 @@ const DEVICE_VIEW = {
 function deviceView(device?: string) {
   return device === 'app' ? DEVICE_VIEW.app : DEVICE_VIEW.web;
 }
+
+/** One-row canvas: Agent Log → Spec → Interface (Y aligned). Sync with orchestrator layout. */
+const DESIGN_CANVAS_ORIGIN = 40;
+const DESIGN_AGENT_LOG_W = 272;
+const DESIGN_SPEC_W = 300;
+const DESIGN_SOURCE_W = 300;
+const DESIGN_CARD_GAP = 48;
+const DESIGN_SPEC_UI_GAP = 56;
+const DESIGN_ROW_Y = 56;
+
+/** Agent Log | Spec | Interface — fixed row, no overlap. */
 const LAYOUT = {
-  process: { x: 40, y: 80 },
-  reference: { x: 40, y: 260 },
-  /** md / url card sits in the second column when present */
-  source: { x: 376, y: 56 },
-  /** spec when no source card (process → spec) */
-  spec: { x: 376, y: 56 },
-  /** spec when a source card occupies column 2 */
-  specAfterSource: { x: 712, y: 56 },
-  /** ui when no source (process → spec → ui) */
-  ui: { x: 732, y: 40 },
-  /** ui when source is present */
-  uiAfterSource: { x: 1068, y: 40 },
-  /** horizontal step between multi-screen UI cards — sized for web preview by default */
-  uiStep: DEVICE_VIEW.web.frameW + 48,
+  agentLog: { x: DESIGN_CANVAS_ORIGIN, y: DESIGN_ROW_Y },
+  reference: { x: DESIGN_CANVAS_ORIGIN, y: 260 },
+  /** After agent log: 40 + 272 + 48 = 360 */
+  source: { x: DESIGN_CANVAS_ORIGIN + DESIGN_AGENT_LOG_W + DESIGN_CARD_GAP, y: DESIGN_ROW_Y },
+  /** Spec when no source card */
+  spec: { x: DESIGN_CANVAS_ORIGIN + DESIGN_AGENT_LOG_W + DESIGN_CARD_GAP, y: DESIGN_ROW_Y },
+  /** Spec when source occupies column 2: 360 + 300 + 48 = 708 */
+  specAfterSource: {
+    x: DESIGN_CANVAS_ORIGIN + DESIGN_AGENT_LOG_W + DESIGN_CARD_GAP + DESIGN_SOURCE_W + DESIGN_CARD_GAP,
+    y: DESIGN_ROW_Y,
+  },
 } as const;
 
-function statusLabel(status?: string): string {
-  switch (status) {
-    case 'crafting_spec':
-      return 'Crafting…';
-    case 'generating_ui':
-      return 'Generating…';
-    case 'iterating':
-      return 'Thinking…';
-    case 'error':
-      return 'Error';
-    case 'ready':
-      return 'Ready';
-    default:
-      return status || '';
-  }
+function uiCanvasPos(specPos: { x: number; y: number }): { x: number; y: number } {
+  return {
+    x: specPos.x + DESIGN_SPEC_W + DESIGN_SPEC_UI_GAP,
+    y: DESIGN_ROW_Y,
+  };
 }
 
 function ShimmerOverlay() {
@@ -541,28 +622,6 @@ function SpecSkeleton() {
           />
         ))}
       </div>
-    </div>
-  );
-}
-
-function ProcessCardNode({ data }: NodeProps) {
-  const d = data as ProcessData;
-  const busy = Boolean(d.status && IN_FLIGHT.has(d.status));
-  return (
-    <div className="w-[280px] rounded-2xl border border-white/70 bg-white/90 p-3.5 shadow-md backdrop-blur-md animate-design-card-in">
-      <Handle type="source" position={Position.Right} className="!bg-neutral-300" />
-      <p className="mb-1.5 line-clamp-3 text-[12px] font-semibold leading-snug text-neutral-800">
-        {d.prompt}
-      </p>
-      <p className="text-[11px] leading-relaxed text-neutral-500">{d.log}</p>
-      {busy ? (
-        <div className="mt-2.5 flex items-center gap-2 whitespace-nowrap text-[10px] font-medium text-neutral-400">
-          <Loader2 size={12} className="animate-spin shrink-0" />
-          {statusLabel(d.status)}
-        </div>
-      ) : d.status === 'error' ? (
-        <div className="mt-2.5 whitespace-nowrap text-[10px] font-medium text-rose-500">{statusLabel(d.status)}</div>
-      ) : null}
     </div>
   );
 }
@@ -897,7 +956,7 @@ function UrlCardNode({ data }: NodeProps) {
 }
 
 const nodeTypes = {
-  process: ProcessCardNode,
+  agentLog: AgentLogCardNode,
   spec: SpecCardNode,
   ui: UiCardNode,
   reference: RefCardNode,
@@ -938,7 +997,6 @@ function buildCanvasNodes(
   session: DesignSession | null,
   prompt: string,
   drawing: boolean,
-  craftingLabel: string,
   positions: Record<string, { x: number; y: number }>,
   extras?: {
     referenceImageUrl?: string | null;
@@ -962,26 +1020,25 @@ function buildCanvasNodes(
   const rounds = parseDesignRounds(session?.process_log, session?.rounds, session?.round_history);
   const activeRound =
     rounds.find((r) => r.index === extras?.selectedRoundIndex) ?? rounds[rounds.length - 1];
-  const latestAssistant = activeRound
-    ? [...activeRound.entries].reverse().find((e) => e.role === 'assistant')
-    : [...(session?.process_log || [])].reverse().find((e) => e.role === 'assistant');
-  const latestUser = activeRound
-    ? { text: activeRound.user_prompt }
-    : [...(session?.process_log || [])].reverse().find((e) => e.role === 'user');
-  const processPrompt = stripIterateMeta(
-    latestUser?.text || session?.prompt || prompt || '',
-  );
-  list.push({
-    id: 'process',
-    type: 'process',
-    position: positions.process || LAYOUT.process,
-    data: {
-      prompt: processPrompt || session?.prompt || prompt,
-      log: latestAssistant?.text || craftingLabel,
-      status: latestAssistant?.status || status,
-    },
-    draggable: true,
-  });
+  const showAgentLog =
+    Boolean(activeRound) ||
+    Boolean(session?.process_log?.length) ||
+    IN_FLIGHT.has(status) ||
+    Boolean(session?.spec) ||
+    Boolean(session?.screens?.length);
+
+  if (showAgentLog) {
+    list.push({
+      id: 'agentLog',
+      type: 'agentLog',
+      position: { ...LAYOUT.agentLog },
+      data: {
+        round: activeRound ?? null,
+        fallbackPrompt: session?.prompt || prompt,
+      },
+      draggable: true,
+    });
+  }
 
   const refUrl = extras?.referenceImageUrl || session?.reference_image_url;
   const mdText = extras?.referenceMd?.text || session?.reference_md_text;
@@ -1027,11 +1084,8 @@ function buildCanvasNodes(
   const specPos = hasSource ? LAYOUT.specAfterSource : LAYOUT.spec;
   const sessionDevice: 'web' | 'app' = session?.device === 'app' ? 'app' : 'web';
   const view = deviceView(sessionDevice);
-  const uiPos = {
-    x: specPos.x + 300 + 56,
-    y: sessionDevice === 'app' ? 24 : 56,
-  };
-  const uiStep = view.frameW + 48;
+  const uiPos = uiCanvasPos(specPos);
+  const uiStep = view.frameW + DESIGN_CARD_GAP;
   const hasSpec = Boolean(session?.spec);
   const showSpecPlaceholder =
     !hasSpec &&
@@ -1040,7 +1094,7 @@ function buildCanvasNodes(
     list.push({
       id: 'spec',
       type: 'spec',
-      position: positions.spec || specPos,
+      position: { ...specPos },
       data: { phase: 'ready', spec: session!.spec },
       draggable: true,
     });
@@ -1048,7 +1102,7 @@ function buildCanvasNodes(
     list.push({
       id: 'spec',
       type: 'spec',
-      position: positions.spec || specPos,
+      position: { ...specPos },
       data: {
         phase: 'placeholder',
         label: 'Crafting…',
@@ -1071,21 +1125,21 @@ function buildCanvasNodes(
     screens.forEach((screen, index) => {
       if (!screen.html) return;
       const nodeId = `ui-${screen.id || index}`;
-      const saved = positions[nodeId] || (index === 0 ? positions.ui : undefined);
+      const saved = positions[nodeId];
       const fromServer = screen.position;
       const fallbackX = uiPos.x + index * uiStep;
       const serverOk =
         fromServer &&
         typeof fromServer.x === 'number' &&
-        fromServer.x >= uiPos.x - 80;
-      // First screen follows tight LAYOUT so old server defaults (e.g. x=1020) don't leave a huge gap.
-      const position =
-        saved ||
-        (index === 0
+        fromServer.x >= uiPos.x - 40;
+      // Default: fixed row layout. Only keep user-dragged X from positions.
+      const position = saved
+        ? { x: saved.x, y: DESIGN_ROW_Y }
+        : index === 0
           ? { ...uiPos }
           : serverOk
-            ? fromServer!
-            : { x: fallbackX, y: uiPos.y });
+            ? { x: fromServer!.x, y: DESIGN_ROW_Y }
+            : { x: fallbackX, y: DESIGN_ROW_Y };
       const pending = extras?.iteratePending;
       const isModifyTarget =
         pending?.mode === 'modify' &&
@@ -1178,7 +1232,7 @@ function buildCanvasNodes(
     list.push({
       id: 'ui-main',
       type: 'ui',
-      position: positions['ui-main'] || positions.ui || uiPos,
+      position: { ...uiPos },
       data: {
         phase: 'placeholder',
         name: 'Interface',
@@ -1194,15 +1248,16 @@ function buildCanvasNodes(
 
 function buildCanvasEdges(nodes: Node[]): Edge[] {
   const e: Edge[] = [];
+  const hasAgentLog = nodes.some((n) => n.id === 'agentLog');
   const hasRef = nodes.some((n) => n.id === 'reference');
   const hasMd = nodes.some((n) => n.id === 'mdDoc');
   const hasUrl = nodes.some((n) => n.id === 'urlCard');
   const hasSpec = nodes.some((n) => n.id === 'spec');
   const uiNodes = nodes.filter((n) => n.id.startsWith('ui'));
-  if (hasSpec) {
+  if (hasAgentLog && hasSpec) {
     e.push({
-      id: 'e-process-spec',
-      source: 'process',
+      id: 'e-agentLog-spec',
+      source: 'agentLog',
       target: 'spec',
       markerEnd: { type: MarkerType.ArrowClosed, color: '#d4d4d4' },
       style: { stroke: '#e5e5e5' },
@@ -1368,8 +1423,7 @@ function DesignCanvasInner({
         next,
         nextPrompt,
         nextDrawing,
-        t('Crafting the design…'),
-        positionsRef.current,
+        userDraggedRef.current ? positionsRef.current : {},
         {
           referenceImageUrl:
             extras?.referenceImageUrl ?? next?.reference_image_url ?? referenceImage?.dataUrl,
@@ -1406,10 +1460,17 @@ function DesignCanvasInner({
         },
       );
       for (const node of built) {
-        if (!positionsRef.current[node.id]) {
-          positionsRef.current[node.id] = { ...node.position };
+        // Default layout is authoritative until the user drags a card.
+        if (userDraggedRef.current && positionsRef.current[node.id]) {
+          const saved = positionsRef.current[node.id];
+          node.position = {
+            x: saved.x,
+            y: node.id === 'agentLog' || node.id === 'spec' || node.id.startsWith('ui')
+              ? DESIGN_ROW_Y
+              : saved.y,
+          };
         } else {
-          node.position = { ...positionsRef.current[node.id] };
+          positionsRef.current[node.id] = { ...node.position };
         }
         node.selected = node.id === selectedId;
       }
@@ -1665,10 +1726,6 @@ function DesignCanvasInner({
   }, [referenceImage?.dataUrl, referenceMd, referenceUrl, pickMode, elementSelection?.label, elementSelection?.path]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const designRounds = parseDesignRounds(session?.process_log, session?.rounds, session?.round_history);
-  const activeDesignRound =
-    designRounds.find((r) => r.index === selectedRoundIndex)
-    ?? designRounds[designRounds.length - 1]
-    ?? null;
 
   const handleRoundSelect = useCallback(
     (index: number) => {
@@ -1858,13 +1915,27 @@ function DesignCanvasInner({
     setDrawing(true);
     setBusy(true);
     setError(null);
-    // Stitch-like: focus process card + show Thinking… immediately.
+    // Focus spec / target screen; execution status lives in Agent Log.
     userDraggedRef.current = false;
-    setFocusNodeIds(['process']);
+    const iterateFocusId =
+      mode === 'modify' && targetId
+        ? `ui-${targetId}`
+        : session.spec
+          ? 'spec'
+          : session.screens?.[0]?.id
+            ? `ui-${session.screens[0].id}`
+            : 'spec';
+    setFocusNodeIds([iterateFocusId]);
     setCanvasSelection({
-      nodeId: 'process',
-      kind: 'process',
-      label: 'Process',
+      nodeId: iterateFocusId,
+      kind: iterateFocusId.startsWith('ui') ? 'ui' : 'spec',
+      label:
+        iterateFocusId.startsWith('ui')
+          ? session.screens?.find((s) => `ui-${s.id}` === iterateFocusId)?.name || 'Interface'
+          : String(session.spec?.name || 'Design system'),
+      screenId: iterateFocusId.startsWith('ui')
+        ? iterateFocusId.replace(/^ui-/, '')
+        : undefined,
     });
     const optimistic: DesignSession = {
       ...session,
@@ -1911,7 +1982,7 @@ function DesignCanvasInner({
       window.setTimeout(() => setDrawing(false), 1450);
       setBusy(false);
       userDraggedRef.current = false;
-      const focusId = focusScreen ? `ui-${focusScreen}` : 'process';
+      const focusId = focusScreen ? `ui-${focusScreen}` : 'spec';
       setFocusNodeIds([focusId]);
       setLayoutKey(`iterate-done-${Date.now()}-${action || mode}`);
       setCanvasSelection({
@@ -2309,13 +2380,6 @@ function DesignCanvasInner({
               />
               <FitViewOnNodes layoutKey={layoutKey} focusIds={focusNodeIds} />
             </ReactFlow>
-          </div>
-
-          <div
-            className="pointer-events-none absolute left-4 top-4 z-20"
-            style={{ bottom: APP_INPUT_DOCK_BOTTOM_PX + 120 }}
-          >
-            <DesignAgentLogRail round={activeDesignRound} />
           </div>
 
           <div

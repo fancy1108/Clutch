@@ -131,12 +131,6 @@ function formatRelativeTime(iso: string): string {
   return `${days}d`;
 }
 
-function formatDesignHistoryDate(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-}
-
 function sessionLabel(session: SessionRecord): string {
   if (session.title?.trim()) return session.title.trim();
   if (session.workflow_id) return session.workflow_id;
@@ -495,8 +489,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             {sessionLabel(session)}
                           </span>
                           <span className="mt-0.5 block truncate text-[10px] text-on-surface-variant/70">
-                            {formatDesignHistoryDate(session.started_at) ||
-                              formatRelativeTime(session.started_at)}
+                            {formatRelativeTime(session.started_at)}
                           </span>
                         </span>
                       </>

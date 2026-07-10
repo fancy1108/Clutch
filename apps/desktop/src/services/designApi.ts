@@ -16,10 +16,20 @@ export type DesignProcessEntry = {
   text: string;
   status?: string;
   at?: string;
+  /** Agent Log meta lines: model picker / token usage. */
+  kind?: 'model' | 'tokens' | string;
   /** Step-by-step model reasoning (e.g. big-pickle free models). */
   reasoning_content?: string;
   /** 1-based round index when provided by the session manifest. */
   round_index?: number;
+  model_id?: string;
+  model_name?: string;
+  usage?: {
+    input_tokens?: number;
+    output_tokens?: number;
+    total_tokens?: number;
+  };
+  usage_estimated?: boolean;
 };
 
 /** One user instruction round and its assistant follow-ups. */

@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from src.workspace import WorkspaceError, require_workspace
+from src.design.builtin_presets import normalize_preset_id, resolve_builtin_spec
 from src.design.layout_patterns import (
     detect_layout_pattern,
     enrich_fallback_spec,
@@ -75,11 +76,49 @@ def _append_design_run_log(run_id: str, message: str, *, reasoning: str | None =
         logger.debug("design terminal log skip run_id=%s", run_id, exc_info=True)
 
 
+_DESIGN_CARD_GAP = 48
+_DESIGN_CANVAS_ORIGIN = 40
+_DESIGN_AGENT_LOG_W = 272
+_DESIGN_SPEC_W = 300
+_DESIGN_SOURCE_W = 300
+_DESIGN_SPEC_UI_GAP = 56
+_DESIGN_ROW_Y = 56
+_DESIGN_UI_FRAME = {"web": 720, "app": 300}
+
+
+def _ui_frame_width(device: str) -> int:
+    return _DESIGN_UI_FRAME.get((device or "web").strip().lower(), 720)
+
+
+def _spec_origin_x(*, has_source: bool = False) -> int:
+    """X for the spec card — after Agent Log column (and optional source)."""
+    x = _DESIGN_CANVAS_ORIGIN + _DESIGN_AGENT_LOG_W + _DESIGN_CARD_GAP
+    if has_source:
+        x += _DESIGN_SOURCE_W + _DESIGN_CARD_GAP
+    return x
+
+
+def _default_ui_origin_x(*, has_source: bool = False) -> int:
+    """Stitch-like x for the first UI artboard (agentLog → spec → ui)."""
+    return _spec_origin_x(has_source=has_source) + _DESIGN_SPEC_W + _DESIGN_SPEC_UI_GAP
+
+
+def _ui_layout_step(device: str) -> int:
+    return _ui_frame_width(device) + _DESIGN_CARD_GAP
+
+
 _preview_procs: dict[str, dict[str, Any]] = {}
 _preview_lock = threading.Lock()
 _generate_jobs: dict[str, threading.Thread] = {}
 _generate_lock = threading.Lock()
 _LLM_TIMEOUT_SEC = 45.0
+_LLM_UI_TIMEOUT_SEC = 90.0
+_DESIGN_REVIEW_ENABLED = os.environ.get("CLUTCH_DESIGN_REVIEW", "").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
 
 
 class DesignError(RuntimeError):
@@ -270,6 +309,136 @@ def _write_manifest(session_dir: Path, manifest: dict[str, Any]) -> None:
     os.replace(tmp, path)
 
 
+def _update_process_status(
+    session_dir: Path,
+    manifest: dict[str, Any],
+    *,
+    text: str,
+    status: str,
+    model_id: str | None = None,
+    model_name: str | None = None,
+) -> None:
+    """Refresh the latest assistant line (in-flight heartbeat for polling UI)."""
+    log = list(manifest.get("process_log") or [])
+    updated = False
+    for i in range(len(log) - 1, -1, -1):
+        entry = log[i]
+        if entry.get("role") != "assistant" or entry.get("kind") in {"model", "tokens"}:
+            continue
+        next_entry = {**entry, "text": text, "status": status, "at": _now_iso()}
+        # Preserve prior model tags; refresh when caller provides the active model.
+        if model_name:
+            next_entry["model_id"] = model_id
+            next_entry["model_name"] = model_name
+        elif manifest.get("model_name") and not next_entry.get("model_name"):
+            next_entry["model_id"] = manifest.get("model_id")
+            next_entry["model_name"] = manifest.get("model_name")
+        log[i] = next_entry
+        updated = True
+        break
+    if not updated:
+        entry: dict[str, Any] = {"role": "assistant", "text": text, "status": status, "at": _now_iso()}
+        name = model_name or manifest.get("model_name")
+        if name:
+            entry["model_id"] = model_id or manifest.get("model_id")
+            entry["model_name"] = name
+        log.append(entry)
+    manifest["process_log"] = log
+    manifest["status"] = status
+    _write_manifest(session_dir, manifest)
+
+
+def _append_process_status(
+    session_dir: Path,
+    manifest: dict[str, Any],
+    *,
+    text: str,
+    status: str,
+    model_id: str | None = None,
+    model_name: str | None = None,
+) -> None:
+    """Append a new assistant process_log entry (phase transition)."""
+    log = list(manifest.get("process_log") or [])
+    entry: dict[str, Any] = {"role": "assistant", "text": text, "status": status, "at": _now_iso()}
+    name = model_name or manifest.get("model_name")
+    if name:
+        entry["model_id"] = model_id or manifest.get("model_id")
+        entry["model_name"] = name
+    log.append(entry)
+    manifest["process_log"] = log
+    manifest["status"] = status
+    _write_manifest(session_dir, manifest)
+
+
+def _resolve_model_label(router: Any, model_id: str) -> tuple[str, str]:
+    try:
+        spec, _ = router.resolve_for_model(model_id)
+        return model_id, str(spec.name or model_id)
+    except Exception:
+        return model_id, model_id
+
+
+def _append_model_process_entry(
+    log: list[dict[str, Any]],
+    *,
+    model_id: str,
+    model_name: str,
+    insert_after_user: bool = False,
+) -> None:
+    entry = {
+        "role": "assistant",
+        "kind": "model",
+        "text": f"Model: {model_name}",
+        "model_id": model_id,
+        "model_name": model_name,
+        "status": "info",
+        "at": _now_iso(),
+    }
+    if insert_after_user:
+        for i in range(len(log) - 1, -1, -1):
+            if log[i].get("role") == "user":
+                log.insert(i + 1, entry)
+                return
+    log.append(entry)
+
+
+def _round_has_model_entry(log: list[dict[str, Any]]) -> bool:
+    """True when the current round (after the latest user line) already has a Model entry."""
+    for item in reversed(log):
+        if item.get("role") == "user":
+            break
+        if item.get("kind") == "model":
+            return True
+    return False
+
+
+def _stamp_session_model(
+    manifest: dict[str, Any],
+    router: Any,
+    *,
+    model_id: str,
+    process_log: list[dict[str, Any]] | None = None,
+    record_in_log: bool = True,
+    insert_after_user: bool = False,
+) -> tuple[str, str]:
+    """Persist model on the session manifest and optionally append an Agent Log line."""
+    model_id, model_name = _resolve_model_label(router, model_id)
+    manifest["model_id"] = model_id
+    manifest["model_name"] = model_name
+    if record_in_log:
+        # Mutate the caller's list when provided so generate/iterate stay in sync.
+        log = process_log if process_log is not None else list(manifest.get("process_log") or [])
+        if not _round_has_model_entry(log):
+            _append_model_process_entry(
+                log,
+                model_id=model_id,
+                model_name=model_name,
+                insert_after_user=insert_after_user,
+            )
+        manifest["process_log"] = log
+    return model_id, model_name
+
+
 def _llm_text(result: object) -> str:
     if isinstance(result, dict):
         content = result.get("content")
@@ -277,16 +446,183 @@ def _llm_text(result: object) -> str:
     return str(result).strip()
 
 
-def _llm_result(result: object) -> tuple[str, str | None]:
+def _empty_token_usage() -> dict[str, int]:
+    return {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}
+
+
+def _merge_token_usage(*usages: dict[str, int] | None) -> dict[str, int]:
+    merged = _empty_token_usage()
+    for usage in usages:
+        if not usage:
+            continue
+        merged["input_tokens"] += int(usage.get("input_tokens") or 0)
+        merged["output_tokens"] += int(usage.get("output_tokens") or 0)
+    merged["total_tokens"] = merged["input_tokens"] + merged["output_tokens"]
+    return merged
+
+
+def _estimate_token_usage(
+    *,
+    prompt: str = "",
+    response_text: str = "",
+    reasoning: str | None = None,
+) -> dict[str, int]:
+    def _count(text: str) -> int:
+        return len((text or "").split())
+
+    input_tokens = _count(prompt)
+    output_tokens = _count(response_text) + _count(reasoning or "")
+    if input_tokens == 0 and output_tokens == 0:
+        return _empty_token_usage()
+    if output_tokens == 0:
+        output_tokens = max(1, input_tokens // 4)
+    return {
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "total_tokens": input_tokens + output_tokens,
+    }
+
+
+def _normalize_usage_dict(raw: object) -> dict[str, int] | None:
+    if not isinstance(raw, dict):
+        return None
+    if "prompt_tokens" in raw or "completion_tokens" in raw:
+        inp = int(raw.get("prompt_tokens") or 0)
+        out = int(raw.get("completion_tokens") or 0)
+        total = int(raw.get("total_tokens") or (inp + out))
+        return {"input_tokens": inp, "output_tokens": out, "total_tokens": total}
+    if "input_tokens" in raw or "output_tokens" in raw:
+        inp = int(raw.get("input_tokens") or 0)
+        out = int(raw.get("output_tokens") or 0)
+        return {"input_tokens": inp, "output_tokens": out, "total_tokens": inp + out}
+    return None
+
+
+def _usage_from_llm_result(
+    result: object,
+    *,
+    prompt: str = "",
+    response_text: str = "",
+    reasoning: str | None = None,
+) -> tuple[dict[str, int], bool]:
+    if isinstance(result, dict):
+        normalized = _normalize_usage_dict(result.get("usage"))
+        if normalized and normalized["total_tokens"] > 0:
+            return normalized, False
+    estimated = _estimate_token_usage(
+        prompt=prompt,
+        response_text=response_text,
+        reasoning=reasoning,
+    )
+    return estimated, estimated["total_tokens"] > 0
+
+
+def _format_token_usage_text(label: str, usage: dict[str, int], *, estimated: bool = False) -> str:
+    input_tokens = int(usage.get("input_tokens") or 0)
+    output_tokens = int(usage.get("output_tokens") or 0)
+    total_tokens = int(usage.get("total_tokens") or (input_tokens + output_tokens))
+    suffix = " (estimated)" if estimated else ""
+    return (
+        f"Tokens · {label}: {total_tokens:,} total "
+        f"({input_tokens:,} in / {output_tokens:,} out){suffix}"
+    )
+
+
+def _attach_step_metadata(
+    entry: dict[str, Any],
+    *,
+    model_id: str | None = None,
+    model_name: str | None = None,
+    usage: dict[str, int] | None = None,
+    usage_estimated: bool = False,
+) -> dict[str, Any]:
+    out = dict(entry)
+    if model_name:
+        out["model_id"] = model_id
+        out["model_name"] = model_name
+    merged = _merge_token_usage(usage)
+    if merged["total_tokens"] > 0:
+        out["usage"] = merged
+        out["usage_estimated"] = usage_estimated
+    return out
+
+
+def _finalize_assistant_step(
+    log: list[dict[str, Any]],
+    *,
+    text: str,
+    status: str,
+    model_id: str | None = None,
+    model_name: str | None = None,
+    usage: dict[str, int] | None = None,
+    usage_estimated: bool = False,
+    replace_statuses: set[str] | None = None,
+) -> None:
+    """Replace the latest in-flight assistant step, or append if none found."""
+    statuses = replace_statuses or {"crafting_spec", "generating_ui", "iterating"}
+    entry = _attach_step_metadata(
+        {"role": "assistant", "text": text, "status": status, "at": _now_iso()},
+        model_id=model_id,
+        model_name=model_name,
+        usage=usage,
+        usage_estimated=usage_estimated,
+    )
+    for i in range(len(log) - 1, -1, -1):
+        item = log[i]
+        if item.get("role") != "assistant":
+            continue
+        if item.get("kind") in {"model", "tokens"}:
+            continue
+        if item.get("status") in statuses:
+            log[i] = entry
+            return
+    log.append(entry)
+
+
+def _append_token_usage_entry(
+    log: list[dict[str, Any]],
+    *,
+    label: str,
+    usage: dict[str, int] | None,
+    estimated: bool = False,
+) -> None:
+    merged = _merge_token_usage(usage)
+    if merged["total_tokens"] <= 0:
+        return
+    log.append(
+        {
+            "role": "assistant",
+            "kind": "tokens",
+            "text": _format_token_usage_text(label, merged, estimated=estimated),
+            "usage_label": label,
+            "usage": merged,
+            "usage_estimated": estimated,
+            "status": "info",
+            "at": _now_iso(),
+        }
+    )
+
+
+def _llm_result(
+    result: object,
+    *,
+    prompt: str = "",
+) -> tuple[str, str | None, dict[str, int], bool]:
     if isinstance(result, dict):
         content = result.get("content")
         text = str(content).strip() if content else ""
         reasoning = result.get("reasoning_content") or result.get("reasoning")
-        if isinstance(reasoning, str) and reasoning.strip():
-            return text, reasoning.strip()
-        return text, None
+        reasoning_text = reasoning.strip() if isinstance(reasoning, str) and reasoning.strip() else None
+        usage, estimated = _usage_from_llm_result(
+            result,
+            prompt=prompt,
+            response_text=text,
+            reasoning=reasoning_text,
+        )
+        return text, reasoning_text, usage, estimated
     text = str(result).strip()
-    return text, None
+    usage, estimated = _usage_from_llm_result(result, prompt=prompt, response_text=text)
+    return text, None, usage, estimated
 
 
 def _extract_json_block(text: str) -> dict[str, Any]:
@@ -395,6 +731,57 @@ def _prompt_intent(prompt: str) -> str:
     if any(k in p for k in ("落地", "landing", "官网", "首页", "home page", "marketing", "hero")):
         return "landing"
     return "generic"
+
+
+def _detect_html_intent(html: str) -> str | None:
+    """Heuristic screen type from generated HTML (for brief-alignment checks)."""
+    lower = (html or "").lower()
+    text = re.sub(r"<[^>]+>", " ", lower)
+    has_password = 'type="password"' in lower or "password" in text
+    has_login_copy = any(
+        k in text
+        for k in (
+            "welcome back",
+            "sign in",
+            "log in",
+            "login",
+            "欢迎回来",
+            "登录",
+            "注册",
+        )
+    )
+    if has_password or (has_login_copy and "email" in text):
+        return "login"
+    shop_signals = (
+        "add to cart",
+        "shopping cart",
+        "featured product",
+        "product card",
+        "加入购物车",
+        "购物车",
+        "商品",
+        "featured",
+    )
+    if any(k in text for k in shop_signals) or (
+        "product" in text and ("cart" in text or "shop" in text or "price" in text)
+    ):
+        return "shop"
+    if any(k in text for k in ("dashboard", "analytics", "sidebar", "控制台", "后台")):
+        return "dashboard"
+    if any(k in text for k in ("playlist", "lyrics", "play", "歌词", "歌单", "切歌")):
+        return "music"
+    return None
+
+
+def _html_matches_brief_intent(prompt: str, html: str) -> bool:
+    """True when generated HTML aligns with the user brief (guards weak-model drift)."""
+    expected = _prompt_intent(prompt)
+    if expected == "generic":
+        return True
+    detected = _detect_html_intent(html)
+    if detected is None:
+        return True
+    return detected == expected
 
 
 def _first_hex(colors: dict[str, Any] | None, key: str, fallback: str) -> str:
@@ -734,8 +1121,9 @@ def _coerce_ui_html(
     spec: dict[str, Any],
     device: str,
     fallback_html: str | None = None,
+    allow_template_fallback: bool = True,
 ) -> str:
-    """Wrap fragment if needed; replace blank LLM output with fallback (or keep prior HTML)."""
+    """Wrap fragment if needed; optional offline template when LLM output is blank."""
     html = (raw or "").strip()
     if html and "<html" not in html.lower():
         html = _shell_html(title, html, device=device)
@@ -743,11 +1131,13 @@ def _coerce_ui_html(
         return html
     if fallback_html is not None and _html_has_visible_content(fallback_html):
         return fallback_html
-    return _fallback_ui_html(prompt, spec, device=device)
+    if allow_template_fallback:
+        return _fallback_ui_html(prompt, spec, device=device)
+    return ""
 
 
 def _fallback_ui_html(prompt: str, spec: dict[str, Any], *, device: str = "web") -> str:
-    """Deterministic HTML when the LLM UI pass fails — must follow the brief, not always login."""
+    """Offline-only stub when no model/API key is configured — never used on the LLM path."""
     primary = (spec.get("colors") or {}).get("primary") or ["#2563eb"]
     accent = primary[0] if isinstance(primary, list) else str(primary)
     title = (prompt.strip() or str(spec.get("name") or "Welcome")).split("\n")[0][:48]
@@ -1164,14 +1554,14 @@ def _public(manifest: dict[str, Any], session_dir: Path, *, include_html: bool =
 
 def _llm_complete(
     router: Any, prompt: str, *, model_id: str, timeout_sec: float = _LLM_TIMEOUT_SEC
-) -> tuple[str, str | None]:
-    """Run router.complete with a hard timeout; returns (content, reasoning_content)."""
+) -> tuple[str, str | None, dict[str, int], bool]:
+    """Run router.complete with a hard timeout; returns content, reasoning, usage, estimated."""
     from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
 
     with ThreadPoolExecutor(max_workers=1) as pool:
         future = pool.submit(router.complete, prompt, model_id=model_id)
         try:
-            return _llm_result(future.result(timeout=timeout_sec))
+            return _llm_result(future.result(timeout=timeout_sec), prompt=prompt)
         except FuturesTimeout as exc:
             future.cancel()
             raise DesignError(f"Model timed out after {int(timeout_sec)}s") from exc
@@ -1358,7 +1748,7 @@ def _llm_complete_vision(
     model_id: str,
     image_data_url: str | None = None,
     timeout_sec: float = _LLM_TIMEOUT_SEC,
-) -> tuple[str, str | None]:
+) -> tuple[str, str | None, dict[str, int], bool]:
     """Complete with optional vision image via router.chat multimodal content."""
     from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
     from src.adapters.ollama_adapter import model_supports_vision
@@ -1385,7 +1775,7 @@ def _llm_complete_vision(
         with ThreadPoolExecutor(max_workers=1) as pool:
             future = pool.submit(_call)
             try:
-                return _llm_result(future.result(timeout=timeout_sec))
+                return _llm_result(future.result(timeout=timeout_sec), prompt=prompt)
             except FuturesTimeout as exc:
                 future.cancel()
                 raise DesignError(f"Model timed out after {int(timeout_sec)}s") from exc
@@ -1399,9 +1789,80 @@ def _llm_complete_vision(
     return _llm_complete(router, note + prompt, model_id=model_id, timeout_sec=timeout_sec)
 
 
+def _try_llm_complete_vision(
+    router: Any,
+    prompt: str,
+    *,
+    model_id: str,
+    image_data_url: str | None = None,
+    timeout_sec: float = _LLM_UI_TIMEOUT_SEC,
+) -> tuple[str, str | None, dict[str, int], bool, str | None]:
+    """Best-effort LLM call for UI HTML — never aborts the whole generation pipeline."""
+    try:
+        text, reasoning, usage, estimated = _llm_complete_vision(
+            router,
+            prompt,
+            model_id=model_id,
+            image_data_url=image_data_url,
+            timeout_sec=timeout_sec,
+        )
+        return text, reasoning, usage, estimated, None
+    except DesignError as exc:
+        logger.warning("design ui llm call failed model=%s err=%s", model_id, exc)
+        return "", None, _empty_token_usage(), False, str(exc)
+    except Exception as exc:
+        logger.warning("design ui llm call error model=%s err=%s", model_id, exc)
+        return "", None, _empty_token_usage(), False, str(exc)
+
+
 def _extract_html_from_llm(text: str) -> str:
-    fence = re.search(r"```(?:html)?\s*([\s\S]*?)```", text)
-    return fence.group(1).strip() if fence else (text or "").strip()
+    raw = (text or "").strip()
+    if not raw:
+        return ""
+    fence = re.search(r"```(?:html)?\s*([\s\S]*?)```", raw, re.I)
+    if fence:
+        return fence.group(1).strip()
+    # Some models omit fences — grab the first HTML document in the blob.
+    doc = re.search(r"(<!DOCTYPE[\s\S]*?</html>)", raw, re.I)
+    if doc:
+        return doc.group(1).strip()
+    html_open = re.search(r"(<html[\s\S]*?</html>)", raw, re.I)
+    if html_open:
+        return html_open.group(1).strip()
+    return raw
+
+
+def _html_from_llm_response(text: str, reasoning: str | None = None) -> str:
+    """Prefer main content; fall back to reasoning when weak models put HTML there."""
+    tag_re = re.compile(r"<(?:html|body|div|main|section|header|nav|form|button|h[1-6]|p)\b", re.I)
+    for chunk in (text, reasoning or ""):
+        if not (chunk or "").strip():
+            continue
+        extracted = _extract_html_from_llm(chunk)
+        if extracted and tag_re.search(extracted):
+            return extracted
+    return ""
+
+
+def _build_ui_compact_prompt(
+    *,
+    user_prompt: str,
+    spec: dict[str, Any],
+    device: str,
+) -> str:
+    """Short prompt for weak models that choke on long design briefs."""
+    pattern = str(spec.get("layout_pattern") or detect_layout_pattern(user_prompt, device=device))
+    primary = _first_hex((spec.get("colors") or {}), "primary", "#171717")
+    return (
+        "Generate ONE complete HTML page with Tailwind CDN for this brief.\n"
+        f"Brief: {user_prompt}\n"
+        f"Device: {device}\n"
+        f"Layout: {pattern}\n"
+        f"Primary color: {primary}\n"
+        f"Brand: {spec.get('name') or 'Clutch'}\n"
+        "Rules: full <!DOCTYPE html>…</html>, visible UI in body, match the brief intent.\n"
+        "Return ONLY ```html ... ```."
+    )
 
 
 def _build_ui_generation_prompt(
@@ -1438,21 +1899,37 @@ def _build_ui_generation_prompt(
             "Do NOT produce a narrow phone-only page.\n"
         )
     )
+    intent = _prompt_intent(user_prompt)
+    if intent == "login":
+        intent_rule = (
+            "5. Brief intent: login — build a polished sign-in / registration screen.\n"
+        )
+    else:
+        intent_rule = (
+            f"5. Brief intent: {intent} — the page MUST match this intent; "
+            "do NOT default to a generic login/auth screen unless the brief asks for it.\n"
+        )
     ui_parts += [
         f"Layout pattern: {pattern}\n",
         f"Layout constraints: {layout_hint}\n",
-        "CRITICAL Rules:\n"
-        "1. Use Tailwind CDN: <script src=\"https://cdn.tailwindcss.com\"></script>\n"
-        "2. Define design system colors via tailwind.config script — no custom <style> blocks.\n"
-        "3. Complete HTML with closed </html>; keep body under 80 lines to avoid truncation.\n"
-        "4. Implement the screen in the Brief — do NOT default to login unless requested.\n"
-        "5. Select 3-5 core components; high-fidelity modern aesthetics (rounded-2xl cards, "
-        "subtle gradients, hover transitions, generous spacing py-12–py-20).\n",
-        f"Premium reference example (match this quality level, adapt to brief):\n{fewshot}\n",
+        (
+            "CRITICAL Rules:\n"
+            "1. Use Tailwind CDN: <script src=\"https://cdn.tailwindcss.com\"></script>\n"
+            "2. Define design system colors via tailwind.config script — no custom <style> blocks.\n"
+            "3. Complete HTML with closed </html>; keep body under 80 lines to avoid truncation.\n"
+            "4. Implement the screen in the Brief — match the requested screen type.\n"
+        )
+        + intent_rule
+        + (
+            "6. Select 3-5 core components; high-fidelity modern aesthetics (rounded-2xl cards, "
+            "subtle gradients, hover transitions, generous spacing py-12–py-20).\n"
+        ),
+        f"Style reference (match quality & polish only — do NOT copy this layout verbatim):\n{fewshot}\n",
         f"Design system JSON:\n{json.dumps(spec, ensure_ascii=False)}\n",
     ]
     if design_md:
-        ui_parts.append(f"DESIGN.md rules:\n{design_md[:6000]}\n")
+        cap = 2000 if str(spec.get("name") or "").strip().lower() == "clutch" else 6000
+        ui_parts.append(f"DESIGN.md rules:\n{design_md[:cap]}\n")
     if md_text:
         ui_parts.append(f"Source Design.md:\n{md_text[:6000]}\n")
     if url_snapshot:
@@ -1478,7 +1955,7 @@ def _design_review_and_improve(
     user_prompt: str,
     model_id: str,
     device: str,
-) -> tuple[str, str | None, int]:
+) -> tuple[str, str | None, int, dict[str, int], bool]:
     """Design Review Pass: score HTML; refine once if below threshold."""
     review_prompt = (
         "You are a senior UI design reviewer. Score this HTML mockup 1-10 on:\n"
@@ -1492,11 +1969,15 @@ def _design_review_and_improve(
         f"HTML:\n{html[:12000]}\n\n"
         'Return ONLY JSON: {"score": N, "feedback": "..."}'
     )
-    review_text, review_reasoning = _llm_complete(router, review_prompt, model_id=model_id)
+    review_text, review_reasoning, review_usage, review_estimated = _llm_complete(
+        router, review_prompt, model_id=model_id
+    )
     score, feedback = parse_review_score(review_text)
     combined_reasoning = review_reasoning
+    usage = review_usage
+    estimated = review_estimated
     if score >= review_threshold():
-        return html, combined_reasoning, score
+        return html, combined_reasoning, score, usage, estimated
     improve_prompt = (
         "Improve this HTML UI based on the design review feedback. "
         "Apply concrete fixes to spacing, hierarchy, CTAs, and contrast.\n"
@@ -1505,13 +1986,42 @@ def _design_review_and_improve(
         f"HTML:\n{html[:14000]}\n"
         "Use Tailwind CDN + tailwind.config for colors. Return ONLY ```html ... ```."
     )
-    improved_text, improve_reasoning = _llm_complete(router, improve_prompt, model_id=model_id)
+    improved_text, improve_reasoning, improve_usage, improve_estimated = _llm_complete(
+        router, improve_prompt, model_id=model_id
+    )
     improved = _extract_html_from_llm(improved_text)
+    usage = _merge_token_usage(usage, improve_usage)
+    estimated = estimated or improve_estimated
     if improve_reasoning:
         combined_reasoning = "\n---\n".join(filter(None, [combined_reasoning, improve_reasoning]))
     if _html_has_visible_content(improved):
-        return improved, combined_reasoning, score
-    return html, combined_reasoning, score
+        return improved, combined_reasoning, score, usage, estimated
+    return html, combined_reasoning, score, usage, estimated
+
+
+def _build_ui_correction_prompt(
+    *,
+    user_prompt: str,
+    spec: dict[str, Any],
+    device: str,
+    reason: str,
+) -> str:
+    """Second-pass prompt when the first LLM output was blank or misaligned with the brief."""
+    layout_hint = layout_wrapper_hint(
+        str(spec.get("layout_pattern") or detect_layout_pattern(user_prompt, device=device))
+    )
+    return (
+        "You are an expert web designer. Your previous HTML was rejected.\n"
+        f"Rejection reason: {reason}\n"
+        f"Brief (follow exactly): {user_prompt}\n"
+        f"Layout constraints: {layout_hint}\n"
+        f"Design system JSON:\n{json.dumps(spec, ensure_ascii=False)[:6000]}\n"
+        "Rules:\n"
+        "- Generate a NEW complete HTML document using Tailwind CDN.\n"
+        "- Fulfill the brief — do NOT default to login/auth unless explicitly requested.\n"
+        "- Use colors and typography from the design system; make it visually distinct.\n"
+        "Return ONLY ```html ... ```."
+    )
 
 
 def _generate_ui_html(
@@ -1529,8 +2039,9 @@ def _generate_ui_html(
     current_html: str = "",
     instruction: str = "",
     fallback_html: str | None = None,
-) -> tuple[str, str | None]:
-    """Generate HTML with layout pattern, few-shot, and optional review pass."""
+) -> tuple[str, str | None, dict[str, int], bool, str | None]:
+    """Generate HTML via LLM; retry once on blank or brief mismatch (no template substitution)."""
+    last_fail: str | None = None
     pattern = str(spec.get("layout_pattern") or detect_layout_pattern(user_prompt, device=device))
     meta = _build_ui_generation_prompt(
         user_prompt=user_prompt,
@@ -1544,10 +2055,14 @@ def _generate_ui_html(
         current_html=current_html,
         instruction=instruction,
     )
-    text, reasoning = _llm_complete_vision(
+    text, reasoning, usage, estimated, fail = _try_llm_complete_vision(
         router, meta, model_id=model_id, image_data_url=image_data_url
     )
-    raw = _extract_html_from_llm(text)
+    if fail:
+        last_fail = fail
+    usage_acc = usage
+    estimated_acc = estimated
+    raw = _html_from_llm_response(text, reasoning)
     html = _coerce_ui_html(
         raw,
         title=str(spec.get("name") or "UI"),
@@ -1555,9 +2070,99 @@ def _generate_ui_html(
         spec=spec,
         device=device,
         fallback_html=fallback_html,
+        allow_template_fallback=False,
     )
-    if _html_has_visible_content(html):
-        reviewed, review_reasoning, _score = _design_review_and_improve(
+    if _html_has_visible_content(html) and not _html_matches_brief_intent(user_prompt, html):
+        detected = _detect_html_intent(html)
+        expected = _prompt_intent(user_prompt)
+        logger.warning(
+            "design ui intent mismatch prompt=%r detected=%s expected=%s — LLM retry",
+            user_prompt[:80],
+            detected,
+            expected,
+        )
+        correction = _build_ui_correction_prompt(
+            user_prompt=user_prompt,
+            spec=spec,
+            device=device,
+            reason=(
+                f"Page looks like '{detected}' but brief requires '{expected}'. "
+                "Do not output login/auth unless the brief asks for it."
+            ),
+        )
+        retry_text, retry_reasoning, retry_usage, retry_estimated, fail = _try_llm_complete_vision(
+            router, correction, model_id=model_id, image_data_url=image_data_url
+        )
+        if fail:
+            last_fail = fail
+        usage_acc = _merge_token_usage(usage_acc, retry_usage)
+        estimated_acc = estimated_acc or retry_estimated
+        retry_raw = _html_from_llm_response(retry_text, retry_reasoning)
+        retry_html = _coerce_ui_html(
+            retry_raw,
+            title=str(spec.get("name") or "UI"),
+            prompt=user_prompt,
+            spec=spec,
+            device=device,
+            fallback_html=html,
+            allow_template_fallback=False,
+        )
+        if _html_has_visible_content(retry_html):
+            html = retry_html
+            reasoning = "\n---\n".join(filter(None, [reasoning, retry_reasoning]))
+    elif not _html_has_visible_content(html):
+        logger.warning("design ui blank output prompt=%r — compact LLM retry", user_prompt[:80])
+        compact = _build_ui_compact_prompt(user_prompt=user_prompt, spec=spec, device=device)
+        retry_text, retry_reasoning, retry_usage, retry_estimated, fail = _try_llm_complete_vision(
+            router, compact, model_id=model_id, image_data_url=image_data_url
+        )
+        if fail:
+            last_fail = fail
+        usage_acc = _merge_token_usage(usage_acc, retry_usage)
+        estimated_acc = estimated_acc or retry_estimated
+        retry_raw = _html_from_llm_response(retry_text, retry_reasoning)
+        retry_html = _coerce_ui_html(
+            retry_raw,
+            title=str(spec.get("name") or "UI"),
+            prompt=user_prompt,
+            spec=spec,
+            device=device,
+            fallback_html=fallback_html,
+            allow_template_fallback=False,
+        )
+        if _html_has_visible_content(retry_html):
+            html = retry_html
+            reasoning = "\n---\n".join(filter(None, [reasoning, retry_reasoning]))
+        else:
+            retry_meta = (
+                meta
+                + "\n\nIMPORTANT: Your previous response was empty or invalid. "
+                "Output a complete, visible HTML document that fulfills the brief."
+            )
+            retry2_text, retry2_reasoning, retry2_usage, retry2_estimated, fail = _try_llm_complete_vision(
+                router, retry_meta, model_id=model_id, image_data_url=image_data_url
+            )
+            if fail:
+                last_fail = fail
+            usage_acc = _merge_token_usage(usage_acc, retry2_usage)
+            estimated_acc = estimated_acc or retry2_estimated
+            retry2_raw = _html_from_llm_response(retry2_text, retry2_reasoning)
+            retry2_html = _coerce_ui_html(
+                retry2_raw,
+                title=str(spec.get("name") or "UI"),
+                prompt=user_prompt,
+                spec=spec,
+                device=device,
+                fallback_html=fallback_html,
+                allow_template_fallback=False,
+            )
+            if _html_has_visible_content(retry2_html):
+                html = retry2_html
+                reasoning = "\n---\n".join(
+                    filter(None, [reasoning, retry_reasoning, retry2_reasoning])
+                )
+    if _html_has_visible_content(html) and _DESIGN_REVIEW_ENABLED:
+        reviewed, review_reasoning, _score, review_usage, review_estimated = _design_review_and_improve(
             router,
             html=html,
             spec=spec,
@@ -1565,6 +2170,8 @@ def _generate_ui_html(
             model_id=model_id,
             device=device,
         )
+        usage_acc = _merge_token_usage(usage_acc, review_usage)
+        estimated_acc = estimated_acc or review_estimated
         html = _coerce_ui_html(
             reviewed,
             title=str(spec.get("name") or "UI"),
@@ -1572,10 +2179,13 @@ def _generate_ui_html(
             spec=spec,
             device=device,
             fallback_html=html,
+            allow_template_fallback=False,
         )
         if review_reasoning:
             reasoning = "\n---\n".join(filter(None, [reasoning, review_reasoning]))
-    return html, reasoning
+    if not _html_has_visible_content(html) and not last_fail:
+        last_fail = "the model returned no valid HTML"
+    return html, reasoning, usage_acc, estimated_acc, last_fail
 
 
 def generate_session(
@@ -1587,6 +2197,8 @@ def generate_session(
     reference_md: str | None = None,
     reference_md_name: str | None = None,
     reference_url: str | None = None,
+    design_system: str | None = None,
+    continue_inflight: bool = False,
 ) -> dict[str, Any]:
     """Two-phase: design spec first, then UI HTML (optional image / Design.md / URL)."""
     from src.models_config import get_router, is_model_available
@@ -1652,6 +2264,12 @@ def generate_session(
         intro = (
             "I'll use your reference image to extract a design system (colors, type, components), then craft a matching interface."
         )
+    elif normalize_preset_id(design_system or manifest.get("design_system")) == "clutch" and not (
+        has_md or has_url or has_image
+    ):
+        intro = (
+            "I'll apply the built-in Clutch design system, then craft the interface for your brief."
+        )
     else:
         intro = "I'll start with a design specification (colors, type, components), then craft the interface to match."
 
@@ -1664,19 +2282,26 @@ def generate_session(
         attach_bits.append(f"url {url}")
     attach_note = f" [{', '.join(attach_bits)}]" if attach_bits else ""
 
-    process_log: list[dict[str, Any]] = [
-        {
-            "role": "user",
-            "text": user_prompt + attach_note,
-            "at": _now_iso(),
-        },
-        {
-            "role": "assistant",
-            "text": intro,
-            "status": "crafting_spec",
-            "at": _now_iso(),
-        },
-    ]
+    resume = continue_inflight and str(manifest.get("status") or "") in {
+        "crafting_spec",
+        "generating_ui",
+    }
+    if resume and manifest.get("process_log"):
+        process_log = list(manifest.get("process_log") or [])
+    else:
+        process_log = [
+            {
+                "role": "user",
+                "text": user_prompt + attach_note,
+                "at": _now_iso(),
+            },
+            {
+                "role": "assistant",
+                "text": intro,
+                "status": "crafting_spec",
+                "at": _now_iso(),
+            },
+        ]
     manifest["prompt"] = user_prompt
     manifest["name"] = user_prompt[:48] or manifest.get("name") or "New Design"
     manifest["device"] = device if device in {"web", "app"} else "web"
@@ -1684,6 +2309,11 @@ def generate_session(
     manifest["status"] = "crafting_spec"
     manifest["process_log"] = process_log
     manifest["error"] = None
+    if not resume:
+        manifest["round_history"] = []
+        manifest["screens"] = []
+        manifest["spec"] = None
+        manifest["design_system"] = normalize_preset_id(design_system or manifest.get("design_system"))
     if ref_rel:
         manifest["reference_image"] = ref_rel
     if md_rel:
@@ -1705,91 +2335,140 @@ def generate_session(
     source = "fallback"
     router = get_router()
     model_id = router.active_model_id
-    if is_model_available(router, model_id):
-        try:
-            context_parts = [
-                "You are a product design system generator.\n",
-                f"Brief: {user_prompt}\nDevice: {device}\n",
-            ]
-            if has_md and md_text:
-                context_parts.append(
-                    f"Source design markdown «{md_name}» (authoritative tokens & rules):\n"
-                    f"---\n{md_text[:12000]}\n---\n"
-                    "Extract and structure a design system from this document.\n"
-                )
-            if has_url and url_snapshot:
-                context_parts.append(
-                    "Reference website snapshot:\n"
-                    f"URL: {url_snapshot.get('url')}\n"
-                    f"Title: {url_snapshot.get('title')}\n"
-                    f"Description: {url_snapshot.get('description')}\n"
-                    f"Excerpt: {(url_snapshot.get('excerpt') or '')[:3000]}\n"
-                    "Infer a polished design system inspired by this site's visual language.\n"
-                )
-            if has_image:
-                context_parts.append(
-                    "A reference UI screenshot is attached. Extract colors, typography, and component style from it.\n"
-                )
-            context_parts.append(
-                "Return ONLY JSON with keys: name, rationale, brand (name, voice), visual_style, "
-                "layout_system, layout_pattern, grid (columns, gutter, max_width), colors "
-                "(object of arrays of hex), typography (fontFamily, samples[{label,size,weight}]), "
-                "radius (sm, md, lg, xl), shadow (card, elevated), components (string array), "
-                "motion (duration, easing, hover_lift), responsive (string), accessibility (string). "
-                "No markdown fences."
-            )
-            meta = "".join(context_parts)
-            spec_raw, _spec_reasoning = _llm_complete_vision(
-                router, meta, model_id=model_id, image_data_url=image_data_url
-            )
-            spec = _extract_json_block(spec_raw)
-            pattern = detect_layout_pattern(user_prompt, device=device)
-            spec = enrich_fallback_spec(spec, user_prompt, pattern)
-            if has_image:
-                source = "llm_vision"
-            elif has_md:
-                source = "llm_md"
-            elif has_url:
-                source = "llm_url"
-            else:
-                source = "llm"
-        except Exception as exc:
-            logger.warning("design spec LLM failed run_id=%s err=%s", run_id, exc)
+    # Persist active model on the session; tags live on each step via metadata
+    # (not as standalone Agent Log lines — users may switch models mid-session).
+    process_log = list(manifest.get("process_log") or [])
+    model_id, model_name = _stamp_session_model(
+        manifest,
+        router,
+        model_id=model_id,
+        process_log=process_log,
+        record_in_log=False,
+    )
+    _write_manifest(session_dir, manifest)
+    preset_id = normalize_preset_id(manifest.get("design_system"))
+    use_builtin_preset = preset_id == "clutch" and not (has_image or has_md or has_url)
+    spec_usage = _empty_token_usage()
+    spec_usage_estimated = False
 
-    if not spec:
-        seed = user_prompt
+    if use_builtin_preset:
+        _update_process_status(
+            session_dir,
+            manifest,
+            text="Applying built-in Clutch design system…",
+            status="crafting_spec",
+            model_id=model_id,
+            model_name=model_name,
+        )
+        spec, design_md = resolve_builtin_spec(preset_id, user_prompt, device=device)
+        source = "builtin_clutch"
+    else:
+        _update_process_status(
+            session_dir,
+            manifest,
+            text="Extracting colors, typography, and layout tokens from your brief…",
+            status="crafting_spec",
+            model_id=model_id,
+            model_name=model_name,
+        )
+        design_md = ""
+        if is_model_available(router, model_id):
+            try:
+                context_parts = [
+                    "You are a product design system generator.\n",
+                    f"Brief: {user_prompt}\nDevice: {device}\n",
+                ]
+                if has_md and md_text:
+                    context_parts.append(
+                        f"Source design markdown «{md_name}» (authoritative tokens & rules):\n"
+                        f"---\n{md_text[:12000]}\n---\n"
+                        "Extract and structure a design system from this document.\n"
+                    )
+                if has_url and url_snapshot:
+                    context_parts.append(
+                        "Reference website snapshot:\n"
+                        f"URL: {url_snapshot.get('url')}\n"
+                        f"Title: {url_snapshot.get('title')}\n"
+                        f"Description: {url_snapshot.get('description')}\n"
+                        f"Excerpt: {(url_snapshot.get('excerpt') or '')[:3000]}\n"
+                        "Infer a polished design system inspired by this site's visual language.\n"
+                    )
+                if has_image:
+                    context_parts.append(
+                        "A reference UI screenshot is attached. Extract colors, typography, and component style from it.\n"
+                    )
+                context_parts.append(
+                    "Return ONLY JSON with keys: name, rationale, brand (name, voice), visual_style, "
+                    "layout_system, layout_pattern, grid (columns, gutter, max_width), colors "
+                    "(object of arrays of hex), typography (fontFamily, samples[{label,size,weight}]), "
+                    "radius (sm, md, lg, xl), shadow (card, elevated), components (string array), "
+                    "motion (duration, easing, hover_lift), responsive (string), accessibility (string). "
+                    "No markdown fences."
+                )
+                meta = "".join(context_parts)
+                spec_raw, _spec_reasoning, call_usage, call_estimated = _llm_complete_vision(
+                    router, meta, model_id=model_id, image_data_url=image_data_url
+                )
+                spec_usage = _merge_token_usage(spec_usage, call_usage)
+                spec_usage_estimated = spec_usage_estimated or call_estimated
+                spec = _extract_json_block(spec_raw)
+                pattern = detect_layout_pattern(user_prompt, device=device)
+                spec = enrich_fallback_spec(spec, user_prompt, pattern)
+                if has_image:
+                    source = "llm_vision"
+                elif has_md:
+                    source = "llm_md"
+                elif has_url:
+                    source = "llm_url"
+                else:
+                    source = "llm"
+            except Exception as exc:
+                logger.warning("design spec LLM failed run_id=%s err=%s", run_id, exc)
+
+        if not spec:
+            seed = user_prompt
+            if has_md and md_text:
+                seed = f"{user_prompt}\n{md_text[:2000]}"
+            elif has_url and url_snapshot:
+                seed = f"{user_prompt}\n{url_snapshot.get('title')}\n{url_snapshot.get('description')}"
+            pattern = detect_layout_pattern(seed, device=device)
+            spec = enrich_fallback_spec(_fallback_spec(seed), seed, pattern)
+
         if has_md and md_text:
-            seed = f"{user_prompt}\n{md_text[:2000]}"
-        elif has_url and url_snapshot:
-            seed = f"{user_prompt}\n{url_snapshot.get('title')}\n{url_snapshot.get('description')}"
-        pattern = detect_layout_pattern(seed, device=device)
-        spec = enrich_fallback_spec(_fallback_spec(seed), seed, pattern)
+            design_md = md_text if md_text.endswith("\n") else md_text + "\n"
+        else:
+            design_md = _spec_to_design_md(spec)
 
     (session_dir / SPEC_JSON).write_text(json.dumps(spec, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    # Prefer uploaded Design.md as DESIGN.md when present; else generate from structured spec.
-    if has_md and md_text:
-        design_md = md_text if md_text.endswith("\n") else md_text + "\n"
-    else:
-        design_md = _spec_to_design_md(spec)
     (session_dir / DESIGN_MD).write_text(design_md, encoding="utf-8")
 
-    spec_ready_text = f"Design system «{spec.get('name')}» ready. Generating the interface…"
+    process_log = list(manifest.get("process_log") or [])
+    spec_ready_text = f"Design system «{spec.get('name')}» ready."
     if not is_model_available(router, model_id):
         spec_ready_text += f"\n\n⚠️ Warning: Model '{model_id}' is not available (API key missing in Settings -> Models). Using offline fallback templates."
-    process_log.append(
-        {
-            "role": "assistant",
-            "text": spec_ready_text,
-            "status": "generating_ui",
-            "at": _now_iso(),
-        }
+    _finalize_assistant_step(
+        process_log,
+        text=spec_ready_text,
+        status="spec_ready",
+        model_id=model_id,
+        model_name=model_name,
+        usage=spec_usage if not use_builtin_preset else None,
+        usage_estimated=spec_usage_estimated,
+        replace_statuses={"crafting_spec"},
     )
     manifest["spec"] = spec
     manifest["phase"] = "ui"
-    manifest["status"] = "generating_ui"
-    manifest["process_log"] = process_log
     manifest["generate_source"] = source
+    manifest["process_log"] = process_log
     _write_manifest(session_dir, manifest)
+    _append_process_status(
+        session_dir,
+        manifest,
+        text="Generating high-fidelity HTML with layout patterns and design review…",
+        status="generating_ui",
+        model_id=model_id,
+        model_name=model_name,
+    )
     _append_design_run_log(
         run_id,
         f"spec ready name={spec.get('name')!s} → generating_ui device={device} model={model_id}",
@@ -1799,10 +2478,13 @@ def generate_session(
     session_dir = _session_dir(run_id)
     html = ""
     ui_reasoning: str | None = None
+    ui_usage = _empty_token_usage()
+    ui_usage_estimated = False
+    ui_fail_reason: str | None = None
     design_md_text = design_md
     if is_model_available(router, model_id):
         try:
-            html, ui_reasoning = _generate_ui_html(
+            html, ui_reasoning, ui_usage, ui_usage_estimated, ui_fail_reason = _generate_ui_html(
                 router,
                 user_prompt=user_prompt,
                 spec=spec,
@@ -1816,13 +2498,54 @@ def generate_session(
             )
         except Exception as exc:
             logger.warning("design ui LLM failed run_id=%s err=%s", run_id, exc)
+            ui_fail_reason = str(exc)
 
+    llm_available = is_model_available(router, model_id)
     if not _html_has_visible_content(html):
+        if llm_available:
+            detail = ui_fail_reason or "the model returned no valid HTML"
+            err_msg = f"Generation failed — {detail}. Please try again."
+            process_log = list(manifest.get("process_log") or [])
+            _finalize_assistant_step(
+                process_log,
+                text=err_msg,
+                status="error",
+                model_id=model_id,
+                model_name=model_name,
+                usage=ui_usage,
+                usage_estimated=ui_usage_estimated,
+                replace_statuses={"generating_ui"},
+            )
+            manifest["status"] = "error"
+            manifest["error"] = err_msg
+            manifest["process_log"] = process_log
+            manifest["screens"] = []
+            _write_manifest(session_dir, manifest)
+            return _public(manifest, session_dir)
         html = _fallback_ui_html(user_prompt, spec, device=device)
 
     screen_id = "main"
     session_dir = _session_dir(run_id)
     (session_dir / "screens").mkdir(exist_ok=True)
+    process_log = list(manifest.get("process_log") or [])
+    round_index = _next_round_index(manifest, screen_id)
+    ui_ready_text = (
+        f"Interface draft is ready — wrote screens/{screen_id}_r{round_index}.html "
+        f"({len(html)} bytes)."
+    )
+    manifest["generate_source"] = source
+    if not is_model_available(router, model_id):
+        ui_ready_text += f"\n\n⚠️ Warning: Model '{model_id}' is not available (API key missing in Settings -> Models). Using offline fallback templates."
+    _finalize_assistant_step(
+        process_log,
+        text=ui_ready_text,
+        status="ready",
+        model_id=model_id,
+        model_name=model_name,
+        usage=ui_usage,
+        usage_estimated=ui_usage_estimated,
+        replace_statuses={"generating_ui"},
+    )
     round_entry = _record_screen_round(
         session_dir,
         manifest,
@@ -1832,28 +2555,21 @@ def generate_session(
         reasoning_content=ui_reasoning,
         process_log_slice=list(process_log),
     )
+    if manifest.get("round_history"):
+        history = list(manifest["round_history"])
+        if history:
+            history[-1] = {**history[-1], "process_log": list(process_log)}
+            manifest["round_history"] = history
+    ui_origin_x = _default_ui_origin_x(has_source=has_image or has_md or has_url)
     screens = [
         {
             "id": screen_id,
             "name": str(spec.get("name") or "Interface"),
-            "position": {"x": 732, "y": 48},
+            "position": {"x": ui_origin_x, "y": _DESIGN_ROW_Y},
             "html_path": round_entry["html_path"],
             "active_round_index": round_entry["round_index"],
         }
     ]
-    ui_ready_text = (
-        f"Wrote {round_entry['html_path']} ({len(html)} bytes). Interface draft is ready."
-    )
-    if not is_model_available(router, model_id):
-        ui_ready_text += f"\n\n⚠️ Warning: Model '{model_id}' is not available (API key missing in Settings -> Models). Using offline fallback templates."
-    process_log.append(
-        {
-            "role": "assistant",
-            "text": ui_ready_text,
-            "status": "ready",
-            "at": _now_iso(),
-        }
-    )
     manifest["screens"] = screens
     manifest["phase"] = "canvas"
     manifest["status"] = "ready"
@@ -1888,6 +2604,7 @@ def start_generate_session(
     reference_md: str | None = None,
     reference_md_name: str | None = None,
     reference_url: str | None = None,
+    design_system: str | None = None,
 ) -> dict[str, Any]:
     """Kick off two-phase generate in a background thread; return immediately for polling."""
     session_dir = _session_dir(run_id)
@@ -1943,6 +2660,10 @@ def start_generate_session(
         intro = f"I'll load {host} on the canvas, extract a design system, then craft a matching interface."
     elif has_image:
         intro = "I'll use your reference image to extract a design system, then craft a matching interface."
+    elif normalize_preset_id(design_system) == "clutch":
+        intro = (
+            "I'll apply the built-in Clutch design system, then craft the interface for your brief."
+        )
     else:
         intro = "I'll start with a design specification (colors, type, components), then craft the interface to match."
 
@@ -1964,6 +2685,8 @@ def start_generate_session(
     manifest["error"] = None
     manifest["screens"] = []
     manifest["spec"] = None
+    manifest["round_history"] = []
+    manifest["design_system"] = normalize_preset_id(design_system)
     if ref_rel:
         manifest["reference_image"] = ref_rel
     if md_rel:
@@ -2014,6 +2737,8 @@ def start_generate_session(
                 reference_image=None,
                 reference_md=None,
                 reference_url=None,  # already saved / snapshotted
+                design_system=manifest.get("design_system"),
+                continue_inflight=True,
             )
         except Exception as exc:
             logger.exception("design generate worker failed run_id=%s", run_id)
@@ -2137,14 +2862,16 @@ def _next_screen_id(screens: list[dict[str, Any]]) -> str:
     return f"screen-{i}"
 
 
-def _screen_layout_x(screens: list[dict[str, Any]]) -> int:
+def _screen_layout_x(
+    screens: list[dict[str, Any]], *, device: str = "web", has_source: bool = False
+) -> int:
     xs = []
     for s in screens:
         pos = s.get("position") or {}
         if isinstance(pos, dict) and isinstance(pos.get("x"), (int, float)):
             xs.append(int(pos["x"]))
-    # 380px UI card + ~48px gap
-    return (max(xs) + 428) if xs else 732
+    step = _ui_layout_step(device)
+    return (max(xs) + step) if xs else _default_ui_origin_x(has_source=has_source)
 
 
 def iterate_session(
@@ -2187,6 +2914,9 @@ def iterate_session(
         selection_note += f"; element={element_label or element_path}"
 
     log = list(manifest.get("process_log") or [])
+    # Capture round boundary before appending this turn's user/assistant lines
+    # (and before Model is inserted after the user entry).
+    log_start = len(log)
     log.append(
         {
             "role": "user",
@@ -2212,6 +2942,24 @@ def iterate_session(
 
     router = get_router()
     model_id = router.active_model_id
+    model_id, model_name = _stamp_session_model(
+        manifest,
+        router,
+        model_id=model_id,
+        process_log=log,
+        record_in_log=False,
+    )
+    # Tag the in-flight "Thinking…" step with the model used for this round.
+    for i in range(len(log) - 1, -1, -1):
+        if log[i].get("role") == "assistant" and log[i].get("status") == "iterating":
+            log[i] = {
+                **log[i],
+                "model_id": model_id,
+                "model_name": model_name,
+            }
+            break
+    manifest["process_log"] = log
+    _write_manifest(session_dir, manifest)
 
     # --- Spec / Design.md edits ---
     if kind in {"spec", "md"}:
@@ -2219,6 +2967,8 @@ def iterate_session(
             # New variant: keep existing DESIGN.md, append a short note screen instead of wiping.
             pass
         updated_spec = spec if isinstance(spec, dict) else _fallback_spec(instruction)
+        spec_usage = _empty_token_usage()
+        spec_usage_estimated = False
         if is_model_available(router, model_id):
             try:
                 meta = (
@@ -2228,7 +2978,10 @@ def iterate_session(
                     f"Source DESIGN.md (excerpt):\n{design_md[:8000]}\n"
                     "Return ONLY updated JSON with keys: name, rationale, colors, typography, components."
                 )
-                parsed = _extract_json_block(_llm_complete(router, meta, model_id=model_id)[0])
+                spec_raw, _, spec_usage, spec_usage_estimated = _llm_complete(
+                    router, meta, model_id=model_id
+                )
+                parsed = _extract_json_block(spec_raw)
                 if isinstance(parsed, dict):
                     updated_spec = enrich_fallback_spec(
                         parsed,
@@ -2251,7 +3004,16 @@ def iterate_session(
         spec_updated_text = "Design system updated."
         if not is_model_available(router, model_id):
             spec_updated_text += f"\n\n⚠️ Warning: Model '{model_id}' is not available (API key missing in Settings -> Models). Using offline fallback templates."
-        log.append({"role": "assistant", "text": spec_updated_text, "status": "ready", "at": _now_iso()})
+        _finalize_assistant_step(
+            log,
+            text=spec_updated_text,
+            status="ready",
+            model_id=model_id,
+            model_name=model_name,
+            usage=spec_usage,
+            usage_estimated=spec_usage_estimated,
+            replace_statuses={"iterating"},
+        )
         manifest["process_log"] = log
         manifest["status"] = "ready"
         _write_manifest(session_dir, manifest)
@@ -2271,11 +3033,13 @@ def iterate_session(
         new_id = _next_screen_id(screens)
         html = ""
         ui_reasoning: str | None = None
+        ui_usage = _empty_token_usage()
+        ui_usage_estimated = False
         device = str(manifest.get("device") or "web")
         spec_dict = spec if isinstance(spec, dict) else _fallback_spec(instruction)
         if is_model_available(router, model_id):
             try:
-                html, ui_reasoning = _generate_ui_html(
+                html, ui_reasoning, ui_usage, ui_usage_estimated, _ui_fail = _generate_ui_html(
                     router,
                     user_prompt=instruction,
                     spec=spec_dict,
@@ -2288,8 +3052,12 @@ def iterate_session(
             except Exception as exc:
                 logger.warning("design iterate add failed: %s", exc)
         if not _html_has_visible_content(html):
+            if is_model_available(router, model_id):
+                raise DesignError(
+                    "Could not generate the new screen — model returned empty HTML. "
+                    "Please try again."
+                )
             html = _fallback_ui_html(instruction, spec_dict, device=device)
-        log_start = len(log)
         round_entry = _record_screen_round(
             session_dir,
             manifest,
@@ -2302,20 +3070,40 @@ def iterate_session(
         new_screen = {
             "id": new_id,
             "name": instruction.strip()[:40] or f"Screen {new_id}",
-            "position": {"x": _screen_layout_x(screens), "y": 48},
+            "position": {
+                "x": _screen_layout_x(
+                    screens,
+                    device=device,
+                    has_source=bool(
+                        manifest.get("reference_image")
+                        or manifest.get("reference_md")
+                        or manifest.get("reference_url")
+                    ),
+                ),
+                "y": _DESIGN_ROW_Y,
+            },
             "html_path": round_entry["html_path"],
             "active_round_index": round_entry["round_index"],
         }
         screens.append(new_screen)
         manifest["screens"] = screens
-        log.append(
-            {
-                "role": "assistant",
-                "text": f"Added «{new_screen['name']}» ({round_entry['html_path']}). Select it to refine further.",
-                "status": "ready",
-                "at": _now_iso(),
-            }
+        _finalize_assistant_step(
+            log,
+            text=(
+                f"Added «{new_screen['name']}» — wrote {round_entry['html_path']}. "
+                "Select it to refine further."
+            ),
+            status="ready",
+            model_id=model_id,
+            model_name=model_name,
+            usage=ui_usage,
+            usage_estimated=ui_usage_estimated,
+            replace_statuses={"iterating"},
         )
+        history = list(manifest.get("round_history") or [])
+        if history:
+            history[-1] = {**history[-1], "process_log": list(log[log_start:])}
+            manifest["round_history"] = history
         manifest["last_iterate_action"] = "add"
         manifest["last_iterate_screen_id"] = new_id
     else:
@@ -2337,9 +3125,11 @@ def iterate_session(
         device = str(manifest.get("device") or "web")
         spec_dict = spec if isinstance(spec, dict) else _fallback_spec(merged_prompt)
         ui_reasoning: str | None = None
+        ui_usage = _empty_token_usage()
+        ui_usage_estimated = False
         if is_model_available(router, model_id):
             try:
-                candidate, ui_reasoning = _generate_ui_html(
+                candidate, ui_reasoning, ui_usage, ui_usage_estimated, _ui_fail = _generate_ui_html(
                     router,
                     user_prompt=merged_prompt,
                     spec=spec_dict,
@@ -2354,21 +3144,24 @@ def iterate_session(
                     candidate, current
                 ):
                     html = candidate
+                elif not is_model_available(router, model_id):
+                    html = _fallback_ui_html(merged_prompt, spec_dict, device=device)
                 else:
                     logger.warning(
-                        "design iterate modify unchanged/blank run_id=%s — using intent fallback",
+                        "design iterate modify unchanged/blank run_id=%s — keeping current HTML",
                         run_id,
                     )
-                    html = _fallback_ui_html(merged_prompt, spec_dict, device=device)
             except Exception as exc:
                 logger.warning("design iterate modify failed: %s", exc)
-                html = _fallback_ui_html(merged_prompt, spec_dict, device=device)
+                if not is_model_available(router, model_id):
+                    html = _fallback_ui_html(merged_prompt, spec_dict, device=device)
         else:
             html = _fallback_ui_html(merged_prompt, spec_dict, device=device)
-        if not _html_has_visible_content(html) or _html_essentially_same(html, current):
+        if not is_model_available(router, model_id) and (
+            not _html_has_visible_content(html) or _html_essentially_same(html, current)
+        ):
             html = _fallback_ui_html(merged_prompt, spec_dict, device=device)
-        log_start = len(log)
-        _record_screen_round(
+        round_entry = _record_screen_round(
             session_dir,
             manifest,
             screen_id=screen_id,
@@ -2377,17 +3170,25 @@ def iterate_session(
             reasoning_content=ui_reasoning,
             process_log_slice=log[log_start:],
         )
-        iterate_ready_text = "Updated the artboard with your changes. What else?"
+        iterate_ready_text = (
+            f"Updated the artboard — wrote {round_entry['html_path']}. What else?"
+        )
         if not is_model_available(router, model_id):
             iterate_ready_text += f"\n\n⚠️ Warning: Model '{model_id}' is not available (API key missing in Settings -> Models). Using offline fallback templates."
-        log.append(
-            {
-                "role": "assistant",
-                "text": iterate_ready_text,
-                "status": "ready",
-                "at": _now_iso(),
-            }
+        _finalize_assistant_step(
+            log,
+            text=iterate_ready_text,
+            status="ready",
+            model_id=model_id,
+            model_name=model_name,
+            usage=ui_usage,
+            usage_estimated=ui_usage_estimated,
+            replace_statuses={"iterating"},
         )
+        history = list(manifest.get("round_history") or [])
+        if history:
+            history[-1] = {**history[-1], "process_log": list(log[log_start:])}
+            manifest["round_history"] = history
         manifest["last_iterate_action"] = "modify"
         manifest["last_iterate_screen_id"] = screen_id
 
@@ -2450,7 +3251,7 @@ def _html_to_react_component(
         f"HTML:\n{html[:16000]}\n\n"
         f"Return ONLY the TSX file content for `{component_name}.tsx` inside ```tsx ... ```."
     )
-    text, _reasoning = _llm_complete(router, prompt, model_id=model_id)
+    text, _reasoning, _usage, _estimated = _llm_complete(router, prompt, model_id=model_id)
     fence = re.search(r"```(?:tsx|typescript|jsx)?\s*([\s\S]*?)```", text)
     tsx = fence.group(1).strip() if fence else text.strip()
     if tsx and f"export function {component_name}" in tsx:

@@ -63,7 +63,14 @@ def test_session_generate_iterate_approve_react_handoff(
     assert session_dir.name.endswith(f"__{run_id}")
     assert len(generated["screens"]) >= 1
     assert "html" in generated["screens"][0]["html"].lower()
-    assert generated.get("generate_source") == "fallback"
+    assert generated.get("generate_source") == "builtin_clutch"
+    log = generated.get("process_log") or []
+    assert not any(e.get("kind") in {"model", "tokens"} for e in log), (
+        "Model/Tokens must be tags on steps, not standalone log lines"
+    )
+    tagged = [e for e in log if e.get("role") == "assistant" and e.get("model_name")]
+    assert tagged, "Agent Log steps should carry model_name tags"
+    assert generated.get("model_id") == "agnes-2.0-flash"
 
     iterated = service.iterate_session(run_id, "Make the primary button larger")
     assert len(iterated["screens"]) >= 1
@@ -417,3 +424,60 @@ def test_session_folder_readable_name_and_delete(
     service.delete_session_artifacts(run_id)
     assert not named[0].exists()
     assert service._find_existing_session_dir(sessions_root, run_id) is None
+
+
+def test_generate_records_model_and_token_usage(
+    workspace: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Each Agent Log step must carry model_name + usage tags (not standalone lines)."""
+
+    class FakeRouter:
+        active_model_id = "agnes-2.0-flash"
+
+        def resolve_for_model(self, model_id: str):
+            return type("Spec", (), {"name": "Agnes 2.0 Flash"})(), None
+
+        def complete(self, *args, **kwargs):
+            return {
+                "content": (
+                    '{"name":"Login","rationale":"clean","colors":{"primary":["#111"]},'
+                    '"typography":{"fontFamily":"Inter","samples":[]},"components":["Button"]}'
+                ),
+                "usage": {"input_tokens": 120, "output_tokens": 80, "total_tokens": 200},
+            }
+
+    monkeypatch.setattr("src.models_config.get_router", lambda: FakeRouter())
+    monkeypatch.setattr("src.models_config.is_model_available", lambda *a, **k: True)
+    # Force LLM spec path (not builtin) so Spec tokens are recorded.
+    monkeypatch.setattr(
+        "src.design.service.normalize_preset_id",
+        lambda *_a, **_k: "custom",
+    )
+
+    run_id = "design-usage-run"
+    service.ensure_session(run_id, title="Login", prompt="")
+    # Skip heavy UI LLM — stub HTML generation after spec.
+    monkeypatch.setattr(
+        "src.design.service._generate_ui_html",
+        lambda *a, **k: (
+            "<!DOCTYPE html><html><body><h1>Login</h1><button>Go</button></body></html>",
+            "plan steps",
+            {"input_tokens": 50, "output_tokens": 40, "total_tokens": 90},
+            False,
+            None,
+        ),
+    )
+
+    generated = service.generate_session(
+        run_id, prompt="设计一个登录页面", device="web", design_system="custom"
+    )
+    log = generated.get("process_log") or []
+    assert not any(e.get("kind") in {"model", "tokens"} for e in log)
+
+    spec_step = next(e for e in log if e.get("status") == "spec_ready")
+    assert spec_step.get("model_name") == "Agnes 2.0 Flash"
+    assert (spec_step.get("usage") or {}).get("total_tokens", 0) > 0
+
+    ready_step = next(e for e in log if e.get("status") == "ready")
+    assert ready_step.get("model_name") == "Agnes 2.0 Flash"
+    assert (ready_step.get("usage") or {}).get("total_tokens") == 90
