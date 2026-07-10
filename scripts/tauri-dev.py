@@ -52,6 +52,18 @@ def command(name: str) -> str:
     return name
 
 
+def pnpm_launcher() -> list[str]:
+    """Prefer corepack-shimmed pnpm; fall back to bare pnpm.
+
+    Corepack ensures the packageManager pin in package.json is honored, but it
+    is not present on installs that use Homebrew/npm-globally-installed pnpm.
+    In those cases fall back to whatever `pnpm` resolves on PATH.
+    """
+    if shutil.which("corepack"):
+        return [command("corepack"), "pnpm"]
+    return [command("pnpm")]
+
+
 def resolve_uv() -> str:
     found = command("uv")
     if found != "uv":
@@ -95,7 +107,7 @@ def start_vite() -> subprocess.Popen[bytes]:
         creationflags = subprocess.CREATE_NEW_PROCESS_GROUP
         start_new_session = False
     proc = subprocess.Popen(
-        [command("corepack"), "pnpm", "--filter", "@clutch/desktop", "dev"],
+        [*pnpm_launcher(), "--filter", "@clutch/desktop", "dev"],
         cwd=REPO_ROOT,
         stdout=log,
         stderr=subprocess.STDOUT,
@@ -141,7 +153,7 @@ def main() -> int:
     env.setdefault("CLUTCH_RUNTIME_MODE", "hybrid")
     env["CLUTCH_UV_BIN"] = resolve_uv()
     return subprocess.call(
-        [command("corepack"), "pnpm", "tauri", "dev", "--no-dev-server-wait"],
+        [*pnpm_launcher(), "tauri", "dev", "--no-dev-server-wait"],
         cwd=DESKTOP,
         env=env,
     )
