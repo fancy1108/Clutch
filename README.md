@@ -17,19 +17,16 @@ Clutch is a **desktop app** (Tauri + React) for developers and technical operato
 |---|---|
 | **Stack** | Tauri 2 · React 19 · FastAPI + LangGraph · local-first (`localhost:8123`) |
 | **License** | See [LICENSE](LICENSE) |
-| **Latest release** | [v1.1.2](https://github.com/fancy1108/Clutch/releases/tag/v1.1.2) · [Changelog](CHANGELOG.md#112---2026-07-06) |
+| **Latest release** | [v1.2.0](https://github.com/fancy1108/Clutch/releases/tag/v1.2.0) · [Changelog](CHANGELOG.md#120---2026-07-10) |
 
-### What's new in v1.1.2
+### What's new in v1.2.0
 
-- **MiMo Code CLI** — First-class `mimo-cli` routing (`mimo run --dangerously-skip-permissions`), Terminal Orchestra `@Mimo` dispatch, and Settings → Models/MCP/Skills scan tab. Prefers the official curl install at `~/.mimocode/bin/mimo`.
-- **Cursor Agent CLI** — Recommended tool with brand logo; detects `cursor-agent` / `agent` (not the IDE `cursor` launcher). `@Cursor` works in Terminal Orchestra.
-- **Claude Code CC Switch repair** — Settings → Models (Claude Code) can detect and fix broken CC Switch config paths.
-- **Terminal Orchestra fixes** — Background terminal count reflects Clutch PTY sessions only; chat thinking bubble height matches the last user message.
+- **Design mode (D36)** — Header `Coding | Design`; generative UI on an infinite canvas (spec → interface → NL iterate); Design.md / URL / image references; Approve → React → Send to Coding.
+- **Design Agent Log** — Per-step **status / model / token** tags so mid-session model switches stay in history.
+- **ZCode CLI** — First-class `zcode-cli` routing, Terminal Orchestra `@ZCode`, and recommended Tools card ([#43](https://github.com/fancy1108/Clutch/pull/43)).
+- **Windows installers return** — Minor release ships MSI/NSIS again (after macOS-only v1.1.2).
 
-> [!NOTE]
-> **v1.1.2 is macOS-only** (Apple Silicon DMG + in-app updater). **Windows** users should stay on [v1.1.1](https://github.com/fancy1108/Clutch/releases/tag/v1.1.1); new Windows installers ship with **minor** releases (v1.2.0, v1.3.0, …).
-
-Older releases (v1.1.1 Windows PTY, v1.1.0 Terminal Orchestra, …): [`CHANGELOG.md`](CHANGELOG.md) · [`docs/releases/`](docs/releases/).
+Older releases (v1.1.2 MiMo/Cursor, v1.1.1 Windows PTY, …): [`CHANGELOG.md`](CHANGELOG.md) · [`docs/releases/`](docs/releases/).
 
 ---
 
@@ -56,7 +53,7 @@ brew install --cask clutch
 irm https://raw.githubusercontent.com/fancy1108/Clutch/main/scripts/install.ps1 | iex
 ```
 
-Pin a version: `CLUTCH_VERSION=v1.1.2` before running either script (or `v1.1.1` / `v1.1.0` for older releases).
+Pin a version: `CLUTCH_VERSION=v1.2.0` before running either script (or `v1.1.2` / `v1.1.1` for older releases).
 
 Install channels (maintainers): [`docs/RELEASE_MAINTAINER.md`](docs/RELEASE_MAINTAINER.md)
 

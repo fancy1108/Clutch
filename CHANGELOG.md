@@ -12,9 +12,22 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ### Added
 
-- **Design mode (D36):** Header `Coding | Design` toggle; language moved to Settings → General. Design is a workspace session (`mode: design`), not a separate project rail. 两阶段生成式流: welcome prompt → infinite canvas → design-spec card first → UI card with draw animation → bottom NL iterate. **References:** paste/drop/attach image; upload **Design.md** (auto-fills “使用 the file [XXX] 创建设计系统…”); attach **website URL** (canvas shows site card first, then spec → UI). **Sidebar history** shows rounded UI thumbnails + title + date. **Right rail** (Overview/Files/Changes/Terminal) available in Design, default collapsed; artifacts under `.clutch/design/sessions/<run_id>/` appear in Files and Changes. **Canvas selection:** select UI/spec/md/image → bottom-bar context chip; iterate auto-chooses modify vs add (unknown → add); ⌘/Ctrl+C/V copy-paste UI; element pick inside UI for precise edits. Session-scoped API; Approve → Vite/React/Tailwind → preview → Send to Coding retained as secondary tray. `design-to-code` workflow template included.
-- **Epicode memory workflow template** (`workflows/epicode-memory-pipeline.json`) and community MCP integration guide (`docs/mcp-servers/epicode.md`) — contributed via [#22](https://github.com/fancy1108/Clutch/pull/22) by [@sunormesky-max](https://github.com/sunormesky-max).
-- **ZCode CLI (`zcode-cli`)**: First-class routing for Z.AI ZCode headless agent (`zcode -p` + `--mode yolo` + `--json`), Terminal Orchestra `@ZCode` dispatch, session resume (`zcode --resume sess_...` / `zcode -c`), recommended Tools card with brand logo, and D19 doc sync — contributed via [#43](https://github.com/fancy1108/Clutch/pull/43) by [@polaris-smart](https://github.com/polaris-smart).
+### Changed
+
+### Fixed
+
+## [1.2.0] - 2026-07-10
+
+Minor release — **Design mode (D36)**, **ZCode CLI**, and Design Agent Log / generate reliability fixes. Ships **macOS + Windows** installers (minor bump restores Windows packages after macOS-only v1.1.2).
+
+> **Release assets (v1.2.0):** Tag `v1.2.0` — macOS `Clutch_1.2.0_aarch64.dmg` + `SHA256SUMS.txt` via CI; Windows MSI/NSIS via **Windows Build** workflow; optional macOS `latest.json` updater bundle. Product snapshot: [`docs/releases/v1.2.0.md`](docs/releases/v1.2.0.md).
+
+### Added
+
+- **Design mode (D36):** Header `Coding | Design` toggle; language moved to Settings → General. Design is a workspace session (`mode: design`), not a separate project rail. Two-phase generative flow: welcome prompt → infinite canvas → design-spec card first → UI card with draw animation → bottom NL iterate. **References:** paste/drop/attach image; upload **Design.md**; attach **website URL**. **Sidebar history** shows UI thumbnails + title + relative time. **Right rail** available in Design (default collapsed); artifacts under `.clutch/design/sessions/`. **Canvas selection** + element pick; iterate modify vs add; ⌘/Ctrl+C/V copy-paste UI. Session-scoped API; Approve → Vite/React/Tailwind → preview → Send to Coding. Built-in Clutch design-system preset; `design-to-code` workflow template.
+- **Design Agent Log:** Canvas Agent Log card shows Thinking + Execution; each step carries **status**, **model**, and **token** tags (per-step history when the user switches models mid-session).
+- **ZCode CLI (`zcode-cli`):** First-class routing for Z.AI ZCode headless agent (`zcode -p` + `--mode yolo` + `--json`), Terminal Orchestra `@ZCode` dispatch, session resume (`zcode --resume sess_...` / `zcode -c`), recommended Tools card with brand logo — contributed via [#43](https://github.com/fancy1108/Clutch/pull/43) by [@polaris-smart](https://github.com/polaris-smart).
+- **Epicode memory workflow template** (`workflows/epicode-memory-pipeline.json`) and community MCP guide (`docs/mcp-servers/epicode.md`) — via [#22](https://github.com/fancy1108/Clutch/pull/22) by [@sunormesky-max](https://github.com/sunormesky-max).
 
 ### Changed
 
@@ -22,16 +35,14 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ### Fixed
 
-- **Design UI code entry:** Bottom-bar **UI code** opens the Approve → Generate → Send to Coding tray on demand (no auto-open, no sky banner). Styling uses surface / outline tokens per UI guidelines.
-- **Design generate stuck Sketching:** Sidebar could stop spinning on `status=ready` while the canvas still showed Sketching (HTML not hydrated yet). Poll now continues until screen HTML is present (or timeout), busy tracks real UI hydrate, and missing HTML is fetched from the screen endpoint. Design progress/`process_log` also mirrors into the Terminal panel for debugging.
-- **Design canvas blank artboard:** LLM UI pass that returned an empty body was wrapped into a full HTML shell and treated as success (sidebar SVG thumbnail from design tokens still looked “done”). Empty/blank HTML now falls back to a prompt-aware draft. Tauri CSP also allows `https://cdn.tailwindcss.com` so Design iframe previews can load Tailwind.
-- **Design history device icon:** Removed the duplicate always-Web monitor icon next to the date; only the thumbnail corner badge shows Web vs Mobile from the session device.
-- **Design history thumbnails:** Empty / new Design sessions show a gray placeholder (no fake SVG silhouette). Sessions with real UI use a live scaled HTML preview of the generated screen so the sidebar matches the canvas.
-- **Design session folders:** Artifacts live under `.clutch/design/sessions/{title}-{web|mobile}__{run_id}/` (readable in Files). Deleting a Design session also deletes that folder.
-- **Design iterate:** Selecting a UI artboard defaults to **modify in place** (not silent add). Process card shows Thinking… and recent instruction; target artboard (or a new placeholder board) shows a loading state. Failed/identical LLM output falls back to an intent-aware draft (e.g. music player with playlist + lyrics) instead of leaving the canvas unchanged.
-- **Design sidebar device badge:** Choosing Mobile/Web on generate now updates the session list icon immediately (no need to switch sessions first).
-- **macOS Dock:** PyInstaller sidecar no longer registers as a GUI app, so opening Clutch shows a single Dock icon instead of a duplicate for the embedded `orchestrator` process.
-- **Windows CI:** `test_scan_mimo_models_reads_cli_catalog` no longer depends on POSIX shell scripts on `PATH` (mock `resolve_tool_binary` instead).
+- **Design UI code entry:** Bottom-bar **UI code** opens the Approve → Generate → Send to Coding tray on demand (no auto-open, no sky banner).
+- **Design generate stuck Sketching:** Poll continues until screen HTML is present; busy tracks real UI hydrate; Design progress mirrors into the Terminal panel.
+- **Design canvas blank artboard:** Empty/blank LLM HTML falls back to a prompt-aware draft; Tauri CSP allows `https://cdn.tailwindcss.com` for Design iframe Tailwind.
+- **Design history:** Relative timestamps; gray placeholder until real UI exists; live HTML preview thumbnails; device badge updates immediately on Web/Mobile choice.
+- **Design session folders:** Artifacts under `.clutch/design/sessions/{title}-{web|mobile}__{run_id}/`; deleting a session deletes the folder.
+- **Design iterate:** Selecting a UI artboard defaults to modify in place; failed/identical LLM output falls back to an intent-aware draft.
+- **macOS Dock:** PyInstaller sidecar no longer registers as a GUI app (single Dock icon).
+- **Windows CI:** `test_scan_mimo_models_reads_cli_catalog` no longer depends on POSIX shell scripts on `PATH`.
 
 ## [1.1.2] - 2026-07-06
 

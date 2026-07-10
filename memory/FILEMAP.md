@@ -65,7 +65,7 @@
 | 待建 pytest 与 task 映射 | `specs/core/tasks.md` §待建 pytest 文件 |
 | 里程碑级验收 T-01~04 | `specs/core/tasks.md` §测试与验收 |
 | 进度 / 待办 | `memory/PROGRESS.md`（近期）· 归档 `memory/archive/PROGRESS-*.md` |
-| **Git worktree · release slices** | v1.0.2 / v1.0.3 worktree 已清理；**v1.1.0** / **v1.1.1** / **v1.1.2** 已 tag（2026-07-06） |
+| **Git worktree · release slices** | v1.0.2 / v1.0.3 worktree 已清理；**v1.1.0** / **v1.1.1** / **v1.1.2** / **v1.2.0** 发版材料已备（2026-07-10；tag 待 `main`） |
 | 候选优化需求池（未立项） | `memory/BACKLOG.md` · Active（含 **B-33** ← PR #22） |
 | GitHub Issue 待修复 Bug | `memory/BACKLOG.md` §GitHub Issues · 待修复 Bug |
 | **开源排期 OSR-xx 验收状态** | **`memory/ROADMAP.md` §开源分发** · Task 定义 `docs/OPEN_SOURCE_RELEASE.md` §7.2 |

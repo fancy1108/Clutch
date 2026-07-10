@@ -17,19 +17,16 @@ Clutch 是一款**桌面应用**（Tauri + React），面向独立开发者和�
 |---|---|
 | **技术栈** | Tauri 2 · React 19 · FastAPI + LangGraph · 本地优先（`localhost:8123`） |
 | **许可证** | 见 [LICENSE](LICENSE) |
-| **当前版本** | [v1.1.2](https://github.com/fancy1108/Clutch/releases/tag/v1.1.2) · [更新日志](CHANGELOG.md#112---2026-07-06) |
+| **当前版本** | [v1.2.0](https://github.com/fancy1108/Clutch/releases/tag/v1.2.0) · [更新日志](CHANGELOG.md#120---2026-07-10) |
 
-### 最新更新（v1.1.2）
+### 最新更新（v1.2.0）
 
-- **MiMo Code CLI** — 一等 `mimo-cli` 路由（`mimo run --dangerously-skip-permissions`）、Terminal Orchestra `@Mimo` 派发，以及 Settings → Models/MCP/Skills 只读扫描 Tab；优先使用官方 curl 安装的 `~/.mimocode/bin/mimo`。
-- **Cursor Agent CLI** — 加入推荐工具列表与品牌 Logo；探测 `cursor-agent` / `agent`（非 IDE 的 `cursor` 启动器）。Terminal Orchestra 支持 `@Cursor`。
-- **Claude Code CC Switch 修复** — Settings → Models（Claude Code）可检测并修复损坏的 CC Switch 配置路径。
-- **Terminal Orchestra 修复** — 后台终端计数仅统计 Clutch PTY 会话；Chat 思考气泡高度与上一条用户消息对齐。
+- **Design 模式（D36）** — Header `Coding | Design`；无限画布生成式 UI（规范 → 界面 → 自然语言迭代）；支持 Design.md / 网址 / 参考图；批准后生成 React 并交给 Coding。
+- **Design Agent Log** — 每步显示 **status / model / token** 标签，会话中途换模型仍可追溯。
+- **ZCode CLI** — 一等 `zcode-cli` 路由、Terminal Orchestra `@ZCode`、推荐工具卡片（[#43](https://github.com/fancy1108/Clutch/pull/43)）。
+- **恢复 Windows 安装包** — 次版本再次发布 MSI/NSIS（v1.1.2 仅为 macOS）。
 
-> [!NOTE]
-> **v1.1.2 仅发 macOS**（Apple Silicon DMG + 应用内更新）。**Windows** 用户请继续使用 [v1.1.1](https://github.com/fancy1108/Clutch/releases/tag/v1.1.1)；新的 Windows 安装包随 **次版本**（v1.2.0、v1.3.0 …）发布。
-
-更早版本（v1.1.1 Windows PTY、v1.1.0 Terminal Orchestra 等）：[`CHANGELOG.md`](CHANGELOG.md) · [`docs/releases/`](docs/releases/)。
+更早版本（v1.1.2 MiMo/Cursor、v1.1.1 Windows PTY 等）：[`CHANGELOG.md`](CHANGELOG.md) · [`docs/releases/`](docs/releases/)。
 
 ---
 
@@ -56,7 +53,7 @@ brew install --cask clutch
 irm https://raw.githubusercontent.com/fancy1108/Clutch/main/scripts/install.ps1 | iex
 ```
 
-指定版本：运行前设置 `CLUTCH_VERSION=v1.1.2`（或 `v1.1.1` / `v1.1.0` 安装更早稳定版）。
+指定版本：运行前设置 `CLUTCH_VERSION=v1.2.0`（或 `v1.1.2` / `v1.1.1` 安装更早稳定版）。
 
 详见 [`docs/PACKAGE_MANAGERS.md`](docs/PACKAGE_MANAGERS.md)
 
