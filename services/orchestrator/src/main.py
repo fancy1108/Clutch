@@ -118,6 +118,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from src.design import router as design_router
+
+app.include_router(design_router)
+
 
 class SidecarAuthMiddleware(BaseHTTPMiddleware):
     """OSR-08: require Bearer token when CLUTCH_SIDECAR_TOKEN is set."""
@@ -253,6 +257,8 @@ class SessionCreateRequest(BaseModel):
     run_id: str
     title: str = Field(default="New session")
     workflow_id: str = Field(default="")
+    mode: str = Field(default="coding")
+    status: str | None = None
 
 
 class SkillsMountRequest(BaseModel):
@@ -2911,8 +2917,54 @@ async def delete_user_workflow_endpoint(workflow_id: str) -> dict[str, str]:
 
 
 @app.get("/api/runs/history")
-async def get_run_history(workspace_id: str | None = None) -> dict[str, list[dict[str, Any]]]:
-    return {"runs": list_runs(workspace_id=workspace_id)}
+async def get_run_history(
+    workspace_id: str | None = None,
+    mode: str | None = None,
+) -> dict[str, list[dict[str, Any]]]:
+    runs = list_runs(workspace_id=workspace_id, mode=mode)
+    # Design history: attach UI thumbnails + sync status from session artifacts.
+    if (mode or "").strip().lower() == "design":
+        try:
+            from src.design import service as design_service
+
+            for record in runs:
+                run_id = str(record.get("run_id") or "")
+                if not run_id:
+                    continue
+                thumb = design_service.thumbnail_data_url_for_run(run_id)
+                if thumb:
+                    record["thumbnail_url"] = thumb
+                else:
+                    record.pop("thumbnail_url", None)
+                preview = design_service.design_ui_preview_path_for_run(run_id)
+                if preview:
+                    record["ui_preview_url"] = preview
+                else:
+                    record.pop("ui_preview_url", None)
+                record["device"] = design_service.design_device_for_run(run_id)
+                design_status = design_service.session_status_for_run(run_id)
+                if design_status:
+                    # Manifest is SSOT for Design busy/ready — heal stale history.json "running".
+                    if design_status in {
+                        "ready",
+                        "error",
+                        "prototype_approved",
+                        "react_ready",
+                        "draft",
+                        "idle",
+                    }:
+                        record["status"] = "ready" if design_status in {
+                            "prototype_approved",
+                            "react_ready",
+                        } else ("idle" if design_status in {"draft", "idle"} else design_status)
+                    elif design_status in {"crafting_spec", "generating_ui", "iterating"}:
+                        record["status"] = design_status
+            # Drop leftover artifact folders for sessions no longer in history.
+            keep = {str(r.get("run_id") or "") for r in runs if r.get("run_id")}
+            design_service.prune_orphan_session_dirs(keep_run_ids=keep)
+        except Exception:
+            pass
+    return {"runs": runs}
 
 
 @app.post("/api/sessions")
@@ -2924,18 +2976,40 @@ async def create_session_endpoint(body: SessionCreateRequest) -> dict[str, Any]:
         raise HTTPException(status_code=400, detail={"message": tr("Please select and authorize a project workspace first", "请先选择并授权一个项目工作区")})
     from src.run_state_store import load_run_state
 
+    mode = (body.mode or "coding").strip().lower()
+    if mode not in {"coding", "design"}:
+        mode = "coding"
     state = load_run_state(body.run_id) or _get_or_create_run(body.run_id)
-    record = upsert_session(
-        {
-            "run_id": body.run_id,
-            "workspace_id": workspace["id"],
-            "workspace_name": workspace["name"],
-            "title": body.title[:80] or "New session",
-            "workflow_id": body.workflow_id,
-            "status": "running",
-            "started_at": _iso_timestamp(),
-        }
-    )
+    status = (body.status or "").strip().lower() if body.status is not None else ""
+    if status and status not in {
+        "running",
+        "idle",
+        "ready",
+        "failed",
+        "completed",
+        "crafting_spec",
+        "generating_ui",
+        "iterating",
+    }:
+        status = ""
+    existing = next((r for r in list_runs() if r.get("run_id") == body.run_id), None)
+    if not status:
+        # Title-only / partial updates must not clobber a terminal Design status.
+        status = str((existing or {}).get("status") or "") or ("idle" if mode == "design" else "running")
+    record_payload: dict[str, Any] = {
+        "run_id": body.run_id,
+        "workspace_id": workspace["id"],
+        "workspace_name": workspace["name"],
+        "title": body.title[:80] or ("New Design" if mode == "design" else "New session"),
+        "workflow_id": body.workflow_id,
+        "mode": mode,
+        "status": status,
+    }
+    if existing and existing.get("started_at"):
+        record_payload["started_at"] = existing["started_at"]
+    else:
+        record_payload["started_at"] = _iso_timestamp()
+    record = upsert_session(record_payload)
     return record
 
 
@@ -4035,6 +4109,13 @@ async def delete_run_endpoint(run_id: str) -> dict[str, str]:
         get_shell_session_manager().release(run_id)
         delete_session(run_id)
         delete_run_state(run_id)
+        # Design mode: remove workspace artifacts under `.clutch/design/sessions/`.
+        try:
+            from src.design import service as design_service
+
+            design_service.delete_session_artifacts(run_id)
+        except Exception:
+            logger.warning("design artifact cleanup failed run_id=%s", run_id, exc_info=True)
         if run_id in _run_states:
             del _run_states[run_id]
         if run_id in _run_sessions:

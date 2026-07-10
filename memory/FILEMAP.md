@@ -139,6 +139,7 @@
 | 主题 Appearance（P2） | `components/ThemeManager.tsx` |
 | 设置模态壳 | `components/SystemPreferencesModal.tsx` |
 | i18n（P2） | `components/LanguageContext.tsx` |
+| **Design 模式（D36 · 工作区会话 + 原型交互画布）** | `components/design/DesignWorkspace.tsx` · `services/designApi.ts` · `Header` Coding/Design · `runApi` `mode` · 后端 `services/orchestrator/src/design/`（sessions） · 模板 `workflows/design-to-code.json` · 参考 `runs/verification/2026-07-10-design-canvas-reference.md` |
 | 工作流画布编辑 | `components/WorkflowOrchestration.tsx` |
 | 工作流 JSON 面板（D9） | `components/WorkflowJsonPanel.tsx` |
 | 画布 ↔ compiler 转换（D9） | `services/workflowFormat.ts` |

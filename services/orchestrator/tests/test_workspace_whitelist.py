@@ -30,3 +30,25 @@ def test_read_outside_workspace_rejected(tmp_path: Path) -> None:
 
     with pytest.raises(workspace.WorkspaceError, match="工作区外"):
         workspace.read_file(f"../{outside.name}")
+
+
+def test_list_tree_includes_clutch_design_artifacts(tmp_path: Path) -> None:
+    design_file = tmp_path / ".clutch" / "design" / "sessions" / "run1" / "DESIGN.md"
+    design_file.parent.mkdir(parents=True)
+    design_file.write_text("# Design\n", encoding="utf-8")
+    (tmp_path / ".env").write_text("SECRET=1\n", encoding="utf-8")
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "app.ts").write_text("export {}\n", encoding="utf-8")
+
+    nodes = workspace.list_tree()
+    names = {n["name"] for n in nodes}
+    assert ".clutch" in names
+    assert ".env" not in names
+    assert "src" in names
+
+    clutch = next(n for n in nodes if n["name"] == ".clutch")
+    design = next(c for c in clutch["children"] if c["name"] == "design")
+    sessions = next(c for c in design["children"] if c["name"] == "sessions")
+    run = next(c for c in sessions["children"] if c["name"] == "run1")
+    files = {c["name"] for c in run["children"]}
+    assert "DESIGN.md" in files

@@ -102,6 +102,17 @@ def _format_openai_messages(messages: list[dict[str, Any]]) -> list[dict[str, An
     return formatted
 
 
+def _extract_openai_message(msg: dict[str, Any]) -> dict[str, Any]:
+    """Normalize OpenAI-compatible message into content + optional reasoning_content."""
+    content = str(msg.get("content") or "").strip()
+    reasoning = msg.get("reasoning_content") or msg.get("reasoning")
+    if isinstance(reasoning, str):
+        reasoning = reasoning.strip() or None
+    else:
+        reasoning = None
+    return {"content": content, "reasoning_content": reasoning}
+
+
 def _openai_chat(
     *,
     base_url: str,
@@ -126,8 +137,12 @@ def _openai_chat(
     try:
         msg = data["choices"][0]["message"]
         if tools and msg.get("tool_calls"):
-            return msg
-        return str(msg.get("content") or "").strip()
+            out = dict(msg)
+            parsed = _extract_openai_message(msg)
+            if parsed.get("reasoning_content"):
+                out["reasoning_content"] = parsed["reasoning_content"]
+            return out
+        return _extract_openai_message(msg)
     except (KeyError, IndexError, TypeError) as exc:
         raise RuntimeError(f"Unexpected OpenAI-compatible response: {data!r}") from exc
 
@@ -248,8 +263,9 @@ def _anthropic_chat(
                 "role": "assistant",
                 "content": text_content or None,
                 "tool_calls": tool_calls,
+                "reasoning_content": None,
             }
-        return text_content
+        return {"content": text_content, "reasoning_content": None}
     except (KeyError, TypeError) as exc:
         raise RuntimeError(f"Unexpected Anthropic response: {data!r}") from exc
 

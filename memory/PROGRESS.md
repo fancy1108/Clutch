@@ -24,9 +24,27 @@
 
 ## Next Actions
 
+- **Design (D36)** — Header Coding/Design + 原型交互画布已落地；人工验收 ROADMAP §Design 模式各项后标 ✅
 - **#23** — Windows smoke 继续用 v1.1.1；v1.2.0 再发 Win 包
 
 ## Recent Sessions
+
+## 2026-07-10 会话（D36 Design 会话模型 + 原型交互画布重做）
+
+- **决策** D36：Design = 工作区 session（`mode`）；Header Coding/Design；语言进 Settings General；欢迎页+无限画布（规范→描绘→NL）
+- **后端** session-scoped `design/sessions` 两阶段 generate + iterate；产物 `.clutch/design/sessions/<run_id>/`
+- **前端** 去掉 Design 项目左栏；`DesignWorkspace` 重写；`App` `appMode` + session 过滤
+- **参考** `runs/verification/2026-07-10-design-canvas-reference.md`；Playwright MCP 已写入 `~/.cursor/mcp.json`
+- **文档** PRODUCT_INTRO §3.5、ROADMAP、CHANGELOG、FILEMAP、DECISIONS D36
+- **测试** `pytest tests/test_design_service.py` 2 passed
+
+## 2026-07-10 会话（D35 Design 模式落地 · 已被 D36 修订）
+
+- **决策** D35 内建 Design（原型画布 + 预览沙箱）；PRODUCT_INTRO §3.5、ROADMAP、CHANGELOG、FILEMAP
+- **后端** `services/orchestrator/src/design/`（CRUD、生成、Play 产物、React codegen、preview、handoff、vision、模板）
+- **前端** 侧栏 Design 入量 + `DesignWorkspace`（画布 / Play / Approve / React / Send to Coding）— 形态已由 D36 替换
+- **模板** `design-to-code` 工作流（`workflows/` + `workflow_assets/`）
+- **测试** `pytest tests/test_design_service.py` 3 passed；`pnpm` desktop vite build 通过
 
 ## 2026-07-06 会话（MiMo Code CLI + v1.1.2 发版准备）
 

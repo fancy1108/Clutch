@@ -1,6 +1,12 @@
 import React from 'react';
 import { useLanguage } from './LanguageContext';
-import { SIDEBAR_COLLAPSED_WIDTH_PX, SIDEBAR_EXPANDED_WIDTH_PX } from '../constants/layout';
+import {
+  HEADER_BREADCRUMB_LEFT_PADDING_PX,
+  SIDEBAR_COLLAPSED_WIDTH_PX,
+  SIDEBAR_EXPANDED_WIDTH_PX,
+} from '../constants/layout';
+
+export type AppWorkspaceMode = 'coding' | 'design';
 
 interface HeaderProps {
   currentFlow: string;
@@ -8,6 +14,8 @@ interface HeaderProps {
   onPickWorkspace?: () => void;
   folders?: any[];
   sidebarOpen?: boolean;
+  appMode: AppWorkspaceMode;
+  onAppModeChange: (mode: AppWorkspaceMode) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -16,10 +24,11 @@ export const Header: React.FC<HeaderProps> = ({
   onPickWorkspace,
   folders,
   sidebarOpen = true,
+  appMode,
+  onAppModeChange,
 }) => {
-  const { language, setLanguage, t } = useLanguage();
+  const { t } = useLanguage();
 
-  // Dynamically resolve parent folder/project name
   const parentFolder = folders?.find((folder) =>
     folder.items.some((item: { name: string }) => item.name === currentFlow),
   );
@@ -31,15 +40,18 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header
-      className="fixed top-0 right-0 h-[64px] bg-background/85 backdrop-blur-md border-b border-outline-variant z-40 flex items-center justify-between px-2 select-none transition-[left] duration-200 ease-out"
-      style={{ left: sidebarOpen ? SIDEBAR_EXPANDED_WIDTH_PX : SIDEBAR_COLLAPSED_WIDTH_PX }}
+      className="fixed top-0 right-0 h-[64px] bg-background/85 backdrop-blur-md border-b border-outline-variant z-40 flex items-center justify-between pr-2 select-none transition-[left] duration-200 ease-out"
+      style={{
+        left: sidebarOpen ? SIDEBAR_EXPANDED_WIDTH_PX : SIDEBAR_COLLAPSED_WIDTH_PX,
+        paddingLeft: HEADER_BREADCRUMB_LEFT_PADDING_PX,
+      }}
     >
       <div className="flex items-center gap-3">
         <nav className="flex items-center gap-2 text-xs font-semibold tracking-wide text-on-surface-variant">
           <span
             onClick={onPickWorkspace}
             className="hover:text-primary cursor-pointer font-bold transition-colors"
-            title={t("Select workspace")}
+            title={t('Select workspace')}
           >
             {t(parentLabel)}
           </span>
@@ -51,30 +63,33 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       <div className="flex items-center gap-3">
-
-        {/* Language Switcher Toggle */}
-        <div className="flex items-center bg-surface-container-low p-1 rounded-lg border border-outline-variant/30">
+        <div
+          className="flex items-center bg-surface-container-low p-1 rounded-lg border border-outline-variant/30"
+          data-testid="app-mode-toggle"
+        >
           <button
-            data-testid="lang-en"
-            onClick={() => setLanguage('en')}
+            type="button"
+            data-testid="mode-coding"
+            onClick={() => onAppModeChange('coding')}
             className={`px-3 py-1.5 text-[11px] rounded-md transition-all cursor-pointer ${
-              language === 'en'
+              appMode === 'coding'
                 ? 'bg-surface-bright text-on-surface font-bold shadow-sm'
                 : 'text-on-surface-variant hover:text-on-surface font-medium'
             }`}
           >
-            English
+            {t('Coding')}
           </button>
           <button
-            data-testid="lang-zh"
-            onClick={() => setLanguage('zh')}
+            type="button"
+            data-testid="mode-design"
+            onClick={() => onAppModeChange('design')}
             className={`px-3 py-1.5 text-[11px] rounded-md transition-all cursor-pointer ${
-              language === 'zh'
+              appMode === 'design'
                 ? 'bg-surface-bright text-on-surface font-bold shadow-sm'
                 : 'text-on-surface-variant hover:text-on-surface font-medium'
             }`}
           >
-            中文
+            {t('Design')}
           </button>
         </div>
       </div>

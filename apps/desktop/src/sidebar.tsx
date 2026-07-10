@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { RepositoryFolder, MainView } from './types';
+import { RepositoryFolder, MainView, type AppWorkspaceMode } from './types';
 import { useLanguage } from './components/LanguageContext';
 import type { SessionRecord } from './services/runApi';
 import type { RepositoryGroup, WorkspaceInfo } from './services/workspaceApi';
@@ -14,7 +14,80 @@ import {
   SidebarToggleWindows,
 } from './platform/chrome/sidebar';
 import { isWindowsHost, useHostOs } from './platform/hostOs';
+import { sidecarFetch, sidecarHttpUrl } from './services/sidecarUrl';
 
+const DESIGN_THUMB_PX = 40;
+
+/** Live HTML preview of the generated screen — gray when empty / still loading. */
+function DesignSessionThumb({
+  previewUrl,
+  thumbnailUrl,
+  device,
+}: {
+  previewUrl?: string | null;
+  thumbnailUrl?: string | null;
+  device?: string | null;
+}) {
+  const [html, setHtml] = useState<string | null>(null);
+  const isMobile = (device || '').toLowerCase() === 'app';
+  const frameW = isMobile ? 390 : 1920;
+  const frameH = isMobile ? 844 : 1080;
+
+  useEffect(() => {
+    if (!previewUrl) {
+      setHtml(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await sidecarFetch(sidecarHttpUrl(previewUrl));
+        if (!res.ok) {
+          if (!cancelled) setHtml(null);
+          return;
+        }
+        const text = await res.text();
+        if (!cancelled) setHtml(text);
+      } catch {
+        if (!cancelled) setHtml(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [previewUrl]);
+
+  const scale = Math.max(DESIGN_THUMB_PX / frameW, DESIGN_THUMB_PX / frameH);
+
+  return (
+    <>
+      {html ? (
+        <iframe
+          title=""
+          srcDoc={html}
+          sandbox="allow-scripts"
+          tabIndex={-1}
+          aria-hidden
+          className="pointer-events-none absolute left-0 top-0 origin-top-left border-0 bg-white"
+          style={{
+            width: frameW,
+            height: frameH,
+            transform: `scale(${scale})`,
+          }}
+        />
+      ) : thumbnailUrl ? (
+        <img
+          src={thumbnailUrl}
+          alt=""
+          className="h-full w-full object-cover"
+          draggable={false}
+        />
+      ) : (
+        <span className="absolute inset-0 bg-neutral-200/90" aria-hidden />
+      )}
+    </>
+  );
+}
 interface SidebarProps {
   currentView: MainView;
   setView: (view: MainView) => void;
@@ -23,6 +96,7 @@ interface SidebarProps {
   activeFlow: string;
   setActiveFlow: (flow: string) => void;
   onNewChat: () => void;
+  appMode?: AppWorkspaceMode;
   isOpenState: boolean;
   setIsOpenState?: (open: boolean) => void;
   isMultiAgent?: boolean;
@@ -57,6 +131,12 @@ function formatRelativeTime(iso: string): string {
   return `${days}d`;
 }
 
+function formatDesignHistoryDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
 function sessionLabel(session: SessionRecord): string {
   if (session.title?.trim()) return session.title.trim();
   if (session.workflow_id) return session.workflow_id;
@@ -71,6 +151,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   activeFlow,
   setActiveFlow,
   onNewChat,
+  appMode = 'coding',
   isOpenState,
   setIsOpenState,
   isMultiAgent = true,
@@ -329,7 +410,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onNewChatInWorkspace?.(repo.id);
             }}
             className={BTN_ICON_SM}
-            aria-label={t('New Chat')}
+            aria-label={appMode === 'design' ? t('New Design') : t('New Chat')}
           >
             <LegacyIcon name="add" className="text-[16px]" />
           </button>
@@ -344,9 +425,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
             ) : (
               projectSessions.map((session) => {
                 const isActiveSession = session.run_id === activeSessionId;
-                const isRunning =
-                  (session.run_id === activeSessionId && clutchStatus === 'running') ||
-                  session.status === 'running';
+                const isDesignSession = session.mode === 'design';
+                const isMobileDevice = (session.device || '').toLowerCase() === 'app';
+                const designBusy =
+                  session.status === 'running' ||
+                  session.status === 'crafting_spec' ||
+                  session.status === 'generating_ui' ||
+                  session.status === 'iterating';
+                const isRunning = isDesignSession
+                  ? designBusy
+                  : (session.run_id === activeSessionId && clutchStatus === 'running') ||
+                    session.status === 'running';
                 const isLoadingSession = session.run_id === loadingSessionId;
                 const hasSnapshot = shellSnapshotRunIds?.has(session.run_id) ?? false;
                 return (
@@ -357,27 +446,79 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     onClick={() => onSelectSession?.(session)}
                     onContextMenu={(e) => handleContextMenu(e, 'session', session.run_id)}
                     aria-label={sessionLabel(session)}
-                    className={`relative w-full overflow-hidden flex items-center justify-between p-2 rounded-lg border text-left transition-[background-color,border-color,color,box-shadow] ${
-                      isActiveSession
-                        ? 'bg-surface-bright shadow-sm text-on-surface-variant/80 font-normal border-outline-variant/40'
-                        : 'border-transparent text-on-surface-variant hover:bg-surface-bright hover:text-on-surface'
+                    className={`relative w-full overflow-hidden rounded-lg border text-left transition-[background-color,border-color,color,box-shadow] ${
+                      isDesignSession
+                        ? `flex items-start gap-2.5 px-2 py-2 ${
+                            isActiveSession
+                              ? 'bg-surface-bright shadow-sm border-outline-variant/40'
+                              : 'border-transparent hover:bg-surface-bright'
+                          }`
+                        : `flex items-center justify-between p-2 ${
+                            isActiveSession
+                              ? 'bg-surface-bright shadow-sm text-on-surface-variant/80 font-normal border-outline-variant/40'
+                              : 'border-transparent text-on-surface-variant hover:bg-surface-bright hover:text-on-surface'
+                          }`
                     }`}
                   >
-                    <span className="flex items-center gap-1.5 min-w-0">
-                      {isRunning ? (
-                        <LegacyIcon
-                          name="progress_activity"
-                          className="text-[12px] text-primary flex-shrink-0 animate-spin"
-                          aria-hidden
-                        />
-                      ) : null}
-                      <span className="text-[12.5px] text-on-surface-variant/80 truncate max-w-[130px]">
-                        {sessionLabel(session)}
-                      </span>
-                    </span>
-                    <span className="text-[9px] font-mono text-on-surface-variant/70 flex-shrink-0">
-                      {formatRelativeTime(session.started_at)}
-                    </span>
+                    {isDesignSession ? (
+                      <>
+                        <span className="relative h-10 w-10 flex-shrink-0 overflow-hidden rounded-lg bg-neutral-200 ring-1 ring-black/5">
+                          <DesignSessionThumb
+                            previewUrl={session.ui_preview_url}
+                            thumbnailUrl={session.thumbnail_url}
+                            device={session.device}
+                          />
+                          {/* Single device badge — Web (monitor) vs Mobile (phone). */}
+                          <span
+                            className="absolute bottom-0.5 right-0.5 z-[1] flex h-3.5 w-3.5 items-center justify-center rounded bg-white/95 text-on-surface-variant shadow-sm ring-1 ring-black/5"
+                            title={isMobileDevice ? 'Mobile' : 'Web'}
+                            data-testid={isMobileDevice ? 'design-device-mobile' : 'design-device-web'}
+                          >
+                            <LegacyIcon
+                              name={isMobileDevice ? 'smartphone' : 'monitoring'}
+                              className="text-[9px]"
+                              aria-hidden
+                            />
+                          </span>
+                          {isRunning ? (
+                            <span className="absolute inset-0 flex items-center justify-center bg-white/50">
+                              <LegacyIcon
+                                name="progress_activity"
+                                className="text-[14px] text-primary animate-spin"
+                                aria-hidden
+                              />
+                            </span>
+                          ) : null}
+                        </span>
+                        <span className="min-w-0 flex-1 py-0.5">
+                          <span className="block truncate text-[12.5px] font-medium leading-snug text-on-surface">
+                            {sessionLabel(session)}
+                          </span>
+                          <span className="mt-0.5 block truncate text-[10px] text-on-surface-variant/70">
+                            {formatDesignHistoryDate(session.started_at) ||
+                              formatRelativeTime(session.started_at)}
+                          </span>
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="flex items-center gap-1.5 min-w-0">
+                          {isRunning ? (
+                            <LegacyIcon
+                              name="progress_activity"
+                              className="text-[12px] text-primary flex-shrink-0 animate-spin"
+                              aria-hidden
+                            />
+                          ) : null}
+                          <span className="text-[12.5px] text-on-surface-variant/80 truncate max-w-[130px]">
+                            {sessionLabel(session)}
+                          </span>
+                        </span>
+                        <span className="text-[9px] font-mono text-on-surface-variant/70 flex-shrink-0">
+                          {formatRelativeTime(session.started_at)}
+                        </span>
+                      </>
+                    )}
                     {isLoadingSession ? (
                       <span className="absolute inset-x-2 bottom-0 h-[2px] overflow-hidden rounded-full bg-outline-variant/30" aria-hidden>
                         <span className="session-row-loading-bar absolute inset-y-0 w-1/2 rounded-full bg-primary/80" />
@@ -415,6 +556,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     showCollapsedTooltip,
     hideCollapsedTooltip,
     t,
+    appMode,
   };
 
   const renderCollapsedRail = () =>
@@ -449,46 +591,50 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button
             data-testid="nav-new-chat"
             onClick={onNewChat}
-            aria-label={t('New Chat')}
+            aria-label={appMode === 'design' ? t('New Design') : t('New Chat')}
             className={`w-full flex items-center gap-2.5 p-2 rounded-lg border transition-[background-color,border-color,color,box-shadow] text-left group ${
               currentView === 'chat'
                 ? 'bg-surface-bright shadow-sm text-on-surface font-semibold border-outline-variant/50'
                 : 'border-transparent text-on-surface-variant hover:bg-surface-bright hover:text-on-surface'
             }`}
           >
-            <LegacyIcon name={NAV_CONFIG.chat.icon} className="text-[17px] text-on-surface-variant group-hover:text-primary" />
-            <span className="text-xs font-semibold tracking-wide">{t("New Chat")}</span>
+            <LegacyIcon name={appMode === 'design' ? 'palette' : NAV_CONFIG.chat.icon} className="text-[17px] text-on-surface-variant group-hover:text-primary" />
+            <span className="text-xs font-semibold tracking-wide">{appMode === 'design' ? t('New Design') : t('New Chat')}</span>
           </button>
 
-          <button
-            data-testid="nav-agents"
-            onClick={() => setView('agents')}
-            aria-label={t('AI Agents')}
-            className={`w-full flex items-center gap-2.5 p-2 rounded-lg border transition-[background-color,border-color,color,box-shadow] text-left group ${
-              currentView === 'agents'
-                ? 'bg-surface-bright shadow-sm text-on-surface font-semibold border-outline-variant/50'
-                : 'border-transparent text-on-surface-variant hover:bg-surface-bright hover:text-on-surface'
-            }`}
-          >
-            <LegacyIcon name={NAV_CONFIG.agents.icon} className="text-[17px] text-on-surface-variant group-hover:text-primary" />
-            <span className="text-xs font-semibold tracking-wide">{t("AI Agents")}</span>
-          </button>
-
-          {isMultiAgent ? (
+        {appMode !== 'design' ? (
+          <>
             <button
-              data-testid="nav-workflows"
-              onClick={() => setView('workflows')}
-              aria-label={t('Workflows SOP')}
+              data-testid="nav-agents"
+              onClick={() => setView('agents')}
+              aria-label={t('AI Agents')}
               className={`w-full flex items-center gap-2.5 p-2 rounded-lg border transition-[background-color,border-color,color,box-shadow] text-left group ${
-                currentView === 'workflows'
-                  ? 'bg-surface-bright shadow-sm text-on-surface font-semibold border-outline-variant/60'
+                currentView === 'agents'
+                  ? 'bg-surface-bright shadow-sm text-on-surface font-semibold border-outline-variant/50'
                   : 'border-transparent text-on-surface-variant hover:bg-surface-bright hover:text-on-surface'
               }`}
             >
-              <LegacyIcon name={NAV_CONFIG.workflows.icon} className="text-[17px] text-on-surface-variant group-hover:text-primary" />
-              <span className="text-xs font-semibold tracking-wide">{t("Workflows SOP")}</span>
+              <LegacyIcon name={NAV_CONFIG.agents.icon} className="text-[17px] text-on-surface-variant group-hover:text-primary" />
+              <span className="text-xs font-semibold tracking-wide">{t("AI Agents")}</span>
             </button>
-          ) : null}
+
+            {isMultiAgent ? (
+              <button
+                data-testid="nav-workflows"
+                onClick={() => setView('workflows')}
+                aria-label={t('Workflows SOP')}
+                className={`w-full flex items-center gap-2.5 p-2 rounded-lg border transition-[background-color,border-color,color,box-shadow] text-left group ${
+                  currentView === 'workflows'
+                    ? 'bg-surface-bright shadow-sm text-on-surface font-semibold border-outline-variant/60'
+                    : 'border-transparent text-on-surface-variant hover:bg-surface-bright hover:text-on-surface'
+                }`}
+              >
+                <LegacyIcon name={NAV_CONFIG.workflows.icon} className="text-[17px] text-on-surface-variant group-hover:text-primary" />
+                <span className="text-xs font-semibold tracking-wide">{t("Workflows SOP")}</span>
+              </button>
+            ) : null}
+          </>
+        ) : null}
         </div>
 
         <div className="flex items-center justify-between text-on-surface-variant px-2">

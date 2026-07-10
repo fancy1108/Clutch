@@ -106,7 +106,35 @@ def update_run_record(run_id: str, patch: dict[str, Any]) -> dict[str, Any] | No
     return _mutate_records(mutate)
 
 
-_DEFAULT_SESSION_TITLES = frozenset({"New session", "New Chat", "新建会话"})
+_DEFAULT_SESSION_TITLES = frozenset(
+    {"New session", "New Chat", "新建会话", "New Design", "新建设计"}
+)
+
+
+def _design_session_has_artifacts(run_id: str) -> bool:
+    """True when Design mode left workspace artifacts for this run."""
+    try:
+        from src.design import service as design_service
+        from src.workspace import WorkspaceError
+
+        status = design_service.session_status_for_run(run_id)
+        if status in {
+            "ready",
+            "crafting_spec",
+            "generating_ui",
+            "iterating",
+            "prototype_approved",
+            "error",
+        }:
+            return True
+        thumb = design_service.thumbnail_data_url_for_run(run_id)
+        return bool(thumb)
+    except Exception:
+        return False
+
+
+def _is_default_session_title(title: str) -> bool:
+    return (not title) or title in _DEFAULT_SESSION_TITLES
 
 
 def _should_keep_session_record(record: dict[str, Any], state: dict[str, Any] | None) -> bool:
@@ -117,7 +145,29 @@ def _should_keep_session_record(record: dict[str, Any], state: dict[str, Any] | 
     status = str(record.get("status") or "").strip().lower()
     if status in {"running", "refining", "awaiting_human"}:
         return True
+    mode = str(record.get("mode") or "coding").strip().lower()
     title = str(record.get("title") or "").strip()
+    if mode == "design":
+        run_id = str(record.get("run_id") or "").strip()
+        has_artifacts = bool(run_id and _design_session_has_artifacts(run_id))
+        if status in {
+            "crafting_spec",
+            "generating_ui",
+            "iterating",
+        }:
+            return True
+        if has_artifacts:
+            return True
+        # Empty Design draft: keep temporarily so the UI can reuse one welcome row.
+        # _prune_empty_records collapses these to at most one per workspace.
+        if _is_default_session_title(title) and status in {
+            "",
+            "idle",
+            "draft",
+            "ready",  # false-ready from welcome mount — still treat as empty draft
+        }:
+            return True
+        return bool(title) and not _is_default_session_title(title)
     if title and title not in _DEFAULT_SESSION_TITLES:
         return True
     return False
@@ -142,16 +192,62 @@ def _prune_empty_records(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
             changed = True
             continue
         kept.append(record)
+
+    # At most one empty Design draft (default title, no artifacts) per workspace.
+    empty_design_by_ws: dict[str, list[int]] = {}
+    for index, record in enumerate(kept):
+        mode = str(record.get("mode") or "coding").strip().lower()
+        if mode != "design":
+            continue
+        title = str(record.get("title") or "").strip()
+        if not _is_default_session_title(title):
+            continue
+        run_id = str(record.get("run_id") or "").strip()
+        if run_id and _design_session_has_artifacts(run_id):
+            continue
+        status = str(record.get("status") or "").strip().lower()
+        if status not in {"", "idle", "draft", "ready"}:
+            continue
+        ws = str(record.get("workspace_id") or "")
+        empty_design_by_ws.setdefault(ws, []).append(index)
+
+    drop_indexes: set[int] = set()
+    for indexes in empty_design_by_ws.values():
+        if len(indexes) <= 1:
+            continue
+        ranked = sorted(
+            indexes,
+            key=lambda i: str(kept[i].get("started_at") or ""),
+            reverse=True,
+        )
+        drop_indexes.update(ranked[1:])
+
+    if drop_indexes:
+        changed = True
+        kept = [record for i, record in enumerate(kept) if i not in drop_indexes]
+
     if changed:
         _save_records(kept)
     return kept
 
 
-def list_runs(*, workspace_id: str | None = None) -> list[dict[str, Any]]:
+def list_runs(
+    *,
+    workspace_id: str | None = None,
+    mode: str | None = None,
+) -> list[dict[str, Any]]:
     records = _prune_empty_records(_load_records())
-    if workspace_id is None:
-        return records
-    return [record for record in records if record.get("workspace_id") == workspace_id]
+    if workspace_id is not None:
+        records = [record for record in records if record.get("workspace_id") == workspace_id]
+    if mode is not None:
+        wanted = mode.strip().lower()
+        if wanted in {"coding", "design"}:
+            records = [
+                record
+                for record in records
+                if str(record.get("mode") or "coding").strip().lower() == wanted
+            ]
+    return records
 
 
 def delete_session(run_id: str) -> None:

@@ -8,6 +8,7 @@ import { McpServerHub } from './McpServerHub';
 import { ModelsManager } from './ModelsManager';
 import { ThemeManager } from './ThemeManager';
 import { useLanguage } from './LanguageContext';
+import type { Language } from './LanguageContext';
 import { BTN_FOCUS, BTN_PRIMARY, BTN_SECONDARY } from './ui/buttonStyles';
 import { LegacyIcon } from './ui/LegacyIcon';
 import { SettingsPageHeader, SettingsPageShell } from './ui/SettingsPageHeader';
@@ -81,7 +82,7 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
   fontSize,
   setFontSize,
 }) => {
-  const { t } = useLanguage();
+  const { t, language, setLanguage } = useLanguage();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -369,6 +370,42 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
                         }))}
                         onChange={(next) => setFontSize(next as AppFontSize)}
                       />
+                    </div>
+                  </div>
+
+                  {/* Language Settings Section */}
+                  <div className="bg-surface-container/30 p-6 rounded-2xl border border-outline/30 space-y-4">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                      {t('Language')}
+                    </h3>
+                    <div
+                      className="inline-flex items-center bg-surface p-1 rounded-lg border border-outline/40"
+                      data-testid="settings-language-toggle"
+                    >
+                      <button
+                        type="button"
+                        data-testid="lang-en"
+                        onClick={() => setLanguage('en' as Language)}
+                        className={`px-3 py-1.5 text-[11px] rounded-md transition-all cursor-pointer ${
+                          language === 'en'
+                            ? 'bg-surface-bright text-on-surface font-bold shadow-sm'
+                            : 'text-on-surface-variant hover:text-on-surface font-medium'
+                        }`}
+                      >
+                        English
+                      </button>
+                      <button
+                        type="button"
+                        data-testid="lang-zh"
+                        onClick={() => setLanguage('zh' as Language)}
+                        className={`px-3 py-1.5 text-[11px] rounded-md transition-all cursor-pointer ${
+                          language === 'zh'
+                            ? 'bg-surface-bright text-on-surface font-bold shadow-sm'
+                            : 'text-on-surface-variant hover:text-on-surface font-medium'
+                        }`}
+                      >
+                        中文
+                      </button>
                     </div>
                   </div>
                 </div>

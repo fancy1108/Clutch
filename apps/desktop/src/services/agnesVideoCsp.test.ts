@@ -39,3 +39,16 @@ describe('Agnes video CSP', () => {
     expect(directiveIncludesOrigin(csp['connect-src'], GCS_ORIGIN)).toBe(true);
   });
 });
+
+describe('Design mode Tailwind CSP', () => {
+  const config = loadTauriConfig();
+  const TAILWIND = 'https://cdn.tailwindcss.com';
+
+  it.each([
+    ['csp', config.app.security.csp],
+    ['devCsp', config.app.security.devCsp],
+  ] as const)('allows Tailwind CDN in %s', (_label, csp) => {
+    expect(directiveIncludesOrigin(csp['script-src'], TAILWIND)).toBe(true);
+    expect(directiveIncludesOrigin(csp['connect-src'], TAILWIND)).toBe(true);
+  });
+});

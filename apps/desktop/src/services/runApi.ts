@@ -1,21 +1,36 @@
 import { sidecarHttpUrl, sidecarFetch } from './sidecarUrl';
 
+export type SessionMode = 'coding' | 'design';
+
 export interface SessionRecord {
   run_id: string;
   workspace_id?: string;
   workspace_name?: string;
   title?: string;
   workflow_id: string;
+  mode?: SessionMode;
   status: string;
   started_at: string;
   ended_at?: string;
+  /** Design mode: SVG/data-URL preview of generated UI (or reference image). */
+  thumbnail_url?: string | null;
+  /** Design mode: live HTML preview path when real UI exists (sidebar iframe). */
+  ui_preview_url?: string | null;
+  /** Design mode: `web` | `app` from session manifest. */
+  device?: string | null;
 }
 
 /** @deprecated use SessionRecord */
 export type RunHistoryRecord = SessionRecord;
 
-export async function fetchSessions(workspaceId?: string): Promise<SessionRecord[]> {
-  const query = workspaceId ? `?workspace_id=${encodeURIComponent(workspaceId)}` : '';
+export async function fetchSessions(
+  workspaceId?: string,
+  mode?: SessionMode,
+): Promise<SessionRecord[]> {
+  const params = new URLSearchParams();
+  if (workspaceId) params.set('workspace_id', workspaceId);
+  if (mode) params.set('mode', mode);
+  const query = params.toString() ? `?${params.toString()}` : '';
   const response = await sidecarFetch(sidecarHttpUrl(`/api/runs/history${query}`));
   if (!response.ok) {
     throw new Error(`Failed to load sessions (${response.status})`);
@@ -31,11 +46,21 @@ export async function createSession(input: {
   run_id: string;
   title?: string;
   workflow_id?: string;
+  mode?: SessionMode;
+  status?: string;
 }): Promise<SessionRecord> {
+  const payload: Record<string, string> = {
+    run_id: input.run_id,
+    mode: input.mode ?? 'coding',
+  };
+  if (input.title != null) payload.title = input.title;
+  if (input.workflow_id != null) payload.workflow_id = input.workflow_id;
+  // Only send status when caller sets it — avoids title updates resurrecting "running".
+  if (input.status != null) payload.status = input.status;
   const response = await sidecarFetch(sidecarHttpUrl('/api/sessions'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(input),
+    body: JSON.stringify(payload),
   });
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));

@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { Header } from './components/Header';
 import { Sidebar } from './sidebar';
 import { ChatFeed, configuredEngineToRuntimeLabel } from './components/ChatFeed';
+import { DesignWorkspace } from './components/design/DesignWorkspace';
+import { getDesignSession, type CodingHandoff } from './services/designApi';
 import { RightPanel } from './components/RightPanel';
 import { WorkflowOrchestration } from './components/WorkflowOrchestration';
 import { AgentManager } from './components/AgentManager';
@@ -12,7 +14,7 @@ import { ModelsManager } from './components/ModelsManager';
 import { ThemeManager, THEME_PRESETS } from './components/ThemeManager';
 import { SystemPreferencesModal } from './components/SystemPreferencesModal';
 import { FooterMenuAction, FooterMenuItem, FooterMenuPanel, FooterMenuSection } from './components/FooterMenu';
-import { MainView, RightTab, ChatMessage, UncommittedFile, DiffLine, type Agent, type ClutchState } from './types';
+import { MainView, RightTab, ChatMessage, UncommittedFile, DiffLine, type Agent, type ClutchState, type AppWorkspaceMode } from './types';
 import { fetchAgents } from './services/agentApi';
 import {
   BUILTIN_AGENT_ID,
@@ -161,6 +163,7 @@ function MainLayout() {
 
   // Navigation & Structure views
   const [currentView, setView] = useState<MainView>('chat');
+  const [appMode, setAppMode] = useState<AppWorkspaceMode>('coding');
   const [currentFlowName, setCurrentFlowName] = useState<string>('');
   const [selectedWorkflowId, setSelectedWorkflowId] = useState<string | null>(null);
   const [workflowAgentSteps, setWorkflowAgentSteps] = useState<WorkflowAgentStep[]>([]);
@@ -518,20 +521,25 @@ function MainLayout() {
     }),
     [footerSelectableAgents],
   );
-  const activeWorkflowLabel = clutchState.workflow_id || currentFlowName || selectedWorkflowId || '—';
-  const hasWorkflowSelection = isMultiAgent && activeWorkflowLabel !== '—';
+  // Design sessions reuse currentFlowName for the canvas title — never treat it as a Workflow SOP.
+  const activeWorkflowLabel =
+    appMode === 'design'
+      ? '—'
+      : clutchState.workflow_id || selectedWorkflowId || '—';
+  const hasWorkflowSelection = isMultiAgent && appMode !== 'design' && activeWorkflowLabel !== '—';
   const multiAgentFooterName = hasWorkflowSelection
     ? '—'
     : selectedAgentId
       ? selectedAgentName
       : '—';
   const showFooterModel =
-    !hasWorkflowSelection && isClutchAgentType(selectedAgent);
+    appMode === 'design' || (!hasWorkflowSelection && isClutchAgentType(selectedAgent));
   const agentBoundModelId =
     selectedAgent && !isBuiltinAgent(selectedAgent) && selectedAgent.modelId
       ? selectedAgent.modelId
       : undefined;
-  const footerEffectiveModelId = agentBoundModelId || activeModelId;
+  const footerEffectiveModelId =
+    appMode === 'design' ? activeModelId : agentBoundModelId || activeModelId;
   const footerEffectiveModelName =
     configuredModels.find((model) => model.id === footerEffectiveModelId)?.name
     || selectedModel
@@ -586,10 +594,10 @@ function MainLayout() {
       ? inFlightTurnRef.current.modelName
       : selectedModel;
 
-  const refreshSessions = async () => {
+  const refreshSessions = useCallback(async (mode: AppWorkspaceMode = appMode) => {
     try {
       const [runs, snapshots] = await Promise.all([
-        fetchSessions(),
+        fetchSessions(activeWorkspaceId ?? undefined, mode),
         fetchShellSnapshots().catch(() => []),
       ]);
       setSessions(runs);
@@ -597,16 +605,17 @@ function MainLayout() {
     } catch (error: unknown) {
       console.warn('[Clutch] sessions unavailable:', error);
     }
-  };
+  }, [appMode, activeWorkspaceId]);
 
   const upsertLocalSession = useCallback((
     runId: string,
     title: string,
-    opts?: { status?: string; workflowId?: string },
+    opts?: { status?: string; workflowId?: string; mode?: AppWorkspaceMode },
   ) => {
     if (!workspace) return;
-    const trimmedTitle = title.trim().slice(0, 80) || t('New session');
-    const status = opts?.status ?? 'running';
+    const mode = opts?.mode ?? appMode;
+    const trimmedTitle = title.trim().slice(0, 80) || (mode === 'design' ? t('New Design') : t('New session'));
+    const status = opts?.status ?? (mode === 'design' ? 'idle' : 'running');
     const workflowId = opts?.workflowId ?? clutchState.workflow_id ?? '';
     setSessions((prev) => {
       const index = prev.findIndex((session) => session.run_id === runId);
@@ -616,6 +625,7 @@ function MainLayout() {
           ...next[index],
           title: trimmedTitle,
           status,
+          mode,
           workflow_id: workflowId || next[index].workflow_id,
         };
         return next;
@@ -626,32 +636,35 @@ function MainLayout() {
         workspace_name: workspace.name,
         title: trimmedTitle,
         workflow_id: workflowId,
+        mode,
         status,
         started_at: new Date().toISOString(),
       };
       return [record, ...prev];
     });
-  }, [workspace, clutchState.workflow_id, t]);
+  }, [workspace, clutchState.workflow_id, t, appMode]);
 
   const registerSessionAfterSend = useCallback((
     runId: string,
     title: string,
-    opts?: { status?: string; workflowId?: string },
+    opts?: { status?: string; workflowId?: string; mode?: AppWorkspaceMode },
   ) => {
-    upsertLocalSession(runId, title, opts);
+    const mode = opts?.mode ?? 'coding';
+    upsertLocalSession(runId, title, { ...opts, mode });
     void createSession({
       run_id: runId,
-      title: title.trim().slice(0, 80) || t('New session'),
+      title: title.trim().slice(0, 80) || (mode === 'design' ? t('New Design') : t('New session')),
       workflow_id: opts?.workflowId ?? clutchState.workflow_id ?? '',
+      mode,
     }).catch((error) => {
       console.warn('[Clutch] session register failed:', error);
     });
-    void refreshSessions();
-  }, [upsertLocalSession, clutchState.workflow_id, t]);
+    void refreshSessions(mode);
+  }, [upsertLocalSession, clutchState.workflow_id, t, refreshSessions]);
 
   useEffect(() => {
-    void refreshSessions();
-  }, [clutchState.run_id, clutchState.status, activeWorkspaceId]);
+    void refreshSessions(appMode);
+  }, [clutchState.run_id, clutchState.status, activeWorkspaceId, appMode, refreshSessions]);
 
   // Active Tab inside the right side panel (Overview, Files, Flow, Changes, Terminal)
   const [rightTab, setRightTab] = useState<RightTab>('overview');
@@ -1041,6 +1054,32 @@ function MainLayout() {
   const discardEmptySessionIfNeeded = async (runId: string) => {
     const snapshot = clutchStore.getSnapshot();
     if (snapshot.run_id !== runId || sessionHasPersistableContent(snapshot)) return;
+
+    // Design content lives under .clutch/design — not clutchStore messages.
+    const local = sessions.find((s) => s.run_id === runId);
+    const treatAsDesign = local?.mode === 'design' || appMode === 'design';
+    if (treatAsDesign) {
+      try {
+        const design = await getDesignSession(runId);
+        const hasDesignWork = Boolean(
+          design.spec ||
+            (design.screens && design.screens.length > 0) ||
+            design.reference_image_url ||
+            design.reference_md_text ||
+            design.reference_url ||
+            (design.prompt && design.prompt.trim()) ||
+            design.status === 'ready' ||
+            design.status === 'crafting_spec' ||
+            design.status === 'generating_ui' ||
+            design.status === 'iterating' ||
+            (design.artifact_paths && design.artifact_paths.length > 0),
+        );
+        if (hasDesignWork) return;
+      } catch {
+        // No design session on disk — empty draft may be discarded.
+      }
+    }
+
     try {
       await deleteSession(runId);
       setSessions((prev) => prev.filter((session) => session.run_id !== runId));
@@ -1048,6 +1087,57 @@ function MainLayout() {
       // Session was never persisted — safe to ignore.
     }
   };
+
+  /** Default-title Design drafts with no real UI preview — at most one should exist. */
+  const isEmptyDesignDraft = useCallback(
+    (s: SessionRecord) => {
+      if (s.mode !== 'design') return false;
+      if (s.ui_preview_url || s.thumbnail_url) return false;
+      const title = (s.title || '').trim();
+      const status = (s.status || '').trim().toLowerCase();
+      const defaultTitle =
+        !title || title === t('New Design') || title === 'New Design' || title === '新建设计';
+      if (!defaultTitle) return false;
+      // "ready" without thumbnail is the false-ready from welcome mount.
+      return status === '' || status === 'idle' || status === 'draft' || status === 'ready';
+    },
+    [t],
+  );
+
+  const pruneExtraEmptyDesignDrafts = useCallback(
+    async (keepRunId: string) => {
+      const extras = sessions.filter((s) => s.run_id !== keepRunId && isEmptyDesignDraft(s));
+      if (extras.length === 0) return;
+      await Promise.all(
+        extras.map(async (s) => {
+          try {
+            await deleteSession(s.run_id);
+          } catch {
+            /* already gone */
+          }
+        }),
+      );
+      const drop = new Set(extras.map((s) => s.run_id));
+      setSessions((prev) => prev.filter((s) => !drop.has(s.run_id)));
+    },
+    [sessions, isEmptyDesignDraft],
+  );
+
+  const openDesignSession = useCallback(
+    (runId: string, title: string) => {
+      setSessionRunId(runId);
+      setHistorySessionViewRunId(null);
+      setHighlightedDispatchEntryId(null);
+      setCurrentFlowName(title);
+      setSelectedWorkflowId(null);
+      setAppMode('design');
+      setView('chat');
+      setRightTab('overview');
+      setRightPanelOpen(false);
+      void clutchStore.connect(runId);
+    },
+    [],
+  );
 
   const handleNewChat = async () => {
     if (!workspace) {
@@ -1066,8 +1156,14 @@ function MainLayout() {
       if (workspaceViewMode !== 'terminal') {
         selectDefaultAgent();
       }
+      setAppMode('coding');
       setView('chat');
       setRightTab('overview');
+      void createSession({
+        run_id: runId,
+        title: t('New session'),
+        mode: 'coding',
+      }).catch(() => {});
       void (async () => {
         try {
           const config = await fetchModelsConfig();
@@ -1081,6 +1177,7 @@ function MainLayout() {
         }
       })();
       void clutchStore.connect(runId);
+      void refreshSessions('coding');
     };
 
     if (shouldConfirmLeavingTerminalForNewChat(clutchState, workspaceViewMode, inputValue, mentionableAgents)) {
@@ -1094,8 +1191,227 @@ function MainLayout() {
     await startNewChat();
   };
 
+  const handleNewDesign = async () => {
+    if (!workspace) {
+      await handlePickWorkspace();
+      return;
+    }
+
+    const emptyTitle = t('New Design');
+    const current = sessions.find((s) => s.run_id === sessionRunId);
+    const existingEmpty = sessions
+      .filter(isEmptyDesignDraft)
+      .sort((a, b) => String(b.started_at || '').localeCompare(String(a.started_at || '')));
+
+    // Already on the sole empty draft — just ensure Design mode, don't spawn another.
+    if (current && isEmptyDesignDraft(current) && appMode === 'design') {
+      await pruneExtraEmptyDesignDrafts(current.run_id);
+      setAppMode('design');
+      setView('chat');
+      setRightPanelOpen(false);
+      void refreshSessions('design');
+      return;
+    }
+
+    // Reuse newest empty draft instead of creating another.
+    if (existingEmpty.length > 0) {
+      const keep = existingEmpty[0];
+      if (sessionRunId !== keep.run_id) {
+        await discardEmptySessionIfNeeded(sessionRunId);
+        scheduleBackgroundHydrateForRun(sessionRunId);
+      }
+      await pruneExtraEmptyDesignDrafts(keep.run_id);
+      openDesignSession(keep.run_id, keep.title || emptyTitle);
+      void refreshSessions('design');
+      return;
+    }
+
+    if (sessionRunId) {
+      await discardEmptySessionIfNeeded(sessionRunId);
+      scheduleBackgroundHydrateForRun(sessionRunId);
+    }
+    const runId = createSessionRunId();
+    openDesignSession(runId, emptyTitle);
+    upsertLocalSession(runId, emptyTitle, { mode: 'design', status: 'idle' });
+    void createSession({
+      run_id: runId,
+      title: emptyTitle,
+      mode: 'design',
+      status: 'idle',
+    }).catch((error) => {
+      console.warn('[Clutch] design session register failed:', error);
+    });
+    void refreshSessions('design');
+  };
+
+  const handleDesignBusyChange = useCallback(
+    (generating: boolean, meta?: { device?: 'web' | 'app' }) => {
+      if (generating) {
+        const device =
+          meta?.device === 'app' || meta?.device === 'web' ? meta.device : undefined;
+        setSessions((prev) =>
+          prev.map((s) =>
+            s.run_id === sessionRunId
+              ? {
+                  ...s,
+                  status: 'running',
+                  mode: 'design' as const,
+                  ...(device ? { device } : {}),
+                }
+              : s,
+          ),
+        );
+        void createSession({
+          run_id: sessionRunId,
+          title: currentFlowName || t('New Design'),
+          mode: 'design',
+          status: 'running',
+        }).catch(() => {});
+        return;
+      }
+
+      void (async () => {
+        let hasDesignWork = false;
+        let designDevice: string | null = null;
+        let designThumb: string | null = null;
+        let designPreview: string | null = null;
+        try {
+          const design = await getDesignSession(sessionRunId);
+          hasDesignWork = Boolean(
+            design.spec ||
+              (design.screens && design.screens.length > 0) ||
+              design.reference_image_url ||
+              design.reference_md_text ||
+              design.reference_url ||
+              (design.prompt && design.prompt.trim()) ||
+              design.status === 'ready' ||
+              design.status === 'crafting_spec' ||
+              design.status === 'generating_ui' ||
+              design.status === 'iterating' ||
+              (design.artifact_paths && design.artifact_paths.length > 0),
+          );
+          if (design.device === 'app' || design.device === 'web') {
+            designDevice = design.device;
+          }
+          if (design.thumbnail_url) {
+            designThumb = design.thumbnail_url;
+          }
+          if (design.ui_preview_url) {
+            designPreview = design.ui_preview_url;
+          }
+        } catch {
+          hasDesignWork = false;
+        }
+
+        // Welcome draft finished "not busy" — stay idle so history can prune extras.
+        if (!hasDesignWork) {
+          setSessions((prev) =>
+            prev.map((s) =>
+              s.run_id === sessionRunId ? { ...s, status: 'idle', mode: 'design' as const } : s,
+            ),
+          );
+          void createSession({
+            run_id: sessionRunId,
+            title: currentFlowName || t('New Design'),
+            mode: 'design',
+            status: 'idle',
+          }).catch(() => {});
+          return;
+        }
+
+        setSessions((prev) =>
+          prev.map((s) =>
+            s.run_id === sessionRunId
+              ? {
+                  ...s,
+                  status: 'ready',
+                  mode: 'design' as const,
+                  ...(designDevice ? { device: designDevice } : {}),
+                  ...(designThumb ? { thumbnail_url: designThumb } : {}),
+                  ...(designPreview ? { ui_preview_url: designPreview } : {}),
+                }
+              : s,
+          ),
+        );
+        try {
+          await createSession({
+            run_id: sessionRunId,
+            title: currentFlowName || t('New Design'),
+            mode: 'design',
+            status: 'ready',
+          });
+        } catch {
+          /* keep local status */
+        }
+        const updated = await fetchSessions(activeWorkspaceId ?? undefined, 'design').catch(() => null);
+        if (updated) {
+          setSessions(
+            updated.map((s) =>
+              s.run_id === sessionRunId ? { ...s, status: 'ready', mode: 'design' as const } : s,
+            ),
+          );
+        }
+        void refreshWorkspaceFiles();
+        try {
+          const session = await getDesignSession(sessionRunId);
+          const paths = session.artifact_paths?.filter(Boolean) ?? [];
+          if (paths.length === 0) return;
+          setUncommitted((prev) => {
+            const next = [...prev];
+            for (const path of paths) {
+              const idx = next.findIndex((f) => f.name === path);
+              const entry: UncommittedFile = {
+                name: path,
+                status: 'A',
+                diffs: [{ type: 'addition', text: path, lineNum: 1 }],
+                active: true,
+              };
+              if (idx >= 0) next[idx] = entry;
+              else next.push(entry);
+            }
+            return next;
+          });
+          setRightTab('changes');
+        } catch {
+          /* ignore — Files refresh still ran */
+        }
+      })();
+    },
+    [sessionRunId, currentFlowName, t, activeWorkspaceId, refreshWorkspaceFiles],
+  );
+
+  const handleAppModeChange = (mode: AppWorkspaceMode) => {
+    if (mode === appMode) return;
+    if (mode === 'design') {
+      // Design defaults to a collapsed right rail (Files / Changes still available).
+      setRightPanelOpen(false);
+      // Reuse an empty draft if one exists; never stack multiple "New Design" rows.
+      void handleNewDesign();
+      return;
+    }
+    setAppMode('coding');
+    setView('chat');
+    void (async () => {
+      // Leaving Design: drop the empty welcome draft so it doesn't pile up.
+      await discardEmptySessionIfNeeded(sessionRunId);
+      try {
+        const codingSessions = await fetchSessions(activeWorkspaceId ?? undefined, 'coding');
+        setSessions(codingSessions);
+        const currentIsDesign = sessions.find((s) => s.run_id === sessionRunId)?.mode === 'design';
+        if (currentIsDesign && codingSessions.length > 0) {
+          await applySelectedSession(codingSessions[0]);
+          return;
+        }
+      } catch {
+        void refreshSessions('coding');
+      }
+    })();
+  };
+
   const applySelectedSession = async (session: SessionRecord) => {
     setLoadingSessionId(session.run_id);
+    const sessionMode: AppWorkspaceMode = session.mode === 'design' ? 'design' : 'coding';
+    setAppMode(sessionMode);
     setView('chat');
     setHighlightedDispatchEntryId(null);
     try {
@@ -1113,16 +1429,25 @@ function MainLayout() {
       setIsMultiAgent(true);
 
       let hydratedState: ClutchState | null = null;
-      try {
-        const { state } = await fetchRunState(session.run_id);
-        hydratedState = normalizeTerminalSessionForResume(state);
-        clutchStore.setPendingHydrate(hydratedState);
-      } catch (error) {
-        console.warn('[Clutch] session state hydrate failed:', error);
+      if (sessionMode === 'coding') {
+        try {
+          const { state } = await fetchRunState(session.run_id);
+          hydratedState = normalizeTerminalSessionForResume(state);
+          clutchStore.setPendingHydrate(hydratedState);
+        } catch (error) {
+          console.warn('[Clutch] session state hydrate failed:', error);
+        }
       }
 
       setSessionRunId(session.run_id);
       setHistorySessionViewRunId(session.run_id);
+      if (sessionMode === 'design') {
+        setCurrentFlowName(session.title || t('New Design'));
+        setSelectedWorkflowId(null);
+        void clutchStore.connect(session.run_id);
+        return;
+      }
+
       setWorkspaceViewMode('chat');
       saveWorkspaceViewMode('chat');
 
@@ -1181,6 +1506,10 @@ function MainLayout() {
     if (workspaceId !== activeWorkspaceId) {
       await handleSelectWorkspace(workspaceId);
     }
+    if (appMode === 'design') {
+      await handleNewDesign();
+      return;
+    }
     await handleNewChat();
   };
 
@@ -1227,7 +1556,7 @@ function MainLayout() {
         setPromptModal(null);
         try {
           await deleteSession(runId);
-          const updatedSessions = await fetchSessions();
+          const updatedSessions = await fetchSessions(activeWorkspaceId ?? undefined, appMode);
           setSessions(updatedSessions);
 
           if (sessionRunId === runId) {
@@ -1237,6 +1566,8 @@ function MainLayout() {
 
             if (remainingWorkspaceSessions.length > 0) {
               await handleSelectSession(remainingWorkspaceSessions[0]);
+            } else if (appMode === 'design') {
+              await handleNewDesign();
             } else {
               const tempRunId = createSessionRunId();
               setSessionRunId(tempRunId);
@@ -1391,11 +1722,13 @@ function MainLayout() {
     >
       {/* 1. Header component */}
       <Header
-        currentFlow={currentFlowName || clutchState.workflow_id || t('New session')}
+        currentFlow={currentFlowName || clutchState.workflow_id || (appMode === 'design' ? t('New Design') : t('New session'))}
         workspaceName={workspace?.name}
         onPickWorkspace={() => { void handlePickWorkspace(); }}
         folders={folders}
         sidebarOpen={sidebarOpen}
+        appMode={appMode}
+        onAppModeChange={handleAppModeChange}
       />
 
       {!isWindows ? (
@@ -1423,7 +1756,14 @@ function MainLayout() {
           setFolders={setFolders}
           activeFlow={currentFlowName}
           setActiveFlow={handleFlowSelect}
-          onNewChat={() => { void handleNewChat(); }}
+          appMode={appMode}
+          onNewChat={() => {
+            if (appMode === 'design') {
+              void handleNewDesign();
+            } else {
+              void handleNewChat();
+            }
+          }}
           isOpenState={sidebarOpen}
           setIsOpenState={setSidebarOpen}
           isMultiAgent={isMultiAgent}
@@ -1450,11 +1790,10 @@ function MainLayout() {
           onMoveWorkspaceToGroup={(wsId, grpId) => { void handleMoveWorkspaceToGroup(wsId, grpId); }}
         />
 
-        {/* Central screen switcher with Right component based on Left tab selections */}
-        {true && (
-          previewFile ? (
+        {/* Main workspace + right rail (Coding chat / Design canvas / file preview) */}
+        {previewFile ? (
             <div 
-              style={{ paddingLeft: `${selectedSidebarWidth}px`, paddingTop: CONTENT_TOP_WITH_BANNER }}
+              style={{ paddingLeft: `${selectedSidebarWidth}px`, paddingRight: `${rightSidebarWidth}px`, paddingTop: CONTENT_TOP_WITH_BANNER }}
               className="flex-1 flex flex-col bg-white h-screen overflow-hidden animate-fade-in relative z-30 transition-all duration-300"
             >
               {/* File Preview Header */}
@@ -1531,7 +1870,56 @@ function MainLayout() {
                 )}
               </div>
             </div>
-          ) : (
+        ) : appMode === 'design' ? (
+          <div
+            style={{
+              paddingLeft: `${selectedSidebarWidth}px`,
+              paddingRight: `${rightSidebarWidth}px`,
+              paddingTop: CONTENT_TOP_WITH_BANNER,
+              paddingBottom: '32px',
+            }}
+            className="flex-1 flex flex-col h-screen overflow-hidden relative z-20 transition-all duration-300"
+          >
+            <DesignWorkspace
+              runId={sessionRunId}
+              workspaceReady={Boolean(workspace)}
+              modelLabel={selectedModel}
+              onOpenModels={() => setView('models')}
+              onBusyChange={handleDesignBusyChange}
+              onSessionTitle={(title, meta) => {
+                setCurrentFlowName(title);
+                // Title + device — never force status=running (races with ready after generate).
+                const device =
+                  meta?.device === 'app' || meta?.device === 'web' ? meta.device : undefined;
+                setSessions((prev) =>
+                  prev.map((s) =>
+                    s.run_id === sessionRunId
+                      ? {
+                          ...s,
+                          title: title.slice(0, 80),
+                          mode: 'design' as const,
+                          ...(device ? { device } : {}),
+                        }
+                      : s,
+                  ),
+                );
+                void createSession({
+                  run_id: sessionRunId,
+                  title,
+                  mode: 'design',
+                }).catch(() => {});
+              }}
+              onSendToCoding={(handoff: CodingHandoff) => {
+                void (async () => {
+                  await handleNewChat();
+                  setInputValue(handoff.instruction);
+                  setAppMode('coding');
+                  setView('chat');
+                })();
+              }}
+            />
+          </div>
+        ) : (
             <>
               <div className="flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden">
               <ChatFeed
@@ -1598,6 +1986,11 @@ function MainLayout() {
                 isHistorySessionView={historySessionViewRunId === sessionRunId}
               />
               </div>
+            </>
+        )}
+
+        {/* Right collapsible rail — Coding + Design (Design defaults collapsed) */}
+        {(appMode === 'coding' || appMode === 'design') && !['workflows', 'agents', 'tools', 'skills', 'mcp', 'models', 'appearance', 'settings'].includes(currentView) ? (
               <RightPanel
                 activeTab={rightTab}
                 setActiveTab={setRightTab}
@@ -1624,21 +2017,20 @@ function MainLayout() {
                 onClearTerminal={handleClearTerminal}
                 dispatchLog={clutchState.dispatch_log ?? []}
                 showTerminalOrchestraOverview={
-                  isPlainLlmFooter
+                  appMode === 'coding'
+                  && isPlainLlmFooter
                   && (workspaceViewMode === 'terminal' || sessionHasTerminalHistory(clutchState))
                 }
                 terminalHistoryReadOnly={
-                  isPlainLlmFooter
+                  appMode === 'coding'
+                  && isPlainLlmFooter
                   && isArchivedTerminalHistoryView(clutchState, workspaceViewMode)
                 }
                 onSelectDispatchEntry={(id) => setHighlightedDispatchEntryId(id)}
                 workflowAgentSteps={workflowAgentSteps}
                 messages={chatMessages}
               />
-            </>
-          )
-        )}
-
+        ) : null}
         {/* Unified Settings & Agent Controller Dialog Modal */}
         <SystemPreferencesModal
           currentView={currentView}
@@ -1725,7 +2117,7 @@ function MainLayout() {
             </span>
           ) : showFooterModel ? (
             <div className="relative">
-              {agentBoundModelId ? (
+              {agentBoundModelId && appMode !== 'design' ? (
                 <span
                   data-testid="footer-model-trigger"
                   className="flex items-center gap-1.5 px-2 py-1 rounded font-medium text-on-surface-variant whitespace-nowrap cursor-default"
@@ -1813,93 +2205,131 @@ function MainLayout() {
           {isMultiAgent ? (
             <>
               <div className="relative">
-                <button
-                  type="button"
-                  data-testid="footer-agent-trigger"
-                  onClick={toggleAgentMenu}
-                  className={`flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-container-low transition-colors cursor-pointer font-medium whitespace-nowrap ${
-                    selectedAgentId
-                      ? 'text-primary font-bold'
-                      : 'text-on-surface-variant'
-                  }`}
-                  aria-label={`${t('Active Agent')}: ${multiAgentFooterName}`}
-                >
-                  <LegacyIcon name="smart_toy" className="text-[15px]" />
-                  {t('Active Agent')}: {multiAgentFooterName}
-                  <LegacyIcon name="keyboard_arrow_down" className="text-[13px]" />
-                </button>
-                {agentMenuOpen ? (
-                  <FooterMenuPanel testId="footer-agent-menu">
-                    <FooterMenuAction
-                      testId="footer-agent-manage"
-                      onClick={() => {
-                        setAgentMenuOpen(false);
-                        setView('agents');
-                      }}
+                {appMode === 'design' ? (
+                  <span
+                    data-testid="footer-agent-trigger"
+                    className="flex items-center gap-1.5 px-2 py-1 rounded font-medium text-on-surface-variant cursor-default whitespace-nowrap opacity-70"
+                    title={t('Design uses the Model LLM, not CLI agents')}
+                    aria-label={`${t('Active Agent')}: ${t('Clutch Agent')}`}
+                  >
+                    <LegacyIcon name="smart_toy" className="text-[15px]" />
+                    {t('Active Agent')}: {t('Clutch Agent')}
+                  </span>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      data-testid="footer-agent-trigger"
+                      onClick={toggleAgentMenu}
+                      className={`flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-container-low transition-colors cursor-pointer font-medium whitespace-nowrap ${
+                        selectedAgentId
+                          ? 'text-primary font-bold'
+                          : 'text-on-surface-variant'
+                      }`}
+                      aria-label={`${t('Active Agent')}: ${multiAgentFooterName}`}
                     >
-                      {t('Manage agents...')}
-                    </FooterMenuAction>
-                    {footerSelectableAgents.map((agent) => (
-                      <FooterMenuItem
-                        key={agent.id}
-                        testId={`footer-agent-item-${agent.id}`}
-                        selected={agent.id === selectedAgentId}
-                        onClick={() => handleFooterAgentSelect(agent)}
-                      >
-                        {getAgentDisplayName(agent)}
-                      </FooterMenuItem>
-                    ))}
-                  </FooterMenuPanel>
-                ) : null}
-              </div>
-              <div className="relative">
-                <button
-                  type="button"
-                  data-testid="footer-workflow-trigger"
-                  onClick={() => { void toggleWorkflowMenu(); }}
-                  className={`flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-container-low transition-colors cursor-pointer font-medium whitespace-nowrap ${
-                    hasWorkflowSelection
-                      ? 'text-primary font-bold'
-                      : 'text-on-surface-variant'
-                  }`}
-                  aria-label={`${t('Workflow')}: ${activeWorkflowLabel}`}
-                >
-                  <LegacyIcon name="fork_right" className="text-[15px]" />
-                  {t('Workflow')}: {activeWorkflowLabel}
-                  <LegacyIcon name="keyboard_arrow_down" className="text-[13px]" />
-                </button>
-                {workflowMenuOpen ? (
-                  <FooterMenuPanel testId="footer-workflow-menu">
-                    <FooterMenuAction
-                      testId="footer-workflow-manage"
-                      onClick={() => {
-                        setWorkflowMenuOpen(false);
-                        setView('workflows');
-                      }}
-                    >
-                      {t('Manage workflows...')}
-                    </FooterMenuAction>
-                    {footerWorkflows.length === 0 ? (
-                      <p className="px-3 py-2 pl-9 text-[11px] text-on-surface-variant">{t('No workflows yet')}</p>
-                    ) : (
-                      footerWorkflows.map((workflow) => (
-                        <FooterMenuItem
-                          key={workflow.id}
-                          testId={`footer-workflow-item-${workflow.id}`}
-                          selected={workflow.id === (selectedWorkflowId || clutchState.workflow_id)}
+                      <LegacyIcon name="smart_toy" className="text-[15px]" />
+                      {t('Active Agent')}: {multiAgentFooterName}
+                      <LegacyIcon name="keyboard_arrow_down" className="text-[13px]" />
+                    </button>
+                    {agentMenuOpen ? (
+                      <FooterMenuPanel testId="footer-agent-menu">
+                        <FooterMenuAction
+                          testId="footer-agent-manage"
                           onClick={() => {
-                            bindWorkflowForChat(workflow.id, workflow.name);
-                            setWorkflowMenuOpen(false);
+                            setAgentMenuOpen(false);
+                            setView('agents');
                           }}
                         >
-                          {workflow.name}
-                        </FooterMenuItem>
-                      ))
-                    )}
-                  </FooterMenuPanel>
-                ) : null}
+                          {t('Manage agents...')}
+                        </FooterMenuAction>
+                        {footerSelectableAgents.map((agent) => (
+                          <FooterMenuItem
+                            key={agent.id}
+                            testId={`footer-agent-item-${agent.id}`}
+                            selected={agent.id === selectedAgentId}
+                            onClick={() => handleFooterAgentSelect(agent)}
+                          >
+                            {getAgentDisplayName(agent)}
+                          </FooterMenuItem>
+                        ))}
+                      </FooterMenuPanel>
+                    ) : null}
+                  </>
+                )}
+              </div>
+              <div className="relative">
+                {appMode === 'design' ? (
+                  <span
+                    data-testid="footer-workflow-trigger"
+                    className="flex items-center gap-1.5 px-2 py-1 rounded font-medium text-on-surface-variant cursor-default whitespace-nowrap opacity-70"
+                    title={t('Workflows are available in Coding mode')}
+                    aria-label={`${t('Workflow')}: —`}
+                  >
+                    <LegacyIcon name="fork_right" className="text-[15px]" />
+                    {t('Workflow')}: —
+                  </span>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      data-testid="footer-workflow-trigger"
+                      onClick={() => { void toggleWorkflowMenu(); }}
+                      className={`flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-container-low transition-colors cursor-pointer font-medium whitespace-nowrap ${
+                        hasWorkflowSelection
+                          ? 'text-primary font-bold'
+                          : 'text-on-surface-variant'
+                      }`}
+                      aria-label={`${t('Workflow')}: ${activeWorkflowLabel}`}
+                    >
+                      <LegacyIcon name="fork_right" className="text-[15px]" />
+                      {t('Workflow')}: {activeWorkflowLabel}
+                      <LegacyIcon name="keyboard_arrow_down" className="text-[13px]" />
+                    </button>
+                    {workflowMenuOpen ? (
+                      <FooterMenuPanel testId="footer-workflow-menu">
+                        <FooterMenuAction
+                          testId="footer-workflow-manage"
+                          onClick={() => {
+                            setWorkflowMenuOpen(false);
+                            setView('workflows');
+                          }}
+                        >
+                          {t('Manage workflows...')}
+                        </FooterMenuAction>
+                        {footerWorkflows.length === 0 ? (
+                          <p className="px-3 py-2 pl-9 text-[11px] text-on-surface-variant">{t('No workflows yet')}</p>
+                        ) : (
+                          footerWorkflows.map((workflow) => (
+                            <FooterMenuItem
+                              key={workflow.id}
+                              testId={`footer-workflow-item-${workflow.id}`}
+                              selected={workflow.id === (selectedWorkflowId || clutchState.workflow_id)}
+                              onClick={() => {
+                                bindWorkflowForChat(workflow.id, workflow.name);
+                                setWorkflowMenuOpen(false);
+                              }}
+                            >
+                              {workflow.name}
+                            </FooterMenuItem>
+                          ))
+                        )}
+                      </FooterMenuPanel>
+                    ) : null}
+                  </>
+                )}
               </div>
             </>
+          ) : appMode === 'design' ? (
+            <span
+              data-testid="footer-agent-trigger"
+              className="flex items-center gap-1.5 px-2 py-1 rounded font-medium text-on-surface-variant cursor-default whitespace-nowrap opacity-70"
+              title={t('Design uses the Model LLM, not CLI agents')}
+              aria-label={`${t('Active Agent')}: ${t('Clutch Agent')}`}
+            >
+              <LegacyIcon name="smart_toy" className="text-[15px]" />
+              {t('Active Agent')}: {t('Clutch Agent')}
+            </span>
           ) : (
             <div className="relative">
               <button
