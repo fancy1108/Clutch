@@ -172,7 +172,7 @@ def execute_agent_task(
     result_message: dict[str, Any] | None = None
     task_failed = False
 
-    if tool in {"claude-cli", "agy-cli", "agy", "antigravity-cli", "codex-cli", "codex", "aider-cli", "opencode-cli", "opencode", "mimo-cli", "mimo", "codebuddy-cli", "codebuddy", "cbc", "llm", "ollama", "ollama-cli", ""}:
+    if tool in {"claude-cli", "agy-cli", "agy", "antigravity-cli", "codex-cli", "codex", "aider-cli", "opencode-cli", "opencode", "mimo-cli", "mimo", "codebuddy-cli", "codebuddy", "cbc", "llm", "ollama", "ollama-cli", "zcode-cli", "zcode", ""}:
         from src.agent_type import resolve_model_for_agent
         from src.engine_router import route_engine
         from src.image_router import format_image_reply, generate_image_for_model, is_image_model
@@ -308,7 +308,7 @@ def execute_agent_task(
 
         resolved_agent_type = agent_type_from_record(agent_dict) if agent_dict else ""
         cli_session_id: str | None = None
-        if resolved_agent_type in {"claude-cli", "antigravity-cli", "codex-cli", "aider-cli"} and run_id:
+        if resolved_agent_type in {"claude-cli", "antigravity-cli", "codex-cli", "aider-cli", "zcode-cli"} and run_id:
             from src.runtime_config import hybrid_eligible
 
             if hybrid_eligible(source="flow", agent_type=resolved_agent_type):
@@ -383,7 +383,7 @@ def execute_agent_task(
                     }
                 }
             if (
-                resolved_agent_type in {"claude-cli", "antigravity-cli", "codex-cli", "aider-cli"}
+                resolved_agent_type in {"claude-cli", "antigravity-cli", "codex-cli", "aider-cli", "zcode-cli"}
                 and run_id
                 and result.cli_session_id
             ):

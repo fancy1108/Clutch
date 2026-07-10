@@ -12,6 +12,13 @@
 
 （暂无）
 
+### [RESOLVED] macOS · 打开 Clutch 出现两个 Dock 图标（2026-07-10）
+
+- **现象：** 打包版启动后 Dock 出现两个相同 Clutch 图标，其一为内嵌 PyInstaller `orchestrator` sidecar
+- **根因：** `clutch.spec` 默认 `console=False`，macOS windowed bootloader 将 sidecar 注册为 GUI 应用
+- **解决：** macOS/Linux 构建改为 `console=True`（Tauri 子进程启动不弹终端）；Windows 仍 `console=False`（OSR-17）
+- **规避：** 发新版 DMG 前须重跑 `build-sidecar.py`；已安装 v1.1.2 用户需升级
+
 ## 已解决问题（经验库）
 
 ### [RESOLVED] D12 · tauri-playwright 无法在 `<textarea>` 上 fill/type（2026-06-23）

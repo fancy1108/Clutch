@@ -145,6 +145,15 @@ export function buildTerminalHistoryCommand(
         descKey:
           'Ollama has no session resume by ID. Run ollama in your system terminal from the project directory to continue interacting with the model.',
       };
+    case 'zcode-cli':
+    case 'zcode':
+      return {
+        cmd: id && id.startsWith('sess_')
+          ? wrapResumeCommandWithWorkspaceCd(workspacePath, `zcode --resume ${id}`)
+          : wrapResumeCommandWithWorkspaceCd(workspacePath, 'zcode -c'),
+        descKey:
+          'Run this in your system terminal from the same project directory Clutch used. Resumes the ZCode session by sess_-prefixed id, or continues the most recent session (zcode -c).',
+      };
     default:
       return {
         cmd: id || '',

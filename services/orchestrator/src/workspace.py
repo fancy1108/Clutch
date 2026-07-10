@@ -13,6 +13,8 @@ from typing import Any
 from src.preferences_storage import tr
 
 _SKIP_DIRS = {".git", "node_modules", ".venv", "__pycache__", "dist", "target"}
+# Dot-dirs normally hidden in Files tree; Clutch design/handoff artifacts must stay visible.
+_VISIBLE_DOT_DIRS = {".clutch"}
 WORKSPACES_ENV = "CLUTCH_WORKSPACES_FILE"
 
 _workspaces: dict[str, dict[str, str]] = {}
@@ -295,7 +297,7 @@ def to_workspace_relative(path: str) -> str | None:
     return "." if str(rel) == "." else str(rel)
 
 
-def list_tree(max_depth: int = 3) -> list[dict[str, Any]]:
+def list_tree(max_depth: int = 5) -> list[dict[str, Any]]:
     root = require_workspace()
 
     def walk(directory: Path, depth: int) -> list[dict[str, Any]]:
@@ -307,7 +309,9 @@ def list_tree(max_depth: int = 3) -> list[dict[str, Any]]:
         except OSError:
             return nodes
         for entry in entries:
-            if entry.name in _SKIP_DIRS or entry.name.startswith("."):
+            if entry.name in _SKIP_DIRS:
+                continue
+            if entry.name.startswith(".") and entry.name not in _VISIBLE_DOT_DIRS:
                 continue
             rel = str(entry.relative_to(root))
             if entry.is_dir():

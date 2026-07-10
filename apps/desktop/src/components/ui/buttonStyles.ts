@@ -16,7 +16,9 @@ export const BTN_SECONDARY_SM = `${BTN_SM} bg-neutral-50 hover:bg-neutral-100 te
 export const BTN_GHOST = `${BTN_MD} text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 border border-neutral-200/60`;
 export const BTN_GHOST_SM = `${BTN_SM} text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 border border-neutral-200/60`;
 
+export const BTN_SUCCESS = `${BTN_MD} bg-emerald-50 hover:bg-emerald-600 border border-emerald-200 text-emerald-800 hover:text-white`;
 export const BTN_SUCCESS_SM = `${BTN_SM} bg-emerald-50 hover:bg-emerald-600 border border-emerald-200 text-emerald-800 hover:text-white uppercase tracking-wide`;
+export const BTN_DANGER = `${BTN_MD} bg-rose-50 hover:bg-rose-600 border border-rose-200 text-rose-800 hover:text-white`;
 export const BTN_DANGER_SM = `${BTN_SM} bg-rose-50 hover:bg-rose-600 border border-rose-200 text-rose-800 hover:text-white uppercase tracking-wide`;
 
 export const BTN_ICON = `${BTN_BASE} p-1.5 rounded-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high`;

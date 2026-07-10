@@ -43,6 +43,11 @@ const LEGACY_ENGINE_TO_TYPE: Record<string, AgentTypeId> = {
   cursor: 'cursor-cli',
   'cursor agent cli': 'cursor-cli',
   'cursor-agent': 'cursor-cli',
+  'zcode-cli': 'zcode-cli',
+  zcode: 'zcode-cli',
+  'zcode cli': 'zcode-cli',
+  'z.ai zcode': 'zcode-cli',
+  'z.ai zcode cli': 'zcode-cli',
 };
 
 const AGENT_TYPE_DISPLAY_LABELS: Record<string, string> = {
@@ -56,6 +61,7 @@ const AGENT_TYPE_DISPLAY_LABELS: Record<string, string> = {
   'codebuddy-cli': 'CodeBuddy CLI',
   'cursor-cli': 'Cursor CLI',
   'rivet-cli': 'Rivet CLI',
+  'zcode-cli': 'ZCode CLI',
 };
 
 /** First-class routed CLI agent types (excludes Clutch built-in LLM). */

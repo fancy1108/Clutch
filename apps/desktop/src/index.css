@@ -248,6 +248,54 @@ body {
   50% { opacity: 1; }
 }
 
+/* Design canvas — Stitch-like craft / draw */
+@keyframes design-card-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes design-shimmer-sweep {
+  0% { transform: translateX(-120%); }
+  100% { transform: translateX(120%); }
+}
+
+@keyframes design-draw-reveal {
+  from { clip-path: inset(0 0 100% 0); opacity: 0.55; }
+  to { clip-path: inset(0 0 0 0); opacity: 1; }
+}
+
+@keyframes design-skeleton-pulse {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 0.9; }
+}
+
+@keyframes design-gradient-breathe {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+.animate-design-card-in {
+  animation: design-card-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-design-shimmer-sweep {
+  animation: design-shimmer-sweep 1.6s ease-in-out infinite;
+}
+
+.animate-design-draw-reveal {
+  animation: design-draw-reveal 1.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-design-skeleton-pulse {
+  animation: design-skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+.design-craft-surface {
+  background: linear-gradient(120deg, #f8fafc 0%, #eef2ff 40%, #f5f3ff 70%, #f8fafc 100%);
+  background-size: 200% 200%;
+  animation: design-gradient-breathe 3.2s ease-in-out infinite;
+}
+
 .animate-fade-in {
   animation: fade-in 0.25s ease-out both;
 }
@@ -274,7 +322,12 @@ body {
   .animate-typing-pulse,
   .animate-subtle-pulse,
   .animate-shimmer,
-  .animate-progress-loading {
+  .animate-progress-loading,
+  .animate-design-card-in,
+  .animate-design-shimmer-sweep,
+  .animate-design-draw-reveal,
+  .animate-design-skeleton-pulse,
+  .design-craft-surface {
     animation: none !important;
   }
 

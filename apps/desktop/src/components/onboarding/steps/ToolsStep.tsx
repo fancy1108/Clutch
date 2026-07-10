@@ -68,6 +68,18 @@ const MOCK_UNINSTALLED_TOOLS: AiToolStatus[] = [
     path: '',
     agentType: 'antigravity-cli',
   },
+  {
+    id: 'zcode-cli',
+    name: 'ZCode CLI',
+    description: 'Z.AI ZCode headless coding agent (GLM-family). Ships with the ZCode desktop app.',
+    icon: 'zcode',
+    kind: 'cli',
+    installed: false,
+    connected: false,
+    registered: false,
+    path: '',
+    agentType: 'zcode-cli',
+  },
 ];
 
 export function ToolsStep({

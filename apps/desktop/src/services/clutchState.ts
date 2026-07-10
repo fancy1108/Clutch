@@ -899,6 +899,11 @@ class ClutchStateStore {
     this.applyPatch({ terminal_logs: [...this.state.terminal_logs, line] });
   }
 
+  /** Public mirror for Design (and other non-WS) progress into the Terminal panel. */
+  appendTerminalLog(line: string): void {
+    this.appendLog(line);
+  }
+
   connect(runId: string = this.runId): Promise<void> {
     if (this.socket?.readyState === WebSocket.OPEN && this.runId === runId) {
       return Promise.resolve();

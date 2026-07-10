@@ -233,7 +233,7 @@ class LLMProviderRouter:
             tools=tools,
         )
 
-    def complete(self, prompt: str, *, model_id: str | None = None) -> str:
+    def complete(self, prompt: str, *, model_id: str | None = None) -> str | dict[str, Any]:
         if self._chat is not None:
             return self.chat([{"role": "user", "content": prompt}], model_id=model_id)
         spec, api_key = self.resolve_for_model(model_id)
@@ -243,6 +243,24 @@ class LLMProviderRouter:
         return self._complete(
             base_url=spec.base_url, api_model=spec.api_model, api_key=key, prompt=prompt
         )
+
+    @staticmethod
+    def extract_content(result: dict[str, Any] | str) -> str:
+        if isinstance(result, dict):
+            content = result.get("content")
+            if content is not None:
+                return str(content).strip()
+            if result.get("tool_calls"):
+                return ""
+        return str(result).strip()
+
+    @staticmethod
+    def extract_reasoning(result: dict[str, Any] | str) -> str | None:
+        if isinstance(result, dict):
+            reasoning = result.get("reasoning_content") or result.get("reasoning")
+            if isinstance(reasoning, str) and reasoning.strip():
+                return reasoning.strip()
+        return None
 
     def as_route_suggester(self) -> Callable[[dict[str, Any], str, dict[str, Any]], str]:
         """Adapter for orchestrator routing LLM fallback (M1-04)."""

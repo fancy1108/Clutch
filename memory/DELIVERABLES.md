@@ -22,9 +22,24 @@
 
 ## Active Deliverables
 
-> 进行中 Task 的交付索引写在此处。完成后移入 **Recently Completed** 或归档。
+### D36 Design 会话模型 + 原型交互画布 ⚠️ 待 commit
+- **日期：** 2026-07-10
+- **Commit：** （未提交 — 等待用户确认 commit）
+- **Verification：** `./scripts/verify.sh` → 0 errors；`pytest tests/test_design_service.py` → 2 passed
+- **证据：** `runs/verification/2026-07-10-design-canvas-reference.md`
+- **交付文件：**
+  - `apps/desktop/src/components/design/DesignWorkspace.tsx` — 欢迎页 + 无限画布（规范→描绘→NL）
+  - `apps/desktop/src/App.tsx` / `Header.tsx` / `sidebar.tsx` — `appMode` Coding|Design；会话按 mode
+  - `apps/desktop/src/services/designApi.ts` · `runApi.ts` — session-scoped Design API + `mode`
+  - `services/orchestrator/src/design/` — 两阶段 generate + iterate
+  - `memory/DECISIONS.md` D36 · `docs/PRODUCT_INTRO.md` §3.5 · `memory/ROADMAP.md` · `CHANGELOG.md`
 
-_（当前无进行中代码 Task。）_
+### D35 Design 模式（原型画布与预览沙箱）⚠️ 已被 D36 修订
+- **日期：** 2026-07-10
+- **Commit：** （未提交 — 等待用户确认 commit）
+- **Verification：** 见 D36
+- **证据：** `—`
+- **交付文件：** 见 D36（项目左栏形态已废弃）
 
 ---
 

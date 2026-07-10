@@ -5,30 +5,55 @@
 
 ## Current Status
 
-- **阶段：** **v1.1.2 待发版**（2026-07-06，**仅 macOS**）— MiMo Code CLI + Cursor Agent CLI + Terminal Orchestra 修复
-- **Release：** 上一版 [v1.1.1](https://github.com/fancy1108/Clutch/releases/tag/v1.1.1) · 目标 [v1.1.2](https://github.com/fancy1108/Clutch/releases/tag/v1.1.2)（macOS DMG only）
-- **Git：** `dev` · 版本号 `1.1.2`（3 feature commits since v1.1.1）
-- **Windows：** 本版不发安装包；Win 用户继续用 v1.1.1，下次 Win 包在 v1.2.0+
+- **阶段：** **v1.2.0 发版材料已备**（2026-07-10，**仅 macOS**）— Design 模式 (D36) + ZCode CLI + Agent Log 步骤标签
+- **Release：** 待 merge `dev` → `main` 后打 tag [v1.2.0](https://github.com/fancy1108/Clutch/releases/tag/v1.2.0)；当前 Latest 仍为 [v1.1.2](https://github.com/fancy1108/Clutch/releases/tag/v1.1.2)（macOS）
+- **Git：** `dev` 领先 · 版本号 `1.2.0`
+- **Windows：** 本版不发安装包；Win 继续 [v1.1.1](https://github.com/fancy1108/Clutch/releases/tag/v1.1.1)
 
-### v1.1.2 发版清单
+### v1.2.0 发版清单
 
 | 项 | 状态 |
 |----|------|
-| CHANGELOG + README + `docs/releases/v1.1.2.md` | ✅ |
-| 版本号 bump（package / tauri / homebrew version） | ✅ |
-| `chore(release)` commit on `dev` | ✅ |
+| CHANGELOG + README + `docs/releases/v1.2.0.md` | ✅（macOS-only） |
+| 版本号 bump（package / tauri / Cargo / cask） | ✅ |
+| PRODUCT_INTRO / UPDATES / STABILITY / INSTALL | ✅ |
 | PR merge `dev` → `main` | ⏳ |
-| `git tag v1.1.2` + macOS DMG CI | ⏳ |
-| Homebrew tap sha256 → 1.1.2 DMG | ⏳ |
-| macOS updater (`latest.json` + tar.gz) | ⏳ |
-| ~~Windows MSI/NSIS~~ | — 本版跳过（patch 仅 macOS） |
+| `git tag v1.2.0` on `main` + macOS DMG CI | ⏳ |
+| ~~Windows MSI/NSIS~~ | — 本版跳过 |
+| Homebrew tap sync | ⏳（DMG 出后） |
+| macOS updater (`latest.json`) | ⏳ |
 
 ## Next Actions
 
-- **发版** — commit release prep → merge `dev` → `main` → tag `v1.1.2` → 等 CI DMG → 更新 Homebrew sha256
-- **#23** — Windows smoke 继续用 v1.1.1 安装包；v1.2.0 再发 Win 包
+- Merge `dev` → `main`，在 **main** 打 `v1.2.0` tag（勿在 `dev` 上 tag）
+- DMG 出后 `scripts/sync-homebrew-tap.sh`；可选 updater workflow
+- **#23** — Windows smoke 继续用 v1.1.1；下次 Win 包随后续发版
 
 ## Recent Sessions
+
+## 2026-07-10 会话（v1.2.0 发版文档 · macOS-only）
+
+- **CHANGELOG** Unreleased → `[1.2.0]`；版本号 bump 1.2.0；**明确本版不发 Windows**
+- **快照** `docs/releases/v1.2.0.md`；README / UPDATES / RELEASE_MAINTAINER 平台策略例外
+- **下一步** merge → main → tag（尚未打 tag）
+
+
+## 2026-07-10 会话（D36 Design 会话模型 + 原型交互画布重做）
+
+- **决策** D36：Design = 工作区 session（`mode`）；Header Coding/Design；语言进 Settings General；欢迎页+无限画布（规范→描绘→NL）
+- **后端** session-scoped `design/sessions` 两阶段 generate + iterate；产物 `.clutch/design/sessions/<run_id>/`
+- **前端** 去掉 Design 项目左栏；`DesignWorkspace` 重写；`App` `appMode` + session 过滤
+- **参考** `runs/verification/2026-07-10-design-canvas-reference.md`；Playwright MCP 已写入 `~/.cursor/mcp.json`
+- **文档** PRODUCT_INTRO §3.5、ROADMAP、CHANGELOG、FILEMAP、DECISIONS D36
+- **测试** `pytest tests/test_design_service.py` 2 passed
+
+## 2026-07-10 会话（D35 Design 模式落地 · 已被 D36 修订）
+
+- **决策** D35 内建 Design（原型画布 + 预览沙箱）；PRODUCT_INTRO §3.5、ROADMAP、CHANGELOG、FILEMAP
+- **后端** `services/orchestrator/src/design/`（CRUD、生成、Play 产物、React codegen、preview、handoff、vision、模板）
+- **前端** 侧栏 Design 入量 + `DesignWorkspace`（画布 / Play / Approve / React / Send to Coding）— 形态已由 D36 替换
+- **模板** `design-to-code` 工作流（`workflows/` + `workflow_assets/`）
+- **测试** `pytest tests/test_design_service.py` 3 passed；`pnpm` desktop vite build 通过
 
 ## 2026-07-06 会话（MiMo Code CLI + v1.1.2 发版准备）
 

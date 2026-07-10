@@ -10,6 +10,40 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ## [Unreleased]
 
+### Added
+
+### Changed
+
+### Fixed
+
+## [1.2.0] - 2026-07-10
+
+Minor release — **macOS only** (Apple Silicon DMG + in-app updater). **Design mode (D36)**, **ZCode CLI**, and Design Agent Log / generate reliability fixes. Windows users remain on [v1.1.1](https://github.com/fancy1108/Clutch/releases/tag/v1.1.1); next Windows installers target a later release.
+
+> **Release assets (v1.2.0):** Tag `v1.2.0` — **macOS only:** `Clutch_1.2.0_aarch64.dmg` + `SHA256SUMS.txt` via CI; optional `latest.json` updater bundle. **No Windows installers** for this release. Product snapshot: [`docs/releases/v1.2.0.md`](docs/releases/v1.2.0.md).
+
+### Added
+
+- **Design mode (D36):** Header `Coding | Design` toggle; language moved to Settings → General. Design is a workspace session (`mode: design`), not a separate project rail. Two-phase generative flow: welcome prompt → infinite canvas → design-spec card first → UI card with draw animation → bottom NL iterate. **References:** paste/drop/attach image; upload **Design.md**; attach **website URL**. **Sidebar history** shows UI thumbnails + title + relative time. **Right rail** available in Design (default collapsed); artifacts under `.clutch/design/sessions/`. **Canvas selection** + element pick; iterate modify vs add; ⌘/Ctrl+C/V copy-paste UI. Session-scoped API; Approve → Vite/React/Tailwind → preview → Send to Coding. Built-in Clutch design-system preset; `design-to-code` workflow template.
+- **Design Agent Log:** Canvas Agent Log card shows Thinking + Execution; each step carries **status**, **model**, and **token** tags (per-step history when the user switches models mid-session).
+- **ZCode CLI (`zcode-cli`):** First-class routing for Z.AI ZCode headless agent (`zcode -p` + `--mode yolo` + `--json`), Terminal Orchestra `@ZCode` dispatch, session resume (`zcode --resume sess_...` / `zcode -c`), recommended Tools card with brand logo — contributed via [#43](https://github.com/fancy1108/Clutch/pull/43) by [@polaris-smart](https://github.com/polaris-smart).
+- **Epicode memory workflow template** (`workflows/epicode-memory-pipeline.json`) and community MCP guide (`docs/mcp-servers/epicode.md`) — via [#22](https://github.com/fancy1108/Clutch/pull/22) by [@sunormesky-max](https://github.com/sunormesky-max).
+
+### Changed
+
+- **Dependencies:** lucide-react 1.23.0, @xyflow/react 12.11.2, motion 12.42.2, @xterm/addon-fit 0.11.0, tauri 2.11.5; Windows CI workflow aligned to `pnpm/action-setup@v6`.
+
+### Fixed
+
+- **Design UI code entry:** Bottom-bar **UI code** opens the Approve → Generate → Send to Coding tray on demand (no auto-open, no sky banner).
+- **Design generate stuck Sketching:** Poll continues until screen HTML is present; busy tracks real UI hydrate; Design progress mirrors into the Terminal panel.
+- **Design canvas blank artboard:** Empty/blank LLM HTML falls back to a prompt-aware draft; Tauri CSP allows `https://cdn.tailwindcss.com` for Design iframe Tailwind.
+- **Design history:** Relative timestamps; gray placeholder until real UI exists; live HTML preview thumbnails; device badge updates immediately on Web/Mobile choice.
+- **Design session folders:** Artifacts under `.clutch/design/sessions/{title}-{web|mobile}__{run_id}/`; deleting a session deletes the folder.
+- **Design iterate:** Selecting a UI artboard defaults to modify in place; failed/identical LLM output falls back to an intent-aware draft.
+- **macOS Dock:** PyInstaller sidecar no longer registers as a GUI app (single Dock icon).
+- **Windows CI:** `test_scan_mimo_models_reads_cli_catalog` no longer depends on POSIX shell scripts on `PATH`.
+
 ## [1.1.2] - 2026-07-06
 
 Patch release — **macOS only** (Apple Silicon DMG + in-app updater). **MiMo Code CLI** first-class integration, **Cursor Agent CLI** as a recommended tool, Terminal Orchestra dispatch fixes, and Claude Code CC Switch config repair in Settings. Windows users remain on [v1.1.1](https://github.com/fancy1108/Clutch/releases/tag/v1.1.1) until the next **minor** release (e.g. v1.2.0).

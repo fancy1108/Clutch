@@ -9,6 +9,7 @@ from zoneinfo import ZoneInfo
 TAG_WORKFLOW = "WORKFLOW"
 TAG_CHECK = "CHECK"
 TAG_HUMAN = "HUMAN"
+TAG_DESIGN = "DESIGN"
 
 _CHINA_TZ = ZoneInfo("Asia/Shanghai")
 _STAMPED_RE = re.compile(r"^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} CST\] ")

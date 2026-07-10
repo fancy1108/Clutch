@@ -440,3 +440,26 @@
 - **影响**：PTY Lane Manager、handoff 解析器（`parse_dispatch_mentions`）、`ClutchState`、`ChatFeed` lane 容器、`docs/PRODUCT_INTRO.md`（D19）。
 - **证据（待补）**：`A∥B` 冷启动、`A,B→C` 整合、完成草稿用户发送 — `runs/verification/`。
 - **决策状态**：`已记录`（原则已定；实现待 D34-α 立项）
+
+### D35 · 内建 Design 模式（原型画布 + 预览沙箱）（2026-07-10）
+
+- **背景**：Clutch 强于 Coding 编排与监督，弱于 Coding 前的需求/UI 验证；需求不确定导致反复修正。对标高保真原型设计（多屏原型）与可运行前端代码预览沙箱，需在本地优先、LangGraph SSOT 约束下内建 Design 能力，而非做成又一个 Lovable。
+- **方案**：（已被 **D36** 修订产品形态；两层流水线与产物原则仍有效）
+  1. ~~侧栏一级入口 + Design 项目 CRUD~~ → 见 D36。
+  2. **两层流水线**：Prototype（规范→界面）→ Approve → UI code（Vite+React+TW）→ Send to Coding。
+  3. **产物路径**：授权工作区 `.clutch/design/...`；Sidecar 为 SSOT。
+  4. **架构**：独立 `services/orchestrator/src/design/`；可选 SOP `design-to-code`。
+  5. **非目标**：全栈 Auth/DB、云 Figma、替代 Cursor 写业务逻辑。
+- **决策状态**：`已修订`（见 D36）
+
+### D36 · Design = 工作区会话 + Header 模式切换 + 原型交互画布（2026-07-10）
+
+- **背景**：D35 首版做成独立 Design 项目左栏 + 三栏工具台，与 Chat 会话模型不一致，且 Prototype 体验不够闭环（缺乏：欢迎大输入 → 无限画布 → 先规范卡再描绘界面 → 底部 NL 修改的连贯交互）。
+- **方案**：
+  1. **会话模型**：`SessionRecord.mode: 'coding' | 'design'`（缺省 `coding`）；Design 挂在当前授权工作区下，与 Chat 一样「新建会话」；侧栏历史按 mode 过滤。
+  2. **Header**：右上角 `Coding | Design` 切换（替换原中英文切换）；语言移入 Settings → General。
+  3. **UI**：无 Design 独立项目栏；欢迎页 + React Flow 无限画布；过程卡 →（可选）**参考源卡**（Design.md / 网址 / 图片）→ **设计规范卡** → **界面卡（描绘动画）** → 底部浮动 NL 修改条；欢迎态 `+` 菜单支持上传 Design.md（自动填提示）、网站网址、参考图。画布**选中**卡片进入底栏上下文；iterate 按文案 **modify/add**（未知→add）；⌘C/V 复制粘贴 UI；UI 内 **点选元素**。右侧 Overview/Files/Changes/Terminal **在 Design 可用，默认收缩**；Files 展示 `.clutch` 产物。UI code / Approve / Send to Coding 收纳为次要托盘。
+  4. **API**：session-scoped `POST /api/design/sessions`、`.../generate`（`reference_image` / `reference_md` / `reference_url` 可选；两阶段 spec→UI）、`.../iterate`（`target_kind` / `target_id` / `element_*` / `mode`）；产物 `.clutch/design/sessions/<run_id>/`（含 `reference.<ext>`、`reference_design.md`、`url_snapshot.json`、`thumbnail.svg`、多屏 `screens/`）；`artifact_paths` 供 Changes 列表。
+  5. **非目标（本轮）**：账号/云协作、完整矢量编辑、真实 Figma 导出、语音输入。
+- **影响**：`Header`、`App` `appMode`、`DesignWorkspace`、`run_history`/`runApi` mode、`PRODUCT_INTRO` §3.5、`ROADMAP`、`FILEMAP`。
+- **决策状态**：`可执行`

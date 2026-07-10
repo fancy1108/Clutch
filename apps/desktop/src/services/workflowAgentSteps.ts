@@ -28,6 +28,8 @@ const TOOL_LABELS: Record<string, string> = {
   'codebuddy-cli': 'CodeBuddy CLI',
   'agy-cli': 'Antigravity CLI',
   agy: 'Antigravity CLI',
+  'zcode-cli': 'ZCode CLI',
+  zcode: 'ZCode CLI',
 };
 
 export function workflowToolLabel(tool?: string): string {
@@ -164,6 +166,7 @@ function nodeToolToAgentTypeId(tool?: string): AgentTypeId {
   if (key === 'antigravity-cli' || key === 'agy-cli' || key === 'agy') return 'antigravity-cli';
   if (key === 'codex-cli' || key === 'codex') return 'codex-cli';
   if (key === 'aider-cli' || key === 'aider') return 'aider-cli';
+  if (key === 'zcode-cli' || key === 'zcode') return 'zcode-cli';
   return 'clutch';
 }
 

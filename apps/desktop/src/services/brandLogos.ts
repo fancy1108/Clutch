@@ -16,6 +16,7 @@ import codebuddyLogo from '../assets/tool-logos/codebuddy.svg';
 import cursorLogo from '../assets/tool-logos/cursor.svg';
 import rivetLogo from '../assets/tool-logos/rivet.svg';
 import vscodeLogo from '../assets/tool-logos/vscode.svg';
+import zcodeLogo from '../assets/tool-logos/zcode.svg';
 
 /** Only tools with an explicit asset in assets/tool-logos/. */
 export type BrandLogoKey =
@@ -29,7 +30,8 @@ export type BrandLogoKey =
   | 'mimo-cli'
   | 'codebuddy-cli'
   | 'cursor-cli'
-  | 'rivet-cli';
+  | 'rivet-cli'
+  | 'zcode-cli';
 
 const BRAND_LOGO_SRC: Record<BrandLogoKey, string> = {
   'claude-cli': claudeLogo,
@@ -43,6 +45,7 @@ const BRAND_LOGO_SRC: Record<BrandLogoKey, string> = {
   'codebuddy-cli': codebuddyLogo,
   'cursor-cli': cursorLogo,
   'rivet-cli': rivetLogo,
+  'zcode-cli': zcodeLogo,
 };
 
 const ALIAS_TO_KEY: Record<string, BrandLogoKey> = {
@@ -85,6 +88,11 @@ const ALIAS_TO_KEY: Record<string, BrandLogoKey> = {
   'rivet cli': 'rivet-cli',
   tianshu: 'rivet-cli',
   't9-cli': 'rivet-cli',
+  'zcode-cli': 'zcode-cli',
+  zcode: 'zcode-cli',
+  'zcode cli': 'zcode-cli',
+  'z.ai zcode': 'zcode-cli',
+  'z.ai zcode cli': 'zcode-cli',
 };
 
 export function normalizeBrandLogoKey(

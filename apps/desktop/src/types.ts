@@ -82,4 +82,7 @@ export type MainView =
   | 'models'
   | 'appearance';
 
+/** Workspace surface mode — Header Coding | Design toggle (D36). */
+export type AppWorkspaceMode = 'coding' | 'design';
+
 export type RightTab = 'overview' | 'files' | 'flow' | 'changes' | 'terminal';

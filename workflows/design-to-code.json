@@ -1,0 +1,51 @@
+{
+  "$schema": "./workflow.schema.json",
+  "id": "design-to-code",
+  "name": "Design to Code",
+  "version": 1,
+  "description": "After Design mode Approve React, review DESIGN.md and implement business logic with a Builder CLI.",
+  "nodes": [
+    {
+      "id": "review-design",
+      "type": "agent_task",
+      "position": { "x": 120, "y": 120 },
+      "data": {
+        "label": "Design Reviewer",
+        "agent": "Researcher",
+        "tool": "llm",
+        "instruction": "阅读工作区 `.clutch/design/` 下最新已批准项目的 DESIGN.md 与 react/ 骨架，总结屏幕清单、设计 token 与实现约束，输出给 Builder 的实现简报（不要改代码）。"
+      }
+    },
+    {
+      "id": "human-approve",
+      "type": "human_gate",
+      "position": { "x": 120, "y": 280 },
+      "data": {
+        "label": "Approve implementation plan"
+      }
+    },
+    {
+      "id": "builder",
+      "type": "agent_task",
+      "position": { "x": 120, "y": 440 },
+      "data": {
+        "label": "Builder",
+        "agent": "Builder",
+        "tool": "claude-cli",
+        "instruction": "根据上游设计简报与 `.clutch/design/<project>/react` 骨架实现业务逻辑；遵守 DESIGN.md；不要无故重做视觉。"
+      }
+    },
+    {
+      "id": "end",
+      "type": "end",
+      "position": { "x": 120, "y": 600 },
+      "data": { "label": "Done" }
+    }
+  ],
+  "edges": [
+    { "id": "e0", "source": "start", "target": "review-design" },
+    { "id": "e1", "source": "review-design", "target": "human-approve" },
+    { "id": "e2", "source": "human-approve", "target": "builder", "data": { "when": "approve" } },
+    { "id": "e3", "source": "builder", "target": "end" }
+  ]
+}

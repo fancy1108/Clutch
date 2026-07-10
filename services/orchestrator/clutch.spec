@@ -16,6 +16,19 @@ _assets = _spec_dir / "src" / "workflow_assets"
 if _assets.is_dir() and any(_assets.glob("*.json")):
     datas.append((str(_assets), "src/workflow_assets"))
 
+
+def _sidecar_console() -> bool:
+    """Windows: hide console unless debugging (OSR-17).
+
+    macOS/Linux: use the console bootloader so Tauri-spawned sidecar does not
+    register as a GUI app and show a second Dock icon.
+    """
+    if os.environ.get("CLUTCH_SIDECAR_CONSOLE") == "1":
+        return True
+    if os.name == "nt":
+        return False
+    return True
+
 for package in (
     "uvicorn",
     "fastapi",
@@ -70,7 +83,7 @@ exe = EXE(
     upx=False,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=os.environ.get("CLUTCH_SIDECAR_CONSOLE") == "1",
+    console=_sidecar_console(),
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,

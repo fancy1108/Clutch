@@ -10,6 +10,22 @@ import sys
 from pathlib import Path
 
 
+def resolve_pyinstaller_python(orchestrator: Path) -> str:
+    """Prefer the orchestrator uv-managed venv (where PyInstaller lives).
+
+    Falls back to `sys.executable`, but that only works if the caller already
+    activated the orchestrator venv or installed PyInstaller globally — which
+    is not how the project is set up (see services/orchestrator/pyproject.toml).
+    """
+    if os.name == "nt":
+        candidate = orchestrator / ".venv" / "Scripts" / "python.exe"
+    else:
+        candidate = orchestrator / ".venv" / "bin" / "python"
+    if candidate.is_file():
+        return str(candidate)
+    return sys.executable
+
+
 def main() -> int:
     root = Path(__file__).resolve().parents[1]
     orchestrator = root / "services" / "orchestrator"
@@ -24,8 +40,9 @@ def main() -> int:
     triple = subprocess.check_output(
         ["rustc", "--print", "host-tuple"], text=True
     ).strip()
+    python = resolve_pyinstaller_python(orchestrator)
     subprocess.run(
-        [sys.executable, "-m", "PyInstaller", "clutch.spec", "--noconfirm", "--clean"],
+        [python, "-m", "PyInstaller", "clutch.spec", "--noconfirm", "--clean"],
         cwd=orchestrator,
         check=True,
     )

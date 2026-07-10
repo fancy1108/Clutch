@@ -54,6 +54,8 @@ CLI_BINARY_MAP: dict[str, str] = {
     "agent": "cursor-agent",
     "ollama-cli": "ollama",
     "ollama": "ollama",
+    "zcode-cli": "zcode",
+    "zcode": "zcode",
 }
 
 

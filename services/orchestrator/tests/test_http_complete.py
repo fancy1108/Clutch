@@ -34,14 +34,14 @@ def test_openai_multimodal_user_message_passthrough() -> None:
     ]
 
     with patch("urllib.request.urlopen", side_effect=fake_urlopen):
-        text = http_chat_complete(
+        result = http_chat_complete(
             provider_id="ollama",
             base_url="http://localhost:11434",
             api_model="qwen2.5vl:7b",
             api_key="",
             messages=messages,
         )
-    assert text == "a cat"
+    assert result == {"content": "a cat", "reasoning_content": None}
     assert captured["body"]["messages"][0]["content"][1]["type"] == "image_url"
 
 
@@ -59,15 +59,44 @@ def test_ollama_base_url_normalized_to_v1_prefix() -> None:
         return mock_resp
 
     with patch("urllib.request.urlopen", side_effect=fake_urlopen):
-        text = http_chat_complete(
+        result = http_chat_complete(
             provider_id="ollama",
             base_url="http://localhost:11434",
             api_model="qwen2.5vl:7b",
             api_key="",
             messages=[{"role": "user", "content": "hi"}],
         )
-    assert text == "ok"
+    assert result == {"content": "ok", "reasoning_content": None}
     assert captured["url"] == "http://localhost:11434/v1/chat/completions"
+
+
+def test_openai_reasoning_content_passthrough() -> None:
+    payload = {
+        "choices": [
+            {
+                "message": {
+                    "content": "Final answer",
+                    "reasoning_content": "Step 1: analyze layout\nStep 2: pick colors",
+                }
+            }
+        ]
+    }
+    mock_resp = MagicMock()
+    mock_resp.read.return_value = json.dumps(payload).encode()
+    mock_resp.__enter__.return_value = mock_resp
+
+    with patch("urllib.request.urlopen", return_value=mock_resp):
+        result = http_chat_complete(
+            provider_id="deepseek",
+            base_url="https://api.deepseek.com",
+            api_model="deepseek-chat",
+            api_key="sk-test",
+            messages=[{"role": "user", "content": "hi"}],
+        )
+    assert result == {
+        "content": "Final answer",
+        "reasoning_content": "Step 1: analyze layout\nStep 2: pick colors",
+    }
 
 
 def test_openai_compatible_response_parsing() -> None:
@@ -77,14 +106,14 @@ def test_openai_compatible_response_parsing() -> None:
     mock_resp.__enter__.return_value = mock_resp
 
     with patch("urllib.request.urlopen", return_value=mock_resp):
-        text = http_chat_complete(
+        result = http_chat_complete(
             provider_id="deepseek",
             base_url="https://api.deepseek.com",
             api_model="deepseek-chat",
             api_key="sk-test",
             messages=[{"role": "user", "content": "hi"}],
         )
-    assert text == "Hello from model"
+    assert result == {"content": "Hello from model", "reasoning_content": None}
 
 
 def test_anthropic_response_parsing() -> None:
@@ -94,14 +123,14 @@ def test_anthropic_response_parsing() -> None:
     mock_resp.__enter__.return_value = mock_resp
 
     with patch("urllib.request.urlopen", return_value=mock_resp):
-        text = http_chat_complete(
+        result = http_chat_complete(
             provider_id="anthropic",
             base_url="https://api.anthropic.com/v1",
             api_model="claude-3-7-sonnet-latest",
             api_key="sk-ant",
             messages=[{"role": "user", "content": "salut"}],
         )
-    assert text == "Bonjour"
+    assert result == {"content": "Bonjour", "reasoning_content": None}
 
 
 def test_gateway_anthropic_with_tools_uses_openai_transport() -> None:
@@ -131,7 +160,7 @@ def test_gateway_anthropic_with_tools_uses_openai_transport() -> None:
     ]
 
     with patch("urllib.request.urlopen", side_effect=fake_urlopen):
-        text = http_chat_complete(
+        result = http_chat_complete(
             provider_id="anthropic",
             base_url="https://apihub.agnes-ai.com/v1",
             api_model="agnes-2.0-flash",
@@ -139,7 +168,7 @@ def test_gateway_anthropic_with_tools_uses_openai_transport() -> None:
             messages=[{"role": "user", "content": "hi"}],
             tools=tools,
         )
-    assert text == "ok"
+    assert result == {"content": "ok", "reasoning_content": None}
     assert captured["url"].endswith("/chat/completions")
     assert captured["body"]["tools"][0]["type"] == "function"
 
@@ -176,7 +205,7 @@ def test_openai_tool_roundtrip_normalizes_assistant_and_tool_messages() -> None:
     ]
 
     with patch("urllib.request.urlopen", side_effect=fake_urlopen):
-        text = http_chat_complete(
+        result = http_chat_complete(
             provider_id="anthropic",
             base_url="https://apihub.agnes-ai.com/v1",
             api_model="agnes-2.0-flash",
@@ -184,7 +213,7 @@ def test_openai_tool_roundtrip_normalizes_assistant_and_tool_messages() -> None:
             messages=messages,
             tools=[{"type": "function", "function": {"name": "x", "parameters": {}}}],
         )
-    assert text == "deleted"
+    assert result == {"content": "deleted", "reasoning_content": None}
     sent = captured["body"]["messages"]
     assert sent[1]["content"] == ""
     assert sent[1]["tool_calls"][0]["type"] == "function"

@@ -17,6 +17,7 @@ export const SidebarCollapsedRailWindows: React.FC<SidebarCollapsedRailProps> = 
   showCollapsedTooltip,
   hideCollapsedTooltip,
   t,
+  appMode,
 }) => {
   const collapsedNavButton = (
     key: string,
@@ -48,10 +49,14 @@ export const SidebarCollapsedRailWindows: React.FC<SidebarCollapsedRailProps> = 
     <div className="flex h-full flex-col items-center gap-3 overflow-hidden pt-[76px] pb-2">
       <div className="flex flex-col items-center gap-1">
         {collapsedNavButton('chat', NAV_CONFIG.chat.icon, t(NAV_CONFIG.chat.labelKey), onNewChat, currentView === 'chat')}
-        {collapsedNavButton('agents', NAV_CONFIG.agents.icon, t(NAV_CONFIG.agents.labelKey), () => setView('agents'), currentView === 'agents')}
-        {isMultiAgent
-          ? collapsedNavButton('workflows', NAV_CONFIG.workflows.icon, t(NAV_CONFIG.workflows.labelKey), () => setView('workflows'), currentView === 'workflows')
-          : null}
+        {appMode !== 'design' ? (
+          <>
+            {collapsedNavButton('agents', NAV_CONFIG.agents.icon, t(NAV_CONFIG.agents.labelKey), () => setView('agents'), currentView === 'agents')}
+            {isMultiAgent
+              ? collapsedNavButton('workflows', NAV_CONFIG.workflows.icon, t(NAV_CONFIG.workflows.labelKey), () => setView('workflows'), currentView === 'workflows')
+              : null}
+          </>
+        ) : null}
         {collapsedNavButton('add-workspace', NAV_CONFIG.addWorkspace.icon, t(NAV_CONFIG.addWorkspace.labelKey), () => onAddWorkspace?.())}
       </div>
 

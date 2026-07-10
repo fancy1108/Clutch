@@ -14,6 +14,7 @@
 | [`specs/core/hybrid-runtime-plan.md`](./specs/core/hybrid-runtime-plan.md) | Hybrid 开发者 | D25 HRT Task 与验收（权威） |
 | [`specs/core/design.md`](./specs/core/design.md) | 前端开发者 | 视觉设计快照 → `docs/UI_UX_GUIDELINES.md` |
 | [`docs/UI_UX_GUIDELINES.md`](./docs/UI_UX_GUIDELINES.md) | 前端开发者 | React + Tailwind UI/UX 规范 |
+| [`docs/DESIGN_WORKSPACE_GUIDE.md`](./docs/DESIGN_WORKSPACE_GUIDE.md) | 产品与业务人员 | Design 模式产品功能与业务逻辑分析指南 |
 | [`.cursor/rules/base.mdc`](./.cursor/rules/base.mdc) | Cursor Agent | 精简指针（`alwaysApply`）→ `CLAUDE.md` |
 | [`.github/copilot-instructions.md`](./.github/copilot-instructions.md) | GitHub Copilot | 精简指针 → `CLAUDE.md` |
 | [`docs/document-governance.md`](./docs/document-governance.md) | 架构评审 | 五层架构、权威真相、文档生命周期 |

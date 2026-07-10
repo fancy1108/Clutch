@@ -237,3 +237,58 @@ def test_delete_session_releases_shell_session(monkeypatch: pytest.MonkeyPatch) 
     response = client.delete("/api/runs/run_shell_release")
     assert response.status_code == 200
     assert released == ["run_shell_release"]
+
+
+def test_design_ready_sessions_kept_without_chat_messages() -> None:
+    """Design sessions store work in .clutch/design — must not prune on empty chat state."""
+    _persist_session_state("design_ready_1")  # no messages
+    run_history.upsert_session(
+        {
+            "run_id": "design_ready_1",
+            "workspace_id": "ws_ecc",
+            "title": "设计一个登录页面",
+            "workflow_id": "",
+            "mode": "design",
+            "status": "ready",
+            "started_at": "2026-07-10T10:00:00+00:00",
+        }
+    )
+    _persist_session_state("design_draft_empty")
+    run_history.upsert_session(
+        {
+            "run_id": "design_draft_empty",
+            "workspace_id": "ws_ecc",
+            "title": "New Design",
+            "workflow_id": "",
+            "mode": "design",
+            "status": "idle",
+            "started_at": "2026-07-10T11:00:00+00:00",
+        }
+    )
+
+    records = run_history.list_runs(mode="design")
+    ids = {r["run_id"] for r in records}
+    assert "design_ready_1" in ids
+    # One empty welcome draft is kept so the UI can reuse it.
+    assert "design_draft_empty" in ids
+
+
+def test_design_empty_drafts_collapsed_to_one_per_workspace() -> None:
+    """Repeated New Design must not stack default-title empty rows."""
+    for i, run_id in enumerate(["design_empty_a", "design_empty_b", "design_empty_c"]):
+        _persist_session_state(run_id)
+        run_history.upsert_session(
+            {
+                "run_id": run_id,
+                "workspace_id": "ws_ecc",
+                "title": "New Design",
+                "workflow_id": "",
+                "mode": "design",
+                "status": "ready",  # false-ready from welcome mount
+                "started_at": f"2026-07-10T1{i}:00:00+00:00",
+            }
+        )
+
+    records = run_history.list_runs(mode="design", workspace_id="ws_ecc")
+    empty_ids = [r["run_id"] for r in records if r.get("title") == "New Design"]
+    assert empty_ids == ["design_empty_c"]
