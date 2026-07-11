@@ -5,52 +5,44 @@
 
 ## Current Status
 
-- **阶段：** **v1.2.1 准备完成**（Chat/Design/Models hotfix + Sidecar 热更 D37）— `./scripts/verify.sh` ✅；待 commit → PR `dev`→`main` → tag
-- **版本号：** `1.2.1`（package / tauri / Cargo / cask version；cask sha256 待 DMG 后 sync）
-- **Release：** 上一版 [v1.2.0](https://github.com/fancy1108/Clutch/releases/tag/v1.2.0)；Win 继续 [v1.1.1](https://github.com/fancy1108/Clutch/releases/tag/v1.1.1)
+- **阶段：** **v1.2.1 已发布**（2026-07-11，**仅 macOS**）— Chat/Design/Models hotfix + Sidecar 热更客户端（D37）
+- **Release：** [v1.2.1](https://github.com/fancy1108/Clutch/releases/tag/v1.2.1) Latest（macOS）· Win 继续 [v1.1.1](https://github.com/fancy1108/Clutch/releases/tag/v1.1.1)
+- **Git：** `main` @ `1b6899b` · tag `v1.2.1`
 - **Windows：** 本版不发安装包
+
+### v1.2.1 发版清单
+
+| 项 | 状态 |
+|----|------|
+| CHANGELOG + README + `docs/releases/v1.2.1.md` | ✅ |
+| 版本号 bump | ✅ |
+| PR merge `dev` → `main` (#48) | ✅ |
+| `git tag v1.2.1` on `main` + push | ✅ |
+| macOS DMG CI (`release.yml`) | ✅ [run](https://github.com/actions/runs/29136178177) |
+| Homebrew tap sync | ✅（CI 缺 `HOMEBREW_TAP_GITHUB_TOKEN`，已手动 `sync-homebrew-tap.sh`） |
+| macOS updater (`latest.json`) | 🔄 已触发 [run](https://github.com/fancy1108/Clutch/actions/runs/29136334316) |
 
 ## Next Actions
 
-- Commit → PR `dev`→`main` → 确认后 tag `v1.2.1` → DMG + updater + Homebrew sha
+- 确认 updater assets 跑完（`latest.json` + `.tar.gz` + `.sig`）
 - **#23** — Windows smoke 继续用 v1.1.1
+- （可选）配置 `HOMEBREW_TAP_GITHUB_TOKEN` 以免下次 CI 跳过 tap bump
 
 ## Recent Sessions
 
+## 2026-07-11 会话（v1.2.1 发版完成）
+
+- Merge #48 · tag `v1.2.1` · DMG + SHA256SUMS · Homebrew tap 手动 sync · updater workflow 已触发
+- 用户从 1.2.0 经应用内全量更新拿修复；热更通道供后续后端热修
+
 ## 2026-07-11 会话（热更 D37 + v1.2.1 打包准备）
 
-- **D37** Sidecar 热更：Application Support 补丁、静默下载、Settings 旁「更新已就绪」、仅重启 sidecar
-- **文档** DECISIONS / UPDATES §5 / PRODUCT_INTRO / FILEMAP / `write-sidecar-patch-manifest.sh`
-- **UX** 与全量 Update 互斥；预览 `docs/previews/sidecar-hotpatch-ux-preview.html`
-- **发版策略** 本次 bugfix仍走 **1.2.1 全量更新**（1.2.0 无热更客户端）
-- **校验** `./scripts/verify.sh` ✅（build + vitest 128 + pytest 679 + doc-drift）
+- D37 Sidecar 热更客户端 + Chat/Design/Models hotfix · verify ✅
 
 ## 2026-07-11 会话（v1.2.0 Chat 回归诊断 + 修复）
 
-- **现象** 1.2.0 DMG Chat 气泡：`expected string or bytes-like object, got 'dict'`
-- **根因** Design 把 `http_chat_complete` 改为返回 dict；`sanitize_engine_output` → `re.sub` 收到 dict
-- **修复** `extract_content` 解包；Design 底栏 / 调色板；Agnes `/models` probe
+- Chat dict 崩溃根因与修复路径
 
-## 2026-07-10 会话（v1.2.0 updater assets）
+## 2026-07-10 会话（v1.2.0 updater / 发版 / D36）
 
-- **Release (updater assets)** `release_tag=v1.2.0` ✅ — `latest.json` · `Clutch.app.tar.gz` · `.sig`
-
-## 2026-07-10 会话（v1.2.0 发版完成）
-
-- **#47** merge · tag `v1.2.0` · DMG + SHA256SUMS · Homebrew · macOS-only
-
-## 2026-07-10 会话（D36 Design 会话模型 + 原型交互画布重做）
-
-- **决策** D36：Design = 工作区 session；Header Coding/Design；语言进 Settings
-
-## 2026-07-10 会话（D35 Design 模式落地 · 已被 D36 修订）
-
-- D35 内建 Design — 形态已由 D36 替换
-
-## 2026-07-06 会话（MiMo Code CLI + v1.1.2 发版准备）
-
-- MiMo / Cursor Agent CLI · v1.1.2 发版材料
-
-## 2026-07-04 会话（#30 merge + 平台 chrome 拆分）
-
-- 见 archive
+- 见 archive / 上文历史
