@@ -10,7 +10,7 @@
 
 cask "clutch" do
   version "1.2.1"
-  sha256 "877cbc623a878d524782d18a65f86e48efca4f3866d7268de082461e6c729c90"
+  sha256 "41e61d98c07cd59db86e90031d67b8aef3b1f539a5054f3a1910798e0d5e2248"
 
   url "https://github.com/fancy1108/Clutch/releases/download/v#{version}/Clutch_#{version}_aarch64.dmg"
   name "Clutch"
