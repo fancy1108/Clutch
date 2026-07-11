@@ -463,3 +463,17 @@
   5. **非目标（本轮）**：账号/云协作、完整矢量编辑、真实 Figma 导出、语音输入。
 - **影响**：`Header`、`App` `appMode`、`DesignWorkspace`、`run_history`/`runApi` mode、`PRODUCT_INTRO` §3.5、`ROADMAP`、`FILEMAP`。
 - **决策状态**：`可执行`
+
+### D37 · Sidecar 热更（独立 patch_id · 静默下载 · 挂起应用）（2026-07-11）
+
+- **背景**：全量 Tauri updater 按 app semver 比较，且产物约 39MB（含 sidecar）。后端-only 热修若强制升版，用户成本高；游戏式「热补丁」需要独立通道。
+- **方案**：
+  1. **范围（v1）**：仅热更 `orchestrator`；**macOS**；不热更前端 / 不 bsdiff / 不 Windows。
+  2. **版本**：`patch_id` 与 app semver **独立**；manifest 含 `min_app_version`（过低忽略）。
+  3. **存放**：`~/Library/Application Support/clutch/patches/`（**禁止**写入 `.app`）；启动时优先加载已校验补丁。
+  4. **完整性（v1）**：manifest 内 **SHA256** 校验（HTTPS + GitHub Release）；minisign 同钥验签为后续增强，非 v1 门禁。
+  5. **应用**：只重启 sidecar，不关整个 App；IPC：`download` / `apply`（restart）/ `status`。
+  6. **UX**：默认 **静默下载** → Settings 旁极小 **「更新已就绪」** → 确认后 apply；与全量 Update 并存时 **只显示全量**。`severity: critical|major` 进度 UI 可后置。
+  7. **分发**：Release 资产 `sidecar-patch.json` + `orchestrator-darwin-aarch64`；客户端拉 `…/latest/download/sidecar-patch.json`（404=无补丁）。
+- **影响**：`lib.rs` / `sidecar_patch.rs`、`sidecarPatch.ts`、`SidecarPatchReady`、`docs/UPDATES.md`、维护脚本。
+- **决策状态**：`可执行`

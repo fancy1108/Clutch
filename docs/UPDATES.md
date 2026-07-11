@@ -1,6 +1,6 @@
 # Clutch — 应用内自动更新（OSR-20）
 
-> **状态：Go-live ✅** — [v1.0.2](https://github.com/fancy1108/Clutch/releases/tag/v1.0.2) 首次应用内更新 · … · [v1.1.2](https://github.com/fancy1108/Clutch/releases/tag/v1.1.2) · **[v1.2.0](https://github.com/fancy1108/Clutch/releases/tag/v1.2.0)**（2026-07-10，**macOS only**）— 当前 macOS 稳定版（Design 模式 · ZCode CLI）；**本版不发 Windows 安装包**（Win 继续用 v1.1.1）。Homebrew tap 须单独 sync（见 [`RELEASE_MAINTAINER.md`](./RELEASE_MAINTAINER.md)）。
+> **状态：Go-live ✅** — [v1.0.2](https://github.com/fancy1108/Clutch/releases/tag/v1.0.2) 首次应用内更新 · … · [v1.2.0](https://github.com/fancy1108/Clutch/releases/tag/v1.2.0) · **[v1.2.1](https://github.com/fancy1108/Clutch/releases/tag/v1.2.1)**（2026-07-11，**macOS only**）— 当前 macOS 稳定版（Chat/Design hotfix · Sidecar 热更客户端）；**本版不发 Windows 安装包**（Win 继续用 v1.1.1）。Homebrew tap 须单独 sync（见 [`RELEASE_MAINTAINER.md`](./RELEASE_MAINTAINER.md)）。
 
 ---
 
@@ -24,10 +24,12 @@
 | Tauri updater 插件 + 进程重启 | `apps/desktop/src-tauri/` |
 | 更新横幅 UI | `apps/desktop/src/components/UpdateBanner.tsx` |
 | 检查 / 下载 / 安装逻辑 | `apps/desktop/src/services/appUpdater.ts` |
+| Sidecar 热更（D37） | `sidecar_patch.rs` · `sidecarPatch.ts` · `SidecarPatchReady.tsx` |
 | 设计 token 样式 | `surfaceStyles.ts` → `BANNER_*` |
 | 中英文文案 | `LanguageContext.tsx` |
-| 静态预览 | `docs/previews/update-banner-preview.html` |
+| 静态预览 | `docs/previews/update-banner-preview.html` · `sidecar-hotpatch-ux-preview.html` |
 | `latest.json` 合并脚本 | `scripts/merge-updater-manifest.sh` |
+| `sidecar-patch.json` 脚本 | `scripts/write-sidecar-patch-manifest.sh` |
 | Updater 专用 CI（**仅手动**） | `.github/workflows/release-updater.yml` |
 | 常规 DMG Release（不变） | `.github/workflows/release.yml` |
 
@@ -92,7 +94,43 @@ gh secret set TAURI_SIGNING_PRIVATE_KEY --repo fancy1108/Clutch < ~/.clutch-upda
 
 ---
 
-## 5. 相关 Task
+## 5. Sidecar 热更（D37 · v1 macOS）
+
+与全量 updater **并行**的后端补丁通道：可不升 app semver，只替换 `orchestrator`。
+
+| 项 | 说明 |
+|----|------|
+| Manifest | `…/releases/latest/download/sidecar-patch.json`（缺失/404 → 无补丁） |
+| 二进制 | `orchestrator-darwin-aarch64`（同 Release 或 URL 指向） |
+| 本地路径 | `~/Library/Application Support/clutch/patches/orchestrator` + `meta.json` |
+| 校验 | SHA256（manifest）；启动时复验 |
+| 应用 | 仅重启 sidecar（`clutch_apply_sidecar_patch`） |
+| UX | 静默下载 → Settings 旁「更新已就绪」→ 确认应用；有全量 Update 时隐藏热更提示 |
+| 脚本 | `scripts/write-sidecar-patch-manifest.sh` |
+
+**与全量更新的关系：** 功能修复若需旧客户端（无热更客户端）拿到，仍发 **app semver**（如 1.2.1）。热更供 **已含客户端** 的版本做后续后端热修。
+
+Manifest 示例：
+
+```json
+{
+  "patch_id": "2026.07.11.1",
+  "min_app_version": "1.2.1",
+  "platforms": {
+    "darwin-aarch64": {
+      "url": "https://github.com/fancy1108/Clutch/releases/download/v1.2.1/orchestrator-darwin-aarch64",
+      "sha256": "<hex>"
+    }
+  },
+  "notes": "Optional",
+  "severity": "normal"
+}
+```
+
+---
+
+## 6. 相关 Task
 
 - **OSR-20** — 应用内自动更新 · macOS（Prep ✅ · Go-live ✅ v1.0.2）
 - **OSR-19** — Windows 桌面分发 → v1.0.2 Release 已含 MSI/NSIS
+- **D37** — Sidecar 热更通道（v1.2.1+ 客户端）

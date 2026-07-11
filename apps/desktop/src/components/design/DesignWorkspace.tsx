@@ -509,6 +509,16 @@ type UrlCardData = {
 
 const IN_FLIGHT = new Set(['crafting_spec', 'generating_ui', 'iterating']);
 
+const DESIGN_SYSTEM_PRESETS = [
+  {
+    id: 'clutch',
+    labelKey: 'Clutch',
+    descriptionKey: 'Built-in Clutch design system — clean developer-tool aesthetic',
+  },
+] as const;
+
+type DesignSystemId = (typeof DESIGN_SYSTEM_PRESETS)[number]['id'];
+
 /** Empty session → welcome prompt; never treat `draft` as in-flight canvas work. */
 function isWelcomeSession(next: DesignSession): boolean {
   const hasArtifacts = Boolean(next.spec || (next.screens && next.screens.length > 0));
@@ -1304,6 +1314,8 @@ function DesignCanvasInner({
   const [urlDraft, setUrlDraft] = useState('');
   const [showUrlField, setShowUrlField] = useState(false);
   const [attachMenuOpen, setAttachMenuOpen] = useState(false);
+  const [designSystem, setDesignSystem] = useState<DesignSystemId>('clutch');
+  const [designSystemMenuOpen, setDesignSystemMenuOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const mdInputRef = useRef<HTMLInputElement | null>(null);
   const [device, setDevice] = useState<'web' | 'app'>('web');
@@ -1873,6 +1885,7 @@ function DesignCanvasInner({
     setBusy(true);
     setError(null);
     setAttachMenuOpen(false);
+    setDesignSystemMenuOpen(false);
     hadSpecRef.current = false;
     hadScreenRef.current = false;
     userDraggedRef.current = false;
@@ -1891,6 +1904,7 @@ function DesignCanvasInner({
         reference_md: referenceMd?.text ?? null,
         reference_md_name: referenceMd?.name ?? null,
         reference_url: referenceUrl,
+        design_system: hasRef ? undefined : designSystem,
       }),
     );
     if (next) {
@@ -2254,7 +2268,10 @@ function DesignCanvasInner({
                 <button
                   type="button"
                   className="rounded-full p-2 text-neutral-500 hover:bg-neutral-100"
-                  onClick={() => setAttachMenuOpen((v) => !v)}
+                  onClick={() => {
+                    setDesignSystemMenuOpen(false);
+                    setAttachMenuOpen((v) => !v);
+                  }}
                   title={t('Add attachment')}
                   aria-label={t('Add attachment')}
                 >
@@ -2316,9 +2333,73 @@ function DesignCanvasInner({
                 </button>
               </div>
               <div className="flex items-center gap-1.5">
-                <button type="button" className="rounded-full p-2 text-neutral-400 hover:bg-neutral-100" disabled>
-                  <Palette size={15} />
-                </button>
+                <div className="relative">
+                  <button
+                    type="button"
+                    className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold transition-colors ${
+                      referenceImage || referenceMd || referenceUrl
+                        ? 'cursor-not-allowed text-neutral-300'
+                        : designSystemMenuOpen
+                          ? 'bg-neutral-100 text-neutral-800'
+                          : 'text-neutral-600 hover:bg-neutral-100'
+                    }`}
+                    disabled={Boolean(referenceImage || referenceMd || referenceUrl)}
+                    title={
+                      referenceImage || referenceMd || referenceUrl
+                        ? t('Reference attachment overrides the design system preset.')
+                        : t('Design system')
+                    }
+                    aria-label={t('Design system')}
+                    onClick={() => {
+                      if (referenceImage || referenceMd || referenceUrl) return;
+                      setAttachMenuOpen(false);
+                      setDesignSystemMenuOpen((v) => !v);
+                    }}
+                  >
+                    <Palette size={14} />
+                    <span>
+                      {t(
+                        DESIGN_SYSTEM_PRESETS.find((p) => p.id === designSystem)?.labelKey
+                          ?? 'Clutch',
+                      )}
+                    </span>
+                    <ChevronDown size={12} className="opacity-60" />
+                  </button>
+                  {designSystemMenuOpen && !(referenceImage || referenceMd || referenceUrl) ? (
+                    <div className="absolute bottom-full right-0 z-30 mb-2 w-72 overflow-hidden rounded-xl border border-neutral-200 bg-white py-1 shadow-lg">
+                      <p className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-neutral-400">
+                        {t('Design system')}
+                      </p>
+                      {DESIGN_SYSTEM_PRESETS.map((preset) => {
+                        const active = designSystem === preset.id;
+                        return (
+                          <button
+                            key={preset.id}
+                            type="button"
+                            className={`flex w-full items-start gap-2 px-3 py-2.5 text-left hover:bg-neutral-50 ${
+                              active ? 'bg-neutral-50' : ''
+                            }`}
+                            onClick={() => {
+                              setDesignSystem(preset.id);
+                              setDesignSystemMenuOpen(false);
+                            }}
+                          >
+                            <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-neutral-200 bg-gradient-to-br from-neutral-800 via-neutral-500 to-neutral-200" />
+                            <span className="min-w-0 flex-1">
+                              <span className="flex items-center justify-between gap-2 text-[12px] font-semibold text-neutral-900">
+                                {t(preset.labelKey)}
+                                {active ? <Check size={14} className="text-sky-600" /> : null}
+                              </span>
+                              <span className="mt-0.5 block text-[11px] leading-snug text-neutral-500">
+                                {t(preset.descriptionKey)}
+                              </span>
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+                </div>
                 <button
                   type="button"
                   onClick={onOpenModels}

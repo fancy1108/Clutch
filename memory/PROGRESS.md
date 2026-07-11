@@ -5,183 +5,51 @@
 
 ## Current Status
 
-- **阶段：** **v1.2.0 已发布**（2026-07-10，**仅 macOS**）— Design 模式 (D36) + ZCode CLI + Agent Log 步骤标签
-- **Release：** [v1.2.0](https://github.com/fancy1108/Clutch/releases/tag/v1.2.0) Latest（macOS）· Win 继续 [v1.1.1](https://github.com/fancy1108/Clutch/releases/tag/v1.1.1)
-- **Git：** `main` @ `ce58b6c` · 版本号 `1.2.0` · Homebrew tap 已 sync
+- **阶段：** **v1.2.1 已发布**（2026-07-11，**仅 macOS**）— Chat/Design/Models hotfix + Sidecar 热更客户端（D37）
+- **Release：** [v1.2.1](https://github.com/fancy1108/Clutch/releases/tag/v1.2.1) Latest（macOS）· Win 继续 [v1.1.1](https://github.com/fancy1108/Clutch/releases/tag/v1.1.1)
+- **Git：** `main` @ `1b6899b` · tag `v1.2.1`
 - **Windows：** 本版不发安装包
 
-### v1.2.0 发版清单
+### v1.2.1 发版清单
 
 | 项 | 状态 |
 |----|------|
-| CHANGELOG + README + `docs/releases/v1.2.0.md` | ✅（macOS-only） |
-| 版本号 bump（package / tauri / Cargo / cask） | ✅ |
-| PRODUCT_INTRO / UPDATES / STABILITY / INSTALL | ✅ |
-| PR merge `dev` → `main` (#47) | ✅ |
-| `git tag v1.2.0` on `main` + push | ✅ |
-| macOS DMG CI (`release.yml`) | ✅ [run](https://github.com/fancy1108/Clutch/actions/runs/29098717351) |
-| ~~Windows MSI/NSIS~~ | — 本版跳过 |
-| Homebrew tap sync | ✅ |
-| macOS updater (`latest.json`) | ✅ [run](https://github.com/fancy1108/Clutch/actions/runs/29099358247) |
+| CHANGELOG + README + `docs/releases/v1.2.1.md` | ✅ |
+| 版本号 bump | ✅ |
+| PR merge `dev` → `main` (#48) | ✅ |
+| `git tag v1.2.1` on `main` + push | ✅ |
+| macOS DMG CI (`release.yml`) | ✅ [run](https://github.com/actions/runs/29136178177) |
+| Homebrew tap sync | ✅（CI 缺 `HOMEBREW_TAP_GITHUB_TOKEN`，已手动 `sync-homebrew-tap.sh`） |
+| macOS updater (`latest.json`) | ✅ [run](https://github.com/fancy1108/Clutch/actions/runs/29136334316) |
 
 ## Next Actions
 
-- **Windows 1.2.0 parity PR** — `win` 已同步到 upstream `dev`，Windows Design Preview / Tauri build 兼容修复已本地验证，待 PR review/CI。
-- **#23** — Windows smoke 从 v1.2.0 parity PR 继续。
+- **Windows 1.2.x parity PR** — `win` 已同步到 upstream `dev`，Windows Design Preview / Tauri build 兼容修复已本地验证，待 PR review/CI。
+- **#23** — Windows smoke 从 Windows parity PR 继续。
+- （可选）配置 `HOMEBREW_TAP_GITHUB_TOKEN` 以免下次 CI 跳过 tap bump
 
 ## Recent Sessions
 
-## 2026-07-11 会话（v1.2.0 Windows parity · PR 准备）
+## 2026-07-11 会话（v1.2.x Windows parity · PR 准备）
 
-- **同步** `win` fast-forward 到 upstream `dev` `3db7e03`，保留主工作区 `clutch_win_wuxian` 不变。
+- **同步** `win` fast-forward 到 upstream `dev` `3db7e03`，后续 merge 作者 v1.2.1 `e03aa64` 以解除 PR conflict；保留主工作区 `clutch_win_wuxian` 不变。
 - **修复** Windows Design Preview：`.cmd` 命令解析、pnpm ignored-build policy、UTF-8 install output、preview process tree stop、重新生成前停止 preview、manifest replace 重试。
 - **修复** Windows Tauri build/dev：desktop `tauri:dev` 走 Node wrapper；`beforeBuildCommand` 走 `scripts/run-build-sidecar.mjs`，不再依赖裸 `uv` 在 PATH。
 - **验证** `pytest tests/test_design_service.py` 28 passed；真实 Design Preview smoke 通过；`pnpm build`、`pnpm test`、orchestrator 全量 pytest、`cargo check`、`pnpm tauri:build` 通过。
 
-## 2026-07-10 会话（v1.2.0 updater assets）
+## 2026-07-11 会话（v1.2.1 发版完成）
 
-- **Release (updater assets)** `release_tag=v1.2.0` ✅ — `latest.json` · `Clutch.app.tar.gz` · `.sig`
-- 旧版 macOS 客户端可应用内升级到 1.2.0
+- Merge #48 · tag `v1.2.1` · DMG + SHA256SUMS · Homebrew tap 手动 sync · updater workflow 已触发
+- 用户从 1.2.0 经应用内全量更新拿修复；热更通道供后续后端热修
 
-## 2026-07-10 会话（v1.2.0 发版完成）
+## 2026-07-11 会话（热更 D37 + v1.2.1 打包准备）
 
-- **#47** merge · tag `v1.2.0` · DMG + SHA256SUMS 已上架
-- **Homebrew** tap bump 1.2.0 + SHA `877cbc62…`
-- **平台** macOS-only；Win 留在 v1.1.1
-- **可选** updater assets workflow
+- D37 Sidecar 热更客户端 + Chat/Design/Models hotfix · verify ✅
 
+## 2026-07-11 会话（v1.2.0 Chat 回归诊断 + 修复）
 
-## 2026-07-10 会话（D36 Design 会话模型 + 原型交互画布重做）
+- Chat dict 崩溃根因与修复路径
 
-- **决策** D36：Design = 工作区 session（`mode`）；Header Coding/Design；语言进 Settings General；欢迎页+无限画布（规范→描绘→NL）
-- **后端** session-scoped `design/sessions` 两阶段 generate + iterate；产物 `.clutch/design/sessions/<run_id>/`
-- **前端** 去掉 Design 项目左栏；`DesignWorkspace` 重写；`App` `appMode` + session 过滤
-- **参考** `runs/verification/2026-07-10-design-canvas-reference.md`；Playwright MCP 已写入 `~/.cursor/mcp.json`
-- **文档** PRODUCT_INTRO §3.5、ROADMAP、CHANGELOG、FILEMAP、DECISIONS D36
-- **测试** `pytest tests/test_design_service.py` 2 passed
+## 2026-07-10 会话（v1.2.0 updater / 发版 / D36）
 
-## 2026-07-10 会话（D35 Design 模式落地 · 已被 D36 修订）
-
-- **决策** D35 内建 Design（原型画布 + 预览沙箱）；PRODUCT_INTRO §3.5、ROADMAP、CHANGELOG、FILEMAP
-- **后端** `services/orchestrator/src/design/`（CRUD、生成、Play 产物、React codegen、preview、handoff、vision、模板）
-- **前端** 侧栏 Design 入量 + `DesignWorkspace`（画布 / Play / Approve / React / Send to Coding）— 形态已由 D36 替换
-- **模板** `design-to-code` 工作流（`workflows/` + `workflow_assets/`）
-- **测试** `pytest tests/test_design_service.py` 3 passed；`pnpm` desktop vite build 通过
-
-## 2026-07-06 会话（MiMo Code CLI + v1.1.2 发版准备）
-
-- **MiMo Code CLI** — `mimo-cli` 白名单、headless 路由、`@Mimo` Terminal Orchestra、Settings 扫描 Tab、D19 文档
-- **Cursor Agent CLI** — 推荐工具、`cursor-agent` 探测、`@Cursor` 派发
-- **修复** — PTY 后台终端计数、Chat thinking 气泡高度、Claude Code CC Switch 配置修复 UI
-- **发版材料** — CHANGELOG [1.1.2]、README、`docs/releases/v1.1.2.md`、版本号 1.1.2
-
-## 2026-07-04 会话（#30 merge + 平台 chrome 拆分）
-
-- **#30** — 已通过 GitHub merge 进 `dev`（@996wuxian）；Windows interactive PTY（WinPTY）、字体偏好恢复、跨平台 `tauri:dev` launcher
-- **平台边界** — `docs/PLATFORM_MAINTENANCE.md`、`.github/CODEOWNERS`、`platform/chrome/*.{macos,windows}.tsx`、`navConfig.ts`
-- **mac** — 保留浮动侧栏折叠按钮、图标+微标签折叠 rail；统一 Chat 紧凑布局 + 右 panel 30px gutter
-- **Windows** — 侧栏边缘折叠按钮、纯图标 rail、紧凑 Chat、右 panel 等分 Tab
-- **致谢** — follow-up commit 含 `Co-authored-by: 996wuxian`
-
-## 2026-07-03 会话（同步 upstream 首页图标 · @996wuxian）
-
-- **原因** 作者 dev 已将首页/侧栏 Workflows SOP 图标更新为 `fork_right`，但 Windows UI polish 恢复时误把该入口带回旧的 `account_tree`。
-- **修复** `apps/desktop/src/sidebar.tsx` 展开态与折叠态 Workflows SOP 图标统一同步为 upstream dev 的 `fork_right`，保留左侧面板中线折叠按钮与 Windows UI 布局。
-- **Commit** `9a982f4` — `fix(ui): sync workflow sidebar icon from upstream`
-
-## 2026-07-03 会话（同步 upstream dev + 侧栏折叠入口 · @996wuxian）
-
-- **同步** 合入 `upstream/dev` `4740786`（v1.1.0 文档对齐、Agnes 默认文本模型、图标/模型相关更新）。
-- **UI** 按作者 dev 方向移除 Header 顶部左侧折叠按钮，将左侧侧栏折叠入口移到侧栏右边缘中线位置，与右侧监督面板折叠按钮交互位置一致。
-- **Commit** `214af4d` — `merge upstream dev and align sidebar collapse chrome`
-
-## 2026-07-03 会话（v1.1.0 文档对齐 · README / 维护者文档）
-
-- **README 双语** — Latest release / 当前版本 → **v1.1.0**；去掉「in development / 开发中」
-- **维护者文档** — `UPDATES.md` · `RELEASE_MAINTAINER.md` · `STABILITY.md` 版本指针同步
-- **Homebrew 模板** — `packaging/homebrew/Casks/clutch.rb` → 1.1.0 + SHA256
-- **Memory** — `PROGRESS.md` · `DELIVERABLES.md` 待发版表述清理
-
-## 2026-07-03 会话（同步 Windows UI polish）
-
-- **原因** 同步 upstream v1.1.0 后，`1a35da6` 中部分 Windows 首页/工作台 chrome 调整被后续 Header、Sidebar、Terminal Orchestra 布局重构覆盖。
-- **修复** 以 `1a35da6` 为基准，恢复 Header 内置侧栏折叠按钮、移除左侧浮动折叠按钮、侧栏折叠态纯图标 tooltip、Workflow 图标、Settings 底部布局、Chat 主区收窄逻辑、聊天气泡紧凑间距、右侧监督面板等分 Tab 与短指示条，并保持 v1.1.0 Terminal Orchestra 新逻辑。
-- **Commit** `796120b` — `fix(ui): restore Windows workspace chrome polish`
-- **验证** `pnpm build` 通过；`pnpm test` 17 files / 125 tests 通过。提交使用 `HUSKY=0`，原因同前：Husky pre-commit 在 Git Bash PATH 中找不到 `uv`。
-
-## 2026-07-03 会话（恢复字体大小偏好）
-
-- **原因** upstream v1.1.0 settings 重构后，字体大小偏好的存储/API/CSS 仍存在，但 `App.tsx` 不再读取并挂载 `data-font-size`，`SystemPreferencesModal.tsx` 也移除了选择入口。
-- **修复** 恢复 General Settings 字体大小选择框、偏好读取/保存、根节点 `data-font-size` 应用，并同步 `PRODUCT_INTRO.md`。
-- **Commit** `68769fb` — `fix(settings): restore font size preference`
-- **验证** `pnpm build` 通过；`pnpm test` 17 files / 125 tests 通过。Husky pre-commit 在 Git Bash PATH 中找不到 `uv`，已在等价前端验证通过后用 `HUSKY=0` 提交。
-
-## 2026-07-03 会话（Windows interactive PTY lanes）
-
-- **修复** Windows Terminal Orchestra interactive PTY：`interactive_pty_runtime.py` 不再在 Windows 直接 blocked，复用 `WindowsPty` 支持 attach/read/write/close。
-- **验证** 后端定向 PTY / Terminal Orchestra / WebSocket PTY 相关测试通过；全量 `python -m uv run pytest` 通过；`pnpm build`、`pnpm test` 通过；真实 Windows `cmd.exe` low-level 与 manager smoke 通过。
-- **Commit** `395bacb` — `fix(windows): support interactive PTY lanes`
-- **下次优先** Windows PTY polish：resize、Ctrl+C/Ctrl+D、长期运行 session、多 lane 并发关闭；再评估 Windows picker 和上游 TypeScript lint 质量债。
-
-## 2026-07-03 会话（v1.1.0 文档恢复）
-
-- **恢复** CHANGELOG `[1.1.0]`、`docs/releases/v1.1.0.md`、README 双语 What's new、PRODUCT_INTRO 终端 dock / resume、GETTING_STARTED / INSTALL pin
-- **版本** package / tauri / Cargo → `1.1.0`
-- **分支** `feat/d34-terminal-ux` rebase 至 `dev`（#28）后 push
-
-## 2026-07-01 会话（文档治理轮转）
-
-- **PROGRESS** → `archive/PROGRESS-2026-Q3.md`（保留最近 10 次会话）
-- **DELIVERABLES** 瘦身：Active 清空 · v1.0.3 未发版条目保留 · OSR-16/17 入 `DELIVERABLES-OSR.md`
-
-## 2026-07-01 会话（发版与安装渠道文档）
-
-- **方案：** curl + `homebrew-clutch` tap；winget / Intel 暂缓
-- **已建** [fancy1108/homebrew-clutch](https://github.com/fancy1108/homebrew-clutch)
-- **文档** `RELEASE_MAINTAINER.md`（发版 checklist · AI 协作话术 · PAT 可选）
-- **CI** `release.yml` 可选自动 sync tap（`HOMEBREW_TAP_GITHUB_TOKEN`）
-
-## 2026-07-01 会话（README 与新手引导）
-
-- **README** 重写：`README.md`（EN）+ `README.zh-CN.md`（ZH），顶部语言切换 + 显眼链向新手指南
-- **新增** `docs/GETTING_STARTED.md` — 安装、向导、首聊、常见配置、故障排除（中英双语）
-- **索引** `docs/README.md` · `INSTALL.md` · `PRODUCT_INTRO.md` · `FILEMAP.md` · `CHANGELOG`
-
-## 2026-07-01 会话（Ollama Models Config 本机同步）
-
-- **问题：** Settings → Models Config 与 Create Agent 的 Ollama 列表不一致，跨 Mac 对话 404
-- **修复：** `models_config.py` — 本机 tag 同步 / 可用性 / `active_model_id` 回退
-- **Commit：** `2257560` · 测试 21 passed
-
-## 2026-07-01 会话（HRT-F 验收）
-
-- **F1/F2/G：** Pass · **F3–F5：** Skip/N/A · **#24** closed
-
-## 2026-07-01 会话（worktree 清理）
-
-- **已删除 worktree：** `clutch-release-1.0.2-*` · `clutch-review-pr16/17` · `clutch-release-1.0.3-loop`
-- **注意：** `1.0.3-loop` WIP 已随 force remove 丢失；Loop 需从 `dev` 重新开工
-
-## 2026-07-01 会话（v1.0.2 发版收尾）
-
-- **Updater go-live：** workflow [28465904210](https://github.com/fancy1108/Clutch/actions/runs/28465904210) ✅
-- **Windows 安装包** 上传 Release · `SHA256SUMS.txt` 三项
-- **Rivet/tools** 纳入 v1.0.2 · `release/1.0.2-updater` 合入 `dev`
-
-## 2026-06-30 会话（GitHub triage）
-
-- **PR #22** → **B-33** 写入 `BACKLOG.md` · **#18/#19** Bug 登记 · **#20** 用法咨询已回复
-
-## 2026-06-29 会话 26（OSR-16/17 · Release 硬化）
-
-- **OSR-16/17**：`release_hardening.py` · CSP · `console=False` — commit `e410897`
-- **验证**：`pytest tests/test_release_hardening.py` + `./scripts/verify.sh`
-
-## 2026-06-29 会话 25（OSR-14 · 首次启动向导）
-
-- **前端**：7 屏 `OnboardingWizard`；`agentProvisioning.ts`；`App.tsx` 全屏挂载
-- **验证**：`pytest tests/test_onboarding_preference.py` · vitest · `./scripts/verify.sh`
-
-## 2026-06-29 会话 23（OSR-12 · v1.0.0 Release 实跑 ✅）
-
-- Release 资产：`Clutch_1.0.0_aarch64.dmg` · `SHA256SUMS.txt` · 构建修复 `dd9fa20`
+- 见 archive / 上文历史

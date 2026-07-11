@@ -229,7 +229,11 @@ def run_mcp_react_loop(
             on_log,
             f"[{log_prefix}] Model does not support tool calling — chat without MCP tools",
         )
-        output = str(router.chat(list(messages), tools=None, model_id=model_id))
+        from src.llm.router import LLMProviderRouter
+
+        output = LLMProviderRouter.extract_content(
+            router.chat(list(messages), tools=None, model_id=model_id)
+        )
         _emit(logs, on_log, f"[{log_prefix}] Completed via {spec.name}")
         return McpRunOutcome(
             output=output,
@@ -462,7 +466,9 @@ def run_mcp_react_loop(
                         }
                     )
             else:
-                output = str(response)
+                from src.llm.router import LLMProviderRouter
+
+                output = LLMProviderRouter.extract_content(response)
                 _emit(logs, on_log, f"[{log_prefix}] Completed via {spec.name}")
                 break
         else:

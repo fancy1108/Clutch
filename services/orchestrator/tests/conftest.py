@@ -71,7 +71,9 @@ def mock_route_engine_for_workflow_tests(monkeypatch: pytest.MonkeyPatch, reques
             chat_history = list(history or [])
             if not chat_history:
                 chat_history = [{"role": "user", "content": prompt}]
-            output = router.chat(chat_history)
+            from src.llm.router import LLMProviderRouter
+
+            output = LLMProviderRouter.extract_content(router.chat(chat_history))
             return EngineResult(engine=model.name, output=output, logs=["[ROUTER] mocked"])
 
         return EngineResult(

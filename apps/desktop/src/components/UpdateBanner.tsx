@@ -7,6 +7,7 @@ import {
   downloadAppUpdate,
   fetchAppUpdate,
   installAppUpdate,
+  setHotpatchSuppressed,
   shouldCheckForAppUpdates,
   type AppUpdatePhase,
   type AppUpdateProgress,
@@ -18,6 +19,23 @@ function progressPercent(progress: AppUpdateProgress): number {
   return Math.min(100, Math.round((progress.downloadedBytes / progress.totalBytes) * 100));
 }
 
+function formatMb(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0';
+  const mb = bytes / (1024 * 1024);
+  return mb >= 10 ? mb.toFixed(0) : mb.toFixed(1);
+}
+
+function progressLabel(progress: AppUpdateProgress, pct: number): string {
+  const total = progress.totalBytes;
+  if (total && total > 0) {
+    return `${formatMb(progress.downloadedBytes)}/${formatMb(total)} MB`;
+  }
+  if (progress.downloadedBytes > 0) {
+    return `${formatMb(progress.downloadedBytes)} MB`;
+  }
+  return `${pct}%`;
+}
+
 export const UpdateBanner: React.FC = () => {
   const { t } = useLanguage();
   const [phase, setPhase] = useState<AppUpdatePhase>('idle');
@@ -26,6 +44,10 @@ export const UpdateBanner: React.FC = () => {
   const [busy, setBusy] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const pendingUpdateRef = useRef<Update | null>(null);
+
+  useEffect(() => {
+    setHotpatchSuppressed(phase !== 'idle');
+  }, [phase]);
 
   useEffect(() => {
     if (!shouldCheckForAppUpdates()) return;
@@ -44,6 +66,7 @@ export const UpdateBanner: React.FC = () => {
       cancelled = true;
       window.clearTimeout(timer);
       void pendingUpdateRef.current?.close();
+      setHotpatchSuppressed(false);
     };
   }, []);
 
@@ -123,9 +146,20 @@ export const UpdateBanner: React.FC = () => {
       )}
 
       {phase === 'downloading' && (
-        <button type="button" disabled className={BTN_PRIMARY_SM}>
+        <button
+          type="button"
+          disabled
+          className={BTN_PRIMARY_SM}
+          title={t('Downloading... {{done}} / {{total}} ({{percent}}%)')
+            .replace('{{done}}', formatMb(progress.downloadedBytes))
+            .replace('{{total}}', formatMb(progress.totalBytes || 0))
+            .replace('{{percent}}', String(pct))}
+          aria-label={t('Download update')}
+        >
           <Loader2 className="size-3 shrink-0 animate-spin" aria-hidden />
-          <span className="font-mono text-[10px] tabular-nums">{pct}%</span>
+          <span className="font-mono text-[10px] tabular-nums whitespace-nowrap">
+            {progressLabel(progress, pct)}
+          </span>
         </button>
       )}
 

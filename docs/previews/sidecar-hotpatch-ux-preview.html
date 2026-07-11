@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Clutch — 热更 UX（设计规范对齐）</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
+  <style>
+    /* Tokens aligned with docs/UI_UX_GUIDELINES.md + buttonStyles / surfaceStyles */
+    :root {
+      --font-sans: "Hanken Grotesk", system-ui, sans-serif;
+      --font-mono: "JetBrains Mono", ui-monospace, monospace;
+      --color-background: #ffffff;
+      --color-surface: #f9f9f9;
+      --color-surface-container-low: #f7f7f7;
+      --color-on-surface: #1a1c1c;
+      --color-on-surface-variant: #71717a;
+      --color-outline: #d4d4d8;
+      --color-outline-variant: #e5e7eb;
+      --color-neutral-50: #fafafa;
+      --color-neutral-100: #f5f5f5;
+      --color-neutral-200: #e5e5e5;
+      --color-neutral-600: #525252;
+      --color-neutral-700: #404040;
+      --color-neutral-900: #171717;
+      --color-primary: #171717;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-sans);
+      background: #ececec;
+      color: var(--color-on-surface);
+      padding: 32px 24px 64px;
+      min-height: 100vh;
+    }
+
+    .wrap { max-width: 1080px; margin: 0 auto; }
+
+    h1 {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .lead {
+      margin-top: 8px;
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--color-on-surface-variant);
+      max-width: 720px;
+    }
+
+    .spec-card {
+      margin: 20px 0 28px;
+      padding: 16px;
+      background: var(--color-surface-container-low);
+      border: 1px solid rgba(229, 231, 235, 0.3);
+      border-radius: 16px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+      font-size: 13px;
+      line-height: 1.55;
+      color: var(--color-neutral-700);
+    }
+
+    .spec-card .eyebrow {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--color-on-surface-variant);
+      margin-bottom: 8px;
+    }
+
+    .spec-card code {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      background: var(--color-neutral-100);
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+
+    .sec {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--color-on-surface-variant);
+      margin: 28px 0 12px;
+    }
+
+    .grid {
+      display: grid;
+      gap: 22px;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    }
+
+    .meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .meta h2 { font-size: 14px; font-weight: 700; }
+
+    .badge {
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 3px 8px;
+      border-radius: 4px;
+      color: var(--color-neutral-700);
+      background: var(--color-neutral-100);
+    }
+
+    .badge.ok {
+      color: #166534;
+      background: #ecfdf5;
+    }
+
+    .note {
+      margin-top: 10px;
+      font-size: 12px;
+      line-height: 1.45;
+      color: var(--color-on-surface-variant);
+    }
+
+    /* Mock window */
+    .win {
+      border: 1px solid var(--color-outline-variant);
+      border-radius: 14px;
+      overflow: hidden;
+      background: var(--color-background);
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+      min-height: 300px;
+      position: relative;
+    }
+
+    .tb {
+      height: 38px;
+      background: linear-gradient(#f5f5f5, #ebebeb);
+      border-bottom: 1px solid #d4d4d4;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 14px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--color-on-surface-variant);
+    }
+
+    .dot { width: 11px; height: 11px; border-radius: 50%; }
+    .r { background: #ff5f57; }
+    .y { background: #febc2e; }
+    .g { background: #28c840; }
+
+    .shell {
+      display: flex;
+      min-height: 262px;
+      background: var(--color-surface);
+    }
+
+    .side {
+      width: 280px;
+      flex-shrink: 0;
+      border-right: 1px solid var(--color-outline-variant);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      font-size: 12px;
+      color: var(--color-on-surface-variant);
+      line-height: 1.8;
+    }
+
+    .side-foot {
+      margin-top: auto;
+      padding-top: 12px;
+      border-top: 1px solid rgba(229, 231, 235, 0.5);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .settings {
+      flex: 1;
+      min-width: 0;
+      border: 0;
+      background: transparent;
+      text-align: left;
+      font: inherit;
+      font-weight: 600;
+      font-size: 12px;
+      color: var(--color-on-surface-variant);
+      padding: 8px;
+      border-radius: 8px;
+    }
+
+    .main {
+      flex: 1;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--color-on-surface-variant);
+      font-size: 13px;
+      padding-bottom: 32px;
+    }
+
+    .bar {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 32px;
+      border-top: 1px solid var(--color-outline-variant);
+      background: var(--color-background);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      font-size: 11px;
+      color: var(--color-on-surface-variant);
+    }
+
+    .brand {
+      font-style: italic;
+      font-weight: 600;
+      opacity: 0.7;
+    }
+
+    /* BTN_PRIMARY_SM / BTN_GHOST_SM */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      font-weight: 600;
+      font-size: 11px;
+      line-height: 1;
+      border-radius: 6px;
+      padding: 4px 10px;
+      white-space: nowrap;
+      border: 1px solid transparent;
+      transition: all 0.2s;
+      cursor: default;
+    }
+
+    .btn-primary {
+      background: var(--color-neutral-900);
+      color: #fff;
+      border-color: var(--color-neutral-900);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--color-neutral-600);
+      border-color: rgba(229, 229, 229, 0.6);
+      padding-left: 8px;
+      padding-right: 8px;
+    }
+
+    .btn-md {
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 11px;
+    }
+
+    /* BADGE_NEUTRAL / ALERT_INFO — ready chip */
+    .ready-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      flex-shrink: 0;
+      padding: 4px 8px;
+      border-radius: 6px;
+      border: 1px solid var(--color-neutral-200);
+      background: var(--color-neutral-50);
+      color: var(--color-neutral-700);
+      font-size: 10.5px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .ready-chip .dot-live {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--color-neutral-900);
+    }
+
+    /* Modal — CARD + settings-like dialog */
+    .scrim {
+      position: absolute;
+      inset: 38px 0 0 0;
+      background: rgba(26, 28, 28, 0.28);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      z-index: 5;
+    }
+
+    .dialog {
+      width: min(400px, 100%);
+      padding: 20px;
+      background: var(--color-surface-container-low);
+      border: 1px solid rgba(229, 231, 235, 0.5);
+      border-radius: 24px;
+      box-shadow: 0 20px 40px rgba(15, 23, 42, 0.12);
+    }
+
+    .dialog h3 {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--color-on-surface);
+    }
+
+    .dialog p {
+      font-size: 13px;
+      line-height: 1.55;
+      color: var(--color-on-surface-variant);
+      margin-bottom: 18px;
+    }
+
+    .dialog-meta {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--color-on-surface-variant);
+      margin: -10px 0 16px;
+    }
+
+    .dialog-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .flow {
+      display: grid;
+      gap: 10px;
+    }
+
+    .flow-row {
+      display: grid;
+      grid-template-columns: 110px 1fr;
+      gap: 12px;
+      align-items: center;
+      padding: 12px 14px;
+      background: var(--color-background);
+      border: 1px solid rgba(229, 231, 235, 0.5);
+      border-radius: 12px;
+      font-size: 13px;
+    }
+
+    .flow-row .k {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--color-on-surface-variant);
+    }
+
+    .splash {
+      width: 240px;
+      padding: 20px 16px 16px;
+      text-align: center;
+      background: var(--color-surface-container-low);
+      border: 1px solid rgba(229, 231, 235, 0.3);
+      border-radius: 16px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    }
+
+    .splash .mark {
+      width: 36px;
+      height: 36px;
+      margin: 0 auto 12px;
+      border-radius: 8px;
+      background: #000;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .splash .title {
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .splash .sub {
+      font-size: 11px;
+      color: var(--color-on-surface-variant);
+      margin-bottom: 14px;
+    }
+
+    .track {
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(229, 231, 235, 0.8);
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+
+    .fill {
+      height: 100%;
+      width: 62%;
+      border-radius: 999px;
+      background: var(--color-primary);
+    }
+
+    .stage {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--color-on-surface-variant);
+      margin-bottom: 14px;
+    }
+
+    .checklist {
+      margin-top: 28px;
+      padding: 16px;
+      background: var(--color-background);
+      border: 1px solid var(--color-outline-variant);
+      border-radius: 12px;
+      font-size: 12px;
+      line-height: 1.7;
+      color: var(--color-neutral-700);
+    }
+
+    .checklist li { margin-left: 1.1em; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>热更 UX · 设计规范对齐</h1>
+    <p class="lead">
+      交互仍是「静默下载 + 挂起应用」。视觉对齐
+      <code style="font-family:var(--font-mono);font-size:11px;">docs/UI_UX_GUIDELINES.md</code>
+      与现有 <code style="font-family:var(--font-mono);font-size:11px;">BTN_*</code> /
+      <code style="font-family:var(--font-mono);font-size:11px;">ALERT_INFO</code> /
+      Update pill（中性黑主按钮，无天蓝/渐变）。
+    </p>
+
+    <div class="spec-card">
+      <div class="eyebrow">Token 映射</div>
+      就绪提示 → 中性 chip（同 <code>ALERT_INFO</code> / <code>BADGE_NEUTRAL</code>）·
+      主操作 → <code>BTN_PRIMARY_SM</code>（neutral-900）·
+      次操作 → <code>BTN_GHOST_SM</code> ·
+      确认框 → <code>rounded-[24px]</code> + <code>bg-surface-container-low</code> +
+      <code>border-outline/50</code>（同设置模态气质）·
+      图标 → lucide · 字体 → Hanken / JetBrains Mono
+    </div>
+
+    <p class="sec">1 · 静默下载（无 UI）</p>
+    <div class="grid">
+      <div>
+        <div class="meta"><h2>下载 / 验签中</h2><span class="badge">用户无感</span></div>
+        <div class="win">
+          <div class="tb"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span> Clutch</div>
+          <div class="shell">
+            <aside class="side">
+              New Chat<br />PROJECTS …
+              <div class="side-foot">
+                <button class="settings" type="button">⚙ Settings</button>
+              </div>
+            </aside>
+            <div class="main">正常使用 · 后台静默下载</div>
+          </div>
+          <div class="bar"><span>Branch · Model · Agent</span><span class="brand">Clutch v1.2.1</span></div>
+        </div>
+        <p class="note">无弹窗、无进度、无彩色强调。版本号不变。</p>
+      </div>
+    </div>
+
+    <p class="sec">2 · 更新已就绪（微提示）</p>
+    <div class="grid">
+      <div>
+        <div class="meta"><h2>Settings 同行</h2><span class="badge ok">默认</span></div>
+        <div class="win">
+          <div class="tb"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span> Clutch</div>
+          <div class="shell">
+            <aside class="side">
+              New Chat<br />PROJECTS …
+              <div class="side-foot">
+                <button class="settings" type="button">⚙ Settings</button>
+                <button type="button" class="ready-chip" title="Runtime patch 20260711.1">
+                  <span class="dot-live" aria-hidden="true"></span>
+                  更新已就绪
+                </button>
+              </div>
+            </aside>
+            <div class="main">继续工作</div>
+          </div>
+          <div class="bar"><span>Branch · Model · Agent</span><span class="brand">Clutch v1.2.1</span></div>
+        </div>
+        <p class="note">中性灰底 + 细边框，不用天蓝 pill。与全量「Update」黑按钮区分：热更是弱提示，全量是强 CTA。</p>
+      </div>
+
+      <div>
+        <div class="meta"><h2>对照 · 全量版本更新</h2><span class="badge">已有</span></div>
+        <div class="win">
+          <div class="tb"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span> Clutch</div>
+          <div class="shell">
+            <aside class="side">
+              New Chat
+              <div class="side-foot">
+                <button class="settings" type="button">⚙ Settings</button>
+                <span class="btn btn-primary" title="New version available: v1.2.2">Update</span>
+                <span class="btn btn-ghost">Later</span>
+              </div>
+            </aside>
+            <div class="main">全量更新优先；此时隐藏热更 chip</div>
+          </div>
+          <div class="bar"><span></span><span class="brand">Clutch v1.2.1</span></div>
+        </div>
+        <p class="note">同位置、同 BTN token。有全量 Update 时不并排「更新已就绪」。</p>
+      </div>
+    </div>
+
+    <p class="sec">3 · 挂起触发 · 确认应用</p>
+    <div class="grid">
+      <div>
+        <div class="meta"><h2>确认对话框</h2><span class="badge ok">默认</span></div>
+        <div class="win">
+          <div class="tb"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span> Clutch</div>
+          <div class="shell">
+            <aside class="side">
+              New Chat
+              <div class="side-foot">
+                <button class="settings" type="button">⚙ Settings</button>
+                <span class="ready-chip"><span class="dot-live"></span>更新已就绪</span>
+              </div>
+            </aside>
+            <div class="main">
+              <div class="scrim">
+                <div class="dialog" role="dialog" aria-labelledby="dlg-title">
+                  <h3 id="dlg-title">运行时更新已就绪</h3>
+                  <p>将短暂重启编排服务以应用补丁。当前对话可能中断；Clutch 窗口保持打开，版本号不变。</p>
+                  <div class="dialog-meta">patch 20260711.1 · sidecar only</div>
+                  <div class="dialog-actions">
+                    <span class="btn btn-ghost btn-md">稍后</span>
+                    <span class="btn btn-primary btn-md">立即应用</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="bar"><span></span><span class="brand">Clutch v1.2.1</span></div>
+        </div>
+        <p class="note">圆角 24px、浅表面、黑主按钮。退出 App 时复用同一对话框。</p>
+      </div>
+    </div>
+
+    <p class="sec">流程</p>
+    <div class="flow">
+      <div class="flow-row"><div class="k">Check</div><div>启动后静默检查 manifest</div></div>
+      <div class="flow-row"><div class="k">Download</div><div>无 UI · 验签写入 Application Support</div></div>
+      <div class="flow-row">
+        <div class="k">Ready</div>
+        <div><span class="ready-chip"><span class="dot-live"></span>更新已就绪</span></div>
+      </div>
+      <div class="flow-row"><div class="k">Apply</div><div>确认框 → 仅重启 sidecar</div></div>
+    </div>
+
+    <p class="sec">第二档 · 重大补丁（预留）</p>
+    <div class="grid">
+      <div>
+        <div class="meta"><h2>启动页小进度</h2><span class="badge">severity major/critical</span></div>
+        <div class="win">
+          <div class="tb"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span> Clutch</div>
+          <div class="shell">
+            <div class="main" style="width:100%;">
+              <div class="splash">
+                <div class="mark">C</div>
+                <div class="title">安全修复</div>
+                <div class="sub">正在校验运行时补丁</div>
+                <div class="track"><div class="fill"></div></div>
+                <div class="stage">校验 62%</div>
+                <span class="btn btn-ghost btn-md">稍后更新</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="note">进度条用 primary（黑），卡片用 surface-container-low。非默认路径。</p>
+      </div>
+    </div>
+
+    <ul class="checklist">
+      <li>浅色主题 · 无默认深色面板 · 无高饱和渐变 / 天蓝 CTA</li>
+      <li>主按钮 neutral-900 · 次按钮 ghost（同 UpdateBanner）</li>
+      <li>就绪提示为中性 info chip，不是第二套彩色 Update</li>
+      <li>对话框 rounded-24 · 设置模态同气质</li>
+      <li>实现时用 lucide-react + 现有 BTN_* / surfaceStyles，禁止新硬编码色板</li>
+    </ul>
+  </div>
+</body>
+</html>

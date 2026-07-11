@@ -110,13 +110,10 @@ def _run_clutch_chat_task(
         extra_logs.extend(outcome.logs)
         return outcome.output, extra_logs
 
+    from src.llm.router import LLMProviderRouter
+
     response = router.chat(chat_messages, model_id=model_id)
-    if isinstance(response, dict):
-        content = response.get("content")
-        if isinstance(content, str) and content.strip():
-            return content.strip(), extra_logs
-        return str(response), extra_logs
-    return str(response), extra_logs
+    return LLMProviderRouter.extract_content(response), extra_logs
 
 
 def execute_agent_task(

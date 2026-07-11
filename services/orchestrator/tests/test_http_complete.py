@@ -222,3 +222,37 @@ def test_openai_tool_roundtrip_normalizes_assistant_and_tool_messages() -> None:
     )
     assert sent[2]["role"] == "tool"
     assert sent[2]["content"] == "ok"
+
+
+def test_http_probe_credentials_models_endpoint() -> None:
+    from src.llm.http_complete import http_probe_credentials
+
+    def fake_urlopen(req: urllib.request.Request, timeout: float = 0) -> MagicMock:
+        _ = timeout
+        assert req.full_url.endswith("/models")
+        assert req.get_method() == "GET"
+        mock_resp = MagicMock()
+        mock_resp.read.return_value = json.dumps({"data": [{"id": "agnes-2.0-flash"}]}).encode()
+        mock_resp.__enter__.return_value = mock_resp
+        return mock_resp
+
+    with patch("urllib.request.urlopen", side_effect=fake_urlopen):
+        assert http_probe_credentials(
+            provider_id="agnes",
+            base_url="https://apihub.agnes-ai.com/v1",
+            api_key="sk-test",
+            timeout_sec=5,
+        )
+
+
+def test_http_probe_credentials_native_anthropic_falls_back() -> None:
+    from src.llm.http_complete import http_probe_credentials
+
+    assert (
+        http_probe_credentials(
+            provider_id="anthropic",
+            base_url="https://api.anthropic.com/v1",
+            api_key="sk-ant",
+        )
+        is False
+    )

@@ -39,6 +39,11 @@ class GenerateBody(BaseModel):
         description="Optional website URL used as visual/style reference",
         max_length=2000,
     )
+    design_system: str | None = Field(
+        default="clutch",
+        description="Built-in design preset when no style reference is attached (default: clutch)",
+        max_length=32,
+    )
 
 
 class IterateBody(BaseModel):
@@ -123,6 +128,7 @@ async def generate_design_session(run_id: str, body: GenerateBody) -> dict[str, 
             reference_md=body.reference_md,
             reference_md_name=body.reference_md_name,
             reference_url=body.reference_url,
+            design_system=body.design_system,
         )
     except (WorkspaceError, service.DesignError, OSError, json.JSONDecodeError) as exc:
         raise _http(exc) from exc

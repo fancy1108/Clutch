@@ -22,10 +22,10 @@
 
 ## Active Deliverables
 
-### v1.2.0 Windows parity ✅ 待 commit
+### v1.2.x Windows parity ✅ 待 PR
 - **日期：** 2026-07-11
-- **Commit：** （待提交）
-- **Verification：** `python -m uv run pytest tests/test_design_service.py -p no:cacheprovider` → 28 passed；真实 Design Preview smoke → start/connect/stop/port released；`pnpm build` → passed；`pnpm test` → 17 files / 128 tests passed；`python -m uv run pytest -p no:cacheprovider` → 679 passed, 9 skipped；`cargo check` → passed；`pnpm tauri:build` → MSI/NSIS built
+- **Commit：** `10d1291` + upstream v1.2.1 merge commit（待 push）
+- **Verification：** `python -m uv run pytest tests/test_design_service.py -p no:cacheprovider` → 28 passed；真实 Design Preview smoke → start/connect/stop/port released；`pnpm build` → passed；`pnpm test` → 17 files / 128 tests passed；`python -m uv run pytest -p no:cacheprovider` → 683 passed, 9 skipped；`cargo check` → passed；`pnpm tauri:build` → v1.2.1 MSI/NSIS built
 - **证据：** `—`
 - **交付文件：**
   - `services/orchestrator/src/design/service.py` — Windows command resolution, install error handling, preview lifecycle cleanup, manifest replace retry
