@@ -275,3 +275,73 @@ def test_compose_cli_argv_opencode_run_auto() -> None:
         extra_args=["run", "--auto"],
     )
     assert cmd == ["opencode", "run", "--auto", "nihao"]
+
+
+def test_compose_cli_argv_zcode_omits_session_id_and_append_system_prompt() -> None:
+    """ZCode CLI (v0.15.x) does not accept `--session-id` or `--append-system-prompt`.
+
+    Guards against regression of the flag-passing bug reported in issue #50:
+    zcode-cli adapter must (a) not emit `--session-id <uuid>` and (b) not emit
+    `--append-system-prompt <text>`, even when the orchestrator passes both a
+    Clutch session_id and a system_prompt.
+    """
+    cmd = compose_cli_argv(
+        binary="zcode",
+        effective_prompt="ping",
+        prompt_flag="-p",
+        conversation_mode="history_only",
+        session_id="cbea05c8-920c-403e-841f-ac322b27d9d7",
+        extra_args=["--json", "--mode", "yolo"],
+        prepend_system_prompt=False,
+        system_prompt="You are ZCode CLI.",
+        supports_append_system_prompt=False,
+    )
+    # Session-related flags must be absent (id-space mismatch with zcode's sess_...).
+    assert "--session-id" not in cmd
+    assert "--resume" not in cmd
+    # No --append-system-prompt: zcode has no equivalent flag.
+    assert "--append-system-prompt" not in cmd
+    # Expected argv shape.
+    assert cmd == ["zcode", "--json", "--mode", "yolo", "-p", "ping"]
+
+
+def test_chat_generic_cli_zcode_prepends_system_prompt_when_append_unsupported() -> None:
+    """When `supports_append_system_prompt=False`, chat_generic_cli() must
+    prepend the system prompt into the user prompt body instead of emitting
+    `--append-system-prompt`. This preserves identity/behavioral context for
+    CLIs like ZCode that have no append flag."""
+    captured: dict[str, list[str]] = {}
+
+    def fake_run_cli(cmd, **kwargs):  # noqa: ANN001
+        captured["cmd"] = cmd
+        class _Result:
+            ok = True
+            stdout = "hi"
+            stderr = ""
+            exit_code = 0
+        return _Result()
+
+    out = chat_generic_cli(
+        "list the files",
+        binary="zcode",
+        conversation_mode="history_only",
+        extra_args=["--json", "--mode", "yolo"],
+        prepend_system_prompt=False,
+        supports_append_system_prompt=False,
+        system_prompt="You are ZCode CLI.",
+        session_id="cbea05c8-920c-403e-841f-ac322b27d9d7",
+        run_cli_fn=fake_run_cli,
+        prompt_flag="-p",
+    )
+    assert out == "hi"
+    cmd = captured["cmd"]
+    # No append flag emitted.
+    assert "--append-system-prompt" not in cmd
+    # No session-id flag emitted (history_only mode).
+    assert "--session-id" not in cmd
+    # System prompt got prepended into the -p prompt body.
+    idx = cmd.index("-p")
+    body = cmd[idx + 1]
+    assert body.startswith("You are ZCode CLI.")
+    assert "list the files" in body
+
