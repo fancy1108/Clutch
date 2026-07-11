@@ -17,16 +17,16 @@ Clutch 是一款**桌面应用**（Tauri + React），面向独立开发者和�
 |---|---|
 | **技术栈** | Tauri 2 · React 19 · FastAPI + LangGraph · 本地优先（`localhost:8123`） |
 | **许可证** | 见 [LICENSE](LICENSE) |
-| **当前版本** | [v1.2.1](https://github.com/fancy1108/Clutch/releases/tag/v1.2.1) · [更新日志](CHANGELOG.md#121---2026-07-11) |
+| **当前版本** | [v1.2.2](https://github.com/fancy1108/Clutch/releases/tag/v1.2.2) · [更新日志](CHANGELOG.md#122---2026-07-11) |
 
-### 最新更新（v1.2.1）
+### 最新更新（v1.2.2）
 
-- **Chat / Design / Models 热修** — 修复纯 Chat dict 崩溃；Design 底栏与设计系统选择器；Models 连接检测改用快速 `/models` probe。
-- **Sidecar 热更（D37）** — 静默下载编排服务补丁；**更新已就绪** 提示；确认后仅重启 sidecar（供后续后端热修）。
+- **Windows Design Preview / 构建对齐** — 再次发布 MSI/NSIS；Design Preview 正确解析 `.cmd` 并清理 Vite 进程树。
+- **工作流可靠性** — ZCode 不支持的 flag（#50/#51）；agentType 校验（#54）；JSON 横幅点名不兼容节点（#55）；`file_exists` 路径说明（#53）；人工审批防抖（#52）。
 
-> **v1.2.1 仅发 macOS**（Apple Silicon DMG + 应用内更新）。**Windows** 用户请继续使用 [v1.1.1](https://github.com/fancy1108/Clutch/releases/tag/v1.1.1)；新的 Windows 安装包随后续发版发布。
+> **v1.2.2 同时发 macOS + Windows。** macOS：Apple Silicon DMG + 应用内更新。Windows：MSI/NSIS（建议从 [v1.1.1](https://github.com/fancy1108/Clutch/releases/tag/v1.1.1) 升级）。
 
-更早版本（v1.2.0 Design/ZCode、v1.1.2 MiMo/Cursor 等）：[`CHANGELOG.md`](CHANGELOG.md) · [`docs/releases/`](docs/releases/)。
+更早版本（v1.2.1 热更客户端、v1.2.0 Design/ZCode 等）：[`CHANGELOG.md`](CHANGELOG.md) · [`docs/releases/`](docs/releases/)。
 
 ---
 
@@ -53,7 +53,7 @@ brew install --cask clutch
 irm https://raw.githubusercontent.com/fancy1108/Clutch/main/scripts/install.ps1 | iex
 ```
 
-指定版本：运行前设置 `CLUTCH_VERSION=v1.2.1`（或 `v1.2.0` / `v1.1.1` 安装更早稳定版）。
+指定版本：运行前设置 `CLUTCH_VERSION=v1.2.2`（或 `v1.2.1` / `v1.1.1` 安装更早稳定版）。
 
 详见 [`docs/PACKAGE_MANAGERS.md`](docs/PACKAGE_MANAGERS.md)
 

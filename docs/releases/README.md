@@ -39,6 +39,7 @@
 
 | Version | Snapshot | Notes |
 |---------|----------|-------|
+| 1.2.2 | [`v1.2.2.md`](./v1.2.2.md) | **macOS + Windows** · Design Preview Win parity · workflow reliability (#50–#55) |
 | 1.2.1 | [`v1.2.1.md`](./v1.2.1.md) | **macOS only** · Chat/Design/Models hotfix · Sidecar hotpatch client (D37) |
 | 1.2.0 | [`v1.2.0.md`](./v1.2.0.md) | **macOS only** · Design mode (D36) · ZCode CLI · Agent Log step tags |
 | 1.1.2 | [`v1.1.2.md`](./v1.1.2.md) | **macOS only** · MiMo Code CLI · Cursor Agent CLI · Terminal Orchestra fixes |

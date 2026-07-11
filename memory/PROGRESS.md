@@ -24,11 +24,15 @@
 
 ## Next Actions
 
-- Merge `fix/issues-55-53-52` → `dev`（#55/#53/#52）；关闭对应 GitHub issues
-- **#23** — Windows smoke 可从已合入的 #57 继续
-- （可选）配置 `HOMEBREW_TAP_GITHUB_TOKEN` 以免下次 CI 跳过 tap bump
+- **v1.2.2 发版中** — `release/v1.2.2` → merge `main` → tag `v1.2.2` → macOS DMG CI + Windows Build 挂 Release → Homebrew tap + updater
+- （可选）配置 `HOMEBREW_TAP_GITHUB_TOKEN`
 
 ## Recent Sessions
+
+## 2026-07-11 会话（v1.2.2 发版准备）
+
+- 版本 bump 1.2.1 → 1.2.2；CHANGELOG / README / releases 快照；**macOS + Windows**（patch 例外，对齐 Design Preview）
+- 分支：`release/v1.2.2`
 
 ## 2026-07-11 会话（开放 PR 合入 + issues #55/#53/#52）
 

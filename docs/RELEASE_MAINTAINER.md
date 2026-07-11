@@ -34,7 +34,8 @@ Windows 安装包由 [`.github/workflows/windows-build.yml`](../.github/workflow
 
 | 版本类型 | 示例 | macOS | Windows |
 |----------|------|-------|---------|
-| **Patch** | 1.1.2 | ✅ DMG + updater | ❌ 不发新包 |
+| **Patch** | 1.1.2, **1.2.1** | ✅ DMG + updater | ❌ 不发新包 |
+| **Patch（例外）** | **1.2.2** | ✅ | ✅ MSI/NSIS（Design Preview Win 对齐） |
 | **Minor（默认）** | 1.3.0, … | ✅ | ✅ MSI/NSIS 挂 Release |
 | **Minor（例外）** | **1.2.0** | ✅ DMG + updater | ❌ 本版跳过（Win 留在 v1.1.1） |
 
