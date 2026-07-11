@@ -726,6 +726,13 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   const isRefining = isWorkflowRefineEligible(clutchStatus, activeWorkflowId);
   const isRunning = clutchStatus === 'running';
   const awaitingHuman = clutchStatus === 'awaiting_human';
+  const [hitlBusy, setHitlBusy] = useState(false);
+
+  useEffect(() => {
+    if (!awaitingHuman) {
+      setHitlBusy(false);
+    }
+  }, [awaitingHuman]);
   const isPlainLlmChat = isPlainLlmSession(selectedWorkflowId, activeWorkflowId);
   const sessionDispatched = sessionHasTerminalHistory(clutchOrchestraState);
   const isTerminalDispatchHistoryReadonly = isPlainLlmChat && hasCliAgents
@@ -1508,7 +1515,11 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
               <button
                 type="button"
                 data-testid="chat-approve"
-                onClick={onApprove}
+                disabled={hitlBusy}
+                onClick={() => {
+                  setHitlBusy(true);
+                  onApprove?.();
+                }}
                 className={BTN_SUCCESS_SM}
               >
                 Bypass & Approve
@@ -1516,7 +1527,11 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
               <button
                 type="button"
                 data-testid="chat-reject"
-                onClick={onReject}
+                disabled={hitlBusy}
+                onClick={() => {
+                  setHitlBusy(true);
+                  onReject?.();
+                }}
                 className={BTN_DANGER_SM}
               >
                 Reject & Redo
@@ -1527,8 +1542,10 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                 type="text"
                 value={hillInstructions}
                 onChange={(e) => setHillInstructions(e.target.value)}
+                disabled={hitlBusy}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && hillInstructions.trim()) {
+                  if (e.key === 'Enter' && hillInstructions.trim() && !hitlBusy) {
+                    setHitlBusy(true);
                     onRetryWithInstructions?.(hillInstructions.trim());
                     setHillInstructions('');
                   }
@@ -1538,15 +1555,16 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
               />
               <button
                 type="button"
-                disabled={!hillInstructions.trim()}
+                disabled={hitlBusy || !hillInstructions.trim()}
                 onClick={() => {
-                  if (hillInstructions.trim()) {
+                  if (hillInstructions.trim() && !hitlBusy) {
+                    setHitlBusy(true);
                     onRetryWithInstructions?.(hillInstructions.trim());
                     setHillInstructions('');
                   }
                 }}
                 className={`${BTN_SM} ${
-                  hillInstructions.trim()
+                  !hitlBusy && hillInstructions.trim()
                     ? 'bg-neutral-900 text-white'
                     : 'bg-neutral-100 text-neutral-400 cursor-not-allowed'
                 }`}

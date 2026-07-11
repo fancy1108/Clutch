@@ -24,11 +24,20 @@
 
 ## Next Actions
 
-- **Windows 1.2.x parity PR** — `win` 已同步到 upstream `dev`，Windows Design Preview / Tauri build 兼容修复已本地验证，待 PR review/CI。
-- **#23** — Windows smoke 从 Windows parity PR 继续。
+- Merge `fix/issues-55-53-52` → `dev`（#55/#53/#52）；关闭对应 GitHub issues
+- **#23** — Windows smoke 可从已合入的 #57 继续
 - （可选）配置 `HOMEBREW_TAP_GITHUB_TOKEN` 以免下次 CI 跳过 tap bump
 
 ## Recent Sessions
+
+## 2026-07-11 会话（开放 PR 合入 + issues #55/#53/#52）
+
+- 合入 #56/#58 → `main`，#57 → `dev`，并 sync `main`→`dev`
+- **#55：** `getCanvasIncompatibilities` + JSON banner 点名节点/边
+- **#53：** `file_exists` FORBIDDEN/resolved path 日志；schema + PRODUCT_INTRO
+- **#52：** human_decision 锁、清 check_result、resume 时 `running`、HITL 按钮防抖
+- **校验：** `./scripts/verify.sh` → 711 passed；vitest workflowFormat 4 passed
+- **分支：** `fix/issues-55-53-52`
 
 ## 2026-07-11 会话（v1.2.x Windows parity · PR 准备）
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import subprocess
+import time
 from typing import Any
 
 from src.adapters.cli_adapter import CliAdapterError, run_cli
@@ -18,12 +19,39 @@ def run_checks(checks: list[dict[str, Any]]) -> tuple[str, list[str]]:
     for index, check in enumerate(checks, start=1):
         check_type = check.get("type", "")
         if check_type == "file_exists":
-            rel = str(check.get("path", ""))
-            target = resolve_allowed_path(rel)
-            if target.is_file():
-                logs.append(tagged(TAG_CHECK, f"check {index} file_exists OK: {rel}"))
+            rel = str(check.get("path", "")).strip()
+            try:
+                target = resolve_allowed_path(rel)
+            except WorkspaceError as exc:
+                logs.append(
+                    tagged(
+                        TAG_CHECK,
+                        f"check {index} file_exists FORBIDDEN (outside workspace): {rel} ({exc})",
+                    )
+                )
+                return "failed", logs
+            found = False
+            for attempt in range(3):
+                if target.is_file():
+                    found = True
+                    break
+                if attempt < 2:
+                    time.sleep(0.2)
+            if found:
+                logs.append(
+                    tagged(
+                        TAG_CHECK,
+                        f"check {index} file_exists OK: {rel} → {target}",
+                    )
+                )
             else:
-                logs.append(tagged(TAG_CHECK, f"check {index} file_exists FAILED: {rel}"))
+                logs.append(
+                    tagged(
+                        TAG_CHECK,
+                        f"check {index} file_exists FAILED: {rel} → {target} "
+                        "(path is workspace-relative; host /tmp/... is outside the workspace)",
+                    )
+                )
                 return "failed", logs
         elif check_type in {"shell", "lint"}:
             command = check.get("command")

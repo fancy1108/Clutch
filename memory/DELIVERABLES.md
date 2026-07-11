@@ -22,6 +22,19 @@
 
 ## Active Deliverables
 
+### Issues #55 / #53 / #52 ✅
+- **日期：** 2026-07-11
+- **Commit：** `c7dfaa1` — fix: address workflow issues #55, #53, and #52
+- **Verification：** `./scripts/verify.sh` → 711 passed, 2 skipped；pre-commit hook green
+- **证据：** —
+- **交付文件：**
+  - `apps/desktop/src/services/workflowFormat.ts` — canvas incompatibility reasons
+  - `apps/desktop/src/components/WorkflowOrchestration.tsx` / `WorkflowJsonPanel.tsx` — banner wiring
+  - `services/orchestrator/src/evaluator.py` — file_exists FORBIDDEN + resolved path
+  - `services/orchestrator/src/compiler/compiler.py` / `main.py` — human gate resume hardening
+  - `apps/desktop/src/components/ChatFeed.tsx` — HITL button debounce
+  - `docs/PRODUCT_INTRO.md` / `CHANGELOG.md` / `workflows/workflow.schema.json` — docs
+
 ### v1.2.x Windows parity ✅ 待 PR
 - **日期：** 2026-07-11
 - **Commit：** `10d1291` + upstream v1.2.1 merge commit（待 push）

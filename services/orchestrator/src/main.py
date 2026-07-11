@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import threading
 import uuid
 from collections.abc import Awaitable, Callable
 from copy import deepcopy
@@ -154,6 +155,8 @@ app.add_middleware(SidecarAuthMiddleware)
 
 _run_states: dict[str, ClutchState] = {}
 _run_sessions: dict[str, WorkflowSession] = {}
+_human_decision_locks: dict[str, threading.Lock] = {}
+_human_decision_inflight: set[str] = set()
 
 
 class StartRunRequest(BaseModel):
@@ -674,72 +677,120 @@ def _apply_human_decision(
     decision: str,
     instructions: str = "",
 ) -> tuple[ClutchState, dict[str, Any], dict[str, Any], str]:
+    lock = _human_decision_locks.setdefault(run_id, threading.Lock())
+    with lock:
+        return _apply_human_decision_locked(run_id, decision, instructions)
+
+
+def _apply_human_decision_locked(
+    run_id: str,
+    decision: str,
+    instructions: str = "",
+) -> tuple[ClutchState, dict[str, Any], dict[str, Any], str]:
+    """Apply approve/reject/retry once per gate; ignore duplicate clicks (#52)."""
     _setup_run_log_forwarder(run_id)
     from src.run_log_forwarder import get_forwarder
+    from src.workflow_runtime import clear_workflow_step_callback, register_workflow_step_callback
 
     forwarder = get_forwarder(run_id)
     state = _get_or_create_run(run_id)
-    if decision == "approve":
-        supervisor_text = tr("Human approval: Approved, continuing workflow.", "人工审批：已通过，继续执行工作流。")
-    elif decision == "reject":
-        supervisor_text = tr("Human approval: Rejected, run marked as failed.", "人工审批：已拒绝，运行标记为失败。")
-    else:
-        supervisor_text = tr(
-            f"Human approval: Retry with instructions - {instructions or '(no comments)'}",
-            f"人工审批：按指令重试 — {instructions or '（无附加说明）'}"
-        )
 
-    supervisor_message = _chat_message("Supervisor", supervisor_text)
-    log_line = tagged(TAG_HUMAN, supervisor_text)
-    messages = list(state["messages"]) + [supervisor_message]
-    forwarder.emit(log_line, node_id=str(state.get("active_node_id", "")))
-    state = _get_or_create_run(run_id)
-    logs = list(state["terminal_logs"])
+    # Duplicate / stale clicks after the gate already advanced.
+    if state["status"] != "awaiting_human":
+        empty = _chat_message("Supervisor", "")
+        return state, {}, empty, ""
 
-    session = _run_sessions.get(run_id)
-    if session and state["status"] == "awaiting_human":
-        graph_result = resume_workflow(
-            session,
-            run_id,
-            decision,
-            instruction=instructions if decision == "retry" else "",
-        )
-        _emit_workflow_graph_tail(run_id, graph_result)
-        patch = _merge_graph_resume(
-            state,
-            graph_result,
-            base_messages=messages,
-            base_logs=logs,
-            include_logs=False,
-        )
-    elif decision == "reject":
-        patch = {
-            "messages": messages,
-            "terminal_logs": logs,
-            "status": "failed",
-            "active_agent": "Supervisor",
-        }
-    elif decision == "approve":
-        patch = {
-            "messages": messages,
-            "terminal_logs": logs,
-            "status": "passed",
-            "active_agent": "Supervisor",
-        }
-    else:
-        patch = {
-            "messages": messages,
-            "terminal_logs": logs,
-            "status": "running",
-            "active_agent": "Builder",
-            "active_node_id": "n1",
-        }
+    if run_id in _human_decision_inflight:
+        empty = _chat_message("Supervisor", "")
+        return state, {}, empty, ""
 
-    state = _merge_patch(state, patch)
-    _commit_run_state(run_id, state)
-    if _is_terminal_status(state["status"]):
-        update_run_record(run_id, {"status": state["status"], "ended_at": _iso_timestamp()})
-    return state, patch, supervisor_message, log_line
+    _human_decision_inflight.add(run_id)
+    try:
+        if decision == "approve":
+            supervisor_text = tr(
+                "Human approval: Approved, continuing workflow.",
+                "人工审批：已通过，继续执行工作流。",
+            )
+        elif decision == "reject":
+            supervisor_text = tr(
+                "Human approval: Rejected, run marked as failed.",
+                "人工审批：已拒绝，运行标记为失败。",
+            )
+        else:
+            supervisor_text = tr(
+                f"Human approval: Retry with instructions - {instructions or '(no comments)'}",
+                f"人工审批：按指令重试 — {instructions or '（无附加说明）'}",
+            )
+
+        supervisor_message = _chat_message("Supervisor", supervisor_text)
+        log_line = tagged(TAG_HUMAN, supervisor_text)
+        messages = list(state["messages"]) + [supervisor_message]
+        forwarder.emit(log_line, node_id=str(state.get("active_node_id", "")))
+        state = _get_or_create_run(run_id)
+        logs = list(state["terminal_logs"])
+
+        session = _run_sessions.get(run_id)
+        if session and state["status"] == "awaiting_human":
+            # Leave HITL UI immediately while resume may run long downstream agents.
+            early = {
+                "messages": messages,
+                "terminal_logs": logs,
+                "status": "running",
+                "active_agent": "Supervisor",
+            }
+            state = _commit_run_state(run_id, _merge_patch(state, early))
+            forwarder.emit_state_patch(early, "running")
+            register_workflow_step_callback(
+                run_id, lambda patch: _apply_workflow_step_patch(run_id, patch)
+            )
+            try:
+                graph_result = resume_workflow(
+                    session,
+                    run_id,
+                    decision,
+                    instruction=instructions if decision == "retry" else "",
+                )
+            finally:
+                clear_workflow_step_callback(run_id)
+            _emit_workflow_graph_tail(run_id, graph_result)
+            patch = _merge_graph_resume(
+                state,
+                graph_result,
+                base_messages=messages,
+                base_logs=logs,
+                include_logs=False,
+            )
+        elif decision == "reject":
+            patch = {
+                "messages": messages,
+                "terminal_logs": logs,
+                "status": "failed",
+                "active_agent": "Supervisor",
+            }
+        elif decision == "approve":
+            # No in-memory session (e.g. sidecar restart) — cannot resume graph.
+            patch = {
+                "messages": messages,
+                "terminal_logs": logs,
+                "status": "passed",
+                "active_agent": "Supervisor",
+            }
+        else:
+            patch = {
+                "messages": messages,
+                "terminal_logs": logs,
+                "status": "running",
+                "active_agent": "Builder",
+                "active_node_id": "n1",
+            }
+
+        state = _merge_patch(state, patch)
+        _commit_run_state(run_id, state)
+        if _is_terminal_status(state["status"]):
+            update_run_record(run_id, {"status": state["status"], "ended_at": _iso_timestamp()})
+        return state, patch, supervisor_message, log_line
+    finally:
+        _human_decision_inflight.discard(run_id)
 
 
 def _validation_http_error(exc: WorkflowValidationError) -> HTTPException:
