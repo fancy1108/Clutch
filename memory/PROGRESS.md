@@ -20,11 +20,10 @@
 | `git tag v1.2.1` on `main` + push | ✅ |
 | macOS DMG CI (`release.yml`) | ✅ [run](https://github.com/actions/runs/29136178177) |
 | Homebrew tap sync | ✅（CI 缺 `HOMEBREW_TAP_GITHUB_TOKEN`，已手动 `sync-homebrew-tap.sh`） |
-| macOS updater (`latest.json`) | 🔄 已触发 [run](https://github.com/fancy1108/Clutch/actions/runs/29136334316) |
+| macOS updater (`latest.json`) | ✅ [run](https://github.com/fancy1108/Clutch/actions/runs/29136334316) |
 
 ## Next Actions
 
-- 确认 updater assets 跑完（`latest.json` + `.tar.gz` + `.sig`）
 - **#23** — Windows smoke 继续用 v1.1.1
 - （可选）配置 `HOMEBREW_TAP_GITHUB_TOKEN` 以免下次 CI 跳过 tap bump
 
