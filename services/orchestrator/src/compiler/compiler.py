@@ -218,12 +218,15 @@ def _handle_human_gate(state: CompilerState, node: dict[str, Any], _workflow: di
             "active_agent": "Supervisor",
             "status": "awaiting_human",
         }
+    # Keep human_decision for routing_signal; clear check_result so a bypassed
+    # failed check cannot short-circuit a later re-entry (#52).
     return {
         **state,
         "active_node_id": node["id"],
         "active_agent": "Supervisor",
         "status": "running",
         "human_decision": decision,
+        "check_result": "",
     }
 
 
@@ -427,7 +430,9 @@ def resume_workflow(
     update: dict[str, str] = {"human_decision": decision}
     if instruction.strip():
         update["current_instruction"] = instruction.strip()
-    if decision == "retry":
+    # Clear stale check_result on approve/retry so preset "failed" cannot
+    # short-circuit a later check node (#52 / #53 follow-on).
+    if decision in {"approve", "retry"}:
         update["check_result"] = ""
     session.compiled.update_state(session.config, update)
     result = session.compiled.invoke(Command(resume=decision), session.config)
@@ -441,4 +446,9 @@ def resume_workflow(
             "active_agent": "Supervisor",
             "status": "awaiting_human",
         }
+    # Consume the decision in the checkpoint so a later gate is not auto-approved.
+    try:
+        session.compiled.update_state(session.config, {"human_decision": ""})
+    except Exception:
+        pass
     return result

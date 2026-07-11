@@ -16,6 +16,23 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ### Fixed
 
+## [1.2.2] - 2026-07-11
+
+Patch release — **macOS + Windows**. Ships Windows Design Preview / build parity (users can leave [v1.1.1](https://github.com/fancy1108/Clutch/releases/tag/v1.1.1)), plus workflow reliability fixes from community reports (#50–#55). Exception to the usual “patch = macOS-only” rule so Windows gets Design Preview in the same train as macOS.
+
+> **Release assets (v1.2.2):** Tag `v1.2.2` — macOS `Clutch_1.2.2_aarch64.dmg` + `SHA256SUMS.txt` (CI `release.yml`); Windows MSI/NSIS via `Windows Build` workflow attached to the Release; optional macOS updater via `Release (updater assets)`. Product snapshot: [`docs/releases/v1.2.2.md`](docs/releases/v1.2.2.md).
+
+### Fixed
+
+- **ZCode CLI (#50 / #51):** Stop emitting unsupported `--session-id` / `--append-system-prompt`; use `history_only` and prepend system prompt into `-p` body (avoids exit-1 misclassified as “sign-in required”).
+- **Agent config (#54):** Reject unknown `agentType` on save; warn when workflow `tool` disagrees with agent `agentType` (silent mis-routing).
+- **Workflow JSON banner (#55):** When a flow is forced into JSON mode, the hint lists the offending node/edge ids (e.g. `human_gate`, conditional `when:`) instead of only a generic “complex workflow” message.
+- **`check(file_exists)` (#53):** Outside-workspace absolute paths fail cleanly with a `FORBIDDEN` log (no crash); failed checks log the resolved workspace path so `/tmp/...` vs workspace-relative mismatches are obvious.
+- **Human gate approve spam (#52):** Serialize `human_decision` per run, ignore duplicate clicks after the gate advances, clear stale `check_result` on approve, patch `status: running` during resume, and disable HITL buttons until status leaves `awaiting_human`.
+- **Windows Design Preview:** Resolve `pnpm` / `npm` / `npx` through full executable paths, handle pnpm ignored-build policy for generated Vite previews, normalize install/start failures into `DesignError`, and kill the preview process tree on stop/timeout.
+- **Windows Design sessions:** Retry atomic manifest replacement when Windows briefly locks `manifest.json` during async polling.
+- **Windows Tauri build/dev:** `tauri:dev` uses the cross-platform Node launcher; Tauri `beforeBuildCommand` uses a Node sidecar-build wrapper that falls back to `python -m uv` or the orchestrator `.venv` instead of requiring bare `uv` on `PATH`.
+
 ## [1.2.1] - 2026-07-11
 
 Patch release — **macOS only** (Apple Silicon DMG + in-app updater). Fixes Chat crash / Design footer & palette / Models connection false failures from v1.2.0, and ships **sidecar hotpatch** client (D37) for future backend-only patches. Windows users remain on [v1.1.1](https://github.com/fancy1108/Clutch/releases/tag/v1.1.1).

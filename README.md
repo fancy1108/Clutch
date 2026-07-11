@@ -17,16 +17,16 @@ Clutch is a **desktop app** (Tauri + React) for developers and technical operato
 |---|---|
 | **Stack** | Tauri 2 · React 19 · FastAPI + LangGraph · local-first (`localhost:8123`) |
 | **License** | See [LICENSE](LICENSE) |
-| **Latest release** | [v1.2.1](https://github.com/fancy1108/Clutch/releases/tag/v1.2.1) · [Changelog](CHANGELOG.md#121---2026-07-11) |
+| **Latest release** | [v1.2.2](https://github.com/fancy1108/Clutch/releases/tag/v1.2.2) · [Changelog](CHANGELOG.md#122---2026-07-11) |
 
-### What's new in v1.2.1
+### What's new in v1.2.2
 
-- **Chat / Design / Models hotfixes** — Fix plain-chat dict crash; Design footer + design-system picker; faster Models connection probe (Agnes TTFT).
-- **Sidecar hotpatch (D37)** — Silent orchestrator patch download; **Update ready** chip; apply restarts sidecar only (future backend-only fixes).
+- **Windows Design Preview / build parity** — MSI/NSIS again; Design Preview resolves `.cmd` tools and cleans Vite process trees.
+- **Workflow reliability** — ZCode unsupported flags (#50/#51); agentType validation (#54); JSON banner names incompatible nodes (#55); `file_exists` path clarity (#53); human-gate approve debounce (#52).
 
-> **v1.2.1 is macOS-only** (Apple Silicon DMG + in-app updater). **Windows** users should stay on [v1.1.1](https://github.com/fancy1108/Clutch/releases/tag/v1.1.1); new Windows installers ship in a later release.
+> **v1.2.2 ships macOS + Windows.** macOS: Apple Silicon DMG + in-app updater. Windows: MSI/NSIS (upgrade from [v1.1.1](https://github.com/fancy1108/Clutch/releases/tag/v1.1.1) recommended).
 
-Older releases (v1.2.0 Design/ZCode, v1.1.2 MiMo/Cursor, …): [`CHANGELOG.md`](CHANGELOG.md) · [`docs/releases/`](docs/releases/).
+Older releases (v1.2.1 hotpatch client, v1.2.0 Design/ZCode, …): [`CHANGELOG.md`](CHANGELOG.md) · [`docs/releases/`](docs/releases/).
 
 ---
 
@@ -53,7 +53,7 @@ brew install --cask clutch
 irm https://raw.githubusercontent.com/fancy1108/Clutch/main/scripts/install.ps1 | iex
 ```
 
-Pin a version: `CLUTCH_VERSION=v1.2.1` before running either script (or `v1.2.0` / `v1.1.1` for older releases).
+Pin a version: `CLUTCH_VERSION=v1.2.2` before running either script (or `v1.2.1` / `v1.1.1` for older releases).
 
 Install channels (maintainers): [`docs/RELEASE_MAINTAINER.md`](docs/RELEASE_MAINTAINER.md)
 

@@ -306,7 +306,22 @@ def _write_manifest(session_dir: Path, manifest: dict[str, Any]) -> None:
     tmp = session_dir / f".{MANIFEST}.{os.getpid()}.{threading.get_ident()}.tmp"
     payload = json.dumps(manifest, indent=2, ensure_ascii=False) + "\n"
     tmp.write_text(payload, encoding="utf-8")
-    os.replace(tmp, path)
+    last_err: PermissionError | None = None
+    for _ in range(12):
+        try:
+            os.replace(tmp, path)
+            return
+        except PermissionError as exc:
+            if not _is_windows():
+                raise
+            last_err = exc
+            time.sleep(0.01)
+    try:
+        tmp.unlink(missing_ok=True)
+    except OSError:
+        pass
+    if last_err is not None:
+        raise last_err
 
 
 def _update_process_status(
@@ -3384,6 +3399,7 @@ def generate_react(run_id: str) -> dict[str, Any]:
     )
     react_dir = session_dir / "react"
     if react_dir.exists():
+        stop_preview(run_id)
         shutil.rmtree(react_dir)
     for rel, content in files.items():
         path = react_dir / rel
@@ -3402,6 +3418,100 @@ def _free_port() -> int:
         return int(sock.getsockname()[1])
 
 
+def _resolve_command(name: str) -> str | None:
+    resolved = shutil.which(name)
+    if resolved:
+        return resolved
+    if _is_windows() and not name.lower().endswith(".cmd"):
+        return shutil.which(f"{name}.cmd") or shutil.which(f"{name}.CMD")
+    return None
+
+
+def _is_windows() -> bool:
+    return os.name == "nt"
+
+
+def _install_react_dependencies(react_dir: Path) -> None:
+    attempts: list[str] = []
+    found_command = False
+    for name in ("pnpm", "npm"):
+        command = _resolve_command(name)
+        if not command:
+            attempts.append(f"{name}: not found")
+            continue
+        found_command = True
+        args = [command, "install"]
+        if name == "pnpm":
+            args.append("--config.dangerously-allow-all-builds=true")
+        try:
+            result = subprocess.run(
+                args,
+                cwd=react_dir,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=300,
+                check=False,
+            )
+        except subprocess.TimeoutExpired as exc:
+            raise DesignError(f"{name} install timed out after {int(exc.timeout)}s") from exc
+        except OSError as exc:
+            attempts.append(f"{name}: {exc}")
+            continue
+        if result.returncode == 0:
+            return
+        detail = (result.stderr or result.stdout or f"exit code {result.returncode}")[:400]
+        attempts.append(f"{name}: {detail}")
+    if not found_command:
+        raise DesignError("pnpm or npm was not found on PATH")
+    raise DesignError(f"Failed to install deps: {'; '.join(attempts)}")
+
+
+def _local_bin_command(react_dir: Path, name: str) -> str | None:
+    bin_dir = react_dir / "node_modules" / ".bin"
+    suffixes = (".cmd", ".exe", "") if _is_windows() else ("",)
+    for suffix in suffixes:
+        candidate = bin_dir / f"{name}{suffix}"
+        if candidate.is_file():
+            return str(candidate)
+    return None
+
+
+def _preview_command(react_dir: Path, port: int) -> list[str]:
+    vite = _local_bin_command(react_dir, "vite")
+    if vite:
+        return [vite, "--host", "127.0.0.1", "--port", str(port), "--strictPort"]
+    npx = _resolve_command("npx")
+    if not npx:
+        raise DesignError("npx was not found on PATH")
+    return [npx, "vite", "--host", "127.0.0.1", "--port", str(port), "--strictPort"]
+
+
+def _stop_preview_process(proc: subprocess.Popen[Any], *, timeout: float = 5.0) -> None:
+    if proc.poll() is not None:
+        return
+    if _is_windows() and getattr(proc, "pid", None):
+        subprocess.run(
+            ["taskkill", "/PID", str(proc.pid), "/T", "/F"],
+            capture_output=True,
+            check=False,
+        )
+        try:
+            proc.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            logger.warning("preview process did not exit after taskkill pid=%s", proc.pid)
+            proc.kill()
+            proc.wait(timeout=timeout)
+        return
+    proc.terminate()
+    try:
+        proc.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.wait(timeout=timeout)
+
+
 def start_preview(run_id: str) -> dict[str, Any]:
     session_dir = _session_dir(run_id)
     manifest = _read_manifest(session_dir)
@@ -3413,22 +3523,18 @@ def start_preview(run_id: str) -> dict[str, Any]:
         if existing and existing.get("proc") and existing["proc"].poll() is None:
             return {"run_id": run_id, "url": existing["url"], "port": existing["port"], "status": "running"}
     if not (react_dir / "node_modules").is_dir():
-        install = subprocess.run(
-            ["pnpm", "install"], cwd=react_dir, capture_output=True, text=True, timeout=300, check=False
-        )
-        if install.returncode != 0:
-            install = subprocess.run(
-                ["npm", "install"], cwd=react_dir, capture_output=True, text=True, timeout=300, check=False
-            )
-            if install.returncode != 0:
-                raise DesignError(f"Failed to install deps: {(install.stderr or install.stdout)[:400]}")
+        _install_react_dependencies(react_dir)
     port = _free_port()
-    proc = subprocess.Popen(
-        ["npx", "vite", "--host", "127.0.0.1", "--port", str(port), "--strictPort"],
-        cwd=react_dir,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
+    command = _preview_command(react_dir, port)
+    try:
+        proc = subprocess.Popen(
+            command,
+            cwd=react_dir,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except OSError as exc:
+        raise DesignError(f"Failed to start preview: {exc}") from exc
     url = f"http://127.0.0.1:{port}"
     deadline = time.time() + 15
     while time.time() < deadline:
@@ -3440,7 +3546,7 @@ def start_preview(run_id: str) -> dict[str, Any]:
         except OSError:
             time.sleep(0.3)
     else:
-        proc.terminate()
+        _stop_preview_process(proc)
         raise DesignError("Preview server did not become ready")
     with _preview_lock:
         _preview_procs[run_id] = {"proc": proc, "port": port, "url": url}
@@ -3453,11 +3559,7 @@ def stop_preview(run_id: str) -> dict[str, Any]:
     with _preview_lock:
         entry = _preview_procs.pop(run_id, None)
     if entry and entry.get("proc") and entry["proc"].poll() is None:
-        entry["proc"].terminate()
-        try:
-            entry["proc"].wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            entry["proc"].kill()
+        _stop_preview_process(entry["proc"])
     try:
         session_dir = _session_dir(run_id)
         manifest = _read_manifest(session_dir)

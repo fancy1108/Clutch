@@ -124,7 +124,7 @@ graph TD
 
 * **General Settings**：支持用户修改个人名称并应用在发送气泡标签中；支持上传自定义头像并转换为 base64 存盘；支持小/默认/大/特大/超级大字体大小偏好并持久化（`data-font-size`）；支持中英文双语对照切换，后端 API / WS 错误采用 `tr()` 响应；利用 Tauri `getVersion` 插件动态显示真实桌面客户端版本号。
 * **Agent Settings**：提供可视化 Agent 管理器（`AgentManager.tsx`），支持自由增删改自定义 Agent，配置其名称、头像、System Prompt、模型及关联 MCP 工具。**Skills / MCP 模块按 Agent 类型分档**：仅 **Clutch** 内置 Agent 可绑定 Clutch Skills Registry 与 MCP Hub；**Claude Code** / **OpenCode** / **MiMo Code** CLI Agent 展示各自原生配置只读扫描与 Settings 深链；其他 CLI 类型显示「即将上线」，避免误用全局 Registry。
-* **Workflow Settings**：管理和选择可用的流程图 SOP 模板，支持一键在 Chat 中启用。内置模板含 `weather-to-vision`、`video-production`、**Design to Code**（`design-to-code`，Design 批准后交给 Builder）与社区贡献的 **Memory-Augmented Pipeline (Epicode)**（`epicode-memory-pipeline.json`；需自行配置 Epicode MCP，见 [`docs/mcp-servers/epicode.md`](./mcp-servers/epicode.md)）。
+* **Workflow Settings**：管理和选择可用的流程图 SOP 模板，支持一键在 Chat 中启用。内置模板含 `weather-to-vision`、`video-production`、**Design to Code**（`design-to-code`，Design 批准后交给 Builder）与社区贡献的 **Memory-Augmented Pipeline (Epicode)**（`epicode-memory-pipeline.json`；需自行配置 Epicode MCP，见 [`docs/mcp-servers/epicode.md`](./mcp-servers/epicode.md)）。含 `check` / `human_gate` / 条件边的复杂流程会强制 **JSON 编辑模式**；提示条会点名导致降级的节点 id / 边 id（如 `review-gate (human_gate)`、`edge e5 when:reject`），不再只显示泛化的「复杂流程」。`check(file_exists)` 的 `path` 必须是**工作区相对路径**（如 `.clutch/staging/kp.json`）；主机绝对路径（如 `/tmp/...`）会被拒绝并在 Terminal 标明 FORBIDDEN，避免与 agent 写入位置错位时静默失败。
 * **Tool Settings**：对 20+ 主流 Agent CLI 白名单做本机探测——**已安装的一律展示**（含 Rivet、OpenCode、MiMo Code、CodeBuddy、Cursor Agent、ZCode 等扩展工具）；**未安装时默认仅推荐经 Clutch 验证的 CLI**（`codebuddy`、`cursor-agent`、`mimo`、`opencode`、`claude`、`ollama`、`codex`、`agy`、`zcode`）及安装指引。CodeBuddy 内置 headless 路由（`codebuddy -p`，curated `--dangerously-skip-permissions`）；OpenCode 内置 headless 路由（`run --auto`）；MiMo Code 内置 headless 路由（`mimo run --dangerously-skip-permissions`）；ZCode 内置 headless 路由（`zcode -p --mode yolo --json`），Auto Config 错误参数不会覆盖 curated 配置。支持 Connect 偏好与 **Auto Config**（LLM 分析 `--help` 写入 `custom_clis.json` 路由参数）。
 * **Model Provider Settings**（**Models by Agent** 顶栏 Tab：**Clutch Agent** · **Claude Code** · **OpenCode** · **MiMo Code**）：**Clutch** Tab 配置内置 Agent 所用云端/本地模型 API Keys（支持无感导入 `.cc-switch` 凭证至 Clutch 侧）。内置文本提供商含 **DeepSeek**、**Anthropic**、**OpenAI**、**Google**、**Ollama**、**Agnes** 与 **OpenCode Zen**（[opencode.ai](https://opencode.ai/auth) Zen 工作区 API Key；端点 `https://opencode.ai/zen/v1`）。**Claude Code** / **OpenCode** / **MiMo Code** Tab 只读扫描各 CLI 原生 model 配置；Claude Code 在已安装 `cc-switch` CLI 时可切换 provider。**OpenCode Zen**（供 Clutch 内置 Agent，非 OpenCode CLI）仍在 Clutch Tab 配置。内置 **Agnes 2.0 Flash**（对话）、**Agnes Image 2.1 Flash**（生图）与 **Agnes Video V2.0**（文生视频）；**Ollama 条目与 Create Agent 下拉同源**——实时读取本机 `ollama list` 已安装 tag。
 * **Skills Settings**（同上 Agent Tab）：Clutch Tab 管理 Skills Registry 挂载；Claude Code / OpenCode / **MiMo Code** Tab 只读扫描原生 `SKILL.md` 目录。
@@ -144,7 +144,7 @@ graph TD
 * **侧栏历史**：Design 会话列表展示**与画布一致的界面缩略图**（对已生成 HTML 做等比预览）+ 标题 + 日期；**新对话 / 尚未生成界面**时为灰色缺省占位，不展示假缩略图。
 * **右侧栏**：与 Coding 相同的可折叠 Overview / Files / Changes / Terminal；进入 Design 时**默认收缩**。产物落在工作区 `.clutch/design/sessions/` 下，**每个会话一个文件夹**，命名为 `{标题}-{web|mobile}__{run_id}`（便于在 Files 中辨认）；**删除侧栏会话时同步删除**对应产物目录（含 HTML / DESIGN.md / React 等）。**Terminal** 会镜像 Design 生成进度（`process_log` 与 status/html 回显），便于排查「侧栏已停转但画布仍 Sketching」类问题。
 * **无限画布（Prototype）**：提交后进入 React Flow 画布；有参考时先展示 **Design.md / 网址 / 参考图** 源卡，再**设计规范卡**（色板 / 字体 / 组件），**再**描绘生成界面卡；左侧 **Agent Log** 展示 Thinking 与 Execution，**每条执行记录**以标签形式显示步骤 `status`、所用 **model** 与 **token** 用量（会话中途切换模型时历史步骤仍保留当时标签）；底部浮动条用自然语言修改界面或规范。**选中**画布卡片（UI / 规范 / 参考）后底栏出现上下文 chip；发送时默认在选中 UI 上**就地修改**（明确说「新增/另一个页面」才加新画板）；支持 ⌘/Ctrl+C/V 复制粘贴 UI 卡；UI 卡可 **点选元素** 做局部修改。侧栏转圈与画布 UI 回显对齐：仅在屏幕 HTML 真正可用（或失败）后才结束 busy。
-* **界面代码层（UI code）**：底栏 **界面代码** 打开右侧面板（不自动弹出、无引导横幅）。流程：**批准原型 → 生成 Vite + React + Tailwind（`react/`）→ 本地 preview → 批准界面代码 → 交给编码**。
+* **界面代码层（UI code）**：底栏 **界面代码** 打开右侧面板（不自动弹出、无引导横幅）。流程：**批准原型 → 生成 Vite + React + Tailwind（`react/`）→ 本地 preview → 批准界面代码 → 交给编码**。Windows 下 preview 会解析 `pnpm.cmd` / `npm.cmd` / `npx.cmd` 完整路径，停止或重新生成时清理 Vite/Node 进程树，避免端口残留。
 * **非目标**：不替代 Figma 协作；无独立 Design 项目 CRUD 左栏；不生成全栈 Auth/DB；不做云端分享。
 
 内置工作流模板 **Design to Code**（`design-to-code`）可在批准后将设计产物交给 Builder CLI 继续实现。
@@ -207,7 +207,7 @@ cd services/orchestrator
 uv run uvicorn src.main:app --reload --port 8124
 ```
 
-> 开发期 Sidecar 监听 **8124**；打包桌面安装包内嵌 Sidecar 为 **8123**。`tauri.conf.json` 的 `beforeDevCommand` 为空，由跨平台 `scripts/tauri-dev.py` 管理 Vite 生命周期，避免 Tauri 误杀 dev server；旧版 Bash 启动器保留为 `pnpm tauri:dev:sh`。
+> 开发期 Sidecar 监听 **8124**；打包桌面安装包内嵌 Sidecar 为 **8123**。`tauri.conf.json` 的 `beforeDevCommand` 为空，由跨平台 `scripts/run-tauri-dev.mjs` → `scripts/tauri-dev.py` 管理 Vite 生命周期，避免 Tauri 误杀 dev server；旧版 Bash 启动器保留为 `pnpm tauri:dev:sh`。
 
 ### 5.2 本地轻量校验 (Pre-commit)
 在提交代码前运行轻量校验，确保编译通过、单元测试正常、文档未产生漂移：
@@ -231,7 +231,7 @@ uv run uvicorn src.main:app --reload --port 8124
 ```bash
 pnpm tauri build
 ```
-编译成功后，生产版自动内嵌 Sidecar Python 运行环境，并按当前平台输出 `.dmg`、`.msi` 或 NSIS `.exe` 安装包。桌面壳启动时会清理残留的 Sidecar 进程；**Cmd+Q** 完全退出时终止内嵌 `orchestrator`；macOS 在仅关闭窗口后点击 Dock 图标可重新显示主窗口。
+编译成功后，生产版自动内嵌 Sidecar Python 运行环境，并按当前平台输出 `.dmg`、`.msi` 或 NSIS `.exe` 安装包。Tauri build 通过 `scripts/run-build-sidecar.mjs` 构建 PyInstaller sidecar：优先使用 `uv`，再尝试 `python -m uv`，最后复用 `services/orchestrator/.venv`。桌面壳启动时会清理残留的 Sidecar 进程；**Cmd+Q** 完全退出时终止内嵌 `orchestrator`；macOS 在仅关闭窗口后点击 Dock 图标可重新显示主窗口。
 
 **Windows（v1.0.2+）：** MSI / NSIS 由 CI 构建；维护者尚未在实体 Win10/11 上完成完整人工 smoke，详见 Release 说明与 [`docs/INSTALL.md`](./INSTALL.md#windows)。
 

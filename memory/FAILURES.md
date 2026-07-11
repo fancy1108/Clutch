@@ -27,6 +27,13 @@
 - **解决：** macOS/Linux 构建改为 `console=True`（Tauri 子进程启动不弹终端）；Windows 仍 `console=False`（OSR-17）
 - **规避：** 发新版 DMG 前须重跑 `build-sidecar.py`；已安装 v1.1.2 用户需升级
 
+### [RESOLVED] Windows · Design Preview / Tauri build 不能依赖裸命令（2026-07-11）
+
+- **现象：** Design Preview 在 Windows `shell=False` 下直接执行 `pnpm/npm/npx` 可能 `WinError 2`；pnpm 10+ ignored builds 会让临时 Vite preview install 返回非 0；Tauri `beforeBuildCommand` 使用裸 `uv` 时在 PATH 无 `uv` 的机器上失败。
+- **根因：** Windows 可执行解析需要 `.cmd` 完整路径；generated Vite preview 需要允许 esbuild postinstall；构建链路假设 `uv` 在 PATH，而本机可用入口是 `python -m uv`。
+- **解决：** Design service 统一 `shutil.which` 解析命令，pnpm install 加 `--config.dangerously-allow-all-builds=true`，install 捕获用 UTF-8 replace，preview stop 用进程树清理；Tauri build 入口改为 `scripts/run-build-sidecar.mjs`。
+- **规避：** Windows 新增 Node/Python/包管理器调用时，先解析完整可执行路径，避免裸 CLI；Tauri build 不写裸 `uv`。
+
 ## 已解决问题（经验库）
 
 ### [RESOLVED] D12 · tauri-playwright 无法在 `<textarea>` 上 fill/type（2026-06-23）

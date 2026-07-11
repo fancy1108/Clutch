@@ -149,7 +149,10 @@
           "type": "string",
           "enum": ["file_exists", "lint", "shell"]
         },
-        "path": { "type": "string" },
+        "path": {
+          "type": "string",
+          "description": "Workspace-relative path for file_exists (e.g. .clutch/staging/kp.json). Host absolute paths like /tmp/... are forbidden and fail the check."
+        },
         "command": { "type": "string" }
       },
       "allOf": [
