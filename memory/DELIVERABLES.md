@@ -22,6 +22,19 @@
 
 ## Active Deliverables
 
+### v1.2.x Windows parity ✅ 待 PR
+- **日期：** 2026-07-11
+- **Commit：** `10d1291` + upstream v1.2.1 merge commit（待 push）
+- **Verification：** `python -m uv run pytest tests/test_design_service.py -p no:cacheprovider` → 28 passed；真实 Design Preview smoke → start/connect/stop/port released；`pnpm build` → passed；`pnpm test` → 17 files / 128 tests passed；`python -m uv run pytest -p no:cacheprovider` → 683 passed, 9 skipped；`cargo check` → passed；`pnpm tauri:build` → v1.2.1 MSI/NSIS built
+- **证据：** `—`
+- **交付文件：**
+  - `services/orchestrator/src/design/service.py` — Windows command resolution, install error handling, preview lifecycle cleanup, manifest replace retry
+  - `services/orchestrator/tests/test_design_service.py` — Design Preview Windows regression coverage
+  - `apps/desktop/package.json` — desktop `tauri:dev` uses Node launcher
+  - `apps/desktop/src-tauri/tauri.conf.json` · `scripts/run-build-sidecar.mjs` — Windows-safe sidecar build entry
+  - `apps/desktop/src-tauri/gen/schemas/windows-schema.json` — Tauri Windows generated schema
+  - `CHANGELOG.md` · `docs/PRODUCT_INTRO.md` · `docs/BUILD_FROM_SOURCE.md` · `memory/PROGRESS.md` · `memory/FAILURES.md` · `CLAUDE.md` — Windows parity documentation
+
 ### D36 Design 会话模型 + 原型交互画布 ⚠️ 待 commit
 - **日期：** 2026-07-10
 - **Commit：** （未提交 — 等待用户确认 commit）

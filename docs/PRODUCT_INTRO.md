@@ -144,7 +144,7 @@ graph TD
 * **侧栏历史**：Design 会话列表展示**与画布一致的界面缩略图**（对已生成 HTML 做等比预览）+ 标题 + 日期；**新对话 / 尚未生成界面**时为灰色缺省占位，不展示假缩略图。
 * **右侧栏**：与 Coding 相同的可折叠 Overview / Files / Changes / Terminal；进入 Design 时**默认收缩**。产物落在工作区 `.clutch/design/sessions/` 下，**每个会话一个文件夹**，命名为 `{标题}-{web|mobile}__{run_id}`（便于在 Files 中辨认）；**删除侧栏会话时同步删除**对应产物目录（含 HTML / DESIGN.md / React 等）。**Terminal** 会镜像 Design 生成进度（`process_log` 与 status/html 回显），便于排查「侧栏已停转但画布仍 Sketching」类问题。
 * **无限画布（Prototype）**：提交后进入 React Flow 画布；有参考时先展示 **Design.md / 网址 / 参考图** 源卡，再**设计规范卡**（色板 / 字体 / 组件），**再**描绘生成界面卡；左侧 **Agent Log** 展示 Thinking 与 Execution，**每条执行记录**以标签形式显示步骤 `status`、所用 **model** 与 **token** 用量（会话中途切换模型时历史步骤仍保留当时标签）；底部浮动条用自然语言修改界面或规范。**选中**画布卡片（UI / 规范 / 参考）后底栏出现上下文 chip；发送时默认在选中 UI 上**就地修改**（明确说「新增/另一个页面」才加新画板）；支持 ⌘/Ctrl+C/V 复制粘贴 UI 卡；UI 卡可 **点选元素** 做局部修改。侧栏转圈与画布 UI 回显对齐：仅在屏幕 HTML 真正可用（或失败）后才结束 busy。
-* **界面代码层（UI code）**：底栏 **界面代码** 打开右侧面板（不自动弹出、无引导横幅）。流程：**批准原型 → 生成 Vite + React + Tailwind（`react/`）→ 本地 preview → 批准界面代码 → 交给编码**。
+* **界面代码层（UI code）**：底栏 **界面代码** 打开右侧面板（不自动弹出、无引导横幅）。流程：**批准原型 → 生成 Vite + React + Tailwind（`react/`）→ 本地 preview → 批准界面代码 → 交给编码**。Windows 下 preview 会解析 `pnpm.cmd` / `npm.cmd` / `npx.cmd` 完整路径，停止或重新生成时清理 Vite/Node 进程树，避免端口残留。
 * **非目标**：不替代 Figma 协作；无独立 Design 项目 CRUD 左栏；不生成全栈 Auth/DB；不做云端分享。
 
 内置工作流模板 **Design to Code**（`design-to-code`）可在批准后将设计产物交给 Builder CLI 继续实现。
@@ -207,7 +207,7 @@ cd services/orchestrator
 uv run uvicorn src.main:app --reload --port 8124
 ```
 
-> 开发期 Sidecar 监听 **8124**；打包桌面安装包内嵌 Sidecar 为 **8123**。`tauri.conf.json` 的 `beforeDevCommand` 为空，由跨平台 `scripts/tauri-dev.py` 管理 Vite 生命周期，避免 Tauri 误杀 dev server；旧版 Bash 启动器保留为 `pnpm tauri:dev:sh`。
+> 开发期 Sidecar 监听 **8124**；打包桌面安装包内嵌 Sidecar 为 **8123**。`tauri.conf.json` 的 `beforeDevCommand` 为空，由跨平台 `scripts/run-tauri-dev.mjs` → `scripts/tauri-dev.py` 管理 Vite 生命周期，避免 Tauri 误杀 dev server；旧版 Bash 启动器保留为 `pnpm tauri:dev:sh`。
 
 ### 5.2 本地轻量校验 (Pre-commit)
 在提交代码前运行轻量校验，确保编译通过、单元测试正常、文档未产生漂移：
@@ -231,7 +231,7 @@ uv run uvicorn src.main:app --reload --port 8124
 ```bash
 pnpm tauri build
 ```
-编译成功后，生产版自动内嵌 Sidecar Python 运行环境，并按当前平台输出 `.dmg`、`.msi` 或 NSIS `.exe` 安装包。桌面壳启动时会清理残留的 Sidecar 进程；**Cmd+Q** 完全退出时终止内嵌 `orchestrator`；macOS 在仅关闭窗口后点击 Dock 图标可重新显示主窗口。
+编译成功后，生产版自动内嵌 Sidecar Python 运行环境，并按当前平台输出 `.dmg`、`.msi` 或 NSIS `.exe` 安装包。Tauri build 通过 `scripts/run-build-sidecar.mjs` 构建 PyInstaller sidecar：优先使用 `uv`，再尝试 `python -m uv`，最后复用 `services/orchestrator/.venv`。桌面壳启动时会清理残留的 Sidecar 进程；**Cmd+Q** 完全退出时终止内嵌 `orchestrator`；macOS 在仅关闭窗口后点击 Dock 图标可重新显示主窗口。
 
 **Windows（v1.0.2+）：** MSI / NSIS 由 CI 构建；维护者尚未在实体 Win10/11 上完成完整人工 smoke，详见 Release 说明与 [`docs/INSTALL.md`](./INSTALL.md#windows)。
 

@@ -24,10 +24,18 @@
 
 ## Next Actions
 
-- **#23** — Windows smoke 继续用 v1.1.1
+- **Windows 1.2.x parity PR** — `win` 已同步到 upstream `dev`，Windows Design Preview / Tauri build 兼容修复已本地验证，待 PR review/CI。
+- **#23** — Windows smoke 从 Windows parity PR 继续。
 - （可选）配置 `HOMEBREW_TAP_GITHUB_TOKEN` 以免下次 CI 跳过 tap bump
 
 ## Recent Sessions
+
+## 2026-07-11 会话（v1.2.x Windows parity · PR 准备）
+
+- **同步** `win` fast-forward 到 upstream `dev` `3db7e03`，后续 merge 作者 v1.2.1 `e03aa64` 以解除 PR conflict；保留主工作区 `clutch_win_wuxian` 不变。
+- **修复** Windows Design Preview：`.cmd` 命令解析、pnpm ignored-build policy、UTF-8 install output、preview process tree stop、重新生成前停止 preview、manifest replace 重试。
+- **修复** Windows Tauri build/dev：desktop `tauri:dev` 走 Node wrapper；`beforeBuildCommand` 走 `scripts/run-build-sidecar.mjs`，不再依赖裸 `uv` 在 PATH。
+- **验证** `pytest tests/test_design_service.py` 28 passed；真实 Design Preview smoke 通过；`pnpm build`、`pnpm test`、orchestrator 全量 pytest、`cargo check`、`pnpm tauri:build` 通过。
 
 ## 2026-07-11 会话（v1.2.1 发版完成）
 

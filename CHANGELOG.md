@@ -16,6 +16,10 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ### Fixed
 
+- **Windows Design Preview:** Resolve `pnpm` / `npm` / `npx` through full executable paths, handle pnpm ignored-build policy for generated Vite previews, normalize install/start failures into `DesignError`, and kill the preview process tree on stop/timeout.
+- **Windows Design sessions:** Retry atomic manifest replacement when Windows briefly locks `manifest.json` during async polling.
+- **Windows Tauri build/dev:** `tauri:dev` uses the cross-platform Node launcher; Tauri `beforeBuildCommand` uses a Node sidecar-build wrapper that falls back to `python -m uv` or the orchestrator `.venv` instead of requiring bare `uv` on `PATH`.
+
 ## [1.2.1] - 2026-07-11
 
 Patch release — **macOS only** (Apple Silicon DMG + in-app updater). Fixes Chat crash / Design footer & palette / Models connection false failures from v1.2.0, and ships **sidecar hotpatch** client (D37) for future backend-only patches. Windows users remain on [v1.1.1](https://github.com/fancy1108/Clutch/releases/tag/v1.1.1).
