@@ -7,10 +7,19 @@ import os
 from pathlib import Path
 from typing import Any
 
-from src.agent_type import migrate_agent_record
+from src.agent_type import migrate_agent_record, normalize_agent_type_strict
 
 AGENTS_ENV = "CLUTCH_AGENTS_DIR"
 BUILTIN_AGENT_ID = "clutch-agent"
+
+
+class AgentValidationError(ValueError):
+    """Raised when a user-submitted agent record fails validation.
+
+    Kept separate from generic ValueError so callers (e.g. the FastAPI layer)
+    can format a targeted 400 response instead of a 500.
+    """
+
 
 
 def get_builtin_agent() -> dict[str, Any]:
@@ -94,17 +103,40 @@ def list_agents() -> list[dict[str, Any]]:
     return [_effective_builtin(builtin_override), *user_agents]
 
 
+def _validate_user_agent(agent: dict[str, Any]) -> None:
+    """Reject user-submitted agent records with an unrecognized `agentType`.
+
+    Prior behavior: `migrate_agent_record` → `normalize_agent_type` silently
+    fell back to 'clutch' on typos (e.g. 'zcode' missing the '-cli' suffix),
+    which then caused the persisted agent to route to the built-in Clutch
+    engine instead of the CLI the user intended. See #54.
+    """
+    raw = str(agent.get("agentType", "")).strip()
+    if not raw:
+        return  # No agentType → defaults to 'clutch', that's fine.
+    try:
+        normalize_agent_type_strict(raw)
+    except ValueError as exc:
+        agent_id = agent.get("id") or "<no-id>"
+        raise AgentValidationError(
+            f"Agent {agent_id!r} has invalid agentType {raw!r}: {exc}"
+        ) from exc
+
+
 def save_agents(agents: list[dict[str, Any]]) -> list[dict[str, Any]]:
     path = _agents_file()
     builtin_override = next(
         (agent for agent in agents if agent.get("id") == BUILTIN_AGENT_ID),
         None,
     )
-    user_agents = [
-        migrate_agent_record(agent)
+    user_agent_inputs = [
+        agent
         for agent in agents
         if agent.get("id") != BUILTIN_AGENT_ID and not agent.get("builtin")
     ]
+    for agent in user_agent_inputs:
+        _validate_user_agent(agent)
+    user_agents = [migrate_agent_record(agent) for agent in user_agent_inputs]
     stored: list[dict[str, Any]] = []
     if builtin_override:
         stored.append(_effective_builtin(builtin_override))

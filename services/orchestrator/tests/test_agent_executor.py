@@ -312,3 +312,114 @@ def test_flow_agy_uses_hybrid_and_persists_cli_session(monkeypatch, tmp_path) ->
     assert "Output JSON only." in str(captured.get("system_prompt"))
     assert captured.get("cli_session_id") is None
     assert persisted
+
+
+# --- tool vs agentType mismatch warning (#54) ---
+
+
+def test_agent_executor_emits_warning_when_tool_disagrees_with_agent_type(monkeypatch) -> None:
+    """When the workflow node declares one tool but the referenced agent's
+    agentType is a different CLI, orchestrator dispatches by agentType (this
+    is the pre-existing behavior) but should surface a warning so users can
+    catch template-copy typos early. See #54.
+    """
+    monkeypatch.setattr(
+        "src.engine_router.find_agent",
+        lambda _ref: {
+            "id": "agent-mismatch",
+            "name": "ZCode CLI",  # user thought they cloned a ZCode agent
+            "agentType": "claude-cli",  # but forgot to change the field
+        },
+    )
+
+    captured: dict = {}
+
+    def fake_route_engine(**kwargs):
+        from src.engine_router import EngineResult
+
+        captured["kwargs"] = kwargs
+        return EngineResult(engine="Claude Code (Local CLI)", output="done", logs=[])
+
+    monkeypatch.setattr("src.engine_router.route_engine", fake_route_engine)
+
+    result = execute_agent_task(
+        {
+            "agent": "agent-mismatch",
+            "label": "step",
+            "tool": "zcode-cli",  # ← does not match agent.agentType
+            "instruction": "do a thing",
+        },
+        instruction="",
+    )
+
+    # Warning was emitted into the log stream.
+    warning_lines = [line for line in result.logs if "[ROUTER] warning" in line]
+    assert len(warning_lines) == 1
+    assert "zcode-cli" in warning_lines[0]
+    assert "claude-cli" in warning_lines[0]
+    assert "agent-mismatch" in warning_lines[0]
+
+
+def test_agent_executor_no_warning_when_tool_matches_agent_type(monkeypatch) -> None:
+    """No noise on the happy path."""
+    monkeypatch.setattr(
+        "src.engine_router.find_agent",
+        lambda _ref: {
+            "id": "agent-ok",
+            "name": "ZCode CLI",
+            "agentType": "zcode-cli",
+        },
+    )
+
+    def fake_route_engine(**kwargs):
+        from src.engine_router import EngineResult
+
+        return EngineResult(engine="ZCode CLI", output="ok", logs=[])
+
+    monkeypatch.setattr("src.engine_router.route_engine", fake_route_engine)
+
+    result = execute_agent_task(
+        {
+            "agent": "agent-ok",
+            "label": "step",
+            "tool": "zcode-cli",
+            "instruction": "do a thing",
+        },
+        instruction="",
+    )
+
+    warning_lines = [line for line in result.logs if "[ROUTER] warning" in line]
+    assert warning_lines == []
+
+
+def test_agent_executor_no_warning_when_tool_is_llm_or_empty(monkeypatch) -> None:
+    """`tool: 'llm'` or empty means 'use whatever the agent's configured
+    engine is' — no mismatch to warn about."""
+    monkeypatch.setattr(
+        "src.engine_router.find_agent",
+        lambda _ref: {
+            "id": "agent-llm",
+            "name": "Some Agent",
+            "agentType": "claude-cli",
+        },
+    )
+
+    def fake_route_engine(**kwargs):
+        from src.engine_router import EngineResult
+
+        return EngineResult(engine="Claude Code CLI", output="ok", logs=[])
+
+    monkeypatch.setattr("src.engine_router.route_engine", fake_route_engine)
+
+    for tool_value in ("llm", ""):
+        result = execute_agent_task(
+            {
+                "agent": "agent-llm",
+                "label": "step",
+                "tool": tool_value,
+                "instruction": "do a thing",
+            },
+            instruction="",
+        )
+        warning_lines = [line for line in result.logs if "[ROUTER] warning" in line]
+        assert warning_lines == [], f"unexpected warning for tool={tool_value!r}: {warning_lines}"
