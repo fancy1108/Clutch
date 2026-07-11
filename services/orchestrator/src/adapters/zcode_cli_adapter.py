@@ -15,6 +15,19 @@ Notes vs Codex CLI (a superficially similar engine):
   `--dangerously-skip-permissions` on other CLIs.
 - Session resumption uses `--resume <sessionId>` with `sess_...`-prefixed ids.
 - `--json` emits a machine-readable envelope Clutch can parse.
+
+Flag compatibility (v0.15.x):
+- ZCode does NOT recognize `--session-id <uuid>`. Attempts to pass one exit
+  with `Unknown option '--session-id'`. Session resumption is via `--resume
+  <sess_...>` only, and expects a ZCode-issued sessionId (different id-space
+  from Clutch's `session_id`), so we default to `history_only` mode here.
+  When we later want persistence, we should extract the `sessionId` from
+  zcode's `--json` response and pass it as `resume_session_id` for the next
+  turn (with a `sess_` prefix already present); this is future work.
+- ZCode does NOT recognize `--append-system-prompt <text>`; there is no
+  direct equivalent flag. We prepend the system prompt into the user prompt
+  body instead (`supports_append_system_prompt=False`), matching the pattern
+  used by other adapters that can't append.
 """
 
 from __future__ import annotations
@@ -60,9 +73,18 @@ def chat_zcode_cli(
     return chat_generic_cli(
         prompt,
         binary=binary or "zcode",
-        conversation_mode="separate",
+        # ZCode does not accept `--session-id <uuid>`; Clutch's session_id
+        # lives in a different id-space than ZCode's sess_... anyway. Use
+        # `history_only` so compose_cli_argv() emits neither `--session-id`
+        # nor `--resume`. Future: parse zcode --json response for its
+        # `sessionId` and pass as `resume_session_id` on the next turn.
+        conversation_mode="history_only",
         extra_args=extra_args,
         prepend_system_prompt=False,
+        # ZCode has no `--append-system-prompt` equivalent. Setting this to
+        # False makes chat_generic_cli() prepend the system prompt into the
+        # user prompt body instead.
+        supports_append_system_prompt=False,
         cwd=cwd,
         system_prompt=system_prompt,
         session_id=session_id,
