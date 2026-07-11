@@ -101,7 +101,7 @@ Artifacts land under `apps/desktop/src-tauri/target/release/bundle/`.
 `beforeBuildCommand` runs:
 
 1. `pnpm build` → `apps/desktop/dist/`
-2. `scripts/build-sidecar.py` → platform-specific PyInstaller binary in `src-tauri/binaries/`
+2. `scripts/run-build-sidecar.mjs` → resolves `uv` / `python -m uv` / orchestrator `.venv`, then runs `scripts/build-sidecar.py` to produce the platform-specific PyInstaller binary in `src-tauri/binaries/`
 
 Windows outputs are `bundle/msi/Clutch_*_x64_en-US.msi` and `bundle/nsis/Clutch_*_x64-setup.exe`. The Windows Hybrid runtime uses Git Bash when a connected CLI requires a persistent shell, so install Git for Windows for that mode.
 

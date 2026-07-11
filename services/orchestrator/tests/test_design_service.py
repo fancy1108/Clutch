@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -31,7 +32,91 @@ def workspace(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     repo.mkdir(parents=True, exist_ok=True)
     entry = ws.add_workspace(str(repo))
     assert entry["id"]
-    return Path(entry["workspace_path"])
+    service._preview_procs.clear()
+    yield Path(entry["workspace_path"])
+    service._preview_procs.clear()
+
+
+class _ReadySocket:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_args):
+        return False
+
+
+class _FakePreviewProcess:
+    def __init__(self, *, pid: int = 4321, running: bool = True, wait_timeout: bool = False) -> None:
+        self.pid = pid
+        self.running = running
+        self.wait_timeout = wait_timeout
+        self.terminated = False
+        self.killed = False
+        self.wait_calls = 0
+
+    def poll(self):
+        return None if self.running else 0
+
+    def terminate(self) -> None:
+        self.terminated = True
+
+    def kill(self) -> None:
+        self.killed = True
+        self.running = False
+
+    def wait(self, timeout=None):
+        self.wait_calls += 1
+        if self.wait_timeout and not self.killed:
+            raise subprocess.TimeoutExpired("preview", timeout)
+        self.running = False
+        return 0
+
+
+def _write_preview_session(workspace: Path, run_id: str, *, node_modules: bool = False) -> Path:
+    session_dir = workspace / ".clutch" / "design" / "sessions" / run_id
+    react_dir = session_dir / "react"
+    react_dir.mkdir(parents=True, exist_ok=True)
+    if node_modules:
+        (react_dir / "node_modules").mkdir(parents=True, exist_ok=True)
+    service._write_manifest(
+        session_dir,
+        {
+            "id": run_id,
+            "run_id": run_id,
+            "name": "Preview",
+            "created_at": service._now_iso(),
+            "updated_at": service._now_iso(),
+            "prototype_approved": True,
+            "react_ready": True,
+            "react_path": str(react_dir),
+            "screens": [{"id": "main", "name": "Main"}],
+        },
+    )
+    return session_dir
+
+
+def test_write_manifest_retries_windows_replace_permission_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    session_dir = tmp_path / "session"
+    session_dir.mkdir()
+    original_replace = service.os.replace
+    calls = {"count": 0}
+
+    def flaky_replace(src, dst):
+        calls["count"] += 1
+        if calls["count"] == 1:
+            raise PermissionError("locked")
+        return original_replace(src, dst)
+
+    monkeypatch.setattr(service, "_is_windows", lambda: True)
+    monkeypatch.setattr(service.os, "replace", flaky_replace)
+    monkeypatch.setattr(service.time, "sleep", lambda _seconds: None)
+
+    service._write_manifest(session_dir, {"run_id": "manifest-retry"})
+
+    assert calls["count"] == 2
+    assert service._read_manifest(session_dir)["run_id"] == "manifest-retry"
 
 
 def test_session_generate_iterate_approve_react_handoff(
@@ -481,3 +566,278 @@ def test_generate_records_model_and_token_usage(
     ready_step = next(e for e in log if e.get("status") == "ready")
     assert ready_step.get("model_name") == "Agnes 2.0 Flash"
     assert (ready_step.get("usage") or {}).get("total_tokens") == 90
+
+
+def test_start_preview_uses_resolved_windows_cmd_paths(
+    workspace: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    run_id = "design-preview-windows-cmd"
+    _write_preview_session(workspace, run_id)
+    monkeypatch.setattr(service, "_is_windows", lambda: True)
+    monkeypatch.setattr(service, "_free_port", lambda: 5173)
+    monkeypatch.setattr(
+        service.shutil,
+        "which",
+        lambda name: {
+            "pnpm.cmd": r"C:\Tools\pnpm.CMD",
+            "npx.cmd": r"C:\Tools\npx.CMD",
+        }.get(name),
+    )
+    run_calls: list[tuple[list[str], dict]] = []
+    popen_calls: list[tuple[list[str], dict]] = []
+
+    def fake_run(args, **kwargs):
+        run_calls.append((args, kwargs))
+        return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
+
+    def fake_popen(args, **kwargs):
+        popen_calls.append((args, kwargs))
+        return _FakePreviewProcess()
+
+    monkeypatch.setattr(service.subprocess, "run", fake_run)
+    monkeypatch.setattr(service.subprocess, "Popen", fake_popen)
+    monkeypatch.setattr(service.socket, "create_connection", lambda *_a, **_k: _ReadySocket())
+
+    result = service.start_preview(run_id)
+
+    assert result["status"] == "running"
+    assert run_calls[0][0] == [
+        r"C:\Tools\pnpm.CMD",
+        "install",
+        "--config.dangerously-allow-all-builds=true",
+    ]
+    assert run_calls[0][1]["encoding"] == "utf-8"
+    assert run_calls[0][1]["errors"] == "replace"
+    assert popen_calls[0][0][0] == r"C:\Tools\npx.CMD"
+    assert "shell" not in run_calls[0][1]
+    assert "shell" not in popen_calls[0][1]
+
+
+def test_start_preview_falls_back_to_npm_when_pnpm_fails(
+    workspace: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    run_id = "design-preview-npm-fallback"
+    _write_preview_session(workspace, run_id)
+    monkeypatch.setattr(service, "_free_port", lambda: 5174)
+    monkeypatch.setattr(
+        service.shutil,
+        "which",
+        lambda name: {
+            "pnpm": "/usr/bin/pnpm",
+            "npm": "/usr/bin/npm",
+            "npx": "/usr/bin/npx",
+        }.get(name),
+    )
+    run_calls: list[list[str]] = []
+
+    def fake_run(args, **_kwargs):
+        run_calls.append(args)
+        code = 1 if args[0].endswith("pnpm") else 0
+        return subprocess.CompletedProcess(args, code, stdout="", stderr="failed")
+
+    monkeypatch.setattr(service.subprocess, "run", fake_run)
+    monkeypatch.setattr(service.subprocess, "Popen", lambda *_a, **_k: _FakePreviewProcess())
+    monkeypatch.setattr(service.socket, "create_connection", lambda *_a, **_k: _ReadySocket())
+
+    service.start_preview(run_id)
+
+    assert run_calls[:2] == [
+        ["/usr/bin/pnpm", "install", "--config.dangerously-allow-all-builds=true"],
+        ["/usr/bin/npm", "install"],
+    ]
+
+
+def test_start_preview_reports_missing_package_managers(
+    workspace: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    run_id = "design-preview-missing-pm"
+    _write_preview_session(workspace, run_id)
+    monkeypatch.setattr(service.shutil, "which", lambda _name: None)
+
+    with pytest.raises(service.DesignError, match="pnpm or npm was not found"):
+        service.start_preview(run_id)
+
+
+def test_start_preview_reports_popen_oserror(
+    workspace: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    run_id = "design-preview-popen-error"
+    _write_preview_session(workspace, run_id, node_modules=True)
+    monkeypatch.setattr(service, "_free_port", lambda: 5175)
+    monkeypatch.setattr(service.shutil, "which", lambda name: "/usr/bin/npx" if name == "npx" else None)
+
+    def fail_popen(*_args, **_kwargs):
+        raise OSError("spawn failed")
+
+    monkeypatch.setattr(service.subprocess, "Popen", fail_popen)
+
+    with pytest.raises(service.DesignError, match="Failed to start preview"):
+        service.start_preview(run_id)
+
+
+def test_start_preview_reuses_live_process(
+    workspace: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    run_id = "design-preview-reuse"
+    _write_preview_session(workspace, run_id, node_modules=True)
+    service._preview_procs[run_id] = {
+        "proc": _FakePreviewProcess(),
+        "port": 6188,
+        "url": "http://127.0.0.1:6188",
+    }
+    monkeypatch.setattr(
+        service.subprocess,
+        "Popen",
+        lambda *_a, **_k: pytest.fail("start_preview should reuse the live process"),
+    )
+
+    result = service.start_preview(run_id)
+
+    assert result == {
+        "run_id": run_id,
+        "url": "http://127.0.0.1:6188",
+        "port": 6188,
+        "status": "running",
+    }
+
+
+def test_start_preview_timeout_cleans_up_process(
+    workspace: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    run_id = "design-preview-timeout"
+    _write_preview_session(workspace, run_id, node_modules=True)
+    proc = _FakePreviewProcess()
+    now = [0.0]
+    monkeypatch.setattr(service, "_is_windows", lambda: False)
+    monkeypatch.setattr(service, "_free_port", lambda: 5176)
+    monkeypatch.setattr(service.shutil, "which", lambda name: "/usr/bin/npx" if name == "npx" else None)
+    monkeypatch.setattr(service.subprocess, "Popen", lambda *_a, **_k: proc)
+    monkeypatch.setattr(service.socket, "create_connection", lambda *_a, **_k: (_ for _ in ()).throw(OSError()))
+    monkeypatch.setattr(service.time, "time", lambda: now[0])
+    monkeypatch.setattr(service.time, "sleep", lambda seconds: now.__setitem__(0, now[0] + seconds + 15))
+
+    with pytest.raises(service.DesignError, match="did not become ready"):
+        service.start_preview(run_id)
+
+    assert proc.terminated is True
+    assert proc.wait_calls == 1
+
+
+def test_stop_preview_uses_windows_process_tree_kill(
+    workspace: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    run_id = "design-preview-windows-stop"
+    session_dir = _write_preview_session(workspace, run_id, node_modules=True)
+    manifest = service._read_manifest(session_dir)
+    manifest["preview_url"] = "http://127.0.0.1:6199"
+    service._write_manifest(session_dir, manifest)
+    proc = _FakePreviewProcess(pid=6199)
+    service._preview_procs[run_id] = {
+        "proc": proc,
+        "port": 6199,
+        "url": "http://127.0.0.1:6199",
+    }
+    taskkill_calls: list[list[str]] = []
+
+    def fake_run(args, **_kwargs):
+        taskkill_calls.append(args)
+        return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(service, "_is_windows", lambda: True)
+    monkeypatch.setattr(service.subprocess, "run", fake_run)
+
+    result = service.stop_preview(run_id)
+
+    assert result["status"] == "stopped"
+    assert taskkill_calls == [["taskkill", "/PID", "6199", "/T", "/F"]]
+    assert proc.wait_calls == 1
+    assert service._read_manifest(session_dir)["preview_url"] is None
+
+
+def test_stop_preview_kills_after_wait_timeout(
+    workspace: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    run_id = "design-preview-stop-timeout"
+    _write_preview_session(workspace, run_id, node_modules=True)
+    proc = _FakePreviewProcess(wait_timeout=True)
+    service._preview_procs[run_id] = {
+        "proc": proc,
+        "port": 6200,
+        "url": "http://127.0.0.1:6200",
+    }
+    monkeypatch.setattr(service, "_is_windows", lambda: False)
+
+    service.stop_preview(run_id)
+
+    assert proc.terminated is True
+    assert proc.killed is True
+    assert proc.wait_calls == 2
+
+
+def test_stop_preview_windows_kills_after_taskkill_wait_timeout(
+    workspace: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    run_id = "design-preview-windows-taskkill-timeout"
+    _write_preview_session(workspace, run_id, node_modules=True)
+    proc = _FakePreviewProcess(pid=6201, wait_timeout=True)
+    service._preview_procs[run_id] = {
+        "proc": proc,
+        "port": 6201,
+        "url": "http://127.0.0.1:6201",
+    }
+    monkeypatch.setattr(service, "_is_windows", lambda: True)
+    monkeypatch.setattr(
+        service.subprocess,
+        "run",
+        lambda args, **_kwargs: subprocess.CompletedProcess(args, 0, stdout="", stderr=""),
+    )
+
+    service.stop_preview(run_id)
+
+    assert proc.killed is True
+    assert proc.wait_calls == 2
+
+
+def test_generate_react_stops_live_preview_before_replacing_react_dir(
+    workspace: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    run_id = "design-generate-stops-preview"
+    session_dir = workspace / ".clutch" / "design" / "sessions" / run_id
+    screens_dir = session_dir / "screens"
+    react_dir = session_dir / "react"
+    screens_dir.mkdir(parents=True, exist_ok=True)
+    react_dir.mkdir(parents=True, exist_ok=True)
+    (screens_dir / "main.html").write_text("<html><body><h1>Main</h1></body></html>", encoding="utf-8")
+    (react_dir / "old.txt").write_text("old", encoding="utf-8")
+    service._write_manifest(
+        session_dir,
+        {
+            "id": run_id,
+            "run_id": run_id,
+            "name": "Preview",
+            "created_at": service._now_iso(),
+            "updated_at": service._now_iso(),
+            "prototype_approved": True,
+            "screens": [{"id": "main", "name": "Main"}],
+        },
+    )
+
+    class FakeRouter:
+        active_model_id = "fake-model"
+
+    call_order: list[str] = []
+    original_rmtree = service.shutil.rmtree
+
+    monkeypatch.setattr("src.models_config.get_router", lambda: FakeRouter())
+    monkeypatch.setattr("src.models_config.is_model_available", lambda *_a, **_k: False)
+    monkeypatch.setattr(service, "stop_preview", lambda _run_id: call_order.append("stop"))
+
+    def record_rmtree(path):
+        call_order.append("rmtree")
+        original_rmtree(path)
+
+    monkeypatch.setattr(service.shutil, "rmtree", record_rmtree)
+
+    service.generate_react(run_id)
+
+    assert call_order[:2] == ["stop", "rmtree"]
