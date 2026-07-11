@@ -26,6 +26,16 @@ export interface CompilerWorkflow {
   description?: string;
 }
 
+export type CanvasIncompatibility =
+  | { kind: 'multiple_end_nodes'; count: number }
+  | { kind: 'unsupported_node_type'; nodeId: string; nodeType: string }
+  | { kind: 'conditional_edge'; edgeId: string; source: string; target: string; when: string }
+  | { kind: 'invalid_start'; outDegree: number }
+  | { kind: 'invalid_end'; nodeId: string; inDegree: number }
+  | { kind: 'branching_node'; nodeId: string; outDegree: number }
+  | { kind: 'merge_or_cycle'; nodeId: string; inDegree: number }
+  | { kind: 'isolated_node'; nodeId: string };
+
 function slugId(name: string): string {
   const base = name
     .toLowerCase()
@@ -34,17 +44,36 @@ function slugId(name: string): string {
   return base || `step-${Date.now()}`;
 }
 
-/** True when workflow is a simple linear agent_task pipeline (canvas-safe). */
-export function isCanvasCompatible(workflow: CompilerWorkflow): boolean {
+/** Collect every reason the canvas editor cannot host this workflow (D9). */
+export function getCanvasIncompatibilities(
+  workflow: Pick<CompilerWorkflow, 'nodes' | 'edges'>,
+): CanvasIncompatibility[] {
+  const reasons: CanvasIncompatibility[] = [];
   const endNodes = workflow.nodes.filter((n) => n.type === 'end');
-  if (endNodes.length !== 1) return false;
+  if (endNodes.length !== 1) {
+    reasons.push({ kind: 'multiple_end_nodes', count: endNodes.length });
+  }
 
   for (const node of workflow.nodes) {
-    if (node.type !== 'agent_task' && node.type !== 'end') return false;
+    if (node.type !== 'agent_task' && node.type !== 'end') {
+      reasons.push({
+        kind: 'unsupported_node_type',
+        nodeId: node.id,
+        nodeType: node.type,
+      });
+    }
   }
 
   for (const edge of workflow.edges) {
-    if (edge.data?.when) return false;
+    if (edge.data?.when) {
+      reasons.push({
+        kind: 'conditional_edge',
+        edgeId: edge.id,
+        source: edge.source,
+        target: edge.target,
+        when: String(edge.data.when),
+      });
+    }
   }
 
   const outCount: Record<string, number> = {};
@@ -54,34 +83,81 @@ export function isCanvasCompatible(workflow: CompilerWorkflow): boolean {
     inCount[edge.target] = (inCount[edge.target] ?? 0) + 1;
   }
 
-  if ((outCount.start ?? 0) !== 1) return false;
+  const startOut = outCount.start ?? 0;
+  if (startOut !== 1) {
+    reasons.push({ kind: 'invalid_start', outDegree: startOut });
+  }
 
   const agentNodes = workflow.nodes.filter((n) => n.type === 'agent_task');
-  if (agentNodes.length === 0) {
+  if (agentNodes.length === 0 && endNodes.length === 1) {
     const endId = endNodes[0].id;
-    return (
-      (inCount[endId] ?? 0) === 1 &&
-      workflow.edges.some((e) => e.source === 'start' && e.target === endId)
-    );
+    const endIn = inCount[endId] ?? 0;
+    const hasStartToEnd = workflow.edges.some((e) => e.source === 'start' && e.target === endId);
+    if (!(endIn === 1 && hasStartToEnd)) {
+      reasons.push({ kind: 'invalid_end', nodeId: endId, inDegree: endIn });
+    }
+    return reasons;
   }
 
   for (const node of workflow.nodes) {
     if (node.type === 'end') {
-      if ((inCount[node.id] ?? 0) !== 1) return false;
+      const endIn = inCount[node.id] ?? 0;
+      if (endIn !== 1) {
+        reasons.push({ kind: 'invalid_end', nodeId: node.id, inDegree: endIn });
+      }
       continue;
     }
     const out = outCount[node.id] ?? 0;
     const inc = inCount[node.id] ?? 0;
-    if (out > 1 || inc > 1) return false;
-    if (out === 0 && inc === 0) return false;
+    if (out > 1) {
+      reasons.push({ kind: 'branching_node', nodeId: node.id, outDegree: out });
+    }
+    if (inc > 1) {
+      reasons.push({ kind: 'merge_or_cycle', nodeId: node.id, inDegree: inc });
+    }
+    if (out === 0 && inc === 0) {
+      reasons.push({ kind: 'isolated_node', nodeId: node.id });
+    }
   }
 
-  return true;
+  return reasons;
+}
+
+/** Human-readable summary for the JSON-mode banner (#55). */
+export function formatCanvasIncompatibilities(reasons: CanvasIncompatibility[]): string {
+  return reasons
+    .map((r) => {
+      switch (r.kind) {
+        case 'multiple_end_nodes':
+          return `end nodes: ${r.count} (need 1)`;
+        case 'unsupported_node_type':
+          return `node ${r.nodeId} (${r.nodeType})`;
+        case 'conditional_edge':
+          return `edge ${r.edgeId} ${r.source}→${r.target} (when:${r.when})`;
+        case 'invalid_start':
+          return `start out-degree ${r.outDegree} (need 1)`;
+        case 'invalid_end':
+          return `end ${r.nodeId} in-degree ${r.inDegree} (need 1)`;
+        case 'branching_node':
+          return `node ${r.nodeId} branches (out:${r.outDegree})`;
+        case 'merge_or_cycle':
+          return `node ${r.nodeId} merge/cycle (in:${r.inDegree})`;
+        case 'isolated_node':
+          return `node ${r.nodeId} isolated`;
+        default:
+          return 'unknown';
+      }
+    })
+    .join('; ');
+}
+
+/** True when workflow is a simple linear agent_task pipeline (canvas-safe). */
+export function isCanvasCompatible(workflow: Pick<CompilerWorkflow, 'nodes' | 'edges'>): boolean {
+  return getCanvasIncompatibilities(workflow).length === 0;
 }
 
 export function compilerToCanvas(workflow: CompilerWorkflow, icon = 'account_tree'): WorkflowDef {
   const agentNodes = workflow.nodes.filter((n) => n.type === 'agent_task');
-  const edgeBySource = new Map(workflow.edges.map((e) => [e.target, e]));
 
   const steps: WorkflowStep[] = agentNodes.map((node) => {
     const data = node.data as {

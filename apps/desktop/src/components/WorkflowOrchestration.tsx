@@ -23,7 +23,8 @@ import {
   canvasToCompiler,
   compilerToCanvas,
   formatCompilerJson,
-  isCanvasCompatible,
+  formatCanvasIncompatibilities,
+  getCanvasIncompatibilities,
   parseCompilerJson,
   type CompilerWorkflow,
 } from '../services/workflowFormat';
@@ -138,6 +139,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
   const [viewMode, setViewMode] = useState<EditorViewMode>('canvas');
   const [jsonText, setJsonText] = useState('');
   const [canvasCompatible, setCanvasCompatible] = useState(false);
+  const [canvasIncompatHint, setCanvasIncompatHint] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -184,8 +186,10 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
     setJsonText(formatCompilerJson(workflow));
     setSaveError(null);
     setSaveStatus(null);
-    const compatible = isCanvasCompatible(workflow);
+    const reasons = getCanvasIncompatibilities(workflow);
+    const compatible = reasons.length === 0;
     setCanvasCompatible(compatible);
+    setCanvasIncompatHint(compatible ? null : formatCanvasIncompatibilities(reasons));
     if (compatible) {
       const canvas = compilerToCanvas(workflow, workflow.icon ?? 'fork_right');
       setWorkflows((prev) => {
@@ -806,7 +810,9 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
                   error={saveError}
                   hint={
                     !canvasCompatible
-                      ? t('Complex workflow: please edit in JSON mode')
+                      ? `${t('Complex workflow: please edit in JSON mode')}${
+                          canvasIncompatHint ? ` — ${canvasIncompatHint}` : ''
+                        }`
                       : null
                   }
                 />
