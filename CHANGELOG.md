@@ -16,6 +16,28 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ### Fixed
 
+## [1.2.1] - 2026-07-11
+
+Patch release — **macOS only** (Apple Silicon DMG + in-app updater). Fixes Chat crash / Design footer & palette / Models connection false failures from v1.2.0, and ships **sidecar hotpatch** client (D37) for future backend-only patches. Windows users remain on [v1.1.1](https://github.com/fancy1108/Clutch/releases/tag/v1.1.1).
+
+> **Release assets (v1.2.1):** Tag `v1.2.1` — **macOS only:** `Clutch_1.2.1_aarch64.dmg` + `SHA256SUMS.txt`; optional `latest.json` updater bundle. **This hotfix ships via full app update** (1.2.0 clients lack the hotpatch client). Product snapshot: [`docs/releases/v1.2.1.md`](docs/releases/v1.2.1.md).
+
+### Added
+
+- **Sidecar hotpatch (D37):** Silent download of a verified `orchestrator` binary into Application Support; Settings-adjacent **Update ready** chip; confirm → restart sidecar only. Manifest: `sidecar-patch.json`. See [`docs/UPDATES.md`](docs/UPDATES.md) §5.
+
+### Changed
+
+- **Updater download UI:** Progress pill shows MB downloaded (and total when known).
+- **CSP:** Allow `release-assets.githubusercontent.com` for GitHub Release asset downloads.
+
+### Fixed
+
+- **Chat mode (v1.2.0 regression):** Clutch Agent plain chat crashed with `expected string or bytes-like object, got 'dict'` after Design mode changed `http_chat_complete` to return `{content, reasoning_content}`. Engine router and MCP/chat callers now unwrap via `LLMProviderRouter.extract_content` before sanitizing/displaying.
+- **Design footer:** Switching into Design after Coding Terminal Orchestra no longer hides Model / Active Agent / Workflow (stuck `workspaceViewMode=terminal`).
+- **Design welcome palette:** Restore design-system preset picker (was shipped as a disabled placeholder in v1.2.0; local WIP had the working control).
+- **Models connection test:** Prefer fast OpenAI-compatible `GET /models` probe before a chat completion — Agnes 2.0 Flash can exceed 60s TTFT under load and was falsely marked CONNECTION FAILED in Settings.
+
 ## [1.2.0] - 2026-07-10
 
 Minor release — **macOS only** (Apple Silicon DMG + in-app updater). **Design mode (D36)**, **ZCode CLI**, and Design Agent Log / generate reliability fixes. Windows users remain on [v1.1.1](https://github.com/fancy1108/Clutch/releases/tag/v1.1.1); next Windows installers target a later release.
