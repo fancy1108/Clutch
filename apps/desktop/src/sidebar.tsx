@@ -5,6 +5,7 @@ import type { SessionRecord } from './services/runApi';
 import type { RepositoryGroup, WorkspaceInfo } from './services/workspaceApi';
 import { LegacyIcon } from './components/ui/LegacyIcon';
 import { UpdateBanner } from './components/UpdateBanner';
+import { SidecarPatchReady } from './components/SidecarPatchReady';
 import { BTN_ICON_SM } from './components/ui/buttonStyles';
 import { SIDEBAR_COLLAPSED_WIDTH_PX, SIDEBAR_EXPANDED_WIDTH_PX } from './constants/layout';
 import { NAV_CONFIG } from './platform/chrome/navConfig';
@@ -780,6 +781,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <span className="text-[11px] font-semibold tracking-wide truncate">{t('Settings')}</span>
             </button>
             <UpdateBanner />
+            <SidecarPatchReady />
           </div>
         </div>
         ) : (
@@ -797,7 +799,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <LegacyIcon name={NAV_CONFIG.settings.icon} className="text-[17px] text-on-surface-variant group-hover:text-primary" />
             <span className="text-xs font-semibold tracking-wide">{t('Settings')}</span>
           </button>
-          <UpdateBanner />
+          <div className="flex items-center gap-1 min-w-0 px-1">
+            <UpdateBanner />
+            <SidecarPatchReady />
+          </div>
         </div>
         )}
       </div>

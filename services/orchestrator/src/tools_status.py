@@ -581,26 +581,10 @@ Example Output:
 
     chat_history = [{"role": "user", "content": prompt}]
     try:
-        raw = router.chat(chat_history, model_id=model_id)
-        # router.chat() can return either a plain str or a dict with message content
-        if isinstance(raw, dict):
-            # OpenAI-style response: choices[0].message.content
-            try:
-                reply = raw["choices"][0]["message"]["content"]
-            except (KeyError, IndexError, TypeError):
-                # Anthropic-style or other: content[0].text or .text
-                try:
-                    content = raw.get("content", [])
-                    if isinstance(content, list) and content:
-                        reply = content[0].get("text", "")
-                    else:
-                        reply = str(raw)
-                except Exception:
-                    reply = str(raw)
-        else:
-            reply = str(raw)
+        from src.llm.router import LLMProviderRouter
 
-        reply_clean = reply.strip()
+        raw = router.chat(chat_history, model_id=model_id)
+        reply_clean = LLMProviderRouter.extract_content(raw).strip()
         if reply_clean.startswith("```"):
             lines = reply_clean.split("\n")
             if lines[0].startswith("```"):

@@ -7,9 +7,12 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use tauri::{AppHandle, Manager, RunEvent};
+#[cfg(not(debug_assertions))]
 use tauri_plugin_shell::ShellExt;
 
 #[cfg(debug_assertions)]
+use std::process::{Command, Stdio};
+#[cfg(not(debug_assertions))]
 use std::process::{Command, Stdio};
 #[cfg(not(debug_assertions))]
 use tauri_plugin_shell::process::CommandChild;
@@ -22,6 +25,7 @@ enum SidecarChild {
 #[cfg(not(debug_assertions))]
 enum SidecarChild {
     Release(CommandChild),
+    Patched(std::process::Child),
 }
 
 struct SidecarState(Mutex<Option<SidecarChild>>);
@@ -31,6 +35,7 @@ struct SidecarAuthState {
 }
 
 mod directory_picker;
+mod sidecar_patch;
 
 #[tauri::command]
 fn clutch_host_os() -> &'static str {
@@ -66,6 +71,13 @@ fn clutch_cpu_arch() -> String {
     std::env::consts::ARCH.to_string()
 }
 
+#[tauri::command]
+fn clutch_apply_sidecar_patch(app: AppHandle) -> Result<(), String> {
+    restart_sidecar(&app)?;
+    sidecar_patch::clear_needs_restart(&app)?;
+    Ok(())
+}
+
 #[cfg(debug_assertions)]
 const SIDECAR_PORT: u16 = 8124;
 #[cfg(not(debug_assertions))]
@@ -85,24 +97,31 @@ fn bundle_sidecar_path() -> Option<PathBuf> {
 /// Release builds: kill orphaned sidecar processes from a prior crash or incomplete quit.
 #[cfg(not(debug_assertions))]
 fn kill_stale_bundle_sidecars() {
-    let Some(sidecar) = bundle_sidecar_path() else {
-        return;
-    };
-
     #[cfg(target_os = "macos")]
     {
-        let path = sidecar.to_string_lossy().into_owned();
-        let _ = std::process::Command::new("pkill")
-            .args(["-f", &path])
-            .status();
+        if let Some(sidecar) = bundle_sidecar_path() {
+            let path = sidecar.to_string_lossy().into_owned();
+            let _ = Command::new("pkill").args(["-f", &path]).status();
+        }
+        // Also clear Application Support hotpatch binary if still running.
+        if let Ok(home) = std::env::var("HOME") {
+            let patch = PathBuf::from(home)
+                .join("Library/Application Support/clutch/patches/orchestrator");
+            if patch.is_file() {
+                let path = patch.to_string_lossy().into_owned();
+                let _ = Command::new("pkill").args(["-f", &path]).status();
+            }
+        }
     }
 
     #[cfg(target_os = "windows")]
     {
-        if let Some(name) = sidecar.file_name().and_then(|n| n.to_str()) {
-            let _ = std::process::Command::new("taskkill")
-                .args(["/IM", name, "/F"])
-                .status();
+        if let Some(sidecar) = bundle_sidecar_path() {
+            if let Some(name) = sidecar.file_name().and_then(|n| n.to_str()) {
+                let _ = Command::new("taskkill")
+                    .args(["/IM", name, "/F"])
+                    .status();
+            }
         }
     }
 
@@ -163,7 +182,11 @@ pub fn run() {
             clutch_host_os,
             clutch_e2e_sandbox,
             clutch_sidecar_token,
-            clutch_cpu_arch
+            clutch_cpu_arch,
+            clutch_apply_sidecar_patch,
+            sidecar_patch::clutch_sidecar_patch_status,
+            sidecar_patch::clutch_sidecar_patch_pending,
+            sidecar_patch::clutch_download_sidecar_patch,
         ])
         .manage(SidecarState(Mutex::new(None)));
 
@@ -228,7 +251,21 @@ fn terminate_sidecar(app: &AppHandle) {
         SidecarChild::Release(child) => {
             let _ = child.kill();
         }
+        #[cfg(not(debug_assertions))]
+        SidecarChild::Patched(mut child) => {
+            let _ = child.kill();
+        }
     }
+}
+
+fn restart_sidecar(app: &AppHandle) -> Result<(), String> {
+    terminate_sidecar(app);
+    prepare_sidecar_launch(SIDECAR_PORT);
+    let token = app.state::<SidecarAuthState>().token.clone();
+    let child = spawn_sidecar(app, &token)?;
+    *app.state::<SidecarState>().0.lock().unwrap() = Some(child);
+    wait_for_sidecar_port(SIDECAR_PORT, Duration::from_secs(60))?;
+    Ok(())
 }
 
 fn focus_main_window(app: &AppHandle) {
@@ -242,11 +279,22 @@ fn focus_main_window(app: &AppHandle) {
 fn spawn_sidecar(app: &tauri::AppHandle, token: &str) -> Result<SidecarChild, String> {
     #[cfg(debug_assertions)]
     {
+        let _ = app;
         return spawn_dev_sidecar(token).map(SidecarChild::Dev);
     }
 
     #[cfg(not(debug_assertions))]
     {
+        if let Some(patch_bin) = sidecar_patch::resolved_patch_binary(app) {
+            let child = Command::new(&patch_bin)
+                .env("CLUTCH_SIDECAR_TOKEN", token)
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .spawn()
+                .map_err(|e| format!("无法启动补丁 Sidecar：{e}"))?;
+            return Ok(SidecarChild::Patched(child));
+        }
+
         let (_rx, child) = app
             .shell()
             .sidecar("orchestrator")

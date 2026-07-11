@@ -295,6 +295,7 @@ def serialize_models_config(router: LLMProviderRouter) -> dict[str, Any]:
 _TEST_PROMPT = "Reply with exactly: ok"
 _TEST_TIMEOUT_SEC = 60.0
 _TEST_MAX_TOKENS = 16
+_PROBE_TIMEOUT_SEC = 20.0
 
 
 def format_connection_error(exc: Exception) -> str:
@@ -310,7 +311,10 @@ def format_connection_error(exc: Exception) -> str:
     if "404" in raw or "not found" in lower:
         return "Model or endpoint not found — the key may work but this model ID is wrong."
     if "timeout" in lower or "timed out" in lower:
-        return "Connection timed out — check your network or try again."
+        return (
+            "Connection timed out — the provider may be overloaded. "
+            "Retest, switch to another model, or try again later."
+        )
     if len(raw) > 120 or raw.strip().startswith("{"):
         return "Connection failed — check your API key and press Test again."
     return raw[:200]
@@ -431,11 +435,32 @@ def test_model_connection(router: LLMProviderRouter, model_id: str) -> dict[str,
             }
         if router._chat is None:
             raise RuntimeError("Chat backend not configured")
+        key = router._require_api_key(spec.provider_id, api_key)
+        # Prefer a fast GET /models probe — Agnes chat completions can exceed 60s TTFT
+        # under load and falsely mark a valid key as CONNECTION FAILED.
+        from src.llm.http_complete import http_probe_credentials
+
+        try:
+            probed = http_probe_credentials(
+                provider_id=spec.provider_id,
+                base_url=spec.base_url,
+                api_key=key,
+                timeout_sec=_PROBE_TIMEOUT_SEC,
+            )
+            if probed:
+                return {
+                    "ok": True,
+                    "model_id": model_id,
+                    "message": "Connection OK — this model is ready to use.",
+                }
+        except Exception:
+            # Fall through to chat completion (covers gateways without /models).
+            pass
         router._chat(
             provider_id=spec.provider_id,
             base_url=spec.base_url,
             api_model=spec.api_model,
-            api_key=router._require_api_key(spec.provider_id, api_key),
+            api_key=key,
             messages=[{"role": "user", "content": _TEST_PROMPT}],
             timeout_sec=_TEST_TIMEOUT_SEC,
             max_tokens=_TEST_MAX_TOKENS,

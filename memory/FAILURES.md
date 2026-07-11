@@ -12,6 +12,14 @@
 
 （暂无）
 
+### [RESOLVED] v1.2.0 · Chat 模式 `expected string or bytes-like object, got 'dict'`（2026-07-11）
+
+- **现象：** 打包版 Clutch Agent + 任意配置模型（如 DeepSeek V4 Pro）发消息后气泡直接显示该 TypeError；Terminal 有 `[CHAT] …: 48 chars`（错误文案长度）
+- **根因：** Design 模式（`fae22b6`）把 `http_chat_complete` 返回值从 `str` 改成 `{content, reasoning_content}`，但 `engine_router.route_engine` → `sanitize_engine_output` 仍对 `re.sub` 传入 dict
+- **解决：** 所有 plain-chat / MCP / handoff / tools_status 调用点用 `LLMProviderRouter.extract_content` 解包；`sanitize_engine_output` 对非 str 做防御
+- **规避：** 改 LLM 返回形状时必须同步所有 `router.chat()` 消费方；发版前用 Clutch Agent 无 MCP 路径做一次真实 chat smoke
+- **关联：** `engine_router.py`、`mcp_react.py`、`agent_executor.py`；回归测 `test_route_engine_unwraps_dict_chat_response`
+
 ### [RESOLVED] macOS · 打开 Clutch 出现两个 Dock 图标（2026-07-10）
 
 - **现象：** 打包版启动后 Dock 出现两个相同 Clutch 图标，其一为内嵌 PyInstaller `orchestrator` sidecar

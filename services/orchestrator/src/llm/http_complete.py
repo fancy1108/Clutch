@@ -27,6 +27,58 @@ def _anthropic_uses_messages_api(base_url: str) -> bool:
     return False
 
 
+def _get_json(
+    url: str, headers: dict[str, str], *, timeout_sec: float = _TIMEOUT_SEC
+) -> dict[str, Any] | list[Any]:
+    req = urllib.request.Request(
+        url,
+        headers={**headers, "User-Agent": _HTTP_USER_AGENT},
+        method="GET",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout_sec) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")[:500]
+        raise RuntimeError(f"LLM API error {exc.code}: {detail}") from exc
+
+
+def http_probe_credentials(
+    *,
+    provider_id: ProviderId,
+    base_url: str,
+    api_key: str,
+    timeout_sec: float = 20.0,
+) -> bool:
+    """Fast credential/network check via OpenAI-compatible GET /models when possible.
+
+    Returns True when the probe succeeds. Raises on auth/network failure.
+    Returns False when this provider should fall back to a chat completion probe.
+    """
+    if provider_id == "anthropic":
+        resolved_base, _, resolved_key = resolve_anthropic_transport(
+            base_url=base_url, api_model="", api_key=api_key
+        )
+        if _anthropic_uses_messages_api(resolved_base):
+            return False
+        base_url = resolved_base
+        api_key = resolved_key
+    if provider_id == "opencode":
+        base_url = ZEN_BASE_URL
+    if provider_id == "ollama":
+        base_url = _normalize_ollama_base_url(base_url)
+
+    url = f"{base_url.rstrip('/')}/models"
+    headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
+    data = _get_json(url, headers, timeout_sec=timeout_sec)
+    if isinstance(data, dict) and ("data" in data or "models" in data or "object" in data):
+        return True
+    if isinstance(data, list):
+        return True
+    # Unexpected shape — treat as inconclusive so callers can fall back to chat.
+    return False
+
+
 def _post_json(
     url: str, headers: dict[str, str], body: dict[str, Any], *, timeout_sec: float = _TIMEOUT_SEC
 ) -> dict[str, Any]:

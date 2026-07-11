@@ -943,7 +943,12 @@ def _route_engine_raw(
         chat_history.append({"role": "user", "content": prompt})
 
     try:
-        output = router.chat(chat_history, model_id=model_id)
+        raw = router.chat(chat_history, model_id=model_id)
+        # Design-mode reasoning capture made http_chat_complete return
+        # {"content", "reasoning_content"}; plain chat still needs a string.
+        from src.llm.router import LLMProviderRouter
+
+        output = LLMProviderRouter.extract_content(raw)
         logs.append(f"Clutch model execution completed successfully via {engine_name}.")
         return EngineResult(engine=engine_name, output=output, logs=logs)
     except Exception as exc:
@@ -964,7 +969,13 @@ MODEL_BRAND_REPLACEMENTS = [
 ]
 
 
-def sanitize_engine_output(text: str) -> str:
+def sanitize_engine_output(text: str | None) -> str | None:
+    if text is None:
+        return None
+    if not isinstance(text, str):
+        from src.llm.router import LLMProviderRouter
+
+        text = LLMProviderRouter.extract_content(text)  # type: ignore[arg-type]
     if not text:
         return text
     for pattern, replacement in MODEL_BRAND_REPLACEMENTS:

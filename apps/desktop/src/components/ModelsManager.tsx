@@ -863,7 +863,10 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
                     </div>
                     <div
                       className={`flex items-center gap-1 flex-shrink-0 ml-2 transition-opacity ${
-                        verify === 'testing' || deletingModelId === model.id
+                        verify === 'testing'
+                          || verify === 'failed'
+                          || deletingModelId === model.id
+                          || isActive
                           ? 'opacity-100'
                           : 'opacity-0 group-hover:opacity-100'
                       }`}

@@ -134,6 +134,17 @@ class FakeRouter:
         return f"Fake response for: {history[-1]['content']}"
 
 
+class FakeDictRouter(FakeRouter):
+    """Mirrors http_chat_complete after Design-mode reasoning capture (v1.2.0)."""
+
+    def chat(self, history: list[dict[str, str]], *, model_id=None, tools=None):
+        _ = (model_id, tools)
+        return {
+            "content": f"Fake response for: {history[-1]['content']}",
+            "reasoning_content": "think step",
+        }
+
+
 def test_route_engine_fallback_no_agent(monkeypatch) -> None:
     monkeypatch.setattr("src.engine_router.list_agents", lambda: [])
     monkeypatch.setattr("src.engine_router.load_connected_ids", lambda: set())
@@ -143,6 +154,27 @@ def test_route_engine_fallback_no_agent(monkeypatch) -> None:
     assert res.engine == "Fake Model"
     assert "test prompt" in res.output
     assert any("Routing task to Clutch model" in log for log in res.logs)
+
+
+def test_route_engine_unwraps_dict_chat_response(monkeypatch) -> None:
+    """Regression: v1.2.0 chat crashed with TypeError when LLM returned a dict."""
+    monkeypatch.setattr("src.engine_router.list_agents", lambda: [])
+    monkeypatch.setattr("src.engine_router.load_connected_ids", lambda: set())
+    monkeypatch.setattr("src.models_config.get_router", lambda: FakeDictRouter())
+
+    res = route_engine(agent_name="clutch-agent", prompt="设计一个登录页面")
+    assert isinstance(res.output, str)
+    assert "设计一个登录页面" in res.output
+    assert "reasoning_content" not in res.output
+
+
+def test_sanitize_engine_output_accepts_dict() -> None:
+    from src.engine_router import sanitize_engine_output
+
+    out = sanitize_engine_output(
+        {"content": "Hello from Agnes model", "reasoning_content": "x"}
+    )
+    assert out == "Hello from Gemini model"
 
 
 def test_route_engine_claude_cli_not_connected(monkeypatch, mock_agents) -> None:

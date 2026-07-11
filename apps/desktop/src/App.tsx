@@ -502,7 +502,10 @@ function MainLayout() {
   const selectedAgent = configuredAgents.find((agent) => agent.id === selectedAgentId);
   const selectedAgentName = getAgentDisplayName(selectedAgent);
   const isPlainLlmFooter = !selectedWorkflowId && !clutchState.workflow_id;
-  const hideFooterSessionControls = isPlainLlmFooter && workspaceViewMode === 'terminal';
+  // Terminal Orchestra hides Model/Agent/Workflow in Coding only. Design has no
+  // Chat/Terminal toggle — never inherit a stuck `terminal` viewMode into Design.
+  const hideFooterSessionControls =
+    appMode !== 'design' && isPlainLlmFooter && workspaceViewMode === 'terminal';
   const footerSelectableAgents = useMemo((): Agent[] => (
     isPlainLlmFooter && workspaceViewMode === 'terminal'
       ? filterAgentsForTerminalWorkspace(configuredAgents, 'terminal', agentTypeFromAgent) as Agent[]
@@ -1132,6 +1135,8 @@ function MainLayout() {
       setSelectedWorkflowId(null);
       setAppMode('design');
       setView('chat');
+      setWorkspaceViewMode('chat');
+      saveWorkspaceViewMode('chat');
       setRightTab('overview');
       setRightPanelOpen(false);
       void clutchStore.connect(runId);
@@ -1444,6 +1449,8 @@ function MainLayout() {
       if (sessionMode === 'design') {
         setCurrentFlowName(session.title || t('New Design'));
         setSelectedWorkflowId(null);
+        setWorkspaceViewMode('chat');
+        saveWorkspaceViewMode('chat');
         void clutchStore.connect(session.run_id);
         return;
       }
