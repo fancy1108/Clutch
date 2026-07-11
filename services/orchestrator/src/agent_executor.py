@@ -169,6 +169,30 @@ def execute_agent_task(
     result_message: dict[str, Any] | None = None
     task_failed = False
 
+    # Guard against a class of silent mis-routing observed in the wild (#54):
+    # the workflow node declares `tool: 'zcode-cli'` but the referenced agent's
+    # `agentType` is `'claude-cli'` (e.g. because it was copied from a template
+    # without updating the field). The router will dispatch by agentType, so
+    # execution silently goes to the wrong CLI while log lines still say
+    # `[<agent.name>]`. Surface the mismatch loudly so users can catch typos
+    # early. We deliberately do not refuse execution — some setups may want
+    # this deliberately (e.g. testing a workflow with a substitute engine).
+    if agent_dict and tool and tool not in {"", "llm"}:
+        from src.agent_type import agent_type_from_record, normalize_agent_type
+
+        agent_type = agent_type_from_record(agent_dict)
+        node_type = normalize_agent_type(tool)
+        if node_type != agent_type and node_type != "clutch":
+            warning = (
+                f"[ROUTER] warning: workflow node tool={tool!r} does not match "
+                f"agent.agentType={agent_type!r} (agent id={agent_dict.get('id')!r}, "
+                f"name={agent_dict.get('name')!r}). Routing will follow agentType "
+                f"({agent_type!r}); if this is a typo, edit the agent to match."
+            )
+            logs.append(warning)
+            if run_id:
+                stream_log(warning)
+
     if tool in {"claude-cli", "agy-cli", "agy", "antigravity-cli", "codex-cli", "codex", "aider-cli", "opencode-cli", "opencode", "mimo-cli", "mimo", "codebuddy-cli", "codebuddy", "cbc", "llm", "ollama", "ollama-cli", "zcode-cli", "zcode", ""}:
         from src.agent_type import resolve_model_for_agent
         from src.engine_router import route_engine

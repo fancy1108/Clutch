@@ -79,6 +79,33 @@ def normalize_agent_type(raw: str) -> str:
     return "clutch"
 
 
+def normalize_agent_type_strict(raw: str) -> str:
+    """Same as normalize_agent_type, but raises ValueError instead of silently
+    falling back to 'clutch' when the input maps to nothing recognizable.
+
+    Use at trust boundaries where an unrecognized `agentType` should surface as
+    a config error, not be papered over. Notably: user-submitted agent records
+    persisted via `save_agents` (see #54).
+
+    Legacy aliases (e.g. 'ZCode CLI', 'Claude Code CLI') are still accepted
+    exactly like in the lenient version; only genuinely unknown inputs (typos
+    like 'zcod' or made-up names) raise.
+
+    Empty / whitespace-only input still returns 'clutch' — this matches the
+    documented default when no `agentType` is specified.
+    """
+    if not raw or not raw.strip():
+        return "clutch"
+    normalized = normalize_agent_type(raw)
+    key = raw.strip().lower()
+    if normalized == "clutch" and key not in AGENT_TYPES and key not in _LEGACY_AI_ENGINE_TO_TYPE:
+        raise ValueError(
+            f"Unrecognized agentType {raw!r}. "
+            f"Expected one of {sorted(AGENT_TYPES)}, or a documented alias."
+        )
+    return normalized
+
+
 def agent_type_from_record(agent: dict[str, Any] | None) -> str:
     if not agent:
         return "clutch"

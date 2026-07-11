@@ -104,3 +104,61 @@ def test_resolve_model_for_agent_ignores_session_model_for_codex_cli() -> None:
     )
     assert model_id == "agnes-image-2.1-flash"
     assert spec.id == "agnes-image-2.1-flash"
+
+
+# --- normalize_agent_type_strict tests (#54) ---
+
+
+def test_normalize_agent_type_strict_accepts_known_type() -> None:
+    from src.agent_type import normalize_agent_type_strict
+
+    assert normalize_agent_type_strict("zcode-cli") == "zcode-cli"
+    assert normalize_agent_type_strict("claude-cli") == "claude-cli"
+    assert normalize_agent_type_strict("clutch") == "clutch"
+
+
+def test_normalize_agent_type_strict_accepts_known_alias() -> None:
+    from src.agent_type import normalize_agent_type_strict
+
+    assert normalize_agent_type_strict("ZCode CLI") == "zcode-cli"
+    assert normalize_agent_type_strict("Claude Code CLI") == "claude-cli"
+
+
+def test_normalize_agent_type_strict_empty_returns_clutch() -> None:
+    from src.agent_type import normalize_agent_type_strict
+
+    assert normalize_agent_type_strict("") == "clutch"
+    assert normalize_agent_type_strict("   ") == "clutch"
+
+
+def test_normalize_agent_type_strict_raises_on_unknown() -> None:
+    """Prevent silent 'clutch' fallback on typo (#54).
+
+    'zcode' is intentionally a documented legacy alias (maps to 'zcode-cli')
+    and remains accepted; 'zcod' or 'not-a-real-cli' are genuine typos and
+    should raise so the config error surfaces early instead of silently
+    routing to the built-in Clutch engine.
+    """
+    import pytest
+    from src.agent_type import normalize_agent_type_strict
+
+    with pytest.raises(ValueError, match="Unrecognized agentType"):
+        normalize_agent_type_strict("not-a-real-cli")
+    with pytest.raises(ValueError, match="Unrecognized agentType"):
+        normalize_agent_type_strict("zcod")
+
+
+def test_normalize_agent_type_strict_still_accepts_zcode_alias() -> None:
+    """Sanity check the documented alias is not accidentally rejected."""
+    from src.agent_type import normalize_agent_type_strict
+
+    assert normalize_agent_type_strict("zcode") == "zcode-cli"
+
+
+def test_normalize_agent_type_lenient_still_falls_back() -> None:
+    """The lenient normalize_agent_type keeps its silent 'clutch' behavior
+    (relied on by tools_status and main tool_id probing). Only the *strict*
+    variant added in #54 raises."""
+    from src.agent_type import normalize_agent_type
+
+    assert normalize_agent_type("not-a-real-cli") == "clutch"
