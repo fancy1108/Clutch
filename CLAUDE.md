@@ -123,6 +123,7 @@ Layer 4 为**操作规程**，不是权威来源。冲突时以本文 §铁律 �
 - 桌面 E2E 侧栏 hydrate 后 `getByText` 易超时 → 先 `waitForSelector` 等 Chat DOM，或延长 `expect` timeout
 - API E2E 在 Chromium 里起 WebSocket 不稳定 → 用 `e2e/helpers/ws.ts`（Node 原生 WS），禁止 `chromium.launch()` 测 WS
 - macOS 打包 sidecar `console=False` 会在 Dock 多出一个图标 → `clutch.spec` 在 macOS/Linux 用 `console=True`，Windows 保持 `console=False`
+- `http_chat_complete` 返回 `{content, reasoning_content}` dict 时，`sanitize_engine_output`/`re.sub` 会 TypeError → 消费方必须先 `LLMProviderRouter.extract_content`（v1.2.0 chat 回归）
 
 ---
 

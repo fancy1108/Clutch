@@ -81,6 +81,7 @@ def summarize_lane_transcripts(
 
     try:
         from src.models_config import get_router
+        from src.llm.router import LLMProviderRouter
 
         router = get_router()
         messages = [
@@ -88,10 +89,7 @@ def summarize_lane_transcripts(
             {"role": "user", "content": user_content},
         ]
         response = router.chat(messages)
-        if isinstance(response, dict):
-            summary = str(response.get("content") or response).strip()
-        else:
-            summary = str(response).strip()
+        summary = LLMProviderRouter.extract_content(response)
         if summary:
             return summary
     except Exception as exc:

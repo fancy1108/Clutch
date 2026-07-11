@@ -23,6 +23,8 @@
 
 **macOS 应用内更新（v1.0.2+）：** 打包版启动后自动检查 GitHub Releases 上的 `latest.json`；有新版本时在**侧栏底部 Settings 同一行**显示紧凑 **Update / Later** pill（下载中 spinner + 进度百分比，完成后 **Restart**），下载签名 bundle 并重启安装。**v1.0.0 / v1.0.1 用户须先手动安装 v1.0.2 一次**；Windows 暂无应用内更新，请从 Release 页手动下载新版本。详见 [`docs/UPDATES.md`](./UPDATES.md) · [`docs/INSTALL.md`](./INSTALL.md) §3。
 
+**macOS Sidecar 热更（v1.2.1+ · D37）：** 在无需升 app 版本时，可静默下载并校验编排服务（`orchestrator`）补丁；就绪后 Settings 旁显示极小 **「更新已就绪」**，确认后仅重启 sidecar（不关整个 App）。与全量 Update 同时存在时只显示全量更新。详见 [`docs/UPDATES.md`](./UPDATES.md) §5。
+
 ### 1.2 真实痛点（本项目的存在理由）
 如果仅仅是想生成代码，直接使用 Claude Code / Cursor 裸跑就够了，不需要这套工作台。Clutch 旨在解决以下两个真实的工程化场景痛点：
 

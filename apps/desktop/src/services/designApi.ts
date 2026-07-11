@@ -247,6 +247,7 @@ export async function generateDesignSession(
     reference_md?: string | null;
     reference_md_name?: string | null;
     reference_url?: string | null;
+    design_system?: string | null;
   },
 ): Promise<DesignSession> {
   const response = await sidecarFetch(

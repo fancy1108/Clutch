@@ -279,7 +279,7 @@ class LLMProviderRouter:
                 f"State keys: {sorted(state.keys())}. "
                 f"Pick one branch: {options}. Reply with only the branch key."
             )
-            choice = self.complete(prompt).strip().strip('"')
+            choice = self.extract_content(self.complete(prompt)).strip().strip('"')
             return choice if choice in options else options[0]
 
         return suggest

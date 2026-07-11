@@ -11,6 +11,17 @@ export type AppUpdateProgress = {
 
 const DISMISS_KEY = 'clutch_update_dismissed_version';
 
+/** When a full app update UI is visible, hide sidecar hotpatch (D37). */
+let hotpatchSuppressed = false;
+
+export function setHotpatchSuppressed(suppressed: boolean): void {
+  hotpatchSuppressed = suppressed;
+}
+
+export function isHotpatchSuppressed(): boolean {
+  return hotpatchSuppressed;
+}
+
 function isDismissed(version: string): boolean {
   try {
     return localStorage.getItem(DISMISS_KEY) === version;
