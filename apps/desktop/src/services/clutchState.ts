@@ -919,7 +919,9 @@ class ClutchStateStore {
       this._connected = false;
     }
     this.connectPromise = null;
-
+    if (this.runId !== runId) {
+      this._laneTranscripts.clear();
+    }
     this.runId = runId;
     if (this.pendingHydrate?.run_id === runId) {
       this.state = this.pendingHydrate;
