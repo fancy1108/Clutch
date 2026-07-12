@@ -22,13 +22,15 @@
 
 ## Active Deliverables
 
-### Codex CLI path fix after DMG install ✅
+### Codex path fix & Multi-CLI message inject fix ✅
 - **日期：** 2026-07-12
-- **Commit：** `47830fa` — fix(orchestrator): add ChatGPT.app fallback paths for Codex CLI and update PROGRESS
+- **Commit：** `PENDING`
 - **Verification：** `ln -sf /Applications/ChatGPT.app/Contents/Resources/codex ~/.local/bin/codex && ~/.local/bin/codex --version` -> `codex-cli 0.144.0-alpha.4`；`pytest` -> 711 passed；`./scripts/verify.sh` -> passed
 - **证据：** —
 - **交付文件：**
   - `services/orchestrator/src/tools_status.py` — Added `/Applications/ChatGPT.app/Contents/Resources` and `/Applications/Codex.app/Contents/Resources` to CLI extra search paths.
+  - `apps/desktop/src/services/terminalOrchestraUtils.ts` — Added `mimo-cli`, `codex-cli`, `claude-cli`, and `codebuddy-cli` to PTY inject ready detection and warmup logic.
+  - `apps/desktop/src/services/terminalOrchestraUtils.test.ts` — Updated unit tests for claude-cli ready-to-inject prompt tests and warmup expect values.
 
 ### Issues #55 / #53 / #52 ✅
 - **日期：** 2026-07-11

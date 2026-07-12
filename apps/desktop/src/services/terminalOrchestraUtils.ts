@@ -654,30 +654,35 @@ export function resolvePtyInjectWarmupMs(
 ): number {
   const attempt = options?.attempt ?? 0;
   const isHandoff = options?.isHandoff ?? false;
-  const isOpenCode = agentType === 'opencode-cli';
+  const isHeavyCLI =
+    agentType === 'opencode-cli' ||
+    agentType === 'mimo-cli' ||
+    agentType === 'codex-cli' ||
+    agentType === 'claude-cli' ||
+    agentType === 'codebuddy-cli';
   const isOllama = agentType === 'ollama-cli';
   const isAgy = agentType === 'antigravity-cli';
 
   if (isHandoff) {
     if (attempt === 0) {
-      if (isOpenCode) return 3200;
+      if (isHeavyCLI) return 3200;
       if (isOllama) return 4500;
       if (isAgy) return 3800;
       return 2800;
     }
-    if (isOpenCode) return 1400;
+    if (isHeavyCLI) return 1400;
     if (isOllama) return 2200;
     if (isAgy) return 1600;
     return 900;
   }
 
   if (attempt === 0) {
-    if (isOpenCode) return 2800;
+    if (isHeavyCLI) return 2800;
     if (isOllama) return 3500;
     if (isAgy) return 3200;
     return 1500;
   }
-  if (isOpenCode) return 1200;
+  if (isHeavyCLI) return 1200;
   if (isOllama) return 1800;
   if (isAgy) return 1200;
   return 600;
@@ -692,7 +697,12 @@ export function isPtyOutputReadyForInject(agentType: string, transcript: string)
     case 'ollama-cli':
       return />>>|Send a message|Type your message/i.test(text) || text.trim().length >= 120;
     case 'opencode-cli':
-      return />>>|Type a message|ctrl\+c/i.test(text);
+    case 'mimo-cli':
+      return />>>|Type a message|ctrl\+c|输入消息|ctrl\+p/i.test(text);
+    case 'claude-cli':
+    case 'codex-cli':
+    case 'codebuddy-cli':
+      return />\s*(write tests for|ask a question|for shortcuts)/i.test(text);
     default:
       return text.trim().length >= 24;
   }

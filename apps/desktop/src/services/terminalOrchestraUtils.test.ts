@@ -386,7 +386,7 @@ describe('terminalOrchestraUtils', () => {
   });
 
   it('uses longer PTY inject warmup for OpenCode TUIs', () => {
-    expect(resolvePtyInjectWarmupMs('claude-cli')).toBe(1500);
+    expect(resolvePtyInjectWarmupMs('claude-cli')).toBe(2800);
     expect(resolvePtyInjectWarmupMs('opencode-cli')).toBe(2800);
     expect(resolvePtyInjectWarmupMs('antigravity-cli')).toBe(3200);
     expect(resolvePtyInjectWarmupMs('ollama-cli')).toBe(3500);
@@ -398,7 +398,9 @@ describe('terminalOrchestraUtils', () => {
     expect(isPtyOutputReadyForInject('antigravity-cli', 'Antigravity CLI 1.0\n? for shortcuts')).toBe(true);
     expect(isPtyOutputReadyForInject('antigravity-cli', 'booting…')).toBe(false);
     expect(isPtyOutputReadyForInject('ollama-cli', '>>> hello')).toBe(true);
-    expect(isPtyOutputReadyForInject('claude-cli', 'x'.repeat(24))).toBe(true);
+    expect(isPtyOutputReadyForInject('claude-cli', 'x'.repeat(24))).toBe(false);
+    expect(isPtyOutputReadyForInject('claude-cli', '> Ask a question')).toBe(true);
+    expect(isPtyOutputReadyForInject('dummy-cli', 'x'.repeat(24))).toBe(true);
   });
 
   it('builds optimistic handoff dispatch entry from preview', () => {
