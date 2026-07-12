@@ -206,6 +206,50 @@ def strip_yaml_frontmatter(content: str) -> str:
     return content
 
 
+def is_handoff_skill_installed(workspace_path: str | None = None) -> bool:
+    """Check if the handoff skill is present in any known skill directories."""
+    import os
+    from pathlib import Path
+    
+    # 1. User global canonical path
+    canonical_path = Path("/Users/fancy/obsidian/PARA/3_Resources/Skills/Sources")
+    if (canonical_path / "handoff").is_dir():
+        return True
+        
+    # 2. User home directories
+    try:
+        home = Path.expanduser(Path("~"))
+        global_paths = [
+            home / ".cursor" / "skills-cursor",
+            home / ".cursor" / "skills",
+            home / ".claude" / "skills",
+        ]
+        for p in global_paths:
+            if (p / "handoff").is_dir():
+                return True
+    except Exception:
+        pass
+            
+    # 3. Workspace directories
+    if workspace_path:
+        try:
+            ws = Path(workspace_path).expanduser().resolve()
+            ws_paths = [
+                ws / "skills",
+                ws / ".cursor" / "skills",
+                ws / ".claude" / "skills",
+                ws / ".agents" / "skills",
+            ]
+            for p in ws_paths:
+                if (p / "handoff").is_dir():
+                    return True
+        except Exception:
+            pass
+                
+    return False
+
+
+
 
 
 

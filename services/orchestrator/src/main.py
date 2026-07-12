@@ -4220,12 +4220,12 @@ async def _async_handoff_summarization_task(
 ):
     try:
         from src.interactive_pty_runtime import interactive_pty_manager
-        from src.handoff_summarizer import find_recent_temp_handoff_file, strip_yaml_frontmatter
+        from src.handoff_summarizer import find_recent_temp_handoff_file, strip_yaml_frontmatter, is_handoff_skill_installed
         from src.agent_type import agent_display_name
 
         agent_handoff_summary = None
         state = _run_states.get(run_id)
-        if state:
+        if state and is_handoff_skill_installed(workspace_path):
             lanes = state.get("pty_lanes") or []
             for source_name in sources:
                 target_lane = None
