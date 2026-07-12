@@ -1888,6 +1888,7 @@ function MainLayout() {
             className="flex-1 flex flex-col h-screen overflow-hidden relative z-20 transition-all duration-300"
           >
             <DesignWorkspace
+              key={sessionRunId}
               runId={sessionRunId}
               workspaceReady={Boolean(workspace)}
               modelLabel={selectedModel}
