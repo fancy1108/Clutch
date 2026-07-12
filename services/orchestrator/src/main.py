@@ -4221,7 +4221,6 @@ async def _async_handoff_summarization_task(
     try:
         from src.interactive_pty_runtime import interactive_pty_manager, configured_cli_binaries
         from src.handoff_summarizer import find_recent_temp_handoff_file, strip_yaml_frontmatter
-        from src.agent_type import agent_display_name
 
         HANDOFF_INJECTION_PROMPT = (
             "\n[System: Please generate a handoff summary file of our current conversation. "
@@ -4244,9 +4243,9 @@ async def _async_handoff_summarization_task(
                         break
                 if not target_lane:
                     for lane in lanes:
-                        agent_type = str(lane.get("agent_type") or "")
-                        display = agent_display_name(agent_type)
-                        if display.lower() == source_name.lower():
+                        agent_type = str(lane.get("agent_type") or "").lower()
+                        clean_type = agent_type.replace("-cli", "")
+                        if clean_type == source_name.lower() or source_name.lower() in clean_type:
                             target_lane = lane
                             break
                 if target_lane:
