@@ -56,9 +56,14 @@ def ollama_model_supports_vision(model_tag: str) -> bool:
 
 
 def model_supports_vision(spec: ModelSpec) -> bool:
-    if getattr(spec, "provider_id", None) == "ollama":
+    provider = getattr(spec, "provider_id", None)
+    if provider == "ollama":
         return ollama_model_supports_vision(spec.api_model)
-    return True
+    # Only well-known multimodal providers support vision input.
+    # opencode, agnes, deepseek, and custom providers are text-only by default
+    # to avoid 400 invalid_request_error when sending image content.
+    _VISION_PROVIDERS = {"openai", "anthropic", "google"}
+    return provider in _VISION_PROVIDERS
 
 
 def model_supports_tool_calling(spec: ModelSpec) -> bool:

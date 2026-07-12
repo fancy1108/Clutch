@@ -458,6 +458,21 @@ function stripInteractionScript(html: string): string {
   );
 }
 
+/** Ensure srcDoc HTML has <meta charset="utf-8"> to prevent garbled text. */
+function ensureCharset(html: string): string {
+  if (!html) return html;
+  // Already has charset declaration — skip.
+  if (/charset\s*=/i.test(html)) return html;
+  // Inject right after <head> if present, otherwise after <!doctype …> or at start.
+  if (/<head[^>]*>/i.test(html)) {
+    return html.replace(/(<head[^>]*>)/i, '$1<meta charset="utf-8"/>');
+  }
+  if (/<!doctype/i.test(html)) {
+    return html.replace(/(<!doctype[^>]*>)/i, '$1<meta charset="utf-8"/>');
+  }
+  return '<meta charset="utf-8"/>' + html;
+}
+
 function withPickerScript(
   html: string,
   opts: boolean | { pickMode?: boolean; selectedPath?: string | null },
@@ -575,10 +590,11 @@ const DESIGN_CARD_GAP = 48;
 const DESIGN_SPEC_UI_GAP = 56;
 const DESIGN_ROW_Y = 56;
 
-/** Agent Log | Spec | Interface — fixed row, no overlap. */
+/** Agent Log | Source/Image | Spec | Interface — fixed row, no overlap. */
 const LAYOUT = {
   agentLog: { x: DESIGN_CANVAS_ORIGIN, y: DESIGN_ROW_Y },
-  reference: { x: DESIGN_CANVAS_ORIGIN, y: 260 },
+  /** Column 2: image / md / url reference card — same row as Agent Log */
+  reference: { x: DESIGN_CANVAS_ORIGIN + DESIGN_AGENT_LOG_W + DESIGN_CARD_GAP, y: DESIGN_ROW_Y },
   /** After agent log: 40 + 272 + 48 = 360 */
   source: { x: DESIGN_CANVAS_ORIGIN + DESIGN_AGENT_LOG_W + DESIGN_CARD_GAP, y: DESIGN_ROW_Y },
   /** Spec when no source card */
@@ -868,10 +884,10 @@ function UiCardNode({ data, selected }: NodeProps) {
           ) : (
             <iframe
               title={d.name}
-              srcDoc={withPickerScript(d.html || '', {
+              srcDoc={ensureCharset(withPickerScript(d.html || '', {
                 pickMode,
                 selectedPath: d.selectedElementPath,
-              })}
+              }))}
               className={`absolute left-0 top-0 origin-top-left border-0 bg-white ${
                 pickMode ? 'pointer-events-auto' : 'pointer-events-none'
               } ${drawing ? 'animate-design-draw-reveal' : ''}`}
@@ -904,31 +920,82 @@ function UiCardNode({ data, selected }: NodeProps) {
 function RefCardNode({ data }: NodeProps) {
   const d = data as RefData;
   return (
-    <div className="w-[280px] overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-md animate-design-card-in">
+    <div className="w-[300px] overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-md animate-design-card-in">
+      <Handle type="target" position={Position.Left} className="!bg-neutral-300" />
       <Handle type="source" position={Position.Right} className="!bg-neutral-300" />
       <div className="flex items-center justify-between border-b border-neutral-100 px-3 py-2">
-        <p className="truncate text-[12px] font-semibold text-neutral-800">{d.name || 'image.png'}</p>
-        <span className="text-[10px] text-neutral-400">Reference</span>
+        <div className="flex min-w-0 items-center gap-2">
+          <ImagePlus size={14} className="shrink-0 text-amber-500" />
+          <p className="truncate text-[12px] font-semibold text-neutral-800">{d.name || 'image.png'}</p>
+        </div>
+        <span className="shrink-0 text-[10px] text-neutral-400">Reference</span>
       </div>
-      <img src={d.url} alt={d.name} className="max-h-[320px] w-full object-contain bg-neutral-50" />
+      <img src={d.url} alt={d.name} className="max-h-[280px] w-full object-contain bg-neutral-50" />
+    </div>
+  );
+}
+
+
+function MdDocFullModal({ name, text, onClose }: { name: string; text: string; onClose: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="relative mx-4 flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-neutral-100 px-4 py-3">
+          <div className="flex items-center gap-2">
+            <FileText size={14} className="shrink-0 text-neutral-500" />
+            <p className="text-[13px] font-semibold text-neutral-800">{name || 'DESIGN.md'}</p>
+            <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] text-neutral-500">{text.length.toLocaleString()} chars</span>
+          </div>
+          <button
+            type="button"
+            className="rounded-lg p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
+            onClick={onClose}
+            aria-label="Close"
+          >
+            <X size={16} />
+          </button>
+        </div>
+        <pre className="min-h-0 flex-1 overflow-auto whitespace-pre-wrap bg-neutral-50 px-4 py-3 font-mono text-[11px] leading-relaxed text-neutral-700">
+          {text}
+        </pre>
+      </div>
     </div>
   );
 }
 
 function MdDocCardNode({ data }: NodeProps) {
   const d = data as MdDocData;
+  const [showFull, setShowFull] = useState(false);
   return (
-    <div className="w-[300px] overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-md animate-design-card-in">
-      <Handle type="source" position={Position.Right} className="!bg-neutral-300" />
-      <div className="flex items-center gap-2 border-b border-neutral-100 px-3 py-2">
-        <FileText size={14} className="shrink-0 text-neutral-500" />
-        <p className="truncate text-[12px] font-semibold text-neutral-800">{d.name || 'DESIGN.md'}</p>
+    <>
+      <div className="w-[300px] overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-md animate-design-card-in">
+        <Handle type="source" position={Position.Right} className="!bg-neutral-300" />
+        <div className="flex items-center justify-between gap-2 border-b border-neutral-100 px-3 py-2">
+          <div className="flex min-w-0 items-center gap-2">
+            <FileText size={14} className="shrink-0 text-neutral-500" />
+            <p className="truncate text-[12px] font-semibold text-neutral-800">{d.name || 'DESIGN.md'}</p>
+          </div>
+          <button
+            type="button"
+            className="nodrag nopan shrink-0 rounded-md border border-neutral-200 bg-neutral-50 px-2 py-0.5 text-[10px] font-medium text-neutral-600 hover:bg-neutral-100 hover:text-neutral-800"
+            onClick={(e) => { e.stopPropagation(); setShowFull(true); }}
+          >
+            View full
+          </button>
+        </div>
+        <pre className="max-h-[360px] overflow-auto whitespace-pre-wrap bg-neutral-50/80 px-3 py-2.5 font-mono text-[10px] leading-relaxed text-neutral-600">
+          {d.text.slice(0, 3500)}
+          {d.text.length > 3500 ? '\n…(truncated — click "View full" to see all)' : ''}
+        </pre>
       </div>
-      <pre className="max-h-[360px] overflow-auto whitespace-pre-wrap bg-neutral-50/80 px-3 py-2.5 font-mono text-[10px] leading-relaxed text-neutral-600">
-        {d.text.slice(0, 3500)}
-        {d.text.length > 3500 ? '\n…' : ''}
-      </pre>
-    </div>
+      {showFull && <MdDocFullModal name={d.name} text={d.text} onClose={() => setShowFull(false)} />}
+    </>
   );
 }
 

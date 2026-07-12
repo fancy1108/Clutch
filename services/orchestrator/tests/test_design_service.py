@@ -841,3 +841,64 @@ def test_generate_react_stops_live_preview_before_replacing_react_dir(
     service.generate_react(run_id)
 
     assert call_order[:2] == ["stop", "rmtree"]
+
+
+def test_extract_css_tokens_and_format_prompt() -> None:
+    html_sample = """
+    <!DOCTYPE html>
+    <html class="dark">
+    <head>
+      <title>Test Design Token Page</title>
+      <meta name="description" content="This is a test web page.">
+      <meta name="theme-color" content="#7C3AED">
+      <meta property="og:image" content="https://example.com/cover.png">
+      <style>
+        :root {
+          --primary-color: #4F46E5;
+          --font-family: 'DM Sans', sans-serif;
+        }
+        body {
+          font-family: 'DM Sans', Inter, sans-serif;
+          background-color: #0f172a;
+        }
+      </style>
+    </head>
+    <body class="bg-slate-900 text-slate-100 font-sans">
+      <div class="bg-indigo-600 text-white p-4">Hello</div>
+      <div class="bg-slate-900 border-indigo-500">World</div>
+    </body>
+    </html>
+    """
+    tokens = service._extract_css_tokens(html_sample, base_url="https://example.com")
+    
+    # 1. Custom properties
+    assert tokens.get("css_vars") == {
+        "primary-color": "#4F46E5",
+        "font-family": "'DM Sans', sans-serif"
+    }
+    
+    # 2. Font family
+    assert "DM Sans" in tokens.get("font_families", [])
+    
+    # 3. Theme color
+    assert tokens.get("theme_color") == "#7C3AED"
+    
+    # 4. Open Graph image
+    assert tokens.get("og_image") == "https://example.com/cover.png"
+    
+    # 5. Hex colors extracted
+    assert "#0F172A" in tokens.get("hex_colors", [])
+    
+    # 6. Tailwind color classes detected
+    assert "indigo-600" in tokens.get("tailwind_color_classes", [])
+    assert "slate-900" in tokens.get("tailwind_color_classes", [])
+    assert tokens.get("tailwind_theme_color") in {"indigo", "slate"}
+
+    # Test formatter
+    prompt_fragment = service._format_css_tokens_for_prompt(tokens)
+    assert "[Extracted Design Tokens from Website]" in prompt_fragment
+    assert "Brand/theme color: #7C3AED" in prompt_fragment
+    assert "Color mode: DARK" in prompt_fragment
+    assert "Font families:" in prompt_fragment
+    assert "Tailwind color classes used:" in prompt_fragment
+

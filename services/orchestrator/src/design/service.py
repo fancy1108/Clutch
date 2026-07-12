@@ -1142,6 +1142,13 @@ def _coerce_ui_html(
     html = (raw or "").strip()
     if html and "<html" not in html.lower():
         html = _shell_html(title, html, device=device)
+    # Ensure charset is declared so srcDoc iframes don't garble text.
+    if html and "charset" not in html.lower()[:500]:
+        if "<head>" in html.lower():
+            html = html.replace("<head>", '<head>\n<meta charset="utf-8"/>', 1)
+        elif "<head " in html.lower():
+            import re as _re
+            html = _re.sub(r"(<head\s[^>]*>)", r'\1\n<meta charset="utf-8"/>', html, count=1, flags=_re.I)
     if _html_has_visible_content(html):
         return html
     if fallback_html is not None and _html_has_visible_content(fallback_html):
@@ -1682,8 +1689,198 @@ def _normalize_reference_url(url: str | None) -> str | None:
     return raw
 
 
+def _extract_css_tokens(html: str, base_url: str = "") -> dict[str, Any]:
+    """Extract real design tokens from raw HTML: colors, fonts, CSS vars, Tailwind classes.
+
+    Handles both traditional sites (inline <style>) and modern SPAs (Tailwind class names,
+    meta theme-color, CSS-in-JS color tokens scattered in JS bundles).
+    """
+    from collections import Counter
+    from html import unescape
+    from urllib.parse import urljoin, urlparse
+
+    tokens: dict[str, Any] = {}
+
+    # ---- 1. CSS custom properties and font-family from <style> blocks ----------
+    style_blocks = re.findall(r"<style[^>]*>(.*?)</style>", html, re.I | re.S)
+    all_css = " ".join(style_blocks)
+
+    css_vars: dict[str, str] = {}
+    for k, v in re.findall(r"--([\.\w-]+)\s*:\s*([^;}\n]{1,80})", all_css):
+        css_vars[k.strip()] = v.strip().rstrip(",")
+    if css_vars:
+        tokens["css_vars"] = css_vars
+
+    font_families: list[str] = []
+    for ff in re.findall(r"font-family\s*:\s*([^;}\n]+)", all_css):
+        cleaned = re.sub(r"['\"/]", "", ff.split(",")[0]).strip()
+        if cleaned and cleaned not in font_families and len(cleaned) < 60:
+            font_families.append(cleaned)
+    # Also scan Google Fonts @import / link hrefs for font names
+    for family in re.findall(r"family=([A-Za-z+]+)", html):
+        name = family.replace("+", " ")
+        if name not in font_families:
+            font_families.append(name)
+    if font_families:
+        tokens["font_families"] = font_families[:6]
+
+    # ---- 2. Hex colors across entire HTML (inline styles + style blocks + data) -
+    hex_counts: Counter = Counter()
+    for h in re.findall(r"#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b", html):
+        norm = h.upper()
+        if len(norm) == 3:
+            norm = norm[0]*2 + norm[1]*2 + norm[2]*2  # expand shorthand
+        hex_counts["#" + norm] += 1
+    if hex_counts:
+        tokens["hex_colors"] = [h for h, _ in hex_counts.most_common(16)]
+        tokens["hex_colors_with_count"] = [[h, cnt] for h, cnt in hex_counts.most_common(16)]
+
+    # ---- 3. Tailwind class heuristic (for SPA sites with no inline CSS) --------
+    tw_palette: Counter = Counter()
+    for cls in re.findall(r'(?:bg|text|border|ring|fill|stroke|from|to|via)-([a-z]+-[0-9]{2,3})\b', html):
+        tw_palette[cls] += 1
+    if tw_palette:
+        top_tw = [cls for cls, _ in tw_palette.most_common(12)]
+        tokens["tailwind_color_classes"] = top_tw
+        # Convert most-frequent Tailwind color to a theme hint
+        tw_theme_color = tw_palette.most_common(1)[0][0].split("-")[0] if tw_palette else ""
+        if tw_theme_color:
+            tokens["tailwind_theme_color"] = tw_theme_color
+
+    # ---- 4. Meta theme-color (PWA / MS tile) ------------------------------------
+    theme_m = re.search(
+        r'<meta[^>]+(?:name|property)=["\'](?:theme-color|msapplication-TileColor)["\'][^>]+content=["\']([^"\'>]+)',
+        html, re.I
+    ) or re.search(
+        r'<meta[^>]+content=["\']([^"\'>]+)["\'][^>]+(?:name|property)=["\'](?:theme-color|msapplication-TileColor)',
+        html, re.I
+    )
+    if theme_m:
+        tokens["theme_color"] = theme_m.group(1).strip()
+
+    # ---- 5. Open Graph image (can be used as a visual reference screenshot) ----
+    og_m = re.search(r'og:image["\'][^>]*content=["\']([^"\'>]+)', html, re.I)
+    if not og_m:
+        og_m = re.search(r'content=["\']([^"\'>]+)["\'][^>]*og:image', html, re.I)
+    if og_m:
+        og_img = og_m.group(1).strip()
+        if og_img.startswith("http"):
+            tokens["og_image"] = og_img
+        elif base_url and og_img:
+            tokens["og_image"] = urljoin(base_url, og_img)
+
+    # ---- 6. Dark mode detection -------------------------------------------------
+    dark_signals = (
+        'prefers-color-scheme: dark' in html
+        or 'prefers-color-scheme:dark' in html
+        or '"dark"' in html[:2000]  # next-themes or similar
+        or "class=\"dark\"" in html
+        or "data-theme=\"dark\"" in html
+    )
+    # Also: if Tailwind dark: prefix is used heavily
+    dark_tw = len(re.findall(r'\bdark:', html)) > 5
+    tokens["dark_mode"] = dark_signals or dark_tw
+
+    # ---- 7. Fetch first linked CSS file for deeper color/var extraction ---------
+    css_hrefs = re.findall(r'<link[^>]+href=["\']([^"\'>]+\.css[^"\'>]*)["\']', html, re.I)
+    if css_hrefs and base_url:
+        parsed = urlparse(base_url)
+        css_base = f"{parsed.scheme}://{parsed.netloc}"
+        # Try the first (usually biggest) CSS bundle
+        for href in css_hrefs[:2]:
+            css_url = href if href.startswith("http") else urljoin(css_base + "/", href.lstrip("/"))
+            try:
+                import urllib.request as _ureq
+                css_req = _ureq.Request(
+                    css_url,
+                    headers={"User-Agent": "ClutchDesign/1.0"},
+                )
+                with _ureq.urlopen(css_req, timeout=8.0) as cr:
+                    css_text = cr.read(300_000).decode("utf-8", errors="replace")
+                # Extract hex colors and CSS vars from the CSS bundle
+                for hc in re.findall(r"#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b", css_text):
+                    norm = hc.upper()
+                    if len(norm) == 3:
+                        norm = norm[0]*2 + norm[1]*2 + norm[2]*2
+                    hex_counts["#" + norm] += 1
+                for ck, cv in re.findall(r"--([\.\w-]+)\s*:\s*([^;}\n]{1,80})", css_text):
+                    if ck.strip() not in css_vars:
+                        css_vars[ck.strip()] = cv.strip().rstrip(",")
+                for ff in re.findall(r"font-family\s*:\s*([^;}\n]+)", css_text):
+                    cleaned = re.sub(r"['\"/]", "", ff.split(",")[0]).strip()
+                    if cleaned and cleaned not in font_families and len(cleaned) < 60:
+                        font_families.append(cleaned)
+                # Update enriched tokens
+                if hex_counts:
+                    tokens["hex_colors"] = [h for h, _ in hex_counts.most_common(16)]
+                    tokens["hex_colors_with_count"] = [[h, cnt] for h, cnt in hex_counts.most_common(16)]
+                if css_vars:
+                    tokens["css_vars"] = css_vars
+                if font_families:
+                    tokens["font_families"] = font_families[:6]
+                break
+            except Exception:
+                continue
+
+    return tokens
+
+
+def _format_css_tokens_for_prompt(tokens: dict[str, Any], host: str = "") -> str:
+    """Format extracted CSS tokens into a structured prompt fragment for the LLM.
+
+    Returns an empty string when no useful tokens were extracted.
+    """
+    if not tokens:
+        return ""
+
+    lines: list[str] = ["[Extracted Design Tokens from Website]"]
+
+    theme_color = tokens.get("theme_color")
+    if theme_color:
+        lines.append(f"Brand/theme color: {theme_color}")
+
+    hex_colors = tokens.get("hex_colors_with_count") or []
+    if hex_colors:
+        color_strs = [f"{h} (x{c})" for h, c in hex_colors[:10]]
+        lines.append(f"Hex colors found (by frequency): {', '.join(color_strs)}")
+
+    css_vars = tokens.get("css_vars") or {}
+    if css_vars:
+        var_strs = [f"--{k}: {v}" for k, v in list(css_vars.items())[:12]]
+        lines.append(f"CSS custom properties: {'; '.join(var_strs)}")
+
+    tw_classes = tokens.get("tailwind_color_classes") or []
+    if tw_classes:
+        lines.append(f"Tailwind color classes used: {', '.join(tw_classes[:10])}")
+        tw_theme = tokens.get("tailwind_theme_color")
+        if tw_theme:
+            lines.append(f"Primary Tailwind color family: {tw_theme}-*")
+
+    font_families = tokens.get("font_families") or []
+    if font_families:
+        lines.append(f"Font families: {', '.join(font_families[:4])}")
+
+    dark_mode = tokens.get("dark_mode", False)
+    if dark_mode:
+        lines.append("Color mode: DARK (use dark background, light text)")
+    else:
+        lines.append("Color mode: light")
+
+    og_image = tokens.get("og_image")
+    if og_image:
+        lines.append(f"Reference screenshot (OG image): {og_image}")
+
+    if len(lines) > 1:
+        lines.append(
+            "\nCRITICAL: You MUST use these exact colors and fonts in your design spec. "
+            "Do NOT invent or substitute colors — the spec must faithfully match the source website's palette."
+        )
+
+    return "\n".join(lines) if len(lines) > 1 else ""
+
+
 def _fetch_url_snapshot(url: str) -> dict[str, Any]:
-    """Fetch a lightweight page snapshot (title / description / text excerpt)."""
+    """Fetch a lightweight page snapshot (title / description / text excerpt + CSS design tokens)."""
     import urllib.error
     import urllib.request
     from html import unescape
@@ -1692,8 +1889,9 @@ def _fetch_url_snapshot(url: str) -> dict[str, Any]:
     req = urllib.request.Request(
         url,
         headers={
-            "User-Agent": "ClutchDesign/1.0 (+local; design-reference)",
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 ClutchDesign/1.0",
             "Accept": "text/html,application/xhtml+xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9",
         },
         method="GET",
     )
@@ -1714,11 +1912,11 @@ def _fetch_url_snapshot(url: str) -> dict[str, Any]:
     title_m = re.search(r"<title[^>]*>(.*?)</title>", html, re.I | re.S)
     title = unescape(re.sub(r"\s+", " ", title_m.group(1))).strip() if title_m else ""
     desc_m = re.search(
-        r'<meta[^>]+name=["\']description["\'][^>]+content=["\'](.*?)["\']',
+        r'<meta[^>]+name=["\']description["\'][^>]+content=["\']([^"\'>]+)',
         html,
         re.I | re.S,
     ) or re.search(
-        r'<meta[^>]+content=["\'](.*?)["\'][^>]+name=["\']description["\']',
+        r'<meta[^>]+content=["\']([^"\'>]+)["\'][^>]+name=["\']description',
         html,
         re.I | re.S,
     )
@@ -1729,12 +1927,21 @@ def _fetch_url_snapshot(url: str) -> dict[str, Any]:
     cleaned = unescape(re.sub(r"\s+", " ", cleaned)).strip()
     excerpt = cleaned[:4000]
     host = urlparse(final_url).netloc or urlparse(url).netloc
+
+    # Extract CSS design tokens from the page HTML (+ linked CSS bundle).
+    try:
+        css_tokens = _extract_css_tokens(html, base_url=final_url)
+    except Exception as exc:
+        logger.debug("design url css_tokens extraction failed url=%s err=%s", url, exc)
+        css_tokens = {}
+
     return {
         "url": final_url,
         "host": host,
         "title": title[:200],
         "description": description[:400],
         "excerpt": excerpt,
+        "css_tokens": css_tokens,
         "fetched_at": _now_iso(),
     }
 
@@ -1756,6 +1963,18 @@ def _load_url_snapshot(session_dir: Path) -> dict[str, Any] | None:
         return None
 
 
+def _check_vision_ok(router: Any, model_id: str, image_data_url: str | None) -> bool:
+    """Return True only if the model provider is known to support multimodal vision."""
+    if not image_data_url:
+        return False
+    try:
+        from src.adapters.ollama_adapter import model_supports_vision
+        spec, _ = router.resolve_for_model(model_id)
+        return model_supports_vision(spec)
+    except Exception:
+        return False
+
+
 def _llm_complete_vision(
     router: Any,
     prompt: str,
@@ -1763,19 +1982,18 @@ def _llm_complete_vision(
     model_id: str,
     image_data_url: str | None = None,
     timeout_sec: float = _LLM_TIMEOUT_SEC,
+    image_analysis_text: str = "",
 ) -> tuple[str, str | None, dict[str, int], bool]:
-    """Complete with optional vision image via router.chat multimodal content."""
+    """Complete with optional vision image via router.chat multimodal content.
+
+    When the model does not support vision, injects a structured image analysis
+    (dominant colors, OCR text) so text-only models can still produce accurate
+    design specs from reference screenshots.
+    """
     from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
-    from src.adapters.ollama_adapter import model_supports_vision
     from src.chat_content import user_message_content_for_llm
 
-    vision_ok = False
-    if image_data_url:
-        try:
-            spec, _ = router.resolve_for_model(model_id)
-            vision_ok = model_supports_vision(spec)
-        except Exception:
-            vision_ok = False
+    vision_ok = _check_vision_ok(router, model_id, image_data_url)
 
     if image_data_url and vision_ok:
         content = user_message_content_for_llm(
@@ -1795,13 +2013,27 @@ def _llm_complete_vision(
                 future.cancel()
                 raise DesignError(f"Model timed out after {int(timeout_sec)}s") from exc
 
-    note = ""
+    # Non-vision model: inject structured image analysis instead of vague note.
+    prefix = ""
     if image_data_url and not vision_ok:
-        note = (
-            "A reference screenshot was attached but the active model may not support vision. "
-            "Infer a polished UI that matches the product brief alone.\n"
-        )
-    return _llm_complete(router, note + prompt, model_id=model_id, timeout_sec=timeout_sec)
+        if image_analysis_text:
+            # Image analysis already computed and injected by caller.
+            prefix = image_analysis_text + "\n\n"
+        else:
+            # Lazy analysis — call here as a fallback.
+            try:
+                from src.design.image_analysis import image_analysis_prompt_fragment
+                analysis = image_analysis_prompt_fragment(image_data_url)
+                prefix = (analysis + "\n\n") if analysis else (
+                    "A reference screenshot was attached; active model does not support vision. "
+                    "Use the product brief to infer colors and layout.\n"
+                )
+            except Exception:
+                prefix = (
+                    "A reference screenshot was attached but the active model may not support vision. "
+                    "Infer a polished UI that matches the product brief alone.\n"
+                )
+    return _llm_complete(router, prefix + prompt, model_id=model_id, timeout_sec=timeout_sec)
 
 
 def _try_llm_complete_vision(
@@ -1943,15 +2175,35 @@ def _build_ui_generation_prompt(
         f"Design system JSON:\n{json.dumps(spec, ensure_ascii=False)}\n",
     ]
     if design_md:
-        cap = 2000 if str(spec.get("name") or "").strip().lower() == "clutch" else 6000
+        cap = 2000 if str(spec.get("name") or "").strip().lower() == "clutch" else 8000
         ui_parts.append(f"DESIGN.md rules:\n{design_md[:cap]}\n")
     if md_text:
-        ui_parts.append(f"Source Design.md:\n{md_text[:6000]}\n")
-    if url_snapshot:
         ui_parts.append(
-            f"Visual inspiration from {url_snapshot.get('url')} "
-            f"({url_snapshot.get('title') or url_snapshot.get('host')}).\n"
+            f"\n=== MANDATORY DESIGN SPECIFICATION ({md_text[:60]!r}...) ===\n"
+            f"{md_text[:8000]}\n"
+            "=== END MANDATORY SPECIFICATION ===\n"
+            "CRITICAL COMPLIANCE RULES for the above specification:\n"
+            "- Use ONLY the exact color hex codes specified — NEVER substitute or invent colors.\n"
+            "- Use ONLY the font families named in the specification — load via Google Fonts @import if needed.\n"
+            "- Apply all spacing, border-radius, and shadow values exactly as specified.\n"
+            "- Implement every component mentioned in the specification.\n"
+            "- The generated HTML must be a faithful implementation of this spec. No deviations.\n"
         )
+    if url_snapshot:
+        css_tokens = url_snapshot.get("css_tokens") or {}
+        token_desc = _format_css_tokens_for_prompt(css_tokens, host=str(url_snapshot.get("host") or ""))
+        if token_desc:
+            ui_parts.append(
+                f"Reference website: {url_snapshot.get('url')} "
+                f"({url_snapshot.get('title') or url_snapshot.get('host')}).\n"
+                + token_desc + "\n"
+                "Apply the above design tokens faithfully in your HTML output.\n"
+            )
+        else:
+            ui_parts.append(
+                f"Visual inspiration from {url_snapshot.get('url')} "
+                f"({url_snapshot.get('title') or url_snapshot.get('host')}).\n"
+            )
     if has_image:
         ui_parts.append(
             "Match the attached reference screenshot (structure, hierarchy, spacing).\n"
@@ -2395,23 +2647,52 @@ def generate_session(
                 ]
                 if has_md and md_text:
                     context_parts.append(
-                        f"Source design markdown «{md_name}» (authoritative tokens & rules):\n"
-                        f"---\n{md_text[:12000]}\n---\n"
-                        "Extract and structure a design system from this document.\n"
+                        f"\n=== AUTHORITATIVE DESIGN SPECIFICATION: {md_name} ===\n"
+                        f"{md_text[:16000]}\n"
+                        "=== END OF SPECIFICATION ===\n\n"
+                        "CRITICAL: Extract EVERY color, font, spacing value, and component rule from "
+                        "the specification above. Use them VERBATIM — do NOT invent or substitute values. "
+                        "The JSON output must faithfully reflect the exact tokens defined in this document.\n"
                     )
                 if has_url and url_snapshot:
+                    css_tokens = url_snapshot.get("css_tokens") or {}
+                    token_desc = _format_css_tokens_for_prompt(css_tokens, host=str(url_snapshot.get("host") or ""))
                     context_parts.append(
-                        "Reference website snapshot:\n"
+                        "Reference website:\n"
                         f"URL: {url_snapshot.get('url')}\n"
                         f"Title: {url_snapshot.get('title')}\n"
                         f"Description: {url_snapshot.get('description')}\n"
-                        f"Excerpt: {(url_snapshot.get('excerpt') or '')[:3000]}\n"
-                        "Infer a polished design system inspired by this site's visual language.\n"
                     )
+                    if token_desc:
+                        context_parts.append(token_desc + "\n")
+                    else:
+                        # Fallback: text excerpt when no CSS tokens available
+                        context_parts.append(
+                            f"Excerpt: {(url_snapshot.get('excerpt') or '')[:3000]}\n"
+                            "Infer a polished design system inspired by this site's visual language.\n"
+                        )
                 if has_image:
-                    context_parts.append(
-                        "A reference UI screenshot is attached. Extract colors, typography, and component style from it.\n"
-                    )
+                    # For vision-capable models: note the image is attached.
+                    # For text-only models: inject local color extraction + OCR.
+                    vision_ok_spec = _check_vision_ok(router, model_id, image_data_url)
+                    if vision_ok_spec:
+                        context_parts.append(
+                            "A reference UI screenshot is attached. Extract colors, typography, and component style from it.\n"
+                        )
+                    else:
+                        try:
+                            from src.design.image_analysis import image_analysis_prompt_fragment
+                            img_analysis = image_analysis_prompt_fragment(image_data_url or "")
+                            if img_analysis:
+                                context_parts.append(img_analysis + "\n")
+                            else:
+                                context_parts.append(
+                                    "A reference UI screenshot was provided; use the product brief to infer design tokens.\n"
+                                )
+                        except Exception:
+                            context_parts.append(
+                                "A reference UI screenshot was provided; use the product brief to infer design tokens.\n"
+                            )
                 context_parts.append(
                     "Return ONLY JSON with keys: name, rationale, brand (name, voice), visual_style, "
                     "layout_system, layout_pattern, grid (columns, gutter, max_width), colors "
@@ -2499,6 +2780,9 @@ def generate_session(
     design_md_text = design_md
     if is_model_available(router, model_id):
         try:
+            # Only pass image_data_url to UI generation when the model actually
+            # supports vision — prevents 400 errors from text-only providers.
+            ui_vision_ok = _check_vision_ok(router, model_id, image_data_url)
             html, ui_reasoning, ui_usage, ui_usage_estimated, ui_fail_reason = _generate_ui_html(
                 router,
                 user_prompt=user_prompt,
@@ -2509,7 +2793,7 @@ def generate_session(
                 md_text=md_text if has_md else None,
                 url_snapshot=url_snapshot if has_url else None,
                 has_image=has_image,
-                image_data_url=image_data_url,
+                image_data_url=image_data_url if ui_vision_ok else None,
             )
         except Exception as exc:
             logger.warning("design ui LLM failed run_id=%s err=%s", run_id, exc)
@@ -3038,6 +3322,21 @@ def iterate_session(
     if not screens:
         raise DesignError("Generate a design before iterating")
 
+    # Load reference materials to preserve styles/colors during iteration rounds
+    ref_rel = manifest.get("reference_image")
+    image_data_url = _load_reference_data_url(session_dir, str(ref_rel) if ref_rel else None)
+    has_image = bool(image_data_url)
+
+    md_rel = manifest.get("reference_md")
+    md_text, md_name = _load_reference_md(session_dir, str(md_rel) if md_rel else None)
+    has_md = bool(md_text)
+
+    url = manifest.get("reference_url")
+    url_snapshot = _load_url_snapshot(session_dir) if url else None
+    has_url = bool(url_snapshot)
+
+    ui_vision_ok = _check_vision_ok(router, model_id, image_data_url)
+
     if action == "add":
         base_id = str(target_id or screens[0].get("id") or "main")
         base = next((s for s in screens if str(s.get("id")) == base_id), screens[0])
@@ -3061,6 +3360,10 @@ def iterate_session(
                     device=device,
                     model_id=model_id,
                     design_md=design_md,
+                    md_text=md_text if has_md else None,
+                    url_snapshot=url_snapshot if has_url else None,
+                    has_image=has_image,
+                    image_data_url=image_data_url if ui_vision_ok else None,
                     current_html=base_html,
                     instruction=instruction,
                 )
@@ -3151,6 +3454,10 @@ def iterate_session(
                     device=device,
                     model_id=model_id,
                     design_md=design_md,
+                    md_text=md_text if has_md else None,
+                    url_snapshot=url_snapshot if has_url else None,
+                    has_image=has_image,
+                    image_data_url=image_data_url if ui_vision_ok else None,
                     current_html=current,
                     instruction=f"{instruction}\n{element_hint}",
                     fallback_html=current,

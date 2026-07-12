@@ -1071,7 +1071,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
         paddingLeft: `${leftChromePad}px`,
         paddingRight: `${rightChromePad}px`,
         paddingTop: APP_HEADER_HEIGHT_PX,
-        paddingBottom: isTerminalLayout ? terminalInputReservePx : chatScrollBottomPad,
+        paddingBottom: isTerminalLayout ? terminalInputReservePx : Math.max(chatScrollBottomPad, 120),
       }}
       className={`flex-1 min-h-0 flex flex-col box-border transition-all duration-300 bg-background ${
         isTerminalLayout ? 'overflow-hidden pb-1 items-stretch px-4' : `overflow-y-auto items-center ${chatChrome.chatEdgePaddingClass}`

@@ -665,15 +665,15 @@ export function resolvePtyInjectWarmupMs(
 
   if (isHandoff) {
     if (attempt === 0) {
-      if (isHeavyCLI) return 3200;
-      if (isOllama) return 4500;
-      if (isAgy) return 3800;
-      return 2800;
+      if (isHeavyCLI) return 3400;
+      if (isOllama) return 4700;
+      if (isAgy) return 4000;
+      return 3000;
     }
-    if (isHeavyCLI) return 1400;
-    if (isOllama) return 2200;
-    if (isAgy) return 1600;
-    return 900;
+    if (isHeavyCLI) return 1500;
+    if (isOllama) return 2500;
+    if (isAgy) return 2000;
+    return 1000;
   }
 
   if (attempt === 0) {

@@ -391,7 +391,7 @@ describe('terminalOrchestraUtils', () => {
     expect(resolvePtyInjectWarmupMs('antigravity-cli')).toBe(3200);
     expect(resolvePtyInjectWarmupMs('ollama-cli')).toBe(3500);
     expect(resolvePtyInjectWarmupMs('opencode-cli', { attempt: 1 })).toBe(1200);
-    expect(resolvePtyInjectWarmupMs('opencode-cli', { isHandoff: true })).toBe(3200);
+    expect(resolvePtyInjectWarmupMs('opencode-cli', { isHandoff: true })).toBe(3400);
   });
 
   it('detects agy and ollama PTY output ready for inject', () => {
@@ -439,7 +439,7 @@ describe('terminalOrchestraUtils', () => {
   });
 
   it('uses longer warmup for ollama PTY inject', () => {
-    expect(resolvePtyInjectWarmupMs('ollama-cli', { isHandoff: true, attempt: 0 })).toBe(4500);
+    expect(resolvePtyInjectWarmupMs('ollama-cli', { isHandoff: true, attempt: 0 })).toBe(4700);
     expect(resolvePtyInjectWarmupMs('ollama-cli', { attempt: 0 })).toBe(3500);
   });
 
