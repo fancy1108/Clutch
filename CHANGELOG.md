@@ -16,6 +16,33 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ### Fixed
 
+## [1.2.3] - 2026-07-12
+
+Patch release — **macOS only** (Apple Silicon DMG + in-app updater). Ships native **handoff flow (D34)**, Design session isolation and layout fixes, and TUI injection reliability for Mimo/Claude/Codex CLI agents. Windows users remain on [v1.1.1](https://github.com/fancy1108/Clutch/releases/tag/v1.1.1) or [v1.2.2](https://github.com/fancy1108/Clutch/releases/tag/v1.2.2) (Windows MSI).
+
+> **Release assets (v1.2.3):** Tag `v1.2.3` — **macOS only:** `Clutch_1.2.3_aarch64.dmg` + `SHA256SUMS.txt` (CI `release.yml`); optional `latest.json` updater bundle. **No Windows installers** for this release. Sidecar hotpatch asset (`sidecar-patch.json` + binary) published separately.
+
+### Added
+
+- **Handoff flow (D34):** Native `/handoff` PTY command injection — the source agent's PTY receives a `/handoff` command, generates a structured handoff file on disk, which the target agent's PTY picks up via general prompt injection and polling. Guarded by `is_handoff_skill_installed`. Multi-turn chat history context included in handoff summarization prompt. Steps refined: `generating_handoff` → `opening_terminal` → `injecting_goal` with per-step status in the Dispatch Log.
+- **Sidecar hotpatch notes:** Version-range check in manifest (`min_app_version` / `max_app_version`); Notes and severity fields.
+
+### Changed
+
+- **Handoff summarization:** LLM timeout increased; summarization prompt includes full conversation history for richer context; TUI artifacts cleaned from summaries.
+- **TUI warmup timing:** All heavy CLIs (opencode, mimo, codex, codebuddy, claude) use higher base warmup values; handoff warmup increased from 3200→3400ms for opencode, 4500→4700ms for ollama.
+- **Design reference layout:** Reference cards moved from row 2 to row 1 (same row as Agent Log), sized to 300px.
+
+### Fixed
+
+- **Design session leakage (v1.2.2 regression):** `DesignWorkspace` keyed with `sessionRunId`; `applySession` guarded by runId filter; lane transcripts cleared on runId change; canvas state fully reset on switch — prevents stale UI cards and cross-session state corruption.
+- **Design Chinese text garbled:** `ensureCharset` injects `<meta charset="utf-8">` into iframe `srcDoc` to fix garbled CJK characters in generated UI previews.
+- **Handoff PTY race:** Polling timeout increased to 30s for slow LLM tool writes; `\r` used instead of `\n` for PTY command submission; `agent_display_name` import and `clean_type` resolution fixed.
+- **Handoff source lanes:** Source lanes stay open during handoff generation and only collapse after the handoff dispatch completes.
+- **CLI detection:** System daemon directories filtered out during active CLI scanning; system-wide running CLI processes counted correctly; ChatGPT.app fallback paths added for Codex CLI on macOS.
+- **Claude CLI inject timing:** `isPtyOutputReadyForInject` now waits for prompt text (`> Ask a question`) instead of 24-char threshold — prevents premature injection before Claude CLI is ready.
+- **Bottom padding:** Minimum 120px padding in ChatFeed for terminal layout to prevent input bar occlusion.
+
 ## [1.2.2] - 2026-07-11
 
 Patch release — **macOS + Windows**. Ships Windows Design Preview / build parity (users can leave [v1.1.1](https://github.com/fancy1108/Clutch/releases/tag/v1.1.1)), plus workflow reliability fixes from community reports (#50–#55). Exception to the usual “patch = macOS-only” rule so Windows gets Design Preview in the same train as macOS.
