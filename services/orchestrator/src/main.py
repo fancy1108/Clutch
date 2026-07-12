@@ -4223,10 +4223,10 @@ async def _async_handoff_summarization_task(
         from src.handoff_summarizer import find_recent_temp_handoff_file, strip_yaml_frontmatter
 
         HANDOFF_INJECTION_PROMPT = (
-            "\n[System: Please generate a handoff summary file of our current conversation. "
+            "[System: Please generate a handoff summary file of our current conversation. "
             "Save it to the OS temporary directory as a markdown file starting with 'handoff-'. "
             "You can use your handoff skill or write it directly. "
-            "Print the exact path once saved.]\n"
+            "Print the exact path once saved.]"
         )
 
         agent_handoff_summary = None
@@ -4260,7 +4260,12 @@ async def _async_handoff_summarization_task(
                         session = interactive_pty_manager.get(session_key)
                         if session and session.alive():
                             try:
+                                # Ensure we clear any half-typed commands, write prompt, and execute with \r
+                                session.write_input("\r")
+                                await asyncio.sleep(0.15)
                                 session.write_input(HANDOFF_INJECTION_PROMPT)
+                                await asyncio.sleep(0.15)
+                                session.write_input("\r")
                                 injected_any = True
                             except Exception as e:
                                 logger.warning("Failed to inject handoff prompt into session %s: %s", session_key, e)
