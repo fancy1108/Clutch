@@ -45,7 +45,7 @@
 
 ### Codex path fix & Multi-CLI message inject fix ✅
 - **日期：** 2026-07-12
-- **Commit：** `PENDING`
+- **Commit：** `41d8e87`, `3a75635`
 - **Verification：** `ln -sf /Applications/ChatGPT.app/Contents/Resources/codex ~/.local/bin/codex && ~/.local/bin/codex --version` -> `codex-cli 0.144.0-alpha.4`；`pytest` -> 711 passed；`./scripts/verify.sh` -> passed
 - **证据：** —
 - **交付文件：**
