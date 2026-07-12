@@ -2,12 +2,18 @@ name: Windows Build
 
 on:
   workflow_dispatch:
+  push:
+    tags:
+      - "v*"
   pull_request:
     paths:
       - "apps/desktop/**"
       - "services/orchestrator/**"
       - "scripts/build-sidecar.py"
       - ".github/workflows/windows-build.yml"
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -29,9 +35,26 @@ jobs:
       - run: uv run pytest
         working-directory: services/orchestrator
       - run: pnpm tauri:build
-      - uses: actions/upload-artifact@v4
+      - name: Upload CI artifact
+        uses: actions/upload-artifact@v4
         with:
           name: clutch-windows-x64
           path: |
             apps/desktop/src-tauri/target/release/bundle/msi/*.msi
             apps/desktop/src-tauri/target/release/bundle/nsis/*-setup.exe
+      - name: SHA256
+        if: startsWith(github.ref, 'refs/tags/v')
+        working-directory: apps/desktop/src-tauri/target/release/bundle
+        run: |
+          Get-ChildItem -Recurse -Include *.msi,*-setup.exe | ForEach-Object {
+            $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower()
+            "$hash  $($_.Name)" | Out-File -Append SHA256SUMS_WIN.txt -Encoding ascii
+          }
+          Get-Content SHA256SUMS_WIN.txt
+      - name: Attach to Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.GITHUB_TOKEN }}
+        working-directory: apps/desktop/src-tauri/target/release/bundle
+        run: |
+          gh release upload "$env:GITHUB_REF_NAME" msi/*.msi nsis/*-setup.exe SHA256SUMS_WIN.txt --clobber
