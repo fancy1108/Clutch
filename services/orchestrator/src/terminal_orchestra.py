@@ -419,6 +419,27 @@ def _apply_dispatch_lane_layout(lanes: list[dict[str, Any]], target_lane_id: str
             lane["focused"] = False
 
 
+def _apply_handoff_initial_layout(
+    lanes: list[dict[str, Any]],
+    target_lane_id: str,
+    source_lane_ids: list[str],
+) -> None:
+    """During handoff generation, keep source lanes expanded so the user can interact/confirm prompts. Keep target lane collapsed."""
+    for lane in lanes:
+        if lane.get("status") == "queued":
+            continue
+        lid = str(lane.get("lane_id", ""))
+        if lid in source_lane_ids:
+            lane["collapsed"] = False
+            lane["focused"] = True
+        elif lid == target_lane_id:
+            lane["collapsed"] = True
+            lane["focused"] = False
+        else:
+            lane["collapsed"] = True
+            lane["focused"] = False
+
+
 def _handoff_inject_prompt(preview: DispatchPreview, *, handoff_path: str) -> str:
     task = preview.task.strip() or preview.target
     return (
@@ -712,8 +733,8 @@ def _confirm_handoff_dispatch(
 
     target_lane = focused_lane({"pty_lanes": lanes}) or {}
     target_lane_id = str(target_lane.get("lane_id", ""))
-    _apply_dispatch_lane_layout(lanes, target_lane_id)
     source_lane_ids = _source_lane_ids(lanes, sources)
+    _apply_handoff_initial_layout(lanes, target_lane_id, source_lane_ids)
     session_lane_ids = [*source_lane_ids]
     if target_lane_id and target_lane_id not in session_lane_ids:
         session_lane_ids.append(target_lane_id)
@@ -864,3 +885,55 @@ def serialize_preview(preview: DispatchPreview) -> dict[str, Any]:
             for c in preview.chips
         ],
     }
+
+
+def transition_handoff_layout(
+    state: dict[str, Any],
+    sources: list[str],
+    target: str,
+) -> list[dict[str, Any]]:
+    """Collapse the source lanes and expand/focus the target lane after handoff generation completes."""
+    lanes = [dict(l) for l in (state.get("pty_lanes") or [])]
+    
+    # 1. Find target lane
+    target_lane = None
+    for lane in lanes:
+        if str(lane.get("configured_agent_name") or "").lower() == target.lower():
+            target_lane = lane
+            break
+    if not target_lane:
+        for lane in lanes:
+            agent_type = str(lane.get("agent_type") or "").lower()
+            clean_type = agent_type.replace("-cli", "")
+            if clean_type == target.lower() or target.lower() in clean_type:
+                target_lane = lane
+                break
+                
+    # 2. Find source lanes
+    source_lanes = []
+    for src in sources:
+        for lane in lanes:
+            if str(lane.get("configured_agent_name") or "").lower() == src.lower():
+                source_lanes.append(lane)
+                break
+            agent_type = str(lane.get("agent_type") or "").lower()
+            clean_type = agent_type.replace("-cli", "")
+            if clean_type == src.lower() or src.lower() in clean_type:
+                source_lanes.append(lane)
+                break
+                
+    # 3. Collapse sources, expand target
+    if target_lane:
+        target_lane["collapsed"] = False
+        target_lane["focused"] = True
+    for sl in source_lanes:
+        sl["collapsed"] = True
+        sl["focused"] = False
+        
+    # Also collapse any other non-target lanes to keep layout clean
+    for lane in lanes:
+        if target_lane and lane.get("lane_id") != target_lane.get("lane_id"):
+            lane["collapsed"] = True
+            lane["focused"] = False
+            
+    return lanes

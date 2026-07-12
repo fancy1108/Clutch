@@ -222,10 +222,18 @@ def test_confirm_handoff_keeps_source_lane(tmp_path):
     assert any(l["agent_type"] == "codex-cli" for l in patch["pty_lanes"])
     claude = next(l for l in patch["pty_lanes"] if l["agent_type"] == "claude-cli")
     codex = next(l for l in patch["pty_lanes"] if l["agent_type"] == "codex-cli")
-    assert claude["collapsed"] is True
-    assert codex["collapsed"] is False
+    # Initial state during handoff generation: source expanded, target collapsed
+    assert claude["collapsed"] is False
+    assert codex["collapsed"] is True
     assert codex["configured_agent_name"] == "Codex CLI"
-    assert patch["focused_lane_id"] == codex["lane_id"]
+
+    # After handoff completes: source collapses, target expands
+    from src.terminal_orchestra import transition_handoff_layout
+    updated_lanes = transition_handoff_layout(patch, ["Claude Code"], "Codex CLI")
+    claude_updated = next(l for l in updated_lanes if l["agent_type"] == "claude-cli")
+    codex_updated = next(l for l in updated_lanes if l["agent_type"] == "codex-cli")
+    assert claude_updated["collapsed"] is True
+    assert codex_updated["collapsed"] is False
     assert claude.get("cli_session_id")
     assert codex.get("cli_session_id")
     sessions = entry.get("lane_sessions") or []
@@ -361,10 +369,18 @@ def test_handoff_collapses_other_lanes_when_target_already_exists(tmp_path):
     )
     claude = next(l for l in patch["pty_lanes"] if l["lane_id"] == "lane_claude")
     opencode = next(l for l in patch["pty_lanes"] if l["lane_id"] == "lane_oc")
-    assert claude["collapsed"] is True
-    assert opencode["collapsed"] is False
+    # Initial state during handoff generation: source expanded, target collapsed
+    assert claude["collapsed"] is False
+    assert opencode["collapsed"] is True
     assert opencode["status"] == "running"
-    assert patch["focused_lane_id"] == "lane_oc"
+
+    # Transition layout
+    from src.terminal_orchestra import transition_handoff_layout
+    updated_lanes = transition_handoff_layout(patch, ["Claude Code"], "Opencode")
+    claude_updated = next(l for l in updated_lanes if l["lane_id"] == "lane_claude")
+    opencode_updated = next(l for l in updated_lanes if l["lane_id"] == "lane_oc")
+    assert claude_updated["collapsed"] is True
+    assert opencode_updated["collapsed"] is False
 
 
 def test_confirm_dispatch_appends_log_and_lane(tmp_path):

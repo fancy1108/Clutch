@@ -4319,7 +4319,9 @@ async def _async_handoff_summarization_task(
                         updated = True
                     break
             if updated:
-                patch = {"dispatch_log": log}
+                from src.terminal_orchestra import transition_handoff_layout
+                new_lanes = transition_handoff_layout(state, sources, target)
+                patch = {"dispatch_log": log, "pty_lanes": new_lanes}
                 state = _merge_patch(state, patch)
                 _run_states[run_id] = state
                 _commit_run_state(run_id, state)
@@ -4340,7 +4342,9 @@ async def _async_handoff_summarization_task(
                         updated = True
                     break
             if updated:
-                patch = {"dispatch_log": log}
+                from src.terminal_orchestra import transition_handoff_layout
+                new_lanes = transition_handoff_layout(state, sources, target)
+                patch = {"dispatch_log": log, "pty_lanes": new_lanes}
                 state = _merge_patch(state, patch)
                 _run_states[run_id] = state
                 _commit_run_state(run_id, state)
