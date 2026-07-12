@@ -466,7 +466,7 @@
 
 ### D37 · Sidecar 热更（独立 patch_id · 静默下载 · 挂起应用）（2026-07-11）
 
-- **背景**：全量 Tauri updater 按 app semver 比较，且产物约 39MB（含 sidecar）。后端-only 热修若强制升版，用户成本高；游戏式「热补丁」需要独立通道。
+- **背景**：…
 - **方案**：
   1. **范围（v1）**：仅热更 `orchestrator`；**macOS**；不热更前端 / 不 bsdiff / 不 Windows。
   2. **版本**：`patch_id` 与 app semver **独立**；manifest 含 `min_app_version`（过低忽略）。
@@ -477,3 +477,28 @@
   7. **分发**：Release 资产 `sidecar-patch.json` + `orchestrator-darwin-aarch64`；客户端拉 `…/latest/download/sidecar-patch.json`（404=无补丁）。
 - **影响**：`lib.rs` / `sidecar_patch.rs`、`sidecarPatch.ts`、`SidecarPatchReady`、`docs/UPDATES.md`、维护脚本。
 - **决策状态**：`可执行`
+
+### D38 · 代码拆分原则（Stable Context Boundary）（2026-07-12）
+
+- **背景**：项目中的 `main.py`（5118 行）、`design/service.py`（3959 行）、`clutchState.ts`（1212 行）等文件在 AI 辅助开发中频繁撑爆上下文，导致修改准确率下降。需要一套可长期执行的拆分规范。
+- **方案**：遵循以下 5 条原则进行文件拆分：
+
+  1. **不以行数作为拆分标准。** 大文件不是问题，多职责才是问题。
+  2. **One Reason to Change。** 一个模块只有一个稳定的变化原因。如果修改 A 不需要理解 B，就应该拆开。
+  3. **Similar Change Rate。** 只有变化节奏不同的职责才值得拆。经常一起改的内容留在一起；很少一起改的分开。
+  4. **保留编排层，拆实现层。** 允许编排层（如 `DesignService`）了解完整流程，但具体实现下放给独立模块。编排层只做协调，不做实现。
+  5. **优先拆高频修改、跨团队影响大的模块。** 不改动的代码再大也不是瓶颈。
+
+- **优先级：**
+
+  | 优先级 | 模块 | 原因 |
+  |--------|------|------|
+  | P0 | `design/service.py`（3959 行） | 高频修改、多职责、变化节奏不同 |
+  | P0 | `main.py`（5118 行） | FastAPI 标准入口，路由职责边界清晰 |
+  | P0 | `clutchState.ts`（1212 行） | 全局状态影响范围最大，容易增加上下文噪音 |
+  | P1 | `DesignWorkspace.tsx`（2804 行） | 先拆 Hooks（逻辑），再拆 Nodes（展示） |
+  | P2 | `App.tsx`（2569 行） | 保持启动流程清晰，避免过度抽象 |
+
+- **拆分的执行方式：** 每次只拆一个文件，不动逻辑；拆完立即跑 `pnpm build` + `pnpm test` + `pytest` 验证；红了就回退，不留半成品。
+- **影响**：降低 AI 辅助开发中每次加载的上下文噪音；提高修改准确率；团队有统一的拆分判断标准。
+- **决策状态**：`已记录`
