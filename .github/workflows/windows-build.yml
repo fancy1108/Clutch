@@ -54,7 +54,7 @@ jobs:
       - name: Attach to Release
         if: startsWith(github.ref, 'refs/tags/v')
         env:
-          GH_TOKEN: ${{ github.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         working-directory: apps/desktop/src-tauri/target/release/bundle
         run: |
           gh release upload "$env:GITHUB_REF_NAME" msi/*.msi nsis/*-setup.exe SHA256SUMS_WIN.txt --clobber
