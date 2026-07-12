@@ -4219,14 +4219,23 @@ async def _async_handoff_summarization_task(
     chat_messages: list[dict[str, object]] | None = None,
 ):
     try:
-        from src.interactive_pty_runtime import interactive_pty_manager
-        from src.handoff_summarizer import find_recent_temp_handoff_file, strip_yaml_frontmatter, is_handoff_skill_installed
+        from src.interactive_pty_runtime import interactive_pty_manager, configured_cli_binaries
+        from src.handoff_summarizer import find_recent_temp_handoff_file, strip_yaml_frontmatter
         from src.agent_type import agent_display_name
+
+        HANDOFF_INJECTION_PROMPT = (
+            "\n[System: Please generate a handoff summary file of our current conversation. "
+            "Save it to the OS temporary directory as a markdown file starting with 'handoff-'. "
+            "You can use your handoff skill or write it directly. "
+            "Print the exact path once saved.]\n"
+        )
 
         agent_handoff_summary = None
         state = _run_states.get(run_id)
-        if state and is_handoff_skill_installed(workspace_path):
+        if state:
             lanes = state.get("pty_lanes") or []
+            cli_binaries = configured_cli_binaries()
+            injected_any = False
             for source_name in sources:
                 target_lane = None
                 for lane in lanes:
@@ -4241,27 +4250,40 @@ async def _async_handoff_summarization_task(
                             target_lane = lane
                             break
                 if target_lane:
-                    lane_id = target_lane.get("lane_id")
-                    session_key = f"{run_id}::{lane_id}"
-                    session = interactive_pty_manager.get(session_key)
-                    if session and session.alive():
-                        try:
-                            session.write_input("\n/handoff\n")
-                        except Exception as e:
-                            logger.warning("Failed to inject /handoff into session %s: %s", session_key, e)
+                    agent_type = target_lane.get("agent_type")
+                    is_cli_agent = (
+                        agent_type in ["claude-cli", "opencode-cli", "mimo-cli", "codex-cli"]
+                        or source_name.lower() in cli_binaries
+                    )
+                    if is_cli_agent:
+                        lane_id = target_lane.get("lane_id")
+                        session_key = f"{run_id}::{lane_id}"
+                        session = interactive_pty_manager.get(session_key)
+                        if session and session.alive():
+                            try:
+                                session.write_input(HANDOFF_INJECTION_PROMPT)
+                                injected_any = True
+                            except Exception as e:
+                                logger.warning("Failed to inject handoff prompt into session %s: %s", session_key, e)
 
-            await asyncio.sleep(3.0)
+            if injected_any:
+                # Poll for the newly generated handoff file (up to 6.0s)
+                recent_file_path = None
+                for _ in range(12):
+                    recent_file_path = find_recent_temp_handoff_file(max_age_seconds=15.0)
+                    if recent_file_path:
+                        break
+                    await asyncio.sleep(0.5)
 
-            recent_file_path = find_recent_temp_handoff_file(max_age_seconds=15.0)
-            if recent_file_path:
-                try:
-                    from pathlib import Path
-                    p = Path(recent_file_path)
-                    raw_content = p.read_text(encoding="utf-8", errors="replace")
-                    agent_handoff_summary = strip_yaml_frontmatter(raw_content)
-                    p.unlink(missing_ok=True)
-                except Exception as exc:
-                    logger.warning("Failed to process temp handoff file %s: %s", recent_file_path, exc)
+                if recent_file_path:
+                    try:
+                        from pathlib import Path
+                        p = Path(recent_file_path)
+                        raw_content = p.read_text(encoding="utf-8", errors="replace")
+                        agent_handoff_summary = strip_yaml_frontmatter(raw_content)
+                        p.unlink(missing_ok=True)
+                    except Exception as exc:
+                        logger.warning("Failed to process temp handoff file %s: %s", recent_file_path, exc)
 
         from src.handoff_writer import write_handoff_markdown
         def do_write():
