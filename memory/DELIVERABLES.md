@@ -32,6 +32,7 @@
   - `services/orchestrator/src/llm/router.py` — Propagated `timeout_sec` and `max_tokens` keywords down to `http_chat_complete`.
   - `services/orchestrator/src/main.py` — Decoupled summarization into an async background task, fixed target log entry index mapping bugs, added exception guards for WS notification, enabled system-wide active PTY CLI scan, and passed chat messages history to the summarization pipeline.
   - `services/orchestrator/src/handoff_writer.py` — Passed `chat_messages` history to `summarize_lane_transcripts` and allowed custom handoff filename.
+  - `services/orchestrator/src/interactive_pty_runtime.py` — Added OS system directory filtering to `scan_system_cli_processes` to prevent OS background daemons matching generic agent names (like `"agent"`) from inflating the active background terminal counts.
   - `services/orchestrator/src/terminal_orchestra.py` — Initialized `step_status` for dispatches and deferred summaries.
   - `apps/desktop/src/components/terminal-orchestra/OverviewDispatchLog.tsx` — Moved target pending status indicator to the bottom row of log cards to prevent visual badge overlap.
   - `apps/desktop/src/components/terminal-orchestra/OrchestratorBar.tsx` — Immediately collapsed sender terminal panes on dispatch click.

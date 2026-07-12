@@ -152,6 +152,14 @@ def scan_system_cli_processes(binaries: set[str]) -> list[dict[str, str | int]]:
         if pid in seen or pid == own_pid:
             continue
         command = parts[1]
+        tokens = command.strip().split()
+        if not tokens:
+            continue
+        executable = tokens[0]
+        exec_lower = executable.lower()
+        if exec_lower.startswith(("/usr/sbin/", "/usr/libexec/", "/system/", "/sbin/")):
+            continue
+
         lowered = command.lower()
         if lowered.startswith("grep ") or " grep " in lowered:
             continue
