@@ -22,6 +22,14 @@
 
 ## Active Deliverables
 
+### Codex CLI path fix after DMG install ✅
+- **日期：** 2026-07-12
+- **Commit：** `47830fa` — fix(orchestrator): add ChatGPT.app fallback paths for Codex CLI and update PROGRESS
+- **Verification：** `ln -sf /Applications/ChatGPT.app/Contents/Resources/codex ~/.local/bin/codex && ~/.local/bin/codex --version` -> `codex-cli 0.144.0-alpha.4`；`pytest` -> 711 passed；`./scripts/verify.sh` -> passed
+- **证据：** —
+- **交付文件：**
+  - `services/orchestrator/src/tools_status.py` — Added `/Applications/ChatGPT.app/Contents/Resources` and `/Applications/Codex.app/Contents/Resources` to CLI extra search paths.
+
 ### Issues #55 / #53 / #52 ✅
 - **日期：** 2026-07-11
 - **Commit：** `c7dfaa1` — fix: address workflow issues #55, #53, and #52

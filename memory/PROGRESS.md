@@ -5,10 +5,31 @@
 
 ## Current Status
 
-- **阶段：** **v1.2.1 已发布**（2026-07-11，**仅 macOS**）— Chat/Design/Models hotfix + Sidecar 热更客户端（D37）
-- **Release：** [v1.2.1](https://github.com/fancy1108/Clutch/releases/tag/v1.2.1) Latest（macOS）· Win 继续 [v1.1.1](https://github.com/fancy1108/Clutch/releases/tag/v1.1.1)
-- **Git：** `main` @ `1b6899b` · tag `v1.2.1`
-- **Windows：** 本版不发安装包
+- **阶段：** **v1.2.2 已发布（macOS）**（2026-07-11）— Windows MSI/NSIS 已在 CI 构建成功，待挂到 Release（本机下载超时）
+- **Release：** [v1.2.2](https://github.com/fancy1108/Clutch/releases/tag/v1.2.2) · tag on `main` @ `7fa6901`
+- **Git：** `main` / `dev` @ `7fa6901`
+- **macOS：** DMG + SHA256SUMS 已上传；Homebrew tap 已 bump
+- **Windows：** Actions artifact `clutch-windows-x64` @ run [29158434326](https://github.com/actions/runs/29158434326) — 需 `gh release upload`
+
+## Next Actions
+
+- 挂 Windows MSI/NSIS 到 Release（网络恢复后）
+- 等 updater assets workflow 完成
+- Windows 实体机 smoke（可选）
+
+## Recent Sessions
+
+## 2026-07-12 会话（修复 Codex CLI 路径找不到问题）
+
+- **修复**：更新了 `~/.local/bin/codex` 软链接至最新的 `/Applications/ChatGPT.app/Contents/Resources/codex`（最新版的 dmg 将 `Codex.app` 更名为 `ChatGPT.app`）。
+- **优化**：在 `services/orchestrator/src/tools_status.py` 的 `_CLI_EXTRA_BIN_DIRS` 中增加了 `/Applications/ChatGPT.app/Contents/Resources` 和 `/Applications/Codex.app/Contents/Resources` 作为 fallback 路径，提高 CLI 分离运行下的鲁棒性。
+- **验证**：本地运行 `./scripts/verify.sh` 校验成功。
+
+## 2026-07-11 会话（v1.2.2 发版）
+
+- PR [#60](https://github.com/fancy1108/Clutch/pull/60) merge → `main`；tag `v1.2.2`；`main`→`dev` 同步
+- macOS `release.yml` ✅（含 Homebrew tap sync）
+- Windows Build ✅；artifact 上传 Release 因本机下载超时未完成
 
 ### v1.2.1 发版清单
 
