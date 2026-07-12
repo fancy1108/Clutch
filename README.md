@@ -17,16 +17,18 @@ Clutch is a **desktop app** (Tauri + React) for developers and technical operato
 |---|---|
 | **Stack** | Tauri 2 · React 19 · FastAPI + LangGraph · local-first (`localhost:8123`) |
 | **License** | See [LICENSE](LICENSE) |
-| **Latest release** | [v1.2.2](https://github.com/fancy1108/Clutch/releases/tag/v1.2.2) · [Changelog](CHANGELOG.md#122---2026-07-11) |
+| **Latest release** | [v1.2.3](https://github.com/fancy1108/Clutch/releases/tag/v1.2.3) · [Changelog](CHANGELOG.md#123---2026-07-12) |
 
-### What's new in v1.2.2
+### What's new in v1.2.3
 
-- **Windows Design Preview / build parity** — MSI/NSIS again; Design Preview resolves `.cmd` tools and cleans Vite process trees.
-- **Workflow reliability** — ZCode unsupported flags (#50/#51); agentType validation (#54); JSON banner names incompatible nodes (#55); `file_exists` path clarity (#53); human-gate approve debounce (#52).
+- **Handoff flow (D34)** — Native `/handoff` PTY command injection with polling-based handoff file pickup; multi-turn chat history context in summarization; deferred source lane collapse.
+- **Design session isolation** — Fixed cross-session state leakage on canvas switch (keyed remount, lane transcript clear, runId guard).
+- **Multi-CLI injection** — `mimo-cli`, `codex-cli`, `claude-cli`, `codebuddy-cli` ready detection and tuned warmup timing.
+- **CLI detection** — System daemon filtering, system-wide PTY count, ChatGPT.app fallback paths for Codex CLI.
 
-> **v1.2.2 ships macOS + Windows.** macOS: Apple Silicon DMG + in-app updater. Windows: MSI/NSIS (upgrade from [v1.1.1](https://github.com/fancy1108/Clutch/releases/tag/v1.1.1) recommended).
+> **v1.2.3 is macOS-only** (Apple Silicon DMG + in-app updater). Windows users remain on [v1.2.2](https://github.com/fancy1108/Clutch/releases/tag/v1.2.2). Sidecar hotpatch assets published separately.
 
-Older releases (v1.2.1 hotpatch client, v1.2.0 Design/ZCode, …): [`CHANGELOG.md`](CHANGELOG.md) · [`docs/releases/`](docs/releases/).
+Older releases (v1.2.2 Windows parity, v1.2.1 hotpatch client, v1.2.0 Design/ZCode, …): [`CHANGELOG.md`](CHANGELOG.md) · [`docs/releases/`](docs/releases/).
 
 ---
 
@@ -53,7 +55,7 @@ brew install --cask clutch
 irm https://raw.githubusercontent.com/fancy1108/Clutch/main/scripts/install.ps1 | iex
 ```
 
-Pin a version: `CLUTCH_VERSION=v1.2.2` before running either script (or `v1.2.1` / `v1.1.1` for older releases).
+Pin a version: `CLUTCH_VERSION=v1.2.3` before running either script (or `v1.2.2` / `v1.2.1` / `v1.1.1` for older releases).
 
 Install channels (maintainers): [`docs/RELEASE_MAINTAINER.md`](docs/RELEASE_MAINTAINER.md)
 

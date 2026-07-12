@@ -17,16 +17,18 @@ Clutch 是一款**桌面应用**（Tauri + React），面向独立开发者和�
 |---|---|
 | **技术栈** | Tauri 2 · React 19 · FastAPI + LangGraph · 本地优先（`localhost:8123`） |
 | **许可证** | 见 [LICENSE](LICENSE) |
-| **当前版本** | [v1.2.2](https://github.com/fancy1108/Clutch/releases/tag/v1.2.2) · [更新日志](CHANGELOG.md#122---2026-07-11) |
+| **当前版本** | [v1.2.3](https://github.com/fancy1108/Clutch/releases/tag/v1.2.3) · [更新日志](CHANGELOG.md#123---2026-07-12) |
 
-### 最新更新（v1.2.2）
+### 最新更新（v1.2.3）
 
-- **Windows Design Preview / 构建对齐** — 再次发布 MSI/NSIS；Design Preview 正确解析 `.cmd` 并清理 Vite 进程树。
-- **工作流可靠性** — ZCode 不支持的 flag（#50/#51）；agentType 校验（#54）；JSON 横幅点名不兼容节点（#55）；`file_exists` 路径说明（#53）；人工审批防抖（#52）。
+- **Handoff 交接流 (D34)** — 原生 `/handoff` PTY 命令注入 + 轮询手交文件拾取；多轮对话上下文参与总结；源终端延时折叠。
+- **Design 会话隔离** — 修复切换会话时画布状态残留（keyed remount、lane transcript 清除、runId 过滤）。
+- **多 CLI 注入适配** — `mimo-cli`、`codex-cli`、`claude-cli`、`codebuddy-cli` 启动就绪检测和 warmup 调优。
+- **CLI 检测** — 系统守护进程过滤、全系统 PTY 计数、Codex CLI ChatGPT.app 回退路径。
 
-> **v1.2.2 同时发 macOS + Windows。** macOS：Apple Silicon DMG + 应用内更新。Windows：MSI/NSIS（建议从 [v1.1.1](https://github.com/fancy1108/Clutch/releases/tag/v1.1.1) 升级）。
+> **v1.2.3 仅发 macOS**（Apple Silicon DMG + 应用内更新）。Windows 用户继续使用 [v1.2.2](https://github.com/fancy1108/Clutch/releases/tag/v1.2.2)。Sidecar 热更资产另行发布。
 
-更早版本（v1.2.1 热更客户端、v1.2.0 Design/ZCode 等）：[`CHANGELOG.md`](CHANGELOG.md) · [`docs/releases/`](docs/releases/)。
+更早版本（v1.2.2 Windows 同步、v1.2.1 热更客户端、v1.2.0 Design/ZCode 等）：[`CHANGELOG.md`](CHANGELOG.md) · [`docs/releases/`](docs/releases/)。
 
 ---
 
@@ -53,7 +55,7 @@ brew install --cask clutch
 irm https://raw.githubusercontent.com/fancy1108/Clutch/main/scripts/install.ps1 | iex
 ```
 
-指定版本：运行前设置 `CLUTCH_VERSION=v1.2.2`（或 `v1.2.1` / `v1.1.1` 安装更早稳定版）。
+指定版本：运行前设置 `CLUTCH_VERSION=v1.2.3`（或 `v1.2.2` / `v1.2.1` / `v1.1.1` 安装更早稳定版）。
 
 详见 [`docs/PACKAGE_MANAGERS.md`](docs/PACKAGE_MANAGERS.md)
 
