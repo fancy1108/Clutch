@@ -466,7 +466,7 @@
 
 ### D37 · Sidecar 热更（独立 patch_id · 静默下载 · 挂起应用）（2026-07-11）
 
-- **背景**：…
+- **背景**：全量 Tauri updater 按 app semver 比较，且产物约 39MB（含 sidecar）。后端-only 热修若强制升版，用户成本高；游戏式「热补丁」需要独立通道。
 - **方案**：
   1. **范围（v1）**：仅热更 `orchestrator`；**macOS**；不热更前端 / 不 bsdiff / 不 Windows。
   2. **版本**：`patch_id` 与 app semver **独立**；manifest 含 `min_app_version`（过低忽略）。
