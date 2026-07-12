@@ -27,17 +27,51 @@ _WS_RE = re.compile(r"[ \t]+\n")
 _BLANK_LINES_RE = re.compile(r"\n{3,}")
 
 
-def clean_pty_transcript(raw: str) -> str:
-    """Strip ANSI/PTY control noise and normalize whitespace."""
+def clean_pty_transcript(raw: str, max_chars: int = 12000) -> str:
+    """Strip ANSI/PTY control noise, filter out TUI draw/status lines, and normalize whitespace."""
     text = _erase_backspaces(strip_ansi(raw)).replace("\r\n", "\n").replace("\r", "\n")
+    
+    # Filter lines to remove terminal UI borders, status lines, and control noise
+    lines = text.split("\n")
+    filtered_lines = []
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            continue
+        # Filter out repeated blocks and lines that are purely TUI layout artifacts
+        if len(stripped) > 5 and len(set(stripped)) <= 2: # e.g. "━━━━━━" or "██████"
+            continue
+        # Filter out common TUI status bars and hotkey guides
+        if "切换模式" in stripped or "ctrl+p" in stripped or "添加文件" in stripped or "唤起命令" in stripped:
+            continue
+        if "esc interrupt" in stripped or "Background terminals" in stripped:
+            continue
+        if "Xiaomi" in stripped or "Mimo Code" in stripped or "MiMo Auto" in stripped or "DeepSeek V4" in stripped:
+            # Skip Mimo/Opencode TUI headers
+            if "你好" not in stripped and "我刚刚" not in stripped:
+                continue
+        # Clean up block characters
+        line_clean = line.replace("█", "").replace("░", "").replace("▒", "").strip()
+        if not line_clean:
+            continue
+        filtered_lines.append(line_clean)
+        
+    text = "\n".join(filtered_lines)
     text = _WS_RE.sub("\n", text)
     text = _BLANK_LINES_RE.sub("\n\n", text)
-    return text.strip()
+    cleaned = text.strip()
+    
+    if len(cleaned) > max_chars:
+        truncated = cleaned[-max_chars:]
+        if "\n" in truncated:
+            truncated = truncated.split("\n", 1)[-1]
+        return truncated.strip()
+    return cleaned
 
 
 def truncate_transcript_fallback(text: str, *, max_chars: int = _FALLBACK_MAX_CHARS) -> str:
     """Intelligent truncation when LLM summarization is unavailable."""
-    cleaned = clean_pty_transcript(text)
+    cleaned = clean_pty_transcript(text, max_chars=999999)
     if not cleaned:
         return "(no upstream session captured)"
     if len(cleaned) <= max_chars:
@@ -88,7 +122,7 @@ def summarize_lane_transcripts(
             {"role": "system", "content": _HANDOFF_SKILL_SYSTEM},
             {"role": "user", "content": user_content},
         ]
-        response = router.chat(messages)
+        response = router.chat(messages, max_tokens=600, timeout_sec=4.0)
         summary = LLMProviderRouter.extract_content(response)
         if summary:
             return summary

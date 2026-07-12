@@ -219,11 +219,18 @@ class LLMProviderRouter:
         *,
         model_id: str | None = None,
         tools: list[dict[str, Any]] | None = None,
+        max_tokens: int | None = None,
+        timeout_sec: float | None = None,
     ) -> dict[str, Any] | str:
         spec, api_key = self.resolve_for_model(model_id)
         key = self._require_api_key(spec.provider_id, api_key)
         if self._chat is None:
             raise RuntimeError("No chat backend configured")
+        kwargs: dict[str, Any] = {}
+        if max_tokens is not None:
+            kwargs["max_tokens"] = max_tokens
+        if timeout_sec is not None:
+            kwargs["timeout_sec"] = timeout_sec
         return self._chat(
             provider_id=spec.provider_id,
             base_url=spec.base_url,
@@ -231,6 +238,7 @@ class LLMProviderRouter:
             api_key=key,
             messages=messages,
             tools=tools,
+            **kwargs,
         )
 
     def complete(self, prompt: str, *, model_id: str | None = None) -> str | dict[str, Any]:

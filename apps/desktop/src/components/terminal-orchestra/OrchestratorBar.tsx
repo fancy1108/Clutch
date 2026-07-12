@@ -8,6 +8,7 @@ import { clutchStore } from '../../services/clutchState';
 import {
   buildOptimisticDispatchEntry,
   collectHandoffLaneTranscripts,
+  findLaneForDispatchSource,
   normalizeOrchestratorDispatchText,
   parseInputAgentMention,
   resolveDispatchTargetAgent,
@@ -269,6 +270,13 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
         targetLabel,
       }),
     );
+    const sourcesToCollapse = chips.length > 0 ? chips : result.preview.sources;
+    for (const src of sourcesToCollapse) {
+      const sourceLane = findLaneForDispatchSource(snapshot.pty_lanes ?? [], src);
+      if (sourceLane) {
+        void clutchStore.collapseLane(sourceLane.lane_id, true);
+      }
+    }
     await clutchStore.confirmDispatch(dispatchText, chips, {
       id: targetAgent?.agentId,
       name: targetAgent?.name,

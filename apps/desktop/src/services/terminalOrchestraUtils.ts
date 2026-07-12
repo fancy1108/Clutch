@@ -308,6 +308,9 @@ export function isDispatchEntryTargetPending(
   pendingInject: { lane_id: string } | null | undefined,
   getLanePtyStatus: (laneId: string) => string,
 ): boolean {
+  if (entry.step_status) {
+    return entry.step_status !== 'done';
+  }
   const lane = findLaneForDispatchTarget(lanes, entry.target, entry.lane_sessions);
   if (!lane) return true;
   if (lane.status === 'queued') return true;

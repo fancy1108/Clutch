@@ -369,6 +369,7 @@ def confirm_dispatch(
     target_configured_agent_id: str = "",
     target_configured_agent_name: str = "",
     lane_transcripts: list[dict[str, object]] | None = None,
+    skip_llm_summary: bool = False,
 ) -> dict[str, Any]:
     if preview.dispatch_mode == "switch":
         return _confirm_switch_dispatch(
@@ -388,6 +389,7 @@ def confirm_dispatch(
         target_configured_agent_id=target_configured_agent_id,
         target_configured_agent_name=target_configured_agent_name,
         lane_transcripts=lane_transcripts,
+        skip_llm_summary=skip_llm_summary,
     )
 
 
@@ -549,6 +551,7 @@ def _confirm_switch_dispatch(
                 "input_mode": preview.input_mode,
                 "dispatch_mode": "switch",
                 "file_refs": preview.file_refs,
+                "step_status": "opening_terminal",
                 "lane_sessions": _collect_lane_sessions(
                     lanes,
                     [target_lane_id],
@@ -600,6 +603,7 @@ def _confirm_switch_dispatch(
             "input_mode": preview.input_mode,
             "dispatch_mode": "switch",
             "file_refs": preview.file_refs,
+            "step_status": "opening_terminal",
             "lane_sessions": _collect_lane_sessions(
                 lanes + [new_lane],
                 ["lane_primary"],
@@ -627,6 +631,7 @@ def _confirm_handoff_dispatch(
     target_configured_agent_id: str = "",
     target_configured_agent_name: str = "",
     lane_transcripts: list[dict[str, object]] | None = None,
+    skip_llm_summary: bool = False,
 ) -> dict[str, Any]:
     sources = list(active_chips if active_chips is not None else preview.sources)
     if not sources:
@@ -641,6 +646,7 @@ def _confirm_handoff_dispatch(
         file_refs=preview.file_refs,
         dispatch_history=_dispatch_log(state),
         lane_transcripts=lane_transcripts,
+        skip_llm_summary=skip_llm_summary,
     )
 
     lanes = _lane_list(state)
@@ -733,6 +739,7 @@ def _confirm_handoff_dispatch(
         "input_mode": preview.input_mode,
         "dispatch_mode": "handoff",
         "file_refs": preview.file_refs,
+        "step_status": "generating_handoff",
         "lane_sessions": _collect_lane_sessions(
             lanes,
             session_lane_ids,

@@ -4203,6 +4203,80 @@ async def stop_run(run_id: str) -> dict[str, str]:
     return {"run_id": run_id, "status": state["status"]}
 
 
+async def _async_handoff_summarization_task(
+    run_id: str,
+    websocket: WebSocket,
+    workspace_path: str,
+    sources: list[str],
+    target: str,
+    task: str,
+    prompt: str,
+    file_refs: list[str] | None,
+    dispatch_history: list[dict[str, object]] | None,
+    lane_transcripts: list[dict[str, object]] | None,
+    custom_file_name: str,
+    entry_id: str,
+):
+    try:
+        from src.handoff_writer import write_handoff_markdown
+        def do_write():
+            return write_handoff_markdown(
+                workspace_path,
+                sources=sources,
+                target=target,
+                task=task,
+                prompt=prompt,
+                file_refs=file_refs,
+                dispatch_history=dispatch_history,
+                lane_transcripts=lane_transcripts,
+                skip_llm_summary=False,
+                custom_file_name=custom_file_name,
+            )
+        
+        await asyncio.to_thread(do_write)
+        
+        state = _run_states.get(run_id)
+        if state:
+            log = [dict(e) for e in (state.get("dispatch_log") or [])]
+            updated = False
+            for entry in log:
+                if entry.get("id") == entry_id:
+                    if entry.get("step_status") == "generating_handoff":
+                        entry["step_status"] = "opening_terminal"
+                        updated = True
+                    break
+            if updated:
+                patch = {"dispatch_log": log}
+                state = _merge_patch(state, patch)
+                _run_states[run_id] = state
+                _commit_run_state(run_id, state)
+                try:
+                    await _notify_run_state(websocket, run_id, state, patch)
+                except Exception as ws_exc:
+                    logger.warning("Failed to notify ws in async handoff: %s", ws_exc)
+    except Exception as exc:
+        logger.exception("Async handoff summarization failed: %s", exc)
+        state = _run_states.get(run_id)
+        if state:
+            log = [dict(e) for e in (state.get("dispatch_log") or [])]
+            updated = False
+            for entry in log:
+                if entry.get("id") == entry_id:
+                    if entry.get("step_status") == "generating_handoff":
+                        entry["step_status"] = "opening_terminal"
+                        updated = True
+                    break
+            if updated:
+                patch = {"dispatch_log": log}
+                state = _merge_patch(state, patch)
+                _run_states[run_id] = state
+                _commit_run_state(run_id, state)
+                try:
+                    await _notify_run_state(websocket, run_id, state, patch)
+                except Exception as ws_exc:
+                    logger.warning("Failed to notify ws in async handoff error: %s", ws_exc)
+
+
 @app.websocket("/ws/runs/{run_id}")
 async def ws_run(websocket: WebSocket, run_id: str) -> None:
     if auth_required():
@@ -4758,6 +4832,7 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                     workspace_path = (
                         str(workspace.get("workspace_path", "")).strip() if workspace else ""
                     )
+                    is_handoff = preview.dispatch_mode == "handoff"
                     patch = confirm_dispatch(
                         state,
                         preview=preview,
@@ -4775,6 +4850,7 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                             if isinstance(payload.get("lane_transcripts"), list)
                             else None
                         ),
+                        skip_llm_summary=is_handoff,
                     )
                     sessions_to_close = patch.pop("pty_sessions_to_close", [])
                     for session_key in sessions_to_close:
@@ -4783,6 +4859,29 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                     _commit_run_state(run_id, state)
                     _touch_session(run_id, title=text.strip()[:80] or "New session", status=state["status"])
                     await _notify_run_state(websocket, run_id, state, patch)
+
+                    if is_handoff:
+                        dispatch_log = patch.get("dispatch_log", [])
+                        added_entry = dispatch_log[-1] if dispatch_log else None
+                        if added_entry:
+                            entry_id = added_entry["id"]
+                            custom_file_name = added_entry["handoff_file"]
+                            asyncio.create_task(
+                                _async_handoff_summarization_task(
+                                    run_id=run_id,
+                                    websocket=websocket,
+                                    workspace_path=workspace_path or ".",
+                                    sources=list(chip_list if chip_list is not None else preview.sources),
+                                    target=preview.target,
+                                    task=preview.task,
+                                    prompt=text,
+                                    file_refs=preview.file_refs,
+                                    dispatch_history=list(state.get("dispatch_log") or [])[:-1],
+                                    lane_transcripts=payload.get("lane_transcripts"),
+                                    custom_file_name=custom_file_name,
+                                    entry_id=entry_id,
+                                )
+                            )
                     if sessions_to_close:
                         await websocket.send_text(
                             json.dumps(
@@ -4892,6 +4991,12 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                 )
             elif isinstance(payload, dict) and payload.get("action") == "pty_inject_ack":
                 patch = {"pending_pty_inject": None}
+                log = list(state.get("dispatch_log") or [])
+                if log:
+                    last_entry = log[-1]
+                    if last_entry.get("step_status") and last_entry["step_status"] != "done":
+                        last_entry["step_status"] = "done"
+                        patch["dispatch_log"] = log
                 state = _merge_patch(state, patch)
                 _commit_run_state(run_id, state)
                 await _notify_run_state(websocket, run_id, state, patch)

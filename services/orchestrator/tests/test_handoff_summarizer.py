@@ -43,7 +43,7 @@ def test_summarize_lane_transcripts_fallback_when_llm_unavailable(monkeypatch) -
 
 def test_summarize_lane_transcripts_uses_llm(monkeypatch) -> None:
     class _FakeRouter:
-        def chat(self, messages, model_id=None):
+        def chat(self, messages, model_id=None, **kwargs):
             assert "Handoff context" in messages[1]["content"]
             return "• Summary bullet from LLM"
 

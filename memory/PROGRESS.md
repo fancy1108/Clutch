@@ -19,6 +19,14 @@
 
 ## Recent Sessions
 
+## 2026-07-12 会话（交接 Handoff 派发流程耗时优化与界面交互体验改进）
+
+- **性能优化**：将 Handoff 派发时 LLM 生成 Smart Summary 的耗时从同步改成了非阻塞后台任务异步生成，并增加了 4.0 秒的严格超时（`timeout_sec=4.0`）及模型 `max_tokens=600` 限制，结合最新 12,000 字符的智能输入截断策略，彻底解决了界面可能因云端模型慢响应而卡死的问题（缩短到 5 秒以内，如果超时或网络不通则自动 fallback，不阻塞派发流程）。
+- **TUI 精细清洗**：重构了 `clean_pty_transcript` 方法，精细清洗过滤了 horizontal 边框线（如 `━━━━`）、填充块（`████`）、键盘操作指南（`tab 切换模式`/`ctrl+p` 等）、无用 headers 等 TUI 画布冗余元数据，让交接生成的 Handoff 文本（即使在 fallback 状态下）内容整洁易读。
+- **状态机步骤渲染**：前端及后端增加了 `generating_handoff` -> `opening_terminal` -> `injecting_goal` -> `done` 的步骤流渲染，支持在卡片最底下一行完美呈现 Spinner 和国际化提示语，防止了头部 Badge 排版重叠。
+- **面板秒折叠**：发送交接时，立即在前端触发 `from @agent1` 来源面板的折叠，使用户获得极速交互响应。
+- **校验**：本地 `./scripts/verify.sh` 通过，所有单元测试通过。
+
 ## 2026-07-12 会话（修复 Codex 路径及多 CLI 终端消息注入时机问题）
 
 - **修复**：更新了 `~/.local/bin/codex` 软链接至最新的 `/Applications/ChatGPT.app/Contents/Resources/codex`（最新版的 dmg 将 `Codex.app` 更名为 `ChatGPT.app`）。

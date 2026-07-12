@@ -275,6 +275,8 @@ const zhTranslations: Record<string, string> = {
   "Interactive CLI ready": "交互 CLI 已就绪",
   "Connecting interactive CLI…": "正在连接交互 CLI…",
   "Opening terminal…": "正在打开终端…",
+  "Generating handoff summary…": "正在生成交接摘要…",
+  "Injecting task goal…": "正在注入任务目标…",
   "Terminal pages": "终端分页",
   "Terminal page": "终端页",
   "Read-only audit log (interactive PTY unavailable)": "只读审计日志（交互 PTY 不可用）",

@@ -73,6 +73,21 @@ export const OverviewDispatchLog: React.FC<OverviewDispatchLogProps> = ({
             pendingInject,
             (laneId) => clutchStore.getLanePtyStatus(laneId),
           );
+
+          let pendingStepText = t('Opening terminal…');
+          if (entry.step_status === 'generating_handoff') {
+            pendingStepText = t('Generating handoff summary…');
+          } else if (entry.step_status === 'opening_terminal') {
+            pendingStepText = t('Opening terminal…');
+          } else if (entry.step_status === 'injecting_goal') {
+            pendingStepText = t('Injecting task goal…');
+          } else if (pendingInject && pendingInject.lane_id) {
+            const targetLane = findLaneForDispatchTarget(lanes, entry.target, entry.lane_sessions);
+            if (targetLane && pendingInject.lane_id === targetLane.lane_id) {
+              pendingStepText = t('Injecting task goal…');
+            }
+          }
+
           return (
             <li
               key={entry.id}
@@ -86,12 +101,6 @@ export const OverviewDispatchLog: React.FC<OverviewDispatchLogProps> = ({
                   {formatDispatchTime(entry.time)}
                 </span>
                 <div className="flex items-center gap-1.5 shrink-0">
-                  {targetPending ? (
-                    <span className="inline-flex items-center gap-1 text-[9px] font-semibold text-primary px-1.5 py-0.5 rounded-md bg-primary/10 border border-primary/20">
-                      <Loader2 className="w-3 h-3 animate-spin shrink-0" strokeWidth={2.25} />
-                      {t('Opening terminal…')}
-                    </span>
-                  ) : null}
                   <span className="text-[9px] uppercase tracking-wider font-bold text-on-surface-variant/70 px-1.5 py-0.5 rounded-md bg-surface-container-high border border-outline-variant/30">
                     {entry.input_mode === 'graph' ? t('Graph') : t('Natural')}
                   </span>
@@ -145,6 +154,14 @@ export const OverviewDispatchLog: React.FC<OverviewDispatchLogProps> = ({
                     ) : null}
                   </div>
                 </>
+              ) : null}
+              {targetPending ? (
+                <div className="flex items-center gap-1.5 mt-2.5">
+                  <span className="inline-flex items-center gap-1 text-[9px] font-semibold text-primary px-1.5 py-0.5 rounded-md bg-primary/10 border border-primary/20">
+                    <Loader2 className="w-3 h-3 animate-spin shrink-0" strokeWidth={2.25} />
+                    {pendingStepText}
+                  </span>
+                </div>
               ) : null}
             </li>
           );

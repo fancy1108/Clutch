@@ -60,9 +60,11 @@ def write_handoff_markdown(
     file_refs: list[str] | None = None,
     dispatch_history: list[dict[str, object]] | None = None,
     lane_transcripts: list[dict[str, object]] | None = None,
+    skip_llm_summary: bool = False,
+    custom_file_name: str | None = None,
 ) -> tuple[str, str]:
     """Write handoff file; returns (relative_path, file_name)."""
-    file_name = handoff_filename(sources, target)
+    file_name = custom_file_name or handoff_filename(sources, target)
     rel_path = f".clutch/handoffs/{file_name}"
     root = Path(workspace_path)
     out = root / rel_path
@@ -83,12 +85,17 @@ def write_handoff_markdown(
         history_lines.append("")
         history_block = "\n".join(history_lines)
 
-    source_output = summarize_lane_transcripts(
-        lane_transcripts,
-        sources_label=sources_label,
-        target=target,
-        task_focus=task or prompt,
-    )
+    if skip_llm_summary:
+        from src.handoff_summarizer import truncate_transcript_fallback, _format_transcripts_for_prompt
+        combined = _format_transcripts_for_prompt(lane_transcripts or [])
+        source_output = truncate_transcript_fallback(combined)
+    else:
+        source_output = summarize_lane_transcripts(
+            lane_transcripts,
+            sources_label=sources_label,
+            target=target,
+            task_focus=task or prompt,
+        )
 
     referenced_files_block = _format_referenced_files_section(refs)
 

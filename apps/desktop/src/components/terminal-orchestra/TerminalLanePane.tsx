@@ -116,6 +116,14 @@ export const TerminalLanePane: React.FC<TerminalLanePaneProps> = ({
     }
     if (!pending || pending.lane_id !== lane.lane_id) return;
 
+    if (pending.handoff_path) {
+      const dispatchLog = clutchStore.getSnapshot().dispatch_log ?? [];
+      const entry = dispatchLog.find((e) => e.handoff_path === pending.handoff_path);
+      if (entry && entry.step_status === 'generating_handoff') {
+        return;
+      }
+    }
+
     const dedupeKey = `${pending.lane_id}:${pending.prompt}:${pending.handoff_path ?? ''}`;
     if (consumedInjectRef.current === dedupeKey || injectInflightRef.current === dedupeKey) return;
 
