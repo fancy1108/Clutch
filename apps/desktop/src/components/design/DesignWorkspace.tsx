@@ -1425,6 +1425,9 @@ function DesignCanvasInner({
   promptRef.current = prompt;
   selectedRoundRef.current = selectedRoundIndex;
   const lastBusyRef = useRef<boolean | null>(null);
+  const currentRunIdRef = useRef(runId);
+  currentRunIdRef.current = runId;
+
 
   useEffect(() => {
     const waitingHtml =
@@ -1444,8 +1447,8 @@ function DesignCanvasInner({
   }, []);
 
   const publishRoundLogs = useCallback((round: DesignRound | null) => {
-    if (!round) return;
     clutchStore.clearTerminalLogs();
+    if (!round) return;
     if (round.reasoning_content?.trim()) {
       clutchStore.appendTerminalLog(
         `[DESIGN:REASONING] ${round.reasoning_content.trim().replace(/\n/g, ' ↵ ')}`,
@@ -1598,6 +1601,9 @@ function DesignCanvasInner({
 
   const applySession = useCallback(
     (next: DesignSession) => {
+      if (next.run_id !== currentRunIdRef.current && next.id !== currentRunIdRef.current) {
+        return;
+      }
       const rounds = parseDesignRounds(next.process_log, next.rounds, next.round_history);
       const latestRoundIndex = rounds[rounds.length - 1]?.index ?? 0;
       const effectiveRoundIndex =
@@ -1780,6 +1786,7 @@ function DesignCanvasInner({
     setSelectedRoundIndex(0);
     setRoundHtmlByScreen({});
     roundPinnedRef.current = false;
+    selectedRoundRef.current = 0;
     hadSpecRef.current = false;
     hadScreenRef.current = false;
     userDraggedRef.current = false;
