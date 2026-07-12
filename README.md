@@ -26,7 +26,7 @@ Clutch is a **desktop app** (Tauri + React) for developers and technical operato
 - **Multi-CLI injection** — `mimo-cli`, `codex-cli`, `claude-cli`, `codebuddy-cli` ready detection and tuned warmup timing.
 - **CLI detection** — System daemon filtering, system-wide PTY count, ChatGPT.app fallback paths for Codex CLI.
 
-> **v1.2.3 is macOS-only** (Apple Silicon DMG + in-app updater). Windows users remain on [v1.2.2](https://github.com/fancy1108/Clutch/releases/tag/v1.2.2). Sidecar hotpatch assets published separately.
+> **v1.2.3 ships macOS + Windows.** macOS: Apple Silicon DMG + in-app updater. Windows: MSI/NSIS (upgrade from [v1.2.2](https://github.com/fancy1108/Clutch/releases/tag/v1.2.2) recommended). Sidecar hotpatch assets published separately.
 
 Older releases (v1.2.2 Windows parity, v1.2.1 hotpatch client, v1.2.0 Design/ZCode, …): [`CHANGELOG.md`](CHANGELOG.md) · [`docs/releases/`](docs/releases/).
 

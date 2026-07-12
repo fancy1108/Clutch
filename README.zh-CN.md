@@ -26,7 +26,7 @@ Clutch 是一款**桌面应用**（Tauri + React），面向独立开发者和�
 - **多 CLI 注入适配** — `mimo-cli`、`codex-cli`、`claude-cli`、`codebuddy-cli` 启动就绪检测和 warmup 调优。
 - **CLI 检测** — 系统守护进程过滤、全系统 PTY 计数、Codex CLI ChatGPT.app 回退路径。
 
-> **v1.2.3 仅发 macOS**（Apple Silicon DMG + 应用内更新）。Windows 用户继续使用 [v1.2.2](https://github.com/fancy1108/Clutch/releases/tag/v1.2.2)。Sidecar 热更资产另行发布。
+> **v1.2.3 同时发 macOS + Windows。** macOS：Apple Silicon DMG + 应用内更新。Windows：MSI/NSIS（建议从 [v1.2.2](https://github.com/fancy1108/Clutch/releases/tag/v1.2.2) 升级）。Sidecar 热更资产另行发布。
 
 更早版本（v1.2.2 Windows 同步、v1.2.1 热更客户端、v1.2.0 Design/ZCode 等）：[`CHANGELOG.md`](CHANGELOG.md) · [`docs/releases/`](docs/releases/)。
 

@@ -18,9 +18,9 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ## [1.2.3] - 2026-07-12
 
-Patch release — **macOS only** (Apple Silicon DMG + in-app updater). Ships native **handoff flow (D34)**, Design session isolation and layout fixes, and TUI injection reliability for Mimo/Claude/Codex CLI agents. Windows users remain on [v1.1.1](https://github.com/fancy1108/Clutch/releases/tag/v1.1.1) or [v1.2.2](https://github.com/fancy1108/Clutch/releases/tag/v1.2.2) (Windows MSI).
+Patch release — **macOS + Windows**. macOS: Apple Silicon DMG + in-app updater. Windows: MSI/NSIS. Ships native **handoff flow (D34)**, Design session isolation and layout fixes, and TUI injection reliability for Mimo/Claude/Codex CLI agents.
 
-> **Release assets (v1.2.3):** Tag `v1.2.3` — **macOS only:** `Clutch_1.2.3_aarch64.dmg` + `SHA256SUMS.txt` (CI `release.yml`); optional `latest.json` updater bundle. **No Windows installers** for this release. Sidecar hotpatch asset (`sidecar-patch.json` + binary) published separately.
+> **Release assets (v1.2.3):** Tag `v1.2.3` — **macOS:** `Clutch_1.2.3_aarch64.dmg` + `SHA256SUMS.txt` (CI `release.yml`). **Windows:** `Clutch_1.2.3_x64-setup.exe` + `Clutch_1.2.3_x64_en-US.msi` + `SHA256SUMS_WIN.txt` (CI `windows-build.yml`). Sidecar hotpatch asset (`sidecar-patch.json` + binary) published separately. Optional macOS updater via `Release (updater assets)` workflow (requires minisign key).
 
 ### Added
 
