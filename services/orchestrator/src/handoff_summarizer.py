@@ -81,6 +81,28 @@ def truncate_transcript_fallback(text: str, *, max_chars: int = _FALLBACK_MAX_CH
     return f"{head}\n\n…\n\n{tail}"
 
 
+def _format_chat_messages_for_prompt(chat_messages: list[dict[str, Any]] | None) -> str:
+    if not chat_messages:
+        return ""
+    blocks = []
+    for msg in chat_messages:
+        role = str(msg.get("role") or "").capitalize()
+        content = msg.get("content")
+        text = ""
+        if isinstance(content, str):
+            text = content
+        elif isinstance(content, list):
+            text_parts = []
+            for part in content:
+                if isinstance(part, dict) and part.get("type") == "text":
+                    text_parts.append(str(part.get("text") or ""))
+            text = "\n".join(text_parts)
+        if text.strip():
+            agent_prefix = f" ({msg.get('agent_id')})" if msg.get("agent_id") else ""
+            blocks.append(f"[{role}{agent_prefix}]: {text.strip()}")
+    return "\n".join(blocks)
+
+
 def _format_transcripts_for_prompt(lane_transcripts: list[dict[str, Any]]) -> str:
     blocks: list[str] = []
     for item in lane_transcripts:
@@ -97,21 +119,27 @@ def summarize_lane_transcripts(
     sources_label: str,
     target: str,
     task_focus: str = "",
+    chat_messages: list[dict[str, Any]] | None = None,
 ) -> str:
-    """Summarize upstream PTY session(s) via built-in LLM; fallback to cleaned truncation."""
-    if not lane_transcripts:
-        return "(no upstream session captured)"
+    """Summarize upstream PTY session(s) and chat context via built-in LLM; fallback to cleaned truncation."""
+    combined = _format_transcripts_for_prompt(lane_transcripts or [])
+    chat_history_str = _format_chat_messages_for_prompt(chat_messages)
 
-    combined = _format_transcripts_for_prompt(lane_transcripts)  # type: ignore[arg-type]
-    if not combined.strip():
+    if not combined.strip() and not chat_history_str.strip():
         return "(no upstream session captured)"
 
     user_focus = task_focus.strip() or f"Continue work in {target} after handoff from {sources_label}."
-    user_content = (
-        f"Handoff context: {sources_label} → {target}\n"
-        f"Next session focus: {user_focus}\n\n"
-        f"Source terminal session transcript:\n\n{combined}"
-    )
+    
+    prompt_parts = [
+        f"Handoff context: {sources_label} → {target}",
+        f"Next session focus: {user_focus}"
+    ]
+    if chat_history_str.strip():
+        prompt_parts.append(f"### Chat History Context:\n\n{chat_history_str}")
+    if combined.strip():
+        prompt_parts.append(f"### Source Terminal Session Transcript:\n\n{combined}")
+
+    user_content = "\n\n".join(prompt_parts)
 
     try:
         from src.models_config import get_router
@@ -122,11 +150,15 @@ def summarize_lane_transcripts(
             {"role": "system", "content": _HANDOFF_SKILL_SYSTEM},
             {"role": "user", "content": user_content},
         ]
-        response = router.chat(messages, max_tokens=600, timeout_sec=4.0)
+        response = router.chat(messages, max_tokens=600, timeout_sec=10.0)
         summary = LLMProviderRouter.extract_content(response)
         if summary:
             return summary
     except Exception as exc:
         logger.warning("Handoff LLM summarization failed, using fallback: %s", exc)
 
-    return truncate_transcript_fallback(combined)
+    return truncate_transcript_fallback(combined) if combined.strip() else "(no upstream session captured)"
+
+
+
+

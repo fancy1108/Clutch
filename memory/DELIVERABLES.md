@@ -28,10 +28,10 @@
 - **Verification：** `pytest tests/test_terminal_orchestra.py` -> 22 passed; `pnpm build` -> successfully built; manual PTY & background task latency check -> green
 - **证据：** —
 - **交付文件：**
-  - `services/orchestrator/src/handoff_summarizer.py` — Added intelligent TUI visual noise cleaning and set strict timeout limit (4.0s) to keep handoff latency under 5s.
+  - `services/orchestrator/src/handoff_summarizer.py` — Added intelligent TUI visual noise cleaning, integrated current chat history context, and configured LLM timeout (10.0s).
   - `services/orchestrator/src/llm/router.py` — Propagated `timeout_sec` and `max_tokens` keywords down to `http_chat_complete`.
-  - `services/orchestrator/src/main.py` — Decoupled summarization into an async background task, fixed target log entry index mapping bugs, added exception guards for WS notification, and enabled system-wide active PTY CLI scan.
-  - `services/orchestrator/src/handoff_writer.py` — Allowed custom handoff filename and optional synchronous LLM bypass.
+  - `services/orchestrator/src/main.py` — Decoupled summarization into an async background task, fixed target log entry index mapping bugs, added exception guards for WS notification, enabled system-wide active PTY CLI scan, and passed chat messages history to the summarization pipeline.
+  - `services/orchestrator/src/handoff_writer.py` — Passed `chat_messages` history to `summarize_lane_transcripts` and allowed custom handoff filename.
   - `services/orchestrator/src/terminal_orchestra.py` — Initialized `step_status` for dispatches and deferred summaries.
   - `apps/desktop/src/components/terminal-orchestra/OverviewDispatchLog.tsx` — Moved target pending status indicator to the bottom row of log cards to prevent visual badge overlap.
   - `apps/desktop/src/components/terminal-orchestra/OrchestratorBar.tsx` — Immediately collapsed sender terminal panes on dispatch click.

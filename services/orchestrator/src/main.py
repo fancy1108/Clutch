@@ -4216,6 +4216,7 @@ async def _async_handoff_summarization_task(
     lane_transcripts: list[dict[str, object]] | None,
     custom_file_name: str,
     entry_id: str,
+    chat_messages: list[dict[str, object]] | None = None,
 ):
     try:
         from src.handoff_writer import write_handoff_markdown
@@ -4229,6 +4230,7 @@ async def _async_handoff_summarization_task(
                 file_refs=file_refs,
                 dispatch_history=dispatch_history,
                 lane_transcripts=lane_transcripts,
+                chat_messages=chat_messages,
                 skip_llm_summary=False,
                 custom_file_name=custom_file_name,
             )
@@ -4880,6 +4882,7 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                                     lane_transcripts=payload.get("lane_transcripts"),
                                     custom_file_name=custom_file_name,
                                     entry_id=entry_id,
+                                    chat_messages=list(state.get("messages") or []),
                                 )
                             )
                     if sessions_to_close:

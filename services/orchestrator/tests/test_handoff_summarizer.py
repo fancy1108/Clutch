@@ -56,3 +56,26 @@ def test_summarize_lane_transcripts_uses_llm(monkeypatch) -> None:
         task_focus="Build HTML page",
     )
     assert result == "• Summary bullet from LLM"
+
+
+def test_summarize_lane_transcripts_with_only_chat_messages(monkeypatch) -> None:
+    class _FakeRouter:
+        def chat(self, messages, model_id=None, **kwargs):
+            assert "Chat History Context:" in messages[1]["content"]
+            assert "[User]: hello" in messages[1]["content"]
+            assert "[Assistant (mimo)]: world" in messages[1]["content"]
+            return "• Chat summary bullet"
+
+    monkeypatch.setattr("src.models_config.get_router", lambda: _FakeRouter())
+
+    result = summarize_lane_transcripts(
+        None,
+        sources_label="Claude Code",
+        target="OpenCode",
+        chat_messages=[
+            {"role": "user", "content": "hello"},
+            {"role": "assistant", "agent_id": "mimo", "content": "world"},
+        ],
+    )
+    assert result == "• Chat summary bullet"
+

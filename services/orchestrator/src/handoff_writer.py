@@ -60,6 +60,7 @@ def write_handoff_markdown(
     file_refs: list[str] | None = None,
     dispatch_history: list[dict[str, object]] | None = None,
     lane_transcripts: list[dict[str, object]] | None = None,
+    chat_messages: list[dict[str, object]] | None = None,
     skip_llm_summary: bool = False,
     custom_file_name: str | None = None,
 ) -> tuple[str, str]:
@@ -95,6 +96,7 @@ def write_handoff_markdown(
             sources_label=sources_label,
             target=target,
             task_focus=task or prompt,
+            chat_messages=chat_messages,
         )
 
     referenced_files_block = _format_referenced_files_section(refs)
