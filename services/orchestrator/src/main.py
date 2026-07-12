@@ -4271,13 +4271,13 @@ async def _async_handoff_summarization_task(
                                 logger.warning("Failed to inject handoff prompt into session %s: %s", session_key, e)
 
             if injected_any:
-                # Poll for the newly generated handoff file (up to 6.0s)
+                # Poll for the newly generated handoff file (up to 30.0s to accommodate slower LLM thought/write cycles)
                 recent_file_path = None
-                for _ in range(12):
-                    recent_file_path = find_recent_temp_handoff_file(max_age_seconds=15.0)
+                for _ in range(30):
+                    recent_file_path = find_recent_temp_handoff_file(max_age_seconds=45.0)
                     if recent_file_path:
                         break
-                    await asyncio.sleep(0.5)
+                    await asyncio.sleep(1.0)
 
                 if recent_file_path:
                     try:
