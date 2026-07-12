@@ -160,5 +160,52 @@ def summarize_lane_transcripts(
     return truncate_transcript_fallback(combined) if combined.strip() else "(no upstream session captured)"
 
 
+def find_recent_temp_handoff_file(max_age_seconds: float = 15.0) -> str | None:
+    """Scan temp directories for a newly written handoff markdown or text file."""
+    import tempfile
+    import glob
+    import os
+    import time
+    from pathlib import Path
+
+    temp_dirs = [tempfile.gettempdir(), "/tmp"]
+    patterns = ["handoff*.md", "handoff*.txt", "handoff*"]
+    
+    candidates: list[tuple[Path, float]] = []
+    now = time.time()
+    
+    for d in temp_dirs:
+        if not d or not os.path.exists(d):
+            continue
+        for pat in patterns:
+            try:
+                for p in glob.glob(os.path.join(d, pat)):
+                    path = Path(p)
+                    if path.is_file():
+                        mtime = path.stat().st_mtime
+                        age = now - mtime
+                        if age < max_age_seconds:
+                            candidates.append((path, mtime))
+            except Exception:
+                pass
+                        
+    if not candidates:
+        return None
+        
+    candidates.sort(key=lambda x: x[1], reverse=True)
+    return str(candidates[0][0])
+
+
+def strip_yaml_frontmatter(content: str) -> str:
+    """Remove YAML frontmatter from a markdown document if present."""
+    content = content.strip()
+    if content.startswith("---"):
+        parts = content.split("---", 2)
+        if len(parts) >= 3:
+            return parts[2].strip()
+    return content
+
+
+
 
 

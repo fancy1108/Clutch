@@ -4219,6 +4219,50 @@ async def _async_handoff_summarization_task(
     chat_messages: list[dict[str, object]] | None = None,
 ):
     try:
+        from src.interactive_pty_runtime import interactive_pty_manager
+        from src.handoff_summarizer import find_recent_temp_handoff_file, strip_yaml_frontmatter
+        from src.agent_type import agent_display_name
+
+        agent_handoff_summary = None
+        state = _run_states.get(run_id)
+        if state:
+            lanes = state.get("pty_lanes") or []
+            for source_name in sources:
+                target_lane = None
+                for lane in lanes:
+                    if str(lane.get("configured_agent_name") or "").lower() == source_name.lower():
+                        target_lane = lane
+                        break
+                if not target_lane:
+                    for lane in lanes:
+                        agent_type = str(lane.get("agent_type") or "")
+                        display = agent_display_name(agent_type)
+                        if display.lower() == source_name.lower():
+                            target_lane = lane
+                            break
+                if target_lane:
+                    lane_id = target_lane.get("lane_id")
+                    session_key = f"{run_id}::{lane_id}"
+                    session = interactive_pty_manager.get(session_key)
+                    if session and session.alive():
+                        try:
+                            session.write_input("\n/handoff\n")
+                        except Exception as e:
+                            logger.warning("Failed to inject /handoff into session %s: %s", session_key, e)
+
+            await asyncio.sleep(3.0)
+
+            recent_file_path = find_recent_temp_handoff_file(max_age_seconds=15.0)
+            if recent_file_path:
+                try:
+                    from pathlib import Path
+                    p = Path(recent_file_path)
+                    raw_content = p.read_text(encoding="utf-8", errors="replace")
+                    agent_handoff_summary = strip_yaml_frontmatter(raw_content)
+                    p.unlink(missing_ok=True)
+                except Exception as exc:
+                    logger.warning("Failed to process temp handoff file %s: %s", recent_file_path, exc)
+
         from src.handoff_writer import write_handoff_markdown
         def do_write():
             return write_handoff_markdown(
@@ -4231,6 +4275,7 @@ async def _async_handoff_summarization_task(
                 dispatch_history=dispatch_history,
                 lane_transcripts=lane_transcripts,
                 chat_messages=chat_messages,
+                agent_handoff_summary=agent_handoff_summary,
                 skip_llm_summary=False,
                 custom_file_name=custom_file_name,
             )

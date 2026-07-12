@@ -61,6 +61,7 @@ def write_handoff_markdown(
     dispatch_history: list[dict[str, object]] | None = None,
     lane_transcripts: list[dict[str, object]] | None = None,
     chat_messages: list[dict[str, object]] | None = None,
+    agent_handoff_summary: str | None = None,
     skip_llm_summary: bool = False,
     custom_file_name: str | None = None,
 ) -> tuple[str, str]:
@@ -86,7 +87,9 @@ def write_handoff_markdown(
         history_lines.append("")
         history_block = "\n".join(history_lines)
 
-    if skip_llm_summary:
+    if agent_handoff_summary:
+        source_output = agent_handoff_summary.strip()
+    elif skip_llm_summary:
         from src.handoff_summarizer import truncate_transcript_fallback, _format_transcripts_for_prompt
         combined = _format_transcripts_for_prompt(lane_transcripts or [])
         source_output = truncate_transcript_fallback(combined)
