@@ -4933,7 +4933,7 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
             elif isinstance(payload, dict) and payload.get("action") == "pty_session_stats":
                 from src.interactive_pty_runtime import interactive_pty_manager
 
-                sessions = interactive_pty_manager.list_alive_for_run(run_id)
+                sessions = interactive_pty_manager.list_alive_for_run(run_id, include_system=True)
                 await websocket.send_text(
                     json.dumps(
                         {
