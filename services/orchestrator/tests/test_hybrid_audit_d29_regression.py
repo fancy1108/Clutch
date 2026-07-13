@@ -92,7 +92,7 @@ async def test_handle_plain_chat_session_busy_audited(
     monkeypatch.setenv("CLUTCH_STORAGE_DIR", str(tmp_path))
     monkeypatch.setenv("CLUTCH_RUNTIME_MODE", "hybrid")
     monkeypatch.setattr("src.run_state_store.save_run_state", lambda _state: None)
-    monkeypatch.setattr("src.main._touch_session", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr("src.chat_runner._touch_session", lambda *_args, **_kwargs: None)
 
     agent_record = {
         "id": "agent-claude-test",
@@ -107,7 +107,7 @@ async def test_handle_plain_chat_session_busy_audited(
             "This chat is still running a Hybrid shell turn.",
         )
 
-    monkeypatch.setattr("src.main._llm_chat_reply", raise_busy)
+    monkeypatch.setattr("src.chat_runner._llm_chat_reply", raise_busy)
 
     websocket = MagicMock()
     websocket.send_text = AsyncMock()

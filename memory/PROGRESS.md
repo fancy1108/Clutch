@@ -19,6 +19,18 @@
 
 ## Recent Sessions
 
+## 2026-07-13 会话（D38 Stable Context Boundary 代码模块化重构完成）
+
+- **后端大文件拆分（Phase 1 & Phase 2）**：
+  - 将 `design/service.py` 拆分为 `session_store.py`、`preview_manager.py`、`generator.py`、`thumbnail.py`、`layout.py` 和 `token_usage.py`，保持 `service.py` 作为外观模式（Facade）暴露原 API。
+  - 将 FastAPI 路由大文件 `main.py` 按业务领域拆入 `routes/` 包下独立的路由子模块：`chat.py`、`design.py`、`models.py`、`pty.py`、`settings.py`、`workspace.py`。
+- **前端大文件拆分（Phase 3, Phase 4 & Phase 5）**：
+  - 将 `services/clutchState.ts` 纯辅助函数（合并消息、更新 Optimistic run 判定等）抽取至 `services/clutchStateUtils.ts` 并重新导出。
+  - 将 `DesignWorkspace.tsx` 中的 React Flow 状态节点渲染拆入 `nodes/` 目录下（`AgentLogCardNode.tsx`、`SpecCardNode.tsx`、`UiCardNode.tsx`、`RefCardNode.tsx`、`MdDocCardNode.tsx`、`UrlCardNode.tsx`），提取画布生成及定位计算等纯函数到 `designWorkspaceUtils.ts`。
+  - 将 `App.tsx` 中的 `PromptModal` 和 `AppErrorBoundary` 组件抽取至 `components/` 下的独立文件中。
+- **文档更新**：更新了 `memory/FILEMAP.md` 对齐全新模块化结构，更新 `memory/DECISIONS.md` 将 D38 状态修改为 `已完成`。
+- **验证**：执行了 `./scripts/verify.sh` 一键验证，前后端所有静态类型检查、测试（含后端 713 个单元测试、前端测试）全部通过。
+
 ## 2026-07-12 会话（交接 Handoff 派发流程耗时优化与界面交互体验改进）
 
 - **性能优化**：将 Handoff 派发时 LLM 生成 Smart Summary 的耗时从同步改成了非阻塞后台任务异步生成，结合最新 12,000 字符的智能输入截断策略，彻底解决了界面可能因云端模型慢响应而卡死的问题。

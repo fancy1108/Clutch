@@ -46,7 +46,7 @@ def hybrid_e2e_env(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
     (tmp_path / "workspace").mkdir()
     monkeypatch.setattr("src.workspace.get_workspace", lambda: workspace)
     monkeypatch.setattr("src.engine_router.get_workspace", lambda: workspace)
-    monkeypatch.setattr("src.main._touch_session", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr("src.chat_runner._touch_session", lambda *_args, **_kwargs: None)
 
 
 def _chat_until_idle(run_id: str, text: str) -> dict[str, object]:

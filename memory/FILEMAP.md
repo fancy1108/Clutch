@@ -120,7 +120,7 @@
 | 想改什么 | 去哪里 |
 |---------|--------|
 | 应用根布局、ClutchState 投影 | `App.tsx` |
-| WebSocket store、`useClutchState` | `services/clutchState.ts` |
+| WebSocket store、`useClutchState` | `services/clutchState.ts` · 纯辅助函数见 `services/clutchStateUtils.ts` |
 | 会话 / 运行 API | `services/runApi.ts` |
 | Skills Registry API（P2-01） | `services/skillsApi.ts` |
 | Theme 偏好 API（P2-03） | `services/themeApi.ts`（含 language） |
@@ -136,11 +136,12 @@
 | 右侧面板（Overview/Files/Flow/Changes/Terminal） | `components/RightPanel.tsx` |
 | Terminal 日志子面板 | `components/TerminalPanel.tsx` |
 | 文件预览浮层 | `App.tsx`（`previewFile`） |
+| Prompt / 错误边界组件 | `components/PromptModal.tsx` · `components/AppErrorBoundary.tsx` |
 | 模型配置 UI（M4-09） | `components/ModelsManager.tsx` |
 | 主题 Appearance（P2） | `components/ThemeManager.tsx` |
 | 设置模态壳 | `components/SystemPreferencesModal.tsx` |
 | i18n（P2） | `components/LanguageContext.tsx` |
-| **Design 模式（D36 · 工作区会话 + 原型交互画布）** | `components/design/DesignWorkspace.tsx` · `services/designApi.ts` · `Header` Coding/Design · `runApi` `mode` · 后端 `services/orchestrator/src/design/`（sessions） · 模板 `workflows/design-to-code.json` · 参考 `runs/verification/2026-07-10-design-canvas-reference.md` |
+| **Design 模式（D36 · 工作区会话 + 原型交互画布）** | `components/design/DesignWorkspace.tsx` · 辅助函数 `components/design/designWorkspaceUtils.ts` · React Flow 卡片节点 `components/design/nodes/` · `services/designApi.ts` |
 | 工作流画布编辑 | `components/WorkflowOrchestration.tsx` |
 | 工作流 JSON 面板（D9） | `components/WorkflowJsonPanel.tsx` |
 | 画布 ↔ compiler 转换（D9） | `services/workflowFormat.ts` |
@@ -165,7 +166,8 @@
 
 | 想改什么 | 去哪里 |
 |---------|--------|
-| FastAPI 入口、HTTP/WS 路由 | `src/main.py` |
+| FastAPI 入口、HTTP/WS 路由 | `src/main.py` · 模块化路由包 `src/routes/` (`workspace.py`, `models.py`, `settings.py`, `pty.py`, `design.py`, `chat.py`) |
+| Design 模式设计系统及画布生成服务 | `src/design/service.py` · 拆分子模块 `src/design/` (`session_store.py`, `preview_manager.py`, `generator.py`, `thumbnail.py`, `layout.py`, `token_usage.py`) |
 | ClutchState 初始值 | `src/state.py` |
 | 会话元数据持久化（M2-07） | `src/run_history.py` |
 | 会话 messages 持久化（D11） | `src/run_state_store.py` |

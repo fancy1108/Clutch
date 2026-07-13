@@ -56,7 +56,7 @@ def test_stop_workflow_requests_cancel_and_releases_shell(monkeypatch) -> None:
         lambda run_id: cancelled.append(run_id),
     )
     monkeypatch.setattr(
-        "src.main._interrupt_plain_chat_shell",
+        "src.chat_runner._interrupt_plain_chat_shell",
         lambda run_id: released.append(run_id),
     )
 

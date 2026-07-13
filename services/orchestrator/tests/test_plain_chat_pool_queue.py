@@ -49,7 +49,7 @@ def pool_queue_env(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
     (tmp_path / "workspace").mkdir()
     monkeypatch.setattr("src.workspace.get_workspace", lambda: workspace)
     monkeypatch.setattr("src.engine_router.get_workspace", lambda: workspace)
-    monkeypatch.setattr("src.main._touch_session", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr("src.chat_runner._touch_session", lambda *_args, **_kwargs: None)
     yield
     manager = get_shell_session_manager()
     manager.release("run_pool_a")
