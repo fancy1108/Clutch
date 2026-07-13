@@ -22,6 +22,23 @@
 
 ## Active Deliverables
 
+### Multi-page design session generation ✅
+- **日期：** 2026-07-13
+- **Commit：** `aa2efd2` — `feat(design): support generating multiple screens side-by-side in design sessions`
+- **Verification：** `./scripts/verify.sh` → all checks passed (723 python tests, vitest checks, doc drift checks passed); added specific unit tests validating multi-screen planning and coordinate positioning.
+- **证据：** —
+- **交付文件：**
+  - `services/orchestrator/src/design/generator.py` — Add `_extract_json_data` to support lists/dicts JSON extraction, add `_parse_multi_screens` parser, refactor `generate_session` to loop over planned screens, dynamically update status, and lay screens side-by-side horizontally.
+  - `services/orchestrator/tests/test_design_service.py` — Add test cases validating multiple screen generation side-by-side and fallback logic.
+
+### Design spec crawler fixes and browser tokens prioritization ✅
+- **日期：** 2026-07-13
+- **Commit：** `—`（已写入工作区，待 Commit）
+- **Verification：** `./scripts/verify.sh` → all checks passed (716 python tests, vitest checks, doc drift checks passed); manual scratch script check -> verified dark_mode is false and colors are correct
+- **证据：** —
+- **交付文件：**
+  - `services/orchestrator/src/design/generator.py` — Refined `dark_signals` logic in `_extract_css_tokens` to prevent false-positives on theme initialization script tag contents. Prioritized computed browser tokens (`browser_prompt_fragment`) over legacy `token_desc` in prompts to avoid conflicts.
+
 ### Design Workspace syncing, UI interaction fixes, and reference URL crawler improvements ✅
 - **日期：** 2026-07-13
 - **Commit：** `4163a46` — `fix: design rounds sync, custom dropdown selection, interactive ready/picking modes, and css variables scraper bypass`

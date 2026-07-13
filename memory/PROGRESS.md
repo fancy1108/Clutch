@@ -19,7 +19,25 @@
 
 ## Recent Sessions
 
-## 2026-07-13 会话（修复设计画布同步、下拉菜单转换、就绪/选取模式以及爬虫 CSS 变量提取）
+## 2026-07-13 会话（实现设计画布多页面自动生成）
+
+- **设计画布多页面自动生成实现**：
+  - 引入了 `_extract_json_data` 辅助函数，支持解析大模型返回的 JSON list 结构。
+  - 新增 `_parse_multi_screens` 架构规划步骤，通过大模型提取用户简述（brief）中期望生成的多页面列表。
+  - 重构了 `generate_session` 生成逻辑，将原有的单页面硬编码逻辑重构为基于规划的多页面迭代生成循环；在画布上以 X 轴位置偏置 `ui_layout_step` 的方式，将多页面横向并排呈现。
+  - 在前端反馈中增加步骤状态动态更新（如 `Generating screen 1/3...`），并支持最终呈现所有已生成页面名称及文件路径。
+- **单元测试与校验**：
+  - 新增 `test_generate_session_with_multiple_screens` 与 `test_parse_multi_screens_fallback` 测试，验证多页面并排定位布局及备用计划兜底。
+  - 通过了 `./scripts/verify.sh` 一键全量校验，723 个测试用例和文档漂移检查均顺利通过。
+
+## 2026-07-13 会话（修复参考设计 Spec 提取颜色与暗黑模式判定错误）
+
+- **设计 Spec 提取逻辑优化**：
+  - 修复了 legacy HTML 爬虫 `_extract_css_tokens` 的暗黑模式判定，移除了过于泛化的 `'"dark"' in html[:2000]` 对 inline theme 脚本配置的误判，引入了对 style 标签及外链样式表中 `@media (prefers-color-scheme: dark)` 的精准检测。
+  - 在 spec 生成 (`generate_session`) 和 HTML 生成 (`_build_ui_generation_prompt`) 中引入了提示词防冲突策略：当 Playwright 浏览器精准提取的计算样式 (`browser_prompt_fragment`) 可用时，自动屏蔽容易产生干扰的 legacy `token_desc`，避免大模型因双重矛盾指令产生混淆。
+- **校验**：执行了 `./scripts/verify.sh` 一键校验，前后端 716 个测试全部通过。
+
+## 2026-07-13 会话（修复设计画布状态同步、下拉菜单转换、就绪/选取模式以及爬虫 CSS 变量提取）
 
 - **设计画布状态同步优化**：合并了 `DesignWorkspace.tsx` 中两个冲突的 React Flow 节点同步 `useEffect`，规避了切换设计轮次（Round）时的组件重复渲染与排版竞争问题。
 - **自定义下拉框组件转换**：将设计轮次水平滚动选择栏改写为自定义绝对定位下拉菜单（DesignRoundSelector），符合 Clutch 状态栏/页脚菜单的 UI/UX 指引规范，支持 Click-Outside 与 Escape 退出。
