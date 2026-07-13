@@ -16,6 +16,28 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ### Fixed
 
+## [1.2.4] - 2026-07-13
+
+Patch release — **macOS + Windows**. Ships prototype Ready mode interactions, design round custom dropdown menu, Safari/WebKit picking remount fix, execution log fallback mapping, and Playwright computed CSS variable scraper bypass for CORS-restricted domains.
+
+> **Release assets (v1.2.4):** Tag `v1.2.4` — **macOS:** `Clutch_1.2.4_aarch64.dmg` + `SHA256SUMS.txt` (CI `release.yml`). **Windows:** `Clutch_1.2.4_x64-setup.exe` + `Clutch_1.2.4_x64_en-US.msi` + `SHA256SUMS_WIN.txt` (CI `windows-build.yml`). Sidecar hotpatch asset (`sidecar-patch.json` + binary) published separately. Optional macOS updater via `Release (updater assets)` workflow (requires minisign key). Product snapshot: [`docs/releases/v1.2.4.md`](docs/releases/v1.2.4.md).
+
+### Added
+
+- **Ready mode interaction (Prototype):** Interactive events (hovers, typing, clicks) unlocked inside design preview iframes when not in picking mode.
+- **Computed CSS Scraper fallback:** Scraper dynamically queries computed variables from container classes (e.g., `.sustainability-platform`) to bypass CORS restrictions on external stylesheets.
+- **Tailwind Utility Filtering:** Scraper filters out framework utility variables (`--tw-*`, etc.) to prioritize true brand/theme tokens in LLM prompts.
+
+### Changed
+
+- **Design Round Dropdown menu:** Horizontal scrollable round selector bar converted to custom popover dropdown select menu matching Clutch's standard popup UI menus (supports Escape key and click-outside close).
+
+### Fixed
+
+- **Canvas Node sync glitch:** Consolidated React Flow sync hooks to eliminate layout race conditions and disappearing cards on round switch.
+- **Safari/WebKit component picker:** Dynamic React key binding triggers clean iframe remounts on picking toggle, bypassing WebKit `srcDoc` caching bugs. Event hijacking blocked using `nodrag nopan` class overrides.
+- **Agent Log execution fallback:** Restored execution steps in left-hand Agent Log cards when the backend updates histories without nested log arrays by scanning the global process log.
+
 ## [1.2.3] - 2026-07-12
 
 Patch release — **macOS + Windows**. macOS: Apple Silicon DMG + in-app updater. Windows: MSI/NSIS. Ships native **handoff flow (D34)**, Design session isolation and layout fixes, and TUI injection reliability for Mimo/Claude/Codex CLI agents.

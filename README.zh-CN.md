@@ -17,16 +17,18 @@ Clutch 是一款**桌面应用**（Tauri + React），面向独立开发者和�
 |---|---|
 | **技术栈** | Tauri 2 · React 19 · FastAPI + LangGraph · 本地优先（`localhost:8123`） |
 | **许可证** | 见 [LICENSE](LICENSE) |
-| **当前版本** | [v1.2.3](https://github.com/fancy1108/Clutch/releases/tag/v1.2.3) · [更新日志](CHANGELOG.md#123---2026-07-12) |
+| **当前版本** | [v1.2.4](https://github.com/fancy1108/Clutch/releases/tag/v1.2.4) · [更新日志](CHANGELOG.md#124---2026-07-13) |
 
-### 最新更新（v1.2.3）
+### 最新更新（v1.2.4）
 
-- **Handoff 交接流 (D34)** — 原生 `/handoff` PTY 命令注入 + 轮询手交文件拾取；多轮对话上下文参与总结；源终端延时折叠。
-- **Design 会话隔离** — 修复切换会话时画布状态残留（keyed remount、lane transcript 清除、runId 过滤）。
-- **多 CLI 注入适配** — `mimo-cli`、`codex-cli`、`claude-cli`、`codebuddy-cli` 启动就绪检测和 warmup 调优。
-- **CLI 检测** — 系统守护进程过滤、全系统 PTY 计数、Codex CLI ChatGPT.app 回退路径。
+- **就绪模式（Prototype）交互解锁** — 在非 Picking 模式下解锁设计预览 iframe 的 hover 和输入交互，恢复原型体验。
+- **爬虫 CSS 变量跨域提取绕过** — 在跨域 CDN 样式表无法读取时，增加对 root, body 以及直接子容器计算样式的自动扫描。
+- **Tailwind 框架杂音变量过滤** — 自动清洗 `--tw-*` 等布局杂音变量，提升 LLM 原型生成时的色彩准确度。
+- **设计轮次下拉框重构** — 将水平滚动条栏改写为自定义绝对定位下拉菜单，完美契合 App 状态栏规范。
+- **画布节点同步与 Safari 选取修复** — 合并 React Flow 冲突 effect 消除卡片消失竞争；绑定 `key` 以强制 iframe 重新挂载绕过 WebKit 的 `srcDoc` 缓存缺陷，结合 `nodrag nopan` 隔离手势劫持。
+- **Agent Log 缺失日志补全** — 针对历史数据缺少 process_log 的轮次增加全局 fallback 扫描。
 
-> **v1.2.3 同时发 macOS + Windows。** macOS：Apple Silicon DMG + 应用内更新。Windows：MSI/NSIS（建议从 [v1.2.2](https://github.com/fancy1108/Clutch/releases/tag/v1.2.2) 升级）。Sidecar 热更资产另行发布。
+> **v1.2.4 同时发 macOS + Windows。** macOS：Apple Silicon DMG + 应用内更新。Windows：MSI/NSIS。Sidecar 热更资产另行发布。
 
 更早版本（v1.2.2 Windows 同步、v1.2.1 热更客户端、v1.2.0 Design/ZCode 等）：[`CHANGELOG.md`](CHANGELOG.md) · [`docs/releases/`](docs/releases/)。
 
@@ -55,7 +57,7 @@ brew install --cask clutch
 irm https://raw.githubusercontent.com/fancy1108/Clutch/main/scripts/install.ps1 | iex
 ```
 
-指定版本：运行前设置 `CLUTCH_VERSION=v1.2.3`（或 `v1.2.2` / `v1.2.1` / `v1.1.1` 安装更早稳定版）。
+指定版本：运行前设置 `CLUTCH_VERSION=v1.2.4`（或 `v1.2.3` / `v1.2.2` / `v1.2.1` / `v1.1.1` 安装更早稳定版）。
 
 详见 [`docs/PACKAGE_MANAGERS.md`](docs/PACKAGE_MANAGERS.md)
 
