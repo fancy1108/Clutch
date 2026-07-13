@@ -28,7 +28,7 @@
     "@xterm/xterm": "^5.5.0",
     "@xyflow/react": "^12.11.2",
     "dotenv": "^17.2.3",
-    "lucide-react": "^1.23.0",
+    "lucide-react": "^1.24.0",
     "motion": "^12.42.2",
     "react": "^19.0.1",
     "react-dom": "^19.0.1"
