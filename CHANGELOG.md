@@ -18,15 +18,30 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ## [1.2.6] - 2026-07-13
 
-Patch release — **macOS + Windows**. Corrects a Content Security Policy (CSP) restriction on inline scripts inside Tauri production configurations (`script-src`) so that the interactive component picking overlay and click handler can successfully run inside iframe elements.
+Patch release — **macOS + Windows**. Fixes CSP inline script restriction, Design mode canvas zoom over prototypes, vision model fallback for image-unaware LLMs, and ships multi-screen generation with loading animations and round transitions.
 
 > **Release assets (v1.2.6):** Tag `v1.2.6` — **macOS:** `Clutch_1.2.6_aarch64.dmg` + `SHA256SUMS.txt` (CI `release.yml`). **Windows:** `Clutch_1.2.6_x64-setup.exe` + `Clutch_1.2.6_x64_en-US.msi` + `SHA256SUMS_WIN.txt` (CI `windows-build.yml`). Sidecar hotpatch asset (`sidecar-patch.json` + binary) published separately. Optional macOS updater via `Release (updater assets)` workflow (requires minisign key). Product snapshot: [`docs/releases/v1.2.6.md`](docs/releases/v1.2.6.md).
+
+### Added
+
+- **Design Round History Entry:** Added `model_usage` field to round_history entries.
+- **Multi-Screen Iteration:** Design iterations (`"add"` mode) now parse multi-screen shorthand (e.g., "生成 Dashboard + 设置页面") via `_parse_multi_screens`, planning and registering all screens upfront with sequential round entries.
+- **Multi-Screen Progressive Loading:** Multi-screen generate/iterate cycle now pre-populates placeholder screens in the manifest for smooth shimmer-animation loading sequences.
+- **Screen Round Versions:** Each screen now carries its own `screenVersions` map and per-screen `roundIndex` tracking for correct versioned file paths across multiple screens.
+- **Design Loading Optimizations:** Refined round history sync, shimmer animation stagger, and canvas layout positioning for smoother multi-screen UX.
+
+### Changed
+
+- **Design Round History Schema:** `round_history` entries now include `screen_id`, `html_path`, `prompt`, and `process_log` fields for richer round-level metadata.
+- **Canvas Layout:** Multi-screen reference cards and new screen nodes are arranged horizontally in sequence from the rightmost position.
 
 ### Fixed
 
 - **CSP Inline Script Block:** Added `'unsafe-inline'` to `"script-src"` inside `tauri.conf.json`'s CSP policies to permit component picking script execution inside `srcDoc` iframes.
 - **Iframe body close tag check:** Made `</body>` tag detection case-insensitive inside `withPickerScript` to ensure the picker script is correctly appended.
 - **querySelector ID safety:** Wrapped label querySelector in a `try/catch` block to prevent invalid CSS identifier syntax errors in element IDs from halting script execution.
+- **Canvas Zoom/Pan Over Prototype:** Restored React Flow zoom/pan gestures when hovering over prototype iframe cards in the Design canvas.
+- **Vision Model Fallback Degradation:** Design generation now gracefully degrades when the active LLM returns vision errors (e.g. "Cannot read image" — model lacks image input). Three independent fallback paths ensure results are produced instead of errors: (1) `_llm_complete_vision` detects error-like LLM responses and retries text-only with local image analysis; (2) `_generate_ui_html` detects vision errors inside generated HTML and drops the image on retry; (3) prompt construction only references attached images when they are actually sent (`image_attached` flag).
 
 ## [1.2.5] - 2026-07-13
 

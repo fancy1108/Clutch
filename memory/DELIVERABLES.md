@@ -22,6 +22,23 @@
 
 ## Active Deliverables
 
+### Design vision model fallback degradation ✅
+- **日期：** 2026-07-13
+- **Commit：** `e92961f` — `fix: design iteration generating login page instead of requested landing page`
+- **Verification：** `./scripts/verify.sh` → all checks passed (723 python tests, check-doc-drift passed); 4 new vision fallback unit tests pass.
+- **证据：** —
+- **交付文件：**
+  - `services/orchestrator/src/design/generator.py` — Added `_VISION_ERROR_RE` regex and `_looks_like_vision_error` detection in `_llm_complete_vision` for runtime fallback when vision-enabled models return error responses. Added `image_attached` param to `_build_ui_generation_prompt` to prevent prompt/image mismatch. Added final text-only degradation block in `_generate_ui_html` dropping image after all retries fail. Added inline vision error detection in generated HTML for immediate retry without image.
+  - `services/orchestrator/tests/test_design_service.py` — Added `test_looks_like_vision_error_detects_common_patterns`, `test_llm_complete_vision_falls_back_on_vision_error`, `test_llm_complete_vision_skips_vision_when_not_ok`, `test_generate_ui_html_detects_vision_error_in_html`.
+
+### Design canvas zoom/pan restoration over prototype iframe ✅
+- **日期：** 2026-07-13
+- **Commit：** `2b72508` — `fix(design): restore canvas zoom/pan gestures over prototype iframe`
+- **Verification：** `./scripts/verify.sh` → all checks passed; manual verification on canvas.
+- **证据：** —
+- **交付文件：**
+  - `apps/desktop/src/components/design/nodes/UiCardNode.tsx` — Replaced pointer-events capture layer with transparent overlay for zoom/pan pass-through when not in picking mode.
+
 ### Multi-page design iteration and sequential loading animation support ✅
 - **日期：** 2026-07-13
 - **Commit：** `e3d0dd0` — `feat(design): support multi-screen generation in iterate session`

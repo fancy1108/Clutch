@@ -5,19 +5,27 @@
 
 ## Current Status
 
-- **阶段：** **v1.2.2 已发布（macOS）**（2026-07-11）— Windows MSI/NSIS 已在 CI 构建成功，待挂到 Release（本机下载超时）
-- **Release：** [v1.2.2](https://github.com/fancy1108/Clutch/releases/tag/v1.2.2) · tag on `main` @ `7fa6901`
-- **Git：** `main` / `dev` @ `7fa6901`
-- **macOS：** DMG + SHA256SUMS 已上传；Homebrew tap 已 bump
-- **Windows：** Actions artifact `clutch-windows-x64` @ run [29158434326](https://github.com/actions/runs/29158434326) — 需 `gh release upload`
+- **阶段：** **v1.2.6 待发布**（2026-07-13）— CHANGELOG / release doc / deliverables 已同步，preflight 通过，待 tag 触发 CI
+- **Release：** [v1.2.6](https://github.com/fancy1108/Clutch/releases/tag/v1.2.6) · tag pending on `dev`
+- **Git：** `dev` ahead of `origin/dev` by 10 commits
+- **Verify：** `./scripts/verify.sh` → 723 python tests + doc-drift passed
+- **Preflight：** `./scripts/release-preflight.sh v1.2.6` → passed
 
 ## Next Actions
 
-- 挂 Windows MSI/NSIS 到 Release（网络恢复后）
-- 等 updater assets workflow 完成
-- Windows 实体机 smoke（可选）
+- `git tag v1.2.6` → push → CI builds macOS DMG + Windows MSI/NSIS
+- 挂 Release 产物、SHA256 校验
+- 发布后同步 Homebrew tap
 
 ## Recent Sessions
+
+## 2026-07-13 会话（v1.2.6 发版准备）
+
+- **版本号：** 已是 `1.2.6`（package.json / tauri.conf.json）。
+- **CHANGELOG 更新：** 补充了 v1.2.6 遗漏的改动（Canvas zoom/pan fix, Vision model fallback degradation, Multi-screen generation, Progressive loading, Round history schema）。
+- **Release doc 更新：** 重写 `docs/releases/v1.2.6.md` 覆盖全部 Shipped capabilities。
+- **DELIVERABLES 补充：** 记录了 vision fallback (`e92961f`) 和 canvas zoom (`2b72508`) 两个 commit 的交付信息。
+- **校验：** `verify.sh` 723 通过，`release-preflight.sh` INV-R1~R5 全部通过。
 
 ## 2026-07-13 会话（支持在设计会话迭代中新增多个页面）
 
