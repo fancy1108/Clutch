@@ -2855,7 +2855,170 @@ def iterate_session(
 
     ui_vision_ok = _check_vision_ok(router, model_id, image_data_url)
 
-    if action in {"add", "duplicate"}:
+    device = str(manifest.get("device") or "web")
+
+    if action == "add":
+        spec_dict = spec if isinstance(spec, dict) else _fallback_spec(instruction)
+        screens_to_gen = _parse_multi_screens(instruction, model_id, router)
+        
+        new_screens = []
+        ui_origin_x = _screen_layout_x(screens, device=device, has_source=has_md or has_image or has_url)
+        for idx, screen_info in enumerate(screens_to_gen):
+            sid = _next_screen_id(screens + new_screens)
+            sname = screen_info["name"]
+            step = ui_layout_step(device)
+            x_pos = ui_origin_x + idx * step
+            new_screens.append({
+                "id": sid,
+                "name": sname,
+                "position": {"x": x_pos, "y": _DESIGN_ROW_Y},
+                "html_path": None,
+                "active_round_index": 0,
+                "original_info": screen_info,
+            })
+            
+        # Append new screens to manifest immediately as placeholders
+        manifest["screens"] = screens + [{k: v for k, v in ns.items() if k != "original_info"} for ns in new_screens]
+        write_manifest(sdir, manifest)
+        
+        accumulated_usage = empty_token_usage()
+        accumulated_estimated = False
+        
+        for idx, ns in enumerate(new_screens):
+            sid = ns["id"]
+            sname = ns["name"]
+            sprompt = ns["original_info"]["prompt"]
+            spattern = ns["original_info"].get("layout_pattern") or detect_layout_pattern(sprompt, device=device)
+            
+            # Pre-register round history entry
+            round_index = _next_round_index(manifest, sid)
+            rel = f"screens/{sid}_r{round_index}.html"
+            
+            round_entry = {
+                "round_index": round_index,
+                "screen_id": sid,
+                "html_path": rel,
+                "prompt": sprompt,
+                "reasoning_content": None,
+                "process_log": list(log[log_start:]),
+                "at": now_iso(),
+            }
+            history = list(manifest.get("round_history") or [])
+            existing_idx = next((i for i, h in enumerate(history) if h.get("screen_id") == sid and h.get("round_index") == round_index), None)
+            if existing_idx is not None:
+                history[existing_idx] = round_entry
+            else:
+                history.append(round_entry)
+            manifest["round_history"] = history
+            
+            for s in manifest.get("screens") or []:
+                if str(s.get("id")) == sid:
+                    s["html_path"] = rel
+                    s["active_round_index"] = round_index
+            write_manifest(sdir, manifest)
+            
+            update_process_status(
+                sdir,
+                manifest,
+                text=f"Generating screen {idx + 1}/{len(new_screens)}: «{sname}» ({spattern})…",
+                status="generating_ui",
+                model_id=model_id,
+                model_name=model_name,
+            )
+            
+            screen_spec = {**spec_dict, "layout_pattern": spattern}
+            html = ""
+            ui_reasoning = None
+            ui_fail_reason = None
+            
+            if is_model_available(router, model_id):
+                try:
+                    from src.design import service
+                    gen_ui = getattr(service, "_generate_ui_html", _generate_ui_html)
+                    html, ui_reasoning, ui_usage, ui_usage_estimated, ui_fail_reason = gen_ui(
+                        router,
+                        user_prompt=sprompt,
+                        spec=screen_spec,
+                        device=device,
+                        model_id=model_id,
+                        design_md=design_md,
+                        md_text=md_text if has_md else None,
+                        url_snapshot=url_snapshot if has_url else None,
+                        has_image=has_image,
+                        image_data_url=image_data_url if ui_vision_ok else None,
+                        current_html="",
+                        instruction="",
+                    )
+                    accumulated_usage = merge_token_usage(accumulated_usage, ui_usage)
+                    accumulated_estimated = accumulated_estimated or ui_usage_estimated
+                except Exception as exc:
+                    logger.warning("design ui LLM failed for iterated screen %s run_id=%s err=%s", sid, run_id, exc)
+                    ui_fail_reason = str(exc)
+            
+            llm_available = is_model_available(router, model_id)
+            if not _html_has_visible_content(html):
+                if llm_available:
+                    detail = ui_fail_reason or "the model returned no valid HTML"
+                    err_msg = f"Generation failed for screen «{sname}» — {detail}. Please try again."
+                    _finalize_assistant_step(
+                        log,
+                        text=err_msg,
+                        status="error",
+                        model_id=model_id,
+                        model_name=model_name,
+                        usage=accumulated_usage,
+                        usage_estimated=accumulated_estimated,
+                        replace_statuses={"generating_ui"},
+                    )
+                    manifest["status"] = "error"
+                    manifest["error"] = err_msg
+                    manifest["process_log"] = log
+                    write_manifest(sdir, manifest)
+                    return public_session_payload(manifest, sdir)
+                html = _fallback_ui_html(sprompt, screen_spec, device=device)
+                
+            # Write html and update round entry
+            (sdir / "screens").mkdir(exist_ok=True)
+            (sdir / rel).write_text(html, encoding="utf-8")
+            
+            history = list(manifest.get("round_history") or [])
+            for h in history:
+                if h.get("screen_id") == sid and h.get("round_index") == round_index:
+                    h["reasoning_content"] = ui_reasoning
+                    h["process_log"] = list(log[log_start:])
+                    break
+            manifest["round_history"] = history
+            
+            for s in manifest.get("screens") or []:
+                if str(s.get("id")) == sid:
+                    s["html_path"] = rel
+                    s["active_round_index"] = round_index
+            write_manifest(sdir, manifest)
+            
+        added_names = ", ".join(f"«{ns['name']}»" for ns in new_screens)
+        _finalize_assistant_step(
+            log,
+            text=f"Added {added_names} successfully. Select any screen to refine further.",
+            status="ready",
+            model_id=model_id,
+            model_name=model_name,
+            usage=accumulated_usage,
+            usage_estimated=accumulated_estimated,
+            replace_statuses={"generating_ui", "iterating"},
+        )
+        
+        # Ensure the final history entry has the full process log
+        history = list(manifest.get("round_history") or [])
+        if history:
+            history[-1] = {**history[-1], "process_log": list(log[log_start:])}
+            manifest["round_history"] = history
+            
+        manifest["last_iterate_action"] = action
+        manifest["last_iterate_screen_id"] = new_screens[-1]["id"]
+        manifest["status"] = "ready"
+        write_manifest(sdir, manifest)
+
+    elif action == "duplicate":
         base_id = str(target_id or screens[0].get("id") or "main")
         base = next((s for s in screens if str(s.get("id")) == base_id), screens[0])
         base_html_path = _resolve_screen_html_path(sdir, base)
@@ -2863,90 +3026,57 @@ def iterate_session(
             base_html_path = sdir / "screens" / f"{base['id']}.html"
         base_html = base_html_path.read_text(encoding="utf-8") if base_html_path.is_file() else ""
         new_id = _next_screen_id(screens)
-        html = ""
-        ui_reasoning: str | None = None
-        ui_usage = empty_token_usage()
-        ui_usage_estimated = False
-        device = str(manifest.get("device") or "web")
-        spec_dict = spec if isinstance(spec, dict) else _fallback_spec(instruction)
-        if action == "duplicate":
-            html = base_html
-            ui_reasoning = None
-        elif is_model_available(router, model_id):
-            try:
-                from src.design import service
-                gen_ui = getattr(service, "_generate_ui_html", _generate_ui_html)
-                html, ui_reasoning, ui_usage, ui_usage_estimated, _ui_fail = gen_ui(
-                    router,
-                    user_prompt=instruction,
-                    spec=spec_dict,
-                    device=device,
-                    model_id=model_id,
-                    design_md=design_md,
-                    md_text=md_text if has_md else None,
-                    url_snapshot=url_snapshot if has_url else None,
-                    has_image=has_image,
-                    image_data_url=image_data_url if ui_vision_ok else None,
-                    current_html="",
-                    instruction="",
-                )
-            except Exception as exc:
-                logger.warning("design iterate add failed: %s", exc)
-        if not _html_has_visible_content(html):
-            if action == "add" and is_model_available(router, model_id):
-                raise DesignError(
-                    "Could not generate the new screen — model returned empty HTML. "
-                    "Please try again."
-                )
-            html = _fallback_ui_html(instruction, spec_dict, device=device)
-        round_entry = _record_screen_round(
-            sdir,
-            manifest,
-            screen_id=new_id,
-            html=html,
-            prompt=instruction,
-            reasoning_content=ui_reasoning,
-            process_log_slice=log[log_start:],
-        )
+        
+        round_index = _next_round_index(manifest, new_id)
+        rel = f"screens/{new_id}_r{round_index}.html"
+        
+        (sdir / "screens").mkdir(exist_ok=True)
+        (sdir / rel).write_text(base_html, encoding="utf-8")
+        
+        round_entry = {
+            "round_index": round_index,
+            "screen_id": new_id,
+            "html_path": rel,
+            "prompt": f"Duplicate of {base.get('name') or 'Screen'}",
+            "reasoning_content": None,
+            "process_log": list(log[log_start:]),
+            "at": now_iso(),
+        }
+        history = list(manifest.get("round_history") or [])
+        history.append(round_entry)
+        manifest["round_history"] = history
+        
         new_screen = {
             "id": new_id,
-            "name": instruction.strip()[:40] or f"Screen {new_id}",
+            "name": f"Copy of {base.get('name') or 'Screen'}",
             "position": {
                 "x": _screen_layout_x(
                     screens,
                     device=device,
-                    has_source=bool(
-                        manifest.get("reference_image")
-                        or manifest.get("reference_md")
-                        or manifest.get("reference_url")
-                    ),
+                    has_source=has_md or has_image or has_url,
                 ),
                 "y": _DESIGN_ROW_Y,
             },
-            "html_path": round_entry["html_path"],
-            "active_round_index": round_entry["round_index"],
+            "html_path": rel,
+            "active_round_index": round_index,
         }
         screens.append(new_screen)
         manifest["screens"] = screens
+        
         _finalize_assistant_step(
             log,
-            text=(
-                f"Added «{new_screen['name']}» — wrote {round_entry['html_path']}. "
-                "Select it to refine further."
-            ),
+            text=f"Duplicated screen as «{new_screen['name']}».",
             status="ready",
             model_id=model_id,
             model_name=model_name,
-            usage=ui_usage,
-            usage_estimated=ui_usage_estimated,
+            usage=empty_token_usage(),
+            usage_estimated=False,
             replace_statuses={"iterating"},
         )
-        history = list(manifest.get("round_history") or [])
-        if history:
-            history[-1] = {**history[-1], "process_log": list(log[log_start:])}
-            manifest["round_history"] = history
-        manifest["last_iterate_action"] = action
+        manifest["last_iterate_action"] = "duplicate"
         manifest["last_iterate_screen_id"] = new_id
+        manifest["status"] = "ready"
+        write_manifest(sdir, manifest)
     else:
         screen_id = str(target_id or screens[0].get("id") or "main")
         screen = next((s for s in screens if str(s.get("id")) == screen_id), screens[0])
