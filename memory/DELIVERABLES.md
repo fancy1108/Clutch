@@ -22,6 +22,15 @@
 
 ## Active Deliverables
 
+### Multi-page design sequential loading animations and round transitions ✅
+- **日期：** 2026-07-13
+- **Commit：** `8c4f6c6` — `feat(design): optimize multi-page loading animations and round transitions`
+- **Verification：** `./scripts/verify.sh` → all checks passed (723 python tests, check-doc-drift passed); unit tests verified successfully.
+- **证据：** —
+- **交付文件：**
+  - `services/orchestrator/src/design/generator.py` — Pre-populate planned screens in `manifest["screens"]` and pre-register round history entries before starting each screen generation loop.
+  - `apps/desktop/src/components/design/designWorkspaceUtils.ts` — Update `buildCanvasNodes` to render screens without HTML as shimmer sweep placeholders and isolate ready screens from drawing loaders.
+
 ### Multi-page design session generation ✅
 - **日期：** 2026-07-13
 - **Commit：** `aa2efd2` — `feat(design): support generating multiple screens side-by-side in design sessions`
