@@ -176,7 +176,7 @@ export function UiCardNode({ data, selected }: NodeProps) {
               <iframe
                 key={`local-${pickMode}-${d.html ? d.html.length : 0}`}
                 title={d.name}
-                sandbox="allow-scripts allow-same-origin"
+                sandbox="allow-scripts"
                 srcDoc={ensureCharset(withPickerScript(d.html || '', {
                   pickMode,
                   selectedPath: d.selectedElementPath,

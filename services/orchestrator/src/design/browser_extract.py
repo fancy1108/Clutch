@@ -15,6 +15,7 @@ import base64
 import io
 import json
 import logging
+import re
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -82,10 +83,31 @@ _EXTRACT_SCRIPT = r"""
   }
 
   // Global page-level info
-  const fonts = [...new Set(
-    [...document.querySelectorAll('*')].slice(0, 300)
-      .map(e => getComputedStyle(e).fontFamily)
-  )].slice(0, 10);
+  const SYSTEM_FONT_STACKS = new Set([
+    'ui-sans-serif','system-ui','sans-serif','-apple-system','BlinkMacSystemFont',
+    'Segoe UI','Roboto','Helvetica Neue','Arial','Noto Sans',
+    'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol','Noto Color Emoji',
+    'serif','monospace','ui-monospace','SFMono-Regular','Menlo','Monaco','Consolas',
+    'Liberation Mono','Courier New','emoji','math','fangsong',
+    'Times New Roman','Georgia','Courier','monospace',
+  ]);
+  const fontCounts = {};
+  const elements = [...document.querySelectorAll('*')].slice(0, 500);
+  for (const el of elements) {
+    const ff = getComputedStyle(el).fontFamily;
+    if (ff) {
+      const parts = ff.split(',').map(s => s.trim().replace(/^["']|["']$/g, ''));
+      for (const part of parts) {
+        if (part && !SYSTEM_FONT_STACKS.has(part)) {
+          fontCounts[part] = (fontCounts[part] || 0) + 1;
+        }
+      }
+    }
+  }
+  const fonts = Object.entries(fontCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(e => e[0]);
 
   const root = document.documentElement;
   const rootStyles = extract(root);
@@ -107,19 +129,26 @@ _EXTRACT_SCRIPT = r"""
   }
 
   // Fallback: extract computed variables from root, body, and top-level container elements
+  // Only capture when the value differs from the parent — this filters out
+  // inherited values and keeps locally-defined / page-specific overrides.
   const collectFromEl = (el) => {
     if (!el) return;
     const style = getComputedStyle(el);
+    const parentEl = el.parentElement;
+    const parentStyle = parentEl ? getComputedStyle(parentEl) : null;
     for (let i = 0; i < style.length; i++) {
       const prop = style[i];
       if (prop.startsWith('--')) {
-        cssVars[prop] = style.getPropertyValue(prop).trim();
+        const val = style.getPropertyValue(prop).trim();
+        if (!parentStyle || parentStyle.getPropertyValue(prop).trim() !== val) {
+          cssVars[prop] = val;
+        }
       }
     }
   };
   collectFromEl(document.documentElement);
   collectFromEl(document.body);
-  const containers = document.querySelectorAll('body > *, body > * > *');
+  const containers = document.querySelectorAll('body > *, body > * > *, body > * > * > *');
   for (let i = 0; i < containers.length; i++) {
     collectFromEl(containers[i]);
   }
@@ -152,7 +181,7 @@ async () => {
 def _extract_with_playwright(
     url: str,
     *,
-    timeout_sec: float = 25.0,
+    timeout_sec: float = 40.0,
     viewport_width: int = 1440,
     viewport_height: int = 900,
 ) -> dict[str, Any]:
@@ -179,14 +208,25 @@ def _extract_with_playwright(
                 user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 ClutchDesign/1.0",
             )
 
-            resp = page.goto(url, wait_until="networkidle", timeout=int(timeout_sec * 1000))
+            # Use domcontentloaded instead of networkidle — heavy SPAs often keep
+            # long-polling / WebSocket connections that never reach "idle".
+            resp = page.goto(url, wait_until="domcontentloaded", timeout=int(timeout_sec * 1000))
             if resp and resp.status >= 400:
                 result["error"] = f"HTTP {resp.status}"
                 browser.close()
                 return result
 
-            # Extra wait for JS rendering
-            page.wait_for_timeout(1500)
+            # Wait for JS to render: look for visible text in body, up to 10 s.
+            try:
+                page.wait_for_function(
+                    "() => document.body && document.body.innerText.trim().length > 20",
+                    timeout=10_000,
+                )
+            except Exception:
+                pass
+
+            # Extra settle time for CSS animations and lazy-loaded content
+            page.wait_for_timeout(2000)
 
             # Scroll to trigger lazy loading
             page.evaluate("window.scrollTo(0, document.body.scrollHeight / 3)")
@@ -240,18 +280,25 @@ def _styles_to_prompt_fragment(computed: dict[str, Any]) -> str:
         # and exclude standard Tailwind utility variables.
         def is_brand_var(k: str) -> bool:
             k_lower = k.lower()
-            # Exclude standard utility prefixes
-            for prefix in ('--tw-', '--font-', '--leading-', '--container-', '--animate-', '--blur-', '--tracking-', '--radius-', '--ease-', '--text-'):
+            for prefix in ('--tw-', '--font-', '--leading-', '--container-', '--animate-', '--blur-', '--tracking-', '--radius-', '--ease-', '--text-', '--font-weight-', '--spacing', '--default-'):
                 if k_lower.startswith(prefix):
                     return False
             return True
 
+        def _var_priority(k: str) -> int:
+            """Lower = more important. Semantic tokens first, color shade entries last."""
+            name = k.lower()
+            # Semantic design tokens (no numeric shade suffix) → highest priority
+            if not re.search(r'-\d{2,4}$', name):
+                return 0
+            # Color shade entries (blue-100, red-500) → lowest priority
+            return 1
+
         filtered_vars = {k: v for k, v in css_vars.items() if is_brand_var(k)}
-        # Fallback to unfiltered if nothing left
         if not filtered_vars:
             filtered_vars = css_vars
-
-        var_strs = [f"{k}: {v}" for k, v in list(filtered_vars.items())[:35]]
+        sorted_vars = sorted(filtered_vars.items(), key=lambda kv: (_var_priority(kv[0]), len(kv[0])))
+        var_strs = [f"{k}: {v}" for k, v in sorted_vars[:50]]
         lines.append(f"CSS custom properties (design tokens): {'; '.join(var_strs)}")
 
     # Fonts

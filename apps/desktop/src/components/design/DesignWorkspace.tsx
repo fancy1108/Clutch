@@ -337,9 +337,11 @@ function DesignCanvasInner({
   const pickModeRef = useRef(false);
   const iteratePendingRef = useRef<IteratePending | null>(null);
   const pasteSourceScreenIdsRef = useRef<Set<string> | null>(null);
+  const sessionRef = useRef<DesignSession | null>(null);
   canvasSelectionRef.current = canvasSelection;
   pickModeRef.current = pickMode;
   iteratePendingRef.current = iteratePending;
+  sessionRef.current = session;
   const [nodes, setNodes] = useNodesState<Node>([]);
   const [edges, setEdges] = useEdgesState<Edge>([]);
   const [layoutKey, setLayoutKey] = useState('');
@@ -1126,16 +1128,18 @@ function DesignCanvasInner({
     const onMessage = (event: MessageEvent) => {
       const data = event.data as { source?: string; path?: string; label?: string };
       if (data?.source !== 'clutch-design-pick' || !data.path) return;
+      const sel = canvasSelectionRef.current;
+      const sess = sessionRef.current;
       setElementSelection({
         path: data.path,
         label: data.label || data.path,
-        screenId: canvasSelection?.screenId || session?.screens?.[0]?.id,
+        screenId: sel?.screenId || sess?.screens?.[0]?.id,
       });
       setPickMode(false);
     };
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, [canvasSelection?.screenId, session?.screens]);
+  }, []);
 
   const handleDeleteScreen = useCallback(
     async (screenId: string) => {

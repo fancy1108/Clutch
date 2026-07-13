@@ -98,10 +98,10 @@ def _yaml_colors_to_spec(color_dict: dict[str, str]) -> dict[str, list[str]]:
         else:
             colors["neutral"].append(hl)
 
-    for k in ("primary", "secondary", "accent", "status"):
-        if not colors[k]:
-            colors[k] = ["#000000"]
-    if not colors["neutral"]:
+    # Only add defaults if no colors were found at all
+    all_empty = all(not v for v in colors.values())
+    if all_empty:
+        colors["primary"] = ["#000000"]
         colors["neutral"] = ["#ffffff", "#000000"]
     return colors
 
@@ -256,11 +256,15 @@ def _markdown_extract_colors(text: str) -> dict[str, list[str]]:
     colors: dict[str, list[str]] = {
         "primary": [], "secondary": [], "neutral": [], "accent": [], "status": [],
     }
+    seen: set[str] = set()
 
     # Pattern: **Name** (`#hex`) or **Name** (#hex) 
     for m in re.finditer(r"\*\*([^*]+)\*\*\s*[`(]+(#[0-9a-fA-F]{3,8})[`)]*", text):
         name = m.group(1).strip().lower()
         hex_val = m.group(2).lower()
+        if hex_val in seen:
+            continue
+        seen.add(hex_val)
         section = _section_of(text, m.start())
         _assign_color(name, hex_val, colors, section)
 
@@ -268,15 +272,16 @@ def _markdown_extract_colors(text: str) -> dict[str, list[str]]:
     for m in re.finditer(r"([a-z\s-]+?)\s*[`(]+(#[0-9a-fA-F]{3,8})[`)]+", text):
         name = m.group(1).strip().lower()
         hex_val = m.group(2).lower()
-        if len(name) <= 2:
+        if len(name) <= 2 or hex_val in seen:
             continue
+        seen.add(hex_val)
         section = _section_of(text, m.start())
         _assign_color(name, hex_val, colors, section)
 
-    for k in ("primary", "secondary", "accent", "status"):
-        if not colors[k]:
-            colors[k] = ["#000000"]
-    if not colors["neutral"]:
+    # Only add defaults if no colors were found at all
+    all_empty = all(not v for v in colors.values())
+    if all_empty:
+        colors["primary"] = ["#000000"]
         colors["neutral"] = ["#ffffff", "#000000"]
     return colors
 
@@ -287,9 +292,13 @@ _BRAND_COLORS = {"green", "blue", "red", "purple", "orange", "yellow", "pink", "
 def _assign_color(name: str, hex_val: str, colors: dict[str, list[str]], section: str = ""):
     n = name.replace(" ", "-").replace("_", "-")
 
-    # Section-based assignment
+    # Section-based assignment (more specific matches first)
     if "primary" in section or "brand" in section:
         colors["primary"].append(hex_val)
+        return
+    # Handle "Secondary & Accent" section - assign to accent
+    if "secondary" in section and "accent" in section:
+        colors["accent"].append(hex_val)
         return
     if "accent" in section:
         colors["accent"].append(hex_val)
@@ -297,7 +306,13 @@ def _assign_color(name: str, hex_val: str, colors: dict[str, list[str]], section
     if "semantic" in section or "status" in section or "error" in section:
         colors["status"].append(hex_val)
         return
-    if "surface" in section or "border" in section or "neutral" in section:
+    if "surface" in section or "background" in section:
+        colors["neutral"].append(hex_val)
+        return
+    if "neutral" in section or "text" in section:
+        colors["neutral"].append(hex_val)
+        return
+    if "border" in section or "hairline" in section:
         colors["neutral"].append(hex_val)
         return
     if "shadow" in section:

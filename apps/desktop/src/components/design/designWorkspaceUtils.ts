@@ -206,19 +206,52 @@ export function buildInteractionScript(opts: {
     if (restored) applySelected(restored, labelFor(restored));
   }
   if (!PICK) return;
+  function killNav(el){
+    if (!el) return;
+    try {
+      if (el.tagName === 'A') { el.removeAttribute('href'); el.onclick = null; }
+      if (el.tagName === 'FORM') { el.onsubmit = function(e2){ e2.preventDefault(); }; }
+    } catch(_){}
+  }
+  if (typeof MutationObserver !== 'undefined') {
+    var mo = new MutationObserver(function(muts){
+      for (var i = 0; i < muts.length; i++) {
+        var added = muts[i].addedNodes;
+        for (var j = 0; j < added.length; j++) {
+          var n = added[j];
+          if (n.nodeType !== 1) continue;
+          killNav(n);
+          if (n.querySelectorAll) {
+            var subs = n.querySelectorAll('a[href],form');
+            for (var k = 0; k < subs.length; k++) killNav(subs[k]);
+          }
+        }
+      }
+    });
+    mo.observe(document.documentElement, { childList: true, subtree: true });
+    var allLinks = document.querySelectorAll('a[href],form');
+    for (var i = 0; i < allLinks.length; i++) killNav(allLinks[i]);
+  }
   document.addEventListener('click', function(e){
     e.preventDefault();
     e.stopPropagation();
+    e.stopImmediatePropagation();
     var el = e.target;
     if (!el || el === document.documentElement || el === document.body) return;
     var path = indexPath(el);
     var label = labelFor(el);
     applySelected(el, label);
-    parent.postMessage({
-      source: 'clutch-design-pick',
-      path: path,
-      label: label
-    }, '*');
+    try {
+      parent.postMessage({
+        source: 'clutch-design-pick',
+        path: path,
+        label: label
+      }, '*');
+    } catch(_){}
+  }, true);
+  document.addEventListener('submit', function(e){
+    e.preventDefault();
+    e.stopPropagation();
   }, true);
   document.addEventListener('mouseover', function(e){
     var el = e.target;
@@ -232,6 +265,13 @@ export function buildInteractionScript(opts: {
   })();
   </script>
   `;
+}
+
+export function stripCspMetaTags(html: string): string {
+  return html.replace(
+    /<meta[^>]*http-equiv\s*=\s*["']?content-security-policy["']?[^>]*>/gi,
+    '',
+  );
 }
 
 export function stripInteractionScript(html: string): string {
@@ -253,7 +293,7 @@ export function withPickerScript(
   if (!pickMode && !selectedPath) {
     return stripInteractionScript(html);
   }
-  const cleaned = stripInteractionScript(html);
+  const cleaned = stripCspMetaTags(stripInteractionScript(html));
   const script = buildInteractionScript({ pickMode, selectedPath });
   if (/<\/body>/i.test(cleaned)) {
     return cleaned.replace(/(<\/body>)/i, `${script}$1`);
@@ -452,7 +492,7 @@ export function buildCanvasNodes(
       (hasSpec && IN_FLIGHT.has(status)) ||
       (hasSpec && status === 'ready'));
 
-  if (hasAnyHtml) {
+  if (screens.length > 0) {
     const pasteFilter = extras?.pasteSourceScreenIds;
     const visibleScreens = pasteFilter
       ? screens.filter((s) => pasteFilter.has(s.id))
@@ -460,7 +500,9 @@ export function buildCanvasNodes(
         ? screens.filter((s) => (s.id || 'main') in extras.screenVersions!)
         : screens;
     visibleScreens.forEach((screen, index) => {
-      if (!screen.html) return;
+      const hasHtml = Boolean(screen.html);
+      if (!hasHtml && status !== 'generating_ui' && status !== 'iterating') return;
+
       const nodeId = `ui-${screen.id || index}`;
       const saved = positions[nodeId];
       const fromServer = screen.position;
@@ -481,17 +523,19 @@ export function buildCanvasNodes(
         pending?.mode === 'modify' &&
         (!pending.screenId || pending.screenId === screen.id);
       const uiPhase: UiData['phase'] =
-        status === 'generating_ui'
-          ? 'drawing'
-          : pending?.mode === 'modify' && (status === 'iterating' || drawing)
-            ? isModifyTarget
-              ? 'drawing'
-              : 'ready'
-            : pending?.mode === 'add' && (status === 'iterating' || drawing)
-              ? 'ready'
-              : drawing || status === 'iterating'
+        !hasHtml
+          ? 'placeholder'
+          : status === 'generating_ui'
+            ? 'ready'
+            : pending?.mode === 'modify' && (status === 'iterating' || drawing)
+              ? isModifyTarget
                 ? 'drawing'
-                : 'ready';
+                : 'ready'
+              : pending?.mode === 'add' && (status === 'iterating' || drawing)
+                ? 'ready'
+                : drawing || status === 'iterating'
+                  ? 'drawing'
+                  : 'ready';
       const isFocusScreen =
         !extras?.pickScreenId || extras.pickScreenId === screen.id;
       const isPickTarget = Boolean(extras?.pickMode) && isFocusScreen;
@@ -503,7 +547,7 @@ export function buildCanvasNodes(
       const perScreenRoundIdx = extras?.screenVersions?.[screenId] ?? extras?.selectedRoundIndex ?? activeRound?.screenRoundIndex ?? 0;
       const versionedHtml = extras?.roundHtmlByScreen?.[screenId];
       const previewSrc =
-        extras?.runId && perScreenRoundIdx > 0
+        extras?.runId && perScreenRoundIdx > 0 && hasHtml
           ? designScreenVersionPath(extras.runId, screenId, perScreenRoundIdx)
           : null;
       list.push({
@@ -519,11 +563,13 @@ export function buildCanvasNodes(
           screenId,
           device: sessionDevice,
           label:
-            uiPhase === 'drawing'
-              ? pending?.mode === 'modify'
-                ? 'Updating…'
-                : 'Generating…'
-              : undefined,
+            uiPhase === 'placeholder'
+              ? 'Generating…'
+              : uiPhase === 'drawing'
+                ? pending?.mode === 'modify'
+                  ? 'Updating…'
+                  : 'Generating…'
+                : undefined,
           pickMode: isPickTarget,
           selectedElementPath: showElementHighlight ? extras?.selectedElementPath : null,
           selectedElementLabel: showElementHighlight ? extras?.selectedElementLabel : null,

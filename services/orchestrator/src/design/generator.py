@@ -2244,19 +2244,63 @@ def generate_session(
         f"spec ready name={spec.get('name')!s} → generating_ui device={device} model={model_id} screens_count={len(screens_to_gen)}",
     )
     
+    ui_origin_x = default_ui_origin_x(has_source=has_image or has_md or has_url)
     screens = []
+    for idx, screen_info in enumerate(screens_to_gen):
+        sid = screen_info["id"]
+        sname = screen_info["name"]
+        if idx == 0:
+            x_pos = ui_origin_x
+        else:
+            step = ui_layout_step(device)
+            x_pos = ui_origin_x + idx * step
+        screens.append({
+            "id": sid,
+            "name": sname,
+            "position": {"x": x_pos, "y": _DESIGN_ROW_Y},
+            "html_path": None,
+            "active_round_index": 0,
+        })
+    manifest["screens"] = screens
+    write_manifest(sdir, manifest)
+
     accumulated_usage = empty_token_usage()
     accumulated_estimated = False
     process_log = list(manifest.get("process_log") or [])
     design_md_text = design_md
-    
-    ui_origin_x = default_ui_origin_x(has_source=has_image or has_md or has_url)
     
     for idx, screen_info in enumerate(screens_to_gen):
         sid = screen_info["id"]
         sname = screen_info["name"]
         sprompt = screen_info["prompt"]
         spattern = screen_info.get("layout_pattern") or detect_layout_pattern(sprompt, device=device)
+        
+        # 1. Pre-register round history entry
+        round_index = _next_round_index(manifest, sid)
+        rel = f"screens/{sid}_r{round_index}.html"
+        
+        round_entry = {
+            "round_index": round_index,
+            "screen_id": sid,
+            "html_path": rel,
+            "prompt": sprompt,
+            "reasoning_content": None,
+            "process_log": list(process_log),
+            "at": now_iso(),
+        }
+        history = list(manifest.get("round_history") or [])
+        existing_idx = next((i for i, h in enumerate(history) if h.get("screen_id") == sid and h.get("round_index") == round_index), None)
+        if existing_idx is not None:
+            history[existing_idx] = round_entry
+        else:
+            history.append(round_entry)
+        manifest["round_history"] = history
+        
+        for screen in screens:
+            if screen["id"] == sid:
+                screen["html_path"] = rel
+                screen["active_round_index"] = round_index
+        manifest["screens"] = screens
         
         update_process_status(
             sdir,
@@ -2320,30 +2364,24 @@ def generate_session(
                 return public_session_payload(manifest, sdir)
             html = _fallback_ui_html(sprompt, screen_spec, device=device)
 
-        round_entry = _record_screen_round(
-            sdir,
-            manifest,
-            screen_id=sid,
-            html=html,
-            prompt=sprompt,
-            reasoning_content=ui_reasoning,
-            process_log_slice=list(process_log),
-        )
+        # 2. Write HTML and update placeholder details
+        (sdir / "screens").mkdir(exist_ok=True)
+        (sdir / rel).write_text(html, encoding="utf-8")
         
-        if idx == 0:
-            x_pos = ui_origin_x
-        else:
-            step = ui_layout_step(device)
-            x_pos = ui_origin_x + idx * step
-            
-        screens.append({
-            "id": sid,
-            "name": sname,
-            "position": {"x": x_pos, "y": _DESIGN_ROW_Y},
-            "html_path": round_entry["html_path"],
-            "active_round_index": round_entry["round_index"],
-        })
-        manifest["screens"] = list(screens)
+        history = list(manifest.get("round_history") or [])
+        for h in history:
+            if h.get("screen_id") == sid and h.get("round_index") == round_index:
+                h["reasoning_content"] = ui_reasoning
+                h["process_log"] = list(process_log)
+                break
+        manifest["round_history"] = history
+        
+        for screen in screens:
+            if screen["id"] == sid:
+                screen["html_path"] = rel
+                screen["active_round_index"] = round_index
+        manifest["screens"] = screens
+        write_manifest(sdir, manifest)
 
     ui_ready_text = (
         f"Interface draft is ready — generated {len(screens)} screens on the canvas:\n"
