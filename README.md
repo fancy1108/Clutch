@@ -17,18 +17,17 @@ Clutch is a **desktop app** (Tauri + React) for developers and technical operato
 |---|---|
 | **Stack** | Tauri 2 · React 19 · FastAPI + LangGraph · local-first (`localhost:8123`) |
 | **License** | See [LICENSE](LICENSE) |
-| **Latest release** | [v1.2.4](https://github.com/fancy1108/Clutch/releases/tag/v1.2.4) · [Changelog](CHANGELOG.md#124---2026-07-13) |
+| **Latest release** | [v1.2.5](https://github.com/fancy1108/Clutch/releases/tag/v1.2.5) · [Changelog](CHANGELOG.md#125---2026-07-13) |
 
-### What's new in v1.2.4
+### What's new in v1.2.5
 
-- **Ready Mode Interaction (Prototype)** — Unlocked hover and typing interactions inside design preview iframes.
-- **Computed CSS Scraper Bypass** — Dynamic computed variables scan for root, body, and container wrappers to bypass CORS limitations on external stylesheets.
-- **Tailwind Utility Filtering** — Auto-filters framework variables to prioritize true brand/theme tokens in LLM generation prompts.
-- **Design Round Dropdown menu** — Replaced native select with custom popover dropdown aligned with Clutch's footer menus.
-- **Node sync & component picking fixes** — Merged React Flow sync triggers to prevent cards disappearing; forced iframe remounts to bypass WebKit `srcDoc` caching bugs, and added `nodrag nopan` event isolation.
-- **Agent Log execution fallback** — Reconstructed step logs for Design rounds by scanning the global process log.
+- **Design Presets Packaging Fix:** Bundled the `presets/` directory in the PyInstaller sidecar build (`clutch.spec`) so that system style specs (like Claude, linear, etc.) are available in production app builds.
+- **Ready Mode Interaction (Prototype) (v1.2.4):** Unlocked hover and typing interactions inside design preview iframes.
+- **Computed CSS Scraper Bypass (v1.2.4):** Dynamic computed variables scan for root, body, and container wrappers to bypass CORS limitations on external stylesheets.
+- **Tailwind Utility Filtering (v1.2.4):** Auto-filters framework variables to prioritize true brand/theme tokens in LLM generation prompts.
+- **Design Round Dropdown menu (v1.2.4):** Replaced native select with custom popover dropdown aligned with Clutch's footer menus.
 
-> **v1.2.4 ships macOS + Windows.** macOS: Apple Silicon DMG + in-app updater. Windows: MSI/NSIS. Sidecar hotpatch assets published separately.
+> **v1.2.5 ships macOS + Windows.** macOS: Apple Silicon DMG + in-app updater. Windows: MSI/NSIS. Sidecar hotpatch assets published separately.
 
 Older releases (v1.2.2 Windows parity, v1.2.1 hotpatch client, v1.2.0 Design/ZCode, …): [`CHANGELOG.md`](CHANGELOG.md) · [`docs/releases/`](docs/releases/).
 
@@ -57,7 +56,7 @@ brew install --cask clutch
 irm https://raw.githubusercontent.com/fancy1108/Clutch/main/scripts/install.ps1 | iex
 ```
 
-Pin a version: `CLUTCH_VERSION=v1.2.4` before running either script (or `v1.2.3` / `v1.2.2` / `v1.2.1` / `v1.1.1` for older releases).
+Pin a version: `CLUTCH_VERSION=v1.2.5` before running either script (or `v1.2.4` / `v1.2.3` / `v1.2.2` / `v1.2.1` / `v1.1.1` for older releases).
 
 Install channels (maintainers): [`docs/RELEASE_MAINTAINER.md`](docs/RELEASE_MAINTAINER.md)
 

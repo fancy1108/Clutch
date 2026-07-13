@@ -16,6 +16,10 @@ _assets = _spec_dir / "src" / "workflow_assets"
 if _assets.is_dir() and any(_assets.glob("*.json")):
     datas.append((str(_assets), "src/workflow_assets"))
 
+_presets = _spec_dir / "src" / "design" / "presets"
+if _presets.is_dir():
+    datas.append((str(_presets), "src/design/presets"))
+
 
 def _sidecar_console() -> bool:
     """Windows: hide console unless debugging (OSR-17).

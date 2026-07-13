@@ -16,6 +16,17 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ### Fixed
 
+## [1.2.5] - 2026-07-13
+
+Patch release — **macOS + Windows**. Fixes PyInstaller packaging config in `clutch.spec` to correctly bundle the `presets/` directory containing design system presets (like the Claude style spec cache) so they are available in production app builds.
+
+> **Release assets (v1.2.5):** Tag `v1.2.5` — **macOS:** `Clutch_1.2.5_aarch64.dmg` + `SHA256SUMS.txt` (CI `release.yml`). **Windows:** `Clutch_1.2.5_x64-setup.exe` + `Clutch_1.2.5_x64_en-US.msi` + `SHA256SUMS_WIN.txt` (CI `windows-build.yml`). Sidecar hotpatch asset (`sidecar-patch.json` + binary) published separately. Optional macOS updater via `Release (updater assets)` workflow (requires minisign key). Product snapshot: [`docs/releases/v1.2.5.md`](docs/releases/v1.2.5.md).
+
+### Fixed
+
+- **Design Preset Packaging:** Updated `clutch.spec` PyInstaller packaging configuration to bundle the `src/design/presets` directory containing all design style specs and markdowns.
+- **Preset loading validation test:** Added `test_builtin_presets_loading` to design service tests to ensure Claude, linear.app, and framer presets are successfully loaded.
+
 ## [1.2.4] - 2026-07-13
 
 Patch release — **macOS + Windows**. Ships prototype Ready mode interactions, design round custom dropdown menu, Safari/WebKit picking remount fix, execution log fallback mapping, and Playwright computed CSS variable scraper bypass for CORS-restricted domains.

@@ -930,3 +930,25 @@ def test_extract_css_tokens_and_format_prompt() -> None:
     assert "Font families:" in prompt_fragment
     assert "Tailwind color classes used:" in prompt_fragment
 
+
+def test_builtin_presets_loading() -> None:
+    from src.design.builtin_presets import list_builtin_presets, resolve_preset_design_md, resolve_preset_spec
+
+    presets = list_builtin_presets()
+    assert len(presets) > 0
+    # Ensure Claude and other main presets are present in list
+    ids = [p["id"] for p in presets]
+    assert "claude" in ids
+    assert "linear.app" in ids
+    assert "framer" in ids
+
+    # Resolve "claude" preset md and spec files
+    md = resolve_preset_design_md("claude")
+    assert md is not None
+    assert "Claude" in md or "claude" in md.lower()
+
+    spec = resolve_preset_spec("claude")
+    assert spec is not None
+    assert spec.get("name") == "Claude"
+
+
