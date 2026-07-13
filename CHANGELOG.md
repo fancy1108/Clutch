@@ -16,6 +16,18 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ### Fixed
 
+## [1.2.6] - 2026-07-13
+
+Patch release — **macOS + Windows**. Corrects a Content Security Policy (CSP) restriction on inline scripts inside Tauri production configurations (`script-src`) so that the interactive component picking overlay and click handler can successfully run inside iframe elements.
+
+> **Release assets (v1.2.6):** Tag `v1.2.6` — **macOS:** `Clutch_1.2.6_aarch64.dmg` + `SHA256SUMS.txt` (CI `release.yml`). **Windows:** `Clutch_1.2.6_x64-setup.exe` + `Clutch_1.2.6_x64_en-US.msi` + `SHA256SUMS_WIN.txt` (CI `windows-build.yml`). Sidecar hotpatch asset (`sidecar-patch.json` + binary) published separately. Optional macOS updater via `Release (updater assets)` workflow (requires minisign key). Product snapshot: [`docs/releases/v1.2.6.md`](docs/releases/v1.2.6.md).
+
+### Fixed
+
+- **CSP Inline Script Block:** Added `'unsafe-inline'` to `"script-src"` inside `tauri.conf.json`'s CSP policies to permit component picking script execution inside `srcDoc` iframes.
+- **Iframe body close tag check:** Made `</body>` tag detection case-insensitive inside `withPickerScript` to ensure the picker script is correctly appended.
+- **querySelector ID safety:** Wrapped label querySelector in a `try/catch` block to prevent invalid CSS identifier syntax errors in element IDs from halting script execution.
+
 ## [1.2.5] - 2026-07-13
 
 Patch release — **macOS + Windows**. Fixes PyInstaller packaging config in `clutch.spec` to correctly bundle the `presets/` directory containing design system presets (like the Claude style spec cache) so they are available in production app builds.

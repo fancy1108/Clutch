@@ -169,8 +169,10 @@ export function buildInteractionScript(opts: {
     if (tag === 'input' || tag === 'textarea' || tag === 'select') {
       var lab = '';
       if (el.id) {
-        var byFor = document.querySelector('label[for=\"' + el.id.replace(/\"/g,'') + '\"]');
-        if (byFor) lab = (byFor.innerText || '').trim();
+        try {
+          var byFor = document.querySelector('label[for="' + el.id.replace(/"/g,'') + '"]');
+          if (byFor) lab = (byFor.innerText || '').trim();
+        } catch (_) {}
       }
       if (!lab && el.closest) {
         var wrap = el.closest('label');
@@ -253,8 +255,8 @@ export function withPickerScript(
   }
   const cleaned = stripInteractionScript(html);
   const script = buildInteractionScript({ pickMode, selectedPath });
-  if (cleaned.includes('</body>')) {
-    return cleaned.replace('</body>', `${script}</body>`);
+  if (/<\/body>/i.test(cleaned)) {
+    return cleaned.replace(/(<\/body>)/i, `${script}$1`);
   }
   return `${cleaned}${script}`;
 }

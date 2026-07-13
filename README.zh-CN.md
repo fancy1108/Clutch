@@ -17,17 +17,16 @@ Clutch 是一款**桌面应用**（Tauri + React），面向独立开发者和�
 |---|---|
 | **技术栈** | Tauri 2 · React 19 · FastAPI + LangGraph · 本地优先（`localhost:8123`） |
 | **许可证** | 见 [LICENSE](LICENSE) |
-| **当前版本** | [v1.2.5](https://github.com/fancy1108/Clutch/releases/tag/v1.2.5) · [更新日志](CHANGELOG.md#125---2026-07-13) |
+| **当前版本** | [v1.2.6](https://github.com/fancy1108/Clutch/releases/tag/v1.2.6) · [更新日志](CHANGELOG.md#126---2026-07-13) |
 
-### 最新更新（v1.2.5）
+### 最新更新（v1.2.6）
 
-- **内置设计预设打包修复** — 修复 `clutch.spec` 打包配置，将 `presets/` 目录下全部品牌预设规范数据打包进 PyInstaller sidecar 生产程序中，解决生产环境无预设缓存的问题。
+- **CSP 策略与组件选取修复** — 在 Tauri 生产配置 `script-src` 中放行了 `'unsafe-inline'`，解决生产态 preview iframe 内部交互选取脚本被 CSP 拦截导致无法选取组件的严重 Bug。
+- **内置设计预设打包 (v1.2.5)** — 修复 `clutch.spec` 打包配置，将 `presets/` 目录下全部品牌预设规范数据打包进 PyInstaller sidecar 生产程序中，解决生产环境无预设缓存的问题。
 - **就绪模式（Prototype）交互解锁 (v1.2.4)** — 在非 Picking 模式下解锁设计预览 iframe 的 hover 和输入交互，恢复原型体验。
-- **爬虫 CSS 变量跨域提取绕过 (v1.2.4)** — 在跨域 CDN 样式表无法读取时，增加对 root, body 以及直接子容器计算样式的自动扫描。
-- **Tailwind 框架杂音变量过滤 (v1.2.4)** — 自动清洗 `--tw-*` 等布局杂音变量，提升 LLM 原型生成时的色彩准确度。
-- **设计轮次下拉框重构 (v1.2.4)** — 将水平滚动条栏改写为自定义绝对定位下拉菜单，完美契合 App 状态栏规范。
+- **爬虫 CSS 变量跨域提取绕过 (v1.2.4)** — 增加对 root, body 以及直接子容器计算样式的自动扫描。
 
-> **v1.2.5 同时发 macOS + Windows。** macOS：Apple Silicon DMG + 应用内更新。Windows：MSI/NSIS。Sidecar 热更资产另行发布。
+> **v1.2.6 同时发 macOS + Windows。** macOS：Apple Silicon DMG + 应用内更新。Windows：MSI/NSIS。Sidecar 热更资产另行发布。
 
 更早版本（v1.2.2 Windows 同步、v1.2.1 热更客户端、v1.2.0 Design/ZCode 等）：[`CHANGELOG.md`](CHANGELOG.md) · [`docs/releases/`](docs/releases/)。
 
@@ -56,7 +55,7 @@ brew install --cask clutch
 irm https://raw.githubusercontent.com/fancy1108/Clutch/main/scripts/install.ps1 | iex
 ```
 
-指定版本：运行前设置 `CLUTCH_VERSION=v1.2.5`（或 `v1.2.4` / `v1.2.3` / `v1.2.2` / `v1.2.1` / `v1.1.1` 安装更早稳定版）。
+指定版本：运行前设置 `CLUTCH_VERSION=v1.2.6`（或 `v1.2.5` / `v1.2.4` / `v1.2.3` / `v1.2.2` / `v1.2.1` / `v1.1.1` 安装更早稳定版）。
 
 详见 [`docs/PACKAGE_MANAGERS.md`](docs/PACKAGE_MANAGERS.md)
 
