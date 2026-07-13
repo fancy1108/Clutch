@@ -22,6 +22,14 @@
 
 ## Active Deliverables
 
+### Multi-page design iteration and sequential loading animation support ✅
+- **日期：** 2026-07-13
+- **Commit：** `e3d0dd0` — `feat(design): support multi-screen generation in iterate session`
+- **Verification：** `./scripts/verify.sh` → all checks passed (723 python tests, check-doc-drift passed); unit tests verified successfully.
+- **证据：** —
+- **交付文件：**
+  - `services/orchestrator/src/design/generator.py` — Refactored `iterate_session` `"add"` action branch to plan multiple added screens via `_parse_multi_screens`, horizontally layout new screen coordinate positions, pre-populate planned screens in manifest, and register placeholder rounds sequentially.
+
 ### Multi-page design sequential loading animations and round transitions ✅
 - **日期：** 2026-07-13
 - **Commit：** `8c4f6c6` — `feat(design): optimize multi-page loading animations and round transitions`
