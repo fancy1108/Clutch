@@ -294,24 +294,114 @@ def _llm_result(
     return text, None, usage, estimated
 
 
-def _extract_json_block(text: str) -> dict[str, Any]:
+def _extract_json_data(text: str) -> Any:
     raw = (text or "").strip()
     if not raw:
-        return {}
+        return None
     m = re.search(r"```(?:json)?\s*([\s\S]*?)```", raw, re.I)
     if m:
         raw = m.group(1).strip()
     try:
         return json.loads(raw)
     except json.JSONDecodeError:
-        start = raw.find("{")
-        end = raw.rfind("}")
-        if start >= 0 and end > start:
-            try:
-                return json.loads(raw[start : end + 1])
-            except json.JSONDecodeError:
-                pass
+        start_dict = raw.find("{")
+        end_dict = raw.rfind("}")
+        start_list = raw.find("[")
+        end_list = raw.rfind("]")
+        
+        # If both are present, pick the one that starts first
+        if start_dict >= 0 and (start_list < 0 or start_dict < start_list):
+            if end_dict > start_dict:
+                try:
+                    return json.loads(raw[start_dict : end_dict + 1])
+                except json.JSONDecodeError:
+                    pass
+        elif start_list >= 0:
+            if end_list > start_list:
+                try:
+                    return json.loads(raw[start_list : end_list + 1])
+                except json.JSONDecodeError:
+                    pass
         raise
+
+
+def _extract_json_block(text: str) -> dict[str, Any]:
+    data = _extract_json_data(text)
+    if isinstance(data, dict):
+        return data
+    return {}
+
+
+def _parse_multi_screens(
+    prompt: str,
+    model_id: str,
+    router: Any,
+) -> list[dict[str, Any]]:
+    """
+    Parse a user prompt to see if they want multiple screens/pages.
+    Returns a list of dicts: [{"id": str, "name": str, "prompt": str, "layout_pattern": str}]
+    """
+    from src.models_config import is_model_available
+    default_screen = [{"id": "main", "name": "Interface", "prompt": prompt, "layout_pattern": None}]
+    if not is_model_available(router, model_id):
+        return default_screen
+
+    planning_prompt = (
+        "You are an AI UI/UX architect planning screens/pages for a design workflow.\n"
+        f"User prompt: {prompt}\n\n"
+        "Analyze the prompt. If the user wants multiple pages, screens, or features generated (for example, 'a homepage, a profile page, and a login page'), "
+        "plan a list of screens to generate.\n"
+        "If the user only wants a single screen or page, or if it is ambiguous, return a list with a single element representing the requested screen.\n\n"
+        "Return ONLY a valid JSON list of objects, representing each planned screen in order. "
+        "Each object must have the following keys:\n"
+        "- 'id': a short lowercase alphanumeric string (e.g. 'home', 'profile', 'login', 'dashboard', 'settings'). The first screen MUST have id 'main'.\n"
+        "- 'name': a user-friendly name in the prompt's language (e.g. '首页', '个人中心', '登录页面', 'Home', 'Profile', 'Login').\n"
+        "- 'prompt': a specific UI generation instruction for this screen, combining the global design system/topic with the screen's specific purpose.\n"
+        "- 'layout_pattern': one of 'landing', 'dashboard', 'crm', 'settings', 'analytics', 'ecommerce', 'chat', 'mobile_app', 'login', 'pricing', 'profile'.\n\n"
+        "Do NOT wrap in markdown code blocks like ```json or ```. Return ONLY the raw JSON string."
+    )
+
+    try:
+        raw, _, _, _ = _llm_complete(router, planning_prompt, model_id=model_id)
+        parsed = _extract_json_data(raw)
+        if isinstance(parsed, list) and len(parsed) > 0:
+            valid_screens = []
+            for i, item in enumerate(parsed):
+                if not isinstance(item, dict):
+                    continue
+                item_id = str(item.get("id") or "").strip().lower()
+                item_name = str(item.get("name") or "").strip()
+                item_prompt = str(item.get("prompt") or "").strip()
+                item_pattern = str(item.get("layout_pattern") or "").strip().lower()
+                
+                if not item_name or not item_prompt:
+                    continue
+                
+                if i == 0:
+                    sid = "main"
+                else:
+                    sid = re.sub(r"[^a-z0-9_-]", "", item_id) or f"screen-{i+1}"
+                    if sid == "main":
+                        sid = f"screen-{i+1}"
+                
+                if item_pattern not in {
+                    "landing", "dashboard", "crm", "settings", "analytics",
+                    "ecommerce", "chat", "mobile_app", "login", "pricing", "profile"
+                }:
+                    item_pattern = None
+
+                valid_screens.append({
+                    "id": sid,
+                    "name": item_name,
+                    "prompt": item_prompt,
+                    "layout_pattern": item_pattern
+                })
+            if valid_screens:
+                return valid_screens
+    except Exception as exc:
+        logger.warning("Failed to parse multi-screen plan, falling back to single: %s", exc)
+
+    return default_screen
 
 
 def _fallback_spec(prompt: str) -> dict[str, Any]:
@@ -2147,65 +2237,117 @@ def generate_session(
     )
 
     sdir = session_dir(run_id)
-    html = ""
-    ui_reasoning: str | None = None
-    ui_usage = empty_token_usage()
-    ui_usage_estimated = False
-    ui_fail_reason: str | None = None
-    design_md_text = design_md
-    if is_model_available(router, model_id):
-        try:
-            ui_vision_ok = _check_vision_ok(router, model_id, image_data_url)
-            from src.design import service
-            gen_ui = getattr(service, "_generate_ui_html", _generate_ui_html)
-            html, ui_reasoning, ui_usage, ui_usage_estimated, ui_fail_reason = gen_ui(
-                router,
-                user_prompt=user_prompt,
-                spec=spec,
-                device=device,
-                model_id=model_id,
-                design_md=design_md_text,
-                md_text=md_text if has_md else None,
-                url_snapshot=url_snapshot if has_url else None,
-                has_image=has_image,
-                image_data_url=image_data_url if ui_vision_ok else None,
-            )
-        except Exception as exc:
-            logger.warning("design ui LLM failed run_id=%s err=%s", run_id, exc)
-            ui_fail_reason = str(exc)
-
-    llm_available = is_model_available(router, model_id)
-    if not _html_has_visible_content(html):
-        if llm_available:
-            detail = ui_fail_reason or "the model returned no valid HTML"
-            err_msg = f"Generation failed — {detail}. Please try again."
-            process_log = list(manifest.get("process_log") or [])
-            _finalize_assistant_step(
-                process_log,
-                text=err_msg,
-                status="error",
-                model_id=model_id,
-                model_name=model_name,
-                usage=ui_usage,
-                usage_estimated=ui_usage_estimated,
-                replace_statuses={"generating_ui"},
-            )
-            manifest["status"] = "error"
-            manifest["error"] = err_msg
-            manifest["process_log"] = process_log
-            manifest["screens"] = []
-            write_manifest(sdir, manifest)
-            return public_session_payload(manifest, sdir)
-        html = _fallback_ui_html(user_prompt, spec, device=device)
-
-    screen_id = "main"
-    sdir = session_dir(run_id)
-    (sdir / "screens").mkdir(exist_ok=True)
+    screens_to_gen = _parse_multi_screens(user_prompt, model_id, router)
+    
+    append_design_run_log(
+        run_id,
+        f"spec ready name={spec.get('name')!s} → generating_ui device={device} model={model_id} screens_count={len(screens_to_gen)}",
+    )
+    
+    screens = []
+    accumulated_usage = empty_token_usage()
+    accumulated_estimated = False
     process_log = list(manifest.get("process_log") or [])
-    round_index = _next_round_index(manifest, screen_id)
+    design_md_text = design_md
+    
+    ui_origin_x = default_ui_origin_x(has_source=has_image or has_md or has_url)
+    
+    for idx, screen_info in enumerate(screens_to_gen):
+        sid = screen_info["id"]
+        sname = screen_info["name"]
+        sprompt = screen_info["prompt"]
+        spattern = screen_info.get("layout_pattern") or detect_layout_pattern(sprompt, device=device)
+        
+        update_process_status(
+            sdir,
+            manifest,
+            text=f"Generating screen {idx + 1}/{len(screens_to_gen)}: «{sname}» ({spattern})…",
+            status="generating_ui",
+            model_id=model_id,
+            model_name=model_name,
+        )
+        
+        screen_spec = {**spec, "layout_pattern": spattern}
+        html = ""
+        ui_reasoning = None
+        ui_fail_reason = None
+        
+        if is_model_available(router, model_id):
+            try:
+                ui_vision_ok = _check_vision_ok(router, model_id, image_data_url)
+                use_img = image_data_url if (idx == 0 and ui_vision_ok) else None
+                
+                from src.design import service
+                gen_ui = getattr(service, "_generate_ui_html", _generate_ui_html)
+                html, ui_reasoning, ui_usage, ui_usage_estimated, ui_fail_reason = gen_ui(
+                    router,
+                    user_prompt=sprompt,
+                    spec=screen_spec,
+                    device=device,
+                    model_id=model_id,
+                    design_md=design_md_text,
+                    md_text=md_text if has_md else None,
+                    url_snapshot=url_snapshot if has_url else None,
+                    has_image=has_image and (idx == 0),
+                    image_data_url=use_img,
+                )
+                accumulated_usage = merge_token_usage(accumulated_usage, ui_usage)
+                accumulated_estimated = accumulated_estimated or ui_usage_estimated
+            except Exception as exc:
+                logger.warning("design ui LLM failed for screen %s run_id=%s err=%s", sid, run_id, exc)
+                ui_fail_reason = str(exc)
+
+        llm_available = is_model_available(router, model_id)
+        if not _html_has_visible_content(html):
+            if llm_available:
+                detail = ui_fail_reason or "the model returned no valid HTML"
+                err_msg = f"Generation failed for screen «{sname}» — {detail}. Please try again."
+                _finalize_assistant_step(
+                    process_log,
+                    text=err_msg,
+                    status="error",
+                    model_id=model_id,
+                    model_name=model_name,
+                    usage=accumulated_usage,
+                    usage_estimated=accumulated_estimated,
+                    replace_statuses={"generating_ui"},
+                )
+                manifest["status"] = "error"
+                manifest["error"] = err_msg
+                manifest["process_log"] = process_log
+                manifest["screens"] = screens
+                write_manifest(sdir, manifest)
+                return public_session_payload(manifest, sdir)
+            html = _fallback_ui_html(sprompt, screen_spec, device=device)
+
+        round_entry = _record_screen_round(
+            sdir,
+            manifest,
+            screen_id=sid,
+            html=html,
+            prompt=sprompt,
+            reasoning_content=ui_reasoning,
+            process_log_slice=list(process_log),
+        )
+        
+        if idx == 0:
+            x_pos = ui_origin_x
+        else:
+            step = ui_layout_step(device)
+            x_pos = ui_origin_x + idx * step
+            
+        screens.append({
+            "id": sid,
+            "name": sname,
+            "position": {"x": x_pos, "y": _DESIGN_ROW_Y},
+            "html_path": round_entry["html_path"],
+            "active_round_index": round_entry["round_index"],
+        })
+        manifest["screens"] = list(screens)
+
     ui_ready_text = (
-        f"Interface draft is ready — wrote screens/{screen_id}_r{round_index}.html "
-        f"({len(html)} bytes)."
+        f"Interface draft is ready — generated {len(screens)} screens on the canvas:\n"
+        + "\n".join(f"- **{s['name']}** (wrote `{s['html_path']}`)" for s in screens)
     )
     manifest["generate_source"] = source
     if not is_model_available(router, model_id):
@@ -2216,34 +2358,16 @@ def generate_session(
         status="ready",
         model_id=model_id,
         model_name=model_name,
-        usage=ui_usage,
-        usage_estimated=ui_usage_estimated,
+        usage=accumulated_usage,
+        usage_estimated=accumulated_estimated,
         replace_statuses={"generating_ui"},
-    )
-    round_entry = _record_screen_round(
-        sdir,
-        manifest,
-        screen_id=screen_id,
-        html=html,
-        prompt=user_prompt,
-        reasoning_content=ui_reasoning,
-        process_log_slice=list(process_log),
     )
     if manifest.get("round_history"):
         history = list(manifest["round_history"])
         if history:
             history[-1] = {**history[-1], "process_log": list(process_log)}
             manifest["round_history"] = history
-    ui_origin_x = default_ui_origin_x(has_source=has_image or has_md or has_url)
-    screens = [
-        {
-            "id": screen_id,
-            "name": str(spec.get("name") or "Interface"),
-            "position": {"x": ui_origin_x, "y": _DESIGN_ROW_Y},
-            "html_path": round_entry["html_path"],
-            "active_round_index": round_entry["round_index"],
-        }
-    ]
+            
     manifest["screens"] = screens
     manifest["phase"] = "canvas"
     manifest["status"] = "ready"
@@ -2261,10 +2385,9 @@ def generate_session(
     )
     append_design_run_log(
         run_id,
-        f"generate done source={source} screen={screen_id} html_bytes={len(html)} round={round_entry['round_index']}",
-        reasoning=ui_reasoning,
+        f"generate done source={source} screens_count={len(screens)}",
     )
-    logger.info("design generate done run_id=%s source=%s", run_id, source)
+    logger.info("design generate done run_id=%s source=%s count=%d", run_id, source, len(screens))
     return get_session(run_id)
 
 

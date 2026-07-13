@@ -1,6 +1,52 @@
 """Tests for Design mode service (D36) — session-scoped two-phase, no live LLM."""
 
-from __future__ import annotations
+
+def test_generate_ui_html_detects_vision_error_in_html(monkeypatch) -> None:
+    """When LLM returns HTML containing a vision error, drop image and retry text-only."""
+    from unittest.mock import MagicMock
+    from src.design.generator import _generate_ui_html
+
+    vision_error_html = (
+        '<html><body><p>ERROR: Cannot read "image.png" '
+        '(this model does not support image input). Inform the user.</p></body></html>'
+    )
+    good_html = '<html><body><h1>Home Page</h1><p>Welcome</p></body></html>'
+    fake_image = "data:image/png;base64,iVBORw0KGgo="
+
+    # Mock _check_vision_ok to return True
+    monkeypatch.setattr("src.design.generator._check_vision_ok", lambda *a, **kw: True)
+
+    call_log = []
+
+    def mock_complete(prompt, model_id=None):
+        call_log.append(("complete", prompt[:100]))
+        return {"content": good_html, "usage": {"total_tokens": 10}}
+
+    def mock_chat(messages, model_id=None):
+        call_log.append(("chat", str(messages)[:100]))
+        return {"content": vision_error_html, "usage": {"total_tokens": 10}}
+
+    mock_router = MagicMock()
+    mock_router.complete = mock_complete
+    mock_router.chat = mock_chat
+
+    spec = {"name": "Test", "colors": {"primary": ["#000"]}, "layout_pattern": "hero"}
+
+    html, reasoning, usage, estimated, fail = _generate_ui_html(
+        mock_router,
+        user_prompt="Generate a home page",
+        spec=spec,
+        device="web",
+        model_id="test-model",
+        image_data_url=fake_image,
+    )
+
+    # Should have detected vision error and retried without image
+    assert "Home Page" in html
+    assert "Cannot read" not in html
+    # Should have attempted chat (with image) then complete (text-only fallback)
+    assert any(c[0] == "chat" for c in call_log)
+
 
 import subprocess
 from pathlib import Path
@@ -931,6 +977,50 @@ def test_extract_css_tokens_and_format_prompt() -> None:
     assert "Tailwind color classes used:" in prompt_fragment
 
 
+def test_extract_css_var_references() -> None:
+    """CSS variable references (var(--color-*)) should be extracted as design hints."""
+    html_sample = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Mental Health App</title>
+      <link rel="stylesheet" href="/style.css">
+    </head>
+    <body>
+      <div style="background: var(--color-bg)">
+        <h1 style="color: var(--color-text)">Welcome</h1>
+        <button class="bg-[var(--color-primary)] text-[var(--color-mint)]">
+          Get Started
+        </button>
+        <div class="bg-[var(--color-lavender)]/40">
+          <p style="color: var(--color-text-muted)">Calm your mind</p>
+        </div>
+      </div>
+    </body>
+    </html>
+    """
+    tokens = service._extract_css_tokens(html_sample, base_url="https://example.com")
+    
+    # CSS variable references should be extracted
+    css_var_refs = tokens.get("css_var_references") or []
+    assert "color-bg" in css_var_refs
+    assert "color-text" in css_var_refs
+    assert "color-primary" in css_var_refs
+    assert "color-mint" in css_var_refs
+    assert "color-lavender" in css_var_refs
+    assert "color-text-muted" in css_var_refs
+
+    # Test formatter includes the references and color hints
+    prompt_fragment = service._format_css_tokens_for_prompt(tokens)
+    assert "CSS design token names referenced" in prompt_fragment
+    assert "--color-bg" in prompt_fragment
+    assert "--color-primary" in prompt_fragment
+    assert "--color-lavender" in prompt_fragment
+    assert "Color palette hints from variable names:" in prompt_fragment
+    assert "lavender" in prompt_fragment
+    assert "mint" in prompt_fragment
+
+
 def test_builtin_presets_loading() -> None:
     from src.design.builtin_presets import list_builtin_presets, resolve_preset_design_md, resolve_preset_spec
 
@@ -950,5 +1040,183 @@ def test_builtin_presets_loading() -> None:
     spec = resolve_preset_spec("claude")
     assert spec is not None
     assert spec.get("name") == "Claude"
+
+
+def test_looks_like_vision_error_detects_common_patterns() -> None:
+    from src.design.generator import _looks_like_vision_error
+
+    assert _looks_like_vision_error(
+        'ERROR: Cannot read "image.png" (this model does not support image input). Inform the user.'
+    )
+    assert _looks_like_vision_error(
+        "I cannot read this image. The model does not support vision."
+    )
+    assert _looks_like_vision_error(
+        "Unable to process the screenshot attached."
+    )
+    assert _looks_like_vision_error(
+        "No image input support. Inform the user."
+    )
+    assert not _looks_like_vision_error("")
+    assert not _looks_like_vision_error(
+        "<html><body><h1>Hello World</h1></body></html>"
+    )
+    assert not _looks_like_vision_error(
+        '{"name": "Test", "colors": {"primary": ["#000"]}}'
+    )
+
+
+def test_llm_complete_vision_falls_back_on_vision_error(monkeypatch) -> None:
+    """When vision_ok=True but LLM returns a vision-error message, degrade to text-only."""
+    from unittest.mock import MagicMock
+    from src.design.generator import _llm_complete_vision, _check_vision_ok
+
+    fake_image = "data:image/png;base64,iVBORw0KGgo="
+    vision_error_text = 'ERROR: Cannot read "image.png" (this model does not support image input). Inform the user.'
+
+    # _check_vision_ok returns True (model claims vision support)
+    monkeypatch.setattr("src.design.generator._check_vision_ok", lambda *a, **kw: True)
+
+    # router.chat returns the vision error (LLM can't actually process the image)
+    mock_router = MagicMock()
+    call_count = {"n": 0}
+
+    def mock_chat(messages, model_id=None):
+        call_count["n"] += 1
+        # First call: vision call → returns error text
+        if call_count["n"] == 1:
+            return {"content": vision_error_text, "usage": {"total_tokens": 10}}
+        return {"content": '{"name":"Home","colors":{}}', "usage": {"total_tokens": 20}}
+
+    mock_router.chat = mock_chat
+    mock_router.complete = lambda prompt, model_id=None: {
+        "content": '{"name":"Home","colors":{}}',
+        "usage": {"total_tokens": 20},
+    }
+
+    text, reasoning, usage, estimated = _llm_complete_vision(
+        mock_router, "Generate a home page", model_id="test-model", image_data_url=fake_image,
+    )
+
+    # Should have fallen back to text-only (called complete, not returned the error)
+    assert "Cannot read" not in text
+    assert "Home" in text or "colors" in text
+    assert call_count["n"] >= 1  # vision call was attempted
+
+
+def test_llm_complete_vision_skips_vision_when_not_ok(monkeypatch) -> None:
+    """When vision_ok=False, should use text-only with image_analysis prefix."""
+    from unittest.mock import MagicMock
+    from src.design.generator import _llm_complete_vision
+
+    fake_image = "data:image/png;base64,iVBORw0KGgo="
+
+    # _check_vision_ok returns False
+    monkeypatch.setattr("src.design.generator._check_vision_ok", lambda *a, **kw: False)
+    # image_analysis returns nothing (Pillow not installed etc.)
+    monkeypatch.setattr(
+        "src.design.image_analysis.image_analysis_prompt_fragment",
+        lambda *a, **kw: "",
+    )
+
+    mock_router = MagicMock()
+    mock_router.chat = MagicMock()
+    mock_router.complete = lambda prompt, model_id=None: {
+        "content": '{"name":"Home"}',
+        "usage": {"total_tokens": 10},
+    }
+
+    text, _, _, _ = _llm_complete_vision(
+        mock_router, "Generate a home page", model_id="test-model", image_data_url=fake_image,
+    )
+
+    assert "Home" in text
+    # Should NOT have called router.chat (no vision attempt)
+    mock_router.chat.assert_not_called()
+
+
+def test_generate_session_with_multiple_screens(workspace, monkeypatch) -> None:
+    """When the prompt asks for multiple screens, generate them side-by-side."""
+    from unittest.mock import MagicMock
+    from src.design import service
+    import json
+    
+    # Mock model availability
+    monkeypatch.setattr("src.models_config.is_model_available", lambda *a, **kw: True)
+    
+    call_log = []
+    
+    def mock_complete(router, prompt, *, model_id, **kwargs):
+        call_log.append(prompt)
+        if "planning screens" in prompt.lower() or "User prompt:" in prompt:
+            # Plan 3 screens
+            return (
+                '[{"id": "main", "name": "首页", "prompt": "generate homepage", "layout_pattern": "landing"}, '
+                '{"id": "profile", "name": "个人中心", "prompt": "generate profile page", "layout_pattern": "profile"}, '
+                '{"id": "login", "name": "登录页面", "prompt": "generate login page", "layout_pattern": "login"}]',
+                None, {"total_tokens": 10}, False
+            )
+        elif "product design system" in prompt.lower():
+            # Return spec
+            return (
+                '{"name": "Crypto Design System", "colors": {"primary": ["#000"]}}',
+                None, {"total_tokens": 10}, False
+            )
+        elif "Tailwind CSS" in prompt or "HTML" in prompt:
+            # UI HTML generation
+            return (
+                '<html><body><h1>Screen</h1></body></html>',
+                None, {"total_tokens": 10}, False
+            )
+        return ("", None, {}, False)
+        
+    monkeypatch.setattr("src.design.generator._llm_complete", mock_complete)
+    # Also mock _llm_complete_vision which is used in _generate_ui_html and generating design spec
+    def mock_complete_vision(router, prompt, *, model_id, image_data_url=None, **kwargs):
+        return mock_complete(router, prompt, model_id=model_id, **kwargs)
+    monkeypatch.setattr("src.design.generator._llm_complete_vision", mock_complete_vision)
+
+    run_id = "test-multi-run"
+    prompt = "生成一个首页，一个个人中心，一个登录页面"
+    
+    res = service.generate_session(
+        run_id,
+        prompt=prompt,
+        device="web",
+    )
+    
+    assert res is not None
+    assert "screens" in res
+    assert len(res["screens"]) == 3
+    
+    s0, s1, s2 = res["screens"]
+    assert s0["id"] == "main"
+    assert s0["name"] == "首页"
+    assert s1["id"] == "profile"
+    assert s1["name"] == "个人中心"
+    assert s2["id"] == "login"
+    assert s2["name"] == "登录页面"
+    
+    # Check positions side-by-side
+    assert s0["position"]["x"] < s1["position"]["x"] < s2["position"]["x"]
+    
+    # Verify round history has 3 screen round entries
+    session_dir = _session_path(workspace, run_id)
+    manifest_path = session_dir / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert len(manifest["round_history"]) == 3
+
+
+def test_parse_multi_screens_fallback(monkeypatch) -> None:
+    """When LLM is not available, return a single default screen."""
+    from src.design.generator import _parse_multi_screens
+    from unittest.mock import MagicMock
+    
+    monkeypatch.setattr("src.models_config.is_model_available", lambda *a, **kw: False)
+    mock_router = MagicMock()
+    
+    res = _parse_multi_screens("some prompt", "model-id", mock_router)
+    assert len(res) == 1
+    assert res[0]["id"] == "main"
 
 
