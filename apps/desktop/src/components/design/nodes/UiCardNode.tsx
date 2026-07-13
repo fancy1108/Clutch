@@ -157,38 +157,44 @@ export function UiCardNode({ data, selected }: NodeProps) {
         style={{ width: view.frameW, height: view.frameH }}
       >
         {d.html || resolvedPreviewSrc ? (
-          useRemotePreview ? (
-            <iframe
-              key={`remote-${resolvedPreviewSrc}`}
-              title={d.name}
-              src={resolvedPreviewSrc!}
-              className={`nodrag nopan absolute left-0 top-0 origin-top-left border-0 bg-white ${
-                drawing ? 'pointer-events-none' : 'pointer-events-auto'
-              } ${drawing ? 'animate-design-draw-reveal' : ''}`}
-              style={{
-                width: view.designW,
-                height: view.designH,
-                transform: `scale(${scale})`,
-              }}
-            />
-          ) : (
-            <iframe
-              key={`local-${pickMode}-${d.html ? d.html.length : 0}`}
-              title={d.name}
-              srcDoc={ensureCharset(withPickerScript(d.html || '', {
-                pickMode,
-                selectedPath: d.selectedElementPath,
-              }))}
-              className={`nodrag nopan absolute left-0 top-0 origin-top-left border-0 bg-white ${
-                drawing ? 'pointer-events-none' : 'pointer-events-auto'
-              } ${drawing ? 'animate-design-draw-reveal' : ''}`}
-              style={{
-                width: view.designW,
-                height: view.designH,
-                transform: `scale(${scale})`,
-              }}
-            />
-          )
+          <>
+            {useRemotePreview ? (
+              <iframe
+                key={`remote-${resolvedPreviewSrc}`}
+                title={d.name}
+                src={resolvedPreviewSrc!}
+                className={`absolute left-0 top-0 origin-top-left border-0 bg-white ${
+                  drawing || !pickMode ? 'pointer-events-none' : 'pointer-events-auto'
+                } ${drawing ? 'animate-design-draw-reveal' : ''}`}
+                style={{
+                  width: view.designW,
+                  height: view.designH,
+                  transform: `scale(${scale})`,
+                }}
+              />
+            ) : (
+              <iframe
+                key={`local-${pickMode}-${d.html ? d.html.length : 0}`}
+                title={d.name}
+                sandbox="allow-scripts allow-same-origin"
+                srcDoc={ensureCharset(withPickerScript(d.html || '', {
+                  pickMode,
+                  selectedPath: d.selectedElementPath,
+                }))}
+                className={`absolute left-0 top-0 origin-top-left border-0 bg-white ${
+                  drawing || !pickMode ? 'pointer-events-none' : 'pointer-events-auto'
+                } ${drawing ? 'animate-design-draw-reveal' : ''}`}
+                style={{
+                  width: view.designW,
+                  height: view.designH,
+                  transform: `scale(${scale})`,
+                }}
+              />
+            )}
+            {!pickMode ? (
+              <div className="nodrag absolute inset-0 z-[1]" />
+            ) : null}
+          </>
         ) : null}
         {drawing ? (
           <>
