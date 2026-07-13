@@ -24,7 +24,7 @@
 
 ### Design Workspace syncing, UI interaction fixes, and reference URL crawler improvements ✅
 - **日期：** 2026-07-13
-- **Commit：** Pending — `fix: design rounds sync, custom dropdown selection, interactive ready/picking modes, and css variables scraper bypass`
+- **Commit：** `4163a46` — `fix: design rounds sync, custom dropdown selection, interactive ready/picking modes, and css variables scraper bypass`
 - **Verification：** `./scripts/verify.sh` → all checks passed (715 python tests, vitest checks, doc drift checks passed)
 - **证据：** —
 - **交付文件：**
