@@ -51,6 +51,7 @@ const zhTranslations: Record<string, string> = {
   "New Design": "新建设计",
   "Crafting the design…": "正在构思设计…",
   "Generating…": "生成中…",
+  "Pasting…": "粘贴中…",
   "Generating interface…": "正在生成界面…",
   "Designing…": "设计中…",
   "Crafting…": "构思中…",
@@ -969,6 +970,8 @@ const zhTranslations: Record<string, string> = {
   "Show install guide": "显示安装指南",
   "Copy command": "复制命令",
   "Copied": "已复制",
+  "Screen deleted": "画板已删除",
+  "Delete screen": "删除画板",
 
   // Agent detail (remaining)
   "DESCRIPTION": "描述",

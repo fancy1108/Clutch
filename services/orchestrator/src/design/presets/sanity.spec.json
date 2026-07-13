@@ -1,0 +1,176 @@
+{
+  "name": "Sanity",
+  "rationale": "Design system for Sanity",
+  "brand": {
+    "name": "Sanity",
+    "voice": "Bold, minimal, technical"
+  },
+  "visual_style": "## 1. Visual Theme & Atmosphere",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#0b0b0b",
+      "#000000",
+      "#f36458",
+      "#0052ef",
+      "#0052ef",
+      "#f36458",
+      "#0052ef",
+      "#f36458",
+      "#f36458",
+      "#0052ef",
+      "#f36458",
+      "#f36458"
+    ],
+    "secondary": [
+      "#0b0b0b"
+    ],
+    "neutral": [
+      "#0b0b0b",
+      "#212121",
+      "#353535",
+      "#ffffff",
+      "#ededed",
+      "#ffffff",
+      "#b9b9b9",
+      "#797979",
+      "#212121",
+      "#0b0b0b",
+      "#0b0b0b",
+      "#212121",
+      "#353535",
+      "#ffffff",
+      "#0b0b0b",
+      "#0b0b0b",
+      "#0b0b0b",
+      "#ffffff",
+      "#0052ef",
+      "#0b0b0b",
+      "#b9b9b9",
+      "#0052ef",
+      "#ffffff",
+      "#0b0b0b",
+      "#0b0b0b",
+      "#0052ef",
+      "#212121",
+      "#b9b9b9",
+      "#212121",
+      "#0052ef",
+      "#212121",
+      "#b9b9b9",
+      "#353535",
+      "#ffffff",
+      "#b9b9b9",
+      "#212121",
+      "#0b0b0b",
+      "#b9b9b9",
+      "#212121",
+      "#072227",
+      "#b9b9b9",
+      "#797979",
+      "#0b0b0b",
+      "#b9b9b9",
+      "#212121",
+      "#0b0b0b",
+      "#b9b9b9",
+      "#ffffff",
+      "#ffffff",
+      "#0b0b0b",
+      "#0b0b0b",
+      "#ffffff",
+      "#212121",
+      "#0052ef",
+      "#0b0b0b",
+      "#0b0b0b",
+      "#353535",
+      "#0052ef",
+      "#0052ef"
+    ],
+    "accent": [
+      "#0052ef",
+      "#55beff",
+      "#19d600"
+    ],
+    "status": [
+      "#dd0000",
+      "#37cd84",
+      "#0052ef"
+    ]
+  },
+  "typography": {
+    "fontFamily": "waldenburgNormal, fallback: waldenburgNormal Fallback, ui-sans-serif, system-ui",
+    "monoFamily": "ui-monospace, monospace",
+    "samples": [
+      {
+        "label": "Display / Hero",
+        "size": "waldenburgNormal",
+        "weight": "112px (7rem)"
+      },
+      {
+        "label": "Hero Secondary",
+        "size": "waldenburgNormal",
+        "weight": "72px (4.5rem)"
+      },
+      {
+        "label": "Section Heading",
+        "size": "waldenburgNormal",
+        "weight": "48px (3rem)"
+      },
+      {
+        "label": "Heading Large",
+        "size": "waldenburgNormal",
+        "weight": "38px (2.38rem)"
+      },
+      {
+        "label": "Heading Medium",
+        "size": "waldenburgNormal",
+        "weight": "32px (2rem)"
+      },
+      {
+        "label": "Heading Small",
+        "size": "waldenburgNormal",
+        "weight": "24px (1.5rem)"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "3px",
+    "md": "99999px",
+    "lg": "99999px",
+    "xl": "32px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Accent & Interactive",
+    "Surface & Background",
+    "Neutrals & Text",
+    "Border System",
+    "Font Family",
+    "Buttons",
+    "Cards",
+    "Inputs",
+    "Navigation",
+    "Badges / Pills",
+    "Spacing System",
+    "Grid & Container",
+    "Whitespace Philosophy",
+    "Border Radius Scale",
+    "Shadow System"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

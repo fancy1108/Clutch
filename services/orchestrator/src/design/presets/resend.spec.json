@@ -1,0 +1,128 @@
+{
+  "name": "Resend",
+  "rationale": "Resend's marketing surfaces sit on a near-pure black canvas with off-white\ntext and a single signature color — the deep editorial-serif Domaine\nDisplay headline mark — that gives an otherwise utilitar",
+  "brand": {
+    "name": "Resend",
+    "voice": "Editorial, authoritative, refined"
+  },
+  "visual_style": "Resend's marketing surfaces sit on a near-pure black canvas with off-white\ntext and a single signature color — the deep editorial-serif Domaine\nDisplay headline mark — that gives an otherwise utilitarian developer-tool\nbrand its print-magazine confidence. The system pairs Domaine Display\n(oversized 76px–96px serif, ss01/ss04/ss11 features on) with ABC Favorit\nfor body and Inter for UI. Surfaces rely on subtle 6–9% opacity gradient\nglows, hairline 1px borders made from translucent white, and a st",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#fcfdff",
+      "#000000"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#fcfdff",
+      "rgba(252,253,255,0.86)",
+      "rgba(252,253,255,0.7)",
+      "#a1a4a5",
+      "#888e90",
+      "#464a4d",
+      "#000000",
+      "rgba(0,0,51,0.7)",
+      "#000000",
+      "#0a0a0c",
+      "#101012",
+      "#06060a",
+      "rgba(255,255,255,0.06)",
+      "rgba(255,255,255,0.14)",
+      "rgba(255,255,255,0.04)",
+      "#3b9eff",
+      "#f1f7fe"
+    ],
+    "accent": [
+      "#ff801f",
+      "rgba(255,89,0,0.22)",
+      "#ffc53d",
+      "#3b9eff",
+      "rgba(0,117,255,0.34)",
+      "#11ff99",
+      "rgba(34,255,153,0.18)",
+      "#ff2047",
+      "rgba(255,32,71,0.34)"
+    ],
+    "status": [
+      "#000000"
+    ]
+  },
+  "typography": {
+    "fontFamily": "Domaine Display",
+    "monoFamily": "Geist Mono",
+    "samples": [
+      {
+        "label": "Display Lg",
+        "size": "56px",
+        "weight": "400"
+      },
+      {
+        "label": "Display Xl",
+        "size": "76.8px",
+        "weight": "400"
+      },
+      {
+        "label": "Display Xxl",
+        "size": "96px",
+        "weight": "400"
+      },
+      {
+        "label": "Body Lg",
+        "size": "18px",
+        "weight": "400"
+      },
+      {
+        "label": "Body Md",
+        "size": "16px",
+        "weight": "400"
+      },
+      {
+        "label": "Body Sm",
+        "size": "14px",
+        "weight": "400"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "4px",
+    "md": "6px",
+    "lg": "8px",
+    "xl": "12px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Button Primary",
+    "Button Primary Pressed",
+    "Button Ghost",
+    "Button Outline",
+    "Text Input",
+    "Hero Stripe",
+    "Feature Card",
+    "Feature Card Bordered",
+    "Pricing Tier",
+    "Pricing Tier Featured",
+    "Code Window",
+    "Code Tab",
+    "Email Mockup",
+    "Badge Pill",
+    "Status Dot"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Save } from 'lucide-react';
 import type { SpecData } from '../designWorkspaceUtils';
 
 function ShimmerOverlay() {
@@ -42,8 +42,79 @@ function SpecSkeleton() {
   );
 }
 
+function SaveStylePopover({ defaultName, onSave, onClose }: { defaultName: string; onSave: (name: string) => void; onClose: () => void }) {
+  const [name, setName] = useState(defaultName);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  }, []);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    onSave(trimmed);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') onClose();
+  };
+
+  return (
+    <div
+      className="nodrag nopan absolute right-0 top-full z-50 mt-1 w-52 rounded-xl border border-neutral-200 bg-white shadow-md"
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={handleKeyDown}
+    >
+      <form onSubmit={handleSubmit} className="p-3 space-y-2">
+        <input
+          ref={inputRef}
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-2.5 py-1.5 text-[12px] text-neutral-900 placeholder-neutral-400 focus:border-neutral-300 focus:outline-none focus:ring-1 focus:ring-neutral-300"
+          placeholder="Style name"
+        />
+        <div className="flex justify-end gap-1.5">
+          <button
+            type="button"
+            className="rounded-lg px-2.5 py-1 text-[11px] font-medium text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700 transition-colors"
+            onClick={onClose}
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="rounded-lg bg-neutral-900 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-black transition-colors disabled:opacity-40"
+            disabled={!name.trim()}
+          >
+            Save
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 export function SpecCardNode({ data }: NodeProps) {
   const d = data as SpecData;
+  const [showSavePopover, setShowSavePopover] = useState(false);
+  const saveBtnRef = useRef<HTMLButtonElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showSavePopover) return;
+    const handler = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (popoverRef.current?.contains(target)) return;
+      if (saveBtnRef.current?.contains(target)) return;
+      setShowSavePopover(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showSavePopover]);
   if (d.phase === 'placeholder') {
     return (
       <div className="relative w-[300px] overflow-hidden rounded-2xl border border-indigo-100/80 bg-white p-3.5 shadow-md animate-design-card-in">
@@ -72,19 +143,52 @@ export function SpecCardNode({ data }: NodeProps) {
     <div className="w-[300px] rounded-2xl border border-outline-variant/30 bg-white p-3.5 shadow-md animate-design-card-in">
       <Handle type="target" position={Position.Left} className="!bg-neutral-300" />
       <Handle type="source" position={Position.Right} className="!bg-neutral-300" />
-      <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-neutral-400">
-        Design specification
-      </p>
+      <div className="flex items-center justify-between mb-1">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">
+          Design specification
+        </p>
+        {d.onSaveStyle && d.designMdText ? (
+          <div className="relative">
+            <button
+              ref={saveBtnRef}
+              type="button"
+              className="nodrag nopan shrink-0 rounded-md p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600 transition-colors"
+              onClick={(e) => { e.stopPropagation(); setShowSavePopover((v) => !v); }}
+              title="Save as custom style"
+              aria-label="Save as custom style"
+            >
+              <Save size={14} />
+            </button>
+            {showSavePopover ? (
+              <div ref={popoverRef}>
+                <SaveStylePopover
+                  defaultName={spec.name || 'Custom Style'}
+                  onSave={(name) => { d.onSaveStyle?.(name, d.designMdText!); setShowSavePopover(false); }}
+                  onClose={() => setShowSavePopover(false)}
+                />
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
       <h3 className="mb-2 text-[14px] font-bold text-neutral-900">{spec.name || 'Spec'}</h3>
       {spec.rationale ? (
         <p className="mb-2.5 text-[11px] leading-relaxed text-neutral-500">{spec.rationale}</p>
       ) : null}
       <div className="space-y-2.5">
-        {Object.entries(colors).map(([group, values]) => (
+        {Object.entries(colors).map(([group, values]) => {
+          const hexList = Array.isArray(values)
+            ? values
+            : typeof values === 'string'
+              ? [values]
+              : Array.isArray(values?.primary)
+                ? values.primary
+                : [];
+          return (
           <div key={group}>
             <p className="mb-1 text-[10px] font-semibold capitalize text-neutral-400">{group}</p>
             <div className="flex flex-wrap gap-1.5">
-              {(values || []).map((hex) => (
+              {hexList.map((hex) => (
                 <div
                   key={`${group}-${hex}`}
                   className="h-6 w-6 rounded-md border border-black/5 shadow-sm"
@@ -94,7 +198,8 @@ export function SpecCardNode({ data }: NodeProps) {
               ))}
             </div>
           </div>
-        ))}
+          );
+        })}
         {spec.typography?.samples?.length ? (
           <div>
             <p className="mb-1 text-[10px] font-semibold text-neutral-400">Typography</p>

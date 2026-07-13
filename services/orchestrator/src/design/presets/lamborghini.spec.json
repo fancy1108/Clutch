@@ -1,0 +1,148 @@
+{
+  "name": "Lamborghini",
+  "rationale": "Design system for Lamborghini",
+  "brand": {
+    "name": "Lamborghini",
+    "voice": "Bold, minimal, technical"
+  },
+  "visual_style": "## 1. Visual Theme & Atmosphere",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#ffc000",
+      "#ffffff"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#000000",
+      "#202020",
+      "#181818",
+      "#f8f8f8",
+      "#e6e6e6",
+      "#ffffff",
+      "#f5f5f5",
+      "#494949",
+      "#7d7d7d",
+      "#969696",
+      "#666666",
+      "#555555",
+      "#313131",
+      "#000000",
+      "#ffc000",
+      "#000000",
+      "#ffc000",
+      "#000000",
+      "#ffffff",
+      "#ffffff",
+      "#000000",
+      "#000000",
+      "#202020",
+      "#202020",
+      "#202020",
+      "#dddddd",
+      "#7d7d7d",
+      "#000000",
+      "#ffc000",
+      "#ffc000",
+      "#000000",
+      "#202020",
+      "#ffffff",
+      "#3860be",
+      "#29abe2",
+      "#ffffff",
+      "#ffc000",
+      "#1eaedb",
+      "#202020"
+    ],
+    "accent": [
+      "#917300",
+      "#ffce3e",
+      "#29abe2",
+      "#3860be",
+      "#29abe2",
+      "#3860be",
+      "#1eaedb"
+    ],
+    "status": [
+      "#000000"
+    ]
+  },
+  "typography": {
+    "fontFamily": "LamboType, Roboto, Helvetica Neue, Arial — custom Neo-Grotesk typeface by Character Type for Lamborghinis 2024 brand refresh. Available in widths from Normal to Ultracompressed and weights from Light (300) to Black. Features 12° angled terminals inspired by aerodynamic car geometry, hexagonal construction logic, and support for 200+ languages including Latin, Cyrillic, and Greek",
+    "monoFamily": "ui-monospace, monospace",
+    "samples": [
+      {
+        "label": "Hero Display",
+        "size": "120px (7.50rem)",
+        "weight": "400"
+      },
+      {
+        "label": "Display 2",
+        "size": "80px (5.00rem)",
+        "weight": "400"
+      },
+      {
+        "label": "Section Title",
+        "size": "54px (3.38rem)",
+        "weight": "400"
+      },
+      {
+        "label": "Sub-section",
+        "size": "40px (2.50rem)",
+        "weight": "400"
+      },
+      {
+        "label": "Feature Heading",
+        "size": "27px (1.69rem)",
+        "weight": "400"
+      },
+      {
+        "label": "Card Title",
+        "size": "24px (1.50rem)",
+        "weight": "400"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "0px",
+    "md": "0px",
+    "lg": "20px",
+    "xl": "32px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Primary",
+    "Secondary & Accent",
+    "Surface & Background",
+    "Neutrals & Text",
+    "Semantic & Accent",
+    "Gradient System",
+    "Font Family",
+    "Buttons",
+    "Cards & Containers",
+    "Inputs & Forms",
+    "Navigation",
+    "Image Treatment",
+    "Distinctive Components",
+    "Spacing System",
+    "Grid & Container"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

@@ -1,0 +1,130 @@
+{
+  "name": "HashiCorp",
+  "rationale": "An enterprise-infrastructure marketing canvas built around a near-black ground (#000000) and a system of per-product accent colors — Terraform purple, Vault yellow, Consul pink, Waypoint cyan, Vagrant",
+  "brand": {
+    "name": "HashiCorp",
+    "voice": "Technical, precise, developer-oriented"
+  },
+  "visual_style": "An enterprise-infrastructure marketing canvas built around a near-black ground (#000000) and a system of per-product accent colors — Terraform purple, Vault yellow, Consul pink, Waypoint cyan, Vagrant blue — that act as identity tokens rather than decorative palette. Display type is hashicorpSans set in 600/700 with tight 1.17–1.21 line-heights; body type runs the same family at 500 weight with relaxed 1.50–1.71 line-heights. Cards live as charcoal surfaces with 1px translucent gray borders; pro",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#000000",
+      "#ffffff"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#ffffff",
+      "#b2b6bd",
+      "#656a76",
+      "#000000",
+      "#15181e",
+      "#1f232b",
+      "#3b3d45",
+      "#3b3d45",
+      "#252830",
+      "#ffffff",
+      "#000000",
+      "#7b42bc",
+      "#911ced",
+      "#ffcf25",
+      "#e62b1e",
+      "#14c6cb",
+      "#12b6bb",
+      "#1868f2",
+      "#00ca8e",
+      "#f24c53",
+      "#fbeabf",
+      "#bb5a00",
+      "#101a59",
+      "#00ca8e",
+      "#ffcf25",
+      "#e62b1e",
+      "#a737ff"
+    ],
+    "accent": [
+      "#2b89ff"
+    ],
+    "status": [
+      "#000000"
+    ]
+  },
+  "typography": {
+    "fontFamily": "hashicorpSans",
+    "monoFamily": "ui-monospace, monospace",
+    "samples": [
+      {
+        "label": "Display Lg",
+        "size": "56px",
+        "weight": "700"
+      },
+      {
+        "label": "Display Md",
+        "size": "40px",
+        "weight": "600"
+      },
+      {
+        "label": "Display Xl",
+        "size": "80px",
+        "weight": "700"
+      },
+      {
+        "label": "Headline",
+        "size": "28px",
+        "weight": "600"
+      },
+      {
+        "label": "Body",
+        "size": "16px",
+        "weight": "500"
+      },
+      {
+        "label": "Body Lg",
+        "size": "18px",
+        "weight": "500"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "4px",
+    "md": "6px",
+    "lg": "8px",
+    "xl": "12px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Button Primary",
+    "Button Primary Pressed",
+    "Button Secondary",
+    "Button Tertiary",
+    "Button Product Terraform",
+    "Button Product Vault",
+    "Button Product Waypoint",
+    "Product Card",
+    "Product Card Terraform",
+    "Product Card Vault",
+    "Product Card Waypoint",
+    "Feature Card",
+    "Pricing Card",
+    "Pricing Card Featured",
+    "Resource Card"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

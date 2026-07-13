@@ -1,0 +1,120 @@
+{
+  "name": "Figma",
+  "rationale": "A confident black-and-white editorial frame interrupted by oversized, hand-cut pastel color blocks. The marketing canvas is rigorously monochrome — figmaSans variable type, pure white surfaces, pure b",
+  "brand": {
+    "name": "Figma",
+    "voice": "Bold, minimal, technical"
+  },
+  "visual_style": "A confident black-and-white editorial frame interrupted by oversized, hand-cut pastel color blocks. The marketing canvas is rigorously monochrome — figmaSans variable type, pure white surfaces, pure black ink, pill-shaped CTAs — while each story section drops the page into a saturated lime, lavender, cream, mint, or pink panel that reads like a sticky note placed on a clean desk. The result is a design system that feels both technical and joyful — a tool for serious work, made by people who like",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#000000",
+      "#ffffff"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#000000",
+      "#ffffff",
+      "#000000",
+      "#ffffff",
+      "#ffffff",
+      "#e6e6e6",
+      "#f1f1f1",
+      "#f7f7f5",
+      "#dceeb1",
+      "#c5b0f4",
+      "#f4ecd6",
+      "#efd4d4",
+      "#c8e6cd",
+      "#f3c9b6",
+      "#1f1d3d",
+      "#1ea64a",
+      "#000000"
+    ],
+    "accent": [
+      "#ff3d8b"
+    ],
+    "status": [
+      "#000000"
+    ]
+  },
+  "typography": {
+    "fontFamily": "figmaSans",
+    "monoFamily": "figmaMono",
+    "samples": [
+      {
+        "label": "Display Lg",
+        "size": "64px",
+        "weight": "340"
+      },
+      {
+        "label": "Display Xl",
+        "size": "86px",
+        "weight": "340"
+      },
+      {
+        "label": "Headline",
+        "size": "26px",
+        "weight": "540"
+      },
+      {
+        "label": "Body",
+        "size": "18px",
+        "weight": "320"
+      },
+      {
+        "label": "Body Lg",
+        "size": "20px",
+        "weight": "330"
+      },
+      {
+        "label": "Body Sm",
+        "size": "16px",
+        "weight": "330"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "2px",
+    "md": "6px",
+    "lg": "8px",
+    "xl": "24px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Button Primary",
+    "Button Primary Pressed",
+    "Button Secondary",
+    "Button Tertiary Text",
+    "Button Icon Circular",
+    "Button Icon Circular Inverse",
+    "Button Magenta Promo",
+    "Pricing Tab Default",
+    "Pricing Tab Selected",
+    "Text Input",
+    "Text Input Focused",
+    "Pricing Card",
+    "Pricing Card Feature Row",
+    "Color Block Section",
+    "Color Block Section Lilac"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

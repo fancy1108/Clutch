@@ -1,0 +1,123 @@
+{
+  "name": "ClickHouse",
+  "rationale": "A high-performance database interface anchored on near-pure black canvas with electric yellow as the brand voltage. White typography in confident sans, yellow CTAs, and yellow-text stat numbers carry ",
+  "brand": {
+    "name": "ClickHouse",
+    "voice": "Bold, minimal, technical"
+  },
+  "visual_style": "A high-performance database interface anchored on near-pure black canvas with electric yellow as the brand voltage. White typography in confident sans, yellow CTAs, and yellow-text stat numbers carry the brand voice across every page. Code blocks and product UI fragments embed directly in dark cards. The yellow + black pairing (and yellow used scarcely as accent) is the system's signature — brand identity without atmospheric decoration.",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#faff69",
+      "#e6eb52",
+      "#3a3a1f",
+      "#0a0a0a"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#ffffff",
+      "#cccccc",
+      "#e6e6e6",
+      "#888888",
+      "#5a5a5a",
+      "#2a2a2a",
+      "#3a3a3a",
+      "#0a0a0a",
+      "#121212",
+      "#1a1a1a",
+      "#242424",
+      "#faff69",
+      "#ffffff",
+      "#0a0a0a"
+    ],
+    "accent": [
+      "#22c55e",
+      "#ef4444",
+      "#3b82f6"
+    ],
+    "status": [
+      "#22c55e",
+      "#f59e0b",
+      "#ef4444"
+    ]
+  },
+  "typography": {
+    "fontFamily": "Inter, sans-serif",
+    "monoFamily": "JetBrains Mono, ui-monospace, monospace",
+    "samples": [
+      {
+        "label": "Display Lg",
+        "size": "56px",
+        "weight": "700"
+      },
+      {
+        "label": "Display Md",
+        "size": "40px",
+        "weight": "700"
+      },
+      {
+        "label": "Display Sm",
+        "size": "32px",
+        "weight": "700"
+      },
+      {
+        "label": "Display Xl",
+        "size": "72px",
+        "weight": "700"
+      },
+      {
+        "label": "Title Lg",
+        "size": "24px",
+        "weight": "700"
+      },
+      {
+        "label": "Title Md",
+        "size": "18px",
+        "weight": "600"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "4px",
+    "md": "6px",
+    "lg": "8px",
+    "xl": "12px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Button Primary",
+    "Button Primary Active",
+    "Button Primary Disabled",
+    "Button Secondary",
+    "Button Text Link",
+    "Button Icon Circular",
+    "Text Link",
+    "Top Nav",
+    "Hero Band",
+    "Hero Stat Card",
+    "Feature Card Yellow",
+    "Feature Card Dark",
+    "Code Window Card",
+    "Product Mockup Card",
+    "Pricing Tier Card"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

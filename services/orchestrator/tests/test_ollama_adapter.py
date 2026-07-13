@@ -241,3 +241,46 @@ def test_chat_ollama_vl_inlines_transcript_for_multi_turn(monkeypatch) -> None:
     assert "[Current question]" in last
     assert "我上句说的什么" in last
     assert "你是谁" in output
+
+
+def _model_spec(provider_id, api_model):
+    return ModelSpec(
+        id=api_model,
+        name=api_model,
+        provider_id=provider_id,
+        api_model=api_model,
+        base_url="https://test.invalid/v1",
+    )
+
+
+def test_model_supports_vision_non_ollama() -> None:
+    from src.adapters.ollama_adapter import model_supports_vision
+
+    assert model_supports_vision(_model_spec("openai", "gpt-4o"))
+    assert model_supports_vision(_model_spec("openai", "gpt-4o-mini"))
+    assert model_supports_vision(_model_spec("openai", "gpt-4-turbo"))
+    assert model_supports_vision(_model_spec("openai", "gpt-4-vision-preview"))
+    assert model_supports_vision(_model_spec("openai", "o1"))
+    assert model_supports_vision(_model_spec("openai", "o3-mini"))
+    assert model_supports_vision(_model_spec("openai", "omni-moderation-latest"))
+
+    assert not model_supports_vision(_model_spec("openai", "gpt-3.5-turbo"))
+    assert not model_supports_vision(_model_spec("openai", "gpt-3.5-turbo-0125"))
+    assert not model_supports_vision(_model_spec("openai", "gpt-4"))
+    assert not model_supports_vision(_model_spec("openai", "gpt-4-32k"))
+    assert not model_supports_vision(_model_spec("openai", "deepseek-chat"))
+    assert not model_supports_vision(_model_spec("openai", "qwen-max"))
+    assert not model_supports_vision(_model_spec("openai", "glm-4-plus"))
+
+    assert model_supports_vision(_model_spec("anthropic", "claude-3-7-sonnet-latest"))
+    assert model_supports_vision(_model_spec("anthropic", "claude-3-5-sonnet-20240620"))
+    assert model_supports_vision(_model_spec("anthropic", "claude-3-haiku-20240307"))
+    assert not model_supports_vision(_model_spec("anthropic", "claude-2.1"))
+
+    assert model_supports_vision(_model_spec("google", "gemini-2.5-flash"))
+    assert model_supports_vision(_model_spec("google", "gemini-1.5-pro"))
+    assert model_supports_vision(_model_spec("google", "gemini-pro-vision"))
+
+    assert not model_supports_vision(_model_spec("deepseek", "deepseek-chat"))
+    assert not model_supports_vision(_model_spec("opencode", "gpt-4o"))
+    assert not model_supports_vision(_model_spec("custom", "gpt-4o"))

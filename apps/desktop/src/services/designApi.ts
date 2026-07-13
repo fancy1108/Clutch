@@ -34,11 +34,17 @@ export type DesignProcessEntry = {
 
 /** One user instruction round and its assistant follow-ups. */
 export type DesignRound = {
-  /** 0-based round index (matches versioned screen paths `main_r{N}.html`). */
+  /** Global sequential round index (0-based, unique across all rounds). */
   index: number;
   user_prompt: string;
   entries: DesignProcessEntry[];
   reasoning_content?: string;
+  /** Screen that was targeted/created in this round. */
+  screenId?: string;
+  /** Per-screen round index for versioned file lookup (e.g. `main_r{N}.html`). */
+  screenRoundIndex?: number;
+  /** Map of screenId → per-screen round index representing the state after this round. */
+  screenVersions?: Record<string, number>;
 };
 
 export type DesignRoundHistoryEntry = {
@@ -49,6 +55,7 @@ export type DesignRoundHistoryEntry = {
   reasoning_content?: string | null;
   process_log?: DesignProcessEntry[];
   at?: string;
+  action?: string;
 };
 
 export type DesignScreen = {
@@ -123,15 +130,36 @@ export function parseDesignRounds(
   roundHistory?: DesignRoundHistoryEntry[],
 ): DesignRound[] {
   if (roundHistory && roundHistory.length > 0) {
-    return roundHistory.map((entry) => ({
-      index: entry.round_index,
-      user_prompt: stripDesignIterateMeta(entry.prompt || ''),
-      entries: entry.process_log || [],
-      reasoning_content:
-        entry.reasoning_content ||
-        entry.process_log?.find((e) => e.reasoning_content)?.reasoning_content ||
-        undefined,
-    }));
+    const sorted = [...roundHistory].sort((a, b) => {
+      const ta = a.at ? new Date(a.at).getTime() : 0;
+      const tb = b.at ? new Date(b.at).getTime() : 0;
+      return ta - tb;
+    });
+    const screenVersions: Record<string, number> = {};
+    return sorted.map((entry, i) => {
+      const sid = entry.screen_id || 'main';
+      if (entry.action === 'delete') {
+        delete screenVersions[sid];
+      } else {
+        screenVersions[sid] = entry.round_index;
+      }
+      const localEntries =
+        entry.process_log && entry.process_log.length > 0
+          ? entry.process_log
+          : (processLog || []).filter((e) => e.round_index === entry.round_index);
+      return {
+        index: i,
+        user_prompt: stripDesignIterateMeta(entry.prompt || ''),
+        entries: localEntries,
+        reasoning_content:
+          entry.reasoning_content ||
+          localEntries.find((e) => e.reasoning_content)?.reasoning_content ||
+          undefined,
+        screenId: sid,
+        screenRoundIndex: entry.round_index,
+        screenVersions: { ...screenVersions },
+      };
+    });
   }
   if (manifestRounds && manifestRounds.length > 0) {
     return manifestRounds.map((round, i) => ({
@@ -176,6 +204,27 @@ export function parseDesignRounds(
   }
   if (current) rounds.push(current);
   return rounds;
+}
+
+/** Look up the per-screen round index for a given screen at a specific global round. */
+export function screenRoundIndexAt(
+  rounds: DesignRound[],
+  globalRoundIndex: number,
+  screenId: string,
+): number {
+  const round = rounds.find((r) => r.index === globalRoundIndex);
+  if (round?.screenVersions && screenId in round.screenVersions) {
+    return round.screenVersions[screenId];
+  }
+  // Fallback: find the latest round that modified this screen with index <= globalRoundIndex
+  let best = 0;
+  for (const r of rounds) {
+    if (r.index > globalRoundIndex) break;
+    if (r.screenId === screenId && typeof r.screenRoundIndex === 'number') {
+      best = r.screenRoundIndex;
+    }
+  }
+  return best;
 }
 
 /** Versioned screen file id, e.g. `main` + round 2 → `main_r2`. */
@@ -269,7 +318,7 @@ export async function iterateDesignSession(
     target_id?: string | null;
     element_path?: string | null;
     element_label?: string | null;
-    mode?: 'modify' | 'add' | 'auto' | null;
+    mode?: 'modify' | 'add' | 'duplicate' | 'auto' | null;
   },
 ): Promise<DesignSession> {
   const response = await sidecarFetch(
@@ -286,6 +335,17 @@ export async function iterateDesignSession(
         mode: options?.mode ?? 'auto',
       }),
     },
+  );
+  return parseJson<DesignSession>(response);
+}
+
+export async function deleteDesignScreen(
+  runId: string,
+  screenId: string,
+): Promise<DesignSession> {
+  const response = await sidecarFetch(
+    `${BASE}/api/design/sessions/${encodeURIComponent(runId)}/screens/${encodeURIComponent(screenId)}`,
+    { method: 'DELETE' },
   );
   return parseJson<DesignSession>(response);
 }

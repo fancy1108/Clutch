@@ -1,0 +1,127 @@
+{
+  "name": "Expo",
+  "rationale": "A React Native developer-platform whose marketing site reads like a quietly-confident infrastructure brand. The base canvas is pure white with a soft sky-blue gradient atmospheric wash behind the hero",
+  "brand": {
+    "name": "Expo",
+    "voice": "Editorial, authoritative, refined"
+  },
+  "visual_style": "A React Native developer-platform whose marketing site reads like a quietly-confident infrastructure brand. The base canvas is pure white with a soft sky-blue gradient atmospheric wash behind the hero; near-black ink (`#171717`) carries body and display alike. The single brand voltage is **pure black** (`#000000`) for primary CTAs — minimal and editorial-feeling, paired with a small blue text-link accent (`#0d74ce`) reserved for inline body links. Type pairs Inter at modest weights (display 600,",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#000000",
+      "#1a1a1a",
+      "#ffffff"
+    ],
+    "secondary": [
+      "#476cff"
+    ],
+    "neutral": [
+      "#0d74ce",
+      "#171717",
+      "#60646c",
+      "#171717",
+      "#999999",
+      "#cccccc",
+      "#f0f0f3",
+      "#f5f5f7",
+      "#dcdee0",
+      "#ffffff",
+      "#fafafa",
+      "#ffffff",
+      "#f0f0f3",
+      "#171717",
+      "#1a1a1a",
+      "#ffffff",
+      "#b0b4ba",
+      "#cfe7ff",
+      "#a8c8e8",
+      "#eb8e90",
+      "#16a34a"
+    ],
+    "accent": [
+      "#ab6400",
+      "#8145b5",
+      "#47c2ff"
+    ],
+    "status": [
+      "#000000"
+    ]
+  },
+  "typography": {
+    "fontFamily": "'Inter', -apple-system, system-ui, sans-serif",
+    "monoFamily": "'JetBrains Mono', 'Fira Code', monospace",
+    "samples": [
+      {
+        "label": "Display Lg",
+        "size": "36px",
+        "weight": "600"
+      },
+      {
+        "label": "Display Md",
+        "size": "28px",
+        "weight": "600"
+      },
+      {
+        "label": "Display Mega",
+        "size": "64px",
+        "weight": "600"
+      },
+      {
+        "label": "Display Sm",
+        "size": "22px",
+        "weight": "600"
+      },
+      {
+        "label": "Display Xl",
+        "size": "48px",
+        "weight": "600"
+      },
+      {
+        "label": "Title Md",
+        "size": "18px",
+        "weight": "600"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "4px",
+    "md": "6px",
+    "lg": "8px",
+    "xl": "12px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Top Nav",
+    "Button Primary",
+    "Button Primary Active",
+    "Button Secondary",
+    "Button Tertiary Text",
+    "Hero Band",
+    "Device Mockup Card",
+    "Feature Card",
+    "Feature Card Dark",
+    "Workflow Step Card",
+    "Workflow Step Icon",
+    "Code Block",
+    "Ide Mockup Card",
+    "Pricing Tier Card",
+    "Pricing Tier Featured"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

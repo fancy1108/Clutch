@@ -1,0 +1,124 @@
+{
+  "name": "Airbnb",
+  "rationale": "A warm, generous consumer marketplace anchored on a clean white canvas and Airbnb Rausch (#ff385c), the single brand voltage that carries every primary CTA, search-button orb, and rating dot. Type run",
+  "brand": {
+    "name": "Airbnb",
+    "voice": "Warm, approachable, human"
+  },
+  "visual_style": "A warm, generous consumer marketplace anchored on a clean white canvas and Airbnb Rausch (#ff385c), the single brand voltage that carries every primary CTA, search-button orb, and rating dot. Type runs Airbnb Cereal VF at modest weights — display sits at 22–28px in weight 500/600 rather than the heavy 700+ that fintech and enterprise systems use; the brand trusts photography and generous whitespace over typographic muscle. Three product entries (Homes, Experiences, Services) sit in the top nav w",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#ff385c",
+      "#e00b41",
+      "#ffd1da",
+      "#c13515",
+      "#b32505",
+      "#ffffff"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#460479",
+      "#92174d",
+      "#222222",
+      "#3f3f3f",
+      "#6a6a6a",
+      "#929292",
+      "#dddddd",
+      "#ebebeb",
+      "#c1c1c1",
+      "#ffffff",
+      "#f7f7f7",
+      "#ffffff",
+      "#f2f2f2",
+      "#ffffff",
+      "#428bff",
+      "#222222",
+      "#000000"
+    ],
+    "accent": [
+      "#000000"
+    ],
+    "status": [
+      "#000000"
+    ]
+  },
+  "typography": {
+    "fontFamily": "'Airbnb Cereal VF', Circular, -apple-system, system-ui, Roboto, 'Helvetica Neue', sans-serif",
+    "monoFamily": "ui-monospace, monospace",
+    "samples": [
+      {
+        "label": "Display Lg",
+        "size": "22px",
+        "weight": "500"
+      },
+      {
+        "label": "Display Md",
+        "size": "21px",
+        "weight": "700"
+      },
+      {
+        "label": "Display Sm",
+        "size": "20px",
+        "weight": "600"
+      },
+      {
+        "label": "Display Xl",
+        "size": "28px",
+        "weight": "700"
+      },
+      {
+        "label": "Title Md",
+        "size": "16px",
+        "weight": "600"
+      },
+      {
+        "label": "Title Sm",
+        "size": "16px",
+        "weight": "500"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "4px",
+    "md": "8px",
+    "lg": "14px",
+    "xl": "20px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Button Primary",
+    "Button Primary Active",
+    "Button Primary Disabled",
+    "Button Secondary",
+    "Button Tertiary Text",
+    "Button Pill Rausch",
+    "Search Orb",
+    "Icon Button Circle",
+    "Icon Button Outline",
+    "Top Nav",
+    "Product Tab Active",
+    "Product Tab Inactive",
+    "Search Bar Pill",
+    "Search Field Segment",
+    "Category Strip"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

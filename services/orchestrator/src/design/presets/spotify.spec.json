@@ -1,0 +1,135 @@
+{
+  "name": "Spotify",
+  "rationale": "Design system for Spotify",
+  "brand": {
+    "name": "Spotify",
+    "voice": "Bold, minimal, technical"
+  },
+  "visual_style": "## 1. Visual Theme & Atmosphere",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#1ed760",
+      "#121212",
+      "#181818",
+      "#1f1f1f",
+      "#f3727f",
+      "#ffa42b",
+      "#539df5"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#ffffff",
+      "#b3b3b3",
+      "#cbcbcb",
+      "#fdfdfd",
+      "#252525",
+      "#272727",
+      "#4d4d4d",
+      "#7c7c7c",
+      "#b3b3b3",
+      "#eeeeee",
+      "#1db954",
+      "#121212",
+      "#1ed760",
+      "#121212",
+      "#1ed760",
+      "#000000",
+      "#b3b3b3",
+      "#121212",
+      "#1ed760",
+      "#121212",
+      "#181818",
+      "#ffffff",
+      "#b3b3b3",
+      "#1ed760",
+      "#1ed760"
+    ],
+    "accent": [
+      "#000000"
+    ],
+    "status": [
+      "#f3727f",
+      "#ffa42b",
+      "#539df5"
+    ]
+  },
+  "typography": {
+    "fontFamily": "SpotifyMixUITitle, fallbacks: CircularSp-Arab, CircularSp-Hebr, CircularSp-Cyrl, CircularSp-Grek, CircularSp-Deva, Helvetica Neue, helvetica, arial, Hiragino Sans, Hiragino Kaku Gothic ProN, Meiryo, MS Gothic",
+    "monoFamily": "ui-monospace, monospace",
+    "samples": [
+      {
+        "label": "Section Title",
+        "size": "SpotifyMixUITitle",
+        "weight": "24px (1.50rem)"
+      },
+      {
+        "label": "Feature Heading",
+        "size": "SpotifyMixUI",
+        "weight": "18px (1.13rem)"
+      },
+      {
+        "label": "Body Bold",
+        "size": "SpotifyMixUI",
+        "weight": "16px (1.00rem)"
+      },
+      {
+        "label": "Body",
+        "size": "SpotifyMixUI",
+        "weight": "16px (1.00rem)"
+      },
+      {
+        "label": "Button Uppercase",
+        "size": "SpotifyMixUI",
+        "weight": "14px (0.88rem)"
+      },
+      {
+        "label": "Button",
+        "size": "SpotifyMixUI",
+        "weight": "14px (0.88rem)"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "6px",
+    "md": "500px",
+    "lg": "9999px",
+    "xl": "32px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Font Families",
+    "Buttons",
+    "Cards & Containers",
+    "Inputs",
+    "Navigation",
+    "Spacing System",
+    "Grid & Container",
+    "Whitespace Philosophy",
+    "Border Radius Scale",
+    "Do",
+    "Don't",
+    "Breakpoints",
+    "Collapsing Strategy",
+    "Quick Color Reference",
+    "Example Component Prompts"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

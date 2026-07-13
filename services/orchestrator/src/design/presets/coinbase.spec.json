@@ -1,0 +1,122 @@
+{
+  "name": "Coinbase",
+  "rationale": "An institutional-grade crypto exchange whose marketing surfaces read like a quietly-confident financial-services brand. The base canvas is pure white; Coinbase Blue (`#0052ff`) is the single brand vol",
+  "brand": {
+    "name": "Coinbase",
+    "voice": "Bold, minimal, technical"
+  },
+  "visual_style": "An institutional-grade crypto exchange whose marketing surfaces read like a quietly-confident financial-services brand. The base canvas is pure white; Coinbase Blue (`#0052ff`) is the single brand voltage, used scarcely on primary CTAs, signature glyphs, and inline accent moments. Type runs Coinbase's licensed CoinbaseDisplay (display) and CoinbaseSans (body) at modest weights — display sits at weight 400 not 700, signaling editorial calm rather than fintech-bombastic. Page rhythm rotates betwee",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#0052ff",
+      "#003ecc",
+      "#a8b8cc",
+      "#ffffff"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#0a0b0d",
+      "#5b616e",
+      "#0a0b0d",
+      "#7c828a",
+      "#a8acb3",
+      "#dee1e6",
+      "#eef0f3",
+      "#ffffff",
+      "#f7f7f7",
+      "#ffffff",
+      "#eef0f3",
+      "#0a0b0d",
+      "#16181c",
+      "#ffffff",
+      "#a8acb3",
+      "#05b169",
+      "#cf202f"
+    ],
+    "accent": [
+      "#f4b000"
+    ],
+    "status": [
+      "#000000"
+    ]
+  },
+  "typography": {
+    "fontFamily": "'Coinbase Display', -apple-system, system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+    "monoFamily": "'Coinbase Mono', 'Coinbase Sans', monospace",
+    "samples": [
+      {
+        "label": "Display Lg",
+        "size": "52px",
+        "weight": "400"
+      },
+      {
+        "label": "Display Md",
+        "size": "44px",
+        "weight": "400"
+      },
+      {
+        "label": "Display Mega",
+        "size": "80px",
+        "weight": "400"
+      },
+      {
+        "label": "Display Sm",
+        "size": "36px",
+        "weight": "400"
+      },
+      {
+        "label": "Display Xl",
+        "size": "64px",
+        "weight": "400"
+      },
+      {
+        "label": "Title Lg",
+        "size": "32px",
+        "weight": "400"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "4px",
+    "md": "8px",
+    "lg": "12px",
+    "xl": "16px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Top Nav Light",
+    "Top Nav On Dark",
+    "Button Primary",
+    "Button Primary Active",
+    "Button Primary Disabled",
+    "Button Secondary Light",
+    "Button Secondary Dark",
+    "Button Outline On Dark",
+    "Button Tertiary Text",
+    "Button Pill Cta",
+    "Hero Band Dark",
+    "Hero Band Light",
+    "Product Ui Card Dark",
+    "Product Ui Card Light",
+    "Feature Card"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

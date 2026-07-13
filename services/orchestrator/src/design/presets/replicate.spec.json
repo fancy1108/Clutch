@@ -1,0 +1,127 @@
+{
+  "name": "Replicate",
+  "rationale": "Replicate's marketing surfaces pair the warm-cream developer-tools aesthetic\nof an indie ML playground with a confident hot-orange brand accent and a\nsignature display typeface (rb-freigeist-neue) siz",
+  "brand": {
+    "name": "Replicate",
+    "voice": "Bold, minimal, technical"
+  },
+  "visual_style": "Replicate's marketing surfaces pair the warm-cream developer-tools aesthetic\nof an indie ML playground with a confident hot-orange brand accent and a\nsignature display typeface (rb-freigeist-neue) sized aggressively large at\n72px+. The system reads as \"AI lab notebook crossed with print magazine\":\ncream and bone surfaces, dark ink type, monospace code wells, irregular\nhand-drawn-feeling diagrams, and a rich orange used scarcely on the most\nconsequential CTA. Photography of contributors and examp",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#ea2804",
+      "#c01f00",
+      "#ffffff"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#202020",
+      "#3a3a3a",
+      "#575757",
+      "#646464",
+      "#8d8d8d",
+      "#bbbbbb",
+      "#fcfcfc",
+      "rgba(252,252,252,0.72)",
+      "#f9f7f3",
+      "#f3f0e8",
+      "#ffffff",
+      "#202020",
+      "#000000",
+      "rgba(32,32,32,0.12)",
+      "#202020",
+      "rgba(255,255,255,0.2)",
+      "#ea2804",
+      "#ff6a3d",
+      "#f4a8a0",
+      "#2b9a66",
+      "#ea2804",
+      "rgba(59,130,246,0.5)",
+      "#24292e"
+    ],
+    "accent": [
+      "#000000"
+    ],
+    "status": [
+      "#000000"
+    ]
+  },
+  "typography": {
+    "fontFamily": "rb-freigeist-neue",
+    "monoFamily": "jetbrains-mono",
+    "samples": [
+      {
+        "label": "Display Lg",
+        "size": "48px",
+        "weight": "700"
+      },
+      {
+        "label": "Display Md",
+        "size": "30px",
+        "weight": "600"
+      },
+      {
+        "label": "Display Xl",
+        "size": "72px",
+        "weight": "700"
+      },
+      {
+        "label": "Display Xxl",
+        "size": "128px",
+        "weight": "700"
+      },
+      {
+        "label": "Body Lg",
+        "size": "18px",
+        "weight": "400"
+      },
+      {
+        "label": "Body Md",
+        "size": "16px",
+        "weight": "400"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "4px",
+    "md": "6px",
+    "lg": "10px",
+    "xl": "16px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Button Primary",
+    "Button Primary Pressed",
+    "Button Dark",
+    "Button Outline",
+    "Button Ghost",
+    "Button Icon",
+    "Text Input",
+    "Hero Band",
+    "Model Card",
+    "Collection Tile",
+    "Pricing Tier",
+    "Pricing Tier Featured",
+    "Code Block",
+    "Code Tab",
+    "Badge Status"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

@@ -1,0 +1,120 @@
+{
+  "name": "Stripe",
+  "rationale": "An inspired interpretation of Stripi's design language — a financial-infrastructure brand built on a deep navy ink, an electric indigo primary, and a recurring atmospheric gradient mesh that occupies ",
+  "brand": {
+    "name": "Stripe",
+    "voice": "Bold, minimal, technical"
+  },
+  "visual_style": "An inspired interpretation of Stripi's design language — a financial-infrastructure brand built on a deep navy ink, an electric indigo primary, and a recurring atmospheric gradient mesh that occupies the upper third of nearly every marketing page. The system pairs the proprietary Sohne family at thin (300) weights with negative letter-spacing for editorial-density display headlines, and uses tabular-figure body type where money and numerics matter. Buttons are tight-radius pills, cards live on n",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#533afd",
+      "#4434d4",
+      "#2e2b8c",
+      "#665efd",
+      "#b9b9f9",
+      "#ffffff"
+    ],
+    "secondary": [
+      "#273951"
+    ],
+    "neutral": [
+      "#1c1e54",
+      "#0d253d",
+      "#64748d",
+      "#61718a",
+      "#ffffff",
+      "#f6f9fc",
+      "#f5e9d4",
+      "#e3e8ee",
+      "#a8c3de",
+      "#ea2261",
+      "#f96bee",
+      "#9b6829",
+      "#003770"
+    ],
+    "accent": [
+      "#000000"
+    ],
+    "status": [
+      "#000000"
+    ]
+  },
+  "typography": {
+    "fontFamily": "sohne-var, 'SF Pro Display', system-ui, -apple-system, sans-serif",
+    "monoFamily": "ui-monospace, monospace",
+    "samples": [
+      {
+        "label": "Display Lg",
+        "size": "32px",
+        "weight": "300"
+      },
+      {
+        "label": "Display Md",
+        "size": "26px",
+        "weight": "300"
+      },
+      {
+        "label": "Display Xl",
+        "size": "48px",
+        "weight": "300"
+      },
+      {
+        "label": "Display Xxl",
+        "size": "56px",
+        "weight": "300"
+      },
+      {
+        "label": "Body Lg",
+        "size": "16px",
+        "weight": "300"
+      },
+      {
+        "label": "Body Md",
+        "size": "15px",
+        "weight": "300"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "4px",
+    "md": "6px",
+    "lg": "8px",
+    "xl": "12px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Button Primary Pill",
+    "Button Primary Pill Pressed",
+    "Button Secondary",
+    "Button On Dark",
+    "Text Input",
+    "Text Input Focused",
+    "Card Feature Light",
+    "Card Pricing",
+    "Card Pricing Featured",
+    "Card Cream Band",
+    "Card Dashboard Mockup",
+    "Pill Tag Soft",
+    "Nav Bar On Mesh",
+    "Link On Light",
+    "Footer Light"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

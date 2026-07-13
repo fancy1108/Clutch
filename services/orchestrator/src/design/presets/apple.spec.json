@@ -1,0 +1,122 @@
+{
+  "name": "Apple",
+  "rationale": "A photography-first interface that turns marketing into a museum gallery. Edge-to-edge product tiles alternate light and dark canvases, framed by SF Pro Display headlines with negative letter-spacing ",
+  "brand": {
+    "name": "Apple",
+    "voice": "Bold, minimal, technical"
+  },
+  "visual_style": "A photography-first interface that turns marketing into a museum gallery. Edge-to-edge product tiles alternate light and dark canvases, framed by SF Pro Display headlines with negative letter-spacing and a single Action Blue (#0066cc) interactive color. UI chrome recedes so the product can speak — no decorative gradients, no shadows on chrome, only the one signature drop-shadow under product imagery resting on a surface.",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#0066cc",
+      "#0071e3",
+      "#2997ff",
+      "#ffffff"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#1d1d1f",
+      "#1d1d1f",
+      "#ffffff",
+      "#cccccc",
+      "#333333",
+      "#7a7a7a",
+      "#f0f0f0",
+      "#e0e0e0",
+      "#ffffff",
+      "#f5f5f7",
+      "#fafafc",
+      "#272729",
+      "#2a2a2c",
+      "#252527",
+      "#000000",
+      "#d2d2d7",
+      "#ffffff"
+    ],
+    "accent": [
+      "#000000"
+    ],
+    "status": [
+      "#000000"
+    ]
+  },
+  "typography": {
+    "fontFamily": "SF Pro Display, system-ui, -apple-system, sans-serif",
+    "monoFamily": "ui-monospace, monospace",
+    "samples": [
+      {
+        "label": "Display Lg",
+        "size": "40px",
+        "weight": "600"
+      },
+      {
+        "label": "Display Md",
+        "size": "34px",
+        "weight": "600"
+      },
+      {
+        "label": "Hero Display",
+        "size": "56px",
+        "weight": "600"
+      },
+      {
+        "label": "Lead",
+        "size": "28px",
+        "weight": "400"
+      },
+      {
+        "label": "Lead Airy",
+        "size": "24px",
+        "weight": "300"
+      },
+      {
+        "label": "Body",
+        "size": "17px",
+        "weight": "400"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "5px",
+    "md": "8px",
+    "lg": "11px",
+    "xl": "18px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Button Primary",
+    "Button Primary Focus",
+    "Button Primary Active",
+    "Button Secondary Pill",
+    "Button Dark Utility",
+    "Button Pearl Capsule",
+    "Button Store Hero",
+    "Button Icon Circular",
+    "Text Link",
+    "Text Link On Dark",
+    "Global Nav",
+    "Sub Nav Frosted",
+    "Product Tile Light",
+    "Product Tile Parchment",
+    "Product Tile Dark"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

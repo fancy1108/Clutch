@@ -1,0 +1,137 @@
+{
+  "name": "Mistral AI",
+  "rationale": "Mistral AI brands itself with a singular signature — atmospheric sunset gradients (mustard, orange, deep red) layered over photography of mountains, plus a horizontal \"sunset stripe\" bar that closes e",
+  "brand": {
+    "name": "Mistral AI",
+    "voice": "Warm, approachable, human"
+  },
+  "visual_style": "Mistral AI brands itself with a singular signature — atmospheric sunset gradients (mustard, orange, deep red) layered over photography of mountains, plus a horizontal \"sunset stripe\" bar that closes every page. The system pairs warm cream-yellow surfaces ({colors.cream}) with a saturated orange primary CTA ({colors.primary}) and uses an elegant near-serif voice for hero displays. Coverage spans homepage (Frontier AI hero), Le Studio product page, Coding solutions, news article surfaces, contact ",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#fa520f",
+      "#cc3a05",
+      "#ffffff"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#ffd06a",
+      "#ffb83e",
+      "#ffa110",
+      "#ff8105",
+      "#ff8a00",
+      "#ffd900",
+      "#fff8e0",
+      "#fffaeb",
+      "#fff0c2",
+      "#e6d5a8",
+      "#ffe295",
+      "#ffd900",
+      "#ff8105",
+      "#1f1f1f",
+      "#3d3d3d",
+      "#2c2c2c",
+      "#4a4a4a",
+      "#6a6a6a",
+      "#8a8a8a",
+      "#a8a8a8",
+      "#e5e5e5",
+      "#ededed",
+      "#c7c7c7",
+      "#ffffff",
+      "#fafafa",
+      "#fff8e0",
+      "#fffaeb",
+      "#1c1c1e",
+      "#ffffff",
+      "#a8a8a8",
+      "#1f1f1f",
+      "#fff8e0",
+      "#fa520f"
+    ],
+    "accent": [
+      "#000000"
+    ],
+    "status": [
+      "#000000"
+    ]
+  },
+  "typography": {
+    "fontFamily": "PP Editorial Old",
+    "monoFamily": "JetBrains Mono",
+    "samples": [
+      {
+        "label": "Display Lg",
+        "size": "64px",
+        "weight": "400"
+      },
+      {
+        "label": "Hero Display",
+        "size": "84px",
+        "weight": "400"
+      },
+      {
+        "label": "Body Md",
+        "size": "16px",
+        "weight": "400"
+      },
+      {
+        "label": "Body Md Medium",
+        "size": "16px",
+        "weight": "500"
+      },
+      {
+        "label": "Body Sm",
+        "size": "14px",
+        "weight": "400"
+      },
+      {
+        "label": "Body Sm Medium",
+        "size": "14px",
+        "weight": "500"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "4px",
+    "md": "6px",
+    "lg": "8px",
+    "xl": "12px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Button Primary",
+    "Button Primary Pressed",
+    "Button Primary Disabled",
+    "Button Cream",
+    "Button Dark",
+    "Button Secondary",
+    "Button On Cream",
+    "Button Link",
+    "Card Base",
+    "Card Feature",
+    "Card Cream",
+    "Card Cream Soft",
+    "Card Feature Product",
+    "Card Photographic",
+    "Pricing Card"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

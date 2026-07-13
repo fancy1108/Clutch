@@ -1,0 +1,125 @@
+{
+  "name": "BMW",
+  "rationale": "BMW's corporate site — distinct from BMW M's motorsport-bombastic variant, this is a measured and settled corporate-automotive interface. On a light (cream-tinted white) canvas, BMW corporate blue (#1",
+  "brand": {
+    "name": "BMW",
+    "voice": "Bold, minimal, technical"
+  },
+  "visual_style": "BMW's corporate site — distinct from BMW M's motorsport-bombastic variant, this is a measured and settled corporate-automotive interface. On a light (cream-tinted white) canvas, BMW corporate blue (#1c69d4) carries every primary CTA; dark navy hero bands frame model photography. BMW Type Next Latin sets the entire hierarchy on two weights — heavy 700 display and Light 300 body. Configuration and reservation flows ride a card-based 4-up grid, where each card holds a model render, a name, and a \"L",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#1c69d4",
+      "#0653b6",
+      "#d6d6d6",
+      "#ffffff"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#262626",
+      "#3c3c3c",
+      "#1a1a1a",
+      "#6b6b6b",
+      "#9a9a9a",
+      "#e6e6e6",
+      "#cccccc",
+      "#ffffff",
+      "#f7f7f7",
+      "#fafafa",
+      "#ebebeb",
+      "#1a2129",
+      "#262e38",
+      "#ffffff",
+      "#bbbbbb",
+      "#0066b1",
+      "#1c69d4",
+      "#e22718"
+    ],
+    "accent": [
+      "#000000"
+    ],
+    "status": [
+      "#22c55e",
+      "#f59e0b",
+      "#dc2626"
+    ]
+  },
+  "typography": {
+    "fontFamily": "'BMW Type Next Latin', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    "monoFamily": "ui-monospace, monospace",
+    "samples": [
+      {
+        "label": "Display Lg",
+        "size": "48px",
+        "weight": "700"
+      },
+      {
+        "label": "Display Md",
+        "size": "32px",
+        "weight": "700"
+      },
+      {
+        "label": "Display Sm",
+        "size": "24px",
+        "weight": "700"
+      },
+      {
+        "label": "Display Xl",
+        "size": "64px",
+        "weight": "700"
+      },
+      {
+        "label": "Title Lg",
+        "size": "20px",
+        "weight": "700"
+      },
+      {
+        "label": "Title Md",
+        "size": "18px",
+        "weight": "700"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "2px",
+    "md": "4px",
+    "lg": "8px",
+    "xl": "12px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Top Nav",
+    "Button Primary",
+    "Button Primary Active",
+    "Button Primary Disabled",
+    "Button Secondary",
+    "Button Secondary On Dark",
+    "Button Text Link",
+    "Text Link",
+    "Hero Band Dark",
+    "Hero Photo Band",
+    "Model Card",
+    "Model Card Photo",
+    "Feature Photo Card",
+    "Spec Cell",
+    "Inventory Card"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

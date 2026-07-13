@@ -1,0 +1,123 @@
+{
+  "name": "Cursor",
+  "rationale": "An AI-first code editor whose marketing site reads like a quietly-confident developer-tools brand with a warm-cream editorial canvas (`#f7f7f4`) instead of the typical dark IDE atmosphere. Near-black ",
+  "brand": {
+    "name": "Cursor",
+    "voice": "Bold, minimal, technical"
+  },
+  "visual_style": "An AI-first code editor whose marketing site reads like a quietly-confident developer-tools brand with a warm-cream editorial canvas (`#f7f7f4`) instead of the typical dark IDE atmosphere. Near-black warm ink (`#26251e`) carries body and display alike — display sits at weight 400 with negative letter-spacing for a magazine feel rather than a bold tech voice. The single brand voltage is **Cursor Orange** (`#f54e00`) reserved for primary CTAs and the wordmark. A signature pastel timeline palette (",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#f54e00",
+      "#d04200",
+      "#ffffff"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#26251e",
+      "#5a5852",
+      "#26251e",
+      "#807d72",
+      "#a09c92",
+      "#e6e5e0",
+      "#efeee8",
+      "#cfcdc4",
+      "#f7f7f4",
+      "#fafaf7",
+      "#ffffff",
+      "#e6e5e0",
+      "#dfa88f",
+      "#9fc9a2",
+      "#9fbbe0",
+      "#c0a8dd",
+      "#c08532",
+      "#cf2d56",
+      "#1f8a65"
+    ],
+    "accent": [
+      "#000000"
+    ],
+    "status": [
+      "#000000"
+    ]
+  },
+  "typography": {
+    "fontFamily": "'CursorGothic', system-ui, 'Helvetica Neue', Helvetica, Arial, sans-serif",
+    "monoFamily": "'JetBrains Mono', 'Fira Code', monospace",
+    "samples": [
+      {
+        "label": "Display Lg",
+        "size": "36px",
+        "weight": "400"
+      },
+      {
+        "label": "Display Md",
+        "size": "26px",
+        "weight": "400"
+      },
+      {
+        "label": "Display Mega",
+        "size": "72px",
+        "weight": "400"
+      },
+      {
+        "label": "Display Sm",
+        "size": "22px",
+        "weight": "400"
+      },
+      {
+        "label": "Title Md",
+        "size": "18px",
+        "weight": "600"
+      },
+      {
+        "label": "Title Sm",
+        "size": "16px",
+        "weight": "600"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "4px",
+    "md": "6px",
+    "lg": "8px",
+    "xl": "12px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Top Nav",
+    "Button Primary",
+    "Button Primary Active",
+    "Button Secondary",
+    "Button Tertiary Text",
+    "Button Download",
+    "Hero Band",
+    "Ide Mockup Card",
+    "Ide Pane",
+    "Feature Card",
+    "Comparison Card",
+    "Timeline Pill Thinking",
+    "Timeline Pill Grep",
+    "Timeline Pill Read",
+    "Timeline Pill Edit"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

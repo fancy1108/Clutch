@@ -1,0 +1,121 @@
+{
+  "name": "Wise",
+  "rationale": "An inspired interpretation of Wise's design language — a global money-transfer brand whose surface combines an unusually heavy near-black display sans (weight 900 at 64–126 px) with a vivid lime-green",
+  "brand": {
+    "name": "Wise",
+    "voice": "Editorial, authoritative, refined"
+  },
+  "visual_style": "An inspired interpretation of Wise's design language — a global money-transfer brand whose surface combines an unusually heavy near-black display sans (weight 900 at 64–126 px) with a vivid lime-green brand accent, sage-tinted surface neutrals, and rounded white cards on a pale green-tinted canvas; the whole system reads more like a Scandinavian fintech magazine than a bank.",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#9fe870",
+      "#0e0f0c",
+      "#cdffad",
+      "#c5edab",
+      "#e2f6d5"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#0e0f0c",
+      "#163300",
+      "#454745",
+      "#868685",
+      "#ffffff",
+      "#e8ebe6",
+      "#2ead4b",
+      "#054d28",
+      "#b86700",
+      "#4a3b1c",
+      "#a72027",
+      "#a7000d",
+      "#320707"
+    ],
+    "accent": [
+      "#ffc091",
+      "#38c8ff"
+    ],
+    "status": [
+      "#ffd11a",
+      "#d03238"
+    ]
+  },
+  "typography": {
+    "fontFamily": "Wise Sans, Inter, system-ui, -apple-system, sans-serif",
+    "monoFamily": "ui-monospace, monospace",
+    "samples": [
+      {
+        "label": "Display Lg",
+        "size": "47px",
+        "weight": "400"
+      },
+      {
+        "label": "Display Md",
+        "size": "40px",
+        "weight": "900"
+      },
+      {
+        "label": "Display Mega",
+        "size": "126px",
+        "weight": "900"
+      },
+      {
+        "label": "Display Sm",
+        "size": "32px",
+        "weight": "600"
+      },
+      {
+        "label": "Display Xl",
+        "size": "64px",
+        "weight": "900"
+      },
+      {
+        "label": "Display Xs",
+        "size": "24px",
+        "weight": "600"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "8px",
+    "md": "8px",
+    "lg": "12px",
+    "xl": "16px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Nav Bar",
+    "Nav Link",
+    "Button Primary",
+    "Button Secondary",
+    "Button Tertiary",
+    "Button Icon Circular",
+    "Text Input",
+    "Card Content",
+    "Card Feature Sage",
+    "Card Feature Green",
+    "Card Feature Dark",
+    "Hero Band",
+    "Hero Band Dark",
+    "Content Band",
+    "Currency Converter Card"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

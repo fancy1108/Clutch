@@ -1,0 +1,112 @@
+{
+  "name": "Kraken",
+  "rationale": "Design system for Kraken",
+  "brand": {
+    "name": "Kraken",
+    "voice": "Professional, modern, trustworthy"
+  },
+  "visual_style": "## 1. Visual Theme & Atmosphere",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#7132f5",
+      "#5741d8",
+      "#5b1ecf",
+      "#101114",
+      "#5741d8"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#686b82",
+      "#9497a9",
+      "#ffffff",
+      "#dedee5",
+      "#7132f5",
+      "#7132f5",
+      "#101114",
+      "#7132f5",
+      "#7132f5",
+      "#101114",
+      "#ffffff"
+    ],
+    "accent": [
+      "#149e61"
+    ],
+    "status": [
+      "#149e61",
+      "#026b3f"
+    ]
+  },
+  "typography": {
+    "fontFamily": "Kraken-Brand, fallbacks: IBM Plex Sans, Helvetica, Arial",
+    "monoFamily": "ui-monospace, monospace",
+    "samples": [
+      {
+        "label": "Display Hero",
+        "size": "Kraken-Brand",
+        "weight": "48px"
+      },
+      {
+        "label": "Section Heading",
+        "size": "Kraken-Brand",
+        "weight": "36px"
+      },
+      {
+        "label": "Sub-heading",
+        "size": "Kraken-Brand",
+        "weight": "28px"
+      },
+      {
+        "label": "Feature Title",
+        "size": "Kraken-Product",
+        "weight": "22px"
+      },
+      {
+        "label": "Body",
+        "size": "Kraken-Product",
+        "weight": "16px"
+      },
+      {
+        "label": "Body Medium",
+        "size": "Kraken-Product",
+        "weight": "16px"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "3px",
+    "md": "12px",
+    "lg": "12px",
+    "xl": "24px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Primary",
+    "Neutral",
+    "Font Families",
+    "Buttons",
+    "Badges",
+    "Do",
+    "Don't",
+    "Quick Color Reference",
+    "Example Component Prompts"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

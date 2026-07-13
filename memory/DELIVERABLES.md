@@ -22,6 +22,17 @@
 
 ## Active Deliverables
 
+### Design Workspace syncing, UI interaction fixes, and reference URL crawler improvements ✅
+- **日期：** 2026-07-13
+- **Commit：** Pending — `fix: design rounds sync, custom dropdown selection, interactive ready/picking modes, and css variables scraper bypass`
+- **Verification：** `./scripts/verify.sh` → all checks passed (715 python tests, vitest checks, doc drift checks passed)
+- **证据：** —
+- **交付文件：**
+  - `apps/desktop/src/components/design/DesignWorkspace.tsx` — Consolidate duplicate React Flow sync effects, convert native round select to custom popover dropdown menu.
+  - `apps/desktop/src/components/design/nodes/UiCardNode.tsx` — Dynamic React key binding for preview iframe to bypass WebKit cache, nodrag/nopan event isolation for component picking, pointer-events toggle for interactive Ready mode.
+  - `apps/desktop/src/services/designApi.ts` — Fallback global process log filtering for design rounds lacking nested log arrays.
+  - `services/orchestrator/src/design/browser_extract.py` — Computed variables scanning fallback for root, body, and container wrappers to bypass CORS. Added Tailwind utility noise filtering and expanded variable limit.
+
 ### Handoff performance optimizations and UI experience improvements ✅
 - **日期：** 2026-07-12
 - **Commit：** `da69fcf`, `04439e1`, `07521aa`, `e03752e`, `5218d30`, `1e824ca`

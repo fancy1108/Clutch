@@ -1,0 +1,116 @@
+{
+  "name": "Superhuman",
+  "rationale": "An inspired interpretation of Superhumon's design language — a fast-email productivity brand split between an editorial dark hero (deep indigo navy with violet-sky atmospheric backdrop and a portrait ",
+  "brand": {
+    "name": "Superhuman",
+    "voice": "Bold, minimal, technical"
+  },
+  "visual_style": "An inspired interpretation of Superhumon's design language — a fast-email productivity brand split between an editorial dark hero (deep indigo navy with violet-sky atmospheric backdrop and a portrait subject) and a quiet white content body with off-warm-grey ink. The system uses a single proprietary variable display sans, heavy weight 460–540 with tight tracking, and a deep-teal closing CTA band that breaks the indigo/white rhythm with a warm dark interlude. Buttons are tight rounded rectangles,",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#1b1938",
+      "#0e0c1f",
+      "#ffffff"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#292827",
+      "#73706d",
+      "#9a9794",
+      "#ffffff",
+      "#fafaf8",
+      "#c9b4fa",
+      "#0e3030",
+      "#155555",
+      "#e8e4dd",
+      "#3f3a52",
+      "#bcbac9",
+      "#5a5772"
+    ],
+    "accent": [
+      "#000000"
+    ],
+    "status": [
+      "#000000"
+    ]
+  },
+  "typography": {
+    "fontFamily": "'Super Sans VF', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
+    "monoFamily": "ui-monospace, monospace",
+    "samples": [
+      {
+        "label": "Display Lg",
+        "size": "28px",
+        "weight": "540"
+      },
+      {
+        "label": "Display Md",
+        "size": "22px",
+        "weight": "460"
+      },
+      {
+        "label": "Display Xl",
+        "size": "48px",
+        "weight": "460"
+      },
+      {
+        "label": "Display Xxl",
+        "size": "64px",
+        "weight": "540"
+      },
+      {
+        "label": "Body Lg",
+        "size": "18px",
+        "weight": "540"
+      },
+      {
+        "label": "Body Md",
+        "size": "16px",
+        "weight": "460"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "4px",
+    "md": "6px",
+    "lg": "8px",
+    "xl": "12px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Button Primary Dark",
+    "Button Primary Dark Pressed",
+    "Button On Dark Pill",
+    "Button Secondary Outline",
+    "Button On Teal",
+    "Text Input",
+    "Card Feature Light",
+    "Card Pricing",
+    "Card Pricing Featured",
+    "Card Teal Band",
+    "Card Feature Row",
+    "Pill Tab Light",
+    "Nav Bar Dark",
+    "Nav Bar Light",
+    "Link On Light"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

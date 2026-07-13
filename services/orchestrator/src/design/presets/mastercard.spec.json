@@ -1,0 +1,150 @@
+{
+  "name": "Mastercard",
+  "rationale": "Design system for Mastercard",
+  "brand": {
+    "name": "Mastercard",
+    "voice": "Premium, sophisticated, aspirational"
+  },
+  "visual_style": "## 1. Visual Theme & Atmosphere",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#eb001b",
+      "#f79e1b",
+      "#141413",
+      "#cf4500",
+      "#eb001b",
+      "#f79e1b"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#f3f0ee",
+      "#fcfbfa",
+      "#ffffff",
+      "#f4f4f4",
+      "#141413",
+      "#262627",
+      "#696969",
+      "#555555",
+      "#565656",
+      "#d1cdc7",
+      "#f3f0ee",
+      "#f3f0ee",
+      "#141413",
+      "#141413",
+      "#f3f0ee",
+      "#ffffff",
+      "#141413",
+      "#cf4500",
+      "#ffffff",
+      "#ffffff",
+      "#000000",
+      "#e8e2da",
+      "#f37338",
+      "#141413",
+      "#f3f0ee",
+      "#141413",
+      "#f3f0ee",
+      "#fcfbfa",
+      "#141413",
+      "#141413",
+      "#696969",
+      "#cf4500",
+      "#f37338",
+      "#141413",
+      "#141413",
+      "#f3f0ee",
+      "#141413",
+      "#f3f0ee",
+      "#e8e2da",
+      "#d1cdc7"
+    ],
+    "accent": [
+      "#cf4500",
+      "#f37338",
+      "#9a3a0a",
+      "#3860be"
+    ],
+    "status": [
+      "#000000"
+    ]
+  },
+  "typography": {
+    "fontFamily": "MarkForMC — Mastercards proprietary geometric sans. Every headline, body paragraph, button, nav link, and footer link on the page.",
+    "monoFamily": "ui-monospace, monospace",
+    "samples": [
+      {
+        "label": "H1 (hero)",
+        "size": "64px",
+        "weight": "500"
+      },
+      {
+        "label": "H2 (section)",
+        "size": "36px",
+        "weight": "500"
+      },
+      {
+        "label": "H3 (card title)",
+        "size": "24px",
+        "weight": "500"
+      },
+      {
+        "label": "H4 (subhead)",
+        "size": "14px",
+        "weight": "700"
+      },
+      {
+        "label": "Eyebrow (H5)",
+        "size": "14px",
+        "weight": "700"
+      },
+      {
+        "label": "Body paragraph",
+        "size": "16px",
+        "weight": "450"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "20px",
+    "md": "999px",
+    "lg": "1000px",
+    "xl": "32px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Primary",
+    "Secondary & Accent",
+    "Surface & Background",
+    "Neutrals & Text",
+    "Semantic & Accent",
+    "Gradient System",
+    "Font Family",
+    "Note on Font Substitutes",
+    "Buttons",
+    "Cards & Containers",
+    "Inputs & Forms",
+    "Navigation",
+    "Image Treatment",
+    "Decorative Orbital Lines",
+    "Footer"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

@@ -1,0 +1,122 @@
+{
+  "name": "Nike",
+  "rationale": "A photography-first commerce system built on extreme typographic contrast — towering uppercase Futura display lockups burned into editorial campaign imagery, sitting above a dense, neutral, near-monoc",
+  "brand": {
+    "name": "Nike",
+    "voice": "Bold, minimal, technical"
+  },
+  "visual_style": "A photography-first commerce system built on extreme typographic contrast — towering uppercase Futura display lockups burned into editorial campaign imagery, sitting above a dense, neutral, near-monochrome retail chrome of pill-shaped black CTAs, gray search and tag pills, and tight 8px-grid product cards. The brand's voice is athletic, kinetic, and absolute: pure black, pure white, a single soft surface gray, and a deliberately small set of semantic accents (sale red, success green, restrained ",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#111111",
+      "#ffffff"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#ffffff",
+      "#f5f5f5",
+      "#111111",
+      "#39393b",
+      "#4b4b4d",
+      "#707072",
+      "#9e9ea0",
+      "#cacacb",
+      "#e5e5e5",
+      "#d30005",
+      "#780700",
+      "#1eaa52",
+      "#1151ff",
+      "#0034e3"
+    ],
+    "accent": [
+      "#ed1aa0",
+      "#ffb0dd",
+      "#beaffd",
+      "#d6d1ff",
+      "#0a7281",
+      "#4c012d"
+    ],
+    "status": [
+      "#007d48"
+    ]
+  },
+  "typography": {
+    "fontFamily": "Nike Futura ND",
+    "monoFamily": "ui-monospace, monospace",
+    "samples": [
+      {
+        "label": "Display Campaign",
+        "size": "96px",
+        "weight": "500"
+      },
+      {
+        "label": "Body Md",
+        "size": "16px",
+        "weight": "400"
+      },
+      {
+        "label": "Body Strong",
+        "size": "16px",
+        "weight": "500"
+      },
+      {
+        "label": "Caption Md",
+        "size": "14px",
+        "weight": "500"
+      },
+      {
+        "label": "Caption Sm",
+        "size": "12px",
+        "weight": "500"
+      },
+      {
+        "label": "Button Lg",
+        "size": "24px",
+        "weight": "500"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "18px",
+    "md": "18px",
+    "lg": "24px",
+    "xl": "30px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Button Primary",
+    "Button Primary Active",
+    "Button Secondary",
+    "Button Outline On Image",
+    "Button Icon Circular",
+    "Search Pill",
+    "Search Pill Focused",
+    "Filter Chip",
+    "Filter Chip Active",
+    "Badge Promo",
+    "Badge Sale Text",
+    "Product Card",
+    "Product Card Image",
+    "Swatch Dot",
+    "Swatch Dot Active"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

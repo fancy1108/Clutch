@@ -1,0 +1,121 @@
+{
+  "name": "Sentry",
+  "rationale": "An inspired interpretation of Sentri's design language — a developer-tools brand built on a deep purple-violet midnight canvas, electric lime accents, and a slightly subversive illustrated personality",
+  "brand": {
+    "name": "Sentry",
+    "voice": "Bold, minimal, technical"
+  },
+  "visual_style": "An inspired interpretation of Sentri's design language — a developer-tools brand built on a deep purple-violet midnight canvas, electric lime accents, and a slightly subversive illustrated personality. The system pairs a custom display sans (chunky, playful, near-condensed) with the open Rubik family for UI copy and Monaco for code, then leans on dark-on-light pricing surfaces, sticker-style mascots, and a single-color CTA hierarchy where black-violet buttons read as the primary action against e",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#150f23",
+      "#ffffff"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#1f1633",
+      "#1f1633",
+      "#ffffff",
+      "#150f23",
+      "#f0f0f0",
+      "#efefef",
+      "#362d59",
+      "#cfcfdb",
+      "#e5e7eb",
+      "#1f1633",
+      "#1a1a1a",
+      "#bdb8c0",
+      "#3f3849",
+      "#9dc1f5"
+    ],
+    "accent": [
+      "#c2ef4e",
+      "#fa7faa",
+      "#6a5fc1",
+      "#422082",
+      "#79628c"
+    ],
+    "status": [
+      "#000000"
+    ]
+  },
+  "typography": {
+    "fontFamily": "Sentri Display, Rubik, system-ui, sans-serif",
+    "monoFamily": "Monaco, Menlo, Ubuntu Mono, monospace",
+    "samples": [
+      {
+        "label": "Display Hero",
+        "size": "88px",
+        "weight": "700"
+      },
+      {
+        "label": "Display Large",
+        "size": "60px",
+        "weight": "500"
+      },
+      {
+        "label": "Body Lg",
+        "size": "16px",
+        "weight": "400"
+      },
+      {
+        "label": "Body Md",
+        "size": "16px",
+        "weight": "500"
+      },
+      {
+        "label": "Body Strong",
+        "size": "16px",
+        "weight": "600"
+      },
+      {
+        "label": "Caption",
+        "size": "14px",
+        "weight": "400"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "4px",
+    "md": "6px",
+    "lg": "8px",
+    "xl": "10px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Button Primary",
+    "Button Primary Pressed",
+    "Button Inverted",
+    "Button Inverted Pressed",
+    "Button Ghost On Dark",
+    "Button Violet Token",
+    "Button Disabled",
+    "Pill Neutral Dark",
+    "Chip Lime Keyword",
+    "Text Input",
+    "Text Input Focused",
+    "Select Violet",
+    "Card Pricing",
+    "Card Pricing Featured",
+    "Card Feature Dark"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

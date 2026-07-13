@@ -1,0 +1,118 @@
+{
+  "name": "Dell (1996)",
+  "rationale": "An inspired interpretation of Dell.com's 1996 design language — a catalog-era enterprise web design built around a literal black page frame, vivid flat color-block \"ribbon cards\" tinted in sage, salmo",
+  "brand": {
+    "name": "Dell (1996)",
+    "voice": "Professional, modern, trustworthy"
+  },
+  "visual_style": "An inspired interpretation of Dell.com's 1996 design language — a catalog-era enterprise web design built around a literal black page frame, vivid flat color-block \"ribbon cards\" tinted in sage, salmon, periwinkle, sky, peach and lime, chunky Helvetica-Black display titles, Times Roman body copy, and an entire visual vocabulary of pre-Photoshop hand-cut GIF stickers (NEW! bursts, award seals, beveled product photos).",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#e91d2a",
+      "#ffffff"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#ffffff",
+      "#ffffff",
+      "#000000",
+      "#000000",
+      "#fcc20f",
+      "#6a26a4",
+      "#0000ee",
+      "#8e8a25",
+      "#b3bd95",
+      "#d77a7a",
+      "#e6915d",
+      "#c0d4a7",
+      "#9ab6c8",
+      "#a5b8c0",
+      "#8c9ae0"
+    ],
+    "accent": [
+      "#000000"
+    ],
+    "status": [
+      "#000000"
+    ]
+  },
+  "typography": {
+    "fontFamily": "Arial Black",
+    "monoFamily": "ui-monospace, monospace",
+    "samples": [
+      {
+        "label": "Display",
+        "size": "36px",
+        "weight": "900"
+      },
+      {
+        "label": "Body",
+        "size": "14px",
+        "weight": "400"
+      },
+      {
+        "label": "Body Sm",
+        "size": "12px",
+        "weight": "400"
+      },
+      {
+        "label": "Caption",
+        "size": "11px",
+        "weight": "400"
+      },
+      {
+        "label": "Button",
+        "size": "12px",
+        "weight": "700"
+      },
+      {
+        "label": "Heading 1",
+        "size": "24px",
+        "weight": "900"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "6px",
+    "md": "12px",
+    "lg": "16px",
+    "xl": "24px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Page Frame",
+    "Top Banner",
+    "Section Eyebrow Olive",
+    "Section Eyebrow Salmon",
+    "Ribbon Card Title",
+    "Ribbon Card Body Sage",
+    "Ribbon Card Body Salmon",
+    "Ribbon Card Body Peach",
+    "Ribbon Card Body Lime",
+    "Ribbon Card Body Sky",
+    "Ribbon Card Body Steel",
+    "Ribbon Card Body Periwinkle",
+    "Cta Block Red",
+    "Phone Callout",
+    "Buy A Dell Sticker"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

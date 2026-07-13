@@ -22,20 +22,18 @@ import {
   Check,
   Code2,
   FileText,
-  ChevronDown,
-  ChevronRight,
   Globe,
   History,
   ImagePlus,
   Loader2,
   Mic,
   Monitor,
-  Palette,
   Pencil,
   Plus,
   Smartphone,
   Sparkles,
   X,
+  ChevronDown,
 } from 'lucide-react';
 import {
   CanvasSelection,
@@ -57,7 +55,6 @@ import {
   uiCanvasPos,
   selectionKindFromNodeId,
   selectionLabel,
-  DesignSystemId,
   DESIGN_SYSTEM_PRESETS,
   DESIGN_ROW_Y,
   DESIGN_CARD_GAP,
@@ -71,11 +68,13 @@ import { UrlCardNode } from './nodes/UrlCardNode';
 
 
 import { useLanguage } from '../LanguageContext';
+import { StyleSelect, type StyleOption } from './StyleSelect';
 import { BTN_PRIMARY, BTN_SECONDARY, BTN_SUCCESS } from '../ui/buttonStyles';
 import { APP_INPUT_DOCK_BOTTOM_PX } from '../../constants/layout';
 import {
   approveDesignPrototype,
   approveDesignReact,
+  deleteDesignScreen,
   designScreenVersionPath,
   ensureDesignSession,
   generateDesignReact,
@@ -84,12 +83,14 @@ import {
   getDesignSession,
   iterateDesignSession,
   parseDesignRounds,
+  screenRoundIndexAt,
   sendDesignToCoding,
   startDesignPreview,
   stopDesignPreview,
   stripDesignIterateMeta,
   versionedDesignScreenId,
   type CodingHandoff,
+  type DesignProcessEntry,
   type DesignRound,
   type DesignSession,
   type DesignSpec,
@@ -127,36 +128,91 @@ function DesignRoundSelector({
   onSelect: (index: number) => void;
 }) {
   const { t } = useLanguage();
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Close dropdown on Escape key
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setOpen(false);
+      }
+    }
+    if (open) {
+      document.addEventListener('keydown', handleKeyDown);
+    }
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [open]);
+
   if (rounds.length <= 1) return null;
+
+  const activeRound = rounds.find((r) => r.index === selectedRoundIndex) ?? rounds[rounds.length - 1];
+
   return (
     <div
-      className="pointer-events-auto mx-auto flex w-full max-w-3xl items-center gap-2 rounded-2xl border border-outline-variant/30 bg-white/92 px-2.5 py-2 shadow-md backdrop-blur-md"
+      ref={containerRef}
+      className="pointer-events-auto relative mx-auto flex items-center gap-2 rounded-2xl border border-outline-variant/30 bg-white/92 px-2.5 py-1.5 shadow-md backdrop-blur-md"
       data-testid="design-round-selector"
     >
-      <span className="inline-flex shrink-0 items-center gap-1 px-1 text-[10px] font-bold uppercase tracking-wider text-neutral-400">
+      <span className="inline-flex shrink-0 items-center gap-1 px-1 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">
         <History size={12} />
         {t('Rounds')}
       </span>
-      <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto pb-0.5">
-        {rounds.map((round) => {
-          const active = round.index === selectedRoundIndex;
-          return (
-            <button
-              key={round.index}
-              type="button"
-              title={round.user_prompt || `Round ${round.index}`}
-              onClick={() => onSelect(round.index)}
-              className={`shrink-0 rounded-full border px-3 py-1 text-[11px] font-medium transition-colors ${
-                active
-                  ? 'border-neutral-900 bg-neutral-900 text-white shadow-sm'
-                  : 'border-neutral-200 bg-neutral-50 text-neutral-600 hover:border-neutral-300 hover:bg-white'
-              }`}
-              data-testid={`design-round-tab-${round.index}`}
-            >
-              {roundTabLabel(round.user_prompt, round.index)}
-            </button>
-          );
-        })}
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => setOpen(!open)}
+          className="flex items-center gap-1.5 rounded-lg border border-outline-variant/60 bg-surface-container-low/60 px-2.5 py-1 text-[11px] font-medium text-on-surface hover:bg-surface-container-low transition-colors cursor-pointer"
+        >
+          <span className="max-w-[200px] truncate">
+            {roundTabLabel(activeRound.user_prompt, activeRound.index)}
+          </span>
+          <ChevronDown size={12} className="text-on-surface-variant/80" />
+        </button>
+
+        {open && (
+          <div className="absolute top-full left-0 mt-1 min-w-[240px] max-h-60 overflow-y-auto bg-surface-bright border border-outline-variant rounded-lg shadow-lg py-1 z-[60]">
+            {rounds.map((round) => {
+              const isSelected = round.index === selectedRoundIndex;
+              return (
+                <button
+                  key={round.index}
+                  type="button"
+                  onClick={() => {
+                    onSelect(round.index);
+                    setOpen(false);
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-[11px] hover:bg-surface-container-low text-left"
+                >
+                  <Check
+                    size={14}
+                    className={`text-primary w-4 flex-shrink-0 transition-opacity ${
+                      isSelected ? 'opacity-100' : 'opacity-0'
+                    }`}
+                  />
+                  <span
+                    className={`truncate ${
+                      isSelected ? 'text-primary font-bold' : 'text-on-surface'
+                    }`}
+                  >
+                    {roundTabLabel(round.user_prompt, round.index)}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -219,13 +275,49 @@ function DesignCanvasInner({
   const [urlDraft, setUrlDraft] = useState('');
   const [showUrlField, setShowUrlField] = useState(false);
   const [attachMenuOpen, setAttachMenuOpen] = useState(false);
-  const [designSystem, setDesignSystem] = useState<DesignSystemId>('clutch');
-  const [designSystemMenuOpen, setDesignSystemMenuOpen] = useState(false);
+  const [designSystem, setDesignSystem] = useState<string>('clutch');
+  const [customStyles, setCustomStyles] = useState<StyleOption[]>([]);
+  const customStyleMdRef = useRef<Record<string, string>>({});
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('clutch-custom-design-styles');
+      if (!raw) return;
+      const data: Array<{ id: string; name: string; description: string; designMdText: string }> = JSON.parse(raw);
+      const mdMap: Record<string, string> = {};
+      const opts: StyleOption[] = data.map((s) => {
+        mdMap[s.id] = s.designMdText;
+        return { id: s.id, labelKey: s.name, descriptionKey: s.description, group: 'custom' as const };
+      });
+      customStyleMdRef.current = mdMap;
+      setCustomStyles(opts);
+    } catch { /* ignore */ }
+  }, []);
+
+  const handleSaveStyle = useCallback((name: string, designMdText: string) => {
+    const customId = `custom-${Date.now()}`;
+    const entry = { id: customId, name, description: `${t('Custom')} — ${name}`, designMdText };
+    setCustomStyles((prev) => {
+      if (prev.some((s) => s.id === customId)) return prev;
+      return [...prev, { id: customId, labelKey: entry.name, descriptionKey: entry.description, group: 'custom' as const }];
+    });
+    customStyleMdRef.current[customId] = designMdText;
+    try {
+      const raw = localStorage.getItem('clutch-custom-design-styles');
+      const list: Array<{ id: string; name: string; description: string; designMdText: string }> = raw ? JSON.parse(raw) : [];
+      list.push(entry);
+      localStorage.setItem('clutch-custom-design-styles', JSON.stringify(list));
+    } catch { /* ignore */ }
+    setToastMessage(t('Style saved to custom styles'));
+    window.setTimeout(() => setToastMessage(null), 2500);
+  }, [t]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const mdInputRef = useRef<HTMLInputElement | null>(null);
   const [device, setDevice] = useState<'web' | 'app'>('web');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const toastTimerRef = useRef<number | null>(null);
   const [drawing, setDrawing] = useState(false);
   const [iterateText, setIterateText] = useState('');
   const [iteratePending, setIteratePending] = useState<IteratePending | null>(null);
@@ -244,6 +336,7 @@ function DesignCanvasInner({
   const canvasSelectionRef = useRef<CanvasSelection | null>(null);
   const pickModeRef = useRef(false);
   const iteratePendingRef = useRef<IteratePending | null>(null);
+  const pasteSourceScreenIdsRef = useRef<Set<string> | null>(null);
   canvasSelectionRef.current = canvasSelection;
   pickModeRef.current = pickMode;
   iteratePendingRef.current = iteratePending;
@@ -276,6 +369,12 @@ function DesignCanvasInner({
     lastBusyRef.current = generating;
     onBusyChange?.(generating, { device });
   }, [busy, session?.status, session?.screens, onBusyChange, device]);
+
+  const showToast = useCallback((msg: string, durationMs = 1500) => {
+    if (toastTimerRef.current != null) window.clearTimeout(toastTimerRef.current);
+    setToastMessage(msg);
+    toastTimerRef.current = window.setTimeout(() => setToastMessage(null), durationMs);
+  }, []);
 
   const stopPoll = useCallback(() => {
     if (pollRef.current != null) {
@@ -339,6 +438,8 @@ function DesignCanvasInner({
       },
     ) => {
       const selectedId = canvasSelectionRef.current?.nodeId ?? null;
+      const rounds = parseDesignRounds(next?.process_log, next?.rounds, next?.round_history);
+      const activeRound = rounds.find((r) => r.index === selectedRoundIndex) ?? rounds[rounds.length - 1];
       const built = buildCanvasNodes(
         next,
         nextPrompt,
@@ -357,7 +458,9 @@ function DesignCanvasInner({
           pickScreenId: canvasSelectionRef.current?.screenId || elementSelection?.screenId || null,
           selectedNodeId: selectedId,
           iteratePending: iteratePendingRef.current,
+          pasteSourceScreenIds: pasteSourceScreenIdsRef.current,
           selectedRoundIndex,
+          screenVersions: activeRound?.screenVersions,
           roundHtmlByScreen,
           runId,
           onTogglePick: ({ nodeId, screenId, name }) => {
@@ -377,6 +480,10 @@ function DesignCanvasInner({
               setElementSelection(null);
             }
           },
+          onDeleteScreen: (screenId: string) => {
+            void handleDeleteScreen(screenId);
+          },
+          onSaveStyle: handleSaveStyle,
         },
       );
       for (const node of built) {
@@ -480,6 +587,22 @@ function DesignCanvasInner({
       if (next.error) setError(next.error);
       if (next.spec && !hadSpecRef.current) {
         hadSpecRef.current = true;
+        if (referenceMd && next.design_md) {
+          const customId = `custom-${Date.now()}`;
+          const entry = { id: customId, name: referenceMd.name, description: `${t('Custom')} — ${referenceMd.name}`, designMdText: next.design_md };
+          setCustomStyles((prev) => {
+            const exists = prev.some((s) => s.id === customId);
+            if (exists) return prev;
+            return [...prev, { id: customId, labelKey: entry.name, descriptionKey: entry.description, group: 'custom' as const }];
+          });
+          customStyleMdRef.current[customId] = next.design_md;
+          try {
+            const raw = localStorage.getItem('clutch-custom-design-styles');
+            const list: typeof entry[] = raw ? JSON.parse(raw) : [];
+            list.push(entry);
+            localStorage.setItem('clutch-custom-design-styles', JSON.stringify(list));
+          } catch { /* ignore */ }
+        }
       }
       let nextDrawing = drawingRef.current;
       if (hasHtml && !hadScreenRef.current) {
@@ -637,17 +760,27 @@ function DesignCanvasInner({
 
   useEffect(() => {
     if (welcomeMode || !session) return;
-    syncNodesFromSession(session, prompt, drawing);
-  }, [drawing]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    if (welcomeMode || !session) return;
     syncNodesFromSession(session, prompt, drawing, {
       referenceImageUrl: referenceImage?.dataUrl,
       referenceMd,
       referenceUrl,
     });
-  }, [referenceImage?.dataUrl, referenceMd, referenceUrl, pickMode, elementSelection?.label, elementSelection?.path]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [
+    welcomeMode,
+    session,
+    prompt,
+    drawing,
+    referenceImage?.dataUrl,
+    referenceMd,
+    referenceUrl,
+    pickMode,
+    elementSelection?.label,
+    elementSelection?.path,
+    selectedRoundIndex,
+    roundHtmlByScreen,
+    syncNodesFromSession,
+  ]);
+
 
   const designRounds = parseDesignRounds(session?.process_log, session?.rounds, session?.round_history);
 
@@ -669,13 +802,15 @@ function DesignCanvasInner({
     const screens = session.screens || [];
     if (!screens.length) return;
     let cancelled = false;
+    const rounds = parseDesignRounds(session.process_log, session.rounds, session.round_history);
 
     void (async () => {
       const nextMap: Record<string, string | undefined> = {};
       await Promise.all(
         screens.map(async (screen) => {
           const screenId = screen.id || 'main';
-          const versionedId = versionedDesignScreenId(screenId, selectedRoundIndex);
+          const perScreenRoundIdx = screenRoundIndexAt(rounds, selectedRoundIndex, screenId);
+          const versionedId = versionedDesignScreenId(screenId, perScreenRoundIdx);
           try {
             const html = await getDesignScreenHtml(runId, versionedId);
             if (html?.trim()) {
@@ -797,7 +932,7 @@ function DesignCanvasInner({
     setBusy(true);
     setError(null);
     setAttachMenuOpen(false);
-    setDesignSystemMenuOpen(false);
+    pasteSourceScreenIdsRef.current = null;
     hadSpecRef.current = false;
     hadScreenRef.current = false;
     userDraggedRef.current = false;
@@ -808,15 +943,22 @@ function DesignCanvasInner({
       `[DESIGN] generate requested device=${device} prompt=${JSON.stringify((text || '').slice(0, 80))}`,
     );
     onSessionTitle?.(text.slice(0, 48) || t('New Design'), { device });
+    const isCustomStyle = Boolean(customStyleMdRef.current[designSystem]);
+    const storedMd = isCustomStyle ? customStyleMdRef.current[designSystem] : null;
+    const storedName = isCustomStyle
+      ? customStyles.find((s) => s.id === designSystem)?.labelKey ?? null
+      : null;
+    const effectiveMd = referenceMd?.text ?? storedMd;
+    const effectiveName = referenceMd?.name ?? storedName;
     const next = await withBusy(() =>
       generateDesignSession(runId, {
         prompt: text || '生成设计系统与界面',
         device,
         reference_image: referenceImage?.dataUrl ?? null,
-        reference_md: referenceMd?.text ?? null,
-        reference_md_name: referenceMd?.name ?? null,
+        reference_md: effectiveMd,
+        reference_md_name: effectiveName,
         reference_url: referenceUrl,
-        design_system: hasRef ? undefined : designSystem,
+        design_system: hasRef || isCustomStyle ? undefined : designSystem,
       }),
     );
     if (next) {
@@ -829,6 +971,7 @@ function DesignCanvasInner({
 
   const handleIterate = async () => {
     if (!iterateText.trim() || !session) return;
+    pasteSourceScreenIdsRef.current = null;
     const instruction = iterateText.trim();
     const mode = inferIterateModeClient(instruction, canvasSelection?.kind ?? 'ui');
     const targetId =
@@ -837,7 +980,8 @@ function DesignCanvasInner({
     const pending: IteratePending = { mode, screenId: targetId };
     setIteratePending(pending);
     iteratePendingRef.current = pending;
-    roundPinnedRef.current = false;
+    const savedRoundIdx = selectedRoundRef.current;
+    roundPinnedRef.current = true;
     setDrawing(true);
     setBusy(true);
     setError(null);
@@ -904,6 +1048,13 @@ function DesignCanvasInner({
       setIteratePending(null);
       iteratePendingRef.current = null;
       applySession(next);
+      const rounds = parseDesignRounds(next.process_log, next.rounds, next.round_history);
+      const latestRoundIndex = rounds[rounds.length - 1]?.index ?? 0;
+      if (!next.error && latestRoundIndex > savedRoundIdx) {
+        setSelectedRoundIndex(latestRoundIndex);
+        selectedRoundRef.current = latestRoundIndex;
+        roundPinnedRef.current = false;
+      }
       setDrawing(true);
       window.setTimeout(() => setDrawing(false), 1450);
       setBusy(false);
@@ -986,16 +1137,62 @@ function DesignCanvasInner({
     return () => window.removeEventListener('message', onMessage);
   }, [canvasSelection?.screenId, session?.screens]);
 
+  const handleDeleteScreen = useCallback(
+    async (screenId: string) => {
+      setBusy(true);
+      pasteSourceScreenIdsRef.current = null;
+      const savedRoundIdx = selectedRoundRef.current;
+      roundPinnedRef.current = true;
+      const next = await withBusy(() => deleteDesignScreen(runId, screenId));
+      if (next) {
+        applySession(next);
+        const rounds = parseDesignRounds(next.process_log, next.rounds, next.round_history);
+        const latestRoundIndex = rounds[rounds.length - 1]?.index ?? 0;
+        if (!next.error && latestRoundIndex > savedRoundIdx) {
+          setSelectedRoundIndex(latestRoundIndex);
+          selectedRoundRef.current = latestRoundIndex;
+          roundPinnedRef.current = false;
+        }
+        const remainingScreens = next.screens || [];
+        if (remainingScreens.length > 0) {
+          const firstId = remainingScreens[0].id;
+          setFocusNodeIds([`ui-${firstId}`]);
+          setCanvasSelection({
+            nodeId: `ui-${firstId}`,
+            kind: 'ui',
+            label: remainingScreens[0].name || 'Interface',
+            screenId: firstId,
+          });
+        } else {
+          setCanvasSelection(null);
+          setFocusNodeIds(['spec']);
+        }
+        showToast(t('Screen deleted'));
+        setDrawing(false);
+        setBusy(false);
+      } else {
+        setBusy(false);
+      }
+    },
+    [runId, t, applySession, showToast],
+  );
+
   useEffect(() => {
     if (welcomeMode) return;
     const onKey = (e: KeyboardEvent) => {
-      const meta = e.metaKey || e.ctrlKey;
-      if (!meta) return;
       const target = e.target as HTMLElement | null;
       if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
+      if ((e.key === 'Backspace' || e.key === 'Delete') && canvasSelection && canvasSelection.kind === 'ui' && canvasSelection.screenId) {
+        e.preventDefault();
+        void handleDeleteScreen(canvasSelection.screenId);
+        return;
+      }
+      const meta = e.metaKey || e.ctrlKey;
+      if (!meta) return;
       if (e.key === 'c' && canvasSelection) {
         e.preventDefault();
         clipboardRef.current = canvasSelection;
+        showToast(t('Copied'));
       }
       if (e.key === 'v' && clipboardRef.current) {
         e.preventDefault();
@@ -1003,23 +1200,76 @@ function DesignCanvasInner({
         if (clip.kind === 'ui') {
           setIterateText((prev) => prev || t('Create another screen based on the selection'));
           setCanvasSelection(clip);
+          const pending: IteratePending = { mode: 'duplicate', screenId: clip.screenId ?? null };
+          setIteratePending(pending);
+          iteratePendingRef.current = pending;
           void (async () => {
-            setDrawing(true);
             setBusy(true);
+            const savedRoundIdx = selectedRoundRef.current;
+            const now = new Date().toISOString();
+            const instruction = t('Duplicate this screen');
+            const sourceRounds = parseDesignRounds(session!.process_log, session!.rounds, session!.round_history);
+            const sourceRound = sourceRounds.find((r) => r.index === savedRoundIdx);
+            const sourceScreenIds = new Set(Object.keys(sourceRound?.screenVersions ?? {}));
+            const fakeRoundEntry = {
+              round_index: (session!.round_history?.length ?? session!.process_log?.length ?? 0),
+              screen_id: 'pending',
+              prompt: instruction,
+              reasoning_content: null,
+              process_log: [] as DesignProcessEntry[],
+              at: now,
+            };
+            const optimistic: DesignSession = {
+              ...session!,
+              status: 'iterating',
+              round_history: [...(session!.round_history || []), fakeRoundEntry],
+              process_log: [
+                ...(session!.process_log || []),
+                { role: 'user' as const, text: instruction, at: now },
+                { role: 'assistant' as const, text: 'Duplicating…', status: 'iterating', at: now },
+              ],
+            };
+            roundPinnedRef.current = false;
+            applySession(optimistic);
+            roundPinnedRef.current = true;
+            pasteSourceScreenIdsRef.current = sourceScreenIds;
             const next = await withBusy(() =>
-              iterateDesignSession(runId, t('Create another screen based on the selection'), {
+              iterateDesignSession(runId, instruction, {
                 target_kind: 'ui',
                 target_id: clip.screenId ?? null,
-                mode: 'add',
+                mode: 'duplicate',
               }),
             );
+            setIteratePending(null);
+            iteratePendingRef.current = null;
             if (next) {
+              const focusScreen =
+                next.last_iterate_screen_id ||
+                next.screens?.[next.screens.length - 1]?.id;
+              if (focusScreen) sourceScreenIds.add(focusScreen);
               applySession(next);
+              const rounds = parseDesignRounds(next.process_log, next.rounds, next.round_history);
+              const latestRoundIndex = rounds[rounds.length - 1]?.index ?? 0;
+              if (!next.error && latestRoundIndex > savedRoundIdx) {
+                setSelectedRoundIndex(latestRoundIndex);
+                selectedRoundRef.current = latestRoundIndex;
+                roundPinnedRef.current = false;
+              }
+              pasteSourceScreenIdsRef.current = null;
+              const focusId = focusScreen ? `ui-${focusScreen}` : 'spec';
+              setFocusNodeIds([focusId]);
+              setLayoutKey(`paste-done-${Date.now()}`);
+              setCanvasSelection({
+                nodeId: focusId,
+                kind: 'ui',
+                label: next.screens?.find((s) => s.id === focusScreen)?.name || 'Interface',
+                screenId: focusScreen || undefined,
+              });
+              setDrawing(true);
+              window.setTimeout(() => setDrawing(false), 1450);
               setBusy(false);
-              setDrawing(false);
             } else {
               setBusy(false);
-              setDrawing(false);
             }
           })();
         }
@@ -1027,7 +1277,7 @@ function DesignCanvasInner({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [welcomeMode, canvasSelection, runId, t, applySession]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [welcomeMode, canvasSelection, runId, t, applySession, showToast, handleDeleteScreen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <>
@@ -1181,7 +1431,6 @@ function DesignCanvasInner({
                   type="button"
                   className="rounded-full p-2 text-neutral-500 hover:bg-neutral-100"
                   onClick={() => {
-                    setDesignSystemMenuOpen(false);
                     setAttachMenuOpen((v) => !v);
                   }}
                   title={t('Add attachment')}
@@ -1245,73 +1494,27 @@ function DesignCanvasInner({
                 </button>
               </div>
               <div className="flex items-center gap-1.5">
-                <div className="relative">
-                  <button
-                    type="button"
-                    className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold transition-colors ${
-                      referenceImage || referenceMd || referenceUrl
-                        ? 'cursor-not-allowed text-neutral-300'
-                        : designSystemMenuOpen
-                          ? 'bg-neutral-100 text-neutral-800'
-                          : 'text-neutral-600 hover:bg-neutral-100'
-                    }`}
-                    disabled={Boolean(referenceImage || referenceMd || referenceUrl)}
-                    title={
-                      referenceImage || referenceMd || referenceUrl
-                        ? t('Reference attachment overrides the design system preset.')
-                        : t('Design system')
-                    }
-                    aria-label={t('Design system')}
-                    onClick={() => {
-                      if (referenceImage || referenceMd || referenceUrl) return;
-                      setAttachMenuOpen(false);
-                      setDesignSystemMenuOpen((v) => !v);
-                    }}
-                  >
-                    <Palette size={14} />
-                    <span>
-                      {t(
-                        DESIGN_SYSTEM_PRESETS.find((p) => p.id === designSystem)?.labelKey
-                          ?? 'Clutch',
-                      )}
-                    </span>
-                    <ChevronDown size={12} className="opacity-60" />
-                  </button>
-                  {designSystemMenuOpen && !(referenceImage || referenceMd || referenceUrl) ? (
-                    <div className="absolute bottom-full right-0 z-30 mb-2 w-72 overflow-hidden rounded-xl border border-neutral-200 bg-white py-1 shadow-lg">
-                      <p className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-neutral-400">
-                        {t('Design system')}
-                      </p>
-                      {DESIGN_SYSTEM_PRESETS.map((preset) => {
-                        const active = designSystem === preset.id;
-                        return (
-                          <button
-                            key={preset.id}
-                            type="button"
-                            className={`flex w-full items-start gap-2 px-3 py-2.5 text-left hover:bg-neutral-50 ${
-                              active ? 'bg-neutral-50' : ''
-                            }`}
-                            onClick={() => {
-                              setDesignSystem(preset.id);
-                              setDesignSystemMenuOpen(false);
-                            }}
-                          >
-                            <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-neutral-200 bg-gradient-to-br from-neutral-800 via-neutral-500 to-neutral-200" />
-                            <span className="min-w-0 flex-1">
-                              <span className="flex items-center justify-between gap-2 text-[12px] font-semibold text-neutral-900">
-                                {t(preset.labelKey)}
-                                {active ? <Check size={14} className="text-sky-600" /> : null}
-                              </span>
-                              <span className="mt-0.5 block text-[11px] leading-snug text-neutral-500">
-                                {t(preset.descriptionKey)}
-                              </span>
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  ) : null}
-                </div>
+                <StyleSelect
+                  value={designSystem}
+                  options={[
+                    ...DESIGN_SYSTEM_PRESETS.map((p) => ({
+                      id: p.id,
+                      labelKey: p.labelKey,
+                      descriptionKey: p.descriptionKey,
+                      color: p.color,
+                      group: 'system' as const,
+                    })),
+                    ...customStyles,
+                  ]}
+                  onChange={(id) => {
+                    setDesignSystem(id);
+                    setAttachMenuOpen(false);
+                  }}
+                  onOpen={() => setAttachMenuOpen(false)}
+                  disabled={Boolean(referenceImage || referenceUrl)}
+                  disabledTitle={t('Reference attachment overrides the design system preset.')}
+                  onUploadClick={() => mdInputRef.current?.click()}
+                />
                 <button
                   type="button"
                   onClick={onOpenModels}
@@ -1361,7 +1564,7 @@ function DesignCanvasInner({
               selectNodesOnDrag={false}
               defaultViewport={{ x: 24, y: 24, zoom: 0.85 }}
               minZoom={0.35}
-              maxZoom={1.25}
+              maxZoom={2.5}
               panOnScroll
               proOptions={{ hideAttribution: true }}
               className="!bg-transparent"
@@ -1377,7 +1580,7 @@ function DesignCanvasInner({
 
           <div
             className="pointer-events-none absolute inset-x-0 z-20 flex justify-center px-4"
-            style={{ bottom: APP_INPUT_DOCK_BOTTOM_PX + 72 }}
+            style={{ top: 48 }}
           >
             <DesignRoundSelector
               rounds={designRounds}
@@ -1607,6 +1810,10 @@ function DesignCanvasInner({
           {error ? (
             <div className="absolute left-1/2 top-4 z-20 -translate-x-1/2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] text-rose-700">
               {error}
+            </div>
+          ) : toastMessage ? (
+            <div className="pointer-events-none absolute left-1/2 top-4 z-20 -translate-x-1/2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] text-emerald-700 transition-opacity duration-300">
+              {toastMessage}
             </div>
           ) : null}
         </>

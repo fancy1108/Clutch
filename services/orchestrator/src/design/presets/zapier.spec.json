@@ -1,0 +1,111 @@
+{
+  "name": "Zapier",
+  "rationale": "An inspired interpretation of Zapier's design language — a workflow-automation platform whose surface combines warm-cream neutrals (`#fffefb` canvas, `#f8f4f0` soft cream) with deep coffee ink (`#2015",
+  "brand": {
+    "name": "Zapier",
+    "voice": "Warm, approachable, human"
+  },
+  "visual_style": "An inspired interpretation of Zapier's design language — a workflow-automation platform whose surface combines warm-cream neutrals (`#fffefb` canvas, `#f8f4f0` soft cream) with deep coffee ink (`#201515`) and a single saturated orange CTA accent (`#ff4f00`); typography pairs the proprietary Degular Display family at hero scale with Inter for sub-displays and body, giving the brand a confident-warm rather than cool-tech voice.",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#ff4f00",
+      "#fffefb"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#201515",
+      "#2f2a26",
+      "#36342e",
+      "#605d52",
+      "#939084",
+      "#c5c0b1",
+      "#fffefb",
+      "#f8f4f0"
+    ],
+    "accent": [
+      "#000000"
+    ],
+    "status": [
+      "#000000"
+    ]
+  },
+  "typography": {
+    "fontFamily": "Degular Display, Inter, system-ui, -apple-system, sans-serif",
+    "monoFamily": "ui-monospace, monospace",
+    "samples": [
+      {
+        "label": "Display Lg",
+        "size": "48px",
+        "weight": "500"
+      },
+      {
+        "label": "Display Md",
+        "size": "32px",
+        "weight": "500"
+      },
+      {
+        "label": "Display Sub Lg",
+        "size": "48px",
+        "weight": "500"
+      },
+      {
+        "label": "Display Sub Md",
+        "size": "32px",
+        "weight": "400"
+      },
+      {
+        "label": "Display Sub Sm",
+        "size": "24px",
+        "weight": "600"
+      },
+      {
+        "label": "Display Xl",
+        "size": "56px",
+        "weight": "500"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "6px",
+    "md": "6px",
+    "lg": "12px",
+    "xl": "24px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Nav Bar",
+    "Nav Link",
+    "Button Primary",
+    "Button Secondary",
+    "Button Tertiary",
+    "Button Text",
+    "Text Input",
+    "Card Content",
+    "Card Feature Cream",
+    "Card Feature Dark",
+    "Pricing Card",
+    "Pricing Card Featured",
+    "Hero Band",
+    "Hero Band Dark",
+    "Content Band Cream"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

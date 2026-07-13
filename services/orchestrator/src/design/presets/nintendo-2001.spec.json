@@ -1,0 +1,122 @@
+{
+  "name": "Nintendo.com (2001)",
+  "rationale": "An analysis of Nintendo.com's 2001 design language — a brushed-periwinkle \"console chrome\" interface where every panel is a beveled metal plate, navigation glows amber over a halftone-dotted carbon ba",
+  "brand": {
+    "name": "Nintendo.com (2001)",
+    "voice": "Professional, modern, trustworthy"
+  },
+  "visual_style": "An analysis of Nintendo.com's 2001 design language — a brushed-periwinkle \"console chrome\" interface where every panel is a beveled metal plate, navigation glows amber over a halftone-dotted carbon bar, and bold outlined display type sits on circuit-board hero fields. A Y2K hardware aesthetic that treats the web page like the faceplate of a game system.",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#e60012",
+      "#ffffff"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#f68d1f",
+      "#ecab37",
+      "#e48600",
+      "#7a8aba",
+      "#9fbee7",
+      "#9fbee7",
+      "#acace7",
+      "#c0d5e6",
+      "#8ba1d4",
+      "#3d4f97",
+      "#60619c",
+      "#dedede",
+      "#ffffff",
+      "#21242e",
+      "#5a5f8c",
+      "#21242e",
+      "#3d4f97",
+      "#206479",
+      "#a7282b"
+    ],
+    "accent": [
+      "#000000"
+    ],
+    "status": [
+      "#e60012"
+    ]
+  },
+  "typography": {
+    "fontFamily": "Arial",
+    "monoFamily": "ui-monospace, monospace",
+    "samples": [
+      {
+        "label": "Display",
+        "size": "44px",
+        "weight": "900"
+      },
+      {
+        "label": "Hero Tagline",
+        "size": "15px",
+        "weight": "700"
+      },
+      {
+        "label": "Body",
+        "size": "12px",
+        "weight": "400"
+      },
+      {
+        "label": "Link",
+        "size": "12px",
+        "weight": "700"
+      },
+      {
+        "label": "Micro",
+        "size": "10px",
+        "weight": "400"
+      },
+      {
+        "label": "Nav Link",
+        "size": "13px",
+        "weight": "700"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "2px",
+    "md": "4px",
+    "lg": "6px",
+    "xl": "10px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Nav Bar",
+    "Subnav Strip",
+    "Logo Pill",
+    "Button Primary",
+    "Button Primary Pressed",
+    "Button Submit",
+    "Button Secondary",
+    "Button Icon Arrow",
+    "Button Arrow Chip",
+    "Search Field",
+    "Text Input",
+    "Select Dropdown",
+    "Field Label",
+    "Form Panel",
+    "Dotted Divider"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

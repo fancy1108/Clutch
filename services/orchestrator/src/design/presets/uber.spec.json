@@ -1,0 +1,114 @@
+{
+  "name": "Uber",
+  "rationale": "An inspired interpretation of Uber's design language — a transportation-and-delivery super-app brand whose web surface is a black-and-white duet, framed by a custom geometric display sans, accented by",
+  "brand": {
+    "name": "Uber",
+    "voice": "Editorial, authoritative, refined"
+  },
+  "visual_style": "An inspired interpretation of Uber's design language — a transportation-and-delivery super-app brand whose web surface is a black-and-white duet, framed by a custom geometric display sans, accented by a single signature pill shape (radius 999px) on every interactive element, and decorated only by editorial 4:3 illustrations of riders, drivers, and city objects.",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#000000",
+      "#ffffff"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#000000",
+      "#5e5e5e",
+      "#afafaf",
+      "#4b4b4b",
+      "#ffffff",
+      "#efefef",
+      "#f3f3f3",
+      "#e2e2e2",
+      "#0000ee",
+      "#ffffff",
+      "#282828"
+    ],
+    "accent": [
+      "#000000"
+    ],
+    "status": [
+      "#000000"
+    ]
+  },
+  "typography": {
+    "fontFamily": "UberMove, UberMoveText, system-ui, Helvetica Neue, Arial, sans-serif",
+    "monoFamily": "ui-monospace, monospace",
+    "samples": [
+      {
+        "label": "Display Lg",
+        "size": "32px",
+        "weight": "700"
+      },
+      {
+        "label": "Display Md",
+        "size": "24px",
+        "weight": "700"
+      },
+      {
+        "label": "Display Sm",
+        "size": "20px",
+        "weight": "700"
+      },
+      {
+        "label": "Display Xl",
+        "size": "36px",
+        "weight": "700"
+      },
+      {
+        "label": "Display Xxl",
+        "size": "52px",
+        "weight": "700"
+      },
+      {
+        "label": "Body Lg",
+        "size": "18px",
+        "weight": "500"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "6px",
+    "md": "8px",
+    "lg": "8px",
+    "xl": "12px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Nav Bar",
+    "Nav Link",
+    "Button Primary",
+    "Button Secondary",
+    "Button Subtle",
+    "Button Floating",
+    "Button Large Rounded",
+    "Button Tab Translucent",
+    "Text Input",
+    "Text Input On Soft",
+    "Card Content",
+    "Card Elevated",
+    "Card Soft Tinted",
+    "Promo Card Illustrated",
+    "Promo Card On Dark"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

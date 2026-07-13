@@ -1,0 +1,129 @@
+{
+  "name": "Pinterest",
+  "rationale": "A photography-first discovery system organized around the Pinterest Red CTA, the masonry pin grid, and a soft warm-cream chrome that gets out of the imagery's way. The home page is a content-discovery",
+  "brand": {
+    "name": "Pinterest",
+    "voice": "Warm, approachable, human"
+  },
+  "visual_style": "A photography-first discovery system organized around the Pinterest Red CTA, the masonry pin grid, and a soft warm-cream chrome that gets out of the imagery's way. The home page is a content-discovery tool wearing the chrome of a magazine publisher: 70px display headlines, friendly Pin Sans typography, fully-rounded pill buttons (16px) on a cream-tinted neutral palette, and a sticky red \"Sign up\" CTA that anchors every viewport. Pin imagery is the system's load-bearing visual element — square, p",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#e60023",
+      "#ffffff",
+      "#cc001f"
+    ],
+    "secondary": [
+      "#000000",
+      "#e5e5e0",
+      "#c8c8c1"
+    ],
+    "neutral": [
+      "#000000",
+      "#211922",
+      "#33332e",
+      "#262622",
+      "#62625b",
+      "#91918c",
+      "#c8c8c1",
+      "#dadad3",
+      "#e5e5e0",
+      "#ffffff",
+      "#fbfbf9",
+      "#f6f6f3",
+      "#ffffff",
+      "#ffffff",
+      "rgba(255,255,255,0.7)",
+      "#262622",
+      "#435ee5",
+      "#ffffff",
+      "#103c25",
+      "#c7f0da",
+      "#cc001f"
+    ],
+    "accent": [
+      "#617bff",
+      "#7e238b",
+      "#6845ab"
+    ],
+    "status": [
+      "#9e0a0a"
+    ]
+  },
+  "typography": {
+    "fontFamily": "Pin Sans",
+    "monoFamily": "ui-monospace, monospace",
+    "samples": [
+      {
+        "label": "Display Lg",
+        "size": "44px",
+        "weight": "700"
+      },
+      {
+        "label": "Display Xl",
+        "size": "70px",
+        "weight": "600"
+      },
+      {
+        "label": "Body Md",
+        "size": "16px",
+        "weight": "400"
+      },
+      {
+        "label": "Body Sm",
+        "size": "14px",
+        "weight": "400"
+      },
+      {
+        "label": "Body Sm Strong",
+        "size": "14px",
+        "weight": "700"
+      },
+      {
+        "label": "Body Strong",
+        "size": "16px",
+        "weight": "600"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "8px",
+    "md": "8px",
+    "lg": "16px",
+    "xl": "32px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Button Primary",
+    "Button Primary Pressed",
+    "Button Secondary",
+    "Button Secondary Pressed",
+    "Button Tertiary",
+    "Button Icon Circular",
+    "Button Pill On Image",
+    "Button Disabled",
+    "Search Bar",
+    "Search Bar Focused",
+    "Text Input",
+    "Text Input Focused",
+    "Pin Card",
+    "Pin Card Large",
+    "Pin Overlay Pill"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

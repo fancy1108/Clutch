@@ -1,0 +1,136 @@
+{
+  "name": "PlayStation",
+  "rationale": "A three-surface marketing system organized around alternating black, white, and PlayStation Blue chapters that scroll past the viewer like a console launch trailer. Each section has a single editorial",
+  "brand": {
+    "name": "PlayStation",
+    "voice": "Premium, sophisticated, aspirational"
+  },
+  "visual_style": "A three-surface marketing system organized around alternating black, white, and PlayStation Blue chapters that scroll past the viewer like a console launch trailer. Each section has a single editorial purpose — hero photography, console product render, PS Plus tier callout, news strip — and each owns one of three full-bleed canvas modes. The chrome is unusually quiet for a gaming brand: bright PlayStation Blue (`#0070d1`) carries every primary CTA as a fully-rounded pill, the proprietary SST fac",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#0070d1",
+      "#0064b7",
+      "#004d8d",
+      "#ffffff"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#0064b7",
+      "#53b1ff",
+      "#d53b00",
+      "#aa2f00",
+      "#d63d00",
+      "#ffffff",
+      "#000000",
+      "#121314",
+      "#181818",
+      "#1f2024",
+      "rgba(0,0,0,0.6)",
+      "#6b6b6b",
+      "#cccccc",
+      "rgba(255,255,255,0.7)",
+      "rgba(229,229,229,0.55)",
+      "rgba(229,229,229,0.2)",
+      "#ffffff",
+      "#f3f3f3",
+      "#f5f7fa",
+      "rgba(245,247,250,0.3)",
+      "#000000",
+      "#121314",
+      "#181818",
+      "#f3f3f3",
+      "rgba(229,229,229,0.2)",
+      "#ffffff",
+      "#cccccc",
+      "#ffce21",
+      "#f5a623",
+      "#ee8e00",
+      "#deff20"
+    ],
+    "accent": [
+      "#000000"
+    ],
+    "status": [
+      "#c81b3a"
+    ]
+  },
+  "typography": {
+    "fontFamily": "PlayStation SST",
+    "monoFamily": "ui-monospace, monospace",
+    "samples": [
+      {
+        "label": "Display Lg",
+        "size": "44px",
+        "weight": "300"
+      },
+      {
+        "label": "Display Md",
+        "size": "35px",
+        "weight": "300"
+      },
+      {
+        "label": "Display Xl",
+        "size": "54px",
+        "weight": "300"
+      },
+      {
+        "label": "Body Md",
+        "size": "18px",
+        "weight": "400"
+      },
+      {
+        "label": "Body Sm",
+        "size": "16px",
+        "weight": "400"
+      },
+      {
+        "label": "Body Strong",
+        "size": "18px",
+        "weight": "500"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "4px",
+    "md": "4px",
+    "lg": "8px",
+    "xl": "16px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Button Primary",
+    "Button Primary Pressed",
+    "Button Commerce",
+    "Button Commerce Pressed",
+    "Button Secondary Light",
+    "Button Secondary Dark",
+    "Button Disabled",
+    "Text Input",
+    "Text Input Focused",
+    "Filter Pill",
+    "Filter Pill Active",
+    "Product Card",
+    "Product Card Dark",
+    "Game Tile",
+    "Feature Card"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

@@ -1,0 +1,127 @@
+{
+  "name": "NVIDIA",
+  "rationale": "An engineering-grade marketing system organized around two surface modes — a deep black canvas for hero and footer chapters and a flat paper-white canvas for body content — connected by a single, almo",
+  "brand": {
+    "name": "NVIDIA",
+    "voice": "Editorial, authoritative, refined"
+  },
+  "visual_style": "An engineering-grade marketing system organized around two surface modes — a deep black canvas for hero and footer chapters and a flat paper-white canvas for body content — connected by a single, almost violently saturated NVIDIA Green accent that carries every CTA, every active tab, and the small decorative corner squares that mark out cards. The system is unapologetically angular: 2px radius across every surface, tight bold sans-serif typography in NVIDIA's proprietary EMEA cut, and a hairline",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#76b900",
+      "#000000",
+      "#5a8d00"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#000000",
+      "#ffffff",
+      "#000000",
+      "#f7f7f7",
+      "#1a1a1a",
+      "#cccccc",
+      "#5e5e5e",
+      "#1a1a1a",
+      "#757575",
+      "#898989",
+      "#a7a7a7",
+      "#ffffff",
+      "rgba(255,255,255,0.7)",
+      "#0046a4",
+      "#0046a4",
+      "#650b0b",
+      "#ef9100",
+      "#3f8500"
+    ],
+    "accent": [
+      "#feeeb2",
+      "#952fc6",
+      "#4d1368",
+      "#f9d4ff",
+      "#bff230"
+    ],
+    "status": [
+      "#e52020",
+      "#df6500"
+    ]
+  },
+  "typography": {
+    "fontFamily": "NVIDIA-EMEA",
+    "monoFamily": "ui-monospace, monospace",
+    "samples": [
+      {
+        "label": "Display Lg",
+        "size": "36px",
+        "weight": "700"
+      },
+      {
+        "label": "Display Xl",
+        "size": "48px",
+        "weight": "700"
+      },
+      {
+        "label": "Body Md",
+        "size": "16px",
+        "weight": "400"
+      },
+      {
+        "label": "Body Sm",
+        "size": "15px",
+        "weight": "400"
+      },
+      {
+        "label": "Body Strong",
+        "size": "16px",
+        "weight": "700"
+      },
+      {
+        "label": "Caption Md",
+        "size": "14px",
+        "weight": "700"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "1px",
+    "md": "2px",
+    "lg": "16px",
+    "xl": "24px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Button Primary",
+    "Button Primary Active",
+    "Button Outline",
+    "Button Outline On Dark",
+    "Button Ghost Link",
+    "Button Disabled",
+    "Pill Tab",
+    "Pill Tab Active",
+    "Text Input",
+    "Text Input Focused",
+    "Search Input",
+    "Product Card",
+    "Feature Card",
+    "Resource Card",
+    "Hero Card Dark"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

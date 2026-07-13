@@ -1,0 +1,126 @@
+{
+  "name": "Supabase",
+  "rationale": "An inspired interpretation of Supabaze's design language — an open-source database platform built on a clean white-and-near-black system with a single signature emerald-green CTA, a custom humanist sa",
+  "brand": {
+    "name": "Supabase",
+    "voice": "Bold, minimal, technical"
+  },
+  "visual_style": "An inspired interpretation of Supabaze's design language — an open-source database platform built on a clean white-and-near-black system with a single signature emerald-green CTA, a custom humanist sans display tier, and dense product UI mockups composited above the hero. The brand reads as quietly technical: minimal chrome, a near-monochrome palette, and the green primary acting as the only chromatic event on the page.",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#3ecf8e",
+      "#24b47e",
+      "#4ade80",
+      "#171717"
+    ],
+    "secondary": [
+      "#212121"
+    ],
+    "neutral": [
+      "#171717",
+      "#707070",
+      "#9a9a9a",
+      "#b2b2b2",
+      "#ffffff",
+      "#ffffff",
+      "#fafafa",
+      "#1c1c1c",
+      "#202020",
+      "#dfdfdf",
+      "#c7c7c7",
+      "#ededed",
+      "#efefef",
+      "#d4d4d4"
+    ],
+    "accent": [
+      "#6b01c2",
+      "#644fc1",
+      "#eddbf9",
+      "#ffdb13",
+      "#ff2201",
+      "#c7007e",
+      "#054cff",
+      "#e2005a"
+    ],
+    "status": [
+      "#000000"
+    ]
+  },
+  "typography": {
+    "fontFamily": "Circular, 'Helvetica Neue', Helvetica, Arial, sans-serif",
+    "monoFamily": "ui-monospace, Menlo, Monaco, Consolas, 'Liberation Mono', monospace",
+    "samples": [
+      {
+        "label": "Display Lg",
+        "size": "36px",
+        "weight": "500"
+      },
+      {
+        "label": "Display Md",
+        "size": "28px",
+        "weight": "500"
+      },
+      {
+        "label": "Display Xl",
+        "size": "48px",
+        "weight": "500"
+      },
+      {
+        "label": "Display Xxl",
+        "size": "64px",
+        "weight": "500"
+      },
+      {
+        "label": "Body Lg",
+        "size": "18px",
+        "weight": "400"
+      },
+      {
+        "label": "Body Md",
+        "size": "16px",
+        "weight": "400"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "4px",
+    "md": "6px",
+    "lg": "8px",
+    "xl": "12px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Button Primary Green",
+    "Button Primary Green Pressed",
+    "Button Secondary Outline",
+    "Button On Dark",
+    "Button Link",
+    "Text Input",
+    "Card Feature Light",
+    "Card Pricing",
+    "Card Pricing Featured",
+    "Card Feature Dark",
+    "Code Block",
+    "Pill Tag Green",
+    "Pill Tag Soft",
+    "Nav Bar Light",
+    "Link On Light"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

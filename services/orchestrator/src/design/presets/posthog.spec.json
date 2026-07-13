@@ -1,0 +1,129 @@
+{
+  "name": "PostHog",
+  "rationale": "A playful developer-tools system rendered on a warm cream canvas with hand-drawn hedgehog mascots dotted across every page like marginalia in a sketchbook. The chrome reads like a friendly engineering",
+  "brand": {
+    "name": "PostHog",
+    "voice": "Bold, minimal, technical"
+  },
+  "visual_style": "A playful developer-tools system rendered on a warm cream canvas with hand-drawn hedgehog mascots dotted across every page like marginalia in a sketchbook. The chrome reads like a friendly engineering blog: olive-gray ink (#4d4f46) for body, deep olive-charcoal (#23251d) for headlines, IBM Plex Sans Variable typography in tight 1.43-line-height paragraphs, and a single saturated yellow-orange CTA pill (#f7a501) carrying every primary action. The system actively rejects the genre's typical somber",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#f7a501",
+      "#dd9001",
+      "#b17816",
+      "#23251d"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#23251d",
+      "#4d4f46",
+      "#33342d",
+      "#6c6e63",
+      "#9b9c92",
+      "#b6b7af",
+      "#bfc1b7",
+      "#dcdfd2",
+      "#ffffff",
+      "#eeefe9",
+      "#e5e7e0",
+      "#ffffff",
+      "#fcfcfa",
+      "#23251d",
+      "#1d4ed8",
+      "#1078a3",
+      "rgba(59,130,246,0.5)"
+    ],
+    "accent": [
+      "#2c84e0",
+      "#dceaf6",
+      "#cd4239",
+      "#f7d6d3",
+      "#2c8c66",
+      "#d9eddf",
+      "#7c44a6",
+      "#e7d8ee"
+    ],
+    "status": [
+      "#000000"
+    ]
+  },
+  "typography": {
+    "fontFamily": "IBM Plex Sans Variable",
+    "monoFamily": "ui-monospace",
+    "samples": [
+      {
+        "label": "Display Lg",
+        "size": "24px",
+        "weight": "800"
+      },
+      {
+        "label": "Display Xl",
+        "size": "36px",
+        "weight": "700"
+      },
+      {
+        "label": "Body Md",
+        "size": "16px",
+        "weight": "400"
+      },
+      {
+        "label": "Body Sm",
+        "size": "15px",
+        "weight": "400"
+      },
+      {
+        "label": "Body Sm Strong",
+        "size": "15px",
+        "weight": "600"
+      },
+      {
+        "label": "Body Strong",
+        "size": "16px",
+        "weight": "600"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "2px",
+    "md": "4px",
+    "lg": "6px",
+    "xl": "8px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Button Primary",
+    "Button Primary Pressed",
+    "Button Secondary",
+    "Button Tertiary",
+    "Button Disabled",
+    "Text Input",
+    "Text Input Focused",
+    "Search Input",
+    "Product Card",
+    "Doc Card",
+    "Feature Tile",
+    "Pricing Tier Card",
+    "Hedgehog Mascot Card",
+    "Product Tab",
+    "Product Tab Active"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

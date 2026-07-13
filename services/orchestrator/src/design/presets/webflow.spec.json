@@ -1,0 +1,119 @@
+{
+  "name": "Webflow",
+  "rationale": "An inspired interpretation of Webflow's design language — a visual web development platform whose surface contrasts a deep near-black `#080808` primary against a generous white canvas, broken by a fiv",
+  "brand": {
+    "name": "Webflow",
+    "voice": "Professional, modern, trustworthy"
+  },
+  "visual_style": "An inspired interpretation of Webflow's design language — a visual web development platform whose surface contrasts a deep near-black `#080808` primary against a generous white canvas, broken by a five-stop chromatic accent system (purple / pink / blue / orange / green) that maps to the brand's product categories, and anchored by the proprietary WF Visual Sans family used at restrained 500 / 600 weights with negative tracking.",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#080808",
+      "#ffffff"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#080808",
+      "#222222",
+      "#363636",
+      "#5a5a5a",
+      "#898989",
+      "#ababab",
+      "#d8d8d8",
+      "#ffffff"
+    ],
+    "accent": [
+      "#7a3dff",
+      "#ed52cb",
+      "#3b89ff",
+      "#006acc",
+      "#146ef5",
+      "#ff6b00",
+      "#00d722",
+      "#ffae13",
+      "#ee1d36"
+    ],
+    "status": [
+      "#000000"
+    ]
+  },
+  "typography": {
+    "fontFamily": "WF Visual Sans Variable, Inter, system-ui, -apple-system, sans-serif",
+    "monoFamily": "WFVisualSans-Mono, Inconsolata, ui-monospace, SFMono-Regular, Menlo, monospace",
+    "samples": [
+      {
+        "label": "Display Lg",
+        "size": "44.8px",
+        "weight": "600"
+      },
+      {
+        "label": "Display Md",
+        "size": "32px",
+        "weight": "500"
+      },
+      {
+        "label": "Display Sm",
+        "size": "24px",
+        "weight": "500"
+      },
+      {
+        "label": "Display Xl",
+        "size": "56px",
+        "weight": "600"
+      },
+      {
+        "label": "Display Xs",
+        "size": "20px",
+        "weight": "500"
+      },
+      {
+        "label": "Display Xxl",
+        "size": "80px",
+        "weight": "600"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "2px",
+    "md": "4px",
+    "lg": "8px",
+    "xl": "24px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Nav Bar",
+    "Nav Link",
+    "Button Primary",
+    "Button Secondary",
+    "Button Text Arrow",
+    "Button Icon Circular",
+    "Text Input",
+    "Badge Info",
+    "Badge Info Soft",
+    "Card Feature",
+    "Card Feature Dark",
+    "Card Pricing",
+    "Hero Band",
+    "Hero Band Dark",
+    "Content Band"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

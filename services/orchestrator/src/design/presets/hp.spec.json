@@ -1,0 +1,128 @@
+{
+  "name": "HP",
+  "rationale": "An inspired interpretation of HP's design language — a white-paper enterprise-consumer system anchored by HP Electric Blue (`#024ad8`) as the lone signal CTA, near-black ink (`#1a1a1a`) for headlines,",
+  "brand": {
+    "name": "HP",
+    "voice": "Bold, minimal, technical"
+  },
+  "visual_style": "An inspired interpretation of HP's design language — a white-paper enterprise-consumer system anchored by HP Electric Blue (`#024ad8`) as the lone signal CTA, near-black ink (`#1a1a1a`) for headlines, geometric Forma-DJR sans throughout, and angular blue-chevron decorations that nod to the HP wordmark's slashes. Cards round at 8–16px, photos sit in soft 16px frames, and dark navy slabs anchor the customer-story and \"how can we help\" closing bands.",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#024ad8",
+      "#296ef9",
+      "#0e3191",
+      "#c9e0fc",
+      "#ffffff"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#1a1a1a",
+      "#000000",
+      "#292929",
+      "#ffffff",
+      "#ffffff",
+      "#ffffff",
+      "#f7f7f7",
+      "#e8e8e8",
+      "#c2c2c2",
+      "#636363",
+      "#3d3d3d",
+      "#e8e8e8",
+      "#c2c2c2",
+      "#024ad8",
+      "#0e3191",
+      "#ff5050",
+      "#f9d4d2",
+      "#b3262b",
+      "#5a1313",
+      "#8ebdce",
+      "#7fadbe",
+      "#356373"
+    ],
+    "accent": [
+      "#000000"
+    ],
+    "status": [
+      "#b3262b"
+    ]
+  },
+  "typography": {
+    "fontFamily": "Forma DJR Micro",
+    "monoFamily": "ui-monospace, monospace",
+    "samples": [
+      {
+        "label": "Display Lg",
+        "size": "44px",
+        "weight": "500"
+      },
+      {
+        "label": "Display Md",
+        "size": "32px",
+        "weight": "500"
+      },
+      {
+        "label": "Display Sm",
+        "size": "24px",
+        "weight": "500"
+      },
+      {
+        "label": "Display Xl",
+        "size": "56px",
+        "weight": "500"
+      },
+      {
+        "label": "Display Xs",
+        "size": "20px",
+        "weight": "500"
+      },
+      {
+        "label": "Display Xxl",
+        "size": "72px",
+        "weight": "500"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "2px",
+    "md": "3px",
+    "lg": "4px",
+    "xl": "8px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Button Primary",
+    "Button Primary Pressed",
+    "Button Primary Disabled",
+    "Button Ink",
+    "Button Outline",
+    "Button Outline Ink",
+    "Button Text Link",
+    "Badge Pill Ink",
+    "Badge Pill Outline",
+    "Badge Sale Coral",
+    "Text Input",
+    "Text Input Focused",
+    "Text Input Search",
+    "Card Product",
+    "Card Product Feature"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

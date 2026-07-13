@@ -919,16 +919,25 @@ def _extract_html_from_llm(text: str) -> str:
     raw = (text or "").strip()
     if not raw:
         return ""
+
+    stripped = re.sub(r"^```[\w#\-]*\s*\n?", "", raw, flags=re.I, count=1)
+    stripped = re.sub(r"\n?```\s*$", "", stripped, flags=re.I)
+
+    for candidate in (stripped, raw):
+        doc = re.search(r"(<!DOCTYPE[\s\S]*?</html>)", candidate, re.I)
+        if doc:
+            return doc.group(1).strip()
+        html_open = re.search(r"(<html[\s\S]*?</html>)", candidate, re.I)
+        if html_open:
+            return html_open.group(1).strip()
+
     fence = re.search(r"```(?:html)?\s*([\s\S]*?)```", raw, re.I)
     if fence:
-        return fence.group(1).strip()
-    doc = re.search(r"(<!DOCTYPE[\s\S]*?</html>)", raw, re.I)
-    if doc:
-        return doc.group(1).strip()
-    html_open = re.search(r"(<html[\s\S]*?</html>)", raw, re.I)
-    if html_open:
-        return html_open.group(1).strip()
-    return raw
+        body = fence.group(1).strip()
+        if len(body) > 20 or re.search(r"<[a-z!]", body, re.I):
+            return body
+
+    return stripped
 
 
 def _html_from_llm_response(text: str, reasoning: str | None = None) -> str:
@@ -1164,6 +1173,48 @@ def _fetch_url_snapshot(url: str) -> dict[str, Any]:
         logger.debug("design url css_tokens extraction failed url=%s err=%s", url, exc)
         css_tokens = {}
 
+    og_image_analysis: dict[str, Any] = {}
+    og_img_url = css_tokens.get("og_image")
+    if og_img_url:
+        try:
+            import base64 as _b64
+            import io as _io
+            og_req = urllib.request.Request(
+                og_img_url,
+                headers={"User-Agent": "ClutchDesign/1.0"},
+            )
+            with urllib.request.urlopen(og_req, timeout=10.0) as img_resp:
+                img_bytes = img_resp.read(2_000_000)
+            img_b64 = _b64.b64encode(img_bytes).decode("ascii")
+            content_type = img_resp.headers.get_content_type() or "image/png"
+            data_url = f"data:{content_type};base64,{img_b64}"
+            from src.design.image_analysis import analyze_image_for_spec
+            og_image_analysis = analyze_image_for_spec(data_url)
+            logger.info(
+                "design url OG image analyzed url=%s colors=%d",
+                og_img_url, len(og_image_analysis.get("colors", [])),
+            )
+        except Exception as exc:
+            logger.debug("design url OG image analysis failed url=%s err=%s", og_img_url, exc)
+
+    # Browser-based extraction: render the page, extract computed styles + screenshot
+    browser_tokens: dict[str, Any] = {}
+    try:
+        from src.design.browser_extract import extract_website_tokens
+        browser_tokens = extract_website_tokens(final_url, timeout_sec=25.0)
+        if browser_tokens.get("available"):
+            logger.info(
+                "design url browser extraction succeeded url=%s fonts=%d",
+                final_url, len((browser_tokens.get("computed_styles") or {}).get("fonts", [])),
+            )
+        else:
+            logger.debug(
+                "design url browser extraction unavailable url=%s err=%s",
+                final_url, browser_tokens.get("error", "unknown"),
+            )
+    except Exception as exc:
+        logger.debug("design url browser extraction failed url=%s err=%s", final_url, exc)
+
     return {
         "url": final_url,
         "host": host,
@@ -1171,6 +1222,10 @@ def _fetch_url_snapshot(url: str) -> dict[str, Any]:
         "description": description[:400],
         "excerpt": excerpt,
         "css_tokens": css_tokens,
+        "og_image_analysis": og_image_analysis,
+        "browser_computed_styles": browser_tokens.get("computed_styles") or {},
+        "browser_screenshot": browser_tokens.get("screenshot_data_url") or "",
+        "browser_prompt_fragment": browser_tokens.get("prompt_fragment") or "",
         "fetched_at": now_iso(),
     }
 
@@ -1612,14 +1667,21 @@ def generate_session(
         intro = (
             "I'll use your reference image to extract a design system (colors, type, components), then craft a matching interface."
         )
-    elif _normalize_preset_id(design_system or manifest.get("design_system")) == "clutch" and not (
-        has_md or has_url or has_image
-    ):
-        intro = (
-            "I'll apply the built-in Clutch design system, then craft the interface for your brief."
-        )
     else:
-        intro = "I'll start with a design specification (colors, type, components), then craft the interface to match."
+        _intro_pid = _normalize_preset_id(design_system or manifest.get("design_system"))
+        if _intro_pid != "clutch":
+            from src.design.builtin_presets import resolve_preset_meta
+            _intro_meta = resolve_preset_meta(_intro_pid)
+            if _intro_meta:
+                intro = (
+                    f"I'll apply the {_intro_meta['name']} design system, then craft the interface for your brief."
+                )
+            else:
+                intro = "I'll start with a design specification (colors, type, components), then craft the interface to match."
+        else:
+            intro = (
+                "I'll apply the built-in Clutch design system, then craft the interface for your brief."
+            )
 
     attach_bits = []
     if has_image:
@@ -1693,20 +1755,26 @@ def generate_session(
     write_manifest(sdir, manifest)
     preset_id = _normalize_preset_id(manifest.get("design_system"))
     use_builtin_preset = preset_id == "clutch" and not (has_image or has_md or has_url)
+    if not use_builtin_preset and not has_image and not has_md and not has_url:
+        from src.design.builtin_presets import resolve_preset_spec
+        if preset_id != "clutch" and resolve_preset_spec(preset_id):
+            use_builtin_preset = True
     spec_usage = empty_token_usage()
     spec_usage_estimated = False
 
     if use_builtin_preset:
+        from src.design.builtin_presets import resolve_preset_meta
+        preset_name = (resolve_preset_meta(preset_id) or {}).get("name") or preset_id
         update_process_status(
             sdir,
             manifest,
-            text="Applying built-in Clutch design system…",
+            text=f"Applying {preset_name} design system…",
             status="crafting_spec",
             model_id=model_id,
             model_name=model_name,
         )
         spec, design_md = resolve_builtin_spec(preset_id, user_prompt, device=device)
-        source = "builtin_clutch"
+        source = "builtin_clutch" if preset_id == "clutch" else "builtin_preset"
     else:
         update_process_status(
             sdir,
@@ -1748,6 +1816,14 @@ def generate_session(
                             f"Excerpt: {(url_snapshot.get('excerpt') or '')[:3000]}\n"
                             "Infer a polished design system inspired by this site's visual language.\n"
                         )
+                    og_analysis = url_snapshot.get("og_image_analysis") or {}
+                    og_desc = og_analysis.get("description", "")
+                    if og_desc:
+                        context_parts.append(og_desc + "\n")
+                    # Browser-rendered computed styles (Playwright extraction)
+                    browser_frag = url_snapshot.get("browser_prompt_fragment") or ""
+                    if browser_frag:
+                        context_parts.append(browser_frag + "\n")
                 if has_image:
                     vision_ok_spec = _check_vision_ok(router, model_id, image_data_url)
                     if vision_ok_spec:
@@ -1768,6 +1844,16 @@ def generate_session(
                             context_parts.append(
                                 "A reference UI screenshot was provided; use the product brief to infer design tokens.\n"
                             )
+                # If URL has a browser screenshot and model supports vision, send it
+                browser_ss = (url_snapshot or {}).get("browser_screenshot") or ""
+                if browser_ss and not image_data_url:
+                    vision_ok_browser = _check_vision_ok(router, model_id, browser_ss)
+                    if vision_ok_browser:
+                        image_data_url = browser_ss
+                        context_parts.append(
+                            "A browser-rendered screenshot of the reference website is attached. "
+                            "Extract exact colors, typography, spacing, and layout from it.\n"
+                        )
                 context_parts.append(
                     "Return ONLY JSON with keys: name, rationale, brand (name, voice), visual_style, "
                     "layout_system, layout_pattern, grid (columns, gutter, max_width), colors "
@@ -2162,7 +2248,7 @@ def _merged_design_prompt(manifest: dict[str, Any], instruction: str) -> str:
 
 def _infer_iterate_mode(instruction: str, *, mode: str | None, target_kind: str | None) -> str:
     raw = (mode or "auto").strip().lower()
-    if raw in {"modify", "add"}:
+    if raw in {"modify", "add", "duplicate"}:
         return raw
     text = instruction.lower()
     add_keys = (
@@ -2258,7 +2344,7 @@ def iterate_session(
     instruction = instruction.strip()
     if not instruction:
         raise DesignError("Instruction is required")
-    screens = list(manifest.get("screens") or [])
+    screens = [s for s in (manifest.get("screens") or []) if not s.get("deleted")]
     if not screens and (target_kind or "ui") == "ui":
         raise DesignError("Generate a design before iterating")
 
@@ -2393,7 +2479,7 @@ def iterate_session(
 
     ui_vision_ok = _check_vision_ok(router, model_id, image_data_url)
 
-    if action == "add":
+    if action in {"add", "duplicate"}:
         base_id = str(target_id or screens[0].get("id") or "main")
         base = next((s for s in screens if str(s.get("id")) == base_id), screens[0])
         base_html_path = _resolve_screen_html_path(sdir, base)
@@ -2407,7 +2493,10 @@ def iterate_session(
         ui_usage_estimated = False
         device = str(manifest.get("device") or "web")
         spec_dict = spec if isinstance(spec, dict) else _fallback_spec(instruction)
-        if is_model_available(router, model_id):
+        if action == "duplicate":
+            html = base_html
+            ui_reasoning = None
+        elif is_model_available(router, model_id):
             try:
                 from src.design import service
                 gen_ui = getattr(service, "_generate_ui_html", _generate_ui_html)
@@ -2428,7 +2517,7 @@ def iterate_session(
             except Exception as exc:
                 logger.warning("design iterate add failed: %s", exc)
         if not _html_has_visible_content(html):
-            if is_model_available(router, model_id):
+            if action == "add" and is_model_available(router, model_id):
                 raise DesignError(
                     "Could not generate the new screen — model returned empty HTML. "
                     "Please try again."
@@ -2480,7 +2569,7 @@ def iterate_session(
         if history:
             history[-1] = {**history[-1], "process_log": list(log[log_start:])}
             manifest["round_history"] = history
-        manifest["last_iterate_action"] = "add"
+        manifest["last_iterate_action"] = action
         manifest["last_iterate_screen_id"] = new_id
     else:
         screen_id = str(target_id or screens[0].get("id") or "main")
@@ -2516,8 +2605,8 @@ def iterate_session(
                     design_md=design_md,
                     md_text=md_text if has_md else None,
                     url_snapshot=url_snapshot if has_url else None,
-                    has_image=has_image,
-                    image_data_url=image_data_url if ui_vision_ok else None,
+                    has_image=False,
+                    image_data_url=None,
                     current_html=current,
                     instruction=f"{instruction}\n{element_hint}",
                     fallback_html=current,
@@ -2543,17 +2632,12 @@ def iterate_session(
             not _html_has_visible_content(html) or _html_essentially_same(html, current)
         ):
             html = _fallback_ui_html(merged_prompt, spec_dict, device=device)
-        round_entry = _record_screen_round(
-            sdir,
-            manifest,
-            screen_id=screen_id,
-            html=html,
-            prompt=instruction,
-            reasoning_content=ui_reasoning,
-            process_log_slice=log[log_start:],
-        )
+        rel = screen.get("html_path") or f"screens/{screen_id}_r0.html"
+        (sdir / "screens").mkdir(exist_ok=True)
+        (sdir / rel).write_text(html, encoding="utf-8")
+        screen["html_path"] = rel
         iterate_ready_text = (
-            f"Updated the artboard — wrote {round_entry['html_path']}. What else?"
+            f"Updated the artboard — wrote {rel}. What else?"
         )
         if not is_model_available(router, model_id):
             iterate_ready_text += f"\n\n⚠️ Warning: Model '{model_id}' is not available (API key missing in Settings -> Models). Using offline fallback templates."
@@ -2567,10 +2651,6 @@ def iterate_session(
             usage_estimated=ui_usage_estimated,
             replace_statuses={"iterating"},
         )
-        history = list(manifest.get("round_history") or [])
-        if history:
-            history[-1] = {**history[-1], "process_log": list(log[log_start:])}
-            manifest["round_history"] = history
         manifest["last_iterate_action"] = "modify"
         manifest["last_iterate_screen_id"] = screen_id
 
@@ -2578,5 +2658,50 @@ def iterate_session(
     manifest.pop("thumbnail", None)
     manifest["process_log"] = log
     manifest["status"] = "ready"
+    write_manifest(sdir, manifest)
+    return public_session_payload(manifest, sdir)
+
+
+def delete_screen(
+    run_id: str,
+    screen_id: str,
+) -> dict[str, Any]:
+    sdir = session_dir(run_id)
+    manifest = read_manifest(sdir)
+    screens = list(manifest.get("screens") or [])
+    target = next((s for s in screens if str(s.get("id")) == screen_id), None)
+    if not target:
+        raise DesignError(f"Screen {screen_id} not found")
+    if target.get("deleted"):
+        raise DesignError(f"Screen {screen_id} is already deleted")
+    removed_name = str(target.get("name") or screen_id)
+    round_index = _next_round_index(manifest, screen_id)
+    for s in screens:
+        if str(s.get("id")) == screen_id:
+            s["deleted"] = True
+            s["deleted_at_round"] = round_index
+            break
+
+    instruction = f"Delete screen: {removed_name}"
+    log = list(manifest.get("process_log") or [])
+    log_start = len(log)
+    log.append({"role": "user", "text": instruction, "at": now_iso()})
+    log.append({"role": "assistant", "text": f"Removed «{removed_name}» from the canvas.", "status": "ready", "at": now_iso()})
+    history = list(manifest.get("round_history") or [])
+    history.append({
+        "round_index": round_index,
+        "screen_id": screen_id,
+        "html_path": f"screens/{screen_id}_r{round_index}.html",
+        "prompt": instruction,
+        "reasoning_content": None,
+        "process_log": list(log[log_start:]),
+        "at": now_iso(),
+        "action": "delete",
+    })
+    manifest["round_history"] = history
+    manifest["process_log"] = log
+    manifest["status"] = "ready"
+    manifest["last_iterate_action"] = "delete"
+    manifest["last_iterate_screen_id"] = None
     write_manifest(sdir, manifest)
     return public_session_payload(manifest, sdir)

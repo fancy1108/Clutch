@@ -1,0 +1,109 @@
+{
+  "name": "Vodafone",
+  "rationale": "An inspired interpretation of Vodafone's design language — a telecom super-brand whose web surface alternates between editorial photography hero bands with massive uppercase display headlines and clea",
+  "brand": {
+    "name": "Vodafone",
+    "voice": "Editorial, authoritative, refined"
+  },
+  "visual_style": "An inspired interpretation of Vodafone's design language — a telecom super-brand whose web surface alternates between editorial photography hero bands with massive uppercase display headlines and clean white content bands, anchored by the company's signature scarlet red CTA and the proprietary Vodafone display sans set at impossibly heavy 800 weight.",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#e60000",
+      "#ffffff"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#25282b",
+      "#7e7e7e",
+      "#bebebe",
+      "#ffffff",
+      "#f2f2f2",
+      "#ffffff"
+    ],
+    "accent": [
+      "#000000"
+    ],
+    "status": [
+      "#000000"
+    ]
+  },
+  "typography": {
+    "fontFamily": "Vodafone, Vodafone Rg, Helvetica Neue, Arial, sans-serif",
+    "monoFamily": "ui-monospace, monospace",
+    "samples": [
+      {
+        "label": "Display Hero",
+        "size": "144px",
+        "weight": "800"
+      },
+      {
+        "label": "Display Lg",
+        "size": "48px",
+        "weight": "300"
+      },
+      {
+        "label": "Display Md",
+        "size": "40px",
+        "weight": "300"
+      },
+      {
+        "label": "Display Sm",
+        "size": "32px",
+        "weight": "700"
+      },
+      {
+        "label": "Display Xl",
+        "size": "90px",
+        "weight": "800"
+      },
+      {
+        "label": "Display Xs",
+        "size": "24px",
+        "weight": "700"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "1px",
+    "md": "6px",
+    "lg": "16px",
+    "xl": "24px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Nav Bar",
+    "Nav Link",
+    "Button Primary",
+    "Button Outline Red",
+    "Button Outline Dark",
+    "Button Icon Circular",
+    "Text Input",
+    "Badge Chip",
+    "Card Content",
+    "Card Hero",
+    "Hero Band Dark",
+    "Hero Band Red",
+    "Content Band Light",
+    "Speechmark Logo Orb",
+    "Divider On Dark"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

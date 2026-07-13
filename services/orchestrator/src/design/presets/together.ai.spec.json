@@ -1,0 +1,113 @@
+{
+  "name": "Together AI",
+  "rationale": "An inspired interpretation of Together AI's design language — an AI infrastructure platform whose surface alternates between near-black hero bands (with a three-color orange-magenta-periwinkle gradien",
+  "brand": {
+    "name": "Together AI",
+    "voice": "Professional, modern, trustworthy"
+  },
+  "visual_style": "An inspired interpretation of Together AI's design language — an AI infrastructure platform whose surface alternates between near-black hero bands (with a three-color orange-magenta-periwinkle gradient as the single piece of brand chrome) and bright white research / pricing / docs bands, knit together by a custom display sans and an uppercase mono eyebrow face.",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#000000",
+      "#ffffff"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#000000",
+      "#959494",
+      "#959494",
+      "#ffffff",
+      "#010120",
+      "#313641",
+      "#ffffff"
+    ],
+    "accent": [
+      "#fc4c02",
+      "#ef2cc1",
+      "#bdbbff",
+      "#c8f6f9"
+    ],
+    "status": [
+      "#000000"
+    ]
+  },
+  "typography": {
+    "fontFamily": "The Future, Inter, Helvetica Neue, Arial, sans-serif",
+    "monoFamily": "PP Neue Montreal Mono, ui-monospace, SF Mono, Menlo, monospace",
+    "samples": [
+      {
+        "label": "Display Lg",
+        "size": "28px",
+        "weight": "500"
+      },
+      {
+        "label": "Display Md",
+        "size": "22px",
+        "weight": "500"
+      },
+      {
+        "label": "Display Xl",
+        "size": "40px",
+        "weight": "500"
+      },
+      {
+        "label": "Display Xxl",
+        "size": "64px",
+        "weight": "500"
+      },
+      {
+        "label": "Body Lg",
+        "size": "18px",
+        "weight": "400"
+      },
+      {
+        "label": "Body Lg Strong",
+        "size": "18px",
+        "weight": "500"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "3.25px",
+    "md": "4px",
+    "lg": "8px",
+    "xl": "24px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Nav Bar",
+    "Nav Link",
+    "Button Primary",
+    "Button Secondary Mint",
+    "Button Secondary White",
+    "Button Ghost On Dark",
+    "Button Outline",
+    "Button Icon Circular",
+    "Text Input",
+    "Badge Neutral",
+    "Badge Subtle On Dark",
+    "Hero Band Dark",
+    "Research Band Dark",
+    "Feature Tab Pill",
+    "Pricing Sub Tab"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

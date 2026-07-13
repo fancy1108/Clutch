@@ -1,0 +1,127 @@
+{
+  "name": "Meta",
+  "rationale": "Meta's design system spans hardware commerce (Quest VR, Ray-Ban Meta AI glasses) and brand surfaces with a confident product-merchandising voice. The system pairs a stark white canvas with full-bleed ",
+  "brand": {
+    "name": "Meta",
+    "voice": "Professional, modern, trustworthy"
+  },
+  "visual_style": "Meta's design system spans hardware commerce (Quest VR, Ray-Ban Meta AI glasses) and brand surfaces with a confident product-merchandising voice. The system pairs a stark white canvas with full-bleed photographic product cards, a confident Optimistic VF wordmark/headline face, dual-CTA hero patterns (black primary + outlined secondary), and a saturated cobalt blue (#0064E0) for in-product purchase actions. Pill-shaped 100px-radius buttons, generous 24-32px card rounding, and tight three-tier tex",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#0064e0",
+      "#0457cb",
+      "#0091ff",
+      "#ffffff"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#000000",
+      "#ffffff",
+      "#1876f2",
+      "#385898",
+      "#a121ce",
+      "#24e400",
+      "#f2a918",
+      "#ffe200",
+      "#e41e3f",
+      "#f0284a",
+      "#ffffff",
+      "#f1f4f7",
+      "#0a1317",
+      "#1c1e21",
+      "#444950",
+      "#4b4c4f",
+      "#5d6c7b",
+      "#8595a4",
+      "#ced0d4",
+      "#dee3e9",
+      "#bcc0c4"
+    ],
+    "accent": [
+      "#000000"
+    ],
+    "status": [
+      "#31a24c",
+      "#f7b928"
+    ]
+  },
+  "typography": {
+    "fontFamily": "Optimistic VF",
+    "monoFamily": "ui-monospace, monospace",
+    "samples": [
+      {
+        "label": "Display Lg",
+        "size": "48px",
+        "weight": "500"
+      },
+      {
+        "label": "Hero Display",
+        "size": "64px",
+        "weight": "500"
+      },
+      {
+        "label": "Body Md",
+        "size": "16px",
+        "weight": "400"
+      },
+      {
+        "label": "Body Md Bold",
+        "size": "16px",
+        "weight": "700"
+      },
+      {
+        "label": "Body Sm",
+        "size": "14px",
+        "weight": "400"
+      },
+      {
+        "label": "Body Sm Bold",
+        "size": "14px",
+        "weight": "700"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "2px",
+    "md": "4px",
+    "lg": "6px",
+    "xl": "8px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Button Primary",
+    "Button Primary Pressed",
+    "Button Primary Disabled",
+    "Button Buy Cta",
+    "Button Buy Cta Pressed",
+    "Button Secondary",
+    "Button Ghost",
+    "Button Pill Tab",
+    "Button Pill Tab Active",
+    "Button Icon Circular",
+    "Card Product Feature",
+    "Card Feature Photo",
+    "Card Promo Strip",
+    "Card Icon Feature",
+    "Card Checkout Summary"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

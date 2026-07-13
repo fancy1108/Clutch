@@ -1,0 +1,118 @@
+{
+  "name": "xAI",
+  "rationale": "An inspired interpretation of xAI's design language — Elon Musk's frontier-AI company whose web surface is a strict near-black canvas broken only by white pill outlines, occasional warm sunset / dusk ",
+  "brand": {
+    "name": "xAI",
+    "voice": "Warm, approachable, human"
+  },
+  "visual_style": "An inspired interpretation of xAI's design language — Elon Musk's frontier-AI company whose web surface is a strict near-black canvas broken only by white pill outlines, occasional warm sunset / dusk gradient accents, a custom geometric sans (Universal Sans) for display, and an uppercase tracked monospace caption face; the whole system reads as engineered-cosmic, unmarketed.",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#ffffff",
+      "#0a0a0a"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#ffffff",
+      "#fafaf7",
+      "#dadbdf",
+      "#7d8187",
+      "#7d8187",
+      "#212327",
+      "#0a0a0a",
+      "#1a1c20",
+      "#191919",
+      "#363a3f"
+    ],
+    "accent": [
+      "#ff7a17",
+      "#ffc285",
+      "#7c3aed",
+      "#c4b5fd",
+      "#a0c3ec",
+      "#0d1726"
+    ],
+    "status": [
+      "#000000"
+    ]
+  },
+  "typography": {
+    "fontFamily": "universalSans, Inter, system-ui, -apple-system, sans-serif",
+    "monoFamily": "GeistMono, ui-monospace, SFMono-Regular, Menlo, monospace",
+    "samples": [
+      {
+        "label": "Display Lg",
+        "size": "72px",
+        "weight": "400"
+      },
+      {
+        "label": "Display Md",
+        "size": "48px",
+        "weight": "400"
+      },
+      {
+        "label": "Display Sm",
+        "size": "32px",
+        "weight": "400"
+      },
+      {
+        "label": "Display Xl",
+        "size": "96px",
+        "weight": "400"
+      },
+      {
+        "label": "Display Xs",
+        "size": "20px",
+        "weight": "400"
+      },
+      {
+        "label": "Body Lg",
+        "size": "18px",
+        "weight": "400"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "8px",
+    "md": "8px",
+    "lg": "16px",
+    "xl": "24px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Nav Bar",
+    "Nav Link",
+    "Button Primary",
+    "Button Outline On Dark",
+    "Button Outline Sm",
+    "Text Input",
+    "Card Content",
+    "Card Feature Product",
+    "Hero Band",
+    "Content Band",
+    "Eyebrow Mono",
+    "Divider Hairline",
+    "Footer",
+    "Ex Pricing Tier",
+    "Ex Pricing Tier Featured"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

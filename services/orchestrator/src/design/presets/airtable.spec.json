@@ -1,0 +1,128 @@
+{
+  "name": "Airtable",
+  "rationale": "A sober, editorial workflow-software interface anchored on white canvas and dark-ink type, where brand voltage comes from full-bleed signature cards in coral, dark green, peach, and dark navy that pun",
+  "brand": {
+    "name": "Airtable",
+    "voice": "Bold, minimal, technical"
+  },
+  "visual_style": "A sober, editorial workflow-software interface anchored on white canvas and dark-ink type, where brand voltage comes from full-bleed signature cards in coral, dark green, peach, and dark navy that punctuate long-scroll explainer pages. Primary actions use a near-black pill CTA; secondary actions sit in a white outlined button. Type runs Haas Grotesk in modest weights — never bold for its own sake.",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#181d26",
+      "#0d1218",
+      "#ffffff"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#181d26",
+      "#333840",
+      "#41454d",
+      "#dddddd",
+      "#9297a0",
+      "#ffffff",
+      "#f8fafc",
+      "#e0e2e6",
+      "#181d26",
+      "#1d1f25",
+      "#aa2d00",
+      "#0a2e0e",
+      "#f5e9d4",
+      "#fcab79",
+      "#a8d8c4",
+      "#f4d35e",
+      "#d9a441",
+      "#ffffff",
+      "#1b61c9",
+      "#1a3866",
+      "#254fad",
+      "#458fff",
+      "#39bf45",
+      "#1d1f25"
+    ],
+    "accent": [
+      "#000000"
+    ],
+    "status": [
+      "#006400"
+    ]
+  },
+  "typography": {
+    "fontFamily": "Haas Groot Disp, Haas, sans-serif",
+    "monoFamily": "ui-monospace, monospace",
+    "samples": [
+      {
+        "label": "Display Lg",
+        "size": "40px",
+        "weight": "400"
+      },
+      {
+        "label": "Display Md",
+        "size": "32px",
+        "weight": "400"
+      },
+      {
+        "label": "Display Xl",
+        "size": "48px",
+        "weight": "500"
+      },
+      {
+        "label": "Title Lg",
+        "size": "24px",
+        "weight": "400"
+      },
+      {
+        "label": "Title Md",
+        "size": "20px",
+        "weight": "400"
+      },
+      {
+        "label": "Title Sm",
+        "size": "18px",
+        "weight": "500"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "2px",
+    "md": "6px",
+    "lg": "10px",
+    "xl": "12px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Button Primary",
+    "Button Primary Active",
+    "Button Secondary",
+    "Button Secondary On Dark",
+    "Button Legal",
+    "Button Icon Circular",
+    "Button Pricing Pill",
+    "Text Link",
+    "Top Nav",
+    "Hero Band",
+    "Signature Coral Card",
+    "Signature Forest Card",
+    "Hero Card Dark",
+    "Feature Card Tabbed",
+    "Cream Callout Card"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

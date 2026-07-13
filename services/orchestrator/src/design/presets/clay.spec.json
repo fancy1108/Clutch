@@ -1,0 +1,129 @@
+{
+  "name": "Clay",
+  "rationale": "A vibrant claymation-meets-data interface for Clay.com (GTM data-orchestration platform). Anchors on white canvas with dark-navy primary CTAs, custom rounded display type, and saturated single-color f",
+  "brand": {
+    "name": "Clay",
+    "voice": "Bold, minimal, technical"
+  },
+  "visual_style": "A vibrant claymation-meets-data interface for Clay.com (GTM data-orchestration platform). Anchors on white canvas with dark-navy primary CTAs, custom rounded display type, and saturated single-color feature cards — hot pink, deep teal, lavender, peach, ochre — that punctuate long-scroll explainer pages. Brand voltage comes from 3D-rendered claymation illustrations (mountains, characters, mascots) used as full-bleed hero artifacts and the bright multi-color card surfaces showing product UI fragme",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#0a0a0a",
+      "#1f1f1f",
+      "#e5e5e5",
+      "#ffffff"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#0a0a0a",
+      "#3a3a3a",
+      "#1a1a1a",
+      "#6a6a6a",
+      "#9a9a9a",
+      "#e5e5e5",
+      "#f0f0f0",
+      "#fffaf0",
+      "#faf5e8",
+      "#f5f0e0",
+      "#ebe6d6",
+      "#0a1a1a",
+      "#1a2a2a",
+      "#ffffff",
+      "#a0a0a0",
+      "#ff4d8b",
+      "#1a3a3a",
+      "#b8a4ed",
+      "#ffb084",
+      "#e8b94a",
+      "#a4d4c5",
+      "#ff6b5a"
+    ],
+    "accent": [
+      "#000000"
+    ],
+    "status": [
+      "#22c55e",
+      "#f59e0b",
+      "#ef4444"
+    ]
+  },
+  "typography": {
+    "fontFamily": "Plain Black, Inter, sans-serif",
+    "monoFamily": "ui-monospace, monospace",
+    "samples": [
+      {
+        "label": "Display Lg",
+        "size": "56px",
+        "weight": "500"
+      },
+      {
+        "label": "Display Md",
+        "size": "40px",
+        "weight": "500"
+      },
+      {
+        "label": "Display Sm",
+        "size": "32px",
+        "weight": "500"
+      },
+      {
+        "label": "Display Xl",
+        "size": "72px",
+        "weight": "500"
+      },
+      {
+        "label": "Title Lg",
+        "size": "24px",
+        "weight": "600"
+      },
+      {
+        "label": "Title Md",
+        "size": "18px",
+        "weight": "600"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "6px",
+    "md": "8px",
+    "lg": "12px",
+    "xl": "16px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Button Primary",
+    "Button Primary Active",
+    "Button Primary Disabled",
+    "Button Secondary",
+    "Button On Color",
+    "Button Text Link",
+    "Text Link",
+    "Top Nav",
+    "Hero Band",
+    "Hero Illustration Card",
+    "Feature Card Pink",
+    "Feature Card Teal",
+    "Feature Card Lavender",
+    "Feature Card Peach",
+    "Feature Card Ochre"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

@@ -1,0 +1,114 @@
+{
+  "name": "VoltAgent",
+  "rationale": "An inspired interpretation of Voltagent's design language — a developer-focused AI agent engineering platform whose surface is an unrelenting near-black canvas broken only by a single electric-green b",
+  "brand": {
+    "name": "VoltAgent",
+    "voice": "Bold, minimal, technical"
+  },
+  "visual_style": "An inspired interpretation of Voltagent's design language — a developer-focused AI agent engineering platform whose surface is an unrelenting near-black canvas broken only by a single electric-green brand accent, code-editor mockups inside the hero, and a precise grid of dark feature cards that read like a documentation site dressed as marketing.",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#00d992",
+      "#2fd6a1",
+      "#10b981",
+      "#101010"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#f2f2f2",
+      "#ffffff",
+      "#bdbdbd",
+      "#8b949e",
+      "#3d3a39",
+      "#b8b3b0",
+      "#101010",
+      "#1a1a1a",
+      "#f5f6f7"
+    ],
+    "accent": [
+      "#000000"
+    ],
+    "status": [
+      "#000000"
+    ]
+  },
+  "typography": {
+    "fontFamily": "Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
+    "monoFamily": "SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+    "samples": [
+      {
+        "label": "Display Lg",
+        "size": "36px",
+        "weight": "400"
+      },
+      {
+        "label": "Display Md",
+        "size": "24px",
+        "weight": "700"
+      },
+      {
+        "label": "Display Sm",
+        "size": "20px",
+        "weight": "600"
+      },
+      {
+        "label": "Display Xl",
+        "size": "60px",
+        "weight": "400"
+      },
+      {
+        "label": "Body Lg",
+        "size": "18px",
+        "weight": "400"
+      },
+      {
+        "label": "Body Md",
+        "size": "16px",
+        "weight": "400"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "4px",
+    "md": "6px",
+    "lg": "8px",
+    "xl": "24px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Nav Bar",
+    "Nav Link",
+    "Button Primary",
+    "Button Outline On Dark",
+    "Button Ghost Green",
+    "Button Pill Tag",
+    "Text Input",
+    "Card Feature",
+    "Card Feature Emphasized",
+    "Code Mockup",
+    "Code Inline Chip",
+    "Hero Band",
+    "Content Band",
+    "Green Divider Band",
+    "Footer"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

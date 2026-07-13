@@ -60,6 +60,7 @@ from src.design.generator import (
     _shell_html,
     generate_session,
     iterate_session,
+    delete_screen,
     start_generate_session,
 )
 
@@ -315,7 +316,7 @@ def generate_react(run_id: str) -> dict[str, Any]:
     manifest = read_manifest(session_dir_path)
     if not manifest.get("prototype_approved"):
         raise DesignError("Approve the prototype before generating UI code")
-    screens = manifest.get("screens") or []
+    screens = [s for s in (manifest.get("screens") or []) if not s.get("deleted")]
     if not screens:
         raise DesignError("No screens to codegen")
     design_md = (session_dir_path / DESIGN_MD).read_text(encoding="utf-8") if (session_dir_path / DESIGN_MD).is_file() else ""
@@ -427,6 +428,10 @@ def generate_prototype(project_id: str, *, prompt: str | None = None, template_i
 
 def iterate_screen(project_id: str, screen_id: str, instruction: str) -> dict[str, Any]:
     return iterate_session(project_id, instruction)
+
+
+def delete_screen_from_session(run_id: str, screen_id: str) -> dict[str, Any]:
+    return delete_screen(run_id, screen_id)
 
 
 def list_templates() -> list[dict[str, str]]:

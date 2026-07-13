@@ -1,0 +1,169 @@
+{
+  "name": "The Verge",
+  "rationale": "Design system for The Verge",
+  "brand": {
+    "name": "The Verge",
+    "voice": "Editorial, authoritative, refined"
+  },
+  "visual_style": "## 1. Visual Theme & Atmosphere",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#3cffd0",
+      "#5200ff",
+      "#3cffd0",
+      "#5200ff",
+      "#5200ff",
+      "#5200ff",
+      "#5200ff",
+      "#5200ff"
+    ],
+    "secondary": [
+      "#2d2d2d"
+    ],
+    "neutral": [
+      "#ffffff",
+      "#131313",
+      "#2d2d2d",
+      "#313131",
+      "#ffffff",
+      "#000000",
+      "#ffffff",
+      "#949494",
+      "#e9e9e9",
+      "#131313",
+      "#131313",
+      "#131313",
+      "#2d2d2d",
+      "#131313",
+      "#3cffd0",
+      "#131313",
+      "#8c8c8c",
+      "#1eaedb",
+      "#0500ff",
+      "#131313",
+      "#3860be",
+      "#ffffff",
+      "#ffffff",
+      "#949494",
+      "#3cffd0",
+      "#5200ff",
+      "#131313",
+      "#ffffff",
+      "#131313",
+      "#131313",
+      "#131313",
+      "#3cffd0",
+      "#3860be",
+      "#3d00bf",
+      "#3cffd0",
+      "#131313",
+      "#3cffd0",
+      "#131313",
+      "#ffffff",
+      "#ffffff",
+      "#e9e9e9",
+      "#949494",
+      "#ffffff",
+      "#309875",
+      "#3860be",
+      "#131313",
+      "#ffffff",
+      "#3cffd0",
+      "#3860be",
+      "#3cffd0",
+      "#131313",
+      "#131313",
+      "#3860be"
+    ],
+    "accent": [
+      "#309875",
+      "#3860be",
+      "#1eaedb",
+      "#3d00bf",
+      "#1eaedb",
+      "#8c8c8c",
+      "#3cffd0",
+      "#3cffd0"
+    ],
+    "status": [
+      "#000000"
+    ]
+  },
+  "typography": {
+    "fontFamily": "Impact, Helvetica. The signature display face for The Verge wordmark and feature headlines. A heavy-weight (900) industrial sans-serif with a condensed, almost-athletic stance. Runs at 60–107px on the homepage, never smaller.",
+    "monoFamily": "ui-monospace, monospace",
+    "samples": [
+      {
+        "label": "Hero Wordmark / Display",
+        "size": "Manuka",
+        "weight": "107px / 6.69rem"
+      },
+      {
+        "label": "Secondary Display",
+        "size": "Manuka",
+        "weight": "90px / 5.63rem"
+      },
+      {
+        "label": "Tertiary Display",
+        "size": "Manuka",
+        "weight": "60px / 3.75rem"
+      },
+      {
+        "label": "Large Headline",
+        "size": "PolySans",
+        "weight": "34px / 2.13rem"
+      },
+      {
+        "label": "Heading Wide",
+        "size": "PolySans",
+        "weight": "32px / 2.00rem"
+      },
+      {
+        "label": "Heading Medium",
+        "size": "PolySans",
+        "weight": "24px / 1.50rem"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "6px",
+    "md": "12px",
+    "lg": "16px",
+    "xl": "24px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Primary (Brand Hazards)",
+    "Secondary & Accent",
+    "Surface & Background",
+    "Neutrals & Text",
+    "Semantic & Accent",
+    "Gradient System",
+    "Font Family",
+    "Note on Font Substitutes",
+    "Buttons",
+    "Cards & Containers",
+    "Inputs & Forms",
+    "Navigation",
+    "Image Treatment",
+    "StoryStream Timeline Item (Distinctive)",
+    "Spacing System"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

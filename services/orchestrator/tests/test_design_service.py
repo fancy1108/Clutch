@@ -299,6 +299,32 @@ def test_iterate_add_creates_new_screen(workspace: Path, monkeypatch: pytest.Mon
     assert any(s["id"] != "main" for s in after["screens"])
 
 
+def test_iterate_duplicate_copies_html(workspace: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("src.models_config.is_model_available", lambda *a, **k: False)
+    run_id = "design-iterate-dup"
+    service.generate_session(run_id, prompt="登录页", device="web")
+    before = service.get_session(run_id)
+    assert len(before["screens"]) == 1
+    original_screen = before["screens"][0]
+    original_id = original_screen["id"]
+    original_html_path = _session_path(workspace, run_id) / original_screen["html_path"]
+    original_html = original_html_path.read_text(encoding="utf-8")
+
+    after = service.iterate_session(
+        run_id,
+        "Duplicate this screen",
+        target_kind="ui",
+        target_id=original_id,
+        mode="duplicate",
+    )
+    assert len(after["screens"]) == 2
+    new_screen = next(s for s in after["screens"] if s["id"] != original_id)
+    new_html_path = _session_path(workspace, run_id) / new_screen["html_path"]
+    assert new_html_path.is_file()
+    new_html = new_html_path.read_text(encoding="utf-8")
+    assert new_html == original_html
+
+
 def test_iterate_modify_keeps_screen_count(workspace: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("src.models_config.is_model_available", lambda *a, **k: False)
     run_id = "design-iterate-mod"
@@ -425,10 +451,12 @@ def test_versioned_screen_rounds(workspace: Path, monkeypatch: pytest.MonkeyPatc
     session = service.iterate_session(run_id, "把主按钮改成深色", target_kind="ui", target_id="main")
     session_dir = _session_path(workspace, run_id)
     assert (session_dir / "screens" / "main_r0.html").is_file()
-    assert (session_dir / "screens" / "main_r1.html").is_file()
     history = session.get("round_history") or []
-    assert len(history) >= 2
-    assert history[-1]["html_path"] == "screens/main_r1.html"
+    assert len(history) == 1
+    assert any(e.get("screen_id") == "main" and e.get("round_index") == 0 for e in history)
+    screens = session.get("screens") or []
+    assert len(screens) == 1
+    assert screens[0]["html_path"] == "screens/main_r0.html"
 
 
 def test_html_has_visible_content_rejects_empty_shell() -> None:

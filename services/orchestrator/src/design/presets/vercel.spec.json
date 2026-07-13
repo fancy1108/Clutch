@@ -1,0 +1,136 @@
+{
+  "name": "Vercel",
+  "rationale": "An inspired interpretation of Vercel's design language — a developer-platform brand whose surface is a stark black-and-ink duet on near-white canvas, broken at hero scale by a multi-color mesh gradien",
+  "brand": {
+    "name": "Vercel",
+    "voice": "Technical, precise, developer-oriented"
+  },
+  "visual_style": "An inspired interpretation of Vercel's design language — a developer-platform brand whose surface is a stark black-and-ink duet on near-white canvas, broken at hero scale by a multi-color mesh gradient (cyan / blue / magenta / amber) that acts as the entire decorative system, paired with a custom geometric sans for headlines and a monospaced caption face for technical labels.",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#171717",
+      "#ffffff"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#171717",
+      "#4d4d4d",
+      "#888888",
+      "#ebebeb",
+      "#a1a1a1",
+      "#ffffff",
+      "#fafafa",
+      "#f5f5f5",
+      "#0070f3",
+      "#0761d1",
+      "#d3e5ff",
+      "#f7d4d6",
+      "#c50000",
+      "#ffefcf",
+      "#ab570a",
+      "#7928ca",
+      "#d8ccf1",
+      "#4c2889",
+      "#50e3c2",
+      "#aaffec",
+      "#29bc9b",
+      "#ff0080",
+      "#eb367f",
+      "#007cf0",
+      "#00dfd8",
+      "#7928ca",
+      "#ff0080",
+      "#ff4d4d",
+      "#f9cb28",
+      "#171717",
+      "#f2f2f2"
+    ],
+    "accent": [
+      "#000000"
+    ],
+    "status": [
+      "#0070f3",
+      "#ee0000",
+      "#f5a623"
+    ]
+  },
+  "typography": {
+    "fontFamily": "Geist, Inter, system-ui, -apple-system, sans-serif",
+    "monoFamily": "Geist Mono, ui-monospace, SFMono-Regular, Menlo, Monaco, monospace",
+    "samples": [
+      {
+        "label": "Display Lg",
+        "size": "32px",
+        "weight": "600"
+      },
+      {
+        "label": "Display Md",
+        "size": "24px",
+        "weight": "600"
+      },
+      {
+        "label": "Display Sm",
+        "size": "20px",
+        "weight": "600"
+      },
+      {
+        "label": "Display Xl",
+        "size": "48px",
+        "weight": "600"
+      },
+      {
+        "label": "Body Lg",
+        "size": "18px",
+        "weight": "400"
+      },
+      {
+        "label": "Body Md",
+        "size": "16px",
+        "weight": "400"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "4px",
+    "md": "6px",
+    "lg": "8px",
+    "xl": "12px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Nav Bar",
+    "Nav Link",
+    "Nav Cta Signup",
+    "Nav Cta Login",
+    "Nav Cta Ask Ai",
+    "Button Primary",
+    "Button Secondary",
+    "Button Primary Sm",
+    "Button Secondary Sm",
+    "Tab Ghost",
+    "Icon Button Circular",
+    "Card Marketing",
+    "Card Marketing Large",
+    "Card Soft",
+    "Template Card"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

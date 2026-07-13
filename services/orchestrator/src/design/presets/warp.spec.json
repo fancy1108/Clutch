@@ -1,0 +1,110 @@
+{
+  "name": "Warp",
+  "rationale": "An inspired interpretation of Warp's design language — an agentic terminal-and-development-environment brand whose surface is a warm near-charcoal canvas (a tint warmer than pure black), broken only b",
+  "brand": {
+    "name": "Warp",
+    "voice": "Warm, approachable, human"
+  },
+  "visual_style": "An inspired interpretation of Warp's design language — an agentic terminal-and-development-environment brand whose surface is a warm near-charcoal canvas (a tint warmer than pure black), broken only by clean Inter typography, the occasional Instrument Serif italic moment, and dense terminal-mockup imagery; CTAs are unusually understated, with shape geometry running tighter than most marketing sites.",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#f7f5f0",
+      "#2b2622"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#f7f5f0",
+      "#c9c0ad",
+      "#dad2c1",
+      "#aea69c",
+      "#2b2622",
+      "#383330",
+      "#3f3a36"
+    ],
+    "accent": [
+      "#000000"
+    ],
+    "status": [
+      "#000000"
+    ]
+  },
+  "typography": {
+    "fontFamily": "Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
+    "monoFamily": "DM Mono, ui-monospace, SFMono-Regular, Menlo, monospace",
+    "samples": [
+      {
+        "label": "Display Lg",
+        "size": "48px",
+        "weight": "400"
+      },
+      {
+        "label": "Display Md",
+        "size": "32px",
+        "weight": "500"
+      },
+      {
+        "label": "Display Serif",
+        "size": "48px",
+        "weight": "400"
+      },
+      {
+        "label": "Display Sm",
+        "size": "24px",
+        "weight": "500"
+      },
+      {
+        "label": "Display Xl",
+        "size": "64px",
+        "weight": "400"
+      },
+      {
+        "label": "Body Lg",
+        "size": "18px",
+        "weight": "400"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "1px",
+    "md": "3px",
+    "lg": "4px",
+    "xl": "6px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Nav Bar",
+    "Nav Link",
+    "Button Primary",
+    "Button Secondary Ghost",
+    "Button Icon Circular",
+    "Text Input",
+    "Card Content",
+    "Card Mockup",
+    "Download Tile",
+    "Press Row",
+    "Job Row",
+    "Hero Band",
+    "Content Band",
+    "Partner Logo Tile",
+    "Testimonial Card"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

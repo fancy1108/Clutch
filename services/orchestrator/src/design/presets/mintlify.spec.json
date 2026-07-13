@@ -1,0 +1,133 @@
+{
+  "name": "Mintlify",
+  "rationale": "Mintlify presents documentation infrastructure with a dual-mode aesthetic — atmospheric sky-gradient marketing heroes (cloud illustration backdrops, soft cream-to-blue washes) paired with dense develo",
+  "brand": {
+    "name": "Mintlify",
+    "voice": "Bold, minimal, technical"
+  },
+  "visual_style": "Mintlify presents documentation infrastructure with a dual-mode aesthetic — atmospheric sky-gradient marketing heroes (cloud illustration backdrops, soft cream-to-blue washes) paired with dense developer-grade documentation surfaces. The system uses Inter for UI prose, Geist Mono for code, and a signature Mintlify green ({colors.brand-green}) reserved for accent CTAs and active states. Black-pill primary buttons dominate marketing, white-on-dark inversions appear on dark hero bands, and a 3-colu",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#0a0a0a",
+      "#ffffff"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#00d4a4",
+      "#00b48a",
+      "#7cebcb",
+      "#3772cf",
+      "#c37d0d",
+      "#1ba673",
+      "#d45656",
+      "#888888",
+      "#87a8c8",
+      "#f5e9d8",
+      "#1a3d4a",
+      "#2d5a4f",
+      "#f55a3c",
+      "#cc3a1f",
+      "#ffffff",
+      "#0a0a0a",
+      "#f7f7f7",
+      "#fafafa",
+      "#1c1c1e",
+      "#e5e5e5",
+      "#ededed",
+      "#1f1f1f",
+      "#0a0a0a",
+      "#1c1c1e",
+      "#3a3a3c",
+      "#5a5a5c",
+      "#888888",
+      "#a8a8aa",
+      "#ffffff",
+      "#b3b3b3"
+    ],
+    "accent": [
+      "#000000"
+    ],
+    "status": [
+      "#000000"
+    ]
+  },
+  "typography": {
+    "fontFamily": "Inter",
+    "monoFamily": "Geist Mono",
+    "samples": [
+      {
+        "label": "Display Lg",
+        "size": "56px",
+        "weight": "600"
+      },
+      {
+        "label": "Hero Display",
+        "size": "72px",
+        "weight": "600"
+      },
+      {
+        "label": "Body Md",
+        "size": "16px",
+        "weight": "400"
+      },
+      {
+        "label": "Body Md Medium",
+        "size": "16px",
+        "weight": "500"
+      },
+      {
+        "label": "Body Sm",
+        "size": "14px",
+        "weight": "400"
+      },
+      {
+        "label": "Body Sm Medium",
+        "size": "14px",
+        "weight": "500"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "4px",
+    "md": "6px",
+    "lg": "8px",
+    "xl": "12px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Button Primary",
+    "Button Primary Pressed",
+    "Button Primary Disabled",
+    "Button Accent Green",
+    "Button On Dark",
+    "Button Secondary",
+    "Button Ghost",
+    "Button Link",
+    "Button Icon Circular",
+    "Card Base",
+    "Card Feature",
+    "Card Help",
+    "Card Startup Perk",
+    "Pricing Card",
+    "Pricing Card Featured"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

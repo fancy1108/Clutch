@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
-import { Loader2, Pencil } from 'lucide-react';
+import { Loader2, Pencil, Trash2 } from 'lucide-react';
 import { useLanguage } from '../../LanguageContext';
 import { sidecarAuthedHttpUrl } from '../../../services/sidecarUrl';
 import {
@@ -104,6 +104,20 @@ export function UiCardNode({ data, selected }: NodeProps) {
             </span>
           ) : (
             <>
+              {selected && d.onDelete ? (
+                <button
+                  type="button"
+                  className="nodrag nopan inline-flex h-6 w-6 items-center justify-center rounded-md text-neutral-400 hover:bg-rose-100 hover:text-rose-600 transition-colors"
+                  title={t('Delete screen')}
+                  aria-label={t('Delete screen')}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    d.onDelete?.();
+                  }}
+                >
+                  <Trash2 size={12} strokeWidth={2.25} />
+                </button>
+              ) : null}
               <button
                 type="button"
                 className={`nodrag nopan inline-flex h-6 w-6 items-center justify-center rounded-md transition-colors ${
@@ -145,11 +159,12 @@ export function UiCardNode({ data, selected }: NodeProps) {
         {d.html || resolvedPreviewSrc ? (
           useRemotePreview ? (
             <iframe
+              key={`remote-${resolvedPreviewSrc}`}
               title={d.name}
               src={resolvedPreviewSrc!}
-              className={`absolute left-0 top-0 origin-top-left border-0 bg-white pointer-events-none ${
-                drawing ? 'animate-design-draw-reveal' : ''
-              }`}
+              className={`nodrag nopan absolute left-0 top-0 origin-top-left border-0 bg-white ${
+                drawing ? 'pointer-events-none' : 'pointer-events-auto'
+              } ${drawing ? 'animate-design-draw-reveal' : ''}`}
               style={{
                 width: view.designW,
                 height: view.designH,
@@ -158,13 +173,14 @@ export function UiCardNode({ data, selected }: NodeProps) {
             />
           ) : (
             <iframe
+              key={`local-${pickMode}-${d.html ? d.html.length : 0}`}
               title={d.name}
               srcDoc={ensureCharset(withPickerScript(d.html || '', {
                 pickMode,
                 selectedPath: d.selectedElementPath,
               }))}
-              className={`absolute left-0 top-0 origin-top-left border-0 bg-white ${
-                pickMode ? 'pointer-events-auto' : 'pointer-events-none'
+              className={`nodrag nopan absolute left-0 top-0 origin-top-left border-0 bg-white ${
+                drawing ? 'pointer-events-none' : 'pointer-events-auto'
               } ${drawing ? 'animate-design-draw-reveal' : ''}`}
               style={{
                 width: view.designW,
@@ -176,10 +192,17 @@ export function UiCardNode({ data, selected }: NodeProps) {
         ) : null}
         {drawing ? (
           <>
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-1 overflow-hidden">
+            <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-violet-50/60 backdrop-blur-[1px]">
+              <div className="flex flex-col items-center gap-2">
+                <Loader2 size={22} className="animate-spin text-violet-500" />
+                <span className="max-w-[180px] text-center text-[12px] font-semibold text-violet-700">
+                  {d.label || 'Generating…'}
+                </span>
+              </div>
+            </div>
+            <div className="pointer-events-none absolute inset-x-0 top-0 z-20 h-1 overflow-hidden">
               <div className="h-full w-1/3 bg-violet-400/80 animate-design-shimmer-sweep" />
             </div>
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-white/30" />
           </>
         ) : null}
         {pickMode && !hasElement ? (

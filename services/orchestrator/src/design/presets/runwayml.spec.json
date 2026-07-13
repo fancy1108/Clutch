@@ -1,0 +1,129 @@
+{
+  "name": "Runway",
+  "rationale": "Design system for Runway",
+  "brand": {
+    "name": "Runway",
+    "voice": "Bold, minimal, technical"
+  },
+  "visual_style": "## 1. Visual Theme & Atmosphere",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#000000",
+      "#030303",
+      "#1a1a1a",
+      "#ffffff"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#fefefe",
+      "#e9ecf2",
+      "#27272a",
+      "#404040",
+      "#3f3f3f",
+      "#767d88",
+      "#7d848e",
+      "#a7a7a7",
+      "#c9ccd1",
+      "#d0d4d4",
+      "#6b7280",
+      "#0c0c0c",
+      "#999999",
+      "#1a1a1a",
+      "#000000",
+      "#ffffff",
+      "#404040",
+      "#767d88",
+      "#a7a7a7",
+      "#c9ccd1",
+      "#27272a",
+      "#1a1a1a",
+      "#767d88",
+      "#767d88"
+    ],
+    "accent": [
+      "#000000"
+    ],
+    "status": [
+      "#000000"
+    ]
+  },
+  "typography": {
+    "fontFamily": "abcNormal, with fallback: abcNormal Fallback",
+    "monoFamily": "ui-monospace, monospace",
+    "samples": [
+      {
+        "label": "Display / Hero",
+        "size": "abcNormal",
+        "weight": "48px (3rem)"
+      },
+      {
+        "label": "Section Heading",
+        "size": "abcNormal",
+        "weight": "40px (2.5rem)"
+      },
+      {
+        "label": "Sub-heading",
+        "size": "abcNormal",
+        "weight": "36px (2.25rem)"
+      },
+      {
+        "label": "Card Title",
+        "size": "abcNormal",
+        "weight": "24px (1.5rem)"
+      },
+      {
+        "label": "Feature Title",
+        "size": "abcNormal",
+        "weight": "20px (1.25rem)"
+      },
+      {
+        "label": "Body / Button",
+        "size": "abcNormal",
+        "weight": "16px (1rem)"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "6px",
+    "md": "12px",
+    "lg": "16px",
+    "xl": "24px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Primary",
+    "Surface & Background",
+    "Neutrals & Text",
+    "Gradient System",
+    "Font Family",
+    "Buttons",
+    "Cards & Containers",
+    "Navigation",
+    "Image Treatment",
+    "Distinctive Components",
+    "Spacing System",
+    "Grid & Container",
+    "Whitespace Philosophy",
+    "Border Radius Scale",
+    "Do"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

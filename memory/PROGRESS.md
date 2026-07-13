@@ -19,6 +19,16 @@
 
 ## Recent Sessions
 
+## 2026-07-13 会话（修复设计画布同步、下拉菜单转换、就绪/选取模式以及爬虫 CSS 变量提取）
+
+- **设计画布状态同步优化**：合并了 `DesignWorkspace.tsx` 中两个冲突的 React Flow 节点同步 `useEffect`，规避了切换设计轮次（Round）时的组件重复渲染与排版竞争问题。
+- **自定义下拉框组件转换**：将设计轮次水平滚动选择栏改写为自定义绝对定位下拉菜单（DesignRoundSelector），符合 Clutch 状态栏/页脚菜单的 UI/UX 指引规范，支持 Click-Outside 与 Escape 退出。
+- **就绪交互模式（Prototype）解锁**：在 Ready 模式下解除了 preview iframe 的 `pointer-events-none` 限制，用户可在原型画布上正常触发 hover、输入、点击等页面交互。
+- **组件拾取选取修复（Safari/WebKit 兼容性）**：为 `UiCardNode` 的 iframe 节点引入了基于 Picking 状态的动态 `key` 绑定以强制销毁重构，规避 WebKit 底层缓存 `srcDoc` 导致拾取脚本不执行的缺陷；同时添加了 `nodrag nopan` 以隔离 React Flow 的鼠标手势劫持。
+- **Agent Log 缺失日志修复**：在 `designApi.ts` 历史轮次解析中，针对后端未返回内嵌日志的情况，引入了 session 全局 process_log 轮次索引 Fallback 机制，恢复了步骤执行细节显示。
+- **网页爬虫 CSS 变量提取与跨域绕过**：重构了 `browser_extract.py` 浏览器提取爬虫，针对 CDN/跨域样式表不可读 `sheet.cssRules` 报错的问题，增加了对 root, body 以及直接子容器（`body > *, body > * > *`）计算样式变量（`getComputedStyle`）的自动扫描；增加了对 Tailwind 杂音变量（`--tw-*` 等）的过滤并扩容至 35 个，确保模型能 100% 提取到正确的品牌颜色设计 spec。
+- **校验**：执行了 `./scripts/verify.sh` 一键校验，前后端测试全部正常通过。
+
 ## 2026-07-13 会话（D38 Stable Context Boundary 代码模块化重构完成）
 
 - **后端大文件拆分（Phase 1 & Phase 2）**：

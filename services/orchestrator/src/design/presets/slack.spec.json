@@ -1,0 +1,120 @@
+{
+  "name": "Slack",
+  "rationale": "An inspired interpretation of Slacc's design language — a workplace messaging brand built on a deep aubergine primary, with cream-lavender hero gradients, blue inline links, and pill CTAs. The system ",
+  "brand": {
+    "name": "Slack",
+    "voice": "Professional, modern, trustworthy"
+  },
+  "visual_style": "An inspired interpretation of Slacc's design language — a workplace messaging brand built on a deep aubergine primary, with cream-lavender hero gradients, blue inline links, and pill CTAs. The system pairs a proprietary humanist sans for display with a separate utility sans for body, and stages product UI mockups inside soft pastel-mesh hero composites that act as both decoration and feature explanation.",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#4a154b",
+      "#481a54",
+      "#611f69",
+      "#592466",
+      "#ffffff"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#1d1d1d",
+      "#696969",
+      "#1264a3",
+      "#3860be",
+      "#ffffff",
+      "#f4ede4",
+      "#f9f0ff",
+      "#ffffff",
+      "#4a154b",
+      "#e6e6e6",
+      "#000000",
+      "#cc4117",
+      "#007a5a",
+      "#d9bdde"
+    ],
+    "accent": [
+      "#000000"
+    ],
+    "status": [
+      "#000000"
+    ]
+  },
+  "typography": {
+    "fontFamily": "Salesforce-Avant-Garde, system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+    "monoFamily": "ui-monospace, monospace",
+    "samples": [
+      {
+        "label": "Display Lg",
+        "size": "50px",
+        "weight": "700"
+      },
+      {
+        "label": "Display Md",
+        "size": "32px",
+        "weight": "700"
+      },
+      {
+        "label": "Display Xl",
+        "size": "58px",
+        "weight": "600"
+      },
+      {
+        "label": "Display Xxl",
+        "size": "64px",
+        "weight": "700"
+      },
+      {
+        "label": "Body Lg",
+        "size": "18px",
+        "weight": "400"
+      },
+      {
+        "label": "Body Md",
+        "size": "16px",
+        "weight": "400"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "2px",
+    "md": "4px",
+    "lg": "8px",
+    "xl": "12px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Button Primary Pill",
+    "Button Primary Pill Pressed",
+    "Button Secondary Pill",
+    "Button Outline Aubergine",
+    "Button Outline On Aubergine",
+    "Text Input",
+    "Pill Cap Shade",
+    "Card Pricing",
+    "Card Pricing Featured",
+    "Card Feature Cream",
+    "Card Aubergine Band",
+    "Card Stat",
+    "Nav Bar Light",
+    "Link On Light",
+    "Link On Aubergine"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

@@ -1,0 +1,123 @@
+{
+  "name": "Shopify",
+  "rationale": "An inspired interpretation of Shopifi's design language — a cinematic commerce platform that runs two parallel design tracks. The marketing-hero and product-narrative pages live on near-black canvases",
+  "brand": {
+    "name": "Shopify",
+    "voice": "Cinematic, immersive, dramatic"
+  },
+  "visual_style": "An inspired interpretation of Shopifi's design language — a cinematic commerce platform that runs two parallel design tracks. The marketing-hero and product-narrative pages live on near-black canvases with full-bleed photography of merchants, giant Neue Haas Grotesk display type at thin weights, and a single black-pill CTA stroked in white. The transactional pages (pricing, signup, dashboards) flip to a cream-mint canvas with pastel aloe and pistachio greens, the same pill button vocabulary, and",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#000000",
+      "#ffffff"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#000000",
+      "#ffffff",
+      "#000000",
+      "#0a0a0a",
+      "#ffffff",
+      "#fbfbf5",
+      "#1e2c31",
+      "#d4d4d8",
+      "#a1a1aa",
+      "#71717a",
+      "#52525b",
+      "#3f3f46",
+      "#e4e4e7",
+      "#1e2c31",
+      "#c1fbd4",
+      "#d4f9e0",
+      "#9dabad",
+      "#9797a2",
+      "#bdbdca",
+      "#99b3ad"
+    ],
+    "accent": [
+      "#000000"
+    ],
+    "status": [
+      "#000000"
+    ]
+  },
+  "typography": {
+    "fontFamily": "NeueHaasGrotesk Display, Helvetica, Arial, sans-serif",
+    "monoFamily": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+    "samples": [
+      {
+        "label": "Display Lg",
+        "size": "55px",
+        "weight": "330"
+      },
+      {
+        "label": "Display Md",
+        "size": "48px",
+        "weight": "330"
+      },
+      {
+        "label": "Display Xl",
+        "size": "70px",
+        "weight": "330"
+      },
+      {
+        "label": "Display Xxl",
+        "size": "96px",
+        "weight": "330"
+      },
+      {
+        "label": "Body Lg",
+        "size": "18px",
+        "weight": "550"
+      },
+      {
+        "label": "Body Md",
+        "size": "16px",
+        "weight": "420"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "4px",
+    "md": "5px",
+    "lg": "8px",
+    "xl": "12px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Button Primary Pill",
+    "Button Primary Pill Pressed",
+    "Button Outline On Dark",
+    "Button Outline On Light",
+    "Button Aloe Pill",
+    "Text Input",
+    "Card Pricing",
+    "Card Pricing Featured",
+    "Card Feature Cinematic",
+    "Card Pistachio Band",
+    "Card Photo Frame",
+    "Pill Tag Mint",
+    "Pill Tag Shade",
+    "Nav Bar Light",
+    "Nav Bar Dark"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

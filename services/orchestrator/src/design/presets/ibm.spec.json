@@ -1,0 +1,122 @@
+{
+  "name": "IBM",
+  "rationale": "An enterprise-marketing canvas faithful to Carbon Design System: white surfaces, charcoal type, IBM Blue (#0f62fe) as the single confident accent, and a deliberately flat-square aesthetic where corner",
+  "brand": {
+    "name": "IBM",
+    "voice": "Professional, modern, trustworthy"
+  },
+  "visual_style": "An enterprise-marketing canvas faithful to Carbon Design System: white surfaces, charcoal type, IBM Blue (#0f62fe) as the single confident accent, and a deliberately flat-square aesthetic where corners stay at 0–4px. Type runs IBM Plex Sans at light weight 300 for display sizes (a brand signature) and 400/600 for body and emphasis. Cards live as thin-bordered tiles with no shadow; sections separate via subtle gray rows. The chrome is square, the typography is light, and the only color in the sys",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#0f62fe",
+      "#ffffff"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#161616",
+      "#525252",
+      "#8c8c8c",
+      "#ffffff",
+      "#f4f4f4",
+      "#e0e0e0",
+      "#161616",
+      "#262626",
+      "#ffffff",
+      "#c6c6c6",
+      "#e0e0e0",
+      "#161616",
+      "#0043ce",
+      "#002d9c",
+      "#0050e6",
+      "#24a148",
+      "#f1c21b",
+      "#da1e28",
+      "#0f62fe"
+    ],
+    "accent": [
+      "#000000"
+    ],
+    "status": [
+      "#000000"
+    ]
+  },
+  "typography": {
+    "fontFamily": "IBM Plex Sans",
+    "monoFamily": "ui-monospace, monospace",
+    "samples": [
+      {
+        "label": "Display Lg",
+        "size": "60px",
+        "weight": "300"
+      },
+      {
+        "label": "Display Md",
+        "size": "42px",
+        "weight": "300"
+      },
+      {
+        "label": "Display Xl",
+        "size": "76px",
+        "weight": "300"
+      },
+      {
+        "label": "Headline",
+        "size": "32px",
+        "weight": "400"
+      },
+      {
+        "label": "Body",
+        "size": "16px",
+        "weight": "400"
+      },
+      {
+        "label": "Body Emphasis",
+        "size": "14px",
+        "weight": "600"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "2px",
+    "md": "4px",
+    "lg": "6px",
+    "xl": "8px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Button Primary",
+    "Button Primary Pressed",
+    "Button Secondary",
+    "Button Tertiary",
+    "Button Ghost",
+    "Button Danger",
+    "Feature Card",
+    "Feature Card Elevated",
+    "Product Card",
+    "Hero Card",
+    "Cta Banner",
+    "Text Input",
+    "Text Input Focused",
+    "Text Input Error",
+    "Newsletter Input"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

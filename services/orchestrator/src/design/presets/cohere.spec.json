@@ -1,0 +1,122 @@
+{
+  "name": "Cohere",
+  "rationale": "Cohere's 2026 web system is a controlled enterprise AI interface built from stark white editorial space, deep green-black product bands, soft mineral surfaces, rounded media cards, and a distinctive t",
+  "brand": {
+    "name": "Cohere",
+    "voice": "Editorial, authoritative, refined"
+  },
+  "visual_style": "Cohere's 2026 web system is a controlled enterprise AI interface built from stark white editorial space, deep green-black product bands, soft mineral surfaces, rounded media cards, and a distinctive type split between monospaced-feeling display headlines and precise Unica77 UI text.",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#17171c",
+      "#ffffff"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#000000",
+      "#212121",
+      "#003c33",
+      "#071829",
+      "#ffffff",
+      "#eeece7",
+      "#edfce9",
+      "#f1f5ff",
+      "#d9d9dd",
+      "#e5e7eb",
+      "#f2f2f2",
+      "#93939f",
+      "#75758a",
+      "#616161",
+      "#1863dc",
+      "#4c6ee6",
+      "#ff7759",
+      "#ffad9b",
+      "#9b60aa",
+      "#ffffff"
+    ],
+    "accent": [
+      "#000000"
+    ],
+    "status": [
+      "#b30000"
+    ]
+  },
+  "typography": {
+    "fontFamily": "CohereText",
+    "monoFamily": "CohereMono",
+    "samples": [
+      {
+        "label": "Hero Display",
+        "size": "96px",
+        "weight": "400"
+      },
+      {
+        "label": "Body",
+        "size": "16px",
+        "weight": "400"
+      },
+      {
+        "label": "Body Large",
+        "size": "18px",
+        "weight": "400"
+      },
+      {
+        "label": "Caption",
+        "size": "14px",
+        "weight": "400"
+      },
+      {
+        "label": "Button",
+        "size": "14px",
+        "weight": "500"
+      },
+      {
+        "label": "Card Heading",
+        "size": "32px",
+        "weight": "400"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "4px",
+    "md": "8px",
+    "lg": "16px",
+    "xl": "22px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Button Primary",
+    "Button Secondary",
+    "Button Pill Outline",
+    "Announcement Bar",
+    "Hero Photo Card",
+    "Agent Console Card",
+    "Trust Logo Strip",
+    "Capability Card",
+    "Dark Feature Band",
+    "Product Card",
+    "Blog Filter Chip",
+    "Research Table",
+    "Contact Form Card",
+    "Footer Newsletter"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

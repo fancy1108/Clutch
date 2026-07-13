@@ -1,0 +1,109 @@
+{
+  "name": "SpaceX",
+  "rationale": "An inspired interpretation of Spasex's design language — a mission-oriented aerospace brand built on pure black canvas, full-bleed photographic and video heroes of rockets and Mars landscapes, and upp",
+  "brand": {
+    "name": "SpaceX",
+    "voice": "Professional, modern, trustworthy"
+  },
+  "visual_style": "An inspired interpretation of Spasex's design language — a mission-oriented aerospace brand built on pure black canvas, full-bleed photographic and video heroes of rockets and Mars landscapes, and uppercase D-DIN display type set in tight vertical leading. UI chrome is intentionally minimal a single ghost outlined pill button per band, all-caps eyebrow microtext, and a fixed top nav over photography. The system is unapologetically austere — black, white, and the imagery itself.",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#000000",
+      "#ffffff",
+      "#f0f0fa"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#000000",
+      "#000000",
+      "#0a0a0a",
+      "#ffffff",
+      "#f0f0fa",
+      "#3a3a3f",
+      "#e0e0e8",
+      "#ffffff",
+      "#0000ee",
+      "#5a5a5f"
+    ],
+    "accent": [
+      "#000000"
+    ],
+    "status": [
+      "#000000"
+    ]
+  },
+  "typography": {
+    "fontFamily": "D-DIN-Bold, Arial Narrow, Arial, Verdana, sans-serif",
+    "monoFamily": "ui-monospace, monospace",
+    "samples": [
+      {
+        "label": "Display Lg",
+        "size": "48px",
+        "weight": "700"
+      },
+      {
+        "label": "Display Xl",
+        "size": "60px",
+        "weight": "700"
+      },
+      {
+        "label": "Display Xxl",
+        "size": "80px",
+        "weight": "700"
+      },
+      {
+        "label": "Body Lg",
+        "size": "16px",
+        "weight": "400"
+      },
+      {
+        "label": "Body Md",
+        "size": "16px",
+        "weight": "400"
+      },
+      {
+        "label": "Caption",
+        "size": "13.008px",
+        "weight": "400"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "4px",
+    "md": "8px",
+    "lg": "16px",
+    "xl": "24px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Button Ghost On Dark",
+    "Button Ghost On Light",
+    "Button Filled Cool",
+    "Text Input",
+    "Card Photo Band",
+    "Card Shop Product",
+    "Nav Bar Overlay",
+    "Link On Dark",
+    "Link On Light",
+    "Footer Dark"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

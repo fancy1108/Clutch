@@ -1,0 +1,117 @@
+{
+  "name": "Framer",
+  "rationale": "A confident dark-canvas builder marketing site that treats the page like a working artboard — pure black surfaces, white display type set in GT Walsheim Medium with aggressive negative tracking, and a",
+  "brand": {
+    "name": "Framer",
+    "voice": "Bold, minimal, technical"
+  },
+  "visual_style": "A confident dark-canvas builder marketing site that treats the page like a working artboard — pure black surfaces, white display type set in GT Walsheim Medium with aggressive negative tracking, and a single confident blue (#0099ff) reserved for hyperlinks and selection states. The page rhythm is broken by oversized vibrant gradient atmosphere panels — magenta, violet, orange spotlights — that act as living showcase tiles, not decoration. Every CTA is a white pill on dark; every card is a transl",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#ffffff",
+      "#000000"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#ffffff",
+      "#999999",
+      "#090909",
+      "#141414",
+      "#1c1c1c",
+      "#262626",
+      "#1a1a1a",
+      "#ffffff",
+      "#000000",
+      "#d44df0",
+      "#6a4cf5",
+      "#ff7a3d",
+      "#ff5577",
+      "#22c55e"
+    ],
+    "accent": [
+      "#0099ff"
+    ],
+    "status": [
+      "#000000"
+    ]
+  },
+  "typography": {
+    "fontFamily": "GT Walsheim Framer Medium",
+    "monoFamily": "ui-monospace, monospace",
+    "samples": [
+      {
+        "label": "Display Lg",
+        "size": "62px",
+        "weight": "500"
+      },
+      {
+        "label": "Display Md",
+        "size": "32px",
+        "weight": "500"
+      },
+      {
+        "label": "Display Xl",
+        "size": "85px",
+        "weight": "500"
+      },
+      {
+        "label": "Display Xxl",
+        "size": "110px",
+        "weight": "500"
+      },
+      {
+        "label": "Headline",
+        "size": "22px",
+        "weight": "700"
+      },
+      {
+        "label": "Body",
+        "size": "15px",
+        "weight": "400"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "4px",
+    "md": "6px",
+    "lg": "10px",
+    "xl": "15px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Button Primary",
+    "Button Primary Pressed",
+    "Button Secondary",
+    "Button Translucent",
+    "Button Icon Circular",
+    "Pricing Tab Default",
+    "Pricing Tab Selected",
+    "Text Input",
+    "Text Input Focused",
+    "Pricing Card",
+    "Pricing Card Featured",
+    "Template Card",
+    "Gradient Spotlight Card",
+    "Gradient Spotlight Card Magenta",
+    "Gradient Spotlight Card Orange"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

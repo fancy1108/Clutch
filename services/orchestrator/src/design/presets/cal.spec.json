@@ -1,0 +1,125 @@
+{
+  "name": "Cal.com",
+  "rationale": "A clean, calendar-software-first interface anchored on white canvas with black primary CTAs and custom Cal Sans display typography. The system reads as friendly modern SaaS — generous whitespace, soft",
+  "brand": {
+    "name": "Cal.com",
+    "voice": "Bold, minimal, technical"
+  },
+  "visual_style": "A clean, calendar-software-first interface anchored on white canvas with black primary CTAs and custom Cal Sans display typography. The system reads as friendly modern SaaS — generous whitespace, soft-rounded cards (~12px), product UI fragments shown directly inside cards, and a dark navy footer that visually closes long-scroll pages. Brand voltage comes from the Cal Sans display headline (a custom geometric face) and from product UI artifacts shown in-card rather than from accent colors.",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#111111",
+      "#242424",
+      "#e5e7eb",
+      "#ffffff"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#111111",
+      "#374151",
+      "#6b7280",
+      "#898989",
+      "#e5e7eb",
+      "#f3f4f6",
+      "#ffffff",
+      "#f8f9fa",
+      "#f5f5f5",
+      "#e5e7eb",
+      "#101010",
+      "#1a1a1a",
+      "#ffffff",
+      "#a1a1aa",
+      "#fb923c",
+      "#ec4899",
+      "#8b5cf6",
+      "#34d399"
+    ],
+    "accent": [
+      "#3b82f6"
+    ],
+    "status": [
+      "#10b981",
+      "#f59e0b",
+      "#ef4444"
+    ]
+  },
+  "typography": {
+    "fontFamily": "Cal Sans, Inter, sans-serif",
+    "monoFamily": "JetBrains Mono, ui-monospace, monospace",
+    "samples": [
+      {
+        "label": "Display Lg",
+        "size": "48px",
+        "weight": "600"
+      },
+      {
+        "label": "Display Md",
+        "size": "36px",
+        "weight": "600"
+      },
+      {
+        "label": "Display Sm",
+        "size": "28px",
+        "weight": "600"
+      },
+      {
+        "label": "Display Xl",
+        "size": "64px",
+        "weight": "600"
+      },
+      {
+        "label": "Title Lg",
+        "size": "22px",
+        "weight": "600"
+      },
+      {
+        "label": "Title Md",
+        "size": "18px",
+        "weight": "600"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "4px",
+    "md": "6px",
+    "lg": "8px",
+    "xl": "12px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Button Primary",
+    "Button Primary Active",
+    "Button Primary Disabled",
+    "Button Secondary",
+    "Button Icon Circular",
+    "Button Text Link",
+    "Text Link",
+    "Top Nav",
+    "Nav Pill Group",
+    "Hero Band",
+    "Hero App Mockup Card",
+    "Feature Card",
+    "Feature Icon Card",
+    "Product Mockup Card",
+    "Testimonial Card"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

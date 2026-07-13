@@ -1,0 +1,124 @@
+{
+  "name": "Binance",
+  "rationale": "A confident financial-platform interface anchored on a deep near-black canvas, where Binance's iconic yellow (#FCD535) carries every primary CTA, brand accent, and value-claim moment. Type runs Binanc",
+  "brand": {
+    "name": "Binance",
+    "voice": "Bold, minimal, technical"
+  },
+  "visual_style": "A confident financial-platform interface anchored on a deep near-black canvas, where Binance's iconic yellow (#FCD535) carries every primary CTA, brand accent, and value-claim moment. Type runs Binance's custom BinanceNova / BinancePlex stack at modest weights — the system trusts size and yellow voltage over bold weight. Marketing and product surfaces default to the dark theme; transactional surfaces (buy crypto, deposit, exchange) flip to a light theme that shares the same yellow CTAs and gray-",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#fcd535",
+      "#f0b90b",
+      "#3a3a1f",
+      "#181a20"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#181a20",
+      "#eaecef",
+      "#181a20",
+      "#707a8a",
+      "#929aa5",
+      "#eaecef",
+      "#2b3139",
+      "#cdd1d6",
+      "#ffffff",
+      "#0b0e11",
+      "#1e2329",
+      "#2b3139",
+      "#fafafa",
+      "#f5f5f5",
+      "#ffffff",
+      "#0ecb81",
+      "#f6465d",
+      "#3b82f6",
+      "#3b82f6"
+    ],
+    "accent": [
+      "#2dbdb6"
+    ],
+    "status": [
+      "#000000"
+    ]
+  },
+  "typography": {
+    "fontFamily": "BinanceNova, -apple-system, BlinkMacSystemFont, sans-serif",
+    "monoFamily": "ui-monospace, monospace",
+    "samples": [
+      {
+        "label": "Display Lg",
+        "size": "48px",
+        "weight": "700"
+      },
+      {
+        "label": "Display Md",
+        "size": "40px",
+        "weight": "600"
+      },
+      {
+        "label": "Display Sm",
+        "size": "32px",
+        "weight": "600"
+      },
+      {
+        "label": "Hero Display",
+        "size": "64px",
+        "weight": "700"
+      },
+      {
+        "label": "Title Lg",
+        "size": "24px",
+        "weight": "600"
+      },
+      {
+        "label": "Title Md",
+        "size": "20px",
+        "weight": "600"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "2px",
+    "md": "4px",
+    "lg": "6px",
+    "xl": "8px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Button Primary",
+    "Button Primary Active",
+    "Button Primary Disabled",
+    "Button Primary Pill",
+    "Button Secondary On Dark",
+    "Button Secondary On Light",
+    "Button Tertiary Text",
+    "Button Trading Up",
+    "Button Trading Down",
+    "Button Subscribe",
+    "Text Link",
+    "Top Nav Dark",
+    "Top Nav Light",
+    "Hero Band Dark",
+    "Stat Callout Card"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

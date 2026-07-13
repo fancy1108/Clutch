@@ -1,0 +1,125 @@
+{
+  "name": "Renault",
+  "rationale": "Renault's web presence pairs the freshly-modernised Renault diamond\n(the 2021 flat-line rhombus mark) with a stark black-and-white canvas, a\nsignature Sunlight Yellow accent, and the proprietary Nouve",
+  "brand": {
+    "name": "Renault",
+    "voice": "Premium, sophisticated, aspirational"
+  },
+  "visual_style": "Renault's web presence pairs the freshly-modernised Renault diamond\n(the 2021 flat-line rhombus mark) with a stark black-and-white canvas, a\nsignature Sunlight Yellow accent, and the proprietary NouvelR display\ntypeface. The system reads as confident, photography-first automotive — large\nhero cars on neutral or atmospheric backdrops, square-edged or barely-rounded\ncontainers, and a small disciplined palette where every coloured element is\nintentional. Tile grids, full-bleed banners, and a recurr",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#ffed00",
+      "#e6d200",
+      "#000000"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#000000",
+      "#222222",
+      "#333333",
+      "#666666",
+      "#8a8a8a",
+      "#c4c4c4",
+      "#ffffff",
+      "rgba(255,255,255,0.72)",
+      "#ffffff",
+      "#f7f7f7",
+      "#ffffff",
+      "#000000",
+      "#111111",
+      "#f2f2f2",
+      "#000000",
+      "rgba(255,255,255,0.16)",
+      "#ffed00",
+      "#0000ee",
+      "#337ab7"
+    ],
+    "accent": [
+      "#000000"
+    ],
+    "status": [
+      "#be6464",
+      "#f0ad4e",
+      "#8dc572"
+    ]
+  },
+  "typography": {
+    "fontFamily": "NouvelR",
+    "monoFamily": "ui-monospace, monospace",
+    "samples": [
+      {
+        "label": "Display Lg",
+        "size": "40px",
+        "weight": "700"
+      },
+      {
+        "label": "Display Md",
+        "size": "32px",
+        "weight": "700"
+      },
+      {
+        "label": "Display Xl",
+        "size": "56px",
+        "weight": "700"
+      },
+      {
+        "label": "Body Lg",
+        "size": "18px",
+        "weight": "400"
+      },
+      {
+        "label": "Body Md",
+        "size": "16px",
+        "weight": "400"
+      },
+      {
+        "label": "Body Sm",
+        "size": "14px",
+        "weight": "400"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "2px",
+    "md": "3px",
+    "lg": "4px",
+    "xl": "24px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Button Primary",
+    "Button Primary Pressed",
+    "Button Secondary Dark",
+    "Button Outline Dark",
+    "Button Outline Light",
+    "Button Pill",
+    "Button Icon Square",
+    "Text Input",
+    "Hero Banner",
+    "Promo Tile Light",
+    "Promo Tile Dark",
+    "Promo Tile Yellow",
+    "Vehicle Card",
+    "Configurator Row",
+    "Configurator Swatch"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

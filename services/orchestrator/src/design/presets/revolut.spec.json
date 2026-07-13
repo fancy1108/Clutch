@@ -1,0 +1,135 @@
+{
+  "name": "Revolut",
+  "rationale": "Revolut's marketing surfaces pair a stark black canvas with the brand's\ncobalt-violet (`#494fdf`) and a wide accent palette of deep, fully-saturated\nproduct colours — teal, light-blue, deep pink, ligh",
+  "brand": {
+    "name": "Revolut",
+    "voice": "Warm, approachable, human"
+  },
+  "visual_style": "Revolut's marketing surfaces pair a stark black canvas with the brand's\ncobalt-violet (`#494fdf`) and a wide accent palette of deep, fully-saturated\nproduct colours — teal, light-blue, deep pink, light-green, warning orange.\nThe system reads as fintech-meets-product-brochure: oversized 80px–136px\nAeonik Pro display headlines, generous whitespace, photography-led hero\nbands, and full-width product mockups (cards, phones, terminals) shown as\nhero objects inside near-black sections. Most surfaces a",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#494fdf",
+      "#4f55f1",
+      "#3a40c4",
+      "#ffffff"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#191c1f",
+      "#1f2226",
+      "#3a3d40",
+      "#505a63",
+      "#5c5e60",
+      "#8d969e",
+      "#c9c9cd",
+      "#ffffff",
+      "rgba(255,255,255,0.72)",
+      "#ffffff",
+      "#000000",
+      "#f4f4f4",
+      "#ffffff",
+      "#0a0a0a",
+      "#16181a",
+      "#e2e2e7",
+      "rgba(255,255,255,0.12)",
+      "#191c1f",
+      "rgba(255,255,255,0.06)",
+      "#376cd5"
+    ],
+    "accent": [
+      "#00a87e",
+      "#376cd5",
+      "#007bc2",
+      "#428619",
+      "#006400",
+      "#b09000",
+      "#ec7e00",
+      "#e61e49",
+      "#e23b4a",
+      "#8b0000",
+      "#936d62"
+    ],
+    "status": [
+      "#000000"
+    ]
+  },
+  "typography": {
+    "fontFamily": "Aeonik Pro",
+    "monoFamily": "ui-monospace, monospace",
+    "samples": [
+      {
+        "label": "Display Lg",
+        "size": "48px",
+        "weight": "500"
+      },
+      {
+        "label": "Display Md",
+        "size": "40px",
+        "weight": "500"
+      },
+      {
+        "label": "Display Xl",
+        "size": "80px",
+        "weight": "500"
+      },
+      {
+        "label": "Display Xxl",
+        "size": "136px",
+        "weight": "500"
+      },
+      {
+        "label": "Body Lg",
+        "size": "18px",
+        "weight": "400"
+      },
+      {
+        "label": "Body Md",
+        "size": "16px",
+        "weight": "400"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "8px",
+    "md": "8px",
+    "lg": "12px",
+    "xl": "20px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Button Primary",
+    "Button Primary Pressed",
+    "Button Dark",
+    "Button Soft",
+    "Button Outline Light",
+    "Button Outline Dark",
+    "Button Pill Sm",
+    "Text Input",
+    "Hero Band Dark",
+    "Hero Band Photo",
+    "Feature Card Light",
+    "Feature Card Dark",
+    "Plan Card",
+    "Plan Card Featured",
+    "Product Mockup"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

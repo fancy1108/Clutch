@@ -1,0 +1,122 @@
+{
+  "name": "Ollama",
+  "rationale": "An almost defiantly minimal documentation-first system that treats the home page like a Markdown README — paper-white canvas, 36px center-aligned heading, a single black pill CTA, an inline terminal i",
+  "brand": {
+    "name": "Ollama",
+    "voice": "Technical, precise, developer-oriented"
+  },
+  "visual_style": "An almost defiantly minimal documentation-first system that treats the home page like a Markdown README — paper-white canvas, 36px center-aligned heading, a single black pill CTA, an inline terminal install snippet, and a hand-drawn llama mascot as the only ornamental element. No gradient, no hero photography, no marketing pyrotechnics. The chrome is a tiny utility palette of pure black, pure white, and three neutral grays; every interactive element is fully rounded into a pill (`{rounded.full}`",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#000000",
+      "#ffffff"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#000000",
+      "#090909",
+      "#525252",
+      "#737373",
+      "#a3a3a3",
+      "#ffffff",
+      "#fafafa",
+      "#ffffff",
+      "#e5e5e5",
+      "#d4d4d4",
+      "#ffffff",
+      "rgba(255,255,255,0.7)",
+      "#171717",
+      "rgba(59,130,246,0.5)",
+      "#000000",
+      "#737373",
+      "#ff5f56",
+      "#ffbd2e",
+      "#27c93f"
+    ],
+    "accent": [
+      "#000000"
+    ],
+    "status": [
+      "#000000"
+    ]
+  },
+  "typography": {
+    "fontFamily": "SF Pro Rounded",
+    "monoFamily": "ui-monospace",
+    "samples": [
+      {
+        "label": "Display Lg",
+        "size": "30px",
+        "weight": "500"
+      },
+      {
+        "label": "Display Xl",
+        "size": "36px",
+        "weight": "500"
+      },
+      {
+        "label": "Body Md",
+        "size": "16px",
+        "weight": "400"
+      },
+      {
+        "label": "Body Sm",
+        "size": "14px",
+        "weight": "400"
+      },
+      {
+        "label": "Body Sm Strong",
+        "size": "14px",
+        "weight": "500"
+      },
+      {
+        "label": "Body Strong",
+        "size": "16px",
+        "weight": "500"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "6px",
+    "md": "6px",
+    "lg": "8px",
+    "xl": "12px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Button Primary",
+    "Button Primary Active",
+    "Button Secondary",
+    "Button Pill On Dark",
+    "Button Disabled",
+    "Search Pill",
+    "Search Pill Focused",
+    "Text Input",
+    "Text Input Focused",
+    "Install Snippet",
+    "Command Tag",
+    "Terminal Card",
+    "Terminal Traffic Lights",
+    "Pricing Card",
+    "Pricing Card Dark"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

@@ -20,7 +20,7 @@ export type ElementSelection = {
 };
 
 export type IteratePending = {
-  mode: 'modify' | 'add';
+  mode: 'modify' | 'add' | 'duplicate';
   screenId?: string | null;
 };
 
@@ -28,6 +28,8 @@ export type SpecData = {
   phase: 'placeholder' | 'ready';
   spec?: DesignSpec | null;
   label?: string;
+  designMdText?: string;
+  onSaveStyle?: (name: string, designMdText: string) => void;
 };
 
 export type UiData = {
@@ -43,6 +45,7 @@ export type UiData = {
   selectedElementLabel?: string | null;
   onElementPicked?: (payload: { path: string; label: string }) => void;
   onTogglePick?: () => void;
+  onDelete?: () => void;
 };
 
 export const DEVICE_VIEW = {
@@ -90,7 +93,17 @@ export function uiCanvasPos(specPos: { x: number; y: number }): { x: number; y: 
   };
 }
 
+export function stripMarkdownFences(html: string): string {
+  if (!html) return html;
+  return html
+    .replace(/^```[\w#\-]*\s*\n?/i, '')
+    .replace(/\n?```\s*$/, '')
+    .trim();
+}
+
 export function ensureCharset(html: string): string {
+  if (!html) return html;
+  html = stripMarkdownFences(html);
   if (!html) return html;
   if (/charset\s*=/i.test(html)) return html;
   if (/<head[^>]*>/i.test(html)) {
@@ -231,6 +244,8 @@ export function withPickerScript(
   opts: boolean | { pickMode?: boolean; selectedPath?: string | null },
 ): string {
   if (!html) return html;
+  html = stripMarkdownFences(html);
+  if (!html) return html;
   const pickMode = typeof opts === 'boolean' ? opts : Boolean(opts.pickMode);
   const selectedPath = typeof opts === 'boolean' ? null : opts.selectedPath || null;
   if (!pickMode && !selectedPath) {
@@ -297,6 +312,9 @@ export function inferIterateModeClient(instruction: string, kind: string | undef
   const text = instruction.toLowerCase();
   const addKeys = ['新增', '添加一', '再做', '另一个', '新页面', '新画板', 'another', 'new page', 'new screen', 'create a new'];
   if (addKeys.some((k) => text.includes(k))) return 'add';
+  // Detect "生成 N 个/新 页面" or "create N pages/screens"
+  if (/\u751f\u6210.*\u9875/.test(instruction) || /\u521b\u5efa.*\u9875/.test(instruction)) return 'add';
+  if (/\b\d+\s*(pages?|screens?|个.*页|个.*画板)\b/.test(text)) return 'add';
   if (kind === 'ui' || !kind) return 'modify';
   return 'add';
 }
@@ -317,10 +335,14 @@ export function buildCanvasNodes(
     selectedNodeId?: string | null;
     iteratePending?: IteratePending | null;
     selectedRoundIndex?: number;
+    screenVersions?: Record<string, number>;
     roundHtmlByScreen?: Record<string, string | undefined>;
     runId?: string;
     onElementPicked?: (payload: { path: string; label: string; screenId?: string }) => void;
     onTogglePick?: (payload: { nodeId: string; screenId: string; name: string }) => void;
+    onDeleteScreen?: (screenId: string) => void;
+    pasteSourceScreenIds?: Set<string> | null;
+    onSaveStyle?: (name: string, designMdText: string) => void;
   },
 ): Node[] {
   const list: Node[] = [];
@@ -403,7 +425,7 @@ export function buildCanvasNodes(
       id: 'spec',
       type: 'spec',
       position: { ...specPos },
-      data: { phase: 'ready', spec: session!.spec },
+      data: { phase: 'ready', spec: session!.spec, designMdText: session?.design_md, onSaveStyle: extras?.onSaveStyle },
       draggable: true,
     });
   } else if (showSpecPlaceholder) {
@@ -429,7 +451,13 @@ export function buildCanvasNodes(
       (hasSpec && status === 'ready'));
 
   if (hasAnyHtml) {
-    screens.forEach((screen, index) => {
+    const pasteFilter = extras?.pasteSourceScreenIds;
+    const visibleScreens = pasteFilter
+      ? screens.filter((s) => pasteFilter.has(s.id))
+      : extras?.screenVersions
+        ? screens.filter((s) => (s.id || 'main') in extras.screenVersions!)
+        : screens;
+    visibleScreens.forEach((screen, index) => {
       if (!screen.html) return;
       const nodeId = `ui-${screen.id || index}`;
       const saved = positions[nodeId];
@@ -457,9 +485,11 @@ export function buildCanvasNodes(
             ? isModifyTarget
               ? 'drawing'
               : 'ready'
-            : drawing || status === 'iterating'
-              ? 'drawing'
-              : 'ready';
+            : pending?.mode === 'add' && (status === 'iterating' || drawing)
+              ? 'ready'
+              : drawing || status === 'iterating'
+                ? 'drawing'
+                : 'ready';
       const isFocusScreen =
         !extras?.pickScreenId || extras.pickScreenId === screen.id;
       const isPickTarget = Boolean(extras?.pickMode) && isFocusScreen;
@@ -468,11 +498,11 @@ export function buildCanvasNodes(
         Boolean(extras?.selectedElementPath || extras?.selectedElementLabel);
       const screenName = screen.name || 'Interface';
       const screenId = screen.id || 'main';
-      const roundIndex = extras?.selectedRoundIndex ?? activeRound?.index ?? 0;
+      const perScreenRoundIdx = extras?.screenVersions?.[screenId] ?? extras?.selectedRoundIndex ?? activeRound?.screenRoundIndex ?? 0;
       const versionedHtml = extras?.roundHtmlByScreen?.[screenId];
       const previewSrc =
-        extras?.runId && roundIndex > 0
-          ? designScreenVersionPath(extras.runId, screenId, roundIndex)
+        extras?.runId && perScreenRoundIdx > 0
+          ? designScreenVersionPath(extras.runId, screenId, perScreenRoundIdx)
           : null;
       list.push({
         id: nodeId,
@@ -507,6 +537,9 @@ export function buildCanvasNodes(
                   name: screenName,
                 })
             : undefined,
+          onDelete: extras?.onDeleteScreen
+            ? () => extras.onDeleteScreen?.(screen.id)
+            : undefined,
         },
         draggable: true,
       });
@@ -521,7 +554,7 @@ export function buildCanvasNodes(
         type: 'ui',
         position:
           positions[pendingId] || {
-            x: uiPos.x + screens.length * uiStep,
+            x: uiPos.x + visibleScreens.length * uiStep,
             y: uiPos.y,
           },
         data: {
@@ -593,11 +626,81 @@ export function buildCanvasEdges(nodes: Node[]): Edge[] {
 }
 
 export const DESIGN_SYSTEM_PRESETS = [
-  {
-    id: 'clutch',
-    labelKey: 'Clutch',
-    descriptionKey: 'Built-in Clutch design system — clean developer-tool aesthetic',
-  },
+  { id: 'clutch',   labelKey: 'Clutch',   descriptionKey: 'Built-in Clutch design system — clean developer-tool aesthetic', color: '#171717' },
+  { id: 'airbnb', labelKey: 'Airbnb', descriptionKey: 'Travel marketplace. Warm coral accent, photography-driven, rounded UI', color: '#ff385c' },
+  { id: 'airtable', labelKey: 'Airtable', descriptionKey: 'Spreadsheet-database hybrid. Colorful, friendly, structured data aesthetic', color: '#181d26' },
+  { id: 'apple', labelKey: 'Apple', descriptionKey: 'Consumer electronics. Premium white space, SF Pro, cinematic imagery', color: '#0066cc' },
+  { id: 'binance', labelKey: 'Binance', descriptionKey: 'Crypto exchange. Bold Binance Yellow on monochrome, trading-floor urgency', color: '#fcd535' },
+  { id: 'bmw', labelKey: 'BMW', descriptionKey: 'Luxury automotive. Dark premium surfaces, precise German engineering aesthetic', color: '#1c69d4' },
+  { id: 'bmw-m', labelKey: 'BMW M', descriptionKey: 'Performance automotive. Motorsport-inspired contrast, M color accents, precision-driven layout', color: '#ffffff' },
+  { id: 'bugatti', labelKey: 'Bugatti', descriptionKey: 'Luxury hypercar. Cinema-black canvas, monochrome austerity, monumental display type', color: '#ffffff' },
+  { id: 'cal', labelKey: 'Cal.com', descriptionKey: 'Open-source scheduling. Clean neutral UI, developer-oriented simplicity', color: '#111111' },
+  { id: 'claude', labelKey: 'Claude', descriptionKey: "Anthropic's AI assistant. Warm terracotta accent, clean editorial layout", color: '#cc785c' },
+  { id: 'clay', labelKey: 'Clay', descriptionKey: 'Creative agency. Organic shapes, soft gradients, art-directed layout', color: '#0a0a0a' },
+  { id: 'clickhouse', labelKey: 'ClickHouse', descriptionKey: 'Fast analytics database. Yellow-accented, technical documentation style', color: '#faff69' },
+  { id: 'cohere', labelKey: 'Cohere', descriptionKey: 'Enterprise AI platform. Vibrant gradients, data-rich dashboard aesthetic', color: '#17171c' },
+  { id: 'coinbase', labelKey: 'Coinbase', descriptionKey: 'Crypto exchange. Clean blue identity, trust-focused, institutional feel', color: '#0052ff' },
+  { id: 'composio', labelKey: 'Composio', descriptionKey: 'Tool integration platform. Modern dark with colorful integration icons', color: '#0007cd' },
+  { id: 'cursor', labelKey: 'Cursor', descriptionKey: 'AI-first code editor. Sleek dark interface, gradient accents', color: '#f54e00' },
+  { id: 'dell-1996', labelKey: 'Dell (1996)', descriptionKey: 'Catalog-era enterprise web. Literal black page frame, flat color-block ribbon cards, chunky Helvetica-Black titles over Times Roman body', color: '#e91d2a' },
+  { id: 'elevenlabs', labelKey: 'ElevenLabs', descriptionKey: 'AI voice platform. Dark cinematic UI, audio-waveform aesthetics', color: '#000000' },
+  { id: 'expo', labelKey: 'Expo', descriptionKey: 'React Native platform. Dark theme, tight letter-spacing, code-centric', color: '#000000' },
+  { id: 'ferrari', labelKey: 'Ferrari', descriptionKey: 'Luxury automotive. Chiaroscuro black-white editorial, Ferrari Red with extreme sparseness', color: '#da291c' },
+  { id: 'figma', labelKey: 'Figma', descriptionKey: 'Collaborative design tool. Vibrant multi-color, playful yet professional', color: '#000000' },
+  { id: 'framer', labelKey: 'Framer', descriptionKey: 'Website builder. Bold black and blue, motion-first, design-forward', color: '#ffffff' },
+  { id: 'hashicorp', labelKey: 'HashiCorp', descriptionKey: 'Infrastructure automation. Enterprise-clean, black and white', color: '#000000' },
+  { id: 'hp', labelKey: 'HP', descriptionKey: 'PC and printer maker. Pure white canvas, HP Electric Blue signal CTA, geometric Forma DJR Micro, blue chevron decorations', color: '#024ad8' },
+  { id: 'ibm', labelKey: 'IBM', descriptionKey: 'Enterprise technology. Carbon design system, structured blue palette', color: '#0f62fe' },
+  { id: 'intercom', labelKey: 'Intercom', descriptionKey: 'Customer messaging. Friendly blue palette, conversational UI patterns', color: '#111111' },
+  { id: 'kraken', labelKey: 'Kraken', descriptionKey: 'Crypto trading platform. Purple-accented dark UI, data-dense dashboards', color: '#7132f5' },
+  { id: 'lamborghini', labelKey: 'Lamborghini', descriptionKey: 'Luxury automotive. True black cathedral, gold accent, LamboType custom Neo-Grotesk', color: '#ffc000' },
+  { id: 'linear.app', labelKey: 'Linear', descriptionKey: 'Project management for engineers. Ultra-minimal, precise, purple accent', color: '#5e6ad2' },
+  { id: 'lovable', labelKey: 'Lovable', descriptionKey: 'AI full-stack builder. Playful gradients, friendly dev aesthetic', color: '#f7f4ed' },
+  { id: 'mastercard', labelKey: 'Mastercard', descriptionKey: 'Global payments network. Warm cream canvas, orbital pill shapes, editorial warmth', color: '#eb001b' },
+  { id: 'meta', labelKey: 'Meta', descriptionKey: 'Tech retail store. Photography-first, binary light/dark surfaces, Meta Blue CTAs', color: '#0064e0' },
+  { id: 'minimax', labelKey: 'Minimax', descriptionKey: 'AI model provider. Bold dark interface with neon accents', color: '#0a0a0a' },
+  { id: 'mintlify', labelKey: 'Mintlify', descriptionKey: 'Documentation platform. Clean, green-accented, reading-optimized', color: '#0a0a0a' },
+  { id: 'miro', labelKey: 'Miro', descriptionKey: 'Visual collaboration. Bright yellow accent, infinite canvas aesthetic', color: '#1c1c1e' },
+  { id: 'mistral.ai', labelKey: 'Mistral AI', descriptionKey: 'Open-weight LLM provider. French-engineered minimalism, purple-toned', color: '#fa520f' },
+  { id: 'mongodb', labelKey: 'MongoDB', descriptionKey: 'Document database. Green leaf branding, developer documentation focus', color: '#00ed64' },
+  { id: 'nike', labelKey: 'Nike', descriptionKey: 'Athletic retail. Monochrome UI, massive uppercase Futura, full-bleed photography', color: '#111111' },
+  { id: 'nintendo-2001', labelKey: 'Nintendo.com (2001)', descriptionKey: 'Y2K console chrome web. Brushed-periwinkle beveled metal panels, halftone-dotted carbon nav glowing amber, outlined Arial-Black box-art wordmarks', color: '#e60012' },
+  { id: 'notion', labelKey: 'Notion', descriptionKey: 'All-in-one workspace. Warm minimalism, serif headings, soft surfaces', color: '#5645d4' },
+  { id: 'nvidia', labelKey: 'NVIDIA', descriptionKey: 'GPU computing. Green-black energy, technical power aesthetic', color: '#76b900' },
+  { id: 'ollama', labelKey: 'Ollama', descriptionKey: 'Run LLMs locally. Terminal-first, monochrome simplicity', color: '#000000' },
+  { id: 'opencode.ai', labelKey: 'OpenCode AI', descriptionKey: 'AI coding platform. Developer-centric dark theme', color: '#201d1d' },
+  { id: 'pinterest', labelKey: 'Pinterest', descriptionKey: 'Visual discovery platform. Red accent, masonry grid, image-first', color: '#e60023' },
+  { id: 'playstation', labelKey: 'PlayStation', descriptionKey: 'Gaming console retail. Three-surface channel layout, cyan hover-scale interaction', color: '#0070d1' },
+  { id: 'posthog', labelKey: 'PostHog', descriptionKey: 'Product analytics. Playful hedgehog branding, developer-friendly dark UI', color: '#f7a501' },
+  { id: 'raycast', labelKey: 'Raycast', descriptionKey: 'Productivity launcher. Sleek dark chrome, vibrant gradient accents', color: '#000000' },
+  { id: 'renault', labelKey: 'Renault', descriptionKey: 'French automotive. Vivid aurora gradients, NouvelR proprietary typeface, zero-radius buttons', color: '#ffed00' },
+  { id: 'replicate', labelKey: 'Replicate', descriptionKey: 'Run ML models via API. Clean white canvas, code-forward', color: '#ea2804' },
+  { id: 'resend', labelKey: 'Resend', descriptionKey: 'Email API for developers. Minimal dark theme, monospace accents', color: '#fcfdff' },
+  { id: 'revolut', labelKey: 'Revolut', descriptionKey: 'Digital banking. Sleek dark interface, gradient cards, fintech precision', color: '#494fdf' },
+  { id: 'runwayml', labelKey: 'Runway', descriptionKey: 'AI creative-tools platform with an editorial film-festival aesthetic', color: '#000000' },
+  { id: 'sanity', labelKey: 'Sanity', descriptionKey: 'Headless content platform with a dark-first editorial marketing surface', color: '#0b0b0b' },
+  { id: 'sentry', labelKey: 'Sentry', descriptionKey: 'Error monitoring. Dark dashboard, data-dense, pink-purple accent', color: '#150f23' },
+  { id: 'shopify', labelKey: 'Shopify', descriptionKey: 'E-commerce platform. Dark-first cinematic, neon green accent, ultra-light display type', color: '#000000' },
+  { id: 'slack', labelKey: 'Slack', descriptionKey: 'Team communication platform. Vibrant multi-color sidebar, clean messaging UI', color: '#4a154b' },
+  { id: 'spacex', labelKey: 'SpaceX', descriptionKey: 'Space technology. Stark black and white, full-bleed imagery, futuristic', color: '#000000' },
+  { id: 'spotify', labelKey: 'Spotify', descriptionKey: 'Music streaming. Vibrant green on dark, bold type, album-art-driven', color: '#1ed760' },
+  { id: 'starbucks', labelKey: 'Starbucks', descriptionKey: 'Coffee retail flagship. Four-tier earth-green system, warm cream canvas, proprietary SoDoSans typography', color: '#006241' },
+  { id: 'stripe', labelKey: 'Stripe', descriptionKey: 'Payment infrastructure. Signature purple gradients, weight-300 elegance', color: '#533afd' },
+  { id: 'supabase', labelKey: 'Supabase', descriptionKey: 'Open-source Firebase alternative. Dark emerald theme, code-first', color: '#3ecf8e' },
+  { id: 'superhuman', labelKey: 'Superhuman', descriptionKey: 'Fast email client. Premium dark UI, keyboard-first, purple glow', color: '#1b1938' },
+  { id: 'tesla', labelKey: 'Tesla', descriptionKey: 'Electric vehicles. Radical subtraction, cinematic full-viewport photography, Universal Sans', color: '#3e6ae1' },
+  { id: 'theverge', labelKey: 'The Verge', descriptionKey: 'Tech editorial media. Acid-mint and ultraviolet accents, Manuka display type', color: '#3cffd0' },
+  { id: 'together.ai', labelKey: 'Together AI', descriptionKey: 'Open-source AI infrastructure. Technical, blueprint-style design', color: '#000000' },
+  { id: 'uber', labelKey: 'Uber', descriptionKey: 'Mobility platform. Bold black and white, tight type, urban energy', color: '#000000' },
+  { id: 'vercel', labelKey: 'Vercel', descriptionKey: 'Frontend deployment platform. Black and white precision, Geist font', color: '#171717' },
+  { id: 'vodafone', labelKey: 'Vodafone', descriptionKey: 'Global telecom brand. Monumental uppercase display, Vodafone Red chapter bands', color: '#e60000' },
+  { id: 'voltagent', labelKey: 'VoltAgent', descriptionKey: 'AI agent framework. Void-black canvas, emerald accent, terminal-native', color: '#00d992' },
+  { id: 'warp', labelKey: 'Warp', descriptionKey: 'Modern terminal. Dark IDE-like interface, block-based command UI', color: '#f7f5f0' },
+  { id: 'webflow', labelKey: 'Webflow', descriptionKey: 'Visual web builder. Blue-accented, polished marketing site aesthetic', color: '#080808' },
+  { id: 'wired', labelKey: 'WIRED', descriptionKey: 'Tech magazine. Paper-white broadsheet density, custom serif, ink-blue links', color: '#000000' },
+  { id: 'wise', labelKey: 'Wise', descriptionKey: 'International money transfer. Bright green accent, friendly and clear', color: '#9fe870' },
+  { id: 'x.ai', labelKey: 'xAI', descriptionKey: "Elon Musk's AI lab. Stark monochrome, futuristic minimalism", color: '#ffffff' },
+  { id: 'zapier', labelKey: 'Zapier', descriptionKey: 'Automation platform. Warm orange, friendly illustration-driven', color: '#ff4f00' },
 ] as const;
 
 export type DesignSystemId = (typeof DESIGN_SYSTEM_PRESETS)[number]['id'];

@@ -1,0 +1,118 @@
+{
+  "name": "Bugatti",
+  "rationale": "An austere luxury-automotive interface that uses near-pure black canvas, white uppercase letterspaced display, and full-bleed automotive photography as the only voltage. The system runs three custom B",
+  "brand": {
+    "name": "Bugatti",
+    "voice": "Premium, sophisticated, aspirational"
+  },
+  "visual_style": "An austere luxury-automotive interface that uses near-pure black canvas, white uppercase letterspaced display, and full-bleed automotive photography as the only voltage. The system runs three custom Bugatti typefaces — Bugatti Display, Bugatti Text Regular, and Bugatti Monospace — and combines them at modest weights with wide tracking to feel European-engineered, hyper-minimal, and quietly expensive. There is no accent color, no decorative element, no chrome — only photography, typography, and t",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#ffffff",
+      "#000000"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#ffffff",
+      "#cccccc",
+      "#e6e6e6",
+      "#999999",
+      "#666666",
+      "#262626",
+      "#3a3a3a",
+      "#000000",
+      "#0d0d0d",
+      "#141414",
+      "#1f1f1f",
+      "#ffffff",
+      "#ffffff",
+      "#c3d9f3"
+    ],
+    "accent": [
+      "#000000"
+    ],
+    "status": [
+      "#d4a017",
+      "#5fa657"
+    ]
+  },
+  "typography": {
+    "fontFamily": "Bugatti Display, sans-serif",
+    "monoFamily": "Bugatti Monospace, ui-monospace, monospace",
+    "samples": [
+      {
+        "label": "Display Lg",
+        "size": "48px",
+        "weight": "400"
+      },
+      {
+        "label": "Display Md",
+        "size": "32px",
+        "weight": "400"
+      },
+      {
+        "label": "Display Sm",
+        "size": "24px",
+        "weight": "400"
+      },
+      {
+        "label": "Display Xl",
+        "size": "64px",
+        "weight": "400"
+      },
+      {
+        "label": "Title Md",
+        "size": "20px",
+        "weight": "400"
+      },
+      {
+        "label": "Title Sm",
+        "size": "16px",
+        "weight": "400"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "6px",
+    "md": "12px",
+    "lg": "16px",
+    "xl": "24px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Button Primary",
+    "Button Icon",
+    "Text Link",
+    "Top Nav",
+    "Wordmark Display",
+    "Hero Photo Band",
+    "Caption Overlay",
+    "Career Callout Card",
+    "Model Photo Card",
+    "Newsroom Article Card",
+    "Career Listing Row",
+    "Text Input",
+    "Spec Cell",
+    "Date Pill",
+    "Category Tag"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

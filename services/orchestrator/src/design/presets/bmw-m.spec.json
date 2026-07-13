@@ -1,0 +1,121 @@
+{
+  "name": "BMW M",
+  "rationale": "A motorsport-engineering interface anchored on a near-black canvas with white BMW Type Next Latin display headlines in confident UPPERCASE. The brand carries no decorative voltage — its energy comes f",
+  "brand": {
+    "name": "BMW M",
+    "voice": "Bold, minimal, technical"
+  },
+  "visual_style": "A motorsport-engineering interface anchored on a near-black canvas with white BMW Type Next Latin display headlines in confident UPPERCASE. The brand carries no decorative voltage — its energy comes from full-bleed automotive photography (cars on tracks, driver-cockpit shots, carbon-fiber detail) and the iconic M tricolor stripe (light blue → dark blue → red) used sparingly as a brand signature on logos, dividers, and motorsport chrome. Type stays light to medium weight to feel European-engineer",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#ffffff",
+      "#000000"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#ffffff",
+      "#bbbbbb",
+      "#e6e6e6",
+      "#7e7e7e",
+      "#3c3c3c",
+      "#262626",
+      "#000000",
+      "#1a1a1a",
+      "#262626",
+      "#0d0d0d",
+      "#ffffff",
+      "#0066b1",
+      "#1c69d4",
+      "#e22718",
+      "#1c69d4",
+      "#0653b6",
+      "#2b2b2b"
+    ],
+    "accent": [
+      "#000000"
+    ],
+    "status": [
+      "#f4b400",
+      "#0fa336"
+    ]
+  },
+  "typography": {
+    "fontFamily": "BMWTypeNextLatin, sans-serif",
+    "monoFamily": "ui-monospace, monospace",
+    "samples": [
+      {
+        "label": "Display Lg",
+        "size": "56px",
+        "weight": "700"
+      },
+      {
+        "label": "Display Md",
+        "size": "40px",
+        "weight": "700"
+      },
+      {
+        "label": "Display Sm",
+        "size": "32px",
+        "weight": "700"
+      },
+      {
+        "label": "Display Xl",
+        "size": "80px",
+        "weight": "700"
+      },
+      {
+        "label": "Title Lg",
+        "size": "24px",
+        "weight": "700"
+      },
+      {
+        "label": "Title Md",
+        "size": "20px",
+        "weight": "400"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "2px",
+    "md": "4px",
+    "lg": "6px",
+    "xl": "24px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Button Primary",
+    "Button Primary Outline",
+    "Button On Light",
+    "Button Icon",
+    "Text Link",
+    "Top Nav",
+    "Hero Photo Band",
+    "M Stripe Divider",
+    "Feature Photo Card",
+    "Model Card",
+    "Magazine Article Card",
+    "Spec Cell",
+    "Cookie Consent Card",
+    "Category Tab",
+    "Category Tab Active"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

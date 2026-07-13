@@ -1,0 +1,127 @@
+{
+  "name": "OpenCode AI",
+  "rationale": "A terminal-native marketing system rendered entirely in Berkeley Mono — every word on the page, from the hero headline down to the footer fine print, is monospaced. The page itself reads like a manpag",
+  "brand": {
+    "name": "OpenCode AI",
+    "voice": "Bold, minimal, technical"
+  },
+  "visual_style": "A terminal-native marketing system rendered entirely in Berkeley Mono — every word on the page, from the hero headline down to the footer fine print, is monospaced. The page itself reads like a manpage or a static-site README: warm cream canvas (`#fdfcfc`), nearly-black ink (`#201d1d`), 4px-radius rectangles for the few interactive elements, and bracketed `[+]`/`[-]` ASCII markers used as bullets. The brand's only \"visual moment\" is a single dark hero card that mocks up the OpenCode TUI itself —",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#201d1d",
+      "#fdfcfc"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#201d1d",
+      "#0f0000",
+      "#302c2c",
+      "#424245",
+      "#646262",
+      "#6e6e73",
+      "#9a9898",
+      "#fdfcfc",
+      "#f8f7f7",
+      "#f1eeee",
+      "#201d1d",
+      "#302c2c",
+      "rgba(15,0,0,0.12)",
+      "#646262",
+      "#fdfcfc",
+      "#9a9898",
+      "#cc7f08",
+      "#995f06",
+      "#d70015",
+      "#a50011"
+    ],
+    "accent": [
+      "#007aff",
+      "#0056b3",
+      "#004085"
+    ],
+    "status": [
+      "#ff9f0a",
+      "#ff3b30",
+      "#30d158"
+    ]
+  },
+  "typography": {
+    "fontFamily": "Berkeley Mono",
+    "monoFamily": "Berkeley Mono",
+    "samples": [
+      {
+        "label": "Display Xl",
+        "size": "38px",
+        "weight": "700"
+      },
+      {
+        "label": "Body Md",
+        "size": "16px",
+        "weight": "400"
+      },
+      {
+        "label": "Body Strong",
+        "size": "16px",
+        "weight": "500"
+      },
+      {
+        "label": "Body Tight",
+        "size": "16px",
+        "weight": "500"
+      },
+      {
+        "label": "Caption Md",
+        "size": "14px",
+        "weight": "400"
+      },
+      {
+        "label": "Button Md",
+        "size": "16px",
+        "weight": "500"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "4px",
+    "md": "4px",
+    "lg": "16px",
+    "xl": "24px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Button Primary",
+    "Button Primary Active",
+    "Button Secondary",
+    "Button Tab",
+    "Button Tab Active",
+    "Button Disabled",
+    "Badge News",
+    "Text Input",
+    "Text Input Focused",
+    "Textarea",
+    "Install Snippet",
+    "Hero Tui Mockup",
+    "Tui Prompt Row",
+    "List Row",
+    "Faq Row"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

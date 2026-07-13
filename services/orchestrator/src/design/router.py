@@ -108,6 +108,14 @@ async def get_design_screen_html(run_id: str, screen_id: str):
         raise _http(exc) from exc
 
 
+@router.delete("/sessions/{run_id}/screens/{screen_id}")
+async def delete_design_screen(run_id: str, screen_id: str) -> dict[str, Any]:
+    try:
+        return service.delete_screen_from_session(run_id, screen_id)
+    except (WorkspaceError, service.DesignError) as exc:
+        raise _http(exc) from exc
+
+
 @router.post("/sessions/{run_id}/generate")
 async def generate_design_session(run_id: str, body: GenerateBody) -> dict[str, Any]:
     """Start two-phase generate in background; poll GET /sessions/{run_id} for progress."""

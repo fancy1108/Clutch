@@ -1,0 +1,104 @@
+{
+  "name": "Raycast",
+  "rationale": "Design system for Raycast",
+  "brand": {
+    "name": "Raycast",
+    "voice": "Bold, minimal, technical"
+  },
+  "visual_style": "colors: primary: \"#ffffff\" primary-pressed: \"#e8e8e8\" on-primary: \"#000000\" ink: \"#f4f4f6\" body: \"#cdcdcd\" charcoal: \"#d3d3d4\" mute: \"#9c9c9d\" ash: \"#6a6b6c\" stone: \"#434345\" on-dark: \"#ffffff\" on-dark-mute: \"rgba(255,255,255,0.72)\" canvas: \"#07080a\" surface: \"#0d0d0d\" surface-elevated: \"#101111\" surface-card: \"#121212\" button-fg: \"#18191a\" hairline: \"#242728\" hairline-soft: \"rgba(255,255,255,0.08)\" hairline-strong: \"rgba(255,255,255,0.16)\" accent-blue: \"#57c1ff\" accent-blue-soft: \"rgba(87,193,2",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#000000"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#ffffff",
+      "#000000"
+    ],
+    "accent": [
+      "#000000"
+    ],
+    "status": [
+      "#000000"
+    ]
+  },
+  "typography": {
+    "fontFamily": "calt, kern, liga, ss03 site-wide — the ss03 stylistic set swaps in Inters alternate g glyph (single-story open g), which is the brands signature typographic detail. Standard ligatures (liga), kerning (kern), and contextual alternates (calt) are also active. The display tier additionally enables ss02 and ss08 and disables standard liga to render the hero Raycast Pro wordmark with its distinctive geometric construction.",
+    "monoFamily": "JetBrains Mono, ui-monospace, monospace",
+    "samples": [
+      {
+        "label": "`{typography.display-xl}`",
+        "size": "64px",
+        "weight": "600"
+      },
+      {
+        "label": "`{typography.display-lg}`",
+        "size": "56px",
+        "weight": "500"
+      },
+      {
+        "label": "`{typography.heading-xl}`",
+        "size": "24px",
+        "weight": "500"
+      },
+      {
+        "label": "`{typography.heading-lg}`",
+        "size": "22px",
+        "weight": "500"
+      },
+      {
+        "label": "`{typography.heading-md}`",
+        "size": "20px",
+        "weight": "500"
+      },
+      {
+        "label": "`{typography.heading-sm}`",
+        "size": "18px",
+        "weight": "500"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "6px",
+    "md": "12px",
+    "lg": "16px",
+    "xl": "24px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Brand & Accent",
+    "Surface",
+    "Brand Gradient",
+    "Font Family",
+    "Note on Font Substitutes",
+    "Spacing System",
+    "Grid & Container",
+    "Whitespace Philosophy",
+    "Decorative Depth",
+    "Border Radius Scale",
+    "Photography Geometry",
+    "Buttons",
+    "Filter & Tab Chips",
+    "Inputs & Forms",
+    "Cards & Containers"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

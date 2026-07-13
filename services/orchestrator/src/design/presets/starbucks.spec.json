@@ -1,0 +1,151 @@
+{
+  "name": "Starbucks",
+  "rationale": "Design system for Starbucks",
+  "brand": {
+    "name": "Starbucks",
+    "voice": "Warm, approachable, human"
+  },
+  "visual_style": "## 1. Visual Theme & Atmosphere",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#006241",
+      "#006241",
+      "#00754a",
+      "#1e3932",
+      "#2b5148",
+      "#d4e9e2",
+      "#1e3932",
+      "#1e3932",
+      "#1e3932",
+      "#1e3932"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#ffffff",
+      "#f9f9f9",
+      "#f2f0eb",
+      "#edebe9",
+      "#000000",
+      "#33433d",
+      "#f2f0eb",
+      "#edebe9",
+      "#cba258",
+      "#00754a",
+      "#f2f0eb",
+      "#1e3932",
+      "#00754a",
+      "#00754a",
+      "#f2f0eb",
+      "#f2f0eb",
+      "#edebe9",
+      "#006241",
+      "#00754a",
+      "#ffffff",
+      "#006241",
+      "#1e3932",
+      "#f2f0eb",
+      "#ffffff",
+      "#cba258",
+      "#33433d",
+      "#00754a",
+      "#ffffff",
+      "#f2f0eb",
+      "#00754a",
+      "#1e3932",
+      "#1e3932",
+      "#1e3932",
+      "#1e3932",
+      "#cba258"
+    ],
+    "accent": [
+      "#cba258",
+      "#dfc49d",
+      "#faf6ee",
+      "#c82014",
+      "#fbbc05",
+      "#d4e9e2"
+    ],
+    "status": [
+      "#000000"
+    ]
+  },
+  "typography": {
+    "fontFamily": " SoDoSans, Helvetica Neue, Helvetica, Arial, sans-serif — Starbucks proprietary corporate typeface, used across nearly every surface",
+    "monoFamily": "ui-monospace, monospace",
+    "samples": [
+      {
+        "label": "Display (text-10)",
+        "size": "5.0rem / 80px",
+        "weight": "400–600"
+      },
+      {
+        "label": "Jumbo (text-9)",
+        "size": "3.6rem / 58px",
+        "weight": "400–600"
+      },
+      {
+        "label": "Hero Large (text-8)",
+        "size": "2.8rem / 45px",
+        "weight": "400–600"
+      },
+      {
+        "label": "H1",
+        "size": "24px",
+        "weight": "600"
+      },
+      {
+        "label": "H2",
+        "size": "24px",
+        "weight": "400"
+      },
+      {
+        "label": "Body Large",
+        "size": "19px",
+        "weight": "400–600"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "6px",
+    "md": "12px",
+    "lg": "16px",
+    "xl": "24px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Primary",
+    "Secondary & Accent",
+    "Surface & Background",
+    "Neutrals & Text",
+    "Semantic & Accent",
+    "Black / White Alpha Ladders",
+    "Gradient System",
+    "Font Family",
+    "Note on Font Substitutes",
+    "Buttons",
+    "Cards & Containers",
+    "Inputs & Forms",
+    "Navigation",
+    "Image Treatment",
+    "Feature Band (dark-green hero strip)"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

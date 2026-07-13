@@ -1,0 +1,122 @@
+{
+  "name": "Composio",
+  "rationale": "A developer-tools brand for AI-agent tool integration whose marketing surfaces lean into a dark, technical aesthetic with a single deep-electric-blue voltage (`#0007cd`). The page floor is near-black ",
+  "brand": {
+    "name": "Composio",
+    "voice": "Bold, minimal, technical"
+  },
+  "visual_style": "A developer-tools brand for AI-agent tool integration whose marketing surfaces lean into a dark, technical aesthetic with a single deep-electric-blue voltage (`#0007cd`). The page floor is near-black (`#0f0f0f`); cards float above on subtle gray-tinted surfaces. abcDiatype carries display and body in a single sans family with weights 400-600. The brand's strongest visual signature is a four-pane terminal-style mockup (a 2×2 grid of dark code/output panels) with a central blue spotlight glow — us",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#0007cd",
+      "#0005a3",
+      "#1a26ff",
+      "#ffffff"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#ffffff",
+      "#a8a8a8",
+      "#ffffff",
+      "#888888",
+      "#666666",
+      "#222222",
+      "#1a1a1a",
+      "#333333",
+      "#0f0f0f",
+      "#000000",
+      "#181818",
+      "#222222",
+      "#2a2a2a",
+      "#ffffff",
+      "#ff4d4d",
+      "#33d17a"
+    ],
+    "accent": [
+      "#00d4ff",
+      "#7b3aed"
+    ],
+    "status": [
+      "#000000"
+    ]
+  },
+  "typography": {
+    "fontFamily": "'abcDiatype', ui-sans-serif, system-ui, sans-serif",
+    "monoFamily": "'JetBrains Mono', 'Fira Code', monospace",
+    "samples": [
+      {
+        "label": "Display Lg",
+        "size": "44px",
+        "weight": "500"
+      },
+      {
+        "label": "Display Md",
+        "size": "32px",
+        "weight": "500"
+      },
+      {
+        "label": "Display Mega",
+        "size": "72px",
+        "weight": "500"
+      },
+      {
+        "label": "Display Sm",
+        "size": "24px",
+        "weight": "500"
+      },
+      {
+        "label": "Display Xl",
+        "size": "56px",
+        "weight": "500"
+      },
+      {
+        "label": "Title Md",
+        "size": "18px",
+        "weight": "600"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "4px",
+    "md": "6px",
+    "lg": "8px",
+    "xl": "12px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Top Nav Dark",
+    "Button Primary",
+    "Button Primary Active",
+    "Button Secondary Dark",
+    "Button Outline",
+    "Button Tertiary Text",
+    "Hero Band",
+    "Terminal Mockup Grid",
+    "Terminal Pane",
+    "Feature Card",
+    "Toolkit Card",
+    "Toolkit Icon",
+    "Spotlight Glow Card",
+    "Code Block",
+    "Badge Pill"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

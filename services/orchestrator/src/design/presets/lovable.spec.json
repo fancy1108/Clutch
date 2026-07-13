@@ -1,0 +1,128 @@
+{
+  "name": "Lovable",
+  "rationale": "Design system for Lovable",
+  "brand": {
+    "name": "Lovable",
+    "voice": "Warm, approachable, human"
+  },
+  "visual_style": "## 1. Visual Theme & Atmosphere",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#f7f4ed",
+      "#1c1c1c",
+      "#fcfbf8",
+      "#3b82f6"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#1c1c1c",
+      "#5f5f5d",
+      "#eceae4",
+      "#f7f4ed",
+      "#f7f4ed",
+      "#1c1c1c",
+      "#1c1c1c",
+      "#f7f4ed",
+      "#1c1c1c",
+      "#eceae4",
+      "#eceae4",
+      "#f7f4ed",
+      "#1c1c1c",
+      "#ffffff",
+      "#1c1c1c",
+      "#f7f4ed",
+      "#1c1c1c",
+      "#5f5f5d",
+      "#f7f4ed",
+      "#f7f4ed",
+      "#f7f4ed",
+      "#f7f4ed",
+      "#1c1c1c"
+    ],
+    "accent": [
+      "#000000"
+    ],
+    "status": [
+      "#000000"
+    ]
+  },
+  "typography": {
+    "fontFamily": "Camera Plain Variable, with fallbacks: ui-sans-serif, system-ui",
+    "monoFamily": "ui-monospace, monospace",
+    "samples": [
+      {
+        "label": "Display Hero",
+        "size": "Camera Plain Variable",
+        "weight": "60px (3.75rem)"
+      },
+      {
+        "label": "Display Alt",
+        "size": "Camera Plain Variable",
+        "weight": "60px (3.75rem)"
+      },
+      {
+        "label": "Section Heading",
+        "size": "Camera Plain Variable",
+        "weight": "48px (3.00rem)"
+      },
+      {
+        "label": "Sub-heading",
+        "size": "Camera Plain Variable",
+        "weight": "36px (2.25rem)"
+      },
+      {
+        "label": "Card Title",
+        "size": "Camera Plain Variable",
+        "weight": "20px (1.25rem)"
+      },
+      {
+        "label": "Body Large",
+        "size": "Camera Plain Variable",
+        "weight": "18px (1.13rem)"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "6px",
+    "md": "6px",
+    "lg": "9999px",
+    "xl": "32px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Primary",
+    "Neutral Scale (Opacity-Based)",
+    "Interactive",
+    "Inset Shadows",
+    "Font Family",
+    "Buttons",
+    "Cards & Containers",
+    "Inputs & Forms",
+    "Navigation",
+    "Links",
+    "Image Treatment",
+    "Distinctive Components",
+    "Spacing System",
+    "Grid & Container",
+    "Whitespace Philosophy"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

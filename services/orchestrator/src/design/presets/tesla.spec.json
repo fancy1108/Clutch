@@ -1,0 +1,126 @@
+{
+  "name": "Tesla",
+  "rationale": "Design system for Tesla",
+  "brand": {
+    "name": "Tesla",
+    "voice": "Cinematic, immersive, dramatic"
+  },
+  "visual_style": "## 1. Visual Theme & Atmosphere",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#3e6ae1",
+      "#ffffff",
+      "#3e6ae1"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#ffffff",
+      "#f4f4f4",
+      "#171a20",
+      "#171a20",
+      "#393c41",
+      "#5c5e62",
+      "#8e8e8e",
+      "#eeeeee",
+      "#d0d1d2",
+      "#3e6ae1",
+      "#ffffff",
+      "#393c41",
+      "#171a20",
+      "#5c5e62",
+      "#3e6ae1",
+      "#3e6ae1",
+      "#ffffff",
+      "#171a20",
+      "#393c41",
+      "#5c5e62",
+      "#171a20",
+      "#3e6ae1"
+    ],
+    "accent": [
+      "#3e6ae1"
+    ],
+    "status": [
+      "#000000"
+    ]
+  },
+  "typography": {
+    "fontFamily": "Universal Sans Display, -apple-system, Arial, sans-serif — used for hero titles and large model names. A geometric sans-serif with precisely engineered proportions, recently replacing Gotham to unify Teslas digital ecosystem (website, mobile app, vehicle interface)",
+    "monoFamily": "ui-monospace, monospace",
+    "samples": [
+      {
+        "label": "Hero Title",
+        "size": "40px (2.50rem)",
+        "weight": "500"
+      },
+      {
+        "label": "Product Name",
+        "size": "17px (1.06rem)",
+        "weight": "500"
+      },
+      {
+        "label": "Nav Item",
+        "size": "14px (0.88rem)",
+        "weight": "500"
+      },
+      {
+        "label": "Body Text",
+        "size": "14px (0.88rem)",
+        "weight": "400"
+      },
+      {
+        "label": "Button Label",
+        "size": "14px (0.88rem)",
+        "weight": "500"
+      },
+      {
+        "label": "Sub-link",
+        "size": "14px (0.88rem)",
+        "weight": "400"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "4px",
+    "md": "4px",
+    "lg": "4px",
+    "xl": "8px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Primary",
+    "Secondary & Accent",
+    "Surface & Background",
+    "Neutrals & Text",
+    "Semantic & Accent",
+    "Gradient System",
+    "Font Family",
+    "Buttons",
+    "Cards & Containers",
+    "Inputs & Forms",
+    "Navigation",
+    "Image Treatment",
+    "Persistent Chat Bar",
+    "Spacing System",
+    "Grid & Container"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}

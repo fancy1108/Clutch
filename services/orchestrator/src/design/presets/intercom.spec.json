@@ -1,0 +1,126 @@
+{
+  "name": "Intercom",
+  "rationale": "An editorial customer-service marketing canvas built around a soft cream-white ground, charcoal type set in Saans (Intercom's proprietary geometric sans), and a single confident Fin Orange (#ff5600) r",
+  "brand": {
+    "name": "Intercom",
+    "voice": "Editorial, authoritative, refined"
+  },
+  "visual_style": "An editorial customer-service marketing canvas built around a soft cream-white ground, charcoal type set in Saans (Intercom's proprietary geometric sans), and a single confident Fin Orange (#ff5600) reserved for the Fin AI brand. Cards live as floating white tiles with thin hairline borders and minimal radii (8–16px). Display headlines run Saans at weight 500 with measured negative tracking. The system reads as a careful, product-led publication: product screenshots dominate, ornament is rare, a",
+  "layout_system": "12-column responsive grid",
+  "layout_pattern": "marketing",
+  "grid": {
+    "columns": 12,
+    "gutter": "24px",
+    "max_width": "1280px"
+  },
+  "colors": {
+    "primary": [
+      "#111111",
+      "#ffffff"
+    ],
+    "secondary": [
+      "#000000"
+    ],
+    "neutral": [
+      "#111111",
+      "#626260",
+      "#7b7b78",
+      "#9c9fa5",
+      "#f5f1ec",
+      "#ffffff",
+      "#ebe7e1",
+      "#000000",
+      "#313130",
+      "#ffffff",
+      "#9c9fa5",
+      "#d3cec6",
+      "#ebe7e1",
+      "#ff5600",
+      "#fe4c02",
+      "#65b5ff",
+      "#0bdf50",
+      "#ff2067",
+      "#b3e01c",
+      "#03b2cb",
+      "#0007cb",
+      "#c41c1c",
+      "#0bdf50"
+    ],
+    "accent": [
+      "#000000"
+    ],
+    "status": [
+      "#000000"
+    ]
+  },
+  "typography": {
+    "fontFamily": "Saans",
+    "monoFamily": "SaansMono",
+    "samples": [
+      {
+        "label": "Display Lg",
+        "size": "56px",
+        "weight": "500"
+      },
+      {
+        "label": "Display Md",
+        "size": "40px",
+        "weight": "500"
+      },
+      {
+        "label": "Display Xl",
+        "size": "72px",
+        "weight": "500"
+      },
+      {
+        "label": "Headline",
+        "size": "28px",
+        "weight": "500"
+      },
+      {
+        "label": "Body",
+        "size": "16px",
+        "weight": "400"
+      },
+      {
+        "label": "Body Lg",
+        "size": "18px",
+        "weight": "400"
+      }
+    ]
+  },
+  "radius": {
+    "sm": "4px",
+    "md": "6px",
+    "lg": "8px",
+    "xl": "12px"
+  },
+  "shadow": {
+    "card": "0 1px 3px rgba(0,0,0,0.08)",
+    "elevated": "0 8px 24px rgba(0,0,0,0.12)"
+  },
+  "components": [
+    "Button Primary",
+    "Button Primary Pressed",
+    "Button Secondary",
+    "Button Tertiary",
+    "Button Fin",
+    "Pricing Card",
+    "Pricing Card Featured",
+    "Feature Card",
+    "Product Mockup Card",
+    "Testimonial Card",
+    "Customer Logo Tile",
+    "Text Input",
+    "Text Input Focused",
+    "Pricing Tab Default",
+    "Pricing Tab Selected"
+  ],
+  "motion": {
+    "duration": "200ms",
+    "easing": "cubic-bezier(0.4,0,0.2,1)",
+    "hover_lift": "-2px"
+  },
+  "responsive": "Mobile-first; stack columns below md; hide sidebar behind menu on sm",
+  "accessibility": "WCAG AA contrast; focus rings; semantic headings; aria-labels"
+}
