@@ -411,9 +411,11 @@ def _detect_html_intent(html: str) -> str | None:
 
 def _html_matches_brief_intent(prompt: str, html: str) -> bool:
     expected = _prompt_intent(prompt)
+    detected = _detect_html_intent(html)
+    if expected == "landing" and detected == "login":
+        return False
     if expected in {"landing", "generic"}:
         return True
-    detected = _detect_html_intent(html)
     return detected == expected or detected is None
 
 
@@ -836,6 +838,21 @@ def _check_vision_ok(router: Any, model_id: str, image_data_url: str | None) -> 
         return False
 
 
+_VISION_ERROR_RE = re.compile(
+    r"(?:cannot\s+read|does\s+not\s+support\s+(?:image|vision)|"
+    r"unable\s+to\s+(?:read|process|view)\s+(?:the\s+)?(?:image|picture|screenshot)|"
+    r"inform\s+the\s+user|no\s+image\s+(?:input|support))",
+    re.IGNORECASE,
+)
+
+
+def _looks_like_vision_error(text: str) -> bool:
+    """Return True if LLM output looks like a vision-capability error instead of real content."""
+    if not text:
+        return False
+    return bool(_VISION_ERROR_RE.search(text[:500]))
+
+
 def _llm_complete_vision(
     router: Any,
     prompt: str,
@@ -864,10 +881,18 @@ def _llm_complete_vision(
         with ThreadPoolExecutor(max_workers=1) as pool:
             future = pool.submit(_call)
             try:
-                return _llm_result(future.result(timeout=timeout_sec), prompt=prompt)
+                result = _llm_result(future.result(timeout=timeout_sec), prompt=prompt)
             except FuturesTimeout as exc:
                 future.cancel()
                 raise DesignError(f"Model timed out after {int(timeout_sec)}s") from exc
+
+        text, reasoning, usage, estimated = result
+        if not _looks_like_vision_error(text):
+            return result
+        logger.warning(
+            "vision call returned error-like response (model=%s) — falling back to text-only",
+            model_id,
+        )
 
     prefix = ""
     if image_data_url and not vision_ok:
@@ -886,6 +911,19 @@ def _llm_complete_vision(
                     "A reference screenshot was attached but the active model may not support vision. "
                     "Infer a polished UI that matches the product brief alone.\n"
                 )
+    elif image_data_url and vision_ok:
+        try:
+            from src.design.image_analysis import image_analysis_prompt_fragment
+            analysis = image_analysis_prompt_fragment(image_data_url)
+            prefix = (analysis + "\n\n") if analysis else (
+                "A reference screenshot was attached but the model could not process it. "
+                "Use the product brief to infer colors and layout.\n"
+            )
+        except Exception:
+            prefix = (
+                "A reference screenshot was attached but the model could not process it. "
+                "Infer a polished UI that matches the product brief alone.\n"
+            )
     return _llm_complete(router, prefix + prompt, model_id=model_id, timeout_sec=timeout_sec)
 
 
@@ -968,6 +1006,12 @@ def _extract_css_tokens(html: str, base_url: str = "") -> dict[str, Any]:
     if css_vars:
         tokens["css_vars"] = css_vars
 
+    css_var_refs: set[str] = set()
+    for ref in re.findall(r"var\(--([a-zA-Z][\w-]*)\)", html):
+        css_var_refs.add(ref)
+    if css_var_refs:
+        tokens["css_var_references"] = sorted(css_var_refs)
+
     font_families: list[str] = []
     for ff in re.findall(r"font-family\s*:\s*([^;}\n]+)", all_css):
         cleaned = re.sub(r"['\"/]", "", ff.split(",")[0]).strip()
@@ -1021,20 +1065,54 @@ def _extract_css_tokens(html: str, base_url: str = "") -> dict[str, Any]:
             tokens["og_image"] = urljoin(base_url, og_img)
 
     dark_signals = (
-        'prefers-color-scheme: dark' in html
-        or 'prefers-color-scheme:dark' in html
-        or '"dark"' in html[:2000]
-        or "class=\"dark\"" in html
+        "class=\"dark\"" in html
         or "data-theme=\"dark\"" in html
+        or re.search(r"@media\s*\(\s*prefers-color-scheme\s*:\s*dark\s*\)", all_css) is not None
     )
     dark_tw = len(re.findall(r'\bdark:', html)) > 5
-    tokens["dark_mode"] = dark_signals or dark_tw
+    # If theme-color meta explicitly says a light colour, the page is light regardless of dark: prefixes
+    tc = tokens.get("theme_color", "")
+    tc_is_light = False
+    if tc and re.match(r'^#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})$', tc):
+        h = tc.lstrip("#")
+        if len(h) == 3:
+            h = h[0]*2 + h[1]*2 + h[2]*2
+        r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+        tc_is_light = (r + g + b) / 3 > 200
+    tokens["dark_mode"] = dark_signals or (dark_tw and not tc_is_light)
 
     css_hrefs = re.findall(r'<link[^>]+href=["\']([^"\'>]+\.css[^"\'>]*)["\']', html, re.I)
     if css_hrefs and base_url:
         parsed = urlparse(base_url)
         css_base = f"{parsed.scheme}://{parsed.netloc}"
-        for href in css_hrefs[:2]:
+        total = len(css_hrefs)
+        seen: set[int] = set()
+        fetch_order: list[int] = []
+
+        # Front: first 4 (global setup: fonts, reset)
+        for i in range(min(4, total)):
+            seen.add(i)
+            fetch_order.append(i)
+        # Back: last 4 (late-loaded page-specific styles for bundled apps)
+        for i in range(total - 1, max(-1, total - 5), -1):
+            if i not in seen:
+                seen.add(i)
+                fetch_order.append(i)
+        # Middle: evenly-spaced samples across the full list
+        remaining_slots = 24 - len(fetch_order)
+        span = max(1, total - 8)
+        step = max(1, span // remaining_slots)
+        for i in range(4, total - 4, step):
+            if i not in seen and len(fetch_order) < 24:
+                seen.add(i)
+                fetch_order.append(i)
+
+        css_fetched = 0
+        max_fetch = 20
+        for idx in sorted(fetch_order):
+            if css_fetched >= max_fetch:
+                break
+            href = css_hrefs[idx]
             css_url = href if href.startswith("http") else urljoin(css_base + "/", href.lstrip("/"))
             try:
                 import urllib.request as _ureq
@@ -1044,28 +1122,34 @@ def _extract_css_tokens(html: str, base_url: str = "") -> dict[str, Any]:
                 )
                 with _ureq.urlopen(css_req, timeout=8.0) as cr:
                     css_text = cr.read(300_000).decode("utf-8", errors="replace")
+                if re.search(r"@media\s*\(\s*prefers-color-scheme\s*:\s*dark\s*\)", css_text):
+                    tokens["dark_mode"] = True
                 for hc in re.findall(r"#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b", css_text):
                     norm = hc.upper()
                     if len(norm) == 3:
                         norm = norm[0]*2 + norm[1]*2 + norm[2]*2
                     hex_counts["#" + norm] += 1
+                # Allow later definitions to override earlier ones (CSS cascade order)
                 for ck, cv in re.findall(r"--([\.\w-]+)\s*:\s*([^;}\n]{1,80})", css_text):
-                    if ck.strip() not in css_vars:
-                        css_vars[ck.strip()] = cv.strip().rstrip(",")
+                    css_vars[ck.strip()] = cv.strip().rstrip(",")
+                for rec in re.findall(r"var\(--([a-zA-Z][\w-]*)\)", css_text):
+                    css_var_refs.add(rec)
                 for ff in re.findall(r"font-family\s*:\s*([^;}\n]+)", css_text):
                     cleaned = re.sub(r"['\"/]", "", ff.split(",")[0]).strip()
                     if cleaned and cleaned not in font_families and len(cleaned) < 60:
                         font_families.append(cleaned)
-                if hex_counts:
-                    tokens["hex_colors"] = [h for h, _ in hex_counts.most_common(16)]
-                    tokens["hex_colors_with_count"] = [[h, cnt] for h, cnt in hex_counts.most_common(16)]
-                if css_vars:
-                    tokens["css_vars"] = css_vars
-                if font_families:
-                    tokens["font_families"] = font_families[:6]
-                break
+                css_fetched += 1
             except Exception:
                 continue
+        if hex_counts:
+            tokens["hex_colors"] = [h for h, _ in hex_counts.most_common(16)]
+            tokens["hex_colors_with_count"] = [[h, cnt] for h, cnt in hex_counts.most_common(16)]
+        if css_vars:
+            tokens["css_vars"] = css_vars
+        if css_var_refs:
+            tokens["css_var_references"] = sorted(css_var_refs)
+        if font_families:
+            tokens["font_families"] = font_families[:6]
 
     return tokens
 
@@ -1078,7 +1162,17 @@ def _format_css_tokens_for_prompt(tokens: dict[str, Any], host: str = "") -> str
 
     theme_color = tokens.get("theme_color")
     if theme_color:
-        lines.append(f"Brand/theme color: {theme_color}")
+        # Skip near-black / near-white defaults — these are rarely the actual brand color
+        tc_is_default = False
+        if re.match(r'^#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})$', theme_color):
+            h = theme_color.lstrip("#")
+            if len(h) == 3:
+                h = h[0]*2 + h[1]*2 + h[2]*2
+            r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+            brightness = (r + g + b) / 3
+            tc_is_default = brightness < 20 or brightness > 245
+        if not tc_is_default:
+            lines.append(f"Brand/theme color: {theme_color}")
 
     hex_colors = tokens.get("hex_colors_with_count") or []
     if hex_colors:
@@ -1089,6 +1183,25 @@ def _format_css_tokens_for_prompt(tokens: dict[str, Any], host: str = "") -> str
     if css_vars:
         var_strs = [f"--{k}: {v}" for k, v in list(css_vars.items())[:12]]
         lines.append(f"CSS custom properties: {'; '.join(var_strs)}")
+
+    css_var_refs = tokens.get("css_var_references") or []
+    if css_var_refs:
+        ref_strs = [f"--{r}" for r in css_var_refs[:20]]
+        lines.append(f"CSS design token names referenced (hint at color palette): {', '.join(ref_strs)}")
+        # Extract color family hints from variable names
+        _skip_hints = {
+            "color", "primary", "secondary", "accent", "text", "bg", "background",
+            "muted", "dark", "alt", "neutral", "white", "black", "bold", "light",
+        }
+        color_hints = set()
+        for r in css_var_refs:
+            parts = r.lower().split("-")
+            if "color" in parts:
+                for p in parts[parts.index("color") + 1:]:
+                    if p not in _skip_hints:
+                        color_hints.add(p)
+        if color_hints:
+            lines.append(f"Color palette hints from variable names: {', '.join(sorted(color_hints))}")
 
     tw_classes = tokens.get("tailwind_color_classes") or []
     if tw_classes:
@@ -1103,9 +1216,18 @@ def _format_css_tokens_for_prompt(tokens: dict[str, Any], host: str = "") -> str
 
     dark_mode = tokens.get("dark_mode", False)
     if dark_mode:
-        lines.append("Color mode: DARK (use dark background, light text)")
+        lines.append(
+            "Color mode: DARK (use dark background tones like #1a1a2e, #16213e, or soft dark grays — "
+            "avoid pure #000000 unless the site explicitly uses it)"
+        )
+        lines.append(
+            "CRITICAL: The reference website uses a DARK color scheme — the generated page MUST have a dark background."
+        )
     else:
-        lines.append("Color mode: light")
+        lines.append("Color mode: LIGHT (use white or very light backgrounds like #ffffff, #f8fafc, #fafafa)")
+        lines.append(
+            "CRITICAL: The reference website uses a LIGHT background — the generated page MUST have a white or very light background, with dark text. Do NOT generate a dark-themed page."
+        )
 
     og_image = tokens.get("og_image")
     if og_image:
@@ -1201,7 +1323,7 @@ def _fetch_url_snapshot(url: str) -> dict[str, Any]:
     browser_tokens: dict[str, Any] = {}
     try:
         from src.design.browser_extract import extract_website_tokens
-        browser_tokens = extract_website_tokens(final_url, timeout_sec=25.0)
+        browser_tokens = extract_website_tokens(final_url, timeout_sec=40.0)
         if browser_tokens.get("available"):
             logger.info(
                 "design url browser extraction succeeded url=%s fonts=%d",
@@ -1246,6 +1368,7 @@ def _build_ui_compact_prompt(
         f"Primary color: {primary}\n"
         f"Brand: {spec.get('name') or 'Clutch'}\n"
         "Rules: full <!DOCTYPE html>…</html>, visible UI in body, match the brief intent.\n"
+        "Do NOT generate interactive elements — no <a href>, no <form>, no onclick handlers. Static prototype only.\n"
         "Return ONLY ```html ... ```."
     )
 
@@ -1260,6 +1383,7 @@ def _build_ui_generation_prompt(
     md_text: str | None = None,
     url_snapshot: dict[str, Any] | None = None,
     has_image: bool = False,
+    image_attached: bool = False,
     current_html: str = "",
     instruction: str = "",
 ) -> str:
@@ -1307,6 +1431,9 @@ def _build_ui_generation_prompt(
         + (
             "6. Select 3-5 core components; high-fidelity modern aesthetics (rounded-2xl cards, "
             "subtle gradients, hover transitions, generous spacing py-12–py-20).\n"
+            "7. CRITICAL: This is a static prototype — do NOT produce any interactive elements. "
+            "No <a href=\"...\"> links, no <form> tags, no onclick attributes, no inline JavaScript handlers. "
+            "Buttons may appear as visual decoration only (no click/tap behavior).\n"
         ),
         f"Style reference (match quality & polish only — do NOT copy this layout verbatim):\n{fewshot}\n",
         f"Design system JSON:\n{json.dumps(spec, ensure_ascii=False)}\n",
@@ -1327,21 +1454,33 @@ def _build_ui_generation_prompt(
             "- The generated HTML must be a faithful implementation of this spec. No deviations.\n"
         )
     if url_snapshot:
-        css_tokens = url_snapshot.get("css_tokens") or {}
-        token_desc = _format_css_tokens_for_prompt(css_tokens, host=str(url_snapshot.get("host") or ""))
-        if token_desc:
+        browser_frag = url_snapshot.get("browser_prompt_fragment") or ""
+        if browser_frag:
             ui_parts.append(
                 f"Reference website: {url_snapshot.get('url')} "
                 f"({url_snapshot.get('title') or url_snapshot.get('host')}).\n"
-                + token_desc + "\n"
+                + browser_frag + "\n"
                 "Apply the above design tokens faithfully in your HTML output.\n"
+                "Determine the background color from the Body computed styles or CSS custom properties. "
+                "If the reference body background is transparent, white, or light (<#ccc), you MUST use a light background (#ffffff or similar). "
+                "If it's dark (>#333), use a dark background. Match what the reference actually renders.\n"
             )
         else:
-            ui_parts.append(
-                f"Visual inspiration from {url_snapshot.get('url')} "
-                f"({url_snapshot.get('title') or url_snapshot.get('host')}).\n"
-            )
-    if has_image:
+            css_tokens = url_snapshot.get("css_tokens") or {}
+            token_desc = _format_css_tokens_for_prompt(css_tokens, host=str(url_snapshot.get("host") or ""))
+            if token_desc:
+                ui_parts.append(
+                    f"Reference website: {url_snapshot.get('url')} "
+                    f"({url_snapshot.get('title') or url_snapshot.get('host')}).\n"
+                    + token_desc + "\n"
+                    "Apply the above design tokens faithfully in your HTML output.\n"
+                )
+            else:
+                ui_parts.append(
+                    f"Visual inspiration from {url_snapshot.get('url')} "
+                    f"({url_snapshot.get('title') or url_snapshot.get('host')}).\n"
+                )
+    if image_attached:
         ui_parts.append(
             "Match the attached reference screenshot (structure, hierarchy, spacing).\n"
         )
@@ -1385,6 +1524,7 @@ def _design_review_and_improve(
     improve_prompt = (
         "Improve this HTML UI based on the design review feedback. "
         "Apply concrete fixes to spacing, hierarchy, CTAs, and contrast.\n"
+        "Do NOT add interactive elements — no <a href>, no <form>, no onclick handlers. Static prototype only.\n"
         f"Feedback (score {score}/10): {feedback}\n"
         f"Brief: {user_prompt}\n"
         f"HTML:\n{html[:14000]}\n"
@@ -1423,6 +1563,7 @@ def _build_ui_correction_prompt(
         "- Generate a NEW complete HTML document using Tailwind CDN.\n"
         "- Fulfill the brief — do NOT default to login/auth unless explicitly requested.\n"
         "- Use colors and typography from the design system; make it visually distinct.\n"
+        "- Do NOT generate interactive elements — no <a href>, no <form>, no onclick handlers. Static prototype only.\n"
         "Return ONLY ```html ... ```."
     )
 
@@ -1454,6 +1595,7 @@ def _generate_ui_html(
         md_text=md_text,
         url_snapshot=url_snapshot,
         has_image=has_image,
+        image_attached=bool(image_data_url),
         current_html=current_html,
         instruction=instruction,
     )
@@ -1474,6 +1616,43 @@ def _generate_ui_html(
         fallback_html=fallback_html,
         allow_template_fallback=False,
     )
+    # If the HTML itself contains a vision error message, drop image and retry immediately
+    if _html_has_visible_content(html) and image_data_url and _looks_like_vision_error(html):
+        logger.warning("design ui HTML contains vision error — dropping image, retrying text-only")
+        no_img_meta = _build_ui_generation_prompt(
+            user_prompt=user_prompt,
+            spec=spec,
+            device=device,
+            pattern=pattern,
+            design_md=design_md,
+            md_text=md_text,
+            url_snapshot=url_snapshot,
+            has_image=False,
+            image_attached=False,
+            current_html=current_html,
+            instruction=instruction,
+        )
+        ni_text, ni_reasoning, ni_usage, ni_estimated, ni_fail = _try_llm_complete_vision(
+            router, no_img_meta, model_id=model_id, image_data_url=None,
+        )
+        usage_acc = merge_token_usage(usage_acc, ni_usage)
+        estimated_acc = estimated_acc or ni_estimated
+        ni_raw = _html_from_llm_response(ni_text, ni_reasoning)
+        ni_html = _coerce_ui_html(
+            ni_raw,
+            title=str(spec.get("name") or "UI"),
+            prompt=user_prompt,
+            spec=spec,
+            device=device,
+            fallback_html=fallback_html,
+            allow_template_fallback=True,
+        )
+        if _html_has_visible_content(ni_html):
+            html = ni_html
+            raw = ni_raw
+            text = ni_text
+            reasoning = ni_reasoning
+            last_fail = None
     if _html_has_visible_content(html) and not _html_matches_brief_intent(user_prompt, html):
         detected = _detect_html_intent(html)
         expected = _prompt_intent(user_prompt)
@@ -1563,6 +1742,42 @@ def _generate_ui_html(
                 reasoning = "\n---\n".join(
                     filter(None, [reasoning, retry_reasoning, retry2_reasoning])
                 )
+    # --- Final degradation: if image was attached but all retries failed, drop image and retry ---
+    if not _html_has_visible_content(html) and image_data_url:
+        logger.warning("design ui all retries failed with image — dropping image, retrying text-only")
+        fallback_meta = _build_ui_generation_prompt(
+            user_prompt=user_prompt,
+            spec=spec,
+            device=device,
+            pattern=pattern,
+            design_md=design_md,
+            md_text=md_text,
+            url_snapshot=url_snapshot,
+            has_image=False,
+            image_attached=False,
+            current_html=current_html,
+            instruction=instruction,
+        )
+        fb_text, fb_reasoning, fb_usage, fb_estimated, fb_fail = _try_llm_complete_vision(
+            router, fallback_meta, model_id=model_id, image_data_url=None,
+        )
+        usage_acc = merge_token_usage(usage_acc, fb_usage)
+        estimated_acc = estimated_acc or fb_estimated
+        fb_raw = _html_from_llm_response(fb_text, fb_reasoning)
+        fb_html = _coerce_ui_html(
+            fb_raw,
+            title=str(spec.get("name") or "UI"),
+            prompt=user_prompt,
+            spec=spec,
+            device=device,
+            fallback_html=fallback_html,
+            allow_template_fallback=True,
+        )
+        if _html_has_visible_content(fb_html):
+            html = fb_html
+            reasoning = "\n---\n".join(filter(None, [reasoning, fb_reasoning]))
+            last_fail = None
+            logger.info("design ui text-only fallback succeeded after image failure")
     if _html_has_visible_content(html) and _DESIGN_REVIEW_ENABLED:
         reviewed, review_reasoning, _score, review_usage, review_estimated = _design_review_and_improve(
             router,
@@ -1801,29 +2016,29 @@ def generate_session(
                         "The JSON output must faithfully reflect the exact tokens defined in this document.\n"
                     )
                 if has_url and url_snapshot:
-                    css_tokens = url_snapshot.get("css_tokens") or {}
-                    token_desc = _format_css_tokens_for_prompt(css_tokens, host=str(url_snapshot.get("host") or ""))
+                    browser_frag = url_snapshot.get("browser_prompt_fragment") or ""
                     context_parts.append(
                         "Reference website:\n"
                         f"URL: {url_snapshot.get('url')}\n"
                         f"Title: {url_snapshot.get('title')}\n"
                         f"Description: {url_snapshot.get('description')}\n"
                     )
-                    if token_desc:
-                        context_parts.append(token_desc + "\n")
+                    if browser_frag:
+                        context_parts.append(browser_frag + "\n")
                     else:
-                        context_parts.append(
-                            f"Excerpt: {(url_snapshot.get('excerpt') or '')[:3000]}\n"
-                            "Infer a polished design system inspired by this site's visual language.\n"
-                        )
+                        css_tokens = url_snapshot.get("css_tokens") or {}
+                        token_desc = _format_css_tokens_for_prompt(css_tokens, host=str(url_snapshot.get("host") or ""))
+                        if token_desc:
+                            context_parts.append(token_desc + "\n")
+                        else:
+                            context_parts.append(
+                                f"Excerpt: {(url_snapshot.get('excerpt') or '')[:3000]}\n"
+                                "Infer a polished design system inspired by this site's visual language.\n"
+                            )
                     og_analysis = url_snapshot.get("og_image_analysis") or {}
                     og_desc = og_analysis.get("description", "")
                     if og_desc:
                         context_parts.append(og_desc + "\n")
-                    # Browser-rendered computed styles (Playwright extraction)
-                    browser_frag = url_snapshot.get("browser_prompt_fragment") or ""
-                    if browser_frag:
-                        context_parts.append(browser_frag + "\n")
                 if has_image:
                     vision_ok_spec = _check_vision_ok(router, model_id, image_data_url)
                     if vision_ok_spec:
@@ -2511,8 +2726,8 @@ def iterate_session(
                     url_snapshot=url_snapshot if has_url else None,
                     has_image=has_image,
                     image_data_url=image_data_url if ui_vision_ok else None,
-                    current_html=base_html,
-                    instruction=instruction,
+                    current_html="",
+                    instruction="",
                 )
             except Exception as exc:
                 logger.warning("design iterate add failed: %s", exc)
