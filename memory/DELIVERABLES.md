@@ -187,6 +187,16 @@
   - `scripts/install.sh` · `scripts/install.ps1` · `scripts/sync-homebrew-tap.sh`
   - `.github/workflows/release.yml` — 可选 Homebrew tap CI sync
 
+### D38 Stable Context Boundary Code Decomposition ✅
+- **日期：** 2026-07-13
+- **Commit：** `d333668` — `refactor: D38 Stable Context Boundary code decomposition`
+- **Verification：** `pnpm build` → 成功; `pnpm test` → 17 files 130 passed; `pytest` → 713 passed 2 skipped; `check-doc-drift.sh` → 0 errors
+- **证据：** —
+- **交付文件：**
+  - Backend — `services/orchestrator/src/main.py` 降 268 行, `chat_runner.py`, `routes/`, `design/generator.py`, `session_store.py`, `preview_manager.py`, `thumbnail.py`, `layout.py`, `token_usage.py`
+  - Frontend — `DesignWorkspace.tsx` 降 1,642 行, `designWorkspaceUtils.ts`, `nodes/`(6 个), `clutchStateUtils.ts`, `PromptModal.tsx`, `AppErrorBoundary.tsx`
+  - Docs — `FILEMAP.md`, `DECISIONS.md`, `PROGRESS.md`, `DELIVERABLES.md`
+
 ---
 
 ## Archive Index
