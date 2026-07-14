@@ -87,6 +87,7 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
   const [isScreenDropdownOpen, setIsScreenDropdownOpen] = useState(false);
   const screenDropdownRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [clickableCount, setClickableCount] = useState(0);
 
   // ---- Prototype Navigation History ----
   const [navigationStack, setNavigationStack] = useState<string[]>([]);
@@ -323,58 +324,67 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
   const injectPrototypeClickHandlers = React.useCallback((iframe: HTMLIFrameElement) => {
     try {
       const doc = iframe.contentDocument || iframe.contentWindow?.document;
-      if (!doc || !doc.body) return;
+      if (!doc || !doc.body) { setClickableCount(0); return; }
+
       const outboundFlows = payload?.flows?.filter((f: any) => f.from === activeScreenId) || [];
-      if (outboundFlows.length === 0) return;
 
       // Build a lookup: normalized element text → best flow (highest confidence)
-      const flowByText: Map<string, { to: string; confidence: number }> = new Map();
+      const flowByText: Map<string, { to: string }> = new Map();
       for (const f of outboundFlows) {
         const key = (f.source_element_text || '').toLowerCase().trim();
         if (!key) continue;
-        const existing = flowByText.get(key);
-        if (!existing || f.confidence > existing.confidence) {
-          flowByText.set(key, { to: f.to, confidence: f.confidence });
+        if (!flowByText.has(key) || (f.confidence || 0) > 0) {
+          flowByText.set(key, { to: f.to });
         }
       }
 
-      // Scan iframe for interactive elements and attach click→navigate handlers
+      // Fallback target: the first OTHER screen (simple next-page heuristic)
+      const otherScreens = screens.filter(s => s.id !== activeScreenId);
+      const fallbackTarget = otherScreens.length > 0 ? otherScreens[0].id : null;
+
+      let injected = 0;
       const interactiveSelector = 'button, a, [role="button"], input[type="submit"], input[type="button"]';
       doc.querySelectorAll(interactiveSelector).forEach((el) => {
         const rawText = (el.textContent || (el as HTMLInputElement).value || '').trim();
         if (!rawText) return;
 
-        // Match: exact text, substring, or partial word overlap
-        let bestMatch: { to: string } | null = null;
+        let targetId: string | null = null;
         const rawLower = rawText.toLowerCase();
 
-        // 1) Exact match
+        // 1) Exact IUE flow match
         if (flowByText.has(rawLower)) {
-          bestMatch = flowByText.get(rawLower)!;
+          targetId = flowByText.get(rawLower)!.to;
         } else {
-          // 2) Substring match
+          // 2) Substring IUE flow match
           for (const [ft, flow] of flowByText) {
             if (rawLower.includes(ft) || ft.includes(rawLower)) {
-              bestMatch = flow;
+              targetId = flow.to;
               break;
             }
           }
         }
 
-        if (bestMatch) {
-          const targetId = bestMatch.to;
+        // 3) Fallback: any submit/button on a page with only one other screen → navigate there
+        if (!targetId && fallbackTarget && otherScreens.length === 1) {
+          targetId = fallbackTarget;
+        }
+
+        if (targetId) {
           const htmlEl = el as HTMLElement;
-          // Visual indicator: clickable cursor + subtle hover highlight
           htmlEl.style.cursor = 'pointer';
-          htmlEl.title = `点击跳转到 ${screens.find(s => s.id === targetId)?.name || targetId}`;
+          htmlEl.style.outline = '2px solid rgba(59,130,246,0.3)';
+          htmlEl.style.outlineOffset = '2px';
+          htmlEl.title = `🖱️ 点击跳转到 ${screens.find(s => s.id === targetId)?.name || targetId}`;
           htmlEl.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            navigateTo(targetId);
+            navigateTo(targetId!);
           });
+          injected++;
         }
       });
-    } catch (_) { /* cross-origin guard */ }
+      setClickableCount(injected);
+    } catch (_) { setClickableCount(0); }
   }, [payload, activeScreenId, navigateTo, screens]);
 
   // Re-trigger DOM style applications and click injection when react states shift
@@ -573,6 +583,11 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
                       ({navigationIndex + 1}/{navigationStack.length})
                     </span>
                   )}
+                  {clickableCount > 0 && (
+                    <span className="text-[9px] text-blue-500/70 font-medium ml-1 bg-blue-50 dark:bg-blue-950/40 px-1.5 py-0.5 rounded-full">
+                      {clickableCount} 可点击
+                    </span>
+                  )}
                 </div>
                 
                 {/* Device Mode Selector */}
@@ -626,7 +641,7 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
                         <div className="absolute top-1 left-1/2 -translate-x-1/2 w-12 h-3.5 bg-neutral-900 rounded-full z-20" />
                       )}
                       <div className="w-full h-full overflow-hidden relative rounded-md bg-white">
-                        <iframe
+                        <iframe key={activeScreenId}
                           ref={iframeRef}
                           title={`simulator-iframe-${deviceMode}`}
                           srcDoc={buildSimulatorSrcDoc(activeScreen.html)}
