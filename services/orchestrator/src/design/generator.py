@@ -1581,6 +1581,42 @@ def _build_ui_compact_prompt(
     )
 
 
+def _build_shared_layout_context(screens_to_gen: list[dict[str, Any]]) -> str:
+    """Build a shared layout context string for multi-page generation.
+    
+    Tells the LLM that all non-login pages must share a consistent left sidebar
+    with identical navigation items, colors, and ordering.
+    """
+    if len(screens_to_gen) <= 1:
+        return ""
+    login_keywords = ("login", "signin", "sign-in", "auth", "登", "注册")
+    login_ids = set()
+    for s in screens_to_gen:
+        pid = (s.get("prompt") or "").lower()
+        nid = (s.get("name") or "").lower()
+        if any(kw in pid or kw in nid for kw in login_keywords):
+            login_ids.add(s["id"])
+    non_login = [s for s in screens_to_gen if s["id"] not in login_ids]
+    if len(non_login) <= 1:
+        return ""
+    nav_names = [s["name"] for s in non_login]
+    lines = [
+        f"This is a multi-page prototype with {len(non_login)} non-login screens plus {len(login_ids)} login/auth screens.",
+        "",
+        "LAYOUT RULES:",
+        f"- ALL {len(non_login)} non-login pages ({', '.join(nav_names)}) MUST share an identical left sidebar navigation.",
+        "- Sidebar bg color: use the design system's primary or secondary color (consistent across all pages).",
+        "- Sidebar text color: white or on-primary (consistent across all pages).",
+        f"- Navigation items in exact order: {' > '.join(nav_names)}.",
+        "- Every page must highlight its own nav item as active/selected.",
+        "- Sidebar width, padding, font sizes, and spacing must be pixel-identical across all pages.",
+        "- Login/auth pages: centered card layout WITHOUT sidebar (standalone authentication screen).",
+        "",
+        "These rules ensure visual consistency when users navigate between screens.",
+    ]
+    return "\n".join(lines)
+
+
 def _build_ui_generation_prompt(
     *,
     user_prompt: str,
@@ -1594,6 +1630,7 @@ def _build_ui_generation_prompt(
     image_attached: bool = False,
     current_html: str = "",
     instruction: str = "",
+    shared_layout_context: str = "",
 ) -> str:
     fewshot = fewshot_for_pattern(pattern)
     layout_hint = layout_wrapper_hint(pattern)
@@ -1628,6 +1665,14 @@ def _build_ui_generation_prompt(
     ui_parts += [
         f"Layout pattern: {pattern}\n",
         f"Layout constraints: {layout_hint}\n",
+    ]
+    if shared_layout_context:
+        ui_parts.append(
+            "\n=== SHARED PAGE LAYOUT (applies to ALL screens in this multi-page session) ===\n"
+            + shared_layout_context + "\n"
+            "=== END SHARED LAYOUT ===\n\n"
+        )
+    ui_parts += [
         (
             "CRITICAL Rules:\n"
             "1. Use Tailwind CDN: <script src=\"https://cdn.tailwindcss.com\"></script>\n"
@@ -1637,9 +1682,14 @@ def _build_ui_generation_prompt(
         )
         + intent_rule
         + (
-            "6. Select 3-5 core components; high-fidelity modern aesthetics (rounded-2xl cards, "
-            "subtle gradients, hover transitions, generous spacing py-12–py-20).\n"
-            "7. CRITICAL: This is a static prototype — do NOT produce any interactive elements. "
+            "6. COLOR RULES — VIOLATION CAUSES REJECTION:\n"
+            "   a. Use ONLY color hex codes from the Design system JSON. NEVER invent arbitrary hex values like #1A73E8 or #3B82F6.\n"
+            "   b. Do NOT use Tailwind default color names: NO bg-blue-*, bg-red-*, bg-green-*, bg-yellow-*, text-blue-*, etc.\n"
+            "   c. Only use the custom color palette defined in the tailwind.config (e.g. bg-primary, bg-accent, bg-secondary, text-primary, bg-neutral). Reference the Design system JSON colors.\n"
+            "   d. Page background MUST be solid white or the neutral/surface color from the design system. NO colorful gradient backgrounds like bg-gradient-to-br from-[...].\n"
+            "   e. Primary buttons: bg-primary text-white rounded-xl. Secondary buttons: border-gray-300 text-gray-700 bg-white. Accent actions: bg-accent text-white.\n"
+            "7. Select 3-5 core components; use rounded-2xl cards, professional horizontal padding px-6–px-10, hover opacity transitions only.\n"
+            "8. CRITICAL: This is a static prototype — do NOT produce any interactive elements. "
             "No <a href=\"...\"> links, no <form> tags, no onclick attributes, no inline JavaScript handlers. "
             "Buttons may appear as visual decoration only (no click/tap behavior).\n"
         ),
@@ -1791,6 +1841,7 @@ def _generate_ui_html(
     current_html: str = "",
     instruction: str = "",
     fallback_html: str | None = None,
+    shared_layout_context: str = "",
 ) -> tuple[str, str | None, dict[str, int], bool, str | None]:
     last_fail: str | None = None
     pattern = str(spec.get("layout_pattern") or detect_layout_pattern(user_prompt, device=device))
@@ -1806,6 +1857,7 @@ def _generate_ui_html(
         image_attached=bool(image_data_url),
         current_html=current_html,
         instruction=instruction,
+        shared_layout_context=shared_layout_context,
     )
     text, reasoning, usage, estimated, fail = _try_llm_complete_vision(
         router, meta, model_id=model_id, image_data_url=image_data_url
@@ -1839,6 +1891,7 @@ def _generate_ui_html(
             image_attached=False,
             current_html=current_html,
             instruction=instruction,
+            shared_layout_context=shared_layout_context,
         )
         ni_text, ni_reasoning, ni_usage, ni_estimated, ni_fail = _try_llm_complete_vision(
             router, no_img_meta, model_id=model_id, image_data_url=None,
@@ -1965,6 +2018,7 @@ def _generate_ui_html(
             image_attached=False,
             current_html=current_html,
             instruction=instruction,
+            shared_layout_context=shared_layout_context,
         )
         fb_text, fb_reasoning, fb_usage, fb_estimated, fb_fail = _try_llm_complete_vision(
             router, fallback_meta, model_id=model_id, image_data_url=None,
@@ -2390,6 +2444,7 @@ def generate_session(
     from concurrent.futures import ThreadPoolExecutor
     manifest_lock = threading.Lock()
     fatal_errors = []
+    shared_ctx = _build_shared_layout_context(screens_to_gen)
 
     def _gen_screen_worker(idx: int, screen_info: dict[str, Any]) -> None:
         nonlocal accumulated_usage, accumulated_estimated
@@ -2459,6 +2514,7 @@ def generate_session(
                     url_snapshot=url_snapshot if has_url else None,
                     has_image=has_image and (idx == 0),
                     image_data_url=use_img,
+                    shared_layout_context=shared_ctx,
                 )
                 with manifest_lock:
                     accumulated_usage = merge_token_usage(accumulated_usage, ui_usage)
@@ -3028,6 +3084,8 @@ def iterate_session(
         from concurrent.futures import ThreadPoolExecutor
         manifest_lock = threading.Lock()
         fatal_errors: list[str] = []
+        new_screens_info = [{"id": ns["id"], "name": ns["name"], "prompt": ns["original_info"]["prompt"]} for ns in new_screens]
+        shared_ctx = _build_shared_layout_context(new_screens_info)
         
         def _gen_iter_screen_worker(idx: int, ns: dict[str, Any]) -> None:
             nonlocal accumulated_usage, accumulated_estimated
@@ -3095,6 +3153,7 @@ def iterate_session(
                         image_data_url=image_data_url if ui_vision_ok else None,
                         current_html="",
                         instruction="",
+                        shared_layout_context=shared_ctx,
                     )
                     with manifest_lock:
                         accumulated_usage = merge_token_usage(accumulated_usage, ui_usage)

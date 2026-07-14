@@ -350,6 +350,7 @@ function DesignCanvasInner({
   const hadScreenRef = useRef(false);
   const positionsRef = useRef<Record<string, { x: number; y: number }>>({});
   const userDraggedRef = useRef(false);
+  const lastNodeFingerprintRef = useRef('');
   const drawingRef = useRef(false);
   const promptRef = useRef('');
   const designLogKeysRef = useRef<Set<string>>(new Set());
@@ -503,6 +504,10 @@ function DesignCanvasInner({
         }
         node.selected = node.id === selectedId;
       }
+      // Dedup: skip setNodes/setEdges if nothing changed (prevents jitter from double calls)
+      const fingerPrint = built.map((n) => `${n.id}@${n.position.x},${n.position.y}:${(n.data as any)?.phase || ''}:${Boolean((n.data as any)?.html) ? 1 : 0}`).join('|');
+      if (fingerPrint === lastNodeFingerprintRef.current) return;
+      lastNodeFingerprintRef.current = fingerPrint;
       setNodes(built);
       setEdges(buildCanvasEdges(built));
       const key = built.map((n) => n.id).join('-');
@@ -707,6 +712,7 @@ function DesignCanvasInner({
       hadScreenRef.current = Boolean(next.screens?.[0]?.html);
       userDraggedRef.current = false;
       positionsRef.current = {};
+      lastNodeFingerprintRef.current = '';
       applySession(next);
       const waitingHtml =
         next.status === 'ready' && !next.screens?.some((s) => Boolean(s.html));
@@ -752,6 +758,7 @@ function DesignCanvasInner({
     hadScreenRef.current = false;
     userDraggedRef.current = false;
     positionsRef.current = {};
+    lastNodeFingerprintRef.current = '';
     lastBusyRef.current = null;
     stopPoll();
     void hydrate();
