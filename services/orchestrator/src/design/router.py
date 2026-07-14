@@ -413,32 +413,3 @@ async def write_generated_code(run_id: str) -> dict[str, Any]:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
-
-
-class CopyToProjectRequest(BaseModel):
-    target_dir: str = Field(default="")
-
-
-@router.post("/sessions/{run_id}/generate-code/copy-to-project")
-async def copy_generated_to_project(run_id: str, body: CopyToProjectRequest = CopyToProjectRequest()) -> dict[str, Any]:
-    """Copy generated code to the workspace root (auto-detected from session path)."""
-    import shutil
-    try:
-        sdir = _session_dir(run_id)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Session dir error: {e}")
-    src = sdir / "generated"
-    if not src.is_dir():
-        raise HTTPException(status_code=404, detail="No generated code found. Generate code first.")
-    target = Path(body.target_dir).expanduser().resolve() if body.target_dir else sdir.parent.parent.parent.parent
-    if not target.exists():
-        target.mkdir(parents=True, exist_ok=True)
-    count = 0
-    for f in src.rglob("*"):
-        if f.is_file():
-            rel = f.relative_to(src)
-            dst = target / rel
-            dst.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(f, dst)
-            count += 1
-    return {"copied": count, "to": str(target)}

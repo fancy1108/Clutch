@@ -614,14 +614,11 @@ export default function PreviewDemo({ screens, sessionRunId }: PreviewDemoProps)
   const [generatingCode, setGeneratingCode] = useState(false);
   const [codeGenResult, setCodeGenResult] = useState<{written:number;path:string} | null>(null);
   const [copyingPrompt, setCopyingPrompt] = useState(false);
-  const [pathCopied, setPathCopied] = useState(false);
-  const [movedToProject, setMovedToProject] = useState(false);
-  const [movedToPath, setMovedToPath] = useState('');
+  
 
   const generateCode = async () => {
     if (!sessionRunId) return;
     setGeneratingCode(true);
-    setMovedToProject(false);
     try {
       const url = sidecarHttpUrl(`/api/design/sessions/${encodeURIComponent(sessionRunId)}/generate-code/write`);
       const r = await sidecarFetch(url, { method: 'POST' });
@@ -634,35 +631,22 @@ export default function PreviewDemo({ screens, sessionRunId }: PreviewDemoProps)
     }
   };
 
-  const openFolder = () => {
-    if (!codeGenResult) return;
-    navigator.clipboard.writeText(codeGenResult.path).then(() => {
-      setPathCopied(true);
-      setTimeout(() => setPathCopied(false), 1500);
-    });
-  };
-
-  const contractPath = sessionRunId
-    ? `.clutch/design/sessions/${sessionRunId}/interaction_contract.json`
-    : '';
-
   const aiPrompt = codeGenResult
     ? `I have a React project generated from a Clutch design prototype. Please integrate these components into a working app.
 
 **Interaction Contract (SSOT — defines all navigation):**
-${contractPath}
+${sessionRunId ? `.clutch/design/sessions/${sessionRunId}/interaction_contract.json` : '(contract not available)'}
 - Read this first. Every entry maps a button/link text to its target page.
 - For each interaction: wrap the matched element with an onClick that navigates to the target.
-- If presentation is "overlay", use a Modal/Drawer instead of page navigation.
 
-**Generated components (HTML→JSX):**
-${codeGenResult.path}
-- These are per-screen React components with Tailwind styling.
+**Generated components (HTML to JSX):**
+./generated/
+- Per-screen React components with Tailwind styling.
 - Contract source_element_text values match button/link text in these files.
 
 **Requirements:**
 1. npm install && npm run dev to verify it runs
-2. Set up routing (react-router or useState) based on contract page transitions
+2. Set up routing based on contract page transitions
 3. Every interaction in the contract MUST be implemented
 4. Keep all existing Tailwind styles
 5. The app should be fully navigable end-to-end`
@@ -1249,7 +1233,7 @@ ${codeGenResult.path}
               </button>
             </div>
             <p className="text-xs text-on-surface-variant/70 text-center mb-4 leading-relaxed">
-              {codeGenResult.written} files written. Open the folder, move into your project, or copy the AI prompt to hand off the rest.
+              {codeGenResult.written} files written to ./generated/. Copy the prompt below and paste it to an AI coding agent to integrate the components.
             </p>
             <div className="flex gap-2">
               <button
