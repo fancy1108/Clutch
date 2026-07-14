@@ -125,3 +125,23 @@ def test_iue_empty_boards():
     engine = InteractionUnderstandingEngine()
     assert engine.analyze([]) == []
     assert engine.analyze_to_dicts([]) == []
+
+
+def test_iue_role_intent_login_to_dashboard():
+    """Login page 'Sign In' button should infer flow to Dashboard via role_intent."""
+    engine = InteractionUnderstandingEngine()
+    boards = [
+        {"id": "login", "title": "Login", "elements": [
+            {"type": "button", "text": "Sign In"},
+        ]},
+        {"id": "dashboard", "title": "Dashboard", "elements": []},
+    ]
+    flows = engine.analyze_to_dicts(boards)
+    login_flows = [f for f in flows if f["from"] == "login"]
+    assert len(login_flows) >= 1  # Sign In should have at least one suggestion
+    sign_in_flow = login_flows[0]
+    assert sign_in_flow["to"] == "dashboard"
+    assert sign_in_flow["source_element_role"] == "SubmitButton"
+    assert 0.30 <= sign_in_flow["confidence"] <= 0.40  # role_intent base
+    assert "提交" in sign_in_flow["reason"] or "登录" in sign_in_flow["reason"]
+    assert "Dashboard" in sign_in_flow["reason"]

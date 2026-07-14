@@ -91,8 +91,8 @@ def default_stage1_candidates(boards: List[Dict[str, Any]]) -> List[ElementCandi
 
 # 角色分类规则：(中文关键词, 英文关键词, 标签白名单) → ElementRole
 _ROLE_RULES: List[Tuple[List[str], List[str], List[str], ElementRole]] = [
-    (["提交", "保存", "确认", "确定", "登录", "注册", "发布"],
-     ["submit", "save", "confirm", "ok", "login", "signup", "publish", "apply", "done"],
+    (["提交", "保存", "确认", "确定", "登录", "注册", "发布", "登入", "登陆"],
+     ["submit", "save", "confirm", "ok", "login", "signup", "publish", "apply", "done", "sign in", "log in", "sign-in", "log-in", "signin"],
      ["button", "input"], ElementRole.SUBMIT_BUTTON),
     (["取消", "关闭", "返回", "退出", "放弃"],
      ["cancel", "close", "back", "exit", "discard", "dismiss", "abort"],
@@ -276,6 +276,46 @@ def default_stage3_match(
                         match_method="action_heuristic",
                     ))
 
+    # ---- Role-intent fallback: for candidates that got NO text-based match ----
+    _main_page_keywords = {"dashboard", "home", "main", "index", "overview", "概览", "首页", "主页", "工作台"}
+    for src_bid, src_candidates in candidates_by_board.items():
+        other_boards = [b for b in boards if b["id"] != src_bid]
+        if not other_boards:
+            continue
+        for candidate in src_candidates:
+            # Check if this candidate already has any text-based match
+            already_matched = any(
+                m.source_board_id == src_bid
+                for m in matches
+            )
+            if already_matched:
+                continue  # text matching already covered this board's elements
+
+            role = candidate.role
+            # SUBMIT_BUTTON on auth/form pages → likely leads to main/dashboard
+            if role == ElementRole.SUBMIT_BUTTON:
+                preferred = [b for b in other_boards if any(
+                    kw in (b.get("title", "") or "").lower() for kw in _main_page_keywords
+                )]
+                target = preferred[0] if preferred else other_boards[0]
+                matches.append(TargetMatch(
+                    source_board_id=src_bid,
+                    target_board_id=target["id"],
+                    match_method="role_intent",
+                ))
+            # CREATE_BUTTON → prefer pages with "create"/"new" in title
+            elif role == ElementRole.CREATE_BUTTON:
+                preferred = [b for b in other_boards if any(
+                    kw in (b.get("title", "") or "").lower()
+                    for kw in ("create", "new", "add", "新建", "创建", "添加")
+                )]
+                target = preferred[0] if preferred else other_boards[0]
+                matches.append(TargetMatch(
+                    source_board_id=src_bid,
+                    target_board_id=target["id"],
+                    match_method="role_intent",
+                ))
+
     return matches
 
 
@@ -287,6 +327,7 @@ _SCORE_MAP: Dict[str, float] = {
     "keyword_overlap": 0.65,
     "title_substring": 0.55,
     "action_heuristic": 0.40,
+    "role_intent": 0.35,
 }
 
 
@@ -313,12 +354,33 @@ def default_stage4_score(matches: List[TargetMatch]) -> List[TargetMatch]:
 
 # ---------- Stage 5: 输出推理理由 ----------
 
+# 角色中文展示名
+_ROLE_DISPLAY = {
+    ElementRole.SUBMIT_BUTTON: "提交/登录",
+    ElementRole.CANCEL_BUTTON: "取消/返回",
+    ElementRole.DELETE_BUTTON: "删除",
+    ElementRole.CREATE_BUTTON: "新建/创建",
+    ElementRole.EDIT_BUTTON: "编辑/修改",
+    ElementRole.SEARCH_BUTTON: "搜索",
+    ElementRole.FILTER_BUTTON: "筛选",
+    ElementRole.PAGINATION_NEXT: "下一页",
+    ElementRole.PAGINATION_PREV: "上一页",
+    ElementRole.NAV_LINK: "导航链接",
+    ElementRole.TABLE_ROW_LINK: "表格行",
+    ElementRole.TAB_SWITCH: "标签切换",
+    ElementRole.MENU_ITEM: "菜单项",
+    ElementRole.ACTION_BUTTON: "操作",
+    ElementRole.ICON_BUTTON: "图标按钮",
+    ElementRole.UNKNOWN: "未知",
+}
+
 _REASON_TEMPLATES: Dict[str, str] = {
     "button_text_exact": "按钮'{btn}'与目标页面'{tgt}'标题完全一致，推断为直接跳转",
     "button_text_partial": "按钮'{btn}'文字包含目标页面'{tgt}'标题关键词，推断为关联跳转",
     "keyword_overlap": "按钮'{btn}'与页面'{tgt}'共享关键词{overlap}，推断为语义关联跳转",
     "title_substring": "页面'{tgt}'标题出现在源页面文本中，推断为上下文跳转",
     "action_heuristic": "按钮'{btn}'为操作类按钮，推断可能跳转至'{tgt}'页面",
+    "role_intent": "'{btn}'为{role}类型按钮，按交互惯例推断跳转至'{tgt}'页面",
 }
 
 
@@ -358,7 +420,12 @@ def default_stage5_reason(
 
         overlap_str = ", ".join(m.overlap_tokens[:3]) if m.overlap_tokens else "—"
         template = _REASON_TEMPLATES.get(m.match_method, "推断'{btn}'可能跳转至'{tgt}'")
-        reasoning = template.format(btn=btn_text or "—", tgt=tgt_title, overlap=overlap_str)
+        reasoning = template.format(
+            btn=btn_text or "—",
+            tgt=tgt_title,
+            overlap=overlap_str,
+            role=_ROLE_DISPLAY.get(role, role.value),
+        )
 
         suggestions.append(FlowSuggestion(
             source_board_id=m.source_board_id,
