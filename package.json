@@ -1,7 +1,7 @@
 {
   "name": "clutch",
   "private": true,
-  "version": "1.2.2",
+  "version": "1.2.7",
   "scripts": {
     "dev": "pnpm --filter @clutch/desktop dev",
     "build": "pnpm --filter @clutch/desktop build",

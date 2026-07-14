@@ -16,6 +16,39 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ### Fixed
 
+## [1.2.7] - 2026-07-14
+
+Feature release — **interactive prototype engine with visual connection editing and React code generation**.
+
+> **Key features:** One-click interactive prototype, dual-mode preview/editor, SVG connection lines, drag-to-connect, thumbnails sidebar, interaction contract persistence, React code generation from contract.
+
+### Added
+
+- **IUE (Interaction Understanding Engine):** 6-stage pluggable pipeline that automatically infers navigation flows between design screens (candidate identification → intent classification → target matching → confidence scoring → Chinese reasoning → approval gate). 17 element roles, 5 matching methods, deduplication and noise filtering.
+- **Clickable Interactive Prototype:** Preview mode where clicking buttons/links in the simulator iframe navigates directly to target screens, with browser-style back/forward history.
+- **Dual-Mode Editor:** Pencil toggle switches between preview mode (click→navigate) and edit mode (click→context menu). Visual SVG connection lines drawn from hot zones in the simulator to target thumbnails in the sidebar.
+- **Drag-to-Connect:** In edit mode, drag the target circle on a connection line to a different thumbnail to change the flow target. Click an unconnected element to start a new line and drop it on a thumbnail.
+- **Thumbnail Sidebar:** Replaced the dropdown screen selector with scrollable thumbnail cards showing mini iframe previews and incoming/outgoing flow counts. Connection line endpoints follow sidebar scrolling with off-screen clamping.
+- **Interaction Contract Persistence:** Auto-save user-edited flows to `.clutch/design/sessions/<id>/interaction_contract.json`. Loads on reopen, survives app restart.
+- **React Code Generation:** One-click generation of a complete Vite + React 19 + Tailwind 4 project from the interaction contract. HTML→JSX conversion, onClick injection from contract flows, full project scaffold (App.tsx, screens/, package.json, vite.config.ts).
+- **AI Prompt Copy:** Generated modal includes a pre-written prompt with contract path and code path, ready to paste to any AI coding agent.
+- **Role-based Flow Inference:** IUE now infers flows for buttons without explicit target text (e.g., "Sign In" on a login page → Dashboard) via role-intent heuristics.
+- **Extended Interactive Selector:** Edit mode detects nav items, menu items, and list elements in addition to buttons and links, enabling interaction editing on all UI elements.
+
+### Changed
+
+- PRD updated with §8 implementation reality section documenting design deviations and adjusted priorities.
+- Code generation button moved to icon-only next to the pencil toggle in the simulator header.
+- Connection line accuracy improved: keyword overlap threshold raised to ≥2 words, deduplication per (source, target) pair, low-confidence filtering.
+
+### Fixed
+
+- Preview API now uses authenticated `sidecarFetch` instead of bare `fetch`, fixing zero-flow results in Tauri desktop mode.
+- Delete flow now properly removes click handlers and blue outlines via `onclick` replacement and `data-clutch-clickable` tracking.
+- Add flow requires explicit source element text input, preventing empty matches.
+- `generatingCode` `useState` moved before conditional returns, fixing "Rendered more hooks" React error.
+- Copy Path and Copy Prompt buttons use separate state variables, preventing cross-interference.
+
 ## [1.2.6] - 2026-07-13
 
 Patch release — **macOS + Windows**. Fixes CSP inline script restriction, Design mode canvas zoom over prototypes, vision model fallback for image-unaware LLMs, and ships multi-screen generation with loading animations and round transitions.
