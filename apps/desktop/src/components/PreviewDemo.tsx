@@ -1,5 +1,6 @@
 import React, {useEffect, useState} from 'react'
 import StateController from './StateController'
+import MatrixPreview from './MatrixPreview'
 
 export default function PreviewDemo() {
   const [payload, setPayload] = useState<any>(null)
@@ -37,12 +38,10 @@ export default function PreviewDemo() {
       </div>
 
       <div style={{display:'flex', gap:12}}>
-        {payload.matrix ? Object.entries(payload.matrix).map(([vp, sample]) => (
-          <div key={vp} style={{flex:1, border:'1px solid #eee', padding:8}}>
-            <div style={{fontWeight:700, marginBottom:6}}>{vp}px viewport</div>
-            <pre style={{maxHeight:220,overflow:'auto'}}>{JSON.stringify(sample, null, 2)}</pre>
-          </div>
-        )) : (
+        {payload.matrix ? (
+          importMetaNotUsed(),
+          <MatrixPreview matrix={payload.matrix} />
+        ) : (
           <div style={{flex:1}}>
             <h4>Transformed Sample</h4>
             <pre>{JSON.stringify(payload.transformed_sample, null, 2)}</pre>
