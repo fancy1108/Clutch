@@ -728,14 +728,30 @@ export default function PreviewDemo({ screens, sessionRunId }: PreviewDemoProps)
                       key={s.id}
                       data-screen-id={s.id}
                       onClick={() => navigateTo(s.id)}
-                      className={`w-full text-left rounded-xl border transition-all overflow-hidden cursor-pointer group ${
+                      className={`w-full text-left overflow-hidden cursor-pointer group transition-all ${
+                        deviceMode === 'mobile'
+                          ? 'rounded-[18px] border-2 border-neutral-400/60'
+                          : deviceMode === 'tablet'
+                          ? 'rounded-[14px] border'
+                          : 'rounded-xl border'
+                      } ${
                         isActive
                           ? 'border-primary/50 bg-primary/5 shadow-sm'
+                          : deviceMode === 'mobile'
+                          ? 'bg-surface hover:border-neutral-400'
                           : 'border-outline/50 bg-surface hover:border-outline/60 hover:bg-surface-container-low'
                       }`}
                     >
                       {/* Mini preview iframe */}
-                      <div className={`${thumbDims.containerH} overflow-hidden relative bg-neutral-50 border-b border-outline/20`}>
+                      <div className={`${thumbDims.containerH} overflow-hidden relative ${
+                        deviceMode === 'mobile'
+                          ? 'bg-neutral-100 rounded-t-[14px]'
+                          : 'bg-neutral-50 border-b border-outline/20'
+                      }`}>
+                        {/* Phone notch for mobile thumbnails */}
+                        {deviceMode === 'mobile' && (
+                          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-7 h-1.5 bg-neutral-300 rounded-b-full z-10" />
+                        )}
                         {s.html ? (
                           <iframe
                             srcDoc={buildSimulatorSrcDoc(s.html)}
