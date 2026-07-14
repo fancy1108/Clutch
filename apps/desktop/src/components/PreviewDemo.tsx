@@ -275,14 +275,18 @@ export default function PreviewDemo({ screens, sessionRunId }: PreviewDemoProps)
     return { width: w, height: h, scale: s };
   }, [deviceMode]);
 
-  // Auto-detect mobile / tablet from prototype HTML on first load
+  // Auto-detect mobile / tablet from prototype HTML on first load.
+  // Only check signals that are mobile-specific — NOT generic responsive meta tags
+  // like viewport width=device-width (used by desktop sites too).
   useEffect(() => {
     if (screens.length === 0) return;
     const firstHtml = screens[0].html || '';
     if (!firstHtml) return;
-    const hasMobileViewport = /viewport.*width=device-width/.test(firstHtml)
-      || /maximum-scale=1/.test(firstHtml)
-      || /max-width:\s*(3[0-9]{2}|4[0-3][0-9])\s*px/.test(firstHtml);
+    // Mobile-specific signals (not present in responsive desktop pages):
+    const hasMobileViewport =
+      /user-scalable=no/.test(firstHtml)                        // mobile web-app lock
+      || /viewport[^>]*content="[^"]*\bwidth=(3[0-9]{2}|4[0-3][0-9])\b/.test(firstHtml)  // explicit mobile width
+      || /max-width:\s*(3[0-9]{2}|4[0-3][0-9])\s*px/.test(firstHtml);                    // CSS mobile container
     if (hasMobileViewport) {
       setDeviceMode('mobile');
     }
