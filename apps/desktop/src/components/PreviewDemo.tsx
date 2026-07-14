@@ -264,6 +264,30 @@ export default function PreviewDemo({ screens, sessionRunId }: PreviewDemoProps)
     };
   }, [deviceMode]);
 
+  // Thumbnail iframe dimensions — follow deviceMode so left panel mirrors the right simulator
+  const thumbDims = React.useMemo(() => {
+    let w: number, h: number;
+    if (deviceMode === 'mobile') { w = 390; h = 844; }
+    else if (deviceMode === 'tablet') { w = 1024; h = 1366; }
+    else { w = 1440; h = 900; }
+    // Scale to fit thumbnail container height (h-16 = 64px)
+    const s = 64 / h;
+    return { width: w, height: h, scale: s };
+  }, [deviceMode]);
+
+  // Auto-detect mobile / tablet from prototype HTML on first load
+  useEffect(() => {
+    if (screens.length === 0) return;
+    const firstHtml = screens[0].html || '';
+    if (!firstHtml) return;
+    const hasMobileViewport = /viewport.*width=device-width/.test(firstHtml)
+      || /maximum-scale=1/.test(firstHtml)
+      || /max-width:\s*(3[0-9]{2}|4[0-3][0-9])\s*px/.test(firstHtml);
+    if (hasMobileViewport) {
+      setDeviceMode('mobile');
+    }
+  }, []); // run once on mount
+
   // Direct, safe external DOM modification to avoid script strings leak
   const applyStateToIframe = (iframe: HTMLIFrameElement) => {
     try {
@@ -398,10 +422,8 @@ export default function PreviewDemo({ screens, sessionRunId }: PreviewDemoProps)
       }
 
       let injected = 0;
-      // Edit mode: also include nav items, menu items, list items, divs with text
-      const sel = editMode
-        ? 'button, a, [role="button"], input[type="submit"], input[type="button"], li, [class*="menu"], [class*="nav"], [class*="sidebar"] a, [class*="sidebar"] li, nav *'
-        : 'button, a, [role="button"], input[type="submit"], input[type="button"]';
+      // Use broad selector in both modes — user may have connected any element
+      const sel = 'button, a, [role="button"], input[type="submit"], input[type="button"], li, [class*="menu"], [class*="nav"], [class*="sidebar"] a, [class*="sidebar"] li, nav *';
       const seen = new Set<HTMLElement>();
       doc.querySelectorAll(sel).forEach((el) => {
         // In edit mode, skip tiny/invisible elements and nested children of already-seen
@@ -706,8 +728,8 @@ export default function PreviewDemo({ screens, sessionRunId }: PreviewDemoProps)
                             srcDoc={buildSimulatorSrcDoc(s.html)}
                             className="border-none absolute top-0 left-0 pointer-events-none"
                             style={{
-                              width: '1280px', height: '800px',
-                              transform: 'scale(0.12)',
+                              width: `${thumbDims.width}px`, height: `${thumbDims.height}px`,
+                              transform: `scale(${thumbDims.scale})`,
                               transformOrigin: 'top left',
                             }}
                             sandbox="allow-scripts"
