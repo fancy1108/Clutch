@@ -92,6 +92,11 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
   const [mutableFlows, setMutableFlows] = useState<any[]>([]);
   const [isAddingFlow, setIsAddingFlow] = useState(false);
   const [newFlowTarget, setNewFlowTarget] = useState('');
+  const [newFlowSourceText, setNewFlowSourceText] = useState('');
+  const mutableFlowsRef = useRef<any[]>([]);
+
+  // Keep ref in sync so click-time lookups always use latest flows
+  useEffect(() => { mutableFlowsRef.current = mutableFlows; }, [mutableFlows]);
 
   // ---- Prototype Navigation History ----
   const [navigationStack, setNavigationStack] = useState<string[]>([]);
@@ -333,71 +338,76 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
       const doc = iframe.contentDocument || iframe.contentWindow?.document;
       if (!doc || !doc.body) { setClickableCount(0); return; }
 
-      const outboundFlows = mutableFlows.filter((f: any) => f.from === activeScreenId);
+      // 0) Clear previous clickable state so delete/add take effect immediately
+      doc.querySelectorAll('[data-clutch-clickable]').forEach((el) => {
+        const h = el as HTMLElement;
+        h.removeAttribute('data-clutch-clickable');
+        h.style.cursor = '';
+        h.style.outline = '';
+        h.style.outlineOffset = '';
+        h.onclick = null;
+      });
 
-      // Build a lookup: normalized element text → best flow (highest confidence)
-      const flowByText: Map<string, { to: string }> = new Map();
+      const outboundFlows = mutableFlows.filter((f: any) => f.from === activeScreenId);
+      const flowByText: Map<string, string> = new Map();
       for (const f of outboundFlows) {
         const key = (f.source_element_text || '').toLowerCase().trim();
         if (!key) continue;
-        if (!flowByText.has(key) || (f.confidence || 0) > 0) {
-          flowByText.set(key, { to: f.to });
-        }
+        flowByText.set(key, f.to);
       }
 
-      // Fallback target: the first OTHER screen (simple next-page heuristic)
       const otherScreens = screens.filter(s => s.id !== activeScreenId);
       const fallbackTarget = otherScreens.length > 0 ? otherScreens[0].id : null;
 
       let injected = 0;
-      const interactiveSelector = 'button, a, [role="button"], input[type="submit"], input[type="button"]';
-      doc.querySelectorAll(interactiveSelector).forEach((el) => {
+      const sel = 'button, a, [role="button"], input[type="submit"], input[type="button"]';
+      doc.querySelectorAll(sel).forEach((el) => {
         const rawText = (el.textContent || (el as HTMLInputElement).value || '').trim();
         if (!rawText) return;
-
         let targetId: string | null = null;
         const rawLower = rawText.toLowerCase();
-
-        // 1) Exact IUE flow match
         if (flowByText.has(rawLower)) {
-          targetId = flowByText.get(rawLower)!.to;
+          targetId = flowByText.get(rawLower)!;
         } else {
-          // 2) Substring IUE flow match
-          for (const [ft, flow] of flowByText) {
-            if (rawLower.includes(ft) || ft.includes(rawLower)) {
-              targetId = flow.to;
-              break;
-            }
+          for (const [ft, tid] of flowByText) {
+            if (rawLower.includes(ft) || ft.includes(rawLower)) { targetId = tid; break; }
           }
         }
-
-        // 3) Fallback: any submit/button on a page with only one other screen → navigate there
         if (!targetId && fallbackTarget) {
           const preferred = otherScreens.find(s => {
             const name = (s.name || '').toLowerCase();
-            return ['dashboard', 'home', 'main', 'index', 'overview', '概览', '首页', '主页', '工作台'].some(kw => name.includes(kw));
+            const kw = ['dashboard','home','main','index','overview'];
+            return kw.some(k => name.includes(k));
           });
           targetId = preferred ? preferred.id : fallbackTarget;
         }
-          targetId = fallbackTarget;
-
         if (targetId) {
           const htmlEl = el as HTMLElement;
+          htmlEl.setAttribute('data-clutch-clickable', targetId);
           htmlEl.style.cursor = 'pointer';
           htmlEl.style.outline = '2px solid rgba(59,130,246,0.3)';
           htmlEl.style.outlineOffset = '2px';
-          htmlEl.title = `🖱️ 点击跳转到 ${screens.find(s => s.id === targetId)?.name || targetId}`;
-          htmlEl.addEventListener('click', (e) => {
+          const tgtName = screens.find(s => s.id === targetId)?.name || targetId;
+          htmlEl.title = `Click to navigate to ${tgtName}`;
+          // onclick (not addEventListener) so clearing/re-running overwrites, never stacks
+          htmlEl.onclick = (e) => {
             e.preventDefault();
             e.stopPropagation();
-            navigateTo(targetId!);
-          });
+            // Re-lookup from latest flows at click time (handles delete)
+            const cur = mutableFlowsRef.current.filter((f: any) => f.from === activeScreenId);
+            const m = cur.find((f: any) =>
+              (f.source_element_text || '').toLowerCase().trim() === rawLower ||
+              rawLower.includes((f.source_element_text || '').toLowerCase()) ||
+              (f.source_element_text || '').toLowerCase().includes(rawLower)
+            );
+            if (m) navigateTo(m.to);
+          };
           injected++;
         }
       });
       setClickableCount(injected);
     } catch (_) { setClickableCount(0); }
-  }, [payload, activeScreenId, navigateTo, screens]);
+  }, [mutableFlows, activeScreenId, navigateTo, screens]);
 
   // Re-trigger DOM style applications and click injection when react states shift
   useEffect(() => {
@@ -439,14 +449,14 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
   };
 
   const addFlow = (targetId: string) => {
-    if (!targetId || targetId === activeScreenId) return;
+    if (!targetId || targetId === activeScreenId || !newFlowSourceText.trim()) return;
     const newFlow = {
       from: activeScreenId,
       to: targetId,
       trigger: 'click',
       confidence: 1.0,
       reason: '用户手动添加的连线',
-      source_element_text: '',
+      source_element_text: newFlowSourceText.trim(),
       source_element_role: 'Unknown',
       params: {},
       status: 'approved',
@@ -454,6 +464,7 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
     setMutableFlows(prev => [...prev, newFlow]);
     setIsAddingFlow(false);
     setNewFlowTarget('');
+    setNewFlowSourceText('');
   };
 
   return (
@@ -566,7 +577,7 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
                     {t('Page Transition Links')} ({activeFlows.length})
                   </label>
                   <button
-                    onClick={() => { setIsAddingFlow(true); setNewFlowTarget(''); }}
+                    onClick={() => { setIsAddingFlow(true); setNewFlowTarget(''); setNewFlowSourceText(''); }}
                     className="p-0.5 rounded hover:bg-surface-container-high transition-colors text-on-surface-variant/60 hover:text-primary cursor-pointer"
                     title="手动添加连线"
                   >
@@ -574,30 +585,49 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
                   </button>
                 </div>
 
-                {/* Add Flow Dropdown */}
+                {/* Add Flow Form */}
                 {isAddingFlow && (
-                  <div className="mb-2 p-2 bg-surface-container-low rounded-lg border border-primary/30 space-y-1.5">
-                    <select
-                      value={newFlowTarget}
-                      onChange={(e) => setNewFlowTarget(e.target.value)}
-                      className="w-full text-[10px] bg-surface border border-outline/40 rounded-md px-2 py-1 text-on-surface cursor-pointer"
-                    >
-                      <option value="">选择目标页面…</option>
+                  <div className="mb-2 p-2.5 bg-surface-container-low rounded-xl border border-outline/30 space-y-2">
+                    <label className="block text-[9px] font-bold uppercase tracking-wider text-on-surface-variant/70">
+                      触发元素文本
+                    </label>
+                    <input
+                      type="text"
+                      value={newFlowSourceText}
+                      onChange={(e) => setNewFlowSourceText(e.target.value)}
+                      placeholder="输入按钮文字，如「登录」「Go to Settings」…"
+                      className="w-full text-[10px] bg-surface border border-outline/40 rounded-lg px-2.5 py-1.5 text-on-surface placeholder:text-on-surface-variant/30 focus:outline-none focus:border-primary/60 transition-colors"
+                    />
+                    <label className="block text-[9px] font-bold uppercase tracking-wider text-on-surface-variant/70">
+                      目标页面
+                    </label>
+                    <div className="grid grid-cols-2 gap-1.5">
                       {screens.filter(s => s.id !== activeScreenId).map(s => (
-                        <option key={s.id} value={s.id}>{s.name || s.id}</option>
+                        <button
+                          key={s.id}
+                          type="button"
+                          onClick={() => setNewFlowTarget(s.id)}
+                          className={`text-left text-[10px] px-2.5 py-1.5 rounded-lg border transition-all font-medium cursor-pointer ${
+                            newFlowTarget === s.id
+                              ? 'bg-primary/10 border-primary/40 text-primary'
+                              : 'bg-surface border-outline/30 text-on-surface-variant hover:border-outline/60 hover:text-on-surface'
+                          }`}
+                        >
+                          {s.name || s.id}
+                        </button>
                       ))}
-                    </select>
-                    <div className="flex gap-1.5">
+                    </div>
+                    <div className="flex gap-1.5 pt-0.5">
                       <button
-                        onClick={() => addFlow(newFlowTarget)}
-                        disabled={!newFlowTarget}
-                        className="flex-1 text-[10px] bg-primary text-white rounded-md px-2 py-1 font-semibold cursor-pointer disabled:opacity-40"
+                        onClick={() => { addFlow(newFlowTarget); setNewFlowSourceText(''); }}
+                        disabled={!newFlowTarget || !newFlowSourceText.trim()}
+                        className="flex-1 text-[10px] bg-primary text-white rounded-lg px-2.5 py-1.5 font-semibold cursor-pointer disabled:opacity-30 transition-opacity"
                       >
                         确认添加
                       </button>
                       <button
-                        onClick={() => setIsAddingFlow(false)}
-                        className="text-[10px] bg-surface-container-high text-on-surface-variant rounded-md px-2 py-1 cursor-pointer"
+                        onClick={() => { setIsAddingFlow(false); setNewFlowSourceText(''); }}
+                        className="text-[10px] bg-surface-container-high text-on-surface-variant rounded-lg px-2.5 py-1.5 cursor-pointer hover:text-on-surface transition-colors"
                       >
                         取消
                       </button>
