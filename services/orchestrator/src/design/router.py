@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from src.design import service
+from src.design.session_store import session_dir as _session_dir
 from src.workspace import WorkspaceError
 
 router = APIRouter(prefix="/api/design", tags=["design"])
@@ -327,3 +328,38 @@ async def design_vision_generate(project_id: str, body: dict[str, Any]) -> dict[
         )
     except (WorkspaceError, service.DesignError) as exc:
         raise _http(exc) from exc
+
+# ---- Interaction Contract persistence ----
+class SaveContractRequest(BaseModel):
+    flows: list[dict[str, Any]] = Field(default_factory=list)
+
+
+@router.get("/sessions/{run_id}/contract")
+async def get_interaction_contract(run_id: str) -> dict[str, Any]:
+    """Load the interaction contract from the design session directory."""
+    import json as _json
+    try:
+        sdir = _session_dir(run_id)
+        path = sdir / "interaction_contract.json"
+        if path.is_file():
+            return _json.loads(path.read_text(encoding="utf-8"))
+        return {"version": "1.0.0", "interactions": []}
+    except OSError:
+        return {"version": "1.0.0", "interactions": []}
+
+
+@router.post("/sessions/{run_id}/contract")
+async def save_interaction_contract(run_id: str, body: SaveContractRequest) -> dict[str, Any]:
+    """Save the interaction contract to the design session directory."""
+    import json as _json
+    sdir = _session_dir(run_id)
+    sdir.mkdir(parents=True, exist_ok=True)
+    contract = {
+        "version": "1.0.0",
+        "interactions": body.flows,
+    }
+    path = sdir / "interaction_contract.json"
+    tmp = sdir / ".interaction_contract.tmp"
+    tmp.write_text(_json.dumps(contract, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp.replace(path)
+    return {"saved": True, "count": len(body.flows), "path": str(path)}

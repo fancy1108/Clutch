@@ -114,13 +114,15 @@ export default function PreviewDemo({ screens, sessionRunId }: PreviewDemoProps)
   // Keep ref in sync so click-time lookups always use latest flows
   useEffect(() => { mutableFlowsRef.current = mutableFlows; }, [mutableFlows]);
 
-  // Auto-save flows to localStorage when they change
+  // Auto-save flows to interaction contract on disk when they change
   useEffect(() => {
-    if (sessionRunId && mutableFlows.length > 0) {
-      try {
-        localStorage.setItem(`clutch_flows_${sessionRunId}`, JSON.stringify(mutableFlows));
-      } catch (_) {}
-    }
+    if (!sessionRunId || mutableFlows.length === 0) return;
+    const url = sidecarHttpUrl(`/api/design/sessions/${encodeURIComponent(sessionRunId)}/contract`);
+    sidecarFetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ flows: mutableFlows }),
+    }).catch(() => {}); // fire-and-forget
   }, [mutableFlows, sessionRunId]);
 
   // ---- Prototype Navigation History ----
@@ -211,20 +213,26 @@ export default function PreviewDemo({ screens, sessionRunId }: PreviewDemoProps)
       .then((r) => r.json())
       .then((data) => {
         setPayload(data);
-        // Try to restore user-edited flows from localStorage, fall back to API
+        // Try to restore saved contract from disk, fall back to API-generated flows
         let flows = data.flows || [];
         if (sessionRunId) {
-          try {
-            const saved = localStorage.getItem(`clutch_flows_${sessionRunId}`);
-            if (saved) {
-              const parsed = JSON.parse(saved);
-              if (Array.isArray(parsed) && parsed.length > 0) {
-                flows = parsed;
+          const contractUrl = sidecarHttpUrl(`/api/design/sessions/${encodeURIComponent(sessionRunId)}/contract`);
+          sidecarFetch(contractUrl)
+            .then(r => r.json())
+            .then(contract => {
+              if (contract.interactions && Array.isArray(contract.interactions) && contract.interactions.length > 0) {
+                setMutableFlows(contract.interactions);
+                setLoading(false);
+              } else {
+                setMutableFlows(flows);
+                setLoading(false);
               }
-            }
-          } catch (_) {}
+            })
+            .catch(() => { setMutableFlows(flows); setLoading(false); });
+        } else {
+          setMutableFlows(flows);
+          setLoading(false);
         }
-        setMutableFlows(flows);
         setLoading(false);
       })
       .catch((e) => {
