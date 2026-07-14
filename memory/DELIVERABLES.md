@@ -22,6 +22,14 @@
 
 ## Active Deliverables
 
+### Design parallel iterate_session add + unified tailwind inject for modify path ✅
+- **日期：** 2026-07-14
+- **Commit：** `c2a772b` — `feat(design): parallel iterate_session add + unified tailwind inject for modify path`
+- **Verification：** `./scripts/verify.sh` → 731 pytest passed (1 pre-existing keychain), 130 vitest passed, doc-drift zero; 41 design tests green
+- **证据：** `—`
+- **交付文件：**
+  - `services/orchestrator/src/design/generator.py` — iterate_session add path: sequential loop → ThreadPoolExecutor concurrent workers with manifest_lock; add path + modify path: inject_unified_tailwind_config before write_text
+
 ### Premium hardware mockup shells, script-free external DOM state injections, and custom dropdowns unification ✅
 - **日期：** 2026-07-14
 - **Commit：** `—`（本会话 commit）

@@ -7,7 +7,7 @@
 
 - **阶段：** **v1.2.6 待发布**（2026-07-13）— CHANGELOG / release doc / deliverables 已同步，preflight 通过，待 tag 触发 CI
 - **Release：** [v1.2.6](https://github.com/fancy1108/Clutch/releases/tag/v1.2.6) · tag pending on `dev`
-- **Git：** `dev` ahead of `origin/dev` by 11 commits
+- **Git：** `dev` ahead of `origin/dev` by 12 commits
 - **Verify：** `./scripts/verify.sh` → 730 python tests + doc-drift passed（1 预存 keychain ACL 失败）
 - **Preflight：** `./scripts/release-preflight.sh v1.2.6` → passed
 - **一键原型 PRD：** Phase 1 IUE 已交付（`cc17c65`）
@@ -20,6 +20,15 @@
 - **一键原型 Phase 2：Prototype Runtime 增强**（导航历史、Overlay Context、全局状态机、Mock 拦截）
 
 ## Recent Sessions
+
+## 2026-07-14 会话（Design 并行多页面生成 + 统一主题风格注入 — iterate_session 补齐）
+
+- **iterate_session `action=="add"` 并发化**：将顺序 `for` 循环替换为 `ThreadPoolExecutor` 并发 worker（max 8 threads），与 `generate_session` 的 `_gen_screen_worker` 模式完全对齐
+- **Tailwind 统一注入补齐**：
+  - `iterate_session` add 路径：worker 内调用 `inject_unified_tailwind_config` 后再写盘
+  - `iterate_session` modify 路径：`write_text` 前调用 `inject_unified_tailwind_config`，确保单页修改后风格一致
+- **校验**：41 design tests 全绿，pytest 731/732（1 预存 keychain），doc-drift 零漂移，vitest 130/130
+- **Commit**：`c2a772b`
 
 ## 2026-07-14 会话（一键原型 PRD — Phase 1 IUE 交互理解引擎）【本次会话】
 
