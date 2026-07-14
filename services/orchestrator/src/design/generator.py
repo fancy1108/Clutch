@@ -1743,7 +1743,15 @@ def _build_ui_generation_prompt(
             "Match the attached reference screenshot (structure, hierarchy, spacing).\n"
         )
     if current_html:
-        ui_parts.append(f"Current HTML to revise:\n{current_html[:14000]}\n")
+        ui_parts.append(
+            "=== REVISION MODE — CRITICAL ===\n"
+            "You are REVISING an existing page, NOT creating a new one from scratch.\n"
+            "1. KEEP the existing page layout, structure, and content type unchanged.\n"
+            "2. Only apply the specific changes requested in the Revision instruction above.\n"
+            "3. Do NOT replace the page with a different screen type (e.g., don't turn a dashboard into a login form).\n"
+            "4. The page type and purpose must remain the same as the current HTML below.\n"
+            f"Current HTML to revise:\n{current_html[:14000]}\n"
+        )
     ui_parts.append("Return ONLY the HTML document inside ```html ... ```.")
     return "".join(ui_parts)
 
@@ -3343,7 +3351,14 @@ def iterate_session(
                 if _html_has_visible_content(candidate) and not _html_essentially_same(
                     candidate, current
                 ):
-                    html = candidate
+                    # Guard: reject if page type completely changed (dashboard→login etc.)
+                    if current and _detect_html_intent(candidate) != _detect_html_intent(current):
+                        logger.warning(
+                            "design iterate modify type-changed run_id=%s — keeping current HTML",
+                            run_id,
+                        )
+                    else:
+                        html = candidate
                 elif not is_model_available(router, model_id):
                     html = _fallback_ui_html(merged_prompt, spec_dict, device=device)
                 else:
