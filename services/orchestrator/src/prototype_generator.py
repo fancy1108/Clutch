@@ -135,7 +135,7 @@ def _apply_extreme_mode(component: Dict[str, Any]) -> Dict[str, Any]:
     return comp
 
 
-def build_preview_payload(boards: List[Dict[str, Any]], state_definitions: Dict[str, Any], preview_options: Dict[str, Any] | None = None) -> Dict[str, Any]:
+def build_preview_payload(boards: List[Dict[str, Any]], state_definitions: Dict[str, Any], preview_options: Dict[str, Any] = None) -> Dict[str, Any]:
     """Build preview payload.
 
     preview_options (optional): {
