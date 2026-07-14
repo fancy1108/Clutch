@@ -54,7 +54,8 @@ def extract_flows_from_boards(boards: List[Dict[str, Any]]) -> List[Dict[str, An
     suggestions: List[Dict[str, Any]] = []
     # lightweight heuristics to approximate LLM suggestions for MVP tests
     for src in boards:
-        src_texts = " ".join(e.get('text', '') for e in src.get('elements', []))
+        # include the board title as part of the source text to improve matching
+        src_texts = " ".join(([src.get('title','')] + [e.get('text', '') for e in src.get('elements', [])]))
         src_words = set(_normalize_words(src_texts))
         # scan for param-like tokens in source texts
         inferred_params = _extract_simple_params_from_text(src_texts)
