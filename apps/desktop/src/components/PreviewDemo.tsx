@@ -8,6 +8,7 @@ import { sidecarFetch, sidecarHttpUrl } from '../services/sidecarUrl';
 
 interface PreviewDemoProps {
   screens: DesignScreen[];
+  sessionRunId?: string;
 }
 
 function extractElementsFromHtml(html: string): Array<{ type: string; text: string }> {
@@ -75,7 +76,7 @@ function buildSimulatorSrcDoc(html: string) {
   return adapterStyle + processed;
 }
 
-export default function PreviewDemo({ screens }: PreviewDemoProps) {
+export default function PreviewDemo({ screens, sessionRunId }: PreviewDemoProps) {
   const { t } = useLanguage();
   const [payload, setPayload] = useState<any>(null);
   const [state, setState] = useState('Normal');
@@ -112,6 +113,15 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
 
   // Keep ref in sync so click-time lookups always use latest flows
   useEffect(() => { mutableFlowsRef.current = mutableFlows; }, [mutableFlows]);
+
+  // Auto-save flows to localStorage when they change
+  useEffect(() => {
+    if (sessionRunId && mutableFlows.length > 0) {
+      try {
+        localStorage.setItem(`clutch_flows_${sessionRunId}`, JSON.stringify(mutableFlows));
+      } catch (_) {}
+    }
+  }, [mutableFlows, sessionRunId]);
 
   // ---- Prototype Navigation History ----
   const [navigationStack, setNavigationStack] = useState<string[]>([]);
@@ -201,7 +211,20 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
       .then((r) => r.json())
       .then((data) => {
         setPayload(data);
-        setMutableFlows(data.flows || []);
+        // Try to restore user-edited flows from localStorage, fall back to API
+        let flows = data.flows || [];
+        if (sessionRunId) {
+          try {
+            const saved = localStorage.getItem(`clutch_flows_${sessionRunId}`);
+            if (saved) {
+              const parsed = JSON.parse(saved);
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                flows = parsed;
+              }
+            }
+          } catch (_) {}
+        }
+        setMutableFlows(flows);
         setLoading(false);
       })
       .catch((e) => {

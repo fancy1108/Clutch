@@ -1740,7 +1740,7 @@ function DesignCanvasInner({
 
             {/* Modal Content */}
             <div className="flex-1 overflow-hidden bg-surface-dim p-6">
-              <PreviewDemo screens={session?.screens || []} />
+              <PreviewDemo screens={session?.screens || []} sessionRunId={session?.run_id} />
             </div>
           </div>
         </div>,
