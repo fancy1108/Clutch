@@ -7,17 +7,30 @@
 
 - **阶段：** **v1.2.6 待发布**（2026-07-13）— CHANGELOG / release doc / deliverables 已同步，preflight 通过，待 tag 触发 CI
 - **Release：** [v1.2.6](https://github.com/fancy1108/Clutch/releases/tag/v1.2.6) · tag pending on `dev`
-- **Git：** `dev` ahead of `origin/dev` by 10 commits
-- **Verify：** `./scripts/verify.sh` → 723 python tests + doc-drift passed
+- **Git：** `dev` ahead of `origin/dev` by 11 commits
+- **Verify：** `./scripts/verify.sh` → 730 python tests + doc-drift passed（1 预存 keychain ACL 失败）
 - **Preflight：** `./scripts/release-preflight.sh v1.2.6` → passed
+- **一键原型 PRD：** Phase 1 IUE 已交付（`cc17c65`）
 
 ## Next Actions
 
 - `git tag v1.2.6` → push → CI builds macOS DMG + Windows MSI/NSIS
 - 挂 Release 产物、SHA256 校验
 - 发布后同步 Homebrew tap
+- **一键原型 Phase 2：Prototype Runtime 增强**（导航历史、Overlay Context、全局状态机、Mock 拦截）
 
 ## Recent Sessions
+
+## 2026-07-14 会话（一键原型 PRD — Phase 1 IUE 交互理解引擎）【本次会话】
+
+- **IUE 模块创建**：`services/orchestrator/src/iue/` — 3 文件
+  - `models.py`：ElementCandidate、ElementRole（17 roles）、TargetMatch、FlowSuggestion、ApprovalStatus
+  - `engine.py`：`InteractionUnderstandingEngine` 6 阶段可插拔管道（候选识别→意图分类→目标匹配→置信打分→推理输出→审批门）
+  - `__init__.py`：公共 API 导出
+- **路由接入**：`routes/preview.py` — `/api/preview` 使用 IUE `analyze_to_dicts()` 返回结构化 flows（含 confidence/reason/role/status）；`/api/suggest_flows` 以 IUE 为主、LLM 为辅
+- **测试**：5 个测试全绿（全管道、dict 兼容、Stage 2 分类、Stage 4 打分、空 board）
+- **校验**：vitest 130/130，pytest 730/731（1 预存 keychain），doc-drift 零漂移
+- **Commit**：`cc17c65`
 
 ## 2026-07-14 会话（一键原型设备外壳与外部 DOM 业务状态模拟器优化）
 

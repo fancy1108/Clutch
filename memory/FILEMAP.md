@@ -58,6 +58,8 @@
 | 历史叙事归档 | `docs/archive/` · `specs/archive/` |
 | 视觉设计快照 | `specs/core/design.md` → `docs/UI_UX_GUIDELINES.md` |
 | 一键原型与交互契约规范 (PRD) | `specs/core/prd-one-click-interactive-prototype.md` |
+| 交互理解引擎 (IUE) — 6 阶段管道 | `services/orchestrator/src/iue/` (`models.py`, `engine.py`, `__init__.py`) |
+| 原型预览 API（接入 IUE） | `services/orchestrator/src/routes/preview.py` |
 | 前端 UI 规范（权威） | `docs/UI_UX_GUIDELINES.md` |
 | **macOS / Windows 平台 UI 边界** | `docs/PLATFORM_MAINTENANCE.md` · `apps/desktop/src/platform/chrome/` |
 | 开发任务清单（含 Verification） | `specs/core/tasks.md` |
