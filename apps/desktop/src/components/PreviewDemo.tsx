@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Layers, Tv, Activity, HelpCircle, CheckCircle, ChevronDown } from 'lucide-react';
+import { Layers, Tv, Activity, HelpCircle, CheckCircle, ChevronDown, ArrowLeft, ArrowRight } from 'lucide-react';
 import StateController from './StateController';
 import MatrixPreview from './MatrixPreview';
 import { DesignScreen } from '../services/designApi';
@@ -88,6 +88,35 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
   const screenDropdownRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
+  // ---- Prototype Navigation History ----
+  const [navigationStack, setNavigationStack] = useState<string[]>([]);
+  const [navigationIndex, setNavigationIndex] = useState(-1);
+
+  const navigateTo = React.useCallback((screenId: string) => {
+    setNavigationStack((prev) => {
+      const trimmed = prev.slice(0, navigationIndex + 1);
+      if (trimmed[trimmed.length - 1] === screenId) return trimmed;
+      return [...trimmed, screenId];
+    });
+    setNavigationIndex((prev) => prev + 1);
+    setActiveScreenId(screenId);
+    setIsScreenDropdownOpen(false);
+  }, [navigationIndex]);
+
+  const goBack = React.useCallback(() => {
+    if (navigationIndex <= 0) return;
+    const newIndex = navigationIndex - 1;
+    setNavigationIndex(newIndex);
+    setActiveScreenId(navigationStack[newIndex]);
+  }, [navigationIndex, navigationStack]);
+
+  const goForward = React.useCallback(() => {
+    if (navigationIndex >= navigationStack.length - 1) return;
+    const newIndex = navigationIndex + 1;
+    setNavigationIndex(newIndex);
+    setActiveScreenId(navigationStack[newIndex]);
+  }, [navigationIndex, navigationStack]);
+
   // Close screen dropdown on click outside
   useEffect(() => {
     function clickOutside(e: MouseEvent) {
@@ -110,7 +139,10 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
 
   useEffect(() => {
     if (screens.length > 0 && !activeScreenId) {
-      setActiveScreenId(screens[0].id);
+      const firstId = screens[0].id;
+      setActiveScreenId(firstId);
+      setNavigationStack([firstId]);
+      setNavigationIndex(0);
     }
   }, [screens, activeScreenId]);
 
@@ -287,12 +319,71 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
     }
   };
 
-  // Re-trigger DOM style applications when react states shift
+  // ---- Prototype Click Injection: make IUE-inferred elements clickable ----
+  const injectPrototypeClickHandlers = React.useCallback((iframe: HTMLIFrameElement) => {
+    try {
+      const doc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!doc || !doc.body) return;
+      const outboundFlows = payload?.flows?.filter((f: any) => f.from === activeScreenId) || [];
+      if (outboundFlows.length === 0) return;
+
+      // Build a lookup: normalized element text → best flow (highest confidence)
+      const flowByText: Map<string, { to: string; confidence: number }> = new Map();
+      for (const f of outboundFlows) {
+        const key = (f.source_element_text || '').toLowerCase().trim();
+        if (!key) continue;
+        const existing = flowByText.get(key);
+        if (!existing || f.confidence > existing.confidence) {
+          flowByText.set(key, { to: f.to, confidence: f.confidence });
+        }
+      }
+
+      // Scan iframe for interactive elements and attach click→navigate handlers
+      const interactiveSelector = 'button, a, [role="button"], input[type="submit"], input[type="button"]';
+      doc.querySelectorAll(interactiveSelector).forEach((el) => {
+        const rawText = (el.textContent || (el as HTMLInputElement).value || '').trim();
+        if (!rawText) return;
+
+        // Match: exact text, substring, or partial word overlap
+        let bestMatch: { to: string } | null = null;
+        const rawLower = rawText.toLowerCase();
+
+        // 1) Exact match
+        if (flowByText.has(rawLower)) {
+          bestMatch = flowByText.get(rawLower)!;
+        } else {
+          // 2) Substring match
+          for (const [ft, flow] of flowByText) {
+            if (rawLower.includes(ft) || ft.includes(rawLower)) {
+              bestMatch = flow;
+              break;
+            }
+          }
+        }
+
+        if (bestMatch) {
+          const targetId = bestMatch.to;
+          const htmlEl = el as HTMLElement;
+          // Visual indicator: clickable cursor + subtle hover highlight
+          htmlEl.style.cursor = 'pointer';
+          htmlEl.title = `点击跳转到 ${screens.find(s => s.id === targetId)?.name || targetId}`;
+          htmlEl.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            navigateTo(targetId);
+          });
+        }
+      });
+    } catch (_) { /* cross-origin guard */ }
+  }, [payload, activeScreenId, navigateTo, screens]);
+
+  // Re-trigger DOM style applications and click injection when react states shift
   useEffect(() => {
     if (iframeRef.current) {
       applyStateToIframe(iframeRef.current);
+      injectPrototypeClickHandlers(iframeRef.current);
     }
-  }, [state, extreme, activeScreenId]);
+  }, [state, extreme, activeScreenId, injectPrototypeClickHandlers]);
 
   if (screens.length === 0) {
     return (
@@ -406,10 +497,7 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
                           <button
                             key={s.id}
                             type="button"
-                            onClick={() => {
-                              setActiveScreenId(s.id);
-                              setIsScreenDropdownOpen(false);
-                            }}
+                            onClick={() => navigateTo(s.id)}
                             className={`w-full text-left px-3 py-2 text-xs flex items-center gap-1.5 cursor-pointer transition-colors font-medium ${
                               isActive
                                 ? 'bg-surface-container text-on-surface font-semibold'
@@ -438,7 +526,7 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
                       return (
                         <button
                           key={idx}
-                          onClick={() => setActiveScreenId(f.to)}
+                          onClick={() => navigateTo(f.to)}
                           className="w-full text-left p-2.5 rounded-xl border border-outline/30 bg-surface-container-low hover:border-primary/40 hover:bg-surface-bright transition-all text-xs flex flex-col gap-1 text-on-surface hover:text-primary group cursor-pointer"
                         >
                           <span className="font-semibold text-primary group-hover:underline">
@@ -459,9 +547,33 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
             <div className="md:col-span-3 flex flex-col bg-surface border border-outline/35 rounded-2xl shadow-xs overflow-hidden h-[510px]">
               {/* Simulator Header */}
               <div className="flex items-center justify-between px-4 py-2 border-b border-outline/30 bg-surface-bright shrink-0 select-none">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">
-                  {t('Live Screen Preview')}: {activeScreen?.name}
-                </span>
+                <div className="flex items-center gap-1.5">
+                  {/* Navigation Breadcrumb */}
+                  <button
+                    onClick={goBack}
+                    disabled={navigationIndex <= 0}
+                    className="p-0.5 rounded hover:bg-surface-container-high transition-colors disabled:opacity-25 disabled:cursor-default cursor-pointer"
+                    title="后退"
+                  >
+                    <ArrowLeft size={12} className="text-on-surface-variant" />
+                  </button>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">
+                    {activeScreen?.name}
+                  </span>
+                  <button
+                    onClick={goForward}
+                    disabled={navigationIndex >= navigationStack.length - 1}
+                    className="p-0.5 rounded hover:bg-surface-container-high transition-colors disabled:opacity-25 disabled:cursor-default cursor-pointer"
+                    title="前进"
+                  >
+                    <ArrowRight size={12} className="text-on-surface-variant" />
+                  </button>
+                  {navigationStack.length > 1 && (
+                    <span className="text-[9px] text-on-surface-variant/40 ml-1">
+                      ({navigationIndex + 1}/{navigationStack.length})
+                    </span>
+                  )}
+                </div>
                 
                 {/* Device Mode Selector */}
                 <div className="flex bg-surface-container p-0.5 rounded-lg border border-outline/40 text-[10px]">
@@ -527,7 +639,7 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
                             transition: 'transform 0.3s ease'
                           }}
                           sandbox="allow-scripts allow-same-origin"
-                          onLoad={(e) => applyStateToIframe(e.currentTarget)}
+                          onLoad={(e) => { applyStateToIframe(e.currentTarget); injectPrototypeClickHandlers(e.currentTarget); }}
                         />
                       </div>
                     </div>
