@@ -11,6 +11,7 @@
 | [`memory/FILEMAP.md`](./memory/FILEMAP.md) | 所有 Agent | 文件路径速查（Check-in 用） |
 | [`specs/core/proposal.md`](./specs/core/proposal.md) | 产品追溯 | 历史快照，非权威 |
 | [`specs/core/tasks.md`](./specs/core/tasks.md) | 全体开发者 | M0–M4 开发任务清单 |
+| [`specs/core/prd-one-click-interactive-prototype.md`](./specs/core/prd-one-click-interactive-prototype.md) | 全体开发者 | 一键原型生成与交互契约规格 (PRD) |
 | [`specs/core/hybrid-runtime-plan.md`](./specs/core/hybrid-runtime-plan.md) | Hybrid 开发者 | D25 HRT Task 与验收（权威） |
 | [`specs/core/design.md`](./specs/core/design.md) | 前端开发者 | 视觉设计快照 → `docs/UI_UX_GUIDELINES.md` |
 | [`docs/UI_UX_GUIDELINES.md`](./docs/UI_UX_GUIDELINES.md) | 前端开发者 | React + Tailwind UI/UX 规范 |

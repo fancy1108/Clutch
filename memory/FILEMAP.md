@@ -57,6 +57,7 @@
 | 产品需求历史 | `specs/core/proposal.md`（指针）· `specs/archive/proposal-v0.1.md` |
 | 历史叙事归档 | `docs/archive/` · `specs/archive/` |
 | 视觉设计快照 | `specs/core/design.md` → `docs/UI_UX_GUIDELINES.md` |
+| 一键原型与交互契约规范 (PRD) | `specs/core/prd-one-click-interactive-prototype.md` |
 | 前端 UI 规范（权威） | `docs/UI_UX_GUIDELINES.md` |
 | **macOS / Windows 平台 UI 边界** | `docs/PLATFORM_MAINTENANCE.md` · `apps/desktop/src/platform/chrome/` |
 | 开发任务清单（含 Verification） | `specs/core/tasks.md` |
