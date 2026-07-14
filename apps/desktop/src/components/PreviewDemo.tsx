@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Layers, Tv, Activity, HelpCircle, CheckCircle, ChevronDown, ArrowLeft, ArrowRight, X, Plus } from 'lucide-react';
+import { Layers, Tv, Activity, HelpCircle, CheckCircle, ChevronDown, ArrowLeft, ArrowRight, X, Plus, Edit } from 'lucide-react';
 import StateController from './StateController';
 import MatrixPreview from './MatrixPreview';
 import { DesignScreen } from '../services/designApi';
@@ -90,10 +90,13 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [clickableCount, setClickableCount] = useState(0);
   const [mutableFlows, setMutableFlows] = useState<any[]>([]);
-  const [isAddingFlow, setIsAddingFlow] = useState(false);
-  const [newFlowTarget, setNewFlowTarget] = useState('');
-  const [newFlowSourceText, setNewFlowSourceText] = useState('');
   const mutableFlowsRef = useRef<any[]>([]);
+  const [contextMenu, setContextMenu] = useState<{
+    flow: any | null;
+    elementText: string;
+    x: number; y: number;
+  } | null>(null);
+  const contextMenuRef = useRef<HTMLDivElement>(null);
 
   // Keep ref in sync so click-time lookups always use latest flows
   useEffect(() => { mutableFlowsRef.current = mutableFlows; }, [mutableFlows]);
@@ -127,11 +130,14 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
     setActiveScreenId(navigationStack[newIndex]);
   }, [navigationIndex, navigationStack]);
 
-  // Close screen dropdown on click outside
+  // Close screen dropdown & context menu on click outside
   useEffect(() => {
     function clickOutside(e: MouseEvent) {
       if (screenDropdownRef.current && !screenDropdownRef.current.contains(e.target as Node)) {
         setIsScreenDropdownOpen(false);
+      }
+      if (contextMenuRef.current && !contextMenuRef.current.contains(e.target as Node)) {
+        setContextMenu(null);
       }
     }
     document.addEventListener('mousedown', clickOutside);
@@ -338,7 +344,7 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
       const doc = iframe.contentDocument || iframe.contentWindow?.document;
       if (!doc || !doc.body) { setClickableCount(0); return; }
 
-      // 0) Clear previous clickable state so delete/add take effect immediately
+      // 0) Clear previous clickable state
       doc.querySelectorAll('[data-clutch-clickable]').forEach((el) => {
         const h = el as HTMLElement;
         h.removeAttribute('data-clutch-clickable');
@@ -356,58 +362,50 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
         flowByText.set(key, f.to);
       }
 
-      const otherScreens = screens.filter(s => s.id !== activeScreenId);
-      const fallbackTarget = otherScreens.length > 0 ? otherScreens[0].id : null;
-
       let injected = 0;
       const sel = 'button, a, [role="button"], input[type="submit"], input[type="button"]';
       doc.querySelectorAll(sel).forEach((el) => {
         const rawText = (el.textContent || (el as HTMLInputElement).value || '').trim();
         if (!rawText) return;
-        let targetId: string | null = null;
         const rawLower = rawText.toLowerCase();
+
+        // Find existing flow for this element
+        let existingFlow: any = null;
         if (flowByText.has(rawLower)) {
-          targetId = flowByText.get(rawLower)!;
+          const tid = flowByText.get(rawLower)!;
+          existingFlow = outboundFlows.find(f => f.to === tid) || null;
         } else {
           for (const [ft, tid] of flowByText) {
-            if (rawLower.includes(ft) || ft.includes(rawLower)) { targetId = tid; break; }
+            if (rawLower.includes(ft) || ft.includes(rawLower)) {
+              existingFlow = outboundFlows.find(f => f.to === tid) || null;
+              break;
+            }
           }
         }
-        if (!targetId && fallbackTarget) {
-          const preferred = otherScreens.find(s => {
-            const name = (s.name || '').toLowerCase();
-            const kw = ['dashboard','home','main','index','overview'];
-            return kw.some(k => name.includes(k));
+
+        // Mark all interactive elements as clickable (show outline + cursor)
+        // Click opens context menu instead of navigating directly
+        const htmlEl = el as HTMLElement;
+        htmlEl.setAttribute('data-clutch-clickable', 'true');
+        htmlEl.style.cursor = 'pointer';
+        htmlEl.style.outline = '2px solid rgba(59,130,246,0.3)';
+        htmlEl.style.outlineOffset = '2px';
+        htmlEl.onclick = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const rect = htmlEl.getBoundingClientRect();
+          setContextMenu({
+            flow: existingFlow,
+            elementText: rawText,
+            x: Math.min(rect.right + 6, window.innerWidth - 180),
+            y: Math.min(rect.top, window.innerHeight - 220),
           });
-          targetId = preferred ? preferred.id : fallbackTarget;
-        }
-        if (targetId) {
-          const htmlEl = el as HTMLElement;
-          htmlEl.setAttribute('data-clutch-clickable', targetId);
-          htmlEl.style.cursor = 'pointer';
-          htmlEl.style.outline = '2px solid rgba(59,130,246,0.3)';
-          htmlEl.style.outlineOffset = '2px';
-          const tgtName = screens.find(s => s.id === targetId)?.name || targetId;
-          htmlEl.title = `Click to navigate to ${tgtName}`;
-          // onclick (not addEventListener) so clearing/re-running overwrites, never stacks
-          htmlEl.onclick = (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            // Re-lookup from latest flows at click time (handles delete)
-            const cur = mutableFlowsRef.current.filter((f: any) => f.from === activeScreenId);
-            const m = cur.find((f: any) =>
-              (f.source_element_text || '').toLowerCase().trim() === rawLower ||
-              rawLower.includes((f.source_element_text || '').toLowerCase()) ||
-              (f.source_element_text || '').toLowerCase().includes(rawLower)
-            );
-            if (m) navigateTo(m.to);
-          };
-          injected++;
-        }
+        };
+        injected++;
       });
       setClickableCount(injected);
     } catch (_) { setClickableCount(0); }
-  }, [mutableFlows, activeScreenId, navigateTo, screens]);
+  }, [mutableFlows, activeScreenId, screens]);
 
   // Re-trigger DOM style applications and click injection when react states shift
   useEffect(() => {
@@ -442,29 +440,30 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
   const activeScreen = screens.find((s) => s.id === activeScreenId);
   const activeFlows = mutableFlows.filter((f: any) => f.from === activeScreenId);
 
-  const deleteFlow = (flowIndex: number) => {
-    // Find the actual index in mutableFlows (not just activeFlows)
-    const flow = activeFlows[flowIndex];
-    setMutableFlows(prev => prev.filter(f => !(f.from === flow.from && f.to === flow.to)));
+  const deleteFlow = (flow: any) => {
+    setMutableFlows(prev => prev.filter(f => !(f.from === flow.from && f.to === flow.to && f.source_element_text === flow.source_element_text)));
+    setContextMenu(null);
   };
 
-  const addFlow = (targetId: string) => {
-    if (!targetId || targetId === activeScreenId || !newFlowSourceText.trim()) return;
-    const newFlow = {
-      from: activeScreenId,
-      to: targetId,
-      trigger: 'click',
-      confidence: 1.0,
-      reason: '用户手动添加的连线',
-      source_element_text: newFlowSourceText.trim(),
-      source_element_role: 'Unknown',
-      params: {},
-      status: 'approved',
-    };
-    setMutableFlows(prev => [...prev, newFlow]);
-    setIsAddingFlow(false);
-    setNewFlowTarget('');
-    setNewFlowSourceText('');
+  const addFlowForElement = (elementText: string, targetId: string) => {
+    if (!targetId || targetId === activeScreenId || !elementText.trim()) return;
+    setMutableFlows(prev => [...prev, {
+      from: activeScreenId, to: targetId, trigger: 'click',
+      confidence: 1.0, reason: '用户手动添加的连线',
+      source_element_text: elementText.trim(),
+      source_element_role: 'Unknown', params: {}, status: 'approved',
+    }]);
+    setContextMenu(null);
+  };
+
+  const editFlowTarget = (flow: any, newTarget: string) => {
+    if (!newTarget || newTarget === activeScreenId) return;
+    setMutableFlows(prev => prev.map(f =>
+      (f.from === flow.from && f.to === flow.to && f.source_element_text === flow.source_element_text)
+        ? { ...f, to: newTarget, reason: '用户编辑的目标页面' }
+        : f
+    ));
+    setContextMenu(null);
   };
 
   return (
@@ -530,146 +529,57 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 h-full min-h-[420px]">
             {/* Simulator Sidebar */}
             <div className="md:col-span-1 bg-surface p-4 border border-outline/35 rounded-2xl flex flex-col gap-4 shadow-xs select-none h-[510px]">
-              {/* Unified Dropdown Selector */}
-              <div className="relative">
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-on-surface-variant mb-2 select-none">
-                  {t('Select Screen Page')}
-                </label>
-                
-                <div className="relative" ref={screenDropdownRef}>
-                  <button
-                    type="button"
-                    onClick={() => setIsScreenDropdownOpen(!isScreenDropdownOpen)}
-                    className="bg-surface border border-outline/40 hover:border-outline-variant/60 rounded-lg px-3 py-1.5 text-xs text-on-surface flex items-center justify-between gap-2.5 cursor-pointer font-semibold shadow-2xs select-none w-full"
-                  >
-                    <span>{activeScreen?.name || activeScreenId}</span>
-                    <ChevronDown size={12} className={`text-on-surface-variant/60 transition-transform duration-200 ${isScreenDropdownOpen ? 'rotate-180' : ''}`} />
-                  </button>
-
-                  {isScreenDropdownOpen && (
-                    <div className="absolute left-0 top-full mt-1 z-30 bg-surface border border-outline rounded-lg shadow-md py-1 overflow-hidden w-full max-h-48 overflow-y-auto">
-                      {screens.map((s) => {
-                        const isActive = s.id === activeScreenId;
-                        return (
-                          <button
-                            key={s.id}
-                            type="button"
-                            onClick={() => navigateTo(s.id)}
-                            className={`w-full text-left px-3 py-2 text-xs flex items-center gap-1.5 cursor-pointer transition-colors font-medium ${
-                              isActive
-                                ? 'bg-surface-container text-on-surface font-semibold'
-                                : 'text-on-surface-variant/80 hover:text-on-surface hover:bg-surface-container-high/40'
-                            }`}
-                          >
-                            {s.name || s.id}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Page Transition Links */}
-              <div className="flex-1 overflow-auto">
-                <div className="flex items-center justify-between mb-2.5">
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">
-                    {t('Page Transition Links')} ({activeFlows.length})
-                  </label>
-                  <button
-                    onClick={() => { setIsAddingFlow(true); setNewFlowTarget(''); setNewFlowSourceText(''); }}
-                    className="p-0.5 rounded hover:bg-surface-container-high transition-colors text-on-surface-variant/60 hover:text-primary cursor-pointer"
-                    title="手动添加连线"
-                  >
-                    <Plus size={12} />
-                  </button>
-                </div>
-
-                {/* Add Flow Form */}
-                {isAddingFlow && (
-                  <div className="mb-2 p-2.5 bg-surface-container-low rounded-xl border border-outline/30 space-y-2">
-                    <label className="block text-[9px] font-bold uppercase tracking-wider text-on-surface-variant/70">
-                      触发元素文本
-                    </label>
-                    <input
-                      type="text"
-                      value={newFlowSourceText}
-                      onChange={(e) => setNewFlowSourceText(e.target.value)}
-                      placeholder="输入按钮文字，如「登录」「Go to Settings」…"
-                      className="w-full text-[10px] bg-surface border border-outline/40 rounded-lg px-2.5 py-1.5 text-on-surface placeholder:text-on-surface-variant/30 focus:outline-none focus:border-primary/60 transition-colors"
-                    />
-                    <label className="block text-[9px] font-bold uppercase tracking-wider text-on-surface-variant/70">
-                      目标页面
-                    </label>
-                    <div className="grid grid-cols-2 gap-1.5">
-                      {screens.filter(s => s.id !== activeScreenId).map(s => (
-                        <button
-                          key={s.id}
-                          type="button"
-                          onClick={() => setNewFlowTarget(s.id)}
-                          className={`text-left text-[10px] px-2.5 py-1.5 rounded-lg border transition-all font-medium cursor-pointer ${
-                            newFlowTarget === s.id
-                              ? 'bg-primary/10 border-primary/40 text-primary'
-                              : 'bg-surface border-outline/30 text-on-surface-variant hover:border-outline/60 hover:text-on-surface'
-                          }`}
-                        >
+              {/* Screen Thumbnail List */}
+              <div className="flex-1 overflow-auto space-y-2 pr-0.5">
+                {screens.map(s => {
+                  const isActive = s.id === activeScreenId;
+                  const outCount = mutableFlows.filter((f: any) => f.from === s.id).length;
+                  const inCount = mutableFlows.filter((f: any) => f.to === s.id).length;
+                  return (
+                    <button
+                      key={s.id}
+                      onClick={() => navigateTo(s.id)}
+                      className={`w-full text-left rounded-xl border transition-all overflow-hidden cursor-pointer group ${
+                        isActive
+                          ? 'border-primary/50 bg-primary/5 shadow-sm'
+                          : 'border-outline/30 bg-surface hover:border-outline/60 hover:bg-surface-container-low'
+                      }`}
+                    >
+                      {/* Mini preview iframe */}
+                      <div className="h-16 overflow-hidden relative bg-neutral-50 border-b border-outline/20">
+                        {s.html ? (
+                          <iframe
+                            srcDoc={buildSimulatorSrcDoc(s.html)}
+                            className="border-none absolute top-0 left-0 pointer-events-none"
+                            style={{
+                              width: '1280px', height: '800px',
+                              transform: 'scale(0.12)',
+                              transformOrigin: 'top left',
+                            }}
+                            sandbox="allow-scripts"
+                          />
+                        ) : (
+                          <div className="flex items-center justify-center h-full text-[9px] text-on-surface-variant/30 italic">
+                            No preview
+                          </div>
+                        )}
+                      </div>
+                      {/* Label + flow counts */}
+                      <div className="px-2.5 py-2 flex items-center justify-between">
+                        <span className={`text-[10px] font-semibold truncate max-w-[60%] ${
+                          isActive ? 'text-primary' : 'text-on-surface'
+                        }`}>
                           {s.name || s.id}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="flex gap-1.5 pt-0.5">
-                      <button
-                        onClick={() => { addFlow(newFlowTarget); setNewFlowSourceText(''); }}
-                        disabled={!newFlowTarget || !newFlowSourceText.trim()}
-                        className="flex-1 text-[10px] bg-primary text-white rounded-lg px-2.5 py-1.5 font-semibold cursor-pointer disabled:opacity-30 transition-opacity"
-                      >
-                        确认添加
-                      </button>
-                      <button
-                        onClick={() => { setIsAddingFlow(false); setNewFlowSourceText(''); }}
-                        className="text-[10px] bg-surface-container-high text-on-surface-variant rounded-lg px-2.5 py-1.5 cursor-pointer hover:text-on-surface transition-colors"
-                      >
-                        取消
-                      </button>
-                    </div>
-                  </div>
-                )}
+                        </span>
+                        <span className="text-[9px] text-on-surface-variant/40 shrink-0 flex gap-1">
+                          {outCount > 0 && <span className="text-blue-500/70">出{outCount}</span>}
+                          {inCount > 0 && <span className="text-green-500/70">入{inCount}</span>}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
 
-                {activeFlows.length === 0 && !isAddingFlow ? (
-                  <p className="text-xs text-on-surface-variant/50 italic px-1">{t('No outbound flows inferred for this screen')}</p>
-                ) : (
-                  <div className="space-y-2">
-                    {activeFlows.map((f: any, idx: number) => {
-                      const targetScreen = screens.find((s) => s.id === f.to);
-                      const isManual = f.status === 'approved';
-                      return (
-                        <div
-                          key={idx}
-                          className="relative group"
-                        >
-                          <button
-                            onClick={() => navigateTo(f.to)}
-                            className="w-full text-left p-2.5 pr-7 rounded-xl border border-outline/30 bg-surface-container-low hover:border-primary/40 hover:bg-surface-bright transition-all text-xs flex flex-col gap-1 text-on-surface hover:text-primary cursor-pointer"
-                          >
-                            <span className="font-semibold text-primary group-hover:underline">
-                              {isManual && '✏️ '}{t('Transition to:')} {targetScreen?.name || f.to}
-                            </span>
-                            <span className="text-[10px] text-on-surface-variant/60 font-medium">
-                              {t('Inference Rule:')} {f.reason}
-                            </span>
-                          </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); deleteFlow(idx); }}
-                            className="absolute top-1.5 right-1.5 p-0.5 rounded-full hover:bg-red-100 text-on-surface-variant/30 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100 cursor-pointer"
-                            title="删除此连线"
-                          >
-                            <X size={11} />
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
               </div>
             </div>
 
@@ -814,14 +724,14 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
               {t('Logic Connections Chart')}
             </h4>
             
-            {payload?.flows?.length === 0 ? (
+            {mutableFlows.length === 0 ? (
               <div className="text-center py-8">
                 <HelpCircle size={32} className="text-on-surface-variant/30 mx-auto mb-2" />
                 <p className="text-xs text-on-surface-variant/50 italic">{t('No page navigation links could be inferred from current screens')}</p>
               </div>
             ) : (
               <div className="space-y-3 max-h-[360px] overflow-auto pr-2">
-                {payload?.flows?.map((f: any, idx: number) => {
+                {mutableFlows.map((f: any, idx: number) => {
                   const fromScreen = screens.find(s => s.id === f.from);
                   const toScreen = screens.find(s => s.id === f.to);
                   return (
@@ -843,6 +753,73 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
           </div>
         )}
       </div>
+
+      {/* Hot Zone Context Menu */}
+      {contextMenu && (
+        <div className="fixed inset-0 z-50" onClick={() => setContextMenu(null)}>
+          <div
+            ref={contextMenuRef}
+            className="absolute bg-surface border border-outline/50 rounded-xl shadow-lg p-1.5 min-w-[170px] max-h-[320px] overflow-y-auto"
+            style={{ left: contextMenu.x, top: contextMenu.y }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-on-surface-variant/50 mb-0.5">
+              热区: {contextMenu.elementText}
+            </div>
+            {contextMenu.flow ? (
+              <>
+                <button
+                  onClick={() => { navigateTo(contextMenu.flow!.to); setContextMenu(null); }}
+                  className="w-full text-left px-2 py-1.5 text-[10px] rounded-md hover:bg-primary/10 text-primary font-semibold transition-colors cursor-pointer flex items-center gap-1.5"
+                >
+                  <ArrowRight size={10} />
+                  跳转到 {screens.find(s => s.id === contextMenu.flow!.to)?.name || contextMenu.flow!.to}
+                </button>
+                <div className="border-t border-outline/20 my-1" />
+                <div className="px-1.5 py-0.5 text-[8px] uppercase tracking-wider text-on-surface-variant/40">
+                  更改目标页面
+                </div>
+                {screens.filter(s => s.id !== activeScreenId).slice(0, 6).map(s => (
+                  <button
+                    key={s.id}
+                    onClick={() => { editFlowTarget(contextMenu.flow!, s.id); navigateTo(s.id); }}
+                    className={`w-full text-left px-2 py-1 text-[10px] rounded-md transition-colors cursor-pointer ${
+                      contextMenu.flow!.to === s.id
+                        ? 'bg-primary/10 text-primary font-semibold'
+                        : 'hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface'
+                    }`}
+                  >
+                    {s.name || s.id} {contextMenu.flow!.to === s.id && '✓'}
+                  </button>
+                ))}
+                <div className="border-t border-outline/20 my-1" />
+                <button
+                  onClick={() => deleteFlow(contextMenu.flow!)}
+                  className="w-full text-left px-2 py-1.5 text-[10px] rounded-md hover:bg-red-50 text-red-500 transition-colors cursor-pointer flex items-center gap-1.5"
+                >
+                  <X size={10} />
+                  删除此交互
+                </button>
+              </>
+            ) : (
+              <div className="space-y-0.5">
+                <div className="px-1.5 py-0.5 text-[8px] uppercase tracking-wider text-on-surface-variant/40">
+                  新增交互 → 选择目标
+                </div>
+                {screens.filter(s => s.id !== activeScreenId).slice(0, 6).map(s => (
+                  <button
+                    key={s.id}
+                    onClick={() => { addFlowForElement(contextMenu.elementText, s.id); navigateTo(s.id); }}
+                    className="w-full text-left px-2 py-1 text-[10px] rounded-md hover:bg-primary/10 text-on-surface hover:text-primary transition-colors cursor-pointer"
+                  >
+                    → {s.name || s.id}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Developer Debug Panel */}
       {payload && (
