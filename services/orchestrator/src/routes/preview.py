@@ -23,6 +23,7 @@ class Board(BaseModel):
 class PreviewRequest(BaseModel):
     boards: List[Board]
     state_definitions: Dict[str, Dict[str, Any]] = {}
+    preview_options: Dict[str, Any] | None = None
 
 
 class TraversalRequest(BaseModel):
@@ -39,7 +40,7 @@ class HandoffRequest(BaseModel):
 async def preview(req: PreviewRequest) -> Dict[str, Any]:
     # Convert pydantic models to plain dicts for the prototype generator
     boards = [b.dict() for b in req.boards]
-    payload = build_preview_payload(boards, req.state_definitions)
+    payload = build_preview_payload(boards, req.state_definitions, req.preview_options)
     return payload
 
 

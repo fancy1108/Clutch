@@ -112,12 +112,69 @@ def inject_ui_and_business_states(component_tree: Dict[str, Any], state_definiti
 
 
 # Lightweight helper to build a sample flow preview payload
-def build_preview_payload(boards: List[Dict[str, Any]], state_definitions: Dict[str, Any]) -> Dict[str, Any]:
-    flows = extract_flows_from_boards(boards)
-    # pick first board as sample component tree placeholder
-    sample_tree = boards[0] if boards else {'id': 'empty', 'elements': []}
-    transformed = inject_ui_and_business_states(sample_tree, state_definitions)
-    return {
-        'flows': flows,
-        'transformed_sample': transformed,
+def _apply_extreme_mode(component: Dict[str, Any]) -> Dict[str, Any]:
+    """Return a copy of component with extreme data injected for stress testing.
+
+    Replaces short texts with very long strings and small numbers with huge values to simulate overflow.
+    This is intentionally simple for PoC.
+    """
+    comp = dict(component)
+    elements = comp.get('elements', [])
+    new_elements = []
+    for el in elements:
+        copy = dict(el)
+        text = str(copy.get('text', ''))
+        # replace with long token
+        if text:
+            copy['text'] = text + ' ' + ('_LONGTEXT_' * 20)
+        # numeric extreme
+        if copy.get('type') in ('number', 'metric') or re.search(r"\d", str(copy.get('text',''))):
+            copy['text'] = '9999999999.99'
+        new_elements.append(copy)
+    comp['elements'] = new_elements
+    return comp
+
+
+def build_preview_payload(boards: List[Dict[str, Any]], state_definitions: Dict[str, Any], preview_options: Dict[str, Any] | None = None) -> Dict[str, Any]:
+    """Build preview payload.
+
+    preview_options (optional): {
+      'extreme': bool,
+      'viewports': ['2560','1440','390']
     }
+
+    Returns flows and transformed samples. If viewports provided, returns 'matrix' mapping viewport->sample.
+    """
+    flows = extract_flows_from_boards(boards)
+    preview_options = preview_options or {}
+    extreme = bool(preview_options.get('extreme'))
+    viewports = preview_options.get('viewports') or []
+
+    # base sample (use first board as placeholder)
+    sample_tree = boards[0] if boards else {'id': 'empty', 'elements': []}
+
+    # transformed sample for default viewport
+    transformed = inject_ui_and_business_states(sample_tree, state_definitions)
+
+    result: Dict[str, Any] = {'flows': flows, 'transformed_sample': transformed}
+
+    # matrix mode: produce per-viewport transformed samples (conceptual; real responsive rendering is frontend)
+    if viewports:
+        matrix: Dict[str, Dict[str, Any]] = {}
+        for vp in viewports:
+            # apply extreme modifications first if requested
+            comp = sample_tree
+            if extreme:
+                comp = _apply_extreme_mode(sample_tree)
+            # annotate with viewport hint so frontend can simulate css constraints
+            comp_v = dict(comp)
+            comp_v['__viewport'] = vp
+            matrix[vp] = inject_ui_and_business_states(comp_v, state_definitions)
+        result['matrix'] = matrix
+
+    # also return an 'extreme_sample' for quick inspection
+    if extreme:
+        extreme_sample = inject_ui_and_business_states(_apply_extreme_mode(sample_tree), state_definitions)
+        result['extreme_sample'] = extreme_sample
+
+    return result
