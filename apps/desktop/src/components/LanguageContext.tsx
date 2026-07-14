@@ -1096,6 +1096,14 @@ const zhTranslations: Record<string, string> = {
   "Change target page": "更改目标页面",
   "Delete this interaction": "删除此交互",
   "New interaction → Select target": "新增交互 → 选择目标",
+
+  // Prototype state banners (generic, not page-specific)
+  "Form input processing may be delayed": "表单输入处理可能延迟",
+  "Data metrics loading slowly": "数据指标加载延迟",
+  "Page data is loading slowly": "页面数据加载较慢",
+  "Validation failed, please check and try again": "输入校验失败，请检查后重试",
+  "Data service connection timeout": "数据服务连接超时",
+  "Request failed, please try again later": "请求失败，请稍后重试",
 };
 
 

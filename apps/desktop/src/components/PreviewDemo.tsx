@@ -272,11 +272,11 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
         banner.className = 'clutch-preview-banner';
         banner.style.cssText = 'background:#fffbeb; border:1px solid #f59e0b; padding:8px 12px; border-radius:8px; margin-bottom:12px; font-size:10px; color:#b45309; font-weight:500; display:flex; align-items:center; gap:6px; box-shadow:0 1px 2px rgba(0,0,0,0.05);';
         if (inputs.length > 0) {
-          banner.innerHTML = '<span>⚠️</span> <span>连接较慢，输入可能延迟提交 (Slow connection warning)</span>';
+          banner.innerHTML = '<span>⚠️</span> <span>' + t('Form input processing may be delayed') + '</span>';
         } else if (metrics.length > 0) {
-          banner.innerHTML = '<span>⚠️</span> <span>部分数据指标同步延迟 (Metrics sync warning)</span>';
+          banner.innerHTML = '<span>⚠️</span> <span>' + t('Data metrics loading slowly') + '</span>';
         } else {
-          banner.innerHTML = '<span>⚠️</span> <span>当前业务数据加载较慢 (Slow response warning)</span>';
+          banner.innerHTML = '<span>⚠️</span> <span>' + t('Page data is loading slowly') + '</span>';
         }
         container.insertBefore(banner, container.firstChild);
       } else if (state === 'Critical') {
@@ -284,15 +284,15 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
         banner.className = 'clutch-preview-banner';
         banner.style.cssText = 'background:#fff1f2; border:1px solid #f43f5e; padding:8px 12px; border-radius:8px; margin-bottom:12px; font-size:10px; color:#b91c1c; font-weight:500; display:flex; align-items:center; gap:6px; box-shadow:0 1px 2px rgba(0,0,0,0.05);';
         if (inputs.length > 0) {
-          banner.innerHTML = '<span>❌</span> <span>用户名或密码验证错误，请重试 (Verification failed)</span>';
+          banner.innerHTML = '<span>❌</span> <span>' + t('Validation failed, please check and try again') + '</span>';
           inputs.forEach(input => {
             (input as HTMLElement).style.borderColor = '#f43f5e';
             (input as HTMLElement).style.boxShadow = '0 0 0 1px #f43f5e';
           });
         } else if (metrics.length > 0) {
-          banner.innerHTML = '<span>❌</span> <span>数据库连接超时，服务暂时不可用 (Database Timeout 500)</span>';
+          banner.innerHTML = '<span>❌</span> <span>' + t('Data service connection timeout') + '</span>';
         } else {
-          banner.innerHTML = '<span>❌</span> <span>权限验证失败，会话已过期 (Unauthorized 401)</span>';
+          banner.innerHTML = '<span>❌</span> <span>' + t('Request failed, please try again later') + '</span>';
         }
         container.insertBefore(banner, container.firstChild);
       }
