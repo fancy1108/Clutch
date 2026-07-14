@@ -52,6 +52,17 @@
   - `services/orchestrator/src/prototype_generator.py` — Upgraded regex tokenizer for Chinese range normalization and substring overlapping matches.
 
 ### Design vision model fallback degradation ✅
+
+### Preview Demo scrollbar + i18n fix ✅
+- **日期：** 2026-07-14
+- **Commit：** `d15143c` — `fix(preview-demo): fix scrollbar hidden by thumbnails + hardcoded Chinese in en mode`
+- **Verification：** `./scripts/verify.sh` → 731 pytest passed (1 pre-existing keychain), 130 vitest passed, doc-drift zero; `pnpm build` success
+- **证据：** `—`
+- **交付文件：**
+  - `apps/desktop/src/components/PreviewDemo.tsx` — 滚动容器 pr-0.5→pr-2 修复滚动条被 iframe 遮盖；9 处硬编码中文（出N入N、可点击、热区、跳转到、更改目标页面、删除此交互、新增交互等）替换为 t() 国际化调用
+  - `apps/desktop/src/components/LanguageContext.tsx` — zhTranslations 新增 11 条 PreviewDemo 相关翻译条目
+
+### Design vision model fallback degradation ✅
 - **日期：** 2026-07-13
 - **Commit：** `e92961f` — `fix: design iteration generating login page instead of requested landing page`
 - **Verification：** `./scripts/verify.sh` → all checks passed (723 python tests, check-doc-drift passed); 4 new vision fallback unit tests pass.

@@ -11,6 +11,7 @@
 - **Verify：** `./scripts/verify.sh` → 731 python tests + doc-drift passed（1 预存 keychain ACL 失败）
 - **Preflight：** `./scripts/release-preflight.sh v1.2.6` → passed
 - **一键原型 PRD：** Phase 1 IUE 已交付（`cc17c65`）
+- **Preview Demo 修复：** 滚动条 pr-0.5→pr-2；9 处中文硬编码→t() 国际化（`d15143c`）
 
 ## Next Actions
 
