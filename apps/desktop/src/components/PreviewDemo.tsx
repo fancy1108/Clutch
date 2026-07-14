@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Layers, Tv, Activity, HelpCircle, CheckCircle, ChevronDown, ArrowLeft, ArrowRight, X, Plus, Edit, Pencil } from 'lucide-react';
+import { Layers, Tv, Activity, HelpCircle, CheckCircle, ChevronDown, ArrowLeft, ArrowRight, X, Plus, Edit, Pencil, Code } from 'lucide-react';
 import StateController from './StateController';
 import MatrixPreview from './MatrixPreview';
 import { DesignScreen } from '../services/designApi';
@@ -662,6 +662,22 @@ export default function PreviewDemo({ screens, sessionRunId }: PreviewDemoProps)
     setContextMenu(null);
   };
 
+  const [generatingCode, setGeneratingCode] = useState(false);
+  const generateCode = async () => {
+    if (!sessionRunId) return;
+    setGeneratingCode(true);
+    try {
+      const url = sidecarHttpUrl(`/api/design/sessions/${encodeURIComponent(sessionRunId)}/generate-code/write`);
+      const r = await sidecarFetch(url, { method: 'POST' });
+      const data = await r.json();
+      alert(`✅ 代码已生成！\n\n${data.written} 个文件 → ${data.path}\n\ncd generated && npm install && npm run dev`);
+    } catch (e) {
+      alert('代码生成失败: ' + String(e));
+    } finally {
+      setGeneratingCode(false);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full bg-surface-dim rounded-[20px] overflow-hidden border border-outline/40">
       {/* State & Configuration Bar */}
@@ -716,6 +732,17 @@ export default function PreviewDemo({ screens, sessionRunId }: PreviewDemoProps)
             />
             <span>{t('Extreme Mode')}</span>
           </label>
+          {sessionRunId && (
+            <button
+              onClick={generateCode}
+              disabled={generatingCode}
+              className="px-2.5 py-1 text-[10px] font-semibold rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors cursor-pointer disabled:opacity-40 flex items-center gap-1"
+              title="从交互契约生成 React 代码"
+            >
+              <Code size={11} />
+              {generatingCode ? '生成中…' : '生成代码'}
+            </button>
+          )}
         </div>
       </div>
 

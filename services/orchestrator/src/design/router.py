@@ -363,3 +363,53 @@ async def save_interaction_contract(run_id: str, body: SaveContractRequest) -> d
     tmp.write_text(_json.dumps(contract, ensure_ascii=False, indent=2), encoding="utf-8")
     tmp.replace(path)
     return {"saved": True, "count": len(body.flows), "path": str(path)}
+
+# ---- Code generation ----
+class GenerateCodeRequest(BaseModel):
+    framework: str = Field(default="react")
+
+
+@router.post("/sessions/{run_id}/generate-code")
+async def generate_code(run_id: str, body: GenerateCodeRequest = GenerateCodeRequest()) -> dict[str, Any]:
+    """Generate framework code from the interaction contract."""
+    from src.codegen import generate_react_app
+
+    try:
+        files = generate_react_app(run_id)
+        return {
+            "framework": body.framework,
+            "files": files,
+            "file_count": len(files),
+            "entry": "index.tsx",
+            "instructions": "cd <output-dir> && npm install && npm run dev",
+        }
+    except OSError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.post("/sessions/{run_id}/generate-code/write")
+async def write_generated_code(run_id: str) -> dict[str, Any]:
+    """Generate code and write to session directory for Files panel access."""
+    from src.codegen import generate_react_app
+
+    try:
+        files = generate_react_app(run_id)
+        sdir = _session_dir(run_id)
+        out_dir = sdir / "generated"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        for filename, content in files.items():
+            fpath = out_dir / filename
+            fpath.parent.mkdir(parents=True, exist_ok=True)
+            fpath.write_text(content, encoding="utf-8")
+        return {
+            "written": len(files),
+            "path": str(out_dir),
+            "entry": str(out_dir / "index.tsx"),
+            "instructions": "cd generated && npm install && npm run dev",
+        }
+    except OSError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
