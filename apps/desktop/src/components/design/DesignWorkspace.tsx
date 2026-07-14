@@ -504,8 +504,26 @@ function DesignCanvasInner({
         }
         node.selected = node.id === selectedId;
       }
-      // Dedup: skip setNodes/setEdges if nothing changed (prevents jitter from double calls)
-      const fingerPrint = built.map((n) => `${n.id}@${n.position.x},${n.position.y}:${(n.data as any)?.phase || ''}:${Boolean((n.data as any)?.html) ? 1 : 0}`).join('|');
+      // Dedup: skip setNodes/setEdges if nothing changed (prevents jitter from double calls).
+      // Must include pick/selection/preview fields — omitting them blocks Pick mode updates
+      // (same id+pos+phase+html presence → early return leaves iframe pointer-events-none).
+      const fingerPrint = built
+        .map((n) => {
+          const d = n.data as UiData;
+          const html = d?.html || '';
+          return [
+            n.id,
+            n.position.x,
+            n.position.y,
+            d?.phase || '',
+            html.length,
+            d?.pickMode ? 1 : 0,
+            d?.selectedElementPath || '',
+            d?.previewSrc || '',
+            n.selected ? 1 : 0,
+          ].join('@');
+        })
+        .join('|');
       if (fingerPrint === lastNodeFingerprintRef.current) return;
       lastNodeFingerprintRef.current = fingerPrint;
       setNodes(built);

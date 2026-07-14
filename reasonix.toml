@@ -1,2 +1,7 @@
 [permissions]
 allow = ["Bash(mkdir -p:*)"]
+
+
+[agent]
+plan_mode_read_only_commands = ["git -C"]
+
