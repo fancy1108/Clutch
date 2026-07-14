@@ -35,7 +35,14 @@ def _extract_simple_params_from_text(text: str) -> Dict[str, Any]:
 
 
 def _normalize_words(s: str) -> List[str]:
-    return re.findall(r"[a-zA-Z0-9]+", (s or "").lower())
+    words = re.findall(r"[a-zA-Z0-9]+", (s or "").lower())
+    # naive singularization: include singular form for trailing 's' to improve overlap matching
+    augmented: List[str] = []
+    for w in words:
+        augmented.append(w)
+        if w.endswith('s') and len(w) > 3:
+            augmented.append(w[:-1])
+    return augmented
 
 
 def extract_flows_from_boards(boards: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
