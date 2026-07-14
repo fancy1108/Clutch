@@ -850,11 +850,7 @@ export default function PreviewDemo({ screens, sessionRunId }: PreviewDemoProps)
                       ({navigationIndex + 1}/{navigationStack.length})
                     </span>
                   )}
-                  {clickableCount > 0 && (
-                    <span className="text-[9px] text-blue-500/70 font-medium ml-1 bg-blue-50 dark:bg-blue-950/40 px-1.5 py-0.5 rounded-full">
-                      {clickableCount} {t('clickable')}
-                    </span>
-                  )}
+
                 </div>
                 {/* Pencil in center between nav and device selector */}
                 <button
@@ -869,18 +865,21 @@ export default function PreviewDemo({ screens, sessionRunId }: PreviewDemoProps)
                   <Pencil size={13} />
                 </button>
                 {sessionRunId && (
-                  <button
-                    onClick={generateCode}
-                    disabled={generatingCode}
-                    className={`p-1 rounded-md transition-all cursor-pointer shrink-0 ${
-                      generatingCode
-                        ? 'text-primary/40'
-                        : 'text-on-surface-variant/40 hover:text-on-surface-variant hover:bg-surface-container-high'
-                    }`}
-                    title="生成 React 代码"
-                  >
-                    <Code size={13} />
-                  </button>
+                  <>
+                    <span className="text-on-surface-variant/20 text-[10px] select-none mx-0.5">→</span>
+                    <button
+                      onClick={generateCode}
+                      disabled={generatingCode}
+                      className={`p-1 rounded-md transition-all cursor-pointer shrink-0 ${
+                        generatingCode
+                          ? 'text-primary/40'
+                          : 'text-on-surface-variant/40 hover:text-on-surface-variant hover:bg-surface-container-high'
+                      }`}
+                      title="生成 React 代码"
+                    >
+                      <Code size={13} />
+                    </button>
+                  </>
                 )}
                 {/* Device Mode Selector */}
                 <div className="flex bg-surface-container p-0.5 rounded-lg border border-outline/40 text-[10px]">
@@ -1200,8 +1199,8 @@ export default function PreviewDemo({ screens, sessionRunId }: PreviewDemoProps)
       {/* Code Generation Result Modal */}
       {codeGenResult && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/30" onClick={() => setCodeGenResult(null)}>
-          <div className="bg-surface border border-outline/40 rounded-2xl shadow-xl p-5 max-w-sm w-full mx-4" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-3">
+          <div className="bg-surface border border-outline/40 rounded-2xl shadow-xl p-5 max-w-xs w-full mx-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
               <h3 className="text-xs font-bold text-on-surface flex items-center gap-1.5">
                 <Code size={14} className="text-primary" />
                 代码已生成
@@ -1210,11 +1209,16 @@ export default function PreviewDemo({ screens, sessionRunId }: PreviewDemoProps)
                 <X size={14} />
               </button>
             </div>
-            <p className="text-[10px] text-on-surface-variant/70 mb-3 leading-relaxed">
-              {codeGenResult.written} 个文件已写入<br />
-              <code className="text-[9px] bg-surface-container px-1.5 py-0.5 rounded text-on-surface-variant/60 mt-1 inline-block max-w-full truncate">{codeGenResult.path}</code>
+            <p className="text-[10px] text-on-surface-variant/60 text-center mb-4 leading-relaxed">
+              {codeGenResult.written} 个文件已生成，可以打开文件夹查看，或移入项目让 AI 接手后续开发。
             </p>
             <div className="space-y-1.5">
+              <button
+                onClick={() => setCodeGenResult(null)}
+                className="w-full text-center px-3 py-2 text-[10px] font-semibold rounded-lg border border-outline/30 text-on-surface-variant hover:bg-surface-container-high transition-colors cursor-pointer"
+              >
+                📂 打开文件夹
+              </button>
               <button
                 onClick={async () => {
                   try {
@@ -1224,9 +1228,9 @@ export default function PreviewDemo({ screens, sessionRunId }: PreviewDemoProps)
                     alert(`✅ 已复制 ${d.copied} 个文件到 ${d.to}`);
                   } catch(e) { alert('复制失败: '+String(e)); }
                 }}
-                className="w-full text-left px-3 py-2 text-[10px] font-semibold rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors cursor-pointer flex items-center gap-1.5"
+                className="w-full text-center px-3 py-2 text-[10px] font-semibold rounded-lg border border-outline/30 text-on-surface-variant hover:bg-surface-container-high transition-colors cursor-pointer"
               >
-                <Code size={10} /> 移入当前项目
+                📦 移入项目
               </button>
               <button
                 onClick={async () => {
@@ -1234,14 +1238,11 @@ export default function PreviewDemo({ screens, sessionRunId }: PreviewDemoProps)
                   setCopyingPrompt(true);
                   setTimeout(() => setCopyingPrompt(false), 1500);
                 }}
-                className="w-full text-left px-3 py-2 text-[10px] font-semibold rounded-lg bg-surface-container-high text-on-surface hover:bg-surface-container-high/80 transition-colors cursor-pointer flex items-center gap-1.5"
+                className="w-full text-center px-3 py-2 text-[10px] font-semibold rounded-lg bg-on-surface text-surface hover:bg-on-surface/90 transition-colors cursor-pointer"
               >
-                {copyingPrompt ? '✓ 已复制' : '📋 复制 AI 提示词'}
+                {copyingPrompt ? '✓ 已复制' : '📋 一键复制提示词'}
               </button>
             </div>
-            <p className="text-[9px] text-on-surface-variant/40 mt-3 leading-relaxed">
-              复制提示词后，粘贴给 AI 即可让它接手：安装依赖、配置路由、整合组件。
-            </p>
           </div>
         </div>
       )}
