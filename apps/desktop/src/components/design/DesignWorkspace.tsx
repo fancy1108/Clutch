@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   ReactFlow,
   Background,
@@ -1841,37 +1842,42 @@ export const DesignWorkspace: React.FC<DesignWorkspaceProps> = (props) => {
   }
 
   return (
-    <div className="relative h-full min-h-0 overflow-hidden bg-[#f7f7f8] font-sans" data-testid="design-workspace">
-      {showPreviewDemo && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center p-8 bg-black/30">
-          <div className="max-w-3xl w-full bg-white rounded-xl shadow-lg p-4 overflow-auto max-h-[90vh]">
-            <div className="flex justify-end mb-2">
-              <button type="button" className="rounded px-2 py-1 text-sm text-neutral-600 hover:text-neutral-900" onClick={() => setShowPreviewDemo(false)}>✕ Close</button>
+    <>
+      <div className="relative h-full min-h-0 overflow-hidden bg-[#f7f7f8] font-sans" data-testid="design-workspace">
+        {showPreviewDemo && (
+          <div className="fixed inset-0 z-50 flex items-start justify-center p-8 bg-black/30">
+            <div className="max-w-3xl w-full bg-white rounded-xl shadow-lg p-4 overflow-auto max-h-[90vh]">
+              <div className="flex justify-end mb-2">
+                <button type="button" className="rounded px-2 py-1 text-sm text-neutral-600 hover:text-neutral-900" onClick={() => setShowPreviewDemo(false)}>✕ Close</button>
+              </div>
+              <PreviewDemo />
             </div>
-            <PreviewDemo />
           </div>
-        </div>
-      )}
-      <div
-        className="pointer-events-none absolute inset-0 opacity-70"
-        style={{
-          backgroundImage: 'radial-gradient(circle, #d4d4d8 1px, transparent 1px)',
-          backgroundSize: '18px 18px',
-        }}
-      />
-      <ReactFlowProvider>
-        <DesignCanvasInner {...props} />
-      </ReactFlowProvider>
+        )}
+        <div
+          className="pointer-events-none absolute inset-0 opacity-70"
+          style={{
+            backgroundImage: 'radial-gradient(circle, #d4d4d8 1px, transparent 1px)',
+            backgroundSize: '18px 18px',
+          }}
+        />
+        <ReactFlowProvider>
+          <DesignCanvasInner {...props} />
+        </ReactFlowProvider>
+      </div>
 
-      {/* Top-level floating button — always visible */}
-      <button
-        type="button"
-        onClick={() => setShowPreviewDemo(true)}
-        className="fixed right-6 bottom-6 z-40 inline-flex items-center gap-2 rounded-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 shadow-lg transition-colors"
-      >
-        <Code2 size={16} />
-        <span className="text-sm font-medium">Preview Demo</span>
-      </button>
-    </div>
+      {/* Portal: Floating button outside overflow-hidden parent */}
+      {createPortal(
+        <button
+          type="button"
+          onClick={() => setShowPreviewDemo(true)}
+          className="fixed right-6 bottom-6 z-40 inline-flex items-center gap-2 rounded-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 shadow-lg transition-colors"
+        >
+          <Code2 size={16} />
+          <span className="text-sm font-medium">Preview Demo</span>
+        </button>,
+        document.body
+      )}
+    </>
   );
 };
