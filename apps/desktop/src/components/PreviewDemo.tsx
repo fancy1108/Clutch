@@ -374,8 +374,22 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
       }
 
       let injected = 0;
-      const sel = 'button, a, [role="button"], input[type="submit"], input[type="button"]';
+      // Edit mode: also include nav items, menu items, list items, divs with text
+      const sel = editMode
+        ? 'button, a, [role="button"], input[type="submit"], input[type="button"], li, [class*="menu"], [class*="nav"], [class*="sidebar"] a, [class*="sidebar"] li, nav *'
+        : 'button, a, [role="button"], input[type="submit"], input[type="button"]';
+      const seen = new Set<HTMLElement>();
       doc.querySelectorAll(sel).forEach((el) => {
+        // In edit mode, skip tiny/invisible elements and nested children of already-seen
+        if (editMode) {
+          const htmlEl = el as HTMLElement;
+          const rect = htmlEl.getBoundingClientRect();
+          if (rect.width < 20 || rect.height < 10) return; // too small
+          // Check if any ancestor is already processed
+          let p = htmlEl.parentElement;
+          while (p) { if (seen.has(p)) return; p = p.parentElement; }
+          seen.add(htmlEl);
+        }
         const rawText = (el.textContent || (el as HTMLInputElement).value || '').trim();
         if (!rawText) return;
         const rawLower = rawText.toLowerCase();
@@ -409,13 +423,16 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
           e.stopPropagation();
           if (editMode) {
             if (!existingFlow) {
-              // No existing flow → start drag to create new connection
+              // No existing flow → start drag from element CENTER (not mouse position)
               const lc = linesContainerRef.current?.getBoundingClientRect();
+              const ifr = iframeRef.current?.getBoundingClientRect();
+              const elCenterX = ifr ? ifr.left + elRect.left * scale + elRect.width * scale / 2 : e.clientX;
+              const elCenterY = ifr ? ifr.top + elRect.top * scale + elRect.height * scale / 2 : e.clientY;
               setDragLine({
-                fromX: lc ? e.clientX - lc.left : e.clientX,
-                fromY: lc ? e.clientY - lc.top : e.clientY,
-                mouseX: lc ? e.clientX - lc.left : e.clientX,
-                mouseY: lc ? e.clientY - lc.top : e.clientY,
+                fromX: lc ? elCenterX - lc.left : elCenterX,
+                fromY: lc ? elCenterY - lc.top : elCenterY,
+                mouseX: lc ? elCenterX - lc.left : elCenterX,
+                mouseY: lc ? elCenterY - lc.top : elCenterY,
                 sourceElementText: rawText,
                 existingFlow: null,
               });
@@ -492,7 +509,7 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
       }
     }
     setConnectionLines(lines);
-  }, [editMode, activeScreenId, mutableFlows, scale]);
+  }, [editMode, activeScreenId, mutableFlows, scale, clickableCount]);
 
   // Recalculate lines after DOM settles
   useEffect(() => {
