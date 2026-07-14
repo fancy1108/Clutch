@@ -102,6 +102,7 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
     fromX: number; fromY: number; toX: number; toY: number; flow: any;
   }>>([]);
   const linesContainerRef = useRef<HTMLDivElement>(null);
+  const sidebarScrollRef = useRef<HTMLDivElement>(null);
   const [dragLine, setDragLine] = useState<{
     fromX: number; fromY: number;
     mouseX: number; mouseY: number;
@@ -478,13 +479,15 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
     }
     const container = linesContainerRef.current;
     const containerRect = container.getBoundingClientRect();
+    const sidebar = sidebarScrollRef.current;
+    const sidebarRect = sidebar?.getBoundingClientRect();
     const iframe = iframeRef.current;
     const iframeRect = iframe.getBoundingClientRect();
     const doc = iframe.contentDocument;
-    if (!doc) { setConnectionLines([]); return; }
+    if (!doc || !sidebarRect) { setConnectionLines([]); return; }
 
     const outboundFlows = mutableFlows.filter((f: any) => f.from === activeScreenId);
-    const lines: Array<{fromX:number;fromY:number;toX:number;toY:number;flow:any}> = [];
+    const lines: Array<{fromX:number;fromY:number;toX:number;toY:number;flow:any;offscreen?:boolean}> = [];
 
     for (const flow of outboundFlows) {
       const hotZones = doc.querySelectorAll('[data-clutch-clickable]');
@@ -501,9 +504,20 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
         const thumb = document.querySelector(`[data-screen-id="${flow.to}"]`);
         if (thumb) {
           const tr = thumb.getBoundingClientRect();
-          const toX = tr.right - containerRect.left;
-          const toY = tr.top - containerRect.top + tr.height / 2;
-          lines.push({ fromX, fromY, toX, toY, flow });
+          let toX = tr.right - containerRect.left;
+          let toY = tr.top - containerRect.top + tr.height / 2;
+          let offscreen = false;
+          // Clamp Y if target thumbnail is scrolled outside sidebar visible area
+          const sidebarTop = sidebarRect.top - containerRect.top;
+          const sidebarBottom = sidebarRect.bottom - containerRect.top;
+          if (toY < sidebarTop + 10) {
+            toY = sidebarTop + 10;
+            offscreen = true;
+          } else if (toY > sidebarBottom - 10) {
+            toY = sidebarBottom - 10;
+            offscreen = true;
+          }
+          lines.push({ fromX, fromY, toX, toY, flow, offscreen });
         }
         break;
       }
@@ -511,11 +525,24 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
     setConnectionLines(lines);
   }, [editMode, activeScreenId, mutableFlows, scale, clickableCount]);
 
-  // Recalculate lines after DOM settles
+  // Recalculate lines after DOM settles + on sidebar scroll
   useEffect(() => {
     if (!editMode) { setConnectionLines([]); return; }
     const id = requestAnimationFrame(() => calcLines());
-    return () => cancelAnimationFrame(id);
+    // Also recalculate on sidebar scroll
+    const sidebar = sidebarScrollRef.current;
+    let ticking = false;
+    const onScroll = () => {
+      if (!ticking) {
+        requestAnimationFrame(() => { calcLines(); ticking = false; });
+        ticking = true;
+      }
+    };
+    sidebar?.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      cancelAnimationFrame(id);
+      sidebar?.removeEventListener('scroll', onScroll);
+    };
   }, [calcLines, editMode]);
 
   if (screens.length === 0) {
@@ -633,7 +660,7 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
             {/* Simulator Sidebar */}
             <div className="md:col-span-1 bg-surface p-4 border border-outline/35 rounded-2xl flex flex-col gap-4 shadow-xs select-none h-[510px]">
               {/* Screen Thumbnail List */}
-              <div className="flex-1 overflow-auto space-y-2 pr-2">
+              <div ref={sidebarScrollRef} className="flex-1 overflow-auto space-y-2 pr-2">
                 {screens.map(s => {
                   const isActive = s.id === activeScreenId;
                   const outCount = mutableFlows.filter((f: any) => f.from === s.id).length;
@@ -858,17 +885,26 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
                         />
                         <circle cx={line.fromX} cy={line.fromY} r="4" fill="#3b82f6" className="pointer-events-none" />
                         {/* Target circle — draggable to reconnect */}
-                        <circle cx={line.toX} cy={line.toY} r="6" fill="#3b82f6" className="cursor-grab active:cursor-grabbing pointer-events-auto"
-                          onMouseDown={(e) => {
-                            e.stopPropagation();
-                            setDragLine({
-                              fromX: line.fromX, fromY: line.fromY,
-                              mouseX: line.toX, mouseY: line.toY,
-                              sourceElementText: line.flow.source_element_text || '',
-                              existingFlow: line.flow,
-                            });
-                          }}
-                        />
+                        {/* Target endpoint — arrow if offscreen, circle if visible */}
+                        {(line as any).offscreen ? (
+                          <polygon
+                            points={`${line.toX - 5},${line.toY - 5} ${line.toX + 5},${line.toY} ${line.toX - 5},${line.toY + 5}`}
+                            fill="#3b82f6"
+                            className="pointer-events-none"
+                          />
+                        ) : (
+                          <circle cx={line.toX} cy={line.toY} r="6" fill="#3b82f6" className="cursor-grab active:cursor-grabbing pointer-events-auto"
+                            onMouseDown={(e) => {
+                              e.stopPropagation();
+                              setDragLine({
+                                fromX: line.fromX, fromY: line.fromY,
+                                mouseX: line.toX, mouseY: line.toY,
+                                sourceElementText: line.flow.source_element_text || '',
+                                existingFlow: line.flow,
+                              });
+                            }}
+                          />
+                        )}
                         {/* Delete button near midpoint */}
                         <g
                           onClick={() => {
