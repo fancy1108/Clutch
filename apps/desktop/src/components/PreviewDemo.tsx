@@ -881,6 +881,7 @@ ${sessionRunId ? `.clutch/design/sessions/${sessionRunId}/interaction_contract.j
                 </div>
 
                 {/* Toolbar: edit connections + generate code */}
+                <div className="flex-1" />
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => setEditMode(v => !v)}
@@ -895,7 +896,9 @@ ${sessionRunId ? `.clutch/design/sessions/${sessionRunId}/interaction_contract.j
                     <span>{t('Connections')}</span>
                   </button>
                   {sessionRunId && (
-                    <button
+                    <>
+                      <span className="text-on-surface-variant/25 text-[11px] select-none mx-0.5">→</span>
+                      <button
                       onClick={generateCode}
                       disabled={generatingCode}
                       className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-all cursor-pointer shrink-0 ${
@@ -908,6 +911,7 @@ ${sessionRunId ? `.clutch/design/sessions/${sessionRunId}/interaction_contract.j
                       <Code size={11} />
                       <span>{t('Code')}</span>
                     </button>
+                    </>
                   )}
                 </div>
 
