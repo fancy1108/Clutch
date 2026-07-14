@@ -17,18 +17,19 @@ Clutch is a **desktop app** (Tauri + React) for developers and technical operato
 |---|---|
 | **Stack** | Tauri 2 · React 19 · FastAPI + LangGraph · local-first (`localhost:8123`) |
 | **License** | See [LICENSE](LICENSE) |
-| **Latest release** | [v1.2.6](https://github.com/fancy1108/Clutch/releases/tag/v1.2.6) · [Changelog](CHANGELOG.md#126---2026-07-13) |
+| **Latest release** | [v1.2.7](https://github.com/fancy1108/Clutch/releases/tag/v1.2.7) · [Changelog](CHANGELOG.md#127---2026-07-14) |
 
-### What's new in v1.2.6
+### What's new in v1.2.7
 
-- **CSP Inline Script Fix:** Allowed `'unsafe-inline'` script-src in Tauri production configurations to permit the picking logic to run inside local preview iframes.
-- **Design Presets Packaging (v1.2.5):** Bundled the `presets/` directory in the sidecar build so system style specs (like Claude, linear) are available in production.
-- **Ready Mode Interaction (Prototype) (v1.2.4):** Unlocked hover and typing interactions inside design preview iframes.
-- **Computed CSS Scraper Bypass (v1.2.4):** Dynamic computed variables scan to bypass CORS limitations on external stylesheets.
+- **Interactive Prototype Engine:** Automatically infers navigation flows between design screens and generates a clickable, navigable prototype with browser-style back/forward history.
+- **Visual Connection Editor:** Dual-mode (preview/edit) with SVG connection lines, drag-to-connect, and drag-to-create for visually editing page interactions.
+- **IUE (Interaction Understanding Engine):** 6-stage AI pipeline that classifies UI elements, matches navigation targets, scores confidence, and generates reasoning in Chinese.
+- **Interaction Contract Persistence:** Auto-saves all user-edited flows to `.clutch/design/sessions/<id>/interaction_contract.json` — survives app restart.
+- **React Code Generation:** One-click generation of a complete Vite + React 19 + Tailwind 4 project from the interaction contract, with AI prompt for handoff.
 
-> **v1.2.6 ships macOS + Windows.** macOS: Apple Silicon DMG + in-app updater. Windows: MSI/NSIS. Sidecar hotpatch assets published separately.
+> **v1.2.7 ships macOS + Windows.** macOS: Apple Silicon DMG + in-app updater. Windows: MSI/NSIS. Sidecar hotpatch assets published separately.
 
-Older releases (v1.2.2 Windows parity, v1.2.1 hotpatch client, v1.2.0 Design/ZCode, …): [`CHANGELOG.md`](CHANGELOG.md) · [`docs/releases/`](docs/releases/).
+Older releases (v1.2.6 CSP fix, v1.2.5 Design presets, v1.2.4 prototype unlock, …): [`CHANGELOG.md`](CHANGELOG.md) · [`docs/releases/`](docs/releases/).
 
 ---
 
@@ -55,7 +56,7 @@ brew install --cask clutch
 irm https://raw.githubusercontent.com/fancy1108/Clutch/main/scripts/install.ps1 | iex
 ```
 
-Pin a version: `CLUTCH_VERSION=v1.2.6` before running either script (or `v1.2.5` / `v1.2.4` / `v1.2.3` / `v1.2.2` / `v1.2.1` / `v1.1.1` for older releases).
+Pin a version: `CLUTCH_VERSION=v1.2.7` before running either script (or `v1.2.5` / `v1.2.4` / `v1.2.3` / `v1.2.2` / `v1.2.1` / `v1.1.1` for older releases).
 
 Install channels (maintainers): [`docs/RELEASE_MAINTAINER.md`](docs/RELEASE_MAINTAINER.md)
 
