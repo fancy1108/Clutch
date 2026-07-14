@@ -1237,32 +1237,6 @@ ${sessionRunId ? `.clutch/design/sessions/${sessionRunId}/interaction_contract.j
             </p>
             <div className="flex gap-2">
               <button
-                onClick={openFolder}
-                className="flex-1 text-center px-2 py-1.5 text-[10px] font-semibold rounded-lg border border-outline/40 text-on-surface-variant hover:bg-surface-container-high transition-colors cursor-pointer"
-              >
-                {pathCopied ? 'Copied' : 'Copy Path'}
-              </button>
-              <button
-                onClick={async () => {
-                  try {
-                    const url = sidecarHttpUrl(`/api/design/sessions/${encodeURIComponent(sessionRunId!)}/generate-code/copy-to-project`);
-                    const r = await sidecarFetch(url, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({}) });
-                    const d = await r.json();
-                    if (!r.ok) { alert('Copy failed: ' + (d.detail || r.statusText)); return; }
-                    setMovedToProject(true);
-                    setMovedToPath(d.to || '');
-                    window.dispatchEvent(new CustomEvent('clutch-files-reveal', {detail: {path: 'generated'}}));
-                  } catch(e) { alert('Copy failed: '+String(e)); }
-                }}
-                className={`flex-1 text-center px-2 py-1.5 text-[10px] font-semibold rounded-lg border border-outline/40 transition-colors cursor-pointer ${
-                  movedToProject
-                    ? 'bg-green-50 text-green-600 border-green-200'
-                    : 'text-on-surface-variant hover:bg-surface-container-high'
-                }`}
-              >
-                {movedToProject ? t('Moved') : t('Move to Project')}
-              </button>
-              <button
                 onClick={async () => {
                   await navigator.clipboard.writeText(aiPrompt);
                   setCopyingPrompt(true);
@@ -1270,7 +1244,7 @@ ${sessionRunId ? `.clutch/design/sessions/${sessionRunId}/interaction_contract.j
                 }}
                 className="flex-1 text-center px-2 py-1.5 text-[10px] font-semibold rounded-lg bg-on-surface text-surface hover:bg-on-surface/90 transition-colors cursor-pointer"
               >
-                {copyingPrompt ? 'Copied' : 'Copy Prompt'}
+                {copyingPrompt ? 'Copied / 已复制' : 'Copy Prompt / 复制提示词'}
               </button>
             </div>
           </div>
