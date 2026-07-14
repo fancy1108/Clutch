@@ -849,6 +849,19 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
                   onMouseMove={dragLine ? (e) => {
                     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
                     setDragLine(prev => prev ? {...prev, mouseX: e.clientX - rect.left, mouseY: e.clientY - rect.top} : null);
+                    // Auto-scroll sidebar when dragging near edges
+                    const sidebar = sidebarScrollRef.current;
+                    if (sidebar) {
+                      const sr = sidebar.getBoundingClientRect();
+                      const edgeZone = 60;
+                      const maxSpeed = 12;
+                      const dy = e.clientY - sr.top;
+                      if (dy < edgeZone) {
+                        sidebar.scrollTop -= Math.round(maxSpeed * (1 - dy / edgeZone));
+                      } else if (dy > sr.height - edgeZone) {
+                        sidebar.scrollTop += Math.round(maxSpeed * (1 - (sr.height - dy) / edgeZone));
+                      }
+                    }
                   } : undefined}
                   onMouseUp={dragLine ? (e) => {
                     // Hit-test thumbnails
