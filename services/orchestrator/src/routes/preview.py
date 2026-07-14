@@ -9,6 +9,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 
 from src.prototype_generator import build_preview_payload
+from src.prototype_traversal import traverse_flows, generate_ai_handoff
 
 router = APIRouter(prefix="/api/preview", tags=["preview"])
 
@@ -24,9 +25,33 @@ class PreviewRequest(BaseModel):
     state_definitions: Dict[str, Dict[str, Any]] = {}
 
 
+class TraversalRequest(BaseModel):
+    flows: List[Dict[str, Any]]
+    boards: List[Board] = []
+
+
+class HandoffRequest(BaseModel):
+    boards: List[Board]
+    flows: List[Dict[str, Any]] = []
+
+
 @router.post("/", response_model=Dict[str, Any])
 async def preview(req: PreviewRequest) -> Dict[str, Any]:
     # Convert pydantic models to plain dicts for the prototype generator
     boards = [b.dict() for b in req.boards]
     payload = build_preview_payload(boards, req.state_definitions)
     return payload
+
+
+@router.post("/traverse", response_model=Dict[str, Any])
+async def traverse(req: TraversalRequest) -> Dict[str, Any]:
+    boards = [b.dict() for b in req.boards]
+    result = traverse_flows(req.flows, boards)
+    return result
+
+
+@router.post("/handoff", response_model=Dict[str, Any])
+async def handoff(req: HandoffRequest) -> Dict[str, Any]:
+    boards = [b.dict() for b in req.boards]
+    package = generate_ai_handoff(boards, req.flows)
+    return package
