@@ -634,15 +634,10 @@ export default function PreviewDemo({ screens, sessionRunId }: PreviewDemoProps)
 
   const openFolder = () => {
     if (!codeGenResult) return;
-    // Try Tauri shell open, fallback to copying path
-    try {
-      window.open('file://' + codeGenResult.path, '_blank');
-    } catch (_) {
-      navigator.clipboard.writeText(codeGenResult.path).then(() => {
-        setCopyingPrompt(true);
-        setTimeout(() => setCopyingPrompt(false), 1500);
-      });
-    }
+    navigator.clipboard.writeText(codeGenResult.path).then(() => {
+      setCopyingPrompt(true);
+      setTimeout(() => setCopyingPrompt(false), 1500);
+    });
   };
 
   const contractPath = sessionRunId
@@ -1259,7 +1254,7 @@ ${codeGenResult.path}
                 onClick={openFolder}
                 className="flex-1 text-center px-2 py-1.5 text-[10px] font-semibold rounded-lg border border-outline/30 text-on-surface-variant hover:bg-surface-container-high transition-colors cursor-pointer"
               >
-                Open Folder
+                Copy Path
               </button>
               <button
                 onClick={async () => {

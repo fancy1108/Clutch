@@ -427,7 +427,8 @@ async def copy_generated_to_project(run_id: str, body: CopyToProjectRequest) -> 
     src = sdir / "generated"
     if not src.is_dir():
         raise HTTPException(status_code=404, detail="No generated code found. Generate code first.")
-    target = Path(body.target_dir).expanduser().resolve()
+    # Auto-detect workspace root: .clutch/design/sessions/<id> → 4 levels up = project root
+    target = Path(body.target_dir).expanduser().resolve() if body.target_dir else sdir.parent.parent.parent.parent
     if not target.exists():
         target.mkdir(parents=True, exist_ok=True)
     count = 0
