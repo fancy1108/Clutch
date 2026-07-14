@@ -264,15 +264,24 @@ export default function PreviewDemo({ screens, sessionRunId }: PreviewDemoProps)
     };
   }, [deviceMode]);
 
-  // Thumbnail iframe dimensions — follow deviceMode so left panel mirrors the right simulator
+  // Thumbnail iframe dimensions — follow deviceMode so left panel mirrors the right simulator.
+  // Each mode gets its own scale + container height to keep thumbnails legible regardless of aspect ratio.
   const thumbDims = React.useMemo(() => {
-    let w: number, h: number;
-    if (deviceMode === 'mobile') { w = 390; h = 844; }
-    else if (deviceMode === 'tablet') { w = 1024; h = 1366; }
-    else { w = 1440; h = 900; }
-    // Scale to fit thumbnail container height (h-16 = 64px)
-    const s = 64 / h;
-    return { width: w, height: h, scale: s };
+    let w: number, h: number, s: number, ch: string;
+    if (deviceMode === 'mobile') {
+      w = 390; h = 844;
+      s = 0.178;          // visible ~69×150px, fills sidebar width well
+      ch = 'h-36';        // 144px container
+    } else if (deviceMode === 'tablet') {
+      w = 1024; h = 1366;
+      s = 0.088;          // visible ~90×120px
+      ch = 'h-28';        // 112px container
+    } else {
+      w = 1440; h = 900;
+      s = 0.072;          // visible ~104×65px
+      ch = 'h-16';        // 64px container
+    }
+    return { width: w, height: h, scale: s, containerH: ch };
   }, [deviceMode]);
 
   // Auto-detect mobile / tablet from prototype HTML on first load.
@@ -726,7 +735,7 @@ export default function PreviewDemo({ screens, sessionRunId }: PreviewDemoProps)
                       }`}
                     >
                       {/* Mini preview iframe */}
-                      <div className="h-16 overflow-hidden relative bg-neutral-50 border-b border-outline/20">
+                      <div className={`${thumbDims.containerH} overflow-hidden relative bg-neutral-50 border-b border-outline/20`}>
                         {s.html ? (
                           <iframe
                             srcDoc={buildSimulatorSrcDoc(s.html)}
