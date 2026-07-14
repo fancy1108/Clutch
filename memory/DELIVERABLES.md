@@ -22,6 +22,15 @@
 
 ## Active Deliverables
 
+### Prompt color constraints + shared layout context + setNodes dedup ✅
+- **日期：** 2026-07-14
+- **Commit：** `3aa748a` — `fix(design): enforce color constraints in prompts + dedup setNodes to fix jitter`
+- **Verification：** `./scripts/verify.sh` → 731 pytest + 130 vitest passed (1 pre-existing keychain), doc-drift zero
+- **证据：** `—`
+- **交付文件：**
+  - `services/orchestrator/src/design/generator.py` — CRITICAL RULES now ban Tailwind default colors, arbitrary hex, colorful gradients for ALL modes. Added `_build_shared_layout_context` with sidebar nav constraints for multi-page. Threaded `shared_layout_context` through `_generate_ui_html` → `_build_ui_generation_prompt`.
+  - `apps/desktop/src/components/design/DesignWorkspace.tsx` — Added `lastNodeFingerprintRef` fingerprint dedup in `syncNodesFromSession` to skip redundant `setNodes`/`setEdges` calls and prevent jitter.
+
 ### Design parallel iterate_session add + unified tailwind inject for modify path ✅
 - **日期：** 2026-07-14
 - **Commit：** `c2a772b` — `feat(design): parallel iterate_session add + unified tailwind inject for modify path`

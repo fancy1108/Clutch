@@ -7,8 +7,8 @@
 
 - **阶段：** **v1.2.6 待发布**（2026-07-13）— CHANGELOG / release doc / deliverables 已同步，preflight 通过，待 tag 触发 CI
 - **Release：** [v1.2.6](https://github.com/fancy1108/Clutch/releases/tag/v1.2.6) · tag pending on `dev`
-- **Git：** `dev` ahead of `origin/dev` by 12 commits
-- **Verify：** `./scripts/verify.sh` → 730 python tests + doc-drift passed（1 预存 keychain ACL 失败）
+- **Git：** `dev` ahead of `origin/dev` by 13 commits
+- **Verify：** `./scripts/verify.sh` → 731 python tests + doc-drift passed（1 预存 keychain ACL 失败）
 - **Preflight：** `./scripts/release-preflight.sh v1.2.6` → passed
 - **一键原型 PRD：** Phase 1 IUE 已交付（`cc17c65`）
 
@@ -20,6 +20,14 @@
 - **一键原型 Phase 2：Prototype Runtime 增强**（导航历史、Overlay Context、全局状态机、Mock 拦截）
 
 ## Recent Sessions
+
+## 2026-07-14 会话（强制颜色约束 + 多页面共享布局 + 前端节点抖动修复）
+
+- **Prompt 颜色约束提权**：将「严禁随意用色」从仅 `md_text` 分支提升为全场景生效 — 禁止 Tailwind 默认颜色名（`bg-blue-*` 等）、禁止任意 hex 值、禁止无 spec 的渐变背景
+- **多页面共享布局**：新增 `_build_shared_layout_context`，当 `screens_to_gen > 1` 时向 LLM 注入侧栏导航结构、颜色一致性、菜单项顺序约束
+- **前端节点抖动修复**：`syncNodesFromSession` 新增 fingerprint 去重（id+position+phase+html），消除 poll 周期内 `applySession` + useEffect 双重 `setNodes` 导致的重复渲染
+- **校验**：vitest 130/130，pytest 731/732（1 预存 keychain），doc-drift 零漂移
+- **Commit**：`3aa748a`
 
 ## 2026-07-14 会话（Design 并行多页面生成 + 统一主题风格注入 — iterate_session 补齐）
 
