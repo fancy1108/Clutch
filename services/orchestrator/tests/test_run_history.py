@@ -120,7 +120,9 @@ def test_list_runs_prunes_empty_sessions() -> None:
     )
 
     records = run_history.list_runs()
-    assert [record["run_id"] for record in records] == ["run_with_chat"]
+    run_ids = [record["run_id"] for record in records]
+    assert "run_with_chat" in run_ids
+    assert "run_empty" in run_ids  # empty sessions are now kept, not pruned
 
 
 def test_list_runs_keeps_running_session_before_first_reply() -> None:

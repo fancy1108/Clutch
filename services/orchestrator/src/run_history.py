@@ -186,10 +186,12 @@ def _prune_empty_records(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
         try:
             state = load_run_state(run_id)
         except (json.JSONDecodeError, OSError, ValueError):
-            changed = True
+            # State file missing or corrupt — keep the record, don't silently delete
+            kept.append(record)
             continue
         if not _should_keep_session_record(record, state):
-            changed = True
+            # Session has no persistable content but record exists — keep it
+            kept.append(record)
             continue
         kept.append(record)
 
