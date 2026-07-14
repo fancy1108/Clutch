@@ -614,6 +614,7 @@ export default function PreviewDemo({ screens, sessionRunId }: PreviewDemoProps)
   const [generatingCode, setGeneratingCode] = useState(false);
   const [codeGenResult, setCodeGenResult] = useState<{written:number;path:string} | null>(null);
   const [copyingPrompt, setCopyingPrompt] = useState(false);
+  const [pathCopied, setPathCopied] = useState(false);
   const [movedToProject, setMovedToProject] = useState(false);
 
   const generateCode = async () => {
@@ -635,8 +636,8 @@ export default function PreviewDemo({ screens, sessionRunId }: PreviewDemoProps)
   const openFolder = () => {
     if (!codeGenResult) return;
     navigator.clipboard.writeText(codeGenResult.path).then(() => {
-      setCopyingPrompt(true);
-      setTimeout(() => setCopyingPrompt(false), 1500);
+      setPathCopied(true);
+      setTimeout(() => setPathCopied(false), 1500);
     });
   };
 
@@ -1252,9 +1253,9 @@ ${codeGenResult.path}
             <div className="flex gap-2">
               <button
                 onClick={openFolder}
-                className="flex-1 text-center px-3 py-2 text-xs font-semibold rounded-lg border border-outline/40 text-on-surface-variant hover:bg-surface-container-high transition-colors cursor-pointer"
+                className="flex-1 text-center px-2 py-1.5 text-[10px] font-semibold rounded-lg border border-outline/40 text-on-surface-variant hover:bg-surface-container-high transition-colors cursor-pointer"
               >
-                Copy Path
+                {pathCopied ? 'Copied' : 'Copy Path'}
               </button>
               <button
                 onClick={async () => {
@@ -1266,7 +1267,7 @@ ${codeGenResult.path}
                     window.dispatchEvent(new CustomEvent('clutch-files-reveal', {detail: {path: 'generated'}}));
                   } catch(e) { alert('Copy failed: '+String(e)); }
                 }}
-                className={`flex-1 text-center px-3 py-2 text-xs font-semibold rounded-lg border border-outline/40 transition-colors cursor-pointer ${
+                className={`flex-1 text-center px-2 py-1.5 text-[10px] font-semibold rounded-lg border border-outline/40 transition-colors cursor-pointer ${
                   movedToProject
                     ? 'bg-green-50 text-green-600 border-green-200'
                     : 'text-on-surface-variant hover:bg-surface-container-high'
@@ -1280,9 +1281,9 @@ ${codeGenResult.path}
                   setCopyingPrompt(true);
                   setTimeout(() => setCopyingPrompt(false), 1500);
                 }}
-                className="flex-1 text-center px-3 py-2 text-xs font-semibold rounded-lg bg-on-surface text-surface hover:bg-on-surface/90 transition-colors cursor-pointer"
+                className="flex-1 text-center px-2 py-1.5 text-[10px] font-semibold rounded-lg bg-on-surface text-surface hover:bg-on-surface/90 transition-colors cursor-pointer"
               >
-                {copyingPrompt ? t('Copied') : t('Copy Prompt')}
+                {copyingPrompt ? 'Copied' : 'Copy Prompt'}
               </button>
             </div>
           </div>
