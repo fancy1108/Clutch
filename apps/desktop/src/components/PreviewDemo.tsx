@@ -1,4 +1,5 @@
 import React, {useEffect, useState} from 'react'
+import StateController from './StateController'
 
 export default function PreviewDemo() {
   const [payload, setPayload] = useState<any>(null)
@@ -25,11 +26,7 @@ export default function PreviewDemo() {
     <div style={{padding: 16}}>
       <h3>Preview Demo</h3>
       <div style={{marginBottom: 8}}>
-        <label>State: </label>
-        <select value={state} onChange={e => setState(e.target.value)}>
-          <option>Normal</option>
-          <option>Critical</option>
-        </select>
+        <StateController state={state} setState={setState} />
       </div>
       <div>
         <h4>Flows</h4>
