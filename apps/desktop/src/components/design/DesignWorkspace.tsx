@@ -326,7 +326,6 @@ function DesignCanvasInner({
   const [showCodeTray, setShowCodeTray] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [welcomeMode, setWelcomeMode] = useState(true);
-  const [showPreviewDemo, setShowPreviewDemo] = useState(false);
   const [canvasSelection, setCanvasSelection] = useState<CanvasSelection | null>(null);
   const [elementSelection, setElementSelection] = useState<ElementSelection | null>(null);
   const [pickMode, setPickMode] = useState(false);
@@ -1287,16 +1286,6 @@ function DesignCanvasInner({
 
   return (
     <>
-      {showPreviewDemo ? (
-        <div className="fixed inset-0 z-50 flex items-start justify-center p-8">
-          <div className="max-w-3xl w-full bg-white rounded-xl shadow-lg p-4 overflow-auto">
-            <div className="flex justify-end">
-              <button type="button" className="rounded px-2 py-1 text-sm text-neutral-600" onClick={() => setShowPreviewDemo(false)}>Close</button>
-            </div>
-            <PreviewDemo />
-          </div>
-        </div>
-      ) : null}
       {welcomeMode ? (
         <div className="relative z-10 flex h-full flex-col items-center justify-center px-6">
           <h1 className="mb-8 text-2xl font-bold tracking-tight text-neutral-900">
@@ -1541,14 +1530,6 @@ function DesignCanvasInner({
                 </button>
                 <button type="button" className="rounded-full p-2 text-neutral-400" disabled>
                   <Mic size={15} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowPreviewDemo(true)}
-                  className="inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-[11px] font-semibold text-neutral-700 ml-2"
-                >
-                  <Code2 size={12} />
-                  Preview Demo
                 </button>
                 <button
                   type="button"
@@ -1840,6 +1821,7 @@ function DesignCanvasInner({
               {toastMessage}
             </div>
           ) : null}
+
         </>
       )}
     </>
@@ -1848,6 +1830,8 @@ function DesignCanvasInner({
 
 export const DesignWorkspace: React.FC<DesignWorkspaceProps> = (props) => {
   const { t } = useLanguage();
+  const [showPreviewDemo, setShowPreviewDemo] = useState(false);
+  
   if (!props.workspaceReady) {
     return (
       <div className="flex h-full items-center justify-center bg-surface font-sans text-sm text-neutral-500">
@@ -1858,6 +1842,16 @@ export const DesignWorkspace: React.FC<DesignWorkspaceProps> = (props) => {
 
   return (
     <div className="relative h-full min-h-0 overflow-hidden bg-[#f7f7f8] font-sans" data-testid="design-workspace">
+      {showPreviewDemo && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center p-8 bg-black/30">
+          <div className="max-w-3xl w-full bg-white rounded-xl shadow-lg p-4 overflow-auto max-h-[90vh]">
+            <div className="flex justify-end mb-2">
+              <button type="button" className="rounded px-2 py-1 text-sm text-neutral-600 hover:text-neutral-900" onClick={() => setShowPreviewDemo(false)}>✕ Close</button>
+            </div>
+            <PreviewDemo />
+          </div>
+        </div>
+      )}
       <div
         className="pointer-events-none absolute inset-0 opacity-70"
         style={{
@@ -1869,6 +1863,15 @@ export const DesignWorkspace: React.FC<DesignWorkspaceProps> = (props) => {
         <DesignCanvasInner {...props} />
       </ReactFlowProvider>
 
+      {/* Top-level floating button — always visible */}
+      <button
+        type="button"
+        onClick={() => setShowPreviewDemo(true)}
+        className="fixed right-6 bottom-6 z-40 inline-flex items-center gap-2 rounded-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 shadow-lg transition-colors"
+      >
+        <Code2 size={16} />
+        <span className="text-sm font-medium">Preview Demo</span>
+      </button>
     </div>
   );
 };

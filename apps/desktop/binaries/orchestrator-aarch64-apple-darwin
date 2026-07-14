@@ -1,0 +1,7 @@
+#!/bin/bash
+# Placeholder orchestrator binary for local tauri dev builds.
+# This stub intentionally does not start the orchestrator. Start the sidecar separately:
+# cd services/orchestrator && ~/.local/bin/uv run uvicorn src.main:app --reload --host 127.0.0.1 --port 8124
+
+echo "orchestrator stub: exiting"
+exit 0

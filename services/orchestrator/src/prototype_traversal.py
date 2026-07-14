@@ -31,6 +31,9 @@ def traverse_flows(flows: List[Dict[str, Any]], boards: List[Dict[str, Any]] = N
     }
 
 
+import re
+
+
 def generate_ai_handoff(boards: List[Dict[str, Any]], flows: List[Dict[str, Any]]) -> Dict[str, Any]:
     """Generate a minimal AI-Native Handoff package (JSON) as a PoC.
 
@@ -50,7 +53,7 @@ def generate_ai_handoff(boards: List[Dict[str, Any]], flows: List[Dict[str, Any]
 
 
 # Enhanced diagnostics: truncation / contrast / fix suggestions
-def enhanced_diagnostics(boards: List[Dict[str, Any]], matrix: Dict[str, Dict[str, Any]] | None = None) -> Dict[str, Any]:
+def enhanced_diagnostics(boards: List[Dict[str, Any]], matrix: Dict[str, Dict[str, Any]] = None) -> Dict[str, Any]:
     """Run additional diagnostics beyond traversal to detect truncation risks and offer simple fixes.
 
     Returns a dict: {issues: [{board, vp, issue, suggestion}], summary: {...}}
