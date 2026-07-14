@@ -13,6 +13,19 @@
 
 ---
 
+## 1.5 落地实施原则 (Implementation Principles)
+
+为了保障该系统在 Clutch 中的顺利落地与高质量演进，技术研发与迭代必须遵循以下三大实施原则：
+
+1. **优先保障完整 Pipeline 跑通 (Pipeline Integrity First)**
+   设计与开发过程中，优先保证“从静态 HTML -> 意图识别匹配 -> 生成契约配置 -> 原型运行时拦截 -> 代码生成编译器消费”的完整闭环管道跑通与验证。不追求一次性实现所有高级能力（如极复杂的复合条件与多权限路由拦截），通过迭代逐步强化各局部节点的智能度和业务模拟密度。
+2. **模块与引擎高内聚、可插拔 (Decoupled & Plug-and-Play)**
+   所有推断、渲染、持久化与编译模块（例如：IUE 中的向量打分或大模型接口、运行时中的特定样式注入、编译器中的 UI 库转换等）均采用高度松耦合、可插拔接口设计。允许未来在不改动和不影响已定义好的 `Interaction Contract` 核心协议的前提下，替换或升级其内部的具体技术实现方式。
+3. **单一事实源原则 (Single Source of Truth)**
+   **`Interaction Contract` 是唯一的交互意图事实真相源。** 无论是原型仿真运行时 (Prototype Runtime) 还是代码生成编译器 (Code Generator)，都必须强制统一读取和消费同一份契约配置文件的输出，**严禁**为原型和生成源码分别维护两套跳转或呈现逻辑，确保所见即所生成的绝对确定性。
+
+---
+
 ## 2. 交互理解引擎管道流 (Interaction Understanding Engine)
 
 为规避与特定 LLM 绑定的局限性，我们将第二阶段升级为模块化的 **Interaction Understanding Engine (IUE)**。该引擎支持插拔式引入规则过滤、向量检索（Embedding）、视觉模型（Vision）、图算法（Graph）以及智能体（Agent）等推断源。
