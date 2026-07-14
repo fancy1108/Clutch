@@ -1247,7 +1247,7 @@ ${codeGenResult.path}
               </button>
             </div>
             <p className="text-xs text-on-surface-variant/70 text-center mb-4 leading-relaxed">
-              {codeGenResult.written} {t('files written')}
+              {codeGenResult.written} files written. Open the folder, move into your project, or copy the AI prompt to hand off the rest.
             </p>
             <div className="flex gap-2">
               <button
