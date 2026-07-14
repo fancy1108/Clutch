@@ -1242,25 +1242,24 @@ ${codeGenResult.path}
       {/* Code Generation Result Modal */}
       {codeGenResult && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/30" onClick={() => setCodeGenResult(null)}>
-          <div className="bg-surface border border-outline/40 rounded-2xl shadow-xl p-5 max-w-xs w-full mx-4" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xs font-bold text-on-surface flex items-center gap-1.5">
-                <Code size={14} className="text-primary" />
-                代码已生成
+          <div className="bg-surface border border-outline/40 rounded-2xl shadow-xl p-5 max-w-sm w-full mx-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-bold text-on-surface">
+                Code Generated / 代码已生成
               </h3>
               <button onClick={() => setCodeGenResult(null)} className="p-0.5 rounded hover:bg-surface-container-high text-on-surface-variant/50 cursor-pointer">
                 <X size={14} />
               </button>
             </div>
-            <p className="text-[10px] text-on-surface-variant/60 text-center mb-4 leading-relaxed">
-              {codeGenResult.written} 个文件已生成，可以打开文件夹查看，或移入项目让 AI 接手后续开发。
+            <p className="text-[10px] text-on-surface-variant/60 text-center mb-3 leading-relaxed">
+              {codeGenResult.written} files written. Open the folder, move into your project, or copy the AI prompt to hand off the rest.
             </p>
-            <div className="space-y-1.5">
+            <div className="flex gap-1.5">
               <button
-                onClick={() => setCodeGenResult(null)}
-                className="w-full text-center px-3 py-2 text-[10px] font-semibold rounded-lg border border-outline/30 text-on-surface-variant hover:bg-surface-container-high transition-colors cursor-pointer"
+                onClick={openFolder}
+                className="flex-1 text-center px-2 py-1.5 text-[10px] font-semibold rounded-lg border border-outline/30 text-on-surface-variant hover:bg-surface-container-high transition-colors cursor-pointer"
               >
-                📂 打开文件夹
+                Open Folder
               </button>
               <button
                 onClick={async () => {
@@ -1268,12 +1267,17 @@ ${codeGenResult.path}
                     const url = sidecarHttpUrl(`/api/design/sessions/${encodeURIComponent(sessionRunId!)}/generate-code/copy-to-project`);
                     const r = await sidecarFetch(url, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({target_dir: '.'}) });
                     const d = await r.json();
-                    alert(`✅ 已复制 ${d.copied} 个文件到 ${d.to}`);
-                  } catch(e) { alert('复制失败: '+String(e)); }
+                    setMovedToProject(true);
+                    window.dispatchEvent(new CustomEvent('clutch-files-reveal', {detail: {path: 'generated'}}));
+                  } catch(e) { alert('Copy failed: '+String(e)); }
                 }}
-                className="w-full text-center px-3 py-2 text-[10px] font-semibold rounded-lg border border-outline/30 text-on-surface-variant hover:bg-surface-container-high transition-colors cursor-pointer"
+                className={`flex-1 text-center px-2 py-1.5 text-[10px] font-semibold rounded-lg border border-outline/30 transition-colors cursor-pointer ${
+                  movedToProject
+                    ? 'bg-green-50 text-green-600 border-green-200'
+                    : 'text-on-surface-variant hover:bg-surface-container-high'
+                }`}
               >
-                📦 移入项目
+                {movedToProject ? 'Moved' : 'Move to Project'}
               </button>
               <button
                 onClick={async () => {
@@ -1281,9 +1285,9 @@ ${codeGenResult.path}
                   setCopyingPrompt(true);
                   setTimeout(() => setCopyingPrompt(false), 1500);
                 }}
-                className="w-full text-center px-3 py-2 text-[10px] font-semibold rounded-lg bg-on-surface text-surface hover:bg-on-surface/90 transition-colors cursor-pointer"
+                className="flex-1 text-center px-2 py-1.5 text-[10px] font-semibold rounded-lg bg-on-surface text-surface hover:bg-on-surface/90 transition-colors cursor-pointer"
               >
-                {copyingPrompt ? '✓ 已复制' : '📋 一键复制提示词'}
+                {copyingPrompt ? 'Copied' : 'Copy Prompt'}
               </button>
             </div>
           </div>
