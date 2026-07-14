@@ -1,18 +1,20 @@
-"""Preview API for prototype generator (minimal stub).
+"""Preview API for prototype generator.
 
 Exposes /api/preview which accepts boards and state definitions and returns
-a preview payload produced by services/orchestrator/src/prototype_generator.py
+a preview payload powered by the IUE (Interaction Understanding Engine).
 """
 from typing import Any, Dict, List
 
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from src.prototype_generator import build_preview_payload, extract_flows_from_boards
+from src.prototype_generator import build_preview_payload
 from src.prototype_traversal import traverse_flows, generate_ai_handoff, enhanced_diagnostics
+from src.iue import InteractionUnderstandingEngine
 from src.llm.router import LLMProviderRouter
 
 llm_router = LLMProviderRouter()
+iue_engine = InteractionUnderstandingEngine()
 
 router = APIRouter(prefix="/api/preview", tags=["preview"])
 
@@ -41,9 +43,19 @@ class HandoffRequest(BaseModel):
 
 @router.post("/", response_model=Dict[str, Any])
 async def preview(req: PreviewRequest) -> Dict[str, Any]:
-    # Convert pydantic models to plain dicts for the prototype generator
+    # Convert pydantic models to plain dicts
     boards = [b.dict() for b in req.boards]
+
+    # Run IUE pipeline for structured flow suggestions with confidence & reasoning
+    iue_flows = iue_engine.analyze_to_dicts(boards)
+
+    # Build legacy payload (transformed samples, matrix, etc.)
     payload = build_preview_payload(boards, req.state_definitions, req.preview_options)
+
+    # Enhance: replace heuristic flows with IUE-structured flows
+    # Backward-compatible keys (from, to, reason) + IUE enrichment (confidence, role, status)
+    payload["flows"] = iue_flows
+    payload["iue_version"] = "1.0.0"
     return payload
 
 
@@ -67,24 +79,40 @@ async def diagnostics(req: TraversalRequest) -> Dict[str, Any]:
 
 @router.post("/suggest_flows", response_model=Dict[str, Any])
 async def suggest_flows(req: PreviewRequest) -> Dict[str, Any]:
-    """Suggest flows using LLM when available, otherwise fallback to heuristics."""
+    """Suggest flows using IUE (primary) with LLM enhancement when available."""
     boards = [b.dict() for b in req.boards]
-    # prepare context
-    ctx = { 'boards': boards }
-    prompt = f"Suggest navigation links between these screens: {[b.get('title') for b in boards]}. Reply JSON list of { '{from,to,reason,params}' }"
+
+    # Primary: IUE pipeline (always available, no API key required)
+    iue_suggestions = iue_engine.analyze_to_dicts(boards)
+
+    # Secondary: attempt LLM enhancement for higher-quality suggestions
     try:
-        # attempt chat via configured router
-        result = llm_router.chat([{'role':'system','content':'You are a helpful flow suggester.'},{'role':'user','content':prompt}], max_tokens=800)
+        prompt = (
+            "Suggest navigation links between these screens: "
+            + str([b.get("title") for b in boards])
+            + ". Reply JSON list of {'from','to','reason','params'}"
+        )
+        result = llm_router.chat(
+            [
+                {"role": "system", "content": "You are a helpful flow suggester."},
+                {"role": "user", "content": prompt},
+            ],
+            max_tokens=1024,
+        )
         content = llm_router.extract_content(result)
-        # try to parse JSON
         import json
-        suggestions = json.loads(content) if content.strip().startswith('[') else []
-        if not suggestions:
-            # fallback heuristic
-            suggestions = extract_flows_from_boards(boards)
+
+        llm_suggestions = json.loads(content) if content.strip().startswith("[") else []
+        if llm_suggestions and len(llm_suggestions) > 0:
+            return {
+                "suggestions": llm_suggestions,
+                "iue_fallback": iue_suggestions,
+                "source": "llm",
+            }
     except Exception:
-        suggestions = extract_flows_from_boards(boards)
-    return {'suggestions': suggestions}
+        pass
+
+    return {"suggestions": iue_suggestions, "source": "iue"}
 
 
 @router.post("/handoff", response_model=Dict[str, Any])
