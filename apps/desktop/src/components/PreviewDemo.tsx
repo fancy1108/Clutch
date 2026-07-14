@@ -102,6 +102,12 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
     fromX: number; fromY: number; toX: number; toY: number; flow: any;
   }>>([]);
   const linesContainerRef = useRef<HTMLDivElement>(null);
+  const [dragLine, setDragLine] = useState<{
+    fromX: number; fromY: number;
+    mouseX: number; mouseY: number;
+    sourceElementText: string;
+    existingFlow: any | null;
+  } | null>(null);
 
   // Keep ref in sync so click-time lookups always use latest flows
   useEffect(() => { mutableFlowsRef.current = mutableFlows; }, [mutableFlows]);
@@ -397,18 +403,31 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
             : '';
         htmlEl.style.outlineOffset = '2px';
 
+        const elRect = htmlEl.getBoundingClientRect();
         htmlEl.onclick = (e) => {
           e.preventDefault();
           e.stopPropagation();
           if (editMode) {
-            // Edit mode: open context menu
-            const rect = htmlEl.getBoundingClientRect();
-            setContextMenu({
-              flow: existingFlow,
-              elementText: rawText,
-              x: Math.min(rect.right + 6, window.innerWidth - 180),
-              y: Math.min(rect.top, window.innerHeight - 280),
-            });
+            if (!existingFlow) {
+              // No existing flow → start drag to create new connection
+              const lc = linesContainerRef.current?.getBoundingClientRect();
+              setDragLine({
+                fromX: lc ? e.clientX - lc.left : e.clientX,
+                fromY: lc ? e.clientY - lc.top : e.clientY,
+                mouseX: lc ? e.clientX - lc.left : e.clientX,
+                mouseY: lc ? e.clientY - lc.top : e.clientY,
+                sourceElementText: rawText,
+                existingFlow: null,
+              });
+            } else {
+              // Has flow → open context menu for edit/delete
+              setContextMenu({
+                flow: existingFlow,
+                elementText: rawText,
+                x: Math.min(elRect.right + 6, window.innerWidth - 180),
+                y: Math.min(elRect.top, window.innerHeight - 280),
+              });
+            }
           } else {
             // Preview mode: navigate if has flow
             const cur = mutableFlowsRef.current.filter((f: any) => f.from === activeScreenId);
@@ -434,8 +453,8 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
     }
   }, [state, extreme, activeScreenId, editMode, injectPrototypeClickHandlers]);
 
-  // ---- Calculate connection lines in edit mode ----
-  useEffect(() => {
+  // ---- Calculate connection lines in edit mode (rAF ensures DOM is ready) ----
+  const calcLines = React.useCallback(() => {
     if (!editMode || !iframeRef.current || !linesContainerRef.current) {
       setConnectionLines([]);
       return;
@@ -445,13 +464,12 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
     const iframe = iframeRef.current;
     const iframeRect = iframe.getBoundingClientRect();
     const doc = iframe.contentDocument;
-    if (!doc) return;
+    if (!doc) { setConnectionLines([]); return; }
 
     const outboundFlows = mutableFlows.filter((f: any) => f.from === activeScreenId);
     const lines: Array<{fromX:number;fromY:number;toX:number;toY:number;flow:any}> = [];
 
     for (const flow of outboundFlows) {
-      // Find matching hot zone in iframe
       const hotZones = doc.querySelectorAll('[data-clutch-clickable]');
       for (const el of hotZones) {
         const text = ((el as HTMLElement).textContent || '').trim().toLowerCase();
@@ -463,7 +481,6 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
         const fromX = iframeRect.left - containerRect.left + elRect.left * scale + elRect.width * scale / 2;
         const fromY = iframeRect.top - containerRect.top + elRect.top * scale + elRect.height * scale / 2;
 
-        // Find target thumbnail
         const thumb = document.querySelector(`[data-screen-id="${flow.to}"]`);
         if (thumb) {
           const tr = thumb.getBoundingClientRect();
@@ -471,11 +488,18 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
           const toY = tr.top - containerRect.top + tr.height / 2;
           lines.push({ fromX, fromY, toX, toY, flow });
         }
-        break; // one line per flow
+        break;
       }
     }
     setConnectionLines(lines);
   }, [editMode, activeScreenId, mutableFlows, scale]);
+
+  // Recalculate lines after DOM settles
+  useEffect(() => {
+    if (!editMode) { setConnectionLines([]); return; }
+    const id = requestAnimationFrame(() => calcLines());
+    return () => cancelAnimationFrame(id);
+  }, [calcLines, editMode]);
 
   if (screens.length === 0) {
     return (
@@ -682,7 +706,18 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
                     </span>
                   )}
                 </div>
-                
+                {/* Pencil in center between nav and device selector */}
+                <button
+                  onClick={() => setEditMode(v => !v)}
+                  className={`p-1 rounded-md transition-all cursor-pointer shrink-0 ${
+                    editMode
+                      ? 'bg-amber-100 text-amber-600 shadow-sm'
+                      : 'text-on-surface-variant/40 hover:text-on-surface-variant hover:bg-surface-container-high'
+                  }`}
+                  title={editMode ? '退出编辑模式' : '编辑连线'}
+                >
+                  <Pencil size={13} />
+                </button>
                 {/* Device Mode Selector */}
                 <div className="flex bg-surface-container p-0.5 rounded-lg border border-outline/40 text-[10px]">
                   <button
@@ -710,60 +745,8 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
                     Mobile
                   </button>
                 </div>
-                {/* Edit Mode Toggle */}
-                <button
-                  onClick={() => setEditMode(v => !v)}
-                  className={`p-1 rounded-md transition-all cursor-pointer ml-1 ${
-                    editMode
-                      ? 'bg-amber-100 text-amber-600 shadow-sm'
-                      : 'text-on-surface-variant/40 hover:text-on-surface-variant hover:bg-surface-container-high'
-                  }`}
-                  title={editMode ? t('Exit edit mode') : t('Edit connections')}
-                >
-                  <Pencil size={12} />
-                </button>
               </div>
               
-              {/* SVG Connection Lines Overlay (edit mode only) */}
-              {editMode && (
-                <div ref={linesContainerRef} className="absolute inset-0 pointer-events-none z-30" style={{margin:0,padding:0}}>
-                  <svg className="absolute inset-0 w-full h-full" style={{overflow:'visible'}}>
-                    {connectionLines.map((line, i) => (
-                      <g key={i} className="pointer-events-auto cursor-pointer group">
-                        <line
-                          x1={line.fromX} y1={line.fromY} x2={line.toX} y2={line.toY}
-                          stroke="rgba(59,130,246,0.5)" strokeWidth="1.5" strokeDasharray="4 2"
-                        />
-                        <circle cx={line.fromX} cy={line.fromY} r="4" fill="#3b82f6" className="group-hover:r-[6]" />
-                        <circle cx={line.toX} cy={line.toY} r="4" fill="#3b82f6" className="group-hover:r-[6]" />
-                        {/* Delete button near midpoint */}
-                        <g
-                          onClick={() => {
-                            setMutableFlows(prev => prev.filter(f =>
-                              !(f.from === line.flow.from && f.to === line.flow.to && f.source_element_text === line.flow.source_element_text)
-                            ));
-                          }}
-                          className="cursor-pointer"
-                        >
-                          <circle
-                            cx={(line.fromX + line.toX) / 2}
-                            cy={(line.fromY + line.toY) / 2}
-                            r="8" fill="white" stroke="rgba(239,68,68,0.6)" strokeWidth="1"
-                            className="opacity-0 group-hover:opacity-100 transition-opacity"
-                          />
-                          <text
-                            x={(line.fromX + line.toX) / 2}
-                            y={(line.fromY + line.toY) / 2 + 3}
-                            textAnchor="middle" fontSize="8" fill="#ef4444"
-                            className="opacity-0 group-hover:opacity-100 transition-opacity"
-                          >✕</text>
-                        </g>
-                      </g>
-                    ))}
-                  </svg>
-                </div>
-              )}
-
               {/* Viewport Frame (Dynamically scaled to fill maximum container area) */}
               <div className="flex-1 bg-surface-container-low flex items-center justify-center p-4 overflow-hidden relative min-h-[380px]">
                 {activeScreen?.html ? (
@@ -815,6 +798,98 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
                   <div className="text-xs text-on-surface-variant/50 italic">{t('This screen has no HTML content')}</div>
                 )}
               </div>
+
+              {/* SVG Connection Lines Overlay (edit mode only) */}
+              {editMode && (
+                <div ref={linesContainerRef} className="absolute inset-0 z-30" style={{margin:0,padding:0,pointerEvents:dragLine?'auto':'none'}}
+                  onMouseMove={dragLine ? (e) => {
+                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                    setDragLine(prev => prev ? {...prev, mouseX: e.clientX - rect.left, mouseY: e.clientY - rect.top} : null);
+                  } : undefined}
+                  onMouseUp={dragLine ? (e) => {
+                    // Hit-test thumbnails
+                    const target = document.elementsFromPoint(e.clientX, e.clientY).find(el => el.getAttribute('data-screen-id'));
+                    if (target) {
+                      const targetId = target.getAttribute('data-screen-id')!;
+                      if (dragLine!.existingFlow) {
+                        // Reconnect: update existing flow's target
+                        setMutableFlows(prev => prev.map(f =>
+                          (f.from === dragLine!.existingFlow.from && f.to === dragLine!.existingFlow.to && f.source_element_text === dragLine!.existingFlow.source_element_text)
+                            ? {...f, to: targetId, reason: '用户重新连线'}
+                            : f
+                        ));
+                      } else {
+                        // Create new flow
+                        setMutableFlows(prev => [...prev, {
+                          from: activeScreenId, to: targetId, trigger: 'click',
+                          confidence: 1.0, reason: '用户手动连线',
+                          source_element_text: dragLine!.sourceElementText.trim(),
+                          source_element_role: 'Unknown', params: {}, status: 'approved',
+                        }]);
+                      }
+                    }
+                    setDragLine(null);
+                  } : undefined}
+                >
+                  <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{overflow:'visible'}}>
+                    {connectionLines.map((line, i) => (
+                      <g key={i} className="group">
+                        <line
+                          x1={line.fromX} y1={line.fromY} x2={line.toX} y2={line.toY}
+                          stroke="rgba(59,130,246,0.5)" strokeWidth="1.5" strokeDasharray="4 2"
+                          className="pointer-events-none"
+                        />
+                        <circle cx={line.fromX} cy={line.fromY} r="4" fill="#3b82f6" className="pointer-events-none" />
+                        {/* Target circle — draggable to reconnect */}
+                        <circle cx={line.toX} cy={line.toY} r="6" fill="#3b82f6" className="cursor-grab active:cursor-grabbing pointer-events-auto"
+                          onMouseDown={(e) => {
+                            e.stopPropagation();
+                            setDragLine({
+                              fromX: line.fromX, fromY: line.fromY,
+                              mouseX: line.toX, mouseY: line.toY,
+                              sourceElementText: line.flow.source_element_text || '',
+                              existingFlow: line.flow,
+                            });
+                          }}
+                        />
+                        {/* Delete button near midpoint */}
+                        <g
+                          onClick={() => {
+                            setMutableFlows(prev => prev.filter(f =>
+                              !(f.from === line.flow.from && f.to === line.flow.to && f.source_element_text === line.flow.source_element_text)
+                            ));
+                          }}
+                          className="cursor-pointer pointer-events-auto"
+                        >
+                          <circle
+                            cx={(line.fromX + line.toX) / 2}
+                            cy={(line.fromY + line.toY) / 2}
+                            r="8" fill="white" stroke="rgba(239,68,68,0.6)" strokeWidth="1"
+                            className="opacity-0 group-hover:opacity-100 transition-opacity"
+                          />
+                          <text
+                            x={(line.fromX + line.toX) / 2}
+                            y={(line.fromY + line.toY) / 2 + 3}
+                            textAnchor="middle" fontSize="8" fill="#ef4444"
+                            className="opacity-0 group-hover:opacity-100 transition-opacity"
+                          >✕</text>
+                        </g>
+                      </g>
+                    ))}
+                    {/* Drag line preview */}
+                    {dragLine && (
+                      <line
+                        x1={dragLine.fromX} y1={dragLine.fromY}
+                        x2={dragLine.mouseX} y2={dragLine.mouseY}
+                        stroke="#3b82f6" strokeWidth="2" strokeDasharray="6 3"
+                        className="pointer-events-none"
+                      />
+                    )}
+                  </svg>
+                </div>
+              )}
+              
+              
             </div>
           </div>
         )}
