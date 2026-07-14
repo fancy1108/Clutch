@@ -1,0 +1,25 @@
+{
+  "task_id": "20260714-072349-runtime-contract-phase-milestone-milestone-demo-ui-json",
+  "goal": "从下一阶段开始，不要再按技术模块交付，而按产品可体验里程碑交付。\n\n例如可以直接发：\n\n从下一阶段开始，请调整开发节奏。不要再以 Runtime、Contract 等技术模块作为一个独立 Phase，而是以最终用户可以体验的功能作为 Milestone。\n\n每个 Milestone 必须满足：\n\n有可以直接体验的 Demo。\n我可以通过 UI 验收，而不是查看 JSON 或运行测试。\n包含完成该用户能力所需的所有后端和前端改动。\n每个 Milestone 都应该是一个可以合并、可以发布、可以演示的完整功能。",
+  "scope": null,
+  "non_goals": null,
+  "allowed_operations": {
+    "write": true,
+    "network": false,
+    "publish": false
+  },
+  "success_criteria": [
+    {
+      "id": "objective_evidence",
+      "description": "The goal outcome is supported by direct evidence, such as inspected code, reproduced behavior, source material, or concrete findings.",
+      "required": true,
+      "evidence_ids": null
+    },
+    {
+      "id": "verification",
+      "description": "The result has relevant verification evidence, such as tests, commands, benchmarks, manual checks, or a documented reason why verification is not applicable.",
+      "required": true,
+      "evidence_ids": null
+    }
+  ]
+}

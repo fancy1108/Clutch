@@ -225,13 +225,15 @@ const nodeTypes = {
 function FitViewOnNodes({
   layoutKey,
   focusIds,
+  isGenerating,
 }: {
   layoutKey: string;
   focusIds?: string[];
+  isGenerating?: boolean;
 }) {
   const { fitView, getNodes } = useReactFlow();
   useEffect(() => {
-    if (!layoutKey) return;
+    if (!layoutKey || isGenerating) return;
     const id = window.setTimeout(() => {
       const all = getNodes();
       const targets =
@@ -247,7 +249,7 @@ function FitViewOnNodes({
       });
     }, 60);
     return () => window.clearTimeout(id);
-  }, [layoutKey, focusIds, fitView, getNodes]);
+  }, [layoutKey, focusIds, isGenerating, fitView, getNodes]);
   return null;
 }
 
@@ -1574,7 +1576,11 @@ function DesignCanvasInner({
                 position="bottom-left"
                 className="!mb-[4.5rem] !ml-3 !overflow-visible !rounded-xl !border !border-neutral-200 !bg-white/95 !shadow-sm"
               />
-              <FitViewOnNodes layoutKey={layoutKey} focusIds={focusNodeIds} />
+              <FitViewOnNodes
+                layoutKey={layoutKey}
+                focusIds={focusNodeIds}
+                isGenerating={Boolean(session && IN_FLIGHT.has(session.status))}
+              />
             </ReactFlow>
           </div>
 
