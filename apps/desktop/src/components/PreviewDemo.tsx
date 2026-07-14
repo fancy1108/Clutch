@@ -612,6 +612,9 @@ export default function PreviewDemo({ screens, sessionRunId }: PreviewDemoProps)
   }, [calcLines, editMode]);
 
   const [generatingCode, setGeneratingCode] = useState(false);
+  const [codeGenResult, setCodeGenResult] = useState<{written:number;path:string} | null>(null);
+  const [copyingPrompt, setCopyingPrompt] = useState(false);
+
   const generateCode = async () => {
     if (!sessionRunId) return;
     setGeneratingCode(true);
@@ -619,13 +622,17 @@ export default function PreviewDemo({ screens, sessionRunId }: PreviewDemoProps)
       const url = sidecarHttpUrl(`/api/design/sessions/${encodeURIComponent(sessionRunId)}/generate-code/write`);
       const r = await sidecarFetch(url, { method: 'POST' });
       const data = await r.json();
-      alert(`✅ 代码已生成！\n\n${data.written} 个文件 → ${data.path}\n\ncd generated && npm install && npm run dev`);
+      setCodeGenResult(data);
     } catch (e) {
       alert('代码生成失败: ' + String(e));
     } finally {
       setGeneratingCode(false);
     }
   };
+
+  const aiPrompt = codeGenResult
+    ? `我已经在 Clutch 中设计好了交互原型并生成了 React 代码。\n\n交互契约: .clutch/design/sessions/${sessionRunId}/interaction_contract.json\n生成代码: ${codeGenResult.path}\n\n请将这些组件整合到项目中，根据契约实现完整的路由和 onClick 交互逻辑，保持现有 Tailwind 样式。`
+    : '';
 
   if (screens.length === 0) {
     return (
@@ -732,17 +739,7 @@ export default function PreviewDemo({ screens, sessionRunId }: PreviewDemoProps)
             />
             <span>{t('Extreme Mode')}</span>
           </label>
-          {sessionRunId && (
-            <button
-              onClick={generateCode}
-              disabled={generatingCode}
-              className="px-2.5 py-1 text-[10px] font-semibold rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors cursor-pointer disabled:opacity-40 flex items-center gap-1"
-              title="从交互契约生成 React 代码"
-            >
-              <Code size={11} />
-              {generatingCode ? '生成中…' : '生成代码'}
-            </button>
-          )}
+
         </div>
       </div>
 
@@ -871,6 +868,20 @@ export default function PreviewDemo({ screens, sessionRunId }: PreviewDemoProps)
                 >
                   <Pencil size={13} />
                 </button>
+                {sessionRunId && (
+                  <button
+                    onClick={generateCode}
+                    disabled={generatingCode}
+                    className={`p-1 rounded-md transition-all cursor-pointer shrink-0 ${
+                      generatingCode
+                        ? 'text-primary/40'
+                        : 'text-on-surface-variant/40 hover:text-on-surface-variant hover:bg-surface-container-high'
+                    }`}
+                    title="生成 React 代码"
+                  >
+                    <Code size={13} />
+                  </button>
+                )}
                 {/* Device Mode Selector */}
                 <div className="flex bg-surface-container p-0.5 rounded-lg border border-outline/40 text-[10px]">
                   <button
@@ -1182,6 +1193,55 @@ export default function PreviewDemo({ screens, sessionRunId }: PreviewDemoProps)
                 ))}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Code Generation Result Modal */}
+      {codeGenResult && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/30" onClick={() => setCodeGenResult(null)}>
+          <div className="bg-surface border border-outline/40 rounded-2xl shadow-xl p-5 max-w-sm w-full mx-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-bold text-on-surface flex items-center gap-1.5">
+                <Code size={14} className="text-primary" />
+                代码已生成
+              </h3>
+              <button onClick={() => setCodeGenResult(null)} className="p-0.5 rounded hover:bg-surface-container-high text-on-surface-variant/50 cursor-pointer">
+                <X size={14} />
+              </button>
+            </div>
+            <p className="text-[10px] text-on-surface-variant/70 mb-3 leading-relaxed">
+              {codeGenResult.written} 个文件已写入<br />
+              <code className="text-[9px] bg-surface-container px-1.5 py-0.5 rounded text-on-surface-variant/60 mt-1 inline-block max-w-full truncate">{codeGenResult.path}</code>
+            </p>
+            <div className="space-y-1.5">
+              <button
+                onClick={async () => {
+                  try {
+                    const url = sidecarHttpUrl(`/api/design/sessions/${encodeURIComponent(sessionRunId!)}/generate-code/copy-to-project`);
+                    const r = await sidecarFetch(url, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({target_dir: '.'}) });
+                    const d = await r.json();
+                    alert(`✅ 已复制 ${d.copied} 个文件到 ${d.to}`);
+                  } catch(e) { alert('复制失败: '+String(e)); }
+                }}
+                className="w-full text-left px-3 py-2 text-[10px] font-semibold rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors cursor-pointer flex items-center gap-1.5"
+              >
+                <Code size={10} /> 移入当前项目
+              </button>
+              <button
+                onClick={async () => {
+                  await navigator.clipboard.writeText(aiPrompt);
+                  setCopyingPrompt(true);
+                  setTimeout(() => setCopyingPrompt(false), 1500);
+                }}
+                className="w-full text-left px-3 py-2 text-[10px] font-semibold rounded-lg bg-surface-container-high text-on-surface hover:bg-surface-container-high/80 transition-colors cursor-pointer flex items-center gap-1.5"
+              >
+                {copyingPrompt ? '✓ 已复制' : '📋 复制 AI 提示词'}
+              </button>
+            </div>
+            <p className="text-[9px] text-on-surface-variant/40 mt-3 leading-relaxed">
+              复制提示词后，粘贴给 AI 即可让它接手：安装依赖、配置路由、整合组件。
+            </p>
           </div>
         </div>
       )}
