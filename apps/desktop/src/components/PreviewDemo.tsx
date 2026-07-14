@@ -614,6 +614,7 @@ export default function PreviewDemo({ screens, sessionRunId }: PreviewDemoProps)
   const [generatingCode, setGeneratingCode] = useState(false);
   const [codeGenResult, setCodeGenResult] = useState<{written:number;path:string} | null>(null);
   const [copyingPrompt, setCopyingPrompt] = useState(false);
+  const [pathCopied, setPathCopied] = useState(false);
   
 
   const generateCode = async () => {
@@ -629,6 +630,14 @@ export default function PreviewDemo({ screens, sessionRunId }: PreviewDemoProps)
     } finally {
       setGeneratingCode(false);
     }
+  };
+
+  const copyPath = () => {
+    if (!codeGenResult) return;
+    navigator.clipboard.writeText(codeGenResult.path).then(() => {
+      setPathCopied(true);
+      setTimeout(() => setPathCopied(false), 1500);
+    });
   };
 
   const aiPrompt = codeGenResult
@@ -1237,6 +1246,12 @@ ${sessionRunId ? `.clutch/design/sessions/${sessionRunId}/interaction_contract.j
             </p>
             <div className="flex gap-2">
               <button
+                onClick={copyPath}
+                className="flex-1 text-center px-2 py-1.5 text-[10px] font-semibold rounded-lg border border-outline/40 text-on-surface-variant hover:bg-surface-container-high transition-colors cursor-pointer"
+              >
+                {pathCopied ? 'Copied' : 'Copy Path'}
+              </button>
+              <button
                 onClick={async () => {
                   await navigator.clipboard.writeText(aiPrompt);
                   setCopyingPrompt(true);
@@ -1244,7 +1259,7 @@ ${sessionRunId ? `.clutch/design/sessions/${sessionRunId}/interaction_contract.j
                 }}
                 className="flex-1 text-center px-2 py-1.5 text-[10px] font-semibold rounded-lg bg-on-surface text-surface hover:bg-on-surface/90 transition-colors cursor-pointer"
               >
-                {copyingPrompt ? 'Copied / 已复制' : 'Copy Prompt / 复制提示词'}
+                {copyingPrompt ? 'Copied' : 'Copy Prompt'}
               </button>
             </div>
           </div>
