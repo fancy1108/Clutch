@@ -1261,8 +1261,9 @@ ${codeGenResult.path}
                 onClick={async () => {
                   try {
                     const url = sidecarHttpUrl(`/api/design/sessions/${encodeURIComponent(sessionRunId!)}/generate-code/copy-to-project`);
-                    const r = await sidecarFetch(url, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({target_dir: '.'}) });
+                    const r = await sidecarFetch(url, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({}) });
                     const d = await r.json();
+                    if (!r.ok) { alert('Copy failed: ' + (d.detail || r.statusText)); return; }
                     setMovedToProject(true);
                     window.dispatchEvent(new CustomEvent('clutch-files-reveal', {detail: {path: 'generated'}}));
                   } catch(e) { alert('Copy failed: '+String(e)); }

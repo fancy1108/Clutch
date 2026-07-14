@@ -420,14 +420,16 @@ class CopyToProjectRequest(BaseModel):
 
 
 @router.post("/sessions/{run_id}/generate-code/copy-to-project")
-async def copy_generated_to_project(run_id: str, body: CopyToProjectRequest) -> dict[str, Any]:
-    """Copy generated code to a project directory."""
+async def copy_generated_to_project(run_id: str, body: CopyToProjectRequest = CopyToProjectRequest()) -> dict[str, Any]:
+    """Copy generated code to the workspace root (auto-detected from session path)."""
     import shutil
-    sdir = _session_dir(run_id)
+    try:
+        sdir = _session_dir(run_id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Session dir error: {e}")
     src = sdir / "generated"
     if not src.is_dir():
         raise HTTPException(status_code=404, detail="No generated code found. Generate code first.")
-    # Auto-detect workspace root: .clutch/design/sessions/<id> → 4 levels up = project root
     target = Path(body.target_dir).expanduser().resolve() if body.target_dir else sdir.parent.parent.parent.parent
     if not target.exists():
         target.mkdir(parents=True, exist_ok=True)
