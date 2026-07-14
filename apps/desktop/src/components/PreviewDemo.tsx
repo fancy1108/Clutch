@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Layers, Tv, Activity, HelpCircle, CheckCircle, ChevronDown, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Layers, Tv, Activity, HelpCircle, CheckCircle, ChevronDown, ArrowLeft, ArrowRight, X, Plus } from 'lucide-react';
 import StateController from './StateController';
 import MatrixPreview from './MatrixPreview';
 import { DesignScreen } from '../services/designApi';
@@ -89,6 +89,9 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
   const screenDropdownRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [clickableCount, setClickableCount] = useState(0);
+  const [mutableFlows, setMutableFlows] = useState<any[]>([]);
+  const [isAddingFlow, setIsAddingFlow] = useState(false);
+  const [newFlowTarget, setNewFlowTarget] = useState('');
 
   // ---- Prototype Navigation History ----
   const [navigationStack, setNavigationStack] = useState<string[]>([]);
@@ -175,11 +178,13 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
       .then((r) => r.json())
       .then((data) => {
         setPayload(data);
+        setMutableFlows(data.flows || []);
         setLoading(false);
       })
       .catch((e) => {
         console.warn('[PreviewDemo] API call failed:', e);
         setPayload({ error: String(e), flows: [] });
+        setMutableFlows([]);
         setLoading(false);
       });
   }, [boards, extreme, viewports]);
@@ -328,7 +333,7 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
       const doc = iframe.contentDocument || iframe.contentWindow?.document;
       if (!doc || !doc.body) { setClickableCount(0); return; }
 
-      const outboundFlows = payload?.flows?.filter((f: any) => f.from === activeScreenId) || [];
+      const outboundFlows = mutableFlows.filter((f: any) => f.from === activeScreenId);
 
       // Build a lookup: normalized element text → best flow (highest confidence)
       const flowByText: Map<string, { to: string }> = new Map();
@@ -425,7 +430,31 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
 
   // Find active screen details
   const activeScreen = screens.find((s) => s.id === activeScreenId);
-  const activeFlows = payload?.flows?.filter((f: any) => f.from === activeScreenId) || [];
+  const activeFlows = mutableFlows.filter((f: any) => f.from === activeScreenId);
+
+  const deleteFlow = (flowIndex: number) => {
+    // Find the actual index in mutableFlows (not just activeFlows)
+    const flow = activeFlows[flowIndex];
+    setMutableFlows(prev => prev.filter(f => !(f.from === flow.from && f.to === flow.to)));
+  };
+
+  const addFlow = (targetId: string) => {
+    if (!targetId || targetId === activeScreenId) return;
+    const newFlow = {
+      from: activeScreenId,
+      to: targetId,
+      trigger: 'click',
+      confidence: 1.0,
+      reason: '用户手动添加的连线',
+      source_element_text: '',
+      source_element_role: 'Unknown',
+      params: {},
+      status: 'approved',
+    };
+    setMutableFlows(prev => [...prev, newFlow]);
+    setIsAddingFlow(false);
+    setNewFlowTarget('');
+  };
 
   return (
     <div className="flex flex-col h-full bg-surface-dim rounded-[20px] overflow-hidden border border-outline/40">
@@ -464,7 +493,7 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
             }`}
           >
             <Activity size={13} />
-            {t('Logic Connections Chart')} ({payload?.flows?.length || 0})
+            {t('Logic Connections Chart')} ({mutableFlows.length})
           </button>
         </div>
 
@@ -530,29 +559,83 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
                 </div>
               </div>
 
+              {/* Page Transition Links */}
               <div className="flex-1 overflow-auto">
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-on-surface-variant mb-2.5">
-                  {t('Page Transition Links')} ({activeFlows.length})
-                </label>
-                {activeFlows.length === 0 ? (
+                <div className="flex items-center justify-between mb-2.5">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">
+                    {t('Page Transition Links')} ({activeFlows.length})
+                  </label>
+                  <button
+                    onClick={() => { setIsAddingFlow(true); setNewFlowTarget(''); }}
+                    className="p-0.5 rounded hover:bg-surface-container-high transition-colors text-on-surface-variant/60 hover:text-primary cursor-pointer"
+                    title="手动添加连线"
+                  >
+                    <Plus size={12} />
+                  </button>
+                </div>
+
+                {/* Add Flow Dropdown */}
+                {isAddingFlow && (
+                  <div className="mb-2 p-2 bg-surface-container-low rounded-lg border border-primary/30 space-y-1.5">
+                    <select
+                      value={newFlowTarget}
+                      onChange={(e) => setNewFlowTarget(e.target.value)}
+                      className="w-full text-[10px] bg-surface border border-outline/40 rounded-md px-2 py-1 text-on-surface cursor-pointer"
+                    >
+                      <option value="">选择目标页面…</option>
+                      {screens.filter(s => s.id !== activeScreenId).map(s => (
+                        <option key={s.id} value={s.id}>{s.name || s.id}</option>
+                      ))}
+                    </select>
+                    <div className="flex gap-1.5">
+                      <button
+                        onClick={() => addFlow(newFlowTarget)}
+                        disabled={!newFlowTarget}
+                        className="flex-1 text-[10px] bg-primary text-white rounded-md px-2 py-1 font-semibold cursor-pointer disabled:opacity-40"
+                      >
+                        确认添加
+                      </button>
+                      <button
+                        onClick={() => setIsAddingFlow(false)}
+                        className="text-[10px] bg-surface-container-high text-on-surface-variant rounded-md px-2 py-1 cursor-pointer"
+                      >
+                        取消
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {activeFlows.length === 0 && !isAddingFlow ? (
                   <p className="text-xs text-on-surface-variant/50 italic px-1">{t('No outbound flows inferred for this screen')}</p>
                 ) : (
                   <div className="space-y-2">
                     {activeFlows.map((f: any, idx: number) => {
                       const targetScreen = screens.find((s) => s.id === f.to);
+                      const isManual = f.status === 'approved';
                       return (
-                        <button
+                        <div
                           key={idx}
-                          onClick={() => navigateTo(f.to)}
-                          className="w-full text-left p-2.5 rounded-xl border border-outline/30 bg-surface-container-low hover:border-primary/40 hover:bg-surface-bright transition-all text-xs flex flex-col gap-1 text-on-surface hover:text-primary group cursor-pointer"
+                          className="relative group"
                         >
-                          <span className="font-semibold text-primary group-hover:underline">
-                            {t('Transition to:')} {targetScreen?.name || f.to}
-                          </span>
-                          <span className="text-[10px] text-on-surface-variant/60 font-medium">
-                            {t('Inference Rule:')} {f.reason}
-                          </span>
-                        </button>
+                          <button
+                            onClick={() => navigateTo(f.to)}
+                            className="w-full text-left p-2.5 pr-7 rounded-xl border border-outline/30 bg-surface-container-low hover:border-primary/40 hover:bg-surface-bright transition-all text-xs flex flex-col gap-1 text-on-surface hover:text-primary cursor-pointer"
+                          >
+                            <span className="font-semibold text-primary group-hover:underline">
+                              {isManual && '✏️ '}{t('Transition to:')} {targetScreen?.name || f.to}
+                            </span>
+                            <span className="text-[10px] text-on-surface-variant/60 font-medium">
+                              {t('Inference Rule:')} {f.reason}
+                            </span>
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); deleteFlow(idx); }}
+                            className="absolute top-1.5 right-1.5 p-0.5 rounded-full hover:bg-red-100 text-on-surface-variant/30 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100 cursor-pointer"
+                            title="删除此连线"
+                          >
+                            <X size={11} />
+                          </button>
+                        </div>
                       );
                     })}
                   </div>
