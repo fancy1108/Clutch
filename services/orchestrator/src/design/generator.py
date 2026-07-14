@@ -680,6 +680,124 @@ def _spec_to_design_md(spec: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def _extract_colors_from_design_md(design_md: str) -> dict[str, str]:
+    colors = {}
+    if not design_md:
+        return colors
+    in_colors = False
+    for line in design_md.splitlines():
+        line_stripped = line.strip()
+        if not line_stripped:
+            continue
+        if line_stripped.startswith("colors:"):
+            in_colors = True
+            continue
+        if in_colors:
+            if line_stripped.startswith("typography:") or line_stripped.startswith("#") or (not line.startswith(" ") and not line.startswith("-") and ":" not in line_stripped):
+                in_colors = False
+                continue
+            match = re.search(r"^\s*-\s*([^:]+):\s*['\"]?(#[0-9a-fA-F]{3,8}|[a-zA-Z0-9]+)['\"]?", line)
+            if not match:
+                match = re.search(r"^\s*([^:]+):\s*['\"]?(#[0-9a-fA-F]{3,8}|[a-zA-Z0-9]+)['\"]?", line)
+            if match:
+                k = match.group(1).strip().strip("-").strip()
+                v = match.group(2).strip()
+                colors[k] = v
+    return colors
+
+
+def _get_unified_tailwind_config(spec: dict[str, Any] | None, design_md: str) -> dict[str, Any]:
+    colors = {}
+    if spec and isinstance(spec, dict):
+        raw_colors = spec.get("colors") or {}
+        for k, v in raw_colors.items():
+            if isinstance(v, list):
+                if len(v) > 0:
+                    colors[k] = v[0]
+                    if len(v) > 1:
+                        colors[f"{k}-light"] = v[1]
+                        colors[f"{k}-hover"] = v[1]
+                    if len(v) > 2:
+                        colors[f"{k}-dark"] = v[2]
+                        colors[f"{k}-active"] = v[2]
+            elif isinstance(v, str):
+                colors[k] = v
+                
+    md_colors = _extract_colors_from_design_md(design_md)
+    for k, v in md_colors.items():
+        if k not in colors:
+            colors[k] = v
+
+    theme_config = {
+        "colors": colors,
+        "borderRadius": {
+            "DEFAULT": "0.125rem",
+            "sm": "0.25rem",
+            "md": "0.375rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "2xl": "1rem",
+            "3xl": "1.5rem",
+            "full": "9999px"
+        },
+        "spacing": {
+            "unit": "4px",
+            "xs": "4px",
+            "sm": "8px",
+            "md": "16px",
+            "lg": "24px",
+            "xl": "32px",
+            "2xl": "48px",
+            "3xl": "64px",
+            "container-max": "1440px",
+            "sidebar-width": "240px",
+            "gutter": "16px"
+        }
+    }
+    
+    if spec and isinstance(spec, dict):
+        font_family = spec.get("typography", {}).get("fontFamily")
+        if font_family:
+            theme_config["fontFamily"] = {
+                "sans": [font_family, "Inter", "system-ui", "-apple-system", "sans-serif"],
+                "body": [font_family, "Inter", "system-ui", "-apple-system", "sans-serif"]
+            }
+    return theme_config
+
+
+def inject_unified_tailwind_config(html: str, spec: dict[str, Any] | None, design_md: str) -> str:
+    if not html:
+        return html
+    theme_config = _get_unified_tailwind_config(spec, design_md)
+    theme_config_json = json.dumps(theme_config, indent=6, ensure_ascii=False)
+    
+    script_content = f"""<script id="tailwind-config">
+      tailwind.config = {{
+        darkMode: "class",
+        theme: {{
+          extend: {theme_config_json}
+        }}
+      }};
+    </script>"""
+    
+    pattern = re.compile(
+        r'<script[^>]*id=["\']tailwind-config["\'][^>]*>[\s\S]*?</script>|<script[^>]*>\s*tailwind\.config\s*=\s*\{[\s\S]*?\}\s*;?\s*</script>',
+        re.I
+    )
+    if pattern.search(html):
+        html = pattern.sub(script_content, html)
+    else:
+        cdn_pattern = re.compile(r'(<script[^>]*src=["\'][^"\']*tailwindcss\.com[^"\']*["\'][^>]*>\s*</script>)', re.I)
+        if cdn_pattern.search(html):
+            html = cdn_pattern.sub(r'\1\n' + script_content, html)
+        elif "</head>" in html:
+            html = html.replace("</head>", f"{script_content}\n</head>")
+        else:
+            html = f"{script_content}\n{html}"
+    return html
+
+
+
 def _fallback_ui_html(prompt: str, spec: dict[str, Any], *, device: str = "web") -> str:
     """Offline-only stub when no model/API key is configured."""
     primary = (spec.get("colors") or {}).get("primary") or ["#2563eb"]
@@ -2269,48 +2387,55 @@ def generate_session(
     process_log = list(manifest.get("process_log") or [])
     design_md_text = design_md
     
-    for idx, screen_info in enumerate(screens_to_gen):
+    from concurrent.futures import ThreadPoolExecutor
+    manifest_lock = threading.Lock()
+    fatal_errors = []
+
+    def _gen_screen_worker(idx: int, screen_info: dict[str, Any]) -> None:
+        nonlocal accumulated_usage, accumulated_estimated
         sid = screen_info["id"]
         sname = screen_info["name"]
         sprompt = screen_info["prompt"]
         spattern = screen_info.get("layout_pattern") or detect_layout_pattern(sprompt, device=device)
         
-        # 1. Pre-register round history entry
-        round_index = _next_round_index(manifest, sid)
-        rel = f"screens/{sid}_r{round_index}.html"
-        
-        round_entry = {
-            "round_index": round_index,
-            "screen_id": sid,
-            "html_path": rel,
-            "prompt": sprompt,
-            "reasoning_content": None,
-            "process_log": list(process_log),
-            "at": now_iso(),
-        }
-        history = list(manifest.get("round_history") or [])
-        existing_idx = next((i for i, h in enumerate(history) if h.get("screen_id") == sid and h.get("round_index") == round_index), None)
-        if existing_idx is not None:
-            history[existing_idx] = round_entry
-        else:
-            history.append(round_entry)
-        manifest["round_history"] = history
-        
-        for screen in screens:
-            if screen["id"] == sid:
-                screen["html_path"] = rel
-                screen["active_round_index"] = round_index
-        manifest["screens"] = screens
-        
-        update_process_status(
-            sdir,
-            manifest,
-            text=f"Generating screen {idx + 1}/{len(screens_to_gen)}: «{sname}» ({spattern})…",
-            status="generating_ui",
-            model_id=model_id,
-            model_name=model_name,
-        )
-        
+        # 1. Pre-register round history entry under lock
+        with manifest_lock:
+            round_index = _next_round_index(manifest, sid)
+            rel = f"screens/{sid}_r{round_index}.html"
+            
+            round_entry = {
+                "round_index": round_index,
+                "screen_id": sid,
+                "html_path": rel,
+                "prompt": sprompt,
+                "reasoning_content": None,
+                "process_log": list(process_log),
+                "at": now_iso(),
+            }
+            history = list(manifest.get("round_history") or [])
+            existing_idx = next((i for i, h in enumerate(history) if h.get("screen_id") == sid and h.get("round_index") == round_index), None)
+            if existing_idx is not None:
+                history[existing_idx] = round_entry
+            else:
+                history.append(round_entry)
+            manifest["round_history"] = history
+            
+            for screen in screens:
+                if screen["id"] == sid:
+                    screen["html_path"] = rel
+                    screen["active_round_index"] = round_index
+            manifest["screens"] = screens
+            
+            update_process_status(
+                sdir,
+                manifest,
+                text=f"Generating {len(screens_to_gen)} screens concurrently (Screen «{sname}»)...",
+                status="generating_ui",
+                model_id=model_id,
+                model_name=model_name,
+            )
+            write_manifest(sdir, manifest)
+            
         screen_spec = {**spec, "layout_pattern": spattern}
         html = ""
         ui_reasoning = None
@@ -2335,53 +2460,69 @@ def generate_session(
                     has_image=has_image and (idx == 0),
                     image_data_url=use_img,
                 )
-                accumulated_usage = merge_token_usage(accumulated_usage, ui_usage)
-                accumulated_estimated = accumulated_estimated or ui_usage_estimated
+                with manifest_lock:
+                    accumulated_usage = merge_token_usage(accumulated_usage, ui_usage)
+                    accumulated_estimated = accumulated_estimated or ui_usage_estimated
             except Exception as exc:
                 logger.warning("design ui LLM failed for screen %s run_id=%s err=%s", sid, run_id, exc)
                 ui_fail_reason = str(exc)
 
-        llm_available = is_model_available(router, model_id)
         if not _html_has_visible_content(html):
-            if llm_available:
+            if is_model_available(router, model_id):
                 detail = ui_fail_reason or "the model returned no valid HTML"
                 err_msg = f"Generation failed for screen «{sname}» — {detail}. Please try again."
-                _finalize_assistant_step(
-                    process_log,
-                    text=err_msg,
-                    status="error",
-                    model_id=model_id,
-                    model_name=model_name,
-                    usage=accumulated_usage,
-                    usage_estimated=accumulated_estimated,
-                    replace_statuses={"generating_ui"},
-                )
-                manifest["status"] = "error"
-                manifest["error"] = err_msg
-                manifest["process_log"] = process_log
-                manifest["screens"] = screens
-                write_manifest(sdir, manifest)
-                return public_session_payload(manifest, sdir)
+                with manifest_lock:
+                    fatal_errors.append(err_msg)
+                return
             html = _fallback_ui_html(sprompt, screen_spec, device=device)
 
-        # 2. Write HTML and update placeholder details
+        # Inject the unified tailwind config to guarantee style consistency!
+        html = inject_unified_tailwind_config(html, spec, design_md_text)
+
+        # 2. Write HTML and update placeholder details under lock
         (sdir / "screens").mkdir(exist_ok=True)
         (sdir / rel).write_text(html, encoding="utf-8")
         
-        history = list(manifest.get("round_history") or [])
-        for h in history:
-            if h.get("screen_id") == sid and h.get("round_index") == round_index:
-                h["reasoning_content"] = ui_reasoning
-                h["process_log"] = list(process_log)
-                break
-        manifest["round_history"] = history
-        
-        for screen in screens:
-            if screen["id"] == sid:
-                screen["html_path"] = rel
-                screen["active_round_index"] = round_index
+        with manifest_lock:
+            history = list(manifest.get("round_history") or [])
+            for h in history:
+                if h.get("screen_id") == sid and h.get("round_index") == round_index:
+                    h["reasoning_content"] = ui_reasoning
+                    h["process_log"] = list(process_log)
+                    break
+            manifest["round_history"] = history
+            
+            for screen in screens:
+                if screen["id"] == sid:
+                    screen["html_path"] = rel
+                    screen["active_round_index"] = round_index
+            manifest["screens"] = screens
+            write_manifest(sdir, manifest)
+
+    # Execute all generations concurrently
+    max_workers = min(len(screens_to_gen), 8) if len(screens_to_gen) > 0 else 1
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        list(executor.map(lambda item: _gen_screen_worker(item[0], item[1]), enumerate(screens_to_gen)))
+
+    # If any fatal error occurred during the parallel runs, report it and exit
+    if fatal_errors:
+        err_msg = fatal_errors[0]
+        _finalize_assistant_step(
+            process_log,
+            text=err_msg,
+            status="error",
+            model_id=model_id,
+            model_name=model_name,
+            usage=accumulated_usage,
+            usage_estimated=accumulated_estimated,
+            replace_statuses={"generating_ui"},
+        )
+        manifest["status"] = "error"
+        manifest["error"] = err_msg
+        manifest["process_log"] = process_log
         manifest["screens"] = screens
         write_manifest(sdir, manifest)
+        return public_session_payload(manifest, sdir)
 
     ui_ready_text = (
         f"Interface draft is ready — generated {len(screens)} screens on the canvas:\n"
@@ -2884,47 +3025,53 @@ def iterate_session(
         accumulated_usage = empty_token_usage()
         accumulated_estimated = False
         
-        for idx, ns in enumerate(new_screens):
+        from concurrent.futures import ThreadPoolExecutor
+        manifest_lock = threading.Lock()
+        fatal_errors: list[str] = []
+        
+        def _gen_iter_screen_worker(idx: int, ns: dict[str, Any]) -> None:
+            nonlocal accumulated_usage, accumulated_estimated
             sid = ns["id"]
             sname = ns["name"]
             sprompt = ns["original_info"]["prompt"]
             spattern = ns["original_info"].get("layout_pattern") or detect_layout_pattern(sprompt, device=device)
             
-            # Pre-register round history entry
-            round_index = _next_round_index(manifest, sid)
-            rel = f"screens/{sid}_r{round_index}.html"
-            
-            round_entry = {
-                "round_index": round_index,
-                "screen_id": sid,
-                "html_path": rel,
-                "prompt": sprompt,
-                "reasoning_content": None,
-                "process_log": list(log[log_start:]),
-                "at": now_iso(),
-            }
-            history = list(manifest.get("round_history") or [])
-            existing_idx = next((i for i, h in enumerate(history) if h.get("screen_id") == sid and h.get("round_index") == round_index), None)
-            if existing_idx is not None:
-                history[existing_idx] = round_entry
-            else:
-                history.append(round_entry)
-            manifest["round_history"] = history
-            
-            for s in manifest.get("screens") or []:
-                if str(s.get("id")) == sid:
-                    s["html_path"] = rel
-                    s["active_round_index"] = round_index
-            write_manifest(sdir, manifest)
-            
-            update_process_status(
-                sdir,
-                manifest,
-                text=f"Generating screen {idx + 1}/{len(new_screens)}: «{sname}» ({spattern})…",
-                status="generating_ui",
-                model_id=model_id,
-                model_name=model_name,
-            )
+            # Pre-register round history entry under lock
+            with manifest_lock:
+                round_index = _next_round_index(manifest, sid)
+                rel = f"screens/{sid}_r{round_index}.html"
+                
+                round_entry = {
+                    "round_index": round_index,
+                    "screen_id": sid,
+                    "html_path": rel,
+                    "prompt": sprompt,
+                    "reasoning_content": None,
+                    "process_log": list(log[log_start:]),
+                    "at": now_iso(),
+                }
+                history_local = list(manifest.get("round_history") or [])
+                existing_idx = next((i for i, h in enumerate(history_local) if h.get("screen_id") == sid and h.get("round_index") == round_index), None)
+                if existing_idx is not None:
+                    history_local[existing_idx] = round_entry
+                else:
+                    history_local.append(round_entry)
+                manifest["round_history"] = history_local
+                
+                for s in manifest.get("screens") or []:
+                    if str(s.get("id")) == sid:
+                        s["html_path"] = rel
+                        s["active_round_index"] = round_index
+                
+                update_process_status(
+                    sdir,
+                    manifest,
+                    text=f"Generating {len(new_screens)} screens concurrently (Screen «{sname}»)...",
+                    status="generating_ui",
+                    model_id=model_id,
+                    model_name=model_name,
+                )
+                write_manifest(sdir, manifest)
             
             screen_spec = {**spec_dict, "layout_pattern": spattern}
             html = ""
@@ -2949,8 +3096,9 @@ def iterate_session(
                         current_html="",
                         instruction="",
                     )
-                    accumulated_usage = merge_token_usage(accumulated_usage, ui_usage)
-                    accumulated_estimated = accumulated_estimated or ui_usage_estimated
+                    with manifest_lock:
+                        accumulated_usage = merge_token_usage(accumulated_usage, ui_usage)
+                        accumulated_estimated = accumulated_estimated or ui_usage_estimated
                 except Exception as exc:
                     logger.warning("design ui LLM failed for iterated screen %s run_id=%s err=%s", sid, run_id, exc)
                     ui_fail_reason = str(exc)
@@ -2960,41 +3108,57 @@ def iterate_session(
                 if llm_available:
                     detail = ui_fail_reason or "the model returned no valid HTML"
                     err_msg = f"Generation failed for screen «{sname}» — {detail}. Please try again."
-                    _finalize_assistant_step(
-                        log,
-                        text=err_msg,
-                        status="error",
-                        model_id=model_id,
-                        model_name=model_name,
-                        usage=accumulated_usage,
-                        usage_estimated=accumulated_estimated,
-                        replace_statuses={"generating_ui"},
-                    )
-                    manifest["status"] = "error"
-                    manifest["error"] = err_msg
-                    manifest["process_log"] = log
-                    write_manifest(sdir, manifest)
-                    return public_session_payload(manifest, sdir)
+                    with manifest_lock:
+                        fatal_errors.append(err_msg)
+                    return
                 html = _fallback_ui_html(sprompt, screen_spec, device=device)
-                
-            # Write html and update round entry
+            
+            # Inject unified tailwind config for cross-screen style consistency
+            html = inject_unified_tailwind_config(html, spec_dict, design_md)
+            
+            # Write html and update round entry under lock
             (sdir / "screens").mkdir(exist_ok=True)
             (sdir / rel).write_text(html, encoding="utf-8")
             
-            history = list(manifest.get("round_history") or [])
-            for h in history:
-                if h.get("screen_id") == sid and h.get("round_index") == round_index:
-                    h["reasoning_content"] = ui_reasoning
-                    h["process_log"] = list(log[log_start:])
-                    break
-            manifest["round_history"] = history
-            
-            for s in manifest.get("screens") or []:
-                if str(s.get("id")) == sid:
-                    s["html_path"] = rel
-                    s["active_round_index"] = round_index
+            with manifest_lock:
+                history_local = list(manifest.get("round_history") or [])
+                for h in history_local:
+                    if h.get("screen_id") == sid and h.get("round_index") == round_index:
+                        h["reasoning_content"] = ui_reasoning
+                        h["process_log"] = list(log[log_start:])
+                        break
+                manifest["round_history"] = history_local
+                
+                for s in manifest.get("screens") or []:
+                    if str(s.get("id")) == sid:
+                        s["html_path"] = rel
+                        s["active_round_index"] = round_index
+                write_manifest(sdir, manifest)
+        
+        # Execute all generations concurrently
+        max_workers = min(len(new_screens), 8) if len(new_screens) > 0 else 1
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            list(executor.map(lambda item: _gen_iter_screen_worker(item[0], item[1]), enumerate(new_screens)))
+        
+        # If any fatal error occurred during the parallel runs, report it and exit
+        if fatal_errors:
+            err_msg = fatal_errors[0]
+            _finalize_assistant_step(
+                log,
+                text=err_msg,
+                status="error",
+                model_id=model_id,
+                model_name=model_name,
+                usage=accumulated_usage,
+                usage_estimated=accumulated_estimated,
+                replace_statuses={"generating_ui", "iterating"},
+            )
+            manifest["status"] = "error"
+            manifest["error"] = err_msg
+            manifest["process_log"] = log
             write_manifest(sdir, manifest)
-            
+            return public_session_payload(manifest, sdir)
+        
         added_names = ", ".join(f"«{ns['name']}»" for ns in new_screens)
         _finalize_assistant_step(
             log,
@@ -3140,6 +3304,8 @@ def iterate_session(
             html = _fallback_ui_html(merged_prompt, spec_dict, device=device)
         rel = screen.get("html_path") or f"screens/{screen_id}_r0.html"
         (sdir / "screens").mkdir(exist_ok=True)
+        # Inject unified tailwind config to maintain style consistency after modification
+        html = inject_unified_tailwind_config(html, spec, design_md)
         (sdir / rel).write_text(html, encoding="utf-8")
         screen["html_path"] = rel
         iterate_ready_text = (
