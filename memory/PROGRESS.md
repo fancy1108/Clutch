@@ -5,19 +5,18 @@
 
 ## Current Status
 
-- **阶段：** **v1.2.7 已 tag 待 push**（2026-07-14）— CHANGELOG / release doc / deliverables 已同步，preflight 通过，tag `v1.2.7` 已创建
-- **Release：** [v1.2.7](https://github.com/fancy1108/Clutch/releases/tag/v1.2.7) · tag `v1.2.7` on `dev`（push pending）
-- **Git：** `dev` ahead of `origin/dev` by ~40 commits
-- **Verify：** `./scripts/verify.sh` → 731 python tests + doc-drift passed（1 预存 keychain ACL 失败）
+- **阶段：** **v1.2.7 重新发布中**（2026-07-14）— 同日 5 个 hotfix（pick 修复 + 迭代 page 锁 + 会话历史保护 + 草稿去重只读 + 工具栏）合入 v1.2.7，CHANGELOG / release doc 已补，preflight 已跑；tag `v1.2.7` 将 force-update 到新的 main HEAD
+- **Release：** [v1.2.7](https://github.com/fancy1108/Clutch/releases/tag/v1.2.7) · tag 将被强制更新到 hotfix 后的 commit
+- **Git：** `dev` ahead of main by 5 commits（将快进合并到 main）；`dev` 与 `origin/dev` 已同步
+- **Verify：** `./scripts/verify.sh` → 130 vitest + 732 pytest passed（2 skipped），doc-drift 0
 - **Preflight：** `./scripts/release-preflight.sh v1.2.7` → passed
 - **一键原型：** 全部 Phase 交付完成（IUE → 连线编辑 → 契约落盘 → 代码生成）
 
 ## Next Actions
 
-- `git push origin dev --tags` → CI builds macOS DMG + Windows MSI/NSIS
-- 挂 Release 产物、SHA256 校验
-- 发布后同步 Homebrew tap
-- 挂 Release 产物、SHA256 校验
+- fast-forward `main` 到 `dev` → `git push origin main`
+- force-update `v1.2.7` tag → `git push origin v1.2.7 --force`
+- 重发触发 CI：macOS DMG + Windows MSI/NSIS
 - 发布后同步 Homebrew tap
 - **一键原型 Phase 2：Prototype Runtime 增强**（导航历史、Overlay Context、全局状态机、Mock 拦截）
 

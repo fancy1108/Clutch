@@ -48,6 +48,11 @@ Feature release — **interactive prototype engine with visual connection editin
 - Add flow requires explicit source element text input, preventing empty matches.
 - `generatingCode` `useState` moved before conditional returns, fixing "Rendered more hooks" React error.
 - Copy Path and Copy Prompt buttons use separate state variables, preventing cross-interference.
+- **Pick-mode element selection restored:** iframe sandbox reset to `allow-scripts allow-same-origin` after an earlier change dropped `allow-same-origin`, leaving the inline picker script in an opaque origin so `postMessage` never reached the parent — the hover outline still painted but clicks fell through to React Flow and could only select the whole board.
+- **Design Modify iteration page type locked:** prompt and parser now refuse to change a screen's page type (e.g. login → dashboard) mid-iteration; the LLM is constrained to the original page identity.
+- **Session history records preserved on load failure:** state-load errors no longer silently delete `sessions.json` records; failed loads return the prior state untouched.
+- **Empty draft dedup is view-only:** deduplication of empty draft sessions no longer persists deletions back to disk — history deletion only happens via the explicit delete action.
+- **Prototype toolbar polish:** an arrow separator was added between the Connections and Code buttons and the toolbar was right-aligned to match the simulator header layout.
 
 ## [1.2.6] - 2026-07-13
 
