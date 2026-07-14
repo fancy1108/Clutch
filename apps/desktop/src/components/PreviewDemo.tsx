@@ -616,6 +616,7 @@ export default function PreviewDemo({ screens, sessionRunId }: PreviewDemoProps)
   const [copyingPrompt, setCopyingPrompt] = useState(false);
   const [pathCopied, setPathCopied] = useState(false);
   const [movedToProject, setMovedToProject] = useState(false);
+  const [movedToPath, setMovedToPath] = useState('');
 
   const generateCode = async () => {
     if (!sessionRunId) return;
@@ -1265,6 +1266,7 @@ ${codeGenResult.path}
                     const d = await r.json();
                     if (!r.ok) { alert('Copy failed: ' + (d.detail || r.statusText)); return; }
                     setMovedToProject(true);
+                    setMovedToPath(d.to || '');
                     window.dispatchEvent(new CustomEvent('clutch-files-reveal', {detail: {path: 'generated'}}));
                   } catch(e) { alert('Copy failed: '+String(e)); }
                 }}

@@ -202,6 +202,13 @@ function MainLayout() {
     return () => window.removeEventListener('clutch-navigate-settings', handler);
   }, []);
 
+  // Listen for code-gen file reveal events — switch to Files tab
+  useEffect(() => {
+    const handler = () => setRightTab('files');
+    window.addEventListener('clutch-files-reveal', handler);
+    return () => window.removeEventListener('clutch-files-reveal', handler);
+  }, []);
+
   const setThemeId = (id: string) => {
     const preset = THEME_PRESETS.find((item) => item.id === id);
     if (!preset) return;
