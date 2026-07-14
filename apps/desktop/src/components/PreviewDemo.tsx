@@ -889,35 +889,41 @@ ${codeGenResult.path}
                   )}
 
                 </div>
-                {/* Pencil in center between nav and device selector */}
-                <button
-                  onClick={() => setEditMode(v => !v)}
-                  className={`p-1 rounded-md transition-all cursor-pointer shrink-0 ${
-                    editMode
-                      ? 'bg-amber-100 text-amber-600 shadow-sm'
-                      : 'text-on-surface-variant/40 hover:text-on-surface-variant hover:bg-surface-container-high'
-                  }`}
-                  title={editMode ? '退出编辑模式' : '编辑连线'}
-                >
-                  <Pencil size={13} />
-                </button>
-                {sessionRunId && (
-                  <>
-                    <span className="text-on-surface-variant/20 text-[10px] select-none mx-0.5">→</span>
+
+                {/* Toolbar: edit connections + generate code */}
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setEditMode(v => !v)}
+                    className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-all cursor-pointer shrink-0 ${
+                      editMode
+                        ? 'bg-amber-100 text-amber-700 shadow-sm'
+                        : 'bg-surface-container-high/70 text-on-surface-variant/70 hover:bg-surface-container-high hover:text-on-surface'
+                    }`}
+                    title={editMode ? t('Exit edit mode') : t('Edit connections')}
+                  >
+                    <Pencil size={11} />
+                    <span>{t('Connections')}</span>
+                  </button>
+                  {sessionRunId && (
                     <button
                       onClick={generateCode}
                       disabled={generatingCode}
-                      className={`p-1 rounded-md transition-all cursor-pointer shrink-0 ${
+                      className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-all cursor-pointer shrink-0 ${
                         generatingCode
-                          ? 'text-primary/40'
-                          : 'text-on-surface-variant/40 hover:text-on-surface-variant hover:bg-surface-container-high'
+                          ? 'bg-surface-container-high/70 text-on-surface-variant/30'
+                          : 'bg-surface-container-high/70 text-on-surface-variant/70 hover:bg-surface-container-high hover:text-on-surface'
                       }`}
-                      title="生成 React 代码"
+                      title="Generate React code"
                     >
-                      <Code size={13} />
+                      <Code size={11} />
+                      <span>{t('Code')}</span>
                     </button>
-                  </>
-                )}
+                  )}
+                </div>
+
+                {/* Separator */}
+                <div className="w-px h-4 bg-outline/25 shrink-0" />
+
                 {/* Device Mode Selector */}
                 <div className="flex bg-surface-container p-0.5 rounded-lg border border-outline/40 text-[10px]">
                   <button

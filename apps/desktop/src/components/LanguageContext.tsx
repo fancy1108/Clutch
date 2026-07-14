@@ -1091,6 +1091,7 @@ const zhTranslations: Record<string, string> = {
   "Manually added connection": "用户手动添加的连线",
   "Exit edit mode": "退出编辑模式",
   "Edit connections": "编辑连线",
+  "Connections": "连线",
   "Hotspot": "热区",
   "Go to": "跳转到",
   "Change target page": "更改目标页面",
