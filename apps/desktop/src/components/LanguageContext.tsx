@@ -1083,6 +1083,19 @@ const zhTranslations: Record<string, string> = {
   "Data Overflow": "数据溢出",
   "No matrix data": "暂无矩阵数据",
   "No dead-ends detected. Flow logic is complete.": "未检测到死胡同，画板路由逻辑闭环正常。",
+
+  // PreviewDemo flow & context menu
+  "Out": "出",
+  "In": "入",
+  "clickable": "可点击",
+  "Manually added connection": "用户手动添加的连线",
+  "Exit edit mode": "退出编辑模式",
+  "Edit connections": "编辑连线",
+  "Hotspot": "热区",
+  "Go to": "跳转到",
+  "Change target page": "更改目标页面",
+  "Delete this interaction": "删除此交互",
+  "New interaction → Select target": "新增交互 → 选择目标",
 };
 
 

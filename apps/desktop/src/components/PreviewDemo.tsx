@@ -511,7 +511,7 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
     if (!targetId || targetId === activeScreenId || !elementText.trim()) return;
     setMutableFlows(prev => [...prev, {
       from: activeScreenId, to: targetId, trigger: 'click',
-      confidence: 1.0, reason: '用户手动添加的连线',
+      confidence: 1.0, reason: t('Manually added connection'),
       source_element_text: elementText.trim(),
       source_element_role: 'Unknown', params: {}, status: 'approved',
     }]);
@@ -592,7 +592,7 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
             {/* Simulator Sidebar */}
             <div className="md:col-span-1 bg-surface p-4 border border-outline/35 rounded-2xl flex flex-col gap-4 shadow-xs select-none h-[510px]">
               {/* Screen Thumbnail List */}
-              <div className="flex-1 overflow-auto space-y-2 pr-0.5">
+              <div className="flex-1 overflow-auto space-y-2 pr-2">
                 {screens.map(s => {
                   const isActive = s.id === activeScreenId;
                   const outCount = mutableFlows.filter((f: any) => f.from === s.id).length;
@@ -635,8 +635,8 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
                           {s.name || s.id}
                         </span>
                         <span className="text-[9px] text-on-surface-variant/40 shrink-0 flex gap-1">
-                          {outCount > 0 && <span className="text-blue-500/70">出{outCount}</span>}
-                          {inCount > 0 && <span className="text-green-500/70">入{inCount}</span>}
+                          {outCount > 0 && <span className="text-blue-500/70">{t('Out')}{outCount}</span>}
+                          {inCount > 0 && <span className="text-green-500/70">{t('In')}{inCount}</span>}
                         </span>
                       </div>
                     </button>
@@ -678,7 +678,7 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
                   )}
                   {clickableCount > 0 && (
                     <span className="text-[9px] text-blue-500/70 font-medium ml-1 bg-blue-50 dark:bg-blue-950/40 px-1.5 py-0.5 rounded-full">
-                      {clickableCount} 可点击
+                      {clickableCount} {t('clickable')}
                     </span>
                   )}
                 </div>
@@ -718,7 +718,7 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
                       ? 'bg-amber-100 text-amber-600 shadow-sm'
                       : 'text-on-surface-variant/40 hover:text-on-surface-variant hover:bg-surface-container-high'
                   }`}
-                  title={editMode ? '退出编辑模式' : '编辑连线'}
+                  title={editMode ? t('Exit edit mode') : t('Edit connections')}
                 >
                   <Pencil size={12} />
                 </button>
@@ -879,7 +879,7 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-on-surface-variant/50 mb-0.5">
-              热区: {contextMenu.elementText}
+              {t('Hotspot')}: {contextMenu.elementText}
             </div>
             {contextMenu.flow ? (
               <>
@@ -888,11 +888,11 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
                   className="w-full text-left px-2 py-1.5 text-[10px] rounded-md hover:bg-primary/10 text-primary font-semibold transition-colors cursor-pointer flex items-center gap-1.5"
                 >
                   <ArrowRight size={10} />
-                  跳转到 {screens.find(s => s.id === contextMenu.flow!.to)?.name || contextMenu.flow!.to}
+                  {t('Go to')} {screens.find(s => s.id === contextMenu.flow!.to)?.name || contextMenu.flow!.to}
                 </button>
                 <div className="border-t border-outline/20 my-1" />
                 <div className="px-1.5 py-0.5 text-[8px] uppercase tracking-wider text-on-surface-variant/40">
-                  更改目标页面
+                  {t('Change target page')}
                 </div>
                 {screens.filter(s => s.id !== activeScreenId).slice(0, 6).map(s => (
                   <button
@@ -913,13 +913,13 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
                   className="w-full text-left px-2 py-1.5 text-[10px] rounded-md hover:bg-red-50 text-red-500 transition-colors cursor-pointer flex items-center gap-1.5"
                 >
                   <X size={10} />
-                  删除此交互
+                  {t('Delete this interaction')}
                 </button>
               </>
             ) : (
               <div className="space-y-0.5">
                 <div className="px-1.5 py-0.5 text-[8px] uppercase tracking-wider text-on-surface-variant/40">
-                  新增交互 → 选择目标
+                  {t('New interaction → Select target')}
                 </div>
                 {screens.filter(s => s.id !== activeScreenId).slice(0, 6).map(s => (
                   <button
