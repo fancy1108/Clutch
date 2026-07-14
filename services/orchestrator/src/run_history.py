@@ -225,11 +225,9 @@ def _prune_empty_records(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
         drop_indexes.update(ranked[1:])
 
     if drop_indexes:
-        changed = True
         kept = [record for i, record in enumerate(kept) if i not in drop_indexes]
 
-    if changed:
-        _save_records(kept)
+    # Never persist during list — dedup is a view filter, not a deletion
     return kept
 
 
