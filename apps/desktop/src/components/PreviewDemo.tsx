@@ -4,6 +4,7 @@ import StateController from './StateController';
 import MatrixPreview from './MatrixPreview';
 import { DesignScreen } from '../services/designApi';
 import { useLanguage } from './LanguageContext';
+import { sidecarFetch, sidecarHttpUrl } from '../services/sidecarUrl';
 
 interface PreviewDemoProps {
   screens: DesignScreen[];
@@ -166,7 +167,7 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
       preview_options: { extreme: extreme, viewports: viewports }
     };
 
-    fetch('/api/preview/', {
+    sidecarFetch(sidecarHttpUrl('/api/preview/'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
@@ -177,7 +178,8 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
         setLoading(false);
       })
       .catch((e) => {
-        setPayload({ error: String(e) });
+        console.warn('[PreviewDemo] API call failed:', e);
+        setPayload({ error: String(e), flows: [] });
         setLoading(false);
       });
   }, [boards, extreme, viewports]);
@@ -365,9 +367,14 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
         }
 
         // 3) Fallback: any submit/button on a page with only one other screen → navigate there
-        if (!targetId && fallbackTarget && otherScreens.length === 1) {
-          targetId = fallbackTarget;
+        if (!targetId && fallbackTarget) {
+          const preferred = otherScreens.find(s => {
+            const name = (s.name || '').toLowerCase();
+            return ['dashboard', 'home', 'main', 'index', 'overview', '概览', '首页', '主页', '工作台'].some(kw => name.includes(kw));
+          });
+          targetId = preferred ? preferred.id : fallbackTarget;
         }
+          targetId = fallbackTarget;
 
         if (targetId) {
           const htmlEl = el as HTMLElement;
