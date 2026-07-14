@@ -614,24 +614,61 @@ export default function PreviewDemo({ screens, sessionRunId }: PreviewDemoProps)
   const [generatingCode, setGeneratingCode] = useState(false);
   const [codeGenResult, setCodeGenResult] = useState<{written:number;path:string} | null>(null);
   const [copyingPrompt, setCopyingPrompt] = useState(false);
+  const [movedToProject, setMovedToProject] = useState(false);
 
   const generateCode = async () => {
     if (!sessionRunId) return;
     setGeneratingCode(true);
+    setMovedToProject(false);
     try {
       const url = sidecarHttpUrl(`/api/design/sessions/${encodeURIComponent(sessionRunId)}/generate-code/write`);
       const r = await sidecarFetch(url, { method: 'POST' });
       const data = await r.json();
       setCodeGenResult(data);
     } catch (e) {
-      alert('代码生成失败: ' + String(e));
+      alert('Code generation failed: ' + String(e));
     } finally {
       setGeneratingCode(false);
     }
   };
 
+  const openFolder = () => {
+    if (!codeGenResult) return;
+    // Try Tauri shell open, fallback to copying path
+    try {
+      window.open('file://' + codeGenResult.path, '_blank');
+    } catch (_) {
+      navigator.clipboard.writeText(codeGenResult.path).then(() => {
+        setCopyingPrompt(true);
+        setTimeout(() => setCopyingPrompt(false), 1500);
+      });
+    }
+  };
+
+  const contractPath = sessionRunId
+    ? `.clutch/design/sessions/${sessionRunId}/interaction_contract.json`
+    : '';
+
   const aiPrompt = codeGenResult
-    ? `我已经在 Clutch 中设计好了交互原型并生成了 React 代码。\n\n交互契约: .clutch/design/sessions/${sessionRunId}/interaction_contract.json\n生成代码: ${codeGenResult.path}\n\n请将这些组件整合到项目中，根据契约实现完整的路由和 onClick 交互逻辑，保持现有 Tailwind 样式。`
+    ? `I have a React project generated from a Clutch design prototype. Please integrate these components into a working app.
+
+**Interaction Contract (SSOT — defines all navigation):**
+${contractPath}
+- Read this first. Every entry maps a button/link text to its target page.
+- For each interaction: wrap the matched element with an onClick that navigates to the target.
+- If presentation is "overlay", use a Modal/Drawer instead of page navigation.
+
+**Generated components (HTML→JSX):**
+${codeGenResult.path}
+- These are per-screen React components with Tailwind styling.
+- Contract source_element_text values match button/link text in these files.
+
+**Requirements:**
+1. npm install && npm run dev to verify it runs
+2. Set up routing (react-router or useState) based on contract page transitions
+3. Every interaction in the contract MUST be implemented
+4. Keep all existing Tailwind styles
+5. The app should be fully navigable end-to-end`
     : '';
 
   if (screens.length === 0) {
