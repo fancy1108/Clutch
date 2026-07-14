@@ -605,7 +605,7 @@ export default function PreviewDemo({ screens }: PreviewDemoProps) {
                       className={`w-full text-left rounded-xl border transition-all overflow-hidden cursor-pointer group ${
                         isActive
                           ? 'border-primary/50 bg-primary/5 shadow-sm'
-                          : 'border-outline/30 bg-surface hover:border-outline/60 hover:bg-surface-container-low'
+                          : 'border-outline/50 bg-surface hover:border-outline/60 hover:bg-surface-container-low'
                       }`}
                     >
                       {/* Mini preview iframe */}
