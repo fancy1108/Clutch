@@ -1105,6 +1105,14 @@ const zhTranslations: Record<string, string> = {
   "Validation failed, please check and try again": "输入校验失败，请检查后重试",
   "Data service connection timeout": "数据服务连接超时",
   "Request failed, please try again later": "请求失败，请稍后重试",
+
+  // Code generation modal
+  "Code Generated": "代码已生成",
+  "files written": "个文件已写入",
+  "Open Folder": "打开文件夹",
+  "Move to Project": "移入项目",
+  "Moved": "已移入",
+  "Copy Prompt": "复制 AI Prompt",
 };
 
 

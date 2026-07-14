@@ -1237,22 +1237,22 @@ ${codeGenResult.path}
       {/* Code Generation Result Modal */}
       {codeGenResult && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/30" onClick={() => setCodeGenResult(null)}>
-          <div className="bg-surface border border-outline/40 rounded-2xl shadow-xl p-5 max-w-sm w-full mx-4" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xs font-bold text-on-surface">
-                Code Generated / 代码已生成
+          <div className="bg-surface border border-outline/40 rounded-2xl shadow-xl p-6 max-w-sm w-full mx-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-bold text-on-surface">
+                {t('Code Generated')}
               </h3>
-              <button onClick={() => setCodeGenResult(null)} className="p-0.5 rounded hover:bg-surface-container-high text-on-surface-variant/50 cursor-pointer">
-                <X size={14} />
+              <button onClick={() => setCodeGenResult(null)} className="p-1 rounded-md hover:bg-surface-container-high text-on-surface-variant/60 cursor-pointer">
+                <X size={15} />
               </button>
             </div>
-            <p className="text-[10px] text-on-surface-variant/60 text-center mb-3 leading-relaxed">
-              {codeGenResult.written} files written. Open the folder, move into your project, or copy the AI prompt to hand off the rest.
+            <p className="text-xs text-on-surface-variant/70 text-center mb-4 leading-relaxed">
+              {codeGenResult.written} {t('files written')}
             </p>
-            <div className="flex gap-1.5">
+            <div className="flex gap-2">
               <button
                 onClick={openFolder}
-                className="flex-1 text-center px-2 py-1.5 text-[10px] font-semibold rounded-lg border border-outline/30 text-on-surface-variant hover:bg-surface-container-high transition-colors cursor-pointer"
+                className="flex-1 text-center px-3 py-2 text-xs font-semibold rounded-lg border border-outline/40 text-on-surface-variant hover:bg-surface-container-high transition-colors cursor-pointer"
               >
                 Copy Path
               </button>
@@ -1266,13 +1266,13 @@ ${codeGenResult.path}
                     window.dispatchEvent(new CustomEvent('clutch-files-reveal', {detail: {path: 'generated'}}));
                   } catch(e) { alert('Copy failed: '+String(e)); }
                 }}
-                className={`flex-1 text-center px-2 py-1.5 text-[10px] font-semibold rounded-lg border border-outline/30 transition-colors cursor-pointer ${
+                className={`flex-1 text-center px-3 py-2 text-xs font-semibold rounded-lg border border-outline/40 transition-colors cursor-pointer ${
                   movedToProject
                     ? 'bg-green-50 text-green-600 border-green-200'
                     : 'text-on-surface-variant hover:bg-surface-container-high'
                 }`}
               >
-                {movedToProject ? 'Moved' : 'Move to Project'}
+                {movedToProject ? t('Moved') : t('Move to Project')}
               </button>
               <button
                 onClick={async () => {
@@ -1280,9 +1280,9 @@ ${codeGenResult.path}
                   setCopyingPrompt(true);
                   setTimeout(() => setCopyingPrompt(false), 1500);
                 }}
-                className="flex-1 text-center px-2 py-1.5 text-[10px] font-semibold rounded-lg bg-on-surface text-surface hover:bg-on-surface/90 transition-colors cursor-pointer"
+                className="flex-1 text-center px-3 py-2 text-xs font-semibold rounded-lg bg-on-surface text-surface hover:bg-on-surface/90 transition-colors cursor-pointer"
               >
-                {copyingPrompt ? 'Copied' : 'Copy Prompt'}
+                {copyingPrompt ? t('Copied') : t('Copy Prompt')}
               </button>
             </div>
           </div>
