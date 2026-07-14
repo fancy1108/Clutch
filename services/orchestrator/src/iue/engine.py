@@ -92,7 +92,7 @@ def default_stage1_candidates(boards: List[Dict[str, Any]]) -> List[ElementCandi
 # 角色分类规则：(中文关键词, 英文关键词, 标签白名单) → ElementRole
 _ROLE_RULES: List[Tuple[List[str], List[str], List[str], ElementRole]] = [
     (["提交", "保存", "确认", "确定", "登录", "注册", "发布", "登入", "登陆"],
-     ["submit", "save", "confirm", "ok", "login", "signup", "publish", "apply", "done", "sign in", "log in", "sign-in", "log-in", "signin"],
+     ["submit", "save", "confirm", "ok", "login", "signup", "publish", "apply", "done", "sign in", "log in", "sign-in", "log-in", "signin", "register", "sign up", "sign-up", "signup", "send", "continue", "get started", "get-started", "try free", "try-free"],
      ["button", "input"], ElementRole.SUBMIT_BUTTON),
     (["取消", "关闭", "返回", "退出", "放弃"],
      ["cancel", "close", "back", "exit", "discard", "dismiss", "abort"],
@@ -118,12 +118,15 @@ _ROLE_RULES: List[Tuple[List[str], List[str], List[str], ElementRole]] = [
     (["上一页", "上一頁", "前一页", "‹", "←"],
      ["prev", "previous", "back", "<", "‹", "«"],
      ["button", "a"], ElementRole.PAGINATION_PREV),
-    (["首页", "仪表盘", "概览", "工作台"],
-     ["home", "dashboard", "overview", "index"],
-     ["a", "menu-item"], ElementRole.NAV_LINK),
+    (["首页", "仪表盘", "概览", "工作台", "设置", "个人", "帮助", "关于", "退出", "登出"],
+     ["home", "dashboard", "overview", "index", "settings", "profile", "account", "help", "about", "logout", "sign out", "sign-out", "log out", "log-out"],
+     ["a", "menu-item", "button", "li"], ElementRole.NAV_LINK),
     (["详情", "查看", "明细", "展开"],
      ["detail", "view", "open", "expand", "inspect", "show"],
      ["button", "a", "tr", "row"], ElementRole.TABLE_ROW_LINK),
+    (["菜单", "导航", "侧栏"],
+     ["menu", "sidebar", "navigation", "notifications", "messages", "inbox", "reports", "analytics", "users", "customers", "orders", "products", "billing"],
+     ["li", "a", "div", "button"], ElementRole.MENU_ITEM),
     (["tab", "标签页"],
      ["tab", "pane"],
      ["tab", "button", "a"], ElementRole.TAB_SWITCH),
@@ -243,7 +246,7 @@ def default_stage3_match(
                 # 方法 3: 关键词重叠
                 btn_words = set(_normalize_words(btn_text))
                 common = btn_words & tgt_words
-                if common and len(common) >= 1:
+                if common and len(common) >= 2:
                     matches.append(TargetMatch(
                         source_board_id=src_bid,
                         target_board_id=tgt_bid,
@@ -316,7 +319,20 @@ def default_stage3_match(
                     match_method="role_intent",
                 ))
 
-    return matches
+    # Deduplicate: keep only best match per (source_board, target_board) pair
+    seen: Dict[Tuple[str, str], TargetMatch] = {}
+    for m in matches:
+        key = (m.source_board_id, m.target_board_id)
+        # Prefer higher-confidence methods
+        method_rank = {
+            "button_text_exact": 5, "button_text_partial": 4,
+            "keyword_overlap": 3, "title_substring": 2, "action_heuristic": 1,
+            "role_intent": 0,
+        }
+        if key not in seen or method_rank.get(m.match_method, 0) > method_rank.get(seen[key].match_method, 0):
+            seen[key] = m
+
+    return [m for m in seen.values()]
 
 
 # ---------- Stage 4: 拓扑概率打分 ----------
@@ -349,7 +365,20 @@ def default_stage4_score(matches: List[TargetMatch]) -> List[TargetMatch]:
         m.confidence = min(base, 1.0)
     # 按置信度降序
     matches.sort(key=lambda m: m.confidence, reverse=True)
-    return matches
+    # Deduplicate: keep only best match per (source_board, target_board) pair
+    seen: Dict[Tuple[str, str], TargetMatch] = {}
+    for m in matches:
+        key = (m.source_board_id, m.target_board_id)
+        # Prefer higher-confidence methods
+        method_rank = {
+            "button_text_exact": 5, "button_text_partial": 4,
+            "keyword_overlap": 3, "title_substring": 2, "action_heuristic": 1,
+            "role_intent": 0,
+        }
+        if key not in seen or method_rank.get(m.match_method, 0) > method_rank.get(seen[key].match_method, 0):
+            seen[key] = m
+
+    return [m for m in seen.values()]
 
 
 # ---------- Stage 5: 输出推理理由 ----------

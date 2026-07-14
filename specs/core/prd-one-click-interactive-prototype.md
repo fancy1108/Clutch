@@ -241,3 +241,45 @@ graph TD
     *   完全替代了大模型依靠猜测在代码里胡乱组装 Modal 或手动编写复杂 state 的低效模式。
 3.  **零偏差交付保证**：
     由于编译引擎和预览运行时都服从同一份 `Interaction Contract`，这彻底保证了：**你在交互原型中调整好、确认过的一切跳转、弹窗效果，就是你最终导出的工程代码效果！**
+
+---
+
+## 8. 实施记录与需求偏移说明 (Implementation Reality · 2026-07)
+
+### 8.1 实际交付路径 vs 原规划
+
+原 PRD 设想的线性流水线（静态 HTML → IUE 推断 → 契约落盘 → 代码编译）在实施中被**双向重构**：
+
+| 原规划 | 实际交付 | 偏移原因 |
+|--------|---------|---------|
+| Stage 6 人工确认门（画布虚线 + Approve/Reject） | 双模式预览/编辑系统 + 拖拽连线 | 用户需要主动"修"而非被动"确认"——可视化编辑比二元审批更高效 |
+| 契约先生成再消费 | 契约在编辑中逐步完善，localStorage 过渡 | 连线精度不够时，先让用户手工修比生成正式文件更重要 |
+| Prototype Runtime 独立沙箱 | iframe 直接 DOM 注入 + onclick 劫持 | 轻量方案满足原型仿真需求，完整沙箱投入产出比低 |
+| Scenario Groups 场景组 | StateController 4 个基本状态 | 核心流程（跳转/连线/状态）优先于边缘场景 |
+| React Compiler 代码生成 | 未启动 | 契约不稳定时生成代码是浪费 |
+
+### 8.2 当前已交付模块
+
+| 模块 | 状态 | 文件 |
+|------|------|------|
+| IUE 引擎（6 阶段可插拔管道） | ✅ | `services/orchestrator/src/iue/` |
+| 可点击交互原型（iframe 点击跳转 + 导航历史） | ✅ | `PreviewDemo.tsx` |
+| 双模式系统（预览模式 + 铅笔编辑模式） | ✅ | `PreviewDemo.tsx` |
+| SVG 可视化连线（热区→缩略图，滚动自适应） | ✅ | `PreviewDemo.tsx` |
+| 拖拽重连 + 拖拽创建交互 | ✅ | `PreviewDemo.tsx` |
+| 连线编辑器（上下文菜单 + 自动保存 localStorage） | ✅ | `PreviewDemo.tsx` |
+| 侧栏缩略图列表（迷你预览 + 出入计数） | ✅ | `PreviewDemo.tsx` |
+| 业务状态模拟（Normal/Warning/Critical/DataOverflow + Extreme） | ✅ | `PreviewDemo.tsx` + `StateController.tsx` |
+| 多视口矩阵（Desktop/Tablet/Mobile 设备外壳） | ✅ | `PreviewDemo.tsx` + `MatrixPreview.tsx` |
+
+### 8.3 调整后的推进顺序
+
+基于实际用户体验反馈，优先级调整为：
+
+1. **连线精度修复**（进行中）— Stage 2 分类 + Stage 3 匹配去噪
+2. **契约落盘** — localStorage → `interaction_contract.json`
+3. **业务状态补齐** — Empty/Loading/Error/PermissionDenied 等
+4. **弹窗/抽屉模拟** — Overlay 类型交互（Modal、Drawer）
+5. **代码生成** — 契约稳定后启动
+
+> 以下原 PRD 模块暂缓：Feedback Loop 交互记忆体、Scenario Groups 场景组播放器。它们在连线精度未达标前投入产出比低。
