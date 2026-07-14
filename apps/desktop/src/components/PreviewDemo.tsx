@@ -611,6 +611,22 @@ export default function PreviewDemo({ screens, sessionRunId }: PreviewDemoProps)
     };
   }, [calcLines, editMode]);
 
+  const [generatingCode, setGeneratingCode] = useState(false);
+  const generateCode = async () => {
+    if (!sessionRunId) return;
+    setGeneratingCode(true);
+    try {
+      const url = sidecarHttpUrl(`/api/design/sessions/${encodeURIComponent(sessionRunId)}/generate-code/write`);
+      const r = await sidecarFetch(url, { method: 'POST' });
+      const data = await r.json();
+      alert(`✅ 代码已生成！\n\n${data.written} 个文件 → ${data.path}\n\ncd generated && npm install && npm run dev`);
+    } catch (e) {
+      alert('代码生成失败: ' + String(e));
+    } finally {
+      setGeneratingCode(false);
+    }
+  };
+
   if (screens.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 px-6 text-center select-none bg-surface-bright text-on-surface">
@@ -660,22 +676,6 @@ export default function PreviewDemo({ screens, sessionRunId }: PreviewDemoProps)
         : f
     ));
     setContextMenu(null);
-  };
-
-  const [generatingCode, setGeneratingCode] = useState(false);
-  const generateCode = async () => {
-    if (!sessionRunId) return;
-    setGeneratingCode(true);
-    try {
-      const url = sidecarHttpUrl(`/api/design/sessions/${encodeURIComponent(sessionRunId)}/generate-code/write`);
-      const r = await sidecarFetch(url, { method: 'POST' });
-      const data = await r.json();
-      alert(`✅ 代码已生成！\n\n${data.written} 个文件 → ${data.path}\n\ncd generated && npm install && npm run dev`);
-    } catch (e) {
-      alert('代码生成失败: ' + String(e));
-    } finally {
-      setGeneratingCode(false);
-    }
   };
 
   return (
