@@ -35,7 +35,9 @@ def _extract_simple_params_from_text(text: str) -> Dict[str, Any]:
 
 
 def _normalize_words(s: str) -> List[str]:
-    words = re.findall(r"[a-zA-Z0-9]+", (s or "").lower())
+    # Extract English words/digits and Chinese character tokens
+    words = re.findall(r"[a-zA-Z0-9]+|[\u4e00-\u9fff]", (s or ""))
+    words = [w.lower() for w in words]
     # naive singularization: include singular form for trailing 's' to improve overlap matching
     augmented: List[str] = []
     for w in words:
@@ -64,16 +66,35 @@ def extract_flows_from_boards(boards: List[Dict[str, Any]]) -> List[Dict[str, An
                 continue
             tgt_title = tgt.get('title') or ""
             tgt_words = set(_normalize_words(tgt_title))
-            # 1) exact title substring match
+            
+            # 1) Button text matches target title substring or vice-versa
+            button_matched = False
+            for el in src.get('elements', []):
+                if el.get('type') == 'button':
+                    btn_txt = el.get('text', '').strip()
+                    if btn_txt and len(btn_txt) >= 2:
+                        if btn_txt.lower() in tgt_title.lower() or tgt_title.lower() in btn_txt.lower():
+                            suggestions.append({
+                                'from': src['id'],
+                                'to': tgt['id'],
+                                'reason': f"Button '{btn_txt}' matches page '{tgt_title}'",
+                                'params': inferred_params
+                            })
+                            button_matched = True
+                            break
+            if button_matched:
+                continue
+
+            # 2) exact title substring match
             if tgt_title and tgt_title.lower() in src_texts.lower():
                 suggestions.append({'from': src['id'], 'to': tgt['id'], 'reason': f"Title match: {tgt_title}", 'params': inferred_params})
                 continue
-            # 2) word overlap between src element texts and target title
+            # 3) word overlap between src element texts and target title
             common = src_words & tgt_words
             if common:
                 suggestions.append({'from': src['id'], 'to': tgt['id'], 'reason': f"Keyword overlap: {sorted(common)[:5]}", 'params': inferred_params})
                 continue
-            # 3) button/action heuristic: look for verbs in src that imply create/edit/view
+            # 4) button/action heuristic: look for verbs in src that imply create/edit/view
             action_verbs = {'create', 'new', 'add', 'edit', 'view', 'open', 'details', 'configure', 'manage'}
             if any(v in src_words for v in action_verbs) and any(w in tgt_words for w in {'create', 'configure', 'settings', 'new', 'edit'}):
                 suggestions.append({'from': src['id'], 'to': tgt['id'], 'reason': 'Action→Page heuristic', 'params': inferred_params})

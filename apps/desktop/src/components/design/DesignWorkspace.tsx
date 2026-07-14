@@ -71,24 +71,17 @@ import { UrlCardNode } from './nodes/UrlCardNode';
 import { useLanguage } from '../LanguageContext';
 import PreviewDemo from '../../components/PreviewDemo';
 import { StyleSelect, type StyleOption } from './StyleSelect';
-import { BTN_PRIMARY, BTN_SECONDARY, BTN_SUCCESS } from '../ui/buttonStyles';
 import { APP_INPUT_DOCK_BOTTOM_PX } from '../../constants/layout';
 import {
-  approveDesignPrototype,
-  approveDesignReact,
   deleteDesignScreen,
   designScreenVersionPath,
   ensureDesignSession,
-  generateDesignReact,
   generateDesignSession,
   getDesignScreenHtml,
   getDesignSession,
   iterateDesignSession,
   parseDesignRounds,
   screenRoundIndexAt,
-  sendDesignToCoding,
-  startDesignPreview,
-  stopDesignPreview,
   stripDesignIterateMeta,
   versionedDesignScreenId,
   type CodingHandoff,
@@ -267,7 +260,12 @@ function DesignCanvasInner({
   onSendToCoding,
   onSessionTitle,
   onBusyChange,
-}: Omit<DesignWorkspaceProps, 'workspaceReady'>) {
+  showPreviewDemo,
+  setShowPreviewDemo,
+}: Omit<DesignWorkspaceProps, 'workspaceReady'> & {
+  showPreviewDemo: boolean;
+  setShowPreviewDemo: (v: boolean | ((prev: boolean) => boolean)) => void;
+}) {
   const { t } = useLanguage();
   const [session, setSession] = useState<DesignSession | null>(null);
   const [prompt, setPrompt] = useState('');
@@ -324,8 +322,6 @@ function DesignCanvasInner({
   const [iterateText, setIterateText] = useState('');
   const [iteratePending, setIteratePending] = useState<IteratePending | null>(null);
   const [focusNodeIds, setFocusNodeIds] = useState<string[] | undefined>(undefined);
-  const [showCodeTray, setShowCodeTray] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [welcomeMode, setWelcomeMode] = useState(true);
   const [canvasSelection, setCanvasSelection] = useState<CanvasSelection | null>(null);
   const [elementSelection, setElementSelection] = useState<ElementSelection | null>(null);
@@ -561,7 +557,6 @@ function DesignCanvasInner({
           : selectedRoundRef.current;
       setSession(next);
       setSelectedRoundIndex(effectiveRoundIndex);
-      setPreviewUrl(next.preview_url ?? null);
       if (next.device === 'app' || next.device === 'web') {
         setDevice(next.device);
       }
@@ -746,8 +741,7 @@ function DesignCanvasInner({
     setError(null);
     setDrawing(false);
     setIterateText('');
-    setShowCodeTray(false);
-    setPreviewUrl(null);
+    setShowPreviewDemo(false);
     setSelectedRoundIndex(0);
     setRoundHtmlByScreen({});
     roundPinnedRef.current = false;
@@ -1669,17 +1663,17 @@ function DesignCanvasInner({
                 <button
                   type="button"
                   className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-semibold transition-colors ${
-                    showCodeTray
+                    showPreviewDemo
                       ? 'border-neutral-900 bg-neutral-900 text-white'
                       : 'border-outline-variant/40 bg-surface-container-low text-on-surface-variant hover:border-outline-variant hover:text-on-surface'
                   }`}
-                  onClick={() => setShowCodeTray((v) => !v)}
-                  title={t('Prototype → Approve → UI code → Coding')}
-                  aria-expanded={showCodeTray}
-                  aria-label={t('UI code')}
+                  onClick={() => setShowPreviewDemo((v) => !v)}
+                  title={t('Preview Demo')}
+                  aria-expanded={showPreviewDemo}
+                  aria-label={t('Preview Demo')}
                 >
                   <Code2 size={12} className="inline shrink-0" />
-                  {t('UI code')}
+                  {t('Preview Demo')}
                 </button>
                 <button
                   type="button"
@@ -1693,126 +1687,6 @@ function DesignCanvasInner({
             </div>
           </div>
 
-          {showCodeTray ? (
-            <div className="absolute right-4 top-4 z-20 w-[300px] space-y-2 rounded-2xl border border-outline-variant/30 bg-white p-3 shadow-md">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="text-[12px] font-semibold text-on-surface">{t('UI code')}</p>
-                  <p className="text-[10px] text-on-surface-variant">
-                    {t('Prototype → Approve → UI code → Coding')}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  className="rounded-md p-1 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
-                  onClick={() => setShowCodeTray(false)}
-                  aria-label={t('Close')}
-                >
-                  <X size={14} />
-                </button>
-              </div>
-              <p className="text-[11px] leading-relaxed text-on-surface-variant">
-                {session?.prototype_approved
-                  ? t('Prototype approved. Generate a Vite + React + Tailwind app.')
-                  : t('Approve the prototype first.')}
-              </p>
-              <button
-                type="button"
-                className={`${BTN_SUCCESS} w-full`}
-                disabled={busy || !session?.screens?.length || session.prototype_approved}
-                onClick={() =>
-                  void withBusy(async () => {
-                    const next = await approveDesignPrototype(runId);
-                    setSession(next);
-                    setBusy(false);
-                    return next;
-                  })
-                }
-              >
-                <Check size={14} /> {t('Approve')}
-              </button>
-              <button
-                type="button"
-                className={`${BTN_PRIMARY} w-full`}
-                disabled={busy || !session?.prototype_approved}
-                onClick={() =>
-                  void withBusy(async () => {
-                    const next = await generateDesignReact(runId);
-                    setSession(next);
-                    setBusy(false);
-                    return next;
-                  })
-                }
-              >
-                {t('Generate UI code')}
-              </button>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  className={`${BTN_SECONDARY} flex-1`}
-                  disabled={busy || !session?.react_ready}
-                  onClick={() =>
-                    void withBusy(async () => {
-                      const r = await startDesignPreview(runId);
-                      setPreviewUrl(r.url);
-                      setBusy(false);
-                      return r;
-                    })
-                  }
-                >
-                  {t('Start preview')}
-                </button>
-                <button
-                  type="button"
-                  className={`${BTN_SECONDARY} flex-1`}
-                  disabled={!previewUrl}
-                  onClick={() =>
-                    void withBusy(async () => {
-                      await stopDesignPreview(runId);
-                      setPreviewUrl(null);
-                      setBusy(false);
-                    })
-                  }
-                >
-                  {t('Stop')}
-                </button>
-              </div>
-              {previewUrl ? (
-                <iframe title="preview" src={previewUrl} className="h-40 w-full rounded-xl border border-outline-variant/30" />
-              ) : null}
-              <button
-                type="button"
-                className={`${BTN_SUCCESS} w-full`}
-                disabled={busy || !session?.react_ready || session.react_approved}
-                onClick={() =>
-                  void withBusy(async () => {
-                    const next = await approveDesignReact(runId);
-                    setSession(next);
-                    setBusy(false);
-                    return next;
-                  })
-                }
-              >
-                {t('Approve UI code')}
-              </button>
-              <button
-                type="button"
-                className={`${BTN_PRIMARY} w-full`}
-                disabled={busy || !session?.react_approved}
-                onClick={() =>
-                  void withBusy(async () => {
-                    const handoff = await sendDesignToCoding(runId);
-                    onSendToCoding(handoff);
-                    setBusy(false);
-                    return handoff;
-                  })
-                }
-              >
-                {t('Send to Coding')}
-              </button>
-            </div>
-          ) : null}
-
           {error ? (
             <div className="absolute left-1/2 top-4 z-20 -translate-x-1/2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] text-rose-700">
               {error}
@@ -1824,6 +1698,40 @@ function DesignCanvasInner({
           ) : null}
 
         </>
+      )}
+      {showPreviewDemo && createPortal(
+        <div className="fixed inset-0 bg-neutral-900/10 backdrop-blur-xs flex items-center justify-center z-[100] p-6 select-none leading-normal">
+          {/* Click backdrop to close */}
+          <div className="absolute inset-0" onClick={() => setShowPreviewDemo(false)} />
+
+          {/* Modal Container */}
+          <div 
+            style={{ width: '1040px', height: '700px', maxHeight: '90vh' }}
+            className="bg-surface text-on-surface rounded-[24px] shadow-xl border border-outline flex flex-col overflow-hidden relative z-10"
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-outline bg-surface-bright shrink-0">
+              <h3 className="text-sm font-bold text-on-surface flex items-center gap-2.5">
+                <Code2 size={16} className="text-primary" />
+                {t('Interactive Prototype & Device Matrix')}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowPreviewDemo(false)}
+                className="w-7 h-7 bg-surface-container/60 hover:bg-surface-container-high/60 text-on-surface-variant hover:text-on-surface rounded-full flex items-center justify-center border border-outline/30 transition-all group cursor-pointer"
+                title={t("Close Panel")}
+              >
+                <X size={14} className="group-hover:rotate-90 transition-transform" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="flex-1 overflow-hidden bg-surface-dim p-6">
+              <PreviewDemo screens={session?.screens || []} />
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
     </>
   );
@@ -1844,16 +1752,6 @@ export const DesignWorkspace: React.FC<DesignWorkspaceProps> = (props) => {
   return (
     <>
       <div className="relative h-full min-h-0 overflow-hidden bg-[#f7f7f8] font-sans" data-testid="design-workspace">
-        {showPreviewDemo && (
-          <div className="fixed inset-0 z-50 flex items-start justify-center p-8 bg-black/30">
-            <div className="max-w-3xl w-full bg-white rounded-xl shadow-lg p-4 overflow-auto max-h-[90vh]">
-              <div className="flex justify-end mb-2">
-                <button type="button" className="rounded px-2 py-1 text-sm text-neutral-600 hover:text-neutral-900" onClick={() => setShowPreviewDemo(false)}>✕ Close</button>
-              </div>
-              <PreviewDemo />
-            </div>
-          </div>
-        )}
         <div
           className="pointer-events-none absolute inset-0 opacity-70"
           style={{
@@ -1862,22 +1760,13 @@ export const DesignWorkspace: React.FC<DesignWorkspaceProps> = (props) => {
           }}
         />
         <ReactFlowProvider>
-          <DesignCanvasInner {...props} />
+          <DesignCanvasInner
+            {...props}
+            showPreviewDemo={showPreviewDemo}
+            setShowPreviewDemo={setShowPreviewDemo}
+          />
         </ReactFlowProvider>
       </div>
-
-      {/* Portal: Floating button outside overflow-hidden parent */}
-      {createPortal(
-        <button
-          type="button"
-          onClick={() => setShowPreviewDemo(true)}
-          className="fixed right-6 bottom-6 z-40 inline-flex items-center gap-2 rounded-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 shadow-lg transition-colors"
-        >
-          <Code2 size={16} />
-          <span className="text-sm font-medium">Preview Demo</span>
-        </button>,
-        document.body
-      )}
     </>
   );
 };

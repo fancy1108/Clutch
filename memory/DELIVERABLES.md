@@ -22,6 +22,18 @@
 
 ## Active Deliverables
 
+### Premium hardware mockup shells, script-free external DOM state injections, and custom dropdowns unification ✅
+- **日期：** 2026-07-14
+- **Commit：** `—`（本会话 commit）
+- **Verification：** `./scripts/verify.sh` → all checks passed (726 passed, check-doc-drift passed); manual browser testing verified all simulator views and dropdown clicks.
+- **证据：** —
+- **交付文件：**
+  - `apps/desktop/src/components/PreviewDemo.tsx` — Rebuilt page selector as custom dropdown. Refactored iframe DOM modification to execute externally using contentDocument same-origin access, bypassing script string injection and resolving JS leakage bugs. Added monitor stand and bezel for Desktop. Corrected CheckCircle import.
+  - `apps/desktop/src/components/MatrixPreview.tsx` — Excluded script/style text nodes from text walker replacements. Refactored viewports to load state rules externally, and added laptop/iPad/iPhone pure CSS frames.
+  - `apps/desktop/src/components/StateController.tsx` — Rebuilt state controller as custom dropdown with animated ChevronDown and colored status indicators.
+  - `apps/desktop/src/components/design/DesignWorkspace.tsx` — Expanded modal height bounds to 700px.
+  - `services/orchestrator/src/prototype_generator.py` — Upgraded regex tokenizer for Chinese range normalization and substring overlapping matches.
+
 ### Design vision model fallback degradation ✅
 - **日期：** 2026-07-13
 - **Commit：** `e92961f` — `fix: design iteration generating login page instead of requested landing page`
