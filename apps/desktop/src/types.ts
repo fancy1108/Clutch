@@ -24,7 +24,9 @@ export type {
   WebSocketEnvelope,
   WebSocketEvent,
   WorkflowDef,
+  WorkflowNodeType,
   WorkflowStep,
+  EdgeWhen,
 } from '@clutch/shared-types';
 
 export interface Deliverable {

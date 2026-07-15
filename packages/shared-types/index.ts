@@ -45,14 +45,25 @@ export interface ChatMessage {
   };
 }
 
+/** Supported node types in the visual canvas editor. */
+export type WorkflowNodeType = 'agent_task' | 'human_gate' | 'check';
+
+/** Conditional routing value on edges (set by check/human_gate nodes). */
+export type EdgeWhen = 'approve' | 'reject' | 'retry' | 'passed' | 'failed';
+
 export interface WorkflowStep {
   id: string;
   name: string;
+  /** Node type — defaults to 'agent_task' for backward compatibility. */
+  nodeType?: WorkflowNodeType;
+  /** Agent instance id (required for agent_task, ignored for gate/check). */
   agent: string;
   aiTool?: string;
   avatar?: string;
   description: string;
   nextSteps: string[];
+  /** Per-outgoing-edge conditional value, keyed by target step id. */
+  edgeWhen?: Record<string, EdgeWhen>;
   position?: { x: number; y: number };
 }
 

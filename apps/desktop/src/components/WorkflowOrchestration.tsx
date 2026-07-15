@@ -26,6 +26,7 @@ import {
   formatCanvasIncompatibilities,
   getCanvasIncompatibilities,
   parseCompilerJson,
+  validWhenValues,
   type CompilerWorkflow,
 } from '../services/workflowFormat';
 import {
@@ -66,9 +67,18 @@ const MODAL_BTN_CANCEL = BTN_GHOST;
 const FLOW_DEFAULT_VIEWPORT = { x: 80, y: 60, zoom: 0.58 };
 const FLOW_FIT_VIEW_OPTIONS = { padding: 0.55, maxZoom: 0.62, minZoom: 0.2 };
 
+const nodeTypeConfig: Record<string, { icon: string; color: string; label: string; bgClass: string }> = {
+  agent_task: { icon: 'smart_toy', color: '#525252', label: 'Agent', bgClass: 'bg-neutral-100' },
+  human_gate: { icon: 'gavel', color: '#7c3aed', label: 'Approval', bgClass: 'bg-violet-50' },
+  check: { icon: 'shield_check', color: '#d97706', label: 'Check', bgClass: 'bg-amber-50' },
+};
+
 const CustomNode = ({ data }: { data: any }) => {
+  const cfg = nodeTypeConfig[data.nodeType as string] ?? nodeTypeConfig.agent_task;
   return (
-    <div className="group min-w-[220px] max-w-xs p-3 bg-white border border-neutral-300 rounded-xl shadow-sm relative hover:border-neutral-400 transition-colors">
+    <div className={`group min-w-[220px] max-w-xs p-3 bg-white border rounded-xl shadow-sm relative transition-colors`}
+      style={{ borderColor: `${cfg.color}40` }}
+    >
       <Handle 
         type="target" 
         position={Position.Top} 
@@ -77,17 +87,19 @@ const CustomNode = ({ data }: { data: any }) => {
       />
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg overflow-hidden flex-shrink-0 flex items-center justify-center bg-neutral-100">
-            {data.avatar ? (
+          <div className={`w-7 h-7 rounded-lg overflow-hidden flex-shrink-0 flex items-center justify-center ${cfg.bgClass}`}>
+            {data.avatar && data.nodeType !== 'human_gate' && data.nodeType !== 'check' ? (
               <img className="w-5 h-5 object-contain" src={data.avatar} alt={data.agent} />
             ) : (
-              <LegacyIcon name="smart_toy" className="text-[15px] text-neutral-500" />
+              <span style={{ color: cfg.color, display: 'flex' }}>
+                <LegacyIcon name={cfg.icon} className="text-[15px]" />
+              </span>
             )}
           </div>
           <div className="overflow-hidden text-left flex-1 max-w-[130px]">
             <p className="text-xs font-bold text-neutral-900 truncate">{data.name}</p>
-            <p className="text-[9px] font-medium text-neutral-400 font-mono truncate">
-              {data.agent} {data.aiTool ? `| ${data.aiTool}` : ''}
+            <p className="text-[9px] font-medium font-mono truncate" style={{ color: cfg.color }}>
+              {cfg.label}
             </p>
           </div>
         </div>
@@ -153,7 +165,8 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
 
   // Modals state
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
-  const [nodeForm, setNodeForm] = useState<Partial<WorkflowStep>>({});
+  const [nodeForm, setNodeForm] = useState<Partial<WorkflowStep & { fromSteps?: string[] }>>({});
+  const [showNodeTypePicker, setShowNodeTypePicker] = useState(false);
 
   // New workflow creation states
   const [isCreatingWorkflow, setIsCreatingWorkflow] = useState(false);
@@ -293,37 +306,56 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
     if (activeWorkflow) {
       const newNodes: Node[] = activeWorkflow.steps.map((step, idx) => {
         const matchedAgent = agents.find((agent) => agent.id === step.agent || agent.name === step.agent);
+        const nodeType = step.nodeType ?? 'agent_task';
         return {
         id: step.id.toString(),
         type: 'custom',
         position: step.position || { x: 250, y: idx * 100 + 50 },
         data: {
           ...step,
+          nodeType,
           agent: resolveAgentLabel(step.agent),
-          avatar: resolveBrandLogoSrc({
+          avatar: nodeType === 'agent_task' ? resolveBrandLogoSrc({
             aiTool: step.aiTool,
             agent: matchedAgent,
             agentType: matchedAgent ? agentTypeFromAgent(matchedAgent) : undefined,
-          }),
+          }) : undefined,
           onEdit: (id: string) => openNodeEditor(id),
           onDelete: (id: string) => deleteNode(id),
         }
       };
       });
 
+      const edgeLabelStyle = { fontSize: '9px', fontWeight: 700, fill: '#fff', lineHeight: '1' };
+const edgeColors: Record<string, string> = {
+  approve: '#16a34a',
+  reject: '#dc2626',
+  retry: '#d97706',
+  passed: '#16a34a',
+  failed: '#dc2626',
+};
+
       const newEdges: Edge[] = [];
       activeWorkflow.steps.forEach(step => {
+        const edgeWhen = (step as any).edgeWhen as Record<string, string> | undefined;
         if (step.nextSteps) {
           step.nextSteps.forEach(nextId => {
+            const when = edgeWhen?.[nextId] || edgeWhen?.[nextId.toString()] || '';
+            const color = edgeColors[when] || '#a3a3a3';
             newEdges.push({
               id: `e-${step.id}-${nextId}`,
               source: step.id.toString(),
               target: nextId.toString(),
               type: 'smoothstep',
-              animated: true,
-              style: { stroke: '#a3a3a3', strokeWidth: 2 },
-              markerEnd: { type: MarkerType.ArrowClosed, color: '#a3a3a3' },
-            });
+              animated: when ? false : true,
+              style: { stroke: color, strokeWidth: when ? 2.5 : 2 },
+              markerEnd: { type: MarkerType.ArrowClosed, color },
+              label: when || undefined,
+              labelStyle: { ...edgeLabelStyle, fill: color },
+              labelBgStyle: { fill: color, borderRadius: 4, padding: '1px 4px' },
+              labelBgPadding: [4, 2] as [number, number],
+              labelBgBorderRadius: 4,
+            } as Edge);
           });
         }
       });
@@ -523,16 +555,35 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
   };
 
   const addNode = () => {
+    setShowNodeTypePicker(true);
+  };
+
+  const createNodeOfType = (nodeType: 'agent_task' | 'human_gate' | 'check') => {
+    setShowNodeTypePicker(false);
     const newNodeId = `step-${Date.now()}`;
     setEditingNodeId(newNodeId);
-    setNodeForm({
-      name: 'New Step',
-      agent: '',
-      aiTool: '',
-      description: '',
-      nextSteps: [],
-      fromSteps: []
-    } as any);
+    if (nodeType === 'human_gate' || nodeType === 'check') {
+      setNodeForm({
+        name: nodeType === 'human_gate' ? 'Human Approval' : 'Check',
+        nodeType,
+        agent: '',
+        aiTool: '',
+        description: '',
+        nextSteps: [],
+        fromSteps: [],
+        edgeWhen: {},
+      } as any);
+    } else {
+      setNodeForm({
+        name: 'New Step',
+        nodeType: 'agent_task',
+        agent: '',
+        aiTool: '',
+        description: '',
+        nextSteps: [],
+        fromSteps: [],
+      } as any);
+    }
   };
 
   const openNodeEditor = (nodeId: string) => {
@@ -554,7 +605,8 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
 
   const saveNode = () => {
     if (!editingNodeId) return;
-    if (!nodeForm.agent?.trim()) return;
+    const nodeType = nodeForm.nodeType ?? 'agent_task';
+    if (nodeType === 'agent_task' && !nodeForm.agent?.trim()) return;
 
     const selectedAgent = agents.find(
       (a) => a.id === nodeForm.agent || a.name === nodeForm.agent,
@@ -565,6 +617,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
       
       const formFromSteps = (nodeForm as any).fromSteps || [];
       const formNextSteps = nodeForm.nextSteps || [];
+      const formEdgeWhen = (nodeForm as any).edgeWhen || {};
 
       let updatedSteps = [...wf.steps];
       const existingStepIndex = updatedSteps.findIndex(s => s.id.toString() === editingNodeId);
@@ -572,11 +625,13 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
       const targetStep: WorkflowStep = {
         id: editingNodeId,
         name: nodeForm.name || 'New Step',
-        agent: selectedAgent?.id ?? nodeForm.agent!.trim(),
-        aiTool: nodeForm.aiTool || '',
+        nodeType,
+        agent: (nodeType === 'agent_task' ? (selectedAgent?.id ?? nodeForm.agent!.trim()) : ''),
+        aiTool: nodeType === 'agent_task' ? (nodeForm.aiTool || '') : '',
         description: nodeForm.description || '',
-        avatar: selectedAgent?.avatar || nodeForm.avatar || DEFAULT_AVATAR,
+        avatar: nodeType === 'agent_task' ? (selectedAgent?.avatar || nodeForm.avatar || DEFAULT_AVATAR) : '',
         nextSteps: formNextSteps,
+        edgeWhen: Object.keys(formEdgeWhen).length > 0 ? formEdgeWhen : undefined,
         position: nodeForm.position || (existingStepIndex >= 0 ? updatedSteps[existingStepIndex].position : { x: 250, y: wf.steps.length * 100 + 50 })
       };
 
@@ -780,14 +835,36 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
                     </button>
                   </div>
                   {viewMode === 'canvas' && canvasCompatible && (
-                    <button
-                      type="button"
-                      onClick={addNode}
-                      className={MODAL_BTN_SECONDARY}
-                    >
-                      <LegacyIcon name="add" className="text-[16px]" />
-                      {t('Add Node')}
-                    </button>
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setShowNodeTypePicker(!showNodeTypePicker)}
+                        className={MODAL_BTN_SECONDARY}
+                      >
+                        <LegacyIcon name="add" className="text-[16px]" />
+                        {t('Add Node')}
+                      </button>
+                      {showNodeTypePicker && (
+                        <div className="absolute right-0 top-full mt-1 z-50 bg-white border border-neutral-200 rounded-xl shadow-xl p-1.5 min-w-[160px]">
+                          {(['agent_task', 'human_gate', 'check'] as const).map((type) => {
+                            const cfg = nodeTypeConfig[type];
+                            return (
+                              <button
+                                key={type}
+                                type="button"
+                                onClick={() => createNodeOfType(type)}
+                                className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[11px] font-medium text-neutral-700 hover:bg-neutral-100 transition-colors text-left"
+                              >
+                                <span style={{ color: cfg.color, display: 'inline-flex' }}>
+                                <LegacyIcon name={cfg.icon} className="text-[15px]" />
+                              </span>
+                                <span>{cfg.label} Node</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
                   )}
                   <button
                     type="button"
@@ -879,6 +956,40 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
             </div>
             
             <div className="p-5 space-y-4 text-xs overflow-y-auto flex-1">
+              {/* Node Type Badge */}
+              <div className="space-y-1.5">
+                <label className="font-bold text-neutral-700">{t('Node Type')}</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['agent_task', 'human_gate', 'check'] as const).map((type) => {
+                    const cfg = nodeTypeConfig[type];
+                    const isActive = (nodeForm.nodeType ?? 'agent_task') === type;
+                    return (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => setNodeForm({
+                          ...nodeForm,
+                          nodeType: type,
+                          name: nodeForm.name || (type === 'human_gate' ? 'Human Approval' : type === 'check' ? 'Check' : 'New Step'),
+                          agent: type === 'agent_task' ? nodeForm.agent : '',
+                          description: type === 'agent_task' ? nodeForm.description : '',
+                        })}
+                        className={`p-2 border rounded-xl flex flex-col items-center gap-1 justify-center transition-all cursor-pointer ${
+                          isActive
+                            ? 'border-neutral-800 bg-neutral-900 text-white'
+                            : 'border-neutral-200 hover:border-neutral-350 text-neutral-600 bg-neutral-50/50'
+                        }`}
+                      >
+                        <span style={{ color: isActive ? '#fff' : cfg.color, display: 'inline-flex' }}>
+                          <LegacyIcon name={cfg.icon} className="text-[16px]" />
+                        </span>
+                        <span className="text-[9px] font-bold leading-tight">{cfg.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div className="space-y-1.5">
                 <label className="font-bold text-neutral-700">{t('Node Name')}</label>
                 <input 
@@ -886,10 +997,12 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
                   value={nodeForm.name || ''}
                   onChange={e => setNodeForm({...nodeForm, name: e.target.value})}
                   className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-neutral-400 focus:ring-2 focus:ring-neutral-200/50 transition-all font-medium"
-                  placeholder={t('e.g. Asset Gathering')}
+                  placeholder={nodeForm.nodeType === 'human_gate' ? t('e.g. Review & Approve') : nodeForm.nodeType === 'check' ? t('e.g. Verify File Exists') : t('e.g. Asset Gathering')}
                 />
               </div>
 
+              {/* Agent selector — only for agent_task */}
+              {(nodeForm.nodeType ?? 'agent_task') === 'agent_task' && (
               <div className="space-y-1.5">
                 <label className="font-bold text-neutral-700">{t('Assigned Agent')}</label>
                 <select 
@@ -937,14 +1050,18 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
                   </div>
                 )}
               </div>
+              )}
 
+              {/* Description/Instructions — for agent_task and gate (label display) */}
               <div className="space-y-1.5">
-                <label className="font-bold text-neutral-700">{t('Description / Instructions')}</label>
+                <label className="font-bold text-neutral-700">
+                  {(nodeForm.nodeType ?? 'agent_task') === 'agent_task' ? t('Description / Instructions') : t('Label / Prompt')}
+                </label>
                 <textarea 
                   value={nodeForm.description || ''}
                   onChange={e => setNodeForm({...nodeForm, description: e.target.value})}
                   className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-neutral-400 focus:ring-2 focus:ring-neutral-200/50 transition-all min-h-[80px] resize-none"
-                  placeholder={t('Task instructions...')}
+                  placeholder={nodeForm.nodeType === 'human_gate' ? t('What to ask the human to review...') : nodeForm.nodeType === 'check' ? t('What to verify...') : t('Task instructions...')}
                 />
               </div>
 
@@ -996,9 +1113,13 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
                     {activeWorkflow?.steps
                       .filter(s => s.id.toString() !== editingNodeId)
                       .map(s => {
+                        const nodeType = nodeForm.nodeType ?? 'agent_task';
                         const isConnected = (nodeForm.nextSteps || []).includes(s.id.toString());
+                        const whenValues = validWhenValues(nodeType);
+                        const edgeWhen = (nodeForm as any).edgeWhen || {};
+                        const currentWhen = edgeWhen[s.id.toString()] || '';
                         return (
-                          <label key={s.id} className="flex items-center gap-2 cursor-pointer hover:text-neutral-900 leading-none select-none py-0.5">
+                          <div key={s.id} className="flex items-center gap-2 py-0.5">
                             <input 
                               type="checkbox"
                               checked={isConnected}
@@ -1006,15 +1127,17 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
                                 const checked = e.target.checked;
                                 setNodeForm(prev => {
                                   const currentNext = prev.nextSteps || [];
+                                  const currentEdgeWhen = { ...((prev as any).edgeWhen || {}) };
                                   const updatedNext = checked 
                                     ? [...currentNext, s.id.toString()]
                                     : currentNext.filter(id => id !== s.id.toString());
-                                  return { ...prev, nextSteps: updatedNext };
+                                  if (!checked) delete currentEdgeWhen[s.id.toString()];
+                                  return { ...prev, nextSteps: updatedNext, edgeWhen: currentEdgeWhen };
                                 });
                               }}
                               className="rounded border-neutral-300 text-neutral-800 focus:ring-neutral-400 w-3.5 h-3.5"
                             />
-                            <span className="text-[11px] truncate font-medium text-neutral-700">
+                            <span className="text-[11px] truncate font-medium text-neutral-700 flex-1">
                               {s.name}{' '}
                               {s.agent ? (
                                 <span className="text-[9px] text-neutral-400 font-normal">
@@ -1022,7 +1145,30 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
                                 </span>
                               ) : null}
                             </span>
-                          </label>
+                            {isConnected && whenValues.length > 0 && (
+                              <select
+                                value={currentWhen}
+                                onChange={(e) => {
+                                  setNodeForm(prev => {
+                                    const currentEdgeWhen = { ...((prev as any).edgeWhen || {}) };
+                                    if (e.target.value) {
+                                      currentEdgeWhen[s.id.toString()] = e.target.value;
+                                    } else {
+                                      delete currentEdgeWhen[s.id.toString()];
+                                    }
+                                    return { ...prev, edgeWhen: currentEdgeWhen };
+                                  });
+                                }}
+                                className="text-[9px] border border-neutral-200 rounded px-1.5 py-0.5 bg-white font-mono"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <option value="">{t('unconditional')}</option>
+                                {whenValues.map((wv) => (
+                                  <option key={wv} value={wv}>{wv}</option>
+                                ))}
+                              </select>
+                            )}
+                          </div>
                         );
                       })}
                     {(activeWorkflow?.steps || []).filter(s => s.id.toString() !== editingNodeId).length === 0 && (
@@ -1048,7 +1194,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
               <button
                 type="button"
                 onClick={saveNode}
-                disabled={!nodeForm.agent?.trim()}
+                disabled={(nodeForm.nodeType ?? 'agent_task') === 'agent_task' && !nodeForm.agent?.trim()}
                 className={MODAL_BTN_PRIMARY}
               >
                 {t('Save Node')}
