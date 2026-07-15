@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import uuid
 from typing import Any
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect, Response
@@ -464,3 +465,48 @@ async def stop_run(run_id: str) -> dict[str, str]:
 async def ws_run(websocket: WebSocket, run_id: str) -> None:
     from src.main import ws_run as main_ws_run
     await main_ws_run(websocket, run_id)
+
+
+@router.get("/api/openspec/list")
+async def openspec_list() -> dict[str, Any]:
+    """List all OpenSpec changes and their artifact statuses."""
+    import subprocess
+    import json as j
+    try:
+        result = subprocess.run(
+            ["openspec", "list", "--json"],
+            capture_output=True, text=True, timeout=15,
+            cwd=os.environ.get("OPENSPEC_WORKSPACE") or os.path.expanduser("~"),
+        )
+        if result.returncode != 0:
+            return {"available": False, "error": result.stderr.strip(), "changes": []}
+        data = j.loads(result.stdout) if result.stdout.strip() else {}
+        return {"available": True, "changes": data.get("changes", data.get("items", []))}
+    except FileNotFoundError:
+        return {"available": False, "error": "openspec CLI not found", "changes": []}
+    except subprocess.TimeoutExpired:
+        return {"available": False, "error": "openspec list timed out", "changes": []}
+    except Exception as exc:
+        return {"available": False, "error": str(exc), "changes": []}
+
+
+@router.get("/api/openspec/status")
+async def openspec_status(change: str) -> dict[str, Any]:
+    """Get detailed status of a single OpenSpec change."""
+    import subprocess
+    import json as j
+    try:
+        result = subprocess.run(
+            ["openspec", "status", "--change", change, "--json"],
+            capture_output=True, text=True, timeout=15,
+            cwd=os.environ.get("OPENSPEC_WORKSPACE") or os.path.expanduser("~"),
+        )
+        if result.returncode != 0:
+            return {"available": False, "error": result.stderr.strip()}
+        return {"available": True, "status": j.loads(result.stdout) if result.stdout.strip() else {}}
+    except FileNotFoundError:
+        return {"available": False, "error": "openspec CLI not found"}
+    except subprocess.TimeoutExpired:
+        return {"available": False, "error": "openspec status timed out"}
+    except Exception as exc:
+        return {"available": False, "error": str(exc)}
