@@ -123,7 +123,7 @@ export function getCanvasIncompatibilities(
     const endId = endNodes[0].id;
     const endIn = inCount[endId] ?? 0;
     const hasStartToEnd = workflow.edges.some((e) => e.source === 'start' && e.target === endId);
-    if (!(endIn === 1 && hasStartToEnd)) {
+    if (!(endIn >= 1 && hasStartToEnd)) {
       reasons.push({ kind: 'invalid_end', nodeId: endId, inDegree: endIn });
     }
     return reasons;
@@ -132,7 +132,8 @@ export function getCanvasIncompatibilities(
   for (const node of workflow.nodes) {
     if (node.type === 'end') {
       const endIn = inCount[node.id] ?? 0;
-      if (endIn !== 1) {
+      // end 允许被多条边汇聚（多个节点指向 end 是 DAG 的正常收敛模式）
+      if (endIn < 1) {
         reasons.push({ kind: 'invalid_end', nodeId: node.id, inDegree: endIn });
       }
       continue;
@@ -184,7 +185,7 @@ export function formatCanvasIncompatibilities(reasons: CanvasIncompatibility[]):
         case 'invalid_start':
           return `start out-degree ${r.outDegree} (need 1)`;
         case 'invalid_end':
-          return `end ${r.nodeId} in-degree ${r.inDegree} (need 1)`;
+          return `end ${r.nodeId} in-degree ${r.inDegree} (need at least 1)`;
         case 'branching_node':
           return `node ${r.nodeId} branches (out:${r.outDegree})`;
         case 'excessive_branching':
