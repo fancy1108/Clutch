@@ -8,16 +8,28 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 **Version snapshots:** Per-release product summaries live in [`docs/releases/`](docs/releases/) (historical); current product truth is [`docs/PRODUCT_INTRO.md`](docs/PRODUCT_INTRO.md).
 
-## [Unreleased]
+## [1.2.8] - 2026-07-16
+
+> **感谢 [@MyloveAless](https://github.com/MyloveAless) 设计了完整的「AI 图片生成多 Agent 工作流」（7 节点：Aesthetic Architect → Prompt Stylist → Human Gate → Parameter Engineer → Check → Safety Specialist → Visual Generator），并在端到端测试中发现了多项流程阻断问题，推动了本轮全部修复。**
 
 ### Added
 
+- **Check passed 消息可见化：** Check 节点通过时现在会显示 "Checks passed." 消息（status=COMPLETED, badge=PASSED），不再静默跳过，用户可明确感知校验环节已执行。
+- **Agent_task 无条件并行扇出：** 编译器和前端统一支持 agent_task 节点最多 3 条无条件出边（之前编译器硬拒绝 >1 条，前端 canvas 兼容性检查也不允许），支持一个节点同时驱动多个下游并行执行。
+
 ### Changed
+
+- **Human Gate 提示文案修正：** 从 "Validation checks did not pass" (FAILED / VALIDATION FAILED) 改为 "Awaiting human approval. Please review…" (PENDING / AWAITING APPROVAL)，不再让用户误以为是 Check 节点报错。
+- **Evaluator / Supervisor / Builder 头像统一：** 工作流元 Agent 不再随机匹配 Cursor 或默认图标，统一使用 Rivet logo 作为头像标识。
 
 ### Fixed
 
-- **Check/Gate 节点 end 汇聚不兼容修复：** `getCanvasIncompatibilities` 中 `end` 节点入度检查从 `endIn !== 1` 放宽到 `endIn < 1`，允许多路径汇聚到 end。修复了添加 check 节点后工作流被强制切换到 JSON 模式且无法返回 Canvas 的问题。
-- **Agent_task 多出边放宽：** 移除 `agent_task` 节点 `branching_node`（out>1）限制，所有节点类型统一使用 `MAX_BRANCH_OUT=3` 出度上限，支持 agent_task 扇出到多个下游节点。
+- **Check/Gate 节点 end 汇聚不兼容修复：** `getCanvasIncompatibilities` 中 `end` 节点入度检查从 `endIn !== 1` 放宽到 `endIn < 1`，允许多路径汇聚到 end。
+- **Agent_task 多出边放宽：** 移除 `agent_task` 节点 `branching_node`（out>1）限制，所有节点类型统一使用 `MAX_BRANCH_OUT=3` 出度上限。
+- **Gate/Check 数据透明穿透：** 下游 agent_task 节点的直接上游如果是 human_gate 或 check，现在会递归向上查找真正的数据源（agent_task），而非把审批信号 "approve" 当作数据传入。修复了 3-Parameter Engineer 收到 "approve" 而非画面描述的问题。
+- **Workflow step 状态防污染：** `buildWorkflowReplyStepIndex` 不再将 Evaluator / Supervisor 等元消息错误映射到 agent_task 步骤，修复了 1-Aesthetic Architect 被标记为 FAILED 的问题。
+- **新建会话消息泄露：** 修复 WebSocket 竞态条件——旧 socket 关闭时先清除 onmessage 回调，并增加 runId 守卫，避免旧工作流的 state_patch 注入空白新会话。
+- **brandLogos 别名过宽：** 移除 `agent: 'cursor-cli'` 通配别名，防止 Evaluator 等消息意外匹配到 Cursor logo。
 
 ## [1.2.7] - 2026-07-14
 

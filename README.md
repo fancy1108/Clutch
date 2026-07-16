@@ -17,15 +17,16 @@ Clutch is a **desktop app** (Tauri + React) for developers and technical operato
 |---|---|
 | **Stack** | Tauri 2 · React 19 · FastAPI + LangGraph · local-first (`localhost:8123`) |
 | **License** | See [LICENSE](LICENSE) |
-| **Latest release** | [v1.2.7](https://github.com/fancy1108/Clutch/releases/tag/v1.2.7) · [Changelog](CHANGELOG.md#127---2026-07-14) |
+| **Latest release** | [v1.2.8](https://github.com/fancy1108/Clutch/releases/tag/v1.2.8) · [Changelog](CHANGELOG.md#128---2026-07-16) |
+| **Contributors** | Thanks to [@MyloveAless](https://github.com/MyloveAless) for the multi-agent image generation workflow design & end-to-end validation. |
 
-### What's new in v1.2.7
+### What's new in v1.2.8
 
-- **Interactive Prototype Engine:** Automatically infers navigation flows between design screens and generates a clickable, navigable prototype with browser-style back/forward history.
-- **Visual Connection Editor:** Dual-mode (preview/edit) with SVG connection lines, drag-to-connect, and drag-to-create for visually editing page interactions.
-- **IUE (Interaction Understanding Engine):** 6-stage AI pipeline that classifies UI elements, matches navigation targets, scores confidence, and generates reasoning in Chinese.
-- **Interaction Contract Persistence:** Auto-saves all user-edited flows to `.clutch/design/sessions/<id>/interaction_contract.json` — survives app restart.
-- **React Code Generation:** One-click generation of a complete Vite + React 19 + Tailwind 4 project from the interaction contract, with AI prompt for handoff.
+- **Multi-Agent Workflow Hardening:** End-to-end fixes for check/gate branching, data passthrough, and canvas compatibility — a complete 7-node image generation SOP now runs correctly.
+- **Gate → Agent Data Transparency:** Human Gate and Check nodes no longer leak control signals ("approve") to downstream agents; real upstream content passes through.
+- **Agent Fan-Out:** Agent nodes can now fan out to up to 3 downstream nodes for parallel execution.
+- **WebSocket Session Isolation:** Stale messages from previous workflow runs no longer leak into new conversations.
+- **Workflow UI Polish:** Human Gate messages now clearly say "Awaiting approval"; Check nodes show "Checks passed"; Evaluator icons use Rivet branding.
 
 > **v1.2.7 ships macOS + Windows.** macOS: Apple Silicon DMG + in-app updater. Windows: MSI/NSIS. Sidecar hotpatch assets published separately.
 
@@ -56,7 +57,7 @@ brew install --cask clutch
 irm https://raw.githubusercontent.com/fancy1108/Clutch/main/scripts/install.ps1 | iex
 ```
 
-Pin a version: `CLUTCH_VERSION=v1.2.7` before running either script (or `v1.2.5` / `v1.2.4` / `v1.2.3` / `v1.2.2` / `v1.2.1` / `v1.1.1` for older releases).
+Pin a version: `CLUTCH_VERSION=v1.2.8` before running either script (or `v1.2.7` / `v1.2.6` /
 
 Install channels (maintainers): [`docs/RELEASE_MAINTAINER.md`](docs/RELEASE_MAINTAINER.md)
 

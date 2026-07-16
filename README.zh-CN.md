@@ -17,14 +17,16 @@ Clutch 是一款**桌面应用**（Tauri + React），面向独立开发者和�
 |---|---|
 | **技术栈** | Tauri 2 · React 19 · FastAPI + LangGraph · 本地优先（`localhost:8123`） |
 | **许可证** | 见 [LICENSE](LICENSE) |
-| **当前版本** | [v1.2.6](https://github.com/fancy1108/Clutch/releases/tag/v1.2.6) · [更新日志](CHANGELOG.md#126---2026-07-13) |
+| **当前版本** | [v1.2.8](https://github.com/fancy1108/Clutch/releases/tag/v1.2.8) · [更新日志](CHANGELOG.md#128---2026-07-16) |
+| **贡献者** | 感谢 [@MyloveAless](https://github.com/MyloveAless) 设计「AI 图片生成多 Agent 工作流」并完成端到端验证。 |
 
-### 最新更新（v1.2.6）
+### 最新更新（v1.2.8）
 
-- **CSP 策略与组件选取修复** — 在 Tauri 生产配置 `script-src` 中放行了 `'unsafe-inline'`，解决生产态 preview iframe 内部交互选取脚本被 CSP 拦截导致无法选取组件的严重 Bug。
-- **内置设计预设打包 (v1.2.5)** — 修复 `clutch.spec` 打包配置，将 `presets/` 目录下全部品牌预设规范数据打包进 PyInstaller sidecar 生产程序中，解决生产环境无预设缓存的问题。
-- **就绪模式（Prototype）交互解锁 (v1.2.4)** — 在非 Picking 模式下解锁设计预览 iframe 的 hover 和输入交互，恢复原型体验。
-- **爬虫 CSS 变量跨域提取绕过 (v1.2.4)** — 增加对 root, body 以及直接子容器计算样式的自动扫描。
+- **多 Agent 工作流硬化：** 端到端修复 check/gate 分支、数据透传和画布兼容性问题 — 一个完整的 7 节点图片生成 SOP 现已可正常运行。
+- **Gate → Agent 数据透明：** Human Gate 和 Check 节点不再将控制信号（"approve"）泄漏给下游 Agent，真实的上游内容可正常穿透。
+- **Agent 并行扇出：** Agent 节点现可扇出至最多 3 个下游节点并行执行。
+- **WebSocket 会话隔离：** 旧工作流的残留消息不再泄漏到新会话中。
+- **工作流 UI 打磨：** Human Gate 明确提示"等待审批"；Check 节点通过时显示"校验通过"；Evaluator 图标统一使用 Rivet 品牌标识。
 
 > **v1.2.6 同时发 macOS + Windows。** macOS：Apple Silicon DMG + 应用内更新。Windows：MSI/NSIS。Sidecar 热更资产另行发布。
 
