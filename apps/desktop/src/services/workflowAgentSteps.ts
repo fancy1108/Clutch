@@ -317,8 +317,11 @@ export function buildWorkflowReplyStepIndex(
 
   const lastUserIndex = messages.findLastIndex((message) => message.agent === 'User');
   let replyIndex = 0;
+  const META_AGENTS = new Set(['evaluator', 'supervisor', 'orchestrator', 'system']);
   for (const message of messages.slice(lastUserIndex + 1)) {
     if (message.agent === 'User' || message.agent === 'System') continue;
+    // Skip gate/check meta-messages — they are not agent_task outputs
+    if (META_AGENTS.has(message.agent.toLowerCase())) continue;
     if (!map.has(message.id)) {
       map.set(message.id, replyIndex);
       replyIndex += 1;
