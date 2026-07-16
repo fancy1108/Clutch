@@ -20,6 +20,15 @@
 ---
 
 
+### Approval Node 多选保存 422 — orchestrator schema & routing 同步 ✅
+- **日期：** 2026-07-16
+- **Commit：** `b24442d` — `fix(flow): Approval Node 多选保存 422 — orchestrator schema & routing 同步数组 when`
+- **Verification：** `./scripts/verify.sh` → build ✓, vitest 136/136, pytest 730/734 (1 预存 keychain ACL)
+- **证据：** `—`
+- **交付文件：**
+  - `services/orchestrator/src/orchestrator/routing.py` — `resolve_from_edges` / `resolve_branch_from_edges` 中 path_map 构建兼容 when: list（展开到 dict）
+  - `services/orchestrator/src/workflow_validator.py` — `workflows_dir()` 查找顺序改为源文件优先（workflows/ → workflow_assets/），dev 模式不再消费过期构建产物
+
 ### EdgeWhen multi-select (Next Flow 条件多选) ✅
 - **日期：** 2026-07-16
 - **Commit：** `bec65d6` — `feat(flow): Next Flow 条件选择器支持多选 (EdgeWhen 单值→数组)`

@@ -21,9 +21,17 @@
 - 重发触发 CI：macOS DMG + Windows MSI/NSIS
 - 发布后同步 Homebrew tap
 - **一键原型 Phase 2：Prototype Runtime 增强**（导航历史、Overlay Context、全局状态机、Mock 拦截）
-- 工作区还有未暂存改动：check/gate 节点多 handle 扇出 + edgeWhen 类型变更（`Record<EdgeWhen>` → `Record<EdgeWhen[]>`）
+- 工作区还有未暂存改动：~~check/gate 节点多 handle 扇出 + edgeWhen 类型变更~~ 已完成（`bec65d6` + `b24442d`）
+- 🔧 **Approval Node 多选保存 422 已修复**（`b24442d`）：routing + schema lookup 同步数组 when
 
 ## Recent Sessions
+
+## 2026-07-16 会话（Approval Node 多选 422 修复）
+
+- **诊断**：bec65d6 多选改造遗漏 — `workflows_dir()` 优先查找 gitignored `workflow_assets/` 旧副本，orchestrator 仍用旧 schema 拒绝数组 when
+- **修复**：`routing.py` path_map 构建兼容 list when（展开）；`workflow_validator.py` 查找顺序调为源文件优先
+- **Commit**：`b24442d`
+- **验证**：vitest 136/136, pytest 730/734 (1 预存 keychain ACL), build ✓
 
 ## 2026-07-16 会话（Flow Next Flow 条件选择器多选支持）
 
