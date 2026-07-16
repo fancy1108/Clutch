@@ -20,6 +20,14 @@
 ---
 
 
+### Check/Gate 节点 end 汇聚不兼容修复 ✅
+- **日期：** 2026-07-16
+- **Commit：** `6ec20b9` — `fix: relax end node in-degree check to allow multi-path convergence to end`
+- **Verification：** `./scripts/verify.sh` → build ✓, vitest 136/136, pytest 730/734 (1 预存 keychain ACL)
+- **证据：** `—`
+- **交付文件：**
+  - `apps/desktop/src/services/workflowFormat.ts` — `getCanvasIncompatibilities` 中 end 入度检查从 `endIn !== 1` 改为 `endIn < 1`；无 agent_task 路径从 `endIn === 1` 改为 `endIn >= 1`；`formatCanvasIncompatibilities` 消息更新
+
 ### Approval Node 多选保存 422 — orchestrator schema & routing 同步 ✅
 - **日期：** 2026-07-16
 - **Commit：** `b24442d` — `fix(flow): Approval Node 多选保存 422 — orchestrator schema & routing 同步数组 when`
