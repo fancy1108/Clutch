@@ -266,6 +266,17 @@ def _handle_check(state: CompilerState, node: dict[str, Any], workflow: dict[str
                 badge_text="VALIDATION FAILED",
             )
         )
+    else:
+        from src.chat_events import chat_message
+
+        task_messages.append(
+            chat_message(
+                "Evaluator",
+                "Checks passed.",
+                status="COMPLETED",
+                badge_text="PASSED",
+            )
+        )
 
     return {
         **state,
