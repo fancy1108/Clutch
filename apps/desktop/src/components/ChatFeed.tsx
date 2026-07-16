@@ -1255,7 +1255,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
           const avatarUrl = isUser
             ? (userAvatar || USER_CHAT_AVATAR)
             : isWorkflowMeta
-              ? USER_CHAT_AVATAR
+              ? (resolveBrandLogoSrc({ toolId: 'rivet-cli' }) || USER_CHAT_AVATAR)
               : (
                 msg.avatar
                 || resolveBrandLogoSrc({ toolId: replyStep?.toolId, runtimeEngine: msg.runtimeEngine })
