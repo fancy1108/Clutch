@@ -1289,9 +1289,11 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                     fallbackIcon={
                       msg.agent === 'Supervisor'
                         ? 'verified_user'
-                        : msg.agent === 'System'
-                          ? 'info'
-                          : 'smart_toy'
+                        : msg.agent === 'Evaluator'
+                          ? 'gavel'
+                          : msg.agent === 'System'
+                            ? 'info'
+                            : 'smart_toy'
                     }
                   />
                 )}

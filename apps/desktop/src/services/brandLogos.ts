@@ -82,7 +82,6 @@ const ALIAS_TO_KEY: Record<string, BrandLogoKey> = {
   'cursor-cli': 'cursor-cli',
   'cursor agent cli': 'cursor-cli',
   'cursor-agent': 'cursor-cli',
-  agent: 'cursor-cli',
   'rivet-cli': 'rivet-cli',
   rivet: 'rivet-cli',
   'rivet cli': 'rivet-cli',
