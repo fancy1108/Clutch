@@ -62,8 +62,8 @@ export interface WorkflowStep {
   avatar?: string;
   description: string;
   nextSteps: string[];
-  /** Per-outgoing-edge conditional value, keyed by target step id. */
-  edgeWhen?: Record<string, EdgeWhen>;
+  /** Per-outgoing-edge conditional values (multi-select), keyed by target step id. */
+  edgeWhen?: Record<string, EdgeWhen[]>;
   position?: { x: number; y: number };
 }
 

@@ -73,8 +73,23 @@ const nodeTypeConfig: Record<string, { icon: string; color: string; label: strin
   check: { icon: 'shield_check', color: '#d97706', label: 'Check', bgClass: 'bg-amber-50' },
 };
 
+/** Source handle definitions for conditional routing nodes.
+ *  Each handle is offset horizontally so multiple edges fan out instead of overlapping. */
+const conditionalSourceHandles: Record<string, { id: string; color: string; left: string }[]> = {
+  human_gate: [
+    { id: 'source-reject', color: '#dc2626', left: '18%' },
+    { id: 'source-retry',  color: '#d97706', left: '50%' },
+    { id: 'source-approve',color: '#16a34a', left: '82%' },
+  ],
+  check: [
+    { id: 'source-failed', color: '#dc2626', left: '28%' },
+    { id: 'source-passed', color: '#16a34a', left: '72%' },
+  ],
+};
+
 const CustomNode = ({ data }: { data: any }) => {
   const cfg = nodeTypeConfig[data.nodeType as string] ?? nodeTypeConfig.agent_task;
+  const condHandles = conditionalSourceHandles[data.nodeType as string];
   return (
     <div className={`group min-w-[220px] max-w-xs p-3 bg-white border rounded-xl shadow-sm relative transition-colors`}
       style={{ borderColor: `${cfg.color}40` }}
@@ -122,12 +137,23 @@ const CustomNode = ({ data }: { data: any }) => {
           </button>
         </div>
       </div>
-      <Handle 
+      <Handle
+        id="source-default"
         type="source" 
         position={Position.Bottom} 
         className="!bg-neutral-400 hover:!bg-neutral-700 !w-3 !h-3 border-2 border-white rounded-full transition-colors cursor-crosshair" 
         style={{ transform: 'translateY(2px)' }}
       />
+      {condHandles && condHandles.map(h => (
+        <Handle
+          key={h.id}
+          id={h.id}
+          type="source"
+          position={Position.Bottom}
+          className="!w-3 !h-3 border-2 border-white rounded-full transition-colors cursor-crosshair"
+          style={{ left: h.left, backgroundColor: h.color, transform: 'translateY(2px)' }}
+        />
+      ))}
     </div>
   );
 };
@@ -337,20 +363,24 @@ const edgeColors: Record<string, string> = {
 
       const newEdges: Edge[] = [];
       activeWorkflow.steps.forEach(step => {
-        const edgeWhen = (step as any).edgeWhen as Record<string, string> | undefined;
+        const edgeWhen = (step as any).edgeWhen as Record<string, string | string[]> | undefined;
         if (step.nextSteps) {
           step.nextSteps.forEach(nextId => {
-            const when = edgeWhen?.[nextId] || edgeWhen?.[nextId.toString()] || '';
-            const color = edgeColors[when] || '#a3a3a3';
+            const rawWhen = edgeWhen?.[nextId] || edgeWhen?.[nextId.toString()] || '';
+            const whenArr: string[] = Array.isArray(rawWhen) ? rawWhen : rawWhen ? [rawWhen] : [];
+            const whenLabel = whenArr.join(' / ') || undefined;
+            const primaryWhen = whenArr[0] || '';
+            const color = edgeColors[primaryWhen] || '#a3a3a3';
             newEdges.push({
               id: `e-${step.id}-${nextId}`,
               source: step.id.toString(),
               target: nextId.toString(),
               type: 'smoothstep',
-              animated: when ? false : true,
-              style: { stroke: color, strokeWidth: when ? 2.5 : 2 },
+              sourceHandle: primaryWhen ? `source-${primaryWhen}` : undefined,
+              animated: primaryWhen ? false : true,
+              style: { stroke: color, strokeWidth: primaryWhen ? 2.5 : 2 },
               markerEnd: { type: MarkerType.ArrowClosed, color },
-              label: when || undefined,
+              label: whenLabel,
               labelStyle: { ...edgeLabelStyle, fill: color },
               labelBgStyle: { fill: color, borderRadius: 4, padding: '1px 4px' },
               labelBgPadding: [4, 2] as [number, number],
@@ -706,17 +736,6 @@ const edgeColors: Record<string, string> = {
           icon="fork_right"
           title={t('Workflow Orchestration')}
           description={t('Design and manage cooperative multi-agent state pipelines.')}
-          actions={
-            <button
-              data-testid="workflow-create"
-              type="button"
-              onClick={handleCreateWorkflow}
-              className={MODAL_BTN_SECONDARY}
-            >
-              <LegacyIcon name="add" className="text-[16px]" />
-              {t('Create Flow')}
-            </button>
-          }
         />
       </div>
 
@@ -731,6 +750,15 @@ const edgeColors: Record<string, string> = {
           </div>
 
           <div className="flex-1 overflow-y-auto flex flex-col p-4 gap-3 overflow-x-hidden">
+            <button
+              data-testid="workflow-create"
+              type="button"
+              onClick={handleCreateWorkflow}
+              className={`${MODAL_BTN_PRIMARY} w-full`}
+            >
+              <LegacyIcon name="add" className="text-[16px]" />
+              {t('Create Flow')}
+            </button>
             <h3 className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest pl-2 mb-1 text-left">
               {t('Active SOP Workflows')}
             </h3>
@@ -1131,7 +1159,8 @@ const edgeColors: Record<string, string> = {
                         const isConnected = (nodeForm.nextSteps || []).includes(s.id.toString());
                         const whenValues = validWhenValues(nodeType);
                         const edgeWhen = (nodeForm as any).edgeWhen || {};
-                        const currentWhen = edgeWhen[s.id.toString()] || '';
+                        const rawWhen = edgeWhen[s.id.toString()];
+                        const currentWhen: string[] = Array.isArray(rawWhen) ? rawWhen : rawWhen ? [rawWhen] : [];
                         return (
                           <div key={s.id} className="flex items-center gap-2 py-0.5">
                             <input 
@@ -1160,27 +1189,37 @@ const edgeColors: Record<string, string> = {
                               ) : null}
                             </span>
                             {isConnected && whenValues.length > 0 && (
-                              <select
-                                value={currentWhen}
-                                onChange={(e) => {
-                                  setNodeForm(prev => {
-                                    const currentEdgeWhen = { ...((prev as any).edgeWhen || {}) };
-                                    if (e.target.value) {
-                                      currentEdgeWhen[s.id.toString()] = e.target.value;
-                                    } else {
-                                      delete currentEdgeWhen[s.id.toString()];
-                                    }
-                                    return { ...prev, edgeWhen: currentEdgeWhen };
-                                  });
-                                }}
-                                className="text-[9px] border border-neutral-200 rounded px-1.5 py-0.5 bg-white font-mono"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <option value="">{t('unconditional')}</option>
-                                {whenValues.map((wv) => (
-                                  <option key={wv} value={wv}>{wv}</option>
-                                ))}
-                              </select>
+                              <div className="flex items-center gap-1">
+                                {whenValues.map((wv) => {
+                                  const isChecked = currentWhen.includes(wv);
+                                  return (
+                                    <label key={wv} className="flex items-center gap-0.5 cursor-pointer" onClick={(e) => e.stopPropagation()}>
+                                      <input
+                                        type="checkbox"
+                                        checked={isChecked}
+                                        onChange={() => {
+                                          setNodeForm(prev => {
+                                            const currentEdgeWhen = { ...((prev as any).edgeWhen || {}) };
+                                            const raw = currentEdgeWhen[s.id.toString()];
+                                            const arr: string[] = Array.isArray(raw) ? [...raw] : raw ? [raw] : [];
+                                            if (isChecked) {
+                                              currentEdgeWhen[s.id.toString()] = arr.filter(v => v !== wv);
+                                              if (currentEdgeWhen[s.id.toString()].length === 0) {
+                                                delete currentEdgeWhen[s.id.toString()];
+                                              }
+                                            } else {
+                                              currentEdgeWhen[s.id.toString()] = [...arr, wv];
+                                            }
+                                            return { ...prev, edgeWhen: currentEdgeWhen };
+                                          });
+                                        }}
+                                        className="rounded border-neutral-300 w-2.5 h-2.5"
+                                      />
+                                      <span className="text-[8px] text-neutral-500 font-mono">{wv}</span>
+                                    </label>
+                                  );
+                                })}
+                              </div>
                             )}
                           </div>
                         );

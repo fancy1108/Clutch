@@ -55,7 +55,7 @@ class EdgeMeta:
     id: str
     source: str
     target: str
-    when: str | None = None
+    when: str | list[str] | None = None
 
 
 def _handle_start(state: CompilerState, _node: dict[str, Any], _workflow: dict[str, Any]) -> CompilerState:
@@ -375,7 +375,14 @@ class WorkflowCompiler:
                 raise ValueError(f"Node {source} mixes conditional and unconditional edges")
 
             if conditional:
-                path_map = {edge["data"]["when"]: edge["target"] for edge in conditional}
+                path_map: dict[str, str] = {}
+                for edge in conditional:
+                    when_val = edge["data"]["when"]
+                    if isinstance(when_val, list):
+                        for w in when_val:
+                            path_map[w] = edge["target"]
+                    else:
+                        path_map[when_val] = edge["target"]
 
                 def _route(
                     state: CompilerState,

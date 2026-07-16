@@ -151,8 +151,8 @@ describe('workflowFormat', () => {
     expect(gateStep).toBeDefined();
     expect(gateStep!.nodeType).toBe('human_gate');
     expect(gateStep!.edgeWhen).toBeDefined();
-    expect(gateStep!.edgeWhen!['end']).toBe('approve');
-    expect(gateStep!.edgeWhen!['write']).toBe('reject');
+    expect(gateStep!.edgeWhen!['end']).toEqual(['approve']);
+    expect(gateStep!.edgeWhen!['write']).toEqual(['reject']);
   });
 
   it('canvasToCompiler produces human_gate nodes with conditional edges', () => {
@@ -164,7 +164,7 @@ describe('workflowFormat', () => {
       icon: 'fork_right',
       steps: [
         { id: 'write', name: 'Write', nodeType: 'agent_task' as const, agent: 'a1', description: 'Write things', nextSteps: ['review'] },
-        { id: 'review', name: 'Review Content', nodeType: 'human_gate' as const, agent: '', description: '', nextSteps: ['end', 'write'], edgeWhen: { end: 'approve' as const, write: 'reject' as const } },
+        { id: 'review', name: 'Review Content', nodeType: 'human_gate' as const, agent: '', description: '', nextSteps: ['end', 'write'], edgeWhen: { end: ['approve'], write: ['reject'] } },
       ],
       description: '',
     };

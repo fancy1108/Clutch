@@ -101,8 +101,13 @@ export function getCanvasIncompatibilities(
     if (!edge.data?.when) continue;
     const sourceNode = nodeMap.get(edge.source);
     if (!sourceNode) continue;
-    if (sourceNode.type === 'human_gate' && GATE_WHEN_VALUES.has(edge.data.when as EdgeWhen)) continue;
-    if (sourceNode.type === 'check' && CHECK_WHEN_VALUES.has(edge.data.when as EdgeWhen)) continue;
+    const whenValues: EdgeWhen[] = Array.isArray(edge.data.when) ? edge.data.when : [edge.data.when];
+    const isValid = whenValues.every((w) => {
+      if (sourceNode.type === 'human_gate') return GATE_WHEN_VALUES.has(w as EdgeWhen);
+      if (sourceNode.type === 'check') return CHECK_WHEN_VALUES.has(w as EdgeWhen);
+      return false;
+    });
+    if (isValid) continue;
     // Conditional edge on a linear node (agent_task) — invalid
     reasons.push({
       kind: 'conditional_edge_on_linear',
@@ -224,10 +229,11 @@ export function compilerToCanvas(workflow: CompilerWorkflow, icon = 'account_tre
     const outgoing = workflow.edges.filter((e) => e.source === node.id);
 
     // Collect edge `when` values for conditional routing
-    const edgeWhen: Record<string, EdgeWhen> = {};
+    const edgeWhen: Record<string, EdgeWhen[]> = {};
     for (const e of outgoing) {
       if (e.data?.when) {
-        edgeWhen[e.target] = e.data.when as EdgeWhen;
+        const raw = e.data.when;
+        edgeWhen[e.target] = Array.isArray(raw) ? raw : [raw];
       }
     }
 
@@ -319,7 +325,7 @@ export function canvasToCompiler(
       ? step.nextSteps
       : [];
     const nodeType = step.nodeType ?? 'agent_task';
-    const edgeWhen = (step as any).edgeWhen as Record<string, EdgeWhen> | undefined;
+    const edgeWhen = (step as any).edgeWhen as Record<string, EdgeWhen[]> | undefined;
 
     for (const target of targets) {
       const targetId = target === 'end' ? 'end' : String(target);
@@ -329,10 +335,9 @@ export function canvasToCompiler(
         target: targetId,
       };
       // Add conditional when for gate/check nodes
-      if (edgeWhen && edgeWhen[targetId]) {
-        edge.data = { when: edgeWhen[targetId] };
-      } else if (edgeWhen && edgeWhen[target]) {
-        edge.data = { when: edgeWhen[target] };
+      const whenVals = edgeWhen?.[targetId] ?? edgeWhen?.[target];
+      if (whenVals && whenVals.length > 0) {
+        edge.data = { when: whenVals.length === 1 ? whenVals[0] : whenVals };
       }
       edges.push(edge);
     }

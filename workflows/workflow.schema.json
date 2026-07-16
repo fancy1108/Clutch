@@ -185,9 +185,22 @@
           "additionalProperties": false,
           "properties": {
             "when": {
-              "type": "string",
-              "enum": ["passed", "failed", "approve", "reject", "retry"],
-              "description": "Conditional branch from check or human_gate nodes"
+              "oneOf": [
+                {
+                  "type": "string",
+                  "enum": ["passed", "failed", "approve", "reject", "retry"]
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": ["passed", "failed", "approve", "reject", "retry"]
+                  },
+                  "minItems": 1,
+                  "uniqueItems": true
+                }
+              ],
+              "description": "Conditional branch(es) from check or human_gate nodes. Single string for backward compat; array for multi-condition edges."
             }
           }
         }
