@@ -700,7 +700,7 @@ const edgeColors: Record<string, string> = {
 
   const contentElement = (
     <div className="flex-1 h-full flex flex-col bg-white overflow-hidden">
-      <div className={`px-8 pt-8 flex-shrink-0 ${isModalStyle ? 'pr-14' : 'pr-8'}`}>
+      <div className={`px-8 pt-8 flex-shrink-0 ${isModalStyle ? 'pr-14' : 'pr-6'}`}>
         <SettingsPageHeader
           isModalStyle={isModalStyle}
           icon="fork_right"
@@ -949,7 +949,7 @@ const edgeColors: Record<string, string> = {
       {/* Node Edit Modal */}
       {editingNodeId && (
         <FullscreenModalOverlay>
-          <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl border border-neutral-200 overflow-hidden flex flex-col text-left max-h-[80%]">
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl border border-neutral-200 overflow-hidden flex flex-col text-left max-h-[calc(100dvh-3rem)]">
             <div className="px-5 py-4 border-b border-neutral-100 flex items-center justify-between bg-neutral-50/50">
               <h3 className="text-sm font-bold text-neutral-900">
                 {activeWorkflow?.steps.find(s => s.id.toString() === editingNodeId) ? t('Edit Node') : t('New Node')}
@@ -964,7 +964,7 @@ const edgeColors: Record<string, string> = {
               </button>
             </div>
             
-            <div className="p-5 space-y-4 text-xs overflow-y-auto flex-1">
+            <div className="p-5 space-y-4 text-xs overflow-y-auto flex-1 min-h-0">
               {/* Node Type Badge */}
               <div className="space-y-1.5">
                 <label className="font-bold text-neutral-700">{t('Node Type')}</label>
@@ -1061,18 +1061,23 @@ const edgeColors: Record<string, string> = {
               </div>
               )}
 
-              {/* Description/Instructions — for agent_task and gate (label display) */}
+              {/* Label / Prompt — only for gate/check (agent_task uses the agent's own description shown above) */}
+              {(nodeForm.nodeType ?? 'agent_task') !== 'agent_task' && (
               <div className="space-y-1.5">
-                <label className="font-bold text-neutral-700">
-                  {(nodeForm.nodeType ?? 'agent_task') === 'agent_task' ? t('Description / Instructions') : t('Label / Prompt')}
-                </label>
-                <textarea 
+                <label className="font-bold text-neutral-700">{t('Label / Prompt')}</label>
+                {nodeForm.nodeType === 'check' && (
+                  <p className="text-[10px] text-neutral-400 leading-relaxed">
+                    {t('Write the check rule in natural language. The LLM will read the upstream output and judge passed / failed.')}
+                  </p>
+                )}
+                <textarea
                   value={nodeForm.description || ''}
                   onChange={e => setNodeForm({...nodeForm, description: e.target.value})}
                   className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-neutral-400 focus:ring-2 focus:ring-neutral-200/50 transition-all min-h-[80px] resize-none"
-                  placeholder={nodeForm.nodeType === 'human_gate' ? t('What to ask the human to review...') : nodeForm.nodeType === 'check' ? t('What to verify...') : t('Task instructions...')}
+                  placeholder={nodeForm.nodeType === 'human_gate' ? t('What to ask the human to review...') : t('e.g. Check if the upstream JSON risk_assessment field equals "none".')}
                 />
               </div>
+              )}
 
               <div className="space-y-3 pt-2 border-t border-neutral-100/70">
                 <div>
@@ -1216,7 +1221,7 @@ const edgeColors: Record<string, string> = {
       {/* Create Workflow Modal */}
       {isCreatingWorkflow && (
         <FullscreenModalOverlay>
-          <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl border border-neutral-200 overflow-hidden flex flex-col text-left max-h-[80%]">
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl border border-neutral-200 overflow-hidden flex flex-col text-left max-h-[calc(100dvh-3rem)]">
             <div className="px-5 py-4 border-b border-neutral-100 flex items-center justify-between bg-neutral-50/50">
               <h3 className="text-sm font-bold text-neutral-900">
                 {editingWorkflowId ? t('Edit Workflow') : t('Create New Workflow')}
@@ -1231,7 +1236,7 @@ const edgeColors: Record<string, string> = {
               </button>
             </div>
             
-            <div className="p-5 space-y-4 text-xs overflow-y-auto flex-1">
+            <div className="p-5 space-y-4 text-xs overflow-y-auto flex-1 min-h-0">
               <div className="space-y-1.5">
                 <label className="font-bold text-neutral-700">{t('Flow Name')}</label>
                 <input 

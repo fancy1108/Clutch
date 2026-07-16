@@ -165,20 +165,89 @@ def _handle_agent_task(
     }
 
 
-def _handle_check(state: CompilerState, node: dict[str, Any], _workflow: dict[str, Any]) -> CompilerState:
+def _llm_judge_check(
+    state: CompilerState,
+    node: dict[str, Any],
+    workflow: dict[str, Any],
+    rule: str,
+) -> tuple[str, list[str]]:
+    """Natural-language check: ask the LLM to apply `rule` to the direct upstream output.
+
+    Returns (passed|failed, log lines). Fails if no LLM credentials are configured.
+    """
+    from src.models_config import get_router, is_model_available
+
+    node_id = str(node.get("id", ""))
+    upstream_text = ""
+    for edge in workflow.get("edges", []):
+        if edge.get("target") == node_id:
+            src = str(edge.get("source", ""))
+            out = str((state.get("node_outputs") or {}).get(src, "") or "")
+            if out.strip():
+                upstream_text = out
+                break
+    if not upstream_text:
+        upstream_text = "(no upstream output available)"
+
+    router = get_router()
+    model_id = router.active_model_id
+    if not is_model_available(router, model_id):
+        return "failed", [
+            tagged(
+                TAG_CHECK,
+                "Check failed: no LLM API key configured for natural-language judge. "
+                "Configure a model in Settings → Models.",
+            )
+        ]
+
+    judge_prompt = (
+        "You are a workflow check evaluator. Decide whether the upstream output "
+        "satisfies the rule below. Respond with EXACTLY one line in the form "
+        "'PASSED <reason>' or 'FAILED <reason>'.\n\n"
+        f"Rule:\n{rule}\n\n"
+        f"Upstream output:\n{upstream_text}\n\n"
+        "Verdict:"
+    )
+    try:
+        raw = router.complete(judge_prompt, model_id=model_id)
+    except Exception as exc:  # noqa: BLE001 — surface LLM failures to the run log
+        return "failed", [tagged(TAG_CHECK, f"Check failed: LLM call error: {exc}")]
+
+    text = router.extract_content(raw).strip()
+    first = text.splitlines()[0].strip() if text else ""
+    lower = first.lower()
+    if lower.startswith("passed"):
+        result = "passed"
+        reason = first[len("passed"):].strip(" :-")
+    elif lower.startswith("failed"):
+        result = "failed"
+        reason = first[len("failed"):].strip(" :-")
+    elif "passed" in lower and "failed" not in lower:
+        result, reason = "passed", first
+    else:
+        result, reason = "failed", first or "LLM did not return a clear verdict"
+    return result, [tagged(TAG_CHECK, f"Check {result}: {reason}")]
+
+
+def _handle_check(state: CompilerState, node: dict[str, Any], workflow: dict[str, Any]) -> CompilerState:
     preset = state.get("check_result") or ""
     if preset:
         result = preset
         eval_logs: list[str] = [tagged(TAG_CHECK, f"Using preset result: {result}")]
     else:
-        from src.evaluator import evaluate_node_data
-        from src.workspace import get_workspace
-
-        if get_workspace() is None:
-            result = "passed"
-            eval_logs = [tagged(TAG_CHECK, "No workspace — checks skipped (passed)")]
+        data = node.get("data", {}) or {}
+        rule = str(data.get("prompt", "") or "").strip()
+        if rule:
+            result, eval_logs = _llm_judge_check(state, node, workflow, rule)
         else:
-            result, eval_logs = evaluate_node_data(node.get("data", {}))
+            from src.evaluator import evaluate_node_data
+            from src.workspace import get_workspace
+
+            if get_workspace() is None:
+                result = "passed"
+                eval_logs = [tagged(TAG_CHECK, "No workspace — checks skipped (passed)")]
+            else:
+                result, eval_logs = evaluate_node_data(data)
 
     task_logs = list(state.get("task_logs", []))
     task_logs.extend(eval_logs)

@@ -218,6 +218,7 @@ export function compilerToCanvas(workflow: CompilerWorkflow, icon = 'account_tre
       agent?: string;
       tool?: string;
       instruction?: string;
+      prompt?: string;
     };
     const incoming = workflow.edges.filter((e) => e.target === node.id);
     const outgoing = workflow.edges.filter((e) => e.source === node.id);
@@ -238,7 +239,7 @@ export function compilerToCanvas(workflow: CompilerWorkflow, icon = 'account_tre
       nodeType,
       agent: data.agent ?? '',
       aiTool: data.tool,
-      description: data.instruction ?? '',
+      description: data.instruction ?? data.prompt ?? '',
       nextSteps: outgoing.map((e) => e.target).filter((t) => t !== 'end'),
       edgeWhen: Object.keys(edgeWhen).length > 0 ? edgeWhen : undefined,
       position: node.position,
@@ -266,13 +267,17 @@ export function canvasToCompiler(
     const position = step.position ?? { x: 250, y: idx * 120 + 80 };
 
     if (nodeType === 'human_gate' || nodeType === 'check') {
+      const data: Record<string, unknown> = {
+        label: step.name || (nodeType === 'human_gate' ? 'Human Approval' : 'Check'),
+      };
+      if (nodeType === 'check' && step.description) {
+        data.prompt = step.description;
+      }
       return {
         id: String(step.id),
         type: nodeType,
         position,
-        data: {
-          label: step.name || (nodeType === 'human_gate' ? 'Human Approval' : 'Check'),
-        },
+        data,
       };
     }
 

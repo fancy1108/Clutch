@@ -83,10 +83,14 @@
             "properties": {
               "data": {
                 "type": "object",
-                "required": ["label", "checks"],
+                "required": ["label"],
                 "additionalProperties": false,
                 "properties": {
                   "label": { "type": "string" },
+                  "prompt": {
+                    "type": "string",
+                    "description": "Natural-language check rule evaluated by the LLM judge. When present the LLM reads the upstream node output and decides passed/failed."
+                  },
                   "checks": {
                     "type": "array",
                     "minItems": 1,
