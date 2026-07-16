@@ -1251,13 +1251,16 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
             msg.badgeText?.includes('FAILED') ||
             msg.badgeText?.includes('NEEDS');
           const isCompletedMsg = msg.status === 'COMPLETED';
+          const isWorkflowMeta = msg.agent === 'Evaluator' || msg.agent === 'Supervisor' || msg.agent === 'Builder';
           const avatarUrl = isUser
             ? (userAvatar || USER_CHAT_AVATAR)
-            : (
-              msg.avatar
-              || resolveBrandLogoSrc({ toolId: replyStep?.toolId, runtimeEngine: msg.runtimeEngine })
-              || resolveAgentLogo?.(msg.agent)
-            );
+            : isWorkflowMeta
+              ? USER_CHAT_AVATAR
+              : (
+                msg.avatar
+                || resolveBrandLogoSrc({ toolId: replyStep?.toolId, runtimeEngine: msg.runtimeEngine })
+                || resolveAgentLogo?.(msg.agent)
+              );
 
           return (
             <div
