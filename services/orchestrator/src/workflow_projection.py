@@ -57,9 +57,9 @@ def project_graph_to_clutch(
             messages.append(
                 chat_message(
                     "Evaluator",
-                    "Validation checks did not pass. Review the terminal log, then approve, reject, or retry with instructions.",
-                    status="FAILED",
-                    badge_text="VALIDATION FAILED",
+                    "Awaiting human approval. Please review the output above, then approve, reject, or retry with instructions.",
+                    status="PENDING",
+                    badge_text="AWAITING APPROVAL",
                 )
             )
     else:
@@ -77,9 +77,9 @@ def project_graph_to_clutch(
             messages.append(
                 chat_message(
                     "Evaluator",
-                    "Validation checks did not pass. Review the terminal log, then approve, reject, or retry with instructions.",
-                    status="FAILED",
-                    badge_text="VALIDATION FAILED",
+                    "Awaiting human approval. Please review the output above, then approve, reject, or retry with instructions.",
+                    status="PENDING",
+                    badge_text="AWAITING APPROVAL",
                 )
             )
 
