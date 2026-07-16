@@ -396,10 +396,10 @@ class WorkflowCompiler:
                     return branch
 
                 graph.add_conditional_edges(source, _route, path_map)
-            elif len(unconditional) == 1:
-                graph.add_edge(source, unconditional[0]["target"])
-            elif len(unconditional) > 1:
-                raise ValueError(f"Node {source} has multiple unconditional edges")
+            elif unconditional:
+                # Fan-out: multiple unconditional edges → parallel execution
+                for edge in unconditional:
+                    graph.add_edge(source, edge["target"])
 
         if "end" in nodes_by_id:
             graph.add_edge("end", END)
