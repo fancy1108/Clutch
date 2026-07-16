@@ -7,20 +7,38 @@
 
 - **阶段：** **v1.2.7 重新发布中**（2026-07-14）— 同日 5 个 hotfix（pick 修复 + 迭代 page 锁 + 会话历史保护 + 草稿去重只读 + 工具栏）合入 v1.2.7，CHANGELOG / release doc 已补，preflight 已跑；tag `v1.2.7` 将 force-update 到新的 main HEAD
 - **Release：** [v1.2.7](https://github.com/fancy1108/Clutch/releases/tag/v1.2.7) · tag 将被强制更新到 hotfix 后的 commit
-- **Git：** `dev` ahead of main by 5 commits（将快进合并到 main）；`dev` 与 `origin/dev` 已同步
-- **Verify：** `./scripts/verify.sh` → 130 vitest + 732 pytest passed（2 skipped），doc-drift 0
+- **Git：** `dev` ahead of main by 6 commits（`ae84a9b` LLM judge）；`dev` 与 `origin/dev` 待同步
+- **Verify：** `./scripts/verify.sh` → 136 vitest + 730 pytest passed（1 pre-existing keychain failure），doc-drift 0
 - **Preflight：** `./scripts/release-preflight.sh v1.2.7` → passed
 - **一键原型：** 全部 Phase 交付完成（IUE → 连线编辑 → 契约落盘 → 代码生成）
+- **LLM Judge：** check 节点支持自然语言 prompt，LLM 读取上游 node_outputs 判定 passed/failed
 
 ## Next Actions
 
+- Push `dev` → `origin/dev`
 - fast-forward `main` 到 `dev` → `git push origin main`
 - force-update `v1.2.7` tag → `git push origin v1.2.7 --force`
 - 重发触发 CI：macOS DMG + Windows MSI/NSIS
 - 发布后同步 Homebrew tap
 - **一键原型 Phase 2：Prototype Runtime 增强**（导航历史、Overlay Context、全局状态机、Mock 拦截）
+- 工作区还有未暂存改动：check/gate 节点多 handle 扇出 + edgeWhen 类型变更（`Record<EdgeWhen>` → `Record<EdgeWhen[]>`）
 
 ## Recent Sessions
+
+## 2026-07-16 会话（Flow Next Flow 条件选择器多选支持）
+
+- **EdgeWhen 多选化**：`edgeWhen` 从 `Record<string, EdgeWhen>` 改为 `Record<string, EdgeWhen[]>`，支持 `reject` + `retry` 同时指向同一节点
+- **改动范围**：6 文件 — 类型定义、JSON Schema、编译工具、UI（多选 checkbox）、运行时编译器、测试
+- **校验**：vitest 136/136，pytest 730/734（1 预存 keychain），doc-drift 0
+- **Commit**：`bec65d6`
+
+## 2026-07-16 会话（LLM Judge for check nodes）
+
+- **LLM Judge 实现**：后端 `_llm_judge_check` 读取上游 `node_outputs`、调 LLM 判定 passed/failed；`_handle_check` 优先走 prompt 分支
+- **Schema 更新**：check 节点 data 新增可选 `prompt` 字段，`checks` 改为非必填
+- **前端适配**：`canvasToCompiler` / `compilerToCanvas` 双向映射 `prompt` ↔ `description`；弹窗 helper text + 自然语言 placeholder
+- **校验**：vitest 136/136，pytest 730/731（1 预存 keychain），build ✓
+- **Commit**：`ae84a9b`
 
 ## 2026-07-14 会话（强制颜色约束 + 多页面共享布局 + 前端节点抖动修复）
 

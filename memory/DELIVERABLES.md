@@ -20,7 +20,31 @@
 ---
 
 
+### EdgeWhen multi-select (Next Flow 条件多选) ✅
+- **日期：** 2026-07-16
+- **Commit：** `bec65d6` — `feat(flow): Next Flow 条件选择器支持多选 (EdgeWhen 单值→数组)`
+- **Verification：** `./scripts/verify.sh` → 136 vitest passed, 730 pytest passed, doc-drift 0
+- **证据：** `—`
+- **交付文件：**
+  - `packages/shared-types/index.ts` — `edgeWhen: Record<string, EdgeWhen[]>` (单值→数组)
+  - `workflows/workflow.schema.json` — `data.when` oneOf [string, array] 向后兼容
+  - `apps/desktop/src/services/workflowFormat.ts` — compilerToCanvas/canvasToCompiler/验证 全适配数组
+  - `apps/desktop/src/components/WorkflowOrchestration.tsx` — 条件选择 <select>→checkbox 多选，边标签 ' / ' 拼接
+  - `services/orchestrator/src/compiler/compiler.py` — path_map/EdgeMeta 支持 list[str] when
+  - `apps/desktop/src/services/workflowFormat.test.ts` — 测试数据适配数组格式
+
 ## Active Deliverables
+
+### LLM Judge for check nodes ✅
+- **日期：** 2026-07-16
+- **Commit：** `ae84a9b` — `feat(compiler): add LLM judge for check nodes with natural-language prompt`
+- **Verification：** `./scripts/verify.sh` → 730 pytest passed (1 pre-existing keychain), 136 vitest passed, pnpm build ✓
+- **证据：** `—`
+- **交付文件：**
+  - `services/orchestrator/src/compiler/compiler.py` — 新增 `_llm_judge_check` 函数（读取上游 node_outputs、调 LLM 判定 passed/failed）；`_handle_check` 优先走 prompt/LLM judge 分支，回退 legacy evaluate_node_data
+  - `workflows/workflow.schema.json` — check 节点 data 新增可选 `prompt` 字段，`checks` 改为非必填
+  - `apps/desktop/src/services/workflowFormat.ts` — `canvasToCompiler` 对 check 节点写 `data.prompt`；`compilerToCanvas` 读回 `data.prompt` → description
+  - `apps/desktop/src/components/WorkflowOrchestration.tsx` — check 节点弹窗：Label/Prompt 仅限 gate/check 显示，加 helper text + 自然语言 placeholder 示例
 
 ### Prompt color constraints + shared layout context + setNodes dedup ✅
 - **日期：** 2026-07-14
