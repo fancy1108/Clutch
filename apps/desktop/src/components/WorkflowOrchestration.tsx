@@ -19,7 +19,6 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { WorkflowJsonPanel } from './WorkflowJsonPanel';
-import { OpenSpecPanel } from './OpenSpecPanel';
 import {
   canvasToCompiler,
   compilerToCanvas,
@@ -48,7 +47,6 @@ import { LegacyIcon } from './ui/LegacyIcon';
 import { FullscreenModalOverlay } from './ui/FullscreenModalOverlay';
 
 type EditorViewMode = 'canvas' | 'json';
-type SidebarTab = 'workflows' | 'openspec';
 
 interface WorkflowOrchestrationProps {
   onClose: () => void;
@@ -151,7 +149,6 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
   const [workflows, setWorkflows] = useState<WorkflowDef[]>([]);
   const [activeWorkflowId, setActiveWorkflowId] = useState<string>('');
   const [viewMode, setViewMode] = useState<EditorViewMode>('canvas');
-  const [sidebarTab, setSidebarTab] = useState<SidebarTab>('workflows');
   const [jsonText, setJsonText] = useState('');
   const [canvasCompatible, setCanvasCompatible] = useState(false);
   const [canvasIncompatHint, setCanvasIncompatHint] = useState<string | null>(null);
@@ -724,38 +721,15 @@ const edgeColors: Record<string, string> = {
       </div>
 
       <div className="flex flex-1 min-h-0">
-        {/* Left sidebar with tabs */}
+        {/* Left sidebar with workflow list */}
         <div className="w-[280px] border-r border-neutral-100 bg-neutral-50/30 flex flex-col overflow-hidden">
-          {/* Tab switcher */}
           <div className="flex border-b border-neutral-200/60 shrink-0">
-            <button
-              type="button"
-              onClick={() => setSidebarTab('workflows')}
-              className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-widest text-center transition-colors ${
-                sidebarTab === 'workflows'
-                  ? 'text-neutral-800 bg-white border-b-2 border-neutral-800'
-                  : 'text-neutral-400 hover:text-neutral-600'
-              }`}
-            >
+            <div className="flex-1 py-2 text-[10px] font-bold uppercase tracking-widest text-center text-neutral-800 bg-white border-b-2 border-neutral-800">
               <LegacyIcon name="account_tree" className="text-[12px] inline mr-1" />
               Workflows
-            </button>
-            <button
-              type="button"
-              onClick={() => setSidebarTab('openspec')}
-              className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-widest text-center transition-colors ${
-                sidebarTab === 'openspec'
-                  ? 'text-neutral-800 bg-white border-b-2 border-neutral-800'
-                  : 'text-neutral-400 hover:text-neutral-600'
-              }`}
-            >
-              <LegacyIcon name="description" className="text-[12px] inline mr-1" />
-              OpenSpec
-            </button>
+            </div>
           </div>
 
-          {/* Tab content */}
-          {sidebarTab === 'workflows' ? (
           <div className="flex-1 overflow-y-auto flex flex-col p-4 gap-3 overflow-x-hidden">
             <h3 className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest pl-2 mb-1 text-left">
               {t('Active SOP Workflows')}
@@ -822,11 +796,6 @@ const edgeColors: Record<string, string> = {
             );
           })}
         </div>
-        ) : (
-          <div className="flex-1 overflow-hidden">
-            <OpenSpecPanel />
-          </div>
-        )}
         </div>
 
         <div className="flex-1 flex flex-col relative min-h-0">
