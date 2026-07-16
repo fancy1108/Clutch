@@ -13,6 +13,7 @@
 - **一键原型：** 全部 Phase 交付完成（IUE → 连线编辑 → 契约落盘 → 代码生成）
 - **LLM Judge：** check 节点支持自然语言 prompt，LLM 读取上游 node_outputs 判定 passed/failed
 - 🔧 **Check/Gate 节点 end 汇聚不兼容修复**（`6ec20b9`）：`getCanvasIncompatibilities` 中 end 入度从 `!== 1` 放宽到 `< 1`，允许多路径汇聚到 end
+- 🔧 **Agent_task 多出边放宽**（`813defa`）：移除 `branching_node` 限制，所有节点类型统一使用 `MAX_BRANCH_OUT=3` 出度上限
 
 ## Next Actions
 

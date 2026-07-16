@@ -17,6 +17,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 ### Fixed
 
 - **Check/Gate 节点 end 汇聚不兼容修复：** `getCanvasIncompatibilities` 中 `end` 节点入度检查从 `endIn !== 1` 放宽到 `endIn < 1`，允许多路径汇聚到 end。修复了添加 check 节点后工作流被强制切换到 JSON 模式且无法返回 Canvas 的问题。
+- **Agent_task 多出边放宽：** 移除 `agent_task` 节点 `branching_node`（out>1）限制，所有节点类型统一使用 `MAX_BRANCH_OUT=3` 出度上限，支持 agent_task 扇出到多个下游节点。
 
 ## [1.2.7] - 2026-07-14
 

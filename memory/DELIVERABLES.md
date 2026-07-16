@@ -20,6 +20,14 @@
 ---
 
 
+### Agent_task 多出边放宽 ✅
+- **日期：** 2026-07-16
+- **Commit：** `813defa` — `fix: allow agent_task nodes to have multiple outgoing edges`
+- **Verification：** `./scripts/verify.sh` → build ✓, vitest 136/136, pytest 730/734
+- **证据：** 用 `AI 图片生成多 Agent 工作流` 实际 JSON 验证 → Reasons: []
+- **交付文件：**
+  - `apps/desktop/src/services/workflowFormat.ts` — 移除 `branching_node` 限制，所有节点类型统一使用 `MAX_BRANCH_OUT=3`；移除未使用的 `isGate` 变量
+
 ### Check/Gate 节点 end 汇聚不兼容修复 ✅
 - **日期：** 2026-07-16
 - **Commit：** `6ec20b9` — `fix: relax end node in-degree check to allow multi-path convergence to end`
