@@ -9,12 +9,53 @@ def upstream_node_ids(workflow: dict[str, Any], node_id: str) -> list[str]:
     return [str(edge["source"]) for edge in workflow.get("edges", []) if str(edge["target"]) == node_id]
 
 
+def _find_node(workflow: dict[str, Any], node_id: str) -> dict[str, Any] | None:
+    for n in workflow.get("nodes", []):
+        if str(n.get("id")) == node_id:
+            return n
+    return None
+
+
+def _resolve_upstream_data(
+    outputs: dict[str, Any],
+    node_id: str,
+    workflow: dict[str, Any],
+    default: str = "",
+) -> str:
+    """Walk upstream until we find a data-producing node (skip gates/checks)."""
+    upstreams = upstream_node_ids(workflow, node_id)
+    if not upstreams:
+        return default
+    # For single upstream, walk through gate/check nodes to find real data source
+    if len(upstreams) == 1:
+        src = upstreams[0]
+        src_node = _find_node(workflow, src)
+        if src_node and src_node.get("type") in ("human_gate", "check"):
+            return _resolve_upstream_data(outputs, src, workflow, default)
+    data = str(outputs.get(node_id, "")).strip()
+    if data:
+        return data
+    # Try walking through upstreams for the data
+    parts: list[str] = []
+    for src in upstreams:
+        src_node = _find_node(workflow, src)
+        if src_node and src_node.get("type") in ("human_gate", "check"):
+            parts.append(_resolve_upstream_data(outputs, src, workflow, default))
+        else:
+            parts.append(str(outputs.get(src, "")).strip())
+    return "\n\n".join(p for p in parts if p) or default
+
+
 def resolve_agent_task_input(
     state: dict[str, Any],
     node: dict[str, Any],
     workflow: dict[str, Any],
 ) -> str:
-    """Auto input rule: start upstream → user instruction; else upstream output."""
+    """Auto input rule: start upstream → user instruction; else upstream output.
+    
+    Gate/check nodes are transparent for data flow — we walk through them
+    to find the real data-producing agent_task upstream.
+    """
     data = node.get("data", {})
     if not isinstance(data, dict):
         data = {}
@@ -29,13 +70,20 @@ def resolve_agent_task_input(
 
     if len(upstreams) == 1 and upstreams[0] == "start":
         body = user_instruction
-    elif len(upstreams) == 1:
-        body = str(outputs.get(upstreams[0], "")).strip()
     elif len(upstreams) == 0:
         body = user_instruction
     else:
-        chunks = [str(outputs.get(node_id, "")).strip() for node_id in upstreams]
-        body = "\n\n".join(chunk for chunk in chunks if chunk)
+        # Walk through gate/check nodes to find actual data
+        chunks: list[str] = []
+        for src_id in upstreams:
+            src_node = _find_node(workflow, src_id)
+            if src_node and src_node.get("type") in ("human_gate", "check"):
+                chunk = _resolve_upstream_data(outputs, src_id, workflow, "")
+            else:
+                chunk = str(outputs.get(src_id, "")).strip()
+            if chunk:
+                chunks.append(chunk)
+        body = "\n\n".join(chunks)
         if not body:
             body = user_instruction
 
