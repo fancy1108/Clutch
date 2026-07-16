@@ -1,6 +1,12 @@
-/** Canvas ↔ compiler JSON mapping (D9). Simple linear agent_task chains only. */
+/**
+ * Canvas ↔ compiler JSON mapping.
+ *
+ * Supported on the visual canvas: agent_task, human_gate, check, end.
+ * human_gate/check nodes may have up to 3 outgoing edges with `when` values
+ * (approve/reject/retry for gates; passed/failed for checks).
+ */
 
-import type { WorkflowDef, WorkflowStep } from '../types';
+import type { WorkflowDef, WorkflowStep, EdgeWhen } from '../types';
 
 export interface CompilerNode {
   id: string;
@@ -26,13 +32,25 @@ export interface CompilerWorkflow {
   description?: string;
 }
 
+/** Node types renderable on the canvas (everything except virtual start). */
+const CANVAS_NODE_TYPES = new Set(['agent_task', 'human_gate', 'check', 'end']);
+
+/** Valid `when` values for edges leaving human_gate nodes. */
+const GATE_WHEN_VALUES = new Set<EdgeWhen>(['approve', 'reject', 'retry']);
+/** Valid `when` values for edges leaving check nodes. */
+const CHECK_WHEN_VALUES = new Set<EdgeWhen>(['passed', 'failed']);
+/** Maximum outgoing edges from a branching node (gate/check). */
+const MAX_BRANCH_OUT = 3;
+
 export type CanvasIncompatibility =
   | { kind: 'multiple_end_nodes'; count: number }
   | { kind: 'unsupported_node_type'; nodeId: string; nodeType: string }
   | { kind: 'conditional_edge'; edgeId: string; source: string; target: string; when: string }
+  | { kind: 'conditional_edge_on_linear'; edgeId: string; source: string; target: string; when: string }
   | { kind: 'invalid_start'; outDegree: number }
   | { kind: 'invalid_end'; nodeId: string; inDegree: number }
   | { kind: 'branching_node'; nodeId: string; outDegree: number }
+  | { kind: 'excessive_branching'; nodeId: string; outDegree: number; nodeType: string }
   | { kind: 'merge_or_cycle'; nodeId: string; inDegree: number }
   | { kind: 'isolated_node'; nodeId: string };
 
@@ -44,7 +62,7 @@ function slugId(name: string): string {
   return base || `step-${Date.now()}`;
 }
 
-/** Collect every reason the canvas editor cannot host this workflow (D9). */
+/** Collect every reason the canvas editor cannot host this workflow. */
 export function getCanvasIncompatibilities(
   workflow: Pick<CompilerWorkflow, 'nodes' | 'edges'>,
 ): CanvasIncompatibility[] {
@@ -54,24 +72,14 @@ export function getCanvasIncompatibilities(
     reasons.push({ kind: 'multiple_end_nodes', count: endNodes.length });
   }
 
+  const nodeMap = new Map(workflow.nodes.map((n) => [n.id, n]));
+
   for (const node of workflow.nodes) {
-    if (node.type !== 'agent_task' && node.type !== 'end') {
+    if (!CANVAS_NODE_TYPES.has(node.type)) {
       reasons.push({
         kind: 'unsupported_node_type',
         nodeId: node.id,
         nodeType: node.type,
-      });
-    }
-  }
-
-  for (const edge of workflow.edges) {
-    if (edge.data?.when) {
-      reasons.push({
-        kind: 'conditional_edge',
-        edgeId: edge.id,
-        source: edge.source,
-        target: edge.target,
-        when: String(edge.data.when),
       });
     }
   }
@@ -86,6 +94,23 @@ export function getCanvasIncompatibilities(
   const startOut = outCount.start ?? 0;
   if (startOut !== 1) {
     reasons.push({ kind: 'invalid_start', outDegree: startOut });
+  }
+
+  // Validate conditional edges
+  for (const edge of workflow.edges) {
+    if (!edge.data?.when) continue;
+    const sourceNode = nodeMap.get(edge.source);
+    if (!sourceNode) continue;
+    if (sourceNode.type === 'human_gate' && GATE_WHEN_VALUES.has(edge.data.when as EdgeWhen)) continue;
+    if (sourceNode.type === 'check' && CHECK_WHEN_VALUES.has(edge.data.when as EdgeWhen)) continue;
+    // Conditional edge on a linear node (agent_task) — invalid
+    reasons.push({
+      kind: 'conditional_edge_on_linear',
+      edgeId: edge.id,
+      source: edge.source,
+      target: edge.target,
+      when: String(edge.data.when),
+    });
   }
 
   const agentNodes = workflow.nodes.filter((n) => n.type === 'agent_task');
@@ -107,13 +132,29 @@ export function getCanvasIncompatibilities(
       }
       continue;
     }
+    if (node.type === 'start') continue;
     const out = outCount[node.id] ?? 0;
     const inc = inCount[node.id] ?? 0;
-    if (out > 1) {
-      reasons.push({ kind: 'branching_node', nodeId: node.id, outDegree: out });
+    const isGate = node.type === 'human_gate' || node.type === 'check';
+    if (isGate) {
+      if (out > MAX_BRANCH_OUT) {
+        reasons.push({ kind: 'excessive_branching', nodeId: node.id, outDegree: out, nodeType: node.type });
+      }
+    } else {
+      if (out > 1) {
+        reasons.push({ kind: 'branching_node', nodeId: node.id, outDegree: out });
+      }
     }
+    // Allow merges when the extra incoming edge is from a human_gate/check (loopback)
     if (inc > 1) {
-      reasons.push({ kind: 'merge_or_cycle', nodeId: node.id, inDegree: inc });
+      const incomingEdges = workflow.edges.filter((e) => e.target === node.id);
+      const nonGateIncoming = incomingEdges.filter((e) => {
+        const src = nodeMap.get(e.source);
+        return src && src.type !== 'human_gate' && src.type !== 'check';
+      });
+      if (nonGateIncoming.length > 1) {
+        reasons.push({ kind: 'merge_or_cycle', nodeId: node.id, inDegree: inc });
+      }
     }
     if (out === 0 && inc === 0) {
       reasons.push({ kind: 'isolated_node', nodeId: node.id });
@@ -133,6 +174,7 @@ export function formatCanvasIncompatibilities(reasons: CanvasIncompatibility[]):
         case 'unsupported_node_type':
           return `node ${r.nodeId} (${r.nodeType})`;
         case 'conditional_edge':
+        case 'conditional_edge_on_linear':
           return `edge ${r.edgeId} ${r.source}→${r.target} (when:${r.when})`;
         case 'invalid_start':
           return `start out-degree ${r.outDegree} (need 1)`;
@@ -140,6 +182,8 @@ export function formatCanvasIncompatibilities(reasons: CanvasIncompatibility[]):
           return `end ${r.nodeId} in-degree ${r.inDegree} (need 1)`;
         case 'branching_node':
           return `node ${r.nodeId} branches (out:${r.outDegree})`;
+        case 'excessive_branching':
+          return `node ${r.nodeId} (${r.nodeType}) has ${r.outDegree} outgoing (max ${MAX_BRANCH_OUT})`;
         case 'merge_or_cycle':
           return `node ${r.nodeId} merge/cycle (in:${r.inDegree})`;
         case 'isolated_node':
@@ -151,15 +195,24 @@ export function formatCanvasIncompatibilities(reasons: CanvasIncompatibility[]):
     .join('; ');
 }
 
-/** True when workflow is a simple linear agent_task pipeline (canvas-safe). */
+/** True when workflow can be hosted on the visual canvas. */
 export function isCanvasCompatible(workflow: Pick<CompilerWorkflow, 'nodes' | 'edges'>): boolean {
   return getCanvasIncompatibilities(workflow).length === 0;
 }
 
-export function compilerToCanvas(workflow: CompilerWorkflow, icon = 'account_tree'): WorkflowDef {
-  const agentNodes = workflow.nodes.filter((n) => n.type === 'agent_task');
+/** Valid `when` values for a given node type. */
+export function validWhenValues(nodeType: string | undefined): EdgeWhen[] {
+  if (nodeType === 'human_gate') return ['approve', 'reject', 'retry'];
+  if (nodeType === 'check') return ['passed', 'failed'];
+  return [];
+}
 
-  const steps: WorkflowStep[] = agentNodes.map((node) => {
+export function compilerToCanvas(workflow: CompilerWorkflow, icon = 'account_tree'): WorkflowDef {
+  const canvasNodes = workflow.nodes.filter((n) => CANVAS_NODE_TYPES.has(n.type) && n.type !== 'end');
+
+  const nodeTypeMap = new Map(workflow.nodes.map((n) => [n.id, n.type]));
+
+  const steps: WorkflowStep[] = canvasNodes.map((node) => {
     const data = node.data as {
       label?: string;
       agent?: string;
@@ -168,13 +221,26 @@ export function compilerToCanvas(workflow: CompilerWorkflow, icon = 'account_tre
     };
     const incoming = workflow.edges.filter((e) => e.target === node.id);
     const outgoing = workflow.edges.filter((e) => e.source === node.id);
+
+    // Collect edge `when` values for conditional routing
+    const edgeWhen: Record<string, EdgeWhen> = {};
+    for (const e of outgoing) {
+      if (e.data?.when) {
+        edgeWhen[e.target] = e.data.when as EdgeWhen;
+      }
+    }
+
+    const nodeType = (node.type === 'human_gate' || node.type === 'check') ? node.type : 'agent_task';
+
     return {
       id: node.id,
       name: data.label ?? node.id,
+      nodeType,
       agent: data.agent ?? '',
       aiTool: data.tool,
       description: data.instruction ?? '',
       nextSteps: outgoing.map((e) => e.target).filter((t) => t !== 'end'),
+      edgeWhen: Object.keys(edgeWhen).length > 0 ? edgeWhen : undefined,
       position: node.position,
       fromSteps: incoming.map((e) => e.source).filter((s) => s !== 'start'),
     } as WorkflowStep & { fromSteps?: string[] };
@@ -195,17 +261,33 @@ export function canvasToCompiler(
   canvas: WorkflowDef,
   base?: Partial<CompilerWorkflow>,
 ): CompilerWorkflow {
-  const agentNodes: CompilerNode[] = canvas.steps.map((step, idx) => ({
-    id: String(step.id),
-    type: 'agent_task',
-    position: step.position ?? { x: 250, y: idx * 120 + 80 },
-    data: {
-      label: step.name,
-      agent: step.agent,
-      ...(step.aiTool ? { tool: step.aiTool } : {}),
-      instruction: step.description || step.name,
-    },
-  }));
+  const compilerNodes: CompilerNode[] = canvas.steps.map((step, idx) => {
+    const nodeType = step.nodeType ?? 'agent_task';
+    const position = step.position ?? { x: 250, y: idx * 120 + 80 };
+
+    if (nodeType === 'human_gate' || nodeType === 'check') {
+      return {
+        id: String(step.id),
+        type: nodeType,
+        position,
+        data: {
+          label: step.name || (nodeType === 'human_gate' ? 'Human Approval' : 'Check'),
+        },
+      };
+    }
+
+    return {
+      id: String(step.id),
+      type: 'agent_task',
+      position,
+      data: {
+        label: step.name,
+        agent: step.agent,
+        ...(step.aiTool ? { tool: step.aiTool } : {}),
+        instruction: step.description || step.name,
+      },
+    };
+  });
 
   const endNode: CompilerNode = {
     id: 'end',
@@ -218,41 +300,52 @@ export function canvasToCompiler(
   let edgeIdx = 1;
 
   if (canvas.steps.length === 0) {
-    edges.push({
-      id: `e${edgeIdx++}`,
-      source: 'start',
-      target: 'end',
-    });
+    edges.push({ id: `e${edgeIdx++}`, source: 'start', target: 'end' });
   } else {
-    edges.push({
-      id: `e${edgeIdx++}`,
-      source: 'start',
-      target: String(canvas.steps[0].id),
-    });
+    edges.push({ id: `e${edgeIdx++}`, source: 'start', target: String(canvas.steps[0].id) });
   }
+
+  // Build a set of all node ids for quick lookup
+  const stepIds = new Set(canvas.steps.map((s) => String(s.id)));
+  const nodeTypeById = new Map(canvas.steps.map((s) => [String(s.id), s.nodeType ?? 'agent_task']));
 
   for (const step of canvas.steps) {
     const targets = step.nextSteps?.length
       ? step.nextSteps
-      : canvas.steps.findIndex((s) => s.id === step.id) === canvas.steps.length - 1
-        ? ['end']
-        : [];
+      : [];
+    const nodeType = step.nodeType ?? 'agent_task';
+    const edgeWhen = (step as any).edgeWhen as Record<string, EdgeWhen> | undefined;
+
     for (const target of targets) {
-      edges.push({
+      const targetId = target === 'end' ? 'end' : String(target);
+      const edge: CompilerEdge = {
         id: `e${edgeIdx++}`,
         source: String(step.id),
-        target: target === 'end' ? 'end' : String(target),
-      });
+        target: targetId,
+      };
+      // Add conditional when for gate/check nodes
+      if (edgeWhen && edgeWhen[targetId]) {
+        edge.data = { when: edgeWhen[targetId] };
+      } else if (edgeWhen && edgeWhen[target]) {
+        edge.data = { when: edgeWhen[target] };
+      }
+      edges.push(edge);
     }
   }
 
+  // Ensure end is reachable: if no edges point to end yet, connect the last agent_task
+  // or the last branching node without explicit nextSteps to end.
   if (!edges.some((e) => e.target === 'end') && canvas.steps.length > 0) {
-    const last = canvas.steps[canvas.steps.length - 1];
-    edges.push({
-      id: `e${edgeIdx++}`,
-      source: String(last.id),
-      target: 'end',
-    });
+    // Find nodes that have no outgoing edges
+    const sourcesWithEdges = new Set(edges.map((e) => e.source));
+    const terminalSteps = canvas.steps.filter((s) => !sourcesWithEdges.has(String(s.id)));
+    for (const step of terminalSteps) {
+      edges.push({
+        id: `e${edgeIdx++}`,
+        source: String(step.id),
+        target: 'end',
+      });
+    }
   }
 
   const rawId = canvas.id || slugId(canvas.name);
@@ -262,7 +355,7 @@ export function canvasToCompiler(
     id,
     name: canvas.name,
     version: base?.version ?? 1,
-    nodes: [...agentNodes, endNode],
+    nodes: [...compilerNodes, endNode],
     edges,
     icon: canvas.icon,
     description: canvas.description,
