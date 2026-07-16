@@ -141,15 +141,8 @@ export function getCanvasIncompatibilities(
     if (node.type === 'start') continue;
     const out = outCount[node.id] ?? 0;
     const inc = inCount[node.id] ?? 0;
-    const isGate = node.type === 'human_gate' || node.type === 'check';
-    if (isGate) {
-      if (out > MAX_BRANCH_OUT) {
-        reasons.push({ kind: 'excessive_branching', nodeId: node.id, outDegree: out, nodeType: node.type });
-      }
-    } else {
-      if (out > 1) {
-        reasons.push({ kind: 'branching_node', nodeId: node.id, outDegree: out });
-      }
+    if (out > MAX_BRANCH_OUT) {
+      reasons.push({ kind: 'excessive_branching', nodeId: node.id, outDegree: out, nodeType: node.type });
     }
     // Allow merges when the extra incoming edge is from a human_gate/check (loopback)
     if (inc > 1) {
