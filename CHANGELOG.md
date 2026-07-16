@@ -16,6 +16,8 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ### Fixed
 
+- **Check/Gate 节点 end 汇聚不兼容修复：** `getCanvasIncompatibilities` 中 `end` 节点入度检查从 `endIn !== 1` 放宽到 `endIn < 1`，允许多路径汇聚到 end。修复了添加 check 节点后工作流被强制切换到 JSON 模式且无法返回 Canvas 的问题。
+
 ## [1.2.7] - 2026-07-14
 
 Feature release — **interactive prototype engine with visual connection editing and React code generation**.
