@@ -57,7 +57,14 @@ def resolve_from_edges(workflow: dict[str, Any], source: str, state: dict[str, A
             raise ValueError(f"Node {source} has multiple unconditional edges")
         return str(unconditional[0]["target"])
 
-    path_map = {edge["data"]["when"]: edge["target"] for edge in conditional}
+    path_map: dict[str, str] = {}
+    for edge in conditional:
+        when_val = edge["data"]["when"]
+        if isinstance(when_val, list):
+            for w in when_val:
+                path_map[w] = edge["target"]
+        else:
+            path_map[when_val] = edge["target"]
     signal = routing_signal(workflow, source, state)
     if signal is None:
         return None
@@ -74,7 +81,14 @@ def resolve_branch_from_edges(
     if not conditional:
         return None
 
-    path_map = {edge["data"]["when"]: edge["target"] for edge in conditional}
+    path_map: dict[str, str] = {}
+    for edge in conditional:
+        when_val = edge["data"]["when"]
+        if isinstance(when_val, list):
+            for w in when_val:
+                path_map[w] = edge["target"]
+        else:
+            path_map[when_val] = edge["target"]
     signal = routing_signal(workflow, source, state)
     if signal is None:
         return None

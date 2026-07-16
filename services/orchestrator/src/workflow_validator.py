@@ -33,9 +33,9 @@ def _bundle_root() -> Path:
 def workflows_dir() -> Path:
     """Built-in read-only workflow templates directory (D5)."""
     candidates = [
-        Path(__file__).resolve().parent / "workflow_assets",
         _bundle_root() / "workflows",
         Path(__file__).resolve().parents[3] / "workflows",
+        Path(__file__).resolve().parent / "workflow_assets",
     ]
     for path in candidates:
         if (path / "workflow.schema.json").is_file():
