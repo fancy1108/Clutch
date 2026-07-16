@@ -7,12 +7,10 @@ updates:
     schedule:
       interval: weekly
       day: monday
-    open-pull-requests-limit: 5
-    groups:
-      dev-dependencies:
-        dependency-type: development
-        patterns:
-          - "*"
+    open-pull-requests-limit: 10
+    # No `groups` — each dev dependency gets its own PR so breaking-change
+    # bumps (e.g. typescript / vite major) can be reviewed individually
+    # instead of one mega-PR that's impossible to bisect.
 
   - package-ecosystem: pip
     directory: /services/orchestrator
