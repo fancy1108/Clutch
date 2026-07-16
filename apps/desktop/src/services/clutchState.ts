@@ -766,6 +766,9 @@ class ClutchStateStore {
     }
 
     if (this.socket) {
+      this.socket.onmessage = null;
+      this.socket.onclose = null;
+      this.socket.onerror = null;
       this.socket.close();
       this.socket = null;
       this._connected = false;
@@ -808,6 +811,8 @@ class ClutchStateStore {
           const envelope = JSON.parse(event.data) as WebSocketEnvelope;
           if (envelope.event === 'state_patch') {
             const data = envelope.data as StatePatchData;
+            // Guard: discard stale patches from a previous connection
+            if (data.patch?.run_id && data.patch.run_id !== this.runId) return;
             if (this.reconnectHydrate) {
               const preferred = this.reconnectHydrate;
               this.reconnectHydrate = null;
