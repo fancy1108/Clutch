@@ -128,10 +128,15 @@ export const CLI_INSTALL_GUIDES: Record<string, CliInstallGuide> = {
     desc: 'Install Qoder CLI (binary: qodercli). Requires ~/.local/bin on PATH.',
     url: 'https://qoder.com',
   },
+  'comate-cli': {
+    cmd: 'curl -fsSL https://comate.baidu.com/install | bash',
+    desc: 'Install Baidu Comate CLI (binary: comate). AI coding assistant with chat subcommand.',
+    url: 'https://comate.baidu.com',
+  },
 };
 
 /** CLIs tested in Clutch — primary install recommendations (Settings + onboarding). */
-export const RECOMMENDED_CLI_IDS = ['codebuddy-cli', 'cursor-cli', 'mimo-cli', 'opencode-cli', 'claude-cli', 'ollama-cli', 'codex-cli', 'agy-cli', 'zcode-cli', 'qoder-cli'] as const;
+export const RECOMMENDED_CLI_IDS = ['codebuddy-cli', 'cursor-cli', 'mimo-cli', 'opencode-cli', 'claude-cli', 'ollama-cli', 'codex-cli', 'agy-cli', 'zcode-cli', 'qoder-cli', 'comate-cli'] as const;
 
 export const ONBOARDING_RECOMMENDED_CLI_IDS = RECOMMENDED_CLI_IDS;
 

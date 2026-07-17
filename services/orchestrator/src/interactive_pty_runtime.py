@@ -58,6 +58,8 @@ CLI_BINARY_MAP: dict[str, str] = {
     "zcode": "zcode",
     "qoder-cli": "qodercli",
     "qodercli": "qodercli",
+    "comate-cli": "comate",
+    "comate": "comate",
 }
 
 

@@ -166,6 +166,14 @@ CLI_ROUTING_CONFIGS = {
         "extra_args": ["--dangerously-skip-permissions"],
         "prompt_flag": "-p",
     },
+    "comate-cli": {
+        "tool_id": "comate-cli",
+        "binary_name": "comate",
+        "conversation_mode": "none",
+        "prepend_system_prompt": True,
+        "extra_args": ["chat"],
+        "prompt_flag": "",
+    },
 }
 
 try:
@@ -231,6 +239,12 @@ def _normalize_engine_type(engine_type: str) -> str:
         "qodercli",
     }:
         return "Qoder CLI"
+    if key in {
+        "comate",
+        "comate-cli",
+        "baidu comate",
+    }:
+        return "Baidu Comate"
     return engine_type.strip()
 
 
@@ -379,6 +393,8 @@ def _resolve_agent_type(agent: dict[str, Any] | None, fallback_tool: str | None)
         return "codebuddy-cli"
     if fallback_tool in {"qoder-cli", "qoder", "qodercli"}:
         return "qoder-cli"
+    if fallback_tool in {"comate-cli", "comate", "baidu-comate"}:
+        return "comate-cli"
     return "clutch"
 
 
@@ -826,7 +842,9 @@ def _route_engine_raw(
             
         display_name = "Antigravity" if config["binary_name"] == "agy" else (
             "Rivet" if config["binary_name"] == "rivet" else (
-                "Qoder" if config["binary_name"] == "qodercli" else config["binary_name"].title()
+                "Qoder" if config["binary_name"] == "qodercli" else (
+                    "Comate" if config["binary_name"] == "comate" else config["binary_name"].title()
+                )
             )
         )
         _emit_log(logs, on_log, f"Routing task to {display_name} Code (Local CLI) for agent {agent_name}.")
@@ -932,7 +950,9 @@ def _route_engine_raw(
         config = CLI_ROUTING_CONFIGS[agent_type]
         display_name = "Antigravity" if config["binary_name"] == "agy" else (
             "Rivet" if config["binary_name"] == "rivet" else (
-                "Qoder" if config["binary_name"] == "qodercli" else config["binary_name"].title()
+                "Qoder" if config["binary_name"] == "qodercli" else (
+                    "Comate" if config["binary_name"] == "comate" else config["binary_name"].title()
+                )
             )
         )
         logs.append(

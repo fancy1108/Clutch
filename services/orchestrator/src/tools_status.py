@@ -199,6 +199,13 @@ CLI_CANDIDATES: list[dict[str, str]] = [
         "description": "Qoder AI coding agent for the terminal (curl qoder.com/install).",
         "icon": "terminal",
     },
+    {
+        "id": "comate-cli",
+        "name": "Baidu Comate",
+        "binary": "comate",
+        "description": "Baidu Comate AI coding assistant — VS Code–based editor with chat subcommand.",
+        "icon": "terminal",
+    },
 ]
 
 # Primary install recommendations (tested Clutch routing). Other whitelist CLIs are
@@ -215,6 +222,7 @@ RECOMMENDED_CLI_IDS: frozenset[str] = frozenset(
         "agy-cli",
         "zcode-cli",
         "qoder-cli",
+        "comate-cli",
     }
 )
 
@@ -231,6 +239,7 @@ _CLI_EXTRA_BIN_DIRS: tuple[Path, ...] = (
     Path.home() / ".mimocode" / "bin",
     Path.home() / ".openclaw" / "bin",
     Path.home() / ".qoder" / "bin",
+    Path.home() / ".comate" / "bin",
     Path.home() / "bin",
     Path("/opt/homebrew/bin"),
     Path("/usr/local/bin"),

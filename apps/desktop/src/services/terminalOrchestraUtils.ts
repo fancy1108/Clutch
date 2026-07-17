@@ -13,6 +13,7 @@ export const CLI_DISPLAY: Record<string, string> = {
   'ollama-cli': 'Ollama',
   'zcode-cli': 'ZCode',
   'qoder-cli': 'Qoder',
+  'comate-cli': 'Baidu Comate',
 };
 
 /** Dispatch @-mention targets shown in Orchestrator Bar picker (matches backend KNOWN_AGENTS). */
