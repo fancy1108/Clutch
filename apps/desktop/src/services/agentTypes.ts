@@ -48,6 +48,24 @@ const LEGACY_ENGINE_TO_TYPE: Record<string, AgentTypeId> = {
   'zcode cli': 'zcode-cli',
   'z.ai zcode': 'zcode-cli',
   'z.ai zcode cli': 'zcode-cli',
+  'qoder-cli': 'qoder-cli',
+  qoder: 'qoder-cli',
+  qodercli: 'qoder-cli',
+  'qoder cli': 'qoder-cli',
+  'comate-cli': 'comate-cli',
+  comate: 'comate-cli',
+  'baidu comate': 'comate-cli',
+  'devin-cli': 'devin-cli',
+  devin: 'devin-cli',
+  'devin cli': 'devin-cli',
+  'copilot-cli': 'copilot-cli',
+  copilot: 'copilot-cli',
+  'github copilot cli': 'copilot-cli',
+  'trae-cli': 'trae-cli',
+  trae: 'trae-cli',
+  traecli: 'trae-cli',
+  'trae cli': 'trae-cli',
+  'trae-agent': 'trae-cli',
 };
 
 const AGENT_TYPE_DISPLAY_LABELS: Record<string, string> = {
@@ -62,6 +80,11 @@ const AGENT_TYPE_DISPLAY_LABELS: Record<string, string> = {
   'cursor-cli': 'Cursor CLI',
   'rivet-cli': 'Rivet CLI',
   'zcode-cli': 'ZCode CLI',
+  'qoder-cli': 'Qoder CLI',
+  'comate-cli': 'Baidu Comate',
+  'devin-cli': 'Devin CLI',
+  'copilot-cli': 'GitHub Copilot CLI',
+  'trae-cli': 'Trae CLI',
 };
 
 /** First-class routed CLI agent types (excludes Clutch built-in LLM). */
@@ -96,17 +119,29 @@ export function agentTypeFromTool(tool: AiToolStatus): string | null {
   return null;
 }
 
-/** Agent types available for new agents: Clutch + connected CLI tools (registered or pending configure). */
+/** Agent types available for new agents: Clutch + connected CLI tools + installed recommended CLIs. */
 export function agentTypeOptionsFromTools(tools: AiToolStatus[]): AgentTypeOption[] {
   const options: AgentTypeOption[] = [{ id: CLUTCH_AGENT_TYPE, label: 'Clutch' }];
   const seen = new Set<string>([CLUTCH_AGENT_TYPE]);
 
+  // First pass: connected tools
   for (const tool of tools) {
     if (!tool.connected) continue;
     const agentType = agentTypeFromTool(tool);
     if (!agentType || seen.has(agentType)) continue;
     seen.add(agentType);
     options.push({ id: agentType, label: displayLabelForTool(tool, agentType) });
+  }
+
+  // Second pass: installed + recommended CLIs that aren't connected yet
+  for (const tool of tools) {
+    if (tool.connected) continue;
+    if (!tool.installed || !tool.recommended) continue;
+    const agentType = agentTypeFromTool(tool);
+    if (!agentType || seen.has(agentType)) continue;
+    seen.add(agentType);
+    const base = AGENT_TYPE_DISPLAY_LABELS[agentType] ?? tool.name?.trim() ?? agentType;
+    options.push({ id: agentType, label: `${base} (not connected)` });
   }
   return options;
 }
