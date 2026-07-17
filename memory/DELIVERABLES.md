@@ -4,6 +4,33 @@
 > **何时写：** 每个**代码 Task** 完成并 commit 后，在 Check-out 追加一节（见 `CLAUDE.md` §Check-out）。  
 > **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。
 
+## Devin + Copilot CLI Whitelist (`6ce426b`)
+
+| 项目 | 值 |
+|------|-----|
+| **Task** | 添加 Devin CLI + GitHub Copilot CLI 白名单支持 |
+| **Commit** | `6ce426b` |
+| **Branch** | `dev` |
+| **Verification** | `./scripts/verify.sh`：vitest 136/136, pytest 730/734, build OK |
+| **代码量** | 10 files, +80/-5 |
+
+### Devin CLI
+
+| 项目 | 详情 |
+|------|------|
+| 二进制版本 | devin 3000.1.27 (0d4bf12e) |
+| 路由 | `devin -p --permission-mode dangerous` |
+| conversation_mode | separate（支持 resume/continue） |
+| 图标 | 复用 rivet.svg（默认） |
+
+### GitHub Copilot CLI
+
+| 项目 | 详情 |
+|------|------|
+| 二进制 | copilot（下载中，npm: @github/copilot） |
+| 路由 | `copilot -p`（待测试） |
+| 图标 | copilot.svg（← ~/Downloads/copilot.svg） |
+
 ## comate CLI Whitelist (`65f23e6`)
 
 | 项目 | 值 |

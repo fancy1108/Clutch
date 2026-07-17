@@ -28,6 +28,15 @@
 
 ## Recent Sessions
 
+## 2026-07-17 会话（Devin + Copilot 白名单）
+
+- **Devin CLI 白名单**：完整添加 devin-cli（binary: devin v3000.1.27）
+- **路由配置**：`devin -p --permission-mode dangerous`（对标 Claude Code）
+- **GitHub Copilot CLI**：已有 CLI_CANDIDATES 条目，新增品牌图标、路由配置、推荐列表
+- **品牌 Logo**：copilot.svg（来自下载），devin 复用 rivet.svg 作为默认图标
+- **Commit**：`6ce426b`
+- **验证**：vitest 136/136, pytest 730/734 (1 预存 keychain), build OK
+
 ## 2026-07-17 会话（comate 白名单）
 
 - **Baidu Comate 白名单**：在所有注册表中添加 comate-cli 支持
