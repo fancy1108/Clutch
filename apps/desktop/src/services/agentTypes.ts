@@ -119,29 +119,17 @@ export function agentTypeFromTool(tool: AiToolStatus): string | null {
   return null;
 }
 
-/** Agent types available for new agents: Clutch + connected CLI tools + installed recommended CLIs. */
+/** Agent types available for new agents: Clutch + connected CLI tools. */
 export function agentTypeOptionsFromTools(tools: AiToolStatus[]): AgentTypeOption[] {
   const options: AgentTypeOption[] = [{ id: CLUTCH_AGENT_TYPE, label: 'Clutch' }];
   const seen = new Set<string>([CLUTCH_AGENT_TYPE]);
 
-  // First pass: connected tools
   for (const tool of tools) {
     if (!tool.connected) continue;
     const agentType = agentTypeFromTool(tool);
     if (!agentType || seen.has(agentType)) continue;
     seen.add(agentType);
     options.push({ id: agentType, label: displayLabelForTool(tool, agentType) });
-  }
-
-  // Second pass: installed + recommended CLIs that aren't connected yet
-  for (const tool of tools) {
-    if (tool.connected) continue;
-    if (!tool.installed || !tool.recommended) continue;
-    const agentType = agentTypeFromTool(tool);
-    if (!agentType || seen.has(agentType)) continue;
-    seen.add(agentType);
-    const base = AGENT_TYPE_DISPLAY_LABELS[agentType] ?? tool.name?.trim() ?? agentType;
-    options.push({ id: agentType, label: `${base} (not connected)` });
   }
   return options;
 }
