@@ -123,7 +123,8 @@ export function AgentManager({
   const refreshConnectedTools = useCallback(() => {
     void fetchToolsStatus()
       .then((toolsList) => {
-        setEligibleTools(toolsList.filter((tool) => tool.connected));
+        // Include connected tools, plus installed recommended CLIs pending connection
+        setEligibleTools(toolsList.filter((tool) => tool.connected || (tool.installed && tool.recommended)));
       })
       .catch(() => {
         setEligibleTools([]);
