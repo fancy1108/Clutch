@@ -28,6 +28,14 @@
 
 ## Recent Sessions
 
+## 2026-07-17 会话（Trae CLI 白名单）
+
+- **Trae CLI 白名单**：完整添加 trae-cli（binary: traecli v0.120.42）
+- **路由配置**：`traecli -p --yolo`（--yolo = bypass permission checks，对标 Claude Code）
+- **品牌 Logo**：Trae.svg（来自下载文件夹）
+- **Commit**：`a595904`
+- **验证**：vitest 136/136, pytest 730/734, build OK
+
 ## 2026-07-17 会话（Devin + Copilot 白名单）
 
 - **Devin CLI 白名单**：完整添加 devin-cli（binary: devin v3000.1.27）
