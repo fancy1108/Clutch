@@ -28,6 +28,15 @@
 
 ## Recent Sessions
 
+## 2026-07-17 会话（comate 白名单）
+
+- **Baidu Comate 白名单**：在所有注册表中添加 comate-cli 支持
+- **路由配置**：binary=comate, extra_args=["chat"], prompt_flag=""（位置参数）
+- **品牌 Logo**：百度.svg → tool-logos/comate.svg
+- **推荐安装**：`curl -fsSL https://comate.baidu.com/install | bash`
+- **Commit**：`65f23e6`
+- **验证**：vitest 136/136, pytest 730/734 (1 预存 keychain), build OK
+
 ## 2026-07-17 会话（qodercli 白名单）
 
 - **Qoder CLI 白名单**：在所有白名单注册表中添加 qoder-cli 支持

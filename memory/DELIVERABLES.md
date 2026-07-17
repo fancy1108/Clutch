@@ -4,6 +4,31 @@
 > **何时写：** 每个**代码 Task** 完成并 commit 后，在 Check-out 追加一节（见 `CLAUDE.md` §Check-out）。  
 > **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。
 
+## comate CLI Whitelist (`65f23e6`)
+
+| 项目 | 值 |
+|------|-----|
+| **Task** | 添加 Baidu Comate CLI 白名单支持 |
+| **Commit** | `65f23e6444acdfc92f4be7e6bdfef22190f135c8` |
+| **Branch** | `dev` |
+| **Verification** | `./scripts/verify.sh`：vitest 136/136, pytest 730/734 (1 预存 keychain), build OK |
+| **代码量** | 10 files, +55/-5 |
+
+### 交付文件
+
+| 文件 | 变更 |
+|------|------|
+| `services/orchestrator/src/tools_status.py` | CLI_CANDIDATES + RECOMMENDED_CLI_IDS + `~/.comate/bin` |
+| `services/orchestrator/src/agent_type.py` | AGENT_TYPES + 别名 (comate/baidu comate) |
+| `services/orchestrator/src/engine_router.py` | CLI_ROUTING_CONFIGS（comate chat, positional prompt） |
+| `services/orchestrator/src/terminal_cli_catalog.py` | CLI_TO_DISPLAY → "Baidu Comate" |
+| `services/orchestrator/src/interactive_pty_runtime.py` | CLI_BINARY_MAP → comate |
+| `apps/desktop/src/services/cliInstallGuides.ts` | CLI_INSTALL_GUIDES + RECOMMENDED_CLI_IDS |
+| `apps/desktop/src/services/brandLogos.ts` | comate.svg + BrandLogoKey + ALIAS_TO_KEY |
+| `apps/desktop/src/services/terminalOrchestraUtils.ts` | CLI_DISPLAY → "Baidu Comate" |
+| `apps/desktop/src/assets/tool-logos/comate.svg` | 百度 Logo（new） |
+| `docs/assets/tool-logos/comate.svg` | 文档图标（new） |
+
 ## qodercli CLI Whitelist (`a14db2d`)
 
 | 项目 | 值 |
