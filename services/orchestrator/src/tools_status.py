@@ -213,6 +213,13 @@ CLI_CANDIDATES: list[dict[str, str]] = [
         "description": "Devin AI coding agent for the terminal. Fast, minimal, supports -p/--print non-interactive mode.",
         "icon": "terminal",
     },
+    {
+        "id": "trae-cli",
+        "name": "Trae CLI",
+        "binary": "traecli",
+        "description": "Trae AI coding agent CLI (traecli). Supports -p/--print, --yolo, --resume.",
+        "icon": "terminal",
+    },
 ]
 
 # Primary install recommendations (tested Clutch routing). Other whitelist CLIs are
@@ -232,6 +239,7 @@ RECOMMENDED_CLI_IDS: frozenset[str] = frozenset(
         "comate-cli",
         "devin-cli",
         "copilot-cli",
+        "trae-cli",
     }
 )
 

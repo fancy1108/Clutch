@@ -20,6 +20,7 @@ import zcodeLogo from '../assets/tool-logos/zcode.svg';
 import qoderLogo from '../assets/tool-logos/qoder.svg';
 import comateLogo from '../assets/tool-logos/comate.svg';
 import copilotLogo from '../assets/tool-logos/copilot.svg';
+import traeLogo from '../assets/tool-logos/trae.svg';
 
 /** Only tools with an explicit asset in assets/tool-logos/. */
 export type BrandLogoKey =
@@ -38,7 +39,8 @@ export type BrandLogoKey =
   | 'qoder-cli'
   | 'comate-cli'
   | 'devin-cli'
-  | 'copilot-cli';
+  | 'copilot-cli'
+  | 'trae-cli';
 
 const BRAND_LOGO_SRC: Record<BrandLogoKey, string> = {
   'claude-cli': claudeLogo,
@@ -57,6 +59,7 @@ const BRAND_LOGO_SRC: Record<BrandLogoKey, string> = {
   'comate-cli': comateLogo,
   'devin-cli': rivetLogo,
   'copilot-cli': copilotLogo,
+  'trae-cli': traeLogo,
 };
 
 const ALIAS_TO_KEY: Record<string, BrandLogoKey> = {
@@ -118,6 +121,11 @@ const ALIAS_TO_KEY: Record<string, BrandLogoKey> = {
   copilot: 'copilot-cli',
   'copilot cli': 'copilot-cli',
   'github copilot cli': 'copilot-cli',
+  'trae-cli': 'trae-cli',
+  trae: 'trae-cli',
+  traecli: 'trae-cli',
+  'trae cli': 'trae-cli',
+  'trae-agent': 'trae-cli',
 };
 
 export function normalizeBrandLogoKey(

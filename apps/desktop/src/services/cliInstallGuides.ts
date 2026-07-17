@@ -143,10 +143,15 @@ export const CLI_INSTALL_GUIDES: Record<string, CliInstallGuide> = {
     desc: 'Install GitHub Copilot CLI globally via npm.',
     url: 'https://github.com/features/copilot/cli',
   },
+  'trae-cli': {
+    cmd: 'curl -fsSL https://docs.trae.cn/cli/install | bash',
+    desc: 'Install Trae CLI (binary: traecli). Supports -p/--print, --yolo, --resume.',
+    url: 'https://docs.trae.cn/cli',
+  },
 };
 
 /** CLIs tested in Clutch — primary install recommendations (Settings + onboarding). */
-export const RECOMMENDED_CLI_IDS = ['codebuddy-cli', 'cursor-cli', 'mimo-cli', 'opencode-cli', 'claude-cli', 'ollama-cli', 'codex-cli', 'agy-cli', 'zcode-cli', 'qoder-cli', 'comate-cli', 'devin-cli', 'copilot-cli'] as const;
+export const RECOMMENDED_CLI_IDS = ['codebuddy-cli', 'cursor-cli', 'mimo-cli', 'opencode-cli', 'claude-cli', 'ollama-cli', 'codex-cli', 'agy-cli', 'zcode-cli', 'qoder-cli', 'comate-cli', 'devin-cli', 'copilot-cli', 'trae-cli'] as const;
 
 export const ONBOARDING_RECOMMENDED_CLI_IDS = RECOMMENDED_CLI_IDS;
 

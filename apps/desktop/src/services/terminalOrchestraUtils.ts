@@ -16,6 +16,7 @@ export const CLI_DISPLAY: Record<string, string> = {
   'comate-cli': 'Baidu Comate',
   'devin-cli': 'Devin',
   'copilot-cli': 'GitHub Copilot',
+  'trae-cli': 'Trae',
 };
 
 /** Dispatch @-mention targets shown in Orchestrator Bar picker (matches backend KNOWN_AGENTS). */

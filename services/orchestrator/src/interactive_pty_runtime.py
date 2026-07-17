@@ -64,6 +64,9 @@ CLI_BINARY_MAP: dict[str, str] = {
     "devin": "devin",
     "copilot-cli": "copilot",
     "copilot": "copilot",
+    "trae-cli": "traecli",
+    "traecli": "traecli",
+    "trae-agent": "traecli",
 }
 
 
