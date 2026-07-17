@@ -16,6 +16,8 @@ CLI_TO_DISPLAY: dict[str, str] = {
     "zcode-cli": "ZCode",
     "qoder-cli": "Qoder",
     "comate-cli": "Baidu Comate",
+    "devin-cli": "Devin",
+    "copilot-cli": "GitHub Copilot",
 }
 
 # Extra @-mention labels (longest-match wins in dispatch_parse).

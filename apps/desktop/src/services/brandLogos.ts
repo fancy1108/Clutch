@@ -19,6 +19,7 @@ import vscodeLogo from '../assets/tool-logos/vscode.svg';
 import zcodeLogo from '../assets/tool-logos/zcode.svg';
 import qoderLogo from '../assets/tool-logos/qoder.svg';
 import comateLogo from '../assets/tool-logos/comate.svg';
+import copilotLogo from '../assets/tool-logos/copilot.svg';
 
 /** Only tools with an explicit asset in assets/tool-logos/. */
 export type BrandLogoKey =
@@ -35,7 +36,9 @@ export type BrandLogoKey =
   | 'rivet-cli'
   | 'zcode-cli'
   | 'qoder-cli'
-  | 'comate-cli';
+  | 'comate-cli'
+  | 'devin-cli'
+  | 'copilot-cli';
 
 const BRAND_LOGO_SRC: Record<BrandLogoKey, string> = {
   'claude-cli': claudeLogo,
@@ -52,6 +55,8 @@ const BRAND_LOGO_SRC: Record<BrandLogoKey, string> = {
   'zcode-cli': zcodeLogo,
   'qoder-cli': qoderLogo,
   'comate-cli': comateLogo,
+  'devin-cli': rivetLogo,
+  'copilot-cli': copilotLogo,
 };
 
 const ALIAS_TO_KEY: Record<string, BrandLogoKey> = {
@@ -106,6 +111,13 @@ const ALIAS_TO_KEY: Record<string, BrandLogoKey> = {
   comate: 'comate-cli',
   'comate cli': 'comate-cli',
   'baidu comate': 'comate-cli',
+  'devin-cli': 'devin-cli',
+  devin: 'devin-cli',
+  'devin cli': 'devin-cli',
+  'copilot-cli': 'copilot-cli',
+  copilot: 'copilot-cli',
+  'copilot cli': 'copilot-cli',
+  'github copilot cli': 'copilot-cli',
 };
 
 export function normalizeBrandLogoKey(

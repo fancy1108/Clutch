@@ -133,10 +133,20 @@ export const CLI_INSTALL_GUIDES: Record<string, CliInstallGuide> = {
     desc: 'Install Baidu Comate CLI (binary: comate). AI coding assistant with chat subcommand.',
     url: 'https://comate.baidu.com',
   },
+  'devin-cli': {
+    cmd: 'curl -fsSL https://devin.ai/install | bash',
+    desc: 'Install Devin CLI (binary: devin). Fast, minimal AI agent with -p/--print mode.',
+    url: 'https://devin.ai',
+  },
+  'copilot-cli': {
+    cmd: 'npm install -g @github/copilot',
+    desc: 'Install GitHub Copilot CLI globally via npm.',
+    url: 'https://github.com/features/copilot/cli',
+  },
 };
 
 /** CLIs tested in Clutch — primary install recommendations (Settings + onboarding). */
-export const RECOMMENDED_CLI_IDS = ['codebuddy-cli', 'cursor-cli', 'mimo-cli', 'opencode-cli', 'claude-cli', 'ollama-cli', 'codex-cli', 'agy-cli', 'zcode-cli', 'qoder-cli', 'comate-cli'] as const;
+export const RECOMMENDED_CLI_IDS = ['codebuddy-cli', 'cursor-cli', 'mimo-cli', 'opencode-cli', 'claude-cli', 'ollama-cli', 'codex-cli', 'agy-cli', 'zcode-cli', 'qoder-cli', 'comate-cli', 'devin-cli', 'copilot-cli'] as const;
 
 export const ONBOARDING_RECOMMENDED_CLI_IDS = RECOMMENDED_CLI_IDS;
 

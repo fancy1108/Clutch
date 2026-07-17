@@ -206,6 +206,13 @@ CLI_CANDIDATES: list[dict[str, str]] = [
         "description": "Baidu Comate AI coding assistant — VS Code–based editor with chat subcommand.",
         "icon": "terminal",
     },
+    {
+        "id": "devin-cli",
+        "name": "Devin CLI",
+        "binary": "devin",
+        "description": "Devin AI coding agent for the terminal. Fast, minimal, supports -p/--print non-interactive mode.",
+        "icon": "terminal",
+    },
 ]
 
 # Primary install recommendations (tested Clutch routing). Other whitelist CLIs are
@@ -223,6 +230,8 @@ RECOMMENDED_CLI_IDS: frozenset[str] = frozenset(
         "zcode-cli",
         "qoder-cli",
         "comate-cli",
+        "devin-cli",
+        "copilot-cli",
     }
 )
 

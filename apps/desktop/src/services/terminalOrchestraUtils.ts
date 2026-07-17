@@ -14,6 +14,8 @@ export const CLI_DISPLAY: Record<string, string> = {
   'zcode-cli': 'ZCode',
   'qoder-cli': 'Qoder',
   'comate-cli': 'Baidu Comate',
+  'devin-cli': 'Devin',
+  'copilot-cli': 'GitHub Copilot',
 };
 
 /** Dispatch @-mention targets shown in Orchestrator Bar picker (matches backend KNOWN_AGENTS). */

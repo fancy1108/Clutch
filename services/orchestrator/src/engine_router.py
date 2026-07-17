@@ -174,6 +174,22 @@ CLI_ROUTING_CONFIGS = {
         "extra_args": ["chat"],
         "prompt_flag": "",
     },
+    "devin-cli": {
+        "tool_id": "devin-cli",
+        "binary_name": "devin",
+        "conversation_mode": "separate",
+        "prepend_system_prompt": False,
+        "extra_args": ["--permission-mode", "dangerous"],
+        "prompt_flag": "-p",
+    },
+    "copilot-cli": {
+        "tool_id": "copilot-cli",
+        "binary_name": "copilot",
+        "conversation_mode": "none",
+        "prepend_system_prompt": True,
+        "extra_args": [],
+        "prompt_flag": "-p",
+    },
 }
 
 try:
@@ -245,6 +261,12 @@ def _normalize_engine_type(engine_type: str) -> str:
         "baidu comate",
     }:
         return "Baidu Comate"
+    if key in {
+        "devin",
+        "devin-cli",
+        "devin cli",
+    }:
+        return "Devin CLI"
     return engine_type.strip()
 
 
@@ -395,6 +417,8 @@ def _resolve_agent_type(agent: dict[str, Any] | None, fallback_tool: str | None)
         return "qoder-cli"
     if fallback_tool in {"comate-cli", "comate", "baidu-comate"}:
         return "comate-cli"
+    if fallback_tool in {"devin-cli", "devin"}:
+        return "devin-cli"
     return "clutch"
 
 
@@ -843,7 +867,9 @@ def _route_engine_raw(
         display_name = "Antigravity" if config["binary_name"] == "agy" else (
             "Rivet" if config["binary_name"] == "rivet" else (
                 "Qoder" if config["binary_name"] == "qodercli" else (
-                    "Comate" if config["binary_name"] == "comate" else config["binary_name"].title()
+                    "Comate" if config["binary_name"] == "comate" else (
+                        "Devin" if config["binary_name"] == "devin" else config["binary_name"].title()
+                    )
                 )
             )
         )
@@ -951,7 +977,9 @@ def _route_engine_raw(
         display_name = "Antigravity" if config["binary_name"] == "agy" else (
             "Rivet" if config["binary_name"] == "rivet" else (
                 "Qoder" if config["binary_name"] == "qodercli" else (
-                    "Comate" if config["binary_name"] == "comate" else config["binary_name"].title()
+                    "Comate" if config["binary_name"] == "comate" else (
+                        "Devin" if config["binary_name"] == "devin" else config["binary_name"].title()
+                    )
                 )
             )
         )

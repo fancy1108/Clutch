@@ -60,6 +60,10 @@ CLI_BINARY_MAP: dict[str, str] = {
     "qodercli": "qodercli",
     "comate-cli": "comate",
     "comate": "comate",
+    "devin-cli": "devin",
+    "devin": "devin",
+    "copilot-cli": "copilot",
+    "copilot": "copilot",
 }
 
 
