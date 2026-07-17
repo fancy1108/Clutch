@@ -17,6 +17,7 @@ import cursorLogo from '../assets/tool-logos/cursor.svg';
 import rivetLogo from '../assets/tool-logos/rivet.svg';
 import vscodeLogo from '../assets/tool-logos/vscode.svg';
 import zcodeLogo from '../assets/tool-logos/zcode.svg';
+import qoderLogo from '../assets/tool-logos/qoder.svg';
 
 /** Only tools with an explicit asset in assets/tool-logos/. */
 export type BrandLogoKey =
@@ -31,7 +32,8 @@ export type BrandLogoKey =
   | 'codebuddy-cli'
   | 'cursor-cli'
   | 'rivet-cli'
-  | 'zcode-cli';
+  | 'zcode-cli'
+  | 'qoder-cli';
 
 const BRAND_LOGO_SRC: Record<BrandLogoKey, string> = {
   'claude-cli': claudeLogo,
@@ -46,6 +48,7 @@ const BRAND_LOGO_SRC: Record<BrandLogoKey, string> = {
   'cursor-cli': cursorLogo,
   'rivet-cli': rivetLogo,
   'zcode-cli': zcodeLogo,
+  'qoder-cli': qoderLogo,
 };
 
 const ALIAS_TO_KEY: Record<string, BrandLogoKey> = {
@@ -92,6 +95,10 @@ const ALIAS_TO_KEY: Record<string, BrandLogoKey> = {
   'zcode cli': 'zcode-cli',
   'z.ai zcode': 'zcode-cli',
   'z.ai zcode cli': 'zcode-cli',
+  'qoder-cli': 'qoder-cli',
+  qoder: 'qoder-cli',
+  'qoder cli': 'qoder-cli',
+  qodercli: 'qoder-cli',
 };
 
 export function normalizeBrandLogoKey(

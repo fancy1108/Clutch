@@ -158,6 +158,14 @@ CLI_ROUTING_CONFIGS = {
         "prompt_flag": "-p",
         "supports_append_system_prompt": False,
     },
+    "qoder-cli": {
+        "tool_id": "qoder-cli",
+        "binary_name": "qodercli",
+        "conversation_mode": "separate",
+        "prepend_system_prompt": False,
+        "extra_args": ["--dangerously-skip-permissions"],
+        "prompt_flag": "-p",
+    },
 }
 
 try:
@@ -216,6 +224,13 @@ def _normalize_engine_type(engine_type: str) -> str:
         "z.ai zcode cli",
     }:
         return "ZCode CLI"
+    if key in {
+        "qoder",
+        "qoder cli",
+        "qoder-cli",
+        "qodercli",
+    }:
+        return "Qoder CLI"
     return engine_type.strip()
 
 
@@ -362,6 +377,8 @@ def _resolve_agent_type(agent: dict[str, Any] | None, fallback_tool: str | None)
         return "mimo-cli"
     if fallback_tool in {"codebuddy-cli", "codebuddy", "cbc"}:
         return "codebuddy-cli"
+    if fallback_tool in {"qoder-cli", "qoder", "qodercli"}:
+        return "qoder-cli"
     return "clutch"
 
 
@@ -808,7 +825,9 @@ def _route_engine_raw(
             cli_binary = config["binary_name"]
             
         display_name = "Antigravity" if config["binary_name"] == "agy" else (
-            "Rivet" if config["binary_name"] == "rivet" else config["binary_name"].title()
+            "Rivet" if config["binary_name"] == "rivet" else (
+                "Qoder" if config["binary_name"] == "qodercli" else config["binary_name"].title()
+            )
         )
         _emit_log(logs, on_log, f"Routing task to {display_name} Code (Local CLI) for agent {agent_name}.")
         if cli_binary:
@@ -912,7 +931,9 @@ def _route_engine_raw(
     if agent_type in CLI_ROUTING_CONFIGS and agent_type != "ollama-cli":
         config = CLI_ROUTING_CONFIGS[agent_type]
         display_name = "Antigravity" if config["binary_name"] == "agy" else (
-            "Rivet" if config["binary_name"] == "rivet" else config["binary_name"].title()
+            "Rivet" if config["binary_name"] == "rivet" else (
+                "Qoder" if config["binary_name"] == "qodercli" else config["binary_name"].title()
+            )
         )
         logs.append(
             tr(

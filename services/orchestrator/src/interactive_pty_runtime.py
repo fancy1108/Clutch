@@ -56,6 +56,8 @@ CLI_BINARY_MAP: dict[str, str] = {
     "ollama": "ollama",
     "zcode-cli": "zcode",
     "zcode": "zcode",
+    "qoder-cli": "qodercli",
+    "qodercli": "qodercli",
 }
 
 

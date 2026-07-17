@@ -192,6 +192,13 @@ CLI_CANDIDATES: list[dict[str, str]] = [
         "description": "Z.AI ZCode headless coding agent (GLM-family). Ships with the ZCode desktop app; expose the CJS entry via a `zcode` shim on PATH.",
         "icon": "terminal",
     },
+    {
+        "id": "qoder-cli",
+        "name": "Qoder CLI",
+        "binary": "qodercli",
+        "description": "Qoder AI coding agent for the terminal (curl qoder.com/install).",
+        "icon": "terminal",
+    },
 ]
 
 # Primary install recommendations (tested Clutch routing). Other whitelist CLIs are
@@ -207,6 +214,7 @@ RECOMMENDED_CLI_IDS: frozenset[str] = frozenset(
         "codex-cli",
         "agy-cli",
         "zcode-cli",
+        "qoder-cli",
     }
 )
 
@@ -222,6 +230,7 @@ _CLI_EXTRA_BIN_DIRS: tuple[Path, ...] = (
     Path.home() / ".opencode" / "bin",
     Path.home() / ".mimocode" / "bin",
     Path.home() / ".openclaw" / "bin",
+    Path.home() / ".qoder" / "bin",
     Path.home() / "bin",
     Path("/opt/homebrew/bin"),
     Path("/usr/local/bin"),

@@ -123,10 +123,15 @@ export const CLI_INSTALL_GUIDES: Record<string, CliInstallGuide> = {
     desc: 'Install ZCode desktop app first, then expose the bundled Node CJS entry as `zcode` on your PATH. Config: ~/.zcode/cli/config.json (see docs).',
     url: 'https://zcode.z.ai',
   },
+  'qoder-cli': {
+    cmd: 'curl -fsSL https://qoder.com/install | bash',
+    desc: 'Install Qoder CLI (binary: qodercli). Requires ~/.local/bin on PATH.',
+    url: 'https://qoder.com',
+  },
 };
 
 /** CLIs tested in Clutch — primary install recommendations (Settings + onboarding). */
-export const RECOMMENDED_CLI_IDS = ['codebuddy-cli', 'cursor-cli', 'mimo-cli', 'opencode-cli', 'claude-cli', 'ollama-cli', 'codex-cli', 'agy-cli', 'zcode-cli'] as const;
+export const RECOMMENDED_CLI_IDS = ['codebuddy-cli', 'cursor-cli', 'mimo-cli', 'opencode-cli', 'claude-cli', 'ollama-cli', 'codex-cli', 'agy-cli', 'zcode-cli', 'qoder-cli'] as const;
 
 export const ONBOARDING_RECOMMENDED_CLI_IDS = RECOMMENDED_CLI_IDS;
 

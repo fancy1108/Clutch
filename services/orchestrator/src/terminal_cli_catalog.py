@@ -14,6 +14,7 @@ CLI_TO_DISPLAY: dict[str, str] = {
     "rivet-cli": "Rivet CLI",
     "ollama-cli": "Ollama",
     "zcode-cli": "ZCode",
+    "qoder-cli": "Qoder",
 }
 
 # Extra @-mention labels (longest-match wins in dispatch_parse).
