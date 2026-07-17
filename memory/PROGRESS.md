@@ -28,6 +28,17 @@
 
 ## Recent Sessions
 
+## 2026-07-17 会话（qodercli 白名单）
+
+- **Qoder CLI 白名单**：在所有白名单注册表中添加 qoder-cli 支持
+- **路由配置**：binary=qodercli, conversation_mode=separate, extra_args=['--dangerously-skip-permissions'], prompt_flag=-p
+- **推荐安装**：`curl -fsSL https://qoder.com/install | bash`
+- **品牌 Logo**：qoder.svg 已添加到前后端 assets
+- **Commit**：`a14db2d`
+- **验证**：vitest 136/136, pytest 730/734 (1 预存 keychain), build OK, doc-drift 0
+- **API 测试**：tools/status 返回 qoder-cli (installed=true, registered=true, agentType=qoder-cli)
+- **Terminal 模式**：CLI_BINARY_MAP、KNOWN_DISPATCH_AGENTS 均已注册，支持消息注入和 handoff
+
 ## 2026-07-16 会话（Approval Node 多选 422 修复）
 
 - **诊断**：bec65d6 多选改造遗漏 — `workflows_dir()` 优先查找 gitignored `workflow_assets/` 旧副本，orchestrator 仍用旧 schema 拒绝数组 when

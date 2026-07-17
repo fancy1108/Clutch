@@ -2,7 +2,33 @@
 
 > **角色：** Task ID → Git commit → Verification → 证据路径。**不复制** `git diff`（代码真相在 Git）。  
 > **何时写：** 每个**代码 Task** 完成并 commit 后，在 Check-out 追加一节（见 `CLAUDE.md` §Check-out）。  
-> **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。  
+> **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。
+
+## qodercli CLI Whitelist (`a14db2d`)
+
+| 项目 | 值 |
+|------|-----|
+| **Task** | 添加 Qoder CLI 白名单支持 |
+| **Commit** | `a14db2d544a406753f832660424bf889d535e0a4` |
+| **Branch** | `dev` |
+| **Verification** | `./scripts/verify.sh`：vitest 136/136, pytest 730/734 (1 预存 keychain), build OK, doc-drift 0 |
+| **API 验证** | `GET /api/tools/status` 返回 qoder-cli（installed=true, registered=true, agentType=qoder-cli） |
+| **代码量** | 10 files, +56/-5 |
+
+### 交付文件
+
+| 文件 | 变更 |
+|------|------|
+| `services/orchestrator/src/tools_status.py` | CLI_CANDIDATES + RECOMMENDED_CLI_IDS + _CLI_EXTRA_BIN_DIRS |
+| `services/orchestrator/src/agent_type.py` | AGENT_TYPES + _LEGACY_AI_ENGINE_TO_TYPE |
+| `services/orchestrator/src/engine_router.py` | CLI_ROUTING_CONFIGS + _normalize_engine_type + _resolve_agent_type |
+| `services/orchestrator/src/terminal_cli_catalog.py` | CLI_TO_DISPLAY |
+| `services/orchestrator/src/interactive_pty_runtime.py` | CLI_BINARY_MAP |
+| `apps/desktop/src/services/cliInstallGuides.ts` | CLI_INSTALL_GUIDES + RECOMMENDED_CLI_IDS |
+| `apps/desktop/src/services/brandLogos.ts` | import + BrandLogoKey + BRAND_LOGO_SRC + ALIAS_TO_KEY |
+| `apps/desktop/src/services/terminalOrchestraUtils.ts` | CLI_DISPLAY |
+| `apps/desktop/src/assets/tool-logos/qoder.svg` | 品牌图标（new） |
+| `docs/assets/tool-logos/qoder.svg` | 文档图标（new） |  
 > **逐文件 diff：** `git show <commit> --stat` / `git show <commit>`
 
 ## 填写模板（复制后改）
