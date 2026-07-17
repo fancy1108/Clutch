@@ -166,14 +166,6 @@ CLI_ROUTING_CONFIGS = {
         "extra_args": ["--dangerously-skip-permissions"],
         "prompt_flag": "-p",
     },
-    "comate-cli": {
-        "tool_id": "comate-cli",
-        "binary_name": "comate",
-        "conversation_mode": "none",
-        "prepend_system_prompt": True,
-        "extra_args": ["chat"],
-        "prompt_flag": "",
-    },
     "devin-cli": {
         "tool_id": "devin-cli",
         "binary_name": "devin",
@@ -263,12 +255,6 @@ def _normalize_engine_type(engine_type: str) -> str:
         "qodercli",
     }:
         return "Qoder CLI"
-    if key in {
-        "comate",
-        "comate-cli",
-        "baidu comate",
-    }:
-        return "Baidu Comate"
     if key in {
         "devin",
         "devin-cli",
@@ -431,8 +417,6 @@ def _resolve_agent_type(agent: dict[str, Any] | None, fallback_tool: str | None)
         return "codebuddy-cli"
     if fallback_tool in {"qoder-cli", "qoder", "qodercli"}:
         return "qoder-cli"
-    if fallback_tool in {"comate-cli", "comate", "baidu-comate"}:
-        return "comate-cli"
     if fallback_tool in {"devin-cli", "devin"}:
         return "devin-cli"
     if fallback_tool in {"trae-cli", "trae", "traecli", "trae-agent"}:
@@ -885,10 +869,8 @@ def _route_engine_raw(
         display_name = "Antigravity" if config["binary_name"] == "agy" else (
             "Rivet" if config["binary_name"] == "rivet" else (
                 "Qoder" if config["binary_name"] == "qodercli" else (
-                    "Comate" if config["binary_name"] == "comate" else (
-                        "Devin" if config["binary_name"] == "devin" else (
-                            "Trae" if config["binary_name"] == "traecli" else config["binary_name"].title()
-                        )
+                    "Devin" if config["binary_name"] == "devin" else (
+                        "Trae" if config["binary_name"] == "traecli" else config["binary_name"].title()
                     )
                 )
             )
@@ -997,10 +979,8 @@ def _route_engine_raw(
         display_name = "Antigravity" if config["binary_name"] == "agy" else (
             "Rivet" if config["binary_name"] == "rivet" else (
                 "Qoder" if config["binary_name"] == "qodercli" else (
-                    "Comate" if config["binary_name"] == "comate" else (
-                        "Devin" if config["binary_name"] == "devin" else (
-                            "Trae" if config["binary_name"] == "traecli" else config["binary_name"].title()
-                        )
+                    "Devin" if config["binary_name"] == "devin" else (
+                        "Trae" if config["binary_name"] == "traecli" else config["binary_name"].title()
                     )
                 )
             )
