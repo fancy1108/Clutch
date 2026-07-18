@@ -58,10 +58,13 @@ from src.design.generator import (
     _infer_iterate_mode,
     _llm_complete,
     _shell_html,
+    confirm_spec,
     generate_session,
     iterate_session,
     delete_screen,
+    start_confirm_spec,
     start_generate_session,
+    start_iterate_session,
 )
 
 # Import thumbnail helpers
@@ -186,6 +189,46 @@ def _component_name(screen_id: str) -> str:
     return name or "Screen"
 
 
+def _load_interaction_contract(session_dir_path: Path) -> list[dict[str, Any]]:
+    path = session_dir_path / "interaction_contract.json"
+    if not path.is_file():
+        return []
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    if isinstance(data, list):
+        return [x for x in data if isinstance(x, dict)]
+    if isinstance(data, dict):
+        flows = data.get("flows") or data.get("interactions") or []
+        return [x for x in flows if isinstance(x, dict)] if isinstance(flows, list) else []
+    return []
+
+
+def _contract_nav_hint(screen_id: str, contract: list[dict[str, Any]]) -> str:
+    """Build navigation instructions from interaction_contract for one screen (D39)."""
+    lines: list[str] = []
+    for flow in contract:
+        src = str(flow.get("source_screen_id") or flow.get("from") or "")
+        if src and src != screen_id:
+            continue
+        label = str(
+            flow.get("source_element_text")
+            or flow.get("element_label")
+            or flow.get("label")
+            or ""
+        ).strip()
+        target = str(
+            flow.get("target_screen_id") or flow.get("to") or flow.get("target") or ""
+        ).strip()
+        if not label or not target:
+            continue
+        lines.append(f'- Element text "{label}" → navigate to "/{target}" (Link or useNavigate).')
+    if not lines:
+        return ""
+    return "Interaction contract (SSOT — implement every line):\n" + "\n".join(lines) + "\n"
+
+
 def _html_to_react_component(
     router: Any,
     *,
@@ -195,11 +238,15 @@ def _html_to_react_component(
     all_screen_ids: list[str],
     design_md: str,
     model_id: str,
+    contract: list[dict[str, Any]] | None = None,
 ) -> str:
     """LLM translation chain: static HTML -> React 19 + Tailwind component."""
     nav_ids = [sid for sid in all_screen_ids if sid != screen_id]
     nav_hint = ""
-    if nav_ids:
+    contract_hint = _contract_nav_hint(screen_id, contract or [])
+    if contract_hint:
+        nav_hint = contract_hint
+    elif nav_ids:
         nav_hint = (
             "Wire navigation: convert href links to react-router-dom <Link to=\"/{id}\"> "
             f"for screen ids: {', '.join(nav_ids)}.\n"
@@ -320,6 +367,7 @@ def generate_react(run_id: str) -> dict[str, Any]:
     if not screens:
         raise DesignError("No screens to codegen")
     design_md = (session_dir_path / DESIGN_MD).read_text(encoding="utf-8") if (session_dir_path / DESIGN_MD).is_file() else ""
+    contract = _load_interaction_contract(session_dir_path)
     router = get_router()
     model_id = router.active_model_id
     all_ids = [str(s["id"]) for s in screens]
@@ -341,6 +389,7 @@ def generate_react(run_id: str) -> dict[str, Any]:
                     all_screen_ids=all_ids,
                     design_md=design_md,
                     model_id=model_id,
+                    contract=contract,
                 )
             except Exception as exc:
                 logger.warning("design react LLM failed screen=%s err=%s", sid, exc)

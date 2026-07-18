@@ -641,22 +641,21 @@ export default function PreviewDemo({ screens, sessionRunId }: PreviewDemoProps)
   };
 
   const aiPrompt = codeGenResult
-    ? `I have a React project generated from a Clutch design prototype. Please integrate these components into a working app.
+    ? `I have a React project generated from a Clutch design prototype (Path A SSOT under react/).
 
-**Interaction Contract (SSOT — defines all navigation):**
+**Interaction Contract:**
 ${sessionRunId ? `.clutch/design/sessions/${sessionRunId}/interaction_contract.json` : '(contract not available)'}
-- Read this first. Every entry maps a button/link text to its target page.
-- For each interaction: wrap the matched element with an onClick that navigates to the target.
+- Navigation should already be wired from this contract into react/ components.
 
-**Generated components (HTML to JSX):**
-./generated/
-- Per-screen React components with Tailwind styling.
-- Contract source_element_text values match button/link text in these files.
+**React scaffold (handoff SSOT):**
+./react/
+- Vite + React 19 + Tailwind v4 + React Router
+- Prefer Design canvas → UI code tray → Approve UI code → Send to Coding
 
 **Requirements:**
-1. npm install && npm run dev to verify it runs
-2. Set up routing based on contract page transitions
-3. Every interaction in the contract MUST be implemented
+1. cd react && npm install && npm run dev to verify it runs
+2. Confirm routes match contract page transitions
+3. Every interaction in the contract MUST remain implemented
 4. Keep all existing Tailwind styles
 5. The app should be fully navigable end-to-end`
     : '';
@@ -676,7 +675,7 @@ ${sessionRunId ? `.clutch/design/sessions/${sessionRunId}/interaction_contract.j
   if (loading && !payload) {
     return (
       <div className="flex flex-col items-center justify-center py-24 select-none bg-surface-bright">
-        <div className="animate-spin rounded-full h-7 w-7 border-b-2 border-primary"></div>
+        <div className="h-7 w-7 animate-spin rounded-full border-2 border-outline border-t-primary" />
         <span className="text-[11px] text-on-surface-variant/60 mt-3 font-medium">{t('Parsing boards and generating flows...')}</span>
       </div>
     );
@@ -1246,7 +1245,7 @@ ${sessionRunId ? `.clutch/design/sessions/${sessionRunId}/interaction_contract.j
               </button>
             </div>
             <p className="text-xs text-on-surface-variant/70 text-center mb-4 leading-relaxed">
-              {codeGenResult.written} files written to ./generated/. Copy the prompt below and paste it to an AI coding agent to integrate the components.
+              {codeGenResult.written} files written to ./react/ (handoff SSOT). Prefer UI code tray → Approve → Send to Coding, or copy the prompt below.
             </p>
             <div className="flex gap-2">
               <button

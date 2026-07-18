@@ -44,6 +44,7 @@ import {
   UiData,
   LAYOUT,
   IN_FLIGHT,
+  AWAITING_SPEC,
   DEVICE_VIEW,
   deviceView,
   hostFromUrl,
@@ -66,13 +67,14 @@ import { UiCardNode } from './nodes/UiCardNode';
 import { RefCardNode } from './nodes/RefCardNode';
 import { MdDocCardNode } from './nodes/MdDocCardNode';
 import { UrlCardNode } from './nodes/UrlCardNode';
-
+import { DesignHandoffTray } from './DesignHandoffTray';
 
 import { useLanguage } from '../LanguageContext';
 import PreviewDemo from '../../components/PreviewDemo';
 import { StyleSelect, type StyleOption } from './StyleSelect';
 import { APP_INPUT_DOCK_BOTTOM_PX } from '../../constants/layout';
 import {
+  confirmDesignSpec,
   deleteDesignScreen,
   designScreenVersionPath,
   ensureDesignSession,
@@ -324,6 +326,11 @@ function DesignCanvasInner({
   const [iterateText, setIterateText] = useState('');
   const [iteratePending, setIteratePending] = useState<IteratePending | null>(null);
   const [focusNodeIds, setFocusNodeIds] = useState<string[] | undefined>(undefined);
+  const [showCodeTray, setShowCodeTray] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [iterateModeOverride, setIterateModeOverride] = useState<
+    'auto' | 'modify' | 'add' | 'variant' | 'revise_spec'
+  >('auto');
   const [welcomeMode, setWelcomeMode] = useState(true);
   const [canvasSelection, setCanvasSelection] = useState<CanvasSelection | null>(null);
   const [elementSelection, setElementSelection] = useState<ElementSelection | null>(null);
@@ -693,6 +700,11 @@ function DesignCanvasInner({
             stopPoll();
             return;
           }
+          if (next.status === AWAITING_SPEC) {
+            stopPoll();
+            setBusy(false);
+            return;
+          }
           if (next.status === 'ready' && hasHtml) {
             stopPoll();
             return;
@@ -998,7 +1010,10 @@ function DesignCanvasInner({
     if (!iterateText.trim() || !session) return;
     pasteSourceScreenIdsRef.current = null;
     const instruction = iterateText.trim();
-    const mode = inferIterateModeClient(instruction, canvasSelection?.kind ?? 'ui');
+    const mode =
+      iterateModeOverride === 'auto'
+        ? inferIterateModeClient(instruction, canvasSelection?.kind ?? 'ui')
+        : iterateModeOverride;
     const targetId =
       canvasSelection?.screenId ?? session.screens?.[0]?.id ?? null;
     const now = new Date().toISOString();
@@ -1063,36 +1078,41 @@ function DesignCanvasInner({
       }),
     );
     if (next) {
-      const action = next.last_iterate_action;
-      const focusScreen =
-        next.last_iterate_screen_id ||
-        targetId ||
-        next.screens?.[next.screens.length - 1]?.id;
       setIterateText('');
       setPickMode(false);
       setIteratePending(null);
       iteratePendingRef.current = null;
       applySession(next);
-      const rounds = parseDesignRounds(next.process_log, next.rounds, next.round_history);
-      const latestRoundIndex = rounds[rounds.length - 1]?.index ?? 0;
-      if (!next.error && latestRoundIndex > savedRoundIdx) {
-        setSelectedRoundIndex(latestRoundIndex);
-        selectedRoundRef.current = latestRoundIndex;
-        roundPinnedRef.current = false;
+      // D40: iterate is async — poll until ready (same model as generate)
+      if (IN_FLIGHT.has(next.status)) {
+        setBusy(true);
+        startPoll();
+      } else {
+        const focusScreen =
+          next.last_iterate_screen_id ||
+          targetId ||
+          next.screens?.[next.screens.length - 1]?.id;
+        const rounds = parseDesignRounds(next.process_log, next.rounds, next.round_history);
+        const latestRoundIndex = rounds[rounds.length - 1]?.index ?? 0;
+        if (!next.error && latestRoundIndex > savedRoundIdx) {
+          setSelectedRoundIndex(latestRoundIndex);
+          selectedRoundRef.current = latestRoundIndex;
+          roundPinnedRef.current = false;
+        }
+        setDrawing(true);
+        window.setTimeout(() => setDrawing(false), 1450);
+        setBusy(false);
+        userDraggedRef.current = false;
+        const focusId = focusScreen ? `ui-${focusScreen}` : 'spec';
+        setFocusNodeIds([focusId]);
+        setLayoutKey(`iterate-done-${Date.now()}-${mode}`);
+        setCanvasSelection({
+          nodeId: focusId,
+          kind: 'ui',
+          label: next.screens?.find((s) => s.id === focusScreen)?.name || 'Interface',
+          screenId: focusScreen || undefined,
+        });
       }
-      setDrawing(true);
-      window.setTimeout(() => setDrawing(false), 1450);
-      setBusy(false);
-      userDraggedRef.current = false;
-      const focusId = focusScreen ? `ui-${focusScreen}` : 'spec';
-      setFocusNodeIds([focusId]);
-      setLayoutKey(`iterate-done-${Date.now()}-${action || mode}`);
-      setCanvasSelection({
-        nodeId: focusId,
-        kind: 'ui',
-        label: next.screens?.find((s) => s.id === focusScreen)?.name || 'Interface',
-        screenId: focusScreen || undefined,
-      });
     } else {
       setIteratePending(null);
       iteratePendingRef.current = null;
@@ -1667,6 +1687,30 @@ function DesignCanvasInner({
                   ) : null}
                 </div>
               )}
+              <div className="mb-1.5 flex flex-wrap items-center gap-1 px-0.5">
+                {(
+                  [
+                    ['auto', 'Auto'],
+                    ['modify', 'Edit'],
+                    ['add', 'Add'],
+                    ['variant', 'Variant'],
+                    ['revise_spec', 'Revise Spec'],
+                  ] as const
+                ).map(([id, label]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold transition-colors ${
+                      iterateModeOverride === id
+                        ? 'border-neutral-900 bg-neutral-900 text-white'
+                        : 'border-outline-variant/40 bg-surface-container-low text-on-surface-variant hover:border-outline-variant'
+                    }`}
+                    onClick={() => setIterateModeOverride(id)}
+                  >
+                    {t(label)}
+                  </button>
+                ))}
+              </div>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
@@ -1698,13 +1742,34 @@ function DesignCanvasInner({
                       ? 'border-neutral-900 bg-neutral-900 text-white'
                       : 'border-outline-variant/40 bg-surface-container-low text-on-surface-variant hover:border-outline-variant hover:text-on-surface'
                   }`}
-                  onClick={() => setShowPreviewDemo((v) => !v)}
+                  onClick={() => {
+                    setShowCodeTray(false);
+                    setShowPreviewDemo((v) => !v);
+                  }}
                   title={t('Preview Demo')}
                   aria-expanded={showPreviewDemo}
                   aria-label={t('Preview Demo')}
                 >
-                  <Code2 size={12} className="inline shrink-0" />
+                  <Sparkles size={12} className="inline shrink-0" />
                   {t('Preview Demo')}
+                </button>
+                <button
+                  type="button"
+                  className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-semibold transition-colors ${
+                    showCodeTray
+                      ? 'border-neutral-900 bg-neutral-900 text-white'
+                      : 'border-outline-variant/40 bg-surface-container-low text-on-surface-variant hover:border-outline-variant hover:text-on-surface'
+                  }`}
+                  onClick={() => {
+                    setShowPreviewDemo(false);
+                    setShowCodeTray((v) => !v);
+                  }}
+                  title={t('Prototype → Approve → UI code → Coding')}
+                  aria-expanded={showCodeTray}
+                  aria-label={t('UI code')}
+                >
+                  <Code2 size={12} className="inline shrink-0" />
+                  {t('UI code')}
                 </button>
                 <button
                   type="button"
@@ -1717,6 +1782,47 @@ function DesignCanvasInner({
               </div>
             </div>
           </div>
+
+          {showCodeTray ? (
+            <DesignHandoffTray
+              runId={runId}
+              session={session}
+              busy={busy}
+              previewUrl={previewUrl}
+              onClose={() => setShowCodeTray(false)}
+              onSession={setSession}
+              onPreviewUrl={setPreviewUrl}
+              onBusy={withBusy}
+              onSendToCoding={onSendToCoding}
+            />
+          ) : null}
+
+          {session?.status === AWAITING_SPEC ? (
+            <div className="absolute left-1/2 top-4 z-20 flex w-[min(420px,92vw)] -translate-x-1/2 flex-col gap-2 rounded-2xl border border-outline-variant/40 bg-white p-3 shadow-md">
+              <p className="text-[12px] font-semibold text-on-surface">
+                {t('Spec ready — confirm to generate screens')}
+              </p>
+              <p className="text-[11px] leading-relaxed text-on-surface-variant">
+                {t('Review the design system card, then confirm to generate UI screens.')}
+              </p>
+              <button
+                type="button"
+                className="inline-flex items-center justify-center gap-1.5 rounded-full bg-neutral-900 px-3 py-1.5 text-[11px] font-semibold text-white disabled:opacity-40"
+                disabled={busy}
+                onClick={() =>
+                  void withBusy(async () => {
+                    const next = await confirmDesignSpec(runId);
+                    applySession(next);
+                    setBusy(true);
+                    startPoll();
+                    return next;
+                  })
+                }
+              >
+                <Check size={14} /> {t('Confirm Spec & Generate UI')}
+              </button>
+            </div>
+          ) : null}
 
           {error ? (
             <div className="absolute left-1/2 top-4 z-20 -translate-x-1/2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] text-rose-700">

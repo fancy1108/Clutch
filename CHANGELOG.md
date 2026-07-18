@@ -8,6 +8,13 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 **Version snapshots:** Per-release product summaries live in [`docs/releases/`](docs/releases/) (historical); current product truth is [`docs/PRODUCT_INTRO.md`](docs/PRODUCT_INTRO.md).
 
+## [Unreleased]
+
+### Changed
+
+- **Design handoff SSOT (D39):** Canvas **UI code** tray restored — Approve Prototype → Generate React (`react/`) → Vite preview → Approve UI code → Send to Coding. `generate_react` consumes `interaction_contract.json` when present; PreviewDemo Generate Code also writes `react/` (not `generated/`).
+- **Design Spec soft-confirm + flow discipline (D40):** Default pause at `awaiting_spec_confirm` after Spec (override with `CLUTCH_DESIGN_SPEC_CONFIRM=0`); brief enhance before Spec; declared iterate modes (Edit / Add / Variant / Revise Spec); async iterate + confirm-spec; HTML prompts allow semantic buttons/`data-clutch-id` for IUE.
+
 ## [1.2.8] - 2026-07-16
 
 > **感谢 [@MyloveAless](https://github.com/MyloveAless) 设计了完整的「AI 图片生成多 Agent 工作流」（7 节点：Aesthetic Architect → Prompt Stylist → Human Gate → Parameter Engineer → Check → Safety Specialist → Visual Generator），并在端到端测试中发现了多项流程阻断问题，推动了本轮全部修复。**

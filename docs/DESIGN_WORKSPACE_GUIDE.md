@@ -61,16 +61,16 @@ graph TD
 *   **局部精确迭代**：大模型接收到路径后，精准识别需要修改的组件区域（如“把这个输入框改成下拉框”），其余页面布局和结构保持不变。
 
 ### 3.4. Code Preview 代码生成与预览沙箱模块
-从原型设计跨越到真实代码的枢纽：
-1.  **Approve Prototype（批准原型）**：当用户在画布上完成视觉迭代后，点击 Approve 确认当前视觉样式。
-2.  **Generate UI Code（生成 React 代码）**：后台自动为当前的所有设计卡片生成完整的 React 项目工程脚手架（基于 Vite + React 19 + Tailwind v4 + React Router v7，每个 Screen 自动生成为独立的 React 组件，并在 `App.tsx` 中配置好路由跳转）。
-3.  **Vite Server 预览**：点击 Start Preview 后，后台 Sidecar 在随机空闲端口上拉起 `npx vite` 服务，前端以实时 iframe 加载，用户可以操作页面路由、点击交互，验证高保真动态效果。
+从原型设计跨越到真实代码的枢纽。入口为画布底栏次要托盘 **UI code**（D39，唯一 SSOT = `react/`）：
+1.  **Approve Prototype（批准原型）**：视觉迭代完成后，在 UI code 托盘点击 Approve。
+2.  **Generate UI Code（生成 React 代码）**：生成 Vite + React 19 + Tailwind v4 + React Router v7 工程至会话目录 `react/`；若已有 `interaction_contract.json`（PreviewDemo 连线编辑落盘），导航约束并入生成。
+3.  **Vite Server 预览**：Start Preview 后 Sidecar 拉起 `npx vite`，托盘内 iframe 加载真实动态界面。
 
 ### 3.5. Handoff 开发交接模块
-将设计成果移交给 Coding 模式。
-*   打包生成的 `DESIGN.md`（作为 AI 开发者规范指令）。
-*   导出 React 源码路径与 prompt 简报。
-*   Coding 模式下的开发 Agent 接收到此 Payload 后，自动将其复制到工作区指定目录，并在其基础上补充状态接口、网络数据绑定，将其打造成真正的上线级别业务系统。
+将设计成果移交给 Coding 模式（须先 Approve UI code）：
+*   打包 `DESIGN.md` + `react/` 路径 + prompt 简报。
+*   点击 **Send to Coding** 切换回 Coding 模式并将 instruction 注入 Chat。
+*   Coding Agent 在脚手架上补齐业务逻辑与数据绑定。
 
 ---
 
@@ -93,14 +93,15 @@ graph TD
      - 方案 B: 开启 Pick Mode (铅笔图标) -> 鼠标在 UI 上点选 "播放控制条" -> 底栏自动带上该组件标签 -> 输入 "把播放按钮改成金黄色，增大间距" -> 点击发送进行局部微调
      - 方案 C: 输入 "新建一个歌词展示页面" -> AI 在画布上新增一个 Screen 节点并自动绘制连线
 
-4. 代码生成与实机测试 (右侧代码面板)
-   - 确认视觉无误 -> 点击 Approve 批准当前原型
-   - 点击 Generate UI Code -> 自动脚手架化，生成规范的 React 组件
-   - 点击 Start Preview -> 启动 Vite 热更新预览器 -> 在右侧面板中操作真实的 React 动态界面
+4. 代码生成与实机测试 (底栏 UI code 托盘)
+   - 可选：先在 PreviewDemo 校对连线（契约落盘 interaction_contract.json）
+   - 底栏打开 UI code -> Approve 批准当前原型
+   - Generate UI Code -> 写入会话 react/ 脚手架
+   - Start Preview -> 托盘内 iframe 操作真实 React 动态界面
 
 5. 交接进入编码 (Handoff)
-   - 点击 Approve UI Code
-   - 点击 Send to Coding -> 携带整个高保真 React 脚手架与规范数据一键跳转回 Coding 模式的 AI 编排流中，由 CLI Agent 深度编写业务逻辑
+   - Approve UI Code -> Send to Coding
+   - 携带 DESIGN.md + react/ 路径跳转 Coding 模式 Chat
 ```
 
 ---

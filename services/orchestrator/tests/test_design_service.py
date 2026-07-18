@@ -48,6 +48,7 @@ def test_generate_ui_html_detects_vision_error_in_html(monkeypatch) -> None:
     assert any(c[0] == "chat" for c in call_log)
 
 
+import json
 import subprocess
 from pathlib import Path
 
@@ -66,6 +67,8 @@ def _session_path(workspace: Path, run_id: str) -> Path:
 
 @pytest.fixture()
 def workspace(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    # Keep legacy sync generate→UI path in unit tests unless a test opts into D40 confirm.
+    monkeypatch.setenv("CLUTCH_DESIGN_SPEC_CONFIRM", "0")
     monkeypatch.setenv("CLUTCH_WORKSPACES_FILE", str(tmp_path / "workspaces.json"))
     from src import workspace as ws
 
@@ -163,6 +166,26 @@ def test_write_manifest_retries_windows_replace_permission_error(
 
     assert calls["count"] == 2
     assert service._read_manifest(session_dir)["run_id"] == "manifest-retry"
+
+
+def test_spec_soft_confirm_pauses_then_continues(
+    workspace: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """D40: with Spec confirm on, generate pauses until confirm_spec."""
+    monkeypatch.setenv("CLUTCH_DESIGN_SPEC_CONFIRM", "1")
+    monkeypatch.setattr("src.models_config.is_model_available", lambda *a, **k: False)
+
+    run_id = "design-spec-confirm"
+    service.ensure_session(run_id, title="Confirm", prompt="")
+    paused = service.generate_session(run_id, prompt="设计一个登录页面", device="web")
+    assert paused["status"] == "awaiting_spec_confirm"
+    assert paused.get("spec")
+    assert not any(s.get("html") for s in (paused.get("screens") or []) if isinstance(s, dict))
+
+    continued = service.confirm_spec(run_id)
+    assert continued["status"] == "ready"
+    assert len(continued.get("screens") or []) >= 1
+    assert "html" in (continued["screens"][0].get("html") or "").lower()
 
 
 def test_session_generate_iterate_approve_react_handoff(
@@ -915,6 +938,67 @@ def test_generate_react_stops_live_preview_before_replacing_react_dir(
     service.generate_react(run_id)
 
     assert call_order[:2] == ["stop", "rmtree"]
+
+
+def test_generate_react_consumes_interaction_contract(
+    workspace: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """D39: Path A prompt includes contract navigation when interaction_contract.json exists."""
+    run_id = "design-contract-nav"
+    session_dir = workspace / ".clutch" / "design" / "sessions" / run_id
+    screens_dir = session_dir / "screens"
+    screens_dir.mkdir(parents=True, exist_ok=True)
+    (screens_dir / "home.html").write_text(
+        "<html><body><button>Go settings</button></body></html>", encoding="utf-8"
+    )
+    (session_dir / "DESIGN.md").write_text("# Design\n", encoding="utf-8")
+    (session_dir / "interaction_contract.json").write_text(
+        json.dumps(
+            [
+                {
+                    "source_screen_id": "home",
+                    "source_element_text": "Go settings",
+                    "target_screen_id": "settings",
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+    service._write_manifest(
+        session_dir,
+        {
+            "id": run_id,
+            "run_id": run_id,
+            "name": "Contract",
+            "created_at": service._now_iso(),
+            "updated_at": service._now_iso(),
+            "prototype_approved": True,
+            "screens": [
+                {"id": "home", "name": "Home", "html_path": "screens/home.html"},
+                {"id": "settings", "name": "Settings"},
+            ],
+        },
+    )
+
+    captured: list[str] = []
+
+    class FakeRouter:
+        active_model_id = "fake-model"
+
+    def fake_llm_complete(router, prompt, model_id=None):
+        captured.append(prompt)
+        return ("```tsx\nexport function Home(){return <div/>}\n```", None, {}, False)
+
+    monkeypatch.setattr("src.models_config.get_router", lambda: FakeRouter())
+    monkeypatch.setattr("src.models_config.is_model_available", lambda *_a, **_k: True)
+    monkeypatch.setattr(service, "_llm_complete", fake_llm_complete)
+
+    service.generate_react(run_id)
+    assert captured, "expected LLM prompt capture"
+    joined = "\n".join(captured)
+    assert "Go settings" in joined
+    assert "/settings" in joined
+    assert (session_dir / "react" / "package.json").is_file()
 
 
 def test_extract_css_tokens_and_format_prompt() -> None:

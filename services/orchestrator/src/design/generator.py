@@ -78,6 +78,52 @@ logger = logging.getLogger(__name__)
 
 _generate_jobs: dict[str, threading.Thread] = {}
 _generate_lock = threading.Lock()
+_iterate_jobs: dict[str, threading.Thread] = {}
+_iterate_lock = threading.Lock()
+
+
+def _spec_confirm_enabled() -> bool:
+    """D40: Spec soft-confirm gate (default on). Set CLUTCH_DESIGN_SPEC_CONFIRM=0 to skip."""
+    return os.environ.get("CLUTCH_DESIGN_SPEC_CONFIRM", "1").strip().lower() not in {
+        "0",
+        "false",
+        "no",
+        "off",
+    }
+
+
+def _enhance_brief(prompt: str, device: str) -> str:
+    """Structure vague UI briefs before Spec/UI (local port of Stitch enhance-prompt)."""
+    text = (prompt or "").strip()
+    if not text:
+        return text
+    if "**PAGE STRUCTURE:**" in text.upper() or "**PLATFORM:**" in text.upper():
+        return text
+    platform = "Mobile, Mobile-first" if device == "app" else "Web, Desktop-first"
+    upgraded = text
+    for pat, repl in (
+        (r"(?i)\bmenu at the top\b", "navigation bar with logo and menu items"),
+        (r"(?i)\blist of items\b", "card grid layout"),
+        (r"(?i)\bpicture area\b", "hero section with full-width image"),
+    ):
+        upgraded = re.sub(pat, repl, upgraded)
+    return (
+        f"{upgraded}\n\n"
+        f"**PLATFORM:** {platform}\n\n"
+        "**PAGE STRUCTURE:** Infer numbered sections from the brief; preserve all user intent.\n"
+        "1. **Header / Nav**\n"
+        "2. **Primary content**\n"
+        "3. **Supporting sections / footer as needed**\n"
+    )
+
+
+_TASTE_ANTI_PATTERNS = (
+    "Taste / anti-patterns (must follow):\n"
+    "- No Inter font; no pure black #000000; no neon purple/blue glow CTAs.\n"
+    "- No generic 3 equal feature cards; prefer asymmetric or 2-column layouts.\n"
+    "- No AI copy clichés (Elevate, Seamless, Unleash, Next-Gen) or invented metrics.\n"
+    "- No emoji decoration; no 'Scroll to explore' filler.\n"
+)
 _LLM_TIMEOUT_SEC = 45.0
 _LLM_UI_TIMEOUT_SEC = 90.0
 _DESIGN_REVIEW_ENABLED = os.environ.get("CLUTCH_DESIGN_REVIEW", "").strip().lower() in {
@@ -1576,7 +1622,8 @@ def _build_ui_compact_prompt(
         f"Primary color: {primary}\n"
         f"Brand: {spec.get('name') or 'Clutch'}\n"
         "Rules: full <!DOCTYPE html>…</html>, visible UI in body, match the brief intent.\n"
-        "Do NOT generate interactive elements — no <a href>, no <form>, no onclick handlers. Static prototype only.\n"
+        "Prefer semantic <button> / <a role=\"button\"> with data-clutch-id for IUE; "
+        "do NOT add real navigation (href=\"#\" or javascript:) or <form> submit / onclick handlers.\n"
         "Return ONLY ```html ... ```."
     )
 
@@ -1689,9 +1736,9 @@ def _build_ui_generation_prompt(
             "   d. Page background MUST be solid white or the neutral/surface color from the design system. NO colorful gradient backgrounds like bg-gradient-to-br from-[...].\n"
             "   e. Primary buttons: bg-primary text-white rounded-xl. Secondary buttons: border-gray-300 text-gray-700 bg-white. Accent actions: bg-accent text-white.\n"
             "7. Select 3-5 core components; use rounded-2xl cards, professional horizontal padding px-6–px-10, hover opacity transitions only.\n"
-            "8. CRITICAL: This is a static prototype — do NOT produce any interactive elements. "
-            "No <a href=\"...\"> links, no <form> tags, no onclick attributes, no inline JavaScript handlers. "
-            "Buttons may appear as visual decoration only (no click/tap behavior).\n"
+            "8. Prototype interactivity: use semantic <button> / <a role=\"button\"> with data-clutch-id "
+            "so IUE can detect hotspots; no real navigation hrefs, no <form> submit, no onclick/javascript.\n"
+            f"9. {_TASTE_ANTI_PATTERNS}"
         ),
         f"Style reference (match quality & polish only — do NOT copy this layout verbatim):\n{fewshot}\n",
         f"Design system JSON:\n{json.dumps(spec, ensure_ascii=False)}\n",
@@ -1790,7 +1837,7 @@ def _design_review_and_improve(
     improve_prompt = (
         "Improve this HTML UI based on the design review feedback. "
         "Apply concrete fixes to spacing, hierarchy, CTAs, and contrast.\n"
-        "Do NOT add interactive elements — no <a href>, no <form>, no onclick handlers. Static prototype only.\n"
+        "Keep semantic buttons with data-clutch-id; no real navigation / form submit / onclick handlers.\n"
         f"Feedback (score {score}/10): {feedback}\n"
         f"Brief: {user_prompt}\n"
         f"HTML:\n{html[:14000]}\n"
@@ -1829,7 +1876,8 @@ def _build_ui_correction_prompt(
         "- Generate a NEW complete HTML document using Tailwind CDN.\n"
         "- Fulfill the brief — do NOT default to login/auth unless explicitly requested.\n"
         "- Use colors and typography from the design system; make it visually distinct.\n"
-        "- Do NOT generate interactive elements — no <a href>, no <form>, no onclick handlers. Static prototype only.\n"
+        "- Prefer semantic <button> with data-clutch-id for IUE; no real navigation / form submit / onclick.\n"
+        f"- {_TASTE_ANTI_PATTERNS}"
         "Return ONLY ```html ... ```."
     )
 
@@ -2086,8 +2134,13 @@ def generate_session(
     reference_url: str | None = None,
     design_system: str | None = None,
     continue_inflight: bool = False,
+    resume_ui: bool = False,
 ) -> dict[str, Any]:
-    """Two-phase: design spec first, then UI HTML (optional image / Design.md / URL)."""
+    """Two-phase: design spec first, then UI HTML (optional image / Design.md / URL).
+
+    D40: when Spec soft-confirm is enabled, pauses at `awaiting_spec_confirm` after Spec;
+    call with `resume_ui=True` (via confirm_spec) to continue screen generation.
+    """
     from src.models_config import get_router, is_model_available
 
     sdir = session_dir(run_id)
@@ -2095,6 +2148,8 @@ def generate_session(
         ensure_session(run_id, title=prompt[:40], prompt=prompt)
     manifest = read_manifest(sdir)
     user_prompt = prompt.strip() or str(manifest.get("prompt") or "").strip()
+    if resume_ui:
+        user_prompt = str(manifest.get("enhanced_prompt") or user_prompt).strip()
 
     ref_rel = manifest.get("reference_image")
     if reference_image:
@@ -2140,6 +2195,14 @@ def generate_session(
         else:
             user_prompt = "参考图片的设计，生成界面"
 
+    device = device if device in {"web", "app"} else str(manifest.get("device") or "web")
+    if device not in {"web", "app"}:
+        device = "web"
+    if not resume_ui:
+        user_prompt = _enhance_brief(user_prompt, device)
+        manifest["enhanced_prompt"] = user_prompt
+        manifest["raw_prompt"] = prompt.strip() or str(manifest.get("raw_prompt") or manifest.get("prompt") or "")
+
     if has_md:
         intro = (
             f"I'll build a design system from «{md_name or 'DESIGN.md'}», then craft an interface that matches your brief."
@@ -2180,8 +2243,18 @@ def generate_session(
     resume = continue_inflight and str(manifest.get("status") or "") in {
         "crafting_spec",
         "generating_ui",
+        "awaiting_spec_confirm",
     }
-    if resume and manifest.get("process_log"):
+    skip_spec = bool(resume_ui)
+    if skip_spec:
+        if str(manifest.get("status") or "") not in {"awaiting_spec_confirm", "generating_ui"}:
+            raise DesignError("Spec is not awaiting confirmation")
+        process_log = list(manifest.get("process_log") or [])
+        manifest["status"] = "generating_ui"
+        manifest["phase"] = "ui"
+        manifest["error"] = None
+        write_manifest(sdir, manifest)
+    elif resume and manifest.get("process_log"):
         process_log = list(manifest.get("process_log") or [])
     else:
         process_log = [
@@ -2197,14 +2270,15 @@ def generate_session(
                 "at": now_iso(),
             },
         ]
-    manifest["prompt"] = user_prompt
-    manifest["name"] = user_prompt[:48] or manifest.get("name") or "New Design"
-    manifest["device"] = device if device in {"web", "app"} else "web"
-    manifest["phase"] = "spec"
-    manifest["status"] = "crafting_spec"
-    manifest["process_log"] = process_log
-    manifest["error"] = None
-    if not resume:
+    if not skip_spec:
+        manifest["prompt"] = user_prompt
+        manifest["name"] = (str(manifest.get("raw_prompt") or user_prompt)[:48]) or manifest.get("name") or "New Design"
+        manifest["device"] = device if device in {"web", "app"} else "web"
+        manifest["phase"] = "spec"
+        manifest["status"] = "crafting_spec"
+        manifest["process_log"] = process_log
+        manifest["error"] = None
+    if not resume and not skip_spec:
         manifest["round_history"] = []
         manifest["screens"] = []
         manifest["spec"] = None
@@ -2227,6 +2301,7 @@ def generate_session(
 
     spec: dict[str, Any] | None = None
     source = "fallback"
+    design_md = ""
     router = get_router()
     model_id = router.active_model_id
     process_log = list(manifest.get("process_log") or [])
@@ -2238,183 +2313,231 @@ def generate_session(
         record_in_log=False,
     )
     write_manifest(sdir, manifest)
-    preset_id = _normalize_preset_id(manifest.get("design_system"))
-    use_builtin_preset = preset_id == "clutch" and not (has_image or has_md or has_url)
-    if not use_builtin_preset and not has_image and not has_md and not has_url:
-        from src.design.builtin_presets import resolve_preset_spec
-        if preset_id != "clutch" and resolve_preset_spec(preset_id):
-            use_builtin_preset = True
-    spec_usage = empty_token_usage()
-    spec_usage_estimated = False
 
-    if use_builtin_preset:
-        from src.design.builtin_presets import resolve_preset_meta
-        preset_name = (resolve_preset_meta(preset_id) or {}).get("name") or preset_id
-        update_process_status(
-            sdir,
-            manifest,
-            text=f"Applying {preset_name} design system…",
-            status="crafting_spec",
-            model_id=model_id,
-            model_name=model_name,
-        )
-        spec, design_md = resolve_builtin_spec(preset_id, user_prompt, device=device)
-        source = "builtin_clutch" if preset_id == "clutch" else "builtin_preset"
-    else:
-        update_process_status(
-            sdir,
-            manifest,
-            text="Extracting colors, typography, and layout tokens from your brief…",
-            status="crafting_spec",
-            model_id=model_id,
-            model_name=model_name,
-        )
-        design_md = ""
-        if is_model_available(router, model_id):
+    if skip_spec:
+        spec = manifest.get("spec") if isinstance(manifest.get("spec"), dict) else None
+        if not spec and (sdir / SPEC_JSON).is_file():
             try:
-                context_parts = [
-                    "You are a product design system generator.\n",
-                    f"Brief: {user_prompt}\nDevice: {device}\n",
-                ]
-                if has_md and md_text:
-                    context_parts.append(
-                        f"\n=== AUTHORITATIVE DESIGN SPECIFICATION: {md_name} ===\n"
-                        f"{md_text[:16000]}\n"
-                        "=== END OF SPECIFICATION ===\n\n"
-                        "CRITICAL: Extract EVERY color, font, spacing value, and component rule from "
-                        "the specification above. Use them VERBATIM — do NOT invent or substitute values. "
-                        "The JSON output must faithfully reflect the exact tokens defined in this document.\n"
-                    )
-                if has_url and url_snapshot:
-                    browser_frag = url_snapshot.get("browser_prompt_fragment") or ""
-                    context_parts.append(
-                        "Reference website:\n"
-                        f"URL: {url_snapshot.get('url')}\n"
-                        f"Title: {url_snapshot.get('title')}\n"
-                        f"Description: {url_snapshot.get('description')}\n"
-                    )
-                    if browser_frag:
-                        context_parts.append(browser_frag + "\n")
-                    else:
-                        css_tokens = url_snapshot.get("css_tokens") or {}
-                        token_desc = _format_css_tokens_for_prompt(css_tokens, host=str(url_snapshot.get("host") or ""))
-                        if token_desc:
-                            context_parts.append(token_desc + "\n")
-                        else:
-                            context_parts.append(
-                                f"Excerpt: {(url_snapshot.get('excerpt') or '')[:3000]}\n"
-                                "Infer a polished design system inspired by this site's visual language.\n"
-                            )
-                    og_analysis = url_snapshot.get("og_image_analysis") or {}
-                    og_desc = og_analysis.get("description", "")
-                    if og_desc:
-                        context_parts.append(og_desc + "\n")
-                if has_image:
-                    vision_ok_spec = _check_vision_ok(router, model_id, image_data_url)
-                    if vision_ok_spec:
+                loaded = json.loads((sdir / SPEC_JSON).read_text(encoding="utf-8"))
+                spec = loaded if isinstance(loaded, dict) else None
+            except (OSError, json.JSONDecodeError):
+                spec = None
+        if not spec:
+            raise DesignError("No Spec available to continue UI generation")
+        if (sdir / DESIGN_MD).is_file():
+            design_md = (sdir / DESIGN_MD).read_text(encoding="utf-8")
+        else:
+            design_md = _spec_to_design_md(spec)
+        source = str(manifest.get("generate_source") or "resume")
+        append_process_status(
+            sdir,
+            manifest,
+            text="Spec confirmed — generating high-fidelity HTML…",
+            status="generating_ui",
+            model_id=model_id,
+            model_name=model_name,
+        )
+    else:
+        preset_id = _normalize_preset_id(manifest.get("design_system"))
+        use_builtin_preset = preset_id == "clutch" and not (has_image or has_md or has_url)
+        if not use_builtin_preset and not has_image and not has_md and not has_url:
+            from src.design.builtin_presets import resolve_preset_spec
+            if preset_id != "clutch" and resolve_preset_spec(preset_id):
+                use_builtin_preset = True
+        spec_usage = empty_token_usage()
+        spec_usage_estimated = False
+
+        if use_builtin_preset:
+            from src.design.builtin_presets import resolve_preset_meta
+            preset_name = (resolve_preset_meta(preset_id) or {}).get("name") or preset_id
+            update_process_status(
+                sdir,
+                manifest,
+                text=f"Applying {preset_name} design system…",
+                status="crafting_spec",
+                model_id=model_id,
+                model_name=model_name,
+            )
+            spec, design_md = resolve_builtin_spec(preset_id, user_prompt, device=device)
+            source = "builtin_clutch" if preset_id == "clutch" else "builtin_preset"
+        else:
+            update_process_status(
+                sdir,
+                manifest,
+                text="Extracting colors, typography, and layout tokens from your brief…",
+                status="crafting_spec",
+                model_id=model_id,
+                model_name=model_name,
+            )
+            design_md = ""
+            if is_model_available(router, model_id):
+                try:
+                    context_parts = [
+                        "You are a product design system generator.\n",
+                        f"Brief: {user_prompt}\nDevice: {device}\n",
+                    ]
+                    if has_md and md_text:
                         context_parts.append(
-                            "A reference UI screenshot is attached. Extract colors, typography, and component style from it.\n"
+                            f"\n=== AUTHORITATIVE DESIGN SPECIFICATION: {md_name} ===\n"
+                            f"{md_text[:16000]}\n"
+                            "=== END OF SPECIFICATION ===\n\n"
+                            "CRITICAL: Extract EVERY color, font, spacing value, and component rule from "
+                            "the specification above. Use them VERBATIM — do NOT invent or substitute values. "
+                            "The JSON output must faithfully reflect the exact tokens defined in this document.\n"
                         )
-                    else:
-                        try:
-                            from src.design.image_analysis import image_analysis_prompt_fragment
-                            img_analysis = image_analysis_prompt_fragment(image_data_url or "")
-                            if img_analysis:
-                                context_parts.append(img_analysis + "\n")
+                    if has_url and url_snapshot:
+                        browser_frag = url_snapshot.get("browser_prompt_fragment") or ""
+                        context_parts.append(
+                            "Reference website:\n"
+                            f"URL: {url_snapshot.get('url')}\n"
+                            f"Title: {url_snapshot.get('title')}\n"
+                            f"Description: {url_snapshot.get('description')}\n"
+                        )
+                        if browser_frag:
+                            context_parts.append(browser_frag + "\n")
+                        else:
+                            css_tokens = url_snapshot.get("css_tokens") or {}
+                            token_desc = _format_css_tokens_for_prompt(
+                                css_tokens, host=str(url_snapshot.get("host") or "")
+                            )
+                            if token_desc:
+                                context_parts.append(token_desc + "\n")
                             else:
+                                context_parts.append(
+                                    f"Excerpt: {(url_snapshot.get('excerpt') or '')[:3000]}\n"
+                                    "Infer a polished design system inspired by this site's visual language.\n"
+                                )
+                        og_analysis = url_snapshot.get("og_image_analysis") or {}
+                        og_desc = og_analysis.get("description", "")
+                        if og_desc:
+                            context_parts.append(og_desc + "\n")
+                    if has_image:
+                        vision_ok_spec = _check_vision_ok(router, model_id, image_data_url)
+                        if vision_ok_spec:
+                            context_parts.append(
+                                "A reference UI screenshot is attached. Extract colors, typography, and component style from it.\n"
+                            )
+                        else:
+                            try:
+                                from src.design.image_analysis import image_analysis_prompt_fragment
+
+                                img_analysis = image_analysis_prompt_fragment(image_data_url or "")
+                                if img_analysis:
+                                    context_parts.append(img_analysis + "\n")
+                                else:
+                                    context_parts.append(
+                                        "A reference UI screenshot was provided; use the product brief to infer design tokens.\n"
+                                    )
+                            except Exception:
                                 context_parts.append(
                                     "A reference UI screenshot was provided; use the product brief to infer design tokens.\n"
                                 )
-                        except Exception:
+                    browser_ss = (url_snapshot or {}).get("browser_screenshot") or ""
+                    if browser_ss and not image_data_url:
+                        vision_ok_browser = _check_vision_ok(router, model_id, browser_ss)
+                        if vision_ok_browser:
+                            image_data_url = browser_ss
                             context_parts.append(
-                                "A reference UI screenshot was provided; use the product brief to infer design tokens.\n"
+                                "A browser-rendered screenshot of the reference website is attached. "
+                                "Extract exact colors, typography, spacing, and layout from it.\n"
                             )
-                # If URL has a browser screenshot and model supports vision, send it
-                browser_ss = (url_snapshot or {}).get("browser_screenshot") or ""
-                if browser_ss and not image_data_url:
-                    vision_ok_browser = _check_vision_ok(router, model_id, browser_ss)
-                    if vision_ok_browser:
-                        image_data_url = browser_ss
-                        context_parts.append(
-                            "A browser-rendered screenshot of the reference website is attached. "
-                            "Extract exact colors, typography, spacing, and layout from it.\n"
-                        )
-                context_parts.append(
-                    "Return ONLY JSON with keys: name, rationale, brand (name, voice), visual_style, "
-                    "layout_system, layout_pattern, grid (columns, gutter, max_width), colors "
-                    "(object of arrays of hex), typography (fontFamily, samples[{label,size,weight}]), "
-                    "radius (sm, md, lg, xl), shadow (card, elevated), components (string array), "
-                    "motion (duration, easing, hover_lift), responsive (string), accessibility (string). "
-                    "No markdown fences."
-                )
-                meta = "".join(context_parts)
-                spec_raw, _spec_reasoning, call_usage, call_estimated = _llm_complete_vision(
-                    router, meta, model_id=model_id, image_data_url=image_data_url
-                )
-                spec_usage = merge_token_usage(spec_usage, call_usage)
-                spec_usage_estimated = spec_usage_estimated or call_estimated
-                spec = _extract_json_block(spec_raw)
-                pattern = detect_layout_pattern(user_prompt, device=device)
-                spec = enrich_fallback_spec(spec, user_prompt, pattern)
-                if has_image:
-                    source = "llm_vision"
-                elif has_md:
-                    source = "llm_md"
-                elif has_url:
-                    source = "llm_url"
-                else:
-                    source = "llm"
-            except Exception as exc:
-                logger.warning("design spec LLM failed run_id=%s err=%s", run_id, exc)
+                    context_parts.append(
+                        "Return ONLY JSON with keys: name, rationale, brand (name, voice), visual_style, "
+                        "layout_system, layout_pattern, grid (columns, gutter, max_width), colors "
+                        "(object of arrays of hex), typography (fontFamily, samples[{label,size,weight}]), "
+                        "radius (sm, md, lg, xl), shadow (card, elevated), components (string array), "
+                        "motion (duration, easing, hover_lift), responsive (string), accessibility (string). "
+                        "No markdown fences."
+                    )
+                    meta = "".join(context_parts)
+                    spec_raw, _spec_reasoning, call_usage, call_estimated = _llm_complete_vision(
+                        router, meta, model_id=model_id, image_data_url=image_data_url
+                    )
+                    spec_usage = merge_token_usage(spec_usage, call_usage)
+                    spec_usage_estimated = spec_usage_estimated or call_estimated
+                    spec = _extract_json_block(spec_raw)
+                    pattern = detect_layout_pattern(user_prompt, device=device)
+                    spec = enrich_fallback_spec(spec, user_prompt, pattern)
+                    if has_image:
+                        source = "llm_vision"
+                    elif has_md:
+                        source = "llm_md"
+                    elif has_url:
+                        source = "llm_url"
+                    else:
+                        source = "llm"
+                except Exception as exc:
+                    logger.warning("design spec LLM failed run_id=%s err=%s", run_id, exc)
 
-        if not spec:
-            seed = user_prompt
+            if not spec:
+                seed = user_prompt
+                if has_md and md_text:
+                    seed = f"{user_prompt}\n{md_text[:2000]}"
+                elif has_url and url_snapshot:
+                    seed = f"{user_prompt}\n{url_snapshot.get('title')}\n{url_snapshot.get('description')}"
+                pattern = detect_layout_pattern(seed, device=device)
+                spec = enrich_fallback_spec(_fallback_spec(seed), seed, pattern)
+
             if has_md and md_text:
-                seed = f"{user_prompt}\n{md_text[:2000]}"
-            elif has_url and url_snapshot:
-                seed = f"{user_prompt}\n{url_snapshot.get('title')}\n{url_snapshot.get('description')}"
-            pattern = detect_layout_pattern(seed, device=device)
-            spec = enrich_fallback_spec(_fallback_spec(seed), seed, pattern)
+                design_md = md_text if md_text.endswith("\n") else md_text + "\n"
+            else:
+                design_md = _spec_to_design_md(spec)
 
-        if has_md and md_text:
-            design_md = md_text if md_text.endswith("\n") else md_text + "\n"
-        else:
-            design_md = _spec_to_design_md(spec)
+        (sdir / SPEC_JSON).write_text(json.dumps(spec, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        (sdir / DESIGN_MD).write_text(design_md, encoding="utf-8")
 
-    (sdir / SPEC_JSON).write_text(json.dumps(spec, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    (sdir / DESIGN_MD).write_text(design_md, encoding="utf-8")
+        process_log = list(manifest.get("process_log") or [])
+        spec_ready_text = f"Design system «{spec.get('name')}» ready."
+        if not is_model_available(router, model_id):
+            spec_ready_text += (
+                f"\n\n⚠️ Warning: Model '{model_id}' is not available "
+                "(API key missing in Settings -> Models). Using offline fallback templates."
+            )
+        _finalize_assistant_step(
+            process_log,
+            text=spec_ready_text,
+            status="spec_ready",
+            model_id=model_id,
+            model_name=model_name,
+            usage=spec_usage if not use_builtin_preset else None,
+            usage_estimated=spec_usage_estimated,
+            replace_statuses={"crafting_spec"},
+        )
+        manifest["spec"] = spec
+        manifest["phase"] = "ui"
+        manifest["generate_source"] = source
+        manifest["process_log"] = process_log
+        write_manifest(sdir, manifest)
 
-    process_log = list(manifest.get("process_log") or [])
-    spec_ready_text = f"Design system «{spec.get('name')}» ready."
-    if not is_model_available(router, model_id):
-        spec_ready_text += f"\n\n⚠️ Warning: Model '{model_id}' is not available (API key missing in Settings -> Models). Using offline fallback templates."
-    _finalize_assistant_step(
-        process_log,
-        text=spec_ready_text,
-        status="spec_ready",
-        model_id=model_id,
-        model_name=model_name,
-        usage=spec_usage if not use_builtin_preset else None,
-        usage_estimated=spec_usage_estimated,
-        replace_statuses={"crafting_spec"},
-    )
-    manifest["spec"] = spec
-    manifest["phase"] = "ui"
-    manifest["generate_source"] = source
-    manifest["process_log"] = process_log
-    write_manifest(sdir, manifest)
-    append_process_status(
-        sdir,
-        manifest,
-        text="Generating high-fidelity HTML with layout patterns and design review…",
-        status="generating_ui",
-        model_id=model_id,
-        model_name=model_name,
-    )
-    append_design_run_log(
-        run_id,
-        f"spec ready name={spec.get('name')!s} → generating_ui device={device} model={model_id}",
-    )
+        if _spec_confirm_enabled():
+            manifest["status"] = "awaiting_spec_confirm"
+            write_manifest(sdir, manifest)
+            append_process_status(
+                sdir,
+                manifest,
+                text="Spec ready — confirm to generate UI screens.",
+                status="awaiting_spec_confirm",
+                model_id=model_id,
+                model_name=model_name,
+            )
+            append_design_run_log(
+                run_id,
+                f"spec ready name={spec.get('name')!s} → awaiting_spec_confirm device={device} model={model_id}",
+            )
+            return get_session(run_id)
+
+        append_process_status(
+            sdir,
+            manifest,
+            text="Generating high-fidelity HTML with layout patterns and design review…",
+            status="generating_ui",
+            model_id=model_id,
+            model_name=model_name,
+        )
+        append_design_run_log(
+            run_id,
+            f"spec ready name={spec.get('name')!s} → generating_ui device={device} model={model_id}",
+        )
 
     sdir = session_dir(run_id)
     screens_to_gen = _parse_multi_screens(user_prompt, model_id, router)
@@ -2811,6 +2934,103 @@ def start_generate_session(
     return public_session_payload(manifest, sdir)
 
 
+def confirm_spec(run_id: str) -> dict[str, Any]:
+    """D40: continue UI generation after Spec soft-confirm."""
+    return generate_session(run_id, prompt="", resume_ui=True)
+
+
+def start_confirm_spec(run_id: str) -> dict[str, Any]:
+    """Kick off confirm_spec in a background thread for polling."""
+    sdir = session_dir(run_id)
+    manifest = read_manifest(sdir)
+    if str(manifest.get("status") or "") != "awaiting_spec_confirm":
+        raise DesignError("Spec is not awaiting confirmation")
+    with _generate_lock:
+        existing = _generate_jobs.get(run_id)
+        if existing and existing.is_alive():
+            return get_session(run_id)
+
+    def _worker() -> None:
+        try:
+            confirm_spec(run_id)
+        except Exception as exc:
+            logger.exception("design confirm-spec worker failed run_id=%s", run_id)
+            try:
+                err_dir = session_dir(run_id)
+                m = read_manifest(err_dir)
+                m["status"] = "error"
+                m["error"] = str(exc)
+                write_manifest(err_dir, m)
+            except Exception:
+                pass
+        finally:
+            with _generate_lock:
+                _generate_jobs.pop(run_id, None)
+
+    thread = threading.Thread(target=_worker, name=f"design-confirm-{run_id}", daemon=True)
+    with _generate_lock:
+        _generate_jobs[run_id] = thread
+    thread.start()
+    manifest["status"] = "generating_ui"
+    write_manifest(sdir, manifest)
+    return public_session_payload(manifest, sdir)
+
+
+def start_iterate_session(
+    run_id: str,
+    instruction: str,
+    *,
+    target_kind: str | None = None,
+    target_id: str | None = None,
+    element_path: str | None = None,
+    element_label: str | None = None,
+    mode: str | None = None,
+) -> dict[str, Any]:
+    """Background iterate (poll until ready) — mirrors start_generate_session."""
+    sdir = session_dir(run_id)
+    if not (sdir / MANIFEST).is_file():
+        raise DesignError("Session not found")
+    with _iterate_lock:
+        existing = _iterate_jobs.get(run_id)
+        if existing and existing.is_alive():
+            return get_session(run_id)
+
+    manifest = read_manifest(sdir)
+    manifest["status"] = "iterating"
+    write_manifest(sdir, manifest)
+
+    def _worker() -> None:
+        try:
+            iterate_session(
+                run_id,
+                instruction,
+                target_kind=target_kind,
+                target_id=target_id,
+                element_path=element_path,
+                element_label=element_label,
+                mode=mode,
+            )
+        except Exception as exc:
+            logger.exception("design iterate worker failed run_id=%s", run_id)
+            try:
+                err_dir = session_dir(run_id)
+                m = read_manifest(err_dir)
+                m["status"] = "error"
+                m["error"] = str(exc)
+                write_manifest(err_dir, m)
+            except Exception:
+                pass
+        finally:
+            with _iterate_lock:
+                _iterate_jobs.pop(run_id, None)
+
+    thread = threading.Thread(target=_worker, name=f"design-iter-{run_id}", daemon=True)
+    with _iterate_lock:
+        _iterate_jobs[run_id] = thread
+    thread.start()
+    return public_session_payload(manifest, sdir)
+
+
 def _html_essentially_same(a: str, b: str) -> bool:
     def norm(s: str) -> str:
         out = re.sub(r"\s+", "", s or "")
@@ -2829,9 +3049,13 @@ def _merged_design_prompt(manifest: dict[str, Any], instruction: str) -> str:
 
 def _infer_iterate_mode(instruction: str, *, mode: str | None, target_kind: str | None) -> str:
     raw = (mode or "auto").strip().lower()
-    if raw in {"modify", "add", "duplicate"}:
+    if raw in {"modify", "add", "duplicate", "variant", "revise_spec"}:
         return raw
     text = instruction.lower()
+    if any(k in text for k in ("variant", "变体", "换个布局", "another version", "explore layout")):
+        return "variant"
+    if any(k in text for k in ("revise spec", "改规范", "更新设计系统", "update design system")):
+        return "revise_spec"
     add_keys = (
         "新增",
         "添加一",
@@ -2933,6 +3157,16 @@ def iterate_session(
     if kind not in {"ui", "spec", "md", "image", "url", "process"}:
         kind = "ui"
     action = _infer_iterate_mode(instruction, mode=mode, target_kind=kind)
+    if action == "revise_spec":
+        kind = "spec"
+        action = "modify"
+    elif action == "variant":
+        kind = "ui"
+        action = "add"
+        instruction = (
+            "Generate a design variant exploring layout / color / content aspects. "
+            f"Direction: {instruction}"
+        )
     design_md = (sdir / DESIGN_MD).read_text(encoding="utf-8") if (sdir / DESIGN_MD).is_file() else ""
     spec = manifest.get("spec")
     if not isinstance(spec, dict) and (sdir / SPEC_JSON).is_file():

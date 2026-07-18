@@ -310,6 +310,8 @@ export async function generateDesignSession(
   return parseJson<DesignSession>(response);
 }
 
+export type DesignIterateMode = 'modify' | 'add' | 'duplicate' | 'variant' | 'revise_spec' | 'auto';
+
 export async function iterateDesignSession(
   runId: string,
   instruction: string,
@@ -318,7 +320,7 @@ export async function iterateDesignSession(
     target_id?: string | null;
     element_path?: string | null;
     element_label?: string | null;
-    mode?: 'modify' | 'add' | 'duplicate' | 'auto' | null;
+    mode?: DesignIterateMode | null;
   },
 ): Promise<DesignSession> {
   const response = await sidecarFetch(
@@ -335,6 +337,15 @@ export async function iterateDesignSession(
         mode: options?.mode ?? 'auto',
       }),
     },
+  );
+  return parseJson<DesignSession>(response);
+}
+
+/** D40: confirm Spec and continue UI generation (async — poll session). */
+export async function confirmDesignSpec(runId: string): Promise<DesignSession> {
+  const response = await sidecarFetch(
+    `${BASE}/api/design/sessions/${encodeURIComponent(runId)}/confirm-spec`,
+    { method: 'POST' },
   );
   return parseJson<DesignSession>(response);
 }

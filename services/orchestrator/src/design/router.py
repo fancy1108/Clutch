@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
@@ -58,7 +59,7 @@ class IterateBody(BaseModel):
     element_label: str | None = Field(default=None, max_length=400)
     mode: str | None = Field(
         default=None,
-        description="modify | add | auto — auto infers from instruction (unknown → add)",
+        description="modify | add | variant | revise_spec | auto — auto infers from instruction",
     )
 
 
@@ -146,7 +147,8 @@ async def generate_design_session(run_id: str, body: GenerateBody) -> dict[str, 
 @router.post("/sessions/{run_id}/iterate")
 async def iterate_design_session(run_id: str, body: IterateBody) -> dict[str, Any]:
     try:
-        return service.iterate_session(
+        # D40: background iterate + poll (avoids proxy timeouts on multi-screen add)
+        return service.start_iterate_session(
             run_id,
             body.instruction,
             target_kind=body.target_kind,
@@ -155,6 +157,15 @@ async def iterate_design_session(run_id: str, body: IterateBody) -> dict[str, An
             element_label=body.element_label,
             mode=body.mode,
         )
+    except (WorkspaceError, service.DesignError, OSError, json.JSONDecodeError) as exc:
+        raise _http(exc) from exc
+
+
+@router.post("/sessions/{run_id}/confirm-spec")
+async def confirm_design_spec(run_id: str) -> dict[str, Any]:
+    """D40: after Spec soft-confirm, continue UI generation (async)."""
+    try:
+        return service.start_confirm_spec(run_id)
     except (WorkspaceError, service.DesignError, OSError, json.JSONDecodeError) as exc:
         raise _http(exc) from exc
 
@@ -371,45 +382,43 @@ class GenerateCodeRequest(BaseModel):
 
 @router.post("/sessions/{run_id}/generate-code")
 async def generate_code(run_id: str, body: GenerateCodeRequest = GenerateCodeRequest()) -> dict[str, Any]:
-    """Generate framework code from the interaction contract."""
-    from src.codegen import generate_react_app
-
+    """D39: delegate to Path A (`react/`); contract is consumed by generate_react."""
     try:
-        files = generate_react_app(run_id)
+        payload = service.approve_prototype(run_id) if not service.get_session(run_id).get("prototype_approved") else service.get_session(run_id)
+        _ = payload
+        session = service.generate_react(run_id)
+        react_path = session.get("react_path") or str(_session_dir(run_id) / "react")
         return {
             "framework": body.framework,
-            "files": files,
-            "file_count": len(files),
-            "entry": "index.tsx",
-            "instructions": "cd <output-dir> && npm install && npm run dev",
+            "files": {},
+            "file_count": 0,
+            "entry": "src/App.tsx",
+            "path": react_path,
+            "instructions": "Use UI code tray → Start preview, or: cd react && npm install && npm run dev",
         }
-    except OSError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except (WorkspaceError, service.DesignError) as exc:
+        raise _http(exc) from exc
 
 
 @router.post("/sessions/{run_id}/generate-code/write")
 async def write_generated_code(run_id: str) -> dict[str, Any]:
-    """Generate code and write to session directory for Files panel access."""
-    from src.codegen import generate_react_app
-
+    """D39: write Path A SSOT under session `react/` (not `generated/`)."""
     try:
-        files = generate_react_app(run_id)
-        sdir = _session_dir(run_id)
-        out_dir = sdir / "generated"
-        out_dir.mkdir(parents=True, exist_ok=True)
-        for filename, content in files.items():
-            fpath = out_dir / filename
-            fpath.parent.mkdir(parents=True, exist_ok=True)
-            fpath.write_text(content, encoding="utf-8")
+        current = service.get_session(run_id)
+        if not current.get("prototype_approved"):
+            service.approve_prototype(run_id)
+        session = service.generate_react(run_id)
+        react_path = str(session.get("react_path") or (_session_dir(run_id) / "react"))
+        # Count written files for UI feedback
+        react_dir = Path(react_path)
+        written = sum(1 for p in react_dir.rglob("*") if p.is_file()) if react_dir.is_dir() else 0
         return {
-            "written": len(files),
-            "path": str(out_dir),
-            "entry": str(out_dir / "index.tsx"),
-            "instructions": "cd generated && npm install && npm run dev",
+            "written": written,
+            "path": react_path,
+            "entry": str(Path(react_path) / "src" / "App.tsx"),
+            "instructions": "Open UI code tray → Start preview / Approve UI code → Send to Coding",
         }
+    except (WorkspaceError, service.DesignError) as exc:
+        raise _http(exc) from exc
     except OSError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc

@@ -511,3 +511,25 @@
   任何验证失败**立即回退**，不保留半完成状态。
 - **影响**：降低 AI 辅助开发中每次加载的上下文噪音；提高修改准确率；团队有统一的拆分判断标准。
 - **决策状态**：`已完成`
+
+### D39 · Design 出码/交接唯一 SSOT = Path A（react/ + 门禁链）（2026-07-18）
+
+- **背景**：Design 同时存在 Path A（`approve-prototype` → `generate-react` → Vite preview → `approve-react` → `send-to-coding`，产物 `react/`）与 Path B（PreviewDemo `/generate-code/write` → `generated/` + contract）。后端门禁完整但画布 UI 曾卸下托盘；PreviewDemo 旁路可写码却不进 Coding handoff，文档仍按「单一闭环」描述 → 产品正确性分叉。
+- **方案**：
+  1. **唯一 SSOT**：`react/` + 双 Approve 门禁链为正式出码/预览/交接路径；画布恢复次要「UI code」托盘并接通 `onSendToCoding`。
+  2. **Contract 并入 Path A**：`generate_react` 读取 `interaction_contract.json`（若存在）注入导航约束；PreviewDemo「Generate Code」改为走 Path A API（必要时先 approve-prototype），不再以 `generated/` 为交接目录。
+  3. **Path B 兼容**：`/generate-code/write` 委托 Path A（要求/自动对齐 `prototype_approved`），写入 `react/` 并更新 manifest；`generated/` 不再作为 handoff 目标。
+  4. **非目标**：不接入 Google Stitch MCP / 云 projectId。
+- **影响**：`DesignWorkspace` 托盘、`PreviewDemo`、`service.generate_react`、`router` generate-code、`PRODUCT_INTRO` §2.10–2.11、`DESIGN_WORKSPACE_GUIDE`。
+- **决策状态**：`可执行`
+
+### D40 · Design Spec 软确认关卡 + 流程纪律（2026-07-18）
+
+- **背景**：对照 Stitch skills 后，Clutch Spec→UI 自动连跑会让坏 Spec 污染全部屏幕；iterate 模式偏启发式；brief 缺少结构化增强。产品 vibe 要求「监督而非黑盒」，不宜默认自治 baton。
+- **方案**：
+  1. **Spec 软确认（默认开）**：Spec/`DESIGN.md` 写盘后 `status=awaiting_spec_confirm`，用户确认后再批量出 UI；可用 `CLUTCH_DESIGN_SPEC_CONFIRM=0` 关闭（测试/脚本）。`POST .../confirm-spec` 继续生成。
+  2. **Brief 增强**：generate 前结构化 brief（platform / page structure / UI terms），不依赖外部云服务。
+  3. **显式 iterate mode**：API/UI 声明 `modify|add|variant|revise_spec`，启发式仅兜底；默认 edit-over-regenerate。
+  4. **多页 baton**：仅 opt-in，本轮不做默认自治 loop。
+- **影响**：`generator.generate_session`、`confirm_spec`、`DesignWorkspace` Spec 确认 CTA、`designApi`、文档与测试 fixture。
+- **决策状态**：`可执行`
