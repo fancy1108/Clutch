@@ -1690,11 +1690,11 @@ function DesignCanvasInner({
               <div className="mb-1.5 flex flex-wrap items-center gap-1 px-0.5">
                 {(
                   [
-                    ['auto', 'Auto'],
-                    ['modify', 'Edit'],
-                    ['add', 'Add'],
-                    ['variant', 'Variant'],
-                    ['revise_spec', 'Revise Spec'],
+                    ['auto', 'Mode Auto'],
+                    ['modify', 'Mode Edit'],
+                    ['add', 'Mode Add'],
+                    ['variant', 'Mode Variant'],
+                    ['revise_spec', 'Mode Revise Spec'],
                   ] as const
                 ).map(([id, label]) => (
                   <button
