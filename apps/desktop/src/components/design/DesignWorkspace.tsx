@@ -67,8 +67,6 @@ import { UiCardNode } from './nodes/UiCardNode';
 import { RefCardNode } from './nodes/RefCardNode';
 import { MdDocCardNode } from './nodes/MdDocCardNode';
 import { UrlCardNode } from './nodes/UrlCardNode';
-import { DesignHandoffTray } from './DesignHandoffTray';
-
 import { useLanguage } from '../LanguageContext';
 import PreviewDemo from '../../components/PreviewDemo';
 import { StyleSelect, type StyleOption } from './StyleSelect';
@@ -326,8 +324,6 @@ function DesignCanvasInner({
   const [iterateText, setIterateText] = useState('');
   const [iteratePending, setIteratePending] = useState<IteratePending | null>(null);
   const [focusNodeIds, setFocusNodeIds] = useState<string[] | undefined>(undefined);
-  const [showCodeTray, setShowCodeTray] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [iterateModeOverride, setIterateModeOverride] = useState<
     'auto' | 'modify' | 'add' | 'variant' | 'revise_spec'
   >('auto');
@@ -1743,7 +1739,6 @@ function DesignCanvasInner({
                       : 'border-outline-variant/40 bg-surface-container-low text-on-surface-variant hover:border-outline-variant hover:text-on-surface'
                   }`}
                   onClick={() => {
-                    setShowCodeTray(false);
                     setShowPreviewDemo((v) => !v);
                   }}
                   title={t('Preview Demo')}
@@ -1752,24 +1747,6 @@ function DesignCanvasInner({
                 >
                   <Sparkles size={12} className="inline shrink-0" />
                   {t('Preview Demo')}
-                </button>
-                <button
-                  type="button"
-                  className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-semibold transition-colors ${
-                    showCodeTray
-                      ? 'border-neutral-900 bg-neutral-900 text-white'
-                      : 'border-outline-variant/40 bg-surface-container-low text-on-surface-variant hover:border-outline-variant hover:text-on-surface'
-                  }`}
-                  onClick={() => {
-                    setShowPreviewDemo(false);
-                    setShowCodeTray((v) => !v);
-                  }}
-                  title={t('Prototype → Approve → UI code → Coding')}
-                  aria-expanded={showCodeTray}
-                  aria-label={t('UI code')}
-                >
-                  <Code2 size={12} className="inline shrink-0" />
-                  {t('UI code')}
                 </button>
                 <button
                   type="button"
@@ -1782,20 +1759,6 @@ function DesignCanvasInner({
               </div>
             </div>
           </div>
-
-          {showCodeTray ? (
-            <DesignHandoffTray
-              runId={runId}
-              session={session}
-              busy={busy}
-              previewUrl={previewUrl}
-              onClose={() => setShowCodeTray(false)}
-              onSession={setSession}
-              onPreviewUrl={setPreviewUrl}
-              onBusy={withBusy}
-              onSendToCoding={onSendToCoding}
-            />
-          ) : null}
 
           {session?.status === AWAITING_SPEC ? (
             <div className="absolute left-1/2 top-4 z-20 flex w-[min(420px,92vw)] -translate-x-1/2 flex-col gap-2 rounded-2xl border border-outline-variant/40 bg-white p-3 shadow-md">
@@ -1864,7 +1827,13 @@ function DesignCanvasInner({
 
             {/* Modal Content */}
             <div className="flex-1 overflow-hidden bg-surface-dim p-6">
-              <PreviewDemo screens={session?.screens || []} sessionRunId={session?.run_id} />
+              <PreviewDemo
+                screens={session?.screens || []}
+                sessionRunId={session?.run_id}
+                session={session}
+                onSession={setSession}
+                onSendToCoding={onSendToCoding}
+              />
             </div>
           </div>
         </div>,

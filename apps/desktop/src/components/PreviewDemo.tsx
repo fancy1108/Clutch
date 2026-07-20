@@ -2,13 +2,21 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Layers, Tv, Activity, HelpCircle, CheckCircle, ChevronDown, ArrowLeft, ArrowRight, X, Plus, Edit, Pencil, Code } from 'lucide-react';
 import StateController from './StateController';
 import MatrixPreview from './MatrixPreview';
-import { DesignScreen } from '../services/designApi';
+import { DesignHandoffTray } from './design/DesignHandoffTray';
+import {
+  DesignScreen,
+  type CodingHandoff,
+  type DesignSession,
+} from '../services/designApi';
 import { useLanguage } from './LanguageContext';
 import { sidecarFetch, sidecarHttpUrl } from '../services/sidecarUrl';
 
 interface PreviewDemoProps {
   screens: DesignScreen[];
   sessionRunId?: string;
+  session?: DesignSession | null;
+  onSession?: (next: DesignSession) => void;
+  onSendToCoding?: (handoff: CodingHandoff) => void;
 }
 
 function extractElementsFromHtml(html: string): Array<{ type: string; text: string }> {
@@ -76,7 +84,13 @@ function buildSimulatorSrcDoc(html: string) {
   return adapterStyle + processed;
 }
 
-export default function PreviewDemo({ screens, sessionRunId }: PreviewDemoProps) {
+export default function PreviewDemo({
+  screens,
+  sessionRunId,
+  session = null,
+  onSession,
+  onSendToCoding,
+}: PreviewDemoProps) {
   const { t } = useLanguage();
   const [payload, setPayload] = useState<any>(null);
   const [state, setState] = useState('Normal');
@@ -615,6 +629,21 @@ export default function PreviewDemo({ screens, sessionRunId }: PreviewDemoProps)
   const [codeGenResult, setCodeGenResult] = useState<{written:number;path:string} | null>(null);
   const [copyingPrompt, setCopyingPrompt] = useState(false);
   const [pathCopied, setPathCopied] = useState(false);
+  const [showHandoffTray, setShowHandoffTray] = useState(false);
+  const [handoffBusy, setHandoffBusy] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  const withHandoffBusy = async <T,>(fn: () => Promise<T>): Promise<T | undefined> => {
+    setHandoffBusy(true);
+    try {
+      return await fn();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : String(err));
+      return undefined;
+    } finally {
+      setHandoffBusy(false);
+    }
+  };
   
 
   const generateCode = async () => {
@@ -650,7 +679,7 @@ ${sessionRunId ? `.clutch/design/sessions/${sessionRunId}/interaction_contract.j
 **React scaffold (handoff SSOT):**
 ./react/
 - Vite + React 19 + Tailwind v4 + React Router
-- Prefer Design canvas → UI code tray → Approve UI code → Send to Coding
+- Prefer Preview Demo → Coding → Approve UI code → Send to Coding
 
 **Requirements:**
 1. cd react && npm install && npm run dev to verify it runs
@@ -712,7 +741,20 @@ ${sessionRunId ? `.clutch/design/sessions/${sessionRunId}/interaction_contract.j
   };
 
   return (
-    <div className="flex flex-col h-full bg-surface-dim rounded-[20px] overflow-hidden border border-outline/40">
+    <div className="relative flex flex-col h-full bg-surface-dim rounded-[20px] overflow-hidden border border-outline/40">
+      {showHandoffTray && sessionRunId && onSendToCoding && onSession ? (
+        <DesignHandoffTray
+          runId={sessionRunId}
+          session={session}
+          busy={handoffBusy}
+          previewUrl={previewUrl}
+          onClose={() => setShowHandoffTray(false)}
+          onSession={onSession}
+          onPreviewUrl={setPreviewUrl}
+          onBusy={withHandoffBusy}
+          onSendToCoding={onSendToCoding}
+        />
+      ) : null}
       {/* State & Configuration Bar */}
       <div className="bg-surface-bright border-b border-outline/35 px-6 py-3.5 flex flex-wrap items-center justify-between gap-4 shrink-0">
         {/* Tab Controls (Moved to Left) */}
@@ -879,70 +921,73 @@ ${sessionRunId ? `.clutch/design/sessions/${sessionRunId}/interaction_contract.j
 
                 </div>
 
-                {/* Toolbar: edit connections + generate code */}
-                <div className="flex-1" />
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => setEditMode(v => !v)}
-                    className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-all cursor-pointer shrink-0 ${
-                      editMode
-                        ? 'bg-amber-100 text-amber-700 shadow-sm'
-                        : 'bg-surface-container-high/70 text-on-surface-variant/70 hover:bg-surface-container-high hover:text-on-surface'
-                    }`}
-                    title={editMode ? t('Exit edit mode') : t('Edit connections')}
-                  >
-                    <Pencil size={11} />
-                    <span>{t('Connections')}</span>
-                  </button>
-                  {sessionRunId && (
-                    <>
-                      <span className="text-on-surface-variant/25 text-[11px] select-none mx-0.5">→</span>
-                      <button
-                      onClick={generateCode}
-                      disabled={generatingCode}
-                      className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-all cursor-pointer shrink-0 ${
-                        generatingCode
-                          ? 'bg-surface-container-high/70 text-on-surface-variant/30'
-                          : 'bg-surface-container-high/70 text-on-surface-variant/70 hover:bg-surface-container-high hover:text-on-surface'
+                {/* Actions: Connections + Coding, separated from device switcher */}
+                <div className="ml-auto flex items-center gap-3 shrink-0 pl-4">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditMode((v) => !v)}
+                      className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-semibold transition-all cursor-pointer ${
+                        editMode
+                          ? 'bg-on-surface text-surface'
+                          : 'bg-surface-container-high text-on-surface hover:bg-surface-container'
                       }`}
-                      title="Generate React code"
+                      title={editMode ? t('Exit edit mode') : t('Edit connections')}
+                      aria-pressed={editMode}
                     >
-                      <Code size={11} />
-                      <span>{t('Code')}</span>
+                      <Pencil size={13} />
+                      <span>{t('Connections')}</span>
                     </button>
-                    </>
-                  )}
-                </div>
+                    {sessionRunId && onSendToCoding && onSession ? (
+                      <button
+                        type="button"
+                        onClick={() => setShowHandoffTray((v) => !v)}
+                        className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-semibold transition-all cursor-pointer ${
+                          showHandoffTray
+                            ? 'bg-neutral-900 text-white ring-2 ring-neutral-900/20'
+                            : 'bg-neutral-900 text-white hover:bg-black'
+                        }`}
+                        title={t('Prototype → Approve → UI code → Coding')}
+                        aria-expanded={showHandoffTray}
+                        aria-label={t('Coding')}
+                      >
+                        <Code size={13} />
+                        <span>{t('Coding')}</span>
+                      </button>
+                    ) : null}
+                  </div>
 
-                {/* Separator */}
-                <div className="w-px h-4 bg-outline/25 shrink-0" />
+                  <div className="h-5 w-px shrink-0 bg-outline/40" aria-hidden />
 
-                {/* Device Mode Selector */}
-                <div className="flex bg-surface-container p-0.5 rounded-lg border border-outline/40 text-[10px]">
-                  <button
-                    onClick={() => setDeviceMode('desktop')}
-                    className={`px-2.5 py-1 rounded transition-all cursor-pointer font-semibold ${
-                      deviceMode === 'desktop' ? 'bg-surface-bright text-on-surface shadow-2xs' : 'text-on-surface-variant'
-                    }`}
-                  >
-                    Desktop
-                  </button>
-                  <button
-                    onClick={() => setDeviceMode('tablet')}
-                    className={`px-2.5 py-1 rounded transition-all cursor-pointer font-semibold ${
-                      deviceMode === 'tablet' ? 'bg-surface-bright text-on-surface shadow-2xs' : 'text-on-surface-variant'
-                    }`}
-                  >
-                    Tablet
-                  </button>
-                  <button
-                    onClick={() => setDeviceMode('mobile')}
-                    className={`px-2.5 py-1 rounded transition-all cursor-pointer font-semibold ${
-                      deviceMode === 'mobile' ? 'bg-surface-bright text-on-surface shadow-2xs' : 'text-on-surface-variant'
-                    }`}
-                  >
-                    Mobile
-                  </button>
+                  <div className="flex rounded-lg bg-surface-container p-0.5 text-[10px]">
+                    <button
+                      type="button"
+                      onClick={() => setDeviceMode('desktop')}
+                      className={`cursor-pointer rounded px-2.5 py-1 font-semibold transition-all ${
+                        deviceMode === 'desktop' ? 'bg-surface-bright text-on-surface shadow-2xs' : 'text-on-surface-variant'
+                      }`}
+                    >
+                      Desktop
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeviceMode('tablet')}
+                      className={`cursor-pointer rounded px-2.5 py-1 font-semibold transition-all ${
+                        deviceMode === 'tablet' ? 'bg-surface-bright text-on-surface shadow-2xs' : 'text-on-surface-variant'
+                      }`}
+                    >
+                      Tablet
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeviceMode('mobile')}
+                      className={`cursor-pointer rounded px-2.5 py-1 font-semibold transition-all ${
+                        deviceMode === 'mobile' ? 'bg-surface-bright text-on-surface shadow-2xs' : 'text-on-surface-variant'
+                      }`}
+                    >
+                      Mobile
+                    </button>
+                  </div>
                 </div>
               </div>
               
@@ -1245,7 +1290,7 @@ ${sessionRunId ? `.clutch/design/sessions/${sessionRunId}/interaction_contract.j
               </button>
             </div>
             <p className="text-xs text-on-surface-variant/70 text-center mb-4 leading-relaxed">
-              {codeGenResult.written} files written to ./react/ (handoff SSOT). Prefer UI code tray → Approve → Send to Coding, or copy the prompt below.
+              {codeGenResult.written} files written to ./react/ (handoff SSOT). Prefer Preview Demo → Coding → Approve → Send to Coding, or copy the prompt below.
             </p>
             <div className="flex gap-2">
               <button

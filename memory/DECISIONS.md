@@ -458,7 +458,7 @@
 - **方案**：
   1. **会话模型**：`SessionRecord.mode: 'coding' | 'design'`（缺省 `coding`）；Design 挂在当前授权工作区下，与 Chat 一样「新建会话」；侧栏历史按 mode 过滤。
   2. **Header**：右上角 `Coding | Design` 切换（替换原中英文切换）；语言移入 Settings → General。
-  3. **UI**：无 Design 独立项目栏；欢迎页 + React Flow 无限画布；过程卡 →（可选）**参考源卡**（Design.md / 网址 / 图片）→ **设计规范卡** → **界面卡（描绘动画）** → 底部浮动 NL 修改条；欢迎态 `+` 菜单支持上传 Design.md（自动填提示）、网站网址、参考图。画布**选中**卡片进入底栏上下文；iterate 按文案 **modify/add**（未知→add）；⌘C/V 复制粘贴 UI；UI 内 **点选元素**。右侧 Overview/Files/Changes/Terminal **在 Design 可用，默认收缩**；Files 展示 `.clutch` 产物。UI code / Approve / Send to Coding 收纳为次要托盘。
+  3. **UI**：无 Design 独立项目栏；欢迎页 + React Flow 无限画布；过程卡 →（可选）**参考源卡**（Design.md / 网址 / 图片）→ **设计规范卡** → **界面卡（描绘动画）** → 底部浮动 NL 修改条；欢迎态 `+` 菜单支持上传 Design.md（自动填提示）、网站网址、参考图。画布**选中**卡片进入底栏上下文；iterate 按文案 **modify/add**（未知→add）；⌘C/V 复制粘贴 UI；UI 内 **点选元素**。右侧 Overview/Files/Changes/Terminal **在 Design 可用，默认收缩**；Files 展示 `.clutch` 产物。出码/交接入口为 Preview Demo → Coding（Approve / Send to Coding）。
   4. **API**：session-scoped `POST /api/design/sessions`、`.../generate`（`reference_image` / `reference_md` / `reference_url` 可选；两阶段 spec→UI）、`.../iterate`（`target_kind` / `target_id` / `element_*` / `mode`）；产物 `.clutch/design/sessions/<run_id>/`（含 `reference.<ext>`、`reference_design.md`、`url_snapshot.json`、`thumbnail.svg`、多屏 `screens/`）；`artifact_paths` 供 Changes 列表。
   5. **非目标（本轮）**：账号/云协作、完整矢量编辑、真实 Figma 导出、语音输入。
 - **影响**：`Header`、`App` `appMode`、`DesignWorkspace`、`run_history`/`runApi` mode、`PRODUCT_INTRO` §3.5、`ROADMAP`、`FILEMAP`。
@@ -516,11 +516,11 @@
 
 - **背景**：Design 同时存在 Path A（`approve-prototype` → `generate-react` → Vite preview → `approve-react` → `send-to-coding`，产物 `react/`）与 Path B（PreviewDemo `/generate-code/write` → `generated/` + contract）。后端门禁完整但画布 UI 曾卸下托盘；PreviewDemo 旁路可写码却不进 Coding handoff，文档仍按「单一闭环」描述 → 产品正确性分叉。
 - **方案**：
-  1. **唯一 SSOT**：`react/` + 双 Approve 门禁链为正式出码/预览/交接路径；画布恢复次要「UI code」托盘并接通 `onSendToCoding`。
+  1. **唯一 SSOT**：`react/` + 双 Approve 门禁链为正式出码/预览/交接路径；入口为 **Preview Demo → Coding**（画布底栏不放「UI code」），接通 `onSendToCoding`。
   2. **Contract 并入 Path A**：`generate_react` 读取 `interaction_contract.json`（若存在）注入导航约束；PreviewDemo「Generate Code」改为走 Path A API（必要时先 approve-prototype），不再以 `generated/` 为交接目录。
   3. **Path B 兼容**：`/generate-code/write` 委托 Path A（要求/自动对齐 `prototype_approved`），写入 `react/` 并更新 manifest；`generated/` 不再作为 handoff 目标。
   4. **非目标**：不接入 Google Stitch MCP / 云 projectId。
-- **影响**：`DesignWorkspace` 托盘、`PreviewDemo`、`service.generate_react`、`router` generate-code、`PRODUCT_INTRO` §2.10–2.11、`DESIGN_WORKSPACE_GUIDE`。
+- **影响**：`PreviewDemo` Coding 入口 + `DesignHandoffTray`、`service.generate_react`、`router` generate-code、`PRODUCT_INTRO` §2.10–2.11、`DESIGN_WORKSPACE_GUIDE`。
 - **决策状态**：`可执行`
 
 ### D40 · Design Spec 软确认关卡 + 流程纪律（2026-07-18）

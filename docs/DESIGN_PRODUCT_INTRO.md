@@ -157,7 +157,7 @@ Phase 2: 生成 UI 界面
 
 ### 2.10 代码生成与预览沙箱 ✅
 
-设计定稿后，画布底栏打开 **UI code** 托盘进入唯一出码路径（产物目录 `react/`，D39）：
+设计定稿后，打开 **Preview Demo → Coding** 进入唯一出码路径（产物目录 `react/`，D39）。面板分步引导：
 
 ```
 Approve Prototype（批准原型）
@@ -179,7 +179,7 @@ PreviewDemo 内的 Generate Code 同样写入 `react/`（不再以 `generated/` 
 
 ### 2.11 开发交接（Handoff） ✅
 
-- 在 **UI code** 托盘中依次：Approve Prototype → Generate → Preview → **Approve UI code** → **Send to Coding**
+- 在 **Preview Demo → Coding** 中依次：Approve Prototype → Generate → Preview → **Approve UI code** → **Send to Coding**
 - 打包内容：
   - `DESIGN.md`（设计规范文档，作为开发 Agent 的指令）
   - `react/` 源码路径 + 项目结构说明

@@ -47,7 +47,7 @@
 | 先规范卡 → 再界面描绘动画 | P0 | ❌ | 两阶段 generate |
 | 底部 NL 修改闭环 | P0 | ❌ | iterate |
 | `DESIGN.md` / spec / screens 落盘 | P0 | ❌ | `.clutch/design/sessions/<run_id>/` |
-| Approve → UI code → preview → Send to Coding | P0 | ❌ | 次要托盘 |
+| Approve → UI code → preview → Send to Coding | P0 | ❌ | Preview Demo → Coding |
 | `design-to-code` 工作流模板 | P1 | ❌ | 内置 SOP |
 
 ## E2E 落地前提（关联 DECISIONS D1）

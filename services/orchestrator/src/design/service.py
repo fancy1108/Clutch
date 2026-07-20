@@ -408,6 +408,7 @@ def generate_react(run_id: str) -> dict[str, Any]:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding="utf-8")
     manifest["react_ready"] = True
+    manifest["react_approved"] = False
     manifest["react_path"] = str(react_dir)
     manifest["status"] = "react_generated"
     write_manifest(session_dir_path, manifest)

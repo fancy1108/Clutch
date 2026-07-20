@@ -61,8 +61,8 @@ graph TD
 *   **局部精确迭代**：大模型接收到路径后，精准识别需要修改的组件区域（如“把这个输入框改成下拉框”），其余页面布局和结构保持不变。
 
 ### 3.4. Code Preview 代码生成与预览沙箱模块
-从原型设计跨越到真实代码的枢纽。入口为画布底栏次要托盘 **UI code**（D39，唯一 SSOT = `react/`）：
-1.  **Approve Prototype（批准原型）**：视觉迭代完成后，在 UI code 托盘点击 Approve。
+从原型设计跨越到真实代码的枢纽。入口为 **Preview Demo** 工具栏 **Coding**（D39，唯一 SSOT = `react/`）：
+1.  **Approve Prototype（批准原型）**：视觉迭代完成后，在 Preview Demo → Coding 托盘点击 Approve。
 2.  **Generate UI Code（生成 React 代码）**：生成 Vite + React 19 + Tailwind v4 + React Router v7 工程至会话目录 `react/`；若已有 `interaction_contract.json`（PreviewDemo 连线编辑落盘），导航约束并入生成。
 3.  **Vite Server 预览**：Start Preview 后 Sidecar 拉起 `npx vite`，托盘内 iframe 加载真实动态界面。
 
@@ -93,14 +93,14 @@ graph TD
      - 方案 B: 开启 Pick Mode (铅笔图标) -> 鼠标在 UI 上点选 "播放控制条" -> 底栏自动带上该组件标签 -> 输入 "把播放按钮改成金黄色，增大间距" -> 点击发送进行局部微调
      - 方案 C: 输入 "新建一个歌词展示页面" -> AI 在画布上新增一个 Screen 节点并自动绘制连线
 
-4. 代码生成与实机测试 (底栏 UI code 托盘)
-   - 可选：先在 PreviewDemo 校对连线（契约落盘 interaction_contract.json）
-   - 底栏打开 UI code -> Approve 批准当前原型
-   - Generate UI Code -> 写入会话 react/ 脚手架
-   - Start Preview -> 托盘内 iframe 操作真实 React 动态界面
+4. 代码生成与实机测试 (Preview Demo → Coding，分步引导)
+   - 可选：先在 Preview Demo 用 Connections 校对连线（契约落盘 interaction_contract.json）
+   - Step 1 批准原型 → Step 2 生成界面代码（有加载提示）→ Step 3 预览并批准 → Step 4 交给编码
+   - Generate UI Code → 写入会话 react/ 脚手架
+   - Start Preview → 面板内 iframe 操作真实 React 动态界面
 
 5. 交接进入编码 (Handoff)
-   - Approve UI Code -> Send to Coding
+   - Step 4：Send to Coding
    - 携带 DESIGN.md + react/ 路径跳转 Coding 模式 Chat
 ```
 

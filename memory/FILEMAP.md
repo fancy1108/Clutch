@@ -146,7 +146,7 @@
 | 主题 Appearance（P2） | `components/ThemeManager.tsx` |
 | 设置模态壳 | `components/SystemPreferencesModal.tsx` |
 | i18n（P2） | `components/LanguageContext.tsx` |
-| **Design 模式（D36 · 工作区会话 + 原型交互画布）** | `components/design/DesignWorkspace.tsx` · 交接托盘 `components/design/DesignHandoffTray.tsx` · 辅助函数 `components/design/designWorkspaceUtils.ts` · React Flow 卡片节点 `components/design/nodes/` · `services/designApi.ts` |
+| **Design 模式（D36 · 工作区会话 + 原型交互画布）** | `components/design/DesignWorkspace.tsx` · 出码托盘 `components/design/DesignHandoffTray.tsx`（入口：`PreviewDemo` → Coding）· 辅助函数 `components/design/designWorkspaceUtils.ts` · React Flow 卡片节点 `components/design/nodes/` · `services/designApi.ts` |
 | 工作流画布编辑 | `components/WorkflowOrchestration.tsx` |
 | 工作流 JSON 面板（D9） | `components/WorkflowJsonPanel.tsx` |
 | 画布 ↔ compiler 转换（D9） | `services/workflowFormat.ts` |
