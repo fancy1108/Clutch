@@ -12,7 +12,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ### Changed
 
-- **Design handoff SSOT (D39):** Handoff entry lives in **Preview Demo → Coding** (not the canvas bottom bar) — stepped flow: Approve Prototype → Generate React (`react/`, with loading feedback) → Vite preview (scaled-to-fit in-panel + open full size) → Approve UI code → Send to Coding. `generate_react` consumes `interaction_contract.json` when present; legacy PreviewDemo write path also targets `react/` (not `generated/`). Toolbar **Connections** / **Coding** sit left of the device switcher with clear spacing.
+- **Design handoff SSOT (D39/D41):** Preview Demo → Coding stepped flow. **Generate** is a deterministic HTML→React export (no LLM redraw): real per-screen `.tsx`, prototype Tailwind CDN theme, contract Links in source. Preview scaled-to-fit + open full size → Approve → Send to Coding (wire APIs next).
 - **Design Spec soft-confirm + flow discipline (D40):** Default pause at `awaiting_spec_confirm` after Spec (override with `CLUTCH_DESIGN_SPEC_CONFIRM=0`); brief enhance before Spec; declared iterate modes (Edit / Add / Variant / Revise Spec); async iterate + confirm-spec; HTML prompts allow semantic buttons/`data-clutch-id` for IUE.
 
 ## [1.2.8] - 2026-07-16

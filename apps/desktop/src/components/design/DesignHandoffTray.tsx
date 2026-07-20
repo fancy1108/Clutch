@@ -143,7 +143,7 @@ export function DesignHandoffTray({
       case 2:
         return {
           title: t('Generate UI code'),
-          body: t('Converts screens into a Vite + React + Tailwind app. Uses your active model and may take a minute.'),
+          body: t('Exports approved screens into a real React app (no AI redraw). UI and navigation are ready for API wiring.'),
         };
       case 3:
         return {
@@ -272,7 +272,7 @@ export function DesignHandoffTray({
 
       {step === 2 && busyAction === 'generate' ? (
         <p className="text-[10px] leading-relaxed text-on-surface-variant">
-          {t('Converting each screen with your model — please keep this panel open.')}
+          {t('Converting prototype HTML into React pages — keeping this panel open.')}
         </p>
       ) : null}
 

@@ -61,16 +61,18 @@ graph TD
 *   **局部精确迭代**：大模型接收到路径后，精准识别需要修改的组件区域（如“把这个输入框改成下拉框”），其余页面布局和结构保持不变。
 
 ### 3.4. Code Preview 代码生成与预览沙箱模块
-从原型设计跨越到真实代码的枢纽。入口为 **Preview Demo** 工具栏 **Coding**（D39，唯一 SSOT = `react/`）：
-1.  **Approve Prototype（批准原型）**：视觉迭代完成后，在 Preview Demo → Coding 托盘点击 Approve。
-2.  **Generate UI Code（生成 React 代码）**：生成 Vite + React 19 + Tailwind v4 + React Router v7 工程至会话目录 `react/`；若已有 `interaction_contract.json`（PreviewDemo 连线编辑落盘），导航约束并入生成。
-3.  **Vite Server 预览**：Start Preview 后 Sidecar 拉起 `npx vite`，托盘内 iframe 加载真实动态界面。
+从原型设计跨越到真实前端工程的枢纽。入口为 **Preview Demo** 工具栏 **Coding**（D39/D41，SSOT = `react/`）：
+
+1.  **Approve Prototype（批准原型）**：视觉与连线定稿后，在 Coding 托盘点击 Approve。
+2.  **Generate UI Code（确定性出码）**：将批准的 HTML **机械转为** 每屏 `.tsx`（禁止 LLM 重画）；同源 Tailwind CDN 主题；`interaction_contract.json` 写入 React Router `<Link>`。产物在会话目录 `react/`。
+3.  **Preview（本地预览）**：启动 Vite；验收「代码跑起来 = 定稿样子 + 连线可用」。
+4.  **Approve UI Code → Send to Coding**：前端 UI+导航已就绪，交接后主要接 API / 联调。
 
 ### 3.5. Handoff 开发交接模块
 将设计成果移交给 Coding 模式（须先 Approve UI code）：
-*   打包 `DESIGN.md` + `react/` 路径 + prompt 简报。
+*   打包 `DESIGN.md` + `react/` 路径 + prompt 简报（强调接 API、勿重设计界面）。
 *   点击 **Send to Coding** 切换回 Coding 模式并将 instruction 注入 Chat。
-*   Coding Agent 在脚手架上补齐业务逻辑与数据绑定。
+*   Coding Agent 在已导出页面上补齐业务逻辑与数据绑定。
 
 ---
 
@@ -95,12 +97,12 @@ graph TD
 
 4. 代码生成与实机测试 (Preview Demo → Coding，分步引导)
    - 可选：先在 Preview Demo 用 Connections 校对连线（契约落盘 interaction_contract.json）
-   - Step 1 批准原型 → Step 2 生成界面代码（有加载提示）→ Step 3 预览并批准 → Step 4 交给编码
-   - Generate UI Code → 写入会话 react/ 脚手架
-   - Start Preview → 面板内 iframe 操作真实 React 动态界面
+   - Step 1 批准原型 → Step 2 确定性导出 React 页面（非 AI 重绘）→ Step 3 预览并批准 → Step 4 交给编码
+   - Generate UI Code → 写入会话 react/（每屏 .tsx + 同源主题 + Link 导航）
+   - Start Preview → 验收与定稿一致
 
 5. 交接进入编码 (Handoff)
-   - Step 4：Send to Coding
+   - Step 4：Send to Coding（接 API / 联调，勿重设计界面）
    - 携带 DESIGN.md + react/ 路径跳转 Coding 模式 Chat
 ```
 

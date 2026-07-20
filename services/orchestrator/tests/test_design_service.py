@@ -943,13 +943,18 @@ def test_generate_react_stops_live_preview_before_replacing_react_dir(
 def test_generate_react_consumes_interaction_contract(
     workspace: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """D39: Path A prompt includes contract navigation when interaction_contract.json exists."""
+    """D41: Path A wires contract navigation into deterministic TSX (no LLM)."""
     run_id = "design-contract-nav"
     session_dir = workspace / ".clutch" / "design" / "sessions" / run_id
     screens_dir = session_dir / "screens"
     screens_dir.mkdir(parents=True, exist_ok=True)
     (screens_dir / "home.html").write_text(
-        "<html><body><button>Go settings</button></body></html>", encoding="utf-8"
+        "<html><body><button class=\"btn\">Go settings</button></body></html>",
+        encoding="utf-8",
+    )
+    (screens_dir / "settings.html").write_text(
+        "<html><body><h1 class=\"title\">Settings</h1></body></html>",
+        encoding="utf-8",
     )
     (session_dir / "DESIGN.md").write_text("# Design\n", encoding="utf-8")
     (session_dir / "interaction_contract.json").write_text(
@@ -975,30 +980,64 @@ def test_generate_react_consumes_interaction_contract(
             "prototype_approved": True,
             "screens": [
                 {"id": "home", "name": "Home", "html_path": "screens/home.html"},
-                {"id": "settings", "name": "Settings"},
+                {"id": "settings", "name": "Settings", "html_path": "screens/settings.html"},
             ],
         },
     )
 
-    captured: list[str] = []
-
-    class FakeRouter:
-        active_model_id = "fake-model"
-
-    def fake_llm_complete(router, prompt, model_id=None):
-        captured.append(prompt)
-        return ("```tsx\nexport function Home(){return <div/>}\n```", None, {}, False)
-
-    monkeypatch.setattr("src.models_config.get_router", lambda: FakeRouter())
-    monkeypatch.setattr("src.models_config.is_model_available", lambda *_a, **_k: True)
-    monkeypatch.setattr(service, "_llm_complete", fake_llm_complete)
-
     service.generate_react(run_id)
-    assert captured, "expected LLM prompt capture"
-    joined = "\n".join(captured)
-    assert "Go settings" in joined
-    assert "/settings" in joined
-    assert (session_dir / "react" / "package.json").is_file()
+    react_dir = session_dir / "react"
+    assert (react_dir / "package.json").is_file()
+    home_tsx = (react_dir / "src" / "screens" / "Home.tsx").read_text(encoding="utf-8")
+    assert "Go settings" in home_tsx
+    assert 'to="/settings"' in home_tsx
+    assert "className=" in home_tsx
+    assert "btn" in home_tsx
+    index_html = (react_dir / "index.html").read_text(encoding="utf-8")
+    assert "cdn.tailwindcss.com" in index_html
+    settings_tsx = (react_dir / "src" / "screens" / "Settings.tsx").read_text(encoding="utf-8")
+    assert "Settings" in settings_tsx
+    assert "title" in settings_tsx
+
+
+def test_generate_react_preserves_prototype_classes(workspace: Path) -> None:
+    """D41: exported TSX keeps prototype Tailwind classes (deterministic, no LLM)."""
+    run_id = "design-fidelity-classes"
+    session_dir = workspace / ".clutch" / "design" / "sessions" / run_id
+    screens_dir = session_dir / "screens"
+    screens_dir.mkdir(parents=True, exist_ok=True)
+    (screens_dir / "main.html").write_text(
+        """<!DOCTYPE html><html><head>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config = { theme: { extend: { colors: { brand: '#0f0' } } } };</script>
+<style>.clutch-canvas{width:1920px}</style>
+</head><body><div class="clutch-canvas">
+<section class="bg-emerald-600 text-white p-8"><h1 class="text-4xl font-bold">Verdant</h1></section>
+</div></body></html>""",
+        encoding="utf-8",
+    )
+    (session_dir / "DESIGN.md").write_text("# Design\n", encoding="utf-8")
+    service._write_manifest(
+        session_dir,
+        {
+            "id": run_id,
+            "run_id": run_id,
+            "name": "Fidelity",
+            "created_at": service._now_iso(),
+            "updated_at": service._now_iso(),
+            "prototype_approved": True,
+            "screens": [{"id": "main", "name": "Main", "html_path": "screens/main.html"}],
+        },
+    )
+    service.generate_react(run_id)
+    tsx = (session_dir / "react" / "src" / "screens" / "Main.tsx").read_text(encoding="utf-8")
+    assert "bg-emerald-600" in tsx
+    assert "Verdant" in tsx
+    assert "text-4xl" in tsx
+    index_html = (session_dir / "react" / "index.html").read_text(encoding="utf-8")
+    assert "brand" in index_html or "tailwind.config" in index_html
+    css = (session_dir / "react" / "src" / "index.css").read_text(encoding="utf-8")
+    assert "clutch-canvas" in css
 
 
 def test_extract_css_tokens_and_format_prompt() -> None:

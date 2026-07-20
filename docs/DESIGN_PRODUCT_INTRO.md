@@ -17,7 +17,7 @@
 | 🔗 **交互原型串联** | AI 自动识别可点击元素，生成页面跳转连线，支持可视化编辑 |
 | 📱 **多设备适配** | Web 桌面端（1920×1080）和 App 移动端（390×844）一键切换 |
 | 🧬 **品牌设计系统** | 内置 70+ 品牌预设（Apple、Stripe、Tesla 等），确保视觉一致性 |
-| 🚀 **一键出码** | 原型批准后自动生成 Vite + React 19 + Tailwind v4 工程，本地预览 |
+| 🚀 **一键出码** | 原型批准后确定性导出 Vite + React 工程（非 AI 重绘），本地预览后交接 Coding 接 API |
 | 🤝 **无感交接** | 设计产物 + 规范文档一键移交 Coding 模式，开发 Agent 继续实现 |
 
 > **与 Coding 模式的关系**：Design 专注"界面与交互的视觉呈现"，调用 LLM 推理接口而非 CLI 工具链；用户满意后通过 Handoff 将 DESIGN.md + React 源码交接给 Coding 模式完成业务逻辑开发。
@@ -157,25 +157,24 @@ Phase 2: 生成 UI 界面
 
 ### 2.10 代码生成与预览沙箱 ✅
 
-设计定稿后，打开 **Preview Demo → Coding** 进入唯一出码路径（产物目录 `react/`，D39）。面板分步引导：
+设计定稿后，打开 **Preview Demo → Coding** 进入唯一出码路径（产物目录 `react/`，D39/D41）。面板分步引导：
 
 ```
 Approve Prototype（批准原型）
     ↓
-Generate UI Code（生成代码）
-  · 自动创建 Vite + React 19 + Tailwind v4 + React Router v7 工程 → `.clutch/design/sessions/.../react/`
-  · 每个 Screen 生成为独立 React 组件
-  · 若存在 interaction_contract.json，导航约束并入生成 prompt
-  · App.tsx 自动配置路由跳转
+Generate UI Code（确定性出码，非 AI 重绘）
+  · 批准 HTML 机械转为每屏 .tsx → `.clutch/design/sessions/.../react/`
+  · 同源 Tailwind CDN + prototype tailwind.config
+  · interaction_contract.json → React Router <Link>
+  · App.tsx 路由已配置；前端 UI + 客户端导航就绪
     ↓
 Start Preview（启动预览）
   · 后台拉起 Vite 开发服务器
-  · 前端 iframe 加载真实 React 动态界面
-  · 支持路由跳转、组件交互验证
+  · 验收代码跑起来 = 定稿样子 + 连线可用
   · 动态端口分配，多会话不冲突
 ```
 
-PreviewDemo 内的 Generate Code 同样写入 `react/`（不再以 `generated/` 作为交接目录）。
+PreviewDemo 旁路 Generate Code 同样写入 `react/`（不再以 `generated/` 作为交接目录）。
 
 ### 2.11 开发交接（Handoff） ✅
 

@@ -146,7 +146,7 @@
 | 主题 Appearance（P2） | `components/ThemeManager.tsx` |
 | 设置模态壳 | `components/SystemPreferencesModal.tsx` |
 | i18n（P2） | `components/LanguageContext.tsx` |
-| **Design 模式（D36 · 工作区会话 + 原型交互画布）** | `components/design/DesignWorkspace.tsx` · 出码托盘 `components/design/DesignHandoffTray.tsx`（入口：`PreviewDemo` → Coding）· 辅助函数 `components/design/designWorkspaceUtils.ts` · React Flow 卡片节点 `components/design/nodes/` · `services/designApi.ts` |
+| **Design 模式（D36 · 工作区会话 + 原型交互画布）** | `components/design/DesignWorkspace.tsx` · 出码托盘 `components/design/DesignHandoffTray.tsx`（入口：`PreviewDemo` → Coding；D41 确定性导出）· 辅助函数 `components/design/designWorkspaceUtils.ts` · React Flow 卡片节点 `components/design/nodes/` · `services/designApi.ts` |
 | 工作流画布编辑 | `components/WorkflowOrchestration.tsx` |
 | 工作流 JSON 面板（D9） | `components/WorkflowJsonPanel.tsx` |
 | 画布 ↔ compiler 转换（D9） | `services/workflowFormat.ts` |
@@ -172,7 +172,7 @@
 | 想改什么 | 去哪里 |
 |---------|--------|
 | FastAPI 入口、HTTP/WS 路由 | `src/main.py` · 模块化路由包 `src/routes/` (`workspace.py`, `models.py`, `settings.py`, `pty.py`, `design.py`, `chat.py`) |
-| Design 模式设计系统及画布生成服务 | `src/design/service.py` · 拆分子模块 `src/design/` (`session_store.py`, `preview_manager.py`, `generator.py`, `thumbnail.py`, `layout.py`, `token_usage.py`) |
+| Design 模式设计系统及画布生成服务 | `src/design/service.py` · 确定性出码 `src/design/fidelity_export.py`（D41）· 拆分子模块 `src/design/` (`session_store.py`, `preview_manager.py`, `generator.py`, `thumbnail.py`, `layout.py`, `token_usage.py`) |
 | ClutchState 初始值 | `src/state.py` |
 | 会话元数据持久化（M2-07） | `src/run_history.py` |
 | 会话 messages 持久化（D11） | `src/run_state_store.py` |

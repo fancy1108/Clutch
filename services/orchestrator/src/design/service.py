@@ -56,7 +56,6 @@ from src.design.generator import (
     _generate_ui_html,
     _html_has_visible_content,
     _infer_iterate_mode,
-    _llm_complete,
     _shell_html,
     confirm_spec,
     generate_session,
@@ -184,9 +183,9 @@ def approve_prototype(run_id: str) -> dict[str, Any]:
 
 
 def _component_name(screen_id: str) -> str:
-    parts = re.split(r"[^a-zA-Z0-9]+", screen_id)
-    name = "".join(p[:1].upper() + p[1:] for p in parts if p)
-    return name or "Screen"
+    from src.design.fidelity_export import component_name
+
+    return component_name(screen_id)
 
 
 def _load_interaction_contract(session_dir_path: Path) -> list[dict[str, Any]]:
@@ -205,159 +204,9 @@ def _load_interaction_contract(session_dir_path: Path) -> list[dict[str, Any]]:
     return []
 
 
-def _contract_nav_hint(screen_id: str, contract: list[dict[str, Any]]) -> str:
-    """Build navigation instructions from interaction_contract for one screen (D39)."""
-    lines: list[str] = []
-    for flow in contract:
-        src = str(flow.get("source_screen_id") or flow.get("from") or "")
-        if src and src != screen_id:
-            continue
-        label = str(
-            flow.get("source_element_text")
-            or flow.get("element_label")
-            or flow.get("label")
-            or ""
-        ).strip()
-        target = str(
-            flow.get("target_screen_id") or flow.get("to") or flow.get("target") or ""
-        ).strip()
-        if not label or not target:
-            continue
-        lines.append(f'- Element text "{label}" → navigate to "/{target}" (Link or useNavigate).')
-    if not lines:
-        return ""
-    return "Interaction contract (SSOT — implement every line):\n" + "\n".join(lines) + "\n"
-
-
-def _html_to_react_component(
-    router: Any,
-    *,
-    html: str,
-    component_name: str,
-    screen_id: str,
-    all_screen_ids: list[str],
-    design_md: str,
-    model_id: str,
-    contract: list[dict[str, Any]] | None = None,
-) -> str:
-    """LLM translation chain: static HTML -> React 19 + Tailwind component."""
-    nav_ids = [sid for sid in all_screen_ids if sid != screen_id]
-    nav_hint = ""
-    contract_hint = _contract_nav_hint(screen_id, contract or [])
-    if contract_hint:
-        nav_hint = contract_hint
-    elif nav_ids:
-        nav_hint = (
-            "Wire navigation: convert href links to react-router-dom <Link to=\"/{id}\"> "
-            f"for screen ids: {', '.join(nav_ids)}.\n"
-        )
-    prompt = (
-        "Convert this HTML UI into a React 19 functional component.\n"
-        f"Component name: {component_name}\n"
-        f"Screen route id: {screen_id}\n"
-        f"{nav_hint}"
-        "Rules:\n"
-        "- Use Tailwind utility classes from the HTML (no CDN script tags).\n"
-        "- Convert class -> className, for -> htmlFor, inline styles stay as style objects where needed.\n"
-        "- For modals, drawers, dropdowns, mobile menus: add useState hooks and toggle handlers.\n"
-        "- Export named function component; include `import { useState } from 'react'` when needed.\n"
-        "- Include `import { Link } from 'react-router-dom'` for internal navigation.\n"
-        "- Preserve visual fidelity — do NOT replace with placeholder skeleton UI.\n"
-        f"Design system excerpt:\n{design_md[:4000]}\n\n"
-        f"HTML:\n{html[:16000]}\n\n"
-        f"Return ONLY the TSX file content for `{component_name}.tsx` inside ```tsx ... ```."
-    )
-    text, _reasoning, _usage, _estimated = _llm_complete(router, prompt, model_id=model_id)
-    fence = re.search(r"```(?:tsx|typescript|jsx)?\s*([\s\S]*?)```", text)
-    tsx = fence.group(1).strip() if fence else text.strip()
-    if tsx and f"export function {component_name}" in tsx:
-        return tsx + ("\n" if not tsx.endswith("\n") else "")
-    # Minimal fallback preserving HTML body content
-    body_match = re.search(r"<body[^>]*>([\s\S]*?)</body>", html, re.I)
-    inner = body_match.group(1).strip() if body_match else html[:8000]
-    inner = re.sub(r"\sclass=", " className=", inner)
-    escaped_inner = inner.replace("`", "\\`")[:12000]
-    return f"""import {{ useState }} from 'react';
-import {{ Link }} from 'react-router-dom';
-
-export function {component_name}() {{
-  const [menuOpen, setMenuOpen] = useState(false);
-  return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      <div dangerouslySetInnerHTML={{{{ __html: `{escaped_inner}` }}}} />
-    </div>
-  );
-}}
-"""
-
-
-def _react_scaffold(
-    app_name: str,
-    screens: list[dict[str, Any]],
-    design_md: str,
-    *,
-    screen_components: dict[str, str] | None = None,
-) -> dict[str, str]:
-    first = screens[0]["id"] if screens else "main"
-    imports = "\n".join(
-        f"import {{ {_component_name(s['id'])} }} from './screens/{_component_name(s['id'])}';"
-        for s in screens
-    )
-    routes = "\n".join(
-        f'        <Route path="/{s["id"]}" element={{<{_component_name(s["id"])} />}} />'
-        for s in screens
-    )
-    files: dict[str, str] = {
-        "package.json": json.dumps(
-            {
-                "name": re.sub(r"[^a-z0-9-]+", "-", app_name.lower()).strip("-") or "clutch-design-app",
-                "private": True,
-                "version": "0.0.1",
-                "type": "module",
-                "scripts": {"dev": "vite --host 127.0.0.1", "build": "vite build"},
-                "dependencies": {
-                    "react": "^19.0.0",
-                    "react-dom": "^19.0.0",
-                    "react-router-dom": "^7.0.0",
-                },
-                "devDependencies": {
-                    "@tailwindcss/vite": "^4.0.0",
-                    "@vitejs/plugin-react": "^4.3.0",
-                    "tailwindcss": "^4.0.0",
-                    "typescript": "^5.6.0",
-                    "vite": "^6.0.0",
-                },
-            },
-            indent=2,
-        )
-        + "\n",
-        "vite.config.ts": "import { defineConfig } from 'vite';\nimport react from '@vitejs/plugin-react';\nimport tailwindcss from '@tailwindcss/vite';\nexport default defineConfig({ plugins: [react(), tailwindcss()], server: { host: '127.0.0.1', strictPort: false } });\n",
-        "index.html": "<!doctype html><html><head><meta charset=\"UTF-8\"/><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"/><title>Clutch Design</title></head><body><div id=\"root\"></div><script type=\"module\" src=\"/src/main.tsx\"></script></body></html>\n",
-        "src/index.css": '@import "tailwindcss";\n',
-        "src/main.tsx": "import { StrictMode } from 'react';\nimport { createRoot } from 'react-dom/client';\nimport { BrowserRouter } from 'react-router-dom';\nimport App from './App';\nimport './index.css';\ncreateRoot(document.getElementById('root')!).render(<StrictMode><BrowserRouter><App /></BrowserRouter></StrictMode>);\n",
-        "src/App.tsx": f"import {{ Navigate, Route, Routes }} from 'react-router-dom';\n{imports}\nexport default function App() {{\n  return (\n    <Routes>\n      <Route path=\"/\" element={{<Navigate to=\"/{first}\" replace />}} />\n{routes}\n    </Routes>\n  );\n}}\n",
-        "DESIGN.md": design_md,
-    }
-    screen_components = screen_components or {}
-    for s in screens:
-        cname = _component_name(s["id"])
-        files[f"src/screens/{cname}.tsx"] = screen_components.get(
-            s["id"],
-            f"""export function {cname}() {{
-  return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 p-8">
-      <h1 className="text-2xl font-bold mb-2">{s.get("name", s["id"])}</h1>
-      <p className="text-slate-500 text-sm">Generated by Clutch Design</p>
-    </div>
-  );
-}}
-""",
-        )
-    return files
-
-
 def generate_react(run_id: str) -> dict[str, Any]:
-    from src.models_config import get_router, is_model_available
+    """D41: Deterministic HTML → React pages (no LLM redraw)."""
+    from src.design.fidelity_export import build_react_files
 
     session_dir_path = session_dir(run_id)
     manifest = read_manifest(session_dir_path)
@@ -366,38 +215,26 @@ def generate_react(run_id: str) -> dict[str, Any]:
     screens = [s for s in (manifest.get("screens") or []) if not s.get("deleted")]
     if not screens:
         raise DesignError("No screens to codegen")
-    design_md = (session_dir_path / DESIGN_MD).read_text(encoding="utf-8") if (session_dir_path / DESIGN_MD).is_file() else ""
+    design_md = (
+        (session_dir_path / DESIGN_MD).read_text(encoding="utf-8")
+        if (session_dir_path / DESIGN_MD).is_file()
+        else ""
+    )
     contract = _load_interaction_contract(session_dir_path)
-    router = get_router()
-    model_id = router.active_model_id
-    all_ids = [str(s["id"]) for s in screens]
-    screen_components: dict[str, str] = {}
+    html_by_id: dict[str, str] = {}
     for s in screens:
         sid = str(s["id"])
         html_path = resolve_screen_html_path(session_dir_path, s)
         if not html_path.is_file():
             html_path = session_dir_path / "screens" / f"{sid}.html"
-        html = html_path.read_text(encoding="utf-8") if html_path.is_file() else ""
-        cname = _component_name(sid)
-        if html and is_model_available(router, model_id):
-            try:
-                screen_components[sid] = _html_to_react_component(
-                    router,
-                    html=html,
-                    component_name=cname,
-                    screen_id=sid,
-                    all_screen_ids=all_ids,
-                    design_md=design_md,
-                    model_id=model_id,
-                    contract=contract,
-                )
-            except Exception as exc:
-                logger.warning("design react LLM failed screen=%s err=%s", sid, exc)
-    files = _react_scaffold(
-        str(manifest.get("name") or "App"),
-        screens,
-        design_md,
-        screen_components=screen_components,
+        html_by_id[sid] = html_path.read_text(encoding="utf-8") if html_path.is_file() else ""
+
+    files = build_react_files(
+        app_name=str(manifest.get("name") or "App"),
+        screens=screens,
+        design_md=design_md,
+        html_by_id=html_by_id,
+        contract=contract,
     )
     react_dir = session_dir_path / "react"
     if react_dir.exists():
@@ -434,11 +271,13 @@ def coding_handoff_payload(run_id: str) -> dict[str, Any]:
     design_md_path = session_dir_path / DESIGN_MD
     react_path = session_dir_path / "react"
     instruction = (
-        f"Implement business logic for approved Clutch Design «{manifest.get('name')}».\n"
+        f"Frontend UI + client navigation are ready for «{manifest.get('name')}» "
+        "(deterministic export from approved Prototype).\n"
         f"Design system: {design_md_path}\n"
-        f"React scaffold: {react_path}\n"
+        f"React app: {react_path}\n"
         f"Brief: {manifest.get('prompt') or '(none)'}\n"
-        "Respect DESIGN.md. Wire real data; do not redesign unless asked."
+        "Do not redesign screens. Wire real APIs, auth, and business logic; "
+        "keep visual fidelity to the exported pages."
     )
     return {
         "run_id": run_id,

@@ -533,3 +533,14 @@
   4. **多页 baton**：仅 opt-in，本轮不做默认自治 loop。
 - **影响**：`generator.generate_session`、`confirm_spec`、`DesignWorkspace` Spec 确认 CTA、`designApi`、文档与测试 fixture。
 - **决策状态**：`可执行`
+
+### D41 · Generate UI code = 确定性保真出前端工程（禁 LLM 重画）（2026-07-20）
+
+- **背景**：D39 Path A 曾用 LLM 将 Prototype HTML「翻译」为 TSX，预览与定稿 UI 不一致；产品目标是定稿+连线后前端 UI/导航基本完成，后续接后端与联调。
+- **方案**：
+  1. **`generate_react` 禁止 LLM 重画**：机械 HTML→JSX（`class`→`className` 等），保留 DOM 与 Tailwind class。
+  2. **样式同源**：生成工程 `index.html` 使用与 Prototype 相同的 Tailwind CDN + 抽出的 `tailwind.config`；`<style>` 写入 `src/index.css`。
+  3. **交互进源码**：`interaction_contract.json` 转为 React Router `<Link to="/…">`。
+  4. **交付定义**：每屏真实 `.tsx` + Vite 可跑工程；Atomic 拆分非本门禁目标。Send to Coding 指令强调接 API、勿重设计。
+- **影响**：`design/fidelity_export.py`、`service.generate_react`、Preview Demo Coding 托盘文案、`PRODUCT_INTRO` / `DESIGN_*`。
+- **决策状态**：`可执行`
