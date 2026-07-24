@@ -23,6 +23,19 @@ export interface SessionRecord {
 /** @deprecated use SessionRecord */
 export type RunHistoryRecord = SessionRecord;
 
+/**
+ * Desktop sidebar lists every project and buckets rows by `workspace_id`.
+ * Scoping history to the active workspace empties other folders until click-switch.
+ * Pass `allWorkspaces: true` for any setSessions / refreshSessions path.
+ */
+export function resolveSessionHistoryWorkspaceId(options: {
+  activeWorkspaceId?: string | null;
+  allWorkspaces?: boolean;
+}): string | undefined {
+  if (options.allWorkspaces) return undefined;
+  return options.activeWorkspaceId ?? undefined;
+}
+
 export async function fetchSessions(
   workspaceId?: string,
   mode?: SessionMode,

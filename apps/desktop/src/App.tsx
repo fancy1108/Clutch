@@ -1394,7 +1394,7 @@ function MainLayout() {
         }
       })();
     },
-    [sessionRunId, currentFlowName, t, activeWorkspaceId, refreshWorkspaceFiles],
+    [sessionRunId, currentFlowName, t, refreshWorkspaceFiles],
   );
 
   const handleAppModeChange = (mode: AppWorkspaceMode) => {
