@@ -858,6 +858,7 @@ def _chat_message(
     tool_steps: list[dict[str, Any]] | None = None,
     files_changed: list[str] | None = None,
     plan_card: dict[str, Any] | None = None,
+    todo_list: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "id": msg_id or f"msg_{uuid.uuid4().hex[:8]}",
@@ -882,6 +883,9 @@ def _chat_message(
     if plan_card is not None:
         # D49: structured plan card for Approve / revise / Cancel (D2).
         payload["planCard"] = plan_card
+    if todo_list:
+        # D3/D49: todo checklist sealed onto the assistant turn.
+        payload["todoList"] = todo_list
     return payload
 
 
@@ -975,10 +979,11 @@ def _mcp_supervisor_approval_text(func_name: str, func_args: dict[str, Any]) -> 
     detail = ""
     if func_args:
         display_args = normalize_mcp_func_args_for_display(func_args)
-        preview = json.dumps(display_args, ensure_ascii=False)
-        if len(preview) > 120:
-            preview = preview[:117] + "..."
-        detail = f"\n\nArgs: `{preview}`"
+        # Fenced JSON so Chat can Expand/scroll — do not crush to 120 chars.
+        preview = json.dumps(display_args, ensure_ascii=False, indent=2)
+        if len(preview) > 12_000:
+            preview = preview[:12_000] + "\n…(truncated)"
+        detail = f"\n\nArgs:\n```json\n{preview}\n```"
     return tr(
         f"MCP tool `{func_name}` requires your approval before execution.{detail}",
         f"MCP 工具 `{func_name}` 需要您批准后才能执行。{detail}",
@@ -988,19 +993,22 @@ def _supervisor_gate_messages(
     messages: list[dict[str, Any]],
     func_name: str,
     func_args: dict[str, Any],
-) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    """Append a supervisor approval line; skip duplicate approval for the same tool intent."""
+) -> tuple[list[dict[str, Any]], dict[str, Any], bool]:
+    """Append a supervisor approval line; skip duplicate approval for the same tool intent.
+
+    Returns (messages, gate_message, created) where created=False if an existing
+    Supervisor bubble with the same approvalKey was reused (do not re-emit WS message).
+    """
     from src.mcp_risk import mcp_approval_key
 
     approval_key = mcp_approval_key(func_name, func_args)
     text = _mcp_supervisor_approval_text(func_name, func_args)
-    if messages:
-        last = messages[-1]
-        if last.get("agent") == "Supervisor" and last.get("approvalKey") == approval_key:
-            return messages, last
+    for msg in reversed(messages[-12:]):
+        if msg.get("agent") == "Supervisor" and msg.get("approvalKey") == approval_key:
+            return messages, msg, False
     supervisor = _chat_message("Supervisor", text)
     supervisor["approvalKey"] = approval_key
-    return [*messages, supervisor], supervisor
+    return [*messages, supervisor], supervisor, True
 
 
 def _is_plan_pause(mcp_pause: dict[str, Any]) -> bool:
@@ -1016,8 +1024,11 @@ def _messages_for_mcp_pause(
     mcp_pause: dict[str, Any],
     *,
     reply_label: str,
-) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    """Append Supervisor gate or D49 plan card for an MCP/tool pause."""
+) -> tuple[list[dict[str, Any]], dict[str, Any], bool]:
+    """Append Supervisor gate or D49 plan card for an MCP/tool pause.
+
+    Returns (messages, pause_msg, created).
+    """
     if _is_plan_pause(mcp_pause):
         from src.builtin_tools import normalize_plan_args
 
@@ -1029,14 +1040,15 @@ def _messages_for_mcp_pause(
         }
         if plan["summary"]:
             card["summary"] = plan["summary"]
-        # Body stays empty — steps live only on planCard (avoid duplicate prose + dock actions).
+        # Body stays empty — steps live only on planCard.
+        # Do not seal toolSteps here: live activity already shows them; sealing
+        # frozen "Awaiting" steps under the plan card doubles the trail.
         plan_msg = _chat_message(
             reply_label,
             "",
-            tool_steps=list(mcp_pause.get("tool_steps") or []) or None,
             plan_card=card,
         )
-        return [*messages, plan_msg], plan_msg
+        return [*messages, plan_msg], plan_msg, True
     return _supervisor_gate_messages(
         messages,
         str(mcp_pause["func_name"]),
@@ -1279,6 +1291,7 @@ async def _llm_chat_reply(
     cli_session_id: str | None = None,
     emit_log: Callable[[str], Awaitable[None]] | None = None,
     emit_tool_step: Callable[[dict[str, Any]], Awaitable[None]] | None = None,
+    emit_todos: Callable[[list[dict[str, Any]]], Awaitable[None]] | None = None,
     tool_steps_sink: list[dict[str, Any]] | None = None,
     mcp_approved_tool: dict[str, Any] | None = None,
     mcp_resume: dict[str, Any] | None = None,
@@ -1516,6 +1529,12 @@ async def _llm_chat_reply(
                             asyncio.run_coroutine_threadsafe(emit_tool_step(step), loop)
                         )
 
+                def on_todos(todos: list[dict[str, Any]]) -> None:
+                    if emit_todos:
+                        step_futures.append(
+                            asyncio.run_coroutine_threadsafe(emit_todos(todos), loop)
+                        )
+
                 outcome = await asyncio.to_thread(
                     run_mcp_react_loop,
                     messages=chat_messages,
@@ -1523,6 +1542,8 @@ async def _llm_chat_reply(
                     log_prefix="CHAT",
                     on_log=on_log if emit_log else None,
                     on_tool_step=on_tool_step if emit_tool_step else None,
+                    on_todos=on_todos if emit_todos else None,
+                    existing_todos=list(state.get("agent_todos") or []),
                     pause_on_risky=True,
                     permission_mode=__import__(
                         "src.preferences_storage", fromlist=["load_permission_mode"]
@@ -1536,6 +1557,8 @@ async def _llm_chat_reply(
                 if tool_steps_sink is not None:
                     tool_steps_sink.clear()
                     tool_steps_sink.extend(list(outcome.tool_steps or []))
+                if outcome.todos is not None and emit_todos:
+                    await emit_todos(list(outcome.todos))
                 if outcome.approval_required:
                     pause_payload = {
                         **outcome.approval_required,
@@ -1545,6 +1568,8 @@ async def _llm_chat_reply(
                         "engine_label": outcome.engine_label,
                         "tool_steps": list(outcome.tool_steps or []),
                     }
+                    if outcome.todos is not None:
+                        pause_payload["todos"] = list(outcome.todos)
                     return (
                         reply_label,
                         outcome.engine_label,
@@ -1790,6 +1815,12 @@ async def _handle_plain_chat_mcp_decision(
             _commit_run_state(run_id, state)
             await _notify_run_state(websocket, run_id, state, {"pending_tool_steps": steps})
 
+        async def emit_todos(todos: list[dict[str, Any]]) -> None:
+            nonlocal state
+            state = _merge_patch(state, {"agent_todos": list(todos)})
+            _commit_run_state(run_id, state)
+            await _notify_run_state(websocket, run_id, state, {"agent_todos": list(todos)})
+
         (
             model_name,
             runtime_engine,
@@ -1807,6 +1838,7 @@ async def _handle_plain_chat_mcp_decision(
             agent_id=pending.agent_id,
             emit_log=emit_log,
             emit_tool_step=emit_tool_step,
+            emit_todos=emit_todos,
             tool_steps_sink=tool_steps_sink,
             mcp_resume={
                 "chat_messages": chat_messages,
@@ -1908,6 +1940,12 @@ async def _handle_plain_chat_mcp_decision(
         _commit_run_state(run_id, state)
         await _notify_run_state(websocket, run_id, state, {"pending_tool_steps": steps})
 
+    async def emit_todos(todos: list[dict[str, Any]]) -> None:
+        nonlocal state
+        state = _merge_patch(state, {"agent_todos": list(todos)})
+        _commit_run_state(run_id, state)
+        await _notify_run_state(websocket, run_id, state, {"agent_todos": list(todos)})
+
     approved_tool = {
         "tool_call_id": pending.tool_call_id,
         "func_name": pending.func_name,
@@ -1937,6 +1975,7 @@ async def _handle_plain_chat_mcp_decision(
         agent_id=pending.agent_id,
         emit_log=emit_log,
         emit_tool_step=emit_tool_step,
+        emit_todos=emit_todos,
         tool_steps_sink=tool_steps_sink,
         mcp_approved_tool=approved_tool,
         mcp_resume=mcp_resume,
@@ -2009,7 +2048,7 @@ async def _finish_plain_chat_after_llm(
             if is_plan
             else f"[CHAT] Awaiting approval for MCP tool: {mcp_pause['func_name']}"
         )
-        pause_messages, pause_msg = _messages_for_mcp_pause(
+        pause_messages, pause_msg, pause_created = _messages_for_mcp_pause(
             list(state["messages"]),
             mcp_pause,
             reply_label=model_name or active_agent,
@@ -2023,10 +2062,12 @@ async def _finish_plain_chat_after_llm(
             "active_agent": active_agent,
             "pending_tool_steps": list(mcp_pause.get("tool_steps") or tool_steps_sink),
         }
+        if mcp_pause.get("todos") is not None:
+            pause_patch["agent_todos"] = list(mcp_pause.get("todos") or [])
         state = _merge_patch(state, pause_patch)
         _commit_run_state(run_id, state)
         _touch_session(run_id, status=state["status"])
-        if pause_messages and pause_messages[-1] is pause_msg:
+        if pause_created:
             await _send_message_event(websocket, run_id, pause_msg, "")
         if not streamed_logs:
             for log in route_logs:
@@ -2053,6 +2094,7 @@ async def _finish_plain_chat_after_llm(
         output_events=output_events,
         tool_steps=sealed_steps,
         files_changed=list(files_changed or []) or None,
+        todo_list=list(state.get("agent_todos") or []) or None,
     )
     log_line = f"[CHAT] {model_name} via {runtime_engine}: {len(reply_text)} chars"
     if not streamed_logs:
@@ -2454,6 +2496,16 @@ async def _handle_plain_chat(
             what="state_patch",
         )
 
+    async def emit_todos(todos: list[dict[str, Any]]) -> None:
+        nonlocal state
+        state = _merge_patch(state, {"agent_todos": list(todos)})
+        _commit_run_state(run_id, state)
+        await _try_ws_notify(
+            _notify_run_state(websocket, run_id, state, {"agent_todos": list(todos)}),
+            run_id=run_id,
+            what="state_patch",
+        )
+
     from src.hybrid_concurrency import HybridPlainChatRejected
 
     try:
@@ -2476,6 +2528,7 @@ async def _handle_plain_chat(
             cli_session_id=stored_session_id,
             emit_log=emit_log,
             emit_tool_step=emit_tool_step,
+            emit_todos=emit_todos,
             tool_steps_sink=tool_steps_sink,
         )
     except HybridPlainChatRejected as exc:
@@ -2541,7 +2594,7 @@ async def _handle_plain_chat(
             if _is_plan_pause(mcp_pause)
             else f"[CHAT] Awaiting approval for MCP tool: {mcp_pause['func_name']}"
         )
-        pause_messages, pause_msg = _messages_for_mcp_pause(
+        pause_messages, pause_msg, pause_created = _messages_for_mcp_pause(
             list(state["messages"]),
             mcp_pause,
             reply_label=model_name or active_agent,
@@ -2559,7 +2612,7 @@ async def _handle_plain_chat(
         state = _merge_patch(state, pause_patch)
         _commit_run_state(run_id, state)
         _touch_session(run_id, status=state["status"])
-        if pause_messages and pause_messages[-1] is pause_msg:
+        if pause_created:
             await _send_message_event(websocket, run_id, pause_msg, "")
         if not streamed_logs:
             for log in route_logs:
@@ -2590,6 +2643,7 @@ async def _handle_plain_chat(
         output_events=output_events,
         tool_steps=sealed_steps,
         files_changed=list(files_changed or []) or None,
+        todo_list=list(state.get("agent_todos") or []) or None,
     )
 
     hybrid_system_prompt: str | None = None
@@ -2921,6 +2975,12 @@ async def _handle_flow_refine_message(
         _commit_run_state(run_id, state)
         await _notify_run_state(websocket, run_id, state, {"pending_tool_steps": steps})
 
+    async def emit_todos(todos: list[dict[str, Any]]) -> None:
+        nonlocal state
+        state = _merge_patch(state, {"agent_todos": list(todos)})
+        _commit_run_state(run_id, state)
+        await _notify_run_state(websocket, run_id, state, {"agent_todos": list(todos)})
+
     from src.agent_type import is_clutch_agent, resolve_model_for_agent
     from src.image_router import is_image_model
     from src.models_config import get_router
@@ -2958,6 +3018,7 @@ async def _handle_flow_refine_message(
             cli_session_id=stored_session_id,
             emit_log=emit_log,
             emit_tool_step=emit_tool_step,
+            emit_todos=emit_todos,
             tool_steps_sink=tool_steps_sink,
             chat_source="flow_refine",
             system_prompt_suffix=refine_suffix,
@@ -2994,7 +3055,7 @@ async def _handle_flow_refine_message(
             if _is_plan_pause(mcp_pause)
             else f"[CHAT] Awaiting approval for MCP tool: {mcp_pause['func_name']}"
         )
-        pause_messages, pause_msg = _messages_for_mcp_pause(
+        pause_messages, pause_msg, pause_created = _messages_for_mcp_pause(
             list(state["messages"]),
             mcp_pause,
             reply_label=model_name or active_agent,
@@ -3011,7 +3072,7 @@ async def _handle_flow_refine_message(
         }
         state = _merge_patch(state, pause_patch)
         _commit_run_state(run_id, state)
-        if pause_messages and pause_messages[-1] is pause_msg:
+        if pause_created:
             await _send_message_event(websocket, run_id, pause_msg, refining_node_id)
         if not streamed_logs:
             for log in route_logs:
@@ -3028,6 +3089,7 @@ async def _handle_flow_refine_message(
         msg_id=f"agent_{uuid.uuid4().hex[:8]}",
         tool_steps=sealed_steps,
         files_changed=list(files_changed or []) or None,
+        todo_list=list(state.get("agent_todos") or []) or None,
     )
     final_messages = list(state["messages"]) + [reply]
     final_patch: dict[str, Any] = {

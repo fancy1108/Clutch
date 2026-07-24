@@ -5,16 +5,21 @@
 
 ## Current Status
 
-- **阶段：** **v1.2.9**；D1+D37+D46+D53+D47+**D2∥D49(计划)** PM ✅；**下次 D3∥D49 Todo**
-- **Git：** D2∥D49 待 commit
+- **阶段：** **v1.2.9**；D3∥D49 Todo PM ✅；**下一批 D4∥D49 结构化提问**
+- **Git：** D3 待本会话 commit
 
 ## Recent Sessions
 
-## 2026-07-24 会话（D2∥D49 PM 通过）
+## 2026-07-24 会话（D3 Todo PM 通过）
 
-- **验收：** 加登录出计划卡；修改「只做 API」→ 新卡；底部按钮；去重 UI
-- **ROADMAP：** D2 + D49(计划) → ✅
-- **下次：** **D3** Todo + 对话内 Todo 卡（D49 续）
+- **实现：** `todo_write`（免人工审批）+ live `agent_todos` + seal `todoList` + `TodoCardView`；计划步骤去重编号；审批气泡去重；Args 可展开；聊天滚过 dock；`max_steps` 24
+- **PM：** 2026-07-24 通过
+- **下次：** D4∥D49 结构化提问卡
+
+## 2026-07-24 会话（D3 Todo 实现）
+
+- **实现：** `todo_write` + live `agent_todos` + seal `todoList` + `TodoCardView`
+- **下次：** PM 验收（多步 ≥3 todos 状态跟随）→ commit
 
 ## 2026-07-24 会话（D47 files_changed 芯片）
 

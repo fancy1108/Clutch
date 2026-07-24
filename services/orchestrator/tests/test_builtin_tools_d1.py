@@ -36,6 +36,7 @@ def test_list_builtin_tools_includes_core_set() -> None:
         "run_terminal_cmd",
         "apply_patch",
         "propose_plan",
+        "todo_write",
     }
 
 

@@ -62,6 +62,8 @@ export interface ChatMessage {
   filesChanged?: string[];
   /** D2/D49 plan card sealed onto the assistant turn (Approve / revise / Cancel). */
   planCard?: PlanCard;
+  /** D3/D49 todo checklist for this turn (also mirrored on ClutchState.agent_todos). */
+  todoList?: TodoItem[];
   codeHighlight?: {
     file: string;
     lineCount: number;
@@ -76,6 +78,14 @@ export interface PlanCard {
   summary?: string;
   status: PlanCardStatus;
   note?: string;
+}
+
+export type TodoItemStatus = 'pending' | 'in_progress' | 'completed';
+
+export interface TodoItem {
+  id: string;
+  content: string;
+  status: TodoItemStatus;
 }
 
 /** Supported node types in the visual canvas editor. */
@@ -273,6 +283,8 @@ export interface ClutchState {
   changed_files: string[];
   /** In-flight tool steps for the current Chat turn (D46); sealed onto the assistant message when idle. */
   pending_tool_steps?: ToolStep[];
+  /** Live session todos for multi-step work (D3); updates via todo_write. */
+  agent_todos?: TodoItem[];
   session_tokens?: number;
   session_cost_usd?: number;
   token_input?: number;

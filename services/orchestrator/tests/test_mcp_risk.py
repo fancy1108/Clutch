@@ -10,6 +10,10 @@ def test_is_risky_mcp_tool_detects_write_and_read() -> None:
     assert is_risky_mcp_tool("edit_file")
     assert not is_risky_mcp_tool("read_file")
     assert not is_risky_mcp_tool("list_directory")
+    # D3: todo_write matches token "write" but is UI-only — never pause for approval
+    assert not is_risky_mcp_tool("todo_write")
+    assert not is_risky_mcp_tool("clutch-tools__todo_write")
+    assert not is_risky_mcp_tool("propose_plan")
 
 
 def test_extract_mcp_file_path_reads_path_argument() -> None:

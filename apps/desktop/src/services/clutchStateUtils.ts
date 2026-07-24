@@ -51,6 +51,7 @@ export function mergeMessageFields(existing: ChatMessage, incoming: ChatMessage)
     toolSteps: incoming.toolSteps ?? existing.toolSteps,
     filesChanged: incoming.filesChanged ?? existing.filesChanged,
     planCard: incoming.planCard ?? existing.planCard,
+    todoList: incoming.todoList ?? existing.todoList,
   };
 }
 
@@ -85,6 +86,23 @@ export function mergeChatMessages(
     if (priorIndex !== undefined) {
       merged[priorIndex] = mergeMessageFields(merged[priorIndex], message);
       continue;
+    }
+
+    // Same MCP approval intent must not duplicate Supervisor bubbles (message + patch race).
+    const approvalKey =
+      typeof (message as ChatMessage & { approvalKey?: string }).approvalKey === 'string'
+        ? (message as ChatMessage & { approvalKey?: string }).approvalKey
+        : undefined;
+    if (message.agent === 'Supervisor' && approvalKey) {
+      const priorApprovalIdx = merged.findIndex(
+        (item) =>
+          item.agent === 'Supervisor' &&
+          (item as ChatMessage & { approvalKey?: string }).approvalKey === approvalKey,
+      );
+      if (priorApprovalIdx >= 0) {
+        merged[priorApprovalIdx] = mergeMessageFields(merged[priorApprovalIdx], message);
+        continue;
+      }
     }
 
     if (message.agent === 'User') {

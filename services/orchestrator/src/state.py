@@ -19,6 +19,7 @@ class ClutchState(TypedDict):
     terminal_logs: list[str]
     changed_files: list[str]
     pending_tool_steps: NotRequired[list[dict[str, object]]]
+    agent_todos: NotRequired[list[dict[str, object]]]
     session_tokens: int
     session_cost_usd: float
     token_input: int

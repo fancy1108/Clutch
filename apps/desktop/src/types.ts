@@ -22,6 +22,8 @@ export type {
   PtySessionStatusData,
   RunStatus,
   StatePatchData,
+  TodoItem,
+  TodoItemStatus,
   ToolStep,
   ToolStepKind,
   ToolStepStatus,

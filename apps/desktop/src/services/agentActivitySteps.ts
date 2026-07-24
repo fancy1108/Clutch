@@ -155,6 +155,35 @@ export function humanizeActivityStep(
         focus: command ? compact(command, 44) : 'shell',
         detail: command || argsRaw,
       };
+    case 'todo_write':
+    case 'write_todos':
+    case 'update_todos': {
+      const todos = Array.isArray(args?.todos) ? args!.todos : [];
+      const n = todos.length;
+      const lines = todos
+        .map((item) => {
+          if (!item || typeof item !== 'object') return '';
+          const row = item as Record<string, unknown>;
+          const status = String(row.status || 'pending');
+          const content = String(row.content || row.text || '').trim();
+          return content ? `[${status}] ${content}` : '';
+        })
+        .filter(Boolean);
+      return {
+        verb: 'Update',
+        focus: n ? `${n} todos` : 'todos',
+        detail: lines.join('\n') || compact(argsRaw, 96),
+      };
+    }
+    case 'propose_plan':
+    case 'create_plan': {
+      const title = pickString(args, ['title']) || 'Plan';
+      return {
+        verb: 'Propose plan',
+        focus: compact(title, 36),
+        detail: compact(argsRaw, 96),
+      };
+    }
     default:
       return {
         verb: shortTool.replace(/_/g, ' '),
@@ -260,6 +289,19 @@ export function toolStepsFromActivityLogs(
       detail: step.detail,
     };
   });
+}
+
+/** Live verb_group source: prefer structured pending steps; never replay a prior log wave. */
+export function resolveLiveActivitySteps(
+  pending: ToolStep[] | undefined | null,
+  logs: string[] | undefined | null,
+  options?: { awaiting?: boolean },
+): ToolStep[] {
+  if (pending && pending.length > 0) return pending;
+  // Empty/cleared pending = this turn has no tools yet. Falling back to terminal_logs
+  // would resurrect the previous turn's Step 1…N wave (ghost "Working" UI).
+  if (!options?.awaiting) return [];
+  return toolStepsFromActivityLogs(logs, { awaiting: true });
 }
 
 const HEADER_NOUN: Record<ToolStepKind, [string, string]> = {

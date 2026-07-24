@@ -5,6 +5,17 @@ import React from 'react';
 import { LegacyIcon } from './ui/LegacyIcon';
 import type { PlanCard as PlanCardData } from '../types';
 
+/** Strip model-supplied "1." / "1)" (repeat) so UI does not show "1. 1. …". */
+export function stripPlanStepIndex(step: string): string {
+  let cleaned = step.trim();
+  for (let i = 0; i < 4; i++) {
+    const next = cleaned.replace(/^\s*(?:\d+[\.\)\:．、]\s*|\d+\s+)/, '').trim();
+    if (next === cleaned) break;
+    cleaned = next;
+  }
+  return cleaned || step.trim();
+}
+
 export function PlanCardView({
   card,
   t,
@@ -38,10 +49,14 @@ export function PlanCardView({
       {card.summary ? (
         <p className="px-3 pt-2 text-[11px] text-on-surface-variant leading-relaxed">{card.summary}</p>
       ) : null}
-      <ol className="px-3 py-2 space-y-1 list-decimal list-inside">
+      {/* Manual indices — avoid CSS list-decimal doubling model-supplied "1." */}
+      <ol className="px-3 py-2 space-y-1 list-none">
         {card.steps.map((step, index) => (
-          <li key={`${index}-${step.slice(0, 24)}`} className="text-[12px] text-on-surface leading-snug">
-            {step}
+          <li key={`${index}-${step.slice(0, 24)}`} className="text-[12px] text-on-surface leading-snug flex gap-2">
+            <span className="tabular-nums text-on-surface-variant/70 shrink-0 w-4 text-right">
+              {index + 1}.
+            </span>
+            <span className="min-w-0 flex-1">{stripPlanStepIndex(step)}</span>
           </li>
         ))}
       </ol>

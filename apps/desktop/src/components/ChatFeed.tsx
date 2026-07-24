@@ -7,7 +7,7 @@ import {
   WORKSPACE_CHROME_ROW_TOP_PX,
 } from '../constants/layout';
 import { ChevronRight } from 'lucide-react';
-import { ChatMessage, ClutchRunStatus, HybridExecutionPayload, OutputEvent } from '../types';
+import { ChatMessage, ClutchRunStatus, HybridExecutionPayload, OutputEvent, TodoItem } from '../types';
 import { useLanguage } from './LanguageContext';
 import { ChatInputBar, type Attachment, type PendingChatMessage } from './ChatInputBar';
 import { BTN_PRIMARY, BTN_SECONDARY, BTN_SM } from './ui/buttonStyles';
@@ -17,10 +17,11 @@ import type { ScannedSkill } from '../services/skillsApi';
 import type { FileTreeNode } from '../services/workspaceApi';
 import type { PermissionMode } from '../services/permissionApi';
 import { USER_CHAT_AVATAR, clutchStore, deleteChatMessage, useClutchState } from '../services/clutchState';
-import { toolStepsFromActivityLogs } from '../services/agentActivitySteps';
+import { resolveLiveActivitySteps } from '../services/agentActivitySteps';
 import { AgentLiveActivity } from './AgentLiveActivity';
 import { FilesChangedChips } from './FilesChangedChips';
 import { PlanCardView } from './PlanCardView';
+import { TodoCardView } from './TodoCardView';
 import { resolveBrandLogoSrc } from '../services/brandLogos';
 import { clutchMarkUrl } from '../assets/brand';
 import { AgentChatAvatar } from './AgentChatAvatar';
@@ -769,19 +770,25 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
     showWorkflowThinking;
 
   const pendingToolSteps = clutchOrchestraState.pending_tool_steps;
-  const liveActivitySteps = useMemo(() => {
-    if (pendingToolSteps && pendingToolSteps.length > 0) return pendingToolSteps;
-    return toolStepsFromActivityLogs(clutchOrchestraState.terminal_logs, {
-      awaiting: awaitingHuman,
-    });
-  }, [pendingToolSteps, clutchOrchestraState.terminal_logs, awaitingHuman]);
+  const liveTodos = (clutchOrchestraState.agent_todos ?? []) as TodoItem[];
+  const liveActivitySteps = useMemo(
+    () =>
+      resolveLiveActivitySteps(pendingToolSteps, clutchOrchestraState.terminal_logs, {
+        awaiting: awaitingHuman,
+      }),
+    [pendingToolSteps, clutchOrchestraState.terminal_logs, awaitingHuman],
+  );
   const showLiveActivity =
     liveActivitySteps.length > 0 &&
     (showThinking || awaitingHuman || (isRunning && isPlainLlmChat));
 
   const chatScrollBottomPad = useMemo(
-    () => dockClearance + (showThinking ? thinkingHeight + 16 : 0),
-    [dockClearance, showThinking, thinkingHeight],
+    () =>
+      dockClearance +
+      (showThinking ? thinkingHeight + 16 : 0) +
+      // Live activity sits above the fixed dock while awaiting — keep extra room.
+      (awaitingHuman && showLiveActivity && !showThinking ? 12 : 0),
+    [dockClearance, showThinking, thinkingHeight, awaitingHuman, showLiveActivity],
   );
 
   const scrollChatToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
@@ -813,10 +820,13 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
     pendingMessages.length,
     shellSessionStatus,
     awaitingHuman,
+    awaitingPlan,
     isRunning,
     isPlainLlmChat,
     showTerminalWorkspace,
     llmModelName,
+    showLiveActivity,
+    liveActivitySteps.length,
   ]);
 
   useEffect(() => {
@@ -907,10 +917,14 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
         paddingLeft: `${leftChromePad}px`,
         paddingRight: `${rightChromePad}px`,
         paddingTop: APP_HEADER_HEIGHT_PX,
-        paddingBottom: isTerminalLayout ? terminalInputReservePx : Math.max(chatScrollBottomPad, 120),
+        paddingBottom: isTerminalLayout
+          ? terminalInputReservePx
+          : Math.max(chatScrollBottomPad, awaitingHuman ? 200 : 120),
       }}
       className={`flex-1 min-h-0 flex flex-col box-border transition-all duration-300 bg-background ${
-        isTerminalLayout ? 'overflow-hidden pb-1 items-stretch px-4' : `overflow-y-auto items-center ${chatChrome.chatEdgePaddingClass}`
+        isTerminalLayout
+          ? 'overflow-hidden pb-1 items-stretch px-4'
+          : `overflow-y-auto overscroll-contain items-stretch ${chatChrome.chatEdgePaddingClass}`
       }`}
     >
       <div
@@ -1139,7 +1153,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                   />
                 )}
 
-                <div className="flex-1 space-y-1.5 overflow-hidden">
+                <div className="flex-1 space-y-1.5 min-w-0">
                   <div className={`flex items-center gap-2 ${isUser ? 'justify-end' : ''}`}>
                     {isUser ? (
                       <>
@@ -1181,7 +1195,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                         </div>
                       ) : null}
 
-                      {!isUser && msg.toolSteps && msg.toolSteps.length > 0 ? (
+                      {!isUser && !msg.planCard && msg.toolSteps && msg.toolSteps.length > 0 ? (
                         <AgentLiveActivity steps={msg.toolSteps} className="mb-2" />
                       ) : null}
 
@@ -1237,6 +1251,9 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                       {!isUser && msg.planCard ? (
                         <PlanCardView card={msg.planCard} t={t} />
                       ) : null}
+                      {!isUser && msg.todoList && msg.todoList.length > 0 ? (
+                        <TodoCardView todos={msg.todoList} t={t} />
+                      ) : null}
                       {msg.codeHighlight && (
                         <div className="mt-3 flex items-center gap-2 py-2 px-3 bg-white/60 rounded-xl border border-outline-variant/30">
                           <LegacyIcon name="check_circle" className="text-green-500 text-[18px]" />
@@ -1267,7 +1284,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                 alt={thinkingAgentName || t('Clutch Agent')}
               />
 
-              <div className="flex-1 space-y-1.5 overflow-hidden">
+              <div className="flex-1 space-y-1.5 min-w-0">
                 <div className="flex items-center gap-2">
                   {renderAgentLabel(
                     thinkingAgentName || t('Clutch Agent'),
@@ -1286,6 +1303,9 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                     className={`${chatChrome.thinkingBubblePaddingClass} bg-surface-container-low rounded-2xl rounded-tl-none border border-outline-variant/30 shadow-sm`}
                   >
                     <AgentLiveActivity steps={liveActivitySteps} live defaultOpen />
+                    {liveTodos.length > 0 ? (
+                      <TodoCardView todos={liveTodos} t={t} live />
+                    ) : null}
                   </div>
                 ) : (
                   <div
@@ -1310,6 +1330,9 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                   className={`${chatChrome.thinkingBubblePaddingClass} bg-surface-container-low rounded-2xl rounded-tl-none border border-outline-variant/30 shadow-sm`}
                 >
                   <AgentLiveActivity steps={liveActivitySteps} live defaultOpen />
+                  {liveTodos.length > 0 ? (
+                    <TodoCardView todos={liveTodos} t={t} live />
+                  ) : null}
                 </div>
               </div>
             </div>

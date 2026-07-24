@@ -43,7 +43,8 @@ export const AgentLiveActivity: React.FC<AgentLiveActivityProps> = ({
   if (!steps.length) return null;
 
   const header = verbGroupHeaderLabel(steps) || t('Tools');
-  const awaiting = steps.some((step) => step.status === 'awaiting');
+  const awaitingSteps = steps.filter((step) => step.status === 'awaiting');
+  const awaiting = awaitingSteps.length > 0;
 
   return (
     <div
@@ -65,11 +66,10 @@ export const AgentLiveActivity: React.FC<AgentLiveActivityProps> = ({
         />
         <span className="text-[11px] font-medium text-on-surface truncate">{header}</span>
         {awaiting ? (
-          <span className="text-[10px] text-amber-800/80 shrink-0">{t('Awaiting approval')}</span>
+          <span className="text-[10px] text-amber-800/80 shrink-0 tabular-nums">
+            {t('Awaiting approval')} {awaitingSteps.length}
+          </span>
         ) : null}
-        <span className="text-[10px] text-on-surface-variant/55 tabular-nums shrink-0">
-          {steps.length}
-        </span>
       </button>
 
       {open ? (
@@ -89,7 +89,7 @@ export const AgentLiveActivity: React.FC<AgentLiveActivityProps> = ({
                     <StepStatusIcon status={step.status} />
                   </span>
                   <span
-                    className={`min-w-0 flex-1 truncate text-[12px] leading-snug ${
+                    className={`min-w-0 flex-1 text-[12px] leading-snug break-words ${
                       step.status === 'completed' || step.status === 'failed'
                         ? 'text-on-surface-variant'
                         : 'text-on-surface font-medium'

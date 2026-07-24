@@ -723,6 +723,22 @@ class ClutchStateStore {
       });
       return;
     }
+    const approvalKey = (enriched as ChatMessage & { approvalKey?: string }).approvalKey;
+    if (enriched.agent === 'Supervisor' && approvalKey) {
+      const prior = this.state.messages.find(
+        (item) =>
+          item.agent === 'Supervisor' &&
+          (item as ChatMessage & { approvalKey?: string }).approvalKey === approvalKey,
+      );
+      if (prior) {
+        this.applyPatch({
+          messages: this.state.messages.map((item) =>
+            item.id === prior.id ? mergeMessageFields(item, enriched) : item,
+          ),
+        });
+        return;
+      }
+    }
     if (enriched.agent === 'User') {
       const trimmed = enriched.text.trim();
       const isPendingTurn =

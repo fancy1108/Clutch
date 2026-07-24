@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   humanizeActivityStep,
   parseAgentActivitySteps,
+  resolveLiveActivitySteps,
   toolStepsFromActivityLogs,
   verbGroupHeaderLabel,
 } from './agentActivitySteps';
@@ -130,5 +131,36 @@ describe('toolStepsFromActivityLogs', () => {
     expect(steps[0].kind).toBe('read');
     expect(steps[0].status).toBe('running');
     expect(steps[0].title).toContain('Reading');
+  });
+});
+
+describe('resolveLiveActivitySteps', () => {
+  const priorWave = [
+    '[CHAT] Step 1: clutch-tools__list_dir args={"path":"."}',
+    '[CHAT] Step 2: clutch-tools__todo_write args={"todos":[]}',
+  ];
+
+  it('prefers structured pending steps', () => {
+    const pending = [
+      {
+        id: 't1',
+        kind: 'edit' as const,
+        tool: 'apply_patch',
+        status: 'running' as const,
+        title: 'Patching',
+      },
+    ];
+    expect(resolveLiveActivitySteps(pending, priorWave, { awaiting: false })).toEqual(pending);
+  });
+
+  it('does not resurrect prior log wave while thinking (empty pending)', () => {
+    expect(resolveLiveActivitySteps([], priorWave, { awaiting: false })).toEqual([]);
+    expect(resolveLiveActivitySteps(undefined, priorWave, { awaiting: false })).toEqual([]);
+  });
+
+  it('falls back to logs only while awaiting approval without pending', () => {
+    const steps = resolveLiveActivitySteps([], priorWave, { awaiting: true });
+    expect(steps.length).toBeGreaterThan(0);
+    expect(steps[steps.length - 1].status).toBe('awaiting');
   });
 });

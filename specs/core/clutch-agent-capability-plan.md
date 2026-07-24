@@ -227,6 +227,7 @@
 - **可见**：待办/进行中/完成；执行中勾选变化；刷新仍在。
 - **验收**：多步任务 ≥3 条 Todo 且状态跟随。
 - **交互先决**：**D49**。
+- **实现笔记**：builtin `todo_write` → `ClutchState.agent_todos` 实时 + seal `ChatMessage.todoList`；FE `TodoCardView`。**`todo_write` 不走人工审批**（UI 元数据；`is_risky` 排除）。PM 2026-07-24 点验通过。
 
 #### D4 — 结构化提问
 - **可见**：选择题卡；答完按选择继续；明确需求不瞎问。

@@ -724,6 +724,7 @@ const zhTranslations: Record<string, string> = {
   "Plan approved": "计划已批准",
   "Plan cancelled": "计划已取消",
   "Plan revision requested": "已请求修改计划",
+  "Todos": "待办",
   "Enter basic setup persona details...": "输入基础人设与指令…",
   "Tips": "提示",
   "Agent persona tips": "此处仅写协议段（人设/步骤约定）。完整 runtime system 由底座、Env、工作区 AGENTS.md、Skills 目录、Plan reminder 等层组装；详情页右侧可查看分层摘要。",

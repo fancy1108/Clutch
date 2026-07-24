@@ -231,6 +231,11 @@ def compose_agent_prompt_assembly(
                     "call clutch-tools `propose_plan` early — do not interview the user about "
                     "stack first; put defaults in the plan. Wait for Chat Approve / Revise / "
                     "Cancel before any write or mutating shell. "
+                    "After a plan is approved (or for clear multi-step work), call `todo_write` "
+                    "with ≥3 items and keep statuses updated (one in_progress). "
+                    "Call `todo_write` only when the list or a status changes — do not spam it. "
+                    "When work is done, mark todos completed and reply in plain text; "
+                    "do not keep calling tools after the goal is met. "
                     "Skip propose_plan only for trivial Q&A or single-line edits.",
                 )
             )

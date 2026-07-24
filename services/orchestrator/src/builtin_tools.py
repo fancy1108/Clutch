@@ -171,7 +171,10 @@ def list_builtin_tools() -> list[dict[str, Any]]:
                     "steps": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "Ordered implementation steps (3–8 typical).",
+                        "description": (
+                            "Ordered implementation steps (3–8 typical). "
+                            "Plain text only — do NOT prefix with '1.' / '2.'; the UI numbers them."
+                        ),
                     },
                     "summary": {
                         "type": "string",
@@ -179,6 +182,41 @@ def list_builtin_tools() -> list[dict[str, Any]]:
                     },
                 },
                 "required": ["title", "steps"],
+            },
+        },
+        {
+            "name": "todo_write",
+            "description": (
+                "Create or replace the session todo list for multi-step work (D3). "
+                "Use ≥3 items with statuses pending | in_progress | completed. "
+                "Keep exactly one in_progress when working. Call again as status changes. "
+                "Todos appear in the Chat timeline."
+            ),
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "todos": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {"type": "string"},
+                                "content": {"type": "string"},
+                                "status": {
+                                    "type": "string",
+                                    "enum": ["pending", "in_progress", "completed"],
+                                },
+                            },
+                            "required": ["content", "status"],
+                        },
+                        "description": "Full replacement todo list.",
+                    },
+                    "merge": {
+                        "type": "boolean",
+                        "description": "If true, merge by id into the existing list (default false = replace).",
+                    },
+                },
+                "required": ["todos"],
             },
         },
     ]
@@ -189,6 +227,81 @@ def is_propose_plan_tool(name: str) -> bool:
     return short == "propose_plan"
 
 
+def is_todo_write_tool(name: str) -> bool:
+    short = name.split("__")[-1].lower().replace("-", "_")
+    return short in {"todo_write", "write_todos", "update_todos"}
+
+
+_TODO_STATUSES = frozenset({"pending", "in_progress", "completed"})
+
+
+def normalize_todo_items(
+    raw: Any,
+    *,
+    existing: list[dict[str, Any]] | None = None,
+    merge: bool = False,
+) -> list[dict[str, Any]]:
+    """Normalize todo_write args into [{id, content, status}, ...]."""
+    items_in: list[Any]
+    if isinstance(raw, dict) and "todos" in raw:
+        merge = bool(raw.get("merge")) or merge
+        items_in = list(raw.get("todos") or [])
+    elif isinstance(raw, list):
+        items_in = raw
+    else:
+        items_in = []
+
+    normalized: list[dict[str, Any]] = []
+    for idx, item in enumerate(items_in):
+        if isinstance(item, str):
+            content = item.strip()
+            status = "pending"
+            todo_id = f"todo_{idx + 1}"
+        elif isinstance(item, dict):
+            content = str(item.get("content") or item.get("text") or item.get("title") or "").strip()
+            status = str(item.get("status") or "pending").strip().lower().replace("-", "_")
+            if status == "done":
+                status = "completed"
+            if status == "doing" or status == "active":
+                status = "in_progress"
+            if status not in _TODO_STATUSES:
+                status = "pending"
+            todo_id = str(item.get("id") or f"todo_{idx + 1}").strip() or f"todo_{idx + 1}"
+        else:
+            continue
+        if not content:
+            continue
+        normalized.append({"id": todo_id, "content": content, "status": status})
+
+    if not merge or not existing:
+        return normalized
+
+    by_id = {str(t.get("id")): dict(t) for t in existing if isinstance(t, dict)}
+    order = [str(t.get("id")) for t in existing if isinstance(t, dict)]
+    for item in normalized:
+        tid = str(item["id"])
+        if tid in by_id:
+            by_id[tid] = item
+        else:
+            by_id[tid] = item
+            order.append(tid)
+    return [by_id[tid] for tid in order if tid in by_id]
+
+
+_STEP_INDEX_RE = re.compile(r"^\s*(?:\d+[\.\)\:．、]\s*|\d+\s+)")
+
+
+def strip_plan_step_index(text: str) -> str:
+    """Remove leading '1.' / '1)' (repeat) so PlanCard does not show '1. 1. …'."""
+    cleaned = (text or "").strip()
+    for _ in range(4):
+        next_text = _STEP_INDEX_RE.sub("", cleaned).strip()
+        if next_text == cleaned:
+            break
+        cleaned = next_text
+    return cleaned or (text or "").strip()
+
+
 def normalize_plan_args(func_args: dict[str, Any] | None) -> dict[str, Any]:
     payload = func_args if isinstance(func_args, dict) else {}
     title = str(payload.get("title") or "Plan").strip() or "Plan"
@@ -196,11 +309,16 @@ def normalize_plan_args(func_args: dict[str, Any] | None) -> dict[str, Any]:
     steps: list[str] = []
     if isinstance(raw_steps, list):
         for item in raw_steps:
-            text = str(item).strip()
+            text = strip_plan_step_index(str(item))
             if text:
                 steps.append(text)
     elif isinstance(raw_steps, str) and raw_steps.strip():
-        steps = [line.strip(" -*\t") for line in raw_steps.splitlines() if line.strip()]
+        steps = [
+            strip_plan_step_index(line.strip(" -*\t"))
+            for line in raw_steps.splitlines()
+            if line.strip()
+        ]
+        steps = [s for s in steps if s]
     summary = str(payload.get("summary") or "").strip()
     return {"title": title, "steps": steps, "summary": summary}
 
@@ -214,6 +332,7 @@ def execute_builtin_tool(tool_name: str, arguments: dict[str, Any]) -> str:
         "run_terminal_cmd": _tool_run_terminal_cmd,
         "apply_patch": _tool_apply_patch,
         "propose_plan": _tool_propose_plan,
+        "todo_write": _tool_todo_write,
     }
     handler = handlers.get(tool_name)
     if handler is None:
@@ -222,6 +341,16 @@ def execute_builtin_tool(tool_name: str, arguments: dict[str, Any]) -> str:
         return handler(arguments)
     except Exception as exc:
         return f"Error executing tool: {exc}"
+
+
+def _tool_todo_write(arguments: dict[str, Any]) -> str:
+    todos = normalize_todo_items(arguments)
+    if not todos:
+        return "Error executing tool: todo_write requires a non-empty `todos` array"
+    lines = [
+        f"- [{t['status']}] {t['id']}: {t['content']}" for t in todos
+    ]
+    return f"Updated {len(todos)} todo(s):\n" + "\n".join(lines)
 
 
 def _tool_propose_plan(arguments: dict[str, Any]) -> str:

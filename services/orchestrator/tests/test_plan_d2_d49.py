@@ -27,6 +27,26 @@ def test_normalize_and_execute_propose_plan() -> None:
     assert "Add route" in out
 
 
+def test_normalize_plan_strips_leading_step_numbers() -> None:
+    plan = normalize_plan_args(
+        {
+            "title": "Health",
+            "steps": [
+                "1. Create health.py",
+                "2) Update README",
+                "3、Run import check",
+                "1. 1. Double numbered",
+            ],
+        }
+    )
+    assert plan["steps"] == [
+        "Create health.py",
+        "Update README",
+        "Run import check",
+        "Double numbered",
+    ]
+
+
 def test_is_propose_plan_tool_alias() -> None:
     assert is_propose_plan_tool("propose_plan")
     assert is_propose_plan_tool("clutch-tools__propose_plan")
@@ -41,15 +61,28 @@ def test_plan_pause_message_seals_plan_card() -> None:
         "tool_steps": [],
     }
     assert _is_plan_pause(pause)
-    messages, msg = _messages_for_mcp_pause([], pause, reply_label="Clutch Agent")
+    messages, msg, created = _messages_for_mcp_pause([], pause, reply_label="Clutch Agent")
+    assert created is True
     assert len(messages) == 1
     assert msg["text"] == ""
     assert msg["planCard"]["title"] == "Add login"
     assert msg["planCard"]["status"] == "pending"
     assert msg["planCard"]["steps"] == ["A", "B"]
+    assert "toolSteps" not in msg
 
 
-def test_patch_plan_card_status() -> None:
+def test_supervisor_gate_dedupes_same_approval_key() -> None:
+    from src.chat_runner import _supervisor_gate_messages
+
+    args = {"patch": "*** Begin Patch\n*** Add File: a.py\n+x\n*** End Patch"}
+    messages, msg, created = _supervisor_gate_messages([], "clutch-tools__apply_patch", args)
+    assert created is True
+    assert len(messages) == 1
+    again, msg2, created2 = _supervisor_gate_messages(messages, "clutch-tools__apply_patch", args)
+    assert created2 is False
+    assert len(again) == 1
+    assert msg2 is msg
+
     base = _chat_message(
         "Clutch Agent",
         "plan",

@@ -43,6 +43,7 @@ class McpRunOutcome:
     approval_required: dict[str, Any] | None = None
     files_changed: list[str] | None = None
     tool_steps: list[dict[str, Any]] | None = None
+    todos: list[dict[str, Any]] | None = None
 
 
 def _sanitize_tool_part(value: str) -> str:
@@ -295,9 +296,11 @@ def run_mcp_react_loop(
     messages: list[dict[str, Any]],
     servers: list[dict[str, Any]],
     log_prefix: str = "MCP",
-    max_steps: int = 10,
+    max_steps: int = 24,
     on_log: Callable[[str], None] | None = None,
     on_tool_step: Callable[[dict[str, Any]], None] | None = None,
+    on_todos: Callable[[list[dict[str, Any]]], None] | None = None,
+    existing_todos: list[dict[str, Any]] | None = None,
     pause_on_risky: bool = False,
     permission_mode: str = "ask",
     approved_tool: dict[str, Any] | None = None,
@@ -309,12 +312,19 @@ def run_mcp_react_loop(
         raise ValueError("At least one MCP server is required")
 
     from src.adapters.ollama_adapter import model_supports_tool_calling
-    from src.builtin_tools import is_virtual_server, list_builtin_tools
+    from src.builtin_tools import (
+        is_todo_write_tool,
+        is_virtual_server,
+        list_builtin_tools,
+        normalize_todo_items,
+    )
     from src.models_config import get_router
 
     router = get_router()
     spec, _resolved_id = router.resolve_for_model(model_id)
     logs: list[str] = []
+    latest_todos: list[dict[str, Any]] | None = None
+    todo_baseline = list(existing_todos or [])
 
     if approved_tool and not model_supports_tool_calling(spec):
         raise RuntimeError(
@@ -403,6 +413,23 @@ def run_mcp_react_loop(
         if on_tool_step:
             on_tool_step(step)
 
+    def capture_todos_if_needed(func_name: str, func_args: dict[str, Any], result_str: str) -> None:
+        nonlocal latest_todos, todo_baseline
+        route = tool_routes.get(func_name)
+        raw_name = route[1] if route else func_name
+        if not (is_todo_write_tool(raw_name) or is_todo_write_tool(func_name)):
+            return
+        if result_str.startswith("Error executing tool"):
+            return
+        latest_todos = normalize_todo_items(
+            func_args,
+            existing=todo_baseline,
+            merge=bool(func_args.get("merge")),
+        )
+        todo_baseline = list(latest_todos)
+        if on_todos:
+            on_todos(list(latest_todos))
+
     try:
         chat_messages = list(messages)
         start_step = 0
@@ -428,6 +455,7 @@ def run_mcp_react_loop(
                 on_tool_step=record_tool_step,
                 step_id=str(approved_tool.get("step_id") or f"tool_{start_step}"),
             )
+            capture_todos_if_needed(func_name, func_args, result_str)
             chat_messages.append(
                 {
                     "role": "tool",
@@ -508,6 +536,7 @@ def run_mcp_react_loop(
                             },
                             files_changed=files_changed or None,
                             tool_steps=list(collected_steps) or None,
+                            todos=latest_todos,
                         )
 
                     if pause_on_risky and is_risky_mcp_tool(raw_tool_name):
@@ -587,6 +616,7 @@ def run_mcp_react_loop(
                                         },
                                         files_changed=files_changed or None,
                                         tool_steps=list(collected_steps) or None,
+                                        todos=latest_todos,
                                     )
 
                         # full mode: skip approval gates entirely
@@ -638,6 +668,7 @@ def run_mcp_react_loop(
                                     },
                                     files_changed=files_changed or None,
                                     tool_steps=list(collected_steps) or None,
+                                    todos=latest_todos,
                                 )
 
                     result_str = _execute_tool_call(
@@ -654,6 +685,7 @@ def run_mcp_react_loop(
                         on_tool_step=record_tool_step,
                         step_id=f"tool_{step_idx}",
                     )
+                    capture_todos_if_needed(func_name, func_args, result_str)
                     chat_messages.append(
                         {
                             "role": "tool",
@@ -689,4 +721,5 @@ def run_mcp_react_loop(
         approval_required=None,
         files_changed=files_changed or None,
         tool_steps=list(collected_steps) or None,
+        todos=latest_todos,
     )

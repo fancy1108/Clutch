@@ -26,8 +26,22 @@ _RISKY_TOKENS = (
 )
 
 
+# UI-only / own-gate builtins: must NOT match the generic "write"/"create" tokens.
+_NON_RISKY_BUILTINS = frozenset(
+    {
+        "todo_write",
+        "write_todos",
+        "update_todos",
+        "propose_plan",  # own D2 pause path in mcp_react
+    }
+)
+
+
 def is_risky_mcp_tool(tool_name: str) -> bool:
     key = tool_name.lower().replace("-", "_")
+    basename = key.split("__")[-1]
+    if basename in _NON_RISKY_BUILTINS:
+        return False
     return any(token in key for token in _RISKY_TOKENS)
 
 
