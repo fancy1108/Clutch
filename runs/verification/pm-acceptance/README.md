@@ -8,6 +8,6 @@
 | D8 长聊不丢任务态 | [D08.md](./D08.md) | `7936786` |
 | D9 运行可控 | [D09.md](./D09.md) | `bef9b75` |
 | D10∥D48 子任务 | [D10.md](./D10.md) | `25dc5dc` |
-| D11 后台命令 | [D11.md](./D11.md) | _(commit 后填)_ |
-| D12 Git + 网页 | [D12.md](./D12.md) | pending |
+| D11 后台命令 | [D11.md](./D11.md) | `59b45ee` |
+| D12 Git + 网页 | [D12.md](./D12.md) | _(commit 后填)_ |
 | D13 权限规则 | [D13.md](./D13.md) | pending |

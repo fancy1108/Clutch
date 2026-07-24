@@ -153,6 +153,74 @@ def list_builtin_tools() -> list[dict[str, Any]]:
             },
         },
         {
+            "name": "git_status",
+            "description": (
+                "Show git status for the active workspace (D12). "
+                "Read-only; prefer before commit."
+            ),
+            "inputSchema": {"type": "object", "properties": {}},
+        },
+        {
+            "name": "git_diff",
+            "description": (
+                "Show git diff for the workspace or optional paths (D12). Read-only."
+            ),
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "paths": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Optional workspace-relative paths to limit the diff.",
+                    },
+                    "staged": {
+                        "type": "boolean",
+                        "description": "If true, show staged diff (default false).",
+                    },
+                },
+            },
+        },
+        {
+            "name": "git_commit",
+            "description": (
+                "Stage paths (or -A when omitted) and create a git commit (D12). "
+                "Risky — requires human approval in ask mode."
+            ),
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "message": {
+                        "type": "string",
+                        "description": "Commit message.",
+                    },
+                    "paths": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Optional paths to stage; omit to stage all tracked changes.",
+                    },
+                },
+                "required": ["message"],
+            },
+        },
+        {
+            "name": "web_fetch",
+            "description": (
+                "Fetch a public http(s) URL and return truncated page text for summarization (D12). "
+                "Use when the user provides a docs/link to cite."
+            ),
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "url": {"type": "string", "description": "http(s) URL to fetch."},
+                    "timeout_sec": {
+                        "type": "integer",
+                        "description": "Timeout seconds (default 20).",
+                    },
+                },
+                "required": ["url"],
+            },
+        },
+        {
             "name": "apply_patch",
             "description": (
                 "Apply a Codex-style patch to the active workspace. "
@@ -1092,6 +1160,10 @@ def execute_builtin_tool(tool_name: str, arguments: dict[str, Any]) -> str:
         "run_terminal_cmd": _tool_run_terminal_cmd,
         "list_background_jobs": _tool_list_background_jobs,
         "kill_background_job": _tool_kill_background_job,
+        "git_status": _tool_git_status,
+        "git_diff": _tool_git_diff,
+        "git_commit": _tool_git_commit,
+        "web_fetch": _tool_web_fetch,
         "apply_patch": _tool_apply_patch,
         "propose_plan": _tool_propose_plan,
         "todo_write": _tool_todo_write,
@@ -1532,3 +1604,112 @@ def _tool_kill_background_job(arguments: dict[str, Any]) -> str:
     if killed is None:
         return f"Error executing tool: background job `{job_id}` not found"
     return json.dumps(killed, ensure_ascii=False)
+
+
+def _run_git(args: list[str], *, cwd: Path) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["git", *args],
+        cwd=str(cwd),
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=60,
+    )
+
+
+def _tool_git_status(arguments: dict[str, Any]) -> str:
+    del arguments
+    from src.workspace import WorkspaceError, require_workspace
+
+    try:
+        root = require_workspace()
+    except WorkspaceError as exc:
+        return f"Error executing tool: {exc}"
+    proc = _run_git(["status", "--short", "--branch"], cwd=root)
+    if proc.returncode != 0:
+        err = (proc.stderr or proc.stdout or "git status failed").strip()
+        return f"Error executing tool: {err}"
+    out = (proc.stdout or "").strip()
+    return out or "(clean)"
+
+
+def _tool_git_diff(arguments: dict[str, Any]) -> str:
+    from src.workspace import WorkspaceError, require_workspace
+
+    try:
+        root = require_workspace()
+    except WorkspaceError as exc:
+        return f"Error executing tool: {exc}"
+    staged = bool(arguments.get("staged"))
+    paths = [
+        str(p).strip()
+        for p in (arguments.get("paths") or [])
+        if str(p).strip()
+    ]
+    args = ["diff", "--staged"] if staged else ["diff"]
+    if paths:
+        args.extend(["--", *paths])
+    proc = _run_git(args, cwd=root)
+    if proc.returncode not in (0, 1):
+        err = (proc.stderr or proc.stdout or "git diff failed").strip()
+        return f"Error executing tool: {err}"
+    out = proc.stdout or ""
+    if len(out) > _MAX_CMD_OUTPUT_CHARS:
+        out = out[:_MAX_CMD_OUTPUT_CHARS] + "\n…[truncated]"
+    return out.strip() or "(no diff)"
+
+
+def _tool_git_commit(arguments: dict[str, Any]) -> str:
+    from src.workspace import WorkspaceError, require_workspace
+
+    message = str(arguments.get("message") or "").strip()
+    if not message:
+        return "Error executing tool: git_commit requires `message`"
+    try:
+        root = require_workspace()
+    except WorkspaceError as exc:
+        return f"Error executing tool: {exc}"
+    paths = [
+        str(p).strip()
+        for p in (arguments.get("paths") or [])
+        if str(p).strip()
+    ]
+    if paths:
+        add = _run_git(["add", "--", *paths], cwd=root)
+    else:
+        add = _run_git(["add", "-A"], cwd=root)
+    if add.returncode != 0:
+        err = (add.stderr or add.stdout or "git add failed").strip()
+        return f"Error executing tool: {err}"
+    commit = _run_git(["commit", "-m", message], cwd=root)
+    if commit.returncode != 0:
+        err = (commit.stderr or commit.stdout or "git commit failed").strip()
+        return f"Error executing tool: {err}"
+    head = _run_git(["rev-parse", "--short", "HEAD"], cwd=root)
+    sha = (head.stdout or "").strip() if head.returncode == 0 else ""
+    return json.dumps(
+        {
+            "ok": True,
+            "message": message,
+            "sha": sha,
+            "stdout": (commit.stdout or "").strip(),
+        },
+        ensure_ascii=False,
+    )
+
+
+def _tool_web_fetch(arguments: dict[str, Any]) -> str:
+    from src.web_fetch_util import fetch_url_text
+
+    url = str(arguments.get("url") or "").strip()
+    if not url:
+        return "Error executing tool: web_fetch requires `url`"
+    try:
+        timeout = int(arguments.get("timeout_sec") or 20)
+    except (TypeError, ValueError):
+        timeout = 20
+    try:
+        payload = fetch_url_text(url, timeout_sec=timeout)
+    except ValueError as exc:
+        return f"Error executing tool: {exc}"
+    return json.dumps(payload, ensure_ascii=False)

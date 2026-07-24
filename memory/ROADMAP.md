@@ -54,7 +54,7 @@
 | D9 运行可控 | P0 | ❌ | Stop/Continue + loop fuse + Chat Steps/tok；待 PM |
 | D10∥D48 子任务委派 | P0 | ❌ | `delegate_subtask` + 嵌套卡；待 PM |
 | D11 后台命令 | P0 | ❌ | bg_jobs + Chat 任务条；待 PM（非 session 持久化） |
-| D12 Git + 网页 | P0 | ❌ | 未交付（capability-plan；非桌面 E2E） |
+| D12 Git + 网页 | P0 | ❌ | git_* + web_fetch；待 PM（非桌面 E2E） |
 | D13 权限规则 | P0 | ❌ | 未交付 |
 | D37 MCP Agent↔Hub 绑定 | P0 | ✅ | Module 4 Hub 勾选 + `mcpServerIds`；PM 2026-07-24 点验通过 |
 | D38–D45 MCP 专项其余 | P1 | ❌ | 见权威表 |

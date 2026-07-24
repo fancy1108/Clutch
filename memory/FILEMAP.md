@@ -208,6 +208,7 @@
 | 运行可控（D9） | `src/run_control.py` · `mcp_react` fuse · Chat `chat-stop`/`chat-continue`/`chat-run-stats` |
 | 子任务委派（D10∥D48） | `src/subagent_runner.py` · `delegate_subtask` · `SubtaskCardView.tsx` |
 | 后台命令（D11） | `src/bg_jobs.py` · `run_terminal_cmd` background · `BackgroundJobsBar.tsx` |
+| Git + 网页（D12） | `builtin_tools` git_* / web_fetch · `web_fetch_util.py` |
 | PM 验收用例包 | `runs/verification/pm-acceptance/` |
 | 本轮 prompt 组装摘要 API（D53） | `GET /api/agents/{id}/prompt-assembly`（`routes/settings.py`） |
 | 运行日志 WS 转发 | `src/run_log_forwarder.py` |

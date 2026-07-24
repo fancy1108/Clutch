@@ -4,12 +4,23 @@
 > **何时写：** 每个**代码 Task** 完成并 commit 后，在 Check-out 追加一节（见 `CLAUDE.md` §Check-out）。  
 > **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。
 
-## Clutch Agent D11 后台命令 (`pending`)
+## Clutch Agent D12 Git + 网页 (`pending`)
+
+| 项目 | 值 |
+|------|-----|
+| **Task** | D12 git_status/diff/commit + web_fetch |
+| **Commit** | _(填入 commit 后)_ |
+| **Branch** | `dev` |
+| **Verification** | `uv run pytest tests/test_git_web_d12.py -q` |
+| **PM 用例** | `runs/verification/pm-acceptance/D12.md` |
+| **下一批** | **D13 权限规则** |
+
+## Clutch Agent D11 后台命令 (`59b45ee`)
 
 | 项目 | 值 |
 |------|-----|
 | **Task** | D11 background jobs + Chat job bar |
-| **Commit** | _(填入 commit 后)_ |
+| **Commit** | `59b45ee` |
 | **Branch** | `dev` |
 | **Verification** | `uv run pytest tests/test_bg_jobs_d11.py -q` → 5 passed |
 | **PM 用例** | `runs/verification/pm-acceptance/D11.md`（待人工点验；ROADMAP 仍 ❌） |

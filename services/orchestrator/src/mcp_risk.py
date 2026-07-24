@@ -23,6 +23,7 @@ _RISKY_TOKENS = (
     "apply_patch",
     "replace",
     "terminal",
+    "commit",
 )
 
 
@@ -45,6 +46,11 @@ _NON_RISKY_BUILTINS = frozenset(
         "read_skill",  # D7 progressive skill disclosure — read-only
         "load_skill",
         "delegate_subtask",  # D10 own nested subagent path in mcp_react
+        "git_status",  # D12 read-only
+        "git_diff",  # D12 read-only
+        "web_fetch",  # D12 network read for summarization
+        "list_background_jobs",
+        "kill_background_job",
     }
 )
 
