@@ -28,6 +28,23 @@
 
 ## Recent Sessions
 
+## 2026-07-24 会话（Workspace 历史消失 bug / D43）
+
+- **现象：** 开发版一打开侧栏项目/历史空了（用户未删）
+- **根因：** 随机 `workspace_id` + `workspaces.json` 被临时沙箱/非原子写污染 → 会话孤儿
+- **修复：** 路径稳定 id + 加载迁移 remap history + 原子写 + 拒 ephemeral 授权 + `run-e2e.sh` 传 `CLUTCH_STORAGE_DIR`（D43）
+- **数据：** 已手工恢复 ECC/test/clutch 旧 id；sidecar 启动会迁到稳定 id 并自动 remap
+- **验证：** `pytest tests/test_workspaces_api.py` → 10 passed
+
+## 2026-07-20 会话（Coding 发图 + 中间产物预览）
+
+- **A1–D 已实现（D42）**
+  - Chat：vision multimodal history 保留；非视觉 / Agnes `data:` 注入 Coding 专用 `image_analysis`（禁 Design 调色板硬约束）
+  - Terminal OrchestratorBar：粘贴图片 chip + Loading；`POST /api/workspace/attachments`（`.gitignore *` + GC）
+  - Chat/Terminal：路径/`[file:]`/fence/xterm 可点预览；`GET /api/workspace/file/resolve` 精确→basename 唯一
+  - 文档：PRODUCT_INTRO / CHANGELOG Unreleased / FILEMAP / DECISIONS D42
+- **验证：** `./scripts/verify.sh` → build OK，vitest 139，pytest 741 passed / 3 skipped，doc-drift 0 error
+
 ## 2026-07-17 会话（Trae CLI 白名单）
 
 - **Trae CLI 白名单**：完整添加 trae-cli（binary: traecli v0.120.42）

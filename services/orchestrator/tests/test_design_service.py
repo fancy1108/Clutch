@@ -1166,47 +1166,43 @@ def test_builtin_presets_loading() -> None:
 
 
 def test_looks_like_vision_error_detects_common_patterns() -> None:
-    from src.design.generator import _looks_like_vision_error
+    from src.chat_content import looks_like_vision_error
 
-    assert _looks_like_vision_error(
+    assert looks_like_vision_error(
         'ERROR: Cannot read "image.png" (this model does not support image input). Inform the user.'
     )
-    assert _looks_like_vision_error(
+    assert looks_like_vision_error(
         "I cannot read this image. The model does not support vision."
     )
-    assert _looks_like_vision_error(
+    assert looks_like_vision_error(
         "Unable to process the screenshot attached."
     )
-    assert _looks_like_vision_error(
+    assert looks_like_vision_error(
         "No image input support. Inform the user."
     )
-    assert not _looks_like_vision_error("")
-    assert not _looks_like_vision_error(
+    assert looks_like_vision_error("当前模型不支持视觉输入，无法识别图片内容。")
+    assert not looks_like_vision_error("")
+    assert not looks_like_vision_error(
         "<html><body><h1>Hello World</h1></body></html>"
     )
-    assert not _looks_like_vision_error(
+    assert not looks_like_vision_error(
         '{"name": "Test", "colors": {"primary": ["#000"]}}'
     )
 
 
 def test_llm_complete_vision_falls_back_on_vision_error(monkeypatch) -> None:
-    """When vision_ok=True but LLM returns a vision-error message, degrade to text-only."""
+    """When LLM returns a vision-error message, degrade to text-only with analysis."""
     from unittest.mock import MagicMock
-    from src.design.generator import _llm_complete_vision, _check_vision_ok
+    from src.design.generator import _llm_complete_vision
 
     fake_image = "data:image/png;base64,iVBORw0KGgo="
     vision_error_text = 'ERROR: Cannot read "image.png" (this model does not support image input). Inform the user.'
 
-    # _check_vision_ok returns True (model claims vision support)
-    monkeypatch.setattr("src.design.generator._check_vision_ok", lambda *a, **kw: True)
-
-    # router.chat returns the vision error (LLM can't actually process the image)
     mock_router = MagicMock()
     call_count = {"n": 0}
 
     def mock_chat(messages, model_id=None):
         call_count["n"] += 1
-        # First call: vision call → returns error text
         if call_count["n"] == 1:
             return {"content": vision_error_text, "usage": {"total_tokens": 10}}
         return {"content": '{"name":"Home","colors":{}}', "usage": {"total_tokens": 20}}
@@ -1221,29 +1217,27 @@ def test_llm_complete_vision_falls_back_on_vision_error(monkeypatch) -> None:
         mock_router, "Generate a home page", model_id="test-model", image_data_url=fake_image,
     )
 
-    # Should have fallen back to text-only (called complete, not returned the error)
     assert "Cannot read" not in text
     assert "Home" in text or "colors" in text
     assert call_count["n"] >= 1  # vision call was attempted
 
 
-def test_llm_complete_vision_skips_vision_when_not_ok(monkeypatch) -> None:
-    """When vision_ok=False, should use text-only with image_analysis prefix."""
+def test_llm_complete_vision_always_tries_then_falls_back(monkeypatch) -> None:
+    """Even when model is not known-vision, still try multimodal then fall back."""
     from unittest.mock import MagicMock
     from src.design.generator import _llm_complete_vision
 
     fake_image = "data:image/png;base64,iVBORw0KGgo="
 
-    # _check_vision_ok returns False
-    monkeypatch.setattr("src.design.generator._check_vision_ok", lambda *a, **kw: False)
-    # image_analysis returns nothing (Pillow not installed etc.)
     monkeypatch.setattr(
         "src.design.image_analysis.image_analysis_prompt_fragment",
         lambda *a, **kw: "",
     )
 
     mock_router = MagicMock()
-    mock_router.chat = MagicMock()
+    mock_router.chat = MagicMock(
+        side_effect=RuntimeError("LLM API error 400: image_url not supported")
+    )
     mock_router.complete = lambda prompt, model_id=None: {
         "content": '{"name":"Home"}',
         "usage": {"total_tokens": 10},
@@ -1254,8 +1248,7 @@ def test_llm_complete_vision_skips_vision_when_not_ok(monkeypatch) -> None:
     )
 
     assert "Home" in text
-    # Should NOT have called router.chat (no vision attempt)
-    mock_router.chat.assert_not_called()
+    mock_router.chat.assert_called_once()
 
 
 def test_generate_session_with_multiple_screens(workspace, monkeypatch) -> None:

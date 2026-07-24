@@ -63,7 +63,7 @@
 
 ### 2.4 两阶段生成引擎 ✅
 
-Design 模式采用"**先定规范，再出界面**"的两阶段流水线（D40：默认 Spec 软确认）：
+Design 模式采用"**先定规范，再出界面**"的两阶段流水线（D40：默认 Spec→UI 连跑）：
 
 ```
 用户需求 + 参考物料
@@ -75,7 +75,7 @@ Phase 1: 生成设计规范（Spec）
   · 字体系统 (Heading / Body / Mono)
   · 组件风格 (Button / Input / Card / Modal 等)
     ↓
-Spec 软确认（可微调规范卡；CLUTCH_DESIGN_SPEC_CONFIRM=0 可关闭）
+（可选）Spec 软确认 — 仅当 CLUTCH_DESIGN_SPEC_CONFIRM=1；默认同一次生成继续出 UI
     ↓
 Phase 2: 生成 UI 界面
   · 严格遵守 Spec 中的颜色和字体约束
@@ -249,7 +249,7 @@ PreviewDemo 旁路 Generate Code 同样写入 `react/`（不再以 `generated/` 
 | 功能 | 说明 | 价值 |
 |------|------|------|
 | **连线精度修复** | 优化 IUE Stage 2 分类和 Stage 3 匹配的去噪能力，减少错误连线 | 减少用户手动修线工作量 |
-| **Spec 软确认** | Spec 生成后暂停，用户确认/微调后再批量出 UI（D40） | 避免坏规范污染全部屏幕 |
+| **Spec 软确认（opt-in）** | 默认 Spec→UI 连跑；设 `CLUTCH_DESIGN_SPEC_CONFIRM=1` 可暂停审 Spec（D40） | 需要时避免坏规范污染全部屏幕 |
 | **交互契约落盘** | ✅ 已实现：PreviewDemo 编辑写入 `interaction_contract.json`，Path A 出码读取 | 为代码生成提供可靠数据源 |
 
 ### 4.2 中期规划（状态与交互增强） 📋

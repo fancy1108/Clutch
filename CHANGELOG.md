@@ -10,10 +10,24 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ## [Unreleased]
 
+### Added
+
+- **Coding image paste (Chat + Terminal OrchestratorBar):** Clipboard/attach images from Clutch composers (not xterm). Chat always sends multimodal first; on vision soft-refuse / API reject, retries with local OCR/palette analysis. Terminal uploads to `.clutch/attachments/` with `*` gitignore + size-triggered GC; send button Loading during upload/OCR.
+- **Click-to-preview artifacts:** Chat paths / `[file:]` / `@path` / fenced code blocks open the App preview overlay (large content uses plain `<pre>`). Terminal xterm + dispatch history linkify paths/filenames with workspace resolve (exact → unique basename fuzzy); missing/ambiguous shows toast.
+
 ### Changed
 
+- **Design Spec→UI continuous by default (D40):** Prompt generates Spec then screens in one run — no confirm CTA. Opt-in pause with `CLUTCH_DESIGN_SPEC_CONFIRM=1` (`awaiting_spec_confirm` + Confirm Spec & Generate UI).
 - **Design handoff SSOT (D39/D41):** Preview Demo → Coding stepped flow. **Generate** is a deterministic HTML→React export (no LLM redraw): real per-screen `.tsx`, prototype Tailwind CDN theme, contract Links in source. Preview scaled-to-fit + open full size → Approve → Send to Coding (wire APIs next).
-- **Design Spec soft-confirm + flow discipline (D40):** Default pause at `awaiting_spec_confirm` after Spec (override with `CLUTCH_DESIGN_SPEC_CONFIRM=0`); brief enhance before Spec; declared iterate modes (Edit / Add / Variant / Revise Spec); async iterate + confirm-spec; HTML prompts allow semantic buttons/`data-clutch-id` for IUE.
+- **Design Spec soft-confirm + flow discipline (D40):** Soft-confirm is opt-in (`CLUTCH_DESIGN_SPEC_CONFIRM=1`); brief enhance before Spec; declared iterate modes (Edit / Add / Variant / Revise Spec); async iterate + confirm-spec; HTML prompts allow semantic buttons/`data-clutch-id` for IUE.
+
+### Fixed
+
+- **Design iterate stuck “Generating…” overlay:** Async Edit/Pick iterate left `drawing` true and round pin on after poll reached `ready`, so the artboard kept the spinner and could show stale HTML. Clear overlay + unpin to latest round when the session finishes.
+- **Workspace list / session history desync:** Project ids are now path-stable (`sha256` of resolved path); legacy random ids migrate on load and remap `history.json`. `workspaces.json` uses atomic replace. Default store refuses ephemeral `/tmp`-style authorize (tests must set `CLUTCH_STORAGE_DIR` / `CLUTCH_E2E_SANDBOX`). Desktop E2E passes `CLUTCH_STORAGE_DIR` into `tauri:e2e` so sandboxes cannot wipe `clutch_dev`.
+- **Coding/Design image try-first:** Attached images are always sent to the LLM as multimodal first. Only when the model soft-refuses vision or the API rejects image input do we retry with local OCR/palette analysis (Coding uses a chat-specific fragment without Design hex mandates).
+- **Agnes 2.0 Flash chat vision:** Agnes **chat** models are treated as vision-capable; clipboard pastes are attempted multimodally (no preemptive `data:` downgrade).
+- **Chat vision history:** `_history_for_llm` no longer flattens multimodal user turns to `[image omitted]` when vision is enabled for the turn.
 
 ## [1.2.8] - 2026-07-16
 

@@ -326,7 +326,7 @@ export function selectionLabel(kind: CanvasSelection['kind'], node: Node, sessio
 
 export const IN_FLIGHT = new Set(['crafting_spec', 'generating_ui', 'iterating']);
 
-/** Soft Spec gate (D40) — paused for user confirm, not a spinner state. */
+/** Soft Spec gate (D40) — only when CLUTCH_DESIGN_SPEC_CONFIRM=1; not a spinner. */
 export const AWAITING_SPEC = 'awaiting_spec_confirm';
 
 export function isWelcomeSession(next: DesignSession): boolean {

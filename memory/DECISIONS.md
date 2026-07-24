@@ -523,11 +523,11 @@
 - **影响**：`PreviewDemo` Coding 入口 + `DesignHandoffTray`、`service.generate_react`、`router` generate-code、`PRODUCT_INTRO` §2.10–2.11、`DESIGN_WORKSPACE_GUIDE`。
 - **决策状态**：`可执行`
 
-### D40 · Design Spec 软确认关卡 + 流程纪律（2026-07-18）
+### D40 · Design Spec 软确认关卡 + 流程纪律（2026-07-18；默认改关 2026-07-24）
 
 - **背景**：对照 Stitch skills 后，Clutch Spec→UI 自动连跑会让坏 Spec 污染全部屏幕；iterate 模式偏启发式；brief 缺少结构化增强。产品 vibe 要求「监督而非黑盒」，不宜默认自治 baton。
 - **方案**：
-  1. **Spec 软确认（默认开）**：Spec/`DESIGN.md` 写盘后 `status=awaiting_spec_confirm`，用户确认后再批量出 UI；可用 `CLUTCH_DESIGN_SPEC_CONFIRM=0` 关闭（测试/脚本）。`POST .../confirm-spec` 继续生成。
+  1. **Spec 软确认（默认关）**：提示词后 Spec→UI **连跑**，不弹出确认按钮。需要人工审 Spec 时设 `CLUTCH_DESIGN_SPEC_CONFIRM=1`：Spec/`DESIGN.md` 写盘后 `status=awaiting_spec_confirm`，用户确认后再批量出 UI；`POST .../confirm-spec` 继续生成。
   2. **Brief 增强**：generate 前结构化 brief（platform / page structure / UI terms），不依赖外部云服务。
   3. **显式 iterate mode**：API/UI 声明 `modify|add|variant|revise_spec`，启发式仅兜底；默认 edit-over-regenerate。
   4. **多页 baton**：仅 opt-in，本轮不做默认自治 loop。
@@ -544,3 +544,22 @@
   4. **交付定义**：每屏真实 `.tsx` + Vite 可跑工程；Atomic 拆分非本门禁目标。Send to Coding 指令强调接 API、勿重设计。
 - **影响**：`design/fidelity_export.py`、`service.generate_react`、Preview Demo Coding 托盘文案、`PRODUCT_INTRO` / `DESIGN_*`。
 - **决策状态**：`可执行`
+
+### D42 · Coding 发图 + 中间产物预览（2026-07-20）
+
+- **背景**：Coding Chat/Terminal 需要粘贴图片给 Agent「看见」；CLI 输出中的文件名应可点开预览，体验接近 IDE。
+- **方案**：
+  1. **发图入口**：仅 Clutch 底栏（`ChatInputBar` / `OrchestratorBar`），不进 xterm。Chat：**任意聊天 LLM 先 multimodal 发图**；仅当软拒绝视觉或 API 拒图时，再降级本地 OCR/调色板（Coding 专用 fragment，禁止 Design 调色板硬约束）。Terminal 先 `POST /api/workspace/attachments` 落盘 `.clutch/attachments/`（自动 `.gitignore`=`*`；目录 ≥~100MB 时删 >3 天旧图），再注入路径+OCR 文本；发送中 Loading 防连按。
+  2. **预览**：共享 path helper + `GET /api/workspace/file/resolve`（精确 → basename 唯一模糊）；不追踪 xterm CWD。Chat fence/路径/`[file:]`/`@` 与 xterm `ILinkProvider`、派发 history 共用 resolve → `previewFile`；大内容 plain view。
+- **影响**：`chat_content` / `chat_runner`、`workspace_attachments`、`OrchestratorBar`、`chatContentRender`、`TerminalLanePane`、`PRODUCT_INTRO`。
+- **决策状态**：`已落地`
+
+### D43 · Workspace id 路径稳定 + 防 clutch_dev 被测试污染（2026-07-24）
+
+- **背景**：侧栏会话按 `workspace_id` 挂载；`workspaces.json` 曾用随机 uuid。列表被 e2e/临时目录授权或非原子写覆盖后，同路径重加得到新 id → 历史「消失」。桌面 E2E 曾未向 `tauri:e2e` 传入 `CLUTCH_STORAGE_DIR`。
+- **方案**：
+  1. **稳定 id**：`ws_` + `sha256(resolved_path)[:12]`；加载时把旧随机 id 迁到稳定 id，并 `remap_workspace_ids` 写回 `history.json`。
+  2. **原子写**：`workspaces.json.tmp` → `os.replace`；损坏文件隔离为 `.corrupt`。
+  3. **防污染**：默认 Application Support 存储拒绝 ephemeral/`tmp*` 授权（`CLUTCH_STORAGE_DIR` / `CLUTCH_E2E_SANDBOX` / `CLUTCH_ALLOW_TEMP_WORKSPACE=1` 可放行）；`run-e2e.sh` 桌面段传入 `CLUTCH_STORAGE_DIR`。
+- **影响**：`workspace.py`、`run_history.remap_workspace_ids`、`scripts/run-e2e.sh`、`test_workspaces_api.py`。
+- **决策状态**：`已落地`

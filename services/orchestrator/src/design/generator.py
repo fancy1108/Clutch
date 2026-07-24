@@ -83,12 +83,12 @@ _iterate_lock = threading.Lock()
 
 
 def _spec_confirm_enabled() -> bool:
-    """D40: Spec soft-confirm gate (default on). Set CLUTCH_DESIGN_SPEC_CONFIRM=0 to skip."""
-    return os.environ.get("CLUTCH_DESIGN_SPEC_CONFIRM", "1").strip().lower() not in {
-        "0",
-        "false",
-        "no",
-        "off",
+    """D40: Spec soft-confirm gate (default off). Set CLUTCH_DESIGN_SPEC_CONFIRM=1 to pause after Spec."""
+    return os.environ.get("CLUTCH_DESIGN_SPEC_CONFIRM", "0").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
     }
 
 
@@ -1092,19 +1092,11 @@ def _check_vision_ok(router: Any, model_id: str, image_data_url: str | None) -> 
         return False
 
 
-_VISION_ERROR_RE = re.compile(
-    r"(?:cannot\s+read|does\s+not\s+support\s+(?:image|vision)|"
-    r"unable\s+to\s+(?:read|process|view)\s+(?:the\s+)?(?:image|picture|screenshot)|"
-    r"inform\s+the\s+user|no\s+image\s+(?:input|support))",
-    re.IGNORECASE,
-)
-
-
 def _looks_like_vision_error(text: str) -> bool:
     """Return True if LLM output looks like a vision-capability error instead of real content."""
-    if not text:
-        return False
-    return bool(_VISION_ERROR_RE.search(text[:500]))
+    from src.chat_content import looks_like_vision_error
+
+    return looks_like_vision_error(text)
 
 
 def _llm_complete_vision(
@@ -1116,13 +1108,15 @@ def _llm_complete_vision(
     timeout_sec: float = _LLM_TIMEOUT_SEC,
     image_analysis_text: str = "",
 ) -> tuple[str, str | None, dict[str, int], bool]:
-    """Complete with optional vision image via router.chat multimodal content."""
+    """Complete with optional vision image via router.chat multimodal content.
+
+    Always tries sending the image first when present; on soft/API vision failure,
+    retries with local image analysis prefix (OCR/palette).
+    """
     from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
-    from src.chat_content import user_message_content_for_llm
+    from src.chat_content import looks_like_vision_api_error, user_message_content_for_llm
 
-    vision_ok = _check_vision_ok(router, model_id, image_data_url)
-
-    if image_data_url and vision_ok:
+    if image_data_url:
         content = user_message_content_for_llm(
             f"[image: {image_data_url}]\n{prompt}",
             vision_enabled=True,
@@ -1132,24 +1126,35 @@ def _llm_complete_vision(
         def _call() -> object:
             return router.chat(messages, model_id=model_id)
 
-        with ThreadPoolExecutor(max_workers=1) as pool:
-            future = pool.submit(_call)
-            try:
-                result = _llm_result(future.result(timeout=timeout_sec), prompt=prompt)
-            except FuturesTimeout as exc:
-                future.cancel()
-                raise DesignError(f"Model timed out after {int(timeout_sec)}s") from exc
+        try:
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                future = pool.submit(_call)
+                try:
+                    result = _llm_result(future.result(timeout=timeout_sec), prompt=prompt)
+                except FuturesTimeout as exc:
+                    future.cancel()
+                    raise DesignError(f"Model timed out after {int(timeout_sec)}s") from exc
 
-        text, reasoning, usage, estimated = result
-        if not _looks_like_vision_error(text):
-            return result
-        logger.warning(
-            "vision call returned error-like response (model=%s) — falling back to text-only",
-            model_id,
-        )
+            text, reasoning, usage, estimated = result
+            if not _looks_like_vision_error(text):
+                return result
+            logger.warning(
+                "vision call returned error-like response (model=%s) — falling back to local analysis",
+                model_id,
+            )
+        except DesignError:
+            raise
+        except Exception as exc:
+            if not looks_like_vision_api_error(exc):
+                raise
+            logger.warning(
+                "vision API error (model=%s) — falling back to local analysis: %s",
+                model_id,
+                exc,
+            )
 
     prefix = ""
-    if image_data_url and not vision_ok:
+    if image_data_url:
         if image_analysis_text:
             prefix = image_analysis_text + "\n\n"
         else:
@@ -1157,27 +1162,14 @@ def _llm_complete_vision(
                 from src.design.image_analysis import image_analysis_prompt_fragment
                 analysis = image_analysis_prompt_fragment(image_data_url)
                 prefix = (analysis + "\n\n") if analysis else (
-                    "A reference screenshot was attached; active model does not support vision. "
+                    "A reference screenshot was attached; the model could not process vision input. "
                     "Use the product brief to infer colors and layout.\n"
                 )
             except Exception:
                 prefix = (
-                    "A reference screenshot was attached but the active model may not support vision. "
+                    "A reference screenshot was attached but the model could not process it. "
                     "Infer a polished UI that matches the product brief alone.\n"
                 )
-    elif image_data_url and vision_ok:
-        try:
-            from src.design.image_analysis import image_analysis_prompt_fragment
-            analysis = image_analysis_prompt_fragment(image_data_url)
-            prefix = (analysis + "\n\n") if analysis else (
-                "A reference screenshot was attached but the model could not process it. "
-                "Use the product brief to infer colors and layout.\n"
-            )
-        except Exception:
-            prefix = (
-                "A reference screenshot was attached but the model could not process it. "
-                "Infer a polished UI that matches the product brief alone.\n"
-            )
     return _llm_complete(router, prefix + prompt, model_id=model_id, timeout_sec=timeout_sec)
 
 

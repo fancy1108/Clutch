@@ -355,6 +355,7 @@ function DesignCanvasInner({
   const userDraggedRef = useRef(false);
   const lastNodeFingerprintRef = useRef('');
   const drawingRef = useRef(false);
+  const drawingTimerRef = useRef<number | null>(null);
   const promptRef = useRef('');
   const designLogKeysRef = useRef<Set<string>>(new Set());
 
@@ -380,6 +381,27 @@ function DesignCanvasInner({
     if (toastTimerRef.current != null) window.clearTimeout(toastTimerRef.current);
     setToastMessage(msg);
     toastTimerRef.current = window.setTimeout(() => setToastMessage(null), durationMs);
+  }, []);
+
+  const clearDrawingOverlay = useCallback(() => {
+    if (drawingTimerRef.current != null) {
+      window.clearTimeout(drawingTimerRef.current);
+      drawingTimerRef.current = null;
+    }
+    setDrawing(false);
+  }, []);
+
+  /** Brief reveal overlay, then clear — cancels any prior timer. */
+  const pulseDrawingReveal = useCallback((ms = 1450) => {
+    if (drawingTimerRef.current != null) {
+      window.clearTimeout(drawingTimerRef.current);
+      drawingTimerRef.current = null;
+    }
+    setDrawing(true);
+    drawingTimerRef.current = window.setTimeout(() => {
+      setDrawing(false);
+      drawingTimerRef.current = null;
+    }, ms);
   }, []);
 
   const stopPoll = useCallback(() => {
@@ -579,6 +601,16 @@ function DesignCanvasInner({
       }
       const rounds = parseDesignRounds(next.process_log, next.rounds, next.round_history);
       const latestRoundIndex = rounds[rounds.length - 1]?.index ?? 0;
+      // Async iterate pins the prior round so the canvas does not jump mid-flight.
+      // When the run finishes, unpin so we land on the new HTML (and clear the overlay).
+      const finishingFlight =
+        (next.status === 'ready' ||
+          next.status === 'error' ||
+          next.status === AWAITING_SPEC) &&
+        (Boolean(iteratePendingRef.current) || drawingRef.current);
+      if (finishingFlight && next.status === 'ready') {
+        roundPinnedRef.current = false;
+      }
       const effectiveRoundIndex =
         !roundPinnedRef.current || !rounds.some((r) => r.index === selectedRoundRef.current)
           ? latestRoundIndex
@@ -635,8 +667,21 @@ function DesignCanvasInner({
       if (hasHtml && !hadScreenRef.current) {
         hadScreenRef.current = true;
         nextDrawing = true;
-        setDrawing(true);
-        window.setTimeout(() => setDrawing(false), 1450);
+        pulseDrawingReveal();
+      } else if (
+        (next.status === 'ready' || next.status === 'error' || next.status === AWAITING_SPEC) &&
+        (drawingRef.current || iteratePendingRef.current)
+      ) {
+        // Async iterate/generate poll finished — clear stuck Generating overlay.
+        setIteratePending(null);
+        iteratePendingRef.current = null;
+        if (next.status === 'ready' && hasHtml) {
+          nextDrawing = true;
+          pulseDrawingReveal();
+        } else {
+          nextDrawing = false;
+          clearDrawingOverlay();
+        }
       }
       // Sidebar spinner must track real UI hydrate, not just status=ready.
       if (next.status === 'error') {
@@ -661,7 +706,7 @@ function DesignCanvasInner({
         referenceUrl: next.reference_url,
       });
     },
-    [syncNodesFromSession, setNodes, setEdges, syncDesignTerminalLogs],
+    [syncNodesFromSession, setNodes, setEdges, syncDesignTerminalLogs, pulseDrawingReveal, clearDrawingOverlay],
   );
 
   const enrichSessionHtml = useCallback(async (next: DesignSession): Promise<DesignSession> => {
@@ -773,8 +818,10 @@ function DesignCanvasInner({
     setEdges([]);
     setBusy(false);
     setError(null);
-    setDrawing(false);
+    clearDrawingOverlay();
     setIterateText('');
+    setIteratePending(null);
+    iteratePendingRef.current = null;
     setShowPreviewDemo(false);
     setSelectedRoundIndex(0);
     setRoundHtmlByScreen({});
@@ -1076,14 +1123,14 @@ function DesignCanvasInner({
     if (next) {
       setIterateText('');
       setPickMode(false);
-      setIteratePending(null);
-      iteratePendingRef.current = null;
       applySession(next);
-      // D40: iterate is async — poll until ready (same model as generate)
+      // D40: iterate is async — poll until ready; keep drawing/pending until applySession clears them.
       if (IN_FLIGHT.has(next.status)) {
         setBusy(true);
         startPoll();
       } else {
+        setIteratePending(null);
+        iteratePendingRef.current = null;
         const focusScreen =
           next.last_iterate_screen_id ||
           targetId ||
@@ -1095,8 +1142,7 @@ function DesignCanvasInner({
           selectedRoundRef.current = latestRoundIndex;
           roundPinnedRef.current = false;
         }
-        setDrawing(true);
-        window.setTimeout(() => setDrawing(false), 1450);
+        pulseDrawingReveal();
         setBusy(false);
         userDraggedRef.current = false;
         const focusId = focusScreen ? `ui-${focusScreen}` : 'spec';
@@ -1112,7 +1158,7 @@ function DesignCanvasInner({
     } else {
       setIteratePending(null);
       iteratePendingRef.current = null;
-      setDrawing(false);
+      clearDrawingOverlay();
       setBusy(false);
       setFocusNodeIds(undefined);
     }
