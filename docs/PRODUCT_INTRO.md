@@ -14,7 +14,7 @@
 - **通用多 Agent 画布编排 (Generic Multi-Agent Orchestration)**：用户通过可视化拖拽连线定义工作流，支持在各节点灵活指定不同的 Agent 角色与任务说明，运行时由编排引擎自动编译为 LangGraph 状态机并处理输入输出接力。
 - **本地工具生态打通 (Local AI Tool Integration)**：自动扫描 macOS / Windows 本地环境并接入 Claude Code、MiMo Code、ZCode、Codex、Aider、Ollama 等 CLI，打破云端与本地的边界。
 - **全流程透明监督 (Console Observability)**：打破 AI 执行的“黑盒”，在统一的控制台界面中展示多角色 Chat 流、流式子进程终端日志、Git 代码变更与 Diff、Flow 进度图以及工作区文件树。
-- **人机协同门控 (Human-in-the-Loop)**：在关键检查失败或敏感操作节点，图会自动挂起，由人类进行 Approve（批准强制通过）、Reject（打回）或 Retry（带补充指令重试）。
+- **人机协同门控 (Human-in-the-Loop)**：在关键检查失败或敏感操作节点，图会自动挂起；Chat 输入框上方以**紧凑操作条**提供 Allow（允许）、Reject（拒绝）或带说明的 Retry（重试），不再使用大块 HITL 面板。
 - **本地优先 (Local First)**：应用完全运行于本地；API Key 保存在 macOS **Keychain** 或 Windows **凭据管理器**（模型元数据在 `models.json`），不经 Clutch 自有云端上传。
 
 **首次体验**：安装后首次启动会进入全屏设置向导（工作区授权 → 云模型或本地 CLI 二选一 → Flow 入口引导 → 权限说明），完成后写入 `onboarding_completed` 偏好，重启不再出现；Settings 仍可手动调整各项配置。**分步说明见 [`docs/GETTING_STARTED.md`](./GETTING_STARTED.md)。**
@@ -117,14 +117,15 @@ graph TD
 ### 3.3 Human-in-the-Loop Dialog (人机门控审批浮窗)
 
 * **High-Risk Tool Interception**：Sidecar 的 `mcp_risk.py` 智能扫描 Agent 的工具调用参数。一旦涉及写入或删除等高风险磁盘操作（如 `apply_patch` 覆盖或删除代码），自动拦截并挂起图状态为 `human_required`。
-* **Gate Control Panel**：前端弹窗展示挂起的详情，支持用户 Approve 批准写入、Reject 拒绝步骤，或 Retry 填入反馈提示词重试。
+* **Gate Control Panel**：挂起时在 Chat 输入区上方提供紧凑 **Allow / Reject**，以及可选「附加说明 → Retry」；不再占用大块 Human-In-The-Loop 卡片。
 
 ---
 
 ### 3.4 Settings Dashboard (设置与配置中心)
 
 * **General Settings**：支持用户修改个人名称并应用在发送气泡标签中；支持上传自定义头像并转换为 base64 存盘；支持小/默认/大/特大/超级大字体大小偏好并持久化（`data-font-size`）；支持中英文双语对照切换，后端 API / WS 错误采用 `tr()` 响应；利用 Tauri `getVersion` 插件动态显示真实桌面客户端版本号。
-* **Agent Settings**：提供可视化 Agent 管理器（`AgentManager.tsx`），支持自由增删改自定义 Agent，配置其名称、头像、System Prompt、模型及关联 MCP 工具。**Skills / MCP 模块按 Agent 类型分档**：仅 **Clutch** 内置 Agent 可绑定 Clutch Skills Registry 与 MCP Hub；**Claude Code** / **OpenCode** / **MiMo Code** CLI Agent 展示各自原生配置只读扫描与 Settings 深链；其他 CLI 类型显示「即将上线」，避免误用全局 Registry。
+* **Agent Settings**：提供可视化 Agent 管理器（`AgentManager.tsx`），支持自由增删改自定义 Agent，配置其名称、头像、System Prompt、模型及关联 MCP 工具。**Skills / MCP 模块按 Agent 类型分档**：仅 **Clutch** 内置 Agent 可绑定 Clutch Skills Registry 与 MCP Hub（Module 4 可勾选 Hub 服务器并持久化 `mcpServerIds`）；**Claude Code** / **OpenCode** / **MiMo Code** CLI Agent 展示各自原生配置只读扫描与 Settings 深链；其他 CLI 类型显示「即将上线」，避免误用全局 Registry。
+* **Clutch Agent 内置手脚（capability D1 / DECISIONS D44）**：授权工作区后，Chat 选择 **Clutch Agent** 默认挂载虚拟 MCP **`clutch-tools`**（无需先绑 Hub）：`read_file` / `list_dir` / `grep` / `search_replace` / `run_terminal_cmd` / `apply_patch`。写文件与 shell 仍走既有风险审批（`permission_mode`）。额外 Hub 服务器（如 `local-fs`）可在 Agent Manager Module 4 绑定叠加。运行中与结束后，Chat 气泡展示可折叠 **工具轨迹**（capability **D46**，对标 Grok verb_group：如 `Read 2 files, Searched 1 pattern`；展开可见逐步；审批等待时标 awaiting）——不必切 Terminal；步骤随该条回复持久化，刷新仍可回看。
 * **Workflow Settings**：管理和选择可用的流程图 SOP 模板，支持一键在 Chat 中启用。内置模板含 `weather-to-vision`、`video-production`、**Design to Code**（`design-to-code`，Design 批准后交给 Builder）与社区贡献的 **Memory-Augmented Pipeline (Epicode)**（`epicode-memory-pipeline.json`；需自行配置 Epicode MCP，见 [`docs/mcp-servers/epicode.md`](./mcp-servers/epicode.md)）。含 `check` / `human_gate` / 条件边的复杂流程会强制 **JSON 编辑模式**；提示条会点名导致降级的节点 id / 边 id（如 `review-gate (human_gate)`、`edge e5 when:reject`），不再只显示泛化的「复杂流程」。`check(file_exists)` 的 `path` 必须是**工作区相对路径**（如 `.clutch/staging/kp.json`）；主机绝对路径（如 `/tmp/...`）会被拒绝并在 Terminal 标明 FORBIDDEN，避免与 agent 写入位置错位时静默失败。
 * **Tool Settings**：对 20+ 主流 Agent CLI 白名单做本机探测——**已安装的一律展示**（含 Rivet、OpenCode、MiMo Code、CodeBuddy、Cursor Agent、ZCode 等扩展工具）；**未安装时默认仅推荐经 Clutch 验证的 CLI**（`codebuddy`、`cursor-agent`、`mimo`、`opencode`、`claude`、`ollama`、`codex`、`agy`、`zcode`）及安装指引。CodeBuddy 内置 headless 路由（`codebuddy -p`，curated `--dangerously-skip-permissions`）；OpenCode 内置 headless 路由（`run --auto`）；MiMo Code 内置 headless 路由（`mimo run --dangerously-skip-permissions`）；ZCode 内置 headless 路由（`zcode -p --mode yolo --json`），Auto Config 错误参数不会覆盖 curated 配置。支持 Connect 偏好与 **Auto Config**（LLM 分析 `--help` 写入 `custom_clis.json` 路由参数）。
 * **Model Provider Settings**（**Models by Agent** 顶栏 Tab：**Clutch Agent** · **Claude Code** · **OpenCode** · **MiMo Code**）：**Clutch** Tab 配置内置 Agent 所用云端/本地模型 API Keys（支持无感导入 `.cc-switch` 凭证至 Clutch 侧）。内置文本提供商含 **DeepSeek**、**Anthropic**、**OpenAI**、**Google**、**Ollama**、**Agnes** 与 **OpenCode Zen**（[opencode.ai](https://opencode.ai/auth) Zen 工作区 API Key；端点 `https://opencode.ai/zen/v1`）。**Claude Code** / **OpenCode** / **MiMo Code** Tab 只读扫描各 CLI 原生 model 配置；Claude Code 在已安装 `cc-switch` CLI 时可切换 provider。**OpenCode Zen**（供 Clutch 内置 Agent，非 OpenCode CLI）仍在 Clutch Tab 配置。内置 **Agnes 2.0 Flash**（对话）、**Agnes Image 2.1 Flash**（生图）与 **Agnes Video V2.0**（文生视频）；**Ollama 条目与 Create Agent 下拉同源**——实时读取本机 `ollama list` 已安装 tag。

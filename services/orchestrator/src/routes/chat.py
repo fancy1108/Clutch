@@ -143,6 +143,26 @@ async def get_run_history(
     mode: str | None = None,
 ) -> dict[str, list[dict[str, Any]]]:
     runs = list_runs(workspace_id=workspace_id, mode=mode)
+    # Heal stale coding "running" badges when the live run state is already idle/failed.
+    try:
+        from src.run_state_store import load_run_state
+
+        for record in runs:
+            if str(record.get("mode") or "coding").strip().lower() == "design":
+                continue
+            if str(record.get("status") or "").strip().lower() != "running":
+                continue
+            run_id = str(record.get("run_id") or "").strip()
+            if not run_id:
+                continue
+            state = load_run_state(run_id)
+            if not state:
+                continue
+            live = str(state.get("status") or "").strip().lower()
+            if live in {"idle", "passed", "failed", "completed"}:
+                record["status"] = "failed" if live == "failed" else "idle"
+    except Exception:
+        pass
     if (mode or "").strip().lower() == "design":
         try:
             from src.design import service as design_service

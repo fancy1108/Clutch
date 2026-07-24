@@ -183,6 +183,10 @@ def parse_patch(patch: str) -> list[Hunk]:
         if mode == "add" and current and line.startswith("+"):
             current.contents += line[1:] + "\n"
             continue
+        # LLMs often omit the leading '+' on Add File body lines; accept bare content.
+        if mode == "add" and current and trimmed and not trimmed.startswith("***"):
+            current.contents += line + "\n"
+            continue
         if mode == "update" and current:
             if trimmed == EOF_MARKER:
                 if chunk:

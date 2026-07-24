@@ -35,6 +35,25 @@
 | **MVP 闭环** | — | M3 | ✅ | proposal §10.1；T-03 |
 | **Design 模式（D36）** | P1 | Design | ❌ | 见下 §Design 模式 |
 
+## Chat Clutch Agent 能力（DECISIONS D44 · 默认 FAIL）
+
+> 权威任务表：[`specs/core/clutch-agent-capability-plan.md`](../specs/core/clutch-agent-capability-plan.md)（交付期 D0–D53）。未 PM 验收不得标 ✅。  
+> 编号：下表 Dn = 交付期，**不是** DECISIONS Dx。
+
+| 交付期 | 优先级 | 状态 | 说明 |
+|--------|--------|------|------|
+| D0 决策落库 | P0 | ✅ | specs + DECISIONS D44 + 本表 + FILEMAP |
+| D1 Agent 真会干活 | P0 | ✅ | clutch-tools builtins + 默认挂载；PM 2026-07-24 点验通过 |
+| D2–D13 / D14 / D15–D36 | — | ❌ | 见权威表全文 |
+| D37 MCP Agent↔Hub 绑定 | P0 | ✅ | Module 4 Hub 勾选 + `mcpServerIds`；PM 2026-07-24 点验通过 |
+| D38–D45 MCP 专项其余 | P1 | ❌ | 见权威表 |
+| D46 对话实时步骤条 | P0 | ✅ | 持久 verb_group + seal `toolSteps`；PM 2026-07-24 点验通过 |
+| D47–D52 Chat 监督 UX 其余 | P0–P1 | ❌ | 见权威表 |
+| D53 分层 prompt + 渐进披露 | P0 | ❌ | 宜在 D7/D2 深化前；system/env/rules/skills/mode 拆层 |
+
+**首期目标：** D1 + D37 + D46 ✅（PM 2026-07-24）。  
+**下一批（防返工顺序）：** **D53**（提示词组装骨架）→ D47（补 D1 芯片）→ D2∥D49 → …
+
 ## Design 模式（D36 · 默认 FAIL）
 
 > Header Coding/Design + 工作区 Design 会话 + 原型交互画布；未实际验证不得标 ✅。

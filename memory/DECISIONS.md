@@ -566,3 +566,15 @@
   3. **防污染**：默认 Application Support 存储拒绝 ephemeral/`tmp*` 授权（`CLUTCH_STORAGE_DIR` / `CLUTCH_E2E_SANDBOX` / `CLUTCH_ALLOW_TEMP_WORKSPACE=1` 可放行）；`run-e2e.sh` 桌面段传入 `CLUTCH_STORAGE_DIR`。
 - **影响**：`workspace.py`、`run_history.remap_workspace_ids`、`scripts/run-e2e.sh`、`test_workspaces_api.py`。
 - **决策状态**：`已落地`
+
+### D44 · Chat Clutch Agent 能力补齐（适配 Grok · 不嵌 Rust）（2026-07-24）
+
+- **背景**：Chat 模式自研 Clutch Agent（`agentType: clutch`）默认接近纯 LLM；手脚、Plan/Todo、自检、生命周期、MCP 绑定 UI、对话内「正在干嘛」等相对 Grok Build / 同类 Agent 缺口大。编排（SOP/LangGraph）在 Agent 之上，本决策只定 **Agent 本体**。
+- **方案**：
+  1. **适配不嵌入**：对齐 Grok 行为与工具语义，实现落在 Python `clutch-tools` + `mcp_react` + WS `ClutchState`；禁止 submodule/链入 `grok-build` Rust。
+  2. **权威任务表**：[`specs/core/clutch-agent-capability-plan.md`](../specs/core/clutch-agent-capability-plan.md) 交付期 **D0–D53**（主线 D1–D13、扩展 D15–D36、MCP D37–D45、Chat UX D46–D52、**Prompt 分层 D53**；旁路 D14=可选 grok CLI）。本文交付期编号 **≠** DECISIONS Dx。
+  3. **验收铁律**：每期须 PM 在 Chat 可见；缺对应前端交互不得标完成；用户可见行为同步 `PRODUCT_INTRO`。
+  4. **首期**：交付表 D1（手脚）+ D37（MCP 绑定 UI）+ D46（实时步骤条）。
+  5. **提示词（2026-07-24 补）**：**D53** — 运行时分层组装 + **渐进式披露**（system 底座 / env / 项目规则 / skills 目录按需全文 / mode reminder）；禁止把 `markdownDoc` 或整份 AGENTS.md 当作唯一 system。D7=发现内容，D53=组装架构。
+- **影响**：`builtin_tools` / `agent_mcp` / `chat_runner` / `mcp_react` / `agent_prompt` / AgentManager MCP UI / ChatFeed 活动条；`ROADMAP` §Chat Clutch Agent。
+- **决策状态**：`可执行`

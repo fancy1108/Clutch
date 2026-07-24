@@ -855,6 +855,7 @@ def _chat_message(
     runtime_engine: str | None = None,
     raw_output: str | None = None,
     output_events: list[dict[str, Any]] | None = None,
+    tool_steps: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "id": msg_id or f"msg_{uuid.uuid4().hex[:8]}",
@@ -871,7 +872,24 @@ def _chat_message(
         payload["rawOutput"] = raw_output
     if output_events is not None:
         payload["outputEvents"] = output_events
+    if tool_steps is not None:
+        payload["toolSteps"] = tool_steps
     return payload
+
+
+def _sealed_tool_steps(
+    state: ClutchState,
+    *,
+    sink: list[dict[str, Any]] | None = None,
+) -> list[dict[str, Any]] | None:
+    from src.tool_steps import complete_running_steps, upsert_tool_step
+
+    steps = list(state.get("pending_tool_steps") or [])
+    for item in sink or []:
+        steps = upsert_tool_step(steps, item)
+    sealed = complete_running_steps(steps)
+    return sealed or None
+
 
 def _hybrid_execution_entry(
     *,
@@ -1188,6 +1206,8 @@ async def _llm_chat_reply(
     session_model_id: str | None = None,
     cli_session_id: str | None = None,
     emit_log: Callable[[str], Awaitable[None]] | None = None,
+    emit_tool_step: Callable[[dict[str, Any]], Awaitable[None]] | None = None,
+    tool_steps_sink: list[dict[str, Any]] | None = None,
     mcp_approved_tool: dict[str, Any] | None = None,
     mcp_resume: dict[str, Any] | None = None,
     isolate_cli_history: bool = False,
@@ -1411,10 +1431,17 @@ async def _llm_chat_reply(
                     else list(history)
                 )
                 loop = asyncio.get_running_loop()
+                step_futures: list[Any] = []
 
                 def on_log(line: str) -> None:
                     if emit_log:
                         asyncio.run_coroutine_threadsafe(emit_log(line), loop)
+
+                def on_tool_step(step: dict[str, Any]) -> None:
+                    if emit_tool_step:
+                        step_futures.append(
+                            asyncio.run_coroutine_threadsafe(emit_tool_step(step), loop)
+                        )
 
                 outcome = await asyncio.to_thread(
                     run_mcp_react_loop,
@@ -1422,6 +1449,7 @@ async def _llm_chat_reply(
                     servers=mcp_servers,
                     log_prefix="CHAT",
                     on_log=on_log if emit_log else None,
+                    on_tool_step=on_tool_step if emit_tool_step else None,
                     pause_on_risky=True,
                     permission_mode=__import__(
                         "src.preferences_storage", fromlist=["load_permission_mode"]
@@ -1430,6 +1458,11 @@ async def _llm_chat_reply(
                     approved_keys=get_approved_mcp_keys(state["run_id"]),
                     model_id=resolved_model_id,
                 )
+                for fut in step_futures:
+                    await asyncio.wrap_future(fut)
+                if tool_steps_sink is not None:
+                    tool_steps_sink.clear()
+                    tool_steps_sink.extend(list(outcome.tool_steps or []))
                 if outcome.approval_required:
                     pause_payload = {
                         **outcome.approval_required,
@@ -1437,6 +1470,7 @@ async def _llm_chat_reply(
                         "agent_id": resolved_id,
                         "reply_label": reply_label,
                         "engine_label": outcome.engine_label,
+                        "tool_steps": list(outcome.tool_steps or []),
                     }
                     return (
                         reply_label,
@@ -1465,10 +1499,11 @@ async def _llm_chat_reply(
 
             llm_only_logs = [
                 tr(
-                    "[CHAT] No MCP servers bound on this agent — using LLM text only. "
-                    "Bind Local Filesystem MCP Server in Agent Manager → Module 4 to enable file tools and approval gates.",
-                    "[CHAT] 此 Agent 未绑定 MCP 服务器，仅使用 LLM 文本回复。"
-                    "请在 Agent Manager → Module 4 绑定 Local Filesystem MCP Server 以启用文件工具与审批门。",
+                    "[CHAT] No tools available for this agent — using LLM text only. "
+                    "Clutch Agent needs an authorized workspace for builtin tools; "
+                    "other agents need MCP Hub bindings or a CLI engine.",
+                    "[CHAT] 此 Agent 无可用工具，仅使用 LLM 文本回复。"
+                    "Clutch Agent 需要已授权工作区以启用内置工具；其他 Agent 需绑定 MCP 或使用 CLI 引擎。",
                 )
             ]
             system_prompt = _compose_agent_system_prompt(
@@ -1624,9 +1659,11 @@ async def _handle_plain_chat_mcp_decision(
             "terminal_logs": list(state["terminal_logs"]) + [stamp_log_line(log_line)],
             "status": "idle",
             "active_agent": pending.reply_label,
+            "pending_tool_steps": [],
         }
         state = _merge_patch(state, final_patch)
         _commit_run_state(run_id, state)
+        _touch_session(run_id, status=state["status"])
         await _send_message_event(websocket, run_id, supervisor, "")
         await _send_log_event(websocket, run_id, log_line, node_id="")
         await _notify_run_state(websocket, run_id, state, final_patch)
@@ -1638,6 +1675,7 @@ async def _handle_plain_chat_mcp_decision(
     await _notify_run_state(websocket, run_id, state, {"status": "running"})
 
     streamed_logs = False
+    tool_steps_sink: list[dict[str, Any]] = []
 
     async def emit_log(line: str) -> None:
         nonlocal streamed_logs, state
@@ -1649,11 +1687,21 @@ async def _handle_plain_chat_mcp_decision(
         _commit_run_state(run_id, state)
         await _notify_run_state(websocket, run_id, state, {"terminal_logs": logs})
 
+    async def emit_tool_step(step: dict[str, Any]) -> None:
+        nonlocal state
+        from src.tool_steps import upsert_tool_step
+
+        steps = upsert_tool_step(list(state.get("pending_tool_steps") or []), step)
+        state = _merge_patch(state, {"pending_tool_steps": steps})
+        _commit_run_state(run_id, state)
+        await _notify_run_state(websocket, run_id, state, {"pending_tool_steps": steps})
+
     approved_tool = {
         "tool_call_id": pending.tool_call_id,
         "func_name": pending.func_name,
         "func_args": pending.func_args,
         "step_idx": pending.step_idx,
+        "step_id": pending.step_id or f"tool_{pending.step_idx}",
     }
     mcp_resume = {
         "chat_messages": pending.chat_messages,
@@ -1676,6 +1724,8 @@ async def _handle_plain_chat_mcp_decision(
         "",
         agent_id=pending.agent_id,
         emit_log=emit_log,
+        emit_tool_step=emit_tool_step,
+        tool_steps_sink=tool_steps_sink,
         mcp_approved_tool=approved_tool,
         mcp_resume=mcp_resume,
     )
@@ -1695,6 +1745,7 @@ async def _handle_plain_chat_mcp_decision(
                 func_args=dict(mcp_pause.get("func_args") or {}),
                 step_idx=int(mcp_pause.get("step_idx", 0)),
                 logs=list(route_logs),
+                step_id=str(mcp_pause.get("step_id") or ""),
             ),
         )
         gate_line = f"[CHAT] Awaiting approval for MCP tool: {mcp_pause['func_name']}"
@@ -1710,9 +1761,11 @@ async def _handle_plain_chat_mcp_decision(
             ),
             "status": "awaiting_human",
             "active_agent": pending.reply_label,
+            "pending_tool_steps": list(mcp_pause.get("tool_steps") or tool_steps_sink),
         }
         state = _merge_patch(state, pause_patch)
         _commit_run_state(run_id, state)
+        _touch_session(run_id, status=state["status"])
         if pause_messages[-1] is supervisor:
             await _send_message_event(websocket, run_id, supervisor, "")
         if not streamed_logs:
@@ -1731,12 +1784,14 @@ async def _handle_plain_chat_mcp_decision(
         )
         return state
 
+    sealed_steps = _sealed_tool_steps(state, sink=tool_steps_sink)
     reply = _chat_message(
         model_name,
         reply_text,
         runtime_engine=runtime_engine,
         raw_output=raw_output,
         output_events=output_events,
+        tool_steps=sealed_steps,
     )
     log_line = f"[CHAT] {model_name} via {runtime_engine}: {len(reply_text)} chars"
     if not streamed_logs:
@@ -1753,6 +1808,7 @@ async def _handle_plain_chat_mcp_decision(
         "terminal_logs": final_logs,
         "status": "idle",
         "active_agent": pending.reply_label,
+        "pending_tool_steps": [],
         **_token_patch_turn(state, user_text="", assistant_text=reply_text),
     }
     if shell_recovered:
@@ -1764,6 +1820,7 @@ async def _handle_plain_chat_mcp_decision(
         final_patch.update(cli_session_patch(_cli_session_id, pending.agent_id))
     state = _merge_patch(state, final_patch)
     _commit_run_state(run_id, state)
+    _touch_session(run_id, status=state["status"])
     await _send_message_event(websocket, run_id, reply, "")
     if runtime_engine and "Hybrid" in runtime_engine:
         await _send_hybrid_execution_event(
@@ -2067,6 +2124,7 @@ async def _handle_plain_chat(
             "messages": messages,
             "status": "running",
             "active_agent": active_agent,
+            "pending_tool_steps": [],
         }
         if runtime_mode() == "hybrid":
             user_patch["shell_session_status"] = "ready"
@@ -2098,6 +2156,7 @@ async def _handle_plain_chat(
         stored_session_id = None
 
     streamed_logs = False
+    tool_steps_sink: list[dict[str, Any]] = []
 
     async def emit_log(line: str) -> None:
         nonlocal streamed_logs, state
@@ -2113,6 +2172,19 @@ async def _handle_plain_chat(
         )
         await _try_ws_notify(
             _notify_run_state(websocket, run_id, state, {"terminal_logs": logs}),
+            run_id=run_id,
+            what="state_patch",
+        )
+
+    async def emit_tool_step(step: dict[str, Any]) -> None:
+        nonlocal state
+        from src.tool_steps import upsert_tool_step
+
+        steps = upsert_tool_step(list(state.get("pending_tool_steps") or []), step)
+        state = _merge_patch(state, {"pending_tool_steps": steps})
+        _commit_run_state(run_id, state)
+        await _try_ws_notify(
+            _notify_run_state(websocket, run_id, state, {"pending_tool_steps": steps}),
             run_id=run_id,
             what="state_patch",
         )
@@ -2138,6 +2210,8 @@ async def _handle_plain_chat(
             session_model_id=session_model_id,
             cli_session_id=stored_session_id,
             emit_log=emit_log,
+            emit_tool_step=emit_tool_step,
+            tool_steps_sink=tool_steps_sink,
         )
     except HybridPlainChatRejected as exc:
         if exc.code == "pool_full":
@@ -2194,6 +2268,7 @@ async def _handle_plain_chat(
                 func_args=dict(mcp_pause.get("func_args") or {}),
                 step_idx=int(mcp_pause.get("step_idx", 0)),
                 logs=list(route_logs),
+                step_id=str(mcp_pause.get("step_id") or ""),
             ),
         )
         gate_line = f"[CHAT] Awaiting approval for MCP tool: {mcp_pause['func_name']}"
@@ -2210,9 +2285,11 @@ async def _handle_plain_chat(
             "terminal_logs": pause_logs,
             "status": "awaiting_human",
             "active_agent": active_agent,
+            "pending_tool_steps": list(mcp_pause.get("tool_steps") or tool_steps_sink),
         }
         state = _merge_patch(state, pause_patch)
         _commit_run_state(run_id, state)
+        _touch_session(run_id, status=state["status"])
         if pause_messages[-1] is supervisor:
             await _send_message_event(websocket, run_id, supervisor, "")
         if not streamed_logs:
@@ -2231,12 +2308,14 @@ async def _handle_plain_chat(
         )
         return state
 
+    sealed_steps = _sealed_tool_steps(state, sink=tool_steps_sink)
     reply = _chat_message(
         model_name,
         reply_text,
         runtime_engine=runtime_engine,
         raw_output=raw_output,
         output_events=output_events,
+        tool_steps=sealed_steps,
     )
 
     hybrid_system_prompt: str | None = None
@@ -2287,6 +2366,7 @@ async def _handle_plain_chat(
         "terminal_logs": final_logs,
         "status": "idle",
         "active_agent": active_agent,
+        "pending_tool_steps": [],
         **_token_patch_turn(state, user_text=text, assistant_text=reply_text),
     }
     if hybrid_executions_patch is not None:
@@ -2515,6 +2595,7 @@ async def _handle_flow_refine_message(
         "status": "refining",
         "refine_agent_id": resolved_id,
         "active_agent": active_agent,
+        "pending_tool_steps": [],
     }
     if runtime_mode() == "hybrid":
         user_patch["shell_session_status"] = "ready"
@@ -2545,6 +2626,7 @@ async def _handle_flow_refine_message(
         stored_session_id = None
 
     streamed_logs = False
+    tool_steps_sink: list[dict[str, Any]] = []
 
     async def emit_log(line: str) -> None:
         nonlocal streamed_logs, state
@@ -2555,6 +2637,15 @@ async def _handle_flow_refine_message(
         _commit_run_state(run_id, state)
         await _send_log_event(websocket, run_id, stamped, node_id=refining_node_id)
         await _notify_run_state(websocket, run_id, state, {"terminal_logs": logs})
+
+    async def emit_tool_step(step: dict[str, Any]) -> None:
+        nonlocal state
+        from src.tool_steps import upsert_tool_step
+
+        steps = upsert_tool_step(list(state.get("pending_tool_steps") or []), step)
+        state = _merge_patch(state, {"pending_tool_steps": steps})
+        _commit_run_state(run_id, state)
+        await _notify_run_state(websocket, run_id, state, {"pending_tool_steps": steps})
 
     from src.agent_type import is_clutch_agent, resolve_model_for_agent
     from src.image_router import is_image_model
@@ -2592,6 +2683,8 @@ async def _handle_flow_refine_message(
             agent_id=resolved_id,
             cli_session_id=stored_session_id,
             emit_log=emit_log,
+            emit_tool_step=emit_tool_step,
+            tool_steps_sink=tool_steps_sink,
             chat_source="flow_refine",
             system_prompt_suffix=refine_suffix,
         )
@@ -2619,6 +2712,7 @@ async def _handle_flow_refine_message(
                 func_args=dict(mcp_pause.get("func_args") or {}),
                 step_idx=int(mcp_pause.get("step_idx", 0)),
                 logs=list(route_logs),
+                step_id=str(mcp_pause.get("step_id") or ""),
             ),
         )
         gate_line = f"[CHAT] Awaiting approval for MCP tool: {mcp_pause['func_name']}"
@@ -2635,6 +2729,7 @@ async def _handle_flow_refine_message(
             "terminal_logs": pause_logs,
             "status": "awaiting_human",
             "active_agent": active_agent,
+            "pending_tool_steps": list(mcp_pause.get("tool_steps") or tool_steps_sink),
         }
         state = _merge_patch(state, pause_patch)
         _commit_run_state(run_id, state)
@@ -2647,11 +2742,13 @@ async def _handle_flow_refine_message(
         await _notify_run_state(websocket, run_id, state, pause_patch)
         return state
 
+    sealed_steps = _sealed_tool_steps(state, sink=tool_steps_sink)
     reply = _chat_message(
         model_name,
         reply_text,
         runtime_engine=runtime_engine,
         msg_id=f"agent_{uuid.uuid4().hex[:8]}",
+        tool_steps=sealed_steps,
     )
     final_messages = list(state["messages"]) + [reply]
     final_patch: dict[str, Any] = {
@@ -2659,6 +2756,7 @@ async def _handle_flow_refine_message(
         "refine_draft_output": reply_text,
         "active_agent": model_name,
         "status": "refining",
+        "pending_tool_steps": [],
         **cli_session_patch(cli_session_id, resolved_id),
         **_token_patch_turn(state, user_text=body or text, assistant_text=reply_text),
     }

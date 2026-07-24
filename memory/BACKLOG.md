@@ -59,8 +59,8 @@
 | B-24 | PreToolUse hooks | 候选 | B-21 后 |
 | B-25 | 计划工具 `update_plan` | 候选 | 人类确认 |
 | B-26 | Multi-agents spawn/wait | 候选 | B-08 或主控拍板 |
-| B-27 | MCP tool_search | 候选 | 工具数 >N |
-| B-28 | MCP resources | 候选 | 人类确认 |
+| B-27 | MCP tool_search | 候选 | → 交付表 D28；见 `specs/core/clutch-agent-capability-plan.md` |
+| B-28 | MCP resources | 候选 | → 交付表 D43；同上 |
 | B-29 | view_image 多模态 | 候选 | 模型就绪 |
 | B-30 | 内置 web_search | 候选 | 人类确认 |
 | B-31 | request_permissions 运行时扩权 | 候选 | B-21/B-22 后 |

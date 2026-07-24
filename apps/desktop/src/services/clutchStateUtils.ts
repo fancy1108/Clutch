@@ -48,6 +48,7 @@ export function mergeMessageFields(existing: ChatMessage, incoming: ChatMessage)
     ...incoming,
     rawOutput: incoming.rawOutput || existing.rawOutput,
     outputEvents: incomingEvents ?? existing.outputEvents,
+    toolSteps: incoming.toolSteps ?? existing.toolSteps,
   };
 }
 

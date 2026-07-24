@@ -10,7 +10,18 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ## [Unreleased]
 
-## [1.2.9] - 2026-07-24
+### Added
+
+- **Chat Clutch Agent capability roadmap (D44):** Authoritative delivery table D0–D53 in [`specs/core/clutch-agent-capability-plan.md`](specs/core/clutch-agent-capability-plan.md) (adds **D53** layered runtime prompt + progressive disclosure); ROADMAP section + FILEMAP/AGENTS index.
+- **Clutch Agent builtin tools (capability D1):** Default `clutch-tools` for Clutch Agent with an authorized workspace — `read_file`, `list_dir`, `grep`, `search_replace`, `run_terminal_cmd`, plus existing `apply_patch`. No Hub bind required for builtins.
+- **Agent Manager MCP Hub binding (capability D37):** Clutch Agent edit Module 4 restores Hub server checkboxes; save persists `mcpServerIds` (no longer wiped). Detail pane lists bound servers.
+- **Chat live tool activity (capability D46):** Clutch Agent / MCP ReAct tool trail uses a Grok-style **verb_group** fold (`Read 2 files, Searched 1 pattern`); expand for step titles/detail. Steps stream via `pending_tool_steps`, then **seal** onto the assistant message as `toolSteps` (survive refresh). Log parsing remains fallback only.
+- **Compact tool approval bar:** `awaiting_human` uses a slim Allow / Reject strip above the composer (optional note + Retry), replacing the large Human-In-The-Loop card.
+- **Sidebar session spinner:** MCP approve/complete now updates session history status; active Coding rows follow live `clutchStatus` so finished chats stop spinning.
+
+### Changed
+
+- Clutch Agent system prompt documents clutch-tools usage.
 
 Feature/patch release — **Coding image paste & click-to-preview**, Design handoff/Spec flow polish, workspace history stability.
 

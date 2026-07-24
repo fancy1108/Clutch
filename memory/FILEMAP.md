@@ -31,7 +31,7 @@
 | 想改什么 | 去哪里 |
 |---------|--------|
 | 铁律、命令、Check-in | `CLAUDE.md` |
-| **新增 Agent CLI 白名单（代码 + 文档同步）** | `.cursor/rules/cli-whitelist-docs.mdc` · 决策 `memory/DECISIONS.md` D19 |
+| **想增强 Chat 自研 Clutch Agent（手脚/Plan/MCP/对话 UX/分层 prompt）** | **`specs/core/clutch-agent-capability-plan.md`** · D44 · **D53** |
 | 产品介绍文档 | `docs/PRODUCT_INTRO.md` |
 | **新手入门（中英）** | `docs/GETTING_STARTED.md` · 仓库 `README.md` / `README.zh-CN.md` |
 | 文档总索引 | `docs/README.md` |
@@ -65,6 +65,7 @@
 | 前端 UI 规范（权威） | `docs/UI_UX_GUIDELINES.md` |
 | **macOS / Windows 平台 UI 边界** | `docs/PLATFORM_MAINTENANCE.md` · `apps/desktop/src/platform/chrome/` |
 | 开发任务清单（含 Verification） | `specs/core/tasks.md` |
+| **Chat Clutch Agent 能力表（D44）** | **`specs/core/clutch-agent-capability-plan.md`** · 决策 `memory/DECISIONS.md` D44 · ROADMAP §Chat Clutch Agent |
 | **D25 Hybrid Runtime Task（HRT）** | **`specs/core/hybrid-runtime-plan.md`** |
 | Flow 多 Agent 接力 Task（D23） | `specs/core/tasks.md` §M3-F · Flow 多 Agent 接力 |
 | Prototype → Task 全量映射 | `specs/core/tasks.md` §Prototype → Task 映射 |
@@ -134,6 +135,9 @@
 | 底部状态栏（Branch / Model / Agent） | `App.tsx` footer |
 | 工作区 Git 分支 API | `services/workspaceApi.ts` → `GET /api/workspace/git` |
 | Chat 流与人工干预 UI | `components/ChatFeed.tsx` |
+| Chat 工具步骤条解析（D46） | `services/agentActivitySteps.ts` |
+| Chat 工具轨迹 UI（D46 verb_group） | `components/AgentLiveActivity.tsx` |
+| Sidecar 结构化 tool steps（D46） | `services/orchestrator/src/tool_steps.py` |
 | Chat markdown（fence / 路径预览） | `components/chatContentRender.tsx` · `services/workspacePathLinks.ts` |
 | Coding 附件上传 / 路径 resolve API | `services/workspaceApi.ts` → `POST /api/workspace/attachments` · `GET /api/workspace/file/resolve`；后端 `workspace_attachments.py` |
 | Terminal Orchestra（Lane / OrchestratorBar / 路径 link） | `components/terminal-orchestra/`（`OrchestratorBar.tsx` 发图 chip；`terminalPathLinkProvider.ts` xterm 可点路径） |
@@ -191,6 +195,7 @@
 | HumanInputKind 载荷 | `src/human_input.py` |
 | agent_task 节点执行 | `src/agent_executor.py` |
 | Agent 持久化与内置 Agent | `src/agent_storage.py` |
+| Agent system prompt 组装（D53） | `src/agent_prompt.py` · `src/agent_skills.py` |
 | 运行日志 WS 转发 | `src/run_log_forwarder.py` |
 | 工作流状态投影 | `src/workflow_projection.py` |
 | 工作流运行中取消 | `src/workflow_cancel.py` |
@@ -198,7 +203,8 @@
 | MCP 工具风险判定 | `src/mcp_risk.py` |
 | MCP ReAct 执行 | `src/mcp_react.py` |
 | Codex 兼容 apply_patch（增删改移） | `src/apply_patch.py` |
-| 内置虚拟工具服务器 clutch-tools | `src/builtin_tools.py` |
+| 内置虚拟工具服务器 clutch-tools | `src/builtin_tools.py`（read/list/grep/search_replace/run_terminal_cmd/apply_patch） |
+| Chat Clutch Agent 能力表（D44） | `specs/core/clutch-agent-capability-plan.md` |
 | 凭证来源（CC Switch / 环境变量） | `src/credentials/sources.py` |
 | 工作区 Git 分支探测 | `src/workspace.py` → `get_git_info()` |
 | LLM Provider Router（M1-08，D4） | `src/llm/router.py` |

@@ -23,6 +23,7 @@ _AUTO_EDIT_APPROVED_TOOLS = frozenset({
     "apply_patch",
     "create_file",
     "patch_file",
+    "search_replace",
 })
 
 # Tools that are ALWAYS hard-blocked in plan mode
@@ -41,6 +42,7 @@ class McpRunOutcome:
     engine_label: str
     approval_required: dict[str, Any] | None = None
     files_changed: list[str] | None = None
+    tool_steps: list[dict[str, Any]] | None = None
 
 
 def _sanitize_tool_part(value: str) -> str:
@@ -79,6 +81,17 @@ def _record_file_change(
                 if rel and rel not in files_changed:
                     files_changed.append(rel)
             return
+    if tool_name == "search_replace":
+        try:
+            payload = json.loads(result_str)
+        except json.JSONDecodeError:
+            payload = None
+        if isinstance(payload, dict):
+            for raw in payload.get("changed_paths") or []:
+                rel = str(raw).strip()
+                if rel and rel not in files_changed:
+                    files_changed.append(rel)
+            return
     raw_path = extract_mcp_file_path(tool_name, func_args)
     if not raw_path:
         return
@@ -104,8 +117,23 @@ def _execute_tool_call(
     on_log: Callable[[str], None] | None,
     step_idx: int,
     files_changed: list[str] | None = None,
+    on_tool_step: Callable[[dict[str, Any]], None] | None = None,
+    step_id: str | None = None,
 ) -> str:
+    from src.tool_steps import make_tool_step
+
     route = tool_routes.get(func_name)
+    active_id = step_id or f"tool_{step_idx}"
+    if on_tool_step:
+        on_tool_step(
+            make_tool_step(
+                tool_alias=func_name,
+                func_args=func_args,
+                status="running",
+                step_idx=step_idx,
+                step_id=active_id,
+            )
+        )
     _emit(
         logs,
         on_log,
@@ -113,12 +141,32 @@ def _execute_tool_call(
         f"args={json.dumps(func_args, ensure_ascii=False)[:240]}",
     )
     if route is None:
+        if on_tool_step:
+            on_tool_step(
+                make_tool_step(
+                    tool_alias=func_name,
+                    func_args=func_args,
+                    status="failed",
+                    step_idx=step_idx,
+                    step_id=active_id,
+                )
+            )
         return f"Unknown tool alias: {func_name}"
     server_id, tool_name = route
     workaround = move_file_delete_workaround_message(tool_name, func_args)
     if workaround:
         result_str = f"Error executing tool: {workaround}"
         _emit(logs, on_log, f"[{log_prefix}] Blocked move_file delete workaround")
+        if on_tool_step:
+            on_tool_step(
+                make_tool_step(
+                    tool_alias=func_name,
+                    func_args=func_args,
+                    status="failed",
+                    step_idx=step_idx,
+                    step_id=active_id,
+                )
+            )
         return result_str
     if server_id in builtin_servers:
         from src.builtin_tools import execute_builtin_tool
@@ -133,12 +181,42 @@ def _execute_tool_call(
                     func_args=func_args,
                     result_str=result_str,
                 )
+            if on_tool_step:
+                on_tool_step(
+                    make_tool_step(
+                        tool_alias=func_name,
+                        func_args=func_args,
+                        status="completed",
+                        step_idx=step_idx,
+                        step_id=active_id,
+                    )
+                )
             return result_str
         except Exception as exc:
             _emit(logs, on_log, f"[{log_prefix}] Builtin tool error: {exc}")
+            if on_tool_step:
+                on_tool_step(
+                    make_tool_step(
+                        tool_alias=func_name,
+                        func_args=func_args,
+                        status="failed",
+                        step_idx=step_idx,
+                        step_id=active_id,
+                    )
+                )
             return f"Error executing tool: {exc}"
     client = clients.get(server_id)
     if client is None:
+        if on_tool_step:
+            on_tool_step(
+                make_tool_step(
+                    tool_alias=func_name,
+                    func_args=func_args,
+                    status="failed",
+                    step_idx=step_idx,
+                    step_id=active_id,
+                )
+            )
         return f"MCP server not connected: {server_id}"
     try:
         tool_res = client.call_tool(tool_name, func_args)
@@ -156,9 +234,29 @@ def _execute_tool_call(
                 func_args=func_args,
                 result_str=result_str,
             )
+        if on_tool_step:
+            on_tool_step(
+                make_tool_step(
+                    tool_alias=func_name,
+                    func_args=func_args,
+                    status="completed",
+                    step_idx=step_idx,
+                    step_id=active_id,
+                )
+            )
         return result_str
     except Exception as exc:
         _emit(logs, on_log, f"[{log_prefix}] Tool error: {exc}")
+        if on_tool_step:
+            on_tool_step(
+                make_tool_step(
+                    tool_alias=func_name,
+                    func_args=func_args,
+                    status="failed",
+                    step_idx=step_idx,
+                    step_id=active_id,
+                )
+            )
         return f"Error executing tool: {exc}"
 
 
@@ -199,6 +297,7 @@ def run_mcp_react_loop(
     log_prefix: str = "MCP",
     max_steps: int = 10,
     on_log: Callable[[str], None] | None = None,
+    on_tool_step: Callable[[dict[str, Any]], None] | None = None,
     pause_on_risky: bool = False,
     permission_mode: str = "ask",
     approved_tool: dict[str, Any] | None = None,
@@ -293,8 +392,16 @@ def run_mcp_react_loop(
     engine_label = f"{spec.name} · MCP ({len(openai_tools)} tools)"
     output = ""
     files_changed: list[str] = []
+    collected_steps: list[dict[str, Any]] = []
     session_approved = set(approved_keys or ())
     use_tools = bool(openai_tools)
+
+    def record_tool_step(step: dict[str, Any]) -> None:
+        from src.tool_steps import upsert_tool_step
+
+        collected_steps[:] = upsert_tool_step(collected_steps, step)
+        if on_tool_step:
+            on_tool_step(step)
 
     try:
         chat_messages = list(messages)
@@ -318,6 +425,8 @@ def run_mcp_react_loop(
                 on_log=on_log,
                 step_idx=start_step,
                 files_changed=files_changed,
+                on_tool_step=record_tool_step,
+                step_id=str(approved_tool.get("step_id") or f"tool_{start_step}"),
             )
             chat_messages.append(
                 {
@@ -397,6 +506,24 @@ def run_mcp_react_loop(
                                 # shell / delete / network → still pause for approval
                                 approval_key = mcp_approval_key(func_name, func_args)
                                 if approval_key not in (approved_keys or set()):
+                                    from src.tool_steps import make_tool_step
+
+                                    step_id = f"tool_{step_idx}"
+                                    record_tool_step(
+                                        make_tool_step(
+                                            tool_alias=func_name,
+                                            func_args=func_args,
+                                            status="awaiting",
+                                            step_idx=step_idx,
+                                            step_id=step_id,
+                                        )
+                                    )
+                                    _emit(
+                                        logs,
+                                        on_log,
+                                        f"[{log_prefix}] Step {step_idx + 1}: {func_name} "
+                                        f"args={json.dumps(func_args, ensure_ascii=False)[:240]}",
+                                    )
                                     _emit(
                                         logs,
                                         on_log,
@@ -412,8 +539,10 @@ def run_mcp_react_loop(
                                             "func_name": func_name,
                                             "func_args": func_args,
                                             "step_idx": step_idx,
+                                            "step_id": step_id,
                                         },
                                         files_changed=files_changed or None,
+                                        tool_steps=list(collected_steps) or None,
                                     )
 
                         # full mode: skip approval gates entirely
@@ -427,6 +556,25 @@ def run_mcp_react_loop(
                                     f"[{log_prefix}] Auto-approved duplicate risky tool: {func_name}",
                                 )
                             else:
+                                # Emit Step before pause so Chat D46 timeline shows the pending tool
+                                from src.tool_steps import make_tool_step
+
+                                step_id = f"tool_{step_idx}"
+                                record_tool_step(
+                                    make_tool_step(
+                                        tool_alias=func_name,
+                                        func_args=func_args,
+                                        status="awaiting",
+                                        step_idx=step_idx,
+                                        step_id=step_id,
+                                    )
+                                )
+                                _emit(
+                                    logs,
+                                    on_log,
+                                    f"[{log_prefix}] Step {step_idx + 1}: {func_name} "
+                                    f"args={json.dumps(func_args, ensure_ascii=False)[:240]}",
+                                )
                                 _emit(
                                     logs,
                                     on_log,
@@ -442,8 +590,10 @@ def run_mcp_react_loop(
                                         "func_name": func_name,
                                         "func_args": func_args,
                                         "step_idx": step_idx,
+                                        "step_id": step_id,
                                     },
                                     files_changed=files_changed or None,
+                                    tool_steps=list(collected_steps) or None,
                                 )
 
                     result_str = _execute_tool_call(
@@ -457,6 +607,8 @@ def run_mcp_react_loop(
                         on_log=on_log,
                         step_idx=step_idx,
                         files_changed=files_changed,
+                        on_tool_step=record_tool_step,
+                        step_id=f"tool_{step_idx}",
                     )
                     chat_messages.append(
                         {
@@ -492,4 +644,5 @@ def run_mcp_react_loop(
         engine_label=engine_label,
         approval_required=None,
         files_changed=files_changed or None,
+        tool_steps=list(collected_steps) or None,
     )

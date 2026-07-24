@@ -690,6 +690,27 @@ function MainLayout() {
     void refreshSessions(appMode);
   }, [clutchState.run_id, clutchState.status, appMode, refreshSessions]);
 
+  // Keep sidebar spinner in sync with live run status (MCP approve path used to leave history at "running").
+  useEffect(() => {
+    const runId = clutchState.run_id;
+    if (!runId) return;
+    const mapped =
+      clutchStatus === 'running' ||
+      clutchStatus === 'awaiting_human' ||
+      clutchStatus === 'refining'
+        ? 'running'
+        : clutchStatus === 'failed'
+          ? 'failed'
+          : 'idle';
+    setSessions((prev) => {
+      const index = prev.findIndex((session) => session.run_id === runId);
+      if (index < 0 || prev[index].status === mapped) return prev;
+      const next = [...prev];
+      next[index] = { ...next[index], status: mapped };
+      return next;
+    });
+  }, [clutchState.run_id, clutchStatus]);
+
   // Active Tab inside the right side panel (Overview, Files, Flow, Changes, Terminal)
   const [rightTab, setRightTab] = useState<RightTab>('overview');
 

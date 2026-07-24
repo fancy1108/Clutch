@@ -17,6 +17,7 @@ class McpPendingApproval:
     func_args: dict[str, Any]
     step_idx: int
     logs: list[str] = field(default_factory=list)
+    step_id: str = ""
 
 
 _pending: dict[str, McpPendingApproval] = {}

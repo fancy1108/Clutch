@@ -21,6 +21,8 @@ _RISKY_TOKENS = (
     "move",
     "rename",
     "apply_patch",
+    "replace",
+    "terminal",
 )
 
 
@@ -41,7 +43,10 @@ def extract_mcp_file_path(tool_name: str, func_args: dict[str, Any]) -> str | No
         patch = str(func_args.get("patch", "")).strip()
         paths = extract_patch_paths(patch) if patch else []
         return paths[0] if paths else None
-    if not any(token in key for token in ("write", "edit", "create", "move", "rename", "delete")):
+    if not any(
+        token in key
+        for token in ("write", "edit", "create", "move", "rename", "delete", "replace")
+    ):
         return None
     for field in _PATH_ARG_KEYS:
         raw = func_args.get(field)

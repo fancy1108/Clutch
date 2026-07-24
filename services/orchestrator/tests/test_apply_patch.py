@@ -103,7 +103,25 @@ def test_apply_patch_add_update_delete(tmp_path: Path, monkeypatch) -> None:
     assert (tmp_path / "fresh.txt").read_text(encoding="utf-8") == "created\n"
 
 
-def test_apply_patch_delete_missing_file_is_ok(tmp_path: Path, monkeypatch) -> None:
+def test_apply_patch_add_file_accepts_bare_content_lines(tmp_path: Path, monkeypatch) -> None:
+    """Models often omit '+' on Add File bodies (D46 smoke regression)."""
+    monkeypatch.setenv("CLUTCH_WORKSPACES_FILE", str(tmp_path / "ws.json"))
+    from src import workspace as workspace_mod
+
+    workspace_mod._loaded = False
+    workspace_mod._workspaces = {}
+    workspace_mod._active_id = None
+    workspace_mod.add_workspace(str(tmp_path))
+
+    patch = (
+        "*** Begin Patch\n"
+        "*** Add File: d46-smoke.txt\n"
+        "hello d46\n"
+        "*** End Patch"
+    )
+    result = apply_patch_in_workspace(patch)
+    assert result.ok
+    assert (tmp_path / "d46-smoke.txt").read_text(encoding="utf-8") == "hello d46\n"
     monkeypatch.setenv("CLUTCH_WORKSPACES_FILE", str(tmp_path / "ws.json"))
     from src import workspace as workspace_mod
 

@@ -418,7 +418,8 @@ export function AgentManager({
     const resolvedModelId = resolvedAgentType === 'clutch' && modelId.trim() ? modelId.trim() : undefined;
     const tier = getAgentCapabilityTier(resolvedAgentType);
     const resolvedSkills: string[] = [];
-    const resolvedMcpServerIds: string[] = [];
+    const resolvedMcpServerIds =
+      tier === 'full' ? [...selectedMcpServerIds] : [];
 
     if (modalMode === 'create') {
       const newAgent: Agent = {
@@ -673,7 +674,29 @@ export function AgentManager({
               <div>
                 <h3 className="text-[11px] font-bold text-neutral-400 font-mono uppercase tracking-wider mb-2">{t('MCP Hub Servers')}</h3>
                 {getAgentCapabilityTier(agentTypeFromAgent(selectedAgent)) === 'full' ? (
-                  <UnderDevelopmentNotice variant="compact" />
+                  <div className="space-y-1.5">
+                    <p className="text-[10px] text-neutral-500 font-mono">
+                      clutch-tools (builtin read/edit/shell) — always on with workspace
+                    </p>
+                    {(selectedAgent.mcpServerIds || []).length === 0 ? (
+                      <p className="text-[10.5px] text-neutral-400 italic">{t('No MCP Hub servers bound.')}</p>
+                    ) : (
+                      (selectedAgent.mcpServerIds || []).map((id) => {
+                        const server = mcpServers.find((s) => s.id === id);
+                        return (
+                          <div
+                            key={id}
+                            className="flex items-center justify-between px-2.5 py-1.5 rounded-lg border border-neutral-200 bg-neutral-50/50"
+                          >
+                            <span className="text-[11px] font-bold text-neutral-800 truncate">
+                              {server?.name || id}
+                            </span>
+                            <span className="text-[9px] font-mono text-neutral-400">{id}</span>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
                 ) : (
                   <AgentNativeCapabilityHint agentType={agentTypeFromAgent(selectedAgent)} kind="mcp" />
                 )}
@@ -1089,7 +1112,50 @@ export function AgentManager({
                 </div>
 
                 {capabilityTier === 'full' ? (
-                  <UnderDevelopmentNotice variant="compact" />
+                  <div className="space-y-2">
+                    <p className="text-[10px] text-neutral-500">
+                      {t('Builtin clutch-tools are always available for Clutch Agent when a workspace is authorized. Bind Hub servers below for extra tools (e.g. local-fs).')}
+                    </p>
+                    {mcpServers.length === 0 ? (
+                      <p className="text-[10.5px] text-neutral-400 italic">
+                        {t('No MCP servers registered. Add some in Settings → MCP.')}
+                      </p>
+                    ) : (
+                      mcpServers.map((server) => {
+                        const checked = selectedMcpServerIds.includes(server.id);
+                        return (
+                          <label
+                            key={server.id}
+                            className="flex items-start gap-2.5 p-2.5 rounded-lg border border-neutral-200 bg-white cursor-pointer hover:border-neutral-300"
+                          >
+                            <input
+                              type="checkbox"
+                              className="mt-0.5"
+                              checked={checked}
+                              onChange={() => {
+                                setSelectedMcpServerIds((prev) =>
+                                  checked
+                                    ? prev.filter((id) => id !== server.id)
+                                    : [...prev, server.id],
+                                );
+                              }}
+                            />
+                            <div className="min-w-0 flex-1">
+                              <div className="text-[11px] font-bold text-neutral-900 truncate">
+                                {server.name}
+                              </div>
+                              <div className="text-[9.5px] font-mono text-neutral-400 truncate">
+                                {server.id}
+                                {typeof server.toolsCount === 'number'
+                                  ? ` · ${server.toolsCount} tools`
+                                  : ''}
+                              </div>
+                            </div>
+                          </label>
+                        );
+                      })
+                    )}
+                  </div>
                 ) : (
                   <AgentNativeCapabilityHint agentType={agentType} kind="mcp" />
                 )}

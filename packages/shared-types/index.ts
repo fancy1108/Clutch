@@ -23,6 +23,23 @@ export interface OutputEvent {
   content: string;
 }
 
+/** Structured Chat/MCP tool step (D46 — Grok-style verb_group transcript). */
+export type ToolStepKind = 'read' | 'search' | 'list' | 'edit' | 'execute' | 'other';
+
+export type ToolStepStatus = 'running' | 'completed' | 'failed' | 'awaiting';
+
+export interface ToolStep {
+  id: string;
+  kind: ToolStepKind;
+  /** Short tool name, e.g. read_file */
+  tool: string;
+  status: ToolStepStatus;
+  /** One-liner, e.g. "Read README.md" */
+  title: string;
+  /** Expand body (args / patch snippet). */
+  detail?: string;
+}
+
 export interface ChatMessage {
   id: string;
   agent: AgentRole;
@@ -39,6 +56,8 @@ export interface ChatMessage {
   rawOutput?: string;
   /** Structured hybrid execution segments (shell echo, system prompt, marker, etc.). */
   outputEvents?: OutputEvent[];
+  /** Persisted MCP/builtin tool trail for this assistant turn (D46). */
+  toolSteps?: ToolStep[];
   codeHighlight?: {
     file: string;
     lineCount: number;
@@ -238,6 +257,8 @@ export interface ClutchState {
   messages: ChatMessage[];
   terminal_logs: string[];
   changed_files: string[];
+  /** In-flight tool steps for the current Chat turn (D46); sealed onto the assistant message when idle. */
+  pending_tool_steps?: ToolStep[];
   session_tokens?: number;
   session_cost_usd?: number;
   token_input?: number;

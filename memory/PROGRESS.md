@@ -5,13 +5,22 @@
 
 ## Current Status
 
-- **阶段：** **v1.2.9 已发布**（2026-07-24）
+- **阶段：** **v1.2.9 已发布**；**Chat Clutch Agent 首期 D1+D37+D46 PM 验收通过**（2026-07-24）；下一批优先 **D53**
 - **Release：** [v1.2.9](https://github.com/fancy1108/Clutch/releases/tag/v1.2.9) · tag on `main` @ `898877d`
 - **macOS：** DMG + SHA256SUMS 已上传；Homebrew tap 已由 Release workflow 同步
 - **Windows：** Build workflow 进行中 / 完成后挂 MSI/NSIS
-- **Git：** `dev` / `main` / `origin` 对齐于发版 commit
+- **Git：** D1/D37/D46 已准备 commit
+- **下次优先：D53（分层 system prompt + 渐进披露）** — 在 D2/D7/Skills 深化前定组装骨架，避免后做再拆 `compose_agent_system_prompt`
+- **D53 后再排：** D47（files_changed 芯片，补齐 D1 交互）→ D2+D49（计划须同交付对话卡）→ D3/D4 同绑 D49
 
 ## Recent Sessions
+
+## 2026-07-24 会话（D1+D37+D46 PM 验收通过 · commit）
+
+- **验收：** D46 verb_group 留在 Agent 气泡；写文件审批 + 内容写入；list/grep 轨迹可见
+- **修中验收：** seal 竞态（outcome.tool_steps）；`apply_patch` 无 `+` 正文；Search 标题带 path
+- **ROADMAP：** D1 / D37 / D46 → ✅
+- **下一批（防返工）：** **D53 先于 D2/D7**；D47 紧随补 D1；计划类必须 D2∥D49
 
 ## 2026-07-24 会话（Workspace 历史消失 bug / D43）
 

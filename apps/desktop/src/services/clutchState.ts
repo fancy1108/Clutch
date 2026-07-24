@@ -849,7 +849,7 @@ class ClutchStateStore {
             if (data.passed === false && data.message) {
               const lang = (localStorage.getItem('workspace_lang') as Language) || 'en';
               const nextStepsText = translateText(
-                'Next steps: select "Bypass & Approve", "Reject & Redo" below, or type instructions and click "Retry".',
+                'Next steps: select Allow / Reject below, or type a note and Retry.',
                 lang
               );
               this.appendMessage({

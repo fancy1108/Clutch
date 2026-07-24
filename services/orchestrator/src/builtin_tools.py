@@ -1,10 +1,22 @@
-"""Built-in Clutch tools (virtual MCP server, no subprocess)."""
+"""Built-in Clutch tools (virtual MCP server, no external MCP subprocess)."""
 
 from __future__ import annotations
 
+import json
+import os
+import re
+import shutil
+import subprocess
+from pathlib import Path
 from typing import Any
 
 CLUTCH_TOOLS_SERVER_ID = "clutch-tools"
+
+_MAX_READ_CHARS = 120_000
+_MAX_GREP_HITS = 50
+_MAX_LIST_ENTRIES = 200
+_DEFAULT_CMD_TIMEOUT_S = 60
+_MAX_CMD_OUTPUT_CHARS = 80_000
 
 
 def resolve_clutch_tools_server() -> dict[str, Any] | None:
@@ -30,11 +42,102 @@ def is_virtual_server(server: dict[str, Any]) -> bool:
 def list_builtin_tools() -> list[dict[str, Any]]:
     return [
         {
+            "name": "read_file",
+            "description": (
+                "Read a text file from the active workspace. "
+                "Paths are workspace-relative. Prefer for inspecting code before edits."
+            ),
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "Workspace-relative file path."},
+                    "offset": {
+                        "type": "integer",
+                        "description": "1-based start line (optional).",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Max number of lines to return (optional).",
+                    },
+                },
+                "required": ["path"],
+            },
+        },
+        {
+            "name": "list_dir",
+            "description": "List files and directories under a workspace-relative path.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Directory path relative to workspace (default '.').",
+                    }
+                },
+            },
+        },
+        {
+            "name": "grep",
+            "description": (
+                "Search file contents in the workspace (ripgrep if available). "
+                "Returns matching lines with paths."
+            ),
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "pattern": {"type": "string", "description": "Regex or fixed string to search."},
+                    "path": {
+                        "type": "string",
+                        "description": "Optional subdirectory or file to scope the search.",
+                    },
+                    "case_insensitive": {"type": "boolean", "description": "Ignore case."},
+                },
+                "required": ["pattern"],
+            },
+        },
+        {
+            "name": "search_replace",
+            "description": (
+                "Replace an exact string occurrence in a workspace file. "
+                "Fails if old_string is missing or not unique unless replace_all is true."
+            ),
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string"},
+                    "old_string": {"type": "string"},
+                    "new_string": {"type": "string"},
+                    "replace_all": {"type": "boolean", "description": "Replace every match."},
+                },
+                "required": ["path", "old_string", "new_string"],
+            },
+        },
+        {
+            "name": "run_terminal_cmd",
+            "description": (
+                "Run a shell command in the workspace root. "
+                "Prefer non-interactive commands. Risky — may require human approval."
+            ),
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "command": {"type": "string", "description": "Shell command to execute."},
+                    "timeout_sec": {
+                        "type": "integer",
+                        "description": f"Timeout seconds (default {_DEFAULT_CMD_TIMEOUT_S}).",
+                    },
+                },
+                "required": ["command"],
+            },
+        },
+        {
             "name": "apply_patch",
             "description": (
                 "Apply a Codex-style patch to the active workspace. "
                 "Supports *** Add File, *** Delete File, *** Update File, and *** Move to. "
                 "Patch must start with '*** Begin Patch' and end with '*** End Patch'. "
+                "Add File body lines should preferably start with '+' (e.g. `+hello`); "
+                "bare content lines are also accepted. "
                 "For deletion (including dotfiles like `.deleted_test.txt`), use "
                 "`*** Delete File: .deleted_test.txt` — never use local-fs move_file."
             ),
@@ -48,21 +151,244 @@ def list_builtin_tools() -> list[dict[str, Any]]:
                 },
                 "required": ["patch"],
             },
-        }
+        },
     ]
 
 
 def execute_builtin_tool(tool_name: str, arguments: dict[str, Any]) -> str:
-    if tool_name == "apply_patch":
-        from src.apply_patch import ApplyPatchError, apply_patch_in_workspace, format_apply_patch_result
+    handlers = {
+        "read_file": _tool_read_file,
+        "list_dir": _tool_list_dir,
+        "grep": _tool_grep,
+        "search_replace": _tool_search_replace,
+        "run_terminal_cmd": _tool_run_terminal_cmd,
+        "apply_patch": _tool_apply_patch,
+    }
+    handler = handlers.get(tool_name)
+    if handler is None:
+        return f"Error executing tool: unknown builtin tool {tool_name}"
+    try:
+        return handler(arguments)
+    except Exception as exc:
+        return f"Error executing tool: {exc}"
 
-        patch = str(arguments.get("patch", "")).strip()
-        if not patch:
-            return "Error executing tool: apply_patch requires non-empty `patch`"
+
+def _tool_apply_patch(arguments: dict[str, Any]) -> str:
+    from src.apply_patch import ApplyPatchError, apply_patch_in_workspace, format_apply_patch_result
+
+    patch = str(arguments.get("patch", "")).strip()
+    if not patch:
+        return "Error executing tool: apply_patch requires non-empty `patch`"
+    try:
+        return format_apply_patch_result(apply_patch_in_workspace(patch))
+    except ApplyPatchError as exc:
+        return f"Error executing tool: {exc}"
+
+
+def _tool_read_file(arguments: dict[str, Any]) -> str:
+    from src.workspace import WorkspaceError, resolve_allowed_path
+
+    rel = str(arguments.get("path", "")).strip()
+    if not rel:
+        return "Error executing tool: read_file requires `path`"
+    try:
+        target = resolve_allowed_path(rel)
+    except WorkspaceError as exc:
+        return f"Error executing tool: {exc}"
+    if not target.is_file():
+        return f"Error executing tool: not a file: {rel}"
+    text = target.read_text(encoding="utf-8", errors="replace")
+    lines = text.splitlines()
+    offset = arguments.get("offset")
+    limit = arguments.get("limit")
+    start = 0
+    if offset is not None:
         try:
-            return format_apply_patch_result(apply_patch_in_workspace(patch))
-        except ApplyPatchError as exc:
-            return f"Error executing tool: {exc}"
-        except Exception as exc:
-            return f"Error executing tool: {exc}"
-    return f"Error executing tool: unknown builtin tool {tool_name}"
+            start = max(0, int(offset) - 1)
+        except (TypeError, ValueError):
+            start = 0
+    end = len(lines)
+    if limit is not None:
+        try:
+            end = min(len(lines), start + max(0, int(limit)))
+        except (TypeError, ValueError):
+            pass
+    sliced = lines[start:end]
+    numbered = [f"{start + i + 1}|{line}" for i, line in enumerate(sliced)]
+    body = "\n".join(numbered)
+    if len(body) > _MAX_READ_CHARS:
+        body = body[:_MAX_READ_CHARS] + "\n…[truncated]"
+    return body or "(empty file)"
+
+
+def _tool_list_dir(arguments: dict[str, Any]) -> str:
+    from src.workspace import WorkspaceError, resolve_allowed_path
+
+    rel = str(arguments.get("path") or ".").strip() or "."
+    try:
+        target = resolve_allowed_path(rel)
+    except WorkspaceError as exc:
+        return f"Error executing tool: {exc}"
+    if not target.is_dir():
+        return f"Error executing tool: not a directory: {rel}"
+    entries: list[str] = []
+    try:
+        children = sorted(target.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower()))
+    except OSError as exc:
+        return f"Error executing tool: {exc}"
+    for child in children[:_MAX_LIST_ENTRIES]:
+        suffix = "/" if child.is_dir() else ""
+        entries.append(f"{child.name}{suffix}")
+    extra = len(children) - _MAX_LIST_ENTRIES
+    if extra > 0:
+        entries.append(f"…and {extra} more")
+    return "\n".join(entries) if entries else "(empty directory)"
+
+
+def _tool_grep(arguments: dict[str, Any]) -> str:
+    from src.workspace import WorkspaceError, require_workspace, resolve_allowed_path
+
+    pattern = str(arguments.get("pattern", ""))
+    if not pattern:
+        return "Error executing tool: grep requires `pattern`"
+    scope = str(arguments.get("path") or ".").strip() or "."
+    case_insensitive = bool(arguments.get("case_insensitive"))
+    try:
+        root = require_workspace()
+        scope_path = resolve_allowed_path(scope)
+    except WorkspaceError as exc:
+        return f"Error executing tool: {exc}"
+
+    rg = shutil.which("rg")
+    if rg:
+        cmd = [rg, "--line-number", "--no-heading", "--color", "never", "-m", str(_MAX_GREP_HITS)]
+        if case_insensitive:
+            cmd.append("-i")
+        cmd.extend(["--", pattern, str(scope_path)])
+        try:
+            proc = subprocess.run(
+                cmd,
+                cwd=str(root),
+                capture_output=True,
+                text=True,
+                timeout=30,
+                check=False,
+            )
+        except subprocess.TimeoutExpired:
+            return "Error executing tool: grep timed out"
+        if proc.returncode not in (0, 1):
+            err = (proc.stderr or proc.stdout or "rg failed").strip()
+            return f"Error executing tool: {err[:500]}"
+        out = (proc.stdout or "").strip()
+        return out or "(no matches)"
+
+    flags = re.IGNORECASE if case_insensitive else 0
+    try:
+        regex = re.compile(pattern, flags)
+    except re.error as exc:
+        return f"Error executing tool: invalid pattern: {exc}"
+    hits: list[str] = []
+    paths = [scope_path] if scope_path.is_file() else scope_path.rglob("*")
+    for path in paths:
+        if not path.is_file():
+            continue
+        try:
+            if path.stat().st_size > 2_000_000:
+                continue
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        try:
+            rel = str(path.relative_to(root))
+        except ValueError:
+            rel = str(path)
+        for idx, line in enumerate(text.splitlines(), start=1):
+            if regex.search(line):
+                hits.append(f"{rel}:{idx}:{line}")
+                if len(hits) >= _MAX_GREP_HITS:
+                    return "\n".join(hits)
+    return "\n".join(hits) if hits else "(no matches)"
+
+
+def _tool_search_replace(arguments: dict[str, Any]) -> str:
+    from src.workspace import WorkspaceError, resolve_allowed_path, to_workspace_relative
+
+    rel = str(arguments.get("path", "")).strip()
+    old = arguments.get("old_string")
+    new = arguments.get("new_string")
+    replace_all = bool(arguments.get("replace_all"))
+    if not rel:
+        return "Error executing tool: search_replace requires `path`"
+    if old is None or new is None:
+        return "Error executing tool: search_replace requires `old_string` and `new_string`"
+    old_s = str(old)
+    new_s = str(new)
+    if old_s == new_s:
+        return "Error executing tool: old_string and new_string are identical"
+    if not old_s:
+        return "Error executing tool: old_string must be non-empty"
+    try:
+        target = resolve_allowed_path(rel)
+    except WorkspaceError as exc:
+        return f"Error executing tool: {exc}"
+    if not target.is_file():
+        return f"Error executing tool: not a file: {rel}"
+    text = target.read_text(encoding="utf-8", errors="replace")
+    count = text.count(old_s)
+    if count == 0:
+        return "Error executing tool: old_string not found in file"
+    if count > 1 and not replace_all:
+        return (
+            f"Error executing tool: old_string found {count} times; "
+            "pass replace_all=true or provide a more unique old_string"
+        )
+    updated = text.replace(old_s, new_s) if replace_all else text.replace(old_s, new_s, 1)
+    target.write_text(updated, encoding="utf-8")
+    rel_out = to_workspace_relative(str(target)) or rel
+    replaced = count if replace_all else 1
+    return json.dumps(
+        {"ok": True, "path": rel_out, "replacements": replaced, "changed_paths": [rel_out]},
+        ensure_ascii=False,
+    )
+
+
+def _tool_run_terminal_cmd(arguments: dict[str, Any]) -> str:
+    from src.workspace import WorkspaceError, require_workspace
+
+    command = str(arguments.get("command", "")).strip()
+    if not command:
+        return "Error executing tool: run_terminal_cmd requires `command`"
+    try:
+        timeout = int(arguments.get("timeout_sec") or _DEFAULT_CMD_TIMEOUT_S)
+    except (TypeError, ValueError):
+        timeout = _DEFAULT_CMD_TIMEOUT_S
+    timeout = max(1, min(timeout, 300))
+    try:
+        root = require_workspace()
+    except WorkspaceError as exc:
+        return f"Error executing tool: {exc}"
+
+    shell = os.environ.get("SHELL") or ("cmd.exe" if os.name == "nt" else "/bin/bash")
+    try:
+        proc = subprocess.run(
+            command,
+            shell=True,
+            cwd=str(root),
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=False,
+            env={**os.environ, "PWD": str(root)},
+            executable=shell if os.name != "nt" and Path(shell).is_file() else None,
+        )
+    except subprocess.TimeoutExpired:
+        return f"Error executing tool: command timed out after {timeout}s"
+    stdout = proc.stdout or ""
+    stderr = proc.stderr or ""
+    combined = stdout
+    if stderr.strip():
+        combined = f"{stdout}\n[stderr]\n{stderr}" if stdout else f"[stderr]\n{stderr}"
+    if len(combined) > _MAX_CMD_OUTPUT_CHARS:
+        combined = combined[:_MAX_CMD_OUTPUT_CHARS] + "\n…[truncated]"
+    header = f"exit_code={proc.returncode}\n"
+    return header + (combined if combined.strip() else "(no output)")

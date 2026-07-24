@@ -10,13 +10,15 @@ import { ChevronRight } from 'lucide-react';
 import { ChatMessage, ClutchRunStatus, HybridExecutionPayload, OutputEvent } from '../types';
 import { useLanguage } from './LanguageContext';
 import { ChatInputBar, type Attachment, type PendingChatMessage } from './ChatInputBar';
-import { BTN_DANGER_SM, BTN_PRIMARY, BTN_SECONDARY, BTN_SM, BTN_SUCCESS_SM } from './ui/buttonStyles';
+import { BTN_PRIMARY, BTN_SECONDARY, BTN_SM } from './ui/buttonStyles';
 import { LegacyIcon } from './ui/LegacyIcon';
 import type { SessionRecord } from '../services/runApi';
 import type { ScannedSkill } from '../services/skillsApi';
 import type { FileTreeNode } from '../services/workspaceApi';
 import type { PermissionMode } from '../services/permissionApi';
 import { USER_CHAT_AVATAR, clutchStore, deleteChatMessage, useClutchState } from '../services/clutchState';
+import { toolStepsFromActivityLogs } from '../services/agentActivitySteps';
+import { AgentLiveActivity } from './AgentLiveActivity';
 import { resolveBrandLogoSrc } from '../services/brandLogos';
 import { clutchMarkUrl } from '../assets/brand';
 import { AgentChatAvatar } from './AgentChatAvatar';
@@ -755,6 +757,17 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
     (isRunning && lastUserIndex >= 0 && lastUserIndex > lastAgentIndex && isPlainLlmChat) ||
     showWorkflowThinking;
 
+  const pendingToolSteps = clutchOrchestraState.pending_tool_steps;
+  const liveActivitySteps = useMemo(() => {
+    if (pendingToolSteps && pendingToolSteps.length > 0) return pendingToolSteps;
+    return toolStepsFromActivityLogs(clutchOrchestraState.terminal_logs, {
+      awaiting: awaitingHuman,
+    });
+  }, [pendingToolSteps, clutchOrchestraState.terminal_logs, awaitingHuman]);
+  const showLiveActivity =
+    liveActivitySteps.length > 0 &&
+    (showThinking || awaitingHuman || (isRunning && isPlainLlmChat));
+
   const chatScrollBottomPad = useMemo(
     () => dockClearance + (showThinking ? thinkingHeight + 16 : 0),
     [dockClearance, showThinking, thinkingHeight],
@@ -806,7 +819,12 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
     const observer = new ResizeObserver(measure);
     observer.observe(thinkingEl);
     return () => observer.disconnect();
-  }, [showThinking, llmModelName, thinkingAgentName, thinkingAgentType]);
+  }, [showThinking, llmModelName, thinkingAgentName, thinkingAgentType, liveActivitySteps.length]);
+
+  useEffect(() => {
+    if (!showLiveActivity) return;
+    scrollChatToBottom();
+  }, [liveActivitySteps.length, showLiveActivity, scrollChatToBottom]);
 
   useEffect(() => {
     const terminalBar = terminalBarRef.current;
@@ -1152,6 +1170,10 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                         </div>
                       ) : null}
 
+                      {!isUser && msg.toolSteps && msg.toolSteps.length > 0 ? (
+                        <AgentLiveActivity steps={msg.toolSteps} className="mb-2" />
+                      ) : null}
+
                       {parsed.images.length > 0 && (
                         <div className="flex flex-col gap-2 mb-3">
                           {parsed.images.map((image, index) => (
@@ -1227,23 +1249,50 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                 <div className="flex items-center gap-2">
                   {renderAgentLabel(
                     thinkingAgentName || t('Clutch Agent'),
-                    shellSessionStatus === 'queued_pool' ? t('Queued for shell...') : t('Thinking...'),
+                    shellSessionStatus === 'queued_pool'
+                      ? t('Queued for shell...')
+                      : showLiveActivity
+                        ? t('Working…')
+                        : t('Thinking...'),
                     isPlainLlmChat ? undefined : engineHint,
                     thinkingAgentType || undefined,
                   )}
                 </div>
 
-                <div
-                  className={`${chatChrome.thinkingBubblePaddingClass} bg-surface-container-low rounded-2xl rounded-tl-none border border-outline-variant/30 shadow-sm flex items-center gap-1.5 min-h-9`}
-                >
-                  <div className="w-1.5 h-1.5 rounded-full bg-on-surface/40 animate-typing-pulse" />
-                  <div className="w-1.5 h-1.5 rounded-full bg-on-surface/40 animate-typing-pulse animation-delay-100" />
-                  <div className="w-1.5 h-1.5 rounded-full bg-on-surface/40 animate-typing-pulse animation-delay-200" />
-                </div>
+                {showLiveActivity ? (
+                  <div
+                    className={`${chatChrome.thinkingBubblePaddingClass} bg-surface-container-low rounded-2xl rounded-tl-none border border-outline-variant/30 shadow-sm`}
+                  >
+                    <AgentLiveActivity steps={liveActivitySteps} live defaultOpen />
+                  </div>
+                ) : (
+                  <div
+                    className={`${chatChrome.thinkingBubblePaddingClass} bg-surface-container-low rounded-2xl rounded-tl-none border border-outline-variant/30 shadow-sm flex items-center gap-1.5 min-h-9`}
+                  >
+                    <div className="w-1.5 h-1.5 rounded-full bg-on-surface/40 animate-typing-pulse" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-on-surface/40 animate-typing-pulse animation-delay-100" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-on-surface/40 animate-typing-pulse animation-delay-200" />
+                  </div>
+                )}
               </div>
             </div>
           </div>
         )}
+
+        {workspaceViewMode === 'chat' && !showThinking && showLiveActivity && awaitingHuman ? (
+          <div className="w-full flex justify-start mb-4">
+            <div className={chatChrome.thinkingRowClass}>
+              <div className="w-8 shrink-0" aria-hidden />
+              <div className="flex-1 overflow-hidden">
+                <div
+                  className={`${chatChrome.thinkingBubblePaddingClass} bg-surface-container-low rounded-2xl rounded-tl-none border border-outline-variant/30 shadow-sm`}
+                >
+                  <AgentLiveActivity steps={liveActivitySteps} live defaultOpen />
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         {workspaceViewMode === 'chat' ? (
           <div ref={bottomRef} style={{ scrollMarginBottom: chatScrollBottomPad }} className="h-2 shrink-0" aria-hidden />
@@ -1307,49 +1356,43 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
             </button>
           </div>
         ) : awaitingHuman ? (
-          <div className={`w-full ${chatChrome.chatMaxWidthClass} bg-white border border-rose-200/90 p-5 shadow-xl rounded-2xl flex flex-col gap-4 text-left`}>
-            <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
-              <div className="flex items-center gap-2.5">
-                <span className="w-8 h-8 rounded-full bg-error text-on-error flex items-center justify-center">
-                  <LegacyIcon name="gavel" className="text-[18px]" />
-                </span>
-                <div>
-                  <h4 className="text-[11.5px] font-bold tracking-wider text-rose-800 uppercase">
-                    Human-In-The-Loop
-                  </h4>
-                  <p className="text-[10.5px] text-on-surface-variant/80 mt-0.5">
-                    {t('Human gate hint')}
-                  </p>
-                </div>
+          <div className={`w-full ${chatChrome.chatMaxWidthClass} flex flex-col gap-1.5`}>
+            <div
+              className="flex items-center gap-2 rounded-xl border border-outline-variant/35 bg-white px-2.5 py-1.5 shadow-sm"
+              role="group"
+              aria-label={t('Needs approval')}
+            >
+              <span className="text-[11px] text-on-surface-variant shrink-0 truncate">
+                {t('Needs approval')}
+              </span>
+              <div className="ml-auto flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  data-testid="chat-approve"
+                  disabled={hitlBusy}
+                  onClick={() => {
+                    setHitlBusy(true);
+                    onApprove?.();
+                  }}
+                  className={`${BTN_SM} bg-neutral-900 hover:bg-black text-white border border-neutral-900`}
+                >
+                  {t('Allow')}
+                </button>
+                <button
+                  type="button"
+                  data-testid="chat-reject"
+                  disabled={hitlBusy}
+                  onClick={() => {
+                    setHitlBusy(true);
+                    onReject?.();
+                  }}
+                  className={`${BTN_SM} bg-neutral-100 hover:bg-neutral-200 text-neutral-800 border border-neutral-200/80`}
+                >
+                  {t('Reject')}
+                </button>
               </div>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                data-testid="chat-approve"
-                disabled={hitlBusy}
-                onClick={() => {
-                  setHitlBusy(true);
-                  onApprove?.();
-                }}
-                className={BTN_SUCCESS_SM}
-              >
-                Bypass & Approve
-              </button>
-              <button
-                type="button"
-                data-testid="chat-reject"
-                disabled={hitlBusy}
-                onClick={() => {
-                  setHitlBusy(true);
-                  onReject?.();
-                }}
-                className={BTN_DANGER_SM}
-              >
-                Reject & Redo
-              </button>
-            </div>
-            <div className="flex items-center gap-2 bg-neutral-50 border border-neutral-200/80 p-1.5 rounded-xl">
+            <div className="flex items-center gap-1.5 px-0.5">
               <input
                 type="text"
                 value={hillInstructions}
@@ -1362,8 +1405,8 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                     setHillInstructions('');
                   }
                 }}
-                placeholder={t('Retry instructions placeholder')}
-                className="w-full bg-transparent border-none text-[11px] text-on-surface placeholder:text-neutral-400 focus:outline-none py-1.5 px-2"
+                placeholder={t('Retry with note…')}
+                className="min-w-0 flex-1 rounded-lg border border-outline-variant/30 bg-surface-container-low px-2.5 py-1.5 text-[11px] text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-1 focus:ring-neutral-900/15"
               />
               <button
                 type="button"
@@ -1377,11 +1420,11 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                 }}
                 className={`${BTN_SM} ${
                   !hitlBusy && hillInstructions.trim()
-                    ? 'bg-neutral-900 text-white'
-                    : 'bg-neutral-100 text-neutral-400 cursor-not-allowed'
+                    ? 'bg-neutral-900 text-white border border-neutral-900'
+                    : 'bg-transparent text-on-surface-variant/40 border border-transparent cursor-not-allowed'
                 }`}
               >
-                Retry
+                {t('Retry')}
               </button>
             </div>
           </div>

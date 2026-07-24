@@ -429,8 +429,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   session.status === 'iterating';
                 const isRunning = isDesignSession
                   ? designBusy
-                  : (session.run_id === activeSessionId && clutchStatus === 'running') ||
-                    session.status === 'running';
+                  : isActiveSession
+                    ? clutchStatus === 'running' ||
+                      clutchStatus === 'awaiting_human' ||
+                      clutchStatus === 'refining'
+                    : session.status === 'running';
                 const isLoadingSession = session.run_id === loadingSessionId;
                 const hasSnapshot = shellSnapshotRunIds?.has(session.run_id) ?? false;
                 return (
