@@ -4,13 +4,14 @@
 > **何时写：** 每个**代码 Task** 完成并 commit 后，在 Check-out 追加一节（见 `CLAUDE.md` §Check-out）。  
 > **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。
 
-## Clutch Agent D2∥D49 plan card (`pending`)
+## Clutch Agent D2∥D49 plan card (`13be92a`)
 
 | 项目 | 值 |
 |------|-----|
 | **Task** | D2 先计划再动手 + D49 对话内计划卡 |
-| **Commit** | _(filled after commit)_ |
+| **Commit** | `13be92a694b0e58af0609e48b84bc6d04ba98e03` |
 | **Branch** | `dev` |
+| **Verification** | pre-commit `verify.sh`：build OK；vitest 151；pytest 含 `test_plan_d2_d49` |
 | **PM** | 2026-07-24 验收通过（ROADMAP D2 / D49-计划 ✅） |
 | **下一批** | **D3∥D49 Todo** |
 
