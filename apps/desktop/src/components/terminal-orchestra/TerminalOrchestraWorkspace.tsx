@@ -19,6 +19,7 @@ interface TerminalOrchestraWorkspaceProps {
   layoutChromeKey?: string;
   /** Outer terminal container — observed for resize when chrome padding animates. */
   layoutObserveRef?: React.RefObject<HTMLElement | null>;
+  onOpenWorkspaceFile?: (path: string) => void;
 }
 
 export const TerminalOrchestraWorkspace: React.FC<TerminalOrchestraWorkspaceProps> = ({
@@ -33,6 +34,7 @@ export const TerminalOrchestraWorkspace: React.FC<TerminalOrchestraWorkspaceProp
   previewAgentName = null,
   layoutChromeKey = '',
   layoutObserveRef,
+  onOpenWorkspaceFile,
 }) => {
   const { state } = useClutchState();
   const lanes = state.pty_lanes ?? [];
@@ -58,6 +60,7 @@ export const TerminalOrchestraWorkspace: React.FC<TerminalOrchestraWorkspaceProp
         previewAgentName={previewAgentName}
         layoutChromeKey={layoutChromeKey}
         layoutObserveRef={layoutObserveRef}
+        onOpenWorkspaceFile={onOpenWorkspaceFile}
       />
       <div className="w-full shrink-0 mt-2">
         <TerminalSessionStatsBar

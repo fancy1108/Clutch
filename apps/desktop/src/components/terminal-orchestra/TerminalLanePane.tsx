@@ -17,6 +17,7 @@ import {
   type LaneGridLayout,
 } from '../../services/terminalOrchestraUtils';
 import { scheduleXtermRefit, wakeXtermTerminal } from './terminalLaneLayout';
+import { createWorkspacePathLinkProvider } from './terminalPathLinkProvider';
 
 interface TerminalLanePaneProps {
   lane: PtyLane;
@@ -36,6 +37,8 @@ interface TerminalLanePaneProps {
   /** Bumped when grid resizes or lane count changes — triggers xterm refit. */
   layoutTick?: number;
   layoutMode?: LaneGridLayout;
+  /** Click workspace path/filename in xterm → App file preview. */
+  onOpenWorkspaceFile?: (path: string) => void;
 }
 
 function isPtyLiveStatus(status: string): boolean {
@@ -56,7 +59,10 @@ export const TerminalLanePane: React.FC<TerminalLanePaneProps> = ({
   paneRef,
   layoutTick = 0,
   layoutMode = 'single',
+  onOpenWorkspaceFile,
 }) => {
+  const onOpenWorkspaceFileRef = useRef(onOpenWorkspaceFile);
+  onOpenWorkspaceFileRef.current = onOpenWorkspaceFile;
   const { t } = useLanguage();
   const hostRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<Terminal | null>(null);
@@ -178,6 +184,11 @@ export const TerminalLanePane: React.FC<TerminalLanePaneProps> = ({
     });
     const fitAddon = new FitAddon();
     term.loadAddon(fitAddon);
+    const linkDisposable = term.registerLinkProvider(
+      createWorkspacePathLinkProvider(term, (path) => {
+        onOpenWorkspaceFileRef.current?.(path);
+      }),
+    );
     term.open(host);
     try {
       fitAddon.fit();
@@ -254,6 +265,7 @@ export const TerminalLanePane: React.FC<TerminalLanePaneProps> = ({
       unsubStatus();
       resizeObserver.disconnect();
       intersectionObserver.disconnect();
+      linkDisposable.dispose();
       term.dispose();
       termRef.current = null;
       fitRef.current = null;

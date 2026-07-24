@@ -38,6 +38,7 @@ interface TerminalLaneGridProps {
   previewAgentName?: string | null;
   layoutChromeKey?: string;
   layoutObserveRef?: React.RefObject<HTMLElement | null>;
+  onOpenWorkspaceFile?: (path: string) => void;
 }
 
 export const TerminalLaneGrid: React.FC<TerminalLaneGridProps> = ({
@@ -53,6 +54,7 @@ export const TerminalLaneGrid: React.FC<TerminalLaneGridProps> = ({
   previewAgentName = null,
   layoutChromeKey = '',
   layoutObserveRef,
+  onOpenWorkspaceFile,
 }) => {
   const { t } = useLanguage();
   const paneRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -311,6 +313,7 @@ export const TerminalLaneGrid: React.FC<TerminalLaneGridProps> = ({
                     onFocusLane={handleFocus}
                     onCollapseLane={handleCollapse}
                     paneRef={showInGrid ? registerPane : undefined}
+                    onOpenWorkspaceFile={onOpenWorkspaceFile}
                   />
                 </div>
               );

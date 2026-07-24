@@ -1107,6 +1107,12 @@ def _history_for_llm(
             content = user_message_content_for_llm(text, vision_enabled=vision_enabled)
         else:
             content = text
+        # Preserve multimodal parts for vision-capable chat models; flatten for CLIs / text-only.
+        if vision_enabled and isinstance(content, list):
+            if not content:
+                continue
+            history.append({"role": role, "content": content})
+            continue
         normalized = normalize_text_content(content)
         if not normalized:
             continue
@@ -1191,9 +1197,21 @@ async def _llm_chat_reply(
         runtime_model_name = str(agent.get("name", reply_label)) if agent else reply_label
         model_api = agent_type_from_record(agent) if agent else "cli"
     from src.adapters.ollama_adapter import model_supports_vision
+    from src.image_router import format_image_reply, generate_image_for_model, is_image_model
+    from src.video_router import format_video_reply, generate_video_for_model, is_video_model
+    from src.chat_content import extract_image_data_urls
 
+    _plain, attached_images = extract_image_data_urls(text)
+
+    # Try-first: always send attached images multimodally for Clutch chat models.
+    # Soft/API vision failures retry with local OCR/palette analysis below.
     if uses_clutch_model:
-        vision_enabled = model_supports_vision(model)
+        if is_image_model(model) or is_video_model(model):
+            vision_enabled = False
+        elif attached_images:
+            vision_enabled = True
+        else:
+            vision_enabled = model_supports_vision(model)
     elif agent and agent_type_from_record(agent) == "ollama-cli":
         from src.llm.router import ModelSpec
 
@@ -1212,12 +1230,6 @@ async def _llm_chat_reply(
             vision_enabled = False
     else:
         vision_enabled = False
-
-    from src.image_router import format_image_reply, generate_image_for_model, is_image_model
-    from src.video_router import format_video_reply, generate_video_for_model, is_video_model
-    from src.chat_content import extract_image_data_urls
-
-    _plain, attached_images = extract_image_data_urls(text)
 
     if uses_clutch_model and is_video_model(model):
         if attached_images:
@@ -1454,20 +1466,71 @@ async def _llm_chat_reply(
                 asyncio.run_coroutine_threadsafe(emit_log(line), loop)
 
         route_history = history
+        tried_vision = bool(attached_images and vision_enabled)
 
-        result = await asyncio.to_thread(
-            route_engine,
-            agent_name=agent_ref,
-            prompt=text,
-            cwd=cwd,
-            history=route_history,
-            system_prompt=system_prompt,
-            cli_session_id=cli_session_id,
-            on_log=on_log if emit_log else None,
-            run_id=state.get("run_id"),
-            source=chat_source,
-            session_model_id=session_model_id,
-        )
+        def _route_once(hist: list[dict[str, Any]]):
+            return route_engine(
+                agent_name=agent_ref,
+                prompt=text,
+                cwd=cwd,
+                history=hist,
+                system_prompt=system_prompt,
+                cli_session_id=cli_session_id,
+                on_log=on_log if emit_log else None,
+                run_id=state.get("run_id"),
+                source=chat_source,
+                session_model_id=session_model_id,
+            )
+
+        try:
+            result = await asyncio.to_thread(_route_once, route_history)
+        except HybridPlainChatRejected:
+            raise
+        except Exception as vision_exc:
+            from src.chat_content import looks_like_vision_api_error
+
+            if not (tried_vision and looks_like_vision_api_error(vision_exc)):
+                raise
+            if emit_log:
+                await emit_log(
+                    "[CHAT] Vision API rejected image input — retrying with local OCR/palette analysis."
+                )
+            llm_only_logs.append(
+                "[CHAT] Vision API rejected image input — retrying with local OCR/palette analysis."
+            )
+            vision_enabled = False
+            route_history = _history_for_llm(
+                state["messages"],
+                vision_enabled=False,
+                hybrid_executions=state.get("hybrid_executions"),
+            )
+            if system_prompt:
+                route_history = [{"role": "system", "content": system_prompt}] + [
+                    item for item in route_history if item.get("role") != "system"
+                ]
+            result = await asyncio.to_thread(_route_once, route_history)
+        else:
+            from src.chat_content import looks_like_vision_error
+
+            if tried_vision and looks_like_vision_error(result.output or ""):
+                if emit_log:
+                    await emit_log(
+                        "[CHAT] Model refused vision input — retrying with local OCR/palette analysis."
+                    )
+                llm_only_logs.append(
+                    "[CHAT] Model refused vision input — retrying with local OCR/palette analysis."
+                )
+                route_history = _history_for_llm(
+                    state["messages"],
+                    vision_enabled=False,
+                    hybrid_executions=state.get("hybrid_executions"),
+                )
+                if system_prompt:
+                    route_history = [{"role": "system", "content": system_prompt}] + [
+                        item for item in route_history if item.get("role") != "system"
+                    ]
+                result = await asyncio.to_thread(_route_once, route_history)
+
         return (
             reply_label,
             result.engine,

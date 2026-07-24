@@ -173,6 +173,33 @@ async def read_workspace_file(path: str) -> dict[str, str]:
         raise _workspace_http_error(exc) from exc
 
 
+class AttachmentUploadBody(BaseModel):
+    data_url: str = Field(..., min_length=16)
+    analyze: bool = True
+
+
+@router.post("/api/workspace/attachments")
+async def upload_workspace_attachment(body: AttachmentUploadBody) -> dict[str, Any]:
+    from src.workspace import WorkspaceError
+    from src.workspace_attachments import save_attachment_data_url
+
+    try:
+        return save_attachment_data_url(body.data_url, analyze=body.analyze)
+    except WorkspaceError as exc:
+        raise _workspace_http_error(exc) from exc
+
+
+@router.get("/api/workspace/file/resolve")
+async def resolve_workspace_file(path: str) -> dict[str, Any]:
+    from src.workspace import WorkspaceError
+    from src.workspace_attachments import resolve_workspace_file_path
+
+    try:
+        return resolve_workspace_file_path(path)
+    except WorkspaceError as exc:
+        raise _workspace_http_error(exc) from exc
+
+
 @router.get("/api/workspace/media")
 async def read_workspace_media(path: str) -> FileResponse:
     from src.workspace import WorkspaceError, resolve_allowed_path

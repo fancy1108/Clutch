@@ -60,6 +60,11 @@ def model_supports_vision(spec: ModelSpec) -> bool:
     if provider == "ollama":
         return ollama_model_supports_vision(spec.api_model)
 
+    # Agnes chat models advertise image understanding (try-first; fall back on failure).
+    if provider == "agnes":
+        kind = (getattr(spec, "model_kind", None) or "chat").strip().lower()
+        return kind == "chat"
+
     model = (getattr(spec, "api_model", "") or "").lower()
 
     if provider == "anthropic":

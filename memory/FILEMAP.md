@@ -134,7 +134,10 @@
 | 底部状态栏（Branch / Model / Agent） | `App.tsx` footer |
 | 工作区 Git 分支 API | `services/workspaceApi.ts` → `GET /api/workspace/git` |
 | Chat 流与人工干预 UI | `components/ChatFeed.tsx` |
-| 终端模式 xterm 视图 | `components/ChatTerminalView.tsx` |
+| Chat markdown（fence / 路径预览） | `components/chatContentRender.tsx` · `services/workspacePathLinks.ts` |
+| Coding 附件上传 / 路径 resolve API | `services/workspaceApi.ts` → `POST /api/workspace/attachments` · `GET /api/workspace/file/resolve`；后端 `workspace_attachments.py` |
+| Terminal Orchestra（Lane / OrchestratorBar / 路径 link） | `components/terminal-orchestra/`（`OrchestratorBar.tsx` 发图 chip；`terminalPathLinkProvider.ts` xterm 可点路径） |
+| 终端模式 xterm 视图 | `components/ChatTerminalView.tsx`（遗留；现用 Orchestra） |
 | 对话/终端模式切换状态 | `services/workspaceViewMode.ts` |
 | 工作流 Chat 步骤 / Agent 类型解析 | `services/workflowAgentSteps.ts` |
 | Agent / 工具品牌 Logo | `services/brandLogos.ts` · `components/BrandLogo.tsx` · `assets/tool-logos/`（含 `mimo.svg`） |

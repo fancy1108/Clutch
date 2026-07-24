@@ -13,8 +13,12 @@ import {
   parseInputAgentMention,
   resolveDispatchTargetAgent,
 } from '../../services/terminalOrchestraUtils';
+import { uploadWorkspaceAttachment } from '../../services/workspaceApi';
 import { useLanguage } from '../LanguageContext';
 import { LegacyIcon } from '../ui/LegacyIcon';
+
+type ImageChip = { id: string; name: string; dataUrl: string };
+
 interface OrchestratorBarProps {
   sessionRunId: string;
   drafts: PendingHandoffDraft[];
@@ -72,10 +76,14 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
   const [fileFilter, setFileFilter] = useState('');
   const [skillFilter, setSkillFilter] = useState('');
   const [sessionFilter, setSessionFilter] = useState('');
+  const [imageChips, setImageChips] = useState<ImageChip[]>([]);
+  const [sending, setSending] = useState(false);
   const prevDraftCount = React.useRef(drafts.length);
   const containerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const sendingLockRef = useRef(false);
 
   const currentPermission = PERMISSION_MODES.find((m) => m.id === permissionMode) ?? PERMISSION_MODES[0];
   const allFilePaths = flattenFileTree(workspaceFiles);
@@ -224,6 +232,21 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
       if (!e.target.files) return;
       let next = inputValue;
       for (const file of Array.from(e.target.files)) {
+        if (file.type.startsWith('image/')) {
+          const reader = new FileReader();
+          reader.onload = () => {
+            setImageChips((prev) => [
+              ...prev,
+              {
+                id: `${Date.now()}-${file.name}`,
+                name: file.name,
+                dataUrl: reader.result as string,
+              },
+            ]);
+          };
+          reader.readAsDataURL(file);
+          continue;
+        }
         next = `[file: ${file.name}]\n${next}`;
       }
       setInputValue(next);
@@ -233,69 +256,147 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
     [inputValue, setInputValue],
   );
 
-  const handleSend = useCallback(async () => {
-    const trimmed = inputValue.trim();
-    if (!trimmed) return;
-    setError('');
-    const mention = parseInputAgentMention(trimmed, mentionableAgents);
-    const dispatchText = normalizeOrchestratorDispatchText(trimmed, mentionableAgents);
-    const result = await clutchStore.previewDispatch(dispatchText);
-    if (!result.ok) {
-      setError(result.error);
-      return;
-    }
-    const targetAgent = resolveDispatchTargetAgent(
-      trimmed,
-      result.preview.target,
-      mentionableAgents,
-      selectedMentionAgentId,
-    );
-    const chips = (result.preview.chips ?? []).filter((c) => c.on).map((c) => c.source_name);
-    const snapshot = clutchStore.getSnapshot();
-    const isHandoff = result.preview.dispatch_mode === 'handoff';
-    const laneTranscripts = isHandoff
-      ? collectHandoffLaneTranscripts(
-          chips.length > 0 ? chips : result.preview.sources,
-          snapshot.pty_lanes ?? [],
-          (laneId) => clutchStore.getLaneTranscript(laneId),
-          result.preview.target,
-        )
-      : [];
-    const targetLabel = targetAgent?.name?.trim() || result.preview.target;
-    clutchStore.optimisticDispatchLogAppend(
-      buildOptimisticDispatchEntry({
-        prompt: dispatchText,
-        preview: result.preview,
-        activeSources: chips,
-        targetLabel,
-      }),
-    );
-    if (!isHandoff) {
-      const sourcesToCollapse = chips.length > 0 ? chips : result.preview.sources;
-      for (const src of sourcesToCollapse) {
-        const sourceLane = findLaneForDispatchSource(snapshot.pty_lanes ?? [], src);
-        if (sourceLane) {
-          void clutchStore.collapseLane(sourceLane.lane_id, true);
+  const addImageFile = useCallback((file: File) => {
+    if (!file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setImageChips((prev) => [
+        ...prev,
+        {
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          name: file.name || 'clipboard.png',
+          dataUrl: reader.result as string,
+        },
+      ]);
+    };
+    reader.readAsDataURL(file);
+  }, []);
+
+  const handleImageInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (!e.target.files) return;
+      for (const file of Array.from(e.target.files)) {
+        addImageFile(file);
+      }
+      e.target.value = '';
+      textareaRef.current?.focus();
+    },
+    [addImageFile],
+  );
+
+  const handlePaste = useCallback(
+    (e: React.ClipboardEvent) => {
+      if (readOnly || sending) return;
+      const { files } = e.clipboardData;
+      if (!files || files.length === 0) return;
+      let hasImage = false;
+      for (const file of Array.from(files)) {
+        if (file.type.startsWith('image/')) {
+          e.preventDefault();
+          addImageFile(file);
+          hasImage = true;
         }
       }
+      if (hasImage) return;
+    },
+    [addImageFile, readOnly, sending],
+  );
+
+  const handleSend = useCallback(async () => {
+    if (sendingLockRef.current || readOnly) return;
+    const trimmed = inputValue.trim();
+    if (!trimmed && imageChips.length === 0) return;
+    sendingLockRef.current = true;
+    setSending(true);
+    setError('');
+    try {
+      let composed = trimmed;
+      if (imageChips.length > 0) {
+        const parts: string[] = [];
+        for (const chip of imageChips) {
+          const uploaded = await uploadWorkspaceAttachment(chip.dataUrl, { analyze: true });
+          if (uploaded.analysis_text) {
+            parts.push(`[Image analysis for ${uploaded.path}]\n${uploaded.analysis_text}`);
+          }
+          parts.push(`[file: ${uploaded.path}]`);
+          parts.push(`@${uploaded.path}`);
+        }
+        composed = `${parts.join('\n')}\n${trimmed}`.trim();
+      }
+      if (!composed) return;
+      const dispatchText = normalizeOrchestratorDispatchText(composed, mentionableAgents);
+      const result = await clutchStore.previewDispatch(dispatchText);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      const targetAgent = resolveDispatchTargetAgent(
+        composed,
+        result.preview.target,
+        mentionableAgents,
+        selectedMentionAgentId,
+      );
+      const chips = (result.preview.chips ?? []).filter((c) => c.on).map((c) => c.source_name);
+      const snapshot = clutchStore.getSnapshot();
+      const isHandoff = result.preview.dispatch_mode === 'handoff';
+      const laneTranscripts = isHandoff
+        ? collectHandoffLaneTranscripts(
+            chips.length > 0 ? chips : result.preview.sources,
+            snapshot.pty_lanes ?? [],
+            (laneId) => clutchStore.getLaneTranscript(laneId),
+            result.preview.target,
+          )
+        : [];
+      const targetLabel = targetAgent?.name?.trim() || result.preview.target;
+      clutchStore.optimisticDispatchLogAppend(
+        buildOptimisticDispatchEntry({
+          prompt: dispatchText,
+          preview: result.preview,
+          activeSources: chips,
+          targetLabel,
+        }),
+      );
+      if (!isHandoff) {
+        const sourcesToCollapse = chips.length > 0 ? chips : result.preview.sources;
+        for (const src of sourcesToCollapse) {
+          const sourceLane = findLaneForDispatchSource(snapshot.pty_lanes ?? [], src);
+          if (sourceLane) {
+            void clutchStore.collapseLane(sourceLane.lane_id, true);
+          }
+        }
+      }
+      await clutchStore.confirmDispatch(dispatchText, chips, {
+        id: targetAgent?.agentId,
+        name: targetAgent?.name,
+      }, laneTranscripts);
+      if (targetAgent) {
+        onMentionAgentChange?.(targetAgent.agentId);
+      }
+      setInputValue('');
+      setImageChips([]);
+      setActiveDraftId(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      sendingLockRef.current = false;
+      setSending(false);
     }
-    await clutchStore.confirmDispatch(dispatchText, chips, {
-      id: targetAgent?.agentId,
-      name: targetAgent?.name,
-    }, laneTranscripts);
-    if (targetAgent) {
-      onMentionAgentChange?.(targetAgent.agentId);
-    }
-    setInputValue('');
-    setActiveDraftId(null);
-  }, [inputValue, mentionableAgents, onMentionAgentChange, selectedMentionAgentId, setInputValue]);
+  }, [
+    imageChips,
+    inputValue,
+    mentionableAgents,
+    onMentionAgentChange,
+    readOnly,
+    selectedMentionAgentId,
+    setInputValue,
+  ]);
 
   const selectDraft = (draft: PendingHandoffDraft) => {
     setActiveDraftId(draft.id);
     setInputValue(draft.text);
   };
 
-  const canSend = !readOnly && inputValue.trim().length > 0;
+  const canSend = !readOnly && !sending && (inputValue.trim().length > 0 || imageChips.length > 0);
 
   return (
     <div
@@ -306,6 +407,14 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
       }`}
     >
       <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleLocalFileChange} />
+      <input
+        ref={imageInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={handleImageInputChange}
+      />
 
       {toast ? (
         <div className="flex items-center gap-2 rounded-t-xl border-b border-outline-variant/40 bg-surface-container-low px-3 py-2 text-xs">
@@ -360,16 +469,44 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
         </div>
       ) : null}
 
+      {imageChips.length > 0 ? (
+        <div className="flex flex-wrap gap-2 px-3 pt-2 pb-1" data-testid="orchestrator-image-chips">
+          {imageChips.map((chip) => (
+            <div
+              key={chip.id}
+              className="relative w-14 h-14 rounded-lg border border-outline-variant/50 overflow-hidden bg-surface-container-low"
+            >
+              <img src={chip.dataUrl} alt={chip.name} className="w-full h-full object-cover" />
+              {sending ? (
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                  <LegacyIcon name="progress_activity" className="text-[18px] text-white animate-spin" />
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/55 text-white flex items-center justify-center"
+                  onClick={() => setImageChips((prev) => prev.filter((c) => c.id !== chip.id))}
+                  title={t('Remove')}
+                >
+                  <LegacyIcon name="close" className="text-[12px]" />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : null}
+
       <div className="relative flex items-end gap-1.5 px-2 py-1.5">
         {!readOnly ? (
         <div className="relative flex-shrink-0">
           <button
             type="button"
+            disabled={sending}
             onClick={() => {
               setAttachMenuOpen((v) => !v);
               setPermissionMenuOpen(false);
             }}
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-on-surface-variant/60 hover:text-on-surface hover:bg-surface-container transition-colors"
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-on-surface-variant/60 hover:text-on-surface hover:bg-surface-container transition-colors disabled:opacity-50"
             title={t('Attach')}
           >
             <LegacyIcon name="add" className="text-[19px]" />
@@ -377,6 +514,17 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
 
           {attachMenuOpen ? (
             <div className="absolute bottom-full left-0 mb-2 w-52 bg-white border border-outline-variant rounded-xl shadow-xl py-1.5 z-50 animate-in fade-in slide-in-from-bottom-1 duration-150">
+              <button
+                type="button"
+                className="w-full flex items-center gap-3 px-3 py-2 text-[12px] text-on-surface hover:bg-surface-container-low transition-colors text-left"
+                onClick={() => {
+                  setAttachMenuOpen(false);
+                  imageInputRef.current?.click();
+                }}
+              >
+                <LegacyIcon name="image" className="text-[17px] text-on-surface-variant" />
+                Image
+              </button>
               <button
                 type="button"
                 className="w-full flex items-center gap-3 px-3 py-2 text-[12px] text-on-surface hover:bg-surface-container-low transition-colors text-left"
@@ -434,12 +582,13 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
           rows={1}
           value={inputValue}
           onChange={handleInputChange}
+          onPaste={handlePaste}
           onFocus={() => !readOnly && onFocusChange?.(true)}
           onBlur={() => onFocusChange?.(false)}
-          disabled={readOnly}
+          disabled={readOnly || sending}
           readOnly={readOnly}
           onKeyDown={(e) => {
-            if (readOnly) return;
+            if (readOnly || sending) return;
             if (e.key === 'Escape') {
               closeAllPopovers();
               return;
@@ -455,7 +604,7 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
           }}
           placeholder={readOnly ? t('Historical session is read-only') : t('Orchestrator input placeholder')}
           className={`w-full border-none focus:ring-0 text-[13px] text-on-surface bg-transparent py-1.5 resize-none min-h-[36px] max-h-[140px] placeholder:text-on-surface-variant/60 outline-none leading-relaxed ${
-            readOnly ? 'cursor-not-allowed' : ''
+            readOnly || sending ? 'cursor-not-allowed opacity-70' : ''
           }`}
         />
 
@@ -540,7 +689,10 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
                 : 'bg-surface-container text-on-surface-variant/40 cursor-not-allowed'
             }`}
           >
-            <LegacyIcon name="arrow_upward" className="text-[17px]" />
+            <LegacyIcon
+              name={sending ? 'progress_activity' : 'arrow_upward'}
+              className={`text-[17px] ${sending ? 'animate-spin' : ''}`}
+            />
           </button>
         </div>
       </div>

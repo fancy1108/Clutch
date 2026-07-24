@@ -9,6 +9,7 @@ import { LegacyIcon } from '../ui/LegacyIcon';
 import { formatDispatchTime } from '../../services/formatTime';
 import { HandoffPreviewModal } from './HandoffPreviewModal';
 import { TerminalSessionCommandCard } from './TerminalSessionCommandCard';
+import { renderChatMarkdown } from '../chatContentRender';
 
 interface MentionableAgent {
   id: string;
@@ -25,6 +26,7 @@ interface TerminalDispatchHistoryFeedProps {
   userName?: string;
   mentionableAgents?: MentionableAgent[];
   workspacePath?: string;
+  onOpenWorkspaceFile?: (path: string) => void;
 }
 
 function resolveAgentForTarget(
@@ -55,6 +57,7 @@ export const TerminalDispatchHistoryFeed: React.FC<TerminalDispatchHistoryFeedPr
   userName = 'User',
   mentionableAgents = [],
   workspacePath,
+  onOpenWorkspaceFile,
 }) => {
   const { t } = useLanguage();
   const [previewPath, setPreviewPath] = React.useState<string | null>(null);
@@ -109,10 +112,22 @@ export const TerminalDispatchHistoryFeed: React.FC<TerminalDispatchHistoryFeedPr
                       <span className="text-[10px] text-on-surface-variant/60">{timeLabel}</span>
                       <span className="text-xs font-bold text-on-surface">{userName}</span>
                     </div>
-                    <div className="px-3 py-1.5 rounded-2xl border border-outline-variant/30 shadow-sm bg-primary/10 text-on-surface rounded-tr-none text-left">
-                      <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">
-                        {entry.prompt}
-                      </p>
+                    <div className="px-3 py-1.5 rounded-2xl border border-outline-variant/30 shadow-sm bg-primary/10 text-on-surface rounded-tr-none text-left text-sm leading-relaxed">
+                      {renderChatMarkdown(entry.prompt, { onOpenPath: onOpenWorkspaceFile })}
+                      {(entry.file_refs?.length ?? 0) > 0 ? (
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {entry.file_refs!.map((ref) => (
+                            <button
+                              key={ref}
+                              type="button"
+                              className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-md border border-outline-variant/40 bg-white/70 text-primary hover:underline"
+                              onClick={() => onOpenWorkspaceFile?.(ref)}
+                            >
+                              {ref}
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                 </div>

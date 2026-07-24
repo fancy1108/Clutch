@@ -32,6 +32,7 @@ import { chatChromeForHost } from '../platform/chrome/chatChrome';
 import { useHostOs } from '../platform/hostOs';
 import { TerminalOrchestraEmptyState } from './terminal-orchestra/TerminalOrchestraEmptyState';
 import { TerminalDispatchHistoryFeed } from './terminal-orchestra/TerminalDispatchHistoryFeed';
+import { renderChatMarkdown } from './chatContentRender';
 import {
   parseInputAgentMention,
   sessionHasTerminalHistory,
@@ -292,6 +293,10 @@ interface ChatFeedProps {
   workspacePath?: string;
   /** Opened from sidebar history — hide chat/terminal toggle, show read-only chrome. */
   isHistorySessionView?: boolean;
+  /** Resolve + open a workspace file (or basename) in the App preview overlay. */
+  onOpenWorkspaceFile?: (path: string) => void;
+  /** Preview an in-memory code snippet (fenced blocks). */
+  onPreviewSnippet?: (name: string, content: string) => void;
 }
 
 const WORKFLOW_AGENTS = new Set(['Builder', 'Orchestrator', 'Evaluator', 'Supervisor']);
@@ -428,199 +433,6 @@ function ChatBubbleImage({ src, alt }: { src: string; alt: string }) {
   );
 }
 
-function renderMarkdown(text: string): React.ReactNode {
-  if (!text) return null;
-
-  const lines = text.split('\n');
-  const elements: React.ReactNode[] = [];
-
-  let inBlockquote = false;
-  let blockquoteLines: string[] = [];
-  let isAlert = false;
-  let alertType = ''; // 'IMPORTANT', 'WARNING', 'NOTE', 'TIP'
-
-  const flushBlockquote = (key: number) => {
-    if (blockquoteLines.length === 0 && !isAlert) return;
-
-    const content = blockquoteLines.join('\n');
-    blockquoteLines = [];
-    inBlockquote = false;
-
-    // Inline formatting helper
-    const formatInline = (str: string) => {
-      return str
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/`([^`]+)`/g, '<code class="bg-neutral-200/60 dark:bg-neutral-800 text-on-surface px-1 py-0.5 rounded font-mono text-[11px] border border-outline-variant/20 mx-0.5">$1</code>');
-    };
-
-    if (isAlert) {
-      // Render GitHub-style alert box
-      const title = alertType;
-      let borderClass = 'border border-blue-200/80';
-      let bgClass = 'bg-blue-50/50';
-      let textClass = 'text-blue-900';
-      let icon = 'info';
-
-      if (alertType === 'IMPORTANT') {
-        borderClass = 'border border-neutral-300/80';
-        bgClass = 'bg-neutral-50/80';
-        textClass = 'text-neutral-900';
-        icon = 'label_important';
-      } else if (alertType === 'WARNING') {
-        borderClass = 'border border-amber-200/80';
-        bgClass = 'bg-amber-50/40';
-        textClass = 'text-amber-900';
-        icon = 'warning';
-      } else if (alertType === 'TIP') {
-        borderClass = 'border border-emerald-200/80';
-        bgClass = 'bg-emerald-50/40';
-        textClass = 'text-emerald-900';
-        icon = 'lightbulb';
-      }
-
-      elements.push(
-        <div key={`alert-${key}`} className={`p-3.5 my-3 rounded-xl ${borderClass} ${bgClass} flex items-start gap-2.5`}>
-          <LegacyIcon name={icon} className={`text-[18px] mt-0.5 ${textClass}`} />
-          <div className="flex-1 space-y-1">
-            <div className={`text-[11px] font-bold tracking-wide uppercase ${textClass}`}>{title}</div>
-            <div className="text-[12.5px] leading-relaxed text-on-surface" dangerouslySetInnerHTML={{ __html: formatInline(content) }} />
-          </div>
-        </div>
-      );
-    } else {
-      // Standard blockquote
-      elements.push(
-        <blockquote key={`bq-${key}`} className="p-3 my-2 border border-neutral-200/80 rounded-xl text-neutral-500 italic text-[12.5px]" dangerouslySetInnerHTML={{ __html: formatInline(content) }} />
-      );
-    }
-
-    isAlert = false;
-    alertType = '';
-  };
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const trimmed = line.trim();
-
-    // Handle blockquote
-    if (trimmed.startsWith('>')) {
-      let content = line.substring(line.indexOf('>') + 1);
-      if (content.startsWith(' ')) {
-        content = content.substring(1);
-      }
-
-      // Check for alert header: [!IMPORTANT], [!WARNING], [!NOTE], [!TIP]
-      const alertMatch = content.match(/^\[!(IMPORTANT|WARNING|NOTE|TIP)\]/i);
-      if (alertMatch) {
-        isAlert = true;
-        alertType = alertMatch[1].toUpperCase();
-        inBlockquote = true;
-      } else {
-        blockquoteLines.push(content);
-        inBlockquote = true;
-      }
-      continue;
-    }
-
-    // If we were in blockquote but the current line is not, flush the blockquote
-    if (inBlockquote) {
-      flushBlockquote(i);
-    }
-
-    // Handle markdown images: ![alt](url)
-    const imageMatch = trimmed.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
-    if (imageMatch) {
-      elements.push(
-        <div key={i} className="my-3">
-          <ChatBubbleImage src={imageMatch[2]} alt={imageMatch[1] || 'generated image'} />
-        </div>
-      );
-      continue;
-    }
-
-    // Handle markdown links on their own line (e.g. "Open image")
-    const linkMatch = trimmed.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
-    if (linkMatch) {
-      elements.push(
-        <a
-          key={i}
-          href={linkMatch[2]}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-[12px] text-primary font-medium hover:underline my-1"
-        >
-          {linkMatch[1]}
-        </a>
-      );
-      continue;
-    }
-
-    // Handle Headings
-    if (trimmed.startsWith('# ')) {
-      elements.push(
-        <h1 key={i} className="text-base font-extrabold text-neutral-900 border-b border-neutral-200 pb-1.5 mb-3 mt-3">
-          {trimmed.substring(2)}
-        </h1>
-      );
-      continue;
-    }
-    if (trimmed.startsWith('## ')) {
-      elements.push(
-        <h2 key={i} className="text-sm font-bold text-neutral-800 mt-4 mb-1.5">
-          {trimmed.substring(3)}
-        </h2>
-      );
-      continue;
-    }
-    if (trimmed.startsWith('### ')) {
-      elements.push(
-        <h3 key={i} className="text-xs font-bold text-neutral-800 mt-3 mb-1">
-          {trimmed.substring(4)}
-        </h3>
-      );
-      continue;
-    }
-
-    // Handle List Items
-    if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
-      const content = trimmed.substring(2);
-      const formatInline = (str: string) => {
-        return str
-          .replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-on-surface">$1</strong>')
-          .replace(/`([^`]+)`/g, '<code class="bg-neutral-200/60 dark:bg-neutral-800 text-on-surface px-1 py-0.5 rounded font-mono text-[11px] border border-outline-variant/20 mx-0.5">$1</code>');
-      };
-      elements.push(
-        <div key={i} className="flex items-start gap-2 pl-2 my-1 text-on-surface text-[13px]">
-          <span className="w-1 h-1 mt-2 rounded bg-neutral-400 flex-shrink-0" />
-          <span dangerouslySetInnerHTML={{ __html: formatInline(content) }} />
-        </div>
-      );
-      continue;
-    }
-
-    // Handle normal paragraphs
-    const formatInline = (str: string) => {
-      return str
-        .replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-on-surface">$1</strong>')
-        .replace(/`([^`]+)`/g, '<code class="bg-neutral-200/60 dark:bg-neutral-800 text-on-surface px-1 py-0.5 rounded font-mono text-[11px] border border-outline-variant/20 mx-0.5">$1</code>');
-    };
-
-    if (trimmed === '') {
-      elements.push(<div key={i} className="h-2" />);
-    } else {
-      elements.push(
-        <p key={i} className="my-1.5 text-on-surface text-[13px] leading-relaxed" dangerouslySetInnerHTML={{ __html: formatInline(line) }} />
-      );
-    }
-  }
-
-  // Final flush in case file ends with blockquote
-  if (inBlockquote) {
-    flushBlockquote(lines.length);
-  }
-
-  return <div className="space-y-1 select-text">{elements}</div>;
-}
 
 export const ChatFeed: React.FC<ChatFeedProps> = ({
   messages,
@@ -681,10 +493,23 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   onMentionAgentChange,
   workspacePath,
   isHistorySessionView = false,
+  onOpenWorkspaceFile,
+  onPreviewSnippet,
 }) => {
   const { t } = useLanguage();
   const hostOs = useHostOs();
   const chatChrome = chatChromeForHost(hostOs, sidebarOpen, rightPanelOpen);
+  const markdownHandlers = useMemo(
+    () => ({
+      onOpenPath: onOpenWorkspaceFile,
+      onPreviewSnippet,
+    }),
+    [onOpenWorkspaceFile, onPreviewSnippet],
+  );
+  const renderMarkdown = useCallback(
+    (text: string) => renderChatMarkdown(text, markdownHandlers),
+    [markdownHandlers],
+  );
   const { state: clutchOrchestraState } = useClutchState();
   const [orchestratorBarFocused, setOrchestratorBarFocused] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -1200,6 +1025,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
               previewAgentName={sessionDispatched ? null : inputTerminalMention?.name ?? null}
               layoutChromeKey={terminalLayoutChromeKey}
               layoutObserveRef={terminalStageRef}
+              onOpenWorkspaceFile={onOpenWorkspaceFile}
             />
           </div>
         ) : isPlainLlmChat && hasCliAgents && isTerminalLayout ? (
@@ -1224,6 +1050,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
               userName={userName}
               mentionableAgents={mentionableAgents}
               workspacePath={workspacePath}
+              onOpenWorkspaceFile={onOpenWorkspaceFile}
             />
           </div>
         ) : null}

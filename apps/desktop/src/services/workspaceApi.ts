@@ -201,6 +201,38 @@ export async function fetchWorkspaceFile(path: string): Promise<string> {
   return body.content;
 }
 
+export type WorkspaceFileResolveResult =
+  | { ok: true; path: string; match?: string }
+  | { ok: false; reason: 'not_found' | 'ambiguous' | string };
+
+export async function resolveWorkspaceFile(path: string): Promise<WorkspaceFileResolveResult> {
+  const response = await sidecarFetch(
+    `${BASE}/api/workspace/file/resolve?path=${encodeURIComponent(path)}`,
+  );
+  if (!response.ok) throw new Error(`resolve file failed (${response.status})`);
+  return (await response.json()) as WorkspaceFileResolveResult;
+}
+
+export async function uploadWorkspaceAttachment(
+  dataUrl: string,
+  options?: { analyze?: boolean },
+): Promise<{ path: string; analysis_text: string }> {
+  const response = await sidecarFetch(`${BASE}/api/workspace/attachments`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ data_url: dataUrl, analyze: options?.analyze ?? true }),
+  });
+  if (!response.ok) {
+    if (response.status === 404) {
+      throw new Error(
+        'upload attachment failed (404): Sidecar is missing /api/workspace/attachments — restart the orchestrator (dev: uvicorn --reload on 8124; do not use an old packaged sidecar on 8123).',
+      );
+    }
+    throw new Error(`upload attachment failed (${response.status})`);
+  }
+  return (await response.json()) as { path: string; analysis_text: string };
+}
+
 export async function reassignToBuilder(runId: string, instructions = 'reassign_to_builder'): Promise<void> {
   const response = await sidecarFetch(`${BASE}/api/runs/${runId}/reassign`, {
     method: 'POST',

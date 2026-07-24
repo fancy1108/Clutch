@@ -71,6 +71,7 @@ import {
   addWorkspace,
   removeWorkspace,
   fetchWorkspaceFile,
+  resolveWorkspaceFile,
   fetchWorkspaceTree,
   fetchWorkspaceGit,
   fetchWorkspaces,
@@ -82,6 +83,7 @@ import {
   type RepositoryGroup,
   type WorkspaceInfo,
 } from './services/workspaceApi';
+import { isLargePreviewContent } from './services/workspacePathLinks';
 import { pickWorkspaceFolder } from './services/pickWorkspaceFolder';
 import {
   fetchModelsConfig,
@@ -240,7 +242,8 @@ function MainLayout() {
   const [rightPanelOpen, setRightPanelOpen] = useState<boolean>(true);
 
   // File Preview state
-  const [previewFile, setPreviewFile] = useState<{ name: string; content: string } | null>(null);
+  const [previewFile, setPreviewFile] = useState<{ name: string; content: string; plain?: boolean } | null>(null);
+  const [previewToast, setPreviewToast] = useState<string | null>(null);
 
   // Repository list folders state
   const [folders, setFolders] = useState<import('./types').RepositoryFolder[]>([]);
@@ -937,11 +940,35 @@ function MainLayout() {
 
   const handleOpenWorkspaceFile = async (path: string) => {
     try {
-      const content = await fetchWorkspaceFile(path);
-      setPreviewFile({ name: path, content });
+      const resolved = await resolveWorkspaceFile(path);
+      if (!resolved.ok) {
+        setPreviewToast(
+          resolved.reason === 'ambiguous'
+            ? `Multiple files named “${path}” — open from Files instead.`
+            : `File not found: ${path}`,
+        );
+        window.setTimeout(() => setPreviewToast(null), 3200);
+        return;
+      }
+      const content = await fetchWorkspaceFile(resolved.path);
+      setPreviewFile({
+        name: resolved.path,
+        content,
+        plain: isLargePreviewContent(content),
+      });
     } catch (error) {
       console.error('[Clutch] read file failed:', error);
+      setPreviewToast(`Could not open: ${path}`);
+      window.setTimeout(() => setPreviewToast(null), 3200);
     }
+  };
+
+  const handlePreviewSnippet = (name: string, content: string) => {
+    setPreviewFile({
+      name,
+      content,
+      plain: isLargePreviewContent(content),
+    });
   };
 
   const handleApprove = () => {
@@ -1823,18 +1850,38 @@ function MainLayout() {
                   </div>
                 </div>
 
-                <button
-                  onClick={() => setPreviewFile(null)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-200/50 rounded-lg text-[11px] font-semibold transition-colors"
-                >
-                  <LegacyIcon name="close" className="text-[16px]" />
-                  Close
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => void navigator.clipboard.writeText(previewFile.content)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-200/50 rounded-lg text-[11px] font-semibold transition-colors"
+                  >
+                    <LegacyIcon name="content_copy" className="text-[16px]" />
+                    Copy
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewFile(null)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-200/50 rounded-lg text-[11px] font-semibold transition-colors"
+                  >
+                    <LegacyIcon name="close" className="text-[16px]" />
+                    Close
+                  </button>
+                </div>
               </div>
 
               {/* Code/Markdown Content Viewer */}
               <div className="flex-1 overflow-y-auto p-8 font-mono text-xs text-neutral-800 bg-[#f9f9f9] select-text leading-relaxed">
-                {previewFile.name.endsWith('.md') ? (
+                {previewFile.plain ? (
+                  <div className="max-w-4xl mx-auto space-y-2">
+                    <p className="text-[11px] font-semibold text-neutral-500 font-sans">
+                      Large file: plain view
+                    </p>
+                    <pre className="bg-neutral-900 text-neutral-200 p-6 rounded-xl text-[11px] shadow-sm overflow-auto max-h-[calc(100vh-10rem)] whitespace-pre border border-neutral-800">
+                      {previewFile.content}
+                    </pre>
+                  </div>
+                ) : previewFile.name.endsWith('.md') ? (
                   <div className="max-w-3xl mx-auto space-y-3 font-sans text-[13px] text-neutral-700 leading-relaxed bg-white border border-outline p-8 rounded-xl shadow-xs">
                     {previewFile.content.split('\n').map((line, i) => {
                       if (line.startsWith('# ')) {
@@ -1995,6 +2042,8 @@ function MainLayout() {
                 onMentionAgentChange={syncSelectedAgentFromMention}
                 workspacePath={workspace?.workspace_path}
                 isHistorySessionView={historySessionViewRunId === sessionRunId}
+                onOpenWorkspaceFile={(path) => { void handleOpenWorkspaceFile(path); }}
+                onPreviewSnippet={handlePreviewSnippet}
               />
               </div>
             </>
@@ -2409,6 +2458,14 @@ function MainLayout() {
         />
       )}
       </footer>
+      {previewToast ? (
+        <div
+          className="fixed bottom-16 left-1/2 -translate-x-1/2 z-[80] max-w-md px-4 py-2 rounded-xl bg-neutral-900 text-white text-[12px] font-medium shadow-xl"
+          role="status"
+        >
+          {previewToast}
+        </div>
+      ) : null}
     </div>
   );
 }

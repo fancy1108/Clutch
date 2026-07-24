@@ -304,3 +304,80 @@ def image_analysis_prompt_fragment(image_data_url: str) -> str:
     """
     result = analyze_image_for_spec(image_data_url)
     return result.get("description", "")
+
+
+def image_analysis_prompt_fragment_for_chat(image_data_url: str) -> str:
+    """Coding-chat variant: OCR/text first; no Design-spec color mandates.
+
+    Design's fragment tells the LLM to lock hex palettes into a JSON spec — that
+    poisons Coding answers when the user only asks what text is in the image.
+    """
+    result = analyze_image_for_spec(image_data_url)
+    if not result.get("available"):
+        return ""
+
+    lines: list[str] = ["[Attached image — local analysis]"]
+    ocr_text = (result.get("ocr_text") or "").strip()
+    colors = result.get("colors") or []
+    ocr_status = ocr_runtime_status()
+
+    if ocr_text:
+        lines.append(f"Visible text (OCR): {ocr_text}")
+        lines.append(
+            "Answer using the OCR text above when the user asks what the image says "
+            "or contains. Do not claim OCR is unavailable."
+        )
+    else:
+        if not ocr_status.get("ready"):
+            reason = ocr_status.get("detail") or "OCR runtime unavailable"
+            lines.append(f"Visible text (OCR): unavailable — {reason}")
+        else:
+            lines.append("Visible text (OCR): no text detected in the image.")
+        lines.append(
+            "You CANNOT reliably read writing from this image via local OCR. "
+            "Do not invent text from colors. Tell the user the vision model could not "
+            "process the image and local OCR did not extract text."
+        )
+
+    if colors:
+        top = ", ".join(f"{c['hex']} ({c.get('name', '?')})" for c in colors[:5])
+        lines.append(f"Dominant colors (secondary context only): {top}")
+
+    return "\n".join(lines)
+
+
+def ocr_runtime_status() -> dict[str, Any]:
+    """Report whether local OCR can run (pytesseract + tesseract binary)."""
+    import shutil
+
+    if not _OCR_AVAILABLE or _pytesseract is None:
+        return {
+            "ready": False,
+            "pytesseract": False,
+            "tesseract_bin": None,
+            "detail": "Python package pytesseract is not installed",
+        }
+    bin_path = shutil.which("tesseract")
+    if not bin_path:
+        return {
+            "ready": False,
+            "pytesseract": True,
+            "tesseract_bin": None,
+            "detail": "tesseract binary not found on PATH (e.g. brew install tesseract)",
+        }
+    try:
+        version = str(_pytesseract.get_tesseract_version())
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "ready": False,
+            "pytesseract": True,
+            "tesseract_bin": bin_path,
+            "detail": f"tesseract found but not usable: {exc}",
+        }
+    return {
+        "ready": True,
+        "pytesseract": True,
+        "tesseract_bin": bin_path,
+        "version": version,
+        "detail": "ok",
+    }
