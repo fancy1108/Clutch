@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  extractImagePathsFromDispatch,
   findPathCandidates,
+  isImageWorkspacePath,
   isLargePreviewContent,
   stripPathPunctuation,
 } from './workspacePathLinks';
@@ -21,5 +23,17 @@ describe('workspacePathLinks', () => {
   it('detects large preview content', () => {
     expect(isLargePreviewContent('short')).toBe(false);
     expect(isLargePreviewContent(`${'x'.repeat(500 * 1024)}`)).toBe(true);
+  });
+
+  it('extracts attachment images from dispatch prompt', () => {
+    const prompt =
+      '[Image analysis for .clutch/attachments/1784877032089.png]\n[Attached image]\n[file: .clutch/attachments/1784877032089.png]\n@.clutch/attachments/1784877032089.png';
+    expect(isImageWorkspacePath('.clutch/attachments/a.png')).toBe(true);
+    expect(extractImagePathsFromDispatch(prompt, [])).toEqual([
+      '.clutch/attachments/1784877032089.png',
+    ]);
+    expect(
+      extractImagePathsFromDispatch('hello', ['.clutch/attachments/x.jpg', 'notes.md']),
+    ).toEqual(['.clutch/attachments/x.jpg']);
   });
 });

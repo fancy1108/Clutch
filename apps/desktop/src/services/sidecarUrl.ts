@@ -94,6 +94,13 @@ export async function sidecarAuthedHttpUrl(path: string): Promise<string> {
   return `${resolved}${joiner}token=${encodeURIComponent(token)}`;
 }
 
+/** Authenticated media URL for a workspace-relative file (png/mp4/…). */
+export async function workspaceMediaUrl(relativePath: string): Promise<string> {
+  return sidecarAuthedHttpUrl(
+    `/api/workspace/media?path=${encodeURIComponent(relativePath)}`,
+  );
+}
+
 export async function sidecarWebSocketUrl(path: string): Promise<string> {
   const normalized = path.startsWith('/') ? path : `/${path}`;
   let base: string;

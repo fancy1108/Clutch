@@ -13,7 +13,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 ### Added
 
 - **Coding image paste (Chat + Terminal OrchestratorBar):** Clipboard/attach images from Clutch composers (not xterm). Chat always sends multimodal first; on vision soft-refuse / API reject, retries with local OCR/palette analysis. Terminal uploads to `.clutch/attachments/` with `*` gitignore + size-triggered GC; send button Loading during upload/OCR.
-- **Click-to-preview artifacts:** Chat paths / `[file:]` / `@path` / fenced code blocks open the App preview overlay (large content uses plain `<pre>`). Terminal xterm + dispatch history linkify paths/filenames with workspace resolve (exact → unique basename fuzzy); missing/ambiguous shows toast.
+- **Click-to-preview artifacts:** Chat paths / `[file:]` / `@path` / fenced code blocks open the App preview overlay (large content uses plain `<pre>`; **images open as media**). Terminal xterm + dispatch history linkify paths/filenames with workspace resolve (exact → unique basename fuzzy); missing/ambiguous shows toast. **Terminal Overview** shows attachment image thumbnails on dispatch records (click to enlarge).
 
 ### Changed
 

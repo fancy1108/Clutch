@@ -214,5 +214,15 @@ async def read_workspace_media(path: str) -> FileResponse:
             detail={"message": tr("File does not exist", "文件不存在"), "message_zh": "文件不存在"},
         )
     suffix = target.suffix.lower()
-    media_type = "video/mp4" if suffix == ".mp4" else "application/octet-stream"
+    media_types = {
+        ".mp4": "video/mp4",
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".gif": "image/gif",
+        ".webp": "image/webp",
+        ".bmp": "image/bmp",
+        ".svg": "image/svg+xml",
+    }
+    media_type = media_types.get(suffix, "application/octet-stream")
     return FileResponse(target, media_type=media_type, filename=target.name)

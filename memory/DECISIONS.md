@@ -545,11 +545,14 @@
 - **影响**：`design/fidelity_export.py`、`service.generate_react`、Preview Demo Coding 托盘文案、`PRODUCT_INTRO` / `DESIGN_*`。
 - **决策状态**：`可执行`
 
-### D42 · Coding 发图 + 中间产物预览（2026-07-20）
+### D42 · Coding 发图 + 中间产物预览（2026-07-20；2026-07-24 修订）
 
 - **背景**：Coding Chat/Terminal 需要粘贴图片给 Agent「看见」；CLI 输出中的文件名应可点开预览，体验接近 IDE。
 - **方案**：
-  1. **发图入口**：仅 Clutch 底栏（`ChatInputBar` / `OrchestratorBar`），不进 xterm。Chat：**任意聊天 LLM 先 multimodal 发图**；仅当软拒绝视觉或 API 拒图时，再降级本地 OCR/调色板（Coding 专用 fragment，禁止 Design 调色板硬约束）。Terminal 先 `POST /api/workspace/attachments` 落盘 `.clutch/attachments/`（自动 `.gitignore`=`*`；目录 ≥~100MB 时删 >3 天旧图），再注入路径+OCR 文本；发送中 Loading 防连按。
+  1. **发图入口**：仅 Clutch 底栏（`ChatInputBar` / `OrchestratorBar`），不进 xterm。
+     - **Chat → 云端/本地 Chat LLM**：先 multimodal 发图；仅当软拒绝视觉或 API 拒图时，再降级本地 OCR/调色板（Coding 专用 fragment，禁止 Design 调色板硬约束）。
+     - **Chat → 本地 CLI（Mimo / Claude Code 等）**：把 `[image: data:…]` **落盘** `.clutch/attachments/`，prompt/history 注入 `@path` / `[file: path]`，让 CLI **自己读图**；禁止把 base64 塞进 argv。仅当 CLI 输出像视觉拒绝时，再降级 OCR。
+     - **Terminal OrchestratorBar**：同样先落盘再注入路径（默认 `analyze=false`，不预塞 OCR）；发送中 Loading 防连按。附件目录自动 `.gitignore`=`*`；≥~100MB 时删 >3 天旧图。
   2. **预览**：共享 path helper + `GET /api/workspace/file/resolve`（精确 → basename 唯一模糊）；不追踪 xterm CWD。Chat fence/路径/`[file:]`/`@` 与 xterm `ILinkProvider`、派发 history 共用 resolve → `previewFile`；大内容 plain view。
 - **影响**：`chat_content` / `chat_runner`、`workspace_attachments`、`OrchestratorBar`、`chatContentRender`、`TerminalLanePane`、`PRODUCT_INTRO`。
 - **决策状态**：`已落地`

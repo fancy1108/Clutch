@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import type { DispatchLogEntry } from '../../types';
 import { isHandoffDispatchEntry } from '../../services/terminalOrchestraUtils';
 import { USER_CHAT_AVATAR } from '../../services/clutchState';
@@ -10,6 +10,8 @@ import { formatDispatchTime } from '../../services/formatTime';
 import { HandoffPreviewModal } from './HandoffPreviewModal';
 import { TerminalSessionCommandCard } from './TerminalSessionCommandCard';
 import { renderChatMarkdown } from '../chatContentRender';
+import { extractImagePathsFromDispatch, isImageWorkspacePath } from '../../services/workspacePathLinks';
+import { workspaceMediaUrl } from '../../services/sidecarUrl';
 
 interface MentionableAgent {
   id: string;
@@ -50,6 +52,44 @@ function resolveAgentLogo(target: string, agents: MentionableAgent[]): string | 
   return resolveBrandLogoSrc({ runtimeEngine: target });
 }
 
+function DispatchImageThumb({
+  path,
+  onOpen,
+}: {
+  path: string;
+  onOpen?: (path: string) => void;
+}) {
+  const [src, setSrc] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    void workspaceMediaUrl(path).then((url) => {
+      if (!cancelled) setSrc(url);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [path]);
+  if (!src) {
+    return (
+      <div
+        className="h-28 w-40 rounded-lg bg-surface-container animate-pulse border border-outline-variant/30"
+        aria-hidden
+      />
+    );
+  }
+  return (
+    <button
+      type="button"
+      title={path}
+      data-testid="dispatch-image-thumb"
+      className="block overflow-hidden rounded-lg border border-outline-variant/40 bg-white shadow-sm hover:ring-2 hover:ring-primary/30 transition"
+      onClick={() => onOpen?.(path)}
+    >
+      <img src={src} alt={path.split('/').pop() || path} className="max-h-40 max-w-[220px] object-contain" />
+    </button>
+  );
+}
+
 export const TerminalDispatchHistoryFeed: React.FC<TerminalDispatchHistoryFeedProps> = ({
   entries,
   highlightedEntryId = null,
@@ -87,6 +127,8 @@ export const TerminalDispatchHistoryFeed: React.FC<TerminalDispatchHistoryFeedPr
           const agentName = entry.target;
           const agentLogo = resolveAgentLogo(entry.target, mentionableAgents);
           const timeLabel = formatDispatchTime(entry.time);
+          const imagePaths = extractImagePathsFromDispatch(entry.prompt, entry.file_refs);
+          const textFileRefs = (entry.file_refs ?? []).filter((ref) => !isImageWorkspacePath(ref));
 
           return (
             <div
@@ -97,7 +139,6 @@ export const TerminalDispatchHistoryFeed: React.FC<TerminalDispatchHistoryFeedPr
                 isHighlighted ? 'ring-2 ring-primary/20 bg-primary/5 p-3 -mx-3' : ''
               }`}
             >
-              {/* User prompt */}
               <div className="w-full flex justify-end">
                 <div className="flex gap-3 max-w-[85%] flex-row-reverse group px-1.5 py-1 rounded-xl">
                   <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center bg-surface-container">
@@ -113,10 +154,21 @@ export const TerminalDispatchHistoryFeed: React.FC<TerminalDispatchHistoryFeedPr
                       <span className="text-xs font-bold text-on-surface">{userName}</span>
                     </div>
                     <div className="px-3 py-1.5 rounded-2xl border border-outline-variant/30 shadow-sm bg-primary/10 text-on-surface rounded-tr-none text-left text-sm leading-relaxed">
+                      {imagePaths.length > 0 ? (
+                        <div className="mb-2 flex flex-wrap gap-2 justify-end">
+                          {imagePaths.map((path) => (
+                            <DispatchImageThumb
+                              key={path}
+                              path={path}
+                              onOpen={onOpenWorkspaceFile}
+                            />
+                          ))}
+                        </div>
+                      ) : null}
                       {renderChatMarkdown(entry.prompt, { onOpenPath: onOpenWorkspaceFile })}
-                      {(entry.file_refs?.length ?? 0) > 0 ? (
+                      {textFileRefs.length > 0 ? (
                         <div className="mt-2 flex flex-wrap gap-1.5">
-                          {entry.file_refs!.map((ref) => (
+                          {textFileRefs.map((ref) => (
                             <button
                               key={ref}
                               type="button"
@@ -133,7 +185,6 @@ export const TerminalDispatchHistoryFeed: React.FC<TerminalDispatchHistoryFeedPr
                 </div>
               </div>
 
-              {/* Agent handoff / dispatch response */}
               <div className="w-full flex justify-start">
                 <div className="flex gap-3 max-w-[85%] group px-1.5 py-1 rounded-xl">
                   <AgentChatAvatar src={agentLogo} alt={agentName} />

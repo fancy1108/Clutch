@@ -33,7 +33,12 @@ export interface WorkspaceGitInfo {
   branches: string[];
 }
 
-import { SIDECAR_BASE as BASE, SIDECAR_DEV_PORT, SIDECAR_PROD_PORT, sidecarFetch as authorizedSidecarFetch } from './sidecarUrl';
+import {
+  SIDECAR_BASE as BASE,
+  SIDECAR_DEV_PORT,
+  SIDECAR_PROD_PORT,
+  sidecarFetch as authorizedSidecarFetch,
+} from './sidecarUrl';
 
 function stableWorkspaceId(path: string): string {
   return `ws_${btoa(path).replace(/[^a-zA-Z0-9]/g, '').slice(0, 12)}`;

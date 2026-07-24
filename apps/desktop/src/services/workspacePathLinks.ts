@@ -35,6 +35,33 @@ export function findPathCandidates(line: string): Array<{ raw: string; start: nu
 
 export const FILE_MARKER_RE = /\[file:\s*([^\]]+)\]/gi;
 export const AT_PATH_RE = /@((?:\.\/)?[\w.@+/-]+\.[A-Za-z0-9]+)/g;
+export const IMAGE_PATH_EXT_RE = /\.(?:png|jpe?g|gif|webp|bmp|svg)$/i;
+const IMAGE_ANALYSIS_PATH_RE = /\[Image analysis for\s+([^\]]+)\]/gi;
+
+export function isImageWorkspacePath(path: string): boolean {
+  return IMAGE_PATH_EXT_RE.test(stripPathPunctuation(path));
+}
+
+/** Collect unique image paths from dispatch prompt + file_refs for thumbnail preview. */
+export function extractImagePathsFromDispatch(text: string, fileRefs?: string[] | null): string[] {
+  const ordered: string[] = [];
+  const seen = new Set<string>();
+  const push = (raw: string) => {
+    const cleaned = stripPathPunctuation(raw);
+    if (!cleaned || !isImageWorkspacePath(cleaned) || seen.has(cleaned)) return;
+    seen.add(cleaned);
+    ordered.push(cleaned);
+  };
+  for (const ref of fileRefs ?? []) push(ref);
+  const fileRe = new RegExp(FILE_MARKER_RE.source, 'gi');
+  let match: RegExpExecArray | null;
+  while ((match = fileRe.exec(text)) !== null) push(match[1]);
+  const atRe = new RegExp(AT_PATH_RE.source, 'g');
+  while ((match = atRe.exec(text)) !== null) push(match[1]);
+  const analysisRe = new RegExp(IMAGE_ANALYSIS_PATH_RE.source, 'gi');
+  while ((match = analysisRe.exec(text)) !== null) push(match[1]);
+  return ordered;
+}
 
 export const LARGE_PREVIEW_LINE_THRESHOLD = 2000;
 export const LARGE_PREVIEW_BYTE_THRESHOLD = 500 * 1024;

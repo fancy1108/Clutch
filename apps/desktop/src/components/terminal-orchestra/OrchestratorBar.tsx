@@ -314,10 +314,7 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
       if (imageChips.length > 0) {
         const parts: string[] = [];
         for (const chip of imageChips) {
-          const uploaded = await uploadWorkspaceAttachment(chip.dataUrl, { analyze: true });
-          if (uploaded.analysis_text) {
-            parts.push(`[Image analysis for ${uploaded.path}]\n${uploaded.analysis_text}`);
-          }
+          const uploaded = await uploadWorkspaceAttachment(chip.dataUrl, { analyze: false });
           parts.push(`[file: ${uploaded.path}]`);
           parts.push(`@${uploaded.path}`);
         }

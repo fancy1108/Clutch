@@ -120,3 +120,45 @@ def normalize_text_content(content: Any) -> str:
                 parts.append("[image omitted]")
         return "\n".join(parts).strip()
     return str(content or "").strip()
+
+
+def materialize_images_as_file_refs(text: str) -> str:
+    """Persist ``[image: data:…]`` markers to ``.clutch/attachments/`` and reference paths.
+
+    Local CLIs (Mimo, Claude Code, …) get ``@path`` / ``[file: path]`` so they can
+    read the image themselves. Never puts base64 on the CLI argv.
+    OCR is intentionally not included — that is a refusal fallback only.
+    """
+    plain, image_urls = extract_image_data_urls(text)
+    if not image_urls:
+        return (plain or text).strip()
+
+    from src.workspace_attachments import save_attachment_data_url
+
+    parts: list[str] = []
+    for url in image_urls:
+        saved = save_attachment_data_url(url, analyze=False)
+        path = str(saved.get("path") or "").strip()
+        if not path:
+            continue
+        parts.append(f"[file: {path}]")
+        parts.append(f"@{path}")
+    if not parts:
+        return (plain or text).strip()
+    body = "\n".join(parts)
+    return f"{body}\n{plain}".strip() if plain else body
+
+
+def ocr_fallback_prompt_for_engine(text: str) -> str:
+    """Local OCR/palette text after the engine refused or could not read the image."""
+    plain, image_urls = extract_image_data_urls(text)
+    if not image_urls:
+        return (plain or text).strip()
+    return normalize_text_content(
+        user_message_content_for_llm(text, vision_enabled=False)
+    )
+
+
+# Back-compat alias (was OCR-first; callers should prefer materialize / ocr_fallback).
+def plain_user_prompt_for_engine(text: str) -> str:
+    return ocr_fallback_prompt_for_engine(text)

@@ -1076,9 +1076,27 @@ def _history_for_llm(
     messages: list[dict[str, object]],
     *,
     vision_enabled: bool = False,
+    image_delivery: str = "auto",
     hybrid_executions: dict[str, object] | None = None,
 ) -> list[dict[str, Any]]:
-    from src.chat_content import normalize_text_content, user_message_content_for_llm
+    """Build chat history for an engine.
+
+    image_delivery:
+      - ``auto``: multimodal parts when vision_enabled else OCR text fallback
+      - ``paths``: persist data-URLs to workspace files and pass ``@path`` (CLI-first)
+      - ``ocr``: force local OCR/palette text (refusal fallback)
+      - ``multimodal``: force vision parts
+    """
+    from src.chat_content import (
+        materialize_images_as_file_refs,
+        normalize_text_content,
+        user_message_content_for_llm,
+    )
+
+    if image_delivery == "auto":
+        mode = "multimodal" if vision_enabled else "ocr"
+    else:
+        mode = image_delivery
 
     history: list[dict[str, Any]] = []
     hybrid_map = hybrid_executions or {}
@@ -1104,11 +1122,16 @@ def _history_for_llm(
             continue
         role = "user" if agent == "User" else "assistant"
         if role == "user":
-            content = user_message_content_for_llm(text, vision_enabled=vision_enabled)
+            if mode == "paths":
+                content = materialize_images_as_file_refs(text)
+            elif mode == "multimodal":
+                content = user_message_content_for_llm(text, vision_enabled=True)
+            else:
+                content = user_message_content_for_llm(text, vision_enabled=False)
         else:
             content = text
         # Preserve multimodal parts for vision-capable chat models; flatten for CLIs / text-only.
-        if vision_enabled and isinstance(content, list):
+        if mode == "multimodal" and isinstance(content, list):
             if not content:
                 continue
             history.append({"role": role, "content": content})
@@ -1205,6 +1228,9 @@ async def _llm_chat_reply(
 
     # Try-first: always send attached images multimodally for Clutch chat models.
     # Soft/API vision failures retry with local OCR/palette analysis below.
+    # Local CLI agents: deliver workspace file paths first (same idea as Terminal);
+    # OCR only after the CLI refuses / cannot read the image.
+    cli_path_images = False
     if uses_clutch_model:
         if is_image_model(model) or is_video_model(model):
             vision_enabled = False
@@ -1230,6 +1256,7 @@ async def _llm_chat_reply(
             vision_enabled = False
     else:
         vision_enabled = False
+        cli_path_images = bool(attached_images)
 
     if uses_clutch_model and is_video_model(model):
         if attached_images:
@@ -1353,6 +1380,7 @@ async def _llm_chat_reply(
     history = _history_for_llm(
         state["messages"],
         vision_enabled=vision_enabled,
+        image_delivery="paths" if cli_path_images else "auto",
         hybrid_executions=state.get("hybrid_executions"),
     )
     if system_prompt:
@@ -1450,10 +1478,11 @@ async def _llm_chat_reply(
                 mcp_servers_bound=False,
             )
             history = _history_for_llm(
-        state["messages"],
-        vision_enabled=vision_enabled,
-        hybrid_executions=state.get("hybrid_executions"),
-    )
+                state["messages"],
+                vision_enabled=vision_enabled,
+                image_delivery="paths" if cli_path_images else "auto",
+                hybrid_executions=state.get("hybrid_executions"),
+            )
             if system_prompt:
                 history = [{"role": "system", "content": system_prompt}] + [
                     item for item in history if item.get("role") != "system"
@@ -1467,11 +1496,24 @@ async def _llm_chat_reply(
 
         route_history = history
         tried_vision = bool(attached_images and vision_enabled)
+        tried_cli_paths = bool(cli_path_images)
+        from src.chat_content import (
+            materialize_images_as_file_refs,
+            ocr_fallback_prompt_for_engine,
+        )
 
-        def _route_once(hist: list[dict[str, Any]]):
+        # Never put raw data:image on CLI argv. Paths first; OCR only on refusal.
+        if cli_path_images:
+            engine_prompt = materialize_images_as_file_refs(text)
+        elif attached_images and not vision_enabled:
+            engine_prompt = ocr_fallback_prompt_for_engine(text)
+        else:
+            engine_prompt = text
+
+        def _route_once(hist: list[dict[str, Any]], *, prompt: str | None = None):
             return route_engine(
                 agent_name=agent_ref,
-                prompt=text,
+                prompt=prompt if prompt is not None else engine_prompt,
                 cwd=cwd,
                 history=hist,
                 system_prompt=system_prompt,
@@ -1481,6 +1523,19 @@ async def _llm_chat_reply(
                 source=chat_source,
                 session_model_id=session_model_id,
             )
+
+        def _ocr_retry_history() -> list[dict[str, Any]]:
+            hist = _history_for_llm(
+                state["messages"],
+                vision_enabled=False,
+                image_delivery="ocr",
+                hybrid_executions=state.get("hybrid_executions"),
+            )
+            if system_prompt:
+                return [{"role": "system", "content": system_prompt}] + [
+                    item for item in hist if item.get("role") != "system"
+                ]
+            return hist
 
         try:
             result = await asyncio.to_thread(_route_once, route_history)
@@ -1498,21 +1553,16 @@ async def _llm_chat_reply(
             llm_only_logs.append(
                 "[CHAT] Vision API rejected image input — retrying with local OCR/palette analysis."
             )
-            vision_enabled = False
-            route_history = _history_for_llm(
-                state["messages"],
-                vision_enabled=False,
-                hybrid_executions=state.get("hybrid_executions"),
+            ocr_prompt = ocr_fallback_prompt_for_engine(text)
+            result = await asyncio.to_thread(
+                _route_once, _ocr_retry_history(), prompt=ocr_prompt
             )
-            if system_prompt:
-                route_history = [{"role": "system", "content": system_prompt}] + [
-                    item for item in route_history if item.get("role") != "system"
-                ]
-            result = await asyncio.to_thread(_route_once, route_history)
         else:
             from src.chat_content import looks_like_vision_error
 
-            if tried_vision and looks_like_vision_error(result.output or ""):
+            if (tried_vision or tried_cli_paths) and looks_like_vision_error(
+                result.output or ""
+            ):
                 if emit_log:
                     await emit_log(
                         "[CHAT] Model refused vision input — retrying with local OCR/palette analysis."
@@ -1520,16 +1570,10 @@ async def _llm_chat_reply(
                 llm_only_logs.append(
                     "[CHAT] Model refused vision input — retrying with local OCR/palette analysis."
                 )
-                route_history = _history_for_llm(
-                    state["messages"],
-                    vision_enabled=False,
-                    hybrid_executions=state.get("hybrid_executions"),
+                ocr_prompt = ocr_fallback_prompt_for_engine(text)
+                result = await asyncio.to_thread(
+                    _route_once, _ocr_retry_history(), prompt=ocr_prompt
                 )
-                if system_prompt:
-                    route_history = [{"role": "system", "content": system_prompt}] + [
-                        item for item in route_history if item.get("role") != "system"
-                    ]
-                result = await asyncio.to_thread(_route_once, route_history)
 
         return (
             reply_label,

@@ -91,7 +91,8 @@ import {
   type RepositoryGroup,
   type WorkspaceInfo,
 } from './services/workspaceApi';
-import { isLargePreviewContent } from './services/workspacePathLinks';
+import { isImageWorkspacePath, isLargePreviewContent } from './services/workspacePathLinks';
+import { workspaceMediaUrl } from './services/sidecarUrl';
 import { pickWorkspaceFolder } from './services/pickWorkspaceFolder';
 import {
   fetchModelsConfig,
@@ -250,7 +251,12 @@ function MainLayout() {
   const [rightPanelOpen, setRightPanelOpen] = useState<boolean>(true);
 
   // File Preview state
-  const [previewFile, setPreviewFile] = useState<{ name: string; content: string; plain?: boolean } | null>(null);
+  const [previewFile, setPreviewFile] = useState<{
+    name: string;
+    content: string;
+    plain?: boolean;
+    mediaSrc?: string;
+  } | null>(null);
   const [previewToast, setPreviewToast] = useState<string | null>(null);
 
   // Repository list folders state
@@ -957,6 +963,15 @@ function MainLayout() {
             : `File not found: ${path}`,
         );
         window.setTimeout(() => setPreviewToast(null), 3200);
+        return;
+      }
+      if (isImageWorkspacePath(resolved.path)) {
+        const mediaSrc = await workspaceMediaUrl(resolved.path);
+        setPreviewFile({
+          name: resolved.path,
+          content: '',
+          mediaSrc,
+        });
         return;
       }
       const content = await fetchWorkspaceFile(resolved.path);
@@ -1825,7 +1840,13 @@ function MainLayout() {
               <div className="h-14 border-b border-outline-variant/60 flex items-center justify-between px-6 bg-neutral-50/50 flex-shrink-0 select-none">
                 <div className="flex items-center gap-3">
                   <LegacyIcon
-                    name={previewFile.name.endsWith('.md') ? 'markdown' : 'code'}
+                    name={
+                      previewFile.mediaSrc
+                        ? 'image'
+                        : previewFile.name.endsWith('.md')
+                          ? 'markdown'
+                          : 'code'
+                    }
                     className="text-[20px] text-neutral-500"
                   />
                   <div className="flex flex-col justify-center">
@@ -1841,7 +1862,13 @@ function MainLayout() {
                 <div className="flex items-center gap-1.5">
                   <button
                     type="button"
-                    onClick={() => void navigator.clipboard.writeText(previewFile.content)}
+                    onClick={() => {
+                      if (previewFile.mediaSrc) {
+                        void navigator.clipboard.writeText(previewFile.name);
+                        return;
+                      }
+                      void navigator.clipboard.writeText(previewFile.content);
+                    }}
                     className="flex items-center gap-1.5 px-3 py-1.5 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-200/50 rounded-lg text-[11px] font-semibold transition-colors"
                   >
                     <LegacyIcon name="content_copy" className="text-[16px]" />
@@ -1858,9 +1885,17 @@ function MainLayout() {
                 </div>
               </div>
 
-              {/* Code/Markdown Content Viewer */}
+              {/* Code/Markdown/Image Content Viewer */}
               <div className="flex-1 overflow-y-auto p-8 font-mono text-xs text-neutral-800 bg-[#f9f9f9] select-text leading-relaxed">
-                {previewFile.plain ? (
+                {previewFile.mediaSrc ? (
+                  <div className="max-w-5xl mx-auto flex items-center justify-center min-h-[calc(100vh-10rem)]">
+                    <img
+                      src={previewFile.mediaSrc}
+                      alt={previewFile.name}
+                      className="max-h-[calc(100vh-12rem)] max-w-full object-contain rounded-xl border border-outline-variant/40 bg-white shadow-sm"
+                    />
+                  </div>
+                ) : previewFile.plain ? (
                   <div className="max-w-4xl mx-auto space-y-2">
                     <p className="text-[11px] font-semibold text-neutral-500 font-sans">
                       Large file: plain view
