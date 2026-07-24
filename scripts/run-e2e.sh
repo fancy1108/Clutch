@@ -123,8 +123,11 @@ wait_tauri_ready() {
 
   echo "=== Desktop E2E ==="
   set +e
+  # Must pass CLUTCH_STORAGE_DIR so the Tauri-spawned sidecar never touches clutch_dev.
   (cd apps/desktop && env CLUTCH_E2E_SANDBOX="${CLUTCH_E2E_SANDBOX:-}" \
     CLUTCH_E2E_FAKE_LLM="${CLUTCH_E2E_FAKE_LLM:-}" \
+    CLUTCH_STORAGE_DIR="${CLUTCH_STORAGE_DIR:-}" \
+    CLUTCH_AGENTS_DIR="${CLUTCH_AGENTS_DIR:-}" \
     CLUTCH_WORKSPACES_FILE="${CLUTCH_WORKSPACES_FILE:-}" \
     CLUTCH_RUN_HISTORY_DIR="${CLUTCH_RUN_HISTORY_DIR:-}" \
     CLUTCH_TOOLS_CONFIG="${CLUTCH_TOOLS_CONFIG:-}" \

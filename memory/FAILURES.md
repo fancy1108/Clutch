@@ -12,6 +12,14 @@
 
 （暂无）
 
+### [RESOLVED] clutch_dev 侧栏项目/历史「一打开就空」（2026-07-24）
+
+- **现象：** 开发版打开后 PROJECTS 只剩临时目录或空列表，Coding/Design 历史都不见；用户未手动删除。
+- **根因：** 会话按随机 `workspace_id` 挂载；`workspaces.json` 被临时沙箱授权/非原子写覆盖后 id 断裂；会话文件仍在 `sessions/`。
+- **解决：** D43 — 路径稳定 id + 加载迁移 remap history + 原子写 + 默认存储拒临时目录 + E2E 传入 `CLUTCH_STORAGE_DIR`。
+- **规避：** 开发 sidecar 与 e2e 必须隔离 `CLUTCH_STORAGE_DIR`；勿对正在用的 8124 跑未沙箱化 API 授权。
+- **关联：** `workspace.py`、`run_history.py`、`scripts/run-e2e.sh`
+
 ### [RESOLVED] v1.2.0 · Chat 模式 `expected string or bytes-like object, got 'dict'`（2026-07-11）
 
 - **现象：** 打包版 Clutch Agent + 任意配置模型（如 DeepSeek V4 Pro）发消息后气泡直接显示该 TypeError；Terminal 有 `[CHAT] …: 48 chars`（错误文案长度）

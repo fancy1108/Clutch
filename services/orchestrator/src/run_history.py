@@ -250,6 +250,23 @@ def list_runs(
     return records
 
 
+def remap_workspace_ids(id_map: dict[str, str]) -> int:
+    """Rewrite session workspace_id values after stable-id migration. Returns rows touched."""
+    if not id_map:
+        return 0
+
+    def mutate(records: list[dict[str, Any]]) -> int:
+        touched = 0
+        for record in records:
+            old = record.get("workspace_id")
+            if isinstance(old, str) and old in id_map:
+                record["workspace_id"] = id_map[old]
+                touched += 1
+        return touched
+
+    return int(_mutate_records(mutate) or 0)
+
+
 def delete_session(run_id: str) -> None:
     records = _load_records()
     records = [r for r in records if r.get("run_id") != run_id]

@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
+import logging
 import os
 import subprocess
 import sys
+import tempfile
 import uuid
 from pathlib import Path
 from typing import Any
@@ -23,6 +26,8 @@ _active_id: str | None = None
 _loaded = False
 _persistence_disabled = False
 
+logger = logging.getLogger(__name__)
+
 
 class WorkspaceError(PermissionError):
     """Raised when workspace is missing or path is outside whitelist."""
@@ -36,6 +41,131 @@ def _store_path() -> Path:
     return get_storage_dir() / "workspaces.json"
 
 
+def stable_workspace_id(resolved: Path) -> str:
+    """Deterministic id for a resolved workspace path (same path → same id)."""
+    digest = hashlib.sha256(str(resolved).encode("utf-8")).hexdigest()[:12]
+    return f"ws_{digest}"
+
+
+def _temp_roots() -> list[Path]:
+    roots: list[Path] = []
+    for raw in (
+        os.environ.get("TMPDIR"),
+        os.environ.get("TMP"),
+        os.environ.get("TEMP"),
+        tempfile.gettempdir(),
+        "/tmp",
+        "/private/var/folders",
+        "/var/folders",
+    ):
+        if not raw:
+            continue
+        try:
+            roots.append(Path(raw).expanduser().resolve())
+        except OSError:
+            continue
+    return roots
+
+
+def _is_ephemeral_path(resolved: Path) -> bool:
+    text = str(resolved)
+    if "clutch-e2e" in text:
+        return True
+    name = resolved.name
+    if name.startswith("tmp") and len(name) >= 6:
+        for root in _temp_roots():
+            try:
+                resolved.relative_to(root)
+                return True
+            except ValueError:
+                continue
+    return False
+
+
+def _using_isolated_store() -> bool:
+    return bool(
+        os.environ.get("CLUTCH_STORAGE_DIR")
+        or os.environ.get(WORKSPACES_ENV)
+        or os.environ.get("CLUTCH_E2E_SANDBOX")
+    )
+
+
+def _guard_ephemeral_authorize(resolved: Path) -> None:
+    """Block temp/e2e sandboxes from polluting the default Application Support store."""
+    if _using_isolated_store() or os.environ.get("CLUTCH_ALLOW_TEMP_WORKSPACE") == "1":
+        return
+    if not _is_ephemeral_path(resolved):
+        return
+    raise WorkspaceError(
+        tr(
+            "Refusing to authorize a temporary folder in the default Clutch store "
+            "(likely a test sandbox). Re-open your real project folder, or set "
+            "CLUTCH_ALLOW_TEMP_WORKSPACE=1 to override.",
+            "拒绝将临时目录写入默认 Clutch 存储（多为测试沙箱）。请重新选择真实项目文件夹，"
+            "或设置 CLUTCH_ALLOW_TEMP_WORKSPACE=1 覆盖。",
+        )
+    )
+
+
+def _remap_history_workspace_ids(id_map: dict[str, str]) -> None:
+    if not id_map:
+        return
+    try:
+        from src import run_history
+    except Exception:
+        return
+    remap = getattr(run_history, "remap_workspace_ids", None)
+    if callable(remap):
+        remap(id_map)
+
+
+def _migrate_to_stable_ids() -> bool:
+    """Rewrite legacy random workspace ids to path-stable ids; remap session history."""
+    global _workspaces, _active_id
+    id_map: dict[str, str] = {}
+    rewritten: dict[str, dict[str, str]] = {}
+    changed = False
+    for old_id, entry in list(_workspaces.items()):
+        raw_path = str(entry.get("workspace_path") or "").strip()
+        if not raw_path:
+            rewritten[old_id] = entry
+            continue
+        try:
+            resolved = Path(raw_path).expanduser().resolve()
+        except OSError:
+            rewritten[old_id] = entry
+            continue
+        new_id = stable_workspace_id(resolved)
+        new_entry = {
+            "id": new_id,
+            "workspace_path": str(resolved),
+            "name": str(entry.get("name") or resolved.name),
+        }
+        if old_id != new_id:
+            id_map[old_id] = new_id
+            changed = True
+        if str(entry.get("workspace_path")) != str(resolved) or entry.get("id") != new_id:
+            changed = True
+        if new_id in rewritten and rewritten[new_id]["workspace_path"] != new_entry["workspace_path"]:
+            # Path collision on hash — keep the first; drop duplicate key.
+            continue
+        rewritten[new_id] = new_entry
+    if not changed:
+        return False
+    _workspaces = rewritten
+    if _active_id in id_map:
+        _active_id = id_map[_active_id]
+    elif _active_id not in _workspaces:
+        _active_id = next(iter(_workspaces), None)
+    for group in _repository_groups.values():
+        workspace_ids = group.get("workspace_ids")
+        if isinstance(workspace_ids, list):
+            group["workspace_ids"] = [id_map.get(str(item), str(item)) for item in workspace_ids]
+            changed = True
+    _remap_history_workspace_ids(id_map)
+    return True
+
+
 def _ensure_loaded() -> None:
     global _loaded, _workspaces, _repository_groups, _active_id
     if _loaded or _persistence_disabled:
@@ -46,7 +176,16 @@ def _ensure_loaded() -> None:
         return
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+    except (OSError, json.JSONDecodeError) as exc:
+        logger.error(
+            "workspaces.json unreadable (%s); leaving in-memory empty and quarantining file",
+            exc,
+        )
+        try:
+            quarantine = path.with_name(path.name + ".corrupt")
+            path.replace(quarantine)
+        except OSError:
+            pass
         _loaded = True
         return
     _workspaces = {item["id"]: item for item in data.get("workspaces", []) if "id" in item}
@@ -56,6 +195,8 @@ def _ensure_loaded() -> None:
     active = data.get("active_id")
     _active_id = active if active in _workspaces else None
     _loaded = True
+    if _migrate_to_stable_ids():
+        _persist()
 
 
 def _persist() -> None:
@@ -68,7 +209,10 @@ def _persist() -> None:
         "active_id": _active_id,
         "repository_groups": list(_repository_groups.values()),
     }
-    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    text = json.dumps(payload, indent=2, ensure_ascii=False) + "\n"
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(text, encoding="utf-8")
+    os.replace(tmp, path)
 
 
 def _normalize_path(path: str) -> Path:
@@ -103,7 +247,7 @@ def workspace_path_missing_message(path: str) -> str:
 
 def _entry_for_path(resolved: Path) -> dict[str, str]:
     return {
-        "id": f"ws_{uuid.uuid4().hex[:12]}",
+        "id": stable_workspace_id(resolved),
         "workspace_path": str(resolved),
         "name": resolved.name,
     }
@@ -120,6 +264,7 @@ def list_workspaces() -> dict[str, Any]:
 def add_workspace(path: str) -> dict[str, str]:
     _ensure_loaded()
     resolved = _normalize_path(path)
+    _guard_ephemeral_authorize(resolved)
     resolved_str = str(resolved)
     for entry in _workspaces.values():
         if entry["workspace_path"] == resolved_str:

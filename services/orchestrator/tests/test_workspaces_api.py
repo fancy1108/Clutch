@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import subprocess
+import tempfile
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -121,3 +123,91 @@ def test_workspace_git_without_workspace() -> None:
     response = client.get("/api/workspace/git")
     assert response.status_code == 200
     assert response.json() == {"is_git_repo": False, "branch": None, "branches": []}
+
+
+def test_stable_workspace_id_survives_remove_and_readd(tmp_path: Path) -> None:
+    from src.workspace import add_workspace, remove_workspace, stable_workspace_id
+
+    project = tmp_path / "stable-proj"
+    project.mkdir()
+    first = add_workspace(str(project))
+    assert first["id"] == stable_workspace_id(project.resolve())
+    remove_workspace(first["id"])
+    second = add_workspace(str(project))
+    assert second["id"] == first["id"]
+
+
+def test_migrate_random_ids_remaps_run_history(tmp_path: Path, monkeypatch) -> None:
+    from src import run_history, workspace
+
+    store = tmp_path / "workspaces.json"
+    project = tmp_path / "legacy-proj"
+    project.mkdir()
+    legacy_id = "ws_deadbeefcafe"
+    store.write_text(
+        json.dumps(
+            {
+                "workspaces": [
+                    {
+                        "id": legacy_id,
+                        "workspace_path": str(project.resolve()),
+                        "name": "legacy-proj",
+                    }
+                ],
+                "active_id": legacy_id,
+                "repository_groups": [],
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("CLUTCH_WORKSPACES_FILE", str(store))
+    monkeypatch.setenv("CLUTCH_RUN_HISTORY_DIR", str(tmp_path / "sessions"))
+    workspace._workspaces = {}
+    workspace._repository_groups = {}
+    workspace._active_id = None
+    workspace._loaded = False
+    workspace._persistence_disabled = False
+
+    run_history.upsert_session(
+        {
+            "run_id": "run_legacy_1",
+            "workspace_id": legacy_id,
+            "workspace_name": "legacy-proj",
+            "title": "kept",
+            "mode": "coding",
+            "status": "idle",
+        }
+    )
+
+    listed = workspace.list_workspaces()
+    expected = workspace.stable_workspace_id(project.resolve())
+    assert listed["active_id"] == expected
+    assert listed["workspaces"][0]["id"] == expected
+    runs = run_history.list_runs(workspace_id=expected)
+    assert len(runs) == 1
+    assert runs[0]["workspace_id"] == expected
+
+
+def test_refuse_temp_workspace_in_default_store(tmp_path: Path, monkeypatch) -> None:
+    from src import workspace
+    from src.workspace import WorkspaceError, add_workspace
+
+    monkeypatch.delenv("CLUTCH_ALLOW_TEMP_WORKSPACE", raising=False)
+    workspace._workspaces = {}
+    workspace._repository_groups = {}
+    workspace._active_id = None
+    workspace._loaded = True
+    workspace._persistence_disabled = False
+    monkeypatch.setattr(workspace, "_using_isolated_store", lambda: False)
+    monkeypatch.setattr(workspace, "_store_path", lambda: tmp_path / "default-workspaces.json")
+
+    ephemeral = Path(tempfile.mkdtemp(prefix="tmp"))
+    try:
+        try:
+            add_workspace(str(ephemeral))
+            raise AssertionError("expected WorkspaceError for temp path")
+        except WorkspaceError as exc:
+            assert "temporary" in str(exc).lower() or "临时" in str(exc)
+    finally:
+        ephemeral.rmdir()
