@@ -50,6 +50,8 @@ class McpRunOutcome:
     fuse_triggered: bool = False
     steps_used: int = 0
     consecutive_failures: int = 0
+    # D10/D48: nested subtask cards from delegate_subtask
+    subtasks: list[dict[str, Any]] | None = None
 
 
 def _sanitize_tool_part(value: str) -> str:
@@ -309,11 +311,13 @@ def run_mcp_react_loop(
     existing_todos: list[dict[str, Any]] | None = None,
     on_verification: Callable[[dict[str, Any]], None] | None = None,
     on_diff_summary: Callable[[dict[str, Any]], None] | None = None,
+    on_subtask: Callable[[dict[str, Any]], None] | None = None,
     pause_on_risky: bool = False,
     permission_mode: str = "ask",
     approved_tool: dict[str, Any] | None = None,
     approved_keys: set[str] | None = None,
     model_id: str | None = None,
+    exclude_builtin_tools: frozenset[str] | None = None,
 ) -> McpRunOutcome:
     """Run tool-augmented chat against one or more MCP servers."""
     if not servers:
@@ -339,6 +343,7 @@ def run_mcp_react_loop(
     todo_baseline = list(existing_todos or [])
     latest_verification: dict[str, Any] | None = None
     latest_diff_summary: dict[str, Any] | None = None
+    latest_subtasks: list[dict[str, Any]] = []
 
     if approved_tool and not model_supports_tool_calling(spec):
         raise RuntimeError(
@@ -388,6 +393,12 @@ def run_mcp_react_loop(
             builtin_servers.add(server_id)
             _emit(logs, on_log, f"[{log_prefix}] Registered builtin server: {name}")
             tools = list_builtin_tools()
+            if exclude_builtin_tools:
+                tools = [
+                    tool
+                    for tool in tools
+                    if str(tool.get("name", "")).strip() not in exclude_builtin_tools
+                ]
         else:
             endpoint = str(server.get("endpoint", ""))
             env = server.get("env") if isinstance(server.get("env"), dict) else None
@@ -520,6 +531,13 @@ def run_mcp_react_loop(
             return True
         return False
 
+    def record_subtask(card: dict[str, Any]) -> None:
+        from src.subagent_runner import upsert_subtask
+
+        latest_subtasks[:] = upsert_subtask(latest_subtasks, card)
+        if on_subtask:
+            on_subtask(dict(card))
+
     def _outcome(
         *,
         output: str,
@@ -538,6 +556,7 @@ def run_mcp_react_loop(
             fuse_triggered=fuse_triggered,
             steps_used=len(collected_steps),
             consecutive_failures=consecutive_failures,
+            subtasks=list(latest_subtasks) or None,
         )
 
     try:
@@ -619,7 +638,11 @@ def run_mcp_react_loop(
 
                     route = tool_routes.get(func_name)
                     raw_tool_name = route[1] if route else func_name
-                    from src.builtin_tools import is_ask_user_question_tool, is_propose_plan_tool
+                    from src.builtin_tools import (
+                        is_ask_user_question_tool,
+                        is_delegate_subtask_tool,
+                        is_propose_plan_tool,
+                    )
 
                     # D2: propose_plan always pauses for in-chat Approve / revise / Cancel (D49).
                     if is_propose_plan_tool(raw_tool_name) or is_propose_plan_tool(func_name):
@@ -664,6 +687,7 @@ def run_mcp_react_loop(
                             todos=latest_todos,
                             verification_report=latest_verification,
                             diff_summary=latest_diff_summary,
+                            subtasks=list(latest_subtasks) or None,
                         )
 
                     # D4: ask_user_question pauses for in-chat multiple choice (D49).
@@ -709,6 +733,7 @@ def run_mcp_react_loop(
                             todos=latest_todos,
                             verification_report=latest_verification,
                             diff_summary=latest_diff_summary,
+                            subtasks=list(latest_subtasks) or None,
                         )
 
                     if pause_on_risky and is_risky_mcp_tool(raw_tool_name):
@@ -791,6 +816,7 @@ def run_mcp_react_loop(
                                         todos=latest_todos,
                                         verification_report=latest_verification,
                                         diff_summary=latest_diff_summary,
+                                        subtasks=list(latest_subtasks) or None,
                                     )
 
                         # full mode: skip approval gates entirely
@@ -845,7 +871,89 @@ def run_mcp_react_loop(
                                     todos=latest_todos,
                                     verification_report=latest_verification,
                                     diff_summary=latest_diff_summary,
+                                    subtasks=list(latest_subtasks) or None,
                                 )
+
+                    if is_delegate_subtask_tool(raw_tool_name) or is_delegate_subtask_tool(func_name):
+                        import uuid as _uuid
+
+                        from src.subagent_runner import (
+                            bind_delegate_context,
+                            initial_subtask_card,
+                            normalize_delegate_args,
+                            release_delegate_context,
+                        )
+
+                        try:
+                            args = normalize_delegate_args(func_args)
+                        except ValueError as exc:
+                            result_str = f"Error executing tool: {exc}"
+                            chat_messages.append(
+                                {
+                                    "role": "tool",
+                                    "tool_call_id": tc_id,
+                                    "content": result_str,
+                                }
+                            )
+                            if note_tool_result(result_str):
+                                output = fuse_message(
+                                    failures=consecutive_failures, max_failures=fuse_limit
+                                )
+                                break
+                            continue
+
+                        sub_id = f"sub_{_uuid.uuid4().hex[:8]}"
+                        running = initial_subtask_card(args, subtask_id=sub_id)
+                        record_subtask(running)
+                        ctx_token = bind_delegate_context(
+                            {
+                                "servers": servers,
+                                "model_id": model_id,
+                                "on_log": on_log,
+                                "on_subtask_update": record_subtask,
+                                "max_steps": 8,
+                                "permission_mode": permission_mode,
+                                "pause_on_risky": pause_on_risky,
+                                "subtask_id": sub_id,
+                            }
+                        )
+                        try:
+                            func_args_exec = enrich_verification_args(func_name, func_args)
+                            result_str = _execute_tool_call(
+                                func_name=func_name,
+                                func_args=func_args_exec,
+                                tool_routes=tool_routes,
+                                clients=clients,
+                                builtin_servers=builtin_servers,
+                                log_prefix=log_prefix,
+                                logs=logs,
+                                on_log=on_log,
+                                step_idx=step_idx,
+                                files_changed=files_changed,
+                                on_tool_step=record_tool_step,
+                                on_diff_summary=on_diff_summary,
+                                step_id=f"tool_{step_idx}",
+                            )
+                        finally:
+                            release_delegate_context(ctx_token)
+                        chat_messages.append(
+                            {
+                                "role": "tool",
+                                "tool_call_id": tc_id,
+                                "content": result_str,
+                            }
+                        )
+                        if note_tool_result(result_str):
+                            output = fuse_message(
+                                failures=consecutive_failures, max_failures=fuse_limit
+                            )
+                            _emit(
+                                logs,
+                                on_log,
+                                f"[{log_prefix}] LOOP FUSE: {consecutive_failures} consecutive tool failures",
+                            )
+                            break
+                        continue
 
                     func_args = enrich_verification_args(func_name, func_args)
                     result_str = _execute_tool_call(

@@ -751,6 +751,28 @@ def _tool_step_live_patch(
     return {"pending_tool_steps": steps, "run_stats": stats}
 
 
+def _subtask_live_patch(
+    state: ClutchState, card: dict[str, Any]
+) -> dict[str, Any]:
+    from src.subagent_runner import upsert_subtask
+
+    subtasks = upsert_subtask(list(state.get("pending_subtasks") or []), card)
+    return {"pending_subtasks": subtasks}
+
+
+def _sealed_subtasks(
+    state: ClutchState,
+    *,
+    sink: list[dict[str, Any]] | None = None,
+) -> list[dict[str, Any]] | None:
+    from src.subagent_runner import upsert_subtask
+
+    subtasks = list(state.get("pending_subtasks") or [])
+    for item in sink or []:
+        subtasks = upsert_subtask(subtasks, item)
+    return subtasks or None
+
+
 def _merge_patch(state: ClutchState, patch: dict[str, Any]) -> ClutchState:
     merged = deepcopy(state)
     optional_keys = frozenset({
@@ -766,6 +788,7 @@ def _merge_patch(state: ClutchState, patch: dict[str, Any]) -> ClutchState:
         "pending_handoff_drafts",
         "focused_lane_id",
         "pending_tool_steps",
+        "pending_subtasks",
         "agent_todos",
         "verification_report",
         "diff_summary",
@@ -888,6 +911,7 @@ def _chat_message(
     question_card: dict[str, Any] | None = None,
     verification_report: dict[str, Any] | None = None,
     diff_summary: dict[str, Any] | None = None,
+    subtask_cards: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "id": msg_id or f"msg_{uuid.uuid4().hex[:8]}",
@@ -924,6 +948,9 @@ def _chat_message(
     if diff_summary is not None:
         # D6/D50: diff review card.
         payload["diffSummary"] = diff_summary
+    if subtask_cards:
+        # D10/D48: nested subtask cards sealed onto the assistant turn.
+        payload["subtaskCards"] = subtask_cards
     return payload
 
 
@@ -1582,7 +1609,9 @@ async def _llm_chat_reply(
     emit_todos: Callable[[list[dict[str, Any]]], Awaitable[None]] | None = None,
     emit_verification: Callable[[dict[str, Any]], Awaitable[None]] | None = None,
     emit_diff_summary: Callable[[dict[str, Any]], Awaitable[None]] | None = None,
+    emit_subtask: Callable[[dict[str, Any]], Awaitable[None]] | None = None,
     tool_steps_sink: list[dict[str, Any]] | None = None,
+    subtasks_sink: list[dict[str, Any]] | None = None,
     mcp_approved_tool: dict[str, Any] | None = None,
     mcp_resume: dict[str, Any] | None = None,
     isolate_cli_history: bool = False,
@@ -1838,6 +1867,12 @@ async def _llm_chat_reply(
                             asyncio.run_coroutine_threadsafe(emit_diff_summary(report), loop)
                         )
 
+                def on_subtask(card: dict[str, Any]) -> None:
+                    if emit_subtask:
+                        step_futures.append(
+                            asyncio.run_coroutine_threadsafe(emit_subtask(card), loop)
+                        )
+
                 outcome = await asyncio.to_thread(
                     run_mcp_react_loop,
                     messages=chat_messages,
@@ -1848,6 +1883,7 @@ async def _llm_chat_reply(
                     on_todos=on_todos if emit_todos else None,
                     on_verification=on_verification if emit_verification else None,
                     on_diff_summary=on_diff_summary if emit_diff_summary else None,
+                    on_subtask=on_subtask if emit_subtask else None,
                     existing_todos=list(state.get("agent_todos") or []),
                     pause_on_risky=True,
                     permission_mode=__import__(
@@ -1862,6 +1898,9 @@ async def _llm_chat_reply(
                 if tool_steps_sink is not None:
                     tool_steps_sink.clear()
                     tool_steps_sink.extend(list(outcome.tool_steps or []))
+                if subtasks_sink is not None:
+                    subtasks_sink.clear()
+                    subtasks_sink.extend(list(outcome.subtasks or []))
                 if outcome.todos is not None and emit_todos:
                     await emit_todos(list(outcome.todos))
                 if outcome.verification_report is not None and emit_verification:
@@ -1885,6 +1924,8 @@ async def _llm_chat_reply(
                         )
                     if outcome.diff_summary is not None:
                         pause_payload["diff_summary"] = dict(outcome.diff_summary)
+                    if outcome.subtasks is not None:
+                        pause_payload["subtasks"] = list(outcome.subtasks)
                     return (
                         reply_label,
                         outcome.engine_label,
@@ -2120,6 +2161,7 @@ async def _handle_plain_chat_mcp_decision(
 
         streamed_logs = False
         tool_steps_sink: list[dict[str, Any]] = []
+        subtasks_sink: list[dict[str, Any]] = []
 
         async def emit_log(line: str) -> None:
             nonlocal streamed_logs, state
@@ -2159,6 +2201,13 @@ async def _handle_plain_chat_mcp_decision(
                 websocket, run_id, state, dict(report), reply_label=label
             )
 
+        async def emit_subtask(card: dict[str, Any]) -> None:
+            nonlocal state
+            patch = _subtask_live_patch(state, card)
+            state = _merge_patch(state, patch)
+            _commit_run_state(run_id, state)
+            await _notify_run_state(websocket, run_id, state, patch)
+
         (
             model_name,
             runtime_engine,
@@ -2179,7 +2228,9 @@ async def _handle_plain_chat_mcp_decision(
             emit_todos=emit_todos,
             emit_verification=emit_verification,
             emit_diff_summary=emit_diff_summary,
+            emit_subtask=emit_subtask,
             tool_steps_sink=tool_steps_sink,
+            subtasks_sink=subtasks_sink,
             mcp_resume={
                 "chat_messages": chat_messages,
                 "servers": pending.servers,
@@ -2200,6 +2251,7 @@ async def _handle_plain_chat_mcp_decision(
             output_events=output_events,
             shell_recovered=shell_recovered,
             tool_steps_sink=tool_steps_sink,
+            subtasks_sink=subtasks_sink,
             streamed_logs=streamed_logs,
             active_agent=pending.reply_label,
             pending_agent_id=pending.agent_id,
@@ -2278,6 +2330,7 @@ async def _handle_plain_chat_mcp_decision(
 
     streamed_logs = False
     tool_steps_sink: list[dict[str, Any]] = []
+    subtasks_sink: list[dict[str, Any]] = []
 
     async def emit_log(line: str) -> None:
         nonlocal streamed_logs, state
@@ -2317,6 +2370,13 @@ async def _handle_plain_chat_mcp_decision(
             websocket, run_id, state, dict(report), reply_label=label
         )
 
+    async def emit_subtask(card: dict[str, Any]) -> None:
+        nonlocal state
+        patch = _subtask_live_patch(state, card)
+        state = _merge_patch(state, patch)
+        _commit_run_state(run_id, state)
+        await _notify_run_state(websocket, run_id, state, patch)
+
     resume_args = dict(pending.func_args or {})
     if question_selection is not None:
         resume_args["selected"] = question_selection
@@ -2352,7 +2412,9 @@ async def _handle_plain_chat_mcp_decision(
         emit_todos=emit_todos,
         emit_verification=emit_verification,
         emit_diff_summary=emit_diff_summary,
+        emit_subtask=emit_subtask,
         tool_steps_sink=tool_steps_sink,
+        subtasks_sink=subtasks_sink,
         mcp_approved_tool=approved_tool,
         mcp_resume=mcp_resume,
     )
@@ -2371,6 +2433,7 @@ async def _handle_plain_chat_mcp_decision(
         output_events=output_events,
         shell_recovered=shell_recovered,
         tool_steps_sink=tool_steps_sink,
+        subtasks_sink=subtasks_sink,
         streamed_logs=streamed_logs,
         active_agent=pending.reply_label,
         pending_agent_id=pending.agent_id,
@@ -2398,6 +2461,7 @@ async def _finish_plain_chat_after_llm(
     pending_agent_id: str,
     user_text_for_tokens: str,
     cli_session_id: str | None = None,
+    subtasks_sink: list[dict[str, Any]] | None = None,
 ) -> ClutchState:
     """Shared pause/complete path after plain-chat LLM (+ MCP) returns."""
     if mcp_pause:
@@ -2433,6 +2497,9 @@ async def _finish_plain_chat_after_llm(
             "status": "awaiting_human",
             "active_agent": active_agent,
             "pending_tool_steps": list(mcp_pause.get("tool_steps") or tool_steps_sink),
+            "pending_subtasks": list(
+                mcp_pause.get("subtasks") or subtasks_sink or []
+            ),
         }
         if mcp_pause.get("todos") is not None:
             pause_patch["agent_todos"] = list(mcp_pause.get("todos") or [])
@@ -2458,6 +2525,7 @@ async def _finish_plain_chat_after_llm(
     from src.run_control import build_run_stats, should_offer_continue
 
     sealed_steps = _sealed_tool_steps(state, sink=tool_steps_sink)
+    sealed_subtasks = _sealed_subtasks(state, sink=subtasks_sink)
     merged_changed = _merge_files_changed_with_tool_steps(files_changed, sealed_steps)
     files_changed = merged_changed
     reply = _chat_message(
@@ -2475,6 +2543,7 @@ async def _finish_plain_chat_after_llm(
         diff_summary=_diff_summary_for_seal(
             state, files_changed=merged_changed or None
         ),
+        subtask_cards=sealed_subtasks,
     )
     log_line = f"[CHAT] {model_name} via {runtime_engine}: {len(reply_text)} chars"
     if not streamed_logs:
@@ -2497,6 +2566,7 @@ async def _finish_plain_chat_after_llm(
         "status": "idle",
         "active_agent": active_agent,
         "pending_tool_steps": [],
+        "pending_subtasks": [],
         "awaiting_continue": offer_continue,
         "run_stats": build_run_stats(
             tool_steps=len(sealed_steps or []),
@@ -2875,6 +2945,7 @@ async def _handle_plain_chat(
 
     streamed_logs = False
     tool_steps_sink: list[dict[str, Any]] = []
+    subtasks_sink: list[dict[str, Any]] = []
 
     async def emit_log(line: str) -> None:
         nonlocal streamed_logs, state
@@ -2930,6 +3001,17 @@ async def _handle_plain_chat(
             websocket, run_id, state, dict(report), reply_label=label
         )
 
+    async def emit_subtask(card: dict[str, Any]) -> None:
+        nonlocal state
+        patch = _subtask_live_patch(state, card)
+        state = _merge_patch(state, patch)
+        _commit_run_state(run_id, state)
+        await _try_ws_notify(
+            _notify_run_state(websocket, run_id, state, patch),
+            run_id=run_id,
+            what="state_patch",
+        )
+
     from src.hybrid_concurrency import HybridPlainChatRejected
 
     try:
@@ -2955,7 +3037,9 @@ async def _handle_plain_chat(
             emit_todos=emit_todos,
             emit_verification=emit_verification,
             emit_diff_summary=emit_diff_summary,
+            emit_subtask=emit_subtask,
             tool_steps_sink=tool_steps_sink,
+            subtasks_sink=subtasks_sink,
         )
     except HybridPlainChatRejected as exc:
         if exc.code == "pool_full":
@@ -3030,6 +3114,9 @@ async def _handle_plain_chat(
             "status": "awaiting_human",
             "active_agent": active_agent,
             "pending_tool_steps": list(mcp_pause.get("tool_steps") or tool_steps_sink),
+            "pending_subtasks": list(
+                mcp_pause.get("subtasks") or subtasks_sink or []
+            ),
         }
         state = _merge_patch(state, pause_patch)
         _commit_run_state(run_id, state)
@@ -3050,6 +3137,7 @@ async def _handle_plain_chat(
         return state
 
     sealed_steps = _sealed_tool_steps(state, sink=tool_steps_sink)
+    sealed_subtasks = _sealed_subtasks(state, sink=subtasks_sink)
     merged_changed = _merge_files_changed_with_tool_steps(files_changed, sealed_steps)
     files_changed = merged_changed
     reply = _chat_message(
@@ -3067,6 +3155,7 @@ async def _handle_plain_chat(
         diff_summary=_diff_summary_for_seal(
             state, files_changed=merged_changed or None
         ),
+        subtask_cards=sealed_subtasks,
     )
 
     hybrid_system_prompt: str | None = None
@@ -3119,6 +3208,7 @@ async def _handle_plain_chat(
         "status": "idle",
         "active_agent": active_agent,
         "pending_tool_steps": [],
+        "pending_subtasks": [],
         **_token_patch_turn(state, user_text=text, assistant_text=reply_text),
     }
     if hybrid_executions_patch is not None:
@@ -3384,6 +3474,7 @@ async def _handle_flow_refine_message(
 
     streamed_logs = False
     tool_steps_sink: list[dict[str, Any]] = []
+    subtasks_sink: list[dict[str, Any]] = []
 
     async def emit_log(line: str) -> None:
         nonlocal streamed_logs, state
@@ -3422,6 +3513,13 @@ async def _handle_flow_refine_message(
         state = await _publish_diff_summary(
             websocket, run_id, state, dict(report), reply_label=label
         )
+
+    async def emit_subtask(card: dict[str, Any]) -> None:
+        nonlocal state
+        patch = _subtask_live_patch(state, card)
+        state = _merge_patch(state, patch)
+        _commit_run_state(run_id, state)
+        await _notify_run_state(websocket, run_id, state, patch)
 
     from src.agent_type import is_clutch_agent, resolve_model_for_agent
     from src.image_router import is_image_model
@@ -3463,7 +3561,9 @@ async def _handle_flow_refine_message(
             emit_todos=emit_todos,
             emit_verification=emit_verification,
             emit_diff_summary=emit_diff_summary,
+            emit_subtask=emit_subtask,
             tool_steps_sink=tool_steps_sink,
+            subtasks_sink=subtasks_sink,
             chat_source="flow_refine",
             system_prompt_suffix=refine_suffix,
         )
@@ -3509,6 +3609,9 @@ async def _handle_flow_refine_message(
             "status": "awaiting_human",
             "active_agent": active_agent,
             "pending_tool_steps": list(mcp_pause.get("tool_steps") or tool_steps_sink),
+            "pending_subtasks": list(
+                mcp_pause.get("subtasks") or subtasks_sink or []
+            ),
         }
         state = _merge_patch(state, pause_patch)
         _commit_run_state(run_id, state)

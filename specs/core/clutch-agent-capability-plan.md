@@ -268,6 +268,7 @@
 - **可见**：子任务状态与摘要回主 Chat。
 - **验收**：先探查再改；子失败主可见。
 - **交互先决**：**D48**（嵌套卡片）；无 D48 不算 D10 完成。
+- **实现笔记（待 PM）**：`delegate_subtask` + `subagent_runner`（max_steps=8）；`subtaskCards` / `pending_subtasks`；`SubtaskCardView`。
 
 #### D11 — 后台命令
 - **可见**：后台跑、看输出、完成通知、杀掉；前台仍可聊。

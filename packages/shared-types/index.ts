@@ -72,10 +72,30 @@ export interface ChatMessage {
   verificationReport?: VerificationReport;
   /** D6/D50 diff review card (file list + readable hunks). */
   diffSummary?: DiffSummary;
+  /** D10/D48 nested subtask cards from delegate_subtask. */
+  subtaskCards?: SubtaskCard[];
   codeHighlight?: {
     file: string;
     lineCount: number;
   };
+}
+
+export type SubtaskCardStatus = 'running' | 'done' | 'failed';
+export type SubtaskCardType = 'explore' | 'implement';
+
+export interface SubtaskCardStep {
+  name: string;
+  status: string;
+}
+
+export interface SubtaskCard {
+  id: string;
+  type: SubtaskCardType;
+  title: string;
+  summary?: string;
+  status: SubtaskCardStatus;
+  toolSteps?: SubtaskCardStep[];
+  error?: string;
 }
 
 export type PlanCardStatus = 'pending' | 'approved' | 'cancelled' | 'revised';
@@ -366,6 +386,8 @@ export interface ClutchState {
   };
   /** D9: show Continue after Stop / loop fuse / max-steps. */
   awaiting_continue?: boolean;
+  /** D10/D48: live nested subtask cards while parent turn runs. */
+  pending_subtasks?: SubtaskCard[];
   /** CLI provider session id (`claude --resume` / `agy --conversation`). */
   cli_session_id?: string;
   /** Agent id that owns `cli_session_id` (reset when user switches agent). */

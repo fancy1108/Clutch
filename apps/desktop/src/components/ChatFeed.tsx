@@ -13,6 +13,7 @@ import {
   HybridExecutionPayload,
   OutputEvent,
   QuestionOption,
+  SubtaskCard,
   TodoItem,
 } from '../types';
 import { useLanguage } from './LanguageContext';
@@ -30,6 +31,7 @@ import { FilesChangedChips } from './FilesChangedChips';
 import { PlanCardView } from './PlanCardView';
 import { QuestionCardView } from './QuestionCardView';
 import { TodoCardView, todosAreComplete } from './TodoCardView';
+import { SubtaskCardView } from './SubtaskCardView';
 import { VerificationReportCardView } from './VerificationReportCardView';
 import { DiffSummaryCardView } from './DiffSummaryCardView';
 import { resolveBrandLogoSrc } from '../services/brandLogos';
@@ -795,6 +797,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
 
   const pendingToolSteps = clutchOrchestraState.pending_tool_steps;
   const liveTodos = (clutchOrchestraState.agent_todos ?? []) as TodoItem[];
+  const liveSubtasks = (clutchOrchestraState.pending_subtasks ?? []) as SubtaskCard[];
   /** Pin live todos while incomplete; unpin when all checked so the sealed card scrolls with history. */
   const pinLiveTodos =
     liveTodos.length > 0 &&
@@ -1337,6 +1340,9 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                       {!isUser && msg.todoList && msg.todoList.length > 0 ? (
                         <TodoCardView todos={msg.todoList} t={t} />
                       ) : null}
+                      {!isUser && msg.subtaskCards && msg.subtaskCards.length > 0 ? (
+                        <SubtaskCardView cards={msg.subtaskCards} t={t} />
+                      ) : null}
                       {!isUser && msg.verificationReport ? (
                         <VerificationReportCardView
                           report={msg.verificationReport}
@@ -1409,6 +1415,9 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                     />
                     {showInlineLiveTodos ? (
                       <TodoCardView todos={liveTodos} t={t} live />
+                    ) : null}
+                    {liveSubtasks.length > 0 ? (
+                      <SubtaskCardView cards={liveSubtasks} t={t} live />
                     ) : null}
                   </div>
                 ) : (

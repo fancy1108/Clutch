@@ -5,8 +5,8 @@
 
 ## Current Status
 
-- **阶段：** **v1.2.9**；**D7=`af58e94` ✅**；**D8=`7936786` 待 PM**；**D9 实现中**；过夜批跑 →D13
-- **Git：** D5=`30d5f86`；D6=`26b9716`；D7=`af58e94`；D8=`7936786`
+- **阶段：** **v1.2.9**；D7✅；D8–D10 待 PM；过夜批跑 →D13
+- **Git：** D8=`7936786`；D9=`bef9b75`；D10=_(commit 后)_
 - **PM 验收包：** `runs/verification/pm-acceptance/`（D08–D13；ROADMAP 未点验前保持 ❌）
 
 ## Recent Sessions

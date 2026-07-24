@@ -44,6 +44,7 @@ _NON_RISKY_BUILTINS = frozenset(
         "propose_diff_review",
         "read_skill",  # D7 progressive skill disclosure — read-only
         "load_skill",
+        "delegate_subtask",  # D10 own nested subagent path in mcp_react
     }
 )
 

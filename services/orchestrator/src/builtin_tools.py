@@ -377,6 +377,34 @@ def list_builtin_tools() -> list[dict[str, Any]]:
                 "required": ["key"],
             },
         },
+        {
+            "name": "delegate_subtask",
+            "description": (
+                "Spawn an isolated subagent for a scoped subtask (D10). "
+                "`explore` runs read-only (list/read/search); `implement` may edit files. "
+                "Use for「先调研再改」— explore first, then implement. "
+                "Returns JSON with status, summary, and brief tool_steps."
+            ),
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": ["explore", "implement"],
+                        "description": "explore = read-only; implement = may edit.",
+                    },
+                    "prompt": {
+                        "type": "string",
+                        "description": "Clear task for the subagent.",
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "Short card title shown in parent Chat (optional).",
+                    },
+                },
+                "required": ["type", "prompt"],
+            },
+        },
     ]
 
 
@@ -416,6 +444,11 @@ def is_submit_diff_summary_tool(name: str) -> bool:
 def is_read_skill_tool(name: str) -> bool:
     short = name.split("__")[-1].lower().replace("-", "_")
     return short in {"read_skill", "load_skill"}
+
+
+def is_delegate_subtask_tool(name: str) -> bool:
+    short = name.split("__")[-1].lower().replace("-", "_")
+    return short == "delegate_subtask"
 
 
 _TODO_STATUSES = frozenset({"pending", "in_progress", "completed"})
@@ -1048,6 +1081,7 @@ def execute_builtin_tool(tool_name: str, arguments: dict[str, Any]) -> str:
         "propose_diff_review": _tool_submit_diff_summary,
         "read_skill": _tool_read_skill,
         "load_skill": _tool_read_skill,
+        "delegate_subtask": _tool_delegate_subtask,
     }
     handler = handlers.get(tool_name)
     if handler is None:
@@ -1071,6 +1105,35 @@ def _tool_read_skill(arguments: dict[str, Any]) -> str:
             "Check the Skills catalog keys bound to this agent."
         )
     return body
+
+
+def _tool_delegate_subtask(arguments: dict[str, Any]) -> str:
+    from src.subagent_runner import delegate_result_json, get_delegate_context, run_subagent
+
+    try:
+        ctx = get_delegate_context()
+        if not ctx:
+            return (
+                "Error executing tool: delegate_subtask requires an active Chat agent context"
+            )
+        card = run_subagent(
+            task_type=str(arguments.get("type") or "explore"),
+            prompt=str(arguments.get("prompt") or ""),
+            title=str(arguments.get("title") or "") or None,
+            servers=list(ctx.get("servers") or []),
+            model_id=ctx.get("model_id"),
+            on_log=ctx.get("on_log"),
+            on_subtask_update=ctx.get("on_subtask_update"),
+            max_steps=int(ctx.get("max_steps") or 8),
+            permission_mode=str(ctx.get("permission_mode") or "ask"),
+            pause_on_risky=bool(ctx.get("pause_on_risky", True)),
+            subtask_id=ctx.get("subtask_id"),
+        )
+        return delegate_result_json(card)
+    except ValueError as exc:
+        return f"Error executing tool: {exc}"
+    except Exception as exc:
+        return f"Error executing tool: {exc}"
 
 
 def _tool_todo_write(arguments: dict[str, Any]) -> str:
