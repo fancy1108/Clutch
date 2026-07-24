@@ -252,6 +252,7 @@
 - **可见**：有 `AGENTS.md`/Skills 的仓库行为不同；换仓库恢复默认。
 - **验收**：规则仓库遵守约束；无规则仓库不出现该约束。
 - **组装先决**：**D53**（发现内容须按层注入 + 渐进披露；禁止整份永久糊进 system）。
+- **实现笔记（PM ✅ 2026-07-25）**：对齐 Grok Build（DECISIONS **D45**）。规则：`git root → workspace` 串链 + `.grok/.claude/.cursor/rules`（更深优先；无 User home 规则）。Skills：开放 catalog（Enabled global∪project∪custom + 可选 Agent 绑定）；同名 project>custom>global；`read_skill` 按需正文；Custom SEARCH PATHS 换仓保留。PM：有规则仓 `RULE_TOKEN_ORANGE`；`read_skill`→`SKILL_BODY_LOADED`。
 
 #### D8 — 长聊不丢任务态
 - **可见**：压缩后仍答得上 Todo/计划要点；压缩发生时有提示。

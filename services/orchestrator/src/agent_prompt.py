@@ -8,8 +8,40 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-_RULE_FILENAMES = ("AGENTS.md", "CLAUDE.md")
+# Grok-compatible named instruction files (all matches in a directory load).
+_RULE_FILENAMES = (
+    "AGENTS.md",
+    "Agents.md",
+    "AGENT.md",
+    "AGENTS.override.md",
+    "CLAUDE.md",
+    "Claude.md",
+    "CLAUDE.local.md",
+)
+_RULES_SUBDIRS = (".grok/rules", ".claude/rules", ".cursor/rules")
 _RULES_MAX_CHARS = 8_000
+_RULE_FILE_MAX_CHARS = 10_000
+_RULES_DIR_MAX_FILES = 12
+
+
+def _append_rule_chunk(
+    chunks: list[str],
+    *,
+    heading: str,
+    text: str,
+    remaining: int,
+) -> int:
+    """Append a ### rule block; return chars still available."""
+    if remaining <= 0 or not text.strip():
+        return remaining
+    body = text.strip()
+    if len(body) > _RULE_FILE_MAX_CHARS:
+        body = body[: _RULE_FILE_MAX_CHARS - 1] + "…"
+    if len(body) > remaining:
+        body = body[: remaining - 1] + "…"
+    chunks.append(f"### {heading}\n{body}")
+    return remaining - len(body)
+
 
 _PLAN_MODE_REMINDER = (
     "## Mode: Plan (read-only)\n"
@@ -83,7 +115,97 @@ class PromptAssembly:
         }
 
 
+def _find_git_root(start: Path) -> Path | None:
+    cur = start.resolve()
+    for _ in range(64):
+        if (cur / ".git").exists():
+            return cur
+        if cur.parent == cur:
+            return None
+        cur = cur.parent
+    return None
+
+
+def _dirs_git_root_to_workspace(workspace: Path) -> list[Path]:
+    """Grok-style chain: git root → … → workspace (inclusive). Deeper dirs load last."""
+    ws = workspace.resolve()
+    git_root = _find_git_root(ws)
+    if git_root is None:
+        return [ws]
+    try:
+        ws.relative_to(git_root)
+    except ValueError:
+        return [ws]
+    chain: list[Path] = []
+    cur = ws
+    while True:
+        chain.append(cur)
+        if cur == git_root:
+            break
+        if cur.parent == cur:
+            break
+        cur = cur.parent
+    chain.reverse()
+    return chain
+
+
+def _collect_rules_in_dir(
+    directory: Path,
+    *,
+    display_root: Path,
+    chunks: list[str],
+    remaining: int,
+) -> int:
+    for name in _RULE_FILENAMES:
+        if remaining <= 0:
+            return remaining
+        path = directory / name
+        if not path.is_file():
+            continue
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        try:
+            rel = path.relative_to(display_root).as_posix()
+        except ValueError:
+            rel = name
+        remaining = _append_rule_chunk(
+            chunks, heading=rel, text=text, remaining=remaining
+        )
+
+    for sub in _RULES_SUBDIRS:
+        if remaining <= 0:
+            return remaining
+        rules_dir = directory / Path(sub)
+        if not rules_dir.is_dir():
+            continue
+        rule_files: list[Path] = []
+        for pattern in ("**/*.mdc", "**/*.md"):
+            rule_files.extend(rules_dir.glob(pattern))
+        unique = sorted(
+            {p.resolve() for p in rule_files if p.is_file()},
+            key=lambda p: str(p),
+        )
+        for path in unique[:_RULES_DIR_MAX_FILES]:
+            if remaining <= 0:
+                break
+            try:
+                text = path.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                continue
+            try:
+                rel = path.relative_to(display_root).as_posix()
+            except ValueError:
+                rel = path.name
+            remaining = _append_rule_chunk(
+                chunks, heading=rel, text=text, remaining=remaining
+            )
+    return remaining
+
+
 def _load_workspace_rules(workspace_path: str | None) -> str:
+    """Grok-aligned project rules: git root → workspace chain (D7). No user-home rules."""
     if not workspace_path:
         return ""
     root = Path(workspace_path)
@@ -91,21 +213,16 @@ def _load_workspace_rules(workspace_path: str | None) -> str:
         return ""
     chunks: list[str] = []
     remaining = _RULES_MAX_CHARS
-    for name in _RULE_FILENAMES:
+    display_root = _find_git_root(root) or root.resolve()
+    for directory in _dirs_git_root_to_workspace(root):
         if remaining <= 0:
             break
-        path = root / name
-        if not path.is_file():
-            continue
-        try:
-            text = path.read_text(encoding="utf-8", errors="replace").strip()
-        except OSError:
-            continue
-        if not text:
-            continue
-        body = text if len(text) <= remaining else text[: remaining - 1] + "…"
-        chunks.append(f"### {name}\n{body}")
-        remaining -= len(body)
+        remaining = _collect_rules_in_dir(
+            directory,
+            display_root=display_root,
+            chunks=chunks,
+            remaining=remaining,
+        )
     if not chunks:
         return ""
     return "## Project rules\n\n" + "\n\n".join(chunks)
@@ -165,7 +282,7 @@ def compose_agent_prompt_assembly(
     user_turn_text: str | None = None,
 ) -> PromptAssembly:
     """Build layered prompt (D53). markdownDoc is protocol only — not the whole system."""
-    from src.agent_skills import compose_skills_section
+    from src.agent_skills import compose_skills_section, resolve_effective_skill_keys
     from src.agent_type import is_clutch_agent
     from src.workspace import get_workspace
 
@@ -246,11 +363,14 @@ def compose_agent_prompt_assembly(
                     "When the user leaves a real fork unspecified (e.g. Redis vs Memcached "
                     "for cache), call `ask_user_question` with 2–5 short options — do not "
                     "interview in free prose. Skip asking when the request is already clear. "
+                    "When a Skills catalog entry is relevant, call `read_skill` with its key "
+                    "to load the full SKILL.md — do not invent skill instructions. "
                     "Skip propose_plan only for trivial Q&A or single-line edits.",
                 )
             )
+        skill_keys = resolve_effective_skill_keys(agent)
         skills_block = compose_skills_section(
-            list(agent.get("skills") or []),
+            skill_keys,
             include_bodies=include_skill_bodies,
         )
         if skills_block:

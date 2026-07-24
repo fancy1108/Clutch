@@ -59,7 +59,7 @@ def scan_mounted_directories(
                     "label": label,
                     "source": root_resolved,
                     "desc": desc,
-                    "isActiveGlobally": active_by_key.get(key, False),
+                    "isActiveGlobally": active_by_key.get(key, True),
                 }
             )
     return discovered

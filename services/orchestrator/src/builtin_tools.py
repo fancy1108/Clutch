@@ -355,6 +355,28 @@ def list_builtin_tools() -> list[dict[str, Any]]:
                 "required": ["files"],
             },
         },
+        {
+            "name": "read_skill",
+            "description": (
+                "Load the full SKILL.md body for a skill listed in the Skills catalog (D7). "
+                "Pass the skill key (e.g. my-skills/secure-review). Use when catalog "
+                "one-liners are not enough; do not invent skill instructions."
+            ),
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "description": "Registry skill key from the Skills catalog.",
+                    },
+                    "skill": {
+                        "type": "string",
+                        "description": "Alias for `key`.",
+                    },
+                },
+                "required": ["key"],
+            },
+        },
     ]
 
 
@@ -389,6 +411,11 @@ def is_submit_diff_summary_tool(name: str) -> bool:
         "diff_summary",
         "propose_diff_review",
     }
+
+
+def is_read_skill_tool(name: str) -> bool:
+    short = name.split("__")[-1].lower().replace("-", "_")
+    return short in {"read_skill", "load_skill"}
 
 
 _TODO_STATUSES = frozenset({"pending", "in_progress", "completed"})
@@ -1019,6 +1046,8 @@ def execute_builtin_tool(tool_name: str, arguments: dict[str, Any]) -> str:
         "submit_diff_summary": _tool_submit_diff_summary,
         "diff_summary": _tool_submit_diff_summary,
         "propose_diff_review": _tool_submit_diff_summary,
+        "read_skill": _tool_read_skill,
+        "load_skill": _tool_read_skill,
     }
     handler = handlers.get(tool_name)
     if handler is None:
@@ -1027,6 +1056,21 @@ def execute_builtin_tool(tool_name: str, arguments: dict[str, Any]) -> str:
         return handler(arguments)
     except Exception as exc:
         return f"Error executing tool: {exc}"
+
+
+def _tool_read_skill(arguments: dict[str, Any]) -> str:
+    from src.agent_skills import load_skill_body
+
+    key = str(arguments.get("key") or arguments.get("skill") or "").strip()
+    if not key:
+        return "Error executing tool: read_skill requires `key` (skill registry key)"
+    body = load_skill_body(key)
+    if not body:
+        return (
+            f"Error executing tool: skill `{key}` not found in the Skills Registry. "
+            "Check the Skills catalog keys bound to this agent."
+        )
+    return body
 
 
 def _tool_todo_write(arguments: dict[str, Any]) -> str:

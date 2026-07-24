@@ -39,12 +39,12 @@ async def list_workspaces_endpoint() -> dict[str, Any]:
 
 @router.post("/api/workspaces")
 async def add_workspace_endpoint(body: WorkspaceRequest) -> dict[str, str]:
-    from src.skills_storage import ensure_default_skill_mounts
+    from src.skills_storage import sync_workspace_skill_mounts
     from src.workspace import WorkspaceError, add_workspace
 
     try:
         entry = add_workspace(body.path)
-        ensure_default_skill_mounts(workspace_path=entry.get("workspace_path"))
+        sync_workspace_skill_mounts(workspace_path=entry.get("workspace_path"))
         return entry
     except WorkspaceError as exc:
         raise _workspace_http_error(exc) from exc
@@ -52,12 +52,12 @@ async def add_workspace_endpoint(body: WorkspaceRequest) -> dict[str, str]:
 
 @router.post("/api/workspaces/{workspace_id}/activate")
 async def activate_workspace_endpoint(workspace_id: str) -> dict[str, str]:
-    from src.skills_storage import ensure_default_skill_mounts
+    from src.skills_storage import sync_workspace_skill_mounts
     from src.workspace import WorkspaceError, activate_workspace
 
     try:
         entry = activate_workspace(workspace_id)
-        ensure_default_skill_mounts(workspace_path=entry.get("workspace_path"))
+        sync_workspace_skill_mounts(workspace_path=entry.get("workspace_path"))
         return entry
     except WorkspaceError as exc:
         raise _workspace_http_error(exc) from exc
@@ -132,12 +132,12 @@ async def get_workspace_endpoint() -> dict[str, str]:
 
 @router.post("/api/workspace")
 async def set_workspace_endpoint(body: WorkspaceRequest) -> dict[str, str]:
-    from src.skills_storage import ensure_default_skill_mounts
+    from src.skills_storage import sync_workspace_skill_mounts
     from src.workspace import WorkspaceError, add_workspace
 
     try:
         entry = add_workspace(body.path)
-        ensure_default_skill_mounts(workspace_path=entry.get("workspace_path"))
+        sync_workspace_skill_mounts(workspace_path=entry.get("workspace_path"))
         return entry
     except WorkspaceError as exc:
         raise _workspace_http_error(exc) from exc

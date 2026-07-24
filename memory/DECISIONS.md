@@ -578,3 +578,14 @@
   5. **提示词（2026-07-24 补）**：**D53** — 运行时分层组装 + **渐进式披露**（system 底座 / env / 项目规则 / skills 目录按需全文 / mode reminder）；禁止把 `markdownDoc` 或整份 AGENTS.md 当作唯一 system。D7=发现内容，D53=组装架构。
 - **影响**：`builtin_tools` / `agent_mcp` / `chat_runner` / `mcp_react` / `agent_prompt` / AgentManager MCP UI / ChatFeed 活动条；`ROADMAP` §Chat Clutch Agent。
 - **决策状态**：`可执行`
+
+### D45 · D7 项目规则 + Skills 对齐 Grok Build（2026-07-24）
+
+- **背景**：能力期 D7；对照本地 `grok-build` 与 docs.x.ai project-rules。User 级规则（`~/.grok/AGENTS.md` 等）本期不做。
+- **方案**：
+  1. **Skills 开放 catalog**：Enabled 的 global∪project∪custom 自动进 skills 层；Agent `skills[]` 为可选强制包含；正文仅 `read_skill`。`isActiveGlobally`=Enabled（新发现默认 True；旧库全 False 时视为全开）。
+  2. **同名 dedupe**：短名冲突时 **project > custom Mount > global**（Grok：local/repo > user）。
+  3. **嵌套规则**：`git root → workspace_path` 串链注入 `AGENTS.md`/`CLAUDE.md` 等 + `.grok/.claude/.cursor/rules`；更深优先；无 User home 规则。
+  4. **Custom SEARCH PATHS** 永不因换仓卸挂；仅 `auto_workspace_mounts` 轮换。
+- **影响**：`agent_prompt`、`agent_skills`、`skills_storage`、`skills_scanner`；PRODUCT_INTRO / capability-plan D7。
+- **决策状态**：`可执行`

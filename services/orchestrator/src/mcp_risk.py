@@ -42,6 +42,8 @@ _NON_RISKY_BUILTINS = frozenset(
         "submit_diff_summary",  # D6 UI report — not a risky gate
         "diff_summary",
         "propose_diff_review",
+        "read_skill",  # D7 progressive skill disclosure — read-only
+        "load_skill",
     }
 )
 

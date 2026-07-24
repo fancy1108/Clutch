@@ -1,11 +1,24 @@
-"""Resolve agent-linked skills from the Clutch Skills Registry (P2-14 / D53)."""
+"""Resolve Clutch Skills Registry entries for prompt injection (P2-14 / D53 / D7)."""
 
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
-from src.skills_storage import load_registry
+from src.skills_storage import (
+    discover_user_skill_directories,
+    load_registry,
+)
+from src.workspace import get_workspace
+
+SkillScope = Literal["project", "custom", "global"]
+
+# Lower rank wins on same short-name (Grok: local/repo > user; Clutch: project > custom > global).
+_SCOPE_RANK: dict[SkillScope, int] = {
+    "project": 0,
+    "custom": 1,
+    "global": 2,
+}
 
 
 def _skill_md_path(skill_meta: dict[str, Any]) -> Path | None:
@@ -34,6 +47,100 @@ def _one_liner(meta: dict[str, Any], path: Path | None) -> str:
             continue
         return trimmed[:160]
     return ""
+
+
+def _short_name(key: str) -> str:
+    return key.rsplit("/", 1)[-1].strip().lower()
+
+
+def _under_any(path: str, roots: list[str]) -> bool:
+    try:
+        resolved = Path(path).resolve()
+    except OSError:
+        return False
+    for root in roots:
+        try:
+            resolved.relative_to(Path(root).resolve())
+            return True
+        except ValueError:
+            continue
+    return False
+
+
+def classify_skill_scope(
+    source: str,
+    *,
+    workspace_path: str | None,
+    auto_workspace_mounts: list[str],
+    global_roots: list[str],
+) -> SkillScope:
+    src = str(Path(source).expanduser().resolve()) if source else ""
+    auto = {str(Path(p).expanduser().resolve()) for p in auto_workspace_mounts}
+    if src in auto:
+        return "project"
+    if workspace_path and _under_any(src, [workspace_path]):
+        return "project"
+    if _under_any(src, global_roots):
+        return "global"
+    return "custom"
+
+
+def resolve_effective_skill_keys(agent: dict[str, Any] | None = None) -> list[str]:
+    """
+    Open catalog (Grok-aligned D7): Enabled global∪project∪custom, plus agent binds.
+
+    Same short-name dedupe: project > custom > global. Agent-bound keys always kept.
+    """
+    agent = agent or {}
+    bound = [
+        str(k).strip()
+        for k in (agent.get("skills") or [])
+        if str(k).strip()
+    ]
+    bound_set = set(bound)
+
+    registry = load_registry()
+    skills = list(registry.get("skills") or [])
+    if not skills and not bound:
+        return []
+
+    workspace = get_workspace()
+    workspace_path = workspace.get("workspace_path") if workspace else None
+    auto_ws = [str(p) for p in (registry.get("auto_workspace_mounts") or [])]
+    global_roots = discover_user_skill_directories()
+
+    # Legacy registries defaulted every toggle to False — treat "all off" as all enabled.
+    any_enabled = any(bool(item.get("isActiveGlobally")) for item in skills)
+    legacy_all_off = bool(skills) and not any_enabled
+
+    ranked: dict[str, tuple[int, str]] = {}
+    for item in skills:
+        key = str(item.get("key") or "").strip()
+        if not key:
+            continue
+        enabled = bool(item.get("isActiveGlobally")) or legacy_all_off or key in bound_set
+        if not enabled:
+            continue
+        scope = classify_skill_scope(
+            str(item.get("source") or ""),
+            workspace_path=str(workspace_path) if workspace_path else None,
+            auto_workspace_mounts=auto_ws,
+            global_roots=global_roots,
+        )
+        name = _short_name(key)
+        rank = _SCOPE_RANK[scope]
+        prev = ranked.get(name)
+        if prev is None or rank < prev[0]:
+            ranked[name] = (rank, key)
+
+    # Force-include agent binds even if disabled / lost the dedupe race under another key.
+    for key in bound:
+        name = _short_name(key)
+        ranked[name] = (-1, key)
+
+    # Stable order: by scope rank then key
+    ordered = sorted(ranked.values(), key=lambda item: (item[0], item[1]))
+    return [key for _, key in ordered]
 
 
 def compose_skills_section(
@@ -88,7 +195,16 @@ def compose_skills_section(
         return ""
     lines.append("")
     lines.append(
-        "Full skill bodies are disclosed on demand when a skill is invoked; "
-        "do not assume the full SKILL.md is in context."
+        "Full skill bodies are not in this catalog. Call clutch-tools `read_skill` "
+        "with the skill key (e.g. `my-skills/secure-review`) when you need the full "
+        "SKILL.md instructions."
     )
     return "\n".join(lines)
+
+
+def load_skill_body(skill_key: str) -> str:
+    """Return full SKILL.md for one registry key, or empty string if missing (D7)."""
+    key = str(skill_key or "").strip()
+    if not key:
+        return ""
+    return compose_skills_section([key], include_bodies=True)

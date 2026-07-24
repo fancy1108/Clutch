@@ -228,12 +228,12 @@ class UserNamePreferenceRequest(BaseModel):
 
 def _skills_registry_payload(*, rescan: bool = True) -> dict[str, Any]:
     from src.skills_scanner import scan_mounted_directories
-    from src.skills_storage import ensure_default_skill_mounts, load_registry, save_registry
+    from src.skills_storage import sync_workspace_skill_mounts, load_registry, save_registry
     from src.workspace import get_workspace
 
     workspace = get_workspace()
     workspace_path = workspace.get("workspace_path") if workspace else None
-    ensure_default_skill_mounts(workspace_path=workspace_path)
+    sync_workspace_skill_mounts(workspace_path=workspace_path)
 
     data = load_registry()
     if rescan:

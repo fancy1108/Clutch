@@ -5,16 +5,29 @@
 
 ## Current Status
 
-- **阶段：** **v1.2.9**；**D6∥D50 Diff — PM 通过**；下一批 **D7 项目规则 + Skills**
-- **Git：** D5=`30d5f86`；D6 待本会话 commit
+- **阶段：** **v1.2.9**；**D7 — PM 通过**；下一批 **D8 长聊不丢任务态**
+- **Git：** D5=`30d5f86`；D6=`26b9716`；D7 待本会话 commit
 
 ## Recent Sessions
+
+## 2026-07-25 会话（D7 项目规则 + Skills PM 通过）
+
+- **实现：** Grok 对齐规则链 + 开放 Skills catalog + read_skill；Custom Mount 保留（D45）
+- **PM：** 2026-07-25 通过（RULE_TOKEN_ORANGE；read_skill→SKILL_BODY_LOADED）
+- **下次：** commit → **D8 长聊不丢任务态**
+
+## 2026-07-24 会话（D7 对齐 Grok Build 实现）
+
+- **拍板（D45）**：Skills 开放 catalog；同名 project>custom>global；规则 git root→workspace 链；User 规则不做
+- **实现：** `resolve_effective_skill_keys`；扩自动 Skills 路径；嵌套 AGENTS/rules；Custom Mount 永不卸
+- **下次：** PM ✅
 
 ## 2026-07-24 会话（D6 Diff 审查 PM 通过）
 
 - **实现：** Cursor 式 `fileDiff` 挂工具步骤 + `InlineFileDiffCard`；行级 append hunk；Changes 与 Diff 同源；`raw_path` 回归修复
 - **PM：** 2026-07-24 通过（边改边出 alpha/beta Diff 卡）
-- **下次：** commit → **D7 项目规则 + Skills**
+- **Commit：** `26b9716`
+- **下次：** D7 ✅
 
 ## 2026-07-24 会话（D5 自检报告 PM 通过）
 

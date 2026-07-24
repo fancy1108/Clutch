@@ -92,8 +92,14 @@ def test_ensure_default_skill_mounts_cursor_and_workspace(
     _write_skill(ws / "skills", "hyperframes", "Hyperframes", "Project skill.")
 
     monkeypatch.setattr(
-        "src.skills_storage.discover_default_skill_directories",
-        lambda **_: [str(cursor_skills.resolve()), str((ws / "skills").resolve())],
+        "src.skills_storage.discover_user_skill_directories",
+        lambda: [str(cursor_skills.resolve())],
+    )
+    monkeypatch.setattr(
+        "src.skills_storage.discover_workspace_skill_directories",
+        lambda workspace_path=None: (
+            [str((ws / "skills").resolve())] if workspace_path else []
+        ),
     )
 
     added = ensure_default_skill_mounts(workspace_path=str(ws))
@@ -110,8 +116,12 @@ def test_api_get_auto_mounts_defaults(skills_data_dir: Path, tmp_path: Path, mon
     mount = tmp_path / "skills-cursor"
     _write_skill(mount, "canvas", "Canvas", "Canvas layouts.")
     monkeypatch.setattr(
-        "src.skills_storage.discover_default_skill_directories",
-        lambda **_: [str(mount.resolve())],
+        "src.skills_storage.discover_user_skill_directories",
+        lambda: [str(mount.resolve())],
+    )
+    monkeypatch.setattr(
+        "src.skills_storage.discover_workspace_skill_directories",
+        lambda workspace_path=None: [],
     )
 
     body = client.get("/api/skills").json()
