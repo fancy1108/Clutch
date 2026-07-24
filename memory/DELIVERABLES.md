@@ -4,6 +4,17 @@
 > **何时写：** 每个**代码 Task** 完成并 commit 后，在 Check-out 追加一节（见 `CLAUDE.md` §Check-out）。  
 > **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。
 
+## Clutch Agent D6∥D50 Diff review (pending hash)
+
+| 项目 | 值 |
+|------|-----|
+| **Task** | D6 Diff 审查 + D50 对话内 Cursor 式 Diff 卡 |
+| **Commit** | （本会话 feat commit） |
+| **Branch** | `dev` |
+| **Verification** | `test_diff_summary_d6` + pre-commit `verify.sh` |
+| **PM** | 2026-07-24 验收通过（边改边出 Diff；ROADMAP D6+D50 ✅） |
+| **下一批** | **D7 项目规则 + Skills** |
+
 ## Clutch Agent D5∥D50 Verification report (`30d5f86`)
 
 | 项目 | 值 |
@@ -13,7 +24,7 @@
 | **Branch** | `dev` |
 | **Verification** | pre-commit `verify.sh`（随 feat commit）；`test_verification_d5` + `test_merge_patch_optional_d5` |
 | **PM** | 2026-07-24 验收通过（ROADMAP D5 ✅；故意失败出 VERIFICATION FAILED + next actions） |
-| **下一批** | **D6∥D50 Diff 摘要** |
+| **下一批** | **D6∥D50 Diff 摘要** ✅ |
 
 ## Clutch Agent D4∥D49 Question card (`662129c`)
 

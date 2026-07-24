@@ -7,6 +7,7 @@ import os
 import re
 import shutil
 import subprocess
+import difflib
 from pathlib import Path
 from typing import Any
 
@@ -309,6 +310,51 @@ def list_builtin_tools() -> list[dict[str, Any]]:
                 "required": ["title", "conclusion", "steps"],
             },
         },
+        {
+            "name": "submit_diff_summary",
+            "description": (
+                "Publish a Diff review card in Chat after editing files (D6). "
+                "Pass the changed workspace-relative paths; include a short per-file "
+                "summary and/or unified `patch` when helpful. If patch is omitted, "
+                "Clutch fills a git (or content) diff when possible. Call after "
+                "meaningful edits so the user can open readable diffs without leaving Chat."
+            ),
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "description": "Short card title (default: Changes).",
+                    },
+                    "summary": {
+                        "type": "string",
+                        "description": "One-paragraph overview of the change set.",
+                    },
+                    "files": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "path": {"type": "string"},
+                                "status": {
+                                    "type": "string",
+                                    "enum": ["A", "M", "D"],
+                                    "description": "A=added M=modified D=deleted",
+                                },
+                                "summary": {"type": "string"},
+                                "patch": {
+                                    "type": "string",
+                                    "description": "Optional unified diff hunks for this file.",
+                                },
+                            },
+                            "required": ["path"],
+                        },
+                        "description": "Changed files (≥1).",
+                    },
+                },
+                "required": ["files"],
+            },
+        },
     ]
 
 
@@ -336,9 +382,20 @@ def is_submit_verification_tool(name: str) -> bool:
     }
 
 
+def is_submit_diff_summary_tool(name: str) -> bool:
+    short = name.split("__")[-1].lower().replace("-", "_")
+    return short in {
+        "submit_diff_summary",
+        "diff_summary",
+        "propose_diff_review",
+    }
+
+
 _TODO_STATUSES = frozenset({"pending", "in_progress", "completed"})
 _VERIFICATION_STEP_STATUSES = frozenset({"passed", "failed", "skipped"})
 _VERIFICATION_CONCLUSIONS = frozenset({"passed", "failed"})
+_DIFF_FILE_STATUSES = frozenset({"A", "M", "D"})
+_MAX_DIFF_PATCH_LINES = 160
 
 
 def normalize_todo_items(
@@ -583,6 +640,368 @@ def normalize_verification_report(
     }
 
 
+def _truncate_patch(patch: str, *, max_lines: int = _MAX_DIFF_PATCH_LINES) -> str:
+    lines = patch.splitlines()
+    if len(lines) <= max_lines:
+        return patch.strip()
+    kept = lines[:max_lines]
+    kept.append(f"... ({len(lines) - max_lines} more lines truncated)")
+    return "\n".join(kept).strip()
+
+
+def _parse_unified_diff_lines(patch: str) -> list[dict[str, Any]]:
+    """Map unified diff text → DiffLine-shaped dicts for Chat/Changes."""
+    out: list[dict[str, Any]] = []
+    line_num = 0
+    for raw in patch.splitlines():
+        if raw.startswith("+++") or raw.startswith("---") or raw.startswith("diff ") or raw.startswith("index "):
+            continue
+        if raw.startswith("@@"):
+            # @@ -a,b +c,d @@ → start from new-file line c
+            m = re.search(r"\+(\d+)", raw)
+            if m:
+                line_num = max(0, int(m.group(1)) - 1)
+            continue
+        if raw.startswith("+"):
+            line_num += 1
+            out.append({"lineNum": line_num, "type": "addition", "text": raw[1:]})
+        elif raw.startswith("-"):
+            out.append({"lineNum": line_num, "type": "deletion", "text": raw[1:]})
+        elif raw.startswith("\\"):
+            continue
+        else:
+            text = raw[1:] if raw.startswith(" ") else raw
+            line_num += 1
+            out.append({"lineNum": line_num, "type": "normal", "text": text})
+    return out
+
+
+def _git_diff_for_path(rel: str) -> tuple[str, str]:
+    """Return (status A|M|D, unified patch) for a workspace-relative path."""
+    from src.workspace import WorkspaceError, require_workspace, resolve_allowed_path
+
+    try:
+        root = require_workspace()
+        target = resolve_allowed_path(rel)
+    except WorkspaceError:
+        return "M", ""
+
+    rel_posix = rel.replace("\\", "/")
+    try:
+        porcelain = subprocess.run(
+            ["git", "status", "--porcelain", "--", rel_posix],
+            cwd=str(root),
+            capture_output=True,
+            text=True,
+            timeout=8,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        porcelain = None
+
+    status = "M"
+    if porcelain and porcelain.returncode == 0 and porcelain.stdout.strip():
+        code = porcelain.stdout.strip()[:2]
+        if "A" in code or "?" in code:
+            status = "A"
+        elif "D" in code:
+            status = "D"
+        else:
+            status = "M"
+
+    patch = ""
+    try:
+        if status == "A" or (porcelain and porcelain.stdout.strip().startswith("??")):
+            diff = subprocess.run(
+                ["git", "diff", "--no-index", "--", "/dev/null", rel_posix],
+                cwd=str(root),
+                capture_output=True,
+                text=True,
+                timeout=8,
+                check=False,
+            )
+            # git --no-index exits 1 when files differ
+            patch = diff.stdout or ""
+        else:
+            diff = subprocess.run(
+                ["git", "diff", "HEAD", "--", rel_posix],
+                cwd=str(root),
+                capture_output=True,
+                text=True,
+                timeout=8,
+                check=False,
+            )
+            patch = diff.stdout or ""
+            if not patch.strip():
+                diff = subprocess.run(
+                    ["git", "diff", "--", rel_posix],
+                    cwd=str(root),
+                    capture_output=True,
+                    text=True,
+                    timeout=8,
+                    check=False,
+                )
+                patch = diff.stdout or ""
+    except (OSError, subprocess.TimeoutExpired):
+        patch = ""
+
+    if not patch.strip() and target.is_file() and status != "D":
+        try:
+            text = target.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            text = ""
+        preview = text.splitlines()[:80]
+        patch = "\n".join(f"+{line}" for line in preview)
+        if len(text.splitlines()) > 80:
+            patch += f"\n... ({len(text.splitlines()) - 80} more lines truncated)"
+        status = status if status in _DIFF_FILE_STATUSES else "A"
+
+    return status, _truncate_patch(patch)
+
+
+def enrich_diff_file_entry(entry: dict[str, Any]) -> dict[str, Any]:
+    """Fill status/patch/diffs for one file entry when missing."""
+    path = str(entry.get("path") or "").strip()
+    if not path:
+        return entry
+    status = str(entry.get("status") or "").strip().upper()[:1]
+    if status not in _DIFF_FILE_STATUSES:
+        status = ""
+    patch = str(entry.get("patch") or "").strip()
+    if not patch or not status:
+        git_status, git_patch = _git_diff_for_path(path)
+        if not status:
+            status = git_status
+        if not patch:
+            patch = git_patch
+    patch = _truncate_patch(patch) if patch else ""
+    diffs = entry.get("diffs")
+    if not isinstance(diffs, list) or not diffs:
+        diffs = _parse_unified_diff_lines(patch) if patch else []
+    summary = str(entry.get("summary") or "").strip()
+    return {
+        "path": path,
+        "status": status or "M",
+        "summary": summary,
+        "patch": patch,
+        "diffs": diffs,
+    }
+
+
+def normalize_diff_summary(
+    func_args: dict[str, Any] | None,
+    *,
+    enrich: bool = True,
+) -> dict[str, Any]:
+    """Normalize submit_diff_summary args into a DiffSummary card payload."""
+    payload = func_args if isinstance(func_args, dict) else {}
+    title = str(payload.get("title") or payload.get("name") or "").strip() or "Changes"
+    summary = str(payload.get("summary") or "").strip()
+    files_in: list[Any] = []
+    raw_files = payload.get("files")
+    if isinstance(raw_files, list):
+        files_in = raw_files
+    elif isinstance(payload.get("changed_files") or payload.get("changedFiles"), list):
+        files_in = list(payload.get("changed_files") or payload.get("changedFiles") or [])
+
+    files: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for item in files_in:
+        if isinstance(item, str):
+            path = item.strip()
+            if not path or path in seen:
+                continue
+            seen.add(path)
+            entry: dict[str, Any] = {"path": path}
+        elif isinstance(item, dict):
+            path = str(item.get("path") or item.get("file") or item.get("name") or "").strip()
+            if not path or path in seen:
+                continue
+            seen.add(path)
+            entry = dict(item)
+            entry["path"] = path
+        else:
+            continue
+        if enrich:
+            files.append(enrich_diff_file_entry(entry))
+        else:
+            path = entry["path"]
+            status = str(entry.get("status") or "M").strip().upper()[:1]
+            if status not in _DIFF_FILE_STATUSES:
+                status = "M"
+            patch = _truncate_patch(str(entry.get("patch") or ""))
+            diffs = entry.get("diffs")
+            if not isinstance(diffs, list) or not diffs:
+                diffs = _parse_unified_diff_lines(patch) if patch else []
+            files.append(
+                {
+                    "path": path,
+                    "status": status,
+                    "summary": str(entry.get("summary") or "").strip(),
+                    "patch": patch,
+                    "diffs": diffs,
+                }
+            )
+
+    if not summary and files:
+        summary = f"{len(files)} file(s) changed"
+
+    out: dict[str, Any] = {"title": title, "summary": summary, "files": files}
+    if payload.get("inline") is True:
+        out["inline"] = True
+    return out
+
+
+def build_diff_summary_from_paths(
+    paths: list[str] | None,
+    *,
+    title: str = "Changes",
+) -> dict[str, Any] | None:
+    """Auto-build a DiffSummary from workspace-relative paths (D6 seal fallback)."""
+    cleaned: list[str] = []
+    for path in paths or []:
+        rel = str(path).strip()
+        if rel and rel not in cleaned:
+            cleaned.append(rel)
+    if not cleaned:
+        return None
+    return normalize_diff_summary({"title": title, "files": cleaned}, enrich=True)
+
+
+def _basename_path(path: str) -> str:
+    normalized = path.replace("\\", "/")
+    parts = [p for p in normalized.split("/") if p]
+    return parts[-1] if parts else path
+
+
+def _hunk_from_old_new(old_s: str, new_s: str) -> str:
+    """Line-level unified hunk so appends don't re-paint unchanged lines as -/+."""
+    old_lines = str(old_s).splitlines()
+    new_lines = str(new_s).splitlines()
+    if old_lines == new_lines:
+        return ""
+    diff_lines = [
+        line
+        for line in difflib.unified_diff(old_lines, new_lines, lineterm="", n=2)
+        if not line.startswith("---") and not line.startswith("+++")
+    ]
+    if diff_lines:
+        return "\n".join(diff_lines)
+    # Fallback: whole block replace (should be rare).
+    parts: list[str] = ["@@ -1 +1 @@"]
+    parts.extend(f"-{line}" for line in old_lines)
+    parts.extend(f"+{line}" for line in new_lines)
+    return "\n".join(parts)
+
+
+def build_inline_edit_diff_cards(
+    *,
+    tool_name: str,
+    func_args: dict[str, Any],
+    result_str: str,
+) -> list[dict[str, Any]]:
+    """
+    Cursor-style: one DiffSummary card per edited file, right after the edit tool.
+    Prefer the edit payload (old/new or patch) so the chat shows the hunk immediately.
+    """
+    if result_str.startswith("Error executing tool"):
+        return []
+    short = tool_name.split("__")[-1].lower().replace("-", "_")
+    cards: list[dict[str, Any]] = []
+
+    if short == "search_replace":
+        path = str(func_args.get("path") or "").strip()
+        old_s = func_args.get("old_string")
+        new_s = func_args.get("new_string")
+        if path and old_s is not None and new_s is not None:
+            try:
+                payload = json.loads(result_str)
+            except json.JSONDecodeError:
+                payload = None
+            if isinstance(payload, dict) and payload.get("path"):
+                path = str(payload["path"]).strip() or path
+            patch = _hunk_from_old_new(str(old_s), str(new_s))
+            entry = enrich_diff_file_entry(
+                {"path": path, "status": "M", "patch": patch}
+            )
+            cards.append(
+                {
+                    "title": _basename_path(path),
+                    "summary": "",
+                    "files": [entry],
+                    "inline": True,
+                }
+            )
+            return cards
+
+    if short == "apply_patch":
+        patch = str(func_args.get("patch") or "").strip()
+        paths: list[str] = []
+        try:
+            payload = json.loads(result_str)
+        except json.JSONDecodeError:
+            payload = None
+        if isinstance(payload, dict):
+            for raw in payload.get("changed_paths") or []:
+                rel = str(raw).strip()
+                if rel and rel not in paths:
+                    paths.append(rel)
+        if not paths and patch:
+            try:
+                from src.apply_patch import extract_patch_paths
+
+                paths = list(extract_patch_paths(patch) or [])
+            except Exception:
+                paths = []
+        for path in paths:
+            entry = enrich_diff_file_entry({"path": path, "patch": patch if len(paths) == 1 else ""})
+            cards.append(
+                {
+                    "title": _basename_path(path),
+                    "summary": "",
+                    "files": [entry],
+                    "inline": True,
+                }
+            )
+        return cards
+
+    # Generic write/create/edit — show git/content diff for the path.
+    from src.mcp_risk import extract_mcp_file_paths
+
+    paths = extract_mcp_file_paths(tool_name, func_args)
+    if not paths:
+        try:
+            payload = json.loads(result_str)
+        except json.JSONDecodeError:
+            payload = None
+        if isinstance(payload, dict):
+            for raw in payload.get("changed_paths") or []:
+                rel = str(raw).strip()
+                if rel and rel not in paths:
+                    paths.append(rel)
+            if payload.get("path"):
+                rel = str(payload["path"]).strip()
+                if rel and rel not in paths:
+                    paths.append(rel)
+    editish = any(
+        tok in short
+        for tok in ("write", "edit", "create", "patch", "replace", "delete")
+    )
+    if not editish:
+        return []
+    for path in paths:
+        entry = enrich_diff_file_entry({"path": path})
+        cards.append(
+            {
+                "title": _basename_path(path),
+                "summary": "",
+                "files": [entry],
+                "inline": True,
+            }
+        )
+    return cards
+
+
 def execute_builtin_tool(tool_name: str, arguments: dict[str, Any]) -> str:
     handlers = {
         "read_file": _tool_read_file,
@@ -597,6 +1016,9 @@ def execute_builtin_tool(tool_name: str, arguments: dict[str, Any]) -> str:
         "submit_verification": _tool_submit_verification,
         "verification_report": _tool_submit_verification,
         "submit_verification_report": _tool_submit_verification,
+        "submit_diff_summary": _tool_submit_diff_summary,
+        "diff_summary": _tool_submit_diff_summary,
+        "propose_diff_review": _tool_submit_diff_summary,
     }
     handler = handlers.get(tool_name)
     if handler is None:
@@ -615,6 +1037,25 @@ def _tool_todo_write(arguments: dict[str, Any]) -> str:
         f"- [{t['status']}] {t['id']}: {t['content']}" for t in todos
     ]
     return f"Updated {len(todos)} todo(s):\n" + "\n".join(lines)
+
+
+def _tool_submit_diff_summary(arguments: dict[str, Any]) -> str:
+    card = normalize_diff_summary(arguments, enrich=True)
+    if not card["files"]:
+        return "Error executing tool: submit_diff_summary requires a non-empty `files` array"
+    lines = [
+        f"- [{f.get('status') or 'M'}] {f['path']}"
+        + (f": {f['summary']}" if f.get("summary") else "")
+        for f in card["files"]
+    ]
+    summary = card.get("summary") or ""
+    summary_line = f"\nSummary: {summary}" if summary else ""
+    return (
+        f"Diff summary published: {card['title']}\n"
+        + "\n".join(lines)
+        + summary_line
+        + "\nUser can review readable diffs in Chat; continue or call submit_verification."
+    )
 
 
 def _tool_submit_verification(arguments: dict[str, Any]) -> str:

@@ -54,6 +54,7 @@ export function mergeMessageFields(existing: ChatMessage, incoming: ChatMessage)
     todoList: incoming.todoList ?? existing.todoList,
     questionCard: incoming.questionCard ?? existing.questionCard,
     verificationReport: incoming.verificationReport ?? existing.verificationReport,
+    diffSummary: incoming.diffSummary ?? existing.diffSummary,
   };
 }
 

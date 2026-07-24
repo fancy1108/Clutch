@@ -142,6 +142,7 @@
 | Chat Todo 卡（D3/D49） | `components/TodoCardView.tsx` · builtin `todo_write` |
 | Chat 提问卡（D4/D49） | `components/QuestionCardView.tsx` · builtin `ask_user_question` |
 | Chat 验证报告卡（D5/D50） | `components/VerificationReportCardView.tsx` · builtin `submit_verification` |
+| Chat Diff 摘要卡（D6/D50） | `components/DiffSummaryCardView.tsx` · builtin `submit_diff_summary` |
 | Chat Agent 卡壳（共享） | `components/chatAgentCard.tsx` |
 | Sidecar 结构化 tool steps（D46） | `services/orchestrator/src/tool_steps.py` |
 | Chat markdown（fence / 路径预览） | `components/chatContentRender.tsx` · `services/workspacePathLinks.ts` |

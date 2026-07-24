@@ -3,6 +3,7 @@ import { Check, ChevronRight, Loader2, ShieldAlert, X } from 'lucide-react';
 import type { ToolStep } from '../types';
 import { verbGroupHeaderLabel } from '../services/agentActivitySteps';
 import { useLanguage } from './LanguageContext';
+import { InlineFileDiffCard } from './DiffSummaryCardView';
 
 type AgentLiveActivityProps = {
   steps: ToolStep[];
@@ -11,6 +12,7 @@ type AgentLiveActivityProps = {
   /** Force expanded (e.g. while awaiting approval). */
   defaultOpen?: boolean;
   className?: string;
+  onOpenFile?: (path: string) => void;
 };
 
 function StepStatusIcon({ status }: { status: ToolStep['status'] }) {
@@ -27,14 +29,15 @@ function StepStatusIcon({ status }: { status: ToolStep['status'] }) {
 }
 
 /**
- * Grok-style verb_group tool transcript (D46).
- * Collapsed header: "Read 2 files, Searched 1 pattern"; expand for step titles + detail.
+ * Grok-style verb_group tool transcript (D46) + Cursor-style edit diffs (D6).
+ * Edit hunks render as always-visible file cards (not buried under the collapse).
  */
 export const AgentLiveActivity: React.FC<AgentLiveActivityProps> = ({
   steps,
   live = false,
   defaultOpen = false,
   className = '',
+  onOpenFile,
 }) => {
   const { t } = useLanguage();
   const [open, setOpen] = useState(defaultOpen);
@@ -42,6 +45,10 @@ export const AgentLiveActivity: React.FC<AgentLiveActivityProps> = ({
 
   if (!steps.length) return null;
 
+  const editDiffSteps = steps.filter(
+    (step) => step.fileDiff && (step.status === 'completed' || step.status === 'failed'),
+  );
+  const trailSteps = steps.filter((step) => !step.fileDiff);
   const header = verbGroupHeaderLabel(steps) || t('Tools');
   const awaitingSteps = steps.filter((step) => step.status === 'awaiting');
   const awaiting = awaitingSteps.length > 0;
@@ -53,28 +60,30 @@ export const AgentLiveActivity: React.FC<AgentLiveActivityProps> = ({
       aria-live={live ? 'polite' : undefined}
       aria-label={awaiting ? t('Awaiting approval') : header}
     >
-      <button
-        type="button"
-        onClick={() => setOpen((value) => !value)}
-        className="flex w-full items-center gap-1.5 rounded-md py-1 px-1 text-left text-on-surface-variant hover:bg-surface-container/70 hover:text-on-surface transition-colors"
-      >
-        <ChevronRight
-          className={`h-3.5 w-3.5 shrink-0 text-on-surface-variant/60 transition-transform duration-200 ${
-            open ? 'rotate-90' : ''
-          }`}
-          strokeWidth={2}
-        />
-        <span className="text-[11px] font-medium text-on-surface truncate">{header}</span>
-        {awaiting ? (
-          <span className="text-[10px] text-amber-800/80 shrink-0 tabular-nums">
-            {t('Awaiting approval')} {awaitingSteps.length}
-          </span>
-        ) : null}
-      </button>
+      {trailSteps.length > 0 || awaiting || editDiffSteps.length === 0 ? (
+        <button
+          type="button"
+          onClick={() => setOpen((value) => !value)}
+          className="flex w-full items-center gap-1.5 rounded-md py-1 px-1 text-left text-on-surface-variant hover:bg-surface-container/70 hover:text-on-surface transition-colors"
+        >
+          <ChevronRight
+            className={`h-3.5 w-3.5 shrink-0 text-on-surface-variant/60 transition-transform duration-200 ${
+              open ? 'rotate-90' : ''
+            }`}
+            strokeWidth={2}
+          />
+          <span className="text-[11px] font-medium text-on-surface truncate">{header}</span>
+          {awaiting ? (
+            <span className="text-[10px] text-amber-800/80 shrink-0 tabular-nums">
+              {t('Awaiting approval')} {awaitingSteps.length}
+            </span>
+          ) : null}
+        </button>
+      ) : null}
 
-      {open ? (
+      {open && trailSteps.length > 0 ? (
         <ol className="ml-[1.1rem] mt-0.5 mb-1 border-l border-outline-variant/25 pl-2.5 space-y-0.5">
-          {steps.map((step) => {
+          {trailSteps.map((step) => {
             const showDetail = detailId === step.id && Boolean(step.detail);
             return (
               <li key={step.id} className="min-w-0">
@@ -108,6 +117,22 @@ export const AgentLiveActivity: React.FC<AgentLiveActivityProps> = ({
             );
           })}
         </ol>
+      ) : null}
+
+      {/* Cursor-style: each edit lands as a visible file Diff card in the dialogue. */}
+      {editDiffSteps.length > 0 ? (
+        <div className="mt-1 space-y-0" data-testid="agent-edit-diff-stream">
+          {editDiffSteps.map((step) =>
+            step.fileDiff ? (
+              <InlineFileDiffCard
+                key={`diff-${step.id}`}
+                file={step.fileDiff}
+                title={step.fileDiff.path.split(/[/\\]/).pop() || step.fileDiff.path}
+                onOpenFile={onOpenFile}
+              />
+            ) : null,
+          )}
+        </div>
       ) : null}
     </div>
   );

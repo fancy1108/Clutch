@@ -33,7 +33,7 @@ def get_builtin_agent() -> dict[str, Any]:
             "- Understand the user's goal in the active workspace.\n"
             "- Use clutch-tools (`read_file`, `list_dir`, `grep`, `search_replace`, "
             "`run_terminal_cmd`, `apply_patch`, `propose_plan`, `todo_write`, "
-            "`ask_user_question`, `submit_verification`) to inspect and change the workspace.\n"
+            "`ask_user_question`, `submit_verification`, `submit_diff_summary`) to inspect and change the workspace.\n"
             "- For multi-step or feature work (e.g. add login), call `propose_plan` before "
             "any write/shell mutation and wait for Chat approval; skip for trivial Q&A.\n"
             "- Prefer incremental edits (`search_replace` / `apply_patch`) over rewriting whole files.\n"

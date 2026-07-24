@@ -752,6 +752,7 @@ def _merge_patch(state: ClutchState, patch: dict[str, Any]) -> ClutchState:
         "pending_tool_steps",
         "agent_todos",
         "verification_report",
+        "diff_summary",
         "refining_node_id",
         "refine_draft_output",
         "refine_agent_id",
@@ -868,6 +869,7 @@ def _chat_message(
     todo_list: list[dict[str, Any]] | None = None,
     question_card: dict[str, Any] | None = None,
     verification_report: dict[str, Any] | None = None,
+    diff_summary: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "id": msg_id or f"msg_{uuid.uuid4().hex[:8]}",
@@ -901,6 +903,9 @@ def _chat_message(
     if verification_report is not None:
         # D5/D50: self-check report card.
         payload["verificationReport"] = verification_report
+    if diff_summary is not None:
+        # D6/D50: diff review card.
+        payload["diffSummary"] = diff_summary
     return payload
 
 
@@ -969,6 +974,99 @@ async def _publish_verification_report(
     return state
 
 
+def _diff_summary_for_seal(
+    state: ClutchState,
+    *,
+    files_changed: list[str] | None = None,
+    mcp_pause: dict[str, Any] | None = None,
+) -> dict[str, Any] | None:
+    """Seal only an explicit (non-inline) DiffSummary onto the final reply.
+
+    Cursor-style inline per-edit cards are already published mid-turn; do not
+    re-attach an aggregate card under the closing text bubble.
+    """
+    card = None
+    if mcp_pause and isinstance(mcp_pause.get("diff_summary"), dict):
+        card = dict(mcp_pause["diff_summary"])
+    elif isinstance(state.get("diff_summary"), dict):
+        card = dict(state["diff_summary"])  # type: ignore[arg-type]
+    if not card or not card.get("files"):
+        return None
+    if card.get("inline"):
+        return None
+    return card
+
+
+async def _publish_diff_summary(
+    websocket: WebSocket,
+    run_id: str,
+    state: ClutchState,
+    report: dict[str, Any],
+    *,
+    reply_label: str,
+) -> ClutchState:
+    """Seal a D6/D50 diff card into the Chat timeline immediately (per-edit or review)."""
+    card = dict(report)
+    if not card.get("files"):
+        return state
+    messages = list(state["messages"])
+    last = messages[-1] if messages else None
+    prev = last.get("diffSummary") if isinstance(last, dict) else None
+    # Inline cards: skip only exact duplicate of the same single-file patch.
+    if isinstance(prev, dict) and prev.get("inline") and card.get("inline"):
+        prev_files = prev.get("files") or []
+        next_files = card.get("files") or []
+        if (
+            len(prev_files) == 1
+            and len(next_files) == 1
+            and isinstance(prev_files[0], dict)
+            and isinstance(next_files[0], dict)
+            and prev_files[0].get("path") == next_files[0].get("path")
+            and prev_files[0].get("patch") == next_files[0].get("patch")
+        ):
+            state = _merge_patch(state, {"diff_summary": card})
+            _commit_run_state(run_id, state)
+            return state
+    elif (
+        isinstance(prev, dict)
+        and not card.get("inline")
+        and prev.get("title") == card.get("title")
+    ):
+        prev_paths = [str(f.get("path")) for f in (prev.get("files") or []) if isinstance(f, dict)]
+        next_paths = [str(f.get("path")) for f in (card.get("files") or []) if isinstance(f, dict)]
+        if prev_paths == next_paths:
+            state = _merge_patch(state, {"diff_summary": card})
+            _commit_run_state(run_id, state)
+            return state
+
+    card_msg = _chat_message(reply_label or "Clutch Agent", "", diff_summary=card)
+    messages = messages + [card_msg]
+    state = _merge_patch(
+        state,
+        {
+            "messages": messages,
+            "diff_summary": card,
+        },
+    )
+    _commit_run_state(run_id, state)
+    await _send_message_event(websocket, run_id, card_msg, "")
+    # Push Changes panel for inline edits as they land.
+    paths = [
+        str(f.get("path")).strip()
+        for f in (card.get("files") or [])
+        if isinstance(f, dict) and str(f.get("path") or "").strip()
+    ]
+    if paths:
+        await _notify_workspace_files_changed(websocket, run_id, paths)
+    await _notify_run_state(
+        websocket,
+        run_id,
+        state,
+        {"messages": messages, "diff_summary": card},
+    )
+    return state
+
+
 def _sealed_tool_steps(
     state: ClutchState,
     *,
@@ -981,6 +1079,28 @@ def _sealed_tool_steps(
         steps = upsert_tool_step(steps, item)
     sealed = complete_running_steps(steps)
     return sealed or None
+
+
+def _merge_files_changed_with_tool_steps(
+    files_changed: list[str] | None,
+    sealed_steps: list[dict[str, Any]] | None,
+) -> list[str]:
+    """Union outcome paths with D6 fileDiff paths so chips/Changes match Diff cards."""
+    merged: list[str] = []
+    for path in files_changed or []:
+        rel = str(path).strip()
+        if rel and rel not in merged:
+            merged.append(rel)
+    for step in sealed_steps or []:
+        if not isinstance(step, dict):
+            continue
+        file_diff = step.get("fileDiff")
+        if not isinstance(file_diff, dict):
+            continue
+        rel = str(file_diff.get("path") or "").strip()
+        if rel and rel not in merged:
+            merged.append(rel)
+    return merged
 
 
 def _hybrid_execution_entry(
@@ -1436,6 +1556,7 @@ async def _llm_chat_reply(
     emit_tool_step: Callable[[dict[str, Any]], Awaitable[None]] | None = None,
     emit_todos: Callable[[list[dict[str, Any]]], Awaitable[None]] | None = None,
     emit_verification: Callable[[dict[str, Any]], Awaitable[None]] | None = None,
+    emit_diff_summary: Callable[[dict[str, Any]], Awaitable[None]] | None = None,
     tool_steps_sink: list[dict[str, Any]] | None = None,
     mcp_approved_tool: dict[str, Any] | None = None,
     mcp_resume: dict[str, Any] | None = None,
@@ -1685,6 +1806,12 @@ async def _llm_chat_reply(
                             asyncio.run_coroutine_threadsafe(emit_verification(report), loop)
                         )
 
+                def on_diff_summary(report: dict[str, Any]) -> None:
+                    if emit_diff_summary:
+                        step_futures.append(
+                            asyncio.run_coroutine_threadsafe(emit_diff_summary(report), loop)
+                        )
+
                 outcome = await asyncio.to_thread(
                     run_mcp_react_loop,
                     messages=chat_messages,
@@ -1694,6 +1821,7 @@ async def _llm_chat_reply(
                     on_tool_step=on_tool_step if emit_tool_step else None,
                     on_todos=on_todos if emit_todos else None,
                     on_verification=on_verification if emit_verification else None,
+                    on_diff_summary=on_diff_summary if emit_diff_summary else None,
                     existing_todos=list(state.get("agent_todos") or []),
                     pause_on_risky=True,
                     permission_mode=__import__(
@@ -1712,6 +1840,8 @@ async def _llm_chat_reply(
                     await emit_todos(list(outcome.todos))
                 if outcome.verification_report is not None and emit_verification:
                     await emit_verification(dict(outcome.verification_report))
+                if outcome.diff_summary is not None and emit_diff_summary:
+                    await emit_diff_summary(dict(outcome.diff_summary))
                 if outcome.approval_required:
                     pause_payload = {
                         **outcome.approval_required,
@@ -1727,6 +1857,8 @@ async def _llm_chat_reply(
                         pause_payload["verification_report"] = dict(
                             outcome.verification_report
                         )
+                    if outcome.diff_summary is not None:
+                        pause_payload["diff_summary"] = dict(outcome.diff_summary)
                     return (
                         reply_label,
                         outcome.engine_label,
@@ -1980,6 +2112,7 @@ async def _handle_plain_chat_mcp_decision(
             state = _merge_patch(state, {"pending_tool_steps": steps})
             _commit_run_state(run_id, state)
             await _notify_run_state(websocket, run_id, state, {"pending_tool_steps": steps})
+            await _maybe_notify_step_file_diff(websocket, run_id, step)
 
         async def emit_todos(todos: list[dict[str, Any]]) -> None:
             nonlocal state
@@ -1991,6 +2124,13 @@ async def _handle_plain_chat_mcp_decision(
             nonlocal state
             label = str(state.get("active_agent") or pending.reply_label or "Clutch Agent")
             state = await _publish_verification_report(
+                websocket, run_id, state, dict(report), reply_label=label
+            )
+
+        async def emit_diff_summary(report: dict[str, Any]) -> None:
+            nonlocal state
+            label = str(state.get("active_agent") or pending.reply_label or "Clutch Agent")
+            state = await _publish_diff_summary(
                 websocket, run_id, state, dict(report), reply_label=label
             )
 
@@ -2013,6 +2153,7 @@ async def _handle_plain_chat_mcp_decision(
             emit_tool_step=emit_tool_step,
             emit_todos=emit_todos,
             emit_verification=emit_verification,
+            emit_diff_summary=emit_diff_summary,
             tool_steps_sink=tool_steps_sink,
             mcp_resume={
                 "chat_messages": chat_messages,
@@ -2131,6 +2272,7 @@ async def _handle_plain_chat_mcp_decision(
         state = _merge_patch(state, {"pending_tool_steps": steps})
         _commit_run_state(run_id, state)
         await _notify_run_state(websocket, run_id, state, {"pending_tool_steps": steps})
+        await _maybe_notify_step_file_diff(websocket, run_id, step)
 
     async def emit_todos(todos: list[dict[str, Any]]) -> None:
         nonlocal state
@@ -2142,6 +2284,13 @@ async def _handle_plain_chat_mcp_decision(
         nonlocal state
         label = str(state.get("active_agent") or "Clutch Agent")
         state = await _publish_verification_report(
+            websocket, run_id, state, dict(report), reply_label=label
+        )
+
+    async def emit_diff_summary(report: dict[str, Any]) -> None:
+        nonlocal state
+        label = str(state.get("active_agent") or "Clutch Agent")
+        state = await _publish_diff_summary(
             websocket, run_id, state, dict(report), reply_label=label
         )
 
@@ -2178,7 +2327,8 @@ async def _handle_plain_chat_mcp_decision(
         emit_log=emit_log,
         emit_tool_step=emit_tool_step,
         emit_todos=emit_todos,
-            emit_verification=emit_verification,
+        emit_verification=emit_verification,
+        emit_diff_summary=emit_diff_summary,
         tool_steps_sink=tool_steps_sink,
         mcp_approved_tool=approved_tool,
         mcp_resume=mcp_resume,
@@ -2265,6 +2415,8 @@ async def _finish_plain_chat_after_llm(
             pause_patch["agent_todos"] = list(mcp_pause.get("todos") or [])
         if mcp_pause.get("verification_report") is not None:
             pause_patch["verification_report"] = dict(mcp_pause["verification_report"])
+        if mcp_pause.get("diff_summary") is not None:
+            pause_patch["diff_summary"] = dict(mcp_pause["diff_summary"])
         state = _merge_patch(state, pause_patch)
         _commit_run_state(run_id, state)
         _touch_session(run_id, status=state["status"])
@@ -2281,6 +2433,8 @@ async def _finish_plain_chat_after_llm(
         return state
 
     sealed_steps = _sealed_tool_steps(state, sink=tool_steps_sink)
+    merged_changed = _merge_files_changed_with_tool_steps(files_changed, sealed_steps)
+    files_changed = merged_changed
     reply = _chat_message(
         model_name,
         reply_text,
@@ -2288,10 +2442,13 @@ async def _finish_plain_chat_after_llm(
         raw_output=raw_output,
         output_events=output_events,
         tool_steps=sealed_steps,
-        files_changed=list(files_changed or []) or None,
+        files_changed=merged_changed or None,
         todo_list=list(state.get("agent_todos") or []) or None,
         verification_report=_verification_report_for_seal(
-            state, files_changed=list(files_changed or []) or None
+            state, files_changed=merged_changed or None
+        ),
+        diff_summary=_diff_summary_for_seal(
+            state, files_changed=merged_changed or None
         ),
     )
     log_line = f"[CHAT] {model_name} via {runtime_engine}: {len(reply_text)} chars"
@@ -2335,7 +2492,12 @@ async def _finish_plain_chat_after_llm(
             output_events=output_events,
         )
     if files_changed:
-        await _notify_workspace_files_changed(websocket, run_id, files_changed)
+        await _notify_workspace_files_changed(
+            websocket,
+            run_id,
+            files_changed,
+            path_diffs=_path_diffs_from_tool_steps(sealed_steps),
+        )
     await _notify_run_state(websocket, run_id, state, final_patch)
     return state
 
@@ -2693,6 +2855,7 @@ async def _handle_plain_chat(
             run_id=run_id,
             what="state_patch",
         )
+        await _maybe_notify_step_file_diff(websocket, run_id, step)
 
     async def emit_todos(todos: list[dict[str, Any]]) -> None:
         nonlocal state
@@ -2708,6 +2871,13 @@ async def _handle_plain_chat(
         nonlocal state
         label = str(state.get("active_agent") or active_agent or "Clutch Agent")
         state = await _publish_verification_report(
+            websocket, run_id, state, dict(report), reply_label=label
+        )
+
+    async def emit_diff_summary(report: dict[str, Any]) -> None:
+        nonlocal state
+        label = str(state.get("active_agent") or active_agent or "Clutch Agent")
+        state = await _publish_diff_summary(
             websocket, run_id, state, dict(report), reply_label=label
         )
 
@@ -2735,6 +2905,7 @@ async def _handle_plain_chat(
             emit_tool_step=emit_tool_step,
             emit_todos=emit_todos,
             emit_verification=emit_verification,
+            emit_diff_summary=emit_diff_summary,
             tool_steps_sink=tool_steps_sink,
         )
     except HybridPlainChatRejected as exc:
@@ -2830,6 +3001,8 @@ async def _handle_plain_chat(
         return state
 
     sealed_steps = _sealed_tool_steps(state, sink=tool_steps_sink)
+    merged_changed = _merge_files_changed_with_tool_steps(files_changed, sealed_steps)
+    files_changed = merged_changed
     reply = _chat_message(
         model_name,
         reply_text,
@@ -2837,10 +3010,13 @@ async def _handle_plain_chat(
         raw_output=raw_output,
         output_events=output_events,
         tool_steps=sealed_steps,
-        files_changed=list(files_changed or []) or None,
+        files_changed=merged_changed or None,
         todo_list=list(state.get("agent_todos") or []) or None,
         verification_report=_verification_report_for_seal(
-            state, files_changed=list(files_changed or []) or None
+            state, files_changed=merged_changed or None
+        ),
+        diff_summary=_diff_summary_for_seal(
+            state, files_changed=merged_changed or None
         ),
     )
 
@@ -2956,7 +3132,12 @@ async def _handle_plain_chat(
         )
     if files_changed:
         await _try_ws_notify(
-            _notify_workspace_files_changed(websocket, run_id, files_changed),
+            _notify_workspace_files_changed(
+                websocket,
+                run_id,
+                files_changed,
+                path_diffs=_path_diffs_from_tool_steps(sealed_steps),
+            ),
             run_id=run_id,
             what="file_changed",
         )
@@ -3172,6 +3353,7 @@ async def _handle_flow_refine_message(
         state = _merge_patch(state, {"pending_tool_steps": steps})
         _commit_run_state(run_id, state)
         await _notify_run_state(websocket, run_id, state, {"pending_tool_steps": steps})
+        await _maybe_notify_step_file_diff(websocket, run_id, step)
 
     async def emit_todos(todos: list[dict[str, Any]]) -> None:
         nonlocal state
@@ -3183,6 +3365,13 @@ async def _handle_flow_refine_message(
         nonlocal state
         label = str(state.get("active_agent") or "Clutch Agent")
         state = await _publish_verification_report(
+            websocket, run_id, state, dict(report), reply_label=label
+        )
+
+    async def emit_diff_summary(report: dict[str, Any]) -> None:
+        nonlocal state
+        label = str(state.get("active_agent") or "Clutch Agent")
+        state = await _publish_diff_summary(
             websocket, run_id, state, dict(report), reply_label=label
         )
 
@@ -3225,6 +3414,7 @@ async def _handle_flow_refine_message(
             emit_tool_step=emit_tool_step,
             emit_todos=emit_todos,
             emit_verification=emit_verification,
+            emit_diff_summary=emit_diff_summary,
             tool_steps_sink=tool_steps_sink,
             chat_source="flow_refine",
             system_prompt_suffix=refine_suffix,
@@ -3284,16 +3474,21 @@ async def _handle_flow_refine_message(
         return state
 
     sealed_steps = _sealed_tool_steps(state, sink=tool_steps_sink)
+    merged_changed = _merge_files_changed_with_tool_steps(files_changed, sealed_steps)
+    files_changed = merged_changed
     reply = _chat_message(
         model_name,
         reply_text,
         runtime_engine=runtime_engine,
         msg_id=f"agent_{uuid.uuid4().hex[:8]}",
         tool_steps=sealed_steps,
-        files_changed=list(files_changed or []) or None,
+        files_changed=merged_changed or None,
         todo_list=list(state.get("agent_todos") or []) or None,
         verification_report=_verification_report_for_seal(
-            state, files_changed=list(files_changed or []) or None
+            state, files_changed=merged_changed or None
+        ),
+        diff_summary=_diff_summary_for_seal(
+            state, files_changed=merged_changed or None
         ),
     )
     final_messages = list(state["messages"]) + [reply]
@@ -3326,7 +3521,13 @@ async def _handle_flow_refine_message(
             output_events=output_events,
         )
     if files_changed:
-        await _notify_workspace_files_changed(websocket, run_id, files_changed, node_id=refining_node_id)
+        await _notify_workspace_files_changed(
+            websocket,
+            run_id,
+            files_changed,
+            node_id=refining_node_id,
+            path_diffs=_path_diffs_from_tool_steps(sealed_steps),
+        )
     await _notify_run_state(websocket, run_id, state, final_patch)
     if refine_reply_ready_to_commit(reply_text):
         state = _prepare_workflow_refine_state(run_id, state, prepend_log=False)
@@ -3425,15 +3626,76 @@ async def _notify_workspace_files_changed(
     paths: list[str],
     *,
     node_id: str = "",
+    path_diffs: dict[str, list[dict[str, Any]]] | None = None,
 ) -> None:
+    """Push Changes-panel updates. Prefer edit-hunk diffs when provided (D6)."""
+    from src.builtin_tools import enrich_diff_file_entry
+
     for path in paths:
+        rel = str(path).strip()
+        if not rel:
+            continue
+        diffs: list[dict[str, Any]] = []
+        if path_diffs and rel in path_diffs:
+            diffs = list(path_diffs[rel] or [])
+        if not diffs:
+            entry = enrich_diff_file_entry({"path": rel})
+            diffs = list(entry.get("diffs") or [])
+        if not diffs:
+            diffs = [{"lineNum": 1, "type": "addition", "text": "(updated via MCP)"}]
         await _send_file_changed(
             websocket,
             run_id,
             node_id=node_id,
-            path=path,
-            diff_lines=[{"lineNum": 1, "type": "addition", "text": "(updated via MCP)"}],
+            path=rel,
+            diff_lines=diffs,
         )
+
+
+def _path_diffs_from_tool_steps(
+    sealed_steps: list[dict[str, Any]] | None,
+) -> dict[str, list[dict[str, Any]]]:
+    out: dict[str, list[dict[str, Any]]] = {}
+    for step in sealed_steps or []:
+        if not isinstance(step, dict):
+            continue
+        file_diff = step.get("fileDiff")
+        if not isinstance(file_diff, dict):
+            continue
+        rel = str(file_diff.get("path") or "").strip()
+        if not rel:
+            continue
+        diffs = file_diff.get("diffs")
+        if isinstance(diffs, list) and diffs:
+            out[rel] = [dict(d) for d in diffs if isinstance(d, dict)]
+    return out
+
+
+
+async def _maybe_notify_step_file_diff(
+    websocket: WebSocket,
+    run_id: str,
+    step: dict[str, Any],
+    *,
+    node_id: str = "",
+) -> None:
+    """Live-push Changes panel using the same hunk as the Chat Diff card."""
+    file_diff = step.get("fileDiff") if isinstance(step, dict) else None
+    if not isinstance(file_diff, dict):
+        return
+    path = str(file_diff.get("path") or "").strip()
+    if not path:
+        return
+    raw_diffs = file_diff.get("diffs")
+    diffs = [dict(d) for d in raw_diffs if isinstance(d, dict)] if isinstance(raw_diffs, list) else []
+    await _notify_workspace_files_changed(
+        websocket,
+        run_id,
+        [path],
+        node_id=node_id,
+        path_diffs={path: diffs},
+    )
+
 
 async def _send_validation_result(
     websocket: WebSocket,

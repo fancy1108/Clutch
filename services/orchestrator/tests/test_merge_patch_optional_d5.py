@@ -22,11 +22,16 @@ def test_merge_patch_keeps_agent_todos_and_verification_report() -> None:
                 {"id": "t1", "content": "A", "status": "pending"},
             ],
             "verification_report": report,
+            "diff_summary": {
+                "title": "Changes",
+                "files": [{"path": "a.py", "status": "M", "summary": "", "patch": "", "diffs": []}],
+            },
             "pending_tool_steps": [{"id": "s1", "title": "Verify"}],
         },
     )
     assert patched.get("agent_todos") and patched["agent_todos"][0]["id"] == "t1"
     assert patched.get("verification_report", {}).get("conclusion") == "failed"
+    assert patched.get("diff_summary", {}).get("title") == "Changes"
     assert patched.get("pending_tool_steps")
 
     sealed = _verification_report_for_seal(patched, files_changed=["extra.py"])

@@ -88,7 +88,7 @@
 #### D50 — 验证报告与 Diff 嵌对话
 - **可见**：D5 验证结论、D6 diff 摘要作为气泡块/可展开卡，而不只是 Terminal 一行。
 - **验收**：做完后对话里看到「验证失败/通过」块；点「查看改动」打开 diff/预览。
-- **实现笔记（验证卡 · PM ✅ 2026-07-24）**：D5 `verificationReport` 卡已嵌对话；D6 diff 摘要卡后续。
+- **实现笔记（验证卡 · PM ✅ 2026-07-24；Diff 卡 · PM ✅ 2026-07-24）**：D5 `verificationReport`；D6 每次 edit 挂 `toolSteps[].fileDiff` + Cursor 式 `InlineFileDiffCard`；Changes 与 hunk 同源。
 
 #### D51 — Chat ↔ Terminal 同步
 - **可见**：步骤条或子任务卡上「在 Terminal 查看」→ 聚焦对应 lane/滚动到日志。
@@ -246,6 +246,7 @@
 - **可见**：变更文件列表+可读 diff。
 - **验收**：改 2 文件能点开差异。
 - **交互先决**：**D50**（可与 Changes 页并存，但对话内须可达）。
+- **实现笔记（PM ✅ 2026-07-24）**：edit 成功 → `ToolStep.fileDiff` + FE `AgentLiveActivity`/`InlineFileDiffCard`（文件名 + `+/-` hunk）；行级 append；Changes 推送同源 diffs；可选 `submit_diff_summary` 汇总卡。
 
 #### D7 — 项目规则 + Skills
 - **可见**：有 `AGENTS.md`/Skills 的仓库行为不同；换仓库恢复默认。

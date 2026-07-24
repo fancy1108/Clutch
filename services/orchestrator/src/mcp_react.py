@@ -45,6 +45,7 @@ class McpRunOutcome:
     tool_steps: list[dict[str, Any]] | None = None
     todos: list[dict[str, Any]] | None = None
     verification_report: dict[str, Any] | None = None
+    diff_summary: dict[str, Any] | None = None
 
 
 def _sanitize_tool_part(value: str) -> str:
@@ -89,11 +90,19 @@ def _record_file_change(
         except json.JSONDecodeError:
             payload = None
         if isinstance(payload, dict):
+            recorded = False
             for raw in payload.get("changed_paths") or []:
                 rel = str(raw).strip()
                 if rel and rel not in files_changed:
                     files_changed.append(rel)
-            return
+                    recorded = True
+            path_one = str(payload.get("path") or "").strip()
+            if path_one and path_one not in files_changed:
+                files_changed.append(path_one)
+                recorded = True
+            if recorded:
+                return
+            # Fall through to arg path if JSON lacked paths.
     raw_path = extract_mcp_file_path(tool_name, func_args)
     if not raw_path:
         return
@@ -120,9 +129,40 @@ def _execute_tool_call(
     step_idx: int,
     files_changed: list[str] | None = None,
     on_tool_step: Callable[[dict[str, Any]], None] | None = None,
+    on_diff_summary: Callable[[dict[str, Any]], None] | None = None,
     step_id: str | None = None,
 ) -> str:
     from src.tool_steps import make_tool_step
+
+    def _emit_inline_diffs(tool_name: str, args: dict[str, Any], result: str) -> list[dict[str, Any]]:
+        """Build Cursor-style per-edit cards; attach to tool steps (not separate Chat bubbles)."""
+        from src.builtin_tools import build_inline_edit_diff_cards
+
+        return build_inline_edit_diff_cards(
+            tool_name=tool_name, func_args=args, result_str=result
+        )
+
+    def _finish_step(
+        *,
+        status: str,
+        result: str = "",
+        tool_name: str = "",
+    ) -> None:
+        if not on_tool_step:
+            return
+        step = make_tool_step(
+            tool_alias=func_name,
+            func_args=func_args,
+            status=status,  # type: ignore[arg-type]
+            step_idx=step_idx,
+            step_id=active_id,
+        )
+        if status == "completed" and tool_name and not result.startswith("Error executing tool"):
+            cards = _emit_inline_diffs(tool_name, func_args, result)
+            if cards and cards[0].get("files"):
+                step["fileDiff"] = dict(cards[0]["files"][0])
+                step["title"] = f"Edit {cards[0].get('title') or tool_name}"
+        on_tool_step(step)
 
     route = tool_routes.get(func_name)
     active_id = step_id or f"tool_{step_idx}"
@@ -183,42 +223,18 @@ def _execute_tool_call(
                     func_args=func_args,
                     result_str=result_str,
                 )
-            if on_tool_step:
-                on_tool_step(
-                    make_tool_step(
-                        tool_alias=func_name,
-                        func_args=func_args,
-                        status="completed",
-                        step_idx=step_idx,
-                        step_id=active_id,
-                    )
-                )
+            if result_str.startswith("Error executing tool"):
+                _finish_step(status="failed", result=result_str, tool_name=tool_name)
+            else:
+                _finish_step(status="completed", result=result_str, tool_name=tool_name)
             return result_str
         except Exception as exc:
             _emit(logs, on_log, f"[{log_prefix}] Builtin tool error: {exc}")
-            if on_tool_step:
-                on_tool_step(
-                    make_tool_step(
-                        tool_alias=func_name,
-                        func_args=func_args,
-                        status="failed",
-                        step_idx=step_idx,
-                        step_id=active_id,
-                    )
-                )
+            _finish_step(status="failed", result=str(exc), tool_name=tool_name)
             return f"Error executing tool: {exc}"
     client = clients.get(server_id)
     if client is None:
-        if on_tool_step:
-            on_tool_step(
-                make_tool_step(
-                    tool_alias=func_name,
-                    func_args=func_args,
-                    status="failed",
-                    step_idx=step_idx,
-                    step_id=active_id,
-                )
-            )
+        _finish_step(status="failed", tool_name=tool_name)
         return f"MCP server not connected: {server_id}"
     try:
         tool_res = client.call_tool(tool_name, func_args)
@@ -236,29 +252,14 @@ def _execute_tool_call(
                 func_args=func_args,
                 result_str=result_str,
             )
-        if on_tool_step:
-            on_tool_step(
-                make_tool_step(
-                    tool_alias=func_name,
-                    func_args=func_args,
-                    status="completed",
-                    step_idx=step_idx,
-                    step_id=active_id,
-                )
-            )
+        if result_str.startswith("Error executing tool"):
+            _finish_step(status="failed", result=result_str, tool_name=tool_name)
+        else:
+            _finish_step(status="completed", result=result_str, tool_name=tool_name)
         return result_str
     except Exception as exc:
         _emit(logs, on_log, f"[{log_prefix}] Tool error: {exc}")
-        if on_tool_step:
-            on_tool_step(
-                make_tool_step(
-                    tool_alias=func_name,
-                    func_args=func_args,
-                    status="failed",
-                    step_idx=step_idx,
-                    step_id=active_id,
-                )
-            )
+        _finish_step(status="failed", result=str(exc), tool_name=tool_name)
         return f"Error executing tool: {exc}"
 
 
@@ -303,6 +304,7 @@ def run_mcp_react_loop(
     on_todos: Callable[[list[dict[str, Any]]], None] | None = None,
     existing_todos: list[dict[str, Any]] | None = None,
     on_verification: Callable[[dict[str, Any]], None] | None = None,
+    on_diff_summary: Callable[[dict[str, Any]], None] | None = None,
     pause_on_risky: bool = False,
     permission_mode: str = "ask",
     approved_tool: dict[str, Any] | None = None,
@@ -315,10 +317,12 @@ def run_mcp_react_loop(
 
     from src.adapters.ollama_adapter import model_supports_tool_calling
     from src.builtin_tools import (
+        is_submit_diff_summary_tool,
         is_submit_verification_tool,
         is_todo_write_tool,
         is_virtual_server,
         list_builtin_tools,
+        normalize_diff_summary,
         normalize_todo_items,
         normalize_verification_report,
     )
@@ -330,6 +334,7 @@ def run_mcp_react_loop(
     latest_todos: list[dict[str, Any]] | None = None
     todo_baseline = list(existing_todos or [])
     latest_verification: dict[str, Any] | None = None
+    latest_diff_summary: dict[str, Any] | None = None
 
     if approved_tool and not model_supports_tool_calling(spec):
         raise RuntimeError(
@@ -474,6 +479,22 @@ def run_mcp_react_loop(
         if on_verification:
             on_verification(dict(latest_verification))
 
+    def capture_diff_summary_if_needed(
+        func_name: str, func_args: dict[str, Any], result_str: str
+    ) -> None:
+        nonlocal latest_diff_summary
+        route = tool_routes.get(func_name)
+        raw_name = route[1] if route else func_name
+        if not (
+            is_submit_diff_summary_tool(raw_name) or is_submit_diff_summary_tool(func_name)
+        ):
+            return
+        if result_str.startswith("Error executing tool"):
+            return
+        latest_diff_summary = normalize_diff_summary(func_args, enrich=True)
+        if on_diff_summary:
+            on_diff_summary(dict(latest_diff_summary))
+
     try:
         chat_messages = list(messages)
         start_step = 0
@@ -498,10 +519,12 @@ def run_mcp_react_loop(
                 step_idx=start_step,
                 files_changed=files_changed,
                 on_tool_step=record_tool_step,
+                on_diff_summary=on_diff_summary,
                 step_id=str(approved_tool.get("step_id") or f"tool_{start_step}"),
             )
             capture_todos_if_needed(func_name, func_args, result_str)
             capture_verification_if_needed(func_name, func_args, result_str)
+            capture_diff_summary_if_needed(func_name, func_args, result_str)
             chat_messages.append(
                 {
                     "role": "tool",
@@ -584,6 +607,7 @@ def run_mcp_react_loop(
                             tool_steps=list(collected_steps) or None,
                             todos=latest_todos,
                             verification_report=latest_verification,
+                            diff_summary=latest_diff_summary,
                         )
 
                     # D4: ask_user_question pauses for in-chat multiple choice (D49).
@@ -628,6 +652,7 @@ def run_mcp_react_loop(
                             tool_steps=list(collected_steps) or None,
                             todos=latest_todos,
                             verification_report=latest_verification,
+                            diff_summary=latest_diff_summary,
                         )
 
                     if pause_on_risky and is_risky_mcp_tool(raw_tool_name):
@@ -709,6 +734,7 @@ def run_mcp_react_loop(
                                         tool_steps=list(collected_steps) or None,
                                         todos=latest_todos,
                                         verification_report=latest_verification,
+                                        diff_summary=latest_diff_summary,
                                     )
 
                         # full mode: skip approval gates entirely
@@ -762,6 +788,7 @@ def run_mcp_react_loop(
                                     tool_steps=list(collected_steps) or None,
                                     todos=latest_todos,
                                     verification_report=latest_verification,
+                                    diff_summary=latest_diff_summary,
                                 )
 
                     func_args = enrich_verification_args(func_name, func_args)
@@ -777,10 +804,12 @@ def run_mcp_react_loop(
                         step_idx=step_idx,
                         files_changed=files_changed,
                         on_tool_step=record_tool_step,
+                        on_diff_summary=on_diff_summary,
                         step_id=f"tool_{step_idx}",
                     )
                     capture_todos_if_needed(func_name, func_args, result_str)
                     capture_verification_if_needed(func_name, func_args, result_str)
+                    capture_diff_summary_if_needed(func_name, func_args, result_str)
                     chat_messages.append(
                         {
                             "role": "tool",
@@ -818,4 +847,5 @@ def run_mcp_react_loop(
         tool_steps=list(collected_steps) or None,
         todos=latest_todos,
         verification_report=latest_verification,
+        diff_summary=latest_diff_summary,
     )

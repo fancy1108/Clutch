@@ -39,6 +39,9 @@ _NON_RISKY_BUILTINS = frozenset(
         "submit_verification",  # D5 UI report — not a risky gate
         "verification_report",
         "submit_verification_report",
+        "submit_diff_summary",  # D6 UI report — not a risky gate
+        "diff_summary",
+        "propose_diff_review",
     }
 )
 

@@ -5,17 +5,23 @@
 
 ## Current Status
 
-- **阶段：** **v1.2.9**；**D5∥D50 自检报告 — PM 通过**；下一批 **D6∥D50 Diff 摘要**
-- **Git：** D4=`662129c`；D5=`30d5f86`
+- **阶段：** **v1.2.9**；**D6∥D50 Diff — PM 通过**；下一批 **D7 项目规则 + Skills**
+- **Git：** D5=`30d5f86`；D6 待本会话 commit
 
 ## Recent Sessions
+
+## 2026-07-24 会话（D6 Diff 审查 PM 通过）
+
+- **实现：** Cursor 式 `fileDiff` 挂工具步骤 + `InlineFileDiffCard`；行级 append hunk；Changes 与 Diff 同源；`raw_path` 回归修复
+- **PM：** 2026-07-24 通过（边改边出 alpha/beta Diff 卡）
+- **下次：** commit → **D7 项目规则 + Skills**
 
 ## 2026-07-24 会话（D5 自检报告 PM 通过）
 
 - **实现：** `submit_verification` + seal `verificationReport` + `VerificationReportCardView`；todos 未完强制 failed；`_merge_patch` 放行 optional keys
 - **PM：** 2026-07-24 通过（故意失败出 VERIFICATION FAILED 卡 + next actions）
 - **Commit：** `30d5f86`
-- **下次：** D6∥D50 Diff 摘要嵌对话
+- **下次：** D6∥D50 ✅
 
 ## 2026-07-24 会话（D4 结构化提问 PM 通过）
 

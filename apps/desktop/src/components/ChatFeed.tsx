@@ -31,6 +31,7 @@ import { PlanCardView } from './PlanCardView';
 import { QuestionCardView } from './QuestionCardView';
 import { TodoCardView, todosAreComplete } from './TodoCardView';
 import { VerificationReportCardView } from './VerificationReportCardView';
+import { DiffSummaryCardView } from './DiffSummaryCardView';
 import { resolveBrandLogoSrc } from '../services/brandLogos';
 import { clutchMarkUrl } from '../assets/brand';
 import { AgentChatAvatar } from './AgentChatAvatar';
@@ -1142,6 +1143,35 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                 || resolveAgentLogo?.(msg.agent)
               );
 
+          // Cursor-style: inline per-edit Diff cards render as standalone feed blocks (no empty bubble).
+          const isInlineDiffOnly =
+            !isUser &&
+            Boolean(msg.diffSummary?.inline) &&
+            !(displayText || '').trim() &&
+            !msg.planCard &&
+            !msg.questionCard &&
+            !msg.verificationReport &&
+            !(msg.todoList && msg.todoList.length > 0) &&
+            !(msg.toolSteps && msg.toolSteps.length > 0);
+
+          if (isInlineDiffOnly && msg.diffSummary) {
+            return (
+              <div
+                key={msg.id}
+                className="w-full flex justify-start pl-10"
+                onContextMenu={(e) => handleMessageContextMenu(e, msg.id)}
+              >
+                <div className="min-w-0 max-w-[min(100%,36rem)] flex-1">
+                  <DiffSummaryCardView
+                    summary={msg.diffSummary}
+                    t={t}
+                    onOpenFile={onOpenWorkspaceFile}
+                  />
+                </div>
+              </div>
+            );
+          }
+
           return (
             <div
               key={msg.id}
@@ -1224,7 +1254,11 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                       ) : null}
 
                       {!isUser && !msg.planCard && !msg.questionCard && msg.toolSteps && msg.toolSteps.length > 0 ? (
-                        <AgentLiveActivity steps={msg.toolSteps} className="mb-2" />
+                        <AgentLiveActivity
+                          steps={msg.toolSteps}
+                          className="mb-2"
+                          onOpenFile={onOpenWorkspaceFile}
+                        />
                       ) : null}
 
                       {parsed.images.length > 0 && (
@@ -1269,7 +1303,10 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                           />
                         );
                       })()}
-                      {!isUser && msg.filesChanged && msg.filesChanged.length > 0 ? (
+                      {!isUser &&
+                      msg.filesChanged &&
+                      msg.filesChanged.length > 0 &&
+                      !(msg.toolSteps || []).some((step) => Boolean(step.fileDiff)) ? (
                         <FilesChangedChips
                           paths={msg.filesChanged}
                           onOpen={onOpenWorkspaceFile}
@@ -1303,6 +1340,15 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                           report={msg.verificationReport}
                           t={t}
                           onOpenChangedFile={onOpenWorkspaceFile}
+                        />
+                      ) : null}
+                      {!isUser &&
+                      msg.diffSummary &&
+                      !(msg.toolSteps || []).some((step) => Boolean(step.fileDiff)) ? (
+                        <DiffSummaryCardView
+                          summary={msg.diffSummary}
+                          t={t}
+                          onOpenFile={onOpenWorkspaceFile}
                         />
                       ) : null}
                       {msg.codeHighlight && (
@@ -1353,7 +1399,12 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                   <div
                     className={`${chatChrome.thinkingBubblePaddingClass} bg-surface-container-low rounded-2xl rounded-tl-none border border-outline-variant/30 shadow-sm`}
                   >
-                    <AgentLiveActivity steps={liveActivitySteps} live defaultOpen />
+                    <AgentLiveActivity
+                      steps={liveActivitySteps}
+                      live
+                      defaultOpen
+                      onOpenFile={onOpenWorkspaceFile}
+                    />
                     {showInlineLiveTodos ? (
                       <TodoCardView todos={liveTodos} t={t} live />
                     ) : null}
@@ -1380,7 +1431,12 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                 <div
                   className={`${chatChrome.thinkingBubblePaddingClass} bg-surface-container-low rounded-2xl rounded-tl-none border border-outline-variant/30 shadow-sm`}
                 >
-                  <AgentLiveActivity steps={liveActivitySteps} live defaultOpen />
+                  <AgentLiveActivity
+                    steps={liveActivitySteps}
+                    live
+                    defaultOpen
+                    onOpenFile={onOpenWorkspaceFile}
+                  />
                   {showInlineLiveTodos ? (
                     <TodoCardView todos={liveTodos} t={t} live />
                   ) : null}

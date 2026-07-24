@@ -38,6 +38,8 @@ export interface ToolStep {
   title: string;
   /** Expand body (args / patch snippet). */
   detail?: string;
+  /** D6 Cursor-style: per-edit file hunk attached when an edit tool completes. */
+  fileDiff?: DiffFileEntry;
 }
 
 export interface ChatMessage {
@@ -68,6 +70,8 @@ export interface ChatMessage {
   questionCard?: QuestionCard;
   /** D5/D50 self-check verification report. */
   verificationReport?: VerificationReport;
+  /** D6/D50 diff review card (file list + readable hunks). */
+  diffSummary?: DiffSummary;
   codeHighlight?: {
     file: string;
     lineCount: number;
@@ -126,6 +130,25 @@ export interface VerificationReport {
   summary?: string;
   nextActions?: string[];
   changedFiles?: string[];
+}
+
+export type DiffFileStatus = 'A' | 'M' | 'D';
+
+export interface DiffFileEntry {
+  path: string;
+  status: DiffFileStatus;
+  summary?: string;
+  /** Unified diff text (optional when `diffs` is present). */
+  patch?: string;
+  diffs?: DiffLine[];
+}
+
+export interface DiffSummary {
+  title: string;
+  summary?: string;
+  files: DiffFileEntry[];
+  /** True when streamed mid-turn as a per-edit Cursor-style card. */
+  inline?: boolean;
 }
 
 /** Supported node types in the visual canvas editor. */
@@ -327,6 +350,8 @@ export interface ClutchState {
   agent_todos?: TodoItem[];
   /** D5/D50 latest verification report (also sealed on ChatMessage.verificationReport). */
   verification_report?: VerificationReport;
+  /** D6/D50 latest diff summary (also sealed on ChatMessage.diffSummary). */
+  diff_summary?: DiffSummary;
   session_tokens?: number;
   session_cost_usd?: number;
   token_input?: number;
