@@ -280,10 +280,13 @@ def compose_agent_prompt_assembly(
     include_skill_bodies: bool = False,
     include_project_rules: bool = True,
     user_turn_text: str | None = None,
+    agent_todos: list[dict[str, Any]] | None = None,
+    plan_card: dict[str, Any] | None = None,
 ) -> PromptAssembly:
     """Build layered prompt (D53). markdownDoc is protocol only — not the whole system."""
     from src.agent_skills import compose_skills_section, resolve_effective_skill_keys
     from src.agent_type import is_clutch_agent
+    from src.task_state import format_task_state
     from src.workspace import get_workspace
 
     is_clutch = is_clutch_agent(agent)
@@ -317,6 +320,13 @@ def compose_agent_prompt_assembly(
         rules = _load_workspace_rules(str(workspace_path) if workspace_path else None)
         if rules:
             layers.append(PromptLayer("rules", rules))
+
+    task_block = format_task_state(
+        agent_todos=agent_todos,
+        plan_card=plan_card,
+    )
+    if task_block:
+        layers.append(PromptLayer("task_state", task_block))
 
     mode = (permission_mode or "").strip().lower()
     if mode == "plan":
@@ -389,6 +399,8 @@ def compose_agent_system_prompt(
     permission_mode: str | None = None,
     include_skill_bodies: bool = False,
     user_turn_text: str | None = None,
+    agent_todos: list[dict[str, Any]] | None = None,
+    plan_card: dict[str, Any] | None = None,
 ) -> str:
     """Backward-compatible flat system string from layered assembly (D53)."""
     if permission_mode is None:
@@ -407,4 +419,6 @@ def compose_agent_system_prompt(
         permission_mode=permission_mode,
         include_skill_bodies=include_skill_bodies,
         user_turn_text=user_turn_text,
+        agent_todos=agent_todos,
+        plan_card=plan_card,
     ).as_system_prompt()

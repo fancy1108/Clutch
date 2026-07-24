@@ -50,7 +50,7 @@
 | D5 自检报告 | P0 | ✅ | `submit_verification` + VerificationReport；PM 2026-07-24 点验通过（须同验 D50） |
 | D6 Diff 审查 | P0 | ✅ | Cursor 式 edit Diff 卡 + Changes 同步；PM 2026-07-24 点验通过（须同验 D50） |
 | D7 项目规则 + Skills | P0 | ✅ | Grok 对齐：规则链 + 开放 Skills catalog；PM 2026-07-25 点验通过 |
-| D8–D13 / D14 / D15–D36 | — | ❌ | 见权威表全文 |
+| D8 长聊不丢任务态 | P0 | ❌ | 压缩保留 Todo/计划 + task_state 层；待 PM |
 | D37 MCP Agent↔Hub 绑定 | P0 | ✅ | Module 4 Hub 勾选 + `mcpServerIds`；PM 2026-07-24 点验通过 |
 | D38–D45 MCP 专项其余 | P1 | ❌ | 见权威表 |
 | D46 对话实时步骤条 | P0 | ✅ | 持久 verb_group + seal `toolSteps`；PM 2026-07-24 点验通过 |
@@ -61,7 +61,7 @@
 | D53 分层 prompt + 渐进披露 | P0 | ✅ | 分层组装 + Agent Manager 分层摘要面板；PM 2026-07-24 点验通过 |
 
 **首期目标：** D1 + D37 + D46 ✅（PM 2026-07-24）。  
-**下一批（防返工顺序）：** **D8 长聊不丢任务态** → …
+**下一批（防返工顺序）：** D8（待 PM）→ D9 → D10∥D48 → D11 → D12 → D13；用例见 `runs/verification/pm-acceptance/`
 
 ## Design 模式（D36 · 默认 FAIL）
 

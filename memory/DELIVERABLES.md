@@ -4,14 +4,25 @@
 > **何时写：** 每个**代码 Task** 完成并 commit 后，在 Check-out 追加一节（见 `CLAUDE.md` §Check-out）。  
 > **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。
 
-## Clutch Agent D7 project rules + Skills (pending hash)
+## Clutch Agent D8 长聊不丢任务态 (`pending`)
+
+| 项目 | 值 |
+|------|-----|
+| **Task** | D8 压缩后保留 Todo/计划 + `task_state` 层 |
+| **Commit** | _(填入 commit 后)_ |
+| **Branch** | `dev` |
+| **Verification** | `uv run pytest tests/test_task_state_d8.py tests/test_compaction.py -q` → 16 passed |
+| **PM 用例** | `runs/verification/pm-acceptance/D08.md`（待人工点验；ROADMAP 仍 ❌） |
+| **下一批** | **D9 运行可控** |
+
+## Clutch Agent D7 project rules + Skills (`af58e94`)
 
 | 项目 | 值 |
 |------|-----|
 | **Task** | D7 项目规则 + Skills（Grok-aligned · D45） |
-| **Commit** | （本会话 feat commit） |
+| **Commit** | `af58e94` |
 | **Branch** | `dev` |
-| **Verification** | `test_d7_project_rules_skills` + pre-commit `verify.sh` |
+| **Verification** | `test_d7_project_rules_skills` + pre-commit `verify.sh`（pytest 806 passed） |
 | **PM** | 2026-07-25 验收通过（规则 token + read_skill→SKILL_BODY_LOADED） |
 | **下一批** | **D8 长聊不丢任务态** |
 

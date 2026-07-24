@@ -44,6 +44,8 @@ htmlcov/
 runs/verification/*
 !runs/verification/.gitkeep
 !runs/verification/README.md
+!runs/verification/pm-acceptance/
+!runs/verification/pm-acceptance/**
 
 # E2E 报告（e2e/ 创建后，见 DECISIONS D1）
 e2e/playwright-report/

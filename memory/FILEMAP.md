@@ -204,6 +204,7 @@
 | Agent 持久化与内置 Agent | `src/agent_storage.py` |
 | Agent system prompt 组装（D53） | `src/agent_prompt.py` · `src/agent_skills.py` |
 | 项目规则发现 + Skills 按需（D7） | `agent_prompt._load_workspace_rules` · `read_skill` · `skills_storage.sync_workspace_skill_mounts` |
+| 长聊任务态 / 压缩（D8） | `src/task_state.py` · `compaction.py` · prompt `task_state` 层 |
 | 本轮 prompt 组装摘要 API（D53） | `GET /api/agents/{id}/prompt-assembly`（`routes/settings.py`） |
 | 运行日志 WS 转发 | `src/run_log_forwarder.py` |
 | 工作流状态投影 | `src/workflow_projection.py` |

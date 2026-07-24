@@ -1517,9 +1517,14 @@ def _compose_agent_system_prompt(
     model_api: str,
     mcp_servers_bound: bool = True,
     user_turn_text: str | None = None,
+    state: dict[str, Any] | None = None,
 ) -> str:
     from src.agent_prompt import compose_agent_system_prompt
     from src.preferences_storage import load_permission_mode
+    from src.task_state import latest_plan_card
+
+    agent_todos = list((state or {}).get("agent_todos") or [])
+    plan_card = latest_plan_card(list((state or {}).get("messages") or []))
 
     return compose_agent_system_prompt(
         agent,
@@ -1528,6 +1533,8 @@ def _compose_agent_system_prompt(
         mcp_servers_bound=mcp_servers_bound,
         permission_mode=load_permission_mode(),
         user_turn_text=user_turn_text,
+        agent_todos=agent_todos,
+        plan_card=plan_card,
     )
 
 def _append_terminal_logs(
@@ -1741,6 +1748,7 @@ async def _llm_chat_reply(
             model_api=model_api,
             mcp_servers_bound=mcp_servers_bound,
             user_turn_text=text,
+            state=state,
         )
         if agent
         else None
@@ -1899,6 +1907,7 @@ async def _llm_chat_reply(
                 model_api=model_api,
                 mcp_servers_bound=False,
                 user_turn_text=text,
+                state=state,
             )
             history = _history_for_llm(
                 state["messages"],
@@ -3038,6 +3047,7 @@ async def _handle_plain_chat(
                 model_name=model.name,
                 model_api=getattr(model, "api_model", None) or model.name,
                 mcp_servers_bound=bool(resolve_agent_mcp_servers(agent)),
+                state=state,
             )
         hybrid_executions_patch = _merge_hybrid_executions(
             state,

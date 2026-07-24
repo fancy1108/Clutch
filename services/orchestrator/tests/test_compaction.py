@@ -54,6 +54,83 @@ def test_critical_context_empty_input() -> None:
     assert not _is_critical_message({})
 
 
+def test_task_state_pinned_in_critical_context() -> None:
+    state = initial_state("run_d8")
+    state["agent_todos"] = [
+        {"id": "1", "content": "Add login page", "status": "completed"},
+        {"id": "2", "content": "Wire auth API", "status": "in_progress"},
+        {"id": "3", "content": "Write tests", "status": "pending"},
+    ]
+    state["messages"] = [
+        {
+            "agent": "Clutch Agent",
+            "text": "",
+            "planCard": {
+                "title": "Add login",
+                "status": "approved",
+                "steps": ["Scaffold form", "Call API"],
+            },
+        }
+    ]
+    lines = _build_critical_context(state, list(state["messages"]))
+    joined = "\n".join(lines)
+    assert "[task_state]" in joined
+    assert "Add login" in joined
+    assert "Wire auth API" in joined
+    assert "Write tests" in joined
+    assert _is_critical_message(state["messages"][0])
+
+
+@pytest.mark.asyncio
+async def test_compact_digest_contains_open_todos(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """D8 acceptance shape: after compact, digest still lists open todos."""
+    monkeypatch.setenv("CLUTCH_WORKSPACES_FILE", str(tmp_path / "ws.json"))
+    from src import workspace as workspace_mod
+
+    workspace_mod._loaded = False
+    workspace_mod._workspaces = {}
+    workspace_mod._active_id = None
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    workspace_mod.add_workspace(str(ws))
+
+    router = SimpleNamespace(chat=lambda messages, model_id=None: {"content": "Folded history."})
+    monkeypatch.setattr("src.models_config.get_router", lambda: router)
+    monkeypatch.setattr("src.compaction.get_archive_dir", lambda: tmp_path / "archive")
+
+    state = initial_state("run_d8_compact")
+    state["agent_todos"] = [
+        {"id": "a", "content": "Keep this open todo", "status": "pending"},
+        {"id": "b", "content": "In progress item", "status": "in_progress"},
+    ]
+    state["messages"] = [
+        {"agent": "User", "text": "start"},
+        {"agent": "Clutch Agent", "text": "working", "todoList": state["agent_todos"]},
+        {"agent": "User", "text": "ok"},
+        {"agent": "Clutch Agent", "text": "more"},
+        {"agent": "User", "text": "go"},
+        {"agent": "Clutch Agent", "text": "done turn"},
+        {"agent": "User", "text": "continue"},
+    ]
+    state["session_tokens"] = 20_000
+
+    new_state = await compact_run_messages("run_d8_compact", state)
+    digest_texts = [
+        str(m.get("text") or "")
+        for m in new_state["messages"]
+        if "压缩" in str(m.get("badgeText") or m.get("badge_text") or "")
+        or "COMPACTION" in str(m.get("badgeText") or m.get("badge_text") or "").upper()
+        or "Context Compacted" in str(m.get("text") or "")
+        or "上下文已压缩" in str(m.get("text") or "")
+    ]
+    assert digest_texts, new_state["messages"]
+    blob = "\n".join(digest_texts)
+    assert "Keep this open todo" in blob
+    assert "In progress item" in blob
+
+
 @pytest.mark.asyncio
 async def test_critical_context_survives_llm_failure(monkeypatch: pytest.MonkeyPatch) -> None:
     def fail(*args, **kwargs):
