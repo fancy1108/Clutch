@@ -4,6 +4,18 @@
 > **何时写：** 每个**代码 Task** 完成并 commit 后，在 Check-out 追加一节（见 `CLAUDE.md` §Check-out）。  
 > **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。
 
+## Clutch Agent D1+D37+D46 (`1097a6d`)
+
+| 项目 | 值 |
+|------|-----|
+| **Task** | D1 builtins + D37 MCP Hub bind + D46 persisted verb_group tool trail |
+| **Commit** | `1097a6dde5b7c165be810ed2661e6c35a762a4bf` |
+| **Branch** | `dev` |
+| **Verification** | pre-commit `verify.sh`：build OK；vitest 150；pytest 762 collected（hook 通过）；doc-drift 0 error |
+| **PM** | 2026-07-24 验收通过（ROADMAP D1/D37/D46 ✅） |
+| **交付要点** | `clutch-tools`；Agent Manager `mcpServerIds`；`toolSteps` / `pending_tool_steps`；apply_patch 裸行；Search 标题含 path |
+| **下一批** | **D53** 分层 prompt（先于 D2/D7）；再 D47；计划类 D2∥D49 |
+
 ## Devin + Copilot CLI Whitelist (`6ce426b`)
 
 | 项目 | 值 |
