@@ -38,6 +38,7 @@ def test_list_builtin_tools_includes_core_set() -> None:
         "propose_plan",
         "todo_write",
         "ask_user_question",
+        "submit_verification",
     }
 
 

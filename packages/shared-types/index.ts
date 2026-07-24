@@ -66,6 +66,8 @@ export interface ChatMessage {
   todoList?: TodoItem[];
   /** D4/D49 multiple-choice question card. */
   questionCard?: QuestionCard;
+  /** D5/D50 self-check verification report. */
+  verificationReport?: VerificationReport;
   codeHighlight?: {
     file: string;
     lineCount: number;
@@ -105,6 +107,25 @@ export interface QuestionCard {
   selectedId?: string;
   selectedLabel?: string;
   note?: string;
+}
+
+export type VerificationConclusion = 'passed' | 'failed';
+export type VerificationStepStatus = 'passed' | 'failed' | 'skipped';
+
+export interface VerificationStep {
+  id: string;
+  name: string;
+  status: VerificationStepStatus;
+  detail?: string;
+}
+
+export interface VerificationReport {
+  title: string;
+  conclusion: VerificationConclusion;
+  steps: VerificationStep[];
+  summary?: string;
+  nextActions?: string[];
+  changedFiles?: string[];
 }
 
 /** Supported node types in the visual canvas editor. */
@@ -304,6 +325,8 @@ export interface ClutchState {
   pending_tool_steps?: ToolStep[];
   /** Live session todos for multi-step work (D3); updates via todo_write. */
   agent_todos?: TodoItem[];
+  /** D5/D50 latest verification report (also sealed on ChatMessage.verificationReport). */
+  verification_report?: VerificationReport;
   session_tokens?: number;
   session_cost_usd?: number;
   token_input?: number;

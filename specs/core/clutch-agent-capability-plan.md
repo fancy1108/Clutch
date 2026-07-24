@@ -88,6 +88,7 @@
 #### D50 — 验证报告与 Diff 嵌对话
 - **可见**：D5 验证结论、D6 diff 摘要作为气泡块/可展开卡，而不只是 Terminal 一行。
 - **验收**：做完后对话里看到「验证失败/通过」块；点「查看改动」打开 diff/预览。
+- **实现笔记（验证卡 · 待 PM）**：D5 `verificationReport` 卡已嵌对话；D6 diff 摘要卡后续。
 
 #### D51 — Chat ↔ Terminal 同步
 - **可见**：步骤条或子任务卡上「在 Terminal 查看」→ 聚焦对应 lane/滚动到日志。
@@ -227,7 +228,7 @@
 - **可见**：待办/进行中/完成；执行中勾选变化；刷新仍在。
 - **验收**：多步任务 ≥3 条 Todo 且状态跟随。
 - **交互先决**：**D49**。
-- **实现笔记**：builtin `todo_write` → `ClutchState.agent_todos` 实时 + seal `ChatMessage.todoList`；FE `TodoCardView`。**`todo_write` 不走人工审批**（UI 元数据；`is_risky` 排除）。PM 2026-07-24 点验通过。
+- **实现笔记**：builtin `todo_write` → `ClutchState.agent_todos` 实时 + seal `ChatMessage.todoList`；FE `TodoCardView`。**`todo_write` 不走人工审批**（UI 元数据；`is_risky` 排除）。运行中未全部完成时 Chat 吸顶固定 Todo 卡；全部完成后取消固定并随 seal 气泡滚动。PM 2026-07-24 点验通过。
 
 #### D4 — 结构化提问
 - **可见**：选择题卡；答完按选择继续；明确需求不瞎问。
@@ -239,6 +240,7 @@
 - **可见**：验证步骤+通过/失败结论；失败可操作；Todo 未完不谎称完成。
 - **验收**：故意验失败 → 失败报告而非沉默结束。
 - **交互先决**：**D50**。
+- **实现笔记（待 PM）**：builtin `submit_verification` → seal `ChatMessage.verificationReport`；FE `VerificationReportCardView`（步骤 + 通过/失败 chip + next actions + View changes）；incomplete todos 强制 failed；非 risky 门。
 
 #### D6 — Diff 审查
 - **可见**：变更文件列表+可读 diff。

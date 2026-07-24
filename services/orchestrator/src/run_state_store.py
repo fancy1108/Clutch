@@ -41,6 +41,8 @@ _PERSISTED_OPTIONAL_KEYS = frozenset({
     "focused_lane_id",
     "pending_pty_inject",
     "pending_tool_steps",
+    "agent_todos",
+    "verification_report",
 })
 
 

@@ -36,6 +36,9 @@ _NON_RISKY_BUILTINS = frozenset(
         "ask_user_question",  # own D4 pause path in mcp_react
         "ask_question",
         "user_question",
+        "submit_verification",  # D5 UI report — not a risky gate
+        "verification_report",
+        "submit_verification_report",
     }
 )
 

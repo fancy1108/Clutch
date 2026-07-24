@@ -749,6 +749,13 @@ def _merge_patch(state: ClutchState, patch: dict[str, Any]) -> ClutchState:
         "dispatch_edges",
         "pending_handoff_drafts",
         "focused_lane_id",
+        "pending_tool_steps",
+        "agent_todos",
+        "verification_report",
+        "refining_node_id",
+        "refine_draft_output",
+        "refine_agent_id",
+        "pending_pty_inject",
     })
     for key, value in patch.items():
         if key in merged or key in optional_keys:
@@ -860,6 +867,7 @@ def _chat_message(
     plan_card: dict[str, Any] | None = None,
     todo_list: list[dict[str, Any]] | None = None,
     question_card: dict[str, Any] | None = None,
+    verification_report: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "id": msg_id or f"msg_{uuid.uuid4().hex[:8]}",
@@ -890,7 +898,75 @@ def _chat_message(
     if question_card is not None:
         # D4/D49: multiple-choice question card.
         payload["questionCard"] = question_card
+    if verification_report is not None:
+        # D5/D50: self-check report card.
+        payload["verificationReport"] = verification_report
     return payload
+
+
+def _verification_report_for_seal(
+    state: ClutchState,
+    *,
+    files_changed: list[str] | None = None,
+    mcp_pause: dict[str, Any] | None = None,
+) -> dict[str, Any] | None:
+    report = None
+    if mcp_pause and isinstance(mcp_pause.get("verification_report"), dict):
+        report = dict(mcp_pause["verification_report"])
+    elif isinstance(state.get("verification_report"), dict):
+        report = dict(state["verification_report"])  # type: ignore[arg-type]
+    if not report:
+        return None
+    paths = list(report.get("changedFiles") or [])
+    for path in files_changed or []:
+        rel = str(path).strip()
+        if rel and rel not in paths:
+            paths.append(rel)
+    if paths:
+        report["changedFiles"] = paths
+    return report
+
+
+async def _publish_verification_report(
+    websocket: WebSocket,
+    run_id: str,
+    state: ClutchState,
+    report: dict[str, Any],
+    *,
+    reply_label: str,
+) -> ClutchState:
+    """Seal a D5/D50 verification card into the Chat timeline immediately."""
+    card = dict(report)
+    messages = list(state["messages"])
+    last = messages[-1] if messages else None
+    prev = last.get("verificationReport") if isinstance(last, dict) else None
+    if (
+        isinstance(prev, dict)
+        and prev.get("title") == card.get("title")
+        and prev.get("conclusion") == card.get("conclusion")
+    ):
+        state = _merge_patch(state, {"verification_report": card})
+        _commit_run_state(run_id, state)
+        return state
+
+    card_msg = _chat_message(reply_label or "Clutch Agent", "", verification_report=card)
+    messages = messages + [card_msg]
+    state = _merge_patch(
+        state,
+        {
+            "messages": messages,
+            "verification_report": card,
+        },
+    )
+    _commit_run_state(run_id, state)
+    await _send_message_event(websocket, run_id, card_msg, "")
+    await _notify_run_state(
+        websocket,
+        run_id,
+        state,
+        {"messages": messages, "verification_report": card},
+    )
+    return state
 
 
 def _sealed_tool_steps(
@@ -1359,6 +1435,7 @@ async def _llm_chat_reply(
     emit_log: Callable[[str], Awaitable[None]] | None = None,
     emit_tool_step: Callable[[dict[str, Any]], Awaitable[None]] | None = None,
     emit_todos: Callable[[list[dict[str, Any]]], Awaitable[None]] | None = None,
+    emit_verification: Callable[[dict[str, Any]], Awaitable[None]] | None = None,
     tool_steps_sink: list[dict[str, Any]] | None = None,
     mcp_approved_tool: dict[str, Any] | None = None,
     mcp_resume: dict[str, Any] | None = None,
@@ -1602,6 +1679,12 @@ async def _llm_chat_reply(
                             asyncio.run_coroutine_threadsafe(emit_todos(todos), loop)
                         )
 
+                def on_verification(report: dict[str, Any]) -> None:
+                    if emit_verification:
+                        step_futures.append(
+                            asyncio.run_coroutine_threadsafe(emit_verification(report), loop)
+                        )
+
                 outcome = await asyncio.to_thread(
                     run_mcp_react_loop,
                     messages=chat_messages,
@@ -1610,6 +1693,7 @@ async def _llm_chat_reply(
                     on_log=on_log if emit_log else None,
                     on_tool_step=on_tool_step if emit_tool_step else None,
                     on_todos=on_todos if emit_todos else None,
+                    on_verification=on_verification if emit_verification else None,
                     existing_todos=list(state.get("agent_todos") or []),
                     pause_on_risky=True,
                     permission_mode=__import__(
@@ -1626,6 +1710,8 @@ async def _llm_chat_reply(
                     tool_steps_sink.extend(list(outcome.tool_steps or []))
                 if outcome.todos is not None and emit_todos:
                     await emit_todos(list(outcome.todos))
+                if outcome.verification_report is not None and emit_verification:
+                    await emit_verification(dict(outcome.verification_report))
                 if outcome.approval_required:
                     pause_payload = {
                         **outcome.approval_required,
@@ -1637,6 +1723,10 @@ async def _llm_chat_reply(
                     }
                     if outcome.todos is not None:
                         pause_payload["todos"] = list(outcome.todos)
+                    if outcome.verification_report is not None:
+                        pause_payload["verification_report"] = dict(
+                            outcome.verification_report
+                        )
                     return (
                         reply_label,
                         outcome.engine_label,
@@ -1897,6 +1987,13 @@ async def _handle_plain_chat_mcp_decision(
             _commit_run_state(run_id, state)
             await _notify_run_state(websocket, run_id, state, {"agent_todos": list(todos)})
 
+        async def emit_verification(report: dict[str, Any]) -> None:
+            nonlocal state
+            label = str(state.get("active_agent") or pending.reply_label or "Clutch Agent")
+            state = await _publish_verification_report(
+                websocket, run_id, state, dict(report), reply_label=label
+            )
+
         (
             model_name,
             runtime_engine,
@@ -1915,6 +2012,7 @@ async def _handle_plain_chat_mcp_decision(
             emit_log=emit_log,
             emit_tool_step=emit_tool_step,
             emit_todos=emit_todos,
+            emit_verification=emit_verification,
             tool_steps_sink=tool_steps_sink,
             mcp_resume={
                 "chat_messages": chat_messages,
@@ -2040,6 +2138,13 @@ async def _handle_plain_chat_mcp_decision(
         _commit_run_state(run_id, state)
         await _notify_run_state(websocket, run_id, state, {"agent_todos": list(todos)})
 
+    async def emit_verification(report: dict[str, Any]) -> None:
+        nonlocal state
+        label = str(state.get("active_agent") or "Clutch Agent")
+        state = await _publish_verification_report(
+            websocket, run_id, state, dict(report), reply_label=label
+        )
+
     resume_args = dict(pending.func_args or {})
     if question_selection is not None:
         resume_args["selected"] = question_selection
@@ -2073,6 +2178,7 @@ async def _handle_plain_chat_mcp_decision(
         emit_log=emit_log,
         emit_tool_step=emit_tool_step,
         emit_todos=emit_todos,
+            emit_verification=emit_verification,
         tool_steps_sink=tool_steps_sink,
         mcp_approved_tool=approved_tool,
         mcp_resume=mcp_resume,
@@ -2157,6 +2263,8 @@ async def _finish_plain_chat_after_llm(
         }
         if mcp_pause.get("todos") is not None:
             pause_patch["agent_todos"] = list(mcp_pause.get("todos") or [])
+        if mcp_pause.get("verification_report") is not None:
+            pause_patch["verification_report"] = dict(mcp_pause["verification_report"])
         state = _merge_patch(state, pause_patch)
         _commit_run_state(run_id, state)
         _touch_session(run_id, status=state["status"])
@@ -2182,6 +2290,9 @@ async def _finish_plain_chat_after_llm(
         tool_steps=sealed_steps,
         files_changed=list(files_changed or []) or None,
         todo_list=list(state.get("agent_todos") or []) or None,
+        verification_report=_verification_report_for_seal(
+            state, files_changed=list(files_changed or []) or None
+        ),
     )
     log_line = f"[CHAT] {model_name} via {runtime_engine}: {len(reply_text)} chars"
     if not streamed_logs:
@@ -2593,6 +2704,13 @@ async def _handle_plain_chat(
             what="state_patch",
         )
 
+    async def emit_verification(report: dict[str, Any]) -> None:
+        nonlocal state
+        label = str(state.get("active_agent") or active_agent or "Clutch Agent")
+        state = await _publish_verification_report(
+            websocket, run_id, state, dict(report), reply_label=label
+        )
+
     from src.hybrid_concurrency import HybridPlainChatRejected
 
     try:
@@ -2616,6 +2734,7 @@ async def _handle_plain_chat(
             emit_log=emit_log,
             emit_tool_step=emit_tool_step,
             emit_todos=emit_todos,
+            emit_verification=emit_verification,
             tool_steps_sink=tool_steps_sink,
         )
     except HybridPlainChatRejected as exc:
@@ -2720,6 +2839,9 @@ async def _handle_plain_chat(
         tool_steps=sealed_steps,
         files_changed=list(files_changed or []) or None,
         todo_list=list(state.get("agent_todos") or []) or None,
+        verification_report=_verification_report_for_seal(
+            state, files_changed=list(files_changed or []) or None
+        ),
     )
 
     hybrid_system_prompt: str | None = None
@@ -3057,6 +3179,13 @@ async def _handle_flow_refine_message(
         _commit_run_state(run_id, state)
         await _notify_run_state(websocket, run_id, state, {"agent_todos": list(todos)})
 
+    async def emit_verification(report: dict[str, Any]) -> None:
+        nonlocal state
+        label = str(state.get("active_agent") or "Clutch Agent")
+        state = await _publish_verification_report(
+            websocket, run_id, state, dict(report), reply_label=label
+        )
+
     from src.agent_type import is_clutch_agent, resolve_model_for_agent
     from src.image_router import is_image_model
     from src.models_config import get_router
@@ -3095,6 +3224,7 @@ async def _handle_flow_refine_message(
             emit_log=emit_log,
             emit_tool_step=emit_tool_step,
             emit_todos=emit_todos,
+            emit_verification=emit_verification,
             tool_steps_sink=tool_steps_sink,
             chat_source="flow_refine",
             system_prompt_suffix=refine_suffix,
@@ -3162,6 +3292,9 @@ async def _handle_flow_refine_message(
         tool_steps=sealed_steps,
         files_changed=list(files_changed or []) or None,
         todo_list=list(state.get("agent_todos") or []) or None,
+        verification_report=_verification_report_for_seal(
+            state, files_changed=list(files_changed or []) or None
+        ),
     )
     final_messages = list(state["messages"]) + [reply]
     final_patch: dict[str, Any] = {

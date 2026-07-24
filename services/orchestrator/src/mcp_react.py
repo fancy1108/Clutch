@@ -44,6 +44,7 @@ class McpRunOutcome:
     files_changed: list[str] | None = None
     tool_steps: list[dict[str, Any]] | None = None
     todos: list[dict[str, Any]] | None = None
+    verification_report: dict[str, Any] | None = None
 
 
 def _sanitize_tool_part(value: str) -> str:
@@ -301,6 +302,7 @@ def run_mcp_react_loop(
     on_tool_step: Callable[[dict[str, Any]], None] | None = None,
     on_todos: Callable[[list[dict[str, Any]]], None] | None = None,
     existing_todos: list[dict[str, Any]] | None = None,
+    on_verification: Callable[[dict[str, Any]], None] | None = None,
     pause_on_risky: bool = False,
     permission_mode: str = "ask",
     approved_tool: dict[str, Any] | None = None,
@@ -313,10 +315,12 @@ def run_mcp_react_loop(
 
     from src.adapters.ollama_adapter import model_supports_tool_calling
     from src.builtin_tools import (
+        is_submit_verification_tool,
         is_todo_write_tool,
         is_virtual_server,
         list_builtin_tools,
         normalize_todo_items,
+        normalize_verification_report,
     )
     from src.models_config import get_router
 
@@ -325,6 +329,7 @@ def run_mcp_react_loop(
     logs: list[str] = []
     latest_todos: list[dict[str, Any]] | None = None
     todo_baseline = list(existing_todos or [])
+    latest_verification: dict[str, Any] | None = None
 
     if approved_tool and not model_supports_tool_calling(spec):
         raise RuntimeError(
@@ -430,6 +435,45 @@ def run_mcp_react_loop(
         if on_todos:
             on_todos(list(latest_todos))
 
+    def enrich_verification_args(func_name: str, func_args: dict[str, Any]) -> dict[str, Any]:
+        route = tool_routes.get(func_name)
+        raw_name = route[1] if route else func_name
+        if not (
+            is_submit_verification_tool(raw_name) or is_submit_verification_tool(func_name)
+        ):
+            return func_args
+        report = normalize_verification_report(
+            func_args,
+            existing_todos=latest_todos if latest_todos is not None else todo_baseline,
+        )
+        return {
+            "title": report["title"],
+            "conclusion": report["conclusion"],
+            "steps": report["steps"],
+            "summary": report.get("summary") or "",
+            "next_actions": list(report.get("nextActions") or []),
+            "changed_files": list(report.get("changedFiles") or []),
+        }
+
+    def capture_verification_if_needed(
+        func_name: str, func_args: dict[str, Any], result_str: str
+    ) -> None:
+        nonlocal latest_verification
+        route = tool_routes.get(func_name)
+        raw_name = route[1] if route else func_name
+        if not (
+            is_submit_verification_tool(raw_name) or is_submit_verification_tool(func_name)
+        ):
+            return
+        if result_str.startswith("Error executing tool"):
+            return
+        latest_verification = normalize_verification_report(
+            func_args,
+            existing_todos=latest_todos if latest_todos is not None else todo_baseline,
+        )
+        if on_verification:
+            on_verification(dict(latest_verification))
+
     try:
         chat_messages = list(messages)
         start_step = 0
@@ -441,6 +485,7 @@ def run_mcp_react_loop(
             if not isinstance(func_args, dict):
                 func_args = {}
             start_step = int(approved_tool.get("step_idx", 0))
+            func_args = enrich_verification_args(func_name, func_args)
             result_str = _execute_tool_call(
                 func_name=func_name,
                 func_args=func_args,
@@ -456,6 +501,7 @@ def run_mcp_react_loop(
                 step_id=str(approved_tool.get("step_id") or f"tool_{start_step}"),
             )
             capture_todos_if_needed(func_name, func_args, result_str)
+            capture_verification_if_needed(func_name, func_args, result_str)
             chat_messages.append(
                 {
                     "role": "tool",
@@ -537,6 +583,7 @@ def run_mcp_react_loop(
                             files_changed=files_changed or None,
                             tool_steps=list(collected_steps) or None,
                             todos=latest_todos,
+                            verification_report=latest_verification,
                         )
 
                     # D4: ask_user_question pauses for in-chat multiple choice (D49).
@@ -580,6 +627,7 @@ def run_mcp_react_loop(
                             files_changed=files_changed or None,
                             tool_steps=list(collected_steps) or None,
                             todos=latest_todos,
+                            verification_report=latest_verification,
                         )
 
                     if pause_on_risky and is_risky_mcp_tool(raw_tool_name):
@@ -660,6 +708,7 @@ def run_mcp_react_loop(
                                         files_changed=files_changed or None,
                                         tool_steps=list(collected_steps) or None,
                                         todos=latest_todos,
+                                        verification_report=latest_verification,
                                     )
 
                         # full mode: skip approval gates entirely
@@ -712,8 +761,10 @@ def run_mcp_react_loop(
                                     files_changed=files_changed or None,
                                     tool_steps=list(collected_steps) or None,
                                     todos=latest_todos,
+                                    verification_report=latest_verification,
                                 )
 
+                    func_args = enrich_verification_args(func_name, func_args)
                     result_str = _execute_tool_call(
                         func_name=func_name,
                         func_args=func_args,
@@ -729,6 +780,7 @@ def run_mcp_react_loop(
                         step_id=f"tool_{step_idx}",
                     )
                     capture_todos_if_needed(func_name, func_args, result_str)
+                    capture_verification_if_needed(func_name, func_args, result_str)
                     chat_messages.append(
                         {
                             "role": "tool",
@@ -765,4 +817,5 @@ def run_mcp_react_loop(
         files_changed=files_changed or None,
         tool_steps=list(collected_steps) or None,
         todos=latest_todos,
+        verification_report=latest_verification,
     )

@@ -17,7 +17,7 @@ import {
 } from '../types';
 import { useLanguage } from './LanguageContext';
 import { ChatInputBar, type Attachment, type PendingChatMessage } from './ChatInputBar';
-import { BTN_DANGER_SM, BTN_PRIMARY, BTN_SECONDARY, BTN_SM, BTN_SUCCESS_SM } from './ui/buttonStyles';
+import { BTN_PRIMARY, BTN_SECONDARY, BTN_SM } from './ui/buttonStyles';
 import { LegacyIcon } from './ui/LegacyIcon';
 import type { SessionRecord } from '../services/runApi';
 import type { ScannedSkill } from '../services/skillsApi';
@@ -29,7 +29,8 @@ import { AgentLiveActivity } from './AgentLiveActivity';
 import { FilesChangedChips } from './FilesChangedChips';
 import { PlanCardView } from './PlanCardView';
 import { QuestionCardView } from './QuestionCardView';
-import { TodoCardView } from './TodoCardView';
+import { TodoCardView, todosAreComplete } from './TodoCardView';
+import { VerificationReportCardView } from './VerificationReportCardView';
 import { resolveBrandLogoSrc } from '../services/brandLogos';
 import { clutchMarkUrl } from '../assets/brand';
 import { AgentChatAvatar } from './AgentChatAvatar';
@@ -791,6 +792,12 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
 
   const pendingToolSteps = clutchOrchestraState.pending_tool_steps;
   const liveTodos = (clutchOrchestraState.agent_todos ?? []) as TodoItem[];
+  /** Pin live todos while incomplete; unpin when all checked so the sealed card scrolls with history. */
+  const pinLiveTodos =
+    liveTodos.length > 0 &&
+    !todosAreComplete(liveTodos) &&
+    (isRunning || awaitingHuman);
+  const showInlineLiveTodos = liveTodos.length > 0 && !pinLiveTodos;
   const liveActivitySteps = useMemo(
     () =>
       resolveLiveActivitySteps(pendingToolSteps, clutchOrchestraState.terminal_logs, {
@@ -1291,6 +1298,13 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                       {!isUser && msg.todoList && msg.todoList.length > 0 ? (
                         <TodoCardView todos={msg.todoList} t={t} />
                       ) : null}
+                      {!isUser && msg.verificationReport ? (
+                        <VerificationReportCardView
+                          report={msg.verificationReport}
+                          t={t}
+                          onOpenChangedFile={onOpenWorkspaceFile}
+                        />
+                      ) : null}
                       {msg.codeHighlight && (
                         <div className="mt-3 flex items-center gap-2 py-2 px-3 bg-white/60 rounded-xl border border-outline-variant/30">
                           <LegacyIcon name="check_circle" className="text-green-500 text-[18px]" />
@@ -1340,7 +1354,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                     className={`${chatChrome.thinkingBubblePaddingClass} bg-surface-container-low rounded-2xl rounded-tl-none border border-outline-variant/30 shadow-sm`}
                   >
                     <AgentLiveActivity steps={liveActivitySteps} live defaultOpen />
-                    {liveTodos.length > 0 ? (
+                    {showInlineLiveTodos ? (
                       <TodoCardView todos={liveTodos} t={t} live />
                     ) : null}
                   </div>
@@ -1367,7 +1381,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                   className={`${chatChrome.thinkingBubblePaddingClass} bg-surface-container-low rounded-2xl rounded-tl-none border border-outline-variant/30 shadow-sm`}
                 >
                   <AgentLiveActivity steps={liveActivitySteps} live defaultOpen />
-                  {liveTodos.length > 0 ? (
+                  {showInlineLiveTodos ? (
                     <TodoCardView todos={liveTodos} t={t} live />
                   ) : null}
                 </div>
@@ -1382,6 +1396,30 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
       </div>
 
     </section>
+
+    {/* Incomplete live todos: pin under header with an opaque curtain (no scroll bleed). */}
+    {workspaceViewMode === 'chat' && pinLiveTodos ? (
+      <div
+        data-testid="todo-sticky-rail"
+        className={`pointer-events-none absolute z-30 ${chatChrome.chatEdgePaddingClass}`}
+        style={{
+          top: APP_HEADER_HEIGHT_PX,
+          left: leftChromePad,
+          right: rightChromePad,
+        }}
+      >
+        <div className="bg-background pt-3">
+          <div className={`pointer-events-auto mx-auto w-full ${chatChrome.chatMaxWidthClass}`}>
+            <TodoCardView todos={liveTodos} t={t} live pinned />
+          </div>
+        </div>
+        {/* Fade into the scrolling feed so content disappears cleanly under the pin. */}
+        <div
+          className="h-4 bg-gradient-to-b from-background via-background/80 to-transparent"
+          aria-hidden
+        />
+      </div>
+    ) : null}
 
     <div
         ref={showTerminalWorkspace ? terminalDockRef : dockRef}
@@ -1467,7 +1505,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                       setHitlBusy(true);
                       onApprove?.();
                     }}
-                    className={BTN_SUCCESS_SM}
+                    className={`${BTN_SM} bg-neutral-900 hover:bg-black text-white border border-neutral-900`}
                   >
                     {awaitingPlan ? t('Approve plan') : t('Allow')}
                   </button>
@@ -1480,7 +1518,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                     setHitlBusy(true);
                     onReject?.();
                   }}
-                  className={BTN_DANGER_SM}
+                  className={`${BTN_SM} bg-neutral-100 hover:bg-neutral-200 text-neutral-800 border border-neutral-200/80`}
                 >
                   {awaitingQuestion
                     ? t('Cancel question')

@@ -254,6 +254,61 @@ def list_builtin_tools() -> list[dict[str, Any]]:
                 "required": ["question", "options"],
             },
         },
+        {
+            "name": "submit_verification",
+            "description": (
+                "Publish a self-check verification report in Chat after implementing work (D5). "
+                "Include concrete steps with passed|failed|skipped and an overall conclusion. "
+                "Never claim conclusion=passed while session todos are still incomplete — "
+                "the tool will force failed. On failure, set next_actions the user can take. "
+                "Call this before saying the task is done; do not silently end after a failed check."
+            ),
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "description": "Short report title shown on the Chat card.",
+                    },
+                    "conclusion": {
+                        "type": "string",
+                        "enum": ["passed", "failed"],
+                        "description": "Overall pass/fail.",
+                    },
+                    "steps": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "name": {"type": "string"},
+                                "status": {
+                                    "type": "string",
+                                    "enum": ["passed", "failed", "skipped"],
+                                },
+                                "detail": {"type": "string"},
+                            },
+                            "required": ["name", "status"],
+                        },
+                        "description": "Ordered verification steps (commands, checks, imports).",
+                    },
+                    "summary": {
+                        "type": "string",
+                        "description": "One-paragraph outcome for the user.",
+                    },
+                    "next_actions": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Actionable follow-ups when failed (or optional tips when passed).",
+                    },
+                    "changed_files": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Workspace-relative paths to highlight for View changes.",
+                    },
+                },
+                "required": ["title", "conclusion", "steps"],
+            },
+        },
     ]
 
 
@@ -272,7 +327,18 @@ def is_ask_user_question_tool(name: str) -> bool:
     return short in {"ask_user_question", "ask_question", "user_question"}
 
 
+def is_submit_verification_tool(name: str) -> bool:
+    short = name.split("__")[-1].lower().replace("-", "_")
+    return short in {
+        "submit_verification",
+        "verification_report",
+        "submit_verification_report",
+    }
+
+
 _TODO_STATUSES = frozenset({"pending", "in_progress", "completed"})
+_VERIFICATION_STEP_STATUSES = frozenset({"passed", "failed", "skipped"})
+_VERIFICATION_CONCLUSIONS = frozenset({"passed", "failed"})
 
 
 def normalize_todo_items(
@@ -426,6 +492,97 @@ def parse_question_selection(
     return {"id": "custom", "label": "(no answer)"}
 
 
+def normalize_verification_report(
+    func_args: dict[str, Any] | None,
+    *,
+    existing_todos: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Normalize submit_verification args; force failed if todos incomplete."""
+    payload = func_args if isinstance(func_args, dict) else {}
+    title = str(payload.get("title") or payload.get("name") or "").strip() or "Verification"
+    raw_conclusion = str(payload.get("conclusion") or payload.get("status") or "failed").strip().lower()
+    conclusion = raw_conclusion if raw_conclusion in _VERIFICATION_CONCLUSIONS else "failed"
+    steps: list[dict[str, str]] = []
+    raw_steps = payload.get("steps")
+    if isinstance(raw_steps, list):
+        for idx, item in enumerate(raw_steps):
+            if isinstance(item, str):
+                name = item.strip()
+                if name:
+                    steps.append(
+                        {
+                            "id": f"step_{idx + 1}",
+                            "name": name,
+                            "status": "passed" if conclusion == "passed" else "failed",
+                            "detail": "",
+                        }
+                    )
+                continue
+            if not isinstance(item, dict):
+                continue
+            name = str(item.get("name") or item.get("title") or item.get("check") or "").strip()
+            if not name:
+                continue
+            status = str(item.get("status") or "failed").strip().lower()
+            if status not in _VERIFICATION_STEP_STATUSES:
+                status = "failed"
+            detail = str(item.get("detail") or item.get("message") or "").strip()
+            sid = str(item.get("id") or f"step_{idx + 1}").strip() or f"step_{idx + 1}"
+            steps.append({"id": sid, "name": name, "status": status, "detail": detail})
+    summary = str(payload.get("summary") or "").strip()
+    next_actions: list[str] = []
+    raw_next = payload.get("next_actions") or payload.get("nextActions")
+    if isinstance(raw_next, list):
+        for item in raw_next:
+            text = str(item).strip()
+            if text:
+                next_actions.append(text)
+    changed_files: list[str] = []
+    raw_files = payload.get("changed_files") or payload.get("changedFiles")
+    if isinstance(raw_files, list):
+        for item in raw_files:
+            path = str(item).strip()
+            if path and path not in changed_files:
+                changed_files.append(path)
+
+    incomplete = [
+        t
+        for t in (existing_todos or [])
+        if isinstance(t, dict) and str(t.get("status") or "") != "completed"
+    ]
+    if conclusion == "passed" and incomplete:
+        conclusion = "failed"
+        names = ", ".join(
+            str(t.get("content") or t.get("id") or "todo").strip() for t in incomplete[:5]
+        )
+        steps.insert(
+            0,
+            {
+                "id": "todos_incomplete",
+                "name": "Session todos incomplete",
+                "status": "failed",
+                "detail": f"Cannot claim passed while todos remain open: {names}",
+            },
+        )
+        tip = "Mark remaining todos completed (or cancel them) before claiming success."
+        if tip not in next_actions:
+            next_actions.insert(0, tip)
+        if not summary:
+            summary = "Verification forced to failed because session todos are still incomplete."
+
+    if any(s["status"] == "failed" for s in steps) and conclusion == "passed":
+        conclusion = "failed"
+
+    return {
+        "title": title,
+        "conclusion": conclusion,
+        "steps": steps,
+        "summary": summary,
+        "nextActions": next_actions,
+        "changedFiles": changed_files,
+    }
+
+
 def execute_builtin_tool(tool_name: str, arguments: dict[str, Any]) -> str:
     handlers = {
         "read_file": _tool_read_file,
@@ -437,6 +594,9 @@ def execute_builtin_tool(tool_name: str, arguments: dict[str, Any]) -> str:
         "propose_plan": _tool_propose_plan,
         "todo_write": _tool_todo_write,
         "ask_user_question": _tool_ask_user_question,
+        "submit_verification": _tool_submit_verification,
+        "verification_report": _tool_submit_verification,
+        "submit_verification_report": _tool_submit_verification,
     }
     handler = handlers.get(tool_name)
     if handler is None:
@@ -455,6 +615,34 @@ def _tool_todo_write(arguments: dict[str, Any]) -> str:
         f"- [{t['status']}] {t['id']}: {t['content']}" for t in todos
     ]
     return f"Updated {len(todos)} todo(s):\n" + "\n".join(lines)
+
+
+def _tool_submit_verification(arguments: dict[str, Any]) -> str:
+    report = normalize_verification_report(arguments)
+    if not report["steps"]:
+        return "Error executing tool: submit_verification requires a non-empty `steps` array"
+    lines = [
+        f"- [{s['status']}] {s['name']}"
+        + (f": {s['detail']}" if s.get("detail") else "")
+        for s in report["steps"]
+    ]
+    actions = report.get("nextActions") or []
+    action_block = ""
+    if actions:
+        action_block = "\nNext actions:\n" + "\n".join(f"- {a}" for a in actions)
+    summary = report.get("summary") or ""
+    summary_line = f"\nSummary: {summary}" if summary else ""
+    return (
+        f"Verification {report['conclusion'].upper()}: {report['title']}\n"
+        + "\n".join(lines)
+        + summary_line
+        + action_block
+        + (
+            "\nDo not claim the task succeeded; address failed steps or next actions."
+            if report["conclusion"] == "failed"
+            else "\nChecks passed; you may summarize completion for the user."
+        )
+    )
 
 
 def _tool_ask_user_question(arguments: dict[str, Any]) -> str:
