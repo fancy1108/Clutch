@@ -4,12 +4,12 @@
 > **何时写：** 每个**代码 Task** 完成并 commit 后，在 Check-out 追加一节（见 `CLAUDE.md` §Check-out）。  
 > **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。
 
-## Clutch Agent D13 权限规则 (`pending`)
+## Clutch Agent D13 权限规则 (`ed7c568`)
 
 | 项目 | 值 |
 |------|-----|
 | **Task** | D13 allow/ask/deny + dangerous force-ask + clear approvals |
-| **Commit** | _(填入 commit 后)_ |
+| **Commit** | `ed7c568` |
 | **Branch** | `dev` |
 | **Verification** | `uv run pytest tests/test_permission_rules_d13.py -q` |
 | **PM 用例** | `runs/verification/pm-acceptance/D13.md` |
