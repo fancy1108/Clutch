@@ -230,6 +230,12 @@ describe('mergeMessageFields', () => {
     const merged = mergeMessageFields(base, { ...base, rawOutput: undefined });
     expect(merged.rawOutput).toBe('raw-from-message');
   });
+
+  it('keeps filesChanged when incoming patch omits it', () => {
+    const withFiles = { ...base, filesChanged: ['notes.md'] };
+    const merged = mergeMessageFields(withFiles, { ...base, filesChanged: undefined });
+    expect(merged.filesChanged).toEqual(['notes.md']);
+  });
 });
 
 describe('preferRicherSessionPatch', () => {

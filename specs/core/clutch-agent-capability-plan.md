@@ -74,6 +74,7 @@
 - **可见**：本回合 `files_changed` / 写出的报告路径自动变成芯片；点击走现有预览（**DECISIONS D42** 路径预览能力）；可选缩略图。
 - **验收**：Agent 写出 `notes.md` → 气泡旁出现芯片 → 一点打开预览；不必在正文里自己找路径。
 - **编号注意**：本表 **D42** = MCP 真实工具目录 UI；路径预览是仓库已有决策 **DECISIONS D42**，两套编号勿混。
+- **实现笔记**：Sidecar seal `ChatMessage.filesChanged`（与 D46 `toolSteps` 同路径）；FE `FilesChangedChips` → `onOpenWorkspaceFile`；既有 `file_changed` → Changes 面板不变。
 
 #### D48 — 子 Agent 嵌套交互
 - **可见**：自动派 subagent（D10）时，父气泡下出现子任务卡（状态、类型 explore/implement、摘要）；可点开子轨迹或跳到对应 lane/日志；失败可见。

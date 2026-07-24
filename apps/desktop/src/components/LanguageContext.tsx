@@ -715,6 +715,7 @@ const zhTranslations: Record<string, string> = {
   "chars": "字符",
   "No assembly data": "暂无组装数据",
   "Refresh": "刷新",
+  "Changed files": "变更文件",
   "Enter basic setup persona details...": "输入基础人设与指令…",
   "Tips": "提示",
   "Agent persona tips": "此处仅写协议段（人设/步骤约定）。完整 runtime system 由底座、Env、工作区 AGENTS.md、Skills 目录、Plan reminder 等层组装；详情页右侧可查看分层摘要。",

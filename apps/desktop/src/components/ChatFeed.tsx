@@ -19,6 +19,7 @@ import type { PermissionMode } from '../services/permissionApi';
 import { USER_CHAT_AVATAR, clutchStore, deleteChatMessage, useClutchState } from '../services/clutchState';
 import { toolStepsFromActivityLogs } from '../services/agentActivitySteps';
 import { AgentLiveActivity } from './AgentLiveActivity';
+import { FilesChangedChips } from './FilesChangedChips';
 import { resolveBrandLogoSrc } from '../services/brandLogos';
 import { clutchMarkUrl } from '../assets/brand';
 import { AgentChatAvatar } from './AgentChatAvatar';
@@ -1215,6 +1216,13 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                           />
                         );
                       })()}
+                      {!isUser && msg.filesChanged && msg.filesChanged.length > 0 ? (
+                        <FilesChangedChips
+                          paths={msg.filesChanged}
+                          onOpen={onOpenWorkspaceFile}
+                          label={t('Changed files')}
+                        />
+                      ) : null}
                       {msg.codeHighlight && (
                         <div className="mt-3 flex items-center gap-2 py-2 px-3 bg-white/60 rounded-xl border border-outline-variant/30">
                           <LegacyIcon name="check_circle" className="text-green-500 text-[18px]" />

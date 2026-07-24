@@ -137,6 +137,7 @@
 | Chat 流与人工干预 UI | `components/ChatFeed.tsx` |
 | Chat 工具步骤条解析（D46） | `services/agentActivitySteps.ts` |
 | Chat 工具轨迹 UI（D46 verb_group） | `components/AgentLiveActivity.tsx` |
+| Chat 变更文件芯片（D47） | `components/FilesChangedChips.tsx` |
 | Sidecar 结构化 tool steps（D46） | `services/orchestrator/src/tool_steps.py` |
 | Chat markdown（fence / 路径预览） | `components/chatContentRender.tsx` · `services/workspacePathLinks.ts` |
 | Coding 附件上传 / 路径 resolve API | `services/workspaceApi.ts` → `POST /api/workspace/attachments` · `GET /api/workspace/file/resolve`；后端 `workspace_attachments.py` |

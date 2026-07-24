@@ -49,6 +49,7 @@ export function mergeMessageFields(existing: ChatMessage, incoming: ChatMessage)
     rawOutput: incoming.rawOutput || existing.rawOutput,
     outputEvents: incomingEvents ?? existing.outputEvents,
     toolSteps: incoming.toolSteps ?? existing.toolSteps,
+    filesChanged: incoming.filesChanged ?? existing.filesChanged,
   };
 }
 

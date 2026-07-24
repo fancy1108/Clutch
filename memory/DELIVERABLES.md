@@ -4,6 +4,15 @@
 > **何时写：** 每个**代码 Task** 完成并 commit 后，在 Check-out 追加一节（见 `CLAUDE.md` §Check-out）。  
 > **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。
 
+## Clutch Agent D47 files-changed chips (`pending`)
+
+| 项目 | 值 |
+|------|-----|
+| **Task** | D47 中间产物芯片（seal `filesChanged` + FilesChangedChips → D42 预览） |
+| **Commit** | _(filled after commit)_ |
+| **Branch** | `dev` |
+| **下一批** | PM 验收后标 ROADMAP ✅；再 D2∥D49 |
+
 ## Clutch Agent D53 layered prompt (`9a840e2`)
 
 | 项目 | 值 |

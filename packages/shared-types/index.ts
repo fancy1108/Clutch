@@ -58,6 +58,8 @@ export interface ChatMessage {
   outputEvents?: OutputEvent[];
   /** Persisted MCP/builtin tool trail for this assistant turn (D46). */
   toolSteps?: ToolStep[];
+  /** Workspace-relative paths written this turn (D47) — clickable chips → D42 preview. */
+  filesChanged?: string[];
   codeHighlight?: {
     file: string;
     lineCount: number;

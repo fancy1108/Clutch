@@ -5,16 +5,21 @@
 
 ## Current Status
 
-- **阶段：** **v1.2.9**；D1+D37+D46+**D53** PM ✅；**下次 D47**
-- **Git：** D53 待 commit
+- **阶段：** **v1.2.9**；D1+D37+D46+D53 PM ✅；**D47 实现待 PM 验收**
+- **Git：** D53=`9a840e2`；D47 未 commit
 
 ## Recent Sessions
+
+## 2026-07-24 会话（D47 files_changed 芯片）
+
+- **实现：** seal `filesChanged` 到 assistant 消息；`FilesChangedChips` 点击走 D42 预览
+- **下次：** PM 验收（写出文件 → 气泡芯片 → 预览）→ commit
 
 ## 2026-07-24 会话（D53 PM 验收通过）
 
 - **验收：** Agent Manager「运行时提示词分层」可见；Plan/Ask 切换 mode 层；rules 跟工作区
 - **ROADMAP：** D53 → ✅
-- **下次：** commit D53 后做 **D47**（files_changed 对话芯片）
+- **Commit：** `9a840e2`
 
 ## 2026-07-24 会话（Workspace 历史消失 bug / D43）
 

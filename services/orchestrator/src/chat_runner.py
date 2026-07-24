@@ -856,6 +856,7 @@ def _chat_message(
     raw_output: str | None = None,
     output_events: list[dict[str, Any]] | None = None,
     tool_steps: list[dict[str, Any]] | None = None,
+    files_changed: list[str] | None = None,
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "id": msg_id or f"msg_{uuid.uuid4().hex[:8]}",
@@ -874,6 +875,9 @@ def _chat_message(
         payload["outputEvents"] = output_events
     if tool_steps is not None:
         payload["toolSteps"] = tool_steps
+    if files_changed:
+        # D47: relative paths sealed onto the assistant bubble for clickable chips.
+        payload["filesChanged"] = list(dict.fromkeys(files_changed))
     return payload
 
 
@@ -1794,6 +1798,7 @@ async def _handle_plain_chat_mcp_decision(
         raw_output=raw_output,
         output_events=output_events,
         tool_steps=sealed_steps,
+        files_changed=list(files_changed or []) or None,
     )
     log_line = f"[CHAT] {model_name} via {runtime_engine}: {len(reply_text)} chars"
     if not streamed_logs:
@@ -2318,6 +2323,7 @@ async def _handle_plain_chat(
         raw_output=raw_output,
         output_events=output_events,
         tool_steps=sealed_steps,
+        files_changed=list(files_changed or []) or None,
     )
 
     hybrid_system_prompt: str | None = None
@@ -2751,6 +2757,7 @@ async def _handle_flow_refine_message(
         runtime_engine=runtime_engine,
         msg_id=f"agent_{uuid.uuid4().hex[:8]}",
         tool_steps=sealed_steps,
+        files_changed=list(files_changed or []) or None,
     )
     final_messages = list(state["messages"]) + [reply]
     final_patch: dict[str, Any] = {
