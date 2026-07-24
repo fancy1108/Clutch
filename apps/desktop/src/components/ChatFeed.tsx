@@ -1234,7 +1234,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                 </div>
 
                 <div
-                  className={`${chatChrome.messageBubblePaddingClass} bg-surface-container-low rounded-2xl rounded-tl-none border border-outline-variant/30 shadow-sm inline-flex items-center gap-1.5 w-fit`}
+                  className={`${chatChrome.thinkingBubblePaddingClass} bg-surface-container-low rounded-2xl rounded-tl-none border border-outline-variant/30 shadow-sm flex items-center gap-1.5 min-h-9`}
                 >
                   <div className="w-1.5 h-1.5 rounded-full bg-on-surface/40 animate-typing-pulse" />
                   <div className="w-1.5 h-1.5 rounded-full bg-on-surface/40 animate-typing-pulse animation-delay-100" />
