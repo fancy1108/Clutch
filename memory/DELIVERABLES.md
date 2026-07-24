@@ -4,6 +4,17 @@
 > **何时写：** 每个**代码 Task** 完成并 commit 后，在 Check-out 追加一节（见 `CLAUDE.md` §Check-out）。  
 > **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。
 
+## Clutch Agent D5∥D50 Verification report (`30d5f86`)
+
+| 项目 | 值 |
+|------|-----|
+| **Task** | D5 自检报告 + D50 对话内 VerificationReport 卡（Diff 摘要仍随 D6） |
+| **Commit** | `30d5f86807380c1da6e899fa590bc962153093ca` |
+| **Branch** | `dev` |
+| **Verification** | pre-commit `verify.sh`（随 feat commit）；`test_verification_d5` + `test_merge_patch_optional_d5` |
+| **PM** | 2026-07-24 验收通过（ROADMAP D5 ✅；故意失败出 VERIFICATION FAILED + next actions） |
+| **下一批** | **D6∥D50 Diff 摘要** |
+
 ## Clutch Agent D4∥D49 Question card (`662129c`)
 
 | 项目 | 值 |
@@ -13,7 +24,7 @@
 | **Branch** | `dev` |
 | **Verification** | pre-commit `verify.sh`：build OK；vitest 156；pytest 784 passed / 3 skipped；doc-drift 0 error |
 | **PM** | 2026-07-24 验收通过（ROADMAP D4 ✅；路径 Redis→health→plan 一致；卡壳与 Plan/Todo 对齐 UI_UX） |
-| **下一批** | **D5∥D50 自检报告** |
+| **下一批** | **D5∥D50 自检报告** ✅ `30d5f86` |
 
 ## Clutch Agent D3∥D49 Todo card (`4d6f6ef`)
 

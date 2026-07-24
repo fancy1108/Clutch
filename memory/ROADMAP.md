@@ -47,19 +47,19 @@
 | D2 先计划再动手 | P0 | ✅ | `propose_plan` + PlanCard；PM 2026-07-24 点验通过（须同验 D49） |
 | D3 Todo 面板 | P0 | ✅ | `todo_write` + TodoCard；PM 2026-07-24 点验通过（须同验 D49） |
 | D4 结构化提问 | P0 | ✅ | `ask_user_question` + QuestionCard；PM 2026-07-24 点验通过（须同验 D49） |
-| D5 自检报告 | P0 | ❌ | `submit_verification` + VerificationReport；待 PM（须同验 D50） |
+| D5 自检报告 | P0 | ✅ | `submit_verification` + VerificationReport；PM 2026-07-24 点验通过（须同验 D50） |
 | D6–D13 / D14 / D15–D36 | — | ❌ | 见权威表全文 |
 | D37 MCP Agent↔Hub 绑定 | P0 | ✅ | Module 4 Hub 勾选 + `mcpServerIds`；PM 2026-07-24 点验通过 |
 | D38–D45 MCP 专项其余 | P1 | ❌ | 见权威表 |
 | D46 对话实时步骤条 | P0 | ✅ | 持久 verb_group + seal `toolSteps`；PM 2026-07-24 点验通过 |
 | D47 中间产物芯片 | P0 | ✅ | seal `filesChanged` + FilesChangedChips → D42 预览；PM 2026-07-24 点验通过 |
 | D49 计划嵌对话流 | P0 | ✅ | PlanCard + TodoCard + QuestionCard；PM 2026-07-24（D2/D3/D4） |
-| D50 验证报告嵌对话 | P0 | ❌ | VerificationReport 卡；Diff 摘要随 D6；待 PM |
+| D50 验证报告嵌对话 | P0 | ❌ | VerificationReport 卡 PM 2026-07-24（随 D5）；Diff 摘要随 D6 |
 | D48 / D51–D52 Chat 监督 UX 其余 | P0–P1 | ❌ | 见权威表 |
 | D53 分层 prompt + 渐进披露 | P0 | ✅ | 分层组装 + Agent Manager 分层摘要面板；PM 2026-07-24 点验通过 |
 
 **首期目标：** D1 + D37 + D46 ✅（PM 2026-07-24）。  
-**下一批（防返工顺序）：** **D5∥D50 自检报告**（实现待 PM） → D6∥D50 → …
+**下一批（防返工顺序）：** **D6∥D50 Diff 摘要** → …
 
 ## Design 模式（D36 · 默认 FAIL）
 

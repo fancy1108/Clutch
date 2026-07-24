@@ -5,22 +5,24 @@
 
 ## Current Status
 
-- **阶段：** **v1.2.9**；**D5∥D50 自检报告 — 实现完成，待 PM 验收**
-- **Git：** D4=`662129c`；D5 未 commit（等 PM）
+- **阶段：** **v1.2.9**；**D5∥D50 自检报告 — PM 通过**；下一批 **D6∥D50 Diff 摘要**
+- **Git：** D4=`662129c`；D5=`30d5f86`
 
 ## Recent Sessions
 
-## 2026-07-24 会话（D5 自检报告实现）
+## 2026-07-24 会话（D5 自检报告 PM 通过）
 
-- **实现：** `submit_verification` + seal `verificationReport` + `VerificationReportCardView`；todos 未完强制 failed；View changes
-- **下次：** PM 验收（故意失败出报告）→ commit → D6∥D50
+- **实现：** `submit_verification` + seal `verificationReport` + `VerificationReportCardView`；todos 未完强制 failed；`_merge_patch` 放行 optional keys
+- **PM：** 2026-07-24 通过（故意失败出 VERIFICATION FAILED 卡 + next actions）
+- **Commit：** `30d5f86`
+- **下次：** D6∥D50 Diff 摘要嵌对话
 
 ## 2026-07-24 会话（D4 结构化提问 PM 通过）
 
 - **实现：** `ask_user_question` + QuestionCard + 共享 `chatAgentCard`（Plan/Todo 对齐 UI_UX）；选项可点；路径 Redis→health→plan 一致
 - **PM：** 2026-07-24 通过
 - **Commit：** `662129c`
-- **下次：** D5∥D50 自检报告
+- **下次：** D5∥D50 自检报告 ✅ `30d5f86`
 
 ## 2026-07-24 会话（D4 结构化提问实现）
 

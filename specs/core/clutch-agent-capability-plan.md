@@ -88,7 +88,7 @@
 #### D50 — 验证报告与 Diff 嵌对话
 - **可见**：D5 验证结论、D6 diff 摘要作为气泡块/可展开卡，而不只是 Terminal 一行。
 - **验收**：做完后对话里看到「验证失败/通过」块；点「查看改动」打开 diff/预览。
-- **实现笔记（验证卡 · 待 PM）**：D5 `verificationReport` 卡已嵌对话；D6 diff 摘要卡后续。
+- **实现笔记（验证卡 · PM ✅ 2026-07-24）**：D5 `verificationReport` 卡已嵌对话；D6 diff 摘要卡后续。
 
 #### D51 — Chat ↔ Terminal 同步
 - **可见**：步骤条或子任务卡上「在 Terminal 查看」→ 聚焦对应 lane/滚动到日志。
@@ -240,7 +240,7 @@
 - **可见**：验证步骤+通过/失败结论；失败可操作；Todo 未完不谎称完成。
 - **验收**：故意验失败 → 失败报告而非沉默结束。
 - **交互先决**：**D50**。
-- **实现笔记（待 PM）**：builtin `submit_verification` → seal `ChatMessage.verificationReport`；FE `VerificationReportCardView`（步骤 + 通过/失败 chip + next actions + View changes）；incomplete todos 强制 failed；非 risky 门。
+- **实现笔记（PM ✅ 2026-07-24 · `30d5f86`）**：builtin `submit_verification` → seal `ChatMessage.verificationReport`；FE `VerificationReportCardView`（步骤 + 通过/失败 chip + next actions + View changes）；incomplete todos 强制 failed；非 risky 门；`_merge_patch` 放行 `verification_report`。
 
 #### D6 — Diff 审查
 - **可见**：变更文件列表+可读 diff。
