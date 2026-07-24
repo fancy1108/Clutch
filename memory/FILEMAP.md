@@ -196,6 +196,7 @@
 | agent_task 节点执行 | `src/agent_executor.py` |
 | Agent 持久化与内置 Agent | `src/agent_storage.py` |
 | Agent system prompt 组装（D53） | `src/agent_prompt.py` · `src/agent_skills.py` |
+| 本轮 prompt 组装摘要 API（D53） | `GET /api/agents/{id}/prompt-assembly`（`routes/settings.py`） |
 | 运行日志 WS 转发 | `src/run_log_forwarder.py` |
 | 工作流状态投影 | `src/workflow_projection.py` |
 | 工作流运行中取消 | `src/workflow_cancel.py` |

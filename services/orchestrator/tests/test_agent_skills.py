@@ -40,9 +40,37 @@ def test_compose_skills_section_includes_linked_skill_md(
         ],
     )
 
-    section = compose_skills_section(["my-skills/secure-review"])
+    section = compose_skills_section(["my-skills/secure-review"], include_bodies=True)
     assert "## Attached Skills" in section
     assert "Always check for secrets" in section
+
+
+def test_compose_skills_section_catalog_omits_body(
+    skills_data_dir: Path, tmp_path: Path
+) -> None:
+    mount = tmp_path / "my-skills"
+    skill_dir = mount / "secure-review"
+    skill_dir.mkdir(parents=True)
+    (skill_dir / "SKILL.md").write_text(
+        "# Secure Review\n\nAlways check for secrets before commit.\n",
+        encoding="utf-8",
+    )
+    save_registry(
+        mounted_directories=[str(mount)],
+        skills=[
+            {
+                "key": "my-skills/secure-review",
+                "label": "Secure Review",
+                "source": str(mount.resolve()),
+                "desc": "Security checklist",
+                "isActiveGlobally": True,
+            }
+        ],
+    )
+    catalog = compose_skills_section(["my-skills/secure-review"])
+    assert "## Skills catalog" in catalog
+    assert "Security checklist" in catalog
+    assert "Always check for secrets" not in catalog
 
 
 def test_compose_skills_section_ignores_unknown_keys(skills_data_dir: Path) -> None:

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 
 import { Deliverable, Agent } from '../types';
-import { fetchAgents, saveAgents, generateAgentPrompt } from '../services/agentApi';
+import { fetchAgents, saveAgents, generateAgentPrompt, fetchPromptAssembly, type PromptAssemblySummary } from '../services/agentApi';
 import { fetchSkillsRegistry, type ScannedSkill } from '../services/skillsApi';
 import { BTN_GHOST, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON } from './ui/buttonStyles';
 import { SettingsPageHeader } from './ui/SettingsPageHeader';
@@ -155,6 +155,9 @@ export function AgentManager({
   });
   const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
   const [promptGenerateError, setPromptGenerateError] = useState<string | null>(null);
+  const [promptAssembly, setPromptAssembly] = useState<PromptAssemblySummary | null>(null);
+  const [promptAssemblyError, setPromptAssemblyError] = useState<string | null>(null);
+  const [promptAssemblyLoading, setPromptAssemblyLoading] = useState(false);
 
   const toggleModule = (moduleNumber: number) => {
     setExpandedModules((prev) => ({ ...prev, [moduleNumber]: !prev[moduleNumber] }));
@@ -165,6 +168,33 @@ export function AgentManager({
       .then((data) => setScannedSkills(data.skills))
       .catch(() => setScannedSkills([]));
   };
+
+  const refreshPromptAssembly = useCallback((agentId: string | null | undefined) => {
+    const id = (agentId || '').trim();
+    if (!id) {
+      setPromptAssembly(null);
+      setPromptAssemblyError(null);
+      return;
+    }
+    setPromptAssemblyLoading(true);
+    setPromptAssemblyError(null);
+    void fetchPromptAssembly(id)
+      .then((summary) => setPromptAssembly(summary))
+      .catch((err: unknown) => {
+        setPromptAssembly(null);
+        setPromptAssemblyError(err instanceof Error ? err.message : String(err));
+      })
+      .finally(() => setPromptAssemblyLoading(false));
+  }, []);
+
+  useEffect(() => {
+    if (!selectedAgent || agentTypeFromAgent(selectedAgent) !== CLUTCH_AGENT_TYPE) {
+      setPromptAssembly(null);
+      setPromptAssemblyError(null);
+      return;
+    }
+    refreshPromptAssembly(selectedAgent.id);
+  }, [selectedAgent, refreshPromptAssembly]);
 
   useEffect(() => {
     void fetchMcpStatus()
@@ -660,6 +690,67 @@ export function AgentManager({
                 </div>
               </div>
 
+              {agentTypeFromAgent(selectedAgent) === CLUTCH_AGENT_TYPE ? (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-[11px] font-bold text-neutral-400 font-mono uppercase tracking-wider">
+                      {t('Runtime prompt layers')}
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => refreshPromptAssembly(selectedAgent.id)}
+                      className="text-[10px] font-semibold text-neutral-600 hover:text-neutral-900"
+                    >
+                      {t('Refresh')}
+                    </button>
+                  </div>
+                  <div className="bg-neutral-50 p-3 rounded-xl border border-neutral-200/50 space-y-2">
+                    <p className="text-[10px] text-neutral-500 leading-snug">
+                      {t('Prompt assembly hint')}
+                    </p>
+                    {promptAssemblyLoading ? (
+                      <p className="text-[10.5px] text-neutral-400 italic">{t('Loading...')}</p>
+                    ) : promptAssemblyError ? (
+                      <p className="text-[10.5px] text-red-600">{promptAssemblyError}</p>
+                    ) : promptAssembly ? (
+                      <>
+                        <p className="text-[10px] font-mono text-neutral-600">
+                          {t('Permission mode')}:{' '}
+                          <span className="font-bold text-neutral-900">
+                            {promptAssembly.permission_mode}
+                          </span>
+                          {' · '}
+                          {promptAssembly.total_chars} {t('chars')}
+                        </p>
+                        <ul className="space-y-1">
+                          {promptAssembly.layers.map((layer) => (
+                            <li
+                              key={layer.name}
+                              className="flex items-center justify-between gap-2 text-[11px] font-mono"
+                            >
+                              <span
+                                className={
+                                  layer.injected
+                                    ? 'text-neutral-800 font-semibold'
+                                    : 'text-neutral-400'
+                                }
+                              >
+                                {layer.name}
+                              </span>
+                              <span className="tabular-nums text-neutral-500">
+                                {layer.injected ? `${layer.chars}` : '—'}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      </>
+                    ) : (
+                      <p className="text-[10.5px] text-neutral-400 italic">{t('No assembly data')}</p>
+                    )}
+                  </div>
+                </div>
+              ) : null}
+
               {/* Attached Skills Manuals */}
               <div>
                 <h3 className="text-[11px] font-bold text-neutral-400 font-mono uppercase tracking-wider mb-2">{t('Attached Skills Manuals')}</h3>
@@ -1071,7 +1162,7 @@ export function AgentManager({
                 </div>
                 
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-neutral-500 tracking-wider uppercase font-mono block">{t('System Prompt / Directive Summary')}</label>
+                  <label className="text-[10px] font-bold text-neutral-500 tracking-wider uppercase font-mono block">{t('Editable protocol segment')}</label>
                   <textarea
                     value={markdownDoc}
                     onChange={(e) => setMarkdownDoc(e.target.value)}
@@ -1082,6 +1173,15 @@ export function AgentManager({
                   <p className="text-[9.5px]/relaxed text-neutral-400 font-sans">
                     💡 <strong>{t('Tips')}:</strong> {t('Agent persona tips')}
                   </p>
+                  {agentType === CLUTCH_AGENT_TYPE && promptAssembly ? (
+                    <p className="text-[9.5px] font-mono text-neutral-500">
+                      {t('Runtime prompt layers')}:{' '}
+                      {promptAssembly.layers
+                        .filter((layer) => layer.injected)
+                        .map((layer) => `${layer.name}(${layer.chars})`)
+                        .join(' · ')}
+                    </p>
+                  ) : null}
                 </div>
               </div>
 

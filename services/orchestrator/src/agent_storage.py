@@ -28,9 +28,8 @@ def get_builtin_agent() -> dict[str, Any]:
         "name": "Clutch Agent",
         "description": "System built-in general-purpose agent for supervised workspace tasks.",
         "markdownDoc": (
-            "# Clutch Agent\n\n"
-            "You are Clutch Agent, the default system agent for single-agent sessions.\n\n"
-            "## Protocol\n"
+            "# Protocol\n\n"
+            "Editable agent protocol segment (D53) — not the full runtime system prompt.\n\n"
             "- Understand the user's goal in the active workspace.\n"
             "- Use clutch-tools (`read_file`, `list_dir`, `grep`, `search_replace`, "
             "`run_terminal_cmd`, `apply_patch`) to inspect and change the workspace.\n"

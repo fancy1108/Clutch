@@ -39,3 +39,27 @@ export async function generateAgentPrompt(payload: {
   }
   return response.json() as Promise<GenerateAgentPromptResult>;
 }
+
+export type PromptAssemblyLayerSummary = {
+  name: string;
+  chars: number;
+  injected: boolean;
+};
+
+export type PromptAssemblySummary = {
+  agent_id: string;
+  permission_mode: string;
+  layer_count: number;
+  total_chars: number;
+  layers: PromptAssemblyLayerSummary[];
+};
+
+/** D53: runtime prompt layers (names + char counts, no full dump). */
+export async function fetchPromptAssembly(agentId: string): Promise<PromptAssemblySummary> {
+  const id = encodeURIComponent(agentId.trim() || 'clutch-agent');
+  const response = await sidecarFetch(`${BASE}/api/agents/${id}/prompt-assembly`);
+  if (!response.ok) {
+    throw new Error(`prompt assembly fetch failed (${response.status})`);
+  }
+  return response.json() as Promise<PromptAssemblySummary>;
+}

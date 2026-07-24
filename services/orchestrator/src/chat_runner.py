@@ -1175,12 +1175,14 @@ def _compose_agent_system_prompt(
     mcp_servers_bound: bool = True,
 ) -> str:
     from src.agent_prompt import compose_agent_system_prompt
+    from src.preferences_storage import load_permission_mode
 
     return compose_agent_system_prompt(
         agent,
         model_name=model_name,
         model_api=model_api,
         mcp_servers_bound=mcp_servers_bound,
+        permission_mode=load_permission_mode(),
     )
 
 def _append_terminal_logs(

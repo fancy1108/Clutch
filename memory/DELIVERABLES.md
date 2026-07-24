@@ -4,6 +4,16 @@
 > **何时写：** 每个**代码 Task** 完成并 commit 后，在 Check-out 追加一节（见 `CLAUDE.md` §Check-out）。  
 > **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。
 
+## Clutch Agent D53 layered prompt (`pending`)
+
+| 项目 | 值 |
+|------|-----|
+| **Task** | D53 分层 system prompt + Agent Manager 分层摘要 UI |
+| **Commit** | _(filled after commit)_ |
+| **Branch** | `dev` |
+| **PM** | 2026-07-24 验收通过（ROADMAP D53 ✅） |
+| **下一批** | **D47** files_changed 对话芯片 |
+
 ## Clutch Agent D1+D37+D46 (`1097a6d`)
 
 | 项目 | 值 |
@@ -14,7 +24,7 @@
 | **Verification** | pre-commit `verify.sh`：build OK；vitest 150；pytest 762 collected（hook 通过）；doc-drift 0 error |
 | **PM** | 2026-07-24 验收通过（ROADMAP D1/D37/D46 ✅） |
 | **交付要点** | `clutch-tools`；Agent Manager `mcpServerIds`；`toolSteps` / `pending_tool_steps`；apply_patch 裸行；Search 标题含 path |
-| **下一批** | **D53** 分层 prompt（先于 D2/D7）；再 D47；计划类 D2∥D49 |
+| **下一批** | **D47** files_changed 对话芯片 |
 
 ## Devin + Copilot CLI Whitelist (`6ce426b`)
 

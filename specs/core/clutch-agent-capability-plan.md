@@ -112,13 +112,13 @@
   | **Mode 覆盖** | Plan 模式等（与 **D2**） | **当轮 reminder**，退出即撤，不写死进底座 |
   | **用户话轮** | 明确包裹（如 `<user_query>` 等价） | 每条用户消息 |
 
-- **可见**：同仓库有/无 `AGENTS.md`、开/关 Plan、绑/不绑 Skills 时行为可区分；开发或设置里可查看「本轮组装摘要」（层名 + 字符量/是否注入），不必 dump 全文给终端用户。
+- **可见**：同仓库有/无 `AGENTS.md`、开/关 Plan、绑/不绑 Skills 时行为可区分；**Agent Manager → Clutch Agent 详情右侧**展示「运行时提示词分层」（层名 + 字符量 + 当前 permission mode，可刷新）；`GET /api/agents/{id}/prompt-assembly` 同数据。
 - **验收**：
   1. 底座变短稳定；换仓库后旧规则不残留。
   2. Skills 未调用时上下文只有目录级摘要，不整份 SKILL.md 塞满。
   3. Plan 模式开启时出现约束 reminder；退出后不再出现。
   4. 压缩/续聊后规则层可再注入（与 **D8** 对齐）。
-- **实现落点**：扩展 `agent_prompt.compose_agent_system_prompt` + chat/session 组装；Agent Manager `markdownDoc` 降级为「可编辑协议段」，不再假装 = 完整 runtime system。
+- **实现落点**：`agent_prompt.compose_agent_prompt_assembly` + Skills 目录默认；`GET /api/agents/{id}/prompt-assembly`；**Agent Manager 右侧「运行时提示词分层」**。**PM 2026-07-24 点验通过**。
 - **与 D7**：D7 = 发现与生效内容；**D53 = 组装架构与披露策略**。无 D53 时 D7 易退化成「全塞进 system」。
 
 ---

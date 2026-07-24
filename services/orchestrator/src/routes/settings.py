@@ -109,6 +109,44 @@ async def list_agents_endpoint() -> dict[str, list[dict[str, Any]]]:
     return {"agents": list_agents()}
 
 
+@router.get("/api/agents/{agent_id}/prompt-assembly")
+async def agent_prompt_assembly_endpoint(agent_id: str) -> dict[str, Any]:
+    """D53: layer names + char counts for the current workspace / permission mode (no full dump)."""
+    from src.agent_mcp import resolve_agent_mcp_servers
+    from src.agent_prompt import compose_agent_prompt_assembly
+    from src.agent_storage import BUILTIN_AGENT_ID, get_agent_by_id
+    from src.agent_type import is_clutch_agent, resolve_model_for_agent
+    from src.models_config import get_router
+    from src.preferences_storage import load_permission_mode
+
+    resolved = (agent_id or "").strip() or BUILTIN_AGENT_ID
+    agent = get_agent_by_id(resolved)
+    if agent is None:
+        raise HTTPException(status_code=404, detail={"message": f"Agent not found: {resolved}"})
+
+    router = get_router()
+    model, _model_id = resolve_model_for_agent(router, agent)
+    model_name = model.name if is_clutch_agent(agent) else str(agent.get("name", "Agent"))
+    model_api = (
+        (getattr(model, "api_model", None) or model.name)
+        if is_clutch_agent(agent)
+        else str(agent.get("agentType") or "cli")
+    )
+    assembly = compose_agent_prompt_assembly(
+        agent,
+        model_name=model_name,
+        model_api=model_api,
+        mcp_servers_bound=bool(resolve_agent_mcp_servers(agent)),
+        permission_mode=load_permission_mode(),
+        include_skill_bodies=False,
+    )
+    return {
+        "agent_id": str(agent.get("id", resolved)),
+        "permission_mode": load_permission_mode(),
+        **assembly.summary(),
+    }
+
+
 @router.post("/api/agents")
 async def save_agents_endpoint(body: AgentsSaveRequest) -> dict[str, str]:
     from src.agent_storage import save_agents
