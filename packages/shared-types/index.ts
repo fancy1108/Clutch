@@ -60,10 +60,22 @@ export interface ChatMessage {
   toolSteps?: ToolStep[];
   /** Workspace-relative paths written this turn (D47) — clickable chips → D42 preview. */
   filesChanged?: string[];
+  /** D2/D49 plan card sealed onto the assistant turn (Approve / revise / Cancel). */
+  planCard?: PlanCard;
   codeHighlight?: {
     file: string;
     lineCount: number;
   };
+}
+
+export type PlanCardStatus = 'pending' | 'approved' | 'cancelled' | 'revised';
+
+export interface PlanCard {
+  title: string;
+  steps: string[];
+  summary?: string;
+  status: PlanCardStatus;
+  note?: string;
 }
 
 /** Supported node types in the visual canvas editor. */

@@ -20,6 +20,7 @@ import { USER_CHAT_AVATAR, clutchStore, deleteChatMessage, useClutchState } from
 import { toolStepsFromActivityLogs } from '../services/agentActivitySteps';
 import { AgentLiveActivity } from './AgentLiveActivity';
 import { FilesChangedChips } from './FilesChangedChips';
+import { PlanCardView } from './PlanCardView';
 import { resolveBrandLogoSrc } from '../services/brandLogos';
 import { clutchMarkUrl } from '../assets/brand';
 import { AgentChatAvatar } from './AgentChatAvatar';
@@ -553,6 +554,15 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   const isRunning = clutchStatus === 'running';
   const awaitingHuman = clutchStatus === 'awaiting_human';
   const [hitlBusy, setHitlBusy] = useState(false);
+  const pendingPlanMessage = useMemo(() => {
+    if (!awaitingHuman) return null;
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      const card = messages[i]?.planCard;
+      if (card && card.status === 'pending') return messages[i];
+    }
+    return null;
+  }, [awaitingHuman, messages]);
+  const awaitingPlan = Boolean(pendingPlanMessage);
 
   useEffect(() => {
     if (!awaitingHuman) {
@@ -1197,7 +1207,8 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                           ))}
                         </div>
                       )}
-                      {renderMarkdown(displayText)}
+                      {/* Plan steps live on PlanCardView only — skip duplicate bubble prose. */}
+                      {!msg.planCard && renderMarkdown(displayText)}
                       {!isUser && (() => {
                         const hybridMeta = hybridExecutions?.[msg.id];
                         const executionEvents = hybridMeta?.outputEvents ?? msg.outputEvents;
@@ -1222,6 +1233,9 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                           onOpen={onOpenWorkspaceFile}
                           label={t('Changed files')}
                         />
+                      ) : null}
+                      {!isUser && msg.planCard ? (
+                        <PlanCardView card={msg.planCard} t={t} />
                       ) : null}
                       {msg.codeHighlight && (
                         <div className="mt-3 flex items-center gap-2 py-2 px-3 bg-white/60 rounded-xl border border-outline-variant/30">
@@ -1368,10 +1382,10 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
             <div
               className="flex items-center gap-2 rounded-xl border border-outline-variant/35 bg-white px-2.5 py-1.5 shadow-sm"
               role="group"
-              aria-label={t('Needs approval')}
+              aria-label={awaitingPlan ? t('Awaiting plan approval') : t('Needs approval')}
             >
               <span className="text-[11px] text-on-surface-variant shrink-0 truncate">
-                {t('Needs approval')}
+                {awaitingPlan ? t('Awaiting plan approval') : t('Needs approval')}
               </span>
               <div className="ml-auto flex items-center gap-1.5 shrink-0">
                 <button
@@ -1384,7 +1398,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                   }}
                   className={`${BTN_SM} bg-neutral-900 hover:bg-black text-white border border-neutral-900`}
                 >
-                  {t('Allow')}
+                  {awaitingPlan ? t('Approve plan') : t('Allow')}
                 </button>
                 <button
                   type="button"
@@ -1396,7 +1410,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                   }}
                   className={`${BTN_SM} bg-neutral-100 hover:bg-neutral-200 text-neutral-800 border border-neutral-200/80`}
                 >
-                  {t('Reject')}
+                  {awaitingPlan ? t('Cancel plan') : t('Reject')}
                 </button>
               </div>
             </div>
@@ -1413,7 +1427,9 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                     setHillInstructions('');
                   }
                 }}
-                placeholder={t('Retry with note…')}
+                placeholder={
+                  awaitingPlan ? t('Suggest plan changes…') : t('Retry with note…')
+                }
                 className="min-w-0 flex-1 rounded-lg border border-outline-variant/30 bg-surface-container-low px-2.5 py-1.5 text-[11px] text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-1 focus:ring-neutral-900/15"
               />
               <button
@@ -1432,7 +1448,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                     : 'bg-transparent text-on-surface-variant/40 border border-transparent cursor-not-allowed'
                 }`}
               >
-                {t('Retry')}
+                {awaitingPlan ? t('Revise') : t('Retry')}
               </button>
             </div>
           </div>

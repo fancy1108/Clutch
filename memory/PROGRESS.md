@@ -5,17 +5,21 @@
 
 ## Current Status
 
-- **阶段：** **v1.2.9**；D1+D37+D46+D53 PM ✅；**D47 实现待 PM 验收**
-- **Git：** D53=`9a840e2`；D47 未 commit
+- **阶段：** **v1.2.9**；D1+D37+D46+D53+D47+**D2∥D49(计划)** PM ✅；**下次 D3∥D49 Todo**
+- **Git：** D2∥D49 待 commit
 
 ## Recent Sessions
 
+## 2026-07-24 会话（D2∥D49 PM 通过）
+
+- **验收：** 加登录出计划卡；修改「只做 API」→ 新卡；底部按钮；去重 UI
+- **ROADMAP：** D2 + D49(计划) → ✅
+- **下次：** **D3** Todo + 对话内 Todo 卡（D49 续）
+
 ## 2026-07-24 会话（D47 files_changed 芯片）
 
-- **实现：** seal `filesChanged` 到 assistant 消息；`FilesChangedChips` 点击走 D42 预览
-- **下次：** PM 验收（写出文件 → 气泡芯片 → 预览）→ commit
-
-## 2026-07-24 会话（D53 PM 验收通过）
+- **实现：** seal `filesChanged`；`FilesChangedChips` → D42 预览；Commit `3a9a951`
+- **PM：** 2026-07-24 通过
 
 - **验收：** Agent Manager「运行时提示词分层」可见；Plan/Ask 切换 mode 层；rules 跟工作区
 - **ROADMAP：** D53 → ✅

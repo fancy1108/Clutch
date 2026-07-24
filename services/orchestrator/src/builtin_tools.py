@@ -152,7 +152,57 @@ def list_builtin_tools() -> list[dict[str, Any]]:
                 "required": ["patch"],
             },
         },
+        {
+            "name": "propose_plan",
+            "description": (
+                "REQUIRED for multi-step feature work (add login, new page, scaffold). "
+                "Call this ASAP with title + ordered steps — before writing files and before "
+                "asking which framework to use; put stack defaults in the plan. "
+                "User must Approve / Revise / Cancel in Chat. "
+                "Skip only for trivial Q&A or single-line edits."
+            ),
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "description": "Short plan title (e.g. Add login).",
+                    },
+                    "steps": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Ordered implementation steps (3–8 typical).",
+                    },
+                    "summary": {
+                        "type": "string",
+                        "description": "Optional one-paragraph rationale.",
+                    },
+                },
+                "required": ["title", "steps"],
+            },
+        },
     ]
+
+
+def is_propose_plan_tool(name: str) -> bool:
+    short = name.split("__")[-1].lower().replace("-", "_")
+    return short == "propose_plan"
+
+
+def normalize_plan_args(func_args: dict[str, Any] | None) -> dict[str, Any]:
+    payload = func_args if isinstance(func_args, dict) else {}
+    title = str(payload.get("title") or "Plan").strip() or "Plan"
+    raw_steps = payload.get("steps")
+    steps: list[str] = []
+    if isinstance(raw_steps, list):
+        for item in raw_steps:
+            text = str(item).strip()
+            if text:
+                steps.append(text)
+    elif isinstance(raw_steps, str) and raw_steps.strip():
+        steps = [line.strip(" -*\t") for line in raw_steps.splitlines() if line.strip()]
+    summary = str(payload.get("summary") or "").strip()
+    return {"title": title, "steps": steps, "summary": summary}
 
 
 def execute_builtin_tool(tool_name: str, arguments: dict[str, Any]) -> str:
@@ -163,6 +213,7 @@ def execute_builtin_tool(tool_name: str, arguments: dict[str, Any]) -> str:
         "search_replace": _tool_search_replace,
         "run_terminal_cmd": _tool_run_terminal_cmd,
         "apply_patch": _tool_apply_patch,
+        "propose_plan": _tool_propose_plan,
     }
     handler = handlers.get(tool_name)
     if handler is None:
@@ -171,6 +222,20 @@ def execute_builtin_tool(tool_name: str, arguments: dict[str, Any]) -> str:
         return handler(arguments)
     except Exception as exc:
         return f"Error executing tool: {exc}"
+
+
+def _tool_propose_plan(arguments: dict[str, Any]) -> str:
+    plan = normalize_plan_args(arguments)
+    steps = plan["steps"]
+    numbered = "\n".join(f"{i}. {step}" for i, step in enumerate(steps, 1)) or "(no steps)"
+    summary = plan["summary"]
+    extra = f"\nRationale: {summary}" if summary else ""
+    return (
+        f"Plan approved by the user: {plan['title']}\n"
+        f"Steps:\n{numbered}{extra}\n"
+        "Proceed to implement these steps with clutch-tools. "
+        "Do not call propose_plan again unless the user asks to revise."
+    )
 
 
 def _tool_apply_patch(arguments: dict[str, Any]) -> str:

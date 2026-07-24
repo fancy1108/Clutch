@@ -74,7 +74,7 @@
 - **可见**：本回合 `files_changed` / 写出的报告路径自动变成芯片；点击走现有预览（**DECISIONS D42** 路径预览能力）；可选缩略图。
 - **验收**：Agent 写出 `notes.md` → 气泡旁出现芯片 → 一点打开预览；不必在正文里自己找路径。
 - **编号注意**：本表 **D42** = MCP 真实工具目录 UI；路径预览是仓库已有决策 **DECISIONS D42**，两套编号勿混。
-- **实现笔记**：Sidecar seal `ChatMessage.filesChanged`（与 D46 `toolSteps` 同路径）；FE `FilesChangedChips` → `onOpenWorkspaceFile`；既有 `file_changed` → Changes 面板不变。
+- **实现笔记（PM 2026-07-24 点验通过）**：Sidecar seal `ChatMessage.filesChanged`（与 D46 `toolSteps` 同路径）；FE `FilesChangedChips` → `onOpenWorkspaceFile`；既有 `file_changed` → Changes 面板不变。
 
 #### D48 — 子 Agent 嵌套交互
 - **可见**：自动派 subagent（D10）时，父气泡下出现子任务卡（状态、类型 explore/implement、摘要）；可点开子轨迹或跳到对应 lane/日志；失败可见。
@@ -83,6 +83,7 @@
 #### D49 — 计划 / Todo / 提问嵌在对话流
 - **可见**：D2 计划审批卡、D3 Todo 列表、D4 选择题 **出现在 Chat 时间线**（不只右侧栏或设置）。
 - **验收**：复杂需求 → 对话里直接批准计划；Todo 在对话旁或气泡下勾选变化；歧义题在对话里点选。
+- **实现笔记（计划卡 · PM 2026-07-24 点验通过）**：`propose_plan` → seal `ChatMessage.planCard`；FE `PlanCardView`（步骤展示）+ 底部 Approve / Revise / Cancel；Todo/提问卡随 D3/D4。
 
 #### D50 — 验证报告与 Diff 嵌对话
 - **可见**：D5 验证结论、D6 diff 摘要作为气泡块/可展开卡，而不只是 Terminal 一行。
@@ -220,6 +221,7 @@
 - **可见**：计划预览；批准 / 改意见 / 取消；未批准不改业务文件；简单任务可跳过。
 - **验收**：「加登录」先出计划；批准后才有文件变更。
 - **交互先决**：**D49**（计划卡在对话流）。
+- **实现笔记（PM 2026-07-24 点验通过）**：builtin `propose_plan` 在写文件前 pause；批准后注入 tool result 继续 ReAct；修改意见走 `human_decision` retry；功能类请求注入 D2 reminder；计划正文仅 PlanCard，操作仅底部 dock。
 
 #### D3 — Todo 面板
 - **可见**：待办/进行中/完成；执行中勾选变化；刷新仍在。

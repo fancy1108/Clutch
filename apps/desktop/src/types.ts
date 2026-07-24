@@ -15,6 +15,8 @@ export type {
   OutputEventType,
   PendingHandoffDraft,
   PendingPtyInject,
+  PlanCard,
+  PlanCardStatus,
   PtyLane,
   PtyOutputData,
   PtySessionStatusData,

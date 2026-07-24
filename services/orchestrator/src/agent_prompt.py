@@ -18,6 +18,41 @@ _PLAN_MODE_REMINDER = (
     "writes are blocked until Plan mode is exited."
 )
 
+_FEATURE_PLAN_REMINDER = (
+    "## Reminder: propose_plan required (D2)\n"
+    "The latest user message is a multi-step implementation request.\n"
+    "You MUST call clutch-tools `propose_plan` in this turn BEFORE any "
+    "search_replace / apply_patch / run_terminal_cmd and BEFORE asking the user "
+    "which framework or stack to use.\n"
+    "Put a default stack and assumptions in the plan title/steps/summary "
+    "(e.g. plain HTML+CSS+JS with fake credentials). The user will Approve / "
+    "Revise / Cancel in Chat. At most one quick list_dir/read_file for orientation, "
+    "then propose_plan immediately."
+)
+
+_FEATURE_REQUEST_RE = (
+    r"(加|添加|实现|做一[个個]?|新建|创建|搭建|开发|寫|写一|"
+    r"build|add\b|implement|create\b|scaffold|login|登录|註冊|注册|"
+    r"auth|認證|认证|页面|頁面|feature|功能|模块|模組)"
+)
+
+
+def looks_like_feature_request(text: str) -> bool:
+    """Heuristic for D2: multi-step coding asks should force propose_plan."""
+    import re
+
+    cleaned = (text or "").strip()
+    if len(cleaned) < 4:
+        return False
+    # Trivial Q&A / read-only probes
+    if re.search(r"^(什么|什麼|谁|誰|why|what|who|哪|怎么读|怎麼讀|看看|读一下|讀一下)\b", cleaned, re.I):
+        return False
+    if "?" in cleaned or "？" in cleaned:
+        # Questions about existing code are usually not "build a feature"
+        if not re.search(r"(加|添加|实现|做|新建|创建|build|add|implement|login|登录)", cleaned, re.I):
+            return False
+    return bool(re.search(_FEATURE_REQUEST_RE, cleaned, re.I))
+
 
 @dataclass(frozen=True)
 class PromptLayer:
@@ -127,6 +162,7 @@ def compose_agent_prompt_assembly(
     permission_mode: str | None = None,
     include_skill_bodies: bool = False,
     include_project_rules: bool = True,
+    user_turn_text: str | None = None,
 ) -> PromptAssembly:
     """Build layered prompt (D53). markdownDoc is protocol only — not the whole system."""
     from src.agent_skills import compose_skills_section
@@ -168,6 +204,13 @@ def compose_agent_prompt_assembly(
     mode = (permission_mode or "").strip().lower()
     if mode == "plan":
         layers.append(PromptLayer("mode", _PLAN_MODE_REMINDER))
+    elif (
+        clutch_mcp_path
+        and is_clutch
+        and mcp_servers_bound
+        and looks_like_feature_request(user_turn_text or "")
+    ):
+        layers.append(PromptLayer("mode", _FEATURE_PLAN_REMINDER))
 
     if clutch_mcp_path and is_clutch:
         if not mcp_servers_bound:
@@ -177,6 +220,18 @@ def compose_agent_prompt_assembly(
                     "No MCP tools are bound for this agent in this run. "
                     "You cannot create, modify, or delete files on disk. "
                     "Never claim a file operation succeeded without MCP tool evidence.",
+                )
+            )
+        else:
+            layers.append(
+                PromptLayer(
+                    "tools",
+                    "## Tools\n"
+                    "For multi-step / feature work (add login, new page, scaffold app), "
+                    "call clutch-tools `propose_plan` early — do not interview the user about "
+                    "stack first; put defaults in the plan. Wait for Chat Approve / Revise / "
+                    "Cancel before any write or mutating shell. "
+                    "Skip propose_plan only for trivial Q&A or single-line edits.",
                 )
             )
         skills_block = compose_skills_section(
@@ -198,6 +253,7 @@ def compose_agent_system_prompt(
     clutch_mcp_path: bool = True,
     permission_mode: str | None = None,
     include_skill_bodies: bool = False,
+    user_turn_text: str | None = None,
 ) -> str:
     """Backward-compatible flat system string from layered assembly (D53)."""
     if permission_mode is None:
@@ -215,4 +271,5 @@ def compose_agent_system_prompt(
         clutch_mcp_path=clutch_mcp_path,
         permission_mode=permission_mode,
         include_skill_bodies=include_skill_bodies,
+        user_turn_text=user_turn_text,
     ).as_system_prompt()

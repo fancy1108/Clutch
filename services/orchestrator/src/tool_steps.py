@@ -16,6 +16,7 @@ _KIND_BY_TOOL: dict[str, ToolStepKind] = {
     "search_replace": "edit",
     "apply_patch": "edit",
     "run_terminal_cmd": "execute",
+    "propose_plan": "other",
     "write_file": "edit",
     "edit_file": "edit",
     "create_file": "edit",
@@ -96,6 +97,13 @@ def humanize_tool_step(tool: str, args: dict[str, Any] | None) -> tuple[str, str
     patch = _pick(payload, ("patch",))
     detail = json.dumps(payload, ensure_ascii=False)[:240] if payload else short
 
+    if short in {"propose_plan", "create_plan"}:
+        title = _pick(payload, ("title",)) or "Plan"
+        steps = payload.get("steps")
+        n = len(steps) if isinstance(steps, list) else 0
+        return f"Propose plan: {_compact(title, 36)}", (
+            f"{n} steps" if n else _compact(str(payload.get("summary") or detail), 160)
+        )
     kind = kind_for_tool(short)
     if short == "apply_patch" or (kind == "edit" and patch):
         title, raw = _patch_title(patch or "")

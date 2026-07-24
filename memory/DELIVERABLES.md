@@ -4,6 +4,16 @@
 > **何时写：** 每个**代码 Task** 完成并 commit 后，在 Check-out 追加一节（见 `CLAUDE.md` §Check-out）。  
 > **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。
 
+## Clutch Agent D2∥D49 plan card (`pending`)
+
+| 项目 | 值 |
+|------|-----|
+| **Task** | D2 先计划再动手 + D49 对话内计划卡 |
+| **Commit** | _(filled after commit)_ |
+| **Branch** | `dev` |
+| **PM** | 2026-07-24 验收通过（ROADMAP D2 / D49-计划 ✅） |
+| **下一批** | **D3∥D49 Todo** |
+
 ## Clutch Agent D47 files-changed chips (`3a9a951`)
 
 | 项目 | 值 |
@@ -12,7 +22,8 @@
 | **Commit** | `3a9a951d13574373a895851f5ea8beea4840991e` |
 | **Branch** | `dev` |
 | **Verification** | pre-commit `verify.sh`：build OK；vitest 151；pytest 766+（含 `test_files_changed_d47`）；doc-drift 0 error |
-| **下一批** | PM 验收后标 ROADMAP ✅；再 D2∥D49 |
+| **PM** | 2026-07-24 验收通过（ROADMAP D47 ✅） |
+| **下一批** | **D3∥D49 Todo**（D2∥D49 计划已过） |
 
 ## Clutch Agent D53 layered prompt (`9a840e2`)
 

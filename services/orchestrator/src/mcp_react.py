@@ -466,6 +466,50 @@ def run_mcp_react_loop(
 
                     route = tool_routes.get(func_name)
                     raw_tool_name = route[1] if route else func_name
+                    from src.builtin_tools import is_propose_plan_tool
+
+                    # D2: propose_plan always pauses for in-chat Approve / revise / Cancel (D49).
+                    if is_propose_plan_tool(raw_tool_name) or is_propose_plan_tool(func_name):
+                        from src.tool_steps import make_tool_step
+
+                        step_id = f"tool_{step_idx}"
+                        record_tool_step(
+                            make_tool_step(
+                                tool_alias=func_name,
+                                func_args=func_args,
+                                status="awaiting",
+                                step_idx=step_idx,
+                                step_id=step_id,
+                            )
+                        )
+                        _emit(
+                            logs,
+                            on_log,
+                            f"[{log_prefix}] Step {step_idx + 1}: propose_plan "
+                            f"args={json.dumps(func_args, ensure_ascii=False)[:240]}",
+                        )
+                        _emit(
+                            logs,
+                            on_log,
+                            f"[{log_prefix}] Plan approval required (D2/D49)",
+                        )
+                        return McpRunOutcome(
+                            output="",
+                            logs=logs,
+                            engine_label=engine_label,
+                            approval_required={
+                                "chat_messages": chat_messages,
+                                "tool_call_id": tc_id,
+                                "func_name": func_name,
+                                "func_args": func_args,
+                                "step_idx": step_idx,
+                                "step_id": step_id,
+                                "kind": "plan",
+                            },
+                            files_changed=files_changed or None,
+                            tool_steps=list(collected_steps) or None,
+                        )
+
                     if pause_on_risky and is_risky_mcp_tool(raw_tool_name):
                         # Plan mode: hard-block ALL write/exec tools immediately
                         if permission_mode == "plan":
