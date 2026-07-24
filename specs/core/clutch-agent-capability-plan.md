@@ -273,6 +273,7 @@
 #### D11 — 后台命令
 - **可见**：后台跑、看输出、完成通知、杀掉；前台仍可聊。
 - **验收**：`sleep`/短测后台时还能提问。
+- **实现笔记（待 PM）**：`bg_jobs.py`；`background=true` + list/kill tools；`BackgroundJobsBar`；完成时 Supervisor 提示。
 
 #### D12 — Git + 网页文档
 - **可见**：status/diff；提交需审批；fetch URL 总结；步骤进 D46。

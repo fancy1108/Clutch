@@ -760,6 +760,10 @@ def _subtask_live_patch(
     return {"pending_subtasks": subtasks}
 
 
+def _bg_jobs_live_patch(jobs: list[dict[str, Any]]) -> dict[str, Any]:
+    return {"bg_jobs": list(jobs)}
+
+
 def _sealed_subtasks(
     state: ClutchState,
     *,
@@ -789,6 +793,7 @@ def _merge_patch(state: ClutchState, patch: dict[str, Any]) -> ClutchState:
         "focused_lane_id",
         "pending_tool_steps",
         "pending_subtasks",
+        "bg_jobs",
         "agent_todos",
         "verification_report",
         "diff_summary",
@@ -856,6 +861,31 @@ async def _send_run_completed(websocket: WebSocket, run_id: str, state: ClutchSt
         },
     }
     await websocket.send_text(json.dumps(envelope))
+
+async def _apply_bg_jobs_update(
+    websocket: WebSocket,
+    run_id: str,
+    jobs: list[dict[str, Any]],
+    finished: dict[str, Any] | None = None,
+) -> None:
+    state = _get_or_create_run(run_id)
+    patch: dict[str, Any] = _bg_jobs_live_patch(jobs)
+    if finished and finished.get("status") in ("done", "failed", "killed"):
+        cmd = str(finished.get("title") or finished.get("command", "")).strip()[:80]
+        status = str(finished.get("status") or "done")
+        label = {
+            "done": "finished",
+            "failed": "failed",
+            "killed": "killed",
+        }.get(status, status)
+        text = f"Background job {label}: {cmd or finished.get('id', 'job')}"
+        supervisor = _chat_message("Supervisor", text)
+        patch["messages"] = list(state["messages"]) + [supervisor]
+        await _send_message_event(websocket, run_id, supervisor, "")
+    state = _merge_patch(state, patch)
+    _commit_run_state(run_id, state)
+    await _notify_run_state(websocket, run_id, state, patch)
+
 
 async def _notify_run_state(
     websocket: WebSocket,
@@ -1873,26 +1903,32 @@ async def _llm_chat_reply(
                             asyncio.run_coroutine_threadsafe(emit_subtask(card), loop)
                         )
 
-                outcome = await asyncio.to_thread(
-                    run_mcp_react_loop,
-                    messages=chat_messages,
-                    servers=mcp_servers,
-                    log_prefix="CHAT",
-                    on_log=on_log if emit_log else None,
-                    on_tool_step=on_tool_step if emit_tool_step else None,
-                    on_todos=on_todos if emit_todos else None,
-                    on_verification=on_verification if emit_verification else None,
-                    on_diff_summary=on_diff_summary if emit_diff_summary else None,
-                    on_subtask=on_subtask if emit_subtask else None,
-                    existing_todos=list(state.get("agent_todos") or []),
-                    pause_on_risky=True,
-                    permission_mode=__import__(
-                        "src.preferences_storage", fromlist=["load_permission_mode"]
-                    ).load_permission_mode(),
-                    approved_tool=mcp_approved_tool,
-                    approved_keys=get_approved_mcp_keys(state["run_id"]),
-                    model_id=resolved_model_id,
-                )
+                from src.bg_jobs import bind_bg_job_context, release_bg_job_context
+
+                bg_token = bind_bg_job_context({"run_id": state["run_id"]})
+                try:
+                    outcome = await asyncio.to_thread(
+                        run_mcp_react_loop,
+                        messages=chat_messages,
+                        servers=mcp_servers,
+                        log_prefix="CHAT",
+                        on_log=on_log if emit_log else None,
+                        on_tool_step=on_tool_step if emit_tool_step else None,
+                        on_todos=on_todos if emit_todos else None,
+                        on_verification=on_verification if emit_verification else None,
+                        on_diff_summary=on_diff_summary if emit_diff_summary else None,
+                        on_subtask=on_subtask if emit_subtask else None,
+                        existing_todos=list(state.get("agent_todos") or []),
+                        pause_on_risky=True,
+                        permission_mode=__import__(
+                            "src.preferences_storage", fromlist=["load_permission_mode"]
+                        ).load_permission_mode(),
+                        approved_tool=mcp_approved_tool,
+                        approved_keys=get_approved_mcp_keys(state["run_id"]),
+                        model_id=resolved_model_id,
+                    )
+                finally:
+                    release_bg_job_context(bg_token)
                 for fut in step_futures:
                     await asyncio.wrap_future(fut)
                 if tool_steps_sink is not None:
@@ -4084,6 +4120,8 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
     from src.run_state_store import sync_run_state_from_disk
 
     register_plain_chat_ws(run_id, websocket)
+    from src.bg_jobs import register_bg_jobs_notifier, unregister_bg_jobs_notifier
+
     state = sync_run_state_from_disk(run_id, _get_or_create_run(run_id))
     _run_states[run_id] = state
     _setup_run_log_forwarder(run_id)
@@ -4091,6 +4129,20 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
 
     forwarder = get_forwarder(run_id)
     loop = asyncio.get_running_loop()
+
+    def _bg_jobs_sync_notifier(
+        rid: str,
+        jobs: list[dict[str, Any]],
+        finished: dict[str, Any] | None,
+    ) -> None:
+        if rid != run_id:
+            return
+        asyncio.run_coroutine_threadsafe(
+            _apply_bg_jobs_update(websocket, run_id, jobs, finished),
+            loop,
+        )
+
+    register_bg_jobs_notifier(run_id, _bg_jobs_sync_notifier)
 
     async def ws_log_emit(line: str, node_id: str) -> None:
         await _send_log_event(websocket, run_id, line, node_id=node_id)
@@ -4389,6 +4441,12 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                             node_id=state["active_node_id"],
                             prompt=tr("Checks failed, waiting for human confirmation.", "检查未通过，等待人工确认。"),
                         )
+            elif isinstance(payload, dict) and payload.get("action") == "kill_bg_job":
+                job_id = str(payload.get("job_id") or "").strip()
+                if job_id:
+                    from src.bg_jobs import kill_job
+
+                    kill_job(run_id, job_id)
             elif isinstance(payload, dict) and payload.get("action") == "continue_run":
                 # D9: resume after Stop / loop fuse — enqueue a continue prompt.
                 if state.get("workflow_id"):
@@ -4856,5 +4914,6 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
         )
     finally:
         unregister_plain_chat_ws(run_id)
+        unregister_bg_jobs_notifier(run_id)
         forwarder.detach_ws()
 

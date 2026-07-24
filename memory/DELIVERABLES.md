@@ -4,12 +4,23 @@
 > **何时写：** 每个**代码 Task** 完成并 commit 后，在 Check-out 追加一节（见 `CLAUDE.md` §Check-out）。  
 > **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。
 
-## Clutch Agent D10∥D48 子任务委派 (`pending`)
+## Clutch Agent D11 后台命令 (`pending`)
+
+| 项目 | 值 |
+|------|-----|
+| **Task** | D11 background jobs + Chat job bar |
+| **Commit** | _(填入 commit 后)_ |
+| **Branch** | `dev` |
+| **Verification** | `uv run pytest tests/test_bg_jobs_d11.py -q` → 5 passed |
+| **PM 用例** | `runs/verification/pm-acceptance/D11.md`（待人工点验；ROADMAP 仍 ❌） |
+| **下一批** | **D12 Git + 网页** |
+
+## Clutch Agent D10∥D48 子任务委派 (`25dc5dc`)
 
 | 项目 | 值 |
 |------|-----|
 | **Task** | D10 delegate_subtask + D48 嵌套 Subtasks 卡 |
-| **Commit** | _(填入 commit 后)_ |
+| **Commit** | `25dc5dc` |
 | **Branch** | `dev` |
 | **Verification** | `uv run pytest tests/test_subagent_d10.py tests/test_mcp_react.py -q` |
 | **PM 用例** | `runs/verification/pm-acceptance/D10.md`（待人工点验；ROADMAP 仍 ❌） |

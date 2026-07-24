@@ -42,6 +42,8 @@ export type {
   SubtaskCardStatus,
   SubtaskCardStep,
   SubtaskCardType,
+  BackgroundJob,
+  BackgroundJobStatus,
   WebSocketEnvelope,
   WebSocketEvent,
   WorkflowDef,

@@ -98,6 +98,18 @@ export interface SubtaskCard {
   error?: string;
 }
 
+export type BackgroundJobStatus = 'running' | 'done' | 'failed' | 'killed';
+
+/** D11 — background shell job tracked per Chat run. */
+export interface BackgroundJob {
+  id: string;
+  command: string;
+  title: string;
+  status: BackgroundJobStatus;
+  output?: string;
+  exit_code?: number | null;
+}
+
 export type PlanCardStatus = 'pending' | 'approved' | 'cancelled' | 'revised';
 
 export interface PlanCard {
@@ -388,6 +400,8 @@ export interface ClutchState {
   awaiting_continue?: boolean;
   /** D10/D48: live nested subtask cards while parent turn runs. */
   pending_subtasks?: SubtaskCard[];
+  /** D11: background shell jobs for this Chat session. */
+  bg_jobs?: BackgroundJob[];
   /** CLI provider session id (`claude --resume` / `agy --conversation`). */
   cli_session_id?: string;
   /** Agent id that owns `cli_session_id` (reset when user switches agent). */

@@ -117,7 +117,8 @@ def list_builtin_tools() -> list[dict[str, Any]]:
             "name": "run_terminal_cmd",
             "description": (
                 "Run a shell command in the workspace root. "
-                "Prefer non-interactive commands. Risky — may require human approval."
+                "Prefer non-interactive commands. Risky — may require human approval. "
+                "Set background=true to start a long-running job and return immediately."
             ),
             "inputSchema": {
                 "type": "object",
@@ -127,8 +128,28 @@ def list_builtin_tools() -> list[dict[str, Any]]:
                         "type": "integer",
                         "description": f"Timeout seconds (default {_DEFAULT_CMD_TIMEOUT_S}).",
                     },
+                    "background": {
+                        "type": "boolean",
+                        "description": "When true, start in background and return job_id immediately.",
+                    },
                 },
                 "required": ["command"],
+            },
+        },
+        {
+            "name": "list_background_jobs",
+            "description": "List background shell jobs for the current Chat session.",
+            "inputSchema": {"type": "object", "properties": {}},
+        },
+        {
+            "name": "kill_background_job",
+            "description": "Kill a running background job by job_id.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "job_id": {"type": "string", "description": "Background job id from run_terminal_cmd."},
+                },
+                "required": ["job_id"],
             },
         },
         {
@@ -1069,6 +1090,8 @@ def execute_builtin_tool(tool_name: str, arguments: dict[str, Any]) -> str:
         "grep": _tool_grep,
         "search_replace": _tool_search_replace,
         "run_terminal_cmd": _tool_run_terminal_cmd,
+        "list_background_jobs": _tool_list_background_jobs,
+        "kill_background_job": _tool_kill_background_job,
         "apply_patch": _tool_apply_patch,
         "propose_plan": _tool_propose_plan,
         "todo_write": _tool_todo_write,
@@ -1411,6 +1434,16 @@ def _tool_search_replace(arguments: dict[str, Any]) -> str:
     )
 
 
+def _bg_job_run_id() -> str | None:
+    from src.bg_jobs import get_bg_job_context
+
+    ctx = get_bg_job_context()
+    if not ctx:
+        return None
+    run_id = str(ctx.get("run_id") or "").strip()
+    return run_id or None
+
+
 def _tool_run_terminal_cmd(arguments: dict[str, Any]) -> str:
     from src.workspace import WorkspaceError, require_workspace
 
@@ -1418,14 +1451,37 @@ def _tool_run_terminal_cmd(arguments: dict[str, Any]) -> str:
     if not command:
         return "Error executing tool: run_terminal_cmd requires `command`"
     try:
+        root = require_workspace()
+    except WorkspaceError as exc:
+        return f"Error executing tool: {exc}"
+
+    if bool(arguments.get("background")):
+        run_id = _bg_job_run_id()
+        if not run_id:
+            return (
+                "Error executing tool: background commands require an active Chat run context"
+            )
+        from src.bg_jobs import start_job
+
+        try:
+            job = start_job(run_id, command, str(root))
+        except ValueError as exc:
+            return f"Error executing tool: {exc}"
+        return json.dumps(
+            {
+                "ok": True,
+                "job_id": job["id"],
+                "status": job["status"],
+                "title": job.get("title") or command[:60],
+            },
+            ensure_ascii=False,
+        )
+
+    try:
         timeout = int(arguments.get("timeout_sec") or _DEFAULT_CMD_TIMEOUT_S)
     except (TypeError, ValueError):
         timeout = _DEFAULT_CMD_TIMEOUT_S
     timeout = max(1, min(timeout, 300))
-    try:
-        root = require_workspace()
-    except WorkspaceError as exc:
-        return f"Error executing tool: {exc}"
 
     shell = os.environ.get("SHELL") or ("cmd.exe" if os.name == "nt" else "/bin/bash")
     try:
@@ -1451,3 +1507,28 @@ def _tool_run_terminal_cmd(arguments: dict[str, Any]) -> str:
         combined = combined[:_MAX_CMD_OUTPUT_CHARS] + "\n…[truncated]"
     header = f"exit_code={proc.returncode}\n"
     return header + (combined if combined.strip() else "(no output)")
+
+
+def _tool_list_background_jobs(arguments: dict[str, Any]) -> str:
+    del arguments
+    run_id = _bg_job_run_id()
+    if not run_id:
+        return "Error executing tool: list_background_jobs requires an active Chat run context"
+    from src.bg_jobs import list_jobs
+
+    return json.dumps(list_jobs(run_id), ensure_ascii=False)
+
+
+def _tool_kill_background_job(arguments: dict[str, Any]) -> str:
+    run_id = _bg_job_run_id()
+    if not run_id:
+        return "Error executing tool: kill_background_job requires an active Chat run context"
+    job_id = str(arguments.get("job_id") or "").strip()
+    if not job_id:
+        return "Error executing tool: kill_background_job requires `job_id`"
+    from src.bg_jobs import kill_job
+
+    killed = kill_job(run_id, job_id)
+    if killed is None:
+        return f"Error executing tool: background job `{job_id}` not found"
+    return json.dumps(killed, ensure_ascii=False)

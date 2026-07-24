@@ -15,6 +15,7 @@ import {
   QuestionOption,
   SubtaskCard,
   TodoItem,
+  BackgroundJob,
 } from '../types';
 import { useLanguage } from './LanguageContext';
 import { ChatInputBar, type Attachment, type PendingChatMessage } from './ChatInputBar';
@@ -32,6 +33,7 @@ import { PlanCardView } from './PlanCardView';
 import { QuestionCardView } from './QuestionCardView';
 import { TodoCardView, todosAreComplete } from './TodoCardView';
 import { SubtaskCardView } from './SubtaskCardView';
+import { BackgroundJobsBar } from './BackgroundJobsBar';
 import { VerificationReportCardView } from './VerificationReportCardView';
 import { DiffSummaryCardView } from './DiffSummaryCardView';
 import { resolveBrandLogoSrc } from '../services/brandLogos';
@@ -798,6 +800,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   const pendingToolSteps = clutchOrchestraState.pending_tool_steps;
   const liveTodos = (clutchOrchestraState.agent_todos ?? []) as TodoItem[];
   const liveSubtasks = (clutchOrchestraState.pending_subtasks ?? []) as SubtaskCard[];
+  const bgJobs = (clutchOrchestraState.bg_jobs ?? []) as BackgroundJob[];
   /** Pin live todos while incomplete; unpin when all checked so the sealed card scrolls with history. */
   const pinLiveTodos =
     liveTodos.length > 0 &&
@@ -1664,7 +1667,14 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
             />
           </div>
         ) : workspaceViewMode === 'chat' ? (
-          <div className="w-full flex justify-center">
+          <div className="w-full flex flex-col items-center">
+            <BackgroundJobsBar
+              jobs={bgJobs}
+              t={t}
+              onKillJob={(jobId) => {
+                void clutchStore.send({ action: 'kill_bg_job', job_id: jobId });
+              }}
+            />
             <ChatInputBar
               inputValue={inputValue}
               setInputValue={setInputValue}
