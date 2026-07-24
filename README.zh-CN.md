@@ -17,20 +17,20 @@ Clutch 是一款**桌面应用**（Tauri + React），面向独立开发者和�
 |---|---|
 | **技术栈** | Tauri 2 · React 19 · FastAPI + LangGraph · 本地优先（`localhost:8123`） |
 | **许可证** | 见 [LICENSE](LICENSE) |
-| **当前版本** | [v1.2.8](https://github.com/fancy1108/Clutch/releases/tag/v1.2.8) · [更新日志](CHANGELOG.md#128---2026-07-16) |
+| **当前版本** | [v1.2.9](https://github.com/fancy1108/Clutch/releases/tag/v1.2.9) · [更新日志](CHANGELOG.md#129---2026-07-24) |
 | **贡献者** | 感谢 [@MyloveAless](https://github.com/MyloveAless) 设计「AI 图片生成多 Agent 工作流」并完成端到端验证。 |
 
-### 最新更新（v1.2.8）
+### 最新更新（v1.2.9）
 
-- **多 Agent 工作流硬化：** 端到端修复 check/gate 分支、数据透传和画布兼容性问题 — 一个完整的 7 节点图片生成 SOP 现已可正常运行。
-- **Gate → Agent 数据透明：** Human Gate 和 Check 节点不再将控制信号（"approve"）泄漏给下游 Agent，真实的上游内容可正常穿透。
-- **Agent 并行扇出：** Agent 节点现可扇出至最多 3 个下游节点并行执行。
-- **WebSocket 会话隔离：** 旧工作流的残留消息不再泄漏到新会话中。
-- **工作流 UI 打磨：** Human Gate 明确提示"等待审批"；Check 节点通过时显示"校验通过"；Evaluator 图标统一使用 Rivet 品牌标识。
+- **Coding 发图：** Chat / Terminal OrchestratorBar 可粘贴图片 — 先 multimodal，失败再 OCR/调色板；本地 CLI 注入 `@path` 文件引用。
+- **点击预览：** 工作区路径与附件缩略图可在应用内打开（图片走媒体预览）。
+- **Design 交接打磨：** Spec→UI 默认连续生成；Coding 侧确定性 HTML→React 导出（D39–D41）。
+- **工作区历史稳定：** 路径稳定 project id，重授权后侧栏历史不再孤儿（D43）。
+- **UI 修复：** Thinking 气泡高度、New Design 置顶、Design 迭代遮罩清除。
 
-> **v1.2.6 同时发 macOS + Windows。** macOS：Apple Silicon DMG + 应用内更新。Windows：MSI/NSIS。Sidecar 热更资产另行发布。
+> **v1.2.9 同时发 macOS + Windows。** macOS：Apple Silicon DMG + 应用内更新。Windows：MSI/NSIS。Sidecar 热更资产另行发布。
 
-更早版本（v1.2.2 Windows 同步、v1.2.1 热更客户端、v1.2.0 Design/ZCode 等）：[`CHANGELOG.md`](CHANGELOG.md) · [`docs/releases/`](docs/releases/)。
+更早版本（v1.2.8 工作流硬化、v1.2.7 交互原型等）：[`CHANGELOG.md`](CHANGELOG.md) · [`docs/releases/`](docs/releases/)。
 
 ---
 
@@ -57,7 +57,7 @@ brew install --cask clutch
 irm https://raw.githubusercontent.com/fancy1108/Clutch/main/scripts/install.ps1 | iex
 ```
 
-指定版本：运行前设置 `CLUTCH_VERSION=v1.2.6`（或 `v1.2.5` / `v1.2.4` / `v1.2.3` / `v1.2.2` / `v1.2.1` / `v1.1.1` 安装更早稳定版）。
+指定版本：运行前设置 `CLUTCH_VERSION=v1.2.9`（或 `v1.2.8` / `v1.2.7` / `v1.2.6` 安装更早稳定版）。
 
 详见 [`docs/PACKAGE_MANAGERS.md`](docs/PACKAGE_MANAGERS.md)
 

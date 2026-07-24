@@ -5,26 +5,21 @@
 
 ## Current Status
 
-- **阶段：** **v1.2.7 重新发布中**（2026-07-14）— 同日 5 个 hotfix（pick 修复 + 迭代 page 锁 + 会话历史保护 + 草稿去重只读 + 工具栏）合入 v1.2.7，CHANGELOG / release doc 已补，preflight 已跑；tag `v1.2.7` 将 force-update 到新的 main HEAD
-- **Release：** [v1.2.7](https://github.com/fancy1108/Clutch/releases/tag/v1.2.7) · tag 将被强制更新到 hotfix 后的 commit
-- **Git：** `dev` ahead of main by 6 commits（`ae84a9b` LLM judge）；`dev` 与 `origin/dev` 待同步
-- **Verify：** `./scripts/verify.sh` → 136 vitest + 730 pytest passed（1 pre-existing keychain failure），doc-drift 0
-- **Preflight：** `./scripts/release-preflight.sh v1.2.7` → passed
-- **一键原型：** 全部 Phase 交付完成（IUE → 连线编辑 → 契约落盘 → 代码生成）
-- **LLM Judge：** check 节点支持自然语言 prompt，LLM 读取上游 node_outputs 判定 passed/failed
-- 🔧 **Check/Gate 节点 end 汇聚不兼容修复**（`6ec20b9`）：`getCanvasIncompatibilities` 中 end 入度从 `!== 1` 放宽到 `< 1`，允许多路径汇聚到 end
-- 🔧 **Agent_task 多出边放宽**（`813defa`）：移除 `branching_node` 限制，所有节点类型统一使用 `MAX_BRANCH_OUT=3` 出度上限
+- **阶段：** **v1.2.9 发布准备中**（2026-07-24）— CHANGELOG / `docs/releases/v1.2.9.md` / README EN+ZH / 版本号已升至 1.2.9
+- **Release 目标：** tag `v1.2.9` on `main`（禁止在 `dev` 上打 tag）
+- **Git：** `dev` ahead of `origin/dev`；发版前需 merge `dev` → `main` 再打 tag
+- **Preflight：** 跑 `./scripts/release-preflight.sh v1.2.9`
+- **亮点：** Coding 发图 + 路径预览（D42）、Design handoff/Spec（D39–D41）、工作区稳定 id（D43）
+- **OCR 备注：** `pytesseract`/`Pillow` 已入依赖；系统需 `tesseract` 二进制（`brew install tesseract tesseract-lang`）OCR 才有文本
 
 ## Next Actions
 
+- `./scripts/release-preflight.sh v1.2.9` 通过
 - Push `dev` → `origin/dev`
-- fast-forward `main` 到 `dev` → `git push origin main`
-- force-update `v1.2.7` tag → `git push origin v1.2.7 --force`
-- 重发触发 CI：macOS DMG + Windows MSI/NSIS
-- 发布后同步 Homebrew tap
-- **一键原型 Phase 2：Prototype Runtime 增强**（导航历史、Overlay Context、全局状态机、Mock 拦截）
-- 工作区还有未暂存改动：~~check/gate 节点多 handle 扇出 + edgeWhen 类型变更~~ 已完成（`bec65d6` + `b24442d`）
-- 🔧 **Approval Node 多选保存 422 已修复**（`b24442d`）：routing + schema lookup 同步数组 when
+- Merge `dev` → `main`（用户确认）
+- 在 **`main`** 上 `git tag v1.2.9` + push tag → CI DMG（+ 视策略是否跑 Windows）
+- 发布后 `CLUTCH_VERSION=v1.2.9 ./scripts/sync-homebrew-tap.sh`
+- 可选：Release (updater assets) 工作流
 
 ## Recent Sessions
 

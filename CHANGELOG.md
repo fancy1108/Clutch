@@ -10,10 +10,15 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ## [Unreleased]
 
+## [1.2.9] - 2026-07-24
+
+Feature/patch release — **Coding image paste & click-to-preview**, Design handoff/Spec flow polish, workspace history stability.
+
 ### Added
 
-- **Coding image paste (Chat + Terminal OrchestratorBar):** Clipboard/attach images from Clutch composers (not xterm). Chat always sends multimodal first; on vision soft-refuse / API reject, retries with local OCR/palette analysis. Terminal uploads to `.clutch/attachments/` with `*` gitignore + size-triggered GC; send button Loading during upload/OCR.
+- **Coding image paste (Chat + Terminal OrchestratorBar):** Clipboard/attach images from Clutch composers (not xterm). Chat always sends multimodal first; on vision soft-refuse / API reject, retries with local OCR/palette analysis. Local CLI agents (Mimo / Claude Code, …) get workspace file refs (`@path` / `[file:]`) instead of base64 on argv. Terminal uploads to `.clutch/attachments/` with `*` gitignore + size-triggered GC; send button Loading during upload.
 - **Click-to-preview artifacts:** Chat paths / `[file:]` / `@path` / fenced code blocks open the App preview overlay (large content uses plain `<pre>`; **images open as media**). Terminal xterm + dispatch history linkify paths/filenames with workspace resolve (exact → unique basename fuzzy); missing/ambiguous shows toast. **Terminal Overview** shows attachment image thumbnails on dispatch records (click to enlarge).
+- **Pillow + pytesseract:** Declared orchestrator dependencies for local image analysis / OCR fallback (system `tesseract` binary still required for OCR text).
 
 ### Changed
 
@@ -26,10 +31,11 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 - **Chat Thinking bubble height:** Typing indicator no longer mirrors the last user bubble (image messages made a huge empty box). Uses normal agent-bubble width + `min-h-9` (single-line reply height), not a `w-fit` pill.
 - **Design “New Design” not at top of sidebar:** Clicking New Design reused an old empty draft (kept its `started_at` / history position). Always create a fresh session at the top and delete prior empty New Design drafts.
 - **Design iterate stuck “Generating…” overlay:** Async Edit/Pick iterate left `drawing` true and round pin on after poll reached `ready`, so the artboard kept the spinner and could show stale HTML. Clear overlay + unpin to latest round when the session finishes.
-- **Workspace list / session history desync:** Project ids are now path-stable (`sha256` of resolved path); legacy random ids migrate on load and remap `history.json`. `workspaces.json` uses atomic replace. Default store refuses ephemeral `/tmp`-style authorize (tests must set `CLUTCH_STORAGE_DIR` / `CLUTCH_E2E_SANDBOX`). Desktop E2E passes `CLUTCH_STORAGE_DIR` into `tauri:e2e` so sandboxes cannot wipe `clutch_dev`.
+- **Workspace list / session history desync (D43):** Project ids are now path-stable (`sha256` of resolved path); legacy random ids migrate on load and remap `history.json`. `workspaces.json` uses atomic replace. Default store refuses ephemeral `/tmp`-style authorize (tests must set `CLUTCH_STORAGE_DIR` / `CLUTCH_E2E_SANDBOX`). Desktop E2E passes `CLUTCH_STORAGE_DIR` into `tauri:e2e` so sandboxes cannot wipe `clutch_dev`.
 - **Coding/Design image try-first:** Attached images are always sent to the LLM as multimodal first. Only when the model soft-refuses vision or the API rejects image input do we retry with local OCR/palette analysis (Coding uses a chat-specific fragment without Design hex mandates).
 - **Agnes 2.0 Flash chat vision:** Agnes **chat** models are treated as vision-capable; clipboard pastes are attempted multimodally (no preemptive `data:` downgrade).
 - **Chat vision history:** `_history_for_llm` no longer flattens multimodal user turns to `[image omitted]` when vision is enabled for the turn.
+- **Sidebar session history for all workspaces:** Hydrate/load history for every project in the sidebar, not only the active one.
 
 ## [1.2.8] - 2026-07-16
 

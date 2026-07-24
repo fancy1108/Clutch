@@ -17,20 +17,20 @@ Clutch is a **desktop app** (Tauri + React) for developers and technical operato
 |---|---|
 | **Stack** | Tauri 2 · React 19 · FastAPI + LangGraph · local-first (`localhost:8123`) |
 | **License** | See [LICENSE](LICENSE) |
-| **Latest release** | [v1.2.8](https://github.com/fancy1108/Clutch/releases/tag/v1.2.8) · [Changelog](CHANGELOG.md#128---2026-07-16) |
+| **Latest release** | [v1.2.9](https://github.com/fancy1108/Clutch/releases/tag/v1.2.9) · [Changelog](CHANGELOG.md#129---2026-07-24) |
 | **Contributors** | Thanks to [@MyloveAless](https://github.com/MyloveAless) for the multi-agent image generation workflow design & end-to-end validation. |
 
-### What's new in v1.2.8
+### What's new in v1.2.9
 
-- **Multi-Agent Workflow Hardening:** End-to-end fixes for check/gate branching, data passthrough, and canvas compatibility — a complete 7-node image generation SOP now runs correctly.
-- **Gate → Agent Data Transparency:** Human Gate and Check nodes no longer leak control signals ("approve") to downstream agents; real upstream content passes through.
-- **Agent Fan-Out:** Agent nodes can now fan out to up to 3 downstream nodes for parallel execution.
-- **WebSocket Session Isolation:** Stale messages from previous workflow runs no longer leak into new conversations.
-- **Workflow UI Polish:** Human Gate messages now clearly say "Awaiting approval"; Check nodes show "Checks passed"; Evaluator icons use Rivet branding.
+- **Coding image paste:** Paste images in Chat and Terminal OrchestratorBar — multimodal first, OCR/palette fallback; local CLIs get `@path` file refs.
+- **Click-to-preview:** Workspace paths and attachment thumbnails open in-app (images as media).
+- **Design handoff polish:** Spec→UI continuous by default; deterministic HTML→React export for Coding (D39–D41).
+- **Workspace history stability:** Path-stable project ids so sidebar history cannot orphan after re-authorize (D43).
+- **UI fixes:** Thinking bubble height, New Design at top of sidebar, Design iterate overlay clear.
 
-> **v1.2.7 ships macOS + Windows.** macOS: Apple Silicon DMG + in-app updater. Windows: MSI/NSIS. Sidecar hotpatch assets published separately.
+> **v1.2.9 ships macOS + Windows.** macOS: Apple Silicon DMG + in-app updater. Windows: MSI/NSIS. Sidecar hotpatch assets published separately.
 
-Older releases (v1.2.6 CSP fix, v1.2.5 Design presets, v1.2.4 prototype unlock, …): [`CHANGELOG.md`](CHANGELOG.md) · [`docs/releases/`](docs/releases/).
+Older releases (v1.2.8 workflow hardening, v1.2.7 interactive prototype, …): [`CHANGELOG.md`](CHANGELOG.md) · [`docs/releases/`](docs/releases/).
 
 ---
 
@@ -57,7 +57,7 @@ brew install --cask clutch
 irm https://raw.githubusercontent.com/fancy1108/Clutch/main/scripts/install.ps1 | iex
 ```
 
-Pin a version: `CLUTCH_VERSION=v1.2.8` before running either script (or `v1.2.7` / `v1.2.6` /
+Pin a version: `CLUTCH_VERSION=v1.2.9` before running either script (or `v1.2.8` / `v1.2.7` /
 
 Install channels (maintainers): [`docs/RELEASE_MAINTAINER.md`](docs/RELEASE_MAINTAINER.md)
 
