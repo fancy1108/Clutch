@@ -494,7 +494,7 @@ def run_mcp_react_loop(
 
                     route = tool_routes.get(func_name)
                     raw_tool_name = route[1] if route else func_name
-                    from src.builtin_tools import is_propose_plan_tool
+                    from src.builtin_tools import is_ask_user_question_tool, is_propose_plan_tool
 
                     # D2: propose_plan always pauses for in-chat Approve / revise / Cancel (D49).
                     if is_propose_plan_tool(raw_tool_name) or is_propose_plan_tool(func_name):
@@ -533,6 +533,49 @@ def run_mcp_react_loop(
                                 "step_idx": step_idx,
                                 "step_id": step_id,
                                 "kind": "plan",
+                            },
+                            files_changed=files_changed or None,
+                            tool_steps=list(collected_steps) or None,
+                            todos=latest_todos,
+                        )
+
+                    # D4: ask_user_question pauses for in-chat multiple choice (D49).
+                    if is_ask_user_question_tool(raw_tool_name) or is_ask_user_question_tool(func_name):
+                        from src.tool_steps import make_tool_step
+
+                        step_id = f"tool_{step_idx}"
+                        record_tool_step(
+                            make_tool_step(
+                                tool_alias=func_name,
+                                func_args=func_args,
+                                status="awaiting",
+                                step_idx=step_idx,
+                                step_id=step_id,
+                            )
+                        )
+                        _emit(
+                            logs,
+                            on_log,
+                            f"[{log_prefix}] Step {step_idx + 1}: ask_user_question "
+                            f"args={json.dumps(func_args, ensure_ascii=False)[:240]}",
+                        )
+                        _emit(
+                            logs,
+                            on_log,
+                            f"[{log_prefix}] User question required (D4/D49)",
+                        )
+                        return McpRunOutcome(
+                            output="",
+                            logs=logs,
+                            engine_label=engine_label,
+                            approval_required={
+                                "chat_messages": chat_messages,
+                                "tool_call_id": tc_id,
+                                "func_name": func_name,
+                                "func_args": func_args,
+                                "step_idx": step_idx,
+                                "step_id": step_id,
+                                "kind": "question",
                             },
                             files_changed=files_changed or None,
                             tool_steps=list(collected_steps) or None,

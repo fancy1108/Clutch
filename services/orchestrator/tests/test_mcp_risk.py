@@ -14,6 +14,9 @@ def test_is_risky_mcp_tool_detects_write_and_read() -> None:
     assert not is_risky_mcp_tool("todo_write")
     assert not is_risky_mcp_tool("clutch-tools__todo_write")
     assert not is_risky_mcp_tool("propose_plan")
+    # D4: ask_user_question has its own pause path — not the generic risky gate
+    assert not is_risky_mcp_tool("ask_user_question")
+    assert not is_risky_mcp_tool("clutch-tools__ask_user_question")
 
 
 def test_extract_mcp_file_path_reads_path_argument() -> None:

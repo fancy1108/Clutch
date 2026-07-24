@@ -1030,6 +1030,15 @@ function MainLayout() {
     setRightTab('overview');
   };
 
+  const handleAnswerQuestion = (option: { id: string; label: string }) => {
+    void clutchStore.send({
+      action: 'human_decision',
+      decision: 'approve',
+      instructions: JSON.stringify({ id: option.id, label: option.label }),
+    });
+    setRightTab('overview');
+  };
+
   // Permission mode (persisted on backend)
   const [permissionMode, setPermissionMode] = useState<PermissionMode>('ask');
 
@@ -2043,6 +2052,7 @@ function MainLayout() {
                 onApprove={handleApprove}
                 onReject={handleReject}
                 onRetryWithInstructions={handleRetryWithInstructions}
+                onAnswerQuestion={handleAnswerQuestion}
                 workspaceAuthorized={Boolean(workspace)}
                 onPickWorkspace={() => { void handlePickWorkspace(); }}
                 onOpenWorkflows={() => setView('workflows')}

@@ -1,9 +1,15 @@
 /**
  * D49 — in-chat plan card (D2). Actions live on the Chat dock only.
+ * Chrome shared with Question/Todo — docs/UI_UX_GUIDELINES.md §4.1.
  */
 import React from 'react';
-import { LegacyIcon } from './ui/LegacyIcon';
 import type { PlanCard as PlanCardData } from '../types';
+import {
+  CHAT_AGENT_CARD,
+  ChatAgentCardHeader,
+  ChatAgentCardStatus,
+  type ChatCardStatusTone,
+} from './chatAgentCard';
 
 /** Strip model-supplied "1." / "1)" (repeat) so UI does not show "1. 1. …". */
 export function stripPlanStepIndex(step: string): string {
@@ -16,6 +22,13 @@ export function stripPlanStepIndex(step: string): string {
   return cleaned || step.trim();
 }
 
+function statusTone(status: PlanCardData['status']): ChatCardStatusTone {
+  if (status === 'approved') return 'success';
+  if (status === 'cancelled') return 'danger';
+  if (status === 'revised') return 'muted';
+  return 'pending';
+}
+
 export function PlanCardView({
   card,
   t,
@@ -24,6 +37,7 @@ export function PlanCardView({
   t: (key: string) => string;
 }) {
   const status = card.status;
+  const pending = status === 'pending';
   const statusLabel =
     status === 'approved'
       ? t('Plan approved')
@@ -34,26 +48,28 @@ export function PlanCardView({
           : t('Awaiting plan approval');
 
   return (
-    <div
-      className="mt-2 rounded-xl border border-outline-variant/40 bg-white/80 overflow-hidden"
-      data-testid="plan-card"
-      data-status={status}
-    >
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-outline-variant/25 bg-surface-container-low/80">
-        <LegacyIcon name="checklist" className="text-[16px] text-primary flex-shrink-0" />
-        <span className="text-[12px] font-bold text-on-surface truncate flex-1">{card.title}</span>
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-on-surface-variant/70 shrink-0">
-          {statusLabel}
-        </span>
-      </div>
+    <div className={CHAT_AGENT_CARD} data-testid="plan-card" data-status={status}>
+      <ChatAgentCardHeader
+        icon="checklist"
+        title={card.title}
+        status={<ChatAgentCardStatus tone={statusTone(status)}>{statusLabel}</ChatAgentCardStatus>}
+      />
       {card.summary ? (
         <p className="px-3 pt-2 text-[11px] text-on-surface-variant leading-relaxed">{card.summary}</p>
       ) : null}
+      {pending ? (
+        <p className="px-3 pt-2 text-[11px] text-on-surface-variant leading-relaxed">
+          {t('Approve, revise, or cancel in the bar below')}
+        </p>
+      ) : null}
       {/* Manual indices — avoid CSS list-decimal doubling model-supplied "1." */}
-      <ol className="px-3 py-2 space-y-1 list-none">
+      <ol className="px-3 py-2.5 space-y-1.5 list-none">
         {card.steps.map((step, index) => (
-          <li key={`${index}-${step.slice(0, 24)}`} className="text-[12px] text-on-surface leading-snug flex gap-2">
-            <span className="tabular-nums text-on-surface-variant/70 shrink-0 w-4 text-right">
+          <li
+            key={`${index}-${step.slice(0, 24)}`}
+            className="text-[12px] text-on-surface leading-snug flex gap-2"
+          >
+            <span className="tabular-nums font-mono text-[11px] text-on-surface-variant/70 shrink-0 w-4 text-right">
               {index + 1}.
             </span>
             <span className="min-w-0 flex-1">{stripPlanStepIndex(step)}</span>
@@ -61,7 +77,7 @@ export function PlanCardView({
         ))}
       </ol>
       {card.note ? (
-        <p className="px-3 pb-2 text-[11px] text-on-surface-variant italic">{card.note}</p>
+        <p className="px-3 pb-3 text-[11px] text-on-surface-variant italic">{card.note}</p>
       ) : null}
     </div>
   );

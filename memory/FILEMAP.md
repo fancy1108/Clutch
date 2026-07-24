@@ -140,6 +140,8 @@
 | Chat 变更文件芯片（D47） | `components/FilesChangedChips.tsx` |
 | Chat 计划卡（D2/D49） | `components/PlanCardView.tsx` · builtin `propose_plan` |
 | Chat Todo 卡（D3/D49） | `components/TodoCardView.tsx` · builtin `todo_write` |
+| Chat 提问卡（D4/D49） | `components/QuestionCardView.tsx` · builtin `ask_user_question` |
+| Chat Agent 卡壳（共享） | `components/chatAgentCard.tsx` |
 | Sidecar 结构化 tool steps（D46） | `services/orchestrator/src/tool_steps.py` |
 | Chat markdown（fence / 路径预览） | `components/chatContentRender.tsx` · `services/workspacePathLinks.ts` |
 | Coding 附件上传 / 路径 resolve API | `services/workspaceApi.ts` → `POST /api/workspace/attachments` · `GET /api/workspace/file/resolve`；后端 `workspace_attachments.py` |

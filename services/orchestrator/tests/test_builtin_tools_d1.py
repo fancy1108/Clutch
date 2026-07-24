@@ -37,6 +37,7 @@ def test_list_builtin_tools_includes_core_set() -> None:
         "apply_patch",
         "propose_plan",
         "todo_write",
+        "ask_user_question",
     }
 
 

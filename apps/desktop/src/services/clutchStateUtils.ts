@@ -52,6 +52,7 @@ export function mergeMessageFields(existing: ChatMessage, incoming: ChatMessage)
     filesChanged: incoming.filesChanged ?? existing.filesChanged,
     planCard: incoming.planCard ?? existing.planCard,
     todoList: incoming.todoList ?? existing.todoList,
+    questionCard: incoming.questionCard ?? existing.questionCard,
   };
 }
 

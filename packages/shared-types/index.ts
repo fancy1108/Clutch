@@ -64,6 +64,8 @@ export interface ChatMessage {
   planCard?: PlanCard;
   /** D3/D49 todo checklist for this turn (also mirrored on ClutchState.agent_todos). */
   todoList?: TodoItem[];
+  /** D4/D49 multiple-choice question card. */
+  questionCard?: QuestionCard;
   codeHighlight?: {
     file: string;
     lineCount: number;
@@ -86,6 +88,23 @@ export interface TodoItem {
   id: string;
   content: string;
   status: TodoItemStatus;
+}
+
+export type QuestionCardStatus = 'pending' | 'answered' | 'cancelled';
+
+export interface QuestionOption {
+  id: string;
+  label: string;
+}
+
+export interface QuestionCard {
+  question: string;
+  options: QuestionOption[];
+  status: QuestionCardStatus;
+  allowCustom?: boolean;
+  selectedId?: string;
+  selectedLabel?: string;
+  note?: string;
 }
 
 /** Supported node types in the visual canvas editor. */

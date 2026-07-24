@@ -33,6 +33,9 @@ _NON_RISKY_BUILTINS = frozenset(
         "write_todos",
         "update_todos",
         "propose_plan",  # own D2 pause path in mcp_react
+        "ask_user_question",  # own D4 pause path in mcp_react
+        "ask_question",
+        "user_question",
     }
 )
 

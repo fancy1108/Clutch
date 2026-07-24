@@ -236,6 +236,9 @@ def compose_agent_prompt_assembly(
                     "Call `todo_write` only when the list or a status changes — do not spam it. "
                     "When work is done, mark todos completed and reply in plain text; "
                     "do not keep calling tools after the goal is met. "
+                    "When the user leaves a real fork unspecified (e.g. Redis vs Memcached "
+                    "for cache), call `ask_user_question` with 2–5 short options — do not "
+                    "interview in free prose. Skip asking when the request is already clear. "
                     "Skip propose_plan only for trivial Q&A or single-line edits.",
                 )
             )

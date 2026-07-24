@@ -5,10 +5,21 @@
 
 ## Current Status
 
-- **阶段：** **v1.2.9**；D3∥D49 Todo PM ✅；**下一批 D4∥D49 结构化提问**
-- **Git：** D3=`4d6f6ef`
+- **阶段：** **v1.2.9**；**D4∥D49 结构化提问 PM ✅**；下一批 **D5∥D50**
+- **Git：** D3=`4d6f6ef`；D4 待本会话 commit
 
 ## Recent Sessions
+
+## 2026-07-24 会话（D4 结构化提问 PM 通过）
+
+- **实现：** `ask_user_question` + QuestionCard + 共享 `chatAgentCard`（Plan/Todo 对齐 UI_UX）；选项可点；路径 Redis→health→plan 一致
+- **PM：** 2026-07-24 通过
+- **下次：** commit → D5∥D50 自检报告
+
+## 2026-07-24 会话（D4 结构化提问实现）
+
+- **实现：** `ask_user_question` + pause `kind:question` + seal `questionCard` + `QuestionCardView`（选项点击）+ dock Cancel/自定义；非 risky 门
+- **下次：** PM 验收（加缓存 → 选 Redis）→ commit → D5∥D50
 
 ## 2026-07-24 会话（D3 Todo PM 通过）
 

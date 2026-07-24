@@ -4,11 +4,16 @@
 import React from 'react';
 import { LegacyIcon } from './ui/LegacyIcon';
 import type { TodoItem } from '../types';
+import {
+  CHAT_AGENT_CARD,
+  CHAT_AGENT_CARD_LIVE,
+  ChatAgentCardHeader,
+} from './chatAgentCard';
 
 function statusIcon(status: TodoItem['status']): string {
   if (status === 'completed') return 'check_circle';
-  if (status === 'in_progress') return 'pending';
-  return 'radio_button_unchecked';
+  if (status === 'in_progress') return 'progress_activity';
+  return 'check_box_outline_blank';
 }
 
 function statusClass(status: TodoItem['status']): string {
@@ -31,18 +36,20 @@ export function TodoCardView({
 
   return (
     <div
-      className={`${live ? 'mb-3' : 'mt-2'} rounded-xl border border-outline-variant/40 bg-white/80 overflow-hidden`}
+      className={live ? CHAT_AGENT_CARD_LIVE : CHAT_AGENT_CARD}
       data-testid="todo-card"
       data-live={live ? 'true' : 'false'}
     >
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-outline-variant/25 bg-surface-container-low/80">
-        <LegacyIcon name="checklist" className="text-[16px] text-primary flex-shrink-0" />
-        <span className="text-[12px] font-bold text-on-surface flex-1">{t('Todos')}</span>
-        <span className="text-[10px] font-semibold text-on-surface-variant/70">
-          {done}/{todos.length}
-        </span>
-      </div>
-      <ul className="px-3 py-2 space-y-1.5">
+      <ChatAgentCardHeader
+        icon="checklist"
+        title={t('Todos')}
+        status={
+          <span className="text-[10px] font-semibold tabular-nums font-mono text-on-surface-variant/70">
+            {done}/{todos.length}
+          </span>
+        }
+      />
+      <ul className="px-3 py-2.5 space-y-1.5">
         {todos.map((item) => (
           <li key={item.id} className="flex items-start gap-2 text-[12px] leading-snug">
             <LegacyIcon

@@ -859,6 +859,7 @@ def _chat_message(
     files_changed: list[str] | None = None,
     plan_card: dict[str, Any] | None = None,
     todo_list: list[dict[str, Any]] | None = None,
+    question_card: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "id": msg_id or f"msg_{uuid.uuid4().hex[:8]}",
@@ -886,6 +887,9 @@ def _chat_message(
     if todo_list:
         # D3/D49: todo checklist sealed onto the assistant turn.
         payload["todoList"] = todo_list
+    if question_card is not None:
+        # D4/D49: multiple-choice question card.
+        payload["questionCard"] = question_card
     return payload
 
 
@@ -1019,13 +1023,41 @@ def _is_plan_pause(mcp_pause: dict[str, Any]) -> bool:
     return is_propose_plan_tool(str(mcp_pause.get("func_name") or ""))
 
 
+def _is_question_pause(mcp_pause: dict[str, Any]) -> bool:
+    from src.builtin_tools import is_ask_user_question_tool
+
+    if str(mcp_pause.get("kind") or "") == "question":
+        return True
+    return is_ask_user_question_tool(str(mcp_pause.get("func_name") or ""))
+
+
+def _mcp_pause_gate_line(mcp_pause: dict[str, Any]) -> str:
+    name = mcp_pause.get("func_name")
+    if _is_plan_pause(mcp_pause):
+        return f"[CHAT] Awaiting plan approval: {name}"
+    if _is_question_pause(mcp_pause):
+        return f"[CHAT] Awaiting answer for question: {name}"
+    return f"[CHAT] Awaiting approval for MCP tool: {name}"
+
+
+def _mcp_pause_human_prompt(mcp_pause: dict[str, Any]) -> str:
+    if _is_plan_pause(mcp_pause):
+        return tr("Approve the proposed plan to continue.", "请批准计划后继续执行。")
+    if _is_question_pause(mcp_pause):
+        return tr("Choose an option to continue.", "请选择一个选项以继续。")
+    return tr(
+        f"Approve MCP tool call: {mcp_pause['func_name']}",
+        f"请审批 MCP 工具调用：{mcp_pause['func_name']}",
+    )
+
+
 def _messages_for_mcp_pause(
     messages: list[dict[str, Any]],
     mcp_pause: dict[str, Any],
     *,
     reply_label: str,
 ) -> tuple[list[dict[str, Any]], dict[str, Any], bool]:
-    """Append Supervisor gate or D49 plan card for an MCP/tool pause.
+    """Append Supervisor gate, D49 plan card, or D49 question card for a pause.
 
     Returns (messages, pause_msg, created).
     """
@@ -1040,15 +1072,28 @@ def _messages_for_mcp_pause(
         }
         if plan["summary"]:
             card["summary"] = plan["summary"]
-        # Body stays empty — steps live only on planCard.
-        # Do not seal toolSteps here: live activity already shows them; sealing
-        # frozen "Awaiting" steps under the plan card doubles the trail.
         plan_msg = _chat_message(
             reply_label,
             "",
             plan_card=card,
         )
         return [*messages, plan_msg], plan_msg, True
+    if _is_question_pause(mcp_pause):
+        from src.builtin_tools import normalize_question_args
+
+        q = normalize_question_args(dict(mcp_pause.get("func_args") or {}))
+        card = {
+            "question": q["question"],
+            "options": q["options"],
+            "status": "pending",
+            "allowCustom": q["allow_custom"],
+        }
+        question_msg = _chat_message(
+            reply_label,
+            "",
+            question_card=card,
+        )
+        return [*messages, question_msg], question_msg, True
     return _supervisor_gate_messages(
         messages,
         str(mcp_pause["func_name"]),
@@ -1070,6 +1115,28 @@ def _patch_plan_card_status(
             if note:
                 next_card["note"] = note
             updated[idx] = {**updated[idx], "planCard": next_card}
+            break
+    return updated
+
+
+def _patch_question_card_status(
+    messages: list[dict[str, Any]],
+    *,
+    status: str,
+    selected: dict[str, str] | None = None,
+    note: str | None = None,
+) -> list[dict[str, Any]]:
+    updated = list(messages)
+    for idx in range(len(updated) - 1, -1, -1):
+        card = updated[idx].get("questionCard")
+        if isinstance(card, dict) and card.get("status") == "pending":
+            next_card = {**card, "status": status}
+            if selected:
+                next_card["selectedId"] = selected.get("id") or ""
+                next_card["selectedLabel"] = selected.get("label") or ""
+            if note:
+                next_card["note"] = note
+            updated[idx] = {**updated[idx], "questionCard": next_card}
             break
     return updated
 
@@ -1741,7 +1808,11 @@ async def _handle_plain_chat_mcp_decision(
     decision: str,
     instructions: str = "",
 ) -> ClutchState:
-    from src.builtin_tools import is_propose_plan_tool
+    from src.builtin_tools import (
+        is_ask_user_question_tool,
+        is_propose_plan_tool,
+        parse_question_selection,
+    )
     from src.mcp_pending import get_pending, pop_pending, record_mcp_approval
 
     pending = get_pending(run_id)
@@ -1749,9 +1820,14 @@ async def _handle_plain_chat_mcp_decision(
         return state
 
     is_plan = is_propose_plan_tool(pending.func_name)
+    is_question = is_ask_user_question_tool(pending.func_name)
     normalized = (decision or "").strip().lower()
     if normalized == "retry":
         normalized = "revise"
+
+    # Free-text on a question card = the user's custom answer (continue).
+    if is_question and normalized == "revise":
+        normalized = "approve"
 
     if is_plan and normalized == "revise":
         pop_pending(run_id)
@@ -1875,6 +1951,15 @@ async def _handle_plain_chat_mcp_decision(
                 tr("Plan cancelled by supervisor.", "监督者已取消计划。"),
             )
             log_line = tagged(TAG_HUMAN, f"Plan {pending.func_name} cancelled")
+        elif is_question:
+            messages = _patch_question_card_status(
+                list(state["messages"]), status="cancelled"
+            )
+            supervisor = _chat_message(
+                "Supervisor",
+                tr("Question cancelled by supervisor.", "监督者已取消提问。"),
+            )
+            log_line = tagged(TAG_HUMAN, f"Question {pending.func_name} cancelled")
         else:
             messages = list(state["messages"])
             supervisor = _chat_message(
@@ -1899,13 +1984,22 @@ async def _handle_plain_chat_mcp_decision(
         return state
 
     pop_pending(run_id)
-    if not is_plan:
+    if not is_plan and not is_question:
         record_mcp_approval(run_id, pending.func_name, pending.func_args)
-    messages = (
-        _patch_plan_card_status(list(state["messages"]), status="approved")
-        if is_plan
-        else list(state["messages"])
-    )
+    question_selection: dict[str, str] | None = None
+    if is_question:
+        question_selection = parse_question_selection(
+            instructions, dict(pending.func_args or {})
+        )
+        messages = _patch_question_card_status(
+            list(state["messages"]),
+            status="answered",
+            selected=question_selection,
+        )
+    elif is_plan:
+        messages = _patch_plan_card_status(list(state["messages"]), status="approved")
+    else:
+        messages = list(state["messages"])
     state = _merge_patch(
         state,
         {
@@ -1946,10 +2040,13 @@ async def _handle_plain_chat_mcp_decision(
         _commit_run_state(run_id, state)
         await _notify_run_state(websocket, run_id, state, {"agent_todos": list(todos)})
 
+    resume_args = dict(pending.func_args or {})
+    if question_selection is not None:
+        resume_args["selected"] = question_selection
     approved_tool = {
         "tool_call_id": pending.tool_call_id,
         "func_name": pending.func_name,
-        "func_args": pending.func_args,
+        "func_args": resume_args,
         "step_idx": pending.step_idx,
         "step_id": pending.step_id or f"tool_{pending.step_idx}",
     }
@@ -2043,11 +2140,7 @@ async def _finish_plain_chat_after_llm(
             ),
         )
         is_plan = _is_plan_pause(mcp_pause)
-        gate_line = (
-            f"[CHAT] Awaiting plan approval: {mcp_pause.get('func_name')}"
-            if is_plan
-            else f"[CHAT] Awaiting approval for MCP tool: {mcp_pause['func_name']}"
-        )
+        gate_line = _mcp_pause_gate_line(mcp_pause)
         pause_messages, pause_msg, pause_created = _messages_for_mcp_pause(
             list(state["messages"]),
             mcp_pause,
@@ -2074,15 +2167,9 @@ async def _finish_plain_chat_after_llm(
                 await _send_log_event(websocket, run_id, log, node_id="")
         await _send_log_event(websocket, run_id, gate_line, node_id="")
         await _notify_run_state(websocket, run_id, state, pause_patch)
-        prompt = (
-            tr("Approve the proposed plan to continue.", "请批准计划后继续执行。")
-            if is_plan
-            else tr(
-                f"Approve MCP tool call: {mcp_pause['func_name']}",
-                f"请审批 MCP 工具调用：{mcp_pause['func_name']}",
-            )
+        await _send_human_required(
+            websocket, run_id, node_id="", prompt=_mcp_pause_human_prompt(mcp_pause)
         )
-        await _send_human_required(websocket, run_id, node_id="", prompt=prompt)
         return state
 
     sealed_steps = _sealed_tool_steps(state, sink=tool_steps_sink)
@@ -2589,11 +2676,7 @@ async def _handle_plain_chat(
                 step_id=str(mcp_pause.get("step_id") or ""),
             ),
         )
-        gate_line = (
-            f"[CHAT] Awaiting plan approval: {mcp_pause.get('func_name')}"
-            if _is_plan_pause(mcp_pause)
-            else f"[CHAT] Awaiting approval for MCP tool: {mcp_pause['func_name']}"
-        )
+        gate_line = _mcp_pause_gate_line(mcp_pause)
         pause_messages, pause_msg, pause_created = _messages_for_mcp_pause(
             list(state["messages"]),
             mcp_pause,
@@ -2623,14 +2706,7 @@ async def _handle_plain_chat(
             websocket,
             run_id,
             node_id="",
-            prompt=(
-                tr("Approve the proposed plan to continue.", "请批准计划后继续执行。")
-                if _is_plan_pause(mcp_pause)
-                else tr(
-                    f"Approve MCP tool call: {mcp_pause['func_name']}",
-                    f"请审批 MCP 工具调用：{mcp_pause['func_name']}",
-                )
-            ),
+            prompt=_mcp_pause_human_prompt(mcp_pause),
         )
         return state
 
@@ -3050,11 +3126,7 @@ async def _handle_flow_refine_message(
                 step_id=str(mcp_pause.get("step_id") or ""),
             ),
         )
-        gate_line = (
-            f"[CHAT] Awaiting plan approval: {mcp_pause.get('func_name')}"
-            if _is_plan_pause(mcp_pause)
-            else f"[CHAT] Awaiting approval for MCP tool: {mcp_pause['func_name']}"
-        )
+        gate_line = _mcp_pause_gate_line(mcp_pause)
         pause_messages, pause_msg, pause_created = _messages_for_mcp_pause(
             list(state["messages"]),
             mcp_pause,

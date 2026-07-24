@@ -83,7 +83,7 @@
 #### D49 — 计划 / Todo / 提问嵌在对话流
 - **可见**：D2 计划审批卡、D3 Todo 列表、D4 选择题 **出现在 Chat 时间线**（不只右侧栏或设置）。
 - **验收**：复杂需求 → 对话里直接批准计划；Todo 在对话旁或气泡下勾选变化；歧义题在对话里点选。
-- **实现笔记（计划卡 · PM 2026-07-24 点验通过）**：`propose_plan` → seal `ChatMessage.planCard`；FE `PlanCardView`（步骤展示）+ 底部 Approve / Revise / Cancel；Todo/提问卡随 D3/D4。
+- **实现笔记（计划卡 · PM 2026-07-24 点验通过）**：`propose_plan` → seal `ChatMessage.planCard`；FE `PlanCardView`（步骤展示）+ 底部 Approve / Revise / Cancel；Todo 卡随 D3；提问卡随 D4。
 
 #### D50 — 验证报告与 Diff 嵌对话
 - **可见**：D5 验证结论、D6 diff 摘要作为气泡块/可展开卡，而不只是 Terminal 一行。
@@ -233,6 +233,7 @@
 - **可见**：选择题卡；答完按选择继续；明确需求不瞎问。
 - **验收**：「加缓存」弹出选项；选 Redis 后路径一致。
 - **交互先决**：**D49**。
+- **实现笔记（PM 2026-07-24 点验通过）**：builtin `ask_user_question` → pause `kind: question` → seal `ChatMessage.questionCard`；FE `QuestionCardView`（可点选项）+ 共享 `chatAgentCard` 与 Plan/Todo 对齐 UI_UX_GUIDELINES；dock Cancel / 自定义；选完 resume `selected`；**不走**通用 MCP risky Allow 门。
 
 #### D5 — 做完自检报告
 - **可见**：验证步骤+通过/失败结论；失败可操作；Todo 未完不谎称完成。

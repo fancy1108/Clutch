@@ -219,6 +219,41 @@ def list_builtin_tools() -> list[dict[str, Any]]:
                 "required": ["todos"],
             },
         },
+        {
+            "name": "ask_user_question",
+            "description": (
+                "Ask the user a multiple-choice question in Chat when a real fork exists "
+                "(e.g. Redis vs Memcached for cache) and the user did not already specify. "
+                "Do NOT use for trivia or when the plan already has a clear default. "
+                "Pause until the user picks an option (or types a custom answer)."
+            ),
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "question": {
+                        "type": "string",
+                        "description": "Clear question shown on the Chat card.",
+                    },
+                    "options": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {"type": "string"},
+                                "label": {"type": "string"},
+                            },
+                            "required": ["label"],
+                        },
+                        "description": "2–5 choices (short labels).",
+                    },
+                    "allow_custom": {
+                        "type": "boolean",
+                        "description": "Allow a free-text answer from the dock (default true).",
+                    },
+                },
+                "required": ["question", "options"],
+            },
+        },
     ]
 
 
@@ -230,6 +265,11 @@ def is_propose_plan_tool(name: str) -> bool:
 def is_todo_write_tool(name: str) -> bool:
     short = name.split("__")[-1].lower().replace("-", "_")
     return short in {"todo_write", "write_todos", "update_todos"}
+
+
+def is_ask_user_question_tool(name: str) -> bool:
+    short = name.split("__")[-1].lower().replace("-", "_")
+    return short in {"ask_user_question", "ask_question", "user_question"}
 
 
 _TODO_STATUSES = frozenset({"pending", "in_progress", "completed"})
@@ -323,6 +363,69 @@ def normalize_plan_args(func_args: dict[str, Any] | None) -> dict[str, Any]:
     return {"title": title, "steps": steps, "summary": summary}
 
 
+def normalize_question_args(func_args: dict[str, Any] | None) -> dict[str, Any]:
+    payload = func_args if isinstance(func_args, dict) else {}
+    question = str(payload.get("question") or payload.get("prompt") or "").strip()
+    raw_opts = payload.get("options")
+    options: list[dict[str, str]] = []
+    if isinstance(raw_opts, list):
+        for idx, item in enumerate(raw_opts):
+            if isinstance(item, str):
+                label = item.strip()
+                if not label:
+                    continue
+                options.append({"id": f"opt_{idx + 1}", "label": label})
+            elif isinstance(item, dict):
+                label = str(item.get("label") or item.get("text") or item.get("title") or "").strip()
+                if not label:
+                    continue
+                oid = str(item.get("id") or f"opt_{idx + 1}").strip() or f"opt_{idx + 1}"
+                options.append({"id": oid, "label": label})
+    allow_custom = payload.get("allow_custom")
+    if allow_custom is None:
+        allow_custom = True
+    return {
+        "question": question or "Please choose an option",
+        "options": options,
+        "allow_custom": bool(allow_custom),
+    }
+
+
+def parse_question_selection(
+    instructions: str,
+    func_args: dict[str, Any] | None,
+) -> dict[str, str]:
+    """Map human_decision instructions to {id, label}."""
+    normalized = normalize_question_args(func_args)
+    options = normalized["options"]
+    raw = (instructions or "").strip()
+    if raw:
+        try:
+            parsed = json.loads(raw)
+            if isinstance(parsed, dict):
+                label = str(parsed.get("label") or parsed.get("text") or "").strip()
+                oid = str(parsed.get("id") or "").strip()
+                if label or oid:
+                    if not label and oid:
+                        for opt in options:
+                            if opt["id"] == oid:
+                                label = opt["label"]
+                                break
+                        label = label or oid
+                    if not oid:
+                        oid = next((o["id"] for o in options if o["label"] == label), f"custom_{label[:24]}")
+                    return {"id": oid, "label": label}
+        except json.JSONDecodeError:
+            pass
+        for opt in options:
+            if opt["id"] == raw or opt["label"] == raw:
+                return dict(opt)
+        return {"id": "custom", "label": raw}
+    if options:
+        return dict(options[0])
+    return {"id": "custom", "label": "(no answer)"}
+
+
 def execute_builtin_tool(tool_name: str, arguments: dict[str, Any]) -> str:
     handlers = {
         "read_file": _tool_read_file,
@@ -333,6 +436,7 @@ def execute_builtin_tool(tool_name: str, arguments: dict[str, Any]) -> str:
         "apply_patch": _tool_apply_patch,
         "propose_plan": _tool_propose_plan,
         "todo_write": _tool_todo_write,
+        "ask_user_question": _tool_ask_user_question,
     }
     handler = handlers.get(tool_name)
     if handler is None:
@@ -351,6 +455,31 @@ def _tool_todo_write(arguments: dict[str, Any]) -> str:
         f"- [{t['status']}] {t['id']}: {t['content']}" for t in todos
     ]
     return f"Updated {len(todos)} todo(s):\n" + "\n".join(lines)
+
+
+def _tool_ask_user_question(arguments: dict[str, Any]) -> str:
+    q = normalize_question_args(arguments)
+    selected = arguments.get("selected")
+    if isinstance(selected, dict):
+        label = str(selected.get("label") or "").strip()
+        oid = str(selected.get("id") or "").strip()
+        if label:
+            extra = f" (id={oid})" if oid else ""
+            return (
+                f"User selected: {label}{extra}. "
+                "Proceed with this choice; do not ask the same question again."
+            )
+    if isinstance(selected, str) and selected.strip():
+        return (
+            f"User selected: {selected.strip()}. "
+            "Proceed with this choice; do not ask the same question again."
+        )
+    opts = ", ".join(o["label"] for o in q["options"]) or "(none)"
+    return (
+        f"Question presented to user: {q['question']}\n"
+        f"Options: {opts}\n"
+        "Awaiting selection."
+    )
 
 
 def _tool_propose_plan(arguments: dict[str, Any]) -> str:

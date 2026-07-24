@@ -7,10 +7,17 @@ import {
   WORKSPACE_CHROME_ROW_TOP_PX,
 } from '../constants/layout';
 import { ChevronRight } from 'lucide-react';
-import { ChatMessage, ClutchRunStatus, HybridExecutionPayload, OutputEvent, TodoItem } from '../types';
+import {
+  ChatMessage,
+  ClutchRunStatus,
+  HybridExecutionPayload,
+  OutputEvent,
+  QuestionOption,
+  TodoItem,
+} from '../types';
 import { useLanguage } from './LanguageContext';
 import { ChatInputBar, type Attachment, type PendingChatMessage } from './ChatInputBar';
-import { BTN_PRIMARY, BTN_SECONDARY, BTN_SM } from './ui/buttonStyles';
+import { BTN_DANGER_SM, BTN_PRIMARY, BTN_SECONDARY, BTN_SM, BTN_SUCCESS_SM } from './ui/buttonStyles';
 import { LegacyIcon } from './ui/LegacyIcon';
 import type { SessionRecord } from '../services/runApi';
 import type { ScannedSkill } from '../services/skillsApi';
@@ -21,6 +28,7 @@ import { resolveLiveActivitySteps } from '../services/agentActivitySteps';
 import { AgentLiveActivity } from './AgentLiveActivity';
 import { FilesChangedChips } from './FilesChangedChips';
 import { PlanCardView } from './PlanCardView';
+import { QuestionCardView } from './QuestionCardView';
 import { TodoCardView } from './TodoCardView';
 import { resolveBrandLogoSrc } from '../services/brandLogos';
 import { clutchMarkUrl } from '../assets/brand';
@@ -253,6 +261,8 @@ interface ChatFeedProps {
   onApprove?: () => void;
   onReject?: () => void;
   onRetryWithInstructions?: (instructions: string) => void;
+  /** D4: answer ask_user_question by picking a card option. */
+  onAnswerQuestion?: (option: QuestionOption) => void;
   workspaceAuthorized?: boolean;
   onPickWorkspace?: () => void;
   onOpenWorkflows?: () => void;
@@ -456,6 +466,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   onApprove,
   onReject,
   onRetryWithInstructions,
+  onAnswerQuestion,
   workspaceAuthorized = false,
   onPickWorkspace,
   onOpenWorkflows,
@@ -563,7 +574,16 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
     }
     return null;
   }, [awaitingHuman, messages]);
+  const pendingQuestionMessage = useMemo(() => {
+    if (!awaitingHuman) return null;
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      const card = messages[i]?.questionCard;
+      if (card && card.status === 'pending') return messages[i];
+    }
+    return null;
+  }, [awaitingHuman, messages]);
   const awaitingPlan = Boolean(pendingPlanMessage);
+  const awaitingQuestion = Boolean(pendingQuestionMessage);
 
   useEffect(() => {
     if (!awaitingHuman) {
@@ -821,6 +841,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
     shellSessionStatus,
     awaitingHuman,
     awaitingPlan,
+    awaitingQuestion,
     isRunning,
     isPlainLlmChat,
     showTerminalWorkspace,
@@ -1195,7 +1216,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                         </div>
                       ) : null}
 
-                      {!isUser && !msg.planCard && msg.toolSteps && msg.toolSteps.length > 0 ? (
+                      {!isUser && !msg.planCard && !msg.questionCard && msg.toolSteps && msg.toolSteps.length > 0 ? (
                         <AgentLiveActivity steps={msg.toolSteps} className="mb-2" />
                       ) : null}
 
@@ -1221,8 +1242,8 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                           ))}
                         </div>
                       )}
-                      {/* Plan steps live on PlanCardView only — skip duplicate bubble prose. */}
-                      {!msg.planCard && renderMarkdown(displayText)}
+                      {/* Plan / question cards own the bubble — skip duplicate prose. */}
+                      {!msg.planCard && !msg.questionCard && renderMarkdown(displayText)}
                       {!isUser && (() => {
                         const hybridMeta = hybridExecutions?.[msg.id];
                         const executionEvents = hybridMeta?.outputEvents ?? msg.outputEvents;
@@ -1250,6 +1271,22 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                       ) : null}
                       {!isUser && msg.planCard ? (
                         <PlanCardView card={msg.planCard} t={t} />
+                      ) : null}
+                      {!isUser && msg.questionCard ? (
+                        <QuestionCardView
+                          card={msg.questionCard}
+                          t={t}
+                          interactive={
+                            awaitingHuman &&
+                            msg.questionCard.status === 'pending' &&
+                            pendingQuestionMessage?.id === msg.id
+                          }
+                          onSelect={(option) => {
+                            if (hitlBusy) return;
+                            setHitlBusy(true);
+                            onAnswerQuestion?.(option);
+                          }}
+                        />
                       ) : null}
                       {!isUser && msg.todoList && msg.todoList.length > 0 ? (
                         <TodoCardView todos={msg.todoList} t={t} />
@@ -1403,26 +1440,38 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
         ) : awaitingHuman ? (
           <div className={`w-full ${chatChrome.chatMaxWidthClass} flex flex-col gap-1.5`}>
             <div
-              className="flex items-center gap-2 rounded-xl border border-outline-variant/35 bg-white px-2.5 py-1.5 shadow-sm"
+              className="flex items-center gap-2 rounded-xl border border-outline-variant/30 bg-white px-2.5 py-1.5 shadow-sm"
               role="group"
-              aria-label={awaitingPlan ? t('Awaiting plan approval') : t('Needs approval')}
+              aria-label={
+                awaitingQuestion
+                  ? t('Awaiting your choice')
+                  : awaitingPlan
+                    ? t('Awaiting plan approval')
+                    : t('Needs approval')
+              }
             >
-              <span className="text-[11px] text-on-surface-variant shrink-0 truncate">
-                {awaitingPlan ? t('Awaiting plan approval') : t('Needs approval')}
+              <span className="text-[11px] text-on-surface-variant shrink-0 truncate font-medium">
+                {awaitingQuestion
+                  ? t('Pick an option in the question card above')
+                  : awaitingPlan
+                    ? t('Awaiting plan approval')
+                    : t('Needs approval')}
               </span>
               <div className="ml-auto flex items-center gap-1.5 shrink-0">
-                <button
-                  type="button"
-                  data-testid="chat-approve"
-                  disabled={hitlBusy}
-                  onClick={() => {
-                    setHitlBusy(true);
-                    onApprove?.();
-                  }}
-                  className={`${BTN_SM} bg-neutral-900 hover:bg-black text-white border border-neutral-900`}
-                >
-                  {awaitingPlan ? t('Approve plan') : t('Allow')}
-                </button>
+                {!awaitingQuestion ? (
+                  <button
+                    type="button"
+                    data-testid="chat-approve"
+                    disabled={hitlBusy}
+                    onClick={() => {
+                      setHitlBusy(true);
+                      onApprove?.();
+                    }}
+                    className={BTN_SUCCESS_SM}
+                  >
+                    {awaitingPlan ? t('Approve plan') : t('Allow')}
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   data-testid="chat-reject"
@@ -1431,49 +1480,65 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                     setHitlBusy(true);
                     onReject?.();
                   }}
-                  className={`${BTN_SM} bg-neutral-100 hover:bg-neutral-200 text-neutral-800 border border-neutral-200/80`}
+                  className={BTN_DANGER_SM}
                 >
-                  {awaitingPlan ? t('Cancel plan') : t('Reject')}
+                  {awaitingQuestion
+                    ? t('Cancel question')
+                    : awaitingPlan
+                      ? t('Cancel plan')
+                      : t('Reject')}
                 </button>
               </div>
             </div>
-            <div className="flex items-center gap-1.5 px-0.5">
-              <input
-                type="text"
-                value={hillInstructions}
-                onChange={(e) => setHillInstructions(e.target.value)}
-                disabled={hitlBusy}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && hillInstructions.trim() && !hitlBusy) {
-                    setHitlBusy(true);
-                    onRetryWithInstructions?.(hillInstructions.trim());
-                    setHillInstructions('');
+            {(awaitingQuestion
+              ? pendingQuestionMessage?.questionCard?.allowCustom !== false
+              : true) ? (
+              <div className="flex items-center gap-1.5 px-0.5">
+                <input
+                  type="text"
+                  value={hillInstructions}
+                  onChange={(e) => setHillInstructions(e.target.value)}
+                  disabled={hitlBusy}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && hillInstructions.trim() && !hitlBusy) {
+                      setHitlBusy(true);
+                      onRetryWithInstructions?.(hillInstructions.trim());
+                      setHillInstructions('');
+                    }
+                  }}
+                  placeholder={
+                    awaitingQuestion
+                      ? t('Or type your own answer…')
+                      : awaitingPlan
+                        ? t('Suggest plan changes…')
+                        : t('Retry with note…')
                   }
-                }}
-                placeholder={
-                  awaitingPlan ? t('Suggest plan changes…') : t('Retry with note…')
-                }
-                className="min-w-0 flex-1 rounded-lg border border-outline-variant/30 bg-surface-container-low px-2.5 py-1.5 text-[11px] text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-1 focus:ring-neutral-900/15"
-              />
-              <button
-                type="button"
-                disabled={hitlBusy || !hillInstructions.trim()}
-                onClick={() => {
-                  if (hillInstructions.trim() && !hitlBusy) {
-                    setHitlBusy(true);
-                    onRetryWithInstructions?.(hillInstructions.trim());
-                    setHillInstructions('');
+                  className="min-w-0 flex-1 rounded-lg border border-outline-variant/30 bg-surface-container-low px-2.5 py-1.5 text-[11px] text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:ring-1 focus:ring-neutral-900/15"
+                />
+                <button
+                  type="button"
+                  disabled={hitlBusy || !hillInstructions.trim()}
+                  onClick={() => {
+                    if (hillInstructions.trim() && !hitlBusy) {
+                      setHitlBusy(true);
+                      onRetryWithInstructions?.(hillInstructions.trim());
+                      setHillInstructions('');
+                    }
+                  }}
+                  className={
+                    !hitlBusy && hillInstructions.trim()
+                      ? `${BTN_SM} bg-neutral-900 text-white border border-neutral-900`
+                      : `${BTN_SM} bg-transparent text-on-surface-variant/40 border border-transparent cursor-not-allowed`
                   }
-                }}
-                className={`${BTN_SM} ${
-                  !hitlBusy && hillInstructions.trim()
-                    ? 'bg-neutral-900 text-white border border-neutral-900'
-                    : 'bg-transparent text-on-surface-variant/40 border border-transparent cursor-not-allowed'
-                }`}
-              >
-                {awaitingPlan ? t('Revise') : t('Retry')}
-              </button>
-            </div>
+                >
+                  {awaitingQuestion
+                    ? t('Submit')
+                    : awaitingPlan
+                      ? t('Revise')
+                      : t('Retry')}
+                </button>
+              </div>
+            ) : null}
           </div>
         ) : isTerminalDispatchHistoryReadonly ? (
           <div className="w-full flex justify-center">
