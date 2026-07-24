@@ -259,6 +259,7 @@ interface ChatFeedProps {
   sidebarOpen?: boolean;
   rightPanelOpen?: boolean;
   onStopRun?: () => void;
+  onContinueRun?: () => void;
   isMultiAgent?: boolean;
   onApprove?: () => void;
   onReject?: () => void;
@@ -464,6 +465,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   sidebarOpen = true,
   rightPanelOpen = true,
   onStopRun,
+  onContinueRun,
   isMultiAgent = true,
   onApprove,
   onReject,
@@ -1661,6 +1663,10 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
               isRunning={isRunning}
               isPlainLlmChat={isPlainLlmChat}
               onStopRun={handleStopWithQueueClear}
+              onContinueRun={onContinueRun}
+              awaitingContinue={Boolean(clutchOrchestraState.awaiting_continue)}
+              runStats={clutchOrchestraState.run_stats}
+              sessionTokens={clutchOrchestraState.session_tokens}
               pendingMessages={pendingMessages}
               onRemovePendingMessage={removePending}
               selectedWorkflowId={selectedWorkflowId}

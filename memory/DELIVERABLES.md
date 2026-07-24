@@ -4,12 +4,23 @@
 > **何时写：** 每个**代码 Task** 完成并 commit 后，在 Check-out 追加一节（见 `CLAUDE.md` §Check-out）。  
 > **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。
 
-## Clutch Agent D8 长聊不丢任务态 (`pending`)
+## Clutch Agent D9 运行可控 (`pending`)
+
+| 项目 | 值 |
+|------|-----|
+| **Task** | D9 Stop/Continue + loop fuse + Chat Steps/tok |
+| **Commit** | _(填入 commit 后)_ |
+| **Branch** | `dev` |
+| **Verification** | `uv run pytest tests/test_run_control_d9.py tests/test_mcp_react.py -q` |
+| **PM 用例** | `runs/verification/pm-acceptance/D09.md`（待人工点验；ROADMAP 仍 ❌） |
+| **下一批** | **D10∥D48** |
+
+## Clutch Agent D8 长聊不丢任务态 (`7936786`)
 
 | 项目 | 值 |
 |------|-----|
 | **Task** | D8 压缩后保留 Todo/计划 + `task_state` 层 |
-| **Commit** | _(填入 commit 后)_ |
+| **Commit** | `7936786` |
 | **Branch** | `dev` |
 | **Verification** | `uv run pytest tests/test_task_state_d8.py tests/test_compaction.py -q` → 16 passed |
 | **PM 用例** | `runs/verification/pm-acceptance/D08.md`（待人工点验；ROADMAP 仍 ❌） |

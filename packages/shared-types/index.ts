@@ -356,6 +356,16 @@ export interface ClutchState {
   session_cost_usd?: number;
   token_input?: number;
   token_output?: number;
+  /** D9: Chat-visible step/token counters (live while running). */
+  run_stats?: {
+    tool_steps?: number;
+    max_steps?: number;
+    session_tokens?: number;
+    fuse_triggered?: boolean;
+    consecutive_failures?: number;
+  };
+  /** D9: show Continue after Stop / loop fuse / max-steps. */
+  awaiting_continue?: boolean;
   /** CLI provider session id (`claude --resume` / `agy --conversation`). */
   cli_session_id?: string;
   /** Agent id that owns `cli_session_id` (reset when user switches agent). */

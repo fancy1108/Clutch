@@ -51,6 +51,16 @@ interface ChatInputBarProps {
   isRunning: boolean;
   isPlainLlmChat: boolean;
   onStopRun?: () => void;
+  /** D9: resume after Stop / fuse. */
+  onContinueRun?: () => void;
+  awaitingContinue?: boolean;
+  runStats?: {
+    tool_steps?: number;
+    max_steps?: number;
+    session_tokens?: number;
+    fuse_triggered?: boolean;
+  };
+  sessionTokens?: number;
   pendingMessages?: PendingChatMessage[];
   onRemovePendingMessage?: (id: string) => void;
   selectedWorkflowId?: string | null;
@@ -176,6 +186,10 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
   isRunning,
   isPlainLlmChat,
   onStopRun,
+  onContinueRun,
+  awaitingContinue = false,
+  runStats,
+  sessionTokens,
   pendingMessages = [],
   onRemovePendingMessage,
   selectedWorkflowId,
@@ -507,6 +521,13 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
 
   const canSend = inputValue.trim().length > 0 || attachments.length > 0;
   const showPlainChatStop = isRunning && isPlainLlmChat;
+  const showPlainChatContinue =
+    !isRunning && isPlainLlmChat && Boolean(awaitingContinue) && Boolean(onContinueRun);
+  const stepsUsed = runStats?.tool_steps ?? 0;
+  const stepsMax = runStats?.max_steps ?? 24;
+  const tokensShown = runStats?.session_tokens ?? sessionTokens ?? 0;
+  const showRunStats =
+    isPlainLlmChat && (isRunning || awaitingContinue || stepsUsed > 0 || tokensShown > 0);
   const currentPermission = PERMISSION_MODES.find((m) => m.id === permissionMode) ?? PERMISSION_MODES[0];
   const hybridNotice = hybridRejectionNotice(shellSessionStatus, language === 'zh' ? 'zh' : 'en');
   const showHybridNotice =
@@ -694,6 +715,23 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
               </p>
             ) : null}
           </div>
+        </div>
+      ) : null}
+      {showRunStats ? (
+        <div
+          data-testid="chat-run-stats"
+          className="flex items-center justify-between gap-2 px-3 pt-2 pb-1 text-[10px] font-mono text-on-surface-variant/70 border-b border-outline-variant/30"
+        >
+          <span>
+            {language === 'zh' ? '步骤' : 'Steps'} {stepsUsed}/{stepsMax}
+            {' · '}
+            ~{tokensShown.toLocaleString()} {language === 'zh' ? 'token' : 'tok'}
+          </span>
+          {runStats?.fuse_triggered ? (
+            <span className="text-rose-600 font-semibold not-italic">
+              {language === 'zh' ? '已熔断' : 'Loop fuse'}
+            </span>
+          ) : null}
         </div>
       ) : null}
       {pendingMessages.length > 0 ? (
@@ -946,7 +984,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
             )}
           </div>
 
-          {/* Stop (plain chat while running) + Send — Cursor-style: both available */}
+          {/* Stop / Continue (D9) + Send */}
           {showPlainChatStop ? (
             <button
               type="button"
@@ -957,6 +995,18 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
               aria-label={t('Stop')}
             >
               <LegacyIcon name="stop" className="text-[17px]" />
+            </button>
+          ) : null}
+          {showPlainChatContinue ? (
+            <button
+              type="button"
+              data-testid="chat-continue"
+              onClick={onContinueRun}
+              className="h-8 px-2.5 flex items-center justify-center rounded-full bg-neutral-900 text-white hover:bg-black transition-all text-[11px] font-semibold"
+              title={t('Continue')}
+              aria-label={t('Continue')}
+            >
+              {t('Continue')}
             </button>
           ) : null}
           <button

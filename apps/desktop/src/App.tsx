@@ -828,6 +828,10 @@ function MainLayout() {
     void clutchStore.send({ action: 'stop_run' });
   };
 
+  const handleContinueRun = () => {
+    void clutchStore.send({ action: 'continue_run' });
+  };
+
   const handlePickWorkspace = async () => {
     setWorkspacePickError(null);
     try {
@@ -2048,6 +2052,7 @@ function MainLayout() {
                 sidebarOpen={sidebarOpen}
                 rightPanelOpen={rightPanelOpen}
                 onStopRun={handleStopRun}
+                onContinueRun={handleContinueRun}
                 isMultiAgent={isMultiAgent}
                 onApprove={handleApprove}
                 onReject={handleReject}

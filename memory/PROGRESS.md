@@ -5,8 +5,8 @@
 
 ## Current Status
 
-- **阶段：** **v1.2.9**；**D7=`af58e94` ✅**；**D8 已实现待 PM**；过夜批跑 D9→D13
-- **Git：** D5=`30d5f86`；D6=`26b9716`；D7=`af58e94`；D8=_(commit 后填)_
+- **阶段：** **v1.2.9**；**D7=`af58e94` ✅**；**D8=`7936786` 待 PM**；**D9 实现中**；过夜批跑 →D13
+- **Git：** D5=`30d5f86`；D6=`26b9716`；D7=`af58e94`；D8=`7936786`
 - **PM 验收包：** `runs/verification/pm-acceptance/`（D08–D13；ROADMAP 未点验前保持 ❌）
 
 ## Recent Sessions
@@ -14,7 +14,8 @@
 ## 2026-07-25 会话（过夜：D8 commit → D9…D13）
 
 - **用户授权：** 按序做完剩余主线、自测、逐项 commit；明早人工点验
-- **D8：** `task_state` + 压缩 digest 钉 Todo/Plan；PM 用例 `D08.md`；自动化 16 passed
+- **D8：** `7936786`；PM `D08.md`
+- **D9：** Stop/Continue + loop fuse + `run_stats` Chat 条；PM `D09.md`
 - **下次（人工）：** 按 `pm-acceptance/README.md` 逐项点验
 
 ## 2026-07-25 会话（D7 commit + D8 实现）

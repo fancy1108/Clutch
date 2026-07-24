@@ -262,6 +262,7 @@
 #### D9 — 运行可控
 - **可见**：停止、继续、死循环熔断提示、用量/步数（Chat 控件，非仅日志）。
 - **验收**：停得住、续得上、重复失败会停、看得见计数。
+- **实现笔记（待 PM）**：`run_control.py`；Stop→`awaiting_continue`+Continue；连续失败 fuse（`CLUTCH_LOOP_FUSE_FAILURES`）；`run_stats` 推 Chat。
 
 #### D10 — 子任务委派
 - **可见**：子任务状态与摘要回主 Chat。

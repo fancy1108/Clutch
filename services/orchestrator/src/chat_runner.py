@@ -735,6 +735,22 @@ def _apply_delete_message(
     state = _merge_patch(state, patch)
     return state, patch
 
+def _tool_step_live_patch(
+    state: ClutchState, step: dict[str, Any]
+) -> dict[str, Any]:
+    """Upsert pending tool step + D9 run_stats for Chat-visible counters."""
+    from src.run_control import DEFAULT_MAX_TOOL_STEPS, build_run_stats
+    from src.tool_steps import upsert_tool_step
+
+    steps = upsert_tool_step(list(state.get("pending_tool_steps") or []), step)
+    stats = build_run_stats(
+        tool_steps=len(steps),
+        max_steps=DEFAULT_MAX_TOOL_STEPS,
+        session_tokens=int(state.get("session_tokens") or 0),
+    )
+    return {"pending_tool_steps": steps, "run_stats": stats}
+
+
 def _merge_patch(state: ClutchState, patch: dict[str, Any]) -> ClutchState:
     merged = deepcopy(state)
     optional_keys = frozenset({
@@ -757,6 +773,8 @@ def _merge_patch(state: ClutchState, patch: dict[str, Any]) -> ClutchState:
         "refine_draft_output",
         "refine_agent_id",
         "pending_pty_inject",
+        "run_stats",
+        "awaiting_continue",
     })
     for key, value in patch.items():
         if key in merged or key in optional_keys:
@@ -2115,12 +2133,10 @@ async def _handle_plain_chat_mcp_decision(
 
         async def emit_tool_step(step: dict[str, Any]) -> None:
             nonlocal state
-            from src.tool_steps import upsert_tool_step
-
-            steps = upsert_tool_step(list(state.get("pending_tool_steps") or []), step)
-            state = _merge_patch(state, {"pending_tool_steps": steps})
+            patch = _tool_step_live_patch(state, step)
+            state = _merge_patch(state, patch)
             _commit_run_state(run_id, state)
-            await _notify_run_state(websocket, run_id, state, {"pending_tool_steps": steps})
+            await _notify_run_state(websocket, run_id, state, patch)
             await _maybe_notify_step_file_diff(websocket, run_id, step)
 
         async def emit_todos(todos: list[dict[str, Any]]) -> None:
@@ -2275,12 +2291,10 @@ async def _handle_plain_chat_mcp_decision(
 
     async def emit_tool_step(step: dict[str, Any]) -> None:
         nonlocal state
-        from src.tool_steps import upsert_tool_step
-
-        steps = upsert_tool_step(list(state.get("pending_tool_steps") or []), step)
-        state = _merge_patch(state, {"pending_tool_steps": steps})
+        patch = _tool_step_live_patch(state, step)
+        state = _merge_patch(state, patch)
         _commit_run_state(run_id, state)
-        await _notify_run_state(websocket, run_id, state, {"pending_tool_steps": steps})
+        await _notify_run_state(websocket, run_id, state, patch)
         await _maybe_notify_step_file_diff(websocket, run_id, step)
 
     async def emit_todos(todos: list[dict[str, Any]]) -> None:
@@ -2441,6 +2455,8 @@ async def _finish_plain_chat_after_llm(
         )
         return state
 
+    from src.run_control import build_run_stats, should_offer_continue
+
     sealed_steps = _sealed_tool_steps(state, sink=tool_steps_sink)
     merged_changed = _merge_files_changed_with_tool_steps(files_changed, sealed_steps)
     files_changed = merged_changed
@@ -2470,15 +2486,24 @@ async def _finish_plain_chat_after_llm(
     final_logs = _append_terminal_logs(
         list(state["terminal_logs"]), route_logs, log_line, streamed=streamed_logs
     )
+    token_patch = _token_patch_turn(
+        state, user_text=user_text_for_tokens, assistant_text=reply_text
+    )
+    offer_continue = should_offer_continue(reply_text)
+    fuse_hit = "Loop fuse" in (reply_text or "") or "死循环熔断" in (reply_text or "")
     final_patch = {
         "messages": final_messages,
         "terminal_logs": final_logs,
         "status": "idle",
         "active_agent": active_agent,
         "pending_tool_steps": [],
-        **_token_patch_turn(
-            state, user_text=user_text_for_tokens, assistant_text=reply_text
+        "awaiting_continue": offer_continue,
+        "run_stats": build_run_stats(
+            tool_steps=len(sealed_steps or []),
+            session_tokens=int(token_patch.get("session_tokens") or 0),
+            fuse_triggered=fuse_hit,
         ),
+        **token_patch,
     }
     if shell_recovered:
         final_patch["shell_session_status"] = "recovering"
@@ -2527,6 +2552,7 @@ async def _apply_plain_chat_stop(
     run_id: str,
     state: ClutchState,
 ) -> ClutchState:
+    from src.run_control import build_run_stats, stop_supervisor_message
     from src.runtime_config import runtime_mode
 
     await asyncio.to_thread(_interrupt_plain_chat_shell, run_id)
@@ -2534,14 +2560,29 @@ async def _apply_plain_chat_stop(
         log_line = stamp_log_line(tagged(TAG_WORKFLOW, "[HYBRID] Plain chat stopped by user."))
     else:
         log_line = stamp_log_line(tagged(TAG_WORKFLOW, "Run stopped by supervisor."))
+    stop_text = tr(stop_supervisor_message(lang="en"), stop_supervisor_message(lang="zh"))
+    supervisor = _chat_message("Supervisor", stop_text)
     logs = list(state["terminal_logs"]) + [log_line]
-    patch: dict[str, Any] = {"status": "idle", "terminal_logs": logs}
+    steps = list(state.get("pending_tool_steps") or [])
+    stats = build_run_stats(
+        tool_steps=len(steps),
+        session_tokens=int(state.get("session_tokens") or 0),
+    )
+    patch: dict[str, Any] = {
+        "status": "idle",
+        "terminal_logs": logs,
+        "messages": list(state["messages"]) + [supervisor],
+        "pending_tool_steps": [],
+        "awaiting_continue": True,
+        "run_stats": stats,
+    }
     if runtime_mode() == "hybrid":
         patch["shell_session_status"] = "ready"
     state = _merge_patch(state, patch)
     _commit_run_state(run_id, state)
     _touch_session(run_id, status=state["status"])
     await _send_log_event(websocket, run_id, log_line, node_id="")
+    await _send_message_event(websocket, run_id, supervisor, "")
     await _notify_run_state(websocket, run_id, state, patch)
     return state
 
@@ -2739,6 +2780,7 @@ async def _persist_plain_chat_user_message(
         "messages": messages,
         "status": "running",
         "active_agent": active_agent,
+        "awaiting_continue": False,
     }
     if runtime_mode() == "hybrid":
         user_patch["shell_session_status"] = "ready"
@@ -2854,13 +2896,11 @@ async def _handle_plain_chat(
 
     async def emit_tool_step(step: dict[str, Any]) -> None:
         nonlocal state
-        from src.tool_steps import upsert_tool_step
-
-        steps = upsert_tool_step(list(state.get("pending_tool_steps") or []), step)
-        state = _merge_patch(state, {"pending_tool_steps": steps})
+        patch = _tool_step_live_patch(state, step)
+        state = _merge_patch(state, patch)
         _commit_run_state(run_id, state)
         await _try_ws_notify(
-            _notify_run_state(websocket, run_id, state, {"pending_tool_steps": steps}),
+            _notify_run_state(websocket, run_id, state, patch),
             run_id=run_id,
             what="state_patch",
         )
@@ -3357,12 +3397,10 @@ async def _handle_flow_refine_message(
 
     async def emit_tool_step(step: dict[str, Any]) -> None:
         nonlocal state
-        from src.tool_steps import upsert_tool_step
-
-        steps = upsert_tool_step(list(state.get("pending_tool_steps") or []), step)
-        state = _merge_patch(state, {"pending_tool_steps": steps})
+        patch = _tool_step_live_patch(state, step)
+        state = _merge_patch(state, patch)
         _commit_run_state(run_id, state)
-        await _notify_run_state(websocket, run_id, state, {"pending_tool_steps": steps})
+        await _notify_run_state(websocket, run_id, state, patch)
         await _maybe_notify_step_file_diff(websocket, run_id, step)
 
     async def emit_todos(todos: list[dict[str, Any]]) -> None:
@@ -4102,6 +4140,7 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
             "terminal_logs": logs,
             "shell_session_status": "ready",
             "status": "running",
+            "awaiting_continue": False,
         }
         state = _merge_patch(state, patch)
         _commit_run_state(run_id, state)
@@ -4247,6 +4286,27 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                             node_id=state["active_node_id"],
                             prompt=tr("Checks failed, waiting for human confirmation.", "检查未通过，等待人工确认。"),
                         )
+            elif isinstance(payload, dict) and payload.get("action") == "continue_run":
+                # D9: resume after Stop / loop fuse — enqueue a continue prompt.
+                if state.get("workflow_id"):
+                    pass
+                elif state.get("status") == "running":
+                    pass
+                else:
+                    from src.run_control import continue_user_prompt
+
+                    resume_text = tr(
+                        continue_user_prompt(lang="en"),
+                        continue_user_prompt(lang="zh"),
+                    )
+                    clear_patch = {"awaiting_continue": False}
+                    state = _merge_patch(state, clear_patch)
+                    _commit_run_state(run_id, state)
+                    await _notify_run_state(websocket, run_id, state, clear_patch)
+                    if plain_chat_task is not None and not plain_chat_task.done():
+                        await _enqueue_plain_chat(resume_text, None, None, None)
+                    else:
+                        await _start_plain_chat_turn(resume_text, None, None, None)
             elif isinstance(payload, dict) and payload.get("action") == "stop_run":
                 if not state.get("workflow_id"):
                     plain_chat_queue.clear()

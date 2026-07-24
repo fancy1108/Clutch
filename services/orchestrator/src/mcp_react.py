@@ -46,6 +46,10 @@ class McpRunOutcome:
     todos: list[dict[str, Any]] | None = None
     verification_report: dict[str, Any] | None = None
     diff_summary: dict[str, Any] | None = None
+    # D9: loop fuse + chat-visible step accounting
+    fuse_triggered: bool = False
+    steps_used: int = 0
+    consecutive_failures: int = 0
 
 
 def _sanitize_tool_part(value: str) -> str:
@@ -362,10 +366,19 @@ def run_mcp_react_loop(
             files_changed=None,
         )
 
+    from src.run_control import (
+        fuse_message,
+        is_tool_failure_result,
+        max_consecutive_failures,
+    )
+
     clients: dict[str, McpClient] = {}
     builtin_servers: set[str] = set()
     tool_routes: dict[str, tuple[str, str]] = {}
     openai_tools: list[dict[str, Any]] = []
+    consecutive_failures = 0
+    fuse_triggered = False
+    fuse_limit = max_consecutive_failures()
     _emit(logs, on_log, f"[{log_prefix}] Starting MCP ReAct with {len(servers)} server(s)")
 
     for server in servers:
@@ -495,9 +508,42 @@ def run_mcp_react_loop(
         if on_diff_summary:
             on_diff_summary(dict(latest_diff_summary))
 
+    def note_tool_result(result_str: str) -> bool:
+        """Track consecutive failures; return True when D9 loop fuse should trip."""
+        nonlocal consecutive_failures, fuse_triggered
+        if is_tool_failure_result(result_str):
+            consecutive_failures += 1
+        else:
+            consecutive_failures = 0
+        if consecutive_failures >= fuse_limit:
+            fuse_triggered = True
+            return True
+        return False
+
+    def _outcome(
+        *,
+        output: str,
+        approval_required: dict[str, Any] | None = None,
+    ) -> McpRunOutcome:
+        return McpRunOutcome(
+            output=output,
+            logs=logs,
+            engine_label=engine_label,
+            approval_required=approval_required,
+            files_changed=files_changed or None,
+            tool_steps=list(collected_steps) or None,
+            todos=latest_todos,
+            verification_report=latest_verification,
+            diff_summary=latest_diff_summary,
+            fuse_triggered=fuse_triggered,
+            steps_used=len(collected_steps),
+            consecutive_failures=consecutive_failures,
+        )
+
     try:
         chat_messages = list(messages)
         start_step = 0
+        output = ""
 
         if approved_tool:
             tc_id = str(approved_tool["tool_call_id"])
@@ -532,6 +578,16 @@ def run_mcp_react_loop(
                     "content": result_str,
                 }
             )
+            if note_tool_result(result_str):
+                output = fuse_message(
+                    failures=consecutive_failures, max_failures=fuse_limit
+                )
+                _emit(
+                    logs,
+                    on_log,
+                    f"[{log_prefix}] LOOP FUSE: {consecutive_failures} consecutive tool failures",
+                )
+                return _outcome(output=output)
             start_step += 1
 
         for step_idx in range(start_step, max_steps):
@@ -817,6 +873,18 @@ def run_mcp_react_loop(
                             "content": result_str,
                         }
                     )
+                    if note_tool_result(result_str):
+                        output = fuse_message(
+                            failures=consecutive_failures, max_failures=fuse_limit
+                        )
+                        _emit(
+                            logs,
+                            on_log,
+                            f"[{log_prefix}] LOOP FUSE: {consecutive_failures} consecutive tool failures",
+                        )
+                        break
+                if fuse_triggered:
+                    break
             else:
                 from src.llm.router import LLMProviderRouter
 
@@ -838,14 +906,4 @@ def run_mcp_react_loop(
             client.close()
             _emit(logs, on_log, f"[{log_prefix}] Stopped MCP server: {name}")
 
-    return McpRunOutcome(
-        output=output,
-        logs=logs,
-        engine_label=engine_label,
-        approval_required=None,
-        files_changed=files_changed or None,
-        tool_steps=list(collected_steps) or None,
-        todos=latest_todos,
-        verification_report=latest_verification,
-        diff_summary=latest_diff_summary,
-    )
+    return _outcome(output=output)
