@@ -4,6 +4,17 @@
 > **何时写：** 每个**代码 Task** 完成并 commit 后，在 Check-out 追加一节（见 `CLAUDE.md` §Check-out）。  
 > **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。
 
+## Clutch Agent D3∥D49 Todo card (`4d6f6ef`)
+
+| 项目 | 值 |
+|------|-----|
+| **Task** | D3 Todo 面板 + D49 对话内 Todo 卡 |
+| **Commit** | `4d6f6efbba72a646efbaaa5240ad8897dcf53002` |
+| **Branch** | `dev` |
+| **Verification** | pre-commit `verify.sh`：build OK；vitest 156；pytest 777 passed / 3 skipped；doc-drift 0 error |
+| **PM** | 2026-07-24 验收通过（ROADMAP D3 ✅） |
+| **下一批** | **D4∥D49 结构化提问** |
+
 ## Clutch Agent D2∥D49 plan card (`13be92a`)
 
 | 项目 | 值 |

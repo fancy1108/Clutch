@@ -6,7 +6,7 @@
 ## Current Status
 
 - **阶段：** **v1.2.9**；D3∥D49 Todo PM ✅；**下一批 D4∥D49 结构化提问**
-- **Git：** D3 待本会话 commit
+- **Git：** D3=`4d6f6ef`
 
 ## Recent Sessions
 
