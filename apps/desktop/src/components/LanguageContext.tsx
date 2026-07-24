@@ -731,7 +731,7 @@ const zhTranslations: Record<string, string> = {
   "Or type your own answer…": "或输入自定义回答…",
   "Submit": "提交",
   "Click an option below to continue": "点击下方选项继续",
-  "Select": "选择",
+  "Select option": "选择",
   "Pick an option in the question card above": "请在上方提问卡中选择一项",
   "Approve, revise, or cancel in the bar below": "请在底部栏批准、修改或取消计划",
   "Question": "提问",

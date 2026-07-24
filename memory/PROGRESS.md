@@ -6,7 +6,7 @@
 ## Current Status
 
 - **阶段：** **v1.2.9**；**D4∥D49 结构化提问 PM ✅**；下一批 **D5∥D50**
-- **Git：** D3=`4d6f6ef`；D4 待本会话 commit
+- **Git：** D3=`4d6f6ef`；D4=`662129c`
 
 ## Recent Sessions
 
@@ -14,7 +14,8 @@
 
 - **实现：** `ask_user_question` + QuestionCard + 共享 `chatAgentCard`（Plan/Todo 对齐 UI_UX）；选项可点；路径 Redis→health→plan 一致
 - **PM：** 2026-07-24 通过
-- **下次：** commit → D5∥D50 自检报告
+- **Commit：** `662129c`
+- **下次：** D5∥D50 自检报告
 
 ## 2026-07-24 会话（D4 结构化提问实现）
 

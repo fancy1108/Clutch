@@ -90,7 +90,7 @@ export function QuestionCardView({
                   {option.label}
                 </span>
                 <span className="mt-0.5 shrink-0 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/50 group-hover:text-on-surface transition-colors duration-200">
-                  {t('Select')}
+                  {t('Select option')}
                 </span>
               </button>
             );

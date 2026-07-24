@@ -4,6 +4,17 @@
 > **何时写：** 每个**代码 Task** 完成并 commit 后，在 Check-out 追加一节（见 `CLAUDE.md` §Check-out）。  
 > **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。
 
+## Clutch Agent D4∥D49 Question card (`662129c`)
+
+| 项目 | 值 |
+|------|-----|
+| **Task** | D4 结构化提问 + D49 对话内提问卡 |
+| **Commit** | `662129c64071430481551475f128819749cb8c87` |
+| **Branch** | `dev` |
+| **Verification** | pre-commit `verify.sh`：build OK；vitest 156；pytest 784 passed / 3 skipped；doc-drift 0 error |
+| **PM** | 2026-07-24 验收通过（ROADMAP D4 ✅；路径 Redis→health→plan 一致；卡壳与 Plan/Todo 对齐 UI_UX） |
+| **下一批** | **D5∥D50 自检报告** |
+
 ## Clutch Agent D3∥D49 Todo card (`4d6f6ef`)
 
 | 项目 | 值 |
@@ -13,7 +24,7 @@
 | **Branch** | `dev` |
 | **Verification** | pre-commit `verify.sh`：build OK；vitest 156；pytest 777 passed / 3 skipped；doc-drift 0 error |
 | **PM** | 2026-07-24 验收通过（ROADMAP D3 ✅） |
-| **下一批** | **D4∥D49 结构化提问** |
+| **下一批** | **D4∥D49 结构化提问** ✅ `662129c` |
 
 ## Clutch Agent D2∥D49 plan card (`13be92a`)
 
