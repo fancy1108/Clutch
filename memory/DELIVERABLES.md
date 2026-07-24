@@ -4,14 +4,16 @@
 > **何时写：** 每个**代码 Task** 完成并 commit 后，在 Check-out 追加一节（见 `CLAUDE.md` §Check-out）。  
 > **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。
 
-## Clutch Agent D53 layered prompt (`pending`)
+## Clutch Agent D53 layered prompt (`9a840e2`)
 
 | 项目 | 值 |
 |------|-----|
 | **Task** | D53 分层 system prompt + Agent Manager 分层摘要 UI |
-| **Commit** | _(filled after commit)_ |
+| **Commit** | `9a840e2085ea4055704c1dbbbd7db9bff1ef7a5d` |
 | **Branch** | `dev` |
+| **Verification** | pre-commit `verify.sh`：build OK；vitest 150；pytest 763 passed / 3 skipped；doc-drift 0 error |
 | **PM** | 2026-07-24 验收通过（ROADMAP D53 ✅） |
+| **交付要点** | `compose_agent_prompt_assembly` 分层；skills catalog；`GET …/prompt-assembly`；Agent Manager 层字符量面板 |
 | **下一批** | **D47** files_changed 对话芯片 |
 
 ## Clutch Agent D1+D37+D46 (`1097a6d`)
