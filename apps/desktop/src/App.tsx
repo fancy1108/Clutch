@@ -42,7 +42,15 @@ import { clutchMarkUrl } from './assets/brand';
 import { DevOnboardingToolsEmptyPreview } from './components/onboarding/DevOnboardingToolsEmptyPreview';
 import { fetchOnboardingState } from './services/onboardingApi';
 import { clutchStore, createSessionRunId, submitChatMessage, useClutchState, setUserChatAvatar, clearWorkflowForSession } from './services/clutchState';
-import { fetchSessions, startWorkflowRun, fetchRunState, deleteSession, createSession, type SessionRecord } from './services/runApi';
+import {
+  fetchSessions,
+  resolveSessionHistoryWorkspaceId,
+  startWorkflowRun,
+  fetchRunState,
+  deleteSession,
+  createSession,
+  type SessionRecord,
+} from './services/runApi';
 import { fetchShellSnapshots } from './services/shellSnapshotApi';
 import { listWorkflowItems, loadWorkflowById } from './services/workflowApi';
 import {
@@ -605,8 +613,9 @@ function MainLayout() {
 
   const refreshSessions = useCallback(async (mode: AppWorkspaceMode = appMode) => {
     try {
+      // Sidebar shows every project — never scope to activeWorkspaceId.
       const [runs, snapshots] = await Promise.all([
-        fetchSessions(activeWorkspaceId ?? undefined, mode),
+        fetchSessions(resolveSessionHistoryWorkspaceId({ allWorkspaces: true }), mode),
         fetchShellSnapshots().catch(() => []),
       ]);
       setSessions(runs);
@@ -614,7 +623,7 @@ function MainLayout() {
     } catch (error: unknown) {
       console.warn('[Clutch] sessions unavailable:', error);
     }
-  }, [appMode, activeWorkspaceId]);
+  }, [appMode]);
 
   const upsertLocalSession = useCallback((
     runId: string,
@@ -673,7 +682,7 @@ function MainLayout() {
 
   useEffect(() => {
     void refreshSessions(appMode);
-  }, [clutchState.run_id, clutchState.status, activeWorkspaceId, appMode, refreshSessions]);
+  }, [clutchState.run_id, clutchState.status, appMode, refreshSessions]);
 
   // Active Tab inside the right side panel (Overview, Files, Flow, Changes, Terminal)
   const [rightTab, setRightTab] = useState<RightTab>('overview');
@@ -1121,7 +1130,7 @@ function MainLayout() {
     }
   };
 
-  /** Default-title Design drafts with no real UI preview — at most one should exist. */
+  /** Default-title Design drafts with no real UI preview — cleaned up when spawning New Design. */
   const isEmptyDesignDraft = useCallback(
     (s: SessionRecord) => {
       if (s.mode !== 'design') return false;
@@ -1135,25 +1144,6 @@ function MainLayout() {
       return status === '' || status === 'idle' || status === 'draft' || status === 'ready';
     },
     [t],
-  );
-
-  const pruneExtraEmptyDesignDrafts = useCallback(
-    async (keepRunId: string) => {
-      const extras = sessions.filter((s) => s.run_id !== keepRunId && isEmptyDesignDraft(s));
-      if (extras.length === 0) return;
-      await Promise.all(
-        extras.map(async (s) => {
-          try {
-            await deleteSession(s.run_id);
-          } catch {
-            /* already gone */
-          }
-        }),
-      );
-      const drop = new Set(extras.map((s) => s.run_id));
-      setSessions((prev) => prev.filter((s) => !drop.has(s.run_id)));
-    },
-    [sessions, isEmptyDesignDraft],
   );
 
   const openDesignSession = useCallback(
@@ -1233,38 +1223,27 @@ function MainLayout() {
     }
 
     const emptyTitle = t('New Design');
-    const current = sessions.find((s) => s.run_id === sessionRunId);
-    const existingEmpty = sessions
-      .filter(isEmptyDesignDraft)
-      .sort((a, b) => String(b.started_at || '').localeCompare(String(a.started_at || '')));
-
-    // Already on the sole empty draft — just ensure Design mode, don't spawn another.
-    if (current && isEmptyDesignDraft(current) && appMode === 'design') {
-      await pruneExtraEmptyDesignDrafts(current.run_id);
-      setAppMode('design');
-      setView('chat');
-      setRightPanelOpen(false);
-      void refreshSessions('design');
-      return;
-    }
-
-    // Reuse newest empty draft instead of creating another.
-    if (existingEmpty.length > 0) {
-      const keep = existingEmpty[0];
-      if (sessionRunId !== keep.run_id) {
-        await discardEmptySessionIfNeeded(sessionRunId);
-        scheduleBackgroundHydrateForRun(sessionRunId);
-      }
-      await pruneExtraEmptyDesignDrafts(keep.run_id);
-      openDesignSession(keep.run_id, keep.title || emptyTitle);
-      void refreshSessions('design');
-      return;
-    }
-
-    if (sessionRunId) {
+    // Always spawn a fresh welcome row at the top. Reusing an old empty draft kept its
+    // started_at / history position, so "New Design" could sit under newer real sessions.
+    const empties = sessions.filter(isEmptyDesignDraft);
+    if (sessionRunId && !empties.some((s) => s.run_id === sessionRunId)) {
       await discardEmptySessionIfNeeded(sessionRunId);
       scheduleBackgroundHydrateForRun(sessionRunId);
     }
+    if (empties.length > 0) {
+      await Promise.all(
+        empties.map(async (s) => {
+          try {
+            await deleteSession(s.run_id);
+          } catch {
+            /* already gone */
+          }
+        }),
+      );
+      const drop = new Set(empties.map((s) => s.run_id));
+      setSessions((prev) => prev.filter((s) => !drop.has(s.run_id)));
+    }
+
     const runId = createSessionRunId();
     openDesignSession(runId, emptyTitle);
     upsertLocalSession(runId, emptyTitle, { mode: 'design', status: 'idle' });
@@ -1378,7 +1357,10 @@ function MainLayout() {
         } catch {
           /* keep local status */
         }
-        const updated = await fetchSessions(activeWorkspaceId ?? undefined, 'design').catch(() => null);
+        const updated = await fetchSessions(
+          resolveSessionHistoryWorkspaceId({ allWorkspaces: true }),
+          'design',
+        ).catch(() => null);
         if (updated) {
           setSessions(
             updated.map((s) =>
@@ -1420,7 +1402,6 @@ function MainLayout() {
     if (mode === 'design') {
       // Design defaults to a collapsed right rail (Files / Changes still available).
       setRightPanelOpen(false);
-      // Reuse an empty draft if one exists; never stack multiple "New Design" rows.
       void handleNewDesign();
       return;
     }
@@ -1430,11 +1411,15 @@ function MainLayout() {
       // Leaving Design: drop the empty welcome draft so it doesn't pile up.
       await discardEmptySessionIfNeeded(sessionRunId);
       try {
-        const codingSessions = await fetchSessions(activeWorkspaceId ?? undefined, 'coding');
+        const codingSessions = await fetchSessions(
+          resolveSessionHistoryWorkspaceId({ allWorkspaces: true }),
+          'coding',
+        );
         setSessions(codingSessions);
         const currentIsDesign = sessions.find((s) => s.run_id === sessionRunId)?.mode === 'design';
         if (currentIsDesign && codingSessions.length > 0) {
-          await applySelectedSession(codingSessions[0]);
+          const inActive = codingSessions.filter((s) => s.workspace_id === activeWorkspaceId);
+          await applySelectedSession(inActive[0] ?? codingSessions[0]);
           return;
         }
       } catch {
@@ -1593,7 +1578,10 @@ function MainLayout() {
         setPromptModal(null);
         try {
           await deleteSession(runId);
-          const updatedSessions = await fetchSessions(activeWorkspaceId ?? undefined, appMode);
+          const updatedSessions = await fetchSessions(
+            resolveSessionHistoryWorkspaceId({ allWorkspaces: true }),
+            appMode,
+          );
           setSessions(updatedSessions);
 
           if (sessionRunId === runId) {

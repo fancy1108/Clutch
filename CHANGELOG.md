@@ -23,6 +23,8 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ### Fixed
 
+- **Chat Thinking bubble height:** Typing indicator no longer mirrors the last user bubble `minHeight` (image/long messages made a huge empty “Thinking…” box). Compact `w-fit` dots only.
+- **Design “New Design” not at top of sidebar:** Clicking New Design reused an old empty draft (kept its `started_at` / history position). Always create a fresh session at the top and delete prior empty New Design drafts.
 - **Design iterate stuck “Generating…” overlay:** Async Edit/Pick iterate left `drawing` true and round pin on after poll reached `ready`, so the artboard kept the spinner and could show stale HTML. Clear overlay + unpin to latest round when the session finishes.
 - **Workspace list / session history desync:** Project ids are now path-stable (`sha256` of resolved path); legacy random ids migrate on load and remap `history.json`. `workspaces.json` uses atomic replace. Default store refuses ephemeral `/tmp`-style authorize (tests must set `CLUTCH_STORAGE_DIR` / `CLUTCH_E2E_SANDBOX`). Desktop E2E passes `CLUTCH_STORAGE_DIR` into `tauri:e2e` so sandboxes cannot wipe `clutch_dev`.
 - **Coding/Design image try-first:** Attached images are always sent to the LLM as multimodal first. Only when the model soft-refuses vision or the API rejects image input do we retry with local OCR/palette analysis (Coding uses a chat-specific fragment without Design hex mandates).

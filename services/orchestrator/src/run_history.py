@@ -158,8 +158,8 @@ def _should_keep_session_record(record: dict[str, Any], state: dict[str, Any] | 
             return True
         if has_artifacts:
             return True
-        # Empty Design draft: keep temporarily so the UI can reuse one welcome row.
-        # _prune_empty_records collapses these to at most one per workspace.
+        # Empty Design draft: keep temporarily (at most one per workspace via collapse below)
+        # so the sidebar can show a welcome row; frontend New Design creates a fresh run_id.
         if _is_default_session_title(title) and status in {
             "",
             "idle",
