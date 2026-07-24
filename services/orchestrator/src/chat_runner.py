@@ -4447,6 +4447,23 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                     from src.bg_jobs import kill_job
 
                     kill_job(run_id, job_id)
+            elif isinstance(payload, dict) and payload.get("action") == "clear_approvals":
+                # D13: clear session-remembered MCP tool approvals.
+                from src.mcp_pending import clear_mcp_approval_state
+
+                clear_mcp_approval_state(run_id)
+                notice = _chat_message(
+                    "Supervisor",
+                    tr(
+                        "Cleared remembered tool approvals for this chat.",
+                        "已清除本会话记住的工具批准。",
+                    ),
+                )
+                patch = {"messages": list(state["messages"]) + [notice]}
+                state = _merge_patch(state, patch)
+                _commit_run_state(run_id, state)
+                await _send_message_event(websocket, run_id, notice, "")
+                await _notify_run_state(websocket, run_id, state, patch)
             elif isinstance(payload, dict) and payload.get("action") == "continue_run":
                 # D9: resume after Stop / loop fuse — enqueue a continue prompt.
                 if state.get("workflow_id"):

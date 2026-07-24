@@ -14,6 +14,7 @@ import type { SessionRecord } from '../services/runApi';
 import type { ScannedSkill } from '../services/skillsApi';
 import type { FileTreeNode } from '../services/workspaceApi';
 import { PERMISSION_MODES, type PermissionMode } from '../services/permissionApi';
+import { clutchStore } from '../services/clutchState';
 import { LegacyIcon } from './ui/LegacyIcon';
 import { BTN_ICON_SM } from './ui/buttonStyles';
 import { shouldSubmitChatOnEnter } from './chatInputKeyboard';
@@ -977,6 +978,17 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
                   </button>
                 ))}
                 <div className="border-t border-outline-variant/60 my-1 mx-3" />
+                <button
+                  type="button"
+                  data-testid="clear-approvals"
+                  className="w-full px-3 py-2 text-left text-[11px] font-semibold text-on-surface hover:bg-surface-container-low transition-colors"
+                  onClick={() => {
+                    setPermissionMenuOpen(false);
+                    void clutchStore.send({ action: 'clear_approvals' });
+                  }}
+                >
+                  {t('Clear remembered approvals')}
+                </button>
                 <div className="px-3 py-1.5 text-[9.5px] leading-normal text-on-surface-variant/60">
                   {t('Note: These settings only apply to the built-in Clutch Agent and MCP tools, and do not affect CLI Agents (such as Claude Code).')}
                 </div>

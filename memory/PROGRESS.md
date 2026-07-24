@@ -5,18 +5,17 @@
 
 ## Current Status
 
-- **阶段：** **v1.2.9**；D7✅；D8–D10 待 PM；过夜批跑 →D13
-- **Git：** D8=`7936786`；D9=`bef9b75`；D10=_(commit 后)_
-- **PM 验收包：** `runs/verification/pm-acceptance/`（D08–D13；ROADMAP 未点验前保持 ❌）
+- **阶段：** **v1.2.9**；D7✅；**D8–D13 已实现待 PM**
+- **Git：** D8=`7936786`；D9=`bef9b75`；D10=`25dc5dc`；D11=`59b45ee`；D12=`194d33a`；D13=_(本批)_
+- **PM 验收包：** `runs/verification/pm-acceptance/`（ROADMAP 未点验前保持 ❌）
 
 ## Recent Sessions
 
-## 2026-07-25 会话（过夜：D8 commit → D9…D13）
+## 2026-07-25 会话（过夜：D8→D13 全交付）
 
-- **用户授权：** 按序做完剩余主线、自测、逐项 commit；明早人工点验
-- **D8：** `7936786`；PM `D08.md`
-- **D9：** Stop/Continue + loop fuse + `run_stats` Chat 条；PM `D09.md`
-- **下次（人工）：** 按 `pm-acceptance/README.md` 逐项点验
+- **用户授权：** 按序实现、自测、逐项 commit；明早人工点验
+- **Commits：** D8 `7936786` · D9 `bef9b75` · D10 `25dc5dc` · D11 `59b45ee` · D12 `194d33a` · D13 _(本批)_
+- **下次（人工）：** 打开 `runs/verification/pm-acceptance/README.md` 按 D08→D13 逐项点验；通过后再把 ROADMAP 标 ✅
 
 ## 2026-07-25 会话（D7 commit + D8 实现）
 

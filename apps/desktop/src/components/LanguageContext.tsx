@@ -757,6 +757,7 @@ const zhTranslations: Record<string, string> = {
   "Fuzzy Search Active Specs": "模糊搜索已激活规范",
   "Done": "完成",
   "Running": "进行中",
+  "Clear remembered approvals": "清除记住的批准",
   "Subtasks": "子任务",
   "Show steps": "显示步骤",
   "Hide steps": "隐藏步骤",

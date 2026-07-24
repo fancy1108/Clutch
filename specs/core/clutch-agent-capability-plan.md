@@ -283,6 +283,7 @@
 #### D13 — 权限规则设置
 - **可见**：允许/询问/拒绝配置；危险命令强问；记住/清除。
 - **验收**：拒规则生效；`rm` 类强问；记忆可关。
+- **实现笔记（待 PM）**：`permission_rules.py` + `/api/preferences/permission-rules`；危险命令 force-ask；WS `clear_approvals`。
 
 ---
 

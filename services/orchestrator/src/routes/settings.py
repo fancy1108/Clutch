@@ -62,6 +62,10 @@ class PermissionModeRequest(BaseModel):
     mode: str
 
 
+class PermissionRulesRequest(BaseModel):
+    rules: list[dict[str, Any]] = Field(default_factory=list)
+
+
 class FontSizePreferenceRequest(BaseModel):
     font_size: str
 
@@ -487,6 +491,20 @@ async def reset_onboarding_preference() -> dict[str, str]:
 async def get_permission_mode() -> dict[str, str]:
     from src.preferences_storage import load_permission_mode
     return {"permission_mode": load_permission_mode()}
+
+
+@router.get("/api/preferences/permission-rules")
+async def get_permission_rules() -> dict[str, Any]:
+    from src.permission_rules import load_permission_rules
+
+    return {"rules": load_permission_rules()}
+
+
+@router.post("/api/preferences/permission-rules")
+async def save_permission_rules_route(body: PermissionRulesRequest) -> dict[str, Any]:
+    from src.permission_rules import save_permission_rules
+
+    return {"rules": save_permission_rules(body.rules)}
 
 
 @router.post("/api/preferences/permission-mode")

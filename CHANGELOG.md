@@ -29,6 +29,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 - **Subtask delegation (capability D10 + D48):** Builtin `delegate_subtask` (`explore` | `implement`) runs a capped nested ReAct loop; parent Chat shows nested **Subtasks** cards (live + sealed) with status/summary and expandable steps.
 - **Background commands (capability D11):** `run_terminal_cmd` supports `background=true` plus `list_background_jobs` / `kill_background_job`; Chat shows a **Background jobs** bar (view output / kill) while the foreground turn stays free.
 - **Git + web fetch (capability D12):** Builtin `git_status` / `git_diff` / `git_commit` (commit is risky/approval) and `web_fetch` for URL text summarization; steps appear in the D46 tool trail.
+- **Permission rules (capability D13):** Persist allow/ask/deny command patterns; dangerous shell (`rm -rf`, `sudo`, …) force-ask even in Full; Chat permission menu **Clear remembered approvals**.
 - **Compact tool approval bar:** `awaiting_human` uses a slim Allow / Reject strip above the composer (optional note + Retry), replacing the large Human-In-The-Loop card.
 - **Sidebar session spinner:** MCP approve/complete now updates session history status; active Coding rows follow live `clutchStatus` so finished chats stop spinning.
 

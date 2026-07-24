@@ -736,9 +736,41 @@ def run_mcp_react_loop(
                             subtasks=list(latest_subtasks) or None,
                         )
 
-                    if pause_on_risky and is_risky_mcp_tool(raw_tool_name):
+                    from src.permission_rules import resolve_tool_gate
+
+                    gate = resolve_tool_gate(
+                        tool_name=raw_tool_name,
+                        func_args=func_args,
+                        permission_mode=permission_mode,
+                    )
+                    if gate == "deny":
+                        deny_msg = (
+                            f"[Permission] Denied by rule for `{raw_tool_name}`. "
+                            "Adjust Settings permission rules or choose a safer command."
+                        )
+                        _emit(logs, on_log, f"[{log_prefix}] Permission deny: {func_name}")
+                        chat_messages.append(
+                            {
+                                "role": "tool",
+                                "tool_call_id": tc_id,
+                                "content": deny_msg,
+                            }
+                        )
+                        if note_tool_result(deny_msg):
+                            output = fuse_message(
+                                failures=consecutive_failures, max_failures=fuse_limit
+                            )
+                            break
+                        continue
+
+                    force_ask = gate == "ask"
+                    force_allow = gate == "allow"
+
+                    if pause_on_risky and (
+                        force_ask or (is_risky_mcp_tool(raw_tool_name) and not force_allow)
+                    ):
                         # Plan mode: hard-block ALL write/exec tools immediately
-                        if permission_mode == "plan":
+                        if permission_mode == "plan" and not force_ask:
                             tool_key = raw_tool_name.lower().replace("-", "_")
                             is_write_exec = any(
                                 token in tool_key for token in _PLAN_MODE_BLOCKED_TOKENS
@@ -763,7 +795,7 @@ def run_mcp_react_loop(
                                 continue
 
                         # auto_edit mode: auto-approve pure file-edit tools
-                        if permission_mode == "auto_edit":
+                        if permission_mode == "auto_edit" and not force_ask:
                             tool_key = raw_tool_name.lower().replace("-", "_")
                             if any(approved in tool_key for approved in _AUTO_EDIT_APPROVED_TOOLS):
                                 _emit(
@@ -819,9 +851,9 @@ def run_mcp_react_loop(
                                         subtasks=list(latest_subtasks) or None,
                                     )
 
-                        # full mode: skip approval gates entirely
-                        elif permission_mode != "full":
-                            # ask mode (default): pause on any risky tool
+                        # full mode: skip approval gates entirely — unless D13 force_ask
+                        elif force_ask or permission_mode != "full":
+                            # ask mode (default) or dangerous/rule force-ask: pause
                             approval_key = mcp_approval_key(func_name, func_args)
                             if approval_key in (approved_keys or set()):
                                 _emit(
