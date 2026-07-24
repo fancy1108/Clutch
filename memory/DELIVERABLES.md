@@ -4,13 +4,14 @@
 > **何时写：** 每个**代码 Task** 完成并 commit 后，在 Check-out 追加一节（见 `CLAUDE.md` §Check-out）。  
 > **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。
 
-## Clutch Agent D47 files-changed chips (`pending`)
+## Clutch Agent D47 files-changed chips (`3a9a951`)
 
 | 项目 | 值 |
 |------|-----|
 | **Task** | D47 中间产物芯片（seal `filesChanged` + FilesChangedChips → D42 预览） |
-| **Commit** | _(filled after commit)_ |
+| **Commit** | `3a9a951d13574373a895851f5ea8beea4840991e` |
 | **Branch** | `dev` |
+| **Verification** | pre-commit `verify.sh`：build OK；vitest 151；pytest 766+（含 `test_files_changed_d47`）；doc-drift 0 error |
 | **下一批** | PM 验收后标 ROADMAP ✅；再 D2∥D49 |
 
 ## Clutch Agent D53 layered prompt (`9a840e2`)
@@ -23,7 +24,7 @@
 | **Verification** | pre-commit `verify.sh`：build OK；vitest 150；pytest 763 passed / 3 skipped；doc-drift 0 error |
 | **PM** | 2026-07-24 验收通过（ROADMAP D53 ✅） |
 | **交付要点** | `compose_agent_prompt_assembly` 分层；skills catalog；`GET …/prompt-assembly`；Agent Manager 层字符量面板 |
-| **下一批** | **D47** files_changed 对话芯片 |
+| **下一批** | **D47** → D2∥D49 |
 
 ## Clutch Agent D1+D37+D46 (`1097a6d`)
 
@@ -35,7 +36,7 @@
 | **Verification** | pre-commit `verify.sh`：build OK；vitest 150；pytest 762 collected（hook 通过）；doc-drift 0 error |
 | **PM** | 2026-07-24 验收通过（ROADMAP D1/D37/D46 ✅） |
 | **交付要点** | `clutch-tools`；Agent Manager `mcpServerIds`；`toolSteps` / `pending_tool_steps`；apply_patch 裸行；Search 标题含 path |
-| **下一批** | **D47** files_changed 对话芯片 |
+| **下一批** | **D47** → D2∥D49 |
 
 ## Devin + Copilot CLI Whitelist (`6ce426b`)
 
