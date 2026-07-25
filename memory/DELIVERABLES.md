@@ -708,7 +708,7 @@ _v1.0.0–v1.0.2 已发布交付见 `archive/DELIVERABLES-OSR.md` 及 Git tag / 
 
 ---
 
-## D20 — Agent busy message queue (`049bd43`)
+## D20 — Agent busy message queue (`94fdc8f`)
 
 - **Verification:** `cd apps/desktop && pnpm test -- src/services/chatPendingQueue.test.ts` → 5 passed
 - **PM:** `runs/verification/pm-acceptance/D20.md`
