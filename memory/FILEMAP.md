@@ -145,6 +145,7 @@
 | 前台转后台（D34） | `foreground_shell.py` · `ForegroundShellBar` · `move_fg_to_background` WS |
 | 会话 fork/回滚（D23） | `session_fork.py` · `file_rewind.py` · fork/rewind API · Chat 菜单 |
 | 跨会话记忆（D16） | `cross_session_memory.py` · `remember_preference` · Settings Memory |
+| 工具 Hooks（D17） | `tool_hooks.py` · `mcp_react` Pre/Post 拦截 |
 | Chat 用量看板（D22） | `components/UsageDashboard.tsx` · `ChatInputBar` 点击 `chat-run-stats` · `chat_runner._touch_session` 持久化用量 |
 | Chat 模式预设（D27） | `permissionApi.ts` `PERMISSION_MODES` · `ChatInputBar` 权限菜单 · `mcp_react` explore/plan 硬拦截 |
 | 能力↔Chat UI 门禁（D52） | `docs/PRODUCT_INTRO.md`（capability-ui-table）· `scripts/check-capability-ui-table.sh` |

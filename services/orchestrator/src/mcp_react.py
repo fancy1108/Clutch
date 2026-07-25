@@ -226,6 +226,25 @@ def _execute_tool_call(
     if server_id in builtin_servers:
         from src.builtin_tools import execute_builtin_tool
 
+        pretool = __import__(
+            "src.tool_hooks", fromlist=["evaluate_pretool", "format_hook_denial_message"]
+        ).evaluate_pretool(tool_name, func_args)
+        if not pretool.allowed:
+            from src.tool_hooks import format_hook_denial_message
+
+            result_str = f"Error executing tool: {format_hook_denial_message(pretool, tool_name)}"
+            _emit(logs, on_log, f"[{log_prefix}] {result_str}")
+            if on_tool_step:
+                on_tool_step(
+                    make_tool_step(
+                        tool_alias=func_name,
+                        func_args=func_args,
+                        status="failed",
+                        step_idx=step_idx,
+                        step_id=active_id,
+                    )
+                )
+            return result_str
         try:
             result_str = execute_builtin_tool(tool_name, func_args)
             _emit(logs, on_log, f"[{log_prefix}] Builtin tool response length: {len(result_str)} chars")
@@ -239,7 +258,16 @@ def _execute_tool_call(
             if result_str.startswith("Error executing tool"):
                 _finish_step(status="failed", result=result_str, tool_name=tool_name)
             else:
-                _finish_step(status="completed", result=result_str, tool_name=tool_name)
+                post = __import__(
+                    "src.tool_hooks", fromlist=["evaluate_posttool", "format_hook_denial_message"]
+                ).evaluate_posttool(tool_name, func_args, result_str)
+                if not post.allowed:
+                    from src.tool_hooks import format_hook_denial_message
+
+                    result_str = f"Error executing tool: {format_hook_denial_message(post, tool_name)}"
+                    _finish_step(status="failed", result=result_str, tool_name=tool_name)
+                else:
+                    _finish_step(status="completed", result=result_str, tool_name=tool_name)
             return result_str
         except Exception as exc:
             _emit(logs, on_log, f"[{log_prefix}] Builtin tool error: {exc}")
