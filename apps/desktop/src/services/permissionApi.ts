@@ -2,16 +2,6 @@ import { SIDECAR_BASE as BASE, sidecarFetch } from './sidecarUrl';
 
 export type PermissionMode = 'ask' | 'auto_edit' | 'explore' | 'plan' | 'full';
 
-/** D27 — one-click Chat presets (Explore / Plan / Implement). */
-export const CHAT_MODE_PRESETS: {
-  id: PermissionMode;
-  label: string;
-  shortLabel: string;
-}[] = [
-  { id: 'explore', label: 'Explore (read-only)', shortLabel: 'Explore' },
-  { id: 'plan', label: 'Plan mode', shortLabel: 'Plan' },
-  { id: 'auto_edit', label: 'Implement', shortLabel: 'Implement' },
-];
 
 export const PERMISSION_MODES: {
   id: PermissionMode;

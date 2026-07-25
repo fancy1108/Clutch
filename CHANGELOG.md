@@ -39,7 +39,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 - **MCP resources pin-for-Chat (capability D43):** Hub can **Browse resources** on stdio servers; **Pin for Chat** stores a text snapshot injected into Clutch Agent prompt layers (`mcp_resources`).
 - **Ignore rules + strict sandbox (capability D21):** Builtin `list_dir` / `grep` / `read_file` respect workspace `.gitignore` and `.clutchignore`; ignored paths are omitted from listings/search and rejected on direct read. **Settings → General → Strict sandbox** rejects shell commands and paths that escape the authorized workspace with readable errors.
 - **Usage dashboard (capability D22):** Click the D9 **Steps n/m · ~tok** strip to open a history panel (current run + recent sessions); sidecar persists `session_tokens` / `tool_steps` on session records when runs end or are touched.
-- **Chat mode presets (capability D27):** Composer pills **Explore / Plan / Implement** map to `explore` / `plan` / `auto_edit`; Explore hard-blocks write/exec MCP tools while allowing read/search.
+- **Chat mode presets (capability D27):** Composer permission menu switches **Explore / Plan / Edit automatically** (`explore` / `plan` / `auto_edit`); Explore hard-blocks write/exec MCP tools while allowing read/search.
 - **Agent busy message queue (capability D20):** While Clutch Agent / MCP plain chat is **running**, new sends enqueue above the composer with **Queue #n** position badges and per-item cancel; messages drain in FIFO order when the turn returns to idle.
 - **Thinking stream (capability D19):** Models that return `reasoning_content` stream into the D46 **Agent live activity** fold as **Thinking / 思考** (same strip as tool steps). Long `run_terminal_cmd` output attaches as expandable step detail snippets.
 - **Background job monitor (capability D26):** When a D11 background job finishes, fails, or is killed, Chat gets a **[Monitor]** Supervisor line; failures also raise a short composer toast.
@@ -48,6 +48,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ### Changed
 
+- Removed redundant Explore / Plan / Implement pills above the Chat composer; the same modes remain in the permission menu.
 - Clutch Agent system prompt documents clutch-tools usage.
 
 Feature/patch release — **Coding image paste & click-to-preview**, Design handoff/Spec flow polish, workspace history stability.
