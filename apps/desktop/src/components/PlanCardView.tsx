@@ -1,6 +1,6 @@
 /**
  * D49 — in-chat plan card (D2). Actions live on the Chat dock only.
- * Chrome shared with Question/Todo — docs/UI_UX_GUIDELINES.md §4.1.
+ * D31 — per-step inline comments on pending plans.
  */
 import React from 'react';
 import type { PlanCard as PlanCardData } from '../types';
@@ -22,6 +22,34 @@ export function stripPlanStepIndex(step: string): string {
   return cleaned || step.trim();
 }
 
+export type PlanStepComment = { step: number; text: string; comment: string };
+
+/** Build JSON revise payload for plan approval with per-step notes (D31). */
+export function formatPlanRevisePayload(
+  note: string,
+  steps: string[],
+  stepComments: string[],
+): string {
+  const annotations: PlanStepComment[] = [];
+  for (let i = 0; i < steps.length; i += 1) {
+    const comment = (stepComments[i] ?? '').trim();
+    if (!comment) continue;
+    annotations.push({
+      step: i + 1,
+      text: stripPlanStepIndex(steps[i] ?? ''),
+      comment,
+    });
+  }
+  return JSON.stringify({
+    note: note.trim(),
+    stepComments: annotations,
+  });
+}
+
+export function hasPlanStepComments(stepComments: string[]): boolean {
+  return stepComments.some((value) => value.trim().length > 0);
+}
+
 function statusTone(status: PlanCardData['status']): ChatCardStatusTone {
   if (status === 'approved') return 'success';
   if (status === 'cancelled') return 'danger';
@@ -32,12 +60,17 @@ function statusTone(status: PlanCardData['status']): ChatCardStatusTone {
 export function PlanCardView({
   card,
   t,
+  stepComments,
+  onStepCommentChange,
 }: {
   card: PlanCardData;
   t: (key: string) => string;
+  stepComments?: string[];
+  onStepCommentChange?: (index: number, value: string) => void;
 }) {
   const status = card.status;
   const pending = status === 'pending';
+  const savedComments = card.stepComments ?? [];
   const statusLabel =
     status === 'approved'
       ? t('Plan approved')
@@ -62,17 +95,33 @@ export function PlanCardView({
           {t('Approve, revise, or cancel in the bar below')}
         </p>
       ) : null}
-      {/* Manual indices — avoid CSS list-decimal doubling model-supplied "1." */}
-      <ol className="px-3 py-2.5 space-y-1.5 list-none">
+      <ol className="px-3 py-2.5 space-y-2 list-none">
         {card.steps.map((step, index) => (
           <li
             key={`${index}-${step.slice(0, 24)}`}
-            className="text-[12px] text-on-surface leading-snug flex gap-2"
+            className="text-[12px] text-on-surface leading-snug"
           >
-            <span className="tabular-nums font-mono text-[11px] text-on-surface-variant/70 shrink-0 w-4 text-right">
-              {index + 1}.
-            </span>
-            <span className="min-w-0 flex-1">{stripPlanStepIndex(step)}</span>
+            <div className="flex gap-2">
+              <span className="tabular-nums font-mono text-[11px] text-on-surface-variant/70 shrink-0 w-4 text-right">
+                {index + 1}.
+              </span>
+              <span className="min-w-0 flex-1">{stripPlanStepIndex(step)}</span>
+            </div>
+            {pending && onStepCommentChange ? (
+              <input
+                type="text"
+                data-testid={`plan-step-comment-${index}`}
+                value={stepComments?.[index] ?? ''}
+                onChange={(e) => onStepCommentChange(index, e.target.value)}
+                placeholder={t('Comment on this step…')}
+                className="mt-1 ml-6 w-[calc(100%-1.5rem)] rounded-md border border-outline-variant/30 bg-surface-container-low px-2 py-1 text-[11px] text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:ring-1 focus:ring-neutral-900/15"
+              />
+            ) : null}
+            {!pending && savedComments[index]?.trim() ? (
+              <p className="mt-1 ml-6 text-[11px] text-on-surface-variant italic">
+                {savedComments[index]}
+              </p>
+            ) : null}
           </li>
         ))}
       </ol>

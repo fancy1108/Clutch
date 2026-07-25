@@ -118,7 +118,7 @@ graph TD
 | Capability | What you see in Chat |
 |------------|----------------------|
 | D1 builtins | Verb-group tool trail (D46) + files-changed chips (D47) + Allow/Reject for risky writes/shell |
-| D2–D4 plan/todo/ask | In-chat Plan / Todo / Question cards (D49); Todo sticky + chevron collapse |
+| D2–D4 plan/todo/ask | In-chat Plan / Todo / Question cards (D49); Todo sticky + chevron collapse; Plan per-step comments (D31) |
 | D5–D6 verify/diff | Verification report card + Cursor-style Diff cards (D50) |
 | D7 rules/skills | Runtime prompt layers panel in Agent Manager; Skills via `read_skill` (D53) |
 | D8 task state | Compaction digest badge; Todo/Plan survive fold via `task_state` |
@@ -138,6 +138,7 @@ graph TD
 | D28 MCP discovery | Many Hub tools → `search_mcp_tools` + few always-on; search enables matches in trail (D46) |
 | D15 web search | Settings **Allow network** → builtin `web_search` (DuckDuckGo HTML); off = tool hidden |
 | D33 rich read | `read_file` images → OCR/analysis; PDF → `pdftotext` or clear error |
+| D31 plan comments | Pending plan card: per-step comment fields; Revise sends structured feedback |
 | D38 Hub probe | MCP Hub **Test connection** → tool count or readable error (no “under development” banner) |
 | D39 transport | Hub register form: stdio only; SSE disabled / API 400; optional Env `KEY=value` |
 | D40 MCP badge | Chat composer: `N MCP · ~M` badge or **Bind MCP** CTA → Agent Manager |

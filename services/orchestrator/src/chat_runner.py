@@ -1397,6 +1397,7 @@ def _patch_plan_card_status(
     *,
     status: str,
     note: str | None = None,
+    step_comments: list[str] | None = None,
 ) -> list[dict[str, Any]]:
     updated = list(messages)
     for idx in range(len(updated) - 1, -1, -1):
@@ -1405,6 +1406,8 @@ def _patch_plan_card_status(
             next_card = {**card, "status": status}
             if note:
                 next_card["note"] = note
+            if step_comments is not None:
+                next_card["stepComments"] = list(step_comments)
             updated[idx] = {**updated[idx], "planCard": next_card}
             break
     return updated
@@ -2199,12 +2202,30 @@ async def _handle_plain_chat_mcp_decision(
         normalized = "approve"
 
     if is_plan and normalized == "revise":
-        pop_pending(run_id)
-        note = (instructions or "").strip() or tr("(no comments)", "（无附加说明）")
-        messages = _patch_plan_card_status(
-            list(state["messages"]), status="revised", note=note
+        from src.plan_revise import (
+            align_step_comments,
+            format_plan_feedback,
+            parse_plan_revise_instructions,
         )
-        revise_line = tagged(TAG_HUMAN, f"Plan revise requested: {note}")
+
+        pop_pending(run_id)
+        note, annotations = parse_plan_revise_instructions(instructions or "")
+        pending_card = None
+        for msg in reversed(state["messages"]):
+            card = msg.get("planCard")
+            if isinstance(card, dict) and card.get("status") == "pending":
+                pending_card = card
+                break
+        steps = list((pending_card or {}).get("steps") or [])
+        step_comments = align_step_comments(steps, annotations)
+        feedback = format_plan_feedback(note, annotations) or tr("(no comments)", "（无附加说明）")
+        messages = _patch_plan_card_status(
+            list(state["messages"]),
+            status="revised",
+            note=feedback,
+            step_comments=step_comments,
+        )
+        revise_line = tagged(TAG_HUMAN, f"Plan revise requested: {feedback}")
         chat_messages = list(pending.chat_messages)
         chat_messages.append(
             {
@@ -2212,7 +2233,7 @@ async def _handle_plain_chat_mcp_decision(
                 "tool_call_id": pending.tool_call_id,
                 "content": (
                     "User requested changes to the plan before approval.\n"
-                    f"Feedback: {note}\n"
+                    f"Feedback:\n{feedback}\n"
                     "Call propose_plan again with a revised title and steps. "
                     "Do not edit files until the new plan is approved."
                 ),

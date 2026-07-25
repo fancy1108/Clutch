@@ -150,7 +150,8 @@
 | MCP 真工具名 / 一键 FS（D42∥D44） | `AgentManager.tsx` Module 4 + catalog tool chips |
 | MCP Resources（D43） | `mcp_resources.py` · Hub Browse/Pin · `agent_prompt` `mcp_resources` 层 |
 | Chat 变更文件芯片（D47） | `components/FilesChangedChips.tsx` |
-| Chat 计划卡（D2/D49） | `components/PlanCardView.tsx` · builtin `propose_plan` |
+| Chat 计划卡（D2/D49） | `components/PlanCardView.tsx` · builtin `propose_plan` · D31 行内批注 |
+| 计划批注解析（D31） | `plan_revise.py` · `chat_runner` revise payload |
 | Chat Todo 卡（D3/D49） | `components/TodoCardView.tsx` · builtin `todo_write` |
 | Chat 提问卡（D4/D49） | `components/QuestionCardView.tsx` · builtin `ask_user_question` |
 | Chat 验证报告卡（D5/D50） | `components/VerificationReportCardView.tsx` · builtin `submit_verification` |

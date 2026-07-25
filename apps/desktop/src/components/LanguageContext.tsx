@@ -156,6 +156,7 @@ const zhTranslations: Record<string, string> = {
   "Enable the builtin web_search tool for Clutch Agent. Off by default.": "为 Clutch Agent 启用内置 web_search 工具。默认关闭。",
   "Allow network: On": "允许联网：开",
   "Allow network: Off": "允许联网：关",
+  "Comment on this step…": "对此步骤批注…",
   "Small": "小",
   "Default": "默认",
   "Large": "大",

@@ -38,7 +38,7 @@ import { USER_CHAT_AVATAR, clutchStore, deleteChatMessage, useClutchState } from
 import { resolveLiveActivitySteps } from '../services/agentActivitySteps';
 import { AgentLiveActivity } from './AgentLiveActivity';
 import { FilesChangedChips } from './FilesChangedChips';
-import { PlanCardView } from './PlanCardView';
+import { PlanCardView, formatPlanRevisePayload, hasPlanStepComments } from './PlanCardView';
 import { QuestionCardView } from './QuestionCardView';
 import { TodoCardView, shouldPinLiveTodos } from './TodoCardView';
 import { GoalBarView, shouldShowGoalBar } from './GoalBarView';
@@ -577,6 +577,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   const [thinkingHeight, setThinkingHeight] = useState(0);
   const [terminalBarHeight, setTerminalBarHeight] = useState(52);
   const [hillInstructions, setHillInstructions] = useState('');
+  const [planStepComments, setPlanStepComments] = useState<string[]>([]);
   const [pendingMessages, setPendingMessages] = useState<PendingChatMessage[]>([]);
   const [bgJobToast, setBgJobToast] = useState<string | null>(null);
   const prevBgJobsRef = useRef<BackgroundJob[]>([]);
@@ -623,6 +624,27 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   }, [awaitingHuman, messages]);
   const awaitingPlan = Boolean(pendingPlanMessage);
   const awaitingQuestion = Boolean(pendingQuestionMessage);
+
+  useEffect(() => {
+    const steps = pendingPlanMessage?.planCard?.steps ?? [];
+    setPlanStepComments(steps.map(() => ''));
+  }, [pendingPlanMessage]);
+
+  const canSubmitPlanRevise =
+    hillInstructions.trim().length > 0 || hasPlanStepComments(planStepComments);
+
+  const submitPlanRevise = () => {
+    if (!canSubmitPlanRevise || hitlBusy) return;
+    setHitlBusy(true);
+    const payload = formatPlanRevisePayload(
+      hillInstructions,
+      pendingPlanMessage?.planCard?.steps ?? [],
+      planStepComments,
+    );
+    onRetryWithInstructions?.(payload);
+    setHillInstructions('');
+    setPlanStepComments((pendingPlanMessage?.planCard?.steps ?? []).map(() => ''));
+  };
 
   useEffect(() => {
     if (!awaitingHuman) {
@@ -1371,7 +1393,26 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                         />
                       ) : null}
                       {!isUser && msg.planCard ? (
-                        <PlanCardView card={msg.planCard} t={t} />
+                        <PlanCardView
+                          card={msg.planCard}
+                          t={t}
+                          stepComments={
+                            awaitingPlan && msg === pendingPlanMessage
+                              ? planStepComments
+                              : undefined
+                          }
+                          onStepCommentChange={
+                            awaitingPlan && msg === pendingPlanMessage
+                              ? (index, value) => {
+                                  setPlanStepComments((prev) => {
+                                    const next = [...prev];
+                                    next[index] = value;
+                                    return next;
+                                  });
+                                }
+                              : undefined
+                          }
+                        />
                       ) : null}
                       {!isUser && msg.questionCard ? (
                         <QuestionCardView
@@ -1689,10 +1730,16 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                   onChange={(e) => setHillInstructions(e.target.value)}
                   disabled={hitlBusy}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' && hillInstructions.trim() && !hitlBusy) {
-                      setHitlBusy(true);
-                      onRetryWithInstructions?.(hillInstructions.trim());
-                      setHillInstructions('');
+                    if (e.key === 'Enter') {
+                      if (awaitingPlan && canSubmitPlanRevise && !hitlBusy) {
+                        submitPlanRevise();
+                        return;
+                      }
+                      if (hillInstructions.trim() && !hitlBusy) {
+                        setHitlBusy(true);
+                        onRetryWithInstructions?.(hillInstructions.trim());
+                        setHillInstructions('');
+                      }
                     }
                   }}
                   placeholder={
@@ -1706,8 +1753,12 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                 />
                 <button
                   type="button"
-                  disabled={hitlBusy || !hillInstructions.trim()}
+                  disabled={hitlBusy || (awaitingPlan ? !canSubmitPlanRevise : !hillInstructions.trim())}
                   onClick={() => {
+                    if (awaitingPlan) {
+                      submitPlanRevise();
+                      return;
+                    }
                     if (hillInstructions.trim() && !hitlBusy) {
                       setHitlBusy(true);
                       onRetryWithInstructions?.(hillInstructions.trim());
@@ -1715,7 +1766,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                     }
                   }}
                   className={
-                    !hitlBusy && hillInstructions.trim()
+                    !hitlBusy && (awaitingPlan ? canSubmitPlanRevise : hillInstructions.trim())
                       ? `${BTN_SM} bg-neutral-900 text-white border border-neutral-900`
                       : `${BTN_SM} bg-transparent text-on-surface-variant/40 border border-transparent cursor-not-allowed`
                   }

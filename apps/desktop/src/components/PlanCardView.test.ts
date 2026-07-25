@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { stripPlanStepIndex } from './PlanCardView';
+import { formatPlanRevisePayload, hasPlanStepComments, stripPlanStepIndex } from './PlanCardView';
 
 describe('stripPlanStepIndex', () => {
   it('removes leading numeric markers', () => {
@@ -11,5 +11,28 @@ describe('stripPlanStepIndex', () => {
 
   it('leaves plain steps alone', () => {
     expect(stripPlanStepIndex('Create health.py')).toBe('Create health.py');
+  });
+});
+
+describe('formatPlanRevisePayload', () => {
+  it('serializes per-step comments', () => {
+    const raw = formatPlanRevisePayload(
+      'Revise please',
+      ['Add route', 'Wire auth'],
+      ['', 'Use OAuth'],
+    );
+    const parsed = JSON.parse(raw) as {
+      note: string;
+      stepComments: { step: number; comment: string }[];
+    };
+    expect(parsed.note).toBe('Revise please');
+    expect(parsed.stepComments).toHaveLength(1);
+    expect(parsed.stepComments[0].step).toBe(2);
+    expect(parsed.stepComments[0].comment).toBe('Use OAuth');
+  });
+
+  it('detects non-empty step comments', () => {
+    expect(hasPlanStepComments(['', 'x'])).toBe(true);
+    expect(hasPlanStepComments(['', ''])).toBe(false);
   });
 });

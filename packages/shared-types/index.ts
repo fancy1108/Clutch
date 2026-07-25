@@ -118,6 +118,8 @@ export interface PlanCard {
   summary?: string;
   status: PlanCardStatus;
   note?: string;
+  /** D31 — per-step reviewer comments (parallel to steps). */
+  stepComments?: string[];
 }
 
 export type TodoItemStatus = 'pending' | 'in_progress' | 'completed';
