@@ -6,7 +6,7 @@
 ## Current Status
 
 - **阶段：** **v1.2.9**；Chat Agent 可验收表：**D8–D13 + D51–D52 + D38–D42 + D44–D45 已交付待 PM**；**D43 Resources 未做**
-- **Git：** D40=`724c26c`；D42∥D44∥D45=_(本批)_
+- **Git：** D40=`724c26c`；D42∥D44∥D45=`24f0e31`
 - **PM 验收包：** `runs/verification/pm-acceptance/`（ROADMAP 未点验前保持 ❌）
 
 ## Recent Sessions

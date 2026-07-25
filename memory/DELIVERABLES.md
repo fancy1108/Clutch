@@ -4,16 +4,16 @@
 > **何时写：** 每个**代码 Task** 完成并 commit 后，在 Check-out 追加一节（见 `CLAUDE.md` §Check-out）。  
 > **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。
 
-## Clutch Agent D42∥D44 真工具名 + 一键 local-fs (`pending`)
+## Clutch Agent D42∥D44 真工具名 + 一键 local-fs (`24f0e31`)
 
 | 项目 | 值 |
 |------|-----|
-| **Task** | D42 real Hub tool chips + D44 Enable workspace file tools |
-| **Commit** | _(fill after commit)_ |
+| **Task** | D42 real Hub tool chips + D44 Enable workspace file tools + D45 Epicode honesty |
+| **Commit** | `24f0e31` |
 | **Branch** | `dev` |
-| **Verification** | `pnpm build` via pre-commit / AgentManager UI |
-| **PM 用例** | `runs/verification/pm-acceptance/D42.md` · `D44.md`（另 D41/D45 对照） |
-| **下一批** | 人工点验；D43 Resources 仍未做 |
+| **Verification** | pre-commit verify.sh (build + vitest + pytest) |
+| **PM 用例** | `runs/verification/pm-acceptance/D42.md` · `D44.md` · `D41.md` · `D45.md` |
+| **下一批** | 人工点验；**D43 Resources 未做** |
 
 ## Clutch Agent D40 Chat MCP 徽章 (`724c26c`)
 
