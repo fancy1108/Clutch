@@ -6,14 +6,14 @@
 ## Current Status
 
 - **阶段：** **v1.2.9**；扩展 D14+D15–D36 交付中（Wave1 起）；主线/MCP 仍待 PM
-- **Git：** D20 `94fdc8f`、D19 `3f3e66e`、D22 `c68301b`、D27 `a269764`；PM 包见 `runs/verification/pm-acceptance/README.md`
+- **Git：** D20 `94fdc8f`、D19 `3f3e66e`、D26 `8be7f06`、D22 `c68301b`、D27 `a269764`；PM 包见 `runs/verification/pm-acceptance/README.md`
 - **PM 验收包：** ROADMAP 未点验前保持 ❌
 
 ## Recent Sessions
 
 ## 2026-07-25 会话（扩展 D14–D36：D26）
 
-- **Commit：** _(D26 pending)_
+- **Commit：** `8be7f06`（D26）
 - **实现：** bg job 终态 [Monitor] Supervisor 行 + 失败 toast
 - **下次：** PM 点验 D20/D19/D26
 
