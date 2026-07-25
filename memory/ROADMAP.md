@@ -56,29 +56,29 @@
 | D11 后台命令 | P0 | ❌ | bg_jobs + Chat 任务条；待 PM（非 session 持久化） |
 | D12 Git + 网页 | P0 | ❌ | git_* + web_fetch；待 PM（非桌面 E2E） |
 | D13 权限规则 | P0 | ❌ | allow/ask/deny + 危险强问 + 清记忆；待 PM |
-| D14 外挂 grok CLI | P2 | ❌ | 旁路引擎；代码已交 PM |
-| D15 联网搜索 | P1 | ❌ | web_search；待实现/PM |
-| D16 跨会话记忆 | P1 | ❌ | Memory 开关；待实现/PM |
-| D17 Hooks | P1 | ❌ | Pre/Post tool；待实现/PM |
-| D18 斜杠命令 | P1 | ❌ | `/plan` `/compact` `/todos`；待 PM |
-| D19 思考流 | P1 | ❌ | live_reasoning + 思考折叠；待 PM |
-| D20 忙时排队 | P1 | ❌ | Queue #n + cancel；`chatPendingQueue`；待 PM |
+| D14 外挂 grok CLI | P2 | ❌ | 代码已交 PM（`5d65a68`） |
+| D15 联网搜索 | P1 | ❌ | 代码已交 PM（`0c0c095`） |
+| D16 跨会话记忆 | P1 | ❌ | 代码已交 PM（`930f9a5`） |
+| D17 Hooks | P1 | ❌ | 代码已交 PM（`68a05a8`） |
+| D18 斜杠命令 | P1 | ❌ | 代码已交 PM（`518b8d0`） |
+| D19 思考流 | P1 | ❌ | 代码已交 PM（`3f3e66e`） |
+| D20 忙时排队 | P1 | ❌ | 代码已交 PM（`94fdc8f`） |
 | D21 ignore/沙箱 | P1 | ❌ | 代码已交 PM（`6733b15`） |
-| D22 用量看板 | P1 | ❌ | 历史用量面板；代码已交 PM（`runs/verification/pm-acceptance/D22.md`） |
-| D23 fork/rewind | P1 | ❌ | 会话分支+文件回滚；待实现/PM |
-| D24 诊断 MVP | P2 | ❌ | tsc/ruff 回灌；代码已交 PM |
-| Cap-D25 定时任务 | P2 | ❌ | 扩展定时/循环（≠ Hybrid D25）；代码已交 PM |
-| D26 长任务监视 | P1 | ❌ | bg 失败 [Monitor] + toast；待 PM |
-| D27 模式/人设 | P1 | ❌ | explore/plan/implement；代码已交 PM（`runs/verification/pm-acceptance/D27.md`） |
-| D28 MCP 工具发现 | P1 | ❌ | 多工具时搜索；待实现/PM |
+| D22 用量看板 | P1 | ❌ | 代码已交 PM（`c68301b`） |
+| D23 fork/rewind | P1 | ❌ | 代码已交 PM（`bc67e30`） |
+| D24 诊断 MVP | P2 | ❌ | 代码已交 PM（`605d0fc`） |
+| Cap-D25 定时任务 | P2 | ❌ | 代码已交 PM（`05547b8`；≠ Hybrid D25） |
+| D26 长任务监视 | P1 | ❌ | 代码已交 PM（`8be7f06`） |
+| D27 模式/人设 | P1 | ❌ | 代码已交 PM（`a269764`；explore 在权限菜单） |
+| D28 MCP 工具发现 | P1 | ❌ | 代码已交 PM（`cc2662e`） |
 | D29 Goal 跟踪 | P1 | ❌ | 代码已交 PM（`96c13d3` + `1d88b02` UI） |
-| D30 会话看板 | P1 | ❌ | 会话总览；待实现/PM |
-| D31 计划批注 | P1 | ❌ | 行内评论批准；待实现/PM |
-| D32 worktree | P2 | ❌ | 隔离试验；代码已交 PM |
-| D33 富读 PDF/图 | P1 | ❌ | read_file 富媒体；待实现/PM |
-| D34 前台转后台 | P1 | ❌ | Ctrl+B 式；待实现/PM |
-| D35 能力包导入 | P2 | ❌ | skills+hooks+mcp；待实现/PM |
-| D36 headless Agent | P2 | ❌ | CI/`-p` 同核（≠ Design D36）；代码已交 PM |
+| D30 会话看板 | P1 | ❌ | 代码已交 PM（`1d88b02`） |
+| D31 计划批注 | P1 | ❌ | 代码已交 PM（`d2f2b2f`） |
+| D32 worktree | P2 | ❌ | 代码已交 PM（`9a863ae`） |
+| D33 富读 PDF/图 | P1 | ❌ | 代码已交 PM（`bec5dbb`） |
+| D34 前台转后台 | P1 | ❌ | 代码已交 PM（`5679a1b`） |
+| D35 能力包导入 | P2 | ❌ | 代码已交 PM（`5de258d`） |
+| D36 headless Agent | P2 | ❌ | 代码已交 PM（`e42ba01`；≠ Design D36） |
 | D37 MCP Agent↔Hub 绑定 | P0 | ✅ | Module 4 Hub 勾选 + `mcpServerIds`；PM 2026-07-24 点验通过 |
 | D38 Hub 可信状态 | P1 | ❌ | Test connection + 去开发中横幅；待 PM（`b2d8f49`） |
 | D39 传输诚实 | P1 | ❌ | stdio-only + Env 表单；待 PM（`092ee91`） |
