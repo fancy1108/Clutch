@@ -5,11 +5,17 @@
 
 ## Current Status
 
-- **阶段：** **v1.2.9**；主线 **D8 PM ✅**；扩展 D14–D36 代码已交；其余主线/MCP/扩展待 PM
+- **阶段：** **v1.2.9**；主线 **D8 · D9 PM ✅**；扩展 D14–D36 代码已交；其余待 PM
 - **Git / PM 索引：** [`runs/verification/pm-acceptance/README.md`](../runs/verification/pm-acceptance/README.md)
-- **下次优先：** D9 运行可控 PM 点验
+- **下次优先：** D10∥D48 子任务 PM 点验
 
 ## Recent Sessions
+
+## 2026-07-25 会话（D9 PM + Usage 占位）
+
+- **PM：** D9 ✅ Stop/Continue；熔断不点验；用量 Overview 占位 `—`（Q-USAGE-1）
+- **产品：** 移除 `+ → Usage`；用量入口仅右侧 Overview
+- **下次：** **D10∥D48**
 
 ## 2026-07-25 会话（D8 PM 通过 + 验收期修复）
 

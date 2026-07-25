@@ -38,6 +38,14 @@ interface RightPanelProps {
   sessionCostUsd?: number;
   tokenInput?: number;
   tokenOutput?: number;
+  /** D9 — current-run tool steps / fuse (shown in Overview usage section). */
+  runStats?: {
+    tool_steps?: number;
+    max_steps?: number;
+    session_tokens?: number;
+    fuse_triggered?: boolean;
+    consecutive_failures?: number;
+  };
   uncommitted: UncommittedFile[];
   terminalLogs: string[];
   isOpen: boolean;
@@ -88,9 +96,10 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   workflowName = '',
   currentInstruction = '',
   sessionTokens = 0,
-  sessionCostUsd = 0,
+  sessionCostUsd: _sessionCostUsd = 0,
   tokenInput = 0,
   tokenOutput = 0,
+  runStats: _runStats,
   uncommitted,
   terminalLogs,
   isOpen,
@@ -207,8 +216,10 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   const hasWorkflow = Boolean(workflowId);
   const workflowLabel = workflowName || workflowId;
   const tokenTotal = sessionTokens || tokenInput + tokenOutput;
-  const inputPct = tokenTotal > 0 ? Math.round((tokenInput / tokenTotal) * 100) : 0;
-  const outputPct = tokenTotal > 0 ? 100 - inputPct : 0;
+  // Usage meters are placeholders until provider-true usage lands (DECISIONS open Q).
+  const showUsageSection = true;
+  void _sessionCostUsd;
+  void _runStats;
   const visibleTabs: RightTab[] = ['overview', 'files', 'changes', 'terminal'];
 
   const terminalLogRef = React.useRef<HTMLDivElement>(null);
@@ -537,20 +548,40 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                       ) : null}
                     </>
                   )}
-                  {tokenTotal > 0 ? (
-                    <section>
+                  {showUsageSection ? (
+                    <section data-testid="overview-run-usage">
                       <h4 className="text-[10px] font-bold text-on-surface-variant/75 uppercase tracking-widest mb-4">
                         {t('Session Token Analytics')}
                       </h4>
+                      <p className="text-[10px] text-on-surface-variant/70 mb-3 leading-relaxed">
+                        {language === 'zh'
+                          ? '用量暂未接入供应商真值，以下为占位；后续优化。'
+                          : 'Usage meters pending provider-true values; placeholders for now.'}
+                      </p>
                       <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-3">
+                          <div
+                            className="p-3 border border-neutral-200 bg-neutral-50/50 rounded-xl"
+                            data-testid="chat-run-stats"
+                          >
+                            <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider mb-1">
+                              {language === 'zh' ? '本局步数' : 'Steps'}
+                            </p>
+                            <p className="text-base font-extrabold text-neutral-900 font-mono">—</p>
+                          </div>
+                          <div className="p-3 border border-neutral-200 bg-neutral-50/50 rounded-xl">
+                            <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider mb-1">
+                              {language === 'zh' ? '本局 ~tok' : 'This run ~tok'}
+                            </p>
+                            <p className="text-base font-extrabold text-neutral-900 font-mono">—</p>
+                          </div>
                           <div className="p-3 border border-neutral-200 bg-neutral-50/50 rounded-xl">
                             <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider mb-1">{t('Total Tokens')}</p>
-                            <p className="text-base font-extrabold text-neutral-900 font-mono">{tokenTotal.toLocaleString()}</p>
+                            <p className="text-base font-extrabold text-neutral-900 font-mono">—</p>
                           </div>
                           <div className="p-3 border border-neutral-200 bg-neutral-50/50 rounded-xl">
                             <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider mb-1">{t('Estimated Cost')}</p>
-                            <p className="text-base font-extrabold text-neutral-900 font-mono">${sessionCostUsd.toFixed(4)}</p>
+                            <p className="text-base font-extrabold text-neutral-900 font-mono">—</p>
                           </div>
                         </div>
 
@@ -560,20 +591,12 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                             <span className="text-zinc-500 font-normal font-mono">{t('Input vs Output')}</span>
                           </div>
                           <div className="w-full h-3 rounded-full overflow-hidden flex bg-neutral-100 border border-neutral-200/50">
-                            <div
-                              className="h-full bg-neutral-900 transition-all duration-300"
-                              style={{ width: `${inputPct}%` }}
-                              title={`Input: ${tokenInput} tokens (${inputPct}%)`}
-                            />
-                            <div
-                              className="h-full bg-neutral-400 transition-all duration-300"
-                              style={{ width: `${outputPct}%` }}
-                              title={`Output: ${tokenOutput} tokens (${outputPct}%)`}
-                            />
+                            <div className="h-full w-1/2 bg-neutral-200" aria-hidden />
+                            <div className="h-full w-1/2 bg-neutral-100" aria-hidden />
                           </div>
-                          <div className="flex justify-between text-[9px] font-mono pt-1">
-                            <span>{t('Input')} ({inputPct}%): {tokenInput.toLocaleString()}</span>
-                            <span>{t('Output')} ({outputPct}%): {tokenOutput.toLocaleString()}</span>
+                          <div className="flex justify-between text-[9px] font-mono pt-1 text-on-surface-variant/70">
+                            <span>{t('Input')}: —</span>
+                            <span>{t('Output')}: —</span>
                           </div>
                         </div>
                       </div>

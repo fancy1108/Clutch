@@ -27,7 +27,6 @@ import {
   type SlashCommand,
   type SlashCommandId,
 } from '../services/slashCommands';
-import { UsageDashboard } from './UsageDashboard';
 import { SessionOverviewBoard } from './SessionOverviewBoard';
 import { ScheduledTasksBar } from './ScheduledTasksBar';
 
@@ -65,13 +64,6 @@ interface ChatInputBarProps {
   /** D9: resume after Stop / fuse. */
   onContinueRun?: () => void;
   awaitingContinue?: boolean;
-  runStats?: {
-    tool_steps?: number;
-    max_steps?: number;
-    session_tokens?: number;
-    fuse_triggered?: boolean;
-  };
-  sessionTokens?: number;
   pendingMessages?: PendingChatMessage[];
   onRemovePendingMessage?: (id: string) => void;
   selectedWorkflowId?: string | null;
@@ -237,8 +229,6 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
   onStopRun,
   onContinueRun,
   awaitingContinue = false,
-  runStats,
-  sessionTokens,
   pendingMessages = [],
   onRemovePendingMessage,
   selectedWorkflowId,
@@ -294,7 +284,6 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
   const [sessionPickerOpen, setSessionPickerOpen] = useState(false);
   const [agentPickerOpen, setAgentPickerOpen] = useState(false);
   const [fileBrowserOpen, setFileBrowserOpen] = useState(false);
-  const [usageDashboardOpen, setUsageDashboardOpen] = useState(false);
   const [sessionBoardOpen, setSessionBoardOpen] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
 
@@ -313,7 +302,6 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
         setSessionPickerOpen(false);
         setAgentPickerOpen(false);
         setFileBrowserOpen(false);
-        setUsageDashboardOpen(false);
         setSessionBoardOpen(false);
         setScheduleOpen(false);
       }
@@ -614,11 +602,6 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
   const showPlainChatStopping = isRunning && isPlainLlmChat && stopPending;
   const showPlainChatContinue =
     !isRunning && isPlainLlmChat && Boolean(awaitingContinue) && Boolean(onContinueRun);
-  const stepsUsed = runStats?.tool_steps ?? 0;
-  const stepsMax = runStats?.max_steps ?? 24;
-  const tokensShown = runStats?.session_tokens ?? sessionTokens ?? 0;
-  const showRunStats =
-    isPlainLlmChat && (isRunning || awaitingContinue || stepsUsed > 0 || tokensShown > 0);
   const currentPermission = PERMISSION_MODES.find((m) => m.id === permissionMode) ?? PERMISSION_MODES[0];
   const hybridNotice = hybridRejectionNotice(shellSessionStatus, language === 'zh' ? 'zh' : 'en');
   const showHybridNotice =
@@ -830,15 +813,6 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
             language={language === 'zh' ? 'zh' : 'en'}
             onSelectSession={onSelectSession}
           />
-          <UsageDashboard
-            open={usageDashboardOpen}
-            onClose={() => setUsageDashboardOpen(false)}
-            currentRunId={currentRunId}
-            sessions={sessions}
-            runStats={runStats}
-            sessionTokens={sessionTokens}
-            language={language === 'zh' ? 'zh' : 'en'}
-          />
           <ScheduledTasksBar
             t={t}
             open={scheduleOpen}
@@ -1042,7 +1016,6 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
                       className={menuItemClass}
                       onClick={() => {
                         setAttachMenuOpen(false);
-                        setUsageDashboardOpen(false);
                         setScheduleOpen(false);
                         setSessionBoardOpen(true);
                       }}
@@ -1082,7 +1055,6 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
                     onClick={() => {
                       setAttachMenuOpen(false);
                       setSessionBoardOpen(false);
-                      setUsageDashboardOpen(false);
                       setScheduleOpen(true);
                     }}
                   >
@@ -1101,29 +1073,6 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
                     >
                       <LegacyIcon name="git-branch" className="text-[17px] text-on-surface-variant" />
                       {t('Enable worktree')}
-                    </button>
-                  ) : null}
-                  {showRunStats ? (
-                    <button
-                      type="button"
-                      data-testid="chat-run-stats"
-                      className={menuItemClass}
-                      onClick={() => {
-                        setAttachMenuOpen(false);
-                        setSessionBoardOpen(false);
-                        setScheduleOpen(false);
-                        setUsageDashboardOpen(true);
-                      }}
-                    >
-                      <LegacyIcon name="monitoring" className="text-[17px] text-on-surface-variant" />
-                      <span className="font-mono text-[11px]">
-                        {language === 'zh' ? '用量' : 'Usage'} {stepsUsed}/{stepsMax}
-                        {' · ~'}
-                        {tokensShown.toLocaleString()}
-                        {runStats?.fuse_triggered
-                          ? ` · ${language === 'zh' ? '熔断' : 'fuse'}`
-                          : ''}
-                      </span>
                     </button>
                   ) : null}
                 </>

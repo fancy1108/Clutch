@@ -10,6 +10,10 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ## [Unreleased]
 
+### Changed
+
+- **Usage / Steps (D9 · D22):** Composer **+ → Usage** removed; Overview **Session Token Analytics** keeps the section but shows **`—` placeholders** until provider-true usage (DECISIONS **Q-USAGE-1**).
+
 ### Fixed
 
 - **D8 PM acceptance polish:** `todo_write` no longer explodes JSON-string `todos` into per-character items; compaction patches **replace** the message list (digest visible); manual `/compact` appends a User `/compact` bubble then an amber digest **at the feed end**; Stop flips to Stopping/Continue immediately; status questions (还剩哪些 todo) instruct the model not to resume edits; slash notices use a high-contrast dark toast.

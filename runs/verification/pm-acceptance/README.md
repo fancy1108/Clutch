@@ -8,7 +8,7 @@ Chat 输入框默认仅 **`+` · 模式 pill · 发送/Stop**（Cursor/Copilot �
 
 | 能力 | 用例 | 入口 |
 |------|------|------|
-| Usage / Steps | D9 · D22 | **+** → Usage (`chat-run-stats`) |
+| Usage / Steps | D9 · D22 | 右侧 **Overview** → Session Token Analytics（数值暂 `—`，真值见 Q-USAGE-1） |
 | Session overview | D30 | **+** → Session overview |
 | Rewind | D23 | **+** → Rewind file changes |
 | MCP 徽章 | D40 | **+** → Bind MCP / `N MCP` |
@@ -23,7 +23,7 @@ Chat 输入框默认仅 **`+` · 模式 pill · 发送/Stop**（Cursor/Copilot �
 | 交付期 | 用例文件 | Commit |
 |--------|----------|--------|
 | D8 长聊不丢任务态 | [D08.md](./D08.md) | `7936786` · **PM ✅ 2026-07-25** |
-| D9 运行可控 | [D09.md](./D09.md) | `bef9b75` |
+| D9 运行可控 | [D09.md](./D09.md) | `bef9b75` · **PM ✅ Stop/Continue 2026-07-25**（熔断跳过；用量 Q-USAGE-1） |
 | D10∥D48 子任务 | [D10.md](./D10.md) | `25dc5dc` |
 | D11 后台命令 | [D11.md](./D11.md) | `59b45ee` |
 | D12 Git + 网页 | [D12.md](./D12.md) | `194d33a` |
@@ -51,7 +51,7 @@ Chat 输入框默认仅 **`+` · 模式 pill · 发送/Stop**（Cursor/Copilot �
 | D19 思考流 | [D19.md](./D19.md) | `3f3e66e` |
 | D20 忙时排队 | [D20.md](./D20.md) | `94fdc8f` |
 | D21 ignore/沙箱 | [D21.md](./D21.md) | `6733b15` |
-| D22 用量看板 | [D22.md](./D22.md) | `c68301b` |
+| D22 用量看板 | [D22.md](./D22.md) | UI 占位；后续真值 Q-USAGE-1 |
 | D23 fork/rewind | [D23.md](./D23.md) | `bc67e30` |
 | D24 诊断 MVP | [D24.md](./D24.md) | `605d0fc` |
 | Cap-D25 定时任务 | [Cap-D25.md](./Cap-D25.md) | `05547b8` |

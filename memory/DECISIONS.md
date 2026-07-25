@@ -339,6 +339,7 @@
 
 | ID | 问题 | 选项 | 默认 |
 |----|------|------|------|
+| Q-USAGE-1 | Overview 用量真值 | A) 继续词数估算 B) 接供应商 `usage`（真 input/output）+ 模型价表；估计算 fallback | **B 后续优化**；UI 暂显示 `—`（2026-07-25） |
 | Q-HRT-1 | 多 session 并发策略 | A) 全 run 串行队列 B) 同 workspace 串行 C) 拒绝+提示（pty §2.1） | **C**（与 POC 一致）直至 HRT-08 立项 |
 | Q-HRT-2 | 诊断导出形态 | A) 仅 API B) API + 桌面「复制诊断」按钮 | **B**（HRT-07） |
 | Q-D34-1 | Terminal 并行 Lane 上限 N | A) 2 B) 4 C) 8 | **B**（4，见 D34 §2） |

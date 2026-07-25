@@ -99,8 +99,8 @@ graph TD
 * **中间产物点击预览**：Chat 气泡中的工作区路径、`[file:]` / `@path`、fenced 代码块可点击打开全屏预览（大文件 plain view 降级）；**图片路径**打开媒体预览。Terminal xterm 与派发历史中的路径/带扩展名文件名同样可点；**Terminal Overview 派发记录**对 `.clutch/attachments/` 等图片显示缩略图，点击放大。
 * **Workspace Chrome（平台差异）**：macOS 与 Windows 侧栏折叠 rail、折叠按钮位置、Chat 间距与右侧监督 Tab 样式分文件维护（`apps/desktop/src/platform/chrome/`）；共享导航图标与文案见 `navConfig.ts`。macOS 默认保留图标+微标签折叠 rail 与 App 级浮动折叠按钮；Windows 使用纯图标 rail 与侧栏边缘折叠按钮。**项目绑定**：侧栏会话按工作区路径稳定 id 挂载（同路径重授权不会丢掉历史）；开发态与打包态分目录存储（`clutch_dev` / `clutch`），E2E 须隔离 `CLUTCH_STORAGE_DIR`。
 * **Long-session compaction（D8）**：Plain chat 在 token 估算接近模型上下文上限时自动压缩历史消息；用户消息与摘要 digest 保留，完整原文写入 `runs/archive/{run_id}.jsonl`。压缩后 **Todo/计划** 仍通过 `task_state` 层与 digest 快照可达。
-* **Run control（D9）**：Plain chat 运行中可 **Stop**；停止后 Chat 显示 Supervisor 提示与 **Continue**（`continue_run`）。连续工具失败触发 **loop fuse**（`CLUTCH_LOOP_FUSE_FAILURES`，默认 3）。输入框 **+** 菜单可打开 **Usage / Steps n/m · ~tok**（`run_stats`）用量看板。
-* **用量看板（D22）**：点击 D9 用量条打开 **Usage dashboard**——本局 steps/tok 与近期 session 历史用量表；Sidecar 在 session 更新时持久化 `session_tokens` / `tool_steps`。
+* **Run control（D9）**：Plain chat 运行中可 **Stop**；停止后 Chat 显示 Supervisor 提示与 **Continue**（`continue_run`）。连续工具失败触发 **loop fuse**（`CLUTCH_LOOP_FUSE_FAILURES`，默认 3）。
+* **用量（D22）**：右侧 **Overview → Session Token Analytics** 为用量入口；**数值暂占位 `—`**，后续接入供应商真值（DECISIONS **Q-USAGE-1**）。不再在 `+` 菜单展示。
 * **模式切换（D27）**：Chat 输入框底栏 **模式 pill** 切换 **Explore / Plan / Ask / Edit / Full**（对应 `explore` / `plan` / `ask` / `auto_edit` / `full`）；Explore 硬拦截写文件/执行命令，只读工具仍可用。
 * **Subtask delegation（D10 + D48）**：Clutch Agent 可调用 `delegate_subtask` 派发 **explore**（只读）或 **implement** 子任务；父气泡下嵌套 **Subtasks** 卡展示状态、摘要与可展开步骤；子失败在父卡可见。
 * **Background commands（D11）**：`run_terminal_cmd` 可设 `background=true` 立即返回 `job_id`；Chat 输入栏上方展示后台任务条（查看输出 / Kill）；前台仍可继续对话。
@@ -134,8 +134,8 @@ graph TD
 | D5–D6 verify/diff | Verification report card + Cursor-style Diff cards (D50) |
 | D7 rules/skills | Runtime prompt layers panel in Agent Manager; Skills via `read_skill` (D53) |
 | D8 task state | `/compact` → User bubble + amber digest at feed end; Todo/Plan via `task_state` |
-| D9 run control | Stop / Continue；**+** → Usage Steps n/m · ~tok (`run_stats`) |
-| D22 usage dashboard | Click stats strip → Usage dashboard (current + session history steps/tok) |
+| D9 run control | Stop / Continue；loop fuse |
+| D22 usage | Overview Session Token Analytics（UI 占位 `—`；真值 Q-USAGE-1） |
 | D27 mode presets | Composer mode pill → Explore / Plan / Ask / Edit / Full |
 | D20 busy queue | Composer **Pending messages** strip with Queue #n + cancel while Agent running |
 | D19 thinking stream | D46 live activity fold **Thinking / 思考** + shell output in step detail |

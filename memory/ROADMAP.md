@@ -51,7 +51,7 @@
 | D6 Diff 审查 | P0 | ✅ | Cursor 式 edit Diff 卡 + Changes 同步；PM 2026-07-24 点验通过（须同验 D50） |
 | D7 项目规则 + Skills | P0 | ✅ | Grok 对齐：规则链 + 开放 Skills catalog；PM 2026-07-25 点验通过 |
 | D8 长聊不丢任务态 | P0 | ✅ | `/compact`→末尾摘要；压缩后答还剩 todo；PM 2026-07-25 点验通过 |
-| D9 运行可控 | P0 | ❌ | Stop/Continue + loop fuse + Chat Steps/tok；待 PM |
+| D9 运行可控 | P0 | ✅ | Stop/Continue PM ✅ 2026-07-25；熔断不点验；用量占位 Q-USAGE-1 |
 | D10∥D48 子任务委派 | P0 | ❌ | `delegate_subtask` + 嵌套卡；待 PM |
 | D11 后台命令 | P0 | ❌ | bg_jobs + Chat 任务条；待 PM（非 session 持久化） |
 | D12 Git + 网页 | P0 | ❌ | git_* + web_fetch；待 PM（非桌面 E2E） |
@@ -64,7 +64,7 @@
 | D19 思考流 | P1 | ❌ | 代码已交 PM（`3f3e66e`） |
 | D20 忙时排队 | P1 | ❌ | 代码已交 PM（`94fdc8f`） |
 | D21 ignore/沙箱 | P1 | ❌ | 代码已交 PM（`6733b15`） |
-| D22 用量看板 | P1 | ❌ | 代码已交 PM（`c68301b`） |
+| D22 用量看板 | P1 | ❌ | Overview 占位 `—`；**后续**接供应商真值（Q-USAGE-1）；原 `c68301b` |
 | D23 fork/rewind | P1 | ❌ | 代码已交 PM（`bc67e30`） |
 | D24 诊断 MVP | P2 | ❌ | 代码已交 PM（`605d0fc`） |
 | Cap-D25 定时任务 | P2 | ❌ | 代码已交 PM（`05547b8`；≠ Hybrid D25） |
@@ -98,7 +98,7 @@
 | D53 分层 prompt + 渐进披露 | P0 | ✅ | 分层组装 + Agent Manager 分层摘要面板；PM 2026-07-24 点验通过 |
 
 **首期目标：** D1 + D37 + D46 ✅（PM 2026-07-24）。  
-**下一批（防返工顺序）：** D9 → D10∥D48 → D11 → D12 → D13；用例见 `runs/verification/pm-acceptance/`
+**下一批（防返工顺序）：** D10∥D48 → D11 → D12 → D13；用例见 `runs/verification/pm-acceptance/`
 
 ## Design 模式（D36 · 默认 FAIL）
 

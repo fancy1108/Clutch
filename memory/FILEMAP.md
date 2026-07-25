@@ -155,7 +155,7 @@
 | 跨会话记忆（D16） | `cross_session_memory.py` · `remember_preference` · Settings Memory |
 | 工具 Hooks（D17） | `tool_hooks.py` · `mcp_react` Pre/Post 拦截 |
 | 能力包导入（D35） | `capability_pack.py` · Skills 页 Import/Uninstall |
-| Chat 用量看板（D22） | `components/UsageDashboard.tsx` · `ChatInputBar` 点击 `chat-run-stats` · `chat_runner._touch_session` 持久化用量 |
+| Chat 用量（D22 / D9） | 右侧 `RightPanel` Overview `overview-run-usage` / `chat-run-stats` · `chat_runner._touch_session` 持久化用量 |
 | Chat 模式预设（D27） | `permissionApi.ts` `PERMISSION_MODES` · `ChatInputBar` 权限菜单 · `mcp_react` explore/plan 硬拦截 |
 | 能力↔Chat UI 门禁（D52） | `docs/PRODUCT_INTRO.md`（capability-ui-table）· `scripts/check-capability-ui-table.sh` |
 | MCP Hub 探测（D38） | `mcp_storage.probe_server_by_id` · `POST /api/mcp/servers/test` · `McpServerHub` Test connection |
@@ -231,7 +231,7 @@
 | Agent system prompt 组装（D53） | `src/agent_prompt.py` · `src/agent_skills.py` |
 | 项目规则发现 + Skills 按需（D7） | `agent_prompt._load_workspace_rules` · `read_skill` · `skills_storage.sync_workspace_skill_mounts` |
 | 长聊任务态 / 压缩（D8） | `src/task_state.py` · `compaction.py` · prompt `task_state` 层 |
-| 运行可控（D9） | `src/run_control.py` · `mcp_react` fuse · Chat `chat-stop`/`chat-continue`/`chat-run-stats` |
+| 运行可控（D9） | `src/run_control.py` · `mcp_react` fuse · Chat `chat-stop`/`chat-continue` · Overview `chat-run-stats` |
 | 子任务委派（D10∥D48） | `src/subagent_runner.py` · `delegate_subtask` · `SubtaskCardView.tsx` |
 | 后台命令（D11） | `src/bg_jobs.py` · `run_terminal_cmd` background · `BackgroundJobsBar.tsx` |
 | Git + 网页（D12） | `builtin_tools` git_* / web_fetch · `web_fetch_util.py` |

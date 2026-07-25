@@ -4,6 +4,14 @@
 > **何时写：** 每个**代码 Task** 完成并 commit 后，在 Check-out 追加一节（见 `CLAUDE.md` §Check-out）。  
 > **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。
 
+## D9 PM 通过 + Usage 占位（2026-07-25）
+
+| 项 | 说明 |
+|----|------|
+| **PM** | D9 ✅ Stop/Continue — `runs/verification/pm-acceptance/D09.md`；熔断跳过；ROADMAP ✅ |
+| **Changed** | 移除 `UsageDashboard` / `+ → Usage`；Overview 用量 `—`；开放问题 **Q-USAGE-1** |
+| **下一批** | D10∥D48 PM |
+
 ## D8 PM 通过 + 验收期修复（2026-07-25）
 
 | 项 | 说明 |

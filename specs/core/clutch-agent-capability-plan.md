@@ -260,9 +260,9 @@
 - **实现笔记（PM ✅ 2026-07-25）**：`task_state` 层每轮注入；`/compact` 末尾 User 气泡 + 琥珀色摘要；压缩后问「还剩哪些 todo」答对。
 
 #### D9 — 运行可控
-- **可见**：停止、继续、死循环熔断提示、用量/步数（Chat 控件，非仅日志）。
-- **验收**：停得住、续得上、重复失败会停、看得见计数。
-- **实现笔记（待 PM）**：`run_control.py`；Stop→`awaiting_continue`+Continue；连续失败 fuse（`CLUTCH_LOOP_FUSE_FAILURES`）；`run_stats` 推 Chat。
+- **可见**：停止、继续；熔断提示（自动化）；用量区在 Overview（占位 `—`）。
+- **验收**：停得住、续得上。
+- **实现笔记（PM ✅ Stop/Continue 2026-07-25）**：`run_control.py`；Stop→Continue；fuse 不点验；用量真值见 **Q-USAGE-1**。
 
 #### D10 — 子任务委派
 - **可见**：子任务状态与摘要回主 Chat。
@@ -327,8 +327,8 @@
 - **验收**：忽略路径不被 list/grep；开严沙箱后出界命令失败且说明。
 
 #### D22 — 用量看板
-- **可见**：本局 token/工具次数；历史 run 用量入口。
-- **验收**：跑一轮后看板数字增加；与 D9 条一致不矛盾。
+- **可见**：右侧 Overview Session Token Analytics（**暂占位 `—`**）。
+- **验收（真值后）**：跑一轮后数字增加且可信；见开放问题 **Q-USAGE-1**。
 
 #### D23 — 会话分支 + 文件回滚
 - **可见**：从某条消息 fork 新会话；一键撤销 Agent 最近文件改动。
