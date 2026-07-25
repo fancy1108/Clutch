@@ -336,6 +336,23 @@ def list_builtin_tools() -> list[dict[str, Any]]:
             },
         },
         {
+            "name": "remember_preference",
+            "description": (
+                "Store a user preference in cross-session memory (D16) when the user asks "
+                "you to remember something for future Chat sessions. Requires Memory enabled in Settings."
+            ),
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "text": {
+                        "type": "string",
+                        "description": "Short preference to remember (e.g. commit messages in Chinese).",
+                    },
+                },
+                "required": ["text"],
+            },
+        },
+        {
             "name": "ask_user_question",
             "description": (
                 "Ask the user a multiple-choice question in Chat when a real fork exists "
@@ -1238,6 +1255,7 @@ def execute_builtin_tool(tool_name: str, arguments: dict[str, Any]) -> str:
         "apply_patch": _tool_apply_patch,
         "propose_plan": _tool_propose_plan,
         "todo_write": _tool_todo_write,
+        "remember_preference": _tool_remember_preference,
         "goal_write": _tool_goal_write,
         "set_goal": _tool_goal_write,
         "update_goal": _tool_goal_write,
@@ -1319,6 +1337,26 @@ def _tool_todo_write(arguments: dict[str, Any]) -> str:
         f"- [{t['status']}] {t['id']}: {t['content']}" for t in todos
     ]
     return f"Updated {len(todos)} todo(s):\n" + "\n".join(lines)
+
+
+def _tool_remember_preference(arguments: dict[str, Any]) -> str:
+    from src.cross_session_memory import add_entry
+    from src.preferences_storage import load_cross_session_memory_enabled
+
+    if not load_cross_session_memory_enabled():
+        return (
+            "Error executing tool: cross-session memory is disabled in Settings. "
+            "Ask the user to enable Memory first."
+        )
+    text = str(arguments.get("text") or "").strip()
+    if not text:
+        return "Error executing tool: remember_preference requires `text`"
+    run_id = _bg_job_run_id() or ""
+    try:
+        entry = add_entry(text, source_run_id=run_id or None)
+    except ValueError as exc:
+        return f"Error executing tool: {exc}"
+    return json.dumps({"ok": True, "id": entry["id"], "text": entry["text"]}, ensure_ascii=False)
 
 
 def _tool_submit_diff_summary(arguments: dict[str, Any]) -> str:

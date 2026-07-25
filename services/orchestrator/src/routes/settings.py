@@ -71,6 +71,18 @@ class AllowNetworkRequest(BaseModel):
     enabled: bool
 
 
+class CrossSessionMemoryRequest(BaseModel):
+    enabled: bool
+
+
+class CapabilityPackImportRequest(BaseModel):
+    path: str
+
+
+class CapabilityPackIdRequest(BaseModel):
+    pack_id: str
+
+
 class PermissionRulesRequest(BaseModel):
     rules: list[dict[str, Any]] = Field(default_factory=list)
 
@@ -634,6 +646,32 @@ async def save_allow_network_route(body: AllowNetworkRequest) -> dict[str, str]:
     return save_allow_network(body.enabled)
 
 
+@router.get("/api/preferences/cross-session-memory")
+async def get_cross_session_memory() -> dict[str, Any]:
+    from src.cross_session_memory import list_entries
+    from src.preferences_storage import load_cross_session_memory_enabled
+
+    return {
+        "enabled": load_cross_session_memory_enabled(),
+        "entries": list_entries(),
+    }
+
+
+@router.post("/api/preferences/cross-session-memory")
+async def save_cross_session_memory_route(body: CrossSessionMemoryRequest) -> dict[str, str]:
+    from src.preferences_storage import save_cross_session_memory_enabled
+
+    return save_cross_session_memory_enabled(body.enabled)
+
+
+@router.post("/api/preferences/cross-session-memory/clear")
+async def clear_cross_session_memory_route() -> dict[str, Any]:
+    from src.cross_session_memory import clear_all, list_entries
+
+    removed = clear_all()
+    return {"cleared": removed, "entries": list_entries()}
+
+
 @router.post("/api/preferences/permission-mode")
 async def save_permission_mode_route(body: PermissionModeRequest) -> dict[str, str]:
     from src.preferences_storage import save_permission_mode
@@ -670,5 +708,32 @@ async def save_user_name_preference(body: UserNamePreferenceRequest) -> dict[str
 
     try:
         return save_user_name(body.user_name)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+
+
+@router.get("/api/capability-packs")
+async def list_capability_packs() -> dict[str, Any]:
+    from src.capability_pack import list_installed_packs
+
+    return {"packs": list_installed_packs()}
+
+
+@router.post("/api/capability-packs/import")
+async def import_capability_pack(body: CapabilityPackImportRequest) -> dict[str, Any]:
+    from src.capability_pack import import_pack
+
+    try:
+        return await asyncio.to_thread(import_pack, body.path.strip())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+
+
+@router.post("/api/capability-packs/uninstall")
+async def uninstall_capability_pack(body: CapabilityPackIdRequest) -> dict[str, Any]:
+    from src.capability_pack import uninstall_pack
+
+    try:
+        return await asyncio.to_thread(uninstall_pack, body.pack_id.strip())
     except ValueError as exc:
         raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc

@@ -103,3 +103,41 @@ export async function saveAllowNetwork(enabled: boolean): Promise<boolean> {
   const saved = (await response.json()) as { allow_network: string };
   return saved.allow_network === 'true';
 }
+
+export interface CrossSessionMemoryEntry {
+  id: string;
+  text: string;
+  created_at?: number;
+}
+
+export async function fetchCrossSessionMemory(): Promise<{
+  enabled: boolean;
+  entries: CrossSessionMemoryEntry[];
+}> {
+  const response = await sidecarFetch(`${BASE}/api/preferences/cross-session-memory`);
+  if (!response.ok) throw new Error(`cross-session-memory fetch failed (${response.status})`);
+  return (await response.json()) as { enabled: boolean; entries: CrossSessionMemoryEntry[] };
+}
+
+export async function saveCrossSessionMemory(enabled: boolean): Promise<boolean> {
+  const response = await sidecarFetch(`${BASE}/api/preferences/cross-session-memory`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enabled }),
+  });
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as { detail?: { message?: string } };
+    throw new Error(body.detail?.message ?? `cross-session-memory save failed (${response.status})`);
+  }
+  const saved = (await response.json()) as { cross_session_memory_enabled: string };
+  return saved.cross_session_memory_enabled === 'true';
+}
+
+export async function clearCrossSessionMemory(): Promise<number> {
+  const response = await sidecarFetch(`${BASE}/api/preferences/cross-session-memory/clear`, {
+    method: 'POST',
+  });
+  if (!response.ok) throw new Error(`cross-session-memory clear failed (${response.status})`);
+  const body = (await response.json()) as { cleared: number };
+  return body.cleared ?? 0;
+}

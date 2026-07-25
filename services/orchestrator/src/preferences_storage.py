@@ -26,6 +26,7 @@ ALLOWED_PERMISSION_MODES = frozenset({"ask", "auto_edit", "explore", "plan", "fu
 DEFAULT_PERMISSION_MODE = "ask"
 DEFAULT_STRICT_SANDBOX = "false"
 DEFAULT_ALLOW_NETWORK = "false"
+DEFAULT_CROSS_SESSION_MEMORY = "false"
 
 
 def preferences_dir() -> Path:
@@ -53,6 +54,7 @@ def _defaults() -> dict[str, str]:
         "onboarding_completed": "false",
         "strict_sandbox": DEFAULT_STRICT_SANDBOX,
         "allow_network": DEFAULT_ALLOW_NETWORK,
+        "cross_session_memory_enabled": DEFAULT_CROSS_SESSION_MEMORY,
     }
 
 
@@ -85,6 +87,11 @@ def load_preferences() -> dict[str, str]:
     allow_network = str(data.get("allow_network") or DEFAULT_ALLOW_NETWORK).lower()
     if allow_network not in {"true", "false"}:
         allow_network = DEFAULT_ALLOW_NETWORK
+    cross_session_memory = str(
+        data.get("cross_session_memory_enabled") or DEFAULT_CROSS_SESSION_MEMORY
+    ).lower()
+    if cross_session_memory not in {"true", "false"}:
+        cross_session_memory = DEFAULT_CROSS_SESSION_MEMORY
     if theme_id not in ALLOWED_THEME_IDS:
         theme_id = DEFAULT_THEME_ID
     if language not in ALLOWED_LANGUAGES:
@@ -103,6 +110,7 @@ def load_preferences() -> dict[str, str]:
         "onboarding_completed": onboarding_completed,
         "strict_sandbox": strict_sandbox,
         "allow_network": allow_network,
+        "cross_session_memory_enabled": cross_session_memory,
     }
 
 
@@ -177,6 +185,18 @@ def save_strict_sandbox(enabled: bool) -> dict[str, str]:
 def save_allow_network(enabled: bool) -> dict[str, str]:
     prefs = load_preferences()
     prefs["allow_network"] = "true" if enabled else "false"
+    return _write_preferences(prefs)
+
+
+def load_cross_session_memory_enabled() -> bool:
+    return load_preferences().get(
+        "cross_session_memory_enabled", DEFAULT_CROSS_SESSION_MEMORY
+    ) == "true"
+
+
+def save_cross_session_memory_enabled(enabled: bool) -> dict[str, str]:
+    prefs = load_preferences()
+    prefs["cross_session_memory_enabled"] = "true" if enabled else "false"
     return _write_preferences(prefs)
 
 

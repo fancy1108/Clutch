@@ -9,7 +9,8 @@
 | ID | Commit | Verification | PM |
 |----|--------|--------------|-----|
 | D34 | `5679a1b` | `pytest tests/test_foreground_shell_d34.py -q` → 3 passed | `runs/verification/pm-acceptance/D34.md` |
-| D23 | _(pending)_ | `pytest tests/test_session_fork_d23.py tests/test_file_rewind_d23.py -q` → 3 passed | `runs/verification/pm-acceptance/D23.md` |
+| D23 fork/rewind | _(pending)_ | `pytest tests/test_session_fork_d23.py tests/test_file_rewind_d23.py -q` → 3 passed | `runs/verification/pm-acceptance/D23.md` |
+| D16 | _(pending)_ | `pytest tests/test_cross_session_memory_d16.py -q` → 2 passed | `runs/verification/pm-acceptance/D16.md` |
 
 ## Wave4 — D28 / D15 / D33 / D31（2026-07-25）
 

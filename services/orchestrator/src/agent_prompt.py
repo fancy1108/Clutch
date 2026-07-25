@@ -404,6 +404,16 @@ def compose_agent_prompt_assembly(
         if resources_block:
             layers.append(PromptLayer("mcp_resources", resources_block))
 
+        # D16 — cross-session memory (Settings toggle).
+        try:
+            from src.cross_session_memory import format_memory_prompt_block
+
+            memory_block = format_memory_prompt_block()
+        except Exception:
+            memory_block = ""
+        if memory_block:
+            layers.append(PromptLayer("memory", memory_block))
+
     return PromptAssembly(layers=layers)
 
 

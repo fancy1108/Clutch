@@ -12,7 +12,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ### Added
 
-- **Session fork + file rewind (D23):** Right-click a message → **Fork session here** copies transcript to a new `run_id`; composer **Rewind** restores shadow snapshots of Agent writes with a Supervisor Chat line. Session board shows fork parent id.
+- **Cross-session memory (D16):** Settings toggle for Memory; builtin `remember_preference` stores JSON entries in app data; `memory` prompt layer when enabled; Clear memory button.
 - **Clutch Agent builtin tools (capability D1):** Default `clutch-tools` for Clutch Agent with an authorized workspace — `read_file`, `list_dir`, `grep`, `search_replace`, `run_terminal_cmd`, plus existing `apply_patch`. No Hub bind required for builtins.
 - **Agent Manager MCP Hub binding (capability D37):** Clutch Agent edit Module 4 restores Hub server checkboxes; save persists `mcpServerIds` (no longer wiped). Detail pane lists bound servers.
 - **Chat live tool activity (capability D46):** Clutch Agent / MCP ReAct tool trail uses a Grok-style **verb_group** fold (`Read 2 files, Searched 1 pattern`); expand for step titles/detail. Steps stream via `pending_tool_steps`, then **seal** onto the assistant message as `toolSteps` (survive refresh). Log parsing remains fallback only.

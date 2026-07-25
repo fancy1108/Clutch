@@ -14,7 +14,7 @@ import { LegacyIcon } from './ui/LegacyIcon';
 import { SettingsPageHeader, SettingsPageShell } from './ui/SettingsPageHeader';
 import { SettingsSelect } from './ui/SettingsSelect';
 import { saveAvatarPreference } from '../services/themeApi';
-import { fetchAllowNetwork, fetchStrictSandbox, saveAllowNetwork, saveStrictSandbox } from '../services/permissionApi';
+import { fetchAllowNetwork, fetchCrossSessionMemory, fetchStrictSandbox, clearCrossSessionMemory, saveAllowNetwork, saveCrossSessionMemory, saveStrictSandbox } from '../services/permissionApi';
 import { FONT_SIZE_LABEL_KEYS, FONT_SIZE_OPTIONS, type AppFontSize } from '../services/fontSizePreference';
 import { setUserChatAvatar } from '../services/clutchState';
 import defaultAvatar from '../assets/default_avatar.jpg';
@@ -89,6 +89,9 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
   const [strictSandboxLoading, setStrictSandboxLoading] = useState(true);
   const [allowNetwork, setAllowNetwork] = useState(false);
   const [allowNetworkLoading, setAllowNetworkLoading] = useState(true);
+  const [crossSessionMemory, setCrossSessionMemory] = useState(false);
+  const [memoryEntryCount, setMemoryEntryCount] = useState(0);
+  const [crossSessionMemoryLoading, setCrossSessionMemoryLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -111,6 +114,22 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
       })
       .finally(() => {
         if (!cancelled) setAllowNetworkLoading(false);
+      });
+    void fetchCrossSessionMemory()
+      .then((payload) => {
+        if (!cancelled) {
+          setCrossSessionMemory(payload.enabled);
+          setMemoryEntryCount(payload.entries?.length ?? 0);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setCrossSessionMemory(false);
+          setMemoryEntryCount(0);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setCrossSessionMemoryLoading(false);
       });
     return () => {
       cancelled = true;
@@ -459,6 +478,49 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
                     >
                       {allowNetwork ? t('Allow network: On') : t('Allow network: Off')}
                     </button>
+                  </div>
+
+                  {/* Cross-session memory (D16) */}
+                  <div className="bg-surface-container/30 p-6 rounded-2xl border border-outline/30 space-y-4">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                      {t('Cross-session memory')}
+                    </h3>
+                    <p className="text-[11px] text-on-surface-variant/80 max-w-xl">
+                      {t('Let Clutch Agent remember preferences across Chat sessions (remember_preference tool).')}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        data-testid="cross-session-memory-toggle"
+                        disabled={crossSessionMemoryLoading}
+                        onClick={() => {
+                          const next = !crossSessionMemory;
+                          setCrossSessionMemory(next);
+                          void saveCrossSessionMemory(next).catch((err) => {
+                            console.error('Failed to save cross-session memory:', err);
+                            setCrossSessionMemory(!next);
+                          });
+                        }}
+                        className={`${BTN_SECONDARY} px-3 py-1.5 text-xs font-semibold ${
+                          crossSessionMemory ? 'border-primary/50 text-primary' : ''
+                        }`}
+                      >
+                        {crossSessionMemory ? t('Memory: On') : t('Memory: Off')}
+                      </button>
+                      <button
+                        type="button"
+                        data-testid="clear-cross-session-memory"
+                        disabled={memoryEntryCount === 0}
+                        onClick={() => {
+                          void clearCrossSessionMemory()
+                            .then((n) => setMemoryEntryCount(Math.max(0, memoryEntryCount - n)))
+                            .catch((err) => console.error('Failed to clear memory:', err));
+                        }}
+                        className={`${BTN_SECONDARY} px-3 py-1.5 text-xs font-semibold`}
+                      >
+                        {t('Clear memory')} ({memoryEntryCount})
+                      </button>
+                    </div>
                   </div>
 
                   {/* Language Settings Section */}
