@@ -62,7 +62,7 @@
 | D40 Chat MCP 徽章 | P1 | ❌ | N MCP · ~M / Bind CTA；待 PM（`724c26c`） |
 | D41 MCP 审批体验 | P1 | ❌ | 既有 Allow/Reject + 路径；待 PM 对照 `D41.md` |
 | D42 真实工具名 UI | P1 | ❌ | 去掉假 permission 芯片；待 PM |
-| D43 MCP Resources | P2 | ❌ | 未做（无 resources 浏览 UI） |
+| D43 MCP Resources | P1 | ❌ | Browse + Pin for Chat；待 PM |
 | D44 一键 local-fs | P1 | ❌ | Module 4「启用工作区文件工具」；待 PM |
 | D45 文档对齐 | P1 | ❌ | PRODUCT_INTRO 已跟 stdio/徽章；待 PM |
 | D46 对话实时步骤条 | P0 | ✅ | 持久 verb_group + seal `toolSteps`；PM 2026-07-24 点验通过 |

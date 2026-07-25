@@ -109,3 +109,88 @@ export async function testMcpServer(id: string): Promise<McpProbeResult> {
   return response.json() as Promise<McpProbeResult>;
 }
 
+export interface McpResourceItem {
+  uri: string;
+  name: string;
+  description?: string | null;
+  mimeType?: string | null;
+}
+
+export interface McpResourcePin {
+  server_id: string;
+  uri: string;
+  name: string;
+  mimeType?: string | null;
+  text?: string | null;
+}
+
+/** D43 — list resources for a Hub server. */
+export async function listMcpResources(serverId: string): Promise<{
+  server_id: string;
+  name: string;
+  resources: McpResourceItem[];
+  count: number;
+}> {
+  const response = await sidecarFetch(
+    `${BASE}/api/mcp/servers/${encodeURIComponent(serverId)}/resources`,
+  );
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as { detail?: { message?: string } };
+    throw new Error(body.detail?.message ?? `mcp resources failed (${response.status})`);
+  }
+  return response.json();
+}
+
+export async function readMcpResource(
+  serverId: string,
+  uri: string,
+): Promise<{ text: string; uri: string }> {
+  const response = await sidecarFetch(`${BASE}/api/mcp/servers/resources/read`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id: serverId, uri }),
+  });
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as { detail?: { message?: string } };
+    throw new Error(body.detail?.message ?? `mcp resource read failed (${response.status})`);
+  }
+  return response.json();
+}
+
+export async function fetchMcpResourcePins(): Promise<McpResourcePin[]> {
+  const response = await sidecarFetch(`${BASE}/api/mcp/resource-pins`);
+  if (!response.ok) return [];
+  const body = (await response.json()) as { pins?: McpResourcePin[] };
+  return body.pins ?? [];
+}
+
+export async function pinMcpResource(pin: {
+  server_id: string;
+  uri: string;
+  name?: string;
+  mimeType?: string | null;
+}): Promise<McpResourcePin[]> {
+  const response = await sidecarFetch(`${BASE}/api/mcp/resource-pins`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(pin),
+  });
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as { detail?: { message?: string } };
+    throw new Error(body.detail?.message ?? `pin failed (${response.status})`);
+  }
+  const body = (await response.json()) as { pins?: McpResourcePin[] };
+  return body.pins ?? [];
+}
+
+export async function unpinMcpResource(serverId: string, uri: string): Promise<McpResourcePin[]> {
+  const response = await sidecarFetch(`${BASE}/api/mcp/resource-pins/remove`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ server_id: serverId, uri }),
+  });
+  if (!response.ok) throw new Error(`unpin failed (${response.status})`);
+  const body = (await response.json()) as { pins?: McpResourcePin[] };
+  return body.pins ?? [];
+}
+

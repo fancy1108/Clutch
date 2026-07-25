@@ -138,6 +138,18 @@ class McpClient:
         except Exception:
             return []
 
+    def list_resources(self) -> list[dict[str, Any]]:
+        """D43 — MCP resources/list (empty if server has no resources capability)."""
+        try:
+            res = self.call("resources/list", timeout=5.0)
+            return res.get("resources") or []
+        except Exception:
+            return []
+
+    def read_resource(self, uri: str) -> dict[str, Any]:
+        """D43 — MCP resources/read for a single URI."""
+        return self.call("resources/read", {"uri": uri}, timeout=15.0)
+
     def call_tool(self, name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         return self.call("tools/call", {"name": name, "arguments": arguments}, timeout=30.0)
 

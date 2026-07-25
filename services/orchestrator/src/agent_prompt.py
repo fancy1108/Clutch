@@ -386,6 +386,16 @@ def compose_agent_prompt_assembly(
         if skills_block:
             layers.append(PromptLayer("skills", skills_block))
 
+        # D43 — user-pinned MCP resource snapshots (Hub → Pin for Chat).
+        try:
+            from src.mcp_resources import format_pinned_resources_block
+
+            resources_block = format_pinned_resources_block()
+        except Exception:
+            resources_block = ""
+        if resources_block:
+            layers.append(PromptLayer("mcp_resources", resources_block))
+
     return PromptAssembly(layers=layers)
 
 

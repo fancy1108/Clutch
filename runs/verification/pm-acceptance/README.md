@@ -18,5 +18,6 @@
 | D40 Chat MCP 徽章 | [D40.md](./D40.md) | `724c26c` |
 | D41 MCP 审批 | [D41.md](./D41.md) | 既有 HITL；待点验 |
 | D42 真实工具名 | [D42.md](./D42.md) | `24f0e31` |
+| D43 MCP Resources | [D43.md](./D43.md) | _(本批)_ |
 | D44 一键 local-fs | [D44.md](./D44.md) | `24f0e31` |
 | D45 文档对齐 | [D45.md](./D45.md) | `24f0e31` |

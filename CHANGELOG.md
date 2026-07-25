@@ -36,6 +36,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 - **MCP transport honesty (capability D39):** Hub registration is **stdio-only** (SSE option disabled; API rejects new SSE registers); optional Env `KEY=value` lines on register; legacy SSE rows stay visible as unavailable.
 - **Chat MCP binding badge (capability D40):** Clutch Agent Chat shows `N MCP · ~M tools` (popover with server names) or a **Bind MCP** CTA when Hub bindings are empty.
 - **MCP Hub real tool names + one-click FS (capability D42∥D44):** Agent Manager catalog/detail show real Hub tool names (not fake permission chips); Module 4 **Enable workspace file tools** binds `local-fs` in one click.
+- **MCP resources pin-for-Chat (capability D43):** Hub can **Browse resources** on stdio servers; **Pin for Chat** stores a text snapshot injected into Clutch Agent prompt layers (`mcp_resources`).
 - **Compact tool approval bar:** `awaiting_human` uses a slim Allow / Reject strip above the composer (optional note + Retry), replacing the large Human-In-The-Loop card.
 - **Sidebar session spinner:** MCP approve/complete now updates session history status; active Coding rows follow live `clutchStatus` so finished chats stop spinning.
 

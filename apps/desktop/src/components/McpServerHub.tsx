@@ -7,10 +7,16 @@ import {
   saveMcpConfig,
   importClaudeMcp,
   testMcpServer,
+  listMcpResources,
+  pinMcpResource,
+  unpinMcpResource,
+  fetchMcpResourcePins,
   type McpServer,
+  type McpResourceItem,
+  type McpResourcePin,
 } from '../services/mcpApi';
 import { SettingsPageHeader, SettingsPageShell } from './ui/SettingsPageHeader';
-import { BTN_GHOST, BTN_PRIMARY } from './ui/buttonStyles';
+import { BTN_GHOST, BTN_PRIMARY, BTN_SECONDARY } from './ui/buttonStyles';
 import { ALERT_SUCCESS, ALERT_WARNING, BADGE_NEUTRAL, BADGE_SUCCESS, CARD_SUBTLE, SECTION_EYEBROW } from './ui/surfaceStyles';
 import { useLanguage } from './LanguageContext';
 import { AgentCapabilityTabs } from './AgentCapabilityTabs';
@@ -57,6 +63,14 @@ export const McpServerHub: React.FC = () => {
   const [probeById, setProbeById] = useState<
     Record<string, { ok: boolean; message: string; toolsCount?: number }>
   >({});
+  const [resourcesById, setResourcesById] = useState<Record<string, McpResourceItem[]>>({});
+  const [resourcesLoadingId, setResourcesLoadingId] = useState<string | null>(null);
+  const [resourcePins, setResourcePins] = useState<McpResourcePin[]>([]);
+  const [resourceError, setResourceError] = useState<string | null>(null);
+
+  useEffect(() => {
+    void fetchMcpResourcePins().then(setResourcePins).catch(() => setResourcePins([]));
+  }, []);
 
   useEffect(() => {
     const stashed = consumeSettingsAgentTab();
@@ -211,7 +225,46 @@ export const McpServerHub: React.FC = () => {
             </div>
 
             {error ? <p className={ALERT_WARNING}>{error}</p> : null}
+            {resourceError ? <p className={ALERT_WARNING}>{resourceError}</p> : null}
             {successMsg ? <p className={ALERT_SUCCESS}>{successMsg}</p> : null}
+            {resourcePins.length > 0 ? (
+              <div
+                data-testid="mcp-resource-pins"
+                className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 space-y-1.5"
+              >
+                <p className="text-[10px] font-bold uppercase tracking-wide text-primary">
+                  {t('Pinned for Chat')} ({resourcePins.length})
+                </p>
+                <ul className="space-y-1">
+                  {resourcePins.map((pin) => (
+                    <li
+                      key={`${pin.server_id}:${pin.uri}`}
+                      className="flex items-center justify-between gap-2 text-[11px]"
+                    >
+                      <span className="truncate font-mono text-on-surface" title={pin.uri}>
+                        {pin.name}
+                      </span>
+                      <button
+                        type="button"
+                        className="text-[10px] font-semibold text-rose-600 hover:underline shrink-0"
+                        onClick={() => {
+                          void unpinMcpResource(pin.server_id, pin.uri)
+                            .then(setResourcePins)
+                            .catch((err) =>
+                              setResourceError(err instanceof Error ? err.message : 'Unpin failed'),
+                            );
+                        }}
+                      >
+                        {t('Unpin')}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-[10px] text-on-surface-variant">
+                  {t('Pinned resources are injected into Clutch Agent Chat context.')}
+                </p>
+              </div>
+            ) : null}
 
             {isJsonEditMode ? (
               <form onSubmit={(e) => void handleSaveJsonConfig(e)} className="p-4 bg-neutral-50/50 border border-neutral-200/60 rounded-xl space-y-3">
@@ -373,6 +426,98 @@ export const McpServerHub: React.FC = () => {
                               </div>
                             ))}
                           </div>
+                        </div>
+                      ) : null}
+                      {/* D43 — MCP resources */}
+                      {server.transport !== 'sse' ? (
+                        <div className="mt-2 space-y-1.5" data-testid={`mcp-resources-${server.id}`}>
+                          <button
+                            type="button"
+                            className="text-[10px] font-bold text-primary hover:underline"
+                            disabled={resourcesLoadingId === server.id}
+                            onClick={() => {
+                              void (async () => {
+                                setResourcesLoadingId(server.id);
+                                setResourceError(null);
+                                try {
+                                  const result = await listMcpResources(server.id);
+                                  setResourcesById((prev) => ({
+                                    ...prev,
+                                    [server.id]: result.resources,
+                                  }));
+                                  if (result.count === 0) {
+                                    setResourceError(t('This server exposes no resources.'));
+                                  }
+                                } catch (err) {
+                                  setResourceError(
+                                    err instanceof Error ? err.message : t('Failed to list resources'),
+                                  );
+                                } finally {
+                                  setResourcesLoadingId(null);
+                                }
+                              })();
+                            }}
+                          >
+                            {resourcesLoadingId === server.id
+                              ? t('Loading resources…')
+                              : t('Browse resources')}
+                          </button>
+                          {(resourcesById[server.id] || []).length > 0 ? (
+                            <ul className="pl-3 border-l-2 border-primary/25 space-y-1 max-h-36 overflow-y-auto">
+                              {(resourcesById[server.id] || []).map((resource) => {
+                                const pinned = resourcePins.some(
+                                  (pin) =>
+                                    pin.server_id === server.id && pin.uri === resource.uri,
+                                );
+                                return (
+                                  <li
+                                    key={resource.uri}
+                                    className="flex items-center justify-between gap-2 text-[10px]"
+                                  >
+                                    <span className="font-mono truncate" title={resource.uri}>
+                                      {resource.name}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      data-testid={`mcp-pin-${server.id}`}
+                                      className={`${BTN_SECONDARY} text-[9px] px-1.5 py-0.5 shrink-0`}
+                                      onClick={() => {
+                                        void (async () => {
+                                          setResourceError(null);
+                                          try {
+                                            if (pinned) {
+                                              setResourcePins(
+                                                await unpinMcpResource(server.id, resource.uri),
+                                              );
+                                            } else {
+                                              setResourcePins(
+                                                await pinMcpResource({
+                                                  server_id: server.id,
+                                                  uri: resource.uri,
+                                                  name: resource.name,
+                                                  mimeType: resource.mimeType,
+                                                }),
+                                              );
+                                              setSuccessMsg(t('Pinned for Chat'));
+                                              setTimeout(() => setSuccessMsg(''), 2500);
+                                            }
+                                          } catch (err) {
+                                            setResourceError(
+                                              err instanceof Error
+                                                ? err.message
+                                                : t('Failed to pin resource'),
+                                            );
+                                          }
+                                        })();
+                                      }}
+                                    >
+                                      {pinned ? t('Unpin') : t('Pin for Chat')}
+                                    </button>
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          ) : null}
                         </div>
                       ) : null}
                     </div>

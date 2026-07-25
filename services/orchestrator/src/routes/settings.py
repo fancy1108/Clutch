@@ -433,6 +433,80 @@ async def test_mcp_server(body: McpServerIdRequest) -> dict[str, Any]:
         raise HTTPException(status_code=404, detail={"message": str(exc)}) from exc
 
 
+class McpResourceReadRequest(BaseModel):
+    id: str
+    uri: str
+
+
+class McpResourcePinRequest(BaseModel):
+    server_id: str
+    uri: str
+    name: str | None = None
+    mimeType: str | None = None
+    text: str | None = None
+
+
+@router.get("/api/mcp/servers/{server_id}/resources")
+async def list_mcp_resources(server_id: str) -> dict[str, Any]:
+    """D43 — list resources exposed by a Hub server."""
+    from src.mcp_resources import list_server_resources
+
+    try:
+        return await list_server_resources(server_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail={"message": str(exc)}) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+
+
+@router.post("/api/mcp/servers/resources/read")
+async def read_mcp_resource(body: McpResourceReadRequest) -> dict[str, Any]:
+    """D43 — read one resource body."""
+    from src.mcp_resources import read_server_resource
+
+    try:
+        return await read_server_resource(body.id, body.uri)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail={"message": str(exc)}) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+
+
+@router.get("/api/mcp/resource-pins")
+async def get_mcp_resource_pins() -> dict[str, Any]:
+    from src.mcp_resources import load_resource_pins
+
+    pins = load_resource_pins()
+    return {"pins": pins, "count": len(pins)}
+
+
+@router.post("/api/mcp/resource-pins")
+async def add_mcp_resource_pin(body: McpResourcePinRequest) -> dict[str, Any]:
+    from src.mcp_resources import pin_resource
+
+    try:
+        pins = await pin_resource(
+            {
+                "server_id": body.server_id,
+                "uri": body.uri,
+                "name": body.name,
+                "mimeType": body.mimeType,
+                "text": body.text,
+            }
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+    return {"pins": pins, "count": len(pins)}
+
+
+@router.post("/api/mcp/resource-pins/remove")
+async def remove_mcp_resource_pin(body: McpResourcePinRequest) -> dict[str, Any]:
+    from src.mcp_resources import unpin_resource
+
+    pins = unpin_resource(server_id=body.server_id, uri=body.uri)
+    return {"pins": pins, "count": len(pins)}
+
+
 @router.post("/api/mcp/config/save")
 async def save_mcp_config(body: McpSaveConfigRequest) -> dict[str, Any]:
     from src.mcp_storage import build_mcp_status_payload, save_raw_config
