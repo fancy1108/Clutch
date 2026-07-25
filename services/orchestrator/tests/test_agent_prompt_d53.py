@@ -61,6 +61,34 @@ def test_assembly_layers_and_short_system_base(tmp_path: Path, monkeypatch: pyte
     assert all("chars" in item for item in summary["layers"])
 
 
+def test_tools_layer_requires_network_tools_for_live_facts(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("CLUTCH_WORKSPACES_FILE", str(tmp_path / "ws.json"))
+    monkeypatch.setenv("CLUTCH_STORAGE_DIR", str(tmp_path / "storage"))
+    from src import workspace as workspace_mod
+    from src.preferences_storage import save_allow_network
+
+    workspace_mod._loaded = False
+    workspace_mod._workspaces = {}
+    workspace_mod._active_id = None
+    workspace_mod.add_workspace(str(tmp_path))
+    save_allow_network(False)
+
+    assembly = compose_agent_prompt_assembly(
+        _clutch_agent(),
+        model_name="Agnes 2.0 Flash",
+        model_api="agnes-2.0-flash",
+        mcp_servers_bound=True,
+        permission_mode="auto_edit",
+    )
+    tools = next(layer for layer in assembly.layers if layer.name == "tools")
+    assert "Tool discipline" in tools.content
+    assert "web_fetch" in tools.content
+    assert "wttr.in" in tools.content
+    assert "never claim you lack access" in tools.content
+
+
 def test_workspace_rules_injected_and_isolated(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

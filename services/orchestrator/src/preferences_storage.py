@@ -35,7 +35,9 @@ def normalize_permission_mode(mode: str | None) -> str:
         return DEFAULT_PERMISSION_MODE
     return normalized
 DEFAULT_STRICT_SANDBOX = "false"
-DEFAULT_ALLOW_NETWORK = "false"
+# On by default so Clutch Agent can use web_search end-to-end (weather/docs).
+# Users can still turn it off in Settings → General → Allow network.
+DEFAULT_ALLOW_NETWORK = "true"
 DEFAULT_CROSS_SESSION_MEMORY = "false"
 
 

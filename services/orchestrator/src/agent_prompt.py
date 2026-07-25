@@ -52,7 +52,8 @@ _PLAN_MODE_REMINDER = (
 
 _ASK_MODE_REMINDER = (
     "## Mode: Ask (conversation only, read-only)\n"
-    "Ask mode is active. Answer with read/search tools only. "
+    "Ask mode is active. Answer with read/search tools only "
+    "(including web_fetch / web_search for live facts). "
     "Do not create, edit, delete, or run mutating shell commands. "
     "To make changes, the user must switch the composer mode to Agent or Full."
 )
@@ -361,10 +362,34 @@ def compose_agent_prompt_assembly(
                 )
             )
         else:
+            from src.preferences_storage import load_allow_network
+
+            network_on = load_allow_network()
+            network_block = (
+                "Tool discipline (harness-enforced): never claim you lack access to the "
+                "workspace, files, git, shell, or internet while the matching tools are listed. "
+                "Workspace questions → `list_dir` / `read_file` / `grep` first. "
+                "Edits → `read_file` then `search_replace` / `apply_patch`. "
+                "Git questions → `git_status` / `git_diff` / `git_commit`. "
+                "Commands/tests → `run_terminal_cmd`. "
+                "Live / external facts (weather, news, events, prices, unfamiliar docs): "
+                + (
+                    "usually 1× `web_search`, then ≤2× `web_fetch` on promising result "
+                    "URLs, then answer — do not re-query synonyms or fetch search-engine "
+                    "result pages until the step budget is empty. "
+                    if network_on
+                    else (
+                        "`web_search` is off (Settings → Allow network); use `web_fetch` "
+                        "(e.g. `https://wttr.in/Shanghai?format=3`). "
+                    )
+                )
+                + "Do not refuse before a tool call. "
+            )
             layers.append(
                 PromptLayer(
                     "tools",
                     "## Tools\n"
+                    f"{network_block}"
                     "For multi-step / feature work (add login, new page, scaffold app), "
                     "call clutch-tools `propose_plan` early — do not interview the user about "
                     "stack first; put defaults in the plan. Wait for Chat Approve / Revise / "

@@ -1,8 +1,9 @@
+import { sidecarBaseUrl } from './sidecar.js';
 import { connectRunWebSocket } from './ws.js';
 
 /** Seed a plain-chat session via Sidecar HTTP + WebSocket (Node, not WebView). */
 export async function seedPlainChatSession(runId: string, text: string): Promise<void> {
-  const sessionRes = await fetch('http://127.0.0.1:8123/api/sessions', {
+  const sessionRes = await fetch(`${sidecarBaseUrl()}/api/sessions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ run_id: runId, title: text.slice(0, 80) }),

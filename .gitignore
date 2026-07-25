@@ -54,6 +54,10 @@ e2e/test-results/
 # Tauri (future)
 apps/desktop/src-tauri/target/
 apps/desktop/src-tauri/binaries/
+# Runtime copy from e2e-capabilities/ (tauri-e2e.sh); must not linger for normal builds
+apps/desktop/src-tauri/capabilities/e2e.json
+.clutch-vite-e2e.pid
+.clutch-vite-e2e.log
 services/orchestrator/build/
 services/orchestrator/dist/
 services/orchestrator/src/workflow_assets/*.json

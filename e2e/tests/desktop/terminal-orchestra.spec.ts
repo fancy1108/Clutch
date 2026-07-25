@@ -3,6 +3,7 @@ import {
   attachConsoleGuard,
   assertNoConsoleIssues,
   clearWorkflowSelection,
+  ensureChatWorkspaceMode,
   selectFooterAgent,
   startNewChat,
   waitForCurrentSessionRunId,
@@ -45,8 +46,7 @@ test('D34 terminal orchestra UI smoke', async ({ tauriPage: page }) => {
   await page.click('[data-testid="right-tab-overview"]');
   await page.waitForSelector('[data-testid="overview-dispatch-log"] li', 15_000);
 
-  await page.click('[data-testid="workspace-view-chat"]');
-  await page.waitForSelector('[data-testid="chat-input"]', 15_000);
+  await ensureChatWorkspaceMode(page);
   await expect(page.locator('[data-testid="orchestrator-bar"]')).toHaveCount(0);
 });
 

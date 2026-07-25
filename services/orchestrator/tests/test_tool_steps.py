@@ -1,6 +1,7 @@
 """Unit tests for D46 structured tool steps / verb_group labels."""
 
 from src.tool_steps import (
+    append_tool_result_detail,
     complete_running_steps,
     humanize_tool_step,
     kind_for_tool,
@@ -13,9 +14,42 @@ from src.tool_steps import (
 def test_kind_for_builtin_tools() -> None:
     assert kind_for_tool("read_file") == "read"
     assert kind_for_tool("clutch-tools__grep") == "search"
+    assert kind_for_tool("web_fetch") == "fetch"
+    assert kind_for_tool("web_search") == "search"
     assert kind_for_tool("list_dir") == "list"
     assert kind_for_tool("apply_patch") == "edit"
     assert kind_for_tool("run_terminal_cmd") == "execute"
+
+
+def test_humanize_web_fetch_and_search() -> None:
+    title, detail = humanize_tool_step(
+        "web_fetch",
+        {"url": "https://www.shanghai.disney.com/events"},
+    )
+    assert title.startswith("Fetched")
+    assert "shanghai.disney.com" in title.lower() or "disney" in title.lower()
+    assert detail.startswith("https://")
+    st, sd = humanize_tool_step("web_search", {"query": "上海迪士尼 活动"})
+    assert "上海迪士尼" in st
+    assert sd == "上海迪士尼 活动"
+
+
+def test_append_fetch_result_keeps_url() -> None:
+    step = make_tool_step(
+        tool_alias="web_fetch",
+        func_args={"url": "https://example.com/a"},
+        status="completed",
+        step_idx=0,
+    )
+    merged = append_tool_result_detail(
+        step,
+        "web_fetch",
+        "<html><body>Hello Disney events page</body></html>" * 20,
+    )
+    detail = merged["detail"]
+    assert "https://example.com/a" in detail
+    assert "── result" in detail
+    assert "Hello Disney" in detail
 
 
 def test_humanize_and_make_step() -> None:
@@ -99,6 +133,26 @@ def test_verb_group_header_label() -> None:
             step_id="c",
         ),
     ]
-    assert verb_group_header_label(steps) == "Read 2 files, Searched 1 pattern"
+    assert verb_group_header_label(steps) == "Read 2 files, Searched 1 query"
     steps[2]["status"] = "running"
-    assert verb_group_header_label(steps) == "Reading 2 files, Searching 1 pattern"
+    assert verb_group_header_label(steps) == "Reading 2 files, Searching 1 query"
+
+
+def test_verb_group_header_fetch_pages() -> None:
+    steps = [
+        make_tool_step(
+            tool_alias="web_fetch",
+            func_args={"url": "https://a.example/x"},
+            status="completed",
+            step_idx=0,
+            step_id="a",
+        ),
+        make_tool_step(
+            tool_alias="web_fetch",
+            func_args={"url": "https://b.example/y"},
+            status="completed",
+            step_idx=1,
+            step_id="b",
+        ),
+    ]
+    assert verb_group_header_label(steps) == "Fetched 2 pages"

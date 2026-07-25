@@ -2,6 +2,46 @@
 
 import type { ToolStep, ToolStepKind } from '../types';
 
+export type ParsedToolDetail = {
+  target: string;
+  body: string | null;
+  isError: boolean;
+  meta: string | null;
+};
+
+/** Prefer a human target (url / query / path / command) over raw args JSON. */
+function humanizeDetailTarget(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed.startsWith('{')) return trimmed;
+  try {
+    const parsed = JSON.parse(trimmed) as Record<string, unknown>;
+    for (const key of ['url', 'uri', 'href', 'query', 'pattern', 'q', 'path', 'file_path', 'command', 'cmd']) {
+      const value = parsed[key];
+      if (typeof value === 'string' && value.trim()) return value.trim();
+    }
+  } catch {
+    /* keep raw */
+  }
+  return trimmed;
+}
+
+/** Split sidecar detail into target vs result/error body (UI shows labels, not ASCII rules). */
+export function parseToolStepDetail(detail?: string | null): ParsedToolDetail {
+  const raw = (detail || '').trim();
+  if (!raw) return { target: '', body: null, isError: false, meta: null };
+  const lines = raw.split('\n');
+  const marker = lines.findIndex((line) => /^──\s*(result|error)\b/i.test(line.trim()));
+  if (marker < 0) {
+    return { target: humanizeDetailTarget(raw), body: null, isError: false, meta: null };
+  }
+  const header = lines[marker].trim();
+  const isError = /^──\s*error\b/i.test(header);
+  const meta = /\(([^)]+)\)/.exec(header)?.[1]?.trim() || null;
+  const target = humanizeDetailTarget(lines.slice(0, marker).join('\n').trim());
+  const body = lines.slice(marker + 1).join('\n').trim() || null;
+  return { target, body, isError, meta };
+}
+
 export type AgentActivityStep = {
   step: number;
   tool: string;
@@ -85,10 +125,26 @@ function patchFocus(patch: string): { verb: string; focus: string } {
   return { verb: 'Patching', focus: 'workspace' };
 }
 
+function hostLabel(url: string): string {
+  const raw = url.trim();
+  if (!raw) return 'page';
+  try {
+    const withProto = raw.includes('://') ? raw : `https://${raw}`;
+    const parsed = new URL(withProto);
+    const host = parsed.hostname.replace(/^www\./, '');
+    const leaf = parsed.pathname.replace(/\/$/, '').split('/').filter(Boolean).pop();
+    if (leaf && leaf.length < 28) return compact(`${host}/${leaf}`, 44);
+    return compact(host || raw, 44);
+  } catch {
+    return compact(raw, 44);
+  }
+}
+
 function kindForTool(shortTool: string): ToolStepKind {
   const key = shortTool.toLowerCase().replace(/-/g, '_');
-  if (key === 'read_file' || key.includes('read') || key.includes('get_file')) return 'read';
-  if (key === 'grep' || key.includes('search')) return 'search';
+  if (key === 'web_fetch' || key === 'fetch_url' || key === 'browse_page') return 'fetch';
+  if (key === 'read_file' || key === 'read_skill' || key.includes('get_file')) return 'read';
+  if (key === 'web_search' || key === 'grep' || key.includes('search')) return 'search';
   if (key === 'list_dir' || key.includes('list') || key.includes('dir') || key.includes('tree')) {
     return 'list';
   }
@@ -120,6 +176,8 @@ export function humanizeActivityStep(
   const command = pickString(args, ['command', 'cmd']);
   const patch = pickString(args, ['patch']);
 
+  const url = pickString(args, ['url', 'uri', 'href']);
+
   switch (shortTool) {
     case 'list_dir':
       return {
@@ -132,6 +190,22 @@ export function humanizeActivityStep(
         verb: 'Reading',
         focus: path ? compact(basenamePath(path), 40) : 'file',
         detail: path || argsRaw,
+      };
+    case 'web_fetch':
+    case 'fetch_url':
+    case 'browse_page':
+      return {
+        verb: 'Fetched',
+        focus: hostLabel(url || path),
+        detail: url || path || argsRaw,
+      };
+    case 'web_search':
+    case 'internet_search':
+    case 'search_web':
+      return {
+        verb: 'Searched',
+        focus: pattern ? compact(`“${pattern}”`, 40) : 'the web',
+        detail: pattern || argsRaw,
       };
     case 'grep':
       return {
@@ -304,9 +378,76 @@ export function resolveLiveActivitySteps(
   return toolStepsFromActivityLogs(logs, { awaiting: true });
 }
 
+function argsJsonForTarget(shortTool: string, target: string): string {
+  const trimmed = target.trim();
+  if (!trimmed) return '{}';
+  if (trimmed.startsWith('{')) return trimmed;
+  const key = shortTool.toLowerCase().replace(/-/g, '_');
+  if (key.includes('fetch') || trimmed.startsWith('http')) {
+    return JSON.stringify({ url: trimmed });
+  }
+  if (key.includes('search') || key === 'grep') {
+    return JSON.stringify({ query: trimmed, pattern: trimmed });
+  }
+  if (key.includes('run') || key.includes('shell') || key.includes('exec')) {
+    return JSON.stringify({ command: trimmed });
+  }
+  return JSON.stringify({ path: trimmed });
+}
+
+/** True when sealed title is the useless "web fetch web_fetch" style. */
+export function isGenericToolTitle(title: string, tool: string): boolean {
+  const t = (title || '').trim().toLowerCase();
+  if (!t) return true;
+  const short = shortToolName(tool).toLowerCase().replace(/-/g, '_');
+  const spaced = short.replace(/_/g, ' ');
+  if (t === spaced || t === short) return true;
+  // "web fetch web_fetch" / "web_fetch web_fetch"
+  if (t === `${spaced} ${short}` || t === `${short} ${short}`) return true;
+  if (t.endsWith(` ${short}`) && t.replace(` ${short}`, '').replace(/_/g, ' ') === spaced) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Re-humanize legacy sealed steps (wrong kind / "web fetch web_fetch" titles)
+ * so collapsed peeks and verb_group headers stay useful.
+ */
+export function normalizeToolStepForDisplay(step: ToolStep): ToolStep {
+  const short = shortToolName(step.tool);
+  const kind = kindForTool(short);
+  const parsed = parseToolStepDetail(step.detail);
+  const needsTitle = isGenericToolTitle(step.title, short);
+  let title = step.title;
+  if (needsTitle) {
+    const human = humanizeActivityStep(short, argsJsonForTarget(short, parsed.target));
+    title = human.focus ? `${human.verb} ${human.focus}` : human.verb;
+  }
+  return {
+    ...step,
+    tool: short,
+    kind: kind !== 'other' || step.kind === 'other' ? kind : step.kind,
+    title,
+    detail: parsed.target
+      ? step.detail && step.detail.includes('──')
+        ? step.detail
+        : parsed.target
+      : step.detail,
+  };
+}
+
+export function normalizeToolStepsForDisplay(steps: ToolStep[]): ToolStep[] {
+  return steps.map(normalizeToolStepForDisplay);
+}
+
+/** Collapsed peek size (Cursor/Grok: show a few lines, expand for the rest). */
+export const TOOL_TRAIL_PEEK = 3;
+
 const HEADER_NOUN: Record<ToolStepKind, [string, string]> = {
   read: ['file', 'files'],
-  search: ['pattern', 'patterns'],
+  fetch: ['page', 'pages'],
+  search: ['query', 'queries'],
   list: ['dir', 'dirs'],
   edit: ['edit', 'edits'],
   execute: ['command', 'commands'],
@@ -315,6 +456,7 @@ const HEADER_NOUN: Record<ToolStepKind, [string, string]> = {
 
 const HEADER_VERB_RUNNING: Record<ToolStepKind, string> = {
   read: 'Reading',
+  fetch: 'Fetching',
   search: 'Searching',
   list: 'Listing',
   edit: 'Editing',
@@ -324,6 +466,7 @@ const HEADER_VERB_RUNNING: Record<ToolStepKind, string> = {
 
 const HEADER_VERB_DONE: Record<ToolStepKind, string> = {
   read: 'Read',
+  fetch: 'Fetched',
   search: 'Searched',
   list: 'Listed',
   edit: 'Edited',
@@ -331,7 +474,7 @@ const HEADER_VERB_DONE: Record<ToolStepKind, string> = {
   other: 'Used',
 };
 
-/** Grok-style fold header: "Read 2 files, Searched 1 pattern". */
+/** Grok/Cursor fold header: "Fetched 4 pages, Searched 1 query". */
 export function verbGroupHeaderLabel(steps: ToolStep[]): string {
   if (!steps.length) return '';
   const anyRunning = steps.some(
@@ -343,7 +486,15 @@ export function verbGroupHeaderLabel(steps: ToolStep[]): string {
     const kind = step.kind in HEADER_NOUN ? step.kind : 'other';
     counts[kind] = (counts[kind] ?? 0) + 1;
   }
-  const order: ToolStepKind[] = ['read', 'search', 'list', 'edit', 'execute', 'other'];
+  const order: ToolStepKind[] = [
+    'read',
+    'fetch',
+    'search',
+    'list',
+    'edit',
+    'execute',
+    'other',
+  ];
   const parts: string[] = [];
   for (const kind of order) {
     const n = counts[kind] ?? 0;

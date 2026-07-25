@@ -1,11 +1,60 @@
 import { describe, expect, it } from 'vitest';
 import {
   humanizeActivityStep,
+  isGenericToolTitle,
+  normalizeToolStepForDisplay,
   parseAgentActivitySteps,
+  parseToolStepDetail,
   resolveLiveActivitySteps,
   toolStepsFromActivityLogs,
   verbGroupHeaderLabel,
 } from './agentActivitySteps';
+
+describe('parseToolStepDetail', () => {
+  it('keeps plain target without result marker', () => {
+    expect(parseToolStepDetail('https://example.com/a')).toEqual({
+      target: 'https://example.com/a',
+      body: null,
+      isError: false,
+      meta: null,
+    });
+  });
+
+  it('splits target and result preview', () => {
+    const parsed = parseToolStepDetail(
+      'https://example.com/a\n\n── result (1,204 chars) ──\nHello events',
+    );
+    expect(parsed.target).toBe('https://example.com/a');
+    expect(parsed.body).toBe('Hello events');
+    expect(parsed.isError).toBe(false);
+    expect(parsed.meta).toBe('1,204 chars');
+  });
+
+  it('extracts url from raw args JSON', () => {
+    expect(
+      parseToolStepDetail(
+        '{"url":"https://m.weibo.cn/search?q=1","timeout_sec":20}',
+      ).target,
+    ).toBe('https://m.weibo.cn/search?q=1');
+  });
+});
+
+describe('normalizeToolStepForDisplay', () => {
+  it('rewrites legacy web fetch titles and kind', () => {
+    expect(isGenericToolTitle('web fetch web_fetch', 'web_fetch')).toBe(true);
+    const step = normalizeToolStepForDisplay({
+      id: '1',
+      kind: 'other',
+      tool: 'web_fetch',
+      status: 'completed',
+      title: 'web fetch web_fetch',
+      detail: '{"url":"https://www.shanghai.disney.com/events","timeout_sec":20}',
+    });
+    expect(step.kind).toBe('fetch');
+    expect(step.title.toLowerCase()).toContain('fetched');
+    expect(step.title.toLowerCase()).toContain('disney');
+  });
+});
 
 describe('parseAgentActivitySteps', () => {
   it('extracts CHAT tool steps and humanizes tool names', () => {
@@ -69,6 +118,21 @@ describe('humanizeActivityStep', () => {
       focus: 'echo hi',
     });
   });
+
+  it('maps web_fetch host and web_search query', () => {
+    expect(
+      humanizeActivityStep(
+        'web_fetch',
+        '{"url":"https://www.shanghai.disney.com/events"}',
+      ),
+    ).toMatchObject({
+      verb: 'Fetched',
+      detail: 'https://www.shanghai.disney.com/events',
+    });
+    const search = humanizeActivityStep('web_search', '{"query":"迪士尼 活动"}');
+    expect(search.verb).toBe('Searched');
+    expect(search.focus).toContain('迪士尼');
+  });
 });
 
 describe('verbGroupHeaderLabel', () => {
@@ -97,7 +161,28 @@ describe('verbGroupHeaderLabel', () => {
           title: 'Search x',
         },
       ]),
-    ).toBe('Read 2 files, Searched 1 pattern');
+    ).toBe('Read 2 files, Searched 1 query');
+  });
+
+  it('groups fetch pages like Cursor/Grok', () => {
+    expect(
+      verbGroupHeaderLabel([
+        {
+          id: '1',
+          kind: 'fetch',
+          tool: 'web_fetch',
+          status: 'completed',
+          title: 'Fetched a.example',
+        },
+        {
+          id: '2',
+          kind: 'fetch',
+          tool: 'web_fetch',
+          status: 'completed',
+          title: 'Fetched b.example',
+        },
+      ]),
+    ).toBe('Fetched 2 pages');
   });
 
   it('uses progressive verbs while running', () => {
@@ -118,7 +203,7 @@ describe('verbGroupHeaderLabel', () => {
           title: 'Search Clutch',
         },
       ]),
-    ).toBe('Searching 1 pattern, Listing 1 dir');
+    ).toBe('Searching 1 query, Listing 1 dir');
   });
 });
 

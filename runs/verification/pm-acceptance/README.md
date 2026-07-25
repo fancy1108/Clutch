@@ -1,6 +1,6 @@
 # PM 验收用例
 
-> **2026-07-25：** Agent 代 PM 已对 D14–D52（除 Design D36）跑通用例内自动化 + API/Hybrid E2E；详见 [`AGENT-PM-2026-07-25.md`](./AGENT-PM-2026-07-25.md)。桌面 Tauri / 真连 acceptance **Skip（环境）**。
+> **2026-07-25：** Agent 代 PM 已对 D14–D52（除 Design D36）跑通用例内自动化 + API/Hybrid/Desktop E2E；详见 [`AGENT-PM-2026-07-25.md`](./AGENT-PM-2026-07-25.md)。真连 acceptance **Skip（缺 DeepSeek/Agnes 密钥）**；Ollama 已可达。
 
 ## Composer UI（验收前必读）
 

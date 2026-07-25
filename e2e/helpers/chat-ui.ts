@@ -39,8 +39,30 @@ export function assertNoConsoleIssues(issues: ConsoleIssue[]): void {
   throw new Error(`Console issues detected:\n${detail}`);
 }
 
+async function confirmPromptModalIfPresent(page: TauriPage, timeoutMs = 2_000): Promise<void> {
+  try {
+    await page.waitForSelector('[data-testid="prompt-modal-confirm"]', timeoutMs);
+    await page.click('[data-testid="prompt-modal-confirm"]');
+  } catch {
+    // No leave-terminal / discard confirm modal.
+  }
+}
+
+/** Switch to Chat workspace mode; confirm leave-terminal modal when present. */
+export async function ensureChatWorkspaceMode(page: TauriPage): Promise<void> {
+  const hasToggle = (await page.locator('[data-testid="workspace-view-chat"]').count()) > 0;
+  if (!hasToggle) {
+    await page.evaluate(`localStorage.setItem('clutch.workspaceViewMode', 'chat')`);
+    return;
+  }
+  await page.click('[data-testid="workspace-view-chat"]');
+  await confirmPromptModalIfPresent(page);
+  await page.waitForSelector('[data-testid="chat-input"]', 30_000);
+}
+
 export async function startNewChat(page: TauriPage): Promise<void> {
   await page.click('[data-testid="nav-new-chat"]');
+  await confirmPromptModalIfPresent(page);
   await page.waitForSelector('[data-testid="chat-input"]', 30_000);
 }
 
@@ -357,21 +379,10 @@ export async function selectFooterAgent(page: TauriPage, agentId: string): Promi
   await page.click(`[data-testid="footer-agent-item-${agentId}"]`);
   const deadline = Date.now() + 10_000;
   while (Date.now() < deadline) {
+    // Prefer clutch_active_agent_id — session keys from earlier tests can win a
+    // lexicographic "best run" scan and hide a successful footer select.
     const selected = (await page.evaluate(`
       (function() {
-        let best = null;
-        let bestSlug = '';
-        for (const key of Object.keys(localStorage)) {
-          if (!key.startsWith('clutch_session_agent_')) continue;
-          const runId = key.slice('clutch_session_agent_'.length);
-          if (!runId.startsWith('run_')) continue;
-          const slug = runId.slice(4);
-          if (slug >= bestSlug) { bestSlug = slug; best = runId; }
-        }
-        if (best) {
-          const stored = localStorage.getItem('clutch_session_agent_' + best);
-          if (stored) return stored;
-        }
         return localStorage.getItem('clutch_active_agent_id') || '';
       })()
     `)) as string;

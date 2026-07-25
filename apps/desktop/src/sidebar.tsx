@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { RepositoryFolder, MainView, type AppWorkspaceMode } from './types';
 import { useLanguage } from './components/LanguageContext';
-import type { SessionRecord } from './services/runApi';
+import { sessionActivityAt, type SessionRecord } from './services/runApi';
 import type { RepositoryGroup, WorkspaceInfo } from './services/workspaceApi';
 import { LegacyIcon } from './components/ui/LegacyIcon';
 import { UpdateBanner } from './components/UpdateBanner';
@@ -304,8 +304,36 @@ export const Sidebar: React.FC<SidebarProps> = ({
       bucket.push(session);
       map.set(workspaceId, bucket);
     }
+    for (const [workspaceId, bucket] of map) {
+      map.set(
+        workspaceId,
+        [...bucket].sort((a, b) =>
+          sessionActivityAt(b).localeCompare(sessionActivityAt(a)),
+        ),
+      );
+    }
     return map;
   }, [sessions]);
+
+  const latestActivityByWorkspace = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const session of sessions) {
+      const workspaceId = session.workspace_id;
+      if (!workspaceId) continue;
+      const at = sessionActivityAt(session);
+      const prev = map.get(workspaceId) ?? '';
+      if (at > prev) map.set(workspaceId, at);
+    }
+    return map;
+  }, [sessions]);
+
+  const sortWorkspacesByRecentActivity = (list: WorkspaceInfo[]) =>
+    [...list].sort((a, b) => {
+      const tb = latestActivityByWorkspace.get(b.id) ?? '';
+      const ta = latestActivityByWorkspace.get(a.id) ?? '';
+      if (tb !== ta) return tb.localeCompare(ta);
+      return a.name.localeCompare(b.name);
+    });
 
   const filterText = repoFilter.trim().toLowerCase();
   const matchesFilter = (value: string) =>
@@ -344,8 +372,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
   );
 
   const ungroupedWorkspaces = useMemo(
-    () => visibleWorkspaces.filter((workspace) => !groupedWorkspaceIds.has(workspace.id)),
-    [visibleWorkspaces, groupedWorkspaceIds],
+    () =>
+      sortWorkspacesByRecentActivity(
+        visibleWorkspaces.filter((workspace) => !groupedWorkspaceIds.has(workspace.id)),
+      ),
+    [visibleWorkspaces, groupedWorkspaceIds, latestActivityByWorkspace],
   );
 
   const showDefaultGroup = useMemo(() => {
@@ -493,7 +524,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             {sessionLabel(session)}
                           </span>
                           <span className="mt-0.5 block truncate text-[10px] text-on-surface-variant/70">
-                            {formatRelativeTime(session.started_at)}
+                            {formatRelativeTime(sessionActivityAt(session))}
                           </span>
                         </span>
                       </>
@@ -512,7 +543,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           </span>
                         </span>
                         <span className="text-[9px] font-mono text-on-surface-variant/70 flex-shrink-0">
-                          {formatRelativeTime(session.started_at)}
+                          {formatRelativeTime(sessionActivityAt(session))}
                         </span>
                       </>
                     )}
@@ -679,9 +710,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
           )}
           {visibleGroups.map((group) => {
             const groupCollapsed = group.collapsed;
-            const groupWorkspaces = group.workspace_ids
-              .map((workspaceId) => visibleWorkspaces.find((item) => item.id === workspaceId))
-              .filter((item): item is WorkspaceInfo => Boolean(item));
+            const groupWorkspaces = sortWorkspacesByRecentActivity(
+              group.workspace_ids
+                .map((workspaceId) => visibleWorkspaces.find((item) => item.id === workspaceId))
+                .filter((item): item is WorkspaceInfo => Boolean(item)),
+            );
             const isDragOver = dragOverGroupId === group.id;
 
             return (

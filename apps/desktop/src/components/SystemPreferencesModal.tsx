@@ -458,7 +458,7 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
                       {t('Allow network')}
                     </h3>
                     <p className="text-[11px] text-on-surface-variant/80 max-w-xl">
-                      {t('Enable the builtin web_search tool for Clutch Agent. Off by default.')}
+                      {t('Enable the builtin web_search tool for Clutch Agent. On by default.')}
                     </p>
                     <button
                       type="button"

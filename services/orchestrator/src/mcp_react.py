@@ -318,11 +318,15 @@ def _router_chat(
     logs: list[str],
     log_prefix: str,
     on_log: Callable[[str], None] | None,
+    tool_choice: str | None = None,
 ) -> tuple[Any, bool]:
     """Call router.chat; fall back to text-only when the model rejects tools."""
     tools_arg = openai_tools if use_tools else None
     try:
-        return router.chat(chat_messages, tools=tools_arg, model_id=model_id), use_tools
+        kwargs: dict[str, Any] = {"tools": tools_arg, "model_id": model_id}
+        if tools_arg and tool_choice:
+            kwargs["tool_choice"] = tool_choice
+        return router.chat(chat_messages, **kwargs), use_tools
     except RuntimeError as exc:
         if use_tools and _tools_unsupported_error(exc):
             _emit(
@@ -443,6 +447,10 @@ def run_mcp_react_loop(
     fuse_triggered = False
     fuse_limit = max_consecutive_failures()
     reasoning_chunks: list[str] = []
+    tool_skip_nudged = False
+    pending_tool_choice: str | None = None
+    network_calls = 0
+    network_stop_nudged = False
     _emit(logs, on_log, f"[{log_prefix}] Starting MCP ReAct with {len(servers)} server(s)")
 
     for server in servers:
@@ -732,6 +740,8 @@ def run_mcp_react_loop(
             start_step += 1
 
         for step_idx in range(start_step, max_steps):
+            step_tool_choice = pending_tool_choice
+            pending_tool_choice = None
             response, use_tools = _router_chat(
                 router,
                 chat_messages,
@@ -741,11 +751,20 @@ def run_mcp_react_loop(
                 logs=logs,
                 log_prefix=log_prefix,
                 on_log=on_log,
+                tool_choice=step_tool_choice,
             )
             _accumulate_model_reasoning(response, reasoning_chunks, on_reasoning)
             if not use_tools and "no tools" not in engine_label:
                 engine_label = f"{spec.name} · no tools"
             if isinstance(response, dict) and response.get("tool_calls"):
+                from src.tool_use_policy import (
+                    NETWORK_HARD_BUDGET,
+                    NETWORK_SOFT_BUDGET,
+                    is_network_tool,
+                    network_budget_exhausted_result,
+                    network_budget_stop_nudge,
+                )
+
                 chat_messages.append(response)
                 for tool_call in response["tool_calls"]:
                     tc_id = tool_call["id"]
@@ -1169,6 +1188,36 @@ def run_mcp_react_loop(
                             break
                         continue
 
+                    if is_network_tool(raw_tool_name) or is_network_tool(func_name):
+                        if network_calls >= NETWORK_HARD_BUDGET:
+                            from src.tool_steps import make_tool_step
+
+                            result_str = network_budget_exhausted_result(used=network_calls)
+                            step_id = f"tool_{step_idx}"
+                            record_tool_step(
+                                make_tool_step(
+                                    tool_alias=func_name,
+                                    func_args=func_args,
+                                    status="failed",
+                                    step_idx=step_idx,
+                                    step_id=step_id,
+                                )
+                            )
+                            _emit(
+                                logs,
+                                on_log,
+                                f"[{log_prefix}] Network budget hard-cap "
+                                f"({network_calls}/{NETWORK_HARD_BUDGET}): blocked {func_name}",
+                            )
+                            chat_messages.append(
+                                {
+                                    "role": "tool",
+                                    "tool_call_id": tc_id,
+                                    "content": result_str,
+                                }
+                            )
+                            continue
+
                     func_args = enrich_verification_args(func_name, func_args)
                     result_str = _execute_tool_call(
                         func_name=func_name,
@@ -1189,6 +1238,8 @@ def run_mcp_react_loop(
                     capture_goal_if_needed(func_name, func_args, result_str)
                     capture_verification_if_needed(func_name, func_args, result_str)
                     capture_diff_summary_if_needed(func_name, func_args, result_str)
+                    if is_network_tool(raw_tool_name) or is_network_tool(func_name):
+                        network_calls += 1
                     chat_messages.append(
                         {
                             "role": "tool",
@@ -1208,18 +1259,110 @@ def run_mcp_react_loop(
                         break
                 if fuse_triggered:
                     break
+                if (
+                    network_calls >= NETWORK_SOFT_BUDGET
+                    and not network_stop_nudged
+                ):
+                    network_stop_nudged = True
+                    chat_messages.append(
+                        {
+                            "role": "user",
+                            "content": network_budget_stop_nudge(used=network_calls),
+                        }
+                    )
+                    _emit(
+                        logs,
+                        on_log,
+                        f"[{log_prefix}] Network budget soft-cap "
+                        f"({network_calls}/{NETWORK_SOFT_BUDGET}): stop-search nudge",
+                    )
             else:
                 from src.llm.router import LLMProviderRouter
+                from src.tool_use_policy import last_user_text, should_nudge_for_skipped_tools
 
                 output = LLMProviderRouter.extract_content(response)
+                short_names = {route[1] for route in tool_routes.values()}
+                # Only nudge when the model skipped tools entirely — never after a
+                # successful tool round (would loop: answer → nudge → required).
+                tools_already_used = any(
+                    message.get("role") == "tool" for message in chat_messages
+                )
+                nudge = (
+                    should_nudge_for_skipped_tools(
+                        user_text=last_user_text(chat_messages),
+                        assistant_text=output,
+                        available_tools=short_names,
+                        already_nudged=tool_skip_nudged,
+                    )
+                    if use_tools and openai_tools and not tools_already_used
+                    else None
+                )
+                if nudge is not None:
+                    tool_skip_nudged = True
+                    pending_tool_choice = "required"
+                    chat_messages.append({"role": "assistant", "content": output or ""})
+                    chat_messages.append({"role": "user", "content": nudge.nudge})
+                    _emit(
+                        logs,
+                        on_log,
+                        f"[{log_prefix}] Tool-skip nudge ({nudge.kind}): no tool_calls — "
+                        "retrying with tool_choice=required",
+                    )
+                    continue
                 _emit(logs, on_log, f"[{log_prefix}] Completed via {spec.name}")
                 break
         else:
-            output = (
+            limit_msg = (
                 f"Agent task hit maximum tool call iteration limit ({max_steps}) "
                 f"in {spec.name}."
             )
+            output = limit_msg
             _emit(logs, on_log, f"[{log_prefix}] ERROR: max iterations limit reached")
+            # One tool-free synthesis turn so the user gets an answer from gathered evidence
+            # instead of only seeing the budget error (common on open web questions).
+            try:
+                from src.llm.router import LLMProviderRouter
+
+                synth_messages = list(chat_messages) + [
+                    {
+                        "role": "user",
+                        "content": (
+                            "[System] Tool-call step budget exhausted. "
+                            "Answer the user's latest question NOW using only the tool "
+                            "results already in this conversation. Do not call tools. "
+                            "Be concise; cite URLs you used. If evidence is thin, say what "
+                            "you found and what is still unknown."
+                        ),
+                    }
+                ]
+                response, _ = _router_chat(
+                    router,
+                    synth_messages,
+                    openai_tools=openai_tools,
+                    use_tools=False,
+                    model_id=model_id,
+                    logs=logs,
+                    log_prefix=log_prefix,
+                    on_log=on_log,
+                )
+                _accumulate_model_reasoning(response, reasoning_chunks, on_reasoning)
+                synthesized = LLMProviderRouter.extract_content(response)
+                if isinstance(synthesized, str) and synthesized.strip():
+                    output = synthesized.strip()
+                    _emit(
+                        logs,
+                        on_log,
+                        f"[{log_prefix}] Synthesized answer after max iterations",
+                    )
+                else:
+                    output = limit_msg
+            except Exception as synth_exc:
+                _emit(
+                    logs,
+                    on_log,
+                    f"[{log_prefix}] Max-iter synthesis failed: {synth_exc}",
+                )
+                output = limit_msg
     finally:
         for server_id, client in clients.items():
             name = str(next(

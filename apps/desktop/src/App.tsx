@@ -665,17 +665,19 @@ function MainLayout() {
     const status = opts?.status ?? (mode === 'design' ? 'idle' : 'running');
     const workflowId = opts?.workflowId ?? clutchState.workflow_id ?? '';
     setSessions((prev) => {
+      const now = new Date().toISOString();
       const index = prev.findIndex((session) => session.run_id === runId);
       if (index >= 0) {
-        const next = [...prev];
-        next[index] = {
-          ...next[index],
+        const updated: SessionRecord = {
+          ...prev[index],
           title: trimmedTitle,
           status,
           mode,
-          workflow_id: workflowId || next[index].workflow_id,
+          workflow_id: workflowId || prev[index].workflow_id,
+          updated_at: now,
         };
-        return next;
+        // Move to front so sidebar recent-first order is immediate (before refresh).
+        return [updated, ...prev.filter((_, i) => i !== index)];
       }
       const record: SessionRecord = {
         run_id: runId,
@@ -685,7 +687,8 @@ function MainLayout() {
         workflow_id: workflowId,
         mode,
         status,
-        started_at: new Date().toISOString(),
+        started_at: now,
+        updated_at: now,
       };
       return [record, ...prev];
     });

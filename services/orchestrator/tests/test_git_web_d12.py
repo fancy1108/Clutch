@@ -8,7 +8,7 @@ from pathlib import Path
 
 from src.builtin_tools import execute_builtin_tool, list_builtin_tools
 from src.mcp_risk import is_risky_mcp_tool
-from src.web_fetch_util import fetch_url_text
+from src.web_fetch_util import fetch_url_text, is_search_engine_serp_url
 
 
 def _init_repo(path: Path) -> None:
@@ -78,11 +78,14 @@ def test_web_fetch_util_html(monkeypatch) -> None:
     html = b"<html><body><h1>Clutch Docs</h1><p>Token budget tip</p><script>x()</script></body></html>"
 
     class _Resp:
-        status = 200
-        headers = {"Content-Type": "text/html; charset=utf-8"}
+        status_code = 200
+        headers = {"content-type": "text/html; charset=utf-8"}
+        content = html
+        url = "https://example.com/docs"
 
-        def read(self, n: int = -1) -> bytes:
-            return html
+    class _Client:
+        def __init__(self, *a, **k):
+            pass
 
         def __enter__(self):
             return self
@@ -90,7 +93,10 @@ def test_web_fetch_util_html(monkeypatch) -> None:
         def __exit__(self, *args):
             return False
 
-    monkeypatch.setattr("src.web_fetch_util.urlopen", lambda *a, **k: _Resp())
+        def get(self, url: str, headers=None):
+            return _Resp()
+
+    monkeypatch.setattr("src.web_fetch_util.httpx.Client", _Client)
     payload = fetch_url_text("https://example.com/docs")
     assert payload["status"] == 200
     assert "Clutch Docs" in payload["text"]
@@ -98,7 +104,57 @@ def test_web_fetch_util_html(monkeypatch) -> None:
     assert "x()" not in payload["text"]
 
 
+def test_web_fetch_util_ssl_eof_is_friendly(monkeypatch) -> None:
+    import httpx
+
+    class _Client:
+        def __init__(self, *a, **k):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def get(self, url: str, headers=None):
+            raise httpx.ConnectError(
+                "[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol"
+            )
+
+    monkeypatch.setattr("src.web_fetch_util.httpx.Client", _Client)
+    monkeypatch.setattr("src.web_fetch_util.time.sleep", lambda *_a, **_k: None)
+    try:
+        fetch_url_text("https://weather.example/shanghai")
+        raise AssertionError("expected ValueError")
+    except ValueError as exc:
+        msg = str(exc)
+        assert "TLS" in msg or "SSL" in msg
+        assert "urlopen error" not in msg
+
+
 def test_web_fetch_tool_rejects_bad_url(tmp_path: Path, monkeypatch) -> None:
     _activate_workspace(tmp_path, monkeypatch)
     out = execute_builtin_tool("web_fetch", {"url": "not-a-url"})
     assert out.startswith("Error executing tool:")
+
+
+def test_is_search_engine_serp_url() -> None:
+    assert is_search_engine_serp_url(
+        "https://www.bing.com/search?q=%E4%B8%8A%E6%B5%B7%E8%BF%AA%E5%A3%AB%E5%B0%BC"
+    )
+    assert is_search_engine_serp_url("https://www.google.com/search?q=shanghai+disney")
+    assert is_search_engine_serp_url("https://html.duckduckgo.com/html/?q=weather")
+    assert not is_search_engine_serp_url("https://www.chinahighlights.com/shanghai/attractions/")
+    assert not is_search_engine_serp_url("not-a-url")
+
+
+def test_web_fetch_rejects_serp_urls(tmp_path: Path, monkeypatch) -> None:
+    _activate_workspace(tmp_path, monkeypatch)
+    out = execute_builtin_tool(
+        "web_fetch",
+        {"url": "https://www.bing.com/search?q=Shanghai+Disney+Resort+events"},
+    )
+    assert out.startswith("Error executing tool:")
+    assert "web_search" in out
+    assert "search-engine" in out.lower() or "result pages" in out.lower()

@@ -1,4 +1,8 @@
-const WS_BASE = 'ws://127.0.0.1:8123/ws/runs';
+import { sidecarBaseUrl } from './sidecar.js';
+
+function wsBase(): string {
+  return `${sidecarBaseUrl().replace(/^http/, 'ws')}/ws/runs`;
+}
 
 export type WsEnvelope = {
   event: string;
@@ -16,7 +20,7 @@ export function connectRunWebSocket(runId: string, options: ConnectOptions): Pro
   const { onOpen, onMessage, timeoutMs = 60_000 } = options;
 
   return new Promise((resolve, reject) => {
-    const ws = new WebSocket(`${WS_BASE}/${runId}`);
+    const ws = new WebSocket(`${wsBase()}/${runId}`);
     let settled = false;
 
     const finish = (error?: Error) => {

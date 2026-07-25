@@ -41,7 +41,10 @@ def is_virtual_server(server: dict[str, Any]) -> bool:
 
 
 def list_builtin_tools() -> list[dict[str, Any]]:
-    from src.preferences_storage import load_allow_network
+    from src.preferences_storage import (
+        load_allow_network,
+        load_cross_session_memory_enabled,
+    )
 
     tools: list[dict[str, Any]] = [
         {
@@ -209,7 +212,11 @@ def list_builtin_tools() -> list[dict[str, Any]]:
             "name": "web_fetch",
             "description": (
                 "Fetch a public http(s) URL and return truncated page text for summarization (D12). "
-                "Use when the user provides a docs/link to cite."
+                "Use for user-provided links and for live facts when you know a concrete page URL "
+                "(e.g. weather: https://wttr.in/Shanghai?format=3). "
+                "Do NOT fetch search-engine result pages (bing.com/search, google.com/search, …) — "
+                "use web_search for open questions, then web_fetch a promising result URL. "
+                "Do not refuse real-time questions without calling this or web_search first."
             ),
             "inputSchema": {
                 "type": "object",
@@ -556,13 +563,19 @@ def list_builtin_tools() -> list[dict[str, Any]]:
             },
         },
     ]
+    # Catalog honesty: never advertise tools that cannot run under current prefs.
+    if not load_cross_session_memory_enabled():
+        tools = [t for t in tools if str(t.get("name")) != "remember_preference"]
     if load_allow_network():
         tools.append(
             {
                 "name": "web_search",
                 "description": (
-                    "Search the public web for recent information (D15). "
-                    "Returns titles, URLs, and snippets. Requires Settings → Allow network."
+                    "Search the public web for recent information (D15) — weather, news, "
+                    "events, docs, etc. Returns titles, URLs, and snippets. "
+                    "For open questions call this ONCE (or twice only if results are empty), "
+                    "then web_fetch at most 1–2 concrete result URLs, then answer. "
+                    "Requires Settings → Allow network."
                 ),
                 "inputSchema": {
                     "type": "object",

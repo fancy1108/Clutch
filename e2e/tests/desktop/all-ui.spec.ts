@@ -1,22 +1,39 @@
 import { test, expect, sandboxRoot } from '../../fixtures/desktop.js';
 import { authorizeSandboxWorkspace, delay } from '../../helpers/tauri.js';
+import { clearWorkflowSelection, ensureChatWorkspaceMode } from '../../helpers/chat-ui.js';
 import { startVideoProductionRun, ensureE2eUserWorkflow } from '../../helpers/workflow.js';
 
 test.describe.configure({ mode: 'serial' });
 
 async function openSettings(page: {
   click: (selector: string) => Promise<void>;
-  locator: (selector: string) => { toBeVisible: () => Promise<void> };
+  evaluate: (script: string) => Promise<unknown>;
+  waitForSelector: (selector: string, timeout?: number) => Promise<void>;
+  locator: (selector: string) => { toBeVisible: () => Promise<void>; count: () => Promise<number> };
 }) {
-  await page.click('[data-testid="nav-settings"]');
-  await expect(page.locator('[data-testid="settings-nav-general"]')).toBeVisible();
+  // Close leftover footer menus that can intercept the Settings click.
+  if ((await page.locator('[data-testid="footer-workflow-menu"]').count()) > 0) {
+    await page.click('[data-testid="footer-workflow-trigger"]');
+  }
+  if ((await page.locator('[data-testid="footer-model-menu"]').count()) > 0) {
+    await page.click('[data-testid="footer-model-trigger"]');
+  }
+  // DOM .click() bypasses overlay hit-testing that sometimes blocks tauri-playwright click.
+  await page.evaluate(`
+    (function() {
+      const el = document.querySelector('[data-testid="nav-settings"]');
+      if (!el) throw new Error('nav-settings not in DOM');
+      el.click();
+    })()
+  `);
+  await page.waitForSelector('[data-testid="settings-nav-general"]', 15_000);
 }
 
 test('desktop: full UI coverage with sandbox isolation', async ({ tauriPage: page }) => {
   await test.step('G-01 sidebar toggle', async () => {
     await page.waitForSelector('[data-testid="nav-new-chat"]');
-    await page.click('[data-testid="sidebar-toggle"]');
-    await page.click('[data-testid="sidebar-toggle"]');
+    await page.click('[data-testid="workspace-sidebar-toggle"]');
+    await page.click('[data-testid="workspace-sidebar-toggle"]');
   });
 
   await test.step('S-05 authorize sandbox workspace', async () => {
@@ -65,7 +82,8 @@ test('desktop: full UI coverage with sandbox isolation', async ({ tauriPage: pag
   });
 
   await test.step('R-06..R-08 right panel tabs', async () => {
-    for (const tab of ['overview', 'files', 'flow', 'changes', 'terminal']) {
+    // Flow tab removed from right panel (workflow steps live in Overview when a SOP is active).
+    for (const tab of ['overview', 'files', 'changes', 'terminal']) {
       await page.click(`[data-testid="right-tab-${tab}"]`);
     }
   });
@@ -86,7 +104,7 @@ test('desktop: full UI coverage with sandbox isolation', async ({ tauriPage: pag
   await test.step('G-09 branch menu', async () => {
     const gitInfo = (await page.evaluate(`
       (async function() {
-        const res = await fetch('http://127.0.0.1:8123/api/workspace/git');
+        const res = await fetch('/api/workspace/git');
         if (!res.ok) return { is_git_repo: false, branch: null, branches: [] };
         return res.json();
       })()
@@ -104,18 +122,32 @@ test('desktop: full UI coverage with sandbox isolation', async ({ tauriPage: pag
   });
 
   await test.step('G-07/G-08 footer shortcuts', async () => {
+    // Leave the video-production session so Model is not workflow-disabled.
+    await page.click('[data-testid="nav-new-chat"]');
+    await ensureChatWorkspaceMode(page);
+    await clearWorkflowSelection(page);
+    // Footer Model opens a menu; Settings Models is behind "Manage models...".
     await page.click('[data-testid="footer-model-trigger"]');
+    await page.waitForSelector('[data-testid="footer-model-manage"]', 10_000);
+    await page.click('[data-testid="footer-model-manage"]');
     await expect(page.locator('[data-testid="settings-nav-models"]')).toBeVisible();
     await page.click('[data-testid="settings-close"]');
     await page.click('[data-testid="footer-workflow-trigger"]');
+    await page.waitForSelector('[data-testid="footer-workflow-menu"]', 10_000);
+    await page.click('[data-testid="footer-workflow-trigger"]'); // close menu
     await page.click('[data-testid="nav-new-chat"]');
   });
 
   await test.step('G-03 language switch', async () => {
     await page.click('[data-testid="nav-new-chat"]');
-    await page.click('[data-testid="lang-zh"]');
+    await openSettings(page);
+    // nav-settings opens General; use DOM click — modal overlays confuse tauri-playwright hit tests.
+    await page.evaluate(`document.querySelector('[data-testid="lang-zh"]').click()`);
+    await page.evaluate(`document.querySelector('[data-testid="settings-close"]').click()`);
     await expect(page.locator('[data-testid="chat-supervised-title"]')).toContainText('开始新的监督会话');
-    await page.click('[data-testid="lang-en"]');
+    await openSettings(page);
+    await page.evaluate(`document.querySelector('[data-testid="lang-en"]').click()`);
+    await page.evaluate(`document.querySelector('[data-testid="settings-close"]').click()`);
     await expect(page.locator('[data-testid="chat-supervised-title"]')).toContainText('Start a supervised session');
   });
 
@@ -127,7 +159,7 @@ test('desktop: full UI coverage with sandbox isolation', async ({ tauriPage: pag
   await test.step('sandbox path guard', async () => {
     const workspacePath = (await page.evaluate(`
       (async function() {
-        const res = await fetch('http://127.0.0.1:8123/api/workspace');
+        const res = await fetch('/api/workspace');
         if (!res.ok) return '';
         const body = await res.json();
         return body.workspace_path ?? '';

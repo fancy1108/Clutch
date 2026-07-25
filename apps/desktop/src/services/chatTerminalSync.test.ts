@@ -20,17 +20,18 @@ const shellStep = (overrides: Partial<ToolStep> = {}): ToolStep => ({
 });
 
 describe('chatTerminalSync', () => {
-  it('detects execute / shell tools', () => {
+  it('allows any tool trail step to sync into Terminal audit', () => {
     expect(isTerminalSyncableStep(shellStep())).toBe(true);
     expect(
       isTerminalSyncableStep({
         id: 'r',
-        kind: 'read',
-        tool: 'read_file',
+        kind: 'fetch',
+        tool: 'web_fetch',
         status: 'completed',
-        title: 'Read x',
+        title: 'Fetched example.com',
+        detail: 'https://example.com/a',
       }),
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it('extracts command needle from JSON detail', () => {

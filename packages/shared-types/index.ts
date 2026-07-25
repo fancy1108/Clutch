@@ -23,8 +23,15 @@ export interface OutputEvent {
   content: string;
 }
 
-/** Structured Chat/MCP tool step (D46 — Grok-style verb_group transcript). */
-export type ToolStepKind = 'read' | 'search' | 'list' | 'edit' | 'execute' | 'other';
+/** Structured Chat/MCP tool step (D46 — Grok/Cursor-style verb_group transcript). */
+export type ToolStepKind =
+  | 'read'
+  | 'fetch'
+  | 'search'
+  | 'list'
+  | 'edit'
+  | 'execute'
+  | 'other';
 
 export type ToolStepStatus = 'running' | 'completed' | 'failed' | 'awaiting';
 
@@ -34,9 +41,12 @@ export interface ToolStep {
   /** Short tool name, e.g. read_file */
   tool: string;
   status: ToolStepStatus;
-  /** One-liner, e.g. "Read README.md" */
+  /** One-liner, e.g. "Read README.md" / "Fetched shanghai.disney.com" */
   title: string;
-  /** Expand body (args / patch snippet). */
+  /**
+   * Expand body: primary target (URL/path/query) plus optional result preview
+   * (Cursor/Grok: collapse for density, expand for supervise).
+   */
   detail?: string;
   /** D6 Cursor-style: per-edit file hunk attached when an edit tool completes. */
   fileDiff?: DiffFileEntry;

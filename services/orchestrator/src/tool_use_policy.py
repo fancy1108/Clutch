@@ -1,0 +1,244 @@
+"""Harness policy: when the model must call tools (Grok Build–style loop discipline).
+
+Clutch adapts Grok Build behavior in Python (D44):
+1. Do not accept a prose refusal when advertised tools cover the turn.
+2. Cap open-web thrash: typically 1× web_search + ≤2× web_fetch, then answer
+   (mainstream agents do not burn a 24-step loop on Bing SERPs).
+"""
+
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass
+
+# Soft = inject "stop and answer"; hard = refuse further network tools this turn.
+NETWORK_SOFT_BUDGET = 3
+NETWORK_HARD_BUDGET = 5
+
+# --- Intent heuristics (user turn) ---
+
+_NETWORK_RE = re.compile(
+    r"("
+    r"天气|氣溫|气温|预报|預報|weather|forecast|temperature|"
+    r"今天|今日|实时|即時|最近|近期|最新|news|股价|股價|汇率|匯率|"
+    r"活动|活動|events?|演出|门票|門票|"
+    r"查一下|搜一下|搜索|搜尋|search\s+(for|the)|look\s+up|"
+    r"https?://|www\."
+    r")",
+    re.IGNORECASE,
+)
+
+_WORKSPACE_READ_RE = re.compile(
+    r"("
+    r"读一下|读下|看看|打开|打开看|列出|列表|有哪些文件|项目结构|目录|"
+    r"read\s+(the\s+)?file|open\s+|list\s+(the\s+)?(dir|directory|files)|"
+    r"what('s|\s+is)\s+in|show\s+me\s+(the\s+)?(file|code|folder)|"
+    r"grep|搜索代码|在代码里找|find\s+in\s+(the\s+)?(code|repo|project)|"
+    r"\b(README|CLAUDE\.md|package\.json|pyproject\.toml)\b|"
+    r"这个文件|那份文件|源码|代码里"
+    r")",
+    re.IGNORECASE,
+)
+
+_WORKSPACE_WRITE_RE = re.compile(
+    r"("
+    r"改一下|修改|编辑|重写|写到|写入|创建文件|新建文件|删掉|删除文件|"
+    r"fix|edit|change|update|refactor|implement|add\s+(a\s+)?|"
+    r"create\s+(a\s+)?file|delete\s+(the\s+)?file|apply\s+patch|"
+    r"search_replace|把.+改成|替换成"
+    r")",
+    re.IGNORECASE,
+)
+
+_GIT_RE = re.compile(
+    r"("
+    r"\bgit\b|提交|commit|diff|status|暂存|stage|分支|branch|"
+    r"看一下改动|有什么改动|未提交"
+    r")",
+    re.IGNORECASE,
+)
+
+_SHELL_RE = re.compile(
+    r"("
+    r"跑一下|执行命令|终端|shell|运行测试|跑测试|npm\s|pnpm\s|uv\s|pytest|"
+    r"run\s+(the\s+)?(tests?|command|script)|execute\s+"
+    r")",
+    re.IGNORECASE,
+)
+
+# Prose that claims tools / workspace / network are unavailable.
+_REFUSAL_RE = re.compile(
+    r"("
+    r"cannot\s+directly\s+obtain|can'?t\s+access\s+(the\s+)?(internet|web|real[- ]?time|files?|workspace|disk)|"
+    r"don'?t\s+have\s+access\s+to\s+(your\s+)?(files?|workspace|code|internet|web)|"
+    r"无法直接|不能直接|没法获取|沒有实时|没有实时|无法获取实时|"
+    r"无法访问(你的)?(文件|工作区|代码|网络)|不能访问(你的)?(文件|工作区)|"
+    r"i\s+don'?t\s+have\s+access\s+to\s+(the\s+)?(internet|web|live)|"
+    r"check\s+(your\s+)?(phone|weather\s+app)|"
+    r"as\s+an\s+ai\s+(language\s+)?model\s+i\s+can'?t\s+(read|access|modify)\s+files"
+    r")",
+    re.IGNORECASE,
+)
+
+_NETWORK_TOOLS = frozenset({"web_search", "web_fetch", "internet_search", "search_web"})
+_READ_TOOLS = frozenset({"read_file", "list_dir", "grep"})
+_WRITE_TOOLS = frozenset({"search_replace", "apply_patch", "run_terminal_cmd"})
+_GIT_TOOLS = frozenset({"git_status", "git_diff", "git_commit"})
+_SHELL_TOOLS = frozenset({"run_terminal_cmd"})
+
+
+def short_tool_name(name: str) -> str:
+    return (name or "").split("__")[-1].lower().replace("-", "_").strip()
+
+
+def is_network_tool(name: str) -> bool:
+    return short_tool_name(name) in _NETWORK_TOOLS
+
+
+def network_budget_stop_nudge(
+    *,
+    used: int,
+    soft: int = NETWORK_SOFT_BUDGET,
+) -> str:
+    return (
+        f"[System reminder — stop searching] You already used {used} network tool "
+        f"calls (soft budget {soft}: typically 1× web_search + ≤2× web_fetch). "
+        "Answer the user NOW from the evidence above. Do not call web_search or "
+        "web_fetch again unless one critical fact is still missing."
+    )
+
+
+def network_budget_exhausted_result(
+    *,
+    used: int,
+    hard: int = NETWORK_HARD_BUDGET,
+) -> str:
+    return (
+        f"Error: network tool budget exhausted ({used}/{hard} web_search/web_fetch). "
+        "Answer NOW from prior tool results. Do not retry network tools this turn."
+    )
+
+
+@dataclass(frozen=True)
+class ToolExpect:
+    kind: str
+    nudge: str
+
+
+def _nudge(kind: str, body: str) -> ToolExpect:
+    return ToolExpect(
+        kind=kind,
+        nudge=(
+            f"[System reminder — tool use required] You answered without calling any tool, "
+            f"but this turn needs {kind} tools. {body} "
+            "Do not claim you lack access while these tools are available. "
+            "Call the appropriate tool NOW, then answer from the tool result."
+        ),
+    )
+
+
+_NUDGES = {
+    "network": _nudge(
+        "network",
+        "Call `web_search` (if listed) or `web_fetch` on a concrete public URL "
+        "(e.g. https://wttr.in/Shanghai?format=3 for weather).",
+    ),
+    "workspace_read": _nudge(
+        "workspace_read",
+        "Call `list_dir`, `read_file`, and/or `grep` on the workspace — do not invent file contents.",
+    ),
+    "workspace_write": _nudge(
+        "workspace_write",
+        "Call `search_replace` or `apply_patch` (and `read_file` first if needed) — "
+        "do not claim edits succeeded without a tool result.",
+    ),
+    "git": _nudge(
+        "git",
+        "Call `git_status` / `git_diff` / `git_commit` as appropriate — do not invent git output.",
+    ),
+    "shell": _nudge(
+        "shell",
+        "Call `run_terminal_cmd` for the requested command/tests — do not invent command output.",
+    ),
+    "generic": _nudge(
+        "available",
+        "Use the listed clutch-tools (read_file, list_dir, grep, web_fetch, etc.) instead of refusing.",
+    ),
+}
+
+
+def last_user_text(messages: list[dict]) -> str:
+    for message in reversed(messages):
+        if message.get("role") == "user":
+            content = message.get("content")
+            if isinstance(content, str):
+                return content.strip()
+            return str(content or "").strip()
+    return ""
+
+
+def prose_looks_like_tool_refusal(text: str) -> bool:
+    return bool(_REFUSAL_RE.search(text or ""))
+
+
+def classify_tool_expectation(
+    user_text: str,
+    *,
+    available_tools: set[str],
+) -> ToolExpect | None:
+    """Return which tool family this turn needs, if any of those tools are available."""
+    text = (user_text or "").strip()
+    if not text or not available_tools:
+        return None
+
+    if _NETWORK_RE.search(text) and available_tools & _NETWORK_TOOLS:
+        return _NUDGES["network"]
+    if _GIT_RE.search(text) and available_tools & _GIT_TOOLS:
+        return _NUDGES["git"]
+    if _SHELL_RE.search(text) and available_tools & _SHELL_TOOLS:
+        return _NUDGES["shell"]
+    if _WORKSPACE_WRITE_RE.search(text) and available_tools & _WRITE_TOOLS:
+        return _NUDGES["workspace_write"]
+    if _WORKSPACE_READ_RE.search(text) and available_tools & _READ_TOOLS:
+        return _NUDGES["workspace_read"]
+    return None
+
+
+def should_nudge_for_skipped_tools(
+    *,
+    user_text: str,
+    assistant_text: str,
+    available_tools: set[str],
+    already_nudged: bool,
+) -> ToolExpect | None:
+    """If the model skipped tools it should have used, return the nudge to inject."""
+    if already_nudged or not available_tools:
+        return None
+
+    expect = classify_tool_expectation(user_text, available_tools=available_tools)
+    if expect is not None:
+        return expect
+
+    # Refusal prose with any tools available → generic nudge once.
+    if prose_looks_like_tool_refusal(assistant_text):
+        return _NUDGES["generic"]
+    return None
+
+
+# Back-compat aliases used by earlier tests / imports.
+TOOL_SKIP_NUDGE = _NUDGES["network"].nudge
+
+
+def turn_expects_network_tools(
+    user_text: str,
+    *,
+    has_web_search: bool,
+    has_web_fetch: bool,
+) -> bool:
+    tools: set[str] = set()
+    if has_web_search:
+        tools.add("web_search")
+    if has_web_fetch:
+        tools.add("web_fetch")
+    expect = classify_tool_expectation(user_text, available_tools=tools)
+    return expect is not None and expect.kind == "network"

@@ -1,18 +1,22 @@
-"""Structured Chat/MCP tool steps for D46 (Grok-style verb_group transcript)."""
+"""Structured Chat/MCP tool steps for D46 (Grok/Cursor-style verb_group transcript)."""
 
 from __future__ import annotations
 
 import json
+import re
 import uuid
 from typing import Any, Literal
+from urllib.parse import urlparse
 
-ToolStepKind = Literal["read", "search", "list", "edit", "execute", "other"]
+ToolStepKind = Literal["read", "fetch", "search", "list", "edit", "execute", "other"]
 ToolStepStatus = Literal["running", "completed", "failed", "awaiting"]
 
 _KIND_BY_TOOL: dict[str, ToolStepKind] = {
     "read_file": "read",
     "list_dir": "list",
     "grep": "search",
+    "web_search": "search",
+    "web_fetch": "fetch",
     "search_replace": "edit",
     "apply_patch": "edit",
     "run_terminal_cmd": "execute",
@@ -31,6 +35,11 @@ _KIND_BY_TOOL: dict[str, ToolStepKind] = {
     "search_files": "search",
     "get_file_info": "read",
     "move_file": "edit",
+    "git_status": "other",
+    "git_diff": "other",
+    "git_commit": "other",
+    "remember_preference": "other",
+    "read_skill": "read",
 }
 
 
@@ -44,6 +53,8 @@ def kind_for_tool(tool: str) -> ToolStepKind:
     key = short_tool_name(tool).lower().replace("-", "_")
     if key in _KIND_BY_TOOL:
         return _KIND_BY_TOOL[key]
+    if key.startswith("web_fetch") or "fetch" in key and "web" in key:
+        return "fetch"
     if any(tok in key for tok in ("grep", "search")):
         return "search"
     if any(tok in key for tok in ("list", "dir", "tree")):
@@ -78,6 +89,24 @@ def _pick(args: dict[str, Any], keys: tuple[str, ...]) -> str:
     return ""
 
 
+def _host_label(url: str) -> str:
+    """Cursor-style short host/path for fetch titles."""
+    raw = (url or "").strip()
+    if not raw:
+        return "page"
+    try:
+        parsed = urlparse(raw if "://" in raw else f"https://{raw}")
+        host = (parsed.netloc or parsed.path.split("/")[0] or "").removeprefix("www.")
+        path = (parsed.path or "").rstrip("/")
+        if path and path != "/":
+            leaf = path.rsplit("/", 1)[-1]
+            if leaf and len(leaf) < 28:
+                return _compact(f"{host}/{leaf}" if host else leaf, 44)
+        return _compact(host or raw, 44)
+    except Exception:
+        return _compact(raw, 44)
+
+
 def _patch_title(patch: str) -> tuple[str, str]:
     if "Delete File:" in patch:
         name = patch.split("Delete File:", 1)[1].split("\n", 1)[0].strip() or "file"
@@ -92,14 +121,37 @@ def _patch_title(patch: str) -> tuple[str, str]:
 
 
 def humanize_tool_step(tool: str, args: dict[str, Any] | None) -> tuple[str, str]:
-    """Return (title, detail) one-liners for a tool call."""
+    """Return (title, detail) — title is Cursor one-liner; detail is target (+ later preview)."""
     short = short_tool_name(tool)
     payload = args if isinstance(args, dict) else {}
     path = _pick(payload, ("path", "file_path", "file", "target"))
-    pattern = _pick(payload, ("pattern", "query", "regex"))
+    pattern = _pick(payload, ("pattern", "query", "regex", "q", "search"))
     command = _pick(payload, ("command", "cmd"))
+    url = _pick(payload, ("url", "uri", "href"))
     patch = _pick(payload, ("patch",))
     detail = json.dumps(payload, ensure_ascii=False)[:240] if payload else short
+
+    if short in {"web_fetch", "fetch_url", "browse_page"}:
+        target = url or path
+        label = _host_label(target) if target else "page"
+        return f"Fetched {label}", target or detail
+
+    if short in {"web_search", "internet_search", "search_web"}:
+        q = pattern or _pick(payload, ("q", "text", "keywords"))
+        if q:
+            return f"Searched “{_compact(q, 36)}”", q
+        return "Searched the web", detail
+
+    if short in {"git_status", "git_diff", "git_commit"}:
+        labels = {
+            "git_status": ("Git status", "git status"),
+            "git_diff": ("Git diff", _pick(payload, ("path", "ref")) or "git diff"),
+            "git_commit": (
+                f"Git commit {_compact(_pick(payload, ('message', 'msg')), 28)}".rstrip(),
+                _pick(payload, ("message", "msg")) or "git commit",
+            ),
+        }
+        return labels[short]
 
     if short in {"todo_write", "write_todos", "update_todos"}:
         todos = payload.get("todos")
@@ -178,8 +230,31 @@ def humanize_tool_step(tool: str, args: dict[str, Any] | None) -> tuple[str, str
     if kind == "execute":
         focus = _compact(command, 44) if command else "shell"
         return f"Run {focus}", command or detail
-    focus = _compact(path or pattern or command or short, 40)
+    if kind == "fetch":
+        target = url or path
+        return f"Fetched {_host_label(target) if target else 'page'}", target or detail
+    focus = _compact(path or pattern or command or url or short, 40)
     return f"{short.replace('_', ' ')} {focus}".strip(), detail
+
+
+def _progressive_title(title: str, status: ToolStepStatus) -> str:
+    """Cursor-style: Running → progressive verb; sealed → past tense."""
+    if status not in {"running", "awaiting"}:
+        return title
+    swaps = (
+        ("Fetched ", "Fetching "),
+        ("Searched ", "Searching "),
+        ("Read ", "Reading "),
+        ("List ", "Listing "),
+        ("Edit ", "Editing "),
+        ("Run ", "Running "),
+        ("Delete ", "Deleting "),
+        ("Create ", "Creating "),
+    )
+    for past, prog in swaps:
+        if title.startswith(past):
+            return prog + title[len(past) :]
+    return title
 
 
 def make_tool_step(
@@ -197,9 +272,107 @@ def make_tool_step(
         "kind": kind_for_tool(short),
         "tool": short,
         "status": status,
-        "title": title,
+        "title": _progressive_title(title, status),
         "detail": detail,
     }
+
+
+_HTML_TAG_RE = re.compile(r"<[^>]+>")
+_WS_RE = re.compile(r"[ \t]+")
+
+
+def _strip_to_text(raw: str, *, max_len: int) -> str:
+    text = (raw or "").strip()
+    if not text:
+        return ""
+    if text.lstrip().startswith("<") or "<html" in text[:200].lower():
+        text = _HTML_TAG_RE.sub(" ", text)
+    text = _WS_RE.sub(" ", text.replace("\r", ""))
+    text = re.sub(r"\n{3,}", "\n\n", text).strip()
+    if len(text) > max_len:
+        text = f"{text[: max_len - 1]}…"
+    return text
+
+
+def _preview_web_search(result: str, *, max_len: int) -> str:
+    text = (result or "").strip()
+    if not text:
+        return ""
+    try:
+        data = json.loads(text)
+    except Exception:
+        return _strip_to_text(text, max_len=max_len)
+    hits: list[Any]
+    if isinstance(data, list):
+        hits = data
+    elif isinstance(data, dict):
+        for key in ("results", "items", "organic", "hits"):
+            if isinstance(data.get(key), list):
+                hits = data[key]
+                break
+        else:
+            return _strip_to_text(text, max_len=max_len)
+    else:
+        return _strip_to_text(text, max_len=max_len)
+    lines: list[str] = []
+    for item in hits[:5]:
+        if not isinstance(item, dict):
+            continue
+        title = str(item.get("title") or item.get("name") or "").strip()
+        link = str(item.get("url") or item.get("href") or item.get("link") or "").strip()
+        snippet = str(item.get("snippet") or item.get("body") or item.get("description") or "").strip()
+        if title and link:
+            lines.append(f"• {title}\n  {link}")
+        elif title:
+            lines.append(f"• {title}")
+        elif link:
+            lines.append(f"• {link}")
+        if snippet and len("\n".join(lines)) < max_len - 40:
+            lines.append(f"  {_compact(snippet, 80)}")
+    if not lines:
+        return _strip_to_text(text, max_len=max_len)
+    return _strip_to_text("\n".join(lines), max_len=max_len)
+
+
+def _result_preview(tool_name: str, result: str, *, max_len: int) -> str:
+    short = short_tool_name(tool_name).lower().replace("-", "_")
+    if short in {"web_search", "internet_search", "search_web"}:
+        return _preview_web_search(result, max_len=max_len)
+    return _strip_to_text(result, max_len=max_len)
+
+
+def append_tool_result_detail(
+    step: dict[str, Any],
+    tool_name: str,
+    result: str,
+    *,
+    max_len: int = 480,
+    failed: bool = False,
+) -> dict[str, Any]:
+    """Attach result/error preview under the target line (Cursor expand body)."""
+    snippet = _result_preview(tool_name, result, max_len=max_len)
+    if not snippet:
+        return step
+    merged = dict(step)
+    kind = kind_for_tool(short_tool_name(tool_name))
+    # Shell: keep prior D19 behavior — detail becomes the output.
+    if kind == "execute" and not failed:
+        merged["detail"] = snippet
+        return merged
+
+    existing = str(step.get("detail") or "").strip()
+    if "── result" in existing.lower() or "── error" in existing.lower():
+        return step
+
+    chars = len((result or "").strip())
+    label = "error" if failed or str(step.get("status")) == "failed" else "result"
+    meta = f"{chars:,} chars" if chars and label == "result" else ""
+    header = f"── {label}" + (f" ({meta})" if meta else "") + " ──"
+    if existing and kind != "execute":
+        merged["detail"] = f"{existing}\n\n{header}\n{snippet}"
+    else:
+        merged["detail"] = f"{header}\n{snippet}" if kind != "execute" else snippet
+    return merged
 
 
 def append_execute_output_detail(
@@ -209,17 +382,13 @@ def append_execute_output_detail(
     *,
     max_len: int = 480,
 ) -> dict[str, Any]:
-    """D19 — attach shell output snippet to execute tool steps for live activity."""
-    if kind_for_tool(short_tool_name(tool_name)) != "execute":
-        return step
-    snippet = (result or "").strip()
-    if not snippet:
-        return step
-    if len(snippet) > max_len:
-        snippet = f"{snippet[: max_len - 1]}…"
-    merged = dict(step)
-    merged["detail"] = snippet
-    return merged
+    """Back-compat alias — now enriches all supervise-worthy tool kinds."""
+    failed = str(step.get("status")) == "failed" or (result or "").startswith(
+        "Error executing tool"
+    )
+    return append_tool_result_detail(
+        step, tool_name, result, max_len=max_len, failed=failed
+    )
 
 
 def upsert_tool_step(steps: list[dict[str, Any]], step: dict[str, Any]) -> list[dict[str, Any]]:
@@ -253,7 +422,8 @@ def complete_running_steps(steps: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 _HEADER_NOUN: dict[ToolStepKind, tuple[str, str]] = {
     "read": ("file", "files"),
-    "search": ("pattern", "patterns"),
+    "fetch": ("page", "pages"),
+    "search": ("query", "queries"),
     "list": ("dir", "dirs"),
     "edit": ("edit", "edits"),
     "execute": ("command", "commands"),
@@ -262,6 +432,7 @@ _HEADER_NOUN: dict[ToolStepKind, tuple[str, str]] = {
 
 _HEADER_VERB_RUNNING: dict[ToolStepKind, str] = {
     "read": "Reading",
+    "fetch": "Fetching",
     "search": "Searching",
     "list": "Listing",
     "edit": "Editing",
@@ -271,6 +442,7 @@ _HEADER_VERB_RUNNING: dict[ToolStepKind, str] = {
 
 _HEADER_VERB_DONE: dict[ToolStepKind, str] = {
     "read": "Read",
+    "fetch": "Fetched",
     "search": "Searched",
     "list": "Listed",
     "edit": "Edited",
@@ -280,7 +452,7 @@ _HEADER_VERB_DONE: dict[ToolStepKind, str] = {
 
 
 def verb_group_header_label(steps: list[dict[str, Any]]) -> str:
-    """Grok-style fold header: 'Read 2 files, Searched 1 pattern'."""
+    """Grok/Cursor fold header: 'Fetched 4 pages, Searched 1 query'."""
     if not steps:
         return ""
     any_running = any(str(s.get("status")) in {"running", "awaiting"} for s in steps)
@@ -291,7 +463,15 @@ def verb_group_header_label(steps: list[dict[str, Any]]) -> str:
         if kind not in _HEADER_NOUN:
             kind = "other"
         counts[kind] = counts.get(kind, 0) + 1
-    order: list[ToolStepKind] = ["read", "search", "list", "edit", "execute", "other"]
+    order: list[ToolStepKind] = [
+        "read",
+        "fetch",
+        "search",
+        "list",
+        "edit",
+        "execute",
+        "other",
+    ]
     parts: list[str] = []
     for kind in order:
         n = counts.get(kind, 0)

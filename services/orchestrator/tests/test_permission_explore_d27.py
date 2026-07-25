@@ -176,7 +176,7 @@ def test_explore_mode_allows_read_tool(monkeypatch) -> None:
         def resolve_for_model(self, model_id=None):
             return SimpleNamespace(name="Test Model"), model_id
 
-        def chat(self, messages, tools=None, model_id=None):
+        def chat(self, messages, tools=None, model_id=None, tool_choice=None):
             if any(message.get("role") == "tool" for message in messages):
                 return "Found README"
             return {

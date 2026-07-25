@@ -2,7 +2,7 @@
  * D30 — session overview board (all local Chat sessions + status badges).
  */
 import React, { useMemo } from 'react';
-import type { SessionRecord } from '../services/runApi';
+import { sessionActivityAt, type SessionRecord } from '../services/runApi';
 import { LegacyIcon } from './ui/LegacyIcon';
 
 export type SessionBoardStatus = 'running' | 'done' | 'idle';
@@ -31,7 +31,7 @@ export function sessionBoardRows(sessions: SessionRecord[]): SessionRecord[] {
     seen.add(session.run_id);
     rows.push(session);
   }
-  return rows.sort((a, b) => String(b.started_at || '').localeCompare(String(a.started_at || '')));
+  return rows.sort((a, b) => sessionActivityAt(b).localeCompare(sessionActivityAt(a)));
 }
 
 function StatusBadge({

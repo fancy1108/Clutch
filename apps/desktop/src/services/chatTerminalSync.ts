@@ -19,28 +19,36 @@ function shortTool(tool: string): string {
 /** Extract a searchable command / focus fragment from a tool step. */
 export function stepSearchNeedle(step: ToolStep): string {
   const detail = (step.detail || '').trim();
-  if (detail.startsWith('{')) {
+  // First line is usually the target (URL / path / query) before result preview.
+  const primary = detail.split('\n').find((line) => line.trim() && !line.startsWith('──'))?.trim() || '';
+  if (primary.startsWith('{')) {
     try {
-      const parsed = JSON.parse(detail) as Record<string, unknown>;
+      const parsed = JSON.parse(primary) as Record<string, unknown>;
       const command = parsed.command ?? parsed.cmd;
       if (typeof command === 'string' && command.trim()) return command.trim();
+      const url = parsed.url ?? parsed.uri ?? parsed.href;
+      if (typeof url === 'string' && url.trim()) return url.trim();
       const path = parsed.path ?? parsed.file_path;
       if (typeof path === 'string' && path.trim()) return path.trim();
+      const query = parsed.query ?? parsed.pattern ?? parsed.q;
+      if (typeof query === 'string' && query.trim()) return query.trim();
     } catch {
       /* fall through */
     }
   }
+  if (primary && (primary.startsWith('http') || primary.includes('/') || primary.length >= 4)) {
+    return primary;
+  }
   const title = step.title.trim();
-  // Titles like "Run echo hi" → prefer the tail after the verb.
-  const runMatch = /^(?:Run|Shell|Exec)\s+(.+)$/i.exec(title);
-  if (runMatch?.[1]) return runMatch[1].trim();
+  // Titles like "Run echo hi" / "Fetched host/path" → prefer the tail after the verb.
+  const runMatch = /^(?:Run|Shell|Exec|Fetched|Searched|Read|List|Edit)\s+(.+)$/i.exec(title);
+  if (runMatch?.[1]) return runMatch[1].replace(/^[“"]|[”"]$/g, '').trim();
   return title || shortTool(step.tool);
 }
 
+/** Any Chat tool trail step can jump to its matching `[CHAT] Step …` audit line. */
 export function isTerminalSyncableStep(step: ToolStep): boolean {
-  if (step.kind === 'execute') return true;
-  const tool = shortTool(step.tool).toLowerCase();
-  return /run_terminal|shell|exec|bash|command/.test(tool);
+  return Boolean(step.tool?.trim());
 }
 
 export function resolveSyncLaneId(state: {

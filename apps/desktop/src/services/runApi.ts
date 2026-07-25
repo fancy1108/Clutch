@@ -11,6 +11,8 @@ export interface SessionRecord {
   mode?: SessionMode;
   status: string;
   started_at: string;
+  /** Last chat/activity bump — sidebar sorts by this (falls back to ended_at / started_at). */
+  updated_at?: string;
   ended_at?: string;
   /** Design mode: SVG/data-URL preview of generated UI (or reference image). */
   thumbnail_url?: string | null;
@@ -29,6 +31,11 @@ export interface SessionRecord {
 
 /** @deprecated use SessionRecord */
 export type RunHistoryRecord = SessionRecord;
+
+/** ISO timestamp used for recent-first sidebar ordering. */
+export function sessionActivityAt(session: SessionRecord): string {
+  return session.updated_at || session.ended_at || session.started_at || '';
+}
 
 /**
  * Desktop sidebar lists every project and buckets rows by `workspace_id`.

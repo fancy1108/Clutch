@@ -12,6 +12,14 @@
 
 （暂无）
 
+### [RESOLVED] Chat · 天气/网页问答露出 `urlopen SSL UNEXPECTED_EOF`（2026-07-25）
+
+- **现象：** Agent 回答直接贴 `<urlopen error [SSL: UNEXPECTED_EOF_WHILE_READING]…>`（如「上海天气」）。
+- **根因：** `web_fetch` 用 `urllib.urlopen` + 自定义 UA，部分站点 TLS 握手被对端掐断；错误原样抛给模型。
+- **解决：** 改 `httpx`、浏览器式 UA、SSL/超时重试一次、对 Agent 返回可读 TLS 提示（引导改用 `web_search`）。
+- **规避：** 改完需重启 Sidecar；天气类优先 `web_search`。
+- **关联：** `web_fetch_util.py`；`test_web_fetch_util_ssl_eof_is_friendly`
+
 ### [RESOLVED] D8 PM · `/compact` 只闪 toast、Chat 历史不变（2026-07-25）
 
 - **现象：** 输入框上方出现 `Context compacted (N messages…)` 几秒后消失，对话仍是原来一长串，看不到「上下文压缩摘要」气泡。

@@ -12,6 +12,9 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ### Changed
 
+- **Tool trail detail (D46 / Cursor·Grok-aligned):** Verb-group headers use tool families (`Fetched N pages`, `Searched N queries`); `web_fetch` / `web_search` titles show host/query; step rows show the target URL/query; expand attaches a truncated result preview. **View in Terminal** works for any tool step (not only shell).
+- **Allow network default On (D15):** New installs expose `web_search` by default; turn off in Settings → General to hide it. Catalog also hides `remember_preference` when Memory is off.
+- **Tool-skip harness (D44 / Grok-aligned):** Live-fact turns (weather/news/URL) that get a prose answer with zero `tool_calls` trigger one reminder + `tool_choice=required` retry so advertised tools are actually used.
 - **Usage / Steps (D9 · D22):** Composer **+ → Usage** removed; Overview **Session Token Analytics** keeps the section but shows **`—` placeholders** until provider-true usage (DECISIONS **Q-USAGE-1**).
 - **Subtask budgets (D10):** Nested explore/implement loops use **16 / 12** tool-step caps (was flat 8); explore system prompt steers away from repeated `list_dir`.
 - **Background jobs (D11):** Composer bar shows **running** jobs only; finished jobs seal into the Chat timeline (Supervisor monitor + View output card).
@@ -20,6 +23,10 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ### Fixed
 
+- **Chat ASGI / max-iterations leak:** Long tool loops that close the WebSocket no longer surface `Unexpected ASGI message 'websocket.send'…` as the agent reply; live emits swallow closed-socket errors. Hitting the 24-step budget now attempts one tool-free synthesis answer. `web_fetch` rejects search-engine result pages (Bing/Google/…) so open questions use `web_search` instead of burning the budget.
+- **Network thrash cap:** Open-web Q&A soft-caps at 3 `web_search`/`web_fetch` calls (stop-and-answer nudge) and hard-caps at 5; prompt/tool copy steers **1 search → ≤2 fetches → answer** like mainstream agents.
+- **Live tool UX:** One loading cue only — spinner + **Working…** / **Thinking…** on the agent label; the tool trail stays a quiet checklist (no stacked spinners, progress bars, or repeated Working dots).
+- **Sidebar recent-first:** Projects and sessions sort by last chat activity (`updated_at`); reopening an old chat floats it (and its project) to the top so you don’t scroll to the bottom.
 - **E2E MVP closed-loop:** With `CLUTCH_E2E_SANDBOX` + `CLUTCH_E2E_FAKE_LLM=1`, workflow `source=flow` short-circuits `route_engine` (no real Claude CLI) so sandbox MVP closed-loop reaches `awaiting_human` → approve → `passed`; plain_chat still uses hybrid/`FAKE_HYBRID`.
 - **D10 explore PM:** Agnes Flash explore subtasks no longer die at 8 iterations before summarizing.
 - **D8 PM acceptance polish:** `todo_write` no longer explodes JSON-string `todos` into per-character items; compaction patches **replace** the message list (digest visible); manual `/compact` appends a User `/compact` bubble then an amber digest **at the feed end**; Stop flips to Stopping/Continue immediately; status questions (还剩哪些 todo) instruct the model not to resume edits; slash notices use a high-contrast dark toast.
@@ -41,7 +48,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 - **Session overview board (capability D30):** Composer exposes a compact session board (goal / todos / plan / permissions / MCP) for at-a-glance status.
 - **Clutch Agent builtin tools (capability D1):** Default `clutch-tools` for Clutch Agent with an authorized workspace — `read_file`, `list_dir`, `grep`, `search_replace`, `run_terminal_cmd`, plus existing `apply_patch`. No Hub bind required for builtins.
 - **Agent Manager MCP Hub binding (capability D37):** Clutch Agent edit Module 4 restores Hub server checkboxes; save persists `mcpServerIds` (no longer wiped). Detail pane lists bound servers.
-- **Chat live tool activity (capability D46):** Clutch Agent / MCP ReAct tool trail uses a Grok-style **verb_group** fold (`Read 2 files, Searched 1 pattern`); expand for step titles/detail. Steps stream via `pending_tool_steps`, then **seal** onto the assistant message as `toolSteps` (survive refresh). Log parsing remains fallback only.
+- **Chat live tool activity (capability D46):** Clutch Agent / MCP ReAct tool trail uses a Grok/Cursor-style **verb_group** fold (`Fetched 4 pages, Searched 1 query`); expand for target + result preview. Steps stream via `pending_tool_steps`, then **seal** onto the assistant message as `toolSteps` (survive refresh). Log parsing remains fallback only.
 - **Layered runtime prompt (capability D53):** System prompt assembled as layers (system / env / protocol / workspace rules / skills catalog / plan-mode reminder). Skills default to name+blurb (full SKILL.md on demand). **Agent Manager** shows a Runtime prompt layers panel (refreshable); `GET /api/agents/{id}/prompt-assembly` returns the same summary. Agent Manager `markdownDoc` is the editable protocol segment only.
 - **Chat files-changed chips (capability D47):** Paths from this turn’s `files_changed` seal onto the assistant message as `filesChanged`; Chat renders clickable chips (optional image thumbs) that open the existing workspace file preview (DECISIONS D42). Changes panel `file_changed` events unchanged.
 - **Plan-before-edit + in-chat plan card (capability D2 + D49):** Builtin `propose_plan` pauses the ReAct loop; Chat shows a **Plan card** with Approve / Revise / Cancel. Writes resume only after Approve; Revise asks the agent to call `propose_plan` again. Trivial turns may skip the tool.
@@ -56,7 +63,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 - **Background commands (capability D11):** `run_terminal_cmd` supports `background=true` plus `list_background_jobs` / `kill_background_job`; Chat shows a **Background jobs** bar (view output / kill) while the foreground turn stays free.
 - **Git + web fetch (capability D12):** Builtin `git_status` / `git_diff` / `git_commit` (commit is risky/approval) and `web_fetch` for URL text summarization; steps appear in the D46 tool trail.
 - **Permission rules (capability D13):** Persist allow/ask/deny command patterns; dangerous shell (`rm -rf`, `sudo`, …) force-ask even in Full; Chat permission menu **Clear remembered approvals**.
-- **Chat ↔ Terminal sync (capability D51):** Shell / execute tool steps and subtask cards expose **View in Terminal** — opens the right-rail Terminal tab, highlights the matching `[CHAT] Step` log line, and (when a CLI Terminal session is available) switches to Terminal mode and focuses the active lane.
+- **Chat ↔ Terminal sync (capability D51):** Tool steps (including `web_fetch` / `web_search`) and subtask cards expose **View in Terminal** — opens the right-rail Terminal tab, highlights the matching `[CHAT] Step` log line, and (when a CLI Terminal session is available) switches to Terminal mode and focuses the active lane.
 - **Capability ↔ Chat UI gate (capability D52):** `PRODUCT_INTRO` ships a **Capability → Chat UI** table (D1/D10/D37 spot-check rows required); `scripts/check-capability-ui-table.sh` is wired into `check-doc-drift.sh` (INV-D52).
 - **MCP Hub trusted status (capability D38):** Remove misleading Hub “under development” banner; per-server **Test connection** (`POST /api/mcp/servers/test`) returns tool count on success or a readable error on failure.
 - **MCP transport honesty (capability D39):** Hub registration is **stdio-only** (SSE option disabled; API rejects new SSE registers); optional Env `KEY=value` lines on register; legacy SSE rows stay visible as unavailable.

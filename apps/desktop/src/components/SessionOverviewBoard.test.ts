@@ -30,4 +30,20 @@ describe('SessionOverviewBoard', () => {
     ]);
     expect(rows.map((row) => row.run_id)).toEqual(['run_new', 'run_old']);
   });
+
+  it('sorts by updated_at when an older session is touched', () => {
+    const rows = sessionBoardRows([
+      base({
+        run_id: 'run_old',
+        started_at: '2026-07-20T10:00:00Z',
+        updated_at: '2026-07-25T18:00:00Z',
+      }),
+      base({
+        run_id: 'run_mid',
+        started_at: '2026-07-24T12:00:00Z',
+        updated_at: '2026-07-24T12:00:00Z',
+      }),
+    ]);
+    expect(rows.map((row) => row.run_id)).toEqual(['run_old', 'run_mid']);
+  });
 });

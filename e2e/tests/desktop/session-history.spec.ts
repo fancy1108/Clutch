@@ -19,8 +19,9 @@ test('desktop: sidebar session restores persisted chat after new chat', async ({
 
   await page.click(`[data-testid="sidebar-session-${runId}"]`);
 
+  // Chat bubbles render via markdown (<p class="my-1.5 …">), not whitespace-pre-wrap.
   await page.waitForFunction(
-    `Array.from(document.querySelectorAll('p.whitespace-pre-wrap')).some((p) => p.textContent && p.textContent.includes(${JSON.stringify(seedText)}))`,
+    `document.body.innerText.includes(${JSON.stringify(seedText)})`,
     20_000,
   );
 });

@@ -63,11 +63,11 @@ export const PromptModal: React.FC<PromptModalProps> = ({
           />
         )}
 
-        <div className="flex justify-end gap-2 pt-1">
-          <button type="button" onClick={onCancel} className={BTN_GHOST}>
+        <div className="flex justify-end gap-2 pt-1" data-testid="prompt-modal">
+          <button type="button" onClick={onCancel} className={BTN_GHOST} data-testid="prompt-modal-cancel">
             {t('Cancel')}
           </button>
-          <button type="button" onClick={() => onConfirm(value)} className={BTN_PRIMARY}>
+          <button type="button" onClick={() => onConfirm(value)} className={BTN_PRIMARY} data-testid="prompt-modal-confirm">
             {t('Confirm')}
           </button>
         </div>

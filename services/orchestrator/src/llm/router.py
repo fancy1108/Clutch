@@ -219,6 +219,7 @@ class LLMProviderRouter:
         *,
         model_id: str | None = None,
         tools: list[dict[str, Any]] | None = None,
+        tool_choice: str | None = None,
         max_tokens: int | None = None,
         timeout_sec: float | None = None,
     ) -> dict[str, Any] | str:
@@ -231,6 +232,8 @@ class LLMProviderRouter:
             kwargs["max_tokens"] = max_tokens
         if timeout_sec is not None:
             kwargs["timeout_sec"] = timeout_sec
+        if tool_choice is not None:
+            kwargs["tool_choice"] = tool_choice
         return self._chat(
             provider_id=spec.provider_id,
             base_url=spec.base_url,

@@ -6,7 +6,7 @@ import {
   CHAT_SCROLL_ABOVE_DOCK_GAP_PX,
   WORKSPACE_CHROME_ROW_TOP_PX,
 } from '../constants/layout';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Loader2 } from 'lucide-react';
 import {
   ChatMessage,
   ClutchRunStatus,
@@ -36,7 +36,7 @@ import type { FileTreeNode } from '../services/workspaceApi';
 import type { PermissionMode } from '../services/permissionApi';
 import { USER_CHAT_AVATAR, clutchStore, deleteChatMessage, useClutchState } from '../services/clutchState';
 import { resolveLiveActivitySteps } from '../services/agentActivitySteps';
-import { AgentLiveActivity } from './AgentLiveActivity';
+import { AgentLiveActivity, TypingDots } from './AgentLiveActivity';
 import { FilesChangedChips } from './FilesChangedChips';
 import { PlanCardView, formatPlanRevisePayload, hasPlanStepComments } from './PlanCardView';
 import { QuestionCardView } from './QuestionCardView';
@@ -1090,7 +1090,29 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
             )}
           </div>
           {statusHint && (
-            <span className="text-[10px] text-on-surface-variant/60 flex-shrink-0">{statusHint}</span>
+            <span
+              className="text-[10px] text-on-surface-variant/70 flex-shrink-0 inline-flex items-center gap-1.5"
+              data-testid="agent-live-status"
+            >
+              {(statusHint === t('Working…') ||
+                statusHint === t('Thinking...') ||
+                statusHint === t('Queued for shell...')) && (
+                <Loader2
+                  className="h-3 w-3 text-primary animate-spin motion-reduce:animate-none"
+                  strokeWidth={2}
+                  aria-hidden
+                />
+              )}
+              <span
+                className={
+                  statusHint === t('Working…') || statusHint === t('Thinking...')
+                    ? 'text-primary font-semibold'
+                    : undefined
+                }
+              >
+                {statusHint}
+              </span>
+            </span>
           )}
         </div>
       );
@@ -1100,7 +1122,19 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
       <>
         <span className="text-xs font-bold text-on-surface">{agent}</span>
         {statusHint && (
-          <span className="text-[10px] text-on-surface-variant/60">{statusHint}</span>
+          <span
+            className="text-[10px] text-on-surface-variant/70 inline-flex items-center gap-1.5"
+            data-testid="agent-live-status"
+          >
+            {(statusHint === t('Working…') || statusHint === t('Thinking...')) && (
+              <Loader2
+                className="h-3 w-3 text-primary animate-spin motion-reduce:animate-none"
+                strokeWidth={2}
+                aria-hidden
+              />
+            )}
+            {statusHint}
+          </span>
         )}
       </>
     );
@@ -1632,7 +1666,6 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                       steps={liveActivitySteps}
                       reasoningContent={liveReasoning}
                       live
-                      defaultOpen
                       onOpenFile={onOpenWorkspaceFile}
                       onViewInTerminal={onViewToolStepInTerminal}
                     />
@@ -1650,11 +1683,14 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                   </div>
                 ) : (
                   <div
-                    className={`${chatChrome.thinkingBubblePaddingClass} bg-surface-container-low rounded-2xl rounded-tl-none border border-outline-variant/30 shadow-sm flex items-center gap-1.5 min-h-9`}
+                    className={`${chatChrome.thinkingBubblePaddingClass} bg-surface-container-low rounded-2xl rounded-tl-none border border-outline-variant/30 shadow-sm flex items-center gap-2 min-h-9`}
+                    data-testid="chat-thinking-dots"
+                    role="status"
+                    aria-busy="true"
+                    aria-label={t('Thinking...')}
                   >
-                    <div className="w-1.5 h-1.5 rounded-full bg-on-surface/40 animate-typing-pulse" />
-                    <div className="w-1.5 h-1.5 rounded-full bg-on-surface/40 animate-typing-pulse animation-delay-100" />
-                    <div className="w-1.5 h-1.5 rounded-full bg-on-surface/40 animate-typing-pulse animation-delay-200" />
+                    <TypingDots />
+                    <span className="text-[11px] text-on-surface-variant">{t('Thinking...')}</span>
                   </div>
                 )}
               </div>

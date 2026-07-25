@@ -84,9 +84,9 @@
 | D39 传输诚实 | P1 | ✅ | Agent 自验 2026-07-25 |
 | D40 Chat MCP 徽章 | P1 | ✅ | Agent 自验 2026-07-25 |
 | D41 MCP 审批体验 | P1 | ✅ | Agent 自验 2026-07-25（Ask≠写审批；见 D41.md） |
-| D42 真实工具名 UI | P1 | ✅ | Agent 自验 2026-07-25（桌面 Skip） |
+| D42 真实工具名 UI | P1 | ✅ | Agent 自验 2026-07-25 |
 | D43 MCP Resources | P1 | ✅ | Agent 自验 2026-07-25 |
-| D44 一键 local-fs | P1 | ✅ | Agent 自验 2026-07-25（桌面 Skip） |
+| D44 一键 local-fs | P1 | ✅ | Agent 自验 2026-07-25 |
 | D45 文档对齐 | P1 | ✅ | Agent 自验 2026-07-25 |
 | D46 对话实时步骤条 | P0 | ✅ | 持久 verb_group + seal `toolSteps`；PM 2026-07-24 点验通过 |
 | D47 中间产物芯片 | P0 | ✅ | seal `filesChanged` + FilesChangedChips → D42 预览；PM 2026-07-24 点验通过 |
@@ -98,7 +98,7 @@
 | D53 分层 prompt + 渐进披露 | P0 | ✅ | 分层组装 + Agent Manager 分层摘要面板；PM 2026-07-24 点验通过 |
 
 **首期目标：** D1 + D37 + D46 ✅（PM 2026-07-24）。  
-**扩展/MCP：** Agent 代 PM 自验 2026-07-25（见 `runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md`）；桌面 Tauri / 真连 acceptance 因环境 Skip。
+**扩展/MCP：** Agent 代 PM 自验 2026-07-25（见 `runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md`）；Desktop Tauri E2E ✅；真连 acceptance Skip（缺 DeepSeek/Agnes 密钥）。
 
 ## Design 模式（D36 · 默认 FAIL）
 

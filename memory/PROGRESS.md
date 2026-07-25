@@ -5,16 +5,28 @@
 
 ## Current Status
 
-- **阶段：** **v1.2.9**；主线 D8–D13 ✅；扩展/MCP **D14–D52 Agent 代 PM ✅**（桌面/真连 Skip）；Design D36 仍 ❌
+- **阶段：** **v1.2.9**；主线 D8–D13 ✅；扩展/MCP **D14–D52 Agent 代 PM ✅**；Desktop E2E ✅；真连 Skip（密钥）；Design D36 仍 ❌
 - **Git / PM 索引：** [`runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md`](../runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md)
-- **下次优先：** 补跑桌面 Tauri E2E（Vite:3000）与真连 acceptance（需 Ollama）；或 Design D36
+- **下次优先：** 重启 Sidecar 验证天气走 `web_search`/`web_fetch`；旧偏好若 Allow network=Off 需手动打开；commit 本轮 e2e + tool harness 修复
 
 ## Recent Sessions
+
+## 2026-07-25 会话（Tool harness 全链路）
+
+- **对照 Grok Build：** 采样→工具→回灌；Clutch 缺「空答不重试」
+- **落地：** `tool_use_policy` + ReAct nudge/`tool_choice=required`；Allow network 默认 On；目录诚实隐藏死工具；web_fetch httpx
+- **测：** `pytest tests/test_tool_use_policy.py …` 22 passed
+
+## 2026-07-25 会话（补：Desktop E2E）
+
+- **Desktop：** `./scripts/run-e2e.sh` → API 6 + Hybrid 1 + Desktop **5/5**（`wave-c-desktop-retry10.log`）
+- **Real：** preflight 仍 Skip（缺 DeepSeek/Agnes；Ollama OK）— `wave-c-real-preflight.log`
+- **下次：** 密钥齐后真连；commit 本轮 e2e 修复
 
 ## 2026-07-25 会话（Agent 代 PM 自验收）
 
 - **Wave A/B：** D14–D52 用例内 pytest/vitest/doc-drift 全绿
-- **Wave C：** API+Hybrid E2E ✅；修 sandbox `route_engine` FAKE_LLM（`0c3462d`/`61c22ec`）；Desktop/Real Skip
+- **Wave C：** API+Hybrid E2E ✅；修 sandbox `route_engine` FAKE_LLM（`0c3462d`/`61c22ec`）；Desktop/Real 当时 Skip（后已补 Desktop）
 - **证据：** `runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md`
 
 ## 2026-07-25 会话（D13 A + Ask=只读）

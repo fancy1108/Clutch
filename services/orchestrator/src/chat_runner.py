@@ -294,7 +294,7 @@ def _touch_session(
     existing = next((record for record in list_runs() if record.get("run_id") == run_id), None)
     if not existing and not session_has_persistable_content(state):
         return
-    patch: dict[str, Any] = {**fields, "run_id": run_id}
+    patch: dict[str, Any] = {**fields, "run_id": run_id, "updated_at": _iso_timestamp()}
     if title is not None:
         patch["title"] = title[:80]
     if workflow_id is not None:
@@ -976,6 +976,24 @@ async def _notify_run_state(
     if _is_terminal_status(state["status"]):
         await _send_run_completed(websocket, run_id, state)
 
+def _is_ws_transport_error(exc: BaseException) -> bool:
+    """True when the socket is already closed / ASGI cycle finished (not a logic bug)."""
+    if isinstance(exc, WebSocketDisconnect):
+        return True
+    msg = str(exc).lower()
+    return any(
+        token in msg
+        for token in (
+            "websocket.close",
+            "websocket.send",
+            "not connected",
+            "connection closed",
+            "asgi message",
+            "response already completed",
+        )
+    )
+
+
 async def _try_ws_notify(
     coro: Awaitable[None],
     *,
@@ -990,6 +1008,16 @@ async def _try_ws_notify(
             what,
             run_id,
         )
+    except RuntimeError as exc:
+        if _is_ws_transport_error(exc):
+            logger.warning(
+                "WebSocket unavailable during %s run_id=%s: %s",
+                what,
+                run_id,
+                exc,
+            )
+            return
+        raise
 
 _AGENT_AVATARS: dict[str, str] = {
     "Orchestrator": "https://lh3.googleusercontent.com/aida-public/AB6AXuA0yGh59QNLj5n0igNxMgu4lgaiNqZpcN29SpWM0JHNlAuFmOBx-Id67Zcd2NDCNBjBKrcffQrdrfoe-3XaSlveekLAP9SRis93uTk7XPPFO5y4Swos7NvATw6n7eZEm7nfAQuTiMAoWRSnxefAOJugUbZx3fCTNv4jGyjvT-UZznwKzp_HoXuStup_0juhBCZYamrV0Coil-k27d9Yi7il6NabIEG0FfbxwL5V5azpfZQOlBfpaganta2kP7n59BKPHd4K2uTOfZ5p",
@@ -2038,8 +2066,24 @@ async def _llm_chat_reply(
                 finally:
                     release_bg_job_context(bg_token)
                     _release_worktree_bindings(wt_root_token, wt_ctx_token)
+                # Live emits can fail if the client dropped mid-loop; never overwrite a
+                # successful react outcome with an ASGI/transport error string.
                 for fut in step_futures:
-                    await asyncio.wrap_future(fut)
+                    try:
+                        await asyncio.wrap_future(fut)
+                    except Exception as emit_exc:
+                        if _is_ws_transport_error(emit_exc):
+                            logger.warning(
+                                "Live WS emit failed after react loop run_id=%s: %s",
+                                state["run_id"],
+                                emit_exc,
+                            )
+                            continue
+                        logger.warning(
+                            "Live emit failed after react loop run_id=%s: %s",
+                            state["run_id"],
+                            emit_exc,
+                        )
                 if tool_steps_sink is not None:
                     tool_steps_sink.clear()
                     tool_steps_sink.extend(list(outcome.tool_steps or []))
@@ -2231,6 +2275,11 @@ async def _llm_chat_reply(
         from src.agent_type import agent_type_from_record
 
         err = str(exc)
+        if _is_ws_transport_error(exc):
+            err = tr(
+                "Connection interrupted while finishing the reply. Please resend your message.",
+                "回复发送时连接中断，请重新发送消息。",
+            )
         agent_type = agent_type_from_record(agent) if agent else "clutch"
         if agent_type == "claude-cli" or "Claude CLI" in err:
             runtime_engine = "Claude CLI"

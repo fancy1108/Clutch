@@ -172,6 +172,7 @@ def _openai_chat(
     api_key: str,
     messages: list[dict[str, Any]],
     tools: list[dict[str, Any]] | None = None,
+    tool_choice: str | None = None,
     timeout_sec: float = _TIMEOUT_SEC,
     max_tokens: int = _MAX_TOKENS,
 ) -> dict[str, Any] | str:
@@ -184,7 +185,7 @@ def _openai_chat(
     }
     if tools:
         body["tools"] = tools
-        body["tool_choice"] = "auto"
+        body["tool_choice"] = tool_choice or "auto"
     data = _post_json(url, headers, body, timeout_sec=timeout_sec)
     try:
         msg = data["choices"][0]["message"]
@@ -206,6 +207,7 @@ def _anthropic_chat(
     api_key: str,
     messages: list[dict[str, Any]],
     tools: list[dict[str, Any]] | None = None,
+    tool_choice: str | None = None,
     timeout_sec: float = _TIMEOUT_SEC,
     max_tokens: int = _MAX_TOKENS,
 ) -> dict[str, Any] | str:
@@ -292,6 +294,11 @@ def _anthropic_chat(
                 "input_schema": func.get("parameters", {"type": "object", "properties": {}}),
             })
         body["tools"] = anthropic_tools
+        # Anthropic: "any" ≈ OpenAI tool_choice=required; "auto" ≈ auto.
+        if tool_choice == "required":
+            body["tool_choice"] = {"type": "any"}
+        elif tool_choice:
+            body["tool_choice"] = {"type": "auto"}
 
     data = _post_json(url, headers, body, timeout_sec=timeout_sec)
     try:
@@ -338,6 +345,7 @@ def http_chat_complete(
     api_key: str,
     messages: list[dict[str, Any]],
     tools: list[dict[str, Any]] | None = None,
+    tool_choice: str | None = None,
     timeout_sec: float = _TIMEOUT_SEC,
     max_tokens: int = _MAX_TOKENS,
 ) -> dict[str, Any] | str:
@@ -358,6 +366,7 @@ def http_chat_complete(
                 api_key=api_key,
                 messages=messages,
                 tools=tools,
+                tool_choice=tool_choice,
                 timeout_sec=timeout_sec,
                 max_tokens=max_tokens,
             )
@@ -367,6 +376,7 @@ def http_chat_complete(
             api_key=api_key,
             messages=messages,
             tools=tools,
+            tool_choice=tool_choice,
             timeout_sec=timeout_sec,
             max_tokens=max_tokens,
         )
@@ -383,6 +393,7 @@ def http_chat_complete(
                 api_key=resolved_key,
                 messages=messages,
                 tools=tools,
+                tool_choice=tool_choice,
                 timeout_sec=timeout_sec,
                 max_tokens=max_tokens,
             )
@@ -392,6 +403,7 @@ def http_chat_complete(
             api_key=resolved_key,
             messages=messages,
             tools=tools,
+            tool_choice=tool_choice,
             timeout_sec=timeout_sec,
             max_tokens=max_tokens,
         )
@@ -401,6 +413,7 @@ def http_chat_complete(
         api_key=api_key,
         messages=messages,
         tools=tools,
+        tool_choice=tool_choice,
         timeout_sec=timeout_sec,
         max_tokens=max_tokens,
     )
