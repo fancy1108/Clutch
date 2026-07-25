@@ -4,16 +4,27 @@
 > **何时写：** 每个**代码 Task** 完成并 commit 后，在 Check-out 追加一节（见 `CLAUDE.md` §Check-out）。  
 > **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。
 
-## Clutch Agent D40 Chat MCP 徽章 (`pending`)
+## Clutch Agent D42∥D44 真工具名 + 一键 local-fs (`pending`)
+
+| 项目 | 值 |
+|------|-----|
+| **Task** | D42 real Hub tool chips + D44 Enable workspace file tools |
+| **Commit** | _(fill after commit)_ |
+| **Branch** | `dev` |
+| **Verification** | `pnpm build` via pre-commit / AgentManager UI |
+| **PM 用例** | `runs/verification/pm-acceptance/D42.md` · `D44.md`（另 D41/D45 对照） |
+| **下一批** | 人工点验；D43 Resources 仍未做 |
+
+## Clutch Agent D40 Chat MCP 徽章 (`724c26c`)
 
 | 项目 | 值 |
 |------|-----|
 | **Task** | D40 Chat MCP badge / Bind CTA |
-| **Commit** | _(fill after commit)_ |
+| **Commit** | `724c26c` |
 | **Branch** | `dev` |
 | **Verification** | `pnpm test -- src/services/agentMcpSummary.test.ts` → 2 passed |
 | **PM 用例** | `runs/verification/pm-acceptance/D40.md` |
-| **下一批** | **D41–D45**（D41 审批已大体具备） |
+| **下一批** | **D42∥D44** |
 
 ## Clutch Agent D39 传输诚实 (`092ee91`)
 

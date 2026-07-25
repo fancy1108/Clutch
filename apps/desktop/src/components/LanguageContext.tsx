@@ -922,6 +922,8 @@ const zhTranslations: Record<string, string> = {
   "Bind MCP": "绑定 MCP",
   "Bound MCP": "已绑定 MCP",
   "Manage bindings": "管理绑定",
+  "Enable workspace file tools": "启用工作区文件工具",
+  "Workspace file tools enabled (local-fs)": "已启用工作区文件工具（local-fs）",
   "Testing connection": "正在测试连接",
   "Change {provider} key": "更改 {provider} Key",
   "Already use CC Switch?": "已使用 CC Switch？",

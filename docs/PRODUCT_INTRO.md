@@ -128,6 +128,9 @@ graph TD
 | D38 Hub probe | MCP Hub **Test connection** → tool count or readable error (no “under development” banner) |
 | D39 transport | Hub register form: stdio only; SSE disabled / API 400; optional Env `KEY=value` |
 | D40 MCP badge | Chat composer: `N MCP · ~M` badge or **Bind MCP** CTA → Agent Manager |
+| D41 MCP approve | Risky MCP pause → Allow/Reject dock + tool/path in approval copy |
+| D42 real tools | Agent list/detail show real Hub tool names (not fake permission chips) |
+| D44 one-click FS | Agent Module 4 **Enable workspace file tools** → binds `local-fs` |
 | D46 tool trail | Foldable verb_group steps on the assistant bubble |
 | D47 chips | Clickable files-changed chips → workspace preview |
 | D48 nested | Subtasks cards with status / summary / expandable steps |

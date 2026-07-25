@@ -774,15 +774,26 @@ export function AgentManager({
                     ) : (
                       (selectedAgent.mcpServerIds || []).map((id) => {
                         const server = mcpServers.find((s) => s.id === id);
+                        const toolNames = (server?.tools || []).map((tool) => tool.name).filter(Boolean);
                         return (
                           <div
                             key={id}
-                            className="flex items-center justify-between px-2.5 py-1.5 rounded-lg border border-neutral-200 bg-neutral-50/50"
+                            className="px-2.5 py-1.5 rounded-lg border border-neutral-200 bg-neutral-50/50 space-y-1"
                           >
-                            <span className="text-[11px] font-bold text-neutral-800 truncate">
-                              {server?.name || id}
-                            </span>
-                            <span className="text-[9px] font-mono text-neutral-400">{id}</span>
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-[11px] font-bold text-neutral-800 truncate">
+                                {server?.name || id}
+                              </span>
+                              <span className="text-[9px] font-mono text-neutral-400 shrink-0">
+                                {toolNames.length ? `${toolNames.length} tools` : id}
+                              </span>
+                            </div>
+                            {toolNames.length > 0 ? (
+                              <p className="text-[9.5px] font-mono text-neutral-500 truncate" title={toolNames.join(', ')}>
+                                {toolNames.slice(0, 6).join(', ')}
+                                {toolNames.length > 6 ? ` +${toolNames.length - 6}` : ''}
+                              </p>
+                            ) : null}
                           </div>
                         );
                       })
@@ -911,31 +922,44 @@ export function AgentManager({
                         {agentTypeLabel(agentTypeFromAgent(agent), eligibleTools)}
                       </span>
                     )}
-                    {agent.mcpTools && agent.mcpTools.length > 0 && (
-                      <div className="flex items-center gap-1">
-                        {agent.mcpTools.map(toolKey => {
-                          const icon = {
-                            'git_write_permission': 'terminal',
-                            'figma_api_connect': 'palette',
-                            'cmd_exec_permission': 'code',
-                            'slack_webhook': 'forum',
-                            'google_sheets_sync': 'table_chart'
-                          }[toolKey] || 'extension';
-                          const title = {
-                            'git_write_permission': 'Local Git Access',
-                            'figma_api_connect': 'Figma Design Schema',
-                            'cmd_exec_permission': 'CLI Command Engine',
-                            'slack_webhook': 'Slack Channel Webhook',
-                            'google_sheets_sync': 'Google Sheets Sync'
-                          }[toolKey] || toolKey;
-                          return (
-                            <span key={toolKey} className="w-4.5 h-4.5 rounded-full border border-neutral-200/60 bg-neutral-50 flex items-center justify-center text-neutral-500 font-mono shadow-3xs" title={title}>
-                              <LegacyIcon name={icon} className="text-[10px]" />
+                    {/* D42 — real Hub tool names (not fake permission keys). */}
+                    {(() => {
+                      const boundIds = agent.mcpServerIds || [];
+                      if (!boundIds.length) return null;
+                      const toolNames = boundIds.flatMap((id) => {
+                        const server = mcpServers.find((s) => s.id === id);
+                        return (server?.tools || []).map((tool) => tool.name).filter(Boolean);
+                      });
+                      const shown = toolNames.slice(0, 4);
+                      if (!shown.length) {
+                        return (
+                          <span
+                            className="text-[9px] font-mono text-neutral-500"
+                            title={boundIds.join(', ')}
+                          >
+                            {boundIds.length} MCP
+                          </span>
+                        );
+                      }
+                      return (
+                        <div className="flex items-center gap-1 flex-wrap max-w-[220px]">
+                          {shown.map((name) => (
+                            <span
+                              key={`${agent.id}-${name}`}
+                              className={`${BADGE_SUCCESS} text-[8.5px] font-mono truncate max-w-[72px]`}
+                              title={name}
+                            >
+                              {name}
                             </span>
-                          );
-                        })}
-                      </div>
-                    )}
+                          ))}
+                          {toolNames.length > shown.length ? (
+                            <span className="text-[9px] font-mono text-neutral-400">
+                              +{toolNames.length - shown.length}
+                            </span>
+                          ) : null}
+                        </div>
+                      );
+                    })()}
                   </div>
                   
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -1216,6 +1240,25 @@ export function AgentManager({
                     <p className="text-[10px] text-neutral-500">
                       {t('Builtin clutch-tools are always available for Clutch Agent when a workspace is authorized. Bind Hub servers below for extra tools (e.g. local-fs).')}
                     </p>
+                    {/* D44 — one-click enable workspace filesystem MCP */}
+                    {!selectedMcpServerIds.includes('local-fs') ? (
+                      <button
+                        type="button"
+                        data-testid="mcp-enable-workspace-tools"
+                        onClick={() => {
+                          setSelectedMcpServerIds((prev) =>
+                            prev.includes('local-fs') ? prev : [...prev, 'local-fs'],
+                          );
+                        }}
+                        className={`${BTN_SECONDARY} text-[10px] font-bold w-full justify-center`}
+                      >
+                        {t('Enable workspace file tools')}
+                      </button>
+                    ) : (
+                      <p className="text-[10px] text-emerald-700 font-semibold">
+                        {t('Workspace file tools enabled (local-fs)')}
+                      </p>
+                    )}
                     {mcpServers.length === 0 ? (
                       <p className="text-[10.5px] text-neutral-400 italic">
                         {t('No MCP servers registered. Add some in Settings → MCP.')}
@@ -1223,6 +1266,10 @@ export function AgentManager({
                     ) : (
                       mcpServers.map((server) => {
                         const checked = selectedMcpServerIds.includes(server.id);
+                        const toolPreview = (server.tools || [])
+                          .map((tool) => tool.name)
+                          .filter(Boolean)
+                          .slice(0, 4);
                         return (
                           <label
                             key={server.id}
@@ -1250,6 +1297,18 @@ export function AgentManager({
                                   ? ` · ${server.toolsCount} tools`
                                   : ''}
                               </div>
+                              {toolPreview.length > 0 ? (
+                                <div className="mt-1 flex flex-wrap gap-1">
+                                  {toolPreview.map((name) => (
+                                    <span
+                                      key={`${server.id}-${name}`}
+                                      className="text-[8.5px] font-mono px-1 py-0.5 rounded bg-neutral-100 text-neutral-600"
+                                    >
+                                      {name}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : null}
                             </div>
                           </label>
                         );

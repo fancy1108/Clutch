@@ -5,16 +5,22 @@
 
 ## Current Status
 
-- **阶段：** **v1.2.9**；D7✅；**D8–D13 + D51–D52 + D38–D40 已实现待 PM**；下一批 **D41–D45**
-- **Git：** D51=`ee4e2a2`；D52=`1365f6d`；D38=`b2d8f49`；D39=`092ee91`；D40=_(本批)_
+- **阶段：** **v1.2.9**；Chat Agent 可验收表：**D8–D13 + D51–D52 + D38–D42 + D44–D45 已交付待 PM**；**D43 Resources 未做**
+- **Git：** D40=`724c26c`；D42∥D44∥D45=_(本批)_
 - **PM 验收包：** `runs/verification/pm-acceptance/`（ROADMAP 未点验前保持 ❌）
 
 ## Recent Sessions
 
+## 2026-07-25 会话（续：D42∥D44 + D45）
+
+- **实现：** Agent 列表真工具名；Module 4 一键 local-fs；Epicode 文档标明 HTTP 未通
+- **下次：** 人工点验；D43 若需要再立项
+
 ## 2026-07-25 会话（续：D40 Chat MCP 徽章）
 
+- **Commit：** D40 `724c26c`
 - **实现：** `McpBindingBadge` + `agentMcpSummary`；未绑 CTA → Agent Manager
-- **下次：** D41 审批卡抛光 / D42 真工具名 / D44 一键 local-fs / D45 文档
+- **下次：** D42∥D44…
 
 ## 2026-07-25 会话（续：D39 传输诚实）
 
