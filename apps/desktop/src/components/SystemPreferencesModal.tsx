@@ -1,4 +1,4 @@
-import React, { Dispatch, SetStateAction, useRef } from 'react';
+import React, { Dispatch, SetStateAction, useEffect, useRef, useState } from 'react';
 import { Agent, MainView } from '../types';
 import { AgentManager } from './AgentManager';
 import { WorkflowOrchestration } from './WorkflowOrchestration';
@@ -14,6 +14,7 @@ import { LegacyIcon } from './ui/LegacyIcon';
 import { SettingsPageHeader, SettingsPageShell } from './ui/SettingsPageHeader';
 import { SettingsSelect } from './ui/SettingsSelect';
 import { saveAvatarPreference } from '../services/themeApi';
+import { fetchStrictSandbox, saveStrictSandbox } from '../services/permissionApi';
 import { FONT_SIZE_LABEL_KEYS, FONT_SIZE_OPTIONS, type AppFontSize } from '../services/fontSizePreference';
 import { setUserChatAvatar } from '../services/clutchState';
 import defaultAvatar from '../assets/default_avatar.jpg';
@@ -84,6 +85,25 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
 }) => {
   const { t, language, setLanguage } = useLanguage();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [strictSandbox, setStrictSandbox] = useState(false);
+  const [strictSandboxLoading, setStrictSandboxLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchStrictSandbox()
+      .then((enabled) => {
+        if (!cancelled) setStrictSandbox(enabled);
+      })
+      .catch(() => {
+        if (!cancelled) setStrictSandbox(false);
+      })
+      .finally(() => {
+        if (!cancelled) setStrictSandboxLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -371,6 +391,34 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
                         onChange={(next) => setFontSize(next as AppFontSize)}
                       />
                     </div>
+                  </div>
+
+                  {/* Strict sandbox (D21) */}
+                  <div className="bg-surface-container/30 p-6 rounded-2xl border border-outline/30 space-y-4">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                      {t('Strict sandbox')}
+                    </h3>
+                    <p className="text-[11px] text-on-surface-variant/80 max-w-xl">
+                      {t('Reject shell commands and paths that escape the authorized workspace.')}
+                    </p>
+                    <button
+                      type="button"
+                      data-testid="strict-sandbox-toggle"
+                      disabled={strictSandboxLoading}
+                      onClick={() => {
+                        const next = !strictSandbox;
+                        setStrictSandbox(next);
+                        void saveStrictSandbox(next).catch((err) => {
+                          console.error('Failed to save strict sandbox:', err);
+                          setStrictSandbox(!next);
+                        });
+                      }}
+                      className={`${BTN_SECONDARY} px-3 py-1.5 text-xs font-semibold ${
+                        strictSandbox ? 'border-primary/50 text-primary' : ''
+                      }`}
+                    >
+                      {strictSandbox ? t('Strict sandbox: On') : t('Strict sandbox: Off')}
+                    </button>
                   </div>
 
                   {/* Language Settings Section */}

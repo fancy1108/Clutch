@@ -6,6 +6,7 @@ import hashlib
 import json
 import logging
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -428,7 +429,62 @@ def resolve_allowed_path(relative_path: str) -> Path:
                 f"禁止访问工作区外的路径：{relative_path}"
             )
         )
+    from src.preferences_storage import load_strict_sandbox
+
+    if load_strict_sandbox():
+        _assert_strict_sandbox_path(root, relative_path, target)
     return target
+
+
+def _assert_strict_sandbox_path(root: Path, relative_path: str, target: Path) -> None:
+    """Extra strict-sandbox checks after workspace bounds (D21)."""
+    rel = str(relative_path).replace("\\", "/").strip()
+    if rel.startswith("/") or rel.startswith("~"):
+        raise WorkspaceError(
+            tr(
+                f"Strict sandbox: use workspace-relative paths only (got: {relative_path})",
+                f"严格沙箱：仅允许工作区相对路径（收到：{relative_path}）",
+            )
+        )
+    try:
+        target.relative_to(root.resolve())
+    except ValueError as exc:
+        raise WorkspaceError(
+            tr(
+                f"Strict sandbox: path resolves outside workspace: {relative_path}",
+                f"严格沙箱：路径解析到工作区外：{relative_path}",
+            )
+        ) from exc
+
+
+def assert_strict_sandbox_command(command: str, root: Path) -> None:
+    from src.preferences_storage import load_strict_sandbox
+
+    if not load_strict_sandbox():
+        return
+    trimmed = command.strip()
+    if not trimmed:
+        return
+    if re.search(r"(?:^|[\s;&|])(?:\.\./)+", trimmed):
+        raise WorkspaceError(
+            tr(
+                "Strict sandbox: shell command cannot use ../ to escape the workspace",
+                "严格沙箱：shell 命令不能使用 ../ 逃出工作区",
+            )
+        )
+    root_resolved = root.resolve()
+    for match in re.finditer(r"(?:^|[\s'\"])(/[^\s'\";|&]+)", trimmed):
+        try:
+            candidate = Path(match.group(1)).expanduser().resolve()
+        except OSError:
+            continue
+        if candidate != root_resolved and root_resolved not in candidate.parents:
+            raise WorkspaceError(
+                tr(
+                    f"Strict sandbox: command references path outside workspace: {match.group(1)}",
+                    f"严格沙箱：命令引用了工作区外路径：{match.group(1)}",
+                )
+            )
 
 
 def to_workspace_relative(path: str) -> str | None:

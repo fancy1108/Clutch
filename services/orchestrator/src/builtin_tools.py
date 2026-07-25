@@ -1340,12 +1340,16 @@ def _tool_apply_patch(arguments: dict[str, Any]) -> str:
 
 
 def _tool_read_file(arguments: dict[str, Any]) -> str:
-    from src.workspace import WorkspaceError, resolve_allowed_path
+    from src.ignore_rules import ignored_path_message, is_ignored_path
+    from src.workspace import WorkspaceError, require_workspace, resolve_allowed_path
 
     rel = str(arguments.get("path", "")).strip()
     if not rel:
         return "Error executing tool: read_file requires `path`"
     try:
+        root = require_workspace()
+        if is_ignored_path(root, rel):
+            return f"Error executing tool: {ignored_path_message(rel)}"
         target = resolve_allowed_path(rel)
     except WorkspaceError as exc:
         return f"Error executing tool: {exc}"
@@ -1376,10 +1380,16 @@ def _tool_read_file(arguments: dict[str, Any]) -> str:
 
 
 def _tool_list_dir(arguments: dict[str, Any]) -> str:
-    from src.workspace import WorkspaceError, resolve_allowed_path
+    from src.ignore_rules import is_ignored_path
+    from src.workspace import WorkspaceError, require_workspace, resolve_allowed_path, to_workspace_relative
 
     rel = str(arguments.get("path") or ".").strip() or "."
     try:
+        root = require_workspace()
+        if is_ignored_path(root, rel, is_dir=True):
+            from src.ignore_rules import ignored_path_message
+
+            return f"Error executing tool: {ignored_path_message(rel)}"
         target = resolve_allowed_path(rel)
     except WorkspaceError as exc:
         return f"Error executing tool: {exc}"
@@ -1391,6 +1401,9 @@ def _tool_list_dir(arguments: dict[str, Any]) -> str:
     except OSError as exc:
         return f"Error executing tool: {exc}"
     for child in children[:_MAX_LIST_ENTRIES]:
+        child_rel = to_workspace_relative(str(child)) or child.name
+        if is_ignored_path(root, child_rel, is_dir=child.is_dir()):
+            continue
         suffix = "/" if child.is_dir() else ""
         entries.append(f"{child.name}{suffix}")
     extra = len(children) - _MAX_LIST_ENTRIES
@@ -1400,7 +1413,8 @@ def _tool_list_dir(arguments: dict[str, Any]) -> str:
 
 
 def _tool_grep(arguments: dict[str, Any]) -> str:
-    from src.workspace import WorkspaceError, require_workspace, resolve_allowed_path
+    from src.ignore_rules import is_ignored_path
+    from src.workspace import WorkspaceError, require_workspace, resolve_allowed_path, to_workspace_relative
 
     pattern = str(arguments.get("pattern", ""))
     if not pattern:
@@ -1410,6 +1424,10 @@ def _tool_grep(arguments: dict[str, Any]) -> str:
     try:
         root = require_workspace()
         scope_path = resolve_allowed_path(scope)
+        if is_ignored_path(root, scope, is_dir=scope_path.is_dir()):
+            from src.ignore_rules import ignored_path_message
+
+            return f"Error executing tool: {ignored_path_message(scope)}"
     except WorkspaceError as exc:
         return f"Error executing tool: {exc}"
 
@@ -1434,6 +1452,14 @@ def _tool_grep(arguments: dict[str, Any]) -> str:
             err = (proc.stderr or proc.stdout or "rg failed").strip()
             return f"Error executing tool: {err[:500]}"
         out = (proc.stdout or "").strip()
+        if out:
+            filtered: list[str] = []
+            for line in out.splitlines():
+                rel = line.split(":", 1)[0] if ":" in line else ""
+                if rel and is_ignored_path(root, rel):
+                    continue
+                filtered.append(line)
+            out = "\n".join(filtered)
         return out or "(no matches)"
 
     flags = re.IGNORECASE if case_insensitive else 0
@@ -1447,15 +1473,17 @@ def _tool_grep(arguments: dict[str, Any]) -> str:
         if not path.is_file():
             continue
         try:
+            rel = str(path.relative_to(root))
+        except ValueError:
+            rel = str(path)
+        if is_ignored_path(root, rel):
+            continue
+        try:
             if path.stat().st_size > 2_000_000:
                 continue
             text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
-        try:
-            rel = str(path.relative_to(root))
-        except ValueError:
-            rel = str(path)
         for idx, line in enumerate(text.splitlines(), start=1):
             if regex.search(line):
                 hits.append(f"{rel}:{idx}:{line}")
@@ -1517,13 +1545,14 @@ def _bg_job_run_id() -> str | None:
 
 
 def _tool_run_terminal_cmd(arguments: dict[str, Any]) -> str:
-    from src.workspace import WorkspaceError, require_workspace
+    from src.workspace import WorkspaceError, assert_strict_sandbox_command, require_workspace
 
     command = str(arguments.get("command", "")).strip()
     if not command:
         return "Error executing tool: run_terminal_cmd requires `command`"
     try:
         root = require_workspace()
+        assert_strict_sandbox_command(command, root)
     except WorkspaceError as exc:
         return f"Error executing tool: {exc}"
 

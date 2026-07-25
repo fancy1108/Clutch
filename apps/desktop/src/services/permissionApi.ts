@@ -71,3 +71,24 @@ export async function savePermissionMode(mode: PermissionMode): Promise<Permissi
   const saved = (await response.json()) as { permission_mode: string };
   return (saved.permission_mode as PermissionMode) || 'ask';
 }
+
+export async function fetchStrictSandbox(): Promise<boolean> {
+  const response = await sidecarFetch(`${BASE}/api/preferences/strict-sandbox`);
+  if (!response.ok) throw new Error(`strict-sandbox fetch failed (${response.status})`);
+  const body = (await response.json()) as { strict_sandbox: boolean };
+  return Boolean(body.strict_sandbox);
+}
+
+export async function saveStrictSandbox(enabled: boolean): Promise<boolean> {
+  const response = await sidecarFetch(`${BASE}/api/preferences/strict-sandbox`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enabled }),
+  });
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as { detail?: { message?: string } };
+    throw new Error(body.detail?.message ?? `strict-sandbox save failed (${response.status})`);
+  }
+  const saved = (await response.json()) as { strict_sandbox: string };
+  return saved.strict_sandbox === 'true';
+}

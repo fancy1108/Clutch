@@ -118,7 +118,7 @@ graph TD
 | Capability | What you see in Chat |
 |------------|----------------------|
 | D1 builtins | Verb-group tool trail (D46) + files-changed chips (D47) + Allow/Reject for risky writes/shell |
-| D2–D4 plan/todo/ask | In-chat Plan / Todo / Question cards (D49) |
+| D2–D4 plan/todo/ask | In-chat Plan / Todo / Question cards (D49); Todo sticky + chevron collapse |
 | D5–D6 verify/diff | Verification report card + Cursor-style Diff cards (D50) |
 | D7 rules/skills | Runtime prompt layers panel in Agent Manager; Skills via `read_skill` (D53) |
 | D8 task state | Compaction digest badge; Todo/Plan survive fold via `task_state` |
@@ -128,6 +128,7 @@ graph TD
 | D20 busy queue | Composer **Pending messages** strip with Queue #n + cancel while Agent running |
 | D19 thinking stream | D46 live activity fold **Thinking / 思考** + shell output in step detail |
 | D26 bg monitor | Supervisor **[Monitor]** line on bg job terminal state + failure toast |
+| D21 ignore/sandbox | Builtin `list_dir`/`grep`/`read_file` respect `.gitignore`/`.clutchignore`; Settings **Strict sandbox** rejects escape paths/commands |
 | D10 subtasks | Nested Subtasks cards under parent bubble (D48) |
 | D11 background | Background jobs bar (view output / kill) above composer |
 | D12 git/web | Tool-trail steps for `git_*` / `web_fetch` |
@@ -174,8 +175,9 @@ graph TD
 * **General Settings**：支持用户修改个人名称并应用在发送气泡标签中；支持上传自定义头像并转换为 base64 存盘；支持小/默认/大/特大/超级大字体大小偏好并持久化（`data-font-size`）；支持中英文双语对照切换，后端 API / WS 错误采用 `tr()` 响应；利用 Tauri `getVersion` 插件动态显示真实桌面客户端版本号。
 * **Agent Settings**：提供可视化 Agent 管理器（`AgentManager.tsx`），支持自由增删改自定义 Agent，配置其名称、头像、**可编辑协议段**（`markdownDoc`，capability **D53** 中仅作 protocol 层，不再假装等于完整 runtime system）、模型及关联 MCP 工具。运行时 system 由分层组装：底座 / Env / 协议 / **项目规则**（**D7**，对齐 Grok：从 git 根走到授权工作区路径，加载 `AGENTS.md`·`CLAUDE.md` 与 `.grok/.claude/.cursor/rules`，更深优先；无 User home 规则）/ **Skills 开放目录**（全局∪当前仓∪自定义 SEARCH PATHS 中 Enabled 项自动进 catalog，同名项目优先；Agent 绑定可选叠加；全文经 `read_skill`）/ Plan 模式当轮 reminder。切换工作区时仅轮换项目自动 Skills 挂载，手动 Search Paths 保留。**Agent Manager → Clutch Agent 详情右侧**可查看「运行时提示词分层」（层名+字符量，可刷新）；亦可用 `GET /api/agents/{id}/prompt-assembly`。**Skills / MCP 模块按 Agent 类型分档**：仅 **Clutch** 内置 Agent 可绑定 Clutch Skills Registry 与 MCP Hub（Module 4 可勾选 Hub 服务器并持久化 `mcpServerIds`）；**Claude Code** / **OpenCode** / **MiMo Code** CLI Agent 展示各自原生配置只读扫描与 Settings 深链；其他 CLI 类型显示「即将上线」，避免误用全局 Registry。
 * **Clutch Agent 内置手脚（capability D1 / DECISIONS D44）**：授权工作区后，Chat 选择 **Clutch Agent** 默认挂载虚拟 MCP **`clutch-tools`**（无需先绑 Hub）：`read_file` / `list_dir` / `grep` / `search_replace` / `run_terminal_cmd` / `apply_patch` / **`propose_plan`** / **`todo_write`** / **`ask_user_question`** / **`submit_verification`** / **`submit_diff_summary`**。写文件与 shell 仍走既有风险审批（`permission_mode`）。额外 Hub 服务器（如 `local-fs`）可在 Agent Manager Module 4 绑定叠加。Chat 输入栏上方显示 **已绑 N 个 MCP / ~M 工具** 徽章（capability **D40**）；未绑时显示「绑定 MCP」引导至 Agent Manager。运行中与结束后，Chat 气泡展示可折叠 **工具轨迹**（capability **D46**，对标 Grok verb_group：如 `Read 2 files, Searched 1 pattern`；展开可见逐步；审批等待时标 awaiting）——不必切 Terminal；步骤随该条回复持久化，刷新仍可回看。本回合写出的工作区文件会以 **变更文件芯片**（capability **D47**）出现在气泡下方；点击走与路径预览相同的全屏预览（**DECISIONS D42**），无需在正文里自己找路径。Shell / 执行类步骤与子任务卡提供 **在 Terminal 查看**（capability **D51**）：打开右侧 Terminal 日志并高亮匹配的 `[CHAT] Step …` 行；若有 CLI Terminal 会话则同时切到 Terminal mode 并 focus 对应 lane。
+* **忽略规则与严格沙箱（capability D21）**：内置 `read_file` / `list_dir` / `grep` 尊重工作区 `.gitignore` 与 `.clutchignore`（忽略路径不出现在列表/搜索结果中，直接读取返回可读错误）。**Settings → General → Strict sandbox（严格沙箱）** 开启后，越界路径与试图逃出工作区的 shell 命令会被拒绝并说明原因。
 * **先计划再动手（capability D2 + D49）**：多步/功能类任务时，Agent 先调用 `propose_plan`；对话流内出现 **计划卡**（步骤列表）与 **批准计划 / 修改计划 / 取消**。未批准前不执行写文件或可变 shell；简单问答可跳过计划。批准后同条回合继续实现。
-* **Todo 清单（capability D3 + D49）**：多步执行时 Agent 调用 `todo_write`（**不走人工审批**，仅更新会话 Todo UI）；Chat 时间线展示待办/进行中/完成状态。**未全部完成时** Todo 卡吸顶固定在对话滚动区顶部（滚动长轨迹时仍可见）；**全部打钩后**取消固定，回合结束 seal 到气泡 `todoList` 并随历史滚动，刷新仍可回看。计划卡步骤会去掉模型自带的 `1.` 前缀，避免显示成 `1. 1. …`。
+* **Todo 清单（capability D3 + D49）**：多步执行时 Agent 调用 `todo_write`（**不走人工审批**，仅更新会话 Todo UI）；Chat 时间线展示待办/进行中/完成状态。**未全部完成时** Todo 卡吸顶固定在对话滚动区顶部（滚动长轨迹时仍可见）；**全部打钩后**取消固定，回合结束 seal 到气泡 `todoList` 并随历史滚动，刷新仍可回看。吸顶与时间线 Todo 卡均支持 **chevron 折叠/展开**（默认展开；折叠后仅保留标题与 `done/total`；样式走 Plan/Question 同源 `chatAgentCard` token）。计划卡步骤会去掉模型自带的 `1.` 前缀，避免显示成 `1. 1. …`。
 * **结构化提问（capability D4 + D49）**：存在真实分叉（如 Redis vs Memcached）且用户未指定时，Agent 调用 `ask_user_question`；对话流内出现 **提问卡**（选项按钮）。点选选项（或底部自定义文字）后继续；**取消提问** 结束本回合。该工具不走通用 MCP 风险审批门，而是独立暂停路径。
 * **自检报告（capability D5 + D50）**：实现收尾时 Agent 调用 `submit_verification`；对话内出现 **验证报告卡**（步骤通过/失败 + 总结）。结论为失败时列出可操作的下一步；Todo 未完成时禁止谎称通过。卡上 **查看改动** 可打开本回合变更文件预览（与 D47 芯片同源）。
 * **Diff 审查（capability D6 + D50）**：每次成功改文件后，对话流**立即**出现单文件 Diff 卡（文件名 + 红绿 hunk，对标 Cursor 边改边看）；可选 `submit_diff_summary` 出多文件汇总卡。与右侧 Changes 面板并存。

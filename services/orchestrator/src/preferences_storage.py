@@ -24,6 +24,7 @@ ALLOWED_FONT_SIZES = frozenset({"small", "default", "large", "xlarge", "xxlarge"
 # full      – bypass all pause gates (still blocks truly catastrophic ops like rm -rf /).
 ALLOWED_PERMISSION_MODES = frozenset({"ask", "auto_edit", "explore", "plan", "full"})
 DEFAULT_PERMISSION_MODE = "ask"
+DEFAULT_STRICT_SANDBOX = "false"
 
 
 def preferences_dir() -> Path:
@@ -49,6 +50,7 @@ def _defaults() -> dict[str, str]:
         "user_avatar": "",
         "user_name": "User",
         "onboarding_completed": "false",
+        "strict_sandbox": DEFAULT_STRICT_SANDBOX,
     }
 
 
@@ -75,6 +77,9 @@ def load_preferences() -> dict[str, str]:
     onboarding_completed = str(data.get("onboarding_completed") or "false").lower()
     if onboarding_completed not in {"true", "false"}:
         onboarding_completed = "false"
+    strict_sandbox = str(data.get("strict_sandbox") or DEFAULT_STRICT_SANDBOX).lower()
+    if strict_sandbox not in {"true", "false"}:
+        strict_sandbox = DEFAULT_STRICT_SANDBOX
     if theme_id not in ALLOWED_THEME_IDS:
         theme_id = DEFAULT_THEME_ID
     if language not in ALLOWED_LANGUAGES:
@@ -91,6 +96,7 @@ def load_preferences() -> dict[str, str]:
         "user_avatar": user_avatar,
         "user_name": user_name,
         "onboarding_completed": onboarding_completed,
+        "strict_sandbox": strict_sandbox,
     }
 
 
@@ -146,6 +152,16 @@ def save_font_size(font_size: str) -> dict[str, str]:
 def load_permission_mode() -> str:
     """Return the current permission mode string."""
     return load_preferences().get("permission_mode", DEFAULT_PERMISSION_MODE)
+
+
+def load_strict_sandbox() -> bool:
+    return load_preferences().get("strict_sandbox", DEFAULT_STRICT_SANDBOX) == "true"
+
+
+def save_strict_sandbox(enabled: bool) -> dict[str, str]:
+    prefs = load_preferences()
+    prefs["strict_sandbox"] = "true" if enabled else "false"
+    return _write_preferences(prefs)
 
 
 def save_onboarding_completed() -> dict[str, str]:

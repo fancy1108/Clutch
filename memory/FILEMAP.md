@@ -232,6 +232,7 @@
 | MCP ReAct 执行 | `src/mcp_react.py` |
 | Codex 兼容 apply_patch（增删改移） | `src/apply_patch.py` |
 | 内置虚拟工具服务器 clutch-tools | `src/builtin_tools.py`（read/list/grep/search_replace/run_terminal_cmd/apply_patch） |
+| D21 ignore + strict sandbox | `src/ignore_rules.py` · `preferences_storage` `strict_sandbox` · Settings General toggle |
 | Chat Clutch Agent 能力表（D44） | `specs/core/clutch-agent-capability-plan.md` |
 | 凭证来源（CC Switch / 环境变量） | `src/credentials/sources.py` |
 | 工作区 Git 分支探测 | `src/workspace.py` → `get_git_info()` |
