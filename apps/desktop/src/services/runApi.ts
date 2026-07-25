@@ -22,6 +22,9 @@ export interface SessionRecord {
   tool_steps?: number;
   /** D22 — last known session token estimate. */
   session_tokens?: number;
+  /** D23 — parent session when forked from a message. */
+  parent_run_id?: string;
+  fork_message_index?: number;
 }
 
 /** @deprecated use SessionRecord */
@@ -149,4 +152,73 @@ export async function compactRun(runId: string): Promise<CompactResult> {
     throw new Error(msg);
   }
   return (await response.json()) as CompactResult;
+}
+
+/** D23 — fork session transcript up to message_index into a new run_id. */
+export async function forkSession(runId: string, messageIndex: number): Promise<{
+  run_id: string;
+  parent_run_id: string;
+  message_index: number;
+  title?: string;
+}> {
+  const response = await sidecarFetch(
+    sidecarHttpUrl(`/api/runs/${encodeURIComponent(runId)}/fork`),
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message_index: messageIndex }),
+    },
+  );
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as {
+      detail?: { message?: string } | string;
+    };
+    const msg =
+      typeof body.detail === 'string'
+        ? body.detail
+        : body.detail?.message ?? `fork failed (${response.status})`;
+    throw new Error(msg);
+  }
+  return (await response.json()) as {
+    run_id: string;
+    parent_run_id: string;
+    message_index: number;
+    title?: string;
+  };
+}
+
+/** D23 — rewind last agent file write(s) from shadow snapshots. */
+export async function rewindFileWrites(
+  runId: string,
+  count = 1,
+): Promise<{
+  run_id: string;
+  restored: Array<{ path: string; restored: boolean }>;
+  remaining_snapshots: number;
+  state?: import('../types').ClutchState;
+}> {
+  const response = await sidecarFetch(
+    sidecarHttpUrl(`/api/runs/${encodeURIComponent(runId)}/rewind`),
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ count }),
+    },
+  );
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as {
+      detail?: { message?: string } | string;
+    };
+    const msg =
+      typeof body.detail === 'string'
+        ? body.detail
+        : body.detail?.message ?? `rewind failed (${response.status})`;
+    throw new Error(msg);
+  }
+  return (await response.json()) as {
+    run_id: string;
+    restored: Array<{ path: string; restored: boolean }>;
+    remaining_snapshots: number;
+    state?: import('../types').ClutchState;
+  };
 }

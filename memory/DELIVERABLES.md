@@ -4,11 +4,12 @@
 > **何时写：** 每个**代码 Task** 完成并 commit 后，在 Check-out 追加一节（见 `CLAUDE.md` §Check-out）。  
 > **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。
 
-## Wave5a — D34（2026-07-25）
+## Wave5a — D34 / D23（2026-07-25）
 
 | ID | Commit | Verification | PM |
 |----|--------|--------------|-----|
-| D34 | _(pending)_ | `pytest tests/test_foreground_shell_d34.py -q` → 3 passed | `runs/verification/pm-acceptance/D34.md` |
+| D34 | `5679a1b` | `pytest tests/test_foreground_shell_d34.py -q` → 3 passed | `runs/verification/pm-acceptance/D34.md` |
+| D23 | _(pending)_ | `pytest tests/test_session_fork_d23.py tests/test_file_rewind_d23.py -q` → 3 passed | `runs/verification/pm-acceptance/D23.md` |
 
 ## Wave4 — D28 / D15 / D33 / D31（2026-07-25）
 

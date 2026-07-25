@@ -1408,11 +1408,16 @@ def _tool_propose_plan(arguments: dict[str, Any]) -> str:
 
 
 def _tool_apply_patch(arguments: dict[str, Any]) -> str:
-    from src.apply_patch import ApplyPatchError, apply_patch_in_workspace, format_apply_patch_result
+    from src.apply_patch import ApplyPatchError, apply_patch_in_workspace, extract_patch_paths, format_apply_patch_result
 
     patch = str(arguments.get("patch", "")).strip()
     if not patch:
         return "Error executing tool: apply_patch requires non-empty `patch`"
+    run_id = _bg_job_run_id()
+    if run_id:
+        from src.file_rewind import snapshot_paths_before_write
+
+        snapshot_paths_before_write(run_id, extract_patch_paths(patch))
     try:
         return format_apply_patch_result(apply_patch_in_workspace(patch))
     except ApplyPatchError as exc:
@@ -1604,6 +1609,11 @@ def _tool_search_replace(arguments: dict[str, Any]) -> str:
         return f"Error executing tool: {exc}"
     if not target.is_file():
         return f"Error executing tool: not a file: {rel}"
+    run_id = _bg_job_run_id()
+    if run_id:
+        from src.file_rewind import snapshot_before_write
+
+        snapshot_before_write(run_id, rel)
     text = target.read_text(encoding="utf-8", errors="replace")
     count = text.count(old_s)
     if count == 0:

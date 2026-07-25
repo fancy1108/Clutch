@@ -59,6 +59,14 @@ class StartRunRequest(BaseModel):
     instruction: str = Field(default="")
 
 
+class ForkSessionRequest(BaseModel):
+    message_index: int = Field(ge=0)
+
+
+class RewindFilesRequest(BaseModel):
+    count: int = Field(default=1, ge=1, le=10)
+
+
 @router.post("/api/workflows/validate")
 async def validate_workflow_endpoint(body: ValidateWorkflowRequest) -> dict[str, str | bool]:
     from src.main import _validation_http_error
@@ -441,6 +449,55 @@ async def delete_run_endpoint(run_id: str) -> dict[str, Any]:
     except Exception as exc:
         raise HTTPException(status_code=500, detail={"message": str(exc)}) from exc
     return {"status": "deleted", "run_id": run_id}
+
+
+@router.post("/api/runs/{run_id}/fork")
+async def fork_session_endpoint(run_id: str, body: ForkSessionRequest) -> dict[str, Any]:
+    from src.session_fork import fork_session
+
+    try:
+        return await asyncio.to_thread(fork_session, run_id, body.message_index)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+
+
+@router.post("/api/runs/{run_id}/rewind")
+async def rewind_files_endpoint(run_id: str, body: RewindFilesRequest) -> dict[str, Any]:
+    from src.file_rewind import rewind_last_writes, snapshot_count
+    from src.main import (
+        _chat_message,
+        _commit_run_state,
+        _get_or_create_run,
+        _merge_patch,
+    )
+
+    try:
+        restored = await asyncio.to_thread(rewind_last_writes, run_id, body.count)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+    if not restored:
+        return {
+            "run_id": run_id,
+            "restored": [],
+            "remaining_snapshots": snapshot_count(run_id),
+            "detail": "No file snapshots to rewind.",
+        }
+    paths = ", ".join(item["path"] for item in restored)
+    notice = _chat_message(
+        "Supervisor",
+        tr(f"Rewound agent file changes: {paths}", f"已回滚 Agent 文件改动：{paths}"),
+    )
+    state = _get_or_create_run(run_id)
+    patch = {"messages": list(state["messages"]) + [notice]}
+    state = _merge_patch(state, patch)
+    _commit_run_state(run_id, state)
+    return {
+        "run_id": run_id,
+        "restored": restored,
+        "remaining_snapshots": snapshot_count(run_id),
+        "message": notice,
+        "state": state,
+    }
 
 
 @router.post("/api/runs/{run_id}/compact")

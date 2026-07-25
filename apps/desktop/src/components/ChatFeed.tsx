@@ -30,7 +30,7 @@ import {
 } from '../services/chatPendingQueue';
 import { BTN_PRIMARY, BTN_SECONDARY, BTN_SM } from './ui/buttonStyles';
 import { LegacyIcon } from './ui/LegacyIcon';
-import type { SessionRecord } from '../services/runApi';
+import { forkSession, rewindFileWrites, type SessionRecord } from '../services/runApi';
 import type { ScannedSkill } from '../services/skillsApi';
 import type { FileTreeNode } from '../services/workspaceApi';
 import type { PermissionMode } from '../services/permissionApi';
@@ -586,6 +586,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
     x: number;
     y: number;
     messageId: string;
+    messageIndex: number;
   } | null>(null);
 
   useEffect(() => {
@@ -764,15 +765,53 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
     setPendingMessages((prev) => removePendingMessage(id, prev));
   }, []);
 
-  const handleMessageContextMenu = useCallback((e: React.MouseEvent, messageId: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setMessageContextMenu({
-      x: e.clientX,
-      y: e.clientY,
-      messageId,
-    });
-  }, []);
+  const handleMessageContextMenu = useCallback(
+    (e: React.MouseEvent, messageId: string, messageIndex: number) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setMessageContextMenu({
+        x: e.clientX,
+        y: e.clientY,
+        messageId,
+        messageIndex,
+      });
+    },
+    [],
+  );
+
+  const handleForkSession = useCallback(
+    async (messageIndex: number) => {
+      if (!sessionRunId || !isPlainLlmChat) return;
+      try {
+        const result = await forkSession(sessionRunId, messageIndex);
+        const session: SessionRecord = {
+          run_id: result.run_id,
+          title: result.title,
+          workflow_id: '',
+          status: 'idle',
+          started_at: new Date().toISOString(),
+          parent_run_id: result.parent_run_id,
+          fork_message_index: result.message_index,
+        };
+        onSelectSession?.(session);
+      } catch (error) {
+        console.error('[Clutch] fork session failed:', error);
+      }
+    },
+    [sessionRunId, isPlainLlmChat, onSelectSession],
+  );
+
+  const handleRewindFiles = useCallback(async () => {
+    if (!sessionRunId || !isPlainLlmChat) return;
+    try {
+      const result = await rewindFileWrites(sessionRunId, 1);
+      if (result.state) {
+        clutchStore.replaceState(result.state);
+      }
+    } catch (error) {
+      console.error('[Clutch] rewind files failed:', error);
+    }
+  }, [sessionRunId, isPlainLlmChat]);
 
   const handleStopWithQueueClear = useCallback(() => {
     setPendingMessages([]);
@@ -1239,7 +1278,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
               <div
                 key={msg.id}
                 className="w-full flex justify-start pl-10"
-                onContextMenu={(e) => handleMessageContextMenu(e, msg.id)}
+                onContextMenu={(e) => handleMessageContextMenu(e, msg.id, messageIndex)}
               >
                 <div className="min-w-0 max-w-[min(100%,36rem)] flex-1">
                   <DiffSummaryCardView
@@ -1256,7 +1295,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
             <div
               key={msg.id}
               className={`w-full flex ${isUser ? 'justify-end' : 'justify-start'}`}
-              onContextMenu={(e) => handleMessageContextMenu(e, msg.id)}
+              onContextMenu={(e) => handleMessageContextMenu(e, msg.id, messageIndex)}
             >
               <div
                 className={`${chatChrome.messageRowClass} ${
@@ -1870,6 +1909,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
               onOpenMcpBind={onOpenMcpBind}
               onSlashCommand={onSlashCommand}
               slashNotice={slashNotice}
+              onRewindFiles={isPlainLlmChat ? handleRewindFiles : undefined}
             />
           </div>
         ) : null}
@@ -1880,6 +1920,18 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
           style={{ top: messageContextMenu.y, left: messageContextMenu.x }}
           onClick={(e) => e.stopPropagation()}
         >
+          <button
+            type="button"
+            className="w-full text-left px-3 py-2 text-xs text-on-surface hover:bg-surface-container-low transition-colors flex items-center gap-2"
+            data-testid="fork-session-menu"
+            onClick={() => {
+              void handleForkSession(messageContextMenu.messageIndex);
+              setMessageContextMenu(null);
+            }}
+          >
+            <LegacyIcon name="fork_right" className="text-[16px]" />
+            {t('Fork session here')}
+          </button>
           <button
             type="button"
             className="w-full text-left px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-colors flex items-center gap-2"

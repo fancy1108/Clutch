@@ -137,8 +137,12 @@ export function SessionOverviewBoard({
                     <div className="truncate text-[12px] font-semibold text-on-surface">
                       {session.title?.trim() || session.run_id}
                     </div>
-                    <div className="mt-0.5 truncate text-[10px] text-on-surface-variant/60">
-                      {session.workspace_name || session.workspace_id || '—'}
+                    <div className="truncate text-[10px] text-on-surface-variant/60">
+                      {session.parent_run_id
+                        ? zh
+                          ? `分支 ← ${session.parent_run_id}`
+                          : `Fork ← ${session.parent_run_id}`
+                        : session.workspace_name || session.workspace_id || '—'}
                     </div>
                   </div>
                   <StatusBadge status={status} language={language} />

@@ -106,6 +106,8 @@ interface ChatInputBarProps {
   onSlashCommand?: (id: SlashCommandId) => void | Promise<void>;
   /** D18 — brief feedback after a slash command. */
   slashNotice?: string | null;
+  /** D23 — rewind last agent file write from shadow snapshot. */
+  onRewindFiles?: () => void | Promise<void>;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -242,6 +244,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
   onOpenMcpBind,
   onSlashCommand,
   slashNotice = null,
+  onRewindFiles,
 }) => {
   const { t, language } = useLanguage();
   const [dismissedNoticeKey, setDismissedNoticeKey] = useState<string | null>(null);
@@ -813,6 +816,18 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
               >
                 <LegacyIcon name="view_list" className="text-[13px]" />
                 <span>{language === 'zh' ? '会话' : 'Sessions'}</span>
+              </button>
+            ) : null}
+            {isPlainLlmChat && onRewindFiles ? (
+              <button
+                type="button"
+                data-testid="rewind-files-btn"
+                title={language === 'zh' ? '回滚 Agent 文件改动' : 'Rewind agent file changes'}
+                onClick={() => void onRewindFiles()}
+                className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 hover:bg-surface-container-low hover:text-on-surface transition-colors"
+              >
+                <LegacyIcon name="restart_alt" className="text-[13px]" />
+                <span>{language === 'zh' ? '回滚' : 'Rewind'}</span>
               </button>
             ) : null}
             {showMcpBindingBadge ? (
