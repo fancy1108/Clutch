@@ -8,7 +8,8 @@
 
 | ID | Commit | Verification | PM |
 |----|--------|--------------|-----|
-| D32 | _(pending)_ | `pytest tests/test_worktree_isolation_d32.py -q` → 2 passed | `runs/verification/pm-acceptance/D32.md` |
+| D32 | `9a863ae` | `pytest tests/test_worktree_isolation_d32.py -q` → 2 passed | `runs/verification/pm-acceptance/D32.md` |
+| Cap-D25 | _(pending)_ | `pytest tests/test_scheduled_tasks_cap_d25.py -q` | `runs/verification/pm-acceptance/Cap-D25.md` |
 
 ## Wave5a — D34 / D23（2026-07-25）
 

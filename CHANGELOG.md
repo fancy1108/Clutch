@@ -13,6 +13,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 ### Added
 
 - **Git worktree isolation (D32):** Optional **Enable worktree** in Chat — Agent cwd points to `.clutch/worktrees/<id>`; **Merge** or **Discard** UI; main workspace stays clean until merge.
+- **Scheduled / loop tasks (Cap-D25 / extension D25 scheduler):** Persisted interval tasks (default off, confirm to enable); list/delete API + Chat panel; asyncio tick fires notifications or optional Agent turn.
 - **Foreground → background (D34):** **Move to background** bar transfers live `run_terminal_cmd` into `bg_jobs`.
 - **Cross-session memory (D16):** Settings Memory toggle, `remember_preference` tool, `memory` prompt layer, Clear memory.
 - **Tool hooks (D17):** User/project `hooks.json` PreToolUse/PostToolUse deny rules; Chat tool steps show Hook denial reason.

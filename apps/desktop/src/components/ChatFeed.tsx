@@ -45,7 +45,8 @@ import { GoalBarView, shouldShowGoalBar } from './GoalBarView';
 import { SubtaskCardView } from './SubtaskCardView';
 import { BackgroundJobsBar } from './BackgroundJobsBar';
 import { ForegroundShellBar } from './ForegroundShellBar';
-import { WorktreeIsolationBar } from './WorktreeIsolationBar';
+import { DiagnosticsIssuesStrip } from './DiagnosticsIssuesStrip';
+import { ScheduledTasksBar } from './ScheduledTasksBar';
 import { detectBgJobFailureToast } from '../services/bgJobMonitor';
 import { VerificationReportCardView } from './VerificationReportCardView';
 import { DiffSummaryCardView } from './DiffSummaryCardView';
@@ -897,6 +898,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   const bgJobs = (clutchOrchestraState.bg_jobs ?? []) as BackgroundJob[];
   const foregroundShell = clutchOrchestraState.foreground_shell ?? null;
   const worktreeIsolation = clutchOrchestraState.worktree_isolation ?? null;
+  const chatDiagnostics = clutchOrchestraState.chat_diagnostics ?? [];
 
   useEffect(() => {
     const prev = prevBgJobsRef.current;
@@ -1851,6 +1853,12 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                   void clutchStore.send({ action: 'move_fg_to_background' });
                 }}
               />
+            ) : null}
+            {isPlainLlmChat ? (
+              <ScheduledTasksBar t={t} />
+            ) : null}
+            {chatDiagnostics.length ? (
+              <DiagnosticsIssuesStrip issues={chatDiagnostics} t={t} />
             ) : null}
             {isPlainLlmChat ? (
               <WorktreeIsolationBar
