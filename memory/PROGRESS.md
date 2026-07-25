@@ -5,11 +5,17 @@
 
 ## Current Status
 
-- **阶段：** **v1.2.9**；主线 **D8 · D9 PM ✅**；扩展 D14–D36 代码已交；其余待 PM
+- **阶段：** **v1.2.9**；主线 **D8 · D9 · D10∥D48 PM ✅**；扩展 D14–D36 代码已交；其余待 PM
 - **Git / PM 索引：** [`runs/verification/pm-acceptance/README.md`](../runs/verification/pm-acceptance/README.md)
-- **下次优先：** D10∥D48 子任务 PM 点验
+- **下次优先：** D11 后台命令 PM 点验
 
 ## Recent Sessions
+
+## 2026-07-25 会话（D10 PM + explore 预算）
+
+- **PM：** D10∥D48 ✅；explore→done；implement 卡非强制
+- **修复：** explore max_steps 16 / implement 12；高效 explore 提示
+- **下次：** **D11**
 
 ## 2026-07-25 会话（D9 PM + Usage 占位）
 

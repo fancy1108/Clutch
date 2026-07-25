@@ -1087,6 +1087,7 @@ def run_mcp_react_loop(
 
                         from src.subagent_runner import (
                             bind_delegate_context,
+                            default_subtask_max_steps,
                             initial_subtask_card,
                             normalize_delegate_args,
                             release_delegate_context,
@@ -1119,7 +1120,7 @@ def run_mcp_react_loop(
                                 "model_id": model_id,
                                 "on_log": on_log,
                                 "on_subtask_update": record_subtask,
-                                "max_steps": 8,
+                                "max_steps": default_subtask_max_steps(args["type"]),
                                 "permission_mode": permission_mode,
                                 "pause_on_risky": pause_on_risky,
                                 "subtask_id": sub_id,

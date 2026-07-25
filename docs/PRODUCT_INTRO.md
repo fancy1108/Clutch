@@ -102,7 +102,7 @@ graph TD
 * **Run control（D9）**：Plain chat 运行中可 **Stop**；停止后 Chat 显示 Supervisor 提示与 **Continue**（`continue_run`）。连续工具失败触发 **loop fuse**（`CLUTCH_LOOP_FUSE_FAILURES`，默认 3）。
 * **用量（D22）**：右侧 **Overview → Session Token Analytics** 为用量入口；**数值暂占位 `—`**，后续接入供应商真值（DECISIONS **Q-USAGE-1**）。不再在 `+` 菜单展示。
 * **模式切换（D27）**：Chat 输入框底栏 **模式 pill** 切换 **Explore / Plan / Ask / Edit / Full**（对应 `explore` / `plan` / `ask` / `auto_edit` / `full`）；Explore 硬拦截写文件/执行命令，只读工具仍可用。
-* **Subtask delegation（D10 + D48）**：Clutch Agent 可调用 `delegate_subtask` 派发 **explore**（只读）或 **implement** 子任务；父气泡下嵌套 **Subtasks** 卡展示状态、摘要与可展开步骤；子失败在父卡可见。
+* **Subtask delegation（D10 + D48）**：Clutch Agent 可调用 `delegate_subtask` 派发 **explore**（只读）或 **implement** 子任务；父气泡下嵌套 **Subtasks** 卡展示状态、摘要与可展开步骤；子失败在父卡可见。Explore 子循环默认更高工具步数预算；用户要求「先探再改」时至少出现 explore 卡，implement 可由父 Agent 完成（不强制第二张卡）。
 * **Background commands（D11）**：`run_terminal_cmd` 可设 `background=true` 立即返回 `job_id`；Chat 输入栏上方展示后台任务条（查看输出 / Kill）；前台仍可继续对话。
 * **Foreground → background（D34）**：长命令前台执行时，输入栏上方出现 **Move to background**；一键转入 D11 后台列表后可继续聊天（对标 Grok Ctrl+B）。
 * **Worktree 隔离试验（D32）**：Chat 输入框 **+** 菜单 → **Enable worktree** — Agent 在 `.clutch/worktrees/<id>` 改代码；启用后上方出现紧凑条，可 **Merge** / **Discard**，主工作区保持干净。

@@ -514,7 +514,8 @@ def list_builtin_tools() -> list[dict[str, Any]]:
             "description": (
                 "Spawn an isolated subagent for a scoped subtask (D10). "
                 "`explore` runs read-only (list/read/search); `implement` may edit files. "
-                "Use for「先调研再改」— explore first, then implement. "
+                "Use for「先调研再改」— explore first, then call again with type=implement "
+                "for writes (do not skip the implement card when the user asked for both). "
                 "Returns JSON with status, summary, and brief tool_steps."
             ),
             "inputSchema": {
@@ -1341,7 +1342,12 @@ def _tool_read_skill(arguments: dict[str, Any]) -> str:
 
 
 def _tool_delegate_subtask(arguments: dict[str, Any]) -> str:
-    from src.subagent_runner import delegate_result_json, get_delegate_context, run_subagent
+    from src.subagent_runner import (
+        default_subtask_max_steps,
+        delegate_result_json,
+        get_delegate_context,
+        run_subagent,
+    )
 
     try:
         ctx = get_delegate_context()
@@ -1349,15 +1355,22 @@ def _tool_delegate_subtask(arguments: dict[str, Any]) -> str:
             return (
                 "Error executing tool: delegate_subtask requires an active Chat agent context"
             )
+        task_type = str(arguments.get("type") or "explore")
+        raw_max = ctx.get("max_steps")
+        steps = (
+            int(raw_max)
+            if raw_max is not None
+            else default_subtask_max_steps(task_type)
+        )
         card = run_subagent(
-            task_type=str(arguments.get("type") or "explore"),
+            task_type=task_type,
             prompt=str(arguments.get("prompt") or ""),
             title=str(arguments.get("title") or "") or None,
             servers=list(ctx.get("servers") or []),
             model_id=ctx.get("model_id"),
             on_log=ctx.get("on_log"),
             on_subtask_update=ctx.get("on_subtask_update"),
-            max_steps=int(ctx.get("max_steps") or 8),
+            max_steps=steps,
             permission_mode=str(ctx.get("permission_mode") or "ask"),
             pause_on_risky=bool(ctx.get("pause_on_risky", True)),
             subtask_id=ctx.get("subtask_id"),

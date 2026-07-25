@@ -79,6 +79,7 @@
 #### D48 — 子 Agent 嵌套交互
 - **可见**：自动派 subagent（D10）时，父气泡下出现子任务卡（状态、类型 explore/implement、摘要）；可点开子轨迹或跳到对应 lane/日志；失败可见。
 - **验收**：说「先调研再改」→ 出现子卡片从 running→done → 主气泡继续；点卡片能看到子步骤或摘要，不是只有 Terminal Overview 一行字。
+- **实现笔记（PM ✅ 随 D10 2026-07-25）**：嵌套卡 + Show steps；implement 第二张卡非强制。
 
 #### D49 — 计划 / Todo / 提问嵌在对话流
 - **可见**：D2 计划审批卡、D3 Todo 列表、D4 选择题 **出现在 Chat 时间线**（不只右侧栏或设置）。
@@ -268,7 +269,7 @@
 - **可见**：子任务状态与摘要回主 Chat。
 - **验收**：先探查再改；子失败主可见。
 - **交互先决**：**D48**（嵌套卡片）；无 D48 不算 D10 完成。
-- **实现笔记（待 PM）**：`delegate_subtask` + `subagent_runner`（max_steps=8）；`subtaskCards` / `pending_subtasks`；`SubtaskCardView`。
+- **实现笔记（PM ✅ 2026-07-25）**：explore max_steps=16 / implement=12；嵌套卡 explore→done 即可；第二张 implement 卡非强制（父可自行改文件）。
 
 #### D11 — 后台命令
 - **可见**：后台跑、看输出、完成通知、杀掉；前台仍可聊。

@@ -7,13 +7,22 @@ from types import SimpleNamespace
 
 from src.builtin_tools import execute_builtin_tool, is_delegate_subtask_tool
 from src.subagent_runner import (
+    DEFAULT_EXPLORE_MAX_STEPS,
+    DEFAULT_IMPLEMENT_MAX_STEPS,
     bind_delegate_context,
+    default_subtask_max_steps,
     initial_subtask_card,
     normalize_delegate_args,
     release_delegate_context,
     run_subagent,
     upsert_subtask,
 )
+
+
+def test_default_subtask_max_steps_by_type() -> None:
+    assert default_subtask_max_steps("explore") == DEFAULT_EXPLORE_MAX_STEPS
+    assert default_subtask_max_steps("implement") == DEFAULT_IMPLEMENT_MAX_STEPS
+    assert DEFAULT_EXPLORE_MAX_STEPS > 8
 
 
 def test_normalize_and_upsert_subtask() -> None:

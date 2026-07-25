@@ -52,7 +52,7 @@
 | D7 项目规则 + Skills | P0 | ✅ | Grok 对齐：规则链 + 开放 Skills catalog；PM 2026-07-25 点验通过 |
 | D8 长聊不丢任务态 | P0 | ✅ | `/compact`→末尾摘要；压缩后答还剩 todo；PM 2026-07-25 点验通过 |
 | D9 运行可控 | P0 | ✅ | Stop/Continue PM ✅ 2026-07-25；熔断不点验；用量占位 Q-USAGE-1 |
-| D10∥D48 子任务委派 | P0 | ❌ | `delegate_subtask` + 嵌套卡；待 PM |
+| D10∥D48 子任务委派 | P0 | ✅ | PM ✅ 2026-07-25；explore 16 步；implement 卡非强制 |
 | D11 后台命令 | P0 | ❌ | bg_jobs + Chat 任务条；待 PM（非 session 持久化） |
 | D12 Git + 网页 | P0 | ❌ | git_* + web_fetch；待 PM（非桌面 E2E） |
 | D13 权限规则 | P0 | ❌ | allow/ask/deny + 危险强问 + 清记忆；待 PM |
@@ -92,13 +92,13 @@
 | D47 中间产物芯片 | P0 | ✅ | seal `filesChanged` + FilesChangedChips → D42 预览；PM 2026-07-24 点验通过 |
 | D49 计划嵌对话流 | P0 | ✅ | PlanCard + TodoCard + QuestionCard；PM 2026-07-24（D2/D3/D4） |
 | D50 验证报告嵌对话 | P0 | ✅ | VerificationReport（D5）+ Cursor Diff 卡（D6）；PM 2026-07-24 |
-| D48 子任务嵌套卡 | P0 | ❌ | 随 D10；待 PM |
+| D48 子任务嵌套卡 | P0 | ✅ | 随 D10 PM ✅ 2026-07-25 |
 | D51 Chat ↔ Terminal 同步 | P1 | ❌ | View in Terminal → 日志高亮 / lane focus；待 PM（`ee4e2a2`） |
 | D52 能力↔交互对照门禁 | P1 | ❌ | PRODUCT_INTRO 对照表 + INV-D52 机检；待 PM |
 | D53 分层 prompt + 渐进披露 | P0 | ✅ | 分层组装 + Agent Manager 分层摘要面板；PM 2026-07-24 点验通过 |
 
 **首期目标：** D1 + D37 + D46 ✅（PM 2026-07-24）。  
-**下一批（防返工顺序）：** D10∥D48 → D11 → D12 → D13；用例见 `runs/verification/pm-acceptance/`
+**下一批（防返工顺序）：** D11 → D12 → D13；用例见 `runs/verification/pm-acceptance/`
 
 ## Design 模式（D36 · 默认 FAIL）
 

@@ -13,9 +13,11 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 ### Changed
 
 - **Usage / Steps (D9 · D22):** Composer **+ → Usage** removed; Overview **Session Token Analytics** keeps the section but shows **`—` placeholders** until provider-true usage (DECISIONS **Q-USAGE-1**).
+- **Subtask budgets (D10):** Nested explore/implement loops use **16 / 12** tool-step caps (was flat 8); explore system prompt steers away from repeated `list_dir`.
 
 ### Fixed
 
+- **D10 explore PM:** Agnes Flash explore subtasks no longer die at 8 iterations before summarizing.
 - **D8 PM acceptance polish:** `todo_write` no longer explodes JSON-string `todos` into per-character items; compaction patches **replace** the message list (digest visible); manual `/compact` appends a User `/compact` bubble then an amber digest **at the feed end**; Stop flips to Stopping/Continue immediately; status questions (还剩哪些 todo) instruct the model not to resume edits; slash notices use a high-contrast dark toast.
 
 ### Added

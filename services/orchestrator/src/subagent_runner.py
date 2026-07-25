@@ -25,9 +25,25 @@ def release_delegate_context(token: contextvars.Token[dict[str, Any] | None]) ->
     _delegate_context.reset(token)
 
 
+# Nested loops are cheaper than the parent; explore often needs more list/read hops
+# than implement. PM saw Agnes Flash burn 8× list_dir before summarizing (2026-07-25).
+DEFAULT_EXPLORE_MAX_STEPS = 16
+DEFAULT_IMPLEMENT_MAX_STEPS = 12
+
+
+def default_subtask_max_steps(task_type: str) -> int:
+    kind = (task_type or "explore").strip().lower()
+    if kind == "implement":
+        return DEFAULT_IMPLEMENT_MAX_STEPS
+    return DEFAULT_EXPLORE_MAX_STEPS
+
+
 _EXPLORE_SYSTEM = (
     "You are a read-only exploration subagent (D10). "
     "Use only read/list/search tools to investigate. "
+    "Be efficient: list each directory at most once, prefer grep/search over "
+    "repeated list_dir, read only the few most likely entry files, then answer. "
+    "Stop as soon as you can summarize findings — do not exhaust the tool budget. "
     "Do NOT write files, run mutating shell commands, or call delegate_subtask."
 )
 _IMPLEMENT_SYSTEM = (
@@ -91,7 +107,7 @@ def run_subagent(
     model_id: str | None = None,
     on_log: Callable[[str], None] | None = None,
     on_subtask_update: Callable[[dict[str, Any]], None] | None = None,
-    max_steps: int = 8,
+    max_steps: int | None = None,
     permission_mode: str = "ask",
     pause_on_risky: bool = True,
     subtask_id: str | None = None,
@@ -101,6 +117,11 @@ def run_subagent(
 
     args = normalize_delegate_args(
         {"type": task_type, "prompt": prompt, "title": title or ""}
+    )
+    steps_budget = (
+        int(max_steps)
+        if max_steps is not None
+        else default_subtask_max_steps(args["type"])
     )
     card = initial_subtask_card(args, subtask_id=subtask_id)
 
@@ -130,7 +151,7 @@ def run_subagent(
             messages=messages,
             servers=servers,
             log_prefix="SUBAGENT",
-            max_steps=max_steps,
+            max_steps=steps_budget,
             on_log=on_log,
             on_tool_step=on_tool_step,
             pause_on_risky=pause_on_risky,
