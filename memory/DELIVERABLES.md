@@ -4,12 +4,23 @@
 > **何时写：** 每个**代码 Task** 完成并 commit 后，在 Check-out 追加一节（见 `CLAUDE.md` §Check-out）。  
 > **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。
 
-## Clutch Agent D51 Chat ↔ Terminal 同步 (`pending`)
+## Clutch Agent D52 能力↔交互对照门禁 (`pending`)
+
+| 项目 | 值 |
+|------|-----|
+| **Task** | D52 PRODUCT_INTRO Capability→Chat UI table + INV-D52 |
+| **Commit** | _(fill after commit)_ |
+| **Branch** | `dev` |
+| **Verification** | `./scripts/check-capability-ui-table.sh` → OK |
+| **PM 用例** | `runs/verification/pm-acceptance/D52.md` |
+| **下一批** | **D38** Hub 可信状态 |
+
+## Clutch Agent D51 Chat ↔ Terminal 同步 (`ee4e2a2`)
 
 | 项目 | 值 |
 |------|-----|
 | **Task** | D51 View in Terminal → log highlight / lane focus |
-| **Commit** | _(fill after commit)_ |
+| **Commit** | `ee4e2a2` |
 | **Branch** | `dev` |
 | **Verification** | `cd apps/desktop && pnpm test -- src/services/chatTerminalSync.test.ts` → 6 passed |
 | **PM 用例** | `runs/verification/pm-acceptance/D51.md` |

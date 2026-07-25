@@ -63,8 +63,8 @@
 | D49 计划嵌对话流 | P0 | ✅ | PlanCard + TodoCard + QuestionCard；PM 2026-07-24（D2/D3/D4） |
 | D50 验证报告嵌对话 | P0 | ✅ | VerificationReport（D5）+ Cursor Diff 卡（D6）；PM 2026-07-24 |
 | D48 子任务嵌套卡 | P0 | ❌ | 随 D10；待 PM |
-| D51 Chat ↔ Terminal 同步 | P1 | ❌ | View in Terminal → 日志高亮 / lane focus；待 PM |
-| D52 能力↔交互对照门禁 | P1 | ❌ | PRODUCT_INTRO 对照表 + 机检；未实现 |
+| D51 Chat ↔ Terminal 同步 | P1 | ❌ | View in Terminal → 日志高亮 / lane focus；待 PM（`ee4e2a2`） |
+| D52 能力↔交互对照门禁 | P1 | ❌ | PRODUCT_INTRO 对照表 + INV-D52 机检；待 PM |
 | D53 分层 prompt + 渐进披露 | P0 | ✅ | 分层组装 + Agent Manager 分层摘要面板；PM 2026-07-24 点验通过 |
 
 **首期目标：** D1 + D37 + D46 ✅（PM 2026-07-24）。  

@@ -107,6 +107,33 @@ graph TD
 * **Observability Chat Feed**：支持对本地子进程 CLI（如 Claude Code CLI）敲击的所有终端命令及 stdout/stderr 输出进行行内展开卡片审计；聊天气泡中优雅地展示 Agent 专属标签、Boundary markers 和系统提示词 metadata。**Hybrid 回复的正文与图片均从 `outputEvents` 的 assistant 内容解析**，避免工作流上一节点气泡误显示下一节点生成的图片。Plain chat 支持 `client_message_id` 与乐观发送合并，避免切换 Agent 后重复「你好」等用户消息被去重或丢失。
 * **Chat / Terminal 双模式（Single Agent plain chat）**：当 Active Agent 为 **任意已 Connect 的 CLI 类型**（`*-cli` 路由键，如 Claude Code、OpenCode、Codex、Aider、CodeBuddy、Rivet、Ollama、Antigravity 等；不含 Clutch 内置 LLM）时，主工作台右上角可切换 **对话模式**（默认）与 **终端模式**（Terminal Orchestra：多 Lane 嵌入式 xterm + `INTERACTIVE_PTY`；**Windows 通过 WinPTY 后端附着交互式 CLI**）。**终端模式下底部 Active Agent 下拉仅列出 CLI 类型 Agent**。终端模式下底部 `ChatInputBar` 隐藏，改为 **OrchestratorBar**（与 Chat 输入栏同款 `+` / ✋ / `@` Agent 选择，**`fixed bottom-8` 贴底布局**）；支持 `@目标Agent` 自然语言或图语法派发、确认卡预览、handoff 文件写入与 Lane 间可视化（Orchestrator `@` 提及与已路由 CLI 显示名一致）。**OrchestratorBar 发送后，系统将任务文本注入目标 Lane 的 PTY（等待 TUI 就绪后自动提交 Enter）**；Ollama 以 `ollama run <model>` 启动交互会话。展开 Lane 超过 4 个时，终端区顶部显示分页圆点（每页 2×2）；**收起、翻页或侧栏切换时 Lane PTY 保持连接，xterm 从缓冲 transcript 恢复并重绘，避免黑屏**。派发确认后 Overview **即时以 Loading 步骤形式（「正在生成交接摘要…」、「正在打开终端…」、「正在注入任务目标…」）显示派发记录并支持异步更新**，时间戳按用户本地时区显示。Handoff「Send to Bar」填入图语法 `@目标 from @来源 @handoff.md`；Handoff 预览不再出现标题下空白卡片。用户可在 xterm Lane 内直接输入，或通过 OrchestratorBar 派发到其它 Lane；切回对话模式后历史消息与监督发消息能力不变，PTY 会话在后台保持以减少切换卡顿。工作流 session 不展示切换。右侧监督面板 Tab 为 **Overview · Files · Changes · Terminal**（Overview 文本可选中复制）；Overview 展示派发记录（**含 CLI Session 恢复命令与 Copy**：Claude/CodeBuddy `claude --resume`、Codex `codex resume --last`、OpenCode `opencode -c` / `opencode -s`、MiMo Code `mimo -c` / `mimo -s`、ZCode `zcode --resume sess_...` / `zcode -c`、Ollama/Antigravity 等按 Agent 类型生成，Clutch 内部分配的 UUID 不误用于不支持 resume 的 CLI）；Terminal 审计日志独立 Tab 保留。
 
+<!-- capability-ui-table:start -->
+#### Capability → Chat UI（D52 门禁对照）
+
+发版或将 capability Task 标完成前，须核对本表与真机一致（抽查 **D1 / D10 / D37** 至少各一条）。权威交付表见 [`specs/core/clutch-agent-capability-plan.md`](../specs/core/clutch-agent-capability-plan.md)。
+
+| Capability | What you see in Chat |
+|------------|----------------------|
+| D1 builtins | Verb-group tool trail (D46) + files-changed chips (D47) + Allow/Reject for risky writes/shell |
+| D2–D4 plan/todo/ask | In-chat Plan / Todo / Question cards (D49) |
+| D5–D6 verify/diff | Verification report card + Cursor-style Diff cards (D50) |
+| D7 rules/skills | Runtime prompt layers panel in Agent Manager; Skills via `read_skill` (D53) |
+| D8 task state | Compaction digest badge; Todo/Plan survive fold via `task_state` |
+| D9 run control | Stop / Continue + Steps n/m · ~tok (`run_stats`) |
+| D10 subtasks | Nested Subtasks cards under parent bubble (D48) |
+| D11 background | Background jobs bar (view output / kill) above composer |
+| D12 git/web | Tool-trail steps for `git_*` / `web_fetch` |
+| D13 permissions | Permission mode menu + Clear remembered approvals |
+| D37 MCP bind | Agent Manager Module 4 Hub checkboxes; bound tools in ReAct trail |
+| D46 tool trail | Foldable verb_group steps on the assistant bubble |
+| D47 chips | Clickable files-changed chips → workspace preview |
+| D48 nested | Subtasks cards with status / summary / expandable steps |
+| D49 cards | Plan / Todo / Question live in the conversation timeline |
+| D50 reports | Verification + Diff cards in the conversation timeline |
+| D51 terminal sync | **View in Terminal** on Shell steps / subtasks → log highlight / lane focus |
+| D53 prompt layers | Agent Manager「运行时提示词分层」+ `GET /api/agents/{id}/prompt-assembly` |
+<!-- capability-ui-table:end -->
+
 ---
 
 ### 3.2 Observability Panel (右侧监督面板)

@@ -81,12 +81,22 @@ check_layer4_headers() {
   fi
 }
 
+# INV-D52: Capability → Chat UI table in PRODUCT_INTRO (capability-plan D52)
+check_capability_ui_table() {
+  if ! ./scripts/check-capability-ui-table.sh; then
+    err "INV-D52 Capability → Chat UI table check failed"
+    return
+  fi
+  ok "INV-D52 Capability → Chat UI table present"
+}
+
 main() {
   echo "== check-doc-drift.sh =="
   check_legacy_naming
   check_sidecar_port
   check_mock_orchestration
   check_layer4_headers
+  check_capability_ui_table
   echo "== done: ${errors} error(s), ${warns} warning(s) =="
   [[ "$errors" -eq 0 ]]
 }

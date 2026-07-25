@@ -5,17 +5,23 @@
 
 ## Current Status
 
-- **阶段：** **v1.2.9**；D7✅；**D8–D13 + D51 已实现待 PM**；下一批 **D52 → MCP D38…**
-- **Git：** D8=`7936786`；D9=`bef9b75`；D10=`25dc5dc`；D11=`59b45ee`；D12=`194d33a`；D13=`ed7c568`；D51=_(本批)_
+- **阶段：** **v1.2.9**；D7✅；**D8–D13 + D51–D52 已实现待 PM**；下一批 **MCP D38…**
+- **Git：** D8=`7936786`；… D13=`ed7c568`；D51=`ee4e2a2`；D52=_(本批)_
 - **PM 验收包：** `runs/verification/pm-acceptance/`（ROADMAP 未点验前保持 ❌）
 
 ## Recent Sessions
 
+## 2026-07-25 会话（续：D52 门禁）
+
+- **实现：** PRODUCT_INTRO Capability→Chat UI 表 + `check-capability-ui-table.sh` / INV-D52
+- **下次：** MCP D38 Hub 可信状态 → D39…
+
 ## 2026-07-25 会话（续：D51 Chat↔Terminal）
 
+- **Commit：** D51 `ee4e2a2`
 - **实现：** `chatTerminalSync` + 步骤/子任务「在 Terminal 查看」→ 右栏日志高亮 +（有 CLI 时）Terminal mode / lane focus
 - **自测：** `pnpm test -- src/services/chatTerminalSync.test.ts` → 6 passed
-- **下次：** D52 能力↔交互对照门禁 → MCP D38…
+- **下次：** D52 → MCP D38…
 
 ## 2026-07-25 会话（过夜：D8→D13 全交付）
 
