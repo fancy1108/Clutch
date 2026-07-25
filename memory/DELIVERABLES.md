@@ -24,7 +24,7 @@
 | **Branch** | `dev` |
 | **Verification** | pre-commit verify.sh (build + vitest + pytest) |
 | **PM 用例** | `runs/verification/pm-acceptance/D42.md` · `D44.md` · `D41.md` · `D45.md` |
-| **下一批** | 人工点验；**D43 Resources 未做** |
+| **下一批** | 人工点验（D43 已于 `4462570` 交付） |
 
 ## Clutch Agent D40 Chat MCP 徽章 (`724c26c`)
 
