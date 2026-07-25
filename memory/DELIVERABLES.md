@@ -4,12 +4,12 @@
 > **何时写：** 每个**代码 Task** 完成并 commit 后，在 Check-out 追加一节（见 `CLAUDE.md` §Check-out）。  
 > **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。
 
-## Clutch Agent D43 MCP Resources (`pending`)
+## Clutch Agent D43 MCP Resources (`4462570`)
 
 | 项目 | 值 |
 |------|-----|
 | **Task** | D43 Browse resources + Pin for Chat + prompt inject |
-| **Commit** | _(fill after commit)_ |
+| **Commit** | `4462570` |
 | **Branch** | `dev` |
 | **Verification** | `uv run pytest tests/test_mcp_resources_d43.py -q` → 2 passed |
 | **PM 用例** | `runs/verification/pm-acceptance/D43.md` |

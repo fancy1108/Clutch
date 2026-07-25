@@ -6,7 +6,7 @@
 ## Current Status
 
 - **阶段：** **v1.2.9**；Chat Agent 可验收表（D1–D13 + D37–D52 主线/MCP/UX）**已全部实现待 PM**；扩展 D14/D15–D36 未做
-- **Git：** D43=_(本批)_；PM 包见 `runs/verification/pm-acceptance/README.md`
+- **Git：** D43=`4462570`；PM 包见 `runs/verification/pm-acceptance/README.md`
 - **PM 验收包：** ROADMAP 未点验前保持 ❌
 
 ## Recent Sessions
