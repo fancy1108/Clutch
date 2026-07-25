@@ -62,7 +62,7 @@
 | D17 Hooks | P1 | ❌ | Pre/Post tool；待实现/PM |
 | D18 斜杠命令 | P1 | ❌ | `/plan` `/compact` `/todos`；待 PM |
 | D19 思考流 | P1 | ❌ | reasoning + D46；待实现/PM |
-| D20 忙时排队 | P1 | ❌ | Agent busy queue；待实现/PM |
+| D20 忙时排队 | P1 | ❌ | Queue #n + cancel；`chatPendingQueue`；待 PM |
 | D21 ignore/沙箱 | P1 | ❌ | gitignore/clutchignore；待实现/PM |
 | D22 用量看板 | P1 | ❌ | 历史用量面板；代码已交 PM（`runs/verification/pm-acceptance/D22.md`） |
 | D23 fork/rewind | P1 | ❌ | 会话分支+文件回滚；待实现/PM |

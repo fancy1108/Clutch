@@ -708,6 +708,14 @@ _v1.0.0–v1.0.2 已发布交付见 `archive/DELIVERABLES-OSR.md` 及 Git tag / 
 
 ---
 
+## D20 — Agent busy message queue (`049bd43`)
+
+- **Verification:** `cd apps/desktop && pnpm test -- src/services/chatPendingQueue.test.ts` → 5 passed
+- **PM:** `runs/verification/pm-acceptance/D20.md`
+- **Files:** `chatPendingQueue.ts`, `ChatFeed.tsx`, `ChatInputBar.tsx`, `PRODUCT_INTRO.md`, `CHANGELOG.md`
+
+---
+
 ## D27 — Explore / Plan / Implement modes (`a269764`)
 
 - **Verification:** `cd services/orchestrator && uv run pytest tests/test_permission_explore_d27.py -q` → 3 passed

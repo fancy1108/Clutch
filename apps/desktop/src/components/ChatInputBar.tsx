@@ -42,10 +42,9 @@ export interface Attachment {
   mimeType?: string;
 }
 
-export interface PendingChatMessage {
-  id: string;
-  text: string;
-}
+export type { PendingChatMessage } from '../services/chatPendingQueue';
+import type { PendingChatMessage } from '../services/chatPendingQueue';
+import { queuePositionLabel } from '../services/chatPendingQueue';
 
 export interface ShellPoolBlocker {
   run_id: string;
@@ -850,11 +849,18 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
             <LegacyIcon name="info" className="text-[13px] text-on-surface-variant/50" />
           </div>
           <div className="space-y-1.5 max-h-24 overflow-y-auto">
-            {pendingMessages.map((item) => (
+            {pendingMessages.map((item, index) => (
               <div
                 key={item.id}
+                data-testid={`pending-message-${index + 1}`}
                 className="flex items-center gap-2 rounded-lg border border-outline-variant/50 bg-surface-container-low/60 px-2.5 py-1.5"
               >
+                <span
+                  className="shrink-0 rounded-md bg-surface-container-high/80 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-on-surface-variant"
+                  data-testid={`pending-queue-position-${index + 1}`}
+                >
+                  {queuePositionLabel(index, language)}
+                </span>
                 <span className="flex-1 text-[12px] text-on-surface truncate" title={item.text}>
                   {item.text}
                 </span>

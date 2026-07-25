@@ -19,7 +19,14 @@ import {
   ToolStep,
 } from '../types';
 import { useLanguage } from './LanguageContext';
-import { ChatInputBar, type Attachment, type PendingChatMessage } from './ChatInputBar';
+import { ChatInputBar, type Attachment } from './ChatInputBar';
+import {
+  dequeueOnIdle,
+  enqueuePendingMessage,
+  removePendingMessage,
+  shouldEnqueueAgentMessage,
+  type PendingChatMessage,
+} from '../services/chatPendingQueue';
 import { BTN_PRIMARY, BTN_SECONDARY, BTN_SM } from './ui/buttonStyles';
 import { LegacyIcon } from './ui/LegacyIcon';
 import type { SessionRecord } from '../services/runApi';
@@ -709,23 +716,21 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
 
   const prevStatusRef = useRef(clutchStatus);
   useEffect(() => {
-    const becameIdle = prevStatusRef.current !== 'idle' && clutchStatus === 'idle';
+    const prevStatus = prevStatusRef.current;
     prevStatusRef.current = clutchStatus;
-    if (!isPlainLlmChat || !becameIdle || pendingMessages.length === 0) return;
-    const [next, ...rest] = pendingMessages;
+    if (!isPlainLlmChat) return;
+    const { next, rest } = dequeueOnIdle(prevStatus, clutchStatus, pendingMessages);
+    if (!next) return;
     setPendingMessages(rest);
     onSendMessage(next.text);
   }, [clutchStatus, isPlainLlmChat, pendingMessages, onSendMessage]);
 
   const enqueuePending = useCallback((text: string) => {
-    const trimmed = text.trim();
-    if (!trimmed) return;
-    const id = `pending_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-    setPendingMessages((prev) => [...prev, { id, text: trimmed }]);
+    setPendingMessages((prev) => enqueuePendingMessage(text, prev));
   }, []);
 
   const removePending = useCallback((id: string) => {
-    setPendingMessages((prev) => prev.filter((item) => item.id !== id));
+    setPendingMessages((prev) => removePendingMessage(id, prev));
   }, []);
 
   const handleMessageContextMenu = useCallback((e: React.MouseEvent, messageId: string) => {
@@ -757,7 +762,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
     }
     const trimmed = fullText.trim();
     if (!trimmed) return;
-    if (isRunning && isPlainLlmChat) {
+    if (shouldEnqueueAgentMessage(isRunning, isPlainLlmChat)) {
       enqueuePending(trimmed);
       return;
     }

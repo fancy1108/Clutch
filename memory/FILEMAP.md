@@ -139,6 +139,7 @@
 | Chat 工具轨迹 UI（D46 verb_group） | `components/AgentLiveActivity.tsx` |
 | Chat ↔ Terminal 同步（D51） | `services/chatTerminalSync.ts` · `AgentLiveActivity` / `SubtaskCardView` 「在 Terminal 查看」 |
 | Chat 斜杠命令（D18） | `services/slashCommands.ts` · `ChatInputBar` `/` 面板 · `POST /api/runs/{id}/compact` |
+| Agent 忙时排队（D20） | `services/chatPendingQueue.ts` · `ChatFeed` drain · `ChatInputBar` Queue #n |
 | Chat 用量看板（D22） | `components/UsageDashboard.tsx` · `ChatInputBar` 点击 `chat-run-stats` · `chat_runner._touch_session` 持久化用量 |
 | Chat 模式预设（D27） | `permissionApi.ts` `CHAT_MODE_PRESETS` · `ChatInputBar` pills · `mcp_react` explore/plan 硬拦截 |
 | 能力↔Chat UI 门禁（D52） | `docs/PRODUCT_INTRO.md`（capability-ui-table）· `scripts/check-capability-ui-table.sh` |

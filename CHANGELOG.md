@@ -40,6 +40,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 - **Chat slash commands (capability D18):** `/` picker adds `/plan`, `/compact`, `/todos`, `/help` (skills remain); `POST /api/runs/{id}/compact` forces compaction with Chat notice feedback.
 - **Usage dashboard (capability D22):** Click the D9 **Steps n/m · ~tok** strip to open a history panel (current run + recent sessions); sidecar persists `session_tokens` / `tool_steps` on session records when runs end or are touched.
 - **Chat mode presets (capability D27):** Composer pills **Explore / Plan / Implement** map to `explore` / `plan` / `auto_edit`; Explore hard-blocks write/exec MCP tools while allowing read/search.
+- **Agent busy message queue (capability D20):** While Clutch Agent / MCP plain chat is **running**, new sends enqueue above the composer with **Queue #n** position badges and per-item cancel; messages drain in FIFO order when the turn returns to idle.
 - **Compact tool approval bar:** `awaiting_human` uses a slim Allow / Reject strip above the composer (optional note + Retry), replacing the large Human-In-The-Loop card.
 - **Sidebar session spinner:** MCP approve/complete now updates session history status; active Coding rows follow live `clutchStatus` so finished chats stop spinning.
 
