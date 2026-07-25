@@ -5,23 +5,16 @@
 
 ## Current Status
 
-- **阶段：** **v1.2.9**；Wave5b（D32→Cap-D25→D24→D36→D14）代码已交 PM 点验
-- **Git：** D32 `9a863ae` · Cap-D25 `05547b8` · D24 `605d0fc` · D36 `e42ba01` · D14 `5d65a68`
-- **Git：** D34 `5679a1b` · D23 `bc67e30` · D16 `930f9a5` · D17 `68a05a8` · D35 `5de258d`
-- **Git：** D28 `cc2662e`、D15 `0c0c095`、D33 `bec5dbb`、D31 `d2f2b2f`；D29 `96c13d3`、D30 `1d88b02`、D21 `6733b15`
-- **PM 验收包：** `runs/verification/pm-acceptance/D{15,28,31,33}.md`
+- **阶段：** **v1.2.9**；扩展 **D14 + D15–D36 代码已全部交付**；主线/MCP/扩展均待 PM
+- **Git / PM 索引：** [`runs/verification/pm-acceptance/README.md`](../runs/verification/pm-acceptance/README.md)
+- **PM 验收包：** ROADMAP 未点验前保持 ❌
 
 ## Recent Sessions
 
-## 2026-07-25 会话（Wave4：D28→D15→D33→D31）
+## 2026-07-25 会话（扩展 D14–D36 全表交付）
 
-- **Commits：** D28 `cc2662e` · D15 `0c0c095` · D33 `bec5dbb` · D31 `d2f2b2f`
-- **实现：** MCP search_mcp_tools；web_search+允许联网；read_file 富读；计划行内批注
-- **下次：** PM 点验 Wave4；继续 D16+ 按 capability 表
-
-- **Commit：** `8be7f06`（D26）
-- **实现：** bg job 终态 [Monitor] Supervisor 行 + 失败 toast
-- **下次：** PM 点验 D20/D19/D26
+- **实现：** Wave1–5 完成旁路 D14 + 扩展 D15–D36（含 Cap-D25 / headless D36）
+- **下次：** **你验收** PM README 扩展表
 
 ## 2026-07-25 会话（扩展 D14–D36：D19）
 
