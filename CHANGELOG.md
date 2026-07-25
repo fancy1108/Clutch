@@ -21,6 +21,10 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 - **Cross-session memory (D16):** Settings Memory toggle, `remember_preference` tool, `memory` prompt layer, Clear memory.
 - **Tool hooks (D17):** User/project `hooks.json` PreToolUse/PostToolUse deny rules; Chat tool steps show Hook denial reason.
 - **Capability packs (D35):** Import zip/dir bundles (skills + hooks + MCP) from Settings → Skills; uninstall support.
+- **Chat slash commands (capability D18):** Composer `/` picker adds `/plan` (plan mode), `/compact` (force context fold + digest), `/todos` (focus Todo card), `/help`, alongside Skills; `POST /api/runs/{id}/compact` for forced compaction.
+- **Session fork + file rewind (capability D23):** Message **Fork session here** copies transcript from that turn into a new session; composer **Rewind** restores the Agent’s last file edits and leaves a Supervisor audit line.
+- **Goal tracking (capability D29):** Builtin `goal_write` streams a live **Goal** bar (title + progress) until marked done.
+- **Session overview board (capability D30):** Composer exposes a compact session board (goal / todos / plan / permissions / MCP) for at-a-glance status.
 - **Clutch Agent builtin tools (capability D1):** Default `clutch-tools` for Clutch Agent with an authorized workspace — `read_file`, `list_dir`, `grep`, `search_replace`, `run_terminal_cmd`, plus existing `apply_patch`. No Hub bind required for builtins.
 - **Agent Manager MCP Hub binding (capability D37):** Clutch Agent edit Module 4 restores Hub server checkboxes; save persists `mcpServerIds` (no longer wiped). Detail pane lists bound servers.
 - **Chat live tool activity (capability D46):** Clutch Agent / MCP ReAct tool trail uses a Grok-style **verb_group** fold (`Read 2 files, Searched 1 pattern`); expand for step titles/detail. Steps stream via `pending_tool_steps`, then **seal** onto the assistant message as `toolSteps` (survive refresh). Log parsing remains fallback only.
@@ -60,6 +64,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ### Changed
 
+- **Chat composer (minimal):** Visible chrome is only **+ · mode · send** (Cursor/Copilot-style). Sessions, Rewind, MCP, Worktree, schedule, and usage live in the **+** menu; idle stacked bars removed; active worktree still shows a slim status chip.
 - Removed redundant Explore / Plan / Implement pills above the Chat composer; the same modes remain in the permission menu.
 - Clutch Agent system prompt documents clutch-tools usage.
 

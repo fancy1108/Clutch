@@ -3,8 +3,11 @@
 ## 目标
 可创建间隔任务（默认关/需确认）；列表/删除；触发时通知或跑一轮 Chat Agent。
 
+## Composer 提示（v1.2.9+）
+入口在 **+** → **Session tools** → **Scheduled tasks**（面板容器 `scheduled-tasks-bar`）。
+
 ## 步骤
-1. Chat 输入栏上方点 **Scheduled tasks** 展开面板。
+1. Chat 输入框 **+** 菜单 → **Scheduled tasks**，展开面板。
 2. 输入 prompt + 间隔（≥30s），点 **Add**（默认 **off**）。
 3. `GET /api/scheduled-tasks` 或 UI 列表可见新任务。
 4. 启用需 `POST .../enable` 或创建时 `confirm=true`。

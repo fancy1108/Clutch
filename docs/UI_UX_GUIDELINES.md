@@ -62,10 +62,12 @@
 | 危险 / 拒绝 / 停止 | `bg-rose-50 hover:bg-rose-600 border border-rose-200 text-rose-800 hover:text-white transition-all` |
 | 主操作 / 命令 | `bg-neutral-900 hover:bg-black text-white` |
 
-### 4.3 输入区域
+### 4.3 输入区域（Composer）
 
-- 中性填充底 + 淡边框
-- 与周围排版对齐，占位符用 `text-on-surface-variant/60`
+- **极简底栏**：可见控件仅 **`+` · 模式 pill · 发送**（对标 Cursor Agents / Copilot Chat）。禁止在底栏平铺 Sessions、MCP、Worktree、定时任务等。
+- **渐进披露**：次要能力一律进 `+` 菜单；占位符提示 `/` 与 `@`。
+- **状态才出 chrome**：仅 worktree 已启用、排队、HITL、后台任务等真实状态时，才在输入框上方显示紧凑条。
+- 薄边框、无重阴影；`rounded-2xl`；占位符 `text-on-surface-variant/50`
 
 ### 4.4 状态与反馈
 

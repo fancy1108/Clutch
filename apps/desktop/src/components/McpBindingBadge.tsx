@@ -1,22 +1,29 @@
 /**
- * D40 — Chat chrome: bound MCP count / unbound CTA.
+ * D40 — Chat chrome: bound MCP count / unbound CTA (composer + menu row).
  */
 import React, { useEffect, useState } from 'react';
 import { fetchMcpStatus } from '../services/mcpApi';
 import { buildMcpBindingSummary } from '../services/agentMcpSummary';
 import { useLanguage } from './LanguageContext';
+import { LegacyIcon } from './ui/LegacyIcon';
 
 type McpBindingBadgeProps = {
   mcpServerIds?: string[];
   /** Only show for Clutch Agent sessions. */
   visible?: boolean;
   onOpenBind?: () => void;
+  /** Full-width row inside the + menu. */
+  variant?: 'inline' | 'menu';
 };
+
+const menuRowClass =
+  'w-full flex items-center gap-3 px-3 py-2 text-[12px] text-on-surface hover:bg-surface-container-low transition-colors text-left';
 
 export const McpBindingBadge: React.FC<McpBindingBadgeProps> = ({
   mcpServerIds,
   visible = true,
   onOpenBind,
+  variant = 'inline',
 }) => {
   const { t } = useLanguage();
   const [open, setOpen] = useState(false);
@@ -49,29 +56,60 @@ export const McpBindingBadge: React.FC<McpBindingBadgeProps> = ({
         type="button"
         data-testid="chat-mcp-bind-cta"
         onClick={onOpenBind}
-        className="text-[10px] font-semibold text-primary hover:underline px-1.5 py-0.5 rounded-md hover:bg-primary/10"
+        title={t('Bind MCP')}
+        aria-label={t('Bind MCP')}
+        className={
+          variant === 'menu'
+            ? menuRowClass
+            : 'inline-flex h-7 items-center gap-1 rounded-lg px-1.5 text-[11px] font-semibold text-primary hover:bg-primary/10 transition-colors'
+        }
       >
-        {t('Bind MCP')}
+        {variant === 'menu' ? (
+          <>
+            <LegacyIcon name="hub" className="text-[17px] text-on-surface-variant" />
+            {t('Bind MCP')}
+          </>
+        ) : (
+          <span className="text-[10px]">MCP</span>
+        )}
       </button>
     );
   }
 
   return (
-    <div className="relative">
+    <div className={variant === 'menu' ? 'relative' : 'relative'}>
       <button
         type="button"
         data-testid="chat-mcp-badge"
         onClick={() => setOpen((value) => !value)}
-        className="text-[10px] font-mono font-semibold text-on-surface-variant hover:text-on-surface px-1.5 py-0.5 rounded-md hover:bg-surface-container-high border border-outline-variant/40"
+        className={
+          variant === 'menu'
+            ? menuRowClass
+            : 'inline-flex h-7 items-center rounded-lg px-1.5 text-[10px] font-mono font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors'
+        }
         title={summary.names.join(', ')}
       >
-        {summary.serverCount} MCP
-        {summary.approxTools > 0 ? ` · ~${summary.approxTools}` : ''}
+        {variant === 'menu' ? (
+          <>
+            <LegacyIcon name="hub" className="text-[17px] text-on-surface-variant" />
+            <span>
+              {summary.serverCount} MCP
+              {summary.approxTools > 0 ? ` · ~${summary.approxTools}` : ''}
+            </span>
+          </>
+        ) : (
+          <>
+            {summary.serverCount} MCP
+            {summary.approxTools > 0 ? ` · ~${summary.approxTools}` : ''}
+          </>
+        )}
       </button>
       {open ? (
         <div
           data-testid="chat-mcp-badge-popover"
-          className="absolute bottom-full mb-1 left-0 z-50 min-w-[160px] rounded-lg border border-outline-variant/50 bg-white shadow-lg p-2"
+          className={`absolute z-50 min-w-[160px] rounded-lg border border-outline-variant/50 bg-white shadow-lg p-2 ${
+            variant === 'menu' ? 'left-full top-0 ml-1' : 'bottom-full mb-1 left-0'
+          }`}
         >
           <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wide mb-1">
             {t('Bound MCP')}

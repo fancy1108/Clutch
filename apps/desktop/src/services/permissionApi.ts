@@ -3,6 +3,7 @@ import { SIDECAR_BASE as BASE, sidecarFetch } from './sidecarUrl';
 export type PermissionMode = 'ask' | 'auto_edit' | 'explore' | 'plan' | 'full';
 
 
+/** Display order: safer → more autonomous (mode pill menu). */
 export const PERMISSION_MODES: {
   id: PermissionMode;
   label: string;
@@ -11,32 +12,32 @@ export const PERMISSION_MODES: {
 }[] = [
   {
     id: 'explore',
-    label: 'Explore (read-only)',
+    label: 'Explore',
     description: 'Read and search only — no writes.',
-    icon: 'travel_explore',
+    icon: 'visibility',
+  },
+  {
+    id: 'plan',
+    label: 'Plan',
+    description: 'Propose a plan before editing.',
+    icon: 'edit_note',
   },
   {
     id: 'ask',
-    label: 'Ask before changes',
-    description: 'Ask before file changes.',
+    label: 'Ask',
+    description: 'Ask before file changes or risky tools.',
     icon: 'front_hand',
   },
   {
     id: 'auto_edit',
-    label: 'Edit automatically',
-    description: 'Edit files automatically.',
+    label: 'Edit',
+    description: 'Edit files automatically; still ask on risky shell.',
     icon: 'verified_user',
   },
   {
-    id: 'plan',
-    label: 'Plan mode',
-    description: 'Plan before editing.',
-    icon: 'edit_note',
-  },
-  {
     id: 'full',
-    label: 'Full access',
-    description: 'Run with fewer confirmations.',
+    label: 'Full',
+    description: 'Fewer confirmations — use with care.',
     icon: 'warning',
   },
 ];

@@ -139,6 +139,9 @@
 | Chat 工具轨迹 UI（D46 verb_group） | `components/AgentLiveActivity.tsx` |
 | Chat ↔ Terminal 同步（D51） | `services/chatTerminalSync.ts` · `AgentLiveActivity` / `SubtaskCardView` 「在 Terminal 查看」 |
 | Chat 斜杠命令（D18） | `services/slashCommands.ts` · `ChatInputBar` `/` 面板 · `POST /api/runs/{id}/compact` |
+| Goal 跟踪（D29） | builtin `goal_write` · `GoalBarView.tsx` · `ClutchState.goal` |
+| 会话看板（D30） | `SessionOverviewBoard.tsx` · `ChatInputBar` 底栏 Sessions 入口 |
+| Chat Composer（极简 + 菜单） | `ChatInputBar.tsx` 仅 +/模式/发送 · 次要能力进 + 菜单 · `WorktreeIsolationBar` 仅启用态 · `ScheduledTasksBar` 受控面板 · `PRODUCT.md` / `docs/UI_UX_GUIDELINES.md` §4.3 |
 | Agent 忙时排队（D20） | `services/chatPendingQueue.ts` · `ChatFeed` drain · `ChatInputBar` Queue #n |
 | 思考流（D19） | `live_reasoning` state · `AgentLiveActivity` 思考折叠 · `mcp_react` reasoning |
 | 长任务监视（D26） | `bg_jobs_monitor.py` · Supervisor `[Monitor]` 行 · `bgJobMonitor` toast |

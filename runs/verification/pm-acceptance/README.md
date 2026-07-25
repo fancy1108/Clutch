@@ -2,6 +2,22 @@
 
 > 每项实现后已跑自动化自测并单独 commit；**ROADMAP 仍标 ❌ 直至你点验通过**。
 
+## Composer UI（验收前必读）
+
+Chat 输入框默认仅 **`+` · 模式 pill · 发送/Stop**（Cursor/Copilot 风格）。下列能力均在 **+** 菜单内（分区 **Add to input** / **Session tools**），**不再**堆在输入框上方：
+
+| 能力 | 用例 | 入口 |
+|------|------|------|
+| Usage / Steps | D9 · D22 | **+** → Usage (`chat-run-stats`) |
+| Session overview | D30 | **+** → Session overview |
+| Rewind | D23 | **+** → Rewind file changes |
+| MCP 徽章 | D40 | **+** → Bind MCP / `N MCP` |
+| Scheduled tasks | Cap-D25 | **+** → Scheduled tasks |
+| Enable worktree | D32 | **+** → Enable worktree（启用后上方出状态条） |
+| 权限模式 | D27 | 底栏模式 pill（Explore → Plan → Ask → Edit → Full） |
+
+仍会出现在输入框**上方**的，仅限真实状态：排队消息（D20）、Background jobs（D11/D26）、Foreground shell（D34）、已启用 worktree 条（D32）、HITL Allow/Reject 等。
+
 ## 主线 / MCP / Chat UX（先批）
 
 | 交付期 | 用例文件 | Commit |

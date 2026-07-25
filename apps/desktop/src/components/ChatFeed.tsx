@@ -46,7 +46,6 @@ import { SubtaskCardView } from './SubtaskCardView';
 import { BackgroundJobsBar } from './BackgroundJobsBar';
 import { ForegroundShellBar } from './ForegroundShellBar';
 import { DiagnosticsIssuesStrip } from './DiagnosticsIssuesStrip';
-import { ScheduledTasksBar } from './ScheduledTasksBar';
 import { WorktreeIsolationBar } from './WorktreeIsolationBar';
 import { detectBgJobFailureToast } from '../services/bgJobMonitor';
 import { VerificationReportCardView } from './VerificationReportCardView';
@@ -1855,9 +1854,6 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                 }}
               />
             ) : null}
-            {isPlainLlmChat ? (
-              <ScheduledTasksBar t={t} />
-            ) : null}
             {chatDiagnostics.length ? (
               <DiagnosticsIssuesStrip issues={chatDiagnostics} t={t} />
             ) : null}
@@ -1865,9 +1861,6 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
               <WorktreeIsolationBar
                 worktree={worktreeIsolation}
                 t={t}
-                onEnable={() => {
-                  void clutchStore.send({ action: 'enable_worktree' });
-                }}
                 onMerge={() => {
                   void clutchStore.send({ action: 'merge_worktree' });
                 }}
@@ -1936,6 +1929,14 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
               onSlashCommand={onSlashCommand}
               slashNotice={slashNotice}
               onRewindFiles={isPlainLlmChat ? handleRewindFiles : undefined}
+              onEnableWorktree={
+                isPlainLlmChat
+                  ? () => {
+                      void clutchStore.send({ action: 'enable_worktree' });
+                    }
+                  : undefined
+              }
+              worktreeActive={Boolean(worktreeIsolation?.enabled)}
             />
           </div>
         ) : null}

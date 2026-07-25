@@ -94,7 +94,7 @@ Or: **Applications** → right-click **Clutch** → **Open** → confirm.
 | Capability | In plain terms |
 |------------|----------------|
 | **Visual workflows** | Drag agents on a canvas; Clutch compiles to LangGraph and runs the SOP |
-| **Local CLI bridge** | Connect Claude Code, CodeBuddy, MiMo Code, ZCode, Codex, Ollama, Aider, Rivet, … from Settings → Tools |
+| **Local CLI bridge** | Connect Claude Code, CodeBuddy, MiMo Code, ZCode, Codex, Ollama, Aider, Rivet, Grok (`grok-cli`), … from Settings → Tools |
 | **One supervision desk** | Chat, terminal, file tree, diffs, and flow progress in one window |
 | **Human-in-the-loop** | Pause on risky steps; approve, reject, or retry with instructions |
 | **Agents & models** | Custom agents, API keys, Skills registry, MCP servers |

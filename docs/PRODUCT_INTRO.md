@@ -91,7 +91,7 @@ graph TD
 
 ### 3.1 Chat Workspace (主工作台对话与输入)
 
-* **Single Agent Workspace**：支持绑定自定义 System Prompts 与大语言模型。底层的 `EngineRouter` 在 `clutch` (全局 LLM API)、`claude-cli` (Claude Code 本地 CLI)、`antigravity-cli` (Agy CLI)、`codex-cli` (Codex CLI)、`opencode-cli` (OpenCode CLI)、`mimo-cli` (小米 MiMo Code CLI)、`codebuddy-cli` (Tencent CodeBuddy / WorkBuddy CLI)、`cursor-cli` (Cursor Agent CLI)、`zcode-cli` (Z.AI ZCode CLI)、`rivet-cli` (天枢 Rivet CLI) 与 `ollama-cli` 之间智能路由分流，并自动维持 CLI 引擎的逻辑 Session 恢复（Codex 使用 `codex exec --json` + history replay，聊天区仅展示 `agent_message` 正文；OpenCode 使用 `opencode run --auto` 非交互 headless；MiMo Code 使用 `mimo run --dangerously-skip-permissions` headless；CodeBuddy 使用 `codebuddy -p` headless 并支持 `--resume` / `--session-id` 会话恢复；ZCode 使用 `zcode -p --mode yolo --json` headless 并支持 `--resume sess_...` 会话恢复；Rivet 由 Sidecar 自动注入 `RIVET_FORCE_RECOVERY_CLI=1` 以 headless 调用）。**Agent 类型下拉**由 `/api/tools/status` 动态生成：已 Connect 且配置完成的 CLI 工具自动出现在 Single Agent 与 Agent Manager 选项中（含 Codex、Ollama、CodeBuddy、MiMo Code、ZCode 等）。Thinking 加载状态的头像与消息加载完成的静态头像保持逻辑一致。
+* **Single Agent Workspace**：支持绑定自定义 System Prompts 与大语言模型。底层的 `EngineRouter` 在 `clutch` (全局 LLM API)、`claude-cli` (Claude Code 本地 CLI)、`antigravity-cli` (Agy CLI)、`codex-cli` (Codex CLI)、`opencode-cli` (OpenCode CLI)、`mimo-cli` (小米 MiMo Code CLI)、`codebuddy-cli` (Tencent CodeBuddy / WorkBuddy CLI)、`cursor-cli` (Cursor Agent CLI)、`zcode-cli` (Z.AI ZCode CLI)、`rivet-cli` (天枢 Rivet CLI)、`grok-cli` (xAI Grok CLI，`grok -p`) 与 `ollama-cli` 之间智能路由分流，并自动维持 CLI 引擎的逻辑 Session 恢复（Codex 使用 `codex exec --json` + history replay，聊天区仅展示 `agent_message` 正文；OpenCode 使用 `opencode run --auto` 非交互 headless；MiMo Code 使用 `mimo run --dangerously-skip-permissions` headless；CodeBuddy 使用 `codebuddy -p` headless 并支持 `--resume` / `--session-id` 会话恢复；ZCode 使用 `zcode -p --mode yolo --json` headless 并支持 `--resume sess_...` 会话恢复；Grok 使用 `grok -p` headless（PATH 无 `grok` 时引擎不可用）；Rivet 由 Sidecar 自动注入 `RIVET_FORCE_RECOVERY_CLI=1` 以 headless 调用）。**Agent 类型下拉**由 `/api/tools/status` 动态生成：已 Connect 且配置完成的 CLI 工具自动出现在 Single Agent 与 Agent Manager 选项中（含 Codex、Ollama、CodeBuddy、MiMo Code、ZCode、Grok 等）。Thinking 加载状态的头像与消息加载完成的静态头像保持逻辑一致。
 * **Hybrid 多 Session（plain chat）**：同一工程 workspace 下可并行维护多个 chat session；`CLUTCH_RUNTIME_MODE=hybrid` 时后端为每个 `run_id` 分配独立 shell，并按 workspace 串行执行 CLI turn，避免同目录并发 `claude -p` 互锁。切换 session 时先持久化 `idle` 状态再推送 WebSocket；切走期间后台 turn 完成后可通过 HTTP hydrate 恢复，避免 UI 永久卡在 Thinking。**同 session 忙时 Send 不禁用**：当前轮次仍在处理时后续消息进入本 session 队列依次执行，用户消息即时展示、不静默丢弃。**跨 session 池满时排队**：当 `CLUTCH_SHELL_MAX_SESSIONS` 槽位均被占用时，新 session 的消息进入全局 FIFO 队列（`shell_session_status: queued_pool`），待其他 session 释放 shell 后自动续跑，不再弹出 Supervisor 拒绝。
 * **New Chat 默认文本模型**：点击 New Chat 时自动将全局 `active_model_id` 重置为默认文本模型（优先 **Agnes 2.0 Flash**，否则首个可用 chat 模型），避免从生图模型切回新会话后仍走 image 路由。
 * **Multi-Agent Graph Workspace**：React Flow 画布可视化编排节点与连线，后台 Workflow Compiler 动态将其编译为 LangGraph 状态机。下游节点自动接收并注入上游的 `node_outputs`；各节点执行时自动注入**分层组装后的 system prompt**（`markdownDoc` 为 D53 协议层，叠加 Env / 项目规则 / Skills 目录等）。工作流节点的激活状态、运行阶段与详细日志通过 WebSocket 增量 `state_patch` 实时推送到前端渲染。Chat 中各节点回复展示 **Agent Manager 配置的 Agent 类型与品牌 Logo**（而非仅依赖节点 `tool` 字段）；Thinking / 进行中步骤优先跟随后端 `active_node_id` / `active_agent`。`claude-cli` 且 `CLUTCH_RUNTIME_MODE=hybrid` 的节点附带可折叠 **View execution details**（与 Single Agent Hybrid 一致）。运行中用户可通过 Stop **暂停并进入精修模式**（`status=refining`）；工作流正常结束（`passed`/`failed`）后也可在同一 session 内继续精修。精修时输入框 `@` 弹出工作流 Agent 列表（支持带空格的节点名，如 `@5-Visual Rendering Engine`），向指定 Agent 发送修改意见（`source=flow_refine`，Hybrid 交互）；满意后发送 `/continue` 提交修订并 **以 Legacy 模式继续执行下游节点**。生图节点精修时自动复用上游 `final_image_prompt` 并结合用户补充说明。Sidecar 重启后可从聊天记录重建 `node_outputs` 以恢复精修会话。`CLUTCH_RUNTIME_MODE=hybrid` 时，**`claude-cli` 节点**走与 plain chat 相同的 Hybrid PTY shell（含 workspace CLI 锁与 session resume）；Flow 多行 Claude prompt 自动降级为 legacy subprocess；Clutch 内置 Agent（含图片模型）等其它节点类型不变。
@@ -99,21 +99,23 @@ graph TD
 * **中间产物点击预览**：Chat 气泡中的工作区路径、`[file:]` / `@path`、fenced 代码块可点击打开全屏预览（大文件 plain view 降级）；**图片路径**打开媒体预览。Terminal xterm 与派发历史中的路径/带扩展名文件名同样可点；**Terminal Overview 派发记录**对 `.clutch/attachments/` 等图片显示缩略图，点击放大。
 * **Workspace Chrome（平台差异）**：macOS 与 Windows 侧栏折叠 rail、折叠按钮位置、Chat 间距与右侧监督 Tab 样式分文件维护（`apps/desktop/src/platform/chrome/`）；共享导航图标与文案见 `navConfig.ts`。macOS 默认保留图标+微标签折叠 rail 与 App 级浮动折叠按钮；Windows 使用纯图标 rail 与侧栏边缘折叠按钮。**项目绑定**：侧栏会话按工作区路径稳定 id 挂载（同路径重授权不会丢掉历史）；开发态与打包态分目录存储（`clutch_dev` / `clutch`），E2E 须隔离 `CLUTCH_STORAGE_DIR`。
 * **Long-session compaction（D8）**：Plain chat 在 token 估算接近模型上下文上限时自动压缩历史消息；用户消息与摘要 digest 保留，完整原文写入 `runs/archive/{run_id}.jsonl`。压缩后 **Todo/计划** 仍通过 `task_state` 层与 digest 快照可达。
-* **Run control（D9）**：Plain chat 运行中可 **Stop**；停止后 Chat 显示 Supervisor 提示与 **Continue**（`continue_run`）。连续工具失败触发 **loop fuse**（`CLUTCH_LOOP_FUSE_FAILURES`，默认 3）。输入栏上方展示实时 **Steps n/m · ~tok**（`run_stats`）。
+* **Run control（D9）**：Plain chat 运行中可 **Stop**；停止后 Chat 显示 Supervisor 提示与 **Continue**（`continue_run`）。连续工具失败触发 **loop fuse**（`CLUTCH_LOOP_FUSE_FAILURES`，默认 3）。输入框 **+** 菜单可打开 **Usage / Steps n/m · ~tok**（`run_stats`）用量看板。
 * **用量看板（D22）**：点击 D9 用量条打开 **Usage dashboard**——本局 steps/tok 与近期 session 历史用量表；Sidecar 在 session 更新时持久化 `session_tokens` / `tool_steps`。
-* **模式切换（D27）**：Chat 输入栏右侧权限菜单切换 **Explore / Plan / Edit automatically**（对应 `explore` / `plan` / `auto_edit`，另含 Ask / Full）；Explore 硬拦截写文件/执行命令，只读工具仍可用。
+* **模式切换（D27）**：Chat 输入框底栏 **模式 pill** 切换 **Explore / Plan / Ask / Edit / Full**（对应 `explore` / `plan` / `ask` / `auto_edit` / `full`）；Explore 硬拦截写文件/执行命令，只读工具仍可用。
 * **Subtask delegation（D10 + D48）**：Clutch Agent 可调用 `delegate_subtask` 派发 **explore**（只读）或 **implement** 子任务；父气泡下嵌套 **Subtasks** 卡展示状态、摘要与可展开步骤；子失败在父卡可见。
 * **Background commands（D11）**：`run_terminal_cmd` 可设 `background=true` 立即返回 `job_id`；Chat 输入栏上方展示后台任务条（查看输出 / Kill）；前台仍可继续对话。
 * **Foreground → background（D34）**：长命令前台执行时，输入栏上方出现 **Move to background**；一键转入 D11 后台列表后可继续聊天（对标 Grok Ctrl+B）。
-* **Worktree 隔离试验（D32）**：Chat 可选 **Enable worktree** — Agent 在 `.clutch/worktrees/<id>` 隔离改代码；**Merge** 合并回主仓或 **Discard** 丢弃，主工作区保持干净。
-* **定时/循环任务（Cap-D25 · 扩展 D25 scheduler）**：Chat **Scheduled tasks** 面板创建间隔任务（默认关，启用需确认）；sidecar asyncio 持久化表；到点通知或可选跑一轮 Agent。
+* **Worktree 隔离试验（D32）**：Chat 输入框 **+** 菜单 → **Enable worktree** — Agent 在 `.clutch/worktrees/<id>` 改代码；启用后上方出现紧凑条，可 **Merge** / **Discard**，主工作区保持干净。
+* **定时/循环任务（Cap-D25 · 扩展 D25 scheduler）**：Chat 输入框 **+** 菜单打开 **Scheduled tasks** 面板，创建间隔任务（默认关，启用需确认）；sidecar asyncio 持久化表；到点通知或可选跑一轮 Agent。
 * **代码诊断 MVP（D24）**：内置 `diagnostics` 工具（`tsc` / `ruff` / `py_compile`）；结果注入下一轮并在 Chat **Code diagnostics** 条展示。
 * **无 UI / CI Agent（D36 · ≠ Design D36）**：`POST /api/agent/run` 与 `python -m src.headless_cli` 与 Chat 同核。
 * **外挂 Grok CLI（D14）**：引擎列表可选 `grok-cli`；PATH 有 `grok` 时路由 `grok -p`，缺失时清晰不可用。
-* **Session fork + file rewind（D23）**：消息右键 **Fork session here** 从该条复制 transcript 到新会话；**Rewind** 一键恢复 Agent 最近一次文件改动并在 Chat 留 Supervisor 记录。
+* **Session fork + file rewind（D23）**：消息右键 **Fork session here** 从该条复制 transcript 到新会话；输入框 **+** → **Rewind file changes** 一键恢复 Agent 最近一次文件改动并在 Chat 留 Supervisor 记录。
 * **Cross-session memory（D16）**：Settings 可开/关 **Memory**；Agent 用 `remember_preference` 记下跨会话约定；可 **Clear memory**。
 * **Tool hooks（D17）**：用户/项目 `.clutch/hooks.json` 或偏好目录 `hooks.json` 配置 PreToolUse/PostToolUse 拒绝规则；违规时 Chat 工具步骤显示 Hook 原因。
 * **Capability packs（D35）**：Settings → Skills 可导入目录/zip 能力包（skills + hooks + MCP 片段）；支持卸载。
+* **Goal 跟踪（D29）**：Builtin `goal_write` 在 Chat 顶部展示实时 **Goal** 条（标题 + 进度）；完成后自动收起。
+* **会话看板（D30）**：输入框 **+** 菜单打开 **Session overview**——一眼查看 Goal / Todo / Plan / 权限模式 / MCP 绑定摘要。
 * **Git + web fetch（D12）**：Builtin `git_status` / `git_diff` / `git_commit`（提交需审批）与 `web_fetch`（抓取 URL 文本供总结）；步骤进入对话工具条。
 * **Permission rules（D13）**：可配置命令 allow/ask/deny 规则；`rm -rf` / `sudo` 等危险命令在 Full 模式下仍强制询问；权限菜单可 **清除记住的批准**。
 * **Chat 斜杠命令（D18）**：输入 `/` 可选 `/plan`（进入计划模式）、`/compact`（强制上下文压缩并出摘要）、`/todos`（聚焦 Todo 卡）、`/help`；同一面板仍列出 Skills。
@@ -132,9 +134,9 @@ graph TD
 | D5–D6 verify/diff | Verification report card + Cursor-style Diff cards (D50) |
 | D7 rules/skills | Runtime prompt layers panel in Agent Manager; Skills via `read_skill` (D53) |
 | D8 task state | Compaction digest badge; Todo/Plan survive fold via `task_state` |
-| D9 run control | Stop / Continue + Steps n/m · ~tok (`run_stats`) |
+| D9 run control | Stop / Continue；**+** → Usage Steps n/m · ~tok (`run_stats`) |
 | D22 usage dashboard | Click stats strip → Usage dashboard (current + session history steps/tok) |
-| D27 mode presets | Composer permission menu → Explore / Plan / Edit automatically (`explore` / `plan` / `auto_edit`) |
+| D27 mode presets | Composer mode pill → Explore / Plan / Ask / Edit / Full |
 | D20 busy queue | Composer **Pending messages** strip with Queue #n + cancel while Agent running |
 | D19 thinking stream | D46 live activity fold **Thinking / 思考** + shell output in step detail |
 | D26 bg monitor | Supervisor **[Monitor]** line on bg job terminal state + failure toast |
@@ -142,7 +144,7 @@ graph TD
 | D10 subtasks | Nested Subtasks cards under parent bubble (D48) |
 | D11 background | Background jobs bar (view output / kill) above composer |
 | D34 fg → bg | Foreground command bar + **Move to background** → D11 job chip |
-| D23 fork/rewind | Message **Fork session here**; composer **Rewind** restores files + Supervisor line |
+| D23 fork/rewind | Message **Fork session here**; composer **+** → Rewind file changes + Supervisor line |
 | D16 memory | Settings **Memory** on/off + **Clear memory**; `remember_preference` + prompt `memory` layer |
 | D17 hooks | `hooks.json` Pre/Post deny → Chat tool step shows Hook blocked reason |
 | D35 capability pack | Skills page import pack path + uninstall; mounts skills/hooks/MCP |
@@ -154,9 +156,16 @@ graph TD
 | D15 web search | Settings **Allow network** → builtin `web_search` (DuckDuckGo HTML); off = tool hidden |
 | D33 rich read | `read_file` images → OCR/analysis; PDF → `pdftotext` or clear error |
 | D31 plan comments | Pending plan card: per-step comment fields; Revise sends structured feedback |
+| D29 goal bar | Live **Goal** strip (title + progress) from `goal_write` until done |
+| D30 session board | Composer **+** → **Session overview** (goal / todos / plan / permission / MCP) |
+| D32 worktree | Composer **+** → Enable worktree; active Merge / Discard chip; cwd under `.clutch/worktrees/` |
+| Cap-D25 scheduler | Composer **+** → **Scheduled tasks** panel (interval jobs; confirm to enable) |
+| D24 diagnostics | Builtin `diagnostics` + Chat **Code diagnostics** issues strip |
+| D14 grok CLI | Engine `grok-cli` when `grok` on PATH; unavailable otherwise |
+| D36 headless Agent | `POST /api/agent/run` + `python -m src.headless_cli` (≠ Design D36) |
 | D38 Hub probe | MCP Hub **Test connection** → tool count or readable error (no “under development” banner) |
 | D39 transport | Hub register form: stdio only; SSE disabled / API 400; optional Env `KEY=value` |
-| D40 MCP badge | Chat composer: `N MCP · ~M` badge or **Bind MCP** CTA → Agent Manager |
+| D40 MCP badge | Composer **+** menu: `N MCP · ~M` badge or **Bind MCP** → Agent Manager |
 | D41 MCP approve | Risky MCP pause → Allow/Reject dock + tool/path in approval copy |
 | D42 real tools | Agent list/detail show real Hub tool names (not fake permission chips) |
 | D43 resources | Hub **Browse resources** → **Pin for Chat** → injected into Clutch Agent context |
@@ -193,7 +202,7 @@ graph TD
 
 * **General Settings**：支持用户修改个人名称并应用在发送气泡标签中；支持上传自定义头像并转换为 base64 存盘；支持小/默认/大/特大/超级大字体大小偏好并持久化（`data-font-size`）；支持中英文双语对照切换，后端 API / WS 错误采用 `tr()` 响应；利用 Tauri `getVersion` 插件动态显示真实桌面客户端版本号。
 * **Agent Settings**：提供可视化 Agent 管理器（`AgentManager.tsx`），支持自由增删改自定义 Agent，配置其名称、头像、**可编辑协议段**（`markdownDoc`，capability **D53** 中仅作 protocol 层，不再假装等于完整 runtime system）、模型及关联 MCP 工具。运行时 system 由分层组装：底座 / Env / 协议 / **项目规则**（**D7**，对齐 Grok：从 git 根走到授权工作区路径，加载 `AGENTS.md`·`CLAUDE.md` 与 `.grok/.claude/.cursor/rules`，更深优先；无 User home 规则）/ **Skills 开放目录**（全局∪当前仓∪自定义 SEARCH PATHS 中 Enabled 项自动进 catalog，同名项目优先；Agent 绑定可选叠加；全文经 `read_skill`）/ Plan 模式当轮 reminder。切换工作区时仅轮换项目自动 Skills 挂载，手动 Search Paths 保留。**Agent Manager → Clutch Agent 详情右侧**可查看「运行时提示词分层」（层名+字符量，可刷新）；亦可用 `GET /api/agents/{id}/prompt-assembly`。**Skills / MCP 模块按 Agent 类型分档**：仅 **Clutch** 内置 Agent 可绑定 Clutch Skills Registry 与 MCP Hub（Module 4 可勾选 Hub 服务器并持久化 `mcpServerIds`）；**Claude Code** / **OpenCode** / **MiMo Code** CLI Agent 展示各自原生配置只读扫描与 Settings 深链；其他 CLI 类型显示「即将上线」，避免误用全局 Registry。
-* **Clutch Agent 内置手脚（capability D1 / DECISIONS D44）**：授权工作区后，Chat 选择 **Clutch Agent** 默认挂载虚拟 MCP **`clutch-tools`**（无需先绑 Hub）：`read_file` / `list_dir` / `grep` / `search_replace` / `run_terminal_cmd` / `apply_patch` / **`propose_plan`** / **`todo_write`** / **`ask_user_question`** / **`submit_verification`** / **`submit_diff_summary`**。写文件与 shell 仍走既有风险审批（`permission_mode`）。额外 Hub 服务器（如 `local-fs`）可在 Agent Manager Module 4 绑定叠加。Chat 输入栏上方显示 **已绑 N 个 MCP / ~M 工具** 徽章（capability **D40**）；未绑时显示「绑定 MCP」引导至 Agent Manager。运行中与结束后，Chat 气泡展示可折叠 **工具轨迹**（capability **D46**，对标 Grok verb_group：如 `Read 2 files, Searched 1 pattern`；展开可见逐步；审批等待时标 awaiting）——不必切 Terminal；步骤随该条回复持久化，刷新仍可回看。本回合写出的工作区文件会以 **变更文件芯片**（capability **D47**）出现在气泡下方；点击走与路径预览相同的全屏预览（**DECISIONS D42**），无需在正文里自己找路径。Shell / 执行类步骤与子任务卡提供 **在 Terminal 查看**（capability **D51**）：打开右侧 Terminal 日志并高亮匹配的 `[CHAT] Step …` 行；若有 CLI Terminal 会话则同时切到 Terminal mode 并 focus 对应 lane。
+* **Clutch Agent 内置手脚（capability D1 / DECISIONS D44）**：授权工作区后，Chat 选择 **Clutch Agent** 默认挂载虚拟 MCP **`clutch-tools`**（无需先绑 Hub）：`read_file` / `list_dir` / `grep` / `search_replace` / `run_terminal_cmd` / `apply_patch` / **`propose_plan`** / **`todo_write`** / **`ask_user_question`** / **`submit_verification`** / **`submit_diff_summary`**。写文件与 shell 仍走既有风险审批（`permission_mode`）。额外 Hub 服务器（如 `local-fs`）可在 Agent Manager Module 4 绑定叠加。Chat 输入框 **+** 菜单显示 **已绑 N 个 MCP / ~M 工具**（capability **D40**）；未绑时「绑定 MCP」引导至 Agent Manager。运行中与结束后，Chat 气泡展示可折叠 **工具轨迹**（capability **D46**，对标 Grok verb_group：如 `Read 2 files, Searched 1 pattern`；展开可见逐步；审批等待时标 awaiting）——不必切 Terminal；步骤随该条回复持久化，刷新仍可回看。本回合写出的工作区文件会以 **变更文件芯片**（capability **D47**）出现在气泡下方；点击走与路径预览相同的全屏预览（**DECISIONS D42**），无需在正文里自己找路径。Shell / 执行类步骤与子任务卡提供 **在 Terminal 查看**（capability **D51**）：打开右侧 Terminal 日志并高亮匹配的 `[CHAT] Step …` 行；若有 CLI Terminal 会话则同时切到 Terminal mode 并 focus 对应 lane。
 * **忽略规则与严格沙箱（capability D21）**：内置 `read_file` / `list_dir` / `grep` 尊重工作区 `.gitignore` 与 `.clutchignore`（忽略路径不出现在列表/搜索结果中，直接读取返回可读错误）。**Settings → General → Strict sandbox（严格沙箱）** 开启后，越界路径与试图逃出工作区的 shell 命令会被拒绝并说明原因。**Settings → General → Allow network（允许联网）** 默认关闭；开启后 Clutch Agent 可使用内置 `web_search` 检索网页（D15）。
 * **先计划再动手（capability D2 + D49）**：多步/功能类任务时，Agent 先调用 `propose_plan`；对话流内出现 **计划卡**（步骤列表）与 **批准计划 / 修改计划 / 取消**。未批准前不执行写文件或可变 shell；简单问答可跳过计划。批准后同条回合继续实现。
 * **Todo 清单（capability D3 + D49）**：多步执行时 Agent 调用 `todo_write`（**不走人工审批**，仅更新会话 Todo UI）；Chat 时间线展示待办/进行中/完成状态。**未全部完成时** Todo 卡吸顶固定在对话滚动区顶部（滚动长轨迹时仍可见）；**全部打钩后**取消固定，回合结束 seal 到气泡 `todoList` 并随历史滚动，刷新仍可回看。吸顶与时间线 Todo 卡均支持 **chevron 折叠/展开**（默认展开；折叠后仅保留标题与 `done/total`；样式走 Plan/Question 同源 `chatAgentCard` token）。计划卡步骤会去掉模型自带的 `1.` 前缀，避免显示成 `1. 1. …`。
@@ -201,7 +210,7 @@ graph TD
 * **自检报告（capability D5 + D50）**：实现收尾时 Agent 调用 `submit_verification`；对话内出现 **验证报告卡**（步骤通过/失败 + 总结）。结论为失败时列出可操作的下一步；Todo 未完成时禁止谎称通过。卡上 **查看改动** 可打开本回合变更文件预览（与 D47 芯片同源）。
 * **Diff 审查（capability D6 + D50）**：每次成功改文件后，对话流**立即**出现单文件 Diff 卡（文件名 + 红绿 hunk，对标 Cursor 边改边看）；可选 `submit_diff_summary` 出多文件汇总卡。与右侧 Changes 面板并存。
 * **Workflow Settings**：管理和选择可用的流程图 SOP 模板，支持一键在 Chat 中启用。内置模板含 `weather-to-vision`、`video-production`、**Design to Code**（`design-to-code`，Design 批准后交给 Builder）与社区贡献的 **Memory-Augmented Pipeline (Epicode)**（`epicode-memory-pipeline.json`；需自行配置 Epicode MCP，见 [`docs/mcp-servers/epicode.md`](./mcp-servers/epicode.md)）。含 `check` / `human_gate` / 条件边的复杂流程会强制 **JSON 编辑模式**；提示条会点名导致降级的节点 id / 边 id（如 `review-gate (human_gate)`、`edge e5 when:reject`），不再只显示泛化的「复杂流程」。`check(file_exists)` 的 `path` 必须是**工作区相对路径**（如 `.clutch/staging/kp.json`）；主机绝对路径（如 `/tmp/...`）会被拒绝并在 Terminal 标明 FORBIDDEN，避免与 agent 写入位置错位时静默失败。
-* **Tool Settings**：对 20+ 主流 Agent CLI 白名单做本机探测——**已安装的一律展示**（含 Rivet、OpenCode、MiMo Code、CodeBuddy、Cursor Agent、ZCode 等扩展工具）；**未安装时默认仅推荐经 Clutch 验证的 CLI**（`codebuddy`、`cursor-agent`、`mimo`、`opencode`、`claude`、`ollama`、`codex`、`agy`、`zcode`）及安装指引。CodeBuddy 内置 headless 路由（`codebuddy -p`，curated `--dangerously-skip-permissions`）；OpenCode 内置 headless 路由（`run --auto`）；MiMo Code 内置 headless 路由（`mimo run --dangerously-skip-permissions`）；ZCode 内置 headless 路由（`zcode -p --mode yolo --json`），Auto Config 错误参数不会覆盖 curated 配置。支持 Connect 偏好与 **Auto Config**（LLM 分析 `--help` 写入 `custom_clis.json` 路由参数）。
+* **Tool Settings**：对 20+ 主流 Agent CLI 白名单做本机探测——**已安装的一律展示**（含 Rivet、OpenCode、MiMo Code、CodeBuddy、Cursor Agent、ZCode、Grok 等扩展工具）；**未安装时默认仅推荐经 Clutch 验证的 CLI**（`codebuddy`、`cursor-agent`、`mimo`、`opencode`、`claude`、`ollama`、`codex`、`agy`、`zcode`）及安装指引（`grok-cli` 为可选旁路引擎，不在默认推荐列表）。CodeBuddy 内置 headless 路由（`codebuddy -p`，curated `--dangerously-skip-permissions`）；OpenCode 内置 headless 路由（`run --auto`）；MiMo Code 内置 headless 路由（`mimo run --dangerously-skip-permissions`）；ZCode 内置 headless 路由（`zcode -p --mode yolo --json`）；Grok 内置 headless 路由（`grok -p`），Auto Config 错误参数不会覆盖 curated 配置。支持 Connect 偏好与 **Auto Config**（LLM 分析 `--help` 写入 `custom_clis.json` 路由参数）。
 * **Model Provider Settings**（**Models by Agent** 顶栏 Tab：**Clutch Agent** · **Claude Code** · **OpenCode** · **MiMo Code**）：**Clutch** Tab 配置内置 Agent 所用云端/本地模型 API Keys（支持无感导入 `.cc-switch` 凭证至 Clutch 侧）。内置文本提供商含 **DeepSeek**、**Anthropic**、**OpenAI**、**Google**、**Ollama**、**Agnes** 与 **OpenCode Zen**（[opencode.ai](https://opencode.ai/auth) Zen 工作区 API Key；端点 `https://opencode.ai/zen/v1`）。**Claude Code** / **OpenCode** / **MiMo Code** Tab 只读扫描各 CLI 原生 model 配置；Claude Code 在已安装 `cc-switch` CLI 时可切换 provider。**OpenCode Zen**（供 Clutch 内置 Agent，非 OpenCode CLI）仍在 Clutch Tab 配置。内置 **Agnes 2.0 Flash**（对话）、**Agnes Image 2.1 Flash**（生图）与 **Agnes Video V2.0**（文生视频）；**Ollama 条目与 Create Agent 下拉同源**——实时读取本机 `ollama list` 已安装 tag。
 * **Skills Settings**（同上 Agent Tab）：Clutch Tab 管理 Skills Registry 挂载；Claude Code / OpenCode / **MiMo Code** Tab 只读扫描原生 `SKILL.md` 目录。
 * **MCP Server Settings**（同上 Agent Tab）：Clutch Tab 注册/开关 MCP Hub 服务器（**stdio only**，capability **D39**——SSE 选项禁用且 API 拒绝新注册；表单支持可选 `KEY=value` Env）；每行可 **Test connection**（capability **D38**）——成功显示工具数，失败显示可读错误；不再展示误导性「开发中」横幅。服务器若暴露 MCP **Resources**（capability **D43**）：可 **Browse resources** 并 **Pin for Chat**，快照注入 Clutch Agent 上下文（可 Unpin）。Claude Code / OpenCode / **MiMo Code** Tab 只读扫描原生 MCP 配置。
