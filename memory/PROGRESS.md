@@ -5,11 +5,17 @@
 
 ## Current Status
 
-- **阶段：** **v1.2.9**；主线 **D8–D12 PM ✅**（含 D10∥D48）；扩展 D14–D36 代码已交；其余待 PM
+- **阶段：** **v1.2.9**；主线 **D8–D13 PM ✅**（含 D10∥D48；D13 仅 A）；扩展 D14–D36 代码已交；其余待 PM
 - **Git / PM 索引：** [`runs/verification/pm-acceptance/README.md`](../runs/verification/pm-acceptance/README.md)
-- **下次优先：** D13 权限规则 PM 点验
+- **下次优先：** 扩展/MCP 表点验；默认 **Agent**；Ask=只读对话（D54）
 
 ## Recent Sessions
+
+## 2026-07-25 会话（D13 A + Ask=只读）
+
+- **PM：** D13 ✅ 用例 A；B/C 跳过
+- **产品：** Explore 并入 Ask；Ask=对话只读（D54）；pill = Agent/Plan/Full/Ask；onboarding 已对齐
+- **下次：** 扩展表或 D27 点验
 
 ## 2026-07-25 会话（D12 PM）
 

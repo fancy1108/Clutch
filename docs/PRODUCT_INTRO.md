@@ -17,7 +17,7 @@
 - **人机协同门控 (Human-in-the-Loop)**：在关键检查失败或敏感操作节点，图会自动挂起；Chat 输入框上方以**紧凑操作条**提供 Allow（允许）、Reject（拒绝）或带说明的 Retry（重试），不再使用大块 HITL 面板。
 - **本地优先 (Local First)**：应用完全运行于本地；API Key 保存在 macOS **Keychain** 或 Windows **凭据管理器**（模型元数据在 `models.json`），不经 Clutch 自有云端上传。
 
-**首次体验**：安装后首次启动会进入全屏设置向导（工作区授权 → 云模型或本地 CLI 二选一 → Flow 入口引导 → 权限说明），完成后写入 `onboarding_completed` 偏好，重启不再出现；Settings 仍可手动调整各项配置。**分步说明见 [`docs/GETTING_STARTED.md`](./GETTING_STARTED.md)。**
+**首次体验**：安装后首次启动会进入全屏设置向导（工作区授权 → 云模型或本地 CLI 二选一 → Flow 入口引导 → **权限模式**：默认 **Agent**，可选 Plan / Full / Ask），完成后写入 `onboarding_completed` 偏好，重启不再出现；会话底栏与 Settings 仍可随时调整。**分步说明见 [`docs/GETTING_STARTED.md`](./GETTING_STARTED.md)。**
 
 **产品官网（GitHub Pages）：** 静态介绍页 [`docs/index.html`](./index.html)，部署于 **https://fancy1108.github.io/Clutch/** — 中英文切换、功能概览、安装命令与作者微信联系方式；与桌面应用功能同步维护。
 
@@ -101,7 +101,7 @@ graph TD
 * **Long-session compaction（D8）**：Plain chat 在 token 估算接近模型上下文上限时自动压缩历史消息；用户消息与摘要 digest 保留，完整原文写入 `runs/archive/{run_id}.jsonl`。压缩后 **Todo/计划** 仍通过 `task_state` 层与 digest 快照可达。
 * **Run control（D9）**：Plain chat 运行中可 **Stop**；停止后 Chat 显示 Supervisor 提示与 **Continue**（`continue_run`）。连续工具失败触发 **loop fuse**（`CLUTCH_LOOP_FUSE_FAILURES`，默认 3）。
 * **用量（D22）**：右侧 **Overview → Session Token Analytics** 为用量入口；**数值暂占位 `—`**，后续接入供应商真值（DECISIONS **Q-USAGE-1**）。不再在 `+` 菜单展示。
-* **模式切换（D27）**：Chat 输入框底栏 **模式 pill** 切换 **Explore / Plan / Ask / Edit / Full**（对应 `explore` / `plan` / `ask` / `auto_edit` / `full`）；Explore 硬拦截写文件/执行命令，只读工具仍可用。
+* **模式切换（D27）**：Chat 输入框底栏 **模式 pill**（对标 Cursor）：**Agent / Plan / Full / Ask**（内部 `auto_edit` / `plan` / `full` / `ask`）。默认 **Agent**（可改文件；危险 shell 仍问）。**Ask** 为对话/只读。旧 `explore` 映射为 Ask；旧 UI 名 Edit = Agent。
 * **Subtask delegation（D10 + D48）**：Clutch Agent 可调用 `delegate_subtask` 派发 **explore**（只读）或 **implement** 子任务；父气泡下嵌套 **Subtasks** 卡展示状态、摘要与可展开步骤；子失败在父卡可见。Explore 子循环默认更高工具步数预算；用户要求「先探再改」时至少出现 explore 卡，implement 可由父 Agent 完成（不强制第二张卡）。
 * **Background commands（D11）**：`run_terminal_cmd` 可设 `background=true` 立即返回 `job_id`；**运行中**任务显示在输入栏上方（查看输出 / Kill）；**结束后**任务卡进入对话时间线（随 Supervisor 完成提示），底栏不再占用。
 * **Foreground → background（D34）**：长命令前台执行时，输入栏上方出现 **Move to background**；一键转入 D11 后台列表后可继续聊天（对标 Grok Ctrl+B）。
@@ -136,7 +136,7 @@ graph TD
 | D8 task state | `/compact` → User bubble + amber digest at feed end; Todo/Plan via `task_state` |
 | D9 run control | Stop / Continue；loop fuse |
 | D22 usage | Overview Session Token Analytics（UI 占位 `—`；真值 Q-USAGE-1） |
-| D27 mode presets | Composer mode pill → Explore / Plan / Ask / Edit / Full |
+| D27 mode presets | Composer pill → Agent / Plan / Full / Ask (default Agent; Ask = read-only) |
 | D20 busy queue | Composer **Pending messages** strip with Queue #n + cancel while Agent running |
 | D19 thinking stream | D46 live activity fold **Thinking / 思考** + shell output in step detail |
 | D26 bg monitor | Supervisor **[Monitor]** line on bg job terminal state + failure toast |

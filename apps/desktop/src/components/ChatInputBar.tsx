@@ -13,7 +13,11 @@ import { useLanguage } from './LanguageContext';
 import type { SessionRecord } from '../services/runApi';
 import type { ScannedSkill } from '../services/skillsApi';
 import type { FileTreeNode } from '../services/workspaceApi';
-import { PERMISSION_MODES, type PermissionMode } from '../services/permissionApi';
+import {
+  normalizePermissionMode,
+  PERMISSION_MODES,
+  type PermissionMode,
+} from '../services/permissionApi';
 import { clutchStore } from '../services/clutchState';
 import { LegacyIcon } from './ui/LegacyIcon';
 import { BTN_ICON_SM } from './ui/buttonStyles';
@@ -131,21 +135,20 @@ function resolveSessionTitle(runId: string, sessions: SessionRecord[]): string {
   return runId.length > 12 ? `${runId.slice(0, 8)}…` : runId;
 }
 
-/** Short pill label for permission mode (Cursor-style composer chrome). */
+/** Short pill label for permission mode (Cursor-style: Agent / Plan / Ask). */
 function permissionPillLabel(mode: PermissionMode): string {
   switch (mode) {
-    case 'explore':
-      return 'Explore';
-    case 'ask':
-      return 'Ask';
     case 'auto_edit':
-      return 'Edit';
+      return 'Agent';
     case 'plan':
       return 'Plan';
     case 'full':
       return 'Full';
-    default:
+    case 'explore':
+    case 'ask':
       return 'Ask';
+    default:
+      return 'Agent';
   }
 }
 
@@ -602,7 +605,9 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
   const showPlainChatStopping = isRunning && isPlainLlmChat && stopPending;
   const showPlainChatContinue =
     !isRunning && isPlainLlmChat && Boolean(awaitingContinue) && Boolean(onContinueRun);
-  const currentPermission = PERMISSION_MODES.find((m) => m.id === permissionMode) ?? PERMISSION_MODES[0];
+  const resolvedPermissionMode = normalizePermissionMode(permissionMode);
+  const currentPermission =
+    PERMISSION_MODES.find((m) => m.id === resolvedPermissionMode) ?? PERMISSION_MODES[0];
   const hybridNotice = hybridRejectionNotice(shellSessionStatus, language === 'zh' ? 'zh' : 'en');
   const showHybridNotice =
     hybridNotice && dismissedNoticeKey !== (shellSessionStatus ?? '');
@@ -1087,51 +1092,72 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
               type="button"
               title={`Permission: ${currentPermission.label}`}
               aria-label={`Permission: ${currentPermission.label}`}
+              aria-expanded={permissionMenuOpen}
               onClick={() => {
                 setPermissionMenuOpen((v) => !v);
                 setAttachMenuOpen(false);
               }}
-              className="inline-flex h-7 items-center gap-0.5 rounded-full px-2 text-[12px] font-medium text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors"
+              className={`inline-flex h-7 items-center gap-1 rounded-full pl-2 pr-1.5 text-[12px] font-medium leading-none transition-colors ${
+                permissionMenuOpen
+                  ? 'bg-surface-container-high text-on-surface'
+                  : 'bg-surface-container text-on-surface/90 hover:bg-surface-container-high hover:text-on-surface'
+              }`}
             >
-              <span>{permissionPillLabel(permissionMode)}</span>
-              <LegacyIcon name="expand_more" className="text-[14px] opacity-50" />
+              <LegacyIcon name={currentPermission.icon} className="text-[15px] opacity-90" />
+              <span>{permissionPillLabel(resolvedPermissionMode)}</span>
+              <LegacyIcon
+                name="expand_more"
+                className={`text-[14px] opacity-45 transition-transform duration-150 ${
+                  permissionMenuOpen ? 'rotate-180' : ''
+                }`}
+              />
             </button>
 
             {permissionMenuOpen && (
-              <div className="absolute bottom-full right-0 mb-2 w-56 bg-white border border-outline-variant/60 rounded-xl shadow-lg py-1 z-50 animate-in fade-in slide-in-from-bottom-1 duration-150">
-                <p className="px-3 pt-1.5 pb-0.5 text-[10px] font-semibold uppercase tracking-wide text-on-surface-variant/55">
-                  {language === 'zh' ? '权限模式' : 'Permission'}
-                </p>
-                {PERMISSION_MODES.map((mode) => (
-                  <button
-                    key={mode.id}
-                    type="button"
-                    onClick={() => {
-                      onPermissionModeChange(mode.id);
-                      setPermissionMenuOpen(false);
-                    }}
-                    className="w-full flex items-start gap-2.5 px-3 py-2 hover:bg-surface-container-low transition-colors text-left"
-                  >
-                    <LegacyIcon
-                      name={mode.icon}
-                      className={`text-[16px] mt-0.5 flex-shrink-0 ${
-                        mode.id === permissionMode
-                          ? 'text-on-surface'
-                          : 'text-on-surface-variant/45'
+              <div className="absolute bottom-full right-0 mb-2 w-56 overflow-hidden rounded-xl border border-outline-variant/50 bg-white py-1 shadow-[0_8px_28px_rgba(15,23,42,0.12)] z-50 animate-in fade-in slide-in-from-bottom-1 duration-150">
+                {PERMISSION_MODES.map((mode) => {
+                  const selected = mode.id === resolvedPermissionMode;
+                  return (
+                    <button
+                      key={mode.id}
+                      type="button"
+                      onClick={() => {
+                        onPermissionModeChange(mode.id);
+                        setPermissionMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors ${
+                        selected
+                          ? 'bg-surface-container/90'
+                          : 'hover:bg-surface-container-low'
                       }`}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-[12px] font-semibold text-on-surface">{mode.label}</span>
-                        {mode.id === permissionMode ? (
-                          <LegacyIcon name="check" className="text-[14px] text-on-surface" />
-                        ) : null}
+                    >
+                      <LegacyIcon
+                        name={mode.icon}
+                        className={`text-[16px] flex-shrink-0 ${
+                          selected ? 'text-on-surface' : 'text-on-surface-variant/55'
+                        }`}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <span
+                            className={`text-[12.5px] ${
+                              selected ? 'font-semibold text-on-surface' : 'font-medium text-on-surface'
+                            }`}
+                          >
+                            {mode.label}
+                          </span>
+                          {selected ? (
+                            <LegacyIcon name="check" className="text-[14px] text-on-surface" />
+                          ) : null}
+                        </div>
+                        <span className="block text-[10px] text-on-surface-variant/60 leading-snug mt-0.5">
+                          {mode.description}
+                        </span>
                       </div>
-                      <span className="text-[10px] text-on-surface-variant/65 leading-snug">{mode.description}</span>
-                    </div>
-                  </button>
-                ))}
-                <div className="border-t border-outline-variant/50 my-1 mx-2" />
+                    </button>
+                  );
+                })}
+                <div className="border-t border-outline-variant/40 my-1 mx-2" />
                 <button
                   type="button"
                   data-testid="clear-approvals"
@@ -1143,7 +1169,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
                 >
                   {t('Clear remembered approvals')}
                 </button>
-                <p className="px-3 pb-2 pt-0.5 text-[9.5px] leading-snug text-on-surface-variant/55">
+                <p className="px-3 pb-2 pt-0.5 text-[9.5px] leading-snug text-on-surface-variant/50">
                   {language === 'zh'
                     ? '仅影响内置 Clutch Agent / MCP，不影响 CLI Agent。'
                     : 'Applies to Clutch Agent & MCP only — not CLI agents.'}

@@ -50,11 +50,14 @@ _PLAN_MODE_REMINDER = (
     "writes are blocked until Plan mode is exited."
 )
 
-_EXPLORE_MODE_REMINDER = (
-    "## Mode: Explore (read-only)\n"
-    "Explore mode is active. Use read/search tools to understand the codebase. "
-    "Do not create, edit, delete, or run mutating shell commands."
+_ASK_MODE_REMINDER = (
+    "## Mode: Ask (conversation only, read-only)\n"
+    "Ask mode is active. Answer with read/search tools only. "
+    "Do not create, edit, delete, or run mutating shell commands. "
+    "To make changes, the user must switch the composer mode to Agent or Full."
 )
+# Legacy alias — same semantics as Ask (D27 merge 2026-07-25).
+_EXPLORE_MODE_REMINDER = _ASK_MODE_REMINDER
 
 _FEATURE_PLAN_REMINDER = (
     "## Reminder: propose_plan required (D2)\n"
@@ -337,8 +340,8 @@ def compose_agent_prompt_assembly(
     mode = (permission_mode or "").strip().lower()
     if mode == "plan":
         layers.append(PromptLayer("mode", _PLAN_MODE_REMINDER))
-    elif mode == "explore":
-        layers.append(PromptLayer("mode", _EXPLORE_MODE_REMINDER))
+    elif mode in {"ask", "explore"}:
+        layers.append(PromptLayer("mode", _ASK_MODE_REMINDER))
     elif (
         clutch_mcp_path
         and is_clutch
@@ -443,7 +446,7 @@ def compose_agent_system_prompt(
 
             permission_mode = load_permission_mode()
         except Exception:
-            permission_mode = "ask"
+            permission_mode = "auto_edit"
     return compose_agent_prompt_assembly(
         agent,
         model_name=model_name,

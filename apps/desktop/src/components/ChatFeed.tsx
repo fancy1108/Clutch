@@ -528,7 +528,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   workspaceFiles = [],
   sessions = [],
   skills = [],
-  permissionMode = 'ask',
+  permissionMode = 'auto_edit',
   onPermissionModeChange,
   shellSessionStatus,
   shellPoolBlockerRunIds = [],

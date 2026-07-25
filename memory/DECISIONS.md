@@ -335,6 +335,13 @@
 - **影响**：`docs/PACKAGE_MANAGERS.md` · `README` · `install.sh` · Homebrew cask `depends_on arch: :arm64`。
 - **决策状态**：`已落地`
 
+### D54 · Ask = 只读对话；Explore 并入 Ask；默认 Agent（2026-07-25）
+
+- **背景**：底栏 Explore / Ask 易混；产品期望 Ask = 对话只读；默认应对标 Cursor **Agent**（可动手）。
+- **方案**：Ask 硬拦截写/变更 shell（原 Explore）；UI 去掉 Explore；`explore` → `ask`；UI 名 **Agent** = `auto_edit`（默认）；菜单序 Agent → Plan → Full → Ask；图标 ∞ / checklist / warning / chat。
+- **影响**：新装默认可改文件；Ask 为只读对话。
+- **决策状态**：`已落地`
+
 ## 开放问题
 
 | ID | 问题 | 选项 | 默认 |

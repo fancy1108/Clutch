@@ -1072,7 +1072,7 @@ function MainLayout() {
   };
 
   // Permission mode (persisted on backend)
-  const [permissionMode, setPermissionMode] = useState<PermissionMode>('ask');
+  const [permissionMode, setPermissionMode] = useState<PermissionMode>('auto_edit');
 
   useEffect(() => {
     void fetchPermissionMode()

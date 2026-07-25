@@ -132,7 +132,7 @@ def test_skills_default_to_catalog_not_full_body(
     assert "Always check for secrets" in full
 
 
-def test_plan_mode_reminder_is_ephemeral() -> None:
+def test_ask_and_plan_mode_reminders() -> None:
     ask = compose_agent_prompt_assembly(
         _clutch_agent(),
         model_name="A",
@@ -149,7 +149,9 @@ def test_plan_mode_reminder_is_ephemeral() -> None:
         permission_mode="plan",
         clutch_mcp_path=True,
     )
-    assert not any(layer.name == "mode" for layer in ask.layers)
-    mode = next(layer for layer in plan.layers if layer.name == "mode")
-    assert "Plan mode" in mode.content or "read-only" in mode.content.lower()
+    ask_mode = next(layer for layer in ask.layers if layer.name == "mode")
+    plan_mode = next(layer for layer in plan.layers if layer.name == "mode")
+    assert "Ask" in ask_mode.content
+    assert "Plan" in plan_mode.content
     assert "Plan mode" not in ask.as_system_prompt()
+    assert "Ask" not in plan_mode.content.splitlines()[0]

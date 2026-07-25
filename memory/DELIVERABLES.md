@@ -4,6 +4,15 @@
 > **何时写：** 每个**代码 Task** 完成并 commit 后，在 Check-out 追加一节（见 `CLAUDE.md` §Check-out）。  
 > **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。
 
+## D13 A + Ask=只读（D54）（2026-07-25）
+
+| 项 | 说明 |
+|----|------|
+| **PM** | D13 ✅ 用例 A — `D13.md`；B/C 跳过；ROADMAP ✅ |
+| **Changed** | Ask=只读；默认 Agent；Cursor 序/图标；onboarding 可选模式；DECISIONS **D54** |
+| **Evidence** | `runs/verification/pm-acceptance/D13.md` |
+| **Verification** | `pytest tests/test_permission_explore_d27.py tests/test_permission_rules_d13.py tests/test_agent_prompt_d53.py -q`（9+ 通过） |
+
 ## D12 PM 通过（2026-07-25）
 
 | 项 | 说明 |

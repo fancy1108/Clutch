@@ -55,7 +55,7 @@
 | D10∥D48 子任务委派 | P0 | ✅ | PM ✅ 2026-07-25；explore 16 步；implement 卡非强制 |
 | D11 后台命令 | P0 | ✅ | PM ✅ 2026-07-25；RUNNING 底栏 / 结束进对话；Kill 乐观 |
 | D12 Git + 网页 | P0 | ✅ | PM ✅ 2026-07-25；commit 真（bcfc099 d12-pm-test）；web_fetch 总结 |
-| D13 权限规则 | P0 | ❌ | allow/ask/deny + 危险强问 + 清记忆；待 PM |
+| D13 权限规则 | P0 | ✅ | PM ✅ A 2026-07-25；B/C 不点验；危险 Full 仍强问 |
 | D14 外挂 grok CLI | P2 | ❌ | 代码已交 PM（`5d65a68`） |
 | D15 联网搜索 | P1 | ❌ | 代码已交 PM（`0c0c095`） |
 | D16 跨会话记忆 | P1 | ❌ | 代码已交 PM（`930f9a5`） |
@@ -69,7 +69,7 @@
 | D24 诊断 MVP | P2 | ❌ | 代码已交 PM（`605d0fc`） |
 | Cap-D25 定时任务 | P2 | ❌ | 代码已交 PM（`05547b8`；≠ Hybrid D25） |
 | D26 长任务监视 | P1 | ❌ | 代码已交 PM（`8be7f06`） |
-| D27 模式/人设 | P1 | ❌ | 代码已交 PM（`a269764`；explore 在权限菜单） |
+| D27 模式/人设 | P1 | ❌ | Ask/Plan/Edit/Full；Ask=只读（D54）；待 PM |
 | D28 MCP 工具发现 | P1 | ❌ | 代码已交 PM（`cc2662e`） |
 | D29 Goal 跟踪 | P1 | ❌ | 代码已交 PM（`96c13d3` + `1d88b02` UI） |
 | D30 会话看板 | P1 | ❌ | 代码已交 PM（`1d88b02`） |
@@ -98,7 +98,7 @@
 | D53 分层 prompt + 渐进披露 | P0 | ✅ | 分层组装 + Agent Manager 分层摘要面板；PM 2026-07-24 点验通过 |
 
 **首期目标：** D1 + D37 + D46 ✅（PM 2026-07-24）。  
-**下一批（防返工顺序）：** D13；用例见 `runs/verification/pm-acceptance/`
+**下一批（防返工顺序）：** 主线 D8–D13 已 PM；扩展/MCP 见 `runs/verification/pm-acceptance/`
 
 ## Design 模式（D36 · 默认 FAIL）
 

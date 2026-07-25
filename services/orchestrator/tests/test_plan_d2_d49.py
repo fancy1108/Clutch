@@ -111,7 +111,7 @@ def test_feature_request_heuristic_and_reminder() -> None:
         model_name="Test",
         model_api="test",
         mcp_servers_bound=True,
-        permission_mode="ask",
+        permission_mode="auto_edit",
         user_turn_text="帮我加一个简单的登录",
         include_project_rules=False,
     )

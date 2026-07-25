@@ -16,14 +16,24 @@ ALLOWED_THEME_IDS = frozenset({"pristine-light", "nordic-frost", "amber-warm"})
 ALLOWED_LANGUAGES = frozenset({"en", "zh"})
 ALLOWED_FONT_SIZES = frozenset({"small", "default", "large", "xlarge", "xxlarge"})
 
-# Permission modes (controls when the agent pauses for human approval)
-# ask       – pause before every risky tool (write/delete/exec). Default & safest.
-# auto_edit – auto-approve file edits; still pause before shell/delete/network ops.
-# explore   – read-only exploration; write/exec tools hard-blocked (read/search allowed).
-# plan      – read-only; all write/exec tools are hard-blocked (agent just plans).
-# full      – bypass all pause gates (still blocks truly catastrophic ops like rm -rf /).
+# Permission modes (controls when the agent may mutate / pauses for approval)
+# auto_edit – UI "Agent" (default): auto-approve file edits; pause on risky shell.
+# plan      – read-only; propose a plan (writes/exec hard-blocked).
+# full      – fewer confirmation gates (still force-asks dangerous cmds like rm -rf).
+# ask       – conversation / read-only (writes & mutating shell hard-blocked).
+# explore   – legacy alias of ask (normalized on load/save; kept for old prefs / subagents).
 ALLOWED_PERMISSION_MODES = frozenset({"ask", "auto_edit", "explore", "plan", "full"})
-DEFAULT_PERMISSION_MODE = "ask"
+DEFAULT_PERMISSION_MODE = "auto_edit"
+
+
+def normalize_permission_mode(mode: str | None) -> str:
+    """Map legacy `explore` → `ask`; unknown → Agent (`auto_edit`)."""
+    normalized = str(mode or DEFAULT_PERMISSION_MODE).strip().lower()
+    if normalized == "explore":
+        return "ask"
+    if normalized not in ALLOWED_PERMISSION_MODES:
+        return DEFAULT_PERMISSION_MODE
+    return normalized
 DEFAULT_STRICT_SANDBOX = "false"
 DEFAULT_ALLOW_NETWORK = "false"
 DEFAULT_CROSS_SESSION_MEMORY = "false"
@@ -74,7 +84,7 @@ def load_preferences() -> dict[str, str]:
     data = json.loads(path.read_text(encoding="utf-8"))
     theme_id = str(data.get("active_theme_id") or DEFAULT_THEME_ID)
     language = str(data.get("active_language") or DEFAULT_LANGUAGE)
-    permission_mode = str(data.get("permission_mode") or DEFAULT_PERMISSION_MODE)
+    permission_mode = normalize_permission_mode(data.get("permission_mode"))
     font_size = str(data.get("font_size") or DEFAULT_FONT_SIZE)
     user_avatar = str(data.get("user_avatar") or "")
     user_name = str(data.get("user_name") or "User")
@@ -96,8 +106,6 @@ def load_preferences() -> dict[str, str]:
         theme_id = DEFAULT_THEME_ID
     if language not in ALLOWED_LANGUAGES:
         language = DEFAULT_LANGUAGE
-    if permission_mode not in ALLOWED_PERMISSION_MODES:
-        permission_mode = DEFAULT_PERMISSION_MODE
     if font_size not in ALLOWED_FONT_SIZES:
         font_size = DEFAULT_FONT_SIZE
     return {
@@ -146,11 +154,11 @@ def save_language(language: str) -> dict[str, str]:
 
 def save_permission_mode(mode: str) -> dict[str, str]:
     """Persist the permission mode. Raises ValueError for unknown modes."""
-    normalized = mode.strip().lower()
-    if normalized not in ALLOWED_PERMISSION_MODES:
-        raise ValueError(f"Unknown permission mode: {normalized}. Allowed: {sorted(ALLOWED_PERMISSION_MODES)}")
+    raw = mode.strip().lower()
+    if raw not in ALLOWED_PERMISSION_MODES:
+        raise ValueError(f"Unknown permission mode: {raw}. Allowed: {sorted(ALLOWED_PERMISSION_MODES)}")
     prefs = load_preferences()
-    prefs["permission_mode"] = normalized
+    prefs["permission_mode"] = normalize_permission_mode(raw)
     return _write_preferences(prefs)
 
 

@@ -1371,7 +1371,7 @@ def _tool_delegate_subtask(arguments: dict[str, Any]) -> str:
             on_log=ctx.get("on_log"),
             on_subtask_update=ctx.get("on_subtask_update"),
             max_steps=steps,
-            permission_mode=str(ctx.get("permission_mode") or "ask"),
+            permission_mode=str(ctx.get("permission_mode") or "auto_edit"),
             pause_on_risky=bool(ctx.get("pause_on_risky", True)),
             subtask_id=ctx.get("subtask_id"),
         )

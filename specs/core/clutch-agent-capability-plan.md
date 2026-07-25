@@ -284,7 +284,7 @@
 #### D13 — 权限规则设置
 - **可见**：允许/询问/拒绝配置；危险命令强问；记住/清除。
 - **验收**：拒规则生效；`rm` 类强问；记忆可关。
-- **实现笔记（待 PM）**：`permission_rules.py` + `/api/preferences/permission-rules`；危险命令 force-ask；WS `clear_approvals`。
+- **实现笔记（PM ✅ A 2026-07-25；B/C 不点验）**：危险命令 Full 下仍 force-ask；deny/clear 自动化覆盖。
 
 ---
 
@@ -348,8 +348,9 @@
 - **验收**：后台测挂了 → Chat 出现失败监视提示。
 
 #### D27 — 模式 / 人设切换
-- **可见**：一键切「只读探查 / 只计划 / 可实现」等；工具权限随模式变。
-- **验收**：探查模式无法写文件；切回实现可写。
+- **可见**：一键切 Agent / Plan / Full / Ask；工具权限随模式变。
+- **验收**：Ask 无法写文件；Agent/Full 可写。
+- **实现笔记（D54）**：默认 Agent；Ask=只读；Explore 并入 Ask；UI 对标 Cursor。
 
 #### D28 — MCP 工具很多时的发现
 - **可见**：MCP 工具多时，Agent 先搜再选（或 UI 筛选）；不一次丢上百 tool。

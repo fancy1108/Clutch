@@ -66,7 +66,7 @@ On first open, Clutch shows a **full-screen setup wizard**. Follow the steps in 
 | **Models** | Add a cloud API key (DeepSeek, Anthropic, OpenCode Zen, …) **or** skip if you will use local CLI only |
 | **Tools** | Scan and **Connect** CLIs already on your machine (Claude Code, CodeBuddy, Ollama, Codex, …) |
 | **Flow guide** | Short tour of Chat vs Workflow |
-| **Permissions** | Read how CLI permissions work (important) |
+| **Permissions** | Pick Clutch Agent mode (default **Agent**; also Plan / Full / Ask) |
 | **Ready** | Launch into the main app |
 
 > **Skipped the wizard?** Open **Settings** (gear, bottom-left) and complete: Workspace → Models → Tools.  
@@ -213,7 +213,7 @@ xattr -cr /Applications/Clutch.app && open -a Clutch
 | **模型** | 填写云端 API Key（含 OpenCode Zen 等），或若只用本机 CLI 可暂时跳过 |
 | **工具** | 扫描并 **Connect** 本机已装的 CLI（Claude Code、CodeBuddy、Ollama、Codex 等） |
 | **流程引导** | 了解「单聊」和「工作流」的区别 |
-| **权限说明** | 阅读 CLI 权限相关说明（建议认真看） |
+| **权限模式** | 选择 Clutch Agent 权限（默认 **Agent**；另有 Plan / Full / Ask） |
 | **就绪** | 进入主界面 |
 
 > **跳过了向导？** 点左下角 **Settings**，依次配置：工作区 → Models → Tools。  

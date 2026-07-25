@@ -26,8 +26,8 @@ _AUTO_EDIT_APPROVED_TOOLS = frozenset({
     "search_replace",
 })
 
-# Tools that are ALWAYS hard-blocked in read-only modes (plan / explore)
-_READ_ONLY_PERMISSION_MODES = frozenset({"plan", "explore"})
+# Tools that are ALWAYS hard-blocked in read-only modes (ask / plan; explore = legacy ask)
+_READ_ONLY_PERMISSION_MODES = frozenset({"ask", "plan", "explore"})
 
 _PLAN_MODE_BLOCKED_TOKENS = (
     "write", "edit", "create", "patch", "delete", "remove",
@@ -366,7 +366,7 @@ def run_mcp_react_loop(
     on_diff_summary: Callable[[dict[str, Any]], None] | None = None,
     on_subtask: Callable[[dict[str, Any]], None] | None = None,
     pause_on_risky: bool = False,
-    permission_mode: str = "ask",
+    permission_mode: str = "auto_edit",
     approved_tool: dict[str, Any] | None = None,
     approved_keys: set[str] | None = None,
     model_id: str | None = None,
@@ -949,7 +949,11 @@ def run_mcp_react_loop(
                                 token in tool_key for token in _PLAN_MODE_BLOCKED_TOKENS
                             )
                             if is_write_exec:
-                                mode_label = "Explore" if permission_mode == "explore" else "Plan"
+                                if permission_mode == "plan":
+                                    mode_label = "Plan"
+                                else:
+                                    # ask (+ legacy explore)
+                                    mode_label = "Ask"
                                 _emit(
                                     logs,
                                     on_log,
@@ -961,8 +965,9 @@ def run_mcp_react_loop(
                                         "tool_call_id": tc_id,
                                         "content": (
                                             f"[{mode_label} Mode] This operation is blocked. "
-                                            f"You are in read-only mode. "
-                                            "Describe what you WOULD do without executing it."
+                                            f"You are in read-only conversation mode. "
+                                            "Describe what you WOULD do without executing it. "
+                                            "The user can switch to Agent or Full to allow changes."
                                         ),
                                     }
                                 )

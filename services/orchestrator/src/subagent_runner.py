@@ -108,7 +108,7 @@ def run_subagent(
     on_log: Callable[[str], None] | None = None,
     on_subtask_update: Callable[[dict[str, Any]], None] | None = None,
     max_steps: int | None = None,
-    permission_mode: str = "ask",
+    permission_mode: str = "auto_edit",
     pause_on_risky: bool = True,
     subtask_id: str | None = None,
 ) -> dict[str, Any]:

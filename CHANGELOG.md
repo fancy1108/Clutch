@@ -16,6 +16,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 - **Subtask budgets (D10):** Nested explore/implement loops use **16 / 12** tool-step caps (was flat 8); explore system prompt steers away from repeated `list_dir`.
 - **Background jobs (D11):** Composer bar shows **running** jobs only; finished jobs seal into the Chat timeline (Supervisor monitor + View output card).
 - **Kill feedback (D11):** Kill is optimistic (chip flips immediately); user Kill no longer shows the red failure toast; process reap is off-thread.
+- **Permission modes (D27 / D54):** Composer pill is **Agent / Plan / Full / Ask** (Cursor-style order & labels; ∞ / checklist / warning / chat). Default **Agent** (`auto_edit`). **Ask** is conversation-only; legacy **Explore** maps to Ask. First-run onboarding Permissions step matches (selectable modes; no longer “Ask only / coming soon”).
 
 ### Fixed
 

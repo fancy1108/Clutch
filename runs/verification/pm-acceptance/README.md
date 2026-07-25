@@ -14,7 +14,7 @@ Chat 输入框默认仅 **`+` · 模式 pill · 发送/Stop**（Cursor/Copilot �
 | MCP 徽章 | D40 | **+** → Bind MCP / `N MCP` |
 | Scheduled tasks | Cap-D25 | **+** → Scheduled tasks |
 | Enable worktree | D32 | **+** → Enable worktree（启用后上方出状态条） |
-| 权限模式 | D27 | 底栏模式 pill（Explore → Plan → Ask → Edit → Full） |
+| 权限模式 | D27 | 底栏模式 pill（Agent → Plan → Full → Ask；默认 Agent） |
 
 仍会出现在输入框**上方**的，仅限真实状态：排队消息（D20）、Background jobs（D11/D26）、Foreground shell（D34）、已启用 worktree 条（D32）、HITL Allow/Reject 等。
 
@@ -27,7 +27,7 @@ Chat 输入框默认仅 **`+` · 模式 pill · 发送/Stop**（Cursor/Copilot �
 | D10∥D48 子任务 | [D10.md](./D10.md) | `25dc5dc` · **PM ✅ 2026-07-25**（explore done；implement 卡非强制） |
 | D11 后台命令 | [D11.md](./D11.md) | `59b45ee` · **PM ✅ 2026-07-25** |
 | D12 Git + 网页 | [D12.md](./D12.md) | `194d33a` · **PM ✅ 2026-07-25** |
-| D13 权限规则 | [D13.md](./D13.md) | `ed7c568` |
+| D13 权限规则 | [D13.md](./D13.md) | `ed7c568` · **PM ✅ A 2026-07-25**（B/C 跳过） |
 | D51 Chat ↔ Terminal | [D51.md](./D51.md) | `ee4e2a2` |
 | D52 能力↔交互门禁 | [D52.md](./D52.md) | `1365f6d` |
 | D38 Hub 可信状态 | [D38.md](./D38.md) | `b2d8f49` |

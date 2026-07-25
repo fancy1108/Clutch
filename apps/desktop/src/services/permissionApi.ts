@@ -1,38 +1,29 @@
 import { SIDECAR_BASE as BASE, sidecarFetch } from './sidecarUrl';
 
-export type PermissionMode = 'ask' | 'auto_edit' | 'explore' | 'plan' | 'full';
+/** UI modes after Explore→Ask merge (D27 / D54). `explore` still accepted from API as alias. */
+export type PermissionMode = 'ask' | 'auto_edit' | 'plan' | 'full' | 'explore';
 
-
-/** Display order: safer → more autonomous (mode pill menu). */
+/**
+ * Display order mirrors Cursor Agent menu: Agent → Plan → … → Ask.
+ * Internal ids stay stable (`auto_edit` = Agent).
+ */
 export const PERMISSION_MODES: {
-  id: PermissionMode;
+  id: Exclude<PermissionMode, 'explore'>;
   label: string;
   description: string;
   icon: string;
 }[] = [
   {
-    id: 'explore',
-    label: 'Explore',
-    description: 'Read and search only — no writes.',
-    icon: 'visibility',
+    id: 'auto_edit',
+    label: 'Agent',
+    description: 'Edit files and use tools; still ask on risky shell.',
+    icon: 'all_inclusive',
   },
   {
     id: 'plan',
     label: 'Plan',
     description: 'Propose a plan before editing.',
-    icon: 'edit_note',
-  },
-  {
-    id: 'ask',
-    label: 'Ask',
-    description: 'Ask before file changes or risky tools.',
-    icon: 'front_hand',
-  },
-  {
-    id: 'auto_edit',
-    label: 'Edit',
-    description: 'Edit files automatically; still ask on risky shell.',
-    icon: 'verified_user',
+    icon: 'checklist',
   },
   {
     id: 'full',
@@ -40,27 +31,44 @@ export const PERMISSION_MODES: {
     description: 'Fewer confirmations — use with care.',
     icon: 'warning',
   },
+  {
+    id: 'ask',
+    label: 'Ask',
+    description: 'Conversation only — read/search, no writes or shell.',
+    icon: 'chat_bubble',
+  },
 ];
+
+/** Normalize legacy explore → ask; default Agent (`auto_edit`). */
+export function normalizePermissionMode(mode: string | null | undefined): PermissionMode {
+  const raw = (mode || 'auto_edit').trim().toLowerCase();
+  if (raw === 'explore') return 'ask';
+  if (raw === 'auto_edit' || raw === 'plan' || raw === 'full' || raw === 'ask') {
+    return raw;
+  }
+  return 'auto_edit';
+}
 
 export async function fetchPermissionMode(): Promise<PermissionMode> {
   const response = await sidecarFetch(`${BASE}/api/preferences/permission-mode`);
   if (!response.ok) throw new Error(`permission-mode fetch failed (${response.status})`);
   const body = (await response.json()) as { permission_mode: string };
-  return (body.permission_mode as PermissionMode) || 'ask';
+  return normalizePermissionMode(body.permission_mode);
 }
 
 export async function savePermissionMode(mode: PermissionMode): Promise<PermissionMode> {
+  const toSave = normalizePermissionMode(mode);
   const response = await sidecarFetch(`${BASE}/api/preferences/permission-mode`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ mode }),
+    body: JSON.stringify({ mode: toSave }),
   });
   if (!response.ok) {
     const body = (await response.json().catch(() => ({}))) as { detail?: { message?: string } };
     throw new Error(body.detail?.message ?? `permission-mode save failed (${response.status})`);
   }
   const saved = (await response.json()) as { permission_mode: string };
-  return (saved.permission_mode as PermissionMode) || 'ask';
+  return normalizePermissionMode(saved.permission_mode);
 }
 
 export async function fetchStrictSandbox(): Promise<boolean> {
