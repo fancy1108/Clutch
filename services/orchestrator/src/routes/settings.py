@@ -67,6 +67,10 @@ class StrictSandboxRequest(BaseModel):
     enabled: bool
 
 
+class AllowNetworkRequest(BaseModel):
+    enabled: bool
+
+
 class PermissionRulesRequest(BaseModel):
     rules: list[dict[str, Any]] = Field(default_factory=list)
 
@@ -614,6 +618,20 @@ async def save_strict_sandbox_route(body: StrictSandboxRequest) -> dict[str, str
     from src.preferences_storage import save_strict_sandbox
 
     return save_strict_sandbox(body.enabled)
+
+
+@router.get("/api/preferences/allow-network")
+async def get_allow_network() -> dict[str, bool]:
+    from src.preferences_storage import load_allow_network
+
+    return {"allow_network": load_allow_network()}
+
+
+@router.post("/api/preferences/allow-network")
+async def save_allow_network_route(body: AllowNetworkRequest) -> dict[str, str]:
+    from src.preferences_storage import save_allow_network
+
+    return save_allow_network(body.enabled)
 
 
 @router.post("/api/preferences/permission-mode")

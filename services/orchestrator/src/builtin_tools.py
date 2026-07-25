@@ -41,7 +41,9 @@ def is_virtual_server(server: dict[str, Any]) -> bool:
 
 
 def list_builtin_tools() -> list[dict[str, Any]]:
-    return [
+    from src.preferences_storage import load_allow_network
+
+    tools: list[dict[str, Any]] = [
         {
             "name": "read_file",
             "description": (
@@ -518,6 +520,28 @@ def list_builtin_tools() -> list[dict[str, Any]]:
             },
         },
     ]
+    if load_allow_network():
+        tools.append(
+            {
+                "name": "web_search",
+                "description": (
+                    "Search the public web for recent information (D15). "
+                    "Returns titles, URLs, and snippets. Requires Settings → Allow network."
+                ),
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "query": {"type": "string", "description": "Search query."},
+                        "max_results": {
+                            "type": "integer",
+                            "description": "Max results to return (default 5).",
+                        },
+                    },
+                    "required": ["query"],
+                },
+            }
+        )
+    return tools
 
 
 def is_propose_plan_tool(name: str) -> bool:
@@ -1209,6 +1233,7 @@ def execute_builtin_tool(tool_name: str, arguments: dict[str, Any]) -> str:
         "git_diff": _tool_git_diff,
         "git_commit": _tool_git_commit,
         "web_fetch": _tool_web_fetch,
+        "web_search": _tool_web_search,
         "apply_patch": _tool_apply_patch,
         "propose_plan": _tool_propose_plan,
         "todo_write": _tool_todo_write,
@@ -1795,4 +1820,54 @@ def _tool_web_fetch(arguments: dict[str, Any]) -> str:
         payload = fetch_url_text(url, timeout_sec=timeout)
     except ValueError as exc:
         return f"Error executing tool: {exc}"
+    return json.dumps(payload, ensure_ascii=False)
+
+
+def _tool_web_search(arguments: dict[str, Any]) -> str:
+    from src.preferences_storage import load_allow_network
+    from src.web_search_util import search_web
+
+    if not load_allow_network():
+        return (
+            "Error executing tool: web_search is disabled. "
+            "Enable Settings → General → Allow network to search the web."
+        )
+    query = str(arguments.get("query") or "").strip()
+    if not query:
+        return "Error executing tool: web_search requires `query`"
+    try:
+        max_results = int(arguments.get("max_results") or 5)
+    except (TypeError, ValueError):
+        max_results = 5
+    try:
+        payload = search_web(query, max_results=max_results)
+    except ValueError as exc:
+        return f"Error executing tool: {exc}"
+    except Exception as exc:
+        return f"Error executing tool: web search failed: {exc}"
+    return json.dumps(payload, ensure_ascii=False)
+
+
+def _tool_web_search(arguments: dict[str, Any]) -> str:
+    from src.preferences_storage import load_allow_network
+    from src.web_search_util import search_web
+
+    if not load_allow_network():
+        return (
+            "Error executing tool: web_search is disabled. "
+            "Enable Settings → General → Allow network to search the web."
+        )
+    query = str(arguments.get("query") or "").strip()
+    if not query:
+        return "Error executing tool: web_search requires `query`"
+    try:
+        max_results = int(arguments.get("max_results") or 5)
+    except (TypeError, ValueError):
+        max_results = 5
+    try:
+        payload = search_web(query, max_results=max_results)
+    except ValueError as exc:
+        return f"Error executing tool: {exc}"
+    except Exception as exc:
+        return f"Error executing tool: web search failed: {exc}"
     return json.dumps(payload, ensure_ascii=False)

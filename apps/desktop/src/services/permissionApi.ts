@@ -82,3 +82,24 @@ export async function saveStrictSandbox(enabled: boolean): Promise<boolean> {
   const saved = (await response.json()) as { strict_sandbox: string };
   return saved.strict_sandbox === 'true';
 }
+
+export async function fetchAllowNetwork(): Promise<boolean> {
+  const response = await sidecarFetch(`${BASE}/api/preferences/allow-network`);
+  if (!response.ok) throw new Error(`allow-network fetch failed (${response.status})`);
+  const body = (await response.json()) as { allow_network: boolean };
+  return Boolean(body.allow_network);
+}
+
+export async function saveAllowNetwork(enabled: boolean): Promise<boolean> {
+  const response = await sidecarFetch(`${BASE}/api/preferences/allow-network`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enabled }),
+  });
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as { detail?: { message?: string } };
+    throw new Error(body.detail?.message ?? `allow-network save failed (${response.status})`);
+  }
+  const saved = (await response.json()) as { allow_network: string };
+  return saved.allow_network === 'true';
+}

@@ -14,7 +14,7 @@ import { LegacyIcon } from './ui/LegacyIcon';
 import { SettingsPageHeader, SettingsPageShell } from './ui/SettingsPageHeader';
 import { SettingsSelect } from './ui/SettingsSelect';
 import { saveAvatarPreference } from '../services/themeApi';
-import { fetchStrictSandbox, saveStrictSandbox } from '../services/permissionApi';
+import { fetchAllowNetwork, fetchStrictSandbox, saveAllowNetwork, saveStrictSandbox } from '../services/permissionApi';
 import { FONT_SIZE_LABEL_KEYS, FONT_SIZE_OPTIONS, type AppFontSize } from '../services/fontSizePreference';
 import { setUserChatAvatar } from '../services/clutchState';
 import defaultAvatar from '../assets/default_avatar.jpg';
@@ -87,6 +87,8 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [strictSandbox, setStrictSandbox] = useState(false);
   const [strictSandboxLoading, setStrictSandboxLoading] = useState(true);
+  const [allowNetwork, setAllowNetwork] = useState(false);
+  const [allowNetworkLoading, setAllowNetworkLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -99,6 +101,16 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
       })
       .finally(() => {
         if (!cancelled) setStrictSandboxLoading(false);
+      });
+    void fetchAllowNetwork()
+      .then((enabled) => {
+        if (!cancelled) setAllowNetwork(enabled);
+      })
+      .catch(() => {
+        if (!cancelled) setAllowNetwork(false);
+      })
+      .finally(() => {
+        if (!cancelled) setAllowNetworkLoading(false);
       });
     return () => {
       cancelled = true;
@@ -418,6 +430,34 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
                       }`}
                     >
                       {strictSandbox ? t('Strict sandbox: On') : t('Strict sandbox: Off')}
+                    </button>
+                  </div>
+
+                  {/* Allow network (D15) */}
+                  <div className="bg-surface-container/30 p-6 rounded-2xl border border-outline/30 space-y-4">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                      {t('Allow network')}
+                    </h3>
+                    <p className="text-[11px] text-on-surface-variant/80 max-w-xl">
+                      {t('Enable the builtin web_search tool for Clutch Agent. Off by default.')}
+                    </p>
+                    <button
+                      type="button"
+                      data-testid="allow-network-toggle"
+                      disabled={allowNetworkLoading}
+                      onClick={() => {
+                        const next = !allowNetwork;
+                        setAllowNetwork(next);
+                        void saveAllowNetwork(next).catch((err) => {
+                          console.error('Failed to save allow network:', err);
+                          setAllowNetwork(!next);
+                        });
+                      }}
+                      className={`${BTN_SECONDARY} px-3 py-1.5 text-xs font-semibold ${
+                        allowNetwork ? 'border-primary/50 text-primary' : ''
+                      }`}
+                    >
+                      {allowNetwork ? t('Allow network: On') : t('Allow network: Off')}
                     </button>
                   </div>
 

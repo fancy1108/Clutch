@@ -25,6 +25,7 @@ ALLOWED_FONT_SIZES = frozenset({"small", "default", "large", "xlarge", "xxlarge"
 ALLOWED_PERMISSION_MODES = frozenset({"ask", "auto_edit", "explore", "plan", "full"})
 DEFAULT_PERMISSION_MODE = "ask"
 DEFAULT_STRICT_SANDBOX = "false"
+DEFAULT_ALLOW_NETWORK = "false"
 
 
 def preferences_dir() -> Path:
@@ -51,6 +52,7 @@ def _defaults() -> dict[str, str]:
         "user_name": "User",
         "onboarding_completed": "false",
         "strict_sandbox": DEFAULT_STRICT_SANDBOX,
+        "allow_network": DEFAULT_ALLOW_NETWORK,
     }
 
 
@@ -80,6 +82,9 @@ def load_preferences() -> dict[str, str]:
     strict_sandbox = str(data.get("strict_sandbox") or DEFAULT_STRICT_SANDBOX).lower()
     if strict_sandbox not in {"true", "false"}:
         strict_sandbox = DEFAULT_STRICT_SANDBOX
+    allow_network = str(data.get("allow_network") or DEFAULT_ALLOW_NETWORK).lower()
+    if allow_network not in {"true", "false"}:
+        allow_network = DEFAULT_ALLOW_NETWORK
     if theme_id not in ALLOWED_THEME_IDS:
         theme_id = DEFAULT_THEME_ID
     if language not in ALLOWED_LANGUAGES:
@@ -97,6 +102,7 @@ def load_preferences() -> dict[str, str]:
         "user_name": user_name,
         "onboarding_completed": onboarding_completed,
         "strict_sandbox": strict_sandbox,
+        "allow_network": allow_network,
     }
 
 
@@ -158,9 +164,19 @@ def load_strict_sandbox() -> bool:
     return load_preferences().get("strict_sandbox", DEFAULT_STRICT_SANDBOX) == "true"
 
 
+def load_allow_network() -> bool:
+    return load_preferences().get("allow_network", DEFAULT_ALLOW_NETWORK) == "true"
+
+
 def save_strict_sandbox(enabled: bool) -> dict[str, str]:
     prefs = load_preferences()
     prefs["strict_sandbox"] = "true" if enabled else "false"
+    return _write_preferences(prefs)
+
+
+def save_allow_network(enabled: bool) -> dict[str, str]:
+    prefs = load_preferences()
+    prefs["allow_network"] = "true" if enabled else "false"
     return _write_preferences(prefs)
 
 
