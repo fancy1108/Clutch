@@ -8,10 +8,11 @@
 
 | 项 | 说明 |
 |----|------|
+| **Commit** | `624c2c5` |
 | **PM** | D13 ✅ 用例 A — `D13.md`；B/C 跳过；ROADMAP ✅ |
 | **Changed** | Ask=只读；默认 Agent；Cursor 序/图标；onboarding 可选模式；DECISIONS **D54** |
 | **Evidence** | `runs/verification/pm-acceptance/D13.md` |
-| **Verification** | `pytest tests/test_permission_explore_d27.py tests/test_permission_rules_d13.py tests/test_agent_prompt_d53.py -q`（9+ 通过） |
+| **Verification** | `./scripts/verify.sh`（pre-commit）；`pytest` permission + mcp_react + plan D2 相关用例通过 |
 
 ## D12 PM 通过（2026-07-25）
 
