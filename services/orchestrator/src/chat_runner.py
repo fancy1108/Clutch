@@ -770,6 +770,10 @@ def _tool_step_live_patch(
     return {"pending_tool_steps": steps, "run_stats": stats}
 
 
+def _reasoning_live_patch(reasoning: str) -> dict[str, Any]:
+    return {"live_reasoning": reasoning}
+
+
 def _subtask_live_patch(
     state: ClutchState, card: dict[str, Any]
 ) -> dict[str, Any]:
@@ -811,6 +815,7 @@ def _merge_patch(state: ClutchState, patch: dict[str, Any]) -> ClutchState:
         "pending_handoff_drafts",
         "focused_lane_id",
         "pending_tool_steps",
+        "live_reasoning",
         "pending_subtasks",
         "bg_jobs",
         "agent_todos",
@@ -1655,6 +1660,7 @@ async def _llm_chat_reply(
     cli_session_id: str | None = None,
     emit_log: Callable[[str], Awaitable[None]] | None = None,
     emit_tool_step: Callable[[dict[str, Any]], Awaitable[None]] | None = None,
+    emit_reasoning: Callable[[str], Awaitable[None]] | None = None,
     emit_todos: Callable[[list[dict[str, Any]]], Awaitable[None]] | None = None,
     emit_verification: Callable[[dict[str, Any]], Awaitable[None]] | None = None,
     emit_diff_summary: Callable[[dict[str, Any]], Awaitable[None]] | None = None,
@@ -1898,6 +1904,12 @@ async def _llm_chat_reply(
                             asyncio.run_coroutine_threadsafe(emit_tool_step(step), loop)
                         )
 
+                def on_reasoning(text: str) -> None:
+                    if emit_reasoning:
+                        step_futures.append(
+                            asyncio.run_coroutine_threadsafe(emit_reasoning(text), loop)
+                        )
+
                 def on_todos(todos: list[dict[str, Any]]) -> None:
                     if emit_todos:
                         step_futures.append(
@@ -1933,6 +1945,7 @@ async def _llm_chat_reply(
                         log_prefix="CHAT",
                         on_log=on_log if emit_log else None,
                         on_tool_step=on_tool_step if emit_tool_step else None,
+                        on_reasoning=on_reasoning if emit_reasoning else None,
                         on_todos=on_todos if emit_todos else None,
                         on_verification=on_verification if emit_verification else None,
                         on_diff_summary=on_diff_summary if emit_diff_summary else None,
@@ -2201,7 +2214,7 @@ async def _handle_plain_chat_mcp_decision(
                 "terminal_logs": list(state["terminal_logs"]) + [stamp_log_line(revise_line)],
                 "status": "running",
                 "active_agent": pending.reply_label,
-                "pending_tool_steps": [],
+                "pending_tool_steps": [], "live_reasoning": "",
             },
         )
         _commit_run_state(run_id, state)
@@ -2235,6 +2248,13 @@ async def _handle_plain_chat_mcp_decision(
             _commit_run_state(run_id, state)
             await _notify_run_state(websocket, run_id, state, patch)
             await _maybe_notify_step_file_diff(websocket, run_id, step)
+
+        async def emit_reasoning(text: str) -> None:
+            nonlocal state
+            patch = _reasoning_live_patch(text)
+            state = _merge_patch(state, patch)
+            _commit_run_state(run_id, state)
+            await _notify_run_state(websocket, run_id, state, patch)
 
         async def emit_todos(todos: list[dict[str, Any]]) -> None:
             nonlocal state
@@ -2280,6 +2300,7 @@ async def _handle_plain_chat_mcp_decision(
             agent_id=pending.agent_id,
             emit_log=emit_log,
             emit_tool_step=emit_tool_step,
+            emit_reasoning=emit_reasoning,
             emit_todos=emit_todos,
             emit_verification=emit_verification,
             emit_diff_summary=emit_diff_summary,
@@ -2344,7 +2365,7 @@ async def _handle_plain_chat_mcp_decision(
             "terminal_logs": list(state["terminal_logs"]) + [stamp_log_line(log_line)],
             "status": "idle",
             "active_agent": pending.reply_label,
-            "pending_tool_steps": [],
+            "pending_tool_steps": [], "live_reasoning": "",
         }
         state = _merge_patch(state, final_patch)
         _commit_run_state(run_id, state)
@@ -2405,6 +2426,13 @@ async def _handle_plain_chat_mcp_decision(
         await _notify_run_state(websocket, run_id, state, patch)
         await _maybe_notify_step_file_diff(websocket, run_id, step)
 
+    async def emit_reasoning(text: str) -> None:
+        nonlocal state
+        patch = _reasoning_live_patch(text)
+        state = _merge_patch(state, patch)
+        _commit_run_state(run_id, state)
+        await _notify_run_state(websocket, run_id, state, patch)
+
     async def emit_todos(todos: list[dict[str, Any]]) -> None:
         nonlocal state
         state = _merge_patch(state, {"agent_todos": list(todos)})
@@ -2464,6 +2492,7 @@ async def _handle_plain_chat_mcp_decision(
         agent_id=pending.agent_id,
         emit_log=emit_log,
         emit_tool_step=emit_tool_step,
+        emit_reasoning=emit_reasoning,
         emit_todos=emit_todos,
         emit_verification=emit_verification,
         emit_diff_summary=emit_diff_summary,
@@ -2620,7 +2649,7 @@ async def _finish_plain_chat_after_llm(
         "terminal_logs": final_logs,
         "status": "idle",
         "active_agent": active_agent,
-        "pending_tool_steps": [],
+        "pending_tool_steps": [], "live_reasoning": "",
         "pending_subtasks": [],
         "awaiting_continue": offer_continue,
         "run_stats": build_run_stats(
@@ -2697,7 +2726,7 @@ async def _apply_plain_chat_stop(
         "status": "idle",
         "terminal_logs": logs,
         "messages": list(state["messages"]) + [supervisor],
-        "pending_tool_steps": [],
+        "pending_tool_steps": [], "live_reasoning": "",
         "awaiting_continue": True,
         "run_stats": stats,
     }
@@ -2967,7 +2996,7 @@ async def _handle_plain_chat(
             "messages": messages,
             "status": "running",
             "active_agent": active_agent,
-            "pending_tool_steps": [],
+            "pending_tool_steps": [], "live_reasoning": "",
         }
         if runtime_mode() == "hybrid":
             user_patch["shell_session_status"] = "ready"
@@ -3032,6 +3061,17 @@ async def _handle_plain_chat(
         )
         await _maybe_notify_step_file_diff(websocket, run_id, step)
 
+    async def emit_reasoning(text: str) -> None:
+        nonlocal state
+        patch = _reasoning_live_patch(text)
+        state = _merge_patch(state, patch)
+        _commit_run_state(run_id, state)
+        await _try_ws_notify(
+            _notify_run_state(websocket, run_id, state, patch),
+            run_id=run_id,
+            what="state_patch",
+        )
+
     async def emit_todos(todos: list[dict[str, Any]]) -> None:
         nonlocal state
         state = _merge_patch(state, {"agent_todos": list(todos)})
@@ -3089,6 +3129,7 @@ async def _handle_plain_chat(
             cli_session_id=stored_session_id,
             emit_log=emit_log,
             emit_tool_step=emit_tool_step,
+            emit_reasoning=emit_reasoning,
             emit_todos=emit_todos,
             emit_verification=emit_verification,
             emit_diff_summary=emit_diff_summary,
@@ -3262,7 +3303,7 @@ async def _handle_plain_chat(
         "terminal_logs": final_logs,
         "status": "idle",
         "active_agent": active_agent,
-        "pending_tool_steps": [],
+        "pending_tool_steps": [], "live_reasoning": "",
         "pending_subtasks": [],
         **_token_patch_turn(state, user_text=text, assistant_text=reply_text),
     }
@@ -3497,7 +3538,7 @@ async def _handle_flow_refine_message(
         "status": "refining",
         "refine_agent_id": resolved_id,
         "active_agent": active_agent,
-        "pending_tool_steps": [],
+        "pending_tool_steps": [], "live_reasoning": "",
     }
     if runtime_mode() == "hybrid":
         user_patch["shell_session_status"] = "ready"
@@ -3548,6 +3589,13 @@ async def _handle_flow_refine_message(
         _commit_run_state(run_id, state)
         await _notify_run_state(websocket, run_id, state, patch)
         await _maybe_notify_step_file_diff(websocket, run_id, step)
+
+    async def emit_reasoning(text: str) -> None:
+        nonlocal state
+        patch = _reasoning_live_patch(text)
+        state = _merge_patch(state, patch)
+        _commit_run_state(run_id, state)
+        await _notify_run_state(websocket, run_id, state, patch)
 
     async def emit_todos(todos: list[dict[str, Any]]) -> None:
         nonlocal state
@@ -3613,6 +3661,7 @@ async def _handle_flow_refine_message(
             cli_session_id=stored_session_id,
             emit_log=emit_log,
             emit_tool_step=emit_tool_step,
+            emit_reasoning=emit_reasoning,
             emit_todos=emit_todos,
             emit_verification=emit_verification,
             emit_diff_summary=emit_diff_summary,
@@ -3703,7 +3752,7 @@ async def _handle_flow_refine_message(
         "refine_draft_output": reply_text,
         "active_agent": model_name,
         "status": "refining",
-        "pending_tool_steps": [],
+        "pending_tool_steps": [], "live_reasoning": "",
         **cli_session_patch(cli_session_id, resolved_id),
         **_token_patch_turn(state, user_text=body or text, assistant_text=reply_text),
     }

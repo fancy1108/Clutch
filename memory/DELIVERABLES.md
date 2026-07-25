@@ -716,6 +716,14 @@ _v1.0.0–v1.0.2 已发布交付见 `archive/DELIVERABLES-OSR.md` 及 Git tag / 
 
 ---
 
+## D19 — Thinking stream in live activity
+
+- **Verification:** `uv run pytest tests/test_thinking_stream_d19.py -q` → 2 passed；`pnpm test src/services/agentLiveReasoning.test.ts` → 1 passed
+- **PM:** `runs/verification/pm-acceptance/D19.md`
+- **Files:** `mcp_react.py`, `tool_steps.py`, `chat_runner.py`, `state.py`, `AgentLiveActivity.tsx`, `ChatFeed.tsx`, `shared-types/index.ts`
+
+---
+
 ## D27 — Explore / Plan / Implement modes (`a269764`)
 
 - **Verification:** `cd services/orchestrator && uv run pytest tests/test_permission_explore_d27.py -q` → 3 passed

@@ -202,6 +202,26 @@ def make_tool_step(
     }
 
 
+def append_execute_output_detail(
+    step: dict[str, Any],
+    tool_name: str,
+    result: str,
+    *,
+    max_len: int = 480,
+) -> dict[str, Any]:
+    """D19 — attach shell output snippet to execute tool steps for live activity."""
+    if kind_for_tool(short_tool_name(tool_name)) != "execute":
+        return step
+    snippet = (result or "").strip()
+    if not snippet:
+        return step
+    if len(snippet) > max_len:
+        snippet = f"{snippet[: max_len - 1]}…"
+    merged = dict(step)
+    merged["detail"] = snippet
+    return merged
+
+
 def upsert_tool_step(steps: list[dict[str, Any]], step: dict[str, Any]) -> list[dict[str, Any]]:
     """Replace by id or append; returns a new list."""
     out = list(steps)

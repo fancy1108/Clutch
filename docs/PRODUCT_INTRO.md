@@ -126,6 +126,7 @@ graph TD
 | D22 usage dashboard | Click stats strip → Usage dashboard (current + session history steps/tok) |
 | D27 mode presets | Explore / Plan / Implement pills above composer (`explore` / `plan` / `auto_edit`) |
 | D20 busy queue | Composer **Pending messages** strip with Queue #n + cancel while Agent running |
+| D19 thinking stream | D46 live activity fold **Thinking / 思考** + shell output in step detail |
 | D10 subtasks | Nested Subtasks cards under parent bubble (D48) |
 | D11 background | Background jobs bar (view output / kill) above composer |
 | D12 git/web | Tool-trail steps for `git_*` / `web_fetch` |

@@ -835,8 +835,9 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
       }),
     [pendingToolSteps, clutchOrchestraState.terminal_logs, awaitingHuman],
   );
+  const liveReasoning = clutchOrchestraState.live_reasoning?.trim() || '';
   const showLiveActivity =
-    liveActivitySteps.length > 0 &&
+    (liveActivitySteps.length > 0 || liveReasoning.length > 0) &&
     (showThinking || awaitingHuman || (isRunning && isPlainLlmChat));
 
   const chatScrollBottomPad = useMemo(
@@ -1438,6 +1439,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                   >
                     <AgentLiveActivity
                       steps={liveActivitySteps}
+                      reasoningContent={liveReasoning}
                       live
                       defaultOpen
                       onOpenFile={onOpenWorkspaceFile}
@@ -1479,6 +1481,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                 >
                   <AgentLiveActivity
                     steps={liveActivitySteps}
+                    reasoningContent={liveReasoning}
                     live
                     defaultOpen
                     onOpenFile={onOpenWorkspaceFile}

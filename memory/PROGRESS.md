@@ -11,6 +11,12 @@
 
 ## Recent Sessions
 
+## 2026-07-25 会话（扩展 D14–D36：D19）
+
+- **Commit：** _(D19 pending)_
+- **实现：** `live_reasoning` WS 流 + AgentLiveActivity「思考」折叠；shell 输出 snippet
+- **下次：** D26
+
 ## 2026-07-25 会话（扩展 D14–D36：D20）
 
 - **Commit：** `94fdc8f`（D20）

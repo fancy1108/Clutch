@@ -140,7 +140,7 @@ def _execute_tool_call(
     on_diff_summary: Callable[[dict[str, Any]], None] | None = None,
     step_id: str | None = None,
 ) -> str:
-    from src.tool_steps import make_tool_step
+    from src.tool_steps import append_execute_output_detail, make_tool_step
 
     def _emit_inline_diffs(tool_name: str, args: dict[str, Any], result: str) -> list[dict[str, Any]]:
         """Build Cursor-style per-edit cards; attach to tool steps (not separate Chat bubbles)."""
@@ -170,6 +170,10 @@ def _execute_tool_call(
             if cards and cards[0].get("files"):
                 step["fileDiff"] = dict(cards[0]["files"][0])
                 step["title"] = f"Edit {cards[0].get('title') or tool_name}"
+            else:
+                step = append_execute_output_detail(step, tool_name, result)
+        elif status == "failed" and result:
+            step = append_execute_output_detail(step, tool_name, result)
         on_tool_step(step)
 
     route = tool_routes.get(func_name)
@@ -301,6 +305,21 @@ def _router_chat(
         raise
 
 
+def _accumulate_model_reasoning(
+    response: Any,
+    chunks: list[str],
+    on_reasoning: Callable[[str], None] | None,
+) -> None:
+    from src.llm.router import LLMProviderRouter
+
+    chunk = LLMProviderRouter.extract_reasoning(response)
+    if not chunk:
+        return
+    chunks.append(chunk)
+    if on_reasoning:
+        on_reasoning("\n\n".join(chunks))
+
+
 def run_mcp_react_loop(
     *,
     messages: list[dict[str, Any]],
@@ -309,6 +328,7 @@ def run_mcp_react_loop(
     max_steps: int = 24,
     on_log: Callable[[str], None] | None = None,
     on_tool_step: Callable[[dict[str, Any]], None] | None = None,
+    on_reasoning: Callable[[str], None] | None = None,
     on_todos: Callable[[list[dict[str, Any]]], None] | None = None,
     existing_todos: list[dict[str, Any]] | None = None,
     on_verification: Callable[[dict[str, Any]], None] | None = None,
@@ -361,9 +381,9 @@ def run_mcp_react_loop(
         )
         from src.llm.router import LLMProviderRouter
 
-        output = LLMProviderRouter.extract_content(
-            router.chat(list(messages), tools=None, model_id=model_id)
-        )
+        response = router.chat(list(messages), tools=None, model_id=model_id)
+        _accumulate_model_reasoning(response, [], on_reasoning)
+        output = LLMProviderRouter.extract_content(response)
         _emit(logs, on_log, f"[{log_prefix}] Completed via {spec.name}")
         return McpRunOutcome(
             output=output,
@@ -386,6 +406,7 @@ def run_mcp_react_loop(
     consecutive_failures = 0
     fuse_triggered = False
     fuse_limit = max_consecutive_failures()
+    reasoning_chunks: list[str] = []
     _emit(logs, on_log, f"[{log_prefix}] Starting MCP ReAct with {len(servers)} server(s)")
 
     for server in servers:
@@ -622,6 +643,7 @@ def run_mcp_react_loop(
                 log_prefix=log_prefix,
                 on_log=on_log,
             )
+            _accumulate_model_reasoning(response, reasoning_chunks, on_reasoning)
             if not use_tools and "no tools" not in engine_label:
                 engine_label = f"{spec.name} · no tools"
             if isinstance(response, dict) and response.get("tool_calls"):

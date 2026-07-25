@@ -348,6 +348,7 @@ const zhTranslations: Record<string, string> = {
   "Confirm": "确认",
   "Reload": "重新加载",
   "Thinking...": "思考中...",
+  "Thinking": "思考",
   "step": "步",
   "steps": "步",
   "Awaiting approval": "等待批准",

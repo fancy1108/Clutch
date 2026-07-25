@@ -8,6 +8,8 @@ import { InlineFileDiffCard } from './DiffSummaryCardView';
 
 type AgentLiveActivityProps = {
   steps: ToolStep[];
+  /** D19 — foldable model reasoning in the same live activity strip as D46. */
+  reasoningContent?: string | null;
   /** Live turn: keep header reflecting running/awaiting verbs. */
   live?: boolean;
   /** Force expanded (e.g. while awaiting approval). */
@@ -37,6 +39,7 @@ function StepStatusIcon({ status }: { status: ToolStep['status'] }) {
  */
 export const AgentLiveActivity: React.FC<AgentLiveActivityProps> = ({
   steps,
+  reasoningContent,
   live = false,
   defaultOpen = false,
   className = '',
@@ -45,9 +48,12 @@ export const AgentLiveActivity: React.FC<AgentLiveActivityProps> = ({
 }) => {
   const { t } = useLanguage();
   const [open, setOpen] = useState(defaultOpen);
+  const [reasoningOpen, setReasoningOpen] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
 
-  if (!steps.length) return null;
+  const reasoningText = reasoningContent?.trim() ?? '';
+  const hasReasoning = reasoningText.length > 0;
+  if (!steps.length && !hasReasoning) return null;
 
   const editDiffSteps = steps.filter(
     (step) => step.fileDiff && (step.status === 'completed' || step.status === 'failed'),
@@ -64,7 +70,30 @@ export const AgentLiveActivity: React.FC<AgentLiveActivityProps> = ({
       aria-live={live ? 'polite' : undefined}
       aria-label={awaiting ? t('Awaiting approval') : header}
     >
-      {trailSteps.length > 0 || awaiting || editDiffSteps.length === 0 ? (
+      {hasReasoning ? (
+        <div className="mb-1" data-testid="agent-live-reasoning">
+          <button
+            type="button"
+            onClick={() => setReasoningOpen((value) => !value)}
+            className="flex w-full items-center gap-1.5 rounded-md py-1 px-1 text-left text-on-surface-variant hover:bg-surface-container/70 hover:text-on-surface transition-colors"
+          >
+            <ChevronRight
+              className={`h-3.5 w-3.5 shrink-0 text-on-surface-variant/60 transition-transform duration-200 ${
+                reasoningOpen ? 'rotate-90' : ''
+              }`}
+              strokeWidth={2}
+            />
+            <span className="text-[11px] font-medium">{t('Thinking')}</span>
+          </button>
+          {reasoningOpen ? (
+            <pre className="ml-[1.1rem] mt-0.5 mb-1 whitespace-pre-wrap break-words text-[10px] leading-relaxed font-mono text-on-surface-variant/85 max-h-40 overflow-y-auto border-l border-outline-variant/25 pl-2.5">
+              {reasoningText}
+            </pre>
+          ) : null}
+        </div>
+      ) : null}
+
+      {(trailSteps.length > 0 || awaiting) ? (
         <button
           type="button"
           onClick={() => setOpen((value) => !value)}

@@ -398,6 +398,8 @@ export interface ClutchState {
   };
   /** D9: show Continue after Stop / loop fuse / max-steps. */
   awaiting_continue?: boolean;
+  /** D19: model reasoning stream for the in-flight Chat turn. */
+  live_reasoning?: string;
   /** D10/D48: live nested subtask cards while parent turn runs. */
   pending_subtasks?: SubtaskCard[];
   /** D11: background shell jobs for this Chat session. */
