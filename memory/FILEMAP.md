@@ -137,6 +137,7 @@
 | Chat 流与人工干预 UI | `components/ChatFeed.tsx` |
 | Chat 工具步骤条解析（D46） | `services/agentActivitySteps.ts` |
 | Chat 工具轨迹 UI（D46 verb_group） | `components/AgentLiveActivity.tsx` |
+| Chat ↔ Terminal 同步（D51） | `services/chatTerminalSync.ts` · `AgentLiveActivity` / `SubtaskCardView` 「在 Terminal 查看」 |
 | Chat 变更文件芯片（D47） | `components/FilesChangedChips.tsx` |
 | Chat 计划卡（D2/D49） | `components/PlanCardView.tsx` · builtin `propose_plan` |
 | Chat Todo 卡（D3/D49） | `components/TodoCardView.tsx` · builtin `todo_write` |

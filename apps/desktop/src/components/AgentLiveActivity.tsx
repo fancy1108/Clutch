@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Check, ChevronRight, Loader2, ShieldAlert, X } from 'lucide-react';
+import { Check, ChevronRight, Loader2, ShieldAlert, Terminal, X } from 'lucide-react';
 import type { ToolStep } from '../types';
 import { verbGroupHeaderLabel } from '../services/agentActivitySteps';
+import { isTerminalSyncableStep } from '../services/chatTerminalSync';
 import { useLanguage } from './LanguageContext';
 import { InlineFileDiffCard } from './DiffSummaryCardView';
 
@@ -13,6 +14,8 @@ type AgentLiveActivityProps = {
   defaultOpen?: boolean;
   className?: string;
   onOpenFile?: (path: string) => void;
+  /** D51 — jump to Terminal lane / matching log for Shell steps. */
+  onViewInTerminal?: (step: ToolStep) => void;
 };
 
 function StepStatusIcon({ status }: { status: ToolStep['status'] }) {
@@ -38,6 +41,7 @@ export const AgentLiveActivity: React.FC<AgentLiveActivityProps> = ({
   defaultOpen = false,
   className = '',
   onOpenFile,
+  onViewInTerminal,
 }) => {
   const { t } = useLanguage();
   const [open, setOpen] = useState(defaultOpen);
@@ -85,29 +89,47 @@ export const AgentLiveActivity: React.FC<AgentLiveActivityProps> = ({
         <ol className="ml-[1.1rem] mt-0.5 mb-1 border-l border-outline-variant/25 pl-2.5 space-y-0.5">
           {trailSteps.map((step) => {
             const showDetail = detailId === step.id && Boolean(step.detail);
+            const canSyncTerminal = Boolean(onViewInTerminal) && isTerminalSyncableStep(step);
             return (
               <li key={step.id} className="min-w-0">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setDetailId((current) => (current === step.id ? null : step.id))
-                  }
-                  className="flex w-full items-center gap-2 rounded-md px-1 py-1 text-left hover:bg-surface-container/60 transition-colors"
-                >
-                  <span className="flex h-4 w-4 shrink-0 items-center justify-center" aria-hidden>
-                    <StepStatusIcon status={step.status} />
-                  </span>
-                  <span
-                    className={`min-w-0 flex-1 text-[12px] leading-snug break-words ${
-                      step.status === 'completed' || step.status === 'failed'
-                        ? 'text-on-surface-variant'
-                        : 'text-on-surface font-medium'
-                    }`}
-                    title={step.detail || step.title}
+                <div className="flex w-full items-center gap-1 rounded-md px-1 py-1 hover:bg-surface-container/60 transition-colors">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setDetailId((current) => (current === step.id ? null : step.id))
+                    }
+                    className="flex min-w-0 flex-1 items-center gap-2 text-left"
                   >
-                    {step.title}
-                  </span>
-                </button>
+                    <span className="flex h-4 w-4 shrink-0 items-center justify-center" aria-hidden>
+                      <StepStatusIcon status={step.status} />
+                    </span>
+                    <span
+                      className={`min-w-0 flex-1 text-[12px] leading-snug break-words ${
+                        step.status === 'completed' || step.status === 'failed'
+                          ? 'text-on-surface-variant'
+                          : 'text-on-surface font-medium'
+                      }`}
+                      title={step.detail || step.title}
+                    >
+                      {step.title}
+                    </span>
+                  </button>
+                  {canSyncTerminal ? (
+                    <button
+                      type="button"
+                      data-testid="chat-view-in-terminal"
+                      title={t('View in Terminal')}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onViewInTerminal?.(step);
+                      }}
+                      className="shrink-0 inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[10px] font-semibold text-primary hover:bg-primary/10"
+                    >
+                      <Terminal className="h-3 w-3" strokeWidth={2} aria-hidden />
+                      <span className="hidden sm:inline">{t('View in Terminal')}</span>
+                    </button>
+                  ) : null}
+                </div>
                 {showDetail ? (
                   <pre className="ml-6 mb-1 whitespace-pre-wrap break-words text-[10px] leading-relaxed font-mono text-on-surface-variant/80 max-h-32 overflow-y-auto">
                     {step.detail}

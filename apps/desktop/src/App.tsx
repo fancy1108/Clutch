@@ -16,7 +16,8 @@ import { SystemPreferencesModal } from './components/SystemPreferencesModal';
 import { PromptModal } from './components/PromptModal';
 import { AppErrorBoundary } from './components/AppErrorBoundary';
 import { FooterMenuAction, FooterMenuItem, FooterMenuPanel, FooterMenuSection } from './components/FooterMenu';
-import { MainView, RightTab, ChatMessage, UncommittedFile, DiffLine, type Agent, type ClutchState, type AppWorkspaceMode } from './types';
+import { MainView, RightTab, ChatMessage, UncommittedFile, DiffLine, type Agent, type ClutchState, type AppWorkspaceMode, type ToolStep } from './types';
+import { resolveChatTerminalSyncTarget } from './services/chatTerminalSync';
 import { fetchAgents } from './services/agentApi';
 import {
   BUILTIN_AGENT_ID,
@@ -133,6 +134,7 @@ function MainLayout() {
 
   const [sessionRunId, setSessionRunId] = useState(() => createSessionRunId());
   const [highlightedDispatchEntryId, setHighlightedDispatchEntryId] = useState<string | null>(null);
+  const [highlightedLogIndex, setHighlightedLogIndex] = useState<number | null>(null);
 
   const [promptModal, setPromptModal] = useState<{
     isOpen: boolean;
@@ -494,6 +496,25 @@ function MainLayout() {
       activateTerminalSession();
     }
   }, [activateTerminalSession]);
+
+  /** D51 — Chat Shell / subtask → Terminal mode + lane focus + log/dispatch highlight. */
+  const handleViewToolStepInTerminal = useCallback((step: ToolStep) => {
+    const target = resolveChatTerminalSyncTarget(step, clutchState);
+    const hasCli = configuredAgents.some((agent) => isCliAgentType(agentTypeFromAgent(agent)));
+    if (hasCli && !selectedWorkflowId && !clutchState.workflow_id) {
+      handleWorkspaceViewModeChange('terminal');
+      void clutchStore.focusLane(target.laneId);
+    }
+    setRightPanelOpen(true);
+    setRightTab('terminal');
+    setHighlightedLogIndex(target.logIndex);
+    setHighlightedDispatchEntryId(target.dispatchEntryId);
+  }, [
+    clutchState,
+    configuredAgents,
+    selectedWorkflowId,
+    handleWorkspaceViewModeChange,
+  ]);
 
   const isPlainLlmFooterEarly = !selectedWorkflowId && !clutchState.workflow_id;
 
@@ -1200,6 +1221,7 @@ function MainLayout() {
       setSessionRunId(runId);
       setHistorySessionViewRunId(null);
       setHighlightedDispatchEntryId(null);
+      setHighlightedLogIndex(null);
       setCurrentFlowName(title);
       setSelectedWorkflowId(null);
       setAppMode('design');
@@ -1225,6 +1247,7 @@ function MainLayout() {
       setSessionRunId(runId);
       setHistorySessionViewRunId(null);
       setHighlightedDispatchEntryId(null);
+      setHighlightedLogIndex(null);
       setCurrentFlowName('');
       setSelectedWorkflowId(null);
       if (workspaceViewMode !== 'terminal') {
@@ -1483,6 +1506,7 @@ function MainLayout() {
     setAppMode(sessionMode);
     setView('chat');
     setHighlightedDispatchEntryId(null);
+    setHighlightedLogIndex(null);
     try {
       if (session.workspace_id && session.workspace_id !== activeWorkspaceId) {
         await handleSelectWorkspace(session.workspace_id);
@@ -2103,6 +2127,7 @@ function MainLayout() {
                 isHistorySessionView={historySessionViewRunId === sessionRunId}
                 onOpenWorkspaceFile={(path) => { void handleOpenWorkspaceFile(path); }}
                 onPreviewSnippet={handlePreviewSnippet}
+                onViewToolStepInTerminal={handleViewToolStepInTerminal}
               />
               </div>
             </>
@@ -2132,6 +2157,7 @@ function MainLayout() {
                 modelName={footerEffectiveModelName}
                 workspaceFiles={workspaceFiles}
                 onOpenWorkspaceFile={(path) => { void handleOpenWorkspaceFile(path); }}
+                highlightedLogIndex={highlightedLogIndex}
                 workspaceAuthorized={Boolean(workspace)}
                 onClearTerminal={handleClearTerminal}
                 dispatchLog={clutchState.dispatch_log ?? []}

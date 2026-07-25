@@ -16,6 +16,7 @@ import {
   SubtaskCard,
   TodoItem,
   BackgroundJob,
+  ToolStep,
 } from '../types';
 import { useLanguage } from './LanguageContext';
 import { ChatInputBar, type Attachment, type PendingChatMessage } from './ChatInputBar';
@@ -319,6 +320,8 @@ interface ChatFeedProps {
   onOpenWorkspaceFile?: (path: string) => void;
   /** Preview an in-memory code snippet (fenced blocks). */
   onPreviewSnippet?: (name: string, content: string) => void;
+  /** D51 — Chat shell / execute step → Terminal sync. */
+  onViewToolStepInTerminal?: (step: ToolStep) => void;
 }
 
 const WORKFLOW_AGENTS = new Set(['Builder', 'Orchestrator', 'Evaluator', 'Supervisor']);
@@ -519,6 +522,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   isHistorySessionView = false,
   onOpenWorkspaceFile,
   onPreviewSnippet,
+  onViewToolStepInTerminal,
 }) => {
   const { t } = useLanguage();
   const hostOs = useHostOs();
@@ -1266,6 +1270,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                           steps={msg.toolSteps}
                           className="mb-2"
                           onOpenFile={onOpenWorkspaceFile}
+                          onViewInTerminal={onViewToolStepInTerminal}
                         />
                       ) : null}
 
@@ -1344,7 +1349,11 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                         <TodoCardView todos={msg.todoList} t={t} />
                       ) : null}
                       {!isUser && msg.subtaskCards && msg.subtaskCards.length > 0 ? (
-                        <SubtaskCardView cards={msg.subtaskCards} t={t} />
+                        <SubtaskCardView
+                          cards={msg.subtaskCards}
+                          t={t}
+                          onViewInTerminal={onViewToolStepInTerminal}
+                        />
                       ) : null}
                       {!isUser && msg.verificationReport ? (
                         <VerificationReportCardView
@@ -1415,12 +1424,18 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                       live
                       defaultOpen
                       onOpenFile={onOpenWorkspaceFile}
+                      onViewInTerminal={onViewToolStepInTerminal}
                     />
                     {showInlineLiveTodos ? (
                       <TodoCardView todos={liveTodos} t={t} live />
                     ) : null}
                     {liveSubtasks.length > 0 ? (
-                      <SubtaskCardView cards={liveSubtasks} t={t} live />
+                      <SubtaskCardView
+                        cards={liveSubtasks}
+                        t={t}
+                        live
+                        onViewInTerminal={onViewToolStepInTerminal}
+                      />
                     ) : null}
                   </div>
                 ) : (
@@ -1450,6 +1465,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                     live
                     defaultOpen
                     onOpenFile={onOpenWorkspaceFile}
+                    onViewInTerminal={onViewToolStepInTerminal}
                   />
                   {showInlineLiveTodos ? (
                     <TodoCardView todos={liveTodos} t={t} live />

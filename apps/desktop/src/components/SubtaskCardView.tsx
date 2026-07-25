@@ -1,9 +1,10 @@
 /**
  * D10 / D48 — nested subtask cards under a parent Chat bubble.
+ * D51 — optional "View in Terminal" jumps to matching lane/logs.
  */
 import React, { useState } from 'react';
 import { LegacyIcon } from './ui/LegacyIcon';
-import type { SubtaskCard } from '../types';
+import type { SubtaskCard, ToolStep } from '../types';
 import {
   CHAT_AGENT_CARD,
   CHAT_AGENT_CARD_LIVE,
@@ -11,6 +12,20 @@ import {
   ChatAgentCardStatus,
   type ChatCardStatusTone,
 } from './chatAgentCard';
+
+function subtaskAsSyncStep(card: SubtaskCard): ToolStep {
+  const shell = (card.toolSteps ?? []).find((step) =>
+    /run_terminal|shell|exec|bash|command/i.test(step.name),
+  );
+  return {
+    id: `subtask-${card.id}`,
+    kind: 'execute',
+    tool: shell?.name || 'run_terminal_cmd',
+    status: card.status === 'failed' ? 'failed' : card.status === 'done' ? 'completed' : 'running',
+    title: card.title || card.summary || 'Subtask',
+    detail: card.summary || card.title || '',
+  };
+}
 
 function statusTone(status: SubtaskCard['status']): ChatCardStatusTone {
   if (status === 'done') return 'success';
@@ -27,9 +42,11 @@ function statusLabel(status: SubtaskCard['status'], t: (key: string) => string):
 function SubtaskCardItem({
   card,
   t,
+  onViewInTerminal,
 }: {
   card: SubtaskCard;
   t: (key: string) => string;
+  onViewInTerminal?: (step: ToolStep) => void;
 }) {
   const [open, setOpen] = useState(card.status === 'failed');
   const steps = card.toolSteps ?? [];
@@ -54,6 +71,16 @@ function SubtaskCardItem({
             <ChatAgentCardStatus tone={statusTone(card.status)}>
               {statusLabel(card.status, t)}
             </ChatAgentCardStatus>
+            {onViewInTerminal ? (
+              <button
+                type="button"
+                data-testid={`subtask-view-in-terminal-${card.id}`}
+                className="ml-auto text-[10px] font-semibold text-primary hover:underline"
+                onClick={() => onViewInTerminal(subtaskAsSyncStep(card))}
+              >
+                {t('View in Terminal')}
+              </button>
+            ) : null}
           </div>
           {card.summary ? (
             <p className="mt-1 text-[11px] leading-snug text-on-surface-variant whitespace-pre-wrap break-words">
@@ -97,10 +124,12 @@ export function SubtaskCardView({
   cards,
   t,
   live = false,
+  onViewInTerminal,
 }: {
   cards: SubtaskCard[];
   t: (key: string) => string;
   live?: boolean;
+  onViewInTerminal?: (step: ToolStep) => void;
 }) {
   if (!cards.length) return null;
   return (
@@ -123,7 +152,12 @@ export function SubtaskCardView({
       />
       <div className="p-2.5 space-y-2">
         {cards.map((card) => (
-          <SubtaskCardItem key={card.id} card={card} t={t} />
+          <SubtaskCardItem
+            key={card.id}
+            card={card}
+            t={t}
+            onViewInTerminal={onViewInTerminal}
+          />
         ))}
       </div>
     </div>

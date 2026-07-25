@@ -351,6 +351,7 @@ const zhTranslations: Record<string, string> = {
   "step": "步",
   "steps": "步",
   "Awaiting approval": "等待批准",
+  "View in Terminal": "在 Terminal 查看",
   "Queued for shell...": "排队等待 shell…",
   "Clutch Agent": "Clutch 智能体",
   "Settings": "设置",

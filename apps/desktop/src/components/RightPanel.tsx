@@ -56,6 +56,8 @@ interface RightPanelProps {
   showTerminalOrchestraOverview?: boolean;
   terminalHistoryReadOnly?: boolean;
   onSelectDispatchEntry?: (entryId: string) => void;
+  /** D51 — highlight + scroll a terminal_logs line from Chat shell step. */
+  highlightedLogIndex?: number | null;
   workflowAgentSteps?: WorkflowAgentStep[];
   messages?: ChatMessage[];
 }
@@ -104,6 +106,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   showTerminalOrchestraOverview = false,
   terminalHistoryReadOnly = false,
   onSelectDispatchEntry,
+  highlightedLogIndex = null,
   workflowAgentSteps = [],
   messages = [],
 }) => {
@@ -209,12 +212,17 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   const visibleTabs: RightTab[] = ['overview', 'files', 'changes', 'terminal'];
 
   const terminalLogRef = React.useRef<HTMLDivElement>(null);
+  const highlightedLogRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
     const container = terminalLogRef.current;
     if (!container) return;
+    if (highlightedLogIndex != null && highlightedLogRef.current) {
+      highlightedLogRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
     container.scrollTop = container.scrollHeight;
-  }, [terminalLogs]);
+  }, [terminalLogs, highlightedLogIndex]);
 
   const renderTerminalLogLines = () => {
     if (terminalLogs.length === 0) {
@@ -229,8 +237,16 @@ export const RightPanel: React.FC<RightPanelProps> = ({
       } else if (log.includes('PASSED') || log.includes('SUCCESS')) {
         colorClass = 'text-emerald-400 font-bold';
       }
+      const isHighlighted = highlightedLogIndex === i;
       return (
-        <div key={i} className={`${colorClass} leading-normal`}>
+        <div
+          key={i}
+          ref={isHighlighted ? highlightedLogRef : undefined}
+          data-testid={isHighlighted ? 'terminal-log-highlight' : undefined}
+          className={`${colorClass} leading-normal rounded px-0.5 ${
+            isHighlighted ? 'ring-1 ring-amber-300/70 bg-amber-500/15' : ''
+          }`}
+        >
           <span className="text-white select-none mr-1.5">$</span>
           {log}
         </div>

@@ -4,6 +4,17 @@
 > **何时写：** 每个**代码 Task** 完成并 commit 后，在 Check-out 追加一节（见 `CLAUDE.md` §Check-out）。  
 > **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。
 
+## Clutch Agent D51 Chat ↔ Terminal 同步 (`pending`)
+
+| 项目 | 值 |
+|------|-----|
+| **Task** | D51 View in Terminal → log highlight / lane focus |
+| **Commit** | _(fill after commit)_ |
+| **Branch** | `dev` |
+| **Verification** | `cd apps/desktop && pnpm test -- src/services/chatTerminalSync.test.ts` → 6 passed |
+| **PM 用例** | `runs/verification/pm-acceptance/D51.md` |
+| **下一批** | **D52** 能力↔交互对照门禁 |
+
 ## Clutch Agent D13 权限规则 (`ed7c568`)
 
 | 项目 | 值 |
