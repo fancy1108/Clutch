@@ -47,6 +47,7 @@ import { BackgroundJobsBar } from './BackgroundJobsBar';
 import { ForegroundShellBar } from './ForegroundShellBar';
 import { DiagnosticsIssuesStrip } from './DiagnosticsIssuesStrip';
 import { ScheduledTasksBar } from './ScheduledTasksBar';
+import { WorktreeIsolationBar } from './WorktreeIsolationBar';
 import { detectBgJobFailureToast } from '../services/bgJobMonitor';
 import { VerificationReportCardView } from './VerificationReportCardView';
 import { DiffSummaryCardView } from './DiffSummaryCardView';
