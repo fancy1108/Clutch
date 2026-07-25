@@ -20,11 +20,16 @@ class McpClient:
         self._next_id = 1
         self._responses: queue.Queue[dict[str, Any]] = queue.Queue()
         self._reader_thread: threading.Thread | None = None
+        self.last_error: str | None = None
 
     def start(self) -> bool:
+        self.last_error = None
         args = shlex.split(self.endpoint, posix=os.name != "nt")
         if os.name == "nt":
             args = [part.strip('"') for part in args]
+        if not args:
+            self.last_error = "Empty MCP endpoint / command"
+            return False
         env_vars = os.environ.copy()
         env_vars["NPM_CONFIG_UPDATE_NOTIFIER"] = "false"
         env_vars["NPM_CONFIG_AUDIT"] = "false"
@@ -56,7 +61,12 @@ class McpClient:
             )
             self.notify("notifications/initialized")
             return True
-        except Exception:
+        except FileNotFoundError as exc:
+            self.last_error = f"Command not found: {exc.filename or args[0]}"
+            self.close()
+            return False
+        except Exception as exc:
+            self.last_error = str(exc).strip() or exc.__class__.__name__
             self.close()
             return False
 

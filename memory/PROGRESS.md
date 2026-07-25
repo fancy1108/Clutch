@@ -5,16 +5,23 @@
 
 ## Current Status
 
-- **阶段：** **v1.2.9**；D7✅；**D8–D13 + D51–D52 已实现待 PM**；下一批 **MCP D38…**
-- **Git：** D8=`7936786`；… D13=`ed7c568`；D51=`ee4e2a2`；D52=_(本批)_
+- **阶段：** **v1.2.9**；D7✅；**D8–D13 + D51–D52 + D38 已实现待 PM**；下一批 **D39…**
+- **Git：** D51=`ee4e2a2`；D52=`1365f6d`；D38=_(本批)_
 - **PM 验收包：** `runs/verification/pm-acceptance/`（ROADMAP 未点验前保持 ❌）
 
 ## Recent Sessions
 
+## 2026-07-25 会话（续：D38 Hub 探测）
+
+- **实现：** 去 UnderDevelopment 横幅；`POST /api/mcp/servers/test` + Hub「Test connection」
+- **自测：** `pytest tests/test_mcp_probe_d38.py` → 5 passed
+- **下次：** D39 传输诚实 → D40 徽章…
+
 ## 2026-07-25 会话（续：D52 门禁）
 
+- **Commit：** D52 `1365f6d`
 - **实现：** PRODUCT_INTRO Capability→Chat UI 表 + `check-capability-ui-table.sh` / INV-D52
-- **下次：** MCP D38 Hub 可信状态 → D39…
+- **下次：** MCP D38…
 
 ## 2026-07-25 会话（续：D51 Chat↔Terminal）
 

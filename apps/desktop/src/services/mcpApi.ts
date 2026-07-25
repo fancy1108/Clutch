@@ -85,3 +85,26 @@ export async function importClaudeMcp(): Promise<McpStatusResponse> {
   return response.json() as Promise<McpStatusResponse>;
 }
 
+export interface McpProbeResult {
+  id: string;
+  name: string;
+  ok: boolean;
+  toolsCount: number;
+  tools: Array<{ name: string; description?: string }>;
+  error: string | null;
+}
+
+/** D38 — per-server Test connection. */
+export async function testMcpServer(id: string): Promise<McpProbeResult> {
+  const response = await sidecarFetch(`${BASE}/api/mcp/servers/test`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id }),
+  });
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as { detail?: { message?: string } };
+    throw new Error(body.detail?.message ?? `mcp test failed (${response.status})`);
+  }
+  return response.json() as Promise<McpProbeResult>;
+}
+

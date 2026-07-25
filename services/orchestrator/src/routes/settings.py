@@ -416,6 +416,17 @@ async def toggle_mcp_server(body: McpServerIdRequest) -> dict[str, Any]:
     return await build_mcp_status_payload()
 
 
+@router.post("/api/mcp/servers/test")
+async def test_mcp_server(body: McpServerIdRequest) -> dict[str, Any]:
+    """D38 — probe one Hub server; return ok + toolsCount or a readable error."""
+    from src.mcp_storage import probe_server_by_id
+
+    try:
+        return await probe_server_by_id(body.id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail={"message": str(exc)}) from exc
+
+
 @router.post("/api/mcp/config/save")
 async def save_mcp_config(body: McpSaveConfigRequest) -> dict[str, Any]:
     from src.mcp_storage import build_mcp_status_payload, save_raw_config

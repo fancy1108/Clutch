@@ -4,12 +4,23 @@
 > **何时写：** 每个**代码 Task** 完成并 commit 后，在 Check-out 追加一节（见 `CLAUDE.md` §Check-out）。  
 > **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。
 
-## Clutch Agent D52 能力↔交互对照门禁 (`pending`)
+## Clutch Agent D38 Hub 可信状态 (`pending`)
+
+| 项目 | 值 |
+|------|-----|
+| **Task** | D38 Test connection + remove under-development banner |
+| **Commit** | _(fill after commit)_ |
+| **Branch** | `dev` |
+| **Verification** | `uv run pytest tests/test_mcp_probe_d38.py -q` → 5 passed |
+| **PM 用例** | `runs/verification/pm-acceptance/D38.md` |
+| **下一批** | **D39** 传输诚实 |
+
+## Clutch Agent D52 能力↔交互对照门禁 (`1365f6d`)
 
 | 项目 | 值 |
 |------|-----|
 | **Task** | D52 PRODUCT_INTRO Capability→Chat UI table + INV-D52 |
-| **Commit** | _(fill after commit)_ |
+| **Commit** | `1365f6d` |
 | **Branch** | `dev` |
 | **Verification** | `./scripts/check-capability-ui-table.sh` → OK |
 | **PM 用例** | `runs/verification/pm-acceptance/D52.md` |

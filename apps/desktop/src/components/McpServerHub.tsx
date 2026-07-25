@@ -6,12 +6,12 @@ import {
   toggleMcpServer,
   saveMcpConfig,
   importClaudeMcp,
+  testMcpServer,
   type McpServer,
 } from '../services/mcpApi';
 import { SettingsPageHeader, SettingsPageShell } from './ui/SettingsPageHeader';
 import { BTN_GHOST, BTN_PRIMARY } from './ui/buttonStyles';
 import { ALERT_SUCCESS, ALERT_WARNING, BADGE_NEUTRAL, BADGE_SUCCESS, CARD_SUBTLE, SECTION_EYEBROW } from './ui/surfaceStyles';
-import { UnderDevelopmentNotice } from './ui/UnderDevelopmentNotice';
 import { useLanguage } from './LanguageContext';
 import { AgentCapabilityTabs } from './AgentCapabilityTabs';
 import { AgentCliCapabilityPreview } from './AgentCliCapabilityPreview';
@@ -52,6 +52,10 @@ export const McpServerHub: React.FC = () => {
   const [isJsonEditMode, setIsJsonEditMode] = useState(false);
   const [rawJsonConfig, setRawJsonConfig] = useState('');
   const [capabilityTab, setCapabilityTab] = useState<AgentCapabilityTabId>('clutch');
+  const [testingId, setTestingId] = useState<string | null>(null);
+  const [probeById, setProbeById] = useState<
+    Record<string, { ok: boolean; message: string; toolsCount?: number }>
+  >({});
 
   useEffect(() => {
     const stashed = consumeSettingsAgentTab();
@@ -175,8 +179,6 @@ export const McpServerHub: React.FC = () => {
 
         {capabilityTab === 'clutch' ? (
           <>
-            <UnderDevelopmentNotice />
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className={`${CARD_SUBTLE} rounded-2xl text-left`}>
                 <span className={`${SECTION_EYEBROW} font-mono`}>{t('CONNECTED')}</span>
@@ -312,6 +314,16 @@ export const McpServerHub: React.FC = () => {
                       <p className="text-[10.5px] font-mono text-neutral-500 bg-neutral-50 px-2 py-1 rounded border border-neutral-100/55 break-all leading-normal">
                         {server.endpoint}
                       </p>
+                      {probeById[server.id] ? (
+                        <p
+                          data-testid={`mcp-probe-${server.id}`}
+                          className={`text-[11px] mt-1 ${
+                            probeById[server.id].ok ? 'text-emerald-700' : 'text-rose-700'
+                          }`}
+                        >
+                          {probeById[server.id].message}
+                        </p>
+                      ) : null}
                       {server.tools && server.tools.length > 0 ? (
                         <div className="mt-2 pl-3 border-l-2 border-outline-variant/40 space-y-1 select-text">
                           <span className="text-[9px] font-extrabold text-neutral-400 font-mono tracking-wider uppercase block">{t('Exposed Tools:')}</span>
@@ -340,24 +352,69 @@ export const McpServerHub: React.FC = () => {
                         </div>
                         <p className="text-[10px] text-neutral-400 mt-1 max-w-[180px]">{server.lastHeartbeat}</p>
                       </div>
-                      {!server.builtin ? (
-                        <div className="flex flex-col gap-1">
-                          <button
-                            type="button"
-                            onClick={() => void handleToggle(server)}
-                            className="text-[10px] font-bold text-neutral-600 hover:text-neutral-900"
-                          >
-                            {server.status === 'failed' ? t('Enable') : t('Disable')}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => void handleRemove(server.id)}
-                            className="text-[10px] font-bold text-rose-600 hover:text-rose-800"
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      ) : null}
+                      <div className="flex flex-col gap-1">
+                        <button
+                          type="button"
+                          data-testid={`mcp-test-${server.id}`}
+                          disabled={testingId === server.id}
+                          onClick={() => {
+                            void (async () => {
+                              setTestingId(server.id);
+                              try {
+                                const result = await testMcpServer(server.id);
+                                setProbeById((prev) => ({
+                                  ...prev,
+                                  [server.id]: result.ok
+                                    ? {
+                                        ok: true,
+                                        toolsCount: result.toolsCount,
+                                        message: t('Connected — {n} tools').replace(
+                                          '{n}',
+                                          String(result.toolsCount),
+                                        ),
+                                      }
+                                    : {
+                                        ok: false,
+                                        message: result.error || t('Connection failed'),
+                                      },
+                                }));
+                                if (result.ok) void refresh();
+                              } catch (err) {
+                                setProbeById((prev) => ({
+                                  ...prev,
+                                  [server.id]: {
+                                    ok: false,
+                                    message: err instanceof Error ? err.message : t('Connection failed'),
+                                  },
+                                }));
+                              } finally {
+                                setTestingId(null);
+                              }
+                            })();
+                          }}
+                          className="text-[10px] font-bold text-primary hover:underline disabled:opacity-50"
+                        >
+                          {testingId === server.id ? t('Testing…') : t('Test connection')}
+                        </button>
+                        {!server.builtin ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => void handleToggle(server)}
+                              className="text-[10px] font-bold text-neutral-600 hover:text-neutral-900"
+                            >
+                              {server.status === 'failed' ? t('Enable') : t('Disable')}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void handleRemove(server.id)}
+                              className="text-[10px] font-bold text-rose-600 hover:text-rose-800"
+                            >
+                              Remove
+                            </button>
+                          </>
+                        ) : null}
+                      </div>
                     </div>
                   </div>
                 ))}
