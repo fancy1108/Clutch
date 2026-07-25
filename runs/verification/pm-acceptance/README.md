@@ -26,7 +26,7 @@ Chat 输入框默认仅 **`+` · 模式 pill · 发送/Stop**（Cursor/Copilot �
 | D9 运行可控 | [D09.md](./D09.md) | `bef9b75` · **PM ✅ Stop/Continue 2026-07-25**（熔断跳过；用量 Q-USAGE-1） |
 | D10∥D48 子任务 | [D10.md](./D10.md) | `25dc5dc` · **PM ✅ 2026-07-25**（explore done；implement 卡非强制） |
 | D11 后台命令 | [D11.md](./D11.md) | `59b45ee` · **PM ✅ 2026-07-25** |
-| D12 Git + 网页 | [D12.md](./D12.md) | `194d33a` |
+| D12 Git + 网页 | [D12.md](./D12.md) | `194d33a` · **PM ✅ 2026-07-25** |
 | D13 权限规则 | [D13.md](./D13.md) | `ed7c568` |
 | D51 Chat ↔ Terminal | [D51.md](./D51.md) | `ee4e2a2` |
 | D52 能力↔交互门禁 | [D52.md](./D52.md) | `1365f6d` |

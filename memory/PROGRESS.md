@@ -5,11 +5,16 @@
 
 ## Current Status
 
-- **阶段：** **v1.2.9**；主线 **D8 · D9 · D10∥D48 · D11 PM ✅**；扩展 D14–D36 代码已交；其余待 PM
+- **阶段：** **v1.2.9**；主线 **D8–D12 PM ✅**（含 D10∥D48）；扩展 D14–D36 代码已交；其余待 PM
 - **Git / PM 索引：** [`runs/verification/pm-acceptance/README.md`](../runs/verification/pm-acceptance/README.md)
-- **下次优先：** D12 Git + 网页 PM 点验
+- **下次优先：** D13 权限规则 PM 点验
 
 ## Recent Sessions
+
+## 2026-07-25 会话（D12 PM）
+
+- **PM：** D12 ✅；`my-video` 真 commit `bcfc099` / `d12-pm-test`；web_fetch 总结 OK
+- **下次：** **D13**
 
 ## 2026-07-25 会话（D11 PM + bg job UX）
 

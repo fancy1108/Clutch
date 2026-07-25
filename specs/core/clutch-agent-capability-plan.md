@@ -279,7 +279,7 @@
 #### D12 — Git + 网页文档
 - **可见**：status/diff；提交需审批；fetch URL 总结；步骤进 D46。
 - **验收**：diff 真；commit 真；URL 能引用要点。
-- **实现笔记（待 PM）**：`git_status`/`git_diff`/`git_commit`/`web_fetch`；`web_fetch_util.py`；commit 标 risky。
+- **实现笔记（PM ✅ 2026-07-25）**：Ask 下 `git_commit` 审批后真实提交；`web_fetch` 可总结页面。
 
 #### D13 — 权限规则设置
 - **可见**：允许/询问/拒绝配置；危险命令强问；记住/清除。

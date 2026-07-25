@@ -54,7 +54,7 @@
 | D9 运行可控 | P0 | ✅ | Stop/Continue PM ✅ 2026-07-25；熔断不点验；用量占位 Q-USAGE-1 |
 | D10∥D48 子任务委派 | P0 | ✅ | PM ✅ 2026-07-25；explore 16 步；implement 卡非强制 |
 | D11 后台命令 | P0 | ✅ | PM ✅ 2026-07-25；RUNNING 底栏 / 结束进对话；Kill 乐观 |
-| D12 Git + 网页 | P0 | ❌ | git_* + web_fetch；待 PM（非桌面 E2E） |
+| D12 Git + 网页 | P0 | ✅ | PM ✅ 2026-07-25；commit 真（bcfc099 d12-pm-test）；web_fetch 总结 |
 | D13 权限规则 | P0 | ❌ | allow/ask/deny + 危险强问 + 清记忆；待 PM |
 | D14 外挂 grok CLI | P2 | ❌ | 代码已交 PM（`5d65a68`） |
 | D15 联网搜索 | P1 | ❌ | 代码已交 PM（`0c0c095`） |
@@ -98,7 +98,7 @@
 | D53 分层 prompt + 渐进披露 | P0 | ✅ | 分层组装 + Agent Manager 分层摘要面板；PM 2026-07-24 点验通过 |
 
 **首期目标：** D1 + D37 + D46 ✅（PM 2026-07-24）。  
-**下一批（防返工顺序）：** D12 → D13；用例见 `runs/verification/pm-acceptance/`
+**下一批（防返工顺序）：** D13；用例见 `runs/verification/pm-acceptance/`
 
 ## Design 模式（D36 · 默认 FAIL）
 

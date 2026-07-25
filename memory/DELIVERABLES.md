@@ -4,6 +4,14 @@
 > **何时写：** 每个**代码 Task** 完成并 commit 后，在 Check-out 追加一节（见 `CLAUDE.md` §Check-out）。  
 > **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。
 
+## D12 PM 通过（2026-07-25）
+
+| 项 | 说明 |
+|----|------|
+| **PM** | D12 ✅ — `runs/verification/pm-acceptance/D12.md`；ROADMAP ✅ |
+| **Evidence** | 工作区 `my-video`：`bcfc099` message `d12-pm-test`；web_fetch 总结通过 |
+| **下一批** | D13 PM |
+
 ## D11 PM 通过 + bg job UX（2026-07-25）
 
 | 项 | 说明 |
