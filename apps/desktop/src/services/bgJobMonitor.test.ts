@@ -23,4 +23,10 @@ describe('bgJobMonitor (D26)', () => {
     const current = [job({ id: 'bg_1', status: 'failed' })];
     expect(detectBgJobFailureToast(prev, current)).toBeNull();
   });
+
+  it('does not toast when the user kills a running job', () => {
+    const prev = [job({ id: 'bg_1', status: 'running', command: 'sleep 20' })];
+    const current = [job({ id: 'bg_1', status: 'killed', command: 'sleep 20' })];
+    expect(detectBgJobFailureToast(prev, current)).toBeNull();
+  });
 });

@@ -954,7 +954,11 @@ async def _apply_bg_jobs_update(
     patch: dict[str, Any] = _bg_jobs_live_patch(jobs)
     monitor_text = format_bg_job_monitor_message(finished or {})
     if monitor_text:
-        supervisor = _chat_message("Supervisor", monitor_text)
+        supervisor = _chat_message(
+            "Supervisor",
+            monitor_text,
+            bg_job=dict(finished) if finished else None,
+        )
         patch["messages"] = list(state["messages"]) + [supervisor]
         await _send_message_event(websocket, run_id, supervisor, "")
     state = _merge_patch(state, patch)
@@ -1017,6 +1021,7 @@ def _chat_message(
     verification_report: dict[str, Any] | None = None,
     diff_summary: dict[str, Any] | None = None,
     subtask_cards: list[dict[str, Any]] | None = None,
+    bg_job: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "id": msg_id or f"msg_{uuid.uuid4().hex[:8]}",
@@ -1056,6 +1061,9 @@ def _chat_message(
     if subtask_cards:
         # D10/D48: nested subtask cards sealed onto the assistant turn.
         payload["subtaskCards"] = subtask_cards
+    if bg_job is not None:
+        # D11: finished background job card lives in the Chat timeline (not the composer).
+        payload["bgJob"] = bg_job
     return payload
 
 
@@ -4672,7 +4680,7 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                 if job_id:
                     from src.bg_jobs import kill_job
 
-                    kill_job(run_id, job_id)
+                    await asyncio.to_thread(kill_job, run_id, job_id)
             elif isinstance(payload, dict) and payload.get("action") == "move_fg_to_background":
                 from src.foreground_shell import transfer_to_background
 

@@ -4,6 +4,15 @@
 > **何时写：** 每个**代码 Task** 完成并 commit 后，在 Check-out 追加一节（见 `CLAUDE.md` §Check-out）。  
 > **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。
 
+## D11 PM 通过 + bg job UX（2026-07-25）
+
+| 项 | 说明 |
+|----|------|
+| **PM** | D11 ✅ — `runs/verification/pm-acceptance/D11.md`；ROADMAP ✅ |
+| **Verification** | `pytest tests/test_bg_jobs_d11.py tests/test_bg_jobs_monitor_d26.py -q`；`vitest bgJobMonitor` |
+| **Fixes** | 结束进对话 `bgJob`；底栏仅 RUNNING；Kill 乐观；killed 不弹失败 toast；dock 上滚 |
+| **下一批** | D12 PM |
+
 ## D10 PM 通过 + explore 预算（2026-07-25）
 
 | 项 | 说明 |

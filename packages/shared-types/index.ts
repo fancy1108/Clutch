@@ -74,6 +74,8 @@ export interface ChatMessage {
   diffSummary?: DiffSummary;
   /** D10/D48 nested subtask cards from delegate_subtask. */
   subtaskCards?: SubtaskCard[];
+  /** D11 — finished background job card sealed onto the Supervisor monitor turn. */
+  bgJob?: BackgroundJob;
   codeHighlight?: {
     file: string;
     lineCount: number;

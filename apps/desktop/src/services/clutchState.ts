@@ -1011,6 +1011,22 @@ class ClutchStateStore {
     });
   }
 
+  /** D11 — optimistic Kill: drop running chip immediately (no red failure toast). */
+  optimisticKillBgJob(jobId: string): void {
+    const id = jobId.trim();
+    if (!id) return;
+    const jobs = this.state.bg_jobs ?? [];
+    let changed = false;
+    const next = jobs.map((job) => {
+      if (job.id !== id || job.status !== 'running') return job;
+      changed = true;
+      return { ...job, status: 'killed' as const };
+    });
+    if (changed) {
+      this.applyPatch({ bg_jobs: next });
+    }
+  }
+
   /** Optimistic user row + running status while plain-chat WS turn starts. */
   optimisticPlainChatSend(text: string): string {
     const trimmed = text.trim();

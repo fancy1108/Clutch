@@ -106,8 +106,7 @@ def _reader_thread(job: BgJob) -> None:
             _notify_run(job.run_id)
     finally:
         if job.status == "killed":
-            finished = job.to_dict()
-            _notify_run(job.run_id, finished=finished)
+            # kill_job already pushed the finished monitor patch — avoid a duplicate.
             return
         try:
             job.exit_code = proc.wait()
@@ -192,16 +191,27 @@ def kill_job(run_id: str, job_id: str) -> dict[str, Any] | None:
         job = _jobs_by_run.get(run_id, {}).get(job_id)
     if job is None or job.status != "running":
         return job.to_dict() if job else None
+    # Mark + notify first so Chat UI flips immediately; reap the process off-thread
+    # so terminate/wait does not stall the WebSocket loop (felt like Kill "stuck").
     job.status = "killed"
-    proc = job._proc
-    if proc is not None and proc.poll() is None:
-        proc.terminate()
-        try:
-            proc.wait(timeout=2)
-        except subprocess.TimeoutExpired:
-            proc.kill()
     finished = job.to_dict()
     _notify_run(run_id, finished=finished)
+    proc = job._proc
+
+    def _reap() -> None:
+        if proc is None or proc.poll() is not None:
+            return
+        try:
+            proc.terminate()
+            try:
+                proc.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait(timeout=1)
+        except Exception:
+            pass
+
+    threading.Thread(target=_reap, daemon=True).start()
     return finished
 
 

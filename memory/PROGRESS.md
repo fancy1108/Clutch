@@ -5,11 +5,17 @@
 
 ## Current Status
 
-- **阶段：** **v1.2.9**；主线 **D8 · D9 · D10∥D48 PM ✅**；扩展 D14–D36 代码已交；其余待 PM
+- **阶段：** **v1.2.9**；主线 **D8 · D9 · D10∥D48 · D11 PM ✅**；扩展 D14–D36 代码已交；其余待 PM
 - **Git / PM 索引：** [`runs/verification/pm-acceptance/README.md`](../runs/verification/pm-acceptance/README.md)
-- **下次优先：** D11 后台命令 PM 点验
+- **下次优先：** D12 Git + 网页 PM 点验
 
 ## Recent Sessions
+
+## 2026-07-25 会话（D11 PM + bg job UX）
+
+- **PM：** D11 ✅；RUNNING 底栏 / 结束进对话；Kill 乐观无红 toast
+- **修复：** dock 上滚；`msg.bgJob`；Kill 离线回收
+- **下次：** **D12**
 
 ## 2026-07-25 会话（D10 PM + explore 预算）
 

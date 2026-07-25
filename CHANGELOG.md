@@ -14,6 +14,8 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 - **Usage / Steps (D9 · D22):** Composer **+ → Usage** removed; Overview **Session Token Analytics** keeps the section but shows **`—` placeholders** until provider-true usage (DECISIONS **Q-USAGE-1**).
 - **Subtask budgets (D10):** Nested explore/implement loops use **16 / 12** tool-step caps (was flat 8); explore system prompt steers away from repeated `list_dir`.
+- **Background jobs (D11):** Composer bar shows **running** jobs only; finished jobs seal into the Chat timeline (Supervisor monitor + View output card).
+- **Kill feedback (D11):** Kill is optimistic (chip flips immediately); user Kill no longer shows the red failure toast; process reap is off-thread.
 
 ### Fixed
 

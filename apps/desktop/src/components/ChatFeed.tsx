@@ -43,7 +43,7 @@ import { QuestionCardView } from './QuestionCardView';
 import { TodoCardView, shouldPinLiveTodos } from './TodoCardView';
 import { GoalBarView, shouldShowGoalBar } from './GoalBarView';
 import { SubtaskCardView } from './SubtaskCardView';
-import { BackgroundJobsBar } from './BackgroundJobsBar';
+import { BackgroundJobChip, BackgroundJobsBar } from './BackgroundJobsBar';
 import { ForegroundShellBar } from './ForegroundShellBar';
 import { DiagnosticsIssuesStrip } from './DiagnosticsIssuesStrip';
 import { WorktreeIsolationBar } from './WorktreeIsolationBar';
@@ -901,6 +901,21 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   const showGoalBar = shouldShowGoalBar(liveGoal);
   const liveSubtasks = (clutchOrchestraState.pending_subtasks ?? []) as SubtaskCard[];
   const bgJobs = (clutchOrchestraState.bg_jobs ?? []) as BackgroundJob[];
+  const sealedBgJobIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const msg of messages) {
+      if (msg.bgJob?.id) ids.add(msg.bgJob.id);
+    }
+    return ids;
+  }, [messages]);
+  /** Finished jobs not yet on a Chat message (legacy / race) — still show in the feed. */
+  const feedFallbackBgJobs = useMemo(
+    () =>
+      bgJobs.filter(
+        (job) => job.status !== 'running' && !sealedBgJobIds.has(job.id),
+      ),
+    [bgJobs, sealedBgJobIds],
+  );
   const foregroundShell = clutchOrchestraState.foreground_shell ?? null;
   const worktreeIsolation = clutchOrchestraState.worktree_isolation ?? null;
   const chatDiagnostics = clutchOrchestraState.chat_diagnostics ?? [];
@@ -951,22 +966,32 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
     bottomRef.current?.scrollIntoView({ behavior, block: 'end' });
   }, []);
 
+  /** After dock chrome grows (bg jobs / HITL), wait for layout then pin messages above it. */
+  const scrollChatAboveDock = useCallback((behavior: ScrollBehavior = 'auto') => {
+    const run = () => scrollChatToBottom(behavior);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(run);
+    });
+  }, [scrollChatToBottom]);
+
   useEffect(() => {
     scrollChatToBottom();
   }, [messages, clutchStatus, showThinking, pendingMessages.length, scrollChatToBottom]);
 
+  // Remeasure dock → chatScrollBottomPad updates scroll-margin → then pin feed above dock.
   useEffect(() => {
-    if (!showThinking) return;
-    scrollChatToBottom();
-  }, [chatScrollBottomPad, showThinking, scrollChatToBottom]);
+    scrollChatAboveDock('auto');
+  }, [chatScrollBottomPad, scrollChatAboveDock]);
+
+  const bgJobsChromeKey = `${bgJobs.length}:${bgJobs.map((job) => job.status).join(',')}`;
 
   useEffect(() => {
     const dock = dockRef.current;
     if (!dock || showTerminalWorkspace) return;
     const measure = () => {
-      setDockClearance(
-        APP_INPUT_DOCK_BOTTOM_PX + dock.offsetHeight + CHAT_SCROLL_ABOVE_DOCK_GAP_PX,
-      );
+      const next =
+        APP_INPUT_DOCK_BOTTOM_PX + dock.offsetHeight + CHAT_SCROLL_ABOVE_DOCK_GAP_PX;
+      setDockClearance((prev) => (prev === next ? prev : next));
     };
     measure();
     const observer = new ResizeObserver(measure);
@@ -984,7 +1009,26 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
     llmModelName,
     showLiveActivity,
     liveActivitySteps.length,
+    // D11 — bar height grows when jobs appear; must remeasure or last bubble sits under dock.
+    bgJobsChromeKey,
+    foregroundShell?.command,
+    chatDiagnostics.length,
+    worktreeIsolation?.enabled,
   ]);
+
+  // Job bar can mount before ResizeObserver delivers; force a post-paint remeasure + scroll.
+  useEffect(() => {
+    if (showTerminalWorkspace) return;
+    const dock = dockRef.current;
+    if (!dock) return;
+    const id = window.requestAnimationFrame(() => {
+      const next =
+        APP_INPUT_DOCK_BOTTOM_PX + dock.offsetHeight + CHAT_SCROLL_ABOVE_DOCK_GAP_PX;
+      setDockClearance((prev) => (prev === next ? prev : next));
+      scrollChatAboveDock('auto');
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [bgJobsChromeKey, showTerminalWorkspace, scrollChatAboveDock]);
 
   useEffect(() => {
     const thinkingEl = thinkingRef.current;
@@ -1505,6 +1549,9 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                           onViewInTerminal={onViewToolStepInTerminal}
                         />
                       ) : null}
+                      {!isUser && msg.bgJob ? (
+                        <BackgroundJobChip job={msg.bgJob} t={t} variant="feed" />
+                      ) : null}
                       {!isUser && msg.verificationReport ? (
                         <VerificationReportCardView
                           report={msg.verificationReport}
@@ -1542,6 +1589,18 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
             </div>
           );
         })}
+
+        {workspaceViewMode === 'chat' &&
+          feedFallbackBgJobs.map((job) => (
+            <div key={`bg-feed-${job.id}`} className="w-full flex justify-start mb-4">
+              <div className={chatChrome.thinkingRowClass}>
+                <div className="w-8 shrink-0" aria-hidden />
+                <div className="flex-1 min-w-0 max-w-full">
+                  <BackgroundJobChip job={job} t={t} variant="feed" />
+                </div>
+              </div>
+            </div>
+          ))}
 
         {workspaceViewMode === 'chat' && showThinking && (
           <div ref={thinkingRef} className="w-full flex justify-start mb-4">
@@ -1864,7 +1923,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
             />
           </div>
         ) : workspaceViewMode === 'chat' ? (
-          <div className="w-full flex flex-col items-center">
+          <div className="w-full flex flex-col items-center rounded-2xl bg-background/95 backdrop-blur-sm pt-1">
             {foregroundShell ? (
               <ForegroundShellBar
                 shell={foregroundShell}
@@ -1893,6 +1952,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
               jobs={bgJobs}
               t={t}
               onKillJob={(jobId) => {
+                clutchStore.optimisticKillBgJob(jobId);
                 void clutchStore.send({ action: 'kill_bg_job', job_id: jobId });
               }}
             />
