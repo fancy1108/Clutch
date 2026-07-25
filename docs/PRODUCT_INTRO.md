@@ -108,6 +108,7 @@ graph TD
 * **Session fork + file rewind（D23）**：消息右键 **Fork session here** 从该条复制 transcript 到新会话；**Rewind** 一键恢复 Agent 最近一次文件改动并在 Chat 留 Supervisor 记录。
 * **Cross-session memory（D16）**：Settings 可开/关 **Memory**；Agent 用 `remember_preference` 记下跨会话约定；可 **Clear memory**。
 * **Tool hooks（D17）**：用户/项目 `.clutch/hooks.json` 或偏好目录 `hooks.json` 配置 PreToolUse/PostToolUse 拒绝规则；违规时 Chat 工具步骤显示 Hook 原因。
+* **Capability packs（D35）**：Settings → Skills 可导入目录/zip 能力包（skills + hooks + MCP 片段）；支持卸载。
 * **Git + web fetch（D12）**：Builtin `git_status` / `git_diff` / `git_commit`（提交需审批）与 `web_fetch`（抓取 URL 文本供总结）；步骤进入对话工具条。
 * **Permission rules（D13）**：可配置命令 allow/ask/deny 规则；`rm -rf` / `sudo` 等危险命令在 Full 模式下仍强制询问；权限菜单可 **清除记住的批准**。
 * **Chat 斜杠命令（D18）**：输入 `/` 可选 `/plan`（进入计划模式）、`/compact`（强制上下文压缩并出摘要）、`/todos`（聚焦 Todo 卡）、`/help`；同一面板仍列出 Skills。
@@ -139,6 +140,7 @@ graph TD
 | D23 fork/rewind | Message **Fork session here**; composer **Rewind** restores files + Supervisor line |
 | D16 memory | Settings **Memory** on/off + **Clear memory**; `remember_preference` + prompt `memory` layer |
 | D17 hooks | `hooks.json` Pre/Post deny → Chat tool step shows Hook blocked reason |
+| D35 capability pack | Skills page import pack path + uninstall; mounts skills/hooks/MCP |
 | D12 git/web | Tool-trail steps for `git_*` / `web_fetch` / `web_search` (when network on) |
 | D13 permissions | Permission mode menu + Clear remembered approvals |
 | D18 slash commands | `/` picker: `/plan` `/compact` `/todos` `/help` + skills; notice toast |

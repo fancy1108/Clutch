@@ -32,4 +32,5 @@
 | D34 前台转后台 | [D34.md](./D34.md) | `5679a1b` |
 | D23 fork/rewind | [D23.md](./D23.md) | `bc67e30` |
 | D16 跨会话记忆 | [D16.md](./D16.md) | `930f9a5` |
-| D17 Hooks | [D17.md](./D17.md) | _(pending)_ |
+| D17 Hooks | [D17.md](./D17.md) | `68a05a8` |
+| D35 能力包 | [D35.md](./D35.md) | _(pending)_ |
