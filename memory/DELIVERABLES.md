@@ -4,6 +4,15 @@
 > **何时写：** 每个**代码 Task** 完成并 commit 后，在 Check-out 追加一节（见 `CLAUDE.md` §Check-out）。  
 > **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。
 
+## Wave4 — D28 / D15 / D33 / D31（2026-07-25）
+
+| ID | Commit | Verification | PM |
+|----|--------|--------------|-----|
+| D28 | `cc2662e` | `pytest tests/test_mcp_tool_discovery_d28.py -q` → 5 passed | `runs/verification/pm-acceptance/D28.md` |
+| D15 | `0c0c095` | `pytest tests/test_web_search_d15.py -q` → 4 passed | `runs/verification/pm-acceptance/D15.md` |
+| D33 | `bec5dbb` | `pytest tests/test_rich_read_d33.py -q` → 3 passed | `runs/verification/pm-acceptance/D33.md` |
+| D31 | `d2f2b2f` | `pytest tests/test_plan_step_comments_d31.py -q` → 3 passed；`PlanCardView.test.ts` → 4 passed | `runs/verification/pm-acceptance/D31.md` |
+
 ## Clutch Agent D18 斜杠命令 (`518b8d0`)
 
 | 项目 | 值 |

@@ -5,17 +5,17 @@
 
 ## Current Status
 
-- **阶段：** **v1.2.9**；扩展 D14+D15–D36 交付中（Wave1 起）；主线/MCP 仍待 PM
-- **Git：** D21（commit 中）、D20 `94fdc8f`、D19 `3f3e66e`、D26 `8be7f06`、D22 `c68301b`、D27 `a269764`；PM 包见 `runs/verification/pm-acceptance/README.md`
-- **PM 验收包：** ROADMAP 未点验前保持 ❌
+- **阶段：** **v1.2.9**；Wave4（D28/D15/D33/D31）已交付；ROADMAP 仍 ❌ 待 PM
+- **Git：** D28 `cc2662e`、D15 `0c0c095`、D33 `bec5dbb`、D31 `d2f2b2f`；D29 `96c13d3`、D30 `1d88b02`、D21 `6733b15`
+- **PM 验收包：** `runs/verification/pm-acceptance/D{15,28,31,33}.md`
 
 ## Recent Sessions
 
-## 2026-07-25 会话（扩展 D14–D36：D21）
+## 2026-07-25 会话（Wave4：D28→D15→D33→D31）
 
-- **Commit：** （本回合）
-- **实现：** `.gitignore`/`.clutchignore` 过滤 list/grep/read；Settings 严格沙箱
-- **下次：** D29 → D30
+- **Commits：** D28 `cc2662e` · D15 `0c0c095` · D33 `bec5dbb` · D31 `d2f2b2f`
+- **实现：** MCP search_mcp_tools；web_search+允许联网；read_file 富读；计划行内批注
+- **下次：** PM 点验 Wave4；继续 D16+ 按 capability 表
 
 - **Commit：** `8be7f06`（D26）
 - **实现：** bg job 终态 [Monitor] Supervisor 行 + 失败 toast
