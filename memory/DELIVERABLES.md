@@ -4,12 +4,12 @@
 > **何时写：** 每个**代码 Task** 完成并 commit 后，在 Check-out 追加一节（见 `CLAUDE.md` §Check-out）。  
 > **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。
 
-## Clutch Agent D18 斜杠命令 (`pending`)
+## Clutch Agent D18 斜杠命令 (`518b8d0`)
 
 | 项目 | 值 |
 |------|-----|
 | **Task** | D18 `/plan` `/compact` `/todos` `/help` + compact API |
-| **Commit** | （commit 后填） |
+| **Commit** | `518b8d0` |
 | **Branch** | `dev` |
 | **Verification** | `pnpm test -- src/services/slashCommands.test.ts` → 3 passed；`pytest tests/test_compact_api_d18.py -q` → 2 passed |
 | **PM 用例** | `runs/verification/pm-acceptance/D18.md` |
