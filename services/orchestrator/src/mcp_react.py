@@ -46,6 +46,7 @@ class McpRunOutcome:
     files_changed: list[str] | None = None
     tool_steps: list[dict[str, Any]] | None = None
     todos: list[dict[str, Any]] | None = None
+    goal: dict[str, Any] | None = None
     verification_report: dict[str, Any] | None = None
     diff_summary: dict[str, Any] | None = None
     # D9: loop fuse + chat-visible step accounting
@@ -331,6 +332,8 @@ def run_mcp_react_loop(
     on_reasoning: Callable[[str], None] | None = None,
     on_todos: Callable[[list[dict[str, Any]]], None] | None = None,
     existing_todos: list[dict[str, Any]] | None = None,
+    on_goal: Callable[[dict[str, Any]], None] | None = None,
+    existing_goal: dict[str, Any] | None = None,
     on_verification: Callable[[dict[str, Any]], None] | None = None,
     on_diff_summary: Callable[[dict[str, Any]], None] | None = None,
     on_subtask: Callable[[dict[str, Any]], None] | None = None,
@@ -347,12 +350,14 @@ def run_mcp_react_loop(
 
     from src.adapters.ollama_adapter import model_supports_tool_calling
     from src.builtin_tools import (
+        is_goal_write_tool,
         is_submit_diff_summary_tool,
         is_submit_verification_tool,
         is_todo_write_tool,
         is_virtual_server,
         list_builtin_tools,
         normalize_diff_summary,
+        normalize_goal_args,
         normalize_todo_items,
         normalize_verification_report,
     )
@@ -363,6 +368,7 @@ def run_mcp_react_loop(
     logs: list[str] = []
     latest_todos: list[dict[str, Any]] | None = None
     todo_baseline = list(existing_todos or [])
+    latest_goal: dict[str, Any] | None = dict(existing_goal) if isinstance(existing_goal, dict) else None
     latest_verification: dict[str, Any] | None = None
     latest_diff_summary: dict[str, Any] | None = None
     latest_subtasks: list[dict[str, Any]] = []
@@ -487,6 +493,18 @@ def run_mcp_react_loop(
         if on_todos:
             on_todos(list(latest_todos))
 
+    def capture_goal_if_needed(func_name: str, func_args: dict[str, Any], result_str: str) -> None:
+        nonlocal latest_goal
+        route = tool_routes.get(func_name)
+        raw_name = route[1] if route else func_name
+        if not (is_goal_write_tool(raw_name) or is_goal_write_tool(func_name)):
+            return
+        if result_str.startswith("Error executing tool"):
+            return
+        latest_goal = normalize_goal_args(func_args)
+        if on_goal:
+            on_goal(dict(latest_goal))
+
     def enrich_verification_args(func_name: str, func_args: dict[str, Any]) -> dict[str, Any]:
         route = tool_routes.get(func_name)
         raw_name = route[1] if route else func_name
@@ -574,6 +592,7 @@ def run_mcp_react_loop(
             files_changed=files_changed or None,
             tool_steps=list(collected_steps) or None,
             todos=latest_todos,
+            goal=latest_goal,
             verification_report=latest_verification,
             diff_summary=latest_diff_summary,
             fuse_triggered=fuse_triggered,
@@ -611,6 +630,7 @@ def run_mcp_react_loop(
                 step_id=str(approved_tool.get("step_id") or f"tool_{start_step}"),
             )
             capture_todos_if_needed(func_name, func_args, result_str)
+            capture_goal_if_needed(func_name, func_args, result_str)
             capture_verification_if_needed(func_name, func_args, result_str)
             capture_diff_summary_if_needed(func_name, func_args, result_str)
             chat_messages.append(
@@ -709,6 +729,7 @@ def run_mcp_react_loop(
                             files_changed=files_changed or None,
                             tool_steps=list(collected_steps) or None,
                             todos=latest_todos,
+                            goal=latest_goal,
                             verification_report=latest_verification,
                             diff_summary=latest_diff_summary,
                             subtasks=list(latest_subtasks) or None,
@@ -755,6 +776,7 @@ def run_mcp_react_loop(
                             files_changed=files_changed or None,
                             tool_steps=list(collected_steps) or None,
                             todos=latest_todos,
+                            goal=latest_goal,
                             verification_report=latest_verification,
                             diff_summary=latest_diff_summary,
                             subtasks=list(latest_subtasks) or None,
@@ -871,6 +893,7 @@ def run_mcp_react_loop(
                                         files_changed=files_changed or None,
                                         tool_steps=list(collected_steps) or None,
                                         todos=latest_todos,
+                                        goal=latest_goal,
                                         verification_report=latest_verification,
                                         diff_summary=latest_diff_summary,
                                         subtasks=list(latest_subtasks) or None,
@@ -926,6 +949,7 @@ def run_mcp_react_loop(
                                     files_changed=files_changed or None,
                                     tool_steps=list(collected_steps) or None,
                                     todos=latest_todos,
+                            goal=latest_goal,
                                     verification_report=latest_verification,
                                     diff_summary=latest_diff_summary,
                                     subtasks=list(latest_subtasks) or None,
@@ -1029,6 +1053,7 @@ def run_mcp_react_loop(
                         step_id=f"tool_{step_idx}",
                     )
                     capture_todos_if_needed(func_name, func_args, result_str)
+                    capture_goal_if_needed(func_name, func_args, result_str)
                     capture_verification_if_needed(func_name, func_args, result_str)
                     capture_diff_summary_if_needed(func_name, func_args, result_str)
                     chat_messages.append(

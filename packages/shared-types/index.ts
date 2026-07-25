@@ -128,6 +128,13 @@ export interface TodoItem {
   status: TodoItemStatus;
 }
 
+/** D29 — session goal tracked via goal_write. */
+export interface AgentGoal {
+  title: string;
+  progress: number;
+  done: boolean;
+}
+
 export type QuestionCardStatus = 'pending' | 'answered' | 'cancelled';
 
 export interface QuestionOption {
@@ -380,6 +387,8 @@ export interface ClutchState {
   pending_tool_steps?: ToolStep[];
   /** Live session todos for multi-step work (D3); updates via todo_write. */
   agent_todos?: TodoItem[];
+  /** D29 — current session goal; updates via goal_write. */
+  agent_goal?: AgentGoal;
   /** D5/D50 latest verification report (also sealed on ChatMessage.verificationReport). */
   verification_report?: VerificationReport;
   /** D6/D50 latest diff summary (also sealed on ChatMessage.diffSummary). */

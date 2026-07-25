@@ -27,6 +27,7 @@ export type {
   StatePatchData,
   TodoItem,
   TodoItemStatus,
+  AgentGoal,
   ToolStep,
   ToolStepKind,
   ToolStepStatus,

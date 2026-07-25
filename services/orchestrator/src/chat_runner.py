@@ -819,6 +819,7 @@ def _merge_patch(state: ClutchState, patch: dict[str, Any]) -> ClutchState:
         "pending_subtasks",
         "bg_jobs",
         "agent_todos",
+        "agent_goal",
         "verification_report",
         "diff_summary",
         "refining_node_id",
@@ -1657,6 +1658,7 @@ async def _llm_chat_reply(
     emit_tool_step: Callable[[dict[str, Any]], Awaitable[None]] | None = None,
     emit_reasoning: Callable[[str], Awaitable[None]] | None = None,
     emit_todos: Callable[[list[dict[str, Any]]], Awaitable[None]] | None = None,
+    emit_goal: Callable[[dict[str, Any]], Awaitable[None]] | None = None,
     emit_verification: Callable[[dict[str, Any]], Awaitable[None]] | None = None,
     emit_diff_summary: Callable[[dict[str, Any]], Awaitable[None]] | None = None,
     emit_subtask: Callable[[dict[str, Any]], Awaitable[None]] | None = None,
@@ -1911,6 +1913,12 @@ async def _llm_chat_reply(
                             asyncio.run_coroutine_threadsafe(emit_todos(todos), loop)
                         )
 
+                def on_goal(goal: dict[str, Any]) -> None:
+                    if emit_goal:
+                        step_futures.append(
+                            asyncio.run_coroutine_threadsafe(emit_goal(goal), loop)
+                        )
+
                 def on_verification(report: dict[str, Any]) -> None:
                     if emit_verification:
                         step_futures.append(
@@ -1942,6 +1950,12 @@ async def _llm_chat_reply(
                         on_tool_step=on_tool_step if emit_tool_step else None,
                         on_reasoning=on_reasoning if emit_reasoning else None,
                         on_todos=on_todos if emit_todos else None,
+                        on_goal=on_goal if emit_goal else None,
+                        existing_goal=(
+                            dict(state.get("agent_goal"))
+                            if isinstance(state.get("agent_goal"), dict)
+                            else None
+                        ),
                         on_verification=on_verification if emit_verification else None,
                         on_diff_summary=on_diff_summary if emit_diff_summary else None,
                         on_subtask=on_subtask if emit_subtask else None,
@@ -1966,6 +1980,8 @@ async def _llm_chat_reply(
                     subtasks_sink.extend(list(outcome.subtasks or []))
                 if outcome.todos is not None and emit_todos:
                     await emit_todos(list(outcome.todos))
+                if outcome.goal is not None and emit_goal:
+                    await emit_goal(dict(outcome.goal))
                 if outcome.verification_report is not None and emit_verification:
                     await emit_verification(dict(outcome.verification_report))
                 if outcome.diff_summary is not None and emit_diff_summary:
@@ -2257,6 +2273,12 @@ async def _handle_plain_chat_mcp_decision(
             _commit_run_state(run_id, state)
             await _notify_run_state(websocket, run_id, state, {"agent_todos": list(todos)})
 
+        async def emit_goal(goal: dict[str, Any]) -> None:
+            nonlocal state
+            state = _merge_patch(state, {"agent_goal": dict(goal)})
+            _commit_run_state(run_id, state)
+            await _notify_run_state(websocket, run_id, state, {"agent_goal": dict(goal)})
+
         async def emit_verification(report: dict[str, Any]) -> None:
             nonlocal state
             label = str(state.get("active_agent") or pending.reply_label or "Clutch Agent")
@@ -2297,6 +2319,7 @@ async def _handle_plain_chat_mcp_decision(
             emit_tool_step=emit_tool_step,
             emit_reasoning=emit_reasoning,
             emit_todos=emit_todos,
+            emit_goal=emit_goal,
             emit_verification=emit_verification,
             emit_diff_summary=emit_diff_summary,
             emit_subtask=emit_subtask,
@@ -2434,6 +2457,12 @@ async def _handle_plain_chat_mcp_decision(
         _commit_run_state(run_id, state)
         await _notify_run_state(websocket, run_id, state, {"agent_todos": list(todos)})
 
+    async def emit_goal(goal: dict[str, Any]) -> None:
+        nonlocal state
+        state = _merge_patch(state, {"agent_goal": dict(goal)})
+        _commit_run_state(run_id, state)
+        await _notify_run_state(websocket, run_id, state, {"agent_goal": dict(goal)})
+
     async def emit_verification(report: dict[str, Any]) -> None:
         nonlocal state
         label = str(state.get("active_agent") or "Clutch Agent")
@@ -2489,6 +2518,7 @@ async def _handle_plain_chat_mcp_decision(
         emit_tool_step=emit_tool_step,
         emit_reasoning=emit_reasoning,
         emit_todos=emit_todos,
+        emit_goal=emit_goal,
         emit_verification=emit_verification,
         emit_diff_summary=emit_diff_summary,
         emit_subtask=emit_subtask,
@@ -3077,6 +3107,16 @@ async def _handle_plain_chat(
             what="state_patch",
         )
 
+    async def emit_goal(goal: dict[str, Any]) -> None:
+        nonlocal state
+        state = _merge_patch(state, {"agent_goal": dict(goal)})
+        _commit_run_state(run_id, state)
+        await _try_ws_notify(
+            _notify_run_state(websocket, run_id, state, {"agent_goal": dict(goal)}),
+            run_id=run_id,
+            what="state_patch",
+        )
+
     async def emit_verification(report: dict[str, Any]) -> None:
         nonlocal state
         label = str(state.get("active_agent") or active_agent or "Clutch Agent")
@@ -3126,6 +3166,7 @@ async def _handle_plain_chat(
             emit_tool_step=emit_tool_step,
             emit_reasoning=emit_reasoning,
             emit_todos=emit_todos,
+            emit_goal=emit_goal,
             emit_verification=emit_verification,
             emit_diff_summary=emit_diff_summary,
             emit_subtask=emit_subtask,
@@ -3598,6 +3639,12 @@ async def _handle_flow_refine_message(
         _commit_run_state(run_id, state)
         await _notify_run_state(websocket, run_id, state, {"agent_todos": list(todos)})
 
+    async def emit_goal(goal: dict[str, Any]) -> None:
+        nonlocal state
+        state = _merge_patch(state, {"agent_goal": dict(goal)})
+        _commit_run_state(run_id, state)
+        await _notify_run_state(websocket, run_id, state, {"agent_goal": dict(goal)})
+
     async def emit_verification(report: dict[str, Any]) -> None:
         nonlocal state
         label = str(state.get("active_agent") or "Clutch Agent")
@@ -3658,6 +3705,7 @@ async def _handle_flow_refine_message(
             emit_tool_step=emit_tool_step,
             emit_reasoning=emit_reasoning,
             emit_todos=emit_todos,
+            emit_goal=emit_goal,
             emit_verification=emit_verification,
             emit_diff_summary=emit_diff_summary,
             emit_subtask=emit_subtask,

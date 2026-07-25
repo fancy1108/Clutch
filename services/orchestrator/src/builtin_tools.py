@@ -275,6 +275,29 @@ def list_builtin_tools() -> list[dict[str, Any]]:
             },
         },
         {
+            "name": "goal_write",
+            "description": (
+                "Set or update the current session goal (D29). "
+                "Provide title, progress 0-100, and done=true when complete. "
+                "Shown as a goal bar above Chat."
+            ),
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string", "description": "Goal title (e.g. Fix login)."},
+                    "progress": {
+                        "type": "integer",
+                        "description": "Progress percent 0-100.",
+                    },
+                    "done": {
+                        "type": "boolean",
+                        "description": "Mark goal complete (closes the bar).",
+                    },
+                },
+                "required": ["title"],
+            },
+        },
+        {
             "name": "todo_write",
             "description": (
                 "Create or replace the session todo list for multi-step work (D3). "
@@ -507,6 +530,11 @@ def is_todo_write_tool(name: str) -> bool:
     return short in {"todo_write", "write_todos", "update_todos"}
 
 
+def is_goal_write_tool(name: str) -> bool:
+    short = name.split("__")[-1].lower().replace("-", "_")
+    return short in {"goal_write", "set_goal", "update_goal"}
+
+
 def is_ask_user_question_tool(name: str) -> bool:
     short = name.split("__")[-1].lower().replace("-", "_")
     return short in {"ask_user_question", "ask_question", "user_question"}
@@ -545,6 +573,23 @@ _VERIFICATION_STEP_STATUSES = frozenset({"passed", "failed", "skipped"})
 _VERIFICATION_CONCLUSIONS = frozenset({"passed", "failed"})
 _DIFF_FILE_STATUSES = frozenset({"A", "M", "D"})
 _MAX_DIFF_PATCH_LINES = 160
+
+
+def normalize_goal_args(func_args: dict[str, Any] | None) -> dict[str, Any]:
+    payload = func_args if isinstance(func_args, dict) else {}
+    title = str(payload.get("title") or payload.get("goal") or "").strip()
+    if not title:
+        title = "Goal"
+    try:
+        progress = int(payload.get("progress") if payload.get("progress") is not None else 0)
+    except (TypeError, ValueError):
+        progress = 0
+    progress = max(0, min(100, progress))
+    done = bool(payload.get("done"))
+    if progress >= 100:
+        done = True
+        progress = 100
+    return {"title": title, "progress": progress, "done": done}
 
 
 def normalize_todo_items(
@@ -1167,6 +1212,9 @@ def execute_builtin_tool(tool_name: str, arguments: dict[str, Any]) -> str:
         "apply_patch": _tool_apply_patch,
         "propose_plan": _tool_propose_plan,
         "todo_write": _tool_todo_write,
+        "goal_write": _tool_goal_write,
+        "set_goal": _tool_goal_write,
+        "update_goal": _tool_goal_write,
         "ask_user_question": _tool_ask_user_question,
         "submit_verification": _tool_submit_verification,
         "verification_report": _tool_submit_verification,
@@ -1229,6 +1277,12 @@ def _tool_delegate_subtask(arguments: dict[str, Any]) -> str:
         return f"Error executing tool: {exc}"
     except Exception as exc:
         return f"Error executing tool: {exc}"
+
+
+def _tool_goal_write(arguments: dict[str, Any]) -> str:
+    goal = normalize_goal_args(arguments)
+    status = "completed" if goal["done"] else f"{goal['progress']}%"
+    return f"Updated goal: {goal['title']} ({status})"
 
 
 def _tool_todo_write(arguments: dict[str, Any]) -> str:

@@ -42,6 +42,7 @@ _PERSISTED_OPTIONAL_KEYS = frozenset({
     "pending_pty_inject",
     "pending_tool_steps",
     "agent_todos",
+    "agent_goal",
     "verification_report",
     "diff_summary",
 })
