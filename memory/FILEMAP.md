@@ -143,6 +143,7 @@
 | 思考流（D19） | `live_reasoning` state · `AgentLiveActivity` 思考折叠 · `mcp_react` reasoning |
 | 长任务监视（D26） | `bg_jobs_monitor.py` · Supervisor `[Monitor]` 行 · `bgJobMonitor` toast |
 | 前台转后台（D34） | `foreground_shell.py` · `ForegroundShellBar` · `move_fg_to_background` WS |
+| Worktree 隔离（D32） | `worktree_isolation.py` · `routes/worktree.py` · `WorktreeIsolationBar` · WS `enable_worktree` / `merge_worktree` / `discard_worktree` |
 | 会话 fork/回滚（D23） | `session_fork.py` · `file_rewind.py` · fork/rewind API · Chat 菜单 |
 | 跨会话记忆（D16） | `cross_session_memory.py` · `remember_preference` · Settings Memory |
 | 工具 Hooks（D17） | `tool_hooks.py` · `mcp_react` Pre/Post 拦截 |

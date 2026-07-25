@@ -260,6 +260,7 @@ from src.routes.pty import router as pty_router
 from src.routes.design import router as design_router_facade
 from src.routes.chat import router as chat_router
 from src.routes.preview import router as preview_router
+from src.routes.worktree import router as worktree_router
 
 app.include_router(workspace_router)
 app.include_router(models_router)
@@ -268,3 +269,4 @@ app.include_router(pty_router)
 app.include_router(design_router_facade)
 app.include_router(chat_router)
 app.include_router(preview_router)
+app.include_router(worktree_router)

@@ -105,6 +105,7 @@ graph TD
 * **Subtask delegation（D10 + D48）**：Clutch Agent 可调用 `delegate_subtask` 派发 **explore**（只读）或 **implement** 子任务；父气泡下嵌套 **Subtasks** 卡展示状态、摘要与可展开步骤；子失败在父卡可见。
 * **Background commands（D11）**：`run_terminal_cmd` 可设 `background=true` 立即返回 `job_id`；Chat 输入栏上方展示后台任务条（查看输出 / Kill）；前台仍可继续对话。
 * **Foreground → background（D34）**：长命令前台执行时，输入栏上方出现 **Move to background**；一键转入 D11 后台列表后可继续聊天（对标 Grok Ctrl+B）。
+* **Worktree 隔离试验（D32）**：Chat 可选 **Enable worktree** — Agent 在 `.clutch/worktrees/<id>` 隔离改代码；**Merge** 合并回主仓或 **Discard** 丢弃，主工作区保持干净。
 * **Session fork + file rewind（D23）**：消息右键 **Fork session here** 从该条复制 transcript 到新会话；**Rewind** 一键恢复 Agent 最近一次文件改动并在 Chat 留 Supervisor 记录。
 * **Cross-session memory（D16）**：Settings 可开/关 **Memory**；Agent 用 `remember_preference` 记下跨会话约定；可 **Clear memory**。
 * **Tool hooks（D17）**：用户/项目 `.clutch/hooks.json` 或偏好目录 `hooks.json` 配置 PreToolUse/PostToolUse 拒绝规则；违规时 Chat 工具步骤显示 Hook 原因。

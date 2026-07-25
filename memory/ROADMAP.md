@@ -74,7 +74,7 @@
 | D29 Goal 跟踪 | P1 | ❌ | 代码已交 PM（`96c13d3` + `1d88b02` UI） |
 | D30 会话看板 | P1 | ❌ | 会话总览；待实现/PM |
 | D31 计划批注 | P1 | ❌ | 行内评论批准；待实现/PM |
-| D32 worktree | P2 | ❌ | 隔离试验；待实现/PM |
+| D32 worktree | P2 | ❌ | 隔离试验；代码已交 PM |
 | D33 富读 PDF/图 | P1 | ❌ | read_file 富媒体；待实现/PM |
 | D34 前台转后台 | P1 | ❌ | Ctrl+B 式；待实现/PM |
 | D35 能力包导入 | P2 | ❌ | skills+hooks+mcp；待实现/PM |

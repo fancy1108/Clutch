@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextvars
 import json
 import logging
 import threading
@@ -789,6 +790,43 @@ def _bg_jobs_live_patch(jobs: list[dict[str, Any]]) -> dict[str, Any]:
 
 def _foreground_shell_live_patch(payload: dict[str, Any] | None) -> dict[str, Any]:
     return {"foreground_shell": payload}
+
+
+def _worktree_isolation_live_patch(payload: dict[str, Any] | None) -> dict[str, Any]:
+    return {"worktree_isolation": payload}
+
+
+def _bind_worktree_from_state(state: ClutchState) -> tuple[contextvars.Token | None, contextvars.Token | None]:
+    """Bind effective workspace root when D32 worktree isolation is active."""
+    from src.workspace import bind_effective_workspace_root
+
+    info = state.get("worktree_isolation")
+    if not isinstance(info, dict) or not info.get("enabled"):
+        return None, None
+    wt_path = str(info.get("path") or "").strip()
+    if not wt_path:
+        return None, None
+    from pathlib import Path
+
+    root_token = bind_effective_workspace_root(Path(wt_path))
+    from src.worktree_isolation import bind_worktree_context
+
+    wt_token = bind_worktree_context(dict(info))
+    return root_token, wt_token
+
+
+def _release_worktree_bindings(
+    root_token: contextvars.Token | None,
+    wt_token: contextvars.Token | None,
+) -> None:
+    if root_token is not None:
+        from src.workspace import release_effective_workspace_root
+
+        release_effective_workspace_root(root_token)
+    if wt_token is not None:
+        from src.worktree_isolation import release_worktree_context
+
+        release_worktree_context(wt_token)
 
 
 async def _apply_foreground_shell_update(
@@ -1960,6 +1998,7 @@ async def _llm_chat_reply(
                 from src.bg_jobs import bind_bg_job_context, release_bg_job_context
 
                 bg_token = bind_bg_job_context({"run_id": state["run_id"]})
+                wt_root_token, wt_ctx_token = _bind_worktree_from_state(state)
                 try:
                     outcome = await asyncio.to_thread(
                         run_mcp_react_loop,
@@ -1990,6 +2029,7 @@ async def _llm_chat_reply(
                     )
                 finally:
                     release_bg_job_context(bg_token)
+                    _release_worktree_bindings(wt_root_token, wt_ctx_token)
                 for fut in step_futures:
                     await asyncio.wrap_future(fut)
                 if tool_steps_sink is not None:
@@ -4628,6 +4668,106 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                     _commit_run_state(run_id, state)
                     await _send_message_event(websocket, run_id, notice, "")
                     await _notify_run_state(websocket, run_id, state, patch)
+            elif isinstance(payload, dict) and payload.get("action") == "enable_worktree":
+                from src.worktree_isolation import create_worktree, describe_worktree
+                from src.workspace import require_workspace
+
+                try:
+                    root = await asyncio.to_thread(require_workspace)
+                    info = await asyncio.to_thread(create_worktree, root)
+                    wt_payload = describe_worktree(info, root)
+                    patch = {"worktree_isolation": wt_payload}
+                    state = _merge_patch(state, patch)
+                    _commit_run_state(run_id, state)
+                    notice = _chat_message(
+                        "Supervisor",
+                        tr(
+                            f"Worktree isolation enabled at {wt_payload.get('path', '')}.",
+                            f"已启用 worktree 隔离：{wt_payload.get('path', '')}。",
+                        ),
+                    )
+                    patch = {**patch, "messages": list(state["messages"]) + [notice]}
+                    state = _merge_patch(state, patch)
+                    _commit_run_state(run_id, state)
+                    await _send_message_event(websocket, run_id, notice, "")
+                    await _notify_run_state(websocket, run_id, state, patch)
+                except Exception as exc:
+                    notice = _chat_message(
+                        "Supervisor",
+                        tr(f"Worktree enable failed: {exc}", f"启用 worktree 失败：{exc}"),
+                    )
+                    patch = {"messages": list(state["messages"]) + [notice]}
+                    state = _merge_patch(state, patch)
+                    _commit_run_state(run_id, state)
+                    await _send_message_event(websocket, run_id, notice, "")
+                    await _notify_run_state(websocket, run_id, state, patch)
+            elif isinstance(payload, dict) and payload.get("action") == "merge_worktree":
+                from src.worktree_isolation import merge_worktree
+                from src.workspace import require_workspace
+
+                wt_info = state.get("worktree_isolation")
+                wt_id = str((wt_info or {}).get("id") or payload.get("wt_id") or "").strip()
+                if wt_id:
+                    try:
+                        root = await asyncio.to_thread(require_workspace)
+                        summary = await asyncio.to_thread(merge_worktree, root, wt_id)
+                        notice = _chat_message(
+                            "Supervisor",
+                            tr(f"Merged worktree {wt_id}: {summary}", f"已合并 worktree {wt_id}：{summary}"),
+                        )
+                        patch = {
+                            "worktree_isolation": None,
+                            "messages": list(state["messages"]) + [notice],
+                        }
+                        state = _merge_patch(state, patch)
+                        _commit_run_state(run_id, state)
+                        await _send_message_event(websocket, run_id, notice, "")
+                        await _notify_run_state(websocket, run_id, state, patch)
+                    except Exception as exc:
+                        notice = _chat_message(
+                            "Supervisor",
+                            tr(f"Worktree merge failed: {exc}", f"合并 worktree 失败：{exc}"),
+                        )
+                        patch = {"messages": list(state["messages"]) + [notice]}
+                        state = _merge_patch(state, patch)
+                        _commit_run_state(run_id, state)
+                        await _send_message_event(websocket, run_id, notice, "")
+                        await _notify_run_state(websocket, run_id, state, patch)
+            elif isinstance(payload, dict) and payload.get("action") == "discard_worktree":
+                from src.worktree_isolation import discard_worktree
+                from src.workspace import require_workspace
+
+                wt_info = state.get("worktree_isolation")
+                wt_id = str((wt_info or {}).get("id") or payload.get("wt_id") or "").strip()
+                if wt_id:
+                    try:
+                        root = await asyncio.to_thread(require_workspace)
+                        await asyncio.to_thread(discard_worktree, root, wt_id)
+                        notice = _chat_message(
+                            "Supervisor",
+                            tr(
+                                f"Discarded worktree {wt_id}; main workspace unchanged.",
+                                f"已丢弃 worktree {wt_id}；主工作区保持干净。",
+                            ),
+                        )
+                        patch = {
+                            "worktree_isolation": None,
+                            "messages": list(state["messages"]) + [notice],
+                        }
+                        state = _merge_patch(state, patch)
+                        _commit_run_state(run_id, state)
+                        await _send_message_event(websocket, run_id, notice, "")
+                        await _notify_run_state(websocket, run_id, state, patch)
+                    except Exception as exc:
+                        notice = _chat_message(
+                            "Supervisor",
+                            tr(f"Worktree discard failed: {exc}", f"丢弃 worktree 失败：{exc}"),
+                        )
+                        patch = {"messages": list(state["messages"]) + [notice]}
+                        state = _merge_patch(state, patch)
+                        _commit_run_state(run_id, state)
+                        await _send_message_event(websocket, run_id, notice, "")
+                        await _notify_run_state(websocket, run_id, state, patch)
             elif isinstance(payload, dict) and payload.get("action") == "clear_approvals":
                 # D13: clear session-remembered MCP tool approvals.
                 from src.mcp_pending import clear_mcp_approval_state

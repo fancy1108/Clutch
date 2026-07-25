@@ -12,7 +12,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ### Added
 
-- **Session fork + file rewind (D23):** Right-click → **Fork session here**; composer **Rewind** restores Agent file writes with Supervisor Chat line.
+- **Git worktree isolation (D32):** Optional **Enable worktree** in Chat — Agent cwd points to `.clutch/worktrees/<id>`; **Merge** or **Discard** UI; main workspace stays clean until merge.
 - **Foreground → background (D34):** **Move to background** bar transfers live `run_terminal_cmd` into `bg_jobs`.
 - **Cross-session memory (D16):** Settings Memory toggle, `remember_preference` tool, `memory` prompt layer, Clear memory.
 - **Tool hooks (D17):** User/project `hooks.json` PreToolUse/PostToolUse deny rules; Chat tool steps show Hook denial reason.

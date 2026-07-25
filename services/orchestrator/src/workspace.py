@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextvars
 import hashlib
 import json
 import logging
@@ -407,7 +408,24 @@ def active_workspace_issue() -> str | None:
     return None
 
 
+_effective_root: contextvars.ContextVar[Path | None] = contextvars.ContextVar(
+    "workspace_effective_root", default=None
+)
+
+
+def bind_effective_workspace_root(path: Path | None) -> contextvars.Token[Path | None]:
+    """D32 — override Agent tool cwd (e.g. git worktree path)."""
+    return _effective_root.set(path)
+
+
+def release_effective_workspace_root(token: contextvars.Token[Path | None]) -> None:
+    _effective_root.reset(token)
+
+
 def require_workspace() -> Path:
+    override = _effective_root.get()
+    if override is not None:
+        return override.resolve()
     info = get_workspace()
     if info is None:
         raise WorkspaceError(

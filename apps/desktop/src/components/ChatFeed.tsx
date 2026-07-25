@@ -45,6 +45,7 @@ import { GoalBarView, shouldShowGoalBar } from './GoalBarView';
 import { SubtaskCardView } from './SubtaskCardView';
 import { BackgroundJobsBar } from './BackgroundJobsBar';
 import { ForegroundShellBar } from './ForegroundShellBar';
+import { WorktreeIsolationBar } from './WorktreeIsolationBar';
 import { detectBgJobFailureToast } from '../services/bgJobMonitor';
 import { VerificationReportCardView } from './VerificationReportCardView';
 import { DiffSummaryCardView } from './DiffSummaryCardView';
@@ -895,6 +896,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   const liveSubtasks = (clutchOrchestraState.pending_subtasks ?? []) as SubtaskCard[];
   const bgJobs = (clutchOrchestraState.bg_jobs ?? []) as BackgroundJob[];
   const foregroundShell = clutchOrchestraState.foreground_shell ?? null;
+  const worktreeIsolation = clutchOrchestraState.worktree_isolation ?? null;
 
   useEffect(() => {
     const prev = prevBgJobsRef.current;
@@ -1847,6 +1849,21 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                 t={t}
                 onMoveToBackground={() => {
                   void clutchStore.send({ action: 'move_fg_to_background' });
+                }}
+              />
+            ) : null}
+            {isPlainLlmChat ? (
+              <WorktreeIsolationBar
+                worktree={worktreeIsolation}
+                t={t}
+                onEnable={() => {
+                  void clutchStore.send({ action: 'enable_worktree' });
+                }}
+                onMerge={() => {
+                  void clutchStore.send({ action: 'merge_worktree' });
+                }}
+                onDiscard={() => {
+                  void clutchStore.send({ action: 'discard_worktree' });
                 }}
               />
             ) : null}
