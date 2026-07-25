@@ -28,6 +28,7 @@ import {
   type SlashCommandId,
 } from '../services/slashCommands';
 import { UsageDashboard } from './UsageDashboard';
+import { SessionOverviewBoard } from './SessionOverviewBoard';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -86,6 +87,10 @@ interface ChatInputBarProps {
   shellPoolQueuePosition?: number;
   shellPoolQueueDepth?: number;
   currentRunId?: string;
+  /** D30 — live status for session board badges. */
+  clutchStatus?: string;
+  /** D30 — click a board row to switch sessions. */
+  onSelectSession?: (session: SessionRecord) => void;
   resolveAgentLogo?: (agentName: string) => string | undefined;
   onDismissHybridNotice?: () => void;
   isFlowRefining?: boolean;
@@ -223,6 +228,8 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
   shellPoolQueuePosition = 0,
   shellPoolQueueDepth = 0,
   currentRunId = '',
+  clutchStatus = 'idle',
+  onSelectSession,
   resolveAgentLogo,
   onDismissHybridNotice,
   isFlowRefining = false,
@@ -256,6 +263,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
   const [agentPickerOpen, setAgentPickerOpen] = useState(false);
   const [fileBrowserOpen, setFileBrowserOpen] = useState(false);
   const [usageDashboardOpen, setUsageDashboardOpen] = useState(false);
+  const [sessionBoardOpen, setSessionBoardOpen] = useState(false);
 
   const [skillFilter, setSkillFilter] = useState('');
   const [sessionFilter, setSessionFilter] = useState('');
@@ -273,6 +281,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
         setAgentPickerOpen(false);
         setFileBrowserOpen(false);
         setUsageDashboardOpen(false);
+        setSessionBoardOpen(false);
       }
     };
     window.addEventListener('mousedown', handler);
@@ -798,10 +807,19 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
           })}
         </div>
       ) : null}
-      {showMcpBindingBadge || showRunStats ? (
+      {showMcpBindingBadge || showRunStats || (sessions.length > 0 && isPlainLlmChat) ? (
         <div
           className="relative flex items-center justify-between gap-2 px-3 pt-2 pb-1 text-[10px] text-on-surface-variant/70 border-b border-outline-variant/30"
         >
+          <SessionOverviewBoard
+            open={sessionBoardOpen && isPlainLlmChat}
+            onClose={() => setSessionBoardOpen(false)}
+            sessions={sessions}
+            currentRunId={currentRunId}
+            clutchStatus={clutchStatus}
+            language={language === 'zh' ? 'zh' : 'en'}
+            onSelectSession={onSelectSession}
+          />
           <UsageDashboard
             open={usageDashboardOpen && isPlainLlmChat}
             onClose={() => setUsageDashboardOpen(false)}
@@ -812,6 +830,21 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
             language={language === 'zh' ? 'zh' : 'en'}
           />
           <div className="flex items-center gap-2 min-w-0">
+            {isPlainLlmChat && sessions.length > 0 ? (
+              <button
+                type="button"
+                data-testid="session-overview-toggle"
+                title={language === 'zh' ? '会话总览' : 'Session overview'}
+                onClick={() => {
+                  setUsageDashboardOpen(false);
+                  setSessionBoardOpen((open) => !open);
+                }}
+                className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 hover:bg-surface-container-low hover:text-on-surface transition-colors"
+              >
+                <LegacyIcon name="view_list" className="text-[13px]" />
+                <span>{language === 'zh' ? '会话' : 'Sessions'}</span>
+              </button>
+            ) : null}
             {showMcpBindingBadge ? (
               <McpBindingBadge
                 mcpServerIds={mcpServerIds}
@@ -824,7 +857,10 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
                 type="button"
                 data-testid="chat-run-stats"
                 title={language === 'zh' ? '打开用量看板' : 'Open usage dashboard'}
-                onClick={() => setUsageDashboardOpen((open) => !open)}
+                onClick={() => {
+                  setSessionBoardOpen(false);
+                  setUsageDashboardOpen((open) => !open);
+                }}
                 className="font-mono truncate text-left hover:text-on-surface transition-colors"
               >
                 {language === 'zh' ? '步骤' : 'Steps'} {stepsUsed}/{stepsMax}

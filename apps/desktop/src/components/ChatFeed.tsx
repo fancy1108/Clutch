@@ -15,6 +15,7 @@ import {
   QuestionOption,
   SubtaskCard,
   TodoItem,
+  AgentGoal,
   BackgroundJob,
   ToolStep,
 } from '../types';
@@ -40,6 +41,7 @@ import { FilesChangedChips } from './FilesChangedChips';
 import { PlanCardView } from './PlanCardView';
 import { QuestionCardView } from './QuestionCardView';
 import { TodoCardView, shouldPinLiveTodos } from './TodoCardView';
+import { GoalBarView, shouldShowGoalBar } from './GoalBarView';
 import { SubtaskCardView } from './SubtaskCardView';
 import { BackgroundJobsBar } from './BackgroundJobsBar';
 import { detectBgJobFailureToast } from '../services/bgJobMonitor';
@@ -330,6 +332,8 @@ interface ChatFeedProps {
   onPreviewSnippet?: (name: string, content: string) => void;
   /** D51 — Chat shell / execute step → Terminal sync. */
   onViewToolStepInTerminal?: (step: ToolStep) => void;
+  /** D30 — switch session from overview board. */
+  onSelectSession?: (session: SessionRecord) => void;
   /** D40 — Hub MCP binding badge for Clutch Agent. */
   mcpServerIds?: string[];
   showMcpBindingBadge?: boolean;
@@ -538,6 +542,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   onOpenWorkspaceFile,
   onPreviewSnippet,
   onViewToolStepInTerminal,
+  onSelectSession,
   mcpServerIds,
   showMcpBindingBadge = false,
   onOpenMcpBind,
@@ -823,6 +828,8 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
 
   const pendingToolSteps = clutchOrchestraState.pending_tool_steps;
   const liveTodos = (clutchOrchestraState.agent_todos ?? []) as TodoItem[];
+  const liveGoal = clutchOrchestraState.agent_goal as AgentGoal | undefined;
+  const showGoalBar = shouldShowGoalBar(liveGoal);
   const liveSubtasks = (clutchOrchestraState.pending_subtasks ?? []) as SubtaskCard[];
   const bgJobs = (clutchOrchestraState.bg_jobs ?? []) as BackgroundJob[];
 
@@ -1522,6 +1529,25 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
 
     </section>
 
+    {/* D29 — active session goal bar */}
+    {workspaceViewMode === 'chat' && showGoalBar && liveGoal ? (
+      <div
+        data-testid="goal-sticky-rail"
+        className={`pointer-events-none absolute z-25 ${chatChrome.chatEdgePaddingClass}`}
+        style={{
+          top: APP_HEADER_HEIGHT_PX + (pinLiveTodos ? 72 : 0),
+          left: leftChromePad,
+          right: rightChromePad,
+        }}
+      >
+        <div className="bg-background pt-2">
+          <div className={`pointer-events-auto mx-auto w-full ${chatChrome.chatMaxWidthClass}`}>
+            <GoalBarView goal={liveGoal} t={t} />
+          </div>
+        </div>
+      </div>
+    ) : null}
+
     {/* Incomplete live todos: pin under header with an opaque curtain (no scroll bleed). */}
     {workspaceViewMode === 'chat' && pinLiveTodos ? (
       <div
@@ -1768,6 +1794,8 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
               shellPoolQueuePosition={shellPoolQueuePosition}
               shellPoolQueueDepth={shellPoolQueueDepth}
               currentRunId={sessionRunId}
+              clutchStatus={clutchStatus}
+              onSelectSession={onSelectSession}
               resolveAgentLogo={resolveAgentLogo}
               onDismissHybridNotice={() => clutchStore.clearShellSessionNotice()}
               isFlowRefining={isRefining}

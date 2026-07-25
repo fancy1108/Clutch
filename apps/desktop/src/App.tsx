@@ -2188,6 +2188,7 @@ function MainLayout() {
                 onOpenMcpBind={() => setView('agents')}
                 onSlashCommand={handleSlashCommand}
                 slashNotice={slashNotice}
+                onSelectSession={(session) => { void handleSelectSession(session); }}
               />
               </div>
             </>
