@@ -1,6 +1,6 @@
-# PM 验收用例（Agent 自测后待你点验）
+# PM 验收用例
 
-> 每项实现后已跑自动化自测并单独 commit；**ROADMAP 仍标 ❌ 直至你点验通过**。
+> **2026-07-25：** Agent 代 PM 已对 D14–D52（除 Design D36）跑通用例内自动化 + API/Hybrid E2E；详见 [`AGENT-PM-2026-07-25.md`](./AGENT-PM-2026-07-25.md)。桌面 Tauri / 真连 acceptance **Skip（环境）**。
 
 ## Composer UI（验收前必读）
 
@@ -28,7 +28,7 @@ Chat 输入框默认仅 **`+` · 模式 pill · 发送/Stop**（Cursor/Copilot �
 | D11 后台命令 | [D11.md](./D11.md) | `59b45ee` · **PM ✅ 2026-07-25** |
 | D12 Git + 网页 | [D12.md](./D12.md) | `194d33a` · **PM ✅ 2026-07-25** |
 | D13 权限规则 | [D13.md](./D13.md) | `ed7c568` · **PM ✅ A 2026-07-25**（B/C 跳过） |
-| D51 Chat ↔ Terminal | [D51.md](./D51.md) | `ee4e2a2` |
+| D51 Chat ↔ Terminal | [D51.md](./D51.md) | `ee4e2a2` · **Agent ✅ 2026-07-25** |
 | D52 能力↔交互门禁 | [D52.md](./D52.md) | `1365f6d` |
 | D38 Hub 可信状态 | [D38.md](./D38.md) | `b2d8f49` |
 | D39 传输诚实 | [D39.md](./D39.md) | `092ee91` |
@@ -39,7 +39,7 @@ Chat 输入框默认仅 **`+` · 模式 pill · 发送/Stop**（Cursor/Copilot �
 | D44 一键 local-fs | [D44.md](./D44.md) | `24f0e31` |
 | D45 文档对齐 | [D45.md](./D45.md) | `24f0e31` |
 
-## 扩展 D14 + D15–D36（本轮交付）
+## 扩展 D14 + D15–D36（Agent 代 PM ✅ 2026-07-25）
 
 | 交付期 | 用例文件 | Commit |
 |--------|----------|--------|

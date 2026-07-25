@@ -1,0 +1,6 @@
+[0;32m✓[0m Text API key available (env or host models.json)
+[0;32m✓[0m Image API key available (env or host models.json)
+[0;31m✗[0m Ollama not reachable on :11434 — start Ollama for local model tests
+[0;32m✓[0m CLI matrix: 6 connected+routable tool(s) (agy excluded)
+
+[0;31mPreflight failed (1 required check(s)).[0m

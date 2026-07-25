@@ -1,0 +1,24 @@
+
+> clutch@1.2.9 test /Users/fancy/clutch
+> pnpm --filter @clutch/desktop test "src/services/slashCommands.test.ts" "src/services/agentLiveReasoning.test.ts" "src/services/chatPendingQueue.test.ts" "src/services/bgJobMonitor.test.ts" "src/components/GoalBarView.test.ts" "src/components/PlanCardView.test.ts" "src/components/SessionOverviewBoard.test.ts"
+
+
+> @clutch/desktop@1.2.9 test /Users/fancy/clutch/apps/desktop
+> vitest run "src/services/slashCommands.test.ts" "src/services/agentLiveReasoning.test.ts" "src/services/chatPendingQueue.test.ts" "src/services/bgJobMonitor.test.ts" "src/components/GoalBarView.test.ts" "src/components/PlanCardView.test.ts" "src/components/SessionOverviewBoard.test.ts"
+
+
+ RUN  v3.2.6 /Users/fancy/clutch/apps/desktop
+
+ ✓ src/services/agentLiveReasoning.test.ts (1 test) 1ms
+ ✓ src/services/bgJobMonitor.test.ts (3 tests) 1ms
+ ✓ src/services/slashCommands.test.ts (3 tests) 1ms
+ ✓ src/services/chatPendingQueue.test.ts (5 tests) 2ms
+ ✓ src/components/GoalBarView.test.ts (1 test) 1ms
+ ✓ src/components/PlanCardView.test.ts (4 tests) 2ms
+ ✓ src/components/SessionOverviewBoard.test.ts (3 tests) 6ms
+
+ Test Files  7 passed (7)
+      Tests  20 passed (20)
+   Start at  14:27:07
+   Duration  249ms (transform 141ms, setup 0ms, collect 378ms, tests 15ms, environment 1ms, prepare 238ms)
+

@@ -5,11 +5,17 @@
 
 ## Current Status
 
-- **阶段：** **v1.2.9**；主线 **D8–D13 PM ✅**（含 D10∥D48；D13 仅 A）；扩展 D14–D36 代码已交；其余待 PM
-- **Git / PM 索引：** [`runs/verification/pm-acceptance/README.md`](../runs/verification/pm-acceptance/README.md)
-- **下次优先：** 扩展/MCP 表点验；默认 **Agent**；Ask=只读对话（D54）
+- **阶段：** **v1.2.9**；主线 D8–D13 ✅；扩展/MCP **D14–D52 Agent 代 PM ✅**（桌面/真连 Skip）；Design D36 仍 ❌
+- **Git / PM 索引：** [`runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md`](../runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md)
+- **下次优先：** 补跑桌面 Tauri E2E（Vite:3000）与真连 acceptance（需 Ollama）；或 Design D36
 
 ## Recent Sessions
+
+## 2026-07-25 会话（Agent 代 PM 自验收）
+
+- **Wave A/B：** D14–D52 用例内 pytest/vitest/doc-drift 全绿
+- **Wave C：** API+Hybrid E2E ✅；修 sandbox `route_engine` FAKE_LLM（`0c3462d`/`61c22ec`）；Desktop/Real Skip
+- **证据：** `runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md`
 
 ## 2026-07-25 会话（D13 A + Ask=只读）
 

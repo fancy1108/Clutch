@@ -4,6 +4,15 @@
 > **何时写：** 每个**代码 Task** 完成并 commit 后，在 Check-out 追加一节（见 `CLAUDE.md` §Check-out）。  
 > **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。
 
+## Agent 代 PM 自验收 D14–D52（2026-07-25）
+
+| 项 | 说明 |
+|----|------|
+| **Commits** | `0c3462d` / `61c22ec`（E2E FAKE_LLM）；closeout docs 另 commit |
+| **Evidence** | `runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md` + wave-*-*.log |
+| **Verification** | Wave A/B 自动化绿；API E2E 6/6；Hybrid 1/1；Desktop/Real **Skip（环境）** |
+| **ROADMAP** | D14–D52（非 Design D36）→ ✅ Agent 自验 |
+
 ## D13 A + Ask=只读（D54）（2026-07-25）
 
 | 项 | 说明 |

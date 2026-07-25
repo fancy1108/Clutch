@@ -1,0 +1,8 @@
+== check-doc-drift.sh ==
+OK: INV-001 no legacy product naming in source
+OK: INV-002 orchestrator src has no wrong localhost ports
+WARN:  INV-003 setTimeout in App.tsx (expected until M0-03; set CLUTCH_STRICT_MOCK=1 after)
+OK: INV-004 Layer 4 playbook headers present
+OK: D52 Capability → Chat UI table present (D1/D10/D37/D46/D51)
+OK: INV-D52 Capability → Chat UI table present
+== done: 0 error(s), 1 warning(s) ==

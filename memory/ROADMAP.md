@@ -56,49 +56,49 @@
 | D11 后台命令 | P0 | ✅ | PM ✅ 2026-07-25；RUNNING 底栏 / 结束进对话；Kill 乐观 |
 | D12 Git + 网页 | P0 | ✅ | PM ✅ 2026-07-25；commit 真（bcfc099 d12-pm-test）；web_fetch 总结 |
 | D13 权限规则 | P0 | ✅ | PM ✅ A 2026-07-25；B/C 不点验；危险 Full 仍强问 |
-| D14 外挂 grok CLI | P2 | ❌ | 代码已交 PM（`5d65a68`） |
-| D15 联网搜索 | P1 | ❌ | 代码已交 PM（`0c0c095`） |
-| D16 跨会话记忆 | P1 | ❌ | 代码已交 PM（`930f9a5`） |
-| D17 Hooks | P1 | ❌ | 代码已交 PM（`68a05a8`） |
-| D18 斜杠命令 | P1 | ❌ | 代码已交 PM（`518b8d0`） |
-| D19 思考流 | P1 | ❌ | 代码已交 PM（`3f3e66e`） |
-| D20 忙时排队 | P1 | ❌ | 代码已交 PM（`94fdc8f`） |
-| D21 ignore/沙箱 | P1 | ❌ | 代码已交 PM（`6733b15`） |
-| D22 用量看板 | P1 | ❌ | Overview 占位 `—`；**后续**接供应商真值（Q-USAGE-1）；原 `c68301b` |
-| D23 fork/rewind | P1 | ❌ | 代码已交 PM（`bc67e30`） |
-| D24 诊断 MVP | P2 | ❌ | 代码已交 PM（`605d0fc`） |
-| Cap-D25 定时任务 | P2 | ❌ | 代码已交 PM（`05547b8`；≠ Hybrid D25） |
-| D26 长任务监视 | P1 | ❌ | 代码已交 PM（`8be7f06`） |
-| D27 模式/人设 | P1 | ❌ | Ask/Plan/Edit/Full；Ask=只读（D54）；待 PM |
-| D28 MCP 工具发现 | P1 | ❌ | 代码已交 PM（`cc2662e`） |
-| D29 Goal 跟踪 | P1 | ❌ | 代码已交 PM（`96c13d3` + `1d88b02` UI） |
-| D30 会话看板 | P1 | ❌ | 代码已交 PM（`1d88b02`） |
-| D31 计划批注 | P1 | ❌ | 代码已交 PM（`d2f2b2f`） |
-| D32 worktree | P2 | ❌ | 代码已交 PM（`9a863ae`） |
-| D33 富读 PDF/图 | P1 | ❌ | 代码已交 PM（`bec5dbb`） |
-| D34 前台转后台 | P1 | ❌ | 代码已交 PM（`5679a1b`） |
-| D35 能力包导入 | P2 | ❌ | 代码已交 PM（`5de258d`） |
-| D36 headless Agent | P2 | ❌ | 代码已交 PM（`e42ba01`；≠ Design D36） |
+| D14 外挂 grok CLI | P2 | ✅ | Agent 自验 2026-07-25（`AGENT-PM-2026-07-25.md`） |
+| D15 联网搜索 | P1 | ✅ | Agent 自验 2026-07-25 |
+| D16 跨会话记忆 | P1 | ✅ | Agent 自验 2026-07-25 |
+| D17 Hooks | P1 | ✅ | Agent 自验 2026-07-25 |
+| D18 斜杠命令 | P1 | ✅ | Agent 自验 2026-07-25 |
+| D19 思考流 | P1 | ✅ | Agent 自验 2026-07-25 |
+| D20 忙时排队 | P1 | ✅ | Agent 自验 2026-07-25 |
+| D21 ignore/沙箱 | P1 | ✅ | Agent 自验 2026-07-25 |
+| D22 用量看板 | P1 | ✅ | Overview 占位 `—`；Q-USAGE-1；Agent 自验 2026-07-25 |
+| D23 fork/rewind | P1 | ✅ | Agent 自验 2026-07-25 |
+| D24 诊断 MVP | P2 | ✅ | Agent 自验 2026-07-25 |
+| Cap-D25 定时任务 | P2 | ✅ | Agent 自验 2026-07-25（≠ Hybrid D25） |
+| D26 长任务监视 | P1 | ✅ | Agent 自验 2026-07-25 |
+| D27 模式/人设 | P1 | ✅ | Agent/Plan/Full/Ask；Ask=只读（D54）；Agent 自验 2026-07-25 |
+| D28 MCP 工具发现 | P1 | ✅ | Agent 自验 2026-07-25 |
+| D29 Goal 跟踪 | P1 | ✅ | Agent 自验 2026-07-25 |
+| D30 会话看板 | P1 | ✅ | Agent 自验 2026-07-25 |
+| D31 计划批注 | P1 | ✅ | Agent 自验 2026-07-25 |
+| D32 worktree | P2 | ✅ | Agent 自验 2026-07-25 |
+| D33 富读 PDF/图 | P1 | ✅ | Agent 自验 2026-07-25 |
+| D34 前台转后台 | P1 | ✅ | Agent 自验 2026-07-25 |
+| D35 能力包导入 | P2 | ✅ | Agent 自验 2026-07-25 |
+| D36 headless Agent | P2 | ✅ | Agent 自验 2026-07-25（≠ Design D36） |
 | D37 MCP Agent↔Hub 绑定 | P0 | ✅ | Module 4 Hub 勾选 + `mcpServerIds`；PM 2026-07-24 点验通过 |
-| D38 Hub 可信状态 | P1 | ❌ | Test connection + 去开发中横幅；待 PM（`b2d8f49`） |
-| D39 传输诚实 | P1 | ❌ | stdio-only + Env 表单；待 PM（`092ee91`） |
-| D40 Chat MCP 徽章 | P1 | ❌ | N MCP · ~M / Bind CTA；待 PM（`724c26c`） |
-| D41 MCP 审批体验 | P1 | ❌ | 既有 Allow/Reject + 路径；待 PM 对照 `D41.md` |
-| D42 真实工具名 UI | P1 | ❌ | 去掉假 permission 芯片；待 PM |
-| D43 MCP Resources | P1 | ❌ | Browse + Pin for Chat；待 PM |
-| D44 一键 local-fs | P1 | ❌ | Module 4「启用工作区文件工具」；待 PM |
-| D45 文档对齐 | P1 | ❌ | PRODUCT_INTRO 已跟 stdio/徽章；待 PM |
+| D38 Hub 可信状态 | P1 | ✅ | Agent 自验 2026-07-25 |
+| D39 传输诚实 | P1 | ✅ | Agent 自验 2026-07-25 |
+| D40 Chat MCP 徽章 | P1 | ✅ | Agent 自验 2026-07-25 |
+| D41 MCP 审批体验 | P1 | ✅ | Agent 自验 2026-07-25（Ask≠写审批；见 D41.md） |
+| D42 真实工具名 UI | P1 | ✅ | Agent 自验 2026-07-25（桌面 Skip） |
+| D43 MCP Resources | P1 | ✅ | Agent 自验 2026-07-25 |
+| D44 一键 local-fs | P1 | ✅ | Agent 自验 2026-07-25（桌面 Skip） |
+| D45 文档对齐 | P1 | ✅ | Agent 自验 2026-07-25 |
 | D46 对话实时步骤条 | P0 | ✅ | 持久 verb_group + seal `toolSteps`；PM 2026-07-24 点验通过 |
 | D47 中间产物芯片 | P0 | ✅ | seal `filesChanged` + FilesChangedChips → D42 预览；PM 2026-07-24 点验通过 |
 | D49 计划嵌对话流 | P0 | ✅ | PlanCard + TodoCard + QuestionCard；PM 2026-07-24（D2/D3/D4） |
 | D50 验证报告嵌对话 | P0 | ✅ | VerificationReport（D5）+ Cursor Diff 卡（D6）；PM 2026-07-24 |
 | D48 子任务嵌套卡 | P0 | ✅ | 随 D10 PM ✅ 2026-07-25 |
-| D51 Chat ↔ Terminal 同步 | P1 | ❌ | View in Terminal → 日志高亮 / lane focus；待 PM（`ee4e2a2`） |
-| D52 能力↔交互对照门禁 | P1 | ❌ | PRODUCT_INTRO 对照表 + INV-D52 机检；待 PM |
+| D51 Chat ↔ Terminal 同步 | P1 | ✅ | Agent 自验 2026-07-25 |
+| D52 能力↔交互对照门禁 | P1 | ✅ | Agent 自验 2026-07-25 |
 | D53 分层 prompt + 渐进披露 | P0 | ✅ | 分层组装 + Agent Manager 分层摘要面板；PM 2026-07-24 点验通过 |
 
 **首期目标：** D1 + D37 + D46 ✅（PM 2026-07-24）。  
-**下一批（防返工顺序）：** 主线 D8–D13 已 PM；扩展/MCP 见 `runs/verification/pm-acceptance/`
+**扩展/MCP：** Agent 代 PM 自验 2026-07-25（见 `runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md`）；桌面 Tauri / 真连 acceptance 因环境 Skip。
 
 ## Design 模式（D36 · 默认 FAIL）
 

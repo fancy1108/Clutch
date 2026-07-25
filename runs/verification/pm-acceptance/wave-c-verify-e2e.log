@@ -1,0 +1,381 @@
+
+> clutch@1.2.9 build /Users/fancy/clutch
+> pnpm --filter @clutch/desktop build
+
+
+> @clutch/desktop@1.2.9 build /Users/fancy/clutch/apps/desktop
+> vite build
+
+vite v6.4.3 building for production...
+transforming...
+[plugin vite:esbuild] src/components/LanguageContext.tsx: Duplicate key "Default agent" in object literal
+979|    "OpenCode config docs": "OpenCode 配置文档",
+980|    "Not detected": "未检测到",
+981|    "Default agent": "默认智能体",
+   |    ^
+982|    "Config": "配置",
+983|    "Credentials": "凭证",
+
+[plugin vite:esbuild] src/components/LanguageContext.tsx: Duplicate key "Available models" in object literal
+985|    "Configured credentials": "已配置凭证",
+986|    "Connected": "已连接",
+987|    "Available models": "可用模型",
+   |    ^
+988|    "Select a model to set the OpenCode CLI default. Free built-in models are included.": "选择模型以设为 OpenCode CLI 默认模型。包含免费内置模型。",
+989|    "Install the opencode CLI on PATH to switch models from Clutch.": "请将 opencode CLI 加入 PATH，以便在 Clutch 中切换模型。",
+
+[plugin vite:esbuild] src/components/LanguageContext.tsx: Duplicate key "Failed to switch model." in object literal
+990|    "Free": "免费",
+991|    "Use model": "使用此模型",
+992|    "Failed to switch model.": "切换模型失败。",
+   |    ^
+993|    "CC Switch providers": "CC Switch 提供方",
+994|    "CC Switch app data detected. Install the cc-switch CLI on PATH to switch providers from Clutch, or switch in the CC Switch desktop app.": "已检测到 CC Switch 应用数据。若要从 Clutch 切换提供方，请将 cc-switch CLI 加入 PATH，或在 CC Switch 桌面应用中切换。",
+
+[plugin vite:esbuild] src/components/LanguageContext.tsx: Duplicate key "Connected" in object literal
+1077|    "No supported AI tools detected on this machine.": "本机未检测到支持的 AI 工具。",
+1078|    "Install CLI rescan hint": "安装 AI CLI（如 claude、codex、agy、ollama）后重新扫描。",
+1079|    "Connected": "已连接",
+   |    ^
+1080|    "No AI tools connected yet.": "尚未连接 AI 工具。",
+1081|    "Unconfigured": "未配置",
+
+[plugin vite:esbuild] src/components/LanguageContext.tsx: Duplicate key "Copy command" in object literal
+1086|    "Auto-configure": "自动配置",
+1087|    "Show install guide": "显示安装指南",
+1088|    "Copy command": "复制命令",
+   |    ^
+1089|    "Copied": "已复制",
+1090|    "Screen deleted": "画板已删除",
+
+[plugin vite:esbuild] src/components/LanguageContext.tsx: Duplicate key "Add attachment" in object literal
+1114|    "Filter files...": "筛选文件…",
+1115|    "Attach": "附加",
+1116|    "Add attachment": "添加附件",
+   |    ^
+1117|  
+1118|    // Workflow node editor extras
+
+[plugin vite:esbuild] src/services/cliInstallGuides.ts: Duplicate key "copilot-cli" in object literal
+144|      url: 'https://x.ai',
+145|    },
+146|    'copilot-cli': {
+   |    ^
+147|      cmd: 'npm install -g @github/copilot',
+148|      desc: 'Install GitHub Copilot CLI globally via npm.',
+
+✓ 2136 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                   0.49 kB │ gzip:   0.34 kB
+dist/assets/aider-i1Q_5BGz.svg                    5.74 kB │ gzip:   2.27 kB
+dist/assets/chatgpt-BzxUrdeu.svg                  6.71 kB │ gzip:   3.01 kB
+dist/assets/zcode-BYMvh8zI.svg                   11.04 kB │ gzip:   2.18 kB
+dist/assets/qoder-DebAofa9.svg                   17.34 kB │ gzip:   6.07 kB
+dist/assets/clutch-mark-SP5dopQC.svg             45.48 kB │ gzip:  33.53 kB
+dist/assets/clutch-logo-CcfslZ3w.svg             45.48 kB │ gzip:  33.53 kB
+dist/assets/clutch-mark-on-navy-BUhYwFUt.svg     45.50 kB │ gzip:  33.54 kB
+dist/assets/default_avatar-BQA9Dcwf.jpg         207.81 kB
+dist/assets/index-DQ0iSSrI.css                  142.67 kB │ gzip:  22.38 kB
+dist/assets/index-C0TvcEG5.js                 1,538.07 kB │ gzip: 434.04 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 1.70s
+
+> clutch@1.2.9 test /Users/fancy/clutch
+> pnpm --filter @clutch/desktop test
+
+
+> @clutch/desktop@1.2.9 test /Users/fancy/clutch/apps/desktop
+> vitest run
+
+
+ RUN  v3.2.6 /Users/fancy/clutch/apps/desktop
+
+ ✓ src/services/workspacePathLinks.test.ts (4 tests) 5ms
+ ✓ src/services/formatTime.test.ts (3 tests) 10ms
+ ✓ src/services/terminalLaneLayout.test.ts (4 tests) 2ms
+ ✓ src/services/chatPendingQueue.test.ts (5 tests) 2ms
+ ✓ src/services/agentActivitySteps.test.ts (11 tests) 3ms
+ ✓ src/services/workflowFormat.test.ts (10 tests) 3ms
+2:27:58 PM [vite] (ssr) warning: Duplicate key "Default agent" in object literal
+979|    "OpenCode config docs": "OpenCode 配置文档",
+980|    "Not detected": "未检测到",
+981|    "Default agent": "默认智能体",
+   |    ^
+982|    "Config": "配置",
+983|    "Credentials": "凭证",
+
+  Plugin: vite:esbuild
+  File: /Users/fancy/clutch/apps/desktop/src/components/LanguageContext.tsx
+2:27:58 PM [vite] (ssr) warning: Duplicate key "Available models" in object literal
+985|    "Configured credentials": "已配置凭证",
+986|    "Connected": "已连接",
+987|    "Available models": "可用模型",
+   |    ^
+988|    "Select a model to set the OpenCode CLI default. Free built-in models are included.": "选择模型以设为 OpenCode CLI 默认模型。包含免费内置模型。",
+989|    "Install the opencode CLI on PATH to switch models from Clutch.": "请将 opencode CLI 加入 PATH，以便在 Clutch 中切换模型。",
+
+  Plugin: vite:esbuild
+  File: /Users/fancy/clutch/apps/desktop/src/components/LanguageContext.tsx
+2:27:58 PM [vite] (ssr) warning: Duplicate key "Failed to switch model." in object literal
+990|    "Free": "免费",
+991|    "Use model": "使用此模型",
+992|    "Failed to switch model.": "切换模型失败。",
+   |    ^
+993|    "CC Switch providers": "CC Switch 提供方",
+994|    "CC Switch app data detected. Install the cc-switch CLI on PATH to switch providers from Clutch, or switch in the CC Switch desktop app.": "已检测到 CC Switch 应用数据。若要从 Clutch 切换提供方，请将 cc-switch CLI 加入 PATH，或在 CC Switch 桌面应用中切换。",
+
+  Plugin: vite:esbuild
+  File: /Users/fancy/clutch/apps/desktop/src/components/LanguageContext.tsx
+2:27:58 PM [vite] (ssr) warning: Duplicate key "Connected" in object literal
+1077|    "No supported AI tools detected on this machine.": "本机未检测到支持的 AI 工具。",
+1078|    "Install CLI rescan hint": "安装 AI CLI（如 claude、codex、agy、ollama）后重新扫描。",
+1079|    "Connected": "已连接",
+   |    ^
+1080|    "No AI tools connected yet.": "尚未连接 AI 工具。",
+1081|    "Unconfigured": "未配置",
+
+  Plugin: vite:esbuild
+  File: /Users/fancy/clutch/apps/desktop/src/components/LanguageContext.tsx
+2:27:58 PM [vite] (ssr) warning: Duplicate key "Copy command" in object literal
+1086|    "Auto-configure": "自动配置",
+1087|    "Show install guide": "显示安装指南",
+1088|    "Copy command": "复制命令",
+   |    ^
+1089|    "Copied": "已复制",
+1090|    "Screen deleted": "画板已删除",
+
+  Plugin: vite:esbuild
+  File: /Users/fancy/clutch/apps/desktop/src/components/LanguageContext.tsx
+2:27:58 PM [vite] (ssr) warning: Duplicate key "Add attachment" in object literal
+1114|    "Filter files...": "筛选文件…",
+1115|    "Attach": "附加",
+1116|    "Add attachment": "添加附件",
+   |    ^
+1117|  
+1118|    // Workflow node editor extras
+
+  Plugin: vite:esbuild
+  File: /Users/fancy/clutch/apps/desktop/src/components/LanguageContext.tsx
+ ✓ src/services/terminalOrchestraUtils.test.ts (34 tests) 6ms
+ ✓ src/services/workflowAgentSteps.test.ts (8 tests) 3ms
+ ✓ src/services/agentProvisioning.test.ts (4 tests) 3ms
+ ✓ src/services/workspaceViewMode.test.ts (5 tests) 94ms
+ ✓ src/components/TodoCardView.test.ts (16 tests) 11ms
+ ✓ src/components/SessionOverviewBoard.test.ts (3 tests) 9ms
+ ✓ src/services/clutchState.test.ts (22 tests) 33ms
+ ✓ src/services/agentTypes.test.ts (3 tests) 2ms
+ ✓ src/services/terminalSessionCommands.test.ts (18 tests) 2ms
+ ✓ src/components/chatInputKeyboard.test.ts (3 tests) 1ms
+ ✓ src/services/environmentCheck.test.ts (10 tests) 2ms
+ ✓ src/services/brandLogos.test.ts (3 tests) 1ms
+ ✓ src/services/agnesVideoCsp.test.ts (4 tests) 1ms
+ ✓ src/services/slashCommands.test.ts (3 tests) 2ms
+ ✓ src/services/agentCapabilityTiers.test.ts (4 tests) 1ms
+ ✓ src/services/sidecarUrl.test.ts (2 tests) 1ms
+ ✓ src/components/PlanCardView.test.ts (4 tests) 2ms
+ ✓ src/services/chatTerminalSync.test.ts (6 tests) 2ms
+ ✓ src/services/runApi.sessionHistoryScope.test.ts (2 tests) 1ms
+ ✓ src/services/ptyEvents.test.ts (2 tests) 1ms
+ ✓ src/services/agentMcpSummary.test.ts (2 tests) 1ms
+ ✓ src/services/agentLiveReasoning.test.ts (1 test) 1ms
+ ✓ src/services/bgJobMonitor.test.ts (3 tests) 1ms
+ ✓ src/components/GoalBarView.test.ts (1 test) 1ms
+
+ Test Files  30 passed (30)
+      Tests  200 passed (200)
+   Start at  14:27:58
+   Duration  639ms (transform 788ms, setup 0ms, collect 1.87s, tests 209ms, environment 3ms, prepare 1.54s)
+
+Resolved 87 packages in 3ms
+Checked 75 packages in 1ms
+============================= test session starts ==============================
+platform darwin -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: /Users/fancy/clutch/services/orchestrator
+configfile: pyproject.toml
+testpaths: tests
+plugins: anyio-4.14.1, asyncio-1.4.0, langsmith-0.9.3
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 904 items
+
+tests/test_agent_executor.py ..........                                  [  1%]
+tests/test_agent_mcp.py ...                                              [  1%]
+tests/test_agent_prompt.py ..                                            [  1%]
+tests/test_agent_prompt_d53.py ....                                      [  2%]
+tests/test_agent_routing_smoke.py ......                                 [  2%]
+tests/test_agent_skills.py ...                                           [  3%]
+tests/test_agent_storage.py .......                                      [  3%]
+tests/test_agent_type.py ................                                [  5%]
+tests/test_agents_api.py ......                                          [  6%]
+tests/test_agnes_image_adapter.py ....                                   [  6%]
+tests/test_agnes_video_adapter.py .............                          [  8%]
+tests/test_agy_cli_adapter.py ....                                       [  8%]
+tests/test_apply_patch.py ........                                       [  9%]
+tests/test_avatar_preferences.py ....                                    [  9%]
+tests/test_bg_jobs_d11.py .....                                          [ 10%]
+tests/test_bg_jobs_monitor_d26.py ....                                   [ 10%]
+tests/test_builtin_tools_d1.py ....                                      [ 11%]
+tests/test_capability_pack_d35.py .                                      [ 11%]
+tests/test_chat_content.py ..........                                    [ 12%]
+tests/test_chat_events.py ..                                             [ 12%]
+tests/test_check_branch.py ..                                            [ 13%]
+tests/test_claude_cli_adapter.py ....                                    [ 13%]
+tests/test_claude_code_credentials.py .........                          [ 14%]
+tests/test_claude_hybrid_output_parser.py ......................         [ 16%]
+tests/test_cli_adapter.py .......................                        [ 19%]
+tests/test_cli_agent_config.py ..............                            [ 21%]
+tests/test_cli_session_state.py ....                                     [ 21%]
+tests/test_compact_api_d18.py ..                                         [ 21%]
+tests/test_compaction.py ..............                                  [ 23%]
+tests/test_compiler.py ......                                            [ 23%]
+tests/test_cors.py .                                                     [ 24%]
+tests/test_credential_sources.py ..                                      [ 24%]
+tests/test_cross_session_memory_d16.py ..                                [ 24%]
+tests/test_custom_models_api.py .....                                    [ 25%]
+tests/test_d7_project_rules_skills.py ........                           [ 25%]
+tests/test_delete_message.py ..                                          [ 26%]
+tests/test_design_service.py .........................................   [ 30%]
+tests/test_diagnostics_d24.py ..                                         [ 30%]
+tests/test_diff_summary_d6.py ........                                   [ 31%]
+tests/test_dispatch_parse.py .......                                     [ 32%]
+tests/test_engine_router.py ................................             [ 36%]
+tests/test_evaluator.py ....                                             [ 36%]
+tests/test_file_rewind_d23.py ..                                         [ 36%]
+tests/test_files_changed_d47.py ..                                       [ 36%]
+tests/test_flow_hybrid_mixed_nodes.py ..                                 [ 37%]
+tests/test_flow_refine.py .............                                  [ 38%]
+tests/test_font_size_preferences.py ....                                 [ 39%]
+tests/test_foreground_shell_d34.py ...                                   [ 39%]
+tests/test_fs_watcher.py .                                               [ 39%]
+tests/test_git_web_d12.py ....                                           [ 39%]
+tests/test_goal_tracking_d29.py ...                                      [ 40%]
+tests/test_graph.py .                                                    [ 40%]
+tests/test_grok_cli_d14.py ....                                          [ 40%]
+tests/test_handoff_summarizer.py .......                                 [ 41%]
+tests/test_headless_agent_d36.py s.                                      [ 41%]
+tests/test_health.py .                                                   [ 41%]
+tests/test_http_complete.py .........                                    [ 42%]
+tests/test_human_gate.py ....                                            [ 43%]
+tests/test_human_input.py .                                              [ 43%]
+tests/test_hybrid_audit_d29_regression.py .......                        [ 44%]
+tests/test_hybrid_audit_log.py ....                                      [ 44%]
+tests/test_hybrid_concurrency.py ...                                     [ 45%]
+tests/test_hybrid_concurrency_handlers.py ............                   [ 46%]
+tests/test_hybrid_concurrent_ws.py .                                     [ 46%]
+tests/test_hybrid_poc_acceptance.py ........                             [ 47%]
+tests/test_i18n_preferences.py ...                                       [ 47%]
+tests/test_ignore_sandbox_d21.py ....                                    [ 48%]
+tests/test_image_chat_reply.py ....                                      [ 48%]
+tests/test_image_router.py .........                                     [ 49%]
+tests/test_interactive_pty_runtime.py .............s..                   [ 51%]
+tests/test_iue.py ......                                                 [ 51%]
+tests/test_keychain_store.py ..........                                  [ 53%]
+tests/test_llm_provider.py .......                                       [ 53%]
+tests/test_mcp_api_extensions.py ..                                      [ 54%]
+tests/test_mcp_client.py .                                               [ 54%]
+tests/test_mcp_probe_d38.py .....                                        [ 54%]
+tests/test_mcp_react.py .........                                        [ 55%]
+tests/test_mcp_registry.py ...                                           [ 56%]
+tests/test_mcp_resources_d43.py ..                                       [ 56%]
+tests/test_mcp_risk.py ....                                              [ 56%]
+tests/test_mcp_tool_discovery_d28.py .....                               [ 57%]
+tests/test_merge_patch_optional_d5.py .                                  [ 57%]
+tests/test_models_config_api.py .............................            [ 60%]
+tests/test_mvp_closed_loop.py .                                          [ 60%]
+tests/test_node_input.py ..                                              [ 60%]
+tests/test_ollama_adapter.py ........                                    [ 61%]
+tests/test_onboarding_preference.py ....                                 [ 62%]
+tests/test_opencode_zen_adapter.py ....                                  [ 62%]
+tests/test_orchestrator_routing.py .......                               [ 63%]
+tests/test_permission_explore_d27.py .....                               [ 64%]
+tests/test_permission_rules_d13.py ....                                  [ 64%]
+tests/test_plain_chat_pool_queue.py .                                    [ 64%]
+tests/test_plan_d2_d49.py .......                                        [ 65%]
+tests/test_plan_step_comments_d31.py ...                                 [ 65%]
+tests/test_prototype_generator.py ...                                    [ 66%]
+tests/test_provider_registry.py ..                                       [ 66%]
+tests/test_question_d4.py .......                                        [ 67%]
+tests/test_repository_groups.py ..                                       [ 67%]
+tests/test_rich_read_d33.py ...                                          [ 67%]
+tests/test_run_completed.py ...                                          [ 67%]
+tests/test_run_control_d9.py ...                                         [ 68%]
+tests/test_run_debug_api.py ...                                          [ 68%]
+tests/test_run_history.py ...........                                    [ 69%]
+tests/test_run_log_forwarder.py ..                                       [ 70%]
+tests/test_run_state_store.py ..........                                 [ 71%]
+tests/test_runtime_config.py ....                                        [ 71%]
+tests/test_runtime_registry.py ...                                       [ 71%]
+tests/test_scheduled_tasks_cap_d25.py ...                                [ 72%]
+tests/test_session_content.py ...                                        [ 72%]
+tests/test_session_fork_d23.py .                                         [ 72%]
+tests/test_session_snapshot.py .....                                     [ 73%]
+tests/test_shell_exec_runtime.py ..............                          [ 74%]
+tests/test_shell_session.py .s.............                              [ 76%]
+tests/test_shell_snapshot_api.py ..                                      [ 76%]
+tests/test_sidecar_auth.py ......                                        [ 77%]
+tests/test_skills_registry.py .....                                      [ 77%]
+tests/test_start_run.py ...                                              [ 78%]
+tests/test_start_run_on_session.py .                                     [ 78%]
+tests/test_storage_helper.py ...                                         [ 78%]
+tests/test_subagent_d10.py .....                                         [ 79%]
+tests/test_subprocess_isolation.py ..                                    [ 79%]
+tests/test_task_state_d8.py ...                                          [ 79%]
+tests/test_terminal_logs.py ......                                       [ 80%]
+tests/test_terminal_orchestra.py ......................                  [ 82%]
+tests/test_theme_preferences.py ...                                      [ 83%]
+tests/test_thinking_stream_d19.py ..                                     [ 83%]
+tests/test_todo_d3.py .....                                              [ 83%]
+tests/test_tool_hooks_d17.py .                                           [ 84%]
+tests/test_tool_steps.py .....                                           [ 84%]
+tests/test_tools_status.py .......................                       [ 87%]
+tests/test_usage_d22.py ..                                               [ 87%]
+tests/test_validate_api.py ....                                          [ 87%]
+tests/test_validation_result.py .                                        [ 87%]
+tests/test_verification_d5.py .....                                      [ 88%]
+tests/test_video_core/test_config.py ......................              [ 90%]
+tests/test_video_core/test_env.py ..........                             [ 92%]
+tests/test_video_core/test_renderer.py ....                              [ 92%]
+tests/test_video_router.py .....                                         [ 93%]
+tests/test_visual_narrative_flow.py s                                    [ 93%]
+tests/test_web_search_d15.py ....                                        [ 93%]
+tests/test_workflow_cancel.py ....                                       [ 94%]
+tests/test_workflow_handoff.py .                                         [ 94%]
+tests/test_workflow_log_streaming.py .                                   [ 94%]
+tests/test_workflow_projection.py .                                      [ 94%]
+tests/test_workflow_step_failure.py .                                    [ 94%]
+tests/test_workflow_step_patch.py .                                      [ 94%]
+tests/test_workflow_storage.py .....                                     [ 95%]
+tests/test_workflow_validator.py .......                                 [ 95%]
+tests/test_workspace_attachments.py ......                               [ 96%]
+tests/test_workspace_whitelist.py ...                                    [ 96%]
+tests/test_workspaces_api.py ..........                                  [ 98%]
+tests/test_worktree_isolation_d32.py ..                                  [ 98%]
+tests/test_ws_dispatch_orchestra.py .                                    [ 98%]
+tests/test_ws_hybrid_execution.py .                                      [ 98%]
+tests/test_ws_message_log.py .....                                       [ 99%]
+tests/test_ws_pty_events.py ...                                          [ 99%]
+tests/test_ws_state_patch.py ....                                        [ 99%]
+tests/test_z_release_hardening.py ..                                     [100%]
+
+=============================== warnings summary ===============================
+.venv/lib/python3.11/site-packages/fastapi/testclient.py:1
+  /Users/fancy/clutch/services/orchestrator/.venv/lib/python3.11/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================== 900 passed, 4 skipped, 1 warning in 28.42s ==================
+== check-doc-drift.sh ==
+OK: INV-001 no legacy product naming in source
+OK: INV-002 orchestrator src has no wrong localhost ports
+WARN:  INV-003 setTimeout in App.tsx (expected until M0-03; set CLUTCH_STRICT_MOCK=1 after)
+OK: INV-004 Layer 4 playbook headers present
+OK: D52 Capability → Chat UI table present (D1/D10/D37/D46/D51)
+OK: INV-D52 Capability → Chat UI table present
+== done: 0 error(s), 1 warning(s) ==
+Downloading Chrome for Testing 149.0.7827.55 (playwright chromium v1228) from https://cdn.playwright.dev/builds/cft/149.0.7827.55/mac-arm64/chrome-mac-arm64.zip
+|                                                                                |   0% of 171 MiB
+./scripts/run-e2e.sh: line 42: 35249 Terminated: 15          pnpm exec playwright install chromium

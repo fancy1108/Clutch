@@ -18,3 +18,7 @@
 ```bash
 cd services/orchestrator && uv run pytest tests/test_scheduled_tasks_cap_d25.py -q
 ```
+
+## 结果
+
+- [x] Agent 代 PM ✅ 2026-07-25 — 自动化见 `AGENT-PM-2026-07-25.md`
