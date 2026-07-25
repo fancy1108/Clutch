@@ -6,7 +6,7 @@
 ## Current Status
 
 - **阶段：** **v1.2.9**；Wave5b（D32→Cap-D25→D24→D36→D14）代码已交 PM 点验
-- **Git：** D32 `9a863ae` · Cap-D25 `05547b8` · D24 `605d0fc` · D36 `e42ba01` · D14 _(pending)_
+- **Git：** D32 `9a863ae` · Cap-D25 `05547b8` · D24 `605d0fc` · D36 `e42ba01` · D14 `5d65a68`
 - **Git：** D34 `5679a1b` · D23 `bc67e30` · D16 `930f9a5` · D17 `68a05a8` · D35 `5de258d`
 - **Git：** D28 `cc2662e`、D15 `0c0c095`、D33 `bec5dbb`、D31 `d2f2b2f`；D29 `96c13d3`、D30 `1d88b02`、D21 `6733b15`
 - **PM 验收包：** `runs/verification/pm-acceptance/D{15,28,31,33}.md`

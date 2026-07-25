@@ -12,7 +12,7 @@
 | Cap-D25 | `05547b8` | `pytest tests/test_scheduled_tasks_cap_d25.py -q` → 3 passed | `runs/verification/pm-acceptance/Cap-D25.md` |
 | D24 | `605d0fc` | `pytest tests/test_diagnostics_d24.py -q` → 2 passed | `runs/verification/pm-acceptance/D24.md` |
 | D36 | `e42ba01` | `pytest tests/test_headless_agent_d36.py -q` → 2 passed | `runs/verification/pm-acceptance/D36-headless.md` |
-| D14 | _(pending)_ | `pytest tests/test_grok_cli_d14.py -q` → 4 passed | `runs/verification/pm-acceptance/D14.md` |
+| D14 | `5d65a68` | `pytest tests/test_grok_cli_d14.py -q` → 4 passed | `runs/verification/pm-acceptance/D14.md` |
 
 ## Wave5b — D32（进行中）
 
