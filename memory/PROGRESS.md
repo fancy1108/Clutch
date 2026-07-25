@@ -6,14 +6,14 @@
 ## Current Status
 
 - **阶段：** **v1.2.9**；扩展 D14+D15–D36 交付中（Wave1 起）；主线/MCP 仍待 PM
-- **Git：** D22 `c68301b`、D27 待提交；PM 包见 `runs/verification/pm-acceptance/README.md`
+- **Git：** D22 `c68301b`、D27 `a269764`；PM 包见 `runs/verification/pm-acceptance/README.md`
 - **PM 验收包：** ROADMAP 未点验前保持 ❌
 
 ## Recent Sessions
 
 ## 2026-07-25 会话（扩展 D14–D36：D22+D27）
 
-- **Commit：** `c68301b`（D22 用量看板）；D27 explore/plan/implement 待提交
+- **Commit：** `c68301b`（D22）、`a269764`（D27）
 - **实现：** Usage dashboard + session 用量持久化；Explore 权限模式 + Chat 三键切换
 - **下次：** D20+ 按 capability 表顺序（用户指定停于此）
 

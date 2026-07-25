@@ -708,7 +708,7 @@ _v1.0.0–v1.0.2 已发布交付见 `archive/DELIVERABLES-OSR.md` 及 Git tag / 
 
 ---
 
-## D27 — Explore / Plan / Implement modes
+## D27 — Explore / Plan / Implement modes (`a269764`)
 
 - **Verification:** `cd services/orchestrator && uv run pytest tests/test_permission_explore_d27.py -q` → 3 passed
 - **PM:** `runs/verification/pm-acceptance/D27.md`
