@@ -258,6 +258,24 @@ def _session_workspace_fields() -> dict[str, str]:
         "workspace_name": workspace["name"],
     }
 
+def _usage_fields_from_state(state: ClutchState) -> dict[str, int]:
+    """D22 — persist session usage on history records when a run is touched."""
+    stats = state.get("run_stats") or {}
+    tool_steps = stats.get("tool_steps")
+    if tool_steps is None:
+        counted = 0
+        for message in state.get("messages") or []:
+            steps = message.get("toolSteps") or message.get("tool_steps") or []
+            if isinstance(steps, list):
+                counted += len(steps)
+        tool_steps = counted
+    tokens = int(state.get("session_tokens") or stats.get("session_tokens") or 0)
+    return {
+        "session_tokens": max(0, tokens),
+        "tool_steps": max(0, int(tool_steps or 0)),
+    }
+
+
 def _touch_session(
     run_id: str,
     *,
@@ -282,6 +300,7 @@ def _touch_session(
         patch["workflow_id"] = workflow_id
     if status is not None:
         patch["status"] = status
+    patch.update(_usage_fields_from_state(state))
     if existing:
         upsert_session({**existing, **patch})
     else:

@@ -100,6 +100,7 @@ graph TD
 * **Workspace Chrome（平台差异）**：macOS 与 Windows 侧栏折叠 rail、折叠按钮位置、Chat 间距与右侧监督 Tab 样式分文件维护（`apps/desktop/src/platform/chrome/`）；共享导航图标与文案见 `navConfig.ts`。macOS 默认保留图标+微标签折叠 rail 与 App 级浮动折叠按钮；Windows 使用纯图标 rail 与侧栏边缘折叠按钮。**项目绑定**：侧栏会话按工作区路径稳定 id 挂载（同路径重授权不会丢掉历史）；开发态与打包态分目录存储（`clutch_dev` / `clutch`），E2E 须隔离 `CLUTCH_STORAGE_DIR`。
 * **Long-session compaction（D8）**：Plain chat 在 token 估算接近模型上下文上限时自动压缩历史消息；用户消息与摘要 digest 保留，完整原文写入 `runs/archive/{run_id}.jsonl`。压缩后 **Todo/计划** 仍通过 `task_state` 层与 digest 快照可达。
 * **Run control（D9）**：Plain chat 运行中可 **Stop**；停止后 Chat 显示 Supervisor 提示与 **Continue**（`continue_run`）。连续工具失败触发 **loop fuse**（`CLUTCH_LOOP_FUSE_FAILURES`，默认 3）。输入栏上方展示实时 **Steps n/m · ~tok**（`run_stats`）。
+* **用量看板（D22）**：点击 D9 用量条打开 **Usage dashboard**——本局 steps/tok 与近期 session 历史用量表；Sidecar 在 session 更新时持久化 `session_tokens` / `tool_steps`。
 * **Subtask delegation（D10 + D48）**：Clutch Agent 可调用 `delegate_subtask` 派发 **explore**（只读）或 **implement** 子任务；父气泡下嵌套 **Subtasks** 卡展示状态、摘要与可展开步骤；子失败在父卡可见。
 * **Background commands（D11）**：`run_terminal_cmd` 可设 `background=true` 立即返回 `job_id`；Chat 输入栏上方展示后台任务条（查看输出 / Kill）；前台仍可继续对话。
 * **Git + web fetch（D12）**：Builtin `git_status` / `git_diff` / `git_commit`（提交需审批）与 `web_fetch`（抓取 URL 文本供总结）；步骤进入对话工具条。
@@ -121,6 +122,7 @@ graph TD
 | D7 rules/skills | Runtime prompt layers panel in Agent Manager; Skills via `read_skill` (D53) |
 | D8 task state | Compaction digest badge; Todo/Plan survive fold via `task_state` |
 | D9 run control | Stop / Continue + Steps n/m · ~tok (`run_stats`) |
+| D22 usage dashboard | Click stats strip → Usage dashboard (current + session history steps/tok) |
 | D10 subtasks | Nested Subtasks cards under parent bubble (D48) |
 | D11 background | Background jobs bar (view output / kill) above composer |
 | D12 git/web | Tool-trail steps for `git_*` / `web_fetch` |

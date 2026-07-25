@@ -18,6 +18,10 @@ export interface SessionRecord {
   ui_preview_url?: string | null;
   /** Design mode: `web` | `app` from session manifest. */
   device?: string | null;
+  /** D22 — last known tool-step count for this session. */
+  tool_steps?: number;
+  /** D22 — last known session token estimate. */
+  session_tokens?: number;
 }
 
 /** @deprecated use SessionRecord */

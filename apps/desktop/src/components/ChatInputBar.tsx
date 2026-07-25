@@ -27,6 +27,7 @@ import {
   type SlashCommand,
   type SlashCommandId,
 } from '../services/slashCommands';
+import { UsageDashboard } from './UsageDashboard';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -255,6 +256,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
   const [sessionPickerOpen, setSessionPickerOpen] = useState(false);
   const [agentPickerOpen, setAgentPickerOpen] = useState(false);
   const [fileBrowserOpen, setFileBrowserOpen] = useState(false);
+  const [usageDashboardOpen, setUsageDashboardOpen] = useState(false);
 
   const [skillFilter, setSkillFilter] = useState('');
   const [sessionFilter, setSessionFilter] = useState('');
@@ -271,6 +273,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
         setSessionPickerOpen(false);
         setAgentPickerOpen(false);
         setFileBrowserOpen(false);
+        setUsageDashboardOpen(false);
       }
     };
     window.addEventListener('mousedown', handler);
@@ -768,8 +771,17 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
       ) : null}
       {showMcpBindingBadge || showRunStats ? (
         <div
-          className="flex items-center justify-between gap-2 px-3 pt-2 pb-1 text-[10px] text-on-surface-variant/70 border-b border-outline-variant/30"
+          className="relative flex items-center justify-between gap-2 px-3 pt-2 pb-1 text-[10px] text-on-surface-variant/70 border-b border-outline-variant/30"
         >
+          <UsageDashboard
+            open={usageDashboardOpen && isPlainLlmChat}
+            onClose={() => setUsageDashboardOpen(false)}
+            currentRunId={currentRunId}
+            sessions={sessions}
+            runStats={runStats}
+            sessionTokens={sessionTokens}
+            language={language === 'zh' ? 'zh' : 'en'}
+          />
           <div className="flex items-center gap-2 min-w-0">
             {showMcpBindingBadge ? (
               <McpBindingBadge
@@ -779,11 +791,17 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
               />
             ) : null}
             {showRunStats ? (
-              <span data-testid="chat-run-stats" className="font-mono truncate">
+              <button
+                type="button"
+                data-testid="chat-run-stats"
+                title={language === 'zh' ? '打开用量看板' : 'Open usage dashboard'}
+                onClick={() => setUsageDashboardOpen((open) => !open)}
+                className="font-mono truncate text-left hover:text-on-surface transition-colors"
+              >
                 {language === 'zh' ? '步骤' : 'Steps'} {stepsUsed}/{stepsMax}
                 {' · '}
                 ~{tokensShown.toLocaleString()} {language === 'zh' ? 'token' : 'tok'}
-              </span>
+              </button>
             ) : null}
           </div>
           {showRunStats && runStats?.fuse_triggered ? (
