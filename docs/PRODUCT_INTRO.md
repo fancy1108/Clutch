@@ -137,6 +137,7 @@ graph TD
 | D37 MCP bind | Agent Manager Module 4 Hub checkboxes; bound tools in ReAct trail |
 | D28 MCP discovery | Many Hub tools → `search_mcp_tools` + few always-on; search enables matches in trail (D46) |
 | D15 web search | Settings **Allow network** → builtin `web_search` (DuckDuckGo HTML); off = tool hidden |
+| D33 rich read | `read_file` images → OCR/analysis; PDF → `pdftotext` or clear error |
 | D38 Hub probe | MCP Hub **Test connection** → tool count or readable error (no “under development” banner) |
 | D39 transport | Hub register form: stdio only; SSE disabled / API 400; optional Env `KEY=value` |
 | D40 MCP badge | Chat composer: `N MCP · ~M` badge or **Bind MCP** CTA → Agent Manager |

@@ -47,8 +47,9 @@ def list_builtin_tools() -> list[dict[str, Any]]:
         {
             "name": "read_file",
             "description": (
-                "Read a text file from the active workspace. "
-                "Paths are workspace-relative. Prefer for inspecting code before edits."
+                "Read a file from the active workspace. "
+                "Text files return numbered lines; images use local OCR/analysis; "
+                "PDFs use pdftotext when available (D33)."
             ),
             "inputSchema": {
                 "type": "object",
@@ -1420,6 +1421,11 @@ def _tool_apply_patch(arguments: dict[str, Any]) -> str:
 
 def _tool_read_file(arguments: dict[str, Any]) -> str:
     from src.ignore_rules import ignored_path_message, is_ignored_path
+    from src.rich_read_util import (
+        is_rich_read_path,
+        read_image_workspace_file,
+        read_pdf_workspace_file,
+    )
     from src.workspace import WorkspaceError, require_workspace, resolve_allowed_path
 
     rel = str(arguments.get("path", "")).strip()
@@ -1434,6 +1440,10 @@ def _tool_read_file(arguments: dict[str, Any]) -> str:
         return f"Error executing tool: {exc}"
     if not target.is_file():
         return f"Error executing tool: not a file: {rel}"
+    if is_rich_read_path(target):
+        if target.suffix.lower() == ".pdf":
+            return read_pdf_workspace_file(target)
+        return read_image_workspace_file(target)
     text = target.read_text(encoding="utf-8", errors="replace")
     lines = text.splitlines()
     offset = arguments.get("offset")

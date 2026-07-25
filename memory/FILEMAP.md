@@ -231,6 +231,7 @@
 | MCP 工具风险判定 | `src/mcp_risk.py` |
 | MCP ReAct 执行 | `src/mcp_react.py` |
 | 联网搜索（D15） | `web_search_util.py` · Settings **Allow network** · `builtin_tools` |
+| 富读 PDF/图（D33） | `rich_read_util.py` · `read_file` in `builtin_tools` |
 | Codex 兼容 apply_patch（增删改移） | `src/apply_patch.py` |
 | 内置虚拟工具服务器 clutch-tools | `src/builtin_tools.py`（read/list/grep/search_replace/run_terminal_cmd/apply_patch） |
 | D21 ignore + strict sandbox | `src/ignore_rules.py` · `preferences_storage` `strict_sandbox` · Settings General toggle |
