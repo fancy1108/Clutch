@@ -42,6 +42,7 @@ import { QuestionCardView } from './QuestionCardView';
 import { TodoCardView, todosAreComplete } from './TodoCardView';
 import { SubtaskCardView } from './SubtaskCardView';
 import { BackgroundJobsBar } from './BackgroundJobsBar';
+import { detectBgJobFailureToast } from '../services/bgJobMonitor';
 import { VerificationReportCardView } from './VerificationReportCardView';
 import { DiffSummaryCardView } from './DiffSummaryCardView';
 import { resolveBrandLogoSrc } from '../services/brandLogos';
@@ -543,7 +544,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   onSlashCommand,
   slashNotice = null,
 }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const hostOs = useHostOs();
   const chatChrome = chatChromeForHost(hostOs, sidebarOpen, rightPanelOpen);
   const markdownHandlers = useMemo(
@@ -572,6 +573,8 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   const [terminalBarHeight, setTerminalBarHeight] = useState(52);
   const [hillInstructions, setHillInstructions] = useState('');
   const [pendingMessages, setPendingMessages] = useState<PendingChatMessage[]>([]);
+  const [bgJobToast, setBgJobToast] = useState<string | null>(null);
+  const prevBgJobsRef = useRef<BackgroundJob[]>([]);
   const [messageContextMenu, setMessageContextMenu] = useState<{
     x: number;
     y: number;
@@ -822,6 +825,25 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   const liveTodos = (clutchOrchestraState.agent_todos ?? []) as TodoItem[];
   const liveSubtasks = (clutchOrchestraState.pending_subtasks ?? []) as SubtaskCard[];
   const bgJobs = (clutchOrchestraState.bg_jobs ?? []) as BackgroundJob[];
+
+  useEffect(() => {
+    const prev = prevBgJobsRef.current;
+    prevBgJobsRef.current = bgJobs;
+    const failedTitle = detectBgJobFailureToast(prev, bgJobs);
+    if (!failedTitle) return;
+    setBgJobToast(
+      language === 'zh'
+        ? `后台任务失败：${failedTitle}`
+        : `Background job failed: ${failedTitle}`,
+    );
+  }, [bgJobs, language]);
+
+  useEffect(() => {
+    if (!bgJobToast) return undefined;
+    const timer = window.setTimeout(() => setBgJobToast(null), 4000);
+    return () => window.clearTimeout(timer);
+  }, [bgJobToast]);
+
   /** Pin live todos while incomplete; unpin when all checked so the sealed card scrolls with history. */
   const pinLiveTodos =
     liveTodos.length > 0 &&
@@ -1711,6 +1733,16 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                 void clutchStore.send({ action: 'kill_bg_job', job_id: jobId });
               }}
             />
+            {bgJobToast ? (
+              <div
+                data-testid="bg-job-failure-toast"
+                className="w-full max-w-3xl mx-auto px-3 pb-2"
+              >
+                <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[12px] font-medium text-rose-800">
+                  {bgJobToast}
+                </div>
+              </div>
+            ) : null}
             <ChatInputBar
               inputValue={inputValue}
               setInputValue={setInputValue}

@@ -42,6 +42,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 - **Chat mode presets (capability D27):** Composer pills **Explore / Plan / Implement** map to `explore` / `plan` / `auto_edit`; Explore hard-blocks write/exec MCP tools while allowing read/search.
 - **Agent busy message queue (capability D20):** While Clutch Agent / MCP plain chat is **running**, new sends enqueue above the composer with **Queue #n** position badges and per-item cancel; messages drain in FIFO order when the turn returns to idle.
 - **Thinking stream (capability D19):** Models that return `reasoning_content` stream into the D46 **Agent live activity** fold as **Thinking / 思考** (same strip as tool steps). Long `run_terminal_cmd` output attaches as expandable step detail snippets.
+- **Background job monitor (capability D26):** When a D11 background job finishes, fails, or is killed, Chat gets a **[Monitor]** Supervisor line; failures also raise a short composer toast.
 - **Compact tool approval bar:** `awaiting_human` uses a slim Allow / Reject strip above the composer (optional note + Retry), replacing the large Human-In-The-Loop card.
 - **Sidebar session spinner:** MCP approve/complete now updates session history status; active Coding rows follow live `clutchStatus` so finished chats stop spinning.
 

@@ -127,6 +127,7 @@ graph TD
 | D27 mode presets | Explore / Plan / Implement pills above composer (`explore` / `plan` / `auto_edit`) |
 | D20 busy queue | Composer **Pending messages** strip with Queue #n + cancel while Agent running |
 | D19 thinking stream | D46 live activity fold **Thinking / 思考** + shell output in step detail |
+| D26 bg monitor | Supervisor **[Monitor]** line on bg job terminal state + failure toast |
 | D10 subtasks | Nested Subtasks cards under parent bubble (D48) |
 | D11 background | Background jobs bar (view output / kill) above composer |
 | D12 git/web | Tool-trail steps for `git_*` / `web_fetch` |

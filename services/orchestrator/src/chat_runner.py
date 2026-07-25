@@ -892,18 +892,13 @@ async def _apply_bg_jobs_update(
     jobs: list[dict[str, Any]],
     finished: dict[str, Any] | None = None,
 ) -> None:
+    from src.bg_jobs_monitor import format_bg_job_monitor_message
+
     state = _get_or_create_run(run_id)
     patch: dict[str, Any] = _bg_jobs_live_patch(jobs)
-    if finished and finished.get("status") in ("done", "failed", "killed"):
-        cmd = str(finished.get("title") or finished.get("command", "")).strip()[:80]
-        status = str(finished.get("status") or "done")
-        label = {
-            "done": "finished",
-            "failed": "failed",
-            "killed": "killed",
-        }.get(status, status)
-        text = f"Background job {label}: {cmd or finished.get('id', 'job')}"
-        supervisor = _chat_message("Supervisor", text)
+    monitor_text = format_bg_job_monitor_message(finished or {})
+    if monitor_text:
+        supervisor = _chat_message("Supervisor", monitor_text)
         patch["messages"] = list(state["messages"]) + [supervisor]
         await _send_message_event(websocket, run_id, supervisor, "")
     state = _merge_patch(state, patch)

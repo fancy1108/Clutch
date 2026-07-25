@@ -68,7 +68,7 @@
 | D23 fork/rewind | P1 | ❌ | 会话分支+文件回滚；待实现/PM |
 | D24 诊断 MVP | P2 | ❌ | tsc/ruff 回灌；待实现/PM |
 | Cap-D25 定时任务 | P2 | ❌ | 扩展定时/循环（≠ Hybrid D25）；待实现/PM |
-| D26 长任务监视 | P1 | ❌ | bg 失败监视；待实现/PM |
+| D26 长任务监视 | P1 | ❌ | bg 失败 [Monitor] + toast；待 PM |
 | D27 模式/人设 | P1 | ❌ | explore/plan/implement；代码已交 PM（`runs/verification/pm-acceptance/D27.md`） |
 | D28 MCP 工具发现 | P1 | ❌ | 多工具时搜索；待实现/PM |
 | D29 Goal 跟踪 | P1 | ❌ | 目标条；待实现/PM |

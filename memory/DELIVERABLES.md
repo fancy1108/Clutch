@@ -716,11 +716,19 @@ _v1.0.0–v1.0.2 已发布交付见 `archive/DELIVERABLES-OSR.md` 及 Git tag / 
 
 ---
 
-## D19 — Thinking stream in live activity
+## D19 — Thinking stream in live activity (`3f3e66e`)
 
 - **Verification:** `uv run pytest tests/test_thinking_stream_d19.py -q` → 2 passed；`pnpm test src/services/agentLiveReasoning.test.ts` → 1 passed
 - **PM:** `runs/verification/pm-acceptance/D19.md`
 - **Files:** `mcp_react.py`, `tool_steps.py`, `chat_runner.py`, `state.py`, `AgentLiveActivity.tsx`, `ChatFeed.tsx`, `shared-types/index.ts`
+
+---
+
+## D26 — Background job failure monitor
+
+- **Verification:** `uv run pytest tests/test_bg_jobs_monitor_d26.py -q` → 3 passed；`pnpm test src/services/bgJobMonitor.test.ts` → 2 passed
+- **PM:** `runs/verification/pm-acceptance/D26.md`
+- **Files:** `bg_jobs_monitor.py`, `chat_runner.py`, `bgJobMonitor.ts`, `ChatFeed.tsx`
 
 ---
 
