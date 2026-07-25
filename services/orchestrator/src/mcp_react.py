@@ -26,7 +26,9 @@ _AUTO_EDIT_APPROVED_TOOLS = frozenset({
     "search_replace",
 })
 
-# Tools that are ALWAYS hard-blocked in plan mode
+# Tools that are ALWAYS hard-blocked in read-only modes (plan / explore)
+_READ_ONLY_PERMISSION_MODES = frozenset({"plan", "explore"})
+
 _PLAN_MODE_BLOCKED_TOKENS = (
     "write", "edit", "create", "patch", "delete", "remove",
     "move", "rename", "run", "execute", "shell", "command",
@@ -769,25 +771,26 @@ def run_mcp_react_loop(
                     if pause_on_risky and (
                         force_ask or (is_risky_mcp_tool(raw_tool_name) and not force_allow)
                     ):
-                        # Plan mode: hard-block ALL write/exec tools immediately
-                        if permission_mode == "plan" and not force_ask:
+                        # Plan / Explore: hard-block ALL write/exec tools immediately
+                        if permission_mode in _READ_ONLY_PERMISSION_MODES and not force_ask:
                             tool_key = raw_tool_name.lower().replace("-", "_")
                             is_write_exec = any(
                                 token in tool_key for token in _PLAN_MODE_BLOCKED_TOKENS
                             )
                             if is_write_exec:
+                                mode_label = "Explore" if permission_mode == "explore" else "Plan"
                                 _emit(
                                     logs,
                                     on_log,
-                                    f"[{log_prefix}] Plan mode: blocked write/exec tool: {func_name}",
+                                    f"[{log_prefix}] {mode_label} mode: blocked write/exec tool: {func_name}",
                                 )
                                 chat_messages.append(
                                     {
                                         "role": "tool",
                                         "tool_call_id": tc_id,
                                         "content": (
-                                            "[Plan Mode] This operation is blocked. "
-                                            "You are in read-only planning mode. "
+                                            f"[{mode_label} Mode] This operation is blocked. "
+                                            f"You are in read-only mode. "
                                             "Describe what you WOULD do without executing it."
                                         ),
                                     }

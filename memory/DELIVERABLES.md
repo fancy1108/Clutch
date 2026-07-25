@@ -697,3 +697,19 @@
 | PROGRESS 会话 | [`archive/PROGRESS-2026-Q2.md`](./archive/PROGRESS-2026-Q2.md) · [`archive/PROGRESS-2026-Q3.md`](./archive/PROGRESS-2026-Q3.md) |
 
 _v1.0.0–v1.0.2 已发布交付见 `archive/DELIVERABLES-OSR.md` 及 Git tag / `CHANGELOG.md`。_
+
+---
+
+## D22 — Usage dashboard (`c68301b`)
+
+- **Verification:** `cd services/orchestrator && uv run pytest tests/test_usage_d22.py -q` → 2 passed；`cd apps/desktop && pnpm test src/components/UsageDashboard.test.ts` → 2 passed
+- **PM:** `runs/verification/pm-acceptance/D22.md`
+- **Files:** `UsageDashboard.tsx`, `ChatInputBar.tsx`, `runApi.ts`, `chat_runner.py`, `test_usage_d22.py`, `PRODUCT_INTRO.md`, `CHANGELOG.md`
+
+---
+
+## D27 — Explore / Plan / Implement modes
+
+- **Verification:** `cd services/orchestrator && uv run pytest tests/test_permission_explore_d27.py -q` → 3 passed
+- **PM:** `runs/verification/pm-acceptance/D27.md`
+- **Files:** `permissionApi.ts`, `ChatInputBar.tsx`, `mcp_react.py`, `preferences_storage.py`, `agent_prompt.py`, `subagent_runner.py`, `test_permission_explore_d27.py`

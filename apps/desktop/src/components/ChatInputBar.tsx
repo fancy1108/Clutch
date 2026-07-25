@@ -13,7 +13,7 @@ import { useLanguage } from './LanguageContext';
 import type { SessionRecord } from '../services/runApi';
 import type { ScannedSkill } from '../services/skillsApi';
 import type { FileTreeNode } from '../services/workspaceApi';
-import { PERMISSION_MODES, type PermissionMode } from '../services/permissionApi';
+import { PERMISSION_MODES, CHAT_MODE_PRESETS, type PermissionMode } from '../services/permissionApi';
 import { clutchStore } from '../services/clutchState';
 import { LegacyIcon } from './ui/LegacyIcon';
 import { BTN_ICON_SM } from './ui/buttonStyles';
@@ -769,6 +769,36 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
           </div>
         </div>
       ) : null}
+      {isPlainLlmChat ? (
+        <div
+          className="flex items-center gap-1 px-3 pt-2"
+          data-testid="chat-mode-presets"
+        >
+          {CHAT_MODE_PRESETS.map((preset) => {
+            const active = permissionMode === preset.id;
+            return (
+              <button
+                key={preset.id}
+                type="button"
+                data-testid={`chat-mode-${preset.id}`}
+                title={preset.label}
+                onClick={() => onPermissionModeChange(preset.id)}
+                className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold transition-colors ${
+                  active
+                    ? preset.id === 'explore'
+                      ? 'bg-violet-100 text-violet-700'
+                      : preset.id === 'plan'
+                        ? 'bg-blue-100 text-blue-700'
+                        : 'bg-emerald-100 text-emerald-700'
+                    : 'bg-surface-container-low text-on-surface-variant/70 hover:text-on-surface'
+                }`}
+              >
+                {preset.shortLabel}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
       {showMcpBindingBadge || showRunStats ? (
         <div
           className="relative flex items-center justify-between gap-2 px-3 pt-2 pb-1 text-[10px] text-on-surface-variant/70 border-b border-outline-variant/30"
@@ -1006,6 +1036,8 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
               className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${
                 permissionMode === 'full'
                   ? 'text-amber-500 hover:bg-amber-50'
+                  : permissionMode === 'explore'
+                  ? 'text-violet-500 hover:bg-violet-50'
                   : permissionMode === 'plan'
                   ? 'text-blue-500 hover:bg-blue-50'
                   : permissionMode === 'auto_edit'
@@ -1034,6 +1066,8 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
                         mode.id === permissionMode
                           ? mode.id === 'full'
                             ? 'text-amber-500'
+                            : mode.id === 'explore'
+                            ? 'text-violet-500'
                             : mode.id === 'plan'
                             ? 'text-blue-500'
                             : mode.id === 'auto_edit'

@@ -39,6 +39,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 - **MCP resources pin-for-Chat (capability D43):** Hub can **Browse resources** on stdio servers; **Pin for Chat** stores a text snapshot injected into Clutch Agent prompt layers (`mcp_resources`).
 - **Chat slash commands (capability D18):** `/` picker adds `/plan`, `/compact`, `/todos`, `/help` (skills remain); `POST /api/runs/{id}/compact` forces compaction with Chat notice feedback.
 - **Usage dashboard (capability D22):** Click the D9 **Steps n/m · ~tok** strip to open a history panel (current run + recent sessions); sidecar persists `session_tokens` / `tool_steps` on session records when runs end or are touched.
+- **Chat mode presets (capability D27):** Composer pills **Explore / Plan / Implement** map to `explore` / `plan` / `auto_edit`; Explore hard-blocks write/exec MCP tools while allowing read/search.
 - **Compact tool approval bar:** `awaiting_human` uses a slim Allow / Reject strip above the composer (optional note + Retry), replacing the large Human-In-The-Loop card.
 - **Sidebar session spinner:** MCP approve/complete now updates session history status; active Coding rows follow live `clutchStatus` so finished chats stop spinning.
 

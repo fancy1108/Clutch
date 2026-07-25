@@ -140,6 +140,7 @@
 | Chat ↔ Terminal 同步（D51） | `services/chatTerminalSync.ts` · `AgentLiveActivity` / `SubtaskCardView` 「在 Terminal 查看」 |
 | Chat 斜杠命令（D18） | `services/slashCommands.ts` · `ChatInputBar` `/` 面板 · `POST /api/runs/{id}/compact` |
 | Chat 用量看板（D22） | `components/UsageDashboard.tsx` · `ChatInputBar` 点击 `chat-run-stats` · `chat_runner._touch_session` 持久化用量 |
+| Chat 模式预设（D27） | `permissionApi.ts` `CHAT_MODE_PRESETS` · `ChatInputBar` pills · `mcp_react` explore/plan 硬拦截 |
 | 能力↔Chat UI 门禁（D52） | `docs/PRODUCT_INTRO.md`（capability-ui-table）· `scripts/check-capability-ui-table.sh` |
 | MCP Hub 探测（D38） | `mcp_storage.probe_server_by_id` · `POST /api/mcp/servers/test` · `McpServerHub` Test connection |
 | Chat MCP 徽章（D40） | `McpBindingBadge.tsx` · `agentMcpSummary.ts` |

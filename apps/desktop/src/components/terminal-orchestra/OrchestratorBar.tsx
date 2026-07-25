@@ -618,7 +618,9 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
               className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${
                 permissionMode === 'full'
                   ? 'text-amber-500 hover:bg-amber-50'
-                  : permissionMode === 'plan'
+                  : permissionMode === 'explore'
+                    ? 'text-violet-500 hover:bg-violet-50'
+                    : permissionMode === 'plan'
                     ? 'text-blue-500 hover:bg-blue-50'
                     : permissionMode === 'auto_edit'
                       ? 'text-emerald-500 hover:bg-emerald-50'
@@ -646,6 +648,8 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
                         mode.id === permissionMode
                           ? mode.id === 'full'
                             ? 'text-amber-500'
+                            : mode.id === 'explore'
+                              ? 'text-violet-500'
                             : mode.id === 'plan'
                               ? 'text-blue-500'
                               : mode.id === 'auto_edit'

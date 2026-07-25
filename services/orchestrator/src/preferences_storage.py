@@ -19,9 +19,10 @@ ALLOWED_FONT_SIZES = frozenset({"small", "default", "large", "xlarge", "xxlarge"
 # Permission modes (controls when the agent pauses for human approval)
 # ask       – pause before every risky tool (write/delete/exec). Default & safest.
 # auto_edit – auto-approve file edits; still pause before shell/delete/network ops.
+# explore   – read-only exploration; write/exec tools hard-blocked (read/search allowed).
 # plan      – read-only; all write/exec tools are hard-blocked (agent just plans).
 # full      – bypass all pause gates (still blocks truly catastrophic ops like rm -rf /).
-ALLOWED_PERMISSION_MODES = frozenset({"ask", "auto_edit", "plan", "full"})
+ALLOWED_PERMISSION_MODES = frozenset({"ask", "auto_edit", "explore", "plan", "full"})
 DEFAULT_PERMISSION_MODE = "ask"
 
 

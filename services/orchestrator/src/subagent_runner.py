@@ -116,7 +116,7 @@ def run_subagent(
         {"role": "system", "content": system},
         {"role": "user", "content": args["prompt"]},
     ]
-    sub_permission = "plan" if args["type"] == "explore" else permission_mode
+    sub_permission = "explore" if args["type"] == "explore" else permission_mode
     collected_steps: list[dict[str, Any]] = []
 
     def on_tool_step(step: dict[str, Any]) -> None:
