@@ -21,3 +21,4 @@
 | D43 MCP Resources | [D43.md](./D43.md) | `4462570` |
 | D44 一键 local-fs | [D44.md](./D44.md) | `24f0e31` |
 | D45 文档对齐 | [D45.md](./D45.md) | `24f0e31` |
+| D18 斜杠命令 | [D18.md](./D18.md) | （commit 后填） |

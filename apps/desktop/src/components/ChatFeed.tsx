@@ -326,6 +326,9 @@ interface ChatFeedProps {
   mcpServerIds?: string[];
   showMcpBindingBadge?: boolean;
   onOpenMcpBind?: () => void;
+  /** D18 slash commands */
+  onSlashCommand?: (id: import('../services/slashCommands').SlashCommandId) => void | Promise<void>;
+  slashNotice?: string | null;
 }
 
 const WORKFLOW_AGENTS = new Set(['Builder', 'Orchestrator', 'Evaluator', 'Supervisor']);
@@ -530,6 +533,8 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   mcpServerIds,
   showMcpBindingBadge = false,
   onOpenMcpBind,
+  onSlashCommand,
+  slashNotice = null,
 }) => {
   const { t } = useLanguage();
   const hostOs = useHostOs();
@@ -1736,6 +1741,8 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
               mcpServerIds={mcpServerIds}
               showMcpBindingBadge={showMcpBindingBadge}
               onOpenMcpBind={onOpenMcpBind}
+              onSlashCommand={onSlashCommand}
+              slashNotice={slashNotice}
             />
           </div>
         ) : null}

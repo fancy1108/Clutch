@@ -443,6 +443,43 @@ async def delete_run_endpoint(run_id: str) -> dict[str, Any]:
     return {"status": "deleted", "run_id": run_id}
 
 
+@router.post("/api/runs/{run_id}/compact")
+async def compact_run(run_id: str) -> dict[str, Any]:
+    """D18 — manually trigger context compaction (slash `/compact`)."""
+    from src.chat_runner import _get_or_create_run, _commit_run_state
+    from src.compaction import compact_run_messages
+    from src.run_log_forwarder import get_forwarder
+
+    state = _get_or_create_run(run_id)
+    before_count = len(state.get("messages") or [])
+    if before_count <= 5:
+        return {
+            "run_id": run_id,
+            "compacted": False,
+            "message_count": before_count,
+            "session_tokens": int(state.get("session_tokens") or 0),
+            "detail": "Not enough messages to compact (need more than 5).",
+        }
+    new_state = await compact_run_messages(run_id, state)
+    after_count = len(new_state.get("messages") or [])
+    compacted = after_count < before_count
+    _commit_run_state(run_id, new_state)
+    patch = {
+        "messages": new_state.get("messages"),
+        "session_tokens": new_state.get("session_tokens"),
+        "input_tokens": new_state.get("input_tokens"),
+        "output_tokens": new_state.get("output_tokens"),
+    }
+    get_forwarder(run_id).emit_state_patch(patch, str(new_state.get("status") or "idle"))
+    return {
+        "run_id": run_id,
+        "compacted": compacted,
+        "message_count": after_count,
+        "session_tokens": int(new_state.get("session_tokens") or 0),
+        "detail": "Context compacted." if compacted else "Compaction returned unchanged state.",
+    }
+
+
 @router.post("/api/runs/{run_id}/stop")
 async def stop_run(run_id: str) -> dict[str, str]:
     from src.main import (

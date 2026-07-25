@@ -4,7 +4,7 @@
  *  - File/folder drag-and-drop from right panel (chip with icon)
  *  - + menu: local attach / project file / skill command / session
  *  - Permission mode selector (4 modes, backend-persisted)
- *  - / command → skill picker popover
+ *  - / command → slash commands (D18) + skill picker popover
  *  - # → session picker popover
  */
 import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
@@ -21,6 +21,12 @@ import { shouldSubmitChatOnEnter } from './chatInputKeyboard';
 import { AgentChatAvatar } from './AgentChatAvatar';
 import { McpBindingBadge } from './McpBindingBadge';
 import { parseInputAgentMention } from '../services/terminalOrchestraUtils';
+import {
+  filterSlashCommands,
+  matchExactSlashCommand,
+  type SlashCommand,
+  type SlashCommandId,
+} from '../services/slashCommands';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -91,6 +97,10 @@ interface ChatInputBarProps {
   mcpServerIds?: string[];
   showMcpBindingBadge?: boolean;
   onOpenMcpBind?: () => void;
+  /** D18 — run a chat slash command (/plan /compact /todos /help). */
+  onSlashCommand?: (id: SlashCommandId) => void | Promise<void>;
+  /** D18 — brief feedback after a slash command. */
+  slashNotice?: string | null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -223,6 +233,8 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
   mcpServerIds,
   showMcpBindingBadge = false,
   onOpenMcpBind,
+  onSlashCommand,
+  slashNotice = null,
 }) => {
   const { t, language } = useLanguage();
   const [dismissedNoticeKey, setDismissedNoticeKey] = useState<string | null>(null);
@@ -382,12 +394,27 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
 
   // ── Send ────────────────────────────────────────────────────────────────────
 
+  const runSlashCommand = useCallback(
+    (cmd: SlashCommand) => {
+      setSkillPickerOpen(false);
+      setInputValue('');
+      void onSlashCommand?.(cmd.id);
+      textareaRef.current?.focus();
+    },
+    [onSlashCommand, setInputValue],
+  );
+
   const handleSend = useCallback(() => {
     if (!inputValue.trim() && attachments.length === 0) return;
+    const slash = matchExactSlashCommand(inputValue);
+    if (slash && onSlashCommand) {
+      runSlashCommand(slash);
+      return;
+    }
     onSendMessage(inputValue, attachments);
     setAttachments([]);
     setInputValue('');
-  }, [inputValue, attachments, onSendMessage, setInputValue]);
+  }, [inputValue, attachments, onSendMessage, setInputValue, onSlashCommand, runSlashCommand]);
 
   const handleInputChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -493,6 +520,11 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
 
   // ── Derived ─────────────────────────────────────────────────────────────────
 
+  const filteredSlashCommands = useMemo(
+    () => filterSlashCommands(skillFilter),
+    [skillFilter],
+  );
+
   const filteredSkills = skills.filter(
     (s) =>
       !skillFilter ||
@@ -569,12 +601,18 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
       const isComposing = compositionActiveRef.current || e.nativeEvent.isComposing;
       if (
         skillPickerOpen &&
-        filteredSkills.length > 0 &&
         shouldSubmitChatOnEnter(e.nativeEvent, isComposing)
       ) {
-        e.preventDefault();
-        insertSkill(filteredSkills[0]);
-        return;
+        if (filteredSlashCommands.length > 0) {
+          e.preventDefault();
+          runSlashCommand(filteredSlashCommands[0]);
+          return;
+        }
+        if (filteredSkills.length > 0) {
+          e.preventDefault();
+          insertSkill(filteredSkills[0]);
+          return;
+        }
       }
       if (
         sessionPickerOpen &&
@@ -611,9 +649,11 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
       canSend,
       filteredSessions,
       filteredSkills,
+      filteredSlashCommands,
       handleSend,
       insertSession,
       insertSkill,
+      runSlashCommand,
       sessionPickerOpen,
       agentPickerOpen,
       filteredMentionableAgents,
@@ -1113,9 +1153,11 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
         </div>
       )}
 
-      {/* ── Skill picker popover ── */}
+      {/* ── Slash commands + skill picker (D18) ── */}
       {skillPickerOpen && (
-        <div className="absolute bottom-full left-0 mb-2 w-72 bg-white border border-outline-variant rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-bottom-1 duration-150"
+        <div
+          className="absolute bottom-full left-0 mb-2 w-72 bg-white border border-outline-variant rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-bottom-1 duration-150"
+          data-testid="slash-command-picker"
           style={{ bottom: '100%', left: 0 }}
         >
           <div className="p-2 border-b border-outline-variant/30">
@@ -1125,7 +1167,23 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
             </div>
           </div>
           <div className="max-h-52 overflow-y-auto">
-            {filteredSkills.length === 0 ? (
+            {filteredSlashCommands.length > 0 && (
+              <div className="py-1 border-b border-outline-variant/20">
+                {filteredSlashCommands.map((cmd) => (
+                  <button
+                    key={cmd.id}
+                    type="button"
+                    data-testid={`slash-cmd-${cmd.id}`}
+                    onClick={() => runSlashCommand(cmd)}
+                    className="w-full flex flex-col px-3 py-2 text-left hover:bg-surface-container-low transition-colors"
+                  >
+                    <span className="text-[12px] font-semibold text-on-surface">{cmd.label}</span>
+                    <span className="text-[10.5px] text-on-surface-variant/60 truncate">{cmd.description}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            {filteredSkills.length === 0 && filteredSlashCommands.length === 0 ? (
               <p className="px-4 py-3 text-[11px] text-on-surface-variant/60 italic">
                 {skills.length === 0 ? t('No skills loaded') : t('No matches')}
               </p>
@@ -1147,6 +1205,15 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
           </div>
         </div>
       )}
+
+      {slashNotice ? (
+        <div
+          data-testid="slash-command-notice"
+          className="absolute bottom-full left-0 mb-1 px-2.5 py-1.5 rounded-lg bg-surface-container text-[11px] text-on-surface shadow border border-outline-variant/40 max-w-[min(100%,22rem)]"
+        >
+          {slashNotice}
+        </div>
+      ) : null}
 
       {/* ── Session picker popover ── */}
       {sessionPickerOpen && (

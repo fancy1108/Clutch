@@ -5,16 +5,21 @@
 
 ## Current Status
 
-- **阶段：** **v1.2.9**；Chat Agent 可验收表（D1–D13 + D37–D52 主线/MCP/UX）**已全部实现待 PM**；扩展 D14/D15–D36 未做
-- **Git：** D43=`4462570`；PM 包见 `runs/verification/pm-acceptance/README.md`
+- **阶段：** **v1.2.9**；扩展 D14+D15–D36 交付中（Wave1 起）；主线/MCP 仍待 PM
+- **Git：** D18 进行中；PM 包见 `runs/verification/pm-acceptance/README.md`
 - **PM 验收包：** ROADMAP 未点验前保持 ❌
 
 ## Recent Sessions
 
+## 2026-07-25 会话（扩展 D14–D36：D18 起）
+
+- **实现中：** D18 斜杠命令
+- **下次：** D22 → D27 → … 按计划顺序
+
 ## 2026-07-25 会话（续：D43 Resources → 交验收）
 
 - **实现：** resources/list+read；Hub Browse/Pin；prompt `mcp_resources` 层
-- **下次：** **你验收** `pm-acceptance/README.md` 全表
+- **下次：** 扩展表 D14–D36（用户要求都做）
 
 ## 2026-07-25 会话（续：D42∥D44 + D45）
 

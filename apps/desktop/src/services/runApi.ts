@@ -119,3 +119,30 @@ export async function deleteSession(runId: string): Promise<void> {
     throw new Error(`Failed to delete session (${response.status})`);
   }
 }
+
+export interface CompactResult {
+  run_id: string;
+  compacted: boolean;
+  message_count: number;
+  session_tokens?: number;
+  detail?: string;
+}
+
+/** D18 — force context compaction for the active run. */
+export async function compactRun(runId: string): Promise<CompactResult> {
+  const response = await sidecarFetch(
+    sidecarHttpUrl(`/api/runs/${encodeURIComponent(runId)}/compact`),
+    { method: 'POST' },
+  );
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as {
+      detail?: { message?: string } | string;
+    };
+    const msg =
+      typeof body.detail === 'string'
+        ? body.detail
+        : body.detail?.message ?? `compact failed (${response.status})`;
+    throw new Error(msg);
+  }
+  return (await response.json()) as CompactResult;
+}

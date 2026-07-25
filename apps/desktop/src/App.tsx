@@ -50,8 +50,10 @@ import {
   fetchRunState,
   deleteSession,
   createSession,
+  compactRun,
   type SessionRecord,
 } from './services/runApi';
+import type { SlashCommandId } from './services/slashCommands';
 import { fetchShellSnapshots } from './services/shellSnapshotApi';
 import { listWorkflowItems, loadWorkflowById } from './services/workflowApi';
 import {
@@ -1077,6 +1079,57 @@ function MainLayout() {
     setPermissionMode(mode);
     void savePermissionMode(mode).catch(() => {});
   };
+
+  const [slashNotice, setSlashNotice] = useState<string | null>(null);
+  const slashNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showSlashNotice = useCallback((text: string) => {
+    setSlashNotice(text);
+    if (slashNoticeTimerRef.current) clearTimeout(slashNoticeTimerRef.current);
+    slashNoticeTimerRef.current = setTimeout(() => setSlashNotice(null), 4000);
+  }, []);
+
+  const handleSlashCommand = useCallback(
+    async (id: SlashCommandId) => {
+      if (id === 'plan') {
+        handlePermissionModeChange('plan');
+        showSlashNotice('Plan mode on — Agent plans before editing. Switch mode to resume writes.');
+        return;
+      }
+      if (id === 'help') {
+        showSlashNotice('/plan · /compact · /todos · /help');
+        return;
+      }
+      if (id === 'todos') {
+        const el =
+          document.querySelector('[data-testid="todo-sticky-rail"]') ||
+          document.querySelector('[data-testid="todo-card"]');
+        if (el instanceof HTMLElement) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          showSlashNotice('Focused Todo checklist.');
+        } else {
+          showSlashNotice('No Todo checklist in this chat yet.');
+        }
+        return;
+      }
+      if (id === 'compact') {
+        if (!sessionRunId) {
+          showSlashNotice('No active session to compact.');
+          return;
+        }
+        try {
+          const result = await compactRun(sessionRunId);
+          showSlashNotice(
+            result.compacted
+              ? `Context compacted (${result.message_count} messages · ~${result.session_tokens ?? 0} tok).`
+              : result.detail || 'Nothing to compact yet.',
+          );
+        } catch (err) {
+          showSlashNotice(err instanceof Error ? err.message : 'Compact failed.');
+        }
+      }
+    },
+    [sessionRunId, showSlashNotice],
+  );
 
   // Skills list for / command picker in chat input
   const [chatSkills, setChatSkills] = useState<ScannedSkill[]>([]);
@@ -2133,6 +2186,8 @@ function MainLayout() {
                   Boolean(selectedAgent && isClutchAgentType(selectedAgent) && !selectedWorkflowId && !clutchState.workflow_id)
                 }
                 onOpenMcpBind={() => setView('agents')}
+                onSlashCommand={handleSlashCommand}
+                slashNotice={slashNotice}
               />
               </div>
             </>
