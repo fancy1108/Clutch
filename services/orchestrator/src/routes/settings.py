@@ -39,6 +39,7 @@ class McpRegisterRequest(BaseModel):
     name: str
     transport: str = Field(default="stdio")
     endpoint: str
+    env: dict[str, str] | None = None
 
 
 class McpServerIdRequest(BaseModel):
@@ -386,7 +387,12 @@ async def register_mcp_server(body: McpRegisterRequest) -> dict[str, Any]:
     from src.mcp_storage import build_mcp_status_payload, register_server
 
     try:
-        register_server(name=body.name, transport=body.transport, endpoint=body.endpoint)
+        register_server(
+            name=body.name,
+            transport=body.transport,
+            endpoint=body.endpoint,
+            env=body.env,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
     return await build_mcp_status_payload()

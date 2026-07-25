@@ -8,7 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from src.main import app
-from src.mcp_storage import _probe_endpoint_sync, probe_server_by_id, register_server
+from src.mcp_storage import _probe_endpoint_sync, probe_server_by_id
 
 client = TestClient(app)
 
@@ -61,16 +61,24 @@ def test_api_test_endpoint_bad_command(mcp_data_dir: Path) -> None:
     assert body["toolsCount"] == 0
 
 
-def test_api_test_sse_registered_honest(mcp_data_dir: Path) -> None:
+def test_api_test_legacy_sse_honest(mcp_data_dir: Path) -> None:
     del mcp_data_dir
-    register_server(
-        name="Remote",
-        transport="sse",
-        endpoint="https://example.com/mcp/sse",
+    from src import mcp_storage
+
+    # Persist a legacy SSE row (pre-D39) without going through register_server.
+    mcp_storage.save_servers(
+        [
+            {
+                "id": "mcp_legacy_sse",
+                "name": "Remote",
+                "type": "remote",
+                "transport": "sse",
+                "endpoint": "https://example.com/mcp/sse",
+                "enabled": True,
+            }
+        ]
     )
-    servers = client.get("/api/mcp/status").json()["servers"]
-    server_id = next(s["id"] for s in servers if s.get("name") == "Remote")
-    probed = client.post("/api/mcp/servers/test", json={"id": server_id})
+    probed = client.post("/api/mcp/servers/test", json={"id": "mcp_legacy_sse"})
     assert probed.status_code == 200
     body = probed.json()
     assert body["ok"] is False

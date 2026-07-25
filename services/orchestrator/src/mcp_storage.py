@@ -47,11 +47,16 @@ def save_servers(servers: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return servers
 
 
+# D39 — runtime is stdio-only; SSE may still appear in legacy saved configs.
+RUNNABLE_TRANSPORTS = frozenset({"stdio"})
+
+
 def validate_server_payload(
     *,
     name: str,
     transport: str,
     endpoint: str,
+    allow_legacy_sse: bool = False,
 ) -> dict[str, Any]:
     label = name.strip()
     cmd = endpoint.strip()
@@ -60,6 +65,13 @@ def validate_server_payload(
         raise ValueError(tr("Name cannot be empty", "名称不能为空"))
     if mode not in VALID_TRANSPORTS:
         raise ValueError(tr("Transport type must be stdio or sse", "传输类型须为 stdio 或 sse"))
+    if mode == "sse" and not allow_legacy_sse:
+        raise ValueError(
+            tr(
+                "SSE/HTTP transport is not available yet — register a stdio command instead",
+                "SSE/HTTP 传输尚未可用 — 请改用 stdio 命令注册",
+            )
+        )
     if not cmd:
         raise ValueError(tr("Endpoint cannot be empty", "端点不能为空"))
     if mode == "sse":
@@ -80,14 +92,17 @@ def register_server(
     name: str,
     transport: str,
     endpoint: str,
+    env: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     payload = validate_server_payload(name=name, transport=transport, endpoint=endpoint)
     servers = load_servers()
-    entry = {
+    entry: dict[str, Any] = {
         "id": f"mcp_{uuid.uuid4().hex[:8]}",
         "enabled": True,
         **payload,
     }
+    if env:
+        entry["env"] = {str(k): str(v) for k, v in env.items() if str(k).strip()}
     servers.append(entry)
     save_servers(servers)
     return entry
@@ -268,7 +283,8 @@ def save_raw_config(servers_list: list[dict[str, Any]]) -> list[dict[str, Any]]:
         payload = validate_server_payload(
             name=s.get("name", ""),
             transport=s.get("transport", "stdio"),
-            endpoint=s.get("endpoint", "")
+            endpoint=s.get("endpoint", ""),
+            allow_legacy_sse=True,
         )
         server_id = s.get("id") or f"mcp_{uuid.uuid4().hex[:8]}"
         enabled = s.get("enabled", True)

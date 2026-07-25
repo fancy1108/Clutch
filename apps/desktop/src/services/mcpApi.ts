@@ -33,6 +33,7 @@ export async function registerMcpServer(payload: {
   name: string;
   transport: 'stdio' | 'sse';
   endpoint: string;
+  env?: Record<string, string>;
 }): Promise<McpStatusResponse> {
   const response = await sidecarFetch(`${BASE}/api/mcp/servers/register`, {
     method: 'POST',

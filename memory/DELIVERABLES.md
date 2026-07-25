@@ -4,12 +4,23 @@
 > **何时写：** 每个**代码 Task** 完成并 commit 后，在 Check-out 追加一节（见 `CLAUDE.md` §Check-out）。  
 > **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。
 
-## Clutch Agent D38 Hub 可信状态 (`pending`)
+## Clutch Agent D39 传输诚实 (`pending`)
+
+| 项目 | 值 |
+|------|-----|
+| **Task** | D39 stdio-only Hub + Env form; reject SSE register |
+| **Commit** | _(fill after commit)_ |
+| **Branch** | `dev` |
+| **Verification** | `uv run pytest tests/test_mcp_registry.py tests/test_mcp_probe_d38.py -q` → 8 passed |
+| **PM 用例** | `runs/verification/pm-acceptance/D39.md` |
+| **下一批** | **D40** Chat MCP 徽章 |
+
+## Clutch Agent D38 Hub 可信状态 (`b2d8f49`)
 
 | 项目 | 值 |
 |------|-----|
 | **Task** | D38 Test connection + remove under-development banner |
-| **Commit** | _(fill after commit)_ |
+| **Commit** | `b2d8f49` |
 | **Branch** | `dev` |
 | **Verification** | `uv run pytest tests/test_mcp_probe_d38.py -q` → 5 passed |
 | **PM 用例** | `runs/verification/pm-acceptance/D38.md` |

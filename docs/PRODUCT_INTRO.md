@@ -126,6 +126,7 @@ graph TD
 | D13 permissions | Permission mode menu + Clear remembered approvals |
 | D37 MCP bind | Agent Manager Module 4 Hub checkboxes; bound tools in ReAct trail |
 | D38 Hub probe | MCP Hub **Test connection** → tool count or readable error (no “under development” banner) |
+| D39 transport | Hub register form: stdio only; SSE disabled / API 400; optional Env `KEY=value` |
 | D46 tool trail | Foldable verb_group steps on the assistant bubble |
 | D47 chips | Clickable files-changed chips → workspace preview |
 | D48 nested | Subtasks cards with status / summary / expandable steps |
@@ -168,7 +169,7 @@ graph TD
 * **Tool Settings**：对 20+ 主流 Agent CLI 白名单做本机探测——**已安装的一律展示**（含 Rivet、OpenCode、MiMo Code、CodeBuddy、Cursor Agent、ZCode 等扩展工具）；**未安装时默认仅推荐经 Clutch 验证的 CLI**（`codebuddy`、`cursor-agent`、`mimo`、`opencode`、`claude`、`ollama`、`codex`、`agy`、`zcode`）及安装指引。CodeBuddy 内置 headless 路由（`codebuddy -p`，curated `--dangerously-skip-permissions`）；OpenCode 内置 headless 路由（`run --auto`）；MiMo Code 内置 headless 路由（`mimo run --dangerously-skip-permissions`）；ZCode 内置 headless 路由（`zcode -p --mode yolo --json`），Auto Config 错误参数不会覆盖 curated 配置。支持 Connect 偏好与 **Auto Config**（LLM 分析 `--help` 写入 `custom_clis.json` 路由参数）。
 * **Model Provider Settings**（**Models by Agent** 顶栏 Tab：**Clutch Agent** · **Claude Code** · **OpenCode** · **MiMo Code**）：**Clutch** Tab 配置内置 Agent 所用云端/本地模型 API Keys（支持无感导入 `.cc-switch` 凭证至 Clutch 侧）。内置文本提供商含 **DeepSeek**、**Anthropic**、**OpenAI**、**Google**、**Ollama**、**Agnes** 与 **OpenCode Zen**（[opencode.ai](https://opencode.ai/auth) Zen 工作区 API Key；端点 `https://opencode.ai/zen/v1`）。**Claude Code** / **OpenCode** / **MiMo Code** Tab 只读扫描各 CLI 原生 model 配置；Claude Code 在已安装 `cc-switch` CLI 时可切换 provider。**OpenCode Zen**（供 Clutch 内置 Agent，非 OpenCode CLI）仍在 Clutch Tab 配置。内置 **Agnes 2.0 Flash**（对话）、**Agnes Image 2.1 Flash**（生图）与 **Agnes Video V2.0**（文生视频）；**Ollama 条目与 Create Agent 下拉同源**——实时读取本机 `ollama list` 已安装 tag。
 * **Skills Settings**（同上 Agent Tab）：Clutch Tab 管理 Skills Registry 挂载；Claude Code / OpenCode / **MiMo Code** Tab 只读扫描原生 `SKILL.md` 目录。
-* **MCP Server Settings**（同上 Agent Tab）：Clutch Tab 注册/开关 MCP Hub 服务器（stdio）；每行可 **Test connection**（capability **D38**）——成功显示工具数，失败显示可读错误；不再展示误导性「开发中」横幅。Claude Code / OpenCode / **MiMo Code** Tab 只读扫描原生 MCP 配置。
+* **MCP Server Settings**（同上 Agent Tab）：Clutch Tab 注册/开关 MCP Hub 服务器（**stdio only**，capability **D39**——SSE 选项禁用且 API 拒绝新注册；表单支持可选 `KEY=value` Env）；每行可 **Test connection**（capability **D38**）——成功显示工具数，失败显示可读错误；不再展示误导性「开发中」横幅。Claude Code / OpenCode / **MiMo Code** Tab 只读扫描原生 MCP 配置。
 * **Appearance Settings**：提供一键在 Pristine Light、Nordic Frost 和 Amber Warm 主题间切换的设计面板。
 * **Session Memory**：使用 LocalStorage 后台自动记忆每个 sessionRunId 的工作流 ID 与智能体 ID，在切换会话时精准恢复并统一展示为多智能体视图架构。
 

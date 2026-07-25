@@ -46,8 +46,9 @@ export const McpServerHub: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState('');
-  const [transport, setTransport] = useState<'stdio' | 'sse'>('stdio');
+  const [transport, setTransport] = useState<'stdio'>('stdio');
   const [endpoint, setEndpoint] = useState('');
+  const [envText, setEnvText] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [isJsonEditMode, setIsJsonEditMode] = useState(false);
   const [rawJsonConfig, setRawJsonConfig] = useState('');
@@ -86,18 +87,35 @@ export const McpServerHub: React.FC = () => {
     0,
   );
 
+  const parseEnvText = (raw: string): Record<string, string> | undefined => {
+    const env: Record<string, string> = {};
+    for (const line of raw.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const eq = trimmed.indexOf('=');
+      if (eq <= 0) continue;
+      const key = trimmed.slice(0, eq).trim();
+      const value = trimmed.slice(eq + 1).trim();
+      if (key) env[key] = value;
+    }
+    return Object.keys(env).length ? env : undefined;
+  };
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !endpoint.trim()) return;
     try {
       const status = await registerMcpServer({
         name: name.trim(),
-        transport,
+        transport: 'stdio',
         endpoint: endpoint.trim(),
+        env: parseEnvText(envText),
       });
       setServers(status.servers);
       setName('');
       setEndpoint('');
+      setEnvText('');
+      setTransport('stdio');
       setSuccessMsg(t('MCP server registered.'));
       setTimeout(() => setSuccessMsg(''), 3000);
     } catch (err: unknown) {
@@ -271,21 +289,34 @@ export const McpServerHub: React.FC = () => {
                   />
                   <select
                     value={transport}
-                    onChange={(e) => setTransport(e.target.value as 'stdio' | 'sse')}
+                    onChange={() => setTransport('stdio')}
                     className="px-3 py-1.5 text-xs border border-neutral-200 rounded-lg bg-white"
+                    title={t('Only stdio is runnable today')}
                   >
                     <option value="stdio">stdio</option>
-                    <option value="sse">sse</option>
+                    <option value="sse" disabled>
+                      sse ({t('unavailable')})
+                    </option>
                   </select>
                   <input
                     type="text"
                     required
                     value={endpoint}
                     onChange={(e) => setEndpoint(e.target.value)}
-                    placeholder={transport === 'sse' ? 'https://host/mcp/sse' : 'npx -y @org/mcp-server'}
+                    placeholder="npx -y @org/mcp-server"
                     className="px-3 py-1.5 text-xs border border-neutral-200 rounded-lg bg-white font-mono md:col-span-1"
                   />
                 </div>
+                <p className="text-[10px] text-neutral-500">
+                  {t('Only stdio is runnable today')}
+                </p>
+                <textarea
+                  rows={2}
+                  value={envText}
+                  onChange={(e) => setEnvText(e.target.value)}
+                  placeholder={t('Env vars (one KEY=value per line, optional)')}
+                  className="w-full px-3 py-1.5 text-xs border border-neutral-200 rounded-lg bg-white font-mono"
+                />
                 <button type="submit" className={BTN_PRIMARY}>
                   {t('+ Register Node')}
                 </button>
@@ -307,6 +338,11 @@ export const McpServerHub: React.FC = () => {
                         <span className="text-[8.5px] font-mono uppercase px-1.5 py-0.2 rounded font-bold bg-neutral-100 text-neutral-800">
                           {server.transport}
                         </span>
+                        {server.transport === 'sse' ? (
+                          <span className="text-[8.5px] font-mono uppercase px-1.5 py-0.2 rounded font-bold bg-amber-50 text-amber-800">
+                            {t('unavailable')}
+                          </span>
+                        ) : null}
                         {server.builtin ? (
                           <span className={BADGE_SUCCESS}>{t('builtin')}</span>
                         ) : null}

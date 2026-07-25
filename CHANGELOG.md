@@ -33,6 +33,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 - **Chat ↔ Terminal sync (capability D51):** Shell / execute tool steps and subtask cards expose **View in Terminal** — opens the right-rail Terminal tab, highlights the matching `[CHAT] Step` log line, and (when a CLI Terminal session is available) switches to Terminal mode and focuses the active lane.
 - **Capability ↔ Chat UI gate (capability D52):** `PRODUCT_INTRO` ships a **Capability → Chat UI** table (D1/D10/D37 spot-check rows required); `scripts/check-capability-ui-table.sh` is wired into `check-doc-drift.sh` (INV-D52).
 - **MCP Hub trusted status (capability D38):** Remove misleading Hub “under development” banner; per-server **Test connection** (`POST /api/mcp/servers/test`) returns tool count on success or a readable error on failure.
+- **MCP transport honesty (capability D39):** Hub registration is **stdio-only** (SSE option disabled; API rejects new SSE registers); optional Env `KEY=value` lines on register; legacy SSE rows stay visible as unavailable.
 - **Compact tool approval bar:** `awaiting_human` uses a slim Allow / Reject strip above the composer (optional note + Retry), replacing the large Human-In-The-Loop card.
 - **Sidebar session spinner:** MCP approve/complete now updates session history status; active Coding rows follow live `clutchStatus` so finished chats stop spinning.
 
