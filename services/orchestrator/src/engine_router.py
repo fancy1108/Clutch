@@ -1080,6 +1080,33 @@ def route_engine(
     source: str = "flow",
     session_model_id: str | None = None,
 ) -> EngineResult:
+    # Sandbox E2E only (`CLUTCH_E2E_SANDBOX` + `CLUTCH_E2E_FAKE_LLM=1`): never hit
+    # real CLIs. Do not key on FAKE_LLM alone — pytest sets that globally while
+    # still exercising real `route_engine` (and `@pytest.mark.real_route_engine`).
+    import os
+
+    if os.environ.get("CLUTCH_E2E_FAKE_LLM") == "1" and os.environ.get("CLUTCH_E2E_SANDBOX"):
+        if source in {"plain_chat", "flow_refine"}:
+            from src.llm.router import LLMProviderRouter
+            from src.models_config import get_router
+
+            router = get_router()
+            model = router.get_active_model()
+            chat_history = list(history or [])
+            if not chat_history:
+                chat_history = [{"role": "user", "content": prompt}]
+            output = LLMProviderRouter.extract_content(router.chat(chat_history))
+            return EngineResult(
+                engine=model.name,
+                output=output,
+                logs=["[ROUTER] E2E_FAKE_LLM"],
+            )
+        return EngineResult(
+            engine=f"Mock ({agent_name})",
+            output=f"Mocked output for: {prompt[:120]}",
+            logs=["[ROUTER] E2E_FAKE_LLM"],
+        )
+
     res = _route_engine_raw(
         agent_name=agent_name,
         prompt=prompt,

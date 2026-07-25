@@ -20,6 +20,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ### Fixed
 
+- **E2E MVP closed-loop:** `CLUTCH_E2E_FAKE_LLM=1` now short-circuits `route_engine` (no real Claude CLI), so sandbox `mvp-closed-loop` reaches `awaiting_human` → approve → `passed`.
 - **D10 explore PM:** Agnes Flash explore subtasks no longer die at 8 iterations before summarizing.
 - **D8 PM acceptance polish:** `todo_write` no longer explodes JSON-string `todos` into per-character items; compaction patches **replace** the message list (digest visible); manual `/compact` appends a User `/compact` bubble then an amber digest **at the feed end**; Stop flips to Stopping/Continue immediately; status questions (还剩哪些 todo) instruct the model not to resume edits; slash notices use a high-contrast dark toast.
 

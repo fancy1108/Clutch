@@ -79,7 +79,7 @@ cat > "${STATE}/storage/preferences/preferences.json" <<'EOF'
 {
   "active_theme_id": "pristine-light",
   "active_language": "en",
-  "permission_mode": "ask",
+  "permission_mode": "auto_edit",
   "user_avatar": "",
   "user_name": "User",
   "onboarding_completed": "true"
