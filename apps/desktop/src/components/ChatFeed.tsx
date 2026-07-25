@@ -39,7 +39,7 @@ import { AgentLiveActivity } from './AgentLiveActivity';
 import { FilesChangedChips } from './FilesChangedChips';
 import { PlanCardView } from './PlanCardView';
 import { QuestionCardView } from './QuestionCardView';
-import { TodoCardView, todosAreComplete } from './TodoCardView';
+import { TodoCardView, shouldPinLiveTodos } from './TodoCardView';
 import { SubtaskCardView } from './SubtaskCardView';
 import { BackgroundJobsBar } from './BackgroundJobsBar';
 import { detectBgJobFailureToast } from '../services/bgJobMonitor';
@@ -845,10 +845,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   }, [bgJobToast]);
 
   /** Pin live todos while incomplete; unpin when all checked so the sealed card scrolls with history. */
-  const pinLiveTodos =
-    liveTodos.length > 0 &&
-    !todosAreComplete(liveTodos) &&
-    (isRunning || awaitingHuman);
+  const pinLiveTodos = shouldPinLiveTodos(liveTodos, { isRunning, awaitingHuman });
   const showInlineLiveTodos = liveTodos.length > 0 && !pinLiveTodos;
   const liveActivitySteps = useMemo(
     () =>
