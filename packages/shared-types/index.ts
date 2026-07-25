@@ -430,6 +430,13 @@ export interface ClutchState {
         dirty?: boolean;
         workspace_root?: string;
     } | null;
+    /** D24: pending code diagnostics for Chat issues strip. */
+    chat_diagnostics?: Array<{
+        tool: string;
+        path: string;
+        line: string;
+        message: string;
+    }>;
   /** CLI provider session id (`claude --resume` / `agy --conversation`). */
   cli_session_id?: string;
   /** Agent id that owns `cli_session_id` (reset when user switches agent). */

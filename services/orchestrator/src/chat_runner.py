@@ -3222,6 +3222,23 @@ async def _handle_plain_chat(
 
     from src.hybrid_concurrency import HybridPlainChatRejected
 
+    chat_text = text
+    from src.code_diagnostics import format_diagnostics_for_prompt, pop_pending_diagnostics
+
+    pending_diag = pop_pending_diagnostics(run_id)
+    if pending_diag:
+        diag_prefix = format_diagnostics_for_prompt(pending_diag)
+        if diag_prefix:
+            chat_text = f"{diag_prefix}\n\n{text}"
+        state = _merge_patch(state, {"chat_diagnostics": pending_diag})
+        _commit_run_state(run_id, state)
+        await _notify_run_state(
+            websocket,
+            run_id,
+            state,
+            {"chat_diagnostics": pending_diag},
+        )
+
     try:
         (
             model_name,
@@ -3236,7 +3253,7 @@ async def _handle_plain_chat(
             shell_recovered,
         ) = await _llm_chat_reply(
             state,
-            text,
+            chat_text,
             agent_id=resolved_id,
             session_model_id=session_model_id,
             cli_session_id=stored_session_id,

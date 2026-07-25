@@ -537,6 +537,23 @@ def list_builtin_tools() -> list[dict[str, Any]]:
                 "required": ["type", "prompt"],
             },
         },
+        {
+            "name": "diagnostics",
+            "description": (
+                "Run lightweight code diagnostics (tsc, ruff, py_compile when available). "
+                "Results are injected into the next Agent turn and shown in Chat issues strip (D24)."
+            ),
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "paths": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Optional workspace-relative files/dirs to scope checks.",
+                    }
+                },
+            },
+        },
     ]
     if load_allow_network():
         tools.append(
@@ -1269,6 +1286,7 @@ def execute_builtin_tool(tool_name: str, arguments: dict[str, Any]) -> str:
         "read_skill": _tool_read_skill,
         "load_skill": _tool_read_skill,
         "delegate_subtask": _tool_delegate_subtask,
+        "diagnostics": _tool_diagnostics,
     }
     handler = handlers.get(tool_name)
     if handler is None:
@@ -1939,26 +1957,22 @@ def _tool_web_search(arguments: dict[str, Any]) -> str:
     return json.dumps(payload, ensure_ascii=False)
 
 
-def _tool_web_search(arguments: dict[str, Any]) -> str:
-    from src.preferences_storage import load_allow_network
-    from src.web_search_util import search_web
+def _tool_diagnostics(arguments: dict[str, Any]) -> str:
+    import json
 
-    if not load_allow_network():
-        return (
-            "Error executing tool: web_search is disabled. "
-            "Enable Settings → General → Allow network to search the web."
-        )
-    query = str(arguments.get("query") or "").strip()
-    if not query:
-        return "Error executing tool: web_search requires `query`"
+    from src.code_diagnostics import run_code_diagnostics, store_pending_diagnostics
+    from src.workspace import WorkspaceError, require_workspace
+
     try:
-        max_results = int(arguments.get("max_results") or 5)
-    except (TypeError, ValueError):
-        max_results = 5
-    try:
-        payload = search_web(query, max_results=max_results)
-    except ValueError as exc:
+        root = require_workspace()
+    except WorkspaceError as exc:
         return f"Error executing tool: {exc}"
-    except Exception as exc:
-        return f"Error executing tool: web search failed: {exc}"
-    return json.dumps(payload, ensure_ascii=False)
+    paths_arg = arguments.get("paths")
+    paths: list[str] | None = None
+    if isinstance(paths_arg, list):
+        paths = [str(item) for item in paths_arg if str(item).strip()]
+    issues = run_code_diagnostics(root, paths)
+    run_id = _bg_job_run_id()
+    if run_id:
+        store_pending_diagnostics(run_id, issues)
+    return json.dumps({"count": len(issues), "issues": issues}, ensure_ascii=False)
