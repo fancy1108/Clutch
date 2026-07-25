@@ -322,6 +322,10 @@ interface ChatFeedProps {
   onPreviewSnippet?: (name: string, content: string) => void;
   /** D51 — Chat shell / execute step → Terminal sync. */
   onViewToolStepInTerminal?: (step: ToolStep) => void;
+  /** D40 — Hub MCP binding badge for Clutch Agent. */
+  mcpServerIds?: string[];
+  showMcpBindingBadge?: boolean;
+  onOpenMcpBind?: () => void;
 }
 
 const WORKFLOW_AGENTS = new Set(['Builder', 'Orchestrator', 'Evaluator', 'Supervisor']);
@@ -523,6 +527,9 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   onOpenWorkspaceFile,
   onPreviewSnippet,
   onViewToolStepInTerminal,
+  mcpServerIds,
+  showMcpBindingBadge = false,
+  onOpenMcpBind,
 }) => {
   const { t } = useLanguage();
   const hostOs = useHostOs();
@@ -1726,6 +1733,9 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
               mentionableAgents={mentionableAgents}
               selectedMentionAgentId={selectedMentionAgentId}
               onMentionAgentChange={onMentionAgentChange}
+              mcpServerIds={mcpServerIds}
+              showMcpBindingBadge={showMcpBindingBadge}
+              onOpenMcpBind={onOpenMcpBind}
             />
           </div>
         ) : null}

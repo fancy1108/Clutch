@@ -58,8 +58,9 @@
 | D13 权限规则 | P0 | ❌ | allow/ask/deny + 危险强问 + 清记忆；待 PM |
 | D37 MCP Agent↔Hub 绑定 | P0 | ✅ | Module 4 Hub 勾选 + `mcpServerIds`；PM 2026-07-24 点验通过 |
 | D38 Hub 可信状态 | P1 | ❌ | Test connection + 去开发中横幅；待 PM（`b2d8f49`） |
-| D39 传输诚实 | P1 | ❌ | stdio-only + Env 表单；待 PM |
-| D40–D45 MCP 专项其余 | P1 | ❌ | 见权威表 |
+| D39 传输诚实 | P1 | ❌ | stdio-only + Env 表单；待 PM（`092ee91`） |
+| D40 Chat MCP 徽章 | P1 | ❌ | N MCP · ~M / Bind CTA；待 PM |
+| D41–D45 MCP 专项其余 | P1 | ❌ | 见权威表 |
 | D46 对话实时步骤条 | P0 | ✅ | 持久 verb_group + seal `toolSteps`；PM 2026-07-24 点验通过 |
 | D47 中间产物芯片 | P0 | ✅ | seal `filesChanged` + FilesChangedChips → D42 预览；PM 2026-07-24 点验通过 |
 | D49 计划嵌对话流 | P0 | ✅ | PlanCard + TodoCard + QuestionCard；PM 2026-07-24（D2/D3/D4） |

@@ -5,16 +5,22 @@
 
 ## Current Status
 
-- **阶段：** **v1.2.9**；D7✅；**D8–D13 + D51–D52 + D38–D39 已实现待 PM**；下一批 **D40…**
-- **Git：** D51=`ee4e2a2`；D52=`1365f6d`；D38=`b2d8f49`；D39=_(本批)_
+- **阶段：** **v1.2.9**；D7✅；**D8–D13 + D51–D52 + D38–D40 已实现待 PM**；下一批 **D41–D45**
+- **Git：** D51=`ee4e2a2`；D52=`1365f6d`；D38=`b2d8f49`；D39=`092ee91`；D40=_(本批)_
 - **PM 验收包：** `runs/verification/pm-acceptance/`（ROADMAP 未点验前保持 ❌）
 
 ## Recent Sessions
 
+## 2026-07-25 会话（续：D40 Chat MCP 徽章）
+
+- **实现：** `McpBindingBadge` + `agentMcpSummary`；未绑 CTA → Agent Manager
+- **下次：** D41 审批卡抛光 / D42 真工具名 / D44 一键 local-fs / D45 文档
+
 ## 2026-07-25 会话（续：D39 传输诚实）
 
+- **Commit：** D39 `092ee91`
 - **实现：** SSE 禁用/API 拒注册；Env KEY=value；legacy SSE 标 unavailable
-- **下次：** D40 Chat MCP 徽章 → D41–D45…
+- **下次：** D40…
 
 ## 2026-07-25 会话（续：D38 Hub 探测）
 

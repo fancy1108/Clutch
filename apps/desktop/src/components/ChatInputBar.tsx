@@ -19,6 +19,7 @@ import { LegacyIcon } from './ui/LegacyIcon';
 import { BTN_ICON_SM } from './ui/buttonStyles';
 import { shouldSubmitChatOnEnter } from './chatInputKeyboard';
 import { AgentChatAvatar } from './AgentChatAvatar';
+import { McpBindingBadge } from './McpBindingBadge';
 import { parseInputAgentMention } from '../services/terminalOrchestraUtils';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -86,6 +87,10 @@ interface ChatInputBarProps {
   mentionableAgents?: Array<{ id: string; name: string; logo?: string }>;
   selectedMentionAgentId?: string | null;
   onMentionAgentChange?: (agentId: string | null) => void;
+  /** D40 — Hub MCP bindings for Clutch Agent Chat badge. */
+  mcpServerIds?: string[];
+  showMcpBindingBadge?: boolean;
+  onOpenMcpBind?: () => void;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -215,6 +220,9 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
   mentionableAgents = [],
   selectedMentionAgentId = null,
   onMentionAgentChange,
+  mcpServerIds,
+  showMcpBindingBadge = false,
+  onOpenMcpBind,
 }) => {
   const { t, language } = useLanguage();
   const [dismissedNoticeKey, setDismissedNoticeKey] = useState<string | null>(null);
@@ -718,18 +726,28 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
           </div>
         </div>
       ) : null}
-      {showRunStats ? (
+      {showMcpBindingBadge || showRunStats ? (
         <div
-          data-testid="chat-run-stats"
-          className="flex items-center justify-between gap-2 px-3 pt-2 pb-1 text-[10px] font-mono text-on-surface-variant/70 border-b border-outline-variant/30"
+          className="flex items-center justify-between gap-2 px-3 pt-2 pb-1 text-[10px] text-on-surface-variant/70 border-b border-outline-variant/30"
         >
-          <span>
-            {language === 'zh' ? '步骤' : 'Steps'} {stepsUsed}/{stepsMax}
-            {' · '}
-            ~{tokensShown.toLocaleString()} {language === 'zh' ? 'token' : 'tok'}
-          </span>
-          {runStats?.fuse_triggered ? (
-            <span className="text-rose-600 font-semibold not-italic">
+          <div className="flex items-center gap-2 min-w-0">
+            {showMcpBindingBadge ? (
+              <McpBindingBadge
+                mcpServerIds={mcpServerIds}
+                visible
+                onOpenBind={onOpenMcpBind}
+              />
+            ) : null}
+            {showRunStats ? (
+              <span data-testid="chat-run-stats" className="font-mono truncate">
+                {language === 'zh' ? '步骤' : 'Steps'} {stepsUsed}/{stepsMax}
+                {' · '}
+                ~{tokensShown.toLocaleString()} {language === 'zh' ? 'token' : 'tok'}
+              </span>
+            ) : null}
+          </div>
+          {showRunStats && runStats?.fuse_triggered ? (
+            <span className="text-rose-600 font-semibold not-italic shrink-0">
               {language === 'zh' ? '已熔断' : 'Loop fuse'}
             </span>
           ) : null}

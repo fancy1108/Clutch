@@ -2128,6 +2128,11 @@ function MainLayout() {
                 onOpenWorkspaceFile={(path) => { void handleOpenWorkspaceFile(path); }}
                 onPreviewSnippet={handlePreviewSnippet}
                 onViewToolStepInTerminal={handleViewToolStepInTerminal}
+                mcpServerIds={selectedAgent?.mcpServerIds}
+                showMcpBindingBadge={
+                  Boolean(selectedAgent && isClutchAgentType(selectedAgent) && !selectedWorkflowId && !clutchState.workflow_id)
+                }
+                onOpenMcpBind={() => setView('agents')}
               />
               </div>
             </>

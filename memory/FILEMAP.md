@@ -140,6 +140,7 @@
 | Chat ↔ Terminal 同步（D51） | `services/chatTerminalSync.ts` · `AgentLiveActivity` / `SubtaskCardView` 「在 Terminal 查看」 |
 | 能力↔Chat UI 门禁（D52） | `docs/PRODUCT_INTRO.md`（capability-ui-table）· `scripts/check-capability-ui-table.sh` |
 | MCP Hub 探测（D38） | `mcp_storage.probe_server_by_id` · `POST /api/mcp/servers/test` · `McpServerHub` Test connection |
+| Chat MCP 徽章（D40） | `McpBindingBadge.tsx` · `agentMcpSummary.ts` |
 | Chat 变更文件芯片（D47） | `components/FilesChangedChips.tsx` |
 | Chat 计划卡（D2/D49） | `components/PlanCardView.tsx` · builtin `propose_plan` |
 | Chat Todo 卡（D3/D49） | `components/TodoCardView.tsx` · builtin `todo_write` |
