@@ -118,6 +118,29 @@ def _reader_thread(job: BgJob) -> None:
         _notify_run(job.run_id, finished=finished)
 
 
+def adopt_process(
+    run_id: str,
+    command: str,
+    cwd: str,
+    proc: subprocess.Popen[str],
+    initial_output: str = "",
+) -> dict[str, Any]:
+    """D34 — move a running foreground subprocess into the bg_jobs registry."""
+    trimmed = command.strip()
+    job_id = f"bg_{uuid.uuid4().hex[:8]}"
+    job = BgJob(run_id, job_id, trimmed, cwd)
+    job._proc = proc
+    if initial_output:
+        job.append_output(initial_output)
+    with _jobs_lock:
+        _jobs_by_run.setdefault(run_id, {})[job_id] = job
+    job._thread = threading.Thread(target=_reader_thread, args=(job,), daemon=True)
+    job._thread.start()
+    payload = job.to_dict()
+    _notify_run(run_id)
+    return payload
+
+
 def start_job(run_id: str, command: str, cwd: str) -> dict[str, Any]:
     trimmed = command.strip()
     if not trimmed:

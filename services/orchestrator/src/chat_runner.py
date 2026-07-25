@@ -787,6 +787,22 @@ def _bg_jobs_live_patch(jobs: list[dict[str, Any]]) -> dict[str, Any]:
     return {"bg_jobs": list(jobs)}
 
 
+def _foreground_shell_live_patch(payload: dict[str, Any] | None) -> dict[str, Any]:
+    return {"foreground_shell": payload}
+
+
+async def _apply_foreground_shell_update(
+    websocket: WebSocket,
+    run_id: str,
+    payload: dict[str, Any] | None,
+) -> None:
+    state = _get_or_create_run(run_id)
+    patch: dict[str, Any] = _foreground_shell_live_patch(payload)
+    state = _merge_patch(state, patch)
+    _commit_run_state(run_id, state)
+    await _notify_run_state(websocket, run_id, state, patch)
+
+
 def _sealed_subtasks(
     state: ClutchState,
     *,
@@ -818,6 +834,7 @@ def _merge_patch(state: ClutchState, patch: dict[str, Any]) -> ClutchState:
         "live_reasoning",
         "pending_subtasks",
         "bg_jobs",
+        "foreground_shell",
         "agent_todos",
         "agent_goal",
         "verification_report",
@@ -4276,6 +4293,21 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
 
     register_bg_jobs_notifier(run_id, _bg_jobs_sync_notifier)
 
+    def _foreground_shell_sync_notifier(
+        rid: str,
+        payload: dict[str, Any] | None,
+    ) -> None:
+        if rid != run_id:
+            return
+        asyncio.run_coroutine_threadsafe(
+            _apply_foreground_shell_update(websocket, run_id, payload),
+            loop,
+        )
+
+    from src.foreground_shell import register_foreground_notifier, unregister_foreground_notifier
+
+    register_foreground_notifier(run_id, _foreground_shell_sync_notifier)
+
     async def ws_log_emit(line: str, node_id: str) -> None:
         await _send_log_event(websocket, run_id, line, node_id=node_id)
         current = _get_or_create_run(run_id)
@@ -4579,6 +4611,23 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                     from src.bg_jobs import kill_job
 
                     kill_job(run_id, job_id)
+            elif isinstance(payload, dict) and payload.get("action") == "move_fg_to_background":
+                from src.foreground_shell import transfer_to_background
+
+                job = await asyncio.to_thread(transfer_to_background, run_id)
+                if job:
+                    notice = _chat_message(
+                        "Supervisor",
+                        tr(
+                            f"Moved foreground command to background (job {job.get('id', '')}).",
+                            f"前台命令已转入后台（任务 {job.get('id', '')}）。",
+                        ),
+                    )
+                    patch = {"messages": list(state["messages"]) + [notice]}
+                    state = _merge_patch(state, patch)
+                    _commit_run_state(run_id, state)
+                    await _send_message_event(websocket, run_id, notice, "")
+                    await _notify_run_state(websocket, run_id, state, patch)
             elif isinstance(payload, dict) and payload.get("action") == "clear_approvals":
                 # D13: clear session-remembered MCP tool approvals.
                 from src.mcp_pending import clear_mcp_approval_state
@@ -5064,5 +5113,6 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
     finally:
         unregister_plain_chat_ws(run_id)
         unregister_bg_jobs_notifier(run_id)
+        unregister_foreground_notifier(run_id)
         forwarder.detach_ws()
 

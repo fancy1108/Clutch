@@ -44,6 +44,7 @@ import { TodoCardView, shouldPinLiveTodos } from './TodoCardView';
 import { GoalBarView, shouldShowGoalBar } from './GoalBarView';
 import { SubtaskCardView } from './SubtaskCardView';
 import { BackgroundJobsBar } from './BackgroundJobsBar';
+import { ForegroundShellBar } from './ForegroundShellBar';
 import { detectBgJobFailureToast } from '../services/bgJobMonitor';
 import { VerificationReportCardView } from './VerificationReportCardView';
 import { DiffSummaryCardView } from './DiffSummaryCardView';
@@ -854,6 +855,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   const showGoalBar = shouldShowGoalBar(liveGoal);
   const liveSubtasks = (clutchOrchestraState.pending_subtasks ?? []) as SubtaskCard[];
   const bgJobs = (clutchOrchestraState.bg_jobs ?? []) as BackgroundJob[];
+  const foregroundShell = clutchOrchestraState.foreground_shell ?? null;
 
   useEffect(() => {
     const prev = prevBgJobsRef.current;
@@ -1800,6 +1802,15 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
           </div>
         ) : workspaceViewMode === 'chat' ? (
           <div className="w-full flex flex-col items-center">
+            {foregroundShell ? (
+              <ForegroundShellBar
+                shell={foregroundShell}
+                t={t}
+                onMoveToBackground={() => {
+                  void clutchStore.send({ action: 'move_fg_to_background' });
+                }}
+              />
+            ) : null}
             <BackgroundJobsBar
               jobs={bgJobs}
               t={t}

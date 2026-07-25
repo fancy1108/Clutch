@@ -104,6 +104,7 @@ graph TD
 * **模式切换（D27）**：Chat 输入栏右侧权限菜单切换 **Explore / Plan / Edit automatically**（对应 `explore` / `plan` / `auto_edit`，另含 Ask / Full）；Explore 硬拦截写文件/执行命令，只读工具仍可用。
 * **Subtask delegation（D10 + D48）**：Clutch Agent 可调用 `delegate_subtask` 派发 **explore**（只读）或 **implement** 子任务；父气泡下嵌套 **Subtasks** 卡展示状态、摘要与可展开步骤；子失败在父卡可见。
 * **Background commands（D11）**：`run_terminal_cmd` 可设 `background=true` 立即返回 `job_id`；Chat 输入栏上方展示后台任务条（查看输出 / Kill）；前台仍可继续对话。
+* **Foreground → background（D34）**：长命令前台执行时，输入栏上方出现 **Move to background**；一键转入 D11 后台列表后可继续聊天（对标 Grok Ctrl+B）。
 * **Git + web fetch（D12）**：Builtin `git_status` / `git_diff` / `git_commit`（提交需审批）与 `web_fetch`（抓取 URL 文本供总结）；步骤进入对话工具条。
 * **Permission rules（D13）**：可配置命令 allow/ask/deny 规则；`rm -rf` / `sudo` 等危险命令在 Full 模式下仍强制询问；权限菜单可 **清除记住的批准**。
 * **Chat 斜杠命令（D18）**：输入 `/` 可选 `/plan`（进入计划模式）、`/compact`（强制上下文压缩并出摘要）、`/todos`（聚焦 Todo 卡）、`/help`；同一面板仍列出 Skills。
@@ -131,6 +132,7 @@ graph TD
 | D21 ignore/sandbox | Builtin `list_dir`/`grep`/`read_file` respect `.gitignore`/`.clutchignore`; Settings **Strict sandbox** rejects escape paths/commands |
 | D10 subtasks | Nested Subtasks cards under parent bubble (D48) |
 | D11 background | Background jobs bar (view output / kill) above composer |
+| D34 fg → bg | Foreground command bar + **Move to background** → D11 job chip |
 | D12 git/web | Tool-trail steps for `git_*` / `web_fetch` / `web_search` (when network on) |
 | D13 permissions | Permission mode menu + Clear remembered approvals |
 | D18 slash commands | `/` picker: `/plan` `/compact` `/todos` `/help` + skills; notice toast |

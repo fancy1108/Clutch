@@ -1673,6 +1673,39 @@ def _tool_run_terminal_cmd(arguments: dict[str, Any]) -> str:
         timeout = _DEFAULT_CMD_TIMEOUT_S
     timeout = max(1, min(timeout, 300))
 
+    run_id = _bg_job_run_id()
+    if run_id:
+        from src.foreground_shell import start_foreground, wait_foreground
+
+        try:
+            start_foreground(run_id, command, str(root))
+        except Exception as exc:
+            return f"Error executing tool: {exc}"
+        output, transferred, exit_code = wait_foreground(run_id, timeout_sec=float(timeout))
+        if transferred:
+            from src.bg_jobs import list_jobs
+
+            jobs = list_jobs(run_id)
+            job_id = jobs[-1]["id"] if jobs else ""
+            return json.dumps(
+                {
+                    "ok": True,
+                    "transferred_to_background": True,
+                    "job_id": job_id,
+                    "status": "running",
+                    "title": command[:60],
+                    "output_prefix": output[:2000] if output else "",
+                },
+                ensure_ascii=False,
+            )
+        if exit_code is None:
+            return f"Error executing tool: command timed out after {timeout}s"
+        header = f"exit_code={exit_code}\n"
+        combined = output
+        if len(combined) > _MAX_CMD_OUTPUT_CHARS:
+            combined = combined[:_MAX_CMD_OUTPUT_CHARS] + "\n…[truncated]"
+        return header + (combined if combined.strip() else "(no output)")
+
     shell = os.environ.get("SHELL") or ("cmd.exe" if os.name == "nt" else "/bin/bash")
     try:
         proc = subprocess.run(

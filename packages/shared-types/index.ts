@@ -415,6 +415,12 @@ export interface ClutchState {
   pending_subtasks?: SubtaskCard[];
   /** D11: background shell jobs for this Chat session. */
   bg_jobs?: BackgroundJob[];
+  /** D34: active foreground shell command (transfer to bg_jobs). */
+  foreground_shell?: {
+    command: string;
+    title: string;
+    cwd?: string;
+  } | null;
   /** CLI provider session id (`claude --resume` / `agy --conversation`). */
   cli_session_id?: string;
   /** Agent id that owns `cli_session_id` (reset when user switches agent). */

@@ -5,7 +5,7 @@
 
 ## Current Status
 
-- **阶段：** **v1.2.9**；Wave4（D28/D15/D33/D31）已交付；ROADMAP 仍 ❌ 待 PM
+- **阶段：** **v1.2.9**；Wave5a D34 实现中；Wave4（D28/D15/D33/D31）已交付
 - **Git：** D28 `cc2662e`、D15 `0c0c095`、D33 `bec5dbb`、D31 `d2f2b2f`；D29 `96c13d3`、D30 `1d88b02`、D21 `6733b15`
 - **PM 验收包：** `runs/verification/pm-acceptance/D{15,28,31,33}.md`
 
