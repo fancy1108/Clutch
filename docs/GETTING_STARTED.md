@@ -104,6 +104,7 @@ Product tour: [`PRODUCT_INTRO.md`](./PRODUCT_INTRO.md) · Architecture: [`ARCHIT
 | **Terminal Orchestra** | Single Agent chat → pick any connected CLI agent → toggle **Terminal mode** (embedded xterm PTY). Bottom **OrchestratorBar** matches Chat input dock; dispatch history shows **CLI session resume** commands (`claude --resume`, `codex resume`, `opencode -s`, `mimo -c`, `zcode --resume`, …) |
 | **MiMo Code CLI** | `curl -fsSL https://mimo.xiaomi.com/install \| bash` (or `npm install -g @mimo-ai/cli`) → Settings → Tools → Connect **MiMo Code CLI** |
 | **ZCode CLI** | Install [ZCode desktop app](https://zcode.z.ai) → symlink `~/.local/bin/zcode` → `/Applications/ZCode.app/Contents/Resources/glm/zcode.cjs` → Settings → Tools → Connect **ZCode CLI** |
+| **Headless / CI Agent (D36)** | Sidecar running + workspace authorized → `curl -X POST http://127.0.0.1:8124/api/agent/run -H 'Content-Type: application/json' -d '{"prompt":"…","workspace_path":"/abs/path"}'` **or** `cd services/orchestrator && uv run python -m src.headless_cli -p "…" --workspace /abs/path --json` |
 | **OpenCode Zen (free)** | [opencode.ai/auth](https://opencode.ai/auth) → Zen → API Keys → Settings → Models → **OpenCode Zen** → pick a free model → Save |
 | **CC Switch users** | Keys can be imported from `~/.cc-switch` on startup |
 
@@ -243,6 +244,7 @@ xattr -cr /Applications/Clutch.app && open -a Clutch
 | **Terminal Orchestra** | Single Agent 聊天 → 选择任意已 Connect 的 CLI Agent → 切换 **终端模式**（嵌入式 xterm PTY）。底部 **OrchestratorBar** 与 Chat 输入栏同款贴底；派发记录含 **CLI Session 恢复命令**（`claude --resume`、`codex resume`、`opencode -s`、`mimo -c`、`zcode --resume` 等） |
 | **MiMo Code CLI** | `curl -fsSL https://mimo.xiaomi.com/install \| bash`（或 `npm install -g @mimo-ai/cli`）→ Settings → Tools → Connect **MiMo Code CLI** |
 | **ZCode CLI** | 安装 [ZCode 桌面应用](https://zcode.z.ai) → 将 `~/.local/bin/zcode` 软链到 `/Applications/ZCode.app/Contents/Resources/glm/zcode.cjs` → Settings → Tools → Connect **ZCode CLI** |
+| **无 UI / CI Agent（D36）** | Sidecar 已启动且工作区已授权 → `curl -X POST http://127.0.0.1:8124/api/agent/run …` **或** `cd services/orchestrator && uv run python -m src.headless_cli -p "…" --workspace /绝对路径 --json` |
 | **OpenCode Zen（免费）** | [opencode.ai/auth](https://opencode.ai/auth) → Zen → API Keys → Settings → Models → **OpenCode Zen** → 选免费模型 → 保存 |
 | **CC Switch 用户** | 启动时可从 `~/.cc-switch` 导入 |
 

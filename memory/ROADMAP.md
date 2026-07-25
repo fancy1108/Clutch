@@ -66,7 +66,7 @@
 | D21 ignore/沙箱 | P1 | ❌ | 代码已交 PM（`6733b15`） |
 | D22 用量看板 | P1 | ❌ | 历史用量面板；代码已交 PM（`runs/verification/pm-acceptance/D22.md`） |
 | D23 fork/rewind | P1 | ❌ | 会话分支+文件回滚；待实现/PM |
-| D24 诊断 MVP | P2 | ❌ | tsc/ruff 回灌；待实现/PM |
+| D24 诊断 MVP | P2 | ❌ | tsc/ruff 回灌；代码已交 PM |
 | Cap-D25 定时任务 | P2 | ❌ | 扩展定时/循环（≠ Hybrid D25）；代码已交 PM |
 | D26 长任务监视 | P1 | ❌ | bg 失败 [Monitor] + toast；待 PM |
 | D27 模式/人设 | P1 | ❌ | explore/plan/implement；代码已交 PM（`runs/verification/pm-acceptance/D27.md`） |
