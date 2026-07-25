@@ -108,6 +108,8 @@ graph TD
 * **Worktree 隔离试验（D32）**：Chat 可选 **Enable worktree** — Agent 在 `.clutch/worktrees/<id>` 隔离改代码；**Merge** 合并回主仓或 **Discard** 丢弃，主工作区保持干净。
 * **定时/循环任务（Cap-D25 · 扩展 D25 scheduler）**：Chat **Scheduled tasks** 面板创建间隔任务（默认关，启用需确认）；sidecar asyncio 持久化表；到点通知或可选跑一轮 Agent。
 * **代码诊断 MVP（D24）**：内置 `diagnostics` 工具（`tsc` / `ruff` / `py_compile`）；结果注入下一轮并在 Chat **Code diagnostics** 条展示。
+* **无 UI / CI Agent（D36 · ≠ Design D36）**：`POST /api/agent/run` 与 `python -m src.headless_cli` 与 Chat 同核。
+* **外挂 Grok CLI（D14）**：引擎列表可选 `grok-cli`；PATH 有 `grok` 时路由 `grok -p`，缺失时清晰不可用。
 * **Session fork + file rewind（D23）**：消息右键 **Fork session here** 从该条复制 transcript 到新会话；**Rewind** 一键恢复 Agent 最近一次文件改动并在 Chat 留 Supervisor 记录。
 * **Cross-session memory（D16）**：Settings 可开/关 **Memory**；Agent 用 `remember_preference` 记下跨会话约定；可 **Clear memory**。
 * **Tool hooks（D17）**：用户/项目 `.clutch/hooks.json` 或偏好目录 `hooks.json` 配置 PreToolUse/PostToolUse 拒绝规则；违规时 Chat 工具步骤显示 Hook 原因。

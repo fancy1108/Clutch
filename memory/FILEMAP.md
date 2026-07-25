@@ -146,6 +146,8 @@
 | Worktree 隔离（D32） | `worktree_isolation.py` · `routes/worktree.py` · `WorktreeIsolationBar` · WS `enable_worktree` / `merge_worktree` / `discard_worktree` |
 | Cap-D25 定时任务 | `scheduled_tasks.py` · `routes/scheduled_tasks.py` · `ScheduledTasksBar` · `scheduledTasksApi.ts` |
 | D24 诊断 MVP | `code_diagnostics.py` · builtin `diagnostics` · `DiagnosticsIssuesStrip` |
+| D36 headless Agent | `headless_agent.py` · `headless_cli.py` · `routes/agent_run.py` |
+| D14 Grok CLI | `grok_cli_adapter.py` · `grok-cli` in `tools_status` / `engine_router` |
 | 会话 fork/回滚（D23） | `session_fork.py` · `file_rewind.py` · fork/rewind API · Chat 菜单 |
 | 跨会话记忆（D16） | `cross_session_memory.py` · `remember_preference` · Settings Memory |
 | 工具 Hooks（D17） | `tool_hooks.py` · `mcp_react` Pre/Post 拦截 |

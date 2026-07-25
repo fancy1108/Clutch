@@ -193,7 +193,7 @@ def execute_agent_task(
             if run_id:
                 stream_log(warning)
 
-    if tool in {"claude-cli", "agy-cli", "agy", "antigravity-cli", "codex-cli", "codex", "aider-cli", "opencode-cli", "opencode", "mimo-cli", "mimo", "codebuddy-cli", "codebuddy", "cbc", "llm", "ollama", "ollama-cli", "zcode-cli", "zcode", ""}:
+    if tool in {"claude-cli", "agy-cli", "agy", "antigravity-cli", "codex-cli", "codex", "aider-cli", "opencode-cli", "opencode", "mimo-cli", "mimo", "codebuddy-cli", "codebuddy", "cbc", "grok-cli", "grok", "llm", "ollama", "ollama-cli", "zcode-cli", "zcode", ""}:
         from src.agent_type import resolve_model_for_agent
         from src.engine_router import route_engine
         from src.image_router import format_image_reply, generate_image_for_model, is_image_model

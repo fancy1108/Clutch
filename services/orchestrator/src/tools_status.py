@@ -179,6 +179,13 @@ CLI_CANDIDATES: list[dict[str, str]] = [
         "icon": "terminal",
     },
     {
+        "id": "grok-cli",
+        "name": "Grok CLI",
+        "binary": "grok",
+        "description": "xAI Grok terminal agent (`grok -p`). Optional bypass engine (D14).",
+        "icon": "terminal",
+    },
+    {
         "id": "codebuddy-cli",
         "name": "CodeBuddy CLI",
         "binary": "codebuddy",

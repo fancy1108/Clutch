@@ -4,6 +4,16 @@
 > **何时写：** 每个**代码 Task** 完成并 commit 后，在 Check-out 追加一节（见 `CLAUDE.md` §Check-out）。  
 > **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。
 
+## Wave5b — D32 / Cap-D25 / D24 / D36 / D14（2026-07-25）
+
+| ID | Commit | Verification | PM |
+|----|--------|--------------|-----|
+| D32 | `9a863ae` | `pytest tests/test_worktree_isolation_d32.py -q` → 2 passed | `runs/verification/pm-acceptance/D32.md` |
+| Cap-D25 | `05547b8` | `pytest tests/test_scheduled_tasks_cap_d25.py -q` → 3 passed | `runs/verification/pm-acceptance/Cap-D25.md` |
+| D24 | `605d0fc` | `pytest tests/test_diagnostics_d24.py -q` → 2 passed | `runs/verification/pm-acceptance/D24.md` |
+| D36 | `e42ba01` | `pytest tests/test_headless_agent_d36.py -q` → 2 passed | `runs/verification/pm-acceptance/D36-headless.md` |
+| D14 | _(pending)_ | `pytest tests/test_grok_cli_d14.py -q` → 4 passed | `runs/verification/pm-acceptance/D14.md` |
+
 ## Wave5b — D32（进行中）
 
 | ID | Commit | Verification | PM |

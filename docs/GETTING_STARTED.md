@@ -98,6 +98,7 @@ Product tour: [`PRODUCT_INTRO.md`](./PRODUCT_INTRO.md) · Architecture: [`ARCHIT
 | **Claude Code locally** | Settings → Tools → Rescan → Connect `claude` |
 | **Cursor Agent CLI** | `curl https://cursor.com/install -fsS \| bash` → Settings → Tools → Rescan → Connect `cursor-agent` |
 | **CodeBuddy CLI** | `npm install -g @tencent-ai/codebuddy-code` → Settings → Tools → Connect `codebuddy` → run `codebuddy` once to log in |
+| **Grok CLI (D14)** | Install `grok` on PATH per xAI docs → Settings → Tools → Rescan → Connect **Grok CLI** (`grok-cli`) |
 | **Ollama locally** | Install [Ollama](https://ollama.com), pull a model (`ollama pull qwen3:8b`), Settings → Tools → Connect Ollama; pick the model in Agent settings or Models |
 | **Cloud API only** | Settings → Models → **Clutch Agent** tab → add provider key → activate a model |
 | **CLI agent models** | Settings → Models → **Claude Code**, **OpenCode**, or **MiMo Code** tab (read-only scan; configure in the CLI or CC Switch) |
@@ -238,6 +239,7 @@ xattr -cr /Applications/Clutch.app && open -a Clutch
 | **本机 Claude Code** | Settings → Tools → Rescan → Connect `claude` |
 | **Cursor Agent CLI** | `curl https://cursor.com/install -fsS \| bash` → Settings → Tools → Rescan → Connect `cursor-agent` |
 | **CodeBuddy CLI** | `npm install -g @tencent-ai/codebuddy-code` → Settings → Tools → Connect `codebuddy` → 终端运行 `codebuddy` 完成登录 |
+| **Grok CLI（D14）** | 按 xAI 文档安装 `grok` 并加入 PATH → Settings → Tools → Rescan → Connect **Grok CLI** |
 | **本机 Ollama** | 安装 [Ollama](https://ollama.com)，执行 `ollama pull qwen3:8b`，Settings → Tools 连接 Ollama；在 Agent 或 Models 里选模型 |
 | **只用云端 API** | Settings → Models → **Clutch Agent** 标签页 → 填 Key → 激活模型 |
 | **CLI Agent 模型** | Settings → Models → **Claude Code**、**OpenCode** 或 **MiMo Code** 标签页（只读扫描；在 CLI 或 CC Switch 中配置） |
