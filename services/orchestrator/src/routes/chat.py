@@ -517,9 +517,13 @@ async def compact_run(run_id: str) -> dict[str, Any]:
             "session_tokens": int(state.get("session_tokens") or 0),
             "detail": "Not enough messages to compact (need more than 5).",
         }
-    new_state = await compact_run_messages(run_id, state)
+    new_state = await compact_run_messages(
+        run_id, state, record_slash_command=True
+    )
     after_count = len(new_state.get("messages") or [])
-    compacted = after_count < before_count
+    # Manual compact appends a User `/compact` row; still counts as compacted when
+    # intermediates were folded (message list shorter than before + slash row).
+    compacted = after_count < before_count + 1
     _commit_run_state(run_id, new_state)
     patch = {
         "messages": new_state.get("messages"),

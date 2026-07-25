@@ -62,12 +62,36 @@ export interface MergeChatMessagesOptions {
   pendingUserMessageId?: string | null;
 }
 
+/** D8 compaction inserts a fresh System digest while dropping intermediate bubbles. */
+export function isCompactionDigestMessage(message: ChatMessage): boolean {
+  if (message.agent !== 'System') return false;
+  if (message.id.startsWith('system_digest_')) return true;
+  const badge = String(message.badgeText ?? '').trim();
+  return (
+    badge.includes('COMPACTION DIGEST') ||
+    badge.includes('上下文压缩摘要')
+  );
+}
+
 export function isAuthoritativeMessageReplacement(
   existing: ChatMessage[],
   incoming: ChatMessage[],
 ): boolean {
   if (incoming.length >= existing.length) return false;
   const existingIds = new Set(existing.map((message) => message.id));
+  // Compaction: shorter list + new digest id must replace, not merge (else UI looks unchanged).
+  // Manual `/compact` also inserts a fresh User `/compact` row before the digest.
+  if (incoming.some(isCompactionDigestMessage)) {
+    const retained = incoming.filter((message) => !isCompactionDigestMessage(message));
+    return (
+      retained.length > 0 &&
+      retained.every(
+        (message) =>
+          existingIds.has(message.id) ||
+          (message.agent === 'User' && message.text.trim() === '/compact'),
+      )
+    );
+  }
   return incoming.every((message) => existingIds.has(message.id));
 }
 
@@ -138,12 +162,18 @@ export function preferRicherSessionPatch(
   const next: Partial<ClutchState> = { ...patch };
   const preferredMessages = preferred.messages ?? [];
   const patchMessages = next.messages ?? [];
-  if (preferredMessages.length > patchMessages.length) {
+  const patchIsCompaction =
+    patchMessages.length > 0 &&
+    patchMessages.length < preferredMessages.length &&
+    patchMessages.some(isCompactionDigestMessage);
+  // Never resurrect pre-compact history over an authoritative compaction fold.
+  if (preferredMessages.length > patchMessages.length && !patchIsCompaction) {
     next.messages = preferredMessages;
   }
   if (
     preferred.status === 'idle' &&
-    preferredMessages.length > patchMessages.length
+    preferredMessages.length > patchMessages.length &&
+    !patchIsCompaction
   ) {
     next.status = 'idle';
   }

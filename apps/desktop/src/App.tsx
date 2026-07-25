@@ -840,15 +840,20 @@ function MainLayout() {
     clutchStore.clearTerminalLogs();
   };
 
-  const handleStopRun = () => {
+  const handleStopRun = (): boolean => {
     // Workflow (Flow) runs: stop immediately without confirmation.
     // Plain LLM chat runs: ask once to avoid accidental interruption.
     if (!isWorkflowChat && !highRiskConfirmed) {
       const ok = window.confirm(t('Confirm stopping the current run? This will interrupt the current AI Agent execution.'));
-      if (!ok) return;
+      if (!ok) return false;
       setHighRiskConfirmed(true);
     }
+    // Immediate UI: Stop → Continue / idle before WS ack (avoid "stuck" Stop).
+    if (!isWorkflowChat) {
+      clutchStore.optimisticPlainChatStop();
+    }
     void clutchStore.send({ action: 'stop_run' });
+    return true;
   };
 
   const handleContinueRun = () => {
@@ -1082,10 +1087,16 @@ function MainLayout() {
 
   const [slashNotice, setSlashNotice] = useState<string | null>(null);
   const slashNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const showSlashNotice = useCallback((text: string) => {
+  const dismissSlashNotice = useCallback(() => {
+    if (slashNoticeTimerRef.current) clearTimeout(slashNoticeTimerRef.current);
+    setSlashNotice(null);
+  }, []);
+
+  const showSlashNotice = useCallback((text: string, durationMs = 12000) => {
     setSlashNotice(text);
     if (slashNoticeTimerRef.current) clearTimeout(slashNoticeTimerRef.current);
-    slashNoticeTimerRef.current = setTimeout(() => setSlashNotice(null), 4000);
+    // Stay long enough to read; user can also dismiss with X.
+    slashNoticeTimerRef.current = setTimeout(() => setSlashNotice(null), durationMs);
   }, []);
 
   const handleSlashCommand = useCallback(
@@ -1120,9 +1131,18 @@ function MainLayout() {
           const result = await compactRun(sessionRunId);
           showSlashNotice(
             result.compacted
-              ? `Context compacted (${result.message_count} messages · ~${result.session_tokens ?? 0} tok).`
+              ? `压缩完成 · 见对话末尾 /compact + 摘要（${result.message_count} 条）`
               : result.detail || 'Nothing to compact yet.',
           );
+          if (result.compacted) {
+            // Let WS patch apply, then scroll to the digest at the end of the feed.
+            window.setTimeout(() => {
+              const el = document.querySelector('[data-testid="compaction-digest"]');
+              if (el instanceof HTMLElement) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'end' });
+              }
+            }, 120);
+          }
         } catch (err) {
           showSlashNotice(err instanceof Error ? err.message : 'Compact failed.');
         }
@@ -2188,6 +2208,7 @@ function MainLayout() {
                 onOpenMcpBind={() => setView('agents')}
                 onSlashCommand={handleSlashCommand}
                 slashNotice={slashNotice}
+                onDismissSlashNotice={dismissSlashNotice}
                 onSelectSession={(session) => { void handleSelectSession(session); }}
               />
               </div>

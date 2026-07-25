@@ -7,6 +7,7 @@ import {
   shouldPreserveOptimisticRun,
   preferRicherSessionPatch,
   isAuthoritativeMessageReplacement,
+  isCompactionDigestMessage,
 } from './clutchState';
 import type { ChatMessage } from '../types';
 
@@ -357,5 +358,87 @@ describe('isAuthoritativeMessageReplacement', () => {
       },
     ];
     expect(isAuthoritativeMessageReplacement(existing, incoming)).toBe(false);
+  });
+
+  it('treats compaction digest fold as authoritative even with a new digest id', () => {
+    const first = createUserChatMessage('hello');
+    const mid = {
+      id: 'agent_mid',
+      agent: 'Clutch Agent',
+      avatar: '',
+      time: '12:00',
+      text: 'working…',
+    } as ChatMessage;
+    const tail = [
+      createUserChatMessage('ok'),
+      {
+        id: 'agent_tail',
+        agent: 'Clutch Agent',
+        avatar: '',
+        time: '12:01',
+        text: 'done step',
+      } as ChatMessage,
+    ];
+    const existing = [first, mid, ...tail, createUserChatMessage('next'), {
+      id: 'agent_extra',
+      agent: 'Clutch Agent',
+      avatar: '',
+      time: '12:02',
+      text: 'extra',
+    } as ChatMessage];
+    const digest: ChatMessage = {
+      id: 'system_digest_abc123',
+      agent: 'System',
+      avatar: '',
+      time: '12:03',
+      text: '⚠️ [上下文已压缩] …',
+      badgeText: '上下文压缩摘要',
+      status: 'COMPLETED',
+    };
+    const slash: ChatMessage = {
+      id: 'user_compact_xyz',
+      agent: 'User',
+      avatar: '',
+      time: '12:03',
+      text: '/compact',
+    };
+    // Chronological fold: first + retained tail + /compact + digest at end
+    const incoming = [first, ...tail, slash, digest];
+    expect(isCompactionDigestMessage(digest)).toBe(true);
+    expect(isAuthoritativeMessageReplacement(existing, incoming)).toBe(true);
+  });
+});
+
+describe('preferRicherSessionPatch compaction', () => {
+  it('does not resurrect longer local history over a compaction patch', () => {
+    const first = createUserChatMessage('hello');
+    const digest: ChatMessage = {
+      id: 'system_digest_x',
+      agent: 'System',
+      avatar: '',
+      time: '12:03',
+      text: 'folded',
+      badgeText: 'COMPACTION DIGEST',
+    };
+    const preferred = {
+      run_id: 'run_a',
+      workflow_id: '',
+      status: 'idle',
+      messages: [
+        first,
+        { id: 'a1', agent: 'Clutch Agent', avatar: '', time: '12:00', text: 'old1' },
+        { id: 'a2', agent: 'Clutch Agent', avatar: '', time: '12:01', text: 'old2' },
+        createUserChatMessage('ok'),
+      ],
+    } as import('../types').ClutchState;
+
+    const patch = preferRicherSessionPatch(preferred, {
+      status: 'idle',
+      messages: [first, digest, createUserChatMessage('ok')],
+      session_tokens: 100,
+    });
+
+    expect(patch.messages).toHaveLength(3);
+    expect(patch.messages?.some(isCompactionDigestMessage)).toBe(true);
   });
 });

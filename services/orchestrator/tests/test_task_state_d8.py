@@ -24,6 +24,7 @@ def test_format_task_state_todos_and_plan() -> None:
     assert "[x] Done item" in text
     assert "[~] Active item" in text
     assert "[ ] Todo item" in text
+    assert "do NOT call tools" in text
 
 
 def test_latest_plan_card_skips_cancelled() -> None:

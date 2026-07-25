@@ -5,11 +5,17 @@
 
 ## Current Status
 
-- **阶段：** **v1.2.9**；扩展 **D14 + D15–D36 代码已全部交付**；主线/MCP/扩展均待 PM
+- **阶段：** **v1.2.9**；主线 **D8 PM ✅**；扩展 D14–D36 代码已交；其余主线/MCP/扩展待 PM
 - **Git / PM 索引：** [`runs/verification/pm-acceptance/README.md`](../runs/verification/pm-acceptance/README.md)
-- **PM 验收包：** ROADMAP 未点验前保持 ❌
+- **下次优先：** D9 运行可控 PM 点验
 
 ## Recent Sessions
+
+## 2026-07-25 会话（D8 PM 通过 + 验收期修复）
+
+- **PM：** D8 ✅（`/compact` 末尾摘要；「还剩哪些 todo」答对）
+- **修复（同批）：** todo JSON 字符串不炸字符；压缩 patch 整表替换；`/compact` 用户气泡+摘要在末尾；Stop 乐观 UI；状态问答不继续改文件
+- **下次：** **D9** PM 验收
 
 ## 2026-07-25 会话（扩展 D14–D36 全表交付）
 

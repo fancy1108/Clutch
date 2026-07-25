@@ -276,7 +276,8 @@ interface ChatFeedProps {
   rightSidebarWidth: number;
   sidebarOpen?: boolean;
   rightPanelOpen?: boolean;
-  onStopRun?: () => void;
+  /** Return false if user cancelled the stop confirm. */
+  onStopRun?: () => boolean | void;
   onContinueRun?: () => void;
   isMultiAgent?: boolean;
   onApprove?: () => void;
@@ -344,6 +345,7 @@ interface ChatFeedProps {
   /** D18 slash commands */
   onSlashCommand?: (id: import('../services/slashCommands').SlashCommandId) => void | Promise<void>;
   slashNotice?: string | null;
+  onDismissSlashNotice?: () => void;
 }
 
 const WORKFLOW_AGENTS = new Set(['Builder', 'Orchestrator', 'Evaluator', 'Supervisor']);
@@ -551,6 +553,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   onOpenMcpBind,
   onSlashCommand,
   slashNotice = null,
+  onDismissSlashNotice,
 }) => {
   const { t, language } = useLanguage();
   const hostOs = useHostOs();
@@ -815,9 +818,11 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
     }
   }, [sessionRunId, isPlainLlmChat]);
 
-  const handleStopWithQueueClear = useCallback(() => {
+  const handleStopWithQueueClear = useCallback((): boolean => {
+    const proceeded = onStopRun?.();
+    if (proceeded === false) return false;
     setPendingMessages([]);
-    onStopRun?.();
+    return true;
   }, [onStopRun]);
 
   // Serialize attachments into text for sending
@@ -1255,6 +1260,12 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
             msg.badgeText?.includes('FAILED') ||
             msg.badgeText?.includes('NEEDS');
           const isCompletedMsg = msg.status === 'COMPLETED';
+          const isCompactionDigest =
+            msg.agent === 'System' &&
+            (msg.id.startsWith('system_digest_') ||
+              Boolean(
+                msg.badgeText?.includes('压缩') || msg.badgeText?.includes('COMPACTION'),
+              ));
           const isWorkflowMeta = msg.agent === 'Evaluator' || msg.agent === 'Supervisor' || msg.agent === 'Builder';
           const avatarUrl = isUser
             ? (userAvatar || USER_CHAT_AVATAR)
@@ -1359,13 +1370,22 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                     </div>
                   ) : (
                     <div
-                      className={`${chatChrome.messageBubblePaddingClass} rounded-2xl border border-outline-variant/30 shadow-sm ${
+                      data-testid={isCompactionDigest ? 'compaction-digest' : undefined}
+                      className={`${chatChrome.messageBubblePaddingClass} rounded-2xl border shadow-sm ${
                       isUser 
-                        ? 'bg-primary/10 text-on-surface rounded-tr-none text-left' 
-                        : 'bg-surface-container-low rounded-tl-none'
+                        ? 'bg-primary/10 text-on-surface rounded-tr-none text-left border-outline-variant/30' 
+                        : isCompactionDigest
+                          ? 'bg-amber-50 border-amber-300/80 rounded-tl-none ring-1 ring-amber-200/80'
+                          : 'bg-surface-container-low rounded-tl-none border-outline-variant/30'
                     }`}>
                       {msg.badgeText ? (
-                        <div className="flex items-center gap-1.5 mb-2 text-primary font-bold text-[11px]">
+                        <div
+                          className={`flex items-center gap-1.5 mb-2 font-bold text-[11px] ${
+                            isCompactionDigest
+                              ? 'text-amber-800 tracking-wide'
+                              : 'text-primary'
+                          }`}
+                        >
                           <LegacyIcon name="info" className="text-[16px]" />
                           <span>{msg.badgeText}</span>
                         </div>
@@ -1928,6 +1948,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
               onOpenMcpBind={onOpenMcpBind}
               onSlashCommand={onSlashCommand}
               slashNotice={slashNotice}
+              onDismissSlashNotice={onDismissSlashNotice}
               onRewindFiles={isPlainLlmChat ? handleRewindFiles : undefined}
               onEnableWorktree={
                 isPlainLlmChat

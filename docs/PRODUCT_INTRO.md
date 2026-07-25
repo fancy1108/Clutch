@@ -133,7 +133,7 @@ graph TD
 | D2–D4 plan/todo/ask | In-chat Plan / Todo / Question cards (D49); Todo sticky + chevron collapse; Plan per-step comments (D31) |
 | D5–D6 verify/diff | Verification report card + Cursor-style Diff cards (D50) |
 | D7 rules/skills | Runtime prompt layers panel in Agent Manager; Skills via `read_skill` (D53) |
-| D8 task state | Compaction digest badge; Todo/Plan survive fold via `task_state` |
+| D8 task state | `/compact` → User bubble + amber digest at feed end; Todo/Plan via `task_state` |
 | D9 run control | Stop / Continue；**+** → Usage Steps n/m · ~tok (`run_stats`) |
 | D22 usage dashboard | Click stats strip → Usage dashboard (current + session history steps/tok) |
 | D27 mode presets | Composer mode pill → Explore / Plan / Ask / Edit / Full |

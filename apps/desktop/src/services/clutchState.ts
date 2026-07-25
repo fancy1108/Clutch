@@ -22,6 +22,7 @@ import {
   createUserChatMessageHelper,
   mergeMessageFields,
   isAuthoritativeMessageReplacement,
+  isCompactionDigestMessage,
   mergeChatMessages,
   preferRicherSessionPatch,
   shouldPreserveOptimisticRun,
@@ -31,6 +32,7 @@ export {
   createSessionRunId,
   mergeMessageFields,
   isAuthoritativeMessageReplacement,
+  isCompactionDigestMessage,
   mergeChatMessages,
   preferRicherSessionPatch,
   shouldPreserveOptimisticRun,
@@ -993,6 +995,20 @@ class ClutchStateStore {
       message.id = messageId;
     }
     this.applyPatch({ messages: [...this.state.messages, message] });
+  }
+
+  /**
+   * D9 — optimistic Stop: flip UI to idle + Continue immediately so the Stop
+   * button does not look stuck waiting on the sidecar round-trip.
+   */
+  optimisticPlainChatStop(): void {
+    this.applyPatch({
+      status: 'idle',
+      awaiting_continue: true,
+      pending_tool_steps: [],
+      live_reasoning: '',
+      foreground_shell: null,
+    });
   }
 
   /** Optimistic user row + running status while plain-chat WS turn starts. */

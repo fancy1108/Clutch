@@ -47,13 +47,23 @@ def test_compact_too_short(client: TestClient) -> None:
 
 
 def test_compact_success(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
-    async def fake_compact(run_id: str, state: dict, model_id: str | None = None):
+    async def fake_compact(
+        run_id: str,
+        state: dict,
+        model_id: str | None = None,
+        *,
+        record_slash_command: bool = False,
+    ):
         msgs = list(state.get("messages") or [])
         out = dict(state)
+        tail = list(msgs[-2:])
+        if record_slash_command:
+            tail.append({"id": "user_compact", "agent": "User", "text": "/compact"})
         out["messages"] = [
             msgs[0],
+            *tail,
             {"id": "digest", "agent": "System", "text": "digest", "status": "COMPLETED"},
-        ] + msgs[-2:]
+        ]
         out["session_tokens"] = 100
         return out
 

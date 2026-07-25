@@ -50,7 +50,7 @@
 | D5 自检报告 | P0 | ✅ | `submit_verification` + VerificationReport；PM 2026-07-24 点验通过（须同验 D50） |
 | D6 Diff 审查 | P0 | ✅ | Cursor 式 edit Diff 卡 + Changes 同步；PM 2026-07-24 点验通过（须同验 D50） |
 | D7 项目规则 + Skills | P0 | ✅ | Grok 对齐：规则链 + 开放 Skills catalog；PM 2026-07-25 点验通过 |
-| D8 长聊不丢任务态 | P0 | ❌ | 压缩保留 Todo/计划 + task_state 层；待 PM（`7936786`） |
+| D8 长聊不丢任务态 | P0 | ✅ | `/compact`→末尾摘要；压缩后答还剩 todo；PM 2026-07-25 点验通过 |
 | D9 运行可控 | P0 | ❌ | Stop/Continue + loop fuse + Chat Steps/tok；待 PM |
 | D10∥D48 子任务委派 | P0 | ❌ | `delegate_subtask` + 嵌套卡；待 PM |
 | D11 后台命令 | P0 | ❌ | bg_jobs + Chat 任务条；待 PM（非 session 持久化） |
@@ -98,7 +98,7 @@
 | D53 分层 prompt + 渐进披露 | P0 | ✅ | 分层组装 + Agent Manager 分层摘要面板；PM 2026-07-24 点验通过 |
 
 **首期目标：** D1 + D37 + D46 ✅（PM 2026-07-24）。  
-**下一批（防返工顺序）：** D8（待 PM）→ D9 → D10∥D48 → D11 → D12 → D13；用例见 `runs/verification/pm-acceptance/`
+**下一批（防返工顺序）：** D9 → D10∥D48 → D11 → D12 → D13；用例见 `runs/verification/pm-acceptance/`
 
 ## Design 模式（D36 · 默认 FAIL）
 

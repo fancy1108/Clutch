@@ -2812,6 +2812,11 @@ async def _apply_plain_chat_stop(
     from src.run_control import build_run_stats, stop_supervisor_message
     from src.runtime_config import runtime_mode
 
+    # Idempotent: avoid stacking duplicate "Run stopped" Supervisor bubbles.
+    if state.get("status") == "idle" and state.get("awaiting_continue"):
+        await asyncio.to_thread(_interrupt_plain_chat_shell, run_id)
+        return state
+
     await asyncio.to_thread(_interrupt_plain_chat_shell, run_id)
     if runtime_mode() == "hybrid":
         log_line = stamp_log_line(tagged(TAG_WORKFLOW, "[HYBRID] Plain chat stopped by user."))

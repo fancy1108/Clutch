@@ -651,6 +651,32 @@ def normalize_goal_args(func_args: dict[str, Any] | None) -> dict[str, Any]:
     return {"title": title, "progress": progress, "done": done}
 
 
+def _coerce_todos_list(value: Any) -> list[Any]:
+    """Coerce tool `todos` payload to a list (models often JSON-stringify the array)."""
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return value
+    if isinstance(value, dict):
+        # Single todo object, or nested {"todos": ...}
+        if "todos" in value:
+            return _coerce_todos_list(value.get("todos"))
+        if any(key in value for key in ("content", "text", "title", "status", "id")):
+            return [value]
+        return []
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return []
+        try:
+            parsed = json.loads(text)
+        except json.JSONDecodeError:
+            # Do not list(str) — that explodes into one todo per character (D8 PM).
+            return []
+        return _coerce_todos_list(parsed)
+    return []
+
+
 def normalize_todo_items(
     raw: Any,
     *,
@@ -661,9 +687,11 @@ def normalize_todo_items(
     items_in: list[Any]
     if isinstance(raw, dict) and "todos" in raw:
         merge = bool(raw.get("merge")) or merge
-        items_in = list(raw.get("todos") or [])
+        items_in = _coerce_todos_list(raw.get("todos"))
     elif isinstance(raw, list):
         items_in = raw
+    elif isinstance(raw, str):
+        items_in = _coerce_todos_list(raw)
     else:
         items_in = []
 
@@ -1354,7 +1382,17 @@ def _tool_todo_write(arguments: dict[str, Any]) -> str:
     lines = [
         f"- [{t['status']}] {t['id']}: {t['content']}" for t in todos
     ]
-    return f"Updated {len(todos)} todo(s):\n" + "\n".join(lines)
+    completed_n = sum(1 for t in todos if t.get("status") == "completed")
+    in_progress_n = sum(1 for t in todos if t.get("status") == "in_progress")
+    tip = ""
+    # Coach models that batch-complete everything after sitting on step 1.
+    if completed_n >= 3 and in_progress_n <= 1 and completed_n + in_progress_n >= len(todos) - 1:
+        tip = (
+            "\nNote for next turns: update statuses step-by-step "
+            "(complete current + set next in_progress) so Chat progress is visible — "
+            "avoid marking many items completed in a single todo_write."
+        )
+    return f"Updated {len(todos)} todo(s):\n" + "\n".join(lines) + tip
 
 
 def _tool_remember_preference(arguments: dict[str, Any]) -> str:

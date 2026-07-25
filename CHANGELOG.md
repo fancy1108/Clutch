@@ -10,6 +10,10 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ## [Unreleased]
 
+### Fixed
+
+- **D8 PM acceptance polish:** `todo_write` no longer explodes JSON-string `todos` into per-character items; compaction patches **replace** the message list (digest visible); manual `/compact` appends a User `/compact` bubble then an amber digest **at the feed end**; Stop flips to Stopping/Continue immediately; status questions (还剩哪些 todo) instruct the model not to resume edits; slash notices use a high-contrast dark toast.
+
 ### Added
 
 - **Git worktree isolation (D32):** Optional **Enable worktree** in Chat — Agent cwd points to `.clutch/worktrees/<id>`; **Merge** or **Discard** UI; main workspace stays clean until merge.
@@ -36,7 +40,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 - **Self-check verification report (capability D5 + D50):** Builtin `submit_verification` seals a **Verification report** card in Chat (steps + passed/failed). Failed reports include next actions; claiming passed while session todos are incomplete is forced to failed. **View changes** opens sealed changed files (D47 / D42 preview).
 - **Diff review in Chat (capability D6 + D50):** Each successful edit streams a **Cursor-style per-file Diff card** into the Chat timeline immediately (filename + `+/-` hunks). Optional `submit_diff_summary` still publishes a multi-file review card. Coexists with the Changes rail.
 - **Project rules + Skills (capability D7, Grok-aligned):** Workspace rules load along **git root → authorized workspace** (`AGENTS.md` / `CLAUDE.md` + `.grok/.claude/.cursor/rules`; deeper wins). Skills use an **open catalog** (enabled global ∪ project ∪ custom Search Paths, plus optional Agent binds; same-name **project > custom > global**). Full `SKILL.md` via `read_skill`. User-home AGENTS rules deferred. Activating a workspace rotates project skill mounts only — manual Search Paths stay.
-- **Long-chat task state (capability D8):** Context compaction keeps a deterministic Todo/Plan snapshot in the digest and re-injects a `task_state` prompt layer each turn so「还剩什么」survives fold; Chat still shows the compaction digest badge.
+- **Long-chat task state (capability D8, PM ✅):** Context compaction keeps Todo/Plan in the digest + `task_state` layer; `/compact` shows User `/compact` then amber「上下文压缩摘要」at the end of Chat so「还剩哪些 todo」survives fold.
 - **Run control in Chat (capability D9):** Stop leaves a resume hint + **Continue** control; consecutive tool failures trip a **loop fuse** (env `CLUTCH_LOOP_FUSE_FAILURES`); Chat composer shows live **Steps n/m · ~tok** (`run_stats`).
 - **Subtask delegation (capability D10 + D48):** Builtin `delegate_subtask` (`explore` | `implement`) runs a capped nested ReAct loop; parent Chat shows nested **Subtasks** cards (live + sealed) with status/summary and expandable steps.
 - **Background commands (capability D11):** `run_terminal_cmd` supports `background=true` plus `list_background_jobs` / `kill_background_job`; Chat shows a **Background jobs** bar (view output / kill) while the foreground turn stays free.

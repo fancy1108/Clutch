@@ -82,6 +82,42 @@ def test_task_state_pinned_in_critical_context() -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.asyncio
+async def test_manual_compact_appends_slash_then_digest_at_end(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """D18/D8 UX: `/compact` User bubble then amber digest at the end."""
+    monkeypatch.setenv("CLUTCH_WORKSPACES_FILE", str(tmp_path / "ws.json"))
+    from src import workspace as workspace_mod
+
+    workspace_mod._loaded = False
+    workspace_mod._workspaces = {}
+    workspace_mod._active_id = None
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    workspace_mod.add_workspace(str(ws))
+    monkeypatch.setattr(
+        "src.models_config.get_router",
+        lambda: SimpleNamespace(chat=lambda messages, model_id=None: {"content": "Folded."}),
+    )
+    monkeypatch.setattr("src.compaction.get_archive_dir", lambda: tmp_path / "archive")
+
+    state = initial_state("run_slash_compact")
+    state["messages"] = [
+        {"id": f"m{i}", "agent": "User" if i % 2 == 0 else "Agent", "text": f"t{i}"}
+        for i in range(8)
+    ]
+    state["session_tokens"] = 20_000
+    new_state = await compact_run_messages(
+        "run_slash_compact", state, record_slash_command=True
+    )
+    msgs = new_state["messages"]
+    assert msgs[-1]["agent"] == "System"
+    assert "上下文压缩摘要" in str(msgs[-1].get("badgeText") or msgs[-1].get("badge_text") or "")
+    assert msgs[-2]["agent"] == "User"
+    assert msgs[-2]["text"].strip() == "/compact"
+
+
 async def test_compact_digest_contains_open_todos(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -253,24 +289,23 @@ async def test_compact_run_messages_success(monkeypatch: pytest.MonkeyPatch, tmp
     new_state = await compact_run_messages("run_test", state)
 
     # Verify state updates
-    # new message count: first_message (1) + digest_msg (1) + last_messages (4) = 6 messages
+    # first (1) + last_messages (4) + digest (1) = 6; digest is last (chronological UX)
     assert len(new_state["messages"]) == 6
     assert new_state["messages"][0]["id"] == "msg_0"
-    
-    digest_msg = new_state["messages"][1]
+
+    # Last 4 messages preserved: msg_4, msg_5, msg_6, msg_7
+    assert new_state["messages"][1]["id"] == "msg_4"
+    assert new_state["messages"][2]["id"] == "msg_5"
+    assert new_state["messages"][3]["id"] == "msg_6"
+    assert new_state["messages"][4]["id"] == "msg_7"
+
+    digest_msg = new_state["messages"][5]
     assert digest_msg["agent"] == "System"
     assert "LLM digest summary text here" in digest_msg["text"]
     assert "runs/archive/run_test.jsonl" in digest_msg["text"]
     assert "上下文已压缩" in digest_msg["text"]
     assert digest_msg["badge_text"] == "上下文压缩摘要"
     assert digest_msg["badgeText"] == "上下文压缩摘要"
-
-
-    # Last 4 messages preserved: msg_4, msg_5, msg_6, msg_7
-    assert new_state["messages"][2]["id"] == "msg_4"
-    assert new_state["messages"][3]["id"] == "msg_5"
-    assert new_state["messages"][4]["id"] == "msg_6"
-    assert new_state["messages"][5]["id"] == "msg_7"
 
     # Verify token recount logic
     assert new_state["token_input"] == 4
@@ -316,7 +351,7 @@ async def test_compact_run_messages_fallback_exception(monkeypatch: pytest.Monke
 
     # Verify compaction still completes using fallback message
     assert len(new_state["messages"]) == 6
-    digest_msg = new_state["messages"][1]
+    digest_msg = new_state["messages"][-1]
     assert digest_msg["agent"] == "System"
     assert "由于 Token 消耗达到阈值，历史对话已折叠" in digest_msg["text"]
     assert "User" in digest_msg["text"]
@@ -394,8 +429,8 @@ def test_ws_plain_chat_compaction_integration(monkeypatch) -> None:
     # The final state should have fewer messages, including a compaction digest.
     final_messages = compaction_patches[-1]["messages"]
 
-    # We expect messages length to be 6 (messages[0], digest_msg, messages[-4:])
+    # first + last4 + digest at end
     assert len(final_messages) == 6
     assert final_messages[0]["text"] == "Start instruction"
-    assert "Mocked summary of conversation" in final_messages[1]["text"]
-    assert "上下文已压缩" in final_messages[1]["text"]
+    assert "Mocked summary of conversation" in final_messages[-1]["text"]
+    assert "上下文已压缩" in final_messages[-1]["text"]

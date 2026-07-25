@@ -60,7 +60,8 @@ interface ChatInputBarProps {
   onSendMessage: (text: string, attachments: Attachment[]) => void;
   isRunning: boolean;
   isPlainLlmChat: boolean;
-  onStopRun?: () => void;
+  /** Return false if stop was cancelled (e.g. confirm dialog). */
+  onStopRun?: () => boolean | void;
   /** D9: resume after Stop / fuse. */
   onContinueRun?: () => void;
   awaitingContinue?: boolean;
@@ -107,6 +108,8 @@ interface ChatInputBarProps {
   onSlashCommand?: (id: SlashCommandId) => void | Promise<void>;
   /** D18 — brief feedback after a slash command. */
   slashNotice?: string | null;
+  /** Dismiss slash / amber notice (X). */
+  onDismissSlashNotice?: () => void;
   /** D23 — rewind last agent file write from shadow snapshot. */
   onRewindFiles?: () => void | Promise<void>;
   /** D32 — enable isolated worktree (idle CTA lives in composer toolbar). */
@@ -267,6 +270,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
   onOpenMcpBind,
   onSlashCommand,
   slashNotice = null,
+  onDismissSlashNotice,
   onRewindFiles,
   onEnableWorktree,
   worktreeActive = false,
@@ -602,7 +606,12 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
   );
 
   const canSend = inputValue.trim().length > 0 || attachments.length > 0;
-  const showPlainChatStop = isRunning && isPlainLlmChat;
+  const [stopPending, setStopPending] = useState(false);
+  useEffect(() => {
+    if (!isRunning || awaitingContinue) setStopPending(false);
+  }, [isRunning, awaitingContinue]);
+  const showPlainChatStop = isRunning && isPlainLlmChat && !stopPending && !awaitingContinue;
+  const showPlainChatStopping = isRunning && isPlainLlmChat && stopPending;
   const showPlainChatContinue =
     !isRunning && isPlainLlmChat && Boolean(awaitingContinue) && Boolean(onContinueRun);
   const stepsUsed = runStats?.tool_steps ?? 0;
@@ -1198,12 +1207,29 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
             <button
               type="button"
               data-testid="chat-stop"
-              onClick={onStopRun}
+              onClick={() => {
+                setStopPending(true);
+                const proceeded = onStopRun?.();
+                if (proceeded === false) setStopPending(false);
+              }}
               className="w-7 h-7 flex items-center justify-center rounded-lg bg-neutral-800 text-white hover:bg-black transition-colors"
               title={t('Stop')}
               aria-label={t('Stop')}
             >
               <LegacyIcon name="stop" className="text-[15px]" />
+            </button>
+          ) : null}
+          {showPlainChatStopping ? (
+            <button
+              type="button"
+              data-testid="chat-stopping"
+              disabled
+              className="h-7 px-2 flex items-center justify-center gap-1 rounded-lg bg-neutral-500 text-white cursor-wait text-[11px] font-semibold"
+              title={language === 'zh' ? '正在停止…' : 'Stopping…'}
+              aria-label={language === 'zh' ? '正在停止…' : 'Stopping…'}
+            >
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              {language === 'zh' ? '停止中' : 'Stopping'}
             </button>
           ) : null}
           {showPlainChatContinue ? (
@@ -1348,9 +1374,18 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
       {slashNotice ? (
         <div
           data-testid="slash-command-notice"
-          className="absolute bottom-full left-0 mb-1 px-2.5 py-1.5 rounded-lg bg-surface-container text-[11px] text-on-surface shadow border border-outline-variant/40 max-w-[min(100%,22rem)]"
+          role="status"
+          className="absolute bottom-full left-0 right-0 mb-2 mx-auto w-fit max-w-[min(100%,32rem)] z-[60] flex items-start gap-2 rounded-xl border border-neutral-700 bg-neutral-900 px-3.5 py-2.5 text-[12px] font-semibold text-white shadow-lg shadow-black/25"
         >
-          {slashNotice}
+          <span className="flex-1 leading-snug text-white/95">{slashNotice}</span>
+          <button
+            type="button"
+            className={`${BTN_ICON_SM} flex-shrink-0 text-white/70 hover:text-white hover:bg-white/10`}
+            aria-label={language === 'zh' ? '关闭提示' : 'Dismiss notice'}
+            onClick={() => onDismissSlashNotice?.()}
+          >
+            <LegacyIcon name="close" className="text-[14px]" />
+          </button>
         </div>
       ) : null}
 

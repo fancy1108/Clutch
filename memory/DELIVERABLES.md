@@ -4,6 +4,14 @@
 > **何时写：** 每个**代码 Task** 完成并 commit 后，在 Check-out 追加一节（见 `CLAUDE.md` §Check-out）。  
 > **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。
 
+## D8 PM 通过 + 验收期修复（2026-07-25）
+
+| 项 | 说明 |
+|----|------|
+| **PM** | D8 ✅ — `runs/verification/pm-acceptance/D08.md`；ROADMAP ✅ |
+| **Verification** | `pytest tests/test_task_state_d8.py tests/test_compaction.py tests/test_todo_d3.py -q`；`pnpm test -- src/services/clutchState.test.ts` |
+| **Fixes** | todo JSON 字符串不炸字符；compaction 权威替换；`/compact` 末尾 User+digest；Stop 乐观 UI；状态问答不续干活；深色 slash notice |
+
 ## Wave5b — D32 / Cap-D25 / D24 / D36 / D14（2026-07-25）
 
 | ID | Commit | Verification | PM |

@@ -64,6 +64,11 @@ def format_task_state(
 
     if not lines:
         return ""
+    lines.append(
+        "If the user only asks what remains / status / 还剩什么 / 还剩哪些 todo, "
+        "answer from this list in plain text and do NOT call tools or resume edits "
+        "unless they explicitly ask to continue working."
+    )
     return "## Current task state\n" + "\n".join(lines)
 
 

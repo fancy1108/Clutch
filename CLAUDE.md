@@ -126,6 +126,8 @@ Layer 4 为**操作规程**，不是权威来源。冲突时以本文 §铁律 �
 - Windows `shell=False` 不要裸跑 `pnpm/npm/npx/uv` → 用 `shutil.which`/Node wrapper 解析 `.cmd`，`uv` 需支持 `python -m uv` fallback
 - `http_chat_complete` 返回 `{content, reasoning_content}` dict 时，`sanitize_engine_output`/`re.sub` 会 TypeError → 消费方必须先 `LLMProviderRouter.extract_content`（v1.2.0 chat 回归）
 - 开发态侧栏历史「消失」多为 `workspace_id` 断裂而非删库 → 同路径须稳定 id；e2e/临时目录勿写入默认 `clutch_dev`（D43）
+- `todo_write` 的 `todos` 若是 JSON 字符串，禁止 `list(str)` → 会炸成数百单字符待办；须 `json.loads`（见 `normalize_todo_items`）
+- 上下文压缩 patch 含新 `system_digest_*` 时须**整表替换** messages，禁止 merge 追加（否则 `/compact` 只闪 toast、历史不变）
 
 ---
 

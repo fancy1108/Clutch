@@ -39,6 +39,22 @@ def test_normalize_todo_items_replace_and_merge() -> None:
     assert len(merged) == 3
 
 
+def test_normalize_todo_items_json_string_not_char_split() -> None:
+    """LLM often passes todos as a JSON string; must not explode into per-char items."""
+    import json
+
+    payload = [
+        {"id": "1", "content": "Build login.html", "status": "completed"},
+        {"id": "2", "content": "Add CSS", "status": "in_progress"},
+    ]
+    todos = normalize_todo_items({"todos": json.dumps(payload)})
+    assert len(todos) == 2
+    assert todos[0]["content"] == "Build login.html"
+    assert todos[1]["status"] == "in_progress"
+    # Non-JSON string must not become list(str) character todos
+    assert normalize_todo_items({"todos": '[{"content":'}) == []
+
+
 def test_execute_todo_write() -> None:
     out = execute_builtin_tool(
         "todo_write",

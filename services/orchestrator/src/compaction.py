@@ -143,10 +143,35 @@ async def compact_run_messages(
     run_id: str,
     state: ClutchState,
     model_id: str | None = None,
+    *,
+    record_slash_command: bool = False,
 ) -> ClutchState:
     messages = list(state.get("messages", []))
     if len(messages) <= 5:
         return state
+
+    now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # Manual `/compact`: append a User bubble so the fold reads chronologically
+    # as … → User `/compact` → System digest at the end.
+    if record_slash_command:
+        last = messages[-1] if messages else None
+        already = (
+            isinstance(last, dict)
+            and str(last.get("agent") or "") == "User"
+            and str(last.get("text") or "").strip() == "/compact"
+        )
+        if not already:
+            messages = [
+                *messages,
+                {
+                    "id": f"user_compact_{uuid.uuid4().hex[:8]}",
+                    "agent": "User",
+                    "text": "/compact",
+                    "time": now_str,
+                    "status": "COMPLETED",
+                },
+            ]
 
     # Step 1: Archive original messages to runs/archive/{run_id}.jsonl
     archive_dir = get_archive_dir()
@@ -173,7 +198,6 @@ async def compact_run_messages(
     )
 
     # Step 4: Create a compaction digest message
-    now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     relative_archive_path = f"runs/archive/{run_id}.jsonl"
     
     text_en = (
@@ -196,8 +220,9 @@ async def compact_run_messages(
     }
 
 
-    # Step 5: Merge into compacted message list
-    compacted_messages = [first_message, digest_msg] + last_messages
+    # Step 5: Keep first + recent tail, then digest at the end (chronological UX).
+    # Manual `/compact` lands in the tail so order is: … → User `/compact` → digest.
+    compacted_messages = [first_message] + last_messages + [digest_msg]
     state["messages"] = compacted_messages
 
     # Step 6: Recalculate tokens
