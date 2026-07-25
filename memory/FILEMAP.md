@@ -230,6 +230,7 @@
 | Terminal 日志格式化与时间戳 | `src/terminal_logs.py` |
 | MCP 工具风险判定 | `src/mcp_risk.py` |
 | MCP ReAct 执行 | `src/mcp_react.py` |
+| MCP 工具过多发现（D28） | `src/mcp_tool_discovery.py` · `mcp_react` search_mcp_tools |
 | Codex 兼容 apply_patch（增删改移） | `src/apply_patch.py` |
 | 内置虚拟工具服务器 clutch-tools | `src/builtin_tools.py`（read/list/grep/search_replace/run_terminal_cmd/apply_patch） |
 | D21 ignore + strict sandbox | `src/ignore_rules.py` · `preferences_storage` `strict_sandbox` · Settings General toggle |

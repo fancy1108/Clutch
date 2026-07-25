@@ -409,6 +409,8 @@ def run_mcp_react_loop(
     builtin_servers: set[str] = set()
     tool_routes: dict[str, tuple[str, str]] = {}
     openai_tools: list[dict[str, Any]] = []
+    builtin_openai_tools: list[dict[str, Any]] = []
+    external_catalog: dict[str, dict[str, Any]] = {}
     consecutive_failures = 0
     fuse_triggered = False
     fuse_limit = max_consecutive_failures()
@@ -447,22 +449,71 @@ def run_mcp_react_loop(
                 continue
             alias = _tool_alias(server_id, tool_name)
             tool_routes[alias] = (server_id, tool_name)
-            openai_tools.append(
-                {
-                    "type": "function",
-                    "function": {
-                        "name": alias,
-                        "description": tool.get("description", "") or f"{name}: {tool_name}",
-                        "parameters": tool.get(
-                            "inputSchema",
-                            {"type": "object", "properties": {}},
-                        ),
-                    },
+            openai_def = {
+                "type": "function",
+                "function": {
+                    "name": alias,
+                    "description": tool.get("description", "") or f"{name}: {tool_name}",
+                    "parameters": tool.get(
+                        "inputSchema",
+                        {"type": "object", "properties": {}},
+                    ),
+                },
+            }
+            if server_id in builtin_servers:
+                builtin_openai_tools.append(openai_def)
+            else:
+                external_catalog[alias] = {
+                    "openai": openai_def,
+                    "tool_name": tool_name,
+                    "description": str(tool.get("description", "") or ""),
+                    "server_id": server_id,
                 }
-            )
 
-    _emit(logs, on_log, f"[{log_prefix}] Discovered {len(openai_tools)} tool(s)")
-    engine_label = f"{spec.name} · MCP ({len(openai_tools)} tools)"
+    from src.mcp_tool_discovery import (
+        DISCOVERY_SERVER_ID,
+        DISCOVERY_THRESHOLD,
+        SEARCH_ALIAS,
+        SEARCH_TOOL_NAME,
+        build_external_openai_tools,
+        execute_search_mcp_tools,
+        initial_enabled_aliases,
+    )
+
+    discovery_mode = len(external_catalog) > DISCOVERY_THRESHOLD
+    enabled_external = (
+        initial_enabled_aliases(external_catalog)
+        if discovery_mode
+        else set(external_catalog.keys())
+    )
+    if external_catalog:
+        tool_routes[SEARCH_ALIAS] = (DISCOVERY_SERVER_ID, SEARCH_TOOL_NAME)
+        openai_tools = list(builtin_openai_tools) + build_external_openai_tools(
+            catalog=external_catalog,
+            enabled=enabled_external,
+            discovery_mode=discovery_mode,
+        )
+        if discovery_mode:
+            _emit(
+                logs,
+                on_log,
+                f"[{log_prefix}] D28 discovery mode: {len(external_catalog)} external tool(s); "
+                f"exposing search_mcp_tools + {len(enabled_external)} always-on",
+            )
+    else:
+        openai_tools = list(builtin_openai_tools)
+
+    def _rebuild_openai_tools() -> None:
+        nonlocal openai_tools
+        openai_tools = list(builtin_openai_tools) + build_external_openai_tools(
+            catalog=external_catalog,
+            enabled=enabled_external,
+            discovery_mode=discovery_mode,
+        )
+
+    visible_count = len(openai_tools)
+    _emit(logs, on_log, f"[{log_prefix}] Discovered {visible_count} visible tool(s)")
+    engine_label = f"{spec.name} · MCP ({visible_count} tools)"
     output = ""
     files_changed: list[str] = []
     collected_steps: list[dict[str, Any]] = []
@@ -687,6 +738,54 @@ def run_mcp_react_loop(
                         is_delegate_subtask_tool,
                         is_propose_plan_tool,
                     )
+
+                    # D28: search_mcp_tools enables matched external tools for later turns.
+                    if (
+                        route
+                        and route[0] == DISCOVERY_SERVER_ID
+                        and raw_tool_name == SEARCH_TOOL_NAME
+                    ):
+                        from src.tool_steps import make_tool_step
+
+                        step_id = f"tool_{step_idx}"
+                        record_tool_step(
+                            make_tool_step(
+                                tool_alias=func_name,
+                                func_args=func_args,
+                                status="running",
+                                step_idx=step_idx,
+                                step_id=step_id,
+                            )
+                        )
+                        result_str = execute_search_mcp_tools(
+                            func_args,
+                            catalog=external_catalog,
+                            enabled=enabled_external,
+                        )
+                        _rebuild_openai_tools()
+                        _emit(
+                            logs,
+                            on_log,
+                            f"[{log_prefix}] Step {step_idx + 1}: search_mcp_tools "
+                            f"enabled={len(enabled_external)} visible={len(openai_tools)}",
+                        )
+                        record_tool_step(
+                            make_tool_step(
+                                tool_alias=func_name,
+                                func_args=func_args,
+                                status="completed" if not result_str.startswith("Error") else "failed",
+                                step_idx=step_idx,
+                                step_id=step_id,
+                            )
+                        )
+                        chat_messages.append(
+                            {
+                                "role": "tool",
+                                "tool_call_id": tc_id,
+                                "content": result_str,
+                            }
+                        )
+                        continue
 
                     # D2: propose_plan always pauses for in-chat Approve / revise / Cancel (D49).
                     if is_propose_plan_tool(raw_tool_name) or is_propose_plan_tool(func_name):
