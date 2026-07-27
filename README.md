@@ -17,16 +17,18 @@ Clutch is a **desktop app** (Tauri + React) for developers and technical operato
 |---|---|
 | **Stack** | Tauri 2 · React 19 · FastAPI + LangGraph · local-first (`localhost:8123`) |
 | **License** | See [LICENSE](LICENSE) |
-| **Latest release** | [v1.2.9](https://github.com/fancy1108/Clutch/releases/tag/v1.2.9) · [Changelog](CHANGELOG.md#129---2026-07-24) |
+| **Latest release** | [v1.3.0](https://github.com/fancy1108/Clutch/releases/tag/v1.3.0) · [Changelog](CHANGELOG.md#130---2026-07-27) |
 | **Contributors** | Thanks to [@MyloveAless](https://github.com/MyloveAless) for the multi-agent image generation workflow design & end-to-end validation. |
 
-### What's new in v1.2.9
+### What's new in v1.3.0
 
-- **Coding image paste:** Paste images in Chat and Terminal OrchestratorBar — multimodal first, OCR/palette fallback; local CLIs get `@path` file refs.
-- **Click-to-preview:** Workspace paths and attachment thumbnails open in-app (images as media).
-- **Design handoff polish:** Spec→UI continuous by default; deterministic HTML→React export for Coding (D39–D41).
-- **Workspace history stability:** Path-stable project ids so sidebar history cannot orphan after re-authorize (D43).
-- **UI fixes:** Thinking bubble height, New Design at top of sidebar, Design iterate overlay clear.
+- **Context Engineering Engine:** Zero-Token Meta Gateway Interceptor, Dynamic Client Clock (`YYYY-MM-DD HH:mm:ss`), OS & Locale tail injection (preserving KV Cache).
+- **PreToolUse Safety Interceptor:** Anthropic Claude Code spec guard intercepting dangerous commands (`git push --force`, `rm -rf`, `sudo`).
+- **1-Click Checkpoint Rewind:** Snapshot rollback engine (`createCheckpoint` / `rollbackCheckpoint`) conforming to Aider & Git Stash specs.
+- **TDD Self-Correction & Memory Vault:** Stack trace parser for automated TDD fix loop and Mem0 persistent user preference store.
+- **Safe Context Compaction:** Token threshold auto-compaction with retention white-list & lossless index pointers (`[SOURCE INDEX]`).
+- **Progressive Skill Loading:** Sitemap indexing (~1K tokens) and on-demand `SKILL.md` lazy reading (135+ skills).
+- **Markdown & UI Polish:** Proper HTML table rendering in document preview modal with Markdown block parsing.
 
 > **v1.2.9 ships macOS + Windows.** macOS: Apple Silicon DMG + in-app updater. Windows: MSI/NSIS. Sidecar hotpatch assets published separately.
 

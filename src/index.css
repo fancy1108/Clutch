@@ -1,0 +1,134 @@
+@import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Hanken Grotesk", "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", monospace;
+  
+  --color-tertiary-fixed: #e0e2e6;
+  --color-on-secondary-fixed-variant: #454748;
+  --color-on-tertiary-fixed: #191c1f;
+  --color-surface-variant: #f3f3f3;
+  --color-surface-container-lowest: #ffffff;
+  --color-tertiary-container: #191c1f;
+  --color-on-surface: #1a1c1c;
+  --color-outline: #e5e7eb;
+  --color-on-primary-container: #858383;
+  --color-on-tertiary-container: #818488;
+  --color-tertiary: #000000;
+  --color-on-primary-fixed: #1c1b1b;
+  --color-surface-container: #f9f9f9;
+  --color-secondary: #5c5f60;
+  --color-surface-container-high: #f0f0f0;
+  --color-tertiary-fixed-dim: #c4c7ca;
+  --color-secondary-fixed-dim: #c5c7c8;
+  --color-secondary-fixed: #e1e3e4;
+  --color-primary-fixed: #e5e2e1;
+  --color-on-background: #1a1c1c;
+  --color-surface-container-low: #f7f7f7;
+  --color-primary-fixed-dim: #c8c6c5;
+  --color-on-surface-variant: #71717a;
+  --color-secondary-container: #f4f4f5;
+  --color-outline-variant: #e5e7eb;
+  --color-error: #ba1a1a;
+  --color-on-secondary: #ffffff;
+  --color-surface-dim: #f3f4f6;
+  --color-on-error-container: #93000a;
+  --color-surface-bright: #ffffff;
+  --color-on-primary-fixed-variant: #474746;
+  --color-surface-tint: #000000;
+  --color-inverse-surface: #2f3131;
+  --color-surface-container-highest: #e2e2e2;
+  --color-on-tertiary: #ffffff;
+  --color-primary: #000000;
+  --color-inverse-on-surface: #f0f1f1;
+  --color-on-secondary-container: #626566;
+  --color-primary-container: #000000;
+  --color-background: #ffffff;
+  --color-inverse-primary: #c8c6c5;
+  --color-on-error: #ffffff;
+  --color-on-secondary-fixed: #191c1d;
+  --color-error-container: #ffdad6;
+  --color-on-tertiary-fixed-variant: #44474a;
+  --color-surface: #f9f9f9;
+  --color-on-primary: #ffffff;
+}
+
+body {
+  font-family: 'Hanken Grotesk', sans-serif;
+  background-color: #ffffff;
+  color: #1a1c1c;
+  -webkit-font-smoothing: antialiased;
+}
+
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+  vertical-align: middle;
+}
+
+/* Custom Scrollbars */
+.sidebar-scroll::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.sidebar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background: #e2e2e2;
+  border-radius: 10px;
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background: #71717a;
+}
+
+/* Terminal Scrolling style */
+.terminal-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.terminal-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+.terminal-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+@keyframes subtle-pulse {
+  0% { opacity: 0.4; }
+  50% { opacity: 1; }
+  100% { opacity: 0.4; }
+}
+
+.animate-subtle-pulse {
+  animation: subtle-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite linear;
+}
+
+@keyframes progress-loading {
+  0% { left: -30%; width: 30%; }
+  50% { left: 30%; width: 50%; }
+  100% { left: 100%; width: 30%; }
+}
+
+.animate-progress-loading {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  animation: progress-loading 1.8s infinite ease-in-out;
+}
+

@@ -17,16 +17,18 @@ Clutch 是一款**桌面应用**（Tauri + React），面向独立开发者和�
 |---|---|
 | **技术栈** | Tauri 2 · React 19 · FastAPI + LangGraph · 本地优先（`localhost:8123`） |
 | **许可证** | 见 [LICENSE](LICENSE) |
-| **当前版本** | [v1.2.9](https://github.com/fancy1108/Clutch/releases/tag/v1.2.9) · [更新日志](CHANGELOG.md#129---2026-07-24) |
+| **当前版本** | [v1.3.0](https://github.com/fancy1108/Clutch/releases/tag/v1.3.0) · [更新日志](CHANGELOG.md#130---2026-07-27) |
 | **贡献者** | 感谢 [@MyloveAless](https://github.com/MyloveAless) 设计「AI 图片生成多 Agent 工作流」并完成端到端验证。 |
 
-### 最新更新（v1.2.9）
+### 最新更新（v1.3.0）
 
-- **Coding 发图：** Chat / Terminal OrchestratorBar 可粘贴图片 — 先 multimodal，失败再 OCR/调色板；本地 CLI 注入 `@path` 文件引用。
-- **点击预览：** 工作区路径与附件缩略图可在应用内打开（图片走媒体预览）。
-- **Design 交接打磨：** Spec→UI 默认连续生成；Coding 侧确定性 HTML→React 导出（D39–D41）。
-- **工作区历史稳定：** 路径稳定 project id，重授权后侧栏历史不再孤儿（D43）。
-- **UI 修复：** Thinking 气泡高度、New Design 置顶、Design 迭代遮罩清除。
+- **上下文工程引擎：** 零 Token 工具元查询拦截器，动态系统时间标头 (`YYYY-MM-DD HH:mm:ss`)、设备与 OS 标头追加末尾（保护 KV Cache）。
+- **PreToolUse 安全防护：** 遵照 Anthropic Claude Code 规范前置拦截破坏性命令（`git push --force`、`rm -rf`、`sudo`）。
+- **一键快照回滚撤销：** 遵照 Aider 与 Git Stash 规范快照引擎 (`createCheckpoint` / `rollbackCheckpoint`)。
+- **TDD 自动修复与偏好记忆库：** 测试 Traceback 解析器驱动自修复闭环，以及 Mem0 持久化用户偏好记忆库。
+- **无损安全上下文压缩：** 达到 Token 阈值后基于白名单压缩，附带无损索引指针 (`[SOURCE INDEX]`)。
+- **渐进式技能加载：** Sitemap 索引地图 (~1K Token) 与按需 `SKILL.md` 延迟加载 (支持 135+ 专业技能)。
+- **文档渲染打磨：** 文件预览模态框支持 HTML Markdown 表格解析渲染。
 
 > **v1.2.9 同时发 macOS + Windows。** macOS：Apple Silicon DMG + 应用内更新。Windows：MSI/NSIS。Sidecar 热更资产另行发布。
 
