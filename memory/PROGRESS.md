@@ -5,21 +5,11 @@
 
 ## Current Status
 
-- **阶段：** **v1.2.9 发布准备中**（2026-07-24）— CHANGELOG / `docs/releases/v1.2.9.md` / README EN+ZH / 版本号已升至 1.2.9
-- **Release 目标：** tag `v1.2.9` on `main`（禁止在 `dev` 上打 tag）
-- **Git：** `dev` ahead of `origin/dev`；发版前需 merge `dev` → `main` 再打 tag
-- **Preflight：** 跑 `./scripts/release-preflight.sh v1.2.9`
-- **亮点：** Coding 发图 + 路径预览（D42）、Design handoff/Spec（D39–D41）、工作区稳定 id（D43）
-- **OCR 备注：** `pytesseract`/`Pillow` 已入依赖；系统需 `tesseract` 二进制（`brew install tesseract tesseract-lang`）OCR 才有文本
-
-## Next Actions
-
-- `./scripts/release-preflight.sh v1.2.9` 通过
-- Push `dev` → `origin/dev`
-- Merge `dev` → `main`（用户确认）
-- 在 **`main`** 上 `git tag v1.2.9` + push tag → CI DMG（+ 视策略是否跑 Windows）
-- 发布后 `CLUTCH_VERSION=v1.2.9 ./scripts/sync-homebrew-tap.sh`
-- 可选：Release (updater assets) 工作流
+- **阶段：** **v1.2.9 已发布**（2026-07-24）
+- **Release：** [v1.2.9](https://github.com/fancy1108/Clutch/releases/tag/v1.2.9) · tag on `main` @ `898877d`
+- **macOS：** DMG + SHA256SUMS 已上传；Homebrew tap 已由 Release workflow 同步
+- **Windows：** Build workflow 进行中 / 完成后挂 MSI/NSIS
+- **Git：** `dev` / `main` / `origin` 对齐于发版 commit
 
 ## Recent Sessions
 
