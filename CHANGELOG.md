@@ -10,6 +10,23 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-07-27
+
+Feature release — **Harness Engine & Context Engineering Infrastructure**, 18 Automated Self-Tests, 1-Click Checkpoint Rewind, TDD Loop, Memory Vault, Zero-Token Interceptor, PreToolUse Safety Interceptor, Safe Context Compaction, Progressive Skill Loading.
+
+### Added
+
+- **Zero-Token Meta Gateway Interceptor (`interceptMetaToolQueries`):** Intercepts tool discovery queries ("你有哪些 tool", "what tools can you call") with 0.01s instant response and 0 token cost.
+- **Dynamic Environment Context Provider (`getClientEnvironmentContext`):** Real-time client timestamp (`YYYY-MM-DD HH:mm:ss`), timezone (`Asia/Shanghai`), OS platform, and locale injected at message tail (preserving static KV Cache).
+- **PreToolUse Safety Interceptor (`checkPreToolUseSafetyGuard`):** Anthropic Claude Code spec guard intercepting dangerous commands (`git push --force`, `rm -rf`, `sudo`).
+- **1-Click Checkpoint Rewind Engine (`CheckpointManager`):** Aider / Git Stash spec snapshot creation (`createCheckpoint`) and 1-click rollback (`rollbackCheckpoint`).
+- **TDD Self-Correction Loop Engine (`parseTestReportAndCorrection`):** Vitest / Jest stack trace parsing and automated code self-fix loop.
+- **Learned Memory Vault (`LearnedMemoryVault`):** Mem0 spec cross-session persistent user preference store.
+- **Safe Context Compaction Engine (`compactContextWithRetentionPriority`):** Token threshold compaction with retention white-list & lossless index pointers (`[SOURCE INDEX]`).
+- **Progressive Skill Loading:** Sitemap indexing (~1K tokens) and on-demand `SKILL.md` lazy reading (135+ skills).
+- **Markdown & Table Rendering:** HTML table parsing and rendering in document preview modal.
+- **Automated Self-Test Suite:** 18 end-to-end Harness unit and integration tests (100% Passed).
+
 ## [1.2.9] - 2026-07-24
 
 Feature/patch release — **Coding image paste & click-to-preview**, Design handoff/Spec flow polish, workspace history stability.
