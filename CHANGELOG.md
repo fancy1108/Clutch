@@ -10,6 +10,8 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-07-28
+
 ### Changed
 
 - **Tool trail detail (D46 / Cursor·Grok-aligned):** Verb-group headers use tool families (`Fetched N pages`, `Searched N queries`); `web_fetch` / `web_search` titles show host/query; step rows show the target URL/query; expand attaches a truncated result preview. **View in Terminal** works for any tool step (not only shell).
@@ -23,9 +25,27 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ### Fixed
 
+- **Plan approve → execute:** After the user says 确认/批准/按计划/按照你说的, Chat injects an execute reminder and tool-skip nudge so the model must `todo_write` then `apply_patch`/`search_replace` — no more re-asking for confirmation or claiming done with prose only.
+- **Shell writes → Changes (no git required):** `run_terminal_cmd` mutations (`cat >`, `mv`, `rm`, …) are detected via workspace mtime snapshot and fill `files_changed` / Changes / D47 chips even when the workspace is not a git repo. Tool copy steers models to prefer `apply_patch`/`search_replace` for source edits.
 - **Chat ASGI / max-iterations leak:** Long tool loops that close the WebSocket no longer surface `Unexpected ASGI message 'websocket.send'…` as the agent reply; live emits swallow closed-socket errors. Hitting the 24-step budget now attempts one tool-free synthesis answer. `web_fetch` rejects search-engine result pages (Bing/Google/…) so open questions use `web_search` instead of burning the budget.
 - **Network thrash cap:** Open-web Q&A soft-caps at 3 `web_search`/`web_fetch` calls (stop-and-answer nudge) and hard-caps at 5; prompt/tool copy steers **1 search → ≤2 fetches → answer** like mainstream agents.
-- **Live tool UX:** One loading cue only — spinner + **Working…** / **Thinking…** on the agent label; the tool trail stays a quiet checklist (no stacked spinners, progress bars, or repeated Working dots).
+- **Live tool UX:** One loading cue only — spinner + **Working…** / **Thinking…** on the agent label. Live process is a Grok-style flat step stream (no dense “Fetched N pages” box); each step stays visible in chat with a **Working…** footer.
+- **Pinned Todos width:** Sticky Todos rail matches the chat content box (full column between sidebars) with an opaque curtain so right-aligned bubbles cannot peek beside; card is `w-full` of that rail. Pin stays for the whole turn (even 3/3) so todos are not nested narrow inside Working.
+- **Auto-open generated HTML in system browser:** When the agent finishes writing an `.html` / `.htm` file (prefer `index.html`), Clutch opens the **rendered page in the OS default browser** (not the in-app source preview). Inline HTML edit cards show **Open in browser** instead of dumping source.
+- **Process trail UX:** Unified live/sealed step rows (status + title + focus line); `todo_write` hidden from the trail (Todo card is SSOT); expand only shows a capped result body — no heavy Target card. Expanding a step no longer force-scrolls the chat (dock-only re-pin).
+- **Network soft-cap nudge:** After the web budget, reminds the model to **continue write tools** for file/HTML deliverables instead of ending with prose alone.
+- **SERP web_fetch → web_search:** Calling `web_fetch` on `google.com/search` / Bing SERPs auto-runs `web_search` with the query instead of failing 3× and tripping the loop fuse. Policy rejects no longer count toward the fuse.
+- **Models list hid OpenCode Zen:** Catalog models without a saved key stay listed (use **+ Add model** for keys); footer picker still only shows usable models. `clutch_managed` is true for Keychain-backed providers so Edit remains available.
+- **OpenCode Zen key save blocked by TLS:** Transient SSL/`urlopen` failures no longer block saving an OpenCode Zen API key — only explicit key rejection does.
+- **HTML deliverable hang:** After the agent writes a `.html` page (browser auto-opens), inject a one-shot wrap-up nudge so Flash models mark todos done and finish the turn instead of idling on **Working…**.
+- **HTML auto-open on history:** Opening a past session no longer re-opens `.html` in the browser — auto-open only when a live turn newly writes the file.
+- **Deliverable intent (need → kind):** Chat decomposes the user ask (search / summarize / visualize / present / implement) and infers deliverable kind — users need not name “HTML/图片”. Browser auto-open only for inferred pages; image/video/code/answer asks get a correction nudge if the model fakes an HTML page; feature-plan HTML stack only when a page was inferred.
+- **Real images + clean artifacts (D54):** Chat gets `generate_image` (configured image model → `.clutch/generated/images/`). Infographic/信息图/可视化 count as image intent; writing `.html` as a fake visual is refused. New chat `.md`/`.html`/image dumps at the repo root are relocated to `.clutch/artifacts/` (like other agents’ output folders).
+- **Auto media from Settings:** After a Chat turn that needs image/video, Clutch auto-calls the user’s configured Agnes (or other) image/video model — no footer model switch required. If no key is configured, the chat reply states clearly that the **last step failed** and how to fix it. Also adds `generate_video` tool.
+- **LLM SSL urlopen leak:** Agnes/OpenAI-compat chat via `urllib` no longer surfaces raw `<urlopen error [SSL: UNEXPECTED_EOF…]>` in Chat — retries once and shows a short TLS/retry hint instead.
+- **web_fetch SERP false positive:** `baijiahao.baidu.com/s?id=…` (百家号文章) is no longer blocked as a Baidu search page.
+- **apply_patch End Patch heal:** Truncated patches missing `*** End Patch` are auto-closed when the body is otherwise valid; after 2 apply_patch failures a write-recovery nudge steers toward `search_replace` before the loop fuse trips.
+- **Plan-approve resume UX:** After Approve, Chat keeps showing **Working…** while `status === running` (no longer looks frozen until a new user message appears).
 - **Sidebar recent-first:** Projects and sessions sort by last chat activity (`updated_at`); reopening an old chat floats it (and its project) to the top so you don’t scroll to the bottom.
 - **E2E MVP closed-loop:** With `CLUTCH_E2E_SANDBOX` + `CLUTCH_E2E_FAKE_LLM=1`, workflow `source=flow` short-circuits `route_engine` (no real Claude CLI) so sandbox MVP closed-loop reaches `awaiting_human` → approve → `passed`; plain_chat still uses hybrid/`FAKE_HYBRID`.
 - **D10 explore PM:** Agnes Flash explore subtasks no longer die at 8 iterations before summarizing.
@@ -63,7 +83,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 - **Background commands (capability D11):** `run_terminal_cmd` supports `background=true` plus `list_background_jobs` / `kill_background_job`; Chat shows a **Background jobs** bar (view output / kill) while the foreground turn stays free.
 - **Git + web fetch (capability D12):** Builtin `git_status` / `git_diff` / `git_commit` (commit is risky/approval) and `web_fetch` for URL text summarization; steps appear in the D46 tool trail.
 - **Permission rules (capability D13):** Persist allow/ask/deny command patterns; dangerous shell (`rm -rf`, `sudo`, …) force-ask even in Full; Chat permission menu **Clear remembered approvals**.
-- **Chat ↔ Terminal sync (capability D51):** Tool steps (including `web_fetch` / `web_search`) and subtask cards expose **View in Terminal** — opens the right-rail Terminal tab, highlights the matching `[CHAT] Step` log line, and (when a CLI Terminal session is available) switches to Terminal mode and focuses the active lane.
+- **Chat ↔ Terminal sync (capability D51):** Tool steps (including `web_fetch` / `web_search`) and subtask cards expose **View in Terminal** — opens the right-rail Terminal tab and highlights the matching `[CHAT] Step` log line (stays in Chat mode; does not jump to interactive Terminal / “Connecting…”).
 - **Capability ↔ Chat UI gate (capability D52):** `PRODUCT_INTRO` ships a **Capability → Chat UI** table (D1/D10/D37 spot-check rows required); `scripts/check-capability-ui-table.sh` is wired into `check-doc-drift.sh` (INV-D52).
 - **MCP Hub trusted status (capability D38):** Remove misleading Hub “under development” banner; per-server **Test connection** (`POST /api/mcp/servers/test`) returns tool count on success or a readable error on failure.
 - **MCP transport honesty (capability D39):** Hub registration is **stdio-only** (SSE option disabled; API rejects new SSE registers); optional Env `KEY=value` lines on register; legacy SSE rows stay visible as unavailable.
