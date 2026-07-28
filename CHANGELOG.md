@@ -10,7 +10,36 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ## [Unreleased]
 
-## [1.2.9] - 2026-07-24
+## [1.3.0] - 2026-07-28
+- **Background commands (capability D11):** `run_terminal_cmd` supports `background=true` plus `list_background_jobs` / `kill_background_job`; Chat shows a **Background jobs** bar (view output / kill) while the foreground turn stays free.
+- **Git + web fetch (capability D12):** Builtin `git_status` / `git_diff` / `git_commit` (commit is risky/approval) and `web_fetch` for URL text summarization; steps appear in the D46 tool trail.
+- **Permission rules (capability D13):** Persist allow/ask/deny command patterns; dangerous shell (`rm -rf`, `sudo`, …) force-ask even in Full; Chat permission menu **Clear remembered approvals**.
+- **Chat ↔ Terminal sync (capability D51):** Tool steps (including `web_fetch` / `web_search`) and subtask cards expose **View in Terminal** — opens the right-rail Terminal tab and highlights the matching `[CHAT] Step` log line (stays in Chat mode; does not jump to interactive Terminal / “Connecting…”).
+- **Capability ↔ Chat UI gate (capability D52):** `PRODUCT_INTRO` ships a **Capability → Chat UI** table (D1/D10/D37 spot-check rows required); `scripts/check-capability-ui-table.sh` is wired into `check-doc-drift.sh` (INV-D52).
+- **MCP Hub trusted status (capability D38):** Remove misleading Hub “under development” banner; per-server **Test connection** (`POST /api/mcp/servers/test`) returns tool count on success or a readable error on failure.
+- **MCP transport honesty (capability D39):** Hub registration is **stdio-only** (SSE option disabled; API rejects new SSE registers); optional Env `KEY=value` lines on register; legacy SSE rows stay visible as unavailable.
+- **Chat MCP binding badge (capability D40):** Clutch Agent Chat shows `N MCP · ~M tools` (popover with server names) or a **Bind MCP** CTA when Hub bindings are empty.
+- **MCP Hub real tool names + one-click FS (capability D42∥D44):** Agent Manager catalog/detail show real Hub tool names (not fake permission chips); Module 4 **Enable workspace file tools** binds `local-fs` in one click.
+- **MCP resources pin-for-Chat (capability D43):** Hub can **Browse resources** on stdio servers; **Pin for Chat** stores a text snapshot injected into Clutch Agent prompt layers (`mcp_resources`).
+- **Ignore rules + strict sandbox (capability D21):** Builtin `list_dir` / `grep` / `read_file` respect workspace `.gitignore` and `.clutchignore`; ignored paths are omitted from listings/search and rejected on direct read. **Settings → General → Strict sandbox** rejects shell commands and paths that escape the authorized workspace with readable errors.
+- **Usage dashboard (capability D22):** Click the D9 **Steps n/m · ~tok** strip to open a history panel (current run + recent sessions); sidecar persists `session_tokens` / `tool_steps` on session records when runs end or are touched.
+- **Chat mode presets (capability D27):** Composer permission menu switches **Explore / Plan / Edit automatically** (`explore` / `plan` / `auto_edit`); Explore hard-blocks write/exec MCP tools while allowing read/search.
+- **MCP tool discovery (capability D28):** When bound Hub tools exceed ~24, ReAct exposes `search_mcp_tools` plus a few always-on aliases instead of dumping every schema; search enables matches for subsequent calls (D46 trail shows the search step).
+- **Web search builtin (capability D15):** Settings **Allow network** toggles builtin `web_search` (DuckDuckGo HTML via httpx). Off hides the tool and rejects calls with a readable error.
+- **Rich file read (capability D33):** Builtin `read_file` routes images through local OCR/analysis (`chat_content` path) and PDFs through `pdftotext` when on PATH; otherwise a clear install hint.
+- **Plan step comments (capability D31):** Pending plan cards expose per-step comment fields; **Revise** sends structured JSON feedback so the agent revises `propose_plan` before execution.
+- **Agent busy message queue (capability D20):** While Clutch Agent / MCP plain chat is **running**, new sends enqueue above the composer with **Queue #n** position badges and per-item cancel; messages drain in FIFO order when the turn returns to idle.
+- **Thinking stream (capability D19):** Models that return `reasoning_content` stream into the D46 **Agent live activity** fold as **Thinking / 思考** (same strip as tool steps). Long `run_terminal_cmd` output attaches as expandable step detail snippets.
+- **Background job monitor (capability D26):** When a D11 background job finishes, fails, or is killed, Chat gets a **[Monitor]** Supervisor line; failures also raise a short composer toast.
+- **Compact tool approval bar:** `awaiting_human` uses a slim Allow / Reject strip above the composer (optional note + Retry), replacing the large Human-In-The-Loop card.
+- **Sidebar session spinner:** MCP approve/complete now updates session history status; active Coding rows follow live `clutchStatus` so finished chats stop spinning.
+
+### Changed
+
+- **Chat composer (minimal):** Visible chrome is only **+ · mode · send** (Cursor/Copilot-style). Sessions, Rewind, MCP, Worktree, schedule, and usage live in the **+** menu; idle stacked bars removed; active worktree still shows a slim status chip.
+- Removed redundant Explore / Plan / Implement pills above the Chat composer; the same modes remain in the permission menu.
+- Clutch Agent system prompt documents clutch-tools usage.
+>>>>>>> 066907d (release: bump version to 1.3.0)
 
 Feature/patch release — **Coding image paste & click-to-preview**, Design handoff/Spec flow polish, workspace history stability.
 
