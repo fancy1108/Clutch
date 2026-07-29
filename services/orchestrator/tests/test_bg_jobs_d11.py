@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import sys
+import tempfile
 import time
 
 from src.bg_jobs import (
@@ -15,14 +17,28 @@ from src.bg_jobs import (
 )
 from src.builtin_tools import execute_builtin_tool
 
+_BG_DIR = tempfile.gettempdir()
+if sys.platform == "win32":
+    _SLEEP_DONE = "timeout /t 1 /nobreak >nul && echo done-bg"
+    _SLEEP_LONG = "timeout /t 30 /nobreak >nul"
+    _SLEEP_LIST = "timeout /t 5 /nobreak >nul"
+    _SLEEP_1 = "timeout /t 1 /nobreak >nul"
+    _SLEEP_2_ECHO = "timeout /t 2 /nobreak >nul && echo builtin-bg"
+else:
+    _SLEEP_DONE = "sleep 1 && echo done-bg"
+    _SLEEP_LONG = "sleep 30"
+    _SLEEP_LIST = "sleep 5"
+    _SLEEP_1 = "sleep 1"
+    _SLEEP_2_ECHO = "sleep 2 && echo builtin-bg"
+
 
 def test_start_sleep_wait_done() -> None:
     run_id = "run_test_bg_done"
-    job = start_job(run_id, "sleep 1 && echo done-bg", "/tmp")
+    job = start_job(run_id, _SLEEP_DONE, _BG_DIR)
     assert job["status"] == "running"
     assert job["id"].startswith("bg_")
 
-    deadline = time.time() + 5
+    deadline = time.time() + 10
     final = None
     while time.time() < deadline:
         current = get_job(run_id, job["id"])
@@ -38,7 +54,7 @@ def test_start_sleep_wait_done() -> None:
 
 def test_kill_while_running() -> None:
     run_id = "run_test_bg_kill"
-    job = start_job(run_id, "sleep 30", "/tmp")
+    job = start_job(run_id, _SLEEP_LONG, _BG_DIR)
     assert job["status"] == "running"
     killed = kill_job(run_id, job["id"])
     assert killed is not None
@@ -50,8 +66,8 @@ def test_kill_while_running() -> None:
 
 def test_list_jobs() -> None:
     run_id = "run_test_bg_list"
-    first = start_job(run_id, "sleep 5", "/tmp")
-    second = start_job(run_id, "sleep 5", "/tmp")
+    first = start_job(run_id, _SLEEP_LIST, _BG_DIR)
+    second = start_job(run_id, _SLEEP_LIST, _BG_DIR)
     jobs = list_jobs(run_id)
     ids = {item["id"] for item in jobs}
     assert first["id"] in ids
@@ -61,7 +77,7 @@ def test_list_jobs() -> None:
 
 
 def test_builtin_background_requires_context() -> None:
-    out = execute_builtin_tool("run_terminal_cmd", {"command": "sleep 1", "background": True})
+    out = execute_builtin_tool("run_terminal_cmd", {"command": _SLEEP_1, "background": True})
     assert out.startswith("Error executing tool:")
 
 
@@ -81,7 +97,7 @@ def test_builtin_background_and_list_kill(tmp_path, monkeypatch) -> None:
     try:
         raw = execute_builtin_tool(
             "run_terminal_cmd",
-            {"command": "sleep 2 && echo builtin-bg", "background": True},
+            {"command": _SLEEP_2_ECHO, "background": True},
         )
         assert not raw.startswith("Error"), raw
         payload = json.loads(raw)

@@ -550,7 +550,7 @@ def snapshot_workspace_mtimes(root: Path | None = None) -> dict[str, tuple[int, 
                 if not entry.is_file():
                     continue
                 st = entry.stat()
-                rel = str(entry.relative_to(base))
+                rel = str(entry.relative_to(base)).replace(os.sep, "/")
                 out[rel] = (st.st_mtime_ns, st.st_size)
             except OSError:
                 continue

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import sys
+import tempfile
 import time
 
 from src.bg_jobs import bind_bg_job_context, get_job, list_jobs, release_bg_job_context
@@ -16,11 +18,21 @@ from src.foreground_shell import (
     wait_foreground,
 )
 
+_BG_DIR = tempfile.gettempdir()
+if sys.platform == "win32":
+    _FG_LONG = "timeout /t 30 /nobreak >nul && echo FG_DONE"
+    _FG_LONG_PLAIN = "timeout /t 30 /nobreak >nul"
+    _BUILTIN_LONG = "timeout /t 30 /nobreak >nul && echo builtin-fg"
+else:
+    _FG_LONG = "sleep 30 && echo FG_DONE"
+    _FG_LONG_PLAIN = "sleep 30"
+    _BUILTIN_LONG = "sleep 30 && echo builtin-fg"
+
 
 def test_transfer_running_foreground_to_bg() -> None:
     run_id = "run_test_d34_transfer"
-    proc = start_foreground(run_id, "sleep 30 && echo FG_DONE", "/tmp")
-    assert proc.command.startswith("sleep")
+    proc = start_foreground(run_id, _FG_LONG, _BG_DIR)
+    assert proc.command
     assert get_foreground(run_id) is not None
 
     # Transfer while still running
@@ -42,7 +54,7 @@ def test_wait_returns_transferred_flag() -> None:
     from threading import Thread
 
     run_id = "run_test_d34_wait"
-    start_foreground(run_id, "sleep 30", "/tmp")
+    start_foreground(run_id, _FG_LONG_PLAIN, _BG_DIR)
     outcomes: list[tuple[str, bool, int | None]] = []
 
     def waiter() -> None:
@@ -84,7 +96,7 @@ def test_builtin_foreground_with_transfer(tmp_path, monkeypatch) -> None:
             result_holder.append(
                 execute_builtin_tool(
                     "run_terminal_cmd",
-                    {"command": "sleep 30 && echo builtin-fg", "timeout_sec": 60},
+                    {"command": _BUILTIN_LONG, "timeout_sec": 60},
                 )
             )
 

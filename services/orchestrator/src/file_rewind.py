@@ -45,6 +45,20 @@ def _save_index(path: Path, entries: list[dict[str, Any]]) -> None:
     )
 
 
+def _parse_snapshot_raw(raw: str) -> list[dict[str, Any]]:
+    if not raw:
+        return []
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError:
+        return []
+    if isinstance(parsed, dict) and isinstance(parsed.get("entries"), list):
+        return list(parsed["entries"])
+    if isinstance(parsed, list):
+        return list(parsed)
+    return []
+
+
 def snapshot_before_write(run_id: str, rel_path: str) -> None:
     """Record pre-write file content (missing file → exists=false)."""
     if not run_id or not rel_path.strip():
@@ -53,7 +67,7 @@ def snapshot_before_write(run_id: str, rel_path: str) -> None:
         root = require_workspace()
         target = resolve_allowed_path(rel_path)
         rel = to_workspace_relative(str(target)) or rel_path.strip()
-    except WorkspaceError:
+    except (WorkspaceError, OSError):
         return
     index_path = _index_path(root, run_id)
     entry: dict[str, Any] = {
@@ -66,20 +80,12 @@ def snapshot_before_write(run_id: str, rel_path: str) -> None:
         with file_lock(handle):
             handle.seek(0)
             raw = handle.read().strip()
-            entries = _load_index(index_path) if not raw else []
-            if raw:
-                try:
-                    parsed = json.loads(raw)
-                    if isinstance(parsed, dict) and isinstance(parsed.get("entries"), list):
-                        entries = list(parsed["entries"])
-                    elif isinstance(parsed, list):
-                        entries = list(parsed)
-                except json.JSONDecodeError:
-                    entries = []
+            entries = _parse_snapshot_raw(raw)
             entries.append(entry)
+            trimmed = entries[-_MAX_SNAPSHOTS:]
             handle.seek(0)
             handle.truncate()
-            handle.write(json.dumps({"entries": entries[-_MAX_SNAPSHOTS:]}, ensure_ascii=False))
+            handle.write(json.dumps({"entries": trimmed}, ensure_ascii=False))
             handle.write("\n")
 
 
@@ -104,7 +110,7 @@ def rewind_last_writes(run_id: str, count: int = 1) -> list[dict[str, Any]]:
         with file_lock(handle):
             handle.seek(0)
             raw = handle.read().strip()
-            entries = _load_index(index_path) if raw else []
+            entries = _parse_snapshot_raw(raw)
             if not entries:
                 return []
             batch = entries[-count:]
