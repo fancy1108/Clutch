@@ -12,6 +12,7 @@ commands.allow = [
   "clutch_pick_directory",
   "clutch_host_os",
   "clutch_apply_sidecar_patch",
+  "clutch_open_path",
   "clutch_sidecar_patch_status",
   "clutch_sidecar_patch_pending",
   "clutch_download_sidecar_patch",

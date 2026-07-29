@@ -46,6 +46,10 @@ runs/verification/*
 !runs/verification/README.md
 !runs/verification/pm-acceptance/
 !runs/verification/pm-acceptance/**
+# PM 验证的 *.log 临时输出（验收证据用 .md，长 log 不入库）。
+runs/verification/pm-acceptance/wave-c-desktop-retry*.log
+runs/verification/pm-acceptance/*-retry*.log
+runs/verification/pm-acceptance/wave-c-real-preflight.log
 
 # E2E 报告（e2e/ 创建后，见 DECISIONS D1）
 e2e/playwright-report/

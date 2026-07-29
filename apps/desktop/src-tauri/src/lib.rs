@@ -78,6 +78,46 @@ fn clutch_apply_sidecar_patch(app: AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+/// Open a local file/URL with the OS default app (HTML → system browser).
+#[tauri::command]
+fn clutch_open_path(path: String) -> Result<(), String> {
+    let trimmed = path.trim();
+    if trimmed.is_empty() {
+        return Err("empty path".into());
+    }
+    let target = std::path::Path::new(trimmed);
+    if !target.is_absolute() {
+        return Err("path must be absolute".into());
+    }
+    if !target.exists() {
+        return Err(format!("path does not exist: {trimmed}"));
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        Command::new("open")
+            .arg(trimmed)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "windows")]
+    {
+        // Empty window title is required: `start "" path`
+        Command::new("cmd")
+            .args(["/C", "start", "", trimmed])
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(all(unix, not(target_os = "macos")))]
+    {
+        Command::new("xdg-open")
+            .arg(trimmed)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 #[cfg(debug_assertions)]
 const SIDECAR_PORT: u16 = 8124;
 #[cfg(not(debug_assertions))]
@@ -184,6 +224,7 @@ pub fn run() {
             clutch_sidecar_token,
             clutch_cpu_arch,
             clutch_apply_sidecar_patch,
+            clutch_open_path,
             sidecar_patch::clutch_sidecar_patch_status,
             sidecar_patch::clutch_sidecar_patch_pending,
             sidecar_patch::clutch_download_sidecar_patch,

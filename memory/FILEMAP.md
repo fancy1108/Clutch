@@ -136,6 +136,7 @@
 | 工作区 Git 分支 API | `services/workspaceApi.ts` → `GET /api/workspace/git` |
 | Chat 流与人工干预 UI | `components/ChatFeed.tsx` |
 | Chat 工具步骤条解析（D46） | `services/agentActivitySteps.ts` |
+| 用系统浏览器打开本地 HTML | `services/openInSystem.ts` · Tauri `clutch_open_path`（`src-tauri/src/lib.rs`） |
 | Chat 工具轨迹 UI（D46 verb_group） | `components/AgentLiveActivity.tsx` |
 | Chat ↔ Terminal 同步（D51） | `services/chatTerminalSync.ts` · `AgentLiveActivity` / `SubtaskCardView` 「在 Terminal 查看」 |
 | Chat 斜杠命令（D18） | `services/slashCommands.ts` · `ChatInputBar` `/` 面板 · `POST /api/runs/{id}/compact` |
@@ -246,6 +247,8 @@
 | MCP ReAct 执行 | `src/mcp_react.py` |
 | 联网搜索（D15） | `web_search_util.py` · Settings **Allow network** · `builtin_tools` |
 | Tool-skip nudge（D44 harness） | `tool_use_policy.py` · `mcp_react` `tool_choice=required` retry |
+| 交付物意图（需求拆解→kind） | `deliverable_intent.py` · FE `agentActivitySteps` `classifyDeliverableIntent` |
+| Chat 产物目录 / 出图出视频（D54） | `artifact_layout.py` · `media_deliverable.py` · `generate_image`/`generate_video` · `.clutch/artifacts/` · `.clutch/generated/{images,videos}/` |
 | 富读 PDF/图（D33） | `rich_read_util.py` · `read_file` in `builtin_tools` |
 | Codex 兼容 apply_patch（增删改移） | `src/apply_patch.py` |
 | 内置虚拟工具服务器 clutch-tools | `src/builtin_tools.py`（read/list/grep/search_replace/run_terminal_cmd/apply_patch） |
@@ -253,6 +256,7 @@
 | Chat Clutch Agent 能力表（D44） | `specs/core/clutch-agent-capability-plan.md` |
 | 凭证来源（CC Switch / 环境变量） | `src/credentials/sources.py` |
 | 工作区 Git 分支探测 | `src/workspace.py` → `get_git_info()` |
+| Shell 写文件 → Changes | `workspace.snapshot_workspace_mtimes` / `diff_workspace_snapshots` · `mcp_react._record_file_change` |
 | LLM Provider Router（M1-08，D4） | `src/llm/router.py` |
 | LLM HTTP 补全 | `src/llm/http_complete.py` |
 | OpenCode Zen 模型目录 / 保存校验 | `src/adapters/opencode_zen_adapter.py` |

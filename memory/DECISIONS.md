@@ -354,6 +354,23 @@
 | Q-D34-3 | 超 N 时行为 | A) 拒绝新 Lane B) 排队 C) Tab 折叠旧 Lane | **B+C** 组合（排队 + 折叠展示） |
 | Q-D34-4 | 多 Lane 同时完成回传 | A) 各一路独立草稿 B) 自动合并一条 C) 仅提醒不预填 | **A**（独立草稿队列；用户可自行合并编辑） |
 | Q-D34-5 | handoff sources 默认 | A) 仅聚焦 Lane B) 最近派发到该 target 的 sources C) 空 | **A**；显式 `from @A @B` 覆盖；发送前 chips 可改（见 D34 §2） |
+| Q-UI-1 | Chat 流式回复滚不上来 | A) 调整 `<section>` flex/overflow 布局让 `scrollHeight` 可靠 B) 用 `bottomRef` rect 算偏移绕过 `scrollHeight`（已试无效）C) 重构 ChatFeed 容器层级 | **待诊断 CSS 布局后定** |
+
+> **Q-UI-1 现象详情（2026-07-29 诊断）**：纯 LLM 对话（`isPlainLlmChat=true`）工具审批通过后，最终 assistant 回复已在 DOM 渲染，但被卡在可视区下方，看不到；下一次发任意消息才被顶上来。流式期间（`isRunning && !awaitingHuman`）也出现。
+>
+> **滚动相关代码**：`apps/desktop/src/components/ChatFeed.tsx`
+> - 滚动入口 `scrollChatToBottom`（`:1048`）：`bottomRef.current?.scrollIntoView({ behavior, block: 'end' })`
+> - 触发 effect 依赖（`:1062`）：`[messages, clutchStatus, showThinking, pendingMessages.length, scrollChatToBottom]`
+> - 下哨兵 `bottomRef`（`:1805`）：`<div ref={bottomRef} style={{ scrollMarginBottom: chatScrollBottomPad }} className="h-2 shrink-0" />`
+> - 滚动容器（`:1234`）`<section>`：`className="flex-1 min-h-0 flex flex-col box-border transition-all duration-300 bg-background ... overflow-y-auto overscroll-contain"`
+> - 父链均为 `h-screen overflow-hidden flex flex-col`（`App.tsx:1913 / :2113`）
+>
+> **实测数据**（往 `scrollChatToBottom` 注入诊断日志测得，已撤回）：
+> - 从 `<section>` 到 `<html>` 全部 `scrollHeight == clientHeight == 768`，全部不可滚动；祖先链：`SECTION.flex-1.min-h-0 ov=auto sh=768 ch=768 st=0` → `DIV.flex-1.min-w-0 ov=hidden sh=768 ch=768 st=0` → `DIV.flex-1.flex ov=hidden sh=768 ch=768 st=0` → `DIV.relative.h-screen ov=hidden sh=768 ch=768 st=0` → `BODY ov=hidden sh=768 ch=768 st=0` → `HTML ov=visible sh=768 ch=768 st=0`。
+> - `bottomRef` 真实 rect y 一路下到 `918`（`bottom: 918`），但 `<section>` `scrollHeight` 偶尔报 `1272` 之后又跌回 `768`：`scrollTo({top: scrollHeight})` 当 scrollHeight=768 时不动；偶发 scrollHeight=1272 时才滚一次。
+> - 显式 `bottomRef.rect` 算偏移的改进已实测无效（layout 被压缩，rect 也未反映真实溢出）。
+>
+> **建议后续**：先 DevTools Computed 面板点 `<section>` 截 `height`/`max-height`/`min-height`/`overflow-y`/`display`/`flex`/`flex-basis`，确认为何 section 子项被压成等高（`scrollHeight == clientHeight`）；再决定是改 CSS 布局还是重构容器层级。
 
 ### D26 · 用户自定义头像替换与存储（2026-06-27）
 
@@ -588,6 +605,17 @@
   7. **联网停搜纪律（2026-07-25 补）**：对齐主流 Agent（ChatGPT/Perplexity/Cursor）「搜一次 → 抓 1–2 页 → 答」——`web_search`/`web_fetch` 软上限 3、硬上限 5；软上限注入 stop-search nudge；硬上限拒绝继续联网工具；禁止 `web_fetch` 搜索引擎 SERP；总步数 24 仍为写代码熔断，不充当联网预算。
 - **影响**：`builtin_tools` / `agent_mcp` / `chat_runner` / `mcp_react` / `agent_prompt` / `tool_use_policy` / AgentManager MCP UI / ChatFeed 活动条；`ROADMAP` §Chat Clutch Agent。
 - **决策状态**：`可执行`
+
+### D54 · Chat 交付物目录与真实出图（2026-07-27）
+
+- **背景**：Chat Agent 常把「信息图 / 图片」写成根目录 `.html`，并污染用户仓库根；业界常见做法是把 Agent 产出放进专用目录（Claude `.claude/`、agentic `_agentic_output/`），Clutch 已有 `.clutch/generated/videos`、attachments、handoffs。
+- **方案**：
+  1. **真实出图/出视频**：Chat 内置 `generate_image` / `generate_video`；回合结束 harness **自动调用**设置里已配置的 image/video 模型（如 Agnes），无需切换 footer 当前聊天模型；落盘 `.clutch/generated/images|videos/`；未配置 Key 时对话明确写「最后一步失败」。
+  2. **禁 HTML 冒充**：intent=image/video/answer/code 时拒绝写 `.html`。
+  3. **产物隔离**：Chat 研究/展示类新文件自动改写到 `.clutch/artifacts/`。
+  4. **意图**：`infographic` / 信息图 / 可视化 → image。
+- **影响**：`deliverable_intent` · `artifact_layout` · `media_deliverable` · `builtin_tools` · PRODUCT_INTRO。
+- **决策状态**：`已落地`
 
 ### D45 · D7 项目规则 + Skills 对齐 Grok Build（2026-07-24）
 
