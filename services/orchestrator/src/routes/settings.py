@@ -39,6 +39,7 @@ class McpRegisterRequest(BaseModel):
     name: str
     transport: str = Field(default="stdio")
     endpoint: str
+    env: dict[str, str] | None = None
 
 
 class McpServerIdRequest(BaseModel):
@@ -60,6 +61,30 @@ class LanguagePreferenceRequest(BaseModel):
 
 class PermissionModeRequest(BaseModel):
     mode: str
+
+
+class StrictSandboxRequest(BaseModel):
+    enabled: bool
+
+
+class AllowNetworkRequest(BaseModel):
+    enabled: bool
+
+
+class CrossSessionMemoryRequest(BaseModel):
+    enabled: bool
+
+
+class CapabilityPackImportRequest(BaseModel):
+    path: str
+
+
+class CapabilityPackIdRequest(BaseModel):
+    pack_id: str
+
+
+class PermissionRulesRequest(BaseModel):
+    rules: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class FontSizePreferenceRequest(BaseModel):
@@ -107,6 +132,44 @@ def _build_agent_prompt_skeleton_fallback(name: str, description: str) -> str:
 async def list_agents_endpoint() -> dict[str, list[dict[str, Any]]]:
     from src.agent_storage import list_agents
     return {"agents": list_agents()}
+
+
+@router.get("/api/agents/{agent_id}/prompt-assembly")
+async def agent_prompt_assembly_endpoint(agent_id: str) -> dict[str, Any]:
+    """D53: layer names + char counts for the current workspace / permission mode (no full dump)."""
+    from src.agent_mcp import resolve_agent_mcp_servers
+    from src.agent_prompt import compose_agent_prompt_assembly
+    from src.agent_storage import BUILTIN_AGENT_ID, get_agent_by_id
+    from src.agent_type import is_clutch_agent, resolve_model_for_agent
+    from src.models_config import get_router
+    from src.preferences_storage import load_permission_mode
+
+    resolved = (agent_id or "").strip() or BUILTIN_AGENT_ID
+    agent = get_agent_by_id(resolved)
+    if agent is None:
+        raise HTTPException(status_code=404, detail={"message": f"Agent not found: {resolved}"})
+
+    router = get_router()
+    model, _model_id = resolve_model_for_agent(router, agent)
+    model_name = model.name if is_clutch_agent(agent) else str(agent.get("name", "Agent"))
+    model_api = (
+        (getattr(model, "api_model", None) or model.name)
+        if is_clutch_agent(agent)
+        else str(agent.get("agentType") or "cli")
+    )
+    assembly = compose_agent_prompt_assembly(
+        agent,
+        model_name=model_name,
+        model_api=model_api,
+        mcp_servers_bound=bool(resolve_agent_mcp_servers(agent)),
+        permission_mode=load_permission_mode(),
+        include_skill_bodies=False,
+    )
+    return {
+        "agent_id": str(agent.get("id", resolved)),
+        "permission_mode": load_permission_mode(),
+        **assembly.summary(),
+    }
 
 
 @router.post("/api/agents")
@@ -344,7 +407,12 @@ async def register_mcp_server(body: McpRegisterRequest) -> dict[str, Any]:
     from src.mcp_storage import build_mcp_status_payload, register_server
 
     try:
-        register_server(name=body.name, transport=body.transport, endpoint=body.endpoint)
+        register_server(
+            name=body.name,
+            transport=body.transport,
+            endpoint=body.endpoint,
+            env=body.env,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
     return await build_mcp_status_payload()
@@ -372,6 +440,91 @@ async def toggle_mcp_server(body: McpServerIdRequest) -> dict[str, Any]:
     except ValueError as exc:
         raise HTTPException(status_code=404, detail={"message": str(exc)}) from exc
     return await build_mcp_status_payload()
+
+
+@router.post("/api/mcp/servers/test")
+async def test_mcp_server(body: McpServerIdRequest) -> dict[str, Any]:
+    """D38 — probe one Hub server; return ok + toolsCount or a readable error."""
+    from src.mcp_storage import probe_server_by_id
+
+    try:
+        return await probe_server_by_id(body.id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail={"message": str(exc)}) from exc
+
+
+class McpResourceReadRequest(BaseModel):
+    id: str
+    uri: str
+
+
+class McpResourcePinRequest(BaseModel):
+    server_id: str
+    uri: str
+    name: str | None = None
+    mimeType: str | None = None
+    text: str | None = None
+
+
+@router.get("/api/mcp/servers/{server_id}/resources")
+async def list_mcp_resources(server_id: str) -> dict[str, Any]:
+    """D43 — list resources exposed by a Hub server."""
+    from src.mcp_resources import list_server_resources
+
+    try:
+        return await list_server_resources(server_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail={"message": str(exc)}) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+
+
+@router.post("/api/mcp/servers/resources/read")
+async def read_mcp_resource(body: McpResourceReadRequest) -> dict[str, Any]:
+    """D43 — read one resource body."""
+    from src.mcp_resources import read_server_resource
+
+    try:
+        return await read_server_resource(body.id, body.uri)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail={"message": str(exc)}) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+
+
+@router.get("/api/mcp/resource-pins")
+async def get_mcp_resource_pins() -> dict[str, Any]:
+    from src.mcp_resources import load_resource_pins
+
+    pins = load_resource_pins()
+    return {"pins": pins, "count": len(pins)}
+
+
+@router.post("/api/mcp/resource-pins")
+async def add_mcp_resource_pin(body: McpResourcePinRequest) -> dict[str, Any]:
+    from src.mcp_resources import pin_resource
+
+    try:
+        pins = await pin_resource(
+            {
+                "server_id": body.server_id,
+                "uri": body.uri,
+                "name": body.name,
+                "mimeType": body.mimeType,
+                "text": body.text,
+            }
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+    return {"pins": pins, "count": len(pins)}
+
+
+@router.post("/api/mcp/resource-pins/remove")
+async def remove_mcp_resource_pin(body: McpResourcePinRequest) -> dict[str, Any]:
+    from src.mcp_resources import unpin_resource
+
+    pins = unpin_resource(server_id=body.server_id, uri=body.uri)
+    return {"pins": pins, "count": len(pins)}
 
 
 @router.post("/api/mcp/config/save")
@@ -451,6 +604,74 @@ async def get_permission_mode() -> dict[str, str]:
     return {"permission_mode": load_permission_mode()}
 
 
+@router.get("/api/preferences/permission-rules")
+async def get_permission_rules() -> dict[str, Any]:
+    from src.permission_rules import load_permission_rules
+
+    return {"rules": load_permission_rules()}
+
+
+@router.post("/api/preferences/permission-rules")
+async def save_permission_rules_route(body: PermissionRulesRequest) -> dict[str, Any]:
+    from src.permission_rules import save_permission_rules
+
+    return {"rules": save_permission_rules(body.rules)}
+
+
+@router.get("/api/preferences/strict-sandbox")
+async def get_strict_sandbox() -> dict[str, bool]:
+    from src.preferences_storage import load_strict_sandbox
+
+    return {"strict_sandbox": load_strict_sandbox()}
+
+
+@router.post("/api/preferences/strict-sandbox")
+async def save_strict_sandbox_route(body: StrictSandboxRequest) -> dict[str, str]:
+    from src.preferences_storage import save_strict_sandbox
+
+    return save_strict_sandbox(body.enabled)
+
+
+@router.get("/api/preferences/allow-network")
+async def get_allow_network() -> dict[str, bool]:
+    from src.preferences_storage import load_allow_network
+
+    return {"allow_network": load_allow_network()}
+
+
+@router.post("/api/preferences/allow-network")
+async def save_allow_network_route(body: AllowNetworkRequest) -> dict[str, str]:
+    from src.preferences_storage import save_allow_network
+
+    return save_allow_network(body.enabled)
+
+
+@router.get("/api/preferences/cross-session-memory")
+async def get_cross_session_memory() -> dict[str, Any]:
+    from src.cross_session_memory import list_entries
+    from src.preferences_storage import load_cross_session_memory_enabled
+
+    return {
+        "enabled": load_cross_session_memory_enabled(),
+        "entries": list_entries(),
+    }
+
+
+@router.post("/api/preferences/cross-session-memory")
+async def save_cross_session_memory_route(body: CrossSessionMemoryRequest) -> dict[str, str]:
+    from src.preferences_storage import save_cross_session_memory_enabled
+
+    return save_cross_session_memory_enabled(body.enabled)
+
+
+@router.post("/api/preferences/cross-session-memory/clear")
+async def clear_cross_session_memory_route() -> dict[str, Any]:
+    from src.cross_session_memory import clear_all, list_entries
+
+    removed = clear_all()
+    return {"cleared": removed, "entries": list_entries()}
+
+
 @router.post("/api/preferences/permission-mode")
 async def save_permission_mode_route(body: PermissionModeRequest) -> dict[str, str]:
     from src.preferences_storage import save_permission_mode
@@ -487,5 +708,32 @@ async def save_user_name_preference(body: UserNamePreferenceRequest) -> dict[str
 
     try:
         return save_user_name(body.user_name)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+
+
+@router.get("/api/capability-packs")
+async def list_capability_packs() -> dict[str, Any]:
+    from src.capability_pack import list_installed_packs
+
+    return {"packs": list_installed_packs()}
+
+
+@router.post("/api/capability-packs/import")
+async def import_capability_pack(body: CapabilityPackImportRequest) -> dict[str, Any]:
+    from src.capability_pack import import_pack
+
+    try:
+        return await asyncio.to_thread(import_pack, body.path.strip())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+
+
+@router.post("/api/capability-packs/uninstall")
+async def uninstall_capability_pack(body: CapabilityPackIdRequest) -> dict[str, Any]:
+    from src.capability_pack import uninstall_pack
+
+    try:
+        return await asyncio.to_thread(uninstall_pack, body.pack_id.strip())
     except ValueError as exc:
         raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc

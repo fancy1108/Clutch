@@ -138,6 +138,11 @@ export const CLI_INSTALL_GUIDES: Record<string, CliInstallGuide> = {
     desc: 'Install Devin CLI (binary: devin). Fast, minimal AI agent with -p/--print mode.',
     url: 'https://devin.ai',
   },
+  'grok-cli': {
+    cmd: 'Install xAI Grok CLI per vendor docs and ensure `grok` is on PATH.',
+    desc: 'Optional bypass engine (D14). Routes `grok -p` when the binary is available.',
+    url: 'https://x.ai',
+  },
   'copilot-cli': {
     cmd: 'npm install -g @github/copilot',
     desc: 'Install GitHub Copilot CLI globally via npm.',

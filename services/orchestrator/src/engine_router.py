@@ -190,6 +190,14 @@ CLI_ROUTING_CONFIGS = {
         "extra_args": ["--yolo"],
         "prompt_flag": "-p",
     },
+    "grok-cli": {
+        "tool_id": "grok-cli",
+        "binary_name": "grok",
+        "conversation_mode": "separate",
+        "prepend_system_prompt": False,
+        "extra_args": ["--dangerously-skip-permissions"],
+        "prompt_flag": "-p",
+    },
 }
 
 try:
@@ -588,6 +596,10 @@ def _route_generic_cli_legacy(
         from src.adapters.zcode_cli_adapter import chat_zcode_cli
 
         legacy_fn = chat_zcode_cli
+    elif binary_name == "grok":
+        from src.adapters.grok_cli_adapter import chat_grok_cli
+
+        legacy_fn = chat_grok_cli
 
     def _invoke_cli(
         *,
@@ -1068,6 +1080,22 @@ def route_engine(
     source: str = "flow",
     session_model_id: str | None = None,
 ) -> EngineResult:
+    # Sandbox E2E workflow steps only (`source=flow`): never hit real CLIs.
+    # Leave plain_chat / flow_refine alone so hybrid + CLUTCH_E2E_FAKE_HYBRID
+    # can still acquire shells. Do not key on FAKE_LLM alone (pytest sets it).
+    import os
+
+    if (
+        source == "flow"
+        and os.environ.get("CLUTCH_E2E_FAKE_LLM") == "1"
+        and os.environ.get("CLUTCH_E2E_SANDBOX")
+    ):
+        return EngineResult(
+            engine=f"Mock ({agent_name})",
+            output=f"Mocked output for: {prompt[:120]}",
+            logs=["[ROUTER] E2E_FAKE_LLM"],
+        )
+
     res = _route_engine_raw(
         agent_name=agent_name,
         prompt=prompt,

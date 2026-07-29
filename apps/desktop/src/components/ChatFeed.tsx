@@ -6,17 +6,54 @@ import {
   CHAT_SCROLL_ABOVE_DOCK_GAP_PX,
   WORKSPACE_CHROME_ROW_TOP_PX,
 } from '../constants/layout';
-import { ChevronRight } from 'lucide-react';
-import { ChatMessage, ClutchRunStatus, HybridExecutionPayload, OutputEvent } from '../types';
+import { ChevronRight, Loader2 } from 'lucide-react';
+import {
+  ChatMessage,
+  ClutchRunStatus,
+  HybridExecutionPayload,
+  OutputEvent,
+  QuestionOption,
+  SubtaskCard,
+  TodoItem,
+  AgentGoal,
+  BackgroundJob,
+  ToolStep,
+} from '../types';
 import { useLanguage } from './LanguageContext';
-import { ChatInputBar, type Attachment, type PendingChatMessage } from './ChatInputBar';
-import { BTN_DANGER_SM, BTN_PRIMARY, BTN_SECONDARY, BTN_SM, BTN_SUCCESS_SM } from './ui/buttonStyles';
+import { ChatInputBar, type Attachment } from './ChatInputBar';
+import {
+  dequeueOnIdle,
+  enqueuePendingMessage,
+  removePendingMessage,
+  shouldEnqueueAgentMessage,
+  type PendingChatMessage,
+} from '../services/chatPendingQueue';
+import { BTN_PRIMARY, BTN_SECONDARY, BTN_SM } from './ui/buttonStyles';
 import { LegacyIcon } from './ui/LegacyIcon';
-import type { SessionRecord } from '../services/runApi';
+import { forkSession, rewindFileWrites, type SessionRecord } from '../services/runApi';
 import type { ScannedSkill } from '../services/skillsApi';
 import type { FileTreeNode } from '../services/workspaceApi';
 import type { PermissionMode } from '../services/permissionApi';
 import { USER_CHAT_AVATAR, clutchStore, deleteChatMessage, useClutchState } from '../services/clutchState';
+import {
+  pickPrimaryHtmlPath,
+  resolveLiveActivitySteps,
+  wantsBrowserPreview,
+} from '../services/agentActivitySteps';
+import { AgentLiveActivity, TypingDots } from './AgentLiveActivity';
+import { FilesChangedChips } from './FilesChangedChips';
+import { PlanCardView, formatPlanRevisePayload, hasPlanStepComments } from './PlanCardView';
+import { QuestionCardView } from './QuestionCardView';
+import { TodoCardView, shouldPinLiveTodos } from './TodoCardView';
+import { GoalBarView, shouldShowGoalBar } from './GoalBarView';
+import { SubtaskCardView } from './SubtaskCardView';
+import { BackgroundJobChip, BackgroundJobsBar } from './BackgroundJobsBar';
+import { ForegroundShellBar } from './ForegroundShellBar';
+import { DiagnosticsIssuesStrip } from './DiagnosticsIssuesStrip';
+import { WorktreeIsolationBar } from './WorktreeIsolationBar';
+import { detectBgJobFailureToast } from '../services/bgJobMonitor';
+import { VerificationReportCardView } from './VerificationReportCardView';
+import { DiffSummaryCardView } from './DiffSummaryCardView';
 import { resolveBrandLogoSrc } from '../services/brandLogos';
 import { clutchMarkUrl } from '../assets/brand';
 import { AgentChatAvatar } from './AgentChatAvatar';
@@ -243,11 +280,15 @@ interface ChatFeedProps {
   rightSidebarWidth: number;
   sidebarOpen?: boolean;
   rightPanelOpen?: boolean;
-  onStopRun?: () => void;
+  /** Return false if user cancelled the stop confirm. */
+  onStopRun?: () => boolean | void;
+  onContinueRun?: () => void;
   isMultiAgent?: boolean;
   onApprove?: () => void;
   onReject?: () => void;
   onRetryWithInstructions?: (instructions: string) => void;
+  /** D4: answer ask_user_question by picking a card option. */
+  onAnswerQuestion?: (option: QuestionOption) => void;
   workspaceAuthorized?: boolean;
   onPickWorkspace?: () => void;
   onOpenWorkflows?: () => void;
@@ -297,6 +338,18 @@ interface ChatFeedProps {
   onOpenWorkspaceFile?: (path: string) => void;
   /** Preview an in-memory code snippet (fenced blocks). */
   onPreviewSnippet?: (name: string, content: string) => void;
+  /** D51 — Chat tool step → right-rail Terminal log highlight. */
+  onViewToolStepInTerminal?: (step: ToolStep) => void;
+  /** D30 — switch session from overview board. */
+  onSelectSession?: (session: SessionRecord) => void;
+  /** D40 — Hub MCP binding badge for Clutch Agent. */
+  mcpServerIds?: string[];
+  showMcpBindingBadge?: boolean;
+  onOpenMcpBind?: () => void;
+  /** D18 slash commands */
+  onSlashCommand?: (id: import('../services/slashCommands').SlashCommandId) => void | Promise<void>;
+  slashNotice?: string | null;
+  onDismissSlashNotice?: () => void;
 }
 
 const WORKFLOW_AGENTS = new Set(['Builder', 'Orchestrator', 'Evaluator', 'Supervisor']);
@@ -447,10 +500,12 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   sidebarOpen = true,
   rightPanelOpen = true,
   onStopRun,
+  onContinueRun,
   isMultiAgent = true,
   onApprove,
   onReject,
   onRetryWithInstructions,
+  onAnswerQuestion,
   workspaceAuthorized = false,
   onPickWorkspace,
   onOpenWorkflows,
@@ -477,7 +532,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   workspaceFiles = [],
   sessions = [],
   skills = [],
-  permissionMode = 'ask',
+  permissionMode = 'auto_edit',
   onPermissionModeChange,
   shellSessionStatus,
   shellPoolBlockerRunIds = [],
@@ -495,8 +550,16 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   isHistorySessionView = false,
   onOpenWorkspaceFile,
   onPreviewSnippet,
+  onViewToolStepInTerminal,
+  onSelectSession,
+  mcpServerIds,
+  showMcpBindingBadge = false,
+  onOpenMcpBind,
+  onSlashCommand,
+  slashNotice = null,
+  onDismissSlashNotice,
 }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const hostOs = useHostOs();
   const chatChrome = chatChromeForHost(hostOs, sidebarOpen, rightPanelOpen);
   const markdownHandlers = useMemo(
@@ -524,11 +587,23 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   const [thinkingHeight, setThinkingHeight] = useState(0);
   const [terminalBarHeight, setTerminalBarHeight] = useState(52);
   const [hillInstructions, setHillInstructions] = useState('');
+  const [planStepComments, setPlanStepComments] = useState<string[]>([]);
   const [pendingMessages, setPendingMessages] = useState<PendingChatMessage[]>([]);
+  const [bgJobToast, setBgJobToast] = useState<string | null>(null);
+  const prevBgJobsRef = useRef<BackgroundJob[]>([]);
+  /**
+   * Auto-open newly generated .html in the system browser (live turn only).
+   * Never fire when merely opening a historical session.
+   */
+  const autoOpenedHtmlRef = useRef<Set<string>>(new Set());
+  const wasRunningForHtmlRef = useRef(false);
+  /** Armed after this visit sees status===running; idle history stays disarmed. */
+  const htmlAutoOpenArmedRef = useRef(false);
   const [messageContextMenu, setMessageContextMenu] = useState<{
     x: number;
     y: number;
     messageId: string;
+    messageIndex: number;
   } | null>(null);
 
   useEffect(() => {
@@ -543,6 +618,9 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
 
   useEffect(() => {
     setPendingMessages([]);
+    autoOpenedHtmlRef.current.clear();
+    wasRunningForHtmlRef.current = false;
+    htmlAutoOpenArmedRef.current = false;
   }, [sessionRunId]);
 
   const isIdle = clutchStatus === 'idle';
@@ -550,6 +628,45 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   const isRunning = clutchStatus === 'running';
   const awaitingHuman = clutchStatus === 'awaiting_human';
   const [hitlBusy, setHitlBusy] = useState(false);
+  const pendingPlanMessage = useMemo(() => {
+    if (!awaitingHuman) return null;
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      const card = messages[i]?.planCard;
+      if (card && card.status === 'pending') return messages[i];
+    }
+    return null;
+  }, [awaitingHuman, messages]);
+  const pendingQuestionMessage = useMemo(() => {
+    if (!awaitingHuman) return null;
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      const card = messages[i]?.questionCard;
+      if (card && card.status === 'pending') return messages[i];
+    }
+    return null;
+  }, [awaitingHuman, messages]);
+  const awaitingPlan = Boolean(pendingPlanMessage);
+  const awaitingQuestion = Boolean(pendingQuestionMessage);
+
+  useEffect(() => {
+    const steps = pendingPlanMessage?.planCard?.steps ?? [];
+    setPlanStepComments(steps.map(() => ''));
+  }, [pendingPlanMessage]);
+
+  const canSubmitPlanRevise =
+    hillInstructions.trim().length > 0 || hasPlanStepComments(planStepComments);
+
+  const submitPlanRevise = () => {
+    if (!canSubmitPlanRevise || hitlBusy) return;
+    setHitlBusy(true);
+    const payload = formatPlanRevisePayload(
+      hillInstructions,
+      pendingPlanMessage?.planCard?.steps ?? [],
+      planStepComments,
+    );
+    onRetryWithInstructions?.(payload);
+    setHillInstructions('');
+    setPlanStepComments((pendingPlanMessage?.planCard?.steps ?? []).map(() => ''));
+  };
 
   useEffect(() => {
     if (!awaitingHuman) {
@@ -651,38 +768,76 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
 
   const prevStatusRef = useRef(clutchStatus);
   useEffect(() => {
-    const becameIdle = prevStatusRef.current !== 'idle' && clutchStatus === 'idle';
+    const prevStatus = prevStatusRef.current;
     prevStatusRef.current = clutchStatus;
-    if (!isPlainLlmChat || !becameIdle || pendingMessages.length === 0) return;
-    const [next, ...rest] = pendingMessages;
+    if (!isPlainLlmChat) return;
+    const { next, rest } = dequeueOnIdle(prevStatus, clutchStatus, pendingMessages);
+    if (!next) return;
     setPendingMessages(rest);
     onSendMessage(next.text);
   }, [clutchStatus, isPlainLlmChat, pendingMessages, onSendMessage]);
 
   const enqueuePending = useCallback((text: string) => {
-    const trimmed = text.trim();
-    if (!trimmed) return;
-    const id = `pending_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-    setPendingMessages((prev) => [...prev, { id, text: trimmed }]);
+    setPendingMessages((prev) => enqueuePendingMessage(text, prev));
   }, []);
 
   const removePending = useCallback((id: string) => {
-    setPendingMessages((prev) => prev.filter((item) => item.id !== id));
+    setPendingMessages((prev) => removePendingMessage(id, prev));
   }, []);
 
-  const handleMessageContextMenu = useCallback((e: React.MouseEvent, messageId: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setMessageContextMenu({
-      x: e.clientX,
-      y: e.clientY,
-      messageId,
-    });
-  }, []);
+  const handleMessageContextMenu = useCallback(
+    (e: React.MouseEvent, messageId: string, messageIndex: number) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setMessageContextMenu({
+        x: e.clientX,
+        y: e.clientY,
+        messageId,
+        messageIndex,
+      });
+    },
+    [],
+  );
 
-  const handleStopWithQueueClear = useCallback(() => {
+  const handleForkSession = useCallback(
+    async (messageIndex: number) => {
+      if (!sessionRunId || !isPlainLlmChat) return;
+      try {
+        const result = await forkSession(sessionRunId, messageIndex);
+        const session: SessionRecord = {
+          run_id: result.run_id,
+          title: result.title,
+          workflow_id: '',
+          status: 'idle',
+          started_at: new Date().toISOString(),
+          parent_run_id: result.parent_run_id,
+          fork_message_index: result.message_index,
+        };
+        onSelectSession?.(session);
+      } catch (error) {
+        console.error('[Clutch] fork session failed:', error);
+      }
+    },
+    [sessionRunId, isPlainLlmChat, onSelectSession],
+  );
+
+  const handleRewindFiles = useCallback(async () => {
+    if (!sessionRunId || !isPlainLlmChat) return;
+    try {
+      const result = await rewindFileWrites(sessionRunId, 1);
+      if (result.state) {
+        clutchStore.replaceState(result.state);
+      }
+    } catch (error) {
+      console.error('[Clutch] rewind files failed:', error);
+    }
+  }, [sessionRunId, isPlainLlmChat]);
+
+  const handleStopWithQueueClear = useCallback((): boolean => {
+    const proceeded = onStopRun?.();
+    if (proceeded === false) return false;
     setPendingMessages([]);
-    onStopRun?.();
+    return true;
   }, [onStopRun]);
 
   // Serialize attachments into text for sending
@@ -699,7 +854,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
     }
     const trimmed = fullText.trim();
     if (!trimmed) return;
-    if (isRunning && isPlainLlmChat) {
+    if (shouldEnqueueAgentMessage(isRunning, isPlainLlmChat)) {
       enqueuePending(trimmed);
       return;
     }
@@ -751,35 +906,176 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
     resolveBrandLogoSrc({ toolId: inProgressWorkflowStep?.toolId })
     ?? resolveAgentLogo?.(thinkingAgentName);
   const showWorkflowThinking = Boolean(inProgressWorkflowStep);
+  // After plan/MCP approve resume there is no new user bubble — still show Working
+  // while status === running (otherwise the UI looks frozen with only Stop).
   const showThinking =
-    (isRunning && lastUserIndex >= 0 && lastUserIndex > lastAgentIndex && isPlainLlmChat) ||
-    showWorkflowThinking;
+    (isRunning && isPlainLlmChat) || showWorkflowThinking;
+
+  const pendingToolSteps = clutchOrchestraState.pending_tool_steps;
+  const liveTodos = (clutchOrchestraState.agent_todos ?? []) as TodoItem[];
+  const liveGoal = clutchOrchestraState.agent_goal as AgentGoal | undefined;
+  const showGoalBar = shouldShowGoalBar(liveGoal);
+  const liveSubtasks = (clutchOrchestraState.pending_subtasks ?? []) as SubtaskCard[];
+  const bgJobs = (clutchOrchestraState.bg_jobs ?? []) as BackgroundJob[];
+  const sealedBgJobIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const msg of messages) {
+      if (msg.bgJob?.id) ids.add(msg.bgJob.id);
+    }
+    return ids;
+  }, [messages]);
+  /** Finished jobs not yet on a Chat message (legacy / race) — still show in the feed. */
+  const feedFallbackBgJobs = useMemo(
+    () =>
+      bgJobs.filter(
+        (job) => job.status !== 'running' && !sealedBgJobIds.has(job.id),
+      ),
+    [bgJobs, sealedBgJobIds],
+  );
+  const foregroundShell = clutchOrchestraState.foreground_shell ?? null;
+  const worktreeIsolation = clutchOrchestraState.worktree_isolation ?? null;
+  const chatDiagnostics = clutchOrchestraState.chat_diagnostics ?? [];
+
+  useEffect(() => {
+    const prev = prevBgJobsRef.current;
+    prevBgJobsRef.current = bgJobs;
+    const failedTitle = detectBgJobFailureToast(prev, bgJobs);
+    if (!failedTitle) return;
+    setBgJobToast(
+      language === 'zh'
+        ? `后台任务失败：${failedTitle}`
+        : `Background job failed: ${failedTitle}`,
+    );
+  }, [bgJobs, language]);
+
+  useEffect(() => {
+    if (!bgJobToast) return undefined;
+    const timer = window.setTimeout(() => setBgJobToast(null), 4000);
+    return () => window.clearTimeout(timer);
+  }, [bgJobToast]);
+
+  /** Pin live todos for the whole turn (incl. 3/3) so the card stays full-width, not nested. */
+  const pinLiveTodos = shouldPinLiveTodos(liveTodos, { isRunning, awaitingHuman });
+  const showInlineLiveTodos = liveTodos.length > 0 && !pinLiveTodos;
+  const liveActivitySteps = useMemo(
+    () =>
+      resolveLiveActivitySteps(pendingToolSteps, clutchOrchestraState.terminal_logs, {
+        awaiting: awaitingHuman,
+      }),
+    [pendingToolSteps, clutchOrchestraState.terminal_logs, awaitingHuman],
+  );
+  const liveReasoning = clutchOrchestraState.live_reasoning?.trim() || '';
+  const showLiveActivity =
+    (liveActivitySteps.length > 0 || liveReasoning.length > 0) &&
+    (showThinking || awaitingHuman || (isRunning && isPlainLlmChat));
+
+  const lastUserPromptForHtml = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      if (messages[i]?.agent === 'User') return messages[i]?.text ?? '';
+    }
+    return '';
+  }, [messages]);
+  const shouldAutoOpenHtml = wantsBrowserPreview(lastUserPromptForHtml);
+
+  // Auto-open HTML only when the user asked for a page, and only for newly written paths
+  // during a live run (never when browsing history).
+  useEffect(() => {
+    if (!onOpenWorkspaceFile || !isRunning) return;
+
+    const completedHtml: string[] = [];
+    for (const step of liveActivitySteps) {
+      if (step.status !== 'completed') continue;
+      const path = step.fileDiff?.path?.trim();
+      if (path) completedHtml.push(path);
+    }
+
+    // First running frame this visit: seed existing HTML so hydrate/resume does not re-open.
+    if (!htmlAutoOpenArmedRef.current) {
+      htmlAutoOpenArmedRef.current = true;
+      for (const path of completedHtml) {
+        const primary = pickPrimaryHtmlPath([path]);
+        if (primary) autoOpenedHtmlRef.current.add(`${sessionRunId}:${primary}`);
+      }
+      return;
+    }
+
+    if (!shouldAutoOpenHtml) return;
+    const primary = pickPrimaryHtmlPath(completedHtml);
+    if (!primary) return;
+    const key = `${sessionRunId}:${primary}`;
+    if (autoOpenedHtmlRef.current.has(key)) return;
+    autoOpenedHtmlRef.current.add(key);
+    onOpenWorkspaceFile(primary);
+  }, [
+    liveActivitySteps,
+    onOpenWorkspaceFile,
+    sessionRunId,
+    isRunning,
+    shouldAutoOpenHtml,
+  ]);
+
+  // Fallback: after a live turn finishes, open .html once — only if user asked for a page.
+  useEffect(() => {
+    const justFinished = wasRunningForHtmlRef.current && !isRunning;
+    wasRunningForHtmlRef.current = isRunning;
+    if (
+      !justFinished ||
+      !htmlAutoOpenArmedRef.current ||
+      !onOpenWorkspaceFile ||
+      !shouldAutoOpenHtml
+    ) {
+      return;
+    }
+    const last = messages[messages.length - 1];
+    if (!last || last.agent === 'User' || !last.filesChanged?.length) return;
+    const primary = pickPrimaryHtmlPath(last.filesChanged);
+    if (!primary) return;
+    const key = `${sessionRunId}:${primary}`;
+    if (autoOpenedHtmlRef.current.has(key)) return;
+    autoOpenedHtmlRef.current.add(key);
+    onOpenWorkspaceFile(primary);
+  }, [isRunning, messages, onOpenWorkspaceFile, sessionRunId, shouldAutoOpenHtml]);
 
   const chatScrollBottomPad = useMemo(
-    () => dockClearance + (showThinking ? thinkingHeight + 16 : 0),
-    [dockClearance, showThinking, thinkingHeight],
+    () =>
+      dockClearance +
+      (showThinking ? thinkingHeight + 16 : 0) +
+      // Live activity sits above the fixed dock while awaiting — keep extra room.
+      (awaitingHuman && showLiveActivity && !showThinking ? 12 : 0),
+    [dockClearance, showThinking, thinkingHeight, awaitingHuman, showLiveActivity],
   );
 
   const scrollChatToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
     bottomRef.current?.scrollIntoView({ behavior, block: 'end' });
   }, []);
 
+  /** After dock chrome grows (bg jobs / HITL), wait for layout then pin messages above it. */
+  const scrollChatAboveDock = useCallback((behavior: ScrollBehavior = 'auto') => {
+    const run = () => scrollChatToBottom(behavior);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(run);
+    });
+  }, [scrollChatToBottom]);
+
   useEffect(() => {
     scrollChatToBottom();
   }, [messages, clutchStatus, showThinking, pendingMessages.length, scrollChatToBottom]);
 
+  // Only re-pin when the *dock* grows — not when the user expands a tool detail
+  // (thinkingHeight / pad changes). Expanding used to force scroll-to-bottom (= jump).
   useEffect(() => {
-    if (!showThinking) return;
-    scrollChatToBottom();
-  }, [chatScrollBottomPad, showThinking, scrollChatToBottom]);
+    scrollChatAboveDock('auto');
+  }, [dockClearance, scrollChatAboveDock]);
+
+  const bgJobsChromeKey = `${bgJobs.length}:${bgJobs.map((job) => job.status).join(',')}`;
 
   useEffect(() => {
     const dock = dockRef.current;
     if (!dock || showTerminalWorkspace) return;
     const measure = () => {
-      setDockClearance(
-        APP_INPUT_DOCK_BOTTOM_PX + dock.offsetHeight + CHAT_SCROLL_ABOVE_DOCK_GAP_PX,
-      );
+      const next =
+        APP_INPUT_DOCK_BOTTOM_PX + dock.offsetHeight + CHAT_SCROLL_ABOVE_DOCK_GAP_PX;
+      setDockClearance((prev) => (prev === next ? prev : next));
     };
     measure();
     const observer = new ResizeObserver(measure);
@@ -789,11 +1085,34 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
     pendingMessages.length,
     shellSessionStatus,
     awaitingHuman,
+    awaitingPlan,
+    awaitingQuestion,
     isRunning,
     isPlainLlmChat,
     showTerminalWorkspace,
     llmModelName,
+    showLiveActivity,
+    liveActivitySteps.length,
+    // D11 — bar height grows when jobs appear; must remeasure or last bubble sits under dock.
+    bgJobsChromeKey,
+    foregroundShell?.command,
+    chatDiagnostics.length,
+    worktreeIsolation?.enabled,
   ]);
+
+  // Job bar can mount before ResizeObserver delivers; force a post-paint remeasure + scroll.
+  useEffect(() => {
+    if (showTerminalWorkspace) return;
+    const dock = dockRef.current;
+    if (!dock) return;
+    const id = window.requestAnimationFrame(() => {
+      const next =
+        APP_INPUT_DOCK_BOTTOM_PX + dock.offsetHeight + CHAT_SCROLL_ABOVE_DOCK_GAP_PX;
+      setDockClearance((prev) => (prev === next ? prev : next));
+      scrollChatAboveDock('auto');
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [bgJobsChromeKey, showTerminalWorkspace, scrollChatAboveDock]);
 
   useEffect(() => {
     const thinkingEl = thinkingRef.current;
@@ -806,7 +1125,12 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
     const observer = new ResizeObserver(measure);
     observer.observe(thinkingEl);
     return () => observer.disconnect();
-  }, [showThinking, llmModelName, thinkingAgentName, thinkingAgentType]);
+  }, [showThinking, llmModelName, thinkingAgentName, thinkingAgentType, liveActivitySteps.length]);
+
+  useEffect(() => {
+    if (!showLiveActivity) return;
+    scrollChatToBottom();
+  }, [liveActivitySteps.length, showLiveActivity, scrollChatToBottom]);
 
   useEffect(() => {
     const terminalBar = terminalBarRef.current;
@@ -850,7 +1174,29 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
             )}
           </div>
           {statusHint && (
-            <span className="text-[10px] text-on-surface-variant/60 flex-shrink-0">{statusHint}</span>
+            <span
+              className="text-[10px] text-on-surface-variant/70 flex-shrink-0 inline-flex items-center gap-1.5"
+              data-testid="agent-live-status"
+            >
+              {(statusHint === t('Working…') ||
+                statusHint === t('Thinking...') ||
+                statusHint === t('Queued for shell...')) && (
+                <Loader2
+                  className="h-3 w-3 text-primary animate-spin motion-reduce:animate-none"
+                  strokeWidth={2}
+                  aria-hidden
+                />
+              )}
+              <span
+                className={
+                  statusHint === t('Working…') || statusHint === t('Thinking...')
+                    ? 'text-primary font-semibold'
+                    : undefined
+                }
+              >
+                {statusHint}
+              </span>
+            </span>
           )}
         </div>
       );
@@ -860,7 +1206,19 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
       <>
         <span className="text-xs font-bold text-on-surface">{agent}</span>
         {statusHint && (
-          <span className="text-[10px] text-on-surface-variant/60">{statusHint}</span>
+          <span
+            className="text-[10px] text-on-surface-variant/70 inline-flex items-center gap-1.5"
+            data-testid="agent-live-status"
+          >
+            {(statusHint === t('Working…') || statusHint === t('Thinking...')) && (
+              <Loader2
+                className="h-3 w-3 text-primary animate-spin motion-reduce:animate-none"
+                strokeWidth={2}
+                aria-hidden
+              />
+            )}
+            {statusHint}
+          </span>
         )}
       </>
     );
@@ -878,10 +1236,14 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
         paddingLeft: `${leftChromePad}px`,
         paddingRight: `${rightChromePad}px`,
         paddingTop: APP_HEADER_HEIGHT_PX,
-        paddingBottom: isTerminalLayout ? terminalInputReservePx : Math.max(chatScrollBottomPad, 120),
+        paddingBottom: isTerminalLayout
+          ? terminalInputReservePx
+          : Math.max(chatScrollBottomPad, awaitingHuman ? 200 : 120),
       }}
       className={`flex-1 min-h-0 flex flex-col box-border transition-all duration-300 bg-background ${
-        isTerminalLayout ? 'overflow-hidden pb-1 items-stretch px-4' : `overflow-y-auto items-center ${chatChrome.chatEdgePaddingClass}`
+        isTerminalLayout
+          ? 'overflow-hidden pb-1 items-stretch px-4'
+          : `overflow-y-auto overscroll-contain items-stretch ${chatChrome.chatEdgePaddingClass}`
       }`}
     >
       <div
@@ -1060,6 +1422,12 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
             msg.badgeText?.includes('FAILED') ||
             msg.badgeText?.includes('NEEDS');
           const isCompletedMsg = msg.status === 'COMPLETED';
+          const isCompactionDigest =
+            msg.agent === 'System' &&
+            (msg.id.startsWith('system_digest_') ||
+              Boolean(
+                msg.badgeText?.includes('压缩') || msg.badgeText?.includes('COMPACTION'),
+              ));
           const isWorkflowMeta = msg.agent === 'Evaluator' || msg.agent === 'Supervisor' || msg.agent === 'Builder';
           const avatarUrl = isUser
             ? (userAvatar || USER_CHAT_AVATAR)
@@ -1071,11 +1439,40 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                 || resolveAgentLogo?.(msg.agent)
               );
 
+          // Cursor-style: inline per-edit Diff cards render as standalone feed blocks (no empty bubble).
+          const isInlineDiffOnly =
+            !isUser &&
+            Boolean(msg.diffSummary?.inline) &&
+            !(displayText || '').trim() &&
+            !msg.planCard &&
+            !msg.questionCard &&
+            !msg.verificationReport &&
+            !(msg.todoList && msg.todoList.length > 0) &&
+            !(msg.toolSteps && msg.toolSteps.length > 0);
+
+          if (isInlineDiffOnly && msg.diffSummary) {
+            return (
+              <div
+                key={msg.id}
+                className="w-full flex justify-start pl-10"
+                onContextMenu={(e) => handleMessageContextMenu(e, msg.id, messageIndex)}
+              >
+                <div className="min-w-0 max-w-[min(100%,36rem)] flex-1">
+                  <DiffSummaryCardView
+                    summary={msg.diffSummary}
+                    t={t}
+                    onOpenFile={onOpenWorkspaceFile}
+                  />
+                </div>
+              </div>
+            );
+          }
+
           return (
             <div
               key={msg.id}
               className={`w-full flex ${isUser ? 'justify-end' : 'justify-start'}`}
-              onContextMenu={(e) => handleMessageContextMenu(e, msg.id)}
+              onContextMenu={(e) => handleMessageContextMenu(e, msg.id, messageIndex)}
             >
               <div
                 className={`${chatChrome.messageRowClass} ${
@@ -1110,7 +1507,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                   />
                 )}
 
-                <div className="flex-1 space-y-1.5 overflow-hidden">
+                <div className="flex-1 space-y-1.5 min-w-0">
                   <div className={`flex items-center gap-2 ${isUser ? 'justify-end' : ''}`}>
                     {isUser ? (
                       <>
@@ -1135,13 +1532,22 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                     </div>
                   ) : (
                     <div
-                      className={`${chatChrome.messageBubblePaddingClass} rounded-2xl border border-outline-variant/30 shadow-sm ${
+                      data-testid={isCompactionDigest ? 'compaction-digest' : undefined}
+                      className={`${chatChrome.messageBubblePaddingClass} rounded-2xl border shadow-sm ${
                       isUser 
-                        ? 'bg-primary/10 text-on-surface rounded-tr-none text-left' 
-                        : 'bg-surface-container-low rounded-tl-none'
+                        ? 'bg-primary/10 text-on-surface rounded-tr-none text-left border-outline-variant/30' 
+                        : isCompactionDigest
+                          ? 'bg-amber-50 border-amber-300/80 rounded-tl-none ring-1 ring-amber-200/80'
+                          : 'bg-surface-container-low rounded-tl-none border-outline-variant/30'
                     }`}>
                       {msg.badgeText ? (
-                        <div className="flex items-center gap-1.5 mb-2 text-primary font-bold text-[11px]">
+                        <div
+                          className={`flex items-center gap-1.5 mb-2 font-bold text-[11px] ${
+                            isCompactionDigest
+                              ? 'text-amber-800 tracking-wide'
+                              : 'text-primary'
+                          }`}
+                        >
                           <LegacyIcon name="info" className="text-[16px]" />
                           <span>{msg.badgeText}</span>
                         </div>
@@ -1150,6 +1556,15 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                           <LegacyIcon name="check_circle" className="text-[16px]" />
                           <span>COMPLETED</span>
                         </div>
+                      ) : null}
+
+                      {!isUser && !msg.planCard && !msg.questionCard && msg.toolSteps && msg.toolSteps.length > 0 ? (
+                        <AgentLiveActivity
+                          steps={msg.toolSteps}
+                          className="mb-2"
+                          onOpenFile={onOpenWorkspaceFile}
+                          onViewInTerminal={onViewToolStepInTerminal}
+                        />
                       ) : null}
 
                       {parsed.images.length > 0 && (
@@ -1174,7 +1589,8 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                           ))}
                         </div>
                       )}
-                      {renderMarkdown(displayText)}
+                      {/* Plan / question cards own the bubble — skip duplicate prose. */}
+                      {!msg.planCard && !msg.questionCard && renderMarkdown(displayText)}
                       {!isUser && (() => {
                         const hybridMeta = hybridExecutions?.[msg.id];
                         const executionEvents = hybridMeta?.outputEvents ?? msg.outputEvents;
@@ -1193,6 +1609,83 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                           />
                         );
                       })()}
+                      {!isUser &&
+                      msg.filesChanged &&
+                      msg.filesChanged.length > 0 &&
+                      !(msg.toolSteps || []).some((step) => Boolean(step.fileDiff)) ? (
+                        <FilesChangedChips
+                          paths={msg.filesChanged}
+                          onOpen={onOpenWorkspaceFile}
+                          label={t('Changed files')}
+                        />
+                      ) : null}
+                      {!isUser && msg.planCard ? (
+                        <PlanCardView
+                          card={msg.planCard}
+                          t={t}
+                          stepComments={
+                            awaitingPlan && msg === pendingPlanMessage
+                              ? planStepComments
+                              : undefined
+                          }
+                          onStepCommentChange={
+                            awaitingPlan && msg === pendingPlanMessage
+                              ? (index, value) => {
+                                  setPlanStepComments((prev) => {
+                                    const next = [...prev];
+                                    next[index] = value;
+                                    return next;
+                                  });
+                                }
+                              : undefined
+                          }
+                        />
+                      ) : null}
+                      {!isUser && msg.questionCard ? (
+                        <QuestionCardView
+                          card={msg.questionCard}
+                          t={t}
+                          interactive={
+                            awaitingHuman &&
+                            msg.questionCard.status === 'pending' &&
+                            pendingQuestionMessage?.id === msg.id
+                          }
+                          onSelect={(option) => {
+                            if (hitlBusy) return;
+                            setHitlBusy(true);
+                            onAnswerQuestion?.(option);
+                          }}
+                        />
+                      ) : null}
+                      {!isUser && msg.todoList && msg.todoList.length > 0 ? (
+                        <TodoCardView todos={msg.todoList} t={t} />
+                      ) : null}
+                      {!isUser && msg.subtaskCards && msg.subtaskCards.length > 0 ? (
+                        <SubtaskCardView
+                          cards={msg.subtaskCards}
+                          t={t}
+                          onViewInTerminal={onViewToolStepInTerminal}
+                        />
+                      ) : null}
+                      {!isUser && msg.bgJob ? (
+                        <BackgroundJobChip job={msg.bgJob} t={t} variant="feed" />
+                      ) : null}
+                      {!isUser && msg.verificationReport ? (
+                        <VerificationReportCardView
+                          report={msg.verificationReport}
+                          t={t}
+                          onOpenChangedFile={onOpenWorkspaceFile}
+                        />
+                      ) : null}
+                      {!isUser &&
+                      msg.diffSummary &&
+                      !(msg.toolSteps || []).some((step) => Boolean(step.fileDiff)) ? (
+                        <DiffSummaryCardView
+                          summary={msg.diffSummary}
+                          t={t}
+                          onOpenFile={onOpenWorkspaceFile}
+                        />
+                      ) : null}
                       {msg.codeHighlight && (
                         <div className="mt-3 flex items-center gap-2 py-2 px-3 bg-white/60 rounded-xl border border-outline-variant/30">
                           <LegacyIcon name="check_circle" className="text-green-500 text-[18px]" />
@@ -1215,6 +1708,18 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
           );
         })}
 
+        {workspaceViewMode === 'chat' &&
+          feedFallbackBgJobs.map((job) => (
+            <div key={`bg-feed-${job.id}`} className="w-full flex justify-start mb-4">
+              <div className={chatChrome.thinkingRowClass}>
+                <div className="w-8 shrink-0" aria-hidden />
+                <div className="flex-1 min-w-0 max-w-full">
+                  <BackgroundJobChip job={job} t={t} variant="feed" />
+                </div>
+              </div>
+            </div>
+          ))}
+
         {workspaceViewMode === 'chat' && showThinking && (
           <div ref={thinkingRef} className="w-full flex justify-start mb-4">
             <div className={chatChrome.thinkingRowClass}>
@@ -1223,27 +1728,78 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                 alt={thinkingAgentName || t('Clutch Agent')}
               />
 
-              <div className="flex-1 space-y-1.5 overflow-hidden">
+              <div className="flex-1 space-y-1.5 min-w-0">
                 <div className="flex items-center gap-2">
                   {renderAgentLabel(
                     thinkingAgentName || t('Clutch Agent'),
-                    shellSessionStatus === 'queued_pool' ? t('Queued for shell...') : t('Thinking...'),
+                    shellSessionStatus === 'queued_pool'
+                      ? t('Queued for shell...')
+                      : showLiveActivity
+                        ? t('Working…')
+                        : t('Thinking...'),
                     isPlainLlmChat ? undefined : engineHint,
                     thinkingAgentType || undefined,
                   )}
                 </div>
 
-                <div
-                  className={`${chatChrome.thinkingBubblePaddingClass} bg-surface-container-low rounded-2xl rounded-tl-none border border-outline-variant/30 shadow-sm flex items-center gap-1.5 min-h-9`}
-                >
-                  <div className="w-1.5 h-1.5 rounded-full bg-on-surface/40 animate-typing-pulse" />
-                  <div className="w-1.5 h-1.5 rounded-full bg-on-surface/40 animate-typing-pulse animation-delay-100" />
-                  <div className="w-1.5 h-1.5 rounded-full bg-on-surface/40 animate-typing-pulse animation-delay-200" />
-                </div>
+                {showLiveActivity ? (
+                  <div className="min-w-0" data-testid="chat-live-process">
+                    <AgentLiveActivity
+                      steps={liveActivitySteps}
+                      reasoningContent={liveReasoning}
+                      live
+                      onOpenFile={onOpenWorkspaceFile}
+                      onViewInTerminal={onViewToolStepInTerminal}
+                    />
+                    {showInlineLiveTodos ? (
+                      <TodoCardView todos={liveTodos} t={t} live />
+                    ) : null}
+                    {liveSubtasks.length > 0 ? (
+                      <SubtaskCardView
+                        cards={liveSubtasks}
+                        t={t}
+                        live
+                        onViewInTerminal={onViewToolStepInTerminal}
+                      />
+                    ) : null}
+                  </div>
+                ) : (
+                  <div
+                    className={`${chatChrome.thinkingBubblePaddingClass} bg-surface-container-low rounded-2xl rounded-tl-none border border-outline-variant/30 shadow-sm flex items-center gap-2 min-h-9`}
+                    data-testid="chat-thinking-dots"
+                    role="status"
+                    aria-busy="true"
+                    aria-label={t('Thinking...')}
+                  >
+                    <TypingDots />
+                    <span className="text-[11px] text-on-surface-variant">{t('Thinking...')}</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
         )}
+
+        {workspaceViewMode === 'chat' && !showThinking && showLiveActivity && awaitingHuman ? (
+          <div className="w-full flex justify-start mb-4">
+            <div className={chatChrome.thinkingRowClass}>
+              <div className="w-8 shrink-0" aria-hidden />
+              <div className="flex-1 overflow-hidden min-w-0" data-testid="chat-live-process">
+                <AgentLiveActivity
+                  steps={liveActivitySteps}
+                  reasoningContent={liveReasoning}
+                  live
+                  defaultOpen
+                  onOpenFile={onOpenWorkspaceFile}
+                  onViewInTerminal={onViewToolStepInTerminal}
+                />
+                {showInlineLiveTodos ? (
+                  <TodoCardView todos={liveTodos} t={t} live />
+                ) : null}
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         {workspaceViewMode === 'chat' ? (
           <div ref={bottomRef} style={{ scrollMarginBottom: chatScrollBottomPad }} className="h-2 shrink-0" aria-hidden />
@@ -1251,6 +1807,52 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
       </div>
 
     </section>
+
+    {/* D29 — active session goal bar */}
+    {workspaceViewMode === 'chat' && showGoalBar && liveGoal ? (
+      <div
+        data-testid="goal-sticky-rail"
+        className="pointer-events-none absolute z-25"
+        style={{
+          top: APP_HEADER_HEIGHT_PX + (pinLiveTodos ? 72 : 0),
+          left: leftChromePad,
+          right: rightChromePad,
+        }}
+      >
+        <div className={`w-full bg-background pt-2 ${chatChrome.chatEdgePaddingClass}`}>
+          <div className="pointer-events-auto w-full">
+            <GoalBarView goal={liveGoal} t={t} />
+          </div>
+        </div>
+      </div>
+    ) : null}
+
+    {/*
+      Live todos: rail = section content box (left/right chrome pads).
+      Opaque curtain is full rail width so right-aligned user bubbles cannot peek beside.
+      Card is w-full of that rail (wider than max-w-3xl message column).
+    */}
+    {workspaceViewMode === 'chat' && pinLiveTodos ? (
+      <div
+        data-testid="todo-sticky-rail"
+        className="pointer-events-none absolute z-30"
+        style={{
+          top: APP_HEADER_HEIGHT_PX,
+          left: leftChromePad,
+          right: rightChromePad,
+        }}
+      >
+        <div className={`w-full bg-background pt-3 ${chatChrome.chatEdgePaddingClass}`}>
+          <div className="pointer-events-auto w-full">
+            <TodoCardView todos={liveTodos} t={t} live pinned />
+          </div>
+        </div>
+        <div
+          className="w-full h-6 bg-gradient-to-b from-background via-background/90 to-transparent"
+          aria-hidden
+        />
+      </div>
+    ) : null}
 
     <div
         ref={showTerminalWorkspace ? terminalDockRef : dockRef}
@@ -1307,83 +1909,117 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
             </button>
           </div>
         ) : awaitingHuman ? (
-          <div className={`w-full ${chatChrome.chatMaxWidthClass} bg-white border border-rose-200/90 p-5 shadow-xl rounded-2xl flex flex-col gap-4 text-left`}>
-            <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
-              <div className="flex items-center gap-2.5">
-                <span className="w-8 h-8 rounded-full bg-error text-on-error flex items-center justify-center">
-                  <LegacyIcon name="gavel" className="text-[18px]" />
-                </span>
-                <div>
-                  <h4 className="text-[11.5px] font-bold tracking-wider text-rose-800 uppercase">
-                    Human-In-The-Loop
-                  </h4>
-                  <p className="text-[10.5px] text-on-surface-variant/80 mt-0.5">
-                    {t('Human gate hint')}
-                  </p>
-                </div>
+          <div className={`w-full ${chatChrome.chatMaxWidthClass} flex flex-col gap-1.5`}>
+            <div
+              className="flex items-center gap-2 rounded-xl border border-outline-variant/30 bg-white px-2.5 py-1.5 shadow-sm"
+              role="group"
+              aria-label={
+                awaitingQuestion
+                  ? t('Awaiting your choice')
+                  : awaitingPlan
+                    ? t('Awaiting plan approval')
+                    : t('Needs approval')
+              }
+            >
+              <span className="text-[11px] text-on-surface-variant shrink-0 truncate font-medium">
+                {awaitingQuestion
+                  ? t('Pick an option in the question card above')
+                  : awaitingPlan
+                    ? t('Awaiting plan approval')
+                    : t('Needs approval')}
+              </span>
+              <div className="ml-auto flex items-center gap-1.5 shrink-0">
+                {!awaitingQuestion ? (
+                  <button
+                    type="button"
+                    data-testid="chat-approve"
+                    disabled={hitlBusy}
+                    onClick={() => {
+                      setHitlBusy(true);
+                      onApprove?.();
+                    }}
+                    className={`${BTN_SM} bg-neutral-900 hover:bg-black text-white border border-neutral-900`}
+                  >
+                    {awaitingPlan ? t('Approve plan') : t('Allow')}
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  data-testid="chat-reject"
+                  disabled={hitlBusy}
+                  onClick={() => {
+                    setHitlBusy(true);
+                    onReject?.();
+                  }}
+                  className={`${BTN_SM} bg-neutral-100 hover:bg-neutral-200 text-neutral-800 border border-neutral-200/80`}
+                >
+                  {awaitingQuestion
+                    ? t('Cancel question')
+                    : awaitingPlan
+                      ? t('Cancel plan')
+                      : t('Reject')}
+                </button>
               </div>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                data-testid="chat-approve"
-                disabled={hitlBusy}
-                onClick={() => {
-                  setHitlBusy(true);
-                  onApprove?.();
-                }}
-                className={BTN_SUCCESS_SM}
-              >
-                Bypass & Approve
-              </button>
-              <button
-                type="button"
-                data-testid="chat-reject"
-                disabled={hitlBusy}
-                onClick={() => {
-                  setHitlBusy(true);
-                  onReject?.();
-                }}
-                className={BTN_DANGER_SM}
-              >
-                Reject & Redo
-              </button>
-            </div>
-            <div className="flex items-center gap-2 bg-neutral-50 border border-neutral-200/80 p-1.5 rounded-xl">
-              <input
-                type="text"
-                value={hillInstructions}
-                onChange={(e) => setHillInstructions(e.target.value)}
-                disabled={hitlBusy}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && hillInstructions.trim() && !hitlBusy) {
-                    setHitlBusy(true);
-                    onRetryWithInstructions?.(hillInstructions.trim());
-                    setHillInstructions('');
+            {(awaitingQuestion
+              ? pendingQuestionMessage?.questionCard?.allowCustom !== false
+              : true) ? (
+              <div className="flex items-center gap-1.5 px-0.5">
+                <input
+                  type="text"
+                  value={hillInstructions}
+                  onChange={(e) => setHillInstructions(e.target.value)}
+                  disabled={hitlBusy}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      if (awaitingPlan && canSubmitPlanRevise && !hitlBusy) {
+                        submitPlanRevise();
+                        return;
+                      }
+                      if (hillInstructions.trim() && !hitlBusy) {
+                        setHitlBusy(true);
+                        onRetryWithInstructions?.(hillInstructions.trim());
+                        setHillInstructions('');
+                      }
+                    }
+                  }}
+                  placeholder={
+                    awaitingQuestion
+                      ? t('Or type your own answer…')
+                      : awaitingPlan
+                        ? t('Suggest plan changes…')
+                        : t('Retry with note…')
                   }
-                }}
-                placeholder={t('Retry instructions placeholder')}
-                className="w-full bg-transparent border-none text-[11px] text-on-surface placeholder:text-neutral-400 focus:outline-none py-1.5 px-2"
-              />
-              <button
-                type="button"
-                disabled={hitlBusy || !hillInstructions.trim()}
-                onClick={() => {
-                  if (hillInstructions.trim() && !hitlBusy) {
-                    setHitlBusy(true);
-                    onRetryWithInstructions?.(hillInstructions.trim());
-                    setHillInstructions('');
+                  className="min-w-0 flex-1 rounded-lg border border-outline-variant/30 bg-surface-container-low px-2.5 py-1.5 text-[11px] text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:ring-1 focus:ring-neutral-900/15"
+                />
+                <button
+                  type="button"
+                  disabled={hitlBusy || (awaitingPlan ? !canSubmitPlanRevise : !hillInstructions.trim())}
+                  onClick={() => {
+                    if (awaitingPlan) {
+                      submitPlanRevise();
+                      return;
+                    }
+                    if (hillInstructions.trim() && !hitlBusy) {
+                      setHitlBusy(true);
+                      onRetryWithInstructions?.(hillInstructions.trim());
+                      setHillInstructions('');
+                    }
+                  }}
+                  className={
+                    !hitlBusy && (awaitingPlan ? canSubmitPlanRevise : hillInstructions.trim())
+                      ? `${BTN_SM} bg-neutral-900 text-white border border-neutral-900`
+                      : `${BTN_SM} bg-transparent text-on-surface-variant/40 border border-transparent cursor-not-allowed`
                   }
-                }}
-                className={`${BTN_SM} ${
-                  !hitlBusy && hillInstructions.trim()
-                    ? 'bg-neutral-900 text-white'
-                    : 'bg-neutral-100 text-neutral-400 cursor-not-allowed'
-                }`}
-              >
-                Retry
-              </button>
-            </div>
+                >
+                  {awaitingQuestion
+                    ? t('Submit')
+                    : awaitingPlan
+                      ? t('Revise')
+                      : t('Retry')}
+                </button>
+              </div>
+            ) : null}
           </div>
         ) : isTerminalDispatchHistoryReadonly ? (
           <div className="w-full flex justify-center">
@@ -1404,7 +2040,49 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
             />
           </div>
         ) : workspaceViewMode === 'chat' ? (
-          <div className="w-full flex justify-center">
+          <div className="w-full flex flex-col items-center rounded-2xl bg-background/95 backdrop-blur-sm pt-1">
+            {foregroundShell ? (
+              <ForegroundShellBar
+                shell={foregroundShell}
+                t={t}
+                onMoveToBackground={() => {
+                  void clutchStore.send({ action: 'move_fg_to_background' });
+                }}
+              />
+            ) : null}
+            {chatDiagnostics.length ? (
+              <DiagnosticsIssuesStrip issues={chatDiagnostics} t={t} />
+            ) : null}
+            {isPlainLlmChat ? (
+              <WorktreeIsolationBar
+                worktree={worktreeIsolation}
+                t={t}
+                onMerge={() => {
+                  void clutchStore.send({ action: 'merge_worktree' });
+                }}
+                onDiscard={() => {
+                  void clutchStore.send({ action: 'discard_worktree' });
+                }}
+              />
+            ) : null}
+            <BackgroundJobsBar
+              jobs={bgJobs}
+              t={t}
+              onKillJob={(jobId) => {
+                clutchStore.optimisticKillBgJob(jobId);
+                void clutchStore.send({ action: 'kill_bg_job', job_id: jobId });
+              }}
+            />
+            {bgJobToast ? (
+              <div
+                data-testid="bg-job-failure-toast"
+                className="w-full max-w-3xl mx-auto px-3 pb-2"
+              >
+                <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[12px] font-medium text-rose-800">
+                  {bgJobToast}
+                </div>
+              </div>
+            ) : null}
             <ChatInputBar
               inputValue={inputValue}
               setInputValue={setInputValue}
@@ -1412,6 +2090,8 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
               isRunning={isRunning}
               isPlainLlmChat={isPlainLlmChat}
               onStopRun={handleStopWithQueueClear}
+              onContinueRun={onContinueRun}
+              awaitingContinue={Boolean(clutchOrchestraState.awaiting_continue)}
               pendingMessages={pendingMessages}
               onRemovePendingMessage={removePending}
               selectedWorkflowId={selectedWorkflowId}
@@ -1429,6 +2109,8 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
               shellPoolQueuePosition={shellPoolQueuePosition}
               shellPoolQueueDepth={shellPoolQueueDepth}
               currentRunId={sessionRunId}
+              clutchStatus={clutchStatus}
+              onSelectSession={onSelectSession}
               resolveAgentLogo={resolveAgentLogo}
               onDismissHybridNotice={() => clutchStore.clearShellSessionNotice()}
               isFlowRefining={isRefining}
@@ -1436,6 +2118,21 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
               mentionableAgents={mentionableAgents}
               selectedMentionAgentId={selectedMentionAgentId}
               onMentionAgentChange={onMentionAgentChange}
+              mcpServerIds={mcpServerIds}
+              showMcpBindingBadge={showMcpBindingBadge}
+              onOpenMcpBind={onOpenMcpBind}
+              onSlashCommand={onSlashCommand}
+              slashNotice={slashNotice}
+              onDismissSlashNotice={onDismissSlashNotice}
+              onRewindFiles={isPlainLlmChat ? handleRewindFiles : undefined}
+              onEnableWorktree={
+                isPlainLlmChat
+                  ? () => {
+                      void clutchStore.send({ action: 'enable_worktree' });
+                    }
+                  : undefined
+              }
+              worktreeActive={Boolean(worktreeIsolation?.enabled)}
             />
           </div>
         ) : null}
@@ -1446,6 +2143,18 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
           style={{ top: messageContextMenu.y, left: messageContextMenu.x }}
           onClick={(e) => e.stopPropagation()}
         >
+          <button
+            type="button"
+            className="w-full text-left px-3 py-2 text-xs text-on-surface hover:bg-surface-container-low transition-colors flex items-center gap-2"
+            data-testid="fork-session-menu"
+            onClick={() => {
+              void handleForkSession(messageContextMenu.messageIndex);
+              setMessageContextMenu(null);
+            }}
+          >
+            <LegacyIcon name="fork_right" className="text-[16px]" />
+            {t('Fork session here')}
+          </button>
           <button
             type="button"
             className="w-full text-left px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-colors flex items-center gap-2"

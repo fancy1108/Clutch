@@ -4,7 +4,7 @@
  *  - File/folder drag-and-drop from right panel (chip with icon)
  *  - + menu: local attach / project file / skill command / session
  *  - Permission mode selector (4 modes, backend-persisted)
- *  - / command → skill picker popover
+ *  - / command → slash commands (D18) + skill picker popover
  *  - # → session picker popover
  */
 import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
@@ -13,12 +13,26 @@ import { useLanguage } from './LanguageContext';
 import type { SessionRecord } from '../services/runApi';
 import type { ScannedSkill } from '../services/skillsApi';
 import type { FileTreeNode } from '../services/workspaceApi';
-import { PERMISSION_MODES, type PermissionMode } from '../services/permissionApi';
+import {
+  normalizePermissionMode,
+  PERMISSION_MODES,
+  type PermissionMode,
+} from '../services/permissionApi';
+import { clutchStore } from '../services/clutchState';
 import { LegacyIcon } from './ui/LegacyIcon';
 import { BTN_ICON_SM } from './ui/buttonStyles';
 import { shouldSubmitChatOnEnter } from './chatInputKeyboard';
 import { AgentChatAvatar } from './AgentChatAvatar';
+import { McpBindingBadge } from './McpBindingBadge';
 import { parseInputAgentMention } from '../services/terminalOrchestraUtils';
+import {
+  filterSlashCommands,
+  matchExactSlashCommand,
+  type SlashCommand,
+  type SlashCommandId,
+} from '../services/slashCommands';
+import { SessionOverviewBoard } from './SessionOverviewBoard';
+import { ScheduledTasksBar } from './ScheduledTasksBar';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -33,10 +47,9 @@ export interface Attachment {
   mimeType?: string;
 }
 
-export interface PendingChatMessage {
-  id: string;
-  text: string;
-}
+export type { PendingChatMessage } from '../services/chatPendingQueue';
+import type { PendingChatMessage } from '../services/chatPendingQueue';
+import { queuePositionLabel } from '../services/chatPendingQueue';
 
 export interface ShellPoolBlocker {
   run_id: string;
@@ -50,7 +63,11 @@ interface ChatInputBarProps {
   onSendMessage: (text: string, attachments: Attachment[]) => void;
   isRunning: boolean;
   isPlainLlmChat: boolean;
-  onStopRun?: () => void;
+  /** Return false if stop was cancelled (e.g. confirm dialog). */
+  onStopRun?: () => boolean | void;
+  /** D9: resume after Stop / fuse. */
+  onContinueRun?: () => void;
+  awaitingContinue?: boolean;
   pendingMessages?: PendingChatMessage[];
   onRemovePendingMessage?: (id: string) => void;
   selectedWorkflowId?: string | null;
@@ -68,6 +85,10 @@ interface ChatInputBarProps {
   shellPoolQueuePosition?: number;
   shellPoolQueueDepth?: number;
   currentRunId?: string;
+  /** D30 — live status for session board badges. */
+  clutchStatus?: string;
+  /** D30 — click a board row to switch sessions. */
+  onSelectSession?: (session: SessionRecord) => void;
   resolveAgentLogo?: (agentName: string) => string | undefined;
   onDismissHybridNotice?: () => void;
   isFlowRefining?: boolean;
@@ -75,6 +96,22 @@ interface ChatInputBarProps {
   mentionableAgents?: Array<{ id: string; name: string; logo?: string }>;
   selectedMentionAgentId?: string | null;
   onMentionAgentChange?: (agentId: string | null) => void;
+  /** D40 — Hub MCP bindings for Clutch Agent Chat badge. */
+  mcpServerIds?: string[];
+  showMcpBindingBadge?: boolean;
+  onOpenMcpBind?: () => void;
+  /** D18 — run a chat slash command (/plan /compact /todos /help). */
+  onSlashCommand?: (id: SlashCommandId) => void | Promise<void>;
+  /** D18 — brief feedback after a slash command. */
+  slashNotice?: string | null;
+  /** Dismiss slash / amber notice (X). */
+  onDismissSlashNotice?: () => void;
+  /** D23 — rewind last agent file write from shadow snapshot. */
+  onRewindFiles?: () => void | Promise<void>;
+  /** D32 — enable isolated worktree (idle CTA lives in composer toolbar). */
+  onEnableWorktree?: () => void;
+  /** D32 — hide enable control while worktree already active. */
+  worktreeActive?: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -96,6 +133,23 @@ function resolveSessionTitle(runId: string, sessions: SessionRecord[]): string {
   const title = hit?.title?.trim();
   if (title) return title;
   return runId.length > 12 ? `${runId.slice(0, 8)}…` : runId;
+}
+
+/** Short pill label for permission mode (Cursor-style: Agent / Plan / Ask). */
+function permissionPillLabel(mode: PermissionMode): string {
+  switch (mode) {
+    case 'auto_edit':
+      return 'Agent';
+    case 'plan':
+      return 'Plan';
+    case 'full':
+      return 'Full';
+    case 'explore':
+    case 'ask':
+      return 'Ask';
+    default:
+      return 'Agent';
+  }
 }
 
 function hybridRejectionNotice(status: string | undefined, lang: 'en' | 'zh'): string | null {
@@ -176,6 +230,8 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
   isRunning,
   isPlainLlmChat,
   onStopRun,
+  onContinueRun,
+  awaitingContinue = false,
   pendingMessages = [],
   onRemovePendingMessage,
   selectedWorkflowId,
@@ -193,6 +249,8 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
   shellPoolQueuePosition = 0,
   shellPoolQueueDepth = 0,
   currentRunId = '',
+  clutchStatus = 'idle',
+  onSelectSession,
   resolveAgentLogo,
   onDismissHybridNotice,
   isFlowRefining = false,
@@ -200,6 +258,15 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
   mentionableAgents = [],
   selectedMentionAgentId = null,
   onMentionAgentChange,
+  mcpServerIds,
+  showMcpBindingBadge = false,
+  onOpenMcpBind,
+  onSlashCommand,
+  slashNotice = null,
+  onDismissSlashNotice,
+  onRewindFiles,
+  onEnableWorktree,
+  worktreeActive = false,
 }) => {
   const { t, language } = useLanguage();
   const [dismissedNoticeKey, setDismissedNoticeKey] = useState<string | null>(null);
@@ -220,6 +287,8 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
   const [sessionPickerOpen, setSessionPickerOpen] = useState(false);
   const [agentPickerOpen, setAgentPickerOpen] = useState(false);
   const [fileBrowserOpen, setFileBrowserOpen] = useState(false);
+  const [sessionBoardOpen, setSessionBoardOpen] = useState(false);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
 
   const [skillFilter, setSkillFilter] = useState('');
   const [sessionFilter, setSessionFilter] = useState('');
@@ -236,6 +305,8 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
         setSessionPickerOpen(false);
         setAgentPickerOpen(false);
         setFileBrowserOpen(false);
+        setSessionBoardOpen(false);
+        setScheduleOpen(false);
       }
     };
     window.addEventListener('mousedown', handler);
@@ -247,7 +318,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
     const ta = textareaRef.current;
     if (!ta) return;
     ta.style.height = 'auto';
-    ta.style.height = `${Math.min(ta.scrollHeight, 140)}px`;
+    ta.style.height = `${Math.min(ta.scrollHeight, 120)}px`;
   }, [inputValue]);
 
   // ── Attachment helpers ──────────────────────────────────────────────────────
@@ -359,12 +430,27 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
 
   // ── Send ────────────────────────────────────────────────────────────────────
 
+  const runSlashCommand = useCallback(
+    (cmd: SlashCommand) => {
+      setSkillPickerOpen(false);
+      setInputValue('');
+      void onSlashCommand?.(cmd.id);
+      textareaRef.current?.focus();
+    },
+    [onSlashCommand, setInputValue],
+  );
+
   const handleSend = useCallback(() => {
     if (!inputValue.trim() && attachments.length === 0) return;
+    const slash = matchExactSlashCommand(inputValue);
+    if (slash && onSlashCommand) {
+      runSlashCommand(slash);
+      return;
+    }
     onSendMessage(inputValue, attachments);
     setAttachments([]);
     setInputValue('');
-  }, [inputValue, attachments, onSendMessage, setInputValue]);
+  }, [inputValue, attachments, onSendMessage, setInputValue, onSlashCommand, runSlashCommand]);
 
   const handleInputChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -470,6 +556,11 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
 
   // ── Derived ─────────────────────────────────────────────────────────────────
 
+  const filteredSlashCommands = useMemo(
+    () => filterSlashCommands(skillFilter),
+    [skillFilter],
+  );
+
   const filteredSkills = skills.filter(
     (s) =>
       !skillFilter ||
@@ -506,8 +597,17 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
   );
 
   const canSend = inputValue.trim().length > 0 || attachments.length > 0;
-  const showPlainChatStop = isRunning && isPlainLlmChat;
-  const currentPermission = PERMISSION_MODES.find((m) => m.id === permissionMode) ?? PERMISSION_MODES[0];
+  const [stopPending, setStopPending] = useState(false);
+  useEffect(() => {
+    if (!isRunning || awaitingContinue) setStopPending(false);
+  }, [isRunning, awaitingContinue]);
+  const showPlainChatStop = isRunning && isPlainLlmChat && !stopPending && !awaitingContinue;
+  const showPlainChatStopping = isRunning && isPlainLlmChat && stopPending;
+  const showPlainChatContinue =
+    !isRunning && isPlainLlmChat && Boolean(awaitingContinue) && Boolean(onContinueRun);
+  const resolvedPermissionMode = normalizePermissionMode(permissionMode);
+  const currentPermission =
+    PERMISSION_MODES.find((m) => m.id === resolvedPermissionMode) ?? PERMISSION_MODES[0];
   const hybridNotice = hybridRejectionNotice(shellSessionStatus, language === 'zh' ? 'zh' : 'en');
   const showHybridNotice =
     hybridNotice && dismissedNoticeKey !== (shellSessionStatus ?? '');
@@ -539,12 +639,18 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
       const isComposing = compositionActiveRef.current || e.nativeEvent.isComposing;
       if (
         skillPickerOpen &&
-        filteredSkills.length > 0 &&
         shouldSubmitChatOnEnter(e.nativeEvent, isComposing)
       ) {
-        e.preventDefault();
-        insertSkill(filteredSkills[0]);
-        return;
+        if (filteredSlashCommands.length > 0) {
+          e.preventDefault();
+          runSlashCommand(filteredSlashCommands[0]);
+          return;
+        }
+        if (filteredSkills.length > 0) {
+          e.preventDefault();
+          insertSkill(filteredSkills[0]);
+          return;
+        }
       }
       if (
         sessionPickerOpen &&
@@ -581,9 +687,11 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
       canSend,
       filteredSessions,
       filteredSkills,
+      filteredSlashCommands,
       handleSend,
       insertSession,
       insertSkill,
+      runSlashCommand,
       sessionPickerOpen,
       agentPickerOpen,
       filteredMentionableAgents,
@@ -601,13 +709,16 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
+  const menuItemClass =
+    'w-full flex items-center gap-3 px-3 py-2 text-[12px] text-on-surface hover:bg-surface-container-low transition-colors text-left';
+
   return (
     <div
       ref={containerRef}
-      className={`relative w-full bg-white border shadow-xl rounded-xl transition-all ${
+      className={`relative w-full bg-white border rounded-2xl transition-colors ${
         isDragging
           ? 'border-primary/60 ring-2 ring-primary/20'
-          : 'border-outline-variant focus-within:ring-2 focus-within:ring-primary/10'
+          : 'border-outline-variant/50 focus-within:border-outline-variant focus-within:ring-1 focus-within:ring-primary/15'
       }`}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -696,6 +807,24 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
           </div>
         </div>
       ) : null}
+      {isPlainLlmChat ? (
+        <>
+          <SessionOverviewBoard
+            open={sessionBoardOpen}
+            onClose={() => setSessionBoardOpen(false)}
+            sessions={sessions}
+            currentRunId={currentRunId}
+            clutchStatus={clutchStatus}
+            language={language === 'zh' ? 'zh' : 'en'}
+            onSelectSession={onSelectSession}
+          />
+          <ScheduledTasksBar
+            t={t}
+            open={scheduleOpen}
+            onOpenChange={setScheduleOpen}
+          />
+        </>
+      ) : null}
       {pendingMessages.length > 0 ? (
         <div className="px-3 pt-3 pb-2 border-b border-outline-variant/40">
           <div className="flex items-center gap-1.5 mb-2">
@@ -705,11 +834,18 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
             <LegacyIcon name="info" className="text-[13px] text-on-surface-variant/50" />
           </div>
           <div className="space-y-1.5 max-h-24 overflow-y-auto">
-            {pendingMessages.map((item) => (
+            {pendingMessages.map((item, index) => (
               <div
                 key={item.id}
+                data-testid={`pending-message-${index + 1}`}
                 className="flex items-center gap-2 rounded-lg border border-outline-variant/50 bg-surface-container-low/60 px-2.5 py-1.5"
               >
+                <span
+                  className="shrink-0 rounded-md bg-surface-container-high/80 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-on-surface-variant"
+                  data-testid={`pending-queue-position-${index + 1}`}
+                >
+                  {queuePositionLabel(index, language)}
+                </span>
                 <span className="flex-1 text-[12px] text-on-surface truncate" title={item.text}>
                   {item.text}
                 </span>
@@ -774,83 +910,8 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
         </div>
       )}
 
-      {/* Text area row */}
-      <div className="flex items-center gap-1.5 px-2 py-1.5">
-        {/* + Attach button */}
-        <div className="relative flex-shrink-0">
-          <button
-            type="button"
-            onClick={() => {
-              setAttachMenuOpen((v) => !v);
-              setPermissionMenuOpen(false);
-            }}
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-on-surface-variant/60 hover:text-on-surface hover:bg-surface-container transition-colors"
-            title={t('Attach')}
-          >
-            <LegacyIcon name="add" className="text-[19px]" />
-          </button>
-
-          {attachMenuOpen && (
-            <div className="absolute bottom-full left-0 mb-2 w-52 bg-white border border-outline-variant rounded-xl shadow-xl py-1.5 z-50 animate-in fade-in slide-in-from-bottom-1 duration-150">
-              {/* Add attachment (local) */}
-              <button
-                type="button"
-                className="w-full flex items-center gap-3 px-3 py-2 text-[12px] text-on-surface hover:bg-surface-container-low transition-colors text-left"
-                onClick={() => {
-                  setAttachMenuOpen(false);
-                  fileInputRef.current?.click();
-                }}
-              >
-                <LegacyIcon name="attach_file" className="text-[17px] text-on-surface-variant" />
-                Add attachment
-              </button>
-
-              {/* @mention project file */}
-              <button
-                type="button"
-                className="w-full flex items-center gap-3 px-3 py-2 text-[12px] text-on-surface hover:bg-surface-container-low transition-colors text-left"
-                onClick={() => {
-                  setAttachMenuOpen(false);
-                  setFileBrowserOpen(true);
-                  setFileFilter('');
-                }}
-              >
-                <LegacyIcon name="alternate_email" className="text-[17px] text-on-surface-variant" />
-                Insert @ mention
-              </button>
-
-              {/* #session */}
-              <button
-                type="button"
-                className="w-full flex items-center gap-3 px-3 py-2 text-[12px] text-on-surface hover:bg-surface-container-low transition-colors text-left"
-                onClick={() => {
-                  setAttachMenuOpen(false);
-                  setSessionPickerOpen(true);
-                  setSessionFilter('');
-                }}
-              >
-                <LegacyIcon name="chat_bubble" className="text-[17px] text-on-surface-variant" />
-                Insert # session
-              </button>
-
-              {/* /command */}
-              <button
-                type="button"
-                className="w-full flex items-center gap-3 px-3 py-2 text-[12px] text-on-surface hover:bg-surface-container-low transition-colors text-left"
-                onClick={() => {
-                  setAttachMenuOpen(false);
-                  setSkillPickerOpen(true);
-                  setSkillFilter('');
-                }}
-              >
-                <LegacyIcon name="terminal" className="text-[17px] text-on-surface-variant" />
-                Insert / command
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Textarea */}
+      {/* Minimal composer: textarea + (+ | mode | send) — extras live in + menu */}
+      <div className="px-3 pt-2">
         <textarea
           ref={textareaRef}
           data-testid="chat-input"
@@ -864,7 +925,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
           }}
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
-          className="w-full border-none focus:ring-0 text-[13px] text-on-surface bg-transparent pt-[6px] pb-[2px] resize-none min-h-8 max-h-[140px] placeholder:text-on-surface-variant/60 outline-none leading-5"
+          className="w-full border-none focus:ring-0 text-[13px] text-on-surface bg-transparent resize-none min-h-[28px] max-h-[120px] placeholder:text-on-surface-variant/50 outline-none leading-5"
           placeholder={
             isFlowRefining
               ? t('@Agent your feedback (Hybrid) — auto-continues downstream; Stop to pause')
@@ -872,91 +933,290 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
               ? t('Describe what you want this workflow to do...')
               : isMultiAgent
               ? t('Ask @Agent or describe your workflow...')
-              : t('Ask your AI Agent anything...')
+              : t('Ask anything, / for commands, @ for context...')
           }
           rows={1}
         />
+      </div>
 
-        {/* Right controls */}
+      <div className="flex items-center justify-between gap-2 px-2 pb-2 pt-0.5">
+        <div className="relative flex-shrink-0">
+          <button
+            type="button"
+            onClick={() => {
+              setAttachMenuOpen((v) => !v);
+              setPermissionMenuOpen(false);
+              setScheduleOpen(false);
+            }}
+            className="h-7 w-7 flex items-center justify-center rounded-full text-on-surface-variant/60 hover:text-on-surface hover:bg-surface-container transition-colors"
+            title={t('Attach')}
+            aria-label={t('Attach')}
+          >
+            <LegacyIcon name="add" className="text-[18px]" />
+          </button>
+
+          {attachMenuOpen && (
+            <div className="absolute bottom-full left-0 mb-2 w-56 bg-white border border-outline-variant/60 rounded-xl shadow-lg py-1 z-50 animate-in fade-in slide-in-from-bottom-1 duration-150">
+              <p className="px-3 pt-1.5 pb-0.5 text-[10px] font-semibold uppercase tracking-wide text-on-surface-variant/55">
+                {language === 'zh' ? '附加到输入' : 'Add to input'}
+              </p>
+              <button
+                type="button"
+                className={menuItemClass}
+                onClick={() => {
+                  setAttachMenuOpen(false);
+                  fileInputRef.current?.click();
+                }}
+              >
+                <LegacyIcon name="attach_file" className="text-[17px] text-on-surface-variant" />
+                {t('Add attachment')}
+              </button>
+              <button
+                type="button"
+                className={menuItemClass}
+                onClick={() => {
+                  setAttachMenuOpen(false);
+                  setFileBrowserOpen(true);
+                  setFileFilter('');
+                }}
+              >
+                <LegacyIcon name="folder" className="text-[17px] text-on-surface-variant" />
+                {t('Attach project file')}
+              </button>
+              <button
+                type="button"
+                className={menuItemClass}
+                onClick={() => {
+                  setAttachMenuOpen(false);
+                  setSessionPickerOpen(true);
+                  setSessionFilter('');
+                }}
+              >
+                <LegacyIcon name="chat_bubble" className="text-[17px] text-on-surface-variant" />
+                {t('Reference a session')}
+              </button>
+              <button
+                type="button"
+                className={menuItemClass}
+                onClick={() => {
+                  setAttachMenuOpen(false);
+                  setSkillPickerOpen(true);
+                  setSkillFilter('');
+                }}
+              >
+                <LegacyIcon name="terminal" className="text-[17px] text-on-surface-variant" />
+                {t('Commands & skills')}
+              </button>
+
+              {isPlainLlmChat ? (
+                <>
+                  <div className="border-t border-outline-variant/40 my-1 mx-2" />
+                  <p className="px-3 pt-1 pb-0.5 text-[10px] font-semibold uppercase tracking-wide text-on-surface-variant/55">
+                    {language === 'zh' ? '会话工具' : 'Session tools'}
+                  </p>
+                  {sessions.length > 0 ? (
+                    <button
+                      type="button"
+                      data-testid="session-overview-toggle"
+                      className={menuItemClass}
+                      onClick={() => {
+                        setAttachMenuOpen(false);
+                        setScheduleOpen(false);
+                        setSessionBoardOpen(true);
+                      }}
+                    >
+                      <LegacyIcon name="view_list" className="text-[17px] text-on-surface-variant" />
+                      {language === 'zh' ? '会话总览' : 'Session overview'}
+                    </button>
+                  ) : null}
+                  {onRewindFiles ? (
+                    <button
+                      type="button"
+                      data-testid="rewind-files-btn"
+                      className={menuItemClass}
+                      onClick={() => {
+                        setAttachMenuOpen(false);
+                        void onRewindFiles();
+                      }}
+                    >
+                      <LegacyIcon name="restart_alt" className="text-[17px] text-on-surface-variant" />
+                      {language === 'zh' ? '回滚文件改动' : 'Rewind file changes'}
+                    </button>
+                  ) : null}
+                  {showMcpBindingBadge ? (
+                    <McpBindingBadge
+                      mcpServerIds={mcpServerIds}
+                      visible
+                      onOpenBind={() => {
+                        setAttachMenuOpen(false);
+                        onOpenMcpBind?.();
+                      }}
+                      variant="menu"
+                    />
+                  ) : null}
+                  <button
+                    type="button"
+                    className={menuItemClass}
+                    onClick={() => {
+                      setAttachMenuOpen(false);
+                      setSessionBoardOpen(false);
+                      setScheduleOpen(true);
+                    }}
+                  >
+                    <LegacyIcon name="schedule" className="text-[17px] text-on-surface-variant" />
+                    {t('Scheduled tasks')}
+                  </button>
+                  {onEnableWorktree && !worktreeActive ? (
+                    <button
+                      type="button"
+                      data-testid="enable-worktree"
+                      className={menuItemClass}
+                      onClick={() => {
+                        setAttachMenuOpen(false);
+                        onEnableWorktree();
+                      }}
+                    >
+                      <LegacyIcon name="git-branch" className="text-[17px] text-on-surface-variant" />
+                      {t('Enable worktree')}
+                    </button>
+                  ) : null}
+                </>
+              ) : null}
+            </div>
+          )}
+        </div>
+
         <div className="flex items-center gap-1 flex-shrink-0">
-          {/* Permission mode button */}
           <div className="relative">
             <button
               type="button"
               title={`Permission: ${currentPermission.label}`}
+              aria-label={`Permission: ${currentPermission.label}`}
+              aria-expanded={permissionMenuOpen}
               onClick={() => {
                 setPermissionMenuOpen((v) => !v);
                 setAttachMenuOpen(false);
               }}
-              className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${
-                permissionMode === 'full'
-                  ? 'text-amber-500 hover:bg-amber-50'
-                  : permissionMode === 'plan'
-                  ? 'text-blue-500 hover:bg-blue-50'
-                  : permissionMode === 'auto_edit'
-                  ? 'text-emerald-500 hover:bg-emerald-50'
-                  : 'text-on-surface-variant/60 hover:text-on-surface hover:bg-surface-container'
+              className={`inline-flex h-7 items-center gap-1 rounded-full pl-2 pr-1.5 text-[12px] font-medium leading-none transition-colors ${
+                permissionMenuOpen
+                  ? 'bg-surface-container-high text-on-surface'
+                  : 'bg-surface-container text-on-surface/90 hover:bg-surface-container-high hover:text-on-surface'
               }`}
             >
-              <LegacyIcon name={currentPermission.icon} className="text-[18px]" />
+              <LegacyIcon name={currentPermission.icon} className="text-[15px] opacity-90" />
+              <span>{permissionPillLabel(resolvedPermissionMode)}</span>
+              <LegacyIcon
+                name="expand_more"
+                className={`text-[14px] opacity-45 transition-transform duration-150 ${
+                  permissionMenuOpen ? 'rotate-180' : ''
+                }`}
+              />
             </button>
 
             {permissionMenuOpen && (
-              <div className="absolute bottom-full right-0 mb-2 w-60 bg-white border border-outline-variant rounded-xl shadow-xl py-1.5 z-50 animate-in fade-in slide-in-from-bottom-1 duration-150">
-                {PERMISSION_MODES.map((mode) => (
-                  <button
-                    key={mode.id}
-                    type="button"
-                    onClick={() => {
-                      onPermissionModeChange(mode.id);
-                      setPermissionMenuOpen(false);
-                    }}
-                    className="w-full flex items-start gap-3 px-3 py-2.5 hover:bg-surface-container-low transition-colors text-left group"
-                  >
-                    <LegacyIcon
-                      name={mode.icon}
-                      className={`text-[18px] mt-0.5 flex-shrink-0 ${
-                        mode.id === permissionMode
-                          ? mode.id === 'full'
-                            ? 'text-amber-500'
-                            : mode.id === 'plan'
-                            ? 'text-blue-500'
-                            : mode.id === 'auto_edit'
-                            ? 'text-emerald-500'
-                            : 'text-on-surface-variant'
-                          : 'text-on-surface-variant/50'
+              <div className="absolute bottom-full right-0 mb-2 w-56 overflow-hidden rounded-xl border border-outline-variant/50 bg-white py-1 shadow-[0_8px_28px_rgba(15,23,42,0.12)] z-50 animate-in fade-in slide-in-from-bottom-1 duration-150">
+                {PERMISSION_MODES.map((mode) => {
+                  const selected = mode.id === resolvedPermissionMode;
+                  return (
+                    <button
+                      key={mode.id}
+                      type="button"
+                      onClick={() => {
+                        onPermissionModeChange(mode.id);
+                        setPermissionMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors ${
+                        selected
+                          ? 'bg-surface-container/90'
+                          : 'hover:bg-surface-container-low'
                       }`}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[12px] font-semibold text-on-surface">{mode.label}</span>
-                        {mode.id === permissionMode && (
-                          <LegacyIcon name="check" className="text-[14px] text-primary" />
-                        )}
+                    >
+                      <LegacyIcon
+                        name={mode.icon}
+                        className={`text-[16px] flex-shrink-0 ${
+                          selected ? 'text-on-surface' : 'text-on-surface-variant/55'
+                        }`}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <span
+                            className={`text-[12.5px] ${
+                              selected ? 'font-semibold text-on-surface' : 'font-medium text-on-surface'
+                            }`}
+                          >
+                            {mode.label}
+                          </span>
+                          {selected ? (
+                            <LegacyIcon name="check" className="text-[14px] text-on-surface" />
+                          ) : null}
+                        </div>
+                        <span className="block text-[10px] text-on-surface-variant/60 leading-snug mt-0.5">
+                          {mode.description}
+                        </span>
                       </div>
-                      <span className="text-[10.5px] text-on-surface-variant/70">{mode.description}</span>
-                    </div>
-                  </button>
-                ))}
-                <div className="border-t border-outline-variant/60 my-1 mx-3" />
-                <div className="px-3 py-1.5 text-[9.5px] leading-normal text-on-surface-variant/60">
-                  {t('Note: These settings only apply to the built-in Clutch Agent and MCP tools, and do not affect CLI Agents (such as Claude Code).')}
-                </div>
+                    </button>
+                  );
+                })}
+                <div className="border-t border-outline-variant/40 my-1 mx-2" />
+                <button
+                  type="button"
+                  data-testid="clear-approvals"
+                  className="w-full px-3 py-2 text-left text-[11px] font-medium text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low transition-colors"
+                  onClick={() => {
+                    setPermissionMenuOpen(false);
+                    void clutchStore.send({ action: 'clear_approvals' });
+                  }}
+                >
+                  {t('Clear remembered approvals')}
+                </button>
+                <p className="px-3 pb-2 pt-0.5 text-[9.5px] leading-snug text-on-surface-variant/50">
+                  {language === 'zh'
+                    ? '仅影响内置 Clutch Agent / MCP，不影响 CLI Agent。'
+                    : 'Applies to Clutch Agent & MCP only — not CLI agents.'}
+                </p>
               </div>
             )}
           </div>
 
-          {/* Stop (plain chat while running) + Send — Cursor-style: both available */}
           {showPlainChatStop ? (
             <button
               type="button"
               data-testid="chat-stop"
-              onClick={onStopRun}
-              className="w-8 h-8 flex items-center justify-center rounded-full bg-neutral-900 text-white hover:bg-black transition-all"
+              onClick={() => {
+                setStopPending(true);
+                const proceeded = onStopRun?.();
+                if (proceeded === false) setStopPending(false);
+              }}
+              className="w-7 h-7 flex items-center justify-center rounded-lg bg-neutral-800 text-white hover:bg-black transition-colors"
               title={t('Stop')}
               aria-label={t('Stop')}
             >
-              <LegacyIcon name="stop" className="text-[17px]" />
+              <LegacyIcon name="stop" className="text-[15px]" />
+            </button>
+          ) : null}
+          {showPlainChatStopping ? (
+            <button
+              type="button"
+              data-testid="chat-stopping"
+              disabled
+              className="h-7 px-2 flex items-center justify-center gap-1 rounded-lg bg-neutral-500 text-white cursor-wait text-[11px] font-semibold"
+              title={language === 'zh' ? '正在停止…' : 'Stopping…'}
+              aria-label={language === 'zh' ? '正在停止…' : 'Stopping…'}
+            >
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              {language === 'zh' ? '停止中' : 'Stopping'}
+            </button>
+          ) : null}
+          {showPlainChatContinue ? (
+            <button
+              type="button"
+              data-testid="chat-continue"
+              onClick={onContinueRun}
+              className="h-7 px-2 flex items-center justify-center rounded-lg bg-neutral-800 text-white hover:bg-black transition-colors text-[11px] font-semibold"
+              title={t('Continue')}
+              aria-label={t('Continue')}
+            >
+              {t('Continue')}
             </button>
           ) : null}
           <button
@@ -964,13 +1224,13 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
             data-testid="chat-send"
             onClick={handleSend}
             disabled={!canSend}
-            className={`w-8 h-8 flex items-center justify-center rounded-full transition-all ${
+            className={`w-7 h-7 flex items-center justify-center rounded-lg transition-colors ${
               canSend
-                ? 'bg-primary text-white hover:opacity-90'
-                : 'bg-surface-container text-on-surface-variant/40 cursor-not-allowed'
+                ? 'bg-neutral-800 text-white hover:bg-black'
+                : 'bg-surface-container text-on-surface-variant/30 cursor-not-allowed'
             }`}
           >
-            <LegacyIcon name="arrow_upward" className="text-[17px]" />
+            <LegacyIcon name="arrow_upward" className="text-[15px]" />
           </button>
         </div>
       </div>
@@ -1033,9 +1293,11 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
         </div>
       )}
 
-      {/* ── Skill picker popover ── */}
+      {/* ── Slash commands + skill picker (D18) ── */}
       {skillPickerOpen && (
-        <div className="absolute bottom-full left-0 mb-2 w-72 bg-white border border-outline-variant rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-bottom-1 duration-150"
+        <div
+          className="absolute bottom-full left-0 mb-2 w-72 bg-white border border-outline-variant rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-bottom-1 duration-150"
+          data-testid="slash-command-picker"
           style={{ bottom: '100%', left: 0 }}
         >
           <div className="p-2 border-b border-outline-variant/30">
@@ -1045,7 +1307,23 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
             </div>
           </div>
           <div className="max-h-52 overflow-y-auto">
-            {filteredSkills.length === 0 ? (
+            {filteredSlashCommands.length > 0 && (
+              <div className="py-1 border-b border-outline-variant/20">
+                {filteredSlashCommands.map((cmd) => (
+                  <button
+                    key={cmd.id}
+                    type="button"
+                    data-testid={`slash-cmd-${cmd.id}`}
+                    onClick={() => runSlashCommand(cmd)}
+                    className="w-full flex flex-col px-3 py-2 text-left hover:bg-surface-container-low transition-colors"
+                  >
+                    <span className="text-[12px] font-semibold text-on-surface">{cmd.label}</span>
+                    <span className="text-[10.5px] text-on-surface-variant/60 truncate">{cmd.description}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            {filteredSkills.length === 0 && filteredSlashCommands.length === 0 ? (
               <p className="px-4 py-3 text-[11px] text-on-surface-variant/60 italic">
                 {skills.length === 0 ? t('No skills loaded') : t('No matches')}
               </p>
@@ -1067,6 +1345,24 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
           </div>
         </div>
       )}
+
+      {slashNotice ? (
+        <div
+          data-testid="slash-command-notice"
+          role="status"
+          className="absolute bottom-full left-0 right-0 mb-2 mx-auto w-fit max-w-[min(100%,32rem)] z-[60] flex items-start gap-2 rounded-xl border border-neutral-700 bg-neutral-900 px-3.5 py-2.5 text-[12px] font-semibold text-white shadow-lg shadow-black/25"
+        >
+          <span className="flex-1 leading-snug text-white/95">{slashNotice}</span>
+          <button
+            type="button"
+            className={`${BTN_ICON_SM} flex-shrink-0 text-white/70 hover:text-white hover:bg-white/10`}
+            aria-label={language === 'zh' ? '关闭提示' : 'Dismiss notice'}
+            onClick={() => onDismissSlashNotice?.()}
+          >
+            <LegacyIcon name="close" className="text-[14px]" />
+          </button>
+        </div>
+      ) : null}
 
       {/* ── Session picker popover ── */}
       {sessionPickerOpen && (

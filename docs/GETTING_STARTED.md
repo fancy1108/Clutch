@@ -66,7 +66,7 @@ On first open, Clutch shows a **full-screen setup wizard**. Follow the steps in 
 | **Models** | Add a cloud API key (DeepSeek, Anthropic, OpenCode Zen, …) **or** skip if you will use local CLI only |
 | **Tools** | Scan and **Connect** CLIs already on your machine (Claude Code, CodeBuddy, Ollama, Codex, …) |
 | **Flow guide** | Short tour of Chat vs Workflow |
-| **Permissions** | Read how CLI permissions work (important) |
+| **Permissions** | Pick Clutch Agent mode (default **Agent**; also Plan / Full / Ask) |
 | **Ready** | Launch into the main app |
 
 > **Skipped the wizard?** Open **Settings** (gear, bottom-left) and complete: Workspace → Models → Tools.  
@@ -98,12 +98,20 @@ Product tour: [`PRODUCT_INTRO.md`](./PRODUCT_INTRO.md) · Architecture: [`ARCHIT
 | **Claude Code locally** | Settings → Tools → Rescan → Connect `claude` |
 | **Cursor Agent CLI** | `curl https://cursor.com/install -fsS \| bash` → Settings → Tools → Rescan → Connect `cursor-agent` |
 | **CodeBuddy CLI** | `npm install -g @tencent-ai/codebuddy-code` → Settings → Tools → Connect `codebuddy` → run `codebuddy` once to log in |
+| **Grok CLI (D14)** | Install `grok` on PATH per xAI docs → Settings → Tools → Rescan → Connect **Grok CLI** (`grok-cli`) |
 | **Ollama locally** | Install [Ollama](https://ollama.com), pull a model (`ollama pull qwen3:8b`), Settings → Tools → Connect Ollama; pick the model in Agent settings or Models |
 | **Cloud API only** | Settings → Models → **Clutch Agent** tab → add provider key → activate a model |
 | **CLI agent models** | Settings → Models → **Claude Code**, **OpenCode**, or **MiMo Code** tab (read-only scan; configure in the CLI or CC Switch) |
+| **Allow network (D15)** | Settings → General → **Allow network** → Clutch Agent gains builtin `web_search` (off by default) |
+| **Strict sandbox (D21)** | Settings → General → **Strict sandbox** → reject paths/commands that escape the authorized workspace |
+| **Cross-session memory (D16)** | Settings → General → **Memory** on/off + **Clear memory**; Agent may call `remember_preference` |
+| **Tool hooks (D17)** | Add `.clutch/hooks.json` (project) or user prefs `hooks.json` with PreToolUse/PostToolUse deny rules |
+| **Capability packs (D35)** | Settings → Skills → Import pack (dir/zip); Uninstall removes mounted skills/hooks/MCP snippets |
+| **Slash commands (D18)** | In Chat composer type `/` → `/plan` `/compact` `/todos` `/help` (+ Skills) |
 | **Terminal Orchestra** | Single Agent chat → pick any connected CLI agent → toggle **Terminal mode** (embedded xterm PTY). Bottom **OrchestratorBar** matches Chat input dock; dispatch history shows **CLI session resume** commands (`claude --resume`, `codex resume`, `opencode -s`, `mimo -c`, `zcode --resume`, …) |
 | **MiMo Code CLI** | `curl -fsSL https://mimo.xiaomi.com/install \| bash` (or `npm install -g @mimo-ai/cli`) → Settings → Tools → Connect **MiMo Code CLI** |
 | **ZCode CLI** | Install [ZCode desktop app](https://zcode.z.ai) → symlink `~/.local/bin/zcode` → `/Applications/ZCode.app/Contents/Resources/glm/zcode.cjs` → Settings → Tools → Connect **ZCode CLI** |
+| **Headless / CI Agent (D36)** | Sidecar running + workspace authorized → `curl -X POST http://127.0.0.1:8124/api/agent/run -H 'Content-Type: application/json' -d '{"prompt":"…","workspace_path":"/abs/path"}'` **or** `cd services/orchestrator && uv run python -m src.headless_cli -p "…" --workspace /abs/path --json` |
 | **OpenCode Zen (free)** | [opencode.ai/auth](https://opencode.ai/auth) → Zen → API Keys → Settings → Models → **OpenCode Zen** → pick a free model → Save |
 | **CC Switch users** | Keys can be imported from `~/.cc-switch` on startup |
 
@@ -205,7 +213,7 @@ xattr -cr /Applications/Clutch.app && open -a Clutch
 | **模型** | 填写云端 API Key（含 OpenCode Zen 等），或若只用本机 CLI 可暂时跳过 |
 | **工具** | 扫描并 **Connect** 本机已装的 CLI（Claude Code、CodeBuddy、Ollama、Codex 等） |
 | **流程引导** | 了解「单聊」和「工作流」的区别 |
-| **权限说明** | 阅读 CLI 权限相关说明（建议认真看） |
+| **权限模式** | 选择 Clutch Agent 权限（默认 **Agent**；另有 Plan / Full / Ask） |
 | **就绪** | 进入主界面 |
 
 > **跳过了向导？** 点左下角 **Settings**，依次配置：工作区 → Models → Tools。  
@@ -237,12 +245,20 @@ xattr -cr /Applications/Clutch.app && open -a Clutch
 | **本机 Claude Code** | Settings → Tools → Rescan → Connect `claude` |
 | **Cursor Agent CLI** | `curl https://cursor.com/install -fsS \| bash` → Settings → Tools → Rescan → Connect `cursor-agent` |
 | **CodeBuddy CLI** | `npm install -g @tencent-ai/codebuddy-code` → Settings → Tools → Connect `codebuddy` → 终端运行 `codebuddy` 完成登录 |
+| **Grok CLI（D14）** | 按 xAI 文档安装 `grok` 并加入 PATH → Settings → Tools → Rescan → Connect **Grok CLI** |
 | **本机 Ollama** | 安装 [Ollama](https://ollama.com)，执行 `ollama pull qwen3:8b`，Settings → Tools 连接 Ollama；在 Agent 或 Models 里选模型 |
 | **只用云端 API** | Settings → Models → **Clutch Agent** 标签页 → 填 Key → 激活模型 |
 | **CLI Agent 模型** | Settings → Models → **Claude Code**、**OpenCode** 或 **MiMo Code** 标签页（只读扫描；在 CLI 或 CC Switch 中配置） |
+| **允许联网（D15）** | Settings → General → **Allow network** → Clutch Agent 可用内置 `web_search`（默认关） |
+| **严格沙箱（D21）** | Settings → General → **Strict sandbox** → 拒绝逃出已授权工作区的路径/命令 |
+| **跨会话记忆（D16）** | Settings → General → **Memory** 开关 + **Clear memory**；Agent 可调用 `remember_preference` |
+| **工具 Hooks（D17）** | 项目 `.clutch/hooks.json` 或用户偏好目录 `hooks.json` 配置 PreToolUse/PostToolUse 拒绝规则 |
+| **能力包（D35）** | Settings → Skills → Import 导入目录/zip；Uninstall 卸载挂载的 skills/hooks/MCP |
+| **斜杠命令（D18）** | Chat 输入 `/` → `/plan` `/compact` `/todos` `/help`（及 Skills） |
 | **Terminal Orchestra** | Single Agent 聊天 → 选择任意已 Connect 的 CLI Agent → 切换 **终端模式**（嵌入式 xterm PTY）。底部 **OrchestratorBar** 与 Chat 输入栏同款贴底；派发记录含 **CLI Session 恢复命令**（`claude --resume`、`codex resume`、`opencode -s`、`mimo -c`、`zcode --resume` 等） |
 | **MiMo Code CLI** | `curl -fsSL https://mimo.xiaomi.com/install \| bash`（或 `npm install -g @mimo-ai/cli`）→ Settings → Tools → Connect **MiMo Code CLI** |
 | **ZCode CLI** | 安装 [ZCode 桌面应用](https://zcode.z.ai) → 将 `~/.local/bin/zcode` 软链到 `/Applications/ZCode.app/Contents/Resources/glm/zcode.cjs` → Settings → Tools → Connect **ZCode CLI** |
+| **无 UI / CI Agent（D36）** | Sidecar 已启动且工作区已授权 → `curl -X POST http://127.0.0.1:8124/api/agent/run …` **或** `cd services/orchestrator && uv run python -m src.headless_cli -p "…" --workspace /绝对路径 --json` |
 | **OpenCode Zen（免费）** | [opencode.ai/auth](https://opencode.ai/auth) → Zen → API Keys → Settings → Models → **OpenCode Zen** → 选免费模型 → 保存 |
 | **CC Switch 用户** | 启动时可从 `~/.cc-switch` 导入 |
 

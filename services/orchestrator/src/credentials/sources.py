@@ -204,5 +204,32 @@ def resolve_model_credential_hint(router: LLMProviderRouter, spec: ModelSpec) ->
     return " ".join(hints) if hints else None
 
 
+# Providers whose API keys Clutch can store/edit (Keychain or models.json).
+CLUTCH_MANAGED_PROVIDERS: frozenset[str] = frozenset(
+    {"deepseek", "openai", "anthropic", "google", "ollama", "agnes", "opencode", "custom"}
+)
+
+
+def is_clutch_managed_provider(provider_id: ProviderId | str) -> bool:
+    """True when Settings can add/edit this provider's key (independent of whether one is saved)."""
+    return str(provider_id) in CLUTCH_MANAGED_PROVIDERS
+
+
+def has_clutch_saved_credential(provider_id: ProviderId | str) -> bool:
+    """True when a key is actually stored in Keychain or models.json for this provider."""
+    pid = str(provider_id)
+    if _saved_api_keys().get(pid):
+        return True
+    if _clutch_uses_keychain():
+        try:
+            from src.credentials.keychain_store import load_all_provider_keys
+
+            return bool(load_all_provider_keys().get(pid))
+        except Exception:
+            return False
+    return False
+
+
 def is_clutch_managed_credential(provider_id: ProviderId) -> bool:
-    return bool(_saved_api_keys().get(provider_id))
+    """Backward-compatible alias: provider is editable in Clutch Settings."""
+    return is_clutch_managed_provider(provider_id)

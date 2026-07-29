@@ -8,6 +8,9 @@ DESKTOP="$REPO_ROOT/apps/desktop"
 VITE_URL="http://127.0.0.1:3000/"
 VITE_LOG="${REPO_ROOT}/.clutch-vite-dev.log"
 VITE_PID_FILE="${REPO_ROOT}/.clutch-vite.pid"
+# E2E injects capabilities/e2e.json; if a prior e2e was killed, remove the leftover
+# so normal builds don't fail with "Permission playwright:default not found".
+rm -f "$DESKTOP/src-tauri/capabilities/e2e.json"
 
 start_vite_daemon() {
   : >"$VITE_LOG"

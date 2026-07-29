@@ -11,6 +11,8 @@ export interface SessionRecord {
   mode?: SessionMode;
   status: string;
   started_at: string;
+  /** Last chat/activity bump — sidebar sorts by this (falls back to ended_at / started_at). */
+  updated_at?: string;
   ended_at?: string;
   /** Design mode: SVG/data-URL preview of generated UI (or reference image). */
   thumbnail_url?: string | null;
@@ -18,10 +20,22 @@ export interface SessionRecord {
   ui_preview_url?: string | null;
   /** Design mode: `web` | `app` from session manifest. */
   device?: string | null;
+  /** D22 — last known tool-step count for this session. */
+  tool_steps?: number;
+  /** D22 — last known session token estimate. */
+  session_tokens?: number;
+  /** D23 — parent session when forked from a message. */
+  parent_run_id?: string;
+  fork_message_index?: number;
 }
 
 /** @deprecated use SessionRecord */
 export type RunHistoryRecord = SessionRecord;
+
+/** ISO timestamp used for recent-first sidebar ordering. */
+export function sessionActivityAt(session: SessionRecord): string {
+  return session.updated_at || session.ended_at || session.started_at || '';
+}
 
 /**
  * Desktop sidebar lists every project and buckets rows by `workspace_id`.
@@ -118,4 +132,100 @@ export async function deleteSession(runId: string): Promise<void> {
   if (!response.ok) {
     throw new Error(`Failed to delete session (${response.status})`);
   }
+}
+
+export interface CompactResult {
+  run_id: string;
+  compacted: boolean;
+  message_count: number;
+  session_tokens?: number;
+  detail?: string;
+}
+
+/** D18 — force context compaction for the active run. */
+export async function compactRun(runId: string): Promise<CompactResult> {
+  const response = await sidecarFetch(
+    sidecarHttpUrl(`/api/runs/${encodeURIComponent(runId)}/compact`),
+    { method: 'POST' },
+  );
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as {
+      detail?: { message?: string } | string;
+    };
+    const msg =
+      typeof body.detail === 'string'
+        ? body.detail
+        : body.detail?.message ?? `compact failed (${response.status})`;
+    throw new Error(msg);
+  }
+  return (await response.json()) as CompactResult;
+}
+
+/** D23 — fork session transcript up to message_index into a new run_id. */
+export async function forkSession(runId: string, messageIndex: number): Promise<{
+  run_id: string;
+  parent_run_id: string;
+  message_index: number;
+  title?: string;
+}> {
+  const response = await sidecarFetch(
+    sidecarHttpUrl(`/api/runs/${encodeURIComponent(runId)}/fork`),
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message_index: messageIndex }),
+    },
+  );
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as {
+      detail?: { message?: string } | string;
+    };
+    const msg =
+      typeof body.detail === 'string'
+        ? body.detail
+        : body.detail?.message ?? `fork failed (${response.status})`;
+    throw new Error(msg);
+  }
+  return (await response.json()) as {
+    run_id: string;
+    parent_run_id: string;
+    message_index: number;
+    title?: string;
+  };
+}
+
+/** D23 — rewind last agent file write(s) from shadow snapshots. */
+export async function rewindFileWrites(
+  runId: string,
+  count = 1,
+): Promise<{
+  run_id: string;
+  restored: Array<{ path: string; restored: boolean }>;
+  remaining_snapshots: number;
+  state?: import('../types').ClutchState;
+}> {
+  const response = await sidecarFetch(
+    sidecarHttpUrl(`/api/runs/${encodeURIComponent(runId)}/rewind`),
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ count }),
+    },
+  );
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as {
+      detail?: { message?: string } | string;
+    };
+    const msg =
+      typeof body.detail === 'string'
+        ? body.detail
+        : body.detail?.message ?? `rewind failed (${response.status})`;
+    throw new Error(msg);
+  }
+  return (await response.json()) as {
+    run_id: string;
+    restored: Array<{ path: string; restored: boolean }>;
+    remaining_snapshots: number;
+    state?: import('../types').ClutchState;
+  };
 }

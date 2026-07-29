@@ -12,6 +12,30 @@
 
 （暂无）
 
+### [RESOLVED] Chat · 天气/网页问答露出 `urlopen SSL UNEXPECTED_EOF`（2026-07-25）
+
+- **现象：** Agent 回答直接贴 `<urlopen error [SSL: UNEXPECTED_EOF_WHILE_READING]…>`（如「上海天气」）。
+- **根因：** `web_fetch` 用 `urllib.urlopen` + 自定义 UA，部分站点 TLS 握手被对端掐断；错误原样抛给模型。
+- **解决：** 改 `httpx`、浏览器式 UA、SSL/超时重试一次、对 Agent 返回可读 TLS 提示（引导改用 `web_search`）。
+- **规避：** 改完需重启 Sidecar；天气类优先 `web_search`。
+- **关联：** `web_fetch_util.py`；`test_web_fetch_util_ssl_eof_is_friendly`
+
+### [RESOLVED] D8 PM · `/compact` 只闪 toast、Chat 历史不变（2026-07-25）
+
+- **现象：** 输入框上方出现 `Context compacted (N messages…)` 几秒后消失，对话仍是原来一长串，看不到「上下文压缩摘要」气泡。
+- **根因：** 压缩摘要是**新** `system_digest_*` id；`isAuthoritativeMessageReplacement` 要求 incoming 全部 id 已存在 → 判定失败 → `mergeChatMessages` 保留旧历史只追加 digest；`preferRicherSessionPatch` 还会偏向更长列表。
+- **解决：** 识别 compaction digest 时按权威替换；preferRicher 不覆盖压缩结果；digest 琥珀色高亮 + 自动滚入视野；toast 文案标明「已写入对话」。
+- **规避：** 验收看 Chat 里琥珀色 System 气泡，不要只看 toast。
+- **关联：** `clutchStateUtils.ts`、`ChatFeed.tsx`、`App.tsx`；回归 `isAuthoritativeMessageReplacement` compaction 用例
+
+### [RESOLVED] D8 PM · Todo 卡出现数百条单字符（2026-07-25）
+
+- **现象：** Todo 进度变成 `2/391`，列表逐字符显示 `[` `{` `"` `c` `o` `n`…；任务做完仍反复做。
+- **根因：** 模型把 `todo_write.todos` 以 JSON **字符串**传入时，旧逻辑 `list(str)` 按字符拆成待办。
+- **解决：** `normalize_todo_items` → `_coerce_todos_list` 对字符串 `json.loads`；非法串返回 `[]`，禁止按字符展开。
+- **规避：** 验收 D8 用新会话；已污染会话需新开 Chat 或再发一次合法 `todo_write`。
+- **关联：** `builtin_tools.py`；回归 `test_normalize_todo_items_json_string_not_char_split`
+
 ### [RESOLVED] clutch_dev 侧栏项目/历史「一打开就空」（2026-07-24）
 
 - **现象：** 开发版打开后 PROJECTS 只剩临时目录或空列表，Coding/Design 历史都不见；用户未手动删除。

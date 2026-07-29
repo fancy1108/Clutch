@@ -164,7 +164,7 @@ function CodeBlock({
           </button>
         </div>
       </div>
-      <pre className="px-3 py-2 text-[11px] font-mono overflow-x-auto leading-relaxed whitespace-pre">
+      <pre className="px-3 py-2 text-[11px] font-mono overflow-x-auto overflow-y-auto max-h-64 leading-relaxed whitespace-pre">
         {shown}
         {collapsed ? '\n…' : ''}
       </pre>

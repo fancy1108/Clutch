@@ -6,12 +6,18 @@ import {
   toggleMcpServer,
   saveMcpConfig,
   importClaudeMcp,
+  testMcpServer,
+  listMcpResources,
+  pinMcpResource,
+  unpinMcpResource,
+  fetchMcpResourcePins,
   type McpServer,
+  type McpResourceItem,
+  type McpResourcePin,
 } from '../services/mcpApi';
 import { SettingsPageHeader, SettingsPageShell } from './ui/SettingsPageHeader';
-import { BTN_GHOST, BTN_PRIMARY } from './ui/buttonStyles';
+import { BTN_GHOST, BTN_PRIMARY, BTN_SECONDARY } from './ui/buttonStyles';
 import { ALERT_SUCCESS, ALERT_WARNING, BADGE_NEUTRAL, BADGE_SUCCESS, CARD_SUBTLE, SECTION_EYEBROW } from './ui/surfaceStyles';
-import { UnderDevelopmentNotice } from './ui/UnderDevelopmentNotice';
 import { useLanguage } from './LanguageContext';
 import { AgentCapabilityTabs } from './AgentCapabilityTabs';
 import { AgentCliCapabilityPreview } from './AgentCliCapabilityPreview';
@@ -46,12 +52,25 @@ export const McpServerHub: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState('');
-  const [transport, setTransport] = useState<'stdio' | 'sse'>('stdio');
+  const [transport, setTransport] = useState<'stdio'>('stdio');
   const [endpoint, setEndpoint] = useState('');
+  const [envText, setEnvText] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [isJsonEditMode, setIsJsonEditMode] = useState(false);
   const [rawJsonConfig, setRawJsonConfig] = useState('');
   const [capabilityTab, setCapabilityTab] = useState<AgentCapabilityTabId>('clutch');
+  const [testingId, setTestingId] = useState<string | null>(null);
+  const [probeById, setProbeById] = useState<
+    Record<string, { ok: boolean; message: string; toolsCount?: number }>
+  >({});
+  const [resourcesById, setResourcesById] = useState<Record<string, McpResourceItem[]>>({});
+  const [resourcesLoadingId, setResourcesLoadingId] = useState<string | null>(null);
+  const [resourcePins, setResourcePins] = useState<McpResourcePin[]>([]);
+  const [resourceError, setResourceError] = useState<string | null>(null);
+
+  useEffect(() => {
+    void fetchMcpResourcePins().then(setResourcePins).catch(() => setResourcePins([]));
+  }, []);
 
   useEffect(() => {
     const stashed = consumeSettingsAgentTab();
@@ -82,18 +101,35 @@ export const McpServerHub: React.FC = () => {
     0,
   );
 
+  const parseEnvText = (raw: string): Record<string, string> | undefined => {
+    const env: Record<string, string> = {};
+    for (const line of raw.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const eq = trimmed.indexOf('=');
+      if (eq <= 0) continue;
+      const key = trimmed.slice(0, eq).trim();
+      const value = trimmed.slice(eq + 1).trim();
+      if (key) env[key] = value;
+    }
+    return Object.keys(env).length ? env : undefined;
+  };
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !endpoint.trim()) return;
     try {
       const status = await registerMcpServer({
         name: name.trim(),
-        transport,
+        transport: 'stdio',
         endpoint: endpoint.trim(),
+        env: parseEnvText(envText),
       });
       setServers(status.servers);
       setName('');
       setEndpoint('');
+      setEnvText('');
+      setTransport('stdio');
       setSuccessMsg(t('MCP server registered.'));
       setTimeout(() => setSuccessMsg(''), 3000);
     } catch (err: unknown) {
@@ -175,8 +211,6 @@ export const McpServerHub: React.FC = () => {
 
         {capabilityTab === 'clutch' ? (
           <>
-            <UnderDevelopmentNotice />
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className={`${CARD_SUBTLE} rounded-2xl text-left`}>
                 <span className={`${SECTION_EYEBROW} font-mono`}>{t('CONNECTED')}</span>
@@ -191,7 +225,46 @@ export const McpServerHub: React.FC = () => {
             </div>
 
             {error ? <p className={ALERT_WARNING}>{error}</p> : null}
+            {resourceError ? <p className={ALERT_WARNING}>{resourceError}</p> : null}
             {successMsg ? <p className={ALERT_SUCCESS}>{successMsg}</p> : null}
+            {resourcePins.length > 0 ? (
+              <div
+                data-testid="mcp-resource-pins"
+                className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 space-y-1.5"
+              >
+                <p className="text-[10px] font-bold uppercase tracking-wide text-primary">
+                  {t('Pinned for Chat')} ({resourcePins.length})
+                </p>
+                <ul className="space-y-1">
+                  {resourcePins.map((pin) => (
+                    <li
+                      key={`${pin.server_id}:${pin.uri}`}
+                      className="flex items-center justify-between gap-2 text-[11px]"
+                    >
+                      <span className="truncate font-mono text-on-surface" title={pin.uri}>
+                        {pin.name}
+                      </span>
+                      <button
+                        type="button"
+                        className="text-[10px] font-semibold text-rose-600 hover:underline shrink-0"
+                        onClick={() => {
+                          void unpinMcpResource(pin.server_id, pin.uri)
+                            .then(setResourcePins)
+                            .catch((err) =>
+                              setResourceError(err instanceof Error ? err.message : 'Unpin failed'),
+                            );
+                        }}
+                      >
+                        {t('Unpin')}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-[10px] text-on-surface-variant">
+                  {t('Pinned resources are injected into Clutch Agent Chat context.')}
+                </p>
+              </div>
+            ) : null}
 
             {isJsonEditMode ? (
               <form onSubmit={(e) => void handleSaveJsonConfig(e)} className="p-4 bg-neutral-50/50 border border-neutral-200/60 rounded-xl space-y-3">
@@ -269,21 +342,34 @@ export const McpServerHub: React.FC = () => {
                   />
                   <select
                     value={transport}
-                    onChange={(e) => setTransport(e.target.value as 'stdio' | 'sse')}
+                    onChange={() => setTransport('stdio')}
                     className="px-3 py-1.5 text-xs border border-neutral-200 rounded-lg bg-white"
+                    title={t('Only stdio is runnable today')}
                   >
                     <option value="stdio">stdio</option>
-                    <option value="sse">sse</option>
+                    <option value="sse" disabled>
+                      sse ({t('unavailable')})
+                    </option>
                   </select>
                   <input
                     type="text"
                     required
                     value={endpoint}
                     onChange={(e) => setEndpoint(e.target.value)}
-                    placeholder={transport === 'sse' ? 'https://host/mcp/sse' : 'npx -y @org/mcp-server'}
+                    placeholder="npx -y @org/mcp-server"
                     className="px-3 py-1.5 text-xs border border-neutral-200 rounded-lg bg-white font-mono md:col-span-1"
                   />
                 </div>
+                <p className="text-[10px] text-neutral-500">
+                  {t('Only stdio is runnable today')}
+                </p>
+                <textarea
+                  rows={2}
+                  value={envText}
+                  onChange={(e) => setEnvText(e.target.value)}
+                  placeholder={t('Env vars (one KEY=value per line, optional)')}
+                  className="w-full px-3 py-1.5 text-xs border border-neutral-200 rounded-lg bg-white font-mono"
+                />
                 <button type="submit" className={BTN_PRIMARY}>
                   {t('+ Register Node')}
                 </button>
@@ -305,6 +391,11 @@ export const McpServerHub: React.FC = () => {
                         <span className="text-[8.5px] font-mono uppercase px-1.5 py-0.2 rounded font-bold bg-neutral-100 text-neutral-800">
                           {server.transport}
                         </span>
+                        {server.transport === 'sse' ? (
+                          <span className="text-[8.5px] font-mono uppercase px-1.5 py-0.2 rounded font-bold bg-amber-50 text-amber-800">
+                            {t('unavailable')}
+                          </span>
+                        ) : null}
                         {server.builtin ? (
                           <span className={BADGE_SUCCESS}>{t('builtin')}</span>
                         ) : null}
@@ -312,6 +403,16 @@ export const McpServerHub: React.FC = () => {
                       <p className="text-[10.5px] font-mono text-neutral-500 bg-neutral-50 px-2 py-1 rounded border border-neutral-100/55 break-all leading-normal">
                         {server.endpoint}
                       </p>
+                      {probeById[server.id] ? (
+                        <p
+                          data-testid={`mcp-probe-${server.id}`}
+                          className={`text-[11px] mt-1 ${
+                            probeById[server.id].ok ? 'text-emerald-700' : 'text-rose-700'
+                          }`}
+                        >
+                          {probeById[server.id].message}
+                        </p>
+                      ) : null}
                       {server.tools && server.tools.length > 0 ? (
                         <div className="mt-2 pl-3 border-l-2 border-outline-variant/40 space-y-1 select-text">
                           <span className="text-[9px] font-extrabold text-neutral-400 font-mono tracking-wider uppercase block">{t('Exposed Tools:')}</span>
@@ -327,6 +428,98 @@ export const McpServerHub: React.FC = () => {
                           </div>
                         </div>
                       ) : null}
+                      {/* D43 — MCP resources */}
+                      {server.transport !== 'sse' ? (
+                        <div className="mt-2 space-y-1.5" data-testid={`mcp-resources-${server.id}`}>
+                          <button
+                            type="button"
+                            className="text-[10px] font-bold text-primary hover:underline"
+                            disabled={resourcesLoadingId === server.id}
+                            onClick={() => {
+                              void (async () => {
+                                setResourcesLoadingId(server.id);
+                                setResourceError(null);
+                                try {
+                                  const result = await listMcpResources(server.id);
+                                  setResourcesById((prev) => ({
+                                    ...prev,
+                                    [server.id]: result.resources,
+                                  }));
+                                  if (result.count === 0) {
+                                    setResourceError(t('This server exposes no resources.'));
+                                  }
+                                } catch (err) {
+                                  setResourceError(
+                                    err instanceof Error ? err.message : t('Failed to list resources'),
+                                  );
+                                } finally {
+                                  setResourcesLoadingId(null);
+                                }
+                              })();
+                            }}
+                          >
+                            {resourcesLoadingId === server.id
+                              ? t('Loading resources…')
+                              : t('Browse resources')}
+                          </button>
+                          {(resourcesById[server.id] || []).length > 0 ? (
+                            <ul className="pl-3 border-l-2 border-primary/25 space-y-1 max-h-36 overflow-y-auto">
+                              {(resourcesById[server.id] || []).map((resource) => {
+                                const pinned = resourcePins.some(
+                                  (pin) =>
+                                    pin.server_id === server.id && pin.uri === resource.uri,
+                                );
+                                return (
+                                  <li
+                                    key={resource.uri}
+                                    className="flex items-center justify-between gap-2 text-[10px]"
+                                  >
+                                    <span className="font-mono truncate" title={resource.uri}>
+                                      {resource.name}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      data-testid={`mcp-pin-${server.id}`}
+                                      className={`${BTN_SECONDARY} text-[9px] px-1.5 py-0.5 shrink-0`}
+                                      onClick={() => {
+                                        void (async () => {
+                                          setResourceError(null);
+                                          try {
+                                            if (pinned) {
+                                              setResourcePins(
+                                                await unpinMcpResource(server.id, resource.uri),
+                                              );
+                                            } else {
+                                              setResourcePins(
+                                                await pinMcpResource({
+                                                  server_id: server.id,
+                                                  uri: resource.uri,
+                                                  name: resource.name,
+                                                  mimeType: resource.mimeType,
+                                                }),
+                                              );
+                                              setSuccessMsg(t('Pinned for Chat'));
+                                              setTimeout(() => setSuccessMsg(''), 2500);
+                                            }
+                                          } catch (err) {
+                                            setResourceError(
+                                              err instanceof Error
+                                                ? err.message
+                                                : t('Failed to pin resource'),
+                                            );
+                                          }
+                                        })();
+                                      }}
+                                    >
+                                      {pinned ? t('Unpin') : t('Pin for Chat')}
+                                    </button>
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          ) : null}
+                        </div>
+                      ) : null}
                     </div>
                     <div className="flex items-end md:items-center gap-3">
                       <div className="text-[10.5px] md:text-right">
@@ -340,24 +533,69 @@ export const McpServerHub: React.FC = () => {
                         </div>
                         <p className="text-[10px] text-neutral-400 mt-1 max-w-[180px]">{server.lastHeartbeat}</p>
                       </div>
-                      {!server.builtin ? (
-                        <div className="flex flex-col gap-1">
-                          <button
-                            type="button"
-                            onClick={() => void handleToggle(server)}
-                            className="text-[10px] font-bold text-neutral-600 hover:text-neutral-900"
-                          >
-                            {server.status === 'failed' ? t('Enable') : t('Disable')}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => void handleRemove(server.id)}
-                            className="text-[10px] font-bold text-rose-600 hover:text-rose-800"
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      ) : null}
+                      <div className="flex flex-col gap-1">
+                        <button
+                          type="button"
+                          data-testid={`mcp-test-${server.id}`}
+                          disabled={testingId === server.id}
+                          onClick={() => {
+                            void (async () => {
+                              setTestingId(server.id);
+                              try {
+                                const result = await testMcpServer(server.id);
+                                setProbeById((prev) => ({
+                                  ...prev,
+                                  [server.id]: result.ok
+                                    ? {
+                                        ok: true,
+                                        toolsCount: result.toolsCount,
+                                        message: t('Connected — {n} tools').replace(
+                                          '{n}',
+                                          String(result.toolsCount),
+                                        ),
+                                      }
+                                    : {
+                                        ok: false,
+                                        message: result.error || t('Connection failed'),
+                                      },
+                                }));
+                                if (result.ok) void refresh();
+                              } catch (err) {
+                                setProbeById((prev) => ({
+                                  ...prev,
+                                  [server.id]: {
+                                    ok: false,
+                                    message: err instanceof Error ? err.message : t('Connection failed'),
+                                  },
+                                }));
+                              } finally {
+                                setTestingId(null);
+                              }
+                            })();
+                          }}
+                          className="text-[10px] font-bold text-primary hover:underline disabled:opacity-50"
+                        >
+                          {testingId === server.id ? t('Testing…') : t('Test connection')}
+                        </button>
+                        {!server.builtin ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => void handleToggle(server)}
+                              className="text-[10px] font-bold text-neutral-600 hover:text-neutral-900"
+                            >
+                              {server.status === 'failed' ? t('Enable') : t('Disable')}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void handleRemove(server.id)}
+                              className="text-[10px] font-bold text-rose-600 hover:text-rose-800"
+                            >
+                              Remove
+                            </button>
+                          </>
+                        ) : null}
+                      </div>
                     </div>
                   </div>
                 ))}

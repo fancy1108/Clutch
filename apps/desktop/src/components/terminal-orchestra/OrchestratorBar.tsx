@@ -3,7 +3,11 @@ import type { PendingHandoffDraft } from '../../types';
 import type { SessionRecord } from '../../services/runApi';
 import type { ScannedSkill } from '../../services/skillsApi';
 import type { FileTreeNode } from '../../services/workspaceApi';
-import { PERMISSION_MODES, type PermissionMode } from '../../services/permissionApi';
+import {
+  normalizePermissionMode,
+  PERMISSION_MODES,
+  type PermissionMode,
+} from '../../services/permissionApi';
 import { clutchStore } from '../../services/clutchState';
 import {
   buildOptimisticDispatchEntry,
@@ -85,7 +89,9 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
   const imageInputRef = useRef<HTMLInputElement>(null);
   const sendingLockRef = useRef(false);
 
-  const currentPermission = PERMISSION_MODES.find((m) => m.id === permissionMode) ?? PERMISSION_MODES[0];
+  const resolvedPermissionMode = normalizePermissionMode(permissionMode);
+  const currentPermission =
+    PERMISSION_MODES.find((m) => m.id === resolvedPermissionMode) ?? PERMISSION_MODES[0];
   const allFilePaths = flattenFileTree(workspaceFiles);
   const filteredFiles = allFilePaths.filter(
     (p) => !fileFilter || p.toLowerCase().includes(fileFilter.toLowerCase()),
@@ -611,62 +617,74 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
             <button
               type="button"
               title={`Permission: ${currentPermission.label}`}
+              aria-label={`Permission: ${currentPermission.label}`}
+              aria-expanded={permissionMenuOpen}
               onClick={() => {
                 setPermissionMenuOpen((v) => !v);
                 setAttachMenuOpen(false);
               }}
-              className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${
-                permissionMode === 'full'
-                  ? 'text-amber-500 hover:bg-amber-50'
-                  : permissionMode === 'plan'
-                    ? 'text-blue-500 hover:bg-blue-50'
-                    : permissionMode === 'auto_edit'
-                      ? 'text-emerald-500 hover:bg-emerald-50'
-                      : 'text-on-surface-variant/60 hover:text-on-surface hover:bg-surface-container'
+              className={`inline-flex h-7 items-center gap-1 rounded-full pl-2 pr-1.5 text-[12px] font-medium leading-none transition-colors ${
+                permissionMenuOpen
+                  ? 'bg-surface-container-high text-on-surface'
+                  : 'bg-surface-container text-on-surface/90 hover:bg-surface-container-high hover:text-on-surface'
               }`}
             >
-              <LegacyIcon name={currentPermission.icon} className="text-[18px]" />
+              <LegacyIcon name={currentPermission.icon} className="text-[15px] opacity-90" />
+              <span>{currentPermission.label}</span>
+              <LegacyIcon
+                name="expand_more"
+                className={`text-[14px] opacity-45 transition-transform duration-150 ${
+                  permissionMenuOpen ? 'rotate-180' : ''
+                }`}
+              />
             </button>
 
             {permissionMenuOpen ? (
-              <div className="absolute bottom-full right-0 mb-2 w-60 bg-white border border-outline-variant rounded-xl shadow-xl py-1.5 z-50 animate-in fade-in slide-in-from-bottom-1 duration-150">
-                {PERMISSION_MODES.map((mode) => (
-                  <button
-                    key={mode.id}
-                    type="button"
-                    onClick={() => {
-                      onPermissionModeChange(mode.id);
-                      setPermissionMenuOpen(false);
-                    }}
-                    className="w-full flex items-start gap-3 px-3 py-2.5 hover:bg-surface-container-low transition-colors text-left group"
-                  >
-                    <LegacyIcon
-                      name={mode.icon}
-                      className={`text-[18px] mt-0.5 flex-shrink-0 ${
-                        mode.id === permissionMode
-                          ? mode.id === 'full'
-                            ? 'text-amber-500'
-                            : mode.id === 'plan'
-                              ? 'text-blue-500'
-                              : mode.id === 'auto_edit'
-                                ? 'text-emerald-500'
-                                : 'text-on-surface-variant'
-                          : 'text-on-surface-variant/50'
+              <div className="absolute bottom-full right-0 mb-2 w-56 overflow-hidden rounded-xl border border-outline-variant/50 bg-white py-1 shadow-[0_8px_28px_rgba(15,23,42,0.12)] z-50 animate-in fade-in slide-in-from-bottom-1 duration-150">
+                {PERMISSION_MODES.map((mode) => {
+                  const selected = mode.id === resolvedPermissionMode;
+                  return (
+                    <button
+                      key={mode.id}
+                      type="button"
+                      onClick={() => {
+                        onPermissionModeChange(mode.id);
+                        setPermissionMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors ${
+                        selected
+                          ? 'bg-surface-container/90'
+                          : 'hover:bg-surface-container-low'
                       }`}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[12px] font-semibold text-on-surface">{mode.label}</span>
-                        {mode.id === permissionMode ? (
-                          <LegacyIcon name="check" className="text-[14px] text-primary" />
-                        ) : null}
+                    >
+                      <LegacyIcon
+                        name={mode.icon}
+                        className={`text-[16px] flex-shrink-0 ${
+                          selected ? 'text-on-surface' : 'text-on-surface-variant/55'
+                        }`}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <span
+                            className={`text-[12.5px] ${
+                              selected ? 'font-semibold text-on-surface' : 'font-medium text-on-surface'
+                            }`}
+                          >
+                            {mode.label}
+                          </span>
+                          {selected ? (
+                            <LegacyIcon name="check" className="text-[14px] text-on-surface" />
+                          ) : null}
+                        </div>
+                        <span className="block text-[10px] text-on-surface-variant/60 leading-snug mt-0.5">
+                          {mode.description}
+                        </span>
                       </div>
-                      <span className="text-[10.5px] text-on-surface-variant/70">{mode.description}</span>
-                    </div>
-                  </button>
-                ))}
-                <div className="border-t border-outline-variant/60 my-1 mx-3" />
-                <div className="px-3 py-1.5 text-[9.5px] leading-normal text-on-surface-variant/60">
+                    </button>
+                  );
+                })}
+                <div className="border-t border-outline-variant/40 my-1 mx-2" />
+                <div className="px-3 py-1.5 text-[9.5px] leading-normal text-on-surface-variant/50">
                   {t('Note: These settings only apply to the built-in Clutch Agent and MCP tools, and do not affect CLI Agents (such as Claude Code).')}
                 </div>
               </div>

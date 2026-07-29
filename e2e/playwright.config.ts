@@ -19,7 +19,8 @@ export default defineConfig({
     },
     {
       name: 'desktop',
-      testMatch: /tests\/desktop\/.*\.spec\.ts/,
+      // Real-connection acceptance.spec.ts uses playwright.acceptance.config.ts
+      testMatch: /tests\/desktop\/(?!acceptance\.spec\.ts$).+\.spec\.ts/,
       use: { mode: 'tauri' },
     },
   ],

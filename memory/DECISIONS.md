@@ -335,10 +335,18 @@
 - **影响**：`docs/PACKAGE_MANAGERS.md` · `README` · `install.sh` · Homebrew cask `depends_on arch: :arm64`。
 - **决策状态**：`已落地`
 
+### D54 · Ask = 只读对话；Explore 并入 Ask；默认 Agent（2026-07-25）
+
+- **背景**：底栏 Explore / Ask 易混；产品期望 Ask = 对话只读；默认应对标 Cursor **Agent**（可动手）。
+- **方案**：Ask 硬拦截写/变更 shell（原 Explore）；UI 去掉 Explore；`explore` → `ask`；UI 名 **Agent** = `auto_edit`（默认）；菜单序 Agent → Plan → Full → Ask；图标 ∞ / checklist / warning / chat。
+- **影响**：新装默认可改文件；Ask 为只读对话。
+- **决策状态**：`已落地`
+
 ## 开放问题
 
 | ID | 问题 | 选项 | 默认 |
 |----|------|------|------|
+| Q-USAGE-1 | Overview 用量真值 | A) 继续词数估算 B) 接供应商 `usage`（真 input/output）+ 模型价表；估计算 fallback | **B 后续优化**；UI 暂显示 `—`（2026-07-25） |
 | Q-HRT-1 | 多 session 并发策略 | A) 全 run 串行队列 B) 同 workspace 串行 C) 拒绝+提示（pty §2.1） | **C**（与 POC 一致）直至 HRT-08 立项 |
 | Q-HRT-2 | 诊断导出形态 | A) 仅 API B) API + 桌面「复制诊断」按钮 | **B**（HRT-07） |
 | Q-D34-1 | Terminal 并行 Lane 上限 N | A) 2 B) 4 C) 8 | **B**（4，见 D34 §2） |
@@ -346,6 +354,23 @@
 | Q-D34-3 | 超 N 时行为 | A) 拒绝新 Lane B) 排队 C) Tab 折叠旧 Lane | **B+C** 组合（排队 + 折叠展示） |
 | Q-D34-4 | 多 Lane 同时完成回传 | A) 各一路独立草稿 B) 自动合并一条 C) 仅提醒不预填 | **A**（独立草稿队列；用户可自行合并编辑） |
 | Q-D34-5 | handoff sources 默认 | A) 仅聚焦 Lane B) 最近派发到该 target 的 sources C) 空 | **A**；显式 `from @A @B` 覆盖；发送前 chips 可改（见 D34 §2） |
+| Q-UI-1 | Chat 流式回复滚不上来 | A) 调整 `<section>` flex/overflow 布局让 `scrollHeight` 可靠 B) 用 `bottomRef` rect 算偏移绕过 `scrollHeight`（已试无效）C) 重构 ChatFeed 容器层级 | **待诊断 CSS 布局后定** |
+
+> **Q-UI-1 现象详情（2026-07-29 诊断）**：纯 LLM 对话（`isPlainLlmChat=true`）工具审批通过后，最终 assistant 回复已在 DOM 渲染，但被卡在可视区下方，看不到；下一次发任意消息才被顶上来。流式期间（`isRunning && !awaitingHuman`）也出现。
+>
+> **滚动相关代码**：`apps/desktop/src/components/ChatFeed.tsx`
+> - 滚动入口 `scrollChatToBottom`（`:1048`）：`bottomRef.current?.scrollIntoView({ behavior, block: 'end' })`
+> - 触发 effect 依赖（`:1062`）：`[messages, clutchStatus, showThinking, pendingMessages.length, scrollChatToBottom]`
+> - 下哨兵 `bottomRef`（`:1805`）：`<div ref={bottomRef} style={{ scrollMarginBottom: chatScrollBottomPad }} className="h-2 shrink-0" />`
+> - 滚动容器（`:1234`）`<section>`：`className="flex-1 min-h-0 flex flex-col box-border transition-all duration-300 bg-background ... overflow-y-auto overscroll-contain"`
+> - 父链均为 `h-screen overflow-hidden flex flex-col`（`App.tsx:1913 / :2113`）
+>
+> **实测数据**（往 `scrollChatToBottom` 注入诊断日志测得，已撤回）：
+> - 从 `<section>` 到 `<html>` 全部 `scrollHeight == clientHeight == 768`，全部不可滚动；祖先链：`SECTION.flex-1.min-h-0 ov=auto sh=768 ch=768 st=0` → `DIV.flex-1.min-w-0 ov=hidden sh=768 ch=768 st=0` → `DIV.flex-1.flex ov=hidden sh=768 ch=768 st=0` → `DIV.relative.h-screen ov=hidden sh=768 ch=768 st=0` → `BODY ov=hidden sh=768 ch=768 st=0` → `HTML ov=visible sh=768 ch=768 st=0`。
+> - `bottomRef` 真实 rect y 一路下到 `918`（`bottom: 918`），但 `<section>` `scrollHeight` 偶尔报 `1272` 之后又跌回 `768`：`scrollTo({top: scrollHeight})` 当 scrollHeight=768 时不动；偶发 scrollHeight=1272 时才滚一次。
+> - 显式 `bottomRef.rect` 算偏移的改进已实测无效（layout 被压缩，rect 也未反映真实溢出）。
+>
+> **建议后续**：先 DevTools Computed 面板点 `<section>` 截 `height`/`max-height`/`min-height`/`overflow-y`/`display`/`flex`/`flex-basis`，确认为何 section 子项被压成等高（`scrollHeight == clientHeight`）；再决定是改 CSS 布局还是重构容器层级。
 
 ### D26 · 用户自定义头像替换与存储（2026-06-27）
 
@@ -566,3 +591,39 @@
   3. **防污染**：默认 Application Support 存储拒绝 ephemeral/`tmp*` 授权（`CLUTCH_STORAGE_DIR` / `CLUTCH_E2E_SANDBOX` / `CLUTCH_ALLOW_TEMP_WORKSPACE=1` 可放行）；`run-e2e.sh` 桌面段传入 `CLUTCH_STORAGE_DIR`。
 - **影响**：`workspace.py`、`run_history.remap_workspace_ids`、`scripts/run-e2e.sh`、`test_workspaces_api.py`。
 - **决策状态**：`已落地`
+
+### D44 · Chat Clutch Agent 能力补齐（适配 Grok · 不嵌 Rust）（2026-07-24）
+
+- **背景**：Chat 模式自研 Clutch Agent（`agentType: clutch`）默认接近纯 LLM；手脚、Plan/Todo、自检、生命周期、MCP 绑定 UI、对话内「正在干嘛」等相对 Grok Build / 同类 Agent 缺口大。编排（SOP/LangGraph）在 Agent 之上，本决策只定 **Agent 本体**。
+- **方案**：
+  1. **适配不嵌入**：对齐 Grok 行为与工具语义，实现落在 Python `clutch-tools` + `mcp_react` + WS `ClutchState`；禁止 submodule/链入 `grok-build` Rust。
+  2. **权威任务表**：[`specs/core/clutch-agent-capability-plan.md`](../specs/core/clutch-agent-capability-plan.md) 交付期 **D0–D53**（主线 D1–D13、扩展 D15–D36、MCP D37–D45、Chat UX D46–D52、**Prompt 分层 D53**；旁路 D14=可选 grok CLI）。本文交付期编号 **≠** DECISIONS Dx。
+  3. **验收铁律**：每期须 PM 在 Chat 可见；缺对应前端交互不得标完成；用户可见行为同步 `PRODUCT_INTRO`。
+  4. **首期**：交付表 D1（手脚）+ D37（MCP 绑定 UI）+ D46（实时步骤条）。
+  5. **提示词（2026-07-24 补）**：**D53** — 运行时分层组装 + **渐进式披露**（system 底座 / env / 项目规则 / skills 目录按需全文 / mode reminder）；禁止把 `markdownDoc` 或整份 AGENTS.md 当作唯一 system。D7=发现内容，D53=组装架构。
+  6. **Harness 纪律（2026-07-25 补）**：对齐 Grok Build「有工具就必须进循环」——按意图覆盖 network / workspace_read|write / git / shell；零 `tool_calls` 时注入族级 nudge 并以 `tool_choice=required` 重试一次（拒绝话术另走 generic）；目录诚实：偏好关闭时隐藏 `web_search` / `remember_preference`；`Allow network` 默认开。
+  7. **联网停搜纪律（2026-07-25 补）**：对齐主流 Agent（ChatGPT/Perplexity/Cursor）「搜一次 → 抓 1–2 页 → 答」——`web_search`/`web_fetch` 软上限 3、硬上限 5；软上限注入 stop-search nudge；硬上限拒绝继续联网工具；禁止 `web_fetch` 搜索引擎 SERP；总步数 24 仍为写代码熔断，不充当联网预算。
+- **影响**：`builtin_tools` / `agent_mcp` / `chat_runner` / `mcp_react` / `agent_prompt` / `tool_use_policy` / AgentManager MCP UI / ChatFeed 活动条；`ROADMAP` §Chat Clutch Agent。
+- **决策状态**：`可执行`
+
+### D54 · Chat 交付物目录与真实出图（2026-07-27）
+
+- **背景**：Chat Agent 常把「信息图 / 图片」写成根目录 `.html`，并污染用户仓库根；业界常见做法是把 Agent 产出放进专用目录（Claude `.claude/`、agentic `_agentic_output/`），Clutch 已有 `.clutch/generated/videos`、attachments、handoffs。
+- **方案**：
+  1. **真实出图/出视频**：Chat 内置 `generate_image` / `generate_video`；回合结束 harness **自动调用**设置里已配置的 image/video 模型（如 Agnes），无需切换 footer 当前聊天模型；落盘 `.clutch/generated/images|videos/`；未配置 Key 时对话明确写「最后一步失败」。
+  2. **禁 HTML 冒充**：intent=image/video/answer/code 时拒绝写 `.html`。
+  3. **产物隔离**：Chat 研究/展示类新文件自动改写到 `.clutch/artifacts/`。
+  4. **意图**：`infographic` / 信息图 / 可视化 → image。
+- **影响**：`deliverable_intent` · `artifact_layout` · `media_deliverable` · `builtin_tools` · PRODUCT_INTRO。
+- **决策状态**：`已落地`
+
+### D45 · D7 项目规则 + Skills 对齐 Grok Build（2026-07-24）
+
+- **背景**：能力期 D7；对照本地 `grok-build` 与 docs.x.ai project-rules。User 级规则（`~/.grok/AGENTS.md` 等）本期不做。
+- **方案**：
+  1. **Skills 开放 catalog**：Enabled 的 global∪project∪custom 自动进 skills 层；Agent `skills[]` 为可选强制包含；正文仅 `read_skill`。`isActiveGlobally`=Enabled（新发现默认 True；旧库全 False 时视为全开）。
+  2. **同名 dedupe**：短名冲突时 **project > custom Mount > global**（Grok：local/repo > user）。
+  3. **嵌套规则**：`git root → workspace_path` 串链注入 `AGENTS.md`/`CLAUDE.md` 等 + `.grok/.claude/.cursor/rules`；更深优先；无 User home 规则。
+  4. **Custom SEARCH PATHS** 永不因换仓卸挂；仅 `auto_workspace_mounts` 轮换。
+- **影响**：`agent_prompt`、`agent_skills`、`skills_storage`、`skills_scanner`；PRODUCT_INTRO / capability-plan D7。
+- **决策状态**：`可执行`

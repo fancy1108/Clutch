@@ -23,6 +23,35 @@ export interface OutputEvent {
   content: string;
 }
 
+/** Structured Chat/MCP tool step (D46 — Grok/Cursor-style verb_group transcript). */
+export type ToolStepKind =
+  | 'read'
+  | 'fetch'
+  | 'search'
+  | 'list'
+  | 'edit'
+  | 'execute'
+  | 'other';
+
+export type ToolStepStatus = 'running' | 'completed' | 'failed' | 'awaiting';
+
+export interface ToolStep {
+  id: string;
+  kind: ToolStepKind;
+  /** Short tool name, e.g. read_file */
+  tool: string;
+  status: ToolStepStatus;
+  /** One-liner, e.g. "Read README.md" / "Fetched shanghai.disney.com" */
+  title: string;
+  /**
+   * Expand body: primary target (URL/path/query) plus optional result preview
+   * (Cursor/Grok: collapse for density, expand for supervise).
+   */
+  detail?: string;
+  /** D6 Cursor-style: per-edit file hunk attached when an edit tool completes. */
+  fileDiff?: DiffFileEntry;
+}
+
 export interface ChatMessage {
   id: string;
   agent: AgentRole;
@@ -39,10 +68,140 @@ export interface ChatMessage {
   rawOutput?: string;
   /** Structured hybrid execution segments (shell echo, system prompt, marker, etc.). */
   outputEvents?: OutputEvent[];
+  /** Persisted MCP/builtin tool trail for this assistant turn (D46). */
+  toolSteps?: ToolStep[];
+  /** Workspace-relative paths written this turn (D47) — clickable chips → D42 preview. */
+  filesChanged?: string[];
+  /** D2/D49 plan card sealed onto the assistant turn (Approve / revise / Cancel). */
+  planCard?: PlanCard;
+  /** D3/D49 todo checklist for this turn (also mirrored on ClutchState.agent_todos). */
+  todoList?: TodoItem[];
+  /** D4/D49 multiple-choice question card. */
+  questionCard?: QuestionCard;
+  /** D5/D50 self-check verification report. */
+  verificationReport?: VerificationReport;
+  /** D6/D50 diff review card (file list + readable hunks). */
+  diffSummary?: DiffSummary;
+  /** D10/D48 nested subtask cards from delegate_subtask. */
+  subtaskCards?: SubtaskCard[];
+  /** D11 — finished background job card sealed onto the Supervisor monitor turn. */
+  bgJob?: BackgroundJob;
   codeHighlight?: {
     file: string;
     lineCount: number;
   };
+}
+
+export type SubtaskCardStatus = 'running' | 'done' | 'failed';
+export type SubtaskCardType = 'explore' | 'implement';
+
+export interface SubtaskCardStep {
+  name: string;
+  status: string;
+}
+
+export interface SubtaskCard {
+  id: string;
+  type: SubtaskCardType;
+  title: string;
+  summary?: string;
+  status: SubtaskCardStatus;
+  toolSteps?: SubtaskCardStep[];
+  error?: string;
+}
+
+export type BackgroundJobStatus = 'running' | 'done' | 'failed' | 'killed';
+
+/** D11 — background shell job tracked per Chat run. */
+export interface BackgroundJob {
+  id: string;
+  command: string;
+  title: string;
+  status: BackgroundJobStatus;
+  output?: string;
+  exit_code?: number | null;
+}
+
+export type PlanCardStatus = 'pending' | 'approved' | 'cancelled' | 'revised';
+
+export interface PlanCard {
+  title: string;
+  steps: string[];
+  summary?: string;
+  status: PlanCardStatus;
+  note?: string;
+  /** D31 — per-step reviewer comments (parallel to steps). */
+  stepComments?: string[];
+}
+
+export type TodoItemStatus = 'pending' | 'in_progress' | 'completed';
+
+export interface TodoItem {
+  id: string;
+  content: string;
+  status: TodoItemStatus;
+}
+
+/** D29 — session goal tracked via goal_write. */
+export interface AgentGoal {
+  title: string;
+  progress: number;
+  done: boolean;
+}
+
+export type QuestionCardStatus = 'pending' | 'answered' | 'cancelled';
+
+export interface QuestionOption {
+  id: string;
+  label: string;
+}
+
+export interface QuestionCard {
+  question: string;
+  options: QuestionOption[];
+  status: QuestionCardStatus;
+  allowCustom?: boolean;
+  selectedId?: string;
+  selectedLabel?: string;
+  note?: string;
+}
+
+export type VerificationConclusion = 'passed' | 'failed';
+export type VerificationStepStatus = 'passed' | 'failed' | 'skipped';
+
+export interface VerificationStep {
+  id: string;
+  name: string;
+  status: VerificationStepStatus;
+  detail?: string;
+}
+
+export interface VerificationReport {
+  title: string;
+  conclusion: VerificationConclusion;
+  steps: VerificationStep[];
+  summary?: string;
+  nextActions?: string[];
+  changedFiles?: string[];
+}
+
+export type DiffFileStatus = 'A' | 'M' | 'D';
+
+export interface DiffFileEntry {
+  path: string;
+  status: DiffFileStatus;
+  summary?: string;
+  /** Unified diff text (optional when `diffs` is present). */
+  patch?: string;
+  diffs?: DiffLine[];
+}
+
+export interface DiffSummary {
+  title: string;
+  summary?: string;
+  files: DiffFileEntry[];
+  /** True when streamed mid-turn as a per-edit Cursor-style card. */
+  inline?: boolean;
 }
 
 /** Supported node types in the visual canvas editor. */
@@ -238,10 +397,58 @@ export interface ClutchState {
   messages: ChatMessage[];
   terminal_logs: string[];
   changed_files: string[];
+  /** In-flight tool steps for the current Chat turn (D46); sealed onto the assistant message when idle. */
+  pending_tool_steps?: ToolStep[];
+  /** Live session todos for multi-step work (D3); updates via todo_write. */
+  agent_todos?: TodoItem[];
+  /** D29 — current session goal; updates via goal_write. */
+  agent_goal?: AgentGoal;
+  /** D5/D50 latest verification report (also sealed on ChatMessage.verificationReport). */
+  verification_report?: VerificationReport;
+  /** D6/D50 latest diff summary (also sealed on ChatMessage.diffSummary). */
+  diff_summary?: DiffSummary;
   session_tokens?: number;
   session_cost_usd?: number;
   token_input?: number;
   token_output?: number;
+  /** D9: Chat-visible step/token counters (live while running). */
+  run_stats?: {
+    tool_steps?: number;
+    max_steps?: number;
+    session_tokens?: number;
+    fuse_triggered?: boolean;
+    consecutive_failures?: number;
+  };
+  /** D9: show Continue after Stop / loop fuse / max-steps. */
+  awaiting_continue?: boolean;
+  /** D19: model reasoning stream for the in-flight Chat turn. */
+  live_reasoning?: string;
+  /** D10/D48: live nested subtask cards while parent turn runs. */
+  pending_subtasks?: SubtaskCard[];
+  /** D11: background shell jobs for this Chat session. */
+  bg_jobs?: BackgroundJob[];
+    /** D34: active foreground shell command (transfer to bg_jobs). */
+    foreground_shell?: {
+        command: string;
+        title: string;
+        cwd?: string;
+    } | null;
+    /** D32: optional git worktree isolation for Agent edits. */
+    worktree_isolation?: {
+        id: string;
+        path: string;
+        branch: string;
+        enabled: boolean;
+        dirty?: boolean;
+        workspace_root?: string;
+    } | null;
+    /** D24: pending code diagnostics for Chat issues strip. */
+    chat_diagnostics?: Array<{
+        tool: string;
+        path: string;
+        line: string;
+        message: string;
+    }>;
   /** CLI provider session id (`claude --resume` / `agy --conversation`). */
   cli_session_id?: string;
   /** Agent id that owns `cli_session_id` (reset when user switches agent). */

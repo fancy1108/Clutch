@@ -47,11 +47,16 @@ def save_servers(servers: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return servers
 
 
+# D39 — runtime is stdio-only; SSE may still appear in legacy saved configs.
+RUNNABLE_TRANSPORTS = frozenset({"stdio"})
+
+
 def validate_server_payload(
     *,
     name: str,
     transport: str,
     endpoint: str,
+    allow_legacy_sse: bool = False,
 ) -> dict[str, Any]:
     label = name.strip()
     cmd = endpoint.strip()
@@ -60,6 +65,13 @@ def validate_server_payload(
         raise ValueError(tr("Name cannot be empty", "名称不能为空"))
     if mode not in VALID_TRANSPORTS:
         raise ValueError(tr("Transport type must be stdio or sse", "传输类型须为 stdio 或 sse"))
+    if mode == "sse" and not allow_legacy_sse:
+        raise ValueError(
+            tr(
+                "SSE/HTTP transport is not available yet — register a stdio command instead",
+                "SSE/HTTP 传输尚未可用 — 请改用 stdio 命令注册",
+            )
+        )
     if not cmd:
         raise ValueError(tr("Endpoint cannot be empty", "端点不能为空"))
     if mode == "sse":
@@ -80,14 +92,17 @@ def register_server(
     name: str,
     transport: str,
     endpoint: str,
+    env: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     payload = validate_server_payload(name=name, transport=transport, endpoint=endpoint)
     servers = load_servers()
-    entry = {
+    entry: dict[str, Any] = {
         "id": f"mcp_{uuid.uuid4().hex[:8]}",
         "enabled": True,
         **payload,
     }
+    if env:
+        entry["env"] = {str(k): str(v) for k, v in env.items() if str(k).strip()}
     servers.append(entry)
     save_servers(servers)
     return entry
@@ -140,6 +155,125 @@ async def get_server_tools(endpoint: str) -> list[dict[str, Any]]:
     return tools
 
 
+def clear_tools_cache(endpoint: str | None = None) -> None:
+    if endpoint is None:
+        _cached_tools.clear()
+        return
+    _cached_tools.pop(endpoint, None)
+
+
+def _probe_endpoint_sync(
+    endpoint: str,
+    *,
+    env: dict[str, str] | None = None,
+    name: str = "probe",
+) -> dict[str, Any]:
+    """Connect once and list tools; return readable ok/error (D38)."""
+    from src.mcp_client import McpClient
+
+    if not (endpoint or "").strip():
+        return {
+            "ok": False,
+            "toolsCount": 0,
+            "tools": [],
+            "error": "Missing MCP endpoint / command",
+        }
+    transport_hint = endpoint.strip().lower()
+    if transport_hint.startswith("http://") or transport_hint.startswith("https://"):
+        return {
+            "ok": False,
+            "toolsCount": 0,
+            "tools": [],
+            "error": "SSE/HTTP remote transport is not runnable yet — use stdio command, or wait for D39",
+        }
+
+    client = McpClient(name, endpoint, env=env)
+    if not client.start():
+        return {
+            "ok": False,
+            "toolsCount": 0,
+            "tools": [],
+            "error": client.last_error or "Failed to start MCP server",
+        }
+    try:
+        tools = client.list_tools()
+    except Exception as exc:
+        client.close()
+        return {
+            "ok": False,
+            "toolsCount": 0,
+            "tools": [],
+            "error": str(exc).strip() or "tools/list failed",
+        }
+    client.close()
+    if not tools:
+        return {
+            "ok": False,
+            "toolsCount": 0,
+            "tools": [],
+            "error": "Connected but server exposed 0 tools",
+        }
+    clear_tools_cache(endpoint)
+    _cached_tools[endpoint] = tools
+    return {
+        "ok": True,
+        "toolsCount": len(tools),
+        "tools": tools,
+        "error": None,
+    }
+
+
+async def probe_server_by_id(server_id: str) -> dict[str, Any]:
+    """D38 — test connection for a registered (or builtin local-fs) server."""
+    from src.workspace import get_workspace
+
+    sid = (server_id or "").strip()
+    if not sid:
+        raise ValueError(tr("MCP server id is required", "需要 MCP 服务器 id"))
+
+    if sid == "local-fs":
+        workspace = get_workspace()
+        if not workspace:
+            return {
+                "id": sid,
+                "name": "Local Filesystem MCP Server",
+                "ok": False,
+                "toolsCount": 0,
+                "tools": [],
+                "error": "Authorize a workspace first",
+            }
+        endpoint = (
+            f"npx -y @modelcontextprotocol/server-filesystem {workspace['workspace_path']}"
+        )
+        result = await asyncio.to_thread(_probe_endpoint_sync, endpoint, name="local-fs")
+        return {"id": sid, "name": "Local Filesystem MCP Server", **result}
+
+    for item in load_servers():
+        if item.get("id") == sid:
+            env = item.get("env") if isinstance(item.get("env"), dict) else None
+            env_str = (
+                {str(k): str(v) for k, v in env.items()} if isinstance(env, dict) else None
+            )
+            if item.get("transport") == "sse":
+                return {
+                    "id": sid,
+                    "name": item.get("name") or sid,
+                    "ok": False,
+                    "toolsCount": 0,
+                    "tools": [],
+                    "error": "SSE transport is registered but not runnable yet (stdio only until D39)",
+                }
+            result = await asyncio.to_thread(
+                _probe_endpoint_sync,
+                str(item.get("endpoint") or ""),
+                env=env_str,
+                name=str(item.get("name") or sid),
+            )
+            return {"id": sid, "name": item.get("name") or sid, **result}
+
+    raise ValueError(tr("MCP server not found", "未找到该 MCP 服务器"))
+
+
 
 def save_raw_config(servers_list: list[dict[str, Any]]) -> list[dict[str, Any]]:
     validated = []
@@ -149,7 +283,8 @@ def save_raw_config(servers_list: list[dict[str, Any]]) -> list[dict[str, Any]]:
         payload = validate_server_payload(
             name=s.get("name", ""),
             transport=s.get("transport", "stdio"),
-            endpoint=s.get("endpoint", "")
+            endpoint=s.get("endpoint", ""),
+            allow_legacy_sse=True,
         )
         server_id = s.get("id") or f"mcp_{uuid.uuid4().hex[:8]}"
         enabled = s.get("enabled", True)

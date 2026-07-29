@@ -29,6 +29,7 @@ const TOOL_LABELS: Record<string, string> = {
   'agy-cli': 'Antigravity CLI',
   agy: 'Antigravity CLI',
   'zcode-cli': 'ZCode CLI',
+  'grok-cli': 'Grok CLI',
   zcode: 'ZCode CLI',
 };
 

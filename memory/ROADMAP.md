@@ -35,6 +35,71 @@
 | **MVP 闭环** | — | M3 | ✅ | proposal §10.1；T-03 |
 | **Design 模式（D36）** | P1 | Design | ❌ | 见下 §Design 模式 |
 
+## Chat Clutch Agent 能力（DECISIONS D44 · 默认 FAIL）
+
+> 权威任务表：[`specs/core/clutch-agent-capability-plan.md`](../specs/core/clutch-agent-capability-plan.md)（交付期 D0–D53）。未 PM 验收不得标 ✅。  
+> 编号：下表 Dn = 交付期，**不是** DECISIONS Dx。
+
+| 交付期 | 优先级 | 状态 | 说明 |
+|--------|--------|------|------|
+| D0 决策落库 | P0 | ✅ | specs + DECISIONS D44 + 本表 + FILEMAP |
+| D1 Agent 真会干活 | P0 | ✅ | clutch-tools builtins + 默认挂载；PM 2026-07-24 点验通过 |
+| D2 先计划再动手 | P0 | ✅ | `propose_plan` + PlanCard；PM 2026-07-24 点验通过（须同验 D49） |
+| D3 Todo 面板 | P0 | ✅ | `todo_write` + TodoCard；PM 2026-07-24 点验通过（须同验 D49） |
+| D4 结构化提问 | P0 | ✅ | `ask_user_question` + QuestionCard；PM 2026-07-24 点验通过（须同验 D49） |
+| D5 自检报告 | P0 | ✅ | `submit_verification` + VerificationReport；PM 2026-07-24 点验通过（须同验 D50） |
+| D6 Diff 审查 | P0 | ✅ | Cursor 式 edit Diff 卡 + Changes 同步；PM 2026-07-24 点验通过（须同验 D50） |
+| D7 项目规则 + Skills | P0 | ✅ | Grok 对齐：规则链 + 开放 Skills catalog；PM 2026-07-25 点验通过 |
+| D8 长聊不丢任务态 | P0 | ✅ | `/compact`→末尾摘要；压缩后答还剩 todo；PM 2026-07-25 点验通过 |
+| D9 运行可控 | P0 | ✅ | Stop/Continue PM ✅ 2026-07-25；熔断不点验；用量占位 Q-USAGE-1 |
+| D10∥D48 子任务委派 | P0 | ✅ | PM ✅ 2026-07-25；explore 16 步；implement 卡非强制 |
+| D11 后台命令 | P0 | ✅ | PM ✅ 2026-07-25；RUNNING 底栏 / 结束进对话；Kill 乐观 |
+| D12 Git + 网页 | P0 | ✅ | PM ✅ 2026-07-25；commit 真（bcfc099 d12-pm-test）；web_fetch 总结 |
+| D13 权限规则 | P0 | ✅ | PM ✅ A 2026-07-25；B/C 不点验；危险 Full 仍强问 |
+| D14 外挂 grok CLI | P2 | ✅ | Agent 自验 2026-07-25（`AGENT-PM-2026-07-25.md`） |
+| D15 联网搜索 | P1 | ✅ | Agent 自验 2026-07-25 |
+| D16 跨会话记忆 | P1 | ✅ | Agent 自验 2026-07-25 |
+| D17 Hooks | P1 | ✅ | Agent 自验 2026-07-25 |
+| D18 斜杠命令 | P1 | ✅ | Agent 自验 2026-07-25 |
+| D19 思考流 | P1 | ✅ | Agent 自验 2026-07-25 |
+| D20 忙时排队 | P1 | ✅ | Agent 自验 2026-07-25 |
+| D21 ignore/沙箱 | P1 | ✅ | Agent 自验 2026-07-25 |
+| D22 用量看板 | P1 | ✅ | Overview 占位 `—`；Q-USAGE-1；Agent 自验 2026-07-25 |
+| D23 fork/rewind | P1 | ✅ | Agent 自验 2026-07-25 |
+| D24 诊断 MVP | P2 | ✅ | Agent 自验 2026-07-25 |
+| Cap-D25 定时任务 | P2 | ✅ | Agent 自验 2026-07-25（≠ Hybrid D25） |
+| D26 长任务监视 | P1 | ✅ | Agent 自验 2026-07-25 |
+| D27 模式/人设 | P1 | ✅ | Agent/Plan/Full/Ask；Ask=只读（D54）；Agent 自验 2026-07-25 |
+| D28 MCP 工具发现 | P1 | ✅ | Agent 自验 2026-07-25 |
+| D29 Goal 跟踪 | P1 | ✅ | Agent 自验 2026-07-25 |
+| D30 会话看板 | P1 | ✅ | Agent 自验 2026-07-25 |
+| D31 计划批注 | P1 | ✅ | Agent 自验 2026-07-25 |
+| D32 worktree | P2 | ✅ | Agent 自验 2026-07-25 |
+| D33 富读 PDF/图 | P1 | ✅ | Agent 自验 2026-07-25 |
+| D34 前台转后台 | P1 | ✅ | Agent 自验 2026-07-25 |
+| D35 能力包导入 | P2 | ✅ | Agent 自验 2026-07-25 |
+| D36 headless Agent | P2 | ✅ | Agent 自验 2026-07-25（≠ Design D36） |
+| D37 MCP Agent↔Hub 绑定 | P0 | ✅ | Module 4 Hub 勾选 + `mcpServerIds`；PM 2026-07-24 点验通过 |
+| D38 Hub 可信状态 | P1 | ✅ | Agent 自验 2026-07-25 |
+| D39 传输诚实 | P1 | ✅ | Agent 自验 2026-07-25 |
+| D40 Chat MCP 徽章 | P1 | ✅ | Agent 自验 2026-07-25 |
+| D41 MCP 审批体验 | P1 | ✅ | Agent 自验 2026-07-25（Ask≠写审批；见 D41.md） |
+| D42 真实工具名 UI | P1 | ✅ | Agent 自验 2026-07-25 |
+| D43 MCP Resources | P1 | ✅ | Agent 自验 2026-07-25 |
+| D44 一键 local-fs | P1 | ✅ | Agent 自验 2026-07-25 |
+| D45 文档对齐 | P1 | ✅ | Agent 自验 2026-07-25 |
+| D46 对话实时步骤条 | P0 | ✅ | 持久 verb_group + seal `toolSteps`；PM 2026-07-24 点验通过 |
+| D47 中间产物芯片 | P0 | ✅ | seal `filesChanged` + FilesChangedChips → D42 预览；PM 2026-07-24 点验通过 |
+| D49 计划嵌对话流 | P0 | ✅ | PlanCard + TodoCard + QuestionCard；PM 2026-07-24（D2/D3/D4） |
+| D50 验证报告嵌对话 | P0 | ✅ | VerificationReport（D5）+ Cursor Diff 卡（D6）；PM 2026-07-24 |
+| D48 子任务嵌套卡 | P0 | ✅ | 随 D10 PM ✅ 2026-07-25 |
+| D51 Chat ↔ Terminal 同步 | P1 | ✅ | Agent 自验 2026-07-25 |
+| D52 能力↔交互对照门禁 | P1 | ✅ | Agent 自验 2026-07-25 |
+| D53 分层 prompt + 渐进披露 | P0 | ✅ | 分层组装 + Agent Manager 分层摘要面板；PM 2026-07-24 点验通过 |
+
+**首期目标：** D1 + D37 + D46 ✅（PM 2026-07-24）。  
+**扩展/MCP：** Agent 代 PM 自验 2026-07-25（见 `runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md`）；Desktop Tauri E2E ✅；真连 acceptance Skip（缺 DeepSeek/Agnes 密钥）。
+
 ## Design 模式（D36 · 默认 FAIL）
 
 > Header Coding/Design + 工作区 Design 会话 + 原型交互画布；未实际验证不得标 ✅。

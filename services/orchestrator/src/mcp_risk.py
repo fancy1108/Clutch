@@ -21,11 +21,48 @@ _RISKY_TOKENS = (
     "move",
     "rename",
     "apply_patch",
+    "replace",
+    "terminal",
+    "commit",
+)
+
+
+# UI-only / own-gate builtins: must NOT match the generic "write"/"create" tokens.
+_NON_RISKY_BUILTINS = frozenset(
+    {
+        "todo_write",
+        "write_todos",
+        "update_todos",
+        "goal_write",
+        "set_goal",
+        "update_goal",
+        "propose_plan",  # own D2 pause path in mcp_react
+        "ask_user_question",  # own D4 pause path in mcp_react
+        "ask_question",
+        "user_question",
+        "submit_verification",  # D5 UI report — not a risky gate
+        "verification_report",
+        "submit_verification_report",
+        "submit_diff_summary",  # D6 UI report — not a risky gate
+        "diff_summary",
+        "propose_diff_review",
+        "read_skill",  # D7 progressive skill disclosure — read-only
+        "load_skill",
+        "delegate_subtask",  # D10 own nested subagent path in mcp_react
+        "git_status",  # D12 read-only
+        "git_diff",  # D12 read-only
+        "web_fetch",  # D12 network read for summarization
+        "list_background_jobs",
+        "kill_background_job",
+    }
 )
 
 
 def is_risky_mcp_tool(tool_name: str) -> bool:
     key = tool_name.lower().replace("-", "_")
+    basename = key.split("__")[-1]
+    if basename in _NON_RISKY_BUILTINS:
+        return False
     return any(token in key for token in _RISKY_TOKENS)
 
 
@@ -41,7 +78,10 @@ def extract_mcp_file_path(tool_name: str, func_args: dict[str, Any]) -> str | No
         patch = str(func_args.get("patch", "")).strip()
         paths = extract_patch_paths(patch) if patch else []
         return paths[0] if paths else None
-    if not any(token in key for token in ("write", "edit", "create", "move", "rename", "delete")):
+    if not any(
+        token in key
+        for token in ("write", "edit", "create", "move", "rename", "delete", "replace")
+    ):
         return None
     for field in _PATH_ARG_KEYS:
         raw = func_args.get(field)

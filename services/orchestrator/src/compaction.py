@@ -37,6 +37,10 @@ def _estimate_tokens(text: str) -> int:
 
 def _is_critical_message(message: dict[str, Any]) -> bool:
     """Return whether a message contains trajectory details compaction must retain."""
+    if message.get("planCard") or message.get("plan_card"):
+        return True
+    if message.get("todoList") or message.get("todo_list"):
+        return True
     status = str(message.get("status") or "").strip().lower()
     event_type = str(
         message.get("event") or message.get("type") or message.get("kind") or ""
@@ -61,6 +65,8 @@ def _build_critical_context(
     messages: list[dict[str, Any]],
 ) -> list[str]:
     """Build deterministic context lines that must survive LLM summarization."""
+    from src.task_state import format_task_state_from_clutch_state
+
     lines: list[str] = []
     status = str(state.get("status") or "").strip()
     if status and status != "idle":
@@ -79,6 +85,16 @@ def _build_critical_context(
     if changed_files:
         lines.append("[files_changed] " + ", ".join(changed_files))
 
+    # D8: always pin live todos / latest plan (not only when messages mention them).
+    task_snapshot = format_task_state_from_clutch_state({
+        **dict(state),
+        # Prefer full message list for plan cards when caller only passed intermediates.
+        "messages": list(state.get("messages") or messages),
+    })
+    if task_snapshot:
+        for line in task_snapshot.splitlines():
+            lines.append(f"[task_state] {line}")
+
     for message in messages:
         if not _is_critical_message(message):
             continue
@@ -89,6 +105,12 @@ def _build_critical_context(
         text = " ".join(str(message.get("text") or "").split())
         if text:
             details.append(f"text={text[:1000]}")
+        plan = message.get("planCard") or message.get("plan_card")
+        if isinstance(plan, dict) and plan.get("title"):
+            details.append(f"plan={plan.get('title')}")
+        todos = message.get("todoList") or message.get("todo_list")
+        if isinstance(todos, list) and todos:
+            details.append(f"todos={len(todos)}")
         output_events = message.get("outputEvents") or message.get("output_events") or []
         if isinstance(output_events, list):
             details.extend(
@@ -121,10 +143,35 @@ async def compact_run_messages(
     run_id: str,
     state: ClutchState,
     model_id: str | None = None,
+    *,
+    record_slash_command: bool = False,
 ) -> ClutchState:
     messages = list(state.get("messages", []))
     if len(messages) <= 5:
         return state
+
+    now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # Manual `/compact`: append a User bubble so the fold reads chronologically
+    # as … → User `/compact` → System digest at the end.
+    if record_slash_command:
+        last = messages[-1] if messages else None
+        already = (
+            isinstance(last, dict)
+            and str(last.get("agent") or "") == "User"
+            and str(last.get("text") or "").strip() == "/compact"
+        )
+        if not already:
+            messages = [
+                *messages,
+                {
+                    "id": f"user_compact_{uuid.uuid4().hex[:8]}",
+                    "agent": "User",
+                    "text": "/compact",
+                    "time": now_str,
+                    "status": "COMPLETED",
+                },
+            ]
 
     # Step 1: Archive original messages to runs/archive/{run_id}.jsonl
     archive_dir = get_archive_dir()
@@ -143,7 +190,7 @@ async def compact_run_messages(
     intermediate_messages = messages[1:-4]
 
     # Step 3: Call LLM to summarize intermediate history
-    critical_context = _build_critical_context(state, intermediate_messages)
+    critical_context = _build_critical_context(state, messages)
     digest = await _generate_llm_digest(
         intermediate_messages,
         model_id=model_id,
@@ -151,7 +198,6 @@ async def compact_run_messages(
     )
 
     # Step 4: Create a compaction digest message
-    now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     relative_archive_path = f"runs/archive/{run_id}.jsonl"
     
     text_en = (
@@ -174,8 +220,9 @@ async def compact_run_messages(
     }
 
 
-    # Step 5: Merge into compacted message list
-    compacted_messages = [first_message, digest_msg] + last_messages
+    # Step 5: Keep first + recent tail, then digest at the end (chronological UX).
+    # Manual `/compact` lands in the tail so order is: … → User `/compact` → digest.
+    compacted_messages = [first_message] + last_messages + [digest_msg]
     state["messages"] = compacted_messages
 
     # Step 6: Recalculate tokens
@@ -228,7 +275,8 @@ async def _generate_llm_digest(
         "2. What changes were made to files/code.\n"
         "3. What tools were executed and what tests passed/failed.\n"
         "4. The current state/status.\n"
-        "5. Human approvals, rejections, and retry instructions.\n\n"
+        "5. Human approvals, rejections, and retry instructions.\n"
+        "6. Open todos and plan steps with their statuses (must remain recoverable).\n\n"
         "Be extremely concise, clear, and bulleted. Do not include introductory chatter. Just return the summary digest. "
         "Respond in the same language as the conversation (English or Chinese)."
     )

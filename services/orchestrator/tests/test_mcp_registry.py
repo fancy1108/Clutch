@@ -20,20 +20,24 @@ def mcp_data_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return target
 
 
-def test_register_stdio_and_sse_servers(mcp_data_dir: Path) -> None:
+def test_register_stdio_and_reject_sse(mcp_data_dir: Path) -> None:
     stdio = client.post(
         "/api/mcp/servers/register",
         json={
             "name": "Git Tools",
             "transport": "stdio",
             "endpoint": "npx -y @modelcontextprotocol/server-git",
+            "env": {"FOO": "bar"},
         },
     )
     assert stdio.status_code == 200
     git = next(s for s in stdio.json()["servers"] if s.get("name") == "Git Tools")
     assert git["transport"] == "stdio"
     assert git["type"] == "local"
+    stored = next(s for s in load_servers() if s.get("name") == "Git Tools")
+    assert stored.get("env") == {"FOO": "bar"}
 
+    # D39 — SSE registration refused until remote transport is implemented.
     sse = client.post(
         "/api/mcp/servers/register",
         json={
@@ -42,10 +46,9 @@ def test_register_stdio_and_sse_servers(mcp_data_dir: Path) -> None:
             "endpoint": "https://example.com/mcp/sse",
         },
     )
-    assert sse.status_code == 200
-    remote = next(s for s in sse.json()["servers"] if s.get("name") == "Remote Hub")
-    assert remote["type"] == "remote"
-    assert len(load_servers()) == 2
+    assert sse.status_code == 400
+    assert "stdio" in sse.json()["detail"]["message"].lower() or "sse" in sse.json()["detail"]["message"].lower()
+    assert len(load_servers()) == 1
     assert mcp_dir() == mcp_data_dir
 
 

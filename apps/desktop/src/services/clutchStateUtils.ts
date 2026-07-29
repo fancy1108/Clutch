@@ -48,11 +48,29 @@ export function mergeMessageFields(existing: ChatMessage, incoming: ChatMessage)
     ...incoming,
     rawOutput: incoming.rawOutput || existing.rawOutput,
     outputEvents: incomingEvents ?? existing.outputEvents,
+    toolSteps: incoming.toolSteps ?? existing.toolSteps,
+    filesChanged: incoming.filesChanged ?? existing.filesChanged,
+    planCard: incoming.planCard ?? existing.planCard,
+    todoList: incoming.todoList ?? existing.todoList,
+    questionCard: incoming.questionCard ?? existing.questionCard,
+    verificationReport: incoming.verificationReport ?? existing.verificationReport,
+    diffSummary: incoming.diffSummary ?? existing.diffSummary,
   };
 }
 
 export interface MergeChatMessagesOptions {
   pendingUserMessageId?: string | null;
+}
+
+/** D8 compaction inserts a fresh System digest while dropping intermediate bubbles. */
+export function isCompactionDigestMessage(message: ChatMessage): boolean {
+  if (message.agent !== 'System') return false;
+  if (message.id.startsWith('system_digest_')) return true;
+  const badge = String(message.badgeText ?? '').trim();
+  return (
+    badge.includes('COMPACTION DIGEST') ||
+    badge.includes('上下文压缩摘要')
+  );
 }
 
 export function isAuthoritativeMessageReplacement(
@@ -61,6 +79,19 @@ export function isAuthoritativeMessageReplacement(
 ): boolean {
   if (incoming.length >= existing.length) return false;
   const existingIds = new Set(existing.map((message) => message.id));
+  // Compaction: shorter list + new digest id must replace, not merge (else UI looks unchanged).
+  // Manual `/compact` also inserts a fresh User `/compact` row before the digest.
+  if (incoming.some(isCompactionDigestMessage)) {
+    const retained = incoming.filter((message) => !isCompactionDigestMessage(message));
+    return (
+      retained.length > 0 &&
+      retained.every(
+        (message) =>
+          existingIds.has(message.id) ||
+          (message.agent === 'User' && message.text.trim() === '/compact'),
+      )
+    );
+  }
   return incoming.every((message) => existingIds.has(message.id));
 }
 
@@ -82,6 +113,23 @@ export function mergeChatMessages(
     if (priorIndex !== undefined) {
       merged[priorIndex] = mergeMessageFields(merged[priorIndex], message);
       continue;
+    }
+
+    // Same MCP approval intent must not duplicate Supervisor bubbles (message + patch race).
+    const approvalKey =
+      typeof (message as ChatMessage & { approvalKey?: string }).approvalKey === 'string'
+        ? (message as ChatMessage & { approvalKey?: string }).approvalKey
+        : undefined;
+    if (message.agent === 'Supervisor' && approvalKey) {
+      const priorApprovalIdx = merged.findIndex(
+        (item) =>
+          item.agent === 'Supervisor' &&
+          (item as ChatMessage & { approvalKey?: string }).approvalKey === approvalKey,
+      );
+      if (priorApprovalIdx >= 0) {
+        merged[priorApprovalIdx] = mergeMessageFields(merged[priorApprovalIdx], message);
+        continue;
+      }
     }
 
     if (message.agent === 'User') {
@@ -114,12 +162,18 @@ export function preferRicherSessionPatch(
   const next: Partial<ClutchState> = { ...patch };
   const preferredMessages = preferred.messages ?? [];
   const patchMessages = next.messages ?? [];
-  if (preferredMessages.length > patchMessages.length) {
+  const patchIsCompaction =
+    patchMessages.length > 0 &&
+    patchMessages.length < preferredMessages.length &&
+    patchMessages.some(isCompactionDigestMessage);
+  // Never resurrect pre-compact history over an authoritative compaction fold.
+  if (preferredMessages.length > patchMessages.length && !patchIsCompaction) {
     next.messages = preferredMessages;
   }
   if (
     preferred.status === 'idle' &&
-    preferredMessages.length > patchMessages.length
+    preferredMessages.length > patchMessages.length &&
+    !patchIsCompaction
   ) {
     next.status = 'idle';
   }

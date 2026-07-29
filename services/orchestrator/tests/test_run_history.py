@@ -67,6 +67,49 @@ def test_update_run_record_status() -> None:
     assert run_history.list_runs()[0]["status"] == "failed"
 
 
+def test_list_runs_orders_by_recent_activity() -> None:
+    _persist_session_state("run_old", messages=[{"id": "m1", "text": "old"}])
+    _persist_session_state("run_new", messages=[{"id": "m2", "text": "new"}])
+    run_history.upsert_session(
+        {
+            "run_id": "run_old",
+            "workspace_id": "ws_a",
+            "title": "Older chat",
+            "workflow_id": "",
+            "status": "idle",
+            "started_at": "2026-06-20T10:00:00+00:00",
+            "updated_at": "2026-06-20T10:00:00+00:00",
+        }
+    )
+    run_history.upsert_session(
+        {
+            "run_id": "run_new",
+            "workspace_id": "ws_b",
+            "title": "Newer chat",
+            "workflow_id": "",
+            "status": "idle",
+            "started_at": "2026-06-21T10:00:00+00:00",
+            "updated_at": "2026-06-21T10:00:00+00:00",
+        }
+    )
+    # Touch the older session — it should float above the newer-started one.
+    run_history.upsert_session(
+        {
+            "run_id": "run_old",
+            "workspace_id": "ws_a",
+            "title": "Older chat (bumped)",
+            "workflow_id": "",
+            "status": "idle",
+            "started_at": "2026-06-20T10:00:00+00:00",
+            "updated_at": "2026-06-25T12:00:00+00:00",
+        }
+    )
+
+    records = run_history.list_runs()
+    assert [r["run_id"] for r in records[:2]] == ["run_old", "run_new"]
+    assert records[0]["updated_at"] == "2026-06-25T12:00:00+00:00"
+
+
 def test_list_runs_filters_by_workspace() -> None:
     _persist_session_state("run_a", messages=[{"id": "m1", "text": "ecc"}])
     _persist_session_state("run_b", messages=[{"id": "m2", "text": "other"}])

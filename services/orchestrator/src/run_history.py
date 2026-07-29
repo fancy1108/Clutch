@@ -79,17 +79,38 @@ def append_run_record(record: dict[str, Any]) -> dict[str, Any]:
     return upsert_session(record)
 
 
+def _iso_now() -> str:
+    from datetime import UTC, datetime
+
+    return datetime.now(UTC).isoformat()
+
+
+def session_activity_at(record: dict[str, Any]) -> str:
+    """Most recent activity timestamp for sidebar / history ordering."""
+    return str(
+        record.get("updated_at")
+        or record.get("ended_at")
+        or record.get("started_at")
+        or ""
+    )
+
+
 def upsert_session(record: dict[str, Any]) -> dict[str, Any]:
     run_id = record.get("run_id")
+    # Bump activity so re-chatting an old session floats to the top of the sidebar.
+    payload = dict(record)
+    if not str(payload.get("updated_at") or "").strip():
+        payload["updated_at"] = _iso_now()
 
     def mutate(records: list[dict[str, Any]]) -> dict[str, Any]:
         for index, existing in enumerate(records):
             if existing.get("run_id") == run_id:
-                updated = {**existing, **record}
-                records[index] = updated
+                updated = {**existing, **payload}
+                records.pop(index)
+                records.insert(0, updated)
                 return updated
-        records.insert(0, record)
-        return record
+        records.insert(0, payload)
+        return payload
 
     return _mutate_records(mutate)
 
@@ -247,6 +268,7 @@ def list_runs(
                 for record in records
                 if str(record.get("mode") or "coding").strip().lower() == wanted
             ]
+    records.sort(key=session_activity_at, reverse=True)
     return records
 
 

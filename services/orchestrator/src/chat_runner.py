@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextvars
 import json
 import logging
 import threading
@@ -228,12 +229,12 @@ class UserNamePreferenceRequest(BaseModel):
 
 def _skills_registry_payload(*, rescan: bool = True) -> dict[str, Any]:
     from src.skills_scanner import scan_mounted_directories
-    from src.skills_storage import ensure_default_skill_mounts, load_registry, save_registry
+    from src.skills_storage import sync_workspace_skill_mounts, load_registry, save_registry
     from src.workspace import get_workspace
 
     workspace = get_workspace()
     workspace_path = workspace.get("workspace_path") if workspace else None
-    ensure_default_skill_mounts(workspace_path=workspace_path)
+    sync_workspace_skill_mounts(workspace_path=workspace_path)
 
     data = load_registry()
     if rescan:
@@ -258,6 +259,24 @@ def _session_workspace_fields() -> dict[str, str]:
         "workspace_name": workspace["name"],
     }
 
+def _usage_fields_from_state(state: ClutchState) -> dict[str, int]:
+    """D22 — persist session usage on history records when a run is touched."""
+    stats = state.get("run_stats") or {}
+    tool_steps = stats.get("tool_steps")
+    if tool_steps is None:
+        counted = 0
+        for message in state.get("messages") or []:
+            steps = message.get("toolSteps") or message.get("tool_steps") or []
+            if isinstance(steps, list):
+                counted += len(steps)
+        tool_steps = counted
+    tokens = int(state.get("session_tokens") or stats.get("session_tokens") or 0)
+    return {
+        "session_tokens": max(0, tokens),
+        "tool_steps": max(0, int(tool_steps or 0)),
+    }
+
+
 def _touch_session(
     run_id: str,
     *,
@@ -275,13 +294,14 @@ def _touch_session(
     existing = next((record for record in list_runs() if record.get("run_id") == run_id), None)
     if not existing and not session_has_persistable_content(state):
         return
-    patch: dict[str, Any] = {**fields, "run_id": run_id}
+    patch: dict[str, Any] = {**fields, "run_id": run_id, "updated_at": _iso_timestamp()}
     if title is not None:
         patch["title"] = title[:80]
     if workflow_id is not None:
         patch["workflow_id"] = workflow_id
     if status is not None:
         patch["status"] = status
+    patch.update(_usage_fields_from_state(state))
     if existing:
         upsert_session({**existing, **patch})
     else:
@@ -735,6 +755,105 @@ def _apply_delete_message(
     state = _merge_patch(state, patch)
     return state, patch
 
+def _tool_step_live_patch(
+    state: ClutchState, step: dict[str, Any]
+) -> dict[str, Any]:
+    """Upsert pending tool step + D9 run_stats for Chat-visible counters."""
+    from src.run_control import DEFAULT_MAX_TOOL_STEPS, build_run_stats
+    from src.tool_steps import upsert_tool_step
+
+    steps = upsert_tool_step(list(state.get("pending_tool_steps") or []), step)
+    stats = build_run_stats(
+        tool_steps=len(steps),
+        max_steps=DEFAULT_MAX_TOOL_STEPS,
+        session_tokens=int(state.get("session_tokens") or 0),
+    )
+    return {"pending_tool_steps": steps, "run_stats": stats}
+
+
+def _reasoning_live_patch(reasoning: str) -> dict[str, Any]:
+    return {"live_reasoning": reasoning}
+
+
+def _subtask_live_patch(
+    state: ClutchState, card: dict[str, Any]
+) -> dict[str, Any]:
+    from src.subagent_runner import upsert_subtask
+
+    subtasks = upsert_subtask(list(state.get("pending_subtasks") or []), card)
+    return {"pending_subtasks": subtasks}
+
+
+def _bg_jobs_live_patch(jobs: list[dict[str, Any]]) -> dict[str, Any]:
+    return {"bg_jobs": list(jobs)}
+
+
+def _foreground_shell_live_patch(payload: dict[str, Any] | None) -> dict[str, Any]:
+    return {"foreground_shell": payload}
+
+
+def _worktree_isolation_live_patch(payload: dict[str, Any] | None) -> dict[str, Any]:
+    return {"worktree_isolation": payload}
+
+
+def _bind_worktree_from_state(state: ClutchState) -> tuple[contextvars.Token | None, contextvars.Token | None]:
+    """Bind effective workspace root when D32 worktree isolation is active."""
+    from src.workspace import bind_effective_workspace_root
+
+    info = state.get("worktree_isolation")
+    if not isinstance(info, dict) or not info.get("enabled"):
+        return None, None
+    wt_path = str(info.get("path") or "").strip()
+    if not wt_path:
+        return None, None
+    from pathlib import Path
+
+    root_token = bind_effective_workspace_root(Path(wt_path))
+    from src.worktree_isolation import bind_worktree_context
+
+    wt_token = bind_worktree_context(dict(info))
+    return root_token, wt_token
+
+
+def _release_worktree_bindings(
+    root_token: contextvars.Token | None,
+    wt_token: contextvars.Token | None,
+) -> None:
+    if root_token is not None:
+        from src.workspace import release_effective_workspace_root
+
+        release_effective_workspace_root(root_token)
+    if wt_token is not None:
+        from src.worktree_isolation import release_worktree_context
+
+        release_worktree_context(wt_token)
+
+
+async def _apply_foreground_shell_update(
+    websocket: WebSocket,
+    run_id: str,
+    payload: dict[str, Any] | None,
+) -> None:
+    state = _get_or_create_run(run_id)
+    patch: dict[str, Any] = _foreground_shell_live_patch(payload)
+    state = _merge_patch(state, patch)
+    _commit_run_state(run_id, state)
+    await _notify_run_state(websocket, run_id, state, patch)
+
+
+def _sealed_subtasks(
+    state: ClutchState,
+    *,
+    sink: list[dict[str, Any]] | None = None,
+) -> list[dict[str, Any]] | None:
+    from src.subagent_runner import upsert_subtask
+
+    subtasks = list(state.get("pending_subtasks") or [])
+    for item in sink or []:
+        subtasks = upsert_subtask(subtasks, item)
+    return subtasks or None
+
+
 def _merge_patch(state: ClutchState, patch: dict[str, Any]) -> ClutchState:
     merged = deepcopy(state)
     optional_keys = frozenset({
@@ -749,6 +868,21 @@ def _merge_patch(state: ClutchState, patch: dict[str, Any]) -> ClutchState:
         "dispatch_edges",
         "pending_handoff_drafts",
         "focused_lane_id",
+        "pending_tool_steps",
+        "live_reasoning",
+        "pending_subtasks",
+        "bg_jobs",
+        "foreground_shell",
+        "agent_todos",
+        "agent_goal",
+        "verification_report",
+        "diff_summary",
+        "refining_node_id",
+        "refine_draft_output",
+        "refine_agent_id",
+        "pending_pty_inject",
+        "run_stats",
+        "awaiting_continue",
     })
     for key, value in patch.items():
         if key in merged or key in optional_keys:
@@ -808,6 +942,30 @@ async def _send_run_completed(websocket: WebSocket, run_id: str, state: ClutchSt
     }
     await websocket.send_text(json.dumps(envelope))
 
+async def _apply_bg_jobs_update(
+    websocket: WebSocket,
+    run_id: str,
+    jobs: list[dict[str, Any]],
+    finished: dict[str, Any] | None = None,
+) -> None:
+    from src.bg_jobs_monitor import format_bg_job_monitor_message
+
+    state = _get_or_create_run(run_id)
+    patch: dict[str, Any] = _bg_jobs_live_patch(jobs)
+    monitor_text = format_bg_job_monitor_message(finished or {})
+    if monitor_text:
+        supervisor = _chat_message(
+            "Supervisor",
+            monitor_text,
+            bg_job=dict(finished) if finished else None,
+        )
+        patch["messages"] = list(state["messages"]) + [supervisor]
+        await _send_message_event(websocket, run_id, supervisor, "")
+    state = _merge_patch(state, patch)
+    _commit_run_state(run_id, state)
+    await _notify_run_state(websocket, run_id, state, patch)
+
+
 async def _notify_run_state(
     websocket: WebSocket,
     run_id: str,
@@ -817,6 +975,24 @@ async def _notify_run_state(
     await _send_state_patch(websocket, run_id, patch)
     if _is_terminal_status(state["status"]):
         await _send_run_completed(websocket, run_id, state)
+
+def _is_ws_transport_error(exc: BaseException) -> bool:
+    """True when the socket is already closed / ASGI cycle finished (not a logic bug)."""
+    if isinstance(exc, WebSocketDisconnect):
+        return True
+    msg = str(exc).lower()
+    return any(
+        token in msg
+        for token in (
+            "websocket.close",
+            "websocket.send",
+            "not connected",
+            "connection closed",
+            "asgi message",
+            "response already completed",
+        )
+    )
+
 
 async def _try_ws_notify(
     coro: Awaitable[None],
@@ -832,6 +1008,16 @@ async def _try_ws_notify(
             what,
             run_id,
         )
+    except RuntimeError as exc:
+        if _is_ws_transport_error(exc):
+            logger.warning(
+                "WebSocket unavailable during %s run_id=%s: %s",
+                what,
+                run_id,
+                exc,
+            )
+            return
+        raise
 
 _AGENT_AVATARS: dict[str, str] = {
     "Orchestrator": "https://lh3.googleusercontent.com/aida-public/AB6AXuA0yGh59QNLj5n0igNxMgu4lgaiNqZpcN29SpWM0JHNlAuFmOBx-Id67Zcd2NDCNBjBKrcffQrdrfoe-3XaSlveekLAP9SRis93uTk7XPPFO5y4Swos7NvATw6n7eZEm7nfAQuTiMAoWRSnxefAOJugUbZx3fCTNv4jGyjvT-UZznwKzp_HoXuStup_0juhBCZYamrV0Coil-k27d9Yi7il6NabIEG0FfbxwL5V5azpfZQOlBfpaganta2kP7n59BKPHd4K2uTOfZ5p",
@@ -855,6 +1041,15 @@ def _chat_message(
     runtime_engine: str | None = None,
     raw_output: str | None = None,
     output_events: list[dict[str, Any]] | None = None,
+    tool_steps: list[dict[str, Any]] | None = None,
+    files_changed: list[str] | None = None,
+    plan_card: dict[str, Any] | None = None,
+    todo_list: list[dict[str, Any]] | None = None,
+    question_card: dict[str, Any] | None = None,
+    verification_report: dict[str, Any] | None = None,
+    diff_summary: dict[str, Any] | None = None,
+    subtask_cards: list[dict[str, Any]] | None = None,
+    bg_job: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "id": msg_id or f"msg_{uuid.uuid4().hex[:8]}",
@@ -871,7 +1066,228 @@ def _chat_message(
         payload["rawOutput"] = raw_output
     if output_events is not None:
         payload["outputEvents"] = output_events
+    if tool_steps is not None:
+        payload["toolSteps"] = tool_steps
+    if files_changed:
+        # D47: relative paths sealed onto the assistant bubble for clickable chips.
+        payload["filesChanged"] = list(dict.fromkeys(files_changed))
+    if plan_card is not None:
+        # D49: structured plan card for Approve / revise / Cancel (D2).
+        payload["planCard"] = plan_card
+    if todo_list:
+        # D3/D49: todo checklist sealed onto the assistant turn.
+        payload["todoList"] = todo_list
+    if question_card is not None:
+        # D4/D49: multiple-choice question card.
+        payload["questionCard"] = question_card
+    if verification_report is not None:
+        # D5/D50: self-check report card.
+        payload["verificationReport"] = verification_report
+    if diff_summary is not None:
+        # D6/D50: diff review card.
+        payload["diffSummary"] = diff_summary
+    if subtask_cards:
+        # D10/D48: nested subtask cards sealed onto the assistant turn.
+        payload["subtaskCards"] = subtask_cards
+    if bg_job is not None:
+        # D11: finished background job card lives in the Chat timeline (not the composer).
+        payload["bgJob"] = bg_job
     return payload
+
+
+def _verification_report_for_seal(
+    state: ClutchState,
+    *,
+    files_changed: list[str] | None = None,
+    mcp_pause: dict[str, Any] | None = None,
+) -> dict[str, Any] | None:
+    report = None
+    if mcp_pause and isinstance(mcp_pause.get("verification_report"), dict):
+        report = dict(mcp_pause["verification_report"])
+    elif isinstance(state.get("verification_report"), dict):
+        report = dict(state["verification_report"])  # type: ignore[arg-type]
+    if not report:
+        return None
+    paths = list(report.get("changedFiles") or [])
+    for path in files_changed or []:
+        rel = str(path).strip()
+        if rel and rel not in paths:
+            paths.append(rel)
+    if paths:
+        report["changedFiles"] = paths
+    return report
+
+
+async def _publish_verification_report(
+    websocket: WebSocket,
+    run_id: str,
+    state: ClutchState,
+    report: dict[str, Any],
+    *,
+    reply_label: str,
+) -> ClutchState:
+    """Seal a D5/D50 verification card into the Chat timeline immediately."""
+    card = dict(report)
+    messages = list(state["messages"])
+    last = messages[-1] if messages else None
+    prev = last.get("verificationReport") if isinstance(last, dict) else None
+    if (
+        isinstance(prev, dict)
+        and prev.get("title") == card.get("title")
+        and prev.get("conclusion") == card.get("conclusion")
+    ):
+        state = _merge_patch(state, {"verification_report": card})
+        _commit_run_state(run_id, state)
+        return state
+
+    card_msg = _chat_message(reply_label or "Clutch Agent", "", verification_report=card)
+    messages = messages + [card_msg]
+    state = _merge_patch(
+        state,
+        {
+            "messages": messages,
+            "verification_report": card,
+        },
+    )
+    _commit_run_state(run_id, state)
+    await _send_message_event(websocket, run_id, card_msg, "")
+    await _notify_run_state(
+        websocket,
+        run_id,
+        state,
+        {"messages": messages, "verification_report": card},
+    )
+    return state
+
+
+def _diff_summary_for_seal(
+    state: ClutchState,
+    *,
+    files_changed: list[str] | None = None,
+    mcp_pause: dict[str, Any] | None = None,
+) -> dict[str, Any] | None:
+    """Seal only an explicit (non-inline) DiffSummary onto the final reply.
+
+    Cursor-style inline per-edit cards are already published mid-turn; do not
+    re-attach an aggregate card under the closing text bubble.
+    """
+    card = None
+    if mcp_pause and isinstance(mcp_pause.get("diff_summary"), dict):
+        card = dict(mcp_pause["diff_summary"])
+    elif isinstance(state.get("diff_summary"), dict):
+        card = dict(state["diff_summary"])  # type: ignore[arg-type]
+    if not card or not card.get("files"):
+        return None
+    if card.get("inline"):
+        return None
+    return card
+
+
+async def _publish_diff_summary(
+    websocket: WebSocket,
+    run_id: str,
+    state: ClutchState,
+    report: dict[str, Any],
+    *,
+    reply_label: str,
+) -> ClutchState:
+    """Seal a D6/D50 diff card into the Chat timeline immediately (per-edit or review)."""
+    card = dict(report)
+    if not card.get("files"):
+        return state
+    messages = list(state["messages"])
+    last = messages[-1] if messages else None
+    prev = last.get("diffSummary") if isinstance(last, dict) else None
+    # Inline cards: skip only exact duplicate of the same single-file patch.
+    if isinstance(prev, dict) and prev.get("inline") and card.get("inline"):
+        prev_files = prev.get("files") or []
+        next_files = card.get("files") or []
+        if (
+            len(prev_files) == 1
+            and len(next_files) == 1
+            and isinstance(prev_files[0], dict)
+            and isinstance(next_files[0], dict)
+            and prev_files[0].get("path") == next_files[0].get("path")
+            and prev_files[0].get("patch") == next_files[0].get("patch")
+        ):
+            state = _merge_patch(state, {"diff_summary": card})
+            _commit_run_state(run_id, state)
+            return state
+    elif (
+        isinstance(prev, dict)
+        and not card.get("inline")
+        and prev.get("title") == card.get("title")
+    ):
+        prev_paths = [str(f.get("path")) for f in (prev.get("files") or []) if isinstance(f, dict)]
+        next_paths = [str(f.get("path")) for f in (card.get("files") or []) if isinstance(f, dict)]
+        if prev_paths == next_paths:
+            state = _merge_patch(state, {"diff_summary": card})
+            _commit_run_state(run_id, state)
+            return state
+
+    card_msg = _chat_message(reply_label or "Clutch Agent", "", diff_summary=card)
+    messages = messages + [card_msg]
+    state = _merge_patch(
+        state,
+        {
+            "messages": messages,
+            "diff_summary": card,
+        },
+    )
+    _commit_run_state(run_id, state)
+    await _send_message_event(websocket, run_id, card_msg, "")
+    # Push Changes panel for inline edits as they land.
+    paths = [
+        str(f.get("path")).strip()
+        for f in (card.get("files") or [])
+        if isinstance(f, dict) and str(f.get("path") or "").strip()
+    ]
+    if paths:
+        await _notify_workspace_files_changed(websocket, run_id, paths)
+    await _notify_run_state(
+        websocket,
+        run_id,
+        state,
+        {"messages": messages, "diff_summary": card},
+    )
+    return state
+
+
+def _sealed_tool_steps(
+    state: ClutchState,
+    *,
+    sink: list[dict[str, Any]] | None = None,
+) -> list[dict[str, Any]] | None:
+    from src.tool_steps import complete_running_steps, upsert_tool_step
+
+    steps = list(state.get("pending_tool_steps") or [])
+    for item in sink or []:
+        steps = upsert_tool_step(steps, item)
+    sealed = complete_running_steps(steps)
+    return sealed or None
+
+
+def _merge_files_changed_with_tool_steps(
+    files_changed: list[str] | None,
+    sealed_steps: list[dict[str, Any]] | None,
+) -> list[str]:
+    """Union outcome paths with D6 fileDiff paths so chips/Changes match Diff cards."""
+    merged: list[str] = []
+    for path in files_changed or []:
+        rel = str(path).strip()
+        if rel and rel not in merged:
+            merged.append(rel)
+    for step in sealed_steps or []:
+        if not isinstance(step, dict):
+            continue
+        file_diff = step.get("fileDiff")
+        if not isinstance(file_diff, dict):
+            continue
+        rel = str(file_diff.get("path") or "").strip()
+        if rel and rel not in merged:
+            merged.append(rel)
+    return merged
+
 
 def _hybrid_execution_entry(
     *,
@@ -949,10 +1365,11 @@ def _mcp_supervisor_approval_text(func_name: str, func_args: dict[str, Any]) -> 
     detail = ""
     if func_args:
         display_args = normalize_mcp_func_args_for_display(func_args)
-        preview = json.dumps(display_args, ensure_ascii=False)
-        if len(preview) > 120:
-            preview = preview[:117] + "..."
-        detail = f"\n\nArgs: `{preview}`"
+        # Fenced JSON so Chat can Expand/scroll — do not crush to 120 chars.
+        preview = json.dumps(display_args, ensure_ascii=False, indent=2)
+        if len(preview) > 12_000:
+            preview = preview[:12_000] + "\n…(truncated)"
+        detail = f"\n\nArgs:\n```json\n{preview}\n```"
     return tr(
         f"MCP tool `{func_name}` requires your approval before execution.{detail}",
         f"MCP 工具 `{func_name}` 需要您批准后才能执行。{detail}",
@@ -962,19 +1379,152 @@ def _supervisor_gate_messages(
     messages: list[dict[str, Any]],
     func_name: str,
     func_args: dict[str, Any],
-) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    """Append a supervisor approval line; skip duplicate approval for the same tool intent."""
+) -> tuple[list[dict[str, Any]], dict[str, Any], bool]:
+    """Append a supervisor approval line; skip duplicate approval for the same tool intent.
+
+    Returns (messages, gate_message, created) where created=False if an existing
+    Supervisor bubble with the same approvalKey was reused (do not re-emit WS message).
+    """
     from src.mcp_risk import mcp_approval_key
 
     approval_key = mcp_approval_key(func_name, func_args)
     text = _mcp_supervisor_approval_text(func_name, func_args)
-    if messages:
-        last = messages[-1]
-        if last.get("agent") == "Supervisor" and last.get("approvalKey") == approval_key:
-            return messages, last
+    for msg in reversed(messages[-12:]):
+        if msg.get("agent") == "Supervisor" and msg.get("approvalKey") == approval_key:
+            return messages, msg, False
     supervisor = _chat_message("Supervisor", text)
     supervisor["approvalKey"] = approval_key
-    return [*messages, supervisor], supervisor
+    return [*messages, supervisor], supervisor, True
+
+
+def _is_plan_pause(mcp_pause: dict[str, Any]) -> bool:
+    from src.builtin_tools import is_propose_plan_tool
+
+    if str(mcp_pause.get("kind") or "") == "plan":
+        return True
+    return is_propose_plan_tool(str(mcp_pause.get("func_name") or ""))
+
+
+def _is_question_pause(mcp_pause: dict[str, Any]) -> bool:
+    from src.builtin_tools import is_ask_user_question_tool
+
+    if str(mcp_pause.get("kind") or "") == "question":
+        return True
+    return is_ask_user_question_tool(str(mcp_pause.get("func_name") or ""))
+
+
+def _mcp_pause_gate_line(mcp_pause: dict[str, Any]) -> str:
+    name = mcp_pause.get("func_name")
+    if _is_plan_pause(mcp_pause):
+        return f"[CHAT] Awaiting plan approval: {name}"
+    if _is_question_pause(mcp_pause):
+        return f"[CHAT] Awaiting answer for question: {name}"
+    return f"[CHAT] Awaiting approval for MCP tool: {name}"
+
+
+def _mcp_pause_human_prompt(mcp_pause: dict[str, Any]) -> str:
+    if _is_plan_pause(mcp_pause):
+        return tr("Approve the proposed plan to continue.", "请批准计划后继续执行。")
+    if _is_question_pause(mcp_pause):
+        return tr("Choose an option to continue.", "请选择一个选项以继续。")
+    return tr(
+        f"Approve MCP tool call: {mcp_pause['func_name']}",
+        f"请审批 MCP 工具调用：{mcp_pause['func_name']}",
+    )
+
+
+def _messages_for_mcp_pause(
+    messages: list[dict[str, Any]],
+    mcp_pause: dict[str, Any],
+    *,
+    reply_label: str,
+) -> tuple[list[dict[str, Any]], dict[str, Any], bool]:
+    """Append Supervisor gate, D49 plan card, or D49 question card for a pause.
+
+    Returns (messages, pause_msg, created).
+    """
+    if _is_plan_pause(mcp_pause):
+        from src.builtin_tools import normalize_plan_args
+
+        plan = normalize_plan_args(dict(mcp_pause.get("func_args") or {}))
+        card = {
+            "title": plan["title"],
+            "steps": plan["steps"],
+            "status": "pending",
+        }
+        if plan["summary"]:
+            card["summary"] = plan["summary"]
+        plan_msg = _chat_message(
+            reply_label,
+            "",
+            plan_card=card,
+        )
+        return [*messages, plan_msg], plan_msg, True
+    if _is_question_pause(mcp_pause):
+        from src.builtin_tools import normalize_question_args
+
+        q = normalize_question_args(dict(mcp_pause.get("func_args") or {}))
+        card = {
+            "question": q["question"],
+            "options": q["options"],
+            "status": "pending",
+            "allowCustom": q["allow_custom"],
+        }
+        question_msg = _chat_message(
+            reply_label,
+            "",
+            question_card=card,
+        )
+        return [*messages, question_msg], question_msg, True
+    return _supervisor_gate_messages(
+        messages,
+        str(mcp_pause["func_name"]),
+        dict(mcp_pause.get("func_args") or {}),
+    )
+
+
+def _patch_plan_card_status(
+    messages: list[dict[str, Any]],
+    *,
+    status: str,
+    note: str | None = None,
+    step_comments: list[str] | None = None,
+) -> list[dict[str, Any]]:
+    updated = list(messages)
+    for idx in range(len(updated) - 1, -1, -1):
+        card = updated[idx].get("planCard")
+        if isinstance(card, dict) and card.get("status") == "pending":
+            next_card = {**card, "status": status}
+            if note:
+                next_card["note"] = note
+            if step_comments is not None:
+                next_card["stepComments"] = list(step_comments)
+            updated[idx] = {**updated[idx], "planCard": next_card}
+            break
+    return updated
+
+
+def _patch_question_card_status(
+    messages: list[dict[str, Any]],
+    *,
+    status: str,
+    selected: dict[str, str] | None = None,
+    note: str | None = None,
+) -> list[dict[str, Any]]:
+    updated = list(messages)
+    for idx in range(len(updated) - 1, -1, -1):
+        card = updated[idx].get("questionCard")
+        if isinstance(card, dict) and card.get("status") == "pending":
+            next_card = {**card, "status": status}
+            if selected:
+                next_card["selectedId"] = selected.get("id") or ""
+                next_card["selectedLabel"] = selected.get("label") or ""
+            if note:
+                next_card["note"] = note
+            updated[idx] = {**updated[idx], "questionCard": next_card}
+            break
+    return updated
+
 
 async def _send_human_required(
     websocket: WebSocket,
@@ -1155,14 +1705,25 @@ def _compose_agent_system_prompt(
     model_name: str,
     model_api: str,
     mcp_servers_bound: bool = True,
+    user_turn_text: str | None = None,
+    state: dict[str, Any] | None = None,
 ) -> str:
     from src.agent_prompt import compose_agent_system_prompt
+    from src.preferences_storage import load_permission_mode
+    from src.task_state import latest_plan_card
+
+    agent_todos = list((state or {}).get("agent_todos") or [])
+    plan_card = latest_plan_card(list((state or {}).get("messages") or []))
 
     return compose_agent_system_prompt(
         agent,
         model_name=model_name,
         model_api=model_api,
         mcp_servers_bound=mcp_servers_bound,
+        permission_mode=load_permission_mode(),
+        user_turn_text=user_turn_text,
+        agent_todos=agent_todos,
+        plan_card=plan_card,
     )
 
 def _append_terminal_logs(
@@ -1188,6 +1749,15 @@ async def _llm_chat_reply(
     session_model_id: str | None = None,
     cli_session_id: str | None = None,
     emit_log: Callable[[str], Awaitable[None]] | None = None,
+    emit_tool_step: Callable[[dict[str, Any]], Awaitable[None]] | None = None,
+    emit_reasoning: Callable[[str], Awaitable[None]] | None = None,
+    emit_todos: Callable[[list[dict[str, Any]]], Awaitable[None]] | None = None,
+    emit_goal: Callable[[dict[str, Any]], Awaitable[None]] | None = None,
+    emit_verification: Callable[[dict[str, Any]], Awaitable[None]] | None = None,
+    emit_diff_summary: Callable[[dict[str, Any]], Awaitable[None]] | None = None,
+    emit_subtask: Callable[[dict[str, Any]], Awaitable[None]] | None = None,
+    tool_steps_sink: list[dict[str, Any]] | None = None,
+    subtasks_sink: list[dict[str, Any]] | None = None,
     mcp_approved_tool: dict[str, Any] | None = None,
     mcp_resume: dict[str, Any] | None = None,
     isolate_cli_history: bool = False,
@@ -1370,6 +1940,8 @@ async def _llm_chat_reply(
             model_name=runtime_model_name,
             model_api=model_api,
             mcp_servers_bound=mcp_servers_bound,
+            user_turn_text=text,
+            state=state,
         )
         if agent
         else None
@@ -1411,25 +1983,121 @@ async def _llm_chat_reply(
                     else list(history)
                 )
                 loop = asyncio.get_running_loop()
+                step_futures: list[Any] = []
 
                 def on_log(line: str) -> None:
                     if emit_log:
                         asyncio.run_coroutine_threadsafe(emit_log(line), loop)
 
-                outcome = await asyncio.to_thread(
-                    run_mcp_react_loop,
-                    messages=chat_messages,
-                    servers=mcp_servers,
-                    log_prefix="CHAT",
-                    on_log=on_log if emit_log else None,
-                    pause_on_risky=True,
-                    permission_mode=__import__(
-                        "src.preferences_storage", fromlist=["load_permission_mode"]
-                    ).load_permission_mode(),
-                    approved_tool=mcp_approved_tool,
-                    approved_keys=get_approved_mcp_keys(state["run_id"]),
-                    model_id=resolved_model_id,
-                )
+                def on_tool_step(step: dict[str, Any]) -> None:
+                    if emit_tool_step:
+                        step_futures.append(
+                            asyncio.run_coroutine_threadsafe(emit_tool_step(step), loop)
+                        )
+
+                def on_reasoning(text: str) -> None:
+                    if emit_reasoning:
+                        step_futures.append(
+                            asyncio.run_coroutine_threadsafe(emit_reasoning(text), loop)
+                        )
+
+                def on_todos(todos: list[dict[str, Any]]) -> None:
+                    if emit_todos:
+                        step_futures.append(
+                            asyncio.run_coroutine_threadsafe(emit_todos(todos), loop)
+                        )
+
+                def on_goal(goal: dict[str, Any]) -> None:
+                    if emit_goal:
+                        step_futures.append(
+                            asyncio.run_coroutine_threadsafe(emit_goal(goal), loop)
+                        )
+
+                def on_verification(report: dict[str, Any]) -> None:
+                    if emit_verification:
+                        step_futures.append(
+                            asyncio.run_coroutine_threadsafe(emit_verification(report), loop)
+                        )
+
+                def on_diff_summary(report: dict[str, Any]) -> None:
+                    if emit_diff_summary:
+                        step_futures.append(
+                            asyncio.run_coroutine_threadsafe(emit_diff_summary(report), loop)
+                        )
+
+                def on_subtask(card: dict[str, Any]) -> None:
+                    if emit_subtask:
+                        step_futures.append(
+                            asyncio.run_coroutine_threadsafe(emit_subtask(card), loop)
+                        )
+
+                from src.bg_jobs import bind_bg_job_context, release_bg_job_context
+
+                bg_token = bind_bg_job_context({"run_id": state["run_id"]})
+                wt_root_token, wt_ctx_token = _bind_worktree_from_state(state)
+                try:
+                    outcome = await asyncio.to_thread(
+                        run_mcp_react_loop,
+                        messages=chat_messages,
+                        servers=mcp_servers,
+                        log_prefix="CHAT",
+                        on_log=on_log if emit_log else None,
+                        on_tool_step=on_tool_step if emit_tool_step else None,
+                        on_reasoning=on_reasoning if emit_reasoning else None,
+                        on_todos=on_todos if emit_todos else None,
+                        on_goal=on_goal if emit_goal else None,
+                        existing_goal=(
+                            dict(state.get("agent_goal"))
+                            if isinstance(state.get("agent_goal"), dict)
+                            else None
+                        ),
+                        on_verification=on_verification if emit_verification else None,
+                        on_diff_summary=on_diff_summary if emit_diff_summary else None,
+                        on_subtask=on_subtask if emit_subtask else None,
+                        existing_todos=list(state.get("agent_todos") or []),
+                        pause_on_risky=True,
+                        permission_mode=__import__(
+                            "src.preferences_storage", fromlist=["load_permission_mode"]
+                        ).load_permission_mode(),
+                        approved_tool=mcp_approved_tool,
+                        approved_keys=get_approved_mcp_keys(state["run_id"]),
+                        model_id=resolved_model_id,
+                    )
+                finally:
+                    release_bg_job_context(bg_token)
+                    _release_worktree_bindings(wt_root_token, wt_ctx_token)
+                # Live emits can fail if the client dropped mid-loop; never overwrite a
+                # successful react outcome with an ASGI/transport error string.
+                for fut in step_futures:
+                    try:
+                        await asyncio.wrap_future(fut)
+                    except Exception as emit_exc:
+                        if _is_ws_transport_error(emit_exc):
+                            logger.warning(
+                                "Live WS emit failed after react loop run_id=%s: %s",
+                                state["run_id"],
+                                emit_exc,
+                            )
+                            continue
+                        logger.warning(
+                            "Live emit failed after react loop run_id=%s: %s",
+                            state["run_id"],
+                            emit_exc,
+                        )
+                if tool_steps_sink is not None:
+                    tool_steps_sink.clear()
+                    tool_steps_sink.extend(list(outcome.tool_steps or []))
+                if subtasks_sink is not None:
+                    subtasks_sink.clear()
+                    subtasks_sink.extend(list(outcome.subtasks or []))
+                if outcome.todos is not None and emit_todos:
+                    await emit_todos(list(outcome.todos))
+                if outcome.goal is not None and emit_goal:
+                    await emit_goal(dict(outcome.goal))
+                if outcome.verification_report is not None and emit_verification:
+                    await emit_verification(dict(outcome.verification_report))
+                if outcome.diff_summary is not None and emit_diff_summary:
+                    await emit_diff_summary(dict(outcome.diff_summary))
                 if outcome.approval_required:
                     pause_payload = {
                         **outcome.approval_required,
@@ -1437,7 +2105,18 @@ async def _llm_chat_reply(
                         "agent_id": resolved_id,
                         "reply_label": reply_label,
                         "engine_label": outcome.engine_label,
+                        "tool_steps": list(outcome.tool_steps or []),
                     }
+                    if outcome.todos is not None:
+                        pause_payload["todos"] = list(outcome.todos)
+                    if outcome.verification_report is not None:
+                        pause_payload["verification_report"] = dict(
+                            outcome.verification_report
+                        )
+                    if outcome.diff_summary is not None:
+                        pause_payload["diff_summary"] = dict(outcome.diff_summary)
+                    if outcome.subtasks is not None:
+                        pause_payload["subtasks"] = list(outcome.subtasks)
                     return (
                         reply_label,
                         outcome.engine_label,
@@ -1465,10 +2144,11 @@ async def _llm_chat_reply(
 
             llm_only_logs = [
                 tr(
-                    "[CHAT] No MCP servers bound on this agent — using LLM text only. "
-                    "Bind Local Filesystem MCP Server in Agent Manager → Module 4 to enable file tools and approval gates.",
-                    "[CHAT] 此 Agent 未绑定 MCP 服务器，仅使用 LLM 文本回复。"
-                    "请在 Agent Manager → Module 4 绑定 Local Filesystem MCP Server 以启用文件工具与审批门。",
+                    "[CHAT] No tools available for this agent — using LLM text only. "
+                    "Clutch Agent needs an authorized workspace for builtin tools; "
+                    "other agents need MCP Hub bindings or a CLI engine.",
+                    "[CHAT] 此 Agent 无可用工具，仅使用 LLM 文本回复。"
+                    "Clutch Agent 需要已授权工作区以启用内置工具；其他 Agent 需绑定 MCP 或使用 CLI 引擎。",
                 )
             ]
             system_prompt = _compose_agent_system_prompt(
@@ -1476,6 +2156,8 @@ async def _llm_chat_reply(
                 model_name=runtime_model_name,
                 model_api=model_api,
                 mcp_servers_bound=False,
+                user_turn_text=text,
+                state=state,
             )
             history = _history_for_llm(
                 state["messages"],
@@ -1593,6 +2275,11 @@ async def _llm_chat_reply(
         from src.agent_type import agent_type_from_record
 
         err = str(exc)
+        if _is_ws_transport_error(exc):
+            err = tr(
+                "Connection interrupted while finishing the reply. Please resend your message.",
+                "回复发送时连接中断，请重新发送消息。",
+            )
         agent_type = agent_type_from_record(agent) if agent else "clutch"
         if agent_type == "claude-cli" or "Claude CLI" in err:
             runtime_engine = "Claude CLI"
@@ -1605,39 +2292,274 @@ async def _handle_plain_chat_mcp_decision(
     run_id: str,
     state: ClutchState,
     decision: str,
+    instructions: str = "",
 ) -> ClutchState:
+    from src.builtin_tools import (
+        is_ask_user_question_tool,
+        is_propose_plan_tool,
+        parse_question_selection,
+    )
     from src.mcp_pending import get_pending, pop_pending, record_mcp_approval
 
     pending = get_pending(run_id)
     if pending is None:
         return state
 
-    if decision != "approve":
-        pop_pending(run_id)
-        supervisor = _chat_message(
-            "Supervisor",
-            tr("MCP tool call rejected by supervisor.", "监督者已拒绝 MCP 工具调用。"),
+    is_plan = is_propose_plan_tool(pending.func_name)
+    is_question = is_ask_user_question_tool(pending.func_name)
+    normalized = (decision or "").strip().lower()
+    if normalized == "retry":
+        normalized = "revise"
+
+    # Free-text on a question card = the user's custom answer (continue).
+    if is_question and normalized == "revise":
+        normalized = "approve"
+
+    if is_plan and normalized == "revise":
+        from src.plan_revise import (
+            align_step_comments,
+            format_plan_feedback,
+            parse_plan_revise_instructions,
         )
-        log_line = tagged(TAG_HUMAN, f"MCP tool {pending.func_name} rejected")
+
+        pop_pending(run_id)
+        note, annotations = parse_plan_revise_instructions(instructions or "")
+        pending_card = None
+        for msg in reversed(state["messages"]):
+            card = msg.get("planCard")
+            if isinstance(card, dict) and card.get("status") == "pending":
+                pending_card = card
+                break
+        steps = list((pending_card or {}).get("steps") or [])
+        step_comments = align_step_comments(steps, annotations)
+        feedback = format_plan_feedback(note, annotations) or tr("(no comments)", "（无附加说明）")
+        messages = _patch_plan_card_status(
+            list(state["messages"]),
+            status="revised",
+            note=feedback,
+            step_comments=step_comments,
+        )
+        revise_line = tagged(TAG_HUMAN, f"Plan revise requested: {feedback}")
+        chat_messages = list(pending.chat_messages)
+        chat_messages.append(
+            {
+                "role": "tool",
+                "tool_call_id": pending.tool_call_id,
+                "content": (
+                    "User requested changes to the plan before approval.\n"
+                    f"Feedback:\n{feedback}\n"
+                    "Call propose_plan again with a revised title and steps. "
+                    "Do not edit files until the new plan is approved."
+                ),
+            }
+        )
+        state = _merge_patch(
+            state,
+            {
+                "messages": messages,
+                "terminal_logs": list(state["terminal_logs"]) + [stamp_log_line(revise_line)],
+                "status": "running",
+                "active_agent": pending.reply_label,
+                "pending_tool_steps": [], "live_reasoning": "",
+            },
+        )
+        _commit_run_state(run_id, state)
+        _touch_session(run_id, status=state["status"])
+        await _send_log_event(websocket, run_id, revise_line, node_id="")
+        await _notify_run_state(
+            websocket,
+            run_id,
+            state,
+            {"messages": messages, "status": "running", "pending_tool_steps": []},
+        )
+
+        streamed_logs = False
+        tool_steps_sink: list[dict[str, Any]] = []
+        subtasks_sink: list[dict[str, Any]] = []
+
+        async def emit_log(line: str) -> None:
+            nonlocal streamed_logs, state
+            streamed_logs = True
+            stamped = stamp_log_line(line)
+            await _send_log_event(websocket, run_id, stamped, node_id="")
+            logs = list(state["terminal_logs"]) + [stamped]
+            state = _merge_patch(state, {"terminal_logs": logs})
+            _commit_run_state(run_id, state)
+            await _notify_run_state(websocket, run_id, state, {"terminal_logs": logs})
+
+        async def emit_tool_step(step: dict[str, Any]) -> None:
+            nonlocal state
+            patch = _tool_step_live_patch(state, step)
+            state = _merge_patch(state, patch)
+            _commit_run_state(run_id, state)
+            await _notify_run_state(websocket, run_id, state, patch)
+            await _maybe_notify_step_file_diff(websocket, run_id, step)
+
+        async def emit_reasoning(text: str) -> None:
+            nonlocal state
+            patch = _reasoning_live_patch(text)
+            state = _merge_patch(state, patch)
+            _commit_run_state(run_id, state)
+            await _notify_run_state(websocket, run_id, state, patch)
+
+        async def emit_todos(todos: list[dict[str, Any]]) -> None:
+            nonlocal state
+            state = _merge_patch(state, {"agent_todos": list(todos)})
+            _commit_run_state(run_id, state)
+            await _notify_run_state(websocket, run_id, state, {"agent_todos": list(todos)})
+
+        async def emit_goal(goal: dict[str, Any]) -> None:
+            nonlocal state
+            state = _merge_patch(state, {"agent_goal": dict(goal)})
+            _commit_run_state(run_id, state)
+            await _notify_run_state(websocket, run_id, state, {"agent_goal": dict(goal)})
+
+        async def emit_verification(report: dict[str, Any]) -> None:
+            nonlocal state
+            label = str(state.get("active_agent") or pending.reply_label or "Clutch Agent")
+            state = await _publish_verification_report(
+                websocket, run_id, state, dict(report), reply_label=label
+            )
+
+        async def emit_diff_summary(report: dict[str, Any]) -> None:
+            nonlocal state
+            label = str(state.get("active_agent") or pending.reply_label or "Clutch Agent")
+            state = await _publish_diff_summary(
+                websocket, run_id, state, dict(report), reply_label=label
+            )
+
+        async def emit_subtask(card: dict[str, Any]) -> None:
+            nonlocal state
+            patch = _subtask_live_patch(state, card)
+            state = _merge_patch(state, patch)
+            _commit_run_state(run_id, state)
+            await _notify_run_state(websocket, run_id, state, patch)
+
+        (
+            model_name,
+            runtime_engine,
+            reply_text,
+            route_logs,
+            _cli_session_id,
+            mcp_pause,
+            files_changed,
+            raw_output,
+            output_events,
+            shell_recovered,
+        ) = await _llm_chat_reply(
+            state,
+            "",
+            agent_id=pending.agent_id,
+            emit_log=emit_log,
+            emit_tool_step=emit_tool_step,
+            emit_reasoning=emit_reasoning,
+            emit_todos=emit_todos,
+            emit_goal=emit_goal,
+            emit_verification=emit_verification,
+            emit_diff_summary=emit_diff_summary,
+            emit_subtask=emit_subtask,
+            tool_steps_sink=tool_steps_sink,
+            subtasks_sink=subtasks_sink,
+            mcp_resume={
+                "chat_messages": chat_messages,
+                "servers": pending.servers,
+            },
+        )
+        # Fall through into shared pause/complete handling below via recursive-style continue:
+        return await _finish_plain_chat_after_llm(
+            websocket,
+            run_id,
+            state,
+            model_name=model_name,
+            runtime_engine=runtime_engine,
+            reply_text=reply_text,
+            route_logs=route_logs,
+            mcp_pause=mcp_pause,
+            files_changed=files_changed,
+            raw_output=raw_output,
+            output_events=output_events,
+            shell_recovered=shell_recovered,
+            tool_steps_sink=tool_steps_sink,
+            subtasks_sink=subtasks_sink,
+            streamed_logs=streamed_logs,
+            active_agent=pending.reply_label,
+            pending_agent_id=pending.agent_id,
+            user_text_for_tokens="",
+        )
+
+    if normalized != "approve":
+        pop_pending(run_id)
+        if is_plan:
+            messages = _patch_plan_card_status(list(state["messages"]), status="cancelled")
+            supervisor = _chat_message(
+                "Supervisor",
+                tr("Plan cancelled by supervisor.", "监督者已取消计划。"),
+            )
+            log_line = tagged(TAG_HUMAN, f"Plan {pending.func_name} cancelled")
+        elif is_question:
+            messages = _patch_question_card_status(
+                list(state["messages"]), status="cancelled"
+            )
+            supervisor = _chat_message(
+                "Supervisor",
+                tr("Question cancelled by supervisor.", "监督者已取消提问。"),
+            )
+            log_line = tagged(TAG_HUMAN, f"Question {pending.func_name} cancelled")
+        else:
+            messages = list(state["messages"])
+            supervisor = _chat_message(
+                "Supervisor",
+                tr("MCP tool call rejected by supervisor.", "监督者已拒绝 MCP 工具调用。"),
+            )
+            log_line = tagged(TAG_HUMAN, f"MCP tool {pending.func_name} rejected")
+        final_messages = messages + [supervisor]
         final_patch: dict[str, Any] = {
-            "messages": list(state["messages"]) + [supervisor],
+            "messages": final_messages,
             "terminal_logs": list(state["terminal_logs"]) + [stamp_log_line(log_line)],
             "status": "idle",
             "active_agent": pending.reply_label,
+            "pending_tool_steps": [], "live_reasoning": "",
         }
         state = _merge_patch(state, final_patch)
         _commit_run_state(run_id, state)
+        _touch_session(run_id, status=state["status"])
         await _send_message_event(websocket, run_id, supervisor, "")
         await _send_log_event(websocket, run_id, log_line, node_id="")
         await _notify_run_state(websocket, run_id, state, final_patch)
         return state
 
     pop_pending(run_id)
-    record_mcp_approval(run_id, pending.func_name, pending.func_args)
-    state = _merge_patch(state, {"status": "running", "active_agent": pending.reply_label})
-    await _notify_run_state(websocket, run_id, state, {"status": "running"})
+    if not is_plan and not is_question:
+        record_mcp_approval(run_id, pending.func_name, pending.func_args)
+    question_selection: dict[str, str] | None = None
+    if is_question:
+        question_selection = parse_question_selection(
+            instructions, dict(pending.func_args or {})
+        )
+        messages = _patch_question_card_status(
+            list(state["messages"]),
+            status="answered",
+            selected=question_selection,
+        )
+    elif is_plan:
+        messages = _patch_plan_card_status(list(state["messages"]), status="approved")
+    else:
+        messages = list(state["messages"])
+    state = _merge_patch(
+        state,
+        {
+            "messages": messages,
+            "status": "running",
+            "active_agent": pending.reply_label,
+        },
+    )
+    await _notify_run_state(
+        websocket, run_id, state, {"status": "running", "messages": messages}
+    )
 
     streamed_logs = False
+    tool_steps_sink: list[dict[str, Any]] = []
+    subtasks_sink: list[dict[str, Any]] = []
 
     async def emit_log(line: str) -> None:
         nonlocal streamed_logs, state
@@ -1649,11 +2571,63 @@ async def _handle_plain_chat_mcp_decision(
         _commit_run_state(run_id, state)
         await _notify_run_state(websocket, run_id, state, {"terminal_logs": logs})
 
+    async def emit_tool_step(step: dict[str, Any]) -> None:
+        nonlocal state
+        patch = _tool_step_live_patch(state, step)
+        state = _merge_patch(state, patch)
+        _commit_run_state(run_id, state)
+        await _notify_run_state(websocket, run_id, state, patch)
+        await _maybe_notify_step_file_diff(websocket, run_id, step)
+
+    async def emit_reasoning(text: str) -> None:
+        nonlocal state
+        patch = _reasoning_live_patch(text)
+        state = _merge_patch(state, patch)
+        _commit_run_state(run_id, state)
+        await _notify_run_state(websocket, run_id, state, patch)
+
+    async def emit_todos(todos: list[dict[str, Any]]) -> None:
+        nonlocal state
+        state = _merge_patch(state, {"agent_todos": list(todos)})
+        _commit_run_state(run_id, state)
+        await _notify_run_state(websocket, run_id, state, {"agent_todos": list(todos)})
+
+    async def emit_goal(goal: dict[str, Any]) -> None:
+        nonlocal state
+        state = _merge_patch(state, {"agent_goal": dict(goal)})
+        _commit_run_state(run_id, state)
+        await _notify_run_state(websocket, run_id, state, {"agent_goal": dict(goal)})
+
+    async def emit_verification(report: dict[str, Any]) -> None:
+        nonlocal state
+        label = str(state.get("active_agent") or "Clutch Agent")
+        state = await _publish_verification_report(
+            websocket, run_id, state, dict(report), reply_label=label
+        )
+
+    async def emit_diff_summary(report: dict[str, Any]) -> None:
+        nonlocal state
+        label = str(state.get("active_agent") or "Clutch Agent")
+        state = await _publish_diff_summary(
+            websocket, run_id, state, dict(report), reply_label=label
+        )
+
+    async def emit_subtask(card: dict[str, Any]) -> None:
+        nonlocal state
+        patch = _subtask_live_patch(state, card)
+        state = _merge_patch(state, patch)
+        _commit_run_state(run_id, state)
+        await _notify_run_state(websocket, run_id, state, patch)
+
+    resume_args = dict(pending.func_args or {})
+    if question_selection is not None:
+        resume_args["selected"] = question_selection
     approved_tool = {
         "tool_call_id": pending.tool_call_id,
         "func_name": pending.func_name,
-        "func_args": pending.func_args,
+        "func_args": resume_args,
         "step_idx": pending.step_idx,
+        "step_id": pending.step_id or f"tool_{pending.step_idx}",
     }
     mcp_resume = {
         "chat_messages": pending.chat_messages,
@@ -1676,17 +2650,71 @@ async def _handle_plain_chat_mcp_decision(
         "",
         agent_id=pending.agent_id,
         emit_log=emit_log,
+        emit_tool_step=emit_tool_step,
+        emit_reasoning=emit_reasoning,
+        emit_todos=emit_todos,
+        emit_goal=emit_goal,
+        emit_verification=emit_verification,
+        emit_diff_summary=emit_diff_summary,
+        emit_subtask=emit_subtask,
+        tool_steps_sink=tool_steps_sink,
+        subtasks_sink=subtasks_sink,
         mcp_approved_tool=approved_tool,
         mcp_resume=mcp_resume,
     )
 
+    return await _finish_plain_chat_after_llm(
+        websocket,
+        run_id,
+        state,
+        model_name=model_name,
+        runtime_engine=runtime_engine,
+        reply_text=reply_text,
+        route_logs=route_logs,
+        mcp_pause=mcp_pause,
+        files_changed=files_changed,
+        raw_output=raw_output,
+        output_events=output_events,
+        shell_recovered=shell_recovered,
+        tool_steps_sink=tool_steps_sink,
+        subtasks_sink=subtasks_sink,
+        streamed_logs=streamed_logs,
+        active_agent=pending.reply_label,
+        pending_agent_id=pending.agent_id,
+        user_text_for_tokens="",
+    )
+
+
+async def _finish_plain_chat_after_llm(
+    websocket: WebSocket,
+    run_id: str,
+    state: ClutchState,
+    *,
+    model_name: str,
+    runtime_engine: str,
+    reply_text: str,
+    route_logs: list[str],
+    mcp_pause: dict[str, Any] | None,
+    files_changed: list[str] | None,
+    raw_output: str | None,
+    output_events: list[dict[str, Any]] | None,
+    shell_recovered: bool,
+    tool_steps_sink: list[dict[str, Any]],
+    streamed_logs: bool,
+    active_agent: str,
+    pending_agent_id: str,
+    user_text_for_tokens: str,
+    cli_session_id: str | None = None,
+    subtasks_sink: list[dict[str, Any]] | None = None,
+) -> ClutchState:
+    """Shared pause/complete path after plain-chat LLM (+ MCP) returns."""
     if mcp_pause:
         from src.mcp_pending import McpPendingApproval, store_pending
 
         store_pending(
             run_id,
             McpPendingApproval(
-                agent_id=pending.agent_id,
+                agent_id=pending_agent_id,
                 reply_label=model_name,
                 chat_messages=list(mcp_pause["chat_messages"]),
                 servers=list(mcp_pause["servers"]),
@@ -1695,13 +2723,15 @@ async def _handle_plain_chat_mcp_decision(
                 func_args=dict(mcp_pause.get("func_args") or {}),
                 step_idx=int(mcp_pause.get("step_idx", 0)),
                 logs=list(route_logs),
+                step_id=str(mcp_pause.get("step_id") or ""),
             ),
         )
-        gate_line = f"[CHAT] Awaiting approval for MCP tool: {mcp_pause['func_name']}"
-        pause_messages, supervisor = _supervisor_gate_messages(
+        is_plan = _is_plan_pause(mcp_pause)
+        gate_line = _mcp_pause_gate_line(mcp_pause)
+        pause_messages, pause_msg, pause_created = _messages_for_mcp_pause(
             list(state["messages"]),
-            str(mcp_pause["func_name"]),
-            dict(mcp_pause.get("func_args") or {}),
+            mcp_pause,
+            reply_label=model_name or active_agent,
         )
         pause_patch: dict[str, Any] = {
             "messages": pause_messages,
@@ -1709,34 +2739,55 @@ async def _handle_plain_chat_mcp_decision(
                 list(state["terminal_logs"]), route_logs, gate_line, streamed=streamed_logs
             ),
             "status": "awaiting_human",
-            "active_agent": pending.reply_label,
+            "active_agent": active_agent,
+            "pending_tool_steps": list(mcp_pause.get("tool_steps") or tool_steps_sink),
+            "pending_subtasks": list(
+                mcp_pause.get("subtasks") or subtasks_sink or []
+            ),
         }
+        if mcp_pause.get("todos") is not None:
+            pause_patch["agent_todos"] = list(mcp_pause.get("todos") or [])
+        if mcp_pause.get("verification_report") is not None:
+            pause_patch["verification_report"] = dict(mcp_pause["verification_report"])
+        if mcp_pause.get("diff_summary") is not None:
+            pause_patch["diff_summary"] = dict(mcp_pause["diff_summary"])
         state = _merge_patch(state, pause_patch)
         _commit_run_state(run_id, state)
-        if pause_messages[-1] is supervisor:
-            await _send_message_event(websocket, run_id, supervisor, "")
+        _touch_session(run_id, status=state["status"])
+        if pause_created:
+            await _send_message_event(websocket, run_id, pause_msg, "")
         if not streamed_logs:
             for log in route_logs:
                 await _send_log_event(websocket, run_id, log, node_id="")
         await _send_log_event(websocket, run_id, gate_line, node_id="")
         await _notify_run_state(websocket, run_id, state, pause_patch)
         await _send_human_required(
-            websocket,
-            run_id,
-            node_id="",
-            prompt=tr(
-                f"Approve MCP tool call: {mcp_pause['func_name']}",
-                f"请审批 MCP 工具调用：{mcp_pause['func_name']}",
-            ),
+            websocket, run_id, node_id="", prompt=_mcp_pause_human_prompt(mcp_pause)
         )
         return state
 
+    from src.run_control import build_run_stats, should_offer_continue
+
+    sealed_steps = _sealed_tool_steps(state, sink=tool_steps_sink)
+    sealed_subtasks = _sealed_subtasks(state, sink=subtasks_sink)
+    merged_changed = _merge_files_changed_with_tool_steps(files_changed, sealed_steps)
+    files_changed = merged_changed
     reply = _chat_message(
         model_name,
         reply_text,
         runtime_engine=runtime_engine,
         raw_output=raw_output,
         output_events=output_events,
+        tool_steps=sealed_steps,
+        files_changed=merged_changed or None,
+        todo_list=list(state.get("agent_todos") or []) or None,
+        verification_report=_verification_report_for_seal(
+            state, files_changed=merged_changed or None
+        ),
+        diff_summary=_diff_summary_for_seal(
+            state, files_changed=merged_changed or None
+        ),
+        subtask_cards=sealed_subtasks,
     )
     log_line = f"[CHAT] {model_name} via {runtime_engine}: {len(reply_text)} chars"
     if not streamed_logs:
@@ -1748,22 +2799,41 @@ async def _handle_plain_chat_mcp_decision(
     final_logs = _append_terminal_logs(
         list(state["terminal_logs"]), route_logs, log_line, streamed=streamed_logs
     )
+    token_patch = _token_patch_turn(
+        state, user_text=user_text_for_tokens, assistant_text=reply_text
+    )
+    offer_continue = should_offer_continue(reply_text)
+    fuse_hit = "Loop fuse" in (reply_text or "") or "死循环熔断" in (reply_text or "")
     final_patch = {
         "messages": final_messages,
         "terminal_logs": final_logs,
         "status": "idle",
-        "active_agent": pending.reply_label,
-        **_token_patch_turn(state, user_text="", assistant_text=reply_text),
+        "active_agent": active_agent,
+        "pending_tool_steps": [], "live_reasoning": "",
+        "pending_subtasks": [],
+        "awaiting_continue": offer_continue,
+        "run_stats": build_run_stats(
+            tool_steps=len(sealed_steps or []),
+            session_tokens=int(token_patch.get("session_tokens") or 0),
+            fuse_triggered=fuse_hit,
+        ),
+        **token_patch,
     }
     if shell_recovered:
         final_patch["shell_session_status"] = "recovering"
     elif runtime_engine and "Hybrid" in runtime_engine:
         final_patch["shell_session_status"] = "ready"
-    if _cli_session_id:
+    if cli_session_id:
         from src.state import cli_session_patch
-        final_patch.update(cli_session_patch(_cli_session_id, pending.agent_id))
+
+        final_patch.update(cli_session_patch(cli_session_id, pending_agent_id))
+    if merged_changed:
+        # Persist shell + edit paths so Changes works without a git repo.
+        prev = [str(p) for p in (state.get("changed_files") or []) if str(p).strip()]
+        final_patch["changed_files"] = list(dict.fromkeys([*prev, *merged_changed]))
     state = _merge_patch(state, final_patch)
     _commit_run_state(run_id, state)
+    _touch_session(run_id, status=state["status"])
     await _send_message_event(websocket, run_id, reply, "")
     if runtime_engine and "Hybrid" in runtime_engine:
         await _send_hybrid_execution_event(
@@ -1774,9 +2844,15 @@ async def _handle_plain_chat_mcp_decision(
             output_events=output_events,
         )
     if files_changed:
-        await _notify_workspace_files_changed(websocket, run_id, files_changed)
+        await _notify_workspace_files_changed(
+            websocket,
+            run_id,
+            files_changed,
+            path_diffs=_path_diffs_from_tool_steps(sealed_steps),
+        )
     await _notify_run_state(websocket, run_id, state, final_patch)
     return state
+
 
 def _interrupt_plain_chat_shell(run_id: str) -> None:
     from src.shell_session import get_shell_session_manager
@@ -1794,21 +2870,42 @@ async def _apply_plain_chat_stop(
     run_id: str,
     state: ClutchState,
 ) -> ClutchState:
+    from src.run_control import build_run_stats, stop_supervisor_message
     from src.runtime_config import runtime_mode
+
+    # Idempotent: avoid stacking duplicate "Run stopped" Supervisor bubbles.
+    if state.get("status") == "idle" and state.get("awaiting_continue"):
+        await asyncio.to_thread(_interrupt_plain_chat_shell, run_id)
+        return state
 
     await asyncio.to_thread(_interrupt_plain_chat_shell, run_id)
     if runtime_mode() == "hybrid":
         log_line = stamp_log_line(tagged(TAG_WORKFLOW, "[HYBRID] Plain chat stopped by user."))
     else:
         log_line = stamp_log_line(tagged(TAG_WORKFLOW, "Run stopped by supervisor."))
+    stop_text = tr(stop_supervisor_message(lang="en"), stop_supervisor_message(lang="zh"))
+    supervisor = _chat_message("Supervisor", stop_text)
     logs = list(state["terminal_logs"]) + [log_line]
-    patch: dict[str, Any] = {"status": "idle", "terminal_logs": logs}
+    steps = list(state.get("pending_tool_steps") or [])
+    stats = build_run_stats(
+        tool_steps=len(steps),
+        session_tokens=int(state.get("session_tokens") or 0),
+    )
+    patch: dict[str, Any] = {
+        "status": "idle",
+        "terminal_logs": logs,
+        "messages": list(state["messages"]) + [supervisor],
+        "pending_tool_steps": [], "live_reasoning": "",
+        "awaiting_continue": True,
+        "run_stats": stats,
+    }
     if runtime_mode() == "hybrid":
         patch["shell_session_status"] = "ready"
     state = _merge_patch(state, patch)
     _commit_run_state(run_id, state)
     _touch_session(run_id, status=state["status"])
     await _send_log_event(websocket, run_id, log_line, node_id="")
+    await _send_message_event(websocket, run_id, supervisor, "")
     await _notify_run_state(websocket, run_id, state, patch)
     return state
 
@@ -2006,6 +3103,7 @@ async def _persist_plain_chat_user_message(
         "messages": messages,
         "status": "running",
         "active_agent": active_agent,
+        "awaiting_continue": False,
     }
     if runtime_mode() == "hybrid":
         user_patch["shell_session_status"] = "ready"
@@ -2067,6 +3165,7 @@ async def _handle_plain_chat(
             "messages": messages,
             "status": "running",
             "active_agent": active_agent,
+            "pending_tool_steps": [], "live_reasoning": "",
         }
         if runtime_mode() == "hybrid":
             user_patch["shell_session_status"] = "ready"
@@ -2098,6 +3197,8 @@ async def _handle_plain_chat(
         stored_session_id = None
 
     streamed_logs = False
+    tool_steps_sink: list[dict[str, Any]] = []
+    subtasks_sink: list[dict[str, Any]] = []
 
     async def emit_log(line: str) -> None:
         nonlocal streamed_logs, state
@@ -2117,7 +3218,92 @@ async def _handle_plain_chat(
             what="state_patch",
         )
 
+    async def emit_tool_step(step: dict[str, Any]) -> None:
+        nonlocal state
+        patch = _tool_step_live_patch(state, step)
+        state = _merge_patch(state, patch)
+        _commit_run_state(run_id, state)
+        await _try_ws_notify(
+            _notify_run_state(websocket, run_id, state, patch),
+            run_id=run_id,
+            what="state_patch",
+        )
+        await _maybe_notify_step_file_diff(websocket, run_id, step)
+
+    async def emit_reasoning(text: str) -> None:
+        nonlocal state
+        patch = _reasoning_live_patch(text)
+        state = _merge_patch(state, patch)
+        _commit_run_state(run_id, state)
+        await _try_ws_notify(
+            _notify_run_state(websocket, run_id, state, patch),
+            run_id=run_id,
+            what="state_patch",
+        )
+
+    async def emit_todos(todos: list[dict[str, Any]]) -> None:
+        nonlocal state
+        state = _merge_patch(state, {"agent_todos": list(todos)})
+        _commit_run_state(run_id, state)
+        await _try_ws_notify(
+            _notify_run_state(websocket, run_id, state, {"agent_todos": list(todos)}),
+            run_id=run_id,
+            what="state_patch",
+        )
+
+    async def emit_goal(goal: dict[str, Any]) -> None:
+        nonlocal state
+        state = _merge_patch(state, {"agent_goal": dict(goal)})
+        _commit_run_state(run_id, state)
+        await _try_ws_notify(
+            _notify_run_state(websocket, run_id, state, {"agent_goal": dict(goal)}),
+            run_id=run_id,
+            what="state_patch",
+        )
+
+    async def emit_verification(report: dict[str, Any]) -> None:
+        nonlocal state
+        label = str(state.get("active_agent") or active_agent or "Clutch Agent")
+        state = await _publish_verification_report(
+            websocket, run_id, state, dict(report), reply_label=label
+        )
+
+    async def emit_diff_summary(report: dict[str, Any]) -> None:
+        nonlocal state
+        label = str(state.get("active_agent") or active_agent or "Clutch Agent")
+        state = await _publish_diff_summary(
+            websocket, run_id, state, dict(report), reply_label=label
+        )
+
+    async def emit_subtask(card: dict[str, Any]) -> None:
+        nonlocal state
+        patch = _subtask_live_patch(state, card)
+        state = _merge_patch(state, patch)
+        _commit_run_state(run_id, state)
+        await _try_ws_notify(
+            _notify_run_state(websocket, run_id, state, patch),
+            run_id=run_id,
+            what="state_patch",
+        )
+
     from src.hybrid_concurrency import HybridPlainChatRejected
+
+    chat_text = text
+    from src.code_diagnostics import format_diagnostics_for_prompt, pop_pending_diagnostics
+
+    pending_diag = pop_pending_diagnostics(run_id)
+    if pending_diag:
+        diag_prefix = format_diagnostics_for_prompt(pending_diag)
+        if diag_prefix:
+            chat_text = f"{diag_prefix}\n\n{text}"
+        state = _merge_patch(state, {"chat_diagnostics": pending_diag})
+        _commit_run_state(run_id, state)
+        await _notify_run_state(
+            websocket,
+            run_id,
+            state,
+            {"chat_diagnostics": pending_diag},
+        )
 
     try:
         (
@@ -2133,11 +3319,20 @@ async def _handle_plain_chat(
             shell_recovered,
         ) = await _llm_chat_reply(
             state,
-            text,
+            chat_text,
             agent_id=resolved_id,
             session_model_id=session_model_id,
             cli_session_id=stored_session_id,
             emit_log=emit_log,
+            emit_tool_step=emit_tool_step,
+            emit_reasoning=emit_reasoning,
+            emit_todos=emit_todos,
+            emit_goal=emit_goal,
+            emit_verification=emit_verification,
+            emit_diff_summary=emit_diff_summary,
+            emit_subtask=emit_subtask,
+            tool_steps_sink=tool_steps_sink,
+            subtasks_sink=subtasks_sink,
         )
     except HybridPlainChatRejected as exc:
         if exc.code == "pool_full":
@@ -2194,13 +3389,14 @@ async def _handle_plain_chat(
                 func_args=dict(mcp_pause.get("func_args") or {}),
                 step_idx=int(mcp_pause.get("step_idx", 0)),
                 logs=list(route_logs),
+                step_id=str(mcp_pause.get("step_id") or ""),
             ),
         )
-        gate_line = f"[CHAT] Awaiting approval for MCP tool: {mcp_pause['func_name']}"
-        pause_messages, supervisor = _supervisor_gate_messages(
+        gate_line = _mcp_pause_gate_line(mcp_pause)
+        pause_messages, pause_msg, pause_created = _messages_for_mcp_pause(
             list(state["messages"]),
-            str(mcp_pause["func_name"]),
-            dict(mcp_pause.get("func_args") or {}),
+            mcp_pause,
+            reply_label=model_name or active_agent,
         )
         pause_logs = _append_terminal_logs(
             list(state["terminal_logs"]), route_logs, gate_line, streamed=streamed_logs
@@ -2210,11 +3406,16 @@ async def _handle_plain_chat(
             "terminal_logs": pause_logs,
             "status": "awaiting_human",
             "active_agent": active_agent,
+            "pending_tool_steps": list(mcp_pause.get("tool_steps") or tool_steps_sink),
+            "pending_subtasks": list(
+                mcp_pause.get("subtasks") or subtasks_sink or []
+            ),
         }
         state = _merge_patch(state, pause_patch)
         _commit_run_state(run_id, state)
-        if pause_messages[-1] is supervisor:
-            await _send_message_event(websocket, run_id, supervisor, "")
+        _touch_session(run_id, status=state["status"])
+        if pause_created:
+            await _send_message_event(websocket, run_id, pause_msg, "")
         if not streamed_logs:
             for log in route_logs:
                 await _send_log_event(websocket, run_id, log, node_id="")
@@ -2224,19 +3425,30 @@ async def _handle_plain_chat(
             websocket,
             run_id,
             node_id="",
-            prompt=tr(
-                f"Approve MCP tool call: {mcp_pause['func_name']}",
-                f"请审批 MCP 工具调用：{mcp_pause['func_name']}",
-            ),
+            prompt=_mcp_pause_human_prompt(mcp_pause),
         )
         return state
 
+    sealed_steps = _sealed_tool_steps(state, sink=tool_steps_sink)
+    sealed_subtasks = _sealed_subtasks(state, sink=subtasks_sink)
+    merged_changed = _merge_files_changed_with_tool_steps(files_changed, sealed_steps)
+    files_changed = merged_changed
     reply = _chat_message(
         model_name,
         reply_text,
         runtime_engine=runtime_engine,
         raw_output=raw_output,
         output_events=output_events,
+        tool_steps=sealed_steps,
+        files_changed=merged_changed or None,
+        todo_list=list(state.get("agent_todos") or []) or None,
+        verification_report=_verification_report_for_seal(
+            state, files_changed=merged_changed or None
+        ),
+        diff_summary=_diff_summary_for_seal(
+            state, files_changed=merged_changed or None
+        ),
+        subtask_cards=sealed_subtasks,
     )
 
     hybrid_system_prompt: str | None = None
@@ -2257,6 +3469,7 @@ async def _handle_plain_chat(
                 model_name=model.name,
                 model_api=getattr(model, "api_model", None) or model.name,
                 mcp_servers_bound=bool(resolve_agent_mcp_servers(agent)),
+                state=state,
             )
         hybrid_executions_patch = _merge_hybrid_executions(
             state,
@@ -2287,6 +3500,8 @@ async def _handle_plain_chat(
         "terminal_logs": final_logs,
         "status": "idle",
         "active_agent": active_agent,
+        "pending_tool_steps": [], "live_reasoning": "",
+        "pending_subtasks": [],
         **_token_patch_turn(state, user_text=text, assistant_text=reply_text),
     }
     if hybrid_executions_patch is not None:
@@ -2302,6 +3517,9 @@ async def _handle_plain_chat(
         final_patch.update(cli_session_patch(cli_session_id, resolved_id))
     elif stored_session_agent and stored_session_agent != resolved_id:
         final_patch.update(cli_session_patch(None, ""))
+    if merged_changed:
+        prev = [str(p) for p in (state.get("changed_files") or []) if str(p).strip()]
+        final_patch["changed_files"] = list(dict.fromkeys([*prev, *merged_changed]))
     state = _merge_patch(state, final_patch)
 
     from src.compaction import should_compact, compact_run_messages
@@ -2350,7 +3568,12 @@ async def _handle_plain_chat(
         )
     if files_changed:
         await _try_ws_notify(
-            _notify_workspace_files_changed(websocket, run_id, files_changed),
+            _notify_workspace_files_changed(
+                websocket,
+                run_id,
+                files_changed,
+                path_diffs=_path_diffs_from_tool_steps(sealed_steps),
+            ),
             run_id=run_id,
             what="file_changed",
         )
@@ -2515,6 +3738,7 @@ async def _handle_flow_refine_message(
         "status": "refining",
         "refine_agent_id": resolved_id,
         "active_agent": active_agent,
+        "pending_tool_steps": [], "live_reasoning": "",
     }
     if runtime_mode() == "hybrid":
         user_patch["shell_session_status"] = "ready"
@@ -2545,6 +3769,8 @@ async def _handle_flow_refine_message(
         stored_session_id = None
 
     streamed_logs = False
+    tool_steps_sink: list[dict[str, Any]] = []
+    subtasks_sink: list[dict[str, Any]] = []
 
     async def emit_log(line: str) -> None:
         nonlocal streamed_logs, state
@@ -2555,6 +3781,54 @@ async def _handle_flow_refine_message(
         _commit_run_state(run_id, state)
         await _send_log_event(websocket, run_id, stamped, node_id=refining_node_id)
         await _notify_run_state(websocket, run_id, state, {"terminal_logs": logs})
+
+    async def emit_tool_step(step: dict[str, Any]) -> None:
+        nonlocal state
+        patch = _tool_step_live_patch(state, step)
+        state = _merge_patch(state, patch)
+        _commit_run_state(run_id, state)
+        await _notify_run_state(websocket, run_id, state, patch)
+        await _maybe_notify_step_file_diff(websocket, run_id, step)
+
+    async def emit_reasoning(text: str) -> None:
+        nonlocal state
+        patch = _reasoning_live_patch(text)
+        state = _merge_patch(state, patch)
+        _commit_run_state(run_id, state)
+        await _notify_run_state(websocket, run_id, state, patch)
+
+    async def emit_todos(todos: list[dict[str, Any]]) -> None:
+        nonlocal state
+        state = _merge_patch(state, {"agent_todos": list(todos)})
+        _commit_run_state(run_id, state)
+        await _notify_run_state(websocket, run_id, state, {"agent_todos": list(todos)})
+
+    async def emit_goal(goal: dict[str, Any]) -> None:
+        nonlocal state
+        state = _merge_patch(state, {"agent_goal": dict(goal)})
+        _commit_run_state(run_id, state)
+        await _notify_run_state(websocket, run_id, state, {"agent_goal": dict(goal)})
+
+    async def emit_verification(report: dict[str, Any]) -> None:
+        nonlocal state
+        label = str(state.get("active_agent") or "Clutch Agent")
+        state = await _publish_verification_report(
+            websocket, run_id, state, dict(report), reply_label=label
+        )
+
+    async def emit_diff_summary(report: dict[str, Any]) -> None:
+        nonlocal state
+        label = str(state.get("active_agent") or "Clutch Agent")
+        state = await _publish_diff_summary(
+            websocket, run_id, state, dict(report), reply_label=label
+        )
+
+    async def emit_subtask(card: dict[str, Any]) -> None:
+        nonlocal state
+        patch = _subtask_live_patch(state, card)
+        state = _merge_patch(state, patch)
+        _commit_run_state(run_id, state)
+        await _notify_run_state(websocket, run_id, state, patch)
 
     from src.agent_type import is_clutch_agent, resolve_model_for_agent
     from src.image_router import is_image_model
@@ -2592,6 +3866,15 @@ async def _handle_flow_refine_message(
             agent_id=resolved_id,
             cli_session_id=stored_session_id,
             emit_log=emit_log,
+            emit_tool_step=emit_tool_step,
+            emit_reasoning=emit_reasoning,
+            emit_todos=emit_todos,
+            emit_goal=emit_goal,
+            emit_verification=emit_verification,
+            emit_diff_summary=emit_diff_summary,
+            emit_subtask=emit_subtask,
+            tool_steps_sink=tool_steps_sink,
+            subtasks_sink=subtasks_sink,
             chat_source="flow_refine",
             system_prompt_suffix=refine_suffix,
         )
@@ -2619,13 +3902,14 @@ async def _handle_flow_refine_message(
                 func_args=dict(mcp_pause.get("func_args") or {}),
                 step_idx=int(mcp_pause.get("step_idx", 0)),
                 logs=list(route_logs),
+                step_id=str(mcp_pause.get("step_id") or ""),
             ),
         )
-        gate_line = f"[CHAT] Awaiting approval for MCP tool: {mcp_pause['func_name']}"
-        pause_messages, supervisor = _supervisor_gate_messages(
+        gate_line = _mcp_pause_gate_line(mcp_pause)
+        pause_messages, pause_msg, pause_created = _messages_for_mcp_pause(
             list(state["messages"]),
-            str(mcp_pause["func_name"]),
-            dict(mcp_pause.get("func_args") or {}),
+            mcp_pause,
+            reply_label=model_name or active_agent,
         )
         pause_logs = _append_terminal_logs(
             list(state["terminal_logs"]), route_logs, gate_line, streamed=streamed_logs
@@ -2635,11 +3919,15 @@ async def _handle_flow_refine_message(
             "terminal_logs": pause_logs,
             "status": "awaiting_human",
             "active_agent": active_agent,
+            "pending_tool_steps": list(mcp_pause.get("tool_steps") or tool_steps_sink),
+            "pending_subtasks": list(
+                mcp_pause.get("subtasks") or subtasks_sink or []
+            ),
         }
         state = _merge_patch(state, pause_patch)
         _commit_run_state(run_id, state)
-        if pause_messages[-1] is supervisor:
-            await _send_message_event(websocket, run_id, supervisor, refining_node_id)
+        if pause_created:
+            await _send_message_event(websocket, run_id, pause_msg, refining_node_id)
         if not streamed_logs:
             for log in route_logs:
                 await _send_log_event(websocket, run_id, log, node_id=refining_node_id)
@@ -2647,11 +3935,23 @@ async def _handle_flow_refine_message(
         await _notify_run_state(websocket, run_id, state, pause_patch)
         return state
 
+    sealed_steps = _sealed_tool_steps(state, sink=tool_steps_sink)
+    merged_changed = _merge_files_changed_with_tool_steps(files_changed, sealed_steps)
+    files_changed = merged_changed
     reply = _chat_message(
         model_name,
         reply_text,
         runtime_engine=runtime_engine,
         msg_id=f"agent_{uuid.uuid4().hex[:8]}",
+        tool_steps=sealed_steps,
+        files_changed=merged_changed or None,
+        todo_list=list(state.get("agent_todos") or []) or None,
+        verification_report=_verification_report_for_seal(
+            state, files_changed=merged_changed or None
+        ),
+        diff_summary=_diff_summary_for_seal(
+            state, files_changed=merged_changed or None
+        ),
     )
     final_messages = list(state["messages"]) + [reply]
     final_patch: dict[str, Any] = {
@@ -2659,6 +3959,7 @@ async def _handle_flow_refine_message(
         "refine_draft_output": reply_text,
         "active_agent": model_name,
         "status": "refining",
+        "pending_tool_steps": [], "live_reasoning": "",
         **cli_session_patch(cli_session_id, resolved_id),
         **_token_patch_turn(state, user_text=body or text, assistant_text=reply_text),
     }
@@ -2670,6 +3971,9 @@ async def _handle_flow_refine_message(
         final_patch["terminal_logs"] = list(state["terminal_logs"]) + [
             stamp_log_line(line) for line in route_logs
         ]
+    if merged_changed:
+        prev = [str(p) for p in (state.get("changed_files") or []) if str(p).strip()]
+        final_patch["changed_files"] = list(dict.fromkeys([*prev, *merged_changed]))
     state = _merge_patch(state, final_patch)
     _commit_run_state(run_id, state)
     await _send_message_event(websocket, run_id, reply, refining_node_id)
@@ -2682,7 +3986,13 @@ async def _handle_flow_refine_message(
             output_events=output_events,
         )
     if files_changed:
-        await _notify_workspace_files_changed(websocket, run_id, files_changed, node_id=refining_node_id)
+        await _notify_workspace_files_changed(
+            websocket,
+            run_id,
+            files_changed,
+            node_id=refining_node_id,
+            path_diffs=_path_diffs_from_tool_steps(sealed_steps),
+        )
     await _notify_run_state(websocket, run_id, state, final_patch)
     if refine_reply_ready_to_commit(reply_text):
         state = _prepare_workflow_refine_state(run_id, state, prepend_log=False)
@@ -2781,15 +4091,76 @@ async def _notify_workspace_files_changed(
     paths: list[str],
     *,
     node_id: str = "",
+    path_diffs: dict[str, list[dict[str, Any]]] | None = None,
 ) -> None:
+    """Push Changes-panel updates. Prefer edit-hunk diffs when provided (D6)."""
+    from src.builtin_tools import enrich_diff_file_entry
+
     for path in paths:
+        rel = str(path).strip()
+        if not rel:
+            continue
+        diffs: list[dict[str, Any]] = []
+        if path_diffs and rel in path_diffs:
+            diffs = list(path_diffs[rel] or [])
+        if not diffs:
+            entry = enrich_diff_file_entry({"path": rel})
+            diffs = list(entry.get("diffs") or [])
+        if not diffs:
+            diffs = [{"lineNum": 1, "type": "addition", "text": "(updated via MCP)"}]
         await _send_file_changed(
             websocket,
             run_id,
             node_id=node_id,
-            path=path,
-            diff_lines=[{"lineNum": 1, "type": "addition", "text": "(updated via MCP)"}],
+            path=rel,
+            diff_lines=diffs,
         )
+
+
+def _path_diffs_from_tool_steps(
+    sealed_steps: list[dict[str, Any]] | None,
+) -> dict[str, list[dict[str, Any]]]:
+    out: dict[str, list[dict[str, Any]]] = {}
+    for step in sealed_steps or []:
+        if not isinstance(step, dict):
+            continue
+        file_diff = step.get("fileDiff")
+        if not isinstance(file_diff, dict):
+            continue
+        rel = str(file_diff.get("path") or "").strip()
+        if not rel:
+            continue
+        diffs = file_diff.get("diffs")
+        if isinstance(diffs, list) and diffs:
+            out[rel] = [dict(d) for d in diffs if isinstance(d, dict)]
+    return out
+
+
+
+async def _maybe_notify_step_file_diff(
+    websocket: WebSocket,
+    run_id: str,
+    step: dict[str, Any],
+    *,
+    node_id: str = "",
+) -> None:
+    """Live-push Changes panel using the same hunk as the Chat Diff card."""
+    file_diff = step.get("fileDiff") if isinstance(step, dict) else None
+    if not isinstance(file_diff, dict):
+        return
+    path = str(file_diff.get("path") or "").strip()
+    if not path:
+        return
+    raw_diffs = file_diff.get("diffs")
+    diffs = [dict(d) for d in raw_diffs if isinstance(d, dict)] if isinstance(raw_diffs, list) else []
+    await _notify_workspace_files_changed(
+        websocket,
+        run_id,
+        [path],
+        node_id=node_id,
+        path_diffs={path: diffs},
+    )
+
 
 async def _send_validation_result(
     websocket: WebSocket,
@@ -3027,6 +4398,8 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
     from src.run_state_store import sync_run_state_from_disk
 
     register_plain_chat_ws(run_id, websocket)
+    from src.bg_jobs import register_bg_jobs_notifier, unregister_bg_jobs_notifier
+
     state = sync_run_state_from_disk(run_id, _get_or_create_run(run_id))
     _run_states[run_id] = state
     _setup_run_log_forwarder(run_id)
@@ -3034,6 +4407,35 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
 
     forwarder = get_forwarder(run_id)
     loop = asyncio.get_running_loop()
+
+    def _bg_jobs_sync_notifier(
+        rid: str,
+        jobs: list[dict[str, Any]],
+        finished: dict[str, Any] | None,
+    ) -> None:
+        if rid != run_id:
+            return
+        asyncio.run_coroutine_threadsafe(
+            _apply_bg_jobs_update(websocket, run_id, jobs, finished),
+            loop,
+        )
+
+    register_bg_jobs_notifier(run_id, _bg_jobs_sync_notifier)
+
+    def _foreground_shell_sync_notifier(
+        rid: str,
+        payload: dict[str, Any] | None,
+    ) -> None:
+        if rid != run_id:
+            return
+        asyncio.run_coroutine_threadsafe(
+            _apply_foreground_shell_update(websocket, run_id, payload),
+            loop,
+        )
+
+    from src.foreground_shell import register_foreground_notifier, unregister_foreground_notifier
+
+    register_foreground_notifier(run_id, _foreground_shell_sync_notifier)
 
     async def ws_log_emit(line: str, node_id: str) -> None:
         await _send_log_event(websocket, run_id, line, node_id=node_id)
@@ -3186,6 +4588,7 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
             "terminal_logs": logs,
             "shell_session_status": "ready",
             "status": "running",
+            "awaiting_continue": False,
         }
         state = _merge_patch(state, patch)
         _commit_run_state(run_id, state)
@@ -3300,8 +4703,9 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                 from src.mcp_pending import get_pending
 
                 if get_pending(run_id) and not state.get("workflow_id"):
+                    instructions = str(payload.get("instructions", ""))
                     state = await _handle_plain_chat_mcp_decision(
-                        websocket, run_id, state, decision
+                        websocket, run_id, state, decision, instructions
                     )
                 else:
                     instructions = str(payload.get("instructions", ""))
@@ -3330,6 +4734,167 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                             node_id=state["active_node_id"],
                             prompt=tr("Checks failed, waiting for human confirmation.", "检查未通过，等待人工确认。"),
                         )
+            elif isinstance(payload, dict) and payload.get("action") == "kill_bg_job":
+                job_id = str(payload.get("job_id") or "").strip()
+                if job_id:
+                    from src.bg_jobs import kill_job
+
+                    await asyncio.to_thread(kill_job, run_id, job_id)
+            elif isinstance(payload, dict) and payload.get("action") == "move_fg_to_background":
+                from src.foreground_shell import transfer_to_background
+
+                job = await asyncio.to_thread(transfer_to_background, run_id)
+                if job:
+                    notice = _chat_message(
+                        "Supervisor",
+                        tr(
+                            f"Moved foreground command to background (job {job.get('id', '')}).",
+                            f"前台命令已转入后台（任务 {job.get('id', '')}）。",
+                        ),
+                    )
+                    patch = {"messages": list(state["messages"]) + [notice]}
+                    state = _merge_patch(state, patch)
+                    _commit_run_state(run_id, state)
+                    await _send_message_event(websocket, run_id, notice, "")
+                    await _notify_run_state(websocket, run_id, state, patch)
+            elif isinstance(payload, dict) and payload.get("action") == "enable_worktree":
+                from src.worktree_isolation import create_worktree, describe_worktree
+                from src.workspace import require_workspace
+
+                try:
+                    root = await asyncio.to_thread(require_workspace)
+                    info = await asyncio.to_thread(create_worktree, root)
+                    wt_payload = describe_worktree(info, root)
+                    patch = {"worktree_isolation": wt_payload}
+                    state = _merge_patch(state, patch)
+                    _commit_run_state(run_id, state)
+                    notice = _chat_message(
+                        "Supervisor",
+                        tr(
+                            f"Worktree isolation enabled at {wt_payload.get('path', '')}.",
+                            f"已启用 worktree 隔离：{wt_payload.get('path', '')}。",
+                        ),
+                    )
+                    patch = {**patch, "messages": list(state["messages"]) + [notice]}
+                    state = _merge_patch(state, patch)
+                    _commit_run_state(run_id, state)
+                    await _send_message_event(websocket, run_id, notice, "")
+                    await _notify_run_state(websocket, run_id, state, patch)
+                except Exception as exc:
+                    notice = _chat_message(
+                        "Supervisor",
+                        tr(f"Worktree enable failed: {exc}", f"启用 worktree 失败：{exc}"),
+                    )
+                    patch = {"messages": list(state["messages"]) + [notice]}
+                    state = _merge_patch(state, patch)
+                    _commit_run_state(run_id, state)
+                    await _send_message_event(websocket, run_id, notice, "")
+                    await _notify_run_state(websocket, run_id, state, patch)
+            elif isinstance(payload, dict) and payload.get("action") == "merge_worktree":
+                from src.worktree_isolation import merge_worktree
+                from src.workspace import require_workspace
+
+                wt_info = state.get("worktree_isolation")
+                wt_id = str((wt_info or {}).get("id") or payload.get("wt_id") or "").strip()
+                if wt_id:
+                    try:
+                        root = await asyncio.to_thread(require_workspace)
+                        summary = await asyncio.to_thread(merge_worktree, root, wt_id)
+                        notice = _chat_message(
+                            "Supervisor",
+                            tr(f"Merged worktree {wt_id}: {summary}", f"已合并 worktree {wt_id}：{summary}"),
+                        )
+                        patch = {
+                            "worktree_isolation": None,
+                            "messages": list(state["messages"]) + [notice],
+                        }
+                        state = _merge_patch(state, patch)
+                        _commit_run_state(run_id, state)
+                        await _send_message_event(websocket, run_id, notice, "")
+                        await _notify_run_state(websocket, run_id, state, patch)
+                    except Exception as exc:
+                        notice = _chat_message(
+                            "Supervisor",
+                            tr(f"Worktree merge failed: {exc}", f"合并 worktree 失败：{exc}"),
+                        )
+                        patch = {"messages": list(state["messages"]) + [notice]}
+                        state = _merge_patch(state, patch)
+                        _commit_run_state(run_id, state)
+                        await _send_message_event(websocket, run_id, notice, "")
+                        await _notify_run_state(websocket, run_id, state, patch)
+            elif isinstance(payload, dict) and payload.get("action") == "discard_worktree":
+                from src.worktree_isolation import discard_worktree
+                from src.workspace import require_workspace
+
+                wt_info = state.get("worktree_isolation")
+                wt_id = str((wt_info or {}).get("id") or payload.get("wt_id") or "").strip()
+                if wt_id:
+                    try:
+                        root = await asyncio.to_thread(require_workspace)
+                        await asyncio.to_thread(discard_worktree, root, wt_id)
+                        notice = _chat_message(
+                            "Supervisor",
+                            tr(
+                                f"Discarded worktree {wt_id}; main workspace unchanged.",
+                                f"已丢弃 worktree {wt_id}；主工作区保持干净。",
+                            ),
+                        )
+                        patch = {
+                            "worktree_isolation": None,
+                            "messages": list(state["messages"]) + [notice],
+                        }
+                        state = _merge_patch(state, patch)
+                        _commit_run_state(run_id, state)
+                        await _send_message_event(websocket, run_id, notice, "")
+                        await _notify_run_state(websocket, run_id, state, patch)
+                    except Exception as exc:
+                        notice = _chat_message(
+                            "Supervisor",
+                            tr(f"Worktree discard failed: {exc}", f"丢弃 worktree 失败：{exc}"),
+                        )
+                        patch = {"messages": list(state["messages"]) + [notice]}
+                        state = _merge_patch(state, patch)
+                        _commit_run_state(run_id, state)
+                        await _send_message_event(websocket, run_id, notice, "")
+                        await _notify_run_state(websocket, run_id, state, patch)
+            elif isinstance(payload, dict) and payload.get("action") == "clear_approvals":
+                # D13: clear session-remembered MCP tool approvals.
+                from src.mcp_pending import clear_mcp_approval_state
+
+                clear_mcp_approval_state(run_id)
+                notice = _chat_message(
+                    "Supervisor",
+                    tr(
+                        "Cleared remembered tool approvals for this chat.",
+                        "已清除本会话记住的工具批准。",
+                    ),
+                )
+                patch = {"messages": list(state["messages"]) + [notice]}
+                state = _merge_patch(state, patch)
+                _commit_run_state(run_id, state)
+                await _send_message_event(websocket, run_id, notice, "")
+                await _notify_run_state(websocket, run_id, state, patch)
+            elif isinstance(payload, dict) and payload.get("action") == "continue_run":
+                # D9: resume after Stop / loop fuse — enqueue a continue prompt.
+                if state.get("workflow_id"):
+                    pass
+                elif state.get("status") == "running":
+                    pass
+                else:
+                    from src.run_control import continue_user_prompt
+
+                    resume_text = tr(
+                        continue_user_prompt(lang="en"),
+                        continue_user_prompt(lang="zh"),
+                    )
+                    clear_patch = {"awaiting_continue": False}
+                    state = _merge_patch(state, clear_patch)
+                    _commit_run_state(run_id, state)
+                    await _notify_run_state(websocket, run_id, state, clear_patch)
+                    if plain_chat_task is not None and not plain_chat_task.done():
+                        await _enqueue_plain_chat(resume_text, None, None, None)
+                    else:
+                        await _start_plain_chat_turn(resume_text, None, None, None)
             elif isinstance(payload, dict) and payload.get("action") == "stop_run":
                 if not state.get("workflow_id"):
                     plain_chat_queue.clear()
@@ -3776,5 +5341,7 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
         )
     finally:
         unregister_plain_chat_ws(run_id)
+        unregister_bg_jobs_notifier(run_id)
+        unregister_foreground_notifier(run_id)
         forwarder.detach_ws()
 

@@ -4,6 +4,359 @@
 > **何时写：** 每个**代码 Task** 完成并 commit 后，在 Check-out 追加一节（见 `CLAUDE.md` §Check-out）。  
 > **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。
 
+## Agent 代 PM 自验收 D14–D52（2026-07-25）
+
+| 项 | 说明 |
+|----|------|
+| **Commits** | `0c3462d` / `61c22ec`（E2E FAKE_LLM）；closeout docs 另 commit |
+| **Evidence** | `runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md` + wave-*-*.log |
+| **Verification** | Wave A/B 自动化绿；API E2E 6/6；Hybrid 1/1；Desktop/Real **Skip（环境）** |
+| **ROADMAP** | D14–D52（非 Design D36）→ ✅ Agent 自验 |
+
+## D13 A + Ask=只读（D54）（2026-07-25）
+
+| 项 | 说明 |
+|----|------|
+| **Commit** | `624c2c5` |
+| **PM** | D13 ✅ 用例 A — `D13.md`；B/C 跳过；ROADMAP ✅ |
+| **Changed** | Ask=只读；默认 Agent；Cursor 序/图标；onboarding 可选模式；DECISIONS **D54** |
+| **Evidence** | `runs/verification/pm-acceptance/D13.md` |
+| **Verification** | `./scripts/verify.sh`（pre-commit）；`pytest` permission + mcp_react + plan D2 相关用例通过 |
+
+## D12 PM 通过（2026-07-25）
+
+| 项 | 说明 |
+|----|------|
+| **PM** | D12 ✅ — `runs/verification/pm-acceptance/D12.md`；ROADMAP ✅ |
+| **Evidence** | 工作区 `my-video`：`bcfc099` message `d12-pm-test`；web_fetch 总结通过 |
+| **下一批** | D13 PM |
+
+## D11 PM 通过 + bg job UX（2026-07-25）
+
+| 项 | 说明 |
+|----|------|
+| **PM** | D11 ✅ — `runs/verification/pm-acceptance/D11.md`；ROADMAP ✅ |
+| **Verification** | `pytest tests/test_bg_jobs_d11.py tests/test_bg_jobs_monitor_d26.py -q`；`vitest bgJobMonitor` |
+| **Fixes** | 结束进对话 `bgJob`；底栏仅 RUNNING；Kill 乐观；killed 不弹失败 toast；dock 上滚 |
+| **下一批** | D12 PM |
+
+## D10 PM 通过 + explore 预算（2026-07-25）
+
+| 项 | 说明 |
+|----|------|
+| **PM** | D10∥D48 ✅ — `runs/verification/pm-acceptance/D10.md`；ROADMAP ✅ |
+| **Verification** | `pytest tests/test_subagent_d10.py -q` → 5 passed |
+| **Fixes** | explore max_steps 16 / implement 12；explore 少扫目录；implement 卡非强制 |
+| **下一批** | D11 PM |
+
+## D9 PM 通过 + Usage 占位（2026-07-25）
+
+| 项 | 说明 |
+|----|------|
+| **PM** | D9 ✅ Stop/Continue — `runs/verification/pm-acceptance/D09.md`；熔断跳过；ROADMAP ✅ |
+| **Changed** | 移除 `UsageDashboard` / `+ → Usage`；Overview 用量 `—`；开放问题 **Q-USAGE-1** |
+| **下一批** | D10∥D48 PM |
+
+## D8 PM 通过 + 验收期修复（2026-07-25）
+
+| 项 | 说明 |
+|----|------|
+| **PM** | D8 ✅ — `runs/verification/pm-acceptance/D08.md`；ROADMAP ✅ |
+| **Verification** | `pytest tests/test_task_state_d8.py tests/test_compaction.py tests/test_todo_d3.py -q`；`pnpm test -- src/services/clutchState.test.ts` |
+| **Fixes** | todo JSON 字符串不炸字符；compaction 权威替换；`/compact` 末尾 User+digest；Stop 乐观 UI；状态问答不续干活；深色 slash notice |
+
+## Wave5b — D32 / Cap-D25 / D24 / D36 / D14（2026-07-25）
+
+| ID | Commit | Verification | PM |
+|----|--------|--------------|-----|
+| D32 | `9a863ae` | `pytest tests/test_worktree_isolation_d32.py -q` → 2 passed | `runs/verification/pm-acceptance/D32.md` |
+| Cap-D25 | `05547b8` | `pytest tests/test_scheduled_tasks_cap_d25.py -q` → 3 passed | `runs/verification/pm-acceptance/Cap-D25.md` |
+| D24 | `605d0fc` | `pytest tests/test_diagnostics_d24.py -q` → 2 passed | `runs/verification/pm-acceptance/D24.md` |
+| D36 | `e42ba01` | `pytest tests/test_headless_agent_d36.py -q` → 2 passed | `runs/verification/pm-acceptance/D36-headless.md` |
+| D14 | `5d65a68` | `pytest tests/test_grok_cli_d14.py -q` → 4 passed | `runs/verification/pm-acceptance/D14.md` |
+
+## Wave5b — D32（进行中）
+
+| ID | Commit | Verification | PM |
+|----|--------|--------------|-----|
+| D32 | `9a863ae` | `pytest tests/test_worktree_isolation_d32.py -q` → 2 passed | `runs/verification/pm-acceptance/D32.md` |
+| Cap-D25 | `05547b8` | `pytest tests/test_scheduled_tasks_cap_d25.py -q` → 3 passed | `runs/verification/pm-acceptance/Cap-D25.md` |
+| D24 | _(pending)_ | `pytest tests/test_diagnostics_d24.py -q` | `runs/verification/pm-acceptance/D24.md` |
+
+## Wave5a — D34 / D23（2026-07-25）
+
+| ID | Commit | Verification | PM |
+|----|--------|--------------|-----|
+| D34 | `5679a1b` | `pytest tests/test_foreground_shell_d34.py -q` → 3 passed | `runs/verification/pm-acceptance/D34.md` |
+| D23 | `bc67e30` | `pytest tests/test_session_fork_d23.py tests/test_file_rewind_d23.py -q` → 3 passed | `runs/verification/pm-acceptance/D23.md` |
+| D16 | `930f9a5` | `pytest tests/test_cross_session_memory_d16.py -q` → 2 passed | `runs/verification/pm-acceptance/D16.md` |
+| D17 | `68a05a8` | `pytest tests/test_tool_hooks_d17.py -q` → 1 passed | `runs/verification/pm-acceptance/D17.md` |
+| D35 | `5de258d` | `pytest tests/test_capability_pack_d35.py -q` → 1 passed | `runs/verification/pm-acceptance/D35.md` |
+
+## Wave4 — D28 / D15 / D33 / D31（2026-07-25）
+
+| ID | Commit | Verification | PM |
+|----|--------|--------------|-----|
+| D28 | `cc2662e` | `pytest tests/test_mcp_tool_discovery_d28.py -q` → 5 passed | `runs/verification/pm-acceptance/D28.md` |
+| D15 | `0c0c095` | `pytest tests/test_web_search_d15.py -q` → 4 passed | `runs/verification/pm-acceptance/D15.md` |
+| D33 | `bec5dbb` | `pytest tests/test_rich_read_d33.py -q` → 3 passed | `runs/verification/pm-acceptance/D33.md` |
+| D31 | `d2f2b2f` | `pytest tests/test_plan_step_comments_d31.py -q` → 3 passed；`PlanCardView.test.ts` → 4 passed | `runs/verification/pm-acceptance/D31.md` |
+
+## Clutch Agent D18 斜杠命令 (`518b8d0`)
+
+| 项目 | 值 |
+|------|-----|
+| **Task** | D18 `/plan` `/compact` `/todos` `/help` + compact API |
+| **Commit** | `518b8d0` |
+| **Branch** | `dev` |
+| **Verification** | `pnpm test -- src/services/slashCommands.test.ts` → 3 passed；`pytest tests/test_compact_api_d18.py -q` → 2 passed |
+| **PM 用例** | `runs/verification/pm-acceptance/D18.md` |
+| **下一批** | D22 → D27… |
+
+## Clutch Agent D43 MCP Resources (`4462570`)
+
+| 项目 | 值 |
+|------|-----|
+| **Task** | D43 Browse resources + Pin for Chat + prompt inject |
+| **Commit** | `4462570` |
+| **Branch** | `dev` |
+| **Verification** | `uv run pytest tests/test_mcp_resources_d43.py -q` → 2 passed |
+| **PM 用例** | `runs/verification/pm-acceptance/D43.md` |
+| **下一批** | 人工全表点验 |
+
+## Clutch Agent D42∥D44 真工具名 + 一键 local-fs (`24f0e31`)
+
+| 项目 | 值 |
+|------|-----|
+| **Task** | D42 real Hub tool chips + D44 Enable workspace file tools + D45 Epicode honesty |
+| **Commit** | `24f0e31` |
+| **Branch** | `dev` |
+| **Verification** | pre-commit verify.sh (build + vitest + pytest) |
+| **PM 用例** | `runs/verification/pm-acceptance/D42.md` · `D44.md` · `D41.md` · `D45.md` |
+| **下一批** | 人工点验（D43 已于 `4462570` 交付） |
+
+## Clutch Agent D40 Chat MCP 徽章 (`724c26c`)
+
+| 项目 | 值 |
+|------|-----|
+| **Task** | D40 Chat MCP badge / Bind CTA |
+| **Commit** | `724c26c` |
+| **Branch** | `dev` |
+| **Verification** | `pnpm test -- src/services/agentMcpSummary.test.ts` → 2 passed |
+| **PM 用例** | `runs/verification/pm-acceptance/D40.md` |
+| **下一批** | **D42∥D44** |
+
+## Clutch Agent D39 传输诚实 (`092ee91`)
+
+| 项目 | 值 |
+|------|-----|
+| **Task** | D39 stdio-only Hub + Env form; reject SSE register |
+| **Commit** | `092ee91` |
+| **Branch** | `dev` |
+| **Verification** | `uv run pytest tests/test_mcp_registry.py tests/test_mcp_probe_d38.py -q` → 8 passed |
+| **PM 用例** | `runs/verification/pm-acceptance/D39.md` |
+| **下一批** | **D40** Chat MCP 徽章 |
+
+## Clutch Agent D38 Hub 可信状态 (`b2d8f49`)
+
+| 项目 | 值 |
+|------|-----|
+| **Task** | D38 Test connection + remove under-development banner |
+| **Commit** | `b2d8f49` |
+| **Branch** | `dev` |
+| **Verification** | `uv run pytest tests/test_mcp_probe_d38.py -q` → 5 passed |
+| **PM 用例** | `runs/verification/pm-acceptance/D38.md` |
+| **下一批** | **D39** 传输诚实 |
+
+## Clutch Agent D52 能力↔交互对照门禁 (`1365f6d`)
+
+| 项目 | 值 |
+|------|-----|
+| **Task** | D52 PRODUCT_INTRO Capability→Chat UI table + INV-D52 |
+| **Commit** | `1365f6d` |
+| **Branch** | `dev` |
+| **Verification** | `./scripts/check-capability-ui-table.sh` → OK |
+| **PM 用例** | `runs/verification/pm-acceptance/D52.md` |
+| **下一批** | **D38** Hub 可信状态 |
+
+## Clutch Agent D51 Chat ↔ Terminal 同步 (`ee4e2a2`)
+
+| 项目 | 值 |
+|------|-----|
+| **Task** | D51 View in Terminal → log highlight / lane focus |
+| **Commit** | `ee4e2a2` |
+| **Branch** | `dev` |
+| **Verification** | `cd apps/desktop && pnpm test -- src/services/chatTerminalSync.test.ts` → 6 passed |
+| **PM 用例** | `runs/verification/pm-acceptance/D51.md` |
+| **下一批** | **D52** 能力↔交互对照门禁 |
+
+## Clutch Agent D13 权限规则 (`ed7c568`)
+
+| 项目 | 值 |
+|------|-----|
+| **Task** | D13 allow/ask/deny + dangerous force-ask + clear approvals |
+| **Commit** | `ed7c568` |
+| **Branch** | `dev` |
+| **Verification** | `uv run pytest tests/test_permission_rules_d13.py -q` |
+| **PM 用例** | `runs/verification/pm-acceptance/D13.md` |
+| **下一批** | 人工点验 D8–D13 |
+
+## Clutch Agent D12 Git + 网页 (`194d33a`)
+
+| 项目 | 值 |
+|------|-----|
+| **Task** | D12 git_status/diff/commit + web_fetch |
+| **Commit** | `194d33a` |
+| **Branch** | `dev` |
+| **Verification** | `uv run pytest tests/test_git_web_d12.py -q` |
+| **PM 用例** | `runs/verification/pm-acceptance/D12.md` |
+| **下一批** | **D13 权限规则** |
+
+## Clutch Agent D11 后台命令 (`59b45ee`)
+
+| 项目 | 值 |
+|------|-----|
+| **Task** | D11 background jobs + Chat job bar |
+| **Commit** | `59b45ee` |
+| **Branch** | `dev` |
+| **Verification** | `uv run pytest tests/test_bg_jobs_d11.py -q` → 5 passed |
+| **PM 用例** | `runs/verification/pm-acceptance/D11.md`（待人工点验；ROADMAP 仍 ❌） |
+| **下一批** | **D12 Git + 网页** |
+
+## Clutch Agent D10∥D48 子任务委派 (`25dc5dc`)
+
+| 项目 | 值 |
+|------|-----|
+| **Task** | D10 delegate_subtask + D48 嵌套 Subtasks 卡 |
+| **Commit** | `25dc5dc` |
+| **Branch** | `dev` |
+| **Verification** | `uv run pytest tests/test_subagent_d10.py tests/test_mcp_react.py -q` |
+| **PM 用例** | `runs/verification/pm-acceptance/D10.md`（待人工点验；ROADMAP 仍 ❌） |
+| **下一批** | **D11 后台命令** |
+
+## Clutch Agent D9 运行可控 (`bef9b75`)
+
+| 项目 | 值 |
+|------|-----|
+| **Task** | D9 Stop/Continue + loop fuse + Chat Steps/tok |
+| **Commit** | `bef9b75` |
+| **Branch** | `dev` |
+| **Verification** | `uv run pytest tests/test_run_control_d9.py tests/test_mcp_react.py -q` + pre-commit verify |
+| **PM 用例** | `runs/verification/pm-acceptance/D09.md`（待人工点验；ROADMAP 仍 ❌） |
+| **下一批** | **D10∥D48** |
+
+## Clutch Agent D8 长聊不丢任务态 (`7936786`)
+
+| 项目 | 值 |
+|------|-----|
+| **Task** | D8 压缩后保留 Todo/计划 + `task_state` 层 |
+| **Commit** | `7936786` |
+| **Branch** | `dev` |
+| **Verification** | `uv run pytest tests/test_task_state_d8.py tests/test_compaction.py -q` → 16 passed |
+| **PM 用例** | `runs/verification/pm-acceptance/D08.md`（待人工点验；ROADMAP 仍 ❌） |
+| **下一批** | **D9 运行可控** |
+
+## Clutch Agent D7 project rules + Skills (`af58e94`)
+
+| 项目 | 值 |
+|------|-----|
+| **Task** | D7 项目规则 + Skills（Grok-aligned · D45） |
+| **Commit** | `af58e94` |
+| **Branch** | `dev` |
+| **Verification** | `test_d7_project_rules_skills` + pre-commit `verify.sh`（pytest 806 passed） |
+| **PM** | 2026-07-25 验收通过（规则 token + read_skill→SKILL_BODY_LOADED） |
+| **下一批** | **D8 长聊不丢任务态** |
+
+## Clutch Agent D6∥D50 Diff review (`26b9716`)
+
+| 项目 | 值 |
+|------|-----|
+| **Task** | D6 Diff 审查 + D50 对话内 Cursor 式 Diff 卡 |
+| **Commit** | `26b9716` |
+| **Branch** | `dev` |
+| **Verification** | `test_diff_summary_d6` + pre-commit `verify.sh`（build OK；vitest 159；pytest 798 passed / 3 skipped） |
+| **PM** | 2026-07-24 验收通过（边改边出 Diff；ROADMAP D6+D50 ✅） |
+| **下一批** | **D7 项目规则 + Skills** |
+
+## Clutch Agent D5∥D50 Verification report (`30d5f86`)
+
+| 项目 | 值 |
+|------|-----|
+| **Task** | D5 自检报告 + D50 对话内 VerificationReport 卡（Diff 摘要仍随 D6） |
+| **Commit** | `30d5f86807380c1da6e899fa590bc962153093ca` |
+| **Branch** | `dev` |
+| **Verification** | pre-commit `verify.sh`（随 feat commit）；`test_verification_d5` + `test_merge_patch_optional_d5` |
+| **PM** | 2026-07-24 验收通过（ROADMAP D5 ✅；故意失败出 VERIFICATION FAILED + next actions） |
+| **下一批** | **D6∥D50 Diff 摘要** ✅ |
+
+## Clutch Agent D4∥D49 Question card (`662129c`)
+
+| 项目 | 值 |
+|------|-----|
+| **Task** | D4 结构化提问 + D49 对话内提问卡 |
+| **Commit** | `662129c64071430481551475f128819749cb8c87` |
+| **Branch** | `dev` |
+| **Verification** | pre-commit `verify.sh`：build OK；vitest 156；pytest 784 passed / 3 skipped；doc-drift 0 error |
+| **PM** | 2026-07-24 验收通过（ROADMAP D4 ✅；路径 Redis→health→plan 一致；卡壳与 Plan/Todo 对齐 UI_UX） |
+| **下一批** | **D5∥D50 自检报告** ✅ `30d5f86` |
+
+## Clutch Agent D3∥D49 Todo card (`4d6f6ef`)
+
+| 项目 | 值 |
+|------|-----|
+| **Task** | D3 Todo 面板 + D49 对话内 Todo 卡 |
+| **Commit** | `4d6f6efbba72a646efbaaa5240ad8897dcf53002` |
+| **Branch** | `dev` |
+| **Verification** | pre-commit `verify.sh`：build OK；vitest 156；pytest 777 passed / 3 skipped；doc-drift 0 error |
+| **PM** | 2026-07-24 验收通过（ROADMAP D3 ✅） |
+| **下一批** | **D4∥D49 结构化提问** ✅ `662129c` |
+
+## Clutch Agent D2∥D49 plan card (`13be92a`)
+
+| 项目 | 值 |
+|------|-----|
+| **Task** | D2 先计划再动手 + D49 对话内计划卡 |
+| **Commit** | `13be92a694b0e58af0609e48b84bc6d04ba98e03` |
+| **Branch** | `dev` |
+| **Verification** | pre-commit `verify.sh`：build OK；vitest 151；pytest 含 `test_plan_d2_d49` |
+| **PM** | 2026-07-24 验收通过（ROADMAP D2 / D49-计划 ✅） |
+| **下一批** | **D3∥D49 Todo** |
+
+## Clutch Agent D47 files-changed chips (`3a9a951`)
+
+| 项目 | 值 |
+|------|-----|
+| **Task** | D47 中间产物芯片（seal `filesChanged` + FilesChangedChips → D42 预览） |
+| **Commit** | `3a9a951d13574373a895851f5ea8beea4840991e` |
+| **Branch** | `dev` |
+| **Verification** | pre-commit `verify.sh`：build OK；vitest 151；pytest 766+（含 `test_files_changed_d47`）；doc-drift 0 error |
+| **PM** | 2026-07-24 验收通过（ROADMAP D47 ✅） |
+| **下一批** | **D3∥D49 Todo**（D2∥D49 计划已过） |
+
+## Clutch Agent D53 layered prompt (`9a840e2`)
+
+| 项目 | 值 |
+|------|-----|
+| **Task** | D53 分层 system prompt + Agent Manager 分层摘要 UI |
+| **Commit** | `9a840e2085ea4055704c1dbbbd7db9bff1ef7a5d` |
+| **Branch** | `dev` |
+| **Verification** | pre-commit `verify.sh`：build OK；vitest 150；pytest 763 passed / 3 skipped；doc-drift 0 error |
+| **PM** | 2026-07-24 验收通过（ROADMAP D53 ✅） |
+| **交付要点** | `compose_agent_prompt_assembly` 分层；skills catalog；`GET …/prompt-assembly`；Agent Manager 层字符量面板 |
+| **下一批** | **D47** → D2∥D49 |
+
+## Clutch Agent D1+D37+D46 (`1097a6d`)
+
+| 项目 | 值 |
+|------|-----|
+| **Task** | D1 builtins + D37 MCP Hub bind + D46 persisted verb_group tool trail |
+| **Commit** | `1097a6dde5b7c165be810ed2661e6c35a762a4bf` |
+| **Branch** | `dev` |
+| **Verification** | pre-commit `verify.sh`：build OK；vitest 150；pytest 762 collected（hook 通过）；doc-drift 0 error |
+| **PM** | 2026-07-24 验收通过（ROADMAP D1/D37/D46 ✅） |
+| **交付要点** | `clutch-tools`；Agent Manager `mcpServerIds`；`toolSteps` / `pending_tool_steps`；apply_patch 裸行；Search 标题含 path |
+| **下一批** | **D47** → D2∥D49 |
+
 ## Devin + Copilot CLI Whitelist (`6ce426b`)
 
 | 项目 | 值 |
@@ -442,3 +795,43 @@
 | PROGRESS 会话 | [`archive/PROGRESS-2026-Q2.md`](./archive/PROGRESS-2026-Q2.md) · [`archive/PROGRESS-2026-Q3.md`](./archive/PROGRESS-2026-Q3.md) |
 
 _v1.0.0–v1.0.2 已发布交付见 `archive/DELIVERABLES-OSR.md` 及 Git tag / `CHANGELOG.md`。_
+
+---
+
+## D22 — Usage dashboard (`c68301b`)
+
+- **Verification:** `cd services/orchestrator && uv run pytest tests/test_usage_d22.py -q` → 2 passed；`cd apps/desktop && pnpm test src/components/UsageDashboard.test.ts` → 2 passed
+- **PM:** `runs/verification/pm-acceptance/D22.md`
+- **Files:** `UsageDashboard.tsx`, `ChatInputBar.tsx`, `runApi.ts`, `chat_runner.py`, `test_usage_d22.py`, `PRODUCT_INTRO.md`, `CHANGELOG.md`
+
+---
+
+## D20 — Agent busy message queue (`94fdc8f`)
+
+- **Verification:** `cd apps/desktop && pnpm test -- src/services/chatPendingQueue.test.ts` → 5 passed
+- **PM:** `runs/verification/pm-acceptance/D20.md`
+- **Files:** `chatPendingQueue.ts`, `ChatFeed.tsx`, `ChatInputBar.tsx`, `PRODUCT_INTRO.md`, `CHANGELOG.md`
+
+---
+
+## D19 — Thinking stream in live activity (`3f3e66e`)
+
+- **Verification:** `uv run pytest tests/test_thinking_stream_d19.py -q` → 2 passed；`pnpm test src/services/agentLiveReasoning.test.ts` → 1 passed
+- **PM:** `runs/verification/pm-acceptance/D19.md`
+- **Files:** `mcp_react.py`, `tool_steps.py`, `chat_runner.py`, `state.py`, `AgentLiveActivity.tsx`, `ChatFeed.tsx`, `shared-types/index.ts`
+
+---
+
+## D26 — Background job failure monitor (`8be7f06`)
+
+- **Verification:** `uv run pytest tests/test_bg_jobs_monitor_d26.py -q` → 3 passed；`pnpm test src/services/bgJobMonitor.test.ts` → 2 passed
+- **PM:** `runs/verification/pm-acceptance/D26.md`
+- **Files:** `bg_jobs_monitor.py`, `chat_runner.py`, `bgJobMonitor.ts`, `ChatFeed.tsx`
+
+---
+
+## D27 — Explore / Plan / Implement modes (`a269764`)
+
+- **Verification:** `cd services/orchestrator && uv run pytest tests/test_permission_explore_d27.py -q` → 3 passed
+- **PM:** `runs/verification/pm-acceptance/D27.md`
+- **Files:** `permissionApi.ts`, `ChatInputBar.tsx`, `mcp_react.py`, `preferences_storage.py`, `agent_prompt.py`, `subagent_runner.py`, `test_permission_explore_d27.py`

@@ -56,5 +56,5 @@ def test_resolve_agent_mcp_servers_pairs_clutch_tools_with_local_fs(monkeypatch)
         "src.builtin_tools.resolve_clutch_tools_server",
         lambda: {"id": "clutch-tools", "name": "Clutch Builtin Tools", "virtual": True},
     )
-    resolved = resolve_agent_mcp_servers({"mcpServerIds": ["local-fs"]})
+    resolved = resolve_agent_mcp_servers({"mcpServerIds": ["local-fs"], "agentType": "claude-cli"})
     assert [item["id"] for item in resolved] == ["local-fs", "clutch-tools"]

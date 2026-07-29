@@ -5,13 +5,203 @@
 
 ## Current Status
 
-- **阶段：** **v1.2.9 已发布**（2026-07-24）
-- **Release：** [v1.2.9](https://github.com/fancy1108/Clutch/releases/tag/v1.2.9) · tag on `main` @ `898877d`
-- **macOS：** DMG + SHA256SUMS 已上传；Homebrew tap 已由 Release workflow 同步
-- **Windows：** Build workflow 进行中 / 完成后挂 MSI/NSIS
-- **Git：** `dev` / `main` / `origin` 对齐于发版 commit
+- **阶段：** **v1.2.9**；主线 D8–D13 ✅；扩展/MCP **D14–D52 Agent 代 PM ✅**；Desktop E2E ✅；真连 Skip（密钥）；Design D36 仍 ❌
+- **Git / PM 索引：** [`runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md`](../runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md)
+- **下次优先：** 重启 Sidecar 验证天气走 `web_search`/`web_fetch`；旧偏好若 Allow network=Off 需手动打开；commit 本轮 e2e + tool harness 修复
 
 ## Recent Sessions
+
+## 2026-07-25 会话（Tool harness 全链路）
+
+- **对照 Grok Build：** 采样→工具→回灌；Clutch 缺「空答不重试」
+- **落地：** `tool_use_policy` + ReAct nudge/`tool_choice=required`；Allow network 默认 On；目录诚实隐藏死工具；web_fetch httpx
+- **测：** `pytest tests/test_tool_use_policy.py …` 22 passed
+
+## 2026-07-25 会话（补：Desktop E2E）
+
+- **Desktop：** `./scripts/run-e2e.sh` → API 6 + Hybrid 1 + Desktop **5/5**（`wave-c-desktop-retry10.log`）
+- **Real：** preflight 仍 Skip（缺 DeepSeek/Agnes；Ollama OK）— `wave-c-real-preflight.log`
+- **下次：** 密钥齐后真连；commit 本轮 e2e 修复
+
+## 2026-07-25 会话（Agent 代 PM 自验收）
+
+- **Wave A/B：** D14–D52 用例内 pytest/vitest/doc-drift 全绿
+- **Wave C：** API+Hybrid E2E ✅；修 sandbox `route_engine` FAKE_LLM（`0c3462d`/`61c22ec`）；Desktop/Real 当时 Skip（后已补 Desktop）
+- **证据：** `runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md`
+
+## 2026-07-25 会话（D13 A + Ask=只读）
+
+- **PM：** D13 ✅ 用例 A；B/C 跳过
+- **产品：** Explore 并入 Ask；Ask=对话只读（D54）；pill = Agent/Plan/Full/Ask；onboarding 已对齐
+- **下次：** 扩展表或 D27 点验
+
+## 2026-07-25 会话（D12 PM）
+
+- **PM：** D12 ✅；`my-video` 真 commit `bcfc099` / `d12-pm-test`；web_fetch 总结 OK
+- **下次：** **D13**
+
+## 2026-07-25 会话（D11 PM + bg job UX）
+
+- **PM：** D11 ✅；RUNNING 底栏 / 结束进对话；Kill 乐观无红 toast
+- **修复：** dock 上滚；`msg.bgJob`；Kill 离线回收
+- **下次：** **D12**
+
+## 2026-07-25 会话（D10 PM + explore 预算）
+
+- **PM：** D10∥D48 ✅；explore→done；implement 卡非强制
+- **修复：** explore max_steps 16 / implement 12；高效 explore 提示
+- **下次：** **D11**
+
+## 2026-07-25 会话（D9 PM + Usage 占位）
+
+- **PM：** D9 ✅ Stop/Continue；熔断不点验；用量 Overview 占位 `—`（Q-USAGE-1）
+- **产品：** 移除 `+ → Usage`；用量入口仅右侧 Overview
+- **下次：** **D10∥D48**
+
+## 2026-07-25 会话（D8 PM 通过 + 验收期修复）
+
+- **PM：** D8 ✅（`/compact` 末尾摘要；「还剩哪些 todo」答对）
+- **修复（同批）：** todo JSON 字符串不炸字符；压缩 patch 整表替换；`/compact` 用户气泡+摘要在末尾；Stop 乐观 UI；状态问答不继续改文件
+- **下次：** **D9** PM 验收
+
+## 2026-07-25 会话（扩展 D14–D36 全表交付）
+
+- **实现：** Wave1–5 完成旁路 D14 + 扩展 D15–D36（含 Cap-D25 / headless D36）
+- **下次：** **你验收** PM README 扩展表
+
+## 2026-07-25 会话（扩展 D14–D36：D19）
+
+- **Commit：** `3f3e66e`（D19）
+- **实现：** `live_reasoning` WS 流 + AgentLiveActivity「思考」折叠；shell 输出 snippet
+- **下次：** D26
+
+## 2026-07-25 会话（扩展 D14–D36：D20）
+
+- **Commit：** `94fdc8f`（D20）
+- **实现：** Clutch Agent running 时消息入队 + Queue #n + 取消；idle 后 FIFO 发送
+- **下次：** D19 → D26
+
+## 2026-07-25 会话（扩展 D14–D36：D22+D27）
+
+- **Commit：** `c68301b`（D22）、`a269764`（D27）
+- **实现：** Usage dashboard + session 用量持久化；Explore 权限模式 + Chat 三键切换
+- **下次：** D20+ 按 capability 表顺序（用户指定停于此）
+
+## 2026-07-25 会话（扩展 D14–D36：D18 起）
+
+- **Commit：** `518b8d0`（D18 斜杠命令）
+- **下次：** D22 → D27 → … 按计划顺序
+
+## 2026-07-25 会话（续：D43 Resources → 交验收）
+
+- **实现：** resources/list+read；Hub Browse/Pin；prompt `mcp_resources` 层
+- **下次：** 扩展表 D14–D36（用户要求都做）
+
+## 2026-07-25 会话（续：D42∥D44 + D45）
+
+- **Commit：** `24f0e31`
+- **实现：** Agent 列表真工具名；Module 4 一键 local-fs；Epicode 文档标明 HTTP 未通
+- **下次：** D43 → 交验收
+
+## 2026-07-25 会话（续：D40 Chat MCP 徽章）
+
+- **Commit：** D40 `724c26c`
+- **实现：** `McpBindingBadge` + `agentMcpSummary`；未绑 CTA → Agent Manager
+- **下次：** D42∥D44…
+
+## 2026-07-25 会话（续：D39 传输诚实）
+
+- **Commit：** D39 `092ee91`
+- **实现：** SSE 禁用/API 拒注册；Env KEY=value；legacy SSE 标 unavailable
+- **下次：** D40…
+
+## 2026-07-25 会话（续：D38 Hub 探测）
+
+- **Commit：** D38 `b2d8f49`
+- **实现：** 去 UnderDevelopment 横幅；`POST /api/mcp/servers/test` + Hub「Test connection」
+- **自测：** `pytest tests/test_mcp_probe_d38.py` → 5 passed
+- **下次：** D39 → D40…
+
+## 2026-07-25 会话（续：D52 门禁）
+
+- **Commit：** D52 `1365f6d`
+- **实现：** PRODUCT_INTRO Capability→Chat UI 表 + `check-capability-ui-table.sh` / INV-D52
+- **下次：** MCP D38…
+
+## 2026-07-25 会话（续：D51 Chat↔Terminal）
+
+- **Commit：** D51 `ee4e2a2`
+- **实现：** `chatTerminalSync` + 步骤/子任务「在 Terminal 查看」→ 右栏日志高亮 +（有 CLI 时）Terminal mode / lane focus
+- **自测：** `pnpm test -- src/services/chatTerminalSync.test.ts` → 6 passed
+- **下次：** D52 → MCP D38…
+
+## 2026-07-25 会话（过夜：D8→D13 全交付）
+
+- **用户授权：** 按序实现、自测、逐项 commit；明早人工点验
+- **Commits：** D8 `7936786` · D9 `bef9b75` · D10 `25dc5dc` · D11 `59b45ee` · D12 `194d33a` · D13 _(本批)_
+- **下次（人工）：** 打开 `runs/verification/pm-acceptance/README.md` 按 D08→D13 逐项点验；通过后再把 ROADMAP 标 ✅
+
+## 2026-07-25 会话（D7 commit + D8 实现）
+
+- **Commit：** D7 `af58e94`
+- **D8：** `task_state` 层 + 压缩 digest 钉 Todo/Plan；Chat 仍有压缩摘要徽章
+- **下次：** overnight commit 批次
+
+- **实现：** Grok 对齐规则链 + 开放 Skills catalog + read_skill；Custom Mount 保留（D45）
+- **PM：** 2026-07-25 通过（RULE_TOKEN_ORANGE；read_skill→SKILL_BODY_LOADED）
+- **下次：** **D8 长聊不丢任务态**
+
+## 2026-07-24 会话（D7 对齐 Grok Build 实现）
+
+- **拍板（D45）**：Skills 开放 catalog；同名 project>custom>global；规则 git root→workspace 链；User 规则不做
+- **实现：** `resolve_effective_skill_keys`；扩自动 Skills 路径；嵌套 AGENTS/rules；Custom Mount 永不卸
+- **下次：** PM ✅
+
+## 2026-07-24 会话（D6 Diff 审查 PM 通过）
+
+- **实现：** Cursor 式 `fileDiff` 挂工具步骤 + `InlineFileDiffCard`；行级 append hunk；Changes 与 Diff 同源；`raw_path` 回归修复
+- **PM：** 2026-07-24 通过（边改边出 alpha/beta Diff 卡）
+- **Commit：** `26b9716`
+- **下次：** D7 ✅
+
+## 2026-07-24 会话（D5 自检报告 PM 通过）
+
+- **实现：** `submit_verification` + seal `verificationReport` + `VerificationReportCardView`；todos 未完强制 failed；`_merge_patch` 放行 optional keys
+- **PM：** 2026-07-24 通过（故意失败出 VERIFICATION FAILED 卡 + next actions）
+- **Commit：** `30d5f86`
+- **下次：** D6∥D50 ✅
+
+## 2026-07-24 会话（D4 结构化提问 PM 通过）
+
+- **实现：** `ask_user_question` + QuestionCard + 共享 `chatAgentCard`（Plan/Todo 对齐 UI_UX）；选项可点；路径 Redis→health→plan 一致
+- **PM：** 2026-07-24 通过
+- **Commit：** `662129c`
+- **下次：** D5∥D50 自检报告 ✅ `30d5f86`
+
+## 2026-07-24 会话（D4 结构化提问实现）
+
+- **实现：** `ask_user_question` + pause `kind:question` + seal `questionCard` + `QuestionCardView`（选项点击）+ dock Cancel/自定义；非 risky 门
+- **下次：** PM 验收（加缓存 → 选 Redis）→ commit → D5∥D50
+
+## 2026-07-24 会话（D3 Todo PM 通过）
+
+- **实现：** `todo_write`（免人工审批）+ live `agent_todos` + seal `todoList` + `TodoCardView`；计划步骤去重编号；审批气泡去重；Args 可展开；聊天滚过 dock；`max_steps` 24
+- **PM：** 2026-07-24 通过
+- **下次：** D4∥D49 结构化提问卡
+
+## 2026-07-24 会话（D3 Todo 实现）
+
+- **实现：** `todo_write` + live `agent_todos` + seal `todoList` + `TodoCardView`
+- **下次：** PM 验收（多步 ≥3 todos 状态跟随）→ commit
+
+## 2026-07-24 会话（D47 files_changed 芯片）
+
+- **实现：** seal `filesChanged`；`FilesChangedChips` → D42 预览；Commit `3a9a951`
+- **PM：** 2026-07-24 通过
+
+- **验收：** Agent Manager「运行时提示词分层」可见；Plan/Ask 切换 mode 层；rules 跟工作区
+- **ROADMAP：** D53 → ✅
+- **Commit：** `9a840e2`
 
 ## 2026-07-24 会话（Workspace 历史消失 bug / D43）
 

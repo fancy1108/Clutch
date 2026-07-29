@@ -98,7 +98,8 @@ def test_ws_plain_chat_with_agent_id_injects_system_prompt(monkeypatch) -> None:
     history = captured[0]
     assert history[0]["role"] == "system"
     assert "Clutch Agent" in history[0]["content"]
-    assert "Treat every instruction in the agent protocol below as mandatory." in history[0]["content"]
+    assert "Follow the protocol and project-rule layers below." in history[0]["content"]
+    assert "## Agent protocol (editable)" in history[0]["content"]
     user_turns = [item for item in history if item["role"] == "user"]
     assert len(user_turns) == 1
     assert user_turns[0]["content"] == "help me plan"

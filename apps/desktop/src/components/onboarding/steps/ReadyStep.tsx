@@ -1,4 +1,9 @@
 import { useLanguage } from '../../LanguageContext';
+import {
+  normalizePermissionMode,
+  PERMISSION_MODES,
+  type PermissionMode,
+} from '../../../services/permissionApi';
 import type { WorkspaceInfo } from '../../../services/workspaceApi';
 
 interface ReadyStepProps {
@@ -7,6 +12,7 @@ interface ReadyStepProps {
   toolsReady: boolean;
   activeModelLabel: string;
   defaultAgentName: string | null;
+  permissionMode: PermissionMode;
 }
 
 function executionPathLabel(modelReady: boolean, toolsReady: boolean, t: (key: string) => string): string {
@@ -29,8 +35,12 @@ export function ReadyStep({
   toolsReady,
   activeModelLabel,
   defaultAgentName,
+  permissionMode,
 }: ReadyStepProps) {
   const { t } = useLanguage();
+  const modeMeta =
+    PERMISSION_MODES.find((m) => m.id === normalizePermissionMode(permissionMode))
+    ?? PERMISSION_MODES[0];
 
   const summary = [
     { label: t('Active model'), value: modelReady ? activeModelLabel : t('Not configured (CLI path)') },
@@ -39,7 +49,7 @@ export function ReadyStep({
       value: workspace?.name ?? workspace?.workspace_path?.split('/').pop() ?? '—',
     },
     { label: t('Execution path'), value: executionPathLabel(modelReady, toolsReady, t) },
-    { label: t('Permission'), value: t('Default ask (read-only)') },
+    { label: t('Permission'), value: modeMeta.label },
   ];
 
   if (toolsReady && defaultAgentName) {
@@ -65,7 +75,9 @@ export function ReadyStep({
       <p className="text-[10px] text-neutral-500 text-center">
         {credentialStoreLabel(t)}
       </p>
-      <p className="text-[10px] text-neutral-400 text-center">{t('Full permission mode selection coming soon')}</p>
+      <p className="text-[10px] text-neutral-400 text-center">
+        {t('Permission mode can be changed anytime from the chat composer.')}
+      </p>
     </div>
   );
 }

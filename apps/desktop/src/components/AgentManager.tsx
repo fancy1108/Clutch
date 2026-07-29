@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 
 import { Deliverable, Agent } from '../types';
-import { fetchAgents, saveAgents, generateAgentPrompt } from '../services/agentApi';
+import { fetchAgents, saveAgents, generateAgentPrompt, fetchPromptAssembly, type PromptAssemblySummary } from '../services/agentApi';
 import { fetchSkillsRegistry, type ScannedSkill } from '../services/skillsApi';
 import { BTN_GHOST, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON } from './ui/buttonStyles';
 import { SettingsPageHeader } from './ui/SettingsPageHeader';
@@ -155,6 +155,9 @@ export function AgentManager({
   });
   const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
   const [promptGenerateError, setPromptGenerateError] = useState<string | null>(null);
+  const [promptAssembly, setPromptAssembly] = useState<PromptAssemblySummary | null>(null);
+  const [promptAssemblyError, setPromptAssemblyError] = useState<string | null>(null);
+  const [promptAssemblyLoading, setPromptAssemblyLoading] = useState(false);
 
   const toggleModule = (moduleNumber: number) => {
     setExpandedModules((prev) => ({ ...prev, [moduleNumber]: !prev[moduleNumber] }));
@@ -165,6 +168,33 @@ export function AgentManager({
       .then((data) => setScannedSkills(data.skills))
       .catch(() => setScannedSkills([]));
   };
+
+  const refreshPromptAssembly = useCallback((agentId: string | null | undefined) => {
+    const id = (agentId || '').trim();
+    if (!id) {
+      setPromptAssembly(null);
+      setPromptAssemblyError(null);
+      return;
+    }
+    setPromptAssemblyLoading(true);
+    setPromptAssemblyError(null);
+    void fetchPromptAssembly(id)
+      .then((summary) => setPromptAssembly(summary))
+      .catch((err: unknown) => {
+        setPromptAssembly(null);
+        setPromptAssemblyError(err instanceof Error ? err.message : String(err));
+      })
+      .finally(() => setPromptAssemblyLoading(false));
+  }, []);
+
+  useEffect(() => {
+    if (!selectedAgent || agentTypeFromAgent(selectedAgent) !== CLUTCH_AGENT_TYPE) {
+      setPromptAssembly(null);
+      setPromptAssemblyError(null);
+      return;
+    }
+    refreshPromptAssembly(selectedAgent.id);
+  }, [selectedAgent, refreshPromptAssembly]);
 
   useEffect(() => {
     void fetchMcpStatus()
@@ -418,7 +448,8 @@ export function AgentManager({
     const resolvedModelId = resolvedAgentType === 'clutch' && modelId.trim() ? modelId.trim() : undefined;
     const tier = getAgentCapabilityTier(resolvedAgentType);
     const resolvedSkills: string[] = [];
-    const resolvedMcpServerIds: string[] = [];
+    const resolvedMcpServerIds =
+      tier === 'full' ? [...selectedMcpServerIds] : [];
 
     if (modalMode === 'create') {
       const newAgent: Agent = {
@@ -659,6 +690,67 @@ export function AgentManager({
                 </div>
               </div>
 
+              {agentTypeFromAgent(selectedAgent) === CLUTCH_AGENT_TYPE ? (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-[11px] font-bold text-neutral-400 font-mono uppercase tracking-wider">
+                      {t('Runtime prompt layers')}
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => refreshPromptAssembly(selectedAgent.id)}
+                      className="text-[10px] font-semibold text-neutral-600 hover:text-neutral-900"
+                    >
+                      {t('Refresh')}
+                    </button>
+                  </div>
+                  <div className="bg-neutral-50 p-3 rounded-xl border border-neutral-200/50 space-y-2">
+                    <p className="text-[10px] text-neutral-500 leading-snug">
+                      {t('Prompt assembly hint')}
+                    </p>
+                    {promptAssemblyLoading ? (
+                      <p className="text-[10.5px] text-neutral-400 italic">{t('Loading...')}</p>
+                    ) : promptAssemblyError ? (
+                      <p className="text-[10.5px] text-red-600">{promptAssemblyError}</p>
+                    ) : promptAssembly ? (
+                      <>
+                        <p className="text-[10px] font-mono text-neutral-600">
+                          {t('Permission mode')}:{' '}
+                          <span className="font-bold text-neutral-900">
+                            {promptAssembly.permission_mode}
+                          </span>
+                          {' · '}
+                          {promptAssembly.total_chars} {t('chars')}
+                        </p>
+                        <ul className="space-y-1">
+                          {promptAssembly.layers.map((layer) => (
+                            <li
+                              key={layer.name}
+                              className="flex items-center justify-between gap-2 text-[11px] font-mono"
+                            >
+                              <span
+                                className={
+                                  layer.injected
+                                    ? 'text-neutral-800 font-semibold'
+                                    : 'text-neutral-400'
+                                }
+                              >
+                                {layer.name}
+                              </span>
+                              <span className="tabular-nums text-neutral-500">
+                                {layer.injected ? `${layer.chars}` : '—'}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      </>
+                    ) : (
+                      <p className="text-[10.5px] text-neutral-400 italic">{t('No assembly data')}</p>
+                    )}
+                  </div>
+                </div>
+              ) : null}
+
               {/* Attached Skills Manuals */}
               <div>
                 <h3 className="text-[11px] font-bold text-neutral-400 font-mono uppercase tracking-wider mb-2">{t('Attached Skills Manuals')}</h3>
@@ -673,7 +765,40 @@ export function AgentManager({
               <div>
                 <h3 className="text-[11px] font-bold text-neutral-400 font-mono uppercase tracking-wider mb-2">{t('MCP Hub Servers')}</h3>
                 {getAgentCapabilityTier(agentTypeFromAgent(selectedAgent)) === 'full' ? (
-                  <UnderDevelopmentNotice variant="compact" />
+                  <div className="space-y-1.5">
+                    <p className="text-[10px] text-neutral-500 font-mono">
+                      clutch-tools (builtin read/edit/shell) — always on with workspace
+                    </p>
+                    {(selectedAgent.mcpServerIds || []).length === 0 ? (
+                      <p className="text-[10.5px] text-neutral-400 italic">{t('No MCP Hub servers bound.')}</p>
+                    ) : (
+                      (selectedAgent.mcpServerIds || []).map((id) => {
+                        const server = mcpServers.find((s) => s.id === id);
+                        const toolNames = (server?.tools || []).map((tool) => tool.name).filter(Boolean);
+                        return (
+                          <div
+                            key={id}
+                            className="px-2.5 py-1.5 rounded-lg border border-neutral-200 bg-neutral-50/50 space-y-1"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-[11px] font-bold text-neutral-800 truncate">
+                                {server?.name || id}
+                              </span>
+                              <span className="text-[9px] font-mono text-neutral-400 shrink-0">
+                                {toolNames.length ? `${toolNames.length} tools` : id}
+                              </span>
+                            </div>
+                            {toolNames.length > 0 ? (
+                              <p className="text-[9.5px] font-mono text-neutral-500 truncate" title={toolNames.join(', ')}>
+                                {toolNames.slice(0, 6).join(', ')}
+                                {toolNames.length > 6 ? ` +${toolNames.length - 6}` : ''}
+                              </p>
+                            ) : null}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
                 ) : (
                   <AgentNativeCapabilityHint agentType={agentTypeFromAgent(selectedAgent)} kind="mcp" />
                 )}
@@ -797,31 +922,44 @@ export function AgentManager({
                         {agentTypeLabel(agentTypeFromAgent(agent), eligibleTools)}
                       </span>
                     )}
-                    {agent.mcpTools && agent.mcpTools.length > 0 && (
-                      <div className="flex items-center gap-1">
-                        {agent.mcpTools.map(toolKey => {
-                          const icon = {
-                            'git_write_permission': 'terminal',
-                            'figma_api_connect': 'palette',
-                            'cmd_exec_permission': 'code',
-                            'slack_webhook': 'forum',
-                            'google_sheets_sync': 'table_chart'
-                          }[toolKey] || 'extension';
-                          const title = {
-                            'git_write_permission': 'Local Git Access',
-                            'figma_api_connect': 'Figma Design Schema',
-                            'cmd_exec_permission': 'CLI Command Engine',
-                            'slack_webhook': 'Slack Channel Webhook',
-                            'google_sheets_sync': 'Google Sheets Sync'
-                          }[toolKey] || toolKey;
-                          return (
-                            <span key={toolKey} className="w-4.5 h-4.5 rounded-full border border-neutral-200/60 bg-neutral-50 flex items-center justify-center text-neutral-500 font-mono shadow-3xs" title={title}>
-                              <LegacyIcon name={icon} className="text-[10px]" />
+                    {/* D42 — real Hub tool names (not fake permission keys). */}
+                    {(() => {
+                      const boundIds = agent.mcpServerIds || [];
+                      if (!boundIds.length) return null;
+                      const toolNames = boundIds.flatMap((id) => {
+                        const server = mcpServers.find((s) => s.id === id);
+                        return (server?.tools || []).map((tool) => tool.name).filter(Boolean);
+                      });
+                      const shown = toolNames.slice(0, 4);
+                      if (!shown.length) {
+                        return (
+                          <span
+                            className="text-[9px] font-mono text-neutral-500"
+                            title={boundIds.join(', ')}
+                          >
+                            {boundIds.length} MCP
+                          </span>
+                        );
+                      }
+                      return (
+                        <div className="flex items-center gap-1 flex-wrap max-w-[220px]">
+                          {shown.map((name) => (
+                            <span
+                              key={`${agent.id}-${name}`}
+                              className={`${BADGE_SUCCESS} text-[8.5px] font-mono truncate max-w-[72px]`}
+                              title={name}
+                            >
+                              {name}
                             </span>
-                          );
-                        })}
-                      </div>
-                    )}
+                          ))}
+                          {toolNames.length > shown.length ? (
+                            <span className="text-[9px] font-mono text-neutral-400">
+                              +{toolNames.length - shown.length}
+                            </span>
+                          ) : null}
+                        </div>
+                      );
+                    })()}
                   </div>
                   
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -1048,7 +1186,7 @@ export function AgentManager({
                 </div>
                 
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-neutral-500 tracking-wider uppercase font-mono block">{t('System Prompt / Directive Summary')}</label>
+                  <label className="text-[10px] font-bold text-neutral-500 tracking-wider uppercase font-mono block">{t('Editable protocol segment')}</label>
                   <textarea
                     value={markdownDoc}
                     onChange={(e) => setMarkdownDoc(e.target.value)}
@@ -1059,6 +1197,15 @@ export function AgentManager({
                   <p className="text-[9.5px]/relaxed text-neutral-400 font-sans">
                     💡 <strong>{t('Tips')}:</strong> {t('Agent persona tips')}
                   </p>
+                  {agentType === CLUTCH_AGENT_TYPE && promptAssembly ? (
+                    <p className="text-[9.5px] font-mono text-neutral-500">
+                      {t('Runtime prompt layers')}:{' '}
+                      {promptAssembly.layers
+                        .filter((layer) => layer.injected)
+                        .map((layer) => `${layer.name}(${layer.chars})`)
+                        .join(' · ')}
+                    </p>
+                  ) : null}
                 </div>
               </div>
 
@@ -1089,7 +1236,85 @@ export function AgentManager({
                 </div>
 
                 {capabilityTier === 'full' ? (
-                  <UnderDevelopmentNotice variant="compact" />
+                  <div className="space-y-2">
+                    <p className="text-[10px] text-neutral-500">
+                      {t('Builtin clutch-tools are always available for Clutch Agent when a workspace is authorized. Bind Hub servers below for extra tools (e.g. local-fs).')}
+                    </p>
+                    {/* D44 — one-click enable workspace filesystem MCP */}
+                    {!selectedMcpServerIds.includes('local-fs') ? (
+                      <button
+                        type="button"
+                        data-testid="mcp-enable-workspace-tools"
+                        onClick={() => {
+                          setSelectedMcpServerIds((prev) =>
+                            prev.includes('local-fs') ? prev : [...prev, 'local-fs'],
+                          );
+                        }}
+                        className={`${BTN_SECONDARY} text-[10px] font-bold w-full justify-center`}
+                      >
+                        {t('Enable workspace file tools')}
+                      </button>
+                    ) : (
+                      <p className="text-[10px] text-emerald-700 font-semibold">
+                        {t('Workspace file tools enabled (local-fs)')}
+                      </p>
+                    )}
+                    {mcpServers.length === 0 ? (
+                      <p className="text-[10.5px] text-neutral-400 italic">
+                        {t('No MCP servers registered. Add some in Settings → MCP.')}
+                      </p>
+                    ) : (
+                      mcpServers.map((server) => {
+                        const checked = selectedMcpServerIds.includes(server.id);
+                        const toolPreview = (server.tools || [])
+                          .map((tool) => tool.name)
+                          .filter(Boolean)
+                          .slice(0, 4);
+                        return (
+                          <label
+                            key={server.id}
+                            className="flex items-start gap-2.5 p-2.5 rounded-lg border border-neutral-200 bg-white cursor-pointer hover:border-neutral-300"
+                          >
+                            <input
+                              type="checkbox"
+                              className="mt-0.5"
+                              checked={checked}
+                              onChange={() => {
+                                setSelectedMcpServerIds((prev) =>
+                                  checked
+                                    ? prev.filter((id) => id !== server.id)
+                                    : [...prev, server.id],
+                                );
+                              }}
+                            />
+                            <div className="min-w-0 flex-1">
+                              <div className="text-[11px] font-bold text-neutral-900 truncate">
+                                {server.name}
+                              </div>
+                              <div className="text-[9.5px] font-mono text-neutral-400 truncate">
+                                {server.id}
+                                {typeof server.toolsCount === 'number'
+                                  ? ` · ${server.toolsCount} tools`
+                                  : ''}
+                              </div>
+                              {toolPreview.length > 0 ? (
+                                <div className="mt-1 flex flex-wrap gap-1">
+                                  {toolPreview.map((name) => (
+                                    <span
+                                      key={`${server.id}-${name}`}
+                                      className="text-[8.5px] font-mono px-1 py-0.5 rounded bg-neutral-100 text-neutral-600"
+                                    >
+                                      {name}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : null}
+                            </div>
+                          </label>
+                        );
+                      })
+                    )}
+                  </div>
                 ) : (
                   <AgentNativeCapabilityHint agentType={agentType} kind="mcp" />
                 )}

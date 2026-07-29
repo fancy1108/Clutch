@@ -54,6 +54,119 @@ def test_critical_context_empty_input() -> None:
     assert not _is_critical_message({})
 
 
+def test_task_state_pinned_in_critical_context() -> None:
+    state = initial_state("run_d8")
+    state["agent_todos"] = [
+        {"id": "1", "content": "Add login page", "status": "completed"},
+        {"id": "2", "content": "Wire auth API", "status": "in_progress"},
+        {"id": "3", "content": "Write tests", "status": "pending"},
+    ]
+    state["messages"] = [
+        {
+            "agent": "Clutch Agent",
+            "text": "",
+            "planCard": {
+                "title": "Add login",
+                "status": "approved",
+                "steps": ["Scaffold form", "Call API"],
+            },
+        }
+    ]
+    lines = _build_critical_context(state, list(state["messages"]))
+    joined = "\n".join(lines)
+    assert "[task_state]" in joined
+    assert "Add login" in joined
+    assert "Wire auth API" in joined
+    assert "Write tests" in joined
+    assert _is_critical_message(state["messages"][0])
+
+
+@pytest.mark.asyncio
+@pytest.mark.asyncio
+async def test_manual_compact_appends_slash_then_digest_at_end(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """D18/D8 UX: `/compact` User bubble then amber digest at the end."""
+    monkeypatch.setenv("CLUTCH_WORKSPACES_FILE", str(tmp_path / "ws.json"))
+    from src import workspace as workspace_mod
+
+    workspace_mod._loaded = False
+    workspace_mod._workspaces = {}
+    workspace_mod._active_id = None
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    workspace_mod.add_workspace(str(ws))
+    monkeypatch.setattr(
+        "src.models_config.get_router",
+        lambda: SimpleNamespace(chat=lambda messages, model_id=None: {"content": "Folded."}),
+    )
+    monkeypatch.setattr("src.compaction.get_archive_dir", lambda: tmp_path / "archive")
+
+    state = initial_state("run_slash_compact")
+    state["messages"] = [
+        {"id": f"m{i}", "agent": "User" if i % 2 == 0 else "Agent", "text": f"t{i}"}
+        for i in range(8)
+    ]
+    state["session_tokens"] = 20_000
+    new_state = await compact_run_messages(
+        "run_slash_compact", state, record_slash_command=True
+    )
+    msgs = new_state["messages"]
+    assert msgs[-1]["agent"] == "System"
+    assert "上下文压缩摘要" in str(msgs[-1].get("badgeText") or msgs[-1].get("badge_text") or "")
+    assert msgs[-2]["agent"] == "User"
+    assert msgs[-2]["text"].strip() == "/compact"
+
+
+async def test_compact_digest_contains_open_todos(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """D8 acceptance shape: after compact, digest still lists open todos."""
+    monkeypatch.setenv("CLUTCH_WORKSPACES_FILE", str(tmp_path / "ws.json"))
+    from src import workspace as workspace_mod
+
+    workspace_mod._loaded = False
+    workspace_mod._workspaces = {}
+    workspace_mod._active_id = None
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    workspace_mod.add_workspace(str(ws))
+
+    router = SimpleNamespace(chat=lambda messages, model_id=None: {"content": "Folded history."})
+    monkeypatch.setattr("src.models_config.get_router", lambda: router)
+    monkeypatch.setattr("src.compaction.get_archive_dir", lambda: tmp_path / "archive")
+
+    state = initial_state("run_d8_compact")
+    state["agent_todos"] = [
+        {"id": "a", "content": "Keep this open todo", "status": "pending"},
+        {"id": "b", "content": "In progress item", "status": "in_progress"},
+    ]
+    state["messages"] = [
+        {"agent": "User", "text": "start"},
+        {"agent": "Clutch Agent", "text": "working", "todoList": state["agent_todos"]},
+        {"agent": "User", "text": "ok"},
+        {"agent": "Clutch Agent", "text": "more"},
+        {"agent": "User", "text": "go"},
+        {"agent": "Clutch Agent", "text": "done turn"},
+        {"agent": "User", "text": "continue"},
+    ]
+    state["session_tokens"] = 20_000
+
+    new_state = await compact_run_messages("run_d8_compact", state)
+    digest_texts = [
+        str(m.get("text") or "")
+        for m in new_state["messages"]
+        if "压缩" in str(m.get("badgeText") or m.get("badge_text") or "")
+        or "COMPACTION" in str(m.get("badgeText") or m.get("badge_text") or "").upper()
+        or "Context Compacted" in str(m.get("text") or "")
+        or "上下文已压缩" in str(m.get("text") or "")
+    ]
+    assert digest_texts, new_state["messages"]
+    blob = "\n".join(digest_texts)
+    assert "Keep this open todo" in blob
+    assert "In progress item" in blob
+
+
 @pytest.mark.asyncio
 async def test_critical_context_survives_llm_failure(monkeypatch: pytest.MonkeyPatch) -> None:
     def fail(*args, **kwargs):
@@ -176,24 +289,23 @@ async def test_compact_run_messages_success(monkeypatch: pytest.MonkeyPatch, tmp
     new_state = await compact_run_messages("run_test", state)
 
     # Verify state updates
-    # new message count: first_message (1) + digest_msg (1) + last_messages (4) = 6 messages
+    # first (1) + last_messages (4) + digest (1) = 6; digest is last (chronological UX)
     assert len(new_state["messages"]) == 6
     assert new_state["messages"][0]["id"] == "msg_0"
-    
-    digest_msg = new_state["messages"][1]
+
+    # Last 4 messages preserved: msg_4, msg_5, msg_6, msg_7
+    assert new_state["messages"][1]["id"] == "msg_4"
+    assert new_state["messages"][2]["id"] == "msg_5"
+    assert new_state["messages"][3]["id"] == "msg_6"
+    assert new_state["messages"][4]["id"] == "msg_7"
+
+    digest_msg = new_state["messages"][5]
     assert digest_msg["agent"] == "System"
     assert "LLM digest summary text here" in digest_msg["text"]
     assert "runs/archive/run_test.jsonl" in digest_msg["text"]
     assert "上下文已压缩" in digest_msg["text"]
     assert digest_msg["badge_text"] == "上下文压缩摘要"
     assert digest_msg["badgeText"] == "上下文压缩摘要"
-
-
-    # Last 4 messages preserved: msg_4, msg_5, msg_6, msg_7
-    assert new_state["messages"][2]["id"] == "msg_4"
-    assert new_state["messages"][3]["id"] == "msg_5"
-    assert new_state["messages"][4]["id"] == "msg_6"
-    assert new_state["messages"][5]["id"] == "msg_7"
 
     # Verify token recount logic
     assert new_state["token_input"] == 4
@@ -239,7 +351,7 @@ async def test_compact_run_messages_fallback_exception(monkeypatch: pytest.Monke
 
     # Verify compaction still completes using fallback message
     assert len(new_state["messages"]) == 6
-    digest_msg = new_state["messages"][1]
+    digest_msg = new_state["messages"][-1]
     assert digest_msg["agent"] == "System"
     assert "由于 Token 消耗达到阈值，历史对话已折叠" in digest_msg["text"]
     assert "User" in digest_msg["text"]
@@ -317,8 +429,8 @@ def test_ws_plain_chat_compaction_integration(monkeypatch) -> None:
     # The final state should have fewer messages, including a compaction digest.
     final_messages = compaction_patches[-1]["messages"]
 
-    # We expect messages length to be 6 (messages[0], digest_msg, messages[-4:])
+    # first + last4 + digest at end
     assert len(final_messages) == 6
     assert final_messages[0]["text"] == "Start instruction"
-    assert "Mocked summary of conversation" in final_messages[1]["text"]
-    assert "上下文已压缩" in final_messages[1]["text"]
+    assert "Mocked summary of conversation" in final_messages[-1]["text"]
+    assert "上下文已压缩" in final_messages[-1]["text"]

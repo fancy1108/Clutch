@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import contextvars
 import hashlib
 import json
 import logging
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -406,7 +408,24 @@ def active_workspace_issue() -> str | None:
     return None
 
 
+_effective_root: contextvars.ContextVar[Path | None] = contextvars.ContextVar(
+    "workspace_effective_root", default=None
+)
+
+
+def bind_effective_workspace_root(path: Path | None) -> contextvars.Token[Path | None]:
+    """D32 — override Agent tool cwd (e.g. git worktree path)."""
+    return _effective_root.set(path)
+
+
+def release_effective_workspace_root(token: contextvars.Token[Path | None]) -> None:
+    _effective_root.reset(token)
+
+
 def require_workspace() -> Path:
+    override = _effective_root.get()
+    if override is not None:
+        return override.resolve()
     info = get_workspace()
     if info is None:
         raise WorkspaceError(
@@ -428,7 +447,62 @@ def resolve_allowed_path(relative_path: str) -> Path:
                 f"禁止访问工作区外的路径：{relative_path}"
             )
         )
+    from src.preferences_storage import load_strict_sandbox
+
+    if load_strict_sandbox():
+        _assert_strict_sandbox_path(root, relative_path, target)
     return target
+
+
+def _assert_strict_sandbox_path(root: Path, relative_path: str, target: Path) -> None:
+    """Extra strict-sandbox checks after workspace bounds (D21)."""
+    rel = str(relative_path).replace("\\", "/").strip()
+    if rel.startswith("/") or rel.startswith("~"):
+        raise WorkspaceError(
+            tr(
+                f"Strict sandbox: use workspace-relative paths only (got: {relative_path})",
+                f"严格沙箱：仅允许工作区相对路径（收到：{relative_path}）",
+            )
+        )
+    try:
+        target.relative_to(root.resolve())
+    except ValueError as exc:
+        raise WorkspaceError(
+            tr(
+                f"Strict sandbox: path resolves outside workspace: {relative_path}",
+                f"严格沙箱：路径解析到工作区外：{relative_path}",
+            )
+        ) from exc
+
+
+def assert_strict_sandbox_command(command: str, root: Path) -> None:
+    from src.preferences_storage import load_strict_sandbox
+
+    if not load_strict_sandbox():
+        return
+    trimmed = command.strip()
+    if not trimmed:
+        return
+    if re.search(r"(?:^|[\s;&|])(?:\.\./)+", trimmed):
+        raise WorkspaceError(
+            tr(
+                "Strict sandbox: shell command cannot use ../ to escape the workspace",
+                "严格沙箱：shell 命令不能使用 ../ 逃出工作区",
+            )
+        )
+    root_resolved = root.resolve()
+    for match in re.finditer(r"(?:^|[\s'\"])(/[^\s'\";|&]+)", trimmed):
+        try:
+            candidate = Path(match.group(1)).expanduser().resolve()
+        except OSError:
+            continue
+        if candidate != root_resolved and root_resolved not in candidate.parents:
+            raise WorkspaceError(
+                tr(
+                    f"Strict sandbox: command references path outside workspace: {match.group(1)}",
+                    f"严格沙箱：命令引用了工作区外路径：{match.group(1)}",
+                )
+            )
 
 
 def to_workspace_relative(path: str) -> str | None:
@@ -440,6 +514,63 @@ def to_workspace_relative(path: str) -> str | None:
         return None
     rel = target.relative_to(root)
     return "." if str(rel) == "." else str(rel)
+
+
+# Skip noisy / internal trees when detecting shell-side file mutations.
+_SNAPSHOT_SKIP_DIRS = _SKIP_DIRS | {
+    ".clutch",
+    ".mimocode",
+    ".workbuddy",
+    ".rivet",
+    ".idea",
+    ".vscode",
+}
+_SNAPSHOT_MAX_FILES = 8000
+
+
+def snapshot_workspace_mtimes(root: Path | None = None) -> dict[str, tuple[int, int]]:
+    """Map workspace-relative path → (mtime_ns, size) for mutation detection."""
+    base = (root or require_workspace()).resolve()
+    out: dict[str, tuple[int, int]] = {}
+    stack = [base]
+    while stack and len(out) < _SNAPSHOT_MAX_FILES:
+        directory = stack.pop()
+        try:
+            entries = list(directory.iterdir())
+        except OSError:
+            continue
+        for entry in entries:
+            name = entry.name
+            if name in _SNAPSHOT_SKIP_DIRS:
+                continue
+            try:
+                if entry.is_dir() and not entry.is_symlink():
+                    stack.append(entry)
+                    continue
+                if not entry.is_file():
+                    continue
+                st = entry.stat()
+                rel = str(entry.relative_to(base))
+                out[rel] = (st.st_mtime_ns, st.st_size)
+            except OSError:
+                continue
+    return out
+
+
+def diff_workspace_snapshots(
+    before: dict[str, tuple[int, int]],
+    after: dict[str, tuple[int, int]],
+) -> list[str]:
+    """Return relative paths added, removed, or modified between snapshots."""
+    changed: list[str] = []
+    for path, meta in after.items():
+        if before.get(path) != meta:
+            changed.append(path)
+    for path in before:
+        if path not in after:
+            changed.append(path)
+    changed.sort()
+    return changed
 
 
 def list_tree(max_depth: int = 5) -> list[dict[str, Any]]:

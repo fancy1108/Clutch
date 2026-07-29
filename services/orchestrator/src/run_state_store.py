@@ -40,6 +40,11 @@ _PERSISTED_OPTIONAL_KEYS = frozenset({
     "pending_handoff_drafts",
     "focused_lane_id",
     "pending_pty_inject",
+    "pending_tool_steps",
+    "agent_todos",
+    "agent_goal",
+    "verification_report",
+    "diff_summary",
 })
 
 

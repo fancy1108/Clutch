@@ -1,4 +1,4 @@
-"""Resolve MCP Hub servers bound to an agent profile (P2-17 / D19)."""
+"""Resolve MCP Hub servers bound to an agent profile (P2-17 / D19 / D44)."""
 
 from __future__ import annotations
 
@@ -33,20 +33,31 @@ def resolve_local_fs_server() -> dict[str, Any] | None:
 def resolve_agent_mcp_servers(agent: dict[str, Any] | None) -> list[dict[str, Any]]:
     if not agent:
         return []
+    from src.agent_type import is_clutch_agent
+    from src.builtin_tools import resolve_clutch_tools_server
+
     raw_ids = agent.get("mcpServerIds") or []
     wanted = {str(item).strip() for item in raw_ids if str(item).strip()}
-    if not wanted:
-        return []
     resolved: list[dict[str, Any]] = []
-    if LOCAL_FS_SERVER_ID in wanted:
-        local_fs = resolve_local_fs_server()
-        if local_fs:
-            resolved.append(local_fs)
-        from src.builtin_tools import resolve_clutch_tools_server
+    seen: set[str] = set()
 
-        clutch_tools = resolve_clutch_tools_server()
-        if clutch_tools:
-            resolved.append(clutch_tools)
+    def _append(server: dict[str, Any] | None) -> None:
+        if not server:
+            return
+        sid = str(server.get("id", "")).strip()
+        if not sid or sid in seen:
+            return
+        seen.add(sid)
+        resolved.append(server)
+
+    # D44 / capability D1: Clutch Agent always gets builtins when workspace is set.
+    if is_clutch_agent(agent):
+        _append(resolve_clutch_tools_server())
+
+    if LOCAL_FS_SERVER_ID in wanted:
+        _append(resolve_local_fs_server())
+        _append(resolve_clutch_tools_server())
+
     for server in load_servers():
         server_id = str(server.get("id", "")).strip()
         if server_id not in wanted:
@@ -56,5 +67,5 @@ def resolve_agent_mcp_servers(agent: dict[str, Any] | None) -> list[dict[str, An
         endpoint = str(server.get("endpoint", "")).strip()
         if not endpoint:
             continue
-        resolved.append(server)
+        _append(server)
     return resolved

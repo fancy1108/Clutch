@@ -16,7 +16,8 @@ import { SystemPreferencesModal } from './components/SystemPreferencesModal';
 import { PromptModal } from './components/PromptModal';
 import { AppErrorBoundary } from './components/AppErrorBoundary';
 import { FooterMenuAction, FooterMenuItem, FooterMenuPanel, FooterMenuSection } from './components/FooterMenu';
-import { MainView, RightTab, ChatMessage, UncommittedFile, DiffLine, type Agent, type ClutchState, type AppWorkspaceMode } from './types';
+import { MainView, RightTab, ChatMessage, UncommittedFile, DiffLine, type Agent, type ClutchState, type AppWorkspaceMode, type ToolStep } from './types';
+import { resolveChatTerminalSyncTarget } from './services/chatTerminalSync';
 import { fetchAgents } from './services/agentApi';
 import {
   BUILTIN_AGENT_ID,
@@ -49,8 +50,10 @@ import {
   fetchRunState,
   deleteSession,
   createSession,
+  compactRun,
   type SessionRecord,
 } from './services/runApi';
+import type { SlashCommandId } from './services/slashCommands';
 import { fetchShellSnapshots } from './services/shellSnapshotApi';
 import { listWorkflowItems, loadWorkflowById } from './services/workflowApi';
 import {
@@ -92,6 +95,11 @@ import {
   type WorkspaceInfo,
 } from './services/workspaceApi';
 import { isImageWorkspacePath, isLargePreviewContent } from './services/workspacePathLinks';
+import {
+  absoluteWorkspacePath,
+  isHtmlWorkspacePath,
+  openPathInSystem,
+} from './services/openInSystem';
 import { workspaceMediaUrl } from './services/sidecarUrl';
 import { pickWorkspaceFolder } from './services/pickWorkspaceFolder';
 import {
@@ -133,6 +141,7 @@ function MainLayout() {
 
   const [sessionRunId, setSessionRunId] = useState(() => createSessionRunId());
   const [highlightedDispatchEntryId, setHighlightedDispatchEntryId] = useState<string | null>(null);
+  const [highlightedLogIndex, setHighlightedLogIndex] = useState<number | null>(null);
 
   const [promptModal, setPromptModal] = useState<{
     isOpen: boolean;
@@ -495,6 +504,23 @@ function MainLayout() {
     }
   }, [activateTerminalSession]);
 
+  /**
+   * D51 — Chat tool step → right-rail Terminal audit (highlight matching `[CHAT] Step`).
+   * Stay in Chat mode: do NOT flip the center workspace to interactive Terminal mode
+   * (that shows "Connecting interactive CLI…" and is a different surface).
+   */
+  const handleViewToolStepInTerminal = useCallback((step: ToolStep) => {
+    const target = resolveChatTerminalSyncTarget(step, clutchState);
+    setRightPanelOpen(true);
+    setRightTab('terminal');
+    setHighlightedLogIndex(target.logIndex);
+    setHighlightedDispatchEntryId(target.dispatchEntryId);
+    // If the user is already in Terminal mode, focus the matching lane — never enter it from here.
+    if (workspaceViewMode === 'terminal') {
+      void clutchStore.focusLane(target.laneId);
+    }
+  }, [clutchState, workspaceViewMode]);
+
   const isPlainLlmFooterEarly = !selectedWorkflowId && !clutchState.workflow_id;
 
   const prevSessionRunIdForTerminalRef = useRef(sessionRunId);
@@ -642,17 +668,19 @@ function MainLayout() {
     const status = opts?.status ?? (mode === 'design' ? 'idle' : 'running');
     const workflowId = opts?.workflowId ?? clutchState.workflow_id ?? '';
     setSessions((prev) => {
+      const now = new Date().toISOString();
       const index = prev.findIndex((session) => session.run_id === runId);
       if (index >= 0) {
-        const next = [...prev];
-        next[index] = {
-          ...next[index],
+        const updated: SessionRecord = {
+          ...prev[index],
           title: trimmedTitle,
           status,
           mode,
-          workflow_id: workflowId || next[index].workflow_id,
+          workflow_id: workflowId || prev[index].workflow_id,
+          updated_at: now,
         };
-        return next;
+        // Move to front so sidebar recent-first order is immediate (before refresh).
+        return [updated, ...prev.filter((_, i) => i !== index)];
       }
       const record: SessionRecord = {
         run_id: runId,
@@ -662,7 +690,8 @@ function MainLayout() {
         workflow_id: workflowId,
         mode,
         status,
-        started_at: new Date().toISOString(),
+        started_at: now,
+        updated_at: now,
       };
       return [record, ...prev];
     });
@@ -689,6 +718,27 @@ function MainLayout() {
   useEffect(() => {
     void refreshSessions(appMode);
   }, [clutchState.run_id, clutchState.status, appMode, refreshSessions]);
+
+  // Keep sidebar spinner in sync with live run status (MCP approve path used to leave history at "running").
+  useEffect(() => {
+    const runId = clutchState.run_id;
+    if (!runId) return;
+    const mapped =
+      clutchStatus === 'running' ||
+      clutchStatus === 'awaiting_human' ||
+      clutchStatus === 'refining'
+        ? 'running'
+        : clutchStatus === 'failed'
+          ? 'failed'
+          : 'idle';
+    setSessions((prev) => {
+      const index = prev.findIndex((session) => session.run_id === runId);
+      if (index < 0 || prev[index].status === mapped) return prev;
+      const next = [...prev];
+      next[index] = { ...next[index], status: mapped };
+      return next;
+    });
+  }, [clutchState.run_id, clutchStatus]);
 
   // Active Tab inside the right side panel (Overview, Files, Flow, Changes, Terminal)
   const [rightTab, setRightTab] = useState<RightTab>('overview');
@@ -796,15 +846,24 @@ function MainLayout() {
     clutchStore.clearTerminalLogs();
   };
 
-  const handleStopRun = () => {
+  const handleStopRun = (): boolean => {
     // Workflow (Flow) runs: stop immediately without confirmation.
     // Plain LLM chat runs: ask once to avoid accidental interruption.
     if (!isWorkflowChat && !highRiskConfirmed) {
       const ok = window.confirm(t('Confirm stopping the current run? This will interrupt the current AI Agent execution.'));
-      if (!ok) return;
+      if (!ok) return false;
       setHighRiskConfirmed(true);
     }
+    // Immediate UI: Stop → Continue / idle before WS ack (avoid "stuck" Stop).
+    if (!isWorkflowChat) {
+      clutchStore.optimisticPlainChatStop();
+    }
     void clutchStore.send({ action: 'stop_run' });
+    return true;
+  };
+
+  const handleContinueRun = () => {
+    void clutchStore.send({ action: 'continue_run' });
   };
 
   const handlePickWorkspace = async () => {
@@ -965,6 +1024,21 @@ function MainLayout() {
         window.setTimeout(() => setPreviewToast(null), 3200);
         return;
       }
+      // HTML: open rendered page in the system browser (not Clutch source preview).
+      if (isHtmlWorkspacePath(resolved.path)) {
+        const abs = absoluteWorkspacePath(workspace?.workspace_path, resolved.path);
+        if (!abs) {
+          setPreviewToast(`Could not resolve path: ${resolved.path}`);
+          window.setTimeout(() => setPreviewToast(null), 3200);
+          return;
+        }
+        setPreviewFile(null);
+        await openPathInSystem(abs);
+        const leaf = resolved.path.split(/[/\\]/).pop() || resolved.path;
+        setPreviewToast(`Opened in browser: ${leaf}`);
+        window.setTimeout(() => setPreviewToast(null), 2800);
+        return;
+      }
       if (isImageWorkspacePath(resolved.path)) {
         const mediaSrc = await workspaceMediaUrl(resolved.path);
         setPreviewFile({
@@ -1009,8 +1083,17 @@ function MainLayout() {
     setRightTab('overview');
   };
 
+  const handleAnswerQuestion = (option: { id: string; label: string }) => {
+    void clutchStore.send({
+      action: 'human_decision',
+      decision: 'approve',
+      instructions: JSON.stringify({ id: option.id, label: option.label }),
+    });
+    setRightTab('overview');
+  };
+
   // Permission mode (persisted on backend)
-  const [permissionMode, setPermissionMode] = useState<PermissionMode>('ask');
+  const [permissionMode, setPermissionMode] = useState<PermissionMode>('auto_edit');
 
   useEffect(() => {
     void fetchPermissionMode()
@@ -1022,6 +1105,72 @@ function MainLayout() {
     setPermissionMode(mode);
     void savePermissionMode(mode).catch(() => {});
   };
+
+  const [slashNotice, setSlashNotice] = useState<string | null>(null);
+  const slashNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dismissSlashNotice = useCallback(() => {
+    if (slashNoticeTimerRef.current) clearTimeout(slashNoticeTimerRef.current);
+    setSlashNotice(null);
+  }, []);
+
+  const showSlashNotice = useCallback((text: string, durationMs = 12000) => {
+    setSlashNotice(text);
+    if (slashNoticeTimerRef.current) clearTimeout(slashNoticeTimerRef.current);
+    // Stay long enough to read; user can also dismiss with X.
+    slashNoticeTimerRef.current = setTimeout(() => setSlashNotice(null), durationMs);
+  }, []);
+
+  const handleSlashCommand = useCallback(
+    async (id: SlashCommandId) => {
+      if (id === 'plan') {
+        handlePermissionModeChange('plan');
+        showSlashNotice('Plan mode on — Agent plans before editing. Switch mode to resume writes.');
+        return;
+      }
+      if (id === 'help') {
+        showSlashNotice('/plan · /compact · /todos · /help');
+        return;
+      }
+      if (id === 'todos') {
+        const el =
+          document.querySelector('[data-testid="todo-sticky-rail"]') ||
+          document.querySelector('[data-testid="todo-card"]');
+        if (el instanceof HTMLElement) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          showSlashNotice('Focused Todo checklist.');
+        } else {
+          showSlashNotice('No Todo checklist in this chat yet.');
+        }
+        return;
+      }
+      if (id === 'compact') {
+        if (!sessionRunId) {
+          showSlashNotice('No active session to compact.');
+          return;
+        }
+        try {
+          const result = await compactRun(sessionRunId);
+          showSlashNotice(
+            result.compacted
+              ? `压缩完成 · 见对话末尾 /compact + 摘要（${result.message_count} 条）`
+              : result.detail || 'Nothing to compact yet.',
+          );
+          if (result.compacted) {
+            // Let WS patch apply, then scroll to the digest at the end of the feed.
+            window.setTimeout(() => {
+              const el = document.querySelector('[data-testid="compaction-digest"]');
+              if (el instanceof HTMLElement) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'end' });
+              }
+            }, 120);
+          }
+        } catch (err) {
+          showSlashNotice(err instanceof Error ? err.message : 'Compact failed.');
+        }
+      }
+    },
+    [sessionRunId, showSlashNotice],
+  );
 
   // Skills list for / command picker in chat input
   const [chatSkills, setChatSkills] = useState<ScannedSkill[]>([]);
@@ -1166,6 +1315,7 @@ function MainLayout() {
       setSessionRunId(runId);
       setHistorySessionViewRunId(null);
       setHighlightedDispatchEntryId(null);
+      setHighlightedLogIndex(null);
       setCurrentFlowName(title);
       setSelectedWorkflowId(null);
       setAppMode('design');
@@ -1191,6 +1341,7 @@ function MainLayout() {
       setSessionRunId(runId);
       setHistorySessionViewRunId(null);
       setHighlightedDispatchEntryId(null);
+      setHighlightedLogIndex(null);
       setCurrentFlowName('');
       setSelectedWorkflowId(null);
       if (workspaceViewMode !== 'terminal') {
@@ -1449,6 +1600,7 @@ function MainLayout() {
     setAppMode(sessionMode);
     setView('chat');
     setHighlightedDispatchEntryId(null);
+    setHighlightedLogIndex(null);
     try {
       if (session.workspace_id && session.workspace_id !== activeWorkspaceId) {
         await handleSelectWorkspace(session.workspace_id);
@@ -2018,10 +2170,12 @@ function MainLayout() {
                 sidebarOpen={sidebarOpen}
                 rightPanelOpen={rightPanelOpen}
                 onStopRun={handleStopRun}
+                onContinueRun={handleContinueRun}
                 isMultiAgent={isMultiAgent}
                 onApprove={handleApprove}
                 onReject={handleReject}
                 onRetryWithInstructions={handleRetryWithInstructions}
+                onAnswerQuestion={handleAnswerQuestion}
                 workspaceAuthorized={Boolean(workspace)}
                 onPickWorkspace={() => { void handlePickWorkspace(); }}
                 onOpenWorkflows={() => setView('workflows')}
@@ -2067,6 +2221,16 @@ function MainLayout() {
                 isHistorySessionView={historySessionViewRunId === sessionRunId}
                 onOpenWorkspaceFile={(path) => { void handleOpenWorkspaceFile(path); }}
                 onPreviewSnippet={handlePreviewSnippet}
+                onViewToolStepInTerminal={handleViewToolStepInTerminal}
+                mcpServerIds={selectedAgent?.mcpServerIds}
+                showMcpBindingBadge={
+                  Boolean(selectedAgent && isClutchAgentType(selectedAgent) && !selectedWorkflowId && !clutchState.workflow_id)
+                }
+                onOpenMcpBind={() => setView('agents')}
+                onSlashCommand={handleSlashCommand}
+                slashNotice={slashNotice}
+                onDismissSlashNotice={dismissSlashNotice}
+                onSelectSession={(session) => { void handleSelectSession(session); }}
               />
               </div>
             </>
@@ -2087,6 +2251,7 @@ function MainLayout() {
                 sessionCostUsd={clutchState.session_cost_usd}
                 tokenInput={clutchState.token_input}
                 tokenOutput={clutchState.token_output}
+                runStats={clutchState.run_stats}
                 uncommitted={uncommitted}
                 terminalLogs={terminalLogs}
                 isOpen={rightPanelOpen}
@@ -2096,6 +2261,7 @@ function MainLayout() {
                 modelName={footerEffectiveModelName}
                 workspaceFiles={workspaceFiles}
                 onOpenWorkspaceFile={(path) => { void handleOpenWorkspaceFile(path); }}
+                highlightedLogIndex={highlightedLogIndex}
                 workspaceAuthorized={Boolean(workspace)}
                 onClearTerminal={handleClearTerminal}
                 dispatchLog={clutchState.dispatch_log ?? []}
@@ -2237,9 +2403,15 @@ function MainLayout() {
                     <p className="px-3 py-2 pl-9 text-[11px] text-on-surface-variant">{t('No models configured')}</p>
                   ) : (
                     (() => {
-                      const chatModels = configuredModels.filter((m) => (m.modelKind ?? 'chat') === 'chat');
-                      const imageModels = configuredModels.filter((m) => m.modelKind === 'image');
-                      const videoModels = configuredModels.filter((m) => m.modelKind === 'video');
+                      const chatModels = configuredModels.filter(
+                        (m) => m.available && (m.modelKind ?? 'chat') === 'chat',
+                      );
+                      const imageModels = configuredModels.filter(
+                        (m) => m.available && m.modelKind === 'image',
+                      );
+                      const videoModels = configuredModels.filter(
+                        (m) => m.available && m.modelKind === 'video',
+                      );
                       const renderGroup = (
                         label: string,
                         models: typeof configuredModels,

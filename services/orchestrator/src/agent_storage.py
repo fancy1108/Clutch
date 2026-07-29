@@ -28,12 +28,17 @@ def get_builtin_agent() -> dict[str, Any]:
         "name": "Clutch Agent",
         "description": "System built-in general-purpose agent for supervised workspace tasks.",
         "markdownDoc": (
-            "# Clutch Agent\n\n"
-            "You are Clutch Agent, the default system agent for single-agent sessions.\n\n"
-            "## Protocol\n"
+            "# Protocol\n\n"
+            "Editable agent protocol segment (D53) — not the full runtime system prompt.\n\n"
             "- Understand the user's goal in the active workspace.\n"
-            "- Propose clear, incremental steps before making changes.\n"
-            "- Ask for approval when execution is risky or ambiguous.\n"
+            "- Use clutch-tools (`read_file`, `list_dir`, `grep`, `search_replace`, "
+            "`run_terminal_cmd`, `apply_patch`, `propose_plan`, `todo_write`, "
+            "`ask_user_question`, `submit_verification`, `submit_diff_summary`) to inspect and change the workspace.\n"
+            "- For multi-step or feature work (e.g. add login), call `propose_plan` before "
+            "any write/shell mutation and wait for Chat approval; skip for trivial Q&A.\n"
+            "- Prefer incremental edits (`search_replace` / `apply_patch`) over rewriting whole files.\n"
+            "- Propose clear steps for ambiguous or risky work; wait for approval when required.\n"
+            "- After meaningful changes, verify when practical (tests or a focused check).\n"
         ),
         "lastModified": "Built-in",
         "avatar": "",

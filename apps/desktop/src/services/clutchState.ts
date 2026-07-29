@@ -22,6 +22,7 @@ import {
   createUserChatMessageHelper,
   mergeMessageFields,
   isAuthoritativeMessageReplacement,
+  isCompactionDigestMessage,
   mergeChatMessages,
   preferRicherSessionPatch,
   shouldPreserveOptimisticRun,
@@ -31,6 +32,7 @@ export {
   createSessionRunId,
   mergeMessageFields,
   isAuthoritativeMessageReplacement,
+  isCompactionDigestMessage,
   mergeChatMessages,
   preferRicherSessionPatch,
   shouldPreserveOptimisticRun,
@@ -723,6 +725,22 @@ class ClutchStateStore {
       });
       return;
     }
+    const approvalKey = (enriched as ChatMessage & { approvalKey?: string }).approvalKey;
+    if (enriched.agent === 'Supervisor' && approvalKey) {
+      const prior = this.state.messages.find(
+        (item) =>
+          item.agent === 'Supervisor' &&
+          (item as ChatMessage & { approvalKey?: string }).approvalKey === approvalKey,
+      );
+      if (prior) {
+        this.applyPatch({
+          messages: this.state.messages.map((item) =>
+            item.id === prior.id ? mergeMessageFields(item, enriched) : item,
+          ),
+        });
+        return;
+      }
+    }
     if (enriched.agent === 'User') {
       const trimmed = enriched.text.trim();
       const isPendingTurn =
@@ -849,7 +867,7 @@ class ClutchStateStore {
             if (data.passed === false && data.message) {
               const lang = (localStorage.getItem('workspace_lang') as Language) || 'en';
               const nextStepsText = translateText(
-                'Next steps: select "Bypass & Approve", "Reject & Redo" below, or type instructions and click "Retry".',
+                'Next steps: select Allow / Reject below, or type a note and Retry.',
                 lang
               );
               this.appendMessage({
@@ -977,6 +995,36 @@ class ClutchStateStore {
       message.id = messageId;
     }
     this.applyPatch({ messages: [...this.state.messages, message] });
+  }
+
+  /**
+   * D9 — optimistic Stop: flip UI to idle + Continue immediately so the Stop
+   * button does not look stuck waiting on the sidecar round-trip.
+   */
+  optimisticPlainChatStop(): void {
+    this.applyPatch({
+      status: 'idle',
+      awaiting_continue: true,
+      pending_tool_steps: [],
+      live_reasoning: '',
+      foreground_shell: null,
+    });
+  }
+
+  /** D11 — optimistic Kill: drop running chip immediately (no red failure toast). */
+  optimisticKillBgJob(jobId: string): void {
+    const id = jobId.trim();
+    if (!id) return;
+    const jobs = this.state.bg_jobs ?? [];
+    let changed = false;
+    const next = jobs.map((job) => {
+      if (job.id !== id || job.status !== 'running') return job;
+      changed = true;
+      return { ...job, status: 'killed' as const };
+    });
+    if (changed) {
+      this.applyPatch({ bg_jobs: next });
+    }
   }
 
   /** Optimistic user row + running status while plain-chat WS turn starts. */

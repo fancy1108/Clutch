@@ -1,0 +1,136 @@
+=== API E2E ===
+INFO:     Started server process [89026]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8123 (Press CTRL+C to quit)
+INFO:     127.0.0.1:56109 - "GET /health HTTP/1.1" 200 OK
+
+> @clutch/e2e@0.0.0 test:api /Users/fancy/clutch/e2e
+> playwright test -c playwright.config.ts --project=api
+
+
+Running 6 tests using 1 worker
+
+(node:89072) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+INFO:     127.0.0.1:56110 - "POST /api/preferences/language HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56110 - "GET /api/preferences/language HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56110 - "POST /api/preferences/language HTTP/1.1" 200 OK
+  ✓  1 [api] › tests/i18n.spec.ts:4:3 › i18n preferences (API) › language preference round-trips through sidecar (42ms)
+INFO:     127.0.0.1:56110 - "POST /api/workspace HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56110 - "POST /api/runs/start HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56110 - "POST /api/runs/run_397cb98d/human-decision HTTP/1.1" 200 OK
+  ✓  2 [api] › tests/mvp-closed-loop.spec.ts:6:1 › mvp closed loop: template → check fail → human approve → pass (2.7s)
+INFO:     127.0.0.1:56110 - "POST /api/workspaces HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56110 - "POST /api/workspaces/ws_cf25ee4201b2/activate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56110 - "POST /api/sessions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56154 - "WebSocket /ws/runs/run_e2e_hist_ms01ndgf" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:56110 - "GET /api/runs/run_e2e_hist_ms01ndgf/state HTTP/1.1" 200 OK
+INFO:     connection closed
+INFO:     127.0.0.1:56110 - "GET /api/runs/history HTTP/1.1" 200 OK
+  ✓  3 [api] › tests/session-history.spec.ts:25:3 › session history (API) › plain chat persists messages; GET /state restores conversation (38ms)
+INFO:     127.0.0.1:56110 - "GET /health HTTP/1.1" 200 OK
+  ✓  4 [api] › tests/smoke.spec.ts:4:1 › sidecar health endpoint responds ok (2ms)
+INFO:     127.0.0.1:56155 - "WebSocket /ws/runs/run_e2e_smoke" [accepted]
+INFO:     connection open
+  ✓  5 [api] › tests/smoke.spec.ts:11:1 › websocket emits state_patch on connect (2ms)
+INFO:     connection closed
+INFO:     127.0.0.1:56110 - "POST /api/workspaces HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56110 - "POST /api/workspaces/ws_cf25ee4201b2/activate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56110 - "GET /api/workspace/git HTTP/1.1" 200 OK
+  ✓  6 [api] › tests/workspace-git.spec.ts:8:3 › workspace git (API) › GET /api/workspace/git returns branch for sandbox repo (40ms)
+
+  6 passed (3.0s)
+=== Hybrid concurrent sessions API E2E (real PTY spawn) ===
+INFO:     Started server process [89215]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8123 (Press CTRL+C to quit)
+INFO:     127.0.0.1:56158 - "GET /health HTTP/1.1" 200 OK
+
+> @clutch/e2e@0.0.0 test:hybrid-api /Users/fancy/clutch/e2e
+> playwright test -c playwright.config.ts --project=hybrid-api
+
+
+Running 1 test using 1 worker
+
+(node:89271) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+INFO:     127.0.0.1:56162 - "POST /api/workspaces HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56162 - "POST /api/workspaces/ws_cf25ee4201b2/activate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56162 - "POST /api/sessions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56162 - "POST /api/sessions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56163 - "WebSocket /ws/runs/run_e2e_hybrid_a_ms01ngm9" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:56164 - "WebSocket /ws/runs/run_e2e_hybrid_b_ms01ngm9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:56176 - "GET /api/runs/run_e2e_hybrid_a_ms01ngm9/state HTTP/1.1" 200 OK
+INFO:     connection closed
+INFO:     127.0.0.1:56176 - "GET /api/runs/run_e2e_hybrid_b_ms01ngm9/state HTTP/1.1" 200 OK
+  ✓  1 [hybrid-api] › tests/hybrid-concurrent-sessions.spec.ts:14:3 › hybrid concurrent sessions (API) › two run_ids complete when messages are sent concurrently (9.9s)
+
+  1 passed (10.1s)
+=== Desktop E2E ===
+
+> @clutch/desktop@1.2.9 tauri:e2e /Users/fancy/clutch/apps/desktop
+> bash ../../scripts/tauri-e2e.sh
+
+
+> @clutch/desktop@1.2.9 tauri /Users/fancy/clutch/apps/desktop
+> tauri "dev" "--features" "e2e-testing" "--config" "src-tauri/tauri.e2e.conf.json"
+
+        Warn Waiting for your frontend dev server to start on http://localhost:3000/...
+        Warn Waiting for your frontend dev server to start on http://localhost:3000/...
+        Warn Waiting for your frontend dev server to start on http://localhost:3000/...
+        Warn Waiting for your frontend dev server to start on http://localhost:3000/...
+        Warn Waiting for your frontend dev server to start on http://localhost:3000/...
+        Warn Waiting for your frontend dev server to start on http://localhost:3000/...
+        Warn Waiting for your frontend dev server to start on http://localhost:3000/...
+        Warn Waiting for your frontend dev server to start on http://localhost:3000/...
+        Warn Waiting for your frontend dev server to start on http://localhost:3000/...
+        Warn Waiting for your frontend dev server to start on http://localhost:3000/...
+        Warn Waiting for your frontend dev server to start on http://localhost:3000/...
+        Warn Waiting for your frontend dev server to start on http://localhost:3000/...
+        Warn Waiting for your frontend dev server to start on http://localhost:3000/...
+        Warn Waiting for your frontend dev server to start on http://localhost:3000/...
+        Warn Waiting for your frontend dev server to start on http://localhost:3000/...
+        Warn Waiting for your frontend dev server to start on http://localhost:3000/...
+        Warn Waiting for your frontend dev server to start on http://localhost:3000/...
+        Warn Waiting for your frontend dev server to start on http://localhost:3000/...
+        Warn Waiting for your frontend dev server to start on http://localhost:3000/...
+        Warn Waiting for your frontend dev server to start on http://localhost:3000/...
+        Warn Waiting for your frontend dev server to start on http://localhost:3000/...
+        Warn Waiting for your frontend dev server to start on http://localhost:3000/...
+        Warn Waiting for your frontend dev server to start on http://localhost:3000/...
+        Warn Waiting for your frontend dev server to start on http://localhost:3000/...
+        Warn Waiting for your frontend dev server to start on http://localhost:3000/...
+        Warn Waiting for your frontend dev server to start on http://localhost:3000/...
+        Warn Waiting for your frontend dev server to start on http://localhost:3000/...
+        Warn Waiting for your frontend dev server to start on http://localhost:3000/...
+        Warn Waiting for your frontend dev server to start on http://localhost:3000/...
+        Warn Waiting for your frontend dev server to start on http://localhost:3000/...
+       Error Could not connect to `http://localhost:3000/` after 180s. Please make sure that is the URL to your dev server.
+ ELIFECYCLE  Command failed with exit code 1.
+ ELIFECYCLE  Command failed with exit code 1.
+Tauri app + sidecar + playwright socket not ready
+
+> @clutch/e2e@0.0.0 test:desktop /Users/fancy/clutch/e2e
+> playwright test -c playwright.config.ts --project=desktop
+
+Error: CLUTCH_E2E_ACCEPTANCE_MANIFEST is not set
+
+   at ../helpers/acceptance-config.ts:63
+
+  61 |   const path = process.env.CLUTCH_E2E_ACCEPTANCE_MANIFEST;
+  62 |   if (!path) {
+> 63 |     throw new Error('CLUTCH_E2E_ACCEPTANCE_MANIFEST is not set');
+     |           ^
+  64 |   }
+  65 |   return JSON.parse(readFileSync(path, 'utf8')) as AcceptanceManifest;
+  66 | }
+    at loadAcceptanceManifest (/Users/fancy/clutch/e2e/helpers/acceptance-config.ts:63:11)
+    at /Users/fancy/clutch/e2e/tests/desktop/acceptance.spec.ts:34:18
+
+ ELIFECYCLE  Command failed with exit code 1.

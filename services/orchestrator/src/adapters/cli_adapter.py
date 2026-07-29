@@ -450,6 +450,7 @@ _CLI_BINARY_LABELS: dict[str, str] = {
     "mimo-cli": "mimo",
     "codebuddy-cli": "codebuddy",
     "zcode-cli": "zcode",
+    "grok-cli": "grok",
 }
 
 

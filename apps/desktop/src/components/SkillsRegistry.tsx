@@ -19,6 +19,12 @@ import { UnderDevelopmentNotice } from './ui/UnderDevelopmentNotice';
 import type { AgentCapabilityTabId } from '../services/agentCapabilityTiers';
 import { consumeSettingsAgentTab } from '../services/cliConfigApi';
 import { pickSkillsDirectory, WorkspacePickerError } from '../services/pickSkillsDirectory';
+import {
+  fetchCapabilityPacks,
+  importCapabilityPack,
+  uninstallCapabilityPack,
+  type CapabilityPackRecord,
+} from '../services/capabilityPackApi';
 
 export type { ScannedSkill };
 
@@ -31,6 +37,8 @@ export const SkillsRegistry: React.FC = () => {
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(true);
   const [capabilityTab, setCapabilityTab] = useState<AgentCapabilityTabId>('clutch');
+  const [capabilityPacks, setCapabilityPacks] = useState<CapabilityPackRecord[]>([]);
+  const [packImportPath, setPackImportPath] = useState('');
 
   useEffect(() => {
     const stashed = consumeSettingsAgentTab();
@@ -45,6 +53,8 @@ export const SkillsRegistry: React.FC = () => {
       setMountedDirectories(data.mounted_directories);
       setScannedSkills(data.skills);
       notifySkillsUpdated();
+      const packs = await fetchCapabilityPacks();
+      setCapabilityPacks(packs);
     } catch {
       setErrorMsg(t('Sidecar unavailable — cannot load skills registry.'));
     } finally {
@@ -223,6 +233,62 @@ export const SkillsRegistry: React.FC = () => {
               {t('Hidden folders (e.g. ~/.cursor/skills): type the path directly, or press Cmd+Shift+. in the picker to show hidden files.')}
             </p>
           </form>
+
+          <div className="bg-surface-container/30 p-4 rounded-xl border border-outline/30 space-y-3">
+            <h3 className="text-[11px] font-extrabold text-[#111111] font-mono tracking-wider uppercase">
+              {t('Capability packs')}
+            </h3>
+            <div className="flex flex-wrap gap-2 items-center">
+              <input
+                type="text"
+                data-testid="capability-pack-import-path"
+                value={packImportPath}
+                onChange={(e) => setPackImportPath(e.target.value)}
+                placeholder={t('/path/to/pack-dir or .zip')}
+                className="flex-1 min-w-[200px] px-3 py-1.5 text-xs border border-neutral-200 rounded-lg font-mono"
+              />
+              <button
+                type="button"
+                data-testid="capability-pack-import-btn"
+                disabled={!packImportPath.trim()}
+                className={`${BTN_PRIMARY} disabled:opacity-50`}
+                onClick={() => {
+                  void importCapabilityPack(packImportPath.trim())
+                    .then(() => {
+                      setPackImportPath('');
+                      setSuccessMsg(t('Capability pack imported.'));
+                      return refresh();
+                    })
+                    .catch((err) => setErrorMsg(String(err)));
+                }}
+              >
+                {t('Import pack')}
+              </button>
+            </div>
+            {capabilityPacks.length > 0 ? (
+              <ul className="space-y-2 text-[11px]">
+                {capabilityPacks.map((pack) => (
+                  <li key={pack.id} className="flex items-center justify-between gap-2">
+                    <span className="font-mono truncate">{pack.name || pack.id}</span>
+                    <button
+                      type="button"
+                      data-testid={`capability-pack-uninstall-${pack.id}`}
+                      className={`${BTN_GHOST} text-[10px]`}
+                      onClick={() => {
+                        void uninstallCapabilityPack(pack.id)
+                          .then(() => refresh())
+                          .catch((err) => setErrorMsg(String(err)));
+                      }}
+                    >
+                      {t('Uninstall')}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-[10px] text-neutral-400 italic">{t('No capability packs installed.')}</p>
+            )}
+          </div>
 
           {successMsg && (
             <p className={`${ALERT_SUCCESS} text-[10px] font-medium select-none`}>

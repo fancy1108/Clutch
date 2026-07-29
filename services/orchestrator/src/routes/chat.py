@@ -59,6 +59,14 @@ class StartRunRequest(BaseModel):
     instruction: str = Field(default="")
 
 
+class ForkSessionRequest(BaseModel):
+    message_index: int = Field(ge=0)
+
+
+class RewindFilesRequest(BaseModel):
+    count: int = Field(default=1, ge=1, le=10)
+
+
 @router.post("/api/workflows/validate")
 async def validate_workflow_endpoint(body: ValidateWorkflowRequest) -> dict[str, str | bool]:
     from src.main import _validation_http_error
@@ -143,6 +151,26 @@ async def get_run_history(
     mode: str | None = None,
 ) -> dict[str, list[dict[str, Any]]]:
     runs = list_runs(workspace_id=workspace_id, mode=mode)
+    # Heal stale coding "running" badges when the live run state is already idle/failed.
+    try:
+        from src.run_state_store import load_run_state
+
+        for record in runs:
+            if str(record.get("mode") or "coding").strip().lower() == "design":
+                continue
+            if str(record.get("status") or "").strip().lower() != "running":
+                continue
+            run_id = str(record.get("run_id") or "").strip()
+            if not run_id:
+                continue
+            state = load_run_state(run_id)
+            if not state:
+                continue
+            live = str(state.get("status") or "").strip().lower()
+            if live in {"idle", "passed", "failed", "completed"}:
+                record["status"] = "failed" if live == "failed" else "idle"
+    except Exception:
+        pass
     if (mode or "").strip().lower() == "design":
         try:
             from src.design import service as design_service
@@ -421,6 +449,96 @@ async def delete_run_endpoint(run_id: str) -> dict[str, Any]:
     except Exception as exc:
         raise HTTPException(status_code=500, detail={"message": str(exc)}) from exc
     return {"status": "deleted", "run_id": run_id}
+
+
+@router.post("/api/runs/{run_id}/fork")
+async def fork_session_endpoint(run_id: str, body: ForkSessionRequest) -> dict[str, Any]:
+    from src.session_fork import fork_session
+
+    try:
+        return await asyncio.to_thread(fork_session, run_id, body.message_index)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+
+
+@router.post("/api/runs/{run_id}/rewind")
+async def rewind_files_endpoint(run_id: str, body: RewindFilesRequest) -> dict[str, Any]:
+    from src.file_rewind import rewind_last_writes, snapshot_count
+    from src.main import (
+        _chat_message,
+        _commit_run_state,
+        _get_or_create_run,
+        _merge_patch,
+    )
+
+    try:
+        restored = await asyncio.to_thread(rewind_last_writes, run_id, body.count)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+    if not restored:
+        return {
+            "run_id": run_id,
+            "restored": [],
+            "remaining_snapshots": snapshot_count(run_id),
+            "detail": "No file snapshots to rewind.",
+        }
+    paths = ", ".join(item["path"] for item in restored)
+    notice = _chat_message(
+        "Supervisor",
+        tr(f"Rewound agent file changes: {paths}", f"已回滚 Agent 文件改动：{paths}"),
+    )
+    state = _get_or_create_run(run_id)
+    patch = {"messages": list(state["messages"]) + [notice]}
+    state = _merge_patch(state, patch)
+    _commit_run_state(run_id, state)
+    return {
+        "run_id": run_id,
+        "restored": restored,
+        "remaining_snapshots": snapshot_count(run_id),
+        "message": notice,
+        "state": state,
+    }
+
+
+@router.post("/api/runs/{run_id}/compact")
+async def compact_run(run_id: str) -> dict[str, Any]:
+    """D18 — manually trigger context compaction (slash `/compact`)."""
+    from src.chat_runner import _get_or_create_run, _commit_run_state
+    from src.compaction import compact_run_messages
+    from src.run_log_forwarder import get_forwarder
+
+    state = _get_or_create_run(run_id)
+    before_count = len(state.get("messages") or [])
+    if before_count <= 5:
+        return {
+            "run_id": run_id,
+            "compacted": False,
+            "message_count": before_count,
+            "session_tokens": int(state.get("session_tokens") or 0),
+            "detail": "Not enough messages to compact (need more than 5).",
+        }
+    new_state = await compact_run_messages(
+        run_id, state, record_slash_command=True
+    )
+    after_count = len(new_state.get("messages") or [])
+    # Manual compact appends a User `/compact` row; still counts as compacted when
+    # intermediates were folded (message list shorter than before + slash row).
+    compacted = after_count < before_count + 1
+    _commit_run_state(run_id, new_state)
+    patch = {
+        "messages": new_state.get("messages"),
+        "session_tokens": new_state.get("session_tokens"),
+        "input_tokens": new_state.get("input_tokens"),
+        "output_tokens": new_state.get("output_tokens"),
+    }
+    get_forwarder(run_id).emit_state_patch(patch, str(new_state.get("status") or "idle"))
+    return {
+        "run_id": run_id,
+        "compacted": compacted,
+        "message_count": after_count,
+        "session_tokens": int(new_state.get("session_tokens") or 0),
+        "detail": "Context compacted." if compacted else "Compaction returned unchanged state.",
+    }
 
 
 @router.post("/api/runs/{run_id}/stop")

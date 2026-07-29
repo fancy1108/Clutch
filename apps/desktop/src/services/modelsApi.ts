@@ -379,7 +379,9 @@ export function resolveDefaultTextModelId(config: ModelConfig): string {
 }
 
 export function mapModelConfigToUi(config: ModelConfig) {
-  const visible = config.models.filter((m) => m.available || m.is_custom);
+  // Keep catalog models visible even without a key (e.g. OpenCode Zen free tier).
+  // Chat/footer pickers filter `available` separately so disabled models stay out of send.
+  const visible = config.models;
   const available = visible.filter((m) => m.available);
   return {
     activeModelId: config.active_model_id,
@@ -396,7 +398,9 @@ export function mapModelConfigToUi(config: ModelConfig) {
       temperature: 0.3,
       sourceSummary: m.available
         ? (m.source_summary ?? 'Credentials configured')
-        : 'Add an API key for this provider to enable this model.',
+        : m.provider_id === 'opencode'
+          ? 'Add an OpenCode Zen API key (opencode.ai/auth) to enable free models.'
+          : 'Add an API key for this provider to enable this model.',
       credentialSourceLabel: m.credential_source_label ?? null,
       endpoint: m.endpoint ?? null,
       clutchManaged: Boolean(m.clutch_managed),

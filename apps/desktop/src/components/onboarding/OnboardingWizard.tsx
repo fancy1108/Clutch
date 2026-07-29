@@ -3,6 +3,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLanguage } from '../LanguageContext';
 import { completeOnboarding } from '../../services/onboardingApi';
 import { fetchModelsConfig, mapModelConfigToUi } from '../../services/modelsApi';
+import {
+  fetchPermissionMode,
+  normalizePermissionMode,
+  savePermissionMode,
+  type PermissionMode,
+} from '../../services/permissionApi';
 import type { WorkspaceInfo } from '../../services/workspaceApi';
 import { BTN_GHOST, BTN_PRIMARY } from '../ui/buttonStyles';
 import { OnboardingLanguageToggle } from './OnboardingLanguageToggle';
@@ -44,8 +50,21 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
   const [provisionedAgentId, setProvisionedAgentId] = useState<string | null>(null);
   const [defaultAgentName, setDefaultAgentName] = useState<string | null>(null);
   const [activeModelLabel, setActiveModelLabel] = useState('—');
+  const [permissionMode, setPermissionMode] = useState<PermissionMode>('auto_edit');
   const [launching, setLaunching] = useState(false);
   const [launchError, setLaunchError] = useState<string | null>(null);
+
+  useEffect(() => {
+    void fetchPermissionMode()
+      .then((mode) => setPermissionMode(normalizePermissionMode(mode)))
+      .catch(() => {});
+  }, []);
+
+  const handlePermissionModeChange = (mode: PermissionMode) => {
+    const next = normalizePermissionMode(mode);
+    setPermissionMode(next);
+    void savePermissionMode(next).catch(() => {});
+  };
 
   const stepIndex = STEP_ORDER.indexOf(step);
   const showStepper = step !== 'welcome';
@@ -196,7 +215,9 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
         />
       )}
       {step === 'flowGuide' && <FlowGuideStep />}
-      {step === 'permissions' && <PermissionsStep />}
+      {step === 'permissions' && (
+        <PermissionsStep mode={permissionMode} onModeChange={handlePermissionModeChange} />
+      )}
       {step === 'ready' && (
         <ReadyStep
           workspace={workspace}
@@ -204,6 +225,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
           toolsReady={toolsReady}
           activeModelLabel={activeModelLabel}
           defaultAgentName={defaultAgentName}
+          permissionMode={permissionMode}
         />
       )}
     </OnboardingShell>

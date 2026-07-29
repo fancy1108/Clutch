@@ -66,6 +66,9 @@ const LEGACY_ENGINE_TO_TYPE: Record<string, AgentTypeId> = {
   traecli: 'trae-cli',
   'trae cli': 'trae-cli',
   'trae-agent': 'trae-cli',
+  grok: 'grok-cli',
+  'grok-cli': 'grok-cli',
+  'grok cli': 'grok-cli',
 };
 
 const AGENT_TYPE_DISPLAY_LABELS: Record<string, string> = {
@@ -85,6 +88,7 @@ const AGENT_TYPE_DISPLAY_LABELS: Record<string, string> = {
   'devin-cli': 'Devin CLI',
   'copilot-cli': 'GitHub Copilot CLI',
   'trae-cli': 'Trae CLI',
+  'grok-cli': 'Grok CLI',
 };
 
 /** First-class routed CLI agent types (excludes Clutch built-in LLM). */

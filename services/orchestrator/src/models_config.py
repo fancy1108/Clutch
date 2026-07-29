@@ -322,8 +322,12 @@ def format_connection_error(exc: Exception) -> str:
 
 def clear_provider_credential(router: LLMProviderRouter, provider_id: ProviderId) -> None:
     """Remove a Clutch-managed provider key and rehydrate external sources (CC Switch, etc.)."""
-    if not is_clutch_managed_credential(provider_id):
+    from src.credentials.sources import has_clutch_saved_credential, is_clutch_managed_provider
+
+    if not is_clutch_managed_provider(provider_id):
         raise ValueError("Only Clutch-managed credentials can be removed here.")
+    if not has_clutch_saved_credential(provider_id):
+        raise ValueError("No Clutch-managed key for this provider.")
 
     router._api_keys.pop(provider_id, None)  # type: ignore[arg-type]
     from src.credentials.credential_store import use_keychain

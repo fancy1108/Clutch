@@ -66,13 +66,31 @@ class ApplyPatchResult:
 
 
 def normalize_patch_text(patch: str) -> str:
-    text = patch.strip()
+    text = (patch or "").strip()
     lines = text.splitlines()
-    if len(lines) >= 4 and lines[0] in ("<<EOF", "<<'EOF'", '<<"EOF"') and lines[-1].endswith("EOF"):
+    if (
+        len(lines) >= 4
+        and lines[0] in ("<<EOF", "<<'EOF'", '<<"EOF"')
+        and lines[-1].endswith("EOF")
+    ):
         inner = lines[1:-1]
-        if inner and inner[0].strip() == BEGIN_PATCH and inner[-1].strip() == END_PATCH:
-            return "\n".join(inner)
-    return text
+        if inner and inner[0].strip() == BEGIN_PATCH:
+            lines = list(inner)
+
+    while lines and not lines[-1].strip():
+        lines.pop()
+    if not lines:
+        return text
+
+    # Flash models often truncate before `*** End Patch` — auto-heal when Begin is present.
+    if lines[0].strip() == BEGIN_PATCH and lines[-1].strip() != END_PATCH:
+        last = lines[-1].strip().lower()
+        if last in {"*** end patch", "*** end", "*** end of patch"}:
+            lines[-1] = END_PATCH
+        else:
+            lines.append(END_PATCH)
+
+    return "\n".join(lines)
 
 
 def extract_patch_paths(patch: str) -> list[str]:
@@ -182,6 +200,10 @@ def parse_patch(patch: str) -> list[Hunk]:
             continue
         if mode == "add" and current and line.startswith("+"):
             current.contents += line[1:] + "\n"
+            continue
+        # LLMs often omit the leading '+' on Add File body lines; accept bare content.
+        if mode == "add" and current and trimmed and not trimmed.startswith("***"):
+            current.contents += line + "\n"
             continue
         if mode == "update" and current:
             if trimmed == EOF_MARKER:

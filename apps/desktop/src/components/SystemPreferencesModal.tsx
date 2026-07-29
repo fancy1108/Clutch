@@ -1,4 +1,4 @@
-import React, { Dispatch, SetStateAction, useRef } from 'react';
+import React, { Dispatch, SetStateAction, useEffect, useRef, useState } from 'react';
 import { Agent, MainView } from '../types';
 import { AgentManager } from './AgentManager';
 import { WorkflowOrchestration } from './WorkflowOrchestration';
@@ -14,6 +14,7 @@ import { LegacyIcon } from './ui/LegacyIcon';
 import { SettingsPageHeader, SettingsPageShell } from './ui/SettingsPageHeader';
 import { SettingsSelect } from './ui/SettingsSelect';
 import { saveAvatarPreference } from '../services/themeApi';
+import { fetchAllowNetwork, fetchCrossSessionMemory, fetchStrictSandbox, clearCrossSessionMemory, saveAllowNetwork, saveCrossSessionMemory, saveStrictSandbox } from '../services/permissionApi';
 import { FONT_SIZE_LABEL_KEYS, FONT_SIZE_OPTIONS, type AppFontSize } from '../services/fontSizePreference';
 import { setUserChatAvatar } from '../services/clutchState';
 import defaultAvatar from '../assets/default_avatar.jpg';
@@ -84,6 +85,56 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
 }) => {
   const { t, language, setLanguage } = useLanguage();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [strictSandbox, setStrictSandbox] = useState(false);
+  const [strictSandboxLoading, setStrictSandboxLoading] = useState(true);
+  const [allowNetwork, setAllowNetwork] = useState(false);
+  const [allowNetworkLoading, setAllowNetworkLoading] = useState(true);
+  const [crossSessionMemory, setCrossSessionMemory] = useState(false);
+  const [memoryEntryCount, setMemoryEntryCount] = useState(0);
+  const [crossSessionMemoryLoading, setCrossSessionMemoryLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchStrictSandbox()
+      .then((enabled) => {
+        if (!cancelled) setStrictSandbox(enabled);
+      })
+      .catch(() => {
+        if (!cancelled) setStrictSandbox(false);
+      })
+      .finally(() => {
+        if (!cancelled) setStrictSandboxLoading(false);
+      });
+    void fetchAllowNetwork()
+      .then((enabled) => {
+        if (!cancelled) setAllowNetwork(enabled);
+      })
+      .catch(() => {
+        if (!cancelled) setAllowNetwork(false);
+      })
+      .finally(() => {
+        if (!cancelled) setAllowNetworkLoading(false);
+      });
+    void fetchCrossSessionMemory()
+      .then((payload) => {
+        if (!cancelled) {
+          setCrossSessionMemory(payload.enabled);
+          setMemoryEntryCount(payload.entries?.length ?? 0);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setCrossSessionMemory(false);
+          setMemoryEntryCount(0);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setCrossSessionMemoryLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -370,6 +421,105 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
                         }))}
                         onChange={(next) => setFontSize(next as AppFontSize)}
                       />
+                    </div>
+                  </div>
+
+                  {/* Strict sandbox (D21) */}
+                  <div className="bg-surface-container/30 p-6 rounded-2xl border border-outline/30 space-y-4">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                      {t('Strict sandbox')}
+                    </h3>
+                    <p className="text-[11px] text-on-surface-variant/80 max-w-xl">
+                      {t('Reject shell commands and paths that escape the authorized workspace.')}
+                    </p>
+                    <button
+                      type="button"
+                      data-testid="strict-sandbox-toggle"
+                      disabled={strictSandboxLoading}
+                      onClick={() => {
+                        const next = !strictSandbox;
+                        setStrictSandbox(next);
+                        void saveStrictSandbox(next).catch((err) => {
+                          console.error('Failed to save strict sandbox:', err);
+                          setStrictSandbox(!next);
+                        });
+                      }}
+                      className={`${BTN_SECONDARY} px-3 py-1.5 text-xs font-semibold ${
+                        strictSandbox ? 'border-primary/50 text-primary' : ''
+                      }`}
+                    >
+                      {strictSandbox ? t('Strict sandbox: On') : t('Strict sandbox: Off')}
+                    </button>
+                  </div>
+
+                  {/* Allow network (D15) */}
+                  <div className="bg-surface-container/30 p-6 rounded-2xl border border-outline/30 space-y-4">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                      {t('Allow network')}
+                    </h3>
+                    <p className="text-[11px] text-on-surface-variant/80 max-w-xl">
+                      {t('Enable the builtin web_search tool for Clutch Agent. On by default.')}
+                    </p>
+                    <button
+                      type="button"
+                      data-testid="allow-network-toggle"
+                      disabled={allowNetworkLoading}
+                      onClick={() => {
+                        const next = !allowNetwork;
+                        setAllowNetwork(next);
+                        void saveAllowNetwork(next).catch((err) => {
+                          console.error('Failed to save allow network:', err);
+                          setAllowNetwork(!next);
+                        });
+                      }}
+                      className={`${BTN_SECONDARY} px-3 py-1.5 text-xs font-semibold ${
+                        allowNetwork ? 'border-primary/50 text-primary' : ''
+                      }`}
+                    >
+                      {allowNetwork ? t('Allow network: On') : t('Allow network: Off')}
+                    </button>
+                  </div>
+
+                  {/* Cross-session memory (D16) */}
+                  <div className="bg-surface-container/30 p-6 rounded-2xl border border-outline/30 space-y-4">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                      {t('Cross-session memory')}
+                    </h3>
+                    <p className="text-[11px] text-on-surface-variant/80 max-w-xl">
+                      {t('Let Clutch Agent remember preferences across Chat sessions (remember_preference tool).')}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        data-testid="cross-session-memory-toggle"
+                        disabled={crossSessionMemoryLoading}
+                        onClick={() => {
+                          const next = !crossSessionMemory;
+                          setCrossSessionMemory(next);
+                          void saveCrossSessionMemory(next).catch((err) => {
+                            console.error('Failed to save cross-session memory:', err);
+                            setCrossSessionMemory(!next);
+                          });
+                        }}
+                        className={`${BTN_SECONDARY} px-3 py-1.5 text-xs font-semibold ${
+                          crossSessionMemory ? 'border-primary/50 text-primary' : ''
+                        }`}
+                      >
+                        {crossSessionMemory ? t('Memory: On') : t('Memory: Off')}
+                      </button>
+                      <button
+                        type="button"
+                        data-testid="clear-cross-session-memory"
+                        disabled={memoryEntryCount === 0}
+                        onClick={() => {
+                          void clearCrossSessionMemory()
+                            .then((n) => setMemoryEntryCount(Math.max(0, memoryEntryCount - n)))
+                            .catch((err) => console.error('Failed to clear memory:', err));
+                        }}
+                        className={`${BTN_SECONDARY} px-3 py-1.5 text-xs font-semibold`}
+                      >
+                        {t('Clear memory')} ({memoryEntryCount})
+                      </button>
                     </div>
                   </div>
 

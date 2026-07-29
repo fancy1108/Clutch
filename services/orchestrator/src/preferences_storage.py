@@ -16,13 +16,29 @@ ALLOWED_THEME_IDS = frozenset({"pristine-light", "nordic-frost", "amber-warm"})
 ALLOWED_LANGUAGES = frozenset({"en", "zh"})
 ALLOWED_FONT_SIZES = frozenset({"small", "default", "large", "xlarge", "xxlarge"})
 
-# Permission modes (controls when the agent pauses for human approval)
-# ask       – pause before every risky tool (write/delete/exec). Default & safest.
-# auto_edit – auto-approve file edits; still pause before shell/delete/network ops.
-# plan      – read-only; all write/exec tools are hard-blocked (agent just plans).
-# full      – bypass all pause gates (still blocks truly catastrophic ops like rm -rf /).
-ALLOWED_PERMISSION_MODES = frozenset({"ask", "auto_edit", "plan", "full"})
-DEFAULT_PERMISSION_MODE = "ask"
+# Permission modes (controls when the agent may mutate / pauses for approval)
+# auto_edit – UI "Agent" (default): auto-approve file edits; pause on risky shell.
+# plan      – read-only; propose a plan (writes/exec hard-blocked).
+# full      – fewer confirmation gates (still force-asks dangerous cmds like rm -rf).
+# ask       – conversation / read-only (writes & mutating shell hard-blocked).
+# explore   – legacy alias of ask (normalized on load/save; kept for old prefs / subagents).
+ALLOWED_PERMISSION_MODES = frozenset({"ask", "auto_edit", "explore", "plan", "full"})
+DEFAULT_PERMISSION_MODE = "auto_edit"
+
+
+def normalize_permission_mode(mode: str | None) -> str:
+    """Map legacy `explore` → `ask`; unknown → Agent (`auto_edit`)."""
+    normalized = str(mode or DEFAULT_PERMISSION_MODE).strip().lower()
+    if normalized == "explore":
+        return "ask"
+    if normalized not in ALLOWED_PERMISSION_MODES:
+        return DEFAULT_PERMISSION_MODE
+    return normalized
+DEFAULT_STRICT_SANDBOX = "false"
+# On by default so Clutch Agent can use web_search end-to-end (weather/docs).
+# Users can still turn it off in Settings → General → Allow network.
+DEFAULT_ALLOW_NETWORK = "true"
+DEFAULT_CROSS_SESSION_MEMORY = "false"
 
 
 def preferences_dir() -> Path:
@@ -48,6 +64,9 @@ def _defaults() -> dict[str, str]:
         "user_avatar": "",
         "user_name": "User",
         "onboarding_completed": "false",
+        "strict_sandbox": DEFAULT_STRICT_SANDBOX,
+        "allow_network": DEFAULT_ALLOW_NETWORK,
+        "cross_session_memory_enabled": DEFAULT_CROSS_SESSION_MEMORY,
     }
 
 
@@ -67,19 +86,28 @@ def load_preferences() -> dict[str, str]:
     data = json.loads(path.read_text(encoding="utf-8"))
     theme_id = str(data.get("active_theme_id") or DEFAULT_THEME_ID)
     language = str(data.get("active_language") or DEFAULT_LANGUAGE)
-    permission_mode = str(data.get("permission_mode") or DEFAULT_PERMISSION_MODE)
+    permission_mode = normalize_permission_mode(data.get("permission_mode"))
     font_size = str(data.get("font_size") or DEFAULT_FONT_SIZE)
     user_avatar = str(data.get("user_avatar") or "")
     user_name = str(data.get("user_name") or "User")
     onboarding_completed = str(data.get("onboarding_completed") or "false").lower()
     if onboarding_completed not in {"true", "false"}:
         onboarding_completed = "false"
+    strict_sandbox = str(data.get("strict_sandbox") or DEFAULT_STRICT_SANDBOX).lower()
+    if strict_sandbox not in {"true", "false"}:
+        strict_sandbox = DEFAULT_STRICT_SANDBOX
+    allow_network = str(data.get("allow_network") or DEFAULT_ALLOW_NETWORK).lower()
+    if allow_network not in {"true", "false"}:
+        allow_network = DEFAULT_ALLOW_NETWORK
+    cross_session_memory = str(
+        data.get("cross_session_memory_enabled") or DEFAULT_CROSS_SESSION_MEMORY
+    ).lower()
+    if cross_session_memory not in {"true", "false"}:
+        cross_session_memory = DEFAULT_CROSS_SESSION_MEMORY
     if theme_id not in ALLOWED_THEME_IDS:
         theme_id = DEFAULT_THEME_ID
     if language not in ALLOWED_LANGUAGES:
         language = DEFAULT_LANGUAGE
-    if permission_mode not in ALLOWED_PERMISSION_MODES:
-        permission_mode = DEFAULT_PERMISSION_MODE
     if font_size not in ALLOWED_FONT_SIZES:
         font_size = DEFAULT_FONT_SIZE
     return {
@@ -90,6 +118,9 @@ def load_preferences() -> dict[str, str]:
         "user_avatar": user_avatar,
         "user_name": user_name,
         "onboarding_completed": onboarding_completed,
+        "strict_sandbox": strict_sandbox,
+        "allow_network": allow_network,
+        "cross_session_memory_enabled": cross_session_memory,
     }
 
 
@@ -125,11 +156,11 @@ def save_language(language: str) -> dict[str, str]:
 
 def save_permission_mode(mode: str) -> dict[str, str]:
     """Persist the permission mode. Raises ValueError for unknown modes."""
-    normalized = mode.strip().lower()
-    if normalized not in ALLOWED_PERMISSION_MODES:
-        raise ValueError(f"Unknown permission mode: {normalized}. Allowed: {sorted(ALLOWED_PERMISSION_MODES)}")
+    raw = mode.strip().lower()
+    if raw not in ALLOWED_PERMISSION_MODES:
+        raise ValueError(f"Unknown permission mode: {raw}. Allowed: {sorted(ALLOWED_PERMISSION_MODES)}")
     prefs = load_preferences()
-    prefs["permission_mode"] = normalized
+    prefs["permission_mode"] = normalize_permission_mode(raw)
     return _write_preferences(prefs)
 
 
@@ -145,6 +176,38 @@ def save_font_size(font_size: str) -> dict[str, str]:
 def load_permission_mode() -> str:
     """Return the current permission mode string."""
     return load_preferences().get("permission_mode", DEFAULT_PERMISSION_MODE)
+
+
+def load_strict_sandbox() -> bool:
+    return load_preferences().get("strict_sandbox", DEFAULT_STRICT_SANDBOX) == "true"
+
+
+def load_allow_network() -> bool:
+    return load_preferences().get("allow_network", DEFAULT_ALLOW_NETWORK) == "true"
+
+
+def save_strict_sandbox(enabled: bool) -> dict[str, str]:
+    prefs = load_preferences()
+    prefs["strict_sandbox"] = "true" if enabled else "false"
+    return _write_preferences(prefs)
+
+
+def save_allow_network(enabled: bool) -> dict[str, str]:
+    prefs = load_preferences()
+    prefs["allow_network"] = "true" if enabled else "false"
+    return _write_preferences(prefs)
+
+
+def load_cross_session_memory_enabled() -> bool:
+    return load_preferences().get(
+        "cross_session_memory_enabled", DEFAULT_CROSS_SESSION_MEMORY
+    ) == "true"
+
+
+def save_cross_session_memory_enabled(enabled: bool) -> dict[str, str]:
+    prefs = load_preferences()
+    prefs["cross_session_memory_enabled"] = "true" if enabled else "false"
+    return _write_preferences(prefs)
 
 
 def save_onboarding_completed() -> dict[str, str]:

@@ -111,6 +111,7 @@ def test_run_mcp_react_loop_returns_engine_label(monkeypatch) -> None:
 
 
 def test_run_mcp_react_pause_on_risky_tool(monkeypatch) -> None:
+    """Agent (auto_edit) still pauses on shell/delete — not on auto-approved writes."""
     captured: list[str] = []
 
     class _RiskyRouter:
@@ -129,28 +130,40 @@ def test_run_mcp_react_pause_on_risky_tool(monkeypatch) -> None:
                         "id": "tc1",
                         "type": "function",
                         "function": {
-                            "name": "mcp_test__write_file",
+                            "name": "mcp_test__delete_file",
                             "arguments": "{\"path\":\"a.txt\"}",
                         },
                     }
                 ],
             }
 
-    monkeypatch.setattr("src.mcp_react.McpClient", _FakeClient)
+    class _DeleteClient(_FakeClient):
+        def list_tools(self) -> list[dict]:
+            return [
+                {
+                    "name": "delete_file",
+                    "description": "Delete file",
+                    "inputSchema": {"type": "object", "properties": {}},
+                }
+            ]
+
+    monkeypatch.setattr("src.mcp_react.McpClient", _DeleteClient)
     monkeypatch.setattr("src.models_config.get_router", lambda: _RiskyRouter())
 
     outcome = run_mcp_react_loop(
-        messages=[{"role": "user", "content": "write file"}],
+        messages=[{"role": "user", "content": "delete file"}],
         servers=[{"id": "mcp_test", "name": "Test MCP", "endpoint": "echo mcp"}],
         pause_on_risky=True,
+        permission_mode="auto_edit",
         on_log=captured.append,
     )
     assert isinstance(outcome, McpRunOutcome)
     assert outcome.approval_required is not None
-    assert outcome.approval_required["func_name"] == "mcp_test__write_file"
+    assert outcome.approval_required["func_name"] == "mcp_test__delete_file"
 
 
 def test_run_mcp_react_auto_approves_duplicate_risky_tool(monkeypatch) -> None:
+    """Remembered approval key lets Agent mode continue a previously-approved delete."""
     calls = {"count": 0}
 
     class _RiskyRouter:
@@ -171,20 +184,20 @@ def test_run_mcp_react_auto_approves_duplicate_risky_tool(monkeypatch) -> None:
                             "id": "tc1",
                             "type": "function",
                             "function": {
-                                "name": "mcp_test__write_file",
-                                "arguments": "{\"path\":\"a.txt\",\"content\":\"\"}",
+                                "name": "mcp_test__delete_file",
+                                "arguments": "{\"path\":\"a.txt\"}",
                             },
                         }
                     ],
                 }
             return "done"
 
-    class _WriteClient(_FakeClient):
+    class _DeleteClient(_FakeClient):
         def list_tools(self) -> list[dict]:
             return [
                 {
-                    "name": "write_file",
-                    "description": "Write file",
+                    "name": "delete_file",
+                    "description": "Delete file",
                     "inputSchema": {"type": "object", "properties": {}},
                 }
             ]
@@ -194,29 +207,30 @@ def test_run_mcp_react_auto_approves_duplicate_risky_tool(monkeypatch) -> None:
 
     from src.mcp_risk import mcp_approval_key
 
-    monkeypatch.setattr("src.mcp_react.McpClient", _WriteClient)
+    monkeypatch.setattr("src.mcp_react.McpClient", _DeleteClient)
     monkeypatch.setattr("src.models_config.get_router", lambda: _RiskyRouter())
     monkeypatch.setattr("src.workspace.to_workspace_relative", lambda path: "a.txt")
 
     approved_key = mcp_approval_key(
-        "mcp_test__write_file",
-        {"path": "a.txt", "content": ""},
+        "mcp_test__delete_file",
+        {"path": "a.txt"},
     )
     outcome = run_mcp_react_loop(
-        messages=[{"role": "user", "content": "write file"}],
+        messages=[{"role": "user", "content": "delete file"}],
         servers=[{"id": "mcp_test", "name": "Test MCP", "endpoint": "echo mcp"}],
         pause_on_risky=True,
+        permission_mode="auto_edit",
         approved_tool={
             "tool_call_id": "tc1",
-            "func_name": "mcp_test__write_file",
-            "func_args": {"path": "a.txt", "content": ""},
+            "func_name": "mcp_test__delete_file",
+            "func_args": {"path": "a.txt"},
             "step_idx": 0,
         },
         approved_keys={approved_key},
     )
     assert outcome.approval_required is None
     assert outcome.output == "done"
-    assert any("Auto-approved duplicate risky tool" in line for line in outcome.logs)
+    assert calls["count"] >= 2
 
 
 def test_tool_alias_matches_openai_name_pattern() -> None:
@@ -297,6 +311,52 @@ def test_run_mcp_react_builtin_apply_patch_records_files_changed(tmp_path, monke
         },
     )
     assert outcome.files_changed == ["added.txt"]
+
+
+def test_run_mcp_react_shell_heredoc_records_files_changed(tmp_path, monkeypatch) -> None:
+    """cat >/mv/rm via shell must still populate files_changed for Changes panel."""
+    monkeypatch.setenv("CLUTCH_WORKSPACES_FILE", str(tmp_path / "ws.json"))
+    from src import workspace as workspace_mod
+
+    workspace_mod._loaded = False
+    workspace_mod._workspaces = {}
+    workspace_mod._active_id = None
+    workspace_mod.add_workspace(str(tmp_path))
+
+    class _Router:
+        def get_active_model(self) -> SimpleNamespace:
+            return SimpleNamespace(name="Test Model")
+
+        def resolve_for_model(self, model_id=None):
+            return SimpleNamespace(name="Test Model"), model_id
+
+        def chat(self, messages, tools=None, model_id=None):
+            return "done"
+
+    monkeypatch.setattr("src.models_config.get_router", lambda: _Router())
+    # Avoid foreground shell / run-context requirements in unit tests.
+    monkeypatch.setattr(
+        "src.builtin_tools._bg_job_run_id",
+        lambda: None,
+    )
+
+    outcome = run_mcp_react_loop(
+        messages=[{"role": "user", "content": "write via shell"}],
+        servers=[{"id": "clutch-tools", "name": "Clutch Builtin Tools", "virtual": True}],
+        approved_tool={
+            "tool_call_id": "tc1",
+            "func_name": "clutch-tools__run_terminal_cmd",
+            "func_args": {
+                "command": "printf 'hello\\n' > shell_written.txt && mkdir -p nested && "
+                "printf 'x\\n' > nested/a.py"
+            },
+            "step_idx": 0,
+        },
+    )
+    assert outcome.files_changed is not None
+    assert "shell_written.txt" in outcome.files_changed
+    assert "nested/a.py" in outcome.files_changed
+    assert (tmp_path / "shell_written.txt").read_text() == "hello\n"
 
 
 def test_run_mcp_react_records_files_changed(monkeypatch) -> None:

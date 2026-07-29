@@ -62,6 +62,18 @@ async def _lifespan(app: FastAPI):
 
     task = asyncio.create_task(_sweep_shell_sessions())
 
+    async def _scheduled_tasks_loop() -> None:
+        from src.scheduled_tasks import tick_scheduled_tasks
+
+        while True:
+            await asyncio.sleep(15)
+            try:
+                await asyncio.to_thread(tick_scheduled_tasks)
+            except Exception:
+                logger.exception("scheduled_tasks tick failed")
+
+    sched_task = asyncio.create_task(_scheduled_tasks_loop())
+
     async def _prefetch_cc_switch_bundle() -> None:
         try:
             from src.cli_agent_config import prefetch_cc_switch_cli_bundle, resolve_cc_switch_cli_path
@@ -74,6 +86,11 @@ async def _lifespan(app: FastAPI):
 
     asyncio.create_task(_prefetch_cc_switch_bundle())
     yield
+    sched_task.cancel()
+    try:
+        await sched_task
+    except asyncio.CancelledError:
+        pass
     task.cancel()
     try:
         await task
@@ -260,6 +277,8 @@ from src.routes.pty import router as pty_router
 from src.routes.design import router as design_router_facade
 from src.routes.chat import router as chat_router
 from src.routes.preview import router as preview_router
+from src.routes.worktree import router as worktree_router
+from src.routes.scheduled_tasks import router as scheduled_tasks_router
 
 app.include_router(workspace_router)
 app.include_router(models_router)
@@ -268,3 +287,5 @@ app.include_router(pty_router)
 app.include_router(design_router_facade)
 app.include_router(chat_router)
 app.include_router(preview_router)
+app.include_router(worktree_router)
+app.include_router(scheduled_tasks_router)

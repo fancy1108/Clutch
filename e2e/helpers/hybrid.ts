@@ -1,4 +1,8 @@
-const WS_BASE = 'ws://127.0.0.1:8123/ws/runs';
+import { sidecarBaseUrl } from './sidecar.js';
+
+function wsBase(): string {
+  return `${sidecarBaseUrl().replace(/^http/, 'ws')}/ws/runs`;
+}
 
 export type HybridChatResult = {
   logs: string[];
@@ -19,7 +23,7 @@ export function hybridPlainChatUntilIdle(
   let sawRunning = false;
 
   return new Promise((resolve, reject) => {
-    const ws = new WebSocket(`${WS_BASE}/${runId}`);
+    const ws = new WebSocket(`${wsBase()}/${runId}`);
     let sent = false;
 
     const finish = (error?: Error) => {
