@@ -349,7 +349,18 @@ def compose_agent_prompt_assembly(
         and mcp_servers_bound
         and looks_like_feature_request(user_turn_text or "")
     ):
-        layers.append(PromptLayer("mode", _FEATURE_PLAN_REMINDER))
+        from src.deliverable_intent import allows_html_feature_plan
+
+        # Only push the default HTML+CSS+JS plan stack when a page was inferred.
+        if allows_html_feature_plan(user_turn_text):
+            layers.append(PromptLayer("mode", _FEATURE_PLAN_REMINDER))
+
+    if clutch_mcp_path and is_clutch and (user_turn_text or "").strip():
+        from src.deliverable_intent import deliverable_system_reminder
+
+        reminder = deliverable_system_reminder(user_turn_text, current_model_kind="chat")
+        if reminder:
+            layers.append(PromptLayer("deliverable", reminder))
 
     if clutch_mcp_path and is_clutch:
         if not mcp_servers_bound:
@@ -394,11 +405,15 @@ def compose_agent_prompt_assembly(
                     "call clutch-tools `propose_plan` early — do not interview the user about "
                     "stack first; put defaults in the plan. Wait for Chat Approve / Revise / "
                     "Cancel before any write or mutating shell. "
-                    "After a plan is approved (or for clear multi-step work), call `todo_write` "
-                    "with ≥3 items. Progress rules (visible in Chat): keep exactly one "
-                    "`in_progress`; when that step finishes, call `todo_write` immediately to "
-                    "mark it `completed` and set the next to `in_progress` — never leave the "
-                    "card stuck on step 1 then jump to all-completed in one write. "
+                    "After a plan is approved (or the user says 确认/批准/go ahead/按计划/"
+                    "按照你说的), IMMEDIATELY call `todo_write` with ≥3 items and start the "
+                    "first `in_progress` step — never ask for confirmation again, never only "
+                    "restate the plan. Prefer `apply_patch`/`search_replace` over shell "
+                    "heredocs (`cat >`); shell file writes skip Diff cards. "
+                    "Progress rules (visible in Chat): keep exactly one `in_progress`; when "
+                    "that step finishes, call `todo_write` immediately to mark it `completed` "
+                    "and set the next to `in_progress` — never leave the card stuck on step 1 "
+                    "then jump to all-completed in one write. "
                     "Call `todo_write` only when the list or a status changes — do not spam it. "
                     "Status-only questions (还剩什么 / 还剩哪些 todo / what's left): reply with "
                     "the open items from the task_state list — do not keep editing or calling "

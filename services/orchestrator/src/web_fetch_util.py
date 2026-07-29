@@ -83,30 +83,99 @@ def _should_retry(exc: BaseException) -> bool:
 
 
 # Search-engine result pages burn tool budget and return noisy HTML — prefer web_search.
-_SERP_MARKERS = (
-    "bing.com/search",
-    "google.com/search",
-    "google.com.hk/search",
-    "google.co.jp/search",
-    "duckduckgo.com/?",
-    "duckduckgo.com/html",
-    "html.duckduckgo.com/",
-    "baidu.com/s?",
-    "baidu.com/s&",
-    "search.yahoo.com/",
-    "so.com/s",
-    "sogou.com/web",
-    "yandex.com/search",
-    "yandex.ru/search",
+# NOTE: do NOT match bare `baidu.com/s?` — that false-positives Baijiahao articles
+# (`baijiahao.baidu.com/s?id=…`).
+_SERP_HOST_PATH = (
+    ("bing.com", "/search"),
+    ("google.com", "/search"),
+    ("google.com.hk", "/search"),
+    ("google.co.jp", "/search"),
+    ("search.yahoo.com", "/"),
+    ("yandex.com", "/search"),
+    ("yandex.ru", "/search"),
+    ("sogou.com", "/web"),
 )
 
 
 def is_search_engine_serp_url(url: str) -> bool:
     """True when URL is a search-engine results page (not a concrete article)."""
-    lowered = (url or "").strip().lower()
-    if not lowered.startswith(("http://", "https://")):
+    from urllib.parse import parse_qs, urlparse
+
+    cleaned = (url or "").strip()
+    if not cleaned.startswith(("http://", "https://")):
         return False
-    return any(marker in lowered for marker in _SERP_MARKERS)
+    try:
+        parsed = urlparse(cleaned)
+    except Exception:
+        return False
+    host = (parsed.netloc or "").lower()
+    if host.startswith("www."):
+        host = host[4:]
+    path = (parsed.path or "").lower() or "/"
+    query = (parsed.query or "").lower()
+
+    # DuckDuckGo HTML/lite SERPs
+    if "duckduckgo.com" in host:
+        if path.startswith("/html") or path == "/" or path.startswith("/?"):
+            return True
+        if "q=" in query:
+            return True
+
+    # Baidu search only on the main search host — not baijiahao / zhidao / tieba.
+    if host in {"baidu.com", "m.baidu.com"}:
+        if path.rstrip("/") == "/s":
+            qs = parse_qs(parsed.query)
+            if any(k in qs for k in ("wd", "word", "q")):
+                return True
+            # `/s` without article-style `id=` is still treated as SERP.
+            if "id" not in qs:
+                return True
+        return False
+
+    # 360 so.com search
+    if host in {"so.com", "www.so.com"} and path.rstrip("/").startswith("/s"):
+        return True
+
+    for serp_host, serp_path in _SERP_HOST_PATH:
+        if host == serp_host or host.endswith("." + serp_host):
+            if path.startswith(serp_path.rstrip("/")) or path == serp_path:
+                return True
+    return False
+
+
+def extract_serp_query(url: str) -> str:
+    """Pull the user query out of a Google/Bing/Baidu/DDG results URL when possible."""
+    from urllib.parse import parse_qs, unquote_plus, urlparse
+
+    cleaned = (url or "").strip()
+    if not cleaned.startswith(("http://", "https://")):
+        return ""
+    try:
+        parsed = urlparse(cleaned)
+    except Exception:
+        return ""
+    qs = parse_qs(parsed.query)
+    for key in ("q", "wd", "word", "query", "text", "keywords"):
+        values = qs.get(key) or []
+        if values and str(values[0]).strip():
+            return unquote_plus(str(values[0]).strip())
+    return ""
+
+
+def serp_redirect_error_message(url: str) -> str:
+    query = extract_serp_query(url)
+    if query:
+        return (
+            "web_fetch cannot be used on search-engine result pages "
+            f"(Google/Bing/…). Call web_search with query={query!r}, "
+            "then web_fetch 1–2 concrete article URLs from the results — "
+            "never google.com/search or bing.com/search."
+        )
+    return (
+        "web_fetch cannot be used on search-engine result pages "
+        "(Google/Bing/DuckDuckGo/Baidu/…). "
+        "Call web_search with a query instead, then web_fetch a concrete result URL."
+    )
 
 
 def fetch_url_text(url: str, *, timeout_sec: int = _DEFAULT_TIMEOUT_S) -> dict[str, Any]:
@@ -115,11 +184,7 @@ def fetch_url_text(url: str, *, timeout_sec: int = _DEFAULT_TIMEOUT_S) -> dict[s
     if not cleaned.startswith(("http://", "https://")):
         raise ValueError("url must start with http:// or https://")
     if is_search_engine_serp_url(cleaned):
-        raise ValueError(
-            "web_fetch cannot be used on search-engine result pages "
-            "(Google/Bing/DuckDuckGo/Baidu/…). "
-            "Call web_search with a query instead, then web_fetch a concrete result URL."
-        )
+        raise ValueError(serp_redirect_error_message(cleaned))
 
     timeout = max(5, int(timeout_sec))
     headers = {
@@ -146,7 +211,8 @@ def fetch_url_text(url: str, *, timeout_sec: int = _DEFAULT_TIMEOUT_S) -> dict[s
                     "error": f"HTTP {status}",
                 }
             break
-        except (httpx.TimeoutException, httpx.NetworkError, httpx.HTTPError) as exc:
+        except Exception as exc:
+            # Catch SSLError / OSError as well as httpx wrappers — never leak raw urlopen.
             last_error = exc
             if attempt + 1 < _MAX_ATTEMPTS and _should_retry(exc):
                 time.sleep(_RETRY_SLEEP_S)

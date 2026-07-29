@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import time
 import urllib.error
 import urllib.request
 from typing import Any
@@ -15,6 +16,55 @@ from src.llm.router import ProviderId
 _TIMEOUT_SEC = 120
 _MAX_TOKENS = 4096
 _HTTP_USER_AGENT = "ClutchSidecar/1.0"
+_TRANSPORT_ATTEMPTS = 2
+_TRANSPORT_RETRY_SLEEP_S = 0.45
+
+
+def friendly_llm_transport_error(exc: BaseException) -> str:
+    """Map urllib/SSL transport failures to a Chat-safe message (no raw urlopen)."""
+    detail = str(exc).strip() or type(exc).__name__
+    lowered = detail.lower()
+    if (
+        "unexpected_eof_while_reading" in lowered
+        or "eof occurred in violation of protocol" in lowered
+    ):
+        return (
+            "Model API TLS connection closed early (SSL UNEXPECTED_EOF). "
+            "Usually transient — retry the message, or switch model/provider "
+            "in Settings → Models."
+        )
+    if "certificate" in lowered or "ssl" in lowered or "tls" in lowered:
+        return (
+            f"Model API TLS/SSL error: {detail}. "
+            "Check network/proxy, then retry or switch provider."
+        )
+    if "timed out" in lowered or "timeout" in lowered:
+        return f"Model API timed out: {detail}"
+    if isinstance(exc, urllib.error.URLError):
+        reason = getattr(exc, "reason", None)
+        reason_s = str(reason).strip() if reason else detail
+        # Avoid nesting another raw urlopen wrapper in Chat.
+        if "urlopen error" in reason_s.lower():
+            reason_s = reason_s.replace("<urlopen error ", "").rstrip(">")
+        return f"Could not reach the model API: {reason_s}"
+    return f"Could not reach the model API: {detail}"
+
+
+def _should_retry_transport(exc: BaseException) -> bool:
+    text = str(exc).lower()
+    return any(
+        token in text
+        for token in (
+            "unexpected_eof_while_reading",
+            "eof occurred in violation of protocol",
+            "connection reset",
+            "connection aborted",
+            "temporarily unavailable",
+            "timed out",
+            "timeout",
+            "remote end closed connection",
+        )
+    )
 
 
 def _anthropic_uses_messages_api(base_url: str) -> bool:
@@ -35,12 +85,21 @@ def _get_json(
         headers={**headers, "User-Agent": _HTTP_USER_AGENT},
         method="GET",
     )
-    try:
-        with urllib.request.urlopen(req, timeout=timeout_sec) as resp:
-            return json.loads(resp.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="replace")[:500]
-        raise RuntimeError(f"LLM API error {exc.code}: {detail}") from exc
+    last_exc: BaseException | None = None
+    for attempt in range(_TRANSPORT_ATTEMPTS):
+        try:
+            with urllib.request.urlopen(req, timeout=timeout_sec) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="replace")[:500]
+            raise RuntimeError(f"LLM API error {exc.code}: {detail}") from exc
+        except (urllib.error.URLError, TimeoutError, OSError) as exc:
+            last_exc = exc
+            if attempt + 1 < _TRANSPORT_ATTEMPTS and _should_retry_transport(exc):
+                time.sleep(_TRANSPORT_RETRY_SLEEP_S)
+                continue
+            raise RuntimeError(friendly_llm_transport_error(exc)) from exc
+    raise RuntimeError(friendly_llm_transport_error(last_exc or RuntimeError("request failed")))
 
 
 def http_probe_credentials(
@@ -89,12 +148,21 @@ def _post_json(
         headers={**headers, "Content-Type": "application/json", "User-Agent": _HTTP_USER_AGENT},
         method="POST",
     )
-    try:
-        with urllib.request.urlopen(req, timeout=timeout_sec) as resp:
-            return json.loads(resp.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="replace")[:500]
-        raise RuntimeError(f"LLM API error {exc.code}: {detail}") from exc
+    last_exc: BaseException | None = None
+    for attempt in range(_TRANSPORT_ATTEMPTS):
+        try:
+            with urllib.request.urlopen(req, timeout=timeout_sec) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="replace")[:500]
+            raise RuntimeError(f"LLM API error {exc.code}: {detail}") from exc
+        except (urllib.error.URLError, TimeoutError, OSError) as exc:
+            last_exc = exc
+            if attempt + 1 < _TRANSPORT_ATTEMPTS and _should_retry_transport(exc):
+                time.sleep(_TRANSPORT_RETRY_SLEEP_S)
+                continue
+            raise RuntimeError(friendly_llm_transport_error(exc)) from exc
+    raise RuntimeError(friendly_llm_transport_error(last_exc or RuntimeError("request failed")))
 
 
 def _format_openai_messages(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:

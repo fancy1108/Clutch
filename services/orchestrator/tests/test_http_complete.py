@@ -256,3 +256,41 @@ def test_http_probe_credentials_native_anthropic_falls_back() -> None:
         )
         is False
     )
+
+
+def test_friendly_llm_transport_error_hides_urlopen_wrapper() -> None:
+    from src.llm.http_complete import friendly_llm_transport_error
+    import urllib.error
+
+    exc = urllib.error.URLError(
+        "[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1016)"
+    )
+    msg = friendly_llm_transport_error(exc)
+    assert "urlopen error" not in msg.lower()
+    assert "UNEXPECTED_EOF" in msg or "TLS" in msg
+
+
+def test_post_json_retries_ssl_eof_then_friendly_error() -> None:
+    import ssl
+    import urllib.error
+    from src.llm import http_complete as hc
+
+    calls = {"n": 0}
+
+    def boom(req, timeout=0):  # noqa: ANN001
+        calls["n"] += 1
+        raise urllib.error.URLError(
+            ssl.SSLError(
+                "[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol"
+            )
+        )
+
+    with patch("urllib.request.urlopen", side_effect=boom):
+        try:
+            hc._post_json("https://example.com/v1/chat/completions", {}, {"m": 1})
+            raise AssertionError("expected RuntimeError")
+        except RuntimeError as exc:
+            msg = str(exc)
+            assert "urlopen error" not in msg.lower()
+            assert "TLS" in msg or "SSL" in msg
+    assert calls["n"] == 2

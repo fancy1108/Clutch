@@ -133,8 +133,40 @@ def verify_opencode_zen_api_key(api_key: str, *, api_model: str = "big-pickle") 
         raise
 
 
+def _is_auth_rejection(exc: BaseException) -> bool:
+    text = str(exc).lower()
+    return "invalid api key" in text or "rejected" in text or "401" in text or "403" in text
+
+
+def _is_transport_failure(exc: BaseException) -> bool:
+    text = str(exc).lower()
+    return any(
+        token in text
+        for token in (
+            "unexpected_eof",
+            "eof occurred in violation of protocol",
+            "ssl",
+            "tls",
+            "timed out",
+            "timeout",
+            "connection reset",
+            "connection aborted",
+            "temporarily unavailable",
+            "name or service not known",
+            "nodename nor servname",
+            "network is unreachable",
+            "urlopen error",
+        )
+    )
+
+
 def validate_opencode_zen_save(api_key: str, model_id: str, router: Any) -> None:
-    """Ensure the model is still on Zen and the API key can call it."""
+    """Ensure the model is still on Zen and the API key can call it.
+
+    Catalog / chat probe failures from TLS or transient network do not block
+    saving the key — only explicit auth rejection does. Builtin router models
+    remain selectable when the live catalog is unreachable.
+    """
     spec = router._models.get(model_id)
     if not spec or spec.provider_id != "opencode":
         raise ValueError(f"Unknown OpenCode Zen model: {model_id}")
@@ -142,13 +174,24 @@ def validate_opencode_zen_save(api_key: str, model_id: str, router: Any) -> None
     try:
         catalog = fetch_opencode_zen_catalog()
     except Exception as exc:
-        raise ValueError(f"Could not reach OpenCode Zen to verify models: {exc}") from exc
+        if not _is_transport_failure(exc):
+            raise ValueError(f"Could not reach OpenCode Zen to verify models: {exc}") from exc
+        catalog = None
 
-    live_api_models = {str(entry["api_model"]) for entry in catalog}
-    if spec.api_model not in live_api_models:
-        raise ValueError(
-            f"Model {spec.name!r} is no longer listed on OpenCode Zen. "
-            "Press Refresh next to Model and pick another."
-        )
+    if catalog is not None:
+        live_api_models = {str(entry["api_model"]) for entry in catalog}
+        if spec.api_model not in live_api_models:
+            raise ValueError(
+                f"Model {spec.name!r} is no longer listed on OpenCode Zen. "
+                "Press Refresh next to Model and pick another."
+            )
 
-    verify_opencode_zen_api_key(api_key, api_model=spec.api_model)
+    try:
+        verify_opencode_zen_api_key(api_key, api_model=spec.api_model)
+    except Exception as exc:
+        if _is_auth_rejection(exc):
+            raise ValueError(str(exc)) from exc
+        if _is_transport_failure(exc):
+            # Key is stored; user can Test later when the network is healthy.
+            return
+        raise ValueError(str(exc)) from exc

@@ -155,20 +155,35 @@ def humanize_tool_step(tool: str, args: dict[str, Any] | None) -> tuple[str, str
 
     if short in {"todo_write", "write_todos", "update_todos"}:
         todos = payload.get("todos")
-        n = len(todos) if isinstance(todos, list) else 0
         lines: list[str] = []
+        focus = ""
+        in_progress = ""
+        completed: list[str] = []
         if isinstance(todos, list):
-            for item in todos[:6]:
+            for item in todos[:8]:
                 if not isinstance(item, dict):
                     continue
                 content = str(item.get("content") or item.get("text") or "").strip()
-                status = str(item.get("status") or "pending").strip()
-                if content:
-                    lines.append(f"[{status}] {content}")
-        return (
-            f"Update {n} todos" if n else "Update todos",
-            "\n".join(lines) if lines else _compact(detail, 160),
-        )
+                status = str(item.get("status") or "pending").strip().lower()
+                if not content:
+                    continue
+                lines.append(f"[{status}] {content}")
+                if status == "in_progress" and not in_progress:
+                    in_progress = content
+                elif status == "completed":
+                    completed.append(content)
+                elif not focus:
+                    focus = content
+        detail_lines = "\n".join(lines) if lines else _compact(detail, 160)
+        if in_progress:
+            return f"Todos · {_compact(in_progress, 40)}", detail_lines
+        if completed and len(completed) == len(lines):
+            return f"Todos done · {_compact(completed[-1], 36)}", detail_lines
+        if completed:
+            return f"Todos · {_compact(completed[-1], 40)}", detail_lines
+        if focus:
+            return f"Todos · {_compact(focus, 40)}", detail_lines
+        return "Updated todos", detail_lines
     if short in {"propose_plan", "create_plan"}:
         title = _pick(payload, ("title",)) or "Plan"
         steps = payload.get("steps")

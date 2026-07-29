@@ -20,6 +20,14 @@ def test_is_tool_failure_result() -> None:
     assert is_tool_failure_result("Error executing tool: boom")
     assert is_tool_failure_result("MCP server not connected: x")
     assert not is_tool_failure_result('{"ok": true}')
+    # SERP policy / auto-redirect must not burn the loop fuse.
+    assert not is_tool_failure_result(
+        "Error executing tool: web_fetch cannot be used on search-engine result pages "
+        "(Google/Bing/…). Call web_search with query='AI短剧'"
+    )
+    assert not is_tool_failure_result(
+        '{"query":"x","redirected_from_web_fetch":true,"results":[]}'
+    )
 
 
 def test_build_run_stats_and_continue_markers() -> None:

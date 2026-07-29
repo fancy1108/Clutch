@@ -124,7 +124,9 @@ def list_builtin_tools() -> list[dict[str, Any]]:
             "description": (
                 "Run a shell command in the workspace root. "
                 "Prefer non-interactive commands. Risky — may require human approval. "
-                "Set background=true to start a long-running job and return immediately."
+                "Set background=true to start a long-running job and return immediately. "
+                "Do NOT create/edit source files via shell heredocs (`cat >`, `echo >`); "
+                "use apply_patch or search_replace so Chat Diff cards and Changes update."
             ),
             "inputSchema": {
                 "type": "object",
@@ -231,13 +233,58 @@ def list_builtin_tools() -> list[dict[str, Any]]:
             },
         },
         {
+            "name": "generate_image",
+            "description": (
+                "REQUIRED when the user wants a picture / poster / illustration / infographic / "
+                "可视化图 — call this instead of writing an HTML page. "
+                "Uses the user's configured image model (e.g. Agnes Image); saves under "
+                "`.clutch/generated/images/`. Never fake images with HTML/CSS."
+            ),
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "prompt": {
+                        "type": "string",
+                        "description": "Detailed image generation prompt (subject, style, layout).",
+                    },
+                    "filename_stem": {
+                        "type": "string",
+                        "description": "Optional short filename stem (saved under .clutch/generated/images/).",
+                    },
+                },
+                "required": ["prompt"],
+            },
+        },
+        {
+            "name": "generate_video",
+            "description": (
+                "REQUIRED when the user wants a video / 短视频 / clip — call this instead of "
+                "writing an HTML page. Uses the user's configured video model (e.g. Agnes Video); "
+                "saves under `.clutch/generated/videos/`."
+            ),
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "prompt": {
+                        "type": "string",
+                        "description": "Detailed video generation prompt.",
+                    },
+                },
+                "required": ["prompt"],
+            },
+        },
+        {
             "name": "apply_patch",
             "description": (
                 "Apply a Codex-style patch to the active workspace. "
                 "Supports *** Add File, *** Delete File, *** Update File, and *** Move to. "
-                "Patch must start with '*** Begin Patch' and end with '*** End Patch'. "
+                "Patch must start with '*** Begin Patch' and end with '*** End Patch' "
+                "(a missing End marker is auto-healed when the rest of the patch is valid). "
                 "Add File body lines should preferably start with '+' (e.g. `+hello`); "
                 "bare content lines are also accepted. "
+                "Chat research/visual deliverables (new .md / .html / images) MUST go under "
+                "`.clutch/artifacts/` — do not dump them at the project root. "
+                "For pictures/infographics call `generate_image` instead of HTML. "
                 "For deletion (including dotfiles like `.deleted_test.txt`), use "
                 "`*** Delete File: .deleted_test.txt` — never use local-fs move_file."
             ),
@@ -1311,6 +1358,8 @@ def execute_builtin_tool(tool_name: str, arguments: dict[str, Any]) -> str:
         "git_commit": _tool_git_commit,
         "web_fetch": _tool_web_fetch,
         "web_search": _tool_web_search,
+        "generate_image": _tool_generate_image,
+        "generate_video": _tool_generate_video,
         "apply_patch": _tool_apply_patch,
         "propose_plan": _tool_propose_plan,
         "todo_write": _tool_todo_write,
@@ -1529,19 +1578,122 @@ def _tool_propose_plan(arguments: dict[str, Any]) -> str:
 
 def _tool_apply_patch(arguments: dict[str, Any]) -> str:
     from src.apply_patch import ApplyPatchError, apply_patch_in_workspace, extract_patch_paths, format_apply_patch_result
+    from src.artifact_layout import (
+        block_html_for_non_page_intent,
+        current_user_turn_text,
+        rewrite_apply_patch_paths,
+    )
 
     patch = str(arguments.get("patch", "")).strip()
     if not patch:
         return "Error executing tool: apply_patch requires non-empty `patch`"
+    user_text = current_user_turn_text()
+    for path in extract_patch_paths(patch):
+        blocked = block_html_for_non_page_intent(path, user_text=user_text)
+        if blocked:
+            return f"Error executing tool: {blocked}"
+    patch, relocate_notes = rewrite_apply_patch_paths(patch, user_text=user_text)
     run_id = _bg_job_run_id()
     if run_id:
         from src.file_rewind import snapshot_paths_before_write
 
         snapshot_paths_before_write(run_id, extract_patch_paths(patch))
     try:
-        return format_apply_patch_result(apply_patch_in_workspace(patch))
+        result = format_apply_patch_result(apply_patch_in_workspace(patch))
     except ApplyPatchError as exc:
         return f"Error executing tool: {exc}"
+    if relocate_notes:
+        note = "; ".join(relocate_notes)
+        return f"{result}\n[Clutch] Relocated chat deliverable(s) under .clutch/artifacts/: {note}"
+    return result
+
+
+def _tool_generate_image(arguments: dict[str, Any]) -> str:
+    from src.image_router import (
+        format_image_reply,
+        generate_image_for_model,
+        persist_generated_image,
+        resolve_configured_image_model,
+    )
+
+    prompt = str(arguments.get("prompt") or "").strip()
+    if not prompt:
+        return "Error executing tool: generate_image requires `prompt`"
+    resolved = resolve_configured_image_model()
+    if resolved is None:
+        return (
+            "Error executing tool: no image model API key configured. "
+            "Add an image model key in Settings → Models (e.g. Agnes Image), "
+            "then retry generate_image. Do NOT write an HTML page as a substitute."
+        )
+    spec, api_key = resolved
+    stem = str(arguments.get("filename_stem") or "").strip() or None
+    try:
+        result = generate_image_for_model(spec, prompt, api_key=api_key)
+        result = persist_generated_image(result, filename_stem=stem)
+    except Exception as exc:
+        return (
+            f"Error executing tool: image generation failed ({exc}). "
+            "Do NOT write an HTML page as a substitute."
+        )
+    local = str(result.get("local_media_path") or "").strip()
+    # Keep tool payload small (no multi‑MB base64 in the ReAct transcript).
+    payload = {
+        "ok": True,
+        "model_id": spec.id,
+        "local_media_path": local,
+        "message": (
+            f"Image generated with {spec.name} and saved to `{local}`. "
+            "Include that path in your final reply; do not invent an HTML substitute."
+            if local
+            else f"Image generated with {spec.name}."
+        ),
+        # Optional short preview for Chat UI if the runner surfaces tool markdown later.
+        "preview_markdown": format_image_reply(result) if local else "",
+    }
+    return json.dumps(payload, ensure_ascii=False)
+
+
+def _tool_generate_video(arguments: dict[str, Any]) -> str:
+    from src.video_router import (
+        format_video_reply,
+        generate_video_for_model,
+        persist_generated_video,
+        resolve_configured_video_model,
+    )
+
+    prompt = str(arguments.get("prompt") or "").strip()
+    if not prompt:
+        return "Error executing tool: generate_video requires `prompt`"
+    resolved = resolve_configured_video_model()
+    if resolved is None:
+        return (
+            "Error executing tool: no video model API key configured. "
+            "Add a video model key in Settings → Models (e.g. Agnes Video), "
+            "then retry generate_video. Do NOT write an HTML page as a substitute."
+        )
+    spec, api_key = resolved
+    try:
+        result = generate_video_for_model(spec, prompt, api_key=api_key)
+        result = persist_generated_video(result)
+    except Exception as exc:
+        return (
+            f"Error executing tool: video generation failed ({exc}). "
+            "Do NOT write an HTML page as a substitute."
+        )
+    local = str(result.get("local_media_path") or "").strip()
+    payload = {
+        "ok": True,
+        "model_id": spec.id,
+        "local_media_path": local,
+        "message": (
+            f"Video generated with {spec.name} and saved to `{local}`."
+            if local
+            else f"Video generated with {spec.name}."
+        ),
+        "preview_markdown": format_video_reply(result) if local else "",
+    }
+    return json.dumps(payload, ensure_ascii=False)
 
 
 def _tool_read_file(arguments: dict[str, Any]) -> str:
@@ -1980,7 +2132,12 @@ def _tool_git_commit(arguments: dict[str, Any]) -> str:
 
 
 def _tool_web_fetch(arguments: dict[str, Any]) -> str:
-    from src.web_fetch_util import fetch_url_text
+    from src.web_fetch_util import (
+        extract_serp_query,
+        fetch_url_text,
+        is_search_engine_serp_url,
+        serp_redirect_error_message,
+    )
 
     url = str(arguments.get("url") or "").strip()
     if not url:
@@ -1989,6 +2146,33 @@ def _tool_web_fetch(arguments: dict[str, Any]) -> str:
         timeout = int(arguments.get("timeout_sec") or 20)
     except (TypeError, ValueError):
         timeout = 20
+
+    # Flash models often web_fetch google.com/search — rewrite to web_search so
+    # the turn can continue (and loop fuse is not burned on policy rejects).
+    if is_search_engine_serp_url(url):
+        from src.preferences_storage import load_allow_network
+        from src.web_search_util import search_web
+
+        query = extract_serp_query(url)
+        if load_allow_network() and query:
+            try:
+                payload = search_web(query, max_results=5)
+            except Exception as exc:
+                return f"Error executing tool: {serp_redirect_error_message(url)} ({exc})"
+            payload = {
+                **payload,
+                "redirected_from_web_fetch": True,
+                "original_url": url,
+                "note": (
+                    "You called web_fetch on a search-engine results URL. "
+                    "Clutch ran web_search instead. Next: web_fetch at most 1–2 "
+                    "concrete article URLs from results[], then answer or write the HTML — "
+                    "do not fetch google.com/search / bing.com/search again."
+                ),
+            }
+            return json.dumps(payload, ensure_ascii=False)
+        return f"Error executing tool: {serp_redirect_error_message(url)}"
+
     try:
         payload = fetch_url_text(url, timeout_sec=timeout)
     except ValueError as exc:
@@ -2017,7 +2201,9 @@ def _tool_web_search(arguments: dict[str, Any]) -> str:
     except ValueError as exc:
         return f"Error executing tool: {exc}"
     except Exception as exc:
-        return f"Error executing tool: web search failed: {exc}"
+        from src.web_fetch_util import _friendly_network_error
+
+        return f"Error executing tool: web search failed: {_friendly_network_error(exc)}"
     return json.dumps(payload, ensure_ascii=False)
 
 

@@ -145,12 +145,46 @@ def test_is_search_engine_serp_url() -> None:
     )
     assert is_search_engine_serp_url("https://www.google.com/search?q=shanghai+disney")
     assert is_search_engine_serp_url("https://html.duckduckgo.com/html/?q=weather")
+    assert is_search_engine_serp_url("https://www.baidu.com/s?wd=AI%E7%9F%AD%E5%89%A7")
+    # Baijiahao article URLs contain `baidu.com/s?` but are NOT SERPs.
+    assert not is_search_engine_serp_url(
+        "https://baijiahao.baidu.com/s?id=1792345678901234567"
+    )
     assert not is_search_engine_serp_url("https://www.chinahighlights.com/shanghai/attractions/")
     assert not is_search_engine_serp_url("not-a-url")
 
 
-def test_web_fetch_rejects_serp_urls(tmp_path: Path, monkeypatch) -> None:
+def test_web_fetch_redirects_serp_urls_to_web_search(
+    tmp_path: Path, monkeypatch
+) -> None:
     _activate_workspace(tmp_path, monkeypatch)
+    monkeypatch.setattr(
+        "src.preferences_storage.load_allow_network",
+        lambda: True,
+    )
+    monkeypatch.setattr(
+        "src.web_search_util.search_web",
+        lambda query, max_results=5: {
+            "query": query,
+            "provider": "duckduckgo_html",
+            "results": [{"title": "Demo", "url": "https://example.com/a", "snippet": "x"}],
+            "result_count": 1,
+        },
+    )
+    out = execute_builtin_tool(
+        "web_fetch",
+        {"url": "https://www.google.com/search?q=%E6%9C%80%E7%81%ABAI%E7%9F%AD%E5%89%A7"},
+    )
+    assert not out.startswith("Error executing tool:")
+    payload = json.loads(out)
+    assert payload.get("redirected_from_web_fetch") is True
+    assert payload.get("result_count") == 1
+    assert "web_search" in (payload.get("note") or "").lower()
+
+
+def test_web_fetch_serp_error_when_network_disabled(tmp_path: Path, monkeypatch) -> None:
+    _activate_workspace(tmp_path, monkeypatch)
+    monkeypatch.setattr("src.preferences_storage.load_allow_network", lambda: False)
     out = execute_builtin_tool(
         "web_fetch",
         {"url": "https://www.bing.com/search?q=Shanghai+Disney+Resort+events"},

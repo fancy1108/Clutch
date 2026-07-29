@@ -173,3 +173,20 @@ def test_parse_patch_rejects_empty_hunks() -> None:
 
     with pytest.raises(ApplyPatchError):
         parse_patch("not a patch")
+
+
+def test_normalize_auto_appends_missing_end_patch() -> None:
+    from src.apply_patch import normalize_patch_text, parse_patch
+
+    truncated = (
+        "*** Begin Patch\n"
+        "*** Add File: ai-dramas.html\n"
+        "+<!DOCTYPE html>\n"
+        "+<html><body>hi</body></html>\n"
+    )
+    healed = normalize_patch_text(truncated)
+    assert healed.rstrip().endswith("*** End Patch")
+    hunks = parse_patch(truncated)
+    assert len(hunks) == 1
+    assert hunks[0].path == "ai-dramas.html"
+    assert "DOCTYPE" in hunks[0].contents

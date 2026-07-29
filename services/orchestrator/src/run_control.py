@@ -20,11 +20,24 @@ def max_consecutive_failures() -> int:
     return max(1, value)
 
 
+# Policy / redirect messages — model should change strategy, not trip the loop fuse.
+_NON_FUSE_FAILURE_MARKERS = (
+    "cannot be used on search-engine result pages",
+    "network tool budget exhausted",
+    "redirected_from_web_fetch",
+)
+
+
 def is_tool_failure_result(result: str | None) -> bool:
     text = (result or "").strip()
     if not text:
         return True
     lowered = text.lower()
+    # Successful SERP→web_search rewrite (JSON) must never count as a failure.
+    if '"redirected_from_web_fetch"' in text or '"redirected_from_web_fetch": true' in lowered:
+        return False
+    if any(marker in lowered for marker in _NON_FUSE_FAILURE_MARKERS):
+        return False
     if text.startswith("Error executing tool"):
         return True
     if text.startswith("MCP server not connected"):

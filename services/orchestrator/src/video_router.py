@@ -118,8 +118,31 @@ def format_video_reply(result: dict[str, Any]) -> str:
         video_ref = str(enriched.get("video_url") or enriched.get("url") or "").strip()
     if video_ref:
         label = tr("Generated video", "生成的视频")
-        return f"[video: {video_ref}]\n\n{label}"
+        body = f"[video: {video_ref}]\n\n{label}"
+        if local_path:
+            body += f"\n\n{tr('Saved to', '已保存至')} `{local_path}`"
+        return body
     return tr(
         "Video generation completed but no video URL was returned.",
         "视频生成已完成，但未返回视频地址。",
     )
+
+
+def resolve_configured_video_model() -> tuple[ModelSpec, str] | None:
+    """Pick the first video model that has a configured API key."""
+    try:
+        from src.models_config import get_router
+
+        router = get_router()
+        preferred = ("agnes-video-v2.0",)
+        ordered = list(router.list_models())
+        ordered.sort(key=lambda s: (0 if s.id in preferred else 1, s.id))
+        for spec in ordered:
+            if getattr(spec, "model_kind", "chat") != "video":
+                continue
+            key = router.get_api_key(spec.provider_id)
+            if key and str(key).strip():
+                return spec, str(key).strip()
+    except Exception:
+        return None
+    return None

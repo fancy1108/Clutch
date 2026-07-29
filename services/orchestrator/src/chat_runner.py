@@ -2827,6 +2827,10 @@ async def _finish_plain_chat_after_llm(
         from src.state import cli_session_patch
 
         final_patch.update(cli_session_patch(cli_session_id, pending_agent_id))
+    if merged_changed:
+        # Persist shell + edit paths so Changes works without a git repo.
+        prev = [str(p) for p in (state.get("changed_files") or []) if str(p).strip()]
+        final_patch["changed_files"] = list(dict.fromkeys([*prev, *merged_changed]))
     state = _merge_patch(state, final_patch)
     _commit_run_state(run_id, state)
     _touch_session(run_id, status=state["status"])
@@ -3513,6 +3517,9 @@ async def _handle_plain_chat(
         final_patch.update(cli_session_patch(cli_session_id, resolved_id))
     elif stored_session_agent and stored_session_agent != resolved_id:
         final_patch.update(cli_session_patch(None, ""))
+    if merged_changed:
+        prev = [str(p) for p in (state.get("changed_files") or []) if str(p).strip()]
+        final_patch["changed_files"] = list(dict.fromkeys([*prev, *merged_changed]))
     state = _merge_patch(state, final_patch)
 
     from src.compaction import should_compact, compact_run_messages
@@ -3964,6 +3971,9 @@ async def _handle_flow_refine_message(
         final_patch["terminal_logs"] = list(state["terminal_logs"]) + [
             stamp_log_line(line) for line in route_logs
         ]
+    if merged_changed:
+        prev = [str(p) for p in (state.get("changed_files") or []) if str(p).strip()]
+        final_patch["changed_files"] = list(dict.fromkeys([*prev, *merged_changed]))
     state = _merge_patch(state, final_patch)
     _commit_run_state(run_id, state)
     await _send_message_event(websocket, run_id, reply, refining_node_id)

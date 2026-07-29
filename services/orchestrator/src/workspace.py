@@ -516,6 +516,63 @@ def to_workspace_relative(path: str) -> str | None:
     return "." if str(rel) == "." else str(rel)
 
 
+# Skip noisy / internal trees when detecting shell-side file mutations.
+_SNAPSHOT_SKIP_DIRS = _SKIP_DIRS | {
+    ".clutch",
+    ".mimocode",
+    ".workbuddy",
+    ".rivet",
+    ".idea",
+    ".vscode",
+}
+_SNAPSHOT_MAX_FILES = 8000
+
+
+def snapshot_workspace_mtimes(root: Path | None = None) -> dict[str, tuple[int, int]]:
+    """Map workspace-relative path → (mtime_ns, size) for mutation detection."""
+    base = (root or require_workspace()).resolve()
+    out: dict[str, tuple[int, int]] = {}
+    stack = [base]
+    while stack and len(out) < _SNAPSHOT_MAX_FILES:
+        directory = stack.pop()
+        try:
+            entries = list(directory.iterdir())
+        except OSError:
+            continue
+        for entry in entries:
+            name = entry.name
+            if name in _SNAPSHOT_SKIP_DIRS:
+                continue
+            try:
+                if entry.is_dir() and not entry.is_symlink():
+                    stack.append(entry)
+                    continue
+                if not entry.is_file():
+                    continue
+                st = entry.stat()
+                rel = str(entry.relative_to(base))
+                out[rel] = (st.st_mtime_ns, st.st_size)
+            except OSError:
+                continue
+    return out
+
+
+def diff_workspace_snapshots(
+    before: dict[str, tuple[int, int]],
+    after: dict[str, tuple[int, int]],
+) -> list[str]:
+    """Return relative paths added, removed, or modified between snapshots."""
+    changed: list[str] = []
+    for path, meta in after.items():
+        if before.get(path) != meta:
+            changed.append(path)
+    for path in before:
+        if path not in after:
+            changed.append(path)
+    changed.sort()
+    return changed
+
+
 def list_tree(max_depth: int = 5) -> list[dict[str, Any]]:
     root = require_workspace()
 

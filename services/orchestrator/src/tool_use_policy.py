@@ -11,6 +11,12 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from src.deliverable_intent import (
+    html_deliverable_wrapup_nudge,
+    is_html_deliverable_path,
+    wants_browser_preview as user_turn_requests_html_preview,
+)
+
 # Soft = inject "stop and answer"; hard = refuse further network tools this turn.
 NETWORK_SOFT_BUDGET = 3
 NETWORK_HARD_BUDGET = 5
@@ -42,13 +48,27 @@ _WORKSPACE_READ_RE = re.compile(
 
 _WORKSPACE_WRITE_RE = re.compile(
     r"("
-    r"改一下|修改|编辑|重写|写到|写入|创建文件|新建文件|删掉|删除文件|"
+    r"改一下|修改|编辑|重写|写到|写入|创建文件|新建文件|删掉|删除文件|优化|"
     r"fix|edit|change|update|refactor|implement|add\s+(a\s+)?|"
     r"create\s+(a\s+)?file|delete\s+(the\s+)?file|apply\s+patch|"
     r"search_replace|把.+改成|替换成"
     r")",
     re.IGNORECASE,
 )
+
+# User approved a plan / told the agent to execute — must todo_write then write.
+_PLAN_APPROVAL_RE = re.compile(
+    r"("
+    r"^确认$|^批准$|^好$|^行$|^可以$|^开始$|"
+    r"批准[，,\s]|确认[，,\s]|同意(计划|执行|优化)|"
+    r"按(照)?你说的|按照(你的|该)?计划|按计划|"
+    r"开始执行|执行吧|去做吧|帮我优化|你自己的计划|"
+    r"\b(approved|lgtm|go\s+ahead|ship\s+it|do\s+it|sounds?\s+good)\b"
+    r")",
+    re.IGNORECASE,
+)
+
+_TODO_TOOLS = frozenset({"todo_write", "write_todos", "update_todos"})
 
 _GIT_RE = re.compile(
     r"("
@@ -103,8 +123,10 @@ def network_budget_stop_nudge(
     return (
         f"[System reminder — stop searching] You already used {used} network tool "
         f"calls (soft budget {soft}: typically 1× web_search + ≤2× web_fetch). "
-        "Answer the user NOW from the evidence above. Do not call web_search or "
-        "web_fetch again unless one critical fact is still missing."
+        "Do not call web_search or web_fetch again unless one critical fact is still "
+        "missing. If the user asked for a file/HTML/page/implementation, continue with "
+        "write tools (search_replace / apply_patch / todo_write) and finish the "
+        "deliverable — do not end the turn with prose alone."
     )
 
 
@@ -152,6 +174,13 @@ _NUDGES = {
         "Call `search_replace` or `apply_patch` (and `read_file` first if needed) — "
         "do not claim edits succeeded without a tool result.",
     ),
+    "plan_execute": _nudge(
+        "plan_execute",
+        "The user approved. Call `todo_write` with ≥3 concrete steps (exactly one "
+        "`in_progress`), then execute with `apply_patch`/`search_replace`. "
+        "Do NOT ask for confirmation again. Do NOT only restate a plan. "
+        "Do NOT claim work is done without tool results.",
+    ),
     "git": _nudge(
         "git",
         "Call `git_status` / `git_diff` / `git_commit` as appropriate — do not invent git output.",
@@ -165,6 +194,10 @@ _NUDGES = {
         "Use the listed clutch-tools (read_file, list_dir, grep, web_fetch, etc.) instead of refusing.",
     ),
 }
+
+
+def looks_like_plan_approval(text: str) -> bool:
+    return bool(_PLAN_APPROVAL_RE.search((text or "").strip()))
 
 
 def last_user_text(messages: list[dict]) -> str:
@@ -191,6 +224,11 @@ def classify_tool_expectation(
     if not text or not available_tools:
         return None
 
+    short_tools = {short_tool_name(t) for t in available_tools}
+    if looks_like_plan_approval(text) and (
+        short_tools & _TODO_TOOLS or short_tools & _WRITE_TOOLS
+    ):
+        return _NUDGES["plan_execute"]
     if _NETWORK_RE.search(text) and available_tools & _NETWORK_TOOLS:
         return _NUDGES["network"]
     if _GIT_RE.search(text) and available_tools & _GIT_TOOLS:

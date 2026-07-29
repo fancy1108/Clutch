@@ -21,6 +21,22 @@ def test_kind_for_builtin_tools() -> None:
     assert kind_for_tool("run_terminal_cmd") == "execute"
 
 
+def test_humanize_todo_write_uses_target_content() -> None:
+    title, detail = humanize_tool_step(
+        "todo_write",
+        {
+            "todos": [
+                {"id": "1", "content": "整理中国古代著名皇帝及事件", "status": "completed"},
+                {"id": "2", "content": "生成包含皇帝和事件的HTML页面", "status": "in_progress"},
+            ]
+        },
+    )
+    assert "生成包含皇帝和事件的HTML页面" in title
+    assert title.startswith("Todos")
+    assert "[in_progress]" in detail
+    assert "Update 2 todos" not in title
+
+
 def test_humanize_web_fetch_and_search() -> None:
     title, detail = humanize_tool_step(
         "web_fetch",

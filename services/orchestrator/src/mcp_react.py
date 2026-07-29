@@ -79,8 +79,32 @@ def _record_file_change(
     tool_name: str,
     func_args: dict[str, Any],
     result_str: str,
+    shell_before: dict[str, tuple[int, int]] | None = None,
 ) -> None:
     if result_str.startswith("Error executing tool"):
+        return
+    short = (tool_name or "").split("__")[-1].lower().replace("-", "_")
+    # Shell heredocs / mv / rm bypass apply_patch — diff mtimes so Changes still fills.
+    if short == "run_terminal_cmd" and shell_before is not None:
+        try:
+            from src.workspace import diff_workspace_snapshots, snapshot_workspace_mtimes
+
+            after = snapshot_workspace_mtimes()
+            for rel in diff_workspace_snapshots(shell_before, after):
+                if rel and rel not in files_changed:
+                    files_changed.append(rel)
+        except Exception:
+            pass
+        return
+    if tool_name in {"generate_image", "generate_video"}:
+        try:
+            payload = json.loads(result_str)
+        except json.JSONDecodeError:
+            payload = None
+        if isinstance(payload, dict):
+            rel = str(payload.get("local_media_path") or "").strip()
+            if rel and rel not in files_changed:
+                files_changed.append(rel)
         return
     if tool_name == "apply_patch":
         try:
@@ -245,6 +269,18 @@ def _execute_tool_call(
                     )
                 )
             return result_str
+        shell_before: dict[str, tuple[int, int]] | None = None
+        if (
+            files_changed is not None
+            and (tool_name or "").split("__")[-1].lower().replace("-", "_")
+            == "run_terminal_cmd"
+        ):
+            try:
+                from src.workspace import snapshot_workspace_mtimes
+
+                shell_before = snapshot_workspace_mtimes()
+            except Exception:
+                shell_before = None
         try:
             result_str = execute_builtin_tool(tool_name, func_args)
             _emit(logs, on_log, f"[{log_prefix}] Builtin tool response length: {len(result_str)} chars")
@@ -254,6 +290,7 @@ def _execute_tool_call(
                     tool_name=tool_name,
                     func_args=func_args,
                     result_str=result_str,
+                    shell_before=shell_before,
                 )
             if result_str.startswith("Error executing tool"):
                 _finish_step(status="failed", result=result_str, tool_name=tool_name)
@@ -451,6 +488,7 @@ def run_mcp_react_loop(
     pending_tool_choice: str | None = None
     network_calls = 0
     network_stop_nudged = False
+    html_wrapup_nudged = False
     _emit(logs, on_log, f"[{log_prefix}] Starting MCP ReAct with {len(servers)} server(s)")
 
     for server in servers:
@@ -647,6 +685,8 @@ def run_mcp_react_loop(
         if on_diff_summary:
             on_diff_summary(dict(latest_diff_summary))
 
+    write_recovery_nudged = False
+
     def note_tool_result(result_str: str) -> bool:
         """Track consecutive failures; return True when D9 loop fuse should trip."""
         nonlocal consecutive_failures, fuse_triggered
@@ -658,6 +698,63 @@ def run_mcp_react_loop(
             fuse_triggered = True
             return True
         return False
+
+    def maybe_nudge_html_wrapup() -> None:
+        """After HTML write: wrap up if page intent, else correct wrong substitute."""
+        nonlocal html_wrapup_nudged
+        if html_wrapup_nudged:
+            return
+        from src.deliverable_intent import (
+            forbids_html_substitute,
+            html_deliverable_wrapup_nudge,
+            html_substitute_correction_nudge,
+            is_html_deliverable_path,
+            wants_browser_preview,
+        )
+        from src.tool_use_policy import last_user_text
+
+        user_text = last_user_text(chat_messages)
+        html_paths = [p for p in files_changed if is_html_deliverable_path(p)]
+        if not html_paths:
+            return
+        html_wrapup_nudged = True
+        if wants_browser_preview(user_text):
+            content = html_deliverable_wrapup_nudge(paths=html_paths)
+            label = "HTML deliverable wrap-up nudge"
+        elif forbids_html_substitute(user_text):
+            content = html_substitute_correction_nudge(paths=html_paths, user_text=user_text)
+            label = "Wrong-deliverable HTML correction nudge"
+        else:
+            return
+        chat_messages.append({"role": "user", "content": content})
+        _emit(logs, on_log, f"[{log_prefix}] {label} ({html_paths[0]})")
+
+    def maybe_nudge_write_recovery(tool_name: str, result_str: str) -> None:
+        """Before the fuse trips, steer Flash models off truncated apply_patch loops."""
+        nonlocal write_recovery_nudged
+        if write_recovery_nudged or consecutive_failures < 2:
+            return
+        short = (tool_name or "").split("__")[-1].lower().replace("-", "_")
+        if short != "apply_patch" and "end patch" not in (result_str or "").lower():
+            return
+        write_recovery_nudged = True
+        chat_messages.append(
+            {
+                "role": "user",
+                "content": (
+                    "[System reminder — write recovery] apply_patch failed twice. "
+                    "Do NOT retry the same truncated patch. Create/overwrite the file "
+                    "with search_replace (full file contents) or a short complete "
+                    "apply_patch that ends with *** End Patch. Then finish remaining todos "
+                    "(e.g. generate the HTML page)."
+                ),
+            }
+        )
+        _emit(
+            logs,
+            on_log,
+            f"[{log_prefix}] Write-recovery nudge after apply_patch failures",
+        )
 
     def record_subtask(card: dict[str, Any]) -> None:
         from src.subagent_runner import upsert_subtask
@@ -688,8 +785,43 @@ def run_mcp_react_loop(
             subtasks=list(latest_subtasks) or None,
         )
 
+    from src.artifact_layout import bind_user_turn_text, release_user_turn_text
+    from src.media_deliverable import finalize_media_deliverables
+    from src.tool_use_policy import (
+        last_user_text as _last_user_text_for_artifacts,
+        looks_like_plan_approval,
+    )
+
+    user_text_for_media = _last_user_text_for_artifacts(list(messages))
+    user_turn_token = bind_user_turn_text(user_text_for_media)
+    chat_messages: list[dict[str, Any]] = list(messages)
+    if looks_like_plan_approval(user_text_for_media) and use_tools:
+        chat_messages.append(
+            {
+                "role": "user",
+                "content": (
+                    "[System reminder — execute approved plan] The user approved. "
+                    "Call `todo_write` (≥3 items, one `in_progress`) NOW, then "
+                    "`apply_patch`/`search_replace` to implement. Do not ask for "
+                    "confirmation again. Do not claim completion without tool results."
+                ),
+            }
+        )
+        _emit(logs, on_log, f"[{log_prefix}] Plan-approval execute reminder injected")
+
+    def finish(out: str) -> McpRunOutcome:
+        finalized = finalize_media_deliverables(
+            output=out,
+            user_text=user_text_for_media,
+            chat_messages=chat_messages,
+            files_changed=files_changed,
+            logs=logs,
+            log_prefix=log_prefix,
+            on_log=on_log,
+        )
+        return _outcome(output=finalized)
+
     try:
-        chat_messages = list(messages)
         start_step = 0
         output = ""
 
@@ -736,7 +868,8 @@ def run_mcp_react_loop(
                     on_log,
                     f"[{log_prefix}] LOOP FUSE: {consecutive_failures} consecutive tool failures",
                 )
-                return _outcome(output=output)
+                return finish(output)
+            maybe_nudge_html_wrapup()
             start_step += 1
 
         for step_idx in range(start_step, max_steps):
@@ -1257,6 +1390,8 @@ def run_mcp_react_loop(
                             f"[{log_prefix}] LOOP FUSE: {consecutive_failures} consecutive tool failures",
                         )
                         break
+                    maybe_nudge_write_recovery(func_name, result_str)
+                    maybe_nudge_html_wrapup()
                 if fuse_triggered:
                     break
                 if (
@@ -1364,6 +1499,7 @@ def run_mcp_react_loop(
                 )
                 output = limit_msg
     finally:
+        release_user_turn_text(user_turn_token)
         for server_id, client in clients.items():
             name = str(next(
                 (s.get("name", server_id) for s in servers if str(s.get("id")) == server_id),
@@ -1372,4 +1508,4 @@ def run_mcp_react_loop(
             client.close()
             _emit(logs, on_log, f"[{log_prefix}] Stopped MCP server: {name}")
 
-    return _outcome(output=output)
+    return finish(output)

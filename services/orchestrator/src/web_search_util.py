@@ -32,17 +32,22 @@ def search_web(query: str, *, max_results: int = 5) -> dict[str, Any]:
     if not cleaned:
         raise ValueError("query is required")
     limit = max(1, min(int(max_results or 5), _MAX_RESULTS))
-    with httpx.Client(timeout=_DEFAULT_TIMEOUT_S, follow_redirects=True) as client:
-        response = client.get(
-            "https://html.duckduckgo.com/html/",
-            params={"q": cleaned},
-            headers={
-                "User-Agent": "ClutchAgent/1.0 (+local; D15 web_search)",
-                "Accept": "text/html",
-            },
-        )
-        response.raise_for_status()
-        html = response.text
+    try:
+        with httpx.Client(timeout=_DEFAULT_TIMEOUT_S, follow_redirects=True) as client:
+            response = client.get(
+                "https://html.duckduckgo.com/html/",
+                params={"q": cleaned},
+                headers={
+                    "User-Agent": "ClutchAgent/1.0 (+local; D15 web_search)",
+                    "Accept": "text/html",
+                },
+            )
+            response.raise_for_status()
+            html = response.text
+    except Exception as exc:
+        from src.web_fetch_util import _friendly_network_error
+
+        raise ValueError(_friendly_network_error(exc)) from exc
 
     links = _RESULT_LINK_RE.findall(html)
     snippets = _SNIPPET_RE.findall(html)

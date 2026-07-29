@@ -377,7 +377,8 @@ def test_delete_provider_credential(models_config: Path) -> None:
     listed = client.get("/api/models/config").json()
     deepseek = next(m for m in listed["models"] if m["id"] == "deepseek-v4pro")
     assert deepseek["available"] is False
-    assert deepseek["clutch_managed"] is False
+    # Provider stays editable in Settings so the user can paste a new key.
+    assert deepseek["clutch_managed"] is True
 
 
 def test_delete_rejects_external_only_credential(models_config: Path) -> None:

@@ -313,6 +313,52 @@ def test_run_mcp_react_builtin_apply_patch_records_files_changed(tmp_path, monke
     assert outcome.files_changed == ["added.txt"]
 
 
+def test_run_mcp_react_shell_heredoc_records_files_changed(tmp_path, monkeypatch) -> None:
+    """cat >/mv/rm via shell must still populate files_changed for Changes panel."""
+    monkeypatch.setenv("CLUTCH_WORKSPACES_FILE", str(tmp_path / "ws.json"))
+    from src import workspace as workspace_mod
+
+    workspace_mod._loaded = False
+    workspace_mod._workspaces = {}
+    workspace_mod._active_id = None
+    workspace_mod.add_workspace(str(tmp_path))
+
+    class _Router:
+        def get_active_model(self) -> SimpleNamespace:
+            return SimpleNamespace(name="Test Model")
+
+        def resolve_for_model(self, model_id=None):
+            return SimpleNamespace(name="Test Model"), model_id
+
+        def chat(self, messages, tools=None, model_id=None):
+            return "done"
+
+    monkeypatch.setattr("src.models_config.get_router", lambda: _Router())
+    # Avoid foreground shell / run-context requirements in unit tests.
+    monkeypatch.setattr(
+        "src.builtin_tools._bg_job_run_id",
+        lambda: None,
+    )
+
+    outcome = run_mcp_react_loop(
+        messages=[{"role": "user", "content": "write via shell"}],
+        servers=[{"id": "clutch-tools", "name": "Clutch Builtin Tools", "virtual": True}],
+        approved_tool={
+            "tool_call_id": "tc1",
+            "func_name": "clutch-tools__run_terminal_cmd",
+            "func_args": {
+                "command": "printf 'hello\\n' > shell_written.txt && mkdir -p nested && "
+                "printf 'x\\n' > nested/a.py"
+            },
+            "step_idx": 0,
+        },
+    )
+    assert outcome.files_changed is not None
+    assert "shell_written.txt" in outcome.files_changed
+    assert "nested/a.py" in outcome.files_changed
+    assert (tmp_path / "shell_written.txt").read_text() == "hello\n"
+
+
 def test_run_mcp_react_records_files_changed(monkeypatch) -> None:
     class _WriteClient(_FakeClient):
         def list_tools(self) -> list[dict]:
