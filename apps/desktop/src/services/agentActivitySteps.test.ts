@@ -1,14 +1,75 @@
 import { describe, expect, it } from 'vitest';
 import {
+  collapseRedundantTodoSteps,
   humanizeActivityStep,
   isGenericToolTitle,
   normalizeToolStepForDisplay,
+  normalizeToolStepsForDisplay,
   parseAgentActivitySteps,
   parseToolStepDetail,
+  classifyDeliverableIntent,
+  decomposeUserGoals,
+  pickPrimaryHtmlPath,
   resolveLiveActivitySteps,
+  titleFromTodoDetail,
   toolStepsFromActivityLogs,
+  wantsBrowserPreview,
   verbGroupHeaderLabel,
 } from './agentActivitySteps';
+import type { ToolStep } from '../types';
+
+describe('pickPrimaryHtmlPath', () => {
+  it('returns null when no html paths', () => {
+    expect(pickPrimaryHtmlPath(['src/a.ts', 'README.md'])).toBeNull();
+  });
+
+  it('prefers index.html over other html files', () => {
+    expect(pickPrimaryHtmlPath(['report.html', 'dist/index.html', 'notes.htm'])).toBe(
+      'dist/index.html',
+    );
+  });
+
+  it('falls back to the last html path', () => {
+    expect(pickPrimaryHtmlPath(['a.md', 'page.html', 'other.htm'])).toBe('other.htm');
+  });
+});
+
+describe('deliverable intent (need → kind)', () => {
+  it('infers image without the user naming a file type', () => {
+    const text = '搜索一下关于金华的介绍，总结一下，再画一张好看的';
+    const goals = decomposeUserGoals(text);
+    expect(goals.has('search')).toBe(true);
+    expect(goals.has('visualize')).toBe(true);
+    expect(classifyDeliverableIntent(text)).toBe('image');
+    expect(wantsBrowserPreview(text)).toBe(false);
+  });
+
+  it('treats infographic / 信息图 as image intent', () => {
+    expect(classifyDeliverableIntent('搜索 AI Agent 知识点并生成信息图可视化')).toBe(
+      'image',
+    );
+    expect(classifyDeliverableIntent('Generate an infographic of the architecture')).toBe(
+      'image',
+    );
+  });
+
+  it('infers present/html from browsable-page language', () => {
+    expect(classifyDeliverableIntent('帮我做个能打开看的金华介绍')).toBe('html');
+    expect(wantsBrowserPreview('做个落地页展示产品')).toBe(true);
+    expect(wantsBrowserPreview('Create a webpage about Jinhua')).toBe(true);
+  });
+
+  it('keeps answer/code from becoming browser preview', () => {
+    expect(classifyDeliverableIntent('金华怎么样')).toBe('answer');
+    expect(wantsBrowserPreview('写一段 Python 代码')).toBe(false);
+    expect(wantsBrowserPreview('总结一下金华')).toBe(false);
+  });
+
+  it('supports mixed page + poster', () => {
+    expect(classifyDeliverableIntent('做个介绍站并配海报')).toBe('mixed');
+    expect(wantsBrowserPreview('生成一个网页，并配一张封面图')).toBe(true);
+  });
+});
 
 describe('parseToolStepDetail', () => {
   it('keeps plain target without result marker', () => {
@@ -132,6 +193,105 @@ describe('humanizeActivityStep', () => {
     const search = humanizeActivityStep('web_search', '{"query":"迪士尼 活动"}');
     expect(search.verb).toBe('Searched');
     expect(search.focus).toContain('迪士尼');
+  });
+
+  it('maps todo_write to in_progress content, not Update N todos', () => {
+    const human = humanizeActivityStep(
+      'todo_write',
+      JSON.stringify({
+        todos: [
+          { id: '1', content: '整理中国古代著名皇帝及事件', status: 'completed' },
+          { id: '2', content: '生成包含皇帝和事件的HTML页面', status: 'in_progress' },
+        ],
+      }),
+    );
+    expect(human.verb).toBe('Todos');
+    expect(human.focus).toContain('生成包含皇帝和事件的HTML页面');
+    expect(human.detail).toContain('[in_progress]');
+  });
+});
+
+describe('todo step display cleanup', () => {
+  it('titleFromTodoDetail prefers in_progress target', () => {
+    expect(
+      titleFromTodoDetail(
+        '[completed] 整理皇帝\n[in_progress] 生成HTML页面',
+      ),
+    ).toBe('Todos · 生成HTML页面');
+  });
+
+  it('collapses consecutive todo_write steps into one', () => {
+    const steps: ToolStep[] = [
+      {
+        id: 'a',
+        kind: 'other',
+        tool: 'todo_write',
+        status: 'completed',
+        title: 'Update 2 todos',
+        detail: '[pending] a\n[pending] b',
+      },
+      {
+        id: 'b',
+        kind: 'other',
+        tool: 'todo_write',
+        status: 'completed',
+        title: 'Update 2 todos',
+        detail: '[completed] a\n[in_progress] b',
+      },
+      {
+        id: 'c',
+        kind: 'other',
+        tool: 'todo_write',
+        status: 'completed',
+        title: 'Update 2 todos',
+        detail: '[completed] a\n[completed] b',
+      },
+    ];
+    const collapsed = collapseRedundantTodoSteps(steps);
+    expect(collapsed).toHaveLength(1);
+    expect(collapsed[0]?.id).toBe('c');
+  });
+
+  it('normalizeToolStepsForDisplay hides todo_write by default (Todo card is SSOT)', () => {
+    const out = normalizeToolStepsForDisplay([
+      {
+        id: '1',
+        kind: 'other',
+        tool: 'todo_write',
+        status: 'completed',
+        title: 'Update 2 todos',
+        detail: '[completed] 整理皇帝\n[in_progress] 生成HTML',
+      },
+      {
+        id: '2',
+        kind: 'fetch',
+        tool: 'web_fetch',
+        status: 'completed',
+        title: 'Fetched zhihu.com',
+        detail: 'https://zhihu.com/search',
+      },
+    ]);
+    expect(out).toHaveLength(1);
+    expect(out[0]?.tool).toBe('web_fetch');
+  });
+
+  it('normalizeToolStepsForDisplay can keep todos when includeTodos', () => {
+    const out = normalizeToolStepsForDisplay(
+      [
+        {
+          id: '1',
+          kind: 'other',
+          tool: 'todo_write',
+          status: 'completed',
+          title: 'Update 2 todos',
+          detail: '[completed] 整理皇帝\n[in_progress] 生成HTML',
+        },
+      ],
+      { includeTodos: true },
+    );
+    expect(out).toHaveLength(1);
+    expect(out[0]?.title).toMatch(/Todos/);
+    expect(out[0]?.title).not.toMatch(/Update 2 todos/i);
   });
 });
 

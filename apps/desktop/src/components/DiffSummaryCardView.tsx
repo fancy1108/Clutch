@@ -181,6 +181,7 @@ export function InlineFileDiffCard({
   const lines = fileDiffLines(file);
   const { added, removed } = countDelta(lines);
   const label = title || basename(file.path);
+  const isHtml = /\.html?$/i.test(file.path);
 
   return (
     <div
@@ -188,6 +189,7 @@ export function InlineFileDiffCard({
       data-testid="diff-summary-card"
       data-inline="true"
       data-file-count={1}
+      data-html-preview={isHtml ? 'true' : undefined}
     >
       <div className="flex items-center gap-2 px-3 py-2 border-b border-outline-variant/20 bg-surface-container-low/60">
         <LegacyIcon name="description" className="text-[15px] text-on-surface-variant shrink-0" />
@@ -207,7 +209,23 @@ export function InlineFileDiffCard({
           ) : null}
         </span>
       </div>
-      <DiffHunk lines={lines} />
+      {isHtml ? (
+        <div className="px-3 py-2.5 flex items-center justify-between gap-2">
+          <p className="text-[11px] text-on-surface-variant min-w-0">
+            Preview opens in your system browser
+          </p>
+          <button
+            type="button"
+            data-testid="open-html-in-browser"
+            onClick={() => onOpenFile?.(file.path)}
+            className="shrink-0 rounded-md border border-outline-variant/40 bg-white px-2 py-1 text-[11px] font-semibold text-primary hover:bg-primary/10 transition-colors duration-200"
+          >
+            Open in browser
+          </button>
+        </div>
+      ) : (
+        <DiffHunk lines={lines} />
+      )}
     </div>
   );
 }

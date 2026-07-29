@@ -95,6 +95,11 @@ import {
   type WorkspaceInfo,
 } from './services/workspaceApi';
 import { isImageWorkspacePath, isLargePreviewContent } from './services/workspacePathLinks';
+import {
+  absoluteWorkspacePath,
+  isHtmlWorkspacePath,
+  openPathInSystem,
+} from './services/openInSystem';
 import { workspaceMediaUrl } from './services/sidecarUrl';
 import { pickWorkspaceFolder } from './services/pickWorkspaceFolder';
 import {
@@ -499,24 +504,22 @@ function MainLayout() {
     }
   }, [activateTerminalSession]);
 
-  /** D51 — Chat Shell / subtask → Terminal mode + lane focus + log/dispatch highlight. */
+  /**
+   * D51 — Chat tool step → right-rail Terminal audit (highlight matching `[CHAT] Step`).
+   * Stay in Chat mode: do NOT flip the center workspace to interactive Terminal mode
+   * (that shows "Connecting interactive CLI…" and is a different surface).
+   */
   const handleViewToolStepInTerminal = useCallback((step: ToolStep) => {
     const target = resolveChatTerminalSyncTarget(step, clutchState);
-    const hasCli = configuredAgents.some((agent) => isCliAgentType(agentTypeFromAgent(agent)));
-    if (hasCli && !selectedWorkflowId && !clutchState.workflow_id) {
-      handleWorkspaceViewModeChange('terminal');
-      void clutchStore.focusLane(target.laneId);
-    }
     setRightPanelOpen(true);
     setRightTab('terminal');
     setHighlightedLogIndex(target.logIndex);
     setHighlightedDispatchEntryId(target.dispatchEntryId);
-  }, [
-    clutchState,
-    configuredAgents,
-    selectedWorkflowId,
-    handleWorkspaceViewModeChange,
-  ]);
+    // If the user is already in Terminal mode, focus the matching lane — never enter it from here.
+    if (workspaceViewMode === 'terminal') {
+      void clutchStore.focusLane(target.laneId);
+    }
+  }, [clutchState, workspaceViewMode]);
 
   const isPlainLlmFooterEarly = !selectedWorkflowId && !clutchState.workflow_id;
 
@@ -1019,6 +1022,21 @@ function MainLayout() {
             : `File not found: ${path}`,
         );
         window.setTimeout(() => setPreviewToast(null), 3200);
+        return;
+      }
+      // HTML: open rendered page in the system browser (not Clutch source preview).
+      if (isHtmlWorkspacePath(resolved.path)) {
+        const abs = absoluteWorkspacePath(workspace?.workspace_path, resolved.path);
+        if (!abs) {
+          setPreviewToast(`Could not resolve path: ${resolved.path}`);
+          window.setTimeout(() => setPreviewToast(null), 3200);
+          return;
+        }
+        setPreviewFile(null);
+        await openPathInSystem(abs);
+        const leaf = resolved.path.split(/[/\\]/).pop() || resolved.path;
+        setPreviewToast(`Opened in browser: ${leaf}`);
+        window.setTimeout(() => setPreviewToast(null), 2800);
         return;
       }
       if (isImageWorkspacePath(resolved.path)) {
@@ -2385,9 +2403,15 @@ function MainLayout() {
                     <p className="px-3 py-2 pl-9 text-[11px] text-on-surface-variant">{t('No models configured')}</p>
                   ) : (
                     (() => {
-                      const chatModels = configuredModels.filter((m) => (m.modelKind ?? 'chat') === 'chat');
-                      const imageModels = configuredModels.filter((m) => m.modelKind === 'image');
-                      const videoModels = configuredModels.filter((m) => m.modelKind === 'video');
+                      const chatModels = configuredModels.filter(
+                        (m) => m.available && (m.modelKind ?? 'chat') === 'chat',
+                      );
+                      const imageModels = configuredModels.filter(
+                        (m) => m.available && m.modelKind === 'image',
+                      );
+                      const videoModels = configuredModels.filter(
+                        (m) => m.available && m.modelKind === 'video',
+                      );
                       const renderGroup = (
                         label: string,
                         models: typeof configuredModels,

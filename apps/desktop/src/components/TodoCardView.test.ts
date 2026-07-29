@@ -90,11 +90,20 @@ describe('shouldPinLiveTodos', () => {
     expect(shouldPinLiveTodos([], { isRunning: true, awaitingHuman: false })).toBe(false);
   });
 
-  it('unpins when every todo is completed (even if still running)', () => {
+  it('keeps pinning completed todos while the turn is still running', () => {
     expect(
       shouldPinLiveTodos(
         [item('completed', 'a'), item('completed', 'b')],
         { isRunning: true, awaitingHuman: false },
+      ),
+    ).toBe(true);
+  });
+
+  it('unpins when every todo is completed and the turn is idle', () => {
+    expect(
+      shouldPinLiveTodos(
+        [item('completed', 'a'), item('completed', 'b')],
+        { isRunning: false, awaitingHuman: false },
       ),
     ).toBe(false);
   });

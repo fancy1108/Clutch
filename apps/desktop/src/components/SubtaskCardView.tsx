@@ -1,6 +1,6 @@
 /**
  * D10 / D48 — nested subtask cards under a parent Chat bubble.
- * D51 — optional "View in Terminal" jumps to matching lane/logs.
+ * D51 — optional "View in Terminal" opens right-rail Terminal + matching log.
  */
 import React, { useState } from 'react';
 import { LegacyIcon } from './ui/LegacyIcon';

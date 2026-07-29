@@ -1,6 +1,7 @@
 /**
  * D51 — Chat ↔ Terminal sync helpers.
- * Click a Shell / execute tool step → switch Terminal view, focus lane, highlight log/dispatch.
+ * Click a tool step → open right-rail Terminal tab and highlight matching log/dispatch.
+ * Does not switch the center workspace into interactive Terminal mode.
  */
 
 import type { DispatchLogEntry, ToolStep } from '../types';

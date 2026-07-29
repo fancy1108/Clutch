@@ -35,7 +35,11 @@ import type { ScannedSkill } from '../services/skillsApi';
 import type { FileTreeNode } from '../services/workspaceApi';
 import type { PermissionMode } from '../services/permissionApi';
 import { USER_CHAT_AVATAR, clutchStore, deleteChatMessage, useClutchState } from '../services/clutchState';
-import { resolveLiveActivitySteps } from '../services/agentActivitySteps';
+import {
+  pickPrimaryHtmlPath,
+  resolveLiveActivitySteps,
+  wantsBrowserPreview,
+} from '../services/agentActivitySteps';
 import { AgentLiveActivity, TypingDots } from './AgentLiveActivity';
 import { FilesChangedChips } from './FilesChangedChips';
 import { PlanCardView, formatPlanRevisePayload, hasPlanStepComments } from './PlanCardView';
@@ -334,7 +338,7 @@ interface ChatFeedProps {
   onOpenWorkspaceFile?: (path: string) => void;
   /** Preview an in-memory code snippet (fenced blocks). */
   onPreviewSnippet?: (name: string, content: string) => void;
-  /** D51 — Chat shell / execute step → Terminal sync. */
+  /** D51 — Chat tool step → right-rail Terminal log highlight. */
   onViewToolStepInTerminal?: (step: ToolStep) => void;
   /** D30 — switch session from overview board. */
   onSelectSession?: (session: SessionRecord) => void;
@@ -587,6 +591,14 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   const [pendingMessages, setPendingMessages] = useState<PendingChatMessage[]>([]);
   const [bgJobToast, setBgJobToast] = useState<string | null>(null);
   const prevBgJobsRef = useRef<BackgroundJob[]>([]);
+  /**
+   * Auto-open newly generated .html in the system browser (live turn only).
+   * Never fire when merely opening a historical session.
+   */
+  const autoOpenedHtmlRef = useRef<Set<string>>(new Set());
+  const wasRunningForHtmlRef = useRef(false);
+  /** Armed after this visit sees status===running; idle history stays disarmed. */
+  const htmlAutoOpenArmedRef = useRef(false);
   const [messageContextMenu, setMessageContextMenu] = useState<{
     x: number;
     y: number;
@@ -606,6 +618,9 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
 
   useEffect(() => {
     setPendingMessages([]);
+    autoOpenedHtmlRef.current.clear();
+    wasRunningForHtmlRef.current = false;
+    htmlAutoOpenArmedRef.current = false;
   }, [sessionRunId]);
 
   const isIdle = clutchStatus === 'idle';
@@ -891,9 +906,10 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
     resolveBrandLogoSrc({ toolId: inProgressWorkflowStep?.toolId })
     ?? resolveAgentLogo?.(thinkingAgentName);
   const showWorkflowThinking = Boolean(inProgressWorkflowStep);
+  // After plan/MCP approve resume there is no new user bubble — still show Working
+  // while status === running (otherwise the UI looks frozen with only Stop).
   const showThinking =
-    (isRunning && lastUserIndex >= 0 && lastUserIndex > lastAgentIndex && isPlainLlmChat) ||
-    showWorkflowThinking;
+    (isRunning && isPlainLlmChat) || showWorkflowThinking;
 
   const pendingToolSteps = clutchOrchestraState.pending_tool_steps;
   const liveTodos = (clutchOrchestraState.agent_todos ?? []) as TodoItem[];
@@ -938,7 +954,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
     return () => window.clearTimeout(timer);
   }, [bgJobToast]);
 
-  /** Pin live todos while incomplete; unpin when all checked so the sealed card scrolls with history. */
+  /** Pin live todos for the whole turn (incl. 3/3) so the card stays full-width, not nested. */
   const pinLiveTodos = shouldPinLiveTodos(liveTodos, { isRunning, awaitingHuman });
   const showInlineLiveTodos = liveTodos.length > 0 && !pinLiveTodos;
   const liveActivitySteps = useMemo(
@@ -952,6 +968,73 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   const showLiveActivity =
     (liveActivitySteps.length > 0 || liveReasoning.length > 0) &&
     (showThinking || awaitingHuman || (isRunning && isPlainLlmChat));
+
+  const lastUserPromptForHtml = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      if (messages[i]?.agent === 'User') return messages[i]?.text ?? '';
+    }
+    return '';
+  }, [messages]);
+  const shouldAutoOpenHtml = wantsBrowserPreview(lastUserPromptForHtml);
+
+  // Auto-open HTML only when the user asked for a page, and only for newly written paths
+  // during a live run (never when browsing history).
+  useEffect(() => {
+    if (!onOpenWorkspaceFile || !isRunning) return;
+
+    const completedHtml: string[] = [];
+    for (const step of liveActivitySteps) {
+      if (step.status !== 'completed') continue;
+      const path = step.fileDiff?.path?.trim();
+      if (path) completedHtml.push(path);
+    }
+
+    // First running frame this visit: seed existing HTML so hydrate/resume does not re-open.
+    if (!htmlAutoOpenArmedRef.current) {
+      htmlAutoOpenArmedRef.current = true;
+      for (const path of completedHtml) {
+        const primary = pickPrimaryHtmlPath([path]);
+        if (primary) autoOpenedHtmlRef.current.add(`${sessionRunId}:${primary}`);
+      }
+      return;
+    }
+
+    if (!shouldAutoOpenHtml) return;
+    const primary = pickPrimaryHtmlPath(completedHtml);
+    if (!primary) return;
+    const key = `${sessionRunId}:${primary}`;
+    if (autoOpenedHtmlRef.current.has(key)) return;
+    autoOpenedHtmlRef.current.add(key);
+    onOpenWorkspaceFile(primary);
+  }, [
+    liveActivitySteps,
+    onOpenWorkspaceFile,
+    sessionRunId,
+    isRunning,
+    shouldAutoOpenHtml,
+  ]);
+
+  // Fallback: after a live turn finishes, open .html once — only if user asked for a page.
+  useEffect(() => {
+    const justFinished = wasRunningForHtmlRef.current && !isRunning;
+    wasRunningForHtmlRef.current = isRunning;
+    if (
+      !justFinished ||
+      !htmlAutoOpenArmedRef.current ||
+      !onOpenWorkspaceFile ||
+      !shouldAutoOpenHtml
+    ) {
+      return;
+    }
+    const last = messages[messages.length - 1];
+    if (!last || last.agent === 'User' || !last.filesChanged?.length) return;
+    const primary = pickPrimaryHtmlPath(last.filesChanged);
+    if (!primary) return;
+    const key = `${sessionRunId}:${primary}`;
+    if (autoOpenedHtmlRef.current.has(key)) return;
+    autoOpenedHtmlRef.current.add(key);
+    onOpenWorkspaceFile(primary);
+  }, [isRunning, messages, onOpenWorkspaceFile, sessionRunId, shouldAutoOpenHtml]);
 
   const chatScrollBottomPad = useMemo(
     () =>
@@ -978,10 +1061,11 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
     scrollChatToBottom();
   }, [messages, clutchStatus, showThinking, pendingMessages.length, scrollChatToBottom]);
 
-  // Remeasure dock → chatScrollBottomPad updates scroll-margin → then pin feed above dock.
+  // Only re-pin when the *dock* grows — not when the user expands a tool detail
+  // (thinkingHeight / pad changes). Expanding used to force scroll-to-bottom (= jump).
   useEffect(() => {
     scrollChatAboveDock('auto');
-  }, [chatScrollBottomPad, scrollChatAboveDock]);
+  }, [dockClearance, scrollChatAboveDock]);
 
   const bgJobsChromeKey = `${bgJobs.length}:${bgJobs.map((job) => job.status).join(',')}`;
 
@@ -1659,9 +1743,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                 </div>
 
                 {showLiveActivity ? (
-                  <div
-                    className={`${chatChrome.thinkingBubblePaddingClass} bg-surface-container-low rounded-2xl rounded-tl-none border border-outline-variant/30 shadow-sm`}
-                  >
+                  <div className="min-w-0" data-testid="chat-live-process">
                     <AgentLiveActivity
                       steps={liveActivitySteps}
                       reasoningContent={liveReasoning}
@@ -1702,22 +1784,18 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
           <div className="w-full flex justify-start mb-4">
             <div className={chatChrome.thinkingRowClass}>
               <div className="w-8 shrink-0" aria-hidden />
-              <div className="flex-1 overflow-hidden">
-                <div
-                  className={`${chatChrome.thinkingBubblePaddingClass} bg-surface-container-low rounded-2xl rounded-tl-none border border-outline-variant/30 shadow-sm`}
-                >
-                  <AgentLiveActivity
-                    steps={liveActivitySteps}
-                    reasoningContent={liveReasoning}
-                    live
-                    defaultOpen
-                    onOpenFile={onOpenWorkspaceFile}
-                    onViewInTerminal={onViewToolStepInTerminal}
-                  />
-                  {showInlineLiveTodos ? (
-                    <TodoCardView todos={liveTodos} t={t} live />
-                  ) : null}
-                </div>
+              <div className="flex-1 overflow-hidden min-w-0" data-testid="chat-live-process">
+                <AgentLiveActivity
+                  steps={liveActivitySteps}
+                  reasoningContent={liveReasoning}
+                  live
+                  defaultOpen
+                  onOpenFile={onOpenWorkspaceFile}
+                  onViewInTerminal={onViewToolStepInTerminal}
+                />
+                {showInlineLiveTodos ? (
+                  <TodoCardView todos={liveTodos} t={t} live />
+                ) : null}
               </div>
             </div>
           </div>
@@ -1734,40 +1812,43 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
     {workspaceViewMode === 'chat' && showGoalBar && liveGoal ? (
       <div
         data-testid="goal-sticky-rail"
-        className={`pointer-events-none absolute z-25 ${chatChrome.chatEdgePaddingClass}`}
+        className="pointer-events-none absolute z-25"
         style={{
           top: APP_HEADER_HEIGHT_PX + (pinLiveTodos ? 72 : 0),
           left: leftChromePad,
           right: rightChromePad,
         }}
       >
-        <div className="bg-background pt-2">
-          <div className={`pointer-events-auto mx-auto w-full ${chatChrome.chatMaxWidthClass}`}>
+        <div className={`w-full bg-background pt-2 ${chatChrome.chatEdgePaddingClass}`}>
+          <div className="pointer-events-auto w-full">
             <GoalBarView goal={liveGoal} t={t} />
           </div>
         </div>
       </div>
     ) : null}
 
-    {/* Incomplete live todos: pin under header with an opaque curtain (no scroll bleed). */}
+    {/*
+      Live todos: rail = section content box (left/right chrome pads).
+      Opaque curtain is full rail width so right-aligned user bubbles cannot peek beside.
+      Card is w-full of that rail (wider than max-w-3xl message column).
+    */}
     {workspaceViewMode === 'chat' && pinLiveTodos ? (
       <div
         data-testid="todo-sticky-rail"
-        className={`pointer-events-none absolute z-30 ${chatChrome.chatEdgePaddingClass}`}
+        className="pointer-events-none absolute z-30"
         style={{
           top: APP_HEADER_HEIGHT_PX,
           left: leftChromePad,
           right: rightChromePad,
         }}
       >
-        <div className="bg-background pt-3">
-          <div className={`pointer-events-auto mx-auto w-full ${chatChrome.chatMaxWidthClass}`}>
+        <div className={`w-full bg-background pt-3 ${chatChrome.chatEdgePaddingClass}`}>
+          <div className="pointer-events-auto w-full">
             <TodoCardView todos={liveTodos} t={t} live pinned />
           </div>
         </div>
-        {/* Fade into the scrolling feed so content disappears cleanly under the pin. */}
         <div
-          className="h-4 bg-gradient-to-b from-background via-background/80 to-transparent"
+          className="w-full h-6 bg-gradient-to-b from-background via-background/90 to-transparent"
           aria-hidden
         />
       </div>

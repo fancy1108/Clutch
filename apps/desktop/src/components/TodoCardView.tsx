@@ -19,16 +19,17 @@ export function todosAreComplete(todos: TodoItem[]): boolean {
   return todos.length > 0 && todos.every((item) => item.status === 'completed');
 }
 
-/** Pin incomplete live todos while the agent turn is active or awaiting human. */
+/**
+ * Pin todos under the header for the whole active turn (even if 3/3 — avoids a
+ * narrow nested card inside Working). When idle, never pin — the sealed message
+ * card scrolls with history.
+ */
 export function shouldPinLiveTodos(
   todos: TodoItem[],
   opts: { isRunning: boolean; awaitingHuman: boolean },
 ): boolean {
-  return (
-    todos.length > 0 &&
-    !todosAreComplete(todos) &&
-    (opts.isRunning || opts.awaitingHuman)
-  );
+  if (!todos.length) return false;
+  return opts.isRunning || opts.awaitingHuman;
 }
 
 export function todoProgressLabel(todos: TodoItem[]): string {
@@ -98,7 +99,7 @@ export function TodoCardView({
 
   return (
     <div
-      className={shell}
+      className={`${shell} w-full`}
       data-testid="todo-card"
       data-live={live || pinned ? 'true' : 'false'}
       data-pinned={pinned ? 'true' : undefined}
