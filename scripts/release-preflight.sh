@@ -89,6 +89,56 @@ else
   ok "INV-R5 skipped (set CLUTCH_RELEASE_TAG or pass version as arg to enforce)"
 fi
 
+# INV-R6: version consistency across all version-bearing files
+if [[ -n "${tag:-}" ]]; then
+  version="${tag#v}"
+  inv_r6_errors=0
+
+  check_version_file() {
+    local label="$1" file="$2" pattern="$3"
+    if [[ ! -f "$file" ]]; then
+      err "INV-R6 missing $label: $file"
+      inv_r6_errors=1
+      return 0
+    fi
+    if grep -qE "$pattern" "$file"; then
+      return 0
+    fi
+    err "INV-R6 $label version mismatch (expected ${version}) in $file"
+    inv_r6_errors=1
+  }
+
+  check_version_file "root package.json" "$root/package.json" "\"version\": \"${version}\""
+  check_version_file "desktop package.json" "$root/apps/desktop/package.json" "\"version\": \"${version}\""
+  check_version_file "tauri.conf.json" "$root/apps/desktop/src-tauri/tauri.conf.json" "\"version\": \"${version}\""
+  check_version_file "Cargo.toml" "$root/apps/desktop/src-tauri/Cargo.toml" "^version = \"${version}\""
+  # Cargo.lock has name + version on adjacent lines — check separately
+  if awk '/name = "clutch-desktop"/{getline; if(/version = "'"${version}"'"/){f=1}} END{exit !f}' "$root/apps/desktop/src-tauri/Cargo.lock" 2>/dev/null; then
+    ok "INV-R6 Cargo.lock clutch-desktop version ${version}"
+  else
+    err "INV-R6 Cargo.lock clutch-desktop version mismatch (expected ${version})"
+    inv_r6_errors=1
+  fi
+  check_version_file "README.md" "$root/README.md" "v${version}]"
+  check_version_file "README.zh-CN.md" "$root/README.zh-CN.md" "v${version}]"
+
+  # Check that release snapshot exists and index has a row
+  if [[ ! -f "$root/docs/releases/v${version}.md" ]]; then
+    err "INV-R6 missing release snapshot docs/releases/v${version}.md"
+    inv_r6_errors=1
+  fi
+  if ! grep -q "^| ${version} " "$root/docs/releases/README.md"; then
+    err "INV-R6 missing ${version} row in docs/releases/README.md index"
+    inv_r6_errors=1
+  fi
+
+  if [[ $inv_r6_errors -eq 0 ]]; then
+    ok "INV-R6 version ${version} consistent across all files, snapshot + index row present"
+  fi
+else
+  ok "INV-R6 skipped (set CLUTCH_RELEASE_TAG or pass version as arg to enforce)"
+fi
+
 if [[ $errors -gt 0 ]]; then
   echo "== release-preflight: $errors error(s) — aborting release ==" >&2
   exit 1

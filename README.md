@@ -17,20 +17,21 @@ Clutch is a **desktop app** (Tauri + React) for developers and technical operato
 |---|---|
 | **Stack** | Tauri 2 · React 19 · FastAPI + LangGraph · local-first (`localhost:8123`) |
 | **License** | See [LICENSE](LICENSE) |
-| **Latest release** | [v1.2.9](https://github.com/fancy1108/Clutch/releases/tag/v1.2.9) · [Changelog](CHANGELOG.md#129---2026-07-24) |
+| **Latest release** | [v1.3.0](https://github.com/fancy1108/Clutch/releases/tag/v1.3.0) · [Changelog](CHANGELOG.md#130---2026-07-28) |
 | **Contributors** | Thanks to [@MyloveAless](https://github.com/MyloveAless) for the multi-agent image generation workflow design & end-to-end validation. |
 
-### What's new in v1.2.9
+### What's new in v1.3.0
 
-- **Coding image paste:** Paste images in Chat and Terminal OrchestratorBar — multimodal first, OCR/palette fallback; local CLIs get `@path` file refs.
-- **Click-to-preview:** Workspace paths and attachment thumbnails open in-app (images as media).
-- **Design handoff polish:** Spec→UI continuous by default; deterministic HTML→React export for Coding (D39–D41).
-- **Workspace history stability:** Path-stable project ids so sidebar history cannot orphan after re-authorize (D43).
-- **UI fixes:** Thinking bubble height, New Design at top of sidebar, Design iterate overlay clear.
+- **Tool trail detail (D46):** Cursor/Grok-aligned tool steps — verb-group headers (`Fetched N pages`, `Searched N queries`), per-step target/preview, **View in Terminal** for any tool step.
+- **Permission modes (D27 / D54):** Composer pill is **Agent / Plan / Full / Ask** (Cursor-style order & labels); default **Agent**; first-run onboarding matches.
+- **Deliverable intent (D54):** Chat infers the deliverable kind (page / image / video / code / answer) from your ask — real `generate_image` / `generate_video`, auto-open rendered `.html` in the system browser, stray artifacts relocated to `.clutch/artifacts/`.
+- **Tool-skip harness (D44):** Live-fact turns answered in prose with zero `tool_calls` get a reminder + `tool_choice=required` retry so advertised tools are actually used.
+- **Plan approve → execute:** After you confirm a plan, Chat injects an execute nudge so the model must `todo_write` then edit files — no more re-asking or claiming done in prose.
+- **Sidebar recent-first:** Projects and sessions sort by last chat activity; reopening an old chat floats it to the top.
 
-> **v1.2.9 ships macOS + Windows.** macOS: Apple Silicon DMG + in-app updater. Windows: MSI/NSIS. Sidecar hotpatch assets published separately.
+> **v1.3.0 ships macOS + Windows.** macOS: Apple Silicon DMG + in-app updater. Windows: MSI/NSIS. Sidecar hotpatch assets published separately.
 
-Older releases (v1.2.8 workflow hardening, v1.2.7 interactive prototype, …): [`CHANGELOG.md`](CHANGELOG.md) · [`docs/releases/`](docs/releases/).
+Older releases (v1.2.9 coding image paste, v1.2.8 workflow hardening, …): [`CHANGELOG.md`](CHANGELOG.md) · [`docs/releases/`](docs/releases/).
 
 ---
 
@@ -57,7 +58,7 @@ brew install --cask clutch
 irm https://raw.githubusercontent.com/fancy1108/Clutch/main/scripts/install.ps1 | iex
 ```
 
-Pin a version: `CLUTCH_VERSION=v1.2.9` before running either script (or `v1.2.8` / `v1.2.7` /
+Pin a version: `CLUTCH_VERSION=v1.3.0` before running either script (or `v1.2.9` / `v1.2.8` / `v1.2.7` /
 
 Install channels (maintainers): [`docs/RELEASE_MAINTAINER.md`](docs/RELEASE_MAINTAINER.md)
 

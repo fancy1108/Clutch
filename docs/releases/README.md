@@ -39,6 +39,7 @@
 
 | Version | Snapshot | Notes |
 |---------|----------|-------|
+| 1.3.0 | [`v1.3.0.md`](./v1.3.0.md) | **macOS + Windows** · Tool trail detail (D46) · Permission modes (D27/D54) · Deliverable intent + real images/video (D54) · Tool-skip harness (D44) · Plan-approve→execute · sidebar recent-first |
 | 1.2.9 | [`v1.2.9.md`](./v1.2.9.md) | **macOS + Windows** · Coding image paste / preview (D42) · Design handoff (D39–D41) · workspace id stability (D43) |
 | 1.2.2 | [`v1.2.2.md`](./v1.2.2.md) | **macOS + Windows** · Design Preview Win parity · workflow reliability (#50–#55) |
 | 1.2.1 | [`v1.2.1.md`](./v1.2.1.md) | **macOS only** · Chat/Design/Models hotfix · Sidecar hotpatch client (D37) |

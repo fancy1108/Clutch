@@ -17,20 +17,21 @@ Clutch 是一款**桌面应用**（Tauri + React），面向独立开发者和�
 |---|---|
 | **技术栈** | Tauri 2 · React 19 · FastAPI + LangGraph · 本地优先（`localhost:8123`） |
 | **许可证** | 见 [LICENSE](LICENSE) |
-| **当前版本** | [v1.2.9](https://github.com/fancy1108/Clutch/releases/tag/v1.2.9) · [更新日志](CHANGELOG.md#129---2026-07-24) |
+| **当前版本** | [v1.3.0](https://github.com/fancy1108/Clutch/releases/tag/v1.3.0) · [更新日志](CHANGELOG.md#130---2026-07-28) |
 | **贡献者** | 感谢 [@MyloveAless](https://github.com/MyloveAless) 设计「AI 图片生成多 Agent 工作流」并完成端到端验证。 |
 
-### 最新更新（v1.2.9）
+### 最新更新（v1.3.0）
 
-- **Coding 发图：** Chat / Terminal OrchestratorBar 可粘贴图片 — 先 multimodal，失败再 OCR/调色板；本地 CLI 注入 `@path` 文件引用。
-- **点击预览：** 工作区路径与附件缩略图可在应用内打开（图片走媒体预览）。
-- **Design 交接打磨：** Spec→UI 默认连续生成；Coding 侧确定性 HTML→React 导出（D39–D41）。
-- **工作区历史稳定：** 路径稳定 project id，重授权后侧栏历史不再孤儿（D43）。
-- **UI 修复：** Thinking 气泡高度、New Design 置顶、Design 迭代遮罩清除。
+- **工具轨迹细节（D46）：** 对齐 Cursor / Grok 的工具步骤展示 — 动词分组标题（`Fetched N pages`、`Searched N queries`）、每步显示目标/预览，任意工具步骤支持 **View in Terminal**。
+- **权限模式（D27 / D54）：** 输入栏权限按钮改为 **Agent / Plan / Full / Ask**（Cursor 风格的顺序与命名），默认 **Agent**；首次安装向导同步对齐。
+- **交付物意图推断（D54）：** Chat 根据你的需求推断交付物类型（页面 / 图片 / 视频 / 代码 / 答复）— 真实的 `generate_image` / `generate_video`，渲染后的 `.html` 自动用系统浏览器打开，散落产物归集到 `.clutch/artifacts/`。
+- **工具跳用拦截（D44）：** 实时事实类提问（天气/新闻/URL）若模型只用纯文本作答且零 `tool_calls`，触发一次提醒 + `tool_choice=required` 重试，确保已声明的工具真的被调用。
+- **计划批准 → 执行：** 你确认计划后，Chat 注入执行提醒，模型必须 `todo_write` 再改文件，不再反复问确认或仅用文字声称完成。
+- **侧栏按最近活动排序：** 项目与会话按最近聊天时间排序，重开旧会话会浮到顶部。
 
-> **v1.2.9 同时发 macOS + Windows。** macOS：Apple Silicon DMG + 应用内更新。Windows：MSI/NSIS。Sidecar 热更资产另行发布。
+> **v1.3.0 同时发 macOS + Windows。** macOS：Apple Silicon DMG + 应用内更新。Windows：MSI/NSIS。Sidecar 热更资产另行发布。
 
-更早版本（v1.2.8 工作流硬化、v1.2.7 交互原型等）：[`CHANGELOG.md`](CHANGELOG.md) · [`docs/releases/`](docs/releases/)。
+更早版本（v1.2.9 Coding 发图、v1.2.8 工作流硬化等）：[`CHANGELOG.md`](CHANGELOG.md) · [`docs/releases/`](docs/releases/)。
 
 ---
 
@@ -57,7 +58,7 @@ brew install --cask clutch
 irm https://raw.githubusercontent.com/fancy1108/Clutch/main/scripts/install.ps1 | iex
 ```
 
-指定版本：运行前设置 `CLUTCH_VERSION=v1.2.9`（或 `v1.2.8` / `v1.2.7` / `v1.2.6` 安装更早稳定版）。
+指定版本：运行前设置 `CLUTCH_VERSION=v1.3.0`（或 `v1.2.9` / `v1.2.8` / `v1.2.7` / `v1.2.6` 安装更早稳定版）。
 
 详见 [`docs/PACKAGE_MANAGERS.md`](docs/PACKAGE_MANAGERS.md)
 
