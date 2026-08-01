@@ -10,6 +10,10 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ## [Unreleased]
 
+### Fixed
+
+- **Chat Markdown tables:** GFM pipe tables (`| col | … |` + `|---|`) in assistant replies render as real HTML tables (with inline `code` / bold in cells) instead of raw pipe text.
+
 ## [1.3.0] - 2026-07-28
 
 ### Changed

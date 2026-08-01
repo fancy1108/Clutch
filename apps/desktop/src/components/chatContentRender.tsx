@@ -126,6 +126,126 @@ function formatInline(str: string, handlers: ChatRenderHandlers, keyPrefix: stri
   return parts.length ? <>{parts}</> : linkifyPlainLine(str, keyPrefix, handlers);
 }
 
+/** Split a GFM table row into cell strings (leading/trailing pipes optional). */
+export function splitTableCells(line: string): string[] {
+  let s = line.trim();
+  if (s.startsWith('|')) s = s.slice(1);
+  if (s.endsWith('|')) s = s.slice(0, -1);
+  return s.split('|').map((c) => c.trim());
+}
+
+/** True when every cell is a GFM alignment marker (`---`, `:---`, `---:`, `:---:`). */
+export function isTableSeparatorRow(line: string): boolean {
+  const cells = splitTableCells(line);
+  if (cells.length < 2) return false;
+  return cells.every((cell) => /^:?-{1,}:?$/.test(cell));
+}
+
+/** True when the line looks like a pipe table row with ≥2 columns. */
+export function looksLikeTableRow(line: string): boolean {
+  const trimmed = line.trim();
+  if (!trimmed.includes('|')) return false;
+  return splitTableCells(trimmed).length >= 2;
+}
+
+type CellAlign = 'left' | 'center' | 'right';
+
+function parseAlignments(sepLine: string): CellAlign[] {
+  return splitTableCells(sepLine).map((cell) => {
+    const left = cell.startsWith(':');
+    const right = cell.endsWith(':');
+    if (left && right) return 'center';
+    if (right) return 'right';
+    return 'left';
+  });
+}
+
+function alignClass(align: CellAlign | undefined): string {
+  if (align === 'center') return 'text-center';
+  if (align === 'right') return 'text-right';
+  return 'text-left';
+}
+
+/**
+ * If `lines[start]` begins a GFM table (header + separator), return parsed rows
+ * and the inclusive end index of the last consumed data/header line.
+ */
+export function tryParseGfmTable(
+  lines: string[],
+  start: number,
+): { header: string[]; alignments: CellAlign[]; body: string[][]; end: number } | null {
+  if (start + 1 >= lines.length) return null;
+  const headerLine = lines[start].trim();
+  const sepLine = lines[start + 1].trim();
+  if (!looksLikeTableRow(headerLine) || !isTableSeparatorRow(sepLine)) return null;
+
+  const header = splitTableCells(headerLine);
+  const alignments = parseAlignments(sepLine);
+  const body: string[][] = [];
+  let i = start + 2;
+  while (i < lines.length) {
+    const trimmed = lines[i].trim();
+    if (trimmed === '' || !looksLikeTableRow(trimmed) || isTableSeparatorRow(trimmed)) break;
+    body.push(splitTableCells(trimmed));
+    i += 1;
+  }
+  return { header, alignments, body, end: i - 1 };
+}
+
+function MarkdownTable({
+  header,
+  alignments,
+  body,
+  handlers,
+  tableKey,
+}: {
+  header: string[];
+  alignments: CellAlign[];
+  body: string[][];
+  handlers: ChatRenderHandlers;
+  tableKey: number;
+}) {
+  const colCount = Math.max(header.length, ...body.map((r) => r.length), alignments.length);
+  const pad = (cells: string[]) => {
+    const out = cells.slice();
+    while (out.length < colCount) out.push('');
+    return out;
+  };
+
+  return (
+    <div className="my-2 overflow-x-auto rounded-lg border border-outline-variant/30">
+      <table className="w-full border-collapse text-[12.5px] text-on-surface">
+        <thead>
+          <tr className="bg-surface-container-low border-b border-outline-variant/30">
+            {pad(header).map((cell, ci) => (
+              <th
+                key={`th-${tableKey}-${ci}`}
+                className={`px-2.5 py-1.5 font-semibold ${alignClass(alignments[ci])}`}
+              >
+                {formatInline(cell, handlers, `th-${tableKey}-${ci}`)}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {body.map((row, ri) => (
+            <tr key={`tr-${tableKey}-${ri}`} className="border-b border-outline-variant/20 last:border-b-0">
+              {pad(row).map((cell, ci) => (
+                <td
+                  key={`td-${tableKey}-${ri}-${ci}`}
+                  className={`px-2.5 py-1.5 ${alignClass(alignments[ci])}`}
+                >
+                  {formatInline(cell, handlers, `td-${tableKey}-${ri}-${ci}`)}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function CodeBlock({
   lang,
   code,
@@ -299,6 +419,22 @@ export function renderChatMarkdown(text: string, handlers: ChatRenderHandlers = 
           {trimmed.substring(4)}
         </h3>,
       );
+      continue;
+    }
+
+    const table = tryParseGfmTable(lines, i);
+    if (table) {
+      elements.push(
+        <MarkdownTable
+          key={`table-${i}`}
+          header={table.header}
+          alignments={table.alignments}
+          body={table.body}
+          handlers={handlers}
+          tableKey={i}
+        />,
+      );
+      i = table.end;
       continue;
     }
 
