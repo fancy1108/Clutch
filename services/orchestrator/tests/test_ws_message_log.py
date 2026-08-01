@@ -160,7 +160,7 @@ def test_ws_plain_chat_mcp_approve(monkeypatch) -> None:
             False,
         )
 
-    monkeypatch.setattr("src.chat_runner._llm_chat_reply", fake_llm_chat_reply)
+    monkeypatch.setattr("src.chat_plain._llm_chat_reply", fake_llm_chat_reply)
 
     from src.mcp_pending import McpPendingApproval, store_pending
     run_id = "run_mcp_approve_test"
