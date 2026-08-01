@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import platform
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -238,13 +238,29 @@ def _load_workspace_rules(workspace_path: str | None) -> str:
     return "## Project rules\n\n" + "\n\n".join(chunks)
 
 
+def _format_local_time(now: datetime | None = None) -> str:
+    """Human-readable local clock for the Environment prompt layer."""
+    stamp = (now or datetime.now().astimezone()).astimezone()
+    tz_name = stamp.tzname() or ""
+    raw_offset = stamp.strftime("%z")  # e.g. +0800
+    if len(raw_offset) == 5:
+        offset_fmt = f"UTC{raw_offset[:3]}:{raw_offset[3:]}"
+    else:
+        offset_fmt = raw_offset or "local"
+    clock = stamp.strftime("%Y-%m-%d %H:%M:%S")
+    if tz_name:
+        return f"{clock} {tz_name} ({offset_fmt})"
+    return f"{clock} ({offset_fmt})"
+
+
 def _env_layer(workspace_path: str | None) -> str:
     import os
 
     shell = (os.environ.get("SHELL") or os.environ.get("ComSpec") or "").strip() or "unknown"
     lines = [
         "## Environment",
-        f"Date: {date.today().isoformat()}",
+        f"Local time: {_format_local_time()}",
+        "Use Local time above for clock/date questions; do not invent a different time.",
         f"OS: {platform.system()} {platform.release()}",
         f"Shell: {shell}",
     ]

@@ -354,24 +354,11 @@
 | Q-D34-3 | 超 N 时行为 | A) 拒绝新 Lane B) 排队 C) Tab 折叠旧 Lane | **B+C** 组合（排队 + 折叠展示） |
 | Q-D34-4 | 多 Lane 同时完成回传 | A) 各一路独立草稿 B) 自动合并一条 C) 仅提醒不预填 | **A**（独立草稿队列；用户可自行合并编辑） |
 | Q-D34-5 | handoff sources 默认 | A) 仅聚焦 Lane B) 最近派发到该 target 的 sources C) 空 | **A**；显式 `from @A @B` 覆盖；发送前 chips 可改（见 D34 §2） |
-| Q-UI-1 | Chat 流式回复滚不上来 | A) 调整 `<section>` flex/overflow 布局让 `scrollHeight` 可靠 B) 用 `bottomRef` rect 算偏移绕过 `scrollHeight`（已试无效）C) 重构 ChatFeed 容器层级 | **待诊断 CSS 布局后定** |
+| Q-UI-1 | Chat 流式回复滚不上来 | A) 调整 `<section>` flex/overflow 布局让 `scrollHeight` 可靠 B) 用 `bottomRef` rect 算偏移绕过 `scrollHeight`（已试无效）C) 重构 ChatFeed 容器层级 | **A 已落地**（2026-08-01）：`<section>` 只做 flex 壳 `overflow-hidden`；独立内层 `chatScrollRef` 承担 `overflow-y-auto`，`scrollTo(scrollHeight)` 钉底 |
 
-> **Q-UI-1 现象详情（2026-07-29 诊断）**：纯 LLM 对话（`isPlainLlmChat=true`）工具审批通过后，最终 assistant 回复已在 DOM 渲染，但被卡在可视区下方，看不到；下一次发任意消息才被顶上来。流式期间（`isRunning && !awaitingHuman`）也出现。
+> **Q-UI-1 现象详情（2026-07-29 诊断；2026-08-01 已修）**：纯 LLM 对话工具审批通过后，最终 assistant 回复已在 DOM，但被卡在可视区下方；根因是 flex 列与 `overflow-y-auto` 同挂在 `<section>` 上导致 `scrollHeight == clientHeight`。修复：内层专用滚动容器。
 >
-> **滚动相关代码**：`apps/desktop/src/components/ChatFeed.tsx`
-> - 滚动入口 `scrollChatToBottom`（`:1048`）：`bottomRef.current?.scrollIntoView({ behavior, block: 'end' })`
-> - 触发 effect 依赖（`:1062`）：`[messages, clutchStatus, showThinking, pendingMessages.length, scrollChatToBottom]`
-> - 下哨兵 `bottomRef`（`:1805`）：`<div ref={bottomRef} style={{ scrollMarginBottom: chatScrollBottomPad }} className="h-2 shrink-0" />`
-> - 滚动容器（`:1234`）`<section>`：`className="flex-1 min-h-0 flex flex-col box-border transition-all duration-300 bg-background ... overflow-y-auto overscroll-contain"`
-> - 父链均为 `h-screen overflow-hidden flex flex-col`（`App.tsx:1913 / :2113`）
->
-> **实测数据**（往 `scrollChatToBottom` 注入诊断日志测得，已撤回）：
-> - 从 `<section>` 到 `<html>` 全部 `scrollHeight == clientHeight == 768`，全部不可滚动；祖先链：`SECTION.flex-1.min-h-0 ov=auto sh=768 ch=768 st=0` → `DIV.flex-1.min-w-0 ov=hidden sh=768 ch=768 st=0` → `DIV.flex-1.flex ov=hidden sh=768 ch=768 st=0` → `DIV.relative.h-screen ov=hidden sh=768 ch=768 st=0` → `BODY ov=hidden sh=768 ch=768 st=0` → `HTML ov=visible sh=768 ch=768 st=0`。
-> - `bottomRef` 真实 rect y 一路下到 `918`（`bottom: 918`），但 `<section>` `scrollHeight` 偶尔报 `1272` 之后又跌回 `768`：`scrollTo({top: scrollHeight})` 当 scrollHeight=768 时不动；偶发 scrollHeight=1272 时才滚一次。
-> - 显式 `bottomRef.rect` 算偏移的改进已实测无效（layout 被压缩，rect 也未反映真实溢出）。
->
-> **建议后续**：先 DevTools Computed 面板点 `<section>` 截 `height`/`max-height`/`min-height`/`overflow-y`/`display`/`flex`/`flex-basis`，确认为何 section 子项被压成等高（`scrollHeight == clientHeight`）；再决定是改 CSS 布局还是重构容器层级。
-
+> **历史诊断摘要**：祖先链全部 `scrollHeight == clientHeight`；`bottomRef` rect 可到 y≈918；`scrollIntoView` / rect 偏移在坏 scrollport 上无效。
 ### D26 · 用户自定义头像替换与存储（2026-06-27）
 
 - **背景**：原系统 User 消息气泡统一指向静态 Unsplash 网页地址，不支持自定义用户配置，在 General 设置里也没有对应的偏好配置，缺乏个性化表现。

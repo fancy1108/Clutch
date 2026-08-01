@@ -576,6 +576,8 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   const { state: clutchOrchestraState } = useClutchState();
   const [orchestratorBarFocused, setOrchestratorBarFocused] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  /** Dedicated chat scrollport (must not be the flex column — Q-UI-1). */
+  const chatScrollRef = useRef<HTMLDivElement>(null);
   const thinkingRef = useRef<HTMLDivElement>(null);
   const dockRef = useRef<HTMLDivElement>(null);
   const terminalDockRef = useRef<HTMLDivElement>(null);
@@ -1046,6 +1048,11 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   );
 
   const scrollChatToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
+    const scroller = chatScrollRef.current;
+    if (scroller) {
+      scroller.scrollTo({ top: scroller.scrollHeight, behavior });
+      return;
+    }
     bottomRef.current?.scrollIntoView({ behavior, block: 'end' });
   }, []);
 
@@ -1236,16 +1243,27 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
         paddingLeft: `${leftChromePad}px`,
         paddingRight: `${rightChromePad}px`,
         paddingTop: APP_HEADER_HEIGHT_PX,
-        paddingBottom: isTerminalLayout
-          ? terminalInputReservePx
-          : Math.max(chatScrollBottomPad, awaitingHuman ? 200 : 120),
+        paddingBottom: isTerminalLayout ? terminalInputReservePx : undefined,
       }}
-      className={`flex-1 min-h-0 flex flex-col box-border transition-all duration-300 bg-background ${
-        isTerminalLayout
-          ? 'overflow-hidden pb-1 items-stretch px-4'
-          : `overflow-y-auto overscroll-contain items-stretch ${chatChrome.chatEdgePaddingClass}`
+      className={`flex-1 min-h-0 flex flex-col box-border transition-all duration-300 bg-background overflow-hidden items-stretch ${
+        isTerminalLayout ? 'pb-1 px-4' : ''
       }`}
     >
+      <div
+        ref={isTerminalLayout ? undefined : chatScrollRef}
+        className={
+          isTerminalLayout
+            ? 'flex-1 min-h-0 flex flex-col overflow-hidden w-full min-w-0'
+            : `flex-1 min-h-0 overflow-y-auto overscroll-contain w-full min-w-0 ${chatChrome.chatEdgePaddingClass}`
+        }
+        style={
+          isTerminalLayout
+            ? undefined
+            : {
+                paddingBottom: Math.max(chatScrollBottomPad, awaitingHuman ? 200 : 120),
+              }
+        }
+      >
       <div
         className={`w-full min-w-0 ${
           isTerminalLayout
@@ -1804,6 +1822,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
         {workspaceViewMode === 'chat' ? (
           <div ref={bottomRef} style={{ scrollMarginBottom: chatScrollBottomPad }} className="h-2 shrink-0" aria-hidden />
         ) : null}
+      </div>
       </div>
 
     </section>
