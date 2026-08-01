@@ -10,6 +10,10 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ## [Unreleased]
 
+### Changed
+
+- **Chat runner split (DECISIONS D38 Phase 1):** Extract message/history/seal helpers (`chat_messages.py`), WebSocket send helpers (`chat_ws_events.py`), and MCP/Plan/Question gate helpers (`chat_mcp_gates.py`) from `chat_runner.py`; orchestration stays in `chat_runner` with re-exports for existing imports. Drop unused duplicate Request schema re-exports from `chat_runner`/`main`.
+
 ## [1.3.0] - 2026-07-28
 
 ### Changed

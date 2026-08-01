@@ -5,11 +5,17 @@
 
 ## Current Status
 
-- **阶段：** **v1.2.9**；主线 D8–D13 ✅；扩展/MCP **D14–D52 Agent 代 PM ✅**；Desktop E2E ✅；真连 Skip（密钥）；Design D36 仍 ❌
+- **阶段：** **v1.3.0** 已发；主线 D8–D13 ✅；扩展/MCP **D14–D52 Agent 代 PM ✅**；Desktop E2E ✅；Design D36 仍 ❌
 - **Git / PM 索引：** [`runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md`](../runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md)
-- **下次优先：** 重启 Sidecar 验证天气走 `web_search`/`web_fetch`；旧偏好若 Allow network=Off 需手动打开；commit 本轮 e2e + tool harness 修复
+- **下次优先：** D38 Phase 2（`chat_runner` plain chat / workflow 编排段）；或另开 Task 拆 `design/generator.py` / `ChatFeed.tsx`
 
 ## Recent Sessions
+
+## 2026-08-01 会话（D38 Phase 1：chat_runner 拆分）
+
+- **落地：** `chat_messages.py` / `chat_ws_events.py` / `chat_mcp_gates.py`；`chat_runner` ~5347→~4570 行 + re-export；清理死 Request schema
+- **测：** 计划内子集 + 全量 pytest / `./scripts/verify.sh`
+- **下次：** Phase 2 或 backlog P1（generator / ChatFeed）
 
 ## 2026-07-25 会话（Tool harness 全链路）
 
