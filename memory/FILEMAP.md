@@ -134,7 +134,7 @@
 | 侧栏（工作区 / 历史，M2-07/09） | `sidebar.tsx` |
 | 底部状态栏（Branch / Model / Agent） | `App.tsx` footer |
 | 工作区 Git 分支 API | `services/workspaceApi.ts` → `GET /api/workspace/git` |
-| Chat 流与人工干预 UI | `components/ChatFeed.tsx` |
+| Chat 流与人工干预 UI | `components/ChatFeed.tsx`（壳）· `hooks/useChatFeedController.ts` · `components/ChatMessageBubble.tsx` · `components/ChatFeedDock.tsx` |
 | Chat 工具步骤条解析（D46） | `services/agentActivitySteps.ts` |
 | 用系统浏览器打开本地 HTML | `services/openInSystem.ts` · Tauri `clutch_open_path`（`src-tauri/src/lib.rs`） |
 | Chat 工具轨迹 UI（D46 verb_group） | `components/AgentLiveActivity.tsx` |

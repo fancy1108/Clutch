@@ -7,9 +7,15 @@
 
 - **阶段：** **v1.3.0** 已发；主线 D8–D13 ✅；扩展/MCP **D14–D52 Agent 代 PM ✅**；Desktop E2E ✅；Design D36 仍 ❌
 - **Git / PM 索引：** [`runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md`](../runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md)
-- **下次优先：** D38 拆 `ChatFeed.tsx`（hooks + bubble/dock）；P2 `App.tsx` / `builtin_tools.py`
+- **下次优先：** D38 拆 `App.tsx` / `builtin_tools.py`；P2 余下大文件
 
 ## Recent Sessions
+
+## 2026-08-01 会话（D38：ChatFeed hooks + bubble/dock）
+
+- **落地：** `useChatFeedController.ts` / `ChatMessageBubble.tsx` / `ChatFeedDock.tsx`；`ChatFeed.tsx` ~2173→~490 行壳；re-export `configuredEngineToRuntimeLabel`
+- **测：** `pnpm --filter @clutch/desktop build` + `test`（223 passed）
+- **下次：** D38 `App.tsx` / `builtin_tools.py`
 
 ## 2026-08-01 会话（D38：design/generator Spec/UI/Iterate）
 
