@@ -15,6 +15,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 - **Design generator split (DECISIONS D38):** Extract Spec / UI / Iterate stage helpers into `design/gen_spec.py`, `design/gen_ui.py`, `design/gen_iterate.py`; `generator.py` remains the orchestration facade with re-exports for `service`/tests.
 - **Chat runner split (DECISIONS D38 Phase 1–2):** Extract message/history/seal (`chat_messages.py`), WebSocket send (`chat_ws_events.py`), MCP/Plan/Question gates (`chat_mcp_gates.py`), run live-patch/state (`chat_run_live.py`), plain-chat turns (`chat_plain.py`), and workflow orch (`chat_workflow.py`) from `chat_runner.py`; shell keeps `ws_run`/`lifespan` with re-exports. Drop unused duplicate Request schema re-exports from `chat_runner`/`main`.
 - **ChatFeed split (DECISIONS D38):** Extract `hooks/useChatFeedController.ts` (state/effects/handlers), `components/ChatMessageBubble.tsx` (bubble rows + hybrid disclosure + media), and `components/ChatFeedDock.tsx` (OrchestratorBar / HITL / ChatInputBar dock); `ChatFeed.tsx` remains layout shell + re-export `configuredEngineToRuntimeLabel`.
+- **App.tsx split (DECISIONS D38 P2):** Extract `hooks/useAppSession.ts` (session/run/agent/workflow/footer wiring), `hooks/useAppSettings.ts` (theme/models/permission preferences), and `hooks/useAppWorkspace.ts` (workspace/repository/file-preview wiring); `App.tsx` remains startup/orchestration shell (`MainLayout` + `AppGate`).
 
 ## [1.3.0] - 2026-07-28
 

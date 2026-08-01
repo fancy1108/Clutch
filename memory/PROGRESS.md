@@ -7,9 +7,15 @@
 
 - **阶段：** **v1.3.0** 已发；主线 D8–D13 ✅；扩展/MCP **D14–D52 Agent 代 PM ✅**；Desktop E2E ✅；Design D36 仍 ❌
 - **Git / PM 索引：** [`runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md`](../runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md)
-- **下次优先：** D38 拆 `App.tsx` / `builtin_tools.py`；P2 余下大文件
+- **下次优先：** D38 `builtin_tools.py`；P2 余下大文件
 
 ## Recent Sessions
+
+## 2026-08-01 会话（D38 P2：App.tsx hooks 拆分）
+
+- **落地：** `useAppSession.ts` / `useAppSettings.ts` / `useAppWorkspace.ts`；`App.tsx` ~2716→~1042 行壳
+- **测：** `pnpm --filter @clutch/desktop build` + `test`（223 passed）
+- **下次：** D38 `builtin_tools.py`
 
 ## 2026-08-01 会话（D38：ChatFeed hooks + bubble/dock）
 

@@ -125,14 +125,14 @@
 
 | 想改什么 | 去哪里 |
 |---------|--------|
-| 应用根布局、ClutchState 投影 | `App.tsx` |
+| 应用根布局、ClutchState 投影 | `App.tsx`（编排壳）· `hooks/useAppSession.ts` · `hooks/useAppSettings.ts` · `hooks/useAppWorkspace.ts` |
 | WebSocket store、`useClutchState` | `services/clutchState.ts` · 纯辅助函数见 `services/clutchStateUtils.ts` |
 | 会话 / 运行 API | `services/runApi.ts` |
 | Skills Registry API（P2-01） | `services/skillsApi.ts` |
 | Theme 偏好 API（P2-03） | `services/themeApi.ts`（含 language） |
 | API 抽象（mock 待 M2 替换） | `services/api.ts` |
 | 侧栏（工作区 / 历史，M2-07/09） | `sidebar.tsx` |
-| 底部状态栏（Branch / Model / Agent） | `App.tsx` footer |
+| 底部状态栏（Branch / Model / Agent） | `App.tsx` footer · `hooks/useAppSession.ts` |
 | 工作区 Git 分支 API | `services/workspaceApi.ts` → `GET /api/workspace/git` |
 | Chat 流与人工干预 UI | `components/ChatFeed.tsx`（壳）· `hooks/useChatFeedController.ts` · `components/ChatMessageBubble.tsx` · `components/ChatFeedDock.tsx` |
 | Chat 工具步骤条解析（D46） | `services/agentActivitySteps.ts` |
@@ -182,7 +182,7 @@
 | Agent / 工具品牌 Logo | `services/brandLogos.ts` · `components/BrandLogo.tsx` · `assets/tool-logos/`（含 `mimo.svg`） |
 | 右侧面板（Overview/Files/Flow/Changes/Terminal） | `components/RightPanel.tsx` |
 | Terminal 日志子面板 | `components/TerminalPanel.tsx` |
-| 文件预览浮层 | `App.tsx`（`previewFile`） |
+| 文件预览浮层 | `hooks/useAppWorkspace.ts`（`previewFile`）· `App.tsx` 渲染 |
 | Prompt / 错误边界组件 | `components/PromptModal.tsx` · `components/AppErrorBoundary.tsx` |
 | 模型配置 UI（M4-09） | `components/ModelsManager.tsx` |
 | 主题 Appearance（P2） | `components/ThemeManager.tsx` |
