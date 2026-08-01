@@ -472,6 +472,8 @@ def run_mcp_react_loop(
         fuse_message,
         is_tool_failure_result,
         max_consecutive_failures,
+        next_consecutive_failures,
+        short_tool_name as fuse_short_tool_name,
     )
 
     clients: dict[str, McpClient] = {}
@@ -489,6 +491,8 @@ def run_mcp_react_loop(
     network_calls = 0
     network_stop_nudged = False
     html_wrapup_nudged = False
+    same_tool_failures: dict[str, int] = {}
+    same_tool_soft_nudged: set[str] = set()
     _emit(logs, on_log, f"[{log_prefix}] Starting MCP ReAct with {len(servers)} server(s)")
 
     for server in servers:
@@ -687,13 +691,40 @@ def run_mcp_react_loop(
 
     write_recovery_nudged = False
 
-    def note_tool_result(result_str: str) -> bool:
-        """Track consecutive failures; return True when D9 loop fuse should trip."""
+    def note_tool_result(result_str: str, tool_name: str = "") -> bool:
+        """Track consecutive + same-tool failures; return True when D9 loop fuse trips."""
         nonlocal consecutive_failures, fuse_triggered
-        if is_tool_failure_result(result_str):
-            consecutive_failures += 1
-        else:
-            consecutive_failures = 0
+        from src.tool_use_policy import (
+            same_tool_soft_budget,
+            same_tool_stop_nudge,
+        )
+
+        short = fuse_short_tool_name(tool_name)
+        failed = is_tool_failure_result(result_str)
+        consecutive_failures = next_consecutive_failures(
+            consecutive_failures,
+            result=result_str,
+            tool_name=tool_name,
+        )
+        if failed and short:
+            same_tool_failures[short] = same_tool_failures.get(short, 0) + 1
+            used = same_tool_failures[short]
+            soft = same_tool_soft_budget()
+            if used >= soft and short not in same_tool_soft_nudged:
+                same_tool_soft_nudged.add(short)
+                chat_messages.append(
+                    {
+                        "role": "user",
+                        "content": same_tool_stop_nudge(short, used=used, soft=soft),
+                    }
+                )
+                _emit(
+                    logs,
+                    on_log,
+                    f"[{log_prefix}] Same-tool soft-cap ({short} {used}/{soft}): stop-retry nudge",
+                )
+        elif not failed and short:
+            same_tool_failures[short] = 0
         if consecutive_failures >= fuse_limit:
             fuse_triggered = True
             return True
@@ -859,7 +890,7 @@ def run_mcp_react_loop(
                     "content": result_str,
                 }
             )
-            if note_tool_result(result_str):
+            if note_tool_result(result_str, func_name):
                 output = fuse_message(
                     failures=consecutive_failures, max_failures=fuse_limit
                 )
@@ -1081,7 +1112,7 @@ def run_mcp_react_loop(
                                 "content": deny_msg,
                             }
                         )
-                        if note_tool_result(deny_msg):
+                        if note_tool_result(deny_msg, raw_tool_name or func_name):
                             output = fuse_message(
                                 failures=consecutive_failures, max_failures=fuse_limit
                             )
@@ -1261,7 +1292,7 @@ def run_mcp_react_loop(
                                     "content": result_str,
                                 }
                             )
-                            if note_tool_result(result_str):
+                            if note_tool_result(result_str, raw_tool_name or func_name):
                                 output = fuse_message(
                                     failures=consecutive_failures, max_failures=fuse_limit
                                 )
@@ -1309,7 +1340,7 @@ def run_mcp_react_loop(
                                 "content": result_str,
                             }
                         )
-                        if note_tool_result(result_str):
+                        if note_tool_result(result_str, raw_tool_name or func_name):
                             output = fuse_message(
                                 failures=consecutive_failures, max_failures=fuse_limit
                             )
@@ -1319,6 +1350,47 @@ def run_mcp_react_loop(
                                 f"[{log_prefix}] LOOP FUSE: {consecutive_failures} consecutive tool failures",
                             )
                             break
+                        continue
+
+                    from src.tool_use_policy import (
+                        same_tool_exhausted_result,
+                        same_tool_hard_budget,
+                    )
+
+                    same_short = fuse_short_tool_name(raw_tool_name) or fuse_short_tool_name(
+                        func_name
+                    )
+                    same_hard = same_tool_hard_budget()
+                    if same_short and same_tool_failures.get(same_short, 0) >= same_hard:
+                        from src.tool_steps import make_tool_step
+
+                        used = same_tool_failures[same_short]
+                        result_str = same_tool_exhausted_result(
+                            same_short, used=used, hard=same_hard
+                        )
+                        step_id = f"tool_{step_idx}"
+                        record_tool_step(
+                            make_tool_step(
+                                tool_alias=func_name,
+                                func_args=func_args,
+                                status="failed",
+                                step_idx=step_idx,
+                                step_id=step_id,
+                            )
+                        )
+                        _emit(
+                            logs,
+                            on_log,
+                            f"[{log_prefix}] Same-tool hard-cap "
+                            f"({same_short} {used}/{same_hard}): blocked {func_name}",
+                        )
+                        chat_messages.append(
+                            {
+                                "role": "tool",
+                                "tool_call_id": tc_id,
+                                "content": result_str,
+                            }
+                        )
                         continue
 
                     if is_network_tool(raw_tool_name) or is_network_tool(func_name):
@@ -1380,7 +1452,7 @@ def run_mcp_react_loop(
                             "content": result_str,
                         }
                     )
-                    if note_tool_result(result_str):
+                    if note_tool_result(result_str, raw_tool_name or func_name):
                         output = fuse_message(
                             failures=consecutive_failures, max_failures=fuse_limit
                         )

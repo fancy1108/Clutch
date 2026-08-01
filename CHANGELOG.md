@@ -15,6 +15,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 - **Chat Markdown tables:** GFM pipe tables (`| col | … |` + `|---|`) in assistant replies render as real HTML tables (with inline `code` / bold in cells) instead of raw pipe text.
 - **Chat scroll after tool turns (Q-UI-1):** Assistant replies no longer sit below the input dock with a dead scrollport — chat uses a dedicated inner scroller (flex shell no longer owns `overflow-y-auto`).
 - **Local clock in agent prompt:** Environment layer injects `Local time: YYYY-MM-DD HH:MM:SS TZ (UTC±HH:MM)` so Ollama/local models can answer 「现在几点」 without guessing or needing `date`.
+- **Same-tool fuse (D44):** Repeated failures of the same tool (e.g. `generate_image`) soft-nudge at 2 and hard-block at 3 this turn; `todo_write` / other meta-tool successes no longer reset the D9 consecutive-failure streak (closes the fail→todo→retry laundering gap).
 
 ## [1.3.0] - 2026-07-28
 

@@ -590,7 +590,8 @@
   5. **提示词（2026-07-24 补）**：**D53** — 运行时分层组装 + **渐进式披露**（system 底座 / env / 项目规则 / skills 目录按需全文 / mode reminder）；禁止把 `markdownDoc` 或整份 AGENTS.md 当作唯一 system。D7=发现内容，D53=组装架构。
   6. **Harness 纪律（2026-07-25 补）**：对齐 Grok Build「有工具就必须进循环」——按意图覆盖 network / workspace_read|write / git / shell；零 `tool_calls` 时注入族级 nudge 并以 `tool_choice=required` 重试一次（拒绝话术另走 generic）；目录诚实：偏好关闭时隐藏 `web_search` / `remember_preference`；`Allow network` 默认开。
   7. **联网停搜纪律（2026-07-25 补）**：对齐主流 Agent（ChatGPT/Perplexity/Cursor）「搜一次 → 抓 1–2 页 → 答」——`web_search`/`web_fetch` 软上限 3、硬上限 5；软上限注入 stop-search nudge；硬上限拒绝继续联网工具；禁止 `web_fetch` 搜索引擎 SERP；总步数 24 仍为写代码熔断，不充当联网预算。
-- **影响**：`builtin_tools` / `agent_mcp` / `chat_runner` / `mcp_react` / `agent_prompt` / `tool_use_policy` / AgentManager MCP UI / ChatFeed 活动条；`ROADMAP` §Chat Clutch Agent。
+  8. **同工具熔断 + 元工具不洗计数（2026-08-01 补）**：对齐 Cursor/Claude「同一失败动作勿死磕」——任一工具名连续失败软上限 2（nudge 改道）、硬上限 3（本回合拒绝再调该工具）；`todo_write` / `propose_plan` / `ask_user_question` 等元工具成功**不重置** D9 连续失败 streak（防 generate_image 失败夹 todo 成功绕过熔断）。环境变量：`CLUTCH_SAME_TOOL_SOFT_FAILURES` / `CLUTCH_SAME_TOOL_HARD_FAILURES`。
+- **影响**：`builtin_tools` / `agent_mcp` / `chat_runner` / `mcp_react` / `agent_prompt` / `tool_use_policy` / `run_control` / AgentManager MCP UI / ChatFeed 活动条；`ROADMAP` §Chat Clutch Agent。
 - **决策状态**：`可执行`
 
 ### D54 · Chat 交付物目录与真实出图（2026-07-27）

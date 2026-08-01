@@ -8,6 +8,31 @@ from typing import Any
 DEFAULT_MAX_CONSECUTIVE_FAILURES = 3
 DEFAULT_MAX_TOOL_STEPS = 24
 
+# Todo / plan / preference updates are bookkeeping — success must not clear a
+# streak of real tool failures (e.g. generate_image fail → todo_write ok → retry).
+_META_TOOLS = frozenset(
+    {
+        "todo_write",
+        "write_todos",
+        "update_todos",
+        "ask_user_question",
+        "propose_plan",
+        "remember_preference",
+        "set_agent_goal",
+        "update_agent_goal",
+        "clear_agent_goal",
+    }
+)
+
+
+def short_tool_name(name: str) -> str:
+    return (name or "").split("__")[-1].lower().replace("-", "_").strip()
+
+
+def is_meta_tool(name: str) -> bool:
+    """True for bookkeeping tools that should not reset the consecutive-failure fuse."""
+    return short_tool_name(name) in _META_TOOLS
+
 
 def max_consecutive_failures() -> int:
     raw = (os.environ.get("CLUTCH_LOOP_FUSE_FAILURES") or "").strip()
@@ -24,6 +49,7 @@ def max_consecutive_failures() -> int:
 _NON_FUSE_FAILURE_MARKERS = (
     "cannot be used on search-engine result pages",
     "network tool budget exhausted",
+    "tool failure budget exhausted",
     "redirected_from_web_fetch",
 )
 
@@ -45,6 +71,24 @@ def is_tool_failure_result(result: str | None) -> bool:
     if "error executing tool" in lowered:
         return True
     return False
+
+
+def next_consecutive_failures(
+    current: int,
+    *,
+    result: str | None,
+    tool_name: str = "",
+) -> int:
+    """Update D9 consecutive-failure streak.
+
+    Meta-tool successes (todo_write, …) leave the streak unchanged so models cannot
+    launder failures by rewriting todos between retries.
+    """
+    if is_tool_failure_result(result):
+        return current + 1
+    if is_meta_tool(tool_name):
+        return current
+    return 0
 
 
 def fuse_message(*, failures: int, max_failures: int, lang: str = "en") -> str:

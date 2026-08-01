@@ -21,6 +21,12 @@ from src.deliverable_intent import (
 NETWORK_SOFT_BUDGET = 3
 NETWORK_HARD_BUDGET = 5
 
+# Same-tool thrash (Cursor/Claude-style): soft nudge then hard-block further calls
+# to that tool name this turn. Tighter than network — retrying the identical failing
+# tool is almost never useful (esp. generate_image / apply_patch).
+SAME_TOOL_SOFT_BUDGET = 2
+SAME_TOOL_HARD_BUDGET = 3
+
 # --- Intent heuristics (user turn) ---
 
 _NETWORK_RE = re.compile(
@@ -115,6 +121,30 @@ def is_network_tool(name: str) -> bool:
     return short_tool_name(name) in _NETWORK_TOOLS
 
 
+def same_tool_soft_budget() -> int:
+    import os
+
+    raw = (os.environ.get("CLUTCH_SAME_TOOL_SOFT_FAILURES") or "").strip()
+    if not raw:
+        return SAME_TOOL_SOFT_BUDGET
+    try:
+        return max(1, int(raw))
+    except ValueError:
+        return SAME_TOOL_SOFT_BUDGET
+
+
+def same_tool_hard_budget() -> int:
+    import os
+
+    raw = (os.environ.get("CLUTCH_SAME_TOOL_HARD_FAILURES") or "").strip()
+    if not raw:
+        return SAME_TOOL_HARD_BUDGET
+    try:
+        return max(same_tool_soft_budget(), int(raw))
+    except ValueError:
+        return SAME_TOOL_HARD_BUDGET
+
+
 def network_budget_stop_nudge(
     *,
     used: int,
@@ -138,6 +168,39 @@ def network_budget_exhausted_result(
     return (
         f"Error: network tool budget exhausted ({used}/{hard} web_search/web_fetch). "
         "Answer NOW from prior tool results. Do not retry network tools this turn."
+    )
+
+
+def same_tool_stop_nudge(tool: str, *, used: int, soft: int | None = None) -> str:
+    soft = SAME_TOOL_SOFT_BUDGET if soft is None else soft
+    name = short_tool_name(tool) or "tool"
+    if name in {"generate_image", "generate_video"}:
+        return (
+            f"[System reminder — stop retrying {name}] Already failed {used} times "
+            f"(soft budget {soft}). Do NOT call `{name}` again this turn. "
+            "Continue remaining work (HTML / files / todos). Tell the user media "
+            "generation failed and how to fix it (Settings → Models key / network). "
+            "Do NOT write an HTML page as a fake image/video."
+        )
+    return (
+        f"[System reminder — stop retrying {name}] Already failed {used} times "
+        f"(soft budget {soft}). Do NOT call `{name}` again with the same approach. "
+        "Change strategy or finish with other tools."
+    )
+
+
+def same_tool_exhausted_result(tool: str, *, used: int, hard: int | None = None) -> str:
+    hard = SAME_TOOL_HARD_BUDGET if hard is None else hard
+    name = short_tool_name(tool) or "tool"
+    if name in {"generate_image", "generate_video"}:
+        return (
+            f"Error: tool failure budget exhausted for `{name}` ({used}/{hard}). "
+            "Do not retry media generation this turn. Continue with other deliverables "
+            "(e.g. HTML) and tell the user image/video generation failed."
+        )
+    return (
+        f"Error: tool failure budget exhausted for `{name}` ({used}/{hard}). "
+        "Do not call this tool again this turn; change strategy or finish without it."
     )
 
 
