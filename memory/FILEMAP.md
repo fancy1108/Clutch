@@ -125,16 +125,16 @@
 
 | 想改什么 | 去哪里 |
 |---------|--------|
-| 应用根布局、ClutchState 投影 | `App.tsx` |
+| 应用根布局、ClutchState 投影 | `App.tsx`（编排壳）· `hooks/useAppSession.ts` · `hooks/useAppSettings.ts` · `hooks/useAppWorkspace.ts` |
 | WebSocket store、`useClutchState` | `services/clutchState.ts` · 纯辅助函数见 `services/clutchStateUtils.ts` |
 | 会话 / 运行 API | `services/runApi.ts` |
 | Skills Registry API（P2-01） | `services/skillsApi.ts` |
 | Theme 偏好 API（P2-03） | `services/themeApi.ts`（含 language） |
 | API 抽象（mock 待 M2 替换） | `services/api.ts` |
 | 侧栏（工作区 / 历史，M2-07/09） | `sidebar.tsx` |
-| 底部状态栏（Branch / Model / Agent） | `App.tsx` footer |
+| 底部状态栏（Branch / Model / Agent） | `App.tsx` footer · `hooks/useAppSession.ts` |
 | 工作区 Git 分支 API | `services/workspaceApi.ts` → `GET /api/workspace/git` |
-| Chat 流与人工干预 UI | `components/ChatFeed.tsx` |
+| Chat 流与人工干预 UI | `components/ChatFeed.tsx`（壳）· `hooks/useChatFeedController.ts` · `components/ChatMessageBubble.tsx` · `components/ChatFeedDock.tsx` |
 | Chat 工具步骤条解析（D46） | `services/agentActivitySteps.ts` |
 | 用系统浏览器打开本地 HTML | `services/openInSystem.ts` · Tauri `clutch_open_path`（`src-tauri/src/lib.rs`） |
 | Chat 工具轨迹 UI（D46 verb_group） | `components/AgentLiveActivity.tsx` |
@@ -171,7 +171,9 @@
 | Chat 验证报告卡（D5/D50） | `components/VerificationReportCardView.tsx` · builtin `submit_verification` |
 | Chat Diff 摘要卡（D6/D50） | `components/DiffSummaryCardView.tsx` · builtin `submit_diff_summary` |
 | Chat Agent 卡壳（共享） | `components/chatAgentCard.tsx` |
+| Builtin tools 拆分（DECISIONS D38） | 门面 `builtin_tools.py` · agent 门禁/卡 `builtin_tools_agent.py` · FS/shell `builtin_tools_workspace.py` · git/web/media `builtin_tools_external.py` |
 | Sidecar 结构化 tool steps（D46） | `services/orchestrator/src/tool_steps.py` |
+| Chat 编排拆分（DECISIONS D38） | 编排壳 `chat_runner.py`（`ws_run`/`lifespan`）· Phase1：`chat_messages.py` / `chat_ws_events.py` / `chat_mcp_gates.py` · Phase2：`chat_run_live.py`（run 状态+live patch）/ `chat_plain.py` / `chat_workflow.py`（`main`/`chat_runner` re-export 兼容） |
 | Chat markdown（fence / 路径预览） | `components/chatContentRender.tsx` · `services/workspacePathLinks.ts` |
 | Coding 附件上传 / 路径 resolve API | `services/workspaceApi.ts` → `POST /api/workspace/attachments` · `GET /api/workspace/file/resolve`；后端 `workspace_attachments.py` |
 | Terminal Orchestra（Lane / OrchestratorBar / 路径 link） | `components/terminal-orchestra/`（`OrchestratorBar.tsx` 发图 chip；`terminalPathLinkProvider.ts` xterm 可点路径） |
@@ -181,7 +183,7 @@
 | Agent / 工具品牌 Logo | `services/brandLogos.ts` · `components/BrandLogo.tsx` · `assets/tool-logos/`（含 `mimo.svg`） |
 | 右侧面板（Overview/Files/Flow/Changes/Terminal） | `components/RightPanel.tsx` |
 | Terminal 日志子面板 | `components/TerminalPanel.tsx` |
-| 文件预览浮层 | `App.tsx`（`previewFile`） |
+| 文件预览浮层 | `hooks/useAppWorkspace.ts`（`previewFile`）· `App.tsx` 渲染 |
 | Prompt / 错误边界组件 | `components/PromptModal.tsx` · `components/AppErrorBoundary.tsx` |
 | 模型配置 UI（M4-09） | `components/ModelsManager.tsx` |
 | 主题 Appearance（P2） | `components/ThemeManager.tsx` |
@@ -213,7 +215,7 @@
 | 想改什么 | 去哪里 |
 |---------|--------|
 | FastAPI 入口、HTTP/WS 路由 | `src/main.py` · 模块化路由包 `src/routes/` (`workspace.py`, `models.py`, `settings.py`, `pty.py`, `design.py`, `chat.py`) |
-| Design 模式设计系统及画布生成服务 | `src/design/service.py` · 确定性出码 `src/design/fidelity_export.py`（D41）· 拆分子模块 `src/design/` (`session_store.py`, `preview_manager.py`, `generator.py`, `thumbnail.py`, `layout.py`, `token_usage.py`) |
+| Design 模式设计系统及画布生成服务 | `src/design/service.py` · 确定性出码 `src/design/fidelity_export.py`（D41）· 拆分子模块 `src/design/` (`session_store.py`, `preview_manager.py`, `generator.py` 编排壳, `gen_spec.py`, `gen_ui.py`, `gen_iterate.py`, `thumbnail.py`, `layout.py`, `token_usage.py`) |
 | ClutchState 初始值 | `src/state.py` |
 | 会话元数据持久化（M2-07） | `src/run_history.py` |
 | 会话 messages 持久化（D11） | `src/run_state_store.py` |

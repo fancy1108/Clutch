@@ -5,11 +5,41 @@
 
 ## Current Status
 
-- **阶段：** **v1.2.9**；主线 D8–D13 ✅；扩展/MCP **D14–D52 Agent 代 PM ✅**；Desktop E2E ✅；真连 Skip（密钥）；Design D36 仍 ❌
+- **阶段：** **v1.3.0** 已发；主线 D8–D13 ✅；扩展/MCP **D14–D52 Agent 代 PM ✅**；Desktop E2E ✅；Design D36 仍 ❌
 - **Git / PM 索引：** [`runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md`](../runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md)
-- **下次优先：** 重启 Sidecar 验证天气走 `web_search`/`web_fetch`；旧偏好若 Allow network=Off 需手动打开；commit 本轮 e2e + tool harness 修复
+- **下次优先：** D38 `builtin_tools.py`；P2 余下大文件
 
 ## Recent Sessions
+
+## 2026-08-01 会话（D38 P2：App.tsx hooks 拆分）
+
+- **落地：** `useAppSession.ts` / `useAppSettings.ts` / `useAppWorkspace.ts`；`App.tsx` ~2716→~1042 行壳
+- **测：** `pnpm --filter @clutch/desktop build` + `test`（223 passed）
+- **下次：** D38 `builtin_tools.py`
+
+## 2026-08-01 会话（D38：ChatFeed hooks + bubble/dock）
+
+- **落地：** `useChatFeedController.ts` / `ChatMessageBubble.tsx` / `ChatFeedDock.tsx`；`ChatFeed.tsx` ~2173→~490 行壳；re-export `configuredEngineToRuntimeLabel`
+- **测：** `pnpm --filter @clutch/desktop build` + `test`（223 passed）
+- **下次：** D38 `App.tsx` / `builtin_tools.py`
+
+## 2026-08-01 会话（D38：design/generator Spec/UI/Iterate）
+
+- **落地：** `gen_spec.py` / `gen_ui.py` / `gen_iterate.py`；`generator.py` 编排壳 + re-export
+- **测：** `pytest tests/test_design_service.py tests/test_prototype_generator.py` 44 passed
+- **下次：** ChatFeed hooks + bubble/dock
+
+## 2026-08-01 会话（D38 Phase 2：chat_runner plain/workflow）
+
+- **落地：** `chat_run_live.py` / `chat_plain.py` / `chat_workflow.py`；`chat_runner` ~4570→~1270 行；删 Phase1 影子 `_patch_question_card_status`；monkeypatch 指向定义模块
+- **测：** pytest 942 passed / 8 skipped
+- **下次：** generator + ChatFeed
+
+## 2026-08-01 会话（D38 Phase 1：chat_runner 拆分）
+
+- **落地：** `chat_messages.py` / `chat_ws_events.py` / `chat_mcp_gates.py`；`chat_runner` ~5347→~4570 行 + re-export；清理死 Request schema
+- **测：** 计划内子集 + 全量 pytest / `./scripts/verify.sh`
+- **下次：** Phase 2
 
 ## 2026-07-25 会话（Tool harness 全链路）
 
@@ -436,6 +466,12 @@
 - （可选）配置 `HOMEBREW_TAP_GITHUB_TOKEN`
 
 ## Recent Sessions
+
+## 2026-08-01 会话（D38：design/generator Spec/UI/Iterate）
+
+- **落地：** `gen_spec.py` / `gen_ui.py` / `gen_iterate.py`；`generator.py` 编排壳 + re-export
+- **测：** `pytest tests/test_design_service.py tests/test_prototype_generator.py` 44 passed
+- **下次：** ChatFeed hooks + bubble/dock
 
 ## 2026-07-11 会话（v1.2.2 发版准备）
 

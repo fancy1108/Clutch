@@ -336,7 +336,7 @@ def test_run_mcp_react_shell_heredoc_records_files_changed(tmp_path, monkeypatch
     monkeypatch.setattr("src.models_config.get_router", lambda: _Router())
     # Avoid foreground shell / run-context requirements in unit tests.
     monkeypatch.setattr(
-        "src.builtin_tools._bg_job_run_id",
+        "src.builtin_tools_workspace._bg_job_run_id",
         lambda: None,
     )
 

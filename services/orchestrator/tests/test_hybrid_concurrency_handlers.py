@@ -129,7 +129,7 @@ async def test_handle_plain_chat_noop_when_already_running(
         llm_called["ok"] = True
         raise AssertionError("llm should not run when status already running")
 
-    monkeypatch.setattr("src.chat_runner._llm_chat_reply", fail_llm)
+    monkeypatch.setattr("src.chat_plain._llm_chat_reply", fail_llm)
 
     websocket = MagicMock()
     websocket.send_text = AsyncMock()
@@ -173,7 +173,7 @@ async def test_handle_plain_chat_session_busy_keeps_running(
             "Shell session is busy.",
         )
 
-    monkeypatch.setattr("src.chat_runner._llm_chat_reply", raise_busy)
+    monkeypatch.setattr("src.chat_plain._llm_chat_reply", raise_busy)
 
     websocket = MagicMock()
     websocket.send_text = AsyncMock()
@@ -224,7 +224,7 @@ async def test_handle_plain_chat_queues_hybrid_pool_full(
         )
 
     drain = AsyncMock()
-    monkeypatch.setattr("src.chat_runner._llm_chat_reply", raise_pool_full)
+    monkeypatch.setattr("src.chat_plain._llm_chat_reply", raise_pool_full)
     monkeypatch.setattr("src.plain_chat_pool_queue.schedule_pool_drain", drain)
 
     websocket = MagicMock()
@@ -304,7 +304,7 @@ async def test_handle_plain_chat_commits_idle_before_ws_disconnect(
             False,
         )
 
-    monkeypatch.setattr("src.chat_runner._llm_chat_reply", fake_llm)
+    monkeypatch.setattr("src.chat_plain._llm_chat_reply", fake_llm)
 
     websocket = MagicMock()
     llm_done = {"ok": False}
@@ -330,7 +330,7 @@ async def test_handle_plain_chat_commits_idle_before_ws_disconnect(
         llm_done["ok"] = True
         return result
 
-    monkeypatch.setattr("src.chat_runner._llm_chat_reply", llm_then_flag)
+    monkeypatch.setattr("src.chat_plain._llm_chat_reply", llm_then_flag)
     websocket.send_text = AsyncMock(side_effect=send_text_after_llm)
 
     state = initial_state("run_ws_disconnect")

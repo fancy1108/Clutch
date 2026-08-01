@@ -107,7 +107,7 @@ async def test_handle_plain_chat_session_busy_audited(
             "This chat is still running a Hybrid shell turn.",
         )
 
-    monkeypatch.setattr("src.chat_runner._llm_chat_reply", raise_busy)
+    monkeypatch.setattr("src.chat_plain._llm_chat_reply", raise_busy)
 
     websocket = MagicMock()
     websocket.send_text = AsyncMock()
