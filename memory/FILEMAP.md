@@ -171,6 +171,7 @@
 | Chat 验证报告卡（D5/D50） | `components/VerificationReportCardView.tsx` · builtin `submit_verification` |
 | Chat Diff 摘要卡（D6/D50） | `components/DiffSummaryCardView.tsx` · builtin `submit_diff_summary` |
 | Chat Agent 卡壳（共享） | `components/chatAgentCard.tsx` |
+| Builtin tools 拆分（DECISIONS D38） | 门面 `builtin_tools.py` · agent 门禁/卡 `builtin_tools_agent.py` · FS/shell `builtin_tools_workspace.py` · git/web/media `builtin_tools_external.py` |
 | Sidecar 结构化 tool steps（D46） | `services/orchestrator/src/tool_steps.py` |
 | Chat 编排拆分（DECISIONS D38） | 编排壳 `chat_runner.py`（`ws_run`/`lifespan`）· Phase1：`chat_messages.py` / `chat_ws_events.py` / `chat_mcp_gates.py` · Phase2：`chat_run_live.py`（run 状态+live patch）/ `chat_plain.py` / `chat_workflow.py`（`main`/`chat_runner` re-export 兼容） |
 | Chat markdown（fence / 路径预览） | `components/chatContentRender.tsx` · `services/workspacePathLinks.ts` |
