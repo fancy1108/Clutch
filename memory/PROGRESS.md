@@ -7,15 +7,21 @@
 
 - **阶段：** **v1.3.0** 已发；主线 D8–D13 ✅；扩展/MCP **D14–D52 Agent 代 PM ✅**；Desktop E2E ✅；Design D36 仍 ❌
 - **Git / PM 索引：** [`runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md`](../runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md)
-- **下次优先：** D38 Phase 2（`chat_runner` plain chat / workflow 编排段）；或另开 Task 拆 `design/generator.py` / `ChatFeed.tsx`
+- **下次优先：** D38 拆 `design/generator.py`（按 Spec/UI/Iterate）与 `ChatFeed.tsx`（hooks + bubble/dock）
 
 ## Recent Sessions
+
+## 2026-08-01 会话（D38 Phase 2：chat_runner plain/workflow）
+
+- **落地：** `chat_run_live.py` / `chat_plain.py` / `chat_workflow.py`；`chat_runner` ~4570→~1270 行；删 Phase1 影子 `_patch_question_card_status`；monkeypatch 指向定义模块
+- **测：** pytest 942 passed / 8 skipped
+- **下次：** generator + ChatFeed
 
 ## 2026-08-01 会话（D38 Phase 1：chat_runner 拆分）
 
 - **落地：** `chat_messages.py` / `chat_ws_events.py` / `chat_mcp_gates.py`；`chat_runner` ~5347→~4570 行 + re-export；清理死 Request schema
 - **测：** 计划内子集 + 全量 pytest / `./scripts/verify.sh`
-- **下次：** Phase 2 或 backlog P1（generator / ChatFeed）
+- **下次：** Phase 2
 
 ## 2026-07-25 会话（Tool harness 全链路）
 

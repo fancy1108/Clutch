@@ -4,6 +4,15 @@
 > **何时写：** 每个**代码 Task** 完成并 commit 后，在 Check-out 追加一节（见 `CLAUDE.md` §Check-out）。  
 > **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。
 
+## D38 Phase 2 · chat_runner plain/workflow（2026-08-01）
+
+| 项 | 说明 |
+|----|------|
+| **Branch / PR** | `cursor/d38-chat-runner-split-9d3c` · [#98](https://github.com/fancy1108/Clutch/pull/98) |
+| **Changed** | `chat_run_live.py` / `chat_plain.py` / `chat_workflow.py`；`chat_runner` 壳 + re-export；测试 monkeypatch 指向定义模块 |
+| **Verification** | `pytest` **942 passed / 8 skipped** |
+| **Stat** | `chat_runner.py` ≈4570→≈1270 |
+
 ## D38 Phase 1 · chat_runner 拆分（2026-08-01）
 
 | 项 | 说明 |

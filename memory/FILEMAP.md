@@ -172,7 +172,7 @@
 | Chat Diff 摘要卡（D6/D50） | `components/DiffSummaryCardView.tsx` · builtin `submit_diff_summary` |
 | Chat Agent 卡壳（共享） | `components/chatAgentCard.tsx` |
 | Sidecar 结构化 tool steps（D46） | `services/orchestrator/src/tool_steps.py` |
-| Chat 编排拆分（DECISIONS D38 Phase 1） | 编排壳 `chat_runner.py` · 消息/seal `chat_messages.py` · WS 信封 `chat_ws_events.py` · MCP/Plan/Question 门禁 `chat_mcp_gates.py`（`main`/`chat_runner` re-export 兼容） |
+| Chat 编排拆分（DECISIONS D38） | 编排壳 `chat_runner.py`（`ws_run`/`lifespan`）· Phase1：`chat_messages.py` / `chat_ws_events.py` / `chat_mcp_gates.py` · Phase2：`chat_run_live.py`（run 状态+live patch）/ `chat_plain.py` / `chat_workflow.py`（`main`/`chat_runner` re-export 兼容） |
 | Chat markdown（fence / 路径预览） | `components/chatContentRender.tsx` · `services/workspacePathLinks.ts` |
 | Coding 附件上传 / 路径 resolve API | `services/workspaceApi.ts` → `POST /api/workspace/attachments` · `GET /api/workspace/file/resolve`；后端 `workspace_attachments.py` |
 | Terminal Orchestra（Lane / OrchestratorBar / 路径 link） | `components/terminal-orchestra/`（`OrchestratorBar.tsx` 发图 chip；`terminalPathLinkProvider.ts` xterm 可点路径） |
