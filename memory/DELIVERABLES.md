@@ -4,6 +4,16 @@
 > **何时写：** 每个**代码 Task** 完成并 commit 后，在 Check-out 追加一节（见 `CLAUDE.md` §Check-out）。  
 > **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。
 
+## D38 Phase 1 · chat_runner 拆分（2026-08-01）
+
+| 项 | 说明 |
+|----|------|
+| **Commit** | `eb3f1e1` |
+| **Branch / PR** | `cursor/d38-chat-runner-split-9d3c` · [#98](https://github.com/fancy1108/Clutch/pull/98) |
+| **Changed** | `chat_messages.py` / `chat_ws_events.py` / `chat_mcp_gates.py`；`chat_runner` re-export；死 Request schema 清理；FILEMAP / PROGRESS / CHANGELOG |
+| **Verification** | pre-commit `./scripts/verify.sh`：build + vitest 223 + pytest **942 passed / 8 skipped** + doc-drift OK |
+| **Stat** | `chat_runner.py` ≈5347→≈4570；`git show --stat eb3f1e1` |
+
 ## Agent 代 PM 自验收 D14–D52（2026-07-25）
 
 | 项 | 说明 |
