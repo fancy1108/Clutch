@@ -14,7 +14,7 @@ def test_generate_ui_html_detects_vision_error_in_html(monkeypatch) -> None:
     fake_image = "data:image/png;base64,iVBORw0KGgo="
 
     # Mock _check_vision_ok to return True
-    monkeypatch.setattr("src.design.generator._check_vision_ok", lambda *a, **kw: True)
+    monkeypatch.setattr("src.design.gen_ui._check_vision_ok", lambda *a, **kw: True)
 
     call_log = []
 
@@ -1286,10 +1286,12 @@ def test_generate_session_with_multiple_screens(workspace, monkeypatch) -> None:
             )
         return ("", None, {}, False)
         
+    monkeypatch.setattr("src.design.gen_ui._llm_complete", mock_complete)
     monkeypatch.setattr("src.design.generator._llm_complete", mock_complete)
     # Also mock _llm_complete_vision which is used in _generate_ui_html and generating design spec
     def mock_complete_vision(router, prompt, *, model_id, image_data_url=None, **kwargs):
         return mock_complete(router, prompt, model_id=model_id, **kwargs)
+    monkeypatch.setattr("src.design.gen_ui._llm_complete_vision", mock_complete_vision)
     monkeypatch.setattr("src.design.generator._llm_complete_vision", mock_complete_vision)
 
     run_id = "test-multi-run"

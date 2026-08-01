@@ -214,7 +214,7 @@
 | 想改什么 | 去哪里 |
 |---------|--------|
 | FastAPI 入口、HTTP/WS 路由 | `src/main.py` · 模块化路由包 `src/routes/` (`workspace.py`, `models.py`, `settings.py`, `pty.py`, `design.py`, `chat.py`) |
-| Design 模式设计系统及画布生成服务 | `src/design/service.py` · 确定性出码 `src/design/fidelity_export.py`（D41）· 拆分子模块 `src/design/` (`session_store.py`, `preview_manager.py`, `generator.py`, `thumbnail.py`, `layout.py`, `token_usage.py`) |
+| Design 模式设计系统及画布生成服务 | `src/design/service.py` · 确定性出码 `src/design/fidelity_export.py`（D41）· 拆分子模块 `src/design/` (`session_store.py`, `preview_manager.py`, `generator.py` 编排壳, `gen_spec.py`, `gen_ui.py`, `gen_iterate.py`, `thumbnail.py`, `layout.py`, `token_usage.py`) |
 | ClutchState 初始值 | `src/state.py` |
 | 会话元数据持久化（M2-07） | `src/run_history.py` |
 | 会话 messages 持久化（D11） | `src/run_state_store.py` |
