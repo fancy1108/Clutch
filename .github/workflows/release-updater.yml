@@ -48,7 +48,7 @@ jobs:
         with:
           ref: ${{ github.event.inputs.release_tag }}
 
-      - uses: pnpm/action-setup@v6
+      - uses: pnpm/action-setup@v6.0.9
         with:
           version: 9.15.0
 
