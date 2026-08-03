@@ -11,7 +11,7 @@
     "test:acceptance": "playwright test -c playwright.config.ts --project=desktop tests/desktop/acceptance.spec.ts"
   },
   "devDependencies": {
-    "@playwright/test": "^1.61.1",
+    "@playwright/test": "^1.62.1",
     "@srsholmes/tauri-playwright": "^0.4.1"
   }
 }
