@@ -5,11 +5,18 @@
 
 ## Current Status
 
-- **阶段：** **v1.3.0** 已发；主线 D8–D13 ✅；扩展/MCP **D14–D52 Agent 代 PM ✅**；Desktop E2E ✅；Design D36 仍 ❌
+- **阶段：** **v1.3.0** 已发；主线 D8–D13 ✅；扩展/MCP **D14–D52 Agent 代 PM ✅**；Desktop E2E ✅；**Design D36 PM ✅**
 - **Git / PM 索引：** [`runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md`](../runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md)
-- **下次优先：** Design D36 未做。
+- **下次优先：** 无强制下一枪；候选见 `BACKLOG.md`。
 
 ## Recent Sessions
+
+## 2026-08-24 会话（Design D36 PM 点验）
+
+- **做了：** ROADMAP Design D36 全表标 ✅（功能已随 v1.2.0 发版；此前缺人工勾选）。
+- **没做：** 不改 Design 代码。
+- **测：** PM 口头点验 2026-08-24。
+- **下次：** 候选池。
 
 ## 2026-08-24 会话（B-48：消融闸 + trajectory）
 

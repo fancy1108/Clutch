@@ -251,7 +251,14 @@ def _load_workspace_rules(workspace_path: str | None) -> str:
 
 def _format_local_time(now: datetime | None = None) -> str:
     """Human-readable local clock for the Environment prompt layer."""
-    stamp = (now or datetime.now().astimezone()).astimezone()
+    if now is None:
+        stamp = datetime.now().astimezone()
+    elif now.tzinfo is None:
+        stamp = now.astimezone()
+    else:
+        # Keep the given offset. `.astimezone()` with no args would convert
+        # to the host TZ and fail CI (Ubuntu UTC) for a UTC+8 fixture.
+        stamp = now
     tz_name = stamp.tzname() or ""
     raw_offset = stamp.strftime("%z")  # e.g. +0800
     if len(raw_offset) == 5:

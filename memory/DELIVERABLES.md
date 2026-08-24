@@ -4,6 +4,14 @@
 > **何时写：** 每个**代码 Task** 完成并 commit 后，在 Check-out 追加一节（见 `CLAUDE.md` §Check-out）。  
 > **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。
 
+## Design D36 PM 点验（2026-08-24）
+
+| 项 | 说明 |
+|----|------|
+| **PM** | Design 主路径已验收（Header / 会话 / 画布 / iterate / 落盘 / Send to Coding / `design-to-code`） |
+| **ROADMAP** | §Design 模式 全表 ✅ |
+| **代码** | 随 v1.2.0 已发；本次不改产品代码 |
+
 ## B-48 Eval ablation（2026-08-24）
 
 | 项 | 说明 |

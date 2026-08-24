@@ -33,7 +33,7 @@
 | E2E / 前端单测 | P0 | M2 | ✅ | M2-10, T-01–03（D1）；D12 桌面 E2E 7/7 |
 | macOS 打包 | P1 | M4 | ✅ | M4-06 |
 | **MVP 闭环** | — | M3 | ✅ | proposal §10.1；T-03 |
-| **Design 模式（D36）** | P1 | Design | ❌ | 见下 §Design 模式 |
+| **Design 模式（D36）** | P1 | Design | ✅ | 见下 §Design 模式；PM 2026-08-24 |
 
 ## Chat Clutch Agent 能力（DECISIONS D44 · 默认 FAIL）
 
@@ -219,18 +219,18 @@
 
 ## Design 模式（D36 · 默认 FAIL）
 
-> Header Coding/Design + 工作区 Design 会话 + 原型交互画布；未实际验证不得标 ✅。
+> Header Coding/Design + 工作区 Design 会话 + 原型交互画布。PM 2026-08-24 点验通过。
 
 | 验收项 | 优先级 | 状态 | 说明 |
 |--------|--------|------|------|
-| Header Coding \| Design；语言在 Settings General | P0 | ❌ | 人工 |
-| Design 无独立项目左栏；会话按 mode 过滤 | P0 | ❌ | 工作区历史 |
-| 欢迎页 → 无限画布 | P0 | ❌ | 原型设计主路径 |
-| 先规范卡 → 再界面描绘动画 | P0 | ❌ | 两阶段 generate |
-| 底部 NL 修改闭环 | P0 | ❌ | iterate |
-| `DESIGN.md` / spec / screens 落盘 | P0 | ❌ | `.clutch/design/sessions/<run_id>/` |
-| Approve → UI code → preview → Send to Coding | P0 | ✅ | Preview Demo → Coding；D41 确定性导出 |
-| `design-to-code` 工作流模板 | P1 | ❌ | 内置 SOP |
+| Header Coding \| Design；语言在 Settings General | P0 | ✅ | PM 2026-08-24 |
+| Design 无独立项目左栏；会话按 mode 过滤 | P0 | ✅ | PM 2026-08-24 |
+| 欢迎页 → 无限画布 | P0 | ✅ | PM 2026-08-24 |
+| 先规范卡 → 再界面描绘动画 | P0 | ✅ | PM 2026-08-24 |
+| 底部 NL 修改闭环 | P0 | ✅ | PM 2026-08-24 |
+| `DESIGN.md` / spec / screens 落盘 | P0 | ✅ | PM 2026-08-24 |
+| Approve → UI code → preview → Send to Coding | P0 | ✅ | Preview Demo → Coding；D41 确定性导出；PM 2026-08-24 |
+| `design-to-code` 工作流模板 | P1 | ✅ | PM 2026-08-24 |
 
 ## E2E 落地前提（关联 DECISIONS D1）
 

@@ -14,6 +14,13 @@ def test_format_local_time_includes_clock_and_offset() -> None:
     assert "UTC+08:00" in text
 
 
+def test_format_local_time_keeps_utc_offset_on_utc_host() -> None:
+    now = datetime(2026, 8, 1, 7, 13, 6, tzinfo=timezone.utc)
+    text = _format_local_time(now)
+    assert "2026-08-01 07:13:06" in text
+    assert "UTC+00:00" in text
+
+
 def test_compose_agent_system_prompt_keeps_clock_out_of_prefix() -> None:
     from src.agent_prompt import attach_trailing_status, compose_agent_prompt_assembly
 
