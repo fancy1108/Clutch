@@ -4,6 +4,14 @@
 > **何时写：** 每个**代码 Task** 完成并 commit 后，在 Check-out 追加一节（见 `CLAUDE.md` §Check-out）。  
 > **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。
 
+## B-41 Tool ACI（2026-08-24）
+
+| 项 | 说明 |
+|----|------|
+| **Verification** | `cd services/orchestrator && uv run pytest tests/test_tool_aci_b41.py tests/test_tool_use_policy.py tests/test_builtin_tools_d1.py tests/test_tool_steps.py tests/test_mcp_react.py -q` → 40 passed |
+| **PM** | 「有没有叫 README.md」→ **List .** / Listed 1 dir，不是 Search |
+| **Files** | `tool_use_policy.py` · `builtin_tools.py` · `mcp_react.py` · `test_tool_aci_b41.py` |
+
 ## Agent 代 PM 自验收 D14–D52（2026-07-25）
 
 | 项 | 说明 |

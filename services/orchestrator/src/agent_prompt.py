@@ -445,6 +445,7 @@ def compose_agent_prompt_assembly(
                 "Tool discipline (harness-enforced): never claim you lack access to the "
                 "workspace, files, git, shell, or internet while the matching tools are listed. "
                 "Workspace questions → `list_dir` / `read_file` / `grep` first. "
+                "Named-file existence (有没有叫 X.md) → `list_dir` only; never grep a filename. "
                 "Edits → `read_file` then `search_replace` / `apply_patch`. "
                 f"{git_hint}"
                 "Commands/tests → `run_terminal_cmd`. "

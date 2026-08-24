@@ -364,6 +364,19 @@
 |----|------|----------|--------------|
 | B45-01 | 投毒不入库 | 裸 URL / 请记住+https 被拒绝 | `uv run pytest tests/test_workspace_memory_b39.py -v` |
 
+## Agent tool ACI（B-41）
+
+> 书 04。不升 D54+。无新 Chat 卡片。
+
+**做了什么：** 内置工具描述写明何时用/不用。按文件名查是否存在（如 README.md）走 `list_dir`；若模型仍 `grep` 文件名，harness 改写成 `list_dir`，步骤条显示 **List** 而不是 Search。不读文件内容。
+
+**没做什么：** 不加按名递归 glob 工具；不改 D46 步骤条组件。
+
+| ID | 任务 | 完成标准 | Verification |
+|----|------|----------|--------------|
+| B41-01 | 文件名 grep 改走 list | `grep README.md` 返回目录列表，不含文件正文 | `uv run pytest tests/test_tool_aci_b41.py -v` |
+| B41-02 | 步骤条是 List | 改写后 kind=list，header 为 Listed 不是 Searched | 同上 |
+
 ## 待建 pytest 文件（随 task 交付）
 
 | 文件 | 关联 task |
@@ -384,3 +397,4 @@
 | `tests/test_repository_groups.py` | P2-05 |
 | `tests/test_skills_registry.py` | P2-01 |
 | `tests/test_agent_eval_b34.py` | B34-01–03 |
+| `tests/test_tool_aci_b41.py` | B41-01–02 |

@@ -166,6 +166,10 @@ def _execute_tool_call(
     step_id: str | None = None,
 ) -> str:
     from src.tool_steps import append_execute_output_detail, make_tool_step
+    from src.tool_use_policy import apply_filename_grep_rewrite
+
+    incoming_name = func_name
+    func_name, func_args = apply_filename_grep_rewrite(func_name, dict(func_args or {}))
 
     def _emit_inline_diffs(tool_name: str, args: dict[str, Any], result: str) -> list[dict[str, Any]]:
         """Build Cursor-style per-edit cards; attach to tool steps (not separate Chat bubbles)."""
@@ -202,6 +206,10 @@ def _execute_tool_call(
         on_tool_step(step)
 
     route = tool_routes.get(func_name)
+    if route is None and func_name != incoming_name:
+        original = tool_routes.get(incoming_name)
+        if original:
+            route = (original[0], "list_dir")
     active_id = step_id or f"tool_{step_idx}"
     if on_tool_step:
         on_tool_step(

@@ -20,6 +20,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 ### Changed
 
 - **No-progress loop (B-38):** Repeating `read_file` / `list_dir` / `grep` / `read_skill` with the same arguments nudges on the 2nd call and stops the turn on the 3rd (Continue, same as D9 fuse). Writes are not counted.
+- **Tool ACI (B-41):** `list_dir` / `read_file` / `grep` / `web_search` say when not to use them. Filename-shaped `grep` (e.g. `README.md`) is rewritten to `list_dir` so Chat shows **List**, not Search.
 - **Archived tool results (B-44):** Offloaded tool dumps are marked `source=tool truncated=yes`.
 - **Verification gate (B-37):** Claiming `submit_verification` passed now runs the workspace test suite when one exists and checks listed `changed_files` are on disk. Failures force the existing D5 card to failed (extra harness steps). No second LLM reviewer, no new card.
 - **Layered context (B-36):** ReAct tool results offload to `runs/archive/tool_results/` when large, drop duplicate/empty noise, then batch-offload older tools past a mid threshold. Full `/compact` digest remains the last resort (D8). No new Chat bubble.

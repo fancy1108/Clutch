@@ -108,6 +108,23 @@ _REFUSAL_RE = re.compile(
 
 _NETWORK_TOOLS = frozenset({"web_search", "web_fetch", "internet_search", "search_web"})
 _READ_TOOLS = frozenset({"read_file", "list_dir", "grep"})
+_FILE_EXT = (
+    "md|txt|json|py|ts|tsx|js|jsx|mjs|cjs|rs|go|toml|yml|yaml|html|htm|css|"
+    "sh|env|lock|c|h|java|kt|swift|rb|php"
+)
+_FILENAME_GREP_RE = re.compile(rf"^[\w.-]+\.(?:{_FILE_EXT})$", re.IGNORECASE)
+_FILE_EXISTS_RE = re.compile(
+    r"("
+    r"不要读文件内容|"
+    r"有没有叫.{0,80}的文件|"
+    r"找出工作区里有没有|"
+    r"find (if )?(there'?s |there is )?(a )?file named|"
+    r"is there (a )?file named|"
+    r"does (a )?file named"
+    r")",
+    re.IGNORECASE,
+)
+_FILE_SCOPE_RE = re.compile(rf"\.({_FILE_EXT})$", re.IGNORECASE)
 _WRITE_TOOLS = frozenset({"search_replace", "apply_patch", "run_terminal_cmd"})
 _GIT_TOOLS = frozenset({"git_status", "git_diff", "git_commit"})
 _SHELL_TOOLS = frozenset({"run_terminal_cmd"})
@@ -119,6 +136,46 @@ def short_tool_name(name: str) -> str:
 
 def is_network_tool(name: str) -> bool:
     return short_tool_name(name) in _NETWORK_TOOLS
+
+
+def looks_like_filename_grep(pattern: str) -> bool:
+    """True when grep is being used to find a file by name, not search contents."""
+    raw = (pattern or "").strip()
+    if not raw:
+        return False
+    core = raw[1:] if raw.startswith("^") else raw
+    if core.endswith("$"):
+        core = core[:-1]
+    unescaped = core.replace(r"\.", ".")
+    if re.search(r"[\\^$*+?()[\]{}|]", unescaped):
+        return False
+    name = unescaped.replace("\\", "/").rsplit("/", 1)[-1]
+    return bool(_FILENAME_GREP_RE.match(name))
+
+
+def _scope_looks_like_file(path: str) -> bool:
+    raw = (path or "").strip().replace("\\", "/").rstrip("/")
+    if not raw or raw in {".", ".."}:
+        return False
+    return bool(_FILE_SCOPE_RE.search(raw.rsplit("/", 1)[-1]))
+
+
+def apply_filename_grep_rewrite(
+    func_name: str, func_args: dict | None
+) -> tuple[str, dict]:
+    """Rewrite filename-shaped grep calls to list_dir so Chat shows List, not Search."""
+    args = dict(func_args or {})
+    if short_tool_name(func_name) != "grep":
+        return func_name, args
+    if not looks_like_filename_grep(str(args.get("pattern") or "")):
+        return func_name, args
+    if _scope_looks_like_file(str(args.get("path") or "")):
+        return func_name, args
+    list_path = str(args.get("path") or ".").strip() or "."
+    if "__" in func_name:
+        prefix = func_name.split("__", 1)[0]
+        return f"{prefix}__list_dir", {"path": list_path}
+    return "list_dir", {"path": list_path}
 
 
 def same_tool_soft_budget() -> int:
@@ -228,6 +285,11 @@ _NUDGES = {
         "Call `web_search` (if listed) or `web_fetch` on a concrete public URL "
         "(e.g. https://wttr.in/Shanghai?format=3 for weather).",
     ),
+    "file_exists": _nudge(
+        "file_exists",
+        "Call `list_dir` on the workspace (usually path `.`). "
+        "Do NOT grep a filename and do NOT read_file — existence is a directory listing.",
+    ),
     "workspace_read": _nudge(
         "workspace_read",
         "Call `list_dir`, `read_file`, and/or `grep` on the workspace — do not invent file contents.",
@@ -300,6 +362,8 @@ def classify_tool_expectation(
         return _NUDGES["shell"]
     if _WORKSPACE_WRITE_RE.search(text) and available_tools & _WRITE_TOOLS:
         return _NUDGES["workspace_write"]
+    if _FILE_EXISTS_RE.search(text) and "list_dir" in short_tools:
+        return _NUDGES["file_exists"]
     if _WORKSPACE_READ_RE.search(text) and available_tools & _READ_TOOLS:
         return _NUDGES["workspace_read"]
     return None

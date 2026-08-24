@@ -188,6 +188,16 @@
 |--------|--------|------|------|
 | 请记住+URL 不入库 | P0 | ✅ | PM 2026-08-24：remember_preference 红叉，未说已保存 |
 
+## Agent tool ACI（B-41 · 默认 FAIL）
+
+> 书 04。定义：[`specs/core/tasks.md`](../specs/core/tasks.md) §Agent tool ACI。  
+> 按文件名查存在走 `list_dir`；步骤条 **List**，不是 Search。PM 2026-08-24 点验通过。
+
+| 验收项 | 优先级 | 状态 | 说明 |
+|--------|--------|------|------|
+| 文件名查询不 grep 内容 | P0 | ✅ | pytest + PM 2026-08-24：List .，未 grep |
+| 步骤条显示 List | P0 | ✅ | PM 2026-08-24：Listed 1 dir，不是 Search |
+
 ## Design 模式（D36 · 默认 FAIL）
 
 > Header Coding/Design + 工作区 Design 会话 + 原型交互画布；未实际验证不得标 ✅。

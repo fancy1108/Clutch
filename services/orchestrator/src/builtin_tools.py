@@ -56,8 +56,9 @@ def list_builtin_tools() -> list[dict[str, Any]]:
             "name": "read_file",
             "description": (
                 "Read a file from the active workspace. "
-                "Text files return numbered lines; images use local OCR/analysis; "
-                "PDFs use pdftotext when available (D33)."
+                "Use when you need file contents. Do NOT use to re-read the same path "
+                "you just read — answer or edit instead. "
+                "Example: {\"path\":\"README.md\",\"limit\":80}."
             ),
             "inputSchema": {
                 "type": "object",
@@ -77,7 +78,12 @@ def list_builtin_tools() -> list[dict[str, Any]]:
         },
         {
             "name": "list_dir",
-            "description": "List files and directories under a workspace-relative path.",
+            "description": (
+                "List files and directories under a workspace-relative path. "
+                "Use to check whether a named file exists (e.g. README.md). "
+                "Do NOT grep or read_file just to see if a file is there. "
+                "Example: {\"path\":\".\"}."
+            ),
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -92,7 +98,10 @@ def list_builtin_tools() -> list[dict[str, Any]]:
             "name": "grep",
             "description": (
                 "Search file contents in the workspace (ripgrep if available). "
-                "Returns matching lines with paths."
+                "Use for symbols/strings across files, not filenames. "
+                "Do NOT grep for a filename (README.md, package.json) — use list_dir. "
+                "Do NOT repeat the same pattern+path. "
+                "Example: {\"pattern\":\"TODO\",\"path\":\"src\"}."
             ),
             "inputSchema": {
                 "type": "object",
@@ -632,6 +641,8 @@ def list_builtin_tools() -> list[dict[str, Any]]:
                     "events, docs, etc. Returns titles, URLs, and snippets. "
                     "For open questions call this ONCE (or twice only if results are empty), "
                     "then web_fetch at most 1–2 concrete result URLs, then answer. "
+                    "Do NOT use for files already in the workspace — use grep/read_file. "
+                    "Example: {\"query\":\"Shanghai weather today\"}. "
                     "Requires Settings → Allow network."
                 ),
                 "inputSchema": {
@@ -1359,6 +1370,9 @@ def build_inline_edit_diff_cards(
 
 
 def execute_builtin_tool(tool_name: str, arguments: dict[str, Any]) -> str:
+    from src.tool_use_policy import apply_filename_grep_rewrite
+
+    tool_name, arguments = apply_filename_grep_rewrite(tool_name, arguments)
     handlers = {
         "read_file": _tool_read_file,
         "list_dir": _tool_list_dir,

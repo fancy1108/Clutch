@@ -7,16 +7,23 @@
 
 - **阶段：** **v1.3.0** 已发；主线 D8–D13 ✅；扩展/MCP **D14–D52 Agent 代 PM ✅**；Desktop E2E ✅；Design D36 仍 ❌
 - **Git / PM 索引：** [`runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md`](../runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md)
-- **下次优先：** B-41 待验收。Design D36 未做。
+- **下次优先：** Design D36 未做。
 
 ## Recent Sessions
+
+## 2026-08-24 会话（B-41：工具何时用）
+
+- **做了：** 文件名存在走 `list_dir`；`grep README.md` 被改写成列目录，步骤条 **List** 不是 Search。ACI 写明何时不用 grep。PM 验收通过。
+- **没做：** 无。
+- **测：** `test_tool_aci_b41`；真机 List . / Listed 1 dir。
+- **下次：** Design D36。
 
 ## 2026-08-24 会话（B-44：落盘指针来源标记）
 
 - **做了：** 超长工具结果落盘后，送给模型的指针带 `source=tool truncated=yes`。Chat 无新卡片。PM 用 `CHANGELOG.md` 全文 `read_file` 验收通过。
 - **没做：** 不把落盘正文自动灌回模型；Chat 展开区仍是短预览。
 - **测：** `test_context_layers_b36` 5 passed；真机 `runs/archive/tool_results/98131840dcd6.txt`。
-- **下次：** B-41 待验收。
+- **下次：** 已 commit `dc3a085`。
 
 ## 2026-08-24 会话（B-45：记忆投毒过滤）
 
