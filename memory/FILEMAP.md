@@ -35,7 +35,7 @@
 | 产品介绍文档 | `docs/PRODUCT_INTRO.md` |
 | **新手入门（中英）** | `docs/GETTING_STARTED.md` · 仓库 `README.md` / `README.zh-CN.md` |
 | 文档总索引 | `docs/README.md` |
-| 系统架构图（HTML） | `docs/diagrams/clutch-system-architecture.html` · 叙事见 `docs/ARCHITECTURE.md` |
+| 系统架构图 | 叙事 `docs/ARCHITECTURE.md`（本地 HTML 预览不入库） |
 | 开源 / DMG 分发排期（OSR-xx） | `docs/OPEN_SOURCE_RELEASE.md` |
 | 应用内更新（Prep / Go-live） | `docs/UPDATES.md` · `.github/workflows/release-updater.yml` |
 | Sidecar 热更（D37） | `apps/desktop/src-tauri/src/sidecar_patch.rs` · `apps/desktop/src/services/sidecarPatch.ts` · `SidecarPatchReady.tsx` · `scripts/write-sidecar-patch-manifest.sh` |
