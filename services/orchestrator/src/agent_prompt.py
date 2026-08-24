@@ -433,14 +433,20 @@ def compose_agent_prompt_assembly(
             )
         else:
             from src.preferences_storage import load_allow_network
+            from src.workspace import get_git_info
 
             network_on = load_allow_network()
+            git_hint = (
+                "Git questions → `git_status` / `git_diff` / `git_commit`. "
+                if get_git_info().get("is_git_repo")
+                else ""
+            )
             network_block = (
                 "Tool discipline (harness-enforced): never claim you lack access to the "
                 "workspace, files, git, shell, or internet while the matching tools are listed. "
                 "Workspace questions → `list_dir` / `read_file` / `grep` first. "
                 "Edits → `read_file` then `search_replace` / `apply_patch`. "
-                "Git questions → `git_status` / `git_diff` / `git_commit`. "
+                f"{git_hint}"
                 "Commands/tests → `run_terminal_cmd`. "
                 "Live / external facts (weather, news, events, prices, unfamiliar docs): "
                 + (

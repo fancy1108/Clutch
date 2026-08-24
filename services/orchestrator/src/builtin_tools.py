@@ -12,6 +12,11 @@ from pathlib import Path
 from typing import Any
 
 CLUTCH_TOOLS_SERVER_ID = "clutch-tools"
+_GIT_TOOL_NAMES = frozenset({"git_status", "git_diff", "git_commit"})
+_NOT_A_GIT_REPO = (
+    "This workspace is not a git repository. "
+    "Git status/diff/commit are unavailable here; use list_dir to inspect files."
+)
 
 _MAX_READ_CHARS = 120_000
 _MAX_GREP_HITS = 50
@@ -611,6 +616,8 @@ def list_builtin_tools() -> list[dict[str, Any]]:
         },
     ]
     # Catalog honesty: never advertise tools that cannot run under current prefs.
+    if _active_workspace_is_git_repo() is False:
+        tools = [t for t in tools if str(t.get("name")) not in _GIT_TOOL_NAMES]
     if not load_cross_session_memory_enabled():
         tools = [t for t in tools if str(t.get("name")) != "remember_preference"]
     if load_allow_network():
@@ -2050,29 +2057,47 @@ def _run_git(args: list[str], *, cwd: Path) -> subprocess.CompletedProcess[str]:
     )
 
 
-def _tool_git_status(arguments: dict[str, Any]) -> str:
-    del arguments
-    from src.workspace import WorkspaceError, require_workspace
+def _active_workspace_is_git_repo() -> bool | None:
+    """True/False when a workspace is active; None if none is selected."""
+    from src.workspace import get_git_info, get_workspace
+
+    if not get_workspace():
+        return None
+    return bool(get_git_info().get("is_git_repo"))
+
+
+def _git_workspace_or_note() -> Path | str:
+    """Workspace root, or a plain note (no `Error executing tool:` prefix)."""
+    from src.workspace import WorkspaceError, get_git_info, require_workspace
 
     try:
         root = require_workspace()
     except WorkspaceError as exc:
         return f"Error executing tool: {exc}"
+    if not get_git_info(root).get("is_git_repo"):
+        return _NOT_A_GIT_REPO
+    return root
+
+
+def _tool_git_status(arguments: dict[str, Any]) -> str:
+    del arguments
+    root = _git_workspace_or_note()
+    if isinstance(root, str):
+        return root
     proc = _run_git(["status", "--short", "--branch"], cwd=root)
     if proc.returncode != 0:
         err = (proc.stderr or proc.stdout or "git status failed").strip()
+        if "not a git repository" in err.lower():
+            return _NOT_A_GIT_REPO
         return f"Error executing tool: {err}"
     out = (proc.stdout or "").strip()
     return out or "(clean)"
 
 
 def _tool_git_diff(arguments: dict[str, Any]) -> str:
-    from src.workspace import WorkspaceError, require_workspace
-
-    try:
-        root = require_workspace()
-    except WorkspaceError as exc:
-        return f"Error executing tool: {exc}"
+    root = _git_workspace_or_note()
+    if isinstance(root, str):
+        return root
     staged = bool(arguments.get("staged"))
     paths = [
         str(p).strip()
@@ -2085,6 +2110,8 @@ def _tool_git_diff(arguments: dict[str, Any]) -> str:
     proc = _run_git(args, cwd=root)
     if proc.returncode not in (0, 1):
         err = (proc.stderr or proc.stdout or "git diff failed").strip()
+        if "not a git repository" in err.lower():
+            return _NOT_A_GIT_REPO
         return f"Error executing tool: {err}"
     out = proc.stdout or ""
     if len(out) > _MAX_CMD_OUTPUT_CHARS:
@@ -2093,15 +2120,12 @@ def _tool_git_diff(arguments: dict[str, Any]) -> str:
 
 
 def _tool_git_commit(arguments: dict[str, Any]) -> str:
-    from src.workspace import WorkspaceError, require_workspace
-
     message = str(arguments.get("message") or "").strip()
     if not message:
         return "Error executing tool: git_commit requires `message`"
-    try:
-        root = require_workspace()
-    except WorkspaceError as exc:
-        return f"Error executing tool: {exc}"
+    root = _git_workspace_or_note()
+    if isinstance(root, str):
+        return root
     paths = [
         str(p).strip()
         for p in (arguments.get("paths") or [])
@@ -2113,10 +2137,14 @@ def _tool_git_commit(arguments: dict[str, Any]) -> str:
         add = _run_git(["add", "-A"], cwd=root)
     if add.returncode != 0:
         err = (add.stderr or add.stdout or "git add failed").strip()
+        if "not a git repository" in err.lower():
+            return _NOT_A_GIT_REPO
         return f"Error executing tool: {err}"
     commit = _run_git(["commit", "-m", message], cwd=root)
     if commit.returncode != 0:
         err = (commit.stderr or commit.stdout or "git commit failed").strip()
+        if "not a git repository" in err.lower():
+            return _NOT_A_GIT_REPO
         return f"Error executing tool: {err}"
     head = _run_git(["rev-parse", "--short", "HEAD"], cwd=root)
     sha = (head.stdout or "").strip() if head.returncode == 0 else ""

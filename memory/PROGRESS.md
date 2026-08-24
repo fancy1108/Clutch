@@ -7,9 +7,14 @@
 
 - **阶段：** **v1.3.0** 已发；主线 D8–D13 ✅；扩展/MCP **D14–D52 Agent 代 PM ✅**；Desktop E2E ✅；Design D36 仍 ❌
 - **Git / PM 索引：** [`runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md`](../runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md)
-- **下次优先：** B-36 或 B-37；B-35 分层已点到。未 commit
+- **下次优先：** B-36 或 B-37；B-35 已 commit（`4374ee5`）。非 git 工作区 hello 红叉已验收。
 
 ## Recent Sessions
+
+## 2026-08-24 会话（非 git 仓 hello 红叉）
+
+- **做了：** 非 git 工作区不挂 `git_*`；残留调用不再带 `Error executing tool:`。PM 已验收。
+- **下次：** B-36 或 B-37
 
 ## 2026-08-24 会话（B-35：末尾 agent_status）
 

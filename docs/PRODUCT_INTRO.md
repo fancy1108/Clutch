@@ -116,7 +116,7 @@ graph TD
 * **Capability packs（D35）**：Settings → Skills 可导入目录/zip 能力包（skills + hooks + MCP 片段）；支持卸载。
 * **Goal 跟踪（D29）**：Builtin `goal_write` 在 Chat 顶部展示实时 **Goal** 条（标题 + 进度）；完成后自动收起。
 * **会话看板（D30）**：输入框 **+** 菜单打开 **Session overview**——一眼查看 Goal / Todo / Plan / 权限模式 / MCP 绑定摘要。
-* **Git + web fetch（D12）**：Builtin `git_status` / `git_diff` / `git_commit`（提交需审批）与 `web_fetch`（抓取 URL 文本供总结）；步骤进入对话工具条。
+* **Git + web fetch（D12）**：Builtin `git_status` / `git_diff` / `git_commit`（提交需审批）与 `web_fetch`（抓取 URL 文本供总结）；步骤进入对话工具条。工作区不是 git 仓库时不挂这些 git 工具；即使被调用也只说明「不是仓库」，不会因 `fatal: not a git repository` 出红叉。
 * **Permission rules（D13）**：可配置命令 allow/ask/deny 规则；`rm -rf` / `sudo` 等危险命令在 Full 模式下仍强制询问；权限菜单可 **清除记住的批准**。
 * **Chat 斜杠命令（D18）**：输入 `/` 可选 `/plan`（进入计划模式）、`/compact`（强制上下文压缩并出摘要）、`/todos`（聚焦 Todo 卡）、`/help`；同一面板仍列出 Skills。
 * **Observability Chat Feed**：支持对本地子进程 CLI（如 Claude Code CLI）敲击的所有终端命令及 stdout/stderr 输出进行行内展开卡片审计；聊天气泡中优雅地展示 Agent 专属标签、Boundary markers 和系统提示词 metadata。**Hybrid 回复的正文与图片均从 `outputEvents` 的 assistant 内容解析**，避免工作流上一节点气泡误显示下一节点生成的图片。Plain chat 支持 `client_message_id` 与乐观发送合并，避免切换 Agent 后重复「你好」等用户消息被去重或丢失。
