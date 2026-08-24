@@ -288,6 +288,20 @@
 | B36-02 | L2 噪声 + L3 批量 | 重复/空转旧工具被丢掉；合计超阈值时只压旧工具、保留最近 2 条 | 同上 |
 | B36-03 | L4 全量熔断仍在 | `should_compact` / `/compact` 行为不变 | `uv run pytest tests/test_compaction.py tests/test_context_layers_b36.py -v` |
 
+## Agent verification gate（B-37）
+
+> 书 01+05 · **Q-AGENT-3 = C**。不升 D54+。沿用 D5 验证报告卡，不新增卡片。
+
+**做了什么：** Agent 声称 `submit_verification` 通过时，harness 先跑工作区测套（有 `tests/` / `pytest.ini` / `package.json` test）；失败则卡上多一步失败、结论改 failed。再机械核对 `changed_files` 是否在磁盘上（隔离子检查，**不**用同一个模型给自己的作文打分）。
+
+**没做什么：** 不另开一个会写长评的同模型 reviewer；不做 B-38 空转循环检测。
+
+| ID | 任务 | 完成标准 | Verification |
+|----|------|----------|--------------|
+| B37-01 | 测套失败不得通过 | 有失败测试时 conclusion=failed，步骤含 `harness_tests` | `uv run pytest tests/test_verify_harness_b37.py tests/test_verification_d5.py -v` |
+| B37-02 | 产物缺失不得通过 | 列出的 changed file 不在磁盘 → failed + `harness_artifacts` | 同上 |
+| B37-03 | 无工作区不改 D5 | 未授权工作区时自报结论保持原样 | 同上 |
+
 ## 待建 pytest 文件（随 task 交付）
 
 | 文件 | 关联 task |

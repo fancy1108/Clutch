@@ -7,9 +7,16 @@
 
 - **阶段：** **v1.3.0** 已发；主线 D8–D13 ✅；扩展/MCP **D14–D52 Agent 代 PM ✅**；Desktop E2E ✅；Design D36 仍 ❌
 - **Git / PM 索引：** [`runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md`](../runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md)
-- **下次优先：** B-36 待 commit 后开 B-37。
+- **下次优先：** B-37 已验收待 commit。下一候选 B-38（空转循环）。
 
 ## Recent Sessions
+
+## 2026-08-24 会话（B-37：验证闸）
+
+- **做了：** `submit_verification` 声称通过时先跑测套、再核对 listed 文件在不在；失败则原 D5 卡变红。无新卡、无同模型互评。
+- **没做：** B-38 空转循环。
+- **测：** `test_verify_harness_b37` + D5 10 passed
+- **下次：** PM 已验收（红卡拦不存在文件 + 摘要改写）；commit 后 B-38
 
 ## 2026-08-24 会话（B-36：分层压缩）
 

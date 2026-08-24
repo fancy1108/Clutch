@@ -74,12 +74,11 @@
 ### P0–P2 · 对照《深入理解 AI Agent》01–10（2026-08-24）
 
 > **调研：** [`docs/research/clutch-agent-book-gap.md`](../docs/research/clutch-agent-book-gap.md)。未立项；升格先答 `DECISIONS.md` **Q-AGENT-1–4**。勿改交付表冒充 D54+。  
-> **B-34 / B-35 / B-36 已升格：** `specs/core/tasks.md` §Agent Harness · §Agent status · §Agent context layers。  
+> **B-34–B-37 已升格：** `specs/core/tasks.md` §Agent Harness · §Agent status · §Agent context layers · §Agent verification gate。  
 > **重叠勿重开：** B-01 分派 · B-02/Q-USAGE-1 用量 · B-08 并行 worktree · B-10 检索 · B-12 项目记忆 · B-18–B-22 沙箱/policy · B-26 spawn/wait · B-27/B-28 → D28/D43。
 
 | ID | 候选能力 | 状态 | 升格条件 |
 |----|----------|------|----------|
-| B-37 | 独立 reviewer + 有测试则跑测套，失败不得声称完成（书 01+05） | 待决策 | **Q-AGENT-3 = C**（强制测套 + 隔离子 Agent）；升格须人类开 Task |
 | B-38 | 无进展循环检测（重复 path+args / 空转 read-grep）（书 01） | 候选 | 人类确认 |
 | B-39 | 可审查 `MEMORY.md` + 会话后抽取 + 睡眠整合（书 03+08） | 待决策 | **Q-AGENT-4 = C 用 B 落地**；检索仍 B-10；升格须人类开 Task |
 | B-40 | 成功策略摘要 / 失败反思写入工作区知识（书 08） | 候选 | B-39 后 |
@@ -122,6 +121,7 @@ _当前无 open 的待修复 Bug（2026-07-01）。_
 
 | ID | 归宿 |
 |----|------|
+| B-37 | `specs/core/tasks.md` §Agent verification gate · `ROADMAP.md` 同名节（书 01+05；测套+产物闸；Q-AGENT-3=C） |
 | B-36 | `specs/core/tasks.md` §Agent context layers · `ROADMAP.md` 同名节（书 02；落盘→噪声→批量→全量熔断） |
 | B-35 | `specs/core/tasks.md` §Agent status · `ROADMAP.md` §Agent status（书 02；末尾 `<agent_status>`；Q-AGENT-2=A） |
 | B-34 | `specs/core/tasks.md` §Agent Harness · `ROADMAP.md` §Agent Harness（书 06；评测尺子，不挪时钟；Q-AGENT-1=C） |

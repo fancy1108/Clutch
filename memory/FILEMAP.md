@@ -74,12 +74,12 @@
 | 里程碑级验收 T-01~04 | `specs/core/tasks.md` §测试与验收 |
 | 进度 / 待办 | `memory/PROGRESS.md`（近期）· 归档 `memory/archive/PROGRESS-*.md` |
 | **Git worktree · release slices** | v1.0.2 / v1.0.3 worktree 已清理；**v1.1.0** / **v1.1.1** / **v1.1.2** / **v1.2.0**（macOS-only 发版材料，2026-07-10；tag 待 `main`） |
-| 候选优化需求池（未立项） | `memory/BACKLOG.md` · Active（含 **B-33** ← PR #22；**B-37–B-50** ← 书 01–10 对照；**B-34 / B-35 / B-36** 已升格） |
+| 候选优化需求池（未立项） | `memory/BACKLOG.md` · Active（含 **B-33** ← PR #22；**B-38–B-50** ← 书 01–10 对照；**B-34–B-37** 已升格） |
 | GitHub Issue 待修复 Bug | `memory/BACKLOG.md` §GitHub Issues · 待修复 Bug |
 | **开源排期 OSR-xx 验收状态** | **`memory/ROADMAP.md` §开源分发** · Task 定义 `docs/OPEN_SOURCE_RELEASE.md` §7.2 |
 | 文档生命周期 / 权威真相 | `docs/document-governance.md` |
 | Orchestrator 主控能力调研（参考） | `docs/research/orchestrator-optimization-pool.md` |
-| **Clutch Agent ↔《深入理解 AI Agent》01–10 缺口（参考）** | **`docs/research/clutch-agent-book-gap.md`** · 候选 B-37–B-50 · **B-34 / B-35 / B-36** 已升格 · **Q-AGENT-1–4** |
+| **Clutch Agent ↔《深入理解 AI Agent》01–10 缺口（参考）** | **`docs/research/clutch-agent-book-gap.md`** · 候选 B-38–B-50 · **B-34–B-37** 已升格 · **Q-AGENT-1–4** |
 | CLI PTY Session 改造方案（参考） | `docs/research/pty-session.md` |
 | **D25 Hybrid 执行状态（权威）** | **`specs/core/hybrid-runtime-plan.md`** · D27 命名对齐 |
 | PTY Session Step 0 实验 | `experiments/pty_poc/` |
@@ -170,7 +170,7 @@
 | 计划批注解析（D31） | `plan_revise.py` · `chat_runner` revise payload |
 | Chat Todo 卡（D3/D49） | `components/TodoCardView.tsx` · builtin `todo_write` |
 | Chat 提问卡（D4/D49） | `components/QuestionCardView.tsx` · builtin `ask_user_question` |
-| Chat 验证报告卡（D5/D50） | `components/VerificationReportCardView.tsx` · builtin `submit_verification` |
+| Chat 验证报告卡（D5/D50 / B-37） | `VerificationReportCardView.tsx` · `submit_verification` · `verify_harness.py` |
 | Chat Diff 摘要卡（D6/D50） | `components/DiffSummaryCardView.tsx` · builtin `submit_diff_summary` |
 | Chat Agent 卡壳（共享） | `components/chatAgentCard.tsx` |
 | Sidecar 结构化 tool steps（D46） | `services/orchestrator/src/tool_steps.py` |

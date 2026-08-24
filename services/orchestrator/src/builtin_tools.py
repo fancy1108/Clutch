@@ -979,14 +979,18 @@ def normalize_verification_report(
     if any(s["status"] == "failed" for s in steps) and conclusion == "passed":
         conclusion = "failed"
 
-    return {
-        "title": title,
-        "conclusion": conclusion,
-        "steps": steps,
-        "summary": summary,
-        "nextActions": next_actions,
-        "changedFiles": changed_files,
-    }
+    from src.verify_harness import apply_verify_harness
+
+    return apply_verify_harness(
+        {
+            "title": title,
+            "conclusion": conclusion,
+            "steps": steps,
+            "summary": summary,
+            "nextActions": next_actions,
+            "changedFiles": changed_files,
+        }
+    )
 
 
 def _truncate_patch(patch: str, *, max_lines: int = _MAX_DIFF_PATCH_LINES) -> str:

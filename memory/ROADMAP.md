@@ -133,6 +133,17 @@
 | 噪声删除 + 超阈值只压旧工具 | P0 | ✅ | 同上 |
 | `/compact` 全量熔断仍可用 | P0 | ✅ | `test_compaction` + B-36 阈值回归 |
 
+## Agent verification gate（B-37 · 默认 FAIL）
+
+> 书 01+05 · **Q-AGENT-3 = C**。定义：[`specs/core/tasks.md`](../specs/core/tasks.md) §Agent verification gate。  
+> 有测套先跑；再核对产物在不在。仍是原来的验证报告卡。
+
+| 验收项 | 优先级 | 状态 | 说明 |
+|--------|--------|------|------|
+| 测套失败时验证卡不能绿 | P0 | ✅ | pytest 2026-08-24 `test_verify_harness_b37` |
+| 列出的文件不在磁盘时不能绿 | P0 | ✅ | 同上 |
+| 无工作区时 D5 自报不变 | P0 | ✅ | 同上 |
+
 ## Design 模式（D36 · 默认 FAIL）
 
 > Header Coding/Design + 工作区 Design 会话 + 原型交互画布；未实际验证不得标 ✅。
