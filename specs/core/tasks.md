@@ -261,6 +261,19 @@
 | B34-02 | 契约：Ask / todo / propose_plan | Ask 层只读；todos 出现在 `task_state`；特性请求含 `propose_plan` | 同上 |
 | B34-03 | 本机 Agnes 任务级小集 | 无密钥 skip；`CLUTCH_AGENT_EVAL_LIVE=1` 时跑 Ask / todo / 注入 3 案 | `CLUTCH_AGENT_EVAL_LIVE=1 uv run pytest tests/test_agent_eval_b34.py -k live -v` |
 
+## Agent eval ablation（B-48）
+
+> 书 06 · B-34 之后。不升 D54+。无 Chat / Settings 变化。
+
+**做了什么：** 评测组装可按 `CLUTCH_AGENT_EVAL_ABLATION`（`all` 或逗号层名）丢掉可选 prompt 层（skills / memory / tools / …），对比指纹。`persist_trajectory` 往 `runs/archive/eval/trajectory.jsonl` 追加 JSONL，写入前剥掉 `api_key` 等密钥字段。
+
+**没做什么：** 不改 Chat；不自动在 CI live 里写仓库 archive；不做消融后的自动打分报表。
+
+| ID | 任务 | 完成标准 | Verification |
+|----|------|----------|--------------|
+| B48-01 | 消融闸 | `ablation=tools` 后无 tools 层，指纹与全集不同 | `uv run pytest tests/test_agent_eval_b48.py -v` |
+| B48-02 | trajectory 落盘 | JSONL 含 name/fingerprint；`api_key` 不落盘 | 同上 |
+
 ## Agent status（B-35）
 
 > 书 02 · **Q-AGENT-2 = A**。无 Chat 气泡变化；可感知处：Agent Manager「运行时提示词分层」多一层 `agent_status`，`env` 不再含时钟。
@@ -410,4 +423,5 @@
 | `tests/test_repository_groups.py` | P2-05 |
 | `tests/test_skills_registry.py` | P2-01 |
 | `tests/test_agent_eval_b34.py` | B34-01–03 |
+| `tests/test_agent_eval_b48.py` | B48-01–02 |
 | `tests/test_tool_aci_b41.py` | B41-01–02 |

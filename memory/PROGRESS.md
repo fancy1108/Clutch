@@ -7,9 +7,16 @@
 
 - **阶段：** **v1.3.0** 已发；主线 D8–D13 ✅；扩展/MCP **D14–D52 Agent 代 PM ✅**；Desktop E2E ✅；Design D36 仍 ❌
 - **Git / PM 索引：** [`runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md`](../runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md)
-- **下次优先：** Design D36 未做。B-48 仍 stash，不混提。
+- **下次优先：** Design D36 未做。
 
 ## Recent Sessions
+
+## 2026-08-24 会话（B-48：消融闸 + trajectory）
+
+- **做了：** `CLUTCH_AGENT_EVAL_ABLATION` 可丢掉可选 prompt 层；`persist_trajectory` 写 JSONL 并剥密钥。无 Chat UI。`dev` 已 push（至 D5 修复）。
+- **没做：** 不自动打分报表；不写 CI archive。
+- **测：** `test_agent_eval_b48` + B-34 6 passed / 3 skipped。
+- **下次：** Design D36。
 
 ## 2026-08-24 会话（D5：记住不发卡）
 

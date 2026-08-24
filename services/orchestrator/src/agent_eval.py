@@ -1,4 +1,4 @@
-"""B-34 prompt snapshots + optional live Agnes eval. Never log API keys."""
+"""B-34 prompt snapshots + B-48 ablation/trajectory. Never log API keys."""
 
 from __future__ import annotations
 
@@ -6,12 +6,22 @@ import hashlib
 import json
 import os
 import re
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from src.agent_prompt import PromptAssembly, compose_agent_prompt_assembly
 
 LIVE_ENV = "CLUTCH_AGENT_EVAL_LIVE"
+ABLATION_ENV = "CLUTCH_AGENT_EVAL_ABLATION"
 SNAPSHOT_EXCLUDE = frozenset({"env", "agent_status"})  # volatile (Q-AGENT-2)
+ABLATION_ALL = frozenset(
+    {"skills", "memory", "tools", "mcp_resources", "rules", "deliverable"}
+)
+ABLATION_ALLOWED = ABLATION_ALL | frozenset({"protocol", "mode"})
+_SECRET_KEYS = frozenset(
+    {"api_key", "authorization", "secret", "token", "password", "access_token"}
+)
 WRITE_CLAIM = re.compile(
     r"(已创建|已写入|已删除|created (the )?file|wrote (to|the file)|deleted the file)", re.I
 )
@@ -37,8 +47,60 @@ def snapshot_fingerprint(layers: dict[str, str]) -> str:
     return hashlib.sha256(blob.encode()).hexdigest()
 
 
+def parse_ablation(raw: str | None = None) -> frozenset[str]:
+    """B-48: comma-separated layer names, or `all` for optional layers."""
+    text = os.environ.get(ABLATION_ENV, "") if raw is None else raw
+    text = (text or "").strip()
+    if not text or text.lower() in {"off", "none", "0"}:
+        return frozenset()
+    if text.lower() == "all":
+        return frozenset(ABLATION_ALL)
+    names = {part.strip().lower() for part in text.split(",") if part.strip()}
+    unknown = names - ABLATION_ALLOWED
+    if unknown:
+        raise ValueError(f"unknown ablation layer(s): {', '.join(sorted(unknown))}")
+    return frozenset(names)
+
+
+def apply_ablation(assembly: PromptAssembly, dropped: frozenset[str]) -> PromptAssembly:
+    if not dropped:
+        return assembly
+    return PromptAssembly(
+        layers=[layer for layer in assembly.layers if layer.name not in dropped]
+    )
+
+
+def _scrub_secrets(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {
+            key: _scrub_secrets(item)
+            for key, item in value.items()
+            if str(key).lower() not in _SECRET_KEYS
+        }
+    if isinstance(value, list):
+        return [_scrub_secrets(item) for item in value]
+    return value
+
+
+def persist_trajectory(record: dict[str, Any], path: Path | None = None) -> Path:
+    """Append one JSONL eval record under runs/archive/eval/ (or `path`)."""
+    if path is None:
+        from src.compaction import get_archive_dir
+
+        dest = get_archive_dir() / "eval" / "trajectory.jsonl"
+    else:
+        dest = path
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    payload = _scrub_secrets(dict(record))
+    payload.setdefault("ts", datetime.now(timezone.utc).isoformat())
+    with dest.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(payload, ensure_ascii=False) + "\n")
+    return dest
+
+
 def assemble_eval_prompt(**kwargs: Any) -> PromptAssembly:
     agent = kwargs.pop("agent", None) or eval_agent()
+    ablation = kwargs.pop("ablation", None)
     base = {
         "model_name": "Agnes 2.0 Flash",
         "model_api": "agnes-2.0-flash",
@@ -46,7 +108,15 @@ def assemble_eval_prompt(**kwargs: Any) -> PromptAssembly:
         "permission_mode": "auto_edit",
         "include_skill_bodies": False,
     }
-    return compose_agent_prompt_assembly(agent, **(base | kwargs))
+    assembly = compose_agent_prompt_assembly(agent, **(base | kwargs))
+    dropped = (
+        ablation
+        if isinstance(ablation, frozenset)
+        else parse_ablation(ablation)
+        if ablation is not None
+        else frozenset()
+    )
+    return apply_ablation(assembly, dropped)
 
 
 def live_eval_enabled() -> bool:

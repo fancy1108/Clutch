@@ -74,7 +74,7 @@
 ### P0–P2 · 对照《深入理解 AI Agent》01–10（2026-08-24）
 
 > **调研：** [`docs/research/clutch-agent-book-gap.md`](../docs/research/clutch-agent-book-gap.md)。未立项；升格先答 `DECISIONS.md` **Q-AGENT-1–4**。勿改交付表冒充 D54+。  
-> **B-34–B-41、B-44、B-45 已升格：** `specs/core/tasks.md` §Agent Harness · status · context layers · archived tool markers · verification gate · progress loop · workspace memory · verification notes · tool ACI · memory poison。  
+> **B-34–B-41、B-44、B-45、B-48 已升格：** `specs/core/tasks.md` §Agent Harness · status · context layers · archived tool markers · verification gate · progress loop · workspace memory · verification notes · tool ACI · memory poison · eval ablation。  
 > **重叠勿重开：** B-01 分派 · B-02/Q-USAGE-1 用量 · B-08 并行 worktree · B-10 检索 · B-12 项目记忆 · B-18–B-22 沙箱/policy · B-26 spawn/wait · B-27/B-28 → D28/D43。
 
 | ID | 候选能力 | 状态 | 升格条件 |
@@ -85,7 +85,6 @@
 | B-44 | 外部内容来源标记 + 工具结果显式截断（书 02） | 已升格 | `tasks.md` §Agent archived tool markers |
 | B-46 | `notify_user` + 子 Agent send/cancel 与两种上下文传递（书 04） | 候选 | 人类确认；原语见 B-26 |
 | B-47 | 独立 Code Interpreter 沙盒（断网/超时结构化错误）（书 05） | 候选 | 语义命令走 **B-21** |
-| B-48 | 消融总闸 + 结构化 trajectory 落盘（书 06） | 候选 | B-34 后 |
 | B-49 | Design 渲染截图 → 视觉 reviewer（书 09/10 新信息）（≠ Design D36 画布本身） | 候选 | Design D36 路径上评估 |
 | B-50 | 子任务步骤预算 + 按复杂度移交包（书 10） | 候选 | 管理者见 **B-01** |
 
@@ -117,6 +116,7 @@ _当前无 open 的待修复 Bug（2026-07-01）。_
 
 | ID | 归宿 |
 |----|------|
+| B-48 | `specs/core/tasks.md` §Agent eval ablation · `ROADMAP.md` 同名节（书 06；消融闸 + JSONL trajectory） |
 | B-44 | `specs/core/tasks.md` §Agent archived tool markers · `ROADMAP.md` 同名节（书 02；`source=tool truncated=yes`） |
 | B-45 | `specs/core/tasks.md` §Agent memory poison · `ROADMAP.md` 同名节（书 03；请记住+URL 不入库） |
 | B-40 | `specs/core/tasks.md` §Agent verification notes · `ROADMAP.md` 同名节（书 08；`Worked:` / `Failed:` 写入 MEMORY.md） |

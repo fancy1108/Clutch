@@ -111,6 +111,16 @@
 | 契约：Ask 只读 / todo 在 task_state / 特性请求 propose_plan | P0 | ✅ | pytest 2026-08-24 |
 | 本机 Agnes live 小集 | P1 | ✅ | `CLUTCH_AGENT_EVAL_LIVE=1` 3 passed（CC Switch Agnes） |
 
+## Agent eval ablation（B-48 · 默认 FAIL）
+
+> 书 06 · B-34 之后。定义：[`specs/core/tasks.md`](../specs/core/tasks.md) §Agent eval ablation。不升 D54+。  
+> **维护者尺子，无界面。** 不请 PM 点验 Chat。
+
+| 验收项 | 优先级 | 状态 | 说明 |
+|--------|--------|------|------|
+| 消融闸可关掉可选层 | P0 | ✅ | pytest 2026-08-24 `test_agent_eval_b48`：`tools` 层消失且指纹变 |
+| trajectory JSONL 落盘且去密钥 | P0 | ✅ | 同上；写 `runs/archive/eval/`（测试用 tmp） |
+
 ## Agent status（B-35 · 默认 FAIL）
 
 > 书 02 · **Q-AGENT-2 = A**。定义：[`specs/core/tasks.md`](../specs/core/tasks.md) §Agent status。  

@@ -4,6 +4,14 @@
 > **何时写：** 每个**代码 Task** 完成并 commit 后，在 Check-out 追加一节（见 `CLAUDE.md` §Check-out）。  
 > **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。
 
+## B-48 Eval ablation（2026-08-24）
+
+| 项 | 说明 |
+|----|------|
+| **Verification** | `cd services/orchestrator && uv run pytest tests/test_agent_eval_b48.py tests/test_agent_eval_b34.py -q` → 6 passed / 3 skipped |
+| **PM** | 无 Chat UI，不请点验 |
+| **Files** | `agent_eval.py` · `test_agent_eval_b48.py` |
+
 ## D5 记住/问答不发卡（2026-08-24）
 
 | 项 | 说明 |

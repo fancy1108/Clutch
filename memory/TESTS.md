@@ -12,6 +12,7 @@
 
 | 日期 | 范围 | 命令 | 结果 | 报告/证据 | 备注 |
 |------|------|------|------|-----------|------|
+| 2026-08-24 | B-48 消融闸 + trajectory | `uv run pytest tests/test_agent_eval_b48.py tests/test_agent_eval_b34.py -q` | ✅ 6 passed / 3 skipped | — | 无 Chat UI；live Agnes skip |
 | 2026-08-24 | D5 记住/问答不发卡 | `uv run pytest tests/test_verification_d5.py tests/test_workspace_memory_b39.py tests/test_verify_harness_b37.py -q` | ✅ 20 passed | — | PM：记住回合无卡、不多 Worked: |
 | 2026-08-24 | B-44 落盘指针来源标记 | `uv run pytest tests/test_context_layers_b36.py -q` | ✅ 5 passed | `runs/archive/tool_results/98131840dcd6.txt` | PM：`CHANGELOG.md` 全文 read；Chat 无新卡 |
 | 2026-08-24 | B-41 文件名走 list_dir | `uv run pytest tests/test_tool_aci_b41.py tests/test_tool_use_policy.py tests/test_builtin_tools_d1.py tests/test_tool_steps.py -v` | ✅ 6 B-41 + 相关回归 passed | — | PM：List . / Listed 1 dir，未 Search |

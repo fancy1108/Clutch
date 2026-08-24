@@ -176,7 +176,7 @@ graph TD
 | D49 cards | Plan / Todo / Question live in the conversation timeline |
 | D50 reports | Verification + Diff cards in the conversation timeline |
 | D51 terminal sync | **View in Terminal** on tool steps / subtasks → right-rail Terminal log highlight (stay in Chat) |
-| D53 prompt layers | Agent Manager「运行时提示词分层」+ `GET /api/agents/{id}/prompt-assembly` |
+| D53 prompt layers | Agent Manager「运行时提示词分层」+ `GET /api/agents/{id}/prompt-assembly`. Maintainer eval can drop optional layers (B-48); Chat unchanged |
 <!-- capability-ui-table:end -->
 
 ---
