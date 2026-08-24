@@ -20,6 +20,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ### Changed
 
+- **Dependencies:** lucide-react 1.33.0, @xyflow/react 12.11.3, @google/genai 2.18.0, @vitejs/plugin-react 6.1.0, vite 8.2.2, @playwright/test 1.62.1 (patch catch-up). Deferred majors: motion 13, @types/node 26, cryptography 50.
 - **No-progress loop (B-38):** Repeating `read_file` / `list_dir` / `grep` / `read_skill` with the same arguments nudges on the 2nd call and stops the turn on the 3rd (Continue, same as D9 fuse). Writes are not counted.
 - **Tool ACI (B-41):** `list_dir` / `read_file` / `grep` / `web_search` say when not to use them. Filename-shaped `grep` (e.g. `README.md`) is rewritten to `list_dir` so Chat shows **List**, not Search.
 - **Archived tool results (B-44):** Offloaded tool dumps are marked `source=tool truncated=yes`.
