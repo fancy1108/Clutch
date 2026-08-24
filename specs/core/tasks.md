@@ -315,6 +315,19 @@
 | B38-01 | 同参读三次即停 | 第 3 次 identical read → stop；写工具不计 | `uv run pytest tests/test_progress_loop_b38.py tests/test_run_control_d9.py -v` |
 | B38-02 | Continue 仍出现 | stop 文案触发 `should_offer_continue` | 同上 |
 
+## Agent workspace memory（B-39）
+
+> 书 03+08 · **Q-AGENT-4 = C 用 B 落地**。不升 D54+。无新 Chat 卡片。
+
+**做了什么：** 用户说「记住：…」或 Agent 调用 `remember_preference` 时，写入工作区 `.clutch/memory/MEMORY.md`（可在 Files 打开编辑）。下一轮把该文件概览注入 prompt。条目过多只留最近 40 条。全局 D16 JSON 仍在。
+
+**没做什么：** 不做 B-10 检索；不做 B-40 成败反思；投毒过滤见 B-45。
+
+| ID | 任务 | 完成标准 | Verification |
+|----|------|----------|--------------|
+| B39-01 | 可打开 MEMORY.md | append 后文件存在且含笔记 | `uv run pytest tests/test_workspace_memory_b39.py -v` |
+| B39-02 | 重复不膨胀 | 相同句子不重复；超过 40 条裁旧 | 同上 |
+
 ## 待建 pytest 文件（随 task 交付）
 
 | 文件 | 关联 task |

@@ -111,7 +111,7 @@ graph TD
 * **无 UI / CI Agent（D36 · ≠ Design D36）**：`POST /api/agent/run` 与 `python -m src.headless_cli` 与 Chat 同核。
 * **外挂 Grok CLI（D14）**：引擎列表可选 `grok-cli`；PATH 有 `grok` 时路由 `grok -p`，缺失时清晰不可用。
 * **Session fork + file rewind（D23）**：消息右键 **Fork session here** 从该条复制 transcript 到新会话；输入框 **+** → **Rewind file changes** 一键恢复 Agent 最近一次文件改动并在 Chat 留 Supervisor 记录。
-* **Cross-session memory（D16）**：Settings 可开/关 **Memory**；Agent 用 `remember_preference` 记下跨会话约定；可 **Clear memory**。
+* **Cross-session memory（D16 / B-39）**：Settings 可开/关 **Memory**。你说「记住：…」后，工作区 **Files → `.clutch/memory/MEMORY.md`** 会出现可编辑笔记（下一会话会读这份概览）。可 **Clear memory** 清全局 JSON，项目文件需自己删。
 * **Tool hooks（D17）**：用户/项目 `.clutch/hooks.json` 或偏好目录 `hooks.json` 配置 PreToolUse/PostToolUse 拒绝规则；违规时 Chat 工具步骤显示 Hook 原因。
 * **Capability packs（D35）**：Settings → Skills 可导入目录/zip 能力包（skills + hooks + MCP 片段）；支持卸载。
 * **Goal 跟踪（D29）**：Builtin `goal_write` 在 Chat 顶部展示实时 **Goal** 条（标题 + 进度）；完成后自动收起。
@@ -145,7 +145,7 @@ graph TD
 | D11 background | Running: bar above composer; finished: job card in Chat timeline |
 | D34 fg → bg | Foreground command bar + **Move to background** → D11 job chip |
 | D23 fork/rewind | Message **Fork session here**; composer **+** → Rewind file changes + Supervisor line |
-| D16 memory | Settings **Memory** on/off + **Clear memory**; `remember_preference` + prompt `memory` layer |
+| D16 memory | Settings **Memory**; `.clutch/memory/MEMORY.md` in Files (B-39); `remember_preference` |
 | D17 hooks | `hooks.json` Pre/Post deny → Chat tool step shows Hook blocked reason |
 | D35 capability pack | Skills page import pack path + uninstall; mounts skills/hooks/MCP |
 | D12 git/web | Tool-trail steps for `git_*` / `web_fetch` / `web_search` (when network on) |

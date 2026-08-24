@@ -7,9 +7,16 @@
 
 - **阶段：** **v1.3.0** 已发；主线 D8–D13 ✅；扩展/MCP **D14–D52 Agent 代 PM ✅**；Desktop E2E ✅；Design D36 仍 ❌
 - **Git / PM 索引：** [`runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md`](../runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md)
-- **下次优先：** B-38 已验收。下一候选 B-39（可审查 MEMORY.md，须人类开 Task）。
+- **下次优先：** B-40 及后续待验收。Design D36 未做。
 
 ## Recent Sessions
+
+## 2026-08-24 会话（B-39：工作区 MEMORY.md）
+
+- **做了：** `.clutch/memory/MEMORY.md`；「记住：」写入；prompt 注入概览。PM 验收通过。
+- **没做：** B-40 / B-45。
+- **测：** `test_workspace_memory_b39`
+- **下次：** B-40 验收
 
 ## 2026-08-24 会话（B-38：无进展循环）
 

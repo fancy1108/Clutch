@@ -518,11 +518,19 @@ def compose_agent_prompt_assembly(
         if resources_block:
             layers.append(PromptLayer("mcp_resources", resources_block))
 
-        # D16 — cross-session memory (Settings toggle).
+        # D16 — app-level prefs JSON; B-39 — workspace MEMORY.md overview.
         try:
             from src.cross_session_memory import format_memory_prompt_block
+            from src.workspace_memory import format_workspace_memory_block
 
-            memory_block = format_memory_prompt_block()
+            memory_block = "\n\n".join(
+                part
+                for part in (
+                    format_memory_prompt_block(),
+                    format_workspace_memory_block(),
+                )
+                if part
+            )
         except Exception:
             memory_block = ""
         if memory_block:

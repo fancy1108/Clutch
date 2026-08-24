@@ -486,7 +486,7 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
                       {t('Cross-session memory')}
                     </h3>
                     <p className="text-[11px] text-on-surface-variant/80 max-w-xl">
-                      {t('Let Clutch Agent remember preferences across Chat sessions (remember_preference tool).')}
+                      {t('Let Clutch Agent remember preferences across Chat sessions. Project notes go to .clutch/memory/MEMORY.md (open in Files).')}
                     </p>
                     <div className="flex flex-wrap items-center gap-2">
                       <button

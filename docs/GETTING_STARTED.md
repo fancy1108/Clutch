@@ -104,7 +104,7 @@ Product tour: [`PRODUCT_INTRO.md`](./PRODUCT_INTRO.md) · Architecture: [`ARCHIT
 | **CLI agent models** | Settings → Models → **Claude Code**, **OpenCode**, or **MiMo Code** tab (read-only scan; configure in the CLI or CC Switch) |
 | **Allow network (D15)** | Settings → General → **Allow network** → Clutch Agent gains builtin `web_search` (off by default) |
 | **Strict sandbox (D21)** | Settings → General → **Strict sandbox** → reject paths/commands that escape the authorized workspace |
-| **Cross-session memory (D16)** | Settings → General → **Memory** on/off + **Clear memory**; Agent may call `remember_preference` |
+| **Cross-session memory (D16 / B-39)** | Settings → General → **Memory** on/off + **Clear memory**; say `记住：…` then open Files → `.clutch/memory/MEMORY.md` |
 | **Tool hooks (D17)** | Add `.clutch/hooks.json` (project) or user prefs `hooks.json` with PreToolUse/PostToolUse deny rules |
 | **Capability packs (D35)** | Settings → Skills → Import pack (dir/zip); Uninstall removes mounted skills/hooks/MCP snippets |
 | **Slash commands (D18)** | In Chat composer type `/` → `/plan` `/compact` `/todos` `/help` (+ Skills) |
@@ -251,7 +251,7 @@ xattr -cr /Applications/Clutch.app && open -a Clutch
 | **CLI Agent 模型** | Settings → Models → **Claude Code**、**OpenCode** 或 **MiMo Code** 标签页（只读扫描；在 CLI 或 CC Switch 中配置） |
 | **允许联网（D15）** | Settings → General → **Allow network** → Clutch Agent 可用内置 `web_search`（默认关） |
 | **严格沙箱（D21）** | Settings → General → **Strict sandbox** → 拒绝逃出已授权工作区的路径/命令 |
-| **跨会话记忆（D16）** | Settings → General → **Memory** 开关 + **Clear memory**；Agent 可调用 `remember_preference` |
+| **跨会话记忆（D16 / B-39）** | Settings → General → **Memory** 开关；说「记住：…」后在 Files 打开 `.clutch/memory/MEMORY.md` |
 | **工具 Hooks（D17）** | 项目 `.clutch/hooks.json` 或用户偏好目录 `hooks.json` 配置 PreToolUse/PostToolUse 拒绝规则 |
 | **能力包（D35）** | Settings → Skills → Import 导入目录/zip；Uninstall 卸载挂载的 skills/hooks/MCP |
 | **斜杠命令（D18）** | Chat 输入 `/` → `/plan` `/compact` `/todos` `/help`（及 Skills） |

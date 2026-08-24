@@ -397,8 +397,10 @@ def list_builtin_tools() -> list[dict[str, Any]]:
         {
             "name": "remember_preference",
             "description": (
-                "Store a user preference in cross-session memory (D16) when the user asks "
-                "you to remember something for future Chat sessions. Requires Memory enabled in Settings."
+                "Store a user preference for future Chat sessions when they ask you to "
+                "remember something. Writes `.clutch/memory/MEMORY.md` in the workspace "
+                "(user-editable) and Settings Memory. Requires Memory enabled in Settings. "
+                "Use when the user says 记住/remember. Do not use for one-off trivia."
             ),
             "inputSchema": {
                 "type": "object",
@@ -1498,6 +1500,12 @@ def _tool_remember_preference(arguments: dict[str, Any]) -> str:
         entry = add_entry(text, source_run_id=run_id or None)
     except ValueError as exc:
         return f"Error executing tool: {exc}"
+    try:
+        from src.workspace_memory import append_note
+
+        append_note(text)
+    except Exception:
+        pass
     return json.dumps({"ok": True, "id": entry["id"], "text": entry["text"]}, ensure_ascii=False)
 
 

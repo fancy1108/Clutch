@@ -2176,6 +2176,14 @@ async def _finish_plain_chat_after_llm(
             files_changed,
             path_diffs=_path_diffs_from_tool_steps(sealed_steps),
         )
+    try:
+        from src.workspace_memory import harvest_user_remember
+
+        memory_files = harvest_user_remember(user_text_for_tokens)
+    except Exception:
+        memory_files = []
+    if memory_files:
+        await _notify_workspace_files_changed(websocket, run_id, memory_files)
     await _notify_run_state(websocket, run_id, state, final_patch)
     return state
 
