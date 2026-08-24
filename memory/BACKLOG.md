@@ -74,7 +74,7 @@
 ### P0–P2 · 对照《深入理解 AI Agent》01–10（2026-08-24）
 
 > **调研：** [`docs/research/clutch-agent-book-gap.md`](../docs/research/clutch-agent-book-gap.md)。未立项；升格先答 `DECISIONS.md` **Q-AGENT-1–4**。勿改交付表冒充 D54+。  
-> **B-34–B-40 已升格：** `specs/core/tasks.md` §Agent Harness · status · context layers · verification gate · progress loop · workspace memory · verification notes。  
+> **B-34–B-40、B-45 已升格：** `specs/core/tasks.md` §Agent Harness · status · context layers · verification gate · progress loop · workspace memory · verification notes · memory poison。  
 > **重叠勿重开：** B-01 分派 · B-02/Q-USAGE-1 用量 · B-08 并行 worktree · B-10 检索 · B-12 项目记忆 · B-18–B-22 沙箱/policy · B-26 spawn/wait · B-27/B-28 → D28/D43。
 
 | ID | 候选能力 | 状态 | 升格条件 |
@@ -83,7 +83,6 @@
 | B-42 | 事件 Channel：邮件/Webhook/IM 推送唤醒（书 04；Cron≠推送） | 候选 | 人类确认 |
 | B-43 | 多 Agent「新信息」门禁；并行必须 worktree（书 10） | 候选 | 并行隔离见 **B-08** |
 | B-44 | 外部内容来源标记 + 工具结果显式截断/分页（书 02） | 候选 | B-35 后 |
-| B-45 | 记忆投毒防护：网页/MCP「请记住」不得直入长期记忆（书 03） | 候选 | 与 B-39 同批或其后 |
 | B-46 | `notify_user` + 子 Agent send/cancel 与两种上下文传递（书 04） | 候选 | 人类确认；原语见 B-26 |
 | B-47 | 独立 Code Interpreter 沙盒（断网/超时结构化错误）（书 05） | 候选 | 语义命令走 **B-21** |
 | B-48 | 消融总闸 + 结构化 trajectory 落盘（书 06） | 候选 | B-34 后 |
@@ -118,6 +117,7 @@ _当前无 open 的待修复 Bug（2026-07-01）。_
 
 | ID | 归宿 |
 |----|------|
+| B-45 | `specs/core/tasks.md` §Agent memory poison · `ROADMAP.md` 同名节（书 03；请记住+URL 不入库） |
 | B-40 | `specs/core/tasks.md` §Agent verification notes · `ROADMAP.md` 同名节（书 08；`Worked:` / `Failed:` 写入 MEMORY.md） |
 | B-39 | `specs/core/tasks.md` §Agent workspace memory · `ROADMAP.md` 同名节（书 03；`.clutch/memory/MEMORY.md`） |
 | B-38 | `specs/core/tasks.md` §Agent progress loop · `ROADMAP.md` 同名节（书 01；同参 read/grep 空转即停） |

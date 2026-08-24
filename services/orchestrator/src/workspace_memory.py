@@ -17,6 +17,11 @@ _REMEMBER_RE = re.compile(
     r"(?:记住|remember(?:\s+that)?)\s*[:：]\s*(.+)",
     re.IGNORECASE,
 )
+_POISON_RE = re.compile(
+    r"(please\s+remember|you must remember|请记住|务必记住).{0,40}https?://|"
+    r"https?://\S+.{0,40}(please\s+remember|you must remember|请记住|务必记住)",
+    re.IGNORECASE | re.DOTALL,
+)
 
 
 def memory_path() -> Path | None:
@@ -43,10 +48,20 @@ def read_notes() -> list[str]:
     return notes
 
 
+def is_poisoned_memory(text: str) -> bool:
+    """B-45: webpage/MCP 'please remember' + URL must not enter MEMORY.md."""
+    blob = (text or "").strip()
+    if not blob:
+        return False
+    if re.fullmatch(r"https?://\S+", blob, flags=re.IGNORECASE):
+        return True
+    return bool(_POISON_RE.search(blob))
+
+
 def append_note(text: str) -> str | None:
     """Append a unique bullet; compact to last N. Returns relative path or None."""
     trimmed = (text or "").strip()
-    if not trimmed:
+    if not trimmed or is_poisoned_memory(trimmed):
         return None
     if len(trimmed) > _MAX_CHARS:
         trimmed = trimmed[: _MAX_CHARS - 1] + "…"

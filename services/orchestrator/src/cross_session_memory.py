@@ -50,6 +50,10 @@ def add_entry(text: str, *, source_run_id: str | None = None) -> dict[str, Any]:
     trimmed = text.strip()
     if not trimmed:
         raise ValueError("memory text is required")
+    from src.workspace_memory import is_poisoned_memory
+
+    if is_poisoned_memory(trimmed):
+        raise ValueError("refused to store webpage/MCP memory-poison text")
     if len(trimmed) > _MAX_ENTRY_CHARS:
         trimmed = trimmed[: _MAX_ENTRY_CHARS - 1] + "…"
     entry = {

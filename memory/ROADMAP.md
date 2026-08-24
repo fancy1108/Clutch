@@ -171,6 +171,14 @@
 |--------|--------|------|------|
 | 验证通过写入 Worked | P0 | ✅ | PM 2026-08-24：绿卡 + MEMORY.md `Worked: 验证报告` |
 
+## Agent memory poison（B-45 · 默认 FAIL）
+
+> 书 03。定义：[`specs/core/tasks.md`](../specs/core/tasks.md) §Agent memory poison。
+
+| 验收项 | 优先级 | 状态 | 说明 |
+|--------|--------|------|------|
+| 请记住+URL 不入库 | P0 | ✅ | PM 2026-08-24：remember_preference 红叉，未说已保存 |
+
 ## Design 模式（D36 · 默认 FAIL）
 
 > Header Coding/Design + 工作区 Design 会话 + 原型交互画布；未实际验证不得标 ✅。

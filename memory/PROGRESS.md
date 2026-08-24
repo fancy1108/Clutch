@@ -7,9 +7,16 @@
 
 - **阶段：** **v1.3.0** 已发；主线 D8–D13 ✅；扩展/MCP **D14–D52 Agent 代 PM ✅**；Desktop E2E ✅；Design D36 仍 ❌
 - **Git / PM 索引：** [`runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md`](../runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md)
-- **下次优先：** B-45 / B-41 / B-44 / B-48 待验收。Design D36 未做。
+- **下次优先：** B-41 待验收。Design D36 未做。
 
 ## Recent Sessions
+
+## 2026-08-24 会话（B-45：记忆投毒过滤）
+
+- **做了：** 裸 URL / 「请记住 + 链接」不写入 MEMORY.md 和 Settings Memory；remember_preference 红叉。PM 验收通过。
+- **没做：** B-41。
+- **测：** `test_workspace_memory_b39` poison cases
+- **下次：** B-41 验收
 
 ## 2026-08-24 会话（B-40：验证结果写入 MEMORY.md）
 

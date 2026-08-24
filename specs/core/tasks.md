@@ -340,6 +340,18 @@
 |----|------|----------|--------------|
 | B40-01 | 验证结果落盘 | passed → `Worked:`；failed → `Failed:` | `uv run pytest tests/test_workspace_memory_b39.py -v` |
 
+## Agent memory poison（B-45）
+
+> 书 03。不升 D54+。无新 Chat 卡片。
+
+**做了什么：** 网页/MCP「请记住 + URL」或裸 URL 不写入 `.clutch/memory/MEMORY.md`，也不写入 Settings Memory；`remember_preference` 返回错误，Agent 不得说已保存。
+
+**没做什么：** 不做检索（B-10）；不加新 Chat 卡。
+
+| ID | 任务 | 完成标准 | Verification |
+|----|------|----------|--------------|
+| B45-01 | 投毒不入库 | 裸 URL / 请记住+https 被拒绝 | `uv run pytest tests/test_workspace_memory_b39.py -v` |
+
 ## 待建 pytest 文件（随 task 交付）
 
 | 文件 | 关联 task |

@@ -111,7 +111,7 @@ graph TD
 * **无 UI / CI Agent（D36 · ≠ Design D36）**：`POST /api/agent/run` 与 `python -m src.headless_cli` 与 Chat 同核。
 * **外挂 Grok CLI（D14）**：引擎列表可选 `grok-cli`；PATH 有 `grok` 时路由 `grok -p`，缺失时清晰不可用。
 * **Session fork + file rewind（D23）**：消息右键 **Fork session here** 从该条复制 transcript 到新会话；输入框 **+** → **Rewind file changes** 一键恢复 Agent 最近一次文件改动并在 Chat 留 Supervisor 记录。
-* **Cross-session memory（D16 / B-39 / B-40）**：Settings 可开/关 **Memory**。你说「记住：…」后，工作区 **Files → `.clutch/memory/MEMORY.md`** 会出现可编辑笔记（下一会话会读这份概览）。交差验证卡通过/失败时也会记一行 `Worked:` / `Failed:`。可 **Clear memory** 清全局 JSON，项目文件需自己删。
+* **Cross-session memory（D16 / B-39 / B-40 / B-45）**：Settings 可开/关 **Memory**。你说「记住：…」后，工作区 **Files → `.clutch/memory/MEMORY.md`** 会出现可编辑笔记（下一会话会读这份概览）。交差验证卡通过/失败时也会记一行 `Worked:` / `Failed:`。网页里「请记住 + 链接」或只丢一个 URL **不会**写入 MEMORY.md，也不会写入 Settings Memory（工具会拒绝，Agent 不能说「已保存」）。可 **Clear memory** 清全局 JSON，项目文件需自己删。
 * **Tool hooks（D17）**：用户/项目 `.clutch/hooks.json` 或偏好目录 `hooks.json` 配置 PreToolUse/PostToolUse 拒绝规则；违规时 Chat 工具步骤显示 Hook 原因。
 * **Capability packs（D35）**：Settings → Skills 可导入目录/zip 能力包（skills + hooks + MCP 片段）；支持卸载。
 * **Goal 跟踪（D29）**：Builtin `goal_write` 在 Chat 顶部展示实时 **Goal** 条（标题 + 进度）；完成后自动收起。
