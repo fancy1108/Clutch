@@ -464,7 +464,9 @@ def list_builtin_tools() -> list[dict[str, Any]]:
                 "Publish a self-check verification report in Chat after implementing work (D5). "
                 "Include concrete steps with passed|failed|skipped and an overall conclusion. "
                 "Never claim conclusion=passed while session todos are still incomplete — "
-                "the tool will force failed. On failure, set next_actions the user can take. "
+                "the tool will force failed. Do NOT call this for remember/Q&A/search-only "
+                "turns, or to re-check leftover files from a previous session. "
+                "On failure, set next_actions the user can take. "
                 "Call this before saying the task is done; do not silently end after a failed check."
             ),
             "inputSchema": {
@@ -688,6 +690,39 @@ def is_submit_verification_tool(name: str) -> bool:
         "verification_report",
         "submit_verification_report",
     }
+
+
+VERIFICATION_NOT_PUBLISHED = (
+    "Verification report not published: this turn did not implement workspace files "
+    "and the user did not ask for a report. Reply in text only."
+)
+_VERIFY_ASK_RE = re.compile(
+    r"验证报告|交差验证|verification\s+report|submit[_\s-]?verification",
+    re.IGNORECASE,
+)
+_REMEMBER_TURN_RE = re.compile(
+    r"^(记住|remember(?:\s+that)?)\s*[:：]",
+    re.IGNORECASE,
+)
+
+
+def _has_paths(paths: list[str] | None) -> bool:
+    return any(str(item).strip() for item in (paths or []))
+
+
+def verification_report_allowed(
+    *,
+    user_text: str | None,
+    files_changed: list[str] | None = None,
+    prior_files_changed: list[str] | None = None,
+) -> bool:
+    """D5 cards are for work in this session, not leftover files or remember/Q&A."""
+    blob = (user_text or "").strip()
+    if _VERIFY_ASK_RE.search(blob):
+        return True
+    if _REMEMBER_TURN_RE.search(blob):
+        return False
+    return _has_paths(files_changed) or _has_paths(prior_files_changed)
 
 
 def is_submit_diff_summary_tool(name: str) -> bool:

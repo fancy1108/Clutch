@@ -377,6 +377,19 @@
 | B41-01 | 文件名 grep 改走 list | `grep README.md` 返回目录列表，不含文件正文 | `uv run pytest tests/test_tool_aci_b41.py -v` |
 | B41-02 | 步骤条是 List | 改写后 kind=list，header 为 Listed 不是 Searched | 同上 |
 
+## Spurious verification card（D5）
+
+> D5 回归。不升 D54+。无新 Chat 卡片。
+
+**做了什么：** `submit_verification` 在记住 / 问答 / 本轮未改文件且用户未要报告时不发布验证卡；上一轮的卡不复制到后一轮回复；也不因此往 MEMORY.md 写 `Worked:`。
+
+**没做什么：** 不改 D5 卡片样子；不做 B-48。
+
+| ID | 任务 | 完成标准 | Verification |
+|----|------|----------|--------------|
+| D5-fix-01 | 记住不发卡 | remember 回合 `verification_report is None` | `uv run pytest tests/test_verification_d5.py -v` |
+| D5-fix-02 | 旧卡不跟到新用户消息 | 后一轮 seal 不含 leftover report | 同上 |
+
 ## 待建 pytest 文件（随 task 交付）
 
 | 文件 | 关联 task |

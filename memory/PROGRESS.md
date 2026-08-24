@@ -7,9 +7,16 @@
 
 - **阶段：** **v1.3.0** 已发；主线 D8–D13 ✅；扩展/MCP **D14–D52 Agent 代 PM ✅**；Desktop E2E ✅；Design D36 仍 ❌
 - **Git / PM 索引：** [`runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md`](../runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md)
-- **下次优先：** Design D36 未做。
+- **下次优先：** Design D36 未做。B-48 仍 stash，不混提。
 
 ## Recent Sessions
+
+## 2026-08-24 会话（D5：记住不发卡）
+
+- **做了：** 记住 / 问答 / 未改文件不发布 `submit_verification` 卡；旧卡不复制到后一轮；不写 MEMORY.md `Worked:`。B-48 轨迹落盘已从工作区拆出（stash）。
+- **没做：** 不做 B-48。
+- **测：** `test_verification_d5` + B-39/B-37 回归 20 passed。
+- **下次：** PM 已验收；单独 commit。
 
 ## 2026-08-24 会话（B-41：工具何时用）
 

@@ -1387,6 +1387,13 @@ async def _llm_chat_reply(
                         approved_tool=mcp_approved_tool,
                         approved_keys=get_approved_mcp_keys(state["run_id"]),
                         model_id=resolved_model_id,
+                        prior_files_changed=[
+                            str(path).strip()
+                            for msg in (state.get("messages") or [])
+                            if isinstance(msg, dict)
+                            for path in (msg.get("filesChanged") or [])
+                            if str(path).strip()
+                        ],
                     )
                 finally:
                     release_bg_job_context(bg_token)

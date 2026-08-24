@@ -29,6 +29,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ### Fixed
 
+- **Spurious verification card on remember/Q&A:** `submit_verification` no longer publishes a Chat card (or a MEMORY.md `Worked:` line) unless this session edited files or you asked for a report. A leftover card from an earlier turn is not copied onto later replies (saying `记住：…` will not revive `still_missing.py`).
 - **Hello / git red-X on a plain folder:** When the workspace is not a git repo, Clutch hides `git_status` / `git_diff` / `git_commit` (same honesty as Memory-off / network-off) and a leftover call returns a plain note instead of `Error executing tool: fatal: not a git repository…` (no Chat red-X).
 - **Chat Markdown tables:** GFM pipe tables (`| col | … |` + `|---|`) in assistant replies render as real HTML tables (with inline `code` / bold in cells) instead of raw pipe text.
 - **Chat scroll after tool turns (Q-UI-1):** Assistant replies no longer sit below the input dock with a dead scrollport — chat uses a dedicated inner scroller (flex shell no longer owns `overflow-y-auto`).

@@ -108,6 +108,26 @@ def _verification_report_for_seal(
         report = dict(state["verification_report"])  # type: ignore[arg-type]
     if not report:
         return None
+    # Do not copy a leftover card onto a later turn (e.g. 记住: after a prior 验证报告).
+    messages = list(state.get("messages") or [])
+    last_user = -1
+    last_card = -1
+    title = report.get("title")
+    conclusion = report.get("conclusion")
+    for idx, msg in enumerate(messages):
+        if not isinstance(msg, dict):
+            continue
+        if str(msg.get("agent") or "") == "User":
+            last_user = idx
+        existing = msg.get("verificationReport")
+        if (
+            isinstance(existing, dict)
+            and existing.get("title") == title
+            and existing.get("conclusion") == conclusion
+        ):
+            last_card = idx
+    if last_card >= 0 and last_user > last_card:
+        return None
     paths = list(report.get("changedFiles") or [])
     for path in files_changed or []:
         rel = str(path).strip()

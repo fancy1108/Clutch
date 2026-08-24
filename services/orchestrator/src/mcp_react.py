@@ -161,6 +161,7 @@ def _execute_tool_call(
     on_log: Callable[[str], None] | None,
     step_idx: int,
     files_changed: list[str] | None = None,
+    prior_files_changed: list[str] | None = None,
     on_tool_step: Callable[[dict[str, Any]], None] | None = None,
     on_diff_summary: Callable[[dict[str, Any]], None] | None = None,
     step_id: str | None = None,
@@ -240,6 +241,23 @@ def _execute_tool_call(
             )
         return f"Unknown tool alias: {func_name}"
     server_id, tool_name = route
+    from src.builtin_tools import (
+        VERIFICATION_NOT_PUBLISHED,
+        is_submit_verification_tool,
+        verification_report_allowed,
+    )
+
+    if is_submit_verification_tool(tool_name):
+        from src.artifact_layout import current_user_turn_text
+
+        if not verification_report_allowed(
+            user_text=current_user_turn_text() or "",
+            files_changed=files_changed,
+            prior_files_changed=prior_files_changed,
+        ):
+            _emit(logs, on_log, f"[{log_prefix}] {VERIFICATION_NOT_PUBLISHED}")
+            _finish_step(status="completed", result=VERIFICATION_NOT_PUBLISHED, tool_name=tool_name)
+            return VERIFICATION_NOT_PUBLISHED
     workaround = move_file_delete_workaround_message(tool_name, func_args)
     if workaround:
         result_str = f"Error executing tool: {workaround}"
@@ -433,6 +451,7 @@ def run_mcp_react_loop(
     approved_keys: set[str] | None = None,
     model_id: str | None = None,
     exclude_builtin_tools: frozenset[str] | None = None,
+    prior_files_changed: list[str] | None = None,
 ) -> McpRunOutcome:
     """Run tool-augmented chat against one or more MCP servers."""
     if not servers:
@@ -619,6 +638,7 @@ def run_mcp_react_loop(
     engine_label = f"{spec.name} · MCP ({visible_count} tools)"
     output = ""
     files_changed: list[str] = []
+    prior_paths = [str(p).strip() for p in (prior_files_changed or []) if str(p).strip()]
     collected_steps: list[dict[str, Any]] = []
     session_approved = set(approved_keys or ())
     use_tools = bool(openai_tools)
@@ -690,6 +710,8 @@ def run_mcp_react_loop(
         ):
             return
         if result_str.startswith("Error executing tool"):
+            return
+        if result_str.startswith("Verification report not published"):
             return
         latest_verification = normalize_verification_report(
             func_args,
@@ -906,6 +928,7 @@ def run_mcp_react_loop(
                 on_log=on_log,
                 step_idx=start_step,
                 files_changed=files_changed,
+                prior_files_changed=prior_paths,
                 on_tool_step=record_tool_step,
                 on_diff_summary=on_diff_summary,
                 step_id=str(approved_tool.get("step_id") or f"tool_{start_step}"),
@@ -1358,6 +1381,7 @@ def run_mcp_react_loop(
                                 on_log=on_log,
                                 step_idx=step_idx,
                                 files_changed=files_changed,
+                                prior_files_changed=prior_paths,
                                 on_tool_step=record_tool_step,
                                 on_diff_summary=on_diff_summary,
                                 step_id=f"tool_{step_idx}",
@@ -1486,6 +1510,7 @@ def run_mcp_react_loop(
                         on_log=on_log,
                         step_idx=step_idx,
                         files_changed=files_changed,
+                        prior_files_changed=prior_paths,
                         on_tool_step=record_tool_step,
                         on_diff_summary=on_diff_summary,
                         step_id=f"tool_{step_idx}",

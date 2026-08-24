@@ -188,6 +188,15 @@
 |--------|--------|------|------|
 | 请记住+URL 不入库 | P0 | ✅ | PM 2026-08-24：remember_preference 红叉，未说已保存 |
 
+## Spurious verification card（D5 · 默认 FAIL）
+
+> 记住 / 问答不得把上一轮验证卡贴到新回复。定义：[`specs/core/tasks.md`](../specs/core/tasks.md) §Spurious verification card。
+
+| 验收项 | 优先级 | 状态 | 说明 |
+|--------|--------|------|------|
+| 记住后不出现验证卡 | P0 | ✅ | PM 2026-08-24：记住回合无卡、不多 `Worked:` |
+| 旧卡不复制到后一轮 | P0 | ✅ | 同上 |
+
 ## Agent tool ACI（B-41 · 默认 FAIL）
 
 > 书 04。定义：[`specs/core/tasks.md`](../specs/core/tasks.md) §Agent tool ACI。  

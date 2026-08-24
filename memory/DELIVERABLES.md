@@ -4,6 +4,14 @@
 > **何时写：** 每个**代码 Task** 完成并 commit 后，在 Check-out 追加一节（见 `CLAUDE.md` §Check-out）。  
 > **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。
 
+## D5 记住/问答不发卡（2026-08-24）
+
+| 项 | 说明 |
+|----|------|
+| **Verification** | `cd services/orchestrator && uv run pytest tests/test_verification_d5.py tests/test_workspace_memory_b39.py tests/test_verify_harness_b37.py -q` → 20 passed |
+| **PM** | 记住回合无验证卡，MEMORY.md 不多 `Worked:` |
+| **Files** | `builtin_tools.verification_report_allowed` · `mcp_react.py` · `chat_messages.py` · `test_verification_d5.py` |
+
 ## B-41 Tool ACI（2026-08-24）
 
 | 项 | 说明 |
