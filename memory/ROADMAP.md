@@ -144,6 +144,16 @@
 | 列出的文件不在磁盘时不能绿 | P0 | ✅ | 同上 |
 | 无工作区时 D5 自报不变 | P0 | ✅ | 同上 |
 
+## Agent progress loop（B-38 · 默认 FAIL）
+
+> 书 01。定义：[`specs/core/tasks.md`](../specs/core/tasks.md) §Agent progress loop。  
+> 同一读/搜空转则停，Continue 与 D9 相同。
+
+| 验收项 | 优先级 | 状态 | 说明 |
+|--------|--------|------|------|
+| 同一文件读三次会停 | P0 | ✅ | pytest 2026-08-24 `test_progress_loop_b38` |
+| 停住后可点 Continue | P0 | ✅ | 同上 + `should_offer_continue` |
+
 ## Design 模式（D36 · 默认 FAIL）
 
 > Header Coding/Design + 工作区 Design 会话 + 原型交互画布；未实际验证不得标 ✅。

@@ -31,6 +31,7 @@ class ClutchState(TypedDict):
     token_output: int
     cli_session_id: str
     cli_session_agent_id: str
+    awaiting_continue: NotRequired[bool]
     hybrid_executions: NotRequired[dict[str, dict[str, object]]]
     shell_session_status: NotRequired[str]
     shell_pool_blocker_run_ids: NotRequired[list[str]]
@@ -77,4 +78,5 @@ def initial_state(run_id: str, workflow_id: str = "") -> ClutchState:
         token_output=0,
         cli_session_id="",
         cli_session_agent_id="",
+        awaiting_continue=False,
     )

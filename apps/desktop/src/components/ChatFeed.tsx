@@ -35,6 +35,7 @@ import type { ScannedSkill } from '../services/skillsApi';
 import type { FileTreeNode } from '../services/workspaceApi';
 import type { PermissionMode } from '../services/permissionApi';
 import { USER_CHAT_AVATAR, clutchStore, deleteChatMessage, useClutchState } from '../services/clutchState';
+import { shouldOfferContinueFromText } from '../services/clutchStateUtils';
 import {
   pickPrimaryHtmlPath,
   resolveLiveActivitySteps,
@@ -629,6 +630,10 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   const isRefining = isWorkflowRefineEligible(clutchStatus, activeWorkflowId);
   const isRunning = clutchStatus === 'running';
   const awaitingHuman = clutchStatus === 'awaiting_human';
+  const lastReplyText = [...messages].reverse().find((msg) => msg.agent !== 'User')?.text;
+  const awaitingContinue =
+    Boolean(clutchOrchestraState.awaiting_continue) ||
+    (isIdle && shouldOfferContinueFromText(lastReplyText));
   const [hitlBusy, setHitlBusy] = useState(false);
   const pendingPlanMessage = useMemo(() => {
     if (!awaitingHuman) return null;
@@ -2110,7 +2115,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
               isPlainLlmChat={isPlainLlmChat}
               onStopRun={handleStopWithQueueClear}
               onContinueRun={onContinueRun}
-              awaitingContinue={Boolean(clutchOrchestraState.awaiting_continue)}
+              awaitingContinue={awaitingContinue}
               pendingMessages={pendingMessages}
               onRemovePendingMessage={removePending}
               selectedWorkflowId={selectedWorkflowId}

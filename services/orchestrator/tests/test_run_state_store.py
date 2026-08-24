@@ -236,3 +236,12 @@ def test_ws_connect_prefers_persisted_completed_turn() -> None:
     patch = envelope["data"]["patch"]
     assert patch["status"] == "idle"
     assert any(message.get("text") == "background reply" for message in patch["messages"])
+
+
+def test_save_and_load_awaiting_continue() -> None:
+    state = initial_state("run_continue_flag")
+    state["awaiting_continue"] = True
+    save_run_state(state)
+    loaded = load_run_state("run_continue_flag")
+    assert loaded is not None
+    assert loaded.get("awaiting_continue") is True

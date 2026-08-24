@@ -2120,8 +2120,16 @@ async def _finish_plain_chat_after_llm(
     token_patch = _token_patch_turn(
         state, user_text=user_text_for_tokens, assistant_text=reply_text
     )
-    offer_continue = should_offer_continue(reply_text)
-    fuse_hit = "Loop fuse" in (reply_text or "") or "死循环熔断" in (reply_text or "")
+    continue_blob = "\n".join(
+        [reply_text or "", *(route_logs or [])]
+    )
+    offer_continue = should_offer_continue(continue_blob)
+    fuse_hit = (
+        "Loop fuse" in continue_blob
+        or "死循环熔断" in continue_blob
+        or "No-progress loop" in continue_blob
+        or "无进展循环" in continue_blob
+    )
     final_patch = {
         "messages": final_messages,
         "terminal_logs": final_logs,

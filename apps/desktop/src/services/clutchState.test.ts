@@ -9,6 +9,7 @@ import {
   isAuthoritativeMessageReplacement,
   isCompactionDigestMessage,
 } from './clutchState';
+import { shouldOfferContinueFromText } from './clutchStateUtils';
 import type { ChatMessage } from '../types';
 
 describe('createUserChatMessage', () => {
@@ -440,5 +441,16 @@ describe('preferRicherSessionPatch compaction', () => {
 
     expect(patch.messages).toHaveLength(3);
     expect(patch.messages?.some(isCompactionDigestMessage)).toBe(true);
+  });
+});
+
+describe('shouldOfferContinueFromText', () => {
+  it('matches B-38 no-progress stop copy', () => {
+    expect(
+      shouldOfferContinueFromText(
+        'No-progress loop: `read_file` was repeated with the same arguments. Run stopped — click Continue or send a new message.',
+      ),
+    ).toBe(true);
+    expect(shouldOfferContinueFromText('Read CLAUDE.md')).toBe(false);
   });
 });

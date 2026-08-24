@@ -506,6 +506,10 @@ def run_mcp_react_loop(
     html_wrapup_nudged = False
     same_tool_failures: dict[str, int] = {}
     same_tool_soft_nudged: set[str] = set()
+    from src.progress_loop import ProgressTracker
+
+    progress = ProgressTracker()
+    progress_nudged: set[str] = set()
     _emit(logs, on_log, f"[{log_prefix}] Starting MCP ReAct with {len(servers)} server(s)")
 
     for server in servers:
@@ -1436,6 +1440,26 @@ def run_mcp_react_loop(
                             )
                             continue
 
+                    from src.progress_loop import progress_nudge, progress_stop_result
+
+                    spin_name = raw_tool_name or func_name
+                    if progress.peek(spin_name, func_args) == "stop":
+                        result_str = progress_stop_result(spin_name)
+                        chat_messages.append(
+                            {
+                                "role": "tool",
+                                "tool_call_id": tc_id,
+                                "content": result_str,
+                            }
+                        )
+                        fuse_triggered = True
+                        output = result_str
+                        _emit(
+                            logs,
+                            on_log,
+                            f"[{log_prefix}] No-progress loop: blocked repeat {func_name}",
+                        )
+                        break
                     func_args = enrich_verification_args(func_name, func_args)
                     result_str = _execute_tool_call(
                         func_name=func_name,
@@ -1465,6 +1489,23 @@ def run_mcp_react_loop(
                             "content": result_str,
                         }
                     )
+                    spin = (
+                        "ok"
+                        if is_tool_failure_result(result_str)
+                        else progress.observe(spin_name, func_args)
+                    )
+                    if spin == "nudge":
+                        fp_key = spin_name
+                        if fp_key not in progress_nudged:
+                            progress_nudged.add(fp_key)
+                            chat_messages.append(
+                                {"role": "user", "content": progress_nudge(spin_name)}
+                            )
+                            _emit(
+                                logs,
+                                on_log,
+                                f"[{log_prefix}] No-progress soft-cap: nudge repeat {func_name}",
+                            )
                     if note_tool_result(result_str, raw_tool_name or func_name):
                         output = fuse_message(
                             failures=consecutive_failures, max_failures=fuse_limit

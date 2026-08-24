@@ -16,6 +16,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ### Changed
 
+- **No-progress loop (B-38):** Repeating `read_file` / `list_dir` / `grep` / `read_skill` with the same arguments nudges on the 2nd call and stops the turn on the 3rd (Continue, same as D9 fuse). Writes are not counted.
 - **Verification gate (B-37):** Claiming `submit_verification` passed now runs the workspace test suite when one exists and checks listed `changed_files` are on disk. Failures force the existing D5 card to failed (extra harness steps). No second LLM reviewer, no new card.
 - **Layered context (B-36):** ReAct tool results offload to `runs/archive/tool_results/` when large, drop duplicate/empty noise, then batch-offload older tools past a mid threshold. Full `/compact` digest remains the last resort (D8). No new Chat bubble.
 - **Trailing agent status (B-35):** Local time and full Todo/plan leave the system prefix (`env` keeps OS/shell/workspace only). Each turn replaces one trailing `<agent_status>` user block (`attach_trailing_status`). Agent Manager layer list shows `agent_status`.

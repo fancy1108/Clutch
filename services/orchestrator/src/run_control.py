@@ -138,6 +138,8 @@ def should_offer_continue(reply_text: str | None) -> bool:
     markers = (
         "Loop fuse triggered",
         "死循环熔断",
+        "No-progress loop",
+        "无进展循环",
         "maximum tool call iteration limit",
         "Run stopped",
         "已停止当前运行",

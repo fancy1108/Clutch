@@ -7,9 +7,16 @@
 
 - **阶段：** **v1.3.0** 已发；主线 D8–D13 ✅；扩展/MCP **D14–D52 Agent 代 PM ✅**；Desktop E2E ✅；Design D36 仍 ❌
 - **Git / PM 索引：** [`runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md`](../runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md)
-- **下次优先：** B-37 已验收待 commit。下一候选 B-38（空转循环）。
+- **下次优先：** B-38 已验收。下一候选 B-39（可审查 MEMORY.md，须人类开 Task）。
 
 ## Recent Sessions
+
+## 2026-08-24 会话（B-38：无进展循环）
+
+- **做了：** 同参 `read_file`/`list_dir`/`grep` 第 2 次提醒、第 3 次停并出 Continue。
+- **没做：** 不改失败熔断；B-39 未做。
+- **测：** `test_progress_loop_b38` + D9 + mcp_react 21 passed
+- **下次：** B-39 须人类开 Task；不自动做。
 
 ## 2026-08-24 会话（B-37：验证闸）
 

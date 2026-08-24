@@ -294,13 +294,26 @@
 
 **做了什么：** Agent 声称 `submit_verification` 通过时，harness 先跑工作区测套（有 `tests/` / `pytest.ini` / `package.json` test）；失败则卡上多一步失败、结论改 failed。再机械核对 `changed_files` 是否在磁盘上（隔离子检查，**不**用同一个模型给自己的作文打分）。
 
-**没做什么：** 不另开一个会写长评的同模型 reviewer；不做 B-38 空转循环检测。
+**没做什么：** 不另开一个会写长评的同模型 reviewer；空转循环见 B-38。
 
 | ID | 任务 | 完成标准 | Verification |
 |----|------|----------|--------------|
 | B37-01 | 测套失败不得通过 | 有失败测试时 conclusion=failed，步骤含 `harness_tests` | `uv run pytest tests/test_verify_harness_b37.py tests/test_verification_d5.py -v` |
 | B37-02 | 产物缺失不得通过 | 列出的 changed file 不在磁盘 → failed + `harness_artifacts` | 同上 |
 | B37-03 | 无工作区不改 D5 | 未授权工作区时自报结论保持原样 | 同上 |
+
+## Agent progress loop（B-38）
+
+> 书 01。不升 D54+。沿用 D9 Continue，不新开卡片。
+
+**做了什么：** 同一回合里 `read_file` / `list_dir` / `grep` / `read_skill` 用同一参数第 2 次提醒、第 3 次停住（不真执行），对话出现 Continue。写文件不计入。
+
+**没做什么：** 不改失败熔断阈值；不做 B-39 记忆。
+
+| ID | 任务 | 完成标准 | Verification |
+|----|------|----------|--------------|
+| B38-01 | 同参读三次即停 | 第 3 次 identical read → stop；写工具不计 | `uv run pytest tests/test_progress_loop_b38.py tests/test_run_control_d9.py -v` |
+| B38-02 | Continue 仍出现 | stop 文案触发 `should_offer_continue` | 同上 |
 
 ## 待建 pytest 文件（随 task 交付）
 
