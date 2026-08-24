@@ -11,6 +11,13 @@
 
 ## Recent Sessions
 
+## 2026-08-24 会话（B-44：落盘指针来源标记）
+
+- **做了：** 超长工具结果落盘后，送给模型的指针带 `source=tool truncated=yes`。Chat 无新卡片。PM 用 `CHANGELOG.md` 全文 `read_file` 验收通过。
+- **没做：** 不把落盘正文自动灌回模型；Chat 展开区仍是短预览。
+- **测：** `test_context_layers_b36` 5 passed；真机 `runs/archive/tool_results/98131840dcd6.txt`。
+- **下次：** B-41 待验收。
+
 ## 2026-08-24 会话（B-45：记忆投毒过滤）
 
 - **做了：** 裸 URL / 「请记住 + 链接」不写入 MEMORY.md 和 Settings Memory；remember_preference 红叉。PM 验收通过。

@@ -280,13 +280,25 @@
 
 **做了什么：** ReAct 送给模型的工具结果按四层收：大段先落盘只留指针 → 丢掉重复/空转噪声 → 工具正文合计超阈值时把较旧的一批也落盘（最近 2 条保持全文）→ 会话 token 仍超 15000 才走现有全量 digest（`should_compact` / `/compact`）。L1–L3 **不调 LLM**。
 
-**没做什么：** 不改 Chat 气泡折叠交互；不做 B-44 分页/来源标记；不把落盘正文自动再灌回模型。
+**没做什么：** 不改 Chat 气泡折叠交互；来源标记见 B-44；不把落盘正文自动再灌回模型。
 
 | ID | 任务 | 完成标准 | Verification |
 |----|------|----------|--------------|
 | B36-01 | L1 磁盘化 | 超阈值 tool content 写成 `runs/archive/tool_results/*.txt`，消息只留指针+预览 | `uv run pytest tests/test_context_layers_b36.py -v` |
 | B36-02 | L2 噪声 + L3 批量 | 重复/空转旧工具被丢掉；合计超阈值时只压旧工具、保留最近 2 条 | 同上 |
 | B36-03 | L4 全量熔断仍在 | `should_compact` / `/compact` 行为不变 | `uv run pytest tests/test_compaction.py tests/test_context_layers_b36.py -v` |
+
+## Agent archived tool markers（B-44）
+
+> 书 02 · B-36 之后。不升 D54+。无新 Chat 气泡。
+
+**做了什么：** 落盘后的工具结果指针标明 `source=tool truncated=yes`（外部工具产出、正文已收走）。模型下一轮只看到指针 + 短预览；全文在 `runs/archive/tool_results/`。
+
+**没做什么：** 不改 Chat 展开交互；不做分页把落盘正文自动灌回模型。
+
+| ID | 任务 | 完成标准 | Verification |
+|----|------|----------|--------------|
+| B44-01 | 指针带来源与截断标记 | offload 后 content 含 `source=tool` 与 `truncated=yes` | `uv run pytest tests/test_context_layers_b36.py -v` |
 
 ## Agent verification gate（B-37）
 

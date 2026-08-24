@@ -80,7 +80,7 @@ def _pointer_for(content: str, path: Path) -> str:
             rel = rel[idx:]
             break
     return (
-        f"{POINTER} file={rel} chars={len(content)}\n"
+        f"{POINTER} source=tool truncated=yes file={rel} chars={len(content)}\n"
         f"preview:\n{preview}"
     )
 

@@ -12,6 +12,7 @@
 
 | 日期 | 范围 | 命令 | 结果 | 报告/证据 | 备注 |
 |------|------|------|------|-----------|------|
+| 2026-08-24 | B-44 落盘指针来源标记 | `uv run pytest tests/test_context_layers_b36.py -q` | ✅ 5 passed | `runs/archive/tool_results/98131840dcd6.txt` | PM：`CHANGELOG.md` 全文 read；Chat 无新卡 |
 | 2026-08-24 | B-35 末尾 agent_status | `uv run pytest tests/test_agent_prompt.py tests/test_task_state_d8.py tests/test_agent_eval_b34.py tests/test_agent_prompt_d53.py tests/test_compaction.py tests/test_d7_project_rules_skills.py tests/test_permission_explore_d27.py tests/test_cross_session_memory_d16.py tests/test_plan_d2_d49.py` | ✅ 51 passed / 3 skipped | — | 前缀无时钟/Todo；status 整换 |
 | 2026-08-24 | B-34 Agent eval 快照 + Agnes live | `uv run pytest tests/test_agent_eval_b34.py -v`；`CLUTCH_AGENT_EVAL_LIVE=1 … -k live` | ✅ 契约 3 passed / live 3 passed | — | CI 默认 skip live；本机 CC Switch Agnes |
 | 2026-06-27 | D25 HRT-04 单 session Hybrid 验收 | 用户人工 A–E | ✅ | `runs/verification/2026-06-27-hrt-04-acceptance.md` | commit `1d281f6` 基线 |

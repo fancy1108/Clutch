@@ -133,6 +133,15 @@
 | 噪声删除 + 超阈值只压旧工具 | P0 | ✅ | 同上 |
 | `/compact` 全量熔断仍可用 | P0 | ✅ | `test_compaction` + B-36 阈值回归 |
 
+## Agent archived tool markers（B-44 · 默认 FAIL）
+
+> 书 02。定义：[`specs/core/tasks.md`](../specs/core/tasks.md) §Agent archived tool markers。  
+> 落盘指针标明来源与截断；无新 Chat 卡片。
+
+| 验收项 | 优先级 | 状态 | 说明 |
+|--------|--------|------|------|
+| 指针含 `source=tool truncated=yes` | P0 | ✅ | pytest 2026-08-24 `test_context_layers_b36`；PM 读 `CHANGELOG.md` 全文 |
+
 ## Agent verification gate（B-37 · 默认 FAIL）
 
 > 书 01+05 · **Q-AGENT-3 = C**。定义：[`specs/core/tasks.md`](../specs/core/tasks.md) §Agent verification gate。  

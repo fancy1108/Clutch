@@ -26,6 +26,8 @@ def test_offload_large_tool_result_writes_pointer(tmp_path: Path, monkeypatch) -
     assert messages[0]["content"] == "read it"
     assert messages[1]["content"].startswith(POINTER)
     assert "chars=200" in messages[1]["content"]
+    assert "source=tool" in messages[1]["content"]
+    assert "truncated=yes" in messages[1]["content"]
     files = list(tmp_path.glob("*.txt"))
     assert len(files) == 1
     assert files[0].read_text(encoding="utf-8") == body

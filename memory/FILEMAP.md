@@ -74,12 +74,12 @@
 | 里程碑级验收 T-01~04 | `specs/core/tasks.md` §测试与验收 |
 | 进度 / 待办 | `memory/PROGRESS.md`（近期）· 归档 `memory/archive/PROGRESS-*.md` |
 | **Git worktree · release slices** | v1.0.2 / v1.0.3 worktree 已清理；**v1.1.0** / **v1.1.1** / **v1.1.2** / **v1.2.0**（macOS-only 发版材料，2026-07-10；tag 待 `main`） |
-| 候选优化需求池（未立项） | `memory/BACKLOG.md` · Active（含 **B-33** ← PR #22；**B-41–B-44、B-46–B-50** ← 书 01–10 对照；**B-34–B-40、B-45** 已升格） |
+| 候选优化需求池（未立项） | `memory/BACKLOG.md` · Active（含 **B-33** ← PR #22；**B-41–B-43、B-46–B-50** ← 书 01–10 对照；**B-34–B-40、B-44、B-45** 已升格） |
 | GitHub Issue 待修复 Bug | `memory/BACKLOG.md` §GitHub Issues · 待修复 Bug |
 | **开源排期 OSR-xx 验收状态** | **`memory/ROADMAP.md` §开源分发** · Task 定义 `docs/OPEN_SOURCE_RELEASE.md` §7.2 |
 | 文档生命周期 / 权威真相 | `docs/document-governance.md` |
 | Orchestrator 主控能力调研（参考） | `docs/research/orchestrator-optimization-pool.md` |
-| **Clutch Agent ↔《深入理解 AI Agent》01–10 缺口（参考）** | **`docs/research/clutch-agent-book-gap.md`** · 候选 B-41–B-44、B-46–B-50 · **B-34–B-40、B-45** 已升格 · **Q-AGENT-1–4** |
+| **Clutch Agent ↔《深入理解 AI Agent》01–10 缺口（参考）** | **`docs/research/clutch-agent-book-gap.md`** · 候选 B-41–B-43、B-46–B-50 · **B-34–B-40、B-44、B-45** 已升格 · **Q-AGENT-1–4** |
 | CLI PTY Session 改造方案（参考） | `docs/research/pty-session.md` |
 | **D25 Hybrid 执行状态（权威）** | **`specs/core/hybrid-runtime-plan.md`** · D27 命名对齐 |
 | PTY Session Step 0 实验 | `experiments/pty_poc/` |
@@ -236,7 +236,7 @@
 | Agent 评测快照 + Agnes live（B-34） | `src/agent_eval.py` · `tests/test_agent_eval_b34.py` · `CLUTCH_AGENT_EVAL_LIVE=1`；定义见 `specs/core/tasks.md` §Agent Harness |
 | 末尾 `<agent_status>`（B-35） | `agent_prompt.format_agent_status` / `attach_trailing_status` · Chat `attach` 在 `_history_with_prefix_and_status`；定义见 `tasks.md` §Agent status |
 | 项目规则发现 + Skills 按需（D7） | `agent_prompt._load_workspace_rules` · `read_skill` · `skills_storage.sync_workspace_skill_mounts` |
-| 长聊任务态 / 压缩（D8 / B-36） | `src/task_state.py` · `compaction.py`（L4） · `context_layers.py`（L1–L3） |
+| 长聊任务态 / 压缩（D8 / B-36 / B-44） | `src/task_state.py` · `compaction.py`（L4） · `context_layers.py`（L1–L3；指针 `source=tool truncated=yes`） |
 | 运行可控（D9 / B-38） | `run_control.py` · `progress_loop.py` · `mcp_react` fuse · Chat Stop/Continue |
 | 子任务委派（D10∥D48） | `src/subagent_runner.py` · `delegate_subtask` · `SubtaskCardView.tsx` |
 | 后台命令（D11） | `src/bg_jobs.py` · `run_terminal_cmd` background · `BackgroundJobsBar.tsx` |
