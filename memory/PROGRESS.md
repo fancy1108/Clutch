@@ -7,9 +7,16 @@
 
 - **阶段：** **v1.3.0** 已发；主线 D8–D13 ✅；扩展/MCP **D14–D52 Agent 代 PM ✅**；Desktop E2E ✅；Design D36 仍 ❌
 - **Git / PM 索引：** [`runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md`](../runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md)
-- **下次优先：** B-40 及后续待验收。Design D36 未做。
+- **下次优先：** B-45 / B-41 / B-44 / B-48 待验收。Design D36 未做。
 
 ## Recent Sessions
+
+## 2026-08-24 会话（B-40：验证结果写入 MEMORY.md）
+
+- **做了：** `submit_verification` 通过/失败后往 MEMORY.md 追加 `Worked:` / `Failed:`。PM 验收通过。
+- **没做：** B-45 投毒过滤。
+- **测：** `test_remember_outcome_passed_and_failed`
+- **下次：** B-45 验收
 
 ## 2026-08-24 会话（B-39：工作区 MEMORY.md）
 

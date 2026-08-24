@@ -687,6 +687,12 @@ def run_mcp_react_loop(
             func_args,
             existing_todos=latest_todos if latest_todos is not None else todo_baseline,
         )
+        try:
+            from src.workspace_memory import remember_outcome
+
+            remember_outcome(latest_verification)
+        except Exception:
+            pass
         if on_verification:
             on_verification(dict(latest_verification))
 

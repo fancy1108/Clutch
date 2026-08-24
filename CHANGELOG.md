@@ -13,6 +13,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 ### Added
 
 - **Workspace MEMORY.md (B-39):** Saying `记住：…` / `remember:` writes `.clutch/memory/MEMORY.md` (open in Files). Next Chat turns inject that overview. Settings Memory copy points at the file.
+- **Verification notes (B-40):** Passing/failing `submit_verification` appends `Worked:` / `Failed:` to that file.
 - **Agent eval harness (B-34):** Maintainer-only prompt-layer snapshots (same config → same fingerprint; `env`/clock omitted from the hash, **not removed from the live prompt**) plus an optional Agnes live set gated by `CLUTCH_AGENT_EVAL_LIVE=1` (CC Switch or Clutch key; CI never binds secrets). No Chat/Settings UI change. Moving clock/todos to a trailing `<agent_status>` is B-35, not this.
 
 ### Changed

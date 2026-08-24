@@ -328,6 +328,18 @@
 | B39-01 | 可打开 MEMORY.md | append 后文件存在且含笔记 | `uv run pytest tests/test_workspace_memory_b39.py -v` |
 | B39-02 | 重复不膨胀 | 相同句子不重复；超过 40 条裁旧 | 同上 |
 
+## Agent verification notes（B-40）
+
+> 书 08。不升 D54+。无新 Chat 卡片。
+
+**做了什么：** `submit_verification` 通过/失败后，往工作区 `.clutch/memory/MEMORY.md` 追加一行 `Worked: {title}` 或 `Failed: {title}`。
+
+**没做什么：** 不做长篇反思；投毒过滤见 B-45。
+
+| ID | 任务 | 完成标准 | Verification |
+|----|------|----------|--------------|
+| B40-01 | 验证结果落盘 | passed → `Worked:`；failed → `Failed:` | `uv run pytest tests/test_workspace_memory_b39.py -v` |
+
 ## 待建 pytest 文件（随 task 交付）
 
 | 文件 | 关联 task |

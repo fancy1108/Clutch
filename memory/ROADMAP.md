@@ -163,6 +163,14 @@
 | Files 能打开 MEMORY.md | P0 | ✅ | PM 2026-08-24：记住后 Files 可见 |
 | 新会话仍记得 | P0 | ✅ | 同上 |
 
+## Agent verification notes（B-40 · 默认 FAIL）
+
+> 书 08。定义：[`specs/core/tasks.md`](../specs/core/tasks.md) §Agent verification notes。
+
+| 验收项 | 优先级 | 状态 | 说明 |
+|--------|--------|------|------|
+| 验证通过写入 Worked | P0 | ✅ | PM 2026-08-24：绿卡 + MEMORY.md `Worked: 验证报告` |
+
 ## Design 模式（D36 · 默认 FAIL）
 
 > Header Coding/Design + 工作区 Design 会话 + 原型交互画布；未实际验证不得标 ✅。

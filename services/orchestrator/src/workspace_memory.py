@@ -90,3 +90,18 @@ def format_workspace_memory_block() -> str:
         "Honor these workspace notes; the user can edit `.clutch/memory/MEMORY.md`:\n"
         f"{body}"
     )
+
+
+def remember_outcome(report: dict[str, object] | None) -> str | None:
+    """B-40: persist verification passed/failed as a short workspace note."""
+    if not isinstance(report, dict):
+        return None
+    conclusion = str(report.get("conclusion") or "").strip().lower()
+    title = str(report.get("title") or "task").strip() or "task"
+    summary = str(report.get("summary") or "").strip()
+    if conclusion == "passed":
+        return append_note(f"Worked: {title}")
+    if conclusion == "failed":
+        extra = f" — {summary[:160]}" if summary else ""
+        return append_note(f"Failed: {title}{extra}")
+    return None

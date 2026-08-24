@@ -74,12 +74,12 @@
 | 里程碑级验收 T-01~04 | `specs/core/tasks.md` §测试与验收 |
 | 进度 / 待办 | `memory/PROGRESS.md`（近期）· 归档 `memory/archive/PROGRESS-*.md` |
 | **Git worktree · release slices** | v1.0.2 / v1.0.3 worktree 已清理；**v1.1.0** / **v1.1.1** / **v1.1.2** / **v1.2.0**（macOS-only 发版材料，2026-07-10；tag 待 `main`） |
-| 候选优化需求池（未立项） | `memory/BACKLOG.md` · Active（含 **B-33** ← PR #22；**B-40–B-50** ← 书 01–10 对照；**B-34–B-39** 已升格） |
+| 候选优化需求池（未立项） | `memory/BACKLOG.md` · Active（含 **B-33** ← PR #22；**B-41–B-50** ← 书 01–10 对照；**B-34–B-40** 已升格） |
 | GitHub Issue 待修复 Bug | `memory/BACKLOG.md` §GitHub Issues · 待修复 Bug |
 | **开源排期 OSR-xx 验收状态** | **`memory/ROADMAP.md` §开源分发** · Task 定义 `docs/OPEN_SOURCE_RELEASE.md` §7.2 |
 | 文档生命周期 / 权威真相 | `docs/document-governance.md` |
 | Orchestrator 主控能力调研（参考） | `docs/research/orchestrator-optimization-pool.md` |
-| **Clutch Agent ↔《深入理解 AI Agent》01–10 缺口（参考）** | **`docs/research/clutch-agent-book-gap.md`** · 候选 B-40–B-50 · **B-34–B-39** 已升格 · **Q-AGENT-1–4** |
+| **Clutch Agent ↔《深入理解 AI Agent》01–10 缺口（参考）** | **`docs/research/clutch-agent-book-gap.md`** · 候选 B-41–B-50 · **B-34–B-40** 已升格 · **Q-AGENT-1–4** |
 | CLI PTY Session 改造方案（参考） | `docs/research/pty-session.md` |
 | **D25 Hybrid 执行状态（权威）** | **`specs/core/hybrid-runtime-plan.md`** · D27 命名对齐 |
 | PTY Session Step 0 实验 | `experiments/pty_poc/` |
@@ -155,7 +155,7 @@
 | D36 headless Agent | `headless_agent.py` · `headless_cli.py` · `routes/agent_run.py` |
 | D14 Grok CLI | `grok_cli_adapter.py` · `grok-cli` in `tools_status` / `engine_router` |
 | 会话 fork/回滚（D23） | `session_fork.py` · `file_rewind.py` · fork/rewind API · Chat 菜单 |
-| 跨会话记忆（D16 / B-39） | `cross_session_memory.py` · `workspace_memory.py` · Settings Memory · Files `.clutch/memory/MEMORY.md` |
+| 跨会话记忆（D16 / B-39 / B-40） | `cross_session_memory.py` · `workspace_memory.py` · Settings Memory · Files `.clutch/memory/MEMORY.md` |
 | 工具 Hooks（D17） | `tool_hooks.py` · `mcp_react` Pre/Post 拦截 |
 | 能力包导入（D35） | `capability_pack.py` · Skills 页 Import/Uninstall |
 | Chat 用量（D22 / D9） | 右侧 `RightPanel` Overview `overview-run-usage` / `chat-run-stats` · `chat_runner._touch_session` 持久化用量 |

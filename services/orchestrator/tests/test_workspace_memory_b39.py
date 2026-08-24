@@ -58,3 +58,15 @@ def test_compact_keeps_last_notes(tmp_path, monkeypatch) -> None:
     assert len(notes) == 40
     assert notes[0] == "note-5"
     assert notes[-1] == "note-44"
+
+
+def test_remember_outcome_passed_and_failed(tmp_path, monkeypatch) -> None:
+    _ws(tmp_path, monkeypatch)
+    from src.workspace_memory import remember_outcome
+
+    assert remember_outcome({"conclusion": "passed", "title": "login form"}) == MEMORY_REL
+    assert any(item.startswith("Worked:") for item in read_notes())
+    assert remember_outcome(
+        {"conclusion": "failed", "title": "tests", "summary": "pytest boom"}
+    ) == MEMORY_REL
+    assert any("Failed: tests" in item for item in read_notes())
