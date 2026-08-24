@@ -10,6 +10,15 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ## [Unreleased]
 
+### Added
+
+- **Agent eval harness (B-34):** Maintainer-only prompt-layer snapshots (same config → same fingerprint; `env`/clock omitted from the hash, **not removed from the live prompt**) plus an optional Agnes live set gated by `CLUTCH_AGENT_EVAL_LIVE=1` (CC Switch or Clutch key; CI never binds secrets). No Chat/Settings UI change. Moving clock/todos to a trailing `<agent_status>` is B-35, not this.
+
+### Changed
+
+- **Trailing agent status (B-35):** Local time and full Todo/plan leave the system prefix (`env` keeps OS/shell/workspace only). Each turn replaces one trailing `<agent_status>` user block (`attach_trailing_status`). Agent Manager layer list shows `agent_status`.
+- **Chat runner split (DECISIONS D38 Phase 1):** Extract message/history/seal helpers (`chat_messages.py`), WebSocket send helpers (`chat_ws_events.py`), and MCP/Plan/Question gate helpers (`chat_mcp_gates.py`) from `chat_runner.py`; orchestration stays in `chat_runner` with re-exports for existing imports. Drop unused duplicate Request schema re-exports from `chat_runner`/`main`.
+
 ### Fixed
 
 - **Chat Markdown tables:** GFM pipe tables (`| col | … |` + `|---|`) in assistant replies render as real HTML tables (with inline `code` / bold in cells) instead of raw pipe text.

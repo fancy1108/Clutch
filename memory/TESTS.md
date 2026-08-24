@@ -12,6 +12,8 @@
 
 | 日期 | 范围 | 命令 | 结果 | 报告/证据 | 备注 |
 |------|------|------|------|-----------|------|
+| 2026-08-24 | B-35 末尾 agent_status | `uv run pytest tests/test_agent_prompt.py tests/test_task_state_d8.py tests/test_agent_eval_b34.py tests/test_agent_prompt_d53.py tests/test_compaction.py tests/test_d7_project_rules_skills.py tests/test_permission_explore_d27.py tests/test_cross_session_memory_d16.py tests/test_plan_d2_d49.py` | ✅ 51 passed / 3 skipped | — | 前缀无时钟/Todo；status 整换 |
+| 2026-08-24 | B-34 Agent eval 快照 + Agnes live | `uv run pytest tests/test_agent_eval_b34.py -v`；`CLUTCH_AGENT_EVAL_LIVE=1 … -k live` | ✅ 契约 3 passed / live 3 passed | — | CI 默认 skip live；本机 CC Switch Agnes |
 | 2026-06-27 | D25 HRT-04 单 session Hybrid 验收 | 用户人工 A–E | ✅ | `runs/verification/2026-06-27-hrt-04-acceptance.md` | commit `1d281f6` 基线 |
 | 2026-07-01 | D25 HRT-F 多 session Hybrid 验收 | 用户人工 F1/F2/G | ✅ | [`runs/verification/2026-07-01-hrt-f-multi-session.md`](../runs/verification/2026-07-01-hrt-f-multi-session.md) · [#24](https://github.com/fancy1108/Clutch/issues/24) · F3–F5 skip |
 | 2026-06-27 | D25 runtime_registry dispatch | `./scripts/verify.sh` | ✅ 342 pytest | `—` | `try_shell_exec_hybrid` |

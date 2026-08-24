@@ -71,6 +71,30 @@
 > **D25 已升格 HRT：** 审计 HRT-05~07 · 并发 HRT-08~10 — 见 [`specs/core/hybrid-runtime-plan.md`](../specs/core/hybrid-runtime-plan.md)。  
 > **B-33 备注：** 与 B-10（内置 BM25 跨 run 记忆）路径不同；Epicode 走 MCP 扩展点。PR 已 triage review，**仅入池，非开发承诺**。
 
+### P0–P2 · 对照《深入理解 AI Agent》01–10（2026-08-24）
+
+> **调研：** [`docs/research/clutch-agent-book-gap.md`](../docs/research/clutch-agent-book-gap.md)。未立项；升格先答 `DECISIONS.md` **Q-AGENT-1–4**。勿改交付表冒充 D54+。  
+> **B-34 / B-35 已升格：** `specs/core/tasks.md` §Agent Harness · §Agent status · `ROADMAP.md` 同名节。  
+> **重叠勿重开：** B-01 分派 · B-02/Q-USAGE-1 用量 · B-08 并行 worktree · B-10 检索 · B-12 项目记忆 · B-18–B-22 沙箱/policy · B-26 spawn/wait · B-27/B-28 → D28/D43。
+
+| ID | 候选能力 | 状态 | 升格条件 |
+|----|----------|------|----------|
+| B-36 | 分层压缩：工具结果磁盘化 → 噪声删除 → 阈值批量压 → 全量熔断（书 02） | 候选 | B-35 后；人类确认 |
+| B-37 | 独立 reviewer + 有测试则跑测套，失败不得声称完成（书 01+05） | 待决策 | **Q-AGENT-3 = C**（强制测套 + 隔离子 Agent）；升格须人类开 Task |
+| B-38 | 无进展循环检测（重复 path+args / 空转 read-grep）（书 01） | 候选 | 人类确认 |
+| B-39 | 可审查 `MEMORY.md` + 会话后抽取 + 睡眠整合（书 03+08） | 待决策 | **Q-AGENT-4 = C 用 B 落地**；检索仍 B-10；升格须人类开 Task |
+| B-40 | 成功策略摘要 / 失败反思写入工作区知识（书 08） | 候选 | B-39 后 |
+| B-41 | Builtin ACI 描述：何时用/不用 + 反例 + 1–3 调用样例（书 04） | 候选 | 人类确认 |
+| B-42 | 事件 Channel：邮件/Webhook/IM 推送唤醒（书 04；Cron≠推送） | 候选 | 人类确认 |
+| B-43 | 多 Agent「新信息」门禁；并行必须 worktree（书 10） | 候选 | 并行隔离见 **B-08** |
+| B-44 | 外部内容来源标记 + 工具结果显式截断/分页（书 02） | 候选 | B-35 后 |
+| B-45 | 记忆投毒防护：网页/MCP「请记住」不得直入长期记忆（书 03） | 候选 | 与 B-39 同批或其后 |
+| B-46 | `notify_user` + 子 Agent send/cancel 与两种上下文传递（书 04） | 候选 | 人类确认；原语见 B-26 |
+| B-47 | 独立 Code Interpreter 沙盒（断网/超时结构化错误）（书 05） | 候选 | 语义命令走 **B-21** |
+| B-48 | 消融总闸 + 结构化 trajectory 落盘（书 06） | 候选 | B-34 后 |
+| B-49 | Design 渲染截图 → 视觉 reviewer（书 09/10 新信息）（≠ Design D36 画布本身） | 候选 | Design D36 路径上评估 |
+| B-50 | 子任务步骤预算 + 按复杂度移交包（书 10） | 候选 | 管理者见 **B-01** |
+
 ---
 
 ## GitHub Issues · 待修复 Bug
@@ -99,6 +123,8 @@ _当前无 open 的待修复 Bug（2026-07-01）。_
 
 | ID | 归宿 |
 |----|------|
+| B-35 | `specs/core/tasks.md` §Agent status · `ROADMAP.md` §Agent status（书 02；末尾 `<agent_status>`；Q-AGENT-2=A） |
+| B-34 | `specs/core/tasks.md` §Agent Harness · `ROADMAP.md` §Agent Harness（书 06；评测尺子，不挪时钟；Q-AGENT-1=C） |
 | B-03 | v1.0.0 — `compaction.py` · `runs/archive/{run_id}.jsonl` · 见 [`archive/DELIVERABLES-POST-MVP.md`](./archive/DELIVERABLES-POST-MVP.md) |
 | #18 | v1.0.2 — `lib.rs` sidecar lifecycle · [Issue closed](https://github.com/fancy1108/Clutch/issues/18) |
 | #19 | `engine_router.py` CLI 错误单层包装 + 529 文案 · [Issue closed](https://github.com/fancy1108/Clutch/issues/19) |

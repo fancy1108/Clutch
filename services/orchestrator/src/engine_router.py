@@ -284,15 +284,21 @@ def _format_history_for_cli_prompt(history: list[dict[str, str]] | None) -> str:
     if not history:
         return ""
     lines: list[str] = []
+    status = ""
     for item in history:
         role = item.get("role")
         content = str(item.get("content", "")).strip()
         if not content or role == "system":
             continue
+        if role == "user" and "<agent_status>" in content:
+            status = content
+            continue
         if role == "user":
             lines.append(f"User: {content}")
         elif role == "assistant":
             lines.append(f"Assistant: {content}")
+    if status:
+        lines.append(status)
     return "\n\n".join(lines)
 
 

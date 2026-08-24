@@ -36,6 +36,17 @@ def test_cli_prompt_from_history_keeps_current_when_already_present() -> None:
     assert prompt.count("User: follow up") == 1
 
 
+def test_cli_prompt_from_history_keeps_agent_status_off_the_current_turn() -> None:
+    history = [
+        {"role": "user", "content": "<agent_status>\nLocal time: now\n</agent_status>"},
+        {"role": "user", "content": "queued-turn"},
+    ]
+    prompt = _cli_prompt_from_history("queued-turn", history)
+    assert prompt.startswith("User: queued-turn")
+    assert "<agent_status>" in prompt
+    assert prompt.count("User: queued-turn") == 1
+
+
 def test_effective_prepend_system_prompt_skips_history_replay_follow_up() -> None:
     assert _effective_prepend_system_prompt(
         True,

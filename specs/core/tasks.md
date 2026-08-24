@@ -242,6 +242,38 @@
 | 文件路径 | `memory/FILEMAP.md` |
 | 开放决策 | `memory/DECISIONS.md` |
 
+## Agent Harness（B-34）
+
+> 书 06 · **Q-AGENT-1 = C**（本机 CC Switch Agnes；CI 不绑密钥）。勿写入交付表 D54+。  
+> **无界面变化** — 不请 PM 点验 Chat/设置。
+
+**B-34 做了什么：** 给开发一条尺子，不是改用户路径。
+
+1. **提示词快照** — 同一套 Agent 配置，两次组装；去掉会变的 `env`（本机时间 / 系统 / Shell / 工作区路径）后，静态层指纹必须一致。防「提示词悄悄漂了」。
+2. **三条契约** — Ask 层写明只读；todos 出现在 `task_state`；「实现登录页」类请求要求 `propose_plan`。
+3. **可选真模型抽检** — `CLUTCH_AGENT_EVAL_LIVE=1` 时用 CC Switch / Clutch 的 Agnes 跑 Ask / 还剩哪些 todo / 网页注入三案。CI 无密钥 skip；禁止把密钥写入日志。
+
+**B-34 没做什么：** 没有冻死系统提示词（故意改文案时测试会红、承认即可）。**没有删掉、也没有挪走本机时间** — 时间仍在 D53 `env` 层、整段 system 前缀里。挪到对话末尾每轮整换的 `<agent_status>`（连同完整 Todo）是 **B-35**（**Q-AGENT-2 = A**），尚未立项落地。对照：现在 = 时钟/Todo 在前缀里破坏缓存；预期 = 前缀只留稳定层。
+
+| ID | 任务 | 完成标准 | Verification |
+|----|------|----------|--------------|
+| B34-01 | 提示词确定性快照 | 同配置两次组装静态层指纹一致；`env` 含 Local time 但不入指纹 | `cd services/orchestrator && uv run pytest tests/test_agent_eval_b34.py -v` |
+| B34-02 | 契约：Ask / todo / propose_plan | Ask 层只读；todos 出现在 `task_state`；特性请求含 `propose_plan` | 同上 |
+| B34-03 | 本机 Agnes 任务级小集 | 无密钥 skip；`CLUTCH_AGENT_EVAL_LIVE=1` 时跑 Ask / todo / 注入 3 案 | `CLUTCH_AGENT_EVAL_LIVE=1 uv run pytest tests/test_agent_eval_b34.py -k live -v` |
+
+## Agent status（B-35）
+
+> 书 02 · **Q-AGENT-2 = A**。无 Chat 气泡变化；可感知处：Agent Manager「运行时提示词分层」多一层 `agent_status`，`env` 不再含时钟。
+
+**做了什么：** 本机时间与完整 Todo/计划从 D53 system 前缀移到对话末尾一条 `<agent_status>`；每轮用新条整换旧条（`attach_trailing_status`），不堆历史。`as_system_prompt()` 不含该层。OS / Shell / 工作区仍留在 `env`。
+
+**没做什么：** 不改 Chat 里 Todo 卡的样子；不做分层压缩（B-36）；不把状态写进用户可见气泡。
+
+| ID | 任务 | 完成标准 | Verification |
+|----|------|----------|--------------|
+| B35-01 | 前缀去掉时钟与 Todo | `compose_agent_system_prompt` 无 `Local time:`；todos 只在 `agent_status` | `uv run pytest tests/test_agent_prompt.py tests/test_task_state_d8.py tests/test_agent_eval_b34.py -v` |
+| B35-02 | 末尾状态整换 | 连续两次 attach 后历史里只有一条 `<agent_status>` | 同上 |
+
 ## 待建 pytest 文件（随 task 交付）
 
 | 文件 | 关联 task |
@@ -261,3 +293,4 @@
 | `tests/test_subprocess_isolation.py` | M3-07 |
 | `tests/test_repository_groups.py` | P2-05 |
 | `tests/test_skills_registry.py` | P2-01 |
+| `tests/test_agent_eval_b34.py` | B34-01–03 |

@@ -35,4 +35,5 @@ pythonpath = ["."]
 testpaths = ["tests"]
 markers = [
     "real_route_engine: use production engine_router instead of conftest mock",
+    "agent_eval_live: real Agnes chat (requires CLUTCH_AGENT_EVAL_LIVE=1 + key)",
 ]

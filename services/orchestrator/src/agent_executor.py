@@ -74,7 +74,7 @@ def _run_clutch_chat_task(
     stream_log,
 ) -> tuple[str, list[str]]:
     from src.agent_mcp import resolve_agent_mcp_servers
-    from src.agent_prompt import compose_agent_system_prompt
+    from src.agent_prompt import attach_trailing_status, compose_agent_prompt_assembly
     from src.agent_type import resolve_model_for_agent
     from src.image_router import is_image_model
     from src.video_router import is_video_model
@@ -87,16 +87,19 @@ def _run_clutch_chat_task(
         raise RuntimeError("media model should be handled before clutch chat")
 
     mcp_servers = resolve_agent_mcp_servers(agent_dict)
-    system_prompt = compose_agent_system_prompt(
+    assembly = compose_agent_prompt_assembly(
         agent_dict,
         model_name=spec.name,
         model_api=spec.api_model,
         mcp_servers_bound=bool(mcp_servers),
     )
-    chat_messages: list[dict[str, Any]] = [
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": task_instruction},
-    ]
+    chat_messages: list[dict[str, Any]] = attach_trailing_status(
+        [
+            {"role": "system", "content": assembly.as_system_prompt()},
+            {"role": "user", "content": task_instruction},
+        ],
+        assembly.agent_status_text(),
+    )
     extra_logs: list[str] = []
 
     if mcp_servers:

@@ -14,21 +14,28 @@ def test_format_local_time_includes_clock_and_offset() -> None:
     assert "UTC+08:00" in text
 
 
-def test_compose_agent_system_prompt_includes_local_time() -> None:
+def test_compose_agent_system_prompt_keeps_clock_out_of_prefix() -> None:
+    from src.agent_prompt import attach_trailing_status, compose_agent_prompt_assembly
+
     agent = {
         "id": "clutch-agent",
         "name": "Clutch Agent",
         "agentType": "clutch",
     }
-    prompt = compose_agent_system_prompt(
+    assembly = compose_agent_prompt_assembly(
         agent,
         model_name="ornith:9b",
         model_api="ollama",
     )
+    prompt = assembly.as_system_prompt()
+    status = assembly.agent_status_text()
     assert "## Environment" in prompt
-    assert "Local time:" in prompt
-    assert "Use Local time above for clock/date questions" in prompt
-    assert "Date:" not in prompt.split("## Environment", 1)[1].split("##", 1)[0]
+    assert "Local time:" not in prompt
+    assert "<agent_status>" in status
+    assert "Local time:" in status
+    once = attach_trailing_status([{"role": "user", "content": "hi"}], status)
+    assert sum(1 for item in once if "<agent_status>" in str(item.get("content"))) == 1
+    assert once[-1]["content"] == "hi"
 
 
 def test_compose_agent_system_prompt_includes_runtime_model_for_clutch_agent() -> None:

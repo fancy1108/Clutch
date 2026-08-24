@@ -5,11 +5,38 @@
 
 ## Current Status
 
-- **阶段：** **v1.2.9**；主线 D8–D13 ✅；扩展/MCP **D14–D52 Agent 代 PM ✅**；Desktop E2E ✅；真连 Skip（密钥）；Design D36 仍 ❌
+- **阶段：** **v1.3.0** 已发；主线 D8–D13 ✅；扩展/MCP **D14–D52 Agent 代 PM ✅**；Desktop E2E ✅；Design D36 仍 ❌
 - **Git / PM 索引：** [`runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md`](../runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md)
-- **下次优先：** 重启 Sidecar 验证天气走 `web_search`/`web_fetch`；旧偏好若 Allow network=Off 需手动打开；commit 本轮 e2e + tool harness 修复
+- **下次优先：** B-36 或 B-37；B-35 分层已点到。未 commit
 
 ## Recent Sessions
+
+## 2026-08-24 会话（B-35：末尾 agent_status）
+
+- **做了：** 时钟与完整 Todo 离开 system 前缀；每轮整换 `<agent_status>`。Agent Manager 分层可见 `agent_status`。
+- **没做：** Chat 气泡/Todo 卡样子不变；B-36 分层压缩未做。
+- **测：** `test_agent_prompt` / `test_task_state_d8` / `test_agent_eval_b34` 等 51 passed
+- **下次：** 未 commit
+
+## 2026-08-24 会话（B-34 升格：评测骨架）
+
+- **落地：** `src/agent_eval.py` + `tests/test_agent_eval_b34.py`；BACKLOG B-34 → `tasks.md` §Agent Harness / `ROADMAP.md` §Agent Harness
+- **做了：** 静态层指纹（不算 `env`）+ Ask/todo/propose_plan 契约 + 可选 Agnes live 三案。无界面。
+- **没做：** 未冻提示词；未删/未挪本机时间（仍在 `env` 前缀）。预期末尾 `<agent_status>` = B-35。
+- **测：** 契约 3 passed；`CLUTCH_AGENT_EVAL_LIVE=1` Agnes 3 passed（Ask / todo / 注入）
+- **下次：** B-35；未 commit（等人说）
+
+## 2026-08-24 会话（书 01–10 ↔ Clutch Agent 对照入池）
+
+- **落地（文档，未写业务代码）：** 调研 [`docs/research/clutch-agent-book-gap.md`](../docs/research/clutch-agent-book-gap.md)；BACKLOG **B-34–B-50**；开放问题 **Q-AGENT-1–4**
+- **结论：** D0–D53 已覆盖「能做事」；下一阶段是评测 / KV 友好状态栏 / 独立验证 / 可审查记忆，而不是再加工具或后训练
+- **下次：** 人类拍板 Q-AGENT-1（评测怎么跑）后才能把 B-34 升格为 Task
+
+## 2026-08-01 会话（D38 Phase 1：chat_runner 拆分）
+
+- **落地：** `chat_messages.py` / `chat_ws_events.py` / `chat_mcp_gates.py`；`chat_runner` ~5347→~4550 行 + re-export；清理死 Request schema
+- **测：** 计划内子集 45 passed；全量 pytest 951 passed / 4 skipped；`./scripts/verify.sh` OK
+- **下次：** Phase 2 或 backlog P1（generator / ChatFeed）
 
 ## 2026-07-25 会话（Tool harness 全链路）
 

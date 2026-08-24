@@ -734,7 +734,7 @@ const zhTranslations: Record<string, string> = {
   "System Prompt / Directive Summary": "系统提示词 / 指令摘要",
   "Editable protocol segment": "可编辑协议段（非完整 system）",
   "Runtime prompt layers": "运行时提示词分层",
-  "Prompt assembly hint": "D53：当前工作区与权限模式下，Sidecar 实际注入的层（仅层名与字符量）。切换 Plan / 换工作区后点刷新。",
+  "Prompt assembly hint": "D53：当前工作区与权限模式下，Sidecar 实际注入的层（仅层名与字符量）。时钟与 Todo 在末尾 agent_status（每轮整换），不进 system 前缀。切换 Plan / 换工作区后点刷新。",
   "chars": "字符",
   "No assembly data": "暂无组装数据",
   "Refresh": "刷新",

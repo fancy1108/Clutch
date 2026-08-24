@@ -111,8 +111,19 @@ class PromptAssembly:
     layers: list[PromptLayer] = field(default_factory=list)
 
     def as_system_prompt(self) -> str:
-        parts = [layer.content.strip() for layer in self.layers if layer.content.strip()]
+        # B-35: agent_status is trailing (replaced each turn), never the cached prefix.
+        parts = [
+            layer.content.strip()
+            for layer in self.layers
+            if layer.content.strip() and layer.name != "agent_status"
+        ]
         return "\n\n".join(parts)
+
+    def agent_status_text(self) -> str:
+        for layer in self.layers:
+            if layer.name == "agent_status" and layer.content.strip():
+                return layer.content.strip()
+        return ""
 
     def summary(self) -> dict[str, Any]:
         return {
@@ -253,14 +264,54 @@ def _format_local_time(now: datetime | None = None) -> str:
     return f"{clock} ({offset_fmt})"
 
 
+def format_agent_status(
+    *,
+    agent_todos: list[dict[str, Any]] | None = None,
+    plan_card: dict[str, Any] | None = None,
+    now: datetime | None = None,
+) -> str:
+    """Trailing replaceable block: clock + Todo/plan (Q-AGENT-2 = A)."""
+    from src.task_state import format_task_state
+
+    lines = [
+        f"Local time: {_format_local_time(now)}",
+        "Use Local time above for clock/date questions; do not invent a different time.",
+    ]
+    task = format_task_state(agent_todos=agent_todos, plan_card=plan_card)
+    if task:
+        lines.append(task)
+    return "<agent_status>\n" + "\n".join(lines) + "\n</agent_status>"
+
+
+def attach_trailing_status(
+    messages: list[dict[str, Any]], status: str
+) -> list[dict[str, Any]]:
+    """Drop any prior <agent_status> user turn and append one fresh block."""
+    cleaned = [
+        item
+        for item in messages
+        if not (
+            isinstance(item, dict)
+            and item.get("role") == "user"
+            and "<agent_status>" in str(item.get("content") or "")
+        )
+    ]
+    text = (status or "").strip()
+    if not text:
+        return cleaned
+    block = {"role": "user", "content": text}
+    # Keep the latest human turn last so adapters that echo history[-1] stay correct.
+    if cleaned and cleaned[-1].get("role") == "user":
+        return cleaned[:-1] + [block, cleaned[-1]]
+    return cleaned + [block]
+
+
 def _env_layer(workspace_path: str | None) -> str:
     import os
 
     shell = (os.environ.get("SHELL") or os.environ.get("ComSpec") or "").strip() or "unknown"
     lines = [
         "## Environment",
-        f"Local time: {_format_local_time()}",
-        "Use Local time above for clock/date questions; do not invent a different time.",
         f"OS: {platform.system()} {platform.release()}",
         f"Shell: {shell}",
     ]
@@ -312,7 +363,6 @@ def compose_agent_prompt_assembly(
     """Build layered prompt (D53). markdownDoc is protocol only — not the whole system."""
     from src.agent_skills import compose_skills_section, resolve_effective_skill_keys
     from src.agent_type import is_clutch_agent
-    from src.task_state import format_task_state
     from src.workspace import get_workspace
 
     is_clutch = is_clutch_agent(agent)
@@ -346,13 +396,6 @@ def compose_agent_prompt_assembly(
         rules = _load_workspace_rules(str(workspace_path) if workspace_path else None)
         if rules:
             layers.append(PromptLayer("rules", rules))
-
-    task_block = format_task_state(
-        agent_todos=agent_todos,
-        plan_card=plan_card,
-    )
-    if task_block:
-        layers.append(PromptLayer("task_state", task_block))
 
     mode = (permission_mode or "").strip().lower()
     if mode == "plan":
@@ -432,7 +475,7 @@ def compose_agent_prompt_assembly(
                     "then jump to all-completed in one write. "
                     "Call `todo_write` only when the list or a status changes — do not spam it. "
                     "Status-only questions (还剩什么 / 还剩哪些 todo / what's left): reply with "
-                    "the open items from the task_state list — do not keep editing or calling "
+                    "the open items from the trailing <agent_status> list — do not keep editing or calling "
                     "tools unless the user asks to continue. "
                     "When work is done, mark todos completed, call `submit_verification` "
                     "with concrete passed/failed steps (never claim passed while todos remain "
@@ -479,6 +522,12 @@ def compose_agent_prompt_assembly(
         if memory_block:
             layers.append(PromptLayer("memory", memory_block))
 
+    layers.append(
+        PromptLayer(
+            "agent_status",
+            format_agent_status(agent_todos=agent_todos, plan_card=plan_card),
+        )
+    )
     return PromptAssembly(layers=layers)
 
 

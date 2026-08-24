@@ -100,6 +100,28 @@
 **首期目标：** D1 + D37 + D46 ✅（PM 2026-07-24）。  
 **扩展/MCP：** Agent 代 PM 自验 2026-07-25（见 `runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md`）；Desktop Tauri E2E ✅；真连 acceptance Skip（缺 DeepSeek/Agnes 密钥）。
 
+## Agent Harness（B-34 · 默认 FAIL）
+
+> 书 06 · **Q-AGENT-1 = C**。定义与「做了/没做」：[`specs/core/tasks.md`](../specs/core/tasks.md) §Agent Harness。不升 D54+。  
+> **维护者尺子，无界面。** 未挪本机时间 / Todo（仍在 system 前缀 `env` / `task_state`）。预期布局见 **B-35** / **Q-AGENT-2**。不请 PM 点验。
+
+| 验收项 | 优先级 | 状态 | 说明 |
+|--------|--------|------|------|
+| 静态层快照确定性（排除 env 时钟） | P0 | ✅ | pytest 2026-08-24；`env` 仍含 Local time，只是不进指纹 |
+| 契约：Ask 只读 / todo 在 task_state / 特性请求 propose_plan | P0 | ✅ | pytest 2026-08-24 |
+| 本机 Agnes live 小集 | P1 | ✅ | `CLUTCH_AGENT_EVAL_LIVE=1` 3 passed（CC Switch Agnes） |
+
+## Agent status（B-35 · 默认 FAIL）
+
+> 书 02 · **Q-AGENT-2 = A**。定义：[`specs/core/tasks.md`](../specs/core/tasks.md) §Agent status。  
+> 时钟与完整 Todo 离开 system 前缀，进对话末尾 `<agent_status>`（每轮整换）。Agent Manager「运行时提示词分层」会出现 `agent_status`，`env` 不再含 Local time。
+
+| 验收项 | 优先级 | 状态 | 说明 |
+|--------|--------|------|------|
+| system 前缀不含 Local time / 完整 Todo | P0 | ✅ | pytest 2026-08-24 |
+| 末尾 `<agent_status>` 每轮整换不堆历史 | P0 | ✅ | pytest `attach_trailing_status` |
+| Agent Manager 分层可见 `agent_status` | P1 | ✅ | 2026-08-24 PM 点开 Clutch Agent 详情：`agent_status` 157 · `env` 82（无时钟） |
+
 ## Design 模式（D36 · 默认 FAIL）
 
 > Header Coding/Design + 工作区 Design 会话 + 原型交互画布；未实际验证不得标 ✅。

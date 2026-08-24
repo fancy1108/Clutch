@@ -35,6 +35,7 @@
 | 产品介绍文档 | `docs/PRODUCT_INTRO.md` |
 | **新手入门（中英）** | `docs/GETTING_STARTED.md` · 仓库 `README.md` / `README.zh-CN.md` |
 | 文档总索引 | `docs/README.md` |
+| 系统架构图（HTML） | `docs/diagrams/clutch-system-architecture.html` · 叙事见 `docs/ARCHITECTURE.md` |
 | 开源 / DMG 分发排期（OSR-xx） | `docs/OPEN_SOURCE_RELEASE.md` |
 | 应用内更新（Prep / Go-live） | `docs/UPDATES.md` · `.github/workflows/release-updater.yml` |
 | Sidecar 热更（D37） | `apps/desktop/src-tauri/src/sidecar_patch.rs` · `apps/desktop/src/services/sidecarPatch.ts` · `SidecarPatchReady.tsx` · `scripts/write-sidecar-patch-manifest.sh` |
@@ -73,11 +74,12 @@
 | 里程碑级验收 T-01~04 | `specs/core/tasks.md` §测试与验收 |
 | 进度 / 待办 | `memory/PROGRESS.md`（近期）· 归档 `memory/archive/PROGRESS-*.md` |
 | **Git worktree · release slices** | v1.0.2 / v1.0.3 worktree 已清理；**v1.1.0** / **v1.1.1** / **v1.1.2** / **v1.2.0**（macOS-only 发版材料，2026-07-10；tag 待 `main`） |
-| 候选优化需求池（未立项） | `memory/BACKLOG.md` · Active（含 **B-33** ← PR #22） |
+| 候选优化需求池（未立项） | `memory/BACKLOG.md` · Active（含 **B-33** ← PR #22；**B-36–B-50** ← 书 01–10 对照；**B-34 / B-35** 已升格） |
 | GitHub Issue 待修复 Bug | `memory/BACKLOG.md` §GitHub Issues · 待修复 Bug |
 | **开源排期 OSR-xx 验收状态** | **`memory/ROADMAP.md` §开源分发** · Task 定义 `docs/OPEN_SOURCE_RELEASE.md` §7.2 |
 | 文档生命周期 / 权威真相 | `docs/document-governance.md` |
 | Orchestrator 主控能力调研（参考） | `docs/research/orchestrator-optimization-pool.md` |
+| **Clutch Agent ↔《深入理解 AI Agent》01–10 缺口（参考）** | **`docs/research/clutch-agent-book-gap.md`** · 候选 B-36–B-50 · **B-34 / B-35** 已升格 · **Q-AGENT-1–4** |
 | CLI PTY Session 改造方案（参考） | `docs/research/pty-session.md` |
 | **D25 Hybrid 执行状态（权威）** | **`specs/core/hybrid-runtime-plan.md`** · D27 命名对齐 |
 | PTY Session Step 0 实验 | `experiments/pty_poc/` |
@@ -172,6 +174,7 @@
 | Chat Diff 摘要卡（D6/D50） | `components/DiffSummaryCardView.tsx` · builtin `submit_diff_summary` |
 | Chat Agent 卡壳（共享） | `components/chatAgentCard.tsx` |
 | Sidecar 结构化 tool steps（D46） | `services/orchestrator/src/tool_steps.py` |
+| Chat 编排拆分（DECISIONS D38 Phase 1） | 编排壳 `chat_runner.py` · 消息/seal `chat_messages.py` · WS 信封 `chat_ws_events.py` · MCP/Plan/Question 门禁 `chat_mcp_gates.py`（`main`/`chat_runner` re-export 兼容） |
 | Chat markdown（fence / 路径预览） | `components/chatContentRender.tsx` · `services/workspacePathLinks.ts` |
 | Coding 附件上传 / 路径 resolve API | `services/workspaceApi.ts` → `POST /api/workspace/attachments` · `GET /api/workspace/file/resolve`；后端 `workspace_attachments.py` |
 | Terminal Orchestra（Lane / OrchestratorBar / 路径 link） | `components/terminal-orchestra/`（`OrchestratorBar.tsx` 发图 chip；`terminalPathLinkProvider.ts` xterm 可点路径） |
@@ -230,6 +233,8 @@
 | agent_task 节点执行 | `src/agent_executor.py` |
 | Agent 持久化与内置 Agent | `src/agent_storage.py` |
 | Agent system prompt 组装（D53） | `src/agent_prompt.py` · `src/agent_skills.py` |
+| Agent 评测快照 + Agnes live（B-34） | `src/agent_eval.py` · `tests/test_agent_eval_b34.py` · `CLUTCH_AGENT_EVAL_LIVE=1`；定义见 `specs/core/tasks.md` §Agent Harness |
+| 末尾 `<agent_status>`（B-35） | `agent_prompt.format_agent_status` / `attach_trailing_status` · Chat `attach` 在 `_history_with_prefix_and_status`；定义见 `tasks.md` §Agent status |
 | 项目规则发现 + Skills 按需（D7） | `agent_prompt._load_workspace_rules` · `read_skill` · `skills_storage.sync_workspace_skill_mounts` |
 | 长聊任务态 / 压缩（D8） | `src/task_state.py` · `compaction.py` · prompt `task_state` 层 |
 | 运行可控（D9） | `src/run_control.py` · `mcp_react` fuse · Chat `chat-stop`/`chat-continue` · Overview `chat-run-stats` |
