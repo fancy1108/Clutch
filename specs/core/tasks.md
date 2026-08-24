@@ -267,12 +267,26 @@
 
 **做了什么：** 本机时间与完整 Todo/计划从 D53 system 前缀移到对话末尾一条 `<agent_status>`；每轮用新条整换旧条（`attach_trailing_status`），不堆历史。`as_system_prompt()` 不含该层。OS / Shell / 工作区仍留在 `env`。
 
-**没做什么：** 不改 Chat 里 Todo 卡的样子；不做分层压缩（B-36）；不把状态写进用户可见气泡。
+**没做什么：** 不改 Chat 里 Todo 卡的样子；不做分层压缩（B-36，已另节）；不把状态写进用户可见气泡。
 
 | ID | 任务 | 完成标准 | Verification |
 |----|------|----------|--------------|
 | B35-01 | 前缀去掉时钟与 Todo | `compose_agent_system_prompt` 无 `Local time:`；todos 只在 `agent_status` | `uv run pytest tests/test_agent_prompt.py tests/test_task_state_d8.py tests/test_agent_eval_b34.py -v` |
 | B35-02 | 末尾状态整换 | 连续两次 attach 后历史里只有一条 `<agent_status>` | 同上 |
+
+## Agent context layers（B-36）
+
+> 书 02 · B-35 之后。不升 D54+。无新 Chat 气泡；`/compact` 仍是最后一档（D8/D18）。
+
+**做了什么：** ReAct 送给模型的工具结果按四层收：大段先落盘只留指针 → 丢掉重复/空转噪声 → 工具正文合计超阈值时把较旧的一批也落盘（最近 2 条保持全文）→ 会话 token 仍超 15000 才走现有全量 digest（`should_compact` / `/compact`）。L1–L3 **不调 LLM**。
+
+**没做什么：** 不改 Chat 气泡折叠交互；不做 B-44 分页/来源标记；不把落盘正文自动再灌回模型。
+
+| ID | 任务 | 完成标准 | Verification |
+|----|------|----------|--------------|
+| B36-01 | L1 磁盘化 | 超阈值 tool content 写成 `runs/archive/tool_results/*.txt`，消息只留指针+预览 | `uv run pytest tests/test_context_layers_b36.py -v` |
+| B36-02 | L2 噪声 + L3 批量 | 重复/空转旧工具被丢掉；合计超阈值时只压旧工具、保留最近 2 条 | 同上 |
+| B36-03 | L4 全量熔断仍在 | `should_compact` / `/compact` 行为不变 | `uv run pytest tests/test_compaction.py tests/test_context_layers_b36.py -v` |
 
 ## 待建 pytest 文件（随 task 交付）
 

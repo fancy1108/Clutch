@@ -124,6 +124,7 @@ def _build_critical_context(
 
 
 def should_compact(state: ClutchState, threshold: int = 15000) -> bool:
+    """Layer 4 emergency compact. Layers 1–3 live in ``context_layers``."""
     messages = state.get("messages", [])
     if len(messages) <= 5:
         return False

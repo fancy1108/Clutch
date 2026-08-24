@@ -16,6 +16,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ### Changed
 
+- **Layered context (B-36):** ReAct tool results offload to `runs/archive/tool_results/` when large, drop duplicate/empty noise, then batch-offload older tools past a mid threshold. Full `/compact` digest remains the last resort (D8). No new Chat bubble.
 - **Trailing agent status (B-35):** Local time and full Todo/plan leave the system prefix (`env` keeps OS/shell/workspace only). Each turn replaces one trailing `<agent_status>` user block (`attach_trailing_status`). Agent Manager layer list shows `agent_status`.
 - **Chat runner split (DECISIONS D38 Phase 1):** Extract message/history/seal helpers (`chat_messages.py`), WebSocket send helpers (`chat_ws_events.py`), and MCP/Plan/Question gate helpers (`chat_mcp_gates.py`) from `chat_runner.py`; orchestration stays in `chat_runner` with re-exports for existing imports. Drop unused duplicate Request schema re-exports from `chat_runner`/`main`.
 

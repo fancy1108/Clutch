@@ -7,9 +7,16 @@
 
 - **阶段：** **v1.3.0** 已发；主线 D8–D13 ✅；扩展/MCP **D14–D52 Agent 代 PM ✅**；Desktop E2E ✅；Design D36 仍 ❌
 - **Git / PM 索引：** [`runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md`](../runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md)
-- **下次优先：** B-36 或 B-37；B-35 已 commit（`4374ee5`）。非 git 工作区 hello 红叉已验收。
+- **下次优先：** B-36 待 commit 后开 B-37。
 
 ## Recent Sessions
+
+## 2026-08-24 会话（B-36：分层压缩）
+
+- **做了：** 工具结果 L1 落盘 / L2 去噪声 / L3 阈值压旧工具；L4 仍是 `/compact`。ReAct `_router_chat` 前应用。
+- **没做：** 不改 Chat 折叠交互；B-44 分页未做。
+- **测：** `test_context_layers_b36` + `test_compaction` + `test_mcp_react` 29 passed
+- **下次：** 等人知悉后再 commit；下一 Task 建议 B-37
 
 ## 2026-08-24 会话（非 git 仓 hello 红叉）
 

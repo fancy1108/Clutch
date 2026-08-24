@@ -122,6 +122,17 @@
 | 末尾 `<agent_status>` 每轮整换不堆历史 | P0 | ✅ | pytest `attach_trailing_status` |
 | Agent Manager 分层可见 `agent_status` | P1 | ✅ | 2026-08-24 PM 点开 Clutch Agent 详情：`agent_status` 157 · `env` 82（无时钟） |
 
+## Agent context layers（B-36 · 默认 FAIL）
+
+> 书 02。定义：[`specs/core/tasks.md`](../specs/core/tasks.md) §Agent context layers。  
+> 工具结果：落盘 → 去噪声 → 阈值批量压 → 全量 `/compact` 熔断。L1–L3 无新气泡。
+
+| 验收项 | 优先级 | 状态 | 说明 |
+|--------|--------|------|------|
+| 大工具结果落盘且消息只留指针 | P0 | ✅ | pytest 2026-08-24 `test_context_layers_b36` |
+| 噪声删除 + 超阈值只压旧工具 | P0 | ✅ | 同上 |
+| `/compact` 全量熔断仍可用 | P0 | ✅ | `test_compaction` + B-36 阈值回归 |
+
 ## Design 模式（D36 · 默认 FAIL）
 
 > Header Coding/Design + 工作区 Design 会话 + 原型交互画布；未实际验证不得标 ✅。

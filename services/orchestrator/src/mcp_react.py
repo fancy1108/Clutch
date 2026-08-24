@@ -358,6 +358,19 @@ def _router_chat(
     tool_choice: str | None = None,
 ) -> tuple[Any, bool]:
     """Call router.chat; fall back to text-only when the model rejects tools."""
+    try:
+        from src.context_layers import apply_layered_context
+
+        stats = apply_layered_context(chat_messages)
+        if stats.offloaded or stats.noise_dropped or stats.batched:
+            _emit(
+                logs,
+                on_log,
+                f"[{log_prefix}] Context layers: offload={stats.offloaded} "
+                f"noise={stats.noise_dropped} batch={stats.batched}",
+            )
+    except Exception:
+        pass
     tools_arg = openai_tools if use_tools else None
     try:
         kwargs: dict[str, Any] = {"tools": tools_arg, "model_id": model_id}
