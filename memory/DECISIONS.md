@@ -478,7 +478,7 @@
   4. **API**：session-scoped `POST /api/design/sessions`、`.../generate`（`reference_image` / `reference_md` / `reference_url` 可选；两阶段 spec→UI）、`.../iterate`（`target_kind` / `target_id` / `element_*` / `mode`）；产物 `.clutch/design/sessions/<run_id>/`（含 `reference.<ext>`、`reference_design.md`、`url_snapshot.json`、`thumbnail.svg`、多屏 `screens/`）；`artifact_paths` 供 Changes 列表。
   5. **非目标（本轮）**：账号/云协作、完整矢量编辑、真实 Figma 导出、语音输入。
 - **影响**：`Header`、`App` `appMode`、`DesignWorkspace`、`run_history`/`runApi` mode、`PRODUCT_INTRO` §3.5、`ROADMAP`、`FILEMAP`。
-- **决策状态**：`可执行`
+- **决策状态**：`已落地`（PM 2026-08-24 点验；产品随 v1.2.0 已发）
 
 ### D37 · Sidecar 热更（独立 patch_id · 静默下载 · 挂起应用）（2026-07-11）
 
