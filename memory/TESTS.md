@@ -12,6 +12,7 @@
 
 | 日期 | 范围 | 命令 | 结果 | 报告/证据 | 备注 |
 |------|------|------|------|-----------|------|
+| 2026-08-25 | Q-USAGE-1 Overview 用量 E2E | API `pnpm test:api`；Desktop `playwright test --project=desktop tests/desktop/session-usage.spec.ts` | ✅ API 7 passed · Desktop 1 passed | `runs/verification/2026-08-25-e2e-session-usage.log` | 费用格仍 `—`；假 LLM 注入占位 Key |
 | 2026-08-25 | Q-USAGE-1 Overview 用量 + Design/D37 文档 | `./scripts/verify.sh` | ✅ vitest 238 · pytest 998 passed / 7 skipped · doc-drift 0 error | — | 费用格仍 `—`；Windows 不修（D55） |
 | 2026-08-24 | Design D36 PM 点验 | 人工（Header / 会话 / 画布 / iterate / 落盘 / Send to Coding / design-to-code） | ✅ | — | 功能随 v1.2.0 已发；今日勾 ROADMAP |
 | 2026-08-24 | B-48 消融闸 + trajectory | `uv run pytest tests/test_agent_eval_b48.py tests/test_agent_eval_b34.py -q` | ✅ 6 passed / 3 skipped | — | 无 Chat UI；live Agnes skip |

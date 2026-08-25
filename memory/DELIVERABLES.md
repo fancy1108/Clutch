@@ -8,7 +8,7 @@
 
 | 项 | 说明 |
 |----|------|
-| **Verification** | `./scripts/verify.sh` → vitest 238 passed · pytest 998 passed / 7 skipped · doc-drift 0 error |
+| **Verification** | `./scripts/verify.sh` → vitest 238 passed · pytest 998 passed / 7 skipped · doc-drift 0 error。E2E：API `pnpm test:api` 7 passed；Desktop `session-usage.spec.ts` 1 passed |
 | **范围** | Provider `usage` 透传 + Overview 步数/tokens；估算标 `~`；费用 `—`。Windows 不做（D55）。D37/D39–D41 决策标已落地。 |
 | **未做** | 价表；Windows flake / #23；打包版热更 apply |
 

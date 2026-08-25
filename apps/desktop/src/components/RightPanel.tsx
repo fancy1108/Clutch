@@ -23,6 +23,7 @@ import {
   workflowStepStatusLabel,
 } from './ui/surfaceStyles';
 import { rightPanelSummaryTextClass, rightPanelUsesGridTabs } from '../platform/chrome/chatChrome';
+import { useHostOs } from '../platform/hostOs';
 import { formatStepMeter, formatTokenMeter, inputOutputPercents } from '../services/sessionUsage';
 
 interface RightPanelProps {
@@ -574,7 +575,10 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                             <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider mb-1">
                               {language === 'zh' ? '本局步数' : 'Steps'}
                             </p>
-                            <p className="text-base font-extrabold text-neutral-900 font-mono">
+                            <p
+                              className="text-base font-extrabold text-neutral-900 font-mono"
+                              data-testid="overview-token-steps"
+                            >
                               {formatStepMeter(stepCount, stepMax)}
                             </p>
                           </div>
@@ -582,19 +586,30 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                             <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider mb-1">
                               {language === 'zh' ? '本局 tokens' : 'This run tokens'}
                             </p>
-                            <p className="text-base font-extrabold text-neutral-900 font-mono">
+                            <p
+                              className="text-base font-extrabold text-neutral-900 font-mono"
+                              data-testid="overview-token-total"
+                            >
                               {formatTokenMeter(tokenTotal, usageEstimated)}
                             </p>
                           </div>
                           <div className="p-3 border border-neutral-200 bg-neutral-50/50 rounded-xl">
                             <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider mb-1">{t('Total Tokens')}</p>
-                            <p className="text-base font-extrabold text-neutral-900 font-mono">
+                            <p
+                              className="text-base font-extrabold text-neutral-900 font-mono"
+                              data-testid="overview-token-total-dup"
+                            >
                               {formatTokenMeter(tokenTotal, usageEstimated)}
                             </p>
                           </div>
                           <div className="p-3 border border-neutral-200 bg-neutral-50/50 rounded-xl">
                             <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider mb-1">{t('Estimated Cost')}</p>
-                            <p className="text-base font-extrabold text-neutral-900 font-mono">—</p>
+                            <p
+                              className="text-base font-extrabold text-neutral-900 font-mono"
+                              data-testid="overview-token-cost"
+                            >
+                              —
+                            </p>
                           </div>
                         </div>
 
@@ -608,10 +623,10 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                             <div className="h-full bg-neutral-200" style={{ width: `${outPct}%` }} aria-hidden />
                           </div>
                           <div className="flex justify-between text-[9px] font-mono pt-1 text-on-surface-variant/70">
-                            <span>
+                            <span data-testid="overview-token-input">
                               {t('Input')}: {formatTokenMeter(tokenInput, usageEstimated)}
                             </span>
-                            <span>
+                            <span data-testid="overview-token-output">
                               {t('Output')}: {formatTokenMeter(tokenOutput, usageEstimated)}
                             </span>
                           </div>

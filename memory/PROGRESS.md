@@ -7,9 +7,16 @@
 
 - **阶段：** **v1.3.0** 已发；主线 D8–D13 ✅；扩展/MCP **D14–D52 Agent 代 PM ✅**；Desktop E2E ✅；**Design D36 PM ✅**
 - **Git / PM 索引：** [`runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md`](../runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md)
-- **下次优先：** 无强制下一枪；Windows 验收不做（D55）。
+- **下次优先：** 无强制下一枪；Windows 验收不做（D55）。Q-USAGE-1 E2E 已跑过（未 commit）。
 
 ## Recent Sessions
+
+## 2026-08-25 会话（Q-USAGE-1 E2E 验收）
+
+- **做了：** API `session-usage` + Desktop Overview 用量格子 E2E。假 LLM 补占位 Key 才会真 Echo/`usage`。补 `RightPanel` 的 `useHostOs` import（否则 WKWebView 白屏）。
+- **没做：** 未跑完整 `./scripts/run-e2e.sh`（hybrid + all-ui）；未 commit。
+- **测：** API 7 passed；Desktop `session-usage` 1 passed。
+- **下次：** 用户若要，再 commit。
 
 ## 2026-08-25 会话（Q-USAGE-1 + Design 收尾 + D37 状态；Windows 不做）
 

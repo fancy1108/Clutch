@@ -12,7 +12,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ### Added
 
-- **Overview usage meters (Q-USAGE-1):** Session Token Analytics shows run steps, tokens, and input/output split. Provider `usage` when the model returns it; otherwise a word-count estimate marked `~`. Cost stays `—` (no price table).
+- **Overview usage meters (Q-USAGE-1):** Session Token Analytics shows run steps, tokens, and input/output split. Provider `usage` when the model returns it; otherwise a word-count estimate marked `~`. Cost stays `—` (no price table). API + desktop E2E cover the loop.
 
 - **Workspace MEMORY.md (B-39):** Saying `记住：…` / `remember:` writes `.clutch/memory/MEMORY.md` (open in Files). Next Chat turns inject that overview. Settings Memory copy points at the file.
 - **Verification notes (B-40):** Passing/failing `submit_verification` appends `Worked:` / `Failed:` to that file.
@@ -33,6 +33,8 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ### Fixed
 
+- **Overview panel crash:** `RightPanel` called `useHostOs` without importing it, so WKWebView showed “Can't find variable: useHostOs” and never rendered Session Token Analytics.
+- **E2E fake LLM never echoed:** `CLUTCH_E2E_FAKE_LLM` still required a real Agnes key before the Echo stub ran, so chat replies were “No API key configured…” and usage fell back to word-count. Dummy keys are injected on the fake router.
 - **Agent local clock on UTC hosts:** `_format_local_time` keeps a timezone-aware stamp (does not convert it to the machine TZ), so GitHub Actions/CI no longer fail the UTC+8 clock assertion.
 - **Spurious verification card on remember/Q&A:** `submit_verification` no longer publishes a Chat card (or a MEMORY.md `Worked:` line) unless this session edited files or you asked for a report. A leftover card from an earlier turn is not copied onto later replies (saying `记住：…` will not revive `still_missing.py`).
 - **Hello / git red-X on a plain folder:** When the workspace is not a git repo, Clutch hides `git_status` / `git_diff` / `git_commit` (same honesty as Memory-off / network-off) and a leftover call returns a plain note instead of `Error executing tool: fatal: not a git repository…` (no Chat red-X).
