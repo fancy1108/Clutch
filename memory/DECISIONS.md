@@ -346,7 +346,7 @@
 
 | ID | 问题 | 选项 | 默认 |
 |----|------|------|------|
-| Q-USAGE-1 | Overview 用量真值 | A) 继续词数估算 B) 接供应商 `usage`（真 input/output）+ 模型价表；估计算 fallback | **B 后续优化**；UI 暂显示 `—`（2026-07-25） |
+| Q-USAGE-1 | Overview 用量真值 | A) 继续词数估算 B) 接供应商 `usage`（真 input/output）+ 模型价表；估计算 fallback | **B 用量已接、价表不做**（2026-08-25）：Overview 展示步数 / tokens / input-output；有供应商 `usage` 用真值，否则词数估算并标 `~`。**不接价表，费用格仍为 `—`。** |
 | Q-HRT-1 | 多 session 并发策略 | A) 全 run 串行队列 B) 同 workspace 串行 C) 拒绝+提示（pty §2.1） | **C**（与 POC 一致）直至 HRT-08 立项 |
 | Q-HRT-2 | 诊断导出形态 | A) 仅 API B) API + 桌面「复制诊断」按钮 | **B**（HRT-07） |
 | Q-D34-1 | Terminal 并行 Lane 上限 N | A) 2 B) 4 C) 8 | **B**（4，见 D34 §2） |
@@ -492,7 +492,7 @@
   6. **UX**：默认 **静默下载** → Settings 旁极小 **「更新已就绪」** → 确认后 apply；与全量 Update 并存时 **只显示全量**。`severity: critical|major` 进度 UI 可后置。
   7. **分发**：Release 资产 `sidecar-patch.json` + `orchestrator-darwin-aarch64`；客户端拉 `…/latest/download/sidecar-patch.json`（404=无补丁）。
 - **影响**：`lib.rs` / `sidecar_patch.rs`、`sidecarPatch.ts`、`SidecarPatchReady`、`docs/UPDATES.md`、维护脚本。
-- **决策状态**：`可执行`
+- **决策状态**：`已落地`（v1.2.1+ 客户端已随包；生产补丁随发版出 `sidecar-patch.json`，不单开功能开发）
 
 ### D38 · Stable Context Boundary：Code Decomposition Principles（2026-07-12）
 
@@ -537,7 +537,7 @@
   3. **Path B 兼容**：`/generate-code/write` 委托 Path A（要求/自动对齐 `prototype_approved`），写入 `react/` 并更新 manifest；`generated/` 不再作为 handoff 目标。
   4. **非目标**：不接入 Google Stitch MCP / 云 projectId。
 - **影响**：`PreviewDemo` Coding 入口 + `DesignHandoffTray`、`service.generate_react`、`router` generate-code、`PRODUCT_INTRO` §2.10–2.11、`DESIGN_WORKSPACE_GUIDE`。
-- **决策状态**：`可执行`
+- **决策状态**：`已落地`（随 Design D36 / v1.2.0 Path A）
 
 ### D40 · Design Spec 软确认关卡 + 流程纪律（2026-07-18；默认改关 2026-07-24）
 
@@ -548,7 +548,7 @@
   3. **显式 iterate mode**：API/UI 声明 `modify|add|variant|revise_spec`，启发式仅兜底；默认 edit-over-regenerate。
   4. **多页 baton**：仅 opt-in，本轮不做默认自治 loop。
 - **影响**：`generator.generate_session`、`confirm_spec`、`DesignWorkspace` Spec 确认 CTA、`designApi`、文档与测试 fixture。
-- **决策状态**：`可执行`
+- **决策状态**：`已落地`（默认关；`CLUTCH_DESIGN_SPEC_CONFIRM=1` 时 Spec 软确认）
 
 ### D41 · Generate UI code = 确定性保真出前端工程（禁 LLM 重画）（2026-07-20）
 
@@ -559,7 +559,7 @@
   3. **交互进源码**：`interaction_contract.json` 转为 React Router `<Link to="/…">`。
   4. **交付定义**：每屏真实 `.tsx` + Vite 可跑工程；Atomic 拆分非本门禁目标。Send to Coding 指令强调接 API、勿重设计。
 - **影响**：`design/fidelity_export.py`、`service.generate_react`、Preview Demo Coding 托盘文案、`PRODUCT_INTRO` / `DESIGN_*`。
-- **决策状态**：`可执行`
+- **决策状态**：`已落地`（HTML→JSX 机械转换，禁 LLM 重画）
 
 ### D42 · Coding 发图 + 中间产物预览（2026-07-20；2026-07-24 修订）
 
@@ -608,6 +608,13 @@
   4. **意图**：`infographic` / 信息图 / 可视化 → image。
 - **影响**：`deliverable_intent` · `artifact_layout` · `media_deliverable` · `builtin_tools` · PRODUCT_INTRO。
 - **决策状态**：`已落地`
+
+### D55 · Windows 本机验收与修复不做（2026-08-25）
+
+- **背景**：维护者无 Windows 电脑；此前 Windows CI 偶发 `test_start_sleep_wait_done`（`failed` vs `done`），以及 Issue #23 v1.0.2 MSI/NSIS 实体机 smoke，都需要 Windows 才能点验。
+- **方案**：明确**不做** Windows 专用修复与实体机验收，直至有 Windows 机器或 Windows 维护者接手。macOS 开发与 CI 绿门禁不变。Windows 安装包仍随历史 Release 提供，不承诺本机复现。
+- **影响**：`BACKLOG.md` #23；Windows pytest flake 不排入开发队列。
+- **决策状态**：`已记录`
 
 ### D45 · D7 项目规则 + Skills 对齐 Grok Build（2026-07-24）
 

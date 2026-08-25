@@ -2251,6 +2251,7 @@ function MainLayout() {
                 sessionCostUsd={clutchState.session_cost_usd}
                 tokenInput={clutchState.token_input}
                 tokenOutput={clutchState.token_output}
+                usageEstimated={clutchState.usage_estimated !== false}
                 runStats={clutchState.run_stats}
                 uncommitted={uncommitted}
                 terminalLogs={terminalLogs}

@@ -4,6 +4,14 @@
 > **何时写：** 每个**代码 Task** 完成并 commit 后，在 Check-out 追加一节（见 `CLAUDE.md` §Check-out）。  
 > **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。
 
+## Q-USAGE-1 Overview usage meters（2026-08-25）
+
+| 项 | 说明 |
+|----|------|
+| **Verification** | `./scripts/verify.sh` → vitest 238 passed · pytest 998 passed / 7 skipped · doc-drift 0 error |
+| **范围** | Provider `usage` 透传 + Overview 步数/tokens；估算标 `~`；费用 `—`。Windows 不做（D55）。D37/D39–D41 决策标已落地。 |
+| **未做** | 价表；Windows flake / #23；打包版热更 apply |
+
 ## Design D36 PM 点验（2026-08-24）
 
 | 项 | 说明 |

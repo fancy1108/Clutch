@@ -243,6 +243,7 @@ async def compact_run_messages(
     state["token_output"] = output_tokens
     state["session_tokens"] = total
     state["session_cost_usd"] = round(total * 0.00000015, 6)
+    state["usage_estimated"] = True
 
     # Save to disk
     from src.run_state_store import save_run_state

@@ -100,7 +100,7 @@ graph TD
 * **Workspace Chrome（平台差异）**：macOS 与 Windows 侧栏折叠 rail、折叠按钮位置、Chat 间距与右侧监督 Tab 样式分文件维护（`apps/desktop/src/platform/chrome/`）；共享导航图标与文案见 `navConfig.ts`。macOS 默认保留图标+微标签折叠 rail 与 App 级浮动折叠按钮；Windows 使用纯图标 rail 与侧栏边缘折叠按钮。**项目绑定**：侧栏会话按工作区路径稳定 id 挂载（同路径重授权不会丢掉历史）；开发态与打包态分目录存储（`clutch_dev` / `clutch`），E2E 须隔离 `CLUTCH_STORAGE_DIR`。
 * **Long-session compaction（D8 / B-36 / B-44）**：工具结果先按层收：大段落盘到 `runs/archive/tool_results/`（消息只留指针，标 `source=tool truncated=yes`）、丢掉重复空转、合计超阈值再压较旧工具；只有会话仍顶满才走原来的全量 `/compact`（首条+近几条+琥珀色 digest，原文进 `runs/archive/{run_id}.jsonl`）。压缩后 **Todo/计划** 仍通过末尾 `<agent_status>` 与 digest 快照可达。Chat **无新卡片**。
 * **Run control（D9 / B-38）**：Plain chat 运行中可 **Stop**；停止后 Chat 显示 Supervisor 提示与 **Continue**（`continue_run`）。连续工具失败触发 **loop fuse**（`CLUTCH_LOOP_FUSE_FAILURES`，默认 3）；**同工具**连败另有软/硬预算（默认 2/3，`CLUTCH_SAME_TOOL_*`）——例如 `generate_image` API 挂了不会靠改 todo 无限重试；`todo_write` 等元工具成功不重置连续失败计数。同一回合用同一参数反复 `read_file` / `list_dir` / `grep`（空转）第 3 次会停住并出 Continue，不必等失败熔断。
-* **用量（D22）**：右侧 **Overview → Session Token Analytics** 为用量入口；**数值暂占位 `—`**，后续接入供应商真值（DECISIONS **Q-USAGE-1**）。不再在 `+` 菜单展示。
+* **用量（D22 / Q-USAGE-1）**：右侧 **Overview → Session Token Analytics** 展示本局步数、tokens、input/output 分布。有模型供应商 `usage` 用真值；没有则词数估算并标 `~`。费用格仍为 `—`（不接价表）。不再在 `+` 菜单展示。
 * **模式切换（D27）**：Chat 输入框底栏 **模式 pill**（对标 Cursor）：**Agent / Plan / Full / Ask**（内部 `auto_edit` / `plan` / `full` / `ask`）。默认 **Agent**（可改文件；危险 shell 仍问）。**Ask** 为对话/只读。旧 `explore` 映射为 Ask；旧 UI 名 Edit = Agent。
 * **Subtask delegation（D10 + D48）**：Clutch Agent 可调用 `delegate_subtask` 派发 **explore**（只读）或 **implement** 子任务；父气泡下嵌套 **Subtasks** 卡展示状态、摘要与可展开步骤；子失败在父卡可见。Explore 子循环默认更高工具步数预算；用户要求「先探再改」时至少出现 explore 卡，implement 可由父 Agent 完成（不强制第二张卡）。
 * **Background commands（D11）**：`run_terminal_cmd` 可设 `background=true` 立即返回 `job_id`；**运行中**任务显示在输入栏上方（查看输出 / Kill）；**结束后**任务卡进入对话时间线（随 Supervisor 完成提示），底栏不再占用。
@@ -135,7 +135,7 @@ graph TD
 | D7 rules/skills | Runtime prompt layers panel in Agent Manager; Skills via `read_skill` (D53) |
 | D8 task state | `/compact` → User bubble + amber digest at feed end; Todo/Plan via trailing `<agent_status>`. Long tool dumps offload first (B-36; no extra bubble); pointer marked `source=tool truncated=yes` (B-44) |
 | D9 run control | Stop / Continue；loop fuse；same read/grep spin stops (B-38) |
-| D22 usage | Overview Session Token Analytics（UI 占位 `—`；真值 Q-USAGE-1） |
+| D22 usage | Overview Session Token Analytics（供应商 `usage` 优先，否则 `~` 估算；费用 `—`） |
 | D27 mode presets | Composer pill → Agent / Plan / Full / Ask (default Agent; Ask = read-only) |
 | D20 busy queue | Composer **Pending messages** strip with Queue #n + cancel while Agent running |
 | D19 thinking stream | D46 live activity fold **Thinking / 思考** + shell output in step detail |

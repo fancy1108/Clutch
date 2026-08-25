@@ -99,6 +99,32 @@ def test_openai_reasoning_content_passthrough() -> None:
     }
 
 
+def test_openai_usage_passthrough() -> None:
+    payload = {
+        "choices": [{"message": {"content": "ok"}}],
+        "usage": {"prompt_tokens": 8, "completion_tokens": 3, "total_tokens": 11},
+    }
+    mock_resp = MagicMock()
+    mock_resp.read.return_value = json.dumps(payload).encode()
+    mock_resp.__enter__.return_value = mock_resp
+
+    with patch("urllib.request.urlopen", return_value=mock_resp):
+        result = http_chat_complete(
+            provider_id="deepseek",
+            base_url="https://api.deepseek.com",
+            api_model="deepseek-chat",
+            api_key="sk-test",
+            messages=[{"role": "user", "content": "hi"}],
+        )
+    assert isinstance(result, dict)
+    assert result["content"] == "ok"
+    assert result["usage"] == {
+        "prompt_tokens": 8,
+        "completion_tokens": 3,
+        "total_tokens": 11,
+    }
+
+
 def test_openai_compatible_response_parsing() -> None:
     payload = {"choices": [{"message": {"content": "Hello from model"}}]}
     mock_resp = MagicMock()

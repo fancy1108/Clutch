@@ -158,7 +158,7 @@
 | 跨会话记忆（D16 / B-39 / B-40 / B-45） | `cross_session_memory.py` · `workspace_memory.py` · Settings Memory · Files `.clutch/memory/MEMORY.md` |
 | 工具 Hooks（D17） | `tool_hooks.py` · `mcp_react` Pre/Post 拦截 |
 | 能力包导入（D35） | `capability_pack.py` · Skills 页 Import/Uninstall |
-| Chat 用量（D22 / D9） | 右侧 `RightPanel` Overview `overview-run-usage` / `chat-run-stats` · `chat_runner._touch_session` 持久化用量 |
+| Chat 用量（D22 / D9 / Q-USAGE-1） | `RightPanel` Overview `overview-run-usage` · `sessionUsage.ts` · `chat_messages._token_patch_turn` / `stash_turn_usage` · `http_complete` 透传 `usage` · `mcp_react` 累计 |
 | Chat 模式预设（D27） | `permissionApi.ts` `PERMISSION_MODES` · `ChatInputBar` 权限菜单 · `mcp_react` explore/plan 硬拦截 |
 | 能力↔Chat UI 门禁（D52） | `docs/PRODUCT_INTRO.md`（capability-ui-table）· `scripts/check-capability-ui-table.sh` |
 | MCP Hub 探测（D38） | `mcp_storage.probe_server_by_id` · `POST /api/mcp/servers/test` · `McpServerHub` Test connection |

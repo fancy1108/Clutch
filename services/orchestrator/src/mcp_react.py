@@ -55,6 +55,9 @@ class McpRunOutcome:
     consecutive_failures: int = 0
     # D10/D48: nested subtask cards from delegate_subtask
     subtasks: list[dict[str, Any]] | None = None
+    # Q-USAGE-1: accumulated provider usage for this ReAct turn
+    usage: dict[str, int] | None = None
+    usage_estimated: bool = True
 
 
 def _sanitize_tool_part(value: str) -> str:
@@ -429,6 +432,15 @@ def _accumulate_model_reasoning(
         on_reasoning("\n\n".join(chunks))
 
 
+def _usage_from_response(response: Any) -> tuple[dict[str, int] | None, bool]:
+    from src.design.token_usage import usage_from_llm_result
+
+    usage, estimated = usage_from_llm_result(response)
+    if int(usage.get("total_tokens") or 0) <= 0:
+        return None, True
+    return usage, estimated
+
+
 def run_mcp_react_loop(
     *,
     messages: list[dict[str, Any]],
@@ -500,12 +512,15 @@ def run_mcp_react_loop(
         _accumulate_model_reasoning(response, [], on_reasoning)
         output = LLMProviderRouter.extract_content(response)
         _emit(logs, on_log, f"[{log_prefix}] Completed via {spec.name}")
+        usage, estimated = _usage_from_response(response)
         return McpRunOutcome(
             output=output,
             logs=logs,
             engine_label=engine_label,
             approval_required=None,
             files_changed=None,
+            usage=usage,
+            usage_estimated=estimated,
         )
 
     from src.run_control import (
@@ -642,6 +657,20 @@ def run_mcp_react_loop(
     collected_steps: list[dict[str, Any]] = []
     session_approved = set(approved_keys or ())
     use_tools = bool(openai_tools)
+    from src.design.token_usage import empty_token_usage, merge_token_usage
+
+    acc_usage = empty_token_usage()
+    acc_estimated = False
+    saw_usage = False
+
+    def note_response(response: Any) -> None:
+        nonlocal acc_usage, acc_estimated, saw_usage
+        usage, estimated = _usage_from_response(response)
+        if not usage:
+            return
+        acc_usage = merge_token_usage(acc_usage, usage)
+        saw_usage = True
+        acc_estimated = acc_estimated or estimated
 
     def record_tool_step(step: dict[str, Any]) -> None:
         from src.tool_steps import upsert_tool_step
@@ -867,6 +896,8 @@ def run_mcp_react_loop(
             steps_used=len(collected_steps),
             consecutive_failures=consecutive_failures,
             subtasks=list(latest_subtasks) or None,
+            usage=acc_usage if saw_usage else None,
+            usage_estimated=True if not saw_usage else acc_estimated,
         )
 
     from src.artifact_layout import bind_user_turn_text, release_user_turn_text
@@ -971,6 +1002,7 @@ def run_mcp_react_loop(
                 on_log=on_log,
                 tool_choice=step_tool_choice,
             )
+            note_response(response)
             _accumulate_model_reasoning(response, reasoning_chunks, on_reasoning)
             if not use_tools and "no tools" not in engine_label:
                 engine_label = f"{spec.name} · no tools"
@@ -1077,10 +1109,8 @@ def run_mcp_react_loop(
                             on_log,
                             f"[{log_prefix}] Plan approval required (D2/D49)",
                         )
-                        return McpRunOutcome(
+                        return _outcome(
                             output="",
-                            logs=logs,
-                            engine_label=engine_label,
                             approval_required={
                                 "chat_messages": chat_messages,
                                 "tool_call_id": tc_id,
@@ -1090,13 +1120,6 @@ def run_mcp_react_loop(
                                 "step_id": step_id,
                                 "kind": "plan",
                             },
-                            files_changed=files_changed or None,
-                            tool_steps=list(collected_steps) or None,
-                            todos=latest_todos,
-                            goal=latest_goal,
-                            verification_report=latest_verification,
-                            diff_summary=latest_diff_summary,
-                            subtasks=list(latest_subtasks) or None,
                         )
 
                     # D4: ask_user_question pauses for in-chat multiple choice (D49).
@@ -1124,10 +1147,8 @@ def run_mcp_react_loop(
                             on_log,
                             f"[{log_prefix}] User question required (D4/D49)",
                         )
-                        return McpRunOutcome(
+                        return _outcome(
                             output="",
-                            logs=logs,
-                            engine_label=engine_label,
                             approval_required={
                                 "chat_messages": chat_messages,
                                 "tool_call_id": tc_id,
@@ -1137,13 +1158,6 @@ def run_mcp_react_loop(
                                 "step_id": step_id,
                                 "kind": "question",
                             },
-                            files_changed=files_changed or None,
-                            tool_steps=list(collected_steps) or None,
-                            todos=latest_todos,
-                            goal=latest_goal,
-                            verification_report=latest_verification,
-                            diff_summary=latest_diff_summary,
-                            subtasks=list(latest_subtasks) or None,
                         )
 
                     from src.permission_rules import resolve_tool_gate
@@ -1247,10 +1261,8 @@ def run_mcp_react_loop(
                                         on_log,
                                         f"[{log_prefix}] Auto-edit: approval required for shell/delete: {func_name}",
                                     )
-                                    return McpRunOutcome(
+                                    return _outcome(
                                         output="",
-                                        logs=logs,
-                                        engine_label=engine_label,
                                         approval_required={
                                             "chat_messages": chat_messages,
                                             "tool_call_id": tc_id,
@@ -1259,13 +1271,6 @@ def run_mcp_react_loop(
                                             "step_idx": step_idx,
                                             "step_id": step_id,
                                         },
-                                        files_changed=files_changed or None,
-                                        tool_steps=list(collected_steps) or None,
-                                        todos=latest_todos,
-                                        goal=latest_goal,
-                                        verification_report=latest_verification,
-                                        diff_summary=latest_diff_summary,
-                                        subtasks=list(latest_subtasks) or None,
                                     )
 
                         # full mode: skip approval gates entirely — unless D13 force_ask
@@ -1303,10 +1308,8 @@ def run_mcp_react_loop(
                                     on_log,
                                     f"[{log_prefix}] Approval required for risky tool: {func_name}",
                                 )
-                                return McpRunOutcome(
+                                return _outcome(
                                     output="",
-                                    logs=logs,
-                                    engine_label=engine_label,
                                     approval_required={
                                         "chat_messages": chat_messages,
                                         "tool_call_id": tc_id,
@@ -1315,13 +1318,6 @@ def run_mcp_react_loop(
                                         "step_idx": step_idx,
                                         "step_id": step_id,
                                     },
-                                    files_changed=files_changed or None,
-                                    tool_steps=list(collected_steps) or None,
-                                    todos=latest_todos,
-                            goal=latest_goal,
-                                    verification_report=latest_verification,
-                                    diff_summary=latest_diff_summary,
-                                    subtasks=list(latest_subtasks) or None,
                                 )
 
                     if is_delegate_subtask_tool(raw_tool_name) or is_delegate_subtask_tool(func_name):
@@ -1645,6 +1641,7 @@ def run_mcp_react_loop(
                     log_prefix=log_prefix,
                     on_log=on_log,
                 )
+                note_response(response)
                 _accumulate_model_reasoning(response, reasoning_chunks, on_reasoning)
                 synthesized = LLMProviderRouter.extract_content(response)
                 if isinstance(synthesized, str) and synthesized.strip():

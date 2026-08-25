@@ -51,7 +51,7 @@
 | D6 Diff 审查 | P0 | ✅ | Cursor 式 edit Diff 卡 + Changes 同步；PM 2026-07-24 点验通过（须同验 D50） |
 | D7 项目规则 + Skills | P0 | ✅ | Grok 对齐：规则链 + 开放 Skills catalog；PM 2026-07-25 点验通过 |
 | D8 长聊不丢任务态 | P0 | ✅ | `/compact`→末尾摘要；压缩后答还剩 todo；PM 2026-07-25 点验通过 |
-| D9 运行可控 | P0 | ✅ | Stop/Continue PM ✅ 2026-07-25；熔断不点验；用量占位 Q-USAGE-1 |
+| D9 运行可控 | P0 | ✅ | Stop/Continue PM ✅ 2026-07-25；熔断不点验；用量见 D22 / Q-USAGE-1 |
 | D10∥D48 子任务委派 | P0 | ✅ | PM ✅ 2026-07-25；explore 16 步；implement 卡非强制 |
 | D11 后台命令 | P0 | ✅ | PM ✅ 2026-07-25；RUNNING 底栏 / 结束进对话；Kill 乐观 |
 | D12 Git + 网页 | P0 | ✅ | PM ✅ 2026-07-25；commit 真（bcfc099 d12-pm-test）；web_fetch 总结 |
@@ -64,7 +64,7 @@
 | D19 思考流 | P1 | ✅ | Agent 自验 2026-07-25 |
 | D20 忙时排队 | P1 | ✅ | Agent 自验 2026-07-25 |
 | D21 ignore/沙箱 | P1 | ✅ | Agent 自验 2026-07-25 |
-| D22 用量看板 | P1 | ✅ | Overview 占位 `—`；Q-USAGE-1；Agent 自验 2026-07-25 |
+| D22 用量看板 | P1 | ✅ | Overview 步数/tokens；供应商真值优先，否则 `~` 估算；费用 `—`（Q-USAGE-1 2026-08-25） |
 | D23 fork/rewind | P1 | ✅ | Agent 自验 2026-07-25 |
 | D24 诊断 MVP | P2 | ✅ | Agent 自验 2026-07-25 |
 | Cap-D25 定时任务 | P2 | ✅ | Agent 自验 2026-07-25（≠ Hybrid D25） |

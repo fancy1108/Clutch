@@ -7,6 +7,43 @@ from typing import Any
 
 from src.state import ClutchState
 
+# Per-run provider usage from the in-flight LLM/ReAct turn (Q-USAGE-1).
+_TURN_USAGE: dict[str, tuple[dict[str, int] | None, bool]] = {}
+
+
+def stash_turn_usage(
+    run_id: str,
+    usage: dict[str, int] | None,
+    estimated: bool,
+) -> None:
+    key = str(run_id or "").strip()
+    if not key:
+        return
+    _TURN_USAGE[key] = (usage, bool(estimated))
+
+
+def pop_turn_usage(run_id: str) -> tuple[dict[str, int] | None, bool]:
+    key = str(run_id or "").strip()
+    if not key:
+        return None, True
+    return _TURN_USAGE.pop(key, (None, True))
+
+
+def consume_turn_usage_patch(
+    state: ClutchState,
+    *,
+    user_text: str,
+    assistant_text: str,
+) -> dict[str, int | float | bool]:
+    usage, estimated = pop_turn_usage(str(state.get("run_id") or ""))
+    return _token_patch_turn(
+        state,
+        user_text=user_text,
+        assistant_text=assistant_text,
+        usage=usage,
+        estimated=None if not usage else estimated,
+    )
+
 def _sealed_subtasks(
     state: ClutchState,
     *,
@@ -197,7 +234,7 @@ def _merge_files_changed_with_tool_steps(
 def _estimate_tokens(text: str) -> int:
     return max(1, len(text.split()))
 
-def _token_patch(state: ClutchState, text: str) -> dict[str, int | float]:
+def _token_patch(state: ClutchState, text: str) -> dict[str, int | float | bool]:
     added = _estimate_tokens(text)
     input_tokens = state.get("token_input", 0) + added
     output_tokens = state.get("token_output", 0) + max(1, added // 2)
@@ -207,19 +244,42 @@ def _token_patch(state: ClutchState, text: str) -> dict[str, int | float]:
         "token_output": output_tokens,
         "session_tokens": total,
         "session_cost_usd": round(total * 0.00000015, 6),
+        "usage_estimated": True,
     }
 
 def _token_patch_turn(
-    state: ClutchState, *, user_text: str, assistant_text: str
-) -> dict[str, int | float]:
-    input_tokens = state.get("token_input", 0) + _estimate_tokens(user_text)
-    output_tokens = state.get("token_output", 0) + _estimate_tokens(assistant_text)
+    state: ClutchState,
+    *,
+    user_text: str,
+    assistant_text: str,
+    usage: dict[str, int] | None = None,
+    estimated: bool | None = None,
+) -> dict[str, int | float | bool]:
+    from src.design.token_usage import normalize_usage_dict
+
+    normalized = normalize_usage_dict(usage) if usage else None
+    prior_total = int(state.get("session_tokens") or 0)
+    if normalized and int(normalized.get("total_tokens") or 0) > 0:
+        added_in = int(normalized.get("input_tokens") or 0)
+        added_out = int(normalized.get("output_tokens") or 0)
+        turn_estimated = True if estimated is None else bool(estimated)
+    else:
+        added_in = _estimate_tokens(user_text)
+        added_out = _estimate_tokens(assistant_text)
+        turn_estimated = True
+    input_tokens = int(state.get("token_input", 0)) + added_in
+    output_tokens = int(state.get("token_output", 0)) + added_out
     total = input_tokens + output_tokens
+    if prior_total > 0:
+        session_estimated = bool(state.get("usage_estimated", True)) or turn_estimated
+    else:
+        session_estimated = turn_estimated
     return {
         "token_input": input_tokens,
         "token_output": output_tokens,
         "session_tokens": total,
         "session_cost_usd": round(total * 0.00000015, 6),
+        "usage_estimated": session_estimated,
     }
 
 def _history_for_llm(

@@ -23,7 +23,7 @@ import {
   workflowStepStatusLabel,
 } from './ui/surfaceStyles';
 import { rightPanelSummaryTextClass, rightPanelUsesGridTabs } from '../platform/chrome/chatChrome';
-import { useHostOs } from '../platform/hostOs';
+import { formatStepMeter, formatTokenMeter, inputOutputPercents } from '../services/sessionUsage';
 
 interface RightPanelProps {
   activeTab: RightTab;
@@ -38,6 +38,7 @@ interface RightPanelProps {
   sessionCostUsd?: number;
   tokenInput?: number;
   tokenOutput?: number;
+  usageEstimated?: boolean;
   /** D9 — current-run tool steps / fuse (shown in Overview usage section). */
   runStats?: {
     tool_steps?: number;
@@ -99,7 +100,8 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   sessionCostUsd: _sessionCostUsd = 0,
   tokenInput = 0,
   tokenOutput = 0,
-  runStats: _runStats,
+  usageEstimated = true,
+  runStats,
   uncommitted,
   terminalLogs,
   isOpen,
@@ -216,10 +218,11 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   const hasWorkflow = Boolean(workflowId);
   const workflowLabel = workflowName || workflowId;
   const tokenTotal = sessionTokens || tokenInput + tokenOutput;
-  // Usage meters are placeholders until provider-true usage lands (DECISIONS open Q).
+  const stepCount = Number(runStats?.tool_steps || 0);
+  const stepMax = Number(runStats?.max_steps || 0);
+  const { inPct, outPct } = inputOutputPercents(tokenInput, tokenOutput);
   const showUsageSection = true;
   void _sessionCostUsd;
-  void _runStats;
   const visibleTabs: RightTab[] = ['overview', 'files', 'changes', 'terminal'];
 
   const terminalLogRef = React.useRef<HTMLDivElement>(null);
@@ -555,8 +558,12 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                       </h4>
                       <p className="text-[10px] text-on-surface-variant/70 mb-3 leading-relaxed">
                         {language === 'zh'
-                          ? '用量暂未接入供应商真值，以下为占位；后续优化。'
-                          : 'Usage meters pending provider-true values; placeholders for now.'}
+                          ? usageEstimated
+                            ? '供应商未返回用量时用词数估算，数字前带 ~。'
+                            : '本局用量来自模型供应商返回的 input/output tokens。'
+                          : usageEstimated
+                            ? 'Provider usage missing — word-count estimate, marked with ~.'
+                            : 'This run uses provider-reported input/output tokens.'}
                       </p>
                       <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-3">
@@ -567,17 +574,23 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                             <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider mb-1">
                               {language === 'zh' ? '本局步数' : 'Steps'}
                             </p>
-                            <p className="text-base font-extrabold text-neutral-900 font-mono">—</p>
+                            <p className="text-base font-extrabold text-neutral-900 font-mono">
+                              {formatStepMeter(stepCount, stepMax)}
+                            </p>
                           </div>
                           <div className="p-3 border border-neutral-200 bg-neutral-50/50 rounded-xl">
                             <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider mb-1">
-                              {language === 'zh' ? '本局 ~tok' : 'This run ~tok'}
+                              {language === 'zh' ? '本局 tokens' : 'This run tokens'}
                             </p>
-                            <p className="text-base font-extrabold text-neutral-900 font-mono">—</p>
+                            <p className="text-base font-extrabold text-neutral-900 font-mono">
+                              {formatTokenMeter(tokenTotal, usageEstimated)}
+                            </p>
                           </div>
                           <div className="p-3 border border-neutral-200 bg-neutral-50/50 rounded-xl">
                             <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider mb-1">{t('Total Tokens')}</p>
-                            <p className="text-base font-extrabold text-neutral-900 font-mono">—</p>
+                            <p className="text-base font-extrabold text-neutral-900 font-mono">
+                              {formatTokenMeter(tokenTotal, usageEstimated)}
+                            </p>
                           </div>
                           <div className="p-3 border border-neutral-200 bg-neutral-50/50 rounded-xl">
                             <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider mb-1">{t('Estimated Cost')}</p>
@@ -591,12 +604,16 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                             <span className="text-zinc-500 font-normal font-mono">{t('Input vs Output')}</span>
                           </div>
                           <div className="w-full h-3 rounded-full overflow-hidden flex bg-neutral-100 border border-neutral-200/50">
-                            <div className="h-full w-1/2 bg-neutral-200" aria-hidden />
-                            <div className="h-full w-1/2 bg-neutral-100" aria-hidden />
+                            <div className="h-full bg-neutral-400" style={{ width: `${inPct}%` }} aria-hidden />
+                            <div className="h-full bg-neutral-200" style={{ width: `${outPct}%` }} aria-hidden />
                           </div>
                           <div className="flex justify-between text-[9px] font-mono pt-1 text-on-surface-variant/70">
-                            <span>{t('Input')}: —</span>
-                            <span>{t('Output')}: —</span>
+                            <span>
+                              {t('Input')}: {formatTokenMeter(tokenInput, usageEstimated)}
+                            </span>
+                            <span>
+                              {t('Output')}: {formatTokenMeter(tokenOutput, usageEstimated)}
+                            </span>
                           </div>
                         </div>
                       </div>

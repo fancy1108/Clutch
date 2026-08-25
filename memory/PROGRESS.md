@@ -7,9 +7,16 @@
 
 - **阶段：** **v1.3.0** 已发；主线 D8–D13 ✅；扩展/MCP **D14–D52 Agent 代 PM ✅**；Desktop E2E ✅；**Design D36 PM ✅**
 - **Git / PM 索引：** [`runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md`](../runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md)
-- **下次优先：** 无强制下一枪；候选见 `BACKLOG.md`。
+- **下次优先：** 无强制下一枪；Windows 验收不做（D55）。
 
 ## Recent Sessions
+
+## 2026-08-25 会话（Q-USAGE-1 + Design 收尾 + D37 状态；Windows 不做）
+
+- **做了：** Overview 用量接供应商 `usage`、否则 `~` 估算；费用仍 `—`。Windows 修复/实体机验收记入 D55 不做。Design 旧文案与 D37/D39–D41 决策状态对齐。
+- **没做：** Windows flake / #23；不接价表；D34。
+- **测：** `test_usage_q1` + `test_http_complete` 用量；`sessionUsage.test.ts`。
+- **下次：** 候选池。
 
 ## 2026-08-24 会话（Design D36 PM 点验）
 

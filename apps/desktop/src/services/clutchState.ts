@@ -478,6 +478,7 @@ class ClutchStateStore {
         token_output: remote.token_output,
         session_tokens: remote.session_tokens,
         session_cost_usd: remote.session_cost_usd,
+        usage_estimated: remote.usage_estimated,
       });
       return;
     }

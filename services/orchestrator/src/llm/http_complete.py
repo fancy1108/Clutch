@@ -233,6 +233,14 @@ def _extract_openai_message(msg: dict[str, Any]) -> dict[str, Any]:
     return {"content": content, "reasoning_content": reasoning}
 
 
+def _attach_usage(payload: dict[str, Any], data: dict[str, Any]) -> dict[str, Any]:
+    usage = data.get("usage") if isinstance(data, dict) else None
+    if isinstance(usage, dict) and usage:
+        payload = dict(payload)
+        payload["usage"] = usage
+    return payload
+
+
 def _openai_chat(
     *,
     base_url: str,
@@ -262,8 +270,8 @@ def _openai_chat(
             parsed = _extract_openai_message(msg)
             if parsed.get("reasoning_content"):
                 out["reasoning_content"] = parsed["reasoning_content"]
-            return out
-        return _extract_openai_message(msg)
+            return _attach_usage(out, data)
+        return _attach_usage(_extract_openai_message(msg), data)
     except (KeyError, IndexError, TypeError) as exc:
         raise RuntimeError(f"Unexpected OpenAI-compatible response: {data!r}") from exc
 
@@ -386,13 +394,19 @@ def _anthropic_chat(
                         "arguments": json.dumps(tu["input"]),
                     },
                 })
-            return {
-                "role": "assistant",
-                "content": text_content or None,
-                "tool_calls": tool_calls,
-                "reasoning_content": None,
-            }
-        return {"content": text_content, "reasoning_content": None}
+            return _attach_usage(
+                {
+                    "role": "assistant",
+                    "content": text_content or None,
+                    "tool_calls": tool_calls,
+                    "reasoning_content": None,
+                },
+                data,
+            )
+        return _attach_usage(
+            {"content": text_content, "reasoning_content": None},
+            data,
+        )
     except (KeyError, TypeError) as exc:
         raise RuntimeError(f"Unexpected Anthropic response: {data!r}") from exc
 

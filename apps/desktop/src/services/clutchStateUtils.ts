@@ -19,6 +19,7 @@ export function createEmptyState(runId: string): ClutchState {
     session_cost_usd: 0,
     token_input: 0,
     token_output: 0,
+    usage_estimated: true,
     awaiting_continue: false,
   };
 }

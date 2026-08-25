@@ -218,7 +218,7 @@ async def send_design_to_coding(run_id: str) -> dict[str, Any]:
         raise _http(exc) from exc
 
 
-# Legacy project routes kept for older clients / tests
+# Legacy D35 project routes — UI uses session APIs (`/sessions`). Kept for older clients.
 @router.get("/templates")
 async def list_design_templates() -> dict[str, Any]:
     return {"templates": service.list_templates()}

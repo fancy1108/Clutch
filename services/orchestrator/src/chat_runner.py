@@ -40,6 +40,8 @@ from src.chat_messages import (
     _sealed_tool_steps,
     _token_patch,
     _token_patch_turn,
+    consume_turn_usage_patch,
+    stash_turn_usage,
     _verification_report_for_seal,
 )
 from src.chat_ws_events import (
@@ -1430,6 +1432,11 @@ async def _llm_chat_reply(
                     await emit_verification(dict(outcome.verification_report))
                 if outcome.diff_summary is not None and emit_diff_summary:
                     await emit_diff_summary(dict(outcome.diff_summary))
+                stash_turn_usage(
+                    str(state.get("run_id") or ""),
+                    outcome.usage,
+                    bool(outcome.usage_estimated),
+                )
                 if outcome.approval_required:
                     pause_payload = {
                         **outcome.approval_required,
@@ -2076,6 +2083,9 @@ async def _finish_plain_chat_after_llm(
             pause_patch["verification_report"] = dict(mcp_pause["verification_report"])
         if mcp_pause.get("diff_summary") is not None:
             pause_patch["diff_summary"] = dict(mcp_pause["diff_summary"])
+        pause_patch.update(
+            consume_turn_usage_patch(state, user_text=user_text_for_tokens, assistant_text="")
+        )
         state = _merge_patch(state, pause_patch)
         _commit_run_state(run_id, state)
         _touch_session(run_id, status=state["status"])
@@ -2124,7 +2134,7 @@ async def _finish_plain_chat_after_llm(
     final_logs = _append_terminal_logs(
         list(state["terminal_logs"]), route_logs, log_line, streamed=streamed_logs
     )
-    token_patch = _token_patch_turn(
+    token_patch = consume_turn_usage_patch(
         state, user_text=user_text_for_tokens, assistant_text=reply_text
     )
     continue_blob = "\n".join(
@@ -2752,6 +2762,9 @@ async def _handle_plain_chat(
                 mcp_pause.get("subtasks") or subtasks_sink or []
             ),
         }
+        pause_patch.update(
+            consume_turn_usage_patch(state, user_text=text, assistant_text="")
+        )
         state = _merge_patch(state, pause_patch)
         _commit_run_state(run_id, state)
         _touch_session(run_id, status=state["status"])
@@ -2843,7 +2856,7 @@ async def _handle_plain_chat(
         "active_agent": active_agent,
         "pending_tool_steps": [], "live_reasoning": "",
         "pending_subtasks": [],
-        **_token_patch_turn(state, user_text=text, assistant_text=reply_text),
+        **consume_turn_usage_patch(state, user_text=text, assistant_text=reply_text),
     }
     if hybrid_executions_patch is not None:
         final_patch["hybrid_executions"] = hybrid_executions_patch
@@ -3265,6 +3278,11 @@ async def _handle_flow_refine_message(
                 mcp_pause.get("subtasks") or subtasks_sink or []
             ),
         }
+        pause_patch.update(
+            consume_turn_usage_patch(
+                state, user_text=body or text, assistant_text=""
+            )
+        )
         state = _merge_patch(state, pause_patch)
         _commit_run_state(run_id, state)
         if pause_created:
@@ -3302,7 +3320,7 @@ async def _handle_flow_refine_message(
         "status": "refining",
         "pending_tool_steps": [], "live_reasoning": "",
         **cli_session_patch(cli_session_id, resolved_id),
-        **_token_patch_turn(state, user_text=body or text, assistant_text=reply_text),
+        **consume_turn_usage_patch(state, user_text=body or text, assistant_text=reply_text),
     }
     if runtime_mode() == "hybrid":
         final_patch["shell_session_status"] = "ready"

@@ -29,6 +29,7 @@ class ClutchState(TypedDict):
     session_cost_usd: float
     token_input: int
     token_output: int
+    usage_estimated: NotRequired[bool]
     cli_session_id: str
     cli_session_agent_id: str
     awaiting_continue: NotRequired[bool]
@@ -76,6 +77,7 @@ def initial_state(run_id: str, workflow_id: str = "") -> ClutchState:
         session_cost_usd=0.0,
         token_input=0,
         token_output=0,
+        usage_estimated=True,
         cli_session_id="",
         cli_session_agent_id="",
         awaiting_continue=False,

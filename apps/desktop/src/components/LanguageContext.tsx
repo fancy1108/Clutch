@@ -83,7 +83,7 @@ const zhTranslations: Record<string, string> = {
   "Play": "播放",
   "Exit Play": "退出播放",
   "Approve": "批准",
-  "Create or open a Design project": "创建或打开设计项目",
+  "Start a Design session": "新建设计会话",
   "Prototype → Approve → UI code → Coding": "原型 → 批准 → 界面代码 → 编码",
   "Iterate this screen…": "迭代当前屏幕…",
   "Iterate": "迭代",

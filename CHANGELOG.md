@@ -12,6 +12,8 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ### Added
 
+- **Overview usage meters (Q-USAGE-1):** Session Token Analytics shows run steps, tokens, and input/output split. Provider `usage` when the model returns it; otherwise a word-count estimate marked `~`. Cost stays `—` (no price table).
+
 - **Workspace MEMORY.md (B-39):** Saying `记住：…` / `remember:` writes `.clutch/memory/MEMORY.md` (open in Files). Next Chat turns inject that overview. Settings Memory copy points at the file.
 - **Verification notes (B-40):** Passing/failing `submit_verification` appends `Worked:` / `Failed:` to that file.
 - **Memory poison filter (B-45):** Webpage-style “please remember” + URL, or a bare URL, is refused for both `.clutch/memory/MEMORY.md` and Settings Memory (`remember_preference` errors instead of “saved”).
