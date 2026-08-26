@@ -43,7 +43,7 @@ export CLUTCH_RUNTIME_MODE=hybrid && pnpm tauri:dev
 | ☑ | [FM-03](#fm-03-命令策略) | allow / ask / deny 规则 | Settings → Tools |
 | ☑ | [FM-04](#fm-04--fm-05-cli-只读扫描) | Codex 扫描 | Settings → Models → **More → Codex** |
 | ☑ | [FM-05](#fm-04--fm-05-cli-只读扫描) | 另外六个 CLI 扫描 | More → Aider / CodeBuddy / … |
-| ☐ | [FM-09](#fm-09-分派横幅) | 空 Chat 不必先选工作流 | New Chat 顶上灰条 |
+| ☑ | [FM-09](#fm-09-分派横幅) | 空 Chat 不必先选工作流 | New Chat 顶上灰条 |
 | ☐ | [FM-19](#fm-19-plannerexecutor) | 规划模型 / 执行模型分开 | Settings → Models；Overview 两行名字 |
 | ☐ | [FM-12](#fm-12-记忆搜索) | 搜 `.clutch/memory` | Settings → General → Search |
 | ☐ | [FM-13](#fm-13-事件-channel) | Test event → Chat 横幅 Continue | Settings → General → Event channel |
