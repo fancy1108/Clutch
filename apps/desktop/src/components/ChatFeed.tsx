@@ -13,6 +13,7 @@ import {
   HybridExecutionPayload,
   OutputEvent,
   QuestionOption,
+  QuestionCard,
   SubtaskCard,
   TodoItem,
   AgentGoal,
@@ -594,6 +595,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   const [planStepComments, setPlanStepComments] = useState<string[]>([]);
   const [pendingMessages, setPendingMessages] = useState<PendingChatMessage[]>([]);
   const [eventBanner, setEventBanner] = useState<string | null>(null);
+  const [demoNotify, setDemoNotify] = useState<QuestionCard | null>(null);
   const [bgJobToast, setBgJobToast] = useState<string | null>(null);
   const prevBgJobsRef = useRef<BackgroundJob[]>([]);
   /**
@@ -626,6 +628,21 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
     };
     window.addEventListener('clutch-event-channel', handler);
     return () => window.removeEventListener('clutch-event-channel', handler);
+  }, [t]);
+
+  useEffect(() => {
+    const handler = () =>
+      setDemoNotify({
+        question: t('Sub-agent wants to notify you'),
+        options: [
+          { id: 'send', label: t('Send') },
+          { id: 'cancel', label: t('Cancel') },
+        ],
+        status: 'pending',
+        kind: 'notify',
+      });
+    window.addEventListener('clutch-notify-user-demo', handler);
+    return () => window.removeEventListener('clutch-notify-user-demo', handler);
   }, [t]);
 
   useEffect(() => {
@@ -1383,6 +1400,23 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
             >
               {t('Continue')}
             </button>
+          </div>
+        ) : null}
+        {demoNotify ? (
+          <div className="mx-auto mb-2 max-w-xl">
+            <QuestionCardView
+              card={demoNotify}
+              t={t}
+              interactive={demoNotify.status === 'pending'}
+              onSelect={(option) => {
+                setDemoNotify({
+                  ...demoNotify,
+                  status: option.id === 'cancel' ? 'cancelled' : 'answered',
+                  selectedId: option.id,
+                  selectedLabel: option.label,
+                });
+              }}
+            />
           </div>
         ) : null}
         {workspaceViewMode === 'chat' && showEmptyState && (

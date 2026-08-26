@@ -118,6 +118,7 @@ def _messages_for_mcp_pause(
             "options": q["options"],
             "status": "pending",
             "allowCustom": q["allow_custom"],
+            "kind": q.get("kind") or "question",
         }
         question_msg = _chat_message(
             reply_label,
