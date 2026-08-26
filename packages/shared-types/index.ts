@@ -164,7 +164,7 @@ export interface QuestionCard {
   selectedId?: string;
   selectedLabel?: string;
   note?: string;
-  kind?: 'question' | 'notify';
+  kind?: 'question' | 'notify' | 'new_info';
 }
 
 export type VerificationConclusion = 'passed' | 'failed';

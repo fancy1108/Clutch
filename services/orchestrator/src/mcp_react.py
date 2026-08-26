@@ -1331,6 +1331,37 @@ def run_mcp_react_loop(
                             release_delegate_context,
                         )
 
+                        if any(str(c.get("status") or "") == "running" for c in latest_subtasks) and not func_args.get(
+                            "confirm_new_info"
+                        ):
+                            from src.tool_steps import make_tool_step
+
+                            step_id = f"tool_{step_idx}"
+                            record_tool_step(
+                                make_tool_step(
+                                    tool_alias=func_name,
+                                    func_args=func_args,
+                                    status="awaiting",
+                                    step_idx=step_idx,
+                                    step_id=step_id,
+                                )
+                            )
+                            return _outcome(
+                                output="",
+                                approval_required={
+                                    "chat_messages": chat_messages,
+                                    "tool_call_id": tc_id,
+                                    "func_name": "notify_user",
+                                    "func_args": {
+                                        "kind": "new_info",
+                                        "message": "New information arrived before another parallel sub-agent. Proceed?",
+                                    },
+                                    "step_idx": step_idx,
+                                    "step_id": step_id,
+                                    "kind": "question",
+                                },
+                            )
+
                         try:
                             args = normalize_delegate_args(func_args)
                         except ValueError as exc:

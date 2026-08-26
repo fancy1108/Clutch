@@ -26,6 +26,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 - **Memory search (FM-12):** Settings → General can search `.clutch/memory`; clicking a hit opens the file.
 - **Event channel (FM-13):** Settings stores webhook/email; Test event shows a Chat Continue banner.
 - **Notify user (FM-14):** Chat shows a notify card with Send/Cancel; the + menu can preview it.
+- **New-info gate (FM-15):** Parallel subtasks ask before a second spawn; Chat shows Proceed/Hold.
 
 - **Workspace MEMORY.md (B-39):** Saying `记住：…` / `remember:` writes `.clutch/memory/MEMORY.md` (open in Files). Next Chat turns inject that overview. Settings Memory copy points at the file.
 - **Verification notes (B-40):** Passing/failing `submit_verification` appends `Worked:` / `Failed:` to that file.

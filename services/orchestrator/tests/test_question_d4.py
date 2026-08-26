@@ -56,6 +56,12 @@ def test_notify_user_normalizes_send_cancel() -> None:
     assert is_ask_user_question_tool("notify_user")
 
 
+def test_new_info_gate_options() -> None:
+    q = normalize_question_args({"kind": "new_info", "message": "Proceed in parallel?"})
+    assert q["kind"] == "new_info"
+    assert [o["id"] for o in q["options"]] == ["proceed", "hold"]
+
+
 def test_parse_question_selection_json_and_custom() -> None:
     args = {
         "question": "Which cache?",

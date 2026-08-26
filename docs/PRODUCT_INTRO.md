@@ -104,6 +104,7 @@ graph TD
 * **模式切换（D27）**：Chat 输入框底栏 **模式 pill**（对标 Cursor）：**Agent / Plan / Full / Ask**（内部 `auto_edit` / `plan` / `full` / `ask`）。默认 **Agent**（可改文件；危险 shell 仍问）。**Ask** 为对话/只读。旧 `explore` 映射为 Ask；旧 UI 名 Edit = Agent。
 * **Subtask delegation（D10 + D48）**：Clutch Agent 可调用 `delegate_subtask` 派发 **explore**（只读）或 **implement** 子任务；父气泡下嵌套 **Subtasks** 卡展示状态、摘要与可展开步骤；子失败在父卡可见。Explore 子循环默认更高工具步数预算；用户要求「先探再改」时至少出现 explore 卡，implement 可由父 Agent 完成（不强制第二张卡）。
 * **Notify user（FM-14 / B-46）**：子 Agent 可调用 `notify_user`；Chat 出现通知卡，**Send** / **Cancel** 可点。对话 **+** 菜单也可预览该卡。
+* **New information gate（FM-15 / B-43）**：并行子任务前 Chat 出现确认卡（**Proceed** / **Hold**）；**+** 菜单可预览。已有运行中子任务时再次 `delegate_subtask` 会暂停询问。
 * **Background commands（D11）**：`run_terminal_cmd` 可设 `background=true` 立即返回 `job_id`；**运行中**任务显示在输入栏上方（查看输出 / Kill）；**结束后**任务卡进入对话时间线（随 Supervisor 完成提示），底栏不再占用。
 * **Foreground → background（D34）**：长命令前台执行时，输入栏上方出现 **Move to background**；一键转入 D11 后台列表后可继续聊天（对标 Grok Ctrl+B）。
 * **Worktree 隔离试验（D32 / FM-11）**：Chat 输入框 **+** 菜单 → **Enable worktree** — Agent 在 `.clutch/worktrees/<id>` 改代码；启用后上方出现紧凑条，可 **Merge** / **Discard**，并可 **Add parallel worktree** 再建一棵子树（各路径可见、各自合并或丢弃）。主工作区保持干净。

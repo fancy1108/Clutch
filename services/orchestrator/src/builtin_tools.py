@@ -919,14 +919,16 @@ def normalize_question_args(func_args: dict[str, Any] | None) -> dict[str, Any]:
                     continue
                 oid = str(item.get("id") or f"opt_{idx + 1}").strip() or f"opt_{idx + 1}"
                 options.append({"id": oid, "label": label})
-    kind = "notify" if str(payload.get("kind") or "").lower() == "notify" or (
-        not options and (payload.get("message") or "")
-    ) else "question"
+    kind = str(payload.get("kind") or "").lower()
+    if kind not in {"notify", "new_info", "question"}:
+        kind = "notify" if (not options and (payload.get("message") or "")) else "question"
     if kind == "notify" and not options:
         options = [{"id": "send", "label": "Send"}, {"id": "cancel", "label": "Cancel"}]
+    if kind == "new_info" and not options:
+        options = [{"id": "proceed", "label": "Proceed"}, {"id": "hold", "label": "Hold"}]
     allow_custom = payload.get("allow_custom")
     if allow_custom is None:
-        allow_custom = kind != "notify"
+        allow_custom = kind == "question"
     return {
         "question": question or "Please choose an option",
         "options": options,

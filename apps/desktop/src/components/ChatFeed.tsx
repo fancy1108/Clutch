@@ -646,6 +646,21 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   }, [t]);
 
   useEffect(() => {
+    const handler = () =>
+      setDemoNotify({
+        question: t('New information arrived. Continue parallel work?'),
+        options: [
+          { id: 'proceed', label: t('Proceed') },
+          { id: 'hold', label: t('Hold') },
+        ],
+        status: 'pending',
+        kind: 'new_info',
+      });
+    window.addEventListener('clutch-new-info-demo', handler);
+    return () => window.removeEventListener('clutch-new-info-demo', handler);
+  }, [t]);
+
+  useEffect(() => {
     const handleClose = () => setMessageContextMenu(null);
     window.addEventListener('click', handleClose);
     window.addEventListener('contextmenu', handleClose);
@@ -1411,7 +1426,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
               onSelect={(option) => {
                 setDemoNotify({
                   ...demoNotify,
-                  status: option.id === 'cancel' ? 'cancelled' : 'answered',
+                  status: option.id === 'cancel' || option.id === 'hold' ? 'cancelled' : 'answered',
                   selectedId: option.id,
                   selectedLabel: option.label,
                 });
