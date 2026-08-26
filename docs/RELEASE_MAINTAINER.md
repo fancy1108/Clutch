@@ -23,7 +23,7 @@
 | 2. 版本号 `tauri.conf.json` / `package.json` | AI | 与 tag 一致 |
 | 3. `./scripts/verify.sh` | AI | 通过后再 merge / tag |
 | 4. **Merge `dev` → `main`** | AI 开 PR，**你确认合并** | `main` 须包含全部发版 commit；合并后再打 tag |
-| 5. **`git tag vX.Y.Z` on `main` + push tag** | AI 准备，**你确认** | 触发 [`.github/workflows/release.yml`](../.github/workflows/release.yml) |
+| 5. **`git tag vX.Y.Z` on `main` + push tag** | AI 准备，**你确认** | 触发 [`.github/workflows/release.yml`](../.github/workflows/release.yml)（**未签名** DMG，D31；公证流程 [`APPLE_NOTARIZATION.md`](./APPLE_NOTARIZATION.md)） |
 | 6. CI 上传 DMG + `SHA256SUMS.txt` | GitHub Actions | 约 15–30 分钟；Release 正文由 `render-release-notes.sh` 生成 |
 | 7. 同步 Homebrew tap | AI 或 CI | 见下文 §Homebrew |
 | 8. macOS 应用内更新（可选） | 你或 AI | 见 [`UPDATES.md`](./UPDATES.md) — 跑 `Release (updater assets)` |

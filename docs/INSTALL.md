@@ -57,7 +57,7 @@ irm https://raw.githubusercontent.com/fancy1108/Clutch/main/scripts/install.ps1 
 2. 下载最新 **`Clutch_*_aarch64.dmg`**（**仅 Apple Silicon / M 芯片**；Intel Mac 暂不提供安装包，见 [`PACKAGE_MANAGERS.md`](./PACKAGE_MANAGERS.md)）
 3. 打开 DMG，将 **Clutch** 拖入 **Applications**
 
-当前发布包为**未签名**构建（见 [`memory/DECISIONS.md`](../memory/DECISIONS.md) **D31**）。获得 Apple Developer 账号后可升级为签名/公证版本（OSR-11）。
+当前发布包为**未签名**构建（见 [`memory/DECISIONS.md`](../memory/DECISIONS.md) **D31**）。签名/公证步骤与**账号阻塞**见 [`APPLE_NOTARIZATION.md`](./APPLE_NOTARIZATION.md)（FM-21 / OSR-11）；账号到位前仍发 unsigned DMG。
 
 ### Windows
 

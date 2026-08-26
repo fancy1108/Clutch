@@ -49,7 +49,7 @@
 | **OSR-26** | `docs/GOVERNANCE.md` | **T1** | 0 | 0.5d | |
 | **OSR-27** | 兼容性矩阵 + `scripts/doctor.sh` | **T1** | 0 | 1d | |
 | **OSR-28** | Issue / PR 模板 | **T1** | 0 | 0.5d | |
-| OSR-11 | Apple 签名 + 公证 | **T2** | 1 | 2–3d | D31 可豁免 |
+| OSR-11 | Apple 签名 + 公证 | **T2** | 1 | 2–3d | D31 豁免仍有效；流程 [`APPLE_NOTARIZATION.md`](./APPLE_NOTARIZATION.md)（FM-21）；**未公证** |
 | OSR-12 | GitHub Actions Release DMG | **T2** | 1 | 2–3d | `release-preflight.sh` |
 | OSR-13 | API Key → macOS Keychain + 迁移 | **T2** | 1 | 3–5d | |
 | OSR-14 | 首次启动向导 | **T2** | 1 | 2–3d | |
