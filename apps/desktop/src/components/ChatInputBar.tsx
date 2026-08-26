@@ -9,7 +9,7 @@
  */
 import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import { Loader2 } from 'lucide-react';
-import { useLanguage } from './LanguageContext';
+import type { PendingHandoffDraft } from '../types';
 import type { SessionRecord } from '../services/runApi';
 import type { ScannedSkill } from '../services/skillsApi';
 import type { FileTreeNode } from '../services/workspaceApi';
@@ -112,6 +112,7 @@ interface ChatInputBarProps {
   onEnableWorktree?: () => void;
   /** D32 — hide enable control while worktree already active. */
   worktreeActive?: boolean;
+  drafts?: PendingHandoffDraft[];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -267,6 +268,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
   onRewindFiles,
   onEnableWorktree,
   worktreeActive = false,
+  drafts = [],
 }) => {
   const { t, language } = useLanguage();
   const [dismissedNoticeKey, setDismissedNoticeKey] = useState<string | null>(null);
@@ -274,6 +276,15 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const compositionActiveRef = useRef(false);
+
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<{ text: string }>).detail;
+      if (detail?.text) setInputValue(detail.text);
+    };
+    window.addEventListener('orchestrator-fill-bar', handler);
+    return () => window.removeEventListener('orchestrator-fill-bar', handler);
+  }, [setInputValue]);
 
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -824,6 +835,20 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
             onOpenChange={setScheduleOpen}
           />
         </>
+      ) : null}
+      {drafts.length > 0 ? (
+        <div className="flex flex-wrap gap-1.5 px-3 pt-2" data-testid="chat-handoff-drafts">
+          {drafts.map((draft) => (
+            <button
+              key={draft.id}
+              type="button"
+              className="text-[10px] font-semibold px-2 py-1 rounded-lg border border-amber-200 bg-amber-50 text-amber-900"
+              onClick={() => setInputValue(draft.text)}
+            >
+              {draft.label}
+            </button>
+          ))}
+        </div>
       ) : null}
       {pendingMessages.length > 0 ? (
         <div className="px-3 pt-3 pb-2 border-b border-outline-variant/40">

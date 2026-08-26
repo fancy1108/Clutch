@@ -764,6 +764,16 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
     }
     onWorkspaceViewModeChange(mode);
     saveWorkspaceViewMode(mode);
+    if (mode === 'terminal') {
+      const recent = messages
+        .filter((msg) => typeof msg.text === 'string' && msg.text.trim())
+        .slice(-4)
+        .map((msg) => `${msg.agent === 'User' ? 'User' : 'Agent'}: ${msg.text.trim()}`)
+        .join('\n');
+      if (recent && !inputValue.trim()) {
+        setInputValue(recent);
+      }
+    }
   }, [
     clutchOrchestraState,
     workspaceViewMode,
@@ -771,6 +781,8 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
     mentionableAgents,
     onLeaveTerminalConfirm,
     onWorkspaceViewModeChange,
+    messages,
+    setInputValue,
   ]);
 
   const prevStatusRef = useRef(clutchStatus);
@@ -2157,6 +2169,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                   : undefined
               }
               worktreeActive={Boolean(worktreeIsolation?.enabled)}
+              drafts={clutchOrchestraState.pending_handoff_drafts ?? []}
             />
           </div>
         ) : null}
