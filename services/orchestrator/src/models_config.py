@@ -285,10 +285,15 @@ def serialize_models_config(router: LLMProviderRouter) -> dict[str, Any]:
                 "is_custom": is_custom_model_id(spec.id),
             }
         )
+    from src.preferences_storage import load_model_roles
+
+    roles = load_model_roles()
     return {
         "active_model_id": router.active_model_id,
         "providers": providers,
         "models": models,
+        "planner_model_id": roles.get("planner_model_id") or router.active_model_id,
+        "executor_model_id": roles.get("executor_model_id") or router.active_model_id,
     }
 
 

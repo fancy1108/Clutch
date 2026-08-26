@@ -25,6 +25,7 @@ import {
 import { rightPanelSummaryTextClass, rightPanelUsesGridTabs } from '../platform/chrome/chatChrome';
 import { useHostOs } from '../platform/hostOs';
 import { formatStepMeter, formatTokenMeter, inputOutputPercents } from '../services/sessionUsage';
+import { fetchModelsConfig } from '../services/modelsApi';
 
 interface RightPanelProps {
   activeTab: RightTab;
@@ -129,6 +130,21 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   const [selectedFile, setSelectedFile] = React.useState<string>('');
   const [expandedFiles, setExpandedFiles] = React.useState<Record<string, boolean>>({});
   const [workflowSteps, setWorkflowSteps] = React.useState<WorkflowStepView[]>([]);
+  const [modelRoles, setModelRoles] = React.useState<{ planner: string; executor: string }>({ planner: '', executor: '' });
+
+  React.useEffect(() => {
+    if (activeTab !== 'overview') return;
+    void fetchModelsConfig()
+      .then((config) => {
+        const planner = config.models.find((m) => m.id === (config.planner_model_id || config.active_model_id));
+        const executor = config.models.find((m) => m.id === (config.executor_model_id || config.active_model_id));
+        setModelRoles({
+          planner: planner?.name || config.planner_model_id || '',
+          executor: executor?.name || config.executor_model_id || '',
+        });
+      })
+      .catch(() => {});
+  }, [activeTab]);
 
   React.useEffect(() => {
     if (activeTab === 'files') {
@@ -568,6 +584,12 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                       <h4 className="text-[10px] font-bold text-on-surface-variant/75 uppercase tracking-widest mb-4">
                         {t('Session Token Analytics')}
                       </h4>
+                      {(modelRoles.planner || modelRoles.executor) ? (
+                        <p data-testid="overview-model-roles" className="text-[11px] text-on-surface-variant mb-3">
+                          {t('Planner')}: {modelRoles.planner || '—'} · {t('Executor')}: {modelRoles.executor || '—'}
+                          {modelName ? ` · ${t('This turn')}: ${modelName}` : ''}
+                        </p>
+                      ) : null}
                       <p className="text-[10px] text-on-surface-variant/70 mb-3 leading-relaxed">
                         {language === 'zh'
                           ? usageEstimated

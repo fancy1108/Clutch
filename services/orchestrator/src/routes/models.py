@@ -14,6 +14,8 @@ class ModelsConfigRequest(BaseModel):
     active_model_id: str | None = None
     provider_id: str | None = None
     api_key: str | None = None
+    planner_model_id: str | None = None
+    executor_model_id: str | None = None
 
 
 class CliActivateProviderRequest(BaseModel):
@@ -118,6 +120,16 @@ async def update_models_config(body: ModelsConfigRequest) -> dict[str, str]:
 
         unhide_model_from_list(body.active_model_id)
         router.set_active_model(body.active_model_id)
+    if body.planner_model_id is not None or body.executor_model_id is not None:
+        from src.preferences_storage import load_model_roles, save_model_roles
+
+        current = load_model_roles()
+        save_model_roles(
+            body.planner_model_id if body.planner_model_id is not None else current["planner_model_id"],
+            body.executor_model_id if body.executor_model_id is not None else current["executor_model_id"],
+        )
+        if body.executor_model_id and is_model_available(router, body.executor_model_id):
+            router.set_active_model(body.executor_model_id)
     save_router(router)
     return {"status": "saved", "active_model_id": router.active_model_id}
 
