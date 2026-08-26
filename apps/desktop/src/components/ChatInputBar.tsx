@@ -969,6 +969,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
         <div className="relative flex-shrink-0">
           <button
             type="button"
+            data-testid="composer-plus"
             onClick={() => {
               setAttachMenuOpen((v) => !v);
               setPermissionMenuOpen(false);
