@@ -169,7 +169,7 @@
 | D36 headless Agent | `headless_agent.py` · `headless_cli.py` · `routes/agent_run.py` |
 | D14 Grok CLI | `grok_cli_adapter.py` · `grok-cli` in `tools_status` / `engine_router` |
 | 会话 fork/回滚（D23） | `session_fork.py` · `file_rewind.py` · fork/rewind API · Chat 菜单 |
-| 跨会话记忆（D16 / B-39 / B-40 / B-45） | `cross_session_memory.py` · `workspace_memory.py` · Settings Memory · Files `.clutch/memory/MEMORY.md` |
+| 跨会话记忆（D16 / B-39 / B-40 / B-45 / FM-12） | `cross_session_memory.py` · `workspace_memory.py` `search_memory` · `GET /api/memory/search` · Settings Memory 检索 · Files `.clutch/memory/MEMORY.md` |
 | 工具 Hooks（D17） | `tool_hooks.py` · `mcp_react` Pre/Post 拦截 |
 | 能力包导入（D35） | `capability_pack.py` · Skills 页 Import/Uninstall |
 | Chat 用量（D22 / D9 / Q-USAGE-1） | `RightPanel` Overview `overview-run-usage` · `sessionUsage.ts` · `chat_messages._token_patch_turn` / `stash_turn_usage` · `http_complete` 透传 `usage` · `mcp_react` 累计 |

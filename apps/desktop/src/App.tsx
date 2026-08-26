@@ -1083,6 +1083,19 @@ function MainLayout() {
     }
   };
 
+  const openWorkspaceFileRef = useRef(handleOpenWorkspaceFile);
+  openWorkspaceFileRef.current = handleOpenWorkspaceFile;
+
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const path = (event as CustomEvent<{ path?: string }>).detail?.path;
+      if (!path) return;
+      void openWorkspaceFileRef.current(path);
+    };
+    window.addEventListener('clutch-open-file', handler);
+    return () => window.removeEventListener('clutch-open-file', handler);
+  }, []);
+
   const handlePreviewSnippet = (name: string, content: string) => {
     setPreviewFile({
       name,

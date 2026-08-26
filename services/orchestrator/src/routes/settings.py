@@ -741,6 +741,13 @@ async def save_local_trust_route(body: TrustItemRequest) -> dict[str, str]:
     return save_trusted_id(kind, body.item_id)
 
 
+@router.get("/api/memory/search")
+async def search_workspace_memory(q: str = "") -> dict[str, Any]:
+    from src.workspace_memory import search_memory
+
+    return {"hits": search_memory(q)}
+
+
 @router.post("/api/preferences/permission-mode")
 async def save_permission_mode_route(body: PermissionModeRequest) -> dict[str, str]:
     from src.preferences_storage import save_permission_mode

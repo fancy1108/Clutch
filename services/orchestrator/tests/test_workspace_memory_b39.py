@@ -8,6 +8,7 @@ from src.workspace_memory import (
     format_workspace_memory_block,
     harvest_user_remember,
     read_notes,
+    search_memory,
 )
 
 
@@ -16,6 +17,15 @@ def _ws(tmp_path, monkeypatch):
         "src.workspace.get_workspace",
         lambda: {"workspace_path": str(tmp_path)},
     )
+
+
+def test_search_memory_hits_notes(tmp_path, monkeypatch) -> None:
+    _ws(tmp_path, monkeypatch)
+    append_note("commit messages in Chinese")
+    hits = search_memory("chinese")
+    assert hits
+    assert hits[0]["rel"].endswith("MEMORY.md")
+    assert "commit messages in Chinese" in hits[0]["snippet"]
 
 
 def test_append_and_prompt_block(tmp_path, monkeypatch) -> None:

@@ -182,6 +182,8 @@ const zhTranslations: Record<string, string> = {
   "Memory: On": "记忆：开",
   "Memory: Off": "记忆：关",
   "Clear memory": "清除记忆",
+  "Search .clutch/memory": "搜索 .clutch/memory",
+  "Search": "搜索",
   "Comment on this step…": "对此步骤批注…",
   "Small": "小",
   "Default": "默认",

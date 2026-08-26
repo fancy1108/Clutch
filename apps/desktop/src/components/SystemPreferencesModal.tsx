@@ -17,6 +17,7 @@ import { saveAvatarPreference } from '../services/themeApi';
 import { fetchAllowNetwork, fetchCrossSessionMemory, fetchDefaultWorkspaceId, fetchHighRiskConfirm, fetchLocalTrust, fetchStrictSandbox, clearCrossSessionMemory, saveAllowNetwork, saveCrossSessionMemory, saveDefaultWorkspaceId, saveHighRiskConfirm, saveStrictSandbox, saveUntrustedConfirm } from '../services/permissionApi';
 import { FONT_SIZE_LABEL_KEYS, FONT_SIZE_OPTIONS, type AppFontSize } from '../services/fontSizePreference';
 import { fetchWorkspaces, type WorkspaceInfo } from '../services/workspaceApi';
+import { SIDECAR_BASE as BASE, sidecarFetch } from '../services/sidecarUrl';
 import { setUserChatAvatar } from '../services/clutchState';
 import defaultAvatar from '../assets/default_avatar.jpg';
 
@@ -104,6 +105,8 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
   const [highRiskConfirm, setHighRiskConfirm] = useState(true);
   const [highRiskConfirmLoading, setHighRiskConfirmLoading] = useState(true);
   const [untrustedConfirm, setUntrustedConfirm] = useState(true);
+  const [memoryQuery, setMemoryQuery] = useState('');
+  const [memoryHits, setMemoryHits] = useState<Array<{ rel: string; snippet: string; path: string }>>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -646,6 +649,49 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
                         {t('Clear memory')} ({memoryEntryCount})
                       </button>
                     </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <input
+                        data-testid="memory-search-input"
+                        value={memoryQuery}
+                        onChange={(e) => setMemoryQuery(e.target.value)}
+                        placeholder={t('Search .clutch/memory')}
+                        className="flex-1 min-w-[160px] bg-surface border border-outline/40 rounded-xl px-3 py-2 text-xs"
+                      />
+                      <button
+                        type="button"
+                        data-testid="memory-search-run"
+                        className={`${BTN_SECONDARY} px-3 py-1.5 text-xs font-semibold`}
+                        onClick={() => {
+                          void sidecarFetch(`${BASE}/api/memory/search?q=${encodeURIComponent(memoryQuery)}`)
+                            .then(async (res) => {
+                              if (!res.ok) return;
+                              const body = (await res.json()) as { hits?: Array<{ rel: string; snippet: string; path: string }> };
+                              setMemoryHits(body.hits ?? []);
+                            })
+                            .catch(() => setMemoryHits([]));
+                        }}
+                      >
+                        {t('Search')}
+                      </button>
+                    </div>
+                    <ul className="space-y-1">
+                      {memoryHits.map((hit) => (
+                        <li key={hit.path}>
+                          <button
+                            type="button"
+                            data-testid="memory-search-hit"
+                            className="w-full text-left text-[11px] rounded-lg border border-outline/30 px-3 py-2 hover:bg-surface"
+                            onClick={() => {
+                              window.dispatchEvent(new CustomEvent('clutch-open-file', { detail: { path: hit.rel } }));
+                              setView('chat');
+                            }}
+                          >
+                            <div className="font-mono truncate">{hit.rel}</div>
+                            <div className="text-on-surface-variant truncate">{hit.snippet}</div>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
 
                   {/* Language Settings Section */}

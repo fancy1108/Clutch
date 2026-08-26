@@ -79,7 +79,38 @@ def append_note(text: str) -> str | None:
     return MEMORY_REL
 
 
-def harvest_user_remember(user_text: str | None) -> list[str]:
+def search_memory(query: str, *, limit: int = 20) -> list[dict[str, str]]:
+    path = memory_path()
+    if path is None:
+        return []
+    root = path.parent
+    if not root.is_dir():
+        return []
+    needle = (query or "").strip().lower()
+    hits: list[dict[str, str]] = []
+    for file in sorted(root.rglob("*")):
+        if not file.is_file():
+            continue
+        try:
+            text = file.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        if needle and needle not in text.lower() and needle not in file.name.lower():
+            continue
+        snippet = next((line.strip() for line in text.splitlines() if line.strip()), "")
+        if needle:
+            for line in text.splitlines():
+                if needle in line.lower():
+                    snippet = line.strip()
+                    break
+        rel = str(file.relative_to(root.parent.parent)) if root.parent.parent in file.parents else file.name
+        hits.append({"path": str(file), "rel": rel, "snippet": snippet[:240]})
+        if len(hits) >= limit:
+            break
+    return hits
+
+
+def harvest_user_remember(user_text: str) -> list[str]:
     """If the user said 记住/remember:, persist it. Returns changed relative paths."""
     from src.preferences_storage import load_cross_session_memory_enabled
 
