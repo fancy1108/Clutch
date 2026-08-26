@@ -33,6 +33,7 @@ import {
 } from '../services/slashCommands';
 import { SessionOverviewBoard } from './SessionOverviewBoard';
 import { ScheduledTasksBar } from './ScheduledTasksBar';
+import { useLanguage } from './LanguageContext';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types

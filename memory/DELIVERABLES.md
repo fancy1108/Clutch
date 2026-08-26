@@ -4,6 +4,14 @@
 > **何时写：** 每个**代码 Task** 完成并 commit 后，在 Check-out 追加一节（见 `CLAUDE.md` §Check-out）。  
 > **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。
 
+## 桌面白屏 useLanguage（2026-08-26）
+
+| 项 | 说明 |
+|----|------|
+| **Verification** | `./scripts/run-e2e.sh` → API 7 · Hybrid 1 · Desktop 6 passed |
+| **证据** | `runs/verification/2026-08-26-fm-e2e-after-orchestra-confirm.log` |
+| **Files** | `ChatInputBar.tsx` · `AiToolsManager.tsx` · `hookImportGuard.test.ts` · `terminal-orchestra.spec.ts` |
+
 ## Wave 6 FM-20–22 文档（2026-08-26）
 
 | 项 | 说明 |

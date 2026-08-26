@@ -7,9 +7,16 @@
 
 - **阶段：** **v1.3.0** 已发；主线 D8–D13 ✅；扩展/MCP **D14–D52 Agent 代 PM ✅**；Desktop E2E ✅；**Design D36 PM ✅**
 - **Git / PM 索引：** [`runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md`](../runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md)
-- **下次优先：** Frontend modules（D56）FM-01–22 已勾完。下一批：T1 开闸信号，或 `memory/BACKLOG.md` 未升格项（价表 / Windows 实体机不做）。
+- **下次优先：** Frontend modules（D56）FM-01–22 已勾完；桌面 E2E 已绿。下一批：T1 开闸信号，或 `memory/BACKLOG.md` 未升格项（价表 / Windows 实体机不做）。
 
 ## Recent Sessions
+
+## 2026-08-26 会话（桌面 E2E 白屏）
+
+- **做了：** `ChatInputBar` / `AiToolsManager` 补 `useLanguage` import；hook 扫描测试；Orchestra E2E 点 Confirm。
+- **没做：** 未补 FM-10/16 等独立 E2E。
+- **测：** `run-e2e.sh` API 7 + Hybrid 1 + Desktop 6 passed。
+- **下次：** T1 开闸或 BACKLOG。
 
 ## 2026-08-26 会话（D56 Wave 6 文档）
 

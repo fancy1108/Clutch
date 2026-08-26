@@ -12,6 +12,14 @@
 
 （暂无）
 
+### [RESOLVED] 桌面 E2E / 真机白屏 `Can't find variable: useLanguage`（2026-08-26）
+
+- **现象：** 桌面进不了主界面；E2E 卡在 `nav-new-chat`。录屏是错误边界「Can't find variable: useLanguage」。
+- **根因：** `ChatInputBar`（FM-08）、`AiToolsManager`（FM-03）调用 `useLanguage()` 未 import。Vite/esbuild 不报未声明标识符，WKWebView 运行时 ReferenceError。
+- **解决：** 补 import；`hookImportGuard.test.ts` 扫描 `useLanguage` / `useHostOs`。
+- **规避：** 新增 hook 调用必须同文件 import；`pnpm build` 挡不住。
+- **关联：** `ChatInputBar.tsx` · `AiToolsManager.tsx`
+
 ### [RESOLVED] Chat · 天气/网页问答露出 `urlopen SSL UNEXPECTED_EOF`（2026-07-25）
 
 - **现象：** Agent 回答直接贴 `<urlopen error [SSL: UNEXPECTED_EOF_WHILE_READING]…>`（如「上海天气」）。

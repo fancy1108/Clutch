@@ -13,6 +13,7 @@ import { AiToolIcon } from './AiToolIcon';
 import { ALERT_WARNING } from './ui/surfaceStyles';
 import { LegacyIcon } from './ui/LegacyIcon';
 import { ExecPolicyPanel } from './ExecPolicyPanel';
+import { useLanguage } from './LanguageContext';
 
 interface AiToolsManagerProps {
   isModalStyle?: boolean;

@@ -54,6 +54,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ### Fixed
 
+- **Desktop white screen (FM-08/FM-03):** `ChatInputBar` and `AiToolsManager` called `useLanguage` without importing it, so WKWebView showed “Can't find variable: useLanguage” and hid the whole chrome (desktop E2E never reached `nav-new-chat`).
 - **Overview panel crash:** `RightPanel` called `useHostOs` without importing it, so WKWebView showed “Can't find variable: useHostOs” and never rendered Session Token Analytics.
 - **E2E fake LLM never echoed:** `CLUTCH_E2E_FAKE_LLM` still required a real Agnes key before the Echo stub ran, so chat replies were “No API key configured…” and usage fell back to word-count. Dummy keys are injected on the fake router.
 - **Agent local clock on UTC hosts:** `_format_local_time` keeps a timezone-aware stamp (does not convert it to the machine TZ), so GitHub Actions/CI no longer fail the UTC+8 clock assertion.
