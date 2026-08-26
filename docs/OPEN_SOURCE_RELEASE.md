@@ -60,7 +60,7 @@
 | OSR-19 | Windows MSI | **T3** | 2 | 1–2w | ✅ v1.0.2 Release |
 | OSR-20 | Tauri 自动更新 | **T3** | 2 | 3–5d | ✅ Go-live v1.0.2 · `docs/UPDATES.md` |
 | OSR-21 | 工作流签名 / MCP 白名单 | **T3** | 2 | 1–2w | |
-| OSR-22 | 外部安全审计 | **T3** | 2 | 外包 | |
+| OSR-22 | 外部安全审计 | **T3** | 2 | 外包 | 流程 [`EXTERNAL_AUDIT.md`](./EXTERNAL_AUDIT.md)（FM-22）；**未委托** |
 | **OSR-29** | `docs/PERFORMANCE.md` 基线 | **T3** | 2 | 1–2d | 测量表见该文档 §1.1 |
 
 ---
@@ -87,6 +87,7 @@
 | 扩展边界 | [`EXTENSIBILITY.md`](./EXTENSIBILITY.md) |
 | 维护者治理 | [`GOVERNANCE.md`](./GOVERNANCE.md) |
 | 安装 / 隐私 | [`INSTALL.md`](./INSTALL.md) · [`DATA_AND_PRIVACY.md`](./DATA_AND_PRIVACY.md) |
+| 签名公证 / 外部审计 | [`APPLE_NOTARIZATION.md`](./APPLE_NOTARIZATION.md) · [`EXTERNAL_AUDIT.md`](./EXTERNAL_AUDIT.md) |
 | 架构 | [`ARCHITECTURE.md`](./ARCHITECTURE.md) |
 | 历史规划全文 | [`archive/OPEN_SOURCE_RELEASE-planning-2026-Q2.md`](./archive/OPEN_SOURCE_RELEASE-planning-2026-Q2.md) |
 

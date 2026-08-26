@@ -41,6 +41,7 @@
 | Sidecar 热更（D37） | `apps/desktop/src-tauri/src/sidecar_patch.rs` · `apps/desktop/src/services/sidecarPatch.ts` · `SidecarPatchReady.tsx` · `scripts/write-sidecar-patch-manifest.sh` |
 | 开源协议 | `LICENSE` |
 | 漏洞报告 | `SECURITY.md` |
+| 外部审计委托 / 报告入口 | `docs/EXTERNAL_AUDIT.md` · `docs/security-audit/` |
 | 社区行为准则 | `CODE_OF_CONDUCT.md` |
 | 版本变更 | `CHANGELOG.md` · 版本快照 `docs/releases/` |
 | Goals / Non-Goals | `docs/PROJECT_SCOPE.md` |

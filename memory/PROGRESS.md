@@ -7,9 +7,16 @@
 
 - **阶段：** **v1.3.0** 已发；主线 D8–D13 ✅；扩展/MCP **D14–D52 Agent 代 PM ✅**；Desktop E2E ✅；**Design D36 PM ✅**
 - **Git / PM 索引：** [`runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md`](../runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md)
-- **下次优先：** **FM-22** 外部安全审计委托说明 + 报告入口。
+- **下次优先：** Frontend modules（D56）FM-01–22 已勾完。下一批：T1 开闸信号，或 `memory/BACKLOG.md` 未升格项（价表 / Windows 实体机不做）。
 
 ## Recent Sessions
+
+## 2026-08-26 会话（D56 Wave 6 文档）
+
+- **做了：** FM-20 PERFORMANCE 本机测量；FM-21 公证流程+账号阻塞；FM-22 外部审计委托与 `docs/security-audit/` 入口。OSR-11/22 本体仍未执行。
+- **没做：** 未公证 DMG；未外包审计。
+- **测：** `curl` health 11ms / templates 7ms（热 Sidecar :8124）；FM-19 钩子 `verify.sh` ~45s。
+- **下次：** T1 开闸或 BACKLOG。
 
 ## 2026-08-25 会话（Q-USAGE-1 E2E 验收）
 

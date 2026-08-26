@@ -23,7 +23,7 @@
 
 **macOS 应用内更新（v1.0.2+）：** 打包版启动后自动检查 GitHub Releases 上的 `latest.json`；有新版本时在**侧栏底部 Settings 同一行**显示紧凑 **Update / Later** pill（下载中 spinner + 进度百分比，完成后 **Restart**），下载签名 bundle 并重启安装。**v1.0.0 / v1.0.1 用户须先手动安装 v1.0.2 一次**；Windows 暂无应用内更新，请从 Release 页手动下载新版本。详见 [`docs/UPDATES.md`](./UPDATES.md) · [`docs/INSTALL.md`](./INSTALL.md) §3。**当前 GitHub DMG 仍未 Apple 公证**（D31）；首次打开须按 INSTALL Gatekeeper 步骤。账号到位后的签名顺序见 [`APPLE_NOTARIZATION.md`](./APPLE_NOTARIZATION.md)。
 
-**macOS Sidecar 热更（v1.2.1+ · D37）：** 在无需升 app 版本时，可静默下载并校验编排服务（`orchestrator`）补丁；就绪后 Settings 旁显示极小 **「更新已就绪」**，确认后仅重启 sidecar（不关整个 App）。与全量 Update 同时存在时只显示全量更新。详见 [`docs/UPDATES.md`](./UPDATES.md) §5。
+**macOS Sidecar 热更（v1.2.1+ · D37）：** 在无需升 app 版本时，可静默下载并校验编排服务（`orchestrator`）补丁；就绪后 Settings 旁显示极小 **「更新已就绪」**，确认后仅重启 sidecar（不关整个 App）。与全量 Update 同时存在时只显示全量更新。详见 [`docs/UPDATES.md`](./UPDATES.md) §5。漏洞请按 [`SECURITY.md`](../SECURITY.md) 私密报告；约请第三方审计的步骤与报告入口见 [`EXTERNAL_AUDIT.md`](./EXTERNAL_AUDIT.md)（尚未外包）。
 
 ### 1.2 真实痛点（本项目的存在理由）
 如果仅仅是想生成代码，直接使用 Claude Code / Cursor 裸跑就够了，不需要这套工作台。Clutch 旨在解决以下两个真实的工程化场景痛点：

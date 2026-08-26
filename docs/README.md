@@ -58,6 +58,7 @@
 | [`GOVERNANCE.md`](./GOVERNANCE.md) | 维护者决策与合并政策 |
 | [`document-governance.md`](./document-governance.md) | 五层架构、权威真相（SoT）、文档生命周期与归档 |
 | 根目录 [`SECURITY.md`](../SECURITY.md) | 漏洞私密报告（GitHub 约定放根目录） |
+| [`EXTERNAL_AUDIT.md`](./EXTERNAL_AUDIT.md) | 外包审计委托；报告索引 [`security-audit/`](./security-audit/)（FM-22） |
 | 根目录 [`CODE_OF_CONDUCT.md`](../CODE_OF_CONDUCT.md) | 社区行为准则 |
 | 根目录 [`CHANGELOG.md`](../CHANGELOG.md) | 版本变更记录（Release 硬门禁） |
 | [`releases/`](./releases/) | 各版本产品快照（历史；当前见 `PRODUCT_INTRO.md`） |

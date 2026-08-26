@@ -326,7 +326,7 @@
 | FM-19 | Planner/Executor 分模型（B-06） | ✅ |
 | FM-20 | PERFORMANCE.md 测量（OSR-29） | ✅ |
 | FM-21 | Apple 签名公证（OSR-11） | ✅ |
-| FM-22 | 外部安全审计（OSR-22） | ❌ |
+| FM-22 | 外部安全审计（OSR-22） | ✅ |
 
 ---
 
@@ -341,7 +341,7 @@
 | T0 护栏 | 持续 | 许可证、文档边界、semver | ⚠️ | OSR-01～04、23～25 ✅；OSR-05 🔄 |
 | **T1 可公开仓库** | **公开 repo 前** | 社区文件、Sidecar 鉴权、CLI 策略 | ✅ | OSR-00/06～10、26～28 已验收（D31） |
 | T2 可放心装 DMG | 陌生人分发前 | 未签名 DMG、Keychain、安装向导 | ⚠️ | OSR-12～17 ✅ |
-| T3 生态成熟 | 按需 | 沙箱、Windows、自动更新 | ⚠️ | OSR-19/20 ✅ v1.0.2；OSR-18→FM-03 · OSR-21→FM-02 · **OSR-29 ✅ FM-20** · **OSR-11 流程 FM-21（未公证）** · OSR-22 流程 FM-22 |
+| T3 生态成熟 | 按需 | 沙箱、Windows、自动更新 | ⚠️ | OSR-19/20 ✅ v1.0.2；OSR-18→FM-03 · OSR-21→FM-02 · **OSR-29 ✅ FM-20** · **OSR-11 流程 FM-21（未公证）** · **OSR-22 流程 FM-22（未外包）** |
 
 ### T1 检查清单（公开仓库前 · 默认 FAIL）
 
@@ -364,6 +364,13 @@
 - [x] **OSR-16** Debug API 收敛 + WebView CSP
 - [x] **OSR-17** PyInstaller `console=False`
 - [ ] **OSR-11** Apple 签名 + 公证 — **D31 豁免**；流程 [`docs/APPLE_NOTARIZATION.md`](../docs/APPLE_NOTARIZATION.md)（FM-21 ✅）；账号到位前仍发未签名 DMG
+
+### T3 检查清单（生态成熟 · 默认 FAIL）
+
+- [x] **OSR-19** Windows MSI（v1.0.2）
+- [x] **OSR-20** Tauri 自动更新（v1.0.2）
+- [x] **OSR-29** `PERFORMANCE.md` 本机测量（FM-20 · 2026-08-26）
+- [ ] **OSR-22** 外部安全审计 — 委托与报告入口 [`docs/EXTERNAL_AUDIT.md`](../docs/EXTERNAL_AUDIT.md)（FM-22 ✅）；**尚无外包报告**
 
 ### T1 开闸信号（§7.5）
 

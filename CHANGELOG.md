@@ -33,6 +33,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 - **Planner/Executor models (FM-19):** Settings → Models can split Planner vs Executor; Overview shows both and this turn.
 - **Performance baseline (FM-20 / OSR-29):** [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md) §1.1 records dated local numbers (health, templates, `verify.sh`).
 - **Apple notarization process (FM-21 / OSR-11):** [`docs/APPLE_NOTARIZATION.md`](docs/APPLE_NOTARIZATION.md) — still **blocked** (no Developer account); unsigned DMG + D31 remain.
+- **External audit process (FM-22 / OSR-22):** [`docs/EXTERNAL_AUDIT.md`](docs/EXTERNAL_AUDIT.md) — how to commission; report index [`docs/security-audit/`](docs/security-audit/) (none yet).
 
 - **Workspace MEMORY.md (B-39):** Saying `记住：…` / `remember:` writes `.clutch/memory/MEMORY.md` (open in Files). Next Chat turns inject that overview. Settings Memory copy points at the file.
 - **Verification notes (B-40):** Passing/failing `submit_verification` appends `Worked:` / `Failed:` to that file.

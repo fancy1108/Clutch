@@ -4,6 +4,15 @@
 > **何时写：** 每个**代码 Task** 完成并 commit 后，在 Check-out 追加一节（见 `CLAUDE.md` §Check-out）。  
 > **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。
 
+## Wave 6 FM-20–22 文档（2026-08-26）
+
+| 项 | 说明 |
+|----|------|
+| **Commits** | `2e768a1` FM-20 · `57f2d87` FM-21 · （本 commit）FM-22 |
+| **Verification** | 文档轨道（未改 `apps/desktop/src` / orchestrator）；health/templates `curl` 见 `PERFORMANCE.md` §1.1 |
+| **诚实边界** | OSR-11 未公证；OSR-22 无外包报告；D31 unsigned 仍发 |
+| **ROADMAP** | FM-20–22 ✅；OSR-11/22 检查项仍 ☐ |
+
 ## Q-USAGE-1 Overview usage meters（2026-08-25）
 
 | 项 | 说明 |
