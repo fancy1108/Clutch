@@ -54,6 +54,7 @@ test('desktop: full UI coverage with sandbox isolation', async ({ tauriPage: pag
   await test.step('P-01..P-08 settings navigation', async () => {
     await openSettings(page);
     await expect(page.locator('[data-testid="high-risk-confirm-toggle"]')).toBeVisible();
+    await expect(page.locator('[data-testid="untrusted-confirm-toggle"]')).toBeVisible();
     await expect(page.locator('[data-testid="general-app-version"]')).toContainText('Clutch v');
     for (const id of [
       'settings-nav-general',

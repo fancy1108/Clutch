@@ -83,6 +83,11 @@ class HighRiskConfirmRequest(BaseModel):
     enabled: bool
 
 
+class TrustItemRequest(BaseModel):
+    kind: str
+    item_id: str
+
+
 class CapabilityPackImportRequest(BaseModel):
     path: str
 
@@ -706,6 +711,34 @@ async def save_high_risk_confirm_route(body: HighRiskConfirmRequest) -> dict[str
     from src.preferences_storage import save_high_risk_confirm
 
     return save_high_risk_confirm(body.enabled)
+
+
+@router.get("/api/preferences/local-trust")
+async def get_local_trust() -> dict[str, Any]:
+    from src.preferences_storage import load_trusted_ids, load_untrusted_confirm
+
+    return {
+        "untrusted_confirm": load_untrusted_confirm(),
+        "trusted_mcp_ids": load_trusted_ids("mcp"),
+        "trusted_workflow_ids": load_trusted_ids("workflow"),
+    }
+
+
+@router.post("/api/preferences/untrusted-confirm")
+async def save_untrusted_confirm_route(body: HighRiskConfirmRequest) -> dict[str, str]:
+    from src.preferences_storage import save_untrusted_confirm
+
+    return save_untrusted_confirm(body.enabled)
+
+
+@router.post("/api/preferences/local-trust")
+async def save_local_trust_route(body: TrustItemRequest) -> dict[str, str]:
+    from src.preferences_storage import save_trusted_id
+
+    kind = body.kind.strip().lower()
+    if kind not in {"mcp", "workflow"}:
+        raise HTTPException(status_code=400, detail={"message": "kind must be mcp or workflow"})
+    return save_trusted_id(kind, body.item_id)
 
 
 @router.post("/api/preferences/permission-mode")

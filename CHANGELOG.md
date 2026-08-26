@@ -13,6 +13,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 ### Added
 
 - **General Settings (FM-01):** Default workspace picker (restored on launch), persistable confirm-before-stop for Chat Stop, and the app version on the General page.
+- **Local trust (FM-02):** Settings → General can require a one-time confirm before enabling an MCP server or using a workflow in Chat; trusted ids persist on this machine.
 
 - **Workspace MEMORY.md (B-39):** Saying `记住：…` / `remember:` writes `.clutch/memory/MEMORY.md` (open in Files). Next Chat turns inject that overview. Settings Memory copy points at the file.
 - **Verification notes (B-40):** Passing/failing `submit_verification` appends `Worked:` / `Failed:` to that file.

@@ -14,7 +14,7 @@ import { LegacyIcon } from './ui/LegacyIcon';
 import { SettingsPageHeader, SettingsPageShell } from './ui/SettingsPageHeader';
 import { SettingsSelect } from './ui/SettingsSelect';
 import { saveAvatarPreference } from '../services/themeApi';
-import { fetchAllowNetwork, fetchCrossSessionMemory, fetchDefaultWorkspaceId, fetchHighRiskConfirm, fetchStrictSandbox, clearCrossSessionMemory, saveAllowNetwork, saveCrossSessionMemory, saveDefaultWorkspaceId, saveHighRiskConfirm, saveStrictSandbox } from '../services/permissionApi';
+import { fetchAllowNetwork, fetchCrossSessionMemory, fetchDefaultWorkspaceId, fetchHighRiskConfirm, fetchLocalTrust, fetchStrictSandbox, clearCrossSessionMemory, saveAllowNetwork, saveCrossSessionMemory, saveDefaultWorkspaceId, saveHighRiskConfirm, saveStrictSandbox, saveUntrustedConfirm } from '../services/permissionApi';
 import { FONT_SIZE_LABEL_KEYS, FONT_SIZE_OPTIONS, type AppFontSize } from '../services/fontSizePreference';
 import { fetchWorkspaces, type WorkspaceInfo } from '../services/workspaceApi';
 import { setUserChatAvatar } from '../services/clutchState';
@@ -103,6 +103,7 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
   const [defaultWorkspaceId, setDefaultWorkspaceId] = useState('');
   const [highRiskConfirm, setHighRiskConfirm] = useState(true);
   const [highRiskConfirmLoading, setHighRiskConfirmLoading] = useState(true);
+  const [untrustedConfirm, setUntrustedConfirm] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -165,6 +166,13 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
       })
       .finally(() => {
         if (!cancelled) setHighRiskConfirmLoading(false);
+      });
+    void fetchLocalTrust()
+      .then((trust) => {
+        if (!cancelled) setUntrustedConfirm(trust.untrusted_confirm);
+      })
+      .catch(() => {
+        if (!cancelled) setUntrustedConfirm(true);
       });
     return () => {
       cancelled = true;
@@ -512,6 +520,32 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
                       }`}
                     >
                       {highRiskConfirm ? t('Confirm stop: On') : t('Confirm stop: Off')}
+                    </button>
+                  </div>
+
+                  <div className="bg-surface-container/30 p-6 rounded-2xl border border-outline/30 space-y-4">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                      {t('Confirm untrusted MCP and workflows')}
+                    </h3>
+                    <p className="text-[11px] text-on-surface-variant/80 max-w-xl">
+                      {t('When on, enabling an MCP server or using a workflow in Chat asks once, then remembers trust.')}
+                    </p>
+                    <button
+                      type="button"
+                      data-testid="untrusted-confirm-toggle"
+                      onClick={() => {
+                        const next = !untrustedConfirm;
+                        setUntrustedConfirm(next);
+                        void saveUntrustedConfirm(next).catch((err) => {
+                          console.error('Failed to save untrusted confirm:', err);
+                          setUntrustedConfirm(!next);
+                        });
+                      }}
+                      className={`${BTN_SECONDARY} px-3 py-1.5 text-xs font-semibold ${
+                        untrustedConfirm ? 'border-primary/50 text-primary' : ''
+                      }`}
+                    >
+                      {untrustedConfirm ? t('Trust confirm: On') : t('Trust confirm: Off')}
                     </button>
                   </div>
 

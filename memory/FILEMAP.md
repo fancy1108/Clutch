@@ -137,6 +137,7 @@
 | Skills Registry API（P2-01） | `services/skillsApi.ts` |
 | Theme 偏好 API（P2-03） | `services/themeApi.ts`（含 language） |
 | General 默认工作区 / 停止确认（FM-01） | `services/permissionApi.ts` · `/api/preferences/default-workspace` · `high-risk-confirm` |
+| 本机信任 MCP/工作流（FM-02） | `permissionApi.ts` `local-trust` · General `untrusted-confirm-toggle` · Hub / Use in Chat |
 | API 抽象（mock 待 M2 替换） | `services/api.ts` |
 | 侧栏（工作区 / 历史，M2-07/09） | `sidebar.tsx` |
 | 底部状态栏（Branch / Model / Agent） | `App.tsx` footer |

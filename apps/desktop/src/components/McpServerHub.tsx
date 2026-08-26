@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { confirmLocalTrust } from '../services/permissionApi';
 import {
   fetchMcpStatus,
   registerMcpServer,
@@ -151,6 +152,10 @@ export const McpServerHub: React.FC = () => {
     if (server.builtin || !server.id) return;
     const enabled = server.status === 'failed';
     try {
+      if (enabled) {
+        const ok = await confirmLocalTrust('mcp', server.id, server.name || server.id);
+        if (!ok) return;
+      }
       const status = await toggleMcpServer(server.id, enabled);
       setServers(status.servers);
     } catch {

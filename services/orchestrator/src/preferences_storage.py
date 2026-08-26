@@ -69,6 +69,9 @@ def _defaults() -> dict[str, str]:
         "cross_session_memory_enabled": DEFAULT_CROSS_SESSION_MEMORY,
         "default_workspace_id": "",
         "high_risk_confirm": "true",
+        "trusted_mcp_ids": "",
+        "trusted_workflow_ids": "",
+        "untrusted_confirm": "true",
     }
 
 
@@ -110,6 +113,11 @@ def load_preferences() -> dict[str, str]:
     high_risk_confirm = str(data.get("high_risk_confirm") or "true").lower()
     if high_risk_confirm not in {"true", "false"}:
         high_risk_confirm = "true"
+    trusted_mcp_ids = str(data.get("trusted_mcp_ids") or "").strip()
+    trusted_workflow_ids = str(data.get("trusted_workflow_ids") or "").strip()
+    untrusted_confirm = str(data.get("untrusted_confirm") or "true").lower()
+    if untrusted_confirm not in {"true", "false"}:
+        untrusted_confirm = "true"
     if theme_id not in ALLOWED_THEME_IDS:
         theme_id = DEFAULT_THEME_ID
     if language not in ALLOWED_LANGUAGES:
@@ -129,6 +137,9 @@ def load_preferences() -> dict[str, str]:
         "cross_session_memory_enabled": cross_session_memory,
         "default_workspace_id": default_workspace_id,
         "high_risk_confirm": high_risk_confirm,
+        "trusted_mcp_ids": trusted_mcp_ids,
+        "trusted_workflow_ids": trusted_workflow_ids,
+        "untrusted_confirm": untrusted_confirm,
     }
 
 
@@ -235,6 +246,36 @@ def load_high_risk_confirm() -> bool:
 def save_high_risk_confirm(enabled: bool) -> dict[str, str]:
     prefs = load_preferences()
     prefs["high_risk_confirm"] = "true" if enabled else "false"
+    return _write_preferences(prefs)
+
+
+def _csv_ids(raw: str) -> list[str]:
+    return [part.strip() for part in raw.split(",") if part.strip()]
+
+
+def load_untrusted_confirm() -> bool:
+    return load_preferences().get("untrusted_confirm", "true") == "true"
+
+
+def save_untrusted_confirm(enabled: bool) -> dict[str, str]:
+    prefs = load_preferences()
+    prefs["untrusted_confirm"] = "true" if enabled else "false"
+    return _write_preferences(prefs)
+
+
+def load_trusted_ids(kind: str) -> list[str]:
+    key = "trusted_mcp_ids" if kind == "mcp" else "trusted_workflow_ids"
+    return _csv_ids(load_preferences().get(key) or "")
+
+
+def save_trusted_id(kind: str, item_id: str) -> dict[str, str]:
+    key = "trusted_mcp_ids" if kind == "mcp" else "trusted_workflow_ids"
+    prefs = load_preferences()
+    current = _csv_ids(prefs.get(key) or "")
+    token = item_id.strip()
+    if token and token not in current:
+        current.append(token)
+    prefs[key] = ",".join(current)
     return _write_preferences(prefs)
 
 

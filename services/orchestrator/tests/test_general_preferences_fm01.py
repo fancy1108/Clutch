@@ -35,3 +35,15 @@ def test_high_risk_confirm_default_on_and_toggle(preferences_data_dir: Path) -> 
     assert saved.status_code == 200
     assert saved.json()["high_risk_confirm"] == "false"
     assert client.get("/api/preferences/high-risk-confirm").json()["high_risk_confirm"] is False
+
+
+def test_local_trust_round_trip(preferences_data_dir: Path) -> None:
+    empty = client.get("/api/preferences/local-trust").json()
+    assert empty["untrusted_confirm"] is True
+    assert empty["trusted_mcp_ids"] == []
+    saved = client.post("/api/preferences/local-trust", json={"kind": "mcp", "item_id": "srv_1"})
+    assert saved.status_code == 200
+    listed = client.get("/api/preferences/local-trust").json()
+    assert listed["trusted_mcp_ids"] == ["srv_1"]
+    client.post("/api/preferences/untrusted-confirm", json={"enabled": False})
+    assert client.get("/api/preferences/local-trust").json()["untrusted_confirm"] is False

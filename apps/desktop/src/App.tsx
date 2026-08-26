@@ -109,7 +109,7 @@ import {
   resolveDefaultTextModelId,
   saveModelsConfig,
 } from './services/modelsApi';
-import { fetchDefaultWorkspaceId, fetchHighRiskConfirm, fetchPermissionMode, savePermissionMode, type PermissionMode } from './services/permissionApi';
+import { confirmLocalTrust, fetchDefaultWorkspaceId, fetchHighRiskConfirm, fetchPermissionMode, savePermissionMode, type PermissionMode } from './services/permissionApi';
 import { fetchSkillsRegistry, type ScannedSkill } from './services/skillsApi';
 import { BTN_GHOST, BTN_PRIMARY } from './components/ui/buttonStyles';
 import { LegacyIcon } from './components/ui/LegacyIcon';
@@ -1217,8 +1217,12 @@ function MainLayout() {
   };
 
   const handleUseWorkflowInChat = (workflowId: string, workflowName: string) => {
-    bindWorkflowForChat(workflowId, workflowName);
-    setView('chat');
+    void (async () => {
+      const ok = await confirmLocalTrust('workflow', workflowId, workflowName);
+      if (!ok) return;
+      bindWorkflowForChat(workflowId, workflowName);
+      setView('chat');
+    })();
   };
 
   const toggleWorkflowMenu = async () => {
