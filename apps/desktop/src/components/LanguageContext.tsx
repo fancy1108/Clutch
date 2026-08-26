@@ -169,6 +169,7 @@ const zhTranslations: Record<string, string> = {
   "Allow, ask, or deny shell commands matching a pattern. Dangerous commands still force-ask.": "按模式允许、询问或拒绝 shell 命令。危险命令仍强制询问。",
   "Add rule": "添加规则",
   "Deny": "拒绝",
+  "Queued": "排队",
   "More agents": "更多智能体",
   "Scan local config": "扫描本机配置",
   "No local config found": "未找到本机配置",

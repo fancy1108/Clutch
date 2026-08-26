@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import type { PendingHandoffDraft } from '../../types';
+import type { DispatchPreviewPayload, PendingHandoffDraft } from '../../types';
+import { DispatchConfirmCard } from './DispatchConfirmCard';
 import type { SessionRecord } from '../../services/runApi';
 import type { ScannedSkill } from '../../services/skillsApi';
 import type { FileTreeNode } from '../../services/workspaceApi';
@@ -82,6 +83,12 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
   const [sessionFilter, setSessionFilter] = useState('');
   const [imageChips, setImageChips] = useState<ImageChip[]>([]);
   const [sending, setSending] = useState(false);
+  const [hiddenDraftIds, setHiddenDraftIds] = useState<string[]>([]);
+  const [pendingConfirm, setPendingConfirm] = useState<{
+    dispatchText: string;
+    preview: DispatchPreviewPayload;
+    chips: string[];
+  } | null>(null);
   const prevDraftCount = React.useRef(drafts.length);
   const containerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -333,34 +340,56 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
         setError(result.error);
         return;
       }
+      const chips = (result.preview.chips ?? []).filter((c) => c.on).map((c) => c.source_name);
+      setPendingConfirm({ dispatchText, preview: result.preview, chips });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      sendingLockRef.current = false;
+      setSending(false);
+    }
+  }, [
+    imageChips,
+    inputValue,
+    mentionableAgents,
+    readOnly,
+  ]);
+
+  const confirmPendingDispatch = useCallback(async () => {
+    if (!pendingConfirm || sendingLockRef.current || readOnly) return;
+    sendingLockRef.current = true;
+    setSending(true);
+    setError('');
+    const { dispatchText, preview, chips } = pendingConfirm;
+    try {
+      const composed = inputValue.trim() || dispatchText;
       const targetAgent = resolveDispatchTargetAgent(
         composed,
-        result.preview.target,
+        preview.target,
         mentionableAgents,
         selectedMentionAgentId,
       );
-      const chips = (result.preview.chips ?? []).filter((c) => c.on).map((c) => c.source_name);
       const snapshot = clutchStore.getSnapshot();
-      const isHandoff = result.preview.dispatch_mode === 'handoff';
+      const isHandoff = preview.dispatch_mode === 'handoff';
       const laneTranscripts = isHandoff
         ? collectHandoffLaneTranscripts(
-            chips.length > 0 ? chips : result.preview.sources,
+            chips.length > 0 ? chips : preview.sources,
             snapshot.pty_lanes ?? [],
             (laneId) => clutchStore.getLaneTranscript(laneId),
-            result.preview.target,
+            preview.target,
           )
         : [];
-      const targetLabel = targetAgent?.name?.trim() || result.preview.target;
+      const targetLabel = targetAgent?.name?.trim() || preview.target;
       clutchStore.optimisticDispatchLogAppend(
         buildOptimisticDispatchEntry({
           prompt: dispatchText,
-          preview: result.preview,
+          preview,
           activeSources: chips,
           targetLabel,
         }),
       );
       if (!isHandoff) {
-        const sourcesToCollapse = chips.length > 0 ? chips : result.preview.sources;
+        const sourcesToCollapse = chips.length > 0 ? chips : preview.sources;
         for (const src of sourcesToCollapse) {
           const sourceLane = findLaneForDispatchSource(snapshot.pty_lanes ?? [], src);
           if (sourceLane) {
@@ -378,6 +407,7 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
       setInputValue('');
       setImageChips([]);
       setActiveDraftId(null);
+      setPendingConfirm(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -385,10 +415,10 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
       setSending(false);
     }
   }, [
-    imageChips,
     inputValue,
     mentionableAgents,
     onMentionAgentChange,
+    pendingConfirm,
     readOnly,
     selectedMentionAgentId,
     setInputValue,
@@ -409,6 +439,26 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
         readOnly ? 'opacity-70' : 'focus-within:ring-2 focus-within:ring-primary/10'
       }`}
     >
+      {pendingConfirm ? (
+        <DispatchConfirmCard
+          preview={pendingConfirm.preview}
+          activeChips={pendingConfirm.chips}
+          onToggleChip={(sourceName) => {
+            setPendingConfirm((current) => {
+              if (!current) return current;
+              const on = current.chips.includes(sourceName);
+              return {
+                ...current,
+                chips: on
+                  ? current.chips.filter((name) => name !== sourceName)
+                  : [...current.chips, sourceName],
+              };
+            });
+          }}
+          onCancel={() => setPendingConfirm(null)}
+          onConfirm={() => void confirmPendingDispatch()}
+        />
+      ) : null}
       <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleLocalFileChange} />
       <input
         ref={imageInputRef}
@@ -453,11 +503,11 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
         </div>
       ) : null}
 
-      {drafts.length > 0 && !readOnly ? (
-        <div className="flex flex-wrap gap-1.5 px-3 pt-2 pb-1">
-          {drafts.map((draft) => (
+      {drafts.filter((draft) => !hiddenDraftIds.includes(draft.id)).length > 0 && !readOnly ? (
+        <div className="flex flex-wrap gap-1.5 px-3 pt-2 pb-1" data-testid="orchestra-drafts">
+          {drafts.filter((draft) => !hiddenDraftIds.includes(draft.id)).map((draft) => (
+            <span key={draft.id} className="inline-flex items-center gap-1">
             <button
-              key={draft.id}
               type="button"
               onClick={() => selectDraft(draft)}
               className={`text-[10px] font-semibold px-2 py-1 rounded-lg border ${
@@ -468,6 +518,15 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
             >
               {draft.label}
             </button>
+            <button
+              type="button"
+              data-testid={`dismiss-draft-${draft.id}`}
+              className="text-[10px] text-on-surface-variant hover:text-on-surface"
+              onClick={() => setHiddenDraftIds((ids) => [...ids, draft.id])}
+            >
+              ×
+            </button>
+            </span>
           ))}
         </div>
       ) : null}
