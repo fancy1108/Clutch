@@ -75,6 +75,14 @@ class CrossSessionMemoryRequest(BaseModel):
     enabled: bool
 
 
+class DefaultWorkspaceRequest(BaseModel):
+    workspace_id: str = ""
+
+
+class HighRiskConfirmRequest(BaseModel):
+    enabled: bool
+
+
 class CapabilityPackImportRequest(BaseModel):
     path: str
 
@@ -670,6 +678,34 @@ async def clear_cross_session_memory_route() -> dict[str, Any]:
 
     removed = clear_all()
     return {"cleared": removed, "entries": list_entries()}
+
+
+@router.get("/api/preferences/default-workspace")
+async def get_default_workspace() -> dict[str, str]:
+    from src.preferences_storage import load_default_workspace_id
+
+    return {"workspace_id": load_default_workspace_id()}
+
+
+@router.post("/api/preferences/default-workspace")
+async def save_default_workspace_route(body: DefaultWorkspaceRequest) -> dict[str, str]:
+    from src.preferences_storage import save_default_workspace_id
+
+    return save_default_workspace_id(body.workspace_id)
+
+
+@router.get("/api/preferences/high-risk-confirm")
+async def get_high_risk_confirm() -> dict[str, bool]:
+    from src.preferences_storage import load_high_risk_confirm
+
+    return {"high_risk_confirm": load_high_risk_confirm()}
+
+
+@router.post("/api/preferences/high-risk-confirm")
+async def save_high_risk_confirm_route(body: HighRiskConfirmRequest) -> dict[str, str]:
+    from src.preferences_storage import save_high_risk_confirm
+
+    return save_high_risk_confirm(body.enabled)
 
 
 @router.post("/api/preferences/permission-mode")

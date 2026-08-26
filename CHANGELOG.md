@@ -12,7 +12,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ### Added
 
-- **Overview usage meters (Q-USAGE-1):** Session Token Analytics shows run steps, tokens, and input/output split. Provider `usage` when the model returns it; otherwise a word-count estimate marked `~`. Cost stays `—` (no price table). API + desktop E2E cover the loop.
+- **General Settings (FM-01):** Default workspace picker (restored on launch), persistable confirm-before-stop for Chat Stop, and the app version on the General page.
 
 - **Workspace MEMORY.md (B-39):** Saying `记住：…` / `remember:` writes `.clutch/memory/MEMORY.md` (open in Files). Next Chat turns inject that overview. Settings Memory copy points at the file.
 - **Verification notes (B-40):** Passing/failing `submit_verification` appends `Worked:` / `Failed:` to that file.

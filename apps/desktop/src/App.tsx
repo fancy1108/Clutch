@@ -109,7 +109,7 @@ import {
   resolveDefaultTextModelId,
   saveModelsConfig,
 } from './services/modelsApi';
-import { fetchPermissionMode, savePermissionMode, type PermissionMode } from './services/permissionApi';
+import { fetchDefaultWorkspaceId, fetchHighRiskConfirm, fetchPermissionMode, savePermissionMode, type PermissionMode } from './services/permissionApi';
 import { fetchSkillsRegistry, type ScannedSkill } from './services/skillsApi';
 import { BTN_GHOST, BTN_PRIMARY } from './components/ui/buttonStyles';
 import { LegacyIcon } from './components/ui/LegacyIcon';
@@ -281,6 +281,13 @@ function MainLayout() {
   const [workspaceFiles, setWorkspaceFiles] = useState<FileTreeNode[]>([]);
   const [workspacePickError, setWorkspacePickError] = useState<string | null>(null);
   const [highRiskConfirmed, setHighRiskConfirmed] = useState(false);
+  const [highRiskConfirmEnabled, setHighRiskConfirmEnabled] = useState(true);
+
+  useEffect(() => {
+    void fetchHighRiskConfirm()
+      .then(setHighRiskConfirmEnabled)
+      .catch(() => setHighRiskConfirmEnabled(true));
+  }, []);
 
   // Reset high-risk confirmation when switching sessions
   useEffect(() => {
@@ -346,10 +353,25 @@ function MainLayout() {
   useEffect(() => {
     void fetchWorkspaces()
       .then(async (listed) => {
-        setWorkspaces(listed.workspaces);
-        setActiveWorkspaceId(listed.active_id);
-        const active = listed.workspaces.find((item) => item.id === listed.active_id) ?? null;
-        setWorkspace(active);
+        let workspacesList = listed.workspaces;
+        let activeId = listed.active_id;
+        try {
+          const defaultId = await fetchDefaultWorkspaceId();
+          if (defaultId && workspacesList.some((item) => item.id === defaultId) && activeId !== defaultId) {
+            const info = await activateWorkspace(defaultId);
+            workspacesList = workspacesList.map((item) => (item.id === defaultId ? info : item));
+            activeId = defaultId;
+            setWorkspace(info);
+          }
+        } catch {
+          /* keep last-active workspace */
+        }
+        setWorkspaces(workspacesList);
+        setActiveWorkspaceId(activeId);
+        const active = workspacesList.find((item) => item.id === activeId) ?? null;
+        if (active && active.id === activeId) {
+          setWorkspace(active);
+        }
         if (active) {
           await refreshWorkspaceFiles();
           await refreshWorkspaceGit();
@@ -849,7 +871,7 @@ function MainLayout() {
   const handleStopRun = (): boolean => {
     // Workflow (Flow) runs: stop immediately without confirmation.
     // Plain LLM chat runs: ask once to avoid accidental interruption.
-    if (!isWorkflowChat && !highRiskConfirmed) {
+    if (!isWorkflowChat && highRiskConfirmEnabled && !highRiskConfirmed) {
       const ok = window.confirm(t('Confirm stopping the current run? This will interrupt the current AI Agent execution.'));
       if (!ok) return false;
       setHighRiskConfirmed(true);
@@ -2311,6 +2333,9 @@ function MainLayout() {
           setUserName={setUserName}
           fontSize={fontSize}
           setFontSize={setFontSize}
+          appVersion={appVersion}
+          onApplyDefaultWorkspace={(workspaceId) => { void handleSelectWorkspace(workspaceId); }}
+          onHighRiskConfirmChange={setHighRiskConfirmEnabled}
         />
 
       </div>

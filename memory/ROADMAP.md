@@ -24,7 +24,7 @@
 | Theme 持久化 | P2 | P2 | ✅ | P2-03 |
 | i18n 双语 | P2 | P2 | ✅ | P2-04 |
 | 侧栏 REPOSITORIES CRUD | P2 | P2 | ✅ | P2-05 |
-| General Settings | P2 | P2 | ⚠️ 部分落地 | P2-06；余量 **FM-01**（D56） |
+| General Settings | P2 | P2 | ✅ | P2-06 + **FM-01**（D56） |
 | 内置模板 | P1 | M4 | ✅ | M4-01 |
 | 运行历史 | P0 | M2 | ✅ | M2-07（D3）+ D11 对话持久化 |
 | 文件浏览（Files 面板） | P0 | M2 | ✅ | M2-11 |
@@ -300,7 +300,7 @@
 
 | ID | 主题 | 状态 |
 |----|------|------|
-| FM-01 | General：默认工作区 / 高危确认 / 版本 | ❌ |
+| FM-01 | General：默认工作区 / 高危确认 / 版本 | ✅ |
 | FM-02 | MCP / 工作流本机信任（OSR-21） | ❌ |
 | FM-03 | Exec policy UI（B-21；OSR-18 界面） | ❌ |
 | FM-04 | Codex 只读扫描 | ❌ |

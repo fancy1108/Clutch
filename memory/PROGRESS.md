@@ -7,7 +7,7 @@
 
 - **阶段：** **v1.3.0** 已发；主线 D8–D13 ✅；扩展/MCP **D14–D52 Agent 代 PM ✅**；Desktop E2E ✅；**Design D36 PM ✅**
 - **Git / PM 索引：** [`runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md`](../runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md)
-- **下次优先：** **FM-01** General 收尾（D56 前端模块轨道）。Windows 验收不做（D55）。
+- **下次优先：** **FM-02** MCP / 工作流本机信任。
 
 ## Recent Sessions
 

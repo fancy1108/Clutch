@@ -14,8 +14,9 @@ import { LegacyIcon } from './ui/LegacyIcon';
 import { SettingsPageHeader, SettingsPageShell } from './ui/SettingsPageHeader';
 import { SettingsSelect } from './ui/SettingsSelect';
 import { saveAvatarPreference } from '../services/themeApi';
-import { fetchAllowNetwork, fetchCrossSessionMemory, fetchStrictSandbox, clearCrossSessionMemory, saveAllowNetwork, saveCrossSessionMemory, saveStrictSandbox } from '../services/permissionApi';
+import { fetchAllowNetwork, fetchCrossSessionMemory, fetchDefaultWorkspaceId, fetchHighRiskConfirm, fetchStrictSandbox, clearCrossSessionMemory, saveAllowNetwork, saveCrossSessionMemory, saveDefaultWorkspaceId, saveHighRiskConfirm, saveStrictSandbox } from '../services/permissionApi';
 import { FONT_SIZE_LABEL_KEYS, FONT_SIZE_OPTIONS, type AppFontSize } from '../services/fontSizePreference';
+import { fetchWorkspaces, type WorkspaceInfo } from '../services/workspaceApi';
 import { setUserChatAvatar } from '../services/clutchState';
 import defaultAvatar from '../assets/default_avatar.jpg';
 
@@ -54,6 +55,9 @@ interface SystemPreferencesModalProps {
   setUserName?: (name: string) => void;
   fontSize: AppFontSize;
   setFontSize: (fontSize: AppFontSize) => void;
+  appVersion?: string;
+  onApplyDefaultWorkspace?: (workspaceId: string) => void;
+  onHighRiskConfirmChange?: (enabled: boolean) => void;
 }
 
 export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
@@ -82,6 +86,9 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
   setUserName,
   fontSize,
   setFontSize,
+  appVersion = '',
+  onApplyDefaultWorkspace,
+  onHighRiskConfirmChange,
 }) => {
   const { t, language, setLanguage } = useLanguage();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -92,6 +99,10 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
   const [crossSessionMemory, setCrossSessionMemory] = useState(false);
   const [memoryEntryCount, setMemoryEntryCount] = useState(0);
   const [crossSessionMemoryLoading, setCrossSessionMemoryLoading] = useState(true);
+  const [workspaces, setWorkspaces] = useState<WorkspaceInfo[]>([]);
+  const [defaultWorkspaceId, setDefaultWorkspaceId] = useState('');
+  const [highRiskConfirm, setHighRiskConfirm] = useState(true);
+  const [highRiskConfirmLoading, setHighRiskConfirmLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -130,6 +141,30 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
       })
       .finally(() => {
         if (!cancelled) setCrossSessionMemoryLoading(false);
+      });
+    void fetchWorkspaces()
+      .then((listed) => {
+        if (!cancelled) setWorkspaces(listed.workspaces);
+      })
+      .catch(() => {
+        if (!cancelled) setWorkspaces([]);
+      });
+    void fetchDefaultWorkspaceId()
+      .then((id) => {
+        if (!cancelled) setDefaultWorkspaceId(id);
+      })
+      .catch(() => {
+        if (!cancelled) setDefaultWorkspaceId('');
+      });
+    void fetchHighRiskConfirm()
+      .then((enabled) => {
+        if (!cancelled) setHighRiskConfirm(enabled);
+      })
+      .catch(() => {
+        if (!cancelled) setHighRiskConfirm(true);
+      })
+      .finally(() => {
+        if (!cancelled) setHighRiskConfirmLoading(false);
       });
     return () => {
       cancelled = true;
@@ -424,6 +459,62 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
                     </div>
                   </div>
 
+                  <div className="bg-surface-container/30 p-6 rounded-2xl border border-outline/30 space-y-4">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                      {t('Default workspace')}
+                    </h3>
+                    <p className="text-[11px] text-on-surface-variant/80 max-w-xl">
+                      {t('Open this project on launch. Last used workspace is kept when unset.')}
+                    </p>
+                    <div className="max-w-md">
+                      <SettingsSelect
+                        id="general-default-workspace"
+                        value={defaultWorkspaceId}
+                        options={[
+                          { value: '', label: t('Last used workspace') },
+                          ...workspaces.map((ws) => ({ value: ws.id, label: ws.name })),
+                        ]}
+                        onChange={(next) => {
+                          setDefaultWorkspaceId(next);
+                          void saveDefaultWorkspaceId(next)
+                            .then(() => {
+                              if (next) onApplyDefaultWorkspace?.(next);
+                            })
+                            .catch((err) => console.error('Failed to save default workspace:', err));
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="bg-surface-container/30 p-6 rounded-2xl border border-outline/30 space-y-4">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                      {t('Confirm before stopping a run')}
+                    </h3>
+                    <p className="text-[11px] text-on-surface-variant/80 max-w-xl">
+                      {t('When on, Chat Stop asks once per session. Workflow Stop is never confirmed.')}
+                    </p>
+                    <button
+                      type="button"
+                      data-testid="high-risk-confirm-toggle"
+                      disabled={highRiskConfirmLoading}
+                      onClick={() => {
+                        const next = !highRiskConfirm;
+                        setHighRiskConfirm(next);
+                        void saveHighRiskConfirm(next)
+                          .then(() => onHighRiskConfirmChange?.(next))
+                          .catch((err) => {
+                          console.error('Failed to save high-risk confirm:', err);
+                          setHighRiskConfirm(!next);
+                        });
+                      }}
+                      className={`${BTN_SECONDARY} px-3 py-1.5 text-xs font-semibold ${
+                        highRiskConfirm ? 'border-primary/50 text-primary' : ''
+                      }`}
+                    >
+                      {highRiskConfirm ? t('Confirm stop: On') : t('Confirm stop: Off')}
+                    </button>
+                  </div>
+
                   {/* Strict sandbox (D21) */}
                   <div className="bg-surface-container/30 p-6 rounded-2xl border border-outline/30 space-y-4">
                     <h3 className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">
@@ -557,6 +648,15 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
                         中文
                       </button>
                     </div>
+                  </div>
+
+                  <div className="bg-surface-container/30 p-6 rounded-2xl border border-outline/30 space-y-2">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                      {t('Version')}
+                    </h3>
+                    <p data-testid="general-app-version" className="text-xs font-mono text-on-surface">
+                      Clutch v{appVersion || '—'}
+                    </p>
                   </div>
                 </div>
               </SettingsPageShell>

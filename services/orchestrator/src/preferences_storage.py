@@ -67,6 +67,8 @@ def _defaults() -> dict[str, str]:
         "strict_sandbox": DEFAULT_STRICT_SANDBOX,
         "allow_network": DEFAULT_ALLOW_NETWORK,
         "cross_session_memory_enabled": DEFAULT_CROSS_SESSION_MEMORY,
+        "default_workspace_id": "",
+        "high_risk_confirm": "true",
     }
 
 
@@ -104,6 +106,10 @@ def load_preferences() -> dict[str, str]:
     ).lower()
     if cross_session_memory not in {"true", "false"}:
         cross_session_memory = DEFAULT_CROSS_SESSION_MEMORY
+    default_workspace_id = str(data.get("default_workspace_id") or "").strip()
+    high_risk_confirm = str(data.get("high_risk_confirm") or "true").lower()
+    if high_risk_confirm not in {"true", "false"}:
+        high_risk_confirm = "true"
     if theme_id not in ALLOWED_THEME_IDS:
         theme_id = DEFAULT_THEME_ID
     if language not in ALLOWED_LANGUAGES:
@@ -121,6 +127,8 @@ def load_preferences() -> dict[str, str]:
         "strict_sandbox": strict_sandbox,
         "allow_network": allow_network,
         "cross_session_memory_enabled": cross_session_memory,
+        "default_workspace_id": default_workspace_id,
+        "high_risk_confirm": high_risk_confirm,
     }
 
 
@@ -207,6 +215,26 @@ def load_cross_session_memory_enabled() -> bool:
 def save_cross_session_memory_enabled(enabled: bool) -> dict[str, str]:
     prefs = load_preferences()
     prefs["cross_session_memory_enabled"] = "true" if enabled else "false"
+    return _write_preferences(prefs)
+
+
+def load_default_workspace_id() -> str:
+    return load_preferences().get("default_workspace_id") or ""
+
+
+def save_default_workspace_id(workspace_id: str) -> dict[str, str]:
+    prefs = load_preferences()
+    prefs["default_workspace_id"] = workspace_id.strip()
+    return _write_preferences(prefs)
+
+
+def load_high_risk_confirm() -> bool:
+    return load_preferences().get("high_risk_confirm", "true") == "true"
+
+
+def save_high_risk_confirm(enabled: bool) -> dict[str, str]:
+    prefs = load_preferences()
+    prefs["high_risk_confirm"] = "true" if enabled else "false"
     return _write_preferences(prefs)
 
 

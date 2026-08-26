@@ -44,6 +44,7 @@ export const SettingsSelect: React.FC<SettingsSelectProps> = ({
       <button
         type="button"
         id={id}
+        data-testid={id}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={listboxId}

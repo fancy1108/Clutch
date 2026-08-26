@@ -142,6 +142,42 @@ export async function saveCrossSessionMemory(enabled: boolean): Promise<boolean>
   return saved.cross_session_memory_enabled === 'true';
 }
 
+export async function fetchDefaultWorkspaceId(): Promise<string> {
+  const response = await sidecarFetch(`${BASE}/api/preferences/default-workspace`);
+  if (!response.ok) throw new Error(`default-workspace fetch failed (${response.status})`);
+  const body = (await response.json()) as { workspace_id?: string };
+  return String(body.workspace_id ?? '');
+}
+
+export async function saveDefaultWorkspaceId(workspaceId: string): Promise<string> {
+  const response = await sidecarFetch(`${BASE}/api/preferences/default-workspace`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ workspace_id: workspaceId }),
+  });
+  if (!response.ok) throw new Error(`default-workspace save failed (${response.status})`);
+  const saved = (await response.json()) as { default_workspace_id?: string };
+  return String(saved.default_workspace_id ?? workspaceId);
+}
+
+export async function fetchHighRiskConfirm(): Promise<boolean> {
+  const response = await sidecarFetch(`${BASE}/api/preferences/high-risk-confirm`);
+  if (!response.ok) throw new Error(`high-risk-confirm fetch failed (${response.status})`);
+  const body = (await response.json()) as { high_risk_confirm: boolean };
+  return Boolean(body.high_risk_confirm);
+}
+
+export async function saveHighRiskConfirm(enabled: boolean): Promise<boolean> {
+  const response = await sidecarFetch(`${BASE}/api/preferences/high-risk-confirm`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enabled }),
+  });
+  if (!response.ok) throw new Error(`high-risk-confirm save failed (${response.status})`);
+  const saved = (await response.json()) as { high_risk_confirm: string };
+  return saved.high_risk_confirm === 'true';
+}
+
 export async function clearCrossSessionMemory(): Promise<number> {
   const response = await sidecarFetch(`${BASE}/api/preferences/cross-session-memory/clear`, {
     method: 'POST',
