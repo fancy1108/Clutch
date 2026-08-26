@@ -19,7 +19,7 @@
 
 | 步骤 | 谁做 | 说明 |
 |------|------|------|
-| 1. `CHANGELOG.md` 增加 `## [x.y.z]` | AI | `release-preflight.sh` 会检查（INV-R5）；该节会成为 **GitHub Release 正文顶部**（见 §Release 正文结构） |
+| 1. `CHANGELOG.md` 增加 `## [x.y.z]` | AI | 下一版已是 `## [1.4.0] - Unreleased`；打 tag 时改日期并 bump `package.json` / Tauri。`release-preflight.sh` 会检查（INV-R5）；该节会成为 **GitHub Release 正文顶部**（见 §Release 正文结构） |
 | 2. 版本号 `tauri.conf.json` / `package.json` | AI | 与 tag 一致 |
 | 3. `./scripts/verify.sh` | AI | 通过后再 merge / tag |
 | 4. **Merge `dev` → `main`** | AI 开 PR，**你确认合并** | `main` 须包含全部发版 commit；合并后再打 tag |
@@ -36,7 +36,7 @@ Windows 安装包由 [`.github/workflows/windows-build.yml`](../.github/workflow
 |----------|------|-------|---------|
 | **Patch** | 1.1.2, **1.2.1** | ✅ DMG + updater | ❌ 不发新包 |
 | **Patch（例外）** | **1.2.2** | ✅ | ✅ MSI/NSIS（Design Preview Win 对齐） |
-| **Minor（默认）** | 1.3.0, … | ✅ | ✅ MSI/NSIS 挂 Release |
+| **Minor（默认）** | 1.4.0, 1.3.0, … | ✅ | ✅ MSI/NSIS 挂 Release |
 | **Minor（例外）** | **1.2.0** | ✅ DMG + updater | ❌ 本版跳过（Win 留在 v1.1.1） |
 
 ---

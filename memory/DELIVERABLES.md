@@ -4,6 +4,14 @@
 > **何时写：** 每个**代码 Task** 完成并 commit 后，在 Check-out 追加一节（见 `CLAUDE.md` §Check-out）。  
 > **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。
 
+## FM-04/05 More CLI 只读扫描（2026-08-26）
+
+| 项 | 说明 |
+|----|------|
+| **Verification** | `cd services/orchestrator && uv run pytest tests/test_cli_agent_config.py` → 18 passed；本机 live scan：Codex/CodeBuddy/Rivet/Ollama/ZCode 有模型，Aider/Antigravity 有配置无 model 字段 |
+| **ROADMAP** | FM-04、FM-05a–f ✅ 人工点验 2026-08-26 |
+| **Files** | `cli_agent_config.py` · `MoreAgentsComingSoon.tsx` · `useCliModelsScan.ts` · `FRONTEND_MODULES_ACCEPTANCE.md` · `CHANGELOG.md` `## [1.4.0]` |
+
 ## 桌面白屏 useLanguage（2026-08-26）
 
 | 项 | 说明 |

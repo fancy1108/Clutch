@@ -12,10 +12,8 @@ import {
   shouldAutoScanModels,
 } from '../services/cliModelsScanCache';
 
-type AgentScanType = 'claude-cli' | 'opencode-cli' | 'mimo-cli';
-
 function scanSuccessMessage(
-  agentType: AgentScanType,
+  agentType: string,
   payload: CliModelsScan,
   t: (key: string) => string,
 ): string {
@@ -26,25 +24,31 @@ function scanSuccessMessage(
       .replace('{models}', String(modelCount))
       .replace('{providers}', String(authCount));
   }
-  return t('Scan complete — {count} providers found.').replace(
-    '{count}',
-    String(payload.providers.length),
-  );
+  if (agentType === 'claude-cli') {
+    return t('Scan complete — {count} providers found.').replace(
+      '{count}',
+      String(payload.providers.length),
+    );
+  }
+  const modelCount = payload.available_models?.length ?? payload.catalog?.length ?? 0;
+  return t('Scan complete — {count} models found.').replace('{count}', String(modelCount));
 }
 
-function scanningMessage(agentType: AgentScanType, t: (key: string) => string): string {
+function scanningMessage(agentType: string, t: (key: string) => string): string {
   if (agentType === 'mimo-cli') return t('Scanning MiMo Code configuration…');
   if (agentType === 'opencode-cli') return t('Scanning OpenCode configuration…');
-  return t('Scanning Claude Code configuration…');
+  if (agentType === 'claude-cli') return t('Scanning Claude Code configuration…');
+  return t('Scanning local config…');
 }
 
-function scanFailureMessage(agentType: AgentScanType, t: (key: string) => string): string {
+function scanFailureMessage(agentType: string, t: (key: string) => string): string {
   if (agentType === 'mimo-cli') return t('Failed to scan MiMo Code models.');
   if (agentType === 'opencode-cli') return t('Failed to scan OpenCode models.');
-  return t('Failed to scan Claude Code models.');
+  if (agentType === 'claude-cli') return t('Failed to scan Claude Code models.');
+  return t('Failed to scan models.');
 }
 
-export function useCliModelsScan(agentType: AgentScanType) {
+export function useCliModelsScan(agentType: string) {
   const { t } = useLanguage();
   const [data, setData] = useState<CliModelsScan | null>(() => getCachedModelsScan(agentType));
   const [loading, setLoading] = useState(() => !getCachedModelsScan(agentType));

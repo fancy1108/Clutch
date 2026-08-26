@@ -1,7 +1,7 @@
 # Release snapshots (`docs/releases/`)
 
 > **Purpose:** Freeze **what the product was** at each major/minor version.  
-> **Current product truth:** [`PRODUCT_INTRO.md`](../PRODUCT_INTRO.md) — always describes the latest shipped behavior.  
+> **Current product truth:** [`PRODUCT_INTRO.md`](../PRODUCT_INTRO.md) — on `dev` this tracks **v1.4.0**; GitHub installers remain **v1.3.0** until the next tag.  
 > **Per-change log:** [`CHANGELOG.md`](../../CHANGELOG.md) — user-facing deltas between versions.  
 > **GitHub Release body:** CI runs [`scripts/render-release-notes.sh`](../../scripts/render-release-notes.sh) — the matching `## [x.y.z]` section becomes **What's in this release** at the top of the Release page; install/Gatekeeper fragments follow below.
 
@@ -39,6 +39,7 @@
 
 | Version | Snapshot | Notes |
 |---------|----------|-------|
+| 1.4.0 | — (at tag) | **In progress on `dev`.** FM 点验 · HTTP MCP · workflow list UX. Changelog [`## [1.4.0] - Unreleased`](../../CHANGELOG.md#140---unreleased) |
 | 1.3.0 | [`v1.3.0.md`](./v1.3.0.md) | **macOS + Windows** · Tool trail detail (D46) · Permission modes (D27/D54) · Deliverable intent + real images/video (D54) · Tool-skip harness (D44) · Plan-approve→execute · sidebar recent-first |
 | 1.2.9 | [`v1.2.9.md`](./v1.2.9.md) | **macOS + Windows** · Coding image paste / preview (D42) · Design handoff (D39–D41) · workspace id stability (D43) |
 | 1.2.2 | [`v1.2.2.md`](./v1.2.2.md) | **macOS + Windows** · Design Preview Win parity · workflow reliability (#50–#55) |

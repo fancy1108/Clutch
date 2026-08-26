@@ -5,11 +5,24 @@
 
 ## Current Status
 
-- **阶段：** **v1.3.0** 已发；主线 D8–D13 ✅；扩展/MCP **D14–D52 Agent 代 PM ✅**；Desktop E2E ✅；**Design D36 PM ✅**
+- **阶段：** **v1.3.0** 已发；`dev` 冲 **v1.4.0**（D59）。主线 D8–D13 ✅；扩展/MCP **D14–D52 Agent 代 PM ✅**；Desktop E2E ✅；**Design D36 PM ✅**
 - **Git / PM 索引：** [`runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md`](../runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md)
-- **下次优先：** Frontend modules（D56）FM-01–22 已勾完；桌面 E2E 已绿。下一批：T1 开闸信号，或 `memory/BACKLOG.md` 未升格项（价表 / Windows 实体机不做）。
+- **下次优先：** Frontend modules 点验进 **v1.4.0**（FM-01…05 已人工点验；下一条 FM-09）。T1 开闸或 `memory/BACKLOG.md` 未升格项（价表 / Windows 实体机不做）。
 
 ## Recent Sessions
+
+## 2026-08-26 会话（FM-04/05 人工点验）
+
+- **做了：** More CLI 真正读本机配置（Codex/Aider/CodeBuddy/Antigravity/Rivet/Ollama/ZCode）；Rescan 与 Back 同一行。PM 勾 FM-04/05。CHANGELOG 目标节 **1.4.0**。
+- **没做：** 未 bump `package.json` / 未打 tag。
+- **测：** `uv run pytest tests/test_cli_agent_config.py` 18 passed；本机 live scan 见会话。
+- **下次：** FM-09 分派横幅。
+
+## 2026-08-26 会话（目标版本 v1.4.0）
+
+- **做了：** D59：CHANGELOG `## [1.4.0] - Unreleased`；PRODUCT_INTRO / ROADMAP / 点验剧本标明进 1.4.0。安装包与 README Latest 仍为 v1.3.0。
+- **没做：** 未 bump `package.json` / Tauri version；未打 tag。
+- **下次：** FM-04 点验。
 
 ## 2026-08-26 会话（桌面 E2E 白屏）
 

@@ -1,41 +1,54 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useLanguage } from './LanguageContext';
 import { COMING_SOON_AGENT_TABS, getAgentCapabilityTier } from '../services/agentCapabilityTiers';
 import { resolveBrandLogoSrc } from '../services/brandLogos';
 import { LegacyIcon } from './ui/LegacyIcon';
 import { AgentCliCapabilityPreview } from './AgentCliCapabilityPreview';
-import { fetchCliModelsConfig, type CliModelsScan } from '../services/cliConfigApi';
+import { CliScanNotice, CliScanRescanButton } from './CliScanNotice';
+import { useCliModelsScan } from '../hooks/useCliModelsScan';
 import type { AgentTypeId } from '../services/agentTypes';
 import { BTN_GHOST } from './ui/buttonStyles';
 
 type ScanKind = 'models' | 'skills' | 'mcp';
 
-function CliModelsScanPreview({ agentType }: { agentType: AgentTypeId }) {
+function CliModelsScanPreview({
+  agentType,
+  onBack,
+}: {
+  agentType: AgentTypeId;
+  onBack: () => void;
+}) {
   const { t } = useLanguage();
-  const [payload, setPayload] = useState<CliModelsScan | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    void fetchCliModelsConfig(agentType)
-      .then((next) => {
-        if (!cancelled) setPayload(next);
-      })
-      .catch((err: unknown) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : t('Scan failed'));
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [agentType, t]);
+  const { data: payload, loading, error, notice, dismissNotice, refresh } = useCliModelsScan(agentType);
 
   const models = payload?.available_models ?? payload?.catalog ?? [];
+  const hasConfig = Boolean(payload?.config_paths?.length || payload?.active_model_id);
   return (
     <div className="space-y-2" data-testid={`cli-models-scan-${agentType}`}>
+      <div className="flex flex-row items-center gap-2">
+        <button type="button" className={`${BTN_GHOST} text-xs`} onClick={onBack}>
+          {t('Back')}
+        </button>
+        <CliScanRescanButton loading={loading} onClick={() => void refresh()} />
+      </div>
+      <CliScanNotice notice={notice} onDismiss={dismissNotice} />
       {error ? <p className="text-xs text-rose-700">{error}</p> : null}
-      {!error && models.length === 0 ? (
-        <p className="text-xs text-neutral-500">{t('No local config found')}</p>
-      ) : (
+      {!loading && payload?.active_model_id ? (
+        <p className="text-xs text-neutral-600">
+          {t('Current model')}: <span className="font-mono">{payload.active_model_id}</span>
+        </p>
+      ) : null}
+      {!loading && payload?.config_paths && payload.config_paths.length > 0 ? (
+        <p className="text-[10px] text-neutral-400 break-all">
+          {t('Config')}: {payload.config_paths.join(', ')}
+        </p>
+      ) : null}
+      {!loading && !error && models.length === 0 ? (
+        <p className="text-xs text-neutral-500">
+          {hasConfig ? t('No models listed in local config') : t('No local config found')}
+        </p>
+      ) : null}
+      {!loading && models.length > 0 ? (
         <ul className="space-y-1">
           {models.map((item) => (
             <li key={`${item.provider}:${item.model_id}`} className="text-xs font-mono">
@@ -43,7 +56,7 @@ function CliModelsScanPreview({ agentType }: { agentType: AgentTypeId }) {
             </li>
           ))}
         </ul>
-      )}
+      ) : null}
     </div>
   );
 }
@@ -55,13 +68,15 @@ export const MoreAgentsComingSoon: React.FC<{ kind?: ScanKind }> = ({ kind = 'sk
   if (scanType && getAgentCapabilityTier(scanType) === 'readOnlyScan') {
     return (
       <div className="space-y-3 text-left">
-        <button type="button" className={`${BTN_GHOST} text-xs`} onClick={() => setScanType(null)}>
-          {t('Back')}
-        </button>
         {kind === 'models' ? (
-          <CliModelsScanPreview agentType={scanType} />
+          <CliModelsScanPreview agentType={scanType} onBack={() => setScanType(null)} />
         ) : (
-          <AgentCliCapabilityPreview agentType={scanType} kind={kind} />
+          <>
+            <button type="button" className={`${BTN_GHOST} text-xs`} onClick={() => setScanType(null)}>
+              {t('Back')}
+            </button>
+            <AgentCliCapabilityPreview agentType={scanType} kind={kind} />
+          </>
         )}
       </div>
     );

@@ -3,7 +3,8 @@
 > **给谁用：** 你在桌面 App 里一条条点、打勾。  
 > **不是状态表：** 勾完后的结论只记 [`memory/ROADMAP.md`](../memory/ROADMAP.md) §Frontend modules。  
 > **功能是否存在：** [`PRODUCT_INTRO.md`](./PRODUCT_INTRO.md)。Task 定义：[`specs/core/frontend-modules-plan.md`](../specs/core/frontend-modules-plan.md)。  
-> **范围：** D56 这批能在 UI 里看到的模块 + 相关 D32 worktree。不含价表、Windows 实体机。
+> **范围：** D56 这批能在 UI 里看到的模块 + 相关 D32 worktree。不含价表、Windows 实体机。  
+> **版本：** 点验通过后进 **v1.4.0**（已发布安装包仍是 v1.3.0）。
 
 打印或分屏打开本文，左边 App、右边文档。每条有 **入口** 和 **过/不过**。  
 灰色代码框是 **整段复制**：Chat 输入框或 Settings 输入框，不要改字。权限 pill 在输入框左边，默认 **Agent**（不是 Ask）。
@@ -40,8 +41,8 @@ export CLUTCH_RUNTIME_MODE=hybrid && pnpm tauri:dev
 | ☑ | [FM-01](#fm-01-general) | 默认工作区 / Stop 确认 / 版本号 | Settings → General |
 | ☑ | [FM-02](#fm-02-本机信任) | 未信任 MCP 先确认 | Settings → General 开关 + Hub Enable |
 | ☑ | [FM-03](#fm-03-命令策略) | allow / ask / deny 规则 | Settings → Tools |
-| ☐ | [FM-04](#fm-04--fm-05-cli-只读扫描) | Codex 扫描 | Settings → Models → **More → Codex** |
-| ☐ | [FM-05](#fm-04--fm-05-cli-只读扫描) | 另外六个 CLI 扫描 | More → Aider / CodeBuddy / … |
+| ☑ | [FM-04](#fm-04--fm-05-cli-只读扫描) | Codex 扫描 | Settings → Models → **More → Codex** |
+| ☑ | [FM-05](#fm-04--fm-05-cli-只读扫描) | 另外六个 CLI 扫描 | More → Aider / CodeBuddy / … |
 | ☐ | [FM-09](#fm-09-分派横幅) | 空 Chat 不必先选工作流 | New Chat 顶上灰条 |
 | ☐ | [FM-19](#fm-19-plannerexecutor) | 规划模型 / 执行模型分开 | Settings → Models；Overview 两行名字 |
 | ☐ | [FM-12](#fm-12-记忆搜索) | 搜 `.clutch/memory` | Settings → General → Search |
@@ -169,7 +170,7 @@ rm -rf /tmp/clutch-fm03-does-not-exist
 
 | ID | 点哪 | 期望 |
 |----|------|------|
-| FM-04 | **Codex**（`cli-scan-codex-cli`） | 扫到本机配置，或明确空态（不是空白死页） |
+| FM-04 | **Codex**（`cli-scan-codex-cli`） | 列出当前模型（`config.toml` 的 `model`）和缓存 catalog；有 **Rescan**；没装/没文件才是空态 |
 | FM-05a | Aider | 同上 |
 | FM-05b | CodeBuddy | 同上 |
 | FM-05c | Antigravity | 同上 |
@@ -177,7 +178,7 @@ rm -rf /tmp/clutch-fm03-does-not-exist
 | FM-05e | Ollama | 同上 |
 | FM-05f | ZCode | 同上 |
 
-本机没装对应 CLI → **空态也算过**。Cursor / Grok 不在这一批，找不到是预期。
+本机没装对应 CLI → **空态也算过**。装了但配置里没写模型（本机 Aider / Antigravity 常见）→ 有 Config 路径、模型列表可以为空。Cursor / Grok 不在这一批。
 
 **复制（没有 Chat 句，按点）：** 齿轮 → **Models** → 顶栏 **More** → 依次点 `cli-scan-codex-cli`、Aider、CodeBuddy、Antigravity、Rivet、Ollama、ZCode。每页要么有配置摘要，要么有明确 Empty / 未检测到，不要白屏。
 

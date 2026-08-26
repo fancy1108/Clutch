@@ -12,6 +12,7 @@ import subprocess
 import sys
 import tarfile
 import time
+import tomllib
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -54,6 +55,8 @@ _CC_SWITCH_ACTIVE_KEY_BY_APP: dict[str, str] = {
 }
 
 _CODEX_CONFIG_PATH = Path.home() / ".codex" / "config.toml"
+_CODEX_MODELS_CACHE_PATH = Path.home() / ".codex" / "models_cache.json"
+_CODEX_AUTH_PATH = Path.home() / ".codex" / "auth.json"
 
 _OPENCODE_CONFIG_CANDIDATES = (
     Path.home() / ".config" / "opencode" / "opencode.json",
@@ -1045,6 +1048,272 @@ def scan_mimo_models(*, workspace_path: str | None = None) -> dict[str, Any]:
     }
 
 
+def _read_codex_toml() -> dict[str, Any]:
+    if not _CODEX_CONFIG_PATH.is_file():
+        return {}
+    try:
+        with _CODEX_CONFIG_PATH.open("rb") as handle:
+            data = tomllib.load(handle)
+        return data if isinstance(data, dict) else {}
+    except (OSError, tomllib.TOMLDecodeError):
+        return {}
+
+
+def scan_codex_models() -> dict[str, Any]:
+    providers = list_cc_switch_providers(app_type="codex")
+    cc_active_id = read_cc_switch_active_provider_id("codex")
+    _annotate_active_providers(providers, cc_active_id)
+
+    data = _read_codex_toml()
+    active_model = str(data.get("model") or "").strip() or None
+    provider_name = str(data.get("model_provider") or "").strip() or None
+    provider_block = data.get("model_providers") if isinstance(data.get("model_providers"), dict) else {}
+    base_url = None
+    if provider_name and isinstance(provider_block.get(provider_name), dict):
+        raw_url = provider_block[provider_name].get("base_url")
+        if raw_url:
+            base_url = str(raw_url)
+
+    catalog: list[dict[str, Any]] = []
+    seen: set[str] = set()
+
+    def add_model(provider: str, model_id: str, name: str | None = None) -> None:
+        key = f"{provider}:{model_id}"
+        if not model_id or key in seen:
+            return
+        seen.add(key)
+        catalog.append(
+            {
+                "provider": provider,
+                "model_id": model_id,
+                "name": name or model_id,
+                "model_ref": model_id,
+            }
+        )
+
+    if active_model:
+        add_model(provider_name or "openai", active_model)
+
+    cache = _read_json_file(_CODEX_MODELS_CACHE_PATH)
+    for item in cache.get("models") or []:
+        if len(catalog) >= 40:
+            break
+        if not isinstance(item, dict):
+            continue
+        slug = str(item.get("slug") or "").strip()
+        display = str(item.get("display_name") or slug).strip()
+        add_model("openai", slug, display or slug)
+
+    return {
+        "agent_type": "codex-cli",
+        "cc_switch_found": (_CC_SWITCH_DIR / "cc-switch.db").is_file(),
+        "cc_switch_cli_available": cc_switch_cli_available(),
+        "active_provider_id": provider_name or cc_active_id,
+        "active_model_id": active_model,
+        "base_url": base_url,
+        "providers": providers,
+        "catalog": catalog,
+        "available_models": catalog,
+        "config_paths": [str(_CODEX_CONFIG_PATH)] if _CODEX_CONFIG_PATH.is_file() else [],
+        "auth_path": str(_CODEX_AUTH_PATH) if _CODEX_AUTH_PATH.is_file() else None,
+    }
+
+
+def _user_home() -> Path:
+    return Path.home()
+
+
+def _cli_on_path(*names: str) -> bool:
+    return any(shutil.which(name) for name in names)
+
+
+def _yaml_scalar(path: Path, keys: tuple[str, ...]) -> str | None:
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return None
+    for line in text.splitlines():
+        raw = line.strip()
+        if not raw or raw.startswith("#"):
+            continue
+        for key in keys:
+            prefix = f"{key}:"
+            if raw.startswith(prefix):
+                value = raw[len(prefix) :].strip().strip("'\"")
+                if value:
+                    return value
+    return None
+
+
+def _catalog_entry(provider: str, model_id: str, name: str | None = None) -> dict[str, Any]:
+    return {
+        "provider": provider,
+        "model_id": model_id,
+        "name": name or model_id,
+        "model_ref": model_id,
+    }
+
+
+def _more_cli_payload(
+    agent_type: str,
+    *,
+    catalog: list[dict[str, Any]],
+    active_model_id: str | None,
+    config_paths: list[Path],
+    binaries: tuple[str, ...],
+    active_provider_id: str | None = None,
+) -> dict[str, Any]:
+    return {
+        "agent_type": agent_type,
+        "providers": [],
+        "catalog": catalog,
+        "available_models": catalog,
+        "cc_switch_found": False,
+        "cc_switch_cli_available": False,
+        "active_provider_id": active_provider_id,
+        "active_model_id": active_model_id,
+        "config_paths": [str(path) for path in config_paths if path.is_file()],
+        "cli_available": _cli_on_path(*binaries),
+    }
+
+
+def scan_aider_models() -> dict[str, Any]:
+    home = _user_home()
+    paths = [path for path in (home / ".aider.conf.yml", home / ".aider.conf.yaml") if path.is_file()]
+    catalog: list[dict[str, Any]] = []
+    active: str | None = None
+    for path in paths:
+        model = _yaml_scalar(path, ("model", "openai-model", "editor-model"))
+        if model:
+            active = active or model
+            catalog.append(_catalog_entry("aider", model))
+    return _more_cli_payload(
+        "aider-cli", catalog=catalog, active_model_id=active, config_paths=paths, binaries=("aider",)
+    )
+
+
+def scan_codebuddy_models() -> dict[str, Any]:
+    settings = _user_home() / ".codebuddy" / "settings.json"
+    model = str(_read_json_file(settings).get("model") or "").strip() or None
+    catalog = [_catalog_entry("codebuddy", model)] if model else []
+    return _more_cli_payload(
+        "codebuddy-cli",
+        catalog=catalog,
+        active_model_id=model,
+        config_paths=[settings],
+        binaries=("codebuddy", "cbc"),
+    )
+
+
+def scan_antigravity_models() -> dict[str, Any]:
+    home = _user_home()
+    paths = [
+        home / ".gemini" / "antigravity-cli" / "settings.json",
+        home / ".gemini" / "config" / "config.json",
+        home / ".gemini" / "settings.json",
+    ]
+    return _more_cli_payload(
+        "antigravity-cli",
+        catalog=[],
+        active_model_id=None,
+        config_paths=paths,
+        binaries=("agy", "antigravity"),
+    )
+
+
+def scan_rivet_models() -> dict[str, Any]:
+    path = _user_home() / ".rivet" / "config.json"
+    block = _read_json_file(path).get("provider")
+    block = block if isinstance(block, dict) else {}
+    default = str(block.get("default") or "").strip() or None
+    providers = block.get("providers") if isinstance(block.get("providers"), dict) else {}
+    catalog: list[dict[str, Any]] = []
+    active: str | None = None
+    for pid, cfg in providers.items():
+        if not isinstance(cfg, dict):
+            continue
+        models = cfg.get("models") if isinstance(cfg.get("models"), list) else []
+        for item in models:
+            if len(catalog) >= 40:
+                break
+            model_id = str(item.get("id") or "").strip() if isinstance(item, dict) else str(item).strip()
+            if not model_id:
+                continue
+            catalog.append(_catalog_entry(str(pid), model_id))
+            if default == pid and not active:
+                active = model_id
+    return _more_cli_payload(
+        "rivet-cli",
+        catalog=catalog,
+        active_model_id=active,
+        config_paths=[path],
+        binaries=("rivet",),
+        active_provider_id=default,
+    )
+
+
+def scan_ollama_models() -> dict[str, Any]:
+    path = _user_home() / ".ollama" / "config.json"
+    last = str(_read_json_file(path).get("last_model") or "").strip() or None
+    tags: list[str] = []
+    try:
+        from src.adapters.ollama_adapter import get_ollama_models
+
+        tags = get_ollama_models()
+    except Exception:
+        tags = []
+    catalog = [_catalog_entry("ollama", tag) for tag in tags if tag]
+    if last and all(item["model_id"] != last for item in catalog):
+        catalog.insert(0, _catalog_entry("ollama", last))
+    return _more_cli_payload(
+        "ollama-cli",
+        catalog=catalog,
+        active_model_id=last or (catalog[0]["model_id"] if catalog else None),
+        config_paths=[path],
+        binaries=("ollama",),
+    )
+
+
+def scan_zcode_models() -> dict[str, Any]:
+    home = _user_home() / ".zcode"
+    cache_path = home / "v2" / "bots-model-cache.v2.json"
+    setting_path = home / "v2" / "setting.json"
+    cli_path = home / "cli" / "config.json"
+    catalog: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for provider in _read_json_file(cache_path).get("providers") or []:
+        if not isinstance(provider, dict):
+            continue
+        pid = str(provider.get("id") or "zcode")
+        for item in provider.get("models") or []:
+            model_id = str(item.get("id") or "").strip() if isinstance(item, dict) else ""
+            if not model_id or model_id in seen:
+                continue
+            seen.add(model_id)
+            catalog.append(_catalog_entry(pid, model_id))
+            if len(catalog) >= 40:
+                break
+    family = str(_read_json_file(setting_path).get("providerFamilyDomain") or "").strip() or None
+    return _more_cli_payload(
+        "zcode-cli",
+        catalog=catalog,
+        active_model_id=catalog[0]["model_id"] if catalog else None,
+        config_paths=[cache_path, setting_path, cli_path],
+        binaries=("zcode",),
+        active_provider_id=family,
+    )
+
+
+_MORE_CLI_SCANNERS = {
+    "aider-cli": scan_aider_models,
+    "codebuddy-cli": scan_codebuddy_models,
+    "antigravity-cli": scan_antigravity_models,
+    "rivet-cli": scan_rivet_models,
+    "ollama-cli": scan_ollama_models,
+    "zcode-cli": scan_zcode_models,
+}
+
+
 def scan_cli_models(agent_type: str, *, workspace_path: str | None = None) -> dict[str, Any]:
     normalized = normalize_cli_agent_type(agent_type)
     if normalized == "claude-cli":
@@ -1053,6 +1322,11 @@ def scan_cli_models(agent_type: str, *, workspace_path: str | None = None) -> di
         return scan_mimo_models(workspace_path=workspace_path)
     if normalized == "opencode-cli":
         return scan_opencode_models(workspace_path=workspace_path)
+    if normalized == "codex-cli":
+        return scan_codex_models()
+    scanner = _MORE_CLI_SCANNERS.get(normalized)
+    if scanner:
+        return scanner()
     short = normalized.removesuffix("-cli")
     return {
         "agent_type": normalized,

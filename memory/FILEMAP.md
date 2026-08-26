@@ -43,7 +43,7 @@
 | 漏洞报告 | `SECURITY.md` |
 | 外部审计委托 / 报告入口 | `docs/EXTERNAL_AUDIT.md` · `docs/security-audit/` |
 | 社区行为准则 | `CODE_OF_CONDUCT.md` |
-| 版本变更 | `CHANGELOG.md` · 版本快照 `docs/releases/` |
+| 版本变更 | `CHANGELOG.md`（开发中 **v1.4.0**） · 已发快照 `docs/releases/` |
 | Goals / Non-Goals | `docs/PROJECT_SCOPE.md` |
 | API / Schema 稳定性 | `docs/STABILITY.md` |
 | 扩展点边界 | `docs/EXTENSIBILITY.md` |

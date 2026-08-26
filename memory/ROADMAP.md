@@ -293,7 +293,7 @@
 
 ---
 
-## Frontend modules（FM-xx · D56 · 默认 FAIL）
+## Frontend modules（FM-xx · D56 · 默认 FAIL · 随 **v1.4.0**）
 
 > **Task 定义：** [`specs/core/frontend-modules-plan.md`](../specs/core/frontend-modules-plan.md)  
 > **点验剧本：** [`docs/FRONTEND_MODULES_ACCEPTANCE.md`](../docs/FRONTEND_MODULES_ACCEPTANCE.md)（桌面入口、步骤、期望；本表仍是唯一 ✅/❌）  
@@ -304,13 +304,13 @@
 | FM-01 | General：默认工作区 / 高危确认 / 版本 | ✅ 人工点验 2026-08-26 |
 | FM-02 | MCP 本机信任（OSR-21 白名单层；自建 SOP 不确认 D58） | ✅ 人工点验 2026-08-26 |
 | FM-03 | Exec policy UI（B-21；OSR-18 界面） | ✅ 人工点验 2026-08-26 |
-| FM-04 | Codex 只读扫描 | ✅ |
-| FM-05a | Aider 只读扫描 | ✅ |
-| FM-05b | CodeBuddy 只读扫描 | ✅ |
-| FM-05c | Antigravity 只读扫描 | ✅ |
-| FM-05d | Rivet 只读扫描 | ✅ |
-| FM-05e | Ollama 只读扫描 | ✅ |
-| FM-05f | ZCode 只读扫描 | ✅ |
+| FM-04 | Codex 只读扫描 | ✅ 人工点验 2026-08-26 |
+| FM-05a | Aider 只读扫描 | ✅ 人工点验 2026-08-26 |
+| FM-05b | CodeBuddy 只读扫描 | ✅ 人工点验 2026-08-26 |
+| FM-05c | Antigravity 只读扫描 | ✅ 人工点验 2026-08-26 |
+| FM-05d | Rivet 只读扫描 | ✅ 人工点验 2026-08-26 |
+| FM-05e | Ollama 只读扫描 | ✅ 人工点验 2026-08-26 |
+| FM-05f | ZCode 只读扫描 | ✅ 人工点验 2026-08-26 |
 | FM-06 | Orchestra 队列与草稿 | ✅ |
 | FM-07 | 派发保存为工作流 | ✅ |
 | FM-08 | 对话模式 handoff | ✅ |

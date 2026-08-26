@@ -14,7 +14,7 @@
 | `memory/ROADMAP.md` §Chat Clutch Agent | 勾选状态（Default FAIL） |
 | `memory/FILEMAP.md` | 入口索引 |
 
-**各交付期再更新：** `docs/PRODUCT_INTRO.md`、`CHANGELOG.md` `[Unreleased]`；MCP 真相时 `docs/mcp-servers/*`；会话 Check-out 写 `PROGRESS` / `DELIVERABLES`。
+**各交付期再更新：** `docs/PRODUCT_INTRO.md`、`CHANGELOG.md` `## [1.4.0] - Unreleased`（D59；发 1.4.0 后改回 `[Unreleased]`）；MCP 真相时 `docs/mcp-servers/*`；会话 Check-out 写 `PROGRESS` / `DELIVERABLES`。
 
 **编号约定：** 本文交付期 Dn ≠ DECISIONS Dx。
 
@@ -467,7 +467,7 @@ Prompt： D53（宜早：在 D7/D2 深化前定组装骨架；可与 D1 后并�
 
 1. 上表验收脚本走通（**含前端可见**）。  
 2. 若该能力在「能力→交互映射」有行，对应 D46–D51 交互必须可演示，否则不算完成。  
-3. `PRODUCT_INTRO` / `CHANGELOG` Unreleased。  
+3. `PRODUCT_INTRO` / `CHANGELOG` 当前开发版本节（`## [1.4.0] - Unreleased`）。  
 4. `./scripts/verify.sh`（或子集）通过——必要但不充分。
 
 ## 任务总数

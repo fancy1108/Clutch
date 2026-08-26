@@ -381,7 +381,7 @@
   1. `docs/PRODUCT_INTRO.md` — 用户可见能力与设置路径；
   2. `docs/GETTING_STARTED.md` — 配置步骤（中英表格各一处）；
   3. `memory/FILEMAP.md` — 新增/变更的源码路径映射（若涉及新模块）；
-  4. `CHANGELOG.md` — `[Unreleased]` 条目（发版前合并进版本节）；
+  4. `CHANGELOG.md` — 当前开发版本节（现为 `## [1.4.0] - Unreleased`，见 D59）；
   5. `README.md` / `README.zh-CN.md` — **「最新更新」**一节：只写**用户可见**的单一版本要点列表（不按 commit / 开发进度分段）；发版时整节替换为新版本，历史见 `CHANGELOG.md`；
   6. `apps/desktop/src/services/cliInstallGuides.ts` — 安装指引与 `RECOMMENDED_CLI_IDS`（若列为推荐）；
   7. `.cursor/rules/cli-whitelist-docs.mdc` — 本清单的权威副本。
@@ -642,6 +642,13 @@
 - **方案**：Settings → Workflows SOP 点选一行即绑定对话并打开画布，不调用 `confirmLocalTrust('workflow')`。General 开关与 Hub Enable 仍只对 MCP。工作流签名仍属 OSR-21 T3，有第三方 SOP 导入时再做。
 - **影响**：`App.tsx` · General 文案 · `PRODUCT_INTRO.md` · FM-02 点验剧本。
 - **决策状态**：`已落地`
+
+### D59 · 下一发版目标 v1.4.0（2026-08-26）
+
+- **背景**：当前 GitHub Release 为 **v1.3.0**。`dev` 上 FM 点验、HTTP MCP、工作流 UX 等尚未打 tag。
+- **方案**：用户可见变更写入 `CHANGELOG.md` **`## [1.4.0] - Unreleased`**（不是空的 `[Unreleased]`）。`package.json` / Tauri `version` **仍为 1.3.0** 直到打 tag。`PRODUCT_INTRO.md` 描述 `dev` 上已有行为（将随 1.4.0 发）。README「Latest release」仍链 v1.3.0。
+- **影响**：`CHANGELOG.md` · `PROGRESS.md` · `ROADMAP.md` §Frontend modules · 点验剧本。
+- **决策状态**：`可执行`
 
 ### D45 · D7 项目规则 + Skills 对齐 Grok Build（2026-07-24）
 

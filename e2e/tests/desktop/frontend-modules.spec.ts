@@ -100,6 +100,7 @@ test('desktop: FM-01…22 acceptance playbook', async ({ tauriPage: page }) => {
     }
     await clickId(page, 'cli-scan-codex-cli');
     await expect(page.locator('[data-testid="cli-models-scan-codex-cli"]')).toBeVisible();
+    await expect(page.locator('[data-testid="cli-scan-rescan"]')).toBeVisible();
     await clickId(page, 'settings-close');
   });
 

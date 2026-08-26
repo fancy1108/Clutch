@@ -8,7 +8,9 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 **Version snapshots:** Per-release product summaries live in [`docs/releases/`](docs/releases/) (historical); current product truth is [`docs/PRODUCT_INTRO.md`](docs/PRODUCT_INTRO.md).
 
-## [Unreleased]
+## [1.4.0] - Unreleased
+
+> **Next minor.** Shipped GitHub Release is still [v1.3.0](#130---2026-07-28). `package.json` / Tauri stay `1.3.0` until the tag. Everything on `dev` after 1.3.0 — including upcoming commits — belongs in this section. After the tag: put the date on this heading and add an empty `## [Unreleased]` above it.
 
 ### Removed
 
@@ -33,8 +35,8 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 - **General Settings (FM-01):** Default workspace picker (restored on launch), persistable confirm-before-stop for Chat Stop, and the app version on the General page.
 - **Local trust (FM-02):** Settings → General can require a one-time confirm before enabling an MCP server; trusted MCP ids persist on this machine. User-authored workflows skip this (D58).
 - **Command policy (FM-03):** Settings → Tools lists allow / ask / deny shell patterns. Deny fails the tool (no Allow card); ask and dangerous commands (`rm -rf`, `sudo`) still force-ask in Full. Strict sandbox remains the OS-level gate.
-- **Codex scan (FM-04):** Settings Models/Skills/MCP → More → Codex scans local config (or an empty state).
-- **More CLI scans (FM-05):** Aider, CodeBuddy, Antigravity, Rivet, Ollama, and ZCode use the same read-only scan path.
+- **Codex scan (FM-04):** Settings Models/Skills/MCP → More → Codex reads `~/.codex/config.toml` (current model + cached catalog) with the same **Rescan** control as Claude/OpenCode. Missing file still shows a clear empty state.
+- **More CLI scans (FM-05):** Aider / CodeBuddy / Antigravity / Rivet / Ollama / ZCode read native local files (or `ollama list`), not an empty stub.
 - **Orchestra queue (FM-06):** Queued lanes stay visible; dispatch shows a confirm card (sources adjustable); handoff drafts can be filled or dismissed.
 - **Save dispatch as workflow (FM-07):** Overview can save dispatch records as a user SOP with matching node order.
 - **Chat handoff (FM-08):** Chat composer shows handoff drafts and accepts Send to Bar; switching to Terminal prefills recent chat.
