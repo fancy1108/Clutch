@@ -1105,6 +1105,18 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
                   </button>
                   <button
                     type="button"
+                    data-testid="interpreter-error-demo"
+                    className={menuItemClass}
+                    onClick={() => {
+                      setAttachMenuOpen(false);
+                      window.dispatchEvent(new CustomEvent('clutch-interpreter-error-demo'));
+                    }}
+                  >
+                    <LegacyIcon name="error" className="text-[17px] text-on-surface-variant" />
+                    {t('Interpreter error')}
+                  </button>
+                  <button
+                    type="button"
                     className={menuItemClass}
                     onClick={() => {
                       setAttachMenuOpen(false);

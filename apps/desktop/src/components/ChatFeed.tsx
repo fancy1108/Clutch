@@ -596,6 +596,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   const [pendingMessages, setPendingMessages] = useState<PendingChatMessage[]>([]);
   const [eventBanner, setEventBanner] = useState<string | null>(null);
   const [demoNotify, setDemoNotify] = useState<QuestionCard | null>(null);
+  const [demoInterpreter, setDemoInterpreter] = useState<'timeout' | 'offline' | null>(null);
   const [bgJobToast, setBgJobToast] = useState<string | null>(null);
   const prevBgJobsRef = useRef<BackgroundJob[]>([]);
   /**
@@ -659,6 +660,12 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
     window.addEventListener('clutch-new-info-demo', handler);
     return () => window.removeEventListener('clutch-new-info-demo', handler);
   }, [t]);
+
+  useEffect(() => {
+    const handler = () => setDemoInterpreter('timeout');
+    window.addEventListener('clutch-interpreter-error-demo', handler);
+    return () => window.removeEventListener('clutch-interpreter-error-demo', handler);
+  }, []);
 
   useEffect(() => {
     const handleClose = () => setMessageContextMenu(null);
@@ -1005,6 +1012,15 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   const foregroundShell = clutchOrchestraState.foreground_shell ?? null;
   const worktreeIsolation = clutchOrchestraState.worktree_isolation ?? null;
   const chatDiagnostics = clutchOrchestraState.chat_diagnostics ?? [];
+  const interpreterError = useMemo(() => {
+    if (demoInterpreter) return demoInterpreter;
+    for (const msg of [...messages].reverse()) {
+      const blob = `${msg.text} ${(msg.toolSteps || []).map((step) => `${step.title} ${step.detail || ''}`).join(' ')}`;
+      if (/interpreter timeout|timed out/i.test(blob)) return 'timeout' as const;
+      if (/interpreter offline|sidecar may be offline|connection refused/i.test(blob)) return 'offline' as const;
+    }
+    return null;
+  }, [demoInterpreter, messages]);
 
   useEffect(() => {
     const prev = prevBgJobsRef.current;
@@ -2186,6 +2202,23 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
             ) : null}
             {chatDiagnostics.length ? (
               <DiagnosticsIssuesStrip issues={chatDiagnostics} t={t} />
+            ) : null}
+            {interpreterError ? (
+              <div
+                data-testid="interpreter-error-card"
+                className="w-full max-w-3xl mx-auto px-3 pb-2"
+              >
+                <div className="rounded-lg border border-amber-300/70 bg-amber-50/90 px-3 py-2">
+                  <div className="text-[11px] font-semibold text-amber-950">
+                    {interpreterError === 'timeout' ? t('Interpreter timed out') : t('Interpreter offline')}
+                  </div>
+                  <p className="text-[10px] text-amber-900/90 mt-0.5">
+                    {interpreterError === 'timeout'
+                      ? t('The command exceeded its time limit. Shorten it or raise timeout_sec.')
+                      : t('The shell could not start. Check PATH and Sidecar, then retry.')}
+                  </p>
+                </div>
+              </div>
             ) : null}
             {isPlainLlmChat ? (
               <WorktreeIsolationBar

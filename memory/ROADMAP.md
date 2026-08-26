@@ -321,7 +321,7 @@
 | FM-14 | notify_user（B-46） | ✅ |
 | FM-15 | 新信息门禁（B-43） | ✅ |
 | FM-16 | Design 视觉审查（B-49） | ✅ |
-| FM-17 | 解释器错误卡（B-47） | ❌ |
+| FM-17 | 解释器错误卡（B-47） | ✅ |
 | FM-18 | 校验失败可读条（B-05） | ❌ |
 | FM-19 | Planner/Executor 分模型（B-06） | ❌ |
 | FM-20 | PERFORMANCE.md 测量（OSR-29） | ❌ |

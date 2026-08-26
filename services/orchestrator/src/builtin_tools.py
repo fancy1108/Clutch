@@ -2083,7 +2083,10 @@ def _tool_run_terminal_cmd(arguments: dict[str, Any]) -> str:
                 ensure_ascii=False,
             )
         if exit_code is None:
-            return f"Error executing tool: command timed out after {timeout}s"
+            return (
+                f"Interpreter timeout: command exceeded {timeout}s. "
+                "Retry with a shorter command or raise timeout_sec."
+            )
         header = f"exit_code={exit_code}\n"
         combined = output
         if len(combined) > _MAX_CMD_OUTPUT_CHARS:
@@ -2104,7 +2107,12 @@ def _tool_run_terminal_cmd(arguments: dict[str, Any]) -> str:
             executable=shell if os.name != "nt" and Path(shell).is_file() else None,
         )
     except subprocess.TimeoutExpired:
-        return f"Error executing tool: command timed out after {timeout}s"
+        return (
+            f"Interpreter timeout: command exceeded {timeout}s. "
+            "Retry with a shorter command or raise timeout_sec."
+        )
+    except OSError:
+        return "Interpreter offline: the shell could not start. Check PATH and try again."
     stdout = proc.stdout or ""
     stderr = proc.stderr or ""
     combined = stdout

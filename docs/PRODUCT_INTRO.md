@@ -111,6 +111,7 @@ graph TD
 * **定时/循环任务（Cap-D25 · 扩展 D25 scheduler）**：Chat 输入框 **+** 菜单打开 **Scheduled tasks** 面板，创建间隔任务（默认关，启用需确认）；sidecar asyncio 持久化表；到点通知或可选跑一轮 Agent。
 * **Event channel（FM-13 / B-42）**：Settings → General 可填 Webhook / 邮箱；**Test event** 后 Chat 出现横幅，点 **Continue** 继续。
 * **代码诊断 MVP（D24）**：内置 `diagnostics` 工具（`tsc` / `ruff` / `py_compile`）；结果注入下一轮并在 Chat **Code diagnostics** 条展示。
+* **Interpreter errors（FM-17 / B-47）**：超时或 shell 无法启动时 Chat 出现结构化卡（不是 traceback）；**+** 菜单可预览。
 * **无 UI / CI Agent（D36 · ≠ Design D36）**：`POST /api/agent/run` 与 `python -m src.headless_cli` 与 Chat 同核。
 * **外挂 Grok CLI（D14）**：引擎列表可选 `grok-cli`；PATH 有 `grok` 时路由 `grok -p`，缺失时清晰不可用。
 * **Session fork + file rewind（D23）**：消息右键 **Fork session here** 从该条复制 transcript 到新会话；输入框 **+** → **Rewind file changes** 一键恢复 Agent 最近一次文件改动并在 Chat 留 Supervisor 记录。
