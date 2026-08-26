@@ -7,7 +7,7 @@
 
 - **阶段：** **v1.3.0** 已发；主线 D8–D13 ✅；扩展/MCP **D14–D52 Agent 代 PM ✅**；Desktop E2E ✅；**Design D36 PM ✅**
 - **Git / PM 索引：** [`runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md`](../runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md)
-- **下次优先：** **FM-20** PERFORMANCE.md 测量。
+- **下次优先：** **FM-21** Apple 签名/公证流程文档（无账号则记阻塞）。
 
 ## Recent Sessions
 

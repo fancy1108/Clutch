@@ -17,6 +17,19 @@
 | **空闲内存（App + Sidecar）** | < 1 GB | 无活跃 Workflow；macOS Activity Monitor 参考 |
 | **活跃 Workflow 内存** | < 2 GB | 含 CLI 子进程除外（CLI 另计） |
 
+### 1.1 本机实测（FM-20 · OSR-29 · 2026-08-26）
+
+> **环境：** Apple M5 Pro · 48 GB RAM · macOS 26 (darwin 25.5) · Sidecar **已在** `127.0.0.1:8124` 运行（热路径）。  
+> **不是** DMG 冷启动，也不是 PyInstaller 首次拉起。目标行仍有效；冷启动须在 Release DMG 上复测。
+
+| 指标 | 测得 | 对照目标 | 方法 |
+|------|------|----------|------|
+| Sidecar `GET /health` | **11 ms** wall | < 5 s | `time curl -sf http://127.0.0.1:8124/health` |
+| `GET /api/workflows/templates` | **7 ms** wall | < 1 s | `time curl -sf http://127.0.0.1:8124/api/workflows/templates` |
+| `./scripts/verify.sh`（无 E2E） | **~45 s** | 非 SLA | Husky pre-commit on FM-19（`elapsed_ms≈44684`） |
+
+未测本轮：App 冷启动、空闲/活跃内存、WebSocket `state_patch`、UI FPS。
+
 ---
 
 ## 2. 非目标（暂不优化）
@@ -53,7 +66,7 @@ time curl -sf http://127.0.0.1:8124/api/workflows/templates  # dev 端口
 ./scripts/verify.sh
 ```
 
-未来可在 `runs/verification/` 归档带时间戳的测量记录。
+带时间戳的测量写入本节 **§1.1**（`runs/verification/` 默认 gitignore，不作为本机基线 SSOT）。
 
 ---
 

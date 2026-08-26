@@ -305,6 +305,8 @@ uv run uvicorn src.main:app --reload --port 8124
 ./scripts/verify.sh
 ```
 
+本机参考耗时见 [`PERFORMANCE.md`](./PERFORMANCE.md) §1.1（2026-08-26：热 Sidecar health ~11 ms、模板 API ~7 ms、无 E2E 的 `verify.sh` ~45 s）。冷启动目标仍按该文档 §1，须在 Release DMG 上测。
+
 ### 5.3 全量 E2E 校验 (Push 前)
 运行完整 Playwright GUI 自动化端到端测试：
 ```bash

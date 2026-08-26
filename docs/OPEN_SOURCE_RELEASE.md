@@ -61,7 +61,7 @@
 | OSR-20 | Tauri 自动更新 | **T3** | 2 | 3–5d | ✅ Go-live v1.0.2 · `docs/UPDATES.md` |
 | OSR-21 | 工作流签名 / MCP 白名单 | **T3** | 2 | 1–2w | |
 | OSR-22 | 外部安全审计 | **T3** | 2 | 外包 | |
-| **OSR-29** | `docs/PERFORMANCE.md` 基线 | **T3** | 2 | 1–2d | |
+| **OSR-29** | `docs/PERFORMANCE.md` 基线 | **T3** | 2 | 1–2d | 测量表见该文档 §1.1 |
 
 ---
 

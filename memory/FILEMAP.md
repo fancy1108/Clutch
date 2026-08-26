@@ -48,7 +48,7 @@
 | 扩展点边界 | `docs/EXTENSIBILITY.md` |
 | 维护者治理 | `docs/GOVERNANCE.md` |
 | 贡献指南（Phase 1 政策） | `CONTRIBUTING.md` |
-| 性能基线 | `docs/PERFORMANCE.md` |
+| 性能基线（含本机实测 §1.1） | `docs/PERFORMANCE.md` |
 | 源码构建 | `docs/BUILD_FROM_SOURCE.md` |
 | 环境自检 | `scripts/doctor.sh` |
 | **终端用户安装（DMG/NSIS）** | `scripts/install.sh` · `scripts/install.ps1` |
