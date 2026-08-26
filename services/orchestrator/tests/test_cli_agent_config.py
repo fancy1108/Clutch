@@ -16,6 +16,8 @@ def test_normalize_cli_agent_type_aliases() -> None:
     assert cfg.normalize_cli_agent_type("opencode") == "opencode-cli"
     assert cfg.normalize_cli_agent_type("mimo") == "mimo-cli"
     assert cfg.normalize_cli_agent_type("codex-cli") == "codex-cli"
+    assert cfg.normalize_cli_agent_type("aider") == "aider-cli"
+    assert cfg.normalize_cli_agent_type("ollama") == "ollama-cli"
 
 
 def test_scan_claude_code_models_without_cc_switch(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

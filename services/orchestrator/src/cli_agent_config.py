@@ -33,6 +33,12 @@ _SUPPORTED_AGENT_TYPES = frozenset(
         "opencode-cli",
         "mimo-cli",
         "codex-cli",
+        "aider-cli",
+        "codebuddy-cli",
+        "antigravity-cli",
+        "rivet-cli",
+        "ollama-cli",
+        "zcode-cli",
     }
 )
 
@@ -80,6 +86,16 @@ def normalize_cli_agent_type(raw: str) -> str:
         return "mimo-cli"
     if key in {"codex", "codex-cli"}:
         return "codex-cli"
+    aliases = {
+        "aider": "aider-cli",
+        "codebuddy": "codebuddy-cli",
+        "antigravity": "antigravity-cli",
+        "agy": "antigravity-cli",
+        "rivet": "rivet-cli",
+        "ollama": "ollama-cli",
+        "zcode": "zcode-cli",
+    }
+    key = aliases.get(key, key)
     if key in _SUPPORTED_AGENT_TYPES:
         return key
     raise ValueError(f"Unsupported agent type: {raw}")

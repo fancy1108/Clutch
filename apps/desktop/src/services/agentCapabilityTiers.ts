@@ -32,9 +32,6 @@ const READ_ONLY_SCAN_TYPES = new Set<AgentTypeId>([
   'opencode-cli',
   'mimo-cli',
   'codex-cli',
-]);
-
-const COMING_SOON_TYPES = new Set<AgentTypeId>([
   'aider-cli',
   'codebuddy-cli',
   'antigravity-cli',
@@ -42,6 +39,8 @@ const COMING_SOON_TYPES = new Set<AgentTypeId>([
   'ollama-cli',
   'zcode-cli',
 ]);
+
+const COMING_SOON_TYPES = new Set<AgentTypeId>([]);
 
 export function getAgentCapabilityTier(agentType: AgentTypeId | string | undefined): AgentCapabilityTier {
   const normalized = (agentType ?? CLUTCH_AGENT_TYPE).trim() || CLUTCH_AGENT_TYPE;
