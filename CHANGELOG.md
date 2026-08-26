@@ -29,6 +29,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 - **New-info gate (FM-15):** Parallel subtasks ask before a second spawn; Chat shows Proceed/Hold.
 - **Design visual review (FM-16):** Handoff step 1 shows a render shot with Approve/Reject; Reject iterates.
 - **Interpreter errors (FM-17):** Timeout/offline shell failures show a structured Chat card.
+- **Validation strip (FM-18):** Failed node validation is readable in Chat and Overview.
 
 - **Workspace MEMORY.md (B-39):** Saying `记住：…` / `remember:` writes `.clutch/memory/MEMORY.md` (open in Files). Next Chat turns inject that overview. Settings Memory copy points at the file.
 - **Verification notes (B-40):** Passing/failing `submit_verification` appends `Worked:` / `Failed:` to that file.

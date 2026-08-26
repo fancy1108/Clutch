@@ -1698,7 +1698,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                           }`}
                         >
                           <LegacyIcon name="info" className="text-[16px]" />
-                          <span>{msg.badgeText}</span>
+                          <span data-testid={msg.badgeText === 'VALIDATION FAILED' ? 'validation-failure-chat' : undefined}>{msg.badgeText}</span>
                         </div>
                       ) : isCompletedMsg ? (
                         <div className="flex items-center gap-1.5 mb-2 text-green-600 font-bold text-[11px]">

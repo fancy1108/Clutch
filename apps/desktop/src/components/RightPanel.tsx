@@ -555,6 +555,14 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                       ) : null}
                     </>
                   )}
+                  {messages.some((msg) => (msg.badgeText || '').includes('VALIDATION FAILED')) ? (
+                    <div
+                      data-testid="validation-failure-strip"
+                      className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] text-rose-900 whitespace-pre-wrap"
+                    >
+                      {messages.find((msg) => (msg.badgeText || '').includes('VALIDATION FAILED'))?.text}
+                    </div>
+                  ) : null}
                   {showUsageSection ? (
                     <section data-testid="overview-run-usage">
                       <h4 className="text-[10px] font-bold text-on-surface-variant/75 uppercase tracking-widest mb-4">

@@ -175,6 +175,7 @@
 | 新信息门禁（FM-15 / B-43） | `new-info-card` · 并行 `delegate_subtask` 前确认 |
 | Design 视觉审查（FM-16 / B-49） | `DesignHandoffTray` `design-review-card` / `design-review-reject` |
 | 解释器错误卡（FM-17 / B-47） | Chat `interpreter-error-card` · `run_terminal_cmd` timeout/offline |
+| 校验失败可读条（FM-18 / B-05） | Chat `validation-failure-chat` · Overview `validation-failure-strip` |
 | 工具 Hooks（D17） | `tool_hooks.py` · `mcp_react` Pre/Post 拦截 |
 | 能力包导入（D35） | `capability_pack.py` · Skills 页 Import/Uninstall |
 | Chat 用量（D22 / D9 / Q-USAGE-1） | `RightPanel` Overview `overview-run-usage` · `sessionUsage.ts` · `chat_messages._token_patch_turn` / `stash_turn_usage` · `http_complete` 透传 `usage` · `mcp_react` 累计 |
