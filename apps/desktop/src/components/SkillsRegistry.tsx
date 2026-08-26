@@ -149,7 +149,7 @@ export const SkillsRegistry: React.FC = () => {
         {capabilityTab === 'mimo-cli' ? (
           <AgentCliCapabilityPreview agentType="mimo-cli" kind="skills" />
         ) : null}
-        {capabilityTab === 'more' ? <MoreAgentsComingSoon /> : null}
+        {capabilityTab === 'more' ? <MoreAgentsComingSoon kind="skills" /> : null}
 
         {capabilityTab === 'clutch' ? (
         <>

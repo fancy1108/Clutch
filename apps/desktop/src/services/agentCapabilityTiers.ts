@@ -27,10 +27,14 @@ export const COMING_SOON_AGENT_TABS = [
   { id: 'zcode-cli', labelKey: 'ZCode', agentType: 'zcode-cli' as AgentTypeId },
 ];
 
-const READ_ONLY_SCAN_TYPES = new Set<AgentTypeId>(['claude-cli', 'opencode-cli', 'mimo-cli']);
+const READ_ONLY_SCAN_TYPES = new Set<AgentTypeId>([
+  'claude-cli',
+  'opencode-cli',
+  'mimo-cli',
+  'codex-cli',
+]);
 
 const COMING_SOON_TYPES = new Set<AgentTypeId>([
-  'codex-cli',
   'aider-cli',
   'codebuddy-cli',
   'antigravity-cli',
@@ -53,6 +57,7 @@ export function settingsTabForAgentType(agentType: AgentTypeId | string | undefi
   if (normalized === 'claude-cli') return 'claude-cli';
   if (normalized === 'opencode-cli') return 'opencode-cli';
   if (normalized === 'mimo-cli') return 'mimo-cli';
+  if (READ_ONLY_SCAN_TYPES.has(normalized) || COMING_SOON_TYPES.has(normalized)) return 'more';
   return null;
 }
 

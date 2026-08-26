@@ -27,7 +27,14 @@ from src.credentials.claude_code import (
 )
 from src.tools_status import resolve_tool_binary
 
-_SUPPORTED_AGENT_TYPES = frozenset({"claude-cli", "opencode-cli", "mimo-cli"})
+_SUPPORTED_AGENT_TYPES = frozenset(
+    {
+        "claude-cli",
+        "opencode-cli",
+        "mimo-cli",
+        "codex-cli",
+    }
+)
 
 _CC_SWITCH_APP_BY_AGENT: dict[str, str] = {
     "claude-cli": "claude",
@@ -65,14 +72,16 @@ _CC_SWITCH_RELEASE_BASE = "https://github.com/SaladDay/cc-switch-cli/releases/la
 
 def normalize_cli_agent_type(raw: str) -> str:
     key = raw.strip().lower()
-    if key in _SUPPORTED_AGENT_TYPES:
-        return key
     if key in {"claude", "claude-cli"}:
         return "claude-cli"
     if key in {"opencode", "opencode-cli"}:
         return "opencode-cli"
     if key in {"mimo", "mimo-cli", "mimocode"}:
         return "mimo-cli"
+    if key in {"codex", "codex-cli"}:
+        return "codex-cli"
+    if key in _SUPPORTED_AGENT_TYPES:
+        return key
     raise ValueError(f"Unsupported agent type: {raw}")
 
 
@@ -1008,7 +1017,20 @@ def scan_cli_models(agent_type: str, *, workspace_path: str | None = None) -> di
         return scan_claude_code_models()
     if normalized == "mimo-cli":
         return scan_mimo_models(workspace_path=workspace_path)
-    return scan_opencode_models(workspace_path=workspace_path)
+    if normalized == "opencode-cli":
+        return scan_opencode_models(workspace_path=workspace_path)
+    short = normalized.removesuffix("-cli")
+    return {
+        "agent_type": normalized,
+        "providers": [],
+        "catalog": [],
+        "available_models": [],
+        "cc_switch_found": False,
+        "cc_switch_cli_available": False,
+        "active_provider_id": None,
+        "active_model_id": None,
+        "config_paths": [str(Path.home() / f".{short}" / "config.toml")],
+    }
 
 
 def _skill_roots_for_agent(agent_type: str, *, workspace_path: str | None = None) -> list[Path]:
@@ -1051,6 +1073,16 @@ def _skill_roots_for_agent(agent_type: str, *, workspace_path: str | None = None
                     Path(workspace_path) / "mimocode" / "skills",
                 ]
             )
+    else:
+        short = agent_type.removesuffix("-cli")
+        roots.extend(
+            [
+                Path.home() / f".{short}" / "skills",
+                Path.home() / ".config" / short / "skills",
+            ]
+        )
+        if workspace_path:
+            roots.append(Path(workspace_path) / f".{short}" / "skills")
     return [root for root in roots if root.is_dir()]
 
 
@@ -1292,7 +1324,7 @@ def scan_cli_mcp(agent_type: str, *, workspace_path: str | None = None) -> dict[
                     servers=extra,
                 )
                 servers.extend(extra)
-    else:
+    elif normalized == "opencode-cli":
         servers = _mcp_from_opencode_config()
         if workspace_path:
             project_mcp = Path(workspace_path) / ".mcp.json"
@@ -1314,6 +1346,23 @@ def scan_cli_mcp(agent_type: str, *, workspace_path: str | None = None) -> dict[
                 continue
             seen.add(key)
             servers.append(entry)
+    else:
+        short = normalized.removesuffix("-cli")
+        servers = []
+        seen: set[str] = set()
+        for path in (
+            Path.home() / f".{short}" / "mcp.json",
+            Path.home() / ".config" / short / "mcp.json",
+        ):
+            data = _read_json_file(path)
+            extra: list[dict[str, Any]] = []
+            _collect_mcp_servers_from_block(
+                data.get("mcpServers") or data.get("mcp"),
+                source=str(path),
+                seen=seen,
+                servers=extra,
+            )
+            servers.extend(extra)
     return {
         "agent_type": normalized,
         "servers": servers,

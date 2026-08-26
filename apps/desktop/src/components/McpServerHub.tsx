@@ -212,7 +212,7 @@ export const McpServerHub: React.FC = () => {
         {capabilityTab === 'mimo-cli' ? (
           <AgentCliCapabilityPreview agentType="mimo-cli" kind="mcp" />
         ) : null}
-        {capabilityTab === 'more' ? <MoreAgentsComingSoon /> : null}
+        {capabilityTab === 'more' ? <MoreAgentsComingSoon kind="mcp" /> : null}
 
         {capabilityTab === 'clutch' ? (
           <>

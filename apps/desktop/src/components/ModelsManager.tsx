@@ -738,7 +738,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
           <MiMoModelsPanel />
         </div>
         <div className={capabilityTab === 'more' ? '' : 'hidden'}>
-          <MoreAgentsComingSoon />
+          <MoreAgentsComingSoon kind="models" />
         </div>
 
         {capabilityTab === 'clutch' ? (
