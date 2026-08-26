@@ -317,7 +317,7 @@
 | FM-10 | 画布 tool 选择（B-04） | ✅ |
 | FM-11 | 并行 worktree（B-08） | ✅ |
 | FM-12 | 记忆检索（B-10） | ✅ |
-| FM-13 | 事件 Channel（B-42） | ❌ |
+| FM-13 | 事件 Channel（B-42） | ✅ |
 | FM-14 | notify_user（B-46） | ❌ |
 | FM-15 | 新信息门禁（B-43） | ❌ |
 | FM-16 | Design 视觉审查（B-49） | ❌ |

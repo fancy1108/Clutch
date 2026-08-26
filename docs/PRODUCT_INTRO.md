@@ -107,6 +107,7 @@ graph TD
 * **Foreground → background（D34）**：长命令前台执行时，输入栏上方出现 **Move to background**；一键转入 D11 后台列表后可继续聊天（对标 Grok Ctrl+B）。
 * **Worktree 隔离试验（D32 / FM-11）**：Chat 输入框 **+** 菜单 → **Enable worktree** — Agent 在 `.clutch/worktrees/<id>` 改代码；启用后上方出现紧凑条，可 **Merge** / **Discard**，并可 **Add parallel worktree** 再建一棵子树（各路径可见、各自合并或丢弃）。主工作区保持干净。
 * **定时/循环任务（Cap-D25 · 扩展 D25 scheduler）**：Chat 输入框 **+** 菜单打开 **Scheduled tasks** 面板，创建间隔任务（默认关，启用需确认）；sidecar asyncio 持久化表；到点通知或可选跑一轮 Agent。
+* **Event channel（FM-13 / B-42）**：Settings → General 可填 Webhook / 邮箱；**Test event** 后 Chat 出现横幅，点 **Continue** 继续。
 * **代码诊断 MVP（D24）**：内置 `diagnostics` 工具（`tsc` / `ruff` / `py_compile`）；结果注入下一轮并在 Chat **Code diagnostics** 条展示。
 * **无 UI / CI Agent（D36 · ≠ Design D36）**：`POST /api/agent/run` 与 `python -m src.headless_cli` 与 Chat 同核。
 * **外挂 Grok CLI（D14）**：引擎列表可选 `grok-cli`；PATH 有 `grok` 时路由 `grok -p`，缺失时清晰不可用。

@@ -57,6 +57,7 @@ import { VerificationReportCardView } from './VerificationReportCardView';
 import { DiffSummaryCardView } from './DiffSummaryCardView';
 import { resolveBrandLogoSrc } from '../services/brandLogos';
 import { clutchMarkUrl } from '../assets/brand';
+import { SIDECAR_BASE as BASE, sidecarFetch } from '../services/sidecarUrl';
 import { AgentChatAvatar } from './AgentChatAvatar';
 import { ChatBubbleVideo } from './ChatBubbleVideo';
 import {
@@ -592,6 +593,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   const [hillInstructions, setHillInstructions] = useState('');
   const [planStepComments, setPlanStepComments] = useState<string[]>([]);
   const [pendingMessages, setPendingMessages] = useState<PendingChatMessage[]>([]);
+  const [eventBanner, setEventBanner] = useState<string | null>(null);
   const [bgJobToast, setBgJobToast] = useState<string | null>(null);
   const prevBgJobsRef = useRef<BackgroundJob[]>([]);
   /**
@@ -608,6 +610,23 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
     messageId: string;
     messageIndex: number;
   } | null>(null);
+
+  useEffect(() => {
+    const apply = (title?: string) => setEventBanner(title || t('Event arrived'));
+    void sidecarFetch(`${BASE}/api/event-channel/pending`)
+      .then(async (res) => {
+        if (!res.ok) return;
+        const body = (await res.json()) as { event?: { title?: string } | null };
+        if (body.event) apply(body.event.title);
+      })
+      .catch(() => {});
+    const handler = (event: Event) => {
+      const title = (event as CustomEvent<{ title?: string }>).detail?.title;
+      apply(title);
+    };
+    window.addEventListener('clutch-event-channel', handler);
+    return () => window.removeEventListener('clutch-event-channel', handler);
+  }, [t]);
 
   useEffect(() => {
     const handleClose = () => setMessageContextMenu(null);
@@ -1344,6 +1363,26 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
             {selectedWorkflowId
               ? `${t('Matched SOP:')} ${selectedWorkflowName || selectedWorkflowId}`
               : t('Using current Agent')}
+          </div>
+        ) : null}
+        {eventBanner ? (
+          <div
+            data-testid="event-channel-banner"
+            className="mx-auto mb-2 flex max-w-xl items-center justify-between gap-2 rounded-xl border border-primary/30 bg-surface-container-low px-3 py-1.5 text-[11px]"
+          >
+            <span>{eventBanner}</span>
+            <button
+              type="button"
+              data-testid="event-channel-continue"
+              className={`${BTN_PRIMARY} px-2 py-0.5 text-[11px] font-semibold`}
+              onClick={() => {
+                setEventBanner(null);
+                void sidecarFetch(`${BASE}/api/event-channel/ack`, { method: 'POST' }).catch(() => {});
+                onContinueRun?.();
+              }}
+            >
+              {t('Continue')}
+            </button>
           </div>
         ) : null}
         {workspaceViewMode === 'chat' && showEmptyState && (
