@@ -51,7 +51,6 @@ type EditorViewMode = 'canvas' | 'json';
 interface WorkflowOrchestrationProps {
   onClose: () => void;
   isModalStyle?: boolean;
-  onUseInChat?: (workflowId: string, workflowName: string) => void;
   onSelectWorkflow?: (workflowId: string, workflowName: string) => void;
   onClearSelectedWorkflow?: () => void;
   selectedWorkflowId?: string | null;
@@ -741,7 +740,7 @@ const edgeColors: Record<string, string> = {
 
       <div className="flex flex-1 min-h-0">
         {/* Left sidebar with workflow list */}
-        <div className="w-[280px] border-r border-neutral-100 bg-neutral-50/30 flex flex-col overflow-hidden">
+        <div className="w-[300px] border-r border-neutral-100 bg-neutral-50/30 flex flex-col overflow-hidden">
           <div className="flex border-b border-neutral-200/60 shrink-0">
             <div className="flex-1 py-2 text-[10px] font-bold uppercase tracking-widest text-center text-neutral-800 bg-white border-b-2 border-neutral-800">
               <LegacyIcon name="account_tree" className="text-[12px] inline mr-1" />
@@ -778,24 +777,19 @@ const edgeColors: Record<string, string> = {
               key={`${item.source}-${item.id}`}
               data-testid={`workflow-item-${item.id}`}
               onClick={() => handleListItemClick(item)}
-              className={`group p-3 border rounded-xl flex items-center justify-between cursor-pointer transition-all bg-white relative ${
+              className={`group flex items-center gap-2 p-2.5 border rounded-xl cursor-pointer transition-all bg-white ${
                 isEditorActive || isChatSelected
                   ? 'border-neutral-400 bg-neutral-50 shadow-sm ring-1 ring-neutral-200'
                   : 'border-neutral-200/50 hover:border-neutral-300 shadow-xs'
               }`}
             >
-              <div className="flex items-center gap-3 overflow-hidden min-w-0 flex-1">
-                <div className="w-8 h-8 rounded-lg bg-neutral-100/70 flex flex-shrink-0 items-center justify-center">
-                  <LegacyIcon name={item.icon || "fork_right"} className="text-neutral-600 text-[18px]" />
-                </div>
-                <div className="overflow-hidden text-left min-w-0">
-                  <h4 className="text-[11px] font-bold text-neutral-800 truncate">{item.name}</h4>
-                  <p className="text-[9px] text-neutral-400 font-mono mt-0.5 truncate">
-                    {t('User Workflow')}
-                  </p>
-                </div>
+              <div className="w-8 h-8 rounded-lg bg-neutral-100/70 flex flex-shrink-0 items-center justify-center">
+                <LegacyIcon name={item.icon || "fork_right"} className="text-neutral-600 text-[18px]" />
               </div>
-              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 ml-2">
+              <h4 className="flex-1 min-w-0 text-left text-[11px] font-bold text-neutral-800 leading-snug break-words">
+                {item.name}
+              </h4>
+              <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button
                   type="button"
                   onClick={(e) => {
@@ -849,6 +843,7 @@ const edgeColors: Record<string, string> = {
                   <div className="flex rounded-xl border border-neutral-200/60 overflow-hidden text-xs font-bold whitespace-nowrap shadow-2xs">
                     <button
                       type="button"
+                      data-testid="workflow-canvas-tab"
                       disabled={!canvasCompatible}
                       onClick={() => { syncJsonFromCanvas(); setViewMode('canvas'); }}
                       className={`px-3 py-1.5 text-[11px] transition-colors ${
@@ -875,6 +870,7 @@ const edgeColors: Record<string, string> = {
                     <div className="relative">
                       <button
                         type="button"
+                        data-testid="workflow-add-node"
                         onClick={() => setShowNodeTypePicker(!showNodeTypePicker)}
                         className={MODAL_BTN_SECONDARY}
                       >
@@ -889,6 +885,7 @@ const edgeColors: Record<string, string> = {
                               <button
                                 key={type}
                                 type="button"
+                                data-testid={`workflow-add-node-${type}`}
                                 onClick={() => createNodeOfType(type)}
                                 className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[11px] font-medium text-neutral-700 hover:bg-neutral-100 transition-colors text-left"
                               >

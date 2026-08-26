@@ -36,8 +36,8 @@ export CLUTCH_RUNTIME_MODE=hybrid && pnpm tauri:dev
 
 | 本轮 | ID | 一句话 | 入口（找不到就看这列） |
 |:----:|----|--------|------------------------|
-| ☐ | [FM-01](#fm-01-general) | 默认工作区 / Stop 确认 / 版本号 | Settings → General |
-| ☐ | [FM-02](#fm-02-本机信任) | 未信任 MCP / 工作流先确认 | Settings → General 开关 + Hub / Use in Chat |
+| ☑ | [FM-01](#fm-01-general) | 默认工作区 / Stop 确认 / 版本号 | Settings → General |
+| ☑ | [FM-02](#fm-02-本机信任) | 未信任 MCP 先确认 | Settings → General 开关 + Hub Enable |
 | ☐ | [FM-03](#fm-03-命令策略) | allow / ask / deny 规则 | Settings → Tools |
 | ☐ | [FM-04](#fm-04--fm-05-cli-只读扫描) | Codex 扫描 | Settings → Models → **More → Codex** |
 | ☐ | [FM-05](#fm-04--fm-05-cli-只读扫描) | 另外六个 CLI 扫描 | More → Aider / CodeBuddy / … |
@@ -83,21 +83,19 @@ export CLUTCH_RUNTIME_MODE=hybrid && pnpm tauri:dev
 
 ### FM-02 本机信任
 
-**是什么：** 第一次启用陌生 MCP、或把未信任工作流丢进 Chat 前，要确认一次；本机记住 id。
+**是什么：** 第一次启用陌生 MCP 要确认一次，本机记住 id。自己创建的 SOP 在 Workflows 列表点选即绑定，不弹信任框（D58）。
 
 **入口：**
 
-- 开关：Settings → General → **Ask before untrusted MCP / workflow**（`untrusted-confirm-toggle`）
+- 开关：Settings → General → **Confirm untrusted MCP**（`untrusted-confirm-toggle`）
 - MCP：Settings → **MCP** Hub，Enable 某个未信任 server
-- 工作流：Workflows 里 **Use in Chat** 一个从未信任过的 SOP
 
 | # | 操作 | 期望 |
 |---|------|------|
 | 1 | 打开上述开关 | 能保存，刷新 Settings 仍是 On |
 | 2 | Hub 里 Enable 新 MCP | 先确认卡，确认后才启用 |
-| 3 | 未信任工作流 Use in Chat | 先确认，不是直接跑 |
 
-**不过：** 直接启用、没有确认卡。本机已信任过的 id 可以不再问（这是过，不是不过）。
+**不过：** 直接启用 MCP、没有确认卡。本机已信任过的 MCP id 可以不再问（这是过，不是不过）。工作流绑 Chat **不应**再弹信任框。
 
 ---
 

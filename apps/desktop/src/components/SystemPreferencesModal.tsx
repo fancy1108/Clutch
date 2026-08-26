@@ -44,7 +44,6 @@ interface SystemPreferencesModalProps {
   setThemeId: (themeId: string) => void;
   workspaceLabel?: string | null;
   sessionActive?: boolean;
-  onUseWorkflowInChat?: (workflowId: string, workflowName: string) => void;
   onSelectWorkflow?: (workflowId: string, workflowName: string) => void;
   onClearSelectedWorkflow?: () => void;
   selectedWorkflowId?: string | null;
@@ -75,7 +74,6 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
   setThemeId,
   workspaceLabel,
   sessionActive = false,
-  onUseWorkflowInChat,
   onSelectWorkflow,
   onClearSelectedWorkflow,
   selectedWorkflowId = null,
@@ -247,7 +245,7 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
         <div className="flex-1 flex overflow-hidden min-h-0 bg-surface-dim">
           
           {/* Modal Left Sidebar Selector */}
-          <div className="w-[240px] bg-surface-container border-r border-outline flex flex-col p-6 justify-between flex-shrink-0">
+          <div className="w-[240px] bg-surface-container border-r border-outline-variant/30 flex flex-col p-6 justify-between flex-shrink-0">
             <div className="space-y-1.5 text-left">
               <p className="font-bold text-[10px] uppercase tracking-widest text-on-surface-variant mb-3.5 px-3">
                 {t("System Preferences")}
@@ -362,7 +360,6 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
               <WorkflowOrchestration
                 isModalStyle={true}
                 onClose={() => setView('chat')}
-                onUseInChat={onUseWorkflowInChat}
                 onSelectWorkflow={onSelectWorkflow}
                 onClearSelectedWorkflow={onClearSelectedWorkflow}
                 selectedWorkflowId={selectedWorkflowId}
@@ -538,10 +535,10 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
 
                   <div className="bg-surface-container/30 p-6 rounded-2xl border border-outline/30 space-y-4">
                     <h3 className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-                      {t('Confirm untrusted MCP and workflows')}
+                      {t('Confirm untrusted MCP')}
                     </h3>
                     <p className="text-[11px] text-on-surface-variant/80 max-w-xl">
-                      {t('When on, enabling an MCP server or using a workflow in Chat asks once, then remembers trust.')}
+                      {t('When on, enabling an MCP server asks once, then remembers trust.')}
                     </p>
                     <button
                       type="button"

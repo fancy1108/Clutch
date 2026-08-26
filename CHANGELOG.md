@@ -16,6 +16,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ### Changed
 
+- **Workflow list (D58):** Settings → Workflows SOP shows the full SOP name (wrap, not ellipsis). Clicking a row selects it for Chat and opens the canvas. Hover only shows edit/delete. Chat can still pick a SOP from the footer menu.
 - **Composer + menu icons:** Session overview / Notify user no longer render as empty circles; each + item uses a lucide glyph that matches its action (history, skills, undo, bell, inbox, bug, calendar, worktree).
 
 ### Fixed
@@ -29,7 +30,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 - **HTTP MCP (D57):** Settings → MCP registers any Streamable HTTP URL (API key in Env). HTTPS 401 without a key falls back to `mcp-remote` browser OAuth — same path for Figma and other remotes, no vendor button. See [`docs/mcp-servers/figma.md`](docs/mcp-servers/figma.md).
 - **FM 点验剧本：** [`docs/FRONTEND_MODULES_ACCEPTANCE.md`](docs/FRONTEND_MODULES_ACCEPTANCE.md) — PM 按模块点入口、步骤与期望（状态仍只记 ROADMAP）。
 - **General Settings (FM-01):** Default workspace picker (restored on launch), persistable confirm-before-stop for Chat Stop, and the app version on the General page.
-- **Local trust (FM-02):** Settings → General can require a one-time confirm before enabling an MCP server or using a workflow in Chat; trusted ids persist on this machine.
+- **Local trust (FM-02):** Settings → General can require a one-time confirm before enabling an MCP server; trusted MCP ids persist on this machine. User-authored workflows skip this (D58).
 - **Command policy (FM-03):** Settings → Tools lists allow / ask / deny shell patterns (dangerous commands still force-ask). Strict sandbox remains the OS-level gate.
 - **Codex scan (FM-04):** Settings Models/Skills/MCP → More → Codex scans local config (or an empty state).
 - **More CLI scans (FM-05):** Aider, CodeBuddy, Antigravity, Rivet, Ollama, and ZCode use the same read-only scan path.

@@ -636,6 +636,13 @@
 - **影响**：`mcp_client.py` · `mcp_storage.py` · `McpServerHub.tsx` · `docs/mcp-servers/figma.md`。
 - **决策状态**：`已落地`
 
+### D58 · 自建工作流不走本机信任确认（2026-08-26）
+
+- **背景**：FM-02 把 OSR-21「工作流签名 / MCP 白名单」收成同一套「未信任 MCP / 工作流确认」。MCP 是外来进程（可跑工具），第一次 Enable 需要确认；SOP 是用户在本机画布创建的，再弹 `Trust workflow` 是多余摩擦。OSR-21 的工作流**签名**针对社区/导入 JSON，当前没有市场导入面。
+- **方案**：Settings → Workflows SOP 点选一行即绑定对话并打开画布，不调用 `confirmLocalTrust('workflow')`。General 开关与 Hub Enable 仍只对 MCP。工作流签名仍属 OSR-21 T3，有第三方 SOP 导入时再做。
+- **影响**：`App.tsx` · General 文案 · `PRODUCT_INTRO.md` · FM-02 点验剧本。
+- **决策状态**：`已落地`
+
 ### D45 · D7 项目规则 + Skills 对齐 Grok Build（2026-07-24）
 
 - **背景**：能力期 D7；对照本地 `grok-build` 与 docs.x.ai project-rules。User 级规则（`~/.grok/AGENTS.md` 等）本期不做。

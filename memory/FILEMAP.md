@@ -139,7 +139,7 @@
 | Skills Registry API（P2-01） | `services/skillsApi.ts` |
 | Theme 偏好 API（P2-03） | `services/themeApi.ts`（含 language） |
 | General 默认工作区 / 停止确认（FM-01） | `services/permissionApi.ts` · `/api/preferences/default-workspace` · `high-risk-confirm` |
-| 本机信任 MCP/工作流（FM-02） | `permissionApi.ts` `local-trust` · General `untrusted-confirm-toggle` · Hub / Use in Chat |
+| 本机信任 MCP（FM-02） | `permissionApi.ts` `local-trust` · General `untrusted-confirm-toggle` · Hub Enable；自建 SOP 不确认（D58） |
 | Exec policy UI（FM-03） | `ExecPolicyPanel.tsx` · Settings Tools · `/api/preferences/permission-rules` |
 | Codex 只读扫描（FM-04） | `MoreAgentsComingSoon.tsx` · `cli_agent_config.py` · More → Codex |
 | Orchestra 队列/确认卡（FM-06） | `TerminalLaneGrid.tsx` `orchestra-queue` · `DispatchConfirmCard` · drafts |

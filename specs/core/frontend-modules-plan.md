@@ -17,7 +17,7 @@
 | ID | 主题 | 用户点验 | Verification |
 |----|------|----------|--------------|
 | **FM-01** | General 收尾（P2-06） | 默认工作区重启仍激活；高危确认 On 时 Stop 先确认；General 显示版本 | pytest 偏好 API + E2E General |
-| **FM-02** | MCP / 工作流本机信任（OSR-21） | Hub 白名单；未信任工作流运行前确认卡 | pytest + 手动跑 SOP |
+| **FM-02** | MCP 本机信任（OSR-21 白名单层） | Hub Enable 未信任 server 先确认；自建 SOP 点选即绑定（D58） | pytest + Hub 点验 |
 | **FM-03** | Exec policy UI（B-18/21/22；OSR-18 界面） | Settings allow/ask/deny；危险命令 `human_required` | pytest + Chat 审批 |
 
 ## Wave 2 · CLI 只读扫描
@@ -77,7 +77,7 @@
 | 模块 | 主要路径 |
 |------|----------|
 | FM-01 | `SystemPreferencesModal.tsx` · `preferences_storage.py` · `routes/settings.py` · `App.tsx` Stop |
-| FM-02 | `McpServerHub.tsx` · 工作流信任偏好 |
+| FM-02 | `McpServerHub.tsx` · General `untrusted-confirm-toggle` |
 | FM-04+ | `agentCapabilityTiers.ts` · `cli_agent_config.py` |
 | FM-06–08 | `terminal_orchestra.py` · `TerminalLaneGrid.tsx` · `OrchestratorBar.tsx` · `ChatFeed.tsx` |
 | FM-09 | `ChatFeed.tsx` 空态 · sidecar 匹配 API |
