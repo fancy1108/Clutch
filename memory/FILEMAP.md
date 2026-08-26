@@ -173,6 +173,7 @@
 | 事件 Channel（FM-13 / B-42） | Settings General Event channel · `GET/POST /api/preferences/event-channel` · `/api/event-channel/test` · Chat `event-channel-banner` |
 | notify_user（FM-14 / B-46） | builtin `notify_user` · `QuestionCardView` `notify-user-card` · Chat `+` 预览 |
 | 新信息门禁（FM-15 / B-43） | `new-info-card` · 并行 `delegate_subtask` 前确认 |
+| Design 视觉审查（FM-16 / B-49） | `DesignHandoffTray` `design-review-card` / `design-review-reject` |
 | 工具 Hooks（D17） | `tool_hooks.py` · `mcp_react` Pre/Post 拦截 |
 | 能力包导入（D35） | `capability_pack.py` · Skills 页 Import/Uninstall |
 | Chat 用量（D22 / D9 / Q-USAGE-1） | `RightPanel` Overview `overview-run-usage` · `sessionUsage.ts` · `chat_messages._token_patch_turn` / `stash_turn_usage` · `http_complete` 透传 `usage` · `mcp_react` 累计 |

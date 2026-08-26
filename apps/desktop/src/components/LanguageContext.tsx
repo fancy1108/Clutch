@@ -199,6 +199,7 @@ const zhTranslations: Record<string, string> = {
   "Hold": "暂缓",
   "Proceeded": "已继续",
   "Held": "已暂缓",
+  "No render yet": "尚无渲染",
   "Send": "发送",
   "Comment on this step…": "对此步骤批注…",
   "Small": "小",
