@@ -19,14 +19,25 @@ async function openSettings(page: {
     await page.click('[data-testid="footer-model-trigger"]');
   }
   // DOM .click() bypasses overlay hit-testing that sometimes blocks tauri-playwright click.
-  await page.evaluate(`
-    (function() {
-      const el = document.querySelector('[data-testid="nav-settings"]');
-      if (!el) throw new Error('nav-settings not in DOM');
-      el.click();
-    })()
-  `);
-  await page.waitForSelector('[data-testid="settings-nav-general"]', 15_000);
+  // Retry: New Chat's async discard can still setView('chat') and close the modal.
+  const deadline = Date.now() + 15_000;
+  while (Date.now() < deadline) {
+    await page.evaluate(`
+      (function() {
+        const el = document.querySelector('[data-testid="nav-settings"]');
+        if (!el) throw new Error('nav-settings not in DOM');
+        el.click();
+      })()
+    `);
+    const remaining = Math.max(250, deadline - Date.now());
+    try {
+      await page.waitForSelector('[data-testid="settings-nav-general"]', Math.min(2_000, remaining));
+      return;
+    } catch {
+      // Modal closed by a racing setView('chat'); click Settings again.
+    }
+  }
+  throw new Error('timeout waiting for [data-testid="settings-nav-general"]');
 }
 
 test('desktop: full UI coverage with sandbox isolation', async ({ tauriPage: page }) => {
@@ -140,6 +151,7 @@ test('desktop: full UI coverage with sandbox isolation', async ({ tauriPage: pag
 
   await test.step('G-03 language switch', async () => {
     await page.click('[data-testid="nav-new-chat"]');
+    await delay(1_000);
     await openSettings(page);
     // nav-settings opens General; use DOM click — modal overlays confuse tauri-playwright hit tests.
     await page.evaluate(`document.querySelector('[data-testid="lang-zh"]').click()`);

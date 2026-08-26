@@ -1335,6 +1335,10 @@ function MainLayout() {
       return;
     }
     const startNewChat = async () => {
+      // Switch to chat immediately. Waiting until after discardEmptySessionIfNeeded
+      // races desktop E2E (and users) who open Settings before the API call returns —
+      // the late setView('chat') would close the preferences modal.
+      setView('chat');
       await discardEmptySessionIfNeeded(sessionRunId);
       scheduleBackgroundHydrateForRun(sessionRunId);
       const runId = createSessionRunId();
@@ -1348,7 +1352,6 @@ function MainLayout() {
         selectDefaultAgent();
       }
       setAppMode('coding');
-      setView('chat');
       setRightTab('overview');
       void createSession({
         run_id: runId,
