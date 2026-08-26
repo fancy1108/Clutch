@@ -1336,6 +1336,16 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
             </div>
           </div>
         ) : null}
+        {workspaceViewMode === 'chat' ? (
+          <div
+            data-testid="dispatch-banner"
+            className="mx-auto mb-2 max-w-xl rounded-xl border border-outline-variant/40 bg-surface-container-low px-3 py-1.5 text-[11px] text-on-surface-variant"
+          >
+            {selectedWorkflowId
+              ? `${t('Matched SOP:')} ${selectedWorkflowName || selectedWorkflowId}`
+              : t('Using current Agent')}
+          </div>
+        ) : null}
         {workspaceViewMode === 'chat' && showEmptyState && (
           <div className="flex flex-col items-center justify-center text-center py-16 px-6 space-y-5">
             <div className="w-14 h-14 rounded-2xl bg-surface-container-low border border-outline-variant/40 flex items-center justify-center">

@@ -85,6 +85,7 @@ test('desktop: full UI coverage with sandbox isolation', async ({ tauriPage: pag
     await page.click('[data-testid="nav-workflows"]');
     await expect(page.locator(`[data-testid="workflow-item-${workflowId}"]`)).toBeVisible();
     await page.click('[data-testid="nav-new-chat"]');
+    await expect(page.locator('[data-testid="dispatch-banner"]')).toBeVisible();
   });
 
   await test.step('W-01/W-10 run user workflow in chat', async () => {
