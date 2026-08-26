@@ -367,8 +367,11 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                       alt={step.agent || step.label}
                       className={compact ? 'w-5 h-5' : 'w-6 h-6'}
                     />
-                    <p className="text-[10px] text-on-surface-variant/80 uppercase tracking-wide truncate">
-                      {step.agentType || '—'}
+                    <p
+                      className="text-[10px] text-on-surface-variant/80 uppercase tracking-wide truncate"
+                      data-testid={`step-engine-${step.id}`}
+                    >
+                      {step.toolId || step.agentType || '—'}
                     </p>
                   </div>
                 </div>

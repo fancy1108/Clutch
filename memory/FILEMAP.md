@@ -144,6 +144,7 @@
 | 派发保存为工作流（FM-07） | `OverviewDispatchLog.tsx` `save-dispatch-as-workflow` |
 | 对话模式 handoff（FM-08） | `ChatInputBar.tsx` drafts · `orchestrator-fill-bar` · 切 Terminal 预填近期对话 |
 | 主控分派横幅（FM-09） | `ChatFeed.tsx` `dispatch-banner` |
+| 画布 node engine（FM-10） | `WorkflowOrchestration.tsx` `node-tool-select` · Overview `step-engine-*` |
 | API 抽象（mock 待 M2 替换） | `services/api.ts` |
 | 侧栏（工作区 / 历史，M2-07/09） | `sidebar.tsx` |
 | 底部状态栏（Branch / Model / Agent） | `App.tsx` footer |

@@ -1063,6 +1063,20 @@ const edgeColors: Record<string, string> = {
                     </option>
                   ))}
                 </select>
+                <label className="font-bold text-neutral-700">{t('Node engine')}</label>
+                <select
+                  data-testid="node-tool-select"
+                  value={nodeForm.aiTool || ''}
+                  onChange={(e) => setNodeForm({ ...nodeForm, aiTool: e.target.value })}
+                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-xs bg-white focus:outline-none focus:border-neutral-400 transition-all font-medium"
+                >
+                  <option value="">{t('Follow assigned agent')}</option>
+                  {['llm', 'mcp', 'claude-cli', 'opencode-cli', 'mimo-cli', 'codex-cli', 'aider-cli'].map((engine) => (
+                    <option key={engine} value={engine}>
+                      {engine}
+                    </option>
+                  ))}
+                </select>
                 {agents.length === 0 && (
                   <p className="text-[10px] text-neutral-400">
                     {t('No agents configured. Create agents in the Agents panel first.')}
