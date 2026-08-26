@@ -69,6 +69,8 @@ test('desktop: full UI coverage with sandbox isolation', async ({ tauriPage: pag
       await page.click(`[data-testid="${id}"]`);
       await delay(300);
     }
+    await page.click('[data-testid="settings-nav-tools"]');
+    await expect(page.locator('[data-testid="exec-policy-panel"]')).toBeVisible();
     await page.click('[data-testid="settings-close"]');
   });
 

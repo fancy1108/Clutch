@@ -302,7 +302,7 @@
 |----|------|------|
 | FM-01 | General：默认工作区 / 高危确认 / 版本 | ✅ |
 | FM-02 | MCP / 工作流本机信任（OSR-21） | ✅ |
-| FM-03 | Exec policy UI（B-21；OSR-18 界面） | ❌ |
+| FM-03 | Exec policy UI（B-21；OSR-18 界面） | ✅ |
 | FM-04 | Codex 只读扫描 | ❌ |
 | FM-05a | Aider 只读扫描 | ❌ |
 | FM-05b | CodeBuddy 只读扫描 | ❌ |

@@ -12,7 +12,7 @@ import { SettingsPageHeader, SettingsPageShell } from './ui/SettingsPageHeader';
 import { AiToolIcon } from './AiToolIcon';
 import { ALERT_WARNING } from './ui/surfaceStyles';
 import { LegacyIcon } from './ui/LegacyIcon';
-import { useLanguage } from './LanguageContext';
+import { ExecPolicyPanel } from './ExecPolicyPanel';
 
 interface AiToolsManagerProps {
   isModalStyle?: boolean;
@@ -373,6 +373,9 @@ export default function AiToolsManager({ isModalStyle }: AiToolsManagerProps) {
             </section>
           </>
         )}
+        <div className="pt-4 border-t border-outline/30">
+          <ExecPolicyPanel />
+        </div>
     </SettingsPageShell>
   );
 }
