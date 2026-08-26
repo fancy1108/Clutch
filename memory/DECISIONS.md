@@ -179,8 +179,9 @@
 - **背景**：P2-01…P2-05 已交付；用户明确 **P2-06 核心（工作区默认、高危确认开关等）先不做**，优先 push / CI / 验收 DMG。但在后续迭代中，为了支持自定义用户头像偏好设置，已将部分设置项在 General 页实质落地。
 - **方案**：`SystemPreferencesModal` General 页原「功能开发中」占位**替换为自定义用户头像配置**；工作区默认等其他高级设置项继续延后。
 - **影响**：`ROADMAP.md` General Settings 状态更新为“部分落地”；`tasks.md` P2-06 部分勾选。
-- **落地前提**：已完成用户头像定制偏好配置，其余项待进一步立项。
-- **决策状态**：`部分落地`
+- **落地前提**：已完成用户头像定制偏好配置。
+- **修订（D56 · 2026-08-26）**：用户要求按前端可点验模块做完剩余项（默认工作区、高危确认、版本行）→ **FM-01**。不再延后。
+- **决策状态**：`可执行`（剩余项 = FM-01）
 
 ### D15 · E2E 移出 Pre-commit 门禁（2026-06-24）
 
@@ -615,6 +616,18 @@
 - **方案**：明确**不做** Windows 专用修复与实体机验收，直至有 Windows 机器或 Windows 维护者接手。macOS 开发与 CI 绿门禁不变。Windows 安装包仍随历史 Release 提供，不承诺本机复现。
 - **影响**：`BACKLOG.md` #23；Windows pytest flake 不排入开发队列。
 - **决策状态**：`已记录`
+
+### D56 · 前端可点验模块轨道（2026-08-26）
+
+- **背景**：主线 D0–D53 / Design D36 / Hybrid 已勾选；剩余为 P2-06 尾巴、CLI Coming soon、D34-ε、BACKLOG 候选与 OSR T3。用户要求全部排入待办，且每条须能在桌面 UI 点验；公证/审计/文档排在全部前端模块之后。
+- **方案**：
+  1. 任务定义 [`specs/core/frontend-modules-plan.md`](../specs/core/frontend-modules-plan.md)（FM-01…FM-22）；验收只勾 [`memory/ROADMAP.md`](./ROADMAP.md) §Frontend modules。
+  2. 顺序：Settings/Trust → CLI 只读扫描 → Orchestra 收口 → 分派/画布 → 协作记忆事件 Design → OSR-29/11/22。
+  3. 升格：B-01、B-04（余量）、B-05、B-06、B-08、B-10、B-18–B-22、B-42、B-43、B-46、B-47、B-49 → 对应 FM-xx。OSR-18 界面层并入 FM-03；OSR-21 并入 FM-02。
+  4. **不做：** 价表、Windows 实体机（D55）、B-15/B-16。D32 单 worktree 开关不重做。
+  5. 一次一个模块；单次 ≤3 新文件、≤200 行。
+- **影响**：ROADMAP 新节；BACKLOG 上述 ID 移 Completed 索引；D14 剩余项改 FM-01。
+- **决策状态**：`可执行`
 
 ### D45 · D7 项目规则 + Skills 对齐 Grok Build（2026-07-24）
 

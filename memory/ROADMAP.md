@@ -24,7 +24,7 @@
 | Theme 持久化 | P2 | P2 | ✅ | P2-03 |
 | i18n 双语 | P2 | P2 | ✅ | P2-04 |
 | 侧栏 REPOSITORIES CRUD | P2 | P2 | ✅ | P2-05 |
-| General Settings | P2 | P2 | ✅ 部分落地 | P2-06（D14；支持用户头像定制） |
+| General Settings | P2 | P2 | ⚠️ 部分落地 | P2-06；余量 **FM-01**（D56） |
 | 内置模板 | P1 | M4 | ✅ | M4-01 |
 | 运行历史 | P0 | M2 | ✅ | M2-07（D3）+ D11 对话持久化 |
 | 文件浏览（Files 面板） | P0 | M2 | ✅ | M2-11 |
@@ -293,6 +293,43 @@
 
 ---
 
+## Frontend modules（FM-xx · D56 · 默认 FAIL）
+
+> **Task 定义：** [`specs/core/frontend-modules-plan.md`](../specs/core/frontend-modules-plan.md)  
+> **决策：** D56。未点验不得标 ✅。一次一个模块。
+
+| ID | 主题 | 状态 |
+|----|------|------|
+| FM-01 | General：默认工作区 / 高危确认 / 版本 | ❌ |
+| FM-02 | MCP / 工作流本机信任（OSR-21） | ❌ |
+| FM-03 | Exec policy UI（B-21；OSR-18 界面） | ❌ |
+| FM-04 | Codex 只读扫描 | ❌ |
+| FM-05a | Aider 只读扫描 | ❌ |
+| FM-05b | CodeBuddy 只读扫描 | ❌ |
+| FM-05c | Antigravity 只读扫描 | ❌ |
+| FM-05d | Rivet 只读扫描 | ❌ |
+| FM-05e | Ollama 只读扫描 | ❌ |
+| FM-05f | ZCode 只读扫描 | ❌ |
+| FM-06 | Orchestra 队列与草稿 | ❌ |
+| FM-07 | 派发保存为工作流 | ❌ |
+| FM-08 | 对话模式 handoff | ❌ |
+| FM-09 | 主控分派横幅（B-01） | ❌ |
+| FM-10 | 画布 tool 选择（B-04） | ❌ |
+| FM-11 | 并行 worktree（B-08） | ❌ |
+| FM-12 | 记忆检索（B-10） | ❌ |
+| FM-13 | 事件 Channel（B-42） | ❌ |
+| FM-14 | notify_user（B-46） | ❌ |
+| FM-15 | 新信息门禁（B-43） | ❌ |
+| FM-16 | Design 视觉审查（B-49） | ❌ |
+| FM-17 | 解释器错误卡（B-47） | ❌ |
+| FM-18 | 校验失败可读条（B-05） | ❌ |
+| FM-19 | Planner/Executor 分模型（B-06） | ❌ |
+| FM-20 | PERFORMANCE.md 测量（OSR-29） | ❌ |
+| FM-21 | Apple 签名公证（OSR-11） | ❌ |
+| FM-22 | 外部安全审计（OSR-22） | ❌ |
+
+---
+
 ## 开源 / DMG 分发（OSR-xx）
 
 > **Task 定义：** [`docs/OPEN_SOURCE_RELEASE.md`](../docs/OPEN_SOURCE_RELEASE.md) §7.2  
@@ -304,7 +341,7 @@
 | T0 护栏 | 持续 | 许可证、文档边界、semver | ⚠️ | OSR-01～04、23～25 ✅；OSR-05 🔄 |
 | **T1 可公开仓库** | **公开 repo 前** | 社区文件、Sidecar 鉴权、CLI 策略 | ✅ | OSR-00/06～10、26～28 已验收（D31） |
 | T2 可放心装 DMG | 陌生人分发前 | 未签名 DMG、Keychain、安装向导 | ⚠️ | OSR-12～17 ✅ |
-| T3 生态成熟 | 按需 | 沙箱、Windows、自动更新 | ⚠️ | OSR-19/20 ✅ v1.0.2；OSR-18/21/22/29 待做 |
+| T3 生态成熟 | 按需 | 沙箱、Windows、自动更新 | ⚠️ | OSR-19/20 ✅ v1.0.2；OSR-18→FM-03 · OSR-21→FM-02 · OSR-22/29→FM-20–22 |
 
 ### T1 检查清单（公开仓库前 · 默认 FAIL）
 

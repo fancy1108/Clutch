@@ -169,7 +169,7 @@
 | P2-03 | Theme 持久化 | `ThemeManager.tsx` | 重启后保留活跃主题 | 手动：切换主题 → 重启 → 主题仍在 |
 | P2-04 | i18n 双语验收 | `LanguageContext.tsx` · `Header.tsx` | Header en/zh 切换；监督台关键文案双语 | 手动 + E2E `lang-zh` / `lang-en` data-testid |
 | P2-05 | 侧栏 REPOSITORIES CRUD | `sidebar.tsx` | filter / new folder；分组持久化 | 手动：新建分组 → 重启 → 仍在 |
-| P2-06 | General Settings 实质功能 | `SystemPreferencesModal` | 替换「功能开发中」占位（已支持用户自定义头像） | 部分落地（D14）— 其余设置项继续延后 |
+| P2-06 | General Settings 实质功能 | `SystemPreferencesModal` | 头像等已落地；默认工作区 / 高危确认 / 版本行 → **FM-01** | 见 `frontend-modules-plan.md` |
 
 ---
 
@@ -194,6 +194,15 @@
 | HRT-10 | POC #6 #10 | BUSY 拒绝；两 run cwd 隔离 | pytest / poc |
 
 已交付代码块（非 HRT 序号）：**HRT-S1 ~ S4**、**HRT-S5-partial** — 见 hybrid-runtime-plan §1.1。
+
+---
+
+## Frontend modules（FM-xx · D56）
+
+> **权威 Task 表**：[`frontend-modules-plan.md`](./frontend-modules-plan.md)  
+> **决策**：D56 — [`memory/DECISIONS.md`](../../memory/DECISIONS.md)  
+> **ROADMAP 勾选**：[`memory/ROADMAP.md`](../../memory/ROADMAP.md) §Frontend modules  
+> **本文件不维护 ✅/❌。**
 
 ---
 
@@ -236,7 +245,7 @@
 
 | 维护什么 | 文件 |
 |----------|------|
-| 任务定义 | 本文件 + [`hybrid-runtime-plan.md`](./hybrid-runtime-plan.md)（D25 HRT） |
+| 任务定义 | 本文件 + [`hybrid-runtime-plan.md`](./hybrid-runtime-plan.md)（D25 HRT） + [`frontend-modules-plan.md`](./frontend-modules-plan.md)（D56 FM） |
 | Task 交付索引 | `memory/DELIVERABLES.md` |
 | 功能验收 ❌/✅ | `memory/ROADMAP.md` |
 | 文件路径 | `memory/FILEMAP.md` |

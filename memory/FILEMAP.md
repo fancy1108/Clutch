@@ -68,13 +68,14 @@
 | 开发任务清单（含 Verification） | `specs/core/tasks.md` |
 | **Chat Clutch Agent 能力表（D44）** | **`specs/core/clutch-agent-capability-plan.md`** · 决策 `memory/DECISIONS.md` D44 · ROADMAP §Chat Clutch Agent |
 | **D25 Hybrid Runtime Task（HRT）** | **`specs/core/hybrid-runtime-plan.md`** |
+| **前端可点验模块（FM-xx · D56）** | **`specs/core/frontend-modules-plan.md`** · ROADMAP §Frontend modules |
 | Flow 多 Agent 接力 Task（D23） | `specs/core/tasks.md` §M3-F · Flow 多 Agent 接力 |
 | Prototype → Task 全量映射 | `specs/core/tasks.md` §Prototype → Task 映射 |
 | 待建 pytest 与 task 映射 | `specs/core/tasks.md` §待建 pytest 文件 |
 | 里程碑级验收 T-01~04 | `specs/core/tasks.md` §测试与验收 |
 | 进度 / 待办 | `memory/PROGRESS.md`（近期）· 归档 `memory/archive/PROGRESS-*.md` |
 | **Git worktree · release slices** | v1.0.2 / v1.0.3 worktree 已清理；**v1.1.0** / **v1.1.1** / **v1.1.2** / **v1.2.0**（macOS-only 发版材料，2026-07-10；tag 待 `main`） |
-| 候选优化需求池（未立项） | `memory/BACKLOG.md` · Active（含 **B-33** ← PR #22；**B-42–B-43、B-46–B-47、B-49–B-50** ← 书 01–10 对照；**B-34–B-41、B-44、B-45、B-48** 已升格） |
+| 候选优化需求池（未立项） | `memory/BACKLOG.md` · Active；**B-01/04/05/06/08/10/18–22/42/43/46/47/49** 已升格 FM-xx（D56） |
 | GitHub Issue 待修复 Bug | `memory/BACKLOG.md` §GitHub Issues · 待修复 Bug |
 | **开源排期 OSR-xx 验收状态** | **`memory/ROADMAP.md` §开源分发** · Task 定义 `docs/OPEN_SOURCE_RELEASE.md` §7.2 |
 | 文档生命周期 / 权威真相 | `docs/document-governance.md` |
