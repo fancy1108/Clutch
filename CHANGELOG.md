@@ -22,6 +22,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 - **Chat handoff (FM-08):** Chat composer shows handoff drafts and accepts Send to Bar; switching to Terminal prefills recent chat.
 - **Dispatch banner (FM-09):** Empty Chat can send without choosing a workflow; a banner shows current Agent or the selected SOP.
 - **Canvas node engine (FM-10):** Workflow node editor can set CLI/MCP/llm; Overview shows that engine.
+- **Parallel worktrees (FM-11):** Chat can spawn extra worktrees with visible paths and merge/discard per tree.
 
 - **Workspace MEMORY.md (B-39):** Saying `记住：…` / `remember:` writes `.clutch/memory/MEMORY.md` (open in Files). Next Chat turns inject that overview. Settings Memory copy points at the file.
 - **Verification notes (B-40):** Passing/failing `submit_verification` appends `Worked:` / `Failed:` to that file.

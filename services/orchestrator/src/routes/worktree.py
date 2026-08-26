@@ -22,6 +22,26 @@ class WorktreeActionRequest(BaseModel):
     run_id: str = Field(default="")
 
 
+@router.get("/api/worktree")
+async def list_worktrees_route() -> dict[str, Any]:
+    from src.worktree_isolation import list_worktrees
+
+    root = require_workspace()
+    return {"worktrees": list_worktrees(root)}
+
+
+@router.post("/api/worktree/spawn")
+async def spawn_parallel_worktree() -> dict[str, Any]:
+    from src.worktree_isolation import create_worktree, describe_worktree, list_worktrees
+
+    root = require_workspace()
+    try:
+        info = create_worktree(root)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"worktree": describe_worktree(info, root), "worktrees": list_worktrees(root)}
+
+
 @router.post("/api/worktree/enable")
 async def enable_worktree(body: WorktreeEnableRequest) -> dict[str, Any]:
     from src.chat_runner import _commit_run_state, _get_or_create_run, _merge_patch

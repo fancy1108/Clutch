@@ -315,7 +315,7 @@
 | FM-08 | 对话模式 handoff | ✅ |
 | FM-09 | 主控分派横幅（B-01） | ✅ |
 | FM-10 | 画布 tool 选择（B-04） | ✅ |
-| FM-11 | 并行 worktree（B-08） | ❌ |
+| FM-11 | 并行 worktree（B-08） | ✅ |
 | FM-12 | 记忆检索（B-10） | ❌ |
 | FM-13 | 事件 Channel（B-42） | ❌ |
 | FM-14 | notify_user（B-46） | ❌ |

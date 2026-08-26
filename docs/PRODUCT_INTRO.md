@@ -105,7 +105,7 @@ graph TD
 * **Subtask delegation（D10 + D48）**：Clutch Agent 可调用 `delegate_subtask` 派发 **explore**（只读）或 **implement** 子任务；父气泡下嵌套 **Subtasks** 卡展示状态、摘要与可展开步骤；子失败在父卡可见。Explore 子循环默认更高工具步数预算；用户要求「先探再改」时至少出现 explore 卡，implement 可由父 Agent 完成（不强制第二张卡）。
 * **Background commands（D11）**：`run_terminal_cmd` 可设 `background=true` 立即返回 `job_id`；**运行中**任务显示在输入栏上方（查看输出 / Kill）；**结束后**任务卡进入对话时间线（随 Supervisor 完成提示），底栏不再占用。
 * **Foreground → background（D34）**：长命令前台执行时，输入栏上方出现 **Move to background**；一键转入 D11 后台列表后可继续聊天（对标 Grok Ctrl+B）。
-* **Worktree 隔离试验（D32）**：Chat 输入框 **+** 菜单 → **Enable worktree** — Agent 在 `.clutch/worktrees/<id>` 改代码；启用后上方出现紧凑条，可 **Merge** / **Discard**，主工作区保持干净。
+* **Worktree 隔离试验（D32 / FM-11）**：Chat 输入框 **+** 菜单 → **Enable worktree** — Agent 在 `.clutch/worktrees/<id>` 改代码；启用后上方出现紧凑条，可 **Merge** / **Discard**，并可 **Add parallel worktree** 再建一棵子树（各路径可见、各自合并或丢弃）。主工作区保持干净。
 * **定时/循环任务（Cap-D25 · 扩展 D25 scheduler）**：Chat 输入框 **+** 菜单打开 **Scheduled tasks** 面板，创建间隔任务（默认关，启用需确认）；sidecar asyncio 持久化表；到点通知或可选跑一轮 Agent。
 * **代码诊断 MVP（D24）**：内置 `diagnostics` 工具（`tsc` / `ruff` / `py_compile`）；结果注入下一轮并在 Chat **Code diagnostics** 条展示。
 * **无 UI / CI Agent（D36 · ≠ Design D36）**：`POST /api/agent/run` 与 `python -m src.headless_cli` 与 Chat 同核。

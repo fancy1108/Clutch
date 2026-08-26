@@ -118,6 +118,24 @@ def merge_worktree(workspace_root: Path, wt_id: str) -> str:
     return (result.stdout or "").strip() or tr("Merged worktree branch.", "已合并 worktree 分支。")
 
 
+def list_worktrees(workspace_root: Path) -> list[dict[str, Any]]:
+    parent = worktrees_parent(workspace_root)
+    if not parent.is_dir():
+        return []
+    rows: list[dict[str, Any]] = []
+    for child in sorted(parent.iterdir()):
+        if not child.is_dir():
+            continue
+        info = {
+            "id": child.name,
+            "path": str(child.resolve()),
+            "branch": f"clutch/{child.name}",
+            "enabled": True,
+        }
+        rows.append(describe_worktree(info, workspace_root))
+    return rows
+
+
 def worktree_has_dirty_changes(wt_path: Path) -> bool:
     if not wt_path.is_dir():
         return False
