@@ -5,7 +5,8 @@
 > **功能是否存在：** [`PRODUCT_INTRO.md`](./PRODUCT_INTRO.md)。Task 定义：[`specs/core/frontend-modules-plan.md`](../specs/core/frontend-modules-plan.md)。  
 > **范围：** D56 这批能在 UI 里看到的模块 + 相关 D32 worktree。不含价表、Windows 实体机。
 
-打印或分屏打开本文，左边 App、右边文档。每条有 **入口**（找不到就看这一行）和 **过/不过**。
+打印或分屏打开本文，左边 App、右边文档。每条有 **入口** 和 **过/不过**。  
+灰色代码框是 **整段复制**：Chat 输入框或 Settings 输入框，不要改字。权限 pill 在输入框左边，默认 **Agent**（不是 Ask）。
 
 ---
 
@@ -38,7 +39,7 @@ export CLUTCH_RUNTIME_MODE=hybrid && pnpm tauri:dev
 |:----:|----|--------|------------------------|
 | ☑ | [FM-01](#fm-01-general) | 默认工作区 / Stop 确认 / 版本号 | Settings → General |
 | ☑ | [FM-02](#fm-02-本机信任) | 未信任 MCP 先确认 | Settings → General 开关 + Hub Enable |
-| ☐ | [FM-03](#fm-03-命令策略) | allow / ask / deny 规则 | Settings → Tools |
+| ☑ | [FM-03](#fm-03-命令策略) | allow / ask / deny 规则 | Settings → Tools |
 | ☐ | [FM-04](#fm-04--fm-05-cli-只读扫描) | Codex 扫描 | Settings → Models → **More → Codex** |
 | ☐ | [FM-05](#fm-04--fm-05-cli-只读扫描) | 另外六个 CLI 扫描 | More → Aider / CodeBuddy / … |
 | ☐ | [FM-09](#fm-09-分派横幅) | 空 Chat 不必先选工作流 | New Chat 顶上灰条 |
@@ -101,15 +102,60 @@ export CLUTCH_RUNTIME_MODE=hybrid && pnpm tauri:dev
 
 ### FM-03 命令策略
 
-**是什么：** 自己加 shell 的 allow / ask / deny；危险命令（`rm -rf`、`sudo` 等）即使 Full 也会再问。
+**是什么：** 自己加 shell 的 allow / ask / deny。**Deny 不会弹审批卡**（工具直接失败）。**Ask** 和危险命令（`rm -rf` / `sudo`）即使权限是 **Full** 也会弹 Allow / Reject。
 
-**入口：** 齿轮 → **Tools**（不是 Models）。面板 `exec-policy-panel`。
+**入口：** 齿轮 → **AI Tools**（不是 Models）。往下翻到 **Command policy**（`exec-policy-panel`）。底栏 Agent 必须是 **Clutch Agent**。权限 pill（输入框左边）不要选 Ask。
 
 | # | 操作 | 期望 |
 |---|------|------|
-| 1 | 看到 allow / ask / deny 列表 | 能加一条 pattern（`exec-policy-add` / `exec-policy-pattern`） |
-| 2 | 加一条 deny，让 Agent 跑匹配命令 | Chat 出现审批，不是默默执行 |
-| 3 | Full 模式仍跑 `rm -rf` 类 | 仍 `human_required`，不能靠规则放行 |
+| 1 | 输入框能打 pattern，下拉 Allow / Ask / Deny，点 Add | 列表多一行（`exec-policy-add` / `exec-policy-pattern`） |
+| 2 | 按下面 **用例 A** | Chat **没有** Allow 卡；工具结果含 `[Permission] Denied`；工作区 **没有** `clutch-fm03-deny.txt` |
+| 3 | 删掉 A 的规则，按 **用例 B** | 权限 **Full** 仍弹出 Allow / Reject，不能默默执行 |
+
+**不过：** Deny 却直接建了文件；Full 下 `rm -rf` 不询问就跑了。
+
+**用例 A · Deny（权限 pill = Agent）**
+
+Settings → Tools → Command policy，pattern 整段粘贴，Action = **Deny**，点 Add：
+
+```
+touch clutch-fm03-deny.txt
+```
+
+New Chat，整段发送：
+
+```
+只执行这一条 shell，一个字都不要改，必须用 run_terminal_cmd：
+touch clutch-fm03-deny.txt
+不要用 apply_patch，不要换路径。
+```
+
+测完：Settings 里把这条规则 **Remove**。
+
+**用例 B · Full 仍问（权限 pill 改成 Full）**
+
+pattern 粘贴，Action = **Ask**，点 Add：
+
+```
+echo clutch-fm03-ask
+```
+
+整段发送：
+
+```
+只执行这一条 shell，一个字都不要改，必须用 run_terminal_cmd：
+echo clutch-fm03-ask
+```
+
+期望：Allow / Reject。点 **Reject**。再发（不必加规则，内置危险名单）：
+
+```
+只执行这一条 shell，一个字都不要改，必须用 run_terminal_cmd：
+rm -rf /tmp/clutch-fm03-does-not-exist
+不要改成工作区路径。
+```
+
+期望：仍 Allow / Reject。**Reject**，不要 Allow。测完 Remove `echo clutch-fm03-ask` 那条，权限 pill 改回 **Agent**。
 
 ---
 
@@ -133,6 +179,8 @@ export CLUTCH_RUNTIME_MODE=hybrid && pnpm tauri:dev
 
 本机没装对应 CLI → **空态也算过**。Cursor / Grok 不在这一批，找不到是预期。
 
+**复制（没有 Chat 句，按点）：** 齿轮 → **Models** → 顶栏 **More** → 依次点 `cli-scan-codex-cli`、Aider、CodeBuddy、Antigravity、Rivet、Ollama、ZCode。每页要么有配置摘要，要么有明确 Empty / 未检测到，不要白屏。
+
 ---
 
 ## Wave 4 先做（Chat 空态，不依赖 CLI）
@@ -151,6 +199,14 @@ export CLUTCH_RUNTIME_MODE=hybrid && pnpm tauri:dev
 
 **不过：** 强制先选工作流才能输入；横幅完全没有。
 
+**复制：** New Chat，不要点工作流。输入框整段发送：
+
+```
+只回复两个字：收到
+```
+
+期望：能发出去；顶上横幅仍是「未选择工作流，将使用当前 Agent」。再从底栏选一条 SOP，横幅变成 Matched SOP 名称。
+
 ---
 
 ### FM-19 Planner/Executor
@@ -164,6 +220,14 @@ export CLUTCH_RUNTIME_MODE=hybrid && pnpm tauri:dev
 | 1 | 看到 **Planner** / **Executor** 两个下拉 | `planner-model-select` · `executor-model-select` |
 | 2 | 两个选成不同模型 | Overview 显示两个名字（`overview-model-roles`） |
 | 3 | 发一轮 Chat | Overview 能看出本轮走的是 Executor |
+
+**复制：** Planner 和 Executor 选两个**不同**的已有模型（没有第二套就跳过第 2、3 步并写原因）。New Chat 发送：
+
+```
+只回复两个字：收到
+```
+
+期望：右侧 Overview IDLE 时就能看到两行模型名；这一轮标注的是 Executor。
 
 ---
 
@@ -180,6 +244,14 @@ export CLUTCH_RUNTIME_MODE=hybrid && pnpm tauri:dev
 | 1 | 输入关键词，点搜（`memory-search-run`） | 有命中（`memory-search-hit`）或明确无结果 |
 | 2 | 点一条命中 | 打开该文件预览，不是死链 |
 
+**复制：** New Chat，Clutch Agent，整段发送：
+
+```
+记住：验收关键词 clutch-fm12-probe
+```
+
+等回复后：齿轮 → General → Memory **Search** 框粘贴 `clutch-fm12-probe`，点搜。期望命中 `.clutch/memory/MEMORY.md`，点开能预览。
+
 ---
 
 ### FM-13 事件 Channel
@@ -193,6 +265,14 @@ export CLUTCH_RUNTIME_MODE=hybrid && pnpm tauri:dev
 | 3 | 点 **Continue** | 横幅消失，会话可继续 |
 
 没有真实 webhook 也可以点 Test（走本机测试通道）。
+
+**复制：** Event channel 的 URL 框粘贴（不必是真服务）：
+
+```
+https://example.com/clutch-fm13
+```
+
+Save → **Test event**。回到 Chat，点横幅 **Continue**。
 
 ---
 
@@ -215,6 +295,14 @@ export CLUTCH_RUNTIME_MODE=hybrid && pnpm tauri:dev
 
 **不过：** Discard 点了没任何 Supervisor 字、蓝条还在。
 
+**复制：** 底栏有 Branch 时，Chat **+** → Enable worktree。Discard 测完再 Enable，然后发送：
+
+```
+只在当前 worktree 里新建文件 clutch-fm11.txt，内容写 ok。不要改仓库里其它文件。
+```
+
+期望：主仓 `git status` 仍干净。再点 **Add parallel worktree**。非 git 文件夹测第 6 步即可。
+
 ---
 
 ### FM-14 Notify user
@@ -225,6 +313,8 @@ export CLUTCH_RUNTIME_MODE=hybrid && pnpm tauri:dev
 |---|------|------|
 | 1 | 点菜单项 | Chat 出现通知卡（`notify-user-card`） |
 | 2 | **Send** / **Cancel** 都能点 | 卡状态变化，不是死按钮 |
+
+**复制：** 不必等 Agent。Chat **+** → **Notify user**。卡上先点 **Cancel** 一次；再打开一次点 **Send**。
 
 ---
 
@@ -237,6 +327,8 @@ export CLUTCH_RUNTIME_MODE=hybrid && pnpm tauri:dev
 | 1 | 点菜单项 | 确认卡 **Proceed / Hold**（`new-info-card`） |
 | 2 | 两个按钮都能点 | 不是只展示文案 |
 
+**复制：** Chat **+** → **New information**。先点 **Hold**，再打开一次点 **Proceed**。
+
 ---
 
 ### FM-17 解释器错误卡
@@ -247,6 +339,8 @@ export CLUTCH_RUNTIME_MODE=hybrid && pnpm tauri:dev
 |---|------|------|
 | 1 | 点菜单项 | 结构化卡（`interpreter-error-card`），标题是超时或 offline，不是 Python traceback |
 | 2 | 有下一步说明 | 能看懂「去改 PATH / 缩短命令」 |
+
+**复制：** Chat **+** → **Interpreter error**。看卡标题是超时或 offline，不是 Python traceback。
 
 ---
 
@@ -261,6 +355,14 @@ export CLUTCH_RUNTIME_MODE=hybrid && pnpm tauri:dev
 | 1 | 右侧/节点编辑器有 **Node engine** | 下拉 CLI / MCP / llm（`node-tool-select`） |
 | 2 | 改一下保存，跑这个工作流 | Overview 步骤行能看到该引擎（`step-engine-*`） |
 
+**复制：** 齿轮 → Workflows SOP → 点开任一条 → 点一个 Agent 节点 → **Node engine** 选 `llm` → Save。底栏绑这条 SOP 后发送：
+
+```
+按当前工作流跑一步即可，不要改节点配置。
+```
+
+没有「跑起来」也可以：保存后 Overview 步骤行能看到 engine 字样即过第 2 步的弱过；真跑才算满过。
+
 ---
 
 ### FM-18 校验失败条
@@ -273,6 +375,20 @@ export CLUTCH_RUNTIME_MODE=hybrid && pnpm tauri:dev
 | 2 | 右侧 Overview | 同样可读（`validation-failure-strip`） |
 
 没有现成失败流时：可标「跳过，待有失败 run 再补」，不要假装过。
+
+**复制（造一个必失败的 check）：** Workflows → Create Flow，名字粘贴 `fm18-missing-file`。画布加一个 **Check** 节点，`check(file_exists)` 的 path 粘贴：
+
+```
+.clutch/fm18-missing.txt
+```
+
+Save，Chat 绑这条 SOP，发送：
+
+```
+运行当前工作流，不要改 check 的 path。
+```
+
+期望：Chat **VALIDATION FAILED**，Overview 同样可读。没有失败条就标跳过。
 
 ---
 
@@ -292,6 +408,14 @@ export CLUTCH_RUNTIME_MODE=hybrid && pnpm tauri:dev
 
 没有 CLI → **整节跳过**（在总表写跳过原因）。
 
+**复制：** 底栏换成已 Connect 的 CLI。切 **Terminal mode**。输入框按你已 Connect 的名字改 `@` 后面，其余照贴：
+
+```
+@claude 只回复 pong，不要改文件。
+```
+
+若 Agent 叫 Codex：用 `@codex 只回复 pong，不要改文件。` 出现确认卡再 Confirm。要测排队：连发 5 次同样内容。
+
 ---
 
 ### FM-07 保存为工作流
@@ -303,6 +427,8 @@ export CLUTCH_RUNTIME_MODE=hybrid && pnpm tauri:dev
 | 1 | 看到派发记录 | `overview-dispatch-log` |
 | 2 | **Save as workflow**（`save-dispatch-as-workflow`） | Workflows 列表出现新 SOP，节点顺序和派发顺序一致 |
 
+**复制：** FM-06 至少 Confirm 过 1 路后，右侧 Overview → **Save as workflow**。名字用默认即可。去 Workflows 列表核对新 SOP。
+
 ---
 
 ### FM-08 对话 handoff
@@ -313,6 +439,8 @@ export CLUTCH_RUNTIME_MODE=hybrid && pnpm tauri:dev
 |---|------|------|
 | 1 | 终端 Handoff「Send to Bar」 | Chat 输入区出现草稿芯片（`chat-handoff-drafts`） |
 | 2 | Chat 空输入时再切 Terminal | 能带上近期对话，不是空白 Bar |
+
+**复制：** Terminal 某 Lane Complete 后点 Handoff **Send to Bar**，再切 **Chat mode**。期望输入区有草稿芯片。清空输入，再切回 Terminal，Bar 里应带近期对话。
 
 ---
 
@@ -326,6 +454,14 @@ export CLUTCH_RUNTIME_MODE=hybrid && pnpm tauri:dev
 |---|------|------|
 | 1 | 走完一轮生成到 handoff 第 1 步 | 审查卡带渲染截图（`design-review-card` / `design-review-shot`） |
 | 2 | 点 **Reject**（`design-review-reject`） | 进入下一轮，不是卡死或直接结束 |
+
+**复制：** 顶栏 **Design**。欢迎大输入整段发送：
+
+```
+做一个只有一个主按钮的空白页，不要多余装饰。
+```
+
+走到 handoff 第 1 步有渲染图后点 **Reject**。
 
 ---
 
