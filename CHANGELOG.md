@@ -18,6 +18,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 - **Codex scan (FM-04):** Settings Models/Skills/MCP → More → Codex scans local config (or an empty state).
 - **More CLI scans (FM-05):** Aider, CodeBuddy, Antigravity, Rivet, Ollama, and ZCode use the same read-only scan path.
 - **Orchestra queue (FM-06):** Queued lanes stay visible; dispatch shows a confirm card (sources adjustable); handoff drafts can be filled or dismissed.
+- **Save dispatch as workflow (FM-07):** Overview can save dispatch records as a user SOP with matching node order.
 
 - **Workspace MEMORY.md (B-39):** Saying `记住：…` / `remember:` writes `.clutch/memory/MEMORY.md` (open in Files). Next Chat turns inject that overview. Settings Memory copy points at the file.
 - **Verification notes (B-40):** Passing/failing `submit_verification` appends `Worked:` / `Failed:` to that file.

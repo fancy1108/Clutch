@@ -141,6 +141,7 @@
 | Exec policy UI（FM-03） | `ExecPolicyPanel.tsx` · Settings Tools · `/api/preferences/permission-rules` |
 | Codex 只读扫描（FM-04） | `MoreAgentsComingSoon.tsx` · `cli_agent_config.py` · More → Codex |
 | Orchestra 队列/确认卡（FM-06） | `TerminalLaneGrid.tsx` `orchestra-queue` · `DispatchConfirmCard` · drafts |
+| 派发保存为工作流（FM-07） | `OverviewDispatchLog.tsx` `save-dispatch-as-workflow` |
 | API 抽象（mock 待 M2 替换） | `services/api.ts` |
 | 侧栏（工作区 / 历史，M2-07/09） | `sidebar.tsx` |
 | 底部状态栏（Branch / Model / Agent） | `App.tsx` footer |

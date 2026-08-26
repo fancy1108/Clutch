@@ -11,7 +11,9 @@ import { clutchStore, useClutchState } from '../../services/clutchState';
 import { useLanguage } from '../LanguageContext';
 import { formatDispatchTime } from '../../services/formatTime';
 import { BTN_PRIMARY_SM, BTN_SECONDARY_SM } from '../ui/buttonStyles';
-import { HandoffPreviewModal } from './HandoffPreviewModal';
+import { saveUserWorkflow } from '../../services/workflowApi';
+import { canvasToCompiler } from '../../services/workflowFormat';
+import type { WorkflowDef } from '../../types';
 
 interface OverviewDispatchLogProps {
   entries: DispatchLogEntry[];
@@ -30,6 +32,7 @@ export const OverviewDispatchLog: React.FC<OverviewDispatchLogProps> = ({
   const { t } = useLanguage();
   const { state: clutchState } = useClutchState();
   const [previewPath, setPreviewPath] = useState<string | null>(null);
+  const [saveMsg, setSaveMsg] = useState<string | null>(null);
   const lanes = clutchState.pty_lanes ?? [];
   const pendingInject = clutchState.pending_pty_inject;
   const [, setPtyTick] = useState(0);
@@ -64,6 +67,42 @@ export const OverviewDispatchLog: React.FC<OverviewDispatchLogProps> = ({
 
   return (
     <>
+      <div className="flex items-center justify-between gap-2">
+        <button
+          type="button"
+          data-testid="save-dispatch-as-workflow"
+          disabled={readOnly}
+          className={`${BTN_SECONDARY_SM}`}
+          onClick={() => {
+            const canvas: WorkflowDef = {
+              id: `dispatch-${Date.now()}`,
+              name: `Dispatch ${new Date().toISOString().slice(0, 16).replace('T', ' ')}`,
+              lastDeployed: '—',
+              isActive: false,
+              icon: 'account_tree',
+              description: t('Saved from dispatch records'),
+              steps: entries.map((entry, index) => ({
+                id: `step-${index + 1}`,
+                name: entry.target,
+                nodeType: 'agent_task',
+                agent: entry.target,
+                aiTool: '',
+                description: entry.prompt,
+                nextSteps: index < entries.length - 1 ? [`step-${index + 2}`] : ['end'],
+                position: { x: 250, y: index * 120 + 80 },
+              })),
+            };
+            void saveUserWorkflow(canvasToCompiler(canvas))
+              .then(() => setSaveMsg(t('Saved to Workflows')))
+              .catch((err: unknown) => {
+                setSaveMsg(err instanceof Error ? err.message : t('Failed to save workflow'));
+              });
+          }}
+        >
+          {t('Save as workflow')}
+        </button>
+        {saveMsg ? <span className="text-[10px] text-on-surface-variant truncate">{saveMsg}</span> : null}
+      </div>
       <ul data-testid="overview-dispatch-log" className="space-y-2.5">
         {entries.map((entry) => {
           const showHandoff = isHandoffDispatchEntry(entry);
