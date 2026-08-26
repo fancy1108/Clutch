@@ -10,6 +10,10 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ## [Unreleased]
 
+### Removed
+
+- **Import from Claude (MCP Hub):** Dropped the one-click copy of Claude Desktop / `~/.claude.json` MCP entries. It did not check that commands exist, so stale paths showed up as failed servers. Register stdio or HTTP yourself; the Claude Code tab remains a read-only scan of native config.
+
 ### Changed
 
 - **Composer + menu icons:** Session overview / Notify user no longer render as empty circles; each + item uses a lucide glyph that matches its action (history, skills, undo, bell, inbox, bug, calendar, worktree).
@@ -22,6 +26,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ### Added
 
+- **HTTP MCP (D57):** Settings → MCP registers any Streamable HTTP URL (API key in Env). HTTPS 401 without a key falls back to `mcp-remote` browser OAuth — same path for Figma and other remotes, no vendor button. See [`docs/mcp-servers/figma.md`](docs/mcp-servers/figma.md).
 - **FM 点验剧本：** [`docs/FRONTEND_MODULES_ACCEPTANCE.md`](docs/FRONTEND_MODULES_ACCEPTANCE.md) — PM 按模块点入口、步骤与期望（状态仍只记 ROADMAP）。
 - **General Settings (FM-01):** Default workspace picker (restored on launch), persistable confirm-before-stop for Chat Stop, and the app version on the General page.
 - **Local trust (FM-02):** Settings → General can require a one-time confirm before enabling an MCP server or using a workflow in Chat; trusted ids persist on this machine.

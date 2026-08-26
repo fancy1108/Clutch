@@ -185,6 +185,7 @@
 | Chat 模式预设（D27） | `permissionApi.ts` `PERMISSION_MODES` · `ChatInputBar` 权限菜单 · `mcp_react` explore/plan 硬拦截 |
 | 能力↔Chat UI 门禁（D52） | `docs/PRODUCT_INTRO.md`（capability-ui-table）· `scripts/check-capability-ui-table.sh` |
 | MCP Hub 探测（D38） | `mcp_storage.probe_server_by_id` · `POST /api/mcp/servers/test` · `McpServerHub` Test connection |
+| MCP Streamable HTTP（D57） | `mcp_client.py` HTTP POST · HTTPS 401 → `mcp-remote` · Hub 通用表单 · [`docs/mcp-servers/figma.md`](../docs/mcp-servers/figma.md) |
 | Chat MCP 徽章（D40） | `McpBindingBadge.tsx` · `agentMcpSummary.ts` |
 | MCP 真工具名 / 一键 FS（D42∥D44） | `AgentManager.tsx` Module 4 + catalog tool chips |
 | MCP Resources（D43） | `mcp_resources.py` · Hub Browse/Pin · `agent_prompt` `mcp_resources` 层 |

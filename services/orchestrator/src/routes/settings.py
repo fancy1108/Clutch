@@ -471,6 +471,14 @@ async def test_mcp_server(body: McpServerIdRequest) -> dict[str, Any]:
         raise HTTPException(status_code=404, detail={"message": str(exc)}) from exc
 
 
+@router.get("/api/mcp/oauth-login-url")
+def mcp_oauth_login_url() -> dict[str, Any]:
+    """URL mcp-remote printed while Test connection is waiting for the browser."""
+    from src.mcp_storage import peek_oauth_login_url
+
+    return {"url": peek_oauth_login_url()}
+
+
 class McpResourceReadRequest(BaseModel):
     id: str
     uri: str
@@ -553,14 +561,6 @@ async def save_mcp_config(body: McpSaveConfigRequest) -> dict[str, Any]:
         save_raw_config(body.servers)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
-    return await build_mcp_status_payload()
-
-
-@router.post("/api/mcp/import/claude")
-async def import_claude_mcp() -> dict[str, Any]:
-    from src.mcp_storage import build_mcp_status_payload, import_from_claude
-
-    import_from_claude()
     return await build_mcp_status_payload()
 
 

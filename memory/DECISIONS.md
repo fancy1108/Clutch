@@ -629,6 +629,13 @@
 - **影响**：ROADMAP 新节；BACKLOG 上述 ID 移 Completed 索引；D14 剩余项改 FM-01。
 - **决策状态**：`可执行`
 
+### D57 · MCP Hub Streamable HTTP（2026-08-26）
+
+- **背景**：官方 Figma MCP 是 `https://mcp.figma.com/mcp` / 桌面 `http://127.0.0.1:3845/mcp`（HTTP + 可选 OAuth）。Hub 曾 stdio-only，无法登记 URL。
+- **方案**：`McpClient` 对 `http(s)://` 走 Streamable HTTP；Hub Transport **HTTP**；Env `Authorization` / `HEADER_*`。HTTPS 远程 401 且未配 Key 时统一回退 `npx mcp-remote`（浏览器 OAuth），不按厂商加 Hub 按钮。本机 HTTP / 已配 Key 的仍直连。
+- **影响**：`mcp_client.py` · `mcp_storage.py` · `McpServerHub.tsx` · `docs/mcp-servers/figma.md`。
+- **决策状态**：`已落地`
+
 ### D45 · D7 项目规则 + Skills 对齐 Grok Build（2026-07-24）
 
 - **背景**：能力期 D7；对照本地 `grok-build` 与 docs.x.ai project-rules。User 级规则（`~/.grok/AGENTS.md` 等）本期不做。

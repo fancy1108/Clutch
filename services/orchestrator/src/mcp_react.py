@@ -571,7 +571,7 @@ def run_mcp_react_loop(
             endpoint = str(server.get("endpoint", ""))
             env = server.get("env") if isinstance(server.get("env"), dict) else None
             client = McpClient(name, endpoint, env=env)
-            if not client.start():
+            if not client.start(oauth_proxy=True):
                 _emit(logs, on_log, f"[{log_prefix}] Failed to start MCP server: {name}")
                 for started in clients.values():
                     started.close()

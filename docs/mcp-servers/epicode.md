@@ -20,24 +20,24 @@ Without Epicode, each Clutch agent starts blank every session. With it, your wor
 
 ## Quick start (2 minutes)
 
-> **Clutch Hub status (capability D39):** Clutch MCP Hub currently runs **stdio servers only**. SSE / Streamable HTTP registration is **disabled** until remote transport lands. Epicode’s native protocol is HTTP — you cannot connect Epicode through Clutch Hub yet. Options until then: (1) use Epicode from a CLI Agent that already supports remote MCP, or (2) wait for Clutch remote MCP (post-D39). The table below is the **target** config once HTTP works.
+> **Clutch Hub (D57):** Streamable HTTP is enabled. Register Transport **HTTP** and the URL below, plus the API key in Env.
 
 ### Step 1 — Get an Epicode account
 
 Sign up at [epicode.cn](https://epicode.cn) (free tier: 1000 memories). You'll receive an API key starting with `tm-`.
 
-### Step 2 — Add Epicode as an MCP server in Clutch（目标配置 · 待远程传输）
+### Step 2 — Add Epicode as an MCP server in Clutch
 
-Go to **Settings → MCP** and add a new server **when HTTP transport is available**:
+Go to **Settings → MCP → Clutch Agent** and register:
 
 | Field | Value |
 |-------|-------|
 | Name | `epicode` |
-| Transport | `HTTP` (Streamable) — *not selectable in Hub today* |
+| Transport | `HTTP` |
 | URL | `https://epicode.cn/api/mcp` |
-| Headers | `X-API-Key: tm-your-key-here` |
+| Env | `HEADER_X-API-Key=tm-your-key-here` |
 
-When remote MCP ships: use **Test connection** — you should see ~35 tools.
+Use **Test connection** — you should see ~35 tools.
 
 ### Step 3 — Bind the MCP server to your agents
 

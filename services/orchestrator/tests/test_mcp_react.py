@@ -25,7 +25,7 @@ class _FakeClient:
         self.name = name
         self.endpoint = endpoint
 
-    def start(self) -> bool:
+    def start(self, *args, **kwargs) -> bool:
         return True
 
     def list_tools(self) -> list[dict]:

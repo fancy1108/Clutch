@@ -77,15 +77,6 @@ export async function saveMcpConfig(servers: any[]): Promise<McpStatusResponse> 
   return response.json() as Promise<McpStatusResponse>;
 }
 
-export async function importClaudeMcp(): Promise<McpStatusResponse> {
-  const response = await sidecarFetch(`${BASE}/api/mcp/import/claude`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-  });
-  if (!response.ok) throw new Error(`mcp import from claude failed (${response.status})`);
-  return response.json() as Promise<McpStatusResponse>;
-}
-
 export interface McpProbeResult {
   id: string;
   name: string;
@@ -97,16 +88,30 @@ export interface McpProbeResult {
 
 /** D38 — per-server Test connection. */
 export async function testMcpServer(id: string): Promise<McpProbeResult> {
-  const response = await sidecarFetch(`${BASE}/api/mcp/servers/test`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id }),
-  });
-  if (!response.ok) {
-    const body = (await response.json().catch(() => ({}))) as { detail?: { message?: string } };
-    throw new Error(body.detail?.message ?? `mcp test failed (${response.status})`);
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), 135_000);
+  try {
+    const response = await sidecarFetch(`${BASE}/api/mcp/servers/test`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      const body = (await response.json().catch(() => ({}))) as { detail?: { message?: string } };
+      throw new Error(body.detail?.message ?? `mcp test failed (${response.status})`);
+    }
+    return response.json() as Promise<McpProbeResult>;
+  } finally {
+    window.clearTimeout(timer);
   }
-  return response.json() as Promise<McpProbeResult>;
+}
+
+export async function fetchMcpOAuthLoginUrl(): Promise<string | null> {
+  const response = await sidecarFetch(`${BASE}/api/mcp/oauth-login-url`);
+  if (!response.ok) return null;
+  const body = (await response.json()) as { url?: string | null };
+  return body.url || null;
 }
 
 export interface McpResourceItem {
