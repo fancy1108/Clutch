@@ -200,6 +200,7 @@
 ## Frontend modules（FM-xx · D56）
 
 > **权威 Task 表**：[`frontend-modules-plan.md`](./frontend-modules-plan.md)  
+> **点验剧本**：[`docs/FRONTEND_MODULES_ACCEPTANCE.md`](../../docs/FRONTEND_MODULES_ACCEPTANCE.md)  
 > **决策**：D56 — [`memory/DECISIONS.md`](../../memory/DECISIONS.md)  
 > **ROADMAP 勾选**：[`memory/ROADMAP.md`](../../memory/ROADMAP.md) §Frontend modules  
 > **本文件不维护 ✅/❌。**

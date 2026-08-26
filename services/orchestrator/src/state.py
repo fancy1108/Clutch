@@ -42,6 +42,7 @@ class ClutchState(TypedDict):
     refining_node_id: NotRequired[str]
     refine_draft_output: NotRequired[str]
     refine_agent_id: NotRequired[str]
+    worktree_isolation: NotRequired[dict[str, object] | None]
 
 
 def read_cli_session_id(state: Mapping[str, Any]) -> str:

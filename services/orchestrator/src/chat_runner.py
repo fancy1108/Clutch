@@ -787,6 +787,7 @@ def _merge_patch(state: ClutchState, patch: dict[str, Any]) -> ClutchState:
         "pending_pty_inject",
         "run_stats",
         "awaiting_continue",
+        "worktree_isolation",
     })
     for key, value in patch.items():
         if key in merged or key in optional_keys:
@@ -4062,8 +4063,18 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                 from src.workspace import require_workspace
 
                 wt_info = state.get("worktree_isolation")
-                wt_id = str((wt_info or {}).get("id") or payload.get("wt_id") or "").strip()
-                if wt_id:
+                wt_id = str(payload.get("wt_id") or (wt_info or {}).get("id") or "").strip()
+                if not wt_id:
+                    notice = _chat_message(
+                        "Supervisor",
+                        tr("No active worktree to merge.", "没有可合并的 worktree。"),
+                    )
+                    patch = {"messages": list(state["messages"]) + [notice]}
+                    state = _merge_patch(state, patch)
+                    _commit_run_state(run_id, state)
+                    await _send_message_event(websocket, run_id, notice, "")
+                    await _notify_run_state(websocket, run_id, state, patch)
+                else:
                     try:
                         root = await asyncio.to_thread(require_workspace)
                         summary = await asyncio.to_thread(merge_worktree, root, wt_id)
@@ -4094,8 +4105,18 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                 from src.workspace import require_workspace
 
                 wt_info = state.get("worktree_isolation")
-                wt_id = str((wt_info or {}).get("id") or payload.get("wt_id") or "").strip()
-                if wt_id:
+                wt_id = str(payload.get("wt_id") or (wt_info or {}).get("id") or "").strip()
+                if not wt_id:
+                    notice = _chat_message(
+                        "Supervisor",
+                        tr("No active worktree to discard.", "没有可丢弃的 worktree。"),
+                    )
+                    patch = {"messages": list(state["messages"]) + [notice]}
+                    state = _merge_patch(state, patch)
+                    _commit_run_state(run_id, state)
+                    await _send_message_event(websocket, run_id, notice, "")
+                    await _notify_run_state(websocket, run_id, state, patch)
+                else:
                     try:
                         root = await asyncio.to_thread(require_workspace)
                         await asyncio.to_thread(discard_worktree, root, wt_id)

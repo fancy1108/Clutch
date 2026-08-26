@@ -1,6 +1,7 @@
 # Frontend modules（FM-xx）
 
 > **Task 定义 + Verification。** 验收状态仅 [`memory/ROADMAP.md`](../../memory/ROADMAP.md) §Frontend modules — **本文件不勾选 ✅/❌。**  
+> **点验剧本（入口/步骤/期望）：** [`docs/FRONTEND_MODULES_ACCEPTANCE.md`](../../docs/FRONTEND_MODULES_ACCEPTANCE.md)  
 > **决策：** D56 — [`memory/DECISIONS.md`](../../memory/DECISIONS.md)  
 > 每条须用户能在桌面 UI 点验；新控件带 `data-testid`；勾 ROADMAP 前更新 `docs/PRODUCT_INTRO.md`。  
 > 一次一个模块。不进本轨道：价表、Windows 实体机（D55）、已否决 B-15/B-16。D32 worktree 开关已有；FM-11 只做并行子树 + 合并/丢弃。

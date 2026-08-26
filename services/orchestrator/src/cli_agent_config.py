@@ -658,6 +658,24 @@ def _read_opencode_active_model_ref() -> str | None:
     return None
 
 
+def resolve_opencode_headless_model(*, workspace_path: str | None = None) -> str | None:
+    """TUI last-used model, then config `model` (jsonc can override json)."""
+    recent = _read_opencode_active_model_ref()
+    if recent:
+        return recent
+    merged = _read_opencode_config_merged(workspace_path=workspace_path)
+    raw = merged.get("model")
+    if isinstance(raw, str) and raw.strip():
+        return raw.strip()
+    return None
+
+
+def opencode_headless_model_args(*, workspace_path: str | None = None) -> list[str]:
+    """`opencode run` ignores TUI selection unless `-m` is passed explicitly."""
+    model = resolve_opencode_headless_model(workspace_path=workspace_path)
+    return ["-m", model] if model else []
+
+
 _OPENCODE_CLI_MODELS_CACHE: tuple[float, list[dict[str, Any]]] | None = None
 _OPENCODE_CLI_MODELS_CACHE_TTL_S = 300.0
 
@@ -799,7 +817,7 @@ def scan_opencode_models(*, workspace_path: str | None = None) -> dict[str, Any]
             )
             seen_refs.add(model_ref)
 
-    active_model = _read_opencode_active_model_ref() or merged.get("model")
+    active_model = resolve_opencode_headless_model(workspace_path=workspace_path)
     if not active_model and catalog:
         first_ref = catalog[0].get("model_ref")
         active_model = first_ref or catalog[0]["model_id"]

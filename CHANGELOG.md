@@ -10,8 +10,19 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ## [Unreleased]
 
+### Changed
+
+- **Composer + menu icons:** Session overview / Notify user no longer render as empty circles; each + item uses a lucide glyph that matches its action (history, skills, undo, bell, inbox, bug, calendar, worktree).
+
+### Fixed
+
+- **OpenCode Chat:** Pass `-m` from the TUI last-used model so `opencode run --auto` matches interactive OpenCode (a stale `opencode.jsonc` default like a retired Zen model previously surfaced as `UnknownError`).
+- **Worktree spawn (FM-11):** Hide **Add parallel worktree** until isolation is enabled; show the Sidecar error (e.g. workspace is not a git repo) instead of generic `spawn failed`.
+- **Worktree Merge/Discard (D32):** Persist `worktree_isolation` on the run so Merge/Discard actually run (they previously no-op’d after Enable).
+
 ### Added
 
+- **FM 点验剧本：** [`docs/FRONTEND_MODULES_ACCEPTANCE.md`](docs/FRONTEND_MODULES_ACCEPTANCE.md) — PM 按模块点入口、步骤与期望（状态仍只记 ROADMAP）。
 - **General Settings (FM-01):** Default workspace picker (restored on launch), persistable confirm-before-stop for Chat Stop, and the app version on the General page.
 - **Local trust (FM-02):** Settings → General can require a one-time confirm before enabling an MCP server or using a workflow in Chat; trusted ids persist on this machine.
 - **Command policy (FM-03):** Settings → Tools lists allow / ask / deny shell patterns (dangerous commands still force-ask). Strict sandbox remains the OS-level gate.
@@ -20,7 +31,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 - **Orchestra queue (FM-06):** Queued lanes stay visible; dispatch shows a confirm card (sources adjustable); handoff drafts can be filled or dismissed.
 - **Save dispatch as workflow (FM-07):** Overview can save dispatch records as a user SOP with matching node order.
 - **Chat handoff (FM-08):** Chat composer shows handoff drafts and accepts Send to Bar; switching to Terminal prefills recent chat.
-- **Dispatch banner (FM-09):** Empty Chat can send without choosing a workflow; a banner shows current Agent or the selected SOP.
+- **Dispatch banner (FM-09):** Empty Chat can send without choosing a workflow; a banner shows “No workflow selected — using current Agent” (plus the Agent name) or the selected SOP.
 - **Canvas node engine (FM-10):** Workflow node editor can set CLI/MCP/llm; Overview shows that engine.
 - **Parallel worktrees (FM-11):** Chat can spawn extra worktrees with visible paths and merge/discard per tree.
 - **Memory search (FM-12):** Settings → General can search `.clutch/memory`; clicking a hit opens the file.

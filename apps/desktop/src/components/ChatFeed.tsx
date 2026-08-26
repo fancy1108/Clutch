@@ -1410,7 +1410,9 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
           >
             {selectedWorkflowId
               ? `${t('Matched SOP:')} ${selectedWorkflowName || selectedWorkflowId}`
-              : t('Using current Agent')}
+              : `${t('No workflow selected — using current Agent')}${
+                  activeAgentName ? `: ${activeAgentName}` : ''
+                }`}
           </div>
         ) : null}
         {eventBanner ? (
@@ -2225,10 +2227,16 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                 worktree={worktreeIsolation}
                 t={t}
                 onMerge={() => {
-                  void clutchStore.send({ action: 'merge_worktree' });
+                  void clutchStore.send({
+                    action: 'merge_worktree',
+                    wt_id: worktreeIsolation?.id ?? '',
+                  });
                 }}
                 onDiscard={() => {
-                  void clutchStore.send({ action: 'discard_worktree' });
+                  void clutchStore.send({
+                    action: 'discard_worktree',
+                    wt_id: worktreeIsolation?.id ?? '',
+                  });
                 }}
               />
             ) : null}

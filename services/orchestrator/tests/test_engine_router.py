@@ -10,6 +10,7 @@ from src.engine_router import (
     EngineResult,
     _cli_prompt_from_history,
     _effective_prepend_system_prompt,
+    _with_opencode_model_args,
     find_agent,
     route_engine,
 )
@@ -45,6 +46,26 @@ def test_cli_prompt_from_history_keeps_agent_status_off_the_current_turn() -> No
     assert prompt.startswith("User: queued-turn")
     assert "<agent_status>" in prompt
     assert prompt.count("User: queued-turn") == 1
+
+
+def test_with_opencode_model_args_appends_tui_model(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "src.cli_agent_config.opencode_headless_model_args",
+        lambda workspace_path=None: ["-m", "opencode/big-pickle"],
+    )
+    assert _with_opencode_model_args("opencode-cli", ["run", "--auto"]) == [
+        "run",
+        "--auto",
+        "-m",
+        "opencode/big-pickle",
+    ]
+    assert _with_opencode_model_args("codex-cli", ["exec", "--json"]) == ["exec", "--json"]
+    assert _with_opencode_model_args("opencode-cli", ["run", "--auto", "-m", "x/y"]) == [
+        "run",
+        "--auto",
+        "-m",
+        "x/y",
+    ]
 
 
 def test_effective_prepend_system_prompt_skips_history_replay_follow_up() -> None:

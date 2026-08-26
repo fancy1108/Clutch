@@ -743,6 +743,7 @@ const zhTranslations: Record<string, string> = {
   "Failed to save workflow": "保存工作流失败",
   "Add parallel worktree": "添加并行 worktree",
   "Follow assigned agent": "跟随已分配 Agent",
+  "No workflow selected — using current Agent": "未选择工作流，将使用当前 Agent",
   "Matched SOP:": "已匹配 SOP：",
   "Saved to Workflows": "已保存到工作流",
   "Saved from dispatch records": "从派发记录保存",

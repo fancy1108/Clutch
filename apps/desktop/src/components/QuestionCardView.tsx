@@ -46,7 +46,7 @@ export function QuestionCardView({
   return (
     <div className={CHAT_AGENT_CARD} data-testid={testId} data-status={status}>
       <ChatAgentCardHeader
-        icon={isNotify ? 'notifications' : isNewInfo ? 'info' : 'forum'}
+        icon={isNotify ? 'bell' : isNewInfo ? 'inbox' : 'forum'}
         title={t(isNotify ? 'Notify user' : isNewInfo ? 'New information' : 'Question')}
         status={
           <ChatAgentCardStatus tone={statusTone(status, canChoose)}>

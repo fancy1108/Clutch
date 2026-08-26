@@ -618,7 +618,7 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
                   setSessionPickerOpen(true);
                 }}
               >
-                <LegacyIcon name="chat_bubble" className="text-[17px] text-on-surface-variant" />
+                <LegacyIcon name="history" className="text-[17px] text-on-surface-variant" />
                 Insert # session
               </button>
               <button
@@ -630,7 +630,7 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
                   setSkillFilter('');
                 }}
               >
-                <LegacyIcon name="terminal" className="text-[17px] text-on-surface-variant" />
+                <LegacyIcon name="sparkles" className="text-[17px] text-on-surface-variant" />
                 Insert / command
               </button>
             </div>
@@ -812,7 +812,7 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
         <div className="absolute bottom-full left-0 mb-2 w-72 bg-white border border-outline-variant rounded-xl shadow-xl z-50 overflow-hidden">
           <div className="p-2 border-b border-outline-variant/30">
             <div className="flex items-center gap-2 px-2">
-              <LegacyIcon name="terminal" className="text-[15px] text-on-surface-variant" />
+              <LegacyIcon name="sparkles" className="text-[15px] text-on-surface-variant" />
               <span className="text-[11px] font-semibold text-on-surface-variant">{t('Skills / Commands')}</span>
             </div>
           </div>
@@ -844,7 +844,7 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
         <div className="absolute bottom-full left-0 mb-2 w-72 bg-white border border-outline-variant rounded-xl shadow-xl z-50 overflow-hidden">
           <div className="p-2 border-b border-outline-variant/30">
             <div className="flex items-center gap-2 px-2">
-              <LegacyIcon name="chat_bubble" className="text-[15px] text-on-surface-variant" />
+              <LegacyIcon name="history" className="text-[15px] text-on-surface-variant" />
               <span className="text-[11px] font-semibold text-on-surface-variant">{t('Sessions')}</span>
             </div>
           </div>

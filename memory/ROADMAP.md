@@ -296,6 +296,7 @@
 ## Frontend modules（FM-xx · D56 · 默认 FAIL）
 
 > **Task 定义：** [`specs/core/frontend-modules-plan.md`](../specs/core/frontend-modules-plan.md)  
+> **点验剧本：** [`docs/FRONTEND_MODULES_ACCEPTANCE.md`](../docs/FRONTEND_MODULES_ACCEPTANCE.md)（桌面入口、步骤、期望；本表仍是唯一 ✅/❌）  
 > **决策：** D56。未点验不得标 ✅。一次一个模块。
 
 | ID | 主题 | 状态 |

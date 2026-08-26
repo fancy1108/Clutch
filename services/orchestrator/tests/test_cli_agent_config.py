@@ -112,6 +112,37 @@ def test_scan_opencode_models_reads_auth_and_state(tmp_path: Path, monkeypatch: 
     assert any(item["model_ref"] == "opencode/deepseek-v4-flash-free" for item in payload["catalog"])
 
 
+def test_opencode_headless_model_args_prefers_tui_recent(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config_path = tmp_path / "opencode.jsonc"
+    config_path.write_text(
+        json.dumps({"model": "opencode/deepseek-v4-flash-free"}),
+        encoding="utf-8",
+    )
+    state_path = tmp_path / "model.json"
+    state_path.write_text(
+        json.dumps({"recent": [{"providerID": "opencode", "modelID": "big-pickle"}]}),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(cfg, "_OPENCODE_CONFIG_CANDIDATES", (config_path,))
+    monkeypatch.setattr(cfg, "_OPENCODE_MODEL_STATE_PATH", state_path)
+
+    assert cfg.resolve_opencode_headless_model() == "opencode/big-pickle"
+    assert cfg.opencode_headless_model_args() == ["-m", "opencode/big-pickle"]
+
+
+def test_opencode_headless_model_args_falls_back_to_config(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config_path = tmp_path / "opencode.json"
+    config_path.write_text(json.dumps({"model": "openai/gpt-4o"}), encoding="utf-8")
+    monkeypatch.setattr(cfg, "_OPENCODE_CONFIG_CANDIDATES", (config_path,))
+    monkeypatch.setattr(cfg, "_OPENCODE_MODEL_STATE_PATH", tmp_path / "missing-model.json")
+
+    assert cfg.opencode_headless_model_args() == ["-m", "openai/gpt-4o"]
+
+
 def test_activate_opencode_model_writes_config_and_state(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     config_dir = tmp_path / "config"
     config_dir.mkdir()

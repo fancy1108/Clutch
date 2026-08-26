@@ -16,6 +16,38 @@ export interface WorktreeIsolationState {
   dirty?: boolean;
 }
 
+/** FM-11 spawn/list bar: idle Chat must not show a dangling Add button. */
+export function worktreeBarVisible(
+  worktree: WorktreeIsolationState | null,
+  extras: WorktreeIsolationState[],
+  error: string | null,
+): boolean {
+  return Boolean(worktree?.enabled) || extras.length > 0 || Boolean(error);
+}
+
+export function canAddParallelWorktree(worktree: WorktreeIsolationState | null): boolean {
+  return Boolean(worktree?.enabled);
+}
+
+export function spawnErrorFromBody(body: unknown, fallback: string): string {
+  if (!body || typeof body !== 'object' || !('detail' in body)) return fallback;
+  const detail = (body as { detail: unknown }).detail;
+  if (typeof detail === 'string' && detail.trim()) return detail;
+  if (detail && typeof detail === 'object' && 'message' in detail) {
+    const msg = (detail as { message: unknown }).message;
+    if (typeof msg === 'string' && msg.trim()) return msg;
+  }
+  return fallback;
+}
+
+async function spawnErrorMessage(res: Response, fallback: string): Promise<string> {
+  try {
+    return spawnErrorFromBody(await res.json(), fallback);
+  } catch {
+    return fallback;
+  }
+}
+
 export function WorktreeIsolationBar({
   worktree,
   t,
@@ -41,6 +73,9 @@ export function WorktreeIsolationBar({
   useEffect(() => {
     void reload().catch(() => setExtras([]));
   }, [reload, worktree?.id]);
+
+  const showSpawn = canAddParallelWorktree(worktree);
+  if (!worktreeBarVisible(worktree, extras, error)) return null;
 
   return (
     <div data-testid="worktree-isolation-bar" className="w-full max-w-3xl mx-auto px-3 pb-1.5 space-y-1.5">
@@ -113,27 +148,31 @@ export function WorktreeIsolationBar({
           </button>
         </div>
       ))}
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          data-testid="add-parallel-worktree"
-          className={`${BTN_SECONDARY} px-2 py-1 text-[10px] font-semibold`}
-          onClick={() => {
-            setError(null);
-            void sidecarFetch(`${BASE}/api/worktree/spawn`, { method: 'POST' })
-              .then((res) => {
-                if (!res.ok) throw new Error('spawn failed');
-                return reload();
-              })
-              .catch((err: unknown) => {
-                setError(err instanceof Error ? err.message : t('Failed'));
-              });
-          }}
-        >
-          {t('Add parallel worktree')}
-        </button>
-        {error ? <span className="text-[10px] text-rose-700">{error}</span> : null}
-      </div>
+      {showSpawn || error ? (
+        <div className="flex items-center gap-2">
+          {showSpawn ? (
+            <button
+              type="button"
+              data-testid="add-parallel-worktree"
+              className={`${BTN_SECONDARY} px-2 py-1 text-[10px] font-semibold`}
+              onClick={() => {
+                setError(null);
+                void sidecarFetch(`${BASE}/api/worktree/spawn`, { method: 'POST' })
+                  .then(async (res) => {
+                    if (!res.ok) throw new Error(await spawnErrorMessage(res, t('Failed')));
+                    return reload();
+                  })
+                  .catch((err: unknown) => {
+                    setError(err instanceof Error ? err.message : t('Failed'));
+                  });
+              }}
+            >
+              {t('Add parallel worktree')}
+            </button>
+          ) : null}
+          {error ? <span className="text-[10px] text-rose-700">{error}</span> : null}
+        </div>
+      ) : null}
     </div>
   );
 }

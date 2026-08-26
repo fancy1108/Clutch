@@ -13,4 +13,9 @@ for port in 8124 8123 3000; do
   fi
 done
 rm -f /tmp/clutch-tauri-playwright.sock 2>/dev/null || true
+# Leftover E2E capability in gen/schemas makes `pnpm tauri:dev` fail:
+# Permission playwright:default not found
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+rm -f "$root/apps/desktop/src-tauri/capabilities/e2e.json"
+git -C "$root" checkout -- apps/desktop/src-tauri/gen/schemas/ 2>/dev/null || true
 echo "Done. Ports 3000/8124/8123 should be free."

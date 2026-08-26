@@ -70,7 +70,7 @@
 | 开发任务清单（含 Verification） | `specs/core/tasks.md` |
 | **Chat Clutch Agent 能力表（D44）** | **`specs/core/clutch-agent-capability-plan.md`** · 决策 `memory/DECISIONS.md` D44 · ROADMAP §Chat Clutch Agent |
 | **D25 Hybrid Runtime Task（HRT）** | **`specs/core/hybrid-runtime-plan.md`** |
-| **前端可点验模块（FM-xx · D56）** | **`specs/core/frontend-modules-plan.md`** · ROADMAP §Frontend modules |
+| **前端可点验模块（FM-xx · D56）** | **`specs/core/frontend-modules-plan.md`** · ROADMAP §Frontend modules · **点验剧本** [`docs/FRONTEND_MODULES_ACCEPTANCE.md`](../docs/FRONTEND_MODULES_ACCEPTANCE.md) |
 | Flow 多 Agent 接力 Task（D23） | `specs/core/tasks.md` §M3-F · Flow 多 Agent 接力 |
 | Prototype → Task 全量映射 | `specs/core/tasks.md` §Prototype → Task 映射 |
 | 待建 pytest 与 task 映射 | `specs/core/tasks.md` §待建 pytest 文件 |
