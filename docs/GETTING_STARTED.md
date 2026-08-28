@@ -104,7 +104,7 @@ Product tour: [`PRODUCT_INTRO.md`](./PRODUCT_INTRO.md) · Architecture: [`ARCHIT
 | **CLI agent models** | Settings → Models → **Claude Code**, **OpenCode**, or **MiMo Code** tab (read-only scan; configure in the CLI or CC Switch) |
 | **Allow network (D15)** | Settings → General → **Allow network** → Clutch Agent gains builtin `web_search` (off by default) |
 | **Strict sandbox (D21)** | Settings → General → **Strict sandbox** → reject paths/commands that escape the authorized workspace |
-| **Cross-session memory (D16)** | Settings → General → **Memory** on/off + **Clear memory**; Agent may call `remember_preference` |
+| **Cross-session memory (D16 / B-39)** | Settings → General → **Memory** on/off + **Clear memory**; say `记住：…` then open Files → `.clutch/memory/MEMORY.md` |
 | **Tool hooks (D17)** | Add `.clutch/hooks.json` (project) or user prefs `hooks.json` with PreToolUse/PostToolUse deny rules |
 | **Capability packs (D35)** | Settings → Skills → Import pack (dir/zip); Uninstall removes mounted skills/hooks/MCP snippets |
 | **Slash commands (D18)** | In Chat composer type `/` → `/plan` `/compact` `/todos` `/help` (+ Skills) |
@@ -114,6 +114,7 @@ Product tour: [`PRODUCT_INTRO.md`](./PRODUCT_INTRO.md) · Architecture: [`ARCHIT
 | **Headless / CI Agent (D36)** | Sidecar running + workspace authorized → `curl -X POST http://127.0.0.1:8124/api/agent/run -H 'Content-Type: application/json' -d '{"prompt":"…","workspace_path":"/abs/path"}'` **or** `cd services/orchestrator && uv run python -m src.headless_cli -p "…" --workspace /abs/path --json` |
 | **OpenCode Zen (free)** | [opencode.ai/auth](https://opencode.ai/auth) → Zen → API Keys → Settings → Models → **OpenCode Zen** → pick a free model → Save |
 | **CC Switch users** | Keys can be imported from `~/.cc-switch` on startup |
+| **Remote HTTP MCP** | Settings → MCP → Clutch Agent → Transport **HTTP** → paste URL (Figma example: `https://mcp.figma.com/mcp`) → Register → Test. API keys in Env; OAuth remotes open a browser. Guide: [`mcp-servers/figma.md`](./mcp-servers/figma.md) |
 
 ### UI map (30 seconds)
 
@@ -251,7 +252,7 @@ xattr -cr /Applications/Clutch.app && open -a Clutch
 | **CLI Agent 模型** | Settings → Models → **Claude Code**、**OpenCode** 或 **MiMo Code** 标签页（只读扫描；在 CLI 或 CC Switch 中配置） |
 | **允许联网（D15）** | Settings → General → **Allow network** → Clutch Agent 可用内置 `web_search`（默认关） |
 | **严格沙箱（D21）** | Settings → General → **Strict sandbox** → 拒绝逃出已授权工作区的路径/命令 |
-| **跨会话记忆（D16）** | Settings → General → **Memory** 开关 + **Clear memory**；Agent 可调用 `remember_preference` |
+| **跨会话记忆（D16 / B-39）** | Settings → General → **Memory** 开关；说「记住：…」后在 Files 打开 `.clutch/memory/MEMORY.md` |
 | **工具 Hooks（D17）** | 项目 `.clutch/hooks.json` 或用户偏好目录 `hooks.json` 配置 PreToolUse/PostToolUse 拒绝规则 |
 | **能力包（D35）** | Settings → Skills → Import 导入目录/zip；Uninstall 卸载挂载的 skills/hooks/MCP |
 | **斜杠命令（D18）** | Chat 输入 `/` → `/plan` `/compact` `/todos` `/help`（及 Skills） |
@@ -261,6 +262,7 @@ xattr -cr /Applications/Clutch.app && open -a Clutch
 | **无 UI / CI Agent（D36）** | Sidecar 已启动且工作区已授权 → `curl -X POST http://127.0.0.1:8124/api/agent/run …` **或** `cd services/orchestrator && uv run python -m src.headless_cli -p "…" --workspace /绝对路径 --json` |
 | **OpenCode Zen（免费）** | [opencode.ai/auth](https://opencode.ai/auth) → Zen → API Keys → Settings → Models → **OpenCode Zen** → 选免费模型 → 保存 |
 | **CC Switch 用户** | 启动时可从 `~/.cc-switch` 导入 |
+| **远程 HTTP MCP** | Settings → MCP → Clutch Agent → Transport **HTTP** → 填网址（Figma 例：`https://mcp.figma.com/mcp`）→ Register → 测试连接。API Key 写 Env；OAuth 远程会打开浏览器。步骤：[`mcp-servers/figma.md`](./mcp-servers/figma.md) |
 
 ### 界面速览
 

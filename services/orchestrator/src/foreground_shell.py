@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 import contextvars
-import os
 import subprocess
 import threading
 import time
-import uuid
 from collections.abc import Callable
-from pathlib import Path
 from typing import Any
+
+from src.shell_proc import command_key, kill_tree, popen_shell
 
 ForegroundNotifier = Callable[[str, dict[str, Any] | None], None]
 
@@ -100,22 +99,56 @@ def _try_idle_hybrid_shell(run_id: str) -> bool:
         return False
 
 
+def occupying_foreground(run_id: str) -> str | None:
+    with _lock:
+        cmd = _active.get(run_id)
+        if cmd is None or cmd.transferred or cmd.proc.poll() is not None:
+            return None
+        return cmd.command
+
+
+def running_commands(run_id: str) -> list[str]:
+    cmds: list[str] = []
+    fg = occupying_foreground(run_id)
+    if fg:
+        cmds.append(fg)
+    from src.bg_jobs import list_jobs
+
+    for job in list_jobs(run_id):
+        if job.get("status") == "running":
+            raw = str(job.get("command") or "").strip()
+            if raw:
+                cmds.append(raw)
+    return cmds
+
+
+def already_running_command(run_id: str, command: str) -> str | None:
+    key = command_key(command)
+    if not key:
+        return None
+    for other in running_commands(run_id):
+        if command_key(other) == key:
+            return other
+    return None
+
+
 def start_foreground(run_id: str, command: str, cwd: str) -> _ForegroundCmd:
     trimmed = command.strip()
-    shell = os.environ.get("SHELL") or ("cmd.exe" if os.name == "nt" else "/bin/bash")
-    proc = subprocess.Popen(
-        trimmed,
-        shell=True,
-        cwd=cwd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        bufsize=1,
-        env={**os.environ, "PWD": cwd},
-        executable=shell if os.name != "nt" and Path(shell).is_file() else None,
-    )
+    with _lock:
+        existing = _active.get(run_id)
+        if existing and not existing.transferred and existing.proc.poll() is None:
+            raise RuntimeError(
+                f"Foreground command already running: {existing.command[:80]}"
+            )
+    proc = popen_shell(trimmed, cwd)
     cmd = _ForegroundCmd(run_id, trimmed, cwd, proc)
     with _lock:
+        existing = _active.get(run_id)
+        if existing and not existing.transferred and existing.proc.poll() is None:
+            kill_tree(proc)
+            raise RuntimeError(
+                f"Foreground command already running: {existing.command[:80]}"
+            )
         _active[run_id] = cmd
     _notify(run_id, cmd.to_dict())
     return cmd
@@ -157,11 +190,13 @@ def wait_foreground(
         time.sleep(poll_interval)
 
     if not cmd.transferred and cmd.proc.poll() is None:
-        try:
-            cmd.proc.kill()
-            exit_code = cmd.proc.wait(timeout=2)
-        except Exception:
-            exit_code = -1
+        kill_tree(cmd.proc)
+        output = cmd.output_so_far()
+        with _lock:
+            if _active.get(run_id) is cmd:
+                _active.pop(run_id, None)
+        _notify(run_id, None)
+        return output, False, None
 
     output = cmd.output_so_far()
     transferred = cmd.transferred

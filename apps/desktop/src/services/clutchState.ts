@@ -478,6 +478,7 @@ class ClutchStateStore {
         token_output: remote.token_output,
         session_tokens: remote.session_tokens,
         session_cost_usd: remote.session_cost_usd,
+        usage_estimated: remote.usage_estimated,
       });
       return;
     }
@@ -884,6 +885,10 @@ class ClutchStateStore {
           }
           if (envelope.event === 'file_changed') {
             window.dispatchEvent(new CustomEvent('clutch-file-changed', { detail: envelope.data }));
+            return;
+          }
+          if (envelope.event === 'files_committed') {
+            window.dispatchEvent(new CustomEvent('clutch-files-committed', { detail: envelope.data }));
             return;
           }
           if (envelope.event === 'run_completed') {

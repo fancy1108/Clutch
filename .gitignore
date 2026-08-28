@@ -66,3 +66,12 @@ services/orchestrator/build/
 services/orchestrator/dist/
 services/orchestrator/src/workflow_assets/*.json
 .clutch/
+
+# Local Mimocode lock
+.mimocode/
+
+# Local architecture HTML preview (narrative stays in docs/ARCHITECTURE.md)
+docs/diagrams/
+
+# Compaction / eval / tool-result dumps (workspace-local)
+runs/archive/

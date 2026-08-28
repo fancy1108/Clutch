@@ -51,7 +51,6 @@ type EditorViewMode = 'canvas' | 'json';
 interface WorkflowOrchestrationProps {
   onClose: () => void;
   isModalStyle?: boolean;
-  onUseInChat?: (workflowId: string, workflowName: string) => void;
   onSelectWorkflow?: (workflowId: string, workflowName: string) => void;
   onClearSelectedWorkflow?: () => void;
   selectedWorkflowId?: string | null;
@@ -201,7 +200,6 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
   const [isSavingNewFlow, setIsSavingNewFlow] = useState(false);
   const [newWorkflowName, setNewWorkflowName] = useState('');
   const [newWorkflowDesc, setNewWorkflowDesc] = useState('');
-  const [newWorkflowIcon, setNewWorkflowIcon] = useState('fork_right');
 
   const activeWorkflow = workflows.find(wf => wf.id === activeWorkflowId);
 
@@ -230,7 +228,7 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
     setCanvasCompatible(compatible);
     setCanvasIncompatHint(compatible ? null : formatCanvasIncompatibilities(reasons));
     if (compatible) {
-      const canvas = compilerToCanvas(workflow, workflow.icon ?? 'fork_right');
+      const canvas = compilerToCanvas(workflow, workflow.icon ?? 'workflow');
       setWorkflows((prev) => {
         const rest = prev.filter((w) => w.id !== canvas.id);
         return [...rest, canvas];
@@ -342,7 +340,6 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
           nodeType,
           agent: resolveAgentLabel(step.agent),
           avatar: nodeType === 'agent_task' ? resolveBrandLogoSrc({
-            aiTool: step.aiTool,
             agent: matchedAgent,
             agentType: matchedAgent ? agentTypeFromAgent(matchedAgent) : undefined,
           }) : undefined,
@@ -458,7 +455,6 @@ const edgeColors: Record<string, string> = {
     setCreateFlowError(null);
     setNewWorkflowName('');
     setNewWorkflowDesc('');
-    setNewWorkflowIcon('fork_right');
   };
 
   const handleEditWorkflow = (item: WorkflowListItem, e: React.MouseEvent) => {
@@ -467,7 +463,6 @@ const edgeColors: Record<string, string> = {
     setCreateFlowError(null);
     setNewWorkflowName(item.name);
     setNewWorkflowDesc(item.description || '');
-    setNewWorkflowIcon(item.icon || 'fork_right');
     setIsCreatingWorkflow(true);
   };
 
@@ -486,7 +481,7 @@ const edgeColors: Record<string, string> = {
         { id: 'end', type: 'end', position: { x: 250, y: 120 }, data: { label: t('Finish') } },
       ],
       edges: [{ id: 'e1', source: 'start', target: 'end' }],
-      icon: newWorkflowIcon,
+      icon: 'workflow',
       description: newWorkflowDesc.trim(),
     };
     setIsSavingNewFlow(true);
@@ -516,7 +511,7 @@ const edgeColors: Record<string, string> = {
       const updatedWorkflow: CompilerWorkflow = {
         ...workflow,
         name: newWorkflowName.trim(),
-        icon: newWorkflowIcon,
+        icon: 'workflow',
         description: newWorkflowDesc.trim(),
       };
 
@@ -530,7 +525,7 @@ const edgeColors: Record<string, string> = {
           return {
             ...wf,
             name: updatedWorkflow.name,
-            icon: updatedWorkflow.icon ?? 'fork_right',
+            icon: updatedWorkflow.icon ?? 'workflow',
             description: updatedWorkflow.description ?? '',
           };
         }));
@@ -657,7 +652,7 @@ const edgeColors: Record<string, string> = {
         name: nodeForm.name || 'New Step',
         nodeType,
         agent: (nodeType === 'agent_task' ? (selectedAgent?.id ?? nodeForm.agent!.trim()) : ''),
-        aiTool: nodeType === 'agent_task' ? (nodeForm.aiTool || '') : '',
+        aiTool: '',
         description: nodeForm.description || '',
         avatar: nodeType === 'agent_task' ? (selectedAgent?.avatar || nodeForm.avatar || DEFAULT_AVATAR) : '',
         nextSteps: formNextSteps,
@@ -726,14 +721,14 @@ const edgeColors: Record<string, string> = {
     }));
   }, [activeWorkflowId]);
 
-  const selectedAgent = agents.find(a => a.id === nodeForm.agent);
+  const selectedAgent = agents.find(a => a.id === nodeForm.agent || a.name === nodeForm.agent);
 
   const contentElement = (
     <div className="flex-1 h-full flex flex-col bg-white overflow-hidden">
       <div className={`px-8 pt-8 flex-shrink-0 ${isModalStyle ? 'pr-14' : 'pr-6'}`}>
         <SettingsPageHeader
           isModalStyle={isModalStyle}
-          icon="fork_right"
+          icon="workflow"
           title={t('Workflow Orchestration')}
           description={t('Design and manage cooperative multi-agent state pipelines.')}
         />
@@ -741,10 +736,9 @@ const edgeColors: Record<string, string> = {
 
       <div className="flex flex-1 min-h-0">
         {/* Left sidebar with workflow list */}
-        <div className="w-[280px] border-r border-neutral-100 bg-neutral-50/30 flex flex-col overflow-hidden">
+        <div className="w-[300px] border-r border-neutral-100 bg-neutral-50/30 flex flex-col overflow-hidden">
           <div className="flex border-b border-neutral-200/60 shrink-0">
             <div className="flex-1 py-2 text-[10px] font-bold uppercase tracking-widest text-center text-neutral-800 bg-white border-b-2 border-neutral-800">
-              <LegacyIcon name="account_tree" className="text-[12px] inline mr-1" />
               Workflows
             </div>
           </div>
@@ -778,24 +772,19 @@ const edgeColors: Record<string, string> = {
               key={`${item.source}-${item.id}`}
               data-testid={`workflow-item-${item.id}`}
               onClick={() => handleListItemClick(item)}
-              className={`group p-3 border rounded-xl flex items-center justify-between cursor-pointer transition-all bg-white relative ${
+              className={`group flex items-center gap-2 p-2.5 border rounded-xl cursor-pointer transition-all bg-white ${
                 isEditorActive || isChatSelected
                   ? 'border-neutral-400 bg-neutral-50 shadow-sm ring-1 ring-neutral-200'
                   : 'border-neutral-200/50 hover:border-neutral-300 shadow-xs'
               }`}
             >
-              <div className="flex items-center gap-3 overflow-hidden min-w-0 flex-1">
-                <div className="w-8 h-8 rounded-lg bg-neutral-100/70 flex flex-shrink-0 items-center justify-center">
-                  <LegacyIcon name={item.icon || "fork_right"} className="text-neutral-600 text-[18px]" />
-                </div>
-                <div className="overflow-hidden text-left min-w-0">
-                  <h4 className="text-[11px] font-bold text-neutral-800 truncate">{item.name}</h4>
-                  <p className="text-[9px] text-neutral-400 font-mono mt-0.5 truncate">
-                    {t('User Workflow')}
-                  </p>
-                </div>
+              <div className="w-8 h-8 rounded-lg bg-neutral-100/70 flex flex-shrink-0 items-center justify-center">
+                <LegacyIcon name="workflow" className="text-neutral-600 text-[18px]" />
               </div>
-              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 ml-2">
+              <h4 className="flex-1 min-w-0 text-left text-[11px] font-bold text-neutral-800 leading-snug break-words">
+                {item.name}
+              </h4>
+              <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button
                   type="button"
                   onClick={(e) => {
@@ -849,6 +838,7 @@ const edgeColors: Record<string, string> = {
                   <div className="flex rounded-xl border border-neutral-200/60 overflow-hidden text-xs font-bold whitespace-nowrap shadow-2xs">
                     <button
                       type="button"
+                      data-testid="workflow-canvas-tab"
                       disabled={!canvasCompatible}
                       onClick={() => { syncJsonFromCanvas(); setViewMode('canvas'); }}
                       className={`px-3 py-1.5 text-[11px] transition-colors ${
@@ -875,6 +865,7 @@ const edgeColors: Record<string, string> = {
                     <div className="relative">
                       <button
                         type="button"
+                        data-testid="workflow-add-node"
                         onClick={() => setShowNodeTypePicker(!showNodeTypePicker)}
                         className={MODAL_BTN_SECONDARY}
                       >
@@ -889,6 +880,7 @@ const edgeColors: Record<string, string> = {
                               <button
                                 key={type}
                                 type="button"
+                                data-testid={`workflow-add-node-${type}`}
                                 onClick={() => createNodeOfType(type)}
                                 className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[11px] font-medium text-neutral-700 hover:bg-neutral-100 transition-colors text-left"
                               >
@@ -967,7 +959,7 @@ const edgeColors: Record<string, string> = {
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center flex-col text-neutral-400">
-              <LegacyIcon name="fork_right" className="text-[32px] mb-2 font-light" />
+              <LegacyIcon name="workflow" className="text-[32px] mb-2 font-light" />
               <p className="text-xs font-medium">{t('Select or create a workflow')}</p>
             </div>
           )}
@@ -1042,7 +1034,8 @@ const edgeColors: Record<string, string> = {
               {(nodeForm.nodeType ?? 'agent_task') === 'agent_task' && (
               <div className="space-y-1.5">
                 <label className="font-bold text-neutral-700">{t('Assigned Agent')}</label>
-                <select 
+                <select
+                  data-testid="node-agent-select"
                   value={nodeForm.agent || ''}
                   onChange={e => {
                     const agentId = e.target.value;
@@ -1051,7 +1044,8 @@ const edgeColors: Record<string, string> = {
                       ...nodeForm,
                       agent: agentId,
                       name: selected ? selected.name : (nodeForm.name || ''),
-                      description: selected ? selected.description : (nodeForm.description || '')
+                      description: selected ? selected.description : (nodeForm.description || ''),
+                      aiTool: '',
                     });
                   }}
                   className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-xs bg-white focus:outline-none focus:border-neutral-400 transition-all font-medium"
@@ -1072,7 +1066,7 @@ const edgeColors: Record<string, string> = {
                   <div className="mt-2 p-2.5 rounded-lg border border-neutral-100 bg-neutral-50/50 space-y-1 text-[10.5px] text-neutral-500 font-medium">
                     <div className="flex justify-between items-center">
                       <span className="text-neutral-400">{t('AI Tool / Type:')}</span>
-                      <span className="font-bold text-neutral-700 font-mono">
+                      <span className="font-bold text-neutral-700 font-mono" data-testid="node-agent-type">
                         {agentTypeLabel(agentTypeFromAgent(selectedAgent))}
                       </span>
                     </div>
@@ -1296,36 +1290,6 @@ const edgeColors: Record<string, string> = {
                   className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-neutral-400 focus:ring-2 focus:ring-neutral-200/50 transition-all min-h-[80px] resize-none"
                   placeholder={t('Briefly state the goal of this pipeline...')}
                 />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="font-bold text-neutral-700 block">{t('Flow Icon Representation')}</label>
-                <div className="grid grid-cols-4 gap-1.5">
-                  {[
-                    { key: 'account_tree', name: t('Tree') },
-                    { key: 'code', name: t('Code') },
-                    { key: 'sync', name: t('Sync') },
-                    { key: 'movie', name: t('Video') },
-                    { key: 'deployed_code', name: t('Deploy') },
-                    { key: 'terminal', name: t('Console') },
-                    { key: 'api', name: t('API') },
-                    { key: 'schema', name: t('SOP Mapping') }
-                  ].map(iconOpt => (
-                    <button
-                      key={iconOpt.key}
-                      type="button"
-                      onClick={() => setNewWorkflowIcon(iconOpt.key)}
-                      className={`p-2 border rounded-xl flex flex-col items-center gap-1 justify-center transition-all cursor-pointer ${
-                        newWorkflowIcon === iconOpt.key
-                          ? 'border-neutral-800 bg-neutral-900 text-white'
-                          : 'border-neutral-200 hover:border-neutral-350 text-neutral-600 bg-neutral-50/50'
-                      }`}
-                    >
-                      <LegacyIcon name={iconOpt.key} className="text-[16px]" />
-                      <span className="text-[8px] font-bold leading-tight truncate w-full text-center">{iconOpt.name}</span>
-                    </button>
-                  ))}
-                </div>
               </div>
             </div>
 

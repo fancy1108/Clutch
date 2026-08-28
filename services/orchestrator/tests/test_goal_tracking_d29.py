@@ -56,7 +56,7 @@ def test_goal_write_streams_via_mcp_react(monkeypatch) -> None:
         def __init__(self, name: str, endpoint: str, env=None) -> None:
             self.name = name
 
-        def start(self) -> bool:
+        def start(self, *args, **kwargs) -> bool:
             return True
 
         def list_tools(self) -> list[dict]:

@@ -12,6 +12,18 @@
 
 | 日期 | 范围 | 命令 | 结果 | 报告/证据 | 备注 |
 |------|------|------|------|-----------|------|
+| 2026-08-28 | Wave 4 FM-10/FM-18 + D64/D65 | `./scripts/verify.sh` | ✅ vitest 248 · pytest 1021 passed / 7 skipped · doc-drift 0 error | `runs/verification/2026-08-28-wave4-fm10-fm18-verify.log` | Agent 点验；FM-10 无 Node engine；FM-18 Chat/Overview testid |
+| 2026-08-26 | FM-01…22 点验剧本 Desktop E2E | `playwright test --project=desktop tests/desktop/frontend-modules.spec.ts`（sidecar :8124） | ✅ 1 passed (17.7s) | `runs/verification/2026-08-26-fm-01-22-playbook-e2e.log` | FM-18 无失败 run 按剧本跳过；FM-08 需真 handoff 未单步断言 |
+| 2026-08-26 | 桌面白屏 + FM E2E | `./scripts/run-e2e.sh` | ✅ API 7 · Hybrid 1 · Desktop 6 passed | `runs/verification/2026-08-26-fm-e2e-after-orchestra-confirm.log` | 根因 `useLanguage` 未 import；Orchestra 须点 Confirm |
+| 2026-08-25 | Q-USAGE-1 Overview 用量 E2E | API `pnpm test:api`；Desktop `playwright test --project=desktop tests/desktop/session-usage.spec.ts` | ✅ API 7 passed · Desktop 1 passed | `runs/verification/2026-08-25-e2e-session-usage.log` | 费用格仍 `—`；假 LLM 注入占位 Key |
+| 2026-08-25 | Q-USAGE-1 Overview 用量 + Design/D37 文档 | `./scripts/verify.sh` | ✅ vitest 238 · pytest 998 passed / 7 skipped · doc-drift 0 error | — | 费用格仍 `—`；Windows 不修（D55） |
+| 2026-08-24 | Design D36 PM 点验 | 人工（Header / 会话 / 画布 / iterate / 落盘 / Send to Coding / design-to-code） | ✅ | — | 功能随 v1.2.0 已发；今日勾 ROADMAP |
+| 2026-08-24 | B-48 消融闸 + trajectory | `uv run pytest tests/test_agent_eval_b48.py tests/test_agent_eval_b34.py -q` | ✅ 6 passed / 3 skipped | — | 无 Chat UI；live Agnes skip |
+| 2026-08-24 | D5 记住/问答不发卡 | `uv run pytest tests/test_verification_d5.py tests/test_workspace_memory_b39.py tests/test_verify_harness_b37.py -q` | ✅ 20 passed | — | PM：记住回合无卡、不多 Worked: |
+| 2026-08-24 | B-44 落盘指针来源标记 | `uv run pytest tests/test_context_layers_b36.py -q` | ✅ 5 passed | `runs/archive/tool_results/98131840dcd6.txt` | PM：`CHANGELOG.md` 全文 read；Chat 无新卡 |
+| 2026-08-24 | B-41 文件名走 list_dir | `uv run pytest tests/test_tool_aci_b41.py tests/test_tool_use_policy.py tests/test_builtin_tools_d1.py tests/test_tool_steps.py -v` | ✅ 6 B-41 + 相关回归 passed | — | PM：List . / Listed 1 dir，未 Search |
+| 2026-08-24 | B-35 末尾 agent_status | `uv run pytest tests/test_agent_prompt.py tests/test_task_state_d8.py tests/test_agent_eval_b34.py tests/test_agent_prompt_d53.py tests/test_compaction.py tests/test_d7_project_rules_skills.py tests/test_permission_explore_d27.py tests/test_cross_session_memory_d16.py tests/test_plan_d2_d49.py` | ✅ 51 passed / 3 skipped | — | 前缀无时钟/Todo；status 整换 |
+| 2026-08-24 | B-34 Agent eval 快照 + Agnes live | `uv run pytest tests/test_agent_eval_b34.py -v`；`CLUTCH_AGENT_EVAL_LIVE=1 … -k live` | ✅ 契约 3 passed / live 3 passed | — | CI 默认 skip live；本机 CC Switch Agnes |
 | 2026-06-27 | D25 HRT-04 单 session Hybrid 验收 | 用户人工 A–E | ✅ | `runs/verification/2026-06-27-hrt-04-acceptance.md` | commit `1d281f6` 基线 |
 | 2026-07-01 | D25 HRT-F 多 session Hybrid 验收 | 用户人工 F1/F2/G | ✅ | [`runs/verification/2026-07-01-hrt-f-multi-session.md`](../runs/verification/2026-07-01-hrt-f-multi-session.md) · [#24](https://github.com/fancy1108/Clutch/issues/24) · F3–F5 skip |
 | 2026-06-27 | D25 runtime_registry dispatch | `./scripts/verify.sh` | ✅ 342 pytest | `—` | `try_shell_exec_hybrid` |

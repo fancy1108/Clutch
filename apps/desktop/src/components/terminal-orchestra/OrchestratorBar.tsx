@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import type { PendingHandoffDraft } from '../../types';
 import type { SessionRecord } from '../../services/runApi';
 import type { ScannedSkill } from '../../services/skillsApi';
 import type { FileTreeNode } from '../../services/workspaceApi';
@@ -25,7 +24,6 @@ type ImageChip = { id: string; name: string; dataUrl: string };
 
 interface OrchestratorBarProps {
   sessionRunId: string;
-  drafts: PendingHandoffDraft[];
   inputValue: string;
   setInputValue: (val: string) => void;
   permissionMode: PermissionMode;
@@ -52,7 +50,6 @@ function flattenFileTree(nodes: FileTreeNode[], prefix = ''): string[] {
 
 export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
   sessionRunId,
-  drafts,
   inputValue,
   setInputValue,
   permissionMode,
@@ -68,8 +65,6 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
 }) => {
   const { t } = useLanguage();
   const [error, setError] = useState('');
-  const [activeDraftId, setActiveDraftId] = useState<string | null>(null);
-  const [toast, setToast] = useState<{ message: string; draftText?: string } | null>(null);
   const [agentPickerOpen, setAgentPickerOpen] = useState(false);
   const [agentFilter, setAgentFilter] = useState('');
   const [attachMenuOpen, setAttachMenuOpen] = useState(false);
@@ -82,7 +77,6 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
   const [sessionFilter, setSessionFilter] = useState('');
   const [imageChips, setImageChips] = useState<ImageChip[]>([]);
   const [sending, setSending] = useState(false);
-  const prevDraftCount = React.useRef(drafts.length);
   const containerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -134,14 +128,6 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
     window.addEventListener('orchestrator-fill-bar', handler);
     return () => window.removeEventListener('orchestrator-fill-bar', handler);
   }, [setInputValue]);
-
-  useEffect(() => {
-    if (drafts.length > prevDraftCount.current && drafts.length > 0) {
-      const latest = drafts[drafts.length - 1];
-      setToast({ message: latest.label, draftText: latest.text });
-    }
-    prevDraftCount.current = drafts.length;
-  }, [drafts]);
 
   useEffect(() => {
     const ta = textareaRef.current;
@@ -333,34 +319,35 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
         setError(result.error);
         return;
       }
+      const preview = result.preview;
+      const chips = (preview.chips ?? []).filter((c) => c.on).map((c) => c.source_name);
       const targetAgent = resolveDispatchTargetAgent(
         composed,
-        result.preview.target,
+        preview.target,
         mentionableAgents,
         selectedMentionAgentId,
       );
-      const chips = (result.preview.chips ?? []).filter((c) => c.on).map((c) => c.source_name);
       const snapshot = clutchStore.getSnapshot();
-      const isHandoff = result.preview.dispatch_mode === 'handoff';
+      const isHandoff = preview.dispatch_mode === 'handoff';
       const laneTranscripts = isHandoff
         ? collectHandoffLaneTranscripts(
-            chips.length > 0 ? chips : result.preview.sources,
+            chips.length > 0 ? chips : preview.sources,
             snapshot.pty_lanes ?? [],
             (laneId) => clutchStore.getLaneTranscript(laneId),
-            result.preview.target,
+            preview.target,
           )
         : [];
-      const targetLabel = targetAgent?.name?.trim() || result.preview.target;
+      const targetLabel = targetAgent?.name?.trim() || preview.target;
       clutchStore.optimisticDispatchLogAppend(
         buildOptimisticDispatchEntry({
           prompt: dispatchText,
-          preview: result.preview,
+          preview,
           activeSources: chips,
           targetLabel,
         }),
       );
       if (!isHandoff) {
-        const sourcesToCollapse = chips.length > 0 ? chips : result.preview.sources;
+        const sourcesToCollapse = chips.length > 0 ? chips : preview.sources;
         for (const src of sourcesToCollapse) {
           const sourceLane = findLaneForDispatchSource(snapshot.pty_lanes ?? [], src);
           if (sourceLane) {
@@ -377,7 +364,6 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
       }
       setInputValue('');
       setImageChips([]);
-      setActiveDraftId(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -393,11 +379,6 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
     selectedMentionAgentId,
     setInputValue,
   ]);
-
-  const selectDraft = (draft: PendingHandoffDraft) => {
-    setActiveDraftId(draft.id);
-    setInputValue(draft.text);
-  };
 
   const canSend = !readOnly && !sending && (inputValue.trim().length > 0 || imageChips.length > 0);
 
@@ -419,56 +400,12 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
         onChange={handleImageInputChange}
       />
 
-      {toast ? (
-        <div className="flex items-center gap-2 rounded-t-xl border-b border-outline-variant/40 bg-surface-container-low px-3 py-2 text-xs">
-          <span className="flex-1 text-on-surface">{toast.message}</span>
-          {toast.draftText ? (
-            <button
-              type="button"
-              className="text-[10px] font-semibold px-2 py-1 rounded-lg border border-outline-variant/40 hover:bg-surface-container-high"
-              onClick={() => {
-                setInputValue(toast.draftText ?? '');
-                setToast(null);
-              }}
-            >
-              {t('Fill draft')}
-            </button>
-          ) : null}
-          <button
-            type="button"
-            className="text-[10px] font-semibold px-2 py-1 rounded-lg border border-outline-variant/40 hover:bg-surface-container-high"
-            onClick={() => setToast(null)}
-          >
-            {t('Dismiss toast')}
-          </button>
-        </div>
-      ) : null}
-
       {error ? (
         <div
           data-testid="orchestrator-dock-error"
           className="mx-3 mt-2 rounded-lg border border-error/30 bg-error/10 px-3 py-2 text-[11px] text-error"
         >
           {error}
-        </div>
-      ) : null}
-
-      {drafts.length > 0 && !readOnly ? (
-        <div className="flex flex-wrap gap-1.5 px-3 pt-2 pb-1">
-          {drafts.map((draft) => (
-            <button
-              key={draft.id}
-              type="button"
-              onClick={() => selectDraft(draft)}
-              className={`text-[10px] font-semibold px-2 py-1 rounded-lg border ${
-                activeDraftId === draft.id
-                  ? 'border-amber-500 bg-amber-50 text-amber-900'
-                  : 'border-outline-variant/40 bg-amber-50/60 text-amber-800'
-              }`}
-            >
-              {draft.label}
-            </button>
-          ))}
         </div>
       ) : null}
 
@@ -559,7 +496,7 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
                   setSessionPickerOpen(true);
                 }}
               >
-                <LegacyIcon name="chat_bubble" className="text-[17px] text-on-surface-variant" />
+                <LegacyIcon name="history" className="text-[17px] text-on-surface-variant" />
                 Insert # session
               </button>
               <button
@@ -571,7 +508,7 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
                   setSkillFilter('');
                 }}
               >
-                <LegacyIcon name="terminal" className="text-[17px] text-on-surface-variant" />
+                <LegacyIcon name="sparkles" className="text-[17px] text-on-surface-variant" />
                 Insert / command
               </button>
             </div>
@@ -753,7 +690,7 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
         <div className="absolute bottom-full left-0 mb-2 w-72 bg-white border border-outline-variant rounded-xl shadow-xl z-50 overflow-hidden">
           <div className="p-2 border-b border-outline-variant/30">
             <div className="flex items-center gap-2 px-2">
-              <LegacyIcon name="terminal" className="text-[15px] text-on-surface-variant" />
+              <LegacyIcon name="sparkles" className="text-[15px] text-on-surface-variant" />
               <span className="text-[11px] font-semibold text-on-surface-variant">{t('Skills / Commands')}</span>
             </div>
           </div>
@@ -785,7 +722,7 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
         <div className="absolute bottom-full left-0 mb-2 w-72 bg-white border border-outline-variant rounded-xl shadow-xl z-50 overflow-hidden">
           <div className="p-2 border-b border-outline-variant/30">
             <div className="flex items-center gap-2 px-2">
-              <LegacyIcon name="chat_bubble" className="text-[15px] text-on-surface-variant" />
+              <LegacyIcon name="history" className="text-[15px] text-on-surface-variant" />
               <span className="text-[11px] font-semibold text-on-surface-variant">{t('Sessions')}</span>
             </div>
           </div>

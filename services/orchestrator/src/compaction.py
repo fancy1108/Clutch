@@ -124,6 +124,7 @@ def _build_critical_context(
 
 
 def should_compact(state: ClutchState, threshold: int = 15000) -> bool:
+    """Layer 4 emergency compact. Layers 1–3 live in ``context_layers``."""
     messages = state.get("messages", [])
     if len(messages) <= 5:
         return False
@@ -242,6 +243,7 @@ async def compact_run_messages(
     state["token_output"] = output_tokens
     state["session_tokens"] = total
     state["session_cost_usd"] = round(total * 0.00000015, 6)
+    state["usage_estimated"] = True
 
     # Save to disk
     from src.run_state_store import save_run_state

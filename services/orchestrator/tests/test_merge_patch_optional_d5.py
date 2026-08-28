@@ -34,6 +34,14 @@ def test_merge_patch_keeps_agent_todos_and_verification_report() -> None:
     assert patched.get("diff_summary", {}).get("title") == "Changes"
     assert patched.get("pending_tool_steps")
 
+    with_wt = _merge_patch(
+        state,
+        {"worktree_isolation": {"id": "wt_1", "path": "/tmp/wt", "branch": "clutch/wt_1", "enabled": True}},
+    )
+    assert with_wt.get("worktree_isolation", {}).get("id") == "wt_1"
+    cleared = _merge_patch(with_wt, {"worktree_isolation": None})
+    assert cleared.get("worktree_isolation") is None
+
     sealed = _verification_report_for_seal(patched, files_changed=["extra.py"])
     assert sealed is not None
     assert sealed["conclusion"] == "failed"

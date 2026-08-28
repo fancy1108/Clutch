@@ -15,8 +15,77 @@ def test_normalize_cli_agent_type_aliases() -> None:
     assert cfg.normalize_cli_agent_type("claude-cli") == "claude-cli"
     assert cfg.normalize_cli_agent_type("opencode") == "opencode-cli"
     assert cfg.normalize_cli_agent_type("mimo") == "mimo-cli"
-    with pytest.raises(ValueError):
-        cfg.normalize_cli_agent_type("codex-cli")
+    assert cfg.normalize_cli_agent_type("codex-cli") == "codex-cli"
+    assert cfg.normalize_cli_agent_type("aider") == "aider-cli"
+    assert cfg.normalize_cli_agent_type("ollama") == "ollama-cli"
+
+
+def test_scan_codex_models_reads_config_toml(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    config_path = tmp_path / "config.toml"
+    config_path.write_text(
+        'model_provider = "custom"\nmodel = "agnes-2.5-pro-alpha"\n\n'
+        '[model_providers.custom]\nbase_url = "https://apihub.agnes-ai.com/v1"\n',
+        encoding="utf-8",
+    )
+    cache_path = tmp_path / "models_cache.json"
+    cache_path.write_text(
+        json.dumps({"models": [{"slug": "gpt-5.6-sol", "display_name": "GPT-5.6 Sol"}]}),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(cfg, "_CODEX_CONFIG_PATH", config_path)
+    monkeypatch.setattr(cfg, "_CODEX_MODELS_CACHE_PATH", cache_path)
+    monkeypatch.setattr(cfg, "_CODEX_AUTH_PATH", tmp_path / "missing-auth.json")
+    monkeypatch.setattr(cfg, "_CC_SWITCH_DIR", tmp_path / "missing-cc-switch")
+
+    payload = cfg.scan_cli_models("codex-cli")
+    assert payload["agent_type"] == "codex-cli"
+    assert payload["active_model_id"] == "agnes-2.5-pro-alpha"
+    assert payload["active_provider_id"] == "custom"
+    assert payload["base_url"] == "https://apihub.agnes-ai.com/v1"
+    ids = {item["model_id"] for item in payload["available_models"]}
+    assert "agnes-2.5-pro-alpha" in ids
+    assert "gpt-5.6-sol" in ids
+
+
+def test_scan_more_clis_read_native_files(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    home = tmp_path / "home"
+    (home / ".codebuddy").mkdir(parents=True)
+    (home / ".codebuddy" / "settings.json").write_text(
+        json.dumps({"model": "minimax-m2.5"}), encoding="utf-8"
+    )
+    (home / ".rivet").mkdir()
+    (home / ".rivet" / "config.json").write_text(
+        json.dumps(
+            {
+                "provider": {
+                    "default": "agnes",
+                    "providers": {
+                        "agnes": {"models": [{"id": "agnes-2.5-flash"}]},
+                        "glm": {"models": [{"id": "glm-5.2"}]},
+                    },
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    (home / ".aider.conf.yml").write_text("model: gpt-4o\n", encoding="utf-8")
+    (home / ".ollama").mkdir()
+    (home / ".ollama" / "config.json").write_text(
+        json.dumps({"last_model": "ornith:9b"}), encoding="utf-8"
+    )
+    monkeypatch.setattr(cfg, "_user_home", lambda: home)
+    monkeypatch.setattr("src.adapters.ollama_adapter.get_ollama_models", lambda: ["ornith:9b", "qwen2.5vl:7b"])
+
+    codebuddy = cfg.scan_cli_models("codebuddy-cli")
+    assert codebuddy["active_model_id"] == "minimax-m2.5"
+    rivet = cfg.scan_cli_models("rivet-cli")
+    assert rivet["active_model_id"] == "agnes-2.5-flash"
+    assert {item["model_id"] for item in rivet["available_models"]} == {"agnes-2.5-flash", "glm-5.2"}
+    aider = cfg.scan_cli_models("aider-cli")
+    assert aider["active_model_id"] == "gpt-4o"
+    ollama = cfg.scan_cli_models("ollama-cli")
+    assert ollama["active_model_id"] == "ornith:9b"
+    assert "qwen2.5vl:7b" in {item["model_id"] for item in ollama["available_models"]}
 
 
 def test_scan_claude_code_models_without_cc_switch(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -109,6 +178,37 @@ def test_scan_opencode_models_reads_auth_and_state(tmp_path: Path, monkeypatch: 
     assert len(payload["auth_providers"]) == 1
     assert payload["auth_providers"][0]["id"] == "deepseek"
     assert any(item["model_ref"] == "opencode/deepseek-v4-flash-free" for item in payload["catalog"])
+
+
+def test_opencode_headless_model_args_prefers_tui_recent(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config_path = tmp_path / "opencode.jsonc"
+    config_path.write_text(
+        json.dumps({"model": "opencode/deepseek-v4-flash-free"}),
+        encoding="utf-8",
+    )
+    state_path = tmp_path / "model.json"
+    state_path.write_text(
+        json.dumps({"recent": [{"providerID": "opencode", "modelID": "big-pickle"}]}),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(cfg, "_OPENCODE_CONFIG_CANDIDATES", (config_path,))
+    monkeypatch.setattr(cfg, "_OPENCODE_MODEL_STATE_PATH", state_path)
+
+    assert cfg.resolve_opencode_headless_model() == "opencode/big-pickle"
+    assert cfg.opencode_headless_model_args() == ["-m", "opencode/big-pickle"]
+
+
+def test_opencode_headless_model_args_falls_back_to_config(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config_path = tmp_path / "opencode.json"
+    config_path.write_text(json.dumps({"model": "openai/gpt-4o"}), encoding="utf-8")
+    monkeypatch.setattr(cfg, "_OPENCODE_CONFIG_CANDIDATES", (config_path,))
+    monkeypatch.setattr(cfg, "_OPENCODE_MODEL_STATE_PATH", tmp_path / "missing-model.json")
+
+    assert cfg.opencode_headless_model_args() == ["-m", "openai/gpt-4o"]
 
 
 def test_activate_opencode_model_writes_config_and_state(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

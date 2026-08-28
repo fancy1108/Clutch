@@ -55,6 +55,9 @@ class McpRunOutcome:
     consecutive_failures: int = 0
     # D10/D48: nested subtask cards from delegate_subtask
     subtasks: list[dict[str, Any]] | None = None
+    # Q-USAGE-1: accumulated provider usage for this ReAct turn
+    usage: dict[str, int] | None = None
+    usage_estimated: bool = True
 
 
 def _sanitize_tool_part(value: str) -> str:
@@ -161,11 +164,36 @@ def _execute_tool_call(
     on_log: Callable[[str], None] | None,
     step_idx: int,
     files_changed: list[str] | None = None,
+    prior_files_changed: list[str] | None = None,
     on_tool_step: Callable[[dict[str, Any]], None] | None = None,
     on_diff_summary: Callable[[dict[str, Any]], None] | None = None,
     step_id: str | None = None,
+    require_explicit_commit: bool = True,
 ) -> str:
     from src.tool_steps import append_execute_output_detail, make_tool_step
+    from src.tool_use_policy import (
+        apply_filename_grep_rewrite,
+        command_includes_git_commit,
+        git_commit_not_requested_result,
+        short_tool_name,
+        user_asked_to_commit,
+    )
+
+    incoming_name = func_name
+    func_name, func_args = apply_filename_grep_rewrite(func_name, dict(func_args or {}))
+
+    if require_explicit_commit:
+        from src.artifact_layout import current_user_turn_text
+
+        if not user_asked_to_commit(current_user_turn_text() or ""):
+            short = short_tool_name(func_name)
+            shell_cmd = str((func_args or {}).get("command") or "")
+            if short == "git_commit" or (
+                short == "run_terminal_cmd" and command_includes_git_commit(shell_cmd)
+            ):
+                msg = git_commit_not_requested_result()
+                _emit(logs, on_log, f"[{log_prefix}] {msg}")
+                return msg
 
     def _emit_inline_diffs(tool_name: str, args: dict[str, Any], result: str) -> list[dict[str, Any]]:
         """Build Cursor-style per-edit cards; attach to tool steps (not separate Chat bubbles)."""
@@ -197,11 +225,25 @@ def _execute_tool_call(
                 step["title"] = f"Edit {cards[0].get('title') or tool_name}"
             else:
                 step = append_execute_output_detail(step, tool_name, result)
+            if short_tool_name(tool_name) == "git_commit":
+                try:
+                    payload = json.loads(result)
+                    raw_paths = payload.get("committed_paths") if isinstance(payload, dict) else None
+                    if isinstance(raw_paths, list):
+                        step["committedPaths"] = [
+                            str(p).strip() for p in raw_paths if str(p).strip()
+                        ]
+                except Exception:
+                    pass
         elif status == "failed" and result:
             step = append_execute_output_detail(step, tool_name, result)
         on_tool_step(step)
 
     route = tool_routes.get(func_name)
+    if route is None and func_name != incoming_name:
+        original = tool_routes.get(incoming_name)
+        if original:
+            route = (original[0], "list_dir")
     active_id = step_id or f"tool_{step_idx}"
     if on_tool_step:
         on_tool_step(
@@ -232,6 +274,23 @@ def _execute_tool_call(
             )
         return f"Unknown tool alias: {func_name}"
     server_id, tool_name = route
+    from src.builtin_tools import (
+        VERIFICATION_NOT_PUBLISHED,
+        is_submit_verification_tool,
+        verification_report_allowed,
+    )
+
+    if is_submit_verification_tool(tool_name):
+        from src.artifact_layout import current_user_turn_text
+
+        if not verification_report_allowed(
+            user_text=current_user_turn_text() or "",
+            files_changed=files_changed,
+            prior_files_changed=prior_files_changed,
+        ):
+            _emit(logs, on_log, f"[{log_prefix}] {VERIFICATION_NOT_PUBLISHED}")
+            _finish_step(status="completed", result=VERIFICATION_NOT_PUBLISHED, tool_name=tool_name)
+            return VERIFICATION_NOT_PUBLISHED
     workaround = move_file_delete_workaround_message(tool_name, func_args)
     if workaround:
         result_str = f"Error executing tool: {workaround}"
@@ -358,6 +417,19 @@ def _router_chat(
     tool_choice: str | None = None,
 ) -> tuple[Any, bool]:
     """Call router.chat; fall back to text-only when the model rejects tools."""
+    try:
+        from src.context_layers import apply_layered_context
+
+        stats = apply_layered_context(chat_messages)
+        if stats.offloaded or stats.noise_dropped or stats.batched:
+            _emit(
+                logs,
+                on_log,
+                f"[{log_prefix}] Context layers: offload={stats.offloaded} "
+                f"noise={stats.noise_dropped} batch={stats.batched}",
+            )
+    except Exception:
+        pass
     tools_arg = openai_tools if use_tools else None
     try:
         kwargs: dict[str, Any] = {"tools": tools_arg, "model_id": model_id}
@@ -390,6 +462,15 @@ def _accumulate_model_reasoning(
         on_reasoning("\n\n".join(chunks))
 
 
+def _usage_from_response(response: Any) -> tuple[dict[str, int] | None, bool]:
+    from src.design.token_usage import usage_from_llm_result
+
+    usage, estimated = usage_from_llm_result(response)
+    if int(usage.get("total_tokens") or 0) <= 0:
+        return None, True
+    return usage, estimated
+
+
 def run_mcp_react_loop(
     *,
     messages: list[dict[str, Any]],
@@ -412,6 +493,7 @@ def run_mcp_react_loop(
     approved_keys: set[str] | None = None,
     model_id: str | None = None,
     exclude_builtin_tools: frozenset[str] | None = None,
+    prior_files_changed: list[str] | None = None,
 ) -> McpRunOutcome:
     """Run tool-augmented chat against one or more MCP servers."""
     if not servers:
@@ -460,18 +542,23 @@ def run_mcp_react_loop(
         _accumulate_model_reasoning(response, [], on_reasoning)
         output = LLMProviderRouter.extract_content(response)
         _emit(logs, on_log, f"[{log_prefix}] Completed via {spec.name}")
+        usage, estimated = _usage_from_response(response)
         return McpRunOutcome(
             output=output,
             logs=logs,
             engine_label=engine_label,
             approval_required=None,
             files_changed=None,
+            usage=usage,
+            usage_estimated=estimated,
         )
 
     from src.run_control import (
         fuse_message,
         is_tool_failure_result,
         max_consecutive_failures,
+        next_consecutive_failures,
+        short_tool_name as fuse_short_tool_name,
     )
 
     clients: dict[str, McpClient] = {}
@@ -489,6 +576,12 @@ def run_mcp_react_loop(
     network_calls = 0
     network_stop_nudged = False
     html_wrapup_nudged = False
+    same_tool_failures: dict[str, int] = {}
+    same_tool_soft_nudged: set[str] = set()
+    from src.progress_loop import ProgressTracker
+
+    progress = ProgressTracker()
+    progress_nudged: set[str] = set()
     _emit(logs, on_log, f"[{log_prefix}] Starting MCP ReAct with {len(servers)} server(s)")
 
     for server in servers:
@@ -508,7 +601,7 @@ def run_mcp_react_loop(
             endpoint = str(server.get("endpoint", ""))
             env = server.get("env") if isinstance(server.get("env"), dict) else None
             client = McpClient(name, endpoint, env=env)
-            if not client.start():
+            if not client.start(oauth_proxy=True):
                 _emit(logs, on_log, f"[{log_prefix}] Failed to start MCP server: {name}")
                 for started in clients.values():
                     started.close()
@@ -590,9 +683,24 @@ def run_mcp_react_loop(
     engine_label = f"{spec.name} · MCP ({visible_count} tools)"
     output = ""
     files_changed: list[str] = []
+    prior_paths = [str(p).strip() for p in (prior_files_changed or []) if str(p).strip()]
     collected_steps: list[dict[str, Any]] = []
     session_approved = set(approved_keys or ())
     use_tools = bool(openai_tools)
+    from src.design.token_usage import empty_token_usage, merge_token_usage
+
+    acc_usage = empty_token_usage()
+    acc_estimated = False
+    saw_usage = False
+
+    def note_response(response: Any) -> None:
+        nonlocal acc_usage, acc_estimated, saw_usage
+        usage, estimated = _usage_from_response(response)
+        if not usage:
+            return
+        acc_usage = merge_token_usage(acc_usage, usage)
+        saw_usage = True
+        acc_estimated = acc_estimated or estimated
 
     def record_tool_step(step: dict[str, Any]) -> None:
         from src.tool_steps import upsert_tool_step
@@ -662,10 +770,18 @@ def run_mcp_react_loop(
             return
         if result_str.startswith("Error executing tool"):
             return
+        if result_str.startswith("Verification report not published"):
+            return
         latest_verification = normalize_verification_report(
             func_args,
             existing_todos=latest_todos if latest_todos is not None else todo_baseline,
         )
+        try:
+            from src.workspace_memory import remember_outcome
+
+            remember_outcome(latest_verification)
+        except Exception:
+            pass
         if on_verification:
             on_verification(dict(latest_verification))
 
@@ -687,13 +803,40 @@ def run_mcp_react_loop(
 
     write_recovery_nudged = False
 
-    def note_tool_result(result_str: str) -> bool:
-        """Track consecutive failures; return True when D9 loop fuse should trip."""
+    def note_tool_result(result_str: str, tool_name: str = "") -> bool:
+        """Track consecutive + same-tool failures; return True when D9 loop fuse trips."""
         nonlocal consecutive_failures, fuse_triggered
-        if is_tool_failure_result(result_str):
-            consecutive_failures += 1
-        else:
-            consecutive_failures = 0
+        from src.tool_use_policy import (
+            same_tool_soft_budget,
+            same_tool_stop_nudge,
+        )
+
+        short = fuse_short_tool_name(tool_name)
+        failed = is_tool_failure_result(result_str)
+        consecutive_failures = next_consecutive_failures(
+            consecutive_failures,
+            result=result_str,
+            tool_name=tool_name,
+        )
+        if failed and short:
+            same_tool_failures[short] = same_tool_failures.get(short, 0) + 1
+            used = same_tool_failures[short]
+            soft = same_tool_soft_budget()
+            if used >= soft and short not in same_tool_soft_nudged:
+                same_tool_soft_nudged.add(short)
+                chat_messages.append(
+                    {
+                        "role": "user",
+                        "content": same_tool_stop_nudge(short, used=used, soft=soft),
+                    }
+                )
+                _emit(
+                    logs,
+                    on_log,
+                    f"[{log_prefix}] Same-tool soft-cap ({short} {used}/{soft}): stop-retry nudge",
+                )
+        elif not failed and short:
+            same_tool_failures[short] = 0
         if consecutive_failures >= fuse_limit:
             fuse_triggered = True
             return True
@@ -783,6 +926,8 @@ def run_mcp_react_loop(
             steps_used=len(collected_steps),
             consecutive_failures=consecutive_failures,
             subtasks=list(latest_subtasks) or None,
+            usage=acc_usage if saw_usage else None,
+            usage_estimated=True if not saw_usage else acc_estimated,
         )
 
     from src.artifact_layout import bind_user_turn_text, release_user_turn_text
@@ -844,9 +989,11 @@ def run_mcp_react_loop(
                 on_log=on_log,
                 step_idx=start_step,
                 files_changed=files_changed,
+                prior_files_changed=prior_paths,
                 on_tool_step=record_tool_step,
                 on_diff_summary=on_diff_summary,
                 step_id=str(approved_tool.get("step_id") or f"tool_{start_step}"),
+                require_explicit_commit=False,
             )
             capture_todos_if_needed(func_name, func_args, result_str)
             capture_goal_if_needed(func_name, func_args, result_str)
@@ -859,7 +1006,7 @@ def run_mcp_react_loop(
                     "content": result_str,
                 }
             )
-            if note_tool_result(result_str):
+            if note_tool_result(result_str, func_name):
                 output = fuse_message(
                     failures=consecutive_failures, max_failures=fuse_limit
                 )
@@ -886,6 +1033,7 @@ def run_mcp_react_loop(
                 on_log=on_log,
                 tool_choice=step_tool_choice,
             )
+            note_response(response)
             _accumulate_model_reasoning(response, reasoning_chunks, on_reasoning)
             if not use_tools and "no tools" not in engine_label:
                 engine_label = f"{spec.name} · no tools"
@@ -992,10 +1140,8 @@ def run_mcp_react_loop(
                             on_log,
                             f"[{log_prefix}] Plan approval required (D2/D49)",
                         )
-                        return McpRunOutcome(
+                        return _outcome(
                             output="",
-                            logs=logs,
-                            engine_label=engine_label,
                             approval_required={
                                 "chat_messages": chat_messages,
                                 "tool_call_id": tc_id,
@@ -1005,13 +1151,6 @@ def run_mcp_react_loop(
                                 "step_id": step_id,
                                 "kind": "plan",
                             },
-                            files_changed=files_changed or None,
-                            tool_steps=list(collected_steps) or None,
-                            todos=latest_todos,
-                            goal=latest_goal,
-                            verification_report=latest_verification,
-                            diff_summary=latest_diff_summary,
-                            subtasks=list(latest_subtasks) or None,
                         )
 
                     # D4: ask_user_question pauses for in-chat multiple choice (D49).
@@ -1039,10 +1178,8 @@ def run_mcp_react_loop(
                             on_log,
                             f"[{log_prefix}] User question required (D4/D49)",
                         )
-                        return McpRunOutcome(
+                        return _outcome(
                             output="",
-                            logs=logs,
-                            engine_label=engine_label,
                             approval_required={
                                 "chat_messages": chat_messages,
                                 "tool_call_id": tc_id,
@@ -1052,13 +1189,6 @@ def run_mcp_react_loop(
                                 "step_id": step_id,
                                 "kind": "question",
                             },
-                            files_changed=files_changed or None,
-                            tool_steps=list(collected_steps) or None,
-                            todos=latest_todos,
-                            goal=latest_goal,
-                            verification_report=latest_verification,
-                            diff_summary=latest_diff_summary,
-                            subtasks=list(latest_subtasks) or None,
                         )
 
                     from src.permission_rules import resolve_tool_gate
@@ -1081,7 +1211,7 @@ def run_mcp_react_loop(
                                 "content": deny_msg,
                             }
                         )
-                        if note_tool_result(deny_msg):
+                        if note_tool_result(deny_msg, raw_tool_name or func_name):
                             output = fuse_message(
                                 failures=consecutive_failures, max_failures=fuse_limit
                             )
@@ -1162,10 +1292,8 @@ def run_mcp_react_loop(
                                         on_log,
                                         f"[{log_prefix}] Auto-edit: approval required for shell/delete: {func_name}",
                                     )
-                                    return McpRunOutcome(
+                                    return _outcome(
                                         output="",
-                                        logs=logs,
-                                        engine_label=engine_label,
                                         approval_required={
                                             "chat_messages": chat_messages,
                                             "tool_call_id": tc_id,
@@ -1174,13 +1302,6 @@ def run_mcp_react_loop(
                                             "step_idx": step_idx,
                                             "step_id": step_id,
                                         },
-                                        files_changed=files_changed or None,
-                                        tool_steps=list(collected_steps) or None,
-                                        todos=latest_todos,
-                                        goal=latest_goal,
-                                        verification_report=latest_verification,
-                                        diff_summary=latest_diff_summary,
-                                        subtasks=list(latest_subtasks) or None,
                                     )
 
                         # full mode: skip approval gates entirely — unless D13 force_ask
@@ -1218,10 +1339,8 @@ def run_mcp_react_loop(
                                     on_log,
                                     f"[{log_prefix}] Approval required for risky tool: {func_name}",
                                 )
-                                return McpRunOutcome(
+                                return _outcome(
                                     output="",
-                                    logs=logs,
-                                    engine_label=engine_label,
                                     approval_required={
                                         "chat_messages": chat_messages,
                                         "tool_call_id": tc_id,
@@ -1230,13 +1349,6 @@ def run_mcp_react_loop(
                                         "step_idx": step_idx,
                                         "step_id": step_id,
                                     },
-                                    files_changed=files_changed or None,
-                                    tool_steps=list(collected_steps) or None,
-                                    todos=latest_todos,
-                            goal=latest_goal,
-                                    verification_report=latest_verification,
-                                    diff_summary=latest_diff_summary,
-                                    subtasks=list(latest_subtasks) or None,
                                 )
 
                     if is_delegate_subtask_tool(raw_tool_name) or is_delegate_subtask_tool(func_name):
@@ -1261,7 +1373,7 @@ def run_mcp_react_loop(
                                     "content": result_str,
                                 }
                             )
-                            if note_tool_result(result_str):
+                            if note_tool_result(result_str, raw_tool_name or func_name):
                                 output = fuse_message(
                                     failures=consecutive_failures, max_failures=fuse_limit
                                 )
@@ -1296,6 +1408,7 @@ def run_mcp_react_loop(
                                 on_log=on_log,
                                 step_idx=step_idx,
                                 files_changed=files_changed,
+                                prior_files_changed=prior_paths,
                                 on_tool_step=record_tool_step,
                                 on_diff_summary=on_diff_summary,
                                 step_id=f"tool_{step_idx}",
@@ -1309,7 +1422,7 @@ def run_mcp_react_loop(
                                 "content": result_str,
                             }
                         )
-                        if note_tool_result(result_str):
+                        if note_tool_result(result_str, raw_tool_name or func_name):
                             output = fuse_message(
                                 failures=consecutive_failures, max_failures=fuse_limit
                             )
@@ -1319,6 +1432,47 @@ def run_mcp_react_loop(
                                 f"[{log_prefix}] LOOP FUSE: {consecutive_failures} consecutive tool failures",
                             )
                             break
+                        continue
+
+                    from src.tool_use_policy import (
+                        same_tool_exhausted_result,
+                        same_tool_hard_budget,
+                    )
+
+                    same_short = fuse_short_tool_name(raw_tool_name) or fuse_short_tool_name(
+                        func_name
+                    )
+                    same_hard = same_tool_hard_budget()
+                    if same_short and same_tool_failures.get(same_short, 0) >= same_hard:
+                        from src.tool_steps import make_tool_step
+
+                        used = same_tool_failures[same_short]
+                        result_str = same_tool_exhausted_result(
+                            same_short, used=used, hard=same_hard
+                        )
+                        step_id = f"tool_{step_idx}"
+                        record_tool_step(
+                            make_tool_step(
+                                tool_alias=func_name,
+                                func_args=func_args,
+                                status="failed",
+                                step_idx=step_idx,
+                                step_id=step_id,
+                            )
+                        )
+                        _emit(
+                            logs,
+                            on_log,
+                            f"[{log_prefix}] Same-tool hard-cap "
+                            f"({same_short} {used}/{same_hard}): blocked {func_name}",
+                        )
+                        chat_messages.append(
+                            {
+                                "role": "tool",
+                                "tool_call_id": tc_id,
+                                "content": result_str,
+                            }
+                        )
                         continue
 
                     if is_network_tool(raw_tool_name) or is_network_tool(func_name):
@@ -1351,6 +1505,26 @@ def run_mcp_react_loop(
                             )
                             continue
 
+                    from src.progress_loop import progress_nudge, progress_stop_result
+
+                    spin_name = raw_tool_name or func_name
+                    if progress.peek(spin_name, func_args) == "stop":
+                        result_str = progress_stop_result(spin_name)
+                        chat_messages.append(
+                            {
+                                "role": "tool",
+                                "tool_call_id": tc_id,
+                                "content": result_str,
+                            }
+                        )
+                        fuse_triggered = True
+                        output = result_str
+                        _emit(
+                            logs,
+                            on_log,
+                            f"[{log_prefix}] No-progress loop: blocked repeat {func_name}",
+                        )
+                        break
                     func_args = enrich_verification_args(func_name, func_args)
                     result_str = _execute_tool_call(
                         func_name=func_name,
@@ -1363,6 +1537,7 @@ def run_mcp_react_loop(
                         on_log=on_log,
                         step_idx=step_idx,
                         files_changed=files_changed,
+                        prior_files_changed=prior_paths,
                         on_tool_step=record_tool_step,
                         on_diff_summary=on_diff_summary,
                         step_id=f"tool_{step_idx}",
@@ -1380,7 +1555,24 @@ def run_mcp_react_loop(
                             "content": result_str,
                         }
                     )
-                    if note_tool_result(result_str):
+                    spin = (
+                        "ok"
+                        if is_tool_failure_result(result_str)
+                        else progress.observe(spin_name, func_args)
+                    )
+                    if spin == "nudge":
+                        fp_key = spin_name
+                        if fp_key not in progress_nudged:
+                            progress_nudged.add(fp_key)
+                            chat_messages.append(
+                                {"role": "user", "content": progress_nudge(spin_name)}
+                            )
+                            _emit(
+                                logs,
+                                on_log,
+                                f"[{log_prefix}] No-progress soft-cap: nudge repeat {func_name}",
+                            )
+                    if note_tool_result(result_str, raw_tool_name or func_name):
                         output = fuse_message(
                             failures=consecutive_failures, max_failures=fuse_limit
                         )
@@ -1480,6 +1672,7 @@ def run_mcp_react_loop(
                     log_prefix=log_prefix,
                     on_log=on_log,
                 )
+                note_response(response)
                 _accumulate_model_reasoning(response, reasoning_chunks, on_reasoning)
                 synthesized = LLMProviderRouter.extract_content(response)
                 if isinstance(synthesized, str) and synthesized.strip():

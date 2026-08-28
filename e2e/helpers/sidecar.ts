@@ -37,3 +37,26 @@ export async function drainRunningSidecarRuns(): Promise<void> {
   }
   await new Promise((r) => setTimeout(r, 1500));
 }
+
+export type RunUsageState = {
+  session_tokens: number;
+  token_input: number;
+  token_output: number;
+  usage_estimated?: boolean;
+};
+
+/** Poll GET /api/runs/{id}/state until session_tokens is applied after a chat turn. */
+export async function waitForRunUsage(runId: string, timeoutMs = 20_000): Promise<RunUsageState> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const res = await sidecarFetch(`/api/runs/${encodeURIComponent(runId)}/state`);
+    if (res.ok) {
+      const body = (await res.json()) as { state: RunUsageState };
+      if (Number(body.state.session_tokens || 0) > 0) {
+        return body.state;
+      }
+    }
+    await new Promise((r) => setTimeout(r, 200));
+  }
+  throw new Error(`session_tokens still 0 after ${timeoutMs}ms (run_id=${runId})`);
+}

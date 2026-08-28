@@ -64,9 +64,9 @@
 
 ### 4.3 输入区域（Composer）
 
-- **极简底栏**：可见控件仅 **`+` · 模式 pill · 发送**（对标 Cursor Agents / Copilot Chat）。禁止在底栏平铺 Sessions、MCP、Worktree、定时任务等。
+- **极简 Composer**：可见控件仅 **`+` · 模式 pill · 发送**（对标 Cursor Agents / Copilot Chat）。禁止在输入条上平铺 Sessions、MCP、Worktree、定时任务等。Worktree 选择放在应用 Footer，紧挨 **Branch**。
 - **渐进披露**：次要能力一律进 `+` 菜单；占位符提示 `/` 与 `@`。
-- **状态才出 chrome**：仅 worktree 已启用、排队、HITL、后台任务等真实状态时，才在输入框上方显示紧凑条。
+- **状态才出 chrome**：排队、HITL、后台任务等真实状态才在输入框上方显示紧凑条。Worktree 与 Branch 同属底栏身份，不在 Composer 上再做一条彩色芯片。Worktree 菜单：切换/加树是列表；Merge / Discard 是该行右侧图标，不要做成底下第二块按钮区。**Merge 合进主仓并保留树；Discard 才删。** **Add parallel** 创建中必须有转圈，禁止无反馈空等。右侧 Files / Changes 跟随所选 worktree，Branch 仍显示主仓。
 - 薄边框、无重阴影；`rounded-2xl`；占位符 `text-on-surface-variant/50`
 
 ### 4.4 状态与反馈
@@ -87,7 +87,7 @@
 | 左栏 | 280px，可折叠 |
 | 右栏 | 300px，可折叠 |
 | Header | 固定 `h-[64px]` |
-| Footer | 固定 `h-8`（32px） |
+| Footer | 固定 `h-8`（32px）。容器查询自适应：宽屏 `Label: Value`，收窄后藏标签并截断值，极窄图标-only；版本号 `shrink-0` 贴右，不被挤出 |
 | 设置模态 | 约 `1040×640`，`rounded-[24px]` |
 
 中间 Chat 区域使用 `max-w-2xl` 居中，保持阅读宽度。

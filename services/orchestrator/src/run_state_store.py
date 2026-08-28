@@ -45,6 +45,9 @@ _PERSISTED_OPTIONAL_KEYS = frozenset({
     "agent_goal",
     "verification_report",
     "diff_summary",
+    "awaiting_continue",
+    "run_stats",
+    "worktree_isolation",
 })
 
 

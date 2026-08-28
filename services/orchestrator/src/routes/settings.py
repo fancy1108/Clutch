@@ -75,6 +75,19 @@ class CrossSessionMemoryRequest(BaseModel):
     enabled: bool
 
 
+class DefaultWorkspaceRequest(BaseModel):
+    workspace_id: str = ""
+
+
+class HighRiskConfirmRequest(BaseModel):
+    enabled: bool
+
+
+class TrustItemRequest(BaseModel):
+    kind: str
+    item_id: str
+
+
 class CapabilityPackImportRequest(BaseModel):
     path: str
 
@@ -453,6 +466,14 @@ async def test_mcp_server(body: McpServerIdRequest) -> dict[str, Any]:
         raise HTTPException(status_code=404, detail={"message": str(exc)}) from exc
 
 
+@router.get("/api/mcp/oauth-login-url")
+def mcp_oauth_login_url() -> dict[str, Any]:
+    """URL mcp-remote printed while Test connection is waiting for the browser."""
+    from src.mcp_storage import peek_oauth_login_url
+
+    return {"url": peek_oauth_login_url()}
+
+
 class McpResourceReadRequest(BaseModel):
     id: str
     uri: str
@@ -535,14 +556,6 @@ async def save_mcp_config(body: McpSaveConfigRequest) -> dict[str, Any]:
         save_raw_config(body.servers)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
-    return await build_mcp_status_payload()
-
-
-@router.post("/api/mcp/import/claude")
-async def import_claude_mcp() -> dict[str, Any]:
-    from src.mcp_storage import build_mcp_status_payload, import_from_claude
-
-    import_from_claude()
     return await build_mcp_status_payload()
 
 
@@ -670,6 +683,69 @@ async def clear_cross_session_memory_route() -> dict[str, Any]:
 
     removed = clear_all()
     return {"cleared": removed, "entries": list_entries()}
+
+
+@router.get("/api/preferences/default-workspace")
+async def get_default_workspace() -> dict[str, str]:
+    from src.preferences_storage import load_default_workspace_id
+
+    return {"workspace_id": load_default_workspace_id()}
+
+
+@router.post("/api/preferences/default-workspace")
+async def save_default_workspace_route(body: DefaultWorkspaceRequest) -> dict[str, str]:
+    from src.preferences_storage import save_default_workspace_id
+
+    return save_default_workspace_id(body.workspace_id)
+
+
+@router.get("/api/preferences/high-risk-confirm")
+async def get_high_risk_confirm() -> dict[str, bool]:
+    from src.preferences_storage import load_high_risk_confirm
+
+    return {"high_risk_confirm": load_high_risk_confirm()}
+
+
+@router.post("/api/preferences/high-risk-confirm")
+async def save_high_risk_confirm_route(body: HighRiskConfirmRequest) -> dict[str, str]:
+    from src.preferences_storage import save_high_risk_confirm
+
+    return save_high_risk_confirm(body.enabled)
+
+
+@router.get("/api/preferences/local-trust")
+async def get_local_trust() -> dict[str, Any]:
+    from src.preferences_storage import load_trusted_ids, load_untrusted_confirm
+
+    return {
+        "untrusted_confirm": load_untrusted_confirm(),
+        "trusted_mcp_ids": load_trusted_ids("mcp"),
+        "trusted_workflow_ids": load_trusted_ids("workflow"),
+    }
+
+
+@router.post("/api/preferences/untrusted-confirm")
+async def save_untrusted_confirm_route(body: HighRiskConfirmRequest) -> dict[str, str]:
+    from src.preferences_storage import save_untrusted_confirm
+
+    return save_untrusted_confirm(body.enabled)
+
+
+@router.post("/api/preferences/local-trust")
+async def save_local_trust_route(body: TrustItemRequest) -> dict[str, str]:
+    from src.preferences_storage import save_trusted_id
+
+    kind = body.kind.strip().lower()
+    if kind not in {"mcp", "workflow"}:
+        raise HTTPException(status_code=400, detail={"message": "kind must be mcp or workflow"})
+    return save_trusted_id(kind, body.item_id)
+
+
+@router.get("/api/memory/search")
+async def search_workspace_memory(q: str = "") -> dict[str, Any]:
+    from src.workspace_memory import search_memory
+
+    return {"hits": search_memory(q)}
 
 
 @router.post("/api/preferences/permission-mode")

@@ -62,6 +62,7 @@ export const CliScanRescanButton: React.FC<{
       onClick={onClick}
       disabled={loading}
       className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10.5px] font-semibold border border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50 disabled:opacity-50"
+      data-testid="cli-scan-rescan"
     >
       <LegacyIcon name="sync" className={`text-[13px] ${loading ? 'animate-spin' : ''}`} />
       {loading ? t('Scanning…') : (label ?? t('Rescan'))}

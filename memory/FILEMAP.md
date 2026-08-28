@@ -35,19 +35,22 @@
 | 产品介绍文档 | `docs/PRODUCT_INTRO.md` |
 | **新手入门（中英）** | `docs/GETTING_STARTED.md` · 仓库 `README.md` / `README.zh-CN.md` |
 | 文档总索引 | `docs/README.md` |
+| 系统架构图 | 叙事 `docs/ARCHITECTURE.md`（本地 HTML 预览不入库） |
 | 开源 / DMG 分发排期（OSR-xx） | `docs/OPEN_SOURCE_RELEASE.md` |
 | 应用内更新（Prep / Go-live） | `docs/UPDATES.md` · `.github/workflows/release-updater.yml` |
 | Sidecar 热更（D37） | `apps/desktop/src-tauri/src/sidecar_patch.rs` · `apps/desktop/src/services/sidecarPatch.ts` · `SidecarPatchReady.tsx` · `scripts/write-sidecar-patch-manifest.sh` |
 | 开源协议 | `LICENSE` |
 | 漏洞报告 | `SECURITY.md` |
+| 外部审计委托 / 报告入口 | `docs/EXTERNAL_AUDIT.md` · `docs/security-audit/` |
 | 社区行为准则 | `CODE_OF_CONDUCT.md` |
-| 版本变更 | `CHANGELOG.md` · 版本快照 `docs/releases/` |
+| 版本变更 | `CHANGELOG.md`（已发 **v1.4.0**；其后 `## [Unreleased]`） · 快照 `docs/releases/` |
 | Goals / Non-Goals | `docs/PROJECT_SCOPE.md` |
 | API / Schema 稳定性 | `docs/STABILITY.md` |
 | 扩展点边界 | `docs/EXTENSIBILITY.md` |
 | 维护者治理 | `docs/GOVERNANCE.md` |
 | 贡献指南（Phase 1 政策） | `CONTRIBUTING.md` |
-| 性能基线 | `docs/PERFORMANCE.md` |
+| 性能基线（含本机实测 §1.1） | `docs/PERFORMANCE.md` |
+| Apple 签名 / 公证（阻塞说明） | `docs/APPLE_NOTARIZATION.md` |
 | 源码构建 | `docs/BUILD_FROM_SOURCE.md` |
 | 环境自检 | `scripts/doctor.sh` |
 | **终端用户安装（DMG/NSIS）** | `scripts/install.sh` · `scripts/install.ps1` |
@@ -67,17 +70,19 @@
 | 开发任务清单（含 Verification） | `specs/core/tasks.md` |
 | **Chat Clutch Agent 能力表（D44）** | **`specs/core/clutch-agent-capability-plan.md`** · 决策 `memory/DECISIONS.md` D44 · ROADMAP §Chat Clutch Agent |
 | **D25 Hybrid Runtime Task（HRT）** | **`specs/core/hybrid-runtime-plan.md`** |
+| **前端可点验模块（FM-xx · D56）** | **`specs/core/frontend-modules-plan.md`** · ROADMAP §Frontend modules · **点验剧本** [`docs/FRONTEND_MODULES_ACCEPTANCE.md`](../docs/FRONTEND_MODULES_ACCEPTANCE.md) |
 | Flow 多 Agent 接力 Task（D23） | `specs/core/tasks.md` §M3-F · Flow 多 Agent 接力 |
 | Prototype → Task 全量映射 | `specs/core/tasks.md` §Prototype → Task 映射 |
 | 待建 pytest 与 task 映射 | `specs/core/tasks.md` §待建 pytest 文件 |
 | 里程碑级验收 T-01~04 | `specs/core/tasks.md` §测试与验收 |
 | 进度 / 待办 | `memory/PROGRESS.md`（近期）· 归档 `memory/archive/PROGRESS-*.md` |
 | **Git worktree · release slices** | v1.0.2 / v1.0.3 worktree 已清理；**v1.1.0** / **v1.1.1** / **v1.1.2** / **v1.2.0**（macOS-only 发版材料，2026-07-10；tag 待 `main`） |
-| 候选优化需求池（未立项） | `memory/BACKLOG.md` · Active（含 **B-33** ← PR #22） |
+| 候选优化需求池（未立项） | `memory/BACKLOG.md` · Active；**B-01/04/05/06/08/10/18–22/42/43/46/47/49** 已升格 FM-xx（D56） |
 | GitHub Issue 待修复 Bug | `memory/BACKLOG.md` §GitHub Issues · 待修复 Bug |
 | **开源排期 OSR-xx 验收状态** | **`memory/ROADMAP.md` §开源分发** · Task 定义 `docs/OPEN_SOURCE_RELEASE.md` §7.2 |
 | 文档生命周期 / 权威真相 | `docs/document-governance.md` |
 | Orchestrator 主控能力调研（参考） | `docs/research/orchestrator-optimization-pool.md` |
+| **Clutch Agent ↔《深入理解 AI Agent》01–10 缺口（参考）** | **`docs/research/clutch-agent-book-gap.md`** · 候选 B-42–B-43、B-46–B-47、B-49–B-50 · **B-34–B-41、B-44、B-45、B-48** 已升格 · **Q-AGENT-1–4** |
 | CLI PTY Session 改造方案（参考） | `docs/research/pty-session.md` |
 | **D25 Hybrid 执行状态（权威）** | **`specs/core/hybrid-runtime-plan.md`** · D27 命名对齐 |
 | PTY Session Step 0 实验 | `experiments/pty_poc/` |
@@ -106,18 +111,22 @@
 | D29 audit 回归（并发 rejection） | `services/orchestrator/tests/test_hybrid_audit_d29_regression.py` |
 | 文档↔代码漂移机检 | `scripts/check-doc-drift.sh` |
 | Git pre-commit（条件触发） | `.husky/pre-commit` |
+| Git prepare-commit-msg（去掉 Cursor trailer） | `.husky/prepare-commit-msg` |
 | 验证报告归档 | `runs/verification/`（gitignore） |
 | E2E 包（M2-10，D1 可执行后） | `e2e/`；见下表 |
 | E2E 沙箱与门禁 | `scripts/e2e-sandbox-setup.sh`；`scripts/run-e2e.sh`；`runs/verification/.e2e-env` |
 | E2E Node WS 助手 | `e2e/helpers/ws.ts` |
+| E2E Sidecar HTTP 助手 | `e2e/helpers/sidecar.ts`（`waitForRunUsage`） |
 | E2E 桌面 Tauri 助手 | `e2e/helpers/tauri.ts`（`authorizeSandboxWorkspace`） |
 | E2E 会话预置（Node） | `e2e/helpers/seed.ts` |
 | E2E API：`session-history` | `e2e/tests/session-history.spec.ts` |
+| E2E API：Overview 用量 | `e2e/tests/session-usage.spec.ts` |
 | E2E API：i18n 偏好 | `e2e/tests/i18n.spec.ts` |
 | E2E API：workspace git | `e2e/tests/workspace-git.spec.ts` |
 | E2E Desktop fixture | `e2e/fixtures/desktop.ts`（`@srsholmes/tauri-playwright`） |
 | E2E Desktop 全 UI | `e2e/tests/desktop/all-ui.spec.ts` |
 | E2E Desktop 历史续聊 | `e2e/tests/desktop/session-history.spec.ts` |
+| E2E Desktop Overview 用量 | `e2e/tests/desktop/session-usage.spec.ts` |
 | E2E Tauri 沙箱 command | `apps/desktop/src-tauri/src/lib.rs` → `clutch_e2e_sandbox` |
 | E2E 工作区注入（前端） | `apps/desktop/src/services/pickWorkspaceFolder.ts` |
 
@@ -130,9 +139,19 @@
 | 会话 / 运行 API | `services/runApi.ts` |
 | Skills Registry API（P2-01） | `services/skillsApi.ts` |
 | Theme 偏好 API（P2-03） | `services/themeApi.ts`（含 language） |
+| General 默认工作区 / 停止确认（FM-01） | `services/permissionApi.ts` · `/api/preferences/default-workspace` · `high-risk-confirm` |
+| 本机信任 MCP（FM-02） | `permissionApi.ts` `local-trust` · General `untrusted-confirm-toggle` · Hub Enable；自建 SOP 不确认（D58） |
+| Exec policy UI（FM-03） | `ExecPolicyPanel.tsx` · Settings Tools · `/api/preferences/permission-rules` |
+| Codex 只读扫描（FM-04） | `MoreAgentsComingSoon.tsx` · `cli_agent_config.py` · More → Codex |
+| Orchestra 发送即派发（D66/D67） | `OrchestratorBar.tsx` · `terminal_orchestra.py`；无确认卡/排队条/Complete 草稿 |
+| 派发保存为工作流（FM-07） | `OverviewDispatchLog.tsx` `save-dispatch-as-workflow` |
+| 对话模式 handoff（FM-08） | `ChatInputBar.tsx` drafts · `orchestrator-fill-bar` · 切 Terminal 预填近期对话 |
+| 主控分派横幅（FM-09） | `ChatFeed.tsx` `dispatch-banner` |
+| 画布节点引擎（FM-10 / D65） | `WorkflowOrchestration.tsx` Assigned Agent `node-agent-select` · Overview `step-engine-*`（跟 Agent 类型，无 Node engine 下拉） |
+| 并行 worktree（FM-11） | `WorktreeIsolationBar.tsx` `FooterWorktreeMenu` · `footer-worktree-trigger` · `GET/POST /api/worktree` |
 | API 抽象（mock 待 M2 替换） | `services/api.ts` |
 | 侧栏（工作区 / 历史，M2-07/09） | `sidebar.tsx` |
-| 底部状态栏（Branch / Model / Agent） | `App.tsx` footer |
+| 底部状态栏（Branch / Model / Agent · 容器宽度自适应） | `App.tsx` footer · `FooterMenu.tsx` `FooterField*` |
 | 工作区 Git 分支 API | `services/workspaceApi.ts` → `GET /api/workspace/git` |
 | Chat 流与人工干预 UI | `components/ChatFeed.tsx` |
 | Chat 工具步骤条解析（D46） | `services/agentActivitySteps.ts` |
@@ -142,24 +161,28 @@
 | Chat 斜杠命令（D18） | `services/slashCommands.ts` · `ChatInputBar` `/` 面板 · `POST /api/runs/{id}/compact` |
 | Goal 跟踪（D29） | builtin `goal_write` · `GoalBarView.tsx` · `ClutchState.goal` |
 | 会话看板（D30） | `SessionOverviewBoard.tsx` · `ChatInputBar` 底栏 Sessions 入口 |
-| Chat Composer（极简 + 菜单） | `ChatInputBar.tsx` 仅 +/模式/发送 · 次要能力进 + 菜单 · `WorktreeIsolationBar` 仅启用态 · `ScheduledTasksBar` 受控面板 · `PRODUCT.md` / `docs/UI_UX_GUIDELINES.md` §4.3 |
+| Chat Composer（极简 + 菜单） | `ChatInputBar.tsx` 仅 +/模式/发送 · 次要能力进 + 菜单 · Worktree 在 App footer · `ScheduledTasksBar` 受控面板 · `PRODUCT.md` / `docs/UI_UX_GUIDELINES.md` §4.3 |
 | Agent 忙时排队（D20） | `services/chatPendingQueue.ts` · `ChatFeed` drain · `ChatInputBar` Queue #n |
 | 思考流（D19） | `live_reasoning` state · `AgentLiveActivity` 思考折叠 · `mcp_react` reasoning |
 | 长任务监视（D26） | `bg_jobs_monitor.py` · Supervisor `[Monitor]` 行 · `bgJobMonitor` toast |
-| 前台转后台（D34） | `foreground_shell.py` · `ForegroundShellBar` · `move_fg_to_background` WS |
-| Worktree 隔离（D32） | `worktree_isolation.py` · `routes/worktree.py` · `WorktreeIsolationBar` · WS `enable_worktree` / `merge_worktree` / `discard_worktree` |
+| 前台转后台（D34） | `foreground_shell.py` · `shell_proc.py` · `ForegroundShellBar` · `move_fg_to_background` WS |
+| Worktree 隔离（D32） | `worktree_isolation.py` · `routes/worktree.py` · `FooterWorktreeMenu` · `GET /api/workspace/tree?wt_id=` · `GET /api/workspace/changes?wt_id=` · `GET /api/workspace/git`（始终主仓，底栏 Branch） · WS `enable_worktree` / `select_worktree` / `merge_worktree` / `discard_worktree` |
 | Cap-D25 定时任务 | `scheduled_tasks.py` · `routes/scheduled_tasks.py` · `ScheduledTasksBar` · `scheduledTasksApi.ts` |
 | D24 诊断 MVP | `code_diagnostics.py` · builtin `diagnostics` · `DiagnosticsIssuesStrip` |
 | D36 headless Agent | `headless_agent.py` · `headless_cli.py` · `routes/agent_run.py` |
 | D14 Grok CLI | `grok_cli_adapter.py` · `grok-cli` in `tools_status` / `engine_router` |
 | 会话 fork/回滚（D23） | `session_fork.py` · `file_rewind.py` · fork/rewind API · Chat 菜单 |
-| 跨会话记忆（D16） | `cross_session_memory.py` · `remember_preference` · Settings Memory |
+| 跨会话记忆（D16 / B-39 / B-40 / B-45 / FM-12） | `cross_session_memory.py` · `workspace_memory.py` `search_memory` · `GET /api/memory/search` · Settings Memory 检索 · Files `.clutch/memory/MEMORY.md` |
+| Design 视觉审查（FM-16 / B-49） | `DesignHandoffTray` `design-review-card` / `design-review-reject` |
+| 解释器错误卡（FM-17 / B-47） | Chat `interpreter-error-card` · `run_terminal_cmd` 返回 `Interpreter timeout` / `Interpreter offline`（无 + 预览） |
+| 校验失败可读条（FM-18 / B-05） | Chat `validation-failure-chat` · Overview `validation-failure-strip` |
 | 工具 Hooks（D17） | `tool_hooks.py` · `mcp_react` Pre/Post 拦截 |
 | 能力包导入（D35） | `capability_pack.py` · Skills 页 Import/Uninstall |
-| Chat 用量（D22 / D9） | 右侧 `RightPanel` Overview `overview-run-usage` / `chat-run-stats` · `chat_runner._touch_session` 持久化用量 |
+| Chat 用量（D22 / D9 / Q-USAGE-1） | `RightPanel` Overview `overview-run-usage` · `sessionUsage.ts` · `chat_messages._token_patch_turn` / `stash_turn_usage` · `http_complete` 透传 `usage` · `mcp_react` 累计 |
 | Chat 模式预设（D27） | `permissionApi.ts` `PERMISSION_MODES` · `ChatInputBar` 权限菜单 · `mcp_react` explore/plan 硬拦截 |
 | 能力↔Chat UI 门禁（D52） | `docs/PRODUCT_INTRO.md`（capability-ui-table）· `scripts/check-capability-ui-table.sh` |
 | MCP Hub 探测（D38） | `mcp_storage.probe_server_by_id` · `POST /api/mcp/servers/test` · `McpServerHub` Test connection |
+| MCP Streamable HTTP（D57） | `mcp_client.py` HTTP POST · HTTPS 401 → `mcp-remote` · Hub 通用表单 · [`docs/mcp-servers/figma.md`](../docs/mcp-servers/figma.md) |
 | Chat MCP 徽章（D40） | `McpBindingBadge.tsx` · `agentMcpSummary.ts` |
 | MCP 真工具名 / 一键 FS（D42∥D44） | `AgentManager.tsx` Module 4 + catalog tool chips |
 | MCP Resources（D43） | `mcp_resources.py` · Hub Browse/Pin · `agent_prompt` `mcp_resources` 层 |
@@ -168,10 +191,12 @@
 | 计划批注解析（D31） | `plan_revise.py` · `chat_runner` revise payload |
 | Chat Todo 卡（D3/D49） | `components/TodoCardView.tsx` · builtin `todo_write` |
 | Chat 提问卡（D4/D49） | `components/QuestionCardView.tsx` · builtin `ask_user_question` |
-| Chat 验证报告卡（D5/D50） | `components/VerificationReportCardView.tsx` · builtin `submit_verification` |
+| Chat 验证报告卡（D5/D50 / B-37） | `VerificationReportCardView.tsx` · `submit_verification` · `verify_harness.py` · `verification_report_allowed` |
 | Chat Diff 摘要卡（D6/D50） | `components/DiffSummaryCardView.tsx` · builtin `submit_diff_summary` |
 | Chat Agent 卡壳（共享） | `components/chatAgentCard.tsx` |
 | Sidecar 结构化 tool steps（D46） | `services/orchestrator/src/tool_steps.py` |
+| Tool ACI 文件名 → List（B-41） | `tool_use_policy.apply_filename_grep_rewrite` · `tests/test_tool_aci_b41.py` |
+| Chat 编排拆分（DECISIONS D38 Phase 1） | 编排壳 `chat_runner.py` · 消息/seal `chat_messages.py` · WS 信封 `chat_ws_events.py` · MCP/Plan/Question 门禁 `chat_mcp_gates.py`（`main`/`chat_runner` re-export 兼容） |
 | Chat markdown（fence / 路径预览） | `components/chatContentRender.tsx` · `services/workspacePathLinks.ts` |
 | Coding 附件上传 / 路径 resolve API | `services/workspaceApi.ts` → `POST /api/workspace/attachments` · `GET /api/workspace/file/resolve`；后端 `workspace_attachments.py` |
 | Terminal Orchestra（Lane / OrchestratorBar / 路径 link） | `components/terminal-orchestra/`（`OrchestratorBar.tsx` 发图 chip；`terminalPathLinkProvider.ts` xterm 可点路径） |
@@ -230,12 +255,15 @@
 | agent_task 节点执行 | `src/agent_executor.py` |
 | Agent 持久化与内置 Agent | `src/agent_storage.py` |
 | Agent system prompt 组装（D53） | `src/agent_prompt.py` · `src/agent_skills.py` |
+| Agent 评测快照 + Agnes live（B-34） | `src/agent_eval.py` · `tests/test_agent_eval_b34.py` · `CLUTCH_AGENT_EVAL_LIVE=1`；定义见 `specs/core/tasks.md` §Agent Harness |
+| Agent 消融闸 + trajectory（B-48） | `agent_eval.parse_ablation` / `persist_trajectory` · `tests/test_agent_eval_b48.py` · `CLUTCH_AGENT_EVAL_ABLATION` · `runs/archive/eval/` |
+| 末尾 `<agent_status>`（B-35） | `agent_prompt.format_agent_status` / `attach_trailing_status` · Chat `attach` 在 `_history_with_prefix_and_status`；定义见 `tasks.md` §Agent status |
 | 项目规则发现 + Skills 按需（D7） | `agent_prompt._load_workspace_rules` · `read_skill` · `skills_storage.sync_workspace_skill_mounts` |
-| 长聊任务态 / 压缩（D8） | `src/task_state.py` · `compaction.py` · prompt `task_state` 层 |
-| 运行可控（D9） | `src/run_control.py` · `mcp_react` fuse · Chat `chat-stop`/`chat-continue` · Overview `chat-run-stats` |
+| 长聊任务态 / 压缩（D8 / B-36 / B-44） | `src/task_state.py` · `compaction.py`（L4） · `context_layers.py`（L1–L3；指针 `source=tool truncated=yes`） |
+| 运行可控（D9 / B-38） | `run_control.py` · `progress_loop.py` · `mcp_react` fuse · Chat Stop/Continue |
 | 子任务委派（D10∥D48） | `src/subagent_runner.py` · `delegate_subtask` · `SubtaskCardView.tsx` |
-| 后台命令（D11） | `src/bg_jobs.py` · `run_terminal_cmd` background · `BackgroundJobsBar.tsx` |
-| Git + 网页（D12） | `builtin_tools` git_* / web_fetch · `web_fetch_util.py` |
+| 后台命令（D11） | `src/bg_jobs.py` · `shell_proc.py` · `run_terminal_cmd` background · `BackgroundJobsBar.tsx` |
+| Git + 网页（D12） | `builtin_tools` git_*（非 git 仓不挂） / web_fetch · `web_fetch_util.py` |
 | 权限规则（D13） | `src/permission_rules.py` · settings permission-rules · `clear_approvals` |
 | PM 验收用例包 | `runs/verification/pm-acceptance/` |
 | 本轮 prompt 组装摘要 API（D53） | `GET /api/agents/{id}/prompt-assembly`（`routes/settings.py`） |

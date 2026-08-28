@@ -9,7 +9,7 @@
  */
 import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import { Loader2 } from 'lucide-react';
-import { useLanguage } from './LanguageContext';
+import type { PendingHandoffDraft } from '../types';
 import type { SessionRecord } from '../services/runApi';
 import type { ScannedSkill } from '../services/skillsApi';
 import type { FileTreeNode } from '../services/workspaceApi';
@@ -33,6 +33,7 @@ import {
 } from '../services/slashCommands';
 import { SessionOverviewBoard } from './SessionOverviewBoard';
 import { ScheduledTasksBar } from './ScheduledTasksBar';
+import { useLanguage } from './LanguageContext';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -112,6 +113,7 @@ interface ChatInputBarProps {
   onEnableWorktree?: () => void;
   /** D32 — hide enable control while worktree already active. */
   worktreeActive?: boolean;
+  drafts?: PendingHandoffDraft[];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -267,6 +269,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
   onRewindFiles,
   onEnableWorktree,
   worktreeActive = false,
+  drafts = [],
 }) => {
   const { t, language } = useLanguage();
   const [dismissedNoticeKey, setDismissedNoticeKey] = useState<string | null>(null);
@@ -274,6 +277,15 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const compositionActiveRef = useRef(false);
+
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<{ text: string }>).detail;
+      if (detail?.text) setInputValue(detail.text);
+    };
+    window.addEventListener('orchestrator-fill-bar', handler);
+    return () => window.removeEventListener('orchestrator-fill-bar', handler);
+  }, [setInputValue]);
 
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -825,6 +837,20 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
           />
         </>
       ) : null}
+      {drafts.length > 0 ? (
+        <div className="flex flex-wrap gap-1.5 px-3 pt-2" data-testid="chat-handoff-drafts">
+          {drafts.map((draft) => (
+            <button
+              key={draft.id}
+              type="button"
+              className="text-[10px] font-semibold px-2 py-1 rounded-lg border border-amber-200 bg-amber-50 text-amber-900"
+              onClick={() => setInputValue(draft.text)}
+            >
+              {draft.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
       {pendingMessages.length > 0 ? (
         <div className="px-3 pt-3 pb-2 border-b border-outline-variant/40">
           <div className="flex items-center gap-1.5 mb-2">
@@ -875,7 +901,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
       {isMultiAgent && selectedWorkflowId ? (
         <div className="flex flex-wrap gap-1.5 px-3 pt-2 pb-1">
           <span className="inline-flex items-center gap-1.5 pl-1.5 pr-1 py-0.5 text-[11px] font-bold text-primary bg-primary/5 border border-primary/20 rounded-lg max-w-[220px]">
-            <LegacyIcon name="fork_right" className="text-[14px] flex-shrink-0" />
+            <LegacyIcon name="workflow" className="text-[14px] flex-shrink-0" />
             <span className="truncate" title={selectedWorkflowName || selectedWorkflowId}>
               {selectedWorkflowName || selectedWorkflowId}
             </span>
@@ -943,6 +969,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
         <div className="relative flex-shrink-0">
           <button
             type="button"
+            data-testid="composer-plus"
             onClick={() => {
               setAttachMenuOpen((v) => !v);
               setPermissionMenuOpen(false);
@@ -980,7 +1007,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
                   setFileFilter('');
                 }}
               >
-                <LegacyIcon name="folder" className="text-[17px] text-on-surface-variant" />
+                <LegacyIcon name="folder_open" className="text-[17px] text-on-surface-variant" />
                 {t('Attach project file')}
               </button>
               <button
@@ -992,7 +1019,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
                   setSessionFilter('');
                 }}
               >
-                <LegacyIcon name="chat_bubble" className="text-[17px] text-on-surface-variant" />
+                <LegacyIcon name="history" className="text-[17px] text-on-surface-variant" />
                 {t('Reference a session')}
               </button>
               <button
@@ -1004,7 +1031,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
                   setSkillFilter('');
                 }}
               >
-                <LegacyIcon name="terminal" className="text-[17px] text-on-surface-variant" />
+                <LegacyIcon name="sparkles" className="text-[17px] text-on-surface-variant" />
                 {t('Commands & skills')}
               </button>
 
@@ -1025,7 +1052,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
                         setSessionBoardOpen(true);
                       }}
                     >
-                      <LegacyIcon name="view_list" className="text-[17px] text-on-surface-variant" />
+                      <LegacyIcon name="clipboard_list" className="text-[17px] text-on-surface-variant" />
                       {language === 'zh' ? '会话总览' : 'Session overview'}
                     </button>
                   ) : null}
@@ -1039,7 +1066,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
                         void onRewindFiles();
                       }}
                     >
-                      <LegacyIcon name="restart_alt" className="text-[17px] text-on-surface-variant" />
+                      <LegacyIcon name="undo" className="text-[17px] text-on-surface-variant" />
                       {language === 'zh' ? '回滚文件改动' : 'Rewind file changes'}
                     </button>
                   ) : null}
@@ -1063,7 +1090,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
                       setScheduleOpen(true);
                     }}
                   >
-                    <LegacyIcon name="schedule" className="text-[17px] text-on-surface-variant" />
+                    <LegacyIcon name="calendar_clock" className="text-[17px] text-on-surface-variant" />
                     {t('Scheduled tasks')}
                   </button>
                   {onEnableWorktree && !worktreeActive ? (
@@ -1076,7 +1103,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
                         onEnableWorktree();
                       }}
                     >
-                      <LegacyIcon name="git-branch" className="text-[17px] text-on-surface-variant" />
+                      <LegacyIcon name="folder-git" className="text-[17px] text-on-surface-variant" />
                       {t('Enable worktree')}
                     </button>
                   ) : null}
@@ -1302,7 +1329,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
         >
           <div className="p-2 border-b border-outline-variant/30">
             <div className="flex items-center gap-2 px-2">
-              <LegacyIcon name="terminal" className="text-[15px] text-on-surface-variant" />
+              <LegacyIcon name="sparkles" className="text-[15px] text-on-surface-variant" />
               <span className="text-[11px] font-semibold text-on-surface-variant">{t('Skills / Commands')}</span>
             </div>
           </div>
@@ -1369,7 +1396,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
         <div className="absolute bottom-full left-0 mb-2 w-72 bg-white border border-outline-variant rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-bottom-1 duration-150">
           <div className="p-2 border-b border-outline-variant/30">
             <div className="flex items-center gap-2 px-2">
-              <LegacyIcon name="chat_bubble" className="text-[15px] text-on-surface-variant" />
+              <LegacyIcon name="history" className="text-[15px] text-on-surface-variant" />
               <span className="text-[11px] font-semibold text-on-surface-variant">{t('Sessions')}</span>
             </div>
           </div>

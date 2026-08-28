@@ -68,7 +68,7 @@ def test_explore_mode_blocks_write_tool(monkeypatch) -> None:
         def __init__(self, name: str, endpoint: str, env=None) -> None:
             self.name = name
 
-        def start(self) -> bool:
+        def start(self, *args, **kwargs) -> bool:
             return True
 
         def list_tools(self) -> list[dict]:
@@ -134,7 +134,7 @@ def test_ask_mode_blocks_write_tool(monkeypatch) -> None:
         def __init__(self, name: str, endpoint: str, env=None) -> None:
             self.name = name
 
-        def start(self) -> bool:
+        def start(self, *args, **kwargs) -> bool:
             return True
 
         def list_tools(self) -> list[dict]:
@@ -198,7 +198,7 @@ def test_explore_mode_allows_read_tool(monkeypatch) -> None:
         def __init__(self, name: str, endpoint: str, env=None) -> None:
             self.name = name
 
-        def start(self) -> bool:
+        def start(self, *args, **kwargs) -> bool:
             return True
 
         def list_tools(self) -> list[dict]:

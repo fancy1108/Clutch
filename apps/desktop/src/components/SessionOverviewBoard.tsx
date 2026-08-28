@@ -97,7 +97,7 @@ export function SessionOverviewBoard({
       <div className="rounded-xl border border-outline-variant/40 bg-surface-bright shadow-xl overflow-hidden">
         <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-outline-variant/30">
           <div className="flex items-center gap-2 min-w-0">
-            <LegacyIcon name="view_list" className="text-[16px] text-on-surface-variant" />
+            <LegacyIcon name="clipboard_list" className="text-[16px] text-on-surface-variant" />
             <span className="text-[11px] font-semibold text-on-surface">
               {zh ? '会话总览' : 'Session overview'}
             </span>

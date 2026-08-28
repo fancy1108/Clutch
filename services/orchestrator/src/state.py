@@ -29,8 +29,10 @@ class ClutchState(TypedDict):
     session_cost_usd: float
     token_input: int
     token_output: int
+    usage_estimated: NotRequired[bool]
     cli_session_id: str
     cli_session_agent_id: str
+    awaiting_continue: NotRequired[bool]
     hybrid_executions: NotRequired[dict[str, dict[str, object]]]
     shell_session_status: NotRequired[str]
     shell_pool_blocker_run_ids: NotRequired[list[str]]
@@ -40,6 +42,7 @@ class ClutchState(TypedDict):
     refining_node_id: NotRequired[str]
     refine_draft_output: NotRequired[str]
     refine_agent_id: NotRequired[str]
+    worktree_isolation: NotRequired[dict[str, object] | None]
 
 
 def read_cli_session_id(state: Mapping[str, Any]) -> str:
@@ -75,6 +78,8 @@ def initial_state(run_id: str, workflow_id: str = "") -> ClutchState:
         session_cost_usd=0.0,
         token_input=0,
         token_output=0,
+        usage_estimated=True,
         cli_session_id="",
         cli_session_agent_id="",
+        awaiting_continue=False,
     )

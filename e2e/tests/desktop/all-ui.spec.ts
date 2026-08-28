@@ -19,14 +19,25 @@ async function openSettings(page: {
     await page.click('[data-testid="footer-model-trigger"]');
   }
   // DOM .click() bypasses overlay hit-testing that sometimes blocks tauri-playwright click.
-  await page.evaluate(`
-    (function() {
-      const el = document.querySelector('[data-testid="nav-settings"]');
-      if (!el) throw new Error('nav-settings not in DOM');
-      el.click();
-    })()
-  `);
-  await page.waitForSelector('[data-testid="settings-nav-general"]', 15_000);
+  // Retry: New Chat's async discard can still setView('chat') and close the modal.
+  const deadline = Date.now() + 15_000;
+  while (Date.now() < deadline) {
+    await page.evaluate(`
+      (function() {
+        const el = document.querySelector('[data-testid="nav-settings"]');
+        if (!el) throw new Error('nav-settings not in DOM');
+        el.click();
+      })()
+    `);
+    const remaining = Math.max(250, deadline - Date.now());
+    try {
+      await page.waitForSelector('[data-testid="settings-nav-general"]', Math.min(2_000, remaining));
+      return;
+    } catch {
+      // Modal closed by a racing setView('chat'); click Settings again.
+    }
+  }
+  throw new Error('timeout waiting for [data-testid="settings-nav-general"]');
 }
 
 test('desktop: full UI coverage with sandbox isolation', async ({ tauriPage: page }) => {
@@ -42,6 +53,11 @@ test('desktop: full UI coverage with sandbox isolation', async ({ tauriPage: pag
 
   await test.step('P-01..P-08 settings navigation', async () => {
     await openSettings(page);
+    await expect(page.locator('[data-testid="memory-search-input"]')).toBeVisible();
+    await expect(page.locator('[data-testid="general-default-workspace"]')).toBeVisible();
+    await expect(page.locator('[data-testid="high-risk-confirm-toggle"]')).toBeVisible();
+    await expect(page.locator('[data-testid="untrusted-confirm-toggle"]')).toBeVisible();
+    await expect(page.locator('[data-testid="general-app-version"]')).toContainText('Clutch v');
     for (const id of [
       'settings-nav-general',
       'settings-nav-tools',
@@ -55,6 +71,13 @@ test('desktop: full UI coverage with sandbox isolation', async ({ tauriPage: pag
       await page.click(`[data-testid="${id}"]`);
       await delay(300);
     }
+    await page.click('[data-testid="settings-nav-tools"]');
+    await expect(page.locator('[data-testid="exec-policy-panel"]')).toBeVisible();
+    await page.click('[data-testid="settings-nav-models"]');
+    await expect(page.locator('[data-testid="clutch-current-model"]')).toBeVisible();
+    await page.click('[data-testid="capability-tab-more"]');
+    await expect(page.locator('[data-testid="cli-scan-codex-cli"]')).toBeVisible();
+    await expect(page.locator('[data-testid="cli-scan-aider-cli"]')).toBeVisible();
     await page.click('[data-testid="settings-close"]');
   });
 
@@ -65,6 +88,7 @@ test('desktop: full UI coverage with sandbox isolation', async ({ tauriPage: pag
     await page.click('[data-testid="nav-workflows"]');
     await expect(page.locator(`[data-testid="workflow-item-${workflowId}"]`)).toBeVisible();
     await page.click('[data-testid="nav-new-chat"]');
+    await expect(page.locator('[data-testid="dispatch-banner"]')).toBeVisible();
   });
 
   await test.step('W-01/W-10 run user workflow in chat', async () => {
@@ -140,6 +164,7 @@ test('desktop: full UI coverage with sandbox isolation', async ({ tauriPage: pag
 
   await test.step('G-03 language switch', async () => {
     await page.click('[data-testid="nav-new-chat"]');
+    await delay(1_000);
     await openSettings(page);
     // nav-settings opens General; use DOM click — modal overlays confuse tauri-playwright hit tests.
     await page.evaluate(`document.querySelector('[data-testid="lang-zh"]').click()`);

@@ -101,8 +101,8 @@ def test_ws_plain_chat_with_agent_id_injects_system_prompt(monkeypatch) -> None:
     assert "Follow the protocol and project-rule layers below." in history[0]["content"]
     assert "## Agent protocol (editable)" in history[0]["content"]
     user_turns = [item for item in history if item["role"] == "user"]
-    assert len(user_turns) == 1
-    assert user_turns[0]["content"] == "help me plan"
+    assert any("<agent_status>" in str(item.get("content")) for item in user_turns)
+    assert user_turns[-1]["content"] == "help me plan"
     reply = next(
         e["data"]["message"]
         for e in events

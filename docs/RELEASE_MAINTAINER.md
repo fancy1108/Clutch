@@ -19,11 +19,11 @@
 
 | 步骤 | 谁做 | 说明 |
 |------|------|------|
-| 1. `CHANGELOG.md` 增加 `## [x.y.z]` | AI | `release-preflight.sh` 会检查（INV-R5）；该节会成为 **GitHub Release 正文顶部**（见 §Release 正文结构） |
+| 1. `CHANGELOG.md` 增加 `## [x.y.z]` | AI | 开发中写 `## [Unreleased]`；打 tag 时改日期、bump `package.json` / Tauri，并开下一空 `[Unreleased]`。`release-preflight.sh` 会检查（INV-R5）；该节会成为 **GitHub Release 正文顶部**（见 §Release 正文结构） |
 | 2. 版本号 `tauri.conf.json` / `package.json` | AI | 与 tag 一致 |
 | 3. `./scripts/verify.sh` | AI | 通过后再 merge / tag |
 | 4. **Merge `dev` → `main`** | AI 开 PR，**你确认合并** | `main` 须包含全部发版 commit；合并后再打 tag |
-| 5. **`git tag vX.Y.Z` on `main` + push tag** | AI 准备，**你确认** | 触发 [`.github/workflows/release.yml`](../.github/workflows/release.yml) |
+| 5. **`git tag vX.Y.Z` on `main` + push tag** | AI 准备，**你确认** | 触发 [`.github/workflows/release.yml`](../.github/workflows/release.yml)（**未签名** DMG，D31；公证流程 [`APPLE_NOTARIZATION.md`](./APPLE_NOTARIZATION.md)） |
 | 6. CI 上传 DMG + `SHA256SUMS.txt` | GitHub Actions | 约 15–30 分钟；Release 正文由 `render-release-notes.sh` 生成 |
 | 7. 同步 Homebrew tap | AI 或 CI | 见下文 §Homebrew |
 | 8. macOS 应用内更新（可选） | 你或 AI | 见 [`UPDATES.md`](./UPDATES.md) — 跑 `Release (updater assets)` |
@@ -36,7 +36,7 @@ Windows 安装包由 [`.github/workflows/windows-build.yml`](../.github/workflow
 |----------|------|-------|---------|
 | **Patch** | 1.1.2, **1.2.1** | ✅ DMG + updater | ❌ 不发新包 |
 | **Patch（例外）** | **1.2.2** | ✅ | ✅ MSI/NSIS（Design Preview Win 对齐） |
-| **Minor（默认）** | 1.3.0, … | ✅ | ✅ MSI/NSIS 挂 Release |
+| **Minor（默认）** | 1.4.0, 1.3.0, … | ✅ | ✅ MSI/NSIS 挂 Release |
 | **Minor（例外）** | **1.2.0** | ✅ DMG + updater | ❌ 本版跳过（Win 留在 v1.1.1） |
 
 ---

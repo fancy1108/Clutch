@@ -34,6 +34,7 @@ def fork_session(parent_run_id: str, message_index: int) -> dict[str, Any]:
         "session_tokens",
         "token_input",
         "token_output",
+        "usage_estimated",
     ):
         if key in parent:
             child[key] = parent[key]

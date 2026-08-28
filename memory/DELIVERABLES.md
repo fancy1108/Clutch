@@ -4,6 +4,90 @@
 > **何时写：** 每个**代码 Task** 完成并 commit 后，在 Check-out 追加一节（见 `CLAUDE.md` §Check-out）。  
 > **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。
 
+## D66/D67 撤回 FM-06（2026-08-28）
+
+| 项 | 说明 |
+|----|------|
+| **Commit** | `3da07a7` |
+| **Verification** | pre-commit `./scripts/verify.sh` → vitest 248 passed · pytest 1023 passed / 7 skipped · doc-drift 0 error |
+| **ROADMAP** | FM-06 🚫 撤回 D67 2026-08-28 |
+| **Files** | `OrchestratorBar.tsx` · `TerminalLaneGrid.tsx` · `DispatchConfirmCard.tsx`（删）· `terminal_orchestra.py` · `FRONTEND_MODULES_ACCEPTANCE.md` |
+
+## Wave 4 FM-10 / FM-18 + D64/D65（2026-08-28）
+
+| 项 | 说明 |
+|----|------|
+| **Commit** | `a978646` |
+| **Verification** | `./scripts/verify.sh` → vitest 248 passed · pytest 1021 passed / 7 skipped · doc-drift 0 error |
+| **证据** | `runs/verification/2026-08-28-wave4-fm10-fm18-verify.log` |
+| **ROADMAP** | FM-10、FM-18 ✅ Agent 点验 2026-08-28；FM-15 🚫 D64 |
+| **Files** | `WorkflowOrchestration.tsx` · `workflowFormat.ts` · `ChatFeed.tsx` · `ChatInputBar.tsx` · `mcp_react.py` · `foreground_shell.py` · `FRONTEND_MODULES_ACCEPTANCE.md` |
+
+## FM-04/05 More CLI 只读扫描（2026-08-26）
+
+| 项 | 说明 |
+|----|------|
+| **Verification** | `cd services/orchestrator && uv run pytest tests/test_cli_agent_config.py` → 18 passed；本机 live scan：Codex/CodeBuddy/Rivet/Ollama/ZCode 有模型，Aider/Antigravity 有配置无 model 字段 |
+| **ROADMAP** | FM-04、FM-05a–f ✅ 人工点验 2026-08-26 |
+| **Files** | `cli_agent_config.py` · `MoreAgentsComingSoon.tsx` · `useCliModelsScan.ts` · `FRONTEND_MODULES_ACCEPTANCE.md` · `CHANGELOG.md` `## [1.4.0]` |
+
+## 桌面白屏 useLanguage（2026-08-26）
+
+| 项 | 说明 |
+|----|------|
+| **Verification** | `./scripts/run-e2e.sh` → API 7 · Hybrid 1 · Desktop 6 passed |
+| **证据** | `runs/verification/2026-08-26-fm-e2e-after-orchestra-confirm.log` |
+| **Files** | `ChatInputBar.tsx` · `AiToolsManager.tsx` · `hookImportGuard.test.ts` · `terminal-orchestra.spec.ts` |
+
+## Wave 6 FM-20–22 文档（2026-08-26）
+
+| 项 | 说明 |
+|----|------|
+| **Commits** | `2e768a1` FM-20 · `57f2d87` FM-21 · （本 commit）FM-22 |
+| **Verification** | 文档轨道（未改 `apps/desktop/src` / orchestrator）；health/templates `curl` 见 `PERFORMANCE.md` §1.1 |
+| **诚实边界** | OSR-11 未公证；OSR-22 无外包报告；D31 unsigned 仍发 |
+| **ROADMAP** | FM-20–22 ✅；OSR-11/22 检查项仍 ☐ |
+
+## Q-USAGE-1 Overview usage meters（2026-08-25）
+
+| 项 | 说明 |
+|----|------|
+| **Verification** | `./scripts/verify.sh` → vitest 238 passed · pytest 998 passed / 7 skipped · doc-drift 0 error。E2E：API `pnpm test:api` 7 passed；Desktop `session-usage.spec.ts` 1 passed |
+| **范围** | Provider `usage` 透传 + Overview 步数/tokens；估算标 `~`；费用 `—`。Windows 不做（D55）。D37/D39–D41 决策标已落地。 |
+| **未做** | 价表；Windows flake / #23；打包版热更 apply |
+
+## Design D36 PM 点验（2026-08-24）
+
+| 项 | 说明 |
+|----|------|
+| **PM** | Design 主路径已验收（Header / 会话 / 画布 / iterate / 落盘 / Send to Coding / `design-to-code`） |
+| **ROADMAP** | §Design 模式 全表 ✅ |
+| **代码** | 随 v1.2.0 已发；本次不改产品代码 |
+
+## B-48 Eval ablation（2026-08-24）
+
+| 项 | 说明 |
+|----|------|
+| **Verification** | `cd services/orchestrator && uv run pytest tests/test_agent_eval_b48.py tests/test_agent_eval_b34.py -q` → 6 passed / 3 skipped |
+| **PM** | 无 Chat UI，不请点验 |
+| **Files** | `agent_eval.py` · `test_agent_eval_b48.py` |
+
+## D5 记住/问答不发卡（2026-08-24）
+
+| 项 | 说明 |
+|----|------|
+| **Verification** | `cd services/orchestrator && uv run pytest tests/test_verification_d5.py tests/test_workspace_memory_b39.py tests/test_verify_harness_b37.py -q` → 20 passed |
+| **PM** | 记住回合无验证卡，MEMORY.md 不多 `Worked:` |
+| **Files** | `builtin_tools.verification_report_allowed` · `mcp_react.py` · `chat_messages.py` · `test_verification_d5.py` |
+
+## B-41 Tool ACI（2026-08-24）
+
+| 项 | 说明 |
+|----|------|
+| **Verification** | `cd services/orchestrator && uv run pytest tests/test_tool_aci_b41.py tests/test_tool_use_policy.py tests/test_builtin_tools_d1.py tests/test_tool_steps.py tests/test_mcp_react.py -q` → 40 passed |
+| **PM** | 「有没有叫 README.md」→ **List .** / Listed 1 dir，不是 Search |
+| **Files** | `tool_use_policy.py` · `builtin_tools.py` · `mcp_react.py` · `test_tool_aci_b41.py` |
+
 ## Agent 代 PM 自验收 D14–D52（2026-07-25）
 
 | 项 | 说明 |

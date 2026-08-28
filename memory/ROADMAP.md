@@ -24,7 +24,7 @@
 | Theme 持久化 | P2 | P2 | ✅ | P2-03 |
 | i18n 双语 | P2 | P2 | ✅ | P2-04 |
 | 侧栏 REPOSITORIES CRUD | P2 | P2 | ✅ | P2-05 |
-| General Settings | P2 | P2 | ✅ 部分落地 | P2-06（D14；支持用户头像定制） |
+| General Settings | P2 | P2 | ✅ | P2-06 + **FM-01**（D56） |
 | 内置模板 | P1 | M4 | ✅ | M4-01 |
 | 运行历史 | P0 | M2 | ✅ | M2-07（D3）+ D11 对话持久化 |
 | 文件浏览（Files 面板） | P0 | M2 | ✅ | M2-11 |
@@ -33,7 +33,7 @@
 | E2E / 前端单测 | P0 | M2 | ✅ | M2-10, T-01–03（D1）；D12 桌面 E2E 7/7 |
 | macOS 打包 | P1 | M4 | ✅ | M4-06 |
 | **MVP 闭环** | — | M3 | ✅ | proposal §10.1；T-03 |
-| **Design 模式（D36）** | P1 | Design | ❌ | 见下 §Design 模式 |
+| **Design 模式（D36）** | P1 | Design | ✅ | 见下 §Design 模式；PM 2026-08-24 |
 
 ## Chat Clutch Agent 能力（DECISIONS D44 · 默认 FAIL）
 
@@ -51,7 +51,7 @@
 | D6 Diff 审查 | P0 | ✅ | Cursor 式 edit Diff 卡 + Changes 同步；PM 2026-07-24 点验通过（须同验 D50） |
 | D7 项目规则 + Skills | P0 | ✅ | Grok 对齐：规则链 + 开放 Skills catalog；PM 2026-07-25 点验通过 |
 | D8 长聊不丢任务态 | P0 | ✅ | `/compact`→末尾摘要；压缩后答还剩 todo；PM 2026-07-25 点验通过 |
-| D9 运行可控 | P0 | ✅ | Stop/Continue PM ✅ 2026-07-25；熔断不点验；用量占位 Q-USAGE-1 |
+| D9 运行可控 | P0 | ✅ | Stop/Continue PM ✅ 2026-07-25；熔断不点验；用量见 D22 / Q-USAGE-1 |
 | D10∥D48 子任务委派 | P0 | ✅ | PM ✅ 2026-07-25；explore 16 步；implement 卡非强制 |
 | D11 后台命令 | P0 | ✅ | PM ✅ 2026-07-25；RUNNING 底栏 / 结束进对话；Kill 乐观 |
 | D12 Git + 网页 | P0 | ✅ | PM ✅ 2026-07-25；commit 真（bcfc099 d12-pm-test）；web_fetch 总结 |
@@ -64,7 +64,7 @@
 | D19 思考流 | P1 | ✅ | Agent 自验 2026-07-25 |
 | D20 忙时排队 | P1 | ✅ | Agent 自验 2026-07-25 |
 | D21 ignore/沙箱 | P1 | ✅ | Agent 自验 2026-07-25 |
-| D22 用量看板 | P1 | ✅ | Overview 占位 `—`；Q-USAGE-1；Agent 自验 2026-07-25 |
+| D22 用量看板 | P1 | ✅ | Overview 步数/tokens；供应商真值优先，否则 `~` 估算；费用 `—`（Q-USAGE-1 2026-08-25） |
 | D23 fork/rewind | P1 | ✅ | Agent 自验 2026-07-25 |
 | D24 诊断 MVP | P2 | ✅ | Agent 自验 2026-07-25 |
 | Cap-D25 定时任务 | P2 | ✅ | Agent 自验 2026-07-25（≠ Hybrid D25） |
@@ -100,20 +100,137 @@
 **首期目标：** D1 + D37 + D46 ✅（PM 2026-07-24）。  
 **扩展/MCP：** Agent 代 PM 自验 2026-07-25（见 `runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md`）；Desktop Tauri E2E ✅；真连 acceptance Skip（缺 DeepSeek/Agnes 密钥）。
 
-## Design 模式（D36 · 默认 FAIL）
+## Agent Harness（B-34 · 默认 FAIL）
 
-> Header Coding/Design + 工作区 Design 会话 + 原型交互画布；未实际验证不得标 ✅。
+> 书 06 · **Q-AGENT-1 = C**。定义与「做了/没做」：[`specs/core/tasks.md`](../specs/core/tasks.md) §Agent Harness。不升 D54+。  
+> **维护者尺子，无界面。** 未挪本机时间 / Todo（仍在 system 前缀 `env` / `task_state`）。预期布局见 **B-35** / **Q-AGENT-2**。不请 PM 点验。
 
 | 验收项 | 优先级 | 状态 | 说明 |
 |--------|--------|------|------|
-| Header Coding \| Design；语言在 Settings General | P0 | ❌ | 人工 |
-| Design 无独立项目左栏；会话按 mode 过滤 | P0 | ❌ | 工作区历史 |
-| 欢迎页 → 无限画布 | P0 | ❌ | 原型设计主路径 |
-| 先规范卡 → 再界面描绘动画 | P0 | ❌ | 两阶段 generate |
-| 底部 NL 修改闭环 | P0 | ❌ | iterate |
-| `DESIGN.md` / spec / screens 落盘 | P0 | ❌ | `.clutch/design/sessions/<run_id>/` |
-| Approve → UI code → preview → Send to Coding | P0 | ✅ | Preview Demo → Coding；D41 确定性导出 |
-| `design-to-code` 工作流模板 | P1 | ❌ | 内置 SOP |
+| 静态层快照确定性（排除 env 时钟） | P0 | ✅ | pytest 2026-08-24；`env` 仍含 Local time，只是不进指纹 |
+| 契约：Ask 只读 / todo 在 task_state / 特性请求 propose_plan | P0 | ✅ | pytest 2026-08-24 |
+| 本机 Agnes live 小集 | P1 | ✅ | `CLUTCH_AGENT_EVAL_LIVE=1` 3 passed（CC Switch Agnes） |
+
+## Agent eval ablation（B-48 · 默认 FAIL）
+
+> 书 06 · B-34 之后。定义：[`specs/core/tasks.md`](../specs/core/tasks.md) §Agent eval ablation。不升 D54+。  
+> **维护者尺子，无界面。** 不请 PM 点验 Chat。
+
+| 验收项 | 优先级 | 状态 | 说明 |
+|--------|--------|------|------|
+| 消融闸可关掉可选层 | P0 | ✅ | pytest 2026-08-24 `test_agent_eval_b48`：`tools` 层消失且指纹变 |
+| trajectory JSONL 落盘且去密钥 | P0 | ✅ | 同上；写 `runs/archive/eval/`（测试用 tmp） |
+
+## Agent status（B-35 · 默认 FAIL）
+
+> 书 02 · **Q-AGENT-2 = A**。定义：[`specs/core/tasks.md`](../specs/core/tasks.md) §Agent status。  
+> 时钟与完整 Todo 离开 system 前缀，进对话末尾 `<agent_status>`（每轮整换）。Agent Manager「运行时提示词分层」会出现 `agent_status`，`env` 不再含 Local time。
+
+| 验收项 | 优先级 | 状态 | 说明 |
+|--------|--------|------|------|
+| system 前缀不含 Local time / 完整 Todo | P0 | ✅ | pytest 2026-08-24 |
+| 末尾 `<agent_status>` 每轮整换不堆历史 | P0 | ✅ | pytest `attach_trailing_status` |
+| Agent Manager 分层可见 `agent_status` | P1 | ✅ | 2026-08-24 PM 点开 Clutch Agent 详情：`agent_status` 157 · `env` 82（无时钟） |
+
+## Agent context layers（B-36 · 默认 FAIL）
+
+> 书 02。定义：[`specs/core/tasks.md`](../specs/core/tasks.md) §Agent context layers。  
+> 工具结果：落盘 → 去噪声 → 阈值批量压 → 全量 `/compact` 熔断。L1–L3 无新气泡。
+
+| 验收项 | 优先级 | 状态 | 说明 |
+|--------|--------|------|------|
+| 大工具结果落盘且消息只留指针 | P0 | ✅ | pytest 2026-08-24 `test_context_layers_b36` |
+| 噪声删除 + 超阈值只压旧工具 | P0 | ✅ | 同上 |
+| `/compact` 全量熔断仍可用 | P0 | ✅ | `test_compaction` + B-36 阈值回归 |
+
+## Agent archived tool markers（B-44 · 默认 FAIL）
+
+> 书 02。定义：[`specs/core/tasks.md`](../specs/core/tasks.md) §Agent archived tool markers。  
+> 落盘指针标明来源与截断；无新 Chat 卡片。
+
+| 验收项 | 优先级 | 状态 | 说明 |
+|--------|--------|------|------|
+| 指针含 `source=tool truncated=yes` | P0 | ✅ | pytest 2026-08-24 `test_context_layers_b36`；PM 读 `CHANGELOG.md` 全文 |
+
+## Agent verification gate（B-37 · 默认 FAIL）
+
+> 书 01+05 · **Q-AGENT-3 = C**。定义：[`specs/core/tasks.md`](../specs/core/tasks.md) §Agent verification gate。  
+> 有测套先跑；再核对产物在不在。仍是原来的验证报告卡。
+
+| 验收项 | 优先级 | 状态 | 说明 |
+|--------|--------|------|------|
+| 测套失败时验证卡不能绿 | P0 | ✅ | pytest 2026-08-24 `test_verify_harness_b37` |
+| 列出的文件不在磁盘时不能绿 | P0 | ✅ | 同上 |
+| 无工作区时 D5 自报不变 | P0 | ✅ | 同上 |
+
+## Agent progress loop（B-38 · 默认 FAIL）
+
+> 书 01。定义：[`specs/core/tasks.md`](../specs/core/tasks.md) §Agent progress loop。  
+> 同一读/搜空转则停，Continue 与 D9 相同。
+
+| 验收项 | 优先级 | 状态 | 说明 |
+|--------|--------|------|------|
+| 同一文件读三次会停 | P0 | ✅ | pytest 2026-08-24 `test_progress_loop_b38` |
+| 停住后可点 Continue | P0 | ✅ | 同上 + `should_offer_continue` |
+
+## Agent workspace memory（B-39 · 默认 FAIL）
+
+> 书 03+08 · **Q-AGENT-4 = C 用 B**。定义：[`specs/core/tasks.md`](../specs/core/tasks.md) §Agent workspace memory。
+
+| 验收项 | 优先级 | 状态 | 说明 |
+|--------|--------|------|------|
+| Files 能打开 MEMORY.md | P0 | ✅ | PM 2026-08-24：记住后 Files 可见 |
+| 新会话仍记得 | P0 | ✅ | 同上 |
+
+## Agent verification notes（B-40 · 默认 FAIL）
+
+> 书 08。定义：[`specs/core/tasks.md`](../specs/core/tasks.md) §Agent verification notes。
+
+| 验收项 | 优先级 | 状态 | 说明 |
+|--------|--------|------|------|
+| 验证通过写入 Worked | P0 | ✅ | PM 2026-08-24：绿卡 + MEMORY.md `Worked: 验证报告` |
+
+## Agent memory poison（B-45 · 默认 FAIL）
+
+> 书 03。定义：[`specs/core/tasks.md`](../specs/core/tasks.md) §Agent memory poison。
+
+| 验收项 | 优先级 | 状态 | 说明 |
+|--------|--------|------|------|
+| 请记住+URL 不入库 | P0 | ✅ | PM 2026-08-24：remember_preference 红叉，未说已保存 |
+
+## Spurious verification card（D5 · 默认 FAIL）
+
+> 记住 / 问答不得把上一轮验证卡贴到新回复。定义：[`specs/core/tasks.md`](../specs/core/tasks.md) §Spurious verification card。
+
+| 验收项 | 优先级 | 状态 | 说明 |
+|--------|--------|------|------|
+| 记住后不出现验证卡 | P0 | ✅ | PM 2026-08-24：记住回合无卡、不多 `Worked:` |
+| 旧卡不复制到后一轮 | P0 | ✅ | 同上 |
+
+## Agent tool ACI（B-41 · 默认 FAIL）
+
+> 书 04。定义：[`specs/core/tasks.md`](../specs/core/tasks.md) §Agent tool ACI。  
+> 按文件名查存在走 `list_dir`；步骤条 **List**，不是 Search。PM 2026-08-24 点验通过。
+
+| 验收项 | 优先级 | 状态 | 说明 |
+|--------|--------|------|------|
+| 文件名查询不 grep 内容 | P0 | ✅ | pytest + PM 2026-08-24：List .，未 grep |
+| 步骤条显示 List | P0 | ✅ | PM 2026-08-24：Listed 1 dir，不是 Search |
+
+## Design 模式（D36 · 默认 FAIL）
+
+> Header Coding/Design + 工作区 Design 会话 + 原型交互画布。PM 2026-08-24 点验通过。
+
+| 验收项 | 优先级 | 状态 | 说明 |
+|--------|--------|------|------|
+| Header Coding \| Design；语言在 Settings General | P0 | ✅ | PM 2026-08-24 |
+| Design 无独立项目左栏；会话按 mode 过滤 | P0 | ✅ | PM 2026-08-24 |
+| 欢迎页 → 无限画布 | P0 | ✅ | PM 2026-08-24 |
+| 先规范卡 → 再界面描绘动画 | P0 | ✅ | PM 2026-08-24 |
+| 底部 NL 修改闭环 | P0 | ✅ | PM 2026-08-24 |
+| `DESIGN.md` / spec / screens 落盘 | P0 | ✅ | PM 2026-08-24 |
+| Approve → UI code → preview → Send to Coding | P0 | ✅ | Preview Demo → Coding；D41 确定性导出；PM 2026-08-24 |
+| `design-to-code` 工作流模板 | P1 | ✅ | PM 2026-08-24 |
 
 ## E2E 落地前提（关联 DECISIONS D1）
 
@@ -176,6 +293,44 @@
 
 ---
 
+## Frontend modules（FM-xx · D56 · 默认 FAIL · 随 **v1.4.0**）
+
+> **Task 定义：** [`specs/core/frontend-modules-plan.md`](../specs/core/frontend-modules-plan.md)  
+> **点验剧本：** [`docs/FRONTEND_MODULES_ACCEPTANCE.md`](../docs/FRONTEND_MODULES_ACCEPTANCE.md)（桌面入口、步骤、期望；本表仍是唯一 ✅/❌）  
+> **决策：** D56。未点验不得标 ✅。一次一个模块。**FM-19 已撤回（D60）**；**FM-13 已撤回（D61）**（webhook/邮箱空壳；本机盯 CI 见 BACKLOG B-51）。
+
+| ID | 主题 | 状态 |
+|----|------|------|
+| FM-01 | General：默认工作区 / 高危确认 / 版本 | ✅ 人工点验 2026-08-26 |
+| FM-02 | MCP 本机信任（OSR-21 白名单层；自建 SOP 不确认 D58） | ✅ 人工点验 2026-08-26 |
+| FM-03 | Exec policy UI（B-21；OSR-18 界面） | ✅ 人工点验 2026-08-26 |
+| FM-04 | Codex 只读扫描 | ✅ 人工点验 2026-08-26 |
+| FM-05a | Aider 只读扫描 | ✅ 人工点验 2026-08-26 |
+| FM-05b | CodeBuddy 只读扫描 | ✅ 人工点验 2026-08-26 |
+| FM-05c | Antigravity 只读扫描 | ✅ 人工点验 2026-08-26 |
+| FM-05d | Rivet 只读扫描 | ✅ 人工点验 2026-08-26 |
+| FM-05e | Ollama 只读扫描 | ✅ 人工点验 2026-08-26 |
+| FM-05f | ZCode 只读扫描 | ✅ 人工点验 2026-08-26 |
+| FM-06 | Orchestra 队列/确认卡/草稿 | 🚫 撤回 D67 2026-08-28 |
+| FM-07 | 派发保存为工作流 | ✅ |
+| FM-08 | 对话模式 handoff | ✅ |
+| FM-09 | 主控分派横幅（B-01） | ✅ 人工点验 2026-08-26 |
+| FM-10 | 画布引擎跟随 Assigned Agent（B-04 / D65） | ✅ Agent 点验 2026-08-28 |
+| FM-11 | 并行 worktree（B-08） | ✅ 人工点验 2026-08-28 |
+| FM-12 | 记忆检索（B-10） | ✅ 人工点验 2026-08-28 |
+| FM-13 | 事件 Channel（B-42） | 🚫 撤回 D61 2026-08-28 |
+| FM-14 | notify_user（B-46） | 🚫 撤回 D63 2026-08-28 |
+| FM-15 | 新信息门禁（B-43） | 🚫 撤回 D64 2026-08-28 |
+| FM-16 | Design 视觉审查（B-49） | ✅ |
+| FM-17 | 解释器错误卡（B-47） | ✅ |
+| FM-18 | 校验失败可读条（B-05） | ✅ Agent 点验 2026-08-28 |
+| FM-19 | Planner/Executor 分模型（B-06） | 🚫 撤回 D60 2026-08-28 |
+| FM-20 | PERFORMANCE.md 测量（OSR-29） | ✅ |
+| FM-21 | Apple 签名公证（OSR-11） | ✅ |
+| FM-22 | 外部安全审计（OSR-22） | ✅ |
+
+---
+
 ## 开源 / DMG 分发（OSR-xx）
 
 > **Task 定义：** [`docs/OPEN_SOURCE_RELEASE.md`](../docs/OPEN_SOURCE_RELEASE.md) §7.2  
@@ -187,7 +342,7 @@
 | T0 护栏 | 持续 | 许可证、文档边界、semver | ⚠️ | OSR-01～04、23～25 ✅；OSR-05 🔄 |
 | **T1 可公开仓库** | **公开 repo 前** | 社区文件、Sidecar 鉴权、CLI 策略 | ✅ | OSR-00/06～10、26～28 已验收（D31） |
 | T2 可放心装 DMG | 陌生人分发前 | 未签名 DMG、Keychain、安装向导 | ⚠️ | OSR-12～17 ✅ |
-| T3 生态成熟 | 按需 | 沙箱、Windows、自动更新 | ⚠️ | OSR-19/20 ✅ v1.0.2；OSR-18/21/22/29 待做 |
+| T3 生态成熟 | 按需 | 沙箱、Windows、自动更新 | ⚠️ | OSR-19/20 ✅ v1.0.2；OSR-18→FM-03 · OSR-21→FM-02 · **OSR-29 ✅ FM-20** · **OSR-11 流程 FM-21（未公证）** · **OSR-22 流程 FM-22（未外包）** |
 
 ### T1 检查清单（公开仓库前 · 默认 FAIL）
 
@@ -209,6 +364,14 @@
 - [x] **OSR-15** `INSTALL.md` + `DATA_AND_PRIVACY.md`
 - [x] **OSR-16** Debug API 收敛 + WebView CSP
 - [x] **OSR-17** PyInstaller `console=False`
+- [ ] **OSR-11** Apple 签名 + 公证 — **D31 豁免**；流程 [`docs/APPLE_NOTARIZATION.md`](../docs/APPLE_NOTARIZATION.md)（FM-21 ✅）；账号到位前仍发未签名 DMG
+
+### T3 检查清单（生态成熟 · 默认 FAIL）
+
+- [x] **OSR-19** Windows MSI（v1.0.2）
+- [x] **OSR-20** Tauri 自动更新（v1.0.2）
+- [x] **OSR-29** `PERFORMANCE.md` 本机测量（FM-20 · 2026-08-26）
+- [ ] **OSR-22** 外部安全审计 — 委托与报告入口 [`docs/EXTERNAL_AUDIT.md`](../docs/EXTERNAL_AUDIT.md)（FM-22 ✅）；**尚无外包报告**
 
 ### T1 开闸信号（§7.5）
 

@@ -19,7 +19,23 @@ export function createEmptyState(runId: string): ClutchState {
     session_cost_usd: 0,
     token_input: 0,
     token_output: 0,
+    usage_estimated: true,
+    awaiting_continue: false,
   };
+}
+
+/** D9 / B-38 — Chat should show Continue when the last reply is a stop/fuse. */
+export function shouldOfferContinueFromText(text: string | undefined | null): boolean {
+  const value = text || '';
+  return (
+    value.includes('Loop fuse triggered') ||
+    value.includes('死循环熔断') ||
+    value.includes('No-progress loop') ||
+    value.includes('无进展循环') ||
+    value.includes('maximum tool call iteration limit') ||
+    value.includes('Run stopped') ||
+    value.includes('已停止当前运行')
+  );
 }
 
 export function isChatMessage(value: unknown): value is ChatMessage {

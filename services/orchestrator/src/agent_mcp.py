@@ -11,12 +11,12 @@ CLUTCH_TOOLS_SERVER_ID = "clutch-tools"
 
 
 def resolve_local_fs_server() -> dict[str, Any] | None:
-    from src.workspace import get_workspace
+    from src.workspace import WorkspaceError, require_workspace
 
-    workspace = get_workspace()
-    if not workspace:
+    try:
+        workspace_path = str(require_workspace())
+    except WorkspaceError:
         return None
-    workspace_path = str(workspace.get("workspace_path", "")).strip()
     if not workspace_path:
         return None
     return {

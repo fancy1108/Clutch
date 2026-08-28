@@ -738,7 +738,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
           <MiMoModelsPanel />
         </div>
         <div className={capabilityTab === 'more' ? '' : 'hidden'}>
-          <MoreAgentsComingSoon />
+          <MoreAgentsComingSoon kind="models" />
         </div>
 
         {capabilityTab === 'clutch' ? (
@@ -750,6 +750,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
         )}
 
         <section
+          data-testid="clutch-current-model"
           className={`rounded-xl border p-4 text-left ${
             statusTone === 'rose'
               ? 'bg-rose-50/60 border-rose-200'

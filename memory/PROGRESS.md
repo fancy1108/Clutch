@@ -5,11 +5,247 @@
 
 ## Current Status
 
-- **阶段：** **v1.2.9**；主线 D8–D13 ✅；扩展/MCP **D14–D52 Agent 代 PM ✅**；Desktop E2E ✅；真连 Skip（密钥）；Design D36 仍 ❌
+- **阶段：** **v1.4.0** 发版中。主线 D8–D13 ✅；扩展/MCP **D14–D52 Agent 代 PM ✅**；Desktop E2E ✅；**Design D36 PM ✅**
 - **Git / PM 索引：** [`runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md`](../runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md)
-- **下次优先：** 重启 Sidecar 验证天气走 `web_search`/`web_fetch`；旧偏好若 Allow network=Off 需手动打开；commit 本轮 e2e + tool harness 修复
+- **下次优先：** 等 GitHub Release 资产（macOS DMG + Windows MSI）就绪后同步 Homebrew tap。后续用户可见变更写入 `CHANGELOG.md` `## [Unreleased]`。
 
 ## Recent Sessions
+
+## 2026-08-28 会话（撤回 FM-06）
+
+- **做了：** 确认卡、排队条、Complete 草稿 UI 都去掉。FM-06 🚫 D67。同 CLI `@` 复用已有 Lane。
+- **下次：** 重启 App 后 `@OpenCode 只回复 pong` 应直接进终端。
+
+## 2026-08-28 会话（D66 去掉派发确认卡）
+
+- **做了：** Orchestrator Bar 发送即派发。跨 Agent 用 `@C from @A`。随后 D67 连排队和草稿一起撤。
+- **下次：** 重启 App 后点 `@OpenCode 只回复 pong`。
+
+## 2026-08-28 会话（Wave 4 Agent 点验并提交）
+
+- **做了：** FM-10 去掉 Node engine，引擎跟 Assigned Agent。FM-18 Chat 失败气泡补 `validation-failure-chat`。连同 D64（撤 FM-15、解释器超时出卡）一起提交。
+- **测：** `./scripts/verify.sh` vitest 248 · pytest 1021 passed / 7 skipped。
+- **下次：** Wave 3 Orchestra（要 CLI）或 FM-16 Design。
+
+## 2026-08-28 会话（D65 节点引擎跟随 Agent）
+
+- **做了：** 去掉 Edit Node 的 Node engine 下拉。引擎、模型、MCP 跟 Assigned Agent。编译不再写节点 `tool`。
+- **下次：** 完全退出再开 App，点验 FM-10。
+
+## 2026-08-28 会话（撤回 FM-15；FM-17 去预览）
+
+- **做了：** 并行 `delegate_subtask` 不再弹确认。+ 去掉两张样式预览。超时杀进程组并返回 `Interpreter timeout`，Chat 出卡。
+- **下次：** 重启 App 看 + 菜单；FM-17 不要求人工点验。
+
+## 2026-08-28 会话（禁止连开同一条 shell）
+
+- **做了：** 同一 Chat 里已在跑的命令再开会被拒绝；前台超时转入后台；Kill 杀进程组（eslint 子进程）。
+- **下次：** 完全退出再开 App；Kill 残留进程后再点验 lint。
+
+## 2026-08-28 会话（Files/Changes 跟随 worktree）
+
+- **做了：** 右侧 Files/Changes 按底栏所选 worktree 拉 `tree`/`changes`/`file`（`wt_id`）。底栏 Branch 仍走主仓 `GET /api/workspace/git`。切树会刷新；提交后 Changes 从 git 重拉。预览/打开文件走当前检出。
+- **测：** `uv run pytest tests/test_worktree_isolation_d32.py tests/test_run_state_store.py` 17 passed。
+- **下次：** 完全退出再开 App，按 playbook 5b 点验。不要标 ROADMAP，等你过。
+
+## 2026-08-28 会话（底栏自适应）
+
+- **做了：** 底栏 `Active Agent` 改为 `Agent`；容器查询藏标签、截断长值、空闲 Worktree/Workflow 先收；版本号 `shrink-0` 贴右。
+- **下次：** 缩小窗口点验版本号不被裁切。
+
+## 2026-08-28 会话（Worktree 底栏选择）
+
+- **做了：** Worktree 选择挪到应用 Footer，紧挨 Branch；去掉输入框上方天蓝条。菜单与 Branch/Model 同一套 chrome。
+- **下次：** 重启 App 后点验底栏 Worktree；再测 FM-11 写文件隔离。
+
+## 2026-08-28 会话（修 D32 worktree cwd）
+
+- **做了：** Enable 后 Agent 仍写主仓。会话恢复丢掉 `worktree_isolation`；整轮 Chat 才绑定 worktree cwd；绝对路径会落到父仓。未 commit。
+- **测：** `uv run pytest tests/test_worktree_isolation_d32.py tests/test_run_state_store.py tests/test_apply_patch.py` 29 passed。
+- **下次：** 完全退出再开 App，重新 Enable，复测 `clutch-fm11.txt` 只出现在 `.clutch/worktrees/wt_…`。
+
+## 2026-08-28 会话（撤回 FM-14）
+
+- **做了：** 删 `notify_user`、Notify 卡与 `+` 预览。问人只走主 Agent Question 卡（D63）。
+- **下次：** D32+FM-11 或 FM-15/17 预览。
+
+## 2026-08-28 会话（FM-14 真响）
+
+- **做了：** 先做错「子任务结束强制弹卡」；用户纠正后改为交差回主 Agent、卡住才 `notify_user`（D62 修订）。
+- **没做：** 未做嵌套子 Agent 直接对用户 HITL（业界也是回报父 Agent）。
+- **下次：** `+` 预览点验 FM-14；或 D32+FM-11。
+
+## 2026-08-28 会话（撤回 FM-13）
+
+- **做了：** 删 Settings Event channel 与 Chat 测试横幅。CI 监视未实现，记 BACKLOG B-51。
+- **下次：** D32 + FM-11 worktree。
+
+## 2026-08-28 会话（FM-12 人工点验）
+
+- **做了：** PM 勾 FM-12 记忆搜索（`clutch-fm12-probe` 命中 MEMORY.md，点开可预览）。
+- **下次：** FM-13 事件 Channel。
+
+## 2026-08-28 会话（撤回 FM-19）
+
+- **做了：** 删 Settings Planner/Executor 与 Overview 角色行；Chat 底栏换模型保留。B-06 回 BACKLOG 候选。
+- **没做：** 未实现双 session 运行时分流。
+- **下次：** FM-12 记忆搜索。
+
+## 2026-08-26 会话（FM-09 人工点验）
+
+- **做了：** PM 勾 FM-09 分派横幅（空 Chat 可发、横幅「当前 Agent / Matched SOP」）。无代码改动。
+- **没做：** 未实现 B-01 智能匹配 SOP（仍在 PRODUCT_INTRO §4.1）。
+- **下次：** FM-19 Planner/Executor。
+
+## 2026-08-26 会话（FM-04/05 人工点验）
+
+- **做了：** More CLI 真正读本机配置（Codex/Aider/CodeBuddy/Antigravity/Rivet/Ollama/ZCode）；Rescan 与 Back 同一行。PM 勾 FM-04/05。CHANGELOG 目标节 **1.4.0**。
+- **没做：** 未 bump `package.json` / 未打 tag。
+- **测：** `uv run pytest tests/test_cli_agent_config.py` 18 passed；本机 live scan 见会话。
+- **下次：** FM-09 分派横幅。
+
+## 2026-08-26 会话（目标版本 v1.4.0）
+
+- **做了：** D59：CHANGELOG `## [1.4.0] - Unreleased`；PRODUCT_INTRO / ROADMAP / 点验剧本标明进 1.4.0。安装包与 README Latest 仍为 v1.3.0。
+- **没做：** 未 bump `package.json` / Tauri version；未打 tag。
+- **下次：** FM-04 点验。
+
+## 2026-08-26 会话（桌面 E2E 白屏）
+
+- **做了：** `ChatInputBar` / `AiToolsManager` 补 `useLanguage` import；hook 扫描测试；Orchestra E2E 点 Confirm。
+- **没做：** 未补 FM-10/16 等独立 E2E。
+- **测：** `run-e2e.sh` API 7 + Hybrid 1 + Desktop 6 passed。
+- **下次：** T1 开闸或 BACKLOG。
+
+## 2026-08-26 会话（D56 Wave 6 文档）
+
+- **做了：** FM-20 PERFORMANCE 本机测量；FM-21 公证流程+账号阻塞；FM-22 外部审计委托与 `docs/security-audit/` 入口。OSR-11/22 本体仍未执行。
+- **没做：** 未公证 DMG；未外包审计。
+- **测：** `curl` health 11ms / templates 7ms（热 Sidecar :8124）；FM-19 钩子 `verify.sh` ~45s。
+- **下次：** T1 开闸或 BACKLOG。
+
+## 2026-08-25 会话（Q-USAGE-1 E2E 验收）
+
+- **做了：** API `session-usage` + Desktop Overview 用量格子 E2E。假 LLM 补占位 Key 才会真 Echo/`usage`。补 `RightPanel` 的 `useHostOs` import（否则 WKWebView 白屏）。
+- **没做：** 未跑完整 `./scripts/run-e2e.sh`（hybrid + all-ui）；未 commit。
+- **测：** API 7 passed；Desktop `session-usage` 1 passed。
+- **下次：** 用户若要，再 commit。
+
+## 2026-08-25 会话（Q-USAGE-1 + Design 收尾 + D37 状态；Windows 不做）
+
+- **做了：** Overview 用量接供应商 `usage`、否则 `~` 估算；费用仍 `—`。Windows 修复/实体机验收记入 D55 不做。Design 旧文案与 D37/D39–D41 决策状态对齐。
+- **没做：** Windows flake / #23；不接价表；D34。
+- **测：** `test_usage_q1` + `test_http_complete` 用量；`sessionUsage.test.ts`。
+- **下次：** 候选池。
+
+## 2026-08-24 会话（Design D36 PM 点验）
+
+- **做了：** ROADMAP Design D36 全表标 ✅（功能已随 v1.2.0 发版；此前缺人工勾选）。
+- **没做：** 不改 Design 代码。
+- **测：** PM 口头点验 2026-08-24。
+- **下次：** 候选池。
+
+## 2026-08-24 会话（B-48：消融闸 + trajectory）
+
+- **做了：** `CLUTCH_AGENT_EVAL_ABLATION` 可丢掉可选 prompt 层；`persist_trajectory` 写 JSONL 并剥密钥。无 Chat UI。`dev` 已 push（至 D5 修复）。
+- **没做：** 不自动打分报表；不写 CI archive。
+- **测：** `test_agent_eval_b48` + B-34 6 passed / 3 skipped。
+- **下次：** Design D36。
+
+## 2026-08-24 会话（D5：记住不发卡）
+
+- **做了：** 记住 / 问答 / 未改文件不发布 `submit_verification` 卡；旧卡不复制到后一轮；不写 MEMORY.md `Worked:`。B-48 轨迹落盘已从工作区拆出（stash）。
+- **没做：** 不做 B-48。
+- **测：** `test_verification_d5` + B-39/B-37 回归 20 passed。
+- **下次：** PM 已验收；单独 commit。
+
+## 2026-08-24 会话（B-41：工具何时用）
+
+- **做了：** 文件名存在走 `list_dir`；`grep README.md` 被改写成列目录，步骤条 **List** 不是 Search。ACI 写明何时不用 grep。PM 验收通过。
+- **没做：** 无。
+- **测：** `test_tool_aci_b41`；真机 List . / Listed 1 dir。
+- **下次：** Design D36。
+
+## 2026-08-24 会话（B-44：落盘指针来源标记）
+
+- **做了：** 超长工具结果落盘后，送给模型的指针带 `source=tool truncated=yes`。Chat 无新卡片。PM 用 `CHANGELOG.md` 全文 `read_file` 验收通过。
+- **没做：** 不把落盘正文自动灌回模型；Chat 展开区仍是短预览。
+- **测：** `test_context_layers_b36` 5 passed；真机 `runs/archive/tool_results/98131840dcd6.txt`。
+- **下次：** 已 commit `dc3a085`。
+
+## 2026-08-24 会话（B-45：记忆投毒过滤）
+
+- **做了：** 裸 URL / 「请记住 + 链接」不写入 MEMORY.md 和 Settings Memory；remember_preference 红叉。PM 验收通过。
+- **没做：** B-41。
+- **测：** `test_workspace_memory_b39` poison cases
+- **下次：** B-41 验收
+
+## 2026-08-24 会话（B-40：验证结果写入 MEMORY.md）
+
+- **做了：** `submit_verification` 通过/失败后往 MEMORY.md 追加 `Worked:` / `Failed:`。PM 验收通过。
+- **没做：** B-45 投毒过滤。
+- **测：** `test_remember_outcome_passed_and_failed`
+- **下次：** B-45 验收
+
+## 2026-08-24 会话（B-39：工作区 MEMORY.md）
+
+- **做了：** `.clutch/memory/MEMORY.md`；「记住：」写入；prompt 注入概览。PM 验收通过。
+- **没做：** B-40 / B-45。
+- **测：** `test_workspace_memory_b39`
+- **下次：** B-40 验收
+
+## 2026-08-24 会话（B-38：无进展循环）
+
+- **做了：** 同参 `read_file`/`list_dir`/`grep` 第 2 次提醒、第 3 次停并出 Continue。
+- **没做：** 不改失败熔断；B-39 未做。
+- **测：** `test_progress_loop_b38` + D9 + mcp_react 21 passed
+- **下次：** B-39 须人类开 Task；不自动做。
+
+## 2026-08-24 会话（B-37：验证闸）
+
+- **做了：** `submit_verification` 声称通过时先跑测套、再核对 listed 文件在不在；失败则原 D5 卡变红。无新卡、无同模型互评。
+- **没做：** B-38 空转循环。
+- **测：** `test_verify_harness_b37` + D5 10 passed
+- **下次：** PM 已验收（红卡拦不存在文件 + 摘要改写）；commit 后 B-38
+
+## 2026-08-24 会话（B-36：分层压缩）
+
+- **做了：** 工具结果 L1 落盘 / L2 去噪声 / L3 阈值压旧工具；L4 仍是 `/compact`。ReAct `_router_chat` 前应用。
+- **没做：** 不改 Chat 折叠交互；B-44 分页未做。
+- **测：** `test_context_layers_b36` + `test_compaction` + `test_mcp_react` 29 passed
+- **下次：** 等人知悉后再 commit；下一 Task 建议 B-37
+
+## 2026-08-24 会话（非 git 仓 hello 红叉）
+
+- **做了：** 非 git 工作区不挂 `git_*`；残留调用不再带 `Error executing tool:`。PM 已验收。
+- **下次：** B-36 或 B-37
+
+## 2026-08-24 会话（B-35：末尾 agent_status）
+
+- **做了：** 时钟与完整 Todo 离开 system 前缀；每轮整换 `<agent_status>`。Agent Manager 分层可见 `agent_status`。
+- **没做：** Chat 气泡/Todo 卡样子不变；B-36 分层压缩未做。
+- **测：** `test_agent_prompt` / `test_task_state_d8` / `test_agent_eval_b34` 等 51 passed
+- **下次：** 未 commit
+
+## 2026-08-24 会话（B-34 升格：评测骨架）
+
+- **落地：** `src/agent_eval.py` + `tests/test_agent_eval_b34.py`；BACKLOG B-34 → `tasks.md` §Agent Harness / `ROADMAP.md` §Agent Harness
+- **做了：** 静态层指纹（不算 `env`）+ Ask/todo/propose_plan 契约 + 可选 Agnes live 三案。无界面。
+- **没做：** 未冻提示词；未删/未挪本机时间（仍在 `env` 前缀）。预期末尾 `<agent_status>` = B-35。
+- **测：** 契约 3 passed；`CLUTCH_AGENT_EVAL_LIVE=1` Agnes 3 passed（Ask / todo / 注入）
+- **下次：** B-35；未 commit（等人说）
+
+## 2026-08-24 会话（书 01–10 ↔ Clutch Agent 对照入池）
+
+- **落地（文档，未写业务代码）：** 调研 [`docs/research/clutch-agent-book-gap.md`](../docs/research/clutch-agent-book-gap.md)；BACKLOG **B-34–B-50**；开放问题 **Q-AGENT-1–4**
+- **结论：** D0–D53 已覆盖「能做事」；下一阶段是评测 / KV 友好状态栏 / 独立验证 / 可审查记忆，而不是再加工具或后训练
+- **下次：** 人类拍板 Q-AGENT-1（评测怎么跑）后才能把 B-34 升格为 Task
+
+## 2026-08-01 会话（D38 Phase 1：chat_runner 拆分）
+
+- **落地：** `chat_messages.py` / `chat_ws_events.py` / `chat_mcp_gates.py`；`chat_runner` ~5347→~4550 行 + re-export；清理死 Request schema
+- **测：** 计划内子集 45 passed；全量 pytest 951 passed / 4 skipped；`./scripts/verify.sh` OK
+- **下次：** Phase 2 或 backlog P1（generator / ChatFeed）
 
 ## 2026-07-25 会话（Tool harness 全链路）
 

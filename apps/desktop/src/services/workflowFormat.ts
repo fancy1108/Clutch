@@ -206,7 +206,7 @@ export function validWhenValues(nodeType: string | undefined): EdgeWhen[] {
   return [];
 }
 
-export function compilerToCanvas(workflow: CompilerWorkflow, icon = 'account_tree'): WorkflowDef {
+export function compilerToCanvas(workflow: CompilerWorkflow, icon = 'workflow'): WorkflowDef {
   const canvasNodes = workflow.nodes.filter((n) => CANVAS_NODE_TYPES.has(n.type) && n.type !== 'end');
 
   const nodeTypeMap = new Map(workflow.nodes.map((n) => [n.id, n.type]));
@@ -215,7 +215,6 @@ export function compilerToCanvas(workflow: CompilerWorkflow, icon = 'account_tre
     const data = node.data as {
       label?: string;
       agent?: string;
-      tool?: string;
       instruction?: string;
       prompt?: string;
     };
@@ -238,7 +237,6 @@ export function compilerToCanvas(workflow: CompilerWorkflow, icon = 'account_tre
       name: data.label ?? node.id,
       nodeType,
       agent: data.agent ?? '',
-      aiTool: data.tool,
       description: data.instruction ?? data.prompt ?? '',
       nextSteps: outgoing.map((e) => e.target).filter((t) => t !== 'end'),
       edgeWhen: Object.keys(edgeWhen).length > 0 ? edgeWhen : undefined,
@@ -286,9 +284,9 @@ export function canvasToCompiler(
       type: 'agent_task',
       position,
       data: {
+        // Engine follows Assigned Agent (D65). Do not write a node-level tool override.
         label: step.name,
         agent: step.agent,
-        ...(step.aiTool ? { tool: step.aiTool } : {}),
         instruction: step.description || step.name,
       },
     };

@@ -179,8 +179,9 @@
 - **背景**：P2-01…P2-05 已交付；用户明确 **P2-06 核心（工作区默认、高危确认开关等）先不做**，优先 push / CI / 验收 DMG。但在后续迭代中，为了支持自定义用户头像偏好设置，已将部分设置项在 General 页实质落地。
 - **方案**：`SystemPreferencesModal` General 页原「功能开发中」占位**替换为自定义用户头像配置**；工作区默认等其他高级设置项继续延后。
 - **影响**：`ROADMAP.md` General Settings 状态更新为“部分落地”；`tasks.md` P2-06 部分勾选。
-- **落地前提**：已完成用户头像定制偏好配置，其余项待进一步立项。
-- **决策状态**：`部分落地`
+- **落地前提**：已完成用户头像定制偏好配置。
+- **修订（D56 · 2026-08-26）**：用户要求按前端可点验模块做完剩余项（默认工作区、高危确认、版本行）→ **FM-01**。不再延后。
+- **决策状态**：`已落地`（头像等 + FM-01 默认工作区 / 高危确认 / 版本行）
 
 ### D15 · E2E 移出 Pre-commit 门禁（2026-06-24）
 
@@ -346,7 +347,7 @@
 
 | ID | 问题 | 选项 | 默认 |
 |----|------|------|------|
-| Q-USAGE-1 | Overview 用量真值 | A) 继续词数估算 B) 接供应商 `usage`（真 input/output）+ 模型价表；估计算 fallback | **B 后续优化**；UI 暂显示 `—`（2026-07-25） |
+| Q-USAGE-1 | Overview 用量真值 | A) 继续词数估算 B) 接供应商 `usage`（真 input/output）+ 模型价表；估计算 fallback | **B 用量已接、价表不做**（2026-08-25）：Overview 展示步数 / tokens / input-output；有供应商 `usage` 用真值，否则词数估算并标 `~`。**不接价表，费用格仍为 `—`。** |
 | Q-HRT-1 | 多 session 并发策略 | A) 全 run 串行队列 B) 同 workspace 串行 C) 拒绝+提示（pty §2.1） | **C**（与 POC 一致）直至 HRT-08 立项 |
 | Q-HRT-2 | 诊断导出形态 | A) 仅 API B) API + 桌面「复制诊断」按钮 | **B**（HRT-07） |
 | Q-D34-1 | Terminal 并行 Lane 上限 N | A) 2 B) 4 C) 8 | **B**（4，见 D34 §2） |
@@ -354,24 +355,15 @@
 | Q-D34-3 | 超 N 时行为 | A) 拒绝新 Lane B) 排队 C) Tab 折叠旧 Lane | **B+C** 组合（排队 + 折叠展示） |
 | Q-D34-4 | 多 Lane 同时完成回传 | A) 各一路独立草稿 B) 自动合并一条 C) 仅提醒不预填 | **A**（独立草稿队列；用户可自行合并编辑） |
 | Q-D34-5 | handoff sources 默认 | A) 仅聚焦 Lane B) 最近派发到该 target 的 sources C) 空 | **A**；显式 `from @A @B` 覆盖；发送前 chips 可改（见 D34 §2） |
-| Q-UI-1 | Chat 流式回复滚不上来 | A) 调整 `<section>` flex/overflow 布局让 `scrollHeight` 可靠 B) 用 `bottomRef` rect 算偏移绕过 `scrollHeight`（已试无效）C) 重构 ChatFeed 容器层级 | **待诊断 CSS 布局后定** |
+| Q-UI-1 | Chat 流式回复滚不上来 | A) 调整 `<section>` flex/overflow 布局让 `scrollHeight` 可靠 B) 用 `bottomRef` rect 算偏移绕过 `scrollHeight`（已试无效）C) 重构 ChatFeed 容器层级 | **A 已落地**（2026-08-01）：`<section>` 只做 flex 壳 `overflow-hidden`；独立内层 `chatScrollRef` 承担 `overflow-y-auto`，`scrollTo(scrollHeight)` 钉底 |
+| Q-AGENT-1 | Clutch Agent 任务级评测怎么跑（B-34） | A) 仅本地 `FAKE_LLM` 契约轨迹 B) CI 可选 job + 录好的 fixture C) 维护者密钥跑真模型小集 | **C**（2026-08-24）：本机用 CC Switch 的 Agnes；CI 不绑密钥。契约用例仍可用 `FAKE_LLM` 作快门。**已升格** `tasks.md` §Agent Harness / `ROADMAP.md` §Agent Harness。B-34 = 快照+契约+可选 live；**不改 Chat UI，不挪时钟**（时钟仍在 `env`）。 |
+| Q-AGENT-2 | 动态状态往哪放才不破坏前缀缓存（B-35） | A) 每轮替换末尾 `<agent_status>` B) 只追加、保留历史条 C) 维持现状：时间/`task_state` 仍在 D53 prefix | **A**（2026-08-24）：一条末尾状态每轮整换。书：C 禁止；长轨迹+小状态用 B，短轨迹或大 TODO 用 A。Clutch 状态含完整 Todo，末尾替换失效便宜。否决 C。**已升格落地**：`as_system_prompt()` 不含时钟/完整 Todo；`attach_trailing_status` 每轮整换。见 `tasks.md` §Agent status。**B-36**（2026-08-24 人类确认）：分层压缩接在 B-35 后，见 `tasks.md` §Agent context layers。 |
+| Q-AGENT-3 | 「做完了」谁说了算（B-37） | A) 隔离子 Agent 再读产物/跑测试 B) 有测套则 harness 强制跑，失败不准 seal 完成 C) A+B | **C**（2026-08-24）：有测套先强制跑；再隔离子检查产物是否在磁盘。禁止同模型互评同一段文本（不用第二个同模型写长评）。**已升格** `tasks.md` §Agent verification gate。 |
+| Q-AGENT-4 | 跨会话记忆落点（B-39） | A) 继续全局 `cross_session_memory.json` 并加整理 B) 工作区 `.clutch/memory/` + `MEMORY.md`（可 Git） C) 概览常驻 + 细节检索（双层） | **C 用 B 落地**（2026-08-24）：工作区 `MEMORY.md` 作短概览常驻；细节按需检索（**B-10**）。全局 JSON 只留跨仓偏好（可选）。否决「只扩 A」。 |
 
-> **Q-UI-1 现象详情（2026-07-29 诊断）**：纯 LLM 对话（`isPlainLlmChat=true`）工具审批通过后，最终 assistant 回复已在 DOM 渲染，但被卡在可视区下方，看不到；下一次发任意消息才被顶上来。流式期间（`isRunning && !awaitingHuman`）也出现。
+> **Q-UI-1 现象详情（2026-07-29 诊断；2026-08-01 已修）**：纯 LLM 对话工具审批通过后，最终 assistant 回复已在 DOM，但被卡在可视区下方；根因是 flex 列与 `overflow-y-auto` 同挂在 `<section>` 上导致 `scrollHeight == clientHeight`。修复：内层专用滚动容器。
 >
-> **滚动相关代码**：`apps/desktop/src/components/ChatFeed.tsx`
-> - 滚动入口 `scrollChatToBottom`（`:1048`）：`bottomRef.current?.scrollIntoView({ behavior, block: 'end' })`
-> - 触发 effect 依赖（`:1062`）：`[messages, clutchStatus, showThinking, pendingMessages.length, scrollChatToBottom]`
-> - 下哨兵 `bottomRef`（`:1805`）：`<div ref={bottomRef} style={{ scrollMarginBottom: chatScrollBottomPad }} className="h-2 shrink-0" />`
-> - 滚动容器（`:1234`）`<section>`：`className="flex-1 min-h-0 flex flex-col box-border transition-all duration-300 bg-background ... overflow-y-auto overscroll-contain"`
-> - 父链均为 `h-screen overflow-hidden flex flex-col`（`App.tsx:1913 / :2113`）
->
-> **实测数据**（往 `scrollChatToBottom` 注入诊断日志测得，已撤回）：
-> - 从 `<section>` 到 `<html>` 全部 `scrollHeight == clientHeight == 768`，全部不可滚动；祖先链：`SECTION.flex-1.min-h-0 ov=auto sh=768 ch=768 st=0` → `DIV.flex-1.min-w-0 ov=hidden sh=768 ch=768 st=0` → `DIV.flex-1.flex ov=hidden sh=768 ch=768 st=0` → `DIV.relative.h-screen ov=hidden sh=768 ch=768 st=0` → `BODY ov=hidden sh=768 ch=768 st=0` → `HTML ov=visible sh=768 ch=768 st=0`。
-> - `bottomRef` 真实 rect y 一路下到 `918`（`bottom: 918`），但 `<section>` `scrollHeight` 偶尔报 `1272` 之后又跌回 `768`：`scrollTo({top: scrollHeight})` 当 scrollHeight=768 时不动；偶发 scrollHeight=1272 时才滚一次。
-> - 显式 `bottomRef.rect` 算偏移的改进已实测无效（layout 被压缩，rect 也未反映真实溢出）。
->
-> **建议后续**：先 DevTools Computed 面板点 `<section>` 截 `height`/`max-height`/`min-height`/`overflow-y`/`display`/`flex`/`flex-basis`，确认为何 section 子项被压成等高（`scrollHeight == clientHeight`）；再决定是改 CSS 布局还是重构容器层级。
-
+> **历史诊断摘要**：祖先链全部 `scrollHeight == clientHeight`；`bottomRef` rect 可到 y≈918；`scrollIntoView` / rect 偏移在坏 scrollport 上无效。
 ### D26 · 用户自定义头像替换与存储（2026-06-27）
 
 - **背景**：原系统 User 消息气泡统一指向静态 Unsplash 网页地址，不支持自定义用户配置，在 General 设置里也没有对应的偏好配置，缺乏个性化表现。
@@ -389,7 +381,7 @@
   1. `docs/PRODUCT_INTRO.md` — 用户可见能力与设置路径；
   2. `docs/GETTING_STARTED.md` — 配置步骤（中英表格各一处）；
   3. `memory/FILEMAP.md` — 新增/变更的源码路径映射（若涉及新模块）；
-  4. `CHANGELOG.md` — `[Unreleased]` 条目（发版前合并进版本节）；
+  4. `CHANGELOG.md` — 当前开发版本节（现为 `## [Unreleased]`；已发 [1.4.0]）；
   5. `README.md` / `README.zh-CN.md` — **「最新更新」**一节：只写**用户可见**的单一版本要点列表（不按 commit / 开发进度分段）；发版时整节替换为新版本，历史见 `CHANGELOG.md`；
   6. `apps/desktop/src/services/cliInstallGuides.ts` — 安装指引与 `RECOMMENDED_CLI_IDS`（若列为推荐）；
   7. `.cursor/rules/cli-whitelist-docs.mdc` — 本清单的权威副本。
@@ -430,7 +422,7 @@
        4. **发送前 UI 确认（推荐默认展示）**：解析出 target + 推断的 sources 后，派发前展示可编辑 chips：`上下文来自：[x] Lane-A [x] Lane-B [ ] 工作区`，用户可增删再发送（避免 silently 丢上下文或误带上下文）。
      - 产物路径：**`.clutch/handoffs/{timestamp}-{sourcesLabel}→{target}-{slug}.md`**；目标 Lane 首条 prompt **只引用路径**，由接收方 CLI `read`。
   3. **PTY Lane 模型（2-B）——对等 Lane + 派发图**
-     - 一个 `run_id` 下 **至多 N=4** 路并行 PTY（首期 CLI 类型仍 `claude-cli` · `opencode-cli`；同类型可多 Lane，按 `lane_id` 区分）。
+     - 一个 `run_id` 下 **至多 N=4** 路并行 PTY（首期 CLI 类型仍 `claude-cli` · `opencode-cli`；同类型可多 Lane，按 `lane_id` 区分）。**`@` 已有 Lane 的同一 CLI 复用该 PTY（注入任务），不新开终端。** 槽位按 **running/booting** 计（折叠仍占槽）；第 5 个尚未开 Lane 的 Agent 进入 `queued`。
      - 每条 Lane：`lane_id`、`agent_type`、`label`（子任务标题）、`status`；**可选** `dispatch_edges[]` 记录 `sources → target`（用于审计与草稿建议，非权限树）。
      - UI：分屏 / Tab；**聚焦**决定默认 handoff source；**Lane 折叠**为终端 **右侧独立栏**（`float-rail`，与 xterm **不重叠**）内堆叠紧凑胶囊：`rounded-xl` · `shadow-sm` · 品牌 LOGO + 一行子任务摘要；`running`/`booting` 仅 spinner，`completed` 仅 LOGO 角标绿点；点击展开，PTY 不断开。
   4. **典型场景（须全部支持，非穷举）**
@@ -487,7 +479,7 @@
   4. **API**：session-scoped `POST /api/design/sessions`、`.../generate`（`reference_image` / `reference_md` / `reference_url` 可选；两阶段 spec→UI）、`.../iterate`（`target_kind` / `target_id` / `element_*` / `mode`）；产物 `.clutch/design/sessions/<run_id>/`（含 `reference.<ext>`、`reference_design.md`、`url_snapshot.json`、`thumbnail.svg`、多屏 `screens/`）；`artifact_paths` 供 Changes 列表。
   5. **非目标（本轮）**：账号/云协作、完整矢量编辑、真实 Figma 导出、语音输入。
 - **影响**：`Header`、`App` `appMode`、`DesignWorkspace`、`run_history`/`runApi` mode、`PRODUCT_INTRO` §3.5、`ROADMAP`、`FILEMAP`。
-- **决策状态**：`可执行`
+- **决策状态**：`已落地`（PM 2026-08-24 点验；产品随 v1.2.0 已发）
 
 ### D37 · Sidecar 热更（独立 patch_id · 静默下载 · 挂起应用）（2026-07-11）
 
@@ -501,7 +493,7 @@
   6. **UX**：默认 **静默下载** → Settings 旁极小 **「更新已就绪」** → 确认后 apply；与全量 Update 并存时 **只显示全量**。`severity: critical|major` 进度 UI 可后置。
   7. **分发**：Release 资产 `sidecar-patch.json` + `orchestrator-darwin-aarch64`；客户端拉 `…/latest/download/sidecar-patch.json`（404=无补丁）。
 - **影响**：`lib.rs` / `sidecar_patch.rs`、`sidecarPatch.ts`、`SidecarPatchReady`、`docs/UPDATES.md`、维护脚本。
-- **决策状态**：`可执行`
+- **决策状态**：`已落地`（v1.2.1+ 客户端已随包；生产补丁随发版出 `sidecar-patch.json`，不单开功能开发）
 
 ### D38 · Stable Context Boundary：Code Decomposition Principles（2026-07-12）
 
@@ -546,7 +538,7 @@
   3. **Path B 兼容**：`/generate-code/write` 委托 Path A（要求/自动对齐 `prototype_approved`），写入 `react/` 并更新 manifest；`generated/` 不再作为 handoff 目标。
   4. **非目标**：不接入 Google Stitch MCP / 云 projectId。
 - **影响**：`PreviewDemo` Coding 入口 + `DesignHandoffTray`、`service.generate_react`、`router` generate-code、`PRODUCT_INTRO` §2.10–2.11、`DESIGN_WORKSPACE_GUIDE`。
-- **决策状态**：`可执行`
+- **决策状态**：`已落地`（随 Design D36 / v1.2.0 Path A）
 
 ### D40 · Design Spec 软确认关卡 + 流程纪律（2026-07-18；默认改关 2026-07-24）
 
@@ -557,7 +549,7 @@
   3. **显式 iterate mode**：API/UI 声明 `modify|add|variant|revise_spec`，启发式仅兜底；默认 edit-over-regenerate。
   4. **多页 baton**：仅 opt-in，本轮不做默认自治 loop。
 - **影响**：`generator.generate_session`、`confirm_spec`、`DesignWorkspace` Spec 确认 CTA、`designApi`、文档与测试 fixture。
-- **决策状态**：`可执行`
+- **决策状态**：`已落地`（默认关；`CLUTCH_DESIGN_SPEC_CONFIRM=1` 时 Spec 软确认）
 
 ### D41 · Generate UI code = 确定性保真出前端工程（禁 LLM 重画）（2026-07-20）
 
@@ -568,7 +560,7 @@
   3. **交互进源码**：`interaction_contract.json` 转为 React Router `<Link to="/…">`。
   4. **交付定义**：每屏真实 `.tsx` + Vite 可跑工程；Atomic 拆分非本门禁目标。Send to Coding 指令强调接 API、勿重设计。
 - **影响**：`design/fidelity_export.py`、`service.generate_react`、Preview Demo Coding 托盘文案、`PRODUCT_INTRO` / `DESIGN_*`。
-- **决策状态**：`可执行`
+- **决策状态**：`已落地`（HTML→JSX 机械转换，禁 LLM 重画）
 
 ### D42 · Coding 发图 + 中间产物预览（2026-07-20；2026-07-24 修订）
 
@@ -603,7 +595,8 @@
   5. **提示词（2026-07-24 补）**：**D53** — 运行时分层组装 + **渐进式披露**（system 底座 / env / 项目规则 / skills 目录按需全文 / mode reminder）；禁止把 `markdownDoc` 或整份 AGENTS.md 当作唯一 system。D7=发现内容，D53=组装架构。
   6. **Harness 纪律（2026-07-25 补）**：对齐 Grok Build「有工具就必须进循环」——按意图覆盖 network / workspace_read|write / git / shell；零 `tool_calls` 时注入族级 nudge 并以 `tool_choice=required` 重试一次（拒绝话术另走 generic）；目录诚实：偏好关闭时隐藏 `web_search` / `remember_preference`；`Allow network` 默认开。
   7. **联网停搜纪律（2026-07-25 补）**：对齐主流 Agent（ChatGPT/Perplexity/Cursor）「搜一次 → 抓 1–2 页 → 答」——`web_search`/`web_fetch` 软上限 3、硬上限 5；软上限注入 stop-search nudge；硬上限拒绝继续联网工具；禁止 `web_fetch` 搜索引擎 SERP；总步数 24 仍为写代码熔断，不充当联网预算。
-- **影响**：`builtin_tools` / `agent_mcp` / `chat_runner` / `mcp_react` / `agent_prompt` / `tool_use_policy` / AgentManager MCP UI / ChatFeed 活动条；`ROADMAP` §Chat Clutch Agent。
+  8. **同工具熔断 + 元工具不洗计数（2026-08-01 补）**：对齐 Cursor/Claude「同一失败动作勿死磕」——任一工具名连续失败软上限 2（nudge 改道）、硬上限 3（本回合拒绝再调该工具）；`todo_write` / `propose_plan` / `ask_user_question` 等元工具成功**不重置** D9 连续失败 streak（防 generate_image 失败夹 todo 成功绕过熔断）。环境变量：`CLUTCH_SAME_TOOL_SOFT_FAILURES` / `CLUTCH_SAME_TOOL_HARD_FAILURES`。
+- **影响**：`builtin_tools` / `agent_mcp` / `chat_runner` / `mcp_react` / `agent_prompt` / `tool_use_policy` / `run_control` / AgentManager MCP UI / ChatFeed 活动条；`ROADMAP` §Chat Clutch Agent。
 - **决策状态**：`可执行`
 
 ### D54 · Chat 交付物目录与真实出图（2026-07-27）
@@ -615,6 +608,102 @@
   3. **产物隔离**：Chat 研究/展示类新文件自动改写到 `.clutch/artifacts/`。
   4. **意图**：`infographic` / 信息图 / 可视化 → image。
 - **影响**：`deliverable_intent` · `artifact_layout` · `media_deliverable` · `builtin_tools` · PRODUCT_INTRO。
+- **决策状态**：`已落地`
+
+### D55 · Windows 本机验收与修复不做（2026-08-25）
+
+- **背景**：维护者无 Windows 电脑；此前 Windows CI 偶发 `test_start_sleep_wait_done`（`failed` vs `done`），以及 Issue #23 v1.0.2 MSI/NSIS 实体机 smoke，都需要 Windows 才能点验。
+- **方案**：明确**不做** Windows 专用修复与实体机验收，直至有 Windows 机器或 Windows 维护者接手。macOS 开发与 CI 绿门禁不变。Windows 安装包仍随历史 Release 提供，不承诺本机复现。
+- **影响**：`BACKLOG.md` #23；Windows pytest flake 不排入开发队列。
+- **决策状态**：`已记录`
+
+### D56 · 前端可点验模块轨道（2026-08-26）
+
+- **背景**：主线 D0–D53 / Design D36 / Hybrid 已勾选；剩余为 P2-06 尾巴、CLI Coming soon、D34-ε、BACKLOG 候选与 OSR T3。用户要求全部排入待办，且每条须能在桌面 UI 点验；公证/审计/文档排在全部前端模块之后。
+- **方案**：
+  1. 任务定义 [`specs/core/frontend-modules-plan.md`](../specs/core/frontend-modules-plan.md)（FM-01…FM-22）；验收只勾 [`memory/ROADMAP.md`](./ROADMAP.md) §Frontend modules。
+  2. 顺序：Settings/Trust → CLI 只读扫描 → Orchestra 收口 → 分派/画布 → 协作记忆事件 Design → OSR-29/11/22。
+  3. 升格：B-01、B-04（余量）、B-05、B-06、B-08、B-10、B-18–B-22、B-42、B-43、B-46、B-47、B-49 → 对应 FM-xx。OSR-18 界面层并入 FM-03；OSR-21 并入 FM-02。
+  4. **不做：** 价表、Windows 实体机（D55）、B-15/B-16。D32 单 worktree 开关不重做。
+  5. 一次一个模块；单次 ≤3 新文件、≤200 行。
+- **影响**：ROADMAP 新节；BACKLOG 上述 ID 移 Completed 索引；D14 剩余项改 FM-01。
+- **决策状态**：`可执行`
+
+### D57 · MCP Hub Streamable HTTP（2026-08-26）
+
+- **背景**：官方 Figma MCP 是 `https://mcp.figma.com/mcp` / 桌面 `http://127.0.0.1:3845/mcp`（HTTP + 可选 OAuth）。Hub 曾 stdio-only，无法登记 URL。
+- **方案**：`McpClient` 对 `http(s)://` 走 Streamable HTTP；Hub Transport **HTTP**；Env `Authorization` / `HEADER_*`。HTTPS 远程 401 且未配 Key 时统一回退 `npx mcp-remote`（浏览器 OAuth），不按厂商加 Hub 按钮。本机 HTTP / 已配 Key 的仍直连。
+- **影响**：`mcp_client.py` · `mcp_storage.py` · `McpServerHub.tsx` · `docs/mcp-servers/figma.md`。
+- **决策状态**：`已落地`
+
+### D58 · 自建工作流不走本机信任确认（2026-08-26）
+
+- **背景**：FM-02 把 OSR-21「工作流签名 / MCP 白名单」收成同一套「未信任 MCP / 工作流确认」。MCP 是外来进程（可跑工具），第一次 Enable 需要确认；SOP 是用户在本机画布创建的，再弹 `Trust workflow` 是多余摩擦。OSR-21 的工作流**签名**针对社区/导入 JSON，当前没有市场导入面。
+- **方案**：Settings → Workflows SOP 点选一行即绑定对话并打开画布，不调用 `confirmLocalTrust('workflow')`。General 开关与 Hub Enable 仍只对 MCP。工作流签名仍属 OSR-21 T3，有第三方 SOP 导入时再做。
+- **影响**：`App.tsx` · General 文案 · `PRODUCT_INTRO.md` · FM-02 点验剧本。
+- **决策状态**：`已落地`
+
+### D59 · 下一发版目标 v1.4.0（2026-08-26）
+
+- **背景**：当前 GitHub Release 为 **v1.3.0**。`dev` 上 FM 点验、HTTP MCP、工作流 UX 等尚未打 tag。
+- **方案**：用户可见变更写入 `CHANGELOG.md` **`## [1.4.0] - Unreleased`**（不是空的 `[Unreleased]`）。`package.json` / Tauri `version` **仍为 1.3.0** 直到打 tag。`PRODUCT_INTRO.md` 描述 `dev` 上已有行为（将随 1.4.0 发）。README「Latest release」仍链 v1.3.0。
+- **影响**：`CHANGELOG.md` · `PROGRESS.md` · `ROADMAP.md` §Frontend modules · 点验剧本。
+- **决策状态**：`已落地`（v1.4.0 tagged 2026-08-28；其后写入 `## [Unreleased]`）
+
+### D60 · 撤回 FM-19 Planner/Executor Settings（2026-08-28）
+
+- **背景**：B-06 原意是 Planner（便宜、只读、独立 session）与 Executor（贵模型写代码）运行时分流。升格成 FM-19 后只做了 Settings 两个下拉 + Overview 两行名字；Chat 实际只打 `active_model_id`（底栏 Model）。点验时换 Executor 会被 New Chat 重置，且与「用户在 Chat 随时换模型」重复。
+- **方案**：删除 Settings Planner/Executor 与 Overview 角色行。对话模型只在 Chat 底栏切换。B-06 真双 session 回 BACKLOG 候选，不在本轨实现。
+- **影响**：`ModelsManager.tsx` · `RightPanel.tsx` · models API · `PRODUCT_INTRO.md` · 点验剧本不再含 FM-19。
+- **决策状态**：`已落地`
+
+### D61 · 撤回 FM-13 Event channel 空壳（2026-08-28）
+
+- **背景**：B-42 原意是外部 Channel 叫醒 Agent。升格成 FM-13 后只做了 Settings 填 webhook/邮箱 + Test 横幅，Continue 复用 D9「接着聊」。webhook 从未被 POST，邮箱从未发信。本地桌面也收不到公网入站。用户要的是 push 后盯 CI，不需要邮箱。
+- **方案**：删除 Event channel UI、测试横幅与相关 API。真需求记 BACKLOG **B-51**（本机轮询本次 push 的 CI Checks，红了出确认卡再修），未立项。
+- **影响**：`SystemPreferencesModal.tsx` · `ChatFeed.tsx` · `routes/settings.py` · `PRODUCT_INTRO.md` · 点验剧本不再含 FM-13。
+- **决策状态**：`已落地`
+
+### D62 · notify_user 仅在主 Agent 卡住时询问（2026-08-28）
+
+- **背景**：曾试过 `delegate_subtask` 一结束就强制弹 Notify 卡。用户指出这不合理：子任务应交回主 Agent 判断合不合格和下一步；只有执行中**不清楚下一步**才该问人。
+- **方案**：撤回完成后必停。子任务结果直接回父循环。嵌套子 Agent 不挂 `notify_user` / `ask_user_question`，卡住时把阻塞点和选项写进摘要。主 Agent 用 `ask_user_question` 处理分叉、用 `notify_user` 处理 yes/no / 阻塞。`+` 预览保留。
+- **影响**：`subagent_runner.py` · `mcp_react.py` · `agent_prompt.py` · `PRODUCT_INTRO.md` · FM-14 点验剧本。
+- **决策状态**：`已落地`（已被 **D63** 取代：不再保留独立 Notify 卡）
+
+### D63 · 撤回 FM-14 Notify user（2026-08-28）
+
+- **背景**：B-46/`notify_user` 与 D4 `ask_user_question` 重复。用户要求任何问题都由主 Agent 问；子任务交差回主 Agent，不单独弹 Notify。
+- **方案**：删除 `notify_user` 工具、Chat 通知卡皮肤、`+` 菜单预览。问人只走 Question 卡。FM-15 并行门禁改挂 `ask_user_question`（`kind: new_info`）。B-46 不另立项。
+- **影响**：`builtin_tools.py` · `QuestionCardView.tsx` · `ChatInputBar.tsx` · `ChatFeed.tsx` · `PRODUCT_INTRO.md` · 点验剧本不再含 FM-14。
+- **决策状态**：`已落地`
+
+### D64 · 撤回 FM-15 并行新信息门禁；FM-17 去掉 + 预览（2026-08-28）
+
+- **背景**：并行再派子 Agent 时弹 Proceed/Hold，和 Cursor/Claude Code 直接干不一致。用户不要确认。**+** 里的 New information / Interpreter error 是样式预览，被当成真功能。
+- **方案**：删除 `delegate_subtask` 并行门禁与两张 + 预览。子任务直接派。解释器卡只在工具结果为 `Interpreter timeout` / `Interpreter offline` 时出现；前台超时杀进程组并返回该文案。
+- **影响**：`mcp_react.py` · `ChatInputBar.tsx` · `ChatFeed.tsx` · `foreground_shell.py` · `PRODUCT_INTRO.md` · 点验剧本不再含 FM-15 预览项。
+- **决策状态**：`已落地`
+
+### D65 · 工作流节点引擎跟随 Assigned Agent（2026-08-28）
+
+- **背景**：FM-10 在 Edit Node 增加 **Node engine** 下拉。用户已选 Assigned Agent，再选引擎会与 Agent 的 CLI/Clutch/MCP 配置冲突；执行侧本来就按 `agentType` 路由，节点 `tool` 写了也不改路由。
+- **方案**：去掉 Node engine。节点只选 Agent；编译不再写 `tool`；Overview 显示该 Agent 的类型。
+- **影响**：`WorkflowOrchestration.tsx` · `workflowFormat.ts` · `PRODUCT_INTRO.md` · 点验剧本 FM-10。
+- **决策状态**：`已落地`
+
+### D66 · Terminal 派发不弹确认卡（2026-08-28）
+
+- **背景**：FM-06 在 Orchestrator Bar 发送后弹出 Confirm dispatch。D34 §2-4 本意是改 handoff sources。用户 `@OpenCode 只回复 pong` 时多点一次，和对话模式直接发送不一致。
+- **方案**：发送即 `confirm_dispatch`。跨 Agent 交接用消息里的 `@C from @A`。排队条与 Complete 草稿保留。
+- **影响**：`OrchestratorBar.tsx`（删除 `DispatchConfirmCard`）· `PRODUCT_INTRO.md` · 点验剧本 FM-06。
+- **决策状态**：`已落地`
+
+### D67 · 撤回 FM-06 排队条与 Complete 草稿（2026-08-28）
+
+- **背景**：确认卡已是负优化（D66）。排队条、Lane Complete 预填草稿同属多出来的编排层；`@C from @A` 已经写清交接。
+- **方案**：撤回 FM-06。界面不再展示排队条、完成草稿 chips/toast。Terminal `@` 仍发送即派发。4 路 PTY 上限仍在后端（第 5 个不同 Agent 等空位），不单独做排队 UI。
+- **影响**：`OrchestratorBar.tsx` · `TerminalLaneGrid.tsx` · `PRODUCT_INTRO.md` · 点验剧本不再含 FM-06。
 - **决策状态**：`已落地`
 
 ### D45 · D7 项目规则 + Skills 对齐 Grok Build（2026-07-24）

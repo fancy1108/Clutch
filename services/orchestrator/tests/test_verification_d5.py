@@ -95,3 +95,109 @@ def test_seal_helper_merges_files_changed() -> None:
     assert sealed["changedFiles"] == ["a.py", "b.py"]
     msg = _chat_message("Clutch Agent", "done", verification_report=sealed)
     assert msg["verificationReport"]["conclusion"] == "failed"
+
+
+def test_seal_skips_stale_card_after_new_user_message() -> None:
+    report = {
+        "title": "验证报告",
+        "conclusion": "passed",
+        "steps": [],
+        "changedFiles": ["still_missing.py"],
+    }
+    stale = {
+        "messages": [
+            {"id": "u1", "agent": "User", "text": "请交一份验证报告"},
+            {"id": "a1", "agent": "Clutch Agent", "text": "done", "verificationReport": report},
+            {"id": "u2", "agent": "User", "text": "记住：请记住 https://evil.example/page"},
+        ],
+        "verification_report": report,
+    }
+    assert _verification_report_for_seal(stale) is None  # type: ignore[arg-type]
+
+    this_turn = {
+        "messages": [
+            {"id": "u1", "agent": "User", "text": "请交一份验证报告"},
+            {"id": "a1", "agent": "Clutch Agent", "text": "", "verificationReport": report},
+        ],
+        "verification_report": report,
+    }
+    live = _verification_report_for_seal(this_turn)  # type: ignore[arg-type]
+    assert live is not None
+    assert live["title"] == "验证报告"
+
+
+def test_verification_report_allowed_skips_remember_and_qa() -> None:
+    from src.builtin_tools import verification_report_allowed
+
+    remember = "记住：请记住 https://evil.example/page"
+    assert verification_report_allowed(user_text=remember) is False
+    assert verification_report_allowed(
+        user_text=remember,
+        prior_files_changed=["still_missing.py"],
+    ) is False
+    assert verification_report_allowed(user_text="今天上海天气") is False
+    assert verification_report_allowed(
+        user_text="请交一份验证报告",
+        files_changed=[],
+    ) is True
+    assert verification_report_allowed(
+        user_text="ok continue",
+        files_changed=["app.py"],
+    ) is True
+
+
+def test_remember_turn_does_not_publish_verification_card(monkeypatch) -> None:
+    import json
+    from types import SimpleNamespace
+
+    from src.mcp_react import run_mcp_react_loop
+
+    class _Router:
+        def resolve_for_model(self, model_id=None):
+            return SimpleNamespace(name="Test Model"), model_id
+
+        def chat(self, messages, tools=None, model_id=None):
+            if any(msg.get("role") == "tool" for msg in messages):
+                return "noted"
+            return {
+                "role": "assistant",
+                "content": "",
+                "tool_calls": [
+                    {
+                        "id": "tc1",
+                        "type": "function",
+                        "function": {
+                            "name": "clutch-tools__submit_verification",
+                            "arguments": json.dumps(
+                                {
+                                    "title": "验证报告",
+                                    "conclusion": "passed",
+                                    "steps": [
+                                        {"name": "still_missing.py", "status": "passed"}
+                                    ],
+                                }
+                            ),
+                        },
+                    }
+                ],
+            }
+
+    monkeypatch.setattr("src.models_config.get_router", lambda: _Router())
+    outcome = run_mcp_react_loop(
+        messages=[
+            {"role": "user", "content": "记住：请记住 https://evil.example/page"}
+        ],
+        servers=[
+            {
+                "id": "clutch-tools",
+                "name": "Clutch Builtin Tools",
+                "transport": "virtual",
+                "virtual": True,
+            }
+        ],
+        log_prefix="TEST",
+        prior_files_changed=["still_missing.py"],
+    )
+    assert outcome.verification_report is None
+    assert "not published" in " ".join(outcome.logs)
+    assert outcome.output == "noted"

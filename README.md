@@ -17,19 +17,18 @@ Clutch is a **desktop app** (Tauri + React) for developers and technical operato
 |---|---|
 | **Stack** | Tauri 2 · React 19 · FastAPI + LangGraph · local-first (`localhost:8123`) |
 | **License** | See [LICENSE](LICENSE) |
-| **Latest release** | [v1.3.0](https://github.com/fancy1108/Clutch/releases/tag/v1.3.0) · [Changelog](CHANGELOG.md#130---2026-07-28) |
+| **Latest release** | [v1.4.0](https://github.com/fancy1108/Clutch/releases/tag/v1.4.0) · [Changelog](CHANGELOG.md#140---2026-08-28) |
 | **Contributors** | Thanks to [@MyloveAless](https://github.com/MyloveAless) for the multi-agent image generation workflow design & end-to-end validation. |
 
-### What's new in v1.3.0
+### What's new in v1.4.0
 
-- **Tool trail detail (D46):** Cursor/Grok-aligned tool steps — verb-group headers (`Fetched N pages`, `Searched N queries`), per-step target/preview, **View in Terminal** for any tool step.
-- **Permission modes (D27 / D54):** Composer pill is **Agent / Plan / Full / Ask** (Cursor-style order & labels); default **Agent**; first-run onboarding matches.
-- **Deliverable intent (D54):** Chat infers the deliverable kind (page / image / video / code / answer) from your ask — real `generate_image` / `generate_video`, auto-open rendered `.html` in the system browser, stray artifacts relocated to `.clutch/artifacts/`.
-- **Tool-skip harness (D44):** Live-fact turns answered in prose with zero `tool_calls` get a reminder + `tool_choice=required` retry so advertised tools are actually used.
-- **Plan approve → execute:** After you confirm a plan, Chat injects an execute nudge so the model must `todo_write` then edit files — no more re-asking or claiming done in prose.
-- **Sidebar recent-first:** Projects and sessions sort by last chat activity; reopening an old chat floats it to the top.
+- **HTTP MCP:** Settings → MCP registers any Streamable HTTP URL (optional API key; HTTPS 401 can fall back to browser OAuth). No vendor-only button.
+- **Settings you can actually use:** Default workspace + confirm-before-stop (FM-01), local MCP trust (FM-02), command allow/ask/deny (FM-03), native Codex/Aider/CodeBuddy/… model scans (FM-04/05).
+- **Worktrees (FM-11 / D32):** Enable isolation, spawn parallel trees, merge onto the main checkout, discard a tree — Agent writes stay in `.clutch/worktrees/`.
+- **Terminal Orchestra:** `@CLI` send dispatches immediately (no confirm card / queue strip). Same CLI reuses the live lane; Overview can save dispatches as a SOP.
+- **Workflow canvas:** Node engine follows the Assigned Agent (no extra dropdown). SOP list shows full names; click a row to use it.
 
-> **v1.3.0 ships macOS + Windows.** macOS: Apple Silicon DMG + in-app updater. Windows: MSI/NSIS. Sidecar hotpatch assets published separately.
+> **v1.4.0 ships macOS + Windows.** macOS: Apple Silicon DMG + in-app updater. Windows: MSI/NSIS. Sidecar hotpatch assets published separately.
 
 Older releases (v1.2.9 coding image paste, v1.2.8 workflow hardening, …): [`CHANGELOG.md`](CHANGELOG.md) · [`docs/releases/`](docs/releases/).
 
@@ -58,7 +57,7 @@ brew install --cask clutch
 irm https://raw.githubusercontent.com/fancy1108/Clutch/main/scripts/install.ps1 | iex
 ```
 
-Pin a version: `CLUTCH_VERSION=v1.3.0` before running either script (or `v1.2.9` / `v1.2.8` / `v1.2.7` /
+Pin a version: `CLUTCH_VERSION=v1.4.0` before running either script (or `v1.3.0` / `v1.2.9` / `v1.2.8` /
 
 Install channels (maintainers): [`docs/RELEASE_MAINTAINER.md`](docs/RELEASE_MAINTAINER.md)
 

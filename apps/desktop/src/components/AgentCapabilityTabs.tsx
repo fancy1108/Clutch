@@ -30,6 +30,7 @@ export const AgentCapabilityTabs: React.FC<AgentCapabilityTabsProps> = ({
             type="button"
             role="tab"
             aria-selected={isActive}
+            data-testid={`capability-tab-${tab.id}`}
             onClick={() => onTabChange(tab.id)}
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10.5px] font-semibold border transition-colors ${
               isActive

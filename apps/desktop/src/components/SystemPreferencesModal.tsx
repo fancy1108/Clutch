@@ -14,8 +14,10 @@ import { LegacyIcon } from './ui/LegacyIcon';
 import { SettingsPageHeader, SettingsPageShell } from './ui/SettingsPageHeader';
 import { SettingsSelect } from './ui/SettingsSelect';
 import { saveAvatarPreference } from '../services/themeApi';
-import { fetchAllowNetwork, fetchCrossSessionMemory, fetchStrictSandbox, clearCrossSessionMemory, saveAllowNetwork, saveCrossSessionMemory, saveStrictSandbox } from '../services/permissionApi';
+import { fetchAllowNetwork, fetchCrossSessionMemory, fetchDefaultWorkspaceId, fetchHighRiskConfirm, fetchLocalTrust, fetchStrictSandbox, clearCrossSessionMemory, saveAllowNetwork, saveCrossSessionMemory, saveDefaultWorkspaceId, saveHighRiskConfirm, saveStrictSandbox, saveUntrustedConfirm } from '../services/permissionApi';
 import { FONT_SIZE_LABEL_KEYS, FONT_SIZE_OPTIONS, type AppFontSize } from '../services/fontSizePreference';
+import { fetchWorkspaces, type WorkspaceInfo } from '../services/workspaceApi';
+import { SIDECAR_BASE as BASE, sidecarFetch } from '../services/sidecarUrl';
 import { setUserChatAvatar } from '../services/clutchState';
 import defaultAvatar from '../assets/default_avatar.jpg';
 
@@ -42,7 +44,6 @@ interface SystemPreferencesModalProps {
   setThemeId: (themeId: string) => void;
   workspaceLabel?: string | null;
   sessionActive?: boolean;
-  onUseWorkflowInChat?: (workflowId: string, workflowName: string) => void;
   onSelectWorkflow?: (workflowId: string, workflowName: string) => void;
   onClearSelectedWorkflow?: () => void;
   selectedWorkflowId?: string | null;
@@ -54,6 +55,9 @@ interface SystemPreferencesModalProps {
   setUserName?: (name: string) => void;
   fontSize: AppFontSize;
   setFontSize: (fontSize: AppFontSize) => void;
+  appVersion?: string;
+  onApplyDefaultWorkspace?: (workspaceId: string) => void;
+  onHighRiskConfirmChange?: (enabled: boolean) => void;
 }
 
 export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
@@ -70,7 +74,6 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
   setThemeId,
   workspaceLabel,
   sessionActive = false,
-  onUseWorkflowInChat,
   onSelectWorkflow,
   onClearSelectedWorkflow,
   selectedWorkflowId = null,
@@ -82,6 +85,9 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
   setUserName,
   fontSize,
   setFontSize,
+  appVersion = '',
+  onApplyDefaultWorkspace,
+  onHighRiskConfirmChange,
 }) => {
   const { t, language, setLanguage } = useLanguage();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -92,6 +98,13 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
   const [crossSessionMemory, setCrossSessionMemory] = useState(false);
   const [memoryEntryCount, setMemoryEntryCount] = useState(0);
   const [crossSessionMemoryLoading, setCrossSessionMemoryLoading] = useState(true);
+  const [workspaces, setWorkspaces] = useState<WorkspaceInfo[]>([]);
+  const [defaultWorkspaceId, setDefaultWorkspaceId] = useState('');
+  const [highRiskConfirm, setHighRiskConfirm] = useState(true);
+  const [highRiskConfirmLoading, setHighRiskConfirmLoading] = useState(true);
+  const [untrustedConfirm, setUntrustedConfirm] = useState(true);
+  const [memoryQuery, setMemoryQuery] = useState('');
+  const [memoryHits, setMemoryHits] = useState<Array<{ rel: string; snippet: string; path: string }>>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -130,6 +143,37 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
       })
       .finally(() => {
         if (!cancelled) setCrossSessionMemoryLoading(false);
+      });
+    void fetchWorkspaces()
+      .then((listed) => {
+        if (!cancelled) setWorkspaces(listed.workspaces);
+      })
+      .catch(() => {
+        if (!cancelled) setWorkspaces([]);
+      });
+    void fetchDefaultWorkspaceId()
+      .then((id) => {
+        if (!cancelled) setDefaultWorkspaceId(id);
+      })
+      .catch(() => {
+        if (!cancelled) setDefaultWorkspaceId('');
+      });
+    void fetchHighRiskConfirm()
+      .then((enabled) => {
+        if (!cancelled) setHighRiskConfirm(enabled);
+      })
+      .catch(() => {
+        if (!cancelled) setHighRiskConfirm(true);
+      })
+      .finally(() => {
+        if (!cancelled) setHighRiskConfirmLoading(false);
+      });
+    void fetchLocalTrust()
+      .then((trust) => {
+        if (!cancelled) setUntrustedConfirm(trust.untrusted_confirm);
+      })
+      .catch(() => {
+        if (!cancelled) setUntrustedConfirm(true);
       });
     return () => {
       cancelled = true;
@@ -191,7 +235,7 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
         <div className="flex-1 flex overflow-hidden min-h-0 bg-surface-dim">
           
           {/* Modal Left Sidebar Selector */}
-          <div className="w-[240px] bg-surface-container border-r border-outline flex flex-col p-6 justify-between flex-shrink-0">
+          <div className="w-[240px] bg-surface-container border-r border-outline-variant/30 flex flex-col p-6 justify-between flex-shrink-0">
             <div className="space-y-1.5 text-left">
               <p className="font-bold text-[10px] uppercase tracking-widest text-on-surface-variant mb-3.5 px-3">
                 {t("System Preferences")}
@@ -230,7 +274,7 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
                 className={`${navBtnBase} ${currentView === 'workflows' ? navBtnActive : navBtnIdle}`}
               >
                 <LegacyIcon
-                  name="fork_right"
+                  name="workflow"
                   className={`text-[16px] ${currentView === 'workflows' ? 'opacity-100' : 'opacity-60'}`}
                 />
                 <span className="text-xs">{t("Workflows SOP")}</span>
@@ -306,7 +350,6 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
               <WorkflowOrchestration
                 isModalStyle={true}
                 onClose={() => setView('chat')}
-                onUseInChat={onUseWorkflowInChat}
                 onSelectWorkflow={onSelectWorkflow}
                 onClearSelectedWorkflow={onClearSelectedWorkflow}
                 selectedWorkflowId={selectedWorkflowId}
@@ -424,6 +467,88 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
                     </div>
                   </div>
 
+                  <div className="bg-surface-container/30 p-6 rounded-2xl border border-outline/30 space-y-4">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                      {t('Default workspace')}
+                    </h3>
+                    <p className="text-[11px] text-on-surface-variant/80 max-w-xl">
+                      {t('Open this project on launch. Last used workspace is kept when unset.')}
+                    </p>
+                    <div className="max-w-md">
+                      <SettingsSelect
+                        id="general-default-workspace"
+                        value={defaultWorkspaceId}
+                        options={[
+                          { value: '', label: t('Last used workspace') },
+                          ...workspaces.map((ws) => ({ value: ws.id, label: ws.name })),
+                        ]}
+                        onChange={(next) => {
+                          setDefaultWorkspaceId(next);
+                          void saveDefaultWorkspaceId(next)
+                            .then(() => {
+                              if (next) onApplyDefaultWorkspace?.(next);
+                            })
+                            .catch((err) => console.error('Failed to save default workspace:', err));
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="bg-surface-container/30 p-6 rounded-2xl border border-outline/30 space-y-4">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                      {t('Confirm before stopping a run')}
+                    </h3>
+                    <p className="text-[11px] text-on-surface-variant/80 max-w-xl">
+                      {t('When on, Chat Stop asks once per session. Workflow Stop is never confirmed.')}
+                    </p>
+                    <button
+                      type="button"
+                      data-testid="high-risk-confirm-toggle"
+                      disabled={highRiskConfirmLoading}
+                      onClick={() => {
+                        const next = !highRiskConfirm;
+                        setHighRiskConfirm(next);
+                        void saveHighRiskConfirm(next)
+                          .then(() => onHighRiskConfirmChange?.(next))
+                          .catch((err) => {
+                          console.error('Failed to save high-risk confirm:', err);
+                          setHighRiskConfirm(!next);
+                        });
+                      }}
+                      className={`${BTN_SECONDARY} px-3 py-1.5 text-xs font-semibold ${
+                        highRiskConfirm ? 'border-primary/50 text-primary' : ''
+                      }`}
+                    >
+                      {highRiskConfirm ? t('Confirm stop: On') : t('Confirm stop: Off')}
+                    </button>
+                  </div>
+
+                  <div className="bg-surface-container/30 p-6 rounded-2xl border border-outline/30 space-y-4">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                      {t('Confirm untrusted MCP')}
+                    </h3>
+                    <p className="text-[11px] text-on-surface-variant/80 max-w-xl">
+                      {t('When on, enabling an MCP server asks once, then remembers trust.')}
+                    </p>
+                    <button
+                      type="button"
+                      data-testid="untrusted-confirm-toggle"
+                      onClick={() => {
+                        const next = !untrustedConfirm;
+                        setUntrustedConfirm(next);
+                        void saveUntrustedConfirm(next).catch((err) => {
+                          console.error('Failed to save untrusted confirm:', err);
+                          setUntrustedConfirm(!next);
+                        });
+                      }}
+                      className={`${BTN_SECONDARY} px-3 py-1.5 text-xs font-semibold ${
+                        untrustedConfirm ? 'border-primary/50 text-primary' : ''
+                      }`}
+                    >
+                      {untrustedConfirm ? t('Trust confirm: On') : t('Trust confirm: Off')}
+                    </button>
+                  </div>
+
                   {/* Strict sandbox (D21) */}
                   <div className="bg-surface-container/30 p-6 rounded-2xl border border-outline/30 space-y-4">
                     <h3 className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">
@@ -486,7 +611,7 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
                       {t('Cross-session memory')}
                     </h3>
                     <p className="text-[11px] text-on-surface-variant/80 max-w-xl">
-                      {t('Let Clutch Agent remember preferences across Chat sessions (remember_preference tool).')}
+                      {t('Let Clutch Agent remember preferences across Chat sessions. Project notes go to .clutch/memory/MEMORY.md (open in Files).')}
                     </p>
                     <div className="flex flex-wrap items-center gap-2">
                       <button
@@ -521,6 +646,49 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
                         {t('Clear memory')} ({memoryEntryCount})
                       </button>
                     </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <input
+                        data-testid="memory-search-input"
+                        value={memoryQuery}
+                        onChange={(e) => setMemoryQuery(e.target.value)}
+                        placeholder={t('Search .clutch/memory')}
+                        className="flex-1 min-w-[160px] bg-surface border border-outline/40 rounded-xl px-3 py-2 text-xs"
+                      />
+                      <button
+                        type="button"
+                        data-testid="memory-search-run"
+                        className={`${BTN_SECONDARY} px-3 py-1.5 text-xs font-semibold`}
+                        onClick={() => {
+                          void sidecarFetch(`${BASE}/api/memory/search?q=${encodeURIComponent(memoryQuery)}`)
+                            .then(async (res) => {
+                              if (!res.ok) return;
+                              const body = (await res.json()) as { hits?: Array<{ rel: string; snippet: string; path: string }> };
+                              setMemoryHits(body.hits ?? []);
+                            })
+                            .catch(() => setMemoryHits([]));
+                        }}
+                      >
+                        {t('Search')}
+                      </button>
+                    </div>
+                    <ul className="space-y-1">
+                      {memoryHits.map((hit) => (
+                        <li key={hit.path}>
+                          <button
+                            type="button"
+                            data-testid="memory-search-hit"
+                            className="w-full text-left text-[11px] rounded-lg border border-outline/30 px-3 py-2 hover:bg-surface"
+                            onClick={() => {
+                              window.dispatchEvent(new CustomEvent('clutch-open-file', { detail: { path: hit.rel } }));
+                              setView('chat');
+                            }}
+                          >
+                            <div className="font-mono truncate">{hit.rel}</div>
+                            <div className="text-on-surface-variant truncate">{hit.snippet}</div>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
 
                   {/* Language Settings Section */}
@@ -557,6 +725,15 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
                         中文
                       </button>
                     </div>
+                  </div>
+
+                  <div className="bg-surface-container/30 p-6 rounded-2xl border border-outline/30 space-y-2">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                      {t('Version')}
+                    </h3>
+                    <p data-testid="general-app-version" className="text-xs font-mono text-on-surface">
+                      Clutch v{appVersion || '—'}
+                    </p>
                   </div>
                 </div>
               </SettingsPageShell>

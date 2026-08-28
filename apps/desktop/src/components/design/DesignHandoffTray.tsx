@@ -6,6 +6,7 @@ import {
   approveDesignPrototype,
   approveDesignReact,
   generateDesignReact,
+  iterateDesignSession,
   sendDesignToCoding,
   startDesignPreview,
   stopDesignPreview,
@@ -26,7 +27,7 @@ type Props = {
 };
 
 type HandoffStep = 1 | 2 | 3 | 4;
-type BusyAction = 'approve' | 'generate' | 'preview' | 'approve_react' | 'send' | null;
+type BusyAction = 'approve' | 'generate' | 'preview' | 'approve_react' | 'send' | 'reject' | null;
 
 function stepFromSession(session: DesignSession | null): HandoffStep {
   if (!session?.prototype_approved) return 1;
@@ -223,25 +224,58 @@ export function DesignHandoffTray({
       </div>
 
       {step === 1 ? (
-        <button
-          type="button"
-          className={`${BTN_SUCCESS} w-full`}
-          disabled={isLoading || !session?.screens?.length || Boolean(session?.prototype_approved)}
-          onClick={() =>
-            void run('approve', async () => {
-              const next = await approveDesignPrototype(runId);
-              onSession(next);
-              return next;
-            })
-          }
-        >
-          {busyAction === 'approve' ? (
-            <Loader2 size={14} className="animate-spin" />
+        <div data-testid="design-review-card" className="space-y-2">
+          {session?.screens?.[0]?.html ? (
+            <iframe
+              title="design-review-shot"
+              data-testid="design-review-shot"
+              className="h-40 w-full rounded-xl border border-outline-variant/40 bg-white"
+              srcDoc={session.screens[0].html}
+            />
           ) : (
-            <Check size={14} />
+            <p className="text-[11px] text-on-surface-variant">{t('No render yet')}</p>
           )}
-          {busyAction === 'approve' ? t('Working…') : t('Approve')}
-        </button>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className={`${BTN_SUCCESS} flex-1`}
+              disabled={isLoading || !session?.screens?.length || Boolean(session?.prototype_approved)}
+              onClick={() =>
+                void run('approve', async () => {
+                  const next = await approveDesignPrototype(runId);
+                  onSession(next);
+                  return next;
+                })
+              }
+            >
+              {busyAction === 'approve' ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <Check size={14} />
+              )}
+              {busyAction === 'approve' ? t('Working…') : t('Approve')}
+            </button>
+            <button
+              type="button"
+              data-testid="design-review-reject"
+              className={`${BTN_SECONDARY} flex-1`}
+              disabled={isLoading || !session?.screens?.length}
+              onClick={() =>
+                void run('reject', async () => {
+                  const next = await iterateDesignSession(
+                    runId,
+                    'Visual review rejected. Revise layout, spacing, and hierarchy.',
+                  );
+                  onSession(next);
+                  return next;
+                })
+              }
+            >
+              {busyAction === 'reject' ? <Loader2 size={14} className="animate-spin" /> : <X size={14} />}
+              {t('Reject')}
+            </button>
+          </div>
+        </div>
       ) : null}
 
       {step === 2 ? (

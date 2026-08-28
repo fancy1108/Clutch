@@ -109,13 +109,65 @@ def discard_worktree(workspace_root: Path, wt_id: str) -> None:
 
 
 def merge_worktree(workspace_root: Path, wt_id: str) -> str:
+    """Merge isolation branch into the main checkout. Keep the worktree (Discard removes it)."""
     branch = f"clutch/{wt_id}"
+    wt_path = worktrees_parent(workspace_root) / wt_id
+    if not wt_path.is_dir():
+        raise RuntimeError(tr("Worktree not found", "Worktree 不存在"))
+
+    if worktree_has_dirty_changes(wt_path):
+        added = _run_git(wt_path, ["add", "-A"])
+        if added.returncode != 0:
+            detail = (added.stderr or added.stdout or "").strip()
+            raise RuntimeError(tr(f"git add failed: {detail}", f"git add 失败：{detail}"))
+        committed = _run_git(wt_path, ["commit", "-m", f"clutch: merge worktree {wt_id}"])
+        if committed.returncode != 0:
+            detail = (committed.stderr or committed.stdout or "").strip()
+            raise RuntimeError(
+                tr(f"git commit failed: {detail}", f"git commit 失败：{detail}")
+            )
+
     result = _run_git(workspace_root, ["merge", branch, "--no-edit"])
     if result.returncode != 0:
+        _run_git(workspace_root, ["merge", "--abort"])
         detail = (result.stderr or result.stdout or "").strip()
         raise RuntimeError(tr(f"git merge failed: {detail}", f"git merge 失败：{detail}"))
-    discard_worktree(workspace_root, wt_id)
     return (result.stdout or "").strip() or tr("Merged worktree branch.", "已合并 worktree 分支。")
+
+
+def list_worktrees(workspace_root: Path) -> list[dict[str, Any]]:
+    parent = worktrees_parent(workspace_root)
+    if not parent.is_dir():
+        return []
+    rows: list[dict[str, Any]] = []
+    for child in sorted(parent.iterdir()):
+        if not child.is_dir():
+            continue
+        info = {
+            "id": child.name,
+            "path": str(child.resolve()),
+            "branch": f"clutch/{child.name}",
+            "enabled": True,
+        }
+        rows.append(describe_worktree(info, workspace_root))
+    return rows
+
+
+def resolve_view_root(wt_id: str | None) -> Path:
+    """Files/Changes view root: main checkout, or `.clutch/worktrees/<id>`."""
+    from src.workspace import WorkspaceError, require_authorized_workspace
+
+    main = require_authorized_workspace()
+    key = (wt_id or "").strip()
+    if not key:
+        return main
+    if "/" in key or "\\" in key or key in {".", ".."}:
+        raise WorkspaceError(tr("Worktree not found", "Worktree 不存在"))
+    parent = worktrees_parent(main).resolve()
+    candidate = (parent / key).resolve()
+    if not candidate.is_dir() or candidate.parent != parent:
+        raise WorkspaceError(tr("Worktree not found", "Worktree 不存在"))
+    return candidate
 
 
 def worktree_has_dirty_changes(wt_path: Path) -> bool:

@@ -15,9 +15,10 @@ describe('agentCapabilityTiers', () => {
     expect(getAgentCapabilityTier('mimo-cli')).toBe('readOnlyScan');
   });
 
-  it('classifies other CLIs as comingSoon', () => {
-    expect(getAgentCapabilityTier('codex-cli')).toBe('comingSoon');
-    expect(getAgentCapabilityTier('ollama-cli')).toBe('comingSoon');
+  it('classifies More CLIs as readOnlyScan', () => {
+    expect(getAgentCapabilityTier('codex-cli')).toBe('readOnlyScan');
+    expect(getAgentCapabilityTier('ollama-cli')).toBe('readOnlyScan');
+    expect(getAgentCapabilityTier('aider-cli')).toBe('readOnlyScan');
   });
 
   it('maps settings tabs for in-scope agents', () => {
@@ -25,6 +26,6 @@ describe('agentCapabilityTiers', () => {
     expect(settingsTabForAgentType('claude-cli')).toBe('claude-cli');
     expect(settingsTabForAgentType('opencode-cli')).toBe('opencode-cli');
     expect(settingsTabForAgentType('mimo-cli')).toBe('mimo-cli');
-    expect(settingsTabForAgentType('codex-cli')).toBeNull();
+    expect(settingsTabForAgentType('codex-cli')).toBe('more');
   });
 });

@@ -1,12 +1,13 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { confirmLocalTrust } from '../services/permissionApi';
 import {
   fetchMcpStatus,
   registerMcpServer,
   removeMcpServer,
   toggleMcpServer,
   saveMcpConfig,
-  importClaudeMcp,
   testMcpServer,
+  fetchMcpOAuthLoginUrl,
   listMcpResources,
   pinMcpResource,
   unpinMcpResource,
@@ -17,7 +18,7 @@ import {
 } from '../services/mcpApi';
 import { SettingsPageHeader, SettingsPageShell } from './ui/SettingsPageHeader';
 import { BTN_GHOST, BTN_PRIMARY, BTN_SECONDARY } from './ui/buttonStyles';
-import { ALERT_SUCCESS, ALERT_WARNING, BADGE_NEUTRAL, BADGE_SUCCESS, CARD_SUBTLE, SECTION_EYEBROW } from './ui/surfaceStyles';
+import { ALERT_SUCCESS, ALERT_WARNING, BADGE_NEUTRAL, BADGE_SUCCESS, CARD, CARD_SUBTLE, SECTION_EYEBROW } from './ui/surfaceStyles';
 import { useLanguage } from './LanguageContext';
 import { AgentCapabilityTabs } from './AgentCapabilityTabs';
 import { AgentCliCapabilityPreview } from './AgentCliCapabilityPreview';
@@ -52,16 +53,17 @@ export const McpServerHub: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState('');
-  const [transport, setTransport] = useState<'stdio'>('stdio');
+  const [transport, setTransport] = useState<'stdio' | 'sse'>('stdio');
   const [endpoint, setEndpoint] = useState('');
   const [envText, setEnvText] = useState('');
+  const [registering, setRegistering] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [isJsonEditMode, setIsJsonEditMode] = useState(false);
   const [rawJsonConfig, setRawJsonConfig] = useState('');
   const [capabilityTab, setCapabilityTab] = useState<AgentCapabilityTabId>('clutch');
   const [testingId, setTestingId] = useState<string | null>(null);
   const [probeById, setProbeById] = useState<
-    Record<string, { ok: boolean; message: string; toolsCount?: number }>
+    Record<string, { ok: boolean; message: string; toolsCount?: number; loginUrl?: string }>
   >({});
   const [resourcesById, setResourcesById] = useState<Record<string, McpResourceItem[]>>({});
   const [resourcesLoadingId, setResourcesLoadingId] = useState<string | null>(null);
@@ -117,11 +119,17 @@ export const McpServerHub: React.FC = () => {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !endpoint.trim()) return;
+    if (registering) return;
+    if (!name.trim() || !endpoint.trim()) {
+      setError(t('Name and endpoint are required.'));
+      return;
+    }
+    setError(null);
+    setRegistering(true);
     try {
       const status = await registerMcpServer({
         name: name.trim(),
-        transport: 'stdio',
+        transport,
         endpoint: endpoint.trim(),
         env: parseEnvText(envText),
       });
@@ -134,6 +142,8 @@ export const McpServerHub: React.FC = () => {
       setTimeout(() => setSuccessMsg(''), 3000);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Register failed.');
+    } finally {
+      setRegistering(false);
     }
   };
 
@@ -151,6 +161,10 @@ export const McpServerHub: React.FC = () => {
     if (server.builtin || !server.id) return;
     const enabled = server.status === 'failed';
     try {
+      if (enabled) {
+        const ok = await confirmLocalTrust('mcp', server.id, server.name || server.id);
+        if (!ok) return;
+      }
       const status = await toggleMcpServer(server.id, enabled);
       setServers(status.servers);
     } catch {
@@ -175,18 +189,6 @@ export const McpServerHub: React.FC = () => {
     }
   };
 
-  const handleImportClaude = async () => {
-    setError(null);
-    try {
-      const status = await importClaudeMcp();
-      setServers(status.servers);
-      setSuccessMsg(t('Imported configurations from local Claude setups.'));
-      setTimeout(() => setSuccessMsg(''), 3000);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Import from Claude failed.');
-    }
-  };
-
   return (
     <SettingsPageShell wide>
       <SettingsPageHeader
@@ -207,7 +209,7 @@ export const McpServerHub: React.FC = () => {
         {capabilityTab === 'mimo-cli' ? (
           <AgentCliCapabilityPreview agentType="mimo-cli" kind="mcp" />
         ) : null}
-        {capabilityTab === 'more' ? <MoreAgentsComingSoon /> : null}
+        {capabilityTab === 'more' ? <MoreAgentsComingSoon kind="mcp" /> : null}
 
         {capabilityTab === 'clutch' ? (
           <>
@@ -299,14 +301,6 @@ export const McpServerHub: React.FC = () => {
                   <div className="flex gap-2.5 items-center">
                     <button
                       type="button"
-                      onClick={() => void handleImportClaude()}
-                      className={`${BTN_GHOST} text-[10px] font-bold`}
-                    >
-                      {t('Import from Claude')}
-                    </button>
-                    <span className="text-neutral-300 text-[10px]">|</span>
-                    <button
-                      type="button"
                       onClick={() => {
                         setRawJsonConfig(
                           JSON.stringify(
@@ -342,26 +336,30 @@ export const McpServerHub: React.FC = () => {
                   />
                   <select
                     value={transport}
-                    onChange={() => setTransport('stdio')}
+                    onChange={(e) => setTransport(e.target.value === 'sse' ? 'sse' : 'stdio')}
                     className="px-3 py-1.5 text-xs border border-neutral-200 rounded-lg bg-white"
-                    title={t('Only stdio is runnable today')}
+                    title={t('stdio = local command; HTTP = Streamable HTTP URL')}
                   >
                     <option value="stdio">stdio</option>
-                    <option value="sse" disabled>
-                      sse ({t('unavailable')})
-                    </option>
+                    <option value="sse">HTTP</option>
                   </select>
                   <input
                     type="text"
                     required
                     value={endpoint}
                     onChange={(e) => setEndpoint(e.target.value)}
-                    placeholder="npx -y @org/mcp-server"
+                    placeholder={
+                      transport === 'sse'
+                        ? 'https://mcp.example.com/mcp'
+                        : 'npx -y @org/mcp-server'
+                    }
                     className="px-3 py-1.5 text-xs border border-neutral-200 rounded-lg bg-white font-mono md:col-span-1"
                   />
                 </div>
                 <p className="text-[10px] text-neutral-500">
-                  {t('Only stdio is runnable today')}
+                  {transport === 'sse'
+                    ? t('HTTP: paste any MCP URL. API key in Env. If Test gets 401, a browser login opens (OAuth remotes).')
+                    : t('stdio runs a local command (npx / uvx / binary).')}
                 </p>
                 <textarea
                   rows={2}
@@ -370,8 +368,8 @@ export const McpServerHub: React.FC = () => {
                   placeholder={t('Env vars (one KEY=value per line, optional)')}
                   className="w-full px-3 py-1.5 text-xs border border-neutral-200 rounded-lg bg-white font-mono"
                 />
-                <button type="submit" className={BTN_PRIMARY}>
-                  {t('+ Register Node')}
+                <button type="submit" className={`${BTN_PRIMARY} disabled:opacity-50`} disabled={registering}>
+                  {registering ? t('Registering…') : t('+ Register Node')}
                 </button>
               </form>
             )}
@@ -381,21 +379,19 @@ export const McpServerHub: React.FC = () => {
             ) : servers.length === 0 ? (
               <p className="text-xs text-neutral-400 italic">{t('No MCP servers available.')}</p>
             ) : (
-              <div className="border border-neutral-200/80 bg-white rounded-xl divide-y divide-neutral-150 overflow-hidden shadow-3xs">
+              <div className="space-y-3">
                 {servers.map((server) => (
-                  <div key={server.id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div
+                    key={server.id}
+                    className={`${CARD} flex flex-col md:flex-row md:items-center justify-between gap-4`}
+                  >
                     <div className="space-y-1.5 text-left flex-1">
                       <div className="flex items-center gap-2.5 flex-wrap">
                         <span className={`inline-flex rounded-full h-3 w-3 ${statusDotClass(server.status)}`} />
                         <span className="text-xs font-bold text-neutral-900 font-sans">{server.name}</span>
                         <span className="text-[8.5px] font-mono uppercase px-1.5 py-0.2 rounded font-bold bg-neutral-100 text-neutral-800">
-                          {server.transport}
+                          {server.transport === 'sse' ? 'http' : server.transport}
                         </span>
-                        {server.transport === 'sse' ? (
-                          <span className="text-[8.5px] font-mono uppercase px-1.5 py-0.2 rounded font-bold bg-amber-50 text-amber-800">
-                            {t('unavailable')}
-                          </span>
-                        ) : null}
                         {server.builtin ? (
                           <span className={BADGE_SUCCESS}>{t('builtin')}</span>
                         ) : null}
@@ -404,17 +400,28 @@ export const McpServerHub: React.FC = () => {
                         {server.endpoint}
                       </p>
                       {probeById[server.id] ? (
-                        <p
-                          data-testid={`mcp-probe-${server.id}`}
-                          className={`text-[11px] mt-1 ${
-                            probeById[server.id].ok ? 'text-emerald-700' : 'text-rose-700'
-                          }`}
-                        >
-                          {probeById[server.id].message}
-                        </p>
+                        <div data-testid={`mcp-probe-${server.id}`} className="mt-1 space-y-1">
+                          <p
+                            className={`text-[11px] ${
+                              probeById[server.id].ok ? 'text-emerald-700' : 'text-rose-700'
+                            }`}
+                          >
+                            {probeById[server.id].message}
+                          </p>
+                          {probeById[server.id].loginUrl ? (
+                            <a
+                              href={probeById[server.id].loginUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-[11px] font-bold text-primary hover:underline break-all"
+                            >
+                              {t('Open login page')}
+                            </a>
+                          ) : null}
+                        </div>
                       ) : null}
                       {server.tools && server.tools.length > 0 ? (
-                        <div className="mt-2 pl-3 border-l-2 border-outline-variant/40 space-y-1 select-text">
+                        <div className="mt-2 pl-3 border-l border-outline-variant/30 space-y-1 select-text">
                           <span className="text-[9px] font-extrabold text-neutral-400 font-mono tracking-wider uppercase block">{t('Exposed Tools:')}</span>
                           <div className="flex flex-col gap-1 max-h-32 overflow-y-auto pr-1">
                             {server.tools.map((tool, idx) => (
@@ -429,8 +436,7 @@ export const McpServerHub: React.FC = () => {
                         </div>
                       ) : null}
                       {/* D43 — MCP resources */}
-                      {server.transport !== 'sse' ? (
-                        <div className="mt-2 space-y-1.5" data-testid={`mcp-resources-${server.id}`}>
+                      <div className="mt-2 space-y-1.5" data-testid={`mcp-resources-${server.id}`}>
                           <button
                             type="button"
                             className="text-[10px] font-bold text-primary hover:underline"
@@ -463,7 +469,7 @@ export const McpServerHub: React.FC = () => {
                               : t('Browse resources')}
                           </button>
                           {(resourcesById[server.id] || []).length > 0 ? (
-                            <ul className="pl-3 border-l-2 border-primary/25 space-y-1 max-h-36 overflow-y-auto">
+                            <ul className="pl-3 border-l border-outline-variant/30 space-y-1 max-h-36 overflow-y-auto">
                               {(resourcesById[server.id] || []).map((resource) => {
                                 const pinned = resourcePins.some(
                                   (pin) =>
@@ -519,7 +525,6 @@ export const McpServerHub: React.FC = () => {
                             </ul>
                           ) : null}
                         </div>
-                      ) : null}
                     </div>
                     <div className="flex items-end md:items-center gap-3">
                       <div className="text-[10.5px] md:text-right">
@@ -541,6 +546,19 @@ export const McpServerHub: React.FC = () => {
                           onClick={() => {
                             void (async () => {
                               setTestingId(server.id);
+                              const poll = window.setInterval(() => {
+                                void fetchMcpOAuthLoginUrl().then((url) => {
+                                  if (!url) return;
+                                  setProbeById((prev) => ({
+                                    ...prev,
+                                    [server.id]: {
+                                      ok: false,
+                                      loginUrl: url,
+                                      message: t('Open the login page, then return here.'),
+                                    },
+                                  }));
+                                });
+                              }, 400);
                               try {
                                 const result = await testMcpServer(server.id);
                                 setProbeById((prev) => ({
@@ -556,26 +574,39 @@ export const McpServerHub: React.FC = () => {
                                       }
                                     : {
                                         ok: false,
+                                        loginUrl: prev[server.id]?.loginUrl,
                                         message: result.error || t('Connection failed'),
                                       },
                                 }));
                                 if (result.ok) void refresh();
                               } catch (err) {
+                                const aborted =
+                                  err instanceof DOMException && err.name === 'AbortError';
                                 setProbeById((prev) => ({
                                   ...prev,
                                   [server.id]: {
                                     ok: false,
-                                    message: err instanceof Error ? err.message : t('Connection failed'),
+                                    loginUrl: prev[server.id]?.loginUrl,
+                                    message: aborted
+                                      ? t('Test timed out. Finish browser login if a window opened, then retry.')
+                                      : err instanceof Error
+                                        ? err.message
+                                        : t('Connection failed'),
                                   },
                                 }));
                               } finally {
+                                window.clearInterval(poll);
                                 setTestingId(null);
                               }
                             })();
                           }}
                           className="text-[10px] font-bold text-primary hover:underline disabled:opacity-50"
                         >
-                          {testingId === server.id ? t('Testing…') : t('Test connection')}
+                          {testingId === server.id
+                            ? probeById[server.id]?.loginUrl
+                              ? t('Waiting for browser login…')
+                              : t('Testing…')
+                            : t('Test connection')}
                         </button>
                         {!server.builtin ? (
                           <>

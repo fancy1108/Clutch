@@ -723,3 +723,55 @@ def test_patch_lane_complete_adds_draft():
     patch = patch_lane_complete(state, "lane_primary")
     assert patch["pty_lanes"][0]["status"] == "completed"
     assert len(patch["pending_handoff_drafts"]) == 1
+
+
+def _apply_orchestra_patch(state, patch):
+    for key in ("pty_lanes", "dispatch_log", "dispatch_edges", "focused_lane_id"):
+        if key in patch:
+            state[key] = patch[key]
+
+
+def _confirm_text(state, text, tmp_path):
+    preview = preview_dispatch(state, text)
+    assert preview is not None
+    patch = confirm_dispatch(
+        state,
+        preview=preview,
+        prompt=text,
+        workspace_path=str(tmp_path),
+    )
+    _apply_orchestra_patch(state, patch)
+    return patch
+
+
+def test_switch_same_cli_reuses_lane_not_queue(tmp_path):
+    state = _base_state()
+    text = "@Claude Code ping"
+    for _ in range(5):
+        _confirm_text(state, text, tmp_path)
+    lanes = state["pty_lanes"]
+    assert len(lanes) == 1
+    assert lanes[0]["agent_type"] == "claude-cli"
+    assert lanes[0]["status"] != "queued"
+
+
+def test_switch_fifth_new_agent_is_queued(tmp_path):
+    state = _base_state()
+    prompts = [
+        "@Claude Code ping",
+        "@OpenCode ping",
+        "@Codex CLI ping",
+        "@Aider CLI ping",
+        "@Ollama ping",
+    ]
+    last = None
+    for text in prompts:
+        last = _confirm_text(state, text, tmp_path)
+    lanes = state["pty_lanes"]
+    live = [lane for lane in lanes if lane["status"] != "queued"]
+    queued = [lane for lane in lanes if lane["status"] == "queued"]
+    assert len(live) == 4
+    assert len(queued) == 1
+    assert queued[0]["agent_type"] == "ollama-cli"
+    assert not last.get("pending_pty_inject")
+

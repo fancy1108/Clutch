@@ -33,18 +33,20 @@ export function QuestionCardView({
 }) {
   const status = card.status;
   const canChoose = Boolean(interactive && status === 'pending' && onSelect);
+  const isNewInfo = card.kind === 'new_info';
   const statusLabel =
     status === 'answered'
-      ? t('Answered')
+      ? t(isNewInfo ? 'Proceeded' : 'Answered')
       : status === 'cancelled'
-        ? t('Question cancelled')
-        : t('Awaiting your choice');
+        ? t(isNewInfo ? 'Held' : 'Question cancelled')
+        : t(isNewInfo ? 'New information' : 'Awaiting your choice');
+  const testId = isNewInfo ? 'new-info-card' : 'question-card';
 
   return (
-    <div className={CHAT_AGENT_CARD} data-testid="question-card" data-status={status}>
+    <div className={CHAT_AGENT_CARD} data-testid={testId} data-status={status}>
       <ChatAgentCardHeader
-        icon="forum"
-        title={t('Question')}
+        icon={isNewInfo ? 'inbox' : 'forum'}
+        title={t(isNewInfo ? 'New information' : 'Question')}
         status={
           <ChatAgentCardStatus tone={statusTone(status, canChoose)}>
             {statusLabel}
@@ -76,7 +78,13 @@ export function QuestionCardView({
                 key={option.id}
                 type="button"
                 role="option"
-                data-testid={`question-option-${option.id}`}
+                data-testid={
+                  isNewInfo
+                    ? option.id === 'hold'
+                      ? 'new-info-hold'
+                      : 'new-info-proceed'
+                    : `question-option-${option.id}`
+                }
                 onClick={() => onSelect?.(option)}
                 className={`${BTN_FOCUS} group w-full flex items-start gap-2.5 rounded-xl border border-neutral-200 bg-surface-container-low px-3 py-2.5 text-left transition-all duration-200 hover:border-neutral-900 hover:bg-white hover:shadow-sm active:scale-[0.99]`}
               >

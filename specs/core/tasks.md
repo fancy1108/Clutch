@@ -169,7 +169,7 @@
 | P2-03 | Theme 持久化 | `ThemeManager.tsx` | 重启后保留活跃主题 | 手动：切换主题 → 重启 → 主题仍在 |
 | P2-04 | i18n 双语验收 | `LanguageContext.tsx` · `Header.tsx` | Header en/zh 切换；监督台关键文案双语 | 手动 + E2E `lang-zh` / `lang-en` data-testid |
 | P2-05 | 侧栏 REPOSITORIES CRUD | `sidebar.tsx` | filter / new folder；分组持久化 | 手动：新建分组 → 重启 → 仍在 |
-| P2-06 | General Settings 实质功能 | `SystemPreferencesModal` | 替换「功能开发中」占位（已支持用户自定义头像） | 部分落地（D14）— 其余设置项继续延后 |
+| P2-06 | General Settings 实质功能 | `SystemPreferencesModal` | 头像等已落地；默认工作区 / 高危确认 / 版本行 → **FM-01** | 见 `frontend-modules-plan.md` |
 
 ---
 
@@ -194,6 +194,16 @@
 | HRT-10 | POC #6 #10 | BUSY 拒绝；两 run cwd 隔离 | pytest / poc |
 
 已交付代码块（非 HRT 序号）：**HRT-S1 ~ S4**、**HRT-S5-partial** — 见 hybrid-runtime-plan §1.1。
+
+---
+
+## Frontend modules（FM-xx · D56）
+
+> **权威 Task 表**：[`frontend-modules-plan.md`](./frontend-modules-plan.md)  
+> **点验剧本**：[`docs/FRONTEND_MODULES_ACCEPTANCE.md`](../../docs/FRONTEND_MODULES_ACCEPTANCE.md)  
+> **决策**：D56 — [`memory/DECISIONS.md`](../../memory/DECISIONS.md)  
+> **ROADMAP 勾选**：[`memory/ROADMAP.md`](../../memory/ROADMAP.md) §Frontend modules  
+> **本文件不维护 ✅/❌。**
 
 ---
 
@@ -236,11 +246,172 @@
 
 | 维护什么 | 文件 |
 |----------|------|
-| 任务定义 | 本文件 + [`hybrid-runtime-plan.md`](./hybrid-runtime-plan.md)（D25 HRT） |
+| 任务定义 | 本文件 + [`hybrid-runtime-plan.md`](./hybrid-runtime-plan.md)（D25 HRT） + [`frontend-modules-plan.md`](./frontend-modules-plan.md)（D56 FM） |
 | Task 交付索引 | `memory/DELIVERABLES.md` |
 | 功能验收 ❌/✅ | `memory/ROADMAP.md` |
 | 文件路径 | `memory/FILEMAP.md` |
 | 开放决策 | `memory/DECISIONS.md` |
+
+## Agent Harness（B-34）
+
+> 书 06 · **Q-AGENT-1 = C**（本机 CC Switch Agnes；CI 不绑密钥）。勿写入交付表 D54+。  
+> **无界面变化** — 不请 PM 点验 Chat/设置。
+
+**B-34 做了什么：** 给开发一条尺子，不是改用户路径。
+
+1. **提示词快照** — 同一套 Agent 配置，两次组装；去掉会变的 `env`（本机时间 / 系统 / Shell / 工作区路径）后，静态层指纹必须一致。防「提示词悄悄漂了」。
+2. **三条契约** — Ask 层写明只读；todos 出现在 `task_state`；「实现登录页」类请求要求 `propose_plan`。
+3. **可选真模型抽检** — `CLUTCH_AGENT_EVAL_LIVE=1` 时用 CC Switch / Clutch 的 Agnes 跑 Ask / 还剩哪些 todo / 网页注入三案。CI 无密钥 skip；禁止把密钥写入日志。
+
+**B-34 没做什么：** 没有冻死系统提示词（故意改文案时测试会红、承认即可）。**没有删掉、也没有挪走本机时间** — 时间仍在 D53 `env` 层、整段 system 前缀里。挪到对话末尾每轮整换的 `<agent_status>`（连同完整 Todo）是 **B-35**（**Q-AGENT-2 = A**），尚未立项落地。对照：现在 = 时钟/Todo 在前缀里破坏缓存；预期 = 前缀只留稳定层。
+
+| ID | 任务 | 完成标准 | Verification |
+|----|------|----------|--------------|
+| B34-01 | 提示词确定性快照 | 同配置两次组装静态层指纹一致；`env` 含 Local time 但不入指纹 | `cd services/orchestrator && uv run pytest tests/test_agent_eval_b34.py -v` |
+| B34-02 | 契约：Ask / todo / propose_plan | Ask 层只读；todos 出现在 `task_state`；特性请求含 `propose_plan` | 同上 |
+| B34-03 | 本机 Agnes 任务级小集 | 无密钥 skip；`CLUTCH_AGENT_EVAL_LIVE=1` 时跑 Ask / todo / 注入 3 案 | `CLUTCH_AGENT_EVAL_LIVE=1 uv run pytest tests/test_agent_eval_b34.py -k live -v` |
+
+## Agent eval ablation（B-48）
+
+> 书 06 · B-34 之后。不升 D54+。无 Chat / Settings 变化。
+
+**做了什么：** 评测组装可按 `CLUTCH_AGENT_EVAL_ABLATION`（`all` 或逗号层名）丢掉可选 prompt 层（skills / memory / tools / …），对比指纹。`persist_trajectory` 往 `runs/archive/eval/trajectory.jsonl` 追加 JSONL，写入前剥掉 `api_key` 等密钥字段。
+
+**没做什么：** 不改 Chat；不自动在 CI live 里写仓库 archive；不做消融后的自动打分报表。
+
+| ID | 任务 | 完成标准 | Verification |
+|----|------|----------|--------------|
+| B48-01 | 消融闸 | `ablation=tools` 后无 tools 层，指纹与全集不同 | `uv run pytest tests/test_agent_eval_b48.py -v` |
+| B48-02 | trajectory 落盘 | JSONL 含 name/fingerprint；`api_key` 不落盘 | 同上 |
+
+## Agent status（B-35）
+
+> 书 02 · **Q-AGENT-2 = A**。无 Chat 气泡变化；可感知处：Agent Manager「运行时提示词分层」多一层 `agent_status`，`env` 不再含时钟。
+
+**做了什么：** 本机时间与完整 Todo/计划从 D53 system 前缀移到对话末尾一条 `<agent_status>`；每轮用新条整换旧条（`attach_trailing_status`），不堆历史。`as_system_prompt()` 不含该层。OS / Shell / 工作区仍留在 `env`。
+
+**没做什么：** 不改 Chat 里 Todo 卡的样子；不做分层压缩（B-36，已另节）；不把状态写进用户可见气泡。
+
+| ID | 任务 | 完成标准 | Verification |
+|----|------|----------|--------------|
+| B35-01 | 前缀去掉时钟与 Todo | `compose_agent_system_prompt` 无 `Local time:`；todos 只在 `agent_status` | `uv run pytest tests/test_agent_prompt.py tests/test_task_state_d8.py tests/test_agent_eval_b34.py -v` |
+| B35-02 | 末尾状态整换 | 连续两次 attach 后历史里只有一条 `<agent_status>` | 同上 |
+
+## Agent context layers（B-36）
+
+> 书 02 · B-35 之后。不升 D54+。无新 Chat 气泡；`/compact` 仍是最后一档（D8/D18）。
+
+**做了什么：** ReAct 送给模型的工具结果按四层收：大段先落盘只留指针 → 丢掉重复/空转噪声 → 工具正文合计超阈值时把较旧的一批也落盘（最近 2 条保持全文）→ 会话 token 仍超 15000 才走现有全量 digest（`should_compact` / `/compact`）。L1–L3 **不调 LLM**。
+
+**没做什么：** 不改 Chat 气泡折叠交互；来源标记见 B-44；不把落盘正文自动再灌回模型。
+
+| ID | 任务 | 完成标准 | Verification |
+|----|------|----------|--------------|
+| B36-01 | L1 磁盘化 | 超阈值 tool content 写成 `runs/archive/tool_results/*.txt`，消息只留指针+预览 | `uv run pytest tests/test_context_layers_b36.py -v` |
+| B36-02 | L2 噪声 + L3 批量 | 重复/空转旧工具被丢掉；合计超阈值时只压旧工具、保留最近 2 条 | 同上 |
+| B36-03 | L4 全量熔断仍在 | `should_compact` / `/compact` 行为不变 | `uv run pytest tests/test_compaction.py tests/test_context_layers_b36.py -v` |
+
+## Agent archived tool markers（B-44）
+
+> 书 02 · B-36 之后。不升 D54+。无新 Chat 气泡。
+
+**做了什么：** 落盘后的工具结果指针标明 `source=tool truncated=yes`（外部工具产出、正文已收走）。模型下一轮只看到指针 + 短预览；全文在 `runs/archive/tool_results/`。
+
+**没做什么：** 不改 Chat 展开交互；不做分页把落盘正文自动灌回模型。
+
+| ID | 任务 | 完成标准 | Verification |
+|----|------|----------|--------------|
+| B44-01 | 指针带来源与截断标记 | offload 后 content 含 `source=tool` 与 `truncated=yes` | `uv run pytest tests/test_context_layers_b36.py -v` |
+
+## Agent verification gate（B-37）
+
+> 书 01+05 · **Q-AGENT-3 = C**。不升 D54+。沿用 D5 验证报告卡，不新增卡片。
+
+**做了什么：** Agent 声称 `submit_verification` 通过时，harness 先跑工作区测套（有 `tests/` / `pytest.ini` / `package.json` test）；失败则卡上多一步失败、结论改 failed。再机械核对 `changed_files` 是否在磁盘上（隔离子检查，**不**用同一个模型给自己的作文打分）。
+
+**没做什么：** 不另开一个会写长评的同模型 reviewer；空转循环见 B-38。
+
+| ID | 任务 | 完成标准 | Verification |
+|----|------|----------|--------------|
+| B37-01 | 测套失败不得通过 | 有失败测试时 conclusion=failed，步骤含 `harness_tests` | `uv run pytest tests/test_verify_harness_b37.py tests/test_verification_d5.py -v` |
+| B37-02 | 产物缺失不得通过 | 列出的 changed file 不在磁盘 → failed + `harness_artifacts` | 同上 |
+| B37-03 | 无工作区不改 D5 | 未授权工作区时自报结论保持原样 | 同上 |
+
+## Agent progress loop（B-38）
+
+> 书 01。不升 D54+。沿用 D9 Continue，不新开卡片。
+
+**做了什么：** 同一回合里 `read_file` / `list_dir` / `grep` / `read_skill` 用同一参数第 2 次提醒、第 3 次停住（不真执行），对话出现 Continue。写文件不计入。
+
+**没做什么：** 不改失败熔断阈值；不做 B-39 记忆。
+
+| ID | 任务 | 完成标准 | Verification |
+|----|------|----------|--------------|
+| B38-01 | 同参读三次即停 | 第 3 次 identical read → stop；写工具不计 | `uv run pytest tests/test_progress_loop_b38.py tests/test_run_control_d9.py -v` |
+| B38-02 | Continue 仍出现 | stop 文案触发 `should_offer_continue` | 同上 |
+
+## Agent workspace memory（B-39）
+
+> 书 03+08 · **Q-AGENT-4 = C 用 B 落地**。不升 D54+。无新 Chat 卡片。
+
+**做了什么：** 用户说「记住：…」或 Agent 调用 `remember_preference` 时，写入工作区 `.clutch/memory/MEMORY.md`（可在 Files 打开编辑）。下一轮把该文件概览注入 prompt。条目过多只留最近 40 条。全局 D16 JSON 仍在。
+
+**没做什么：** 不做 B-10 检索；不做 B-40 成败反思；投毒过滤见 B-45。
+
+| ID | 任务 | 完成标准 | Verification |
+|----|------|----------|--------------|
+| B39-01 | 可打开 MEMORY.md | append 后文件存在且含笔记 | `uv run pytest tests/test_workspace_memory_b39.py -v` |
+| B39-02 | 重复不膨胀 | 相同句子不重复；超过 40 条裁旧 | 同上 |
+
+## Agent verification notes（B-40）
+
+> 书 08。不升 D54+。无新 Chat 卡片。
+
+**做了什么：** `submit_verification` 通过/失败后，往工作区 `.clutch/memory/MEMORY.md` 追加一行 `Worked: {title}` 或 `Failed: {title}`。
+
+**没做什么：** 不做长篇反思；投毒过滤见 B-45。
+
+| ID | 任务 | 完成标准 | Verification |
+|----|------|----------|--------------|
+| B40-01 | 验证结果落盘 | passed → `Worked:`；failed → `Failed:` | `uv run pytest tests/test_workspace_memory_b39.py -v` |
+
+## Agent memory poison（B-45）
+
+> 书 03。不升 D54+。无新 Chat 卡片。
+
+**做了什么：** 网页/MCP「请记住 + URL」或裸 URL 不写入 `.clutch/memory/MEMORY.md`，也不写入 Settings Memory；`remember_preference` 返回错误，Agent 不得说已保存。
+
+**没做什么：** 不做检索（B-10）；不加新 Chat 卡。
+
+| ID | 任务 | 完成标准 | Verification |
+|----|------|----------|--------------|
+| B45-01 | 投毒不入库 | 裸 URL / 请记住+https 被拒绝 | `uv run pytest tests/test_workspace_memory_b39.py -v` |
+
+## Agent tool ACI（B-41）
+
+> 书 04。不升 D54+。无新 Chat 卡片。
+
+**做了什么：** 内置工具描述写明何时用/不用。按文件名查是否存在（如 README.md）走 `list_dir`；若模型仍 `grep` 文件名，harness 改写成 `list_dir`，步骤条显示 **List** 而不是 Search。不读文件内容。
+
+**没做什么：** 不加按名递归 glob 工具；不改 D46 步骤条组件。
+
+| ID | 任务 | 完成标准 | Verification |
+|----|------|----------|--------------|
+| B41-01 | 文件名 grep 改走 list | `grep README.md` 返回目录列表，不含文件正文 | `uv run pytest tests/test_tool_aci_b41.py -v` |
+| B41-02 | 步骤条是 List | 改写后 kind=list，header 为 Listed 不是 Searched | 同上 |
+
+## Spurious verification card（D5）
+
+> D5 回归。不升 D54+。无新 Chat 卡片。
+
+**做了什么：** `submit_verification` 在记住 / 问答 / 本轮未改文件且用户未要报告时不发布验证卡；上一轮的卡不复制到后一轮回复；也不因此往 MEMORY.md 写 `Worked:`。
+
+**没做什么：** 不改 D5 卡片样子；不做 B-48。
+
+| ID | 任务 | 完成标准 | Verification |
+|----|------|----------|--------------|
+| D5-fix-01 | 记住不发卡 | remember 回合 `verification_report is None` | `uv run pytest tests/test_verification_d5.py -v` |
+| D5-fix-02 | 旧卡不跟到新用户消息 | 后一轮 seal 不含 leftover report | 同上 |
 
 ## 待建 pytest 文件（随 task 交付）
 
@@ -261,3 +432,6 @@
 | `tests/test_subprocess_isolation.py` | M3-07 |
 | `tests/test_repository_groups.py` | P2-05 |
 | `tests/test_skills_registry.py` | P2-01 |
+| `tests/test_agent_eval_b34.py` | B34-01–03 |
+| `tests/test_agent_eval_b48.py` | B48-01–02 |
+| `tests/test_tool_aci_b41.py` | B41-01–02 |

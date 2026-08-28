@@ -14,7 +14,7 @@
 | `memory/ROADMAP.md` §Chat Clutch Agent | 勾选状态（Default FAIL） |
 | `memory/FILEMAP.md` | 入口索引 |
 
-**各交付期再更新：** `docs/PRODUCT_INTRO.md`、`CHANGELOG.md` `[Unreleased]`；MCP 真相时 `docs/mcp-servers/*`；会话 Check-out 写 `PROGRESS` / `DELIVERABLES`。
+**各交付期再更新：** `docs/PRODUCT_INTRO.md`、`CHANGELOG.md` `## [Unreleased]`（已发 v1.4.0）；MCP 真相时 `docs/mcp-servers/*`；会话 Check-out 写 `PROGRESS` / `DELIVERABLES`。
 
 **编号约定：** 本文交付期 Dn ≠ DECISIONS Dx。
 
@@ -150,7 +150,7 @@
 
 - Hub 能注册/开关 stdio 服务器；后端 ReAct 在 **真有 `mcpServerIds`** 时能跑。
 - **断点：** Agent Manager 的 MCP 绑定仍是 `UnderDevelopmentNotice`；保存会把 `mcpServerIds` **清空** → Chat 很少真正走到 MCP。
-- SSE/HTTP 可登记但运行时基本是 **stdio-only**；Epicode 文档要的 Header/HTTP 表单不齐。
+- SSE/HTTP 可登记；运行时走 **stdio 或 Streamable HTTP**。Env 可带 `Authorization` / `HEADER_*`。
 - Hub/文档仍有「开发中」或超卖，和真实能力不一致。
 
 因此 MCP **不能**只靠 D28（工具多时搜索）；必须先有 **D37 绑定可用**。
@@ -168,8 +168,8 @@
 - **验收**：坏命令的服务器点测试 → 明确失败原因；好服务器列出工具数。
 
 #### D39 — 传输诚实 + 远程可用
-- **可见**：未实现的传输在 UI **禁用或标注不可用**；或实现 SSE / Streamable HTTP；表单支持 URL + Header/Env（不必只靠 raw JSON）。
-- **验收**：至少一条：要么远程 URL+Header 能 Connect 出工具列表，要么 UI 明确禁止选该传输且文案一致。
+- **可见**：Hub 可选 **stdio** 或 **HTTP**（Streamable HTTP URL）；Env 支持 `Authorization` / `HEADER_*`。
+- **验收**：HTTP 填任意 MCP URL → Test 出工具列表；OAuth 远程（无 Env Key、401）会打开浏览器；配了 Key 的 HTTP 不走浏览器。
 
 #### D40 — Chat 已绑 MCP 可见
 - **可见**：Chat/顶栏有「已绑 N 个 MCP / 工具约 M」类提示；未绑时引导去绑定或一键启用。
@@ -467,7 +467,7 @@ Prompt： D53（宜早：在 D7/D2 深化前定组装骨架；可与 D1 后并�
 
 1. 上表验收脚本走通（**含前端可见**）。  
 2. 若该能力在「能力→交互映射」有行，对应 D46–D51 交互必须可演示，否则不算完成。  
-3. `PRODUCT_INTRO` / `CHANGELOG` Unreleased。  
+3. `PRODUCT_INTRO` / `CHANGELOG` 当前开发版本节（`## [Unreleased]`）。  
 4. `./scripts/verify.sh`（或子集）通过——必要但不充分。
 
 ## 任务总数

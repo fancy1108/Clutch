@@ -76,8 +76,7 @@ export const TerminalLaneGrid: React.FC<TerminalLaneGridProps> = ({
 
   const displayLanes = useMemo(() => {
     if (sessionDispatched) {
-      const candidates = lanes.filter((lane) => lane.status !== 'queued');
-      return uniqueLanesByLaneId(candidates);
+      return uniqueLanesByLaneId(lanes);
     }
     if (!previewAgentType) return [];
     const preview = buildPreviewPtyLane(previewAgentType, sessionRunId);

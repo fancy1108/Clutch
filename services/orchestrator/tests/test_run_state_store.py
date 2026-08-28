@@ -60,6 +60,21 @@ def test_save_and_load_run_state_roundtrip() -> None:
     assert loaded["terminal_logs"] == ["[CHAT] Claude Sonnet: 12 chars"]
 
 
+def test_save_and_load_worktree_isolation() -> None:
+    state = initial_state("run_wt_persist")
+    state["worktree_isolation"] = {
+        "id": "wt_abc",
+        "path": "/tmp/repo/.clutch/worktrees/wt_abc",
+        "branch": "clutch/wt_abc",
+        "enabled": True,
+    }
+    save_run_state(state)
+    loaded = load_run_state("run_wt_persist")
+    assert loaded is not None
+    assert loaded.get("worktree_isolation", {}).get("id") == "wt_abc"
+    assert loaded["worktree_isolation"]["enabled"] is True
+
+
 def test_save_and_load_terminal_orchestra_fields() -> None:
     state = initial_state("run_terminal_hist")
     state["dispatch_log"] = [
@@ -236,3 +251,12 @@ def test_ws_connect_prefers_persisted_completed_turn() -> None:
     patch = envelope["data"]["patch"]
     assert patch["status"] == "idle"
     assert any(message.get("text") == "background reply" for message in patch["messages"])
+
+
+def test_save_and_load_awaiting_continue() -> None:
+    state = initial_state("run_continue_flag")
+    state["awaiting_continue"] = True
+    save_run_state(state)
+    loaded = load_run_state("run_continue_flag")
+    assert loaded is not None
+    assert loaded.get("awaiting_continue") is True

@@ -145,6 +145,7 @@ async def set_workspace_endpoint(body: WorkspaceRequest) -> dict[str, str]:
 
 @router.get("/api/workspace/git")
 async def get_workspace_git() -> dict[str, Any]:
+    # Footer Branch is always the authorized main checkout; do not take wt_id.
     from src.workspace import WorkspaceError, get_git_info
 
     try:
@@ -154,21 +155,34 @@ async def get_workspace_git() -> dict[str, Any]:
 
 
 @router.get("/api/workspace/tree")
-async def get_workspace_tree() -> dict[str, Any]:
+async def get_workspace_tree(wt_id: str = "") -> dict[str, Any]:
+    from src.worktree_isolation import resolve_view_root
     from src.workspace import WorkspaceError, list_tree
 
     try:
-        return {"nodes": list_tree()}
+        return {"nodes": list_tree(root=resolve_view_root(wt_id or None))}
+    except WorkspaceError as exc:
+        raise _workspace_http_error(exc) from exc
+
+
+@router.get("/api/workspace/changes")
+async def get_workspace_changes(wt_id: str = "") -> dict[str, Any]:
+    from src.worktree_isolation import resolve_view_root
+    from src.workspace import WorkspaceError, list_uncommitted
+
+    try:
+        return {"files": list_uncommitted(resolve_view_root(wt_id or None))}
     except WorkspaceError as exc:
         raise _workspace_http_error(exc) from exc
 
 
 @router.get("/api/workspace/file")
-async def read_workspace_file(path: str) -> dict[str, str]:
+async def read_workspace_file(path: str, wt_id: str = "") -> dict[str, str]:
+    from src.worktree_isolation import resolve_view_root
     from src.workspace import WorkspaceError, read_file
 
     try:
-        return {"path": path, "content": read_file(path)}
+        return {"path": path, "content": read_file(path, root=resolve_view_root(wt_id or None))}
     except WorkspaceError as exc:
         raise _workspace_http_error(exc) from exc
 
@@ -201,11 +215,12 @@ async def resolve_workspace_file(path: str) -> dict[str, Any]:
 
 
 @router.get("/api/workspace/media")
-async def read_workspace_media(path: str) -> FileResponse:
+async def read_workspace_media(path: str, wt_id: str = "") -> FileResponse:
+    from src.worktree_isolation import resolve_view_root
     from src.workspace import WorkspaceError, resolve_allowed_path
 
     try:
-        target = resolve_allowed_path(path)
+        target = resolve_allowed_path(path, root=resolve_view_root(wt_id or None))
     except WorkspaceError as exc:
         raise _workspace_http_error(exc) from exc
     if not target.is_file():

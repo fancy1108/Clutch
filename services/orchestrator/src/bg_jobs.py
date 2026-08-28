@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 import contextvars
-import os
-import subprocess
 import threading
 import uuid
 from collections import deque
 from collections.abc import Callable
-from pathlib import Path
+from subprocess import Popen
 from typing import Any, Literal
+
+from src.shell_proc import kill_tree, popen_shell
 
 BgJobStatus = Literal["running", "done", "failed", "killed"]
 BgJobsNotifier = Callable[[str, list[dict[str, Any]], dict[str, Any] | None], None]
@@ -56,7 +56,7 @@ class BgJob:
         self._buffer: deque[str] = deque(maxlen=_RING_LINES)
         self._total_chars = 0
         self.exit_code: int | None = None
-        self._proc: subprocess.Popen[str] | None = None
+        self._proc: Popen[str] | None = None
         self._thread: threading.Thread | None = None
 
     def append_output(self, text: str) -> None:
@@ -121,7 +121,7 @@ def adopt_process(
     run_id: str,
     command: str,
     cwd: str,
-    proc: subprocess.Popen[str],
+    proc: Popen[str],
     initial_output: str = "",
 ) -> dict[str, Any]:
     """D34 — move a running foreground subprocess into the bg_jobs registry."""
@@ -146,19 +146,8 @@ def start_job(run_id: str, command: str, cwd: str) -> dict[str, Any]:
         raise ValueError("command is required")
     job_id = f"bg_{uuid.uuid4().hex[:8]}"
     job = BgJob(run_id, job_id, trimmed, cwd)
-    shell = os.environ.get("SHELL") or ("cmd.exe" if os.name == "nt" else "/bin/bash")
     try:
-        proc = subprocess.Popen(
-            trimmed,
-            shell=True,
-            cwd=cwd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            bufsize=1,
-            env={**os.environ, "PWD": cwd},
-            executable=shell if os.name != "nt" and Path(shell).is_file() else None,
-        )
+        proc = popen_shell(trimmed, cwd)
     except Exception as exc:
         job.status = "failed"
         job.append_output(f"[job error] {exc}\n")
@@ -201,15 +190,7 @@ def kill_job(run_id: str, job_id: str) -> dict[str, Any] | None:
     def _reap() -> None:
         if proc is None or proc.poll() is not None:
             return
-        try:
-            proc.terminate()
-            try:
-                proc.wait(timeout=2)
-            except subprocess.TimeoutExpired:
-                proc.kill()
-                proc.wait(timeout=1)
-        except Exception:
-            pass
+        kill_tree(proc)
 
     threading.Thread(target=_reap, daemon=True).start()
     return finished

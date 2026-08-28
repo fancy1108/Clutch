@@ -15,7 +15,8 @@ import { ThemeManager, THEME_PRESETS } from './components/ThemeManager';
 import { SystemPreferencesModal } from './components/SystemPreferencesModal';
 import { PromptModal } from './components/PromptModal';
 import { AppErrorBoundary } from './components/AppErrorBoundary';
-import { FooterMenuAction, FooterMenuItem, FooterMenuPanel, FooterMenuSection } from './components/FooterMenu';
+import { FooterFieldChevron, FooterFieldLabel, FooterFieldValue, FooterMenuAction, FooterMenuItem, FooterMenuPanel, FooterMenuSection, FOOTER_CHIP_BUTTON_CLASS, FOOTER_CHIP_CLASS, footerIdleHiddenClass } from './components/FooterMenu';
+import { FooterWorktreeMenu } from './components/WorktreeIsolationBar';
 import { MainView, RightTab, ChatMessage, UncommittedFile, DiffLine, type Agent, type ClutchState, type AppWorkspaceMode, type ToolStep } from './types';
 import { resolveChatTerminalSyncTarget } from './services/chatTerminalSync';
 import { fetchAgents } from './services/agentApi';
@@ -82,6 +83,7 @@ import {
   addWorkspace,
   removeWorkspace,
   fetchWorkspaceFile,
+  fetchWorkspaceChanges,
   resolveWorkspaceFile,
   fetchWorkspaceTree,
   fetchWorkspaceGit,
@@ -109,7 +111,7 @@ import {
   resolveDefaultTextModelId,
   saveModelsConfig,
 } from './services/modelsApi';
-import { fetchPermissionMode, savePermissionMode, type PermissionMode } from './services/permissionApi';
+import { fetchDefaultWorkspaceId, fetchHighRiskConfirm, fetchPermissionMode, savePermissionMode, type PermissionMode } from './services/permissionApi';
 import { fetchSkillsRegistry, type ScannedSkill } from './services/skillsApi';
 import { BTN_GHOST, BTN_PRIMARY } from './components/ui/buttonStyles';
 import { LegacyIcon } from './components/ui/LegacyIcon';
@@ -281,12 +283,20 @@ function MainLayout() {
   const [workspaceFiles, setWorkspaceFiles] = useState<FileTreeNode[]>([]);
   const [workspacePickError, setWorkspacePickError] = useState<string | null>(null);
   const [highRiskConfirmed, setHighRiskConfirmed] = useState(false);
+  const [highRiskConfirmEnabled, setHighRiskConfirmEnabled] = useState(true);
+
+  useEffect(() => {
+    void fetchHighRiskConfirm()
+      .then(setHighRiskConfirmEnabled)
+      .catch(() => setHighRiskConfirmEnabled(true));
+  }, []);
 
   // Reset high-risk confirmation when switching sessions
   useEffect(() => {
     setHighRiskConfirmed(false);
   }, [sessionRunId]);
   const [branchMenuOpen, setBranchMenuOpen] = useState(false);
+  const [worktreeMenuOpen, setWorktreeMenuOpen] = useState(false);
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
   const [agentMenuOpen, setAgentMenuOpen] = useState(false);
   const [workflowMenuOpen, setWorkflowMenuOpen] = useState(false);
@@ -294,6 +304,7 @@ function MainLayout() {
 
   const closeFooterMenus = useCallback(() => {
     setBranchMenuOpen(false);
+    setWorktreeMenuOpen(false);
     setModelMenuOpen(false);
     setAgentMenuOpen(false);
     setWorkflowMenuOpen(false);
@@ -311,7 +322,7 @@ function MainLayout() {
 
   useEffect(() => {
     const handleOutsideClick = (e: MouseEvent) => {
-      if (branchMenuOpen || modelMenuOpen || agentMenuOpen || workflowMenuOpen) {
+      if (branchMenuOpen || worktreeMenuOpen || modelMenuOpen || agentMenuOpen || workflowMenuOpen) {
         const target = e.target as HTMLElement;
         if (target.closest('[data-testid^="footer-"]')) {
           return;
@@ -323,7 +334,16 @@ function MainLayout() {
     return () => {
       window.removeEventListener('click', handleOutsideClick);
     };
-  }, [branchMenuOpen, modelMenuOpen, agentMenuOpen, workflowMenuOpen, closeFooterMenus]);
+  }, [branchMenuOpen, worktreeMenuOpen, modelMenuOpen, agentMenuOpen, workflowMenuOpen, closeFooterMenus]);
+
+  const viewWorktreeId =
+    clutchState.worktree_isolation?.enabled && clutchState.worktree_isolation.id
+      ? clutchState.worktree_isolation.id
+      : '';
+  const viewWorktreePath =
+    clutchState.worktree_isolation?.enabled && clutchState.worktree_isolation.path
+      ? clutchState.worktree_isolation.path
+      : '';
 
   const refreshWorkspaceGit = useCallback(async () => {
     try {
@@ -336,20 +356,44 @@ function MainLayout() {
 
   const refreshWorkspaceFiles = useCallback(async () => {
     try {
-      const nodes = await fetchWorkspaceTree();
+      const nodes = await fetchWorkspaceTree(viewWorktreeId || undefined);
       setWorkspaceFiles(nodes);
     } catch {
       setWorkspaceFiles([]);
     }
-  }, []);
+  }, [viewWorktreeId]);
+
+  const refreshViewChanges = useCallback(async () => {
+    try {
+      const files = await fetchWorkspaceChanges(viewWorktreeId || undefined);
+      setUncommitted(files);
+    } catch {
+      setUncommitted([]);
+    }
+  }, [viewWorktreeId]);
 
   useEffect(() => {
     void fetchWorkspaces()
       .then(async (listed) => {
-        setWorkspaces(listed.workspaces);
-        setActiveWorkspaceId(listed.active_id);
-        const active = listed.workspaces.find((item) => item.id === listed.active_id) ?? null;
-        setWorkspace(active);
+        let workspacesList = listed.workspaces;
+        let activeId = listed.active_id;
+        try {
+          const defaultId = await fetchDefaultWorkspaceId();
+          if (defaultId && workspacesList.some((item) => item.id === defaultId) && activeId !== defaultId) {
+            const info = await activateWorkspace(defaultId);
+            workspacesList = workspacesList.map((item) => (item.id === defaultId ? info : item));
+            activeId = defaultId;
+            setWorkspace(info);
+          }
+        } catch {
+          /* keep last-active workspace */
+        }
+        setWorkspaces(workspacesList);
+        setActiveWorkspaceId(activeId);
+        const active = workspacesList.find((item) => item.id === activeId) ?? null;
+        if (active && active.id === activeId) {
+          setWorkspace(active);
+        }
         if (active) {
           await refreshWorkspaceFiles();
           await refreshWorkspaceGit();
@@ -783,6 +827,12 @@ function MainLayout() {
   }, [rightTab, workspace?.id, refreshWorkspaceFiles]);
 
   useEffect(() => {
+    if (!workspace) return;
+    void refreshWorkspaceFiles();
+    void refreshViewChanges();
+  }, [viewWorktreeId, workspace, refreshWorkspaceFiles, refreshViewChanges]);
+
+  useEffect(() => {
     const handler = (event: Event) => {
       const data = (event as CustomEvent).detail as { path?: string; diff_lines?: DiffLine[] };
       if (!data.path) return;
@@ -791,11 +841,20 @@ function MainLayout() {
         { name: data.path, status: 'M', diffs: data.diff_lines || [], active: true },
       ]);
       void refreshWorkspaceFiles();
+      void refreshViewChanges();
       setRightTab('changes');
     };
     window.addEventListener('clutch-file-changed', handler);
     return () => window.removeEventListener('clutch-file-changed', handler);
-  }, [refreshWorkspaceFiles]);
+  }, [refreshWorkspaceFiles, refreshViewChanges]);
+
+  useEffect(() => {
+    const handler = () => {
+      void refreshViewChanges();
+    };
+    window.addEventListener('clutch-files-committed', handler);
+    return () => window.removeEventListener('clutch-files-committed', handler);
+  }, [refreshViewChanges]);
 
   // Sidebar selector width for calculations
   const selectedSidebarWidth = sidebarOpen ? SIDEBAR_EXPANDED_WIDTH_PX : SIDEBAR_COLLAPSED_WIDTH_PX;
@@ -849,7 +908,7 @@ function MainLayout() {
   const handleStopRun = (): boolean => {
     // Workflow (Flow) runs: stop immediately without confirmation.
     // Plain LLM chat runs: ask once to avoid accidental interruption.
-    if (!isWorkflowChat && !highRiskConfirmed) {
+    if (!isWorkflowChat && highRiskConfirmEnabled && !highRiskConfirmed) {
       const ok = window.confirm(t('Confirm stopping the current run? This will interrupt the current AI Agent execution.'));
       if (!ok) return false;
       setHighRiskConfirmed(true);
@@ -1013,44 +1072,49 @@ function MainLayout() {
   };
 
   const handleOpenWorkspaceFile = async (path: string) => {
+    const wtId = viewWorktreeId || undefined;
+    const fileRoot = viewWorktreePath || workspace?.workspace_path;
     try {
-      const resolved = await resolveWorkspaceFile(path);
-      if (!resolved.ok) {
-        setPreviewToast(
-          resolved.reason === 'ambiguous'
-            ? `Multiple files named “${path}” — open from Files instead.`
-            : `File not found: ${path}`,
-        );
-        window.setTimeout(() => setPreviewToast(null), 3200);
-        return;
+      let rel = path;
+      if (!wtId) {
+        const resolved = await resolveWorkspaceFile(path);
+        if (!resolved.ok) {
+          setPreviewToast(
+            resolved.reason === 'ambiguous'
+              ? `Multiple files named “${path}” — open from Files instead.`
+              : `File not found: ${path}`,
+          );
+          window.setTimeout(() => setPreviewToast(null), 3200);
+          return;
+        }
+        rel = resolved.path;
       }
-      // HTML: open rendered page in the system browser (not Clutch source preview).
-      if (isHtmlWorkspacePath(resolved.path)) {
-        const abs = absoluteWorkspacePath(workspace?.workspace_path, resolved.path);
+      if (isHtmlWorkspacePath(rel)) {
+        const abs = absoluteWorkspacePath(fileRoot, rel);
         if (!abs) {
-          setPreviewToast(`Could not resolve path: ${resolved.path}`);
+          setPreviewToast(`Could not resolve path: ${rel}`);
           window.setTimeout(() => setPreviewToast(null), 3200);
           return;
         }
         setPreviewFile(null);
         await openPathInSystem(abs);
-        const leaf = resolved.path.split(/[/\\]/).pop() || resolved.path;
+        const leaf = rel.split(/[/\\]/).pop() || rel;
         setPreviewToast(`Opened in browser: ${leaf}`);
         window.setTimeout(() => setPreviewToast(null), 2800);
         return;
       }
-      if (isImageWorkspacePath(resolved.path)) {
-        const mediaSrc = await workspaceMediaUrl(resolved.path);
+      if (isImageWorkspacePath(rel)) {
+        const mediaSrc = await workspaceMediaUrl(rel, wtId);
         setPreviewFile({
-          name: resolved.path,
+          name: rel,
           content: '',
           mediaSrc,
         });
         return;
       }
-      const content = await fetchWorkspaceFile(resolved.path);
+      const content = await fetchWorkspaceFile(rel, wtId);
       setPreviewFile({
-        name: resolved.path,
+        name: rel,
         content,
         plain: isLargePreviewContent(content),
       });
@@ -1060,6 +1124,19 @@ function MainLayout() {
       window.setTimeout(() => setPreviewToast(null), 3200);
     }
   };
+
+  const openWorkspaceFileRef = useRef(handleOpenWorkspaceFile);
+  openWorkspaceFileRef.current = handleOpenWorkspaceFile;
+
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const path = (event as CustomEvent<{ path?: string }>).detail?.path;
+      if (!path) return;
+      void openWorkspaceFileRef.current(path);
+    };
+    window.addEventListener('clutch-open-file', handler);
+    return () => window.removeEventListener('clutch-open-file', handler);
+  }, []);
 
   const handlePreviewSnippet = (name: string, content: string) => {
     setPreviewFile({
@@ -1335,6 +1412,10 @@ function MainLayout() {
       return;
     }
     const startNewChat = async () => {
+      // Switch to chat immediately. Waiting until after discardEmptySessionIfNeeded
+      // races desktop E2E (and users) who open Settings before the API call returns —
+      // the late setView('chat') would close the preferences modal.
+      setView('chat');
       await discardEmptySessionIfNeeded(sessionRunId);
       scheduleBackgroundHydrateForRun(sessionRunId);
       const runId = createSessionRunId();
@@ -1348,7 +1429,6 @@ function MainLayout() {
         selectDefaultAgent();
       }
       setAppMode('coding');
-      setView('chat');
       setRightTab('overview');
       void createSession({
         run_id: runId,
@@ -2251,6 +2331,7 @@ function MainLayout() {
                 sessionCostUsd={clutchState.session_cost_usd}
                 tokenInput={clutchState.token_input}
                 tokenOutput={clutchState.token_output}
+                usageEstimated={clutchState.usage_estimated !== false}
                 runStats={clutchState.run_stats}
                 uncommitted={uncommitted}
                 terminalLogs={terminalLogs}
@@ -2295,7 +2376,6 @@ function MainLayout() {
           setThemeId={setThemeId}
           workspaceLabel={workspace?.name ?? workspace?.workspace_path?.split('/').pop() ?? null}
           sessionActive={clutchStatus !== 'idle' && clutchStatus !== 'failed'}
-          onUseWorkflowInChat={handleUseWorkflowInChat}
           onSelectWorkflow={bindWorkflowForChat}
           onClearSelectedWorkflow={clearWorkflowSelection}
           selectedWorkflowId={selectedWorkflowId}
@@ -2307,6 +2387,9 @@ function MainLayout() {
           setUserName={setUserName}
           fontSize={fontSize}
           setFontSize={setFontSize}
+          appVersion={appVersion}
+          onApplyDefaultWorkspace={(workspaceId) => { void handleSelectWorkspace(workspaceId); }}
+          onHighRiskConfirmChange={setHighRiskConfirmEnabled}
         />
 
       </div>
@@ -2314,10 +2397,10 @@ function MainLayout() {
       {/* 3. Footer Bar Component */}
       <footer 
         style={{ left: `${selectedSidebarWidth}px` }}
-        className="fixed bottom-0 right-0 h-8 bg-background border-t border-outline-variant flex items-center justify-between px-6 z-50 text-[11px] text-on-surface-variant/80 select-none transition-all duration-300"
+        className="@container/footer fixed bottom-0 right-0 h-8 bg-background border-t border-outline-variant flex items-center justify-between gap-2 px-2 @min-[40rem]/footer:px-3 @min-[56rem]/footer:px-4 z-50 text-[11px] text-on-surface-variant/80 select-none transition-all duration-300"
       >
-        <div className="flex items-center gap-6">
-          <div className="relative">
+        <div className="flex min-w-0 flex-1 items-center gap-0.5 @min-[48rem]/footer:gap-1 @min-[64rem]/footer:gap-2">
+          <div className="relative min-w-0">
             <button
               type="button"
               data-testid="footer-branch-trigger"
@@ -2326,12 +2409,14 @@ function MainLayout() {
                 closeFooterMenus();
                 setBranchMenuOpen(next);
               }}
-              className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-container-low hover:text-on-surface transition-colors cursor-pointer font-medium whitespace-nowrap"
+              className={`${FOOTER_CHIP_BUTTON_CLASS} text-on-surface-variant`}
               aria-label={`${t('Branch')}: ${workspaceGit.branch || '—'}`}
+              title={`${t('Branch')}: ${workspaceGit.branch || '—'}`}
             >
-              <LegacyIcon name="account_tree" className="text-[15px] text-on-surface-variant" />
-              {t('Branch')}: {workspaceGit.branch || '—'}
-              <LegacyIcon name="keyboard_arrow_down" className="text-[13px]" />
+              <LegacyIcon name="account_tree" className="text-[15px] text-on-surface-variant shrink-0" />
+              <FooterFieldLabel>{t('Branch')}</FooterFieldLabel>
+              <FooterFieldValue>{workspaceGit.branch || '—'}</FooterFieldValue>
+              <FooterFieldChevron />
             </button>
             {branchMenuOpen ? (
               <FooterMenuPanel testId="footer-branch-menu">
@@ -2353,27 +2438,70 @@ function MainLayout() {
             ) : null}
           </div>
 
+          <FooterWorktreeMenu
+            worktree={clutchState.worktree_isolation ?? null}
+            open={worktreeMenuOpen}
+            t={t}
+            onToggle={() => {
+              const next = !worktreeMenuOpen;
+              closeFooterMenus();
+              setWorktreeMenuOpen(next);
+            }}
+            onSelectMain={() => {
+              setWorktreeMenuOpen(false);
+              if (clutchState.worktree_isolation?.enabled) {
+                void clutchStore.send({ action: 'select_worktree', wt_id: '' });
+              }
+            }}
+            onSelectWorktree={(wtId) => {
+              setWorktreeMenuOpen(false);
+              if (wtId !== clutchState.worktree_isolation?.id) {
+                void clutchStore.send({ action: 'select_worktree', wt_id: wtId });
+              }
+            }}
+            onEnable={() => {
+              setWorktreeMenuOpen(false);
+              void clutchStore.send({ action: 'enable_worktree' });
+            }}
+            onMerge={(wtId) => {
+              setWorktreeMenuOpen(false);
+              void clutchStore.send({
+                action: 'merge_worktree',
+                wt_id: wtId,
+              });
+            }}
+            onDiscard={(wtId) => {
+              setWorktreeMenuOpen(false);
+              void clutchStore.send({
+                action: 'discard_worktree',
+                wt_id: wtId,
+              });
+            }}
+          />
+
           {!hideFooterSessionControls ? (
             <>
           {hasWorkflowSelection ? (
             <span
               data-testid="footer-model-disabled"
-              className="flex items-center gap-1.5 px-2 py-1 rounded font-medium text-on-surface-variant cursor-default whitespace-nowrap"
+              className={`${FOOTER_CHIP_CLASS} text-on-surface-variant cursor-default`}
               title={t('Model is determined by the selected workflow')}
             >
-              <LegacyIcon name="layers" className="text-[15px] text-on-surface-variant" />
-              {t("Model")}: —
+              <LegacyIcon name="layers" className="text-[15px] text-on-surface-variant shrink-0" />
+              <FooterFieldLabel>{t('Model')}</FooterFieldLabel>
+              <FooterFieldValue>—</FooterFieldValue>
             </span>
           ) : showFooterModel ? (
-            <div className="relative">
+            <div className="relative min-w-0">
               {agentBoundModelId && appMode !== 'design' ? (
                 <span
                   data-testid="footer-model-trigger"
-                  className="flex items-center gap-1.5 px-2 py-1 rounded font-medium text-on-surface-variant whitespace-nowrap cursor-default"
+                  className={`${FOOTER_CHIP_CLASS} text-on-surface-variant cursor-default`}
                   title={t('Model is bound on this agent')}
                 >
-                  <LegacyIcon name="layers" className="text-[15px] text-on-surface-variant" />
-                  {t("Model")}: {footerEffectiveModelName}
+                  <LegacyIcon name="layers" className="text-[15px] text-on-surface-variant shrink-0" />
+                  <FooterFieldLabel>{t('Model')}</FooterFieldLabel>
+                  <FooterFieldValue title={footerEffectiveModelName}>{footerEffectiveModelName}</FooterFieldValue>
                 </span>
               ) : (
                 <>
@@ -2381,12 +2509,14 @@ function MainLayout() {
                 type="button"
                 data-testid="footer-model-trigger"
                 onClick={toggleModelMenu}
-                className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-container-low hover:text-on-surface transition-colors cursor-pointer font-medium text-on-surface-variant whitespace-nowrap"
+                className={`${FOOTER_CHIP_BUTTON_CLASS} text-on-surface-variant`}
                 aria-label={`${t("Model")}: ${footerEffectiveModelName}`}
+                title={`${t("Model")}: ${footerEffectiveModelName}`}
               >
-                <LegacyIcon name="layers" className="text-[15px] text-on-surface-variant" />
-                {t("Model")}: {footerEffectiveModelName}
-                <LegacyIcon name="keyboard_arrow_down" className="text-[13px]" />
+                <LegacyIcon name="layers" className="text-[15px] text-on-surface-variant shrink-0" />
+                <FooterFieldLabel>{t('Model')}</FooterFieldLabel>
+                <FooterFieldValue title={footerEffectiveModelName}>{footerEffectiveModelName}</FooterFieldValue>
+                <FooterFieldChevron />
               </button>
               {modelMenuOpen ? (
                 <FooterMenuPanel testId="footer-model-menu">
@@ -2449,26 +2579,28 @@ function MainLayout() {
           ) : !hasWorkflowSelection && customAgentEngineLabel ? (
             <span
               data-testid="footer-engine-label"
-              className="flex items-center gap-1.5 px-2 py-1 rounded font-medium text-on-surface-variant cursor-default whitespace-nowrap"
+              className={`${FOOTER_CHIP_CLASS} text-on-surface-variant cursor-default`}
               title={t('Model is provided by the selected agent tool')}
             >
-              <LegacyIcon name="bolt" className="text-[15px] text-on-surface-variant" />
-              {t('Engine')}: {customAgentEngineLabel}
+              <LegacyIcon name="bolt" className="text-[15px] text-on-surface-variant shrink-0" />
+              <FooterFieldLabel>{t('Engine')}</FooterFieldLabel>
+              <FooterFieldValue title={customAgentEngineLabel}>{customAgentEngineLabel}</FooterFieldValue>
             </span>
           ) : null}
 
           {isMultiAgent ? (
             <>
-              <div className="relative">
+              <div className="relative min-w-0">
                 {appMode === 'design' ? (
                   <span
                     data-testid="footer-agent-trigger"
-                    className="flex items-center gap-1.5 px-2 py-1 rounded font-medium text-on-surface-variant cursor-default whitespace-nowrap opacity-70"
+                    className={`${FOOTER_CHIP_CLASS} text-on-surface-variant cursor-default opacity-70`}
                     title={t('Design uses the Model LLM, not CLI agents')}
-                    aria-label={`${t('Active Agent')}: ${t('Clutch Agent')}`}
+                    aria-label={`${t('Agent')}: ${t('Clutch Agent')}`}
                   >
-                    <LegacyIcon name="smart_toy" className="text-[15px]" />
-                    {t('Active Agent')}: {t('Clutch Agent')}
+                    <LegacyIcon name="smart_toy" className="text-[15px] shrink-0" />
+                    <FooterFieldLabel>{t('Agent')}</FooterFieldLabel>
+                    <FooterFieldValue>{t('Clutch Agent')}</FooterFieldValue>
                   </span>
                 ) : (
                   <>
@@ -2476,16 +2608,18 @@ function MainLayout() {
                       type="button"
                       data-testid="footer-agent-trigger"
                       onClick={toggleAgentMenu}
-                      className={`flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-container-low transition-colors cursor-pointer font-medium whitespace-nowrap ${
+                      className={`${FOOTER_CHIP_BUTTON_CLASS} ${
                         selectedAgentId
                           ? 'text-primary font-bold'
                           : 'text-on-surface-variant'
                       }`}
-                      aria-label={`${t('Active Agent')}: ${multiAgentFooterName}`}
+                      aria-label={`${t('Agent')}: ${multiAgentFooterName}`}
+                      title={`${t('Agent')}: ${multiAgentFooterName}`}
                     >
-                      <LegacyIcon name="smart_toy" className="text-[15px]" />
-                      {t('Active Agent')}: {multiAgentFooterName}
-                      <LegacyIcon name="keyboard_arrow_down" className="text-[13px]" />
+                      <LegacyIcon name="smart_toy" className="text-[15px] shrink-0" />
+                      <FooterFieldLabel>{t('Agent')}</FooterFieldLabel>
+                      <FooterFieldValue title={multiAgentFooterName}>{multiAgentFooterName}</FooterFieldValue>
+                      <FooterFieldChevron />
                     </button>
                     {agentMenuOpen ? (
                       <FooterMenuPanel testId="footer-agent-menu">
@@ -2513,16 +2647,17 @@ function MainLayout() {
                   </>
                 )}
               </div>
-              <div className="relative">
+              <div className={`relative min-w-0 ${footerIdleHiddenClass(!hasWorkflowSelection)}`}>
                 {appMode === 'design' ? (
                   <span
                     data-testid="footer-workflow-trigger"
-                    className="flex items-center gap-1.5 px-2 py-1 rounded font-medium text-on-surface-variant cursor-default whitespace-nowrap opacity-70"
+                    className={`${FOOTER_CHIP_CLASS} text-on-surface-variant cursor-default opacity-70`}
                     title={t('Workflows are available in Coding mode')}
                     aria-label={`${t('Workflow')}: —`}
                   >
-                    <LegacyIcon name="fork_right" className="text-[15px]" />
-                    {t('Workflow')}: —
+                    <LegacyIcon name="workflow" className="text-[15px] shrink-0" />
+                    <FooterFieldLabel>{t('Workflow')}</FooterFieldLabel>
+                    <FooterFieldValue>—</FooterFieldValue>
                   </span>
                 ) : (
                   <>
@@ -2530,16 +2665,18 @@ function MainLayout() {
                       type="button"
                       data-testid="footer-workflow-trigger"
                       onClick={() => { void toggleWorkflowMenu(); }}
-                      className={`flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-container-low transition-colors cursor-pointer font-medium whitespace-nowrap ${
+                      className={`${FOOTER_CHIP_BUTTON_CLASS} ${
                         hasWorkflowSelection
                           ? 'text-primary font-bold'
                           : 'text-on-surface-variant'
                       }`}
                       aria-label={`${t('Workflow')}: ${activeWorkflowLabel}`}
+                      title={`${t('Workflow')}: ${activeWorkflowLabel}`}
                     >
-                      <LegacyIcon name="fork_right" className="text-[15px]" />
-                      {t('Workflow')}: {activeWorkflowLabel}
-                      <LegacyIcon name="keyboard_arrow_down" className="text-[13px]" />
+                      <LegacyIcon name="workflow" className="text-[15px] shrink-0" />
+                      <FooterFieldLabel>{t('Workflow')}</FooterFieldLabel>
+                      <FooterFieldValue title={activeWorkflowLabel}>{activeWorkflowLabel}</FooterFieldValue>
+                      <FooterFieldChevron />
                     </button>
                     {workflowMenuOpen ? (
                       <FooterMenuPanel testId="footer-workflow-menu">
@@ -2561,7 +2698,7 @@ function MainLayout() {
                               testId={`footer-workflow-item-${workflow.id}`}
                               selected={workflow.id === (selectedWorkflowId || clutchState.workflow_id)}
                               onClick={() => {
-                                bindWorkflowForChat(workflow.id, workflow.name);
+                                handleUseWorkflowInChat(workflow.id, workflow.name);
                                 setWorkflowMenuOpen(false);
                               }}
                             >
@@ -2578,25 +2715,28 @@ function MainLayout() {
           ) : appMode === 'design' ? (
             <span
               data-testid="footer-agent-trigger"
-              className="flex items-center gap-1.5 px-2 py-1 rounded font-medium text-on-surface-variant cursor-default whitespace-nowrap opacity-70"
+              className={`${FOOTER_CHIP_CLASS} text-on-surface-variant cursor-default opacity-70`}
               title={t('Design uses the Model LLM, not CLI agents')}
-              aria-label={`${t('Active Agent')}: ${t('Clutch Agent')}`}
+              aria-label={`${t('Agent')}: ${t('Clutch Agent')}`}
             >
-              <LegacyIcon name="smart_toy" className="text-[15px]" />
-              {t('Active Agent')}: {t('Clutch Agent')}
+              <LegacyIcon name="smart_toy" className="text-[15px] shrink-0" />
+              <FooterFieldLabel>{t('Agent')}</FooterFieldLabel>
+              <FooterFieldValue>{t('Clutch Agent')}</FooterFieldValue>
             </span>
           ) : (
-            <div className="relative">
+            <div className="relative min-w-0">
               <button
                 type="button"
                 data-testid="footer-agent-trigger"
                 onClick={toggleAgentMenu}
-                className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-container-low text-primary font-bold transition-colors cursor-pointer whitespace-nowrap"
-                aria-label={`${t("Active Agent")}: ${selectedAgentName}`}
+                className={`${FOOTER_CHIP_BUTTON_CLASS} text-primary font-bold`}
+                aria-label={`${t('Agent')}: ${selectedAgentName}`}
+                title={`${t('Agent')}: ${selectedAgentName}`}
               >
-                <LegacyIcon name="smart_toy" className="text-[15px] text-primary" />
-                {t("Active Agent")}: {selectedAgentName}
-                <LegacyIcon name="keyboard_arrow_down" className="text-[13px]" />
+                <LegacyIcon name="smart_toy" className="text-[15px] text-primary shrink-0" />
+                <FooterFieldLabel>{t('Agent')}</FooterFieldLabel>
+                <FooterFieldValue title={selectedAgentName}>{selectedAgentName}</FooterFieldValue>
+                <FooterFieldChevron />
               </button>
               {agentMenuOpen ? (
                 <FooterMenuPanel testId="footer-agent-menu">
@@ -2628,7 +2768,7 @@ function MainLayout() {
         </div>
 
         <div
-          className="flex items-center gap-1.5 font-semibold text-on-surface-variant/70 italic mr-2 select-text"
+          className="shrink-0 flex items-center gap-1.5 font-semibold text-on-surface-variant/70 italic pl-1 select-text"
           data-testid="footer-app-brand"
         >
           <BrandLogo
@@ -2638,7 +2778,9 @@ function MainLayout() {
             className="w-3.5 h-3.5 rounded-sm flex items-center justify-center flex-shrink-0 bg-black"
             imgClassName="w-full h-full object-cover block"
           />
-          <span>Clutch v{appVersion}</span>
+          <span>
+            <span className="@max-[32rem]/footer:hidden">Clutch </span>v{appVersion}
+          </span>
         </div>
       {promptModal && (
         <PromptModal

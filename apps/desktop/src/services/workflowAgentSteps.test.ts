@@ -123,4 +123,22 @@ describe('workflowAgentSteps', () => {
     expect(failed.get('n1')).toBe('completed');
     expect(failed.get('n2')).toBe('failed');
   });
+
+  it('follows Assigned Agent type even when the node tool field disagrees', () => {
+    const conflicting: CompilerWorkflow = {
+      ...workflow,
+      nodes: [
+        { id: 'n1', type: 'agent_task', data: { label: 'Stylist', agent: 'agent-b', tool: 'claude-cli' } },
+        { id: 'end', type: 'end', data: {} },
+      ],
+      edges: [
+        { id: 'e1', source: 'start', target: 'n1' },
+        { id: 'e2', source: 'n1', target: 'end' },
+      ],
+    };
+    const steps = orderedWorkflowAgentSteps(conflicting, [...agents]);
+    expect(steps).toHaveLength(1);
+    expect(steps[0].toolId).toBe('clutch');
+    expect(steps[0].agentType).toBe('Clutch');
+  });
 });

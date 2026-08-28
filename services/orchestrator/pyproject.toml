@@ -10,7 +10,7 @@ dependencies = [
     "jsonschema>=4.26.0",
     "keyring>=25.0.0",
     "langgraph>=1.2.6",
-    "pillow>=10.0.0",
+    "pillow>=12.3.0",
     "playwright>=1.40.0",
     "pytesseract>=0.3.10",
     "pywinpty>=3.0.5; sys_platform == 'win32'",
@@ -35,4 +35,5 @@ pythonpath = ["."]
 testpaths = ["tests"]
 markers = [
     "real_route_engine: use production engine_router instead of conftest mock",
+    "agent_eval_live: real Agnes chat (requires CLUTCH_AGENT_EVAL_LIVE=1 + key)",
 ]

@@ -10,6 +10,90 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-08-28
+
+### Removed
+
+- **Import from Claude (MCP Hub):** Dropped the one-click copy of Claude Desktop / `~/.claude.json` MCP entries. It did not check that commands exist, so stale paths showed up as failed servers. Register stdio or HTTP yourself; the Claude Code tab remains a read-only scan of native config.
+- **Planner / Executor (FM-19):** Removed the Settings dual model pickers. Chat footer remains the place to switch the active model. Dual-session Planner/Executor stays a backlog idea (B-06).
+- **Event channel (FM-13):** Removed the Settings webhook/email form and Test-event Chat banner. They did not receive external events. Local CI watch after push is BACKLOG B-51.
+- **Notify user (FM-14):** Removed the notify card, `notify_user` tool, and + menu preview. Questions go through the existing Question card (`ask_user_question`) on the parent agent.
+- **New information gate (FM-15):** Removed the parallel-subtask Proceed/Hold card and the + menu preview. Extra `delegate_subtask` calls run without asking.
+- **Orchestra extras (FM-06 / D67):** Dropped the Confirm dispatch card, the 5th-agent queue strip, and Complete-lane draft chips. Terminal `@` send goes to the CLI immediately; `@C from @A` in the same message is enough for handoff.
+
+### Changed
+
+- **Command policy (FM-03):** Deny matching shell commands fail the tool with `[Permission] Denied` (no Allow card). Ask and dangerous commands (`rm -rf`, `sudo`) still pause in Full. Playbook has copy-paste Chat cases.
+- **Workflow list (D58):** Settings → Workflows SOP shows the full SOP name (wrap, not ellipsis). Clicking a row selects it for Chat and opens the canvas. Hover only shows edit/delete. Chat can still pick a SOP from the footer menu.
+- **Workflows SOP icons:** The SOP list always uses the same workflow glyph as the nav (no per-flow rocket/tree/fork). Create/edit no longer has an icon picker. Canvas nodes keep type icons (Agent / Approval / Check).
+- **Composer + menu icons:** Session overview no longer renders as an empty circle; each + item uses a lucide glyph that matches its action (history, skills, undo, calendar, worktree).
+- **Footer status bar:** Drops the redundant **Active** prefix (`Agent: …`). The bar is a container: field labels hide when it gets narrow, long Worktree/Model names truncate, idle Worktree/Workflow chips drop first, and `Clutch v…` stays pinned on the right (tightest widths show `v…` only).
+
+### Fixed
+
+- **OpenCode Chat:** Pass `-m` from the TUI last-used model so `opencode run --auto` matches interactive OpenCode (a stale `opencode.jsonc` default like a retired Zen model previously surfaced as `UnknownError`).
+- **Worktree spawn (FM-11):** Hide **Add parallel worktree** until isolation is enabled; show the Sidecar error (e.g. workspace is not a git repo) instead of generic `spawn failed`.
+- **Worktree Merge/Discard (D32):** Persist `worktree_isolation` on the run so Merge/Discard actually run (they previously no-op’d after Enable).
+- **Worktree Agent cwd (D32 / FM-11):** Isolation now keeps `worktree_isolation` across session reload, pins tool cwd to `.clutch/worktrees/<id>`, and rewrites absolute parent-checkout paths so Enable → write-file leaves the main tree clean.
+- **Worktree Files/Changes (D32):** The right **Files** and **Changes** tabs follow the footer Worktree selection (that checkout’s tree and `git status`). Footer **Branch** stays on the main workspace.
+- **Worktree Merge (D32):** Merge lands the isolation branch on the main checkout (uncommitted worktree edits are committed on that branch first). It no longer deletes the worktree — **Discard** removes it. A previous Merge of an uncommitted README edit looked successful then dropped the file.
+- **Unsolicited git commit (D12):** Creating/editing files no longer auto-commits. `git_commit` and shell `git commit` (via `run_terminal_cmd`) run only when the user asked to commit (or after they Allow the HITL card).
+- **Shell duplicate lint (D11/D34):** A command already running in the Chat (foreground or background) is refused instead of spawning another copy. Timeout kills the process group (eslint children included).
+- **Interpreter errors (FM-17):** Timeout or a shell that cannot start shows a structured Chat card (not a traceback). There is no + menu preview. Foreground timeout kills the process group and returns `Interpreter timeout` so the card can appear.
+- **Workflow node engine (FM-10 / D65):** Removed the extra Node engine dropdown. A node already has an Assigned Agent; CLI / Clutch / MCP follow that Agent. Saving no longer writes a conflicting `tool` override.
+
+### Added
+
+- **HTTP MCP (D57):** Settings → MCP registers any Streamable HTTP URL (API key in Env). HTTPS 401 without a key falls back to `mcp-remote` browser OAuth — same path for Figma and other remotes, no vendor button. See [`docs/mcp-servers/figma.md`](docs/mcp-servers/figma.md).
+- **FM 点验剧本：** [`docs/FRONTEND_MODULES_ACCEPTANCE.md`](docs/FRONTEND_MODULES_ACCEPTANCE.md) — PM 按模块点入口、步骤与期望（状态仍只记 ROADMAP）。
+- **General Settings (FM-01):** Default workspace picker (restored on launch), persistable confirm-before-stop for Chat Stop, and the app version on the General page.
+- **Local trust (FM-02):** Settings → General can require a one-time confirm before enabling an MCP server; trusted MCP ids persist on this machine. User-authored workflows skip this (D58).
+- **Command policy (FM-03):** Settings → Tools lists allow / ask / deny shell patterns. Deny fails the tool (no Allow card); ask and dangerous commands (`rm -rf`, `sudo`) still force-ask in Full. Strict sandbox remains the OS-level gate.
+- **Codex scan (FM-04):** Settings Models/Skills/MCP → More → Codex reads `~/.codex/config.toml` (current model + cached catalog) with the same **Rescan** control as Claude/OpenCode. Missing file still shows a clear empty state.
+- **More CLI scans (FM-05):** Aider / CodeBuddy / Antigravity / Rivet / Ollama / ZCode read native local files (or `ollama list`), not an empty stub.
+- **Save dispatch as workflow (FM-07):** Overview can save dispatch records as a user SOP with matching node order.
+- **Chat handoff (FM-08):** Chat composer shows handoff drafts and accepts Send to Bar; switching to Terminal prefills recent chat.
+- **Dispatch banner (FM-09):** Empty Chat can send without choosing a workflow; a banner shows “No workflow selected — using current Agent” (plus the Agent name) or the selected SOP.
+- **Canvas node engine (FM-10):** Workflow nodes follow the **Assigned Agent** type. Overview shows that engine. There is no separate Node engine dropdown (D65).
+- **Parallel worktrees (FM-11):** Chat can spawn extra worktrees with visible paths and merge/discard per tree.
+- **Memory search (FM-12):** Settings → General can search `.clutch/memory`; clicking a hit opens the file.
+- **Design visual review (FM-16):** Handoff step 1 shows a render shot with Approve/Reject; Reject iterates.
+- **Interpreter errors (FM-17):** Timeout/offline shell failures show a structured Chat card (not a traceback); no + preview.
+- **Validation strip (FM-18):** Failed node validation is readable in Chat and Overview.
+- **Performance baseline (FM-20 / OSR-29):** [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md) §1.1 records dated local numbers (health, templates, `verify.sh`).
+- **Apple notarization process (FM-21 / OSR-11):** [`docs/APPLE_NOTARIZATION.md`](docs/APPLE_NOTARIZATION.md) — still **blocked** (no Developer account); unsigned DMG + D31 remain.
+- **External audit process (FM-22 / OSR-22):** [`docs/EXTERNAL_AUDIT.md`](docs/EXTERNAL_AUDIT.md) — how to commission; report index [`docs/security-audit/`](docs/security-audit/) (none yet).
+
+- **Workspace MEMORY.md (B-39):** Saying `记住：…` / `remember:` writes `.clutch/memory/MEMORY.md` (open in Files). Next Chat turns inject that overview. Settings Memory copy points at the file.
+- **Verification notes (B-40):** Passing/failing `submit_verification` appends `Worked:` / `Failed:` to that file.
+- **Memory poison filter (B-45):** Webpage-style “please remember” + URL, or a bare URL, is refused for both `.clutch/memory/MEMORY.md` and Settings Memory (`remember_preference` errors instead of “saved”).
+- **Eval ablation + trajectory (B-48):** Maintainer eval can drop optional prompt layers (`CLUTCH_AGENT_EVAL_ABLATION=all` or `skills,memory,…`) and append JSONL records under `runs/archive/eval/` (secrets stripped). No Chat/Settings UI.
+- **Agent eval harness (B-34):** Maintainer-only prompt-layer snapshots (same config → same fingerprint; `env`/clock omitted from the hash, **not removed from the live prompt**) plus an optional Agnes live set gated by `CLUTCH_AGENT_EVAL_LIVE=1` (CC Switch or Clutch key; CI never binds secrets). No Chat/Settings UI change. Moving clock/todos to a trailing `<agent_status>` is B-35, not this.
+
+### Changed
+
+- **Dependencies:** lucide-react 1.33.0, @xyflow/react 12.11.3, @google/genai 2.18.0, @vitejs/plugin-react 6.1.0, vite 8.2.2, @playwright/test 1.62.1 (patch catch-up). Deferred majors: motion 13, @types/node 26, cryptography 50.
+- **No-progress loop (B-38):** Repeating `read_file` / `list_dir` / `grep` / `read_skill` with the same arguments nudges on the 2nd call and stops the turn on the 3rd (Continue, same as D9 fuse). Writes are not counted.
+- **Tool ACI (B-41):** `list_dir` / `read_file` / `grep` / `web_search` say when not to use them. Filename-shaped `grep` (e.g. `README.md`) is rewritten to `list_dir` so Chat shows **List**, not Search.
+- **Archived tool results (B-44):** Offloaded tool dumps are marked `source=tool truncated=yes`.
+- **Verification gate (B-37):** Claiming `submit_verification` passed now runs the workspace test suite when one exists and checks listed `changed_files` are on disk. Failures force the existing D5 card to failed (extra harness steps). No second LLM reviewer, no new card.
+- **Layered context (B-36):** ReAct tool results offload to `runs/archive/tool_results/` when large, drop duplicate/empty noise, then batch-offload older tools past a mid threshold. Full `/compact` digest remains the last resort (D8). No new Chat bubble.
+- **Trailing agent status (B-35):** Local time and full Todo/plan leave the system prefix (`env` keeps OS/shell/workspace only). Each turn replaces one trailing `<agent_status>` user block (`attach_trailing_status`). Agent Manager layer list shows `agent_status`.
+- **Chat runner split (DECISIONS D38 Phase 1):** Extract message/history/seal helpers (`chat_messages.py`), WebSocket send helpers (`chat_ws_events.py`), and MCP/Plan/Question gate helpers (`chat_mcp_gates.py`) from `chat_runner.py`; orchestration stays in `chat_runner` with re-exports for existing imports. Drop unused duplicate Request schema re-exports from `chat_runner`/`main`.
+
+### Fixed
+
+- **Desktop white screen (FM-08/FM-03):** `ChatInputBar` and `AiToolsManager` called `useLanguage` without importing it, so WKWebView showed “Can't find variable: useLanguage” and hid the whole chrome (desktop E2E never reached `nav-new-chat`).
+- **Overview panel crash:** `RightPanel` called `useHostOs` without importing it, so WKWebView showed “Can't find variable: useHostOs” and never rendered Session Token Analytics.
+- **E2E fake LLM never echoed:** `CLUTCH_E2E_FAKE_LLM` still required a real Agnes key before the Echo stub ran, so chat replies were “No API key configured…” and usage fell back to word-count. Dummy keys are injected on the fake router.
+- **Agent local clock on UTC hosts:** `_format_local_time` keeps a timezone-aware stamp (does not convert it to the machine TZ), so GitHub Actions/CI no longer fail the UTC+8 clock assertion.
+- **Spurious verification card on remember/Q&A:** `submit_verification` no longer publishes a Chat card (or a MEMORY.md `Worked:` line) unless this session edited files or you asked for a report. A leftover card from an earlier turn is not copied onto later replies (saying `记住：…` will not revive `still_missing.py`).
+- **Hello / git red-X on a plain folder:** When the workspace is not a git repo, Clutch hides `git_status` / `git_diff` / `git_commit` (same honesty as Memory-off / network-off) and a leftover call returns a plain note instead of `Error executing tool: fatal: not a git repository…` (no Chat red-X).
+- **Chat Markdown tables:** GFM pipe tables (`| col | … |` + `|---|`) in assistant replies render as real HTML tables (with inline `code` / bold in cells) instead of raw pipe text.
+- **Chat scroll after tool turns (Q-UI-1):** Assistant replies no longer sit below the input dock with a dead scrollport — chat uses a dedicated inner scroller (flex shell no longer owns `overflow-y-auto`).
+- **Local clock in agent prompt:** Environment layer injects `Local time: YYYY-MM-DD HH:MM:SS TZ (UTC±HH:MM)` so Ollama/local models can answer 「现在几点」 without guessing or needing `date`.
+- **Same-tool fuse (D44):** Repeated failures of the same tool (e.g. `generate_image`) soft-nudge at 2 and hard-block at 3 this turn; `todo_write` / other meta-tool successes no longer reset the D9 consecutive-failure streak (closes the fail→todo→retry laundering gap).
+
 ## [1.3.0] - 2026-07-28
 
 ### Changed

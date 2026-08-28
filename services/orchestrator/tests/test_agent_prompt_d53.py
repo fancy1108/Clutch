@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -73,6 +74,7 @@ def test_tools_layer_requires_network_tools_for_live_facts(
     workspace_mod._workspaces = {}
     workspace_mod._active_id = None
     workspace_mod.add_workspace(str(tmp_path))
+    subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
     save_allow_network(False)
 
     assembly = compose_agent_prompt_assembly(
@@ -87,6 +89,7 @@ def test_tools_layer_requires_network_tools_for_live_facts(
     assert "web_fetch" in tools.content
     assert "wttr.in" in tools.content
     assert "never claim you lack access" in tools.content
+    assert "explicitly asked to commit" in tools.content
 
 
 def test_workspace_rules_injected_and_isolated(

@@ -110,13 +110,6 @@ def _resolve_server(server_id: str) -> dict[str, Any]:
         }
     for item in load_servers():
         if item.get("id") == sid:
-            if item.get("transport") == "sse":
-                raise ValueError(
-                    tr(
-                        "SSE transport cannot list resources yet",
-                        "SSE 传输尚不可列出 resources",
-                    )
-                )
             env = item.get("env") if isinstance(item.get("env"), dict) else None
             return {
                 "id": sid,
@@ -136,7 +129,7 @@ def _list_resources_sync(server: dict[str, Any]) -> list[dict[str, Any]]:
         str(server.get("endpoint") or ""),
         env=server.get("env"),
     )
-    if not client.start():
+    if not client.start(oauth_proxy=True):
         raise RuntimeError(client.last_error or "Failed to start MCP server")
     try:
         resources = client.list_resources()
@@ -168,7 +161,7 @@ def _read_resource_sync(server: dict[str, Any], uri: str) -> dict[str, Any]:
         str(server.get("endpoint") or ""),
         env=server.get("env"),
     )
-    if not client.start():
+    if not client.start(oauth_proxy=True):
         raise RuntimeError(client.last_error or "Failed to start MCP server")
     try:
         result = client.read_resource(uri)

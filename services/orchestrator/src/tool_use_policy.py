@@ -21,6 +21,12 @@ from src.deliverable_intent import (
 NETWORK_SOFT_BUDGET = 3
 NETWORK_HARD_BUDGET = 5
 
+# Same-tool thrash (Cursor/Claude-style): soft nudge then hard-block further calls
+# to that tool name this turn. Tighter than network — retrying the identical failing
+# tool is almost never useful (esp. generate_image / apply_patch).
+SAME_TOOL_SOFT_BUDGET = 2
+SAME_TOOL_HARD_BUDGET = 3
+
 # --- Intent heuristics (user turn) ---
 
 _NETWORK_RE = re.compile(
@@ -102,9 +108,63 @@ _REFUSAL_RE = re.compile(
 
 _NETWORK_TOOLS = frozenset({"web_search", "web_fetch", "internet_search", "search_web"})
 _READ_TOOLS = frozenset({"read_file", "list_dir", "grep"})
+_FILE_EXT = (
+    "md|txt|json|py|ts|tsx|js|jsx|mjs|cjs|rs|go|toml|yml|yaml|html|htm|css|"
+    "sh|env|lock|c|h|java|kt|swift|rb|php"
+)
+_FILENAME_GREP_RE = re.compile(rf"^[\w.-]+\.(?:{_FILE_EXT})$", re.IGNORECASE)
+_FILE_EXISTS_RE = re.compile(
+    r"("
+    r"不要读文件内容|"
+    r"有没有叫.{0,80}的文件|"
+    r"找出工作区里有没有|"
+    r"find (if )?(there'?s |there is )?(a )?file named|"
+    r"is there (a )?file named|"
+    r"does (a )?file named"
+    r")",
+    re.IGNORECASE,
+)
+_FILE_SCOPE_RE = re.compile(rf"\.({_FILE_EXT})$", re.IGNORECASE)
 _WRITE_TOOLS = frozenset({"search_replace", "apply_patch", "run_terminal_cmd"})
 _GIT_TOOLS = frozenset({"git_status", "git_diff", "git_commit"})
 _SHELL_TOOLS = frozenset({"run_terminal_cmd"})
+
+_COMMIT_ASK_RE = re.compile(
+    r"("
+    r"\bgit\s+commit\b|"
+    r"\b(please\s+)?commit\b|"
+    r"提交(代码|改动|变更|一下|吧)?|"
+    r"做成提交|帮我提交"
+    r")",
+    re.IGNORECASE,
+)
+_COMMIT_FORBID_RE = re.compile(
+    r"(不要提交|别提交|don'?t\s+commit|do\s+not\s+commit)",
+    re.IGNORECASE,
+)
+
+_SHELL_GIT_COMMIT_RE = re.compile(r"\bgit\s+commit\b", re.IGNORECASE)
+
+GIT_COMMIT_NOT_REQUESTED = (
+    "Commit skipped: the user did not ask to commit. "
+    "Leave changes uncommitted; do not call git_commit or run `git commit` in the shell "
+    "unless they explicitly request a commit / 提交."
+)
+
+
+def user_asked_to_commit(text: str) -> bool:
+    raw = text or ""
+    if _COMMIT_FORBID_RE.search(raw):
+        return False
+    return bool(_COMMIT_ASK_RE.search(raw))
+
+
+def command_includes_git_commit(command: str) -> bool:
+    return bool(_SHELL_GIT_COMMIT_RE.search(command or ""))
+
+
+def git_commit_not_requested_result() -> str:
+    return GIT_COMMIT_NOT_REQUESTED
 
 
 def short_tool_name(name: str) -> str:
@@ -113,6 +173,70 @@ def short_tool_name(name: str) -> str:
 
 def is_network_tool(name: str) -> bool:
     return short_tool_name(name) in _NETWORK_TOOLS
+
+
+def looks_like_filename_grep(pattern: str) -> bool:
+    """True when grep is being used to find a file by name, not search contents."""
+    raw = (pattern or "").strip()
+    if not raw:
+        return False
+    core = raw[1:] if raw.startswith("^") else raw
+    if core.endswith("$"):
+        core = core[:-1]
+    unescaped = core.replace(r"\.", ".")
+    if re.search(r"[\\^$*+?()[\]{}|]", unescaped):
+        return False
+    name = unescaped.replace("\\", "/").rsplit("/", 1)[-1]
+    return bool(_FILENAME_GREP_RE.match(name))
+
+
+def _scope_looks_like_file(path: str) -> bool:
+    raw = (path or "").strip().replace("\\", "/").rstrip("/")
+    if not raw or raw in {".", ".."}:
+        return False
+    return bool(_FILE_SCOPE_RE.search(raw.rsplit("/", 1)[-1]))
+
+
+def apply_filename_grep_rewrite(
+    func_name: str, func_args: dict | None
+) -> tuple[str, dict]:
+    """Rewrite filename-shaped grep calls to list_dir so Chat shows List, not Search."""
+    args = dict(func_args or {})
+    if short_tool_name(func_name) != "grep":
+        return func_name, args
+    if not looks_like_filename_grep(str(args.get("pattern") or "")):
+        return func_name, args
+    if _scope_looks_like_file(str(args.get("path") or "")):
+        return func_name, args
+    list_path = str(args.get("path") or ".").strip() or "."
+    if "__" in func_name:
+        prefix = func_name.split("__", 1)[0]
+        return f"{prefix}__list_dir", {"path": list_path}
+    return "list_dir", {"path": list_path}
+
+
+def same_tool_soft_budget() -> int:
+    import os
+
+    raw = (os.environ.get("CLUTCH_SAME_TOOL_SOFT_FAILURES") or "").strip()
+    if not raw:
+        return SAME_TOOL_SOFT_BUDGET
+    try:
+        return max(1, int(raw))
+    except ValueError:
+        return SAME_TOOL_SOFT_BUDGET
+
+
+def same_tool_hard_budget() -> int:
+    import os
+
+    raw = (os.environ.get("CLUTCH_SAME_TOOL_HARD_FAILURES") or "").strip()
+    if not raw:
+        return SAME_TOOL_HARD_BUDGET
+    try:
+        return max(same_tool_soft_budget(), int(raw))
+    except ValueError:
+        return SAME_TOOL_HARD_BUDGET
 
 
 def network_budget_stop_nudge(
@@ -141,6 +265,39 @@ def network_budget_exhausted_result(
     )
 
 
+def same_tool_stop_nudge(tool: str, *, used: int, soft: int | None = None) -> str:
+    soft = SAME_TOOL_SOFT_BUDGET if soft is None else soft
+    name = short_tool_name(tool) or "tool"
+    if name in {"generate_image", "generate_video"}:
+        return (
+            f"[System reminder — stop retrying {name}] Already failed {used} times "
+            f"(soft budget {soft}). Do NOT call `{name}` again this turn. "
+            "Continue remaining work (HTML / files / todos). Tell the user media "
+            "generation failed and how to fix it (Settings → Models key / network). "
+            "Do NOT write an HTML page as a fake image/video."
+        )
+    return (
+        f"[System reminder — stop retrying {name}] Already failed {used} times "
+        f"(soft budget {soft}). Do NOT call `{name}` again with the same approach. "
+        "Change strategy or finish with other tools."
+    )
+
+
+def same_tool_exhausted_result(tool: str, *, used: int, hard: int | None = None) -> str:
+    hard = SAME_TOOL_HARD_BUDGET if hard is None else hard
+    name = short_tool_name(tool) or "tool"
+    if name in {"generate_image", "generate_video"}:
+        return (
+            f"Error: tool failure budget exhausted for `{name}` ({used}/{hard}). "
+            "Do not retry media generation this turn. Continue with other deliverables "
+            "(e.g. HTML) and tell the user image/video generation failed."
+        )
+    return (
+        f"Error: tool failure budget exhausted for `{name}` ({used}/{hard}). "
+        "Do not call this tool again this turn; change strategy or finish without it."
+    )
+
+
 @dataclass(frozen=True)
 class ToolExpect:
     kind: str
@@ -165,6 +322,11 @@ _NUDGES = {
         "Call `web_search` (if listed) or `web_fetch` on a concrete public URL "
         "(e.g. https://wttr.in/Shanghai?format=3 for weather).",
     ),
+    "file_exists": _nudge(
+        "file_exists",
+        "Call `list_dir` on the workspace (usually path `.`). "
+        "Do NOT grep a filename and do NOT read_file — existence is a directory listing.",
+    ),
     "workspace_read": _nudge(
         "workspace_read",
         "Call `list_dir`, `read_file`, and/or `grep` on the workspace — do not invent file contents.",
@@ -183,7 +345,8 @@ _NUDGES = {
     ),
     "git": _nudge(
         "git",
-        "Call `git_status` / `git_diff` / `git_commit` as appropriate — do not invent git output.",
+        "Call `git_status` / `git_diff` as appropriate — do not invent git output. "
+        "Call `git_commit` only if the user explicitly asked to commit / 提交.",
     ),
     "shell": _nudge(
         "shell",
@@ -237,6 +400,8 @@ def classify_tool_expectation(
         return _NUDGES["shell"]
     if _WORKSPACE_WRITE_RE.search(text) and available_tools & _WRITE_TOOLS:
         return _NUDGES["workspace_write"]
+    if _FILE_EXISTS_RE.search(text) and "list_dir" in short_tools:
+        return _NUDGES["file_exists"]
     if _WORKSPACE_READ_RE.search(text) and available_tools & _READ_TOOLS:
         return _NUDGES["workspace_read"]
     return None

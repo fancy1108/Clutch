@@ -28,10 +28,10 @@ def test_probe_bad_command_readable_error() -> None:
     assert "not found" in result["error"].lower() or "failed" in result["error"].lower()
 
 
-def test_probe_http_endpoint_honest() -> None:
-    result = _probe_endpoint_sync("https://example.com/mcp/sse")
+def test_probe_http_endpoint_refused() -> None:
+    result = _probe_endpoint_sync("http://127.0.0.1:1/mcp")
     assert result["ok"] is False
-    assert "SSE" in (result["error"] or "") or "HTTP" in (result["error"] or "")
+    assert result["error"]
 
 
 @pytest.mark.asyncio
@@ -61,25 +61,24 @@ def test_api_test_endpoint_bad_command(mcp_data_dir: Path) -> None:
     assert body["toolsCount"] == 0
 
 
-def test_api_test_legacy_sse_honest(mcp_data_dir: Path) -> None:
+def test_api_test_http_refused(mcp_data_dir: Path) -> None:
     del mcp_data_dir
     from src import mcp_storage
 
-    # Persist a legacy SSE row (pre-D39) without going through register_server.
     mcp_storage.save_servers(
         [
             {
-                "id": "mcp_legacy_sse",
+                "id": "mcp_http_down",
                 "name": "Remote",
                 "type": "remote",
                 "transport": "sse",
-                "endpoint": "https://example.com/mcp/sse",
+                "endpoint": "http://127.0.0.1:1/mcp",
                 "enabled": True,
             }
         ]
     )
-    probed = client.post("/api/mcp/servers/test", json={"id": "mcp_legacy_sse"})
+    probed = client.post("/api/mcp/servers/test", json={"id": "mcp_http_down"})
     assert probed.status_code == 200
     body = probed.json()
     assert body["ok"] is False
-    assert "stdio" in body["error"].lower() or "sse" in body["error"].lower()
+    assert body["error"]

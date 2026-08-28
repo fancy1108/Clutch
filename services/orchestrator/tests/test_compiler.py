@@ -77,3 +77,16 @@ def test_invoke_failed_check_pauses_at_human_gate() -> None:
     assert result["active_node_id"] == "n2"
     assert result["check_result"] == "failed"
     assert compiled.get_state(workflow_run_config(run_id)).next == ("n3",)
+
+
+def test_handle_check_failed_emits_validation_failed_chat_message() -> None:
+    """FM-18: check failure is a readable Chat badge, not only a graph status."""
+    from src.compiler.compiler import _handle_check
+
+    state = initial_compiler_state("run_fm18")
+    state["check_result"] = "failed"
+    out = _handle_check(state, {"id": "chk", "type": "check", "data": {}}, {})
+    msgs = out["task_messages"]
+    assert any(m.get("badgeText") == "VALIDATION FAILED" for m in msgs)
+    assert any("Checks failed" in str(m.get("text", "")) for m in msgs)
+    assert any(m.get("status") == "FAILED" for m in msgs)

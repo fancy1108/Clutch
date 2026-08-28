@@ -43,6 +43,7 @@
 |------|------|
 | [`GETTING_STARTED.md`](./GETTING_STARTED.md) | **新手入门** — 安装后首聊、向导步骤、常见配置（中英双语） |
 | [`INSTALL.md`](./INSTALL.md) | DMG / Windows 安装、Gatekeeper、应用内更新、首次使用、卸载 |
+| [`APPLE_NOTARIZATION.md`](./APPLE_NOTARIZATION.md) | Apple 签名/公证步骤；无账号则阻塞（D31 / FM-21） |
 | [`UPDATES.md`](./UPDATES.md) | macOS 应用内自动更新（OSR-20）· 维护者 go-live 清单 |
 | [`BUILD_FROM_SOURCE.md`](./BUILD_FROM_SOURCE.md) | 克隆、依赖、`pnpm tauri:dev`、本地打包 |
 | [`DATA_AND_PRIVACY.md`](./DATA_AND_PRIVACY.md) | 本地数据目录、第三方 LLM、用户权利 |
@@ -57,6 +58,7 @@
 | [`GOVERNANCE.md`](./GOVERNANCE.md) | 维护者决策与合并政策 |
 | [`document-governance.md`](./document-governance.md) | 五层架构、权威真相（SoT）、文档生命周期与归档 |
 | 根目录 [`SECURITY.md`](../SECURITY.md) | 漏洞私密报告（GitHub 约定放根目录） |
+| [`EXTERNAL_AUDIT.md`](./EXTERNAL_AUDIT.md) | 外包审计委托；报告索引 [`security-audit/`](./security-audit/)（FM-22） |
 | 根目录 [`CODE_OF_CONDUCT.md`](../CODE_OF_CONDUCT.md) | 社区行为准则 |
 | 根目录 [`CHANGELOG.md`](../CHANGELOG.md) | 版本变更记录（Release 硬门禁） |
 | [`releases/`](./releases/) | 各版本产品快照（历史；当前见 `PRODUCT_INTRO.md`） |

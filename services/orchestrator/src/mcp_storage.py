@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import json
 import os
-import sys
 import uuid
 from pathlib import Path
 from typing import Any
@@ -47,8 +46,8 @@ def save_servers(servers: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return servers
 
 
-# D39 — runtime is stdio-only; SSE may still appear in legacy saved configs.
-RUNNABLE_TRANSPORTS = frozenset({"stdio"})
+# D39 — stdio (local command) and sse (Streamable HTTP URL) are both runnable.
+RUNNABLE_TRANSPORTS = frozenset({"stdio", "sse"})
 
 
 def validate_server_payload(
@@ -65,13 +64,6 @@ def validate_server_payload(
         raise ValueError(tr("Name cannot be empty", "名称不能为空"))
     if mode not in VALID_TRANSPORTS:
         raise ValueError(tr("Transport type must be stdio or sse", "传输类型须为 stdio 或 sse"))
-    if mode == "sse" and not allow_legacy_sse:
-        raise ValueError(
-            tr(
-                "SSE/HTTP transport is not available yet — register a stdio command instead",
-                "SSE/HTTP 传输尚未可用 — 请改用 stdio 命令注册",
-            )
-        )
     if not cmd:
         raise ValueError(tr("Endpoint cannot be empty", "端点不能为空"))
     if mode == "sse":
@@ -162,6 +154,18 @@ def clear_tools_cache(endpoint: str | None = None) -> None:
     _cached_tools.pop(endpoint, None)
 
 
+_oauth_login_url: str | None = None
+
+
+def peek_oauth_login_url() -> str | None:
+    return _oauth_login_url
+
+
+def _set_oauth_login_url(url: str) -> None:
+    global _oauth_login_url
+    _oauth_login_url = url
+
+
 def _probe_endpoint_sync(
     endpoint: str,
     *,
@@ -169,6 +173,7 @@ def _probe_endpoint_sync(
     name: str = "probe",
 ) -> dict[str, Any]:
     """Connect once and list tools; return readable ok/error (D38)."""
+    from src import mcp_client as mcp_client_mod
     from src.mcp_client import McpClient
 
     if not (endpoint or "").strip():
@@ -178,22 +183,25 @@ def _probe_endpoint_sync(
             "tools": [],
             "error": "Missing MCP endpoint / command",
         }
-    transport_hint = endpoint.strip().lower()
-    if transport_hint.startswith("http://") or transport_hint.startswith("https://"):
-        return {
-            "ok": False,
-            "toolsCount": 0,
-            "tools": [],
-            "error": "SSE/HTTP remote transport is not runnable yet — use stdio command, or wait for D39",
-        }
 
+    global _oauth_login_url
+    _oauth_login_url = None
+    mcp_client_mod.login_url_hook = _set_oauth_login_url
     client = McpClient(name, endpoint, env=env)
-    if not client.start():
+    try:
+        started = client.start(oauth_proxy=True)
+    finally:
+        mcp_client_mod.login_url_hook = None
+    if not started:
+        error = client.last_error or "Failed to start MCP server"
+        if _oauth_login_url and _oauth_login_url not in error:
+            error = f"{error} Login URL: {_oauth_login_url}"
         return {
             "ok": False,
             "toolsCount": 0,
             "tools": [],
-            "error": client.last_error or "Failed to start MCP server",
+            "error": error,
+            "loginUrl": _oauth_login_url,
         }
     try:
         tools = client.list_tools()
@@ -254,15 +262,6 @@ async def probe_server_by_id(server_id: str) -> dict[str, Any]:
             env_str = (
                 {str(k): str(v) for k, v in env.items()} if isinstance(env, dict) else None
             )
-            if item.get("transport") == "sse":
-                return {
-                    "id": sid,
-                    "name": item.get("name") or sid,
-                    "ok": False,
-                    "toolsCount": 0,
-                    "tools": [],
-                    "error": "SSE transport is registered but not runnable yet (stdio only until D39)",
-                }
             result = await asyncio.to_thread(
                 _probe_endpoint_sync,
                 str(item.get("endpoint") or ""),
@@ -299,55 +298,6 @@ def save_raw_config(servers_list: list[dict[str, Any]]) -> list[dict[str, Any]]:
         validated.append(entry)
     save_servers(validated)
     return validated
-
-
-def import_from_claude() -> list[dict[str, Any]]:
-    imported_count = 0
-    servers = load_servers()
-    paths = []
-    if sys.platform == "darwin":
-        paths.append(Path.home() / "Library/Application Support/Claude/claude_desktop_config.json")
-    elif sys.platform == "win32":
-        appdata = os.environ.get("APPDATA")
-        if appdata:
-            paths.append(Path(appdata) / "Claude" / "claude_desktop_config.json")
-    paths.append(Path.home() / ".claude.json")
-
-    for path in paths:
-        if not path.is_file():
-            continue
-        try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-            mcp_servers = data.get("mcpServers") or {}
-            for name, cfg in mcp_servers.items():
-                cmd = cfg.get("command")
-                args = cfg.get("args") or []
-                env = cfg.get("env") or {}
-                if not cmd:
-                    continue
-                endpoint_cmd = cmd
-                if args:
-                    import shlex
-                    endpoint_cmd = cmd + " " + " ".join(shlex.quote(arg) for arg in args)
-                exists = any(s.get("endpoint") == endpoint_cmd for s in servers)
-                if not exists:
-                    entry = {
-                        "id": f"mcp_{uuid.uuid4().hex[:8]}",
-                        "name": f"Claude {name}",
-                        "type": "local",
-                        "transport": "stdio",
-                        "endpoint": endpoint_cmd,
-                        "enabled": True,
-                    }
-                    if env:
-                        entry["env"] = env
-                    servers.append(entry)
-                    imported_count += 1
-        except Exception:
-            continue
-    if imported_count > 0:
-        save_servers(servers)
-    return servers
 
 
 async def serialize_server_status(server: dict[str, Any]) -> dict[str, Any]:

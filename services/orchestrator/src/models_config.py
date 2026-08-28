@@ -502,13 +502,35 @@ def _e2e_fake_router() -> LLMProviderRouter:
             timeout_sec: float = 20.0,
         ) -> dict[str, Any] | str:
             _ = (provider_id, base_url, api_model, api_key, tools, timeout_sec)
-            # If the last message is a tool response, we can just echo it
             last_msg = messages[-1]
+            text = last_msg.get("content")
             if last_msg["role"] == "tool":
-                return f"Echo Tool Response: {last_msg['content']}"
-            return f"Echo: {last_msg['content']}"
+                content = f"Echo Tool Response: {text}"
+            else:
+                content = f"Echo: {text}"
+            # Q-USAGE-1: provider-shaped usage so Overview E2E can assert true meters.
+            return {
+                "content": content,
+                "usage": {
+                    "prompt_tokens": 11,
+                    "completion_tokens": 7,
+                    "total_tokens": 18,
+                },
+            }
 
         router._chat = _fake_chat  # type: ignore[method-assign]
+        # router.chat() requires a key before calling _chat; E2E must not hit the network.
+        for pid in (
+            "deepseek",
+            "openai",
+            "anthropic",
+            "google",
+            "ollama",
+            "agnes",
+            "opencode",
+            "custom",
+        ):
+            router.set_api_key(pid, "e2e-fake-key")
         _E2E_ROUTER = router
     return _E2E_ROUTER
 

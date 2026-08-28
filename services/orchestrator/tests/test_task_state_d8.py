@@ -37,7 +37,7 @@ def test_latest_plan_card_skips_cancelled() -> None:
     assert card["title"] == "Live"
 
 
-def test_assembly_includes_task_state_layer() -> None:
+def test_assembly_puts_todos_in_trailing_status_not_prefix() -> None:
     assembly = compose_agent_prompt_assembly(
         {
             "id": "clutch-agent",
@@ -55,7 +55,9 @@ def test_assembly_includes_task_state_layer() -> None:
         plan_card={"title": "D8", "status": "approved", "steps": ["Pin todos"]},
     )
     names = [layer.name for layer in assembly.layers]
-    assert "task_state" in names
-    task = next(layer for layer in assembly.layers if layer.name == "task_state")
-    assert "Finish D8" in task.content
-    assert "D8" in task.content
+    assert "task_state" not in names
+    assert "agent_status" in names
+    status = assembly.agent_status_text()
+    assert "Finish D8" in status
+    assert "D8" in status
+    assert "Finish D8" not in assembly.as_system_prompt()

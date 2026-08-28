@@ -164,6 +164,7 @@ export interface QuestionCard {
   selectedId?: string;
   selectedLabel?: string;
   note?: string;
+  kind?: 'question' | 'new_info';
 }
 
 export type VerificationConclusion = 'passed' | 'failed';
@@ -355,6 +356,7 @@ export type WebSocketEvent =
   | 'hybrid_execution'
   | 'log'
   | 'file_changed'
+  | 'files_committed'
   | 'validation_result'
   | 'human_required'
   | 'run_completed'
@@ -410,8 +412,10 @@ export interface ClutchState {
   session_tokens?: number;
   session_cost_usd?: number;
   token_input?: number;
-  token_output?: number;
-  /** D9: Chat-visible step/token counters (live while running). */
+    token_output?: number;
+    /** Q-USAGE-1: true when meters used word-count (or mixed) instead of provider usage. */
+    usage_estimated?: boolean;
+    /** D9: Chat-visible step/token counters (live while running). */
   run_stats?: {
     tool_steps?: number;
     max_steps?: number;

@@ -87,3 +87,7 @@ See [`README.md`](README.md) §安全与 CLI 权限 and decision **D30** in [`me
 ## Secure development
 
 Contributors: follow [`CLAUDE.md`](CLAUDE.md) — no secrets in commits or logs. Run `./scripts/verify.sh` before PRs that touch application code.
+
+## Paid / third-party audits (OSR-22)
+
+Vulnerability **intake** is this file. Commissioning an external review, NDA, and where reports live: [`docs/EXTERNAL_AUDIT.md`](docs/EXTERNAL_AUDIT.md). Public index (empty until a report exists): [`docs/security-audit/README.md`](docs/security-audit/README.md).

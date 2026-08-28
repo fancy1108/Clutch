@@ -13,7 +13,6 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import WebSocket, WebSocketDisconnect, HTTPException
-from pydantic import BaseModel, Field
 
 from src.release_hardening import api_docs_enabled, debug_api_enabled
 from src.sidecar_auth import auth_required, public_http_paths, validate_bearer, validate_token
@@ -21,13 +20,60 @@ from src.sidecar_auth import auth_required, public_http_paths, validate_bearer, 
 from src.compiler import WorkflowSession, begin_workflow, resume_workflow
 from src.run_history import append_run_record, list_runs, update_run_record, upsert_session
 from src.state import ClutchState, initial_state
-from src.workspace import WorkspaceError
 from src.workflow_storage import resolve_workflow
 from src.workflow_validator import WorkflowValidationError, load_and_validate_workflow, validate_workflow
 from src.preferences_storage import tr
 from src.terminal_logs import TAG_HUMAN, TAG_WORKFLOW, stamp_log_line, tagged
 
 logger = logging.getLogger(__name__)
+
+# D38 Stable Context Boundary — implementation modules (re-exported for main/tests)
+from src.chat_messages import (
+    _AGENT_AVATARS,
+    _chat_message,
+    _chat_time,
+    _diff_summary_for_seal,
+    _estimate_tokens,
+    _history_for_llm,
+    _merge_files_changed_with_tool_steps,
+    _sealed_subtasks,
+    _sealed_tool_steps,
+    _token_patch,
+    _token_patch_turn,
+    consume_turn_usage_patch,
+    stash_turn_usage,
+    _verification_report_for_seal,
+)
+from src.chat_ws_events import (
+    _is_terminal_status,
+    _is_ws_transport_error,
+    _notify_run_state,
+    _send_file_changed,
+    _send_files_committed,
+    _send_human_required,
+    _send_hybrid_execution_event,
+    _send_log_event,
+    _send_message_event,
+    _send_pty_output,
+    _send_pty_session_status,
+    _send_run_completed,
+    _send_state_patch,
+    _send_validation_result,
+    _serialize_clutch_state,
+    _try_ws_notify,
+)
+from src.chat_mcp_gates import (
+    _is_plan_pause,
+    _is_question_pause,
+    _mcp_pause_gate_line,
+    _mcp_pause_human_prompt,
+    _mcp_supervisor_approval_text,
+    _messages_for_mcp_pause,
+    _patch_plan_card_status,
+    _patch_question_card_status,
+    _supervisor_gate_messages,
+)
+
 
 async def _lifespan(app: FastAPI):
     from src.plain_chat_pool_queue import set_event_loop, set_refresh_handler, set_resume_handler
@@ -98,134 +144,6 @@ _human_decision_locks: dict[str, threading.Lock] = {}
 
 _human_decision_inflight: set[str] = set()
 
-class StartRunRequest(BaseModel):
-    workflow_id: str = Field(default="video-production")
-    instruction: str = Field(default="")
-
-class ValidateWorkflowRequest(BaseModel):
-    workflow_id: str | None = None
-    workflow: dict[str, Any] | None = None
-
-class SaveUserWorkflowRequest(BaseModel):
-    workflow: dict[str, Any]
-
-class WorkspaceRequest(BaseModel):
-    path: str
-
-class RepositoryGroupRequest(BaseModel):
-    name: str
-
-class RepositoryGroupUpdateRequest(BaseModel):
-    name: str | None = None
-    collapsed: bool | None = None
-    workspace_ids: list[str] | None = None
-
-class AgentsSaveRequest(BaseModel):
-    agents: list[dict[str, Any]]
-
-class AgentPromptGenerateRequest(BaseModel):
-    name: str
-    description: str = Field(default="")
-
-class ModelsConfigRequest(BaseModel):
-    active_model_id: str | None = None
-    provider_id: str | None = None
-    api_key: str | None = None
-
-class OpenCodeZenListRequest(BaseModel):
-    api_key: str | None = None
-
-class ModelTestRequest(BaseModel):
-    model_id: str
-
-class CustomImageModelRequest(BaseModel):
-    name: str
-    api_model: str
-    base_url: str
-    provider_id: str = Field(default="custom")
-    image_backend: str = Field(default="")
-    api_key: str | None = None
-
-class CustomChatModelRequest(BaseModel):
-    name: str
-    api_model: str
-    base_url: str
-    provider_id: str = Field(default="custom")
-    api_key: str | None = None
-
-class CustomVideoModelRequest(BaseModel):
-    name: str
-    api_model: str
-    base_url: str
-    provider_id: str = Field(default="custom")
-    video_backend: str = Field(default="agnes")
-    api_key: str | None = None
-
-class CustomModelUpdateRequest(BaseModel):
-    name: str
-    api_model: str
-    base_url: str
-    api_key: str | None = None
-
-class ToolConnectRequest(BaseModel):
-    tool_id: str
-
-class ReassignRequest(BaseModel):
-    instructions: str = Field(default="reassign_to_builder")
-
-class HumanDecisionRequest(BaseModel):
-    decision: str = Field(default="approve")
-    instructions: str = Field(default="")
-
-class SessionCreateRequest(BaseModel):
-    run_id: str
-    title: str = Field(default="New session")
-    workflow_id: str = Field(default="")
-    mode: str = Field(default="coding")
-    status: str | None = None
-
-class SkillsMountRequest(BaseModel):
-    path: str
-
-class SkillsToggleRequest(BaseModel):
-    key: str
-    is_active: bool = Field(default=True)
-
-class McpRegisterRequest(BaseModel):
-    name: str
-    transport: str = Field(default="stdio")
-    endpoint: str
-
-class McpServerIdRequest(BaseModel):
-    id: str
-    enabled: bool | None = None
-
-class McpSaveConfigRequest(BaseModel):
-    servers: list[dict[str, Any]]
-
-class CliActivateProviderRequest(BaseModel):
-    provider_id: str
-
-class CliActivateModelRequest(BaseModel):
-    model_ref: str
-
-class ThemePreferenceRequest(BaseModel):
-    theme_id: str
-
-class LanguagePreferenceRequest(BaseModel):
-    language: str
-
-class PermissionModeRequest(BaseModel):
-    mode: str
-
-class FontSizePreferenceRequest(BaseModel):
-    font_size: str
-
-class AvatarPreferenceRequest(BaseModel):
-    avatar: str
-
-class UserNamePreferenceRequest(BaseModel):
-    user_name: str
 
 def _skills_registry_payload(*, rescan: bool = True) -> dict[str, Any]:
     from src.skills_scanner import scan_mounted_directories
@@ -796,22 +714,34 @@ def _worktree_isolation_live_patch(payload: dict[str, Any] | None) -> dict[str, 
     return {"worktree_isolation": payload}
 
 
+def _isolation_info_from_state(state: ClutchState) -> dict[str, Any] | None:
+    info = state.get("worktree_isolation")
+    if isinstance(info, dict) and info.get("enabled") and str(info.get("path") or "").strip():
+        return dict(info)
+    run_id = str(state.get("run_id") or "").strip()
+    live = _run_states.get(run_id) if run_id else None
+    if live is None or live is state:
+        return None
+    fallback = live.get("worktree_isolation")
+    if isinstance(fallback, dict) and fallback.get("enabled") and str(fallback.get("path") or "").strip():
+        return dict(fallback)
+    return None
+
+
 def _bind_worktree_from_state(state: ClutchState) -> tuple[contextvars.Token | None, contextvars.Token | None]:
     """Bind effective workspace root when D32 worktree isolation is active."""
     from src.workspace import bind_effective_workspace_root
 
-    info = state.get("worktree_isolation")
-    if not isinstance(info, dict) or not info.get("enabled"):
+    info = _isolation_info_from_state(state)
+    if info is None:
         return None, None
     wt_path = str(info.get("path") or "").strip()
-    if not wt_path:
-        return None, None
     from pathlib import Path
 
     root_token = bind_effective_workspace_root(Path(wt_path))
     from src.worktree_isolation import bind_worktree_context
 
-    wt_token = bind_worktree_context(dict(info))
+    wt_token = bind_worktree_context(info)
     return root_token, wt_token
 
 
@@ -839,19 +769,6 @@ async def _apply_foreground_shell_update(
     state = _merge_patch(state, patch)
     _commit_run_state(run_id, state)
     await _notify_run_state(websocket, run_id, state, patch)
-
-
-def _sealed_subtasks(
-    state: ClutchState,
-    *,
-    sink: list[dict[str, Any]] | None = None,
-) -> list[dict[str, Any]] | None:
-    from src.subagent_runner import upsert_subtask
-
-    subtasks = list(state.get("pending_subtasks") or [])
-    for item in sink or []:
-        subtasks = upsert_subtask(subtasks, item)
-    return subtasks or None
 
 
 def _merge_patch(state: ClutchState, patch: dict[str, Any]) -> ClutchState:
@@ -883,6 +800,7 @@ def _merge_patch(state: ClutchState, patch: dict[str, Any]) -> ClutchState:
         "pending_pty_inject",
         "run_stats",
         "awaiting_continue",
+        "worktree_isolation",
     })
     for key, value in patch.items():
         if key in merged or key in optional_keys:
@@ -913,34 +831,6 @@ def _emit_workflow_graph_tail(run_id: str, graph_result: dict[str, Any]) -> None
     if graph_result.get("status") == "awaiting_human":
         forwarder.emit(tagged(TAG_HUMAN, "Human gate reached — awaiting decision."), node_id=node_id)
 
-def _is_terminal_status(status: str) -> bool:
-    return status in {"passed", "failed"}
-
-def _serialize_clutch_state(state: ClutchState) -> dict[str, Any]:
-    return dict(state)
-
-async def _send_state_patch(websocket: WebSocket, run_id: str, patch: dict[str, Any]) -> None:
-    envelope = {
-        "event": "state_patch",
-        "data": {
-            "run_id": run_id,
-            "timestamp": _iso_timestamp(),
-            "patch": patch,
-        },
-    }
-    await websocket.send_text(json.dumps(envelope))
-
-async def _send_run_completed(websocket: WebSocket, run_id: str, state: ClutchState) -> None:
-    envelope = {
-        "event": "run_completed",
-        "data": {
-            "run_id": run_id,
-            "timestamp": _iso_timestamp(),
-            "status": state["status"],
-            "state": _serialize_clutch_state(state),
-        },
-    }
-    await websocket.send_text(json.dumps(envelope))
 
 async def _apply_bg_jobs_update(
     websocket: WebSocket,
@@ -964,158 +854,6 @@ async def _apply_bg_jobs_update(
     state = _merge_patch(state, patch)
     _commit_run_state(run_id, state)
     await _notify_run_state(websocket, run_id, state, patch)
-
-
-async def _notify_run_state(
-    websocket: WebSocket,
-    run_id: str,
-    state: ClutchState,
-    patch: dict[str, Any],
-) -> None:
-    await _send_state_patch(websocket, run_id, patch)
-    if _is_terminal_status(state["status"]):
-        await _send_run_completed(websocket, run_id, state)
-
-def _is_ws_transport_error(exc: BaseException) -> bool:
-    """True when the socket is already closed / ASGI cycle finished (not a logic bug)."""
-    if isinstance(exc, WebSocketDisconnect):
-        return True
-    msg = str(exc).lower()
-    return any(
-        token in msg
-        for token in (
-            "websocket.close",
-            "websocket.send",
-            "not connected",
-            "connection closed",
-            "asgi message",
-            "response already completed",
-        )
-    )
-
-
-async def _try_ws_notify(
-    coro: Awaitable[None],
-    *,
-    run_id: str,
-    what: str,
-) -> None:
-    try:
-        await coro
-    except WebSocketDisconnect:
-        logger.warning(
-            "WebSocket disconnected during %s run_id=%s",
-            what,
-            run_id,
-        )
-    except RuntimeError as exc:
-        if _is_ws_transport_error(exc):
-            logger.warning(
-                "WebSocket unavailable during %s run_id=%s: %s",
-                what,
-                run_id,
-                exc,
-            )
-            return
-        raise
-
-_AGENT_AVATARS: dict[str, str] = {
-    "Orchestrator": "https://lh3.googleusercontent.com/aida-public/AB6AXuA0yGh59QNLj5n0igNxMgu4lgaiNqZpcN29SpWM0JHNlAuFmOBx-Id67Zcd2NDCNBjBKrcffQrdrfoe-3XaSlveekLAP9SRis93uTk7XPPFO5y4Swos7NvATw6n7eZEm7nfAQuTiMAoWRSnxefAOJugUbZx3fCTNv4jGyjvT-UZznwKzp_HoXuStup_0juhBCZYamrV0Coil-k27d9Yi7il6NabIEG0FfbxwL5V5azpfZQOlBfpaganta2kP7n59BKPHd4K2uTOfZ5p",
-    "Builder": "https://lh3.googleusercontent.com/aida-public/AB6AXuBpRidttSGTIY-J-PGvnlcZX_oZSZoBXJY5vjZ9g1PKl_fq4EKoa2RXbcSCvvIdbPLdmfuzPKTxnR8TqV7skwsKlt-eKEzSzktv-TWbHu4c9uBEdP6Es_Fjek1EBQuGZeMtWsUi3fn0lyozFaZBLp9SpES3r0WalbqYY6gGiT1R_0J1kvU-D9rI_2q2f3sMGHuTjWyOZ5gImCLGHSGejtcKmToTSZYMrXfT_A5x1iw_f4q7WljP3FXjk64aQhLgh9nTXUDfPdkIzu0b",
-    "Evaluator": "https://lh3.googleusercontent.com/aida-public/AB6AXuCmb7VGaQXE-4sYnIZR3VrcHVAPhv4Px14kMlkayJj8kVm8htTWITmPi26wsj8P6B9RrqykIWj81S2ilmGR0e8cXhA1gjc3U-Nw0DsgHV3HvVmBskuoUksIt6YM6Z3ORjFtRhBphqAXxRKf9ke-zYcPs0TcEFKxw_bwGXSDiAKV5CL7kZf9i6lSZDe91ccUNjaAIsgTMKEEvYc7bZpXYz3D5dClulRwbNru5SZB-1E5FM0A2qMPs-IAfiR8OB1-cUvFh3WYKx9qlGgN",
-    "Supervisor": "",
-    "User": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=100",
-}
-
-def _chat_time() -> str:
-    from src.chat_events import chat_time
-
-    return chat_time()
-
-def _chat_message(
-    agent: str,
-    text: str,
-    *,
-    status: str | None = None,
-    msg_id: str | None = None,
-    runtime_engine: str | None = None,
-    raw_output: str | None = None,
-    output_events: list[dict[str, Any]] | None = None,
-    tool_steps: list[dict[str, Any]] | None = None,
-    files_changed: list[str] | None = None,
-    plan_card: dict[str, Any] | None = None,
-    todo_list: list[dict[str, Any]] | None = None,
-    question_card: dict[str, Any] | None = None,
-    verification_report: dict[str, Any] | None = None,
-    diff_summary: dict[str, Any] | None = None,
-    subtask_cards: list[dict[str, Any]] | None = None,
-    bg_job: dict[str, Any] | None = None,
-) -> dict[str, Any]:
-    payload: dict[str, Any] = {
-        "id": msg_id or f"msg_{uuid.uuid4().hex[:8]}",
-        "agent": agent,
-        "avatar": _AGENT_AVATARS.get(agent, ""),
-        "time": _chat_time(),
-        "text": text,
-    }
-    if status:
-        payload["status"] = status
-    if runtime_engine:
-        payload["runtimeEngine"] = runtime_engine
-    if raw_output is not None:
-        payload["rawOutput"] = raw_output
-    if output_events is not None:
-        payload["outputEvents"] = output_events
-    if tool_steps is not None:
-        payload["toolSteps"] = tool_steps
-    if files_changed:
-        # D47: relative paths sealed onto the assistant bubble for clickable chips.
-        payload["filesChanged"] = list(dict.fromkeys(files_changed))
-    if plan_card is not None:
-        # D49: structured plan card for Approve / revise / Cancel (D2).
-        payload["planCard"] = plan_card
-    if todo_list:
-        # D3/D49: todo checklist sealed onto the assistant turn.
-        payload["todoList"] = todo_list
-    if question_card is not None:
-        # D4/D49: multiple-choice question card.
-        payload["questionCard"] = question_card
-    if verification_report is not None:
-        # D5/D50: self-check report card.
-        payload["verificationReport"] = verification_report
-    if diff_summary is not None:
-        # D6/D50: diff review card.
-        payload["diffSummary"] = diff_summary
-    if subtask_cards:
-        # D10/D48: nested subtask cards sealed onto the assistant turn.
-        payload["subtaskCards"] = subtask_cards
-    if bg_job is not None:
-        # D11: finished background job card lives in the Chat timeline (not the composer).
-        payload["bgJob"] = bg_job
-    return payload
-
-
-def _verification_report_for_seal(
-    state: ClutchState,
-    *,
-    files_changed: list[str] | None = None,
-    mcp_pause: dict[str, Any] | None = None,
-) -> dict[str, Any] | None:
-    report = None
-    if mcp_pause and isinstance(mcp_pause.get("verification_report"), dict):
-        report = dict(mcp_pause["verification_report"])
-    elif isinstance(state.get("verification_report"), dict):
-        report = dict(state["verification_report"])  # type: ignore[arg-type]
-    if not report:
-        return None
-    paths = list(report.get("changedFiles") or [])
-    for path in files_changed or []:
-        rel = str(path).strip()
-        if rel and rel not in paths:
-            paths.append(rel)
-    if paths:
-        report["changedFiles"] = paths
-    return report
 
 
 async def _publish_verification_report(
@@ -1158,29 +896,6 @@ async def _publish_verification_report(
         {"messages": messages, "verification_report": card},
     )
     return state
-
-
-def _diff_summary_for_seal(
-    state: ClutchState,
-    *,
-    files_changed: list[str] | None = None,
-    mcp_pause: dict[str, Any] | None = None,
-) -> dict[str, Any] | None:
-    """Seal only an explicit (non-inline) DiffSummary onto the final reply.
-
-    Cursor-style inline per-edit cards are already published mid-turn; do not
-    re-attach an aggregate card under the closing text bubble.
-    """
-    card = None
-    if mcp_pause and isinstance(mcp_pause.get("diff_summary"), dict):
-        card = dict(mcp_pause["diff_summary"])
-    elif isinstance(state.get("diff_summary"), dict):
-        card = dict(state["diff_summary"])  # type: ignore[arg-type]
-    if not card or not card.get("files"):
-        return None
-    if card.get("inline"):
-        return None
-    return card
 
 
 async def _publish_diff_summary(
@@ -1253,42 +968,6 @@ async def _publish_diff_summary(
     return state
 
 
-def _sealed_tool_steps(
-    state: ClutchState,
-    *,
-    sink: list[dict[str, Any]] | None = None,
-) -> list[dict[str, Any]] | None:
-    from src.tool_steps import complete_running_steps, upsert_tool_step
-
-    steps = list(state.get("pending_tool_steps") or [])
-    for item in sink or []:
-        steps = upsert_tool_step(steps, item)
-    sealed = complete_running_steps(steps)
-    return sealed or None
-
-
-def _merge_files_changed_with_tool_steps(
-    files_changed: list[str] | None,
-    sealed_steps: list[dict[str, Any]] | None,
-) -> list[str]:
-    """Union outcome paths with D6 fileDiff paths so chips/Changes match Diff cards."""
-    merged: list[str] = []
-    for path in files_changed or []:
-        rel = str(path).strip()
-        if rel and rel not in merged:
-            merged.append(rel)
-    for step in sealed_steps or []:
-        if not isinstance(step, dict):
-            continue
-        file_diff = step.get("fileDiff")
-        if not isinstance(file_diff, dict):
-            continue
-        rel = str(file_diff.get("path") or "").strip()
-        if rel and rel not in merged:
-            merged.append(rel)
-    return merged
-
-
 def _hybrid_execution_entry(
     *,
     raw_output: str | None,
@@ -1322,375 +1001,6 @@ def _merge_hybrid_executions(
     )
     return merged
 
-async def _send_message_event(
-    websocket: WebSocket, run_id: str, message: dict[str, Any], node_id: str
-) -> None:
-    envelope = {
-        "event": "message",
-        "data": {
-            "run_id": run_id,
-            "node_id": node_id,
-            "source": "orchestrator",
-            "timestamp": _iso_timestamp(),
-            "message": message,
-        },
-    }
-    await websocket.send_text(json.dumps(envelope))
-
-async def _send_hybrid_execution_event(
-    websocket: WebSocket,
-    run_id: str,
-    *,
-    message_id: str,
-    raw_output: str | None,
-    output_events: list[dict[str, Any]] | None,
-) -> None:
-    envelope = {
-        "event": "hybrid_execution",
-        "data": {
-            "run_id": run_id,
-            "node_id": "",
-            "source": "orchestrator",
-            "timestamp": _iso_timestamp(),
-            "messageId": message_id,
-            "rawOutput": raw_output,
-            "outputEvents": output_events or [],
-        },
-    }
-    await websocket.send_text(json.dumps(envelope))
-
-def _mcp_supervisor_approval_text(func_name: str, func_args: dict[str, Any]) -> str:
-    from src.mcp_risk import normalize_mcp_func_args_for_display
-
-    detail = ""
-    if func_args:
-        display_args = normalize_mcp_func_args_for_display(func_args)
-        # Fenced JSON so Chat can Expand/scroll — do not crush to 120 chars.
-        preview = json.dumps(display_args, ensure_ascii=False, indent=2)
-        if len(preview) > 12_000:
-            preview = preview[:12_000] + "\n…(truncated)"
-        detail = f"\n\nArgs:\n```json\n{preview}\n```"
-    return tr(
-        f"MCP tool `{func_name}` requires your approval before execution.{detail}",
-        f"MCP 工具 `{func_name}` 需要您批准后才能执行。{detail}",
-    )
-
-def _supervisor_gate_messages(
-    messages: list[dict[str, Any]],
-    func_name: str,
-    func_args: dict[str, Any],
-) -> tuple[list[dict[str, Any]], dict[str, Any], bool]:
-    """Append a supervisor approval line; skip duplicate approval for the same tool intent.
-
-    Returns (messages, gate_message, created) where created=False if an existing
-    Supervisor bubble with the same approvalKey was reused (do not re-emit WS message).
-    """
-    from src.mcp_risk import mcp_approval_key
-
-    approval_key = mcp_approval_key(func_name, func_args)
-    text = _mcp_supervisor_approval_text(func_name, func_args)
-    for msg in reversed(messages[-12:]):
-        if msg.get("agent") == "Supervisor" and msg.get("approvalKey") == approval_key:
-            return messages, msg, False
-    supervisor = _chat_message("Supervisor", text)
-    supervisor["approvalKey"] = approval_key
-    return [*messages, supervisor], supervisor, True
-
-
-def _is_plan_pause(mcp_pause: dict[str, Any]) -> bool:
-    from src.builtin_tools import is_propose_plan_tool
-
-    if str(mcp_pause.get("kind") or "") == "plan":
-        return True
-    return is_propose_plan_tool(str(mcp_pause.get("func_name") or ""))
-
-
-def _is_question_pause(mcp_pause: dict[str, Any]) -> bool:
-    from src.builtin_tools import is_ask_user_question_tool
-
-    if str(mcp_pause.get("kind") or "") == "question":
-        return True
-    return is_ask_user_question_tool(str(mcp_pause.get("func_name") or ""))
-
-
-def _mcp_pause_gate_line(mcp_pause: dict[str, Any]) -> str:
-    name = mcp_pause.get("func_name")
-    if _is_plan_pause(mcp_pause):
-        return f"[CHAT] Awaiting plan approval: {name}"
-    if _is_question_pause(mcp_pause):
-        return f"[CHAT] Awaiting answer for question: {name}"
-    return f"[CHAT] Awaiting approval for MCP tool: {name}"
-
-
-def _mcp_pause_human_prompt(mcp_pause: dict[str, Any]) -> str:
-    if _is_plan_pause(mcp_pause):
-        return tr("Approve the proposed plan to continue.", "请批准计划后继续执行。")
-    if _is_question_pause(mcp_pause):
-        return tr("Choose an option to continue.", "请选择一个选项以继续。")
-    return tr(
-        f"Approve MCP tool call: {mcp_pause['func_name']}",
-        f"请审批 MCP 工具调用：{mcp_pause['func_name']}",
-    )
-
-
-def _messages_for_mcp_pause(
-    messages: list[dict[str, Any]],
-    mcp_pause: dict[str, Any],
-    *,
-    reply_label: str,
-) -> tuple[list[dict[str, Any]], dict[str, Any], bool]:
-    """Append Supervisor gate, D49 plan card, or D49 question card for a pause.
-
-    Returns (messages, pause_msg, created).
-    """
-    if _is_plan_pause(mcp_pause):
-        from src.builtin_tools import normalize_plan_args
-
-        plan = normalize_plan_args(dict(mcp_pause.get("func_args") or {}))
-        card = {
-            "title": plan["title"],
-            "steps": plan["steps"],
-            "status": "pending",
-        }
-        if plan["summary"]:
-            card["summary"] = plan["summary"]
-        plan_msg = _chat_message(
-            reply_label,
-            "",
-            plan_card=card,
-        )
-        return [*messages, plan_msg], plan_msg, True
-    if _is_question_pause(mcp_pause):
-        from src.builtin_tools import normalize_question_args
-
-        q = normalize_question_args(dict(mcp_pause.get("func_args") or {}))
-        card = {
-            "question": q["question"],
-            "options": q["options"],
-            "status": "pending",
-            "allowCustom": q["allow_custom"],
-        }
-        question_msg = _chat_message(
-            reply_label,
-            "",
-            question_card=card,
-        )
-        return [*messages, question_msg], question_msg, True
-    return _supervisor_gate_messages(
-        messages,
-        str(mcp_pause["func_name"]),
-        dict(mcp_pause.get("func_args") or {}),
-    )
-
-
-def _patch_plan_card_status(
-    messages: list[dict[str, Any]],
-    *,
-    status: str,
-    note: str | None = None,
-    step_comments: list[str] | None = None,
-) -> list[dict[str, Any]]:
-    updated = list(messages)
-    for idx in range(len(updated) - 1, -1, -1):
-        card = updated[idx].get("planCard")
-        if isinstance(card, dict) and card.get("status") == "pending":
-            next_card = {**card, "status": status}
-            if note:
-                next_card["note"] = note
-            if step_comments is not None:
-                next_card["stepComments"] = list(step_comments)
-            updated[idx] = {**updated[idx], "planCard": next_card}
-            break
-    return updated
-
-
-def _patch_question_card_status(
-    messages: list[dict[str, Any]],
-    *,
-    status: str,
-    selected: dict[str, str] | None = None,
-    note: str | None = None,
-) -> list[dict[str, Any]]:
-    updated = list(messages)
-    for idx in range(len(updated) - 1, -1, -1):
-        card = updated[idx].get("questionCard")
-        if isinstance(card, dict) and card.get("status") == "pending":
-            next_card = {**card, "status": status}
-            if selected:
-                next_card["selectedId"] = selected.get("id") or ""
-                next_card["selectedLabel"] = selected.get("label") or ""
-            if note:
-                next_card["note"] = note
-            updated[idx] = {**updated[idx], "questionCard": next_card}
-            break
-    return updated
-
-
-async def _send_human_required(
-    websocket: WebSocket,
-    run_id: str,
-    *,
-    node_id: str,
-    prompt: str,
-) -> None:
-    envelope = {
-        "event": "human_required",
-        "data": {
-            "run_id": run_id,
-            "node_id": node_id,
-            "source": "orchestrator",
-            "level": "info",
-            "message": prompt,
-            "timestamp": _iso_timestamp(),
-        },
-    }
-    await websocket.send_text(json.dumps(envelope))
-
-async def _send_pty_output(
-    websocket: WebSocket,
-    run_id: str,
-    chunk: str,
-    *,
-    node_id: str = "",
-    lane_id: str = "",
-) -> None:
-    envelope = {
-        "event": "pty_output",
-        "data": {
-            "run_id": run_id,
-            "lane_id": lane_id,
-            "node_id": node_id,
-            "source": "interactive_pty",
-            "level": "info",
-            "message": "pty output chunk",
-            "timestamp": _iso_timestamp(),
-            "chunk": chunk,
-            "encoding": "utf8",
-        },
-    }
-    await websocket.send_text(json.dumps(envelope))
-
-async def _send_pty_session_status(
-    websocket: WebSocket,
-    run_id: str,
-    status: str,
-    *,
-    node_id: str = "",
-    detail: str = "",
-    lane_id: str = "",
-) -> None:
-    envelope = {
-        "event": "pty_session_status",
-        "data": {
-            "run_id": run_id,
-            "lane_id": lane_id,
-            "node_id": node_id,
-            "source": "interactive_pty",
-            "level": "info",
-            "message": detail or f"pty session {status}",
-            "timestamp": _iso_timestamp(),
-            "status": status,
-        },
-    }
-    await websocket.send_text(json.dumps(envelope))
-
-def _estimate_tokens(text: str) -> int:
-    return max(1, len(text.split()))
-
-def _token_patch(state: ClutchState, text: str) -> dict[str, int | float]:
-    added = _estimate_tokens(text)
-    input_tokens = state.get("token_input", 0) + added
-    output_tokens = state.get("token_output", 0) + max(1, added // 2)
-    total = input_tokens + output_tokens
-    return {
-        "token_input": input_tokens,
-        "token_output": output_tokens,
-        "session_tokens": total,
-        "session_cost_usd": round(total * 0.00000015, 6),
-    }
-
-def _token_patch_turn(
-    state: ClutchState, *, user_text: str, assistant_text: str
-) -> dict[str, int | float]:
-    input_tokens = state.get("token_input", 0) + _estimate_tokens(user_text)
-    output_tokens = state.get("token_output", 0) + _estimate_tokens(assistant_text)
-    total = input_tokens + output_tokens
-    return {
-        "token_input": input_tokens,
-        "token_output": output_tokens,
-        "session_tokens": total,
-        "session_cost_usd": round(total * 0.00000015, 6),
-    }
-
-def _history_for_llm(
-    messages: list[dict[str, object]],
-    *,
-    vision_enabled: bool = False,
-    image_delivery: str = "auto",
-    hybrid_executions: dict[str, object] | None = None,
-) -> list[dict[str, Any]]:
-    """Build chat history for an engine.
-
-    image_delivery:
-      - ``auto``: multimodal parts when vision_enabled else OCR text fallback
-      - ``paths``: persist data-URLs to workspace files and pass ``@path`` (CLI-first)
-      - ``ocr``: force local OCR/palette text (refusal fallback)
-      - ``multimodal``: force vision parts
-    """
-    from src.chat_content import (
-        materialize_images_as_file_refs,
-        normalize_text_content,
-        user_message_content_for_llm,
-    )
-
-    if image_delivery == "auto":
-        mode = "multimodal" if vision_enabled else "ocr"
-    else:
-        mode = image_delivery
-
-    history: list[dict[str, Any]] = []
-    hybrid_map = hybrid_executions or {}
-    for message in messages:
-        agent = str(message.get("agent", ""))
-        text = str(message.get("text", "")).strip()
-        if not text:
-            msg_id = str(message.get("id", ""))
-            entry = hybrid_map.get(msg_id) if msg_id else None
-            if isinstance(entry, dict):
-                events = entry.get("outputEvents") or message.get("outputEvents") or []
-                if isinstance(events, list):
-                    for event in events:
-                        if not isinstance(event, dict):
-                            continue
-                        if event.get("type") == "assistant" and event.get("visible", True) is not False:
-                            text = str(event.get("content", "")).strip()
-                            if text:
-                                break
-        if not text:
-            continue
-        if agent in {"Supervisor", "Orchestrator"}:
-            continue
-        role = "user" if agent == "User" else "assistant"
-        if role == "user":
-            if mode == "paths":
-                content = materialize_images_as_file_refs(text)
-            elif mode == "multimodal":
-                content = user_message_content_for_llm(text, vision_enabled=True)
-            else:
-                content = user_message_content_for_llm(text, vision_enabled=False)
-        else:
-            content = text
-        # Preserve multimodal parts for vision-capable chat models; flatten for CLIs / text-only.
-        if mode == "multimodal" and isinstance(content, list):
-            if not content:
-                continue
-            history.append({"role": role, "content": content})
-            continue
-        normalized = normalize_text_content(content)
-        if not normalized:
-            continue
-        history.append({"role": role, "content": normalized})
-    return history
 
 def _uses_configured_llm(agent: dict[str, Any] | None) -> bool:
     from src.agent_type import is_clutch_agent
@@ -1698,6 +1008,32 @@ def _uses_configured_llm(agent: dict[str, Any] | None) -> bool:
     if not agent:
         return True
     return is_clutch_agent(agent)
+
+def _compose_agent_bundle(
+    agent: dict[str, Any],
+    *,
+    model_name: str,
+    model_api: str,
+    mcp_servers_bound: bool = True,
+    user_turn_text: str | None = None,
+    state: dict[str, Any] | None = None,
+) -> tuple[str, str]:
+    from src.agent_prompt import compose_agent_prompt_assembly
+    from src.preferences_storage import load_permission_mode
+    from src.task_state import latest_plan_card
+
+    assembly = compose_agent_prompt_assembly(
+        agent,
+        model_name=model_name,
+        model_api=model_api,
+        mcp_servers_bound=mcp_servers_bound,
+        permission_mode=load_permission_mode(),
+        user_turn_text=user_turn_text,
+        agent_todos=list((state or {}).get("agent_todos") or []),
+        plan_card=latest_plan_card(list((state or {}).get("messages") or [])),
+    )
+    return assembly.as_system_prompt(), assembly.agent_status_text()
+
 
 def _compose_agent_system_prompt(
     agent: dict[str, Any],
@@ -1708,23 +1044,28 @@ def _compose_agent_system_prompt(
     user_turn_text: str | None = None,
     state: dict[str, Any] | None = None,
 ) -> str:
-    from src.agent_prompt import compose_agent_system_prompt
-    from src.preferences_storage import load_permission_mode
-    from src.task_state import latest_plan_card
-
-    agent_todos = list((state or {}).get("agent_todos") or [])
-    plan_card = latest_plan_card(list((state or {}).get("messages") or []))
-
-    return compose_agent_system_prompt(
+    return _compose_agent_bundle(
         agent,
         model_name=model_name,
         model_api=model_api,
         mcp_servers_bound=mcp_servers_bound,
-        permission_mode=load_permission_mode(),
         user_turn_text=user_turn_text,
-        agent_todos=agent_todos,
-        plan_card=plan_card,
+        state=state,
+    )[0]
+
+
+def _history_with_prefix_and_status(
+    history: list[dict[str, Any]],
+    system_prompt: str | None,
+    status: str,
+) -> list[dict[str, Any]]:
+    from src.agent_prompt import attach_trailing_status
+
+    headed = (
+        ([{"role": "system", "content": system_prompt}] if system_prompt else [])
+        + [item for item in history if item.get("role") != "system"]
     )
+    return attach_trailing_status(headed, status)
 
 def _append_terminal_logs(
     current_logs: list[str],
@@ -1742,6 +1083,57 @@ def _append_terminal_logs(
     return list(current_logs) + [stamp_log_line(line) for line in route_logs] + [stamped_tail]
 
 async def _llm_chat_reply(
+    state: ClutchState,
+    text: str,
+    agent_id: str | None = None,
+    *,
+    session_model_id: str | None = None,
+    cli_session_id: str | None = None,
+    emit_log: Callable[[str], Awaitable[None]] | None = None,
+    emit_tool_step: Callable[[dict[str, Any]], Awaitable[None]] | None = None,
+    emit_reasoning: Callable[[str], Awaitable[None]] | None = None,
+    emit_todos: Callable[[list[dict[str, Any]]], Awaitable[None]] | None = None,
+    emit_goal: Callable[[dict[str, Any]], Awaitable[None]] | None = None,
+    emit_verification: Callable[[dict[str, Any]], Awaitable[None]] | None = None,
+    emit_diff_summary: Callable[[dict[str, Any]], Awaitable[None]] | None = None,
+    emit_subtask: Callable[[dict[str, Any]], Awaitable[None]] | None = None,
+    tool_steps_sink: list[dict[str, Any]] | None = None,
+    subtasks_sink: list[dict[str, Any]] | None = None,
+    mcp_approved_tool: dict[str, Any] | None = None,
+    mcp_resume: dict[str, Any] | None = None,
+    isolate_cli_history: bool = False,
+    chat_source: str = "plain_chat",
+    system_prompt_suffix: str = "",
+) -> tuple[str, str, str, list[str], str | None, dict[str, Any] | None, list[str], str | None, list[dict[str, Any]] | None, bool]:
+    wt_root_token, wt_ctx_token = _bind_worktree_from_state(state)
+    try:
+        return await _llm_chat_reply_impl(
+            state,
+            text,
+            agent_id,
+            session_model_id=session_model_id,
+            cli_session_id=cli_session_id,
+            emit_log=emit_log,
+            emit_tool_step=emit_tool_step,
+            emit_reasoning=emit_reasoning,
+            emit_todos=emit_todos,
+            emit_goal=emit_goal,
+            emit_verification=emit_verification,
+            emit_diff_summary=emit_diff_summary,
+            emit_subtask=emit_subtask,
+            tool_steps_sink=tool_steps_sink,
+            subtasks_sink=subtasks_sink,
+            mcp_approved_tool=mcp_approved_tool,
+            mcp_resume=mcp_resume,
+            isolate_cli_history=isolate_cli_history,
+            chat_source=chat_source,
+            system_prompt_suffix=system_prompt_suffix,
+        )
+    finally:
+        _release_worktree_bindings(wt_root_token, wt_ctx_token)
+
+
+async def _llm_chat_reply_impl(
     state: ClutchState,
     text: str,
     agent_id: str | None = None,
@@ -1934,8 +1326,10 @@ async def _llm_chat_reply(
     from src.agent_mcp import resolve_agent_mcp_servers
 
     mcp_servers_bound = bool(resolve_agent_mcp_servers(agent)) if agent else False
-    system_prompt = (
-        _compose_agent_system_prompt(
+    agent_status = ""
+    system_prompt = None
+    if agent:
+        system_prompt, agent_status = _compose_agent_bundle(
             agent,
             model_name=runtime_model_name,
             model_api=model_api,
@@ -1943,9 +1337,6 @@ async def _llm_chat_reply(
             user_turn_text=text,
             state=state,
         )
-        if agent
-        else None
-    )
     if system_prompt_suffix.strip():
         system_prompt = (system_prompt or "") + system_prompt_suffix
 
@@ -1955,13 +1346,15 @@ async def _llm_chat_reply(
         image_delivery="paths" if cli_path_images else "auto",
         hybrid_executions=state.get("hybrid_executions"),
     )
-    if system_prompt:
-        history = [{"role": "system", "content": system_prompt}] + [
-            item for item in history if item.get("role") != "system"
-        ]
+    history = _history_with_prefix_and_status(history, system_prompt, agent_status)
 
     workspace = get_workspace()
-    cwd = workspace.get("workspace_path") if workspace else None
+    try:
+        from src.workspace import require_workspace as _require_ws
+
+        cwd = str(_require_ws())
+    except Exception:
+        cwd = workspace.get("workspace_path") if workspace else None
     llm_only_logs: list[str] = []
 
     from src.hybrid_concurrency import HybridPlainChatRejected
@@ -1982,6 +1375,10 @@ async def _llm_chat_reply(
                     if mcp_resume
                     else list(history)
                 )
+                if mcp_resume:
+                    from src.agent_prompt import attach_trailing_status
+
+                    chat_messages = attach_trailing_status(chat_messages, agent_status)
                 loop = asyncio.get_running_loop()
                 step_futures: list[Any] = []
 
@@ -2062,6 +1459,13 @@ async def _llm_chat_reply(
                         approved_tool=mcp_approved_tool,
                         approved_keys=get_approved_mcp_keys(state["run_id"]),
                         model_id=resolved_model_id,
+                        prior_files_changed=[
+                            str(path).strip()
+                            for msg in (state.get("messages") or [])
+                            if isinstance(msg, dict)
+                            for path in (msg.get("filesChanged") or [])
+                            if str(path).strip()
+                        ],
                     )
                 finally:
                     release_bg_job_context(bg_token)
@@ -2098,6 +1502,11 @@ async def _llm_chat_reply(
                     await emit_verification(dict(outcome.verification_report))
                 if outcome.diff_summary is not None and emit_diff_summary:
                     await emit_diff_summary(dict(outcome.diff_summary))
+                stash_turn_usage(
+                    str(state.get("run_id") or ""),
+                    outcome.usage,
+                    bool(outcome.usage_estimated),
+                )
                 if outcome.approval_required:
                     pause_payload = {
                         **outcome.approval_required,
@@ -2151,7 +1560,7 @@ async def _llm_chat_reply(
                     "Clutch Agent 需要已授权工作区以启用内置工具；其他 Agent 需绑定 MCP 或使用 CLI 引擎。",
                 )
             ]
-            system_prompt = _compose_agent_system_prompt(
+            system_prompt, agent_status = _compose_agent_bundle(
                 agent,
                 model_name=runtime_model_name,
                 model_api=model_api,
@@ -2165,10 +1574,7 @@ async def _llm_chat_reply(
                 image_delivery="paths" if cli_path_images else "auto",
                 hybrid_executions=state.get("hybrid_executions"),
             )
-            if system_prompt:
-                history = [{"role": "system", "content": system_prompt}] + [
-                    item for item in history if item.get("role") != "system"
-                ]
+            history = _history_with_prefix_and_status(history, system_prompt, agent_status)
 
         loop = asyncio.get_running_loop()
 
@@ -2213,11 +1619,7 @@ async def _llm_chat_reply(
                 image_delivery="ocr",
                 hybrid_executions=state.get("hybrid_executions"),
             )
-            if system_prompt:
-                return [{"role": "system", "content": system_prompt}] + [
-                    item for item in hist if item.get("role") != "system"
-                ]
-            return hist
+            return _history_with_prefix_and_status(hist, system_prompt, agent_status)
 
         try:
             result = await asyncio.to_thread(_route_once, route_history)
@@ -2751,6 +2153,9 @@ async def _finish_plain_chat_after_llm(
             pause_patch["verification_report"] = dict(mcp_pause["verification_report"])
         if mcp_pause.get("diff_summary") is not None:
             pause_patch["diff_summary"] = dict(mcp_pause["diff_summary"])
+        pause_patch.update(
+            consume_turn_usage_patch(state, user_text=user_text_for_tokens, assistant_text="")
+        )
         state = _merge_patch(state, pause_patch)
         _commit_run_state(run_id, state)
         _touch_session(run_id, status=state["status"])
@@ -2799,11 +2204,19 @@ async def _finish_plain_chat_after_llm(
     final_logs = _append_terminal_logs(
         list(state["terminal_logs"]), route_logs, log_line, streamed=streamed_logs
     )
-    token_patch = _token_patch_turn(
+    token_patch = consume_turn_usage_patch(
         state, user_text=user_text_for_tokens, assistant_text=reply_text
     )
-    offer_continue = should_offer_continue(reply_text)
-    fuse_hit = "Loop fuse" in (reply_text or "") or "死循环熔断" in (reply_text or "")
+    continue_blob = "\n".join(
+        [reply_text or "", *(route_logs or [])]
+    )
+    offer_continue = should_offer_continue(continue_blob)
+    fuse_hit = (
+        "Loop fuse" in continue_blob
+        or "死循环熔断" in continue_blob
+        or "No-progress loop" in continue_blob
+        or "无进展循环" in continue_blob
+    )
     final_patch = {
         "messages": final_messages,
         "terminal_logs": final_logs,
@@ -2850,6 +2263,14 @@ async def _finish_plain_chat_after_llm(
             files_changed,
             path_diffs=_path_diffs_from_tool_steps(sealed_steps),
         )
+    try:
+        from src.workspace_memory import harvest_user_remember
+
+        memory_files = harvest_user_remember(user_text_for_tokens)
+    except Exception:
+        memory_files = []
+    if memory_files:
+        await _notify_workspace_files_changed(websocket, run_id, memory_files)
     await _notify_run_state(websocket, run_id, state, final_patch)
     return state
 
@@ -3411,6 +2832,9 @@ async def _handle_plain_chat(
                 mcp_pause.get("subtasks") or subtasks_sink or []
             ),
         }
+        pause_patch.update(
+            consume_turn_usage_patch(state, user_text=text, assistant_text="")
+        )
         state = _merge_patch(state, pause_patch)
         _commit_run_state(run_id, state)
         _touch_session(run_id, status=state["status"])
@@ -3502,7 +2926,7 @@ async def _handle_plain_chat(
         "active_agent": active_agent,
         "pending_tool_steps": [], "live_reasoning": "",
         "pending_subtasks": [],
-        **_token_patch_turn(state, user_text=text, assistant_text=reply_text),
+        **consume_turn_usage_patch(state, user_text=text, assistant_text=reply_text),
     }
     if hybrid_executions_patch is not None:
         final_patch["hybrid_executions"] = hybrid_executions_patch
@@ -3924,6 +3348,11 @@ async def _handle_flow_refine_message(
                 mcp_pause.get("subtasks") or subtasks_sink or []
             ),
         }
+        pause_patch.update(
+            consume_turn_usage_patch(
+                state, user_text=body or text, assistant_text=""
+            )
+        )
         state = _merge_patch(state, pause_patch)
         _commit_run_state(run_id, state)
         if pause_created:
@@ -3961,7 +3390,7 @@ async def _handle_flow_refine_message(
         "status": "refining",
         "pending_tool_steps": [], "live_reasoning": "",
         **cli_session_patch(cli_session_id, resolved_id),
-        **_token_patch_turn(state, user_text=body or text, assistant_text=reply_text),
+        **consume_turn_usage_patch(state, user_text=body or text, assistant_text=reply_text),
     }
     if runtime_mode() == "hybrid":
         final_patch["shell_session_status"] = "ready"
@@ -4062,28 +3491,6 @@ async def _handle_workflow_chat_message(
     await _notify_run_state(websocket, run_id, state, patch)
     return state
 
-async def _send_file_changed(
-    websocket: WebSocket,
-    run_id: str,
-    *,
-    node_id: str,
-    path: str,
-    diff_lines: list[dict[str, Any]],
-) -> None:
-    envelope = {
-        "event": "file_changed",
-        "data": {
-            "run_id": run_id,
-            "node_id": node_id,
-            "source": "orchestrator",
-            "level": "info",
-            "message": f"Workspace file changed: {path}",
-            "path": path,
-            "diff_lines": diff_lines,
-            "timestamp": _iso_timestamp(),
-        },
-    }
-    await websocket.send_text(json.dumps(envelope))
 
 async def _notify_workspace_files_changed(
     websocket: WebSocket,
@@ -4136,7 +3543,6 @@ def _path_diffs_from_tool_steps(
     return out
 
 
-
 async def _maybe_notify_step_file_diff(
     websocket: WebSocket,
     run_id: str,
@@ -4145,6 +3551,14 @@ async def _maybe_notify_step_file_diff(
     node_id: str = "",
 ) -> None:
     """Live-push Changes panel using the same hunk as the Chat Diff card."""
+    if (
+        isinstance(step, dict)
+        and str(step.get("tool") or "") == "git_commit"
+        and str(step.get("status") or "") == "completed"
+    ):
+        raw = step.get("committedPaths")
+        paths = [str(p).strip() for p in raw if str(p).strip()] if isinstance(raw, list) else []
+        await _send_files_committed(websocket, run_id, node_id=node_id, paths=paths)
     file_diff = step.get("fileDiff") if isinstance(step, dict) else None
     if not isinstance(file_diff, dict):
         return
@@ -4161,75 +3575,6 @@ async def _maybe_notify_step_file_diff(
         path_diffs={path: diffs},
     )
 
-
-async def _send_validation_result(
-    websocket: WebSocket,
-    run_id: str,
-    *,
-    node_id: str,
-    passed: bool,
-    message: str,
-) -> None:
-    envelope = {
-        "event": "validation_result",
-        "data": {
-            "run_id": run_id,
-            "node_id": node_id,
-            "source": "orchestrator",
-            "level": "error" if not passed else "info",
-            "passed": passed,
-            "message": message,
-            "timestamp": _iso_timestamp(),
-        },
-    }
-    await websocket.send_text(json.dumps(envelope))
-
-async def _send_log_event(
-    websocket: WebSocket,
-    run_id: str,
-    line: str,
-    *,
-    node_id: str,
-    level: str = "info",
-) -> None:
-    stamped = stamp_log_line(line)
-    envelope = {
-        "event": "log",
-        "data": {
-            "run_id": run_id,
-            "node_id": node_id,
-            "source": "orchestrator",
-            "level": level,
-            "message": stamped,
-            "timestamp": _iso_timestamp(),
-        },
-    }
-    await websocket.send_text(json.dumps(envelope))
-
-class ShellSnapshotUpdateRequest(BaseModel):
-    task_summary: str = ""
-    open_todos: list[str] = Field(default_factory=list)
-    cwd: str | None = None
-    cli_session_id: str | None = None
-
-def _workspace_http_error(exc: WorkspaceError) -> HTTPException:
-    return HTTPException(status_code=403, detail={"message": str(exc)})
-
-def _build_agent_prompt_skeleton_fallback(name: str, description: str) -> str:
-    agent_name = name.strip() or "Custom Agent"
-    mission = description.strip() or "Define your core execution task here."
-    return (
-        f"# {agent_name}\n\n"
-        f"You are **{agent_name}**, an operational AI agent in the Clutch workspace.\n\n"
-        f"## Mission\n{mission}\n\n"
-        "## Operating Principles\n"
-        "- Stay focused on the assigned task.\n"
-        "- Surface blockers clearly before proceeding.\n"
-        "- Prefer actionable outputs over vague summaries.\n\n"
-        "## Constraints\n"
-        "- Follow workspace conventions and user instructions.\n"
-        "- Ask for clarification when requirements are ambiguous."
-    )
 
 def _extract_llm_text(result: object) -> str:
     if isinstance(result, dict):
@@ -4521,6 +3866,10 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
         nonlocal plain_chat_task, state
         if plain_chat_task is not None and not plain_chat_task.done():
             return
+        live = _get_or_create_run(run_id)
+        wt = live.get("worktree_isolation") if live is not None else None
+        if wt and not state.get("worktree_isolation"):
+            state = _merge_patch(state, {"worktree_isolation": wt})
         state = await _persist_plain_chat_user_message(
             websocket,
             run_id,
@@ -4757,12 +4106,49 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                     _commit_run_state(run_id, state)
                     await _send_message_event(websocket, run_id, notice, "")
                     await _notify_run_state(websocket, run_id, state, patch)
+            elif isinstance(payload, dict) and payload.get("action") == "select_worktree":
+                from src.worktree_isolation import describe_worktree, worktrees_parent
+                from src.workspace import require_authorized_workspace
+
+                wt_id = str(payload.get("wt_id") or "").strip()
+                try:
+                    root = await asyncio.to_thread(require_authorized_workspace)
+                    if not wt_id:
+                        patch = {"worktree_isolation": None}
+                    else:
+                        wt_path = worktrees_parent(root) / wt_id
+                        if not wt_path.is_dir():
+                            raise RuntimeError(tr("Worktree not found", "Worktree 不存在"))
+                        patch = {
+                            "worktree_isolation": describe_worktree(
+                                {
+                                    "id": wt_id,
+                                    "path": str(wt_path.resolve()),
+                                    "branch": f"clutch/{wt_id}",
+                                    "enabled": True,
+                                },
+                                root,
+                            )
+                        }
+                    state = _merge_patch(state, patch)
+                    _commit_run_state(run_id, state)
+                    await _notify_run_state(websocket, run_id, state, patch)
+                except Exception as exc:
+                    notice = _chat_message(
+                        "Supervisor",
+                        tr(f"Worktree switch failed: {exc}", f"切换 worktree 失败：{exc}"),
+                    )
+                    patch = {"messages": list(state["messages"]) + [notice]}
+                    state = _merge_patch(state, patch)
+                    _commit_run_state(run_id, state)
+                    await _send_message_event(websocket, run_id, notice, "")
+                    await _notify_run_state(websocket, run_id, state, patch)
             elif isinstance(payload, dict) and payload.get("action") == "enable_worktree":
                 from src.worktree_isolation import create_worktree, describe_worktree
-                from src.workspace import require_workspace
+                from src.workspace import require_authorized_workspace
 
                 try:
-                    root = await asyncio.to_thread(require_workspace)
+                    root = await asyncio.to_thread(require_authorized_workspace)
                     info = await asyncio.to_thread(create_worktree, root)
                     wt_payload = describe_worktree(info, root)
                     patch = {"worktree_isolation": wt_payload}
@@ -4792,17 +4178,31 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                     await _notify_run_state(websocket, run_id, state, patch)
             elif isinstance(payload, dict) and payload.get("action") == "merge_worktree":
                 from src.worktree_isolation import merge_worktree
-                from src.workspace import require_workspace
+                from src.workspace import require_authorized_workspace
 
                 wt_info = state.get("worktree_isolation")
-                wt_id = str((wt_info or {}).get("id") or payload.get("wt_id") or "").strip()
-                if wt_id:
+                wt_id = str(payload.get("wt_id") or (wt_info or {}).get("id") or "").strip()
+                if not wt_id:
+                    notice = _chat_message(
+                        "Supervisor",
+                        tr("No active worktree to merge.", "没有可合并的 worktree。"),
+                    )
+                    patch = {"messages": list(state["messages"]) + [notice]}
+                    state = _merge_patch(state, patch)
+                    _commit_run_state(run_id, state)
+                    await _send_message_event(websocket, run_id, notice, "")
+                    await _notify_run_state(websocket, run_id, state, patch)
+                else:
                     try:
-                        root = await asyncio.to_thread(require_workspace)
+                        root = await asyncio.to_thread(require_authorized_workspace)
                         summary = await asyncio.to_thread(merge_worktree, root, wt_id)
                         notice = _chat_message(
                             "Supervisor",
-                            tr(f"Merged worktree {wt_id}: {summary}", f"已合并 worktree {wt_id}：{summary}"),
+                            tr(
+                                f"Merged worktree {wt_id} into the main workspace. "
+                                f"The worktree is kept — Discard to remove it. {summary}",
+                                f"已将 worktree {wt_id} 合进主仓。隔离树仍保留，要用 Discard 才删除。{summary}",
+                            ),
                         )
                         patch = {
                             "worktree_isolation": None,
@@ -4824,13 +4224,23 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                         await _notify_run_state(websocket, run_id, state, patch)
             elif isinstance(payload, dict) and payload.get("action") == "discard_worktree":
                 from src.worktree_isolation import discard_worktree
-                from src.workspace import require_workspace
+                from src.workspace import require_authorized_workspace
 
                 wt_info = state.get("worktree_isolation")
-                wt_id = str((wt_info or {}).get("id") or payload.get("wt_id") or "").strip()
-                if wt_id:
+                wt_id = str(payload.get("wt_id") or (wt_info or {}).get("id") or "").strip()
+                if not wt_id:
+                    notice = _chat_message(
+                        "Supervisor",
+                        tr("No active worktree to discard.", "没有可丢弃的 worktree。"),
+                    )
+                    patch = {"messages": list(state["messages"]) + [notice]}
+                    state = _merge_patch(state, patch)
+                    _commit_run_state(run_id, state)
+                    await _send_message_event(websocket, run_id, notice, "")
+                    await _notify_run_state(websocket, run_id, state, patch)
+                else:
                     try:
-                        root = await asyncio.to_thread(require_workspace)
+                        root = await asyncio.to_thread(require_authorized_workspace)
                         await asyncio.to_thread(discard_worktree, root, wt_id)
                         notice = _chat_message(
                             "Supervisor",

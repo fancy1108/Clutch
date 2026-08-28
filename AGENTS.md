@@ -14,6 +14,8 @@
 | [`specs/core/clutch-agent-capability-plan.md`](./specs/core/clutch-agent-capability-plan.md) | Chat Agent 开发者 | Chat 自研 Clutch Agent 能力交付表 D0–D53（D44） |
 | [`specs/core/prd-one-click-interactive-prototype.md`](./specs/core/prd-one-click-interactive-prototype.md) | 全体开发者 | 一键原型生成与交互契约规格 (PRD) |
 | [`specs/core/hybrid-runtime-plan.md`](./specs/core/hybrid-runtime-plan.md) | Hybrid 开发者 | D25 HRT Task 与验收（权威） |
+| [`specs/core/frontend-modules-plan.md`](./specs/core/frontend-modules-plan.md) | 全体开发者 | 前端可点验模块 FM-01…FM-22（D56） |
+| [`docs/FRONTEND_MODULES_ACCEPTANCE.md`](./docs/FRONTEND_MODULES_ACCEPTANCE.md) | PM / 验收 | FM-01…22 桌面点验剧本（入口、步骤、期望） |
 | [`specs/core/design.md`](./specs/core/design.md) | 前端开发者 | 视觉设计快照 → `docs/UI_UX_GUIDELINES.md` |
 | [`docs/UI_UX_GUIDELINES.md`](./docs/UI_UX_GUIDELINES.md) | 前端开发者 | React + Tailwind UI/UX 规范 |
 | [`docs/DESIGN_WORKSPACE_GUIDE.md`](./docs/DESIGN_WORKSPACE_GUIDE.md) | 产品与业务人员 | Design 模式产品功能与业务逻辑分析指南 |

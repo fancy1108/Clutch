@@ -35,6 +35,7 @@ import type { ScannedSkill } from '../services/skillsApi';
 import type { FileTreeNode } from '../services/workspaceApi';
 import type { PermissionMode } from '../services/permissionApi';
 import { USER_CHAT_AVATAR, clutchStore, deleteChatMessage, useClutchState } from '../services/clutchState';
+import { shouldOfferContinueFromText } from '../services/clutchStateUtils';
 import {
   pickPrimaryHtmlPath,
   resolveLiveActivitySteps,
@@ -50,12 +51,12 @@ import { SubtaskCardView } from './SubtaskCardView';
 import { BackgroundJobChip, BackgroundJobsBar } from './BackgroundJobsBar';
 import { ForegroundShellBar } from './ForegroundShellBar';
 import { DiagnosticsIssuesStrip } from './DiagnosticsIssuesStrip';
-import { WorktreeIsolationBar } from './WorktreeIsolationBar';
 import { detectBgJobFailureToast } from '../services/bgJobMonitor';
 import { VerificationReportCardView } from './VerificationReportCardView';
 import { DiffSummaryCardView } from './DiffSummaryCardView';
 import { resolveBrandLogoSrc } from '../services/brandLogos';
 import { clutchMarkUrl } from '../assets/brand';
+import { SIDECAR_BASE as BASE, sidecarFetch } from '../services/sidecarUrl';
 import { AgentChatAvatar } from './AgentChatAvatar';
 import { ChatBubbleVideo } from './ChatBubbleVideo';
 import {
@@ -576,6 +577,8 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   const { state: clutchOrchestraState } = useClutchState();
   const [orchestratorBarFocused, setOrchestratorBarFocused] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  /** Dedicated chat scrollport (must not be the flex column — Q-UI-1). */
+  const chatScrollRef = useRef<HTMLDivElement>(null);
   const thinkingRef = useRef<HTMLDivElement>(null);
   const dockRef = useRef<HTMLDivElement>(null);
   const terminalDockRef = useRef<HTMLDivElement>(null);
@@ -627,6 +630,10 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   const isRefining = isWorkflowRefineEligible(clutchStatus, activeWorkflowId);
   const isRunning = clutchStatus === 'running';
   const awaitingHuman = clutchStatus === 'awaiting_human';
+  const lastReplyText = [...messages].reverse().find((msg) => msg.agent !== 'User')?.text;
+  const awaitingContinue =
+    Boolean(clutchOrchestraState.awaiting_continue) ||
+    (isIdle && shouldOfferContinueFromText(lastReplyText));
   const [hitlBusy, setHitlBusy] = useState(false);
   const pendingPlanMessage = useMemo(() => {
     if (!awaitingHuman) return null;
@@ -757,6 +764,16 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
     }
     onWorkspaceViewModeChange(mode);
     saveWorkspaceViewMode(mode);
+    if (mode === 'terminal') {
+      const recent = messages
+        .filter((msg) => typeof msg.text === 'string' && msg.text.trim())
+        .slice(-4)
+        .map((msg) => `${msg.agent === 'User' ? 'User' : 'Agent'}: ${msg.text.trim()}`)
+        .join('\n');
+      if (recent && !inputValue.trim()) {
+        setInputValue(recent);
+      }
+    }
   }, [
     clutchOrchestraState,
     workspaceViewMode,
@@ -764,6 +781,8 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
     mentionableAgents,
     onLeaveTerminalConfirm,
     onWorkspaceViewModeChange,
+    messages,
+    setInputValue,
   ]);
 
   const prevStatusRef = useRef(clutchStatus);
@@ -935,6 +954,14 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   const foregroundShell = clutchOrchestraState.foreground_shell ?? null;
   const worktreeIsolation = clutchOrchestraState.worktree_isolation ?? null;
   const chatDiagnostics = clutchOrchestraState.chat_diagnostics ?? [];
+  const interpreterError = useMemo(() => {
+    for (const msg of [...messages].reverse()) {
+      const blob = `${msg.text} ${(msg.toolSteps || []).map((step) => `${step.title} ${step.detail || ''}`).join(' ')}`;
+      if (/interpreter timeout|timed out/i.test(blob)) return 'timeout' as const;
+      if (/interpreter offline|sidecar may be offline|connection refused/i.test(blob)) return 'offline' as const;
+    }
+    return null;
+  }, [messages]);
 
   useEffect(() => {
     const prev = prevBgJobsRef.current;
@@ -1046,6 +1073,11 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   );
 
   const scrollChatToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
+    const scroller = chatScrollRef.current;
+    if (scroller) {
+      scroller.scrollTo({ top: scroller.scrollHeight, behavior });
+      return;
+    }
     bottomRef.current?.scrollIntoView({ behavior, block: 'end' });
   }, []);
 
@@ -1142,7 +1174,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
     const observer = new ResizeObserver(measure);
     observer.observe(terminalBar);
     return () => observer.disconnect();
-  }, [showTerminalWorkspace, inputValue, clutchOrchestraState.pending_handoff_drafts?.length]);
+  }, [showTerminalWorkspace, inputValue]);
 
   const renderAgentLabel = (
     agent: string,
@@ -1236,16 +1268,27 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
         paddingLeft: `${leftChromePad}px`,
         paddingRight: `${rightChromePad}px`,
         paddingTop: APP_HEADER_HEIGHT_PX,
-        paddingBottom: isTerminalLayout
-          ? terminalInputReservePx
-          : Math.max(chatScrollBottomPad, awaitingHuman ? 200 : 120),
+        paddingBottom: isTerminalLayout ? terminalInputReservePx : undefined,
       }}
-      className={`flex-1 min-h-0 flex flex-col box-border transition-all duration-300 bg-background ${
-        isTerminalLayout
-          ? 'overflow-hidden pb-1 items-stretch px-4'
-          : `overflow-y-auto overscroll-contain items-stretch ${chatChrome.chatEdgePaddingClass}`
+      className={`flex-1 min-h-0 flex flex-col box-border transition-all duration-300 bg-background overflow-hidden items-stretch ${
+        isTerminalLayout ? 'pb-1 px-4' : ''
       }`}
     >
+      <div
+        ref={isTerminalLayout ? undefined : chatScrollRef}
+        className={
+          isTerminalLayout
+            ? 'flex-1 min-h-0 flex flex-col overflow-hidden w-full min-w-0'
+            : `flex-1 min-h-0 overflow-y-auto overscroll-contain w-full min-w-0 ${chatChrome.chatEdgePaddingClass}`
+        }
+        style={
+          isTerminalLayout
+            ? undefined
+            : {
+                paddingBottom: Math.max(chatScrollBottomPad, awaitingHuman ? 200 : 120),
+              }
+        }
+      >
       <div
         className={`w-full min-w-0 ${
           isTerminalLayout
@@ -1299,6 +1342,18 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                 {t('Terminal mode')}
               </button>
             </div>
+          </div>
+        ) : null}
+        {workspaceViewMode === 'chat' ? (
+          <div
+            data-testid="dispatch-banner"
+            className="mx-auto mb-2 max-w-xl rounded-xl border border-outline-variant/40 bg-surface-container-low px-3 py-1.5 text-[11px] text-on-surface-variant"
+          >
+            {selectedWorkflowId
+              ? `${t('Matched SOP:')} ${selectedWorkflowName || selectedWorkflowId}`
+              : `${t('No workflow selected — using current Agent')}${
+                  activeAgentName ? `: ${activeAgentName}` : ''
+                }`}
           </div>
         ) : null}
         {workspaceViewMode === 'chat' && showEmptyState && (
@@ -1526,7 +1581,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                     <div className={`${chatChrome.messageBubblePaddingClass} bg-neutral-50/50 rounded-2xl rounded-tl-none border border-neutral-200/80 shadow-xs`}>
                       <div className="flex items-center gap-1.5 mb-2 text-neutral-800 font-bold text-[11px]">
                         <LegacyIcon name="error" className="text-[16px]" />
-                        <span>VALIDATION FAILED</span>
+                        <span data-testid={msg.badgeText === 'VALIDATION FAILED' ? 'validation-failure-chat' : undefined}>VALIDATION FAILED</span>
                       </div>
                       {renderMarkdown(msg.text)}
                     </div>
@@ -1549,7 +1604,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                           }`}
                         >
                           <LegacyIcon name="info" className="text-[16px]" />
-                          <span>{msg.badgeText}</span>
+                          <span data-testid={msg.badgeText === 'VALIDATION FAILED' ? 'validation-failure-chat' : undefined}>{msg.badgeText}</span>
                         </div>
                       ) : isCompletedMsg ? (
                         <div className="flex items-center gap-1.5 mb-2 text-green-600 font-bold text-[11px]">
@@ -1805,6 +1860,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
           <div ref={bottomRef} style={{ scrollMarginBottom: chatScrollBottomPad }} className="h-2 shrink-0" aria-hidden />
         ) : null}
       </div>
+      </div>
 
     </section>
 
@@ -1868,7 +1924,6 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
           <div ref={terminalBarRef} className={`w-full ${chatChrome.chatMaxWidthClass}`}>
             <OrchestratorBar
             sessionRunId={sessionRunId}
-            drafts={clutchOrchestraState.pending_handoff_drafts ?? []}
             inputValue={inputValue}
             setInputValue={setInputValue}
             permissionMode={permissionMode}
@@ -2025,7 +2080,6 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
           <div className="w-full flex justify-center">
             <OrchestratorBar
               sessionRunId={sessionRunId}
-              drafts={[]}
               inputValue=""
               setInputValue={() => {}}
               permissionMode={permissionMode}
@@ -2053,17 +2107,22 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
             {chatDiagnostics.length ? (
               <DiagnosticsIssuesStrip issues={chatDiagnostics} t={t} />
             ) : null}
-            {isPlainLlmChat ? (
-              <WorktreeIsolationBar
-                worktree={worktreeIsolation}
-                t={t}
-                onMerge={() => {
-                  void clutchStore.send({ action: 'merge_worktree' });
-                }}
-                onDiscard={() => {
-                  void clutchStore.send({ action: 'discard_worktree' });
-                }}
-              />
+            {interpreterError ? (
+              <div
+                data-testid="interpreter-error-card"
+                className="w-full max-w-3xl mx-auto px-3 pb-2"
+              >
+                <div className="rounded-lg border border-amber-300/70 bg-amber-50/90 px-3 py-2">
+                  <div className="text-[11px] font-semibold text-amber-950">
+                    {interpreterError === 'timeout' ? t('Interpreter timed out') : t('Interpreter offline')}
+                  </div>
+                  <p className="text-[10px] text-amber-900/90 mt-0.5">
+                    {interpreterError === 'timeout'
+                      ? t('The command exceeded its time limit. Shorten it or raise timeout_sec.')
+                      : t('The shell could not start. Check PATH and Sidecar, then retry.')}
+                  </p>
+                </div>
+              </div>
             ) : null}
             <BackgroundJobsBar
               jobs={bgJobs}
@@ -2091,7 +2150,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
               isPlainLlmChat={isPlainLlmChat}
               onStopRun={handleStopWithQueueClear}
               onContinueRun={onContinueRun}
-              awaitingContinue={Boolean(clutchOrchestraState.awaiting_continue)}
+              awaitingContinue={awaitingContinue}
               pendingMessages={pendingMessages}
               onRemovePendingMessage={removePending}
               selectedWorkflowId={selectedWorkflowId}
@@ -2133,6 +2192,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                   : undefined
               }
               worktreeActive={Boolean(worktreeIsolation?.enabled)}
+              drafts={clutchOrchestraState.pending_handoff_drafts ?? []}
             />
           </div>
         ) : null}

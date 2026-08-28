@@ -17,7 +17,7 @@ export const NAV_CONFIG = {
     view: 'agents' as MainView,
   },
   workflows: {
-    icon: 'fork_right',
+    icon: 'workflow',
     labelKey: 'Workflows SOP',
     shortLabelKey: 'Flow',
     testId: 'nav-workflows',

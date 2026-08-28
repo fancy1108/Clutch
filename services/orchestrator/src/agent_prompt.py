@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import platform
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -111,8 +111,19 @@ class PromptAssembly:
     layers: list[PromptLayer] = field(default_factory=list)
 
     def as_system_prompt(self) -> str:
-        parts = [layer.content.strip() for layer in self.layers if layer.content.strip()]
+        # B-35: agent_status is trailing (replaced each turn), never the cached prefix.
+        parts = [
+            layer.content.strip()
+            for layer in self.layers
+            if layer.content.strip() and layer.name != "agent_status"
+        ]
         return "\n\n".join(parts)
+
+    def agent_status_text(self) -> str:
+        for layer in self.layers:
+            if layer.name == "agent_status" and layer.content.strip():
+                return layer.content.strip()
+        return ""
 
     def summary(self) -> dict[str, Any]:
         return {
@@ -238,18 +249,86 @@ def _load_workspace_rules(workspace_path: str | None) -> str:
     return "## Project rules\n\n" + "\n\n".join(chunks)
 
 
+def _format_local_time(now: datetime | None = None) -> str:
+    """Human-readable local clock for the Environment prompt layer."""
+    if now is None:
+        stamp = datetime.now().astimezone()
+    elif now.tzinfo is None:
+        stamp = now.astimezone()
+    else:
+        # Keep the given offset. `.astimezone()` with no args would convert
+        # to the host TZ and fail CI (Ubuntu UTC) for a UTC+8 fixture.
+        stamp = now
+    tz_name = stamp.tzname() or ""
+    raw_offset = stamp.strftime("%z")  # e.g. +0800
+    if len(raw_offset) == 5:
+        offset_fmt = f"UTC{raw_offset[:3]}:{raw_offset[3:]}"
+    else:
+        offset_fmt = raw_offset or "local"
+    clock = stamp.strftime("%Y-%m-%d %H:%M:%S")
+    if tz_name:
+        return f"{clock} {tz_name} ({offset_fmt})"
+    return f"{clock} ({offset_fmt})"
+
+
+def format_agent_status(
+    *,
+    agent_todos: list[dict[str, Any]] | None = None,
+    plan_card: dict[str, Any] | None = None,
+    now: datetime | None = None,
+) -> str:
+    """Trailing replaceable block: clock + Todo/plan (Q-AGENT-2 = A)."""
+    from src.task_state import format_task_state
+
+    lines = [
+        f"Local time: {_format_local_time(now)}",
+        "Use Local time above for clock/date questions; do not invent a different time.",
+    ]
+    task = format_task_state(agent_todos=agent_todos, plan_card=plan_card)
+    if task:
+        lines.append(task)
+    return "<agent_status>\n" + "\n".join(lines) + "\n</agent_status>"
+
+
+def attach_trailing_status(
+    messages: list[dict[str, Any]], status: str
+) -> list[dict[str, Any]]:
+    """Drop any prior <agent_status> user turn and append one fresh block."""
+    cleaned = [
+        item
+        for item in messages
+        if not (
+            isinstance(item, dict)
+            and item.get("role") == "user"
+            and "<agent_status>" in str(item.get("content") or "")
+        )
+    ]
+    text = (status or "").strip()
+    if not text:
+        return cleaned
+    block = {"role": "user", "content": text}
+    # Keep the latest human turn last so adapters that echo history[-1] stay correct.
+    if cleaned and cleaned[-1].get("role") == "user":
+        return cleaned[:-1] + [block, cleaned[-1]]
+    return cleaned + [block]
+
+
 def _env_layer(workspace_path: str | None) -> str:
     import os
 
     shell = (os.environ.get("SHELL") or os.environ.get("ComSpec") or "").strip() or "unknown"
     lines = [
         "## Environment",
-        f"Date: {date.today().isoformat()}",
         f"OS: {platform.system()} {platform.release()}",
         f"Shell: {shell}",
     ]
     if workspace_path:
         lines.append(f"Workspace root: {workspace_path}")
+        if "/.clutch/worktrees/" in workspace_path.replace("\\", "/"):
+            lines.append(
+                "This turn is git-worktree isolated. Create and edit files here with "
+                "relative paths only. Do not write into the parent checkout."
+            )
     else:
         lines.append("Workspace root: (none authorized)")
     return "\n".join(lines)
@@ -296,14 +375,16 @@ def compose_agent_prompt_assembly(
     """Build layered prompt (D53). markdownDoc is protocol only — not the whole system."""
     from src.agent_skills import compose_skills_section, resolve_effective_skill_keys
     from src.agent_type import is_clutch_agent
-    from src.task_state import format_task_state
-    from src.workspace import get_workspace
+    from src.workspace import WorkspaceError, get_workspace, require_workspace
 
     is_clutch = is_clutch_agent(agent)
     agent_name = str(agent.get("name", "Clutch Agent"))
     protocol = str(agent.get("markdownDoc", "")).strip()
-    workspace = get_workspace()
-    workspace_path = workspace.get("workspace_path") if workspace else None
+    try:
+        workspace_path = str(require_workspace())
+    except WorkspaceError:
+        workspace = get_workspace()
+        workspace_path = workspace.get("workspace_path") if workspace else None
 
     layers: list[PromptLayer] = [
         PromptLayer(
@@ -330,13 +411,6 @@ def compose_agent_prompt_assembly(
         rules = _load_workspace_rules(str(workspace_path) if workspace_path else None)
         if rules:
             layers.append(PromptLayer("rules", rules))
-
-    task_block = format_task_state(
-        agent_todos=agent_todos,
-        plan_card=plan_card,
-    )
-    if task_block:
-        layers.append(PromptLayer("task_state", task_block))
 
     mode = (permission_mode or "").strip().lower()
     if mode == "plan":
@@ -374,15 +448,26 @@ def compose_agent_prompt_assembly(
             )
         else:
             from src.preferences_storage import load_allow_network
+            from src.workspace import get_git_info
 
             network_on = load_allow_network()
+            git_hint = (
+                "Git questions → `git_status` / `git_diff`. "
+                "Call `git_commit` only when the user explicitly asked to commit / 提交; "
+                "creating or editing files is not a commit request. "
+                "Never `git commit` via `run_terminal_cmd` unless they asked. "
+                if get_git_info().get("is_git_repo")
+                else ""
+            )
             network_block = (
                 "Tool discipline (harness-enforced): never claim you lack access to the "
                 "workspace, files, git, shell, or internet while the matching tools are listed. "
                 "Workspace questions → `list_dir` / `read_file` / `grep` first. "
+                "Named-file existence (有没有叫 X.md) → `list_dir` only; never grep a filename. "
                 "Edits → `read_file` then `search_replace` / `apply_patch`. "
-                "Git questions → `git_status` / `git_diff` / `git_commit`. "
-                "Commands/tests → `run_terminal_cmd`. "
+                f"{git_hint}"
+                "Commands/tests → `run_terminal_cmd` (do not start a second copy of a "
+                "command already running in this Chat). "
                 "Live / external facts (weather, news, events, prices, unfamiliar docs): "
                 + (
                     "usually 1× `web_search`, then ≤2× `web_fetch` on promising result "
@@ -416,13 +501,14 @@ def compose_agent_prompt_assembly(
                     "then jump to all-completed in one write. "
                     "Call `todo_write` only when the list or a status changes — do not spam it. "
                     "Status-only questions (还剩什么 / 还剩哪些 todo / what's left): reply with "
-                    "the open items from the task_state list — do not keep editing or calling "
+                    "the open items from the trailing <agent_status> list — do not keep editing or calling "
                     "tools unless the user asks to continue. "
-                    "When work is done, mark todos completed, call `submit_verification` "
+                    "When implementation work is done, mark todos completed, call `submit_verification` "
                     "with concrete passed/failed steps (never claim passed while todos remain "
                     "open), then reply in plain text; do not keep calling tools after the goal "
                     "is met. On a failed check, still submit a failed report with next_actions — "
-                    "do not silently end. "
+                    "do not silently end. Do not call `submit_verification` on remember / Q&A / "
+                    "search-only turns, or for files you did not change this session. "
                     "Each file edit already streams a Diff card in Chat (Cursor-style); "
                     "optional `submit_diff_summary` only for an explicit multi-file review. "
                     "After edits, do NOT restate each file change in a numbered list — "
@@ -430,6 +516,9 @@ def compose_agent_prompt_assembly(
                     "When the user leaves a real fork unspecified (e.g. Redis vs Memcached "
                     "for cache), call `ask_user_question` with 2–5 short options — do not "
                     "interview in free prose. Skip asking when the request is already clear. "
+                    "After `delegate_subtask`, judge the result yourself and continue. "
+                    "If YOU cannot decide the next step, call `ask_user_question` "
+                    "(yes/no is two options) — do not interview in free prose. "
                     "When a Skills catalog entry is relevant, call `read_skill` with its key "
                     "to load the full SKILL.md — do not invent skill instructions. "
                     "Skip propose_plan only for trivial Q&A or single-line edits.",
@@ -453,16 +542,30 @@ def compose_agent_prompt_assembly(
         if resources_block:
             layers.append(PromptLayer("mcp_resources", resources_block))
 
-        # D16 — cross-session memory (Settings toggle).
+        # D16 — app-level prefs JSON; B-39 — workspace MEMORY.md overview.
         try:
             from src.cross_session_memory import format_memory_prompt_block
+            from src.workspace_memory import format_workspace_memory_block
 
-            memory_block = format_memory_prompt_block()
+            memory_block = "\n\n".join(
+                part
+                for part in (
+                    format_memory_prompt_block(),
+                    format_workspace_memory_block(),
+                )
+                if part
+            )
         except Exception:
             memory_block = ""
         if memory_block:
             layers.append(PromptLayer("memory", memory_block))
 
+    layers.append(
+        PromptLayer(
+            "agent_status",
+            format_agent_status(agent_todos=agent_todos, plan_card=plan_card),
+        )
+    )
     return PromptAssembly(layers=layers)
 
 

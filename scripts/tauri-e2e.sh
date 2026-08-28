@@ -14,6 +14,7 @@ VITE_PID_FILE="${REPO_ROOT}/.clutch-vite-e2e.pid"
 
 cleanup() {
   rm -f "$E2E_LINK"
+  git -C "$REPO_ROOT" checkout -- apps/desktop/src-tauri/gen/schemas/ 2>/dev/null || true
 }
 trap cleanup EXIT INT TERM
 # Stale copy from a killed e2e run breaks normal tauri build (playwright:default unknown).

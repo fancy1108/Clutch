@@ -35,16 +35,32 @@ def _init_repo(path: Path) -> None:
     )
 
 
-def _activate_workspace(tmp_path: Path, monkeypatch) -> Path:
+def _reset_workspaces(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setenv("CLUTCH_WORKSPACES_FILE", str(tmp_path / "ws.json"))
     from src import workspace as workspace_mod
 
     workspace_mod._loaded = False
     workspace_mod._workspaces = {}
     workspace_mod._active_id = None
+
+
+def _activate_workspace(tmp_path: Path, monkeypatch) -> Path:
+    _reset_workspaces(tmp_path, monkeypatch)
+    from src import workspace as workspace_mod
+
     ws = tmp_path / "repo"
     ws.mkdir()
     _init_repo(ws)
+    workspace_mod.add_workspace(str(ws))
+    return ws
+
+
+def _activate_plain_workspace(tmp_path: Path, monkeypatch) -> Path:
+    _reset_workspaces(tmp_path, monkeypatch)
+    from src import workspace as workspace_mod
+
+    ws = tmp_path / "plain"
+    ws.mkdir()
     workspace_mod.add_workspace(str(ws))
     return ws
 
@@ -59,6 +75,8 @@ def test_tool_names_registered() -> None:
 
 def test_git_status_diff_commit(tmp_path: Path, monkeypatch) -> None:
     ws = _activate_workspace(tmp_path, monkeypatch)
+    names = {t["name"] for t in list_builtin_tools()}
+    assert {"git_status", "git_diff", "git_commit"} <= names
     (ws / "hello.txt").write_text("hello\nworld\n", encoding="utf-8")
     status = execute_builtin_tool("git_status", {})
     assert "hello.txt" in status
@@ -72,6 +90,21 @@ def test_git_status_diff_commit(tmp_path: Path, monkeypatch) -> None:
     payload = json.loads(committed)
     assert payload["ok"] is True
     assert payload.get("sha")
+    assert "hello.txt" in payload.get("committed_paths", [])
+
+
+def test_git_tools_hidden_on_plain_folder(tmp_path: Path, monkeypatch) -> None:
+    _activate_plain_workspace(tmp_path, monkeypatch)
+    names = {t["name"] for t in list_builtin_tools()}
+    assert not {"git_status", "git_diff", "git_commit"} & names
+    assert "web_fetch" in names
+
+
+def test_git_status_plain_folder_is_not_red_error(tmp_path: Path, monkeypatch) -> None:
+    _activate_plain_workspace(tmp_path, monkeypatch)
+    out = execute_builtin_tool("git_status", {})
+    assert not out.startswith("Error executing tool")
+    assert "not a git repository" in out.lower()
 
 
 def test_web_fetch_util_html(monkeypatch) -> None:

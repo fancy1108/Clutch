@@ -284,15 +284,21 @@ def _format_history_for_cli_prompt(history: list[dict[str, str]] | None) -> str:
     if not history:
         return ""
     lines: list[str] = []
+    status = ""
     for item in history:
         role = item.get("role")
         content = str(item.get("content", "")).strip()
         if not content or role == "system":
             continue
+        if role == "user" and "<agent_status>" in content:
+            status = content
+            continue
         if role == "user":
             lines.append(f"User: {content}")
         elif role == "assistant":
             lines.append(f"Assistant: {content}")
+    if status:
+        lines.append(status)
     return "\n\n".join(lines)
 
 
@@ -308,6 +314,21 @@ def _cli_prompt_from_history(
     if current and f"User: {current}" not in history_prompt:
         return f"{history_prompt}\n\nUser: {current}"
     return history_prompt
+
+
+def _with_opencode_model_args(
+    agent_type: str,
+    extra_args: list[str],
+    workspace_path: str | None = None,
+) -> list[str]:
+    """Pin `opencode run` to the TUI last-used model so jsonc defaults cannot override it."""
+    out = list(extra_args)
+    if agent_type != "opencode-cli" or "-m" in out or "--model" in out:
+        return out
+    from src.cli_agent_config import opencode_headless_model_args
+
+    out.extend(opencode_headless_model_args(workspace_path=workspace_path))
+    return out
 
 
 def _effective_prepend_system_prompt(
@@ -907,7 +928,9 @@ def _route_engine_raw(
         elif config["binary_name"] == "agy":
             hybrid_fn = _route_agy_hybrid
 
-        effective_extra_args = list(config["extra_args"])
+        effective_extra_args = _with_opencode_model_args(
+            agent_type, list(config["extra_args"]), workspace_path
+        )
 
         legacy_kwargs = dict(
             agent_type=agent_type,
