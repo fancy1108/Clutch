@@ -297,7 +297,7 @@
 
 > **Task 定义：** [`specs/core/frontend-modules-plan.md`](../specs/core/frontend-modules-plan.md)  
 > **点验剧本：** [`docs/FRONTEND_MODULES_ACCEPTANCE.md`](../docs/FRONTEND_MODULES_ACCEPTANCE.md)（桌面入口、步骤、期望；本表仍是唯一 ✅/❌）  
-> **决策：** D56。未点验不得标 ✅。一次一个模块。
+> **决策：** D56。未点验不得标 ✅。一次一个模块。**FM-19 已撤回（D60）**：Chat 底栏换模型即可；Settings 不再分 Planner/Executor。
 
 | ID | 主题 | 状态 |
 |----|------|------|
@@ -324,7 +324,7 @@
 | FM-16 | Design 视觉审查（B-49） | ✅ |
 | FM-17 | 解释器错误卡（B-47） | ✅ |
 | FM-18 | 校验失败可读条（B-05） | ✅ |
-| FM-19 | Planner/Executor 分模型（B-06） | ✅ |
+| FM-19 | Planner/Executor 分模型（B-06） | 🚫 撤回 D60 2026-08-28 |
 | FM-20 | PERFORMANCE.md 测量（OSR-29） | ✅ |
 | FM-21 | Apple 签名公证（OSR-11） | ✅ |
 | FM-22 | 外部安全审计（OSR-22） | ✅ |

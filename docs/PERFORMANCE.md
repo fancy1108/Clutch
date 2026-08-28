@@ -26,7 +26,7 @@
 |------|------|----------|------|
 | Sidecar `GET /health` | **11 ms** wall | < 5 s | `time curl -sf http://127.0.0.1:8124/health` |
 | `GET /api/workflows/templates` | **7 ms** wall | < 1 s | `time curl -sf http://127.0.0.1:8124/api/workflows/templates` |
-| `./scripts/verify.sh`（无 E2E） | **~45 s** | 非 SLA | Husky pre-commit on FM-19（`elapsed_ms≈44684`） |
+| `./scripts/verify.sh`（无 E2E） | **~45 s** | 非 SLA | Husky pre-commit（`elapsed_ms≈44684`，2026-08-26 记录） |
 
 未测本轮：App 冷启动、空闲/活跃内存、WebSocket `state_patch`、UI FPS。
 

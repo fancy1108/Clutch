@@ -44,7 +44,6 @@ export CLUTCH_RUNTIME_MODE=hybrid && pnpm tauri:dev
 | ☑ | [FM-04](#fm-04--fm-05-cli-只读扫描) | Codex 扫描 | Settings → Models → **More → Codex** |
 | ☑ | [FM-05](#fm-04--fm-05-cli-只读扫描) | 另外六个 CLI 扫描 | More → Aider / CodeBuddy / … |
 | ☑ | [FM-09](#fm-09-分派横幅) | 空 Chat 不必先选工作流 | New Chat 顶上灰条 |
-| ☐ | [FM-19](#fm-19-plannerexecutor) | 规划模型 / 执行模型分开 | Settings → Models；Overview 两行名字 |
 | ☐ | [FM-12](#fm-12-记忆搜索) | 搜 `.clutch/memory` | Settings → General → Search |
 | ☐ | [FM-13](#fm-13-事件-channel) | Test event → Chat 横幅 Continue | Settings → General → Event channel |
 | ☐ | [D32+FM-11](#d32--fm-11-worktree) | Enable → 蓝条 → Discard/Merge / 并行树 | Chat **+** → Enable worktree |
@@ -207,28 +206,6 @@ rm -rf /tmp/clutch-fm03-does-not-exist
 ```
 
 期望：能发出去；顶上横幅仍是「未选择工作流，将使用当前 Agent」。再从底栏选一条 SOP，横幅变成 Matched SOP 名称。
-
----
-
-### FM-19 Planner/Executor
-
-**是什么：** 规划可以用便宜模型，真正对话用 Executor。
-
-**入口：** Settings → **Models** → Clutch Agent 页。右侧 Overview 在 IDLE 时也能看到两行名字。
-
-| # | 操作 | 期望 |
-|---|------|------|
-| 1 | 看到 **Planner** / **Executor** 两个下拉 | `planner-model-select` · `executor-model-select` |
-| 2 | 两个选成不同模型 | Overview 显示两个名字（`overview-model-roles`） |
-| 3 | 发一轮 Chat | Overview 能看出本轮走的是 Executor |
-
-**复制：** Planner 和 Executor 选两个**不同**的已有模型（没有第二套就跳过第 2、3 步并写原因）。New Chat 发送：
-
-```
-只回复两个字：收到
-```
-
-期望：右侧 Overview IDLE 时就能看到两行模型名；这一轮标注的是 Executor。
 
 ---
 

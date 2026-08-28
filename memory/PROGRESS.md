@@ -7,9 +7,15 @@
 
 - **阶段：** **v1.3.0** 已发；`dev` 冲 **v1.4.0**（D59）。主线 D8–D13 ✅；扩展/MCP **D14–D52 Agent 代 PM ✅**；Desktop E2E ✅；**Design D36 PM ✅**
 - **Git / PM 索引：** [`runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md`](../runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md)
-- **下次优先：** Frontend modules 点验进 **v1.4.0**（FM-01…05、FM-09 已人工点验；下一条 **FM-19** Planner/Executor）。T1 开闸或 `memory/BACKLOG.md` 未升格项（价表 / Windows 实体机不做）。
+- **下次优先：** Frontend modules 点验进 **v1.4.0**（FM-01…05、FM-09 已人工点验；**FM-19 已撤回 D60**；下一条 **FM-12** 记忆搜索）。T1 开闸或 `memory/BACKLOG.md` 未升格项（价表 / Windows 实体机不做）。
 
 ## Recent Sessions
+
+## 2026-08-28 会话（撤回 FM-19）
+
+- **做了：** 删 Settings Planner/Executor 与 Overview 角色行；Chat 底栏换模型保留。B-06 回 BACKLOG 候选。
+- **没做：** 未实现双 session 运行时分流。
+- **下次：** FM-12 记忆搜索。
 
 ## 2026-08-26 会话（FM-09 人工点验）
 

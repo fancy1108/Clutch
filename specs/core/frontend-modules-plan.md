@@ -4,7 +4,7 @@
 > **点验剧本（入口/步骤/期望）：** [`docs/FRONTEND_MODULES_ACCEPTANCE.md`](../../docs/FRONTEND_MODULES_ACCEPTANCE.md)  
 > **决策：** D56 — [`memory/DECISIONS.md`](../../memory/DECISIONS.md)  
 > 每条须用户能在桌面 UI 点验；新控件带 `data-testid`；勾 ROADMAP 前更新 `docs/PRODUCT_INTRO.md`。  
-> 一次一个模块。不进本轨道：价表、Windows 实体机（D55）、已否决 B-15/B-16。D32 worktree 开关已有；FM-11 只做并行子树 + 合并/丢弃。  
+> 一次一个模块。不进本轨道：价表、Windows 实体机（D55）、已否决 B-15/B-16、**已撤回 FM-19（D60）**。D32 worktree 开关已有；FM-11 只做并行子树 + 合并/丢弃。  
 > **发版：** 本轨随 **v1.4.0**（D59）；CHANGELOG 写 `## [1.4.0] - Unreleased`。
 
 ## 门禁
@@ -59,7 +59,8 @@
 | **FM-16** | B-49 | Design 渲染截图 + 审查卡可驳回 |
 | **FM-17** | B-47 | 解释器超时/断网结构化错误卡 |
 | **FM-18** | B-05 | 校验失败进 Chat/Overview 可读条 |
-| **FM-19** | B-06 | Planner/Executor 分模型；Overview 显示本轮模型 |
+
+> **撤回：** FM-19（原 B-06 UI 切片）见 D60。Chat 底栏换模型；双 session Planner/Executor 回 BACKLOG B-06。
 
 ## Wave 6 · 非界面（全部 FM 勾完之后）
 
@@ -71,7 +72,7 @@
 
 ## 顺序
 
-`FM-01 → 02 → 03 → 04 → 05a–f → 06 → 07 → 08 → 09 → 10 → 11–19 → 20–22`
+`FM-01 → 02 → 03 → 04 → 05a–f → 06 → 07 → 08 → 09 → 10 → 11–18 → 20–22`
 
 ## 文件落点（首模块）
 

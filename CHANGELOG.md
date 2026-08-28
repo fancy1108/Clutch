@@ -15,6 +15,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 ### Removed
 
 - **Import from Claude (MCP Hub):** Dropped the one-click copy of Claude Desktop / `~/.claude.json` MCP entries. It did not check that commands exist, so stale paths showed up as failed servers. Register stdio or HTTP yourself; the Claude Code tab remains a read-only scan of native config.
+- **Planner / Executor (FM-19):** Removed the Settings dual model pickers. Chat footer remains the place to switch the active model. Dual-session Planner/Executor stays a backlog idea (B-06).
 
 ### Changed
 
@@ -50,7 +51,6 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 - **Design visual review (FM-16):** Handoff step 1 shows a render shot with Approve/Reject; Reject iterates.
 - **Interpreter errors (FM-17):** Timeout/offline shell failures show a structured Chat card.
 - **Validation strip (FM-18):** Failed node validation is readable in Chat and Overview.
-- **Planner/Executor models (FM-19):** Settings → Models can split Planner vs Executor; Overview shows both and this turn.
 - **Performance baseline (FM-20 / OSR-29):** [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md) §1.1 records dated local numbers (health, templates, `verify.sh`).
 - **Apple notarization process (FM-21 / OSR-11):** [`docs/APPLE_NOTARIZATION.md`](docs/APPLE_NOTARIZATION.md) — still **blocked** (no Developer account); unsigned DMG + D31 remain.
 - **External audit process (FM-22 / OSR-22):** [`docs/EXTERNAL_AUDIT.md`](docs/EXTERNAL_AUDIT.md) — how to commission; report index [`docs/security-audit/`](docs/security-audit/) (none yet).

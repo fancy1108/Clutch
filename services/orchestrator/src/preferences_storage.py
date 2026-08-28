@@ -74,8 +74,6 @@ def _defaults() -> dict[str, str]:
         "untrusted_confirm": "true",
         "event_webhook": "",
         "event_email": "",
-        "planner_model_id": "",
-        "executor_model_id": "",
     }
 
 
@@ -124,8 +122,6 @@ def load_preferences() -> dict[str, str]:
         untrusted_confirm = "true"
     event_webhook = str(data.get("event_webhook") or "").strip()
     event_email = str(data.get("event_email") or "").strip()
-    planner_model_id = str(data.get("planner_model_id") or "").strip()
-    executor_model_id = str(data.get("executor_model_id") or "").strip()
     if theme_id not in ALLOWED_THEME_IDS:
         theme_id = DEFAULT_THEME_ID
     if language not in ALLOWED_LANGUAGES:
@@ -150,8 +146,6 @@ def load_preferences() -> dict[str, str]:
         "untrusted_confirm": untrusted_confirm,
         "event_webhook": event_webhook,
         "event_email": event_email,
-        "planner_model_id": planner_model_id,
-        "executor_model_id": executor_model_id,
     }
 
 
@@ -303,21 +297,6 @@ def save_event_channel(webhook: str, email: str) -> dict[str, str]:
     prefs = load_preferences()
     prefs["event_webhook"] = webhook.strip()
     prefs["event_email"] = email.strip()
-    return _write_preferences(prefs)
-
-
-def load_model_roles() -> dict[str, str]:
-    prefs = load_preferences()
-    return {
-        "planner_model_id": prefs.get("planner_model_id") or "",
-        "executor_model_id": prefs.get("executor_model_id") or "",
-    }
-
-
-def save_model_roles(planner_model_id: str, executor_model_id: str) -> dict[str, str]:
-    prefs = load_preferences()
-    prefs["planner_model_id"] = planner_model_id.strip()
-    prefs["executor_model_id"] = executor_model_id.strip()
     return _write_preferences(prefs)
 
 

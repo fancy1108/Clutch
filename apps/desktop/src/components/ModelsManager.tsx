@@ -146,8 +146,6 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
     () => ({ ...initialVerify.verifyMessageByModel }),
   );
   const [capabilityTab, setCapabilityTab] = useState<AgentCapabilityTabId>('clutch');
-  const [plannerModelId, setPlannerModelId] = useState('');
-  const [executorModelId, setExecutorModelId] = useState('');
 
   useEffect(() => {
     const stashed = consumeSettingsAgentTab();
@@ -160,8 +158,6 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
       setConfiguredModels(mapped.models);
       setProviders(mapped.providers);
       setActiveModelId(mapped.activeModelId);
-      setPlannerModelId(mapped.plannerModelId);
-      setExecutorModelId(mapped.executorModelId);
       setActiveAvailable(mapped.activeAvailable);
       const active = mapped.models.find((m) => m.id === mapped.activeModelId);
       setSelectedModel(active?.name ?? '');
@@ -754,6 +750,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
         )}
 
         <section
+          data-testid="clutch-current-model"
           className={`rounded-xl border p-4 text-left ${
             statusTone === 'rose'
               ? 'bg-rose-50/60 border-rose-200'
@@ -775,56 +772,6 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
           >
             {currentStatusLine}
           </p>
-        </section>
-
-        <section className="rounded-xl border border-outline p-4 text-left space-y-3">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">{t('Planner / Executor')}</p>
-          <p className="text-[11px] text-on-surface-variant">{t('Planner can stay cheaper; Executor is the active Chat model.')}</p>
-          <label className="block text-[11px] font-semibold">
-            {t('Planner')}
-            <select
-              data-testid="planner-model-select"
-              className="mt-1 w-full bg-surface border border-outline/40 rounded-xl px-3 py-2 text-xs"
-              value={plannerModelId}
-              onChange={(e) => {
-                const next = e.target.value;
-                setPlannerModelId(next);
-                void saveModelsConfig({ planner_model_id: next });
-              }}
-            >
-              {configuredModels
-                .filter((m) => m.modelKind !== 'image' && m.modelKind !== 'video')
-                .map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name}
-                  </option>
-                ))}
-            </select>
-          </label>
-          <label className="block text-[11px] font-semibold">
-            {t('Executor')}
-            <select
-              data-testid="executor-model-select"
-              className="mt-1 w-full bg-surface border border-outline/40 rounded-xl px-3 py-2 text-xs"
-              value={executorModelId}
-              onChange={(e) => {
-                const next = e.target.value;
-                setExecutorModelId(next);
-                void saveModelsConfig({ executor_model_id: next, active_model_id: next });
-                setActiveModelId(next);
-                const named = configuredModels.find((m) => m.id === next);
-                if (named) setSelectedModel(named.name);
-              }}
-            >
-              {configuredModels
-                .filter((m) => m.modelKind !== 'image' && m.modelKind !== 'video')
-                .map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name}
-                  </option>
-                ))}
-            </select>
-          </label>
         </section>
 
         <section className="space-y-3 text-left">

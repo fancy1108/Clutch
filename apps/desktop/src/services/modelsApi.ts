@@ -27,8 +27,6 @@ export interface ProviderEntry {
 
 export interface ModelConfig {
   active_model_id: string;
-  planner_model_id?: string;
-  executor_model_id?: string;
   models: ModelEntry[];
   providers?: Record<string, ProviderEntry>;
 }
@@ -74,8 +72,6 @@ export async function saveModelsConfig(payload: {
   active_model_id?: string;
   provider_id?: string;
   api_key?: string;
-  planner_model_id?: string;
-  executor_model_id?: string;
 }): Promise<void> {
   const response = await sidecarFetch(`${BASE}/api/models/config`, {
     method: 'POST',
@@ -389,8 +385,6 @@ export function mapModelConfigToUi(config: ModelConfig) {
   const available = visible.filter((m) => m.available);
   return {
     activeModelId: config.active_model_id,
-    plannerModelId: config.planner_model_id || config.active_model_id,
-    executorModelId: config.executor_model_id || config.active_model_id,
     providers: config.providers ?? {},
     models: sortModelsByKind(visible.map((m) => ({
       id: m.id,

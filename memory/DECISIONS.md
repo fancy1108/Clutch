@@ -650,6 +650,13 @@
 - **影响**：`CHANGELOG.md` · `PROGRESS.md` · `ROADMAP.md` §Frontend modules · 点验剧本。
 - **决策状态**：`可执行`
 
+### D60 · 撤回 FM-19 Planner/Executor Settings（2026-08-28）
+
+- **背景**：B-06 原意是 Planner（便宜、只读、独立 session）与 Executor（贵模型写代码）运行时分流。升格成 FM-19 后只做了 Settings 两个下拉 + Overview 两行名字；Chat 实际只打 `active_model_id`（底栏 Model）。点验时换 Executor 会被 New Chat 重置，且与「用户在 Chat 随时换模型」重复。
+- **方案**：删除 Settings Planner/Executor 与 Overview 角色行。对话模型只在 Chat 底栏切换。B-06 真双 session 回 BACKLOG 候选，不在本轨实现。
+- **影响**：`ModelsManager.tsx` · `RightPanel.tsx` · models API · `PRODUCT_INTRO.md` · 点验剧本不再含 FM-19。
+- **决策状态**：`已落地`
+
 ### D45 · D7 项目规则 + Skills 对齐 Grok Build（2026-07-24）
 
 - **背景**：能力期 D7；对照本地 `grok-build` 与 docs.x.ai project-rules。User 级规则（`~/.grok/AGENTS.md` 等）本期不做。

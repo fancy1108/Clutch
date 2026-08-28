@@ -22,6 +22,7 @@
 | ID | 候选能力 | 状态 | 升格条件 |
 |----|----------|------|----------|
 | B-02 | API 真实 token usage + cache 进 `state_patch` | 部分落地 | Q-USAGE-1 已接 usage；cache 字段仍候选 |
+| B-06 | Planner flash 只读 / Executor pro 写（独立 session） | 候选 | D60 撤回 Settings 双下拉；真双模型运行需人类确认 |
 
 ### P2–P3 · 增强
 
@@ -51,7 +52,7 @@
 | B-33 | 第三方 MCP 记忆工作流示例（Epicode） | ✅ 已合并 dev（[#22](https://github.com/fancy1108/Clutch/pull/22)） |
 
 > **D21 已落地：** `clutch-tools__apply_patch` — 勿重复立项。  
-> **D25 已升格 HRT。** **D56：** B-01/04/05/06/08/10/18–22/42/43/46/47/49 → FM-xx。  
+> **D25 已升格 HRT。** **D56：** B-01/04/05/08/10/18–22/42/43/46/47/49 → FM-xx。**D60：** B-06 撤回 FM-19 UI，回本表候选。  
 > **B-27/B-28** → 交付表 D28/D43。B-33 与 FM-12 路径不同。
 
 ### P0–P2 · 对照《深入理解 AI Agent》01–10（2026-08-24）
@@ -96,7 +97,6 @@ _当前无 open 的待修复 Bug（2026-07-01）。_
 | B-04 | D56 **FM-10**（余量）；部分执行已在 Git |
 | B-17 | 部分 — plain chat + hybrid Codex · Git |
 | B-05 | D56 **FM-18** |
-| B-06 | D56 **FM-19** |
 | B-08 | D56 **FM-11** |
 | B-10 | D56 **FM-12** |
 | B-18–B-22 | D56 **FM-03**（OSR-18 界面层） |

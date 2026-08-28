@@ -92,8 +92,7 @@ test('desktop: FM-01…22 acceptance playbook', async ({ tauriPage: page }) => {
     await expect(page.locator('[data-testid="exec-policy-panel"]')).toBeVisible();
     await expect(page.locator('[data-testid="exec-policy-add"]')).toBeVisible();
     await clickId(page, 'settings-nav-models');
-    await expect(page.locator('[data-testid="planner-model-select"]')).toBeVisible();
-    await expect(page.locator('[data-testid="executor-model-select"]')).toBeVisible();
+    await expect(page.locator('[data-testid="clutch-current-model"]')).toBeVisible();
     await clickId(page, 'capability-tab-more');
     for (const id of CLI_SCANS) {
       await expect(page.locator(`[data-testid="cli-scan-${id}"]`)).toBeVisible();
@@ -108,8 +107,6 @@ test('desktop: FM-01…22 acceptance playbook', async ({ tauriPage: page }) => {
     await startNewChat(page);
     await expect(page.locator('[data-testid="dispatch-banner"]')).toBeVisible();
     await expect(page.locator('[data-testid="dispatch-banner"]')).toContainText(/current Agent|当前 Agent/i);
-    await clickId(page, 'right-tab-overview');
-    await expect(page.locator('[data-testid="overview-model-roles"]')).toBeVisible();
   });
 
   await test.step('FM-10 node engine', async () => {
