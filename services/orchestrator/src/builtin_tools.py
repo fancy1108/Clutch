@@ -459,23 +459,6 @@ def list_builtin_tools() -> list[dict[str, Any]]:
             },
         },
         {
-            "name": "notify_user",
-            "description": (
-                "Notify the user from a sub-agent with a short message. "
-                "Pauses until they Send or Cancel."
-            ),
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "message": {
-                        "type": "string",
-                        "description": "Notification shown on the Chat card.",
-                    },
-                },
-                "required": ["message"],
-            },
-        },
-        {
             "name": "submit_verification",
             "description": (
                 "Publish a self-check verification report in Chat after implementing work (D5). "
@@ -697,7 +680,7 @@ def is_goal_write_tool(name: str) -> bool:
 
 def is_ask_user_question_tool(name: str) -> bool:
     short = name.split("__")[-1].lower().replace("-", "_")
-    return short in {"ask_user_question", "ask_question", "user_question", "notify_user"}
+    return short in {"ask_user_question", "ask_question", "user_question"}
 
 
 def is_submit_verification_tool(name: str) -> bool:
@@ -920,10 +903,10 @@ def normalize_question_args(func_args: dict[str, Any] | None) -> dict[str, Any]:
                 oid = str(item.get("id") or f"opt_{idx + 1}").strip() or f"opt_{idx + 1}"
                 options.append({"id": oid, "label": label})
     kind = str(payload.get("kind") or "").lower()
-    if kind not in {"notify", "new_info", "question"}:
-        kind = "notify" if (not options and (payload.get("message") or "")) else "question"
-    if kind == "notify" and not options:
-        options = [{"id": "send", "label": "Send"}, {"id": "cancel", "label": "Cancel"}]
+    if kind == "notify":
+        kind = "question"
+    if kind not in {"new_info", "question"}:
+        kind = "question"
     if kind == "new_info" and not options:
         options = [{"id": "proceed", "label": "Proceed"}, {"id": "hold", "label": "Hold"}]
     allow_custom = payload.get("allow_custom")
@@ -1456,7 +1439,6 @@ def execute_builtin_tool(tool_name: str, arguments: dict[str, Any]) -> str:
         "set_goal": _tool_goal_write,
         "update_goal": _tool_goal_write,
         "ask_user_question": _tool_ask_user_question,
-        "notify_user": _tool_ask_user_question,
         "submit_verification": _tool_submit_verification,
         "verification_report": _tool_submit_verification,
         "submit_verification_report": _tool_submit_verification,

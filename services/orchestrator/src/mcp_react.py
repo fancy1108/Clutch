@@ -1351,7 +1351,7 @@ def run_mcp_react_loop(
                                 approval_required={
                                     "chat_messages": chat_messages,
                                     "tool_call_id": tc_id,
-                                    "func_name": "notify_user",
+                                    "func_name": "ask_user_question",
                                     "func_args": {
                                         "kind": "new_info",
                                         "message": "New information arrived before another parallel sub-agent. Proceed?",

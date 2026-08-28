@@ -23,7 +23,6 @@ _KIND_BY_TOOL: dict[str, ToolStepKind] = {
     "propose_plan": "other",
     "todo_write": "other",
     "ask_user_question": "other",
-    "notify_user": "other",
     "submit_verification": "other",
     "submit_diff_summary": "other",
     "write_file": "edit",
@@ -192,7 +191,7 @@ def humanize_tool_step(tool: str, args: dict[str, Any] | None) -> tuple[str, str
         return f"Propose plan: {_compact(title, 36)}", (
             f"{n} steps" if n else _compact(str(payload.get("summary") or detail), 160)
         )
-    if short in {"ask_user_question", "ask_question", "user_question", "notify_user"}:
+    if short in {"ask_user_question", "ask_question", "user_question"}:
         question = _pick(payload, ("question", "prompt")) or "Question"
         opts = payload.get("options")
         n = len(opts) if isinstance(opts, list) else 0

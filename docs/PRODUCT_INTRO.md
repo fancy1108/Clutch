@@ -103,8 +103,7 @@ graph TD
 * **Run control（D9 / B-38）**：Plain chat 运行中可 **Stop**；停止后 Chat 显示 Supervisor 提示与 **Continue**（`continue_run`）。连续工具失败触发 **loop fuse**（`CLUTCH_LOOP_FUSE_FAILURES`，默认 3）；**同工具**连败另有软/硬预算（默认 2/3，`CLUTCH_SAME_TOOL_*`）——例如 `generate_image` API 挂了不会靠改 todo 无限重试；`todo_write` 等元工具成功不重置连续失败计数。同一回合用同一参数反复 `read_file` / `list_dir` / `grep`（空转）第 3 次会停住并出 Continue，不必等失败熔断。
 * **用量（D22 / Q-USAGE-1）**：右侧 **Overview → Session Token Analytics** 展示本局步数、tokens、input/output 分布。有模型供应商 `usage` 用真值；没有则词数估算并标 `~`。费用格仍为 `—`（不接价表）。不再在 `+` 菜单展示。
 * **模式切换（D27）**：Chat 输入框底栏 **模式 pill**（对标 Cursor）：**Agent / Plan / Full / Ask**（内部 `auto_edit` / `plan` / `full` / `ask`）。默认 **Agent**（可改文件；危险 shell 仍问）。**Ask** 为对话/只读。旧 `explore` 映射为 Ask；旧 UI 名 Edit = Agent。
-* **Subtask delegation（D10 + D48）**：Clutch Agent 可调用 `delegate_subtask` 派发 **explore**（只读）或 **implement** 子任务；父气泡下嵌套 **Subtasks** 卡展示状态、摘要与可展开步骤；子失败在父卡可见。Explore 子循环默认更高工具步数预算；用户要求「先探再改」时至少出现 explore 卡，implement 可由父 Agent 完成（不强制第二张卡）。
-* **Notify user（FM-14 / B-46）**：子 Agent 可调用 `notify_user`；Chat 出现通知卡，**Send** / **Cancel** 可点。对话 **+** 菜单也可预览该卡。
+* **Subtask delegation（D10 + D48）**：Clutch Agent 可调用 `delegate_subtask` 派发 **explore**（只读）或 **implement** 子任务；父气泡下嵌套 **Subtasks** 卡展示状态、摘要与可展开步骤；子失败在父卡可见。Explore 子循环默认更高工具步数预算；用户要求「先探再改」时至少出现 explore 卡，implement 可由父 Agent 完成（不强制第二张卡）。子任务交差回主 Agent；要问人时主 Agent 走 Question 卡（`ask_user_question`），没有单独的 Notify 卡。
 * **New information gate（FM-15 / B-43）**：并行子任务前 Chat 出现确认卡（**Proceed** / **Hold**）；**+** 菜单可预览。已有运行中子任务时再次 `delegate_subtask` 会暂停询问。
 * **Background commands（D11）**：`run_terminal_cmd` 可设 `background=true` 立即返回 `job_id`；**运行中**任务显示在输入栏上方（查看输出 / Kill）；**结束后**任务卡进入对话时间线（随 Supervisor 完成提示），底栏不再占用。
 * **Foreground → background（D34）**：长命令前台执行时，输入栏上方出现 **Move to background**；一键转入 D11 后台列表后可继续聊天（对标 Grok Ctrl+B）。

@@ -30,7 +30,7 @@ export CLUTCH_RUNTIME_MODE=hybrid && pnpm tauri:dev
 | 右侧监督 | **Overview / Files / Changes / Terminal** |
 | 切换 Coding / Design | 顶栏右侧 **Coding · Design** |
 
-**+ 菜单里和本批相关的项：** Enable worktree、Notify user、New information、Interpreter error（后三项是 **预览卡**，不必等 Agent）。
+**+ 菜单里和本批相关的项：** Enable worktree、New information、Interpreter error（后两项是 **预览卡**，不必等 Agent）。
 
 ---
 
@@ -46,7 +46,6 @@ export CLUTCH_RUNTIME_MODE=hybrid && pnpm tauri:dev
 | ☑ | [FM-09](#fm-09-分派横幅) | 空 Chat 不必先选工作流 | New Chat 顶上灰条 |
 | ☑ | [FM-12](#fm-12-记忆搜索) | 搜 `.clutch/memory` | Settings → General → Search |
 | ☐ | [D32+FM-11](#d32--fm-11-worktree) | Enable → 蓝条 → Discard/Merge / 并行树 | Chat **+** → Enable worktree |
-| ☐ | [FM-14](#fm-14-notify-user) | 通知卡 Send / Cancel | **+** → Notify user（预览） |
 | ☐ | [FM-15](#fm-15-新信息门禁) | 并行前 Proceed / Hold | **+** → New information（预览） |
 | ☐ | [FM-17](#fm-17-解释器错误卡) | 超时/离线结构化卡 | **+** → Interpreter error（预览） |
 | ☐ | [FM-10](#fm-10-画布-node-engine) | 节点选 CLI/MCP/llm | Workflows 画布点节点 |
@@ -257,19 +256,6 @@ rm -rf /tmp/clutch-fm03-does-not-exist
 ```
 
 期望：主仓 `git status` 仍干净。再点 **Add parallel worktree**。非 git 文件夹测第 6 步即可。
-
----
-
-### FM-14 Notify user
-
-**入口：** **+** → **Notify user**（预览，不必等子 Agent）。真路径是子 Agent 调 `notify_user`。
-
-| # | 操作 | 期望 |
-|---|------|------|
-| 1 | 点菜单项 | Chat 出现通知卡（`notify-user-card`） |
-| 2 | **Send** / **Cancel** 都能点 | 卡状态变化，不是死按钮 |
-
-**复制：** 不必等 Agent。Chat **+** → **Notify user**。卡上先点 **Cancel** 一次；再打开一次点 **Send**。
 
 ---
 

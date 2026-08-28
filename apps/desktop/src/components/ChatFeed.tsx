@@ -616,21 +616,6 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   useEffect(() => {
     const handler = () =>
       setDemoNotify({
-        question: t('Sub-agent wants to notify you'),
-        options: [
-          { id: 'send', label: t('Send') },
-          { id: 'cancel', label: t('Cancel') },
-        ],
-        status: 'pending',
-        kind: 'notify',
-      });
-    window.addEventListener('clutch-notify-user-demo', handler);
-    return () => window.removeEventListener('clutch-notify-user-demo', handler);
-  }, [t]);
-
-  useEffect(() => {
-    const handler = () =>
-      setDemoNotify({
         question: t('New information arrived. Continue parallel work?'),
         options: [
           { id: 'proceed', label: t('Proceed') },

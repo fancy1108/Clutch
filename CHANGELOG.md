@@ -17,12 +17,13 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 - **Import from Claude (MCP Hub):** Dropped the one-click copy of Claude Desktop / `~/.claude.json` MCP entries. It did not check that commands exist, so stale paths showed up as failed servers. Register stdio or HTTP yourself; the Claude Code tab remains a read-only scan of native config.
 - **Planner / Executor (FM-19):** Removed the Settings dual model pickers. Chat footer remains the place to switch the active model. Dual-session Planner/Executor stays a backlog idea (B-06).
 - **Event channel (FM-13):** Removed the Settings webhook/email form and Test-event Chat banner. They did not receive external events. Local CI watch after push is BACKLOG B-51.
+- **Notify user (FM-14):** Removed the notify card, `notify_user` tool, and + menu preview. Questions go through the existing Question card (`ask_user_question`) on the parent agent.
 
 ### Changed
 
 - **Command policy (FM-03):** Deny matching shell commands fail the tool with `[Permission] Denied` (no Allow card). Ask and dangerous commands (`rm -rf`, `sudo`) still pause in Full. Playbook has copy-paste Chat cases.
 - **Workflow list (D58):** Settings → Workflows SOP shows the full SOP name (wrap, not ellipsis). Clicking a row selects it for Chat and opens the canvas. Hover only shows edit/delete. Chat can still pick a SOP from the footer menu.
-- **Composer + menu icons:** Session overview / Notify user no longer render as empty circles; each + item uses a lucide glyph that matches its action (history, skills, undo, bell, inbox, bug, calendar, worktree).
+- **Composer + menu icons:** Session overview no longer renders as an empty circle; each + item uses a lucide glyph that matches its action (history, skills, undo, inbox, bug, calendar, worktree).
 
 ### Fixed
 
@@ -46,7 +47,6 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 - **Canvas node engine (FM-10):** Workflow node editor can set CLI/MCP/llm; Overview shows that engine.
 - **Parallel worktrees (FM-11):** Chat can spawn extra worktrees with visible paths and merge/discard per tree.
 - **Memory search (FM-12):** Settings → General can search `.clutch/memory`; clicking a hit opens the file.
-- **Notify user (FM-14):** Chat shows a notify card with Send/Cancel; the + menu can preview it.
 - **New-info gate (FM-15):** Parallel subtasks ask before a second spawn; Chat shows Proceed/Hold.
 - **Design visual review (FM-16):** Handoff step 1 shows a render shot with Approve/Reject; Reject iterates.
 - **Interpreter errors (FM-17):** Timeout/offline shell failures show a structured Chat card.

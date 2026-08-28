@@ -33,21 +33,20 @@ export function QuestionCardView({
 }) {
   const status = card.status;
   const canChoose = Boolean(interactive && status === 'pending' && onSelect);
-  const isNotify = card.kind === 'notify';
   const isNewInfo = card.kind === 'new_info';
   const statusLabel =
     status === 'answered'
-      ? t(isNotify ? 'Sent' : isNewInfo ? 'Proceeded' : 'Answered')
+      ? t(isNewInfo ? 'Proceeded' : 'Answered')
       : status === 'cancelled'
-        ? t(isNotify ? 'Notification cancelled' : isNewInfo ? 'Held' : 'Question cancelled')
-        : t(isNotify ? 'Awaiting send' : isNewInfo ? 'New information' : 'Awaiting your choice');
-  const testId = isNotify ? 'notify-user-card' : isNewInfo ? 'new-info-card' : 'question-card';
+        ? t(isNewInfo ? 'Held' : 'Question cancelled')
+        : t(isNewInfo ? 'New information' : 'Awaiting your choice');
+  const testId = isNewInfo ? 'new-info-card' : 'question-card';
 
   return (
     <div className={CHAT_AGENT_CARD} data-testid={testId} data-status={status}>
       <ChatAgentCardHeader
-        icon={isNotify ? 'bell' : isNewInfo ? 'inbox' : 'forum'}
-        title={t(isNotify ? 'Notify user' : isNewInfo ? 'New information' : 'Question')}
+        icon={isNewInfo ? 'inbox' : 'forum'}
+        title={t(isNewInfo ? 'New information' : 'Question')}
         status={
           <ChatAgentCardStatus tone={statusTone(status, canChoose)}>
             {statusLabel}
@@ -80,15 +79,11 @@ export function QuestionCardView({
                 type="button"
                 role="option"
                 data-testid={
-                  isNotify
-                    ? option.id === 'cancel'
-                      ? 'notify-user-cancel'
-                      : 'notify-user-send'
-                    : isNewInfo
-                      ? option.id === 'hold'
-                        ? 'new-info-hold'
-                        : 'new-info-proceed'
-                      : `question-option-${option.id}`
+                  isNewInfo
+                    ? option.id === 'hold'
+                      ? 'new-info-hold'
+                      : 'new-info-proceed'
+                    : `question-option-${option.id}`
                 }
                 onClick={() => onSelect?.(option)}
                 className={`${BTN_FOCUS} group w-full flex items-start gap-2.5 rounded-xl border border-neutral-200 bg-surface-container-low px-3 py-2.5 text-left transition-all duration-200 hover:border-neutral-900 hover:bg-white hover:shadow-sm active:scale-[0.99]`}

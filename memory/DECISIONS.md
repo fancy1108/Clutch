@@ -664,6 +664,20 @@
 - **影响**：`SystemPreferencesModal.tsx` · `ChatFeed.tsx` · `routes/settings.py` · `PRODUCT_INTRO.md` · 点验剧本不再含 FM-13。
 - **决策状态**：`已落地`
 
+### D62 · notify_user 仅在主 Agent 卡住时询问（2026-08-28）
+
+- **背景**：曾试过 `delegate_subtask` 一结束就强制弹 Notify 卡。用户指出这不合理：子任务应交回主 Agent 判断合不合格和下一步；只有执行中**不清楚下一步**才该问人。
+- **方案**：撤回完成后必停。子任务结果直接回父循环。嵌套子 Agent 不挂 `notify_user` / `ask_user_question`，卡住时把阻塞点和选项写进摘要。主 Agent 用 `ask_user_question` 处理分叉、用 `notify_user` 处理 yes/no / 阻塞。`+` 预览保留。
+- **影响**：`subagent_runner.py` · `mcp_react.py` · `agent_prompt.py` · `PRODUCT_INTRO.md` · FM-14 点验剧本。
+- **决策状态**：`已落地`（已被 **D63** 取代：不再保留独立 Notify 卡）
+
+### D63 · 撤回 FM-14 Notify user（2026-08-28）
+
+- **背景**：B-46/`notify_user` 与 D4 `ask_user_question` 重复。用户要求任何问题都由主 Agent 问；子任务交差回主 Agent，不单独弹 Notify。
+- **方案**：删除 `notify_user` 工具、Chat 通知卡皮肤、`+` 菜单预览。问人只走 Question 卡。FM-15 并行门禁改挂 `ask_user_question`（`kind: new_info`）。B-46 不另立项。
+- **影响**：`builtin_tools.py` · `QuestionCardView.tsx` · `ChatInputBar.tsx` · `ChatFeed.tsx` · `PRODUCT_INTRO.md` · 点验剧本不再含 FM-14。
+- **决策状态**：`已落地`
+
 ### D45 · D7 项目规则 + Skills 对齐 Grok Build（2026-07-24）
 
 - **背景**：能力期 D7；对照本地 `grok-build` 与 docs.x.ai project-rules。User 级规则（`~/.grok/AGENTS.md` 等）本期不做。

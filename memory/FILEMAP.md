@@ -172,7 +172,6 @@
 | D14 Grok CLI | `grok_cli_adapter.py` · `grok-cli` in `tools_status` / `engine_router` |
 | 会话 fork/回滚（D23） | `session_fork.py` · `file_rewind.py` · fork/rewind API · Chat 菜单 |
 | 跨会话记忆（D16 / B-39 / B-40 / B-45 / FM-12） | `cross_session_memory.py` · `workspace_memory.py` `search_memory` · `GET /api/memory/search` · Settings Memory 检索 · Files `.clutch/memory/MEMORY.md` |
-| notify_user（FM-14 / B-46） | builtin `notify_user` · `QuestionCardView` `notify-user-card` · Chat `+` 预览 |
 | 新信息门禁（FM-15 / B-43） | `new-info-card` · 并行 `delegate_subtask` 前确认 |
 | Design 视觉审查（FM-16 / B-49） | `DesignHandoffTray` `design-review-card` / `design-review-reject` |
 | 解释器错误卡（FM-17 / B-47） | Chat `interpreter-error-card` · `run_terminal_cmd` timeout/offline |

@@ -504,6 +504,9 @@ def compose_agent_prompt_assembly(
                     "When the user leaves a real fork unspecified (e.g. Redis vs Memcached "
                     "for cache), call `ask_user_question` with 2–5 short options — do not "
                     "interview in free prose. Skip asking when the request is already clear. "
+                    "After `delegate_subtask`, judge the result yourself and continue. "
+                    "If YOU cannot decide the next step, call `ask_user_question` "
+                    "(yes/no is two options) — do not interview in free prose. "
                     "When a Skills catalog entry is relevant, call `read_skill` with its key "
                     "to load the full SKILL.md — do not invent skill instructions. "
                     "Skip propose_plan only for trivial Q&A or single-line edits.",

@@ -7,9 +7,20 @@
 
 - **阶段：** **v1.3.0** 已发；`dev` 冲 **v1.4.0**（D59）。主线 D8–D13 ✅；扩展/MCP **D14–D52 Agent 代 PM ✅**；Desktop E2E ✅；**Design D36 PM ✅**
 - **Git / PM 索引：** [`runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md`](../runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md)
-- **下次优先：** Frontend modules 点验进 **v1.4.0**（FM-01…05、FM-09、FM-12 已人工点验；**FM-13 / FM-19 已撤回**；下一条 **D32+FM-11** worktree）。T1 开闸或 `memory/BACKLOG.md` 未升格项（价表 / Windows 实体机不做）。
+- **下次优先：** FM-14 已撤回（D63）。其余 Wave 5：**D32+FM-11** worktree，或 FM-15/17 预览。
 
 ## Recent Sessions
+
+## 2026-08-28 会话（撤回 FM-14）
+
+- **做了：** 删 `notify_user`、Notify 卡与 `+` 预览。问人只走主 Agent Question 卡（D63）。
+- **下次：** D32+FM-11 或 FM-15/17 预览。
+
+## 2026-08-28 会话（FM-14 真响）
+
+- **做了：** 先做错「子任务结束强制弹卡」；用户纠正后改为交差回主 Agent、卡住才 `notify_user`（D62 修订）。
+- **没做：** 未做嵌套子 Agent 直接对用户 HITL（业界也是回报父 Agent）。
+- **下次：** `+` 预览点验 FM-14；或 D32+FM-11。
 
 ## 2026-08-28 会话（撤回 FM-13）
 

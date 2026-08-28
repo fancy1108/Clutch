@@ -44,11 +44,15 @@ _EXPLORE_SYSTEM = (
     "Be efficient: list each directory at most once, prefer grep/search over "
     "repeated list_dir, read only the few most likely entry files, then answer. "
     "Stop as soon as you can summarize findings — do not exhaust the tool budget. "
-    "Do NOT write files, run mutating shell commands, or call delegate_subtask."
+    "Do NOT write files, run mutating shell commands, or call delegate_subtask. "
+    "If you cannot proceed without a human decision, say what is blocked and "
+    "which options exist in your summary — do not try to ask the user yourself."
 )
 _IMPLEMENT_SYSTEM = (
     "You are an implementation subagent (D10). "
-    "Complete the scoped task with available tools. Do not call delegate_subtask."
+    "Complete the scoped task with available tools. Do not call delegate_subtask. "
+    "If you cannot proceed without a human decision, say what is blocked and "
+    "which options exist in your summary — do not try to ask the user yourself."
 )
 
 
@@ -157,7 +161,7 @@ def run_subagent(
             pause_on_risky=pause_on_risky,
             permission_mode=sub_permission,
             model_id=model_id,
-            exclude_builtin_tools=frozenset({"delegate_subtask"}),
+            exclude_builtin_tools=frozenset({"delegate_subtask", "ask_user_question"}),
         )
     except Exception as exc:
         failed = {

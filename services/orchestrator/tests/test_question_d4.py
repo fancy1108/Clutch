@@ -20,8 +20,10 @@ from src.mcp_risk import is_risky_mcp_tool
 
 def test_ask_user_question_listed() -> None:
     assert "ask_user_question" in {t["name"] for t in list_builtin_tools()}
+    assert "notify_user" not in {t["name"] for t in list_builtin_tools()}
     assert is_ask_user_question_tool("clutch-tools__ask_user_question")
     assert not is_ask_user_question_tool("propose_plan")
+    assert not is_ask_user_question_tool("notify_user")
 
 
 def test_ask_user_question_not_risky_gate() -> None:
@@ -45,15 +47,6 @@ def test_normalize_question_args() -> None:
         {"id": "opt_2", "label": "Memcached"},
     ]
     assert q["allow_custom"] is True
-
-
-def test_notify_user_normalizes_send_cancel() -> None:
-    q = normalize_question_args({"message": "Build finished"})
-    assert q["kind"] == "notify"
-    assert q["question"] == "Build finished"
-    assert [o["id"] for o in q["options"]] == ["send", "cancel"]
-    assert "notify_user" in {t["name"] for t in list_builtin_tools()}
-    assert is_ask_user_question_tool("notify_user")
 
 
 def test_new_info_gate_options() -> None:

@@ -4,7 +4,7 @@
 > **点验剧本（入口/步骤/期望）：** [`docs/FRONTEND_MODULES_ACCEPTANCE.md`](../../docs/FRONTEND_MODULES_ACCEPTANCE.md)  
 > **决策：** D56 — [`memory/DECISIONS.md`](../../memory/DECISIONS.md)  
 > 每条须用户能在桌面 UI 点验；新控件带 `data-testid`；勾 ROADMAP 前更新 `docs/PRODUCT_INTRO.md`。  
-> 一次一个模块。不进本轨道：价表、Windows 实体机（D55）、已否决 B-15/B-16、**已撤回 FM-19（D60）**、**已撤回 FM-13（D61）**。D32 worktree 开关已有；FM-11 只做并行子树 + 合并/丢弃。  
+> 一次一个模块。不进本轨道：价表、Windows 实体机（D55）、已否决 B-15/B-16、**已撤回 FM-19（D60）**、**已撤回 FM-13（D61）**、**已撤回 FM-14（D63）**。D32 worktree 开关已有；FM-11 只做并行子树 + 合并/丢弃。  
 > **发版：** 本轨随 **v1.4.0**（D59）；CHANGELOG 写 `## [1.4.0] - Unreleased`。
 
 ## 门禁
@@ -53,14 +53,14 @@
 |----|------|----------|
 | **FM-11** | B-08 | 并行子任务各 worktree 路径；合并/丢弃 |
 | **FM-12** | B-10 | Settings/Files 搜 `.clutch/memory`，结果可打开 |
-| **FM-14** | B-46 | `notify_user` 卡；子 Agent 发送/取消 |
 | **FM-15** | B-43 | 并行前「新信息」确认卡 |
 | **FM-16** | B-49 | Design 渲染截图 + 审查卡可驳回 |
 | **FM-17** | B-47 | 解释器超时/断网结构化错误卡 |
 | **FM-18** | B-05 | 校验失败进 Chat/Overview 可读条 |
 
 > **撤回：** FM-19（原 B-06 UI 切片）见 D60。Chat 底栏换模型；双 session Planner/Executor 回 BACKLOG B-06。  
-> **撤回：** FM-13（原 B-42 webhook/邮箱空壳）见 D61。本机盯 CI 见 BACKLOG **B-51**。
+> **撤回：** FM-13（原 B-42 webhook/邮箱空壳）见 D61。本机盯 CI 见 BACKLOG **B-51**。  
+> **撤回：** FM-14（原 B-46 `notify_user`）见 D63。问人只走主 Agent `ask_user_question`。
 
 ## Wave 6 · 非界面（全部 FM 勾完之后）
 

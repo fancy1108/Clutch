@@ -53,14 +53,14 @@
 | B-33 | 第三方 MCP 记忆工作流示例（Epicode） | ✅ 已合并 dev（[#22](https://github.com/fancy1108/Clutch/pull/22)） |
 
 > **D21 已落地：** `clutch-tools__apply_patch` — 勿重复立项。  
-> **D25 已升格 HRT。** **D56：** B-01/04/05/08/10/18–22/43/46/47/49 → FM-xx。**D60：** B-06 撤回 FM-19 UI。**D61：** B-42 撤回 FM-13 UI；本机盯 CI 见 **B-51**。  
+> **D25 已升格 HRT。** **D56：** B-01/04/05/08/10/18–22/43/47/49 → FM-xx。**D60：** B-06 撤回 FM-19 UI。**D61：** B-42 撤回 FM-13 UI；本机盯 CI 见 **B-51**。**D63：** B-46 撤回 FM-14；问人走 D4。  
 > **B-27/B-28** → 交付表 D28/D43。B-33 与 FM-12 路径不同。
 
 ### P0–P2 · 对照《深入理解 AI Agent》01–10（2026-08-24）
 
 > **调研：** [`docs/research/clutch-agent-book-gap.md`](../docs/research/clutch-agent-book-gap.md)。  
 > **B-34–B-41、B-44、B-45、B-48 已升格** harness 各节。  
-> **B-43/46/47/49 已升格 FM-15/14/17/16（D56）。B-42 webhook 空壳已撤回（D61）。**
+> **B-43/47/49 已升格 FM-15/17/16（D56）。B-46 notify 空壳已撤回（D63）。B-42 webhook 空壳已撤回（D61）。**
 
 | ID | 候选能力 | 状态 | 升格条件 |
 |----|----------|------|----------|
@@ -102,7 +102,7 @@ _当前无 open 的待修复 Bug（2026-07-01）。_
 | B-10 | D56 **FM-12** |
 | B-18–B-22 | D56 **FM-03**（OSR-18 界面层） |
 | B-43 | D56 **FM-15** |
-| B-46 | D56 **FM-14** |
+| B-46 | 撤回 D63 — 问人走 D4 `ask_user_question` |
 | B-47 | D56 **FM-17** |
 | B-49 | D56 **FM-16** |
 | B-48 | `specs/core/tasks.md` §Agent eval ablation · `ROADMAP.md` 同名节（书 06；消融闸 + JSONL trajectory） |

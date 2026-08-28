@@ -135,12 +135,9 @@ test('desktop: FM-01…22 acceptance playbook', async ({ tauriPage: page }) => {
     await clearWorkflowSelection(page);
   });
 
-  await test.step('FM-14/15/17 plus demos', async () => {
+  await test.step('FM-15/17 plus demos', async () => {
     await clickId(page, 'composer-plus');
-    await page.waitForSelector('[data-testid="notify-user-demo"]', 5_000);
-    await clickId(page, 'notify-user-demo');
-    await page.waitForSelector('[data-testid="notify-user-card"]', 8_000);
-    await clickId(page, 'composer-plus');
+    await page.waitForSelector('[data-testid="new-info-demo"]', 5_000);
     await clickId(page, 'new-info-demo');
     await page.waitForSelector('[data-testid="new-info-card"]', 8_000);
     await clickId(page, 'composer-plus');

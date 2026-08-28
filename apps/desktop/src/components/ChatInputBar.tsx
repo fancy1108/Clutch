@@ -1083,18 +1083,6 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
                   ) : null}
                   <button
                     type="button"
-                    data-testid="notify-user-demo"
-                    className={menuItemClass}
-                    onClick={() => {
-                      setAttachMenuOpen(false);
-                      window.dispatchEvent(new CustomEvent('clutch-notify-user-demo'));
-                    }}
-                  >
-                    <LegacyIcon name="bell" className="text-[17px] text-on-surface-variant" />
-                    {t('Notify user')}
-                  </button>
-                  <button
-                    type="button"
                     data-testid="new-info-demo"
                     className={menuItemClass}
                     onClick={() => {
