@@ -230,6 +230,28 @@ async def _send_file_changed(
     }
     await websocket.send_text(json.dumps(envelope))
 
+
+async def _send_files_committed(
+    websocket: WebSocket,
+    run_id: str,
+    *,
+    node_id: str,
+    paths: list[str],
+) -> None:
+    envelope = {
+        "event": "files_committed",
+        "data": {
+            "run_id": run_id,
+            "node_id": node_id,
+            "source": "orchestrator",
+            "level": "info",
+            "message": "Working tree files committed",
+            "paths": paths,
+            "timestamp": _iso_timestamp(),
+        },
+    }
+    await websocket.send_text(json.dumps(envelope))
+
 async def _send_validation_result(
     websocket: WebSocket,
     run_id: str,

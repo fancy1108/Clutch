@@ -16,6 +16,7 @@ import { SystemPreferencesModal } from './components/SystemPreferencesModal';
 import { PromptModal } from './components/PromptModal';
 import { AppErrorBoundary } from './components/AppErrorBoundary';
 import { FooterFieldChevron, FooterFieldLabel, FooterFieldValue, FooterMenuAction, FooterMenuItem, FooterMenuPanel, FooterMenuSection, FOOTER_CHIP_BUTTON_CLASS, FOOTER_CHIP_CLASS, footerIdleHiddenClass } from './components/FooterMenu';
+import { FooterWorktreeMenu } from './components/WorktreeIsolationBar';
 import { MainView, RightTab, ChatMessage, UncommittedFile, DiffLine, type Agent, type ClutchState, type AppWorkspaceMode, type ToolStep } from './types';
 import { resolveChatTerminalSyncTarget } from './services/chatTerminalSync';
 import { fetchAgents } from './services/agentApi';
@@ -82,6 +83,7 @@ import {
   addWorkspace,
   removeWorkspace,
   fetchWorkspaceFile,
+  fetchWorkspaceChanges,
   resolveWorkspaceFile,
   fetchWorkspaceTree,
   fetchWorkspaceGit,
@@ -294,6 +296,7 @@ function MainLayout() {
     setHighRiskConfirmed(false);
   }, [sessionRunId]);
   const [branchMenuOpen, setBranchMenuOpen] = useState(false);
+  const [worktreeMenuOpen, setWorktreeMenuOpen] = useState(false);
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
   const [agentMenuOpen, setAgentMenuOpen] = useState(false);
   const [workflowMenuOpen, setWorkflowMenuOpen] = useState(false);
@@ -301,6 +304,7 @@ function MainLayout() {
 
   const closeFooterMenus = useCallback(() => {
     setBranchMenuOpen(false);
+    setWorktreeMenuOpen(false);
     setModelMenuOpen(false);
     setAgentMenuOpen(false);
     setWorkflowMenuOpen(false);
@@ -318,7 +322,7 @@ function MainLayout() {
 
   useEffect(() => {
     const handleOutsideClick = (e: MouseEvent) => {
-      if (branchMenuOpen || modelMenuOpen || agentMenuOpen || workflowMenuOpen) {
+      if (branchMenuOpen || worktreeMenuOpen || modelMenuOpen || agentMenuOpen || workflowMenuOpen) {
         const target = e.target as HTMLElement;
         if (target.closest('[data-testid^="footer-"]')) {
           return;
@@ -330,7 +334,16 @@ function MainLayout() {
     return () => {
       window.removeEventListener('click', handleOutsideClick);
     };
-  }, [branchMenuOpen, modelMenuOpen, agentMenuOpen, workflowMenuOpen, closeFooterMenus]);
+  }, [branchMenuOpen, worktreeMenuOpen, modelMenuOpen, agentMenuOpen, workflowMenuOpen, closeFooterMenus]);
+
+  const viewWorktreeId =
+    clutchState.worktree_isolation?.enabled && clutchState.worktree_isolation.id
+      ? clutchState.worktree_isolation.id
+      : '';
+  const viewWorktreePath =
+    clutchState.worktree_isolation?.enabled && clutchState.worktree_isolation.path
+      ? clutchState.worktree_isolation.path
+      : '';
 
   const refreshWorkspaceGit = useCallback(async () => {
     try {
@@ -343,12 +356,21 @@ function MainLayout() {
 
   const refreshWorkspaceFiles = useCallback(async () => {
     try {
-      const nodes = await fetchWorkspaceTree();
+      const nodes = await fetchWorkspaceTree(viewWorktreeId || undefined);
       setWorkspaceFiles(nodes);
     } catch {
       setWorkspaceFiles([]);
     }
-  }, []);
+  }, [viewWorktreeId]);
+
+  const refreshViewChanges = useCallback(async () => {
+    try {
+      const files = await fetchWorkspaceChanges(viewWorktreeId || undefined);
+      setUncommitted(files);
+    } catch {
+      setUncommitted([]);
+    }
+  }, [viewWorktreeId]);
 
   useEffect(() => {
     void fetchWorkspaces()
@@ -805,6 +827,12 @@ function MainLayout() {
   }, [rightTab, workspace?.id, refreshWorkspaceFiles]);
 
   useEffect(() => {
+    if (!workspace) return;
+    void refreshWorkspaceFiles();
+    void refreshViewChanges();
+  }, [viewWorktreeId, workspace, refreshWorkspaceFiles, refreshViewChanges]);
+
+  useEffect(() => {
     const handler = (event: Event) => {
       const data = (event as CustomEvent).detail as { path?: string; diff_lines?: DiffLine[] };
       if (!data.path) return;
@@ -813,11 +841,20 @@ function MainLayout() {
         { name: data.path, status: 'M', diffs: data.diff_lines || [], active: true },
       ]);
       void refreshWorkspaceFiles();
+      void refreshViewChanges();
       setRightTab('changes');
     };
     window.addEventListener('clutch-file-changed', handler);
     return () => window.removeEventListener('clutch-file-changed', handler);
-  }, [refreshWorkspaceFiles]);
+  }, [refreshWorkspaceFiles, refreshViewChanges]);
+
+  useEffect(() => {
+    const handler = () => {
+      void refreshViewChanges();
+    };
+    window.addEventListener('clutch-files-committed', handler);
+    return () => window.removeEventListener('clutch-files-committed', handler);
+  }, [refreshViewChanges]);
 
   // Sidebar selector width for calculations
   const selectedSidebarWidth = sidebarOpen ? SIDEBAR_EXPANDED_WIDTH_PX : SIDEBAR_COLLAPSED_WIDTH_PX;
@@ -1035,44 +1072,49 @@ function MainLayout() {
   };
 
   const handleOpenWorkspaceFile = async (path: string) => {
+    const wtId = viewWorktreeId || undefined;
+    const fileRoot = viewWorktreePath || workspace?.workspace_path;
     try {
-      const resolved = await resolveWorkspaceFile(path);
-      if (!resolved.ok) {
-        setPreviewToast(
-          resolved.reason === 'ambiguous'
-            ? `Multiple files named “${path}” — open from Files instead.`
-            : `File not found: ${path}`,
-        );
-        window.setTimeout(() => setPreviewToast(null), 3200);
-        return;
+      let rel = path;
+      if (!wtId) {
+        const resolved = await resolveWorkspaceFile(path);
+        if (!resolved.ok) {
+          setPreviewToast(
+            resolved.reason === 'ambiguous'
+              ? `Multiple files named “${path}” — open from Files instead.`
+              : `File not found: ${path}`,
+          );
+          window.setTimeout(() => setPreviewToast(null), 3200);
+          return;
+        }
+        rel = resolved.path;
       }
-      // HTML: open rendered page in the system browser (not Clutch source preview).
-      if (isHtmlWorkspacePath(resolved.path)) {
-        const abs = absoluteWorkspacePath(workspace?.workspace_path, resolved.path);
+      if (isHtmlWorkspacePath(rel)) {
+        const abs = absoluteWorkspacePath(fileRoot, rel);
         if (!abs) {
-          setPreviewToast(`Could not resolve path: ${resolved.path}`);
+          setPreviewToast(`Could not resolve path: ${rel}`);
           window.setTimeout(() => setPreviewToast(null), 3200);
           return;
         }
         setPreviewFile(null);
         await openPathInSystem(abs);
-        const leaf = resolved.path.split(/[/\\]/).pop() || resolved.path;
+        const leaf = rel.split(/[/\\]/).pop() || rel;
         setPreviewToast(`Opened in browser: ${leaf}`);
         window.setTimeout(() => setPreviewToast(null), 2800);
         return;
       }
-      if (isImageWorkspacePath(resolved.path)) {
-        const mediaSrc = await workspaceMediaUrl(resolved.path);
+      if (isImageWorkspacePath(rel)) {
+        const mediaSrc = await workspaceMediaUrl(rel, wtId);
         setPreviewFile({
-          name: resolved.path,
+          name: rel,
           content: '',
           mediaSrc,
         });
         return;
       }
-      const content = await fetchWorkspaceFile(resolved.path);
+      const content = await fetchWorkspaceFile(rel, wtId);
       setPreviewFile({
-        name: resolved.path,
+        name: rel,
         content,
         plain: isLargePreviewContent(content),
       });
@@ -2396,6 +2438,47 @@ function MainLayout() {
             ) : null}
           </div>
 
+          <FooterWorktreeMenu
+            worktree={clutchState.worktree_isolation ?? null}
+            open={worktreeMenuOpen}
+            t={t}
+            onToggle={() => {
+              const next = !worktreeMenuOpen;
+              closeFooterMenus();
+              setWorktreeMenuOpen(next);
+            }}
+            onSelectMain={() => {
+              setWorktreeMenuOpen(false);
+              if (clutchState.worktree_isolation?.enabled) {
+                void clutchStore.send({ action: 'select_worktree', wt_id: '' });
+              }
+            }}
+            onSelectWorktree={(wtId) => {
+              setWorktreeMenuOpen(false);
+              if (wtId !== clutchState.worktree_isolation?.id) {
+                void clutchStore.send({ action: 'select_worktree', wt_id: wtId });
+              }
+            }}
+            onEnable={() => {
+              setWorktreeMenuOpen(false);
+              void clutchStore.send({ action: 'enable_worktree' });
+            }}
+            onMerge={(wtId) => {
+              setWorktreeMenuOpen(false);
+              void clutchStore.send({
+                action: 'merge_worktree',
+                wt_id: wtId,
+              });
+            }}
+            onDiscard={(wtId) => {
+              setWorktreeMenuOpen(false);
+              void clutchStore.send({
+                action: 'discard_worktree',
+                wt_id: wtId,
+              });
+            }}
+          />
+
           {!hideFooterSessionControls ? (
             <>
           {hasWorkflowSelection ? (
@@ -2572,7 +2655,7 @@ function MainLayout() {
                     title={t('Workflows are available in Coding mode')}
                     aria-label={`${t('Workflow')}: —`}
                   >
-                    <LegacyIcon name="fork_right" className="text-[15px] shrink-0" />
+                    <LegacyIcon name="workflow" className="text-[15px] shrink-0" />
                     <FooterFieldLabel>{t('Workflow')}</FooterFieldLabel>
                     <FooterFieldValue>—</FooterFieldValue>
                   </span>
@@ -2590,7 +2673,7 @@ function MainLayout() {
                       aria-label={`${t('Workflow')}: ${activeWorkflowLabel}`}
                       title={`${t('Workflow')}: ${activeWorkflowLabel}`}
                     >
-                      <LegacyIcon name="fork_right" className="text-[15px] shrink-0" />
+                      <LegacyIcon name="workflow" className="text-[15px] shrink-0" />
                       <FooterFieldLabel>{t('Workflow')}</FooterFieldLabel>
                       <FooterFieldValue title={activeWorkflowLabel}>{activeWorkflowLabel}</FooterFieldValue>
                       <FooterFieldChevron />

@@ -147,7 +147,7 @@
 | 对话模式 handoff（FM-08） | `ChatInputBar.tsx` drafts · `orchestrator-fill-bar` · 切 Terminal 预填近期对话 |
 | 主控分派横幅（FM-09） | `ChatFeed.tsx` `dispatch-banner` |
 | 画布 node engine（FM-10） | `WorkflowOrchestration.tsx` `node-tool-select` · Overview `step-engine-*` |
-| 并行 worktree（FM-11） | `WorktreeIsolationBar.tsx` `add-parallel-worktree` · `GET/POST /api/worktree` |
+| 并行 worktree（FM-11） | `WorktreeIsolationBar.tsx` `FooterWorktreeMenu` · `footer-worktree-trigger` · `GET/POST /api/worktree` |
 | API 抽象（mock 待 M2 替换） | `services/api.ts` |
 | 侧栏（工作区 / 历史，M2-07/09） | `sidebar.tsx` |
 | 底部状态栏（Branch / Model / Agent · 容器宽度自适应） | `App.tsx` footer · `FooterMenu.tsx` `FooterField*` |
@@ -160,12 +160,12 @@
 | Chat 斜杠命令（D18） | `services/slashCommands.ts` · `ChatInputBar` `/` 面板 · `POST /api/runs/{id}/compact` |
 | Goal 跟踪（D29） | builtin `goal_write` · `GoalBarView.tsx` · `ClutchState.goal` |
 | 会话看板（D30） | `SessionOverviewBoard.tsx` · `ChatInputBar` 底栏 Sessions 入口 |
-| Chat Composer（极简 + 菜单） | `ChatInputBar.tsx` 仅 +/模式/发送 · 次要能力进 + 菜单 · `WorktreeIsolationBar` 仅启用态 · `ScheduledTasksBar` 受控面板 · `PRODUCT.md` / `docs/UI_UX_GUIDELINES.md` §4.3 |
+| Chat Composer（极简 + 菜单） | `ChatInputBar.tsx` 仅 +/模式/发送 · 次要能力进 + 菜单 · Worktree 在 App footer · `ScheduledTasksBar` 受控面板 · `PRODUCT.md` / `docs/UI_UX_GUIDELINES.md` §4.3 |
 | Agent 忙时排队（D20） | `services/chatPendingQueue.ts` · `ChatFeed` drain · `ChatInputBar` Queue #n |
 | 思考流（D19） | `live_reasoning` state · `AgentLiveActivity` 思考折叠 · `mcp_react` reasoning |
 | 长任务监视（D26） | `bg_jobs_monitor.py` · Supervisor `[Monitor]` 行 · `bgJobMonitor` toast |
-| 前台转后台（D34） | `foreground_shell.py` · `ForegroundShellBar` · `move_fg_to_background` WS |
-| Worktree 隔离（D32） | `worktree_isolation.py` · `routes/worktree.py` · `WorktreeIsolationBar` · WS `enable_worktree` / `merge_worktree` / `discard_worktree` |
+| 前台转后台（D34） | `foreground_shell.py` · `shell_proc.py` · `ForegroundShellBar` · `move_fg_to_background` WS |
+| Worktree 隔离（D32） | `worktree_isolation.py` · `routes/worktree.py` · `FooterWorktreeMenu` · `GET /api/workspace/tree?wt_id=` · `GET /api/workspace/changes?wt_id=` · `GET /api/workspace/git`（始终主仓，底栏 Branch） · WS `enable_worktree` / `select_worktree` / `merge_worktree` / `discard_worktree` |
 | Cap-D25 定时任务 | `scheduled_tasks.py` · `routes/scheduled_tasks.py` · `ScheduledTasksBar` · `scheduledTasksApi.ts` |
 | D24 诊断 MVP | `code_diagnostics.py` · builtin `diagnostics` · `DiagnosticsIssuesStrip` |
 | D36 headless Agent | `headless_agent.py` · `headless_cli.py` · `routes/agent_run.py` |
@@ -262,7 +262,7 @@
 | 长聊任务态 / 压缩（D8 / B-36 / B-44） | `src/task_state.py` · `compaction.py`（L4） · `context_layers.py`（L1–L3；指针 `source=tool truncated=yes`） |
 | 运行可控（D9 / B-38） | `run_control.py` · `progress_loop.py` · `mcp_react` fuse · Chat Stop/Continue |
 | 子任务委派（D10∥D48） | `src/subagent_runner.py` · `delegate_subtask` · `SubtaskCardView.tsx` |
-| 后台命令（D11） | `src/bg_jobs.py` · `run_terminal_cmd` background · `BackgroundJobsBar.tsx` |
+| 后台命令（D11） | `src/bg_jobs.py` · `shell_proc.py` · `run_terminal_cmd` background · `BackgroundJobsBar.tsx` |
 | Git + 网页（D12） | `builtin_tools` git_*（非 git 仓不挂） / web_fetch · `web_fetch_util.py` |
 | 权限规则（D13） | `src/permission_rules.py` · settings permission-rules · `clear_approvals` |
 | PM 验收用例包 | `runs/verification/pm-acceptance/` |

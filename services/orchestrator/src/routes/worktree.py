@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from src.preferences_storage import tr
-from src.workspace import require_workspace
+from src.workspace import require_authorized_workspace
 
 router = APIRouter(tags=["worktree"])
 
@@ -26,7 +26,7 @@ class WorktreeActionRequest(BaseModel):
 async def list_worktrees_route() -> dict[str, Any]:
     from src.worktree_isolation import list_worktrees
 
-    root = require_workspace()
+    root = require_authorized_workspace()
     return {"worktrees": list_worktrees(root)}
 
 
@@ -34,7 +34,7 @@ async def list_worktrees_route() -> dict[str, Any]:
 async def spawn_parallel_worktree() -> dict[str, Any]:
     from src.worktree_isolation import create_worktree, describe_worktree, list_worktrees
 
-    root = require_workspace()
+    root = require_authorized_workspace()
     try:
         info = create_worktree(root)
     except RuntimeError as exc:
@@ -50,7 +50,7 @@ async def enable_worktree(body: WorktreeEnableRequest) -> dict[str, Any]:
     run_id = body.run_id.strip()
     if not run_id:
         raise HTTPException(status_code=400, detail="run_id required")
-    root = require_workspace()
+    root = require_authorized_workspace()
     try:
         info = create_worktree(root)
     except RuntimeError as exc:
@@ -69,7 +69,7 @@ async def merge_worktree_route(wt_id: str, body: WorktreeActionRequest) -> dict[
     from src.worktree_isolation import merge_worktree
 
     run_id = body.run_id.strip()
-    root = require_workspace()
+    root = require_authorized_workspace()
     try:
         summary = merge_worktree(root, wt_id)
     except RuntimeError as exc:
@@ -89,7 +89,7 @@ async def discard_worktree_route(wt_id: str, body: WorktreeActionRequest) -> dic
     from src.worktree_isolation import discard_worktree
 
     run_id = body.run_id.strip()
-    root = require_workspace()
+    root = require_authorized_workspace()
     try:
         discard_worktree(root, wt_id)
     except RuntimeError as exc:
@@ -107,7 +107,7 @@ async def discard_worktree_route(wt_id: str, body: WorktreeActionRequest) -> dic
 async def worktree_status(wt_id: str) -> dict[str, Any]:
     from src.worktree_isolation import describe_worktree, worktrees_parent
 
-    root = require_workspace()
+    root = require_authorized_workspace()
     wt_path = worktrees_parent(root) / wt_id
     if not wt_path.is_dir():
         raise HTTPException(status_code=404, detail=tr("Worktree not found", "Worktree 不存在"))

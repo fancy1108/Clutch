@@ -12,6 +12,14 @@
 
 （暂无）
 
+### [RESOLVED] 前台 `npm run lint` 连开三趟把电脑打烫（2026-08-28）
+
+- **现象：** Chat 卡在 Working；前台条和 BACKGROUND JOBS 同时显示 `npm run lint`；本机 3 个 eslint 各 ~97% CPU。
+- **根因：** 前台按 `run_id` 覆盖不杀旧进程；超时 `proc.kill()` 只杀 shell；Agent 重试再开一趟。
+- **解决：** 同一命令已在跑则拒绝；超时转入后台；Kill/超时用进程组 `kill_tree`。
+- **规避：** 改 Sidecar 后完全退出再开 App。
+- **关联：** `shell_proc.py` · `foreground_shell.py` · `bg_jobs.py` · `builtin_tools.py`
+
 ### [RESOLVED] 桌面 E2E / 真机白屏 `Can't find variable: useLanguage`（2026-08-26）
 
 - **现象：** 桌面进不了主界面；E2E 卡在 `nav-new-chat`。录屏是错误边界「Can't find variable: useLanguage」。

@@ -151,6 +151,7 @@ test('desktop: FM-01…22 acceptance playbook', async ({ tauriPage: page }) => {
     await page.waitForSelector('[data-testid="enable-worktree"]', 5_000);
     await clickId(page, 'enable-worktree');
     await page.waitForSelector('[data-testid="worktree-active-chip"]', 15_000);
+    await clickId(page, 'footer-worktree-trigger');
     await expect(page.locator('[data-testid="add-parallel-worktree"]')).toBeVisible();
     await clickId(page, 'discard-worktree');
     await page.waitForFunction(

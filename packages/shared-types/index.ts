@@ -356,6 +356,7 @@ export type WebSocketEvent =
   | 'hybrid_execution'
   | 'log'
   | 'file_changed'
+  | 'files_committed'
   | 'validation_result'
   | 'human_required'
   | 'run_completed'

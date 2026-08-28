@@ -7,14 +7,36 @@
 
 - **阶段：** **v1.3.0** 已发；`dev` 冲 **v1.4.0**（D59）。主线 D8–D13 ✅；扩展/MCP **D14–D52 Agent 代 PM ✅**；Desktop E2E ✅；**Design D36 PM ✅**
 - **Git / PM 索引：** [`runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md`](../runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md)
-- **下次优先：** 重启 App 后看底栏：版本号贴右、窄窗口标签收起；再测 D32+FM-11。
+- **下次优先：** **完全退出再开 App**，复测 Merge：隔离树改 README → Merge → 树还在，切回 Main 能看到改动。Discard 才删树。
 
 ## Recent Sessions
 
+## 2026-08-28 会话（禁止连开同一条 shell）
+
+- **做了：** 同一 Chat 里已在跑的命令再开会被拒绝；前台超时转入后台；Kill 杀进程组（eslint 子进程）。
+- **下次：** 完全退出再开 App；Kill 残留进程后再点验 lint。
+
+## 2026-08-28 会话（Files/Changes 跟随 worktree）
+
+- **做了：** 右侧 Files/Changes 按底栏所选 worktree 拉 `tree`/`changes`/`file`（`wt_id`）。底栏 Branch 仍走主仓 `GET /api/workspace/git`。切树会刷新；提交后 Changes 从 git 重拉。预览/打开文件走当前检出。
+- **测：** `uv run pytest tests/test_worktree_isolation_d32.py tests/test_run_state_store.py` 17 passed。
+- **下次：** 完全退出再开 App，按 playbook 5b 点验。不要标 ROADMAP，等你过。
+
 ## 2026-08-28 会话（底栏自适应）
 
-- **做了：** 底栏 `Active Agent` 改为 `Agent`；容器查询藏标签、截断长值、空闲 Workflow 先收；版本号 `shrink-0` 贴右。
+- **做了：** 底栏 `Active Agent` 改为 `Agent`；容器查询藏标签、截断长值、空闲 Worktree/Workflow 先收；版本号 `shrink-0` 贴右。
 - **下次：** 缩小窗口点验版本号不被裁切。
+
+## 2026-08-28 会话（Worktree 底栏选择）
+
+- **做了：** Worktree 选择挪到应用 Footer，紧挨 Branch；去掉输入框上方天蓝条。菜单与 Branch/Model 同一套 chrome。
+- **下次：** 重启 App 后点验底栏 Worktree；再测 FM-11 写文件隔离。
+
+## 2026-08-28 会话（修 D32 worktree cwd）
+
+- **做了：** Enable 后 Agent 仍写主仓。会话恢复丢掉 `worktree_isolation`；整轮 Chat 才绑定 worktree cwd；绝对路径会落到父仓。未 commit。
+- **测：** `uv run pytest tests/test_worktree_isolation_d32.py tests/test_run_state_store.py tests/test_apply_patch.py` 29 passed。
+- **下次：** 完全退出再开 App，重新 Enable，复测 `clutch-fm11.txt` 只出现在 `.clutch/worktrees/wt_…`。
 
 ## 2026-08-28 会话（撤回 FM-14）
 

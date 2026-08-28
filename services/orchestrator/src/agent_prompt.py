@@ -324,6 +324,11 @@ def _env_layer(workspace_path: str | None) -> str:
     ]
     if workspace_path:
         lines.append(f"Workspace root: {workspace_path}")
+        if "/.clutch/worktrees/" in workspace_path.replace("\\", "/"):
+            lines.append(
+                "This turn is git-worktree isolated. Create and edit files here with "
+                "relative paths only. Do not write into the parent checkout."
+            )
     else:
         lines.append("Workspace root: (none authorized)")
     return "\n".join(lines)
@@ -370,13 +375,16 @@ def compose_agent_prompt_assembly(
     """Build layered prompt (D53). markdownDoc is protocol only — not the whole system."""
     from src.agent_skills import compose_skills_section, resolve_effective_skill_keys
     from src.agent_type import is_clutch_agent
-    from src.workspace import get_workspace
+    from src.workspace import WorkspaceError, get_workspace, require_workspace
 
     is_clutch = is_clutch_agent(agent)
     agent_name = str(agent.get("name", "Clutch Agent"))
     protocol = str(agent.get("markdownDoc", "")).strip()
-    workspace = get_workspace()
-    workspace_path = workspace.get("workspace_path") if workspace else None
+    try:
+        workspace_path = str(require_workspace())
+    except WorkspaceError:
+        workspace = get_workspace()
+        workspace_path = workspace.get("workspace_path") if workspace else None
 
     layers: list[PromptLayer] = [
         PromptLayer(
@@ -444,7 +452,10 @@ def compose_agent_prompt_assembly(
 
             network_on = load_allow_network()
             git_hint = (
-                "Git questions → `git_status` / `git_diff` / `git_commit`. "
+                "Git questions → `git_status` / `git_diff`. "
+                "Call `git_commit` only when the user explicitly asked to commit / 提交; "
+                "creating or editing files is not a commit request. "
+                "Never `git commit` via `run_terminal_cmd` unless they asked. "
                 if get_git_info().get("is_git_repo")
                 else ""
             )
@@ -455,7 +466,8 @@ def compose_agent_prompt_assembly(
                 "Named-file existence (有没有叫 X.md) → `list_dir` only; never grep a filename. "
                 "Edits → `read_file` then `search_replace` / `apply_patch`. "
                 f"{git_hint}"
-                "Commands/tests → `run_terminal_cmd`. "
+                "Commands/tests → `run_terminal_cmd` (do not start a second copy of a "
+                "command already running in this Chat). "
                 "Live / external facts (weather, news, events, prices, unfamiliar docs): "
                 + (
                     "usually 1× `web_search`, then ≤2× `web_fetch` on promising result "

@@ -14,7 +14,7 @@ const PLUS_MENU_ICONS = [
   'inbox',
   'bug',
   'calendar_clock',
-  'git-branch-plus',
+  'folder-git',
 ];
 
 describe('LegacyIcon map', () => {

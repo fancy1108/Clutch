@@ -130,6 +130,7 @@ Layer 4 为**操作规程**，不是权威来源。冲突时以本文 §铁律 �
 - `todo_write` 的 `todos` 若是 JSON 字符串，禁止 `list(str)` → 会炸成数百单字符待办；须 `json.loads`（见 `normalize_todo_items`）
 - 上下文压缩 patch 含新 `system_digest_*` 时须**整表替换** messages，禁止 merge 追加（否则 `/compact` 只闪 toast、历史不变）
 - WKWebView `Can't find variable: useLanguage` / `useHostOs` → 组件调了 hook 却没 import；`pnpm build` 不报，须看 `hookImportGuard.test.ts`
+- `run_terminal_cmd` `shell=True` 后 `proc.kill()` 只杀到 shell，eslint 等子进程继续占满 CPU；超时/Kill 须进程组（`shell_proc.kill_tree`），同一命令已在跑则拒绝再开
 
 ---
 

@@ -23,6 +23,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 - **Command policy (FM-03):** Deny matching shell commands fail the tool with `[Permission] Denied` (no Allow card). Ask and dangerous commands (`rm -rf`, `sudo`) still pause in Full. Playbook has copy-paste Chat cases.
 - **Workflow list (D58):** Settings → Workflows SOP shows the full SOP name (wrap, not ellipsis). Clicking a row selects it for Chat and opens the canvas. Hover only shows edit/delete. Chat can still pick a SOP from the footer menu.
+- **Workflows SOP icons:** The SOP list always uses the same workflow glyph as the nav (no per-flow rocket/tree/fork). Create/edit no longer has an icon picker. Canvas nodes keep type icons (Agent / Approval / Check).
 - **Composer + menu icons:** Session overview no longer renders as an empty circle; each + item uses a lucide glyph that matches its action (history, skills, undo, inbox, bug, calendar, worktree).
 - **Footer status bar:** Drops the redundant **Active** prefix (`Agent: …`). The bar is a container: field labels hide when it gets narrow, long Worktree/Model names truncate, idle Worktree/Workflow chips drop first, and `Clutch v…` stays pinned on the right (tightest widths show `v…` only).
 
@@ -31,6 +32,11 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 - **OpenCode Chat:** Pass `-m` from the TUI last-used model so `opencode run --auto` matches interactive OpenCode (a stale `opencode.jsonc` default like a retired Zen model previously surfaced as `UnknownError`).
 - **Worktree spawn (FM-11):** Hide **Add parallel worktree** until isolation is enabled; show the Sidecar error (e.g. workspace is not a git repo) instead of generic `spawn failed`.
 - **Worktree Merge/Discard (D32):** Persist `worktree_isolation` on the run so Merge/Discard actually run (they previously no-op’d after Enable).
+- **Worktree Agent cwd (D32 / FM-11):** Isolation now keeps `worktree_isolation` across session reload, pins tool cwd to `.clutch/worktrees/<id>`, and rewrites absolute parent-checkout paths so Enable → write-file leaves the main tree clean.
+- **Worktree Files/Changes (D32):** The right **Files** and **Changes** tabs follow the footer Worktree selection (that checkout’s tree and `git status`). Footer **Branch** stays on the main workspace.
+- **Worktree Merge (D32):** Merge lands the isolation branch on the main checkout (uncommitted worktree edits are committed on that branch first). It no longer deletes the worktree — **Discard** removes it. A previous Merge of an uncommitted README edit looked successful then dropped the file.
+- **Unsolicited git commit (D12):** Creating/editing files no longer auto-commits. `git_commit` and shell `git commit` (via `run_terminal_cmd`) run only when the user asked to commit (or after they Allow the HITL card).
+- **Shell duplicate lint (D11/D34):** A command already running in the Chat (foreground or background) is refused instead of spawning another copy. Foreground timeout moves the process to background (process-group kill on Kill / leftover). `npm run lint` no longer stacks three eslint workers.
 
 ### Added
 

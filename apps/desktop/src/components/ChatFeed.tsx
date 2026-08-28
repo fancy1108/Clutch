@@ -52,7 +52,6 @@ import { SubtaskCardView } from './SubtaskCardView';
 import { BackgroundJobChip, BackgroundJobsBar } from './BackgroundJobsBar';
 import { ForegroundShellBar } from './ForegroundShellBar';
 import { DiagnosticsIssuesStrip } from './DiagnosticsIssuesStrip';
-import { WorktreeIsolationBar } from './WorktreeIsolationBar';
 import { detectBgJobFailureToast } from '../services/bgJobMonitor';
 import { VerificationReportCardView } from './VerificationReportCardView';
 import { DiffSummaryCardView } from './DiffSummaryCardView';
@@ -2168,24 +2167,6 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                   </p>
                 </div>
               </div>
-            ) : null}
-            {isPlainLlmChat ? (
-              <WorktreeIsolationBar
-                worktree={worktreeIsolation}
-                t={t}
-                onMerge={() => {
-                  void clutchStore.send({
-                    action: 'merge_worktree',
-                    wt_id: worktreeIsolation?.id ?? '',
-                  });
-                }}
-                onDiscard={() => {
-                  void clutchStore.send({
-                    action: 'discard_worktree',
-                    wt_id: worktreeIsolation?.id ?? '',
-                  });
-                }}
-              />
             ) : null}
             <BackgroundJobsBar
               jobs={bgJobs}

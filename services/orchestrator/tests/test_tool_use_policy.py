@@ -446,3 +446,37 @@ def test_react_network_soft_cap_stops_thrash(monkeypatch) -> None:
     assert any("Network budget soft-cap" in line for line in outcome.logs)
     assert fetch_count["n"] <= NETWORK_HARD_BUDGET + 1
     assert "disney" in outcome.output.lower() or "anniversary" in outcome.output.lower()
+
+
+def test_user_asked_to_commit_requires_explicit_ask() -> None:
+    from src.tool_use_policy import command_includes_git_commit, user_asked_to_commit
+
+    assert user_asked_to_commit("帮我提交这些改动") is True
+    assert user_asked_to_commit("please commit this") is True
+    assert user_asked_to_commit("只在当前 worktree 里新建文件 clutch-fm11.txt") is False
+    assert user_asked_to_commit("不要提交，只改文件") is False
+    assert command_includes_git_commit("git add clutch-fm11.txt && git commit -m f") is True
+    assert command_includes_git_commit("git status") is False
+
+
+def test_execute_blocks_shell_git_commit_without_ask(monkeypatch) -> None:
+    from src.mcp_react import _execute_tool_call
+    from src.tool_use_policy import GIT_COMMIT_NOT_REQUESTED
+
+    monkeypatch.setattr(
+        "src.artifact_layout.current_user_turn_text",
+        lambda: "只在当前 worktree 里新建文件 clutch-fm11.txt，内容写 ok。",
+    )
+    logs: list[str] = []
+    out = _execute_tool_call(
+        func_name="clutch-tools__run_terminal_cmd",
+        func_args={"command": "git add clutch-fm11.txt && git commit -m f"},
+        tool_routes={"clutch-tools__run_terminal_cmd": ("clutch-tools", "run_terminal_cmd")},
+        clients={},
+        builtin_servers={"clutch-tools"},
+        log_prefix="TEST",
+        logs=logs,
+        on_log=None,
+        step_idx=0,
+    )
+    assert out == GIT_COMMIT_NOT_REQUESTED

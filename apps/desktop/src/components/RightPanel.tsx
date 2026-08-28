@@ -331,7 +331,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
     if (workflowSteps.length === 0) {
       return (
         <div className="p-6 border border-dashed border-outline-variant/50 rounded-xl text-center space-y-2">
-          <LegacyIcon name="fork_right" className="text-[24px] text-on-surface-variant/50" />
+          <LegacyIcon name="workflow" className="text-[24px] text-on-surface-variant/50" />
           <p className="text-[11px] text-on-surface-variant leading-relaxed">{t('Workflow steps unavailable')}</p>
         </div>
       );

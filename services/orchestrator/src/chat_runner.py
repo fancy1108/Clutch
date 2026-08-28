@@ -49,6 +49,7 @@ from src.chat_ws_events import (
     _is_ws_transport_error,
     _notify_run_state,
     _send_file_changed,
+    _send_files_committed,
     _send_human_required,
     _send_hybrid_execution_event,
     _send_log_event,
@@ -713,22 +714,34 @@ def _worktree_isolation_live_patch(payload: dict[str, Any] | None) -> dict[str, 
     return {"worktree_isolation": payload}
 
 
+def _isolation_info_from_state(state: ClutchState) -> dict[str, Any] | None:
+    info = state.get("worktree_isolation")
+    if isinstance(info, dict) and info.get("enabled") and str(info.get("path") or "").strip():
+        return dict(info)
+    run_id = str(state.get("run_id") or "").strip()
+    live = _run_states.get(run_id) if run_id else None
+    if live is None or live is state:
+        return None
+    fallback = live.get("worktree_isolation")
+    if isinstance(fallback, dict) and fallback.get("enabled") and str(fallback.get("path") or "").strip():
+        return dict(fallback)
+    return None
+
+
 def _bind_worktree_from_state(state: ClutchState) -> tuple[contextvars.Token | None, contextvars.Token | None]:
     """Bind effective workspace root when D32 worktree isolation is active."""
     from src.workspace import bind_effective_workspace_root
 
-    info = state.get("worktree_isolation")
-    if not isinstance(info, dict) or not info.get("enabled"):
+    info = _isolation_info_from_state(state)
+    if info is None:
         return None, None
     wt_path = str(info.get("path") or "").strip()
-    if not wt_path:
-        return None, None
     from pathlib import Path
 
     root_token = bind_effective_workspace_root(Path(wt_path))
     from src.worktree_isolation import bind_worktree_context
 
-    wt_token = bind_worktree_context(dict(info))
+    wt_token = bind_worktree_context(info)
     return root_token, wt_token
 
 
@@ -1092,6 +1105,57 @@ async def _llm_chat_reply(
     chat_source: str = "plain_chat",
     system_prompt_suffix: str = "",
 ) -> tuple[str, str, str, list[str], str | None, dict[str, Any] | None, list[str], str | None, list[dict[str, Any]] | None, bool]:
+    wt_root_token, wt_ctx_token = _bind_worktree_from_state(state)
+    try:
+        return await _llm_chat_reply_impl(
+            state,
+            text,
+            agent_id,
+            session_model_id=session_model_id,
+            cli_session_id=cli_session_id,
+            emit_log=emit_log,
+            emit_tool_step=emit_tool_step,
+            emit_reasoning=emit_reasoning,
+            emit_todos=emit_todos,
+            emit_goal=emit_goal,
+            emit_verification=emit_verification,
+            emit_diff_summary=emit_diff_summary,
+            emit_subtask=emit_subtask,
+            tool_steps_sink=tool_steps_sink,
+            subtasks_sink=subtasks_sink,
+            mcp_approved_tool=mcp_approved_tool,
+            mcp_resume=mcp_resume,
+            isolate_cli_history=isolate_cli_history,
+            chat_source=chat_source,
+            system_prompt_suffix=system_prompt_suffix,
+        )
+    finally:
+        _release_worktree_bindings(wt_root_token, wt_ctx_token)
+
+
+async def _llm_chat_reply_impl(
+    state: ClutchState,
+    text: str,
+    agent_id: str | None = None,
+    *,
+    session_model_id: str | None = None,
+    cli_session_id: str | None = None,
+    emit_log: Callable[[str], Awaitable[None]] | None = None,
+    emit_tool_step: Callable[[dict[str, Any]], Awaitable[None]] | None = None,
+    emit_reasoning: Callable[[str], Awaitable[None]] | None = None,
+    emit_todos: Callable[[list[dict[str, Any]]], Awaitable[None]] | None = None,
+    emit_goal: Callable[[dict[str, Any]], Awaitable[None]] | None = None,
+    emit_verification: Callable[[dict[str, Any]], Awaitable[None]] | None = None,
+    emit_diff_summary: Callable[[dict[str, Any]], Awaitable[None]] | None = None,
+    emit_subtask: Callable[[dict[str, Any]], Awaitable[None]] | None = None,
+    tool_steps_sink: list[dict[str, Any]] | None = None,
+    subtasks_sink: list[dict[str, Any]] | None = None,
+    mcp_approved_tool: dict[str, Any] | None = None,
+    mcp_resume: dict[str, Any] | None = None,
+    isolate_cli_history: bool = False,
+    chat_source: str = "plain_chat",
+    system_prompt_suffix: str = "",
+) -> tuple[str, str, str, list[str], str | None, dict[str, Any] | None, list[str], str | None, list[dict[str, Any]] | None, bool]:
     from src.agent_storage import BUILTIN_AGENT_ID, get_agent_by_id
     from src.engine_router import route_engine
     from src.models_config import get_router
@@ -1285,7 +1349,12 @@ async def _llm_chat_reply(
     history = _history_with_prefix_and_status(history, system_prompt, agent_status)
 
     workspace = get_workspace()
-    cwd = workspace.get("workspace_path") if workspace else None
+    try:
+        from src.workspace import require_workspace as _require_ws
+
+        cwd = str(_require_ws())
+    except Exception:
+        cwd = workspace.get("workspace_path") if workspace else None
     llm_only_logs: list[str] = []
 
     from src.hybrid_concurrency import HybridPlainChatRejected
@@ -3482,6 +3551,14 @@ async def _maybe_notify_step_file_diff(
     node_id: str = "",
 ) -> None:
     """Live-push Changes panel using the same hunk as the Chat Diff card."""
+    if (
+        isinstance(step, dict)
+        and str(step.get("tool") or "") == "git_commit"
+        and str(step.get("status") or "") == "completed"
+    ):
+        raw = step.get("committedPaths")
+        paths = [str(p).strip() for p in raw if str(p).strip()] if isinstance(raw, list) else []
+        await _send_files_committed(websocket, run_id, node_id=node_id, paths=paths)
     file_diff = step.get("fileDiff") if isinstance(step, dict) else None
     if not isinstance(file_diff, dict):
         return
@@ -3789,6 +3866,10 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
         nonlocal plain_chat_task, state
         if plain_chat_task is not None and not plain_chat_task.done():
             return
+        live = _get_or_create_run(run_id)
+        wt = live.get("worktree_isolation") if live is not None else None
+        if wt and not state.get("worktree_isolation"):
+            state = _merge_patch(state, {"worktree_isolation": wt})
         state = await _persist_plain_chat_user_message(
             websocket,
             run_id,
@@ -4025,12 +4106,49 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                     _commit_run_state(run_id, state)
                     await _send_message_event(websocket, run_id, notice, "")
                     await _notify_run_state(websocket, run_id, state, patch)
+            elif isinstance(payload, dict) and payload.get("action") == "select_worktree":
+                from src.worktree_isolation import describe_worktree, worktrees_parent
+                from src.workspace import require_authorized_workspace
+
+                wt_id = str(payload.get("wt_id") or "").strip()
+                try:
+                    root = await asyncio.to_thread(require_authorized_workspace)
+                    if not wt_id:
+                        patch = {"worktree_isolation": None}
+                    else:
+                        wt_path = worktrees_parent(root) / wt_id
+                        if not wt_path.is_dir():
+                            raise RuntimeError(tr("Worktree not found", "Worktree 不存在"))
+                        patch = {
+                            "worktree_isolation": describe_worktree(
+                                {
+                                    "id": wt_id,
+                                    "path": str(wt_path.resolve()),
+                                    "branch": f"clutch/{wt_id}",
+                                    "enabled": True,
+                                },
+                                root,
+                            )
+                        }
+                    state = _merge_patch(state, patch)
+                    _commit_run_state(run_id, state)
+                    await _notify_run_state(websocket, run_id, state, patch)
+                except Exception as exc:
+                    notice = _chat_message(
+                        "Supervisor",
+                        tr(f"Worktree switch failed: {exc}", f"切换 worktree 失败：{exc}"),
+                    )
+                    patch = {"messages": list(state["messages"]) + [notice]}
+                    state = _merge_patch(state, patch)
+                    _commit_run_state(run_id, state)
+                    await _send_message_event(websocket, run_id, notice, "")
+                    await _notify_run_state(websocket, run_id, state, patch)
             elif isinstance(payload, dict) and payload.get("action") == "enable_worktree":
                 from src.worktree_isolation import create_worktree, describe_worktree
-                from src.workspace import require_workspace
+                from src.workspace import require_authorized_workspace
 
                 try:
-                    root = await asyncio.to_thread(require_workspace)
+                    root = await asyncio.to_thread(require_authorized_workspace)
                     info = await asyncio.to_thread(create_worktree, root)
                     wt_payload = describe_worktree(info, root)
                     patch = {"worktree_isolation": wt_payload}
@@ -4060,7 +4178,7 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                     await _notify_run_state(websocket, run_id, state, patch)
             elif isinstance(payload, dict) and payload.get("action") == "merge_worktree":
                 from src.worktree_isolation import merge_worktree
-                from src.workspace import require_workspace
+                from src.workspace import require_authorized_workspace
 
                 wt_info = state.get("worktree_isolation")
                 wt_id = str(payload.get("wt_id") or (wt_info or {}).get("id") or "").strip()
@@ -4076,11 +4194,15 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                     await _notify_run_state(websocket, run_id, state, patch)
                 else:
                     try:
-                        root = await asyncio.to_thread(require_workspace)
+                        root = await asyncio.to_thread(require_authorized_workspace)
                         summary = await asyncio.to_thread(merge_worktree, root, wt_id)
                         notice = _chat_message(
                             "Supervisor",
-                            tr(f"Merged worktree {wt_id}: {summary}", f"已合并 worktree {wt_id}：{summary}"),
+                            tr(
+                                f"Merged worktree {wt_id} into the main workspace. "
+                                f"The worktree is kept — Discard to remove it. {summary}",
+                                f"已将 worktree {wt_id} 合进主仓。隔离树仍保留，要用 Discard 才删除。{summary}",
+                            ),
                         )
                         patch = {
                             "worktree_isolation": None,
@@ -4102,7 +4224,7 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                         await _notify_run_state(websocket, run_id, state, patch)
             elif isinstance(payload, dict) and payload.get("action") == "discard_worktree":
                 from src.worktree_isolation import discard_worktree
-                from src.workspace import require_workspace
+                from src.workspace import require_authorized_workspace
 
                 wt_info = state.get("worktree_isolation")
                 wt_id = str(payload.get("wt_id") or (wt_info or {}).get("id") or "").strip()
@@ -4118,7 +4240,7 @@ async def ws_run(websocket: WebSocket, run_id: str) -> None:
                     await _notify_run_state(websocket, run_id, state, patch)
                 else:
                     try:
-                        root = await asyncio.to_thread(require_workspace)
+                        root = await asyncio.to_thread(require_authorized_workspace)
                         await asyncio.to_thread(discard_worktree, root, wt_id)
                         notice = _chat_message(
                             "Supervisor",

@@ -183,6 +183,12 @@ export async function deleteRepositoryGroup(groupId: string): Promise<void> {
   if (!response.ok) throw new Error(`delete repository group failed (${response.status})`);
 }
 
+function withWtId(url: string, wtId?: string | null): string {
+  const id = (wtId ?? '').trim();
+  if (!id) return url;
+  return `${url}${url.includes('?') ? '&' : '?'}wt_id=${encodeURIComponent(id)}`;
+}
+
 export async function fetchWorkspaceGit(): Promise<WorkspaceGitInfo> {
   const response = await sidecarFetch(`${BASE}/api/workspace/git`);
   if (response.status === 404) {
@@ -192,15 +198,24 @@ export async function fetchWorkspaceGit(): Promise<WorkspaceGitInfo> {
   return response.json() as Promise<WorkspaceGitInfo>;
 }
 
-export async function fetchWorkspaceTree(): Promise<FileTreeNode[]> {
-  const response = await sidecarFetch(`${BASE}/api/workspace/tree`);
+export async function fetchWorkspaceTree(wtId?: string | null): Promise<FileTreeNode[]> {
+  const response = await sidecarFetch(withWtId(`${BASE}/api/workspace/tree`, wtId));
   if (!response.ok) throw new Error(`workspace tree failed (${response.status})`);
   const body = (await response.json()) as { nodes: FileTreeNode[] };
   return body.nodes;
 }
 
-export async function fetchWorkspaceFile(path: string): Promise<string> {
-  const response = await sidecarFetch(`${BASE}/api/workspace/file?path=${encodeURIComponent(path)}`);
+export async function fetchWorkspaceChanges(wtId?: string | null): Promise<import('../types').UncommittedFile[]> {
+  const response = await sidecarFetch(withWtId(`${BASE}/api/workspace/changes`, wtId));
+  if (!response.ok) throw new Error(`workspace changes failed (${response.status})`);
+  const body = (await response.json()) as { files?: import('../types').UncommittedFile[] };
+  return body.files ?? [];
+}
+
+export async function fetchWorkspaceFile(path: string, wtId?: string | null): Promise<string> {
+  const response = await sidecarFetch(
+    withWtId(`${BASE}/api/workspace/file?path=${encodeURIComponent(path)}`, wtId),
+  );
   if (!response.ok) throw new Error(`read file failed (${response.status})`);
   const body = (await response.json()) as { content: string };
   return body.content;

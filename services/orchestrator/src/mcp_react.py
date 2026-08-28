@@ -168,12 +168,32 @@ def _execute_tool_call(
     on_tool_step: Callable[[dict[str, Any]], None] | None = None,
     on_diff_summary: Callable[[dict[str, Any]], None] | None = None,
     step_id: str | None = None,
+    require_explicit_commit: bool = True,
 ) -> str:
     from src.tool_steps import append_execute_output_detail, make_tool_step
-    from src.tool_use_policy import apply_filename_grep_rewrite
+    from src.tool_use_policy import (
+        apply_filename_grep_rewrite,
+        command_includes_git_commit,
+        git_commit_not_requested_result,
+        short_tool_name,
+        user_asked_to_commit,
+    )
 
     incoming_name = func_name
     func_name, func_args = apply_filename_grep_rewrite(func_name, dict(func_args or {}))
+
+    if require_explicit_commit:
+        from src.artifact_layout import current_user_turn_text
+
+        if not user_asked_to_commit(current_user_turn_text() or ""):
+            short = short_tool_name(func_name)
+            shell_cmd = str((func_args or {}).get("command") or "")
+            if short == "git_commit" or (
+                short == "run_terminal_cmd" and command_includes_git_commit(shell_cmd)
+            ):
+                msg = git_commit_not_requested_result()
+                _emit(logs, on_log, f"[{log_prefix}] {msg}")
+                return msg
 
     def _emit_inline_diffs(tool_name: str, args: dict[str, Any], result: str) -> list[dict[str, Any]]:
         """Build Cursor-style per-edit cards; attach to tool steps (not separate Chat bubbles)."""
@@ -205,6 +225,16 @@ def _execute_tool_call(
                 step["title"] = f"Edit {cards[0].get('title') or tool_name}"
             else:
                 step = append_execute_output_detail(step, tool_name, result)
+            if short_tool_name(tool_name) == "git_commit":
+                try:
+                    payload = json.loads(result)
+                    raw_paths = payload.get("committed_paths") if isinstance(payload, dict) else None
+                    if isinstance(raw_paths, list):
+                        step["committedPaths"] = [
+                            str(p).strip() for p in raw_paths if str(p).strip()
+                        ]
+                except Exception:
+                    pass
         elif status == "failed" and result:
             step = append_execute_output_detail(step, tool_name, result)
         on_tool_step(step)
@@ -963,6 +993,7 @@ def run_mcp_react_loop(
                 on_tool_step=record_tool_step,
                 on_diff_summary=on_diff_summary,
                 step_id=str(approved_tool.get("step_id") or f"tool_{start_step}"),
+                require_explicit_commit=False,
             )
             capture_todos_if_needed(func_name, func_args, result_str)
             capture_goal_if_needed(func_name, func_args, result_str)

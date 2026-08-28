@@ -901,7 +901,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
       {isMultiAgent && selectedWorkflowId ? (
         <div className="flex flex-wrap gap-1.5 px-3 pt-2 pb-1">
           <span className="inline-flex items-center gap-1.5 pl-1.5 pr-1 py-0.5 text-[11px] font-bold text-primary bg-primary/5 border border-primary/20 rounded-lg max-w-[220px]">
-            <LegacyIcon name="fork_right" className="text-[14px] flex-shrink-0" />
+            <LegacyIcon name="workflow" className="text-[14px] flex-shrink-0" />
             <span className="truncate" title={selectedWorkflowName || selectedWorkflowId}>
               {selectedWorkflowName || selectedWorkflowId}
             </span>
@@ -1127,7 +1127,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
                         onEnableWorktree();
                       }}
                     >
-                      <LegacyIcon name="git-branch-plus" className="text-[17px] text-on-surface-variant" />
+                      <LegacyIcon name="folder-git" className="text-[17px] text-on-surface-variant" />
                       {t('Enable worktree')}
                     </button>
                   ) : null}

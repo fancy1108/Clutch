@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   canAddParallelWorktree,
+  footerWorktreeLabel,
   spawnErrorFromBody,
-  worktreeBarVisible,
 } from './WorktreeIsolationBar';
 
 const enabled = {
@@ -12,15 +12,16 @@ const enabled = {
   enabled: true,
 };
 
-describe('WorktreeIsolationBar', () => {
-  it('hides idle Add parallel on empty Chat', () => {
-    expect(worktreeBarVisible(null, [], null)).toBe(false);
-    expect(canAddParallelWorktree(null)).toBe(false);
-    expect(canAddParallelWorktree({ ...enabled, enabled: false })).toBe(false);
+describe('FooterWorktreeMenu', () => {
+  it('labels the footer like Branch (em dash when idle)', () => {
+    expect(footerWorktreeLabel(null)).toBe('—');
+    expect(footerWorktreeLabel({ ...enabled, enabled: false })).toBe('—');
+    expect(footerWorktreeLabel(enabled)).toBe('clutch/wt_1');
   });
 
-  it('shows spawn only after isolation is enabled', () => {
-    expect(worktreeBarVisible(enabled, [], null)).toBe(true);
+  it('allows parallel trees only while isolation is bound', () => {
+    expect(canAddParallelWorktree(null)).toBe(false);
+    expect(canAddParallelWorktree({ ...enabled, enabled: false })).toBe(false);
     expect(canAddParallelWorktree(enabled)).toBe(true);
   });
 

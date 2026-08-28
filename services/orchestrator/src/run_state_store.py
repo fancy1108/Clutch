@@ -47,6 +47,7 @@ _PERSISTED_OPTIONAL_KEYS = frozenset({
     "diff_summary",
     "awaiting_continue",
     "run_stats",
+    "worktree_isolation",
 })
 
 

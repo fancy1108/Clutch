@@ -53,7 +53,7 @@ export function FooterMenuPanel({
   return (
     <div
       data-testid={testId}
-      className="absolute bottom-full left-0 mb-1 min-w-[220px] max-h-48 overflow-y-auto bg-surface-bright border border-outline-variant rounded-lg shadow-lg py-1 z-[60]"
+      className="absolute bottom-full left-0 mb-1 min-w-[240px] max-h-48 overflow-y-auto bg-surface-bright border border-outline-variant rounded-lg shadow-lg py-1 z-[60]"
     >
       {children}
     </div>
@@ -65,26 +65,81 @@ export function FooterMenuItem({
   onClick,
   children,
   testId,
+  actions,
 }: {
   selected: boolean;
   onClick: () => void;
   children: React.ReactNode;
   testId?: string;
+  actions?: React.ReactNode;
+}) {
+  const rowClass =
+    'w-full flex items-center gap-2 px-3 py-2 text-[11px] hover:bg-surface-container-low text-left';
+  const check = (
+    <LegacyIcon
+      name="check"
+      className={`text-[14px] w-4 flex-shrink-0 ${selected ? 'text-primary opacity-100' : 'opacity-0'}`}
+    />
+  );
+  const label = (
+    <span className={`truncate min-w-0 ${selected ? 'text-primary font-bold' : 'text-on-surface'}`}>
+      {children}
+    </span>
+  );
+  if (!actions) {
+    return (
+      <button type="button" data-testid={testId} onClick={onClick} className={rowClass}>
+        {check}
+        {label}
+      </button>
+    );
+  }
+  return (
+    <div className={`${rowClass} group`}>
+      <button
+        type="button"
+        data-testid={testId}
+        onClick={onClick}
+        className="flex-1 min-w-0 flex items-center gap-2 text-left"
+      >
+        {check}
+        {label}
+      </button>
+      <div className="flex items-center gap-0.5 shrink-0">{actions}</div>
+    </div>
+  );
+}
+
+export function FooterMenuRowIcon({
+  name,
+  label,
+  onClick,
+  testId,
+  danger,
+}: {
+  name: string;
+  label: string;
+  onClick: () => void;
+  testId?: string;
+  danger?: boolean;
 }) {
   return (
     <button
       type="button"
       data-testid={testId}
-      onClick={onClick}
-      className="w-full flex items-center gap-2 px-3 py-2 text-[11px] hover:bg-surface-container-low text-left"
+      title={label}
+      aria-label={label}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      className={`p-1 rounded transition-colors cursor-pointer ${
+        danger
+          ? 'text-on-surface-variant hover:text-rose-700 hover:bg-rose-50'
+          : 'text-on-surface-variant hover:text-emerald-700 hover:bg-emerald-50'
+      }`}
     >
-      <LegacyIcon
-        name="check"
-        className={`text-[14px] w-4 flex-shrink-0 ${selected ? 'text-primary opacity-100' : 'opacity-0'}`}
-      />
-      <span className={`truncate ${selected ? 'text-primary font-bold' : 'text-on-surface'}`}>
-        {children}
-      </span>
+      <LegacyIcon name={name} className="text-[14px]" />
     </button>
   );
 }

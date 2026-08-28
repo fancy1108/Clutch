@@ -98,16 +98,16 @@ graph TD
 * **Multi-Agent Graph Workspace**：React Flow 画布可视化编排节点与连线，后台 Workflow Compiler 动态将其编译为 LangGraph 状态机。下游节点自动接收并注入上游的 `node_outputs`；各节点执行时自动注入**分层组装后的 system prompt**（`markdownDoc` 为 D53 协议层，叠加 Env / 项目规则 / Skills 目录等）。工作流节点的激活状态、运行阶段与详细日志通过 WebSocket 增量 `state_patch` 实时推送到前端渲染。Chat 中各节点回复展示 **Agent Manager 配置的 Agent 类型与品牌 Logo**（而非仅依赖节点 `tool` 字段）；节点编辑器可选择 **Node engine**（CLI / MCP / llm，写入 `tool`，FM-10）；Overview 步骤行显示该引擎。Thinking / 进行中步骤优先跟随后端 `active_node_id` / `active_agent`。`claude-cli` 且 `CLUTCH_RUNTIME_MODE=hybrid` 的节点附带可折叠 **View execution details**（与 Single Agent Hybrid 一致）。运行中用户可通过 Stop **暂停并进入精修模式**（`status=refining`）；工作流正常结束（`passed`/`failed`）后也可在同一 session 内继续精修。精修时输入框 `@` 弹出工作流 Agent 列表（支持带空格的节点名，如 `@5-Visual Rendering Engine`），向指定 Agent 发送修改意见（`source=flow_refine`，Hybrid 交互）；满意后发送 `/continue` 提交修订并 **以 Legacy 模式继续执行下游节点**。生图节点精修时自动复用上游 `final_image_prompt` 并结合用户补充说明。Sidecar 重启后可从聊天记录重建 `node_outputs` 以恢复精修会话。`CLUTCH_RUNTIME_MODE=hybrid` 时，**`claude-cli` 节点**走与 plain chat 相同的 Hybrid PTY shell（含 workspace CLI 锁与 session resume）；Flow 多行 Claude prompt 自动降级为 legacy subprocess；Clutch 内置 Agent（含图片模型）等其它节点类型不变。
 * **Rich Chat Input Bar & Attachments**：支持从剪贴板直接粘贴图片生成 Chip 缩略图预览；支持从右侧文件树拖拽文件/文件夹进入输入框作为附件；输入框内键入 `/` 触发已扫描 Skills 的指令联想，键入 `#` 触发历史会话引用联想；工作流精修模式（`refining` 或已完成工作流）下键入 `@` 触发工作流 Agent 联想；提供全局运行状态控制（Running 时展示 Stop 按钮，工作流 Stop 进入精修而非 failed）；提供持久化的安全审批模式选择（Auto-approve, Ask-on-Write, Manual confirmation）。**Coding 发图**：Chat 底栏与 Terminal **OrchestratorBar**（非 xterm 黑框）均可粘贴/选择图片；**聊天 LLM 先 multimodal 发图**，有效回复直接展示；仅当软拒绝视觉或 API 拒图时，才降级本地 OCR/调色板。**本地 CLI Agent（Mimo / Claude Code 等）**则先把图落盘 `.clutch/attachments/`，再注入 `@path` / `[file: path]` 让 CLI 自己读图（禁止把 base64 塞进命令行）；仅当 CLI 拒绝读图时再降级 OCR。Terminal 发图同样先落盘再注入路径（目录含 `.gitignore` 为 `*`，过大时清理 3 天前旧图）；发送期间输入与发送按钮 Loading，防重复派发。
 * **中间产物点击预览**：Chat 气泡中的工作区路径、`[file:]` / `@path`、fenced 代码块可点击打开全屏预览（大文件 plain view 降级）；**图片路径**打开媒体预览。Chat 回复支持 GFM **Markdown 表格**（管道表渲染为 HTML `<table>`，单元格保留行内 code/加粗）。Terminal xterm 与派发历史中的路径/带扩展名文件名同样可点；**Terminal Overview 派发记录**对 `.clutch/attachments/` 等图片显示缩略图，点击放大。
-* **Workspace Chrome（平台差异）**：macOS 与 Windows 侧栏折叠 rail、折叠按钮位置、Chat 间距与右侧监督 Tab 样式分文件维护（`apps/desktop/src/platform/chrome/`）；共享导航图标与文案见 `navConfig.ts`。macOS 默认保留图标+微标签折叠 rail 与 App 级浮动折叠按钮；Windows 使用纯图标 rail 与侧栏边缘折叠按钮。**底栏**显示 Branch / Model / Agent / Workflow 与版本号；文案为 `Agent:`（不加 Active）。窗口收窄时按底栏自身宽度折叠：先藏字段标签并截断长值，空闲 Workflow 先消失，版本号始终贴右（极窄只留 `v…`）。**项目绑定**：侧栏会话按工作区路径稳定 id 挂载（同路径重授权不会丢掉历史）；开发态与打包态分目录存储（`clutch_dev` / `clutch`），E2E 须隔离 `CLUTCH_STORAGE_DIR`。
+* **Workspace Chrome（平台差异）**：macOS 与 Windows 侧栏折叠 rail、折叠按钮位置、Chat 间距与右侧监督 Tab 样式分文件维护（`apps/desktop/src/platform/chrome/`）；共享导航图标与文案见 `navConfig.ts`。macOS 默认保留图标+微标签折叠 rail 与 App 级浮动折叠按钮；Windows 使用纯图标 rail 与侧栏边缘折叠按钮。**底栏**显示 Branch / Worktree / Model / Agent / Workflow 与版本号；文案为 `Agent:`（不加 Active）。窗口收窄时按底栏自身宽度折叠：先藏字段标签并截断长值，空闲 Worktree/Workflow 先消失，版本号始终贴右（极窄只留 `v…`）。**项目绑定**：侧栏会话按工作区路径稳定 id 挂载（同路径重授权不会丢掉历史）；开发态与打包态分目录存储（`clutch_dev` / `clutch`），E2E 须隔离 `CLUTCH_STORAGE_DIR`。
 * **Long-session compaction（D8 / B-36 / B-44）**：工具结果先按层收：大段落盘到 `runs/archive/tool_results/`（消息只留指针，标 `source=tool truncated=yes`）、丢掉重复空转、合计超阈值再压较旧工具；只有会话仍顶满才走原来的全量 `/compact`（首条+近几条+琥珀色 digest，原文进 `runs/archive/{run_id}.jsonl`）。压缩后 **Todo/计划** 仍通过末尾 `<agent_status>` 与 digest 快照可达。Chat **无新卡片**。
 * **Run control（D9 / B-38）**：Plain chat 运行中可 **Stop**；停止后 Chat 显示 Supervisor 提示与 **Continue**（`continue_run`）。连续工具失败触发 **loop fuse**（`CLUTCH_LOOP_FUSE_FAILURES`，默认 3）；**同工具**连败另有软/硬预算（默认 2/3，`CLUTCH_SAME_TOOL_*`）——例如 `generate_image` API 挂了不会靠改 todo 无限重试；`todo_write` 等元工具成功不重置连续失败计数。同一回合用同一参数反复 `read_file` / `list_dir` / `grep`（空转）第 3 次会停住并出 Continue，不必等失败熔断。
 * **用量（D22 / Q-USAGE-1）**：右侧 **Overview → Session Token Analytics** 展示本局步数、tokens、input/output 分布。有模型供应商 `usage` 用真值；没有则词数估算并标 `~`。费用格仍为 `—`（不接价表）。不再在 `+` 菜单展示。
 * **模式切换（D27）**：Chat 输入框底栏 **模式 pill**（对标 Cursor）：**Agent / Plan / Full / Ask**（内部 `auto_edit` / `plan` / `full` / `ask`）。默认 **Agent**（可改文件；危险 shell 仍问）。**Ask** 为对话/只读。旧 `explore` 映射为 Ask；旧 UI 名 Edit = Agent。
 * **Subtask delegation（D10 + D48）**：Clutch Agent 可调用 `delegate_subtask` 派发 **explore**（只读）或 **implement** 子任务；父气泡下嵌套 **Subtasks** 卡展示状态、摘要与可展开步骤；子失败在父卡可见。Explore 子循环默认更高工具步数预算；用户要求「先探再改」时至少出现 explore 卡，implement 可由父 Agent 完成（不强制第二张卡）。子任务交差回主 Agent；要问人时主 Agent 走 Question 卡（`ask_user_question`），没有单独的 Notify 卡。
 * **New information gate（FM-15 / B-43）**：并行子任务前 Chat 出现确认卡（**Proceed** / **Hold**）；**+** 菜单可预览。已有运行中子任务时再次 `delegate_subtask` 会暂停询问。
-* **Background commands（D11）**：`run_terminal_cmd` 可设 `background=true` 立即返回 `job_id`；**运行中**任务显示在输入栏上方（查看输出 / Kill）；**结束后**任务卡进入对话时间线（随 Supervisor 完成提示），底栏不再占用。
-* **Foreground → background（D34）**：长命令前台执行时，输入栏上方出现 **Move to background**；一键转入 D11 后台列表后可继续聊天（对标 Grok Ctrl+B）。
-* **Worktree 隔离试验（D32 / FM-11）**：Chat 输入框 **+** 菜单 → **Enable worktree** — Agent 在 `.clutch/worktrees/<id>` 改代码。未启用时输入栏上方不出现 **Add parallel worktree**。启用后出现紧凑条，可 **Merge** / **Discard**（Discard 会删掉隔离目录并清掉会话状态），并可再建一棵并行子树（各路径可见、各自合并或丢弃）。工作区必须是 git 仓库，否则 Sidecar 返回可读错误（不是笼统的 spawn failed）。主工作区保持干净。
+* **Background commands（D11）**：`run_terminal_cmd` 可设 `background=true` 立即返回 `job_id`；**运行中**任务显示在输入栏上方（查看输出 / Kill）；**结束后**任务卡进入对话时间线（随 Supervisor 完成提示），底栏不再占用。同一条命令已在本会话前台或后台跑着时，再开会被拒绝（避免连开三趟 `npm run lint` 把 CPU 打满）。Kill 会杀掉整个进程组（含 eslint 子进程）。
+* **Foreground → background（D34）**：长命令前台执行时，输入栏上方出现 **Move to background**；一键转入 D11 后台列表后可继续聊天（对标 Grok Ctrl+B）。前台超过 `timeout_sec`（默认 60s）会自动转入后台继续跑，而不是只杀 shell、留下孤儿子进程。
+* **Worktree 隔离试验（D32 / FM-11）**：底栏 **Branch** 旁是 **Worktree** 下拉（与 Branch / Model 同一套菜单）。默认 **Main workspace**（`—`）。也可从 Chat **+** 菜单 **Enable worktree**。启用后底栏显示 `clutch/wt_…`。菜单里切主仓或各棵树，列表下 **Add parallel worktree**（创建中会转圈，菜单保持打开）；每条隔离树右侧图标是 **Merge**（把该树的提交合进主仓；若还有未提交改动会先在隔离树提交再合；**Merge 不删树**）或 **Discard**（删目录并清会话）。右侧 **Files** 与 **Changes** 跟着所选检出走（选 worktree1 就只看那份目录的文件和未提交改动）；底栏 **Branch** 仍是主仓当前分支。工作区必须是 git 仓库，否则 Sidecar 返回可读错误。主工作区保持干净。
 * **定时/循环任务（Cap-D25 · 扩展 D25 scheduler）**：Chat 输入框 **+** 菜单打开 **Scheduled tasks** 面板，创建间隔任务（默认关，启用需确认）；sidecar asyncio 持久化表；到点通知或可选跑一轮 Agent。
 * **代码诊断 MVP（D24）**：内置 `diagnostics` 工具（`tsc` / `ruff` / `py_compile`）；结果注入下一轮并在 Chat **Code diagnostics** 条展示。
 * **Interpreter errors（FM-17 / B-47）**：超时或 shell 无法启动时 Chat 出现结构化卡（不是 traceback）；**+** 菜单可预览。
@@ -119,7 +119,7 @@ graph TD
 * **Capability packs（D35）**：Settings → Skills 可导入目录/zip 能力包（skills + hooks + MCP 片段）；支持卸载。
 * **Goal 跟踪（D29）**：Builtin `goal_write` 在 Chat 顶部展示实时 **Goal** 条（标题 + 进度）；完成后自动收起。
 * **会话看板（D30）**：输入框 **+** 菜单打开 **Session overview**——一眼查看 Goal / Todo / Plan / 权限模式 / MCP 绑定摘要。
-* **Git + web fetch（D12）**：Builtin `git_status` / `git_diff` / `git_commit`（提交需审批）与 `web_fetch`（抓取 URL 文本供总结）；步骤进入对话工具条。工作区不是 git 仓库时不挂这些 git 工具；即使被调用也只说明「不是仓库」，不会因 `fatal: not a git repository` 出红叉。
+* **Git + web fetch（D12）**：Builtin `git_status` / `git_diff` / `git_commit`（用户明确要求提交时才 commit；Ask 模式提交需审批；终端里的 `git commit` 同样拦截）与 `web_fetch`（抓取 URL 文本供总结）；步骤进入对话工具条。成功提交后右侧 **Changes** 清掉已入库文件。工作区不是 git 仓库时不挂这些 git 工具；即使被调用也只说明「不是仓库」，不会因 `fatal: not a git repository` 出红叉。
 * **Permission rules（D13）**：可配置命令 allow/ask/deny 规则；`rm -rf` / `sudo` 等危险命令在 Full 模式下仍强制询问；权限菜单可 **清除记住的批准**。
 * **Chat 斜杠命令（D18）**：输入 `/` 可选 `/plan`（进入计划模式）、`/compact`（强制上下文压缩并出摘要）、`/todos`（聚焦 Todo 卡）、`/help`；同一面板仍列出 Skills。
 * **Observability Chat Feed**：支持对本地子进程 CLI（如 Claude Code CLI）敲击的所有终端命令及 stdout/stderr 输出进行行内展开卡片审计；聊天气泡中优雅地展示 Agent 专属标签、Boundary markers 和系统提示词 metadata。**Hybrid 回复的正文与图片均从 `outputEvents` 的 assistant 内容解析**，避免工作流上一节点气泡误显示下一节点生成的图片。Plain chat 支持 `client_message_id` 与乐观发送合并，避免切换 Agent 后重复「你好」等用户消息被去重或丢失。
@@ -146,7 +146,7 @@ graph TD
 | D21 ignore/sandbox | Builtin `list_dir`/`grep`/`read_file` respect `.gitignore`/`.clutchignore`; Settings **Strict sandbox** rejects escape paths/commands |
 | D10 subtasks | Nested Subtasks cards under parent bubble (D48) |
 | D11 background | Running: bar above composer; finished: job card in Chat timeline |
-| D34 fg → bg | Foreground command bar + **Move to background** → D11 job chip |
+| D34 fg → bg | Foreground bar + **Move to background**; timeout auto-bg; same command refused if already running |
 | D23 fork/rewind | Message **Fork session here**; composer **+** → Rewind file changes + Supervisor line |
 | D16 memory | Settings **Memory**; `.clutch/memory/MEMORY.md` in Files (B-39); verification writes `Worked:` / `Failed:` (B-40); `remember_preference` |
 | D17 hooks | `hooks.json` Pre/Post deny → Chat tool step shows Hook blocked reason |
@@ -161,7 +161,7 @@ graph TD
 | D31 plan comments | Pending plan card: per-step comment fields; Revise sends structured feedback |
 | D29 goal bar | Live **Goal** strip (title + progress) from `goal_write` until done |
 | D30 session board | Composer **+** → **Session overview** (goal / todos / plan / permission / MCP) |
-| D32 worktree | Composer **+** → Enable worktree; active Merge / Discard chip; cwd under `.clutch/worktrees/` |
+| D32 worktree | Footer **Worktree** next to Branch; **+** still Enables; cwd under `.clutch/worktrees/` |
 | Cap-D25 scheduler | Composer **+** → **Scheduled tasks** panel (interval jobs; confirm to enable) |
 | D24 diagnostics | Builtin `diagnostics` + Chat **Code diagnostics** issues strip |
 | D14 grok CLI | Engine `grok-cli` when `grok` on PATH; unavailable otherwise |

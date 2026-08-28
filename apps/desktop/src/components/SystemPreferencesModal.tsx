@@ -274,7 +274,7 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
                 className={`${navBtnBase} ${currentView === 'workflows' ? navBtnActive : navBtnIdle}`}
               >
                 <LegacyIcon
-                  name="fork_right"
+                  name="workflow"
                   className={`text-[16px] ${currentView === 'workflows' ? 'opacity-100' : 'opacity-60'}`}
                 />
                 <span className="text-xs">{t("Workflows SOP")}</span>

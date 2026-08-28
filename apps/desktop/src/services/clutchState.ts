@@ -887,6 +887,10 @@ class ClutchStateStore {
             window.dispatchEvent(new CustomEvent('clutch-file-changed', { detail: envelope.data }));
             return;
           }
+          if (envelope.event === 'files_committed') {
+            window.dispatchEvent(new CustomEvent('clutch-files-committed', { detail: envelope.data }));
+            return;
+          }
           if (envelope.event === 'run_completed') {
             const data = envelope.data as { status?: string };
             if (data.status) {

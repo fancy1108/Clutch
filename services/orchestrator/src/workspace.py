@@ -422,10 +422,8 @@ def release_effective_workspace_root(token: contextvars.Token[Path | None]) -> N
     _effective_root.reset(token)
 
 
-def require_workspace() -> Path:
-    override = _effective_root.get()
-    if override is not None:
-        return override.resolve()
+def require_authorized_workspace() -> Path:
+    """Main checkout — ignore D32 worktree cwd override (merge/create/discard)."""
     info = get_workspace()
     if info is None:
         raise WorkspaceError(
@@ -434,12 +432,54 @@ def require_workspace() -> Path:
                 "未授权工作区，请先在应用中选择一个项目根目录。"
             )
         )
-    return Path(info["workspace_path"])
+    return Path(info["workspace_path"]).resolve()
 
 
-def resolve_allowed_path(relative_path: str) -> Path:
-    root = require_workspace()
-    target = (root / relative_path).resolve()
+def require_workspace() -> Path:
+    override = _effective_root.get()
+    if override is not None:
+        return override.resolve()
+    from src.worktree_isolation import get_worktree_context
+
+    ctx = get_worktree_context()
+    if isinstance(ctx, dict) and ctx.get("enabled"):
+        raw = str(ctx.get("path") or "").strip()
+        if raw:
+            return Path(raw).resolve()
+    return require_authorized_workspace()
+
+
+def _authorized_workspace_root() -> Path | None:
+    info = get_workspace()
+    if not info:
+        return None
+    raw = str(info.get("workspace_path") or "").strip()
+    return Path(raw).resolve() if raw else None
+
+
+def _target_in_isolation_root(root: Path, target: Path, authorized: Path | None) -> Path:
+    """When cwd is a worktree, rewrite paths that landed in the parent checkout."""
+    if authorized is None or root == authorized:
+        return target
+    in_auth = target == authorized or authorized in target.parents
+    in_root = target == root or root in target.parents
+    if not in_auth or in_root:
+        return target
+    try:
+        rel = target.relative_to(authorized)
+    except ValueError:
+        return target
+    parts = rel.parts
+    if len(parts) >= 2 and parts[0] == ".clutch" and parts[1] == "worktrees":
+        return target
+    return (root / rel).resolve()
+
+
+def resolve_allowed_path(relative_path: str, *, root: Path | None = None) -> Path:
+    root = root.resolve() if root is not None else require_workspace()
+    raw = Path(str(relative_path).strip()).expanduser()
+    target = raw.resolve() if raw.is_absolute() else (root / raw).resolve()
+    target = _target_in_isolation_root(root, target, _authorized_workspace_root())
     if target != root and root not in target.parents:
         raise WorkspaceError(
             tr(
@@ -450,7 +490,8 @@ def resolve_allowed_path(relative_path: str) -> Path:
     from src.preferences_storage import load_strict_sandbox
 
     if load_strict_sandbox():
-        _assert_strict_sandbox_path(root, relative_path, target)
+        rel_for_strict = "." if target == root else str(target.relative_to(root))
+        _assert_strict_sandbox_path(root, rel_for_strict, target)
     return target
 
 
@@ -573,8 +614,8 @@ def diff_workspace_snapshots(
     return changed
 
 
-def list_tree(max_depth: int = 5) -> list[dict[str, Any]]:
-    root = require_workspace()
+def list_tree(max_depth: int = 5, *, root: Path | None = None) -> list[dict[str, Any]]:
+    root = (root or require_workspace()).resolve()
 
     def walk(directory: Path, depth: int) -> list[dict[str, Any]]:
         if depth > max_depth:
@@ -663,8 +704,75 @@ def get_git_info(root: Path | None = None) -> dict[str, Any]:
     return {"is_git_repo": True, "branch": branch, "branches": branches}
 
 
-def read_file(relative_path: str, *, max_bytes: int = 512_000) -> str:
-    target = resolve_allowed_path(relative_path)
+def _porcelain_xy_status(code: str) -> str:
+    xy = (code + "  ")[:2]
+    if "A" in xy or "?" in xy:
+        return "A"
+    if "D" in xy:
+        return "D"
+    return "M"
+
+
+def _uncommitted_diff_lines(root: Path, rel: str) -> list[dict[str, Any]]:
+    proc = _run_git(root, "diff", "-U3", "--", rel)
+    if proc is None or not (proc.stdout or "").strip():
+        return []
+    lines: list[dict[str, Any]] = []
+    n = 0
+    for raw in proc.stdout.splitlines():
+        if raw.startswith(("+++", "---", "diff ", "index ", "@@")):
+            continue
+        n += 1
+        if raw.startswith("+"):
+            kind = "addition"
+            text = raw[1:]
+        elif raw.startswith("-"):
+            kind = "deletion"
+            text = raw[1:]
+        else:
+            kind = "normal"
+            text = raw[1:] if raw.startswith(" ") else raw
+        lines.append({"lineNum": n, "type": kind, "text": text})
+        if len(lines) >= 80:
+            break
+    return lines
+
+
+def list_uncommitted(root: Path | None = None) -> list[dict[str, Any]]:
+    """Git porcelain for the Files/Changes view root (main or a worktree)."""
+    try:
+        cwd = (root or require_workspace()).resolve()
+    except WorkspaceError:
+        return []
+    proc = _run_git(cwd, "status", "--porcelain", "-uall")
+    if proc is None or proc.returncode not in (0, 1):
+        return []
+    files: list[dict[str, Any]] = []
+    for line in (proc.stdout or "").splitlines():
+        if len(line) < 4:
+            continue
+        path = line[3:].strip()
+        if " -> " in path:
+            path = path.split(" -> ", 1)[-1]
+        if path.startswith('"') and path.endswith('"'):
+            path = path[1:-1]
+        rel = path.replace("\\", "/")
+        if rel.startswith(".clutch/worktrees"):
+            continue
+        status = _porcelain_xy_status(line[:2])
+        files.append(
+            {
+                "name": rel,
+                "status": status,
+                "diffs": _uncommitted_diff_lines(cwd, rel),
+                "active": False,
+            }
+        )
+    return files
+
+
+def read_file(relative_path: str, *, max_bytes: int = 512_000, root: Path | None = None) -> str:
+    target = resolve_allowed_path(relative_path, root=root)
     if not target.is_file():
         raise WorkspaceError(
             tr(

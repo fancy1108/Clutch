@@ -95,9 +95,11 @@ export async function sidecarAuthedHttpUrl(path: string): Promise<string> {
 }
 
 /** Authenticated media URL for a workspace-relative file (png/mp4/…). */
-export async function workspaceMediaUrl(relativePath: string): Promise<string> {
+export async function workspaceMediaUrl(relativePath: string, wtId?: string | null): Promise<string> {
+  const id = (wtId ?? '').trim();
+  const extra = id ? `&wt_id=${encodeURIComponent(id)}` : '';
   return sidecarAuthedHttpUrl(
-    `/api/workspace/media?path=${encodeURIComponent(relativePath)}`,
+    `/api/workspace/media?path=${encodeURIComponent(relativePath)}${extra}`,
   );
 }
 

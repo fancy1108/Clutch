@@ -90,6 +90,7 @@ def test_git_status_diff_commit(tmp_path: Path, monkeypatch) -> None:
     payload = json.loads(committed)
     assert payload["ok"] is True
     assert payload.get("sha")
+    assert "hello.txt" in payload.get("committed_paths", [])
 
 
 def test_git_tools_hidden_on_plain_folder(tmp_path: Path, monkeypatch) -> None:

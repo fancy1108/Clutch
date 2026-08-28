@@ -129,6 +129,43 @@ _WRITE_TOOLS = frozenset({"search_replace", "apply_patch", "run_terminal_cmd"})
 _GIT_TOOLS = frozenset({"git_status", "git_diff", "git_commit"})
 _SHELL_TOOLS = frozenset({"run_terminal_cmd"})
 
+_COMMIT_ASK_RE = re.compile(
+    r"("
+    r"\bgit\s+commit\b|"
+    r"\b(please\s+)?commit\b|"
+    r"提交(代码|改动|变更|一下|吧)?|"
+    r"做成提交|帮我提交"
+    r")",
+    re.IGNORECASE,
+)
+_COMMIT_FORBID_RE = re.compile(
+    r"(不要提交|别提交|don'?t\s+commit|do\s+not\s+commit)",
+    re.IGNORECASE,
+)
+
+_SHELL_GIT_COMMIT_RE = re.compile(r"\bgit\s+commit\b", re.IGNORECASE)
+
+GIT_COMMIT_NOT_REQUESTED = (
+    "Commit skipped: the user did not ask to commit. "
+    "Leave changes uncommitted; do not call git_commit or run `git commit` in the shell "
+    "unless they explicitly request a commit / 提交."
+)
+
+
+def user_asked_to_commit(text: str) -> bool:
+    raw = text or ""
+    if _COMMIT_FORBID_RE.search(raw):
+        return False
+    return bool(_COMMIT_ASK_RE.search(raw))
+
+
+def command_includes_git_commit(command: str) -> bool:
+    return bool(_SHELL_GIT_COMMIT_RE.search(command or ""))
+
+
+def git_commit_not_requested_result() -> str:
+    return GIT_COMMIT_NOT_REQUESTED
+
 
 def short_tool_name(name: str) -> str:
     return (name or "").split("__")[-1].lower().replace("-", "_").strip()
@@ -308,7 +345,8 @@ _NUDGES = {
     ),
     "git": _nudge(
         "git",
-        "Call `git_status` / `git_diff` / `git_commit` as appropriate — do not invent git output.",
+        "Call `git_status` / `git_diff` as appropriate — do not invent git output. "
+        "Call `git_commit` only if the user explicitly asked to commit / 提交.",
     ),
     "shell": _nudge(
         "shell",

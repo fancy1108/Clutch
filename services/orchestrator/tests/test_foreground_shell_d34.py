@@ -115,3 +115,59 @@ def test_builtin_foreground_with_transfer(tmp_path, monkeypatch) -> None:
     finally:
         release_bg_job_context(bg_token)
         release_foreground_context(fg_token)
+
+
+def test_wait_timeout_moves_to_background() -> None:
+    from src.bg_jobs import kill_job, list_jobs
+
+    run_id = "run_test_d34_timeout_bg"
+    start_foreground(run_id, _FG_LONG_PLAIN, _BG_DIR)
+    output, transferred, exit_code = wait_foreground(run_id, timeout_sec=1.0)
+    assert transferred is True
+    assert exit_code is None
+    assert get_foreground(run_id) is None
+    jobs = [j for j in list_jobs(run_id) if j["status"] == "running"]
+    assert jobs
+    kill_job(run_id, jobs[0]["id"])
+
+
+def test_builtin_refuses_duplicate_running_command(tmp_path, monkeypatch) -> None:
+    run_id = "run_test_d34_dup"
+    monkeypatch.setenv("CLUTCH_WORKSPACES_FILE", str(tmp_path / "ws.json"))
+    from src import workspace as workspace_mod
+
+    workspace_mod._loaded = False
+    workspace_mod._workspaces = {}
+    workspace_mod._active_id = None
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    workspace_mod.add_workspace(str(ws))
+
+    bg_token = bind_bg_job_context({"run_id": run_id})
+    try:
+        first = execute_builtin_tool(
+            "run_terminal_cmd",
+            {"command": _FG_LONG_PLAIN, "background": True},
+        )
+        assert not first.startswith("Error"), first
+        second = execute_builtin_tool(
+            "run_terminal_cmd",
+            {"command": _FG_LONG_PLAIN, "background": True},
+        )
+        assert "already running" in second.lower()
+        payload = json.loads(first)
+        from src.bg_jobs import kill_job
+
+        kill_job(run_id, payload["job_id"])
+    finally:
+        release_bg_job_context(bg_token)
+
+
+def test_kill_tree_reaps_shell_children() -> None:
+    from src.shell_proc import kill_tree, popen_shell
+
+    proc = popen_shell(_FG_LONG_PLAIN, _BG_DIR)
+    time.sleep(0.2)
+    assert proc.poll() is None
+    kill_tree(proc)
+    assert proc.poll() is not None

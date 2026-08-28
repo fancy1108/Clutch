@@ -140,7 +140,9 @@ def list_builtin_tools() -> list[dict[str, Any]]:
                 "Prefer non-interactive commands. Risky — may require human approval. "
                 "Set background=true to start a long-running job and return immediately. "
                 "Do NOT create/edit source files via shell heredocs (`cat >`, `echo >`); "
-                "use apply_patch or search_replace so Chat Diff cards and Changes update."
+                "use apply_patch or search_replace so Chat Diff cards and Changes update. "
+                "Do not `git commit` here unless the user asked to commit / 提交. "
+                "Do not start a second copy of a command that is already running in this Chat. "
             ),
             "inputSchema": {
                 "type": "object",
@@ -206,6 +208,8 @@ def list_builtin_tools() -> list[dict[str, Any]]:
             "name": "git_commit",
             "description": (
                 "Stage paths (or -A when omitted) and create a git commit (D12). "
+                "Call only when the user explicitly asked to commit / 提交. "
+                "Do not commit after ordinary file creates or edits. "
                 "Risky — requires human approval in ask mode."
             ),
             "inputSchema": {
@@ -2018,7 +2022,14 @@ def _tool_run_terminal_cmd(arguments: dict[str, Any]) -> str:
                 "Error executing tool: background commands require an active Chat run context"
             )
         from src.bg_jobs import start_job
+        from src.foreground_shell import already_running_command
 
+        dup = already_running_command(run_id, command)
+        if dup:
+            return (
+                f"Command already running in this Chat: `{dup[:80]}`. "
+                "Do not start another copy. Wait for it, or Kill it from the jobs bar."
+            )
         try:
             job = start_job(run_id, command, str(root))
         except ValueError as exc:
@@ -2041,8 +2052,14 @@ def _tool_run_terminal_cmd(arguments: dict[str, Any]) -> str:
 
     run_id = _bg_job_run_id()
     if run_id:
-        from src.foreground_shell import start_foreground, wait_foreground
+        from src.foreground_shell import already_running_command, start_foreground, wait_foreground
 
+        dup = already_running_command(run_id, command)
+        if dup:
+            return (
+                f"Command already running in this Chat: `{dup[:80]}`. "
+                "Do not start another copy. Wait for it, or Kill it from the jobs bar."
+            )
         try:
             start_foreground(run_id, command, str(root))
         except Exception as exc:
@@ -2233,11 +2250,16 @@ def _tool_git_commit(arguments: dict[str, Any]) -> str:
         return f"Error executing tool: {err}"
     head = _run_git(["rev-parse", "--short", "HEAD"], cwd=root)
     sha = (head.stdout or "").strip() if head.returncode == 0 else ""
+    named = _run_git(["diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD"], cwd=root)
+    committed_paths = [p.strip() for p in (named.stdout or "").splitlines() if p.strip()]
+    if not committed_paths:
+        committed_paths = list(paths)
     return json.dumps(
         {
             "ok": True,
             "message": message,
             "sha": sha,
+            "committed_paths": committed_paths,
             "stdout": (commit.stdout or "").strip(),
         },
         ensure_ascii=False,

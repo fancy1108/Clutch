@@ -1,12 +1,11 @@
 /**
- * D32 — worktree isolation status (active only).
- * Idle enable lives in ChatInputBar toolbar (progressive disclosure).
- * FM-11 — extra parallel trees listed from disk with merge/discard.
+ * D32 / FM-11 — worktree switcher lives in the footer next to Branch.
+ * Composer + still exposes Enable (progressive disclosure). No extra sky chip.
  */
 import React, { useCallback, useEffect, useState } from 'react';
 import { LegacyIcon } from './ui/LegacyIcon';
+import { FooterFieldChevron, FooterFieldLabel, FooterFieldValue, FooterMenuItem, FooterMenuPanel, FooterMenuRowIcon, FOOTER_CHIP_BUTTON_CLASS, footerIdleHiddenClass } from './FooterMenu';
 import { SIDECAR_BASE as BASE, sidecarFetch } from '../services/sidecarUrl';
-import { BTN_SECONDARY } from './ui/buttonStyles';
 
 export interface WorktreeIsolationState {
   id: string;
@@ -16,13 +15,11 @@ export interface WorktreeIsolationState {
   dirty?: boolean;
 }
 
-/** FM-11 spawn/list bar: idle Chat must not show a dangling Add button. */
-export function worktreeBarVisible(
-  worktree: WorktreeIsolationState | null,
-  extras: WorktreeIsolationState[],
-  error: string | null,
-): boolean {
-  return Boolean(worktree?.enabled) || extras.length > 0 || Boolean(error);
+export function footerWorktreeLabel(worktree: WorktreeIsolationState | null): string {
+  if (worktree?.enabled && (worktree.branch || worktree.id)) {
+    return worktree.branch || worktree.id;
+  }
+  return '—';
 }
 
 export function canAddParallelWorktree(worktree: WorktreeIsolationState | null): boolean {
@@ -48,130 +45,152 @@ async function spawnErrorMessage(res: Response, fallback: string): Promise<strin
   }
 }
 
-export function WorktreeIsolationBar({
+export function FooterWorktreeMenu({
   worktree,
+  open,
   t,
+  onToggle,
+  onSelectMain,
+  onSelectWorktree,
+  onEnable,
   onMerge,
   onDiscard,
 }: {
   worktree: WorktreeIsolationState | null;
+  open: boolean;
   t: (key: string) => string;
-  onMerge: () => void;
-  onDiscard: () => void;
+  onToggle: () => void;
+  onSelectMain: () => void;
+  onSelectWorktree: (id: string) => void;
+  onEnable: () => void;
+  onMerge: (wtId: string) => void;
+  onDiscard: (wtId: string) => void;
 }) {
-  const [extras, setExtras] = useState<WorktreeIsolationState[]>([]);
+  const [trees, setTrees] = useState<WorktreeIsolationState[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [spawning, setSpawning] = useState(false);
+  const active = Boolean(worktree?.enabled);
+  const label = footerWorktreeLabel(worktree);
+  const rows =
+    worktree?.enabled && !trees.some((item) => item.id === worktree.id)
+      ? [worktree, ...trees]
+      : trees;
 
   const reload = useCallback(async () => {
     const res = await sidecarFetch(`${BASE}/api/worktree`);
     if (!res.ok) return;
     const body = (await res.json()) as { worktrees?: WorktreeIsolationState[] };
-    const primaryId = worktree?.id;
-    setExtras((body.worktrees ?? []).filter((item) => item.id !== primaryId));
-  }, [worktree?.id]);
+    setTrees(body.worktrees ?? []);
+  }, []);
 
   useEffect(() => {
-    void reload().catch(() => setExtras([]));
-  }, [reload, worktree?.id]);
+    if (!open) return;
+    setError(null);
+    void reload().catch(() => setTrees([]));
+  }, [open, reload, worktree?.id]);
 
-  const showSpawn = canAddParallelWorktree(worktree);
-  if (!worktreeBarVisible(worktree, extras, error)) return null;
+  const spawnParallel = () => {
+    if (spawning) return;
+    setError(null);
+    setSpawning(true);
+    void sidecarFetch(`${BASE}/api/worktree/spawn`, { method: 'POST' })
+      .then(async (res) => {
+        if (!res.ok) throw new Error(await spawnErrorMessage(res, t('Failed')));
+        return reload();
+      })
+      .catch((err: unknown) => {
+        setError(err instanceof Error ? err.message : t('Failed'));
+      })
+      .finally(() => {
+        setSpawning(false);
+      });
+  };
 
   return (
-    <div data-testid="worktree-isolation-bar" className="w-full max-w-3xl mx-auto px-3 pb-1.5 space-y-1.5">
-      {worktree?.enabled ? (
-        <div
-          className="flex items-center gap-2 rounded-xl border border-sky-500/35 bg-sky-500/[0.06] px-2.5 py-1.5"
-          data-testid="worktree-active-chip"
-        >
-          <LegacyIcon name="git-branch" className="text-[14px] text-sky-700 shrink-0" />
-          <div className="flex-1 min-w-0">
-            <div className="text-[11px] font-semibold text-on-surface truncate">
-              {worktree.branch}
-              {worktree.dirty ? ` · ${t('dirty')}` : ''}
-            </div>
-            <div className="text-[10px] text-on-surface-variant/70 truncate">{worktree.path}</div>
-          </div>
-          <button
-            type="button"
-            data-testid="merge-worktree"
-            className="shrink-0 rounded-md bg-primary px-2 py-0.5 text-[10px] font-semibold text-on-primary hover:bg-primary/90"
-            onClick={onMerge}
+    <div
+      className={`relative min-w-0 ${footerIdleHiddenClass(!active)}`}
+      data-testid={active ? 'worktree-active-chip' : undefined}
+    >
+      <button
+        type="button"
+        data-testid="footer-worktree-trigger"
+        data-active={active ? 'true' : 'false'}
+        onClick={onToggle}
+        className={`${FOOTER_CHIP_BUTTON_CLASS} text-on-surface-variant`}
+        aria-label={`${t('Worktree')}: ${label}`}
+        title={`${t('Worktree')}: ${label}`}
+      >
+        <LegacyIcon name="folder-git" className="text-[15px] text-on-surface-variant shrink-0" />
+        <FooterFieldLabel>{t('Worktree')}</FooterFieldLabel>
+        <FooterFieldValue title={label}>{label}</FooterFieldValue>
+        <FooterFieldChevron />
+      </button>
+      {open ? (
+        <FooterMenuPanel testId="footer-worktree-menu">
+          <FooterMenuItem
+            testId="footer-worktree-main"
+            selected={!active}
+            onClick={onSelectMain}
           >
-            {t('Merge')}
-          </button>
-          <button
-            type="button"
-            data-testid="discard-worktree"
-            className="shrink-0 rounded-md border border-rose-300 px-2 py-0.5 text-[10px] font-semibold text-rose-700 hover:bg-rose-50"
-            onClick={onDiscard}
-          >
-            {t('Discard')}
-          </button>
-        </div>
-      ) : null}
-      {extras.map((item) => (
-        <div
-          key={item.id}
-          data-testid={`parallel-worktree-${item.id}`}
-          className="flex items-center gap-2 rounded-xl border border-outline-variant/40 bg-surface-container-low px-2.5 py-1.5"
-        >
-          <div className="flex-1 min-w-0">
-            <div className="text-[11px] font-semibold truncate">{item.branch}</div>
-            <div className="text-[10px] text-on-surface-variant/70 truncate">{item.path}</div>
-          </div>
-          <button
-            type="button"
-            className="text-[10px] font-semibold text-primary"
-            onClick={() => {
-              void sidecarFetch(`${BASE}/api/worktree/${encodeURIComponent(item.id)}/merge`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ run_id: '' }),
-              }).then(() => reload());
-            }}
-          >
-            {t('Merge')}
-          </button>
-          <button
-            type="button"
-            className="text-[10px] font-semibold text-rose-700"
-            onClick={() => {
-              void sidecarFetch(`${BASE}/api/worktree/${encodeURIComponent(item.id)}/discard`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ run_id: '' }),
-              }).then(() => reload());
-            }}
-          >
-            {t('Discard')}
-          </button>
-        </div>
-      ))}
-      {showSpawn || error ? (
-        <div className="flex items-center gap-2">
-          {showSpawn ? (
-            <button
-              type="button"
-              data-testid="add-parallel-worktree"
-              className={`${BTN_SECONDARY} px-2 py-1 text-[10px] font-semibold`}
-              onClick={() => {
-                setError(null);
-                void sidecarFetch(`${BASE}/api/worktree/spawn`, { method: 'POST' })
-                  .then(async (res) => {
-                    if (!res.ok) throw new Error(await spawnErrorMessage(res, t('Failed')));
-                    return reload();
-                  })
-                  .catch((err: unknown) => {
-                    setError(err instanceof Error ? err.message : t('Failed'));
-                  });
-              }}
+            {t('Main workspace')}
+          </FooterMenuItem>
+          {rows.map((item) => {
+            const selected = active && item.id === worktree?.id;
+            return (
+            <FooterMenuItem
+              key={item.id}
+              testId={`parallel-worktree-${item.id}`}
+              selected={selected}
+              onClick={() => onSelectWorktree(item.id)}
+              actions={
+                <>
+                  <FooterMenuRowIcon
+                    name="git-merge"
+                    label={t('Merge')}
+                    testId={selected ? 'merge-worktree' : `merge-worktree-${item.id}`}
+                    onClick={() => onMerge(item.id)}
+                  />
+                  <FooterMenuRowIcon
+                    name="delete"
+                    label={t('Discard')}
+                    danger
+                    testId={selected ? 'discard-worktree' : `discard-worktree-${item.id}`}
+                    onClick={() => onDiscard(item.id)}
+                  />
+                </>
+              }
             >
-              {t('Add parallel worktree')}
-            </button>
+              {item.branch}
+              {item.dirty ? ` · ${t('dirty')}` : ''}
+            </FooterMenuItem>
+            );
+          })}
+          <button
+            type="button"
+            data-testid={
+              !active && !trees.length ? 'footer-worktree-enable' : 'add-parallel-worktree'
+            }
+            disabled={spawning}
+            aria-busy={spawning}
+            onClick={!active && !trees.length ? onEnable : spawnParallel}
+            className="w-full flex items-center gap-2 px-3 py-2 text-[11px] text-on-surface-variant hover:bg-surface-container-low border-t border-outline-variant/40 text-left disabled:opacity-70 disabled:pointer-events-none"
+          >
+            <LegacyIcon
+              name={spawning ? 'progress_activity' : 'add'}
+              className="text-[14px] w-4 flex-shrink-0"
+            />
+            <span>
+              {spawning
+                ? t('Creating worktree…')
+                : !active && !trees.length
+                  ? t('Enable worktree')
+                  : t('Add parallel worktree')}
+            </span>
+          </button>
+          {error ? (
+            <p className="px-3 py-2 pl-9 text-[11px] text-on-surface-variant">{error}</p>
           ) : null}
-          {error ? <span className="text-[10px] text-rose-700">{error}</span> : null}
-        </div>
+        </FooterMenuPanel>
       ) : null}
     </div>
   );

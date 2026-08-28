@@ -206,7 +206,7 @@ export function validWhenValues(nodeType: string | undefined): EdgeWhen[] {
   return [];
 }
 
-export function compilerToCanvas(workflow: CompilerWorkflow, icon = 'account_tree'): WorkflowDef {
+export function compilerToCanvas(workflow: CompilerWorkflow, icon = 'workflow'): WorkflowDef {
   const canvasNodes = workflow.nodes.filter((n) => CANVAS_NODE_TYPES.has(n.type) && n.type !== 'end');
 
   const nodeTypeMap = new Map(workflow.nodes.map((n) => [n.id, n.type]));
