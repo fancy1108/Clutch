@@ -4,6 +4,15 @@
 > **何时写：** 每个**代码 Task** 完成并 commit 后，在 Check-out 追加一节（见 `CLAUDE.md` §Check-out）。  
 > **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。
 
+## D66/D67 撤回 FM-06（2026-08-28）
+
+| 项 | 说明 |
+|----|------|
+| **Commit** | `3da07a7` |
+| **Verification** | pre-commit `./scripts/verify.sh` → vitest 248 passed · pytest 1023 passed / 7 skipped · doc-drift 0 error |
+| **ROADMAP** | FM-06 🚫 撤回 D67 2026-08-28 |
+| **Files** | `OrchestratorBar.tsx` · `TerminalLaneGrid.tsx` · `DispatchConfirmCard.tsx`（删）· `terminal_orchestra.py` · `FRONTEND_MODULES_ACCEPTANCE.md` |
+
 ## Wave 4 FM-10 / FM-18 + D64/D65（2026-08-28）
 
 | 项 | 说明 |
