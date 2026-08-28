@@ -297,7 +297,7 @@
 
 > **Task 定义：** [`specs/core/frontend-modules-plan.md`](../specs/core/frontend-modules-plan.md)  
 > **点验剧本：** [`docs/FRONTEND_MODULES_ACCEPTANCE.md`](../docs/FRONTEND_MODULES_ACCEPTANCE.md)（桌面入口、步骤、期望；本表仍是唯一 ✅/❌）  
-> **决策：** D56。未点验不得标 ✅。一次一个模块。**FM-19 已撤回（D60）**：Chat 底栏换模型即可；Settings 不再分 Planner/Executor。
+> **决策：** D56。未点验不得标 ✅。一次一个模块。**FM-19 已撤回（D60）**；**FM-13 已撤回（D61）**（webhook/邮箱空壳；本机盯 CI 见 BACKLOG B-51）。
 
 | ID | 主题 | 状态 |
 |----|------|------|
@@ -318,7 +318,7 @@
 | FM-10 | 画布 tool 选择（B-04） | ✅ |
 | FM-11 | 并行 worktree（B-08） | ✅ |
 | FM-12 | 记忆检索（B-10） | ✅ 人工点验 2026-08-28 |
-| FM-13 | 事件 Channel（B-42） | ✅ |
+| FM-13 | 事件 Channel（B-42） | 🚫 撤回 D61 2026-08-28 |
 | FM-14 | notify_user（B-46） | ✅ |
 | FM-15 | 新信息门禁（B-43） | ✅ |
 | FM-16 | Design 视觉审查（B-49） | ✅ |

@@ -72,8 +72,6 @@ def _defaults() -> dict[str, str]:
         "trusted_mcp_ids": "",
         "trusted_workflow_ids": "",
         "untrusted_confirm": "true",
-        "event_webhook": "",
-        "event_email": "",
     }
 
 
@@ -120,8 +118,6 @@ def load_preferences() -> dict[str, str]:
     untrusted_confirm = str(data.get("untrusted_confirm") or "true").lower()
     if untrusted_confirm not in {"true", "false"}:
         untrusted_confirm = "true"
-    event_webhook = str(data.get("event_webhook") or "").strip()
-    event_email = str(data.get("event_email") or "").strip()
     if theme_id not in ALLOWED_THEME_IDS:
         theme_id = DEFAULT_THEME_ID
     if language not in ALLOWED_LANGUAGES:
@@ -144,8 +140,6 @@ def load_preferences() -> dict[str, str]:
         "trusted_mcp_ids": trusted_mcp_ids,
         "trusted_workflow_ids": trusted_workflow_ids,
         "untrusted_confirm": untrusted_confirm,
-        "event_webhook": event_webhook,
-        "event_email": event_email,
     }
 
 
@@ -282,21 +276,6 @@ def save_trusted_id(kind: str, item_id: str) -> dict[str, str]:
     if token and token not in current:
         current.append(token)
     prefs[key] = ",".join(current)
-    return _write_preferences(prefs)
-
-
-def load_event_channel() -> dict[str, str]:
-    prefs = load_preferences()
-    return {
-        "webhook": prefs.get("event_webhook") or "",
-        "email": prefs.get("event_email") or "",
-    }
-
-
-def save_event_channel(webhook: str, email: str) -> dict[str, str]:
-    prefs = load_preferences()
-    prefs["event_webhook"] = webhook.strip()
-    prefs["event_email"] = email.strip()
     return _write_preferences(prefs)
 
 

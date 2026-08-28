@@ -47,18 +47,3 @@ def test_local_trust_round_trip(preferences_data_dir: Path) -> None:
     assert listed["trusted_mcp_ids"] == ["srv_1"]
     client.post("/api/preferences/untrusted-confirm", json={"enabled": False})
     assert client.get("/api/preferences/local-trust").json()["untrusted_confirm"] is False
-
-
-def test_event_channel_save_and_test(preferences_data_dir: Path) -> None:
-    saved = client.post(
-        "/api/preferences/event-channel",
-        json={"webhook": "https://example.test/hook", "email": "a@b.c"},
-    )
-    assert saved.status_code == 200
-    listed = client.get("/api/preferences/event-channel").json()
-    assert listed["webhook"] == "https://example.test/hook"
-    fired = client.post("/api/event-channel/test")
-    assert fired.json()["event"]["title"] == "Test event"
-    assert client.get("/api/event-channel/pending").json()["event"]["title"] == "Test event"
-    client.post("/api/event-channel/ack")
-    assert client.get("/api/event-channel/pending").json()["event"] is None

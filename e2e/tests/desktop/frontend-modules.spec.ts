@@ -78,7 +78,7 @@ test('desktop: FM-01…22 acceptance playbook', async ({ tauriPage: page }) => {
     expect(readFileSync(resolve(repoRoot, 'docs/EXTERNAL_AUDIT.md'), 'utf8').length).toBeGreaterThan(80);
   });
 
-  await test.step('FM-01/02/03/12/13/19 Settings', async () => {
+  await test.step('FM-01/02/03/12 Settings', async () => {
     await openSettings(page);
     await expect(page.locator('[data-testid="general-default-workspace"]')).toBeVisible();
     await expect(page.locator('[data-testid="high-risk-confirm-toggle"]')).toBeVisible();
@@ -86,8 +86,6 @@ test('desktop: FM-01…22 acceptance playbook', async ({ tauriPage: page }) => {
     await expect(page.locator('[data-testid="general-app-version"]')).toContainText('Clutch v');
     await expect(page.locator('[data-testid="memory-search-input"]')).toBeVisible();
     await expect(page.locator('[data-testid="memory-search-run"]')).toBeVisible();
-    await expect(page.locator('[data-testid="event-channel-save"]')).toBeVisible();
-    await expect(page.locator('[data-testid="event-channel-test"]')).toBeVisible();
     await clickId(page, 'settings-nav-tools');
     await expect(page.locator('[data-testid="exec-policy-panel"]')).toBeVisible();
     await expect(page.locator('[data-testid="exec-policy-add"]')).toBeVisible();

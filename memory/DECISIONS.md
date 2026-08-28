@@ -657,6 +657,13 @@
 - **影响**：`ModelsManager.tsx` · `RightPanel.tsx` · models API · `PRODUCT_INTRO.md` · 点验剧本不再含 FM-19。
 - **决策状态**：`已落地`
 
+### D61 · 撤回 FM-13 Event channel 空壳（2026-08-28）
+
+- **背景**：B-42 原意是外部 Channel 叫醒 Agent。升格成 FM-13 后只做了 Settings 填 webhook/邮箱 + Test 横幅，Continue 复用 D9「接着聊」。webhook 从未被 POST，邮箱从未发信。本地桌面也收不到公网入站。用户要的是 push 后盯 CI，不需要邮箱。
+- **方案**：删除 Event channel UI、测试横幅与相关 API。真需求记 BACKLOG **B-51**（本机轮询本次 push 的 CI Checks，红了出确认卡再修），未立项。
+- **影响**：`SystemPreferencesModal.tsx` · `ChatFeed.tsx` · `routes/settings.py` · `PRODUCT_INTRO.md` · 点验剧本不再含 FM-13。
+- **决策状态**：`已落地`
+
 ### D45 · D7 项目规则 + Skills 对齐 Grok Build（2026-07-24）
 
 - **背景**：能力期 D7；对照本地 `grok-build` 与 docs.x.ai project-rules。User 级规则（`~/.grok/AGENTS.md` 等）本期不做。

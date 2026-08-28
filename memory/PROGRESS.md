@@ -7,9 +7,14 @@
 
 - **阶段：** **v1.3.0** 已发；`dev` 冲 **v1.4.0**（D59）。主线 D8–D13 ✅；扩展/MCP **D14–D52 Agent 代 PM ✅**；Desktop E2E ✅；**Design D36 PM ✅**
 - **Git / PM 索引：** [`runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md`](../runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md)
-- **下次优先：** Frontend modules 点验进 **v1.4.0**（FM-01…05、FM-09、FM-12 已人工点验；**FM-19 已撤回 D60**；下一条 **FM-13** 事件 Channel）。T1 开闸或 `memory/BACKLOG.md` 未升格项（价表 / Windows 实体机不做）。
+- **下次优先：** Frontend modules 点验进 **v1.4.0**（FM-01…05、FM-09、FM-12 已人工点验；**FM-13 / FM-19 已撤回**；下一条 **D32+FM-11** worktree）。T1 开闸或 `memory/BACKLOG.md` 未升格项（价表 / Windows 实体机不做）。
 
 ## Recent Sessions
+
+## 2026-08-28 会话（撤回 FM-13）
+
+- **做了：** 删 Settings Event channel 与 Chat 测试横幅。CI 监视未实现，记 BACKLOG B-51。
+- **下次：** D32 + FM-11 worktree。
 
 ## 2026-08-28 会话（FM-12 人工点验）
 

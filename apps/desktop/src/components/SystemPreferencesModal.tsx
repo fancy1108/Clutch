@@ -105,8 +105,6 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
   const [untrustedConfirm, setUntrustedConfirm] = useState(true);
   const [memoryQuery, setMemoryQuery] = useState('');
   const [memoryHits, setMemoryHits] = useState<Array<{ rel: string; snippet: string; path: string }>>([]);
-  const [eventWebhook, setEventWebhook] = useState('');
-  const [eventEmail, setEventEmail] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -177,14 +175,6 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
       .catch(() => {
         if (!cancelled) setUntrustedConfirm(true);
       });
-    void sidecarFetch(`${BASE}/api/preferences/event-channel`)
-      .then(async (res) => {
-        if (!res.ok || cancelled) return;
-        const body = (await res.json()) as { webhook?: string; email?: string };
-        setEventWebhook(body.webhook ?? '');
-        setEventEmail(body.email ?? '');
-      })
-      .catch(() => {});
     return () => {
       cancelled = true;
     };
@@ -699,65 +689,6 @@ export const SystemPreferencesModal: React.FC<SystemPreferencesModalProps> = ({
                         </li>
                       ))}
                     </ul>
-                  </div>
-
-                  <div className="bg-surface-container/30 p-6 rounded-2xl border border-outline/30 space-y-4">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-                      {t('Event channel')}
-                    </h3>
-                    <p className="text-[11px] text-on-surface-variant/80 max-w-xl">
-                      {t('Webhook or email for wake-up events. Test posts a Chat Continue banner.')}
-                    </p>
-                    <input
-                      data-testid="event-channel-webhook"
-                      value={eventWebhook}
-                      onChange={(e) => setEventWebhook(e.target.value)}
-                      placeholder="https://…"
-                      className="w-full bg-surface border border-outline/40 rounded-xl px-3 py-2 text-xs"
-                    />
-                    <input
-                      data-testid="event-channel-email"
-                      value={eventEmail}
-                      onChange={(e) => setEventEmail(e.target.value)}
-                      placeholder="you@example.com"
-                      className="w-full bg-surface border border-outline/40 rounded-xl px-3 py-2 text-xs"
-                    />
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        data-testid="event-channel-save"
-                        className={`${BTN_SECONDARY} px-3 py-1.5 text-xs font-semibold`}
-                        onClick={() => {
-                          void sidecarFetch(`${BASE}/api/preferences/event-channel`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ webhook: eventWebhook, email: eventEmail }),
-                          });
-                        }}
-                      >
-                        {t('Save')}
-                      </button>
-                      <button
-                        type="button"
-                        data-testid="event-channel-test"
-                        className={`${BTN_PRIMARY} px-3 py-1.5 text-xs font-semibold`}
-                        onClick={() => {
-                          void sidecarFetch(`${BASE}/api/preferences/event-channel`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ webhook: eventWebhook, email: eventEmail }),
-                          }).then(() =>
-                            sidecarFetch(`${BASE}/api/event-channel/test`, { method: 'POST' }).then(async (res) => {
-                              if (!res.ok) return;
-                              const body = (await res.json()) as { event?: { title?: string; message?: string } };
-                              window.dispatchEvent(new CustomEvent('clutch-event-channel', { detail: body.event }));
-                            }),
-                          );
-                        }}
-                      >
-                        {t('Test event')}
-                      </button>
-                    </div>
                   </div>
 
                   {/* Language Settings Section */}

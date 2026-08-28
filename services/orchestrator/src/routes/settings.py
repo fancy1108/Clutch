@@ -88,11 +88,6 @@ class TrustItemRequest(BaseModel):
     item_id: str
 
 
-class EventChannelRequest(BaseModel):
-    webhook: str = ""
-    email: str = ""
-
-
 class CapabilityPackImportRequest(BaseModel):
     path: str
 
@@ -751,42 +746,6 @@ async def search_workspace_memory(q: str = "") -> dict[str, Any]:
     from src.workspace_memory import search_memory
 
     return {"hits": search_memory(q)}
-
-
-_EVENT_PENDING: dict[str, str] | None = None
-
-
-@router.get("/api/preferences/event-channel")
-async def get_event_channel() -> dict[str, str]:
-    from src.preferences_storage import load_event_channel
-
-    return load_event_channel()
-
-
-@router.post("/api/preferences/event-channel")
-async def save_event_channel_route(body: EventChannelRequest) -> dict[str, str]:
-    from src.preferences_storage import save_event_channel
-
-    return save_event_channel(body.webhook, body.email)
-
-
-@router.post("/api/event-channel/test")
-async def test_event_channel() -> dict[str, Any]:
-    global _EVENT_PENDING
-    _EVENT_PENDING = {"title": "Test event", "message": "Continue when ready"}
-    return {"event": _EVENT_PENDING}
-
-
-@router.get("/api/event-channel/pending")
-async def pending_event_channel() -> dict[str, Any]:
-    return {"event": _EVENT_PENDING}
-
-
-@router.post("/api/event-channel/ack")
-async def ack_event_channel() -> dict[str, str]:
-    global _EVENT_PENDING
-    _EVENT_PENDING = None
-    return {"status": "ok"}
 
 
 @router.post("/api/preferences/permission-mode")

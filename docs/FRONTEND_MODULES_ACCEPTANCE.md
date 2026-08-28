@@ -45,7 +45,6 @@ export CLUTCH_RUNTIME_MODE=hybrid && pnpm tauri:dev
 | ☑ | [FM-05](#fm-04--fm-05-cli-只读扫描) | 另外六个 CLI 扫描 | More → Aider / CodeBuddy / … |
 | ☑ | [FM-09](#fm-09-分派横幅) | 空 Chat 不必先选工作流 | New Chat 顶上灰条 |
 | ☑ | [FM-12](#fm-12-记忆搜索) | 搜 `.clutch/memory` | Settings → General → Search |
-| ☐ | [FM-13](#fm-13-事件-channel) | Test event → Chat 横幅 Continue | Settings → General → Event channel |
 | ☐ | [D32+FM-11](#d32--fm-11-worktree) | Enable → 蓝条 → Discard/Merge / 并行树 | Chat **+** → Enable worktree |
 | ☐ | [FM-14](#fm-14-notify-user) | 通知卡 Send / Cancel | **+** → Notify user（预览） |
 | ☐ | [FM-15](#fm-15-新信息门禁) | 并行前 Proceed / Hold | **+** → New information（预览） |
@@ -209,7 +208,7 @@ rm -rf /tmp/clutch-fm03-does-not-exist
 
 ---
 
-## Wave 5 · 记忆 / 事件 / 卡片（多数可预览）
+## Wave 5 · 记忆 / 卡片（多数可预览）
 
 ### FM-12 记忆搜索
 
@@ -229,28 +228,6 @@ rm -rf /tmp/clutch-fm03-does-not-exist
 ```
 
 等回复后：齿轮 → General → Memory **Search** 框粘贴 `clutch-fm12-probe`，点搜。期望命中 `.clutch/memory/MEMORY.md`，点开能预览。
-
----
-
-### FM-13 事件 Channel
-
-**入口：** Settings → General → **Event channel**（webhook / email）。
-
-| # | 操作 | 期望 |
-|---|------|------|
-| 1 | 填一个 webhook 或邮箱，Save（`event-channel-save`） | 保存成功 |
-| 2 | 点 **Test event**（`event-channel-test`） | 回到 Chat，顶上有横幅（`event-channel-banner`） |
-| 3 | 点 **Continue** | 横幅消失，会话可继续 |
-
-没有真实 webhook 也可以点 Test（走本机测试通道）。
-
-**复制：** Event channel 的 URL 框粘贴（不必是真服务）：
-
-```
-https://example.com/clutch-fm13
-```
-
-Save → **Test event**。回到 Chat，点横幅 **Continue**。
 
 ---
 
