@@ -7,9 +7,14 @@
 
 - **阶段：** **v1.3.0** 已发；`dev` 冲 **v1.4.0**（D59）。主线 D8–D13 ✅；扩展/MCP **D14–D52 Agent 代 PM ✅**；Desktop E2E ✅；**Design D36 PM ✅**
 - **Git / PM 索引：** [`runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md`](../runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md)
-- **下次优先：** FM-14 已撤回（D63）。其余 Wave 5：**D32+FM-11** worktree，或 FM-15/17 预览。
+- **下次优先：** 重启 App 后看底栏：版本号贴右、窄窗口标签收起；再测 D32+FM-11。
 
 ## Recent Sessions
+
+## 2026-08-28 会话（底栏自适应）
+
+- **做了：** 底栏 `Active Agent` 改为 `Agent`；容器查询藏标签、截断长值、空闲 Workflow 先收；版本号 `shrink-0` 贴右。
+- **下次：** 缩小窗口点验版本号不被裁切。
 
 ## 2026-08-28 会话（撤回 FM-14）
 

@@ -335,7 +335,7 @@ Save，Chat 绑这条 SOP，发送：
 
 ## Wave 3 · Orchestra（要 CLI）
 
-前置：底栏 **Active Agent** 换成已 Connect 的 `*-cli`。主区右上出现 **Chat mode / Terminal mode**。
+前置：底栏 **Agent** 换成已 Connect 的 `*-cli`。主区右上出现 **Chat mode / Terminal mode**。
 
 ### FM-06 Orchestra 队列与确认卡
 

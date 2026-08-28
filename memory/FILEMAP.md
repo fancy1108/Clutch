@@ -150,7 +150,7 @@
 | 并行 worktree（FM-11） | `WorktreeIsolationBar.tsx` `add-parallel-worktree` · `GET/POST /api/worktree` |
 | API 抽象（mock 待 M2 替换） | `services/api.ts` |
 | 侧栏（工作区 / 历史，M2-07/09） | `sidebar.tsx` |
-| 底部状态栏（Branch / Model / Agent） | `App.tsx` footer |
+| 底部状态栏（Branch / Model / Agent · 容器宽度自适应） | `App.tsx` footer · `FooterMenu.tsx` `FooterField*` |
 | 工作区 Git 分支 API | `services/workspaceApi.ts` → `GET /api/workspace/git` |
 | Chat 流与人工干预 UI | `components/ChatFeed.tsx` |
 | Chat 工具步骤条解析（D46） | `services/agentActivitySteps.ts` |

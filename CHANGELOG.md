@@ -24,6 +24,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 - **Command policy (FM-03):** Deny matching shell commands fail the tool with `[Permission] Denied` (no Allow card). Ask and dangerous commands (`rm -rf`, `sudo`) still pause in Full. Playbook has copy-paste Chat cases.
 - **Workflow list (D58):** Settings → Workflows SOP shows the full SOP name (wrap, not ellipsis). Clicking a row selects it for Chat and opens the canvas. Hover only shows edit/delete. Chat can still pick a SOP from the footer menu.
 - **Composer + menu icons:** Session overview no longer renders as an empty circle; each + item uses a lucide glyph that matches its action (history, skills, undo, inbox, bug, calendar, worktree).
+- **Footer status bar:** Drops the redundant **Active** prefix (`Agent: …`). The bar is a container: field labels hide when it gets narrow, long Worktree/Model names truncate, idle Worktree/Workflow chips drop first, and `Clutch v…` stays pinned on the right (tightest widths show `v…` only).
 
 ### Fixed
 

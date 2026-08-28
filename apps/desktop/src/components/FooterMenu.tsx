@@ -1,6 +1,48 @@
 import React from 'react';
 import { LegacyIcon } from './ui/LegacyIcon';
 
+/** Shared chip chrome for footer status items. */
+export const FOOTER_CHIP_CLASS =
+  'flex items-center gap-1 min-w-0 px-1.5 py-1 rounded font-medium whitespace-nowrap';
+export const FOOTER_CHIP_BUTTON_CLASS =
+  `${FOOTER_CHIP_CLASS} hover:bg-surface-container-low hover:text-on-surface transition-colors cursor-pointer`;
+
+/** Hide idle (em-dash) chips once the footer container gets tight. */
+export function footerIdleHiddenClass(idle: boolean): string {
+  return idle ? '@max-[42rem]/footer:hidden' : '';
+}
+
+export function FooterFieldLabel({ children }: { children: React.ReactNode }) {
+  return <span className="shrink-0 @max-[48rem]/footer:hidden">{children}:&nbsp;</span>;
+}
+
+export function FooterFieldValue({
+  children,
+  title,
+}: {
+  children: React.ReactNode;
+  title?: string;
+}) {
+  const tip = title ?? (typeof children === 'string' ? children : undefined);
+  return (
+    <span
+      className="min-w-0 truncate max-w-[7rem] @min-[40rem]/footer:max-w-[10rem] @min-[56rem]/footer:max-w-[14rem] @max-[28rem]/footer:hidden"
+      title={tip}
+    >
+      {children}
+    </span>
+  );
+}
+
+export function FooterFieldChevron() {
+  return (
+    <LegacyIcon
+      name="keyboard_arrow_down"
+      className="text-[13px] shrink-0 @max-[36rem]/footer:hidden"
+    />
+  );
+}
+
 export function FooterMenuPanel({
   children,
   testId,
