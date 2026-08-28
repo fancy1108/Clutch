@@ -19,11 +19,12 @@ from src.builtin_tools import execute_builtin_tool
 
 _BG_DIR = tempfile.gettempdir()
 if sys.platform == "win32":
-    _SLEEP_DONE = "timeout /t 1 /nobreak >nul && echo done-bg"
-    _SLEEP_LONG = "timeout /t 30 /nobreak >nul"
-    _SLEEP_LIST = "timeout /t 5 /nobreak >nul"
-    _SLEEP_1 = "timeout /t 1 /nobreak >nul"
-    _SLEEP_2_ECHO = "timeout /t 2 /nobreak >nul && echo builtin-bg"
+    # `timeout` exits 1 under redirected stdout (CI has no console). ping is fine.
+    _SLEEP_DONE = "ping -n 2 127.0.0.1 >nul && echo done-bg"
+    _SLEEP_LONG = "ping -n 31 127.0.0.1 >nul"
+    _SLEEP_LIST = "ping -n 6 127.0.0.1 >nul"
+    _SLEEP_1 = "ping -n 2 127.0.0.1 >nul"
+    _SLEEP_2_ECHO = "ping -n 3 127.0.0.1 >nul && echo builtin-bg"
 else:
     _SLEEP_DONE = "sleep 1 && echo done-bg"
     _SLEEP_LONG = "sleep 30"

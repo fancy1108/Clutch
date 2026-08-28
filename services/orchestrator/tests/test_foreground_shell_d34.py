@@ -20,9 +20,10 @@ from src.foreground_shell import (
 
 _BG_DIR = tempfile.gettempdir()
 if sys.platform == "win32":
-    _FG_LONG = "timeout /t 30 /nobreak >nul && echo FG_DONE"
-    _FG_LONG_PLAIN = "timeout /t 30 /nobreak >nul"
-    _BUILTIN_LONG = "timeout /t 30 /nobreak >nul && echo builtin-fg"
+    # `timeout` exits 1 under redirected stdout (CI has no console). ping is fine.
+    _FG_LONG = "ping -n 31 127.0.0.1 >nul && echo FG_DONE"
+    _FG_LONG_PLAIN = "ping -n 31 127.0.0.1 >nul"
+    _BUILTIN_LONG = "ping -n 31 127.0.0.1 >nul && echo builtin-fg"
 else:
     _FG_LONG = "sleep 30 && echo FG_DONE"
     _FG_LONG_PLAIN = "sleep 30"
