@@ -5,9 +5,9 @@
 
 ## Current Status
 
-- **阶段：** **v1.3.0** 已发；`dev` 冲 **v1.4.0**（D59）。主线 D8–D13 ✅；扩展/MCP **D14–D52 Agent 代 PM ✅**；Desktop E2E ✅；**Design D36 PM ✅**
+- **阶段：** **v1.4.0** 发版中。主线 D8–D13 ✅；扩展/MCP **D14–D52 Agent 代 PM ✅**；Desktop E2E ✅；**Design D36 PM ✅**
 - **Git / PM 索引：** [`runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md`](../runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md)
-- **下次优先：** Wave 3 从 FM-07 开始（要 CLI）。Terminal `@` 发送即派发，无确认卡 / 排队条 / Complete 草稿。
+- **下次优先：** 等 GitHub Release 资产（macOS DMG + Windows MSI）就绪后同步 Homebrew tap。后续用户可见变更写入 `CHANGELOG.md` `## [Unreleased]`。
 
 ## Recent Sessions
 

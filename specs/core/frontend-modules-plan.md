@@ -5,7 +5,7 @@
 > **决策：** D56 — [`memory/DECISIONS.md`](../../memory/DECISIONS.md)  
 > 每条须用户能在桌面 UI 点验；新控件带 `data-testid`；勾 ROADMAP 前更新 `docs/PRODUCT_INTRO.md`。  
 > 一次一个模块。不进本轨道：价表、Windows 实体机（D55）、已否决 B-15/B-16、**已撤回 FM-19（D60）**、**已撤回 FM-13（D61）**、**已撤回 FM-14（D63）**、**已撤回 FM-15（D64）**。D32 worktree 开关已有；FM-11 只做并行子树 + 合并/丢弃。  
-> **发版：** 本轨随 **v1.4.0**（D59）；CHANGELOG 写 `## [1.4.0] - Unreleased`。
+> **发版：** 本轨随 **v1.4.0**（D59）；其后变更写入 `CHANGELOG.md` `## [Unreleased]`。
 
 ## 门禁
 

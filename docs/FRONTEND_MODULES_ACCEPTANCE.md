@@ -4,7 +4,7 @@
 > **不是状态表：** 勾完后的结论只记 `[memory/ROADMAP.md](../memory/ROADMAP.md)` §Frontend modules。  
 > **功能是否存在：** `[PRODUCT_INTRO.md](./PRODUCT_INTRO.md)`。Task 定义：`[specs/core/frontend-modules-plan.md](../specs/core/frontend-modules-plan.md)`。  
 > **范围：** D56 这批能在 UI 里看到的模块 + 相关 D32 worktree。不含价表、Windows 实体机。  
-> **版本：** 点验通过后进 **v1.4.0**（已发布安装包仍是 v1.3.0）。
+> **版本：** 随 **v1.4.0** 发版。后续模块点验仍只记 `memory/ROADMAP.md`。
 
 打印或分屏打开本文，左边 App、右边文档。每条有 **入口** 和 **过/不过**。  
 灰色代码框是 **整段复制**：Chat 输入框或 Settings 输入框，不要改字。权限 pill 在输入框左边，默认 **Agent**（不是 Ask）。

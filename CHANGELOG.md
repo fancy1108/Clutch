@@ -8,9 +8,9 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 **Version snapshots:** Per-release product summaries live in [`docs/releases/`](docs/releases/) (historical); current product truth is [`docs/PRODUCT_INTRO.md`](docs/PRODUCT_INTRO.md).
 
-## [1.4.0] - Unreleased
+## [Unreleased]
 
-> **Next minor.** Shipped GitHub Release is still [v1.3.0](#130---2026-07-28). `package.json` / Tauri stay `1.3.0` until the tag. Everything on `dev` after 1.3.0 — including upcoming commits — belongs in this section. After the tag: put the date on this heading and add an empty `## [Unreleased]` above it.
+## [1.4.0] - 2026-08-28
 
 ### Removed
 
