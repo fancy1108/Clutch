@@ -8,6 +8,7 @@
 
 | 项 | 说明 |
 |----|------|
+| **Commit** | `a978646` |
 | **Verification** | `./scripts/verify.sh` → vitest 248 passed · pytest 1021 passed / 7 skipped · doc-drift 0 error |
 | **证据** | `runs/verification/2026-08-28-wave4-fm10-fm18-verify.log` |
 | **ROADMAP** | FM-10、FM-18 ✅ Agent 点验 2026-08-28；FM-15 🚫 D64 |
