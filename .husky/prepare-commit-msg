@@ -1,0 +1,13 @@
+#!/usr/bin/env sh
+set -e
+
+# Strip Cursor attribution trailers so GitHub does not rank cursoragent as a contributor.
+MSG_FILE="$1"
+[ -n "$MSG_FILE" ] && [ -f "$MSG_FILE" ] || exit 0
+
+tmp=$(mktemp)
+grep -v -E '^Co-authored-by:[[:space:]]*Cursor[[:space:]]*<cursoragent@cursor\.com>[[:space:]]*$' "$MSG_FILE" \
+  | grep -v -E '^Made-with:[[:space:]]*Cursor[[:space:]]*$' \
+  | grep -v -E '^Made with Cursor[[:space:]]*$' \
+  > "$tmp" || true
+mv "$tmp" "$MSG_FILE"

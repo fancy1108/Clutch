@@ -422,7 +422,7 @@
        4. **发送前 UI 确认（推荐默认展示）**：解析出 target + 推断的 sources 后，派发前展示可编辑 chips：`上下文来自：[x] Lane-A [x] Lane-B [ ] 工作区`，用户可增删再发送（避免 silently 丢上下文或误带上下文）。
      - 产物路径：**`.clutch/handoffs/{timestamp}-{sourcesLabel}→{target}-{slug}.md`**；目标 Lane 首条 prompt **只引用路径**，由接收方 CLI `read`。
   3. **PTY Lane 模型（2-B）——对等 Lane + 派发图**
-     - 一个 `run_id` 下 **至多 N=4** 路并行 PTY（首期 CLI 类型仍 `claude-cli` · `opencode-cli`；同类型可多 Lane，按 `lane_id` 区分）。
+     - 一个 `run_id` 下 **至多 N=4** 路并行 PTY（首期 CLI 类型仍 `claude-cli` · `opencode-cli`；同类型可多 Lane，按 `lane_id` 区分）。**`@` 已有 Lane 的同一 CLI 复用该 PTY（注入任务），不新开终端。** 槽位按 **running/booting** 计（折叠仍占槽）；第 5 个尚未开 Lane 的 Agent 进入 `queued`。
      - 每条 Lane：`lane_id`、`agent_type`、`label`（子任务标题）、`status`；**可选** `dispatch_edges[]` 记录 `sources → target`（用于审计与草稿建议，非权限树）。
      - UI：分屏 / Tab；**聚焦**决定默认 handoff source；**Lane 折叠**为终端 **右侧独立栏**（`float-rail`，与 xterm **不重叠**）内堆叠紧凑胶囊：`rounded-xl` · `shadow-sm` · 品牌 LOGO + 一行子任务摘要；`running`/`booting` 仅 spinner，`completed` 仅 LOGO 角标绿点；点击展开，PTY 不断开。
   4. **典型场景（须全部支持，非穷举）**
@@ -690,6 +690,20 @@
 - **背景**：FM-10 在 Edit Node 增加 **Node engine** 下拉。用户已选 Assigned Agent，再选引擎会与 Agent 的 CLI/Clutch/MCP 配置冲突；执行侧本来就按 `agentType` 路由，节点 `tool` 写了也不改路由。
 - **方案**：去掉 Node engine。节点只选 Agent；编译不再写 `tool`；Overview 显示该 Agent 的类型。
 - **影响**：`WorkflowOrchestration.tsx` · `workflowFormat.ts` · `PRODUCT_INTRO.md` · 点验剧本 FM-10。
+- **决策状态**：`已落地`
+
+### D66 · Terminal 派发不弹确认卡（2026-08-28）
+
+- **背景**：FM-06 在 Orchestrator Bar 发送后弹出 Confirm dispatch。D34 §2-4 本意是改 handoff sources。用户 `@OpenCode 只回复 pong` 时多点一次，和对话模式直接发送不一致。
+- **方案**：发送即 `confirm_dispatch`。跨 Agent 交接用消息里的 `@C from @A`。排队条与 Complete 草稿保留。
+- **影响**：`OrchestratorBar.tsx`（删除 `DispatchConfirmCard`）· `PRODUCT_INTRO.md` · 点验剧本 FM-06。
+- **决策状态**：`已落地`
+
+### D67 · 撤回 FM-06 排队条与 Complete 草稿（2026-08-28）
+
+- **背景**：确认卡已是负优化（D66）。排队条、Lane Complete 预填草稿同属多出来的编排层；`@C from @A` 已经写清交接。
+- **方案**：撤回 FM-06。界面不再展示排队条、完成草稿 chips/toast。Terminal `@` 仍发送即派发。4 路 PTY 上限仍在后端（第 5 个不同 Agent 等空位），不单独做排队 UI。
+- **影响**：`OrchestratorBar.tsx` · `TerminalLaneGrid.tsx` · `PRODUCT_INTRO.md` · 点验剧本不再含 FM-06。
 - **决策状态**：`已落地`
 
 ### D45 · D7 项目规则 + Skills 对齐 Grok Build（2026-07-24）

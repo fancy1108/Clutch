@@ -19,7 +19,7 @@ export CLUTCH_RUNTIME_MODE=hybrid && pnpm tauri:dev
 
 1. 授权一个 **git 仓库** 工作区（本仓库 `clutch` 即可）。底栏应显示 **Branch: 某分支**，不是 `Branch: -`。
 2. 需要云模型时：Settings → Models → **Clutch Agent** 配好 Key（验收 Chat 回复用）。
-3. Orchestra（FM-06…08）需要至少一个 **已 Connect 的 CLI Agent**（Claude Code / Codex 等）。没有 CLI 就跳过 Wave 3，先做 Settings / Chat。
+3. Orchestra（FM-07…08）需要至少一个 **已 Connect 的 CLI Agent**（Claude Code / Codex 等）。没有 CLI 就跳过 Wave 3，先做 Settings / Chat。
 
 **藏得最深的入口（整份文档反复用）：**
 
@@ -53,7 +53,6 @@ export CLUTCH_RUNTIME_MODE=hybrid && pnpm tauri:dev
 | ☑   | [D32+FM-11](#d32--fm-11-worktree) | 底栏 Worktree；Enable / 并行树 / Merge / Discard | 底栏 **Worktree** 或 Chat **+** → Enable worktree |
 | ☑   | [FM-10](#fm-10-节点引擎跟随-agent)    | 引擎跟随 Assigned Agent               | Workflows 画布点节点                      |
 | ☑   | [FM-18](#fm-18-校验失败条)             | 校验失败可读                            | 跑一个会失败校验的工作流                         |
-| ☐   | [FM-06](#fm-06-orchestra-队列与确认卡)  | 排队条 + 确认卡                         | Chat mode → **Terminal mode**        |
 | ☐   | [FM-07](#fm-07-保存为工作流)            | Overview 保存 SOP                   | 终端派发后 Overview                       |
 | ☐   | [FM-08](#fm-08-对话-handoff)        | Chat 草稿 / Send to Bar             | 对话模式输入栏                              |
 | ☐   | [FM-16](#fm-16-design-视觉审查)       | 渲染图 + 驳回                          | 顶栏 **Design**                        |
@@ -376,32 +375,6 @@ Save，Chat 绑这条 SOP，发送：
 
 前置：底栏 **Agent** 换成已 Connect 的 `*-cli`。主区右上出现 **Chat mode / Terminal mode**。
 
-### FM-06 Orchestra 队列与确认卡
-
-**入口：** 切到 **Terminal mode**。底栏变成 OrchestratorBar（不是普通 Chat 输入框）。
-
-
-| #   | 操作                   | 期望                                                                              |
-| --- | -------------------- | ------------------------------------------------------------------------------- |
-| 1   | `@某CLI 做一件小事` 发送     | 出现确认卡（`dispatch-confirm-card`），可改 sources，再 **Confirm**（`confirm-dispatch-btn`） |
-| 2   | 连续派发超过可见 Lane（约 4 个） | 上方排队条（`orchestra-queue`）看得到第 5 路                                                |
-| 3   | Lane Complete        | 草稿可填进 Bar 或关掉（`orchestra-drafts` / `dismiss-draft-*`）                           |
-
-
-没有 CLI → **整节跳过**（在总表写跳过原因）。
-
-**复制：** 底栏换成已 Connect 的 CLI。切 **Terminal mode**。输入框按你已 Connect 的名字改 `@` 后面，其余照贴：
-
-```
-@claude 只回复 pong，不要改文件。
-```
-
-若 Agent 叫 Codex：用 `@codex 只回复 pong，不要改文件。` 出现确认卡再 Confirm。要测排队：连发 5 次同样内容。
-
----
-
-
-
 ### FM-07 保存为工作流
 
 **入口：** 终端里至少成功派发 1～2 路后，右侧 **Overview**。
@@ -413,7 +386,7 @@ Save，Chat 绑这条 SOP，发送：
 | 2   | **Save as workflow**（`save-dispatch-as-workflow`） | Workflows 列表出现新 SOP，节点顺序和派发顺序一致 |
 
 
-**复制：** FM-06 至少 Confirm 过 1 路后，右侧 Overview → **Save as workflow**。名字用默认即可。去 Workflows 列表核对新 SOP。
+**复制：** Terminal 里 `@某CLI` 成功派发 1 路后，右侧 Overview → **Save as workflow**。名字用默认即可。去 Workflows 列表核对新 SOP。
 
 ---
 

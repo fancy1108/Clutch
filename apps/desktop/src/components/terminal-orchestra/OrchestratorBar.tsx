@@ -1,6 +1,4 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import type { DispatchPreviewPayload, PendingHandoffDraft } from '../../types';
-import { DispatchConfirmCard } from './DispatchConfirmCard';
 import type { SessionRecord } from '../../services/runApi';
 import type { ScannedSkill } from '../../services/skillsApi';
 import type { FileTreeNode } from '../../services/workspaceApi';
@@ -26,7 +24,6 @@ type ImageChip = { id: string; name: string; dataUrl: string };
 
 interface OrchestratorBarProps {
   sessionRunId: string;
-  drafts: PendingHandoffDraft[];
   inputValue: string;
   setInputValue: (val: string) => void;
   permissionMode: PermissionMode;
@@ -53,7 +50,6 @@ function flattenFileTree(nodes: FileTreeNode[], prefix = ''): string[] {
 
 export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
   sessionRunId,
-  drafts,
   inputValue,
   setInputValue,
   permissionMode,
@@ -69,8 +65,6 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
 }) => {
   const { t } = useLanguage();
   const [error, setError] = useState('');
-  const [activeDraftId, setActiveDraftId] = useState<string | null>(null);
-  const [toast, setToast] = useState<{ message: string; draftText?: string } | null>(null);
   const [agentPickerOpen, setAgentPickerOpen] = useState(false);
   const [agentFilter, setAgentFilter] = useState('');
   const [attachMenuOpen, setAttachMenuOpen] = useState(false);
@@ -83,13 +77,6 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
   const [sessionFilter, setSessionFilter] = useState('');
   const [imageChips, setImageChips] = useState<ImageChip[]>([]);
   const [sending, setSending] = useState(false);
-  const [hiddenDraftIds, setHiddenDraftIds] = useState<string[]>([]);
-  const [pendingConfirm, setPendingConfirm] = useState<{
-    dispatchText: string;
-    preview: DispatchPreviewPayload;
-    chips: string[];
-  } | null>(null);
-  const prevDraftCount = React.useRef(drafts.length);
   const containerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -141,14 +128,6 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
     window.addEventListener('orchestrator-fill-bar', handler);
     return () => window.removeEventListener('orchestrator-fill-bar', handler);
   }, [setInputValue]);
-
-  useEffect(() => {
-    if (drafts.length > prevDraftCount.current && drafts.length > 0) {
-      const latest = drafts[drafts.length - 1];
-      setToast({ message: latest.label, draftText: latest.text });
-    }
-    prevDraftCount.current = drafts.length;
-  }, [drafts]);
 
   useEffect(() => {
     const ta = textareaRef.current;
@@ -340,29 +319,8 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
         setError(result.error);
         return;
       }
-      const chips = (result.preview.chips ?? []).filter((c) => c.on).map((c) => c.source_name);
-      setPendingConfirm({ dispatchText, preview: result.preview, chips });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      sendingLockRef.current = false;
-      setSending(false);
-    }
-  }, [
-    imageChips,
-    inputValue,
-    mentionableAgents,
-    readOnly,
-  ]);
-
-  const confirmPendingDispatch = useCallback(async () => {
-    if (!pendingConfirm || sendingLockRef.current || readOnly) return;
-    sendingLockRef.current = true;
-    setSending(true);
-    setError('');
-    const { dispatchText, preview, chips } = pendingConfirm;
-    try {
-      const composed = inputValue.trim() || dispatchText;
+      const preview = result.preview;
+      const chips = (preview.chips ?? []).filter((c) => c.on).map((c) => c.source_name);
       const targetAgent = resolveDispatchTargetAgent(
         composed,
         preview.target,
@@ -406,8 +364,6 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
       }
       setInputValue('');
       setImageChips([]);
-      setActiveDraftId(null);
-      setPendingConfirm(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -415,19 +371,14 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
       setSending(false);
     }
   }, [
+    imageChips,
     inputValue,
     mentionableAgents,
     onMentionAgentChange,
-    pendingConfirm,
     readOnly,
     selectedMentionAgentId,
     setInputValue,
   ]);
-
-  const selectDraft = (draft: PendingHandoffDraft) => {
-    setActiveDraftId(draft.id);
-    setInputValue(draft.text);
-  };
 
   const canSend = !readOnly && !sending && (inputValue.trim().length > 0 || imageChips.length > 0);
 
@@ -439,26 +390,6 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
         readOnly ? 'opacity-70' : 'focus-within:ring-2 focus-within:ring-primary/10'
       }`}
     >
-      {pendingConfirm ? (
-        <DispatchConfirmCard
-          preview={pendingConfirm.preview}
-          activeChips={pendingConfirm.chips}
-          onToggleChip={(sourceName) => {
-            setPendingConfirm((current) => {
-              if (!current) return current;
-              const on = current.chips.includes(sourceName);
-              return {
-                ...current,
-                chips: on
-                  ? current.chips.filter((name) => name !== sourceName)
-                  : [...current.chips, sourceName],
-              };
-            });
-          }}
-          onCancel={() => setPendingConfirm(null)}
-          onConfirm={() => void confirmPendingDispatch()}
-        />
-      ) : null}
       <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleLocalFileChange} />
       <input
         ref={imageInputRef}
@@ -469,65 +400,12 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
         onChange={handleImageInputChange}
       />
 
-      {toast ? (
-        <div className="flex items-center gap-2 rounded-t-xl border-b border-outline-variant/40 bg-surface-container-low px-3 py-2 text-xs">
-          <span className="flex-1 text-on-surface">{toast.message}</span>
-          {toast.draftText ? (
-            <button
-              type="button"
-              className="text-[10px] font-semibold px-2 py-1 rounded-lg border border-outline-variant/40 hover:bg-surface-container-high"
-              onClick={() => {
-                setInputValue(toast.draftText ?? '');
-                setToast(null);
-              }}
-            >
-              {t('Fill draft')}
-            </button>
-          ) : null}
-          <button
-            type="button"
-            className="text-[10px] font-semibold px-2 py-1 rounded-lg border border-outline-variant/40 hover:bg-surface-container-high"
-            onClick={() => setToast(null)}
-          >
-            {t('Dismiss toast')}
-          </button>
-        </div>
-      ) : null}
-
       {error ? (
         <div
           data-testid="orchestrator-dock-error"
           className="mx-3 mt-2 rounded-lg border border-error/30 bg-error/10 px-3 py-2 text-[11px] text-error"
         >
           {error}
-        </div>
-      ) : null}
-
-      {drafts.filter((draft) => !hiddenDraftIds.includes(draft.id)).length > 0 && !readOnly ? (
-        <div className="flex flex-wrap gap-1.5 px-3 pt-2 pb-1" data-testid="orchestra-drafts">
-          {drafts.filter((draft) => !hiddenDraftIds.includes(draft.id)).map((draft) => (
-            <span key={draft.id} className="inline-flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => selectDraft(draft)}
-              className={`text-[10px] font-semibold px-2 py-1 rounded-lg border ${
-                activeDraftId === draft.id
-                  ? 'border-amber-500 bg-amber-50 text-amber-900'
-                  : 'border-outline-variant/40 bg-amber-50/60 text-amber-800'
-              }`}
-            >
-              {draft.label}
-            </button>
-            <button
-              type="button"
-              data-testid={`dismiss-draft-${draft.id}`}
-              className="text-[10px] text-on-surface-variant hover:text-on-surface"
-              onClick={() => setHiddenDraftIds((ids) => [...ids, draft.id])}
-            >
-              ×
-            </button>
-            </span>
-          ))}
         </div>
       ) : null}
 

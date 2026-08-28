@@ -42,8 +42,7 @@ test('D34 terminal orchestra UI smoke', async ({ tauriPage: page }) => {
   const prompt = '@OpenCode 实现 API';
   await setTextareaValue(page, '[data-testid="orchestrator-input"]', prompt);
   await page.click('[data-testid="orchestrator-send-btn"]');
-  await page.waitForSelector('[data-testid="dispatch-confirm-card"]', 15_000);
-  await page.click('[data-testid="confirm-dispatch-btn"]');
+  await expect(page.locator('[data-testid="dispatch-confirm-card"]')).toHaveCount(0);
 
   await page.click('[data-testid="right-tab-overview"]');
   await page.waitForSelector('[data-testid="overview-dispatch-log"] li', 15_000);

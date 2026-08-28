@@ -111,6 +111,7 @@
 | D29 audit 回归（并发 rejection） | `services/orchestrator/tests/test_hybrid_audit_d29_regression.py` |
 | 文档↔代码漂移机检 | `scripts/check-doc-drift.sh` |
 | Git pre-commit（条件触发） | `.husky/pre-commit` |
+| Git prepare-commit-msg（去掉 Cursor trailer） | `.husky/prepare-commit-msg` |
 | 验证报告归档 | `runs/verification/`（gitignore） |
 | E2E 包（M2-10，D1 可执行后） | `e2e/`；见下表 |
 | E2E 沙箱与门禁 | `scripts/e2e-sandbox-setup.sh`；`scripts/run-e2e.sh`；`runs/verification/.e2e-env` |
@@ -142,7 +143,7 @@
 | 本机信任 MCP（FM-02） | `permissionApi.ts` `local-trust` · General `untrusted-confirm-toggle` · Hub Enable；自建 SOP 不确认（D58） |
 | Exec policy UI（FM-03） | `ExecPolicyPanel.tsx` · Settings Tools · `/api/preferences/permission-rules` |
 | Codex 只读扫描（FM-04） | `MoreAgentsComingSoon.tsx` · `cli_agent_config.py` · More → Codex |
-| Orchestra 队列/确认卡（FM-06） | `TerminalLaneGrid.tsx` `orchestra-queue` · `DispatchConfirmCard` · drafts |
+| Orchestra 发送即派发（D66/D67） | `OrchestratorBar.tsx` · `terminal_orchestra.py`；无确认卡/排队条/Complete 草稿 |
 | 派发保存为工作流（FM-07） | `OverviewDispatchLog.tsx` `save-dispatch-as-workflow` |
 | 对话模式 handoff（FM-08） | `ChatInputBar.tsx` drafts · `orchestrator-fill-bar` · 切 Terminal 预填近期对话 |
 | 主控分派横幅（FM-09） | `ChatFeed.tsx` `dispatch-banner` |

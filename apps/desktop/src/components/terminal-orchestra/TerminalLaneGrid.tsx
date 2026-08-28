@@ -238,29 +238,8 @@ export const TerminalLaneGrid: React.FC<TerminalLaneGridProps> = ({
     return scheduleLayoutRefit();
   }, [displayLanes.length, expanded.length, collapsed.length, handoffEdges.length, layout, laneLayoutKey, scheduleLayoutRefit]);
 
-  const queuedLanes = useMemo(
-    () => lanes.filter((lane) => lane.status === 'queued'),
-    [lanes],
-  );
-
   return (
     <div data-testid="terminal-lane-grid" className="w-full flex flex-1 flex-col min-h-0 min-w-0">
-      {queuedLanes.length > 0 ? (
-        <div
-          data-testid="orchestra-queue"
-          className="flex flex-wrap gap-1.5 px-2 py-1.5 shrink-0 text-[10px] text-on-surface-variant"
-        >
-          {queuedLanes.map((lane) => (
-            <span
-              key={lane.lane_id}
-              data-testid={`queued-lane-${lane.lane_id}`}
-              className="px-2 py-0.5 rounded-md border border-dashed border-outline-variant/50 bg-surface-container-low"
-            >
-              {lane.label || lane.agent_type} · {t('Queued')}
-            </span>
-          ))}
-        </div>
-      ) : null}
       <div ref={stageRef} className="relative flex flex-1 flex-col min-h-0 min-w-0">
         {needsPagination ? (
           <div

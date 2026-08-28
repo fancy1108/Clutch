@@ -19,6 +19,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 - **Event channel (FM-13):** Removed the Settings webhook/email form and Test-event Chat banner. They did not receive external events. Local CI watch after push is BACKLOG B-51.
 - **Notify user (FM-14):** Removed the notify card, `notify_user` tool, and + menu preview. Questions go through the existing Question card (`ask_user_question`) on the parent agent.
 - **New information gate (FM-15):** Removed the parallel-subtask Proceed/Hold card and the + menu preview. Extra `delegate_subtask` calls run without asking.
+- **Orchestra extras (FM-06 / D67):** Dropped the Confirm dispatch card, the 5th-agent queue strip, and Complete-lane draft chips. Terminal `@` send goes to the CLI immediately; `@C from @A` in the same message is enough for handoff.
 
 ### Changed
 
@@ -50,7 +51,6 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 - **Command policy (FM-03):** Settings → Tools lists allow / ask / deny shell patterns. Deny fails the tool (no Allow card); ask and dangerous commands (`rm -rf`, `sudo`) still force-ask in Full. Strict sandbox remains the OS-level gate.
 - **Codex scan (FM-04):** Settings Models/Skills/MCP → More → Codex reads `~/.codex/config.toml` (current model + cached catalog) with the same **Rescan** control as Claude/OpenCode. Missing file still shows a clear empty state.
 - **More CLI scans (FM-05):** Aider / CodeBuddy / Antigravity / Rivet / Ollama / ZCode read native local files (or `ollama list`), not an empty stub.
-- **Orchestra queue (FM-06):** Queued lanes stay visible; dispatch shows a confirm card (sources adjustable); handoff drafts can be filled or dismissed.
 - **Save dispatch as workflow (FM-07):** Overview can save dispatch records as a user SOP with matching node order.
 - **Chat handoff (FM-08):** Chat composer shows handoff drafts and accepts Send to Bar; switching to Terminal prefills recent chat.
 - **Dispatch banner (FM-09):** Empty Chat can send without choosing a workflow; a banner shows “No workflow selected — using current Agent” (plus the Agent name) or the selected SOP.

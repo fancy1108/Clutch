@@ -36,7 +36,6 @@
 
 | ID | 主题 | 用户点验 |
 |----|------|----------|
-| **FM-06** | 超 N 排队 + 草稿生命周期 | 第 5 路可见排队；Complete → 可编辑/关闭草稿；确认卡可改 sources |
 | **FM-07** | 保存为工作流 | Overview → SOP，Workflows 节点顺序对齐派发 |
 | **FM-08** | 对话模式 handoff | Chat 可见草稿 / Send to Bar；切 Terminal 时 handoff 含近期对话 |
 
@@ -61,6 +60,7 @@
 > **撤回：** FM-13（原 B-42 webhook/邮箱空壳）见 D61。本机盯 CI 见 BACKLOG **B-51**。  
 > **撤回：** FM-14（原 B-46 `notify_user`）见 D63。问人只走主 Agent `ask_user_question`。
 > **撤回：** FM-15（原 B-43 并行「新信息」确认）见 D64。再派子任务直接开。
+> **撤回：** FM-06（确认卡 / 排队条 / Complete 草稿）见 D67。Terminal `@` 发送即派发。
 
 ## Wave 6 · 非界面（全部 FM 勾完之后）
 
@@ -72,7 +72,7 @@
 
 ## 顺序
 
-`FM-01 → 02 → 03 → 04 → 05a–f → 06 → 07 → 08 → 09 → 10 → 11–18 → 20–22`
+`FM-01 → 02 → 03 → 04 → 05a–f → 07 → 08 → 09 → 10 → 11–18 → 20–22`
 
 ## 文件落点（首模块）
 
@@ -81,6 +81,6 @@
 | FM-01 | `SystemPreferencesModal.tsx` · `preferences_storage.py` · `routes/settings.py` · `App.tsx` Stop |
 | FM-02 | `McpServerHub.tsx` · General `untrusted-confirm-toggle` |
 | FM-04+ | `agentCapabilityTiers.ts` · `cli_agent_config.py` |
-| FM-06–08 | `terminal_orchestra.py` · `TerminalLaneGrid.tsx` · `OrchestratorBar.tsx` · `ChatFeed.tsx` |
+| FM-07–08 | `terminal_orchestra.py` · `TerminalLaneGrid.tsx` · `OrchestratorBar.tsx` · `ChatFeed.tsx` |
 | FM-09 | `ChatFeed.tsx` 空态 · sidecar 匹配 API |
 | FM-10 | `WorkflowOrchestration.tsx` · `agent_executor.py` |

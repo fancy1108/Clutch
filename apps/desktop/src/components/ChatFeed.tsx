@@ -1174,7 +1174,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
     const observer = new ResizeObserver(measure);
     observer.observe(terminalBar);
     return () => observer.disconnect();
-  }, [showTerminalWorkspace, inputValue, clutchOrchestraState.pending_handoff_drafts?.length]);
+  }, [showTerminalWorkspace, inputValue]);
 
   const renderAgentLabel = (
     agent: string,
@@ -1924,7 +1924,6 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
           <div ref={terminalBarRef} className={`w-full ${chatChrome.chatMaxWidthClass}`}>
             <OrchestratorBar
             sessionRunId={sessionRunId}
-            drafts={clutchOrchestraState.pending_handoff_drafts ?? []}
             inputValue={inputValue}
             setInputValue={setInputValue}
             permissionMode={permissionMode}
@@ -2081,7 +2080,6 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
           <div className="w-full flex justify-center">
             <OrchestratorBar
               sessionRunId={sessionRunId}
-              drafts={[]}
               inputValue=""
               setInputValue={() => {}}
               permissionMode={permissionMode}

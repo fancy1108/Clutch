@@ -151,15 +151,14 @@ test('desktop: FM-01…22 acceptance playbook', async ({ tauriPage: page }) => {
     );
   });
 
-  await test.step('FM-06/07 orchestra', async () => {
+  await test.step('FM-07 orchestra save as workflow', async () => {
     await selectFooterAgent(page, 'agent-e2e-hybrid');
     await page.waitForSelector('[data-testid="workspace-view-terminal"]', 15_000);
     await clickId(page, 'workspace-view-terminal');
     await page.waitForSelector('[data-testid="orchestrator-bar"]', 15_000);
     await setTextareaValue(page, '[data-testid="orchestrator-input"]', '@Claude E2E Hybrid ping');
     await clickId(page, 'orchestrator-send-btn');
-    await page.waitForSelector('[data-testid="dispatch-confirm-card"]', 15_000);
-    await page.click('[data-testid="confirm-dispatch-btn"]');
+    await expect(page.locator('[data-testid="dispatch-confirm-card"]')).toHaveCount(0);
     await openRightOverview(page);
     await page.waitForSelector('[data-testid="overview-dispatch-log"]', 15_000);
     await expect(page.locator('[data-testid="save-dispatch-as-workflow"]')).toBeVisible();

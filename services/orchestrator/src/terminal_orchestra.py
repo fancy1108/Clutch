@@ -13,6 +13,7 @@ from src.terminal_cli_catalog import CLI_TO_DISPLAY, DISPLAY_TO_CLI
 MAX_PTY_LANES = 4
 WORKSPACE_SOURCE = "工作区"
 USER_SOURCE = "User"
+_INACTIVE_LANE_STATUSES = frozenset({"queued", "completed"})
 
 
 def pty_session_key(run_id: str, lane_id: str) -> str:
@@ -275,6 +276,8 @@ def _find_lane_for_agent(
     for lane in lanes:
         if lane.get("agent_type") != cli:
             continue
+        if lane.get("status") == "queued":
+            continue
         if lane.get("status") == "completed":
             if completed_fallback is None:
                 completed_fallback = lane
@@ -465,6 +468,37 @@ def _pending_inject_patch(
     return {"pending_pty_inject": payload}
 
 
+def _live_pty_lanes(lanes: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Running/booting PTYs. Folded lanes still occupy a slot; queued/completed do not."""
+    return [lane for lane in lanes if lane.get("status") not in _INACTIVE_LANE_STATUSES]
+
+
+def _append_queued_target_lane(
+    lanes: list[dict[str, Any]],
+    *,
+    preview: DispatchPreview,
+    run_id: str,
+    target_configured_agent_id: str = "",
+    target_configured_agent_name: str = "",
+) -> str:
+    queued_lane = {
+        "lane_id": f"lane_q_{uuid.uuid4().hex[:8]}",
+        "agent_type": _agent_type_for_target(preview.target),
+        "label": preview.task[:40] or preview.target,
+        "status": "queued",
+        "focused": False,
+        "collapsed": True,
+        "run_id": run_id,
+    }
+    lanes.append(queued_lane)
+    _apply_configured_agent(
+        queued_lane,
+        agent_id=target_configured_agent_id,
+        agent_name=target_configured_agent_name,
+    )
+    return str(queued_lane["lane_id"])
+
+
 def _append_target_lane_for_switch(
     lanes: list[dict[str, Any]],
     *,
@@ -473,30 +507,7 @@ def _append_target_lane_for_switch(
     target_configured_agent_id: str = "",
     target_configured_agent_name: str = "",
 ) -> str:
-    """Find or create the @-target lane; return its lane_id."""
-    expanded = [lane for lane in lanes if not lane.get("collapsed")]
-    if len(expanded) >= MAX_PTY_LANES and not _find_lane_for_agent(
-        lanes,
-        preview.target,
-        configured_agent_id=target_configured_agent_id,
-    ):
-        queued_lane = {
-            "lane_id": f"lane_q_{uuid.uuid4().hex[:8]}",
-            "agent_type": _agent_type_for_target(preview.target),
-            "label": preview.task[:40] or preview.target,
-            "status": "queued",
-            "focused": False,
-            "collapsed": True,
-            "run_id": run_id,
-        }
-        lanes.append(queued_lane)
-        _apply_configured_agent(
-            queued_lane,
-            agent_id=target_configured_agent_id,
-            agent_name=target_configured_agent_name,
-        )
-        return str(queued_lane["lane_id"])
-
+    """Reuse the @-target's existing PTY, else create or queue a new lane."""
     existing = _find_lane_for_agent(
         lanes,
         preview.target,
@@ -512,6 +523,15 @@ def _append_target_lane_for_switch(
         )
         _ensure_lane_cli_session_id(existing)
         return str(existing.get("lane_id", ""))
+
+    if len(_live_pty_lanes(lanes)) >= MAX_PTY_LANES:
+        return _append_queued_target_lane(
+            lanes,
+            preview=preview,
+            run_id=run_id,
+            target_configured_agent_id=target_configured_agent_id,
+            target_configured_agent_name=target_configured_agent_name,
+        )
 
     lane_id = f"lane_{uuid.uuid4().hex[:8]}"
     lanes.append(
@@ -555,7 +575,8 @@ def _confirm_switch_dispatch(
             target_configured_agent_name=target_configured_agent_name,
         )
         for lane in lanes:
-            _ensure_lane_cli_session_id(lane)
+            if lane.get("status") != "queued":
+                _ensure_lane_cli_session_id(lane)
         _apply_dispatch_lane_layout(lanes, target_lane_id)
 
         target_label = target_configured_agent_name.strip() or preview.target
@@ -580,11 +601,20 @@ def _confirm_switch_dispatch(
                 ),
             }
         )
+        target_lane = next(
+            (lane for lane in lanes if str(lane.get("lane_id", "")) == target_lane_id),
+            None,
+        )
+        inject = (
+            _pending_inject_patch(preview, target_lane_id)
+            if target_lane and target_lane.get("status") != "queued"
+            else {}
+        )
         return {
             "pty_lanes": lanes,
             "focused_lane_id": target_lane_id,
             "dispatch_log": log,
-            **_pending_inject_patch(preview, target_lane_id),
+            **inject,
         }
 
     sessions_to_close = [
@@ -671,68 +701,64 @@ def _confirm_handoff_dispatch(
     )
 
     lanes = _lane_list(state)
-    expanded = [l for l in lanes if not l.get("collapsed")]
-    if len(expanded) >= MAX_PTY_LANES and not _find_lane_for_agent(
+    existing = _find_lane_for_agent(
         lanes,
         preview.target,
         configured_agent_id=target_configured_agent_id,
-    ):
-        queued_lane = {
-            "lane_id": f"lane_q_{uuid.uuid4().hex[:8]}",
-            "agent_type": _agent_type_for_target(preview.target),
-            "label": preview.task[:40] or preview.target,
-            "status": "queued",
-            "focused": False,
-            "collapsed": True,
-            "run_id": state.get("run_id", ""),
-        }
-        lanes.append(queued_lane)
-    else:
-        existing = _find_lane_for_agent(
+    )
+    if not existing and len(_live_pty_lanes(lanes)) >= MAX_PTY_LANES:
+        target_lane_id = _append_queued_target_lane(
             lanes,
-            preview.target,
-            configured_agent_id=target_configured_agent_id,
+            preview=preview,
+            run_id=str(state.get("run_id", "")),
+            target_configured_agent_id=target_configured_agent_id,
+            target_configured_agent_name=target_configured_agent_name,
         )
-        if existing:
-            # Reuse live PTY — keep running so the lane pane injects without detach/respawn.
-            existing["status"] = "running"
-            existing["label"] = preview.task[:40] or existing.get("label", preview.target)
-            existing["focused"] = True
-            _apply_configured_agent(
-                existing,
-                agent_id=target_configured_agent_id,
-                agent_name=target_configured_agent_name,
-            )
-            _ensure_lane_cli_session_id(existing)
-            for lane in lanes:
-                lane["focused"] = lane.get("lane_id") == existing.get("lane_id")
-        else:
-            lane_id = f"lane_{uuid.uuid4().hex[:8]}"
-            lanes.append(
-                {
-                    "lane_id": lane_id,
-                    "agent_type": _agent_type_for_target(preview.target),
-                    "label": preview.task[:40] or preview.target,
-                    "status": "booting",
-                    "focused": True,
-                    "collapsed": False,
-                    "run_id": state.get("run_id", ""),
-                }
-            )
-            _apply_configured_agent(
-                lanes[-1],
-                agent_id=target_configured_agent_id,
-                agent_name=target_configured_agent_name,
-            )
-            _ensure_lane_cli_session_id(lanes[-1])
-            for lane in lanes:
-                lane["focused"] = lane.get("lane_id") == lane_id
+    elif existing:
+        # Reuse live PTY — keep running so the lane pane injects without detach/respawn.
+        existing["status"] = "running"
+        existing["label"] = preview.task[:40] or existing.get("label", preview.target)
+        existing["focused"] = True
+        _apply_configured_agent(
+            existing,
+            agent_id=target_configured_agent_id,
+            agent_name=target_configured_agent_name,
+        )
+        _ensure_lane_cli_session_id(existing)
+        for lane in lanes:
+            lane["focused"] = lane.get("lane_id") == existing.get("lane_id")
+        target_lane_id = str(existing.get("lane_id", ""))
+    else:
+        lane_id = f"lane_{uuid.uuid4().hex[:8]}"
+        lanes.append(
+            {
+                "lane_id": lane_id,
+                "agent_type": _agent_type_for_target(preview.target),
+                "label": preview.task[:40] or preview.target,
+                "status": "booting",
+                "focused": True,
+                "collapsed": False,
+                "run_id": state.get("run_id", ""),
+            }
+        )
+        _apply_configured_agent(
+            lanes[-1],
+            agent_id=target_configured_agent_id,
+            agent_name=target_configured_agent_name,
+        )
+        _ensure_lane_cli_session_id(lanes[-1])
+        for lane in lanes:
+            lane["focused"] = lane.get("lane_id") == lane_id
+        target_lane_id = lane_id
 
     for lane in lanes:
-        _ensure_lane_cli_session_id(lane)
+        if lane.get("status") != "queued":
+            _ensure_lane_cli_session_id(lane)
 
-    target_lane = focused_lane({"pty_lanes": lanes}) or {}
-    target_lane_id = str(target_lane.get("lane_id", ""))
+    target_lane = next(
+        (lane for lane in lanes if str(lane.get("lane_id", "")) == target_lane_id),
+        {},
+    )
     source_lane_ids = _source_lane_ids(lanes, sources)
     _apply_handoff_initial_layout(lanes, target_lane_id, source_lane_ids)
     session_lane_ids = [*source_lane_ids]
@@ -780,17 +806,22 @@ def _confirm_handoff_dispatch(
     edges = _dispatch_edges(state)
     edges.append(edge)
 
+    inject = (
+        _pending_inject_patch(
+            preview,
+            target_lane_id,
+            prompt=_handoff_inject_prompt(preview, handoff_path=rel_path),
+            handoff_path=rel_path,
+        )
+        if target_lane.get("status") != "queued"
+        else {}
+    )
     return {
         "pty_lanes": lanes,
         "focused_lane_id": target_lane_id,
         "dispatch_log": log,
         "dispatch_edges": edges,
-        **_pending_inject_patch(
-            preview,
-            target_lane_id,
-            prompt=_handoff_inject_prompt(preview, handoff_path=rel_path),
-            handoff_path=rel_path,
-        ),
+        **inject,
     }
 
 

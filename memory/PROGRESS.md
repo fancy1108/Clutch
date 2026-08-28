@@ -7,9 +7,19 @@
 
 - **阶段：** **v1.3.0** 已发；`dev` 冲 **v1.4.0**（D59）。主线 D8–D13 ✅；扩展/MCP **D14–D52 Agent 代 PM ✅**；Desktop E2E ✅；**Design D36 PM ✅**
 - **Git / PM 索引：** [`runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md`](../runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md)
-- **下次优先：** Wave 3 Orchestra（要 CLI）或 FM-16 Design。
+- **下次优先：** Wave 3 从 FM-07 开始（要 CLI）。Terminal `@` 发送即派发，无确认卡 / 排队条 / Complete 草稿。
 
 ## Recent Sessions
+
+## 2026-08-28 会话（撤回 FM-06）
+
+- **做了：** 确认卡、排队条、Complete 草稿 UI 都去掉。FM-06 🚫 D67。同 CLI `@` 复用已有 Lane。
+- **下次：** 重启 App 后 `@OpenCode 只回复 pong` 应直接进终端。
+
+## 2026-08-28 会话（D66 去掉派发确认卡）
+
+- **做了：** Orchestrator Bar 发送即派发。跨 Agent 用 `@C from @A`。随后 D67 连排队和草稿一起撤。
+- **下次：** 重启 App 后点 `@OpenCode 只回复 pong`。
 
 ## 2026-08-28 会话（Wave 4 Agent 点验并提交）
 
