@@ -163,15 +163,13 @@ export const RightPanel: React.FC<RightPanelProps> = ({
           workflow.nodes
             .filter((node) => node.type === 'agent_task')
             .map((node) => {
-              const data = node.data as { label?: string; agent?: string; tool?: string };
-              const tool = String(data.tool ?? 'clutch').trim().toLowerCase() || 'clutch';
-              const toolId = tool === 'llm' ? 'clutch' : tool;
+              const data = node.data as { label?: string; agent?: string };
               return {
                 id: node.id,
                 label: String(data.label ?? node.id),
                 agent: String(data.agent ?? '—'),
-                agentType: workflowToolLabel(tool),
-                toolId,
+                agentType: workflowToolLabel('clutch'),
+                toolId: 'clutch',
               };
             }),
         );

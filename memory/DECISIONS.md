@@ -678,6 +678,20 @@
 - **影响**：`builtin_tools.py` · `QuestionCardView.tsx` · `ChatInputBar.tsx` · `ChatFeed.tsx` · `PRODUCT_INTRO.md` · 点验剧本不再含 FM-14。
 - **决策状态**：`已落地`
 
+### D64 · 撤回 FM-15 并行新信息门禁；FM-17 去掉 + 预览（2026-08-28）
+
+- **背景**：并行再派子 Agent 时弹 Proceed/Hold，和 Cursor/Claude Code 直接干不一致。用户不要确认。**+** 里的 New information / Interpreter error 是样式预览，被当成真功能。
+- **方案**：删除 `delegate_subtask` 并行门禁与两张 + 预览。子任务直接派。解释器卡只在工具结果为 `Interpreter timeout` / `Interpreter offline` 时出现；前台超时杀进程组并返回该文案。
+- **影响**：`mcp_react.py` · `ChatInputBar.tsx` · `ChatFeed.tsx` · `foreground_shell.py` · `PRODUCT_INTRO.md` · 点验剧本不再含 FM-15 预览项。
+- **决策状态**：`已落地`
+
+### D65 · 工作流节点引擎跟随 Assigned Agent（2026-08-28）
+
+- **背景**：FM-10 在 Edit Node 增加 **Node engine** 下拉。用户已选 Assigned Agent，再选引擎会与 Agent 的 CLI/Clutch/MCP 配置冲突；执行侧本来就按 `agentType` 路由，节点 `tool` 写了也不改路由。
+- **方案**：去掉 Node engine。节点只选 Agent；编译不再写 `tool`；Overview 显示该 Agent 的类型。
+- **影响**：`WorkflowOrchestration.tsx` · `workflowFormat.ts` · `PRODUCT_INTRO.md` · 点验剧本 FM-10。
+- **决策状态**：`已落地`
+
 ### D45 · D7 项目规则 + Skills 对齐 Grok Build（2026-07-24）
 
 - **背景**：能力期 D7；对照本地 `grok-build` 与 docs.x.ai project-rules。User 级规则（`~/.grok/AGENTS.md` 等）本期不做。

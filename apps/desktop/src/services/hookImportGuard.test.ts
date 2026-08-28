@@ -31,4 +31,18 @@ describe('hook import guard', () => {
     }
     expect(missing).toEqual([]);
   });
+
+  it('FM-10 has Assigned Agent select and no Node engine override', () => {
+    const src = readFileSync(join(SRC, 'components/WorkflowOrchestration.tsx'), 'utf8');
+    expect(src).toContain('data-testid="node-agent-select"');
+    expect(src).not.toContain('data-testid="node-tool-select"');
+    expect(src).not.toContain("t('Node engine')");
+  });
+
+  it('FM-18 wires validation failure testids on Chat and Overview', () => {
+    const feed = readFileSync(join(SRC, 'components/ChatFeed.tsx'), 'utf8');
+    const panel = readFileSync(join(SRC, 'components/RightPanel.tsx'), 'utf8');
+    expect(feed).toContain('validation-failure-chat');
+    expect(panel).toContain('data-testid="validation-failure-strip"');
+  });
 });

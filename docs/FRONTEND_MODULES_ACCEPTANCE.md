@@ -32,7 +32,7 @@ export CLUTCH_RUNTIME_MODE=hybrid && pnpm tauri:dev
 | 切换 Coding / Design | 顶栏右侧 **Coding · Design**                  |
 
 
-**+ 菜单里和本批相关的项：** Enable worktree、New information、Interpreter error（后两项是 **预览卡**，不必等 Agent）。
+**+ 菜单里和本批相关的项：** Enable worktree。解释器错误卡只在命令真超时或 shell 起不来时出现，**+ 里没有预览**。
 
 ---
 
@@ -50,11 +50,9 @@ export CLUTCH_RUNTIME_MODE=hybrid && pnpm tauri:dev
 | ☑   | [FM-05](#fm-04--fm-05-cli-只读扫描)   | 另外六个 CLI 扫描                       | More → Aider / CodeBuddy / …         |
 | ☑   | [FM-09](#fm-09-分派横幅)              | 空 Chat 不必先选工作流                    | New Chat 顶上灰条                        |
 | ☑   | [FM-12](#fm-12-记忆搜索)              | 搜 `.clutch/memory`                | Settings → General → Search          |
-| ☐   | [D32+FM-11](#d32--fm-11-worktree) | Enable → 蓝条 → Discard/Merge / 并行树 | Chat **+** → Enable worktree         |
-| ☐   | [FM-15](#fm-15-新信息门禁)             | 并行前 Proceed / Hold                | **+** → New information（预览）          |
-| ☐   | [FM-17](#fm-17-解释器错误卡)            | 超时/离线结构化卡                         | **+** → Interpreter error（预览）        |
-| ☐   | [FM-10](#fm-10-画布-node-engine)    | 节点选 CLI/MCP/llm                   | Workflows 画布点节点                      |
-| ☐   | [FM-18](#fm-18-校验失败条)             | 校验失败可读                            | 跑一个会失败校验的工作流                         |
+| ☑   | [D32+FM-11](#d32--fm-11-worktree) | 底栏 Worktree；Enable / 并行树 / Merge / Discard | 底栏 **Worktree** 或 Chat **+** → Enable worktree |
+| ☑   | [FM-10](#fm-10-节点引擎跟随-agent)    | 引擎跟随 Assigned Agent               | Workflows 画布点节点                      |
+| ☑   | [FM-18](#fm-18-校验失败条)             | 校验失败可读                            | 跑一个会失败校验的工作流                         |
 | ☐   | [FM-06](#fm-06-orchestra-队列与确认卡)  | 排队条 + 确认卡                         | Chat mode → **Terminal mode**        |
 | ☐   | [FM-07](#fm-07-保存为工作流)            | Overview 保存 SOP                   | 终端派发后 Overview                       |
 | ☐   | [FM-08](#fm-08-对话-handoff)        | Chat 草稿 / Send to Bar             | 对话模式输入栏                              |
@@ -303,35 +301,11 @@ rm -rf /tmp/clutch-fm03-does-not-exist
 
 
 
-### FM-15 新信息门禁
-
-**入口：** **+** → **New information**（预览）。真路径：已有并行子任务时再 `delegate_subtask`。
-
-
-| #   | 操作      | 期望                                      |
-| --- | ------- | --------------------------------------- |
-| 1   | 点菜单项    | 确认卡 **Proceed / Hold**（`new-info-card`） |
-| 2   | 两个按钮都能点 | 不是只展示文案                                 |
-
-
-**复制：** Chat **+** → **New information**。先点 **Hold**，再打开一次点 **Proceed**。
-
----
-
-
-
 ### FM-17 解释器错误卡
 
-**入口：** **+** → **Interpreter error**（预览）。真路径：`run_terminal_cmd` 超时或 shell 起不来。
+**是什么：** `run_terminal_cmd` 超时或本机 shell 起不来时，Chat 输入框上方出现结构化卡（超时 / 离线），不是 Python traceback。**+ 菜单没有预览项。**
 
-
-| #   | 操作     | 期望                                                                |
-| --- | ------ | ----------------------------------------------------------------- |
-| 1   | 点菜单项   | 结构化卡（`interpreter-error-card`），标题是超时或 offline，不是 Python traceback |
-| 2   | 有下一步说明 | 能看懂「去改 PATH / 缩短命令」                                               |
-
-
-**复制：** Chat **+** → **Interpreter error**。看卡标题是超时或 offline，不是 Python traceback。
+人工很难稳定复现。实现保证：工具结果含 `Interpreter timeout` 或 `Interpreter offline` 时出卡（pytest 覆盖超时返回该文案）。
 
 ---
 
@@ -341,24 +315,27 @@ rm -rf /tmp/clutch-fm03-does-not-exist
 
 
 
-### FM-10 画布 Node engine
+### FM-10 节点引擎跟随 Agent
 
-**入口：** 侧栏 **Workflows SOP** → 打开任一个 SOP → 点画布上一个节点。
+**入口：** 侧栏 **Workflows SOP** → 打开任一个 SOP → 点画布上一个 Agent 节点。
 
-
-| #   | 操作                        | 期望                                     |
-| --- | ------------------------- | -------------------------------------- |
-| 1   | 右侧/节点编辑器有 **Node engine** | 下拉 CLI / MCP / llm（`node-tool-select`） |
-| 2   | 改一下保存，跑这个工作流              | Overview 步骤行能看到该引擎（`step-engine-*`）    |
+**是什么：** 节点只选 **Assigned Agent**。引擎、模型、MCP 都跟这个 Agent 走。没有单独的 Node engine 下拉（避免和 Agent 配置打架）。
 
 
-**复制：** 齿轮 → Workflows SOP → 点开任一条 → 点一个 Agent 节点 → **Node engine** 选 `llm` → Save。底栏绑这条 SOP 后发送：
+| #   | 操作 | 期望 |
+| --- | --- | --- |
+| 1   | 打开 Edit Node | 有 **Assigned Agent**（`node-agent-select`）；**没有** Node engine / `node-tool-select` |
+| 2   | 选一个已有 Agent | 下方 **AI Tool / Type** 显示该 Agent 的类型（`node-agent-type`） |
+| 3   | Save，Overview | 步骤行引擎与该 Agent 类型一致（`step-engine-*`） |
+
+
+**复制：** 齿轮 → Workflows SOP → 点开任一条 → 点一个 Agent 节点 → 只改 **Assigned Agent** → Save。底栏绑这条 SOP 后发送：
 
 ```
 按当前工作流跑一步即可，不要改节点配置。
 ```
 
-没有「跑起来」也可以：保存后 Overview 步骤行能看到 engine 字样即过第 2 步的弱过；真跑才算满过。
+没有「跑起来」也可以：Save 后 Overview 步骤行能看到 Assigned Agent 的类型即过第 3 步的弱过；真跑才算满过。
 
 ---
 

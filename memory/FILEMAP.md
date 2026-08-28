@@ -146,7 +146,7 @@
 | 派发保存为工作流（FM-07） | `OverviewDispatchLog.tsx` `save-dispatch-as-workflow` |
 | 对话模式 handoff（FM-08） | `ChatInputBar.tsx` drafts · `orchestrator-fill-bar` · 切 Terminal 预填近期对话 |
 | 主控分派横幅（FM-09） | `ChatFeed.tsx` `dispatch-banner` |
-| 画布 node engine（FM-10） | `WorkflowOrchestration.tsx` `node-tool-select` · Overview `step-engine-*` |
+| 画布节点引擎（FM-10 / D65） | `WorkflowOrchestration.tsx` Assigned Agent `node-agent-select` · Overview `step-engine-*`（跟 Agent 类型，无 Node engine 下拉） |
 | 并行 worktree（FM-11） | `WorktreeIsolationBar.tsx` `FooterWorktreeMenu` · `footer-worktree-trigger` · `GET/POST /api/worktree` |
 | API 抽象（mock 待 M2 替换） | `services/api.ts` |
 | 侧栏（工作区 / 历史，M2-07/09） | `sidebar.tsx` |
@@ -172,9 +172,8 @@
 | D14 Grok CLI | `grok_cli_adapter.py` · `grok-cli` in `tools_status` / `engine_router` |
 | 会话 fork/回滚（D23） | `session_fork.py` · `file_rewind.py` · fork/rewind API · Chat 菜单 |
 | 跨会话记忆（D16 / B-39 / B-40 / B-45 / FM-12） | `cross_session_memory.py` · `workspace_memory.py` `search_memory` · `GET /api/memory/search` · Settings Memory 检索 · Files `.clutch/memory/MEMORY.md` |
-| 新信息门禁（FM-15 / B-43） | `new-info-card` · 并行 `delegate_subtask` 前确认 |
 | Design 视觉审查（FM-16 / B-49） | `DesignHandoffTray` `design-review-card` / `design-review-reject` |
-| 解释器错误卡（FM-17 / B-47） | Chat `interpreter-error-card` · `run_terminal_cmd` timeout/offline |
+| 解释器错误卡（FM-17 / B-47） | Chat `interpreter-error-card` · `run_terminal_cmd` 返回 `Interpreter timeout` / `Interpreter offline`（无 + 预览） |
 | 校验失败可读条（FM-18 / B-05） | Chat `validation-failure-chat` · Overview `validation-failure-strip` |
 | 工具 Hooks（D17） | `tool_hooks.py` · `mcp_react` Pre/Post 拦截 |
 | 能力包导入（D35） | `capability_pack.py` · Skills 页 Import/Uninstall |

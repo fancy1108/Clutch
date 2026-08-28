@@ -190,11 +190,13 @@ def wait_foreground(
         time.sleep(poll_interval)
 
     if not cmd.transferred and cmd.proc.poll() is None:
-        job = transfer_to_background(run_id)
-        if job is not None:
-            return cmd.output_so_far(), True, None
         kill_tree(cmd.proc)
-        exit_code = cmd.proc.poll() if cmd.proc.poll() is not None else -1
+        output = cmd.output_so_far()
+        with _lock:
+            if _active.get(run_id) is cmd:
+                _active.pop(run_id, None)
+        _notify(run_id, None)
+        return output, False, None
 
     output = cmd.output_so_far()
     transferred = cmd.transferred

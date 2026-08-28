@@ -7,9 +7,25 @@
 
 - **阶段：** **v1.3.0** 已发；`dev` 冲 **v1.4.0**（D59）。主线 D8–D13 ✅；扩展/MCP **D14–D52 Agent 代 PM ✅**；Desktop E2E ✅；**Design D36 PM ✅**
 - **Git / PM 索引：** [`runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md`](../runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md)
-- **下次优先：** **完全退出再开 App**，复测 Merge：隔离树改 README → Merge → 树还在，切回 Main 能看到改动。Discard 才删树。
+- **下次优先：** Wave 3 Orchestra（要 CLI）或 FM-16 Design。
 
 ## Recent Sessions
+
+## 2026-08-28 会话（Wave 4 Agent 点验并提交）
+
+- **做了：** FM-10 去掉 Node engine，引擎跟 Assigned Agent。FM-18 Chat 失败气泡补 `validation-failure-chat`。连同 D64（撤 FM-15、解释器超时出卡）一起提交。
+- **测：** `./scripts/verify.sh` vitest 248 · pytest 1021 passed / 7 skipped。
+- **下次：** Wave 3 Orchestra（要 CLI）或 FM-16 Design。
+
+## 2026-08-28 会话（D65 节点引擎跟随 Agent）
+
+- **做了：** 去掉 Edit Node 的 Node engine 下拉。引擎、模型、MCP 跟 Assigned Agent。编译不再写节点 `tool`。
+- **下次：** 完全退出再开 App，点验 FM-10。
+
+## 2026-08-28 会话（撤回 FM-15；FM-17 去预览）
+
+- **做了：** 并行 `delegate_subtask` 不再弹确认。+ 去掉两张样式预览。超时杀进程组并返回 `Interpreter timeout`，Chat 出卡。
+- **下次：** 重启 App 看 + 菜单；FM-17 不要求人工点验。
 
 ## 2026-08-28 会话（禁止连开同一条 shell）
 

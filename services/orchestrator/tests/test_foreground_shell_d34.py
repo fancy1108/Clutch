@@ -117,18 +117,38 @@ def test_builtin_foreground_with_transfer(tmp_path, monkeypatch) -> None:
         release_foreground_context(fg_token)
 
 
-def test_wait_timeout_moves_to_background() -> None:
-    from src.bg_jobs import kill_job, list_jobs
-
-    run_id = "run_test_d34_timeout_bg"
+def test_wait_timeout_kills_and_signals_interpreter() -> None:
+    run_id = "run_test_d34_timeout_kill"
     start_foreground(run_id, _FG_LONG_PLAIN, _BG_DIR)
-    output, transferred, exit_code = wait_foreground(run_id, timeout_sec=1.0)
-    assert transferred is True
+    _output, transferred, exit_code = wait_foreground(run_id, timeout_sec=1.0)
+    assert transferred is False
     assert exit_code is None
     assert get_foreground(run_id) is None
-    jobs = [j for j in list_jobs(run_id) if j["status"] == "running"]
-    assert jobs
-    kill_job(run_id, jobs[0]["id"])
+
+
+def test_builtin_timeout_returns_interpreter_timeout(tmp_path, monkeypatch) -> None:
+    run_id = "run_test_d34_timeout_msg"
+    monkeypatch.setenv("CLUTCH_WORKSPACES_FILE", str(tmp_path / "ws.json"))
+    from src import workspace as workspace_mod
+
+    workspace_mod._loaded = False
+    workspace_mod._workspaces = {}
+    workspace_mod._active_id = None
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    workspace_mod.add_workspace(str(ws))
+
+    fg_token = bind_foreground_context({"run_id": run_id})
+    bg_token = bind_bg_job_context({"run_id": run_id})
+    try:
+        out = execute_builtin_tool(
+            "run_terminal_cmd",
+            {"command": _FG_LONG_PLAIN, "timeout_sec": 1},
+        )
+        assert "Interpreter timeout" in out
+    finally:
+        release_bg_job_context(bg_token)
+        release_foreground_context(fg_token)
 
 
 def test_builtin_refuses_duplicate_running_command(tmp_path, monkeypatch) -> None:

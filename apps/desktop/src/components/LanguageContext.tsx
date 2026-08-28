@@ -735,7 +735,6 @@ const zhTranslations: Record<string, string> = {
   "Merge": "合并",
   "Discard": "丢弃",
   "dirty": "有改动",
-  "Follow assigned agent": "跟随已分配 Agent",
   "No workflow selected — using current Agent": "未选择工作流，将使用当前 Agent",
   "Matched SOP:": "已匹配 SOP：",
   "Saved to Workflows": "已保存到工作流",

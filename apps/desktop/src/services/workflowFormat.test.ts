@@ -186,4 +186,49 @@ describe('workflowFormat', () => {
     expect(validWhenValues('agent_task')).toEqual([]);
     expect(validWhenValues(undefined)).toEqual([]);
   });
+
+  it('does not persist a node-level tool override (engine follows Assigned Agent)', () => {
+    const canvas = {
+      id: 'test',
+      name: 'Test',
+      lastDeployed: '—',
+      isActive: false,
+      icon: 'fork_right',
+      steps: [
+        {
+          id: 'stylist',
+          name: 'Prompt Stylist',
+          nodeType: 'agent_task' as const,
+          agent: 'agent-stylist',
+          aiTool: 'claude-cli',
+          description: 'Rewrite prompts',
+          nextSteps: [],
+        },
+      ],
+      description: '',
+    };
+    const compiler = canvasToCompiler(canvas);
+    const node = compiler.nodes.find((n) => n.id === 'stylist');
+    expect(node?.data).toEqual({
+      label: 'Prompt Stylist',
+      agent: 'agent-stylist',
+      instruction: 'Rewrite prompts',
+    });
+    expect(node?.data).not.toHaveProperty('tool');
+
+    const roundTrip = compilerToCanvas({
+      id: 'test',
+      name: 'Test',
+      version: 1,
+      nodes: [
+        {
+          id: 'stylist',
+          type: 'agent_task',
+          data: { label: 'Prompt Stylist', agent: 'agent-stylist', tool: 'claude-cli', instruction: 'Rewrite prompts' },
+        },
+      ],
+      edges: [],
+    });
+    expect(roundTrip.steps[0]?.aiTool).toBeUndefined();
+  });
 });

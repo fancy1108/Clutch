@@ -1083,30 +1083,6 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
                   ) : null}
                   <button
                     type="button"
-                    data-testid="new-info-demo"
-                    className={menuItemClass}
-                    onClick={() => {
-                      setAttachMenuOpen(false);
-                      window.dispatchEvent(new CustomEvent('clutch-new-info-demo'));
-                    }}
-                  >
-                    <LegacyIcon name="inbox" className="text-[17px] text-on-surface-variant" />
-                    {t('New information')}
-                  </button>
-                  <button
-                    type="button"
-                    data-testid="interpreter-error-demo"
-                    className={menuItemClass}
-                    onClick={() => {
-                      setAttachMenuOpen(false);
-                      window.dispatchEvent(new CustomEvent('clutch-interpreter-error-demo'));
-                    }}
-                  >
-                    <LegacyIcon name="bug" className="text-[17px] text-on-surface-variant" />
-                    {t('Interpreter error')}
-                  </button>
-                  <button
-                    type="button"
                     className={menuItemClass}
                     onClick={() => {
                       setAttachMenuOpen(false);

@@ -340,7 +340,6 @@ export const WorkflowOrchestration: React.FC<WorkflowOrchestrationProps> = ({
           nodeType,
           agent: resolveAgentLabel(step.agent),
           avatar: nodeType === 'agent_task' ? resolveBrandLogoSrc({
-            aiTool: step.aiTool,
             agent: matchedAgent,
             agentType: matchedAgent ? agentTypeFromAgent(matchedAgent) : undefined,
           }) : undefined,
@@ -653,7 +652,7 @@ const edgeColors: Record<string, string> = {
         name: nodeForm.name || 'New Step',
         nodeType,
         agent: (nodeType === 'agent_task' ? (selectedAgent?.id ?? nodeForm.agent!.trim()) : ''),
-        aiTool: nodeType === 'agent_task' ? (nodeForm.aiTool || '') : '',
+        aiTool: '',
         description: nodeForm.description || '',
         avatar: nodeType === 'agent_task' ? (selectedAgent?.avatar || nodeForm.avatar || DEFAULT_AVATAR) : '',
         nextSteps: formNextSteps,
@@ -722,7 +721,7 @@ const edgeColors: Record<string, string> = {
     }));
   }, [activeWorkflowId]);
 
-  const selectedAgent = agents.find(a => a.id === nodeForm.agent);
+  const selectedAgent = agents.find(a => a.id === nodeForm.agent || a.name === nodeForm.agent);
 
   const contentElement = (
     <div className="flex-1 h-full flex flex-col bg-white overflow-hidden">
@@ -1035,7 +1034,8 @@ const edgeColors: Record<string, string> = {
               {(nodeForm.nodeType ?? 'agent_task') === 'agent_task' && (
               <div className="space-y-1.5">
                 <label className="font-bold text-neutral-700">{t('Assigned Agent')}</label>
-                <select 
+                <select
+                  data-testid="node-agent-select"
                   value={nodeForm.agent || ''}
                   onChange={e => {
                     const agentId = e.target.value;
@@ -1044,7 +1044,8 @@ const edgeColors: Record<string, string> = {
                       ...nodeForm,
                       agent: agentId,
                       name: selected ? selected.name : (nodeForm.name || ''),
-                      description: selected ? selected.description : (nodeForm.description || '')
+                      description: selected ? selected.description : (nodeForm.description || ''),
+                      aiTool: '',
                     });
                   }}
                   className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-xs bg-white focus:outline-none focus:border-neutral-400 transition-all font-medium"
@@ -1053,20 +1054,6 @@ const edgeColors: Record<string, string> = {
                   {agents.map((agent) => (
                     <option key={agent.id} value={agent.id}>
                       {getAgentDisplayName(agent)}
-                    </option>
-                  ))}
-                </select>
-                <label className="font-bold text-neutral-700">{t('Node engine')}</label>
-                <select
-                  data-testid="node-tool-select"
-                  value={nodeForm.aiTool || ''}
-                  onChange={(e) => setNodeForm({ ...nodeForm, aiTool: e.target.value })}
-                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-xs bg-white focus:outline-none focus:border-neutral-400 transition-all font-medium"
-                >
-                  <option value="">{t('Follow assigned agent')}</option>
-                  {['llm', 'mcp', 'claude-cli', 'opencode-cli', 'mimo-cli', 'codex-cli', 'aider-cli'].map((engine) => (
-                    <option key={engine} value={engine}>
-                      {engine}
                     </option>
                   ))}
                 </select>
@@ -1079,7 +1066,7 @@ const edgeColors: Record<string, string> = {
                   <div className="mt-2 p-2.5 rounded-lg border border-neutral-100 bg-neutral-50/50 space-y-1 text-[10.5px] text-neutral-500 font-medium">
                     <div className="flex justify-between items-center">
                       <span className="text-neutral-400">{t('AI Tool / Type:')}</span>
-                      <span className="font-bold text-neutral-700 font-mono">
+                      <span className="font-bold text-neutral-700 font-mono" data-testid="node-agent-type">
                         {agentTypeLabel(agentTypeFromAgent(selectedAgent))}
                       </span>
                     </div>

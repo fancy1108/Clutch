@@ -18,13 +18,14 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 - **Planner / Executor (FM-19):** Removed the Settings dual model pickers. Chat footer remains the place to switch the active model. Dual-session Planner/Executor stays a backlog idea (B-06).
 - **Event channel (FM-13):** Removed the Settings webhook/email form and Test-event Chat banner. They did not receive external events. Local CI watch after push is BACKLOG B-51.
 - **Notify user (FM-14):** Removed the notify card, `notify_user` tool, and + menu preview. Questions go through the existing Question card (`ask_user_question`) on the parent agent.
+- **New information gate (FM-15):** Removed the parallel-subtask Proceed/Hold card and the + menu preview. Extra `delegate_subtask` calls run without asking.
 
 ### Changed
 
 - **Command policy (FM-03):** Deny matching shell commands fail the tool with `[Permission] Denied` (no Allow card). Ask and dangerous commands (`rm -rf`, `sudo`) still pause in Full. Playbook has copy-paste Chat cases.
 - **Workflow list (D58):** Settings → Workflows SOP shows the full SOP name (wrap, not ellipsis). Clicking a row selects it for Chat and opens the canvas. Hover only shows edit/delete. Chat can still pick a SOP from the footer menu.
 - **Workflows SOP icons:** The SOP list always uses the same workflow glyph as the nav (no per-flow rocket/tree/fork). Create/edit no longer has an icon picker. Canvas nodes keep type icons (Agent / Approval / Check).
-- **Composer + menu icons:** Session overview no longer renders as an empty circle; each + item uses a lucide glyph that matches its action (history, skills, undo, inbox, bug, calendar, worktree).
+- **Composer + menu icons:** Session overview no longer renders as an empty circle; each + item uses a lucide glyph that matches its action (history, skills, undo, calendar, worktree).
 - **Footer status bar:** Drops the redundant **Active** prefix (`Agent: …`). The bar is a container: field labels hide when it gets narrow, long Worktree/Model names truncate, idle Worktree/Workflow chips drop first, and `Clutch v…` stays pinned on the right (tightest widths show `v…` only).
 
 ### Fixed
@@ -36,7 +37,9 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 - **Worktree Files/Changes (D32):** The right **Files** and **Changes** tabs follow the footer Worktree selection (that checkout’s tree and `git status`). Footer **Branch** stays on the main workspace.
 - **Worktree Merge (D32):** Merge lands the isolation branch on the main checkout (uncommitted worktree edits are committed on that branch first). It no longer deletes the worktree — **Discard** removes it. A previous Merge of an uncommitted README edit looked successful then dropped the file.
 - **Unsolicited git commit (D12):** Creating/editing files no longer auto-commits. `git_commit` and shell `git commit` (via `run_terminal_cmd`) run only when the user asked to commit (or after they Allow the HITL card).
-- **Shell duplicate lint (D11/D34):** A command already running in the Chat (foreground or background) is refused instead of spawning another copy. Foreground timeout moves the process to background (process-group kill on Kill / leftover). `npm run lint` no longer stacks three eslint workers.
+- **Shell duplicate lint (D11/D34):** A command already running in the Chat (foreground or background) is refused instead of spawning another copy. Timeout kills the process group (eslint children included).
+- **Interpreter errors (FM-17):** Timeout or a shell that cannot start shows a structured Chat card (not a traceback). There is no + menu preview. Foreground timeout kills the process group and returns `Interpreter timeout` so the card can appear.
+- **Workflow node engine (FM-10 / D65):** Removed the extra Node engine dropdown. A node already has an Assigned Agent; CLI / Clutch / MCP follow that Agent. Saving no longer writes a conflicting `tool` override.
 
 ### Added
 
@@ -51,12 +54,11 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 - **Save dispatch as workflow (FM-07):** Overview can save dispatch records as a user SOP with matching node order.
 - **Chat handoff (FM-08):** Chat composer shows handoff drafts and accepts Send to Bar; switching to Terminal prefills recent chat.
 - **Dispatch banner (FM-09):** Empty Chat can send without choosing a workflow; a banner shows “No workflow selected — using current Agent” (plus the Agent name) or the selected SOP.
-- **Canvas node engine (FM-10):** Workflow node editor can set CLI/MCP/llm; Overview shows that engine.
+- **Canvas node engine (FM-10):** Workflow nodes follow the **Assigned Agent** type. Overview shows that engine. There is no separate Node engine dropdown (D65).
 - **Parallel worktrees (FM-11):** Chat can spawn extra worktrees with visible paths and merge/discard per tree.
 - **Memory search (FM-12):** Settings → General can search `.clutch/memory`; clicking a hit opens the file.
-- **New-info gate (FM-15):** Parallel subtasks ask before a second spawn; Chat shows Proceed/Hold.
 - **Design visual review (FM-16):** Handoff step 1 shows a render shot with Approve/Reject; Reject iterates.
-- **Interpreter errors (FM-17):** Timeout/offline shell failures show a structured Chat card.
+- **Interpreter errors (FM-17):** Timeout/offline shell failures show a structured Chat card (not a traceback); no + preview.
 - **Validation strip (FM-18):** Failed node validation is readable in Chat and Overview.
 - **Performance baseline (FM-20 / OSR-29):** [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md) §1.1 records dated local numbers (health, templates, `verify.sh`).
 - **Apple notarization process (FM-21 / OSR-11):** [`docs/APPLE_NOTARIZATION.md`](docs/APPLE_NOTARIZATION.md) — still **blocked** (no Developer account); unsigned DMG + D31 remain.

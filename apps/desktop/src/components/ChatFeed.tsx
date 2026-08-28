@@ -13,7 +13,6 @@ import {
   HybridExecutionPayload,
   OutputEvent,
   QuestionOption,
-  QuestionCard,
   SubtaskCard,
   TodoItem,
   AgentGoal,
@@ -593,8 +592,6 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   const [hillInstructions, setHillInstructions] = useState('');
   const [planStepComments, setPlanStepComments] = useState<string[]>([]);
   const [pendingMessages, setPendingMessages] = useState<PendingChatMessage[]>([]);
-  const [demoNotify, setDemoNotify] = useState<QuestionCard | null>(null);
-  const [demoInterpreter, setDemoInterpreter] = useState<'timeout' | 'offline' | null>(null);
   const [bgJobToast, setBgJobToast] = useState<string | null>(null);
   const prevBgJobsRef = useRef<BackgroundJob[]>([]);
   /**
@@ -611,27 +608,6 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
     messageId: string;
     messageIndex: number;
   } | null>(null);
-
-  useEffect(() => {
-    const handler = () =>
-      setDemoNotify({
-        question: t('New information arrived. Continue parallel work?'),
-        options: [
-          { id: 'proceed', label: t('Proceed') },
-          { id: 'hold', label: t('Hold') },
-        ],
-        status: 'pending',
-        kind: 'new_info',
-      });
-    window.addEventListener('clutch-new-info-demo', handler);
-    return () => window.removeEventListener('clutch-new-info-demo', handler);
-  }, [t]);
-
-  useEffect(() => {
-    const handler = () => setDemoInterpreter('timeout');
-    window.addEventListener('clutch-interpreter-error-demo', handler);
-    return () => window.removeEventListener('clutch-interpreter-error-demo', handler);
-  }, []);
 
   useEffect(() => {
     const handleClose = () => setMessageContextMenu(null);
@@ -979,14 +955,13 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
   const worktreeIsolation = clutchOrchestraState.worktree_isolation ?? null;
   const chatDiagnostics = clutchOrchestraState.chat_diagnostics ?? [];
   const interpreterError = useMemo(() => {
-    if (demoInterpreter) return demoInterpreter;
     for (const msg of [...messages].reverse()) {
       const blob = `${msg.text} ${(msg.toolSteps || []).map((step) => `${step.title} ${step.detail || ''}`).join(' ')}`;
       if (/interpreter timeout|timed out/i.test(blob)) return 'timeout' as const;
       if (/interpreter offline|sidecar may be offline|connection refused/i.test(blob)) return 'offline' as const;
     }
     return null;
-  }, [demoInterpreter, messages]);
+  }, [messages]);
 
   useEffect(() => {
     const prev = prevBgJobsRef.current;
@@ -1381,23 +1356,6 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                 }`}
           </div>
         ) : null}
-        {demoNotify ? (
-          <div className="mx-auto mb-2 max-w-xl">
-            <QuestionCardView
-              card={demoNotify}
-              t={t}
-              interactive={demoNotify.status === 'pending'}
-              onSelect={(option) => {
-                setDemoNotify({
-                  ...demoNotify,
-                  status: option.id === 'cancel' || option.id === 'hold' ? 'cancelled' : 'answered',
-                  selectedId: option.id,
-                  selectedLabel: option.label,
-                });
-              }}
-            />
-          </div>
-        ) : null}
         {workspaceViewMode === 'chat' && showEmptyState && (
           <div className="flex flex-col items-center justify-center text-center py-16 px-6 space-y-5">
             <div className="w-14 h-14 rounded-2xl bg-surface-container-low border border-outline-variant/40 flex items-center justify-center">
@@ -1623,7 +1581,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                     <div className={`${chatChrome.messageBubblePaddingClass} bg-neutral-50/50 rounded-2xl rounded-tl-none border border-neutral-200/80 shadow-xs`}>
                       <div className="flex items-center gap-1.5 mb-2 text-neutral-800 font-bold text-[11px]">
                         <LegacyIcon name="error" className="text-[16px]" />
-                        <span>VALIDATION FAILED</span>
+                        <span data-testid={msg.badgeText === 'VALIDATION FAILED' ? 'validation-failure-chat' : undefined}>VALIDATION FAILED</span>
                       </div>
                       {renderMarkdown(msg.text)}
                     </div>

@@ -4,6 +4,15 @@
 > **何时写：** 每个**代码 Task** 完成并 commit 后，在 Check-out 追加一节（见 `CLAUDE.md` §Check-out）。  
 > **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。
 
+## Wave 4 FM-10 / FM-18 + D64/D65（2026-08-28）
+
+| 项 | 说明 |
+|----|------|
+| **Verification** | `./scripts/verify.sh` → vitest 248 passed · pytest 1021 passed / 7 skipped · doc-drift 0 error |
+| **证据** | `runs/verification/2026-08-28-wave4-fm10-fm18-verify.log` |
+| **ROADMAP** | FM-10、FM-18 ✅ Agent 点验 2026-08-28；FM-15 🚫 D64 |
+| **Files** | `WorkflowOrchestration.tsx` · `workflowFormat.ts` · `ChatFeed.tsx` · `ChatInputBar.tsx` · `mcp_react.py` · `foreground_shell.py` · `FRONTEND_MODULES_ACCEPTANCE.md` |
+
 ## FM-04/05 More CLI 只读扫描（2026-08-26）
 
 | 项 | 说明 |

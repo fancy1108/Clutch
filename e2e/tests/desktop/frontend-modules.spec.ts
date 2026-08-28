@@ -107,7 +107,7 @@ test('desktop: FM-01…22 acceptance playbook', async ({ tauriPage: page }) => {
     await expect(page.locator('[data-testid="dispatch-banner"]')).toContainText(/current Agent|当前 Agent/i);
   });
 
-  await test.step('FM-10 node engine', async () => {
+  await test.step('FM-10 assigned agent engine', async () => {
     await clickId(page, 'nav-workflows');
     await page.waitForSelector('[data-testid="workflow-create"]', 10_000);
     await delay(800);
@@ -128,21 +128,12 @@ test('desktop: FM-01…22 acceptance playbook', async ({ tauriPage: page }) => {
         agent.click();
       })()
     `);
-    await page.waitForSelector('[data-testid="node-tool-select"]', 10_000);
+    await page.waitForSelector('[data-testid="node-agent-select"]', 10_000);
+    await expect(page.locator('[data-testid="node-tool-select"]')).toHaveCount(0);
     await clickId(page, 'settings-close');
     await startNewChat(page);
     await ensureChatWorkspaceMode(page);
     await clearWorkflowSelection(page);
-  });
-
-  await test.step('FM-15/17 plus demos', async () => {
-    await clickId(page, 'composer-plus');
-    await page.waitForSelector('[data-testid="new-info-demo"]', 5_000);
-    await clickId(page, 'new-info-demo');
-    await page.waitForSelector('[data-testid="new-info-card"]', 8_000);
-    await clickId(page, 'composer-plus');
-    await clickId(page, 'interpreter-error-demo');
-    await page.waitForSelector('[data-testid="interpreter-error-card"]', 8_000);
   });
 
   await test.step('FM-11 worktree enable then discard', async () => {

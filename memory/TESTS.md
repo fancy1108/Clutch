@@ -12,6 +12,7 @@
 
 | 日期 | 范围 | 命令 | 结果 | 报告/证据 | 备注 |
 |------|------|------|------|-----------|------|
+| 2026-08-28 | Wave 4 FM-10/FM-18 + D64/D65 | `./scripts/verify.sh` | ✅ vitest 248 · pytest 1021 passed / 7 skipped · doc-drift 0 error | `runs/verification/2026-08-28-wave4-fm10-fm18-verify.log` | Agent 点验；FM-10 无 Node engine；FM-18 Chat/Overview testid |
 | 2026-08-26 | FM-01…22 点验剧本 Desktop E2E | `playwright test --project=desktop tests/desktop/frontend-modules.spec.ts`（sidecar :8124） | ✅ 1 passed (17.7s) | `runs/verification/2026-08-26-fm-01-22-playbook-e2e.log` | FM-18 无失败 run 按剧本跳过；FM-08 需真 handoff 未单步断言 |
 | 2026-08-26 | 桌面白屏 + FM E2E | `./scripts/run-e2e.sh` | ✅ API 7 · Hybrid 1 · Desktop 6 passed | `runs/verification/2026-08-26-fm-e2e-after-orchestra-confirm.log` | 根因 `useLanguage` 未 import；Orchestra 须点 Confirm |
 | 2026-08-25 | Q-USAGE-1 Overview 用量 E2E | API `pnpm test:api`；Desktop `playwright test --project=desktop tests/desktop/session-usage.spec.ts` | ✅ API 7 passed · Desktop 1 passed | `runs/verification/2026-08-25-e2e-session-usage.log` | 费用格仍 `—`；假 LLM 注入占位 Key |

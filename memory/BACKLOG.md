@@ -60,7 +60,7 @@
 
 > **调研：** [`docs/research/clutch-agent-book-gap.md`](../docs/research/clutch-agent-book-gap.md)。  
 > **B-34–B-41、B-44、B-45、B-48 已升格** harness 各节。  
-> **B-43/47/49 已升格 FM-15/17/16（D56）。B-46 notify 空壳已撤回（D63）。B-42 webhook 空壳已撤回（D61）。**
+> **B-47/49 已升格 FM-17/16（D56）。B-43 并行确认已撤回（D64）。B-46 notify 空壳已撤回（D63）。B-42 webhook 空壳已撤回（D61）。**
 
 | ID | 候选能力 | 状态 | 升格条件 |
 |----|----------|------|----------|
@@ -95,13 +95,13 @@ _当前无 open 的待修复 Bug（2026-07-01）。_
 | ID | 归宿 |
 |----|------|
 | B-01 | D56 **FM-09** · `frontend-modules-plan.md` |
-| B-04 | D56 **FM-10**（余量）；部分执行已在 Git |
+| B-04 | D56 **FM-10**；D65 引擎跟随 Assigned Agent，无节点 override |
 | B-17 | 部分 — plain chat + hybrid Codex · Git |
 | B-05 | D56 **FM-18** |
 | B-08 | D56 **FM-11** |
 | B-10 | D56 **FM-12** |
 | B-18–B-22 | D56 **FM-03**（OSR-18 界面层） |
-| B-43 | D56 **FM-15** |
+| B-43 | 撤回 D64（曾 FM-15） |
 | B-46 | 撤回 D63 — 问人走 D4 `ask_user_question` |
 | B-47 | D56 **FM-17** |
 | B-49 | D56 **FM-16** |
