@@ -131,6 +131,7 @@ Layer 4 为**操作规程**，不是权威来源。冲突时以本文 §铁律 �
 - 上下文压缩 patch 含新 `system_digest_*` 时须**整表替换** messages，禁止 merge 追加（否则 `/compact` 只闪 toast、历史不变）
 - WKWebView `Can't find variable: useLanguage` / `useHostOs` → 组件调了 hook 却没 import；`pnpm build` 不报，须看 `hookImportGuard.test.ts`
 - `run_terminal_cmd` `shell=True` 后 `proc.kill()` 只杀到 shell，eslint 等子进程继续占满 CPU；超时/Kill 须进程组（`shell_proc.kill_tree`），同一命令已在跑则拒绝再开
+- Windows CI 后台 job 测 `sleep` 不要用 `timeout /t`：无控制台 + stdout PIPE 会立刻 `ERROR: Input redirection is not supported` 并以 exit 1 失败 → 用 `ping -n N 127.0.0.1 >nul`
 
 ---
 

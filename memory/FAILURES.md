@@ -12,6 +12,14 @@
 
 （暂无）
 
+### [RESOLVED] Windows CI `test_start_sleep_wait_done` failed（2026-08-28）
+
+- **现象：** v1.4.0 tag 的 Windows Build 在 `uv run pytest` 挂掉：`test_bg_jobs_d11.py::test_start_sleep_wait_done` 期望 `done`，实际 `failed`。
+- **根因：** 测试用 `timeout /t … >nul`。GitHub `windows-latest` 无控制台且 stdout 为 PIPE，`timeout` 立刻报 Input redirection is not supported 并以非 0 退出。
+- **解决：** Windows 侧改为 `ping -n N 127.0.0.1 >nul`。
+- **规避：** 测 delay 不要用 `timeout`；杀进程组仍走 `taskkill /T`。
+- **关联：** `test_bg_jobs_d11.py` · `test_foreground_shell_d34.py`
+
 ### [RESOLVED] 前台 `npm run lint` 连开三趟把电脑打烫（2026-08-28）
 
 - **现象：** Chat 卡在 Working；前台条和 BACKGROUND JOBS 同时显示 `npm run lint`；本机 3 个 eslint 各 ~97% CPU。
