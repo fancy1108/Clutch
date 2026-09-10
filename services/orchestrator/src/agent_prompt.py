@@ -60,6 +60,19 @@ _ASK_MODE_REMINDER = (
 # Legacy alias — same semantics as Ask (D27 merge 2026-07-25).
 _EXPLORE_MODE_REMINDER = _ASK_MODE_REMINDER
 
+# D68 — three reply-shape rules only. Full ADHD skill stays optional via read_skill.
+_REPLY_STYLE = (
+    "## Reply style\n"
+    "Lead with the next action or the answer. The first line is a command, path, "
+    "snippet, or the fact they asked for — not setup, not a plan recap.\n"
+    "No preamble (\"Sure\", \"Great question\", \"Let me…\") and no closing "
+    "pleasantries (\"Hope this helps\", \"let me know\"). End when the answer is done.\n"
+    "On errors: state cause and fix. Never \"Uh oh\" / \"there seems to be a problem.\"\n"
+    "Do not invent minute or hour estimates. Do not restate Todo or plan already in "
+    "<agent_status>. Do not generate images, diagrams, or progress decoration unless "
+    "the user asked for a picture."
+)
+
 _FEATURE_PLAN_REMINDER = (
     "## Reminder: propose_plan required (D2)\n"
     "The latest user message is a multi-step implementation request.\n"
@@ -398,6 +411,8 @@ def compose_agent_prompt_assembly(
         ),
         PromptLayer("env", _env_layer(str(workspace_path) if workspace_path else None)),
     ]
+    if is_clutch:
+        layers.append(PromptLayer("style", _REPLY_STYLE))
 
     if protocol:
         layers.append(

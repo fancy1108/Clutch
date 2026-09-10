@@ -53,7 +53,14 @@ def test_assembly_layers_and_short_system_base(tmp_path: Path, monkeypatch: pyte
     names = [layer.name for layer in assembly.layers]
     assert "system" in names
     assert "env" in names
+    assert "style" in names
     assert "protocol" in names
+    style = next(layer for layer in assembly.layers if layer.name == "style")
+    assert "Lead with the next action" in style.content
+    assert "No preamble" in style.content
+    assert "cause and fix" in style.content
+    assert "Do not invent minute" in style.content
+    assert "Do not generate images" in style.content
     system = next(layer for layer in assembly.layers if layer.name == "system")
     assert "Clutch Agent" in system.content
     assert len(system.content) < 1200
@@ -161,6 +168,24 @@ def test_skills_default_to_catalog_not_full_body(
         ["my-skills/secure-review"], include_bodies=True
     )
     assert "Always check for secrets" in full
+
+
+def test_reply_style_skipped_for_cli_agents() -> None:
+    assembly = compose_agent_prompt_assembly(
+        {
+            "id": "claude-code",
+            "name": "Claude Code",
+            "agentType": "claude-cli",
+            "markdownDoc": "",
+        },
+        model_name="Claude",
+        model_api="claude-cli",
+        mcp_servers_bound=False,
+        clutch_mcp_path=False,
+        permission_mode="auto_edit",
+    )
+    assert all(layer.name != "style" for layer in assembly.layers)
+    assert "Lead with the next action" not in assembly.as_system_prompt()
 
 
 def test_ask_and_plan_mode_reminders() -> None:

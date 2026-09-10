@@ -254,7 +254,7 @@
 | HumanInputKind 载荷 | `src/human_input.py` |
 | agent_task 节点执行 | `src/agent_executor.py` |
 | Agent 持久化与内置 Agent | `src/agent_storage.py` |
-| Agent system prompt 组装（D53） | `src/agent_prompt.py` · `src/agent_skills.py` |
+| Agent system prompt 组装（D53 / D68 style） | `src/agent_prompt.py` · `src/agent_skills.py` |
 | Agent 评测快照 + Agnes live（B-34） | `src/agent_eval.py` · `tests/test_agent_eval_b34.py` · `CLUTCH_AGENT_EVAL_LIVE=1`；定义见 `specs/core/tasks.md` §Agent Harness |
 | Agent 消融闸 + trajectory（B-48） | `agent_eval.parse_ablation` / `persist_trajectory` · `tests/test_agent_eval_b48.py` · `CLUTCH_AGENT_EVAL_ABLATION` · `runs/archive/eval/` |
 | 末尾 `<agent_status>`（B-35） | `agent_prompt.format_agent_status` / `attach_trailing_status` · Chat `attach` 在 `_history_with_prefix_and_status`；定义见 `tasks.md` §Agent status |

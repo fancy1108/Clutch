@@ -699,6 +699,13 @@
 - **影响**：`OrchestratorBar.tsx`（删除 `DispatchConfirmCard`）· `PRODUCT_INTRO.md` · 点验剧本 FM-06。
 - **决策状态**：`已落地`
 
+### D68 · Clutch Agent 默认回复只留 3 条风格规则（2026-09-10）
+
+- **背景**：在 `/Users/fancy/test` 对照默认 Agent vs 注入 `i-have-adhd` 全文。默认已经能编号、少客套、压题外话。整份 10 条写入默认后：登录题 HTTP 中断无答案；其余 3 题被「让完成可见」触发 Media finalize 配图，回复涨到 1MB+。分钟估计不可靠；每轮复述与 `<agent_status>` / Todo 重复。
+- **方案**：默认 `agent_prompt` 只加 `style` 层三正一禁——第一句给下一步或答案；禁止开场白/收尾客套；报错只写原因和修法；并写明不估计时间、不复述 agent_status、未点名不要配图。完整 ADHD Skill 保持可选（`read_skill` / `/skill:…`），不 vendor 进默认协议。
+- **影响**：`agent_prompt.py` · `PRODUCT_INTRO.md` · CHANGELOG `[Unreleased]`。
+- **决策状态**：`已落地`
+
 ### D67 · 撤回 FM-06 排队条与 Complete 草稿（2026-08-28）
 
 - **背景**：确认卡已是负优化（D66）。排队条、Lane Complete 预填草稿同属多出来的编排层；`@C from @A` 已经写清交接。
