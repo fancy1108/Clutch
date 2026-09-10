@@ -285,33 +285,33 @@ def test_model_supports_vision_non_ollama() -> None:
     assert not model_supports_vision(_model_spec("opencode", "gpt-4o"))
     assert not model_supports_vision(_model_spec("custom", "gpt-4o"))
 
-    assert model_supports_vision(_model_spec("agnes", "agnes-2.0-flash"))
+    assert model_supports_vision(_model_spec("agnes", "agnes-3.0-flash"))
     assert model_supports_vision(
         ModelSpec(
-            id="agnes-2.0-flash",
-            name="Agnes 2.0 Flash",
+            id="agnes-3.0-flash",
+            name="Agnes 3.0 Flash",
             provider_id="agnes",
-            api_model="agnes-2.0-flash",
+            api_model="agnes-3.0-flash",
             base_url="https://apihub.agnes-ai.com/v1",
             model_kind="chat",
         )
     )
     assert not model_supports_vision(
         ModelSpec(
-            id="agnes-image-2.1-flash",
+            id="agnes-image-2.5-flash",
             name="Agnes Image",
             provider_id="agnes",
-            api_model="agnes-image-2.1-flash",
+            api_model="agnes-image-2.5-flash",
             base_url="https://apihub.agnes-ai.com",
             model_kind="image",
         )
     )
     assert not model_supports_vision(
         ModelSpec(
-            id="agnes-video-v2.0",
+            id="agnes-video-2.5-flash",
             name="Agnes Video",
             provider_id="agnes",
-            api_model="agnes-video-v2.0",
+            api_model="agnes-video-2.5-flash",
             base_url="https://apihub.agnes-ai.com",
             model_kind="video",
         )

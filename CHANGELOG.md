@@ -10,6 +10,10 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ## [Unreleased]
 
+### Changed
+
+- **Agnes free models:** Built-in catalog is now **Agnes 3.0 Flash** (chat), **Agnes Image 2.5 Flash**, and **Agnes Video 2.5 Flash** (720P, OpenAI Videos-compatible). Retired `agnes-2.0-flash`, `agnes-image-2.1-flash`, and `agnes-video-v2.0`; saved selections remap to the new ids.
+
 ## [1.4.0] - 2026-08-28
 
 ### Removed

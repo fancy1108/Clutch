@@ -10,7 +10,7 @@
     "text_model_id": "deepseek-v4pro",
     "text_provider_id": "deepseek",
     "text_env_key": "CLUTCH_E2E_DEEPSEEK_KEY",
-    "image_model_id": "agnes-image-2.1-flash",
+    "image_model_id": "agnes-image-2.5-flash",
     "image_provider_id": "custom",
     "image_env_key": "CLUTCH_E2E_AGNES_KEY"
   },

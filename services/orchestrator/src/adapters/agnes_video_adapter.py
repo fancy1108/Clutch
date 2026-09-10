@@ -1,4 +1,4 @@
-"""Agnes Video V2.0 — async text/image-to-video via apihub.agnes-ai.com."""
+"""Agnes Video 2.5 Flash — async text/image-to-video via apihub.agnes-ai.com."""
 
 from __future__ import annotations
 
@@ -13,11 +13,10 @@ from typing import Any, Literal
 from src.preferences_storage import tr
 
 AGNES_VIDEO_API_BASE = "https://apihub.agnes-ai.com"
-AGNES_VIDEO_MODEL = "agnes-video-v2.0"
-DEFAULT_HEIGHT = 768
-DEFAULT_WIDTH = 1152
-DEFAULT_NUM_FRAMES = 121
-DEFAULT_FRAME_RATE = 24.0
+AGNES_VIDEO_MODEL = "agnes-video-2.5-flash"
+DEFAULT_SECONDS = "5"
+DEFAULT_SIZE = "720P"
+DEFAULT_ASPECT_RATIO = "16:9"
 DEFAULT_POLL_INTERVAL_SEC = 5.0
 DEFAULT_POLL_TIMEOUT_SEC = 900.0
 CREATE_TIMEOUT_SEC = 180.0
@@ -28,7 +27,7 @@ DONE_STATES = frozenset({"completed", "succeeded", "success"})
 FAILED_STATES = frozenset({"failed", "cancelled", "canceled", "error"})
 
 TEST_PROMPT = "A minimal red circle on a plain white background, subtle zoom, 2 seconds"
-AGNES_VIDEO_TRANSLATE_MODEL = "agnes-2.0-flash"
+AGNES_VIDEO_TRANSLATE_MODEL = "agnes-3.0-flash"
 
 
 def _contains_cjk(text: str) -> bool:
@@ -141,8 +140,12 @@ def _http_error_message(exc: urllib.error.HTTPError, detail: str) -> str:
     return f"Agnes Video API error {exc.code}: {detail}"
 
 
-def _video_status_url(video_id: str, base_url: str = AGNES_VIDEO_API_BASE) -> str:
-    query = urllib.parse.urlencode({"video_id": video_id})
+def _video_status_url(
+    video_id: str,
+    base_url: str = AGNES_VIDEO_API_BASE,
+    model: str = AGNES_VIDEO_MODEL,
+) -> str:
+    query = urllib.parse.urlencode({"video_id": video_id, "model_name": model})
     return f"{_api_root(base_url)}/agnesapi?{query}"
 
 
@@ -213,9 +216,25 @@ def _extract_video_url(response: dict[str, Any]) -> str | None:
     return None
 
 
-def _validate_num_frames(value: int) -> None:
-    if value > 441 or value < 1 or (value - 1) % 8 != 0:
-        raise ValueError("num_frames must be <= 441 and satisfy 8n + 1 (e.g. 81, 121, 161, 241, 441)")
+def _normalize_seconds(value: str | int | float | None) -> str:
+    raw = DEFAULT_SECONDS if value is None else str(value).strip()
+    try:
+        seconds = int(float(raw))
+    except ValueError as exc:
+        raise ValueError("seconds must be an integer from 4 to 12") from exc
+    if seconds < 4 or seconds > 12:
+        raise ValueError("seconds must be an integer from 4 to 12")
+    return str(seconds)
+
+
+def _resolve_video_mode(mode: str | None, image_urls: list[str]) -> Literal["text", "keyframe", "reference"]:
+    if mode in {"keyframe", "keyframes"}:
+        return "keyframe"
+    if mode in {"reference", "multi-image"}:
+        return "reference"
+    if image_urls:
+        return "reference"
+    return "text"
 
 
 def create_agnes_video_task(
@@ -223,12 +242,11 @@ def create_agnes_video_task(
     *,
     api_key: str,
     model: str = AGNES_VIDEO_MODEL,
-    height: int = DEFAULT_HEIGHT,
-    width: int = DEFAULT_WIDTH,
-    num_frames: int = DEFAULT_NUM_FRAMES,
-    frame_rate: float = DEFAULT_FRAME_RATE,
+    seconds: str | int = DEFAULT_SECONDS,
+    size: str = DEFAULT_SIZE,
+    aspect_ratio: str = DEFAULT_ASPECT_RATIO,
     input_images: list[str] | None = None,
-    mode: Literal["ti2vid", "keyframes", "multi-image"] | None = None,
+    mode: str | None = None,
     base_url: str = AGNES_VIDEO_API_BASE,
     timeout_sec: float = CREATE_TIMEOUT_SEC,
 ) -> dict[str, Any]:
@@ -237,25 +255,32 @@ def create_agnes_video_task(
         raise ValueError("prompt is required")
     if not api_key.strip():
         raise ValueError("api_key is required")
-    _validate_num_frames(num_frames)
+    if size.strip().upper() != DEFAULT_SIZE:
+        raise ValueError("size must be 720P")
+
+    image_urls = [url.strip() for url in (input_images or []) if url.strip()]
+    resolved_mode = _resolve_video_mode(mode, image_urls)
+    if resolved_mode == "keyframe" and not image_urls:
+        raise ValueError("keyframe mode requires at least one input image")
+    if resolved_mode == "reference" and not image_urls:
+        raise ValueError("reference mode requires at least one input image")
+    if len(image_urls) > 5:
+        raise ValueError("images length must not exceed 5")
 
     body: dict[str, Any] = {
         "model": model,
         "prompt": trimmed,
-        "height": height,
-        "width": width,
-        "num_frames": num_frames,
-        "frame_rate": frame_rate,
+        "seconds": _normalize_seconds(seconds),
+        "mode": resolved_mode,
+        "size": DEFAULT_SIZE,
+        "aspect_ratio": aspect_ratio or DEFAULT_ASPECT_RATIO,
     }
-    image_urls = [url.strip() for url in (input_images or []) if url.strip()]
-    if len(image_urls) == 1 and mode not in {"keyframes", "multi-image"}:
-        body["image"] = image_urls[0]
-    elif image_urls:
-        body["extra_body"] = {"image": image_urls}
-        if mode == "keyframes":
-            body["extra_body"]["mode"] = "keyframes"
-    if mode and mode not in {"keyframes", "multi-image"}:
-        body["mode"] = mode
+    if resolved_mode == "keyframe":
+        body["first_frame"] = image_urls[0]
+        if len(image_urls) > 1:
+            body["last_frame"] = image_urls[1]
+    elif resolved_mode == "reference":
+        body["images"] = image_urls
 
     return _request_json(
         "POST",
@@ -270,18 +295,19 @@ def poll_agnes_video(
     video_id: str,
     *,
     api_key: str,
+    model: str = AGNES_VIDEO_MODEL,
     base_url: str = AGNES_VIDEO_API_BASE,
     poll_interval_sec: float = DEFAULT_POLL_INTERVAL_SEC,
     poll_timeout_sec: float = DEFAULT_POLL_TIMEOUT_SEC,
     on_log: Callable[[str], None] | None = None,
 ) -> dict[str, Any]:
-    """Poll by video_id (recommended). Do not use task_id — it queues much longer."""
+    """Poll by video_id + model_name (recommended). Do not use task_id — it queues much longer."""
     deadline = time.monotonic() + poll_timeout_sec
     last_response: dict[str, Any] | None = None
     while time.monotonic() < deadline:
         last_response = _request_json(
             "GET",
-            _video_status_url(video_id, base_url),
+            _video_status_url(video_id, base_url, model),
             api_key=api_key,
             timeout_sec=POLL_REQUEST_TIMEOUT_SEC,
         )
@@ -309,12 +335,11 @@ def generate_agnes_video(
     *,
     api_key: str,
     model: str = AGNES_VIDEO_MODEL,
-    height: int = DEFAULT_HEIGHT,
-    width: int = DEFAULT_WIDTH,
-    num_frames: int = DEFAULT_NUM_FRAMES,
-    frame_rate: float = DEFAULT_FRAME_RATE,
+    seconds: str | int = DEFAULT_SECONDS,
+    size: str = DEFAULT_SIZE,
+    aspect_ratio: str = DEFAULT_ASPECT_RATIO,
     input_images: list[str] | None = None,
-    mode: Literal["ti2vid", "keyframes", "multi-image"] | None = None,
+    mode: str | None = None,
     base_url: str = AGNES_VIDEO_API_BASE,
     poll_interval_sec: float = DEFAULT_POLL_INTERVAL_SEC,
     poll_timeout_sec: float = DEFAULT_POLL_TIMEOUT_SEC,
@@ -327,16 +352,16 @@ def generate_agnes_video(
         base_url=base_url,
         on_log=on_log,
     )
+    duration = _normalize_seconds(seconds)
     if on_log:
-        on_log(f"[AGNES VIDEO] Creating task model={model} frames={num_frames} fps={frame_rate}")
+        on_log(f"[AGNES VIDEO] Creating task model={model} seconds={duration} size={DEFAULT_SIZE}")
     created = create_agnes_video_task(
         api_prompt,
         api_key=api_key,
         model=model,
-        height=height,
-        width=width,
-        num_frames=num_frames,
-        frame_rate=frame_rate,
+        seconds=duration,
+        size=size,
+        aspect_ratio=aspect_ratio,
         input_images=input_images,
         mode=mode,
         base_url=base_url,
@@ -347,6 +372,7 @@ def generate_agnes_video(
     return poll_agnes_video(
         video_id,
         api_key=api_key,
+        model=model,
         base_url=base_url,
         poll_interval_sec=poll_interval_sec,
         poll_timeout_sec=poll_timeout_sec,

@@ -45,8 +45,8 @@ def test_assembly_layers_and_short_system_base(tmp_path: Path, monkeypatch: pyte
 
     assembly = compose_agent_prompt_assembly(
         _clutch_agent(),
-        model_name="Agnes 2.0 Flash",
-        model_api="agnes-2.0-flash",
+        model_name="Agnes 3.0 Flash",
+        model_api="agnes-3.0-flash",
         mcp_servers_bound=True,
         permission_mode="ask",
     )
@@ -79,8 +79,8 @@ def test_tools_layer_requires_network_tools_for_live_facts(
 
     assembly = compose_agent_prompt_assembly(
         _clutch_agent(),
-        model_name="Agnes 2.0 Flash",
-        model_api="agnes-2.0-flash",
+        model_name="Agnes 3.0 Flash",
+        model_api="agnes-3.0-flash",
         mcp_servers_bound=True,
         permission_mode="auto_edit",
     )

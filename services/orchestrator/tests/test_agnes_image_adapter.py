@@ -1,4 +1,4 @@
-"""Agnes Image 2.1 Flash adapter tests."""
+"""Agnes Image 2.5 Flash adapter tests."""
 
 from __future__ import annotations
 

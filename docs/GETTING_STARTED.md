@@ -113,6 +113,7 @@ Product tour: [`PRODUCT_INTRO.md`](./PRODUCT_INTRO.md) · Architecture: [`ARCHIT
 | **ZCode CLI** | Install [ZCode desktop app](https://zcode.z.ai) → symlink `~/.local/bin/zcode` → `/Applications/ZCode.app/Contents/Resources/glm/zcode.cjs` → Settings → Tools → Connect **ZCode CLI** |
 | **Headless / CI Agent (D36)** | Sidecar running + workspace authorized → `curl -X POST http://127.0.0.1:8124/api/agent/run -H 'Content-Type: application/json' -d '{"prompt":"…","workspace_path":"/abs/path"}'` **or** `cd services/orchestrator && uv run python -m src.headless_cli -p "…" --workspace /abs/path --json` |
 | **OpenCode Zen (free)** | [opencode.ai/auth](https://opencode.ai/auth) → Zen → API Keys → Settings → Models → **OpenCode Zen** → pick a free model → Save |
+| **Agnes (free)** | Settings → Models → **Clutch Agent** → Agnes key → built-in **Agnes 3.0 Flash** (chat), **Agnes Image 2.5 Flash**, **Agnes Video 2.5 Flash** (720P) |
 | **CC Switch users** | Keys can be imported from `~/.cc-switch` on startup |
 | **Remote HTTP MCP** | Settings → MCP → Clutch Agent → Transport **HTTP** → paste URL (Figma example: `https://mcp.figma.com/mcp`) → Register → Test. API keys in Env; OAuth remotes open a browser. Guide: [`mcp-servers/figma.md`](./mcp-servers/figma.md) |
 
@@ -261,6 +262,7 @@ xattr -cr /Applications/Clutch.app && open -a Clutch
 | **ZCode CLI** | 安装 [ZCode 桌面应用](https://zcode.z.ai) → 将 `~/.local/bin/zcode` 软链到 `/Applications/ZCode.app/Contents/Resources/glm/zcode.cjs` → Settings → Tools → Connect **ZCode CLI** |
 | **无 UI / CI Agent（D36）** | Sidecar 已启动且工作区已授权 → `curl -X POST http://127.0.0.1:8124/api/agent/run …` **或** `cd services/orchestrator && uv run python -m src.headless_cli -p "…" --workspace /绝对路径 --json` |
 | **OpenCode Zen（免费）** | [opencode.ai/auth](https://opencode.ai/auth) → Zen → API Keys → Settings → Models → **OpenCode Zen** → 选免费模型 → 保存 |
+| **Agnes（免费）** | Settings → Models → **Clutch Agent** → 填 Agnes Key → 内置 **Agnes 3.0 Flash**（对话）、**Agnes Image 2.5 Flash**、**Agnes Video 2.5 Flash**（720P） |
 | **CC Switch 用户** | 启动时可从 `~/.cc-switch` 导入 |
 | **远程 HTTP MCP** | Settings → MCP → Clutch Agent → Transport **HTTP** → 填网址（Figma 例：`https://mcp.figma.com/mcp`）→ Register → 测试连接。API Key 写 Env；OAuth 远程会打开浏览器。步骤：[`mcp-servers/figma.md`](./mcp-servers/figma.md) |
 

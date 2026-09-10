@@ -199,7 +199,7 @@ def test_route_engine_antigravity_does_not_inject_clutch_model(monkeypatch) -> N
     res = route_engine(
         agent_name="Agytest",
         prompt="你好",
-        session_model_id="agnes-2.0-flash",
+        session_model_id="agnes-3.0-flash",
     )
     assert res.output == "agy reply"
     extra = captured.get("extra_args") or []

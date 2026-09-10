@@ -189,7 +189,7 @@ def test_gateway_anthropic_with_tools_uses_openai_transport() -> None:
         result = http_chat_complete(
             provider_id="anthropic",
             base_url="https://apihub.agnes-ai.com/v1",
-            api_model="agnes-2.0-flash",
+            api_model="agnes-3.0-flash",
             api_key="sk-agnes",
             messages=[{"role": "user", "content": "hi"}],
             tools=tools,
@@ -234,7 +234,7 @@ def test_openai_tool_roundtrip_normalizes_assistant_and_tool_messages() -> None:
         result = http_chat_complete(
             provider_id="anthropic",
             base_url="https://apihub.agnes-ai.com/v1",
-            api_model="agnes-2.0-flash",
+            api_model="agnes-3.0-flash",
             api_key="sk-agnes",
             messages=messages,
             tools=[{"type": "function", "function": {"name": "x", "parameters": {}}}],
@@ -258,7 +258,7 @@ def test_http_probe_credentials_models_endpoint() -> None:
         assert req.full_url.endswith("/models")
         assert req.get_method() == "GET"
         mock_resp = MagicMock()
-        mock_resp.read.return_value = json.dumps({"data": [{"id": "agnes-2.0-flash"}]}).encode()
+        mock_resp.read.return_value = json.dumps({"data": [{"id": "agnes-3.0-flash"}]}).encode()
         mock_resp.__enter__.return_value = mock_resp
         return mock_resp
 

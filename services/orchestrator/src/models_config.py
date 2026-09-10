@@ -12,7 +12,7 @@ from typing import Any
 from src.image_router import is_image_model, resolve_image_backend, verify_image_model_connection
 from src.video_router import is_video_model, resolve_video_backend, verify_video_model_connection
 from src.llm.http_complete import http_chat_complete
-from src.llm.router import LLMProviderRouter, ModelSpec, ProviderId
+from src.llm.router import LLMProviderRouter, ModelSpec, ProviderId, canonicalize_model_id
 
 from src.credentials.claude_code import bootstrap_claude_credentials, bootstrap_cc_switch_credentials
 from src.credentials.credential_store import (
@@ -180,6 +180,7 @@ def _ensure_active_model_available(router: LLMProviderRouter) -> None:
 
 
 def is_model_available(router: LLMProviderRouter, model_id: str) -> bool:
+    model_id = canonicalize_model_id(model_id)
     if model_id not in router._models:
         return False
     spec = router._models[model_id]

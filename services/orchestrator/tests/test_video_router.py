@@ -15,9 +15,9 @@ from src.video_router import (
 
 
 def test_is_video_model_uses_model_kind() -> None:
-    assert is_video_model(BUILTIN_MODELS["agnes-video-v2.0"])
-    assert not is_video_model(BUILTIN_MODELS["agnes-image-2.1-flash"])
-    assert not is_video_model(BUILTIN_MODELS["agnes-2.0-flash"])
+    assert is_video_model(BUILTIN_MODELS["agnes-video-2.5-flash"])
+    assert not is_video_model(BUILTIN_MODELS["agnes-image-2.5-flash"])
+    assert not is_video_model(BUILTIN_MODELS["agnes-3.0-flash"])
 
 
 def test_resolve_video_backend_explicit() -> None:
@@ -25,7 +25,7 @@ def test_resolve_video_backend_explicit() -> None:
         id="custom-vid",
         name="Custom Video",
         provider_id="custom",
-        api_model="agnes-video-v2.0",
+        api_model="agnes-video-2.5-flash",
         base_url="https://apihub.agnes-ai.com",
         model_kind="video",
         video_backend="agnes",
@@ -34,7 +34,7 @@ def test_resolve_video_backend_explicit() -> None:
 
 
 def test_resolve_video_backend_infers_agnes() -> None:
-    assert resolve_video_backend(BUILTIN_MODELS["agnes-video-v2.0"]) == "agnes"
+    assert resolve_video_backend(BUILTIN_MODELS["agnes-video-2.5-flash"]) == "agnes"
 
 
 def test_format_video_reply() -> None:

@@ -78,12 +78,12 @@ def test_delete_custom_image_model(models_config: Path) -> None:
 
 def test_hide_builtin_image_model(models_config: Path) -> None:
     client = TestClient(app)
-    response = client.delete("/api/models/custom/agnes-image-2.1-flash")
+    response = client.delete("/api/models/custom/agnes-image-2.5-flash")
     assert response.status_code == 200
     listed = client.get("/api/models/config").json()
-    assert not any(m["id"] == "agnes-image-2.1-flash" for m in listed["models"])
+    assert not any(m["id"] == "agnes-image-2.5-flash" for m in listed["models"])
     stored = models_config.read_text(encoding="utf-8")
-    assert "agnes-image-2.1-flash" in stored
+    assert "agnes-image-2.5-flash" in stored
 
 
 def test_custom_model_not_deduped_against_builtin(models_config: Path) -> None:
@@ -96,7 +96,7 @@ def test_custom_model_not_deduped_against_builtin(models_config: Path) -> None:
         "/api/models/custom/image",
         json={
             "name": "My Agnes Copy",
-            "api_model": "agnes-image-2.1-flash",
+            "api_model": "agnes-image-2.5-flash",
             "base_url": "https://apihub.agnes-ai.com",
             "provider_id": "custom",
             "image_backend": "agnes",
@@ -107,7 +107,7 @@ def test_custom_model_not_deduped_against_builtin(models_config: Path) -> None:
     listed = client.get("/api/models/config").json()
     ids = {m["id"] for m in listed["models"] if m.get("model_kind") == "image"}
     assert custom_id in ids
-    assert "agnes-image-2.1-flash" in ids
+    assert "agnes-image-2.5-flash" in ids
 
 
 def test_add_custom_image_model_rejects_invalid_backend(models_config: Path) -> None:

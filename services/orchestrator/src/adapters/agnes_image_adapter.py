@@ -1,4 +1,4 @@
-"""Agnes Image 2.1 Flash — text-to-image / image-to-image via apihub.agnes-ai.com."""
+"""Agnes Image 2.5 Flash — text-to-image / image-to-image via apihub.agnes-ai.com."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from collections.abc import Callable
 from typing import Any, Literal
 
 AGNES_IMAGE_API_BASE = "https://apihub.agnes-ai.com"
-AGNES_IMAGE_MODEL = "agnes-image-2.1-flash"
+AGNES_IMAGE_MODEL = "agnes-image-2.5-flash"
 DEFAULT_IMAGE_SIZE = "1024x768"
 DEFAULT_TIMEOUT_SEC = 120.0
 TEST_PROMPT = "A minimal red circle on a plain white background, flat vector style"

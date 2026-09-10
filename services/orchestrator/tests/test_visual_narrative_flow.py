@@ -59,7 +59,7 @@ def visual_narrative_env(monkeypatch: pytest.MonkeyPatch, tmp_path) -> dict[str,
             "id": "agent-1782646188905",
             "name": "5-Visual Rendering Engine",
             "agentType": "clutch",
-            "modelId": "agnes-image-2.1-flash",
+            "modelId": "agnes-image-2.5-flash",
             "markdownDoc": "Render the final_image_prompt.",
         },
     }
@@ -103,14 +103,14 @@ def visual_narrative_env(monkeypatch: pytest.MonkeyPatch, tmp_path) -> dict[str,
         _models = BUILTIN_MODELS
 
         def get_active_model(self):
-            return BUILTIN_MODELS["agnes-image-2.1-flash"]
+            return BUILTIN_MODELS["agnes-image-2.5-flash"]
 
         @property
         def active_model_id(self) -> str:
-            return "agnes-image-2.1-flash"
+            return "agnes-image-2.5-flash"
 
         def resolve_for_model(self, model_id: str | None = None):
-            return BUILTIN_MODELS["agnes-image-2.1-flash"], "sk-test"
+            return BUILTIN_MODELS["agnes-image-2.5-flash"], "sk-test"
 
         def _require_api_key(self, _provider_id: str, api_key: str | None) -> str:
             return api_key or "sk-test"
