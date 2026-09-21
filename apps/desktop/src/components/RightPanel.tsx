@@ -49,6 +49,7 @@ interface RightPanelProps {
     consecutive_failures?: number;
   };
   uncommitted: UncommittedFile[];
+  uncommittedIsGitRepo?: boolean;
   terminalLogs: string[];
   isOpen: boolean;
   setIsOpen: (val: boolean) => void;
@@ -104,6 +105,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   usageEstimated = true,
   runStats,
   uncommitted,
+  uncommittedIsGitRepo = true,
   terminalLogs,
   isOpen,
   setIsOpen,
@@ -679,6 +681,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                 onSelect={setSelectedFile}
                 onOpenFile={onOpenWorkspaceFile}
                 t={t}
+                isGitRepo={uncommittedIsGitRepo}
               />
 
               {uncommitted.length > 0 && getActiveFileDiff() && (

@@ -365,10 +365,12 @@ function MainLayout() {
 
   const refreshViewChanges = useCallback(async () => {
     try {
-      const files = await fetchWorkspaceChanges(viewWorktreeId || undefined);
+      const { files, isGitRepo } = await fetchWorkspaceChanges(viewWorktreeId || undefined);
       setUncommitted(files);
+      setUncommittedIsGitRepo(isGitRepo);
     } catch {
       setUncommitted([]);
+      setUncommittedIsGitRepo(false);
     }
   }, [viewWorktreeId]);
 
@@ -889,6 +891,7 @@ function MainLayout() {
   }, [rightTab]);
 
   const [uncommitted, setUncommitted] = useState<UncommittedFile[]>([]);
+  const [uncommittedIsGitRepo, setUncommittedIsGitRepo] = useState<boolean>(false);
 
   // Close unified settings dialog on ESC key
   useEffect(() => {
@@ -2334,6 +2337,7 @@ function MainLayout() {
                 usageEstimated={clutchState.usage_estimated !== false}
                 runStats={clutchState.run_stats}
                 uncommitted={uncommitted}
+                uncommittedIsGitRepo={uncommittedIsGitRepo}
                 terminalLogs={terminalLogs}
                 isOpen={rightPanelOpen}
                 setIsOpen={setRightPanelOpen}

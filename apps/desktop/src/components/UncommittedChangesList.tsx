@@ -66,12 +66,14 @@ export function UncommittedChangesList({
   onSelect,
   onOpenFile,
   t,
+  isGitRepo = true,
 }: {
   files: UncommittedFile[];
   selectedFile: string | null;
   onSelect: (name: string) => void;
   onOpenFile?: (name: string) => void;
   t: (key: string) => string;
+  isGitRepo?: boolean;
 }) {
   const [filter, setFilter] = useState('');
 
@@ -106,9 +108,22 @@ export function UncommittedChangesList({
 
   if (total === 0) {
     return (
-      <div className="py-8 text-center bg-surface-container-low/40 rounded-xl border border-dashed border-outline-variant mt-2 text-on-surface-variant/60">
-        <LegacyIcon name="difference" className="text-[28px] mb-2" />
-        <p className="text-[11px] font-medium">{t('No uncommitted changes')}</p>
+      <div
+        className="py-8 text-center bg-surface-container-low/40 rounded-xl border border-dashed border-outline-variant mt-2 text-on-surface-variant/60"
+        data-testid="uncommitted-changes-empty"
+      >
+        <LegacyIcon
+          name={isGitRepo ? 'difference' : 'folder_off'}
+          className="text-[28px] mb-2"
+        />
+        <p className="text-[11px] font-medium">
+          {isGitRepo ? t('No uncommitted changes') : t('Not a Git repository')}
+        </p>
+        {!isGitRepo ? (
+          <p className="mt-1 px-6 text-[10px] leading-relaxed text-on-surface-variant/50">
+            {t('This workspace is not a Git repository; changes cannot be tracked here.')}
+          </p>
+        ) : null}
       </div>
     );
   }

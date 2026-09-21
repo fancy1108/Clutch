@@ -24,6 +24,23 @@ describe('UncommittedChangesList', () => {
     expect(out).not.toContain('data-testid="uncommitted-changes-list"');
   });
 
+  it('shows non-git-repo hint instead of empty state when isGitRepo is false', () => {
+    const out = renderToStaticMarkup(
+      <UncommittedChangesList
+        files={[]}
+        selectedFile={null}
+        onSelect={() => {}}
+        t={t}
+        isGitRepo={false}
+      />,
+    );
+    expect(out).toContain('Not a Git repository');
+    expect(out).toContain(
+      'This workspace is not a Git repository; changes cannot be tracked here.',
+    );
+    expect(out).not.toContain('No uncommitted changes');
+  });
+
   it('renders flat list without filter when below threshold', () => {
     const files = [file('a.md'), file('b.md'), file('c.md')];
     const out = renderToStaticMarkup(

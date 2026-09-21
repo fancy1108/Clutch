@@ -205,11 +205,16 @@ export async function fetchWorkspaceTree(wtId?: string | null): Promise<FileTree
   return body.nodes;
 }
 
-export async function fetchWorkspaceChanges(wtId?: string | null): Promise<import('../types').UncommittedFile[]> {
+export async function fetchWorkspaceChanges(
+  wtId?: string | null,
+): Promise<{ files: import('../types').UncommittedFile[]; isGitRepo: boolean }> {
   const response = await sidecarFetch(withWtId(`${BASE}/api/workspace/changes`, wtId));
   if (!response.ok) throw new Error(`workspace changes failed (${response.status})`);
-  const body = (await response.json()) as { files?: import('../types').UncommittedFile[] };
-  return body.files ?? [];
+  const body = (await response.json()) as {
+    files?: import('../types').UncommittedFile[];
+    is_git_repo?: boolean;
+  };
+  return { files: body.files ?? [], isGitRepo: Boolean(body.is_git_repo) };
 }
 
 export async function fetchWorkspaceFile(path: string, wtId?: string | null): Promise<string> {
