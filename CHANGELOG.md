@@ -12,6 +12,7 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ### Fixed
 
+- **Design pages rendered black-and-white:** Generated UI cards and sidebar thumbnails used oversized `srcDoc` iframes, which freeze at the initial pre-Tailwind paint (Chromium and WKWebView alike) — theme colors injected at runtime never repainted. Canvas cards and sidebar thumbnails now load the sidecar-served preview URL (`src=`), which repaints normally; Pick-element mode still uses `srcDoc` (needs same-origin DOM).
 - **Chat history vanished mid-conversation:** Auto context-compaction (D8) folded the visible chat after just a few normal turns — the trigger compared a fixed 15k threshold against lifetime cumulative `session_tokens` (every turn's full-context input summed, and summed again across ReAct steps). The L4 fold now engages only when the *current* context fill (estimated from visible message text + system-prompt allowance) approaches the model context window (default 100k tokens, `CLUTCH_COMPACT_THRESHOLD` override). Earlier Q&A stays visible while new turns append below; manual `/compact` is unchanged.
 
 ## [1.4.1] - 2026-09-21
