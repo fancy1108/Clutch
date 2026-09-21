@@ -100,6 +100,22 @@
 
 ## 已解决问题（经验库）
 
+### [RESOLVED] 超大 srcDoc iframe paint 冻结 → Design 生成页黑白（2026-09-21）
+
+- **现象：** Design 画布卡片与侧栏缩略图只渲染未着色的黑白页面；磁盘 HTML 文件本身主题完整，浏览器直接打开正常
+- **根因：** 卡片用 1440px 级宽度的 `srcDoc` iframe 再 `transform: scale()` 缩小；Chromium 与 WKWebView 都会把可见 paint 冻结在初始帧，Tailwind Play CDN 运行时注入的 `<style>` 不再触发重绘。与 LLM、网络、CDN 可达性均无关
+- **解决：** 画布卡片（含 r0）与侧栏缩略图改走 sidecar 预览 URL（`src=`），`src=` 加载重绘正常；仅 Pick-element 模式保留 `srcDoc`（需同源 DOM）。commit `c12ddba`
+- **规避：** 排查「样式没生效」先看磁盘 HTML 与 `src=` 直开是否正常，把 iframe 渲染层与生成层分开定位；超大缩放预览一律用 `src=`，不要用 `srcDoc`
+- **关联：** `apps/desktop/src/components/design/designWorkspaceUtils.ts`、`apps/desktop/src/sidebar.tsx`
+
+### [RESOLVED] `prune_orphan_session_dirs` 跨 store 注册表不匹配误删会话（2026-09-21）
+
+- **现象：** dev sidecar（`clutch_dev` store）打开用户工作区后，磁盘上 4 个真实 Design 会话目录被当作 orphan 删除（注册表里查不到 run_id）
+- **根因：** 清理逻辑默认「注册表没有 = 用户已删」，但 workspace-id 翻转、dev/打包应用共享工作区时注册表会暂时失真（D43）；用户主动删除本就走 `delete_session_artifacts`，prune 不需要替它兜底
+- **解决：** 两道守护——keep 集为空但磁盘有产物时整体跳过；mtime 24 小时内的目录不删。新增回归测试覆盖空 keep / 宽限期 / 陈旧 orphan 三条路径。commit `d8dd342`
+- **规避：** 任何「以注册表为准删磁盘」的清理都必须假设注册表可能失真；调试时用 dev store 打开生产工作区前先意识到 prune 类逻辑会跑
+- **关联：** `services/orchestrator/src/design/session_store.py`、`tests/test_design_service.py::test_prune_orphan_session_dirs_guards`
+
 ### [RESOLVED] D12 · tauri-playwright 无法在 `<textarea>` 上 fill/type（2026-06-23）
 
 - **现象：** `all-ui.spec.ts` 在 `chat-input`（React `<textarea>`）上 `fill` / `type` 报错：`HTMLInputElement.value setter can only be used on instances of HTMLInputElement`

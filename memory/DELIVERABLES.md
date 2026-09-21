@@ -20,6 +20,16 @@
 
 ## Recently Completed
 
+## Design 回归修复：srcDoc 冻结 / modify 版本 / prune 守护（2026-09-21）
+
+| 项 | 说明 |
+|----|------|
+| **Commit** | `c12ddba`（前端预览 src= 化）· `d8dd342`（modify 记 round + prune 守护） |
+| **Verification** | `./scripts/verify.sh` → vitest 248 passed · pytest 1029 passed / 7 skipped · doc-drift 0 error；`uv run pytest tests/test_design_service.py -q` → 42 passed（含新增 `test_prune_orphan_session_dirs_guards`）；Playwright 浏览器实测画布卡片与侧栏缩略图正常上色 |
+| **证据** | `runs/verification/2026-09-21-design-regression-fixes.md` |
+| **Files** | `apps/desktop/src/components/design/designWorkspaceUtils.ts` · `apps/desktop/src/sidebar.tsx` · `services/orchestrator/src/design/generator.py` · `services/orchestrator/src/design/session_store.py` · `services/orchestrator/tests/test_design_service.py` · `CHANGELOG.md` |
+| **备注** | 排查中 prune bug 误删用户 4 个测试 Design 会话（已披露，守护即防复发）；modify 端到端 UI 点验待用户重启 sidecar 后进行 |
+
 ## Chat 历史自动压缩误折叠修复（2026-09-21）
 
 | 项 | 说明 |

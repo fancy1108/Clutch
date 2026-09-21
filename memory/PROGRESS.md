@@ -8,7 +8,7 @@
 - **阶段：** **v1.4.1** 已发（2026-09-21，macOS + Windows；DMG/MSI/NSIS + updater 资产齐了，tap 已同步 1.4.1）。主线 D8–D13 ✅；扩展/MCP **D14–D52 Agent 代 PM ✅**；Desktop E2E ✅；**Design D36 PM ✅**
 - **Git / PM 索引：** [`runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md`](../runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md)
 - **下次优先：** 后续用户可见变更写入 `CHANGELOG.md` `## [Unreleased]`；需要应用内更新时手动跑 `Release (updater assets)`。
-- **本会话：** 修复 Chat 历史被自动压缩误折叠（发出第二问后第一条回答消失）——`should_compact` 改用当前上下文填充估算，默认阈值 100k（commit `9570832`）。
+- **本会话：** 修复 Design 模式两个回归（生成页黑白不渲染 / modify 不切换版本）+ `prune_orphan_session_dirs` 数据丢失守护（commit `c12ddba` / `d8dd342`）。
 
 ## Next Actions
 
@@ -17,6 +17,13 @@
 - 用户可见变更写入 `CHANGELOG.md` `## [Unreleased]`
 
 ## Recent Sessions
+
+## 2026-09-21 会话（Design 回归修复：黑白页 / modify 版本 / prune 守护）
+
+- **做了：** ① 「生成的 Design 页面黑白无样式」——根因不是 LLM 也不是 CDN：画布卡片与侧栏缩略图用**超大 srcDoc iframe**（如 1440px 宽再 scale 缩小），Chromium 与 WKWebView 都会把 paint 冻结在 Tailwind CDN 运行时注入样式之前的初始帧；磁盘上的 HTML 与 `src=` 加载均正常。修复：卡片与缩略图改走 sidecar 预览 URL（`src=`），仅 Pick-element 模式保留 srcDoc（需同源 DOM）。commit `c12ddba`。② 「modify 不切换版本」——后端 `iterate_session` modify 分支原地覆写 `_r0.html`，从不产生新 round；改为走 `_record_screen_round` 记录 `_r1/_r2/…`，与 add/duplicate/delete 对齐。③ `prune_orphan_session_dirs` 守护：注册表为空但磁盘有产物时整体跳过；24 小时内修改过的目录不删。commit `d8dd342`。
+- **⚠️ 事故披露：** 排查期间我用 dev sidecar（`clutch_dev` store）打开用户工作区，`prune_orphan_session_dirs` 因跨 store 注册表不匹配**误删了用户 4 个测试 Design 会话**（磁盘目录被清）。补救：为验证修复重建了 1 个会话；被删的 4 个为测试会话无法恢复，已向用户披露；③ 的守护即为防复发（空 keep 集跳过 + 24h 宽限期 + 回归测试）。
+- **测：** `verify.sh` ✅（vitest 248 · pytest 1029 passed / 7 skipped · doc-drift 0 error）；`test_design_service.py` 42 passed（含新增 prune 守护用例）；浏览器实测画布卡片与侧栏缩略图均正常上色。
+- **下次：** 用户重启 App 后点验 Design 生成页配色与 Rounds 切换；modify 的端到端 UI 点验需重启 sidecar 后做一次。
 
 ## 2026-09-21 会话（Chat 历史自动压缩误折叠修复）
 
