@@ -12,6 +12,14 @@
 
 （暂无）
 
+### [RESOLVED] Chat · 发出第二问后第一条回答从 feed 消失（2026-09-21）
+
+- **现象：** Chat 模式 Q1 回答正常渲染；发出 Q2 的瞬间，第一条回答从 Chat feed 消失（截图实证）。
+- **根因：** `compaction.should_compact` 用**lifetime 累计** `session_tokens`（每轮全量上下文 input 累加，`mcp_react` 还在 ReAct 步间求和）对比固定 15k 阈值 → 正常聊天 3–5 轮即触发 L4 全量折叠；`compact_run_messages` 把可见消息替换为 首条+近4条+digest，中间轮次从 Chat 抹掉。真实会话折叠时当前上下文仅 ~7.8k tokens，远未接近任何模型窗口。
+- **解决：** 触发改为估算**当前上下文填充**（`estimate_context_tokens`：可见消息文本 chars/2 + 系统提示常量 6k），默认阈值 100k（`CLUTCH_COMPACT_THRESHOLD` 可覆盖）；手动 `/compact` 与折叠形态不变。
+- **规避：** 「接近上下文窗口」类判断禁止用 lifetime 累计 token；必须按下一次 LLM 调用实际要发的消息体量估算。
+- **关联：** `compaction.py` · `test_compaction.py` · `test_context_layers_b36.py` · `test_chat_turn_messages_repro.py` · `test_chat_reconnect_repro.py`
+
 ### [RESOLVED] Windows CI `test_start_sleep_wait_done` failed（2026-08-28）
 
 - **现象：** v1.4.0 tag 的 Windows Build 在 `uv run pytest` 挂掉：`test_bg_jobs_d11.py::test_start_sleep_wait_done` 期望 `done`，实际 `failed`。

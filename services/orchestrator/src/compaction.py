@@ -123,12 +123,53 @@ def _build_critical_context(
     return lines
 
 
-def should_compact(state: ClutchState, threshold: int = 15000) -> bool:
-    """Layer 4 emergency compact. Layers 1–3 live in ``context_layers``."""
+# Fixed allowance for the layered system prompt + built-in tool schemas that
+# accompany every chat LLM call. Only used by the L4 emergency trigger estimate.
+_SYSTEM_CONTEXT_ALLOWANCE_TOKENS = 6_000
+
+# Default current-context budget for the L4 emergency fold. The fold rewrites
+# the visible chat history (first + last 4 + digest), so it must engage only
+# when the conversation genuinely approaches a typical hosted model context
+# window (>=128k tokens) — never after a handful of normal turns.
+DEFAULT_COMPACT_THRESHOLD_TOKENS = 100_000
+
+
+def estimate_context_tokens(messages: list[dict[str, Any]]) -> int:
+    """Approximate the context fill the next chat LLM call would send.
+
+    Mirrors `_history_for_llm`: only message text reaches the model (with the
+    assistant outputEvent content as fallback for hybrid replies), plus a fixed
+    allowance for the layered system prompt and tool schemas. English averages
+    ~4 chars/token and CJK ~1.5, so 2 chars/token is a conservative blend.
+    """
+    total_chars = 0
+    for message in messages:
+        if not isinstance(message, dict):
+            continue
+        text = str(message.get("text") or "")
+        if not text.strip():
+            output_events = message.get("outputEvents") or message.get("output_events") or []
+            if isinstance(output_events, list):
+                for event in output_events:
+                    if isinstance(event, dict) and event.get("type") == "assistant":
+                        text = str(event.get("content") or "")
+                        break
+        total_chars += len(text)
+    return total_chars // 2 + _SYSTEM_CONTEXT_ALLOWANCE_TOKENS
+
+
+def should_compact(state: ClutchState, threshold: int = DEFAULT_COMPACT_THRESHOLD_TOKENS) -> bool:
+    """Layer 4 emergency compact. Layers 1–3 live in ``context_layers``.
+
+    Triggers on the *current* context fill (what the next LLM call would send),
+    NOT on lifetime cumulative ``session_tokens``: that counter sums every
+    turn's full-context input, so the old fixed 15k threshold folded healthy
+    conversations after just a few turns and earlier Q&A vanished from Chat.
+    """
     messages = state.get("messages", [])
     if len(messages) <= 5:
         return False
-    
+
     # Read threshold from environment variable if present
     env_threshold = os.environ.get("CLUTCH_COMPACT_THRESHOLD")
     if env_threshold:
@@ -136,7 +177,7 @@ def should_compact(state: ClutchState, threshold: int = 15000) -> bool:
             threshold = int(env_threshold)
         except ValueError:
             pass
-    return state.get("session_tokens", 0) > threshold
+    return estimate_context_tokens(messages) > threshold
 
 
 

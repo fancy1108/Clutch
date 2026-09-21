@@ -132,6 +132,7 @@ Layer 4 为**操作规程**，不是权威来源。冲突时以本文 §铁律 �
 - WKWebView `Can't find variable: useLanguage` / `useHostOs` → 组件调了 hook 却没 import；`pnpm build` 不报，须看 `hookImportGuard.test.ts`
 - `run_terminal_cmd` `shell=True` 后 `proc.kill()` 只杀到 shell，eslint 等子进程继续占满 CPU；超时/Kill 须进程组（`shell_proc.kill_tree`），同一命令已在跑则拒绝再开
 - Windows CI 后台 job 测 `sleep` 不要用 `timeout /t`：无控制台 + stdout PIPE 会立刻 `ERROR: Input redirection is not supported` 并以 exit 1 失败 → 用 `ping -n N 127.0.0.1 >nul`
+- 「接近上下文窗口」类判断禁止用 lifetime 累计 `session_tokens`（每轮全量 input 累加，正常聊天几轮就爆固定阈值）→ 按当前消息体量估算（`estimate_context_tokens`），否则 L4 自动折叠会把历史问答从 Chat 抹掉
 
 ---
 

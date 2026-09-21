@@ -10,6 +10,10 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ## [Unreleased]
 
+### Fixed
+
+- **Chat history vanished mid-conversation:** Auto context-compaction (D8) folded the visible chat after just a few normal turns — the trigger compared a fixed 15k threshold against lifetime cumulative `session_tokens` (every turn's full-context input summed, and summed again across ReAct steps). The L4 fold now engages only when the *current* context fill (estimated from visible message text + system-prompt allowance) approaches the model context window (default 100k tokens, `CLUTCH_COMPACT_THRESHOLD` override). Earlier Q&A stays visible while new turns append below; manual `/compact` is unchanged.
+
 ## [1.4.1] - 2026-09-21
 
 ### Changed
