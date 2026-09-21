@@ -20,6 +20,16 @@
 
 ## Recently Completed
 
+## Chat 历史自动压缩误折叠修复（2026-09-21）
+
+| 项 | 说明 |
+|----|------|
+| **Commit** | `9570832` |
+| **Verification** | `./scripts/verify.sh` → vitest 248 passed · pytest 1028 passed / 7 skipped · doc-drift 0 error；`uv run pytest tests/test_compaction.py tests/test_context_layers_b36.py tests/test_chat_turn_messages_repro.py tests/test_chat_reconnect_repro.py` → 22 passed |
+| **证据** | `runs/verification/2026-09-21-chat-history-autocompact-fix.md`（真实会话 `run_muao447c` 归档回放：折叠时当前上下文 ~7.8k tokens；旧逻辑折、新逻辑不折） |
+| **Files** | `services/orchestrator/src/compaction.py` · `tests/test_compaction.py` · `tests/test_context_layers_b36.py` · `tests/test_chat_turn_messages_repro.py`（新）· `tests/test_chat_reconnect_repro.py`（新）· `CHANGELOG.md` · `CLAUDE.md` · `memory/FAILURES.md` |
+| **备注** | `docs/PRODUCT_INTRO.md` 无需改：§3.1 本就写「估算 token 接近上下文窗口限额时自动折叠」，本次是让代码对齐文档 |
+
 ## Release v1.4.1（2026-09-21）
 
 | 项 | 说明 |

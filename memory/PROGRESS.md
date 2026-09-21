@@ -8,7 +8,7 @@
 - **阶段：** **v1.4.1** 已发（2026-09-21，macOS + Windows；DMG/MSI/NSIS + updater 资产齐了，tap 已同步 1.4.1）。主线 D8–D13 ✅；扩展/MCP **D14–D52 Agent 代 PM ✅**；Desktop E2E ✅；**Design D36 PM ✅**
 - **Git / PM 索引：** [`runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md`](../runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md)
 - **下次优先：** 后续用户可见变更写入 `CHANGELOG.md` `## [Unreleased]`；需要应用内更新时手动跑 `Release (updater assets)`。
-- **本会话：** 发版 v1.4.1（Agnes 3.0 / Image 2.5 / Video 2.5 Flash + D68 回复风格 + Windows CI ping 修复）。
+- **本会话：** 修复 Chat 历史被自动压缩误折叠（发出第二问后第一条回答消失）——`should_compact` 改用当前上下文填充估算，默认阈值 100k（commit `9570832`）。
 
 ## Next Actions
 
@@ -17,6 +17,12 @@
 - 用户可见变更写入 `CHANGELOG.md` `## [Unreleased]`
 
 ## Recent Sessions
+
+## 2026-09-21 会话（Chat 历史自动压缩误折叠修复）
+
+- **做了：** 修复「发出第二问后第一条回答从 feed 消失」。根因：`compaction.should_compact` 用 lifetime 累计 `session_tokens`（每轮全量上下文 input 累加，mcp_react 跨 ReAct 步求和）对比固定 15k 阈值 → 正常聊天几轮即触发 L4 全量折叠，可见消息被换成 首条+近4条+digest。真实会话 `run_muao447c` 折叠时当前上下文仅 ~7.8k tokens。修复：触发改为 `estimate_context_tokens`（可见消息文本 chars/2 + 系统提示常量 6k），默认阈值 100k（`CLUTCH_COMPACT_THRESHOLD` 可覆盖）；手动 `/compact` 与折叠形态不变。commit `9570832`。
+- **测：** `verify.sh` ✅（vitest 248 · pytest 1028 passed / 7 skipped · doc-drift 0 error）；真实会话归档回放：旧逻辑折叠、新逻辑不折；新增 3 个回归测试（阈值守卫 / 两轮 patch 保留首答 / WS 重连保留首答）。
+- **下次：** 重启 Sidecar 后 Chat 连续多问几句确认历史常驻；超长会话（当前上下文 >100k）点验一次自动折叠 digest 是否正常。
 
 ## 2026-09-21 会话（清 dependabot  backlog）
 
