@@ -344,7 +344,18 @@ def prune_orphan_session_dirs(*, keep_run_ids: set[str]) -> list[str]:
     if not root.is_dir():
         return []
     keep = {str(x) for x in keep_run_ids if x}
+    if not keep and any(root.iterdir()):
+        # Registry says "no sessions" but artifacts exist → almost certainly a
+        # store/workspace-id mismatch (D43), not a user wipe. User-initiated
+        # deletes go through delete_session_artifacts directly, so pruning with
+        # an empty keep set is never the right call — it only causes data loss.
+        logger.warning(
+            "design orphan prune skipped: empty keep set with existing artifacts path=%s", root
+        )
+        return []
     removed: list[str] = []
+    # Grace window: never prune freshly-written sessions (registry lag / races).
+    grace_seconds = 24 * 3600
     
     from src.design.generator import get_generator_jobs_and_lock
     _generate_jobs, _generate_lock = get_generator_jobs_and_lock()
@@ -355,6 +366,11 @@ def prune_orphan_session_dirs(*, keep_run_ids: set[str]) -> list[str]:
         name = child.name
         run_id = name.rsplit("__", 1)[-1] if "__" in name else name
         if run_id in keep:
+            continue
+        try:
+            if time_mod.time() - child.stat().st_mtime < grace_seconds:
+                continue
+        except OSError:
             continue
         with _generate_lock:
             job = _generate_jobs.get(run_id)
