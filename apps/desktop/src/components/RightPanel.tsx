@@ -17,7 +17,7 @@ import { AgentChatAvatar } from './AgentChatAvatar';
 import { resolveBrandLogoSrc } from '../services/brandLogos';
 import { UnderDevelopmentNotice } from './ui/UnderDevelopmentNotice';
 import { OverviewDispatchLog } from './terminal-orchestra/OverviewDispatchLog';
-import { BTN_ICON } from './ui/buttonStyles';
+import { UncommittedChangesList } from './UncommittedChangesList';
 import {
   WORKFLOW_STEP_STATUS_BADGE,
   workflowStepStatusLabel,
@@ -673,52 +673,13 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                 {t('Uncommitted changes')} ({uncommitted.length})
               </h4>
 
-              {uncommitted.length === 0 ? (
-                <div className="py-8 text-center bg-surface-container-low/40 rounded-xl border border-dashed border-outline-variant mt-2 text-on-surface-variant/60">
-                  <LegacyIcon name="difference" className="text-[28px] mb-2" />
-                  <p className="text-[11px] font-medium">{t('No uncommitted changes')}</p>
-                </div>
-              ) : (
-                <div className="space-y-1">
-                  {uncommitted.map((file) => {
-                    const isActive = file.name === selectedFile;
-                    return (
-                      <div
-                        key={file.name}
-                        onClick={() => setSelectedFile(file.name)}
-                        className={`flex items-center justify-between p-2 rounded-lg transition-colors cursor-pointer group ${
-                          isActive
-                            ? 'bg-surface-container-low border border-outline-variant/30 font-bold'
-                            : 'hover:bg-surface-container-low'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3 overflow-hidden">
-                          <span
-                            className={`text-[10px] font-bold w-4 text-center ${
-                              file.status === 'A' ? 'text-green-500' : 'text-amber-500'
-                            }`}
-                          >
-                            {file.status}
-                          </span>
-                          <span className="text-xs truncate text-on-surface">{file.name}</span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onOpenWorkspaceFile?.(file.name);
-                          }}
-                          className={BTN_ICON}
-                          title={t('Preview file')}
-                          aria-label={t('Preview file')}
-                        >
-                          <LegacyIcon name="visibility" className="text-[15px]" />
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+              <UncommittedChangesList
+                files={uncommitted}
+                selectedFile={selectedFile}
+                onSelect={setSelectedFile}
+                onOpenFile={onOpenWorkspaceFile}
+                t={t}
+              />
 
               {uncommitted.length > 0 && getActiveFileDiff() && (
                 <div className="mt-6 border border-outline-variant/20 rounded-xl overflow-hidden bg-white shadow-xs">
