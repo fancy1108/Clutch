@@ -27,7 +27,7 @@
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/xterm": "^5.5.0",
     "@xyflow/react": "^12.11.6",
-    "dotenv": "^17.2.3",
+    "dotenv": "^18.0.0",
     "lucide-react": "^1.41.0",
     "motion": "^13.4.0",
     "react": "^19.2.8",
