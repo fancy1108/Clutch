@@ -17,20 +17,17 @@ Clutch is a **desktop app** (Tauri + React) for developers and technical operato
 |---|---|
 | **Stack** | Tauri 2 · React 19 · FastAPI + LangGraph · local-first (`localhost:8123`) |
 | **License** | See [LICENSE](LICENSE) |
-| **Latest release** | [v1.4.0](https://github.com/fancy1108/Clutch/releases/tag/v1.4.0) · [Changelog](CHANGELOG.md#140---2026-08-28) |
+| **Latest release** | [v1.4.1](https://github.com/fancy1108/Clutch/releases/tag/v1.4.1) · [Changelog](CHANGELOG.md#141---2026-09-21) |
 | **Contributors** | Thanks to [@MyloveAless](https://github.com/MyloveAless) for the multi-agent image generation workflow design & end-to-end validation. |
 
-### What's new in v1.4.0
+### What's new in v1.4.1
 
-- **HTTP MCP:** Settings → MCP registers any Streamable HTTP URL (optional API key; HTTPS 401 can fall back to browser OAuth). No vendor-only button.
-- **Settings you can actually use:** Default workspace + confirm-before-stop (FM-01), local MCP trust (FM-02), command allow/ask/deny (FM-03), native Codex/Aider/CodeBuddy/… model scans (FM-04/05).
-- **Worktrees (FM-11 / D32):** Enable isolation, spawn parallel trees, merge onto the main checkout, discard a tree — Agent writes stay in `.clutch/worktrees/`.
-- **Terminal Orchestra:** `@CLI` send dispatches immediately (no confirm card / queue strip). Same CLI reuses the live lane; Overview can save dispatches as a SOP.
-- **Workflow canvas:** Node engine follows the Assigned Agent (no extra dropdown). SOP list shows full names; click a row to use it.
+- **Agnes free models, next generation:** Built-in catalog is now **Agnes 3.0 Flash** (chat), **Agnes Image 2.5 Flash**, and **Agnes Video 2.5 Flash** (720P). Saved selections remap to the new ids automatically.
+- **Tighter default replies (D68):** Clutch Agent now leads with the next action or the answer — no preamble, no closers; errors state cause + fix. The full ADHD output skill stays optional via Skills.
 
-> **v1.4.0 ships macOS + Windows.** macOS: Apple Silicon DMG + in-app updater. Windows: MSI/NSIS. Sidecar hotpatch assets published separately.
+> **v1.4.1 is a macOS-only patch.** Apple Silicon DMG + in-app updater. Windows stays on the v1.4.0 installer (MSI/NSIS).
 
-Older releases (v1.2.9 coding image paste, v1.2.8 workflow hardening, …): [`CHANGELOG.md`](CHANGELOG.md) · [`docs/releases/`](docs/releases/).
+Older releases (v1.4.0 HTTP MCP + worktrees, v1.2.9 coding image paste, …): [`CHANGELOG.md`](CHANGELOG.md) · [`docs/releases/`](docs/releases/).
 
 ---
 
@@ -57,7 +54,7 @@ brew install --cask clutch
 irm https://raw.githubusercontent.com/fancy1108/Clutch/main/scripts/install.ps1 | iex
 ```
 
-Pin a version: `CLUTCH_VERSION=v1.4.0` before running either script (or `v1.3.0` / `v1.2.9` / `v1.2.8` /
+Pin a version: `CLUTCH_VERSION=v1.4.1` before running either script (or `v1.4.0` / `v1.3.0` / `v1.2.9` for earlier stable builds).
 
 Install channels (maintainers): [`docs/RELEASE_MAINTAINER.md`](docs/RELEASE_MAINTAINER.md)
 

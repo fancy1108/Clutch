@@ -8,9 +8,9 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 **Version snapshots:** Per-release product summaries live in [`docs/releases/`](docs/releases/) (historical); current product truth is [`docs/PRODUCT_INTRO.md`](docs/PRODUCT_INTRO.md).
 
-## [1.4.1] - Unreleased
+## [Unreleased]
 
-v1.4.0 之后到本 tag 的用户可见变更都记在这一节（含 Agnes 免费模型换代与 D68 回复风格）。后续 `dev` 提交继续往这里写，打 tag 时改日期并 bump `package.json` / Tauri。
+## [1.4.1] - 2026-09-21
 
 ### Changed
 

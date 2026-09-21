@@ -5,17 +5,17 @@
 
 ## Current Status
 
-- **阶段：** **v1.4.0** 已发；下一目标 **v1.4.1**（D69）。主线 D8–D13 ✅；扩展/MCP **D14–D52 Agent 代 PM ✅**；Desktop E2E ✅；**Design D36 PM ✅**
+- **阶段：** **v1.4.1** 发版中（CHANGELOG 已冻结、版本号已 bump；待 merge `main` 打 tag）。主线 D8–D13 ✅；扩展/MCP **D14–D52 Agent 代 PM ✅**；Desktop E2E ✅；**Design D36 PM ✅**
 - **Git / PM 索引：** [`runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md`](../runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md)
-- **下次优先：** 用户可见变更写入 `CHANGELOG.md` `## [1.4.1] - Unreleased`。1.4.0 资产就绪后同步 Homebrew tap。
-- **本会话：** 评估腾讯 TeamAI 思路后，产品确认 **流程图共享暂不立项**，记入需求池 **B-52**。
+- **下次优先：** v1.4.1 tag 推送后等 CI 出 DMG，同步 Homebrew tap；后续用户可见变更写入 `CHANGELOG.md` `## [Unreleased]`。
+- **本会话：** 发版 v1.4.1（Agnes 3.0 / Image 2.5 / Video 2.5 Flash + D68 回复风格 + Windows CI ping 修复）。
 
 ## Next Actions
 
 - **B-52 流程图共享不开工**（需求池候选，等人再开）
 - 重启 Sidecar / App 后用 Clutch Agent 问一句排错题，确认第一句是动作或结论、没有配图
-- GitHub Release 资产就绪后同步 Homebrew tap
-- 用户可见变更写入 `CHANGELOG.md` `## [1.4.1] - Unreleased`
+- v1.4.1 GitHub Release 资产就绪后同步 Homebrew tap
+- 用户可见变更写入 `CHANGELOG.md` `## [Unreleased]`
 
 ## Recent Sessions
 

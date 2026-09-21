@@ -14,7 +14,7 @@
 | `memory/ROADMAP.md` §Chat Clutch Agent | 勾选状态（Default FAIL） |
 | `memory/FILEMAP.md` | 入口索引 |
 
-**各交付期再更新：** `docs/PRODUCT_INTRO.md`、`CHANGELOG.md` `## [1.4.1] - Unreleased`（已发 v1.4.0）；MCP 真相时 `docs/mcp-servers/*`；会话 Check-out 写 `PROGRESS` / `DELIVERABLES`。
+**各交付期再更新：** `docs/PRODUCT_INTRO.md`、`CHANGELOG.md` `## [Unreleased]`（已发 v1.4.1）；MCP 真相时 `docs/mcp-servers/*`；会话 Check-out 写 `PROGRESS` / `DELIVERABLES`。
 
 **编号约定：** 本文交付期 Dn ≠ DECISIONS Dx。
 
