@@ -25,7 +25,7 @@ Clutch 是一款**桌面应用**（Tauri + React），面向独立开发者和�
 - **Agnes 免费模型换代：** 内置目录改为 **Agnes 3.0 Flash**（对话）、**Agnes Image 2.5 Flash**、**Agnes Video 2.5 Flash**（720P）。已保存的选择自动 remap 到新 id。
 - **更干脆的默认回复（D68）：** Clutch Agent 第一句直接给下一步动作或结论——无开场白、无客套；报错说明原因 + 修法。完整 ADHD 输出 Skill 仍可在 Skills 里选用。
 
-> **v1.4.1 为仅 macOS 的补丁版。** Apple Silicon DMG + 应用内更新。Windows 继续使用 v1.4.0 安装包（MSI/NSIS）。
+> **v1.4.1 同时发 macOS + Windows。** macOS：Apple Silicon DMG + 应用内更新。Windows：MSI/NSIS。
 
 更早版本（v1.4.0 HTTP MCP + Worktree、v1.2.9 Coding 发图等）：[`CHANGELOG.md`](CHANGELOG.md) · [`docs/releases/`](docs/releases/)。
 

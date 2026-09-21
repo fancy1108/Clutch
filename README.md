@@ -25,7 +25,7 @@ Clutch is a **desktop app** (Tauri + React) for developers and technical operato
 - **Agnes free models, next generation:** Built-in catalog is now **Agnes 3.0 Flash** (chat), **Agnes Image 2.5 Flash**, and **Agnes Video 2.5 Flash** (720P). Saved selections remap to the new ids automatically.
 - **Tighter default replies (D68):** Clutch Agent now leads with the next action or the answer — no preamble, no closers; errors state cause + fix. The full ADHD output skill stays optional via Skills.
 
-> **v1.4.1 is a macOS-only patch.** Apple Silicon DMG + in-app updater. Windows stays on the v1.4.0 installer (MSI/NSIS).
+> **v1.4.1 ships macOS + Windows.** macOS: Apple Silicon DMG + in-app updater. Windows: MSI/NSIS.
 
 Older releases (v1.4.0 HTTP MCP + worktrees, v1.2.9 coding image paste, …): [`CHANGELOG.md`](CHANGELOG.md) · [`docs/releases/`](docs/releases/).
 
