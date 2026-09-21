@@ -14,6 +14,7 @@
 | Homebrew / winget 渠道 | [`PACKAGE_MANAGERS.md`](./PACKAGE_MANAGERS.md) |
 | **维护者发版 / AI 代劳** | **[`RELEASE_MAINTAINER.md`](./RELEASE_MAINTAINER.md)** |
 | 评估产品能力 | [`PRODUCT_INTRO.md`](./PRODUCT_INTRO.md) |
+| Design 模式（产品/业务） | [`DESIGN_PRODUCT_INTRO.md`](./DESIGN_PRODUCT_INTRO.md) · [`DESIGN_WORKSPACE_GUIDE.md`](./DESIGN_WORKSPACE_GUIDE.md) |
 | 安装 DMG / Windows | [`INSTALL.md`](./INSTALL.md) |
 | macOS 应用内更新 | [`UPDATES.md`](./UPDATES.md) |
 | 从源码开发 | [`BUILD_FROM_SOURCE.md`](./BUILD_FROM_SOURCE.md) |
@@ -29,6 +30,8 @@
 | 文档 | 用途 |
 |------|------|
 | [`PRODUCT_INTRO.md`](./PRODUCT_INTRO.md) | 定位、痛点、功能清单、运行机制 |
+| [`DESIGN_PRODUCT_INTRO.md`](./DESIGN_PRODUCT_INTRO.md) | Design 模式 WHAT/WHY（产品经理 / 业务） |
+| [`DESIGN_WORKSPACE_GUIDE.md`](./DESIGN_WORKSPACE_GUIDE.md) | Design 模式功能与业务逻辑分析 |
 | [`ARCHITECTURE.md`](./ARCHITECTURE.md) | 系统架构、LangGraph 工作流、WebSocket、ADR |
 | [`PROJECT_SCOPE.md`](./PROJECT_SCOPE.md) | Goals / Non-Goals |
 | [`EXTENSIBILITY.md`](./EXTENSIBILITY.md) | 官方扩展点与禁止替换区域 |
@@ -70,7 +73,10 @@
 | 文档 | 用途 |
 |------|------|
 | [`UI_UX_GUIDELINES.md`](./UI_UX_GUIDELINES.md) | React + Tailwind 组件与视觉规范（权威） |
+| [`FRONTEND_MODULES_ACCEPTANCE.md`](./FRONTEND_MODULES_ACCEPTANCE.md) | FM-01…22 桌面点验剧本（入口、步骤、期望；状态只在 ROADMAP） |
+| [`PLATFORM_MAINTENANCE.md`](./PLATFORM_MAINTENANCE.md) | macOS / Windows 平台 UI 文件边界 |
 | [`specs/core/design.md`](../specs/core/design.md) | 视觉设计历史快照 → 以上规范 |
+| 根目录 [`PRODUCT.md`](../PRODUCT.md) | 战略设计寄存器（impeccable：用户、品牌、原则） |
 
 ---
 
@@ -83,6 +89,8 @@
 | [`memory/DECISIONS.md`](../memory/DECISIONS.md) | 架构决策与开放问题 |
 | [`specs/core/tasks.md`](../specs/core/tasks.md) | M0–M4 开发任务清单 |
 | [`specs/core/hybrid-runtime-plan.md`](../specs/core/hybrid-runtime-plan.md) | D25 Hybrid Runtime（HRT-xx） |
+| [`specs/core/d34-terminal-orchestra-plan.md`](../specs/core/d34-terminal-orchestra-plan.md) | D34 Terminal Orchestra Task |
+| [`specs/core/frontend-modules-plan.md`](../specs/core/frontend-modules-plan.md) | 前端可点验模块 FM-01…22（D56） |
 
 ---
 
@@ -92,6 +100,7 @@
 |------|------|
 | [`research/`](./research/) | 探索性设计笔记 — **Research Notice**，非真相源 |
 | [`archive/`](./archive/) | 历史叙事（规划、handover）— **Archive Notice** |
+| [`archive/AI_STUDIO_HANDOVER.md`](./archive/AI_STUDIO_HANDOVER.md) | 原型期前端交接（过时）；根目录 [`AI_STUDIO_HANDOVER.md`](./AI_STUDIO_HANDOVER.md) 仅为跳转 stub |
 | [`agents/`](./agents/) | Issue tracker / triage 技能说明 |
 
 ---

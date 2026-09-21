@@ -1,7 +1,7 @@
 # Clutch — 本地 AI 多 Agent 编排与监督控制台
 
-> **This document describes WHAT users can do** in **v1.4.0**.  
-> GitHub Release: [v1.4.0](https://github.com/fancy1108/Clutch/releases/tag/v1.4.0).  
+> **This document describes WHAT users can do** on `dev` toward **v1.4.1**.  
+> Latest GitHub Release: [v1.4.0](https://github.com/fancy1108/Clutch/releases/tag/v1.4.0). Deltas vs 1.4.0: [`CHANGELOG` § 1.4.1](../CHANGELOG.md).  
 > Implementation details belong in [`ARCHITECTURE.md`](./ARCHITECTURE.md).  
 > Acceptance status belongs in [`memory/ROADMAP.md`](../memory/ROADMAP.md) — not here.
 

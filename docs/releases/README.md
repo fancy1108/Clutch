@@ -1,7 +1,7 @@
 # Release snapshots (`docs/releases/`)
 
 > **Purpose:** Freeze **what the product was** at each major/minor version.  
-> **Current product truth:** [`PRODUCT_INTRO.md`](../PRODUCT_INTRO.md) — shipped **v1.4.0**. Next user-facing deltas go in [`CHANGELOG.md`](../../CHANGELOG.md) `## [Unreleased]`.  
+> **Current product truth:** [`PRODUCT_INTRO.md`](../PRODUCT_INTRO.md) — shipped **v1.4.0**; `dev` 下一目标 **v1.4.1**. Next user-facing deltas go in [`CHANGELOG.md`](../../CHANGELOG.md) `## [1.4.1] - Unreleased`.  
 > **Per-change log:** [`CHANGELOG.md`](../../CHANGELOG.md) — user-facing deltas between versions.  
 > **GitHub Release body:** CI runs [`scripts/render-release-notes.sh`](../../scripts/render-release-notes.sh) — the matching `## [x.y.z]` section becomes **What's in this release** at the top of the Release page; install/Gatekeeper fragments follow below.
 

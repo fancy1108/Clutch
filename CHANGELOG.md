@@ -8,12 +8,18 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 **Version snapshots:** Per-release product summaries live in [`docs/releases/`](docs/releases/) (historical); current product truth is [`docs/PRODUCT_INTRO.md`](docs/PRODUCT_INTRO.md).
 
-## [Unreleased]
+## [1.4.1] - Unreleased
+
+v1.4.0 之后到本 tag 的用户可见变更都记在这一节（含 Agnes 免费模型换代与 D68 回复风格）。后续 `dev` 提交继续往这里写，打 tag 时改日期并 bump `package.json` / Tauri。
 
 ### Changed
 
 - **Agnes free models:** Built-in catalog is now **Agnes 3.0 Flash** (chat), **Agnes Image 2.5 Flash**, and **Agnes Video 2.5 Flash** (720P, OpenAI Videos-compatible). Retired `agnes-2.0-flash`, `agnes-image-2.1-flash`, and `agnes-video-v2.0`; saved selections remap to the new ids.
 - **Clutch Agent reply style (D68):** Default replies lead with the next action or the answer, skip preamble/closers, and state error cause + fix. Time estimates, `<agent_status>` recaps, and unsolicited images stay out of the default prompt; the full ADHD output skill remains optional via Skills / `read_skill`.
+
+### Fixed
+
+- **Windows CI delay test:** Background-job sleep on `windows-latest` now uses `ping -n` instead of `timeout /t` (piped stdout made `timeout` fail immediately).
 
 ## [1.4.0] - 2026-08-28
 

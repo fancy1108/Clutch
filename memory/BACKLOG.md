@@ -35,6 +35,9 @@
 | B-12 | 工作区 `.clutch/AGENTS.md` 项目记忆 | 候选 | 人类确认 |
 | B-13 | LSP diagnostics 回灌 Builder | 候选 | 人类确认 |
 | B-14 | Cache-safe 子 Agent fork | 候选 | FM-11 后评估 |
+| B-52 | 流程图（SOP）跟项目走：换电脑 / 同事打开同一仓库时对齐同一张图 | 候选 | 2026-09-10 产品确认暂不立项；人类再开才升格 |
+
+> **B-52 范围（评估 TeamAI 思路后记下，未开工）：** 共享的是 **流程图 + Agent 规矩**，不是 Skill，也不是跨 Claude/CodeBuddy 的技能同步。不做账号/团队云。D5 已有「可选导出到 `.clutch/workflows/`」，本条是把它做成默认对齐，不是新造一种文件。**不做：** 场景 4 跨工具 Skill 注入、场景 5 组织治理。相关但不同：B-12 是项目记忆文件。
 
 ### P0–P2 · Agent 执行对标（Codex / Claude Code）
 

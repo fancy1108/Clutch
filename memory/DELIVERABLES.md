@@ -4,6 +4,22 @@
 > **何时写：** 每个**代码 Task** 完成并 commit 后，在 Check-out 追加一节（见 `CLAUDE.md` §Check-out）。  
 > **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期；冷数据见 [`archive/`](./archive/)。
 
+## Archive Index
+
+| 归档 | 内容 |
+|------|------|
+| [`archive/DELIVERABLES-M0.md`](./archive/DELIVERABLES-M0.md) | M0 基座 |
+| [`archive/DELIVERABLES-M1.md`](./archive/DELIVERABLES-M1.md) | M1 引擎 |
+| [`archive/DELIVERABLES-M2-M4-P2.md`](./archive/DELIVERABLES-M2-M4-P2.md) | M2–M4、P2 |
+| [`archive/DELIVERABLES-M3.md`](./archive/DELIVERABLES-M3.md) | M3 工具链 |
+| [`archive/DELIVERABLES-POST-MVP.md`](./archive/DELIVERABLES-POST-MVP.md) | D25 后迭代 |
+| [`archive/DELIVERABLES-HRT.md`](./archive/DELIVERABLES-HRT.md) | Hybrid Runtime HRT-00~10 |
+| [`archive/DELIVERABLES-OSR.md`](./archive/DELIVERABLES-OSR.md) | OSR T0–T2 / OSR-16/17 |
+
+本文件保留 **v1.4.0 前后** 仍在接力的交付索引（未整节迁入 archive）。
+
+## Recently Completed
+
 ## D66/D67 撤回 FM-06（2026-08-28）
 
 | 项 | 说明 |
