@@ -18,6 +18,13 @@
 
 ## Recent Sessions
 
+## 2026-09-21 会话（清 dependabot  backlog）
+
+- **做了：** 合并全部 14 个 dependabot PR（含 major：vitest 5.0.1、motion 13.4.0、@types/node 26.6.1）。`windows-build.yml`/`ci.yml` 全绿后逐个 merge；dependabot 分支合并即自动删除，远端只剩 main/dev/win。
+- **坑：** Tauri 版本守卫要求 NPM 包与 Rust crate 同 major/minor → updater/dialog 这类双侧 PR 必须先合 NPM 侧（#135→#130），否则 `build` 报 version mismatched；rebase 早于配对合并产生的失败是陈旧检查，重 rebase 即消。
+- **测：** 合并后 `dev` 本地 `verify.sh` ✅（pytest 1025 passed / 7 skipped）。
+- **下次：** 这批依赖升级随下个版本发布；点验时留意 motion 13 动画回归。
+
 ## 2026-09-21 会话（发版 v1.4.1）
 
 - **做了：** 提交 docs/memory 批次（`7043ac6`）→ bump + 冻结 CHANGELOG（`9bdca8b`）→ PR [#144](https://github.com/fancy1108/Clutch/pull/144) CI 全绿后 merge → `main` 打 tag `v1.4.1` → CI 出 DMG → 手动同步 Homebrew tap（`3eff0ed`）→ 手动触发 `Release (updater assets)`，`latest.json`/`Clutch.app.tar.gz`/`.sig` 已挂 Release。
