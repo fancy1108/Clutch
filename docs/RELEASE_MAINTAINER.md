@@ -28,16 +28,15 @@
 | 7. 同步 Homebrew tap | AI 或 CI | 见下文 §Homebrew |
 | 8. macOS 应用内更新（可选） | 你或 AI | 见 [`UPDATES.md`](./UPDATES.md) — 跑 `Release (updater assets)` |
 
-Windows 安装包由 [`.github/workflows/windows-build.yml`](../.github/workflows/windows-build.yml) 构建；**默认在次版本（minor）发版时**挂到 GitHub Release。**补丁版（patch）只发 macOS DMG**。个别 minor 也可声明 **macOS-only**（如 **v1.2.0**），此时不跑 Windows Build，Win 用户继续用上一版有安装包的 Release（v1.1.1）。
+Windows 安装包由 [`.github/workflows/windows-build.yml`](../.github/workflows/windows-build.yml) 构建；**该 workflow 监听所有 `v*` tag，每次发版（含 patch）都会自动把 MSI/NSIS 挂到 GitHub Release**（自 v1.4.1 起以此为准；早年「patch 只发 macOS」系手动时代的说法，已过时）。
 
 ### 平台发版策略
 
 | 版本类型 | 示例 | macOS | Windows |
 |----------|------|-------|---------|
-| **Patch** | 1.1.2, **1.2.1** | ✅ DMG + updater | ❌ 不发新包 |
-| **Patch（例外）** | **1.2.2** | ✅ | ✅ MSI/NSIS（Design Preview Win 对齐） |
-| **Minor（默认）** | 1.4.0, 1.3.0, … | ✅ | ✅ MSI/NSIS 挂 Release |
-| **Minor（例外）** | **1.2.0** | ✅ DMG + updater | ❌ 本版跳过（Win 留在 v1.1.1） |
+| **现行（patch / minor 相同）** | **1.4.1**, 1.4.0 | ✅ DMG + updater | ✅ MSI/NSIS（tag 自动触发 `windows-build.yml`） |
+| **历史 Patch** | 1.1.2, **1.2.1** | ✅ DMG + updater | ❌ 当时未发 |
+| **历史 Minor 例外** | **1.2.0** | ✅ DMG + updater | ❌ 本版跳过（Win 留在 v1.1.1） |
 
 ---
 

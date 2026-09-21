@@ -5,7 +5,7 @@
 
 ## Current Status
 
-- **阶段：** **v1.4.1** 已发（2026-09-21，macOS-only patch；DMG + SHA256SUMS 已上 Release，tap 已同步 1.4.1）。主线 D8–D13 ✅；扩展/MCP **D14–D52 Agent 代 PM ✅**；Desktop E2E ✅；**Design D36 PM ✅**
+- **阶段：** **v1.4.1** 已发（2026-09-21，macOS + Windows；DMG/MSI/NSIS + updater 资产齐了，tap 已同步 1.4.1）。主线 D8–D13 ✅；扩展/MCP **D14–D52 Agent 代 PM ✅**；Desktop E2E ✅；**Design D36 PM ✅**
 - **Git / PM 索引：** [`runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md`](../runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md)
 - **下次优先：** 后续用户可见变更写入 `CHANGELOG.md` `## [Unreleased]`；需要应用内更新时手动跑 `Release (updater assets)`。
 - **本会话：** 发版 v1.4.1（Agnes 3.0 / Image 2.5 / Video 2.5 Flash + D68 回复风格 + Windows CI ping 修复）。
@@ -20,10 +20,10 @@
 
 ## 2026-09-21 会话（发版 v1.4.1）
 
-- **做了：** 提交 docs/memory 批次（`7043ac6`）→ bump + 冻结 CHANGELOG（`9bdca8b`）→ PR [#144](https://github.com/fancy1108/Clutch/pull/144) CI 全绿后 merge → `main` 打 tag `v1.4.1` → CI 出 DMG → 手动同步 Homebrew tap（`3eff0ed`）。
-- **测：** `verify.sh` pytest 1025 passed / 7 skipped；`release-preflight.sh v1.4.1` ✅；Release 资产 `Clutch_1.4.1_aarch64.dmg` + `SHA256SUMS.txt`。
-- **发现：** CI tap 自动同步的 `HOMEBREW_TAP_GITHUB_TOKEN` 未配置（自 v1.2.1 起 tap 一直靠手动）；`docs/releases/README.md` 原称 patch 可免快照，与 INV-R6 门禁矛盾，已改为「patch 必须快照」。
-- **下次：** 要应用内更新资产时手动跑 `Release (updater assets)`；考虑配 `HOMEBREW_TAP_GITHUB_TOKEN` 省掉手动同步。
+- **做了：** 提交 docs/memory 批次（`7043ac6`）→ bump + 冻结 CHANGELOG（`9bdca8b`）→ PR [#144](https://github.com/fancy1108/Clutch/pull/144) CI 全绿后 merge → `main` 打 tag `v1.4.1` → CI 出 DMG → 手动同步 Homebrew tap（`3eff0ed`）→ 手动触发 `Release (updater assets)`，`latest.json`/`Clutch.app.tar.gz`/`.sig` 已挂 Release。
+- **测：** `verify.sh` pytest 1025 passed / 7 skipped；`release-preflight.sh v1.4.1` ✅；updater workflow run 35554855630 ✅。
+- **发现：** ① CI tap 自动同步的 `HOMEBREW_TAP_GITHUB_TOKEN` 未配置（自 v1.2.1 起 tap 一直靠手动）；② `docs/releases/README.md` 原称 patch 可免快照，与 INV-R6 门禁矛盾，已改为「patch 必须快照」；③ `windows-build.yml` 监听所有 `v*` tag，patch 也自动出 Windows 安装包——`RELEASE_MAINTAINER.md`「patch 只发 macOS」过时，已按现实改写（v1.4.1 实为 macOS + Windows）。
+- **下次：** 考虑配 `HOMEBREW_TAP_GITHUB_TOKEN` 省掉手动同步。
 
 ## 2026-09-10 会话（B-52 流程图共享入池）
 

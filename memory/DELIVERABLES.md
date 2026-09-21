@@ -28,7 +28,7 @@
 | **Verification** | `./scripts/verify.sh` → pytest 1025 passed / 7 skipped · doc-drift 0 error；`release-preflight.sh v1.4.1` ✅ INV-R1…R6；PR #144 CI 全绿（verify/build/gitleaks + Cursor Approval/Security） |
 | **证据** | [Release v1.4.1](https://github.com/fancy1108/Clutch/releases/tag/v1.4.1)（`Clutch_1.4.1_aarch64.dmg` + `SHA256SUMS.txt`，CI run 35554194551）；tap bump `fancy1108/homebrew-clutch@3eff0ed` |
 | **Files** | `CHANGELOG.md` · 双 README · `docs/releases/v1.4.1.md`（新增快照）· 版本号五处（root/desktop `package.json`、`tauri.conf.json`、`Cargo.toml/lock`）· `PRODUCT_INTRO.md` · `STABILITY.md` |
-| **备注** | macOS-only patch（Windows 留 v1.4.0）；CI tap 同步因 `HOMEBREW_TAP_GITHUB_TOKEN` 未配置按设计跳过，已手动 `sync-homebrew-tap.sh`；应用内更新资产（updater）未跑，需要时手动 `Release (updater assets)` |
+| **备注** | macOS + Windows（`windows-build.yml` 对所有 `v*` tag 自动出包，patch 策略文档已按现实修正）；updater 资产（`latest.json`/`Clutch.app.tar.gz`/`.sig`）由手动 `Release (updater assets)` 补齐（run 35554855630）；CI tap 同步因 `HOMEBREW_TAP_GITHUB_TOKEN` 未配置按设计跳过，已手动 `sync-homebrew-tap.sh` |
 
 ## D66/D67 撤回 FM-06（2026-08-28）
 
