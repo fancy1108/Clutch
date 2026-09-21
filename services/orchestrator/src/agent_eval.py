@@ -102,8 +102,8 @@ def assemble_eval_prompt(**kwargs: Any) -> PromptAssembly:
     agent = kwargs.pop("agent", None) or eval_agent()
     ablation = kwargs.pop("ablation", None)
     base = {
-        "model_name": "Agnes 2.0 Flash",
-        "model_api": "agnes-2.0-flash",
+        "model_name": "Agnes 3.0 Flash",
+        "model_api": "agnes-3.0-flash",
         "mcp_servers_bound": True,
         "permission_mode": "auto_edit",
         "include_skill_bodies": False,
@@ -125,11 +125,11 @@ def live_eval_enabled() -> bool:
 
 def resolve_agnes_eval_model_id(router: Any) -> str | None:
     try:
-        _spec, key = router.resolve_for_model("agnes-2.0-flash")
+        _spec, key = router.resolve_for_model("agnes-3.0-flash")
     except KeyError:
         key = None
     if key:
-        return "agnes-2.0-flash"
+        return "agnes-3.0-flash"
     for mid, spec in getattr(router, "_models", {}).items():
         if "agnes-ai.com" in (spec.base_url or "") and router.get_api_key(spec.provider_id):
             return str(mid)

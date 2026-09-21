@@ -189,6 +189,9 @@ docs/releases/                   # 按需：版本产品快照 vX.Y.md
 |---------|--------|---------|
 | 铁律、命令、Check-in | `CLAUDE.md` | 治理规则变更时 |
 | 产品最新功能与特性 | [`docs/PRODUCT_INTRO.md`](./PRODUCT_INTRO.md) | 功能发布或大幅迭代时 |
+| Design 模式产品介绍 / 业务指南 | [`docs/DESIGN_PRODUCT_INTRO.md`](./DESIGN_PRODUCT_INTRO.md) · [`docs/DESIGN_WORKSPACE_GUIDE.md`](./DESIGN_WORKSPACE_GUIDE.md) | Design 对外说明变更时 |
+| FM 点验剧本 | [`docs/FRONTEND_MODULES_ACCEPTANCE.md`](./FRONTEND_MODULES_ACCEPTANCE.md) | 新增/撤回 FM 模块时（状态仍只记 ROADMAP） |
+| 平台 UI 边界 | [`docs/PLATFORM_MAINTENANCE.md`](./PLATFORM_MAINTENANCE.md) | macOS / Windows chrome 文件变更时 |
 | 产品目标、MVP、Non-Goals（历史） | [`specs/core/proposal.md`](../specs/core/proposal.md) | 仅作快照，不随演进更新 |
 | 视觉规范 | `specs/core/design.md` | 第 4–5 步 |
 | 前端 UI 规范（权威） | [`docs/UI_UX_GUIDELINES.md`](./UI_UX_GUIDELINES.md) | 组件与视觉变更时 |

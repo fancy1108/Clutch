@@ -13,7 +13,7 @@ def test_finalize_image_calls_configured_model(monkeypatch) -> None:
     monkeypatch.setattr(
         "src.image_router.resolve_configured_image_model",
         lambda: (
-            SimpleNamespace(id="agnes-image-2.1-flash", name="Agnes Image", provider_id="agnes"),
+            SimpleNamespace(id="agnes-image-2.5-flash", name="Agnes Image", provider_id="agnes"),
             "sk-test",
         ),
     )

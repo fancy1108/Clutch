@@ -33,6 +33,10 @@
 | 铁律、命令、Check-in | `CLAUDE.md` |
 | **想增强 Chat 自研 Clutch Agent（手脚/Plan/MCP/对话 UX/分层 prompt）** | **`specs/core/clutch-agent-capability-plan.md`** · D44 · **D53** |
 | 产品介绍文档 | `docs/PRODUCT_INTRO.md` |
+| Design 模式产品介绍（WHAT/WHY） | `docs/DESIGN_PRODUCT_INTRO.md` |
+| Design 模式业务逻辑指南 | `docs/DESIGN_WORKSPACE_GUIDE.md` |
+| 战略设计寄存器（impeccable） | 根目录 `PRODUCT.md` |
+| Reasonix 本地权限（数据目录已 gitignore） | 根目录 `reasonix.toml` · `.reasonix/` |
 | **新手入门（中英）** | `docs/GETTING_STARTED.md` · 仓库 `README.md` / `README.zh-CN.md` |
 | 文档总索引 | `docs/README.md` |
 | 系统架构图 | 叙事 `docs/ARCHITECTURE.md`（本地 HTML 预览不入库） |
@@ -43,7 +47,7 @@
 | 漏洞报告 | `SECURITY.md` |
 | 外部审计委托 / 报告入口 | `docs/EXTERNAL_AUDIT.md` · `docs/security-audit/` |
 | 社区行为准则 | `CODE_OF_CONDUCT.md` |
-| 版本变更 | `CHANGELOG.md`（已发 **v1.4.0**；其后 `## [Unreleased]`） · 快照 `docs/releases/` |
+| 版本变更 | `CHANGELOG.md`（已发 **v1.4.0**；开发中 `## [1.4.1] - Unreleased`） · 快照 `docs/releases/` |
 | Goals / Non-Goals | `docs/PROJECT_SCOPE.md` |
 | API / Schema 稳定性 | `docs/STABILITY.md` |
 | 扩展点边界 | `docs/EXTENSIBILITY.md` |
@@ -61,6 +65,8 @@
 | 历史叙事归档 | `docs/archive/` · `specs/archive/` |
 | 视觉设计快照 | `specs/core/design.md` → `docs/UI_UX_GUIDELINES.md` |
 | 一键原型与交互契约规范 (PRD) | `specs/core/prd-one-click-interactive-prototype.md` |
+| D34 Terminal Orchestra 执行计划 | `specs/core/d34-terminal-orchestra-plan.md` · UI 参考 `experiments/d34_terminal_orchestra_ui/` |
+| Design 出码质量改进计划（历史） | `specs/core/design-quality-improvement-plan.md` |
 | 交互理解引擎 (IUE) — 6 阶段管道 | `services/orchestrator/src/iue/` (`models.py`, `engine.py`, `__init__.py`) |
 | 原型预览 API（接入 IUE） | `services/orchestrator/src/routes/preview.py` |
 | React 代码生成器 | `services/orchestrator/src/codegen/` (`react_generator.py`, `__init__.py`) |
@@ -75,8 +81,8 @@
 | Prototype → Task 全量映射 | `specs/core/tasks.md` §Prototype → Task 映射 |
 | 待建 pytest 与 task 映射 | `specs/core/tasks.md` §待建 pytest 文件 |
 | 里程碑级验收 T-01~04 | `specs/core/tasks.md` §测试与验收 |
-| 进度 / 待办 | `memory/PROGRESS.md`（近期）· 归档 `memory/archive/PROGRESS-*.md` |
-| **Git worktree · release slices** | v1.0.2 / v1.0.3 worktree 已清理；**v1.1.0** / **v1.1.1** / **v1.1.2** / **v1.2.0**（macOS-only 发版材料，2026-07-10；tag 待 `main`） |
+| 进度 / 待办 | `memory/PROGRESS.md`（近期）· 归档 `memory/archive/PROGRESS-2026-Q2.md` · `PROGRESS-2026-Q3.md` · `PROGRESS-2026-Q3-late.md` |
+| 发版产品快照 | 当前 **v1.4.0** · [`docs/releases/`](../docs/releases/) · [`docs/releases/v1.4.0.md`](../docs/releases/v1.4.0.md) |
 | 候选优化需求池（未立项） | `memory/BACKLOG.md` · Active；**B-01/04/05/06/08/10/18–22/42/43/46/47/49** 已升格 FM-xx（D56） |
 | GitHub Issue 待修复 Bug | `memory/BACKLOG.md` §GitHub Issues · 待修复 Bug |
 | **开源排期 OSR-xx 验收状态** | **`memory/ROADMAP.md` §开源分发** · Task 定义 `docs/OPEN_SOURCE_RELEASE.md` §7.2 |
@@ -102,7 +108,7 @@
 | 测试策略与 E2E 范围 | `memory/DECISIONS.md`（D1） |
 | E2E 落地前提勾选 | `memory/ROADMAP.md` §E2E 落地前提 |
 | 后端单元测试（现有 + 随 task 新建） | `services/orchestrator/tests/`；清单见 `tasks.md` §待建 pytest |
-| Video Core 测试 | `tests/test_video_core/` |
+| Video Core 测试 | `services/orchestrator/tests/test_video_core/` |
 | CI 工作流 | `.github/workflows/ci.yml` |
 | Secret scanning（gitleaks） | `.github/workflows/secret-scan.yml` |
 | 本地一键校验 | `scripts/verify.sh` |
@@ -149,7 +155,7 @@
 | 主控分派横幅（FM-09） | `ChatFeed.tsx` `dispatch-banner` |
 | 画布节点引擎（FM-10 / D65） | `WorkflowOrchestration.tsx` Assigned Agent `node-agent-select` · Overview `step-engine-*`（跟 Agent 类型，无 Node engine 下拉） |
 | 并行 worktree（FM-11） | `WorktreeIsolationBar.tsx` `FooterWorktreeMenu` · `footer-worktree-trigger` · `GET/POST /api/worktree` |
-| API 抽象（mock 待 M2 替换） | `services/api.ts` |
+| Chat WS re-export | `services/api.ts`（re-export `clutchState`；M2 已去 mock） |
 | 侧栏（工作区 / 历史，M2-07/09） | `sidebar.tsx` |
 | 底部状态栏（Branch / Model / Agent · 容器宽度自适应） | `App.tsx` footer · `FooterMenu.tsx` `FooterField*` |
 | 工作区 Git 分支 API | `services/workspaceApi.ts` → `GET /api/workspace/git` |
@@ -200,7 +206,7 @@
 | Chat markdown（fence / 路径预览） | `components/chatContentRender.tsx` · `services/workspacePathLinks.ts` |
 | Coding 附件上传 / 路径 resolve API | `services/workspaceApi.ts` → `POST /api/workspace/attachments` · `GET /api/workspace/file/resolve`；后端 `workspace_attachments.py` |
 | Terminal Orchestra（Lane / OrchestratorBar / 路径 link） | `components/terminal-orchestra/`（`OrchestratorBar.tsx` 发图 chip；`terminalPathLinkProvider.ts` xterm 可点路径） |
-| 终端模式 xterm 视图 | `components/ChatTerminalView.tsx`（遗留；现用 Orchestra） |
+| 终端模式 xterm 视图 | `components/ChatTerminalView.tsx`（无引用遗留；现用 `terminal-orchestra/`） |
 | 对话/终端模式切换状态 | `services/workspaceViewMode.ts` |
 | 工作流 Chat 步骤 / Agent 类型解析 | `services/workflowAgentSteps.ts` |
 | Agent / 工具品牌 Logo | `services/brandLogos.ts` · `components/BrandLogo.tsx` · `assets/tool-logos/`（含 `mimo.svg`） |
@@ -229,7 +235,6 @@
 | 顶栏 | `components/Header.tsx` |
 | 全局样式 | `index.css` |
 | 类型定义 | `types.ts` |
-| **待废弃** mock 数据 | `mockData.ts` |
 | Vite 配置与代理 | `vite.config.ts` |
 | Tauri 壳与 Sidecar 拉起 | `src-tauri/` |
 
@@ -254,9 +259,9 @@
 | HumanInputKind 载荷 | `src/human_input.py` |
 | agent_task 节点执行 | `src/agent_executor.py` |
 | Agent 持久化与内置 Agent | `src/agent_storage.py` |
-| Agent system prompt 组装（D53） | `src/agent_prompt.py` · `src/agent_skills.py` |
-| Agent 评测快照 + Agnes live（B-34） | `src/agent_eval.py` · `tests/test_agent_eval_b34.py` · `CLUTCH_AGENT_EVAL_LIVE=1`；定义见 `specs/core/tasks.md` §Agent Harness |
-| Agent 消融闸 + trajectory（B-48） | `agent_eval.parse_ablation` / `persist_trajectory` · `tests/test_agent_eval_b48.py` · `CLUTCH_AGENT_EVAL_ABLATION` · `runs/archive/eval/` |
+| Agent system prompt 组装（D53 / D68 style） | `src/agent_prompt.py` · `src/agent_skills.py` |
+| Agent 评测快照 + Agnes live（B-34） | `src/agent_eval.py` · `services/orchestrator/tests/test_agent_eval_b34.py` · `CLUTCH_AGENT_EVAL_LIVE=1`；定义见 `specs/core/tasks.md` §Agent Harness |
+| Agent 消融闸 + trajectory（B-48） | `agent_eval.parse_ablation` / `persist_trajectory` · `services/orchestrator/tests/test_agent_eval_b48.py` · `CLUTCH_AGENT_EVAL_ABLATION` · `runs/archive/eval/` |
 | 末尾 `<agent_status>`（B-35） | `agent_prompt.format_agent_status` / `attach_trailing_status` · Chat `attach` 在 `_history_with_prefix_and_status`；定义见 `tasks.md` §Agent status |
 | 项目规则发现 + Skills 按需（D7） | `agent_prompt._load_workspace_rules` · `read_skill` · `skills_storage.sync_workspace_skill_mounts` |
 | 长聊任务态 / 压缩（D8 / B-36 / B-44） | `src/task_state.py` · `compaction.py`（L4） · `context_layers.py`（L1–L3；指针 `source=tool truncated=yes`） |
@@ -285,7 +290,8 @@
 | 凭证来源（CC Switch / 环境变量） | `src/credentials/sources.py` |
 | 工作区 Git 分支探测 | `src/workspace.py` → `get_git_info()` |
 | Shell 写文件 → Changes | `workspace.snapshot_workspace_mtimes` / `diff_workspace_snapshots` · `mcp_react._record_file_change` |
-| LLM Provider Router（M1-08，D4） | `src/llm/router.py` |
+| LLM Provider Router（M1-08，D4） | `src/llm/router.py`（默认 `agnes-3.0-flash`） |
+| Agnes 图/视频适配器 | `src/adapters/agnes_image_adapter.py` · `src/adapters/agnes_video_adapter.py` |
 | LLM HTTP 补全 | `src/llm/http_complete.py` |
 | OpenCode Zen 模型目录 / 保存校验 | `src/adapters/opencode_zen_adapter.py` |
 | 内置模型 Provider 预设（含 OpenCode Zen） | `apps/desktop/src/services/modelProviderPresets.ts` |

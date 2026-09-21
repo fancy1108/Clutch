@@ -134,7 +134,7 @@ def resolve_configured_video_model() -> tuple[ModelSpec, str] | None:
         from src.models_config import get_router
 
         router = get_router()
-        preferred = ("agnes-video-v2.0",)
+        preferred = ("agnes-video-2.5-flash",)
         ordered = list(router.list_models())
         ordered.sort(key=lambda s: (0 if s.id in preferred else 1, s.id))
         for spec in ordered:

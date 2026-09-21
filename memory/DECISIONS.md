@@ -75,7 +75,7 @@
 ### D4 · LLM 提供方可切换（2026-06-22）
 
 - **背景**：Q2 — Orchestrator / Agent 推理所用模型是否固定 Claude。
-- **方案**：**可切换**多 Provider；**默认**为 **Agnes 2.0 Flash**（2026-07 自 DeepSeek V4 Pro 调整）；用户可在设置或 Agent 配置中改选。
+- **方案**：**可切换**多 Provider；**默认**为 **Agnes 3.0 Flash**（2026-09 自 Agnes 2.0 Flash 调整；更早为 DeepSeek V4 Pro）；用户可在设置或 Agent 配置中改选。内置免费档同步为 **Agnes Image 2.5 Flash** / **Agnes Video 2.5 Flash**。
 - **影响**：M1 引擎需 Provider 抽象（Router）；API Key 按 Provider 分别配置；`ARCHITECTURE.md` ADR 待实现时对齐。
 - **落地前提**：M1。
 - **决策状态**：`已记录`（原 Q2 关闭）
@@ -381,7 +381,7 @@
   1. `docs/PRODUCT_INTRO.md` — 用户可见能力与设置路径；
   2. `docs/GETTING_STARTED.md` — 配置步骤（中英表格各一处）；
   3. `memory/FILEMAP.md` — 新增/变更的源码路径映射（若涉及新模块）；
-  4. `CHANGELOG.md` — 当前开发版本节（现为 `## [Unreleased]`；已发 [1.4.0]）；
+  4. `CHANGELOG.md` — 当前开发版本节（现为 `## [1.4.1] - Unreleased`；已发 [1.4.0]）；
   5. `README.md` / `README.zh-CN.md` — **「最新更新」**一节：只写**用户可见**的单一版本要点列表（不按 commit / 开发进度分段）；发版时整节替换为新版本，历史见 `CHANGELOG.md`；
   6. `apps/desktop/src/services/cliInstallGuides.ts` — 安装指引与 `RECOMMENDED_CLI_IDS`（若列为推荐）；
   7. `.cursor/rules/cli-whitelist-docs.mdc` — 本清单的权威副本。
@@ -648,7 +648,7 @@
 - **背景**：当前 GitHub Release 为 **v1.3.0**。`dev` 上 FM 点验、HTTP MCP、工作流 UX 等尚未打 tag。
 - **方案**：用户可见变更写入 `CHANGELOG.md` **`## [1.4.0] - Unreleased`**（不是空的 `[Unreleased]`）。`package.json` / Tauri `version` **仍为 1.3.0** 直到打 tag。`PRODUCT_INTRO.md` 描述 `dev` 上已有行为（将随 1.4.0 发）。README「Latest release」仍链 v1.3.0。
 - **影响**：`CHANGELOG.md` · `PROGRESS.md` · `ROADMAP.md` §Frontend modules · 点验剧本。
-- **决策状态**：`已落地`（v1.4.0 tagged 2026-08-28；其后写入 `## [Unreleased]`）
+- **决策状态**：`已落地`（v1.4.0 tagged 2026-08-28；下一目标见 **D69**）
 
 ### D60 · 撤回 FM-19 Planner/Executor Settings（2026-08-28）
 
@@ -697,6 +697,20 @@
 - **背景**：FM-06 在 Orchestrator Bar 发送后弹出 Confirm dispatch。D34 §2-4 本意是改 handoff sources。用户 `@OpenCode 只回复 pong` 时多点一次，和对话模式直接发送不一致。
 - **方案**：发送即 `confirm_dispatch`。跨 Agent 交接用消息里的 `@C from @A`。排队条与 Complete 草稿保留。
 - **影响**：`OrchestratorBar.tsx`（删除 `DispatchConfirmCard`）· `PRODUCT_INTRO.md` · 点验剧本 FM-06。
+- **决策状态**：`已落地`
+
+### D69 · 下一发版目标 v1.4.1（2026-09-10）
+
+- **背景**：v1.4.0 已打 tag。`dev` 上已有 Agnes 免费模型换代、D68 回复风格、Windows CI `timeout` 修复等，不应再散落在空的 `[Unreleased]`。
+- **方案**：用户可见变更写入 `CHANGELOG.md` **`## [1.4.1] - Unreleased`**。v1.4.0 tag 之后到 1.4.1 tag 的提交（含已落地的 a0f8eba / da61f6f / 9ddb900）都算这一版。`package.json` / Tauri `version` **仍为 1.4.0** 直到打 tag。`PRODUCT_INTRO.md` 描述 `dev` 上已有行为（将随 1.4.1 发）。README「Latest release」仍链 v1.4.0。
+- **影响**：`CHANGELOG.md` · `PROGRESS.md` · `STABILITY.md` · `docs/releases/README.md`。
+- **决策状态**：`可执行`
+
+### D68 · Clutch Agent 默认回复只留 3 条风格规则（2026-09-10）
+
+- **背景**：在 `/Users/fancy/test` 对照默认 Agent vs 注入 `i-have-adhd` 全文。默认已经能编号、少客套、压题外话。整份 10 条写入默认后：登录题 HTTP 中断无答案；其余 3 题被「让完成可见」触发 Media finalize 配图，回复涨到 1MB+。分钟估计不可靠；每轮复述与 `<agent_status>` / Todo 重复。
+- **方案**：默认 `agent_prompt` 只加 `style` 层三正一禁——第一句给下一步或答案；禁止开场白/收尾客套；报错只写原因和修法；并写明不估计时间、不复述 agent_status、未点名不要配图。完整 ADHD Skill 保持可选（`read_skill` / `/skill:…`），不 vendor 进默认协议。
+- **影响**：`agent_prompt.py` · `PRODUCT_INTRO.md` · CHANGELOG `## [1.4.1] - Unreleased`。
 - **决策状态**：`已落地`
 
 ### D67 · 撤回 FM-06 排队条与 Complete 草稿（2026-08-28）

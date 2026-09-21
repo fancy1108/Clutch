@@ -1,4 +1,4 @@
-"""Agnes Video V2.0 adapter tests."""
+"""Agnes Video 2.5 Flash adapter tests."""
 
 from __future__ import annotations
 
@@ -61,8 +61,12 @@ def test_create_agnes_video_task_posts_payload() -> None:
     assert "https://apihub.agnes-ai.com/v1/videos" in str(captured["url"])
     body = captured["body"]
     assert isinstance(body, dict)
-    assert body["model"] == "agnes-video-v2.0"
+    assert body["model"] == "agnes-video-2.5-flash"
     assert body["prompt"] == "A cat on the beach"
+    assert body["mode"] == "text"
+    assert body["size"] == "720P"
+    assert body["seconds"] == "5"
+    assert "num_frames" not in body
 
 
 def test_poll_agnes_video_uses_video_id_endpoint() -> None:
@@ -85,6 +89,7 @@ def test_poll_agnes_video_uses_video_id_endpoint() -> None:
 
     assert result["video_url"] == "https://cdn.example.com/out.mp4"
     assert all("video_id=vid_abc" in url for url in calls)
+    assert all("model_name=agnes-video-2.5-flash" in url for url in calls)
     assert "/agnesapi?" in calls[0]
 
 

@@ -85,14 +85,14 @@ def test_save_agnes_video_key_and_active_in_one_request(models_config: Path) -> 
         json={
             "provider_id": "agnes",
             "api_key": "sk-test-agnes",
-            "active_model_id": "agnes-video-v2.0",
+            "active_model_id": "agnes-video-2.5-flash",
         },
     )
     assert response.status_code == 200
-    assert response.json()["active_model_id"] == "agnes-video-v2.0"
+    assert response.json()["active_model_id"] == "agnes-video-2.5-flash"
 
     listed = client.get("/api/models/config").json()
-    video = next(m for m in listed["models"] if m["id"] == "agnes-video-v2.0")
+    video = next(m for m in listed["models"] if m["id"] == "agnes-video-2.5-flash")
     assert video["available"] is True
     assert video["model_kind"] == "video"
 
@@ -103,22 +103,22 @@ def test_activate_unhides_hidden_agnes_video(models_config: Path) -> None:
         "/api/models/config",
         json={"provider_id": "agnes", "api_key": "sk-test-agnes"},
     )
-    hide = client.delete("/api/models/custom/agnes-video-v2.0")
+    hide = client.delete("/api/models/custom/agnes-video-2.5-flash")
     assert hide.status_code == 200
 
     hidden_list = client.get("/api/models/config").json()
-    assert not any(m["id"] == "agnes-video-v2.0" for m in hidden_list["models"])
+    assert not any(m["id"] == "agnes-video-2.5-flash" for m in hidden_list["models"])
 
     activate = client.post(
         "/api/models/config",
-        json={"active_model_id": "agnes-video-v2.0"},
+        json={"active_model_id": "agnes-video-2.5-flash"},
     )
     assert activate.status_code == 200
 
     listed = client.get("/api/models/config").json()
-    video = next(m for m in listed["models"] if m["id"] == "agnes-video-v2.0")
+    video = next(m for m in listed["models"] if m["id"] == "agnes-video-2.5-flash")
     assert video["available"] is True
-    assert listed["active_model_id"] == "agnes-video-v2.0"
+    assert listed["active_model_id"] == "agnes-video-2.5-flash"
 
 
 def test_activate_ollama_model_without_api_key(models_config: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -175,11 +175,11 @@ def test_serialize_dedupes_same_endpoint_and_api_model() -> None:
 
     router = LLMProviderRouter()
     agnes_url = "https://apihub.agnes-ai.com/v1"
-    agnes_model = "agnes-2.0-flash"
+    agnes_model = "agnes-3.0-flash"
     router.register_model(
         ModelSpec(
             id="claude-3-7-sonnet",
-            name="Agnes 2.0 Flash",
+            name="Agnes 3.0 Flash",
             provider_id="anthropic",
             api_model=agnes_model,
             base_url=agnes_url,
@@ -188,7 +188,7 @@ def test_serialize_dedupes_same_endpoint_and_api_model() -> None:
     router.register_model(
         ModelSpec(
             id="cc-switch-agnes1",
-            name="agnes-ai (agnes-2.0-flash)",
+            name="agnes-ai (agnes-3.0-flash)",
             provider_id="openai",
             api_model=agnes_model,
             base_url=agnes_url,
@@ -197,7 +197,7 @@ def test_serialize_dedupes_same_endpoint_and_api_model() -> None:
     router.register_model(
         ModelSpec(
             id="cc-switch-agnes2",
-            name="Agnes AI (Cloud) (agnes-2.0-flash)",
+            name="Agnes AI (Cloud) (agnes-3.0-flash)",
             provider_id="custom",
             api_model=agnes_model,
             base_url=agnes_url,
@@ -208,10 +208,10 @@ def test_serialize_dedupes_same_endpoint_and_api_model() -> None:
     router.set_api_key("custom", "key-custom")
 
     payload = serialize_models_config(router)
-    agnes_ids = {"claude-3-7-sonnet", "cc-switch-agnes1", "cc-switch-agnes2", "agnes-2.0-flash"}
+    agnes_ids = {"claude-3-7-sonnet", "cc-switch-agnes1", "cc-switch-agnes2", "agnes-3.0-flash"}
     listed = [model for model in payload["models"] if model["id"] in agnes_ids]
     assert len(listed) == 1
-    assert listed[0]["id"] == "agnes-2.0-flash"
+    assert listed[0]["id"] == "agnes-3.0-flash"
 
     router.set_active_model("cc-switch-agnes1")
     payload_active = serialize_models_config(router)
@@ -257,8 +257,8 @@ def test_model_test_endpoint_failure(models_config: Path) -> None:
 def test_agnes_chat_model_listed_with_kind(models_config: Path) -> None:
     client = TestClient(app)
     body = client.get("/api/models/config").json()
-    agnes = next(m for m in body["models"] if m["id"] == "agnes-2.0-flash")
-    assert agnes["name"] == "Agnes 2.0 Flash"
+    agnes = next(m for m in body["models"] if m["id"] == "agnes-3.0-flash")
+    assert agnes["name"] == "Agnes 3.0 Flash"
     assert agnes["provider_id"] == "agnes"
     assert agnes["model_kind"] == "chat"
     assert agnes["endpoint"] == "https://apihub.agnes-ai.com/v1"
@@ -268,9 +268,9 @@ def test_agnes_chat_model_available_with_custom_key(models_config: Path) -> None
     client = TestClient(app)
     client.post("/api/models/config", json={"provider_id": "agnes", "api_key": "sk-test-agnes"})
     body = client.get("/api/models/config").json()
-    agnes = next(m for m in body["models"] if m["id"] == "agnes-2.0-flash")
+    agnes = next(m for m in body["models"] if m["id"] == "agnes-3.0-flash")
     assert agnes["available"] is True
-    image = next(m for m in body["models"] if m["id"] == "agnes-image-2.1-flash")
+    image = next(m for m in body["models"] if m["id"] == "agnes-image-2.5-flash")
     assert image["available"] is True
 
 
@@ -346,8 +346,8 @@ def test_opencode_zen_list_endpoint_returns_catalog(models_config: Path, monkeyp
 def test_agnes_image_model_listed_with_kind(models_config: Path) -> None:
     client = TestClient(app)
     body = client.get("/api/models/config").json()
-    agnes = next(m for m in body["models"] if m["id"] == "agnes-image-2.1-flash")
-    assert agnes["name"] == "Agnes Image 2.1 Flash"
+    agnes = next(m for m in body["models"] if m["id"] == "agnes-image-2.5-flash")
+    assert agnes["name"] == "Agnes Image 2.5 Flash"
     assert agnes["provider_id"] == "agnes"
     assert agnes["model_kind"] == "image"
     assert agnes["endpoint"] == "https://apihub.agnes-ai.com"
@@ -357,7 +357,7 @@ def test_agnes_image_model_test_uses_image_adapter(models_config: Path) -> None:
     client = TestClient(app)
     client.post("/api/models/config", json={"provider_id": "agnes", "api_key": "sk-test-agnes"})
     with patch("src.models_config.verify_image_model_connection") as mocked:
-        result = client.post("/api/models/test", json={"model_id": "agnes-image-2.1-flash"}).json()
+        result = client.post("/api/models/test", json={"model_id": "agnes-image-2.5-flash"}).json()
     assert result["ok"] is True
     assert "image" in result["message"].lower()
     mocked.assert_called_once()
@@ -458,13 +458,13 @@ def test_rehydrate_cc_switch_imports_models(
 def test_rehydrate_clears_hidden_models(models_config: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     import json
     client = TestClient(app)
-    # Hide 'agnes-image-2.1-flash'
-    response = client.delete("/api/models/custom/agnes-image-2.1-flash")
+    # Hide 'agnes-image-2.5-flash'
+    response = client.delete("/api/models/custom/agnes-image-2.5-flash")
     assert response.status_code == 200
 
     # Verify it is in hidden_model_ids
     stored = json.loads(models_config.read_text(encoding="utf-8"))
-    assert "agnes-image-2.1-flash" in stored.get("hidden_model_ids", [])
+    assert "agnes-image-2.5-flash" in stored.get("hidden_model_ids", [])
 
     # Call rehydrate
     monkeypatch.setattr("src.models_config.Path.home", lambda: models_config.parent)

@@ -192,7 +192,7 @@ def test_session_generate_iterate_approve_react_handoff(
     workspace: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     class FakeRouter:
-        active_model_id = "agnes-2.0-flash"
+        active_model_id = "agnes-3.0-flash"
 
         def complete(self, *args, **kwargs):
             raise RuntimeError("no llm")
@@ -224,7 +224,7 @@ def test_session_generate_iterate_approve_react_handoff(
     )
     tagged = [e for e in log if e.get("role") == "assistant" and e.get("model_name")]
     assert tagged, "Agent Log steps should carry model_name tags"
-    assert generated.get("model_id") == "agnes-2.0-flash"
+    assert generated.get("model_id") == "agnes-3.0-flash"
 
     iterated = service.iterate_session(run_id, "Make the primary button larger")
     assert len(iterated["screens"]) >= 1
@@ -614,10 +614,10 @@ def test_generate_records_model_and_token_usage(
     """Each Agent Log step must carry model_name + usage tags (not standalone lines)."""
 
     class FakeRouter:
-        active_model_id = "agnes-2.0-flash"
+        active_model_id = "agnes-3.0-flash"
 
         def resolve_for_model(self, model_id: str):
-            return type("Spec", (), {"name": "Agnes 2.0 Flash"})(), None
+            return type("Spec", (), {"name": "Agnes 3.0 Flash"})(), None
 
         def complete(self, *args, **kwargs):
             return {
@@ -657,11 +657,11 @@ def test_generate_records_model_and_token_usage(
     assert not any(e.get("kind") in {"model", "tokens"} for e in log)
 
     spec_step = next(e for e in log if e.get("status") == "spec_ready")
-    assert spec_step.get("model_name") == "Agnes 2.0 Flash"
+    assert spec_step.get("model_name") == "Agnes 3.0 Flash"
     assert (spec_step.get("usage") or {}).get("total_tokens", 0) > 0
 
     ready_step = next(e for e in log if e.get("status") == "ready")
-    assert ready_step.get("model_name") == "Agnes 2.0 Flash"
+    assert ready_step.get("model_name") == "Agnes 3.0 Flash"
     assert (ready_step.get("usage") or {}).get("total_tokens") == 90
 
 

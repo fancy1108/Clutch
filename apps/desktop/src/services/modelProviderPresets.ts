@@ -20,7 +20,7 @@ export const DEFAULT_CHAT_MODEL_BY_PROVIDER: Record<string, string> = {
   openai: 'gpt-4o',
   google: 'gemini-2.5-flash',
   ollama: 'qwen2.5vl-7b',
-  agnes: 'agnes-2.0-flash',
+  agnes: 'agnes-3.0-flash',
   opencode: 'opencode-deepseek-v4-flash-free',
 };
 
@@ -70,9 +70,9 @@ export const OPENCODE_BUILTIN_MODELS = [
 ] as const;
 
 export const AGNES_BUILTIN_MODEL_ID: Record<ModelKind, string> = {
-  chat: 'agnes-2.0-flash',
-  image: 'agnes-image-2.1-flash',
-  video: 'agnes-video-v2.0',
+  chat: 'agnes-3.0-flash',
+  image: 'agnes-image-2.5-flash',
+  video: 'agnes-video-2.5-flash',
 };
 
 export const AGNES_DEFAULTS: Record<
@@ -80,16 +80,16 @@ export const AGNES_DEFAULTS: Record<
   { api_model: string; base_url: string; image_backend?: 'agnes'; video_backend?: 'agnes' }
 > = {
   chat: {
-    api_model: 'agnes-2.0-flash',
+    api_model: 'agnes-3.0-flash',
     base_url: 'https://apihub.agnes-ai.com/v1',
   },
   image: {
-    api_model: 'agnes-image-2.1-flash',
+    api_model: 'agnes-image-2.5-flash',
     base_url: 'https://apihub.agnes-ai.com',
     image_backend: 'agnes',
   },
   video: {
-    api_model: 'agnes-video-v2.0',
+    api_model: 'agnes-video-2.5-flash',
     base_url: 'https://apihub.agnes-ai.com',
     video_backend: 'agnes',
   },

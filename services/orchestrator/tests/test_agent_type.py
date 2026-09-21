@@ -31,7 +31,7 @@ def test_builtin_agent_ignores_bound_model_id() -> None:
         "id": "clutch-agent",
         "agentType": "clutch",
         "builtin": True,
-        "modelId": "agnes-image-2.1-flash",
+        "modelId": "agnes-image-2.5-flash",
     }
     spec, model_id = resolve_model_for_agent(router, agent)
     assert model_id == "deepseek-v4pro"
@@ -46,7 +46,7 @@ def test_resolve_model_for_agent_uses_session_model_id() -> None:
         "id": "clutch-agent",
         "agentType": "clutch",
         "builtin": True,
-        "modelId": "agnes-image-2.1-flash",
+        "modelId": "agnes-image-2.5-flash",
     }
     spec, model_id = resolve_model_for_agent(
         router, agent, session_model_id="qwen2.5vl-7b"
@@ -59,10 +59,10 @@ def test_resolve_model_for_agent_uses_bound_model_id() -> None:
     router = LLMProviderRouter()
     router._chat = lambda **_kwargs: "ok"  # type: ignore[method-assign]
     router.set_active_model("deepseek-v4pro")
-    agent = {"id": "custom-agent", "agentType": "clutch", "modelId": "agnes-image-2.1-flash"}
+    agent = {"id": "custom-agent", "agentType": "clutch", "modelId": "agnes-image-2.5-flash"}
     spec, model_id = resolve_model_for_agent(router, agent)
-    assert model_id == "agnes-image-2.1-flash"
-    assert spec.id == "agnes-image-2.1-flash"
+    assert model_id == "agnes-image-2.5-flash"
+    assert spec.id == "agnes-image-2.5-flash"
 
 
 def test_resolve_model_for_agent_falls_back_to_active_model() -> None:
@@ -97,13 +97,13 @@ def test_codex_cli_migration_and_resolution() -> None:
 def test_resolve_model_for_agent_ignores_session_model_for_codex_cli() -> None:
     router = LLMProviderRouter()
     router._chat = lambda **_kwargs: "ok"  # type: ignore[method-assign]
-    router.set_active_model("agnes-image-2.1-flash")
+    router.set_active_model("agnes-image-2.5-flash")
     agent = {"id": "agent-codex", "agentType": "codex-cli", "name": "Codex"}
     spec, model_id = resolve_model_for_agent(
-        router, agent, session_model_id="agnes-image-2.1-flash"
+        router, agent, session_model_id="agnes-image-2.5-flash"
     )
-    assert model_id == "agnes-image-2.1-flash"
-    assert spec.id == "agnes-image-2.1-flash"
+    assert model_id == "agnes-image-2.5-flash"
+    assert spec.id == "agnes-image-2.5-flash"
 
 
 # --- normalize_agent_type_strict tests (#54) ---

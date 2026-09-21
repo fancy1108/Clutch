@@ -17,20 +17,17 @@ Clutch 是一款**桌面应用**（Tauri + React），面向独立开发者和�
 |---|---|
 | **技术栈** | Tauri 2 · React 19 · FastAPI + LangGraph · 本地优先（`localhost:8123`） |
 | **许可证** | 见 [LICENSE](LICENSE) |
-| **当前版本** | [v1.4.0](https://github.com/fancy1108/Clutch/releases/tag/v1.4.0) · [更新日志](CHANGELOG.md#140---2026-08-28) |
+| **当前版本** | [v1.4.1](https://github.com/fancy1108/Clutch/releases/tag/v1.4.1) · [更新日志](CHANGELOG.md#141---2026-09-21) |
 | **贡献者** | 感谢 [@MyloveAless](https://github.com/MyloveAless) 设计「AI 图片生成多 Agent 工作流」并完成端到端验证。 |
 
-### 最新更新（v1.4.0）
+### 最新更新（v1.4.1）
 
-- **HTTP MCP：** Settings → MCP 可登记任意 Streamable HTTP 地址（可选 API Key；HTTPS 401 可走浏览器 OAuth），没有厂商专用按钮。
-- **能用的 Settings：** 默认工作区 / Stop 确认（FM-01）、本机 MCP 信任（FM-02）、命令 allow/ask/deny（FM-03）、Codex/Aider/CodeBuddy 等本机扫描（FM-04/05）。
-- **Worktree（FM-11 / D32）：** 开启隔离、并行树、合回主仓、丢弃树；Agent 写入落在 `.clutch/worktrees/`。
-- **Terminal Orchestra：** `@CLI` 发送即派发（无确认卡 / 排队条）。同一 CLI 复用已有 Lane；Overview 可把派发存成 SOP。
-- **工作流画布：** 节点引擎跟随 Assigned Agent（不再另有下拉）。SOP 列表显示全名，点一行即选用。
+- **Agnes 免费模型换代：** 内置目录改为 **Agnes 3.0 Flash**（对话）、**Agnes Image 2.5 Flash**、**Agnes Video 2.5 Flash**（720P）。已保存的选择自动 remap 到新 id。
+- **更干脆的默认回复（D68）：** Clutch Agent 第一句直接给下一步动作或结论——无开场白、无客套；报错说明原因 + 修法。完整 ADHD 输出 Skill 仍可在 Skills 里选用。
 
-> **v1.4.0 同时发 macOS + Windows。** macOS：Apple Silicon DMG + 应用内更新。Windows：MSI/NSIS。Sidecar 热更资产另行发布。
+> **v1.4.1 为仅 macOS 的补丁版。** Apple Silicon DMG + 应用内更新。Windows 继续使用 v1.4.0 安装包（MSI/NSIS）。
 
-更早版本（v1.2.9 Coding 发图、v1.2.8 工作流硬化等）：[`CHANGELOG.md`](CHANGELOG.md) · [`docs/releases/`](docs/releases/)。
+更早版本（v1.4.0 HTTP MCP + Worktree、v1.2.9 Coding 发图等）：[`CHANGELOG.md`](CHANGELOG.md) · [`docs/releases/`](docs/releases/)。
 
 ---
 
@@ -57,7 +54,7 @@ brew install --cask clutch
 irm https://raw.githubusercontent.com/fancy1108/Clutch/main/scripts/install.ps1 | iex
 ```
 
-指定版本：运行前设置 `CLUTCH_VERSION=v1.4.0`（或 `v1.3.0` / `v1.2.9` / `v1.2.8` 安装更早稳定版）。
+指定版本：运行前设置 `CLUTCH_VERSION=v1.4.1`（或 `v1.4.0` / `v1.3.0` / `v1.2.9` 安装更早稳定版）。
 
 详见 [`docs/PACKAGE_MANAGERS.md`](docs/PACKAGE_MANAGERS.md)
 

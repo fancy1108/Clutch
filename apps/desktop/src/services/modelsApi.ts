@@ -369,7 +369,7 @@ export function modelKindMenuSuffix(modelKind?: string): string {
   return '';
 }
 
-/** Prefer Agnes 2.0 Flash when available; otherwise first available chat (non-image) model. */
+/** Prefer Agnes 3.0 Flash when available; otherwise first available chat (non-image) model. */
 export function resolveDefaultTextModelId(config: ModelConfig): string {
   const chatModels = config.models.filter(
     (model) => model.available && !['image', 'video'].includes(model.model_kind ?? 'chat'),

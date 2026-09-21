@@ -1,4 +1,4 @@
-"""LLM Provider Router — D4 default Agnes 2.0 Flash, switchable per provider keys (M1-08)."""
+"""LLM Provider Router — D4 default Agnes 3.0 Flash, switchable per provider keys (M1-08)."""
 
 from __future__ import annotations
 
@@ -11,8 +11,26 @@ ProviderId = Literal[
 ]
 ModelKind = Literal["chat", "image", "video"]
 
-DEFAULT_MODEL_ID = "agnes-2.0-flash"
+DEFAULT_MODEL_ID = "agnes-3.0-flash"
 ENV_KEY_PREFIX = "CLUTCH_"
+
+# Retired catalog ids → current free Agnes models (persisted models.json / agent modelId).
+AGNES_MODEL_ALIASES: dict[str, str] = {
+    "agnes-2.0-flash": "agnes-3.0-flash",
+    "agnes-2.5-flash": "agnes-3.0-flash",
+    "agnes-image-2.0-flash": "agnes-image-2.5-flash",
+    "agnes-image-2.1-flash": "agnes-image-2.5-flash",
+    "agnes-video-v2.0": "agnes-video-2.5-flash",
+}
+
+
+def canonicalize_model_id(model_id: str) -> str:
+    current = model_id
+    seen: set[str] = set()
+    while current in AGNES_MODEL_ALIASES and current not in seen:
+        seen.add(current)
+        current = AGNES_MODEL_ALIASES[current]
+    return current
 
 
 @dataclass(frozen=True)
@@ -71,11 +89,11 @@ BUILTIN_MODELS: dict[str, ModelSpec] = {
         api_model="qwen2.5vl:7b",
         base_url="http://localhost:11434/v1",
     ),
-    "agnes-2.0-flash": ModelSpec(
-        id="agnes-2.0-flash",
-        name="Agnes 2.0 Flash",
+    "agnes-3.0-flash": ModelSpec(
+        id="agnes-3.0-flash",
+        name="Agnes 3.0 Flash",
         provider_id="agnes",
-        api_model="agnes-2.0-flash",
+        api_model="agnes-3.0-flash",
         base_url="https://apihub.agnes-ai.com/v1",
     ),
     # OpenCode Zen free models — https://opencode.ai/docs/zen
@@ -114,20 +132,20 @@ BUILTIN_MODELS: dict[str, ModelSpec] = {
         api_model="nemotron-3-ultra-free",
         base_url="https://opencode.ai/zen/v1",
     ),
-    "agnes-image-2.1-flash": ModelSpec(
-        id="agnes-image-2.1-flash",
-        name="Agnes Image 2.1 Flash",
+    "agnes-image-2.5-flash": ModelSpec(
+        id="agnes-image-2.5-flash",
+        name="Agnes Image 2.5 Flash",
         provider_id="agnes",
-        api_model="agnes-image-2.1-flash",
+        api_model="agnes-image-2.5-flash",
         base_url="https://apihub.agnes-ai.com",
         model_kind="image",
         image_backend="agnes",
     ),
-    "agnes-video-v2.0": ModelSpec(
-        id="agnes-video-v2.0",
-        name="Agnes Video V2.0",
+    "agnes-video-2.5-flash": ModelSpec(
+        id="agnes-video-2.5-flash",
+        name="Agnes Video 2.5 Flash",
         provider_id="agnes",
-        api_model="agnes-video-v2.0",
+        api_model="agnes-video-2.5-flash",
         base_url="https://apihub.agnes-ai.com",
         model_kind="video",
         video_backend="agnes",
@@ -179,6 +197,7 @@ class LLMProviderRouter:
         return list(self._models.values())
 
     def set_active_model(self, model_id: str) -> None:
+        model_id = canonicalize_model_id(model_id)
         if model_id not in self._models:
             raise KeyError(f"Unknown model: {model_id}")
         self._active_model_id = model_id
@@ -203,7 +222,8 @@ class LLMProviderRouter:
         return None
 
     def resolve_for_model(self, model_id: str | None = None) -> tuple[ModelSpec, str | None]:
-        spec = self._models[model_id or self._active_model_id]
+        resolved = canonicalize_model_id(model_id or self._active_model_id)
+        spec = self._models[resolved]
         return spec, self.get_api_key(spec.provider_id)
 
     def _require_api_key(self, provider_id: ProviderId, api_key: str | None) -> str:

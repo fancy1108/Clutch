@@ -17,14 +17,14 @@ class _FakeImageRouter:
     _models = BUILTIN_MODELS
 
     def get_active_model(self):
-        return BUILTIN_MODELS["agnes-image-2.1-flash"]
+        return BUILTIN_MODELS["agnes-image-2.5-flash"]
 
     @property
     def active_model_id(self) -> str:
-        return "agnes-image-2.1-flash"
+        return "agnes-image-2.5-flash"
 
     def resolve_for_model(self, model_id: str | None = None):
-        return BUILTIN_MODELS["agnes-image-2.1-flash"], "sk-test"
+        return BUILTIN_MODELS["agnes-image-2.5-flash"], "sk-test"
 
     def _require_api_key(self, _provider_id: str, api_key: str | None) -> str:
         return api_key or ""
@@ -51,7 +51,7 @@ async def test_llm_chat_reply_image_model_rejects_vision_input(monkeypatch: pyte
         f"[image: {data_url}]\n这个图片说了什么",
     )
 
-    assert engine == "Agnes Image 2.1 Flash"
+    assert engine == "Agnes Image 2.5 Flash"
     assert "cannot read uploaded" in reply_text.lower()
 
 
@@ -77,7 +77,7 @@ async def test_llm_chat_reply_uses_image_adapter(monkeypatch: pytest.MonkeyPatch
         ) = await _llm_chat_reply(initial_state("run_img"), "生成一张白色的狗的照片")
 
     mocked.assert_called_once()
-    assert engine == "Agnes Image 2.1 Flash"
+    assert engine == "Agnes Image 2.5 Flash"
     assert "https://example.com/white-dog.png" in reply_text
 
 
@@ -109,7 +109,7 @@ def test_ws_plain_chat_image_model(monkeypatch: pytest.MonkeyPatch) -> None:
         and event["data"]["message"]["agent"] == "Clutch Agent"
     )
     assert "https://example.com/white-dog.png" in reply["text"]
-    assert reply.get("runtimeEngine") == "Agnes Image 2.1 Flash"
+    assert reply.get("runtimeEngine") == "Agnes Image 2.5 Flash"
     assert not any(
         event.get("event") == "log" and "[CHAT] Starting MCP ReAct" in event["data"].get("message", "")
         for event in events
@@ -155,7 +155,7 @@ async def test_llm_chat_reply_codex_ignores_footer_image_model(monkeypatch: pyte
             initial_state("run_codex_no_image"),
             "我上句说了什么",
             agent_id="agent-codex",
-            session_model_id="agnes-image-2.1-flash",
+            session_model_id="agnes-image-2.5-flash",
         )
 
     mocked_image.assert_not_called()

@@ -10,7 +10,15 @@ from typing import Any
 from urllib.parse import urlparse
 
 from src.image_router import resolve_image_backend
-from src.llm.router import BUILTIN_MODELS, DEFAULT_MODEL_ID, LLMProviderRouter, ModelKind, ModelSpec, ProviderId
+from src.llm.router import (
+    BUILTIN_MODELS,
+    DEFAULT_MODEL_ID,
+    LLMProviderRouter,
+    ModelKind,
+    ModelSpec,
+    ProviderId,
+    canonicalize_model_id,
+)
 from src.preferences_storage import tr
 from src.video_router import resolve_video_backend
 
@@ -259,14 +267,17 @@ def unhide_model_from_list(model_id: str) -> bool:
     """Remove a built-in model from hidden_model_ids so it appears in the catalog again."""
     data = _read_config()
     hidden = [str(item) for item in data.get("hidden_model_ids", []) if isinstance(item, str)]
-    if model_id not in hidden:
+    canonical = canonicalize_model_id(model_id)
+    targets = {model_id, canonical}
+    if not any(item in targets for item in hidden):
         return False
-    data["hidden_model_ids"] = [item for item in hidden if item != model_id]
+    data["hidden_model_ids"] = [item for item in hidden if item not in targets]
     _write_config(data)
     return True
 
 
 def hide_model_from_list(router: LLMProviderRouter, model_id: str) -> None:
+    model_id = canonicalize_model_id(model_id)
     if model_id not in router._models:
         raise ValueError(tr("Unknown model.", "未知模型。"))
     if is_custom_model_id(model_id):

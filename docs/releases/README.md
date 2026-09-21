@@ -1,7 +1,7 @@
 # Release snapshots (`docs/releases/`)
 
 > **Purpose:** Freeze **what the product was** at each major/minor version.  
-> **Current product truth:** [`PRODUCT_INTRO.md`](../PRODUCT_INTRO.md) — shipped **v1.4.0**. Next user-facing deltas go in [`CHANGELOG.md`](../../CHANGELOG.md) `## [Unreleased]`.  
+> **Current product truth:** [`PRODUCT_INTRO.md`](../PRODUCT_INTRO.md) — shipped **v1.4.1**. Next user-facing deltas go in [`CHANGELOG.md`](../../CHANGELOG.md) `## [Unreleased]`.  
 > **Per-change log:** [`CHANGELOG.md`](../../CHANGELOG.md) — user-facing deltas between versions.  
 > **GitHub Release body:** CI runs [`scripts/render-release-notes.sh`](../../scripts/render-release-notes.sh) — the matching `## [x.y.z]` section becomes **What's in this release** at the top of the Release page; install/Gatekeeper fragments follow below.
 
@@ -10,7 +10,7 @@
 | Trigger | Action |
 |---------|--------|
 | First public **major** or **minor** tag | Add `vX.Y.md` summarizing capabilities at ship time |
-| Patch tag only | Usually **no** new snapshot — `CHANGELOG.md` entry suffices |
+| Patch tag only | Snapshot **required** by `release-preflight.sh` INV-R6 — keep it short (see `v1.4.1.md` / `v1.2.1.md`) |
 | Feature removed or reintroduced across versions | Update **new** snapshot; do not rewrite old files |
 
 ## File template
@@ -39,6 +39,7 @@
 
 | Version | Snapshot | Notes |
 |---------|----------|-------|
+| 1.4.1 | [`v1.4.1.md`](./v1.4.1.md) | **macOS only** · Agnes 3.0 / Image 2.5 / Video 2.5 Flash · D68 default reply style |
 | 1.4.0 | [`v1.4.0.md`](./v1.4.0.md) | **macOS + Windows** · HTTP MCP · Settings FM-01…05 · Worktrees D32 · Orchestra send-immediate (D67) · Assigned-Agent node engine |
 | 1.3.0 | [`v1.3.0.md`](./v1.3.0.md) | **macOS + Windows** · Tool trail detail (D46) · Permission modes (D27/D54) · Deliverable intent + real images/video (D54) · Tool-skip harness (D44) · Plan-approve→execute · sidebar recent-first |
 | 1.2.9 | [`v1.2.9.md`](./v1.2.9.md) | **macOS + Windows** · Coding image paste / preview (D42) · Design handoff (D39–D41) · workspace id stability (D43) |

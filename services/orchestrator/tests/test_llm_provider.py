@@ -6,12 +6,22 @@ from src.llm import DEFAULT_MODEL_ID, LLMProviderRouter, ModelSpec
 from src.orchestrator.routing import route_next
 
 
-def test_default_model_is_agnes_2_flash() -> None:
+def test_default_model_is_agnes_3_flash() -> None:
     router = LLMProviderRouter()
     assert router.active_model_id == DEFAULT_MODEL_ID
     model = router.get_active_model()
-    assert model.name == "Agnes 2.0 Flash"
+    assert model.name == "Agnes 3.0 Flash"
     assert model.provider_id == "agnes"
+
+
+def test_retired_agnes_ids_remap_to_current_free_models() -> None:
+    router = LLMProviderRouter()
+    router.set_active_model("agnes-2.0-flash")
+    assert router.active_model_id == "agnes-3.0-flash"
+    spec, _ = router.resolve_for_model("agnes-image-2.1-flash")
+    assert spec.id == "agnes-image-2.5-flash"
+    spec, _ = router.resolve_for_model("agnes-video-v2.0")
+    assert spec.id == "agnes-video-2.5-flash"
 
 
 def test_switch_active_model() -> None:
@@ -47,7 +57,7 @@ def test_complete_uses_active_provider() -> None:
     router._complete = fake_complete  # type: ignore[method-assign]
 
     assert router.complete("hello") == "ok"
-    assert calls[0]["api_model"] == "agnes-2.0-flash"
+    assert calls[0]["api_model"] == "agnes-3.0-flash"
     assert calls[0]["api_key"] == "key-agnes"
     assert calls[0]["base_url"] == "https://apihub.agnes-ai.com/v1"
 

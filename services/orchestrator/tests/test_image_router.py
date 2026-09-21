@@ -17,8 +17,8 @@ from src.llm.router import BUILTIN_MODELS, ModelSpec
 
 
 def test_is_image_model_uses_model_kind() -> None:
-    assert is_image_model(BUILTIN_MODELS["agnes-image-2.1-flash"])
-    assert not is_image_model(BUILTIN_MODELS["agnes-2.0-flash"])
+    assert is_image_model(BUILTIN_MODELS["agnes-image-2.5-flash"])
+    assert not is_image_model(BUILTIN_MODELS["agnes-3.0-flash"])
     assert not is_image_model(BUILTIN_MODELS["deepseek-v4pro"])
 
 
@@ -36,7 +36,7 @@ def test_resolve_image_backend_explicit() -> None:
 
 
 def test_resolve_image_backend_infers_agnes() -> None:
-    assert resolve_image_backend(BUILTIN_MODELS["agnes-image-2.1-flash"]) == "agnes"
+    assert resolve_image_backend(BUILTIN_MODELS["agnes-image-2.5-flash"]) == "agnes"
 
 
 def test_resolve_image_backend_defaults_to_openai_images() -> None:
@@ -112,6 +112,6 @@ def test_verify_image_model_connection_agnes() -> None:
         return_value=lambda **_kwargs: None,
     ):
         verify_image_model_connection(
-            BUILTIN_MODELS["agnes-image-2.1-flash"],
+            BUILTIN_MODELS["agnes-image-2.5-flash"],
             api_key="sk-test",
         )

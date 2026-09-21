@@ -149,7 +149,7 @@ def test_ws_plain_chat_mcp_approve(monkeypatch) -> None:
     async def fake_llm_chat_reply(*args, **kwargs):
         return (
             "agnes-ai",
-            "agnes-2.0-flash",
+            "agnes-3.0-flash",
             "File created successfully.",
             ["[CHAT] Step 1: local-fs__write_file", "[CHAT] Tool response length: 50 chars"],
             None,
