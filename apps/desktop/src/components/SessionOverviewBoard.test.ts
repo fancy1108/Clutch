@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   filterSessionBoardRows,
+  formatSessionBoardReviewTarget,
   getSessionBoardActionLabel,
   getSessionBoardDecisionActionLabel,
   resolveSessionBoardStatus,
@@ -45,6 +46,16 @@ describe('SessionOverviewBoard', () => {
     expect(getSessionBoardActionLabel('running', 'en')).toBe('Follow');
     expect(getSessionBoardDecisionActionLabel('approve', 'zh')).toBe('批准');
     expect(getSessionBoardDecisionActionLabel('retry', 'en')).toBe('Retry');
+  });
+
+  it('formats the review target label with workspace context', () => {
+    const session = base({
+      run_id: 'run_review',
+      title: 'Need approval',
+      workspace_name: 'alpha-workspace',
+    });
+    expect(formatSessionBoardReviewTarget(session, 'en')).toBe('Need approval · alpha-workspace');
+    expect(formatSessionBoardReviewTarget(session, 'zh')).toBe('Need approval · alpha-workspace');
   });
 
   it('summarizes task-center counts by status', () => {

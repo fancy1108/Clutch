@@ -18,6 +18,13 @@
 
 ## Recent Sessions
 
+## 2026-09-22 会话（Task-center 审批目标展示增强）
+
+- **做了：** 在会话总览的待处理角标中增补“当前目标”信息，展示具体等待审批的 session 标题与工作区上下文，便于审阅人员一眼定位要处理的任务，而不是只能看到总数。
+- **落地：** `apps/desktop/src/components/SessionOverviewBoard.tsx` 新增 `formatSessionBoardReviewTarget()`，在需要人工决策的顶部 banner 中展示 `Target: <title> · <workspace>`，提升任务中心的指向性和动作清晰度。
+- **测：** `pnpm --filter @clutch/desktop exec vitest run src/components/SessionOverviewBoard.test.ts` ✅（10/10 passed）。
+- **下次：** 继续接通待审批任务的真实决策动作（批准/拒绝/重试），将这一层从“可见”推进到“可执行”。
+
 ## 2026-09-22 会话（Task-center 任务总览增强）
 
 - **做了：** 继续扩展任务中心：为 `SessionOverviewBoard` 增加状态汇总卡片（Running / Waiting / Failed / Done / Idle），让用户一眼看见热点与风险项，不再只看单条 badge；并补齐更明确的操作语义，等待与失败态都显示 `Review` / `Inspect` 之类的 action pill，方便直接切到对应会话。

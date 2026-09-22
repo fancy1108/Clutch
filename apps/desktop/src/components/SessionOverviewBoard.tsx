@@ -52,6 +52,16 @@ export function getSessionBoardReviewTarget(
   return waiting[0];
 }
 
+export function formatSessionBoardReviewTarget(
+  session: SessionRecord | undefined,
+  language: 'en' | 'zh',
+): string {
+  if (!session) return '';
+  const title = session.title?.trim() || session.run_id;
+  const workspace = session.workspace_name || session.workspace_id || '—';
+  return language === 'zh' ? `${title} · ${workspace}` : `${title} · ${workspace}`;
+}
+
 export function filterSessionBoardRows(
   sessions: SessionRecord[],
   filter: SessionBoardFilter,
@@ -203,6 +213,7 @@ export function SessionOverviewBoard({
     () => getSessionBoardReviewTarget(sessions, currentRunId, clutchStatus),
     [sessions, currentRunId, clutchStatus],
   );
+  const reviewTargetLabel = formatSessionBoardReviewTarget(reviewTarget, language);
   const zh = language === 'zh';
   const filterOptions: { value: SessionBoardFilter; label: string }[] = [
     { value: 'all', label: zh ? '全部' : 'All' },
@@ -273,6 +284,11 @@ export function SessionOverviewBoard({
                       ? (zh ? `${summary.waiting} 个待审批任务` : `${summary.waiting} sessions waiting for review`)
                       : (zh ? '1 个待审批任务' : '1 session waiting for review')}
                   </div>
+                  {reviewTargetLabel ? (
+                    <div className="truncate text-[10px] text-amber-800/75">
+                      {zh ? `当前目标：${reviewTargetLabel}` : `Target: ${reviewTargetLabel}`}
+                    </div>
+                  ) : null}
                 </div>
               </div>
               <button
