@@ -20,6 +20,16 @@
 
 ## Recently Completed
 
+## Task-center 状态增强（2026-09-22）
+
+| 项 | 说明 |
+|----|------|
+| **Commit** | 现处于工作树中，未单独提交（本轮最小实现落在 `SessionOverviewBoard` 任务中心状态层） |
+| **Verification** | `pnpm --filter @clutch/desktop test -- --run src/components/SessionOverviewBoard.test.ts` → `9/9 tests passed` |
+| **证据** | `apps/desktop/src/components/SessionOverviewBoard.tsx` · `apps/desktop/src/components/SessionOverviewBoard.test.ts` · issue [#153](https://github.com/fancy1108/Clutch/issues/153) |
+| **Files** | `apps/desktop/src/components/SessionOverviewBoard.tsx` · `apps/desktop/src/components/SessionOverviewBoard.test.ts` |
+| **备注** | 已补齐 `running / waiting / failed / done / idle` 的状态映射、汇总卡片、筛选逻辑和更明确的动作标签（`Review` / `Inspect` / `Follow`）；等待审批和失败态在总览区显示明确 CTA，且保留去重与时间排序。 |
+
 ## Design 回归修复：srcDoc 冻结 / modify 版本 / prune 守护（2026-09-21）
 
 | 项 | 说明 |

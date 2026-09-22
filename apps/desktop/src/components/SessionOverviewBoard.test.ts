@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   filterSessionBoardRows,
+  getSessionBoardActionLabel,
   resolveSessionBoardStatus,
   sessionBoardRows,
   summarizeSessionBoardStatus,
@@ -35,6 +36,12 @@ describe('SessionOverviewBoard', () => {
   it('marks failed sessions as failed', () => {
     const session = base({ status: 'failed' });
     expect(resolveSessionBoardStatus(session, 'run_other', 'idle')).toBe('failed');
+  });
+
+  it('uses action labels for review and follow-up states', () => {
+    expect(getSessionBoardActionLabel('waiting', 'en')).toBe('Review');
+    expect(getSessionBoardActionLabel('failed', 'zh')).toBe('检查');
+    expect(getSessionBoardActionLabel('running', 'en')).toBe('Follow');
   });
 
   it('summarizes task-center counts by status', () => {

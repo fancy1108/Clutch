@@ -41,6 +41,17 @@ export function sessionBoardRows(sessions: SessionRecord[]): SessionRecord[] {
   return rows.sort((a, b) => sessionActivityAt(b).localeCompare(sessionActivityAt(a)));
 }
 
+export function getSessionBoardReviewTarget(
+  sessions: SessionRecord[],
+  currentRunId?: string,
+  clutchStatus?: string,
+): SessionRecord | undefined {
+  const waiting = sessionBoardRows(sessions).filter(
+    (session) => resolveSessionBoardStatus(session, currentRunId, clutchStatus) === 'waiting',
+  );
+  return waiting[0];
+}
+
 export function filterSessionBoardRows(
   sessions: SessionRecord[],
   filter: SessionBoardFilter,
@@ -69,6 +80,25 @@ export function summarizeSessionBoardStatus(
     summary[resolveSessionBoardStatus(session, currentRunId, clutchStatus)] += 1;
   }
   return summary;
+}
+
+export function getSessionBoardActionLabel(
+  status: SessionBoardStatus,
+  language: 'en' | 'zh',
+): string {
+  const zh = language === 'zh';
+  switch (status) {
+    case 'running':
+      return zh ? '跟踪' : 'Follow';
+    case 'waiting':
+      return zh ? '处理' : 'Review';
+    case 'failed':
+      return zh ? '检查' : 'Inspect';
+    case 'done':
+      return zh ? '查看' : 'Open';
+    default:
+      return zh ? '查看' : 'View';
+  }
 }
 
 function StatusBadge({
@@ -146,6 +176,10 @@ export function SessionOverviewBoard({
     () => summarizeSessionBoardStatus(sessions, currentRunId, clutchStatus),
     [sessions, currentRunId, clutchStatus],
   );
+  const reviewTarget = useMemo(
+    () => getSessionBoardReviewTarget(sessions, currentRunId, clutchStatus),
+    [sessions, currentRunId, clutchStatus],
+  );
   const zh = language === 'zh';
   const filterOptions: { value: SessionBoardFilter; label: string }[] = [
     { value: 'all', label: zh ? '全部' : 'All' },
@@ -202,6 +236,33 @@ export function SessionOverviewBoard({
             </button>
           ))}
         </div>
+        {reviewTarget ? (
+          <div className="flex items-center justify-between gap-2 border-b border-amber-200/80 bg-amber-50/70 px-2.5 py-2">
+            <div className="flex min-w-0 items-center gap-2">
+              <LegacyIcon name="warning_amber" className="text-[14px] text-amber-700" />
+              <div className="min-w-0">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-amber-800/80">
+                  {zh ? '待处理' : 'Needs review'}
+                </div>
+                <div className="truncate text-[11px] text-amber-900">
+                  {summary.waiting > 1
+                    ? (zh ? `${summary.waiting} 个待审批任务` : `${summary.waiting} sessions waiting for review`)
+                    : (zh ? '1 个待审批任务' : '1 session waiting for review')}
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                onSelectSession?.(reviewTarget);
+                onClose();
+              }}
+              className="shrink-0 rounded-full border border-amber-300 bg-white px-2 py-1 text-[10px] font-semibold text-amber-900 hover:bg-amber-100"
+            >
+              {zh ? '立即处理' : getSessionBoardActionLabel('waiting', 'en')}
+            </button>
+          </div>
+        ) : null}
         <div className="grid grid-cols-5 gap-1.5 px-2 py-2 border-b border-outline-variant/30">
           {summaryOptions.map(({ key, label }) => (
             <div
@@ -255,7 +316,22 @@ export function SessionOverviewBoard({
                         : session.workspace_name || session.workspace_id || '—'}
                     </div>
                   </div>
-                  <StatusBadge status={status} language={language} />
+                  <div className="flex items-center gap-1.5">
+                    <StatusBadge status={status} language={language} />
+                    {status !== 'idle' ? (
+                      <span
+                        className={`inline-flex items-center rounded-full border px-1.5 py-0.5 text-[9px] font-semibold ${
+                          status === 'waiting'
+                            ? 'border-amber-300 bg-amber-50 text-amber-800'
+                            : status === 'failed'
+                              ? 'border-red-300 bg-red-50 text-red-800'
+                              : 'border-primary/30 bg-primary/5 text-primary'
+                        }`}
+                      >
+                        {getSessionBoardActionLabel(status, language)}
+                      </span>
+                    ) : null}
+                  </div>
                 </button>
               );
             })
