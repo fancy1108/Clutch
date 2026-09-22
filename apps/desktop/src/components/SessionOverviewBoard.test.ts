@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   filterSessionBoardRows,
   getSessionBoardActionLabel,
+  getSessionBoardDecisionActionLabel,
   resolveSessionBoardStatus,
   sessionBoardRows,
   summarizeSessionBoardStatus,
@@ -42,6 +43,8 @@ describe('SessionOverviewBoard', () => {
     expect(getSessionBoardActionLabel('waiting', 'en')).toBe('Review');
     expect(getSessionBoardActionLabel('failed', 'zh')).toBe('检查');
     expect(getSessionBoardActionLabel('running', 'en')).toBe('Follow');
+    expect(getSessionBoardDecisionActionLabel('approve', 'zh')).toBe('批准');
+    expect(getSessionBoardDecisionActionLabel('retry', 'en')).toBe('Retry');
   });
 
   it('summarizes task-center counts by status', () => {

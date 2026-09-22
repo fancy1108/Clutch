@@ -101,6 +101,23 @@ export function getSessionBoardActionLabel(
   }
 }
 
+export type SessionBoardDecisionAction = 'approve' | 'reject' | 'retry';
+
+export function getSessionBoardDecisionActionLabel(
+  action: SessionBoardDecisionAction,
+  language: 'en' | 'zh',
+): string {
+  const zh = language === 'zh';
+  switch (action) {
+    case 'approve':
+      return zh ? '批准' : 'Approve';
+    case 'reject':
+      return zh ? '拒绝' : 'Reject';
+    case 'retry':
+      return zh ? '重试' : 'Retry';
+  }
+}
+
 function StatusBadge({
   status,
   language,
@@ -156,6 +173,9 @@ export interface SessionOverviewBoardProps {
   clutchStatus?: string;
   language: 'en' | 'zh';
   onSelectSession?: (session: SessionRecord) => void;
+  onApprove?: () => void;
+  onReject?: () => void;
+  onRetryWithInstructions?: (instructions: string) => void;
 }
 
 export function SessionOverviewBoard({
@@ -166,6 +186,9 @@ export function SessionOverviewBoard({
   clutchStatus,
   language,
   onSelectSession,
+  onApprove,
+  onReject,
+  onRetryWithInstructions,
 }: SessionOverviewBoardProps) {
   const [filter, setFilter] = useState<SessionBoardFilter>('all');
   const rows = useMemo(
@@ -237,30 +260,65 @@ export function SessionOverviewBoard({
           ))}
         </div>
         {reviewTarget ? (
-          <div className="flex items-center justify-between gap-2 border-b border-amber-200/80 bg-amber-50/70 px-2.5 py-2">
-            <div className="flex min-w-0 items-center gap-2">
-              <LegacyIcon name="warning_amber" className="text-[14px] text-amber-700" />
-              <div className="min-w-0">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-amber-800/80">
-                  {zh ? '待处理' : 'Needs review'}
-                </div>
-                <div className="truncate text-[11px] text-amber-900">
-                  {summary.waiting > 1
-                    ? (zh ? `${summary.waiting} 个待审批任务` : `${summary.waiting} sessions waiting for review`)
-                    : (zh ? '1 个待审批任务' : '1 session waiting for review')}
+          <div className="border-b border-amber-200/80 bg-amber-50/70 px-2.5 py-2">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex min-w-0 items-center gap-2">
+                <LegacyIcon name="warning_amber" className="text-[14px] text-amber-700" />
+                <div className="min-w-0">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-amber-800/80">
+                    {zh ? '待处理' : 'Needs review'}
+                  </div>
+                  <div className="truncate text-[11px] text-amber-900">
+                    {summary.waiting > 1
+                      ? (zh ? `${summary.waiting} 个待审批任务` : `${summary.waiting} sessions waiting for review`)
+                      : (zh ? '1 个待审批任务' : '1 session waiting for review')}
+                  </div>
                 </div>
               </div>
+              <button
+                type="button"
+                onClick={() => {
+                  onSelectSession?.(reviewTarget);
+                  onClose();
+                }}
+                className="shrink-0 rounded-full border border-amber-300 bg-white px-2 py-1 text-[10px] font-semibold text-amber-900 hover:bg-amber-100"
+              >
+                {zh ? '立即处理' : getSessionBoardActionLabel('waiting', 'en')}
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                onSelectSession?.(reviewTarget);
-                onClose();
-              }}
-              className="shrink-0 rounded-full border border-amber-300 bg-white px-2 py-1 text-[10px] font-semibold text-amber-900 hover:bg-amber-100"
-            >
-              {zh ? '立即处理' : getSessionBoardActionLabel('waiting', 'en')}
-            </button>
+            {(onApprove || onReject || onRetryWithInstructions) ? (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {onApprove ? (
+                  <button
+                    type="button"
+                    onClick={() => onApprove()}
+                    className="rounded-full bg-emerald-600 px-2 py-1 text-[10px] font-semibold text-white hover:bg-emerald-500"
+                  >
+                    {getSessionBoardDecisionActionLabel('approve', language)}
+                  </button>
+                ) : null}
+                {onReject ? (
+                  <button
+                    type="button"
+                    onClick={() => onReject()}
+                    className="rounded-full bg-rose-600 px-2 py-1 text-[10px] font-semibold text-white hover:bg-rose-500"
+                  >
+                    {getSessionBoardDecisionActionLabel('reject', language)}
+                  </button>
+                ) : null}
+                {onRetryWithInstructions ? (
+                  <button
+                    type="button"
+                    onClick={() => onRetryWithInstructions(
+                      zh ? '请修正当前结果并继续执行。' : 'Please revise and continue from the current state.',
+                    )}
+                    className="rounded-full border border-amber-300 bg-white px-2 py-1 text-[10px] font-semibold text-amber-900 hover:bg-amber-100"
+                  >
+                    {getSessionBoardDecisionActionLabel('retry', language)}
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         ) : null}
         <div className="grid grid-cols-5 gap-1.5 px-2 py-2 border-b border-outline-variant/30">

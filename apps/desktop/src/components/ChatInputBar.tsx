@@ -90,6 +90,10 @@ interface ChatInputBarProps {
   clutchStatus?: string;
   /** D30 — click a board row to switch sessions. */
   onSelectSession?: (session: SessionRecord) => void;
+  /** D30 — quick review actions for waiting sessions in the overview board. */
+  onApprove?: () => void;
+  onReject?: () => void;
+  onRetryWithInstructions?: (instructions: string) => void;
   resolveAgentLogo?: (agentName: string) => string | undefined;
   onDismissHybridNotice?: () => void;
   isFlowRefining?: boolean;
