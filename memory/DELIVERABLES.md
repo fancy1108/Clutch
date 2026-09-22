@@ -20,6 +20,19 @@
 
 ## Recently Completed
 
+## v1.4.2 issue 证据总览（2026-09-22）
+
+| Issue | 范围 | 交付证据 | 验收方式 |
+|------|------|----------|----------|
+| [#153](https://github.com/fancy1108/Clutch/issues/153) | Task Center / execution status | `SessionOverviewBoard.tsx` + `SessionOverviewBoard.test.ts` | 总览顶部状态卡片、waiting / failed / done / idle 分组、待处理 banner 与动作标签匀齐可见 |
+| [#154](https://github.com/fancy1108/Clutch/issues/154) | Memory / history / preferences | `SystemPreferencesModal.tsx` + `permissionApi.ts` | 记忆开关、清空记忆、搜索记忆、默认工作区与高风险确认都可设置并持久化 |
+| [#155](https://github.com/fancy1108/Clutch/issues/155) | Multi-agent execution monitor | `RightPanel.tsx` + `WorkflowOrchestration.tsx` + `AgentLiveActivity.tsx` | 单页可见多 agent 工作流状态、步骤跟踪和工时/状态聚合 |
+| [#156](https://github.com/fancy1108/Clutch/issues/156) | Plan before patch / approval flow | `PlanCardView.tsx` + `ChatFeed.tsx` + `LanguageContext.tsx` | 计划卡片、审批状态、逐步骤备注与 revise/cancel 流转皆可观察 |
+| [#157](https://github.com/fancy1108/Clutch/issues/157) | Validation / evidence / failure attribution | `RightPanel.tsx` + `ChatFeed.tsx` + `validation_result` message handling | 验证失败 strip、失败提示和上下文记录均可看见 |
+| [#158](https://github.com/fancy1108/Clutch/issues/158) | Diff review / risk scoring | `DiffSummaryCardView.tsx` + `AgentLiveActivity.tsx` + `ChatFeed.tsx` | diff hunk、文件级摘要与新增/删除计数，适合人工 review 与 risk triage |
+
+最终验证：`./scripts/verify.sh` → `build ok`，`vitest 38 passed (38)`，`pytest 1029 passed / 7 skipped`，`doc-drift 0 error`。
+
 ## Task-center 状态增强（2026-09-22）
 
 | 项 | 说明 |
