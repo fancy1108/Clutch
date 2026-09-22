@@ -18,6 +18,13 @@
 
 ## Recent Sessions
 
+## 2026-09-22 会话（Task-center 任务总览增强）
+
+- **做了：** 继续扩展任务中心：为 `SessionOverviewBoard` 增加状态汇总卡片（Running / Waiting / Failed / Done / Idle），让用户一眼看见热点与风险项，不再只看单条 badge。
+- **落地：** `apps/desktop/src/components/SessionOverviewBoard.tsx` 新增 `summarizeSessionBoardStatus()`；`SessionOverviewBoard` 顶部展示汇总计数，仍保持原有筛选与去重逻辑。
+- **测：** `pnpm --filter @clutch/desktop test -- --run src/components/SessionOverviewBoard.test.ts` ✅（8/8 passed）。
+- **下次：** 继续下一步任务项：审批流交互/UX 的更细化反馈（如批准/拒绝的动作态势与重试说明）。
+
 ## 2026-09-21 会话（Design 回归修复：黑白页 / modify 版本 / prune 守护）
 
 - **做了：** ① 「生成的 Design 页面黑白无样式」——根因不是 LLM 也不是 CDN：画布卡片与侧栏缩略图用**超大 srcDoc iframe**（如 1440px 宽再 scale 缩小），Chromium 与 WKWebView 都会把 paint 冻结在 Tailwind CDN 运行时注入样式之前的初始帧；磁盘上的 HTML 与 `src=` 加载均正常。修复：卡片与缩略图改走 sidecar 预览 URL（`src=`），仅 Pick-element 模式保留 srcDoc（需同源 DOM）。commit `c12ddba`。② 「modify 不切换版本」——后端 `iterate_session` modify 分支原地覆写 `_r0.html`，从不产生新 round；改为走 `_record_screen_round` 记录 `_r1/_r2/…`，与 add/duplicate/delete 对齐。③ `prune_orphan_session_dirs` 守护：注册表为空但磁盘有产物时整体跳过；24 小时内修改过的目录不删。commit `d8dd342`。

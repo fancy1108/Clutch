@@ -1,11 +1,13 @@
 /**
  * D30 — session overview board (all local Chat sessions + status badges).
  */
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { sessionActivityAt, type SessionRecord } from '../services/runApi';
 import { LegacyIcon } from './ui/LegacyIcon';
 
-export type SessionBoardStatus = 'running' | 'done' | 'idle';
+export type SessionBoardStatus = 'running' | 'done' | 'waiting' | 'failed' | 'idle';
+export type SessionBoardFilter = 'all' | SessionBoardStatus;
+export type SessionBoardSummary = Record<SessionBoardStatus, number>;
 
 export function resolveSessionBoardStatus(
   session: SessionRecord,
@@ -19,7 +21,12 @@ export function resolveSessionBoardStatus(
       clutchStatus === 'awaiting_human' ||
       clutchStatus === 'refining');
   if (activeBusy || session.status === 'running') return 'running';
-  if (['passed', 'done', 'completed', 'idle'].includes(session.status)) return 'done';
+  if (['waiting_approval', 'awaiting_human', 'awaiting_user', 'blocked', 'paused'].includes(session.status)) {
+    return 'waiting';
+  }
+  if (['failed', 'error', 'cancelled', 'rejected'].includes(session.status)) return 'failed';
+  if (['passed', 'done', 'completed'].includes(session.status)) return 'done';
+  if (['queued', 'pending'].includes(session.status)) return 'idle';
   return 'idle';
 }
 
@@ -32,6 +39,36 @@ export function sessionBoardRows(sessions: SessionRecord[]): SessionRecord[] {
     rows.push(session);
   }
   return rows.sort((a, b) => sessionActivityAt(b).localeCompare(sessionActivityAt(a)));
+}
+
+export function filterSessionBoardRows(
+  sessions: SessionRecord[],
+  filter: SessionBoardFilter,
+  currentRunId?: string,
+  clutchStatus?: string,
+): SessionRecord[] {
+  const rows = sessionBoardRows(sessions);
+  if (filter === 'all') return rows;
+  return rows.filter((session) => resolveSessionBoardStatus(session, currentRunId, clutchStatus) === filter);
+}
+
+export function summarizeSessionBoardStatus(
+  sessions: SessionRecord[],
+  currentRunId?: string,
+  clutchStatus?: string,
+): SessionBoardSummary {
+  const summary: SessionBoardSummary = {
+    running: 0,
+    done: 0,
+    waiting: 0,
+    failed: 0,
+    idle: 0,
+  };
+
+  for (const session of sessionBoardRows(sessions)) {
+    summary[resolveSessionBoardStatus(session, currentRunId, clutchStatus)] += 1;
+  }
+  return summary;
 }
 
 function StatusBadge({
@@ -47,6 +84,22 @@ function StatusBadge({
       <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
         <LegacyIcon name="progress_activity" className="text-[11px] animate-spin" aria-hidden />
         {zh ? '进行中' : 'Running'}
+      </span>
+    );
+  }
+  if (status === 'waiting') {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+        <LegacyIcon name="schedule" className="text-[11px]" aria-hidden />
+        {zh ? '待审批' : 'Waiting'}
+      </span>
+    );
+  }
+  if (status === 'failed') {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-semibold text-red-700">
+        <LegacyIcon name="error" className="text-[11px]" aria-hidden />
+        {zh ? '失败' : 'Failed'}
       </span>
     );
   }
@@ -84,8 +137,30 @@ export function SessionOverviewBoard({
   language,
   onSelectSession,
 }: SessionOverviewBoardProps) {
-  const rows = useMemo(() => sessionBoardRows(sessions), [sessions]);
+  const [filter, setFilter] = useState<SessionBoardFilter>('all');
+  const rows = useMemo(
+    () => filterSessionBoardRows(sessions, filter, currentRunId, clutchStatus),
+    [sessions, filter, currentRunId, clutchStatus],
+  );
+  const summary = useMemo(
+    () => summarizeSessionBoardStatus(sessions, currentRunId, clutchStatus),
+    [sessions, currentRunId, clutchStatus],
+  );
   const zh = language === 'zh';
+  const filterOptions: { value: SessionBoardFilter; label: string }[] = [
+    { value: 'all', label: zh ? '全部' : 'All' },
+    { value: 'running', label: zh ? '进行中' : 'Running' },
+    { value: 'waiting', label: zh ? '待审批' : 'Waiting' },
+    { value: 'failed', label: zh ? '失败' : 'Failed' },
+    { value: 'done', label: zh ? '已完成' : 'Done' },
+  ];
+  const summaryOptions: Array<{ key: SessionBoardStatus; label: string }> = [
+    { key: 'running', label: zh ? '进行中' : 'Running' },
+    { key: 'waiting', label: zh ? '待审批' : 'Waiting' },
+    { key: 'failed', label: zh ? '失败' : 'Failed' },
+    { key: 'done', label: zh ? '已完成' : 'Done' },
+    { key: 'idle', label: zh ? '空闲' : 'Idle' },
+  ];
 
   if (!open) return null;
 
@@ -110,6 +185,41 @@ export function SessionOverviewBoard({
           >
             <LegacyIcon name="close" className="text-[16px]" />
           </button>
+        </div>
+        <div className="flex flex-wrap gap-1.5 px-2 py-2 border-b border-outline-variant/30">
+          {filterOptions.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => setFilter(option.value)}
+              className={`rounded-full px-2 py-1 text-[10px] font-medium transition-colors ${
+                filter === option.value
+                  ? 'bg-primary text-white'
+                  : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container'
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+        <div className="grid grid-cols-5 gap-1.5 px-2 py-2 border-b border-outline-variant/30">
+          {summaryOptions.map(({ key, label }) => (
+            <div
+              key={key}
+              className={`rounded-lg border px-2 py-1.5 text-center ${
+                key === 'waiting'
+                  ? 'border-amber-300/60 bg-amber-500/5'
+                  : key === 'failed'
+                    ? 'border-red-300/60 bg-red-500/5'
+                    : key === 'running'
+                      ? 'border-primary/40 bg-primary/5'
+                      : 'border-outline-variant/30 bg-surface-container-low'
+              }`}
+            >
+              <div className="text-[9px] text-on-surface-variant/70">{label}</div>
+              <div className="mt-0.5 text-[12px] font-semibold text-on-surface">{summary[key]}</div>
+            </div>
+          ))}
         </div>
         <div className="max-h-64 overflow-y-auto">
           {rows.length === 0 ? (

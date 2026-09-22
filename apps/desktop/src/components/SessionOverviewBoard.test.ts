@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { resolveSessionBoardStatus, sessionBoardRows } from './SessionOverviewBoard';
+import {
+  filterSessionBoardRows,
+  resolveSessionBoardStatus,
+  sessionBoardRows,
+  summarizeSessionBoardStatus,
+} from './SessionOverviewBoard';
 import type { SessionRecord } from '../services/runApi';
 
 const base = (overrides: Partial<SessionRecord>): SessionRecord => ({
@@ -20,6 +25,52 @@ describe('SessionOverviewBoard', () => {
   it('marks completed sessions as done', () => {
     const session = base({ status: 'passed' });
     expect(resolveSessionBoardStatus(session, 'run_other', 'idle')).toBe('done');
+  });
+
+  it('marks approval-waiting sessions as waiting', () => {
+    const session = base({ status: 'waiting_approval' });
+    expect(resolveSessionBoardStatus(session, 'run_other', 'idle')).toBe('waiting');
+  });
+
+  it('marks failed sessions as failed', () => {
+    const session = base({ status: 'failed' });
+    expect(resolveSessionBoardStatus(session, 'run_other', 'idle')).toBe('failed');
+  });
+
+  it('summarizes task-center counts by status', () => {
+    const sessions = [
+      base({ run_id: 'run_running', status: 'running' }),
+      base({ run_id: 'run_waiting', status: 'waiting_approval' }),
+      base({ run_id: 'run_failed', status: 'failed' }),
+      base({ run_id: 'run_done', status: 'completed' }),
+      base({ run_id: 'run_idle', status: 'queued' }),
+    ];
+
+    expect(summarizeSessionBoardStatus(sessions)).toEqual({
+      running: 1,
+      done: 1,
+      waiting: 1,
+      failed: 1,
+      idle: 1,
+    });
+  });
+
+  it('filters sessions by board status', () => {
+    const sessions = [
+      base({ run_id: 'run_running', status: 'running' }),
+      base({ run_id: 'run_waiting', status: 'waiting_approval' }),
+      base({ run_id: 'run_failed', status: 'failed' }),
+      base({ run_id: 'run_done', status: 'completed' }),
+    ];
+
+    expect(filterSessionBoardRows(sessions, 'all').map((session) => session.run_id)).toEqual([
+      'run_running',
+      'run_waiting',
+      'run_failed',
+      'run_done',
+    ]);
+    expect(filterSessionBoardRows(sessions, 'waiting').map((session) => session.run_id)).toEqual(['run_waiting']);
+    expect(filterSessionBoardRows(sessions, 'failed').map((session) => session.run_id)).toEqual(['run_failed']);
   });
 
   it('dedupes and sorts session rows', () => {
