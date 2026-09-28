@@ -408,7 +408,11 @@ def test_iterate_modify_keeps_screen_count(workspace: Path, monkeypatch: pytest.
         mode="auto",
     )
     assert len(after["screens"]) == 1
-    html = (_session_path(workspace, run_id) / "screens" / "main_r0.html").read_text(encoding="utf-8")
+    # Modify records a new versioned round (r1); r0 stays intact for version switching.
+    active_rel = after["screens"][0]["html_path"]
+    assert active_rel == "screens/main_r1.html"
+    assert (_session_path(workspace, run_id) / "screens" / "main_r0.html").is_file()
+    html = (_session_path(workspace, run_id) / active_rel).read_text(encoding="utf-8")
     # Without LLM, modify uses intent-aware fallback (must visibly change).
     assert "html" in html.lower()
     assert "data-note" not in html or "Playlist" in html or "Lyrics" in html or "登录" in html or "Log in" in html or "Feature" in html
@@ -468,7 +472,9 @@ def test_iterate_modify_music_intent_changes_ui(
         mode="auto",
     )
     assert after.get("last_iterate_action") == "modify"
-    html = (_session_path(workspace, run_id) / "screens" / "main_r0.html").read_text(encoding="utf-8")
+    # Modify writes a new versioned round; read the active round file.
+    active_rel = (after.get("screens") or [{}])[0].get("html_path") or "screens/main_r1.html"
+    html = (_session_path(workspace, run_id) / active_rel).read_text(encoding="utf-8")
     assert "Lyrics" in html or "歌词" in html
     assert "Prev" in html or "Next" in html or "切歌" in html
     assert service._infer_iterate_mode(
@@ -519,13 +525,49 @@ def test_versioned_screen_rounds(workspace: Path, monkeypatch: pytest.MonkeyPatc
     service.generate_session(run_id, prompt="登录页", device="web")
     session = service.iterate_session(run_id, "把主按钮改成深色", target_kind="ui", target_id="main")
     session_dir = _session_path(workspace, run_id)
+    # Modify creates a new versioned round: r0 preserved, r1 becomes active.
     assert (session_dir / "screens" / "main_r0.html").is_file()
+    assert (session_dir / "screens" / "main_r1.html").is_file()
     history = session.get("round_history") or []
-    assert len(history) == 1
+    assert len(history) == 2
     assert any(e.get("screen_id") == "main" and e.get("round_index") == 0 for e in history)
+    assert any(e.get("screen_id") == "main" and e.get("round_index") == 1 for e in history)
     screens = session.get("screens") or []
     assert len(screens) == 1
-    assert screens[0]["html_path"] == "screens/main_r0.html"
+    assert screens[0]["html_path"] == "screens/main_r1.html"
+    assert screens[0]["active_round_index"] == 1
+    # Both versions remain readable for the round switcher.
+    assert "html" in service.read_screen_html(run_id, "main_r0").lower()
+    assert "html" in service.read_screen_html(run_id, "main_r1").lower()
+
+
+def test_prune_orphan_session_dirs_guards(workspace: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Registry mismatch must never wipe on-disk design sessions (data-loss guard)."""
+    import os
+    import time
+
+    from src.design import session_store
+
+    monkeypatch.setattr("src.models_config.is_model_available", lambda *a, **k: False)
+    run_id = "design-prune-guard"
+    service.generate_session(run_id, prompt="登录页", device="web")
+    sdir = _session_path(workspace, run_id)
+    assert sdir.is_dir()
+
+    # Empty keep set with existing artifacts → skip (store/workspace-id mismatch, D43).
+    assert session_store.prune_orphan_session_dirs(keep_run_ids=set()) == []
+    assert sdir.is_dir()
+
+    # Fresh session missing from keep → 24h grace window keeps it.
+    assert session_store.prune_orphan_session_dirs(keep_run_ids={"other-run"}) == []
+    assert sdir.is_dir()
+
+    # Stale orphan (mtime > 24h) missing from keep → pruned as intended.
+    old_ts = time.time() - 25 * 3600
+    os.utime(sdir, (old_ts, old_ts))
+    removed = session_store.prune_orphan_session_dirs(keep_run_ids={"other-run"})
+    assert removed
+    assert not sdir.exists()
 
 
 def test_html_has_visible_content_rejects_empty_shell() -> None:

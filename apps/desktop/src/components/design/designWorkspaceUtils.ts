@@ -549,8 +549,11 @@ export function buildCanvasNodes(
       const screenId = screen.id || 'main';
       const perScreenRoundIdx = extras?.screenVersions?.[screenId] ?? extras?.selectedRoundIndex ?? activeRound?.screenRoundIndex ?? 0;
       const versionedHtml = extras?.roundHtmlByScreen?.[screenId];
+      // Always prefer the sidecar-served preview (src=) over srcDoc: oversized
+      // srcDoc iframes freeze at the initial pre-Tailwind paint in both Chromium
+      // and WKWebView, leaving generated pages unstyled (black-and-white).
       const previewSrc =
-        extras?.runId && perScreenRoundIdx > 0 && hasHtml
+        extras?.runId && hasHtml
           ? designScreenVersionPath(extras.runId, screenId, perScreenRoundIdx)
           : null;
       list.push({

@@ -3602,12 +3602,21 @@ def iterate_session(
             not _html_has_visible_content(html) or _html_essentially_same(html, current)
         ):
             html = _fallback_ui_html(merged_prompt, spec_dict, device=device)
-        rel = screen.get("html_path") or f"screens/{screen_id}_r0.html"
-        (sdir / "screens").mkdir(exist_ok=True)
         # Inject unified tailwind config to maintain style consistency after modification
         html = inject_unified_tailwind_config(html, spec, design_md)
-        (sdir / rel).write_text(html, encoding="utf-8")
-        screen["html_path"] = rel
+        # Record every modify as a new versioned round (r1, r2, …) so the canvas
+        # round selector can switch versions; previously the file was overwritten
+        # in place and the version never advanced.
+        round_entry = _record_screen_round(
+            sdir,
+            manifest,
+            screen_id=screen_id,
+            html=html,
+            prompt=instruction,
+            reasoning_content=ui_reasoning,
+            process_log_slice=list(log[log_start:]),
+        )
+        rel = str(round_entry.get("html_path") or f"screens/{screen_id}_r0.html")
         iterate_ready_text = (
             f"Updated the artboard — wrote {rel}. What else?"
         )

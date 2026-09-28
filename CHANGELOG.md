@@ -10,6 +10,25 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ## [Unreleased]
 
+## [1.4.2] - 2026-09-28
+
+### Added
+
+- **Non-Git workspace hint in Changes panel:** When the active workspace is not a Git repository, the Changes tab now shows a "Not a Git repository" notice (bilingual) instead of a bare "No uncommitted changes" — explaining why deletions from a non-git folder make the panel go empty. The `/api/workspace/changes` endpoint now returns an `is_git_repo` flag alongside `files`.
+
+### Changed
+
+- **Smaller chat footprint for large file lists:** `FilesChangedChips` in the chat feed rendered every touched file as an individual chip with no limit — a 593-file change set produced 593 chips, bloating the feed and the LLM context. Lists with more than 8 files now show the first 8 chips + a total count + a "Show all (N)" expander; the expanded view lives in a 220 px scrollable container.
+- **Changes panel groups, collapses, and filters:** The right-side Changes tab rendered every uncommitted file as a flat DOM node (593 nodes for 593 files), making it slow and unnavigable. Files are now grouped by top-level directory (collapsible headers with counts), all groups collapse by default when there are more than 50 files, and a filter input appears when there are more than 20.
+- **`run_terminal_cmd` efficiency guidance:** The tool description only listed prohibitions (no heredocs, no duplicate runs) but gave no positive guidance on command efficiency, so the agent defaulted to heavy recursive searches (e.g. `grep -r` over a 17 GB workspace) to answer simple questions and ate the 60 s timeout. The description now nudges toward shell globs / `find -maxdepth`, ripgrep over `grep -r`, and stat-first for "can I delete X?" questions.
+
+### Fixed
+
+- **Design pages rendered black-and-white:** Generated UI cards and sidebar thumbnails used oversized `srcDoc` iframes, which freeze at the initial pre-Tailwind paint (Chromium and WKWebView alike) — theme colors injected at runtime never repainted. Canvas cards and sidebar thumbnails now load the sidecar-served preview URL (`src=`), which repaints normally; Pick-element mode still uses `srcDoc` (needs same-origin DOM).
+- **Design modify never switched versions:** Iterating with "modify" overwrote `screens/<id>_r0.html` in place, so no new round ever appeared in the Rounds switcher. Modify now records a versioned round (`_r1`, `_r2`, …) like add/duplicate/delete; prior versions stay readable.
+- **Design sessions could be wiped by registry mismatch:** `prune_orphan_session_dirs` deleted on-disk session folders missing from the runs registry — catastrophic when the store lost track (workspace-id flip, dev sidecar vs packaged app sharing one workspace). Pruning now skips entirely when the registry is empty but artifacts exist, and never touches folders modified within 24 hours.
+- **Chat history vanished mid-conversation:** Auto context-compaction (D8) folded the visible chat after just a few normal turns — the trigger compared a fixed 15k threshold against lifetime cumulative `session_tokens` (every turn's full-context input summed, and summed again across ReAct steps). The L4 fold now engages only when the *current* context fill (estimated from visible message text + system-prompt allowance) approaches the model context window (default 100k tokens, `CLUTCH_COMPACT_THRESHOLD` override). Earlier Q&A stays visible while new turns append below; manual `/compact` is unchanged.
+
 ## [1.4.1] - 2026-09-21
 
 ### Changed

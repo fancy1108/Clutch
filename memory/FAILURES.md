@@ -12,6 +12,14 @@
 
 （暂无）
 
+### [RESOLVED] Chat · 发出第二问后第一条回答从 feed 消失（2026-09-21）
+
+- **现象：** Chat 模式 Q1 回答正常渲染；发出 Q2 的瞬间，第一条回答从 Chat feed 消失（截图实证）。
+- **根因：** `compaction.should_compact` 用**lifetime 累计** `session_tokens`（每轮全量上下文 input 累加，`mcp_react` 还在 ReAct 步间求和）对比固定 15k 阈值 → 正常聊天 3–5 轮即触发 L4 全量折叠；`compact_run_messages` 把可见消息替换为 首条+近4条+digest，中间轮次从 Chat 抹掉。真实会话折叠时当前上下文仅 ~7.8k tokens，远未接近任何模型窗口。
+- **解决：** 触发改为估算**当前上下文填充**（`estimate_context_tokens`：可见消息文本 chars/2 + 系统提示常量 6k），默认阈值 100k（`CLUTCH_COMPACT_THRESHOLD` 可覆盖）；手动 `/compact` 与折叠形态不变。
+- **规避：** 「接近上下文窗口」类判断禁止用 lifetime 累计 token；必须按下一次 LLM 调用实际要发的消息体量估算。
+- **关联：** `compaction.py` · `test_compaction.py` · `test_context_layers_b36.py` · `test_chat_turn_messages_repro.py` · `test_chat_reconnect_repro.py`
+
 ### [RESOLVED] Windows CI `test_start_sleep_wait_done` failed（2026-08-28）
 
 - **现象：** v1.4.0 tag 的 Windows Build 在 `uv run pytest` 挂掉：`test_bg_jobs_d11.py::test_start_sleep_wait_done` 期望 `done`，实际 `failed`。
@@ -91,6 +99,22 @@
 - **规避：** Windows 新增 Node/Python/包管理器调用时，先解析完整可执行路径，避免裸 CLI；Tauri build 不写裸 `uv`。
 
 ## 已解决问题（经验库）
+
+### [RESOLVED] 超大 srcDoc iframe paint 冻结 → Design 生成页黑白（2026-09-21）
+
+- **现象：** Design 画布卡片与侧栏缩略图只渲染未着色的黑白页面；磁盘 HTML 文件本身主题完整，浏览器直接打开正常
+- **根因：** 卡片用 1440px 级宽度的 `srcDoc` iframe 再 `transform: scale()` 缩小；Chromium 与 WKWebView 都会把可见 paint 冻结在初始帧，Tailwind Play CDN 运行时注入的 `<style>` 不再触发重绘。与 LLM、网络、CDN 可达性均无关
+- **解决：** 画布卡片（含 r0）与侧栏缩略图改走 sidecar 预览 URL（`src=`），`src=` 加载重绘正常；仅 Pick-element 模式保留 `srcDoc`（需同源 DOM）。commit `c12ddba`
+- **规避：** 排查「样式没生效」先看磁盘 HTML 与 `src=` 直开是否正常，把 iframe 渲染层与生成层分开定位；超大缩放预览一律用 `src=`，不要用 `srcDoc`
+- **关联：** `apps/desktop/src/components/design/designWorkspaceUtils.ts`、`apps/desktop/src/sidebar.tsx`
+
+### [RESOLVED] `prune_orphan_session_dirs` 跨 store 注册表不匹配误删会话（2026-09-21）
+
+- **现象：** dev sidecar（`clutch_dev` store）打开用户工作区后，磁盘上 4 个真实 Design 会话目录被当作 orphan 删除（注册表里查不到 run_id）
+- **根因：** 清理逻辑默认「注册表没有 = 用户已删」，但 workspace-id 翻转、dev/打包应用共享工作区时注册表会暂时失真（D43）；用户主动删除本就走 `delete_session_artifacts`，prune 不需要替它兜底
+- **解决：** 两道守护——keep 集为空但磁盘有产物时整体跳过；mtime 24 小时内的目录不删。新增回归测试覆盖空 keep / 宽限期 / 陈旧 orphan 三条路径。commit `d8dd342`
+- **规避：** 任何「以注册表为准删磁盘」的清理都必须假设注册表可能失真；调试时用 dev store 打开生产工作区前先意识到 prune 类逻辑会跑
+- **关联：** `services/orchestrator/src/design/session_store.py`、`tests/test_design_service.py::test_prune_orphan_session_dirs_guards`
 
 ### [RESOLVED] D12 · tauri-playwright 无法在 `<textarea>` 上 fill/type（2026-06-23）
 

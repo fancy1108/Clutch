@@ -1672,6 +1672,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
                           paths={msg.filesChanged}
                           onOpen={onOpenWorkspaceFile}
                           label={t('Changed files')}
+                          t={t}
                         />
                       ) : null}
                       {!isUser && msg.planCard ? (

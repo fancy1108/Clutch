@@ -201,29 +201,50 @@ def test_should_compact() -> None:
     state["session_tokens"] = 20000
     assert not should_compact(state)
 
-    # > 5 messages, session_tokens <= threshold (default 15000)
+    # > 5 messages but small current context: no fold, even when the lifetime
+    # cumulative token counter is huge (regression: the cumulative-based
+    # trigger folded healthy chats after a few turns and earlier Q&A vanished
+    # from the feed).
     state["messages"] = [{"agent": "User", "text": "hello"}] * 6
-    state["session_tokens"] = 14999
+    state["session_tokens"] = 500_000
     assert not should_compact(state)
 
-    # > 5 messages, session_tokens > threshold
-    state["session_tokens"] = 15001
+    # Genuinely large current context (chars-based estimate) folds.
+    state["messages"] = [{"agent": "User", "text": "x" * 60_000}] * 6
     assert should_compact(state)
+
+
+def test_should_compact_real_chat_session_regression() -> None:
+    """Mirror of the reported bug session: 8 short messages, cumulative
+    session_tokens 15_666 (> old 15k threshold) but only ~6k current context.
+    Auto-compaction must NOT fire — earlier answers stay visible."""
+    state = initial_state("run_regression")
+    state["messages"] = [
+        {"agent": "User", "text": "hello"},
+        {"agent": "Clutch Agent", "text": "你好！有什么可以帮你的？"},
+        {"agent": "User", "text": "https://github.com/affaan-m/ECC 这是什么"},
+        {"agent": "User", "text": "我的电脑安装这个了吗"},
+        {"agent": "Clutch Agent", "text": "没有安装。`which ecc` 找不到该命令。"},
+        {"agent": "User", "text": "ECC 有哪些SKILL，根据使用场景，总结给我"},
+        {"agent": "Clutch Agent", "text": "SKILL 汇总：" + "详细内容。" * 600},
+        {"agent": "User", "text": "我们现在在哪个项目里面？"},
+    ]
+    state["session_tokens"] = 15_666
+    assert not should_compact(state)
 
 
 def test_should_compact_with_env_override(monkeypatch: pytest.MonkeyPatch) -> None:
     state = initial_state("run_test")
     state["messages"] = [{"agent": "User", "text": "hello"}] * 6
-    state["session_tokens"] = 5000
 
-    # default is 15000, so 5000 shouldn't compact
+    # default budget is large, so a small conversation never compacts
     assert not should_compact(state)
 
-    # Override threshold to 4000
-    monkeypatch.setenv("CLUTCH_COMPACT_THRESHOLD", "4000")
+    # Override threshold far below the current context estimate
+    monkeypatch.setenv("CLUTCH_COMPACT_THRESHOLD", "10")
     assert should_compact(state)
 
-    # Override threshold to invalid value, should fallback to default 15000
+    # Override threshold to invalid value, should fallback to default
     monkeypatch.setenv("CLUTCH_COMPACT_THRESHOLD", "invalid")
     assert not should_compact(state)
 

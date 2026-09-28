@@ -17,15 +17,17 @@ Clutch 是一款**桌面应用**（Tauri + React），面向独立开发者和�
 |---|---|
 | **技术栈** | Tauri 2 · React 19 · FastAPI + LangGraph · 本地优先（`localhost:8123`） |
 | **许可证** | 见 [LICENSE](LICENSE) |
-| **当前版本** | [v1.4.1](https://github.com/fancy1108/Clutch/releases/tag/v1.4.1) · [更新日志](CHANGELOG.md#141---2026-09-21) |
+| **当前版本** | [v1.4.2](https://github.com/fancy1108/Clutch/releases/tag/v1.4.2) · [更新日志](CHANGELOG.md#142---2026-09-28) |
 | **贡献者** | 感谢 [@MyloveAless](https://github.com/MyloveAless) 设计「AI 图片生成多 Agent 工作流」并完成端到端验证。 |
 
-### 最新更新（v1.4.1）
+### 最新更新（v1.4.2）
 
-- **Agnes 免费模型换代：** 内置目录改为 **Agnes 3.0 Flash**（对话）、**Agnes Image 2.5 Flash**、**Agnes Video 2.5 Flash**（720P）。已保存的选择自动 remap 到新 id。
-- **更干脆的默认回复（D68）：** Clutch Agent 第一句直接给下一步动作或结论——无开场白、无客套；报错说明原因 + 修法。完整 ADHD 输出 Skill 仍可在 Skills 里选用。
+- **大文件列表更轻量：** 聊天流「变更文件」chip 与右侧 Changes 面板以前对每个文件渲染独立节点——593 个改动 = 593 个 chip / 593 行 DOM。现在两者都会折叠（chip >8 个出「显示全部」按钮；Changes 面板按目录分组、默认折叠、加过滤框）。
+- **非 Git 工作区提示：** 当前工作区不是 Git 仓库时，Changes 面板显示「非 Git 仓库」而不是空白的「暂无未提交变更」。
+- **`run_terminal_cmd` 效率指引：** Agent 工具描述现在引导用 shell glob / ripgrep / 先 stat，不再为简单问题跑 17GB 递归 `grep -r`。
+- **Design 与 Chat 稳定性修复：** Design 页面不再黑白（srcDoc iframe paint 冻结）；Design「modify」现在记录版本化 round；孤儿会话清理在注册表失配时不再误删目录；Chat 自动压缩不再几轮就把可见历史折叠掉。
 
-> **v1.4.1 同时发 macOS + Windows。** macOS：Apple Silicon DMG + 应用内更新。Windows：MSI/NSIS。
+> **v1.4.2 同时发 macOS + Windows。** macOS：Apple Silicon DMG + 应用内更新。Windows：MSI/NSIS。
 
 更早版本（v1.4.0 HTTP MCP + Worktree、v1.2.9 Coding 发图等）：[`CHANGELOG.md`](CHANGELOG.md) · [`docs/releases/`](docs/releases/)。
 

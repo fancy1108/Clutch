@@ -20,6 +20,35 @@
 
 ## Recently Completed
 
+## UI 大文件列表性能优化 + run_terminal_cmd 效率 + 非 git 提示（2026-09-21）
+
+| 项 | 说明 |
+|----|------|
+| **Commit** | `3849256`（run_terminal_cmd EFFICIENCY 指引）· `c582428`（FilesChangedChips 折叠）· `d78ee0c`（Changes 面板分组/折叠/过滤）· `0d599b8`（非 git 仓库提示 + is_git_repo 标志） |
+| **Verification** | `pnpm build` ✅；`npx vitest run src/components/FilesChangedChips.test.tsx` → 4 passed；`npx vitest run src/components/UncommittedChangesList.test.tsx` → 7 passed；`uv run pytest tests/ -k "workspace or uncommitted or changes"` → 52 passed；`uv run pytest tests/ -k "builtin_tool or terminal or run_terminal"` → 43 passed；pre-commit `verify.sh` → 0 error |
+| **证据** | `git show --stat 3849256 c582428 d78ee0c 0d599b8`（4 commits, 1+3+3+8 files changed） |
+| **Files** | `services/orchestrator/src/builtin_tools.py` · `apps/desktop/src/components/FilesChangedChips.tsx` · `apps/desktop/src/components/FilesChangedChips.test.tsx` · `apps/desktop/src/components/ChatFeed.tsx` · `apps/desktop/src/components/UncommittedChangesList.tsx` · `apps/desktop/src/components/UncommittedChangesList.test.tsx` · `apps/desktop/src/components/RightPanel.tsx` · `apps/desktop/src/App.tsx` · `apps/desktop/src/services/workspaceApi.ts` · `services/orchestrator/src/workspace.py` · `services/orchestrator/src/routes/workspace.py` · `apps/desktop/src/components/LanguageContext.tsx` |
+
+## Design 回归修复：srcDoc 冻结 / modify 版本 / prune 守护（2026-09-21）
+
+| 项 | 说明 |
+|----|------|
+| **Commit** | `c12ddba`（前端预览 src= 化）· `d8dd342`（modify 记 round + prune 守护） |
+| **Verification** | `./scripts/verify.sh` → vitest 248 passed · pytest 1029 passed / 7 skipped · doc-drift 0 error；`uv run pytest tests/test_design_service.py -q` → 42 passed（含新增 `test_prune_orphan_session_dirs_guards`）；Playwright 浏览器实测画布卡片与侧栏缩略图正常上色 |
+| **证据** | `runs/verification/2026-09-21-design-regression-fixes.md` |
+| **Files** | `apps/desktop/src/components/design/designWorkspaceUtils.ts` · `apps/desktop/src/sidebar.tsx` · `services/orchestrator/src/design/generator.py` · `services/orchestrator/src/design/session_store.py` · `services/orchestrator/tests/test_design_service.py` · `CHANGELOG.md` |
+| **备注** | 排查中 prune bug 误删用户 4 个测试 Design 会话（已披露，守护即防复发）；modify 端到端 UI 点验待用户重启 sidecar 后进行 |
+
+## Chat 历史自动压缩误折叠修复（2026-09-21）
+
+| 项 | 说明 |
+|----|------|
+| **Commit** | `9570832` |
+| **Verification** | `./scripts/verify.sh` → vitest 248 passed · pytest 1028 passed / 7 skipped · doc-drift 0 error；`uv run pytest tests/test_compaction.py tests/test_context_layers_b36.py tests/test_chat_turn_messages_repro.py tests/test_chat_reconnect_repro.py` → 22 passed |
+| **证据** | `runs/verification/2026-09-21-chat-history-autocompact-fix.md`（真实会话 `run_muao447c` 归档回放：折叠时当前上下文 ~7.8k tokens；旧逻辑折、新逻辑不折） |
+| **Files** | `services/orchestrator/src/compaction.py` · `tests/test_compaction.py` · `tests/test_context_layers_b36.py` · `tests/test_chat_turn_messages_repro.py`（新）· `tests/test_chat_reconnect_repro.py`（新）· `CHANGELOG.md` · `CLAUDE.md` · `memory/FAILURES.md` |
+| **备注** | `docs/PRODUCT_INTRO.md` 无需改：§3.1 本就写「估算 token 接近上下文窗口限额时自动折叠」，本次是让代码对齐文档 |
+
 ## Release v1.4.1（2026-09-21）
 
 | 项 | 说明 |

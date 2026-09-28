@@ -15,7 +15,7 @@ import {
   SidebarToggleWindows,
 } from './platform/chrome/sidebar';
 import { isWindowsHost, useHostOs } from './platform/hostOs';
-import { sidecarFetch, sidecarHttpUrl } from './services/sidecarUrl';
+import { sidecarAuthedHttpUrl } from './services/sidecarUrl';
 
 const DESIGN_THUMB_PX = 40;
 
@@ -29,30 +29,23 @@ function DesignSessionThumb({
   thumbnailUrl?: string | null;
   device?: string | null;
 }) {
-  const [html, setHtml] = useState<string | null>(null);
+  // Serve the preview via src= (real navigation) instead of srcDoc: oversized
+  // srcDoc iframes freeze at the initial pre-Tailwind paint, rendering thumbnails
+  // unstyled (black-and-white).
+  const [src, setSrc] = useState<string | null>(null);
   const isMobile = (device || '').toLowerCase() === 'app';
   const frameW = isMobile ? 390 : 1920;
   const frameH = isMobile ? 844 : 1080;
 
   useEffect(() => {
     if (!previewUrl) {
-      setHtml(null);
+      setSrc(null);
       return;
     }
     let cancelled = false;
-    void (async () => {
-      try {
-        const res = await sidecarFetch(sidecarHttpUrl(previewUrl));
-        if (!res.ok) {
-          if (!cancelled) setHtml(null);
-          return;
-        }
-        const text = await res.text();
-        if (!cancelled) setHtml(text);
-      } catch {
-        if (!cancelled) setHtml(null);
-      }
-    })();
+    void sidecarAuthedHttpUrl(previewUrl).then((url) => {
+      if (!cancelled) setSrc(url);
+    });
     return () => {
       cancelled = true;
     };
@@ -62,10 +55,10 @@ function DesignSessionThumb({
 
   return (
     <>
-      {html ? (
+      {src ? (
         <iframe
           title=""
-          srcDoc={html}
+          src={src}
           sandbox="allow-scripts"
           tabIndex={-1}
           aria-hidden

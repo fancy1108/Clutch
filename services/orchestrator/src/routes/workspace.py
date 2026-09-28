@@ -168,10 +168,14 @@ async def get_workspace_tree(wt_id: str = "") -> dict[str, Any]:
 @router.get("/api/workspace/changes")
 async def get_workspace_changes(wt_id: str = "") -> dict[str, Any]:
     from src.worktree_isolation import resolve_view_root
-    from src.workspace import WorkspaceError, list_uncommitted
+    from src.workspace import WorkspaceError, is_git_workspace, list_uncommitted
 
     try:
-        return {"files": list_uncommitted(resolve_view_root(wt_id or None))}
+        root = resolve_view_root(wt_id or None)
+        return {
+            "files": list_uncommitted(root),
+            "is_git_repo": is_git_workspace(root),
+        }
     except WorkspaceError as exc:
         raise _workspace_http_error(exc) from exc
 

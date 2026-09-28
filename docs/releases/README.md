@@ -39,6 +39,7 @@
 
 | Version | Snapshot | Notes |
 |---------|----------|-------|
+| 1.4.2 | [`v1.4.2.md`](./v1.4.2.md) | **macOS + Windows** · Chat/Changes large-list collapse + non-Git hint · run_terminal_cmd efficiency · Design black-white / modify-round / prune-guard fixes · Chat compaction fix |
 | 1.4.1 | [`v1.4.1.md`](./v1.4.1.md) | **macOS + Windows** · Agnes 3.0 / Image 2.5 / Video 2.5 Flash · D68 default reply style |
 | 1.4.0 | [`v1.4.0.md`](./v1.4.0.md) | **macOS + Windows** · HTTP MCP · Settings FM-01…05 · Worktrees D32 · Orchestra send-immediate (D67) · Assigned-Agent node engine |
 | 1.3.0 | [`v1.3.0.md`](./v1.3.0.md) | **macOS + Windows** · Tool trail detail (D46) · Permission modes (D27/D54) · Deliverable intent + real images/video (D54) · Tool-skip harness (D44) · Plan-approve→execute · sidebar recent-first |

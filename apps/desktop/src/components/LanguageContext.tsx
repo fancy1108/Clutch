@@ -375,6 +375,8 @@ const zhTranslations: Record<string, string> = {
   "Workflow selected — send a message to start": "已选择工作流 — 发送消息即可启动",
   "Uncommitted changes": "未提交变更",
   "No uncommitted changes": "暂无未提交变更。",
+  "Not a Git repository": "非 Git 仓库",
+  "This workspace is not a Git repository; changes cannot be tracked here.": "此工作区不是 Git 仓库，无法在此追踪文件变更。",
   "Terminal logs": "终端日志",
   "Authorize workspace files hint": "请先在侧栏添加项目文件夹，或点击 Authorize workspace。",
   "Workspace folder empty": "工作区为空。",

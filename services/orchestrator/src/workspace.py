@@ -738,6 +738,20 @@ def _uncommitted_diff_lines(root: Path, rel: str) -> list[dict[str, Any]]:
     return lines
 
 
+def is_git_workspace(root: Path | None = None) -> bool:
+    """True when `root` is inside a git work tree (lightweight, no branch scan)."""
+    try:
+        cwd = (root or require_workspace()).resolve()
+    except WorkspaceError:
+        return False
+    inside = _run_git(cwd, "rev-parse", "--is-inside-work-tree")
+    return (
+        inside is not None
+        and inside.returncode == 0
+        and inside.stdout.strip() == "true"
+    )
+
+
 def list_uncommitted(root: Path | None = None) -> list[dict[str, Any]]:
     """Git porcelain for the Files/Changes view root (main or a worktree)."""
     try:

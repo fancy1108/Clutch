@@ -76,10 +76,13 @@ def test_batch_offloads_older_tools_keeps_recent(tmp_path: Path, monkeypatch) ->
     assert messages[3]["content"] == recent_b
 
 
-def test_emergency_compact_threshold_unchanged() -> None:
+def test_emergency_compact_threshold() -> None:
     state = initial_state("run_b36")
     state["messages"] = [{"agent": "User", "text": f"m{i}"} for i in range(6)]
-    state["session_tokens"] = 14_999
+    # Small current context: never fold, regardless of the lifetime cumulative
+    # token counter (L4 fires on current context fill, not session_tokens).
+    state["session_tokens"] = 500_000
     assert should_compact(state) is False
-    state["session_tokens"] = 15_001
+    # Genuinely large current context: the emergency fold still engages.
+    state["messages"] = [{"agent": "User", "text": "x" * 60_000} for _ in range(6)]
     assert should_compact(state) is True

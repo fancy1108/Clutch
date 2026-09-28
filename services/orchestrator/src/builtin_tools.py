@@ -143,6 +143,17 @@ def list_builtin_tools() -> list[dict[str, Any]]:
                 "use apply_patch or search_replace so Chat Diff cards and Changes update. "
                 "Do not `git commit` here unless the user asked to commit / 提交. "
                 "Do not start a second copy of a command that is already running in this Chat. "
+                "EFFICIENCY (default timeout is 60s — a well-chosen command finishes in <5s): "
+                "• List files by name/pattern → use `ls /path/*.ext` or `find /path -maxdepth N -name X` "
+                "with an explicit -maxdepth; never unbounded `find /` or `grep -r` over the whole workspace. "
+                "• Search file CONTENTS → prefer `rg` (ripgrep) over `grep -r`; rg auto-skips .git/ignored "
+                "files and is ~10x faster. If only `grep` is available, always add `--include`/`--exclude` "
+                "and `--max-depth`-equivalent scope; never grep node_modules/.git/dist/build/target. "
+                "• Before a recursive search, ask: is the scope actually needed? A user asking about "
+                "files in directory X usually does NOT need references scanned across the whole repo — "
+                "check X directly first. "
+                "• For 'can I delete X?' questions: stat/list X and check git tracking of X; do NOT grep "
+                "the entire workspace for mentions of X's filename. "
             ),
             "inputSchema": {
                 "type": "object",
