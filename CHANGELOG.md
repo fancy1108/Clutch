@@ -10,6 +10,8 @@ All notable changes to Clutch are documented here. Format follows [Keep a Change
 
 ## [Unreleased]
 
+## [1.4.2] - 2026-09-28
+
 ### Added
 
 - **Non-Git workspace hint in Changes panel:** When the active workspace is not a Git repository, the Changes tab now shows a "Not a Git repository" notice (bilingual) instead of a bare "No uncommitted changes" — explaining why deletions from a non-git folder make the panel go empty. The `/api/workspace/changes` endpoint now returns an `is_git_repo` flag alongside `files`.

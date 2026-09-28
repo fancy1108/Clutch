@@ -17,15 +17,17 @@ Clutch is a **desktop app** (Tauri + React) for developers and technical operato
 |---|---|
 | **Stack** | Tauri 2 · React 19 · FastAPI + LangGraph · local-first (`localhost:8123`) |
 | **License** | See [LICENSE](LICENSE) |
-| **Latest release** | [v1.4.1](https://github.com/fancy1108/Clutch/releases/tag/v1.4.1) · [Changelog](CHANGELOG.md#141---2026-09-21) |
+| **Latest release** | [v1.4.2](https://github.com/fancy1108/Clutch/releases/tag/v1.4.2) · [Changelog](CHANGELOG.md#142---2026-09-28) |
 | **Contributors** | Thanks to [@MyloveAless](https://github.com/MyloveAless) for the multi-agent image generation workflow design & end-to-end validation. |
 
-### What's new in v1.4.1
+### What's new in v1.4.2
 
-- **Agnes free models, next generation:** Built-in catalog is now **Agnes 3.0 Flash** (chat), **Agnes Image 2.5 Flash**, and **Agnes Video 2.5 Flash** (720P). Saved selections remap to the new ids automatically.
-- **Tighter default replies (D68):** Clutch Agent now leads with the next action or the answer — no preamble, no closers; errors state cause + fix. The full ADHD output skill stays optional via Skills.
+- **Lighter chat & Changes panel on big file lists:** The chat feed's "Changed files" chips and the right-side Changes tab used to render every touched file as its own node — a 593-file change set meant 593 chips / 593 DOM rows. Both now collapse (>8 chips show a "Show all" expander; the Changes tab groups by directory, collapses by default, and adds a filter box).
+- **Non-Git workspace hint:** When the active workspace isn't a Git repo, the Changes tab now says "Not a Git repository" instead of a bare "No uncommitted changes".
+- **`run_terminal_cmd` efficiency guidance:** The agent tool description now steers toward shell globs / ripgrep / stat-first, so it stops running 17 GB recursive `grep -r` to answer simple questions.
+- **Design & Chat reliability fixes:** Design pages no longer render black-and-white (srcDoc iframe paint freeze); Design "modify" now records versioned rounds; orphan-session pruning can't wipe folders on a registry mismatch; Chat auto-compaction no longer folds visible history after a few normal turns.
 
-> **v1.4.1 ships macOS + Windows.** macOS: Apple Silicon DMG + in-app updater. Windows: MSI/NSIS.
+> **v1.4.2 ships macOS + Windows.** macOS: Apple Silicon DMG + in-app updater. Windows: MSI/NSIS.
 
 Older releases (v1.4.0 HTTP MCP + worktrees, v1.2.9 coding image paste, …): [`CHANGELOG.md`](CHANGELOG.md) · [`docs/releases/`](docs/releases/).
 
