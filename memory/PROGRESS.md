@@ -1,22 +1,28 @@
 # PROGRESS
 
 > **生命周期：** 见 [`docs/document-governance.md`](../docs/document-governance.md) §文档生命周期。  
-> 主文件仅保留当前状态 + 最近 10 次会话；更早记录见 [`archive/PROGRESS-2026-Q2.md`](./archive/PROGRESS-2026-Q2.md) · [`archive/PROGRESS-2026-Q3.md`](./archive/PROGRESS-2026-Q3.md) · [`archive/PROGRESS-2026-Q3-late.md`](./archive/PROGRESS-2026-Q3-late.md)。
+> 主文件仅保留当前状态 + 最近 10 次会话；更早记录见 [`archive/PROGRESS-2026-Q2.md`](./archive/PROGRESS-2026-Q2.md) · [`archive/PROGRESS-2026-Q3.md`](./archive/PROGRESS-2026-Q3.md) · [`archive/PROGRESS-2026-Q3-late.md`](./archive/PROGRESS-2026-Q3-late.md) · [`archive/PROGRESS-2026-Q3-rotate-2026-09-28.md`](./archive/PROGRESS-2026-Q3-rotate-2026-09-28.md)。
 
 ## Current Status
 
 - **阶段：** **v1.4.1** 已发（2026-09-21，macOS + Windows；DMG/MSI/NSIS + updater 资产齐了，tap 已同步 1.4.1）。主线 D8–D13 ✅；扩展/MCP **D14–D52 Agent 代 PM ✅**；Desktop E2E ✅；**Design D36 PM ✅**
 - **Git / PM 索引：** [`runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md`](../runs/verification/pm-acceptance/AGENT-PM-2026-07-25.md)
 - **下次优先：** 后续用户可见变更写入 `CHANGELOG.md` `## [Unreleased]`；需要应用内更新时手动跑 `Release (updater assets)`。
-- **本会话：** 修复 Design 模式两个回归（生成页黑白不渲染 / modify 不切换版本）+ `prune_orphan_session_dirs` 数据丢失守护（commit `c12ddba` / `d8dd342`）。
+- **本会话：** UI 大文件列表性能优化（FilesChangedChips 折叠 + Changes 面板分组/过滤）+ `run_terminal_cmd` 效率指引 + 非 git 仓库提示（commit `3849256` / `c582428` / `d78ee0c` / `0d599b8`）；另更新本机 Claude Code / Codex 的 agnes 模型配置至 `agnes-3.0-flash`。
 
 ## Next Actions
 
 - **B-52 流程图共享不开工**（需求池候选，等人再开）
-- 重启 Sidecar / App 后用 Clutch Agent 问一句排错题，确认第一句是动作或结论、没有配图
-- 用户可见变更写入 `CHANGELOG.md` `## [Unreleased]`
+- 重启 Sidecar / App 后点验：① 聊天流 CHANGED FILES 折叠 ② 右侧 Changes 分组/过滤 ③ 非 git 工作区提示 ④ Design 生成页配色与 Rounds 切换
+- 后续用户可见变更写入 `CHANGELOG.md` `## [Unreleased]`
 
 ## Recent Sessions
+
+## 2026-09-21 会话（UI 大文件列表性能优化 + run_terminal_cmd 效率 + 非 git 提示）
+
+- **做了：** ① `FilesChangedChips` 折叠：聊天流 CHANGED FILES 之前无上限渲染所有 chip（593 文件 = 593 chip），>8 文件时改为前 8 + 总数 + "Show all (N)" 折叠，展开后 220px 滚动容器。commit `c582428`。② 右侧 Changes 面板分组/折叠/过滤：之前平铺 593 个 DOM 节点，改为按顶层目录分组（可折叠组头 + 计数）、>50 文件默认全折叠、>20 文件出过滤框。commit `d78ee0c`。③ `run_terminal_cmd` tool description 加 EFFICIENCY 指引（glob 优先 / ripgrep 优先 / "能不能删 X" 先 stat 不 grep 全仓），根因是 agent 对简单问题跑 17GB 递归 grep 吃满 60s 超时。commit `3849256`。④ 非 git 工作区提示：`list_uncommitted` 对非 git 仓库返回空，与"无改动"不可区分；新增 `is_git_workspace` + 路由返回 `is_git_repo` 标志，前端在无文件且非 git 时显示"非 Git 仓库"提示。commit `0d599b8`。⑤ 本机 Claude Code / Codex 的 agnes 模型配置（cc-switch DB + live 文件）从 `agnes-2.0-flash` / `agnes-2.5-pro-alpha` 统一更新至 `agnes-3.0-flash`，API 实测通过。
+- **测：** `pnpm build` ✅；vitest（FilesChangedChips 4 + UncommittedChangesList 7）全过；pytest workspace 52 passed；pre-commit `verify.sh` 0 error。
+- **下次：** 重启 Sidecar / App 后点验四项 UI 改动（聊天流折叠 / Changes 分组 / 非 git 提示 / Design 配色）。
 
 ## 2026-09-21 会话（Design 回归修复：黑白页 / modify 版本 / prune 守护）
 
@@ -71,56 +77,3 @@
 
 - **做了：** 本地缓存移出 git（`.reasonix/`、`e2e-sandbox/`、`.impeccable/`）；`PROGRESS.md` 轮转至 `archive/PROGRESS-2026-Q3-late.md`；补全 `docs/README.md` / `FILEMAP.md` / `AGENTS.md` 索引；去掉已删的 `mockData.ts` 指针。未改业务逻辑。
 - **下次：** 需要的话再 commit 本批整理。
-
-## 2026-08-28 会话（撤回 FM-06）
-
-- **做了：** 确认卡、排队条、Complete 草稿 UI 都去掉。FM-06 🚫 D67。同 CLI `@` 复用已有 Lane。
-- **下次：** 重启 App 后 `@OpenCode 只回复 pong` 应直接进终端。
-
-## 2026-08-28 会话（D66 去掉派发确认卡）
-
-- **做了：** Orchestrator Bar 发送即派发。跨 Agent 用 `@C from @A`。随后 D67 连排队和草稿一起撤。
-- **下次：** 重启 App 后点 `@OpenCode 只回复 pong`。
-
-## 2026-08-28 会话（Wave 4 Agent 点验并提交）
-
-- **做了：** FM-10 去掉 Node engine，引擎跟 Assigned Agent。FM-18 Chat 失败气泡补 `validation-failure-chat`。连同 D64（撤 FM-15、解释器超时出卡）一起提交。
-- **测：** `./scripts/verify.sh` vitest 248 · pytest 1021 passed / 7 skipped。
-- **下次：** Wave 3 Orchestra（要 CLI）或 FM-16 Design。
-
-## 2026-08-28 会话（D65 节点引擎跟随 Agent）
-
-- **做了：** 去掉 Edit Node 的 Node engine 下拉。引擎、模型、MCP 跟 Assigned Agent。编译不再写节点 `tool`。
-- **下次：** 完全退出再开 App，点验 FM-10。
-
-## 2026-08-28 会话（撤回 FM-15；FM-17 去预览）
-
-- **做了：** 并行 `delegate_subtask` 不再弹确认。+ 去掉两张样式预览。超时杀进程组并返回 `Interpreter timeout`，Chat 出卡。
-- **下次：** 重启 App 看 + 菜单；FM-17 不要求人工点验。
-
-## 2026-08-28 会话（禁止连开同一条 shell）
-
-- **做了：** 同一 Chat 里已在跑的命令再开会被拒绝；前台超时转入后台；Kill 杀进程组（eslint 子进程）。
-- **下次：** 完全退出再开 App；Kill 残留进程后再点验 lint。
-
-## 2026-08-28 会话（Files/Changes 跟随 worktree）
-
-- **做了：** 右侧 Files/Changes 按底栏所选 worktree 拉 `tree`/`changes`/`file`（`wt_id`）。底栏 Branch 仍走主仓 `GET /api/workspace/git`。切树会刷新；提交后 Changes 从 git 重拉。预览/打开文件走当前检出。
-- **测：** `uv run pytest tests/test_worktree_isolation_d32.py tests/test_run_state_store.py` 17 passed。
-- **下次：** 完全退出再开 App，按 playbook 5b 点验。不要标 ROADMAP，等你过。
-
-## 2026-08-28 会话（底栏自适应）
-
-- **做了：** 底栏 `Active Agent` 改为 `Agent`；容器查询藏标签、截断长值、空闲 Worktree/Workflow 先收；版本号 `shrink-0` 贴右。
-- **下次：** 缩小窗口点验版本号不被裁切。
-
-## 2026-08-28 会话（Worktree 底栏选择）
-
-- **做了：** Worktree 选择挪到应用 Footer，紧挨 Branch；去掉输入框上方天蓝条。菜单与 Branch/Model 同一套 chrome。
-- **下次：** 重启 App 后点验底栏 Worktree；再测 FM-11 写文件隔离。
-
-## 2026-08-28 会话（修 D32 worktree cwd）
-
-- **做了：** Enable 后 Agent 仍写主仓。会话恢复丢掉 `worktree_isolation`；整轮 Chat 才绑定 worktree cwd；绝对路径会落到父仓。未 commit。
-- **测：** `uv run pytest tests/test_worktree_isolation_d32.py tests/test_run_state_store.py tests/test_apply_patch.py` 29 passed。
-- **下次：** 完全退出再开 App，重新 Enable，复测 `clutch-fm11.txt` 只出现在 `.clutch/worktrees/wt_…`。

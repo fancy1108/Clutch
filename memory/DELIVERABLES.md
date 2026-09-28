@@ -20,6 +20,15 @@
 
 ## Recently Completed
 
+## UI 大文件列表性能优化 + run_terminal_cmd 效率 + 非 git 提示（2026-09-21）
+
+| 项 | 说明 |
+|----|------|
+| **Commit** | `3849256`（run_terminal_cmd EFFICIENCY 指引）· `c582428`（FilesChangedChips 折叠）· `d78ee0c`（Changes 面板分组/折叠/过滤）· `0d599b8`（非 git 仓库提示 + is_git_repo 标志） |
+| **Verification** | `pnpm build` ✅；`npx vitest run src/components/FilesChangedChips.test.tsx` → 4 passed；`npx vitest run src/components/UncommittedChangesList.test.tsx` → 7 passed；`uv run pytest tests/ -k "workspace or uncommitted or changes"` → 52 passed；`uv run pytest tests/ -k "builtin_tool or terminal or run_terminal"` → 43 passed；pre-commit `verify.sh` → 0 error |
+| **证据** | `git show --stat 3849256 c582428 d78ee0c 0d599b8`（4 commits, 1+3+3+8 files changed） |
+| **Files** | `services/orchestrator/src/builtin_tools.py` · `apps/desktop/src/components/FilesChangedChips.tsx` · `apps/desktop/src/components/FilesChangedChips.test.tsx` · `apps/desktop/src/components/ChatFeed.tsx` · `apps/desktop/src/components/UncommittedChangesList.tsx` · `apps/desktop/src/components/UncommittedChangesList.test.tsx` · `apps/desktop/src/components/RightPanel.tsx` · `apps/desktop/src/App.tsx` · `apps/desktop/src/services/workspaceApi.ts` · `services/orchestrator/src/workspace.py` · `services/orchestrator/src/routes/workspace.py` · `apps/desktop/src/components/LanguageContext.tsx` |
+
 ## Design 回归修复：srcDoc 冻结 / modify 版本 / prune 守护（2026-09-21）
 
 | 项 | 说明 |
